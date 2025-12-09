@@ -5,7 +5,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <PackageId>GFramework</PackageId>
-        <Authors>GeWuYou</Authors>
+        <Authors>gewuyou</Authors>
         <Product>GFramework</Product>
         <Description>A game development framework inspired by QFramework</Description>
         <Copyright>Copyright © 2025</Copyright>
