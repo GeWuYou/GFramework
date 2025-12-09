@@ -1,0 +1,140 @@
+# Model 包使用说明
+
+## 概述
+
+Model 包定义了数据模型层的接口和基类。Model 是 MVC 架构中的 M 层，负责管理应用程序的数据和状态。Model 层应该只包含数据和简单的数据逻辑，不包含复杂的业务逻辑。
+
+## 核心接口
+
+### [`IModel`](IModel.cs)
+
+模型接口，定义了模型的基本行为和功能。
+
+**继承的能力接口：**
+- [`ICanSetArchitecture`](../rule/ICanSetArchitecture.cs) - 可设置架构引用
+- [`ICanGetUtility`](../utility/ICanGetUtility.cs) - 可获取工具类
+- [`ICanSendEvent`](../events/ICanSendEvent.cs) - 可发送事件
+
+**核心方法：**
+```csharp
+void Init();  // 初始化模型
+```
+
+### [`ICanGetModel`](ICanGetModel.cs)
+
+标记接口，表示实现者可以获取模型。继承自 [`IBelongToArchitecture`](../rule/IBelongToArchitecture.cs)。
+
+## 核心类
+
+### [`AbstractModel`](AbstractModel.cs)
+
+抽象模型基类，提供模型的基础实现。
+
+**使用示例：**
+
+```csharp
+public class PlayerModel : AbstractModel
+{
+    // 使用 BindableProperty 定义可监听的属性
+    public BindableProperty<string> Name { get; } = new("Player");
+    public BindableProperty<int> Level { get; } = new(1);
+    public BindableProperty<int> Health { get; } = new(100);
+    public BindableProperty<int> MaxHealth { get; } = new(100);
+    
+    protected override void OnInit()
+    {
+        // 监听生命值变化
+        Health.Register(newHealth =>
+        {
+            if (newHealth <= 0)
+            {
+                this.SendEvent(new PlayerDiedEvent());
+            }
+        });
+    }
+}
+```
+
+## Model 的职责
+
+### ✅ 应该做的事
+
+1. **存储数据和状态**
+2. **提供数据访问接口**
+3. **监听自身属性变化并做出响应**
+4. **发送数据变化事件**
+
+### ❌ 不应该做的事
+
+1. **不包含复杂业务逻辑** - 业务逻辑应该在 System 中
+2. **不直接依赖其他 Model** - 通过 Command 协调
+3. **不包含 UI 逻辑** - UI 逻辑应该在 Controller 中
+
+## 常见 Model 示例
+
+### 玩家数据模型
+
+```csharp
+public class PlayerModel : AbstractModel
+{
+    public BindableProperty<string> PlayerId { get; } = new("");
+    public BindableProperty<string> PlayerName { get; } = new("Player");
+    public BindableProperty<int> Level { get; } = new(1);
+    public BindableProperty<int> Health { get; } = new(100);
+    public BindableProperty<int> MaxHealth { get; } = new(100);
+    public BindableProperty<int> Gold { get; } = new(0);
+    
+    public Vector3 Position { get; set; }
+    
+    protected override void OnInit()
+    {
+        Health.Register(hp =>
+        {
+            if (hp <= 0)
+            {
+                this.SendEvent(new PlayerDiedEvent());
+            }
+        });
+    }
+}
+```
+
+### 游戏状态模型
+
+```csharp
+public class GameModel : AbstractModel
+{
+    public BindableProperty<GameState> State { get; } = new(GameState.Menu);
+    public BindableProperty<int> Score { get; } = new(0);
+    public BindableProperty<int> HighScore { get; } = new(0);
+    public BindableProperty<int> CurrentLevel { get; } = new(1);
+    
+    protected override void OnInit()
+    {
+        Score.Register(newScore =>
+        {
+            if (newScore > HighScore.Value)
+            {
+                HighScore.Value = newScore;
+                this.SendEvent(new NewHighScoreEvent { Score = newScore });
+            }
+        });
+    }
+}
+```
+
+## 最佳实践
+
+1. **使用 BindableProperty 存储需要监听的数据**
+2. **Model 之间不要直接调用，通过 Command/System 协调**
+3. **复杂计算和业务逻辑放在 System 中**
+4. **使用事件通知数据的重要变化**
+5. **保持 Model 简单纯粹，只做数据管理**
+
+## 相关包
+
+- [`architecture`](../architecture/README.md) - 提供 Model 的注册和获取
+- [`property`](../property/README.md) - BindableProperty 用于定义可监听属性
+- [`events`](../events/README.md) - Model 发送事件通知变化
+- [`utility`](../utility/README.md) - Model 可以使用工具类
+- [`extensions`](../extensions/README.md) - 提供 GetModel 等扩展方法
