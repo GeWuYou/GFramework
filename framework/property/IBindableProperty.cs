@@ -1,4 +1,4 @@
-namespace GWFramework.framework.property;
+namespace GFramework.framework.property;
 
 /// <summary>
 /// 可绑定属性接口，继承自只读可绑定属性接口，提供可读写的属性绑定功能

@@ -1,7 +1,7 @@
-using GWFramework.framework.architecture;
-using GWFramework.framework.rule;
+using GFramework.framework.architecture;
+using GFramework.framework.rule;
 
-namespace GWFramework.framework.system;
+namespace GFramework.framework.system;
 
 /// <summary>
 /// 抽象系统基类，实现系统接口的基本功能

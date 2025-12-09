@@ -1,6 +1,6 @@
-using GWFramework.framework.rule;
+using GFramework.framework.rule;
 
-namespace GWFramework.framework.system;
+namespace GFramework.framework.system;
 
 /// <summary>
 /// 定义一个接口，表示可以获取系统的对象。

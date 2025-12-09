@@ -1,6 +1,6 @@
-﻿using GWFramework.framework.rule;
+﻿using GFramework.framework.rule;
 
-namespace GWFramework.framework.utility;
+namespace GFramework.framework.utility;
 
 /// <summary>
 /// 定义一个接口，表示可以获取工具类的对象

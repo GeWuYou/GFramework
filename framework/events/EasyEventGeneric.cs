@@ -1,4 +1,4 @@
-﻿namespace GWFramework.framework.events;
+﻿namespace GFramework.framework.events;
 
 /// <summary>
 /// 泛型事件类，支持一个泛型参数 T 的事件注册、注销与触发。

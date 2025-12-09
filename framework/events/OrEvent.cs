@@ -1,6 +1,6 @@
-using GWFramework.framework.extensions;
+using GFramework.framework.extensions;
 
-namespace GWFramework.framework.events;
+namespace GFramework.framework.events;
 
 /// <summary>
 /// OrEvent类用于实现事件的或逻辑组合，当任意一个注册的事件触发时，都会触发OrEvent本身

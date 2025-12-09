@@ -1,6 +1,6 @@
-using GWFramework.framework.rule;
+using GFramework.framework.rule;
 
-namespace GWFramework.framework.events;
+namespace GFramework.framework.events;
 
 /// <summary>
 /// 定义一个可以注册事件的接口，继承自IBelongToArchitecture接口。

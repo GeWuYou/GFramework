@@ -1,8 +1,7 @@
-﻿using GWFramework.framework.architecture;
-using GWFramework.framework.rule;
+﻿using GFramework.framework.architecture;
+using GFramework.framework.rule;
 
-
-namespace GWFramework.framework.command;
+namespace GFramework.framework.command;
 
 /// <summary>
 /// 抽象命令类，实现 ICommand 接口，为具体命令提供基础架构支持

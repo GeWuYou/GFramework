@@ -1,8 +1,8 @@
-﻿using GWFramework.framework.events;
-using GWFramework.framework.rule;
-using GWFramework.framework.utility;
+﻿using GFramework.framework.events;
+using GFramework.framework.rule;
+using GFramework.framework.utility;
 
-namespace GWFramework.framework.model;
+namespace GFramework.framework.model;
 
 /// <summary>
 /// 模型接口，定义了模型的基本行为和功能

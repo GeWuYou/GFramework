@@ -1,6 +1,6 @@
-using GWFramework.framework.architecture;
+using GFramework.framework.architecture;
 
-namespace GWFramework.framework.query;
+namespace GFramework.framework.query;
 
 /// <summary>
 /// 抽象查询类，提供查询操作的基础实现

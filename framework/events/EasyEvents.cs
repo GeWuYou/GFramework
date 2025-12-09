@@ -1,4 +1,4 @@
-﻿namespace GWFramework.framework.events;
+﻿namespace GFramework.framework.events;
 
 /// <summary>
 /// EasyEvents事件管理器类，用于全局事件的注册、获取和管理

@@ -1,6 +1,6 @@
-using GWFramework.framework.rule;
+using GFramework.framework.rule;
 
-namespace GWFramework.framework.command;
+namespace GFramework.framework.command;
 
 /// <summary>
 /// 定义一个可以发送命令的接口，继承自IBelongToArchitecture接口。

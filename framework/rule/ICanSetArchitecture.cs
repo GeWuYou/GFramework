@@ -1,6 +1,6 @@
-using GWFramework.framework.architecture;
+using GFramework.framework.architecture;
 
-namespace GWFramework.framework.rule;
+namespace GFramework.framework.rule;
 
 /// <summary>
 /// 定义一个接口，用于设置架构实例

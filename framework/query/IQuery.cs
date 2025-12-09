@@ -1,8 +1,8 @@
-using GWFramework.framework.model;
-using GWFramework.framework.rule;
-using GWFramework.framework.system;
+using GFramework.framework.model;
+using GFramework.framework.rule;
+using GFramework.framework.system;
 
-namespace GWFramework.framework.query;
+namespace GFramework.framework.query;
 
 
 /// <summary>

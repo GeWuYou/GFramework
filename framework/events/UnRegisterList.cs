@@ -1,4 +1,4 @@
-﻿namespace GWFramework.framework.events;
+﻿namespace GFramework.framework.events;
 
 
 /// <summary>
