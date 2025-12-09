@@ -77,6 +77,27 @@ jobs:
           # 推荐把用户名放到仓库 Secret（不是邮箱），例如 ${{ secrets.NUGET_USER }}
           # 也可以直接写用户名（不推荐），但通常使用 secret 更安全
           user: ${{ secrets.NUGET_USER }}
+      - name: Debug NuGet/login outputs (no secret printed)
+        run: |
+          echo "---- Debug: show package info and login output length ----"
+          ls -la ./packages || true
+          PKG=$(find ./packages -name "*.nupkg" | head -n1)
+          if [ -z "$PKG" ]; then
+            echo "No .nupkg found"
+            exit 1
+          fi
+          echo "Found package: $PKG"
+          echo "nuspec <id>:"
+          unzip -p "$PKG" *.nuspec 2>/dev/null | sed -n 's:.*<id>\(.*\)</id>.*:\1:p' || true
+          echo "nuspec <version>:"
+          unzip -p "$PKG" *.nuspec 2>/dev/null | sed -n 's:.*<version>\(.*\)</version>.*:\1:p' || true
+
+          # Check NuGet/login output length (do NOT print the key)
+          echo -n "Length of steps.login.outputs.NUGET_API_KEY: "
+          echo -n "${{ steps.login.outputs.NUGET_API_KEY }}" | wc -c
+          echo
+          # Also check whether the login step reported any error (GitHub Actions will show step logs)
+          echo "---- end debug ----"
 
       - name: NuGet push (using short-lived API key from NuGet/login)
         run: |
@@ -91,29 +112,3 @@ jobs:
             --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" \
             --source https://api.nuget.org/v3/index.json \
             --skip-duplicate
-        # 如果你希望在没有 NuGet/login outputs 的情况下也能失败得更清楚，可以在这里检查输出长度
-
-      # -----------------------
-      # Create GitHub Release and upload .nupkg as asset
-      # -----------------------
-      - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref_name }}
-          release_name: "Release ${{ github.ref_name }}"
-          body: "Release created by CI for tag ${{ github.ref_name }} (package version ${{ steps.get_version.outputs.version }})"
-          draft: false
-          prerelease: false
-
-      - name: Upload .nupkg to Release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ steps.get_version.outputs.package_file }}
-          asset_name: ${{ steps.get_version.outputs.package_basename }}
-          asset_content_type: application/octet-stream
