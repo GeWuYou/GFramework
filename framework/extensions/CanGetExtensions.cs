@@ -1,8 +1,8 @@
-using GFramework.framework.model;
-using GFramework.framework.system;
-using GFramework.framework.utility;
+using GWFramework.framework.model;
+using GWFramework.framework.system;
+using GWFramework.framework.utility;
 
-namespace GFramework.framework.extensions;
+namespace GWFramework.framework.extensions;
 
 /// <summary>
 /// 提供获取模型对象扩展方法的静态类

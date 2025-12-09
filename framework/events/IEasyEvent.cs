@@ -1,4 +1,4 @@
-﻿namespace GFramework.framework.events;
+﻿namespace GWFramework.framework.events;
 
 /// <summary>
 /// 事件接口，定义了事件注册的基本功能

@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework", "GFramework.csproj", "{9BEDDD6C-DF8B-4E71-9C75-F44EC669ABBD}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GWFramework", "GWFramework.csproj", "{9BEDDD6C-DF8B-4E71-9C75-F44EC669ABBD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

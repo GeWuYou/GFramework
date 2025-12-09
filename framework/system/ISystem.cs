@@ -1,9 +1,9 @@
-﻿using GFramework.framework.events;
-using GFramework.framework.model;
-using GFramework.framework.rule;
-using GFramework.framework.utility;
+﻿using GWFramework.framework.events;
+using GWFramework.framework.model;
+using GWFramework.framework.rule;
+using GWFramework.framework.utility;
 
-namespace GFramework.framework.system;
+namespace GWFramework.framework.system;
 
 /// <summary>
 /// 系统接口，定义了系统的基本行为和功能

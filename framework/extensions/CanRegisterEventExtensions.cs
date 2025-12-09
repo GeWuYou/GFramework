@@ -1,6 +1,6 @@
-﻿using GFramework.framework.events;
+﻿using GWFramework.framework.events;
 
-namespace GFramework.framework.extensions;
+namespace GWFramework.framework.extensions;
 
 /// <summary>
 /// 事件注册扩展类，提供ICanRegisterEvent接口的扩展方法用于注册和注销事件

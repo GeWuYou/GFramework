@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace GFramework.framework.ioc;
+namespace GWFramework.framework.ioc;
 
 /// <summary>
 /// IOC容器类，用于管理对象的注册和获取

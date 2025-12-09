@@ -1,6 +1,6 @@
-﻿using GFramework.framework.rule;
+﻿using GWFramework.framework.rule;
 
-namespace GFramework.framework.model;
+namespace GWFramework.framework.model;
 
 /// <summary>
 /// 定义一个接口，表示可以获取模型的架构组件。

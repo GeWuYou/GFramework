@@ -1,6 +1,6 @@
-﻿using GFramework.framework.events;
+﻿using GWFramework.framework.events;
 
-namespace GFramework.framework.extensions;
+namespace GWFramework.framework.extensions;
 
 
 /// <summary>

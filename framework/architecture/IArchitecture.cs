@@ -1,13 +1,11 @@
-﻿
+﻿using GWFramework.framework.command;
+using GWFramework.framework.events;
+using GWFramework.framework.model;
+using GWFramework.framework.query;
+using GWFramework.framework.system;
+using GWFramework.framework.utility;
 
-using GFramework.framework.command;
-using GFramework.framework.events;
-using GFramework.framework.model;
-using GFramework.framework.query;
-using GFramework.framework.system;
-using GFramework.framework.utility;
-
-namespace GFramework.framework.architecture;
+namespace GWFramework.framework.architecture;
 
 /// <summary>
 /// 架构接口，定义了应用程序架构的核心功能，包括系统、模型、工具的注册和获取，

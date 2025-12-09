@@ -1,14 +1,13 @@
+using GWFramework.framework.command;
+using GWFramework.framework.events;
+using GWFramework.framework.ioc;
+using GWFramework.framework.model;
+using GWFramework.framework.query;
+using GWFramework.framework.system;
+using GWFramework.framework.utility;
 
-using GFramework.framework.command;
-using GFramework.framework.events;
-using GFramework.framework.ioc;
-using GFramework.framework.model;
-using GFramework.framework.query;
-using GFramework.framework.system;
-using GFramework.framework.utility;
 
-
-namespace GFramework.framework.architecture;
+namespace GWFramework.framework.architecture;
 
 /// <summary>
 /// 架构基类，提供系统、模型、工具等组件的注册与管理功能。
@@ -77,7 +76,7 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
 
         arch._mInited = true;
         return arch;
-    }, System.Threading.LazyThreadSafetyMode.ExecutionAndPublication);
+    }, LazyThreadSafetyMode.ExecutionAndPublication);
 
     /// <summary>
     /// 获取架构实例的受保护静态属性

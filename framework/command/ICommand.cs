@@ -1,11 +1,11 @@
-using GFramework.framework.events;
-using GFramework.framework.model;
-using GFramework.framework.query;
-using GFramework.framework.rule;
-using GFramework.framework.system;
-using GFramework.framework.utility;
+using GWFramework.framework.events;
+using GWFramework.framework.model;
+using GWFramework.framework.query;
+using GWFramework.framework.rule;
+using GWFramework.framework.system;
+using GWFramework.framework.utility;
 
-namespace GFramework.framework.command;
+namespace GWFramework.framework.command;
 
 /// <summary>
 /// 命令接口，定义了无返回值命令的基本契约

@@ -4,13 +4,13 @@
         <TargetFramework>net9.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <PackageId>GFramework</PackageId>
+        <PackageId>GWFramework</PackageId>
         <Authors>gewuyou</Authors>
-        <Product>GFramework</Product>
+        <Product>GWFramework</Product>
         <Description>A game development framework inspired by QFramework</Description>
         <Copyright>Copyright © 2025</Copyright>
-        <RepositoryUrl>https://github.com/GeWuYou/GFramework</RepositoryUrl>
-        <PackageProjectUrl>https://github.com/GeWuYou/GFramework</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/GeWuYou/GWFramework</RepositoryUrl>
+        <PackageProjectUrl>https://github.com/GeWuYou/GWFramework</PackageProjectUrl>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageTags>game;framework;godot</PackageTags>
         <GeneratePackageOnBuild>false</GeneratePackageOnBuild>

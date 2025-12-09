@@ -1,8 +1,8 @@
 ﻿#if GODOT
 using Godot;
-using GFramework.framework.events;
+using GWFramework.framework.events;
 
-namespace GFramework.framework.extensions;
+namespace GWFramework.framework.extensions;
 
 /// <summary>
 /// 提供取消注册扩展方法的静态类

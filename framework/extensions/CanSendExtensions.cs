@@ -1,8 +1,8 @@
-﻿using GFramework.framework.command;
-using GFramework.framework.events;
-using GFramework.framework.query;
+﻿using GWFramework.framework.command;
+using GWFramework.framework.events;
+using GWFramework.framework.query;
 
-namespace GFramework.framework.extensions;
+namespace GWFramework.framework.extensions;
 
 /// <summary>
 /// 提供发送命令功能的扩展类

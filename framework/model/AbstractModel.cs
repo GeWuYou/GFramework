@@ -1,7 +1,7 @@
-﻿using GFramework.framework.architecture;
-using GFramework.framework.model;
+﻿using GWFramework.framework.model;
+using GWFramework.framework.architecture;
 
-namespace GFramework.framework.model;
+namespace GWFramework.framework.model;
 
 /// <summary>
 /// 抽象模型基类，实现IModel接口，提供模型的基本架构支持

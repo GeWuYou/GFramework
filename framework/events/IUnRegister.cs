@@ -1,4 +1,4 @@
-﻿namespace GFramework.framework.events;
+﻿namespace GWFramework.framework.events;
 
 /// <summary>
 /// 提供注销功能的接口

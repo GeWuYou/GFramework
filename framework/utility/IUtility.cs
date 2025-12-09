@@ -1,4 +1,4 @@
-﻿namespace GFramework.framework.utility;
+﻿namespace GWFramework.framework.utility;
 
 /// <summary>
 /// IUtility接口定义了通用工具类的基本契约

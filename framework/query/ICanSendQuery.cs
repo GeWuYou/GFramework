@@ -1,6 +1,6 @@
-using GFramework.framework.rule;
+using GWFramework.framework.rule;
 
-namespace GFramework.framework.query;
+namespace GWFramework.framework.query;
 
 /// <summary>
 /// 定义一个可以发送查询的接口契约

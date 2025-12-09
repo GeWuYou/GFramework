@@ -1,11 +1,11 @@
-﻿using GFramework.framework.command;
-using GFramework.framework.events;
-using GFramework.framework.model;
-using GFramework.framework.query;
-using GFramework.framework.system;
-using GFramework.framework.utility;
+﻿using GWFramework.framework.command;
+using GWFramework.framework.events;
+using GWFramework.framework.model;
+using GWFramework.framework.query;
+using GWFramework.framework.system;
+using GWFramework.framework.utility;
 
-namespace GFramework.framework.controller;
+namespace GWFramework.framework.controller;
 
 /// <summary>
 /// 控制器接口，定义了控制器需要实现的所有功能契约

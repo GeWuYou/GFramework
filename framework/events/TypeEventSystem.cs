@@ -1,4 +1,4 @@
-﻿namespace GFramework.framework.events;
+﻿namespace GWFramework.framework.events;
 
 /// <summary>
 /// TypeEventSystem

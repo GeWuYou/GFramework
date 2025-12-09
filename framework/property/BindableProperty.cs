@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using GFramework.framework.events;
+using GWFramework.framework.events;
 
-namespace GFramework.framework.property;
+namespace GWFramework.framework.property;
 
 
 /// <summary>

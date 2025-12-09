@@ -1,6 +1,6 @@
-using GFramework.framework.architecture;
+using GWFramework.framework.architecture;
 
-namespace GFramework.framework.rule;
+namespace GWFramework.framework.rule;
 
 
 /// <summary>
