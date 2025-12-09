@@ -81,8 +81,9 @@ jobs:
             exit 1
           fi
           echo "Pushing $PKG to nuget.org..."
+          # 注意：不要使用 --verbosity（dotnet nuget push 不支持）
           dotnet nuget push "$PKG" \
             --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" \
             --source https://api.nuget.org/v3/index.json \
-            --skip-duplicate --verbosity detailed
+            --skip-duplicate
       
