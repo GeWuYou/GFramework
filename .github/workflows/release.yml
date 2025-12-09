@@ -32,7 +32,7 @@ jobs:
       - name: Pack
         run: dotnet pack --no-build -c Release -o ./packages
 
-      - name: Get Version from .nupkg
+      - name: Get Version and Package Path
         id: get_version
         run: |
           set -e
@@ -41,12 +41,15 @@ jobs:
             echo "No .nupkg file found in ./packages"
             exit 1
           fi
+          # 从 .nupkg（zip）里读取 .nuspec 并提取 <version> 标签（稳妥）
           VERSION=$(unzip -p "$PACKAGE_FILE" *.nuspec 2>/dev/null | sed -n 's:.*<version>\(.*\)</version>.*:\1:p' | head -n1)
           if [ -z "$VERSION" ]; then
             echo "Failed to parse version from $PACKAGE_FILE"
             exit 1
           fi
+          BASENAME=$(basename "$PACKAGE_FILE")
           echo "package_file=$PACKAGE_FILE" >> $GITHUB_OUTPUT
+          echo "package_basename=$BASENAME" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
@@ -68,5 +71,5 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ${{ steps.get_version.outputs.package_file }}
-          asset_name: ${{ steps.get_version.outputs.package_file && (steps.get_version.outputs.package_file | basename) || 'package.nupkg' }}
+          asset_name: ${{ steps.get_version.outputs.package_basename }}
           asset_content_type: application/octet-stream
