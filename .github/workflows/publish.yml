@@ -1,0 +1,59 @@
+name: Publish NuGet (on push to main)
+
+# 触发条件：当有标签被推送到仓库时触发该工作流。
+# 支持任意格式的标签名，例如 `1.0.0` 或 `v1.0.0`。
+on:
+  push:
+    tags:
+      - '*'   # 匹配所有标签推送事件
+
+# 权限设置：授予写入 contents 的权限，
+# 这样 GITHUB_TOKEN 才能调用 GitHub Releases API 创建发布。
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+      - name: Test
+        run: dotnet test --no-build -c Release --verbosity normal
+
+      - name: Pack
+        run: dotnet pack --no-build -c Release -o ./packages
+
+      - name: Show packages
+        run: ls -la ./packages || true
+
+      - name: Publish to NuGet
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          set -e
+          if [ -z "$(ls -A ./packages 2>/dev/null)" ]; then
+            echo "No packages found in ./packages"
+            exit 1
+          fi
+          echo "Publishing packages to nuget.org..."
+          dotnet nuget push "./packages/*.nupkg" \
+            --api-key $NUGET_API_KEY \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate

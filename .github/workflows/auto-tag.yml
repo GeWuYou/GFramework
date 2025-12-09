@@ -1,0 +1,112 @@
+name: Auto Increment Version and Tag
+
+# 工作流触发条件配置
+# 当向 main 或 master 分支推送代码时触发
+# 或者当针对 main 或 master 的 PR 被合并关闭时触发
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+    types: [ closed ]
+
+jobs:
+  auto-tag:
+    name: Auto Increment Version and Create Tag
+    runs-on: ubuntu-latest
+    # 条件判断：仅在推送事件或已合并的 PR 关闭事件中执行
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true)
+    permissions:
+      contents: write
+    
+    steps:
+      # 步骤一：检出仓库代码
+      # 使用 actions/checkout 动作获取完整的 Git 历史用于查找已有标签
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+          fetch-depth: 0 # 获取全部历史记录以查找现有标签
+          persist-credentials: false
+
+      # 步骤二：检查是否需要跳过打标签操作
+      # 根据最新提交信息决定是否继续后续流程
+      - name: Check for skip keyword
+        id: check_skip
+        run: |
+          # 检查最近一次提交信息是否包含跳过关键词
+          LAST_COMMIT_MSG=$(git log -1 --pretty=format:"%B")
+          if [[ "$LAST_COMMIT_MSG" == *"[skip release]"* ]] || [[ "$LAST_COMMIT_MSG" == *"[no tag]"* ]]; then
+            echo "skip_tag=true" >> $GITHUB_OUTPUT
+            echo "Skipping tag creation due to skip keyword in commit message"
+          else
+            echo "skip_tag=false" >> $GITHUB_OUTPUT
+            echo "No skip keyword found, proceeding with tag creation"
+          fi
+          echo "Last commit message: $LAST_COMMIT_MSG"
+
+      # 步骤三：计算下一个版本号（若未被跳过）
+      # 自动解析当前最新标签并递增修订号生成新的语义化版本号
+      - name: Get next version
+        id: get_next_version
+        if: steps.check_skip.outputs.skip_tag == 'false'
+        run: |
+          # 获取最新的标签版本号，如果没有标签则默认为 0.0.0
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          
+          # 移除可能存在的 v 前缀
+          VERSION_NUM=${LATEST_TAG#v}
+          
+          # 解析主版本号、次版本号和修订号
+          MAJOR=$(echo $VERSION_NUM | cut -d. -f1)
+          MINOR=$(echo $VERSION_NUM | cut -d. -f2)
+          PATCH=$(echo $VERSION_NUM | cut -d. -f3)
+          
+          # 递增修订号
+          PATCH=$((PATCH + 1))
+          
+          # 构造新版本号
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          NEW_TAG="v$NEW_VERSION"
+          
+          echo "latest_tag=$LATEST_TAG"
+          echo "new_version=$NEW_VERSION"
+          echo "new_tag=$NEW_TAG"
+          
+          echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
+
+      # 步骤四：创建并推送新标签到远程仓库（若未被跳过）
+      # 使用个人访问令牌(PAT)进行身份验证完成推送操作
+      - name: Create tag and push (using PAT)
+        if: steps.check_skip.outputs.skip_tag == 'false'
+        env:
+          PAT: ${{ secrets.PAT_TOKEN }}
+          REPO: ${{ github.repository }}
+          NEW_TAG: ${{ steps.get_next_version.outputs.new_tag }}
+        run: |
+          set -e
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+          echo "Creating annotated tag $NEW_TAG"
+          git tag -a "$NEW_TAG" -m "Auto-generated tag: $NEW_TAG"
+
+          # 推送单个 tag，使用 PAT 作为 HTTPS token
+          echo "Pushing tag $NEW_TAG to origin using PAT"
+          git push "https://x-access-token:${PAT}@github.com/${REPO}.git" "refs/tags/${NEW_TAG}"
+      
+      # 步骤五：输出本次成功创建的新版本相关信息（若未被跳过）
+      - name: Print version info
+        if: steps.check_skip.outputs.skip_tag == 'false'
+        run: |
+          echo "Previous tag was: ${{ steps.get_next_version.outputs.latest_tag }}"
+          echo "New tag created: ${{ steps.get_next_version.outputs.new_tag }}"
+          echo "Version number: ${{ steps.get_next_version.outputs.new_version }}"
+
+      # 步骤六：输出跳过原因信息（如果检测到了跳过关键字）
+      - name: Print skip info
+        if: steps.check_skip.outputs.skip_tag == 'true'
+        run: |
+          echo "Tag creation skipped due to commit message containing skip keyword"

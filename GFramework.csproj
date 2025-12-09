@@ -1,9 +1,24 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <TargetFramework>net9.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <PackageId>GFramework</PackageId>
+        <Authors>GeWuYou</Authors>
+        <Product>GFramework</Product>
+        <Description>A game development framework inspired by QFramework</Description>
+        <Copyright>Copyright © 2025</Copyright>
+        <RepositoryUrl>https://github.com/GeWuYou/GFramework</RepositoryUrl>
+        <PackageProjectUrl>https://github.com/GeWuYou/GFramework</PackageProjectUrl>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageTags>game;framework;godot</PackageTags>
+        <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+        <RepositoryType>git</RepositoryType>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <EmbedUntrackedSources>true</EmbedUntrackedSources>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     </PropertyGroup>
 
 </Project>
