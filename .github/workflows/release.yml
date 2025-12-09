@@ -29,9 +29,25 @@ jobs:
       - name: Build
         run: dotnet build --no-restore -c Release
 
-      - name: Pack
-        run: dotnet pack --no-build -c Release -o ./packages
+      - name: Determine tag version
+        id: tag_version
+        run: |
+          set -e
+          # GITHUB_REF example: refs/tags/v0.0.1 or refs/tags/0.0.1
+          echo "GITHUB_REF = ${GITHUB_REF}"
+          TAG=${GITHUB_REF#refs/tags/}
+          # remove leading 'v' or 'V' if present
+          VERSION=${TAG#v}
+          VERSION=${VERSION#V}
+          echo "tag='$TAG' -> version='$VERSION'"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
+      - name: Pack (use tag version)
+        run: |
+          set -e
+          echo "Packing with version=${{ steps.tag_version.outputs.version }}"
+          dotnet pack --no-build -c Release -o ./packages -p:PackageVersion=${{ steps.tag_version.outputs.version }}
+      
       - name: Get Version and Package Path
         id: get_version
         run: |
