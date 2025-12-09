@@ -7,7 +7,7 @@
         <PackageId>GeWuYou.GFramework</PackageId>
         <Authors>gewuyou</Authors>
         <Product>GeWuYou.GFramework</Product>
-        <Description>A game development framework inspired by QFramework</Description>
+        <Description>404 not found</Description>
         <Copyright>Copyright © 2025</Copyright>
         <RepositoryUrl>https://github.com/GeWuYou/GFramework</RepositoryUrl>
         <PackageProjectUrl>https://github.com/GeWuYou/GFramework</PackageProjectUrl>
@@ -20,6 +20,7 @@
         <IncludeSymbols>true</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
         <RootNamespace>GFramework</RootNamespace>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 
 </Project>
