@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net9.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <PackageId>GeWuYou.GFramework</PackageId>
@@ -21,6 +20,7 @@
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
         <RootNamespace>GFramework</RootNamespace>
         <PackageReadmeFile>README.md</PackageReadmeFile>
+        <TargetFrameworks>net9.0;net8.0</TargetFrameworks>
     </PropertyGroup>
 
 </Project>
