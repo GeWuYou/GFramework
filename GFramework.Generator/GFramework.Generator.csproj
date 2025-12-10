@@ -1,25 +1,26 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>netstandard2.0</TargetFramework>
         <PackageId>GeWuYou.GFramework.Generator</PackageId>
+        <TargetFramework>netstandard2.0</TargetFramework>
+        <IsRoslynAnalyzer>true</IsRoslynAnalyzer>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <LangVersion>latest</LangVersion>
         <IsRoslynComponent>true</IsRoslynComponent>
-        
+
         <!-- 对 generator 项目要启用扩展规则 -->
         <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
-
         <!-- 不把输出当作运行时库 -->
         <IncludeBuildOutput>false</IncludeBuildOutput>
-
+        <PackageReadmeFile>README.md</PackageReadmeFile>
         <!-- 有助于调试生成的代码（可选） -->
         <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
         <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
     </PropertyGroup>
-
     <ItemGroup>
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" PrivateAssets="all"/>
         <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" PrivateAssets="all"/>
+        <PackageReference Include="System.Collections.Immutable" Version="9.0.0" />
     </ItemGroup>
 
     <ItemGroup>
@@ -32,8 +33,13 @@
     <ItemGroup>
         <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true"
               PackagePath="analyzers/dotnet/cs" Visible="false"/>
+        <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="lib/netstandard2.0" />
         <None Include="$(OutputPath)\GFramework.Generator.Attributes.dll" Pack="true"
               PackagePath="analyzers/dotnet/cs" Visible="false"/>
+        <None Update="README.md">
+          <Pack>true</Pack>
+          <PackagePath></PackagePath>
+        </None>
     </ItemGroup>
 
 </Project>
