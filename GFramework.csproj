@@ -22,7 +22,29 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <TargetFrameworks>net9.0;net8.0</TargetFrameworks>
     </PropertyGroup>
+    
     <ItemGroup>
         <None Include="README.md" Pack="true" PackagePath="" />
+        <None Remove="GFramework.Generator\**" />
+        <None Remove="GFramework.Generator.Attributes\**" />
     </ItemGroup>
+    
+    <ItemGroup>
+        <Compile Remove="GFramework.Generator\**" />
+        <Compile Remove="GFramework.Generator.Attributes\**" />
+    </ItemGroup>
+    
+    <ItemGroup>
+        <EmbeddedResource Remove="GFramework.Generator\**" />
+        <EmbeddedResource Remove="GFramework.Generator.Attributes\**" />
+    </ItemGroup>
+
+    <!-- 引用 Source Generator -->
+    <ItemGroup>
+        <ProjectReference Include="GFramework.Generator\GFramework.Generator.csproj"
+                          OutputItemType="Analyzer"
+                          ReferenceOutputAssembly="false"/>
+        <ProjectReference Include="GFramework.Generator.Attributes\GFramework.Generator.Attributes.csproj"/>
+    </ItemGroup>
+    
 </Project>

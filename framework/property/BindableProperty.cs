@@ -1,4 +1,4 @@
-﻿using GFramework.framework.events;
+using GFramework.framework.events;
 
 namespace GFramework.framework.property;
 
@@ -8,14 +8,14 @@ namespace GFramework.framework.property;
 /// </summary>
 /// <typeparam name="T">属性值的类型</typeparam>
 /// <param name="defaultValue">属性的默认值</param>
-public class BindableProperty<T>(T defaultValue = default) : IBindableProperty<T>
+public class BindableProperty<T>(T defaultValue = default!) : IBindableProperty<T>
 {
     protected T MValue = defaultValue;
 
     /// <summary>
     /// 获取或设置属性值比较器，默认使用Equals方法进行比较
     /// </summary>
-    public static Func<T, T, bool> Comparer { get; set; } = (a, b) => a.Equals(b);
+    public static Func<T, T, bool> Comparer { get; set; } = (a, b) => a!.Equals(b)!;
 
     /// <summary>
     /// 设置自定义比较器
@@ -37,12 +37,12 @@ public class BindableProperty<T>(T defaultValue = default) : IBindableProperty<T
         set
         {
             // 使用 default(T) 替代 null 比较，避免 SonarQube 警告
-            if (EqualityComparer<T>.Default.Equals(value, default) && 
-                EqualityComparer<T>.Default.Equals(MValue, default)) 
+            if (EqualityComparer<T>.Default.Equals(value, default!) && 
+                EqualityComparer<T>.Default.Equals(MValue, default!)) 
                 return;
 
             // 若新值与旧值相等则不执行后续操作
-            if (!EqualityComparer<T>.Default.Equals(value, default) && Comparer(value, MValue)) 
+            if (!EqualityComparer<T>.Default.Equals(value, default!) && Comparer(value, MValue)) 
                 return;
 
             SetValue(value);
@@ -68,7 +68,7 @@ public class BindableProperty<T>(T defaultValue = default) : IBindableProperty<T
     /// <param name="newValue">新的属性值</param>
     public void SetValueWithoutEvent(T newValue) => MValue = newValue;
 
-    private Action<T> _mOnValueChanged = (_) => { };
+    private Action<T>? _mOnValueChanged = null;
 
     /// <summary>
     /// 注册属性值变化事件回调
@@ -106,13 +106,15 @@ public class BindableProperty<T>(T defaultValue = default) : IBindableProperty<T
     IUnRegister IEasyEvent.Register(Action onEvent)
     {
         return Register(Action);
-        void Action(T _) => onEvent();
+        void Action(T _)
+        {
+            onEvent();
+        }
     }
 
     /// <summary>
     /// 返回属性值的字符串表示形式
     /// </summary>
     /// <returns>属性值的字符串表示</returns>
-    public override string ToString() => Value.ToString();
+    public override string ToString() => Value?.ToString() ?? string.Empty;
 }
-
