@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.Generator", "GFr
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.Generator.Attributes", "GFramework.Generator.Attributes\GFramework.Generator.Attributes.csproj", "{84C5C3C9-5620-4924-BA04-92F813F2B70F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.Core", "GFramework.Core\GFramework.Core.csproj", "{A6D5854D-79EA-487A-9ED9-396E6A1F8031}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +26,9 @@ Global
 		{84C5C3C9-5620-4924-BA04-92F813F2B70F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{84C5C3C9-5620-4924-BA04-92F813F2B70F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{84C5C3C9-5620-4924-BA04-92F813F2B70F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A6D5854D-79EA-487A-9ED9-396E6A1F8031}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A6D5854D-79EA-487A-9ED9-396E6A1F8031}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A6D5854D-79EA-487A-9ED9-396E6A1F8031}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A6D5854D-79EA-487A-9ED9-396E6A1F8031}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

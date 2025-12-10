@@ -27,24 +27,26 @@
         <None Include="README.md" Pack="true" PackagePath="" />
         <None Remove="GFramework.Generator\**" />
         <None Remove="GFramework.Generator.Attributes\**" />
+        <None Remove="GFramework.Core\**" />
     </ItemGroup>
     
     <ItemGroup>
         <Compile Remove="GFramework.Generator\**" />
         <Compile Remove="GFramework.Generator.Attributes\**" />
+        <Compile Remove="GFramework.Core\**" />
     </ItemGroup>
     
     <ItemGroup>
         <EmbeddedResource Remove="GFramework.Generator\**" />
         <EmbeddedResource Remove="GFramework.Generator.Attributes\**" />
+        <EmbeddedResource Remove="GFramework.Core\**" />
     </ItemGroup>
 
     <!-- 引用 Source Generator -->
     <ItemGroup>
-        <ProjectReference Include="GFramework.Generator\GFramework.Generator.csproj"
-                          OutputItemType="Analyzer"
-                          ReferenceOutputAssembly="false"/>
+        <ProjectReference Include="GFramework.Generator\GFramework.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
         <ProjectReference Include="GFramework.Generator.Attributes\GFramework.Generator.Attributes.csproj"/>
+        <ProjectReference Include="GFramework.Core\GFramework.Core.csproj"/>
     </ItemGroup>
     
 </Project>
