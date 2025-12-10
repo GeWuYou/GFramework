@@ -13,7 +13,6 @@
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageTags>game;framework</PackageTags>
         <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
-        <RepositoryType>git</RepositoryType>
         <PublishRepositoryUrl>true</PublishRepositoryUrl>
         <EmbedUntrackedSources>true</EmbedUntrackedSources>
         <IncludeSymbols>true</IncludeSymbols>
@@ -21,32 +20,59 @@
         <RootNamespace>GFramework</RootNamespace>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <TargetFrameworks>net9.0;net8.0</TargetFrameworks>
+        <IncludeBuildOutput>false</IncludeBuildOutput>
     </PropertyGroup>
-    
+
+    <!-- 排除不需要参与打包/编译的目录 -->
     <ItemGroup>
         <None Include="README.md" Pack="true" PackagePath="" />
         <None Remove="GFramework.Generator\**" />
         <None Remove="GFramework.Generator.Attributes\**" />
         <None Remove="GFramework.Core\**" />
-    </ItemGroup>
-    
-    <ItemGroup>
+
         <Compile Remove="GFramework.Generator\**" />
         <Compile Remove="GFramework.Generator.Attributes\**" />
         <Compile Remove="GFramework.Core\**" />
-    </ItemGroup>
-    
-    <ItemGroup>
+
         <EmbeddedResource Remove="GFramework.Generator\**" />
         <EmbeddedResource Remove="GFramework.Generator.Attributes\**" />
         <EmbeddedResource Remove="GFramework.Core\**" />
     </ItemGroup>
 
-    <!-- 引用 Source Generator -->
+    <!-- 作为 Analyzer 引入本地 SourceGenerator -->
     <ItemGroup>
-        <ProjectReference Include="GFramework.Generator\GFramework.Generator.csproj"/>
+        <ProjectReference Include="GFramework.Generator\GFramework.Generator.csproj"
+                          OutputItemType="Analyzer"
+                          ReferenceOutputAssembly="false" />
+
         <ProjectReference Include="GFramework.Generator.Attributes\GFramework.Generator.Attributes.csproj"/>
         <ProjectReference Include="GFramework.Core\GFramework.Core.csproj"/>
     </ItemGroup>
-    
+
+    <!-- 打包 Source Generator 到 nupkg 的 analyzers/ -->
+    <Target Name="BuildGeneratorAndPackAnalyzers" BeforeTargets="Pack">
+        <!-- 1. 构建 Source Generator 项目 -->
+        <MSBuild Projects="..\GFramework.Generator\GFramework.Generator.csproj"
+                 Targets="Build"
+                 Properties="Configuration=$(Configuration)" />
+
+        <!-- 2. 找到 Generator DLL -->
+        <ItemGroup>
+            <_GeneratorDll Include="..\GFramework.Generator\bin\$(Configuration)\netstandard2.0\GFramework.Generator.dll" />
+        </ItemGroup>
+
+        <!-- 3. 复制到 obj/.../analyzers/netstandard2.0 -->
+        <MakeDir Directories="$(IntermediateOutputPath)analyzers\netstandard2.0" />
+        <Copy SourceFiles="@(_GeneratorDll)"
+              DestinationFolder="$(IntermediateOutputPath)analyzers\netstandard2.0"
+              SkipUnchangedFiles="true" />
+
+        <!-- 4. 标记为 nupkg 文件 -->
+        <ItemGroup>
+            <None Include="$(IntermediateOutputPath)analyzers\netstandard2.0\GFramework.Generator.dll"
+                  Pack="true"
+                  PackagePath="analyzers/netstandard2.0" />
+        </ItemGroup>
+    </Target>
+
 </Project>
