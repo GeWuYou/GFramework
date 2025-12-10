@@ -60,7 +60,7 @@ jobs:
         run: |
           set -e
           echo "Packing with version=${{ steps.tag_version.outputs.version }}"
-          dotnet pack --no-build -c Release -o ./packages -p:PackageVersion=${{ steps.tag_version.outputs.version }}
+          dotnet pack -c Release -o ./packages -p:PackageVersion=${{ steps.tag_version.outputs.version }}
 
       - name: Show packages
         run: ls -la ./packages || true
