@@ -44,7 +44,7 @@
 
     <!-- 引用 Source Generator -->
     <ItemGroup>
-        <ProjectReference Include="GFramework.Generator\GFramework.Generator.csproj" PrivateAssets="all" />
+        <ProjectReference Include="GFramework.Generator\GFramework.Generator.csproj"/>
         <ProjectReference Include="GFramework.Generator.Attributes\GFramework.Generator.Attributes.csproj"/>
         <ProjectReference Include="GFramework.Core\GFramework.Core.csproj"/>
     </ItemGroup>
