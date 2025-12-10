@@ -44,35 +44,7 @@
         <ProjectReference Include="GFramework.Generator\GFramework.Generator.csproj"
                           OutputItemType="Analyzer"
                           ReferenceOutputAssembly="false" />
-
         <ProjectReference Include="GFramework.Generator.Attributes\GFramework.Generator.Attributes.csproj"/>
         <ProjectReference Include="GFramework.Core\GFramework.Core.csproj"/>
     </ItemGroup>
-
-    <!-- 打包 Source Generator 到 nupkg 的 analyzers/ -->
-    <Target Name="BuildGeneratorAndPackAnalyzers" BeforeTargets="Pack">
-        <!-- 1. 构建 Source Generator 项目 -->
-        <MSBuild Projects="GFramework.Generator\GFramework.Generator.csproj"
-                 Targets="Build"
-                 Properties="Configuration=$(Configuration)" />
-
-        <!-- 2. 找到 Generator DLL -->
-        <ItemGroup>
-            <_GeneratorDll Include="GFramework.Generator\bin\$(Configuration)\netstandard2.0\GFramework.Generator.dll" />
-        </ItemGroup>
-
-        <!-- 3. 复制到 obj/.../analyzers/netstandard2.0 -->
-        <MakeDir Directories="$(IntermediateOutputPath)analyzers\netstandard2.0" />
-        <Copy SourceFiles="@(_GeneratorDll)"
-              DestinationFolder="$(IntermediateOutputPath)analyzers\netstandard2.0"
-              SkipUnchangedFiles="true" />
-
-        <!-- 4. 标记为 nupkg 文件 -->
-        <ItemGroup>
-            <None Include="$(IntermediateOutputPath)analyzers\netstandard2.0\GFramework.Generator.dll"
-                  Pack="true"
-                  PackagePath="analyzers/netstandard2.0" />
-        </ItemGroup>
-    </Target>
-
 </Project>
