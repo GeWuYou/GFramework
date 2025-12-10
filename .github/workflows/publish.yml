@@ -40,7 +40,7 @@ jobs:
         run: dotnet restore
 
       - name: Build
-        run: dotnet build -c Release --include-symbols --no-restore -p:DebugType=portable
+        run: dotnet build -c Release --no-restore -p:DebugType=portable
 
       - name: Test
         run: dotnet test --no-build -c Release --verbosity normal
