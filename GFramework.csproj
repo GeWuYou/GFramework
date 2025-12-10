@@ -52,13 +52,13 @@
     <!-- 打包 Source Generator 到 nupkg 的 analyzers/ -->
     <Target Name="BuildGeneratorAndPackAnalyzers" BeforeTargets="Pack">
         <!-- 1. 构建 Source Generator 项目 -->
-        <MSBuild Projects="..\GFramework.Generator\GFramework.Generator.csproj"
+        <MSBuild Projects="GFramework.Generator\GFramework.Generator.csproj"
                  Targets="Build"
                  Properties="Configuration=$(Configuration)" />
 
         <!-- 2. 找到 Generator DLL -->
         <ItemGroup>
-            <_GeneratorDll Include="..\GFramework.Generator\bin\$(Configuration)\netstandard2.0\GFramework.Generator.dll" />
+            <_GeneratorDll Include="GFramework.Generator\bin\$(Configuration)\netstandard2.0\GFramework.Generator.dll" />
         </ItemGroup>
 
         <!-- 3. 复制到 obj/.../analyzers/netstandard2.0 -->
