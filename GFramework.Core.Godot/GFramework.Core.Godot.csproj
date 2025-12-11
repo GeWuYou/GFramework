@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
+        <PackageId>GeWuYou.GFramework.Core.Godot</PackageId>
         <Product>GeWuYou.GFramework.Core.Godot</Product>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
