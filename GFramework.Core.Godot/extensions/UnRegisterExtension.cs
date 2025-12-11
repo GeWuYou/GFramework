@@ -1,7 +1,7 @@
 ﻿using GFramework.Core.events;
 using Godot;
 
-namespace GFramework.Core.Godot.godot.extensions;
+namespace GFramework.Core.Godot.extensions;
 
 /// <summary>
 /// 提供取消注册扩展方法的静态类
