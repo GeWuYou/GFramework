@@ -8,6 +8,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.Generator.Attrib
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.Core", "GFramework.Core\GFramework.Core.csproj", "{A6D5854D-79EA-487A-9ED9-396E6A1F8031}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.Core.Godot", "GFramework.Core.Godot\GFramework.Core.Godot.csproj", "{FC56D81A-3A3B-4B49-B318-363DFA0D8206}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +32,9 @@ Global
 		{A6D5854D-79EA-487A-9ED9-396E6A1F8031}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A6D5854D-79EA-487A-9ED9-396E6A1F8031}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A6D5854D-79EA-487A-9ED9-396E6A1F8031}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FC56D81A-3A3B-4B49-B318-363DFA0D8206}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FC56D81A-3A3B-4B49-B318-363DFA0D8206}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FC56D81A-3A3B-4B49-B318-363DFA0D8206}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FC56D81A-3A3B-4B49-B318-363DFA0D8206}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

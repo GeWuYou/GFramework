@@ -1,8 +1,7 @@
-﻿#if GODOT
+﻿using GFramework.Core.events;
 using Godot;
-using GWFramework.framework.events;
 
-namespace GWFramework.framework.extensions;
+namespace GFramework.Core.Godot.godot.extensions;
 
 /// <summary>
 /// 提供取消注册扩展方法的静态类
@@ -22,5 +21,3 @@ public static class UnRegisterExtension
         return unRegister;
     }
 }
-
-#endif

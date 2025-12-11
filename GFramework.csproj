@@ -38,6 +38,18 @@
         <EmbeddedResource Remove="GFramework.Generator\**" />
         <EmbeddedResource Remove="GFramework.Generator.Attributes\**" />
         <EmbeddedResource Remove="GFramework.Core\**" />
+        <Compile Remove="GFramework.Godot\**" />
+        <EmbeddedResource Remove="GFramework.Godot\**" />
+        <None Remove="GFramework.Godot\**" />
+        <Compile Update="GFramework.Core.Godot\godot\extensions\NodeExtensions.cs">
+          <Link>GFramework.Godot\godot\extensions\NodeExtensions.cs</Link>
+        </Compile>
+        <Compile Update="GFramework.Core.Godot\godot\extensions\UnRegisterExtension.cs">
+          <Link>GFramework.Godot\godot\extensions\UnRegisterExtension.cs</Link>
+        </Compile>
+        <Compile Remove="GFramework.Core.Godot\**" />
+        <EmbeddedResource Remove="GFramework.Core.Godot\**" />
+        <None Remove="GFramework.Core.Godot\**" />
     </ItemGroup>
 
     <!-- 作为 Analyzer 引入本地 SourceGenerator -->
