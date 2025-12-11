@@ -16,4 +16,8 @@
       <ProjectReference Include="..\GFramework.Core\GFramework.Core.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Compile Remove="extensions\ControlExtensions.cs" />
+    </ItemGroup>
+
 </Project>
