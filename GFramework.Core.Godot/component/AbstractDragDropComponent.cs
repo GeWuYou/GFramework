@@ -8,35 +8,35 @@ using Godot;
 namespace GFramework.Core.Godot.component;
 
 /// <summary>
-///     拖拽组件类，用于处理节点的拖放逻辑。
+///     抽象拖拽组件类，用于处理节点的拖放逻辑。
 ///     实现了 IController 接口以支持架构通信，并通过信号通知拖拽事件的发生。
 /// </summary>
-public abstract partial class DragDropComponent : Node, IController
+public abstract partial class AbstractDragDropComponent : Node, IController
 {
-	/// <summary>
-	///     当拖拽被取消时触发的信号。
-	/// </summary>
-	/// <param name="startingPosition">拖拽起始位置。</param>
-	[Signal]
+    /// <summary>
+    ///     当拖拽被取消时触发的信号。
+    /// </summary>
+    /// <param name="startingPosition">拖拽起始位置。</param>
+    [Signal]
     public delegate void DragCanceledEventHandler(Vector2 startingPosition);
 
-	/// <summary>
-	///     当拖拽开始时触发的信号。
-	/// </summary>
-	[Signal]
+    /// <summary>
+    ///     当拖拽开始时触发的信号。
+    /// </summary>
+    [Signal]
     public delegate void DragStartedEventHandler();
 
-	/// <summary>
-	///     当拖拽结束并放置时触发的信号。
-	/// </summary>
-	/// <param name="startingPosition">拖拽起始位置。</param>
-	[Signal]
+    /// <summary>
+    ///     当拖拽结束并放置时触发的信号。
+    /// </summary>
+    /// <param name="startingPosition">拖拽起始位置。</param>
+    [Signal]
     public delegate void DroppedEventHandler(Vector2 startingPosition);
 
-	/// <summary>
-	///     取消注册列表，用于管理需要在节点销毁时取消注册的对象
-	/// </summary>
-	private readonly IUnRegisterList _unRegisterList = new UnRegisterList();
+    /// <summary>
+    ///     取消注册列表，用于管理需要在节点销毁时取消注册的对象
+    /// </summary>
+    private readonly IUnRegisterList _unRegisterList = new UnRegisterList();
 
     private bool _isDragging;
     private Vector2 _offset = Vector2.Zero;
@@ -75,25 +75,33 @@ public abstract partial class DragDropComponent : Node, IController
     }
 
     /// <summary>
-    ///     处理输入事件的方法
+    ///     处理输入事件的回调方法。
+    ///     根据当前拖拽状态和输入事件类型，执行相应的拖拽操作。
     /// </summary>
     /// <param name="event">输入事件对象</param>
     public override void _Input(InputEvent @event)
     {
-        // 处理取消拖拽操作：当正在拖拽且按下取消拖拽按键时，执行取消拖拽逻辑
-        if (!_isDragging || Target.IsInvalidNode() || !@event.IsActionPressed("cancel_drag")) return;
-        CancelDragging();
-        // 设置输入为处理，防止输入穿透
-        this.SetInputAsHandled();
+        switch (_isDragging)
+        {
+            // 处理取消拖拽操作：当正在拖拽且按下取消拖拽按键时，执行取消拖拽逻辑
+            case true when Target.IsValidNode() && @event.IsActionPressed("cancel_drag"):
+                CancelDragging();
+                // 设置输入为处理，防止输入穿透
+                this.SetInputAsHandled();
+                break;
+            case true when @event.IsActionReleased("select"):
+                Drop();
+                break;
+        }
     }
 
     /// <summary>
-    ///     处理目标区域接收到的输入事件。
-    ///     根据当前是否处于拖拽状态以及用户操作决定执行开始、取消或完成拖拽的动作。
+    ///     目标区域的输入事件处理器。
+    ///     当目标区域接收到输入事件时被调用，用于控制拖拽的开始和结束。
     /// </summary>
-    /// <param name="viewport">接收输入事件的视图端口节点。</param>
-    /// <param name="event">发生的输入事件。</param>
-    /// <param name="_">事件索引（未使用）。</param>
+    /// <param name="viewport">事件发生的视口节点</param>
+    /// <param name="event">输入事件对象</param>
+    /// <param name="_">事件触点ID（未使用）</param>
     private void OnTargetInputEvent(Node viewport, InputEvent @event, long _)
     {
         if (!Enable) return;
@@ -102,16 +110,13 @@ public abstract partial class DragDropComponent : Node, IController
         var draggingObj = GetTree().GetFirstNodeInGroup(GroupName);
         switch (_isDragging)
         {
-            // 如果当前没有拖拽操作且已有其他对象正在拖拽，则直接返回
-            case false when draggingObj is not null:
-                return;
             // 处理开始拖拽操作：当未在拖拽状态且按下选择按键时，开始拖拽
+            case false when
+                // 如果当前没有拖拽操作且已有其他对象正在拖拽，则直接返回
+                draggingObj is not null:
+                return;
             case false when @event.IsActionPressed("select"):
                 StartDragging();
-                break;
-            // 处理放置操作：当正在拖拽且释放选择按键时，执行放置逻辑
-            case true when @event.IsActionReleased("select"):
-                Drop();
                 break;
         }
     }
