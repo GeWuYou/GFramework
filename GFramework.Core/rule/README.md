@@ -11,6 +11,7 @@ Rule 包定义了框架的核心规则接口，这些接口规定了框架各个
 标记接口，表示某个对象属于特定的架构体系。
 
 **接口定义：**
+
 ```csharp
 public interface IBelongToArchitecture
 {
@@ -19,6 +20,7 @@ public interface IBelongToArchitecture
 ```
 
 **实现此接口的类型：**
+
 - Controller
 - System
 - Model
@@ -34,6 +36,7 @@ public interface IBelongToArchitecture
 定义可以设置架构实例的能力。
 
 **接口定义：**
+
 ```csharp
 public interface ICanSetArchitecture
 {
@@ -42,6 +45,7 @@ public interface ICanSetArchitecture
 ```
 
 **实现此接口的类型：**
+
 - Command
 - Query
 

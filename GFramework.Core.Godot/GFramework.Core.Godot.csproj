@@ -9,15 +9,16 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="GodotSharpEditor" Version="4.5.1" />
+        <PackageReference Include="Godot.SourceGenerators" Version="4.5.1"/>
+        <PackageReference Include="GodotSharpEditor" Version="4.5.1"/>
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\GFramework.Core\GFramework.Core.csproj" />
+        <ProjectReference Include="..\GFramework.Core\GFramework.Core.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
-      <Compile Remove="extensions\ControlExtensions.cs" />
+        <Compile Remove="extensions\ControlExtensions.cs"/>
     </ItemGroup>
 
 </Project>

@@ -2,7 +2,8 @@
 
 ## 概述
 
-Model 包定义了数据模型层的接口和基类。Model 是 MVC 架构中的 M 层，负责管理应用程序的数据和状态。Model 层应该只包含数据和简单的数据逻辑，不包含复杂的业务逻辑。
+Model 包定义了数据模型层的接口和基类。Model 是 MVC 架构中的 M 层，负责管理应用程序的数据和状态。Model
+层应该只包含数据和简单的数据逻辑，不包含复杂的业务逻辑。
 
 ## 核心接口
 
@@ -11,11 +12,13 @@ Model 包定义了数据模型层的接口和基类。Model 是 MVC 架构中的
 模型接口，定义了模型的基本行为和功能。
 
 **继承的能力接口：**
+
 - [`ICanSetArchitecture`](../rule/ICanSetArchitecture.cs) - 可设置架构引用
 - [`ICanGetUtility`](../utility/ICanGetUtility.cs) - 可获取工具类
 - [`ICanSendEvent`](../events/ICanSendEvent.cs) - 可发送事件
 
 **核心方法：**
+
 ```csharp
 void Init();  // 初始化模型
 ```

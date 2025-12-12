@@ -102,6 +102,7 @@ Event   ──┘
 ### 为什么需要这个框架？
 
 在传统的 Godot 开发中，我们经常遇到这些问题：
+
 - 💔 **代码耦合严重**：UI 直接访问游戏逻辑，逻辑直接操作 UI
 - 🔄 **难以维护**：修改一个功能需要改动多个文件
 - 🐛 **难以测试**：业务逻辑和 UI 混在一起无法独立测试
@@ -133,6 +134,7 @@ public class GameArchitecture : Architecture<GameArchitecture>
 ```
 
 **优势**：
+
 - ✅ **单例模式**：通过 `GameArchitecture.Interface` 全局访问
 - ✅ **自动初始化**：注册时自动调用组件的 Init 方法
 - ✅ **依赖注入**：组件自动获得架构引用，无需手动传递
@@ -173,12 +175,14 @@ public class PlayerModel : AbstractModel
 ```
 
 **优势**：
+
 - ✅ **数据响应式**：BindableProperty 让数据变化自动通知 UI
 - ✅ **职责单一**：只存储数据，不包含复杂业务逻辑
 - ✅ **易于测试**：可以独立测试数据逻辑
 - ✅ **数据持久化**：可以轻松序列化整个 Model 进行存档
 
 **为什么不在 Model 中写业务逻辑？**
+
 - 保持 Model 简单纯粹，业务逻辑应该在 System 中处理
 - Model 应该是"被动"的，等待其他组件修改它
 
@@ -209,12 +213,14 @@ public class CombatSystem : AbstractSystem
 ```
 
 **优势**：
+
 - ✅ **事件驱动**：通过事件解耦，不同 System 之间松耦合
 - ✅ **可组合**：多个 System 协同工作，每个专注自己的领域
 - ✅ **易于扩展**：新增功能只需添加新的 System 和事件监听
 - ✅ **独立测试**：可以模拟事件来测试 System 的逻辑
 
 **System 与 Model 的关系**：
+
 - System 读取和修改 Model 的数据
 - System 不应该存储重要的游戏状态（状态应在 Model 中）
 - System 可以存储临时的计算结果或缓存
@@ -251,18 +257,21 @@ public partial class PlayerController : Node, IController
 ```
 
 **优势**：
+
 - ✅ **自动更新 UI**：通过 BindableProperty，数据变化自动反映到界面
 - ✅ **生命周期管理**：自动注销监听，避免内存泄漏
 - ✅ **分离关注点**：UI 逻辑和业务逻辑完全分离
 - ✅ **易于修改 UI**：改变 UI 不影响业务逻辑
 
 **为什么使用 RegisterWithInitValue？**
+
 - 注册监听时立即获得当前值，避免 UI 显示空白
 - 后续数据变化会自动触发更新
 
 ### 完成！现在你有了一个完整的架构
 
 这 4 步完成后，你就拥有了：
+
 - 📦 **清晰的数据层**（Model）
 - 🧠 **独立的业务逻辑**（System）
 - 🎮 **灵活的控制层**（Controller）
@@ -277,20 +286,20 @@ public partial class PlayerController : Node, IController
 
 ## 包说明
 
-| 包名 | 职责 | 文档 |
-|-----|------|------|
+| 包名               | 职责              | 文档                              |
+|------------------|-----------------|---------------------------------|
 | **architecture** | 架构核心，管理所有组件生命周期 | [📖 查看](architecture/README.md) |
-| **model** | 数据模型层，存储游戏状态 | [📖 查看](model/README.md) |
-| **system** | 业务逻辑层，处理游戏系统 | [📖 查看](system/README.md) |
-| **controller** | 控制器层，连接视图和逻辑 | [📖 查看](controller/README.md) |
-| **utility** | 工具类层，提供无状态工具 | [📖 查看](utility/README.md) |
-| **command** | 命令模式，封装写操作 | [📖 查看](command/README.md) |
-| **query** | 查询模式，封装读操作 | [📖 查看](query/README.md) |
-| **events** | 事件系统，组件间通信 | [📖 查看](events/README.md) |
-| **property** | 可绑定属性，响应式编程 | [📖 查看](property/README.md) |
-| **ioc** | IoC 容器，依赖注入 | [📖 查看](ioc/README.md) |
-| **rule** | 规则接口，定义组件约束 | [📖 查看](rule/README.md) |
-| **extensions** | 扩展方法，简化 API 调用 | [📖 查看](extensions/README.md) |
+| **model**        | 数据模型层，存储游戏状态    | [📖 查看](model/README.md)        |
+| **system**       | 业务逻辑层，处理游戏系统    | [📖 查看](system/README.md)       |
+| **controller**   | 控制器层，连接视图和逻辑    | [📖 查看](controller/README.md)   |
+| **utility**      | 工具类层，提供无状态工具    | [📖 查看](utility/README.md)      |
+| **command**      | 命令模式，封装写操作      | [📖 查看](command/README.md)      |
+| **query**        | 查询模式，封装读操作      | [📖 查看](query/README.md)        |
+| **events**       | 事件系统，组件间通信      | [📖 查看](events/README.md)       |
+| **property**     | 可绑定属性，响应式编程     | [📖 查看](property/README.md)     |
+| **ioc**          | IoC 容器，依赖注入     | [📖 查看](ioc/README.md)          |
+| **rule**         | 规则接口，定义组件约束     | [📖 查看](rule/README.md)         |
+| **extensions**   | 扩展方法，简化 API 调用  | [📖 查看](extensions/README.md)   |
 
 ## 组件联动
 
@@ -346,6 +355,7 @@ Controller: Health.RegisterWithInitValue(hp => UpdateUI(hp))
 #### ✅ 好的实践 vs ❌ 坏的实践
 
 **Model 层**：
+
 ```csharp
 // ✅ 好：只存储数据
 public class PlayerModel : AbstractModel
@@ -367,6 +377,7 @@ public class PlayerModel : AbstractModel
 ```
 
 **System 层**：
+
 ```csharp
 // ✅ 好：处理业务逻辑
 public class CombatSystem : AbstractSystem
@@ -398,6 +409,7 @@ public class CombatSystem : AbstractSystem
 ```
 
 **Controller 层**：
+
 ```csharp
 // ✅ 好：只处理 UI 和用户输入
 public partial class AttackButton : Button, IController
@@ -430,12 +442,12 @@ public partial class AttackButton : Button, IController
 
 不同的通信方式适用于不同场景，选对方式能让代码更优雅。
 
-| 通信方式 | 使用场景 | 示例 | 优势 |
-|---------|---------|------|------|
-| **Command** | 用户操作、修改状态 | 购买物品、攻击敌人 | 可撤销、可记录 |
-| **Query** | 查询数据、检查条件 | 查询金币数量、检查是否可购买 | 明确只读意图 |
-| **Event** | 通知其他组件 | 玩家死亡、物品拾取 | 松耦合、可扩展 |
-| **BindableProperty** | 数据→UI 自动同步 | 生命值变化更新血条 | 自动化、不会遗漏 |
+| 通信方式                 | 使用场景       | 示例             | 优势       |
+|----------------------|------------|----------------|----------|
+| **Command**          | 用户操作、修改状态  | 购买物品、攻击敌人      | 可撤销、可记录  |
+| **Query**            | 查询数据、检查条件  | 查询金币数量、检查是否可购买 | 明确只读意图   |
+| **Event**            | 通知其他组件     | 玩家死亡、物品拾取      | 松耦合、可扩展  |
+| **BindableProperty** | 数据→UI 自动同步 | 生命值变化更新血条      | 自动化、不会遗漏 |
 
 **实战示例：购物系统**
 
@@ -527,6 +539,7 @@ public partial class GoldDisplay : Label, IController
 **为什么需要注销？**
 
 忘记注销监听器会导致：
+
 - 💥 **内存泄漏**：对象无法被 GC 回收
 - 🐛 **逻辑错误**：已销毁的对象仍在响应事件
 - 📉 **性能下降**：无用的监听器消耗资源
@@ -726,6 +739,7 @@ public class CombatSystemTests
 ```
 
 **优势**：
+
 - 不需要启动游戏就能测试逻辑
 - 可以快速验证各种边界情况
 - 易于进行回归测试
@@ -840,6 +854,7 @@ protected override void Init()
 ```
 
 **优势总结**：
+
 - 数据驱动，易于存档
 - 事件解耦，易于扩展
 - UI 自动化，不会遗漏更新
@@ -854,12 +869,14 @@ protected override void Init()
 **理念**：每个类只负责一件事，只有一个改变的理由。
 
 **在框架中的体现**：
+
 - **Model**：只负责存储数据
 - **System**：只负责处理业务逻辑
 - **Controller**：只负责 UI 交互
 - **Utility**：只负责提供工具方法
 
 **好处**：
+
 - 代码更容易理解和维护
 - 修改一个功能不会影响其他功能
 - 单元测试更简单
@@ -869,11 +886,13 @@ protected override void Init()
 **理念**：对扩展开放，对修改封闭。
 
 **在框架中的实现**：
+
 - 通过**事件系统**添加新功能，无需修改现有代码
 - 新的 System 可以监听现有事件，插入自己的逻辑
 - 符合"插件式"的架构设计
 
 **示例**：
+
 ```csharp
 // 现有：战斗系统
 public class CombatSystem : AbstractSystem
@@ -908,11 +927,13 @@ public class CriticalSystem : AbstractSystem
 **理念**：依赖抽象（接口）而非具体实现。
 
 **在框架中的应用**：
+
 - 所有组件通过接口交互
 - 通过 IoC 容器注入依赖
 - 易于替换实现和编写测试
 
 **好处**：
+
 - 降低耦合度
 - 易于进行单元测试（可以 mock）
 - 可以灵活替换实现
@@ -922,6 +943,7 @@ public class CriticalSystem : AbstractSystem
 **理念**：使用多个专门的接口，而不是一个庞大的接口。
 
 **在框架中的体现**：
+
 ```csharp
 // 小而专注的接口
 public interface ICanGetModel : IBelongToArchitecture { }
@@ -936,6 +958,7 @@ public interface IController :
 ```
 
 **优势**：
+
 - 类只需要实现它真正需要的方法
 - 接口更容易理解和使用
 - 减少不必要的依赖
@@ -945,11 +968,13 @@ public interface IController :
 **理念**：通过接口组合获得能力，而不是通过继承。
 
 **传统继承的问题**：
+
 - 继承层次深，难以理解
 - 子类与父类紧密耦合
 - 难以灵活组合能力
 
 **框架的解决方案**：
+
 ```csharp
 // ✅ 通过接口组合能力
 public interface IController :
@@ -966,39 +991,44 @@ public class BattleController : GameController { }
 
 ### 框架核心设计模式 🎨
 
-| 设计模式 | 应用位置 | 解决的问题 | 带来的好处 |
-|---------|---------|-----------|-----------|
-| **单例模式** | Architecture | 全局唯一的架构实例 | 统一的组件管理 |
-| **工厂模式** | IoC 容器 | 组件的创建和管理 | 解耦创建逻辑 |
-| **观察者模式** | Event 系统 | 组件间的通信 | 松耦合通信 |
-| **命令模式** | Command | 封装操作请求 | 支持撤销重做 |
-| **策略模式** | System | 不同的业务逻辑 | 易于切换策略 |
-| **依赖注入** | 整体架构 | 组件间的依赖 | 自动管理依赖 |
-| **模板方法** | Abstract 类 | 定义算法骨架 | 统一流程规范 |
+| 设计模式      | 应用位置         | 解决的问题     | 带来的好处   |
+|-----------|--------------|-----------|---------|
+| **单例模式**  | Architecture | 全局唯一的架构实例 | 统一的组件管理 |
+| **工厂模式**  | IoC 容器       | 组件的创建和管理  | 解耦创建逻辑  |
+| **观察者模式** | Event 系统     | 组件间的通信    | 松耦合通信   |
+| **命令模式**  | Command      | 封装操作请求    | 支持撤销重做  |
+| **策略模式**  | System       | 不同的业务逻辑   | 易于切换策略  |
+| **依赖注入**  | 整体架构         | 组件间的依赖    | 自动管理依赖  |
+| **模板方法**  | Abstract 类   | 定义算法骨架    | 统一流程规范  |
 
 ### 为什么这样设计？🤔
 
 #### 1. 降低学习成本
+
 - 遵循业界标准模式和原则
 - 有经验的开发者能快速上手
 - 清晰的分层易于理解
 
 #### 2. 提高代码质量
+
 - 强制分层，避免意大利面代码
 - 职责明确，减少 bug
 - 易于 Code Review
 
 #### 3. 便于团队协作
+
 - 清晰的职责划分，减少冲突
 - 统一的代码风格
 - 新人容易融入项目
 
 #### 4. 易于维护扩展
+
 - 符合 SOLID 原则
 - 通过事件添加功能无需修改现有代码
 - 模块化设计，易于替换
 
 #### 5. 支持单元测试
+
 - 依赖注入让 mock 变得简单
 - 接口设计便于测试
 - 业务逻辑与 UI 分离，可独立测试
@@ -1006,16 +1036,19 @@ public class BattleController : GameController { }
 ### 架构演进建议 🚀
 
 #### 小型项目（< 5000 行代码）
+
 - 使用基础的 MVC 分层
 - 适度使用 Command 和 Query
 - 事件系统用于关键通知
 
 #### 中型项目（5000-20000 行）
+
 - 完整使用框架所有特性
 - 细分 System 的职责
 - 引入更多 Utility 复用代码
 
 #### 大型项目（> 20000 行）
+
 - 考虑按功能模块拆分多个 Architecture
 - 使用事件总线连接不同模块
 - 引入领域驱动设计（DDD）概念
@@ -1023,6 +1056,7 @@ public class BattleController : GameController { }
 ### 常见反模式 ⚠️
 
 #### 反模式 1：上帝类（God Class）
+
 ```csharp
 // ❌ 一个类做所有事情
 public class GameManager
@@ -1042,6 +1076,7 @@ public class SaveSystem { /* 只负责存档 */ }
 ```
 
 #### 反模式 2：循环依赖
+
 ```csharp
 // ❌ A 依赖 B，B 又依赖 A
 public class SystemA
@@ -1071,6 +1106,7 @@ public class SystemB
 ```
 
 #### 反模式 3：过度设计
+
 ```csharp
 // ❌ 简单功能过度抽象
 public interface IClickable { }

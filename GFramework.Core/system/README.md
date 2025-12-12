@@ -11,6 +11,7 @@ System 包定义了业务逻辑层（Business Logic Layer）。System 负责处�
 标记接口，表示该类型可以获取其他 System。
 
 **继承关系：**
+
 ```csharp
 public interface ICanGetSystem : IBelongToArchitecture
 ```
@@ -20,11 +21,13 @@ public interface ICanGetSystem : IBelongToArchitecture
 System 接口，定义了系统的基本行为。
 
 **核心成员：**
+
 ```csharp
 void Init();  // 系统初始化方法
 ```
 
 **继承的能力：**
+
 - `ICanSetArchitecture` - 可设置架构
 - `ICanGetModel` - 可获取 Model
 - `ICanGetUtility` - 可获取 Utility
@@ -39,6 +42,7 @@ void Init();  // 系统初始化方法
 抽象 System 基类，提供了 System 的基础实现。
 
 **使用方式：**
+
 ```csharp
 public abstract class AbstractSystem : ISystem
 {
@@ -419,11 +423,13 @@ public class GameStateSystem : AbstractSystem
 ## System vs Model
 
 ### Model（数据层）
+
 - **职责**：存储数据和状态
 - **特点**：被动，等待修改
 - **示例**：PlayerModel、InventoryModel
 
 ### System（逻辑层）
+
 - **职责**：处理业务逻辑，协调 Model
 - **特点**：主动，响应事件
 - **示例**：CombatSystem、QuestSystem

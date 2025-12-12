@@ -9,43 +9,23 @@ using GFramework.Core.utility;
 namespace GFramework.Core.architecture;
 
 /// <summary>
-/// 架构基类，提供系统、模型、工具等组件的注册与管理功能。
-/// 使用单例模式确保全局唯一实例，并支持命令、查询和事件机制。
+///     架构基类，提供系统、模型、工具等组件的注册与管理功能。
+///     使用单例模式确保全局唯一实例，并支持命令、查询和事件机制。
 /// </summary>
 /// <typeparam name="T">派生类类型，用于实现单例</typeparam>
 public abstract class Architecture<T> : IArchitecture where T : Architecture<T>, new()
 {
     /// <summary>
-    /// 标记架构是否已初始化完成
-    /// </summary>
-    private bool _mInited;
-
-    /// <summary>
-    /// 存储尚未初始化的系统集合，在初始化阶段统一调用Init方法
-    /// </summary>
-    private readonly HashSet<ISystem> _mSystems = [];
-
-    /// <summary>
-    /// 存储尚未初始化的模型集合，在初始化阶段统一调用Init方法
-    /// </summary>
-    private readonly HashSet<IModel> _mModels = [];
-
-    /// <summary>
-    /// 注册补丁委托，允许在架构创建后执行额外逻辑
-    /// </summary>
-    public static Action<T> OnRegisterPatch { get; set; } = _ => { };
-
-    /// <summary>
-    /// 静态只读字段，用于延迟初始化架构实例
-    /// 使用Lazy确保线程安全的单例模式实现
+    ///     静态只读字段，用于延迟初始化架构实例
+    ///     使用Lazy确保线程安全的单例模式实现
     /// </summary>
     /// <remarks>
-    /// 初始化过程包括：
-    /// 1. 创建T类型的实例
-    /// 2. 调用用户自定义的Init方法
-    /// 3. 执行注册的补丁逻辑
-    /// 4. 初始化所有已注册的模型和系统
-    /// 5. 清理临时集合并标记初始化完成
+    ///     初始化过程包括：
+    ///     1. 创建T类型的实例
+    ///     2. 调用用户自定义的Init方法
+    ///     3. 执行注册的补丁逻辑
+    ///     4. 初始化所有已注册的模型和系统
+    ///     5. 清理临时集合并标记初始化完成
     /// </remarks>
     /// <returns>T类型的架构实例</returns>
     private static readonly Lazy<T> MArchitectureLazy = new(() =>
@@ -58,18 +38,12 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
         OnRegisterPatch?.Invoke(arch);
 
         // 初始化所有已注册但尚未初始化的模型
-        foreach (var model in arch._mModels)
-        {
-            model.Init();
-        }
+        foreach (var model in arch._mModels) model.Init();
 
         arch._mModels.Clear();
 
         // 初始化所有已注册但尚未初始化的系统
-        foreach (var system in arch._mSystems)
-        {
-            system.Init();
-        }
+        foreach (var system in arch._mSystems) system.Init();
 
         arch._mSystems.Clear();
 
@@ -78,33 +52,52 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
     }, LazyThreadSafetyMode.ExecutionAndPublication);
 
     /// <summary>
-    /// 获取架构实例的受保护静态属性
-    /// 通过Lazy初始化确保只创建一个实例
+    ///     控制反转容器，用于存储和获取各种服务（如系统、模型、工具）
+    /// </summary>
+    private readonly IocContainer _mContainer = new();
+
+    /// <summary>
+    ///     存储尚未初始化的模型集合，在初始化阶段统一调用Init方法
+    /// </summary>
+    private readonly HashSet<IModel> _mModels = [];
+
+    /// <summary>
+    ///     存储尚未初始化的系统集合，在初始化阶段统一调用Init方法
+    /// </summary>
+    private readonly HashSet<ISystem> _mSystems = [];
+
+    /// <summary>
+    ///     类型化事件系统，负责事件的发布与订阅管理
+    /// </summary>
+    private readonly TypeEventSystem _mTypeEventSystem = new();
+
+    /// <summary>
+    ///     标记架构是否已初始化完成
+    /// </summary>
+    private bool _mInited;
+
+    /// <summary>
+    ///     注册补丁委托，允许在架构创建后执行额外逻辑
+    /// </summary>
+    public static Action<T> OnRegisterPatch { get; set; } = _ => { };
+
+    /// <summary>
+    ///     获取架构实例的受保护静态属性
+    ///     通过Lazy初始化确保只创建一个实例
     /// </summary>
     /// <returns>T类型的架构实例</returns>
     protected static T MArchitecture => MArchitectureLazy.Value;
 
     /// <summary>
-    /// 获取架构实例的公共静态属性，以接口形式暴露
-    /// 提供对外访问架构功能的标准接口
+    ///     获取架构实例的公共静态属性，以接口形式暴露
+    ///     提供对外访问架构功能的标准接口
     /// </summary>
     /// <returns>IArchitecture接口类型的架构实例</returns>
     public static IArchitecture Interface => MArchitectureLazy.Value;
 
-
     /// <summary>
-    /// 抽象初始化方法，由子类重写以进行自定义初始化操作
-    /// </summary>
-    protected abstract void Init();
-
-    /// <summary>
-    /// 控制反转容器，用于存储和获取各种服务（如系统、模型、工具）
-    /// </summary>
-    private readonly IocContainer _mContainer = new();
-
-    /// <summary>
-    /// 注册一个系统到架构中。
-    /// 若当前未初始化，则暂存至待初始化列表；否则立即初始化该系统。
+    ///     注册一个系统到架构中。
+    ///     若当前未初始化，则暂存至待初始化列表；否则立即初始化该系统。
     /// </summary>
     /// <typeparam name="TSystem">要注册的系统类型</typeparam>
     /// <param name="system">要注册的系统实例</param>
@@ -114,18 +107,14 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
         _mContainer.Register(system);
 
         if (!_mInited)
-        {
             _mSystems.Add(system);
-        }
         else
-        {
             system.Init();
-        }
     }
 
     /// <summary>
-    /// 注册一个模型到架构中。
-    /// 若当前未初始化，则暂存至待初始化列表；否则立即初始化该模型。
+    ///     注册一个模型到架构中。
+    ///     若当前未初始化，则暂存至待初始化列表；否则立即初始化该模型。
     /// </summary>
     /// <typeparam name="TModel">要注册的模型类型</typeparam>
     /// <param name="model">要注册的模型实例</param>
@@ -135,62 +124,132 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
         _mContainer.Register(model);
 
         if (!_mInited)
-        {
             _mModels.Add(model);
-        }
         else
-        {
             model.Init();
-        }
     }
 
     /// <summary>
-    /// 注册一个工具到架构中。
-    /// 工具不会被延迟初始化，直接放入IOC容器供后续使用。
+    ///     注册一个工具到架构中。
+    ///     工具不会被延迟初始化，直接放入IOC容器供后续使用。
     /// </summary>
     /// <typeparam name="TUtility">要注册的工具类型</typeparam>
     /// <param name="utility">要注册的工具实例</param>
-    public void RegisterUtility<TUtility>(TUtility utility) where TUtility : IUtility =>
+    public void RegisterUtility<TUtility>(TUtility utility) where TUtility : IUtility
+    {
         _mContainer.Register(utility);
+    }
 
     /// <summary>
-    /// 从IOC容器中获取指定类型的系统实例
+    ///     从IOC容器中获取指定类型的系统实例
     /// </summary>
     /// <typeparam name="TSystem">目标系统类型</typeparam>
     /// <returns>对应的系统实例</returns>
-    public TSystem GetSystem<TSystem>() where TSystem : class, ISystem => _mContainer.Get<TSystem>();
+    public TSystem GetSystem<TSystem>() where TSystem : class, ISystem
+    {
+        return _mContainer.Get<TSystem>();
+    }
 
     /// <summary>
-    /// 从IOC容器中获取指定类型的模型实例
+    ///     从IOC容器中获取指定类型的模型实例
     /// </summary>
     /// <typeparam name="TModel">目标模型类型</typeparam>
     /// <returns>对应的模型实例</returns>
-    public TModel GetModel<TModel>() where TModel : class, IModel => _mContainer.Get<TModel>();
+    public TModel GetModel<TModel>() where TModel : class, IModel
+    {
+        return _mContainer.Get<TModel>();
+    }
 
     /// <summary>
-    /// 从IOC容器中获取指定类型的工具实例
+    ///     从IOC容器中获取指定类型的工具实例
     /// </summary>
     /// <typeparam name="TUtility">目标工具类型</typeparam>
     /// <returns>对应的工具实例</returns>
-    public TUtility GetUtility<TUtility>() where TUtility : class, IUtility => _mContainer.Get<TUtility>();
+    public TUtility GetUtility<TUtility>() where TUtility : class, IUtility
+    {
+        return _mContainer.Get<TUtility>();
+    }
 
     /// <summary>
-    /// 发送一个带返回结果的命令请求
+    ///     发送一个带返回结果的命令请求
     /// </summary>
     /// <typeparam name="TResult">命令执行后的返回值类型</typeparam>
     /// <param name="command">要发送的命令对象</param>
     /// <returns>命令执行的结果</returns>
-    public TResult SendCommand<TResult>(ICommand<TResult> command) => ExecuteCommand(command);
+    public TResult SendCommand<TResult>(ICommand<TResult> command)
+    {
+        return ExecuteCommand(command);
+    }
 
     /// <summary>
-    /// 发送一个无返回结果的命令请求
+    ///     发送一个无返回结果的命令请求
     /// </summary>
     /// <typeparam name="TCommand">命令的具体类型</typeparam>
     /// <param name="command">要发送的命令对象</param>
-    public void SendCommand<TCommand>(TCommand command) where TCommand : ICommand => ExecuteCommand(command);
+    public void SendCommand<TCommand>(TCommand command) where TCommand : ICommand
+    {
+        ExecuteCommand(command);
+    }
 
     /// <summary>
-    /// 执行一个带返回结果的命令
+    ///     发起一次查询请求并获得其结果
+    /// </summary>
+    /// <typeparam name="TResult">查询结果的数据类型</typeparam>
+    /// <param name="query">要发起的查询对象</param>
+    /// <returns>查询得到的结果数据</returns>
+    public TResult SendQuery<TResult>(IQuery<TResult> query)
+    {
+        return DoQuery(query);
+    }
+
+    /// <summary>
+    ///     发布一个默认构造的新事件对象
+    /// </summary>
+    /// <typeparam name="TEvent">事件类型</typeparam>
+    public void SendEvent<TEvent>() where TEvent : new()
+    {
+        _mTypeEventSystem.Send<TEvent>();
+    }
+
+    /// <summary>
+    ///     发布一个具体的事件对象
+    /// </summary>
+    /// <typeparam name="TEvent">事件类型</typeparam>
+    /// <param name="e">要发布的事件实例</param>
+    public void SendEvent<TEvent>(TEvent e)
+    {
+        _mTypeEventSystem.Send(e);
+    }
+
+    /// <summary>
+    ///     订阅某个特定类型的事件
+    /// </summary>
+    /// <typeparam name="TEvent">事件类型</typeparam>
+    /// <param name="onEvent">当事件发生时触发的动作</param>
+    /// <returns>可用于取消订阅的对象</returns>
+    public IUnRegister RegisterEvent<TEvent>(Action<TEvent> onEvent)
+    {
+        return _mTypeEventSystem.Register(onEvent);
+    }
+
+    /// <summary>
+    ///     取消对某类型事件的监听
+    /// </summary>
+    /// <typeparam name="TEvent">事件类型</typeparam>
+    /// <param name="onEvent">之前绑定的事件处理器</param>
+    public void UnRegisterEvent<TEvent>(Action<TEvent> onEvent)
+    {
+        _mTypeEventSystem.UnRegister(onEvent);
+    }
+
+
+    /// <summary>
+    ///     抽象初始化方法，由子类重写以进行自定义初始化操作
+    /// </summary>
+    protected abstract void Init();
+
+    /// <summary>
+    ///     执行一个带返回结果的命令
     /// </summary>
     /// <typeparam name="TResult">命令执行后的返回值类型</typeparam>
     /// <param name="command">要执行的命令对象</param>
@@ -202,7 +261,7 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
     }
 
     /// <summary>
-    /// 执行一个无返回结果的命令
+    ///     执行一个无返回结果的命令
     /// </summary>
     /// <param name="command">要执行的命令对象</param>
     protected virtual void ExecuteCommand(ICommand command)
@@ -212,15 +271,7 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
     }
 
     /// <summary>
-    /// 发起一次查询请求并获得其结果
-    /// </summary>
-    /// <typeparam name="TResult">查询结果的数据类型</typeparam>
-    /// <param name="query">要发起的查询对象</param>
-    /// <returns>查询得到的结果数据</returns>
-    public TResult SendQuery<TResult>(IQuery<TResult> query) => DoQuery(query);
-
-    /// <summary>
-    /// 实际执行查询逻辑的方法
+    ///     实际执行查询逻辑的方法
     /// </summary>
     /// <typeparam name="TResult">查询结果的数据类型</typeparam>
     /// <param name="query">要处理的查询对象</param>
@@ -230,37 +281,4 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
         query.SetArchitecture(this);
         return query.Do();
     }
-
-    /// <summary>
-    /// 类型化事件系统，负责事件的发布与订阅管理
-    /// </summary>
-    private readonly TypeEventSystem _mTypeEventSystem = new();
-
-    /// <summary>
-    /// 发布一个默认构造的新事件对象
-    /// </summary>
-    /// <typeparam name="TEvent">事件类型</typeparam>
-    public void SendEvent<TEvent>() where TEvent : new() => _mTypeEventSystem.Send<TEvent>();
-
-    /// <summary>
-    /// 发布一个具体的事件对象
-    /// </summary>
-    /// <typeparam name="TEvent">事件类型</typeparam>
-    /// <param name="e">要发布的事件实例</param>
-    public void SendEvent<TEvent>(TEvent e) => _mTypeEventSystem.Send(e);
-
-    /// <summary>
-    /// 订阅某个特定类型的事件
-    /// </summary>
-    /// <typeparam name="TEvent">事件类型</typeparam>
-    /// <param name="onEvent">当事件发生时触发的动作</param>
-    /// <returns>可用于取消订阅的对象</returns>
-    public IUnRegister RegisterEvent<TEvent>(Action<TEvent> onEvent) => _mTypeEventSystem.Register(onEvent);
-
-    /// <summary>
-    /// 取消对某类型事件的监听
-    /// </summary>
-    /// <typeparam name="TEvent">事件类型</typeparam>
-    /// <param name="onEvent">之前绑定的事件处理器</param>
-    public void UnRegisterEvent<TEvent>(Action<TEvent> onEvent) => _mTypeEventSystem.UnRegister(onEvent);
 }

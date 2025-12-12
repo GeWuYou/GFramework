@@ -1,87 +1,64 @@
-﻿using System;
-using System.Threading.Tasks;
-using Godot;
+﻿using Godot;
 
 namespace GFramework.Core.Godot.extensions;
 
 /// <summary>
-/// 节点扩展方法类，提供对Godot节点的扩展功能
+///     节点扩展方法类，提供对Godot节点的扩展功能
 /// </summary>
 public static class NodeExtensions
 {
     /// <summary>
-    /// 安全地将节点加入删除队列，在下一帧开始时释放节点资源
+    ///     安全地将节点加入删除队列，在下一帧开始时释放节点资源
     /// </summary>
     /// <param name="node">要释放的节点实例</param>
     public static void QueueFreeX(this Node? node)
     {
         // 检查节点是否为空
-        if (node is null)
-        {
-            return;
-        }
+        if (node is null) return;
 
         // 检查节点实例是否有效
-        if (!GodotObject.IsInstanceValid(node))
-        {
-            return;
-        }
+        if (!GodotObject.IsInstanceValid(node)) return;
 
         // 检查节点是否已经加入删除队列
-        if (node.IsQueuedForDeletion())
-        {
-            return;
-        }
+        if (node.IsQueuedForDeletion()) return;
 
         // 延迟调用QueueFree方法，避免在当前帧中直接删除节点
         node.CallDeferred(Node.MethodName.QueueFree);
     }
 
     /// <summary>
-    /// 立即释放节点资源，不等待下一帧
+    ///     立即释放节点资源，不等待下一帧
     /// </summary>
     /// <param name="node">要立即释放的节点实例</param>
     public static void FreeX(this Node? node)
     {
         // 检查节点是否为空
-        if (node is null)
-        {
-            return;
-        }
+        if (node is null) return;
 
         // 检查节点实例是否有效
-        if (!GodotObject.IsInstanceValid(node))
-        {
-            return;
-        }
+        if (!GodotObject.IsInstanceValid(node)) return;
 
         // 检查节点是否已经加入删除队列
-        if (node.IsQueuedForDeletion())
-        {
-            return;
-        }
+        if (node.IsQueuedForDeletion()) return;
 
         // 立即释放节点资源
         node.Free();
     }
 
     /// <summary>
-    /// 如果节点尚未进入场景树，则等待 ready 信号。
-    /// 如果已经在场景树中，则立刻返回。
+    ///     如果节点尚未进入场景树，则等待 ready 信号。
+    ///     如果已经在场景树中，则立刻返回。
     /// </summary>
     public static async Task WaitUntilReady(this Node node)
     {
-        if (!node.IsInsideTree())
-        {
-            await node.ToSignal(node, Node.SignalName.Ready);
-        }
+        if (!node.IsInsideTree()) await node.ToSignal(node, Node.SignalName.Ready);
     }
 
     /// <summary>
-    /// 检查节点是否有效：
-    /// 1. 非 null
-    /// 2. Godot 实例仍然存在（未被释放）
-    /// 3. 已经加入 SceneTree
+    ///     检查节点是否有效：
+    ///     1. 非 null
+    ///     2. Godot 实例仍然存在（未被释放）
+    ///     3. 已经加入 SceneTree
     /// </summary>
     public static bool IsValidNode(this Node? node)
     {
@@ -91,12 +68,11 @@ public static class NodeExtensions
     }
 
     /// <summary>
-    /// 检查节点是否无效：
-    /// 1. 为 null，或者
-    /// 2. Godot 实例已被释放，或者
-    /// 3. 尚未加入 SceneTree
-    /// 
-    /// 返回 true 表示该节点不可用。
+    ///     检查节点是否无效：
+    ///     1. 为 null，或者
+    ///     2. Godot 实例已被释放，或者
+    ///     3. 尚未加入 SceneTree
+    ///     返回 true 表示该节点不可用。
     /// </summary>
     public static bool IsInvalidNode(this Node? node)
     {
@@ -106,7 +82,7 @@ public static class NodeExtensions
     }
 
     /// <summary>
-    /// 将当前节点的输入事件标记为已处理，防止事件继续向父节点传播。
+    ///     将当前节点的输入事件标记为已处理，防止事件继续向父节点传播。
     /// </summary>
     /// <param name="node">要处理输入事件的节点实例</param>
     public static void SetInputAsHandled(this Node node)
@@ -116,7 +92,7 @@ public static class NodeExtensions
     }
 
     /// <summary>
-    /// 设置节点所在场景树的暂停状态
+    ///     设置节点所在场景树的暂停状态
     /// </summary>
     /// <param name="node">要操作的节点对象</param>
     /// <param name="paused">暂停状态标识，默认为true表示暂停，false表示恢复运行</param>
@@ -127,7 +103,7 @@ public static class NodeExtensions
     }
 
     /// <summary>
-    /// 查找指定名称的子节点并将其转换为指定类型
+    ///     查找指定名称的子节点并将其转换为指定类型
     /// </summary>
     /// <typeparam name="T">要转换到的目标节点类型</typeparam>
     /// <param name="node">要在其子节点中进行查找的父节点</param>
@@ -137,12 +113,12 @@ public static class NodeExtensions
     public static T? FindChildX<T>(this Node node, string name, bool recursive = true)
         where T : Node
     {
-        var child = node.FindChild(name, recursive, owned: false);
+        var child = node.FindChild(name, recursive, false);
         return child as T;
     }
 
     /// <summary>
-    /// 获取指定路径的节点，如果不存在则创建一个新的节点
+    ///     获取指定路径的节点，如果不存在则创建一个新的节点
     /// </summary>
     /// <typeparam name="T">节点类型，必须继承自Node且具有无参构造函数</typeparam>
     /// <param name="node">父节点</param>
@@ -163,7 +139,7 @@ public static class NodeExtensions
     }
 
     /// <summary>
-    /// 异步添加子节点并等待其准备就绪
+    ///     异步添加子节点并等待其准备就绪
     /// </summary>
     /// <param name="parent">父节点</param>
     /// <param name="child">要添加的子节点</param>
@@ -175,7 +151,7 @@ public static class NodeExtensions
     }
 
     /// <summary>
-    /// 获取父节点并将其转换为指定类型
+    ///     获取父节点并将其转换为指定类型
     /// </summary>
     /// <typeparam name="T">要转换到的目标节点类型</typeparam>
     /// <param name="node">当前节点</param>
@@ -184,8 +160,9 @@ public static class NodeExtensions
     {
         return node.GetParent() as T;
     }
+
     /// <summary>
-    /// 获取场景树的根节点的第一个子节点
+    ///     获取场景树的根节点的第一个子节点
     /// </summary>
     /// <param name="node">扩展方法的目标节点</param>
     /// <returns>根节点的第一个子节点</returns>
@@ -195,7 +172,7 @@ public static class NodeExtensions
     }
 
     /// <summary>
-    /// 遍历节点的所有子节点，并对指定类型的子节点执行特定操作
+    ///     遍历节点的所有子节点，并对指定类型的子节点执行特定操作
     /// </summary>
     /// <typeparam name="T">要筛选的节点类型</typeparam>
     /// <param name="node">扩展方法的目标节点</param>
@@ -208,7 +185,7 @@ public static class NodeExtensions
     }
 
     /// <summary>
-    /// 禁用节点所在场景树的输入处理功能
+    ///     禁用节点所在场景树的输入处理功能
     /// </summary>
     /// <param name="node">扩展方法的目标节点</param>
     public static void DisableInput(this Node node)
@@ -219,7 +196,7 @@ public static class NodeExtensions
     }
 
     /// <summary>
-    /// 启用节点所在场景树的输入处理功能
+    ///     启用节点所在场景树的输入处理功能
     /// </summary>
     /// <param name="node">扩展方法的目标节点</param>
     public static void EnableInput(this Node node)
@@ -230,7 +207,7 @@ public static class NodeExtensions
     }
 
     /// <summary>
-    /// 打印节点的路径信息到控制台
+    ///     打印节点的路径信息到控制台
     /// </summary>
     /// <param name="node">扩展方法的目标节点</param>
     public static void LogNodePath(this Node node)
@@ -239,7 +216,7 @@ public static class NodeExtensions
     }
 
     /// <summary>
-    /// 以树形结构递归打印节点及其所有子节点的名称
+    ///     以树形结构递归打印节点及其所有子节点的名称
     /// </summary>
     /// <param name="node">扩展方法的目标节点</param>
     /// <param name="indent">缩进字符串，用于显示层级关系</param>
@@ -253,7 +230,7 @@ public static class NodeExtensions
     }
 
     /// <summary>
-    /// 安全地延迟调用指定方法，确保节点有效后再执行
+    ///     安全地延迟调用指定方法，确保节点有效后再执行
     /// </summary>
     /// <param name="node">扩展方法的目标节点</param>
     /// <param name="method">要延迟调用的方法名</param>
@@ -263,6 +240,4 @@ public static class NodeExtensions
         if (node != null && GodotObject.IsInstanceValid(node))
             node.CallDeferred(method);
     }
-
-
 }

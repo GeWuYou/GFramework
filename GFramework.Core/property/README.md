@@ -11,6 +11,7 @@ Property 包提供了可绑定属性（BindableProperty）的实现，支持属�
 只读可绑定属性接口，提供属性值的读取和变更监听功能。
 
 **核心成员：**
+
 ```csharp
 T Value { get; }  // 获取属性值
 IUnRegister Register(Action<T> onValueChanged);  // 注册监听
@@ -23,6 +24,7 @@ void UnRegister(Action<T> onValueChanged);  // 取消监听
 可绑定属性接口，继承自只读接口，增加了修改能力。
 
 **核心成员：**
+
 ```csharp
 new T Value { get; set; }  // 可读写的属性值
 void SetValueWithoutEvent(T newValue);  // 设置值但不触发事件

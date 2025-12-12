@@ -2,9 +2,8 @@ using GFramework.Core.events;
 
 namespace GFramework.Core.property;
 
-
 /// <summary>
-/// 可绑定属性注销器类，用于取消注册可绑定属性的值变化监听
+///     可绑定属性注销器类，用于取消注册可绑定属性的值变化监听
 /// </summary>
 /// <typeparam name="T">可绑定属性的值类型</typeparam>
 /// <param name="bindableProperty">需要注销的可绑定属性实例</param>
@@ -13,17 +12,17 @@ public class BindablePropertyUnRegister<T>(BindableProperty<T> bindableProperty,
     : IUnRegister
 {
     /// <summary>
-    /// 获取或设置可绑定属性实例
+    ///     获取或设置可绑定属性实例
     /// </summary>
     public BindableProperty<T> BindableProperty { get; set; } = bindableProperty;
 
     /// <summary>
-    /// 获取或设置值变化时的回调函数
+    ///     获取或设置值变化时的回调函数
     /// </summary>
     public Action<T> OnValueChanged { get; set; } = onValueChanged;
 
     /// <summary>
-    /// 执行注销操作，取消注册值变化监听并清理引用
+    ///     执行注销操作，取消注册值变化监听并清理引用
     /// </summary>
     public void UnRegister()
     {

@@ -8,7 +8,8 @@ Extensions 包提供了一系列扩展方法，简化了框架各个接口的使
 
 ### 1. 获取组件扩展 ([`CanGetExtensions.cs`](CanGetExtensions.cs))
 
-为 [`ICanGetModel`](../model/ICanGetModel.cs)、[`ICanGetSystem`](../system/ICanGetSystem.cs)、[`ICanGetUtility`](../utility/ICanGetUtility.cs) 提供扩展方法。
+为 [`ICanGetModel`](../model/ICanGetModel.cs)、[`ICanGetSystem`](../system/ICanGetSystem.cs)、[
+`ICanGetUtility`](../utility/ICanGetUtility.cs) 提供扩展方法。
 
 #### CanGetModelExtension
 
@@ -480,17 +481,17 @@ public class AchievementSystem : AbstractSystem
    ```
 
 2. **理解扩展方法本质**：
-   - 扩展方法是静态方法的语法糖
-   - 不会改变原始类型的结构
-   - 仅在编译时解析
+    - 扩展方法是静态方法的语法糖
+    - 不会改变原始类型的结构
+    - 仅在编译时解析
 
 3. **Godot 特定功能**：
-   - `UnRegisterWhenNodeExitTree` 仅在 Godot 环境下可用
-   - 使用 `#if GODOT` 编译指令控制
+    - `UnRegisterWhenNodeExitTree` 仅在 Godot 环境下可用
+    - 使用 `#if GODOT` 编译指令控制
 
 4. **性能考虑**：
-   - 扩展方法本身无性能开销
-   - 实际调用的是底层方法
+    - 扩展方法本身无性能开销
+    - 实际调用的是底层方法
 
 ## 相关包
 

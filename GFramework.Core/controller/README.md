@@ -2,7 +2,8 @@
 
 ## 概述
 
-Controller 包定义了控制器（Controller）的接口规范。控制器是 MVC 架构中的 C 层，负责处理用户交互、协调视图和模型，是连接表现层和业务层的桥梁。在本框架中，Controller 通常对应 Godot 的节点脚本。
+Controller 包定义了控制器（Controller）的接口规范。控制器是 MVC 架构中的 C
+层，负责处理用户交互、协调视图和模型，是连接表现层和业务层的桥梁。在本框架中，Controller 通常对应 Godot 的节点脚本。
 
 ## 核心接口
 
@@ -11,6 +12,7 @@ Controller 包定义了控制器（Controller）的接口规范。控制器是 M
 控制器接口，定义了控制器需要实现的所有功能契约。
 
 **继承的能力接口：**
+
 - [`ICanSendCommand`](../command/ICanSendCommand.cs) - 可发送命令
 - [`ICanGetSystem`](../system/ICanGetSystem.cs) - 可获取系统
 - [`ICanGetModel`](../model/ICanGetModel.cs) - 可获取模型
@@ -21,6 +23,7 @@ Controller 包定义了控制器（Controller）的接口规范。控制器是 M
 **能力说明：**
 
 控制器拥有框架中最全面的能力集合，可以：
+
 1. 发送命令执行业务逻辑
 2. 获取系统调用服务
 3. 获取模型读写数据
@@ -224,40 +227,40 @@ public partial class CombatController : Node, IController
 ### ✅ 应该做的事
 
 1. **处理用户输入**
-   - 键盘、鼠标、触摸输入
-   - UI 按钮点击
-   - 手势识别
+    - 键盘、鼠标、触摸输入
+    - UI 按钮点击
+    - 手势识别
 
 2. **协调视图和模型**
-   - 监听模型变化更新视图
-   - 将用户操作转换为命令
+    - 监听模型变化更新视图
+    - 将用户操作转换为命令
 
 3. **管理界面逻辑**
-   - UI 元素的显示/隐藏
-   - 动画播放控制
-   - 视觉反馈
+    - UI 元素的显示/隐藏
+    - 动画播放控制
+    - 视觉反馈
 
 4. **事件监听**
-   - 注册关心的事件
-   - 响应事件更新界面
+    - 注册关心的事件
+    - 响应事件更新界面
 
 ### ❌ 不应该做的事
 
 1. **不包含业务逻辑**
-   - 业务逻辑应该在 System 中
-   - 控制器只负责调用和协调
+    - 业务逻辑应该在 System 中
+    - 控制器只负责调用和协调
 
 2. **不直接修改模型**
-   - 应该通过 Command 修改模型
-   - 避免直接访问 Model 的 setter
+    - 应该通过 Command 修改模型
+    - 避免直接访问 Model 的 setter
 
 3. **不处理复杂计算**
-   - 复杂计算应该在 Query 或 System 中
-   - 控制器保持简洁
+    - 复杂计算应该在 Query 或 System 中
+    - 控制器保持简洁
 
 4. **不保存核心状态**
-   - 核心状态应该在 Model 中
-   - 控制器可以保存临时 UI 状态
+    - 核心状态应该在 Model 中
+    - 控制器可以保存临时 UI 状态
 
 ## 生命周期管理
 
@@ -326,28 +329,28 @@ public partial class GameController : Node, IController
 ## 最佳实践
 
 1. **一个控制器对应一个视图**
-   - 每个 Godot 场景/节点有对应的控制器
-   - 避免一个控制器管理多个不相关的视图
+    - 每个 Godot 场景/节点有对应的控制器
+    - 避免一个控制器管理多个不相关的视图
 
 2. **使用依赖注入获取依赖**
-   - 通过 `GetModel()`、`GetSystem()` 获取依赖
-   - 不要在构造函数中获取，应在 `_Ready()` 中
+    - 通过 `GetModel()`、`GetSystem()` 获取依赖
+    - 不要在构造函数中获取，应在 `_Ready()` 中
 
 3. **保持控制器轻量**
-   - 复杂逻辑放在 Command、Query、System 中
-   - 控制器只做协调和转发
+    - 复杂逻辑放在 Command、Query、System 中
+    - 控制器只做协调和转发
 
 4. **合理使用缓存**
-   - 频繁使用的 Model、System 可以缓存引用
-   - 平衡性能和内存占用
+    - 频繁使用的 Model、System 可以缓存引用
+    - 平衡性能和内存占用
 
 5. **统一管理事件注销**
-   - 使用 `IUnRegisterList` 统一管理
-   - 在 `_ExitTree()` 中统一注销
+    - 使用 `IUnRegisterList` 统一管理
+    - 在 `_ExitTree()` 中统一注销
 
 6. **命名规范**
-   - 控制器类名：`XxxController`
-   - 继承 Godot 节点：`Node`、`Control`、`Node2D` 等
+    - 控制器类名：`XxxController`
+    - 继承 Godot 节点：`Node`、`Control`、`Node2D` 等
 
 ## 常见模式
 

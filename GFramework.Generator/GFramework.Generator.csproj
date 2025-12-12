@@ -20,7 +20,7 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" PrivateAssets="all"/>
         <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" PrivateAssets="all"/>
-        <PackageReference Include="System.Collections.Immutable" Version="9.0.0" />
+        <PackageReference Include="System.Collections.Immutable" Version="9.0.0"/>
     </ItemGroup>
 
     <ItemGroup>
@@ -33,12 +33,12 @@
     <ItemGroup>
         <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true"
               PackagePath="analyzers/dotnet/cs" Visible="false"/>
-        <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="lib/netstandard2.0" />
+        <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="lib/netstandard2.0"/>
         <None Include="$(OutputPath)\GFramework.Generator.Attributes.dll" Pack="true"
               PackagePath="analyzers/dotnet/cs" Visible="false"/>
         <None Update="README.md">
-          <Pack>true</Pack>
-          <PackagePath></PackagePath>
+            <Pack>true</Pack>
+            <PackagePath></PackagePath>
         </None>
     </ItemGroup>
 

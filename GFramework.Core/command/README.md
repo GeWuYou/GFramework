@@ -11,6 +11,7 @@ Command 包实现了命令模式（Command Pattern），用于封装用户操作
 无返回值命令接口，定义了命令的基本契约。
 
 **继承的能力接口：**
+
 - [`ICanSetArchitecture`](../rule/ICanSetArchitecture.cs) - 可设置架构
 - [`ICanGetSystem`](../system/ICanGetSystem.cs) - 可获取系统
 - [`ICanGetModel`](../model/ICanGetModel.cs) - 可获取模型
@@ -20,6 +21,7 @@ Command 包实现了命令模式（Command Pattern），用于封装用户操作
 - [`ICanSendQuery`](../query/ICanSendQuery.cs) - 可发送查询
 
 **核心方法：**
+
 ```csharp
 void Execute();  // 执行命令
 ```
@@ -29,6 +31,7 @@ void Execute();  // 执行命令
 带返回值的命令接口，用于需要返回执行结果的命令。
 
 **核心方法：**
+
 ```csharp
 TResult Execute();  // 执行命令并返回结果
 ```
@@ -232,12 +235,14 @@ public class LoginCommand : AbstractCommand<bool>
 ## 命令 vs 系统方法
 
 **何时使用命令：**
+
 - 需要参数化操作
 - 需要记录操作历史（用于撤销/重做）
 - 操作需要跨多个系统协调
 - 用户触发的离散操作
 
 **何时使用系统方法：**
+
 - 持续运行的逻辑（如每帧更新）
 - 系统内部的私有逻辑
 - 不需要外部调用的功能

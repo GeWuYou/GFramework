@@ -2,7 +2,8 @@
 
 ## 概述
 
-Query 包实现了 CQRS（命令查询职责分离）模式中的查询部分。Query 用于封装数据查询逻辑，与 Command 不同的是，Query 有返回值且不应该修改系统状态。
+Query 包实现了 CQRS（命令查询职责分离）模式中的查询部分。Query 用于封装数据查询逻辑，与 Command 不同的是，Query
+有返回值且不应该修改系统状态。
 
 ## 核心接口
 
@@ -11,6 +12,7 @@ Query 包实现了 CQRS（命令查询职责分离）模式中的查询部分。
 标记接口，表示该类型可以发送查询。
 
 **继承关系：**
+
 ```csharp
 public interface ICanSendQuery : IBelongToArchitecture
 ```
@@ -20,11 +22,13 @@ public interface ICanSendQuery : IBelongToArchitecture
 查询接口，定义了查询的基本契约。
 
 **核心成员：**
+
 ```csharp
 TResult Do();  // 执行查询并返回结果
 ```
 
 **继承的能力：**
+
 - `ICanSetArchitecture` - 可设置架构
 - `ICanGetModel` - 可获取 Model
 - `ICanGetSystem` - 可获取 System
@@ -37,6 +41,7 @@ TResult Do();  // 执行查询并返回结果
 抽象查询基类，提供了查询的基础实现。
 
 **使用方式：**
+
 ```csharp
 public abstract class AbstractQuery<T> : IQuery<T>
 {
@@ -287,11 +292,13 @@ public class EnemyAISystem : AbstractSystem
 ## Command vs Query
 
 ### Command（命令）
+
 - **用途**：修改系统状态
 - **返回值**：无返回值（void）
 - **示例**：购买物品、造成伤害、升级角色
 
 ### Query（查询）
+
 - **用途**：读取数据，不修改状态
 - **返回值**：有返回值
 - **示例**：获取金币数量、检查技能冷却、查询玩家位置

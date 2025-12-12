@@ -11,6 +11,7 @@ Architecture 包是整个框架的核心，提供了基于 MVC 架构模式的�
 架构接口，定义了框架的核心功能契约。
 
 **主要职责：**
+
 - 组件注册：注册 System、Model、Utility
 - 组件获取：从容器中获取已注册的组件
 - 命令处理：发送并执行命令
@@ -49,6 +50,7 @@ void UnRegisterEvent<T>(Action<T> onEvent);
 架构基类，实现了 [`IArchitecture`](IArchitecture.cs) 接口，提供完整的架构功能实现。
 
 **特性：**
+
 - **单例模式**：使用泛型和 `Lazy<T>` 确保全局唯一实例
 - **线程安全**：采用 `LazyThreadSafetyMode.ExecutionAndPublication` 保证多线程安全
 - **生命周期管理**：自动管理 System 和 Model 的初始化顺序
@@ -56,6 +58,7 @@ void UnRegisterEvent<T>(Action<T> onEvent);
 - **事件系统**：集成类型化事件系统，支持类型安全的事件通信
 
 **初始化流程：**
+
 1. 创建架构实例
 2. 调用用户自定义的 `Init()` 方法
 3. 执行注册的补丁逻辑（`OnRegisterPatch`）
@@ -133,27 +136,32 @@ GameArchitecture.Interface.RegisterSystem(newSystem);
 ## 设计模式
 
 ### 单例模式
+
 通过泛型约束和 `Lazy<T>` 实现类型安全的单例。
 
 ### 依赖注入（IoC）
+
 使用内置 IoC 容器管理组件生命周期和依赖关系。
 
 ### 命令模式
+
 通过 [`ICommand`](../command/ICommand.cs) 封装所有用户操作。
 
 ### 查询模式（CQRS）
+
 通过 [`IQuery<T>`](../query/IQuery.cs) 分离查询和命令操作。
 
 ### 观察者模式
+
 通过事件系统实现组件间的松耦合通信。
 
 ## 最佳实践
 
 1. **保持架构类简洁**：只在 `Init()` 中注册组件，不要包含业务逻辑
 2. **合理划分职责**：
-   - Model：数据和状态
-   - System：业务逻辑和规则
-   - Utility：无状态的工具方法
+    - Model：数据和状态
+    - System：业务逻辑和规则
+    - Utility：无状态的工具方法
 3. **使用接口访问**：通过 `Interface` 属性访问架构，便于测试
 4. **事件命名规范**：使用过去式命名事件类，如 `PlayerDiedEvent`
 5. **避免循环依赖**：System 不应直接引用 System，应通过事件通信

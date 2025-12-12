@@ -2,7 +2,8 @@
 
 ## 概述
 
-Utility 包定义了工具类层。Utility 提供无状态的辅助功能，如数学计算、文件操作、序列化等通用工具方法。与 System 不同，Utility 不依赖架构状态，是纯粹的工具函数集合。
+Utility 包定义了工具类层。Utility 提供无状态的辅助功能，如数学计算、文件操作、序列化等通用工具方法。与 System 不同，Utility
+不依赖架构状态，是纯粹的工具函数集合。
 
 ## 核心接口
 
@@ -11,6 +12,7 @@ Utility 包定义了工具类层。Utility 提供无状态的辅助功能，如�
 标记接口，表示该类型可以获取 Utility。
 
 **继承关系：**
+
 ```csharp
 public interface ICanGetUtility : IBelongToArchitecture
 ```
@@ -20,6 +22,7 @@ public interface ICanGetUtility : IBelongToArchitecture
 Utility 标记接口，所有工具类都应实现此接口。
 
 **接口定义：**
+
 ```csharp
 public interface IUtility
 {
@@ -419,12 +422,14 @@ public class LogUtility : IUtility
 ## Utility vs System
 
 ### Utility（工具层）
+
 - **无状态** - 不存储业务数据
 - **纯函数** - 相同输入产生相同输出
 - **独立性** - 不依赖架构状态
 - **可复用** - 可在多个项目中使用
 
 ### System（逻辑层）
+
 - **有状态** - 可能存储临时状态
 - **业务逻辑** - 处理特定业务流程
 - **架构依赖** - 需要访问 Model
