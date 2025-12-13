@@ -34,12 +34,12 @@ public abstract partial class AbstractDragDropArea2DComponent : AbstractDragDrop
         switch (IsDragging)
         {
             // 处理取消拖拽操作：当正在拖拽且按下取消拖拽按键时，执行取消拖拽逻辑
-            case true when Target.IsValidNode() && @event.IsActionPressed("cancel_drag"):
+            case true when Target.IsValidNode() && @event.IsActionPressed(CancelDragInputActionName):
                 CancelDragging();
                 // 设置输入为处理，防止输入穿透
                 this.SetInputAsHandled();
                 break;
-            case true when @event.IsActionReleased("select"):
+            case true when @event.IsActionReleased(SelectInputActionName):
                 Drop();
                 break;
         }
@@ -65,7 +65,7 @@ public abstract partial class AbstractDragDropArea2DComponent : AbstractDragDrop
                 // 如果当前没有拖拽操作且已有其他对象正在拖拽，则直接返回
                 draggingObj is not null:
                 return;
-            case false when @event.IsActionPressed("select"):
+            case false when @event.IsActionPressed(SelectInputActionName):
                 StartDragging();
                 break;
         }

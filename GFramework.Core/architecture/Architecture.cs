@@ -81,19 +81,13 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
     /// </summary>
     public static Action<T> OnRegisterPatch { get; set; } = _ => { };
 
-    /// <summary>
-    ///     获取架构实例的受保护静态属性
-    ///     通过Lazy初始化确保只创建一个实例
-    /// </summary>
-    /// <returns>T类型的架构实例</returns>
-    protected static T MArchitecture => MArchitectureLazy.Value;
 
     /// <summary>
-    ///     获取架构实例的公共静态属性，以接口形式暴露
-    ///     提供对外访问架构功能的标准接口
+    ///     获取架构实例的静态属性
     /// </summary>
-    /// <returns>IArchitecture接口类型的架构实例</returns>
-    public static IArchitecture Interface => MArchitectureLazy.Value;
+    /// <returns>返回IArchitecture类型的架构实例</returns>
+    public static IArchitecture Instance => MArchitectureLazy.Value;
+
 
     /// <summary>
     ///     注册一个系统到架构中。

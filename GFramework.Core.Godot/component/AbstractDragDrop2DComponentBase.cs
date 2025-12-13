@@ -11,13 +11,13 @@ namespace GFramework.Core.Godot.component;
 ///     继承自Godot的Node类并实现了IController接口。
 ///     提供了拖拽相关的信号定义以及基础属性配置。
 /// </summary>
-public abstract partial class AbstractDragDrop2DComponentBase: Node, IController
+public abstract partial class AbstractDragDrop2DComponentBase : Node, IController
 {
     /// <summary>
     ///     取消注册列表，用于管理需要在节点销毁时取消注册的对象
     /// </summary>
     protected readonly IUnRegisterList UnRegisterList = new UnRegisterList();
-    
+
     /// <summary>
     ///     当拖拽被取消时触发的信号。
     /// </summary>
@@ -37,7 +37,7 @@ public abstract partial class AbstractDragDrop2DComponentBase: Node, IController
     /// <param name="startingPosition">拖拽起始位置。</param>
     [Signal]
     public delegate void DroppedEventHandler(Vector2 startingPosition);
-    
+
     /// <summary>
     ///     是否启用拖拽功能。若为 false，则忽略所有输入事件。
     /// </summary>
@@ -47,6 +47,16 @@ public abstract partial class AbstractDragDrop2DComponentBase: Node, IController
     ///     拖拽组的名称，用于区分不同的拖拽组。
     /// </summary>
     public string GroupName { get; set; } = "dragging";
+
+    /// <summary>
+    /// 获取或设置取消拖拽输入操作的名称
+    /// </summary>
+    public string CancelDragInputActionName { get; set; } = "cancel_drag";
+
+    /// <summary>
+    /// 获取或设置选择输入操作的名称
+    /// </summary>
+    public string SelectInputActionName { get; set; } = "select";
 
     /// <summary>
     ///     拖拽时元素的最大Z轴索引值。
@@ -63,12 +73,12 @@ public abstract partial class AbstractDragDrop2DComponentBase: Node, IController
     /// </summary>
     /// <returns>返回实现IArchitecture接口的架构实例。</returns>
     public abstract IArchitecture GetArchitecture();
-    
+
     /// <summary>
     ///     表示是否正在拖拽操作的标志位。
     /// </summary>
     protected bool IsDragging;
-    
+
     /// <summary>
     ///     表示拖拽操作中的偏移量，用于计算当前位置与起始位置的差值。
     /// </summary>
@@ -78,7 +88,7 @@ public abstract partial class AbstractDragDrop2DComponentBase: Node, IController
     ///     表示拖拽操作的起始位置坐标。
     /// </summary>
     protected Vector2 StartingPosition;
-    
+
     /// <summary>
     ///     节点退出场景树时的回调方法。
     ///     在节点从场景树移除前调用，用于清理资源。
