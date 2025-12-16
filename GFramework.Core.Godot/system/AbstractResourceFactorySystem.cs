@@ -51,7 +51,7 @@ public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceF
     /// <typeparam name="T">场景节点类型，必须继承自Node</typeparam>
     /// <param name="sceneKey">场景在资产目录中的键名</param>
     /// <param name="preload">是否需要预加载该场景资源</param>
-    private void RegisterScene<T>(
+    protected void RegisterScene<T>(
         string sceneKey,
         bool preload = false)
         where T : Node
@@ -72,7 +72,7 @@ public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceF
     /// <param name="resourceKey">资源在资产目录中的键名</param>
     /// <param name="duplicate">是否需要复制资源实例</param>
     /// <param name="preload">是否需要预加载该资源</param>
-    private void RegisterResource<T>(
+    protected void RegisterResource<T>(
         string resourceKey,
         bool duplicate = false,
         bool preload = false)
