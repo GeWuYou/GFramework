@@ -1,4 +1,5 @@
 ﻿using GFramework.Core.architecture;
+using Godot;
 
 namespace GFramework.Core.Godot.architecture;
 
@@ -8,6 +9,8 @@ namespace GFramework.Core.Godot.architecture;
 /// <typeparam name="T">架构的具体类型，必须继承自Architecture且能被实例化</typeparam>
 public abstract class AbstractArchitecture<T> : Architecture<T> where T : Architecture<T>, new()
 {
+    private const string ArchitectureName = "__GFrameworkArchitectureAnchor";
+    
     /// <summary>
     /// 初始化架构，按顺序注册模型、系统和工具
     /// </summary>
@@ -16,8 +19,35 @@ public abstract class AbstractArchitecture<T> : Architecture<T> where T : Archit
         RegisterModels();
         RegisterSystems();
         RegisterUtilities();
+        AttachToGodotLifecycle();
     }
+    
+    /// <summary>
+    /// 将架构绑定到Godot生命周期中，确保在场景树销毁时能够正确清理资源
+    /// 通过创建一个锚节点来监听场景树的销毁事件
+    /// </summary>
+    private void AttachToGodotLifecycle()
+    {
+        if (Engine.GetMainLoop() is not SceneTree tree)
+            return;
 
+        // 防止重复挂载（热重载 / 多次 Init）
+        if (tree.Root.GetNodeOrNull(ArchitectureName) != null)
+            return;
+
+        var anchor = new ArchitectureAnchorNode
+        {
+            Name = ArchitectureName
+        };
+
+        anchor.Bind(() =>
+        {
+            Destroy();
+        });
+
+        tree.Root.AddChild(anchor);
+    }
+    
     /// <summary>
     /// 注册工具抽象方法，由子类实现具体的工具注册逻辑
     /// </summary>
@@ -33,3 +63,4 @@ public abstract class AbstractArchitecture<T> : Architecture<T> where T : Archit
     /// </summary>
     protected abstract void RegisterModels();
 }
+

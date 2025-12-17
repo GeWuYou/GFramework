@@ -65,6 +65,8 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
     ///     存储尚未初始化的系统集合，在初始化阶段统一调用Init方法
     /// </summary>
     private readonly HashSet<ISystem> _mSystems = [];
+    
+    private readonly HashSet<ISystem> _allSystems = [];
 
     /// <summary>
     ///     类型化事件系统，负责事件的发布与订阅管理
@@ -99,7 +101,7 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
     {
         system.SetArchitecture(this);
         _mContainer.Register(system);
-
+        _allSystems.Add(system);
         if (!_mInited)
             _mSystems.Add(system);
         else
@@ -242,11 +244,11 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
     public void Destroy()
     {
         // 销毁所有已注册的系统
-        foreach (var system in _mSystems)
+        foreach (var system in _allSystems)
         {
             system.Destroy();
         }
-        _mSystems.Clear();
+        _allSystems.Clear();
     }
 
 
