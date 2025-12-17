@@ -419,7 +419,7 @@ public abstract class AbstractAudioManagerSystem : AbstractSystem, IAudioManager
     /// <summary>
     /// 系统销毁时清理资源
     /// </summary>
-    protected void OnDestroy()
+    protected override void OnDestroy()
     {
         // 停止并清理淡入淡出动画
         MusicFadeTween?.Kill();

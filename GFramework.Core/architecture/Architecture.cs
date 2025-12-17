@@ -35,7 +35,7 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
         arch.Init();
 
         // 执行注册的补丁逻辑
-        OnRegisterPatch?.Invoke(arch);
+        OnRegisterPatch(arch);
 
         // 初始化所有已注册但尚未初始化的模型
         foreach (var model in arch._mModels) model.Init();
@@ -234,6 +234,19 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
     public void UnRegisterEvent<TEvent>(Action<TEvent> onEvent)
     {
         _mTypeEventSystem.UnRegister(onEvent);
+    }
+
+    /// <summary>
+    ///     销毁架构，同时销毁所有已注册的系统
+    /// </summary>
+    public void Destroy()
+    {
+        // 销毁所有已注册的系统
+        foreach (var system in _mSystems)
+        {
+            system.Destroy();
+        }
+        _mSystems.Clear();
     }
 
 

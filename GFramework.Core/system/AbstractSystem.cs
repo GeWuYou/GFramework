@@ -5,7 +5,7 @@ namespace GFramework.Core.system;
 
 /// <summary>
 ///     抽象系统基类，实现系统接口的基本功能
-///     提供架构关联和初始化机制
+///     提供架构关联、初始化和销毁机制
 /// </summary>
 public abstract class AbstractSystem : ISystem
 {
@@ -38,7 +38,20 @@ public abstract class AbstractSystem : ISystem
     }
 
     /// <summary>
+    ///     系统销毁方法，调用抽象销毁方法
+    /// </summary>
+    void ISystem.Destroy()
+    {
+        OnDestroy();
+    }
+
+    /// <summary>
     ///     抽象初始化方法，由子类实现具体的初始化逻辑
     /// </summary>
     protected abstract void OnInit();
+    
+    /// <summary>
+    ///     抽象销毁方法，由子类实现具体的资源清理逻辑
+    /// </summary>
+    protected virtual void OnDestroy() { }
 }
