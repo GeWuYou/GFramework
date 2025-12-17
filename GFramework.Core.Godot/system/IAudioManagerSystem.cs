@@ -25,6 +25,30 @@ public interface IAudioManagerSystem : ISystem
     void PlaySound(string audioPath, float volume = 1.0f, float pitch = 1.0f);
     
     /// <summary>
+    /// 播放特效音效
+    /// </summary>
+    /// <param name="audioPath">音频文件路径</param>
+    /// <param name="volume">音量大小，范围0-1</param>
+    /// <param name="pitch">音调调整</param>
+    void PlaySfx(string audioPath, float volume = 1.0f, float pitch = 1.0f);
+    
+    /// <summary>
+    /// 播放语音
+    /// </summary>
+    /// <param name="audioPath">音频文件路径</param>
+    /// <param name="volume">音量大小，范围0-1</param>
+    /// <param name="pitch">音调调整</param>
+    void PlayVoice(string audioPath, float volume = 1.0f, float pitch = 1.0f);
+    
+    /// <summary>
+    /// 播放环境音效
+    /// </summary>
+    /// <param name="audioPath">音频文件路径</param>
+    /// <param name="volume">音量大小，范围0-1</param>
+    /// <param name="pitch">音调调整</param>
+    void PlayAmbient(string audioPath, float volume = 1.0f, float pitch = 1.0f);
+    
+    /// <summary>
     /// 停止背景音乐
     /// </summary>
     void StopMusic();
@@ -46,16 +70,70 @@ public interface IAudioManagerSystem : ISystem
     void SetMusicVolume(float volume);
     
     /// <summary>
+    /// 获取背景音乐音量
+    /// </summary>
+    /// <returns>音量大小，范围0-1</returns>
+    float GetMusicVolume();
+    
+    /// <summary>
     /// 设置音效音量
     /// </summary>
     /// <param name="volume">音量大小，范围0-1</param>
     void SetSoundVolume(float volume);
     
     /// <summary>
+    /// 获取音效音量
+    /// </summary>
+    /// <returns>音量大小，范围0-1</returns>
+    float GetSoundVolume();
+    
+    /// <summary>
+    /// 设置特效音量
+    /// </summary>
+    /// <param name="volume">音量大小，范围0-1</param>
+    void SetSfxVolume(float volume);
+    
+    /// <summary>
+    /// 获取特效音量
+    /// </summary>
+    /// <returns>音量大小，范围0-1</returns>
+    float GetSfxVolume();
+    
+    /// <summary>
+    /// 设置语音音量
+    /// </summary>
+    /// <param name="volume">音量大小，范围0-1</param>
+    void SetVoiceVolume(float volume);
+    
+    /// <summary>
+    /// 获取语音音量
+    /// </summary>
+    /// <returns>音量大小，范围0-1</returns>
+    float GetVoiceVolume();
+    
+    /// <summary>
+    /// 设置环境音量
+    /// </summary>
+    /// <param name="volume">音量大小，范围0-1</param>
+    void SetAmbientVolume(float volume);
+    
+    /// <summary>
+    /// 获取环境音量
+    /// </summary>
+    /// <returns>音量大小，范围0-1</returns>
+    float GetAmbientVolume();
+    
+    /// <summary>
     /// 设置主音量
     /// </summary>
     /// <param name="volume">音量大小，范围0-1</param>
     void SetMasterVolume(float volume);
+    
+    /// <summary>
+    /// 获取主音量
+    /// </summary>
+    /// <returns>音量大小，范围0-1</returns>
+    float GetMasterVolume();
     
     /// <summary>
     /// 检查背景音乐是否正在播放

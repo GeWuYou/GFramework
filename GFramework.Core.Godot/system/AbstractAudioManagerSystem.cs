@@ -204,6 +204,63 @@ public abstract class AbstractAudioManagerSystem : AbstractSystem, IAudioManager
     }
 
     /// <summary>
+    /// 播放特效音效
+    /// </summary>
+    /// <param name="audioPath">音频文件路径</param>
+    /// <param name="volume">音量大小，范围0-1</param>
+    /// <param name="pitch">音调调整</param>
+    public virtual void PlaySfx(string audioPath, float volume = 1.0f, float pitch = 1.0f)
+    {
+        if (AvailableSoundPlayers.Count == 0) return;
+
+        var audioStream = ResourceLoadSystem?.LoadResource<AudioStream>(audioPath);
+        if (audioStream == null) return;
+
+        var player = AvailableSoundPlayers.Dequeue();
+        player.Stream = audioStream;
+        player.VolumeDb = LinearToDb(volume * SfxVolume * MasterVolume);
+        player.Play();
+    }
+
+    /// <summary>
+    /// 播放语音
+    /// </summary>
+    /// <param name="audioPath">音频文件路径</param>
+    /// <param name="volume">音量大小，范围0-1</param>
+    /// <param name="pitch">音调调整</param>
+    public virtual void PlayVoice(string audioPath, float volume = 1.0f, float pitch = 1.0f)
+    {
+        if (AvailableSoundPlayers.Count == 0) return;
+
+        var audioStream = ResourceLoadSystem?.LoadResource<AudioStream>(audioPath);
+        if (audioStream == null) return;
+
+        var player = AvailableSoundPlayers.Dequeue();
+        player.Stream = audioStream;
+        player.VolumeDb = LinearToDb(volume * VoiceVolume * MasterVolume);
+        player.Play();
+    }
+
+    /// <summary>
+    /// 播放环境音效
+    /// </summary>
+    /// <param name="audioPath">音频文件路径</param>
+    /// <param name="volume">音量大小，范围0-1</param>
+    /// <param name="pitch">音调调整</param>
+    public virtual void PlayAmbient(string audioPath, float volume = 1.0f, float pitch = 1.0f)
+    {
+        if (AvailableSoundPlayers.Count == 0) return;
+
+        var audioStream = ResourceLoadSystem?.LoadResource<AudioStream>(audioPath);
+        if (audioStream == null) return;
+
+        var player = AvailableSoundPlayers.Dequeue();
+        player.Stream = audioStream;
+        player.VolumeDb = LinearToDb(volume * AmbientVolume * MasterVolume);
+        player.Play();
+    }
+
+    /// <summary>
     /// 通过资源ID播放音效
     /// </summary>
     /// <param name="soundId">音效资源ID</param>
@@ -272,6 +329,15 @@ public abstract class AbstractAudioManagerSystem : AbstractSystem, IAudioManager
             MusicPlayer.VolumeDb = LinearToDb(MusicVolume * MasterVolume);
         }
     }
+    
+    /// <summary>
+    /// 获取背景音乐音量
+    /// </summary>
+    /// <returns>音量大小，范围0-1</returns>
+    public virtual float GetMusicVolume()
+    {
+        return MusicVolume;
+    }
 
     /// <summary>
     /// 设置音效音量
@@ -280,6 +346,15 @@ public abstract class AbstractAudioManagerSystem : AbstractSystem, IAudioManager
     public virtual void SetSoundVolume(float volume)
     {
         SoundVolume = volume;
+    }
+    
+    /// <summary>
+    /// 获取音效音量
+    /// </summary>
+    /// <returns>音量大小，范围0-1</returns>
+    public virtual float GetSoundVolume()
+    {
+        return SoundVolume;
     }
 
     /// <summary>
@@ -296,6 +371,15 @@ public abstract class AbstractAudioManagerSystem : AbstractSystem, IAudioManager
             MusicPlayer.VolumeDb = LinearToDb(MusicVolume * MasterVolume);
         }
     }
+    
+    /// <summary>
+    /// 获取主音量
+    /// </summary>
+    /// <returns>音量大小，范围0-1</returns>
+    public virtual float GetMasterVolume()
+    {
+        return MasterVolume;
+    }
 
     /// <summary>
     /// 设置SFX音量
@@ -304,6 +388,15 @@ public abstract class AbstractAudioManagerSystem : AbstractSystem, IAudioManager
     public virtual void SetSfxVolume(float volume)
     {
         SfxVolume = volume;
+    }
+    
+    /// <summary>
+    /// 获取SFX音量
+    /// </summary>
+    /// <returns>音量大小，范围0-1</returns>
+    public virtual float GetSfxVolume()
+    {
+        return SfxVolume;
     }
 
     /// <summary>
@@ -314,6 +407,15 @@ public abstract class AbstractAudioManagerSystem : AbstractSystem, IAudioManager
     {
         VoiceVolume = volume;
     }
+    
+    /// <summary>
+    /// 获取语音音量
+    /// </summary>
+    /// <returns>音量大小，范围0-1</returns>
+    public virtual float GetVoiceVolume()
+    {
+        return VoiceVolume;
+    }
 
     /// <summary>
     /// 设置环境音量
@@ -322,6 +424,15 @@ public abstract class AbstractAudioManagerSystem : AbstractSystem, IAudioManager
     public virtual void SetAmbientVolume(float volume)
     {
         AmbientVolume = volume;
+    }
+    
+    /// <summary>
+    /// 获取环境音量
+    /// </summary>
+    /// <returns>音量大小，范围0-1</returns>
+    public virtual float GetAmbientVolume()
+    {
+        return AmbientVolume;
     }
 
     /// <summary>
