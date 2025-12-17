@@ -10,7 +10,6 @@ namespace GFramework.Core.Godot.architecture;
 public abstract class AbstractArchitecture<T> : Architecture<T> where T : Architecture<T>, new()
 {
     private const string ArchitectureName = "__GFrameworkArchitectureAnchor";
-    
     /// <summary>
     /// 初始化架构，按顺序注册模型、系统和工具
     /// </summary>

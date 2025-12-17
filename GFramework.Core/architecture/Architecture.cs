@@ -46,7 +46,8 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
         foreach (var system in arch._mSystems) system.Init();
 
         arch._mSystems.Clear();
-
+        // 发送架构初始化完成事件
+        arch.SendEvent(new ArchitectureEvents.ArchitectureInitializedEvent());
         arch._mInited = true;
         return arch;
     }, LazyThreadSafetyMode.ExecutionAndPublication);

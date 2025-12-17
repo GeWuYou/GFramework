@@ -1,4 +1,5 @@
-﻿using GFramework.Core.extensions;
+﻿using GFramework.Core.events;
+using GFramework.Core.extensions;
 using GFramework.Core.system;
 using Godot;
 
@@ -25,9 +26,14 @@ public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceF
         _registry = new ResourceFactory.Registry();
         _resourceLoadSystem = this.GetSystem<IResourceLoadSystem>();
         _assetCatalogSystem = this.GetSystem<IAssetCatalogSystem>();
+        // 注册资源
         RegisterResources();
-        // 执行预加载
-        _registry.PreloadAll();
+        // 监听架构初始化事件
+        this.RegisterEvent<ArchitectureEvents.ArchitectureInitializedEvent>(_ =>
+        {
+            // 预加载所有资源
+            _registry.PreloadAll();
+        });
     }
 
     /// <summary>
