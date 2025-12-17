@@ -40,12 +40,9 @@ public abstract class AbstractArchitecture<T> : Architecture<T> where T : Archit
             Name = ArchitectureName
         };
 
-        anchor.Bind(() =>
-        {
-            Destroy();
-        });
+        anchor.Bind(Destroy);
 
-        tree.Root.AddChild(anchor);
+        tree.Root.CallDeferred(Node.MethodName.AddChild, anchor);
     }
     
     /// <summary>
