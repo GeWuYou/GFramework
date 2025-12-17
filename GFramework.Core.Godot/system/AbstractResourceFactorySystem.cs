@@ -26,11 +26,11 @@ public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceF
         _registry = new ResourceFactory.Registry();
         _resourceLoadSystem = this.GetSystem<IResourceLoadSystem>();
         _assetCatalogSystem = this.GetSystem<IAssetCatalogSystem>();
-        // 注册资源
-        RegisterResources();
         // 监听架构初始化事件
         this.RegisterEvent<ArchitectureEvents.ArchitectureInitializedEvent>(_ =>
         {
+            // 注册资源
+            RegisterResources();
             // 预加载所有资源
             _registry.PreloadAll();
         });
