@@ -46,6 +46,8 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
         foreach (var system in arch._mSystems) system.Init();
 
         arch._mSystems.Clear();
+        // 冻结IOC容器，不允许 anymore
+        arch._mContainer.Freeze();
         // 发送架构初始化完成事件
         arch.SendEvent(new ArchitectureEvents.ArchitectureInitializedEvent());
         arch._mInited = true;
