@@ -32,7 +32,7 @@ public class IocContainer
                 $"Singleton already registered for type: {type.Name}");
         }
 
-        _instances[type] = new List<object> { instance! };
+        _instances[type] = [instance!];
     }
 
     /// <summary>
@@ -82,7 +82,7 @@ public class IocContainer
     {
         if (!_instances.TryGetValue(type, out var list))
         {
-            list = new List<object>();
+            list = [];
             _instances[type] = list;
         }
 
