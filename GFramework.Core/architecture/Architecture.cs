@@ -103,7 +103,7 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
     public void RegisterSystem<TSystem>(TSystem system) where TSystem : ISystem
     {
         system.SetArchitecture(this);
-        _mContainer.Register(system);
+        _mContainer.RegisterPlurality(system);
         _allSystems.Add(system);
         if (!_mInited)
             _mSystems.Add(system);
@@ -120,7 +120,7 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
     public void RegisterModel<TModel>(TModel model) where TModel : IModel
     {
         model.SetArchitecture(this);
-        _mContainer.Register(model);
+        _mContainer.RegisterPlurality(model);
 
         if (!_mInited)
             _mModels.Add(model);
@@ -136,7 +136,7 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
     /// <param name="utility">要注册的工具实例</param>
     public void RegisterUtility<TUtility>(TUtility utility) where TUtility : IUtility
     {
-        _mContainer.Register(utility);
+        _mContainer.RegisterPlurality(utility);
     }
 
     /// <summary>
