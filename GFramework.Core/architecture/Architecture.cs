@@ -144,7 +144,7 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
     /// </summary>
     /// <typeparam name="TSystem">目标系统类型</typeparam>
     /// <returns>对应的系统实例</returns>
-    public TSystem GetSystem<TSystem>() where TSystem : class, ISystem
+    public TSystem? GetSystem<TSystem>() where TSystem : class, ISystem
     {
         return _mContainer.Get<TSystem>();
     }
@@ -154,7 +154,7 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
     /// </summary>
     /// <typeparam name="TModel">目标模型类型</typeparam>
     /// <returns>对应的模型实例</returns>
-    public TModel GetModel<TModel>() where TModel : class, IModel
+    public TModel? GetModel<TModel>() where TModel : class, IModel
     {
         return _mContainer.Get<TModel>();
     }
@@ -164,7 +164,7 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
     /// </summary>
     /// <typeparam name="TUtility">目标工具类型</typeparam>
     /// <returns>对应的工具实例</returns>
-    public TUtility GetUtility<TUtility>() where TUtility : class, IUtility
+    public TUtility? GetUtility<TUtility>() where TUtility : class, IUtility
     {
         return _mContainer.Get<TUtility>();
     }

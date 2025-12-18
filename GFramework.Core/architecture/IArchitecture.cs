@@ -39,21 +39,21 @@ public interface IArchitecture
     /// </summary>
     /// <typeparam name="T">系统类型，必须是class且实现ISystem接口</typeparam>
     /// <returns>指定类型的系统实例</returns>
-    T GetSystem<T>() where T : class, ISystem;
+    T? GetSystem<T>() where T : class, ISystem;
 
     /// <summary>
     ///     从架构中获取指定类型的模型实例
     /// </summary>
     /// <typeparam name="T">模型类型，必须是class且实现IModel接口</typeparam>
     /// <returns>指定类型的模型实例</returns>
-    T GetModel<T>() where T : class, IModel;
+    T? GetModel<T>() where T : class, IModel;
 
     /// <summary>
     ///     从架构中获取指定类型的工具实例
     /// </summary>
     /// <typeparam name="T">工具类型，必须是class且实现IUtility接口</typeparam>
     /// <returns>指定类型的工具实例</returns>
-    T GetUtility<T>() where T : class, IUtility;
+    T? GetUtility<T>() where T : class, IUtility;
 
     /// <summary>
     ///     发送并执行指定的命令
