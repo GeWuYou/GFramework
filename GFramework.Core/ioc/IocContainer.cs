@@ -30,7 +30,7 @@ public class IocContainer
     /// 冻结标志位，用于标识对象是否已被冻结
     /// true表示对象已冻结，不可修改；false表示对象可正常修改
     /// </summary>
-    private bool _frozen;
+    private volatile bool _frozen;
 
     #endregion
 
