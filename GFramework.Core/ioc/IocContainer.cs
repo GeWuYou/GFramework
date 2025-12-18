@@ -7,11 +7,21 @@ namespace GFramework.Core.ioc;
 /// </summary>
 public class IocContainer
 {
+    #region Core
+
     /// <summary>
-    /// 核心存储结构：
-    /// 一个 Type 对应 0~N 个实例
+    /// 存储所有已注册对象实例的集合，用于跟踪和管理容器中的所有对象
+    /// 使用HashSet确保对象唯一性，避免重复注册同一实例
     /// </summary>
-    private readonly Dictionary<Type, List<object>> _instances = new();
+    private readonly HashSet<object> _objects = [];
+
+    /// <summary>
+    /// 类型索引字典，用于快速查找指定类型的所有实例
+    /// 键为类型对象，值为该类型对应的所有实例集合
+    /// </summary>
+    private readonly Dictionary<Type, HashSet<object>> _typeIndex = new();
+
+    #endregion
 
     #region Lock
 
@@ -38,7 +48,7 @@ public class IocContainer
     #region Register
 
     /// <summary>
-    /// 注册单例（强语义）
+    /// 注册单例
     /// 一个类型只允许一个实例
     /// </summary>
     /// <typeparam name="T">要注册为单例的类型</typeparam>
@@ -51,13 +61,16 @@ public class IocContainer
         _lock.EnterWriteLock();
         try
         {
-            if (_instances.TryGetValue(type, out var list) && list.Count > 0)
+            if (_frozen)
+                throw new InvalidOperationException("IocContainer is frozen");
+
+            if (_typeIndex.TryGetValue(type, out var set) && set.Count > 0)
             {
                 throw new InvalidOperationException(
                     $"Singleton already registered for type: {type.Name}");
             }
 
-            _instances[type] = [instance!];
+            RegisterInternal(type, instance!);
         }
         finally
         {
@@ -105,19 +118,18 @@ public class IocContainer
     {
         if (_frozen)
             throw new InvalidOperationException("IocContainer is frozen");
-        // 如果该类型还没有对应的实例列表，则创建一个新的列表
-        if (!_instances.TryGetValue(type, out var list))
+
+        _objects.Add(instance);
+
+        if (!_typeIndex.TryGetValue(type, out var set))
         {
-            list = [];
-            _instances[type] = list;
+            set = [];
+            _typeIndex[type] = set;
         }
 
-        // 避免重复添加相同的实例
-        if (!list.Contains(instance))
-        {
-            list.Add(instance);
-        }
+        set.Add(instance);
     }
+
 
     /// <summary>
     /// 注册系统实例，将其绑定到其所有实现的接口上
@@ -184,9 +196,9 @@ public class IocContainer
         _lock.EnterReadLock();
         try
         {
-            if (_instances.TryGetValue(typeof(T), out var list) && list.Count > 0)
+            if (_typeIndex.TryGetValue(typeof(T), out var set) && set.Count > 0)
             {
-                return list[0] as T;
+                return set.First() as T;
             }
 
             return null;
@@ -228,8 +240,8 @@ public class IocContainer
         _lock.EnterReadLock();
         try
         {
-            return _instances.TryGetValue(typeof(T), out var list)
-                ? list.Cast<T>().ToList() // 快照
+            return _typeIndex.TryGetValue(typeof(T), out var set)
+                ? set.Cast<T>().ToList() // 快照
                 : Array.Empty<T>();
         }
         finally
@@ -267,7 +279,7 @@ public class IocContainer
         _lock.EnterReadLock();
         try
         {
-            return _instances.ContainsKey(typeof(T));
+            return _typeIndex.TryGetValue(typeof(T), out var set) && set.Count > 0;
         }
         finally
         {
@@ -280,17 +292,36 @@ public class IocContainer
     /// </summary>
     public void Clear()
     {
-        // 获取写锁以确保线程安全的清空操作
         _lock.EnterWriteLock();
         try
         {
-            _instances.Clear();
+            _objects.Clear();
+            _typeIndex.Clear();
         }
         finally
         {
             _lock.ExitWriteLock();
         }
     }
+
+    /// <summary>
+    /// 判断容器中是否包含某个具体的实例对象
+    /// </summary>
+    /// <param name="instance">待查询的实例对象</param>
+    /// <returns>若容器中包含该实例则返回true，否则返回false</returns>
+    public bool ContainsInstance(object instance)
+    {
+        _lock.EnterReadLock();
+        try
+        {
+            return _objects.Contains(instance);
+        }
+        finally
+        {
+            _lock.ExitReadLock();
+        }
+    }
+
 
     /// <summary>
     /// 冻结容器，防止后续修改
