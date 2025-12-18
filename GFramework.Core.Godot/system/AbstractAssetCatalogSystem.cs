@@ -1,4 +1,4 @@
-﻿using GFramework.Core.system;
+using GFramework.Core.system;
 
 namespace GFramework.Core.Godot.system;
 
@@ -40,6 +40,20 @@ public abstract class AbstractAssetCatalogSystem : AbstractSystem, IAssetCatalog
     }
 
     /// <summary>
+    /// 注册场景资源
+    /// </summary>
+    /// <param name="mapping">包含键和场景标识符的映射对象</param>
+    /// <exception cref="InvalidOperationException">当场景键已存在时抛出异常</exception>
+    public void RegisterScene(AssetCatalog.AssetCatalogMapping mapping)
+    {
+        if (mapping.Id is not AssetCatalog.SceneId sceneId)
+            throw new InvalidOperationException("Mapping ID is not a SceneId");
+
+        if (!_scenes.TryAdd(mapping.Key, sceneId))
+            throw new InvalidOperationException($"Scene key duplicated: {mapping.Key}");
+    }
+
+    /// <summary>
     /// 注册普通资源
     /// </summary>
     /// <param name="key">资源的唯一标识键</param>
@@ -51,6 +65,20 @@ public abstract class AbstractAssetCatalogSystem : AbstractSystem, IAssetCatalog
             throw new InvalidOperationException($"Resource key duplicated: {key}");
 
         _resources[key] = new AssetCatalog.ResourceId(path);
+    }
+
+    /// <summary>
+    /// 注册普通资源
+    /// </summary>
+    /// <param name="mapping">包含键和资源标识符的映射对象</param>
+    /// <exception cref="InvalidOperationException">当资源键已存在时抛出异常</exception>
+    public void RegisterResource(AssetCatalog.AssetCatalogMapping mapping)
+    {
+        if (mapping.Id is not AssetCatalog.ResourceId resourceId)
+            throw new InvalidOperationException("Mapping ID is not a ResourceId");
+
+        if (!_resources.TryAdd(mapping.Key, resourceId))
+            throw new InvalidOperationException($"Resource key duplicated: {mapping.Key}");
     }
 
     #endregion
