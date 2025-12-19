@@ -1,8 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
         <PackageId>GeWuYou.GFramework</PackageId>
         <Authors>gewuyou</Authors>
         <Product>GeWuYou.GFramework</Product>
@@ -14,10 +12,7 @@
         <PackageTags>game;framework</PackageTags>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <PublishRepositoryUrl>true</PublishRepositoryUrl>
-        <EmbedUntrackedSources>true</EmbedUntrackedSources>
-        <DebugType>portable</DebugType>
         <IncludeSymbols>false</IncludeSymbols>
-        <RootNamespace>GFramework</RootNamespace>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
         <IncludeBuildOutput>false</IncludeBuildOutput>
@@ -25,38 +20,30 @@
 
     <!-- 排除不需要参与打包/编译的目录 -->
     <ItemGroup>
-        <None Include="README.md" Pack="true" PackagePath=""/>
-        <None Remove="GFramework.Generator\**"/>
-        <None Remove="GFramework.Generator.Attributes\**"/>
-        <None Remove="GFramework.Core\**"/>
-
-        <Compile Remove="GFramework.Generator\**"/>
-        <Compile Remove="GFramework.Generator.Attributes\**"/>
-        <Compile Remove="GFramework.Core\**"/>
-
-        <EmbeddedResource Remove="GFramework.Generator\**"/>
-        <EmbeddedResource Remove="GFramework.Generator.Attributes\**"/>
-        <EmbeddedResource Remove="GFramework.Core\**"/>
-        <Compile Remove="GFramework.Godot\**"/>
-        <EmbeddedResource Remove="GFramework.Godot\**"/>
-        <None Remove="GFramework.Godot\**"/>
-        <Compile Update="GFramework.Core.Godot\godot\extensions\NodeExtensions.cs">
-            <Link>GFramework.Godot\godot\extensions\NodeExtensions.cs</Link>
-        </Compile>
-        <Compile Update="GFramework.Core.Godot\godot\extensions\UnRegisterExtension.cs">
-            <Link>GFramework.Godot\godot\extensions\UnRegisterExtension.cs</Link>
-        </Compile>
-        <Compile Remove="GFramework.Core.Godot\**"/>
-        <EmbeddedResource Remove="GFramework.Core.Godot\**"/>
-        <None Remove="GFramework.Core.Godot\**"/>
+        <None Include="README.md" Pack="true" PackagePath="" />
+        <None Remove="GFramework.Core\**" />
+        <None Remove="GFramework.Game\**" />
+        <None Remove="GFramework.Generator\**" />
+        <None Remove="GFramework.Generator.Attributes\**" />
+        <None Remove="GFramework.Godot\**" />
     </ItemGroup>
-
-    <!-- 作为 Analyzer 引入本地 SourceGenerator -->
+    <!-- 聚合核心模块 -->
     <ItemGroup>
-        <ProjectReference Include="GFramework.Generator\GFramework.Generator.csproj"
-                          OutputItemType="Analyzer"
-                          ReferenceOutputAssembly="false"/>
-        <ProjectReference Include="GFramework.Generator.Attributes\GFramework.Generator.Attributes.csproj"/>
-        <ProjectReference Include="GFramework.Core\GFramework.Core.csproj"/>
+        <ProjectReference Include="GFramework.Core\GFramework.Core.csproj" />
+        <ProjectReference Include="GFramework.Game\GFramework.Game.csproj" />
+    </ItemGroup>
+    <ItemGroup>
+      <Compile Remove="GFramework.Core\**" />
+      <Compile Remove="GFramework.Game\**" />
+      <Compile Remove="GFramework.Generator\**" />
+      <Compile Remove="GFramework.Generator.Attributes\**" />
+      <Compile Remove="GFramework.Godot\**" />
+    </ItemGroup>
+    <ItemGroup>
+      <EmbeddedResource Remove="GFramework.Core\**" />
+      <EmbeddedResource Remove="GFramework.Game\**" />
+      <EmbeddedResource Remove="GFramework.Generator\**" />
+      <EmbeddedResource Remove="GFramework.Generator.Attributes\**" />
+      <EmbeddedResource Remove="GFramework.Godot\**" />
     </ItemGroup>
 </Project>

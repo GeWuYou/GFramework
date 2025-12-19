@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <PackageId>GeWuYou.GFramework.Godot</PackageId>
+        <Product>GeWuYou.GFramework.Godot</Product>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Godot.SourceGenerators" Version="4.5.1"/>
+        <PackageReference Include="GodotSharpEditor" Version="4.5.1"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\GFramework.Core\GFramework.Core.csproj" />
+        <ProjectReference Include="..\GFramework.Game\GFramework.Game.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Remove="extensions\ControlExtensions.cs"/>
+    </ItemGroup>
+
+</Project>
