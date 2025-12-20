@@ -10,5 +10,7 @@
     <ItemGroup>
       <Folder Include="entities\" />
     </ItemGroup>
-
+    <ItemGroup>
+        <ProjectReference Include="..\GFramework.Core\GFramework.Core.csproj" />
+    </ItemGroup>
 </Project>

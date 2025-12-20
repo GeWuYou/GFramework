@@ -1,10 +1,10 @@
 ﻿using GFramework.Core.events;
 using GFramework.Core.extensions;
 using GFramework.Core.system;
+using GFramework.Game.assets;
 using Godot;
 
 namespace GFramework.Godot.system;
-
 
 /// <summary>
 /// 资源工厂系统抽象基类，用于统一管理各类资源的创建与预加载逻辑。
@@ -15,7 +15,7 @@ public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceF
     private ResourceFactory.Registry? _registry;
     private IResourceLoadSystem? _resourceLoadSystem;
     private IAssetCatalogSystem? _assetCatalogSystem;
-    
+
     /// <summary>
     /// 系统初始化方法，在系统启动时执行一次。
     /// 初始化资源注册表，并获取依赖的资源加载系统和资产目录系统。
@@ -35,11 +35,12 @@ public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceF
             _registry.PreloadAll();
         });
     }
+
     /// <summary>
     /// 注册系统所需的各种资源类型。由子类实现具体注册逻辑。
     /// </summary>
     protected abstract void RegisterResources();
-    
+
 
     /// <summary>
     /// 根据指定的键获取资源工厂函数。
@@ -47,8 +48,8 @@ public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceF
     /// <typeparam name="T">资源类型</typeparam>
     /// <param name="key">资源键</param>
     /// <returns>返回创建指定类型资源的工厂函数</returns>
-    public Func<T> GetFactory<T>(string key)=>_registry!.ResolveFactory<T>(key);
-    
+    public Func<T> GetFactory<T>(string key) => _registry!.ResolveFactory<T>(key);
+
     /// <summary>
     /// 根据资产目录映射信息获取资源工厂函数。
     /// </summary>
@@ -58,49 +59,64 @@ public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceF
     public Func<T> GetFactory<T>(AssetCatalog.AssetCatalogMapping mapping) => _registry!.ResolveFactory<T>(mapping.Key);
 
 
-
     #region Register Helpers（声明式）
 
     /// <summary>
-    /// 注册场景资源工厂。
-    /// 根据场景键名获取场景ID，并将场景加载工厂注册到注册表中。
+    /// 注册游戏单位资源到资源管理系统中
     /// </summary>
-    /// <typeparam name="T">场景节点类型，必须继承自Node</typeparam>
-    /// <param name="sceneKey">场景在资产目录中的键名</param>
-    /// <param name="preload">是否需要预加载该场景资源</param>
-    protected void RegisterScene<T>(
+    /// <typeparam name="T">游戏单位类型，必须继承自Node</typeparam>
+    /// <param name="sceneKey">场景键值，用于标识特定的游戏单位资源</param>
+    /// <param name="preload">是否预加载该资源，默认为false</param>
+    public void RegisterGameUnit<T>(
         string sceneKey,
         bool preload = false)
         where T : Node
     {
-        var id = _assetCatalogSystem!.GetScene(sceneKey);
+        var id = _assetCatalogSystem!.GetGameUnit(sceneKey);
 
         _registry!.Register(
             sceneKey,
-            _resourceLoadSystem!.GetOrRegisterSceneFactory<T>(id),
+            _resourceLoadSystem!.GetOrRegisterGameUnitFactory<T>(id),
             preload
         );
     }
 
     /// <summary>
-    /// 注册普通资源工厂。
-    /// 根据资源键名获取资源ID，并将资源加载工厂注册到注册表中。
+    /// 注册模板资源到资源管理系统中
     /// </summary>
-    /// <typeparam name="T">资源类型，必须继承自Resource</typeparam>
-    /// <param name="resourceKey">资源在资产目录中的键名</param>
-    /// <param name="duplicate">是否需要复制资源实例</param>
-    /// <param name="preload">是否需要预加载该资源</param>
-    protected void RegisterResource<T>(
-        string resourceKey,
-        bool duplicate = false,
+    /// <typeparam name="T">模板类型，必须继承自Node</typeparam>
+    /// <param name="templateKey">模板键值，用于标识特定的模板资源</param>
+    /// <param name="preload">是否预加载该资源，默认为false</param>
+    public void RegisterTemplate<T>(
+        string templateKey,
+        bool preload = false)
+        where T : Node
+    {
+        var id = _assetCatalogSystem!.GetTemplate(templateKey);
+
+        _registry!.Register(
+            templateKey,
+            _resourceLoadSystem!.GetOrRegisterTemplateFactory<T>(id),
+            preload
+        );
+    }
+
+    /// <summary>
+    /// 注册通用资产资源到资源管理系统中
+    /// </summary>
+    /// <typeparam name="T">资产类型，必须继承自Resource</typeparam>
+    /// <param name="assetKey">资产键值，用于标识特定的资产资源</param>
+    /// <param name="preload">是否预加载该资源，默认为false</param>
+    public void RegisterAsset<T>(
+        string assetKey,
         bool preload = false)
         where T : Resource
     {
-        var id = _assetCatalogSystem!.GetResource(resourceKey);
+        var id = _assetCatalogSystem!.GetAsset(assetKey);
 
         _registry!.Register(
-            resourceKey,
-            _resourceLoadSystem!.GetOrRegisterResourceFactory<T>(id, duplicate),
+            assetKey,
+            _resourceLoadSystem!.GetOrRegisterAssetFactory<T>(id),
             preload
         );
     }

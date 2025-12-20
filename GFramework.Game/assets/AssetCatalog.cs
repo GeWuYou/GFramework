@@ -1,5 +1,5 @@
 ﻿
-namespace GFramework.Godot.system;
+namespace GFramework.Game.assets;
 
 /// <summary>
 /// 资源目录类，用于定义和管理游戏中的场景和资源标识符
@@ -23,17 +23,23 @@ public static class AssetCatalog
     /// <param name="Key">资源目录的键</param>
     /// <param name="Id">资源标识符</param>
     public readonly record struct AssetCatalogMapping(string Key, IAssetId Id);
-    
+        
     /// <summary>
-    /// 场景标识符结构体，用于唯一标识一个场景资源
+    /// 模板资源标识符结构体，实现IAssetId接口
     /// </summary>
-    /// <param name="Path">场景资源的路径</param>
-    public readonly record struct SceneId(string Path) : IAssetId;
-    
+    /// <param name="Path">资源路径</param>
+    public readonly record struct TemplateId(string Path) : IAssetId;
+        
     /// <summary>
-    /// 资源标识符结构体，用于唯一标识一个游戏资源
+    /// 游戏单位资源标识符结构体，实现IAssetId接口
     /// </summary>
-    /// <param name="Path">游戏资源的路径</param>
-    public readonly record struct ResourceId(string Path) : IAssetId;
+    /// <param name="Path">资源路径</param>
+    public readonly record struct GameUnitId(string Path) : IAssetId;
+     
+    /// <summary>
+    /// 通用资源标识符结构体，实现IAssetId接口
+    /// </summary>
+    /// <param name="Path">资源路径</param>
+    public readonly record struct AssetId(string Path) : IAssetId;
 
 }

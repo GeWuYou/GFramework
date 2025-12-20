@@ -1,3 +1,5 @@
+using GFramework.Game.assets;
+
 namespace GFramework.Godot.system;
 
 /// <summary>

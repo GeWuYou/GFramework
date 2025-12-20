@@ -1,6 +1,6 @@
 ﻿using GFramework.Core.system;
 
-namespace GFramework.Godot.system;
+namespace GFramework.Game.assets;
 
 /// <summary>
 /// 资源工厂系统接口，用于获取指定类型的资源创建函数

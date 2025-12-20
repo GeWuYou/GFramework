@@ -1,4 +1,5 @@
 ﻿using GFramework.Core.system;
+using GFramework.Game.assets;
 using Godot;
 
 namespace GFramework.Godot.system;
@@ -22,6 +23,7 @@ public interface IResourceLoadSystem : ISystem
     /// <param name="path">场景路径</param>
     /// <returns>场景的延迟加载包装器</returns>
     public Lazy<PackedScene> GetSceneLoader(string path);
+
     /// <summary>
     /// 创建指定路径场景的实例
     /// </summary>
@@ -30,24 +32,37 @@ public interface IResourceLoadSystem : ISystem
     /// <returns>场景实例化的节点对象</returns>
     public T? CreateInstance<T>(string path) where T : Node;
     
-
     /// <summary>
-    /// 获取或注册场景工厂函数
+    /// 获取或注册游戏单位工厂函数
     /// </summary>
     /// <typeparam name="T">节点类型，必须继承自Node</typeparam>
     /// <param name="id">场景资源标识符</param>
     /// <returns>创建场景实例的工厂函数</returns>
-    public Func<T> GetOrRegisterSceneFactory<T>(AssetCatalog.SceneId id) where T : Node;
-    
+    Func<T> GetOrRegisterGameUnitFactory<T>(
+        AssetCatalog.GameUnitId id
+    ) where T : Node;
+
     /// <summary>
-    /// 获取或注册资源工厂函数
+    /// 获取或注册模板资源工厂函数
     /// </summary>
-    /// <typeparam name="T">资源类型，必须继承自Node</typeparam>
-    /// <param name="id">资源标识符</param>
-    /// <param name="duplicate">是否创建副本，默认为false</param>
-    /// <returns>创建资源实例的工厂函数</returns>
-    public Func<T> GetOrRegisterResourceFactory<T>(AssetCatalog.ResourceId id, bool duplicate = false)
-        where T : Resource;
+    /// <typeparam name="T">节点类型，必须继承自Node</typeparam>
+    /// <param name="id">模板资源标识符</param>
+    /// <returns>创建模板实例的工厂函数</returns>
+    Func<T> GetOrRegisterTemplateFactory<T>(
+        AssetCatalog.TemplateId id
+    ) where T : Node;
+
+    /// <summary>
+    /// 获取或注册通用资产工厂函数
+    /// </summary>
+    /// <typeparam name="T">资源类型，必须继承自Resource</typeparam>
+    /// <param name="id">资产资源标识符</param>
+    /// <param name="duplicate">是否对原始资源进行复制操作，默认为false</param>
+    /// <returns>创建资产实例的工厂函数</returns>
+    Func<T> GetOrRegisterAssetFactory<T>(
+        AssetCatalog.AssetId id,
+        bool duplicate = false
+    ) where T : Resource;
 
     /// <summary>
     /// 预加载指定路径的多个资源

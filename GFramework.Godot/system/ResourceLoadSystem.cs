@@ -1,4 +1,5 @@
 ﻿using GFramework.Core.system;
+using GFramework.Game.assets;
 using Godot;
 
 namespace GFramework.Godot.system;
@@ -85,9 +86,7 @@ public class ResourceLoadSystem : AbstractSystem, IResourceLoadSystem
     }
 
     #endregion
-
-    #region 场景实例化
-
+    
     /// <summary>
     /// 根据给定路径加载场景，并创建其节点实例。
     /// </summary>
@@ -100,16 +99,7 @@ public class ResourceLoadSystem : AbstractSystem, IResourceLoadSystem
         return scene.Instantiate<T>();
     }
 
-    /// <summary>
-    /// 注册或获取一个用于创建特定场景实例的工厂函数。
-    /// 如果已存在相同路径的工厂函数，则尝试转换后复用。
-    /// </summary>
-    /// <typeparam name="T">目标场景根节点的类型。</typeparam>
-    /// <param name="id">场景文件的id。</param>
-    /// <returns>用于创建该场景实例的Func委托。</returns>
-    /// <exception cref="InvalidCastException">当已有工厂不是Func&lt;T&gt;类型时抛出。</exception>
-    /// <exception cref="InvalidOperationException">当无法加载场景或实例化失败时抛出。</exception>
-    public Func<T> GetOrRegisterSceneFactory<T>(AssetCatalog.SceneId id) where T : Node
+    public Func<T> GetOrRegisterGameUnitFactory<T>(AssetCatalog.GameUnitId id) where T : Node
     {
         var path = id.Path;
         if (_sceneFactories.TryGetValue(path, out var d))
@@ -129,22 +119,27 @@ public class ResourceLoadSystem : AbstractSystem, IResourceLoadSystem
         return factory;
     }
 
-    #endregion
+    public Func<T> GetOrRegisterTemplateFactory<T>(AssetCatalog.TemplateId id) where T : Node
+    {
+        var path = id.Path;
+        if (_sceneFactories.TryGetValue(path, out var d))
+            return d as Func<T> ??
+                   throw new InvalidCastException($"Factory for path '{path}' is not of type Func<{typeof(T)}>");
 
-    #region 资源工厂
+        var factory = () =>
+        {
+            var scene = GetSceneLoader(path).Value
+                        ?? throw new InvalidOperationException($"Scene not loaded: {path}");
 
-    /// <summary>
-    /// 注册或获取一个用于加载或复制资源的工厂函数。
-    /// 可选择是否每次调用都返回副本（Duplicate），适用于需要独立状态的资源。
-    /// </summary>
-    /// <typeparam name="T">资源的具体类型。</typeparam>
-    /// <param name="id">资源文件的id。</param>
-    /// <param name="duplicate">是否每次都返回资源的一个副本，默认为false。</param>
-    /// <returns>用于加载或复制资源的Func委托。</returns>
-    /// <exception cref="InvalidCastException">当已有工厂不是Func&lt;T&gt;类型时抛出。</exception>
-    /// <exception cref="InvalidOperationException">当资源加载失败时抛出。</exception>
-    public Func<T> GetOrRegisterResourceFactory<T>(AssetCatalog.ResourceId id, bool duplicate = false)
-        where T : Resource
+            return scene.Instantiate<T>()
+                   ?? throw new InvalidOperationException($"Instantiate failed: {path}");
+        };
+
+        _sceneFactories[path] = factory;
+        return factory;
+    }
+
+    public Func<T> GetOrRegisterAssetFactory<T>(AssetCatalog.AssetId id, bool duplicate = false) where T : Resource
     {
         var path = id.Path;
         if (_resourceFactories.TryGetValue(path, out var d))
@@ -164,9 +159,6 @@ public class ResourceLoadSystem : AbstractSystem, IResourceLoadSystem
         _resourceFactories[path] = factory;
         return factory;
     }
-
-    #endregion
-
     #region 缓存管理
 
     /// <summary>

@@ -1,4 +1,4 @@
-﻿namespace GFramework.Godot.system;
+﻿namespace GFramework.Game.assets;
 
 /// <summary>
 /// 资源工厂类，用于注册和解析各种资源的创建工厂
@@ -68,7 +68,7 @@ public static class ResourceFactory
     /// <summary>
     /// 工厂注册表，管理所有已注册的资源工厂
     /// </summary>
-    internal sealed class Registry
+    public sealed class Registry
     {
         /// <summary>
         /// 存储所有已注册的工厂函数，键为资源类型，值为对应的工厂条目对象

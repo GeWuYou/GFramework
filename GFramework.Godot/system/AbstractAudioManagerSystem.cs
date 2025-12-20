@@ -1,5 +1,6 @@
 using GFramework.Core.extensions;
 using GFramework.Core.system;
+using GFramework.Game.assets;
 using Godot;
 
 namespace GFramework.Godot.system;
@@ -179,7 +180,7 @@ public abstract class AbstractAudioManagerSystem : AbstractSystem, IAudioManager
     /// <param name="musicId">音乐资源ID</param>
     /// <param name="volume">音量大小，范围0-1</param>
     /// <param name="loop">是否循环播放</param>
-    public virtual void PlayMusic(AssetCatalog.ResourceId musicId, float volume = 1.0f, bool loop = true)
+    public virtual void PlayMusic(AssetCatalog.AssetId musicId, float volume = 1.0f, bool loop = true)
     {
         PlayMusic(musicId.Path, volume, loop);
     }
@@ -266,7 +267,7 @@ public abstract class AbstractAudioManagerSystem : AbstractSystem, IAudioManager
     /// <param name="soundId">音效资源ID</param>
     /// <param name="volume">音量大小，范围0-1</param>
     /// <param name="pitch">音调调整</param>
-    public virtual void PlaySound(AssetCatalog.ResourceId soundId, float volume = 1.0f, float pitch = 1.0f)
+    public virtual void PlaySound(AssetCatalog.AssetId soundId, float volume = 1.0f, float pitch = 1.0f)
     {
         PlaySound(soundId.Path, volume, pitch);
     }
