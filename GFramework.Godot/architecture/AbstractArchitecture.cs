@@ -10,16 +10,20 @@ namespace GFramework.Godot.architecture;
 public abstract class AbstractArchitecture<T> : Architecture<T> where T : Architecture<T>, new()
 {
     private const string ArchitectureName = "__GFramework__Architecture__Anchor";
+    
     /// <summary>
     /// 初始化架构，按顺序注册模型、系统和工具
     /// </summary>
     protected override void Init()
     {
-        RegisterModels();
-        RegisterSystems();
-        RegisterUtilities();
         AttachToGodotLifecycle();
+        InstallModules();
     }
+    
+    /// <summary>
+    /// 安装模块抽象方法，由子类实现具体的模块注册逻辑
+    /// </summary>
+    protected abstract void InstallModules();
     
     /// <summary>
     /// 将架构绑定到Godot生命周期中，确保在场景树销毁时能够正确清理资源
@@ -43,20 +47,5 @@ public abstract class AbstractArchitecture<T> : Architecture<T> where T : Archit
 
         tree.Root.CallDeferred(Node.MethodName.AddChild, anchor);
     }
-    
-    /// <summary>
-    /// 注册工具抽象方法，由子类实现具体的工具注册逻辑
-    /// </summary>
-    protected abstract void RegisterUtilities();
-
-    /// <summary>
-    /// 注册系统抽象方法，由子类实现具体系统注册逻辑
-    /// </summary>
-    protected abstract void RegisterSystems();
-
-    /// <summary>
-    /// 注册模型抽象方法，由子类实现具体模型注册逻辑
-    /// </summary>
-    protected abstract void RegisterModels();
 }
 
