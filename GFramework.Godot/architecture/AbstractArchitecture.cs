@@ -1,4 +1,5 @@
 ﻿using GFramework.Core.architecture;
+using GFramework.Core.constants;
 using GFramework.Godot.extensions;
 using Godot;
 
@@ -16,7 +17,7 @@ public abstract class AbstractArchitecture<T> : Architecture<T> where T : Archit
     /// 架构锚点节点的唯一标识名称
     /// 用于在Godot场景树中创建和查找架构锚点节点
     /// </summary>
-    private const string ArchitectureName = "__GFramework__Architecture__Anchor";
+    private const string ArchitectureAnchorName = $"__${GFrameworkConstants.FrameworkName}__ArchitectureAnchor__";
     
     /// <summary>
     /// 存储所有已安装的Godot架构扩展组件列表
@@ -28,7 +29,7 @@ public abstract class AbstractArchitecture<T> : Architecture<T> where T : Archit
     /// 架构锚点节点引用
     /// 用于将架构绑定到Godot生命周期并作为扩展节点的父节点
     /// </summary>
-    private ArchitectureAnchorNode? _anchor;
+    private ArchitectureAnchor? _anchor;
 
     /// <summary>
     /// 获取架构根节点。如果尚未初始化或已被销毁，则抛出异常。
@@ -69,12 +70,12 @@ public abstract class AbstractArchitecture<T> : Architecture<T> where T : Archit
             return;
 
         // 防止重复挂载（热重载 / 多次 Init）
-        if (tree.Root.GetNodeOrNull(ArchitectureName) != null)
+        if (tree.Root.GetNodeOrNull(ArchitectureAnchorName) != null)
             return;
 
-        _anchor = new ArchitectureAnchorNode
+        _anchor = new ArchitectureAnchor
         {
-            Name = ArchitectureName
+            Name = ArchitectureAnchorName
         };
 
         _anchor.Bind(Destroy);

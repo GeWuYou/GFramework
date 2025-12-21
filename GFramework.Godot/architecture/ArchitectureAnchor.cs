@@ -6,7 +6,7 @@ namespace GFramework.Godot.architecture;
 /// 架构锚点节点类，用于在Godot场景树中作为架构组件的根节点
 /// 该类提供了退出时的回调绑定功能，可以在节点从场景树中移除时执行清理操作
 /// </summary>
-public partial class ArchitectureAnchorNode : Node
+public partial class ArchitectureAnchor : Node
 {
     private Action? _onExit;
     /// <summary>
@@ -18,7 +18,7 @@ public partial class ArchitectureAnchorNode : Node
         if (_onExit != null)
         {
             GD.PushWarning(
-                $"{nameof(ArchitectureAnchorNode)} already bound. Rebinding will override previous callback.");
+                $"{nameof(ArchitectureAnchor)} already bound. Rebinding will override previous callback.");
         }
         _onExit = onExit;
     }
