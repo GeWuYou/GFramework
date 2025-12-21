@@ -70,41 +70,43 @@ public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceF
 
     #region Register Helpers（声明式）
 
+
     /// <summary>
-    /// 注册游戏单位资源到资源管理系统中
+    /// 注册场景单元到资源管理系统中
     /// </summary>
-    /// <typeparam name="T">游戏单位类型，必须继承自Node</typeparam>
-    /// <param name="sceneKey">场景键值，用于标识特定的游戏单位资源</param>
+    /// <typeparam name="T">场景单元类型，必须继承自Node</typeparam>
+    /// <param name="sceneUnitKey">场景单元键值，用于标识特定的场景单元资源</param>
     /// <param name="preload">是否预加载该资源，默认为false</param>
-    public void RegisterGameUnit<T>(
-        string sceneKey,
+    public void RegisterSceneUnit<T>(
+        string sceneUnitKey,
         bool preload = false)
         where T : Node
     {
-        var id = _assetCatalogSystem!.GetSceneUnit(sceneKey);
+        var id = _assetCatalogSystem!.GetSceneUnit(sceneUnitKey);
 
         _registry!.Register(
-            sceneKey,
+            sceneUnitKey,
             _resourceLoadSystem!.GetOrRegisterGameUnitFactory<T>(id),
             preload
         );
     }
 
+
     /// <summary>
-    /// 注册模板资源到资源管理系统中
+    /// 注册场景页面到资源管理系统中
     /// </summary>
-    /// <typeparam name="T">模板类型，必须继承自Node</typeparam>
-    /// <param name="templateKey">模板键值，用于标识特定的模板资源</param>
+    /// <typeparam name="T">场景页面类型，必须继承自Node</typeparam>
+    /// <param name="scenePageKey">场景页面键值，用于标识特定的场景页面资源</param>
     /// <param name="preload">是否预加载该资源，默认为false</param>
-    public void RegisterTemplate<T>(
-        string templateKey,
+    public void RegisterScenePage<T>(
+        string scenePageKey,
         bool preload = false)
         where T : Node
     {
-        var id = _assetCatalogSystem!.GetScenePage(templateKey);
+        var id = _assetCatalogSystem!.GetScenePage(scenePageKey);
 
         _registry!.Register(
-            templateKey,
+            scenePageKey,
             _resourceLoadSystem!.GetOrRegisterTemplateFactory<T>(id),
             preload
         );
@@ -129,6 +131,7 @@ public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceF
             preload
         );
     }
+
 
     #endregion
 }
