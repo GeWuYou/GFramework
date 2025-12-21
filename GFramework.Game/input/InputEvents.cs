@@ -1,6 +1,4 @@
-﻿using System.Numerics;
-
-namespace GFramework.Game.input;
+﻿namespace GFramework.Game.input;
 
 public static class InputEvents
 {

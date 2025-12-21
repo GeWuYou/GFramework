@@ -57,5 +57,7 @@ public sealed class GodotInputModule<T> : AbstractGodotModule<T>
     {
         // 从架构中获取输入系统实例
         _inputSystem = architecture.GetSystem<InputSystem>()!;
+        // 注册输入转换器
+        _inputSystem.RegisterTranslator(new GodotInputTranslator());
     }
 }
