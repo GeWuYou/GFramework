@@ -171,21 +171,31 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
     protected abstract void Init();
 
     /// <summary>
-    ///     销毁架构，同时销毁所有已注册的系统
+    /// 销毁架构并清理所有系统资源
     /// </summary>
+    /// <remarks>
+    /// 此函数负责有序地销毁架构中的所有系统组件，并发送相应的生命周期事件。
+    /// 函数会确保只执行一次销毁操作，避免重复销毁。
+    /// </remarks>
     public void Destroy()
     {
+        // 检查当前阶段，如果已经处于销毁或已销毁状态则直接返回
         if (CurrentPhase >= ArchitecturePhase.Destroying)
             return;
 
+        // 进入销毁阶段并发送销毁开始事件
         EnterPhase(ArchitecturePhase.Destroying);
-
+        SendEvent(new ArchitectureEvents.ArchitectureDestroyingEvent());
+        
+        // 销毁所有系统组件并清空系统列表
         foreach (var system in _allSystems)
             system.Destroy();
 
         _allSystems.Clear();
 
+        // 进入已销毁阶段并发送销毁完成事件
         EnterPhase(ArchitecturePhase.Destroyed);
+        SendEvent(new ArchitectureEvents.ArchitectureDestroyedEvent());
     }
 
     #endregion
