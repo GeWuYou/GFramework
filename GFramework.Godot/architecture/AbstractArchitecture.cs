@@ -9,7 +9,7 @@ namespace GFramework.Godot.architecture;
 /// <typeparam name="T">架构的具体类型，必须继承自Architecture且能被实例化</typeparam>
 public abstract class AbstractArchitecture<T> : Architecture<T> where T : Architecture<T>, new()
 {
-    private const string ArchitectureName = "__GFrameworkArchitectureAnchor";
+    private const string ArchitectureName = "__GFramework__Architecture__Anchor";
     /// <summary>
     /// 初始化架构，按顺序注册模型、系统和工具
     /// </summary>

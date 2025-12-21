@@ -18,14 +18,16 @@ public partial class ArchitectureAnchorNode : Node
     {
         _onExit = onExit;
     }
-
+    
     /// <summary>
     /// 当节点从场景树中移除时调用此方法
     /// 执行绑定的退出回调并清理引用
     /// </summary>
     public override void _ExitTree()
     {
+        // 执行退出回调
         _onExit?.Invoke();
+        // 清理引用
         _onExit = null;
     }
 }

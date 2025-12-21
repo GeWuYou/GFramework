@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace GFramework.Generator.Attributes
+namespace GFramework.Generator.Attributes.generator.enums
 {
     /// <summary>
     ///     标注在 enum 上，Source Generator 会为该 enum 生成扩展方法。

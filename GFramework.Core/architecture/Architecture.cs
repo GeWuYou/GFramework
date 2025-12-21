@@ -15,6 +15,41 @@ namespace GFramework.Core.architecture;
 /// <typeparam name="T">派生类类型，用于实现单例</typeparam>
 public abstract class Architecture<T> : IArchitecture where T : Architecture<T>, new()
 {
+    public ArchitecturePhase CurrentPhase { get; private set; }
+
+    private void EnterPhase(ArchitecturePhase next)
+    {
+        if (!ArchitectureConstants.PhaseTransitions.TryGetValue(CurrentPhase, out var allowed) ||
+            !allowed.Contains(next))
+        {
+            throw new InvalidOperationException(
+                $"Invalid phase transition: {CurrentPhase} -> {next}");
+        }
+
+        CurrentPhase = next;
+        NotifyPhase(next);
+        foreach (var obj in _mContainer.GetAll<IArchitecturePhaseAware>())
+        {
+            obj.OnArchitecturePhase(next);
+        }
+    }
+
+    private readonly List<IArchitectureLifecycle> _lifecycleHooks = [];
+
+    public void RegisterLifecycleHook(IArchitectureLifecycle hook)
+    {
+        if (CurrentPhase >= ArchitecturePhase.Ready)
+            throw new InvalidOperationException(
+                "Cannot register lifecycle hook after architecture is Ready");
+        _lifecycleHooks.Add(hook);
+    }
+
+    private void NotifyPhase(ArchitecturePhase phase)
+    {
+        foreach (var hook in _lifecycleHooks)
+            hook.OnPhase(phase, this);
+    }
+
     /// <summary>
     ///     静态只读字段，用于延迟初始化架构实例
     ///     使用Lazy确保线程安全的单例模式实现
@@ -31,23 +66,34 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
     private static readonly Lazy<T> MArchitectureLazy = new(() =>
     {
         var arch = new T();
+        // == Architecture Init  ==
+        arch.EnterPhase(ArchitecturePhase.Created);
+        arch.EnterPhase(ArchitecturePhase.BeforeInit);
         // 调用用户实现的初始化
         arch.Init();
+        arch.EnterPhase(ArchitecturePhase.AfterInit);
 
-        // 执行注册的补丁逻辑
-        OnRegisterPatch(arch);
 
+        // == Model Init ==
+        arch.EnterPhase(ArchitecturePhase.BeforeModelInit);
         // 初始化所有已注册但尚未初始化的模型
         foreach (var model in arch._mModels) model.Init();
-
         arch._mModels.Clear();
+        arch.EnterPhase(ArchitecturePhase.AfterModelInit);
 
+
+        // == System Init ==
+        arch.EnterPhase(ArchitecturePhase.BeforeSystemInit);
         // 初始化所有已注册但尚未初始化的系统
         foreach (var system in arch._mSystems) system.Init();
-
         arch._mSystems.Clear();
+        arch.EnterPhase(ArchitecturePhase.AfterSystemInit);
+
+
+        // == Finalize ==
         // 冻结IOC容器，不允许 anymore
         arch._mContainer.Freeze();
+        arch.EnterPhase(ArchitecturePhase.Ready);
         // 发送架构初始化完成事件
         arch.SendEvent(new ArchitectureEvents.ArchitectureInitializedEvent());
         arch._mInited = true;
@@ -68,7 +114,7 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
     ///     存储尚未初始化的系统集合，在初始化阶段统一调用Init方法
     /// </summary>
     private readonly HashSet<ISystem> _mSystems = [];
-    
+
     private readonly HashSet<ISystem> _allSystems = [];
 
     /// <summary>
@@ -80,12 +126,6 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
     ///     标记架构是否已初始化完成
     /// </summary>
     private bool _mInited;
-
-    /// <summary>
-    ///     注册补丁委托，允许在架构创建后执行额外逻辑
-    /// </summary>
-    public static Action<T> OnRegisterPatch { get; set; } = _ => { };
-
 
     /// <summary>
     ///     获取架构实例的静态属性
@@ -102,6 +142,9 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
     /// <param name="system">要注册的系统实例</param>
     public void RegisterSystem<TSystem>(TSystem system) where TSystem : ISystem
     {
+        if (CurrentPhase >= ArchitecturePhase.Ready)
+            throw new InvalidOperationException(
+                $"Cannot register system after Architecture is Ready");
         system.SetArchitecture(this);
         _mContainer.RegisterPlurality(system);
         _allSystems.Add(system);
@@ -119,6 +162,9 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
     /// <param name="model">要注册的模型实例</param>
     public void RegisterModel<TModel>(TModel model) where TModel : IModel
     {
+        if (CurrentPhase >= ArchitecturePhase.Ready)
+            throw new InvalidOperationException(
+                $"Cannot register system after Architecture is Ready");
         model.SetArchitecture(this);
         _mContainer.RegisterPlurality(model);
 
@@ -246,12 +292,17 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
     /// </summary>
     public void Destroy()
     {
-        // 销毁所有已注册的系统
+        if (CurrentPhase >= ArchitecturePhase.Destroying)
+            return;
+
+        EnterPhase(ArchitecturePhase.Destroying);
+
         foreach (var system in _allSystems)
-        {
             system.Destroy();
-        }
+
         _allSystems.Clear();
+
+        EnterPhase(ArchitecturePhase.Destroyed);
     }
 
 
@@ -292,5 +343,12 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
     {
         query.SetArchitecture(this);
         return query.Do();
+    }
+
+    public void InstallModule(IArchitectureModule module)
+    {
+        RegisterLifecycleHook(module);
+        _mContainer.RegisterPlurality(module);
+        module.Install(this);
     }
 }
