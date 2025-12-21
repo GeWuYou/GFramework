@@ -39,7 +39,7 @@ public interface IResourceLoadSystem : ISystem
     /// <param name="id">场景资源标识符</param>
     /// <returns>创建场景实例的工厂函数</returns>
     Func<T> GetOrRegisterGameUnitFactory<T>(
-        AssetCatalog.GameUnitId id
+        AssetCatalog.SceneUnitId id
     ) where T : Node;
 
     /// <summary>
@@ -49,7 +49,7 @@ public interface IResourceLoadSystem : ISystem
     /// <param name="id">模板资源标识符</param>
     /// <returns>创建模板实例的工厂函数</returns>
     Func<T> GetOrRegisterTemplateFactory<T>(
-        AssetCatalog.TemplateId id
+        AssetCatalog.ScenePageId id
     ) where T : Node;
 
     /// <summary>

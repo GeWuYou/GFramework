@@ -81,7 +81,7 @@ public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceF
         bool preload = false)
         where T : Node
     {
-        var id = _assetCatalogSystem!.GetGameUnit(sceneKey);
+        var id = _assetCatalogSystem!.GetSceneUnit(sceneKey);
 
         _registry!.Register(
             sceneKey,
@@ -101,7 +101,7 @@ public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceF
         bool preload = false)
         where T : Node
     {
-        var id = _assetCatalogSystem!.GetTemplate(templateKey);
+        var id = _assetCatalogSystem!.GetScenePage(templateKey);
 
         _registry!.Register(
             templateKey,

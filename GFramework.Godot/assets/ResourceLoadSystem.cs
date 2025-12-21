@@ -99,7 +99,7 @@ public class ResourceLoadSystem : AbstractSystem, IResourceLoadSystem
         return scene.Instantiate<T>();
     }
 
-    public Func<T> GetOrRegisterGameUnitFactory<T>(AssetCatalog.GameUnitId id) where T : Node
+    public Func<T> GetOrRegisterGameUnitFactory<T>(AssetCatalog.SceneUnitId id) where T : Node
     {
         var path = id.Path;
         if (_sceneFactories.TryGetValue(path, out var d))
@@ -119,7 +119,7 @@ public class ResourceLoadSystem : AbstractSystem, IResourceLoadSystem
         return factory;
     }
 
-    public Func<T> GetOrRegisterTemplateFactory<T>(AssetCatalog.TemplateId id) where T : Node
+    public Func<T> GetOrRegisterTemplateFactory<T>(AssetCatalog.ScenePageId id) where T : Node
     {
         var path = id.Path;
         if (_sceneFactories.TryGetValue(path, out var d))

@@ -1,5 +1,4 @@
-﻿
-namespace GFramework.Game.assets;
+﻿namespace GFramework.Game.assets;
 
 /// <summary>
 /// 资源目录类，用于定义和管理游戏中的场景和资源标识符
@@ -24,17 +23,19 @@ public static class AssetCatalog
     /// <param name="Id">资源标识符</param>
     public readonly record struct AssetCatalogMapping(string Key, IAssetId Id);
         
+
     /// <summary>
-    /// 模板资源标识符结构体，实现IAssetId接口
+    /// 场景页面资源标识符结构体，用于标识场景页面资源
     /// </summary>
-    /// <param name="Path">资源路径</param>
-    public readonly record struct TemplateId(string Path) : IAssetId;
+    /// <param name="Path">场景页面资源路径</param>
+    public readonly record struct ScenePageId(string Path) : IAssetId;
         
+
     /// <summary>
-    /// 游戏单位资源标识符结构体，实现IAssetId接口
+    /// 场景单元资源标识符结构体，用于标识场景单元资源
     /// </summary>
-    /// <param name="Path">资源路径</param>
-    public readonly record struct GameUnitId(string Path) : IAssetId;
+    /// <param name="Path">场景单元资源路径</param>
+    public readonly record struct SceneUnitId(string Path) : IAssetId;
      
     /// <summary>
     /// 通用资源标识符结构体，实现IAssetId接口
@@ -43,3 +44,4 @@ public static class AssetCatalog
     public readonly record struct AssetId(string Path) : IAssetId;
 
 }
+

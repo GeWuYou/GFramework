@@ -9,8 +9,8 @@ namespace GFramework.Game.assets;
 /// </summary>
 public abstract class AbstractAssetCatalogSystem : AbstractSystem, IAssetCatalogSystem
 {
-    private readonly Dictionary<string, AssetCatalog.GameUnitId> _gameUnits = new();
-    private readonly Dictionary<string, AssetCatalog.TemplateId> _templates = new();
+    private readonly Dictionary<string, AssetCatalog.SceneUnitId> _sceneUnits = new();
+    private readonly Dictionary<string, AssetCatalog.ScenePageId> _scenePages = new();
     private readonly Dictionary<string, AssetCatalog.AssetId> _assets = new();
 
 
@@ -31,61 +31,64 @@ public abstract class AbstractAssetCatalogSystem : AbstractSystem, IAssetCatalog
 
     #region Register（内部 or Module 使用）
 
+
     /// <summary>
-    /// 注册一个游戏单元（GameUnit），使用指定的键和路径。
+    /// 注册场景单元到资产目录中
     /// </summary>
-    /// <param name="key">唯一标识该游戏单元的字符串键。</param>
-    /// <param name="path">该游戏单元对应的资源路径。</param>
-    /// <exception cref="InvalidOperationException">当键已存在时抛出异常。</exception>
-    public void RegisterGameUnit(string key, string path)
+    /// <param name="key">场景单元的唯一标识键</param>
+    /// <param name="path">场景单元资源的路径</param>
+    /// <exception cref="InvalidOperationException">当指定的键已存在时抛出异常</exception>
+    public void RegisterSceneUnit(string key, string path)
     {
-        if (!_gameUnits.TryAdd(key, new AssetCatalog.GameUnitId(path)))
-            throw new InvalidOperationException($"GameUnit key duplicated: {key}");
+        // 尝试添加场景单元，如果键已存在则抛出异常
+        if (!_sceneUnits.TryAdd(key, new AssetCatalog.SceneUnitId(path)))
+            throw new InvalidOperationException($"SceneUnit key duplicated: {key}");
     }
 
     /// <summary>
-    /// 根据映射对象注册一个游戏单元（GameUnit）。
+    /// 通过资产目录映射注册场景单元
     /// </summary>
-    /// <param name="mapping">包含键与ID映射关系的对象。</param>
-    /// <exception cref="InvalidOperationException">
-    /// 当映射ID不是 <see cref="AssetCatalog.GameUnitId"/> 类型或键重复时抛出异常。
-    /// </exception>
-    public void RegisterGameUnit(AssetCatalog.AssetCatalogMapping mapping)
+    /// <param name="mapping">包含场景单元信息的资产目录映射对象</param>
+    /// <exception cref="InvalidOperationException">当映射ID不是SceneUnitId类型或键已存在时抛出异常</exception>
+    public void RegisterSceneUnit(AssetCatalog.AssetCatalogMapping mapping)
     {
-        if (mapping.Id is not AssetCatalog.GameUnitId sceneId)
-            throw new InvalidOperationException("Mapping ID is not a GameUnitId");
+        // 验证映射ID是否为SceneUnitId类型
+        if (mapping.Id is not AssetCatalog.SceneUnitId sceneId)
+            throw new InvalidOperationException("Mapping ID is not a SceneUnitId");
 
-        if (!_gameUnits.TryAdd(mapping.Key, sceneId))
+        // 尝试添加场景单元，如果键已存在则抛出异常
+        if (!_sceneUnits.TryAdd(mapping.Key, sceneId))
             throw new InvalidOperationException($"Scene key duplicated: {mapping.Key}");
     }
 
     /// <summary>
-    /// 注册一个模板资源（Template），使用指定的键和路径。
+    /// 注册场景页面模板
     /// </summary>
-    /// <param name="key">唯一标识该模板的字符串键。</param>
-    /// <param name="path">该模板对应的资源路径。</param>
-    /// <exception cref="InvalidOperationException">当键已存在时抛出异常。</exception>
-    public void RegisterTemplate(string key, string path)
+    /// <param name="key">场景页面的唯一标识键</param>
+    /// <param name="path">场景页面资源路径</param>
+    /// <exception cref="InvalidOperationException">当键已存在时抛出异常</exception>
+    public void RegisterScenePage(string key, string path)
     {
-        if (!_templates.TryAdd(key, new AssetCatalog.TemplateId(path)))
+        if (!_scenePages.TryAdd(key, new AssetCatalog.ScenePageId(path)))
             throw new InvalidOperationException($"Template key duplicated: {key}");
     }
-
+    
     /// <summary>
-    /// 根据映射对象注册一个模板资源（Template）。
+    /// 通过资产目录映射注册场景页面
     /// </summary>
-    /// <param name="mapping">包含键与ID映射关系的对象。</param>
-    /// <exception cref="InvalidOperationException">
-    /// 当映射ID不是 <see cref="AssetCatalog.TemplateId"/> 类型或键重复时抛出异常。
-    /// </exception>
-    public void RegisterTemplate(AssetCatalog.AssetCatalogMapping mapping)
+    /// <param name="mapping">包含场景页面信息的资产目录映射对象</param>
+    /// <exception cref="InvalidOperationException">当映射ID不是ScenePageId类型或键已存在时抛出异常</exception>
+    public void RegisterScenePage(AssetCatalog.AssetCatalogMapping mapping)
     {
-        if (mapping.Id is not AssetCatalog.TemplateId templateId)
-            throw new InvalidOperationException("Mapping ID is not a TemplateId");
+        // 验证映射ID是否为ScenePageId类型
+        if (mapping.Id is not AssetCatalog.ScenePageId templateId)
+            throw new InvalidOperationException("Mapping ID is not a ScenePageId");
 
-        if (!_templates.TryAdd(mapping.Key, templateId))
+        // 尝试添加场景页面，如果键已存在则抛出异常
+        if (!_scenePages.TryAdd(mapping.Key, templateId))
             throw new InvalidOperationException($"Template key duplicated: {mapping.Key}");
     }
+
 
     /// <summary>
     /// 注册一个通用资源（Asset），使用指定的键和路径。
@@ -119,20 +122,18 @@ public abstract class AbstractAssetCatalogSystem : AbstractSystem, IAssetCatalog
     #region Query（对外）
 
     /// <summary>
-    /// 获取指定键对应的游戏单元ID。
+    /// 根据指定的键获取场景单元标识符
     /// </summary>
-    /// <param name="key">要查找的游戏单元键。</param>
-    /// <returns>对应的游戏单元ID。</returns>
-    /// <exception cref="KeyNotFoundException">如果未找到指定键则抛出异常。</exception>
-    public AssetCatalog.GameUnitId GetGameUnit(string key) => _gameUnits[key];
+    /// <param name="key">用于查找场景单元的键值</param>
+    /// <returns>返回与指定键对应的场景单元标识符</returns>
+    public AssetCatalog.SceneUnitId GetSceneUnit(string key) => _sceneUnits[key];
 
     /// <summary>
-    /// 获取指定键对应的模板资源ID。
+    /// 根据指定的键获取场景页面标识符
     /// </summary>
-    /// <param name="key">要查找的模板资源键。</param>
-    /// <returns>对应的模板资源ID。</returns>
-    /// <exception cref="KeyNotFoundException">如果未找到指定键则抛出异常。</exception>
-    public AssetCatalog.TemplateId GetTemplate(string key) => _templates[key];
+    /// <param name="key">用于查找场景页面的键值</param>
+    /// <returns>返回与指定键对应的场景页面标识符</returns>
+    public AssetCatalog.ScenePageId GetScenePage(string key) => _scenePages[key];
 
     /// <summary>
     /// 获取指定键对应的通用资源ID。
@@ -143,18 +144,18 @@ public abstract class AbstractAssetCatalogSystem : AbstractSystem, IAssetCatalog
     public AssetCatalog.AssetId GetAsset(string key) => _assets[key];
 
     /// <summary>
-    /// 判断是否存在指定键的游戏单元。
+    /// 检查是否存在指定键的场景单元
     /// </summary>
-    /// <param name="key">要检查的游戏单元键。</param>
-    /// <returns>若存在返回 true，否则返回 false。</returns>
-    public bool HasGameUnit(string key) => _gameUnits.ContainsKey(key);
+    /// <param name="key">用于查找场景单元的键值</param>
+    /// <returns>存在返回true，否则返回false</returns>
+    public bool HasSceneUnit(string key) => _sceneUnits.ContainsKey(key);
 
     /// <summary>
-    /// 判断是否存在指定键的模板资源。
+    /// 检查是否存在指定键的场景页面
     /// </summary>
-    /// <param name="key">要检查的模板资源键。</param>
-    /// <returns>若存在返回 true，否则返回 false。</returns>
-    public bool HasTemplate(string key) => _templates.ContainsKey(key);
+    /// <param name="key">用于查找场景页面的键值</param>
+    /// <returns>存在返回true，否则返回false</returns>
+    public bool HasScenePage(string key) => _scenePages.ContainsKey(key);
 
     /// <summary>
     /// 判断是否存在指定键的通用资源。
