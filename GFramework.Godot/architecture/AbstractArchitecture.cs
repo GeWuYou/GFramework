@@ -11,6 +11,7 @@ namespace GFramework.Godot.architecture;
 /// <typeparam name="T">架构的具体类型，必须继承自Architecture且能被实例化。</typeparam>
 public abstract class AbstractArchitecture<T> : Architecture<T> where T : Architecture<T>, new()
 {
+    
     /// <summary>
     /// 架构锚点节点的唯一标识名称
     /// 用于在Godot场景树中创建和查找架构锚点节点

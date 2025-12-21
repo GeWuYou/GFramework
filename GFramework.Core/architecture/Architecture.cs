@@ -13,8 +13,22 @@ namespace GFramework.Core.architecture;
 ///     使用单例模式确保全局唯一实例，并支持命令、查询和事件机制。
 /// </summary>
 /// <typeparam name="T">派生类类型，用于实现单例</typeparam>
-public abstract class Architecture<T> : IArchitecture where T : Architecture<T>, new()
+public abstract class Architecture<T> : IArchitecture
+    where T : Architecture<T>, new()
 {
+    /// <summary>
+    /// 获取架构选项的虚拟属性
+    /// </summary>
+    /// <returns>返回IArchitectureOptions接口实例，包含架构配置选项</returns>
+    /// <remarks>
+    /// 默认实现返回FunctionalArchitectureOptions实例，其中包含两个委托：
+    /// 第一个委托始终返回true，第二个委托始终返回false
+    /// </remarks>
+    protected virtual IArchitectureOptions Options { get; } = new FunctionalArchitectureOptions(
+        () => true,
+        () => false
+    );
+
     #region Fields and Properties
 
     /// <summary>
@@ -57,7 +71,7 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
     ///     生命周期感知对象列表
     /// </summary>
     private readonly List<IArchitectureLifecycle> _lifecycleHooks = [];
-    
+
     /// <summary>
     ///     当前架构的阶段
     /// </summary>
@@ -124,17 +138,18 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
     /// <exception cref="InvalidOperationException">当阶段转换不被允许时抛出异常</exception>
     private void EnterPhase(ArchitecturePhase next)
     {
-        // 验证阶段转换是否合法
-        if (!ArchitectureConstants.PhaseTransitions.TryGetValue(CurrentPhase, out var allowed) ||
-            !allowed.Contains(next))
+        if (Options.StrictPhaseValidation &&
+            (!ArchitectureConstants.PhaseTransitions.TryGetValue(CurrentPhase, out var allowed) ||
+             !allowed.Contains(next)))
         {
+            // 验证阶段转换是否合法
             throw new InvalidOperationException(
                 $"Invalid phase transition: {CurrentPhase} -> {next}");
         }
 
         CurrentPhase = next;
         NotifyPhase(next);
-        
+
         // 通知所有架构阶段感知对象阶段变更
         foreach (var obj in _mContainer.GetAll<IArchitecturePhaseAware>())
         {
@@ -158,7 +173,7 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
     /// <param name="hook">生命周期钩子实例</param>
     public void RegisterLifecycleHook(IArchitectureLifecycle hook)
     {
-        if (CurrentPhase >= ArchitecturePhase.Ready)
+        if (CurrentPhase >= ArchitecturePhase.Ready && !Options.AllowLateRegistration)
             throw new InvalidOperationException(
                 "Cannot register lifecycle hook after architecture is Ready");
         _lifecycleHooks.Add(hook);
@@ -186,7 +201,7 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
         // 进入销毁阶段并发送销毁开始事件
         EnterPhase(ArchitecturePhase.Destroying);
         SendEvent(new ArchitectureEvents.ArchitectureDestroyingEvent());
-        
+
         // 销毁所有系统组件并清空系统列表
         foreach (var system in _allSystems)
             system.Destroy();
@@ -225,9 +240,9 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
     /// <param name="system">要注册的系统实例</param>
     public void RegisterSystem<TSystem>(TSystem system) where TSystem : ISystem
     {
-        if (CurrentPhase >= ArchitecturePhase.Ready)
+        if (CurrentPhase >= ArchitecturePhase.Ready && !Options.AllowLateRegistration)
             throw new InvalidOperationException(
-                $"Cannot register system after Architecture is Ready");
+                "Cannot register system after Architecture is Ready");
         system.SetArchitecture(this);
         _mContainer.RegisterPlurality(system);
         _allSystems.Add(system);
@@ -245,9 +260,9 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
     /// <param name="model">要注册的模型实例</param>
     public void RegisterModel<TModel>(TModel model) where TModel : IModel
     {
-        if (CurrentPhase >= ArchitecturePhase.Ready)
+        if (CurrentPhase >= ArchitecturePhase.Ready && !Options.AllowLateRegistration)
             throw new InvalidOperationException(
-                $"Cannot register system after Architecture is Ready");
+                "Cannot register system after Architecture is Ready");
         model.SetArchitecture(this);
         _mContainer.RegisterPlurality(model);
 
