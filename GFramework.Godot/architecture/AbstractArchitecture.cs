@@ -21,7 +21,7 @@ public abstract class AbstractArchitecture<T> : Architecture<T> where T : Archit
     /// 存储所有已安装的Godot架构扩展组件列表
     /// 用于在架构销毁时正确清理所有扩展资源
     /// </summary>
-    private readonly List<IGodotArchitectureExtension<T>> _extensions = [];
+    private readonly List<IGodotModule<T>> _extensions = [];
     
     /// <summary>
     /// 架构锚点节点引用
@@ -81,30 +81,34 @@ public abstract class AbstractArchitecture<T> : Architecture<T> where T : Archit
         tree.Root.CallDeferred(Node.MethodName.AddChild, _anchor);
     }
 
- 
+    
     /// <summary>
-    /// 安装Godot架构扩展组件
+    /// 安装Godot模块扩展
     /// </summary>
-    /// <param name="extension">要安装的Godot架构扩展实例，必须实现IGodotArchitectureExtension接口</param>
-    /// <returns>异步任务，表示扩展安装过程</returns>
-    protected async Task InstallGodotExtension(IGodotArchitectureExtension<T> extension)
+    /// <typeparam name="TModule">模块类型，必须实现IGodotModule接口</typeparam>
+    /// <param name="module">要安装的模块实例</param>
+    /// <returns>异步任务</returns>
+    protected async Task InstallGodotModule<TModule>(TModule module) where TModule : IGodotModule<T>
     {
+        module.Install(this);
+        
         // 检查锚点是否已初始化，未初始化则抛出异常
         if (_anchor == null)
             throw new InvalidOperationException("Anchor not initialized");
-        
+            
         // 等待锚点准备就绪
         await _anchor.WaitUntilReady();
         
         // 延迟调用将扩展节点添加为锚点的子节点
-        _anchor.CallDeferred(Node.MethodName.AddChild, extension.Node);
+        _anchor.CallDeferred(Node.MethodName.AddChild, module.Node);
 
         // 调用扩展的附加回调方法
-        extension.OnAttach(this);
+        module.OnAttach(this);
         
         // 将扩展添加到扩展集合中
-        _extensions.Add(extension);
+        _extensions.Add(module);
     }
+
 
 
     /// <summary>
