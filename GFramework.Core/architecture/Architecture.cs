@@ -177,7 +177,7 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
     /// 此函数负责有序地销毁架构中的所有系统组件，并发送相应的生命周期事件。
     /// 函数会确保只执行一次销毁操作，避免重复销毁。
     /// </remarks>
-    public void Destroy()
+    public virtual void Destroy()
     {
         // 检查当前阶段，如果已经处于销毁或已销毁状态则直接返回
         if (CurrentPhase >= ArchitecturePhase.Destroying)

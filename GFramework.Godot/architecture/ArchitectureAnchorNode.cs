@@ -9,13 +9,17 @@ namespace GFramework.Godot.architecture;
 public partial class ArchitectureAnchorNode : Node
 {
     private Action? _onExit;
-
     /// <summary>
     /// 绑定节点退出时的回调动作
     /// </summary>
     /// <param name="onExit">当节点从场景树退出时要执行的动作</param>
     public void Bind(Action onExit)
     {
+        if (_onExit != null)
+        {
+            GD.PushWarning(
+                $"{nameof(ArchitectureAnchorNode)} already bound. Rebinding will override previous callback.");
+        }
         _onExit = onExit;
     }
     
@@ -25,10 +29,9 @@ public partial class ArchitectureAnchorNode : Node
     /// </summary>
     public override void _ExitTree()
     {
-        // 执行退出回调
-        _onExit?.Invoke();
-        // 清理引用
+        var callback = _onExit;
         _onExit = null;
+        callback?.Invoke();
     }
 }
 
