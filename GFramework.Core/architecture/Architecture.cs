@@ -106,10 +106,10 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
         // == Finalize ==
         // 冻结IOC容器，不允许 anymore
         arch._mContainer.Freeze();
-        arch.EnterPhase(ArchitecturePhase.Ready);
-        // 发送架构初始化完成事件
-        arch.SendEvent(new ArchitectureEvents.ArchitectureInitializedEvent());
         arch._mInited = true;
+        arch.EnterPhase(ArchitecturePhase.Ready);
+        // 发送架构生命周期就绪事件
+        arch.SendEvent(new ArchitectureEvents.ArchitectureLifecycleReadyEvent());
         return arch;
     }, LazyThreadSafetyMode.ExecutionAndPublication);
 

@@ -1,4 +1,5 @@
-﻿using GFramework.Core.events;
+using GFramework.Core.architecture;
+using GFramework.Core.events;
 using GFramework.Core.extensions;
 using GFramework.Core.system;
 using GFramework.Game.assets;
@@ -10,7 +11,7 @@ namespace GFramework.Godot.system;
 /// 资源工厂系统抽象基类，用于统一管理各类资源的创建与预加载逻辑。
 /// 提供注册场景和资源的方法，并通过依赖的资源加载系统和资产目录系统完成实际资源的获取与构造。
 /// </summary>
-public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceFactorySystem
+public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceFactorySystem, IArchitectureLifecycle
 {
     private ResourceFactory.Registry? _registry;
     private IResourceLoadSystem? _resourceLoadSystem;
@@ -26,14 +27,22 @@ public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceF
         _registry = new ResourceFactory.Registry();
         _resourceLoadSystem = this.GetSystem<IResourceLoadSystem>();
         _assetCatalogSystem = this.GetSystem<IAssetCatalogSystem>();
-        // 监听架构初始化事件
-        this.RegisterEvent<ArchitectureEvents.ArchitectureInitializedEvent>(_ =>
+    }
+
+    /// <summary>
+    /// 架构阶段回调，在架构就绪时注册和预加载资源
+    /// </summary>
+    /// <param name="phase">当前架构阶段</param>
+    /// <param name="arch">架构实例</param>
+    public void OnPhase(ArchitecturePhase phase, IArchitecture arch)
+    {
+        if (phase == ArchitecturePhase.Ready)
         {
             // 注册资源
             RegisterResources();
             // 预加载所有资源
-            _registry.PreloadAll();
-        });
+            _registry!.PreloadAll();
+        }
     }
 
     /// <summary>
