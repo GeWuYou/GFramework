@@ -20,11 +20,22 @@ public partial class GodotInputBridge : Node
     }
 
     /// <summary>
-    /// 处理输入事件的回调方法
+    /// 捕获阶段：最早
     /// </summary>
-    /// <param name="event">Godot输入事件</param>
     public override void _Input(InputEvent @event)
     {
-        _inputSystem.HandleRaw(@event);
+        _inputSystem.HandleRaw(
+            new GodotRawInput(@event, GodotInputPhase.Capture)
+        );
+    }
+
+    /// <summary>
+    /// 冒泡阶段：UI 未处理
+    /// </summary>
+    public override void _UnhandledInput(InputEvent @event)
+    {
+        _inputSystem.HandleRaw(
+            new GodotRawInput(@event, GodotInputPhase.Bubble)
+        );
     }
 }

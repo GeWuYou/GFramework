@@ -11,23 +11,31 @@ namespace GFramework.Godot.input;
 /// Godot输入模块类，用于管理Godot游戏引擎中的输入系统
 /// </summary>
 /// <typeparam name="T">架构类型，必须继承自Architecture且具有无参构造函数</typeparam>
-public sealed class GodotInputModule<T> : AbstractGodotModule<T>
+public abstract class AbstractGodotInputModule<T> : AbstractGodotModule<T>
     where T : Architecture<T>, new()
 {
     private GodotInputBridge? _node;
+
+    /// <summary>
+    /// 启用默认的输入转换器
+    /// </summary>
+    protected virtual bool EnableDefaultTranslator => false;
+
     /// <summary>
     /// 架构锚点节点的唯一标识名称
     /// 用于在Godot场景树中创建和查找架构锚点节点
     /// </summary>
     private const string GodotInputBridgeName = $"__${GFrameworkConstants.FrameworkName}__GodotInputBridge__";
+
     /// <summary>
     /// 获取模块对应的节点对象
     /// </summary>
     /// <exception cref="InvalidOperationException">当节点尚未创建时抛出异常</exception>
-    public override Node Node => _node 
+    public override Node Node => _node
                                  ?? throw new InvalidOperationException("Node not created yet");
+
     private InputSystem _inputSystem = null!;
-    
+
     /// <summary>
     /// 当模块被附加到架构时调用此方法
     /// </summary>
@@ -35,7 +43,7 @@ public sealed class GodotInputModule<T> : AbstractGodotModule<T>
     public override void OnAttach(Architecture<T> architecture)
     {
         // 创建Godot输入桥接节点并绑定输入系统
-        _node = new GodotInputBridge { Name = GodotInputBridgeName};
+        _node = new GodotInputBridge { Name = GodotInputBridgeName };
         _node.Bind(_inputSystem);
     }
 
@@ -57,7 +65,18 @@ public sealed class GodotInputModule<T> : AbstractGodotModule<T>
     {
         // 从架构中获取输入系统实例
         _inputSystem = architecture.GetSystem<InputSystem>()!;
-        // 注册输入转换器
-        _inputSystem.RegisterTranslator(new GodotInputTranslator());
+        if (EnableDefaultTranslator)
+        {
+            // 注册输入转换器
+            _inputSystem.RegisterTranslator(new GodotInputTranslator(), true);
+        }
+
+        RegisterTranslator(_inputSystem);
     }
+
+    /// <summary>
+    /// 注册翻译器的抽象方法，由子类实现具体的注册逻辑
+    /// </summary>
+    /// <param name="inputSystem">输入系统实例</param>
+    protected abstract void RegisterTranslator(InputSystem inputSystem);
 }

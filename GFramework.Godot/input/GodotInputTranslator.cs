@@ -18,12 +18,16 @@ public sealed class GodotInputTranslator : IInputTranslator
     {
         gameEvent = null!;
 
-        // 检查输入是否为Godot的InputEvent类型
-        if (rawInput is not InputEvent evt)
+        if (rawInput is not GodotRawInput raw)
+            return false;
+
+        var evt = raw.Event;
+
+        // 示例规则：只在 Bubble 阶段生成游戏输入
+        if (raw.Phase != GodotInputPhase.Bubble)
             return false;
 
         // Action
-        // 处理动作输入事件（如键盘按键、手柄按钮等）
         if (evt is InputEventAction action)
         {
             gameEvent = new InputEvents.KeyInputEvent(
@@ -35,7 +39,6 @@ public sealed class GodotInputTranslator : IInputTranslator
         }
 
         // Mouse button
-        // 处理鼠标按钮输入事件
         if (evt is InputEventMouseButton mb)
         {
             gameEvent = new InputEvents.PointerInputEvent<Vector2>(
@@ -48,7 +51,6 @@ public sealed class GodotInputTranslator : IInputTranslator
         }
 
         // Mouse motion
-        // 处理鼠标移动输入事件
         if (evt is InputEventMouseMotion mm)
         {
             gameEvent = new InputEvents.PointerInputEvent<Vector2>(
