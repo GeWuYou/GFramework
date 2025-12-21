@@ -15,40 +15,53 @@ namespace GFramework.Core.architecture;
 /// <typeparam name="T">派生类类型，用于实现单例</typeparam>
 public abstract class Architecture<T> : IArchitecture where T : Architecture<T>, new()
 {
-    public ArchitecturePhase CurrentPhase { get; private set; }
+    #region Fields and Properties
 
-    private void EnterPhase(ArchitecturePhase next)
-    {
-        if (!ArchitectureConstants.PhaseTransitions.TryGetValue(CurrentPhase, out var allowed) ||
-            !allowed.Contains(next))
-        {
-            throw new InvalidOperationException(
-                $"Invalid phase transition: {CurrentPhase} -> {next}");
-        }
+    /// <summary>
+    ///     控制反转容器，用于存储和获取各种服务（如系统、模型、工具）
+    /// </summary>
+    private readonly IocContainer _mContainer = new();
 
-        CurrentPhase = next;
-        NotifyPhase(next);
-        foreach (var obj in _mContainer.GetAll<IArchitecturePhaseAware>())
-        {
-            obj.OnArchitecturePhase(next);
-        }
-    }
+    /// <summary>
+    ///     存储尚未初始化的模型集合，在初始化阶段统一调用Init方法
+    /// </summary>
+    private readonly HashSet<IModel> _mModels = [];
 
+    /// <summary>
+    ///     存储尚未初始化的系统集合，在初始化阶段统一调用Init方法
+    /// </summary>
+    private readonly HashSet<ISystem> _mSystems = [];
+
+    /// <summary>
+    ///     存储所有已注册的系统，用于销毁
+    /// </summary>
+    private readonly HashSet<ISystem> _allSystems = [];
+
+    /// <summary>
+    ///     类型化事件系统，负责事件的发布与订阅管理
+    /// </summary>
+    private readonly TypeEventSystem _mTypeEventSystem = new();
+
+    /// <summary>
+    ///     标记架构是否已初始化完成
+    /// </summary>
+    private bool _mInited;
+
+    /// <summary>
+    ///     获取架构实例的静态属性
+    /// </summary>
+    /// <returns>返回IArchitecture类型的架构实例</returns>
+    public static IArchitecture Instance => MArchitectureLazy.Value;
+
+    /// <summary>
+    ///     生命周期感知对象列表
+    /// </summary>
     private readonly List<IArchitectureLifecycle> _lifecycleHooks = [];
-
-    public void RegisterLifecycleHook(IArchitectureLifecycle hook)
-    {
-        if (CurrentPhase >= ArchitecturePhase.Ready)
-            throw new InvalidOperationException(
-                "Cannot register lifecycle hook after architecture is Ready");
-        _lifecycleHooks.Add(hook);
-    }
-
-    private void NotifyPhase(ArchitecturePhase phase)
-    {
-        foreach (var hook in _lifecycleHooks)
-            hook.OnPhase(phase, this);
-    }
+    
+    /// <summary>
+    ///     当前架构的阶段
+    /// </summary>
+    public ArchitecturePhase CurrentPhase { get; private set; }
 
     /// <summary>
     ///     静态只读字段，用于延迟初始化架构实例
@@ -100,39 +113,99 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
         return arch;
     }, LazyThreadSafetyMode.ExecutionAndPublication);
 
-    /// <summary>
-    ///     控制反转容器，用于存储和获取各种服务（如系统、模型、工具）
-    /// </summary>
-    private readonly IocContainer _mContainer = new();
+    #endregion
+
+    #region Lifecycle Management
 
     /// <summary>
-    ///     存储尚未初始化的模型集合，在初始化阶段统一调用Init方法
+    /// 进入指定的架构阶段，并执行相应的生命周期管理操作
     /// </summary>
-    private readonly HashSet<IModel> _mModels = [];
+    /// <param name="next">要进入的下一个架构阶段</param>
+    /// <exception cref="InvalidOperationException">当阶段转换不被允许时抛出异常</exception>
+    private void EnterPhase(ArchitecturePhase next)
+    {
+        // 验证阶段转换是否合法
+        if (!ArchitectureConstants.PhaseTransitions.TryGetValue(CurrentPhase, out var allowed) ||
+            !allowed.Contains(next))
+        {
+            throw new InvalidOperationException(
+                $"Invalid phase transition: {CurrentPhase} -> {next}");
+        }
+
+        CurrentPhase = next;
+        NotifyPhase(next);
+        
+        // 通知所有架构阶段感知对象阶段变更
+        foreach (var obj in _mContainer.GetAll<IArchitecturePhaseAware>())
+        {
+            obj.OnArchitecturePhase(next);
+        }
+    }
 
     /// <summary>
-    ///     存储尚未初始化的系统集合，在初始化阶段统一调用Init方法
+    /// 通知所有生命周期钩子当前阶段变更
     /// </summary>
-    private readonly HashSet<ISystem> _mSystems = [];
-
-    private readonly HashSet<ISystem> _allSystems = [];
+    /// <param name="phase">当前架构阶段</param>
+    private void NotifyPhase(ArchitecturePhase phase)
+    {
+        foreach (var hook in _lifecycleHooks)
+            hook.OnPhase(phase, this);
+    }
 
     /// <summary>
-    ///     类型化事件系统，负责事件的发布与订阅管理
+    /// 注册生命周期钩子
     /// </summary>
-    private readonly TypeEventSystem _mTypeEventSystem = new();
+    /// <param name="hook">生命周期钩子实例</param>
+    public void RegisterLifecycleHook(IArchitectureLifecycle hook)
+    {
+        if (CurrentPhase >= ArchitecturePhase.Ready)
+            throw new InvalidOperationException(
+                "Cannot register lifecycle hook after architecture is Ready");
+        _lifecycleHooks.Add(hook);
+    }
+
 
     /// <summary>
-    ///     标记架构是否已初始化完成
+    ///     抽象初始化方法，由子类重写以进行自定义初始化操作
     /// </summary>
-    private bool _mInited;
+    protected abstract void Init();
 
     /// <summary>
-    ///     获取架构实例的静态属性
+    ///     销毁架构，同时销毁所有已注册的系统
     /// </summary>
-    /// <returns>返回IArchitecture类型的架构实例</returns>
-    public static IArchitecture Instance => MArchitectureLazy.Value;
+    public void Destroy()
+    {
+        if (CurrentPhase >= ArchitecturePhase.Destroying)
+            return;
 
+        EnterPhase(ArchitecturePhase.Destroying);
+
+        foreach (var system in _allSystems)
+            system.Destroy();
+
+        _allSystems.Clear();
+
+        EnterPhase(ArchitecturePhase.Destroyed);
+    }
+
+    #endregion
+
+    #region Module Management
+
+    /// <summary>
+    /// 安装架构模块
+    /// </summary>
+    /// <param name="module">要安装的模块</param>
+    public void InstallModule(IArchitectureModule module)
+    {
+        RegisterLifecycleHook(module);
+        _mContainer.RegisterPlurality(module);
+        module.Install(this);
+    }
+
+    #endregion
+
+    #region Component Registration
 
     /// <summary>
     ///     注册一个系统到架构中。
@@ -185,6 +258,10 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
         _mContainer.RegisterPlurality(utility);
     }
 
+    #endregion
+
+    #region Component Retrieval
+
     /// <summary>
     ///     从IOC容器中获取指定类型的系统实例
     /// </summary>
@@ -215,6 +292,10 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
         return _mContainer.Get<TUtility>();
     }
 
+    #endregion
+
+    #region Command Execution
+
     /// <summary>
     ///     发送一个带返回结果的命令请求
     /// </summary>
@@ -237,6 +318,32 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
     }
 
     /// <summary>
+    ///     执行一个带返回结果的命令
+    /// </summary>
+    /// <typeparam name="TResult">命令执行后的返回值类型</typeparam>
+    /// <param name="command">要执行的命令对象</param>
+    /// <returns>命令执行的结果</returns>
+    protected virtual TResult ExecuteCommand<TResult>(ICommand<TResult> command)
+    {
+        command.SetArchitecture(this);
+        return command.Execute();
+    }
+
+    /// <summary>
+    ///     执行一个无返回结果的命令
+    /// </summary>
+    /// <param name="command">要执行的命令对象</param>
+    protected virtual void ExecuteCommand(ICommand command)
+    {
+        command.SetArchitecture(this);
+        command.Execute();
+    }
+
+    #endregion
+
+    #region Query Execution
+
+    /// <summary>
     ///     发起一次查询请求并获得其结果
     /// </summary>
     /// <typeparam name="TResult">查询结果的数据类型</typeparam>
@@ -246,6 +353,22 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
     {
         return DoQuery(query);
     }
+
+    /// <summary>
+    ///     实际执行查询逻辑的方法
+    /// </summary>
+    /// <typeparam name="TResult">查询结果的数据类型</typeparam>
+    /// <param name="query">要处理的查询对象</param>
+    /// <returns>查询结果</returns>
+    protected virtual TResult DoQuery<TResult>(IQuery<TResult> query)
+    {
+        query.SetArchitecture(this);
+        return query.Do();
+    }
+
+    #endregion
+
+    #region Event Management
 
     /// <summary>
     ///     发布一个默认构造的新事件对象
@@ -287,68 +410,5 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
         _mTypeEventSystem.UnRegister(onEvent);
     }
 
-    /// <summary>
-    ///     销毁架构，同时销毁所有已注册的系统
-    /// </summary>
-    public void Destroy()
-    {
-        if (CurrentPhase >= ArchitecturePhase.Destroying)
-            return;
-
-        EnterPhase(ArchitecturePhase.Destroying);
-
-        foreach (var system in _allSystems)
-            system.Destroy();
-
-        _allSystems.Clear();
-
-        EnterPhase(ArchitecturePhase.Destroyed);
-    }
-
-
-    /// <summary>
-    ///     抽象初始化方法，由子类重写以进行自定义初始化操作
-    /// </summary>
-    protected abstract void Init();
-
-    /// <summary>
-    ///     执行一个带返回结果的命令
-    /// </summary>
-    /// <typeparam name="TResult">命令执行后的返回值类型</typeparam>
-    /// <param name="command">要执行的命令对象</param>
-    /// <returns>命令执行的结果</returns>
-    protected virtual TResult ExecuteCommand<TResult>(ICommand<TResult> command)
-    {
-        command.SetArchitecture(this);
-        return command.Execute();
-    }
-
-    /// <summary>
-    ///     执行一个无返回结果的命令
-    /// </summary>
-    /// <param name="command">要执行的命令对象</param>
-    protected virtual void ExecuteCommand(ICommand command)
-    {
-        command.SetArchitecture(this);
-        command.Execute();
-    }
-
-    /// <summary>
-    ///     实际执行查询逻辑的方法
-    /// </summary>
-    /// <typeparam name="TResult">查询结果的数据类型</typeparam>
-    /// <param name="query">要处理的查询对象</param>
-    /// <returns>查询结果</returns>
-    protected virtual TResult DoQuery<TResult>(IQuery<TResult> query)
-    {
-        query.SetArchitecture(this);
-        return query.Do();
-    }
-
-    public void InstallModule(IArchitectureModule module)
-    {
-        RegisterLifecycleHook(module);
-        _mContainer.RegisterPlurality(module);
-        module.Install(this);
-    }
+    #endregion
 }
