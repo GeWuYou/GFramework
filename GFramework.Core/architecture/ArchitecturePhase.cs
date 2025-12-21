@@ -9,7 +9,10 @@
 /// </remarks>
 public enum ArchitecturePhase
 {
-    
+    /// <summary>
+    /// 无效阶段，表示未定义的阶段
+    /// </summary>
+    None = 0,
     /// <summary>
     /// 对象创建阶段，对应 new T() 操作完成后的状态
     /// </summary>

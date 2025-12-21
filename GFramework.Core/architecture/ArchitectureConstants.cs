@@ -8,6 +8,7 @@ public static class ArchitectureConstants
     public static readonly ImmutableDictionary<ArchitecturePhase, ArchitecturePhase[]> PhaseTransitions =
         new Dictionary<ArchitecturePhase, ArchitecturePhase[]>
         {
+            { ArchitecturePhase.None, [ArchitecturePhase.Created] },
             { ArchitecturePhase.Created, [ArchitecturePhase.BeforeInit] },
             { ArchitecturePhase.BeforeInit, [ArchitecturePhase.AfterInit] },
             { ArchitecturePhase.AfterInit, [ArchitecturePhase.BeforeModelInit] },
