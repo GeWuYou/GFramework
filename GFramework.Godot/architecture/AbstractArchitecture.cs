@@ -17,7 +17,7 @@ public abstract class AbstractArchitecture<T> : Architecture<T> where T : Archit
     /// 架构锚点节点的唯一标识名称
     /// 用于在Godot场景树中创建和查找架构锚点节点
     /// </summary>
-    private const string ArchitectureAnchorName = $"__${GFrameworkConstants.FrameworkName}__ArchitectureAnchor__";
+    private const string ArchitectureAnchorName = $"__{GFrameworkConstants.FrameworkName}__ArchitectureAnchor__";
     
     /// <summary>
     /// 存储所有已安装的Godot架构扩展组件列表
