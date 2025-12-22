@@ -23,8 +23,9 @@ public sealed class GodotInputTranslator : IInputTranslator
 
         var evt = raw.Event;
 
-        // 示例规则：只在 Bubble 阶段生成游戏输入
-        if (raw.Phase != GodotInputPhase.Bubble)
+        // 支持多个输入阶段：Capture, Bubble, 和其他阶段
+        // 在拖拽过程中，可能需要在Capture阶段也处理输入
+        if (raw.Phase != GodotInputPhase.Bubble && raw.Phase != GodotInputPhase.Capture)
             return false;
 
         // Action
