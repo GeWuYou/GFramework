@@ -25,7 +25,7 @@ public abstract class AbstractGodotInputModule<T> : AbstractGodotModule<T>
     /// 架构锚点节点的唯一标识名称
     /// 用于在Godot场景树中创建和查找架构锚点节点
     /// </summary>
-    private const string GodotInputBridgeName = $"__${GFrameworkConstants.FrameworkName}__GodotInputBridge__";
+    private const string GodotInputBridgeName = $"__{GFrameworkConstants.FrameworkName}__GodotInputBridge__";
 
     /// <summary>
     /// 获取模块对应的节点对象

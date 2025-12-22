@@ -80,7 +80,6 @@ public class InputSystem : AbstractSystem
         {
             if (!t.TryTranslate(rawInput, out var gameEvent)) continue;
             Handle(gameEvent);
-            return;
         }
     }
 
