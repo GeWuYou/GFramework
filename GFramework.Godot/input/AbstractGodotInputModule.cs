@@ -1,4 +1,4 @@
-﻿using GFramework.Core.architecture;
+using GFramework.Core.architecture;
 using GFramework.Core.constants;
 using GFramework.Game.input;
 using GFramework.Godot.architecture;
@@ -34,22 +34,6 @@ public abstract class AbstractGodotInputModule<T> : AbstractGodotModule<T>
     public override Node Node => _node
                                  ?? throw new InvalidOperationException("Node not created yet");
 
-    private InputSystem _inputSystem = null!;
-
-    /// <summary>
-    /// 当模块被附加到架构时调用此方法
-    /// </summary>
-    /// <param name="architecture">要附加到的架构实例</param>
-    public override void OnAttach(Architecture<T> architecture)
-    {
-        // 创建Godot输入桥接节点并绑定输入系统
-        _node = new GodotInputBridge { Name = GodotInputBridgeName };
-        _node.Bind(_inputSystem);
-    }
-
-    /// <summary>
-    /// 当模块从架构中分离时调用此方法
-    /// </summary>
     public override void OnDetach()
     {
         // 释放节点资源并清理引用
@@ -64,14 +48,17 @@ public abstract class AbstractGodotInputModule<T> : AbstractGodotModule<T>
     public override void Install(IArchitecture architecture)
     {
         // 从架构中获取输入系统实例
-        _inputSystem = architecture.GetSystem<InputSystem>()!;
+        var inputSystem = architecture.GetSystem<InputSystem>()!;
         if (EnableDefaultTranslator)
         {
             // 注册输入转换器
-            _inputSystem.RegisterTranslator(new GodotInputTranslator(), true);
+            inputSystem.RegisterTranslator(new GodotInputTranslator(), true);
         }
 
-        RegisterTranslator(_inputSystem);
+        RegisterTranslator(inputSystem);
+        // 创建Godot输入桥接节点并绑定输入系统
+        _node = new GodotInputBridge { Name = GodotInputBridgeName };
+        _node.Bind(inputSystem);
     }
 
     /// <summary>
