@@ -237,7 +237,25 @@ public static class NodeExtensions
     public static void SafeCallDeferred(this Node? node, string method)
     {
         // 检查节点是否为空且实例是否有效，有效时才执行延迟调用
-        if (node != null && GodotObject.IsInstanceValid(node))
-            node.CallDeferred(method);
+        if (node.IsValidNode())
+            node!.CallDeferred(method);
     }
+
+
+    /// <summary>
+    /// 将指定节点转换为目标类型T
+    /// </summary>
+    /// <typeparam name="T">目标节点类型，必须继承自Node</typeparam>
+    /// <param name="node">要转换的节点对象，可以为null</param>
+    /// <returns>转换后的目标类型节点</returns>
+    /// <exception cref="InvalidCastException">当节点无效或类型不匹配时抛出</exception>
+    public static T OfType<T>(this Node? node) where T : Node
+    {
+        // 检查节点是否有效且类型匹配
+        if (node.IsValidNode()&& node is T t)
+            return t;
+        throw new InvalidCastException($"Cannot cast {node} to {typeof(T)}");
+    }
+
+
 }
