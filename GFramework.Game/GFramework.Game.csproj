@@ -9,7 +9,6 @@
 
     <ItemGroup>
       <Folder Include="entities\" />
-      <Folder Include="input\" />
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\GFramework.Core\GFramework.Core.csproj" />

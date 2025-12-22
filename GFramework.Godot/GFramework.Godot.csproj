@@ -21,8 +21,4 @@
         <Compile Remove="extensions\ControlExtensions.cs"/>
     </ItemGroup>
 
-    <ItemGroup>
-      <Folder Include="input\" />
-    </ItemGroup>
-
 </Project>
