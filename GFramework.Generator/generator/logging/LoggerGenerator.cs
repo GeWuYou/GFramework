@@ -93,11 +93,21 @@ namespace GFramework.Generator.generator.logging
             var attr = classSymbol.GetAttributes()
                 .First(a => a.AttributeClass!.ToDisplayString() == AttributeMetadataName);
 
-            var category =
-                attr.ConstructorArguments.Length > 0 &&
-                attr.ConstructorArguments[0].Value is string s
-                    ? s
-                    : className;
+            string categoryExpr;
+
+            if (attr.ConstructorArguments.Length > 0 &&
+                attr.ConstructorArguments[0].Value is string s &&
+                !string.IsNullOrWhiteSpace(s))
+            {
+                // 用户显式指定字符串
+                categoryExpr = $"\"{s}\"";
+            }
+            else
+            {
+                // 默认使用 nameof(Class)
+                categoryExpr = $"nameof({className})";
+            }
+
 
             var fieldName = GetNamedArg(attr, "FieldName", "_log");
             var access = GetNamedArg(attr, "AccessModifier", "private");
@@ -119,7 +129,7 @@ namespace GFramework.Generator.generator.logging
             sb.AppendLine("    {");
             sb.AppendLine(
                 $"        {access} {staticKeyword}readonly ILog {fieldName} =" +
-                $" Log.CreateLogger(\"{category}\");");
+                $" Log.CreateLogger(\"{categoryExpr}\");");
             sb.AppendLine("    }");
 
             if (ns is not null)
