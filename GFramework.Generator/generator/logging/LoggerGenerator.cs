@@ -14,7 +14,7 @@ namespace GFramework.Generator.generator.logging
     public sealed class LoggerGenerator : IIncrementalGenerator
     {
         private const string AttributeMetadataName =
-            "GFramework.Generator.Attributes.generator.logging.LogAttribute";
+            "GFramework.Generator.Attributes.LogAttribute";
 
         /// <summary>
         /// 初始化增量生成器
@@ -22,12 +22,7 @@ namespace GFramework.Generator.generator.logging
         /// <param name="context">增量生成器初始化上下文</param>
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
-            // 1. 拿到 LogAttribute Symbol
-            var logAttributeSymbol =
-                context.CompilationProvider.Select((compilation, _) =>
-                    compilation.GetTypeByMetadataName(AttributeMetadataName));
-
-            // 2. 在 SyntaxProvider 阶段就拿到 SemanticModel
+            // 查找所有类声明语法节点，并获取对应的符号信息
             var candidates =
                 context.SyntaxProvider.CreateSyntaxProvider(
                         static (node, _) => node is ClassDeclarationSyntax,
@@ -39,43 +34,40 @@ namespace GFramework.Generator.generator.logging
                         })
                     .Where(x => x.Symbol is not null);
 
-            // 3. 合并 Attribute Symbol 并筛选
+            // 筛选出带有指定属性标记的类
             var targets =
-                candidates.Combine(logAttributeSymbol)
-                    .Where(pair =>
+                candidates.Where(x =>
+                    x.Symbol!.GetAttributes().Any(a =>
                     {
-                        var symbol = pair.Left.Symbol!;
-                        var attrSymbol = pair.Right;
-                        if (attrSymbol is null) return false;
+                        var c = a.AttributeClass;
+                        if (c is null) return false;
+                        return c.ToDisplayString() == AttributeMetadataName
+                               || c.Name == "LogAttribute";
+                    }));
 
-                        return symbol.GetAttributes().Any(a =>
-                            SymbolEqualityComparer.Default.Equals(a.AttributeClass, attrSymbol));
-                    });
-
-            // 4. 输出代码
+            // 注册源代码输出，为符合条件的类生成日志相关的源代码
             context.RegisterSourceOutput(targets, (spc, pair) =>
             {
-                var classDecl = pair.Left.ClassDecl;
-                var classSymbol = pair.Left.Symbol!;
+                var classDecl = pair.ClassDecl;
+                var classSymbol = pair.Symbol!;
 
-                // 必须是 partial
                 if (!classDecl.Modifiers.Any(SyntaxKind.PartialKeyword))
                 {
                     spc.ReportDiagnostic(
                         Diagnostic.Create(
                             Diagnostics.MustBePartial,
                             classDecl.Identifier.GetLocation(),
-                            classSymbol.Name
-                        ));
+                            classSymbol.Name));
                     return;
                 }
 
                 var source = Generate(classSymbol, spc);
-                spc.AddSource(
-                    $"{classSymbol.Name}.Logger.g.cs",
+                spc.AddSource($"{classSymbol.Name}.Logger.g.cs",
                     SourceText.From(source, Encoding.UTF8));
             });
+
         }
+
 
         /// <summary>
         /// 生成日志字段代码
