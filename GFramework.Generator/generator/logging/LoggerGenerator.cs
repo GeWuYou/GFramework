@@ -22,10 +22,26 @@ namespace GFramework.Generator.generator.logging
         /// <param name="context">增量生成器初始化上下文</param>
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
-            // 查找所有类声明语法节点，并获取对应的符号信息
-            var candidates =
+            // 筛选出带有指定属性标记的类
+            var targets =
                 context.SyntaxProvider.CreateSyntaxProvider(
-                        static (node, _) => node is ClassDeclarationSyntax,
+                        static (node, _) =>
+                        {
+                            if (node is not ClassDeclarationSyntax cls)
+                                return false;
+
+                            // 只要写了 [Log] / [Log(...)] 就命中
+                            return cls.AttributeLists
+                                .SelectMany(a => a.Attributes)
+                                .Any(a =>
+                                {
+                                    var name = a.Name.ToString();
+                                    return name == "Log"
+                                           || name == "LogAttribute"
+                                           || name.EndsWith(".Log")
+                                           || name.EndsWith(".LogAttribute");
+                                });
+                        },
                         static (ctx, _) =>
                         {
                             var classDecl = (ClassDeclarationSyntax)ctx.Node;
@@ -34,16 +50,6 @@ namespace GFramework.Generator.generator.logging
                         })
                     .Where(x => x.Symbol is not null);
 
-            // 筛选出带有指定属性标记的类
-            var targets =
-                candidates.Where(x =>
-                    x.Symbol!.GetAttributes().Any(a =>
-                    {
-                        var c = a.AttributeClass;
-                        if (c is null) return false;
-                        return c.ToDisplayString() == AttributeMetadataName
-                               || c.Name == "LogAttribute";
-                    }));
 
             // 注册源代码输出，为符合条件的类生成日志相关的源代码
             context.RegisterSourceOutput(targets, (spc, pair) =>
