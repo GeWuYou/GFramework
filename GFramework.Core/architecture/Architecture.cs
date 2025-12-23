@@ -76,7 +76,7 @@ public abstract class Architecture<T> : IArchitecture
     /// <summary>
     ///     当前架构的阶段
     /// </summary>
-    public ArchitecturePhase CurrentPhase { get; private set; }
+    private ArchitecturePhase CurrentPhase { get; set; }
 
     /// <summary>
     ///     静态只读字段，用于延迟初始化架构实例
