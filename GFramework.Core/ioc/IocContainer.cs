@@ -242,27 +242,22 @@ public class IocContainer
         var logger = Log.CreateLogger("IOC");
         var list = GetAll<T>();
 
-        // 根据实例数量进行判断和处理
-        return list.Count switch
+        switch (list.Count)
         {
-            0 =>
-            {
-                var errorMsg = $"No instance registered for {typeof(T).Name}";
-                logger.Error(errorMsg);
-                throw new InvalidOperationException(errorMsg);
-            },
-            > 1 =>
-            {
-                var errorMsg = $"Multiple instances registered for {typeof(T).Name}";
-                logger.Error(errorMsg);
-                throw new InvalidOperationException(errorMsg);
-            },
-            _ =>
-            {
+            case 0:
+                var notFoundMsg = $"No instance registered for {typeof(T).Name}";
+                logger.Error(notFoundMsg);
+                throw new InvalidOperationException(notFoundMsg);
+
+            case 1:
                 logger.Debug($"Retrieved required instance: {typeof(T).Name}");
                 return list[0];
-            }
-        };
+
+            default:
+                var multipleMsg = $"Multiple instances registered for {typeof(T).Name}";
+                logger.Error(multipleMsg);
+                throw new InvalidOperationException(multipleMsg);
+        }
     }
 
     /// <summary>
