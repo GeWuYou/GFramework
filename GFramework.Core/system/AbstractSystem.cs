@@ -1,4 +1,5 @@
 using GFramework.Core.architecture;
+using GFramework.Core.logging;
 using GFramework.Core.rule;
 
 namespace GFramework.Core.system;
@@ -34,7 +35,12 @@ public abstract class AbstractSystem : ISystem
     /// </summary>
     void ISystem.Init()
     {
+        var logger = Log.CreateLogger("System");
+        logger.Debug($"Initializing system: {GetType().Name}");
+        
         OnInit();
+        
+        logger.Info($"System initialized: {GetType().Name}");
     }
 
     /// <summary>
@@ -42,7 +48,12 @@ public abstract class AbstractSystem : ISystem
     /// </summary>
     void ISystem.Destroy()
     {
+        var logger = Log.CreateLogger("System");
+        logger.Debug($"Destroying system: {GetType().Name}");
+        
         OnDestroy();
+        
+        logger.Info($"System destroyed: {GetType().Name}");
     }
 
     /// <summary>

@@ -1,6 +1,7 @@
 using GFramework.Core.command;
 using GFramework.Core.events;
 using GFramework.Core.ioc;
+using GFramework.Core.logging;
 using GFramework.Core.model;
 using GFramework.Core.query;
 using GFramework.Core.system;
@@ -93,28 +94,49 @@ public abstract class Architecture<T> : IArchitecture
     private static readonly Lazy<T> MArchitectureLazy = new(() =>
     {
         var arch = new T();
+        var logger = Log.CreateLogger("Architecture");
+        
         // == Architecture Init  ==
         arch.EnterPhase(ArchitecturePhase.Created);
+        logger.Info($"Architecture {typeof(T).Name} created");
+        
         arch.EnterPhase(ArchitecturePhase.BeforeInit);
+        logger.Info("Starting architecture initialization");
+        
         // 调用用户实现的初始化
         arch.Init();
         arch.EnterPhase(ArchitecturePhase.AfterInit);
+        logger.Info("Architecture initialization completed");
 
 
         // == Model Init ==
         arch.EnterPhase(ArchitecturePhase.BeforeModelInit);
+        logger.Info($"Initializing {arch._mModels.Count} models");
+        
         // 初始化所有已注册但尚未初始化的模型
-        foreach (var model in arch._mModels) model.Init();
+        foreach (var model in arch._mModels)
+        {
+            logger.Debug($"Initializing model: {model.GetType().Name}");
+            model.Init();
+        }
         arch._mModels.Clear();
         arch.EnterPhase(ArchitecturePhase.AfterModelInit);
+        logger.Info("All models initialized");
 
 
         // == System Init ==
         arch.EnterPhase(ArchitecturePhase.BeforeSystemInit);
+        logger.Info($"Initializing {arch._mSystems.Count} systems");
+        
         // 初始化所有已注册但尚未初始化的系统
-        foreach (var system in arch._mSystems) system.Init();
+        foreach (var system in arch._mSystems)
+        {
+            logger.Debug($"Initializing system: {system.GetType().Name}");
+            system.Init();
+        }
         arch._mSystems.Clear();
         arch.EnterPhase(ArchitecturePhase.AfterSystemInit);
+        logger.Info("All systems initialized");
 
 
         // == Finalize ==
@@ -124,6 +146,7 @@ public abstract class Architecture<T> : IArchitecture
         arch.EnterPhase(ArchitecturePhase.Ready);
         // 发送架构生命周期就绪事件
         arch.SendEvent(new ArchitectureEvents.ArchitectureLifecycleReadyEvent());
+        logger.Info($"Architecture {typeof(T).Name} is ready - all components initialized");
         return arch;
     }, LazyThreadSafetyMode.ExecutionAndPublication);
 
@@ -138,21 +161,32 @@ public abstract class Architecture<T> : IArchitecture
     /// <exception cref="InvalidOperationException">当阶段转换不被允许时抛出异常</exception>
     private void EnterPhase(ArchitecturePhase next)
     {
+        var logger = Log.CreateLogger("Architecture");
+        
         if (Options.StrictPhaseValidation &&
             (!ArchitectureConstants.PhaseTransitions.TryGetValue(CurrentPhase, out var allowed) ||
              !allowed.Contains(next)))
         {
             // 验证阶段转换是否合法
-            throw new InvalidOperationException(
-                $"Invalid phase transition: {CurrentPhase} -> {next}");
+            var errorMsg = $"Invalid phase transition: {CurrentPhase} -> {next}";
+            logger.Fatal(errorMsg);
+            throw new InvalidOperationException(errorMsg);
         }
 
+        var previousPhase = CurrentPhase;
         CurrentPhase = next;
+        
+        if (previousPhase != next)
+        {
+            logger.Info($"Architecture phase changed: {previousPhase} -> {next}");
+        }
+        
         NotifyPhase(next);
 
         // 通知所有架构阶段感知对象阶段变更
         foreach (var obj in _mContainer.GetAll<IArchitecturePhaseAware>())
         {
+            logger.Debug($"Notifying phase-aware object {obj.GetType().Name} of phase change to {next}");
             obj.OnArchitecturePhase(next);
         }
     }
@@ -194,23 +228,34 @@ public abstract class Architecture<T> : IArchitecture
     /// </remarks>
     public virtual void Destroy()
     {
+        var logger = Log.CreateLogger("Architecture");
+        
         // 检查当前阶段，如果已经处于销毁或已销毁状态则直接返回
         if (CurrentPhase >= ArchitecturePhase.Destroying)
+        {
+            logger.Warn("Architecture destroy called but already in destroying/destroyed state");
             return;
+        }
 
         // 进入销毁阶段并发送销毁开始事件
+        logger.Info("Starting architecture destruction");
         EnterPhase(ArchitecturePhase.Destroying);
         SendEvent(new ArchitectureEvents.ArchitectureDestroyingEvent());
 
         // 销毁所有系统组件并清空系统列表
+        logger.Info($"Destroying {_allSystems.Count} systems");
         foreach (var system in _allSystems)
+        {
+            logger.Debug($"Destroying system: {system.GetType().Name}");
             system.Destroy();
+        }
 
         _allSystems.Clear();
 
         // 进入已销毁阶段并发送销毁完成事件
         EnterPhase(ArchitecturePhase.Destroyed);
         SendEvent(new ArchitectureEvents.ArchitectureDestroyedEvent());
+        logger.Info("Architecture destruction completed");
     }
 
     #endregion
@@ -223,9 +268,12 @@ public abstract class Architecture<T> : IArchitecture
     /// <param name="module">要安装的模块</param>
     public void InstallModule(IArchitectureModule module)
     {
+        var logger = Log.CreateLogger("Architecture");
+        logger.Debug($"Installing module: {module.GetType().Name}");
         RegisterLifecycleHook(module);
         _mContainer.RegisterPlurality(module);
         module.Install(this);
+        logger.Info($"Module installed: {module.GetType().Name}");
     }
 
     #endregion
@@ -240,16 +288,28 @@ public abstract class Architecture<T> : IArchitecture
     /// <param name="system">要注册的系统实例</param>
     public void RegisterSystem<TSystem>(TSystem system) where TSystem : ISystem
     {
+        var logger = Log.CreateLogger("Architecture");
+        
         if (CurrentPhase >= ArchitecturePhase.Ready && !Options.AllowLateRegistration)
-            throw new InvalidOperationException(
-                "Cannot register system after Architecture is Ready");
+        {
+            var errorMsg = "Cannot register system after Architecture is Ready";
+            logger.Error(errorMsg);
+            throw new InvalidOperationException(errorMsg);
+        }
+        
+        logger.Debug($"Registering system: {typeof(TSystem).Name}");
         system.SetArchitecture(this);
         _mContainer.RegisterPlurality(system);
         _allSystems.Add(system);
         if (!_mInited)
             _mSystems.Add(system);
         else
+        {
+            logger.Debug($"Immediately initializing system: {typeof(TSystem).Name}");
             system.Init();
+        }
+        
+        logger.Info($"System registered: {typeof(TSystem).Name}");
     }
 
     /// <summary>
@@ -260,16 +320,28 @@ public abstract class Architecture<T> : IArchitecture
     /// <param name="model">要注册的模型实例</param>
     public void RegisterModel<TModel>(TModel model) where TModel : IModel
     {
+        var logger = Log.CreateLogger("Architecture");
+        
         if (CurrentPhase >= ArchitecturePhase.Ready && !Options.AllowLateRegistration)
-            throw new InvalidOperationException(
-                "Cannot register system after Architecture is Ready");
+        {
+            var errorMsg = "Cannot register model after Architecture is Ready";
+            logger.Error(errorMsg);
+            throw new InvalidOperationException(errorMsg);
+        }
+        
+        logger.Debug($"Registering model: {typeof(TModel).Name}");
         model.SetArchitecture(this);
         _mContainer.RegisterPlurality(model);
 
         if (!_mInited)
             _mModels.Add(model);
         else
+        {
+            logger.Debug($"Immediately initializing model: {typeof(TModel).Name}");
             model.Init();
+        }
+        
+        logger.Info($"Model registered: {typeof(TModel).Name}");
     }
 
     /// <summary>
@@ -280,7 +352,10 @@ public abstract class Architecture<T> : IArchitecture
     /// <param name="utility">要注册的工具实例</param>
     public void RegisterUtility<TUtility>(TUtility utility) where TUtility : IUtility
     {
+        var logger = Log.CreateLogger("Architecture");
+        logger.Debug($"Registering utility: {typeof(TUtility).Name}");
         _mContainer.RegisterPlurality(utility);
+        logger.Info($"Utility registered: {typeof(TUtility).Name}");
     }
 
     #endregion

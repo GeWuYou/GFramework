@@ -46,4 +46,34 @@ public sealed class GodotLogger : ILog
     /// <param name="level">日志级别</param>
     /// <returns>始终返回 true</returns>
     public bool IsEnabled(LogLevel level) => true;
+
+    public void Info(string msg, object? ctx = null)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void Error(string msg, Exception? ex = null, object? ctx = null)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void Debug(string msg, object? ctx = null)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void Trace(string msg, object? ctx = null)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void Warn(string msg, object? ctx = null)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void Fatal(string msg, object? ctx = null)
+    {
+        throw new NotImplementedException();
+    }
 }

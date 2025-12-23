@@ -20,5 +20,12 @@ internal sealed class NullLogger : ILog
     /// <param name="level">要检查的日志级别</param>
     /// <returns>始终返回 false，表示所有日志级别都被禁用</returns>
     public bool IsEnabled(LogLevel level) => false;
-}
 
+    // 快捷方法实现（空实现）
+    public void Info(string msg, object? ctx = null) { }
+    public void Error(string msg, Exception? ex = null, object? ctx = null) { }
+    public void Debug(string msg, object? ctx = null) { }
+    public void Trace(string msg, object? ctx = null) { }
+    public void Warn(string msg, object? ctx = null) { }
+    public void Fatal(string msg, object? ctx = null) { }
+}

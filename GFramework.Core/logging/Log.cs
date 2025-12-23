@@ -5,19 +5,90 @@
 /// </summary>
 public static class Log
 {
+    private static ILoggerFactory? _factory;
+    private static LogConfig? _config;
+
     /// <summary>
-    /// 获取或设置当前的日志记录器实例
-    /// 默认使用 NullLogger，不输出任何日志
+    /// 获取当前的日志记录器实例
     /// </summary>
-    public static ILog Instance { get; private set; } = new NullLogger();
+    public static ILog Instance { get; private set; } = new ConsoleLogger(null, LogLevel.Info);
+
+    /// <summary>
+    /// 获取当前的日志配置
+    /// </summary>
+    public static LogConfig Config => _config ??= new LogConfig();
 
     /// <summary>
     /// 设置日志记录器实例
     /// </summary>
-    /// <param name="logger">要设置的日志记录器，如果为 null 则使用 NullLogger</param>
+    /// <param name="logger">要设置的日志记录器，如果为 null 则使用默认的ConsoleLogger</param>
     public static void SetLogger(ILog? logger)
     {
-        Instance = logger ?? new NullLogger();
+        Instance = logger ?? new ConsoleLogger(null, LogLevel.Info);
+    }
+
+    /// <summary>
+    /// 使用日志工厂创建日志记录器
+    /// </summary>
+    /// <param name="factory">日志工厂实例</param>
+    public static void SetLoggerFactory(ILoggerFactory factory)
+    {
+        _factory = factory ?? throw new ArgumentNullException(nameof(factory));
+        Instance = _factory.CreateGlobalLogger();
+    }
+
+    /// <summary>
+    /// 使用日志配置初始化日志系统
+    /// </summary>
+    /// <param name="config">日志配置</param>
+    public static void Initialize(LogConfig config)
+    {
+        _config = config ?? throw new ArgumentNullException(nameof(config));
+        _factory = new LoggerFactory(config);
+        Instance = _factory.CreateGlobalLogger();
+    }
+
+    /// <summary>
+    /// 快速配置日志系统
+    /// </summary>
+    /// <param name="minLevel">最小日志级别（默认为Info）</param>
+    /// <param name="enableConsole">是否启用控制台输出（默认为true）</param>
+    /// <param name="useColors">是否使用彩色输出（默认为true）</param>
+    /// <param name="enableFile">是否启用文件输出（默认为false）</param>
+    /// <param name="logFilePath">日志文件路径（可选）</param>
+    public static void Configure(
+        LogLevel minLevel = LogLevel.Info,
+        bool enableConsole = true,
+        bool useColors = true,
+        bool enableFile = false,
+        string? logFilePath = null)
+    {
+        var config = new LogConfig
+        {
+            DefaultMinLevel = minLevel,
+            EnableConsole = enableConsole,
+            UseColors = useColors,
+            EnableFile = enableFile,
+            LogFilePath = logFilePath
+        };
+
+        Initialize(config);
+    }
+
+    /// <summary>
+    /// 创建指定类别的日志记录器
+    /// </summary>
+    /// <param name="category">日志类别</param>
+    /// <returns>日志记录器实例</returns>
+    public static ILog CreateLogger(string category)
+    {
+        if (_factory != null)
+        {
+            return _factory.Create(category);
+        }
+
+        // 如果没有设置工厂，使用默认配置
+        return new ConsoleLogger(category, Config.GetCategoryLevel(category));
     }
 
     /// <summary>
