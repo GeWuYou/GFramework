@@ -11,7 +11,7 @@ public static class Log
     /// <summary>
     /// 获取当前的日志记录器实例
     /// </summary>
-    public static ILog Instance { get; private set; } = new ConsoleLogger(null, LogLevel.Info);
+    public static ILog Instance { get; private set; } = new ConsoleLogger();
 
     /// <summary>
     /// 获取当前的日志配置
@@ -24,7 +24,7 @@ public static class Log
     /// <param name="logger">要设置的日志记录器，如果为 null 则使用默认的ConsoleLogger</param>
     public static void SetLogger(ILog? logger)
     {
-        Instance = logger ?? new ConsoleLogger(null, LogLevel.Info);
+        Instance = logger ?? new ConsoleLogger();
     }
 
     /// <summary>

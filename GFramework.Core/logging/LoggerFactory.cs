@@ -42,7 +42,11 @@ public class LoggerFactory : ILoggerFactory
     {
         return Create("Global");
     }
-
+    /// <summary>
+    /// 创建日志记录器
+    /// </summary>
+    /// <param name="category">日志类别</param>
+    /// <returns>日志记录器实例</returns>
     private ILog CreateLogger(string category)
     {
         var level = _config.GetCategoryLevel(category);
@@ -57,6 +61,11 @@ public class LoggerFactory : ILoggerFactory
         return consoleLogger;
     }
 
+    /// <summary>
+    /// 创建文件日志记录器
+    /// </summary>
+    /// <param name="category">日志类别</param>
+    /// <returns>文件日志记录器实例</returns>
     private ILog CreateFileLogger(string category)
     {
         try
@@ -76,6 +85,7 @@ public class LoggerFactory : ILoggerFactory
             return new NullLogger();
         }
     }
+
 
     /// <summary>
     /// 组合日志记录器，将日志同时输出到多个目标

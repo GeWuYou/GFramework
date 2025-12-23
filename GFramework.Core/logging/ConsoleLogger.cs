@@ -55,7 +55,7 @@ public sealed class ConsoleLogger : ILog
         }
         else
         {
-            _writer.WriteLine(logMessage);
+            _writer!.WriteLine(logMessage);
         }
     }
 
@@ -82,7 +82,7 @@ public sealed class ConsoleLogger : ILog
         try
         {
             Console.ForegroundColor = GetColor(level);
-            _writer.WriteLine(message);
+            _writer!.WriteLine(message);
         }
         finally
         {

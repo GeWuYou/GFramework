@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-
 namespace GFramework.Core.logging;
 
 /// <summary>
@@ -27,7 +23,7 @@ public sealed class LogConfig
     /// <summary>
     /// 获取或设置是否启用文件输出（默认为false）
     /// </summary>
-    public bool EnableFile { get; set; } = false;
+    public bool EnableFile { get; set; }
 
     /// <summary>
     /// 获取或设置日志文件路径（当EnableFile为true时使用）
