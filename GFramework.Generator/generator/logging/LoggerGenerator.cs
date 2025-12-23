@@ -14,7 +14,7 @@ namespace GFramework.Generator.generator.logging
     public sealed class LoggerGenerator : IIncrementalGenerator
     {
         private const string AttributeMetadataName =
-            "GFramework.Generator.Attributes.LogAttribute";
+            "GFramework.Generator.Attributes.generator.logging.LogAttribute";
 
         /// <summary>
         /// 初始化增量生成器
@@ -85,7 +85,13 @@ namespace GFramework.Generator.generator.logging
 
             var attr = classSymbol.GetAttributes()
                 .FirstOrDefault(a =>
-                    a.AttributeClass?.ToDisplayString() == AttributeMetadataName);
+                {
+                    var c = a.AttributeClass;
+                    if (c is null) return false;
+
+                    return c.ToDisplayString() == AttributeMetadataName
+                           || c.Name == "LogAttribute";
+                });
 
             if (attr is null)
             {

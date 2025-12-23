@@ -10,7 +10,7 @@ namespace GFramework.Generator.generator.enums;
 [Generator]
 public class EnumExtensionsGenerator : IIncrementalGenerator
 {
-    private const string AttributeFullName = "GFramework.Generator.Attributes.GenerateEnumExtensionsAttribute";
+    private const string AttributeFullName = "GFramework.Generator.Attributes.generator.enums.GenerateEnumExtensionsAttribute";
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
