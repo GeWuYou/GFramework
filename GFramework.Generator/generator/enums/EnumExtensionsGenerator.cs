@@ -34,7 +34,6 @@ public class EnumExtensionsGenerator : IIncrementalGenerator
             .Where(symbol => symbol != null)
             .Select((symbol, _) =>
             {
-                // 判断是否包含我们的 Attribute
                 var hasAttr = symbol.GetAttributes().Any(ad =>
                     ad.AttributeClass?.ToDisplayString() == AttributeFullName ||
                     ad.AttributeClass?.ToDisplayString().EndsWith(".GenerateEnumExtensionsAttribute") == true);
