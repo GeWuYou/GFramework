@@ -49,31 +49,31 @@ public sealed class GodotLogger : ILog
 
     public void Info(string msg, object? ctx = null)
     {
-        throw new NotImplementedException();
+        Log(LogLevel.Info, msg, null, ctx);
     }
 
     public void Error(string msg, Exception? ex = null, object? ctx = null)
     {
-        throw new NotImplementedException();
+        Log(LogLevel.Error, msg, ex, ctx);
     }
 
     public void Debug(string msg, object? ctx = null)
     {
-        throw new NotImplementedException();
+        Log(LogLevel.Debug, msg, null, ctx);
     }
 
     public void Trace(string msg, object? ctx = null)
     {
-        throw new NotImplementedException();
+        Log(LogLevel.Trace, msg, null, ctx);
     }
 
     public void Warn(string msg, object? ctx = null)
     {
-        throw new NotImplementedException();
+        Log(LogLevel.Warning, msg, null, ctx);
     }
 
-    public void Fatal(string msg, object? ctx = null)
+    public void Fatal(string msg,Exception? ex = null, object? ctx = null)
     {
-        throw new NotImplementedException();
+        Log(LogLevel.Fatal, msg, ex, ctx);
     }
 }

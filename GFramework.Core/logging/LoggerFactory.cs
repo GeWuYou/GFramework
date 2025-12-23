@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-
 namespace GFramework.Core.logging;
 
 /// <summary>
@@ -65,13 +62,13 @@ public class LoggerFactory : ILoggerFactory
         try
         {
             var level = _config.GetCategoryLevel(category);
-            var directory = System.IO.Path.GetDirectoryName(_config.LogFilePath);
-            if (!string.IsNullOrEmpty(directory) && !System.IO.Directory.Exists(directory))
+            var directory = Path.GetDirectoryName(_config.LogFilePath);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
             {
-                System.IO.Directory.CreateDirectory(directory);
+                Directory.CreateDirectory(directory);
             }
 
-            var writer = new System.IO.StreamWriter(_config.LogFilePath!, append: true);
+            var writer = new StreamWriter(_config.LogFilePath!, append: true);
             return new ConsoleLogger(category, level, writer, useColors: false);
         }
         catch
@@ -125,7 +122,7 @@ public class LoggerFactory : ILoggerFactory
         public void Warn(string msg, object? ctx = null)
             => Log(LogLevel.Warning, msg, null, ctx);
 
-        public void Fatal(string msg, object? ctx = null)
-            => Log(LogLevel.Fatal, msg, null, ctx);
+        public void Fatal(string msg,Exception? ex = null, object? ctx = null)
+            => Log(LogLevel.Fatal, msg, ex, ctx);
     }
 }

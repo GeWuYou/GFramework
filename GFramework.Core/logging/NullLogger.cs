@@ -21,11 +21,47 @@ internal sealed class NullLogger : ILog
     /// <returns>始终返回 false，表示所有日志级别都被禁用</returns>
     public bool IsEnabled(LogLevel level) => false;
 
-    // 快捷方法实现（空实现）
+    /// <summary>
+    /// 记录信息级别日志
+    /// </summary>
+    /// <param name="msg">日志消息</param>
+    /// <param name="ctx">日志上下文信息（可选）</param>
     public void Info(string msg, object? ctx = null) { }
+
+    /// <summary>
+    /// 记录错误级别日志
+    /// </summary>
+    /// <param name="msg">日志消息</param>
+    /// <param name="ex">相关异常对象（可选）</param>
+    /// <param name="ctx">日志上下文信息（可选）</param>
     public void Error(string msg, Exception? ex = null, object? ctx = null) { }
+
+    /// <summary>
+    /// 记录调试级别日志
+    /// </summary>
+    /// <param name="msg">日志消息</param>
+    /// <param name="ctx">日志上下文信息（可选）</param>
     public void Debug(string msg, object? ctx = null) { }
+
+    /// <summary>
+    /// 记录跟踪级别日志
+    /// </summary>
+    /// <param name="msg">日志消息</param>
+    /// <param name="ctx">日志上下文信息（可选）</param>
     public void Trace(string msg, object? ctx = null) { }
+
+    /// <summary>
+    /// 记录警告级别日志
+    /// </summary>
+    /// <param name="msg">日志消息</param>
+    /// <param name="ctx">日志上下文信息（可选）</param>
     public void Warn(string msg, object? ctx = null) { }
-    public void Fatal(string msg, object? ctx = null) { }
+
+    /// <summary>
+    /// 记录致命错误级别日志
+    /// </summary>
+    /// <param name="msg">日志消息</param>
+    /// <param name="ex">相关异常对象（可选）</param>
+    /// <param name="ctx">日志上下文信息（可选）</param>
+    public void Fatal(string msg,Exception? ex = null, object? ctx = null) { }
 }

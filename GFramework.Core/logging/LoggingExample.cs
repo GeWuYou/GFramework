@@ -3,6 +3,7 @@ using GFramework.Core.logging;
 using GFramework.Core.system;
 using GFramework.Core.model;
 using GFramework.Core.events;
+using GFramework.Core.utility;
 
 namespace GFramework.Core.Examples;
 
@@ -99,8 +100,6 @@ public class LoggingExample
         
         // 创建示例架构
         var architecture = ExampleArchitecture.Instance;
-        
-        Console.WriteLine($"架构当前阶段: {architecture.CurrentPhase}");
         
         // 注册组件（会自动记录日志）
         architecture.RegisterSystem(new ExampleSystem());

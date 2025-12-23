@@ -66,6 +66,7 @@ public interface ILog
     /// 记录致命错误级别日志
     /// </summary>
     /// <param name="msg">日志消息</param>
+    /// <param name="ex">相关异常对象（可选）</param>
     /// <param name="ctx">日志上下文信息（可选）</param>
-    void Fatal(string msg, object? ctx = null);
+    void Fatal(string msg, Exception? ex = null,object? ctx = null);
 }
