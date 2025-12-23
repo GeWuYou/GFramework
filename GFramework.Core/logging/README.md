@@ -48,12 +48,26 @@ Log.Initialize(config);
 
 ### 2. 使用日志记录
 
+#### 基本使用示例
+
 ```csharp
 // 使用全局日志实例
-Log.Info("应用程序启动完成");
-Log.Warn("这是一个警告信息");
-Log.Error("这是一个错误信息", exception);
+Log.Info("应用程序启动");
+Log.Warn("这是一个警告");
+Log.Error("这是一个错误信息");
 
+// 创建特定类别的日志记录器
+var userLogger = Log.CreateLogger("UserService");
+userLogger.Info("用户服务初始化完成", new { ServiceVersion = "1.0" });
+
+var dbLogger = Log.CreateLogger("Database");
+dbLogger.Debug("连接数据库", new { Server = "localhost", Database = "MyApp" });
+dbLogger.Info("数据库连接成功");
+```
+
+#### 详细使用示例
+
+```csharp
 // 创建特定类别的日志记录器
 var logger = Log.CreateLogger("MyModule");
 
@@ -62,6 +76,54 @@ logger.Info("用户登录成功", new { UserId = 123, UserName = "张三" });
 logger.Warn("连接超时，正在重试", new { RetryCount = 2 });
 logger.Error("数据库连接失败", ex, new { DatabaseUrl = "localhost:1433" });
 logger.Fatal("系统发生严重错误", new { SystemState = "Critical" });
+```
+
+#### 框架组件日志示例
+
+```csharp
+// 在架构中使用
+var architecture = ExampleArchitecture.Instance;
+architecture.RegisterSystem(new ExampleSystem());
+architecture.RegisterModel(new ExampleModel());
+architecture.RegisterUtility(new ExampleUtility());
+
+// 在系统中使用
+public class ExampleSystem : AbstractSystem
+{
+    protected override void OnInit()
+    {
+        Log.CreateLogger("System").Info("ExampleSystem 初始化完成");
+    }
+    
+    protected override void OnDestroy()
+    {
+        Log.CreateLogger("System").Info("ExampleSystem 销毁");
+    }
+}
+
+// 在模型中使用
+public class ExampleModel : AbstractModel
+{
+    protected override void OnInit()
+    {
+        Log.CreateLogger("Model").Info("ExampleModel 初始化完成");
+    }
+}
+
+// 在工具中使用
+public class ExampleUtility : IUtility
+{
+    public void DoSomething()
+    {
+        Log.CreateLogger("Utility").Debug("ExampleUtility 执行操作");
+    }
+}
+
+// 在事件中使用
+architecture.RegisterEvent<ExampleEvent>(evt =>
+{
+    Log.CreateLogger("EventListener").Info($"收到事件: {evt.Message}");
+});
 ```
 
 ### 3. 高级配置
@@ -86,6 +148,83 @@ config.SetCategoryLevel("Database", LogLevel.Debug);        // 数据库日志
 config.SetCategoryLevel("Network", LogLevel.Trace);         // 网络日志（最详细）
 
 Log.Initialize(config);
+
+// 演示不同级别的日志记录
+var networkLogger = Log.CreateLogger("Network");
+networkLogger.Trace("网络请求开始", new { Url = "https://api.example.com/users", Method = "GET" });
+networkLogger.Debug("添加请求头", new { Headers = new[] { "Authorization: Bearer xxx", "Content-Type: application/json" } });
+networkLogger.Info("网络请求完成", new { StatusCode = 200, ResponseTime = "120ms" });
+
+var userServiceLogger = Log.CreateLogger("UserService");
+userServiceLogger.Debug("查询用户信息", new { UserId = 123 });
+userServiceLogger.Info("用户登录成功", new { UserId = 123, UserName = "张三", LoginTime = DateTime.Now });
+```
+
+### 4. 异常日志记录
+
+```csharp
+var serviceLogger = Log.CreateLogger("UserService");
+
+try
+{
+    // 模拟业务逻辑中的异常
+    throw new InvalidOperationException("用户数据验证失败");
+}
+catch (Exception ex)
+{
+    serviceLogger.Error("用户注册失败", ex, new 
+    { 
+        Operation = "UserRegistration", 
+        UserEmail = "user@example.com",
+        ValidationErrors = new[] { "邮箱格式无效", "密码强度不足" }
+    });
+}
+
+// 演示Fatal级别的使用
+try
+{
+    throw new SystemException("数据库连接完全中断");
+}
+catch (Exception ex)
+{
+    serviceLogger.Fatal("系统发生致命错误", ex, new 
+    { 
+        ErrorCode = "DB_CONNECTION_FAILED",
+        RetryAttempts = 3,
+        LastRetryTime = DateTime.Now.AddMinutes(-5)
+    });
+}
+```
+
+### 5. 生产环境配置
+
+```csharp
+// 生产环境推荐配置
+var productionConfig = new LogConfig
+{
+    DefaultMinLevel = LogLevel.Info,        // 只记录Info及以上级别
+    EnableConsole = false,                  // 生产环境通常不输出到控制台
+    UseColors = false,
+    EnableFile = true,                      // 启用文件日志
+    LogFilePath = "logs/production-{yyyy-MM-dd}.log"
+};
+
+// 为关键模块设置更详细的日志级别
+productionConfig.SetCategoryLevel("Architecture", LogLevel.Info);
+productionConfig.SetCategoryLevel("Security", LogLevel.Debug);    // 安全相关日志更详细
+productionConfig.SetCategoryLevel("Payment", LogLevel.Debug);     // 支付相关日志更详细
+productionConfig.SetCategoryLevel("IOC", LogLevel.Warning);       // 减少IOC调试日志
+
+Log.Initialize(productionConfig);
+
+var securityLogger = Log.CreateLogger("Security");
+securityLogger.Info("用户登录尝试", new { UserId = 456, IpAddress = "192.168.1.100" });
+securityLogger.Warn("密码错误", new { UserId = 456, FailedAttempts = 2 });
+securityLogger.Info("登录成功", new { UserId = 456, SessionId = "sess_abc123" });
+
+var paymentLogger = Log.CreateLogger("Payment");
+paymentLogger.Debug("开始处理支付", new { OrderId = "ORD_789", Amount = 99.99m, Currency = "CNY" });
+paymentLogger.Info("支付成功", new { OrderId = "ORD_789", TransactionId = "txn_456" });
 ```
 
 ## 日志级别说明
@@ -172,6 +311,21 @@ GFramework.Core 在以下关键位置自动添加了日志记录：
    
    dbLogger.Info("查询用户数据");
    netLogger.Debug("发送HTTP请求");
+   ```
+
+5. **在框架组件中合理使用日志**:
+   ```csharp
+   // 在系统初始化时记录
+   protected override void OnInit()
+   {
+       Log.CreateLogger("System").Info("系统初始化完成");
+   }
+   
+   // 在事件处理中记录
+   architecture.RegisterEvent<UserLoginEvent>(evt =>
+   {
+       Log.CreateLogger("Event").Info("用户登录事件", new { UserId = evt.UserId });
+   });
    ```
 
 ## 配置建议
