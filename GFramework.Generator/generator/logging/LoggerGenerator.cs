@@ -30,14 +30,14 @@ namespace GFramework.Generator.generator.logging
             // 2. 在 SyntaxProvider 阶段就拿到 SemanticModel
             var candidates =
                 context.SyntaxProvider.CreateSyntaxProvider(
-                    static (node, _) => node is ClassDeclarationSyntax,
-                    static (ctx, _) =>
-                    {
-                        var classDecl = (ClassDeclarationSyntax)ctx.Node;
-                        var symbol = ctx.SemanticModel.GetDeclaredSymbol(classDecl);
-                        return (ClassDecl: classDecl, Symbol: symbol);
-                    })
-                .Where(x => x.Symbol is not null);
+                        static (node, _) => node is ClassDeclarationSyntax,
+                        static (ctx, _) =>
+                        {
+                            var classDecl = (ClassDeclarationSyntax)ctx.Node;
+                            var symbol = ctx.SemanticModel.GetDeclaredSymbol(classDecl);
+                            return (ClassDecl: classDecl, Symbol: symbol);
+                        })
+                    .Where(x => x.Symbol is not null);
 
             // 3. 合并 Attribute Symbol 并筛选
             var targets =
@@ -70,7 +70,7 @@ namespace GFramework.Generator.generator.logging
                     return;
                 }
 
-                var source = Generate(classSymbol);
+                var source = Generate(classSymbol, spc);
                 spc.AddSource(
                     $"{classSymbol.Name}.Logger.g.cs",
                     SourceText.From(source, Encoding.UTF8));
@@ -81,8 +81,9 @@ namespace GFramework.Generator.generator.logging
         /// 生成日志字段代码
         /// </summary>
         /// <param name="classSymbol">类符号</param>
+        /// <param name="spc">源代码生成上下文</param>
         /// <returns>生成的代码字符串</returns>
-        private static string Generate(INamedTypeSymbol classSymbol)
+        private static string Generate(INamedTypeSymbol classSymbol, SourceProductionContext spc)
         {
             var ns = classSymbol.ContainingNamespace.IsGlobalNamespace
                 ? null
@@ -91,23 +92,46 @@ namespace GFramework.Generator.generator.logging
             var className = classSymbol.Name;
 
             var attr = classSymbol.GetAttributes()
-                .First(a => a.AttributeClass!.ToDisplayString() == AttributeMetadataName);
+                .FirstOrDefault(a =>
+                    a.AttributeClass?.ToDisplayString() == AttributeMetadataName);
 
-            string categoryExpr;
-
-            if (attr.ConstructorArguments.Length > 0 &&
-                attr.ConstructorArguments[0].Value is string s &&
-                !string.IsNullOrWhiteSpace(s))
+            if (attr is null)
             {
-                // 用户显式指定字符串
-                categoryExpr = $"\"{s}\"";
+                // 理论上不会发生，但防御式处理
+                spc.ReportDiagnostic(
+                    Diagnostic.Create(
+                        Diagnostics.LogAttributeInvalid,
+                        classSymbol.Locations.FirstOrDefault(),
+                        className,
+                        "未找到 LogAttribute"
+                    ));
+                return string.Empty;
+            }
+
+            // === 解析 category ===
+            string category;
+
+            if (attr.ConstructorArguments.Length == 0)
+            {
+                // 默认：类名
+                category = className;
+            }
+            else if (attr.ConstructorArguments[0].Value is string s &&
+                     !string.IsNullOrWhiteSpace(s))
+            {
+                category = s;
             }
             else
             {
-                // 默认使用 nameof(Class)
-                categoryExpr = $"nameof({className})";
+                spc.ReportDiagnostic(
+                    Diagnostic.Create(
+                        Diagnostics.LogAttributeInvalid,
+                        classSymbol.Locations.FirstOrDefault(),
+                        className,
+                        "LogAttribute 的构造参数不是有效的 string"
+                    ));
+                return string.Empty;
             }
-
 
             var fieldName = GetNamedArg(attr, "FieldName", "_log");
             var access = GetNamedArg(attr, "AccessModifier", "private");
@@ -128,8 +152,8 @@ namespace GFramework.Generator.generator.logging
             sb.AppendLine($"    public partial class {className}");
             sb.AppendLine("    {");
             sb.AppendLine(
-                $"        {access} {staticKeyword}readonly ILog {fieldName} =" +
-                $" Log.CreateLogger(\"{categoryExpr}\");");
+                $"        {access} {staticKeyword}readonly ILog {fieldName} = " +
+                $"Log.CreateLogger(\"{category}\");");
             sb.AppendLine("    }");
 
             if (ns is not null)
@@ -137,6 +161,7 @@ namespace GFramework.Generator.generator.logging
 
             return sb.ToString();
         }
+
 
         /// <summary>
         /// 获取属性参数的值
@@ -153,6 +178,7 @@ namespace GFramework.Generator.generator.logging
                 if (kv.Key == name && kv.Value.Value is T v)
                     return v;
             }
+
             return defaultValue;
         }
     }

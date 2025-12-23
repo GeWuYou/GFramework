@@ -6,3 +6,4 @@
 Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
 GFLOG001 | GFramework.Logging | Error | Diagnostics
+GFW_LOG001 | GFramework.Logging | Warning | Diagnostics
