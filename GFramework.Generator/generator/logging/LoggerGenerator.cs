@@ -57,8 +57,7 @@ namespace GFramework.Generator.generator.logging
                     {
                         // 如果 Diagnostics 类有问题，这里可能会崩，先注释掉或确保该类存在
                         spc.ReportDiagnostic(Diagnostic.Create(
-                            new DiagnosticDescriptor("GEN001", "Class must be partial", "Class '{0}' must be partial",
-                                "Usage", DiagnosticSeverity.Error, true),
+                            Diagnostics.MustBePartial,
                             classDecl.Identifier.GetLocation(),
                             classSymbol.Name));
 
@@ -102,15 +101,33 @@ namespace GFramework.Generator.generator.logging
             var className = classSymbol.Name;
 
             // === 解析 Category ===
-            string category = className; // 默认值
+            string category = className; // 默认使用类名
 
-            // 检查构造函数参数 (第一个参数)
+            // 检查是否有构造函数参数
             if (attr.ConstructorArguments.Length > 0)
             {
                 var argValue = attr.ConstructorArguments[0].Value;
-                if (argValue is string s && !string.IsNullOrWhiteSpace(s))
+
+                // 情况 1: 参数存在，但值为 null (例如 [Log] 且构造函数有默认值 null)
+                if (argValue is null)
+                {
+                    category = className;
+                }
+                // 情况 2: 参数存在，且是有效的字符串 (例如 [Log("MyCategory")])
+                else if (argValue is string s && !string.IsNullOrWhiteSpace(s))
                 {
                     category = s;
+                }
+                // 情况 3: 参数存在，但类型不对 (防御性编程)
+                else
+                {
+                    // 这里可以选择报错，或者回退到默认值。
+                    // 为了让用户知道写错了，保留报错逻辑是合理的。
+                    // 注意：这里需要你有 ReportDiagnostic 的逻辑，如果没有，为了不中断生成，建议回退到默认值。
+                    
+                    // 如果你在 Generate 方法里无法轻松调用 ReportDiagnostic，
+                    // 建议直接忽略错误使用默认值，或者生成一段 #error 代码。
+                    category = $"{className}_InvalidArg"; 
                 }
             }
 
