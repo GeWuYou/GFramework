@@ -1,7 +1,4 @@
-using GFramework.Core.events;
-using GFramework.Core.model;
 using GFramework.Core.rule;
-using GFramework.Core.utility;
 
 namespace GFramework.Core.system;
 
@@ -9,8 +6,7 @@ namespace GFramework.Core.system;
 ///     系统接口，定义了系统的基本行为和功能
 ///     该接口继承了多个框架相关的接口，提供了系统初始化和销毁能力
 /// </summary>
-public interface ISystem : ICanSetArchitecture, ICanGetModel, ICanGetUtility,
-    ICanRegisterEvent, ICanSendEvent, ICanGetSystem
+public interface ISystem : IContextAware
 {
     /// <summary>
     ///     初始化系统

@@ -6,16 +6,9 @@
 public interface ILoggerFactory
 {
     /// <summary>
-    /// 创建指定类别的日志记录器实例
+    /// 根据指定的名称获取日志记录器实例
     /// </summary>
-    /// <param name="category">日志类别，用于区分不同的日志源</param>
-    /// <returns>返回指定类别的日志记录器实例</returns>
-    ILog Create(string category);
-    
-    /// <summary>
-    /// 创建全局日志记录器实例
-    /// </summary>
-    /// <returns>返回全局日志记录器实例</returns>
-    ILog CreateGlobalLogger();
+    /// <param name="name">日志记录器的名称</param>
+    /// <returns>指定名称的日志记录器实例</returns>
+    ILogger GetLogger(string name);
 }
-

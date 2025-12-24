@@ -1,4 +1,5 @@
 using GFramework.Core.logging;
+using GFramework.Core.rule;
 using GFramework.Core.system;
 
 namespace GFramework.Core.ioc;
@@ -6,7 +7,7 @@ namespace GFramework.Core.ioc;
 /// <summary>
 ///     IOC容器类，用于管理对象的注册和获取
 /// </summary>
-public class IocContainer
+public class IocContainer : ContextAwareBase, IIocContainer
 {
     #region Core
 
@@ -21,6 +22,8 @@ public class IocContainer
     /// 键为类型对象，值为该类型对应的所有实例集合
     /// </summary>
     private readonly Dictionary<Type, HashSet<object>> _typeIndex = new();
+
+    private ILogger _logger = null!;
 
     #endregion
 
@@ -48,6 +51,11 @@ public class IocContainer
 
     #region Register
 
+    public void Init()
+    {
+        _logger = Context.Logger;
+    }
+
     /// <summary>
     /// 注册单例
     /// 一个类型只允许一个实例
@@ -58,27 +66,25 @@ public class IocContainer
     public void RegisterSingleton<T>(T instance)
     {
         var type = typeof(T);
-        var logger = Log.CreateLogger("IOC");
-
         _lock.EnterWriteLock();
         try
         {
             if (_frozen)
             {
                 var errorMsg = "IocContainer is frozen";
-                logger.Error(errorMsg);
+                _logger.Error(errorMsg);
                 throw new InvalidOperationException(errorMsg);
             }
 
             if (_typeIndex.TryGetValue(type, out var set) && set.Count > 0)
             {
                 var errorMsg = $"Singleton already registered for type: {type.Name}";
-                logger.Error(errorMsg);
+                _logger.Error(errorMsg);
                 throw new InvalidOperationException(errorMsg);
             }
 
             RegisterInternal(type, instance!);
-            logger.Debug($"Singleton registered: {type.Name}");
+            _logger.Debug($"Singleton registered: {type.Name}");
         }
         finally
         {
@@ -95,8 +101,6 @@ public class IocContainer
     public void RegisterPlurality<T>(T instance)
     {
         var concreteType = instance!.GetType();
-        var logger = Log.CreateLogger("IOC");
-        
         // 获取实例类型直接实现的所有接口，并筛选出可以赋值给T类型的接口
         var interfaces = concreteType.GetInterfaces()
             .Where(typeof(T).IsAssignableFrom);
@@ -106,13 +110,13 @@ public class IocContainer
         {
             // 注册具体类型
             RegisterInternal(concreteType, instance);
-            logger.Debug($"Registered concrete type: {concreteType.Name}");
+            _logger.Debug($"Registered concrete type: {concreteType.Name}");
 
             // 注册所有匹配的接口类型
             foreach (var itf in interfaces)
             {
                 RegisterInternal(itf, instance);
-                logger.Debug($"Registered interface: {itf.Name} for {concreteType.Name}");
+                _logger.Debug($"Registered interface: {itf.Name} for {concreteType.Name}");
             }
         }
         finally
@@ -130,8 +134,8 @@ public class IocContainer
     {
         if (_frozen)
         {
-            var errorMsg = "IocContainer is frozen";
-            Log.CreateLogger("IOC").Error(errorMsg);
+            const string errorMsg = "IocContainer is frozen";
+            _logger.Error(errorMsg);
             throw new InvalidOperationException(errorMsg);
         }
 
@@ -209,19 +213,17 @@ public class IocContainer
     /// <returns>找到的第一个实例；如果未找到则返回 null</returns>
     public T? Get<T>() where T : class
     {
-        var logger = Log.CreateLogger("IOC");
-        
         _lock.EnterReadLock();
         try
         {
             if (_typeIndex.TryGetValue(typeof(T), out var set) && set.Count > 0)
             {
                 var result = set.First() as T;
-                logger.Debug($"Retrieved instance: {typeof(T).Name}");
+                _logger.Debug($"Retrieved instance: {typeof(T).Name}");
                 return result;
             }
 
-            logger.Debug($"No instance found for type: {typeof(T).Name}");
+            _logger.Debug($"No instance found for type: {typeof(T).Name}");
             return null;
         }
         finally
@@ -239,23 +241,22 @@ public class IocContainer
     /// <exception cref="InvalidOperationException">当没有注册实例或注册了多个实例时抛出</exception>
     public T GetRequired<T>() where T : class
     {
-        var logger = Log.CreateLogger("IOC");
         var list = GetAll<T>();
 
         switch (list.Count)
         {
             case 0:
                 var notFoundMsg = $"No instance registered for {typeof(T).Name}";
-                logger.Error(notFoundMsg);
+                _logger.Error(notFoundMsg);
                 throw new InvalidOperationException(notFoundMsg);
 
             case 1:
-                logger.Debug($"Retrieved required instance: {typeof(T).Name}");
+                _logger.Debug($"Retrieved required instance: {typeof(T).Name}");
                 return list[0];
 
             default:
                 var multipleMsg = $"Multiple instances registered for {typeof(T).Name}";
-                logger.Error(multipleMsg);
+                _logger.Error(multipleMsg);
                 throw new InvalidOperationException(multipleMsg);
         }
     }
@@ -358,14 +359,12 @@ public class IocContainer
     /// </summary>
     public void Freeze()
     {
-        var logger = Log.CreateLogger("IOC");
-        
         // 获取写锁以确保线程安全的状态修改
         _lock.EnterWriteLock();
         try
         {
             _frozen = true;
-            logger.Info("IOC Container frozen - no further registrations allowed");
+            _logger.Info("IOC Container frozen - no further registrations allowed");
         }
         finally
         {

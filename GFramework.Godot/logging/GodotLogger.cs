@@ -6,8 +6,11 @@ namespace GFramework.Godot.logging;
 /// <summary>
 /// Godot平台的日志记录器实现
 /// </summary>
-public sealed class GodotLogger : ILog
+public sealed class GodotLogger : ILogger
 {
+    private readonly string _category;
+
+    public GodotLogger(string category) => _category = category;
     /// <summary>
     /// 记录日志消息到Godot控制台
     /// </summary>

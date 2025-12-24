@@ -14,21 +14,6 @@ public enum ArchitecturePhase
     /// </summary>
     None = 0,
     /// <summary>
-    /// 对象创建阶段，对应 new T() 操作完成后的状态
-    /// </summary>
-    Created,
-    
-    /// <summary>
-    /// 初始化之前阶段，在 Init() 方法调用之前的状态
-    /// </summary>
-    BeforeInit,
-    
-    /// <summary>
-    /// 初始化之后阶段，在 Init() 方法调用之后的状态
-    /// </summary>
-    AfterInit,
-    
-    /// <summary>
     /// 模型初始化之前阶段
     /// </summary>
     BeforeModelInit,

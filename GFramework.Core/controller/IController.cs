@@ -1,9 +1,4 @@
-﻿using GFramework.Core.command;
-using GFramework.Core.events;
-using GFramework.Core.model;
-using GFramework.Core.query;
-using GFramework.Core.system;
-using GFramework.Core.utility;
+﻿using GFramework.Core.rule;
 
 namespace GFramework.Core.controller;
 
@@ -12,5 +7,4 @@ namespace GFramework.Core.controller;
 ///     该接口继承了多个框架核心接口，用于支持控制器的各种能力
 ///     包括架构归属、命令发送、系统获取、模型获取、事件注册、查询发送和工具获取等功能
 /// </summary>
-public interface IController : ICanSendCommand, ICanGetSystem, ICanGetModel,
-    ICanRegisterEvent, ICanSendQuery, ICanGetUtility;
+public interface IController : IContextAware;

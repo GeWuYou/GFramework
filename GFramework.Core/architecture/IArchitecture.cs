@@ -11,8 +11,25 @@ namespace GFramework.Core.architecture;
 ///     架构接口，定义了应用程序架构的核心功能，包括系统、模型、工具的注册和获取，
 ///     以及命令、查询、事件的发送和处理机制
 /// </summary>
-public interface IArchitecture
+public interface IArchitecture: IAsyncInitializable
 {
+    /// <summary>
+    /// 初始化方法，用于执行对象的初始化操作
+    /// </summary>
+    /// <remarks>
+    /// 该方法通常用于设置初始状态、初始化成员变量或执行必要的预处理操作
+    /// </remarks>
+    void Initialize();
+    
+    /// <summary>
+    /// 销毁方法，用于执行对象的清理和销毁操作
+    /// </summary>
+    /// <remarks>
+    /// 该方法通常用于释放资源、清理内存或执行必要的清理操作
+    /// </remarks>
+    void Destroy();
+
+
     /// <summary>
     ///     注册系统实例到架构中
     /// </summary>
@@ -34,26 +51,7 @@ public interface IArchitecture
     /// <param name="utility">要注册的工具实例</param>
     void RegisterUtility<T>(T utility) where T : IUtility;
 
-    /// <summary>
-    ///     从架构中获取指定类型的系统实例
-    /// </summary>
-    /// <typeparam name="T">系统类型，必须是class且实现ISystem接口</typeparam>
-    /// <returns>指定类型的系统实例</returns>
-    T? GetSystem<T>() where T : class, ISystem;
 
-    /// <summary>
-    ///     从架构中获取指定类型的模型实例
-    /// </summary>
-    /// <typeparam name="T">模型类型，必须是class且实现IModel接口</typeparam>
-    /// <returns>指定类型的模型实例</returns>
-    T? GetModel<T>() where T : class, IModel;
-
-    /// <summary>
-    ///     从架构中获取指定类型的工具实例
-    /// </summary>
-    /// <typeparam name="T">工具类型，必须是class且实现IUtility接口</typeparam>
-    /// <returns>指定类型的工具实例</returns>
-    T? GetUtility<T>() where T : class, IUtility;
 
     /// <summary>
     ///     发送并执行指定的命令

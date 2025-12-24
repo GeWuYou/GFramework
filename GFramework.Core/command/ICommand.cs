@@ -1,9 +1,4 @@
-using GFramework.Core.events;
-using GFramework.Core.model;
-using GFramework.Core.query;
 using GFramework.Core.rule;
-using GFramework.Core.system;
-using GFramework.Core.utility;
 
 namespace GFramework.Core.command;
 
@@ -11,8 +6,7 @@ namespace GFramework.Core.command;
 ///     命令接口，定义了无返回值命令的基本契约
 ///     该接口继承了多个框架能力接口，使命令可以访问架构、系统、模型、工具，并能够发送事件、命令和查询
 /// </summary>
-public interface ICommand : ICanSetArchitecture, ICanGetSystem, ICanGetModel, ICanGetUtility,
-    ICanSendEvent, ICanSendCommand, ICanSendQuery
+public interface ICommand: IContextAware
 {
     /// <summary>
     ///     执行命令的核心方法
@@ -26,9 +20,7 @@ public interface ICommand : ICanSetArchitecture, ICanGetSystem, ICanGetModel, IC
 ///     该接口继承了多个框架能力接口，使命令可以访问架构、系统、模型、工具，并能够发送事件、命令和查询
 /// </summary>
 /// <typeparam name="TResult">命令执行后返回的结果类型</typeparam>
-public interface ICommand<out TResult> : ICanSetArchitecture, ICanGetSystem, ICanGetModel,
-    ICanGetUtility,
-    ICanSendEvent, ICanSendCommand, ICanSendQuery
+public interface ICommand<out TResult>: IContextAware
 {
     /// <summary>
     ///     执行命令的核心方法
