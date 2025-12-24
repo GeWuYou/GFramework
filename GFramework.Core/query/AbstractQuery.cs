@@ -1,4 +1,4 @@
-using GFramework.Core.architecture;
+using GFramework.Core.rule;
 
 namespace GFramework.Core.query;
 
@@ -6,10 +6,8 @@ namespace GFramework.Core.query;
 ///     抽象查询类，提供查询操作的基础实现
 /// </summary>
 /// <typeparam name="T">查询结果的类型</typeparam>
-public abstract class AbstractQuery<T> : IQuery<T>
+public abstract class AbstractQuery<T> :ContextAwareBase, IQuery<T>
 {
-    private IArchitecture _mArchitecture;
-
     /// <summary>
     ///     执行查询操作
     /// </summary>
@@ -18,25 +16,7 @@ public abstract class AbstractQuery<T> : IQuery<T>
     {
         return OnDo();
     }
-
-    /// <summary>
-    ///     获取架构实例
-    /// </summary>
-    /// <returns>架构实例</returns>
-    public IArchitecture GetArchitecture()
-    {
-        return _mArchitecture;
-    }
-
-    /// <summary>
-    ///     设置架构实例
-    /// </summary>
-    /// <param name="architecture">要设置的架构实例</param>
-    public void SetArchitecture(IArchitecture architecture)
-    {
-        _mArchitecture = architecture;
-    }
-
+    
     /// <summary>
     ///     抽象方法，由子类实现具体的查询逻辑
     /// </summary>

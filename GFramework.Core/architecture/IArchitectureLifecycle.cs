@@ -9,7 +9,7 @@ public interface IArchitectureLifecycle
     /// 当架构进入指定阶段时触发的回调方法
     /// </summary>
     /// <param name="phase">当前的架构阶段</param>
-    /// <param name="arch">相关的架构实例</param>
-    void OnPhase(ArchitecturePhase phase, IArchitecture arch);
+    /// <param name="architecture">相关的架构实例</param>
+    void OnPhase(ArchitecturePhase phase, IArchitecture architecture);
 }
 

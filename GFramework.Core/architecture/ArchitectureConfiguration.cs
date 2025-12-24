@@ -6,7 +6,7 @@ namespace GFramework.Core.architecture;
 /// 默认架构配置类，实现IArchitectureConfiguration接口
 /// 提供日志工厂、日志级别和架构选项的默认配置
 /// </summary>
-public class DefaultArchitectureConfiguration: IArchitectureConfiguration
+public class ArchitectureConfiguration: IArchitectureConfiguration
 {
     /// <summary>
     /// 获取或设置日志工厂实例

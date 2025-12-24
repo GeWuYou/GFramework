@@ -1,24 +1,23 @@
-using GFramework.Core.command;
 using GFramework.Core.events;
 using GFramework.Core.ioc;
 using GFramework.Core.logging;
 using GFramework.Core.model;
-using GFramework.Core.query;
 using GFramework.Core.system;
 using GFramework.Core.utility;
 
 namespace GFramework.Core.architecture;
 
 /// <summary>
-///     架构基类，提供系统、模型、工具等组件的注册与管理功能。
-///     使用单例模式确保全局唯一实例，并支持命令、查询和事件机制。
+/// 架构基类，提供系统、模型、工具等组件的注册与管理功能。
+/// 专注于生命周期管理、初始化流程控制和架构阶段转换。
+/// 不直接提供业务操作方法，业务操作通过 ArchitectureRuntime 提供。
 /// </summary>
 public abstract class Architecture(
     IArchitectureConfiguration? configuration = null,
     IArchitectureServices? services = null,
     IArchitectureContext? context = null
-    )
-    : IArchitecture
+    ) 
+    : IArchitecture, IArchitectureLifecycle
 {
     /// <summary>
     /// 获取架构配置对象
@@ -26,7 +25,7 @@ public abstract class Architecture(
     /// <value>
     /// 返回一个IArchitectureConfiguration接口的实例，默认为DefaultArchitectureConfiguration类型
     /// </value>
-    private IArchitectureConfiguration Configuration { get; } = configuration ?? new DefaultArchitectureConfiguration();
+    private IArchitectureConfiguration Configuration { get; } = configuration ?? new ArchitectureConfiguration();
 
     /// <summary>
     /// 获取架构服务对象
@@ -34,7 +33,7 @@ public abstract class Architecture(
     /// <value>
     /// 返回一个IArchitectureServices接口的实例，默认为DefaultArchitectureServices类型
     /// </value>
-    private IArchitectureServices Services { get; } = services ?? new DefaultArchitectureServices();
+    private IArchitectureServices Services { get; } = services ?? new ArchitectureServices();
 
     /// <summary>
     /// 获取依赖注入容器
@@ -52,6 +51,13 @@ public abstract class Architecture(
     /// </value>
     private ITypeEventSystem TypeEventSystem => Services.TypeEventSystem;
 
+    /// <summary>
+    /// 获取架构运行时实例
+    /// </summary>
+    /// <value>
+    /// 统一的操作入口，负责命令、查询、事件的执行
+    /// </value>
+    public IArchitectureRuntime Runtime { get; private set; } = null!;
 
     #region Fields and Properties
 
@@ -183,7 +189,7 @@ public abstract class Architecture(
         // 进入销毁阶段并发送销毁开始事件
         logger.Info("Starting architecture destruction");
         EnterPhase(ArchitecturePhase.Destroying);
-        SendEvent(new ArchitectureEvents.ArchitectureDestroyingEvent());
+        TypeEventSystem.Send(new ArchitectureEvents.ArchitectureDestroyingEvent());
 
         // 销毁所有系统组件并清空系统列表
         logger.Info($"Destroying {_allSystems.Count} systems");
@@ -197,7 +203,7 @@ public abstract class Architecture(
 
         // 进入已销毁阶段并发送销毁完成事件
         EnterPhase(ArchitecturePhase.Destroyed);
-        SendEvent(new ArchitectureEvents.ArchitectureDestroyedEvent());
+        TypeEventSystem.Send(new ArchitectureEvents.ArchitectureDestroyedEvent());
         logger.Info("Architecture destruction completed");
     }
 
@@ -226,7 +232,11 @@ public abstract class Architecture(
     public void Initialize()
     {
         _logger = Configuration.LoggerFactory.GetLogger(GetType().Name);
-        _context ??= new DefaultArchitectureContext(Container, TypeEventSystem, _logger);
+        _context ??= new ArchitectureContext(Container, TypeEventSystem, _logger);
+        
+        // 创建架构运行时实例
+        Runtime = new ArchitectureRuntime(_context);
+        ((ArchitectureContext)_context).Runtime = Runtime;
         // 调用用户实现的初始化
         Init();
 
@@ -245,7 +255,6 @@ public abstract class Architecture(
         EnterPhase(ArchitecturePhase.AfterModelInit);
         _logger.Info("All models initialized");
 
-
         // == System Init ==
         EnterPhase(ArchitecturePhase.BeforeSystemInit);
         _logger.Info($"Initializing {_mSystems.Count} systems");
@@ -261,21 +270,24 @@ public abstract class Architecture(
         EnterPhase(ArchitecturePhase.AfterSystemInit);
         _logger.Info("All systems initialized");
 
-
         // == Finalize ==
         // 冻结IOC容器，不允许 anymore
         Container.Freeze();
         _mInited = true;
         EnterPhase(ArchitecturePhase.Ready);
         // 发送架构生命周期就绪事件
-        SendEvent(new ArchitectureEvents.ArchitectureLifecycleReadyEvent());
+        TypeEventSystem.Send(new ArchitectureEvents.ArchitectureLifecycleReadyEvent());
         _logger.Info($"Architecture {GetType().Name} is ready - all components initialized");
     }
 
     public async Task InitializeAsync()
     {
         _logger = Configuration.LoggerFactory.GetLogger(GetType().Name);
-
+        _context ??= new ArchitectureContext(Container, TypeEventSystem, _logger);
+        
+        // 创建架构运行时实例
+        Runtime = new ArchitectureRuntime(_context);
+        ((ArchitectureContext)_context).Runtime = Runtime;
         // 调用用户实现的初始化
         Init();
 
@@ -319,7 +331,7 @@ public abstract class Architecture(
         Container.Freeze();
         _mInited = true;
         EnterPhase(ArchitecturePhase.Ready);
-        SendEvent(new ArchitectureEvents.ArchitectureLifecycleReadyEvent());
+        TypeEventSystem.Send(new ArchitectureEvents.ArchitectureLifecycleReadyEvent());
         _logger.Info($"Architecture {GetType().Name} is ready - all components initialized");
     }
 
@@ -339,7 +351,7 @@ public abstract class Architecture(
         }
 
         _logger.Debug($"Registering system: {typeof(TSystem).Name}");
-        system.SetArchitecture(this);
+        system.SetContext(Context);
         Container.RegisterPlurality(system);
         _allSystems.Add(system);
         if (!_mInited)
@@ -369,7 +381,9 @@ public abstract class Architecture(
         }
 
         _logger.Debug($"Registering model: {typeof(TModel).Name}");
-        model.SetArchitecture(this);
+        // 对于有 SetArchitecture 方法的模型，尝试调用该方法
+        var setArchitectureMethod = typeof(TModel).GetMethod("SetArchitecture", [typeof(IArchitecture)]);
+        setArchitectureMethod?.Invoke(model, [this]);
         Container.RegisterPlurality(model);
 
         if (!_mInited)
@@ -398,122 +412,16 @@ public abstract class Architecture(
 
     #endregion
 
-
-
-    #region Command Execution
+    #region IArchitectureLifecycle Implementation
 
     /// <summary>
-    ///     发送一个带返回结果的命令请求
+    /// 处理架构阶段变更通知
     /// </summary>
-    /// <typeparam name="TResult">命令执行后的返回值类型</typeparam>
-    /// <param name="command">要发送的命令对象</param>
-    /// <returns>命令执行的结果</returns>
-    public TResult SendCommand<TResult>(ICommand<TResult> command)
+    /// <param name="phase">当前架构阶段</param>
+    /// <param name="architecture">架构实例</param>
+    public virtual void OnPhase(ArchitecturePhase phase, IArchitecture architecture)
     {
-        return ExecuteCommand(command);
-    }
-
-    /// <summary>
-    ///     发送一个无返回结果的命令请求
-    /// </summary>
-    /// <typeparam name="TCommand">命令的具体类型</typeparam>
-    /// <param name="command">要发送的命令对象</param>
-    public void SendCommand<TCommand>(TCommand command) where TCommand : ICommand
-    {
-        ExecuteCommand(command);
-    }
-
-    /// <summary>
-    ///     执行一个带返回结果的命令
-    /// </summary>
-    /// <typeparam name="TResult">命令执行后的返回值类型</typeparam>
-    /// <param name="command">要执行的命令对象</param>
-    /// <returns>命令执行的结果</returns>
-    protected virtual TResult ExecuteCommand<TResult>(ICommand<TResult> command)
-    {
-        command.SetArchitecture(this);
-        return command.Execute();
-    }
-
-    /// <summary>
-    ///     执行一个无返回结果的命令
-    /// </summary>
-    /// <param name="command">要执行的命令对象</param>
-    protected virtual void ExecuteCommand(ICommand command)
-    {
-        command.SetArchitecture(this);
-        command.Execute();
-    }
-
-    #endregion
-
-    #region Query Execution
-
-    /// <summary>
-    ///     发起一次查询请求并获得其结果
-    /// </summary>
-    /// <typeparam name="TResult">查询结果的数据类型</typeparam>
-    /// <param name="query">要发起的查询对象</param>
-    /// <returns>查询得到的结果数据</returns>
-    public TResult SendQuery<TResult>(IQuery<TResult> query)
-    {
-        return DoQuery(query);
-    }
-
-    /// <summary>
-    ///     实际执行查询逻辑的方法
-    /// </summary>
-    /// <typeparam name="TResult">查询结果的数据类型</typeparam>
-    /// <param name="query">要处理的查询对象</param>
-    /// <returns>查询结果</returns>
-    protected virtual TResult DoQuery<TResult>(IQuery<TResult> query)
-    {
-        query.SetArchitecture(this);
-        return query.Do();
-    }
-
-    #endregion
-
-    #region Event Management
-
-    /// <summary>
-    ///     发布一个默认构造的新事件对象
-    /// </summary>
-    /// <typeparam name="TEvent">事件类型</typeparam>
-    public void SendEvent<TEvent>() where TEvent : new()
-    {
-        TypeEventSystem.Send<TEvent>();
-    }
-
-    /// <summary>
-    ///     发布一个具体的事件对象
-    /// </summary>
-    /// <typeparam name="TEvent">事件类型</typeparam>
-    /// <param name="e">要发布的事件实例</param>
-    public void SendEvent<TEvent>(TEvent e)
-    {
-        TypeEventSystem.Send(e);
-    }
-
-    /// <summary>
-    ///     订阅某个特定类型的事件
-    /// </summary>
-    /// <typeparam name="TEvent">事件类型</typeparam>
-    /// <param name="onEvent">当事件发生时触发的动作</param>
-    /// <returns>可用于取消订阅的对象</returns>
-    public IUnRegister RegisterEvent<TEvent>(Action<TEvent> onEvent)
-    {
-        return TypeEventSystem.Register(onEvent);
-    }
-
-    /// <summary>
-    ///     取消对某类型事件的监听
-    /// </summary>
-    /// <typeparam name="TEvent">事件类型</typeparam>
-    /// <param name="onEvent">之前绑定的事件处理器</param>
-    public void UnRegisterEvent<TEvent>(Action<TEvent> onEvent)
-    {
-        TypeEventSystem.UnRegister(onEvent);
+        
     }
 
     #endregion

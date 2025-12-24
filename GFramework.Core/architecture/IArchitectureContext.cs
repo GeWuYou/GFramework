@@ -59,15 +59,15 @@ public interface IArchitectureContext
     /// <summary>
     /// 发送一个事件
     /// </summary>
-    /// <typeparam name="TEvent">事件类型</typeparam>
-    void SendEvent<TEvent>();
-    
+    /// <typeparam name="TEvent">事件类型，必须具有无参构造函数</typeparam>
+    void SendEvent<TEvent>() where TEvent : new();
+
     /// <summary>
     /// 发送一个带参数的事件
     /// </summary>
     /// <typeparam name="TEvent">事件类型</typeparam>
     /// <param name="e">事件参数</param>
-    void SendEvent<TEvent>(TEvent e);
+    void SendEvent<TEvent>(TEvent e) where TEvent : class;
     
     /// <summary>
     /// 注册事件处理器
@@ -81,4 +81,11 @@ public interface IArchitectureContext
     /// 获取日志记录器
     /// </summary>
     ILogger Logger { get; }
+
+    /// <summary>
+    /// 取消注册事件监听器
+    /// </summary>
+    /// <typeparam name="TEvent">事件类型</typeparam>
+    /// <param name="onEvent">要取消注册的事件回调方法</param>
+    void UnRegisterEvent<TEvent>(Action<TEvent> onEvent);
 }

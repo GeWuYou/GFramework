@@ -1,6 +1,4 @@
-using GFramework.Core.model;
 using GFramework.Core.rule;
-using GFramework.Core.system;
 
 namespace GFramework.Core.query;
 
@@ -8,7 +6,7 @@ namespace GFramework.Core.query;
 ///     查询接口，定义了执行查询操作的契约
 /// </summary>
 /// <typeparam name="TResult">查询结果的类型</typeparam>
-public interface IQuery<out TResult>
+public interface IQuery<out TResult>:IContextAware
 {
     /// <summary>
     ///     执行查询操作并返回结果
