@@ -1,4 +1,5 @@
-﻿using System;
+﻿#nullable enable
+using System;
 using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
@@ -42,7 +43,6 @@ namespace GFramework.Generator.generator.logging
             // 2. 生成代码
             context.RegisterSourceOutput(targets, (spc, pair) =>
             {
-                // === 关键修复：添加 try-catch 块 ===
                 try
                 {
                     var classDecl = pair.ClassDecl;
@@ -55,7 +55,6 @@ namespace GFramework.Generator.generator.logging
                     // 检查 partial
                     if (!classDecl.Modifiers.Any(SyntaxKind.PartialKeyword))
                     {
-                        // 如果 Diagnostics 类有问题，这里可能会崩，先注释掉或确保该类存在
                         spc.ReportDiagnostic(Diagnostic.Create(
                             Diagnostics.MustBePartial,
                             classDecl.Identifier.GetLocation(),
@@ -79,7 +78,7 @@ namespace GFramework.Generator.generator.logging
             });
         }
 
-        private static AttributeData GetAttribute(INamedTypeSymbol classSymbol)
+        private static AttributeData? GetAttribute(INamedTypeSymbol classSymbol)
         {
             return classSymbol.GetAttributes().FirstOrDefault(a =>
             {
@@ -101,34 +100,21 @@ namespace GFramework.Generator.generator.logging
             var className = classSymbol.Name;
 
             // === 解析 Category ===
-            string category = className; // 默认使用类名
+            var category = className; // 默认使用类名
 
             // 检查是否有构造函数参数
             if (attr.ConstructorArguments.Length > 0)
             {
                 var argValue = attr.ConstructorArguments[0].Value;
 
-                // 情况 1: 参数存在，但值为 null (例如 [Log] 且构造函数有默认值 null)
-                if (argValue is null)
+                category = argValue switch
                 {
-                    category = className;
-                }
-                // 情况 2: 参数存在，且是有效的字符串 (例如 [Log("MyCategory")])
-                else if (argValue is string s && !string.IsNullOrWhiteSpace(s))
-                {
-                    category = s;
-                }
-                // 情况 3: 参数存在，但类型不对 (防御性编程)
-                else
-                {
-                    // 这里可以选择报错，或者回退到默认值。
-                    // 为了让用户知道写错了，保留报错逻辑是合理的。
-                    // 注意：这里需要你有 ReportDiagnostic 的逻辑，如果没有，为了不中断生成，建议回退到默认值。
-                    
-                    // 如果你在 Generate 方法里无法轻松调用 ReportDiagnostic，
-                    // 建议直接忽略错误使用默认值，或者生成一段 #error 代码。
-                    category = $"{className}_InvalidArg"; 
-                }
+                    // 情况 1: 参数存在，但值为 null (例如 [Log] 且构造函数有默认值 null)
+                    null => className,
+                    // 情况 2: 参数存在，且是有效的字符串 (例如 [Log("MyCategory")])
+                    string s when !string.IsNullOrWhiteSpace(s) => s,
+                    _ => $"{className}_InvalidArg"
+                };
             }
 
             // === 解析 Named Arguments (更加安全的获取方式) ===
@@ -169,13 +155,7 @@ namespace GFramework.Generator.generator.logging
 
         private static object? GetNamedArg(AttributeData attr, string name)
         {
-            foreach (var kv in attr.NamedArguments)
-            {
-                if (kv.Key == name)
-                    return kv.Value.Value;
-            }
-
-            return null;
+            return (from kv in attr.NamedArguments where kv.Key == name select kv.Value.Value).FirstOrDefault();
         }
     }
 }

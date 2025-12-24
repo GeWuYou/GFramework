@@ -10,7 +10,7 @@ namespace GFramework.Generator.Attributes.generator.logging;
 public sealed class LogAttribute : Attribute
 {
     /// <summary>日志分类名（默认使用类名）</summary>
-    public string? Category { get; }
+    public string? Category { get; set; }
 
     /// <summary>生成字段名</summary>
     public string FieldName { get; set; } = "_log";
@@ -20,12 +20,12 @@ public sealed class LogAttribute : Attribute
 
     /// <summary>访问修饰符</summary>
     public string AccessModifier { get; set; } = "private";
-
+    public LogAttribute() { }
     /// <summary>
     /// 初始化 LogAttribute 类的新实例
     /// </summary>
     /// <param name="category">日志分类名，默认使用类名</param>
-    public LogAttribute(string? category = null)
+    public LogAttribute(string? category)
     {
         Category = category;
     }
