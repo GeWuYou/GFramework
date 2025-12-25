@@ -67,7 +67,7 @@ public class ArchitectureRuntime(IArchitectureContext context) : IArchitectureRu
     /// </summary>
     /// <typeparam name="TEvent">事件类型</typeparam>
     /// <param name="e">要发布的事件实例</param>
-    public void SendEvent<TEvent>(TEvent e)
+    public void SendEvent<TEvent>(TEvent e) where TEvent : class
     {
         _context.SendEvent(e);
     }

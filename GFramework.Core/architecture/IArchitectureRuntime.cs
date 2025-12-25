@@ -1,9 +1,6 @@
 using GFramework.Core.command;
 using GFramework.Core.events;
-using GFramework.Core.model;
 using GFramework.Core.query;
-using GFramework.Core.system;
-using GFramework.Core.utility;
 
 namespace GFramework.Core.architecture;
 
@@ -39,28 +36,28 @@ public interface IArchitectureRuntime
     /// <summary>
     /// 发送无参事件
     /// </summary>
-    /// <typeparam name="T">事件类型，必须具有无参构造函数</typeparam>
-    void SendEvent<T>() where T : new();
+    /// <typeparam name="TEvent">事件类型，必须具有无参构造函数</typeparam>
+    void SendEvent<TEvent>() where TEvent : new();
 
     /// <summary>
     /// 发送指定的事件实例
     /// </summary>
-    /// <typeparam name="T">事件类型</typeparam>
+    /// <typeparam name="TEvent">事件类型</typeparam>
     /// <param name="e">要发送的事件实例</param>
-    void SendEvent<T>(T e);
+    void SendEvent<TEvent>(TEvent e) where TEvent : class;
 
     /// <summary>
     /// 注册事件监听器
     /// </summary>
-    /// <typeparam name="T">事件类型</typeparam>
+    /// <typeparam name="TEvent">事件类型</typeparam>
     /// <param name="onEvent">事件触发时的回调方法</param>
     /// <returns>用于取消注册的句柄</returns>
-    IUnRegister RegisterEvent<T>(Action<T> onEvent);
+    IUnRegister RegisterEvent<TEvent>(Action<TEvent> onEvent);
 
     /// <summary>
     /// 取消注册事件监听器
     /// </summary>
-    /// <typeparam name="T">事件类型</typeparam>
+    /// <typeparam name="TEvent">事件类型</typeparam>
     /// <param name="onEvent">要取消注册的事件回调方法</param>
-    void UnRegisterEvent<T>(Action<T> onEvent);
+    void UnRegisterEvent<TEvent>(Action<TEvent> onEvent);
 }
