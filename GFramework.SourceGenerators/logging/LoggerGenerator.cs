@@ -17,8 +17,8 @@ namespace GFramework.SourceGenerators.logging;
 [Generator]
 public sealed class LoggerGenerator : IIncrementalGenerator
 {
-    private const string AttributeMetadataName = "GFramework.SourceGenerators.Attributes.logging.GodotLogAttribute";
-    private const string AttributeShortName = "GodotLogAttribute";
+    private const string AttributeMetadataName = "GFramework.SourceGenerators.Attributes.logging.LogAttribute";
+    private const string AttributeShortName = "LogAttribute";
     private const string AttributeShortNameWithoutSuffix = "Log";
 
     /// <summary>
@@ -163,7 +163,7 @@ public sealed class LoggerGenerator : IIncrementalGenerator
         sb.AppendLine($"        /// <summary>Auto-generated logger</summary>");
         sb.AppendLine(
             $"        {access} {staticKeyword}readonly ILogger {fieldName} = " +
-            $"new ConsoleLoggerFactory.GetLogger(\"{name}\");");
+            $"new ConsoleLoggerFactory().GetLogger(\"{name}\");");
         sb.AppendLine("    }");
 
         if (ns is not null)

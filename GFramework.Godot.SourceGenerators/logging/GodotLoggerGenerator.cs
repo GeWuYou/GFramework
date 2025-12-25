@@ -14,9 +14,11 @@ namespace GFramework.Godot.SourceGenerators.logging;
 [Generator]
 public sealed class GodotLoggerGenerator : IIncrementalGenerator
 {
-    private const string AttributeMetadataName = "GFramework.SourceGenerators.Attributes.logging.GodotLogAttribute";
+    private const string AttributeMetadataName =
+        "GFramework.Godot.SourceGenerators.Attributes.logging.GodotLogAttribute";
+
     private const string AttributeShortName = "GodotLogAttribute";
-    private const string AttributeShortNameWithoutSuffix = "Log";
+    private const string AttributeShortNameWithoutSuffix = "GodotLog";
 
     /// <summary>
     /// 初始化生成器，设置语法过滤和代码生成逻辑
