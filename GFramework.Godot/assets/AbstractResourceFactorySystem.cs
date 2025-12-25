@@ -1,11 +1,10 @@
 using GFramework.Core.architecture;
-using GFramework.Core.events;
-using GFramework.Core.extensions;
 using GFramework.Core.system;
 using GFramework.Game.assets;
+using GFramework.Godot.system;
 using Godot;
 
-namespace GFramework.Godot.system;
+namespace GFramework.Godot.assets;
 
 /// <summary>
 /// 资源工厂系统抽象基类，用于统一管理各类资源的创建与预加载逻辑。
@@ -25,16 +24,16 @@ public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceF
     protected override void OnInit()
     {
         _registry = new ResourceFactory.Registry();
-        _resourceLoadSystem = this.GetSystem<IResourceLoadSystem>();
-        _assetCatalogSystem = this.GetSystem<IAssetCatalogSystem>();
+        _resourceLoadSystem = Context.GetSystem<IResourceLoadSystem>();
+        _assetCatalogSystem = Context.GetSystem<IAssetCatalogSystem>();
     }
 
     /// <summary>
     /// 架构阶段回调，在架构就绪时注册和预加载资源
     /// </summary>
     /// <param name="phase">当前架构阶段</param>
-    /// <param name="arch">架构实例</param>
-    public void OnPhase(ArchitecturePhase phase, IArchitecture arch)
+    /// <param name="architecture">架构实例</param>
+    public void OnPhase(ArchitecturePhase phase, IArchitecture architecture)
     {
         if (phase == ArchitecturePhase.Ready)
         {

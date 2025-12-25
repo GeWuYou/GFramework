@@ -9,8 +9,7 @@ namespace GFramework.Godot.architecture;
 /// 抽象架构类，为特定类型的架构提供基础实现框架。
 /// 此类负责管理架构的初始化、生命周期绑定以及扩展模块的安装与销毁。
 /// </summary>
-/// <typeparam name="T">架构的具体类型，必须继承自Architecture且能被实例化。</typeparam>
-public abstract class AbstractArchitecture<T> : Architecture<T> where T : Architecture<T>, new()
+public abstract class AbstractArchitecture: Architecture
 {
     
     /// <summary>
@@ -23,7 +22,7 @@ public abstract class AbstractArchitecture<T> : Architecture<T> where T : Archit
     /// 存储所有已安装的Godot架构扩展组件列表
     /// 用于在架构销毁时正确清理所有扩展资源
     /// </summary>
-    private readonly List<IGodotModule<T>> _extensions = [];
+    private readonly List<IGodotModule> _extensions = [];
     
     /// <summary>
     /// 架构锚点节点引用
@@ -90,7 +89,7 @@ public abstract class AbstractArchitecture<T> : Architecture<T> where T : Archit
     /// <typeparam name="TModule">模块类型，必须实现IGodotModule接口</typeparam>
     /// <param name="module">要安装的模块实例</param>
     /// <returns>异步任务</returns>
-    protected async Task InstallGodotModule<TModule>(TModule module) where TModule : IGodotModule<T>
+    protected async Task InstallGodotModule<TModule>(TModule module) where TModule : IGodotModule
     {
         module.Install(this);
         

@@ -6,8 +6,7 @@ namespace GFramework.Godot.architecture;
 /// <summary>
 /// 抽象的Godot模块基类，用于定义Godot框架中的模块行为
 /// </summary>
-/// <typeparam name="T">架构类型，必须继承自Architecture并且有无参构造函数</typeparam>
-public abstract class AbstractGodotModule<T>: IGodotModule<T> where T : Architecture<T>, new()
+public abstract class AbstractGodotModule: IGodotModule 
 {
     /// <summary>
     /// 当架构阶段发生变化时调用此方法
@@ -43,7 +42,7 @@ public abstract class AbstractGodotModule<T>: IGodotModule<T> where T : Architec
     /// 当模块被附加到架构时调用此方法
     /// </summary>
     /// <param name="architecture">被附加到的架构实例</param>
-    public virtual void OnAttach(Architecture<T> architecture)
+    public virtual void OnAttach(Architecture architecture)
     {
         
     }

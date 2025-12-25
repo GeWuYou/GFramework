@@ -74,8 +74,7 @@ public interface ILogger
     }
 
     #endregion
-
-
+    
     #region Trace Logging Methods
 
     /// <summary>
