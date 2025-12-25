@@ -1,5 +1,7 @@
 #nullable enable
-namespace GFramework.SourceGenerators.Attributes.logging;
+using System;
+
+namespace GFramework.Godot.SourceGenerators.Attributes.logging;
 
 /// <summary>
 /// Godot日志特性，用于在类上标记以自动生成日志字段

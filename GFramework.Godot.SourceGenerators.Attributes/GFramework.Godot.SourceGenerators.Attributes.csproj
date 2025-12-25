@@ -1,9 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net10.0</TargetFramework>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
+        <TargetFramework>netstandard2.0</TargetFramework>
+        <PackageId>GeWuYou.GFramework.SourceGenerators.Attributes</PackageId>
+        <Version>1.0.0</Version>
+        <LangVersion>10</LangVersion>
     </PropertyGroup>
 
 </Project>

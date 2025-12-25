@@ -12,7 +12,6 @@
         <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
         <!-- 不把输出当作运行时库 -->
         <IncludeBuildOutput>false</IncludeBuildOutput>
-        <PackageReadmeFile>README.md</PackageReadmeFile>
         <!-- 有助于调试生成的代码（可选） -->
         <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
         <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
