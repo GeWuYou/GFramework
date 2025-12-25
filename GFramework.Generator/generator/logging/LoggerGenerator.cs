@@ -9,6 +9,9 @@ using Microsoft.CodeAnalysis.Text;
 
 namespace GFramework.Generator.generator.logging
 {
+    /// <summary>
+    /// 日志生成器，用于为标记了LogAttribute的类自动生成日志字段
+    /// </summary>
     [Generator]
     public sealed class LoggerGenerator : IIncrementalGenerator
     {
@@ -17,6 +20,10 @@ namespace GFramework.Generator.generator.logging
         private const string AttributeShortName = "LogAttribute";
         private const string AttributeShortNameWithoutSuffix = "Log";
 
+        /// <summary>
+        /// 初始化生成器，设置语法过滤和代码生成逻辑
+        /// </summary>
+        /// <param name="context">增量生成器初始化上下文</param>
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
             // 1. 语法过滤：快速筛选候选类
@@ -78,6 +85,11 @@ namespace GFramework.Generator.generator.logging
             });
         }
 
+        /// <summary>
+        /// 获取类符号上的LogAttribute特性
+        /// </summary>
+        /// <param name="classSymbol">类符号</param>
+        /// <returns>LogAttribute特性数据，如果不存在则返回null</returns>
         private static AttributeData? GetAttribute(INamedTypeSymbol classSymbol)
         {
             return classSymbol.GetAttributes().FirstOrDefault(a =>
@@ -91,6 +103,12 @@ namespace GFramework.Generator.generator.logging
             });
         }
 
+        /// <summary>
+        /// 生成日志字段代码
+        /// </summary>
+        /// <param name="classSymbol">类符号</param>
+        /// <param name="attr">LogAttribute特性数据</param>
+        /// <returns>生成的C#代码字符串</returns>
         private static string Generate(INamedTypeSymbol classSymbol, AttributeData attr)
         {
             var ns = classSymbol.ContainingNamespace.IsGlobalNamespace
@@ -99,15 +117,15 @@ namespace GFramework.Generator.generator.logging
 
             var className = classSymbol.Name;
 
-            // === 解析 Category ===
-            var category = className; // 默认使用类名
+            // === 解析 Name ===
+            var name = className; // 默认使用类名
 
             // 检查是否有构造函数参数
             if (attr.ConstructorArguments.Length > 0)
             {
                 var argValue = attr.ConstructorArguments[0].Value;
 
-                category = argValue switch
+                name = argValue switch
                 {
                     // 情况 1: 参数存在，但值为 null (例如 [Log] 且构造函数有默认值 null)
                     null => className,
@@ -143,8 +161,8 @@ namespace GFramework.Generator.generator.logging
             sb.AppendLine("    {");
             sb.AppendLine($"        /// <summary>Auto-generated logger</summary>");
             sb.AppendLine(
-                $"        {access} {staticKeyword}readonly ILog {fieldName} = " +
-                $"Log.CreateLogger(\"{category}\");");
+                $"        {access} {staticKeyword}readonly ILogger {fieldName} = " +
+                $"new ConsoleLoggerFactory.GetLogger(\"{name}\");");
             sb.AppendLine("    }");
 
             if (ns is not null)
@@ -153,6 +171,12 @@ namespace GFramework.Generator.generator.logging
             return sb.ToString();
         }
 
+        /// <summary>
+        /// 从特性数据中获取命名参数的值
+        /// </summary>
+        /// <param name="attr">特性数据</param>
+        /// <param name="name">参数名称</param>
+        /// <returns>参数值，如果不存在则返回null</returns>
         private static object? GetNamedArg(AttributeData attr, string name)
         {
             return (from kv in attr.NamedArguments where kv.Key == name select kv.Value.Value).FirstOrDefault();
