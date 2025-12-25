@@ -1,7 +1,7 @@
 #nullable enable
 using System;
 
-namespace GFramework.Generator.Attributes.generator.logging;
+namespace GFramework.SourceGenerators.Attributes.logging;
 
 /// <summary>
 /// 标注在类上，Source Generator 会为该类自动生成一个日志记录器字段。
@@ -9,6 +9,19 @@ namespace GFramework.Generator.Attributes.generator.logging;
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
 public sealed class LogAttribute : Attribute
 {
+    public LogAttribute()
+    {
+    }
+
+    /// <summary>
+    /// 初始化 GodotLogAttribute 类的新实例
+    /// </summary>
+    /// <param name="name">日志分类名，默认使用类名</param>
+    public LogAttribute(string? name)
+    {
+        Name = name;
+    }
+
     /// <summary>日志分类名（默认使用类名）</summary>
     public string? Name { get; set; }
 
@@ -20,13 +33,4 @@ public sealed class LogAttribute : Attribute
 
     /// <summary>访问修饰符</summary>
     public string AccessModifier { get; set; } = "private";
-    public LogAttribute() { }
-    /// <summary>
-    /// 初始化 LogAttribute 类的新实例
-    /// </summary>
-    /// <param name="name">日志分类名，默认使用类名</param>
-    public LogAttribute(string? name)
-    {
-        Name = name;
-    }
 }

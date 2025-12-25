@@ -23,9 +23,27 @@
         <None Include="README.md" Pack="true" PackagePath="" />
         <None Remove="GFramework.Core\**" />
         <None Remove="GFramework.Game\**" />
-        <None Remove="GFramework.Generator\**" />
-        <None Remove="GFramework.Generator.Attributes\**" />
         <None Remove="GFramework.Godot\**" />
+        <None Update="GFramework.SourceGenerators\bin\Debug\netstandard2.0\GFramework.Generator.Attributes.dll">
+            <Link>GFramework.SorceGenerators\bin\Debug\netstandard2.0\GFramework.Generator.Attributes.dll</Link>
+        </None>
+        <None Update="GFramework.SourceGenerators\logging\README.md">
+            <Link>GFramework.SorceGenerators\logging\README.md</Link>
+        </None>
+        <None Update="GFramework.SourceGenerators\README.md">
+            <Link>GFramework.SorceGenerators\README.md</Link>
+        </None>
+        <None Update="GFramework.SourceGenerators\AnalyzerReleases.Shipped.md">
+            <Link>GFramework.SorceGenerators\AnalyzerReleases.Shipped.md</Link>
+        </None>
+        <None Update="GFramework.SourceGenerators\AnalyzerReleases.Unshipped.md">
+            <Link>GFramework.SorceGenerators\AnalyzerReleases.Unshipped.md</Link>
+        </None>
+        <None Remove="GFramework.Godot.SourceGenerators\**"/>
+        <None Remove="GFramework.Godot.SourceGenerators.Attributes\**"/>
+        <None Remove="GFramework.SorceGenerators\**"/>
+        <None Remove="GFramework.SourceGenerators\**"/>
+        <None Remove="GFramework.SourceGenerators.Attributes\**"/>
     </ItemGroup>
     <!-- 聚合核心模块 -->
     <ItemGroup>
@@ -35,15 +53,30 @@
     <ItemGroup>
       <Compile Remove="GFramework.Core\**" />
       <Compile Remove="GFramework.Game\**" />
-      <Compile Remove="GFramework.Generator\**" />
-      <Compile Remove="GFramework.Generator.Attributes\**" />
       <Compile Remove="GFramework.Godot\**" />
+        <Compile Update="GFramework.SourceGenerators\enums\EnumExtensionsGenerator.cs">
+            <Link>GFramework.SorceGenerators\enums\EnumExtensionsGenerator.cs</Link>
+        </Compile>
+        <Compile Update="GFramework.SourceGenerators\logging\Diagnostic.cs">
+            <Link>GFramework.SorceGenerators\logging\Diagnostic.cs</Link>
+        </Compile>
+        <Compile Update="GFramework.SourceGenerators\logging\LoggerGenerator.cs">
+            <Link>GFramework.SorceGenerators\logging\LoggerGenerator.cs</Link>
+        </Compile>
+        <Compile Remove="GFramework.Godot.SourceGenerators\**"/>
+        <Compile Remove="GFramework.Godot.SourceGenerators.Attributes\**"/>
+        <Compile Remove="GFramework.SorceGenerators\**"/>
+        <Compile Remove="GFramework.SourceGenerators\**"/>
+        <Compile Remove="GFramework.SourceGenerators.Attributes\**"/>
     </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Remove="GFramework.Core\**" />
       <EmbeddedResource Remove="GFramework.Game\**" />
-      <EmbeddedResource Remove="GFramework.Generator\**" />
-      <EmbeddedResource Remove="GFramework.Generator.Attributes\**" />
       <EmbeddedResource Remove="GFramework.Godot\**" />
+        <EmbeddedResource Remove="GFramework.Godot.SourceGenerators\**"/>
+        <EmbeddedResource Remove="GFramework.Godot.SourceGenerators.Attributes\**"/>
+        <EmbeddedResource Remove="GFramework.SorceGenerators\**"/>
+        <EmbeddedResource Remove="GFramework.SourceGenerators\**"/>
+        <EmbeddedResource Remove="GFramework.SourceGenerators.Attributes\**"/>
     </ItemGroup>
 </Project>

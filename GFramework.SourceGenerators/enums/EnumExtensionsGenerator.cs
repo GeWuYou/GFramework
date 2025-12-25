@@ -5,12 +5,13 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 
-namespace GFramework.Generator.generator.enums;
+namespace GFramework.SourceGenerators.enums;
 
 [Generator]
 public class EnumExtensionsGenerator : IIncrementalGenerator
 {
-    private const string AttributeFullName = "GFramework.Generator.Attributes.generator.enums.GenerateEnumExtensionsAttribute";
+    private const string AttributeFullName =
+        "GFramework.SourceGenerators.Attributes.generator.enums.GenerateEnumExtensionsAttribute";
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {

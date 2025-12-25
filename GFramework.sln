@@ -2,15 +2,19 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework ", "GFramework.csproj", "{9BEDDD6C-DF8B-4E71-9C75-F44EC669ABBD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.Generator", "GFramework.Generator\GFramework.Generator.csproj", "{E9D51809-0351-4B83-B85B-B5F469AAB3B8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.SourceGenerators", "GFramework.SourceGenerators\GFramework.SourceGenerators.csproj", "{E9D51809-0351-4B83-B85B-B5F469AAB3B8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.Generator.Attributes", "GFramework.Generator.Attributes\GFramework.Generator.Attributes.csproj", "{84C5C3C9-5620-4924-BA04-92F813F2B70F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.SourceGenerators.Attributes", "GFramework.SourceGenerators.Attributes\GFramework.SourceGenerators.Attributes.csproj", "{84C5C3C9-5620-4924-BA04-92F813F2B70F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.Core", "GFramework.Core\GFramework.Core.csproj", "{A6D5854D-79EA-487A-9ED9-396E6A1F8031}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.Godot", "GFramework.Godot\GFramework.Godot.csproj", "{FC56D81A-3A3B-4B49-B318-363DFA0D8206}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.Game", "GFramework.Game\GFramework.Game.csproj", "{0B00816B-E8B2-4562-8C11-0C06CE761638}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.Godot.SourceGenerators", "GFramework.Godot.SourceGenerators\GFramework.Godot.SourceGenerators.csproj", "{C56FD287-CBC6-4C44-B3DF-103FA3660CA0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.Godot.SourceGenerators.Attributes", "GFramework.Godot.SourceGenerators.Attributes\GFramework.Godot.SourceGenerators.Attributes.csproj", "{3A1132B7-EC3B-4BB6-A752-8ADC92BC08A0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -42,5 +46,13 @@ Global
 		{0B00816B-E8B2-4562-8C11-0C06CE761638}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0B00816B-E8B2-4562-8C11-0C06CE761638}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0B00816B-E8B2-4562-8C11-0C06CE761638}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C56FD287-CBC6-4C44-B3DF-103FA3660CA0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C56FD287-CBC6-4C44-B3DF-103FA3660CA0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C56FD287-CBC6-4C44-B3DF-103FA3660CA0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C56FD287-CBC6-4C44-B3DF-103FA3660CA0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3A1132B7-EC3B-4BB6-A752-8ADC92BC08A0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3A1132B7-EC3B-4BB6-A752-8ADC92BC08A0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3A1132B7-EC3B-4BB6-A752-8ADC92BC08A0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3A1132B7-EC3B-4BB6-A752-8ADC92BC08A0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

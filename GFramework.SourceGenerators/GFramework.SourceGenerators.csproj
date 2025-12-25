@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <PackageId>GeWuYou.GFramework.Generator</PackageId>
+        <PackageId>GeWuYou.GFramework.SourceGenerators</PackageId>
         <TargetFramework>netstandard2.0</TargetFramework>
         <IsRoslynAnalyzer>true</IsRoslynAnalyzer>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
@@ -26,7 +26,7 @@
 
     <ItemGroup>
         <!-- Generator 需要引用 Attributes 项目，但不作为运行时依赖 -->
-        <ProjectReference Include="..\GFramework.Generator.Attributes\GFramework.Generator.Attributes.csproj"
+        <ProjectReference Include="..\GFramework.SourceGenerators.Attributes\GFramework.SourceGenerators.Attributes.csproj"
                           PrivateAssets="all"/>
     </ItemGroup>
 
@@ -35,12 +35,8 @@
         <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true"
               PackagePath="analyzers/dotnet/cs" Visible="false"/>
         <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="lib/netstandard2.0"/>
-        <None Include="$(OutputPath)\GFramework.Generator.Attributes.dll" Pack="true"
+        <None Include="$(OutputPath)\GFramework.SourceGenerators.Attributes.dll" Pack="true"
               PackagePath="analyzers/dotnet/cs" Visible="false"/>
-        <None Update="README.md">
-            <Pack>true</Pack>
-            <PackagePath></PackagePath>
-        </None>
     </ItemGroup>
 
 </Project>
