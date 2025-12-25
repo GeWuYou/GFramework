@@ -161,7 +161,7 @@ public sealed class GodotLoggerGenerator : IIncrementalGenerator
         sb.AppendLine("        /// <summary>Auto-generated logger</summary>");
         sb.AppendLine(
             $"        {access} {staticKeyword}readonly ILogger {fieldName} = " +
-            $"new GodotLoggerFactory.GetLogger(\"{name}\");");
+            $"new GodotLoggerFactory().GetLogger(\"{name}\");");
         sb.AppendLine("    }");
 
         if (ns is not null)

@@ -26,7 +26,7 @@ public sealed class LogAttribute : Attribute
     public string? Name { get; set; }
 
     /// <summary>生成字段名</summary>
-    public string FieldName { get; set; } = "_log";
+    public string FieldName { get; set; } = "Logger";
 
     /// <summary>是否生成 static 字段</summary>
     public bool IsStatic { get; set; } = true;
