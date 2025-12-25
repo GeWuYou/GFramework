@@ -13,16 +13,21 @@ namespace GFramework.Core.architecture;
 /// 架构上下文类，提供对系统、模型、工具等组件的访问以及命令、查询、事件的执行管理
 /// </summary>
 public class ArchitectureContext(
-    IIocContainer container, 
-    ITypeEventSystem typeEventSystem, 
-    ILogger logger)
+    IIocContainer container,
+    ITypeEventSystem typeEventSystem,
+    ILogger logger,
+    ILoggerFactory? loggerFactory)
     : IArchitectureContext
 {
     private readonly IIocContainer _container = container ?? throw new ArgumentNullException(nameof(container));
-    private readonly ITypeEventSystem _typeEventSystem = typeEventSystem ?? throw new ArgumentNullException(nameof(typeEventSystem));
+
+    private readonly ITypeEventSystem _typeEventSystem =
+        typeEventSystem ?? throw new ArgumentNullException(nameof(typeEventSystem));
+
     public ILogger Logger { get; } = logger ?? throw new ArgumentNullException(nameof(logger));
+    public ILoggerFactory LoggerFactory { get; } = loggerFactory ?? new NoopLoggerFactory();
     internal IArchitectureRuntime Runtime { get; set; } = null!;
-    
+
     #region Component Retrieval
 
     /// <summary>

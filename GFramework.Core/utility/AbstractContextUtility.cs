@@ -9,7 +9,7 @@ namespace GFramework.Core.utility;
 /// </summary>
 public abstract class AbstractContextUtility : ContextAwareBase, IContextUtility
 {
-    private ILogger _logger = null!;
+    protected ILogger _logger = new NoopLoggerFactory().GetLogger(nameof(AbstractContextUtility));
     
     /// <summary>
     /// 初始化上下文工具类

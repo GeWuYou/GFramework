@@ -81,7 +81,10 @@ public interface IArchitectureContext
     /// 获取日志记录器
     /// </summary>
     ILogger Logger { get; }
-
+    /// <summary>
+    /// 获取日志工厂
+    /// </summary>
+    ILoggerFactory LoggerFactory { get; }
     /// <summary>
     /// 取消注册事件监听器
     /// </summary>

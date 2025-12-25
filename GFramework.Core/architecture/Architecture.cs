@@ -232,7 +232,7 @@ public abstract class Architecture(
     public void Initialize()
     {
         _logger = Configuration.LoggerFactory.GetLogger(GetType().Name);
-        _context ??= new ArchitectureContext(Container, TypeEventSystem, _logger);
+        _context ??= new ArchitectureContext(Container, TypeEventSystem, _logger, Configuration.LoggerFactory);
         
         // 创建架构运行时实例
         Runtime = new ArchitectureRuntime(_context);
@@ -283,7 +283,7 @@ public abstract class Architecture(
     public async Task InitializeAsync()
     {
         _logger = Configuration.LoggerFactory.GetLogger(GetType().Name);
-        _context ??= new ArchitectureContext(Container, TypeEventSystem, _logger);
+        _context ??= new ArchitectureContext(Container, TypeEventSystem, _logger, Configuration.LoggerFactory);
         
         // 创建架构运行时实例
         Runtime = new ArchitectureRuntime(_context);
