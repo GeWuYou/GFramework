@@ -30,7 +30,7 @@
 
     <ItemGroup>
         <!-- Generator 需要引用 Attributes 项目，但不作为运行时依赖 -->
-        <ProjectReference Include="..\GFramework.Godot.SourceGenerators.Attributes\GFramework.SourceGenerators.Attributes.csproj"
+        <ProjectReference Include="..\GFramework.Godot.SourceGenerators.Attributes\GFramework.Godot.SourceGenerators.Attributes.csproj"
                           PrivateAssets="all"/>
     </ItemGroup>
     <!-- 将 Generator 和 Attributes DLL 打包为 Analyzer -->
