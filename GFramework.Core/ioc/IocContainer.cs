@@ -9,24 +9,6 @@ namespace GFramework.Core.ioc;
 /// </summary>
 public class IocContainer : ContextAwareBase, IIocContainer
 {
-    #region Core
-
-    /// <summary>
-    /// 存储所有已注册对象实例的集合，用于跟踪和管理容器中的所有对象
-    /// 使用HashSet确保对象唯一性，避免重复注册同一实例
-    /// </summary>
-    private readonly HashSet<object> _objects = [];
-
-    /// <summary>
-    /// 类型索引字典，用于快速查找指定类型的所有实例
-    /// 键为类型对象，值为该类型对应的所有实例集合
-    /// </summary>
-    private readonly Dictionary<Type, HashSet<object>> _typeIndex = new();
-
-    private ILogger _logger = null!;
-
-    #endregion
-
     #region Lock
 
     /// <summary>
@@ -48,12 +30,30 @@ public class IocContainer : ContextAwareBase, IIocContainer
 
     #endregion
 
+    #region Core
+
+    /// <summary>
+    /// 存储所有已注册对象实例的集合，用于跟踪和管理容器中的所有对象
+    /// 使用HashSet确保对象唯一性，避免重复注册同一实例
+    /// </summary>
+    private readonly HashSet<object> _objects = [];
+
+    /// <summary>
+    /// 类型索引字典，用于快速查找指定类型的所有实例
+    /// 键为类型对象，值为该类型对应的所有实例集合
+    /// </summary>
+    private readonly Dictionary<Type, HashSet<object>> _typeIndex = new();
+
+    private ILogger _logger = null!;
+
+    #endregion
+
 
     #region Register
 
     public void Init()
     {
-        _logger = Context.Logger;
+        _logger = Context.LoggerFactory.GetLogger(nameof(IocContainer));
     }
 
     /// <summary>

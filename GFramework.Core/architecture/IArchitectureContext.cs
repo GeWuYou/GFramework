@@ -14,32 +14,37 @@ namespace GFramework.Core.architecture;
 public interface IArchitectureContext
 {
     /// <summary>
+    /// 获取日志工厂
+    /// </summary>
+    ILoggerFactory LoggerFactory { get; }
+
+    /// <summary>
     /// 获取指定类型的系统实例
     /// </summary>
     /// <typeparam name="TSystem">系统类型，必须继承自ISystem接口</typeparam>
     /// <returns>系统实例，如果不存在则返回null</returns>
     TSystem? GetSystem<TSystem>() where TSystem : class, ISystem;
-    
+
     /// <summary>
     /// 获取指定类型的模型实例
     /// </summary>
     /// <typeparam name="TModel">模型类型，必须继承自IModel接口</typeparam>
     /// <returns>模型实例，如果不存在则返回null</returns>
     TModel? GetModel<TModel>() where TModel : class, IModel;
-    
+
     /// <summary>
     /// 获取指定类型的工具类实例
     /// </summary>
     /// <typeparam name="TUtility">工具类类型，必须继承自IUtility接口</typeparam>
     /// <returns>工具类实例，如果不存在则返回null</returns>
     TUtility? GetUtility<TUtility>() where TUtility : class, IUtility;
-    
+
     /// <summary>
     /// 发送一个命令
     /// </summary>
     /// <param name="command">要发送的命令</param>
     void SendCommand(ICommand command);
-    
+
     /// <summary>
     /// 发送一个带返回值的命令
     /// </summary>
@@ -47,7 +52,7 @@ public interface IArchitectureContext
     /// <param name="command">要发送的命令</param>
     /// <returns>命令执行结果</returns>
     TResult SendCommand<TResult>(ICommand<TResult> command);
-    
+
     /// <summary>
     /// 发送一个查询请求
     /// </summary>
@@ -55,7 +60,7 @@ public interface IArchitectureContext
     /// <param name="query">要发送的查询</param>
     /// <returns>查询结果</returns>
     TResult SendQuery<TResult>(IQuery<TResult> query);
-    
+
     /// <summary>
     /// 发送一个事件
     /// </summary>
@@ -68,7 +73,7 @@ public interface IArchitectureContext
     /// <typeparam name="TEvent">事件类型</typeparam>
     /// <param name="e">事件参数</param>
     void SendEvent<TEvent>(TEvent e) where TEvent : class;
-    
+
     /// <summary>
     /// 注册事件处理器
     /// </summary>
@@ -76,15 +81,7 @@ public interface IArchitectureContext
     /// <param name="handler">事件处理委托</param>
     /// <returns>事件注销接口</returns>
     IUnRegister RegisterEvent<TEvent>(Action<TEvent> handler);
-    
-    /// <summary>
-    /// 获取日志记录器
-    /// </summary>
-    ILogger Logger { get; }
-    /// <summary>
-    /// 获取日志工厂
-    /// </summary>
-    ILoggerFactory LoggerFactory { get; }
+
     /// <summary>
     /// 取消注册事件监听器
     /// </summary>

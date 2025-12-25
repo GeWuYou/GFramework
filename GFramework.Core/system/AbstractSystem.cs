@@ -1,4 +1,3 @@
-using GFramework.Core.architecture;
 using GFramework.Core.logging;
 using GFramework.Core.rule;
 
@@ -17,7 +16,7 @@ public abstract class AbstractSystem : ContextAwareBase, ISystem
     /// </summary>
     void ISystem.Init()
     {
-        _logger = Context.Logger;
+        _logger = Context.LoggerFactory.GetLogger(nameof(AbstractSystem));
         _logger.Debug($"Initializing system: {GetType().Name}");
 
         OnInit();

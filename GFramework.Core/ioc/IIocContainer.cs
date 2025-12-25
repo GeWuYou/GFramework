@@ -6,11 +6,8 @@ namespace GFramework.Core.ioc;
 /// <summary>
 /// 依赖注入容器接口，定义了服务注册、解析和管理的基本操作
 /// </summary>
-public interface IIocContainer:IContextAware{
-    /// <summary>
-    /// 初始化方法
-    /// </summary>
-    void Init();
+public interface IIocContainer : IContextAware
+{
     #region Register Methods
 
     /// <summary>

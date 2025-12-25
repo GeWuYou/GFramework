@@ -15,7 +15,6 @@ namespace GFramework.Core.architecture;
 public class ArchitectureContext(
     IIocContainer container,
     ITypeEventSystem typeEventSystem,
-    ILogger logger,
     ILoggerFactory? loggerFactory)
     : IArchitectureContext
 {
@@ -24,9 +23,24 @@ public class ArchitectureContext(
     private readonly ITypeEventSystem _typeEventSystem =
         typeEventSystem ?? throw new ArgumentNullException(nameof(typeEventSystem));
 
-    public ILogger Logger { get; } = logger ?? throw new ArgumentNullException(nameof(logger));
-    public ILoggerFactory LoggerFactory { get; } = loggerFactory ?? new NoopLoggerFactory();
     internal IArchitectureRuntime Runtime { get; set; } = null!;
+
+    public ILoggerFactory LoggerFactory { get; } = loggerFactory ?? new NoopLoggerFactory();
+
+    #region Query Execution
+
+    /// <summary>
+    ///     发送一个查询请求
+    /// </summary>
+    /// <typeparam name="TResult">查询结果类型</typeparam>
+    /// <param name="query">要发送的查询</param>
+    /// <returns>查询结果</returns>
+    public TResult SendQuery<TResult>(IQuery<TResult> query)
+    {
+        return query == null ? throw new ArgumentNullException(nameof(query)) : Runtime.SendQuery(query);
+    }
+
+    #endregion
 
     #region Component Retrieval
 
@@ -84,21 +98,6 @@ public class ArchitectureContext(
     {
         ArgumentNullException.ThrowIfNull(command);
         return Runtime.SendCommand(command);
-    }
-
-    #endregion
-
-    #region Query Execution
-
-    /// <summary>
-    ///     发送一个查询请求
-    /// </summary>
-    /// <typeparam name="TResult">查询结果类型</typeparam>
-    /// <param name="query">要发送的查询</param>
-    /// <returns>查询结果</returns>
-    public TResult SendQuery<TResult>(IQuery<TResult> query)
-    {
-        return query == null ? throw new ArgumentNullException(nameof(query)) : Runtime.SendQuery(query);
     }
 
     #endregion

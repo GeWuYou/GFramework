@@ -16,7 +16,7 @@ public abstract class Architecture(
     IArchitectureConfiguration? configuration = null,
     IArchitectureServices? services = null,
     IArchitectureContext? context = null
-    ) 
+)
     : IArchitecture, IArchitectureLifecycle
 {
     /// <summary>
@@ -42,7 +42,7 @@ public abstract class Architecture(
     /// 通过Services属性获取的IArchitectureServices中的Container属性
     /// </value>
     private IIocContainer Container => Services.Container;
-    
+
     /// <summary>
     /// 获取类型事件系统
     /// </summary>
@@ -58,6 +58,37 @@ public abstract class Architecture(
     /// 统一的操作入口，负责命令、查询、事件的执行
     /// </value>
     public IArchitectureRuntime Runtime { get; private set; } = null!;
+
+    #region Module Management
+
+    /// <summary>
+    /// 安装架构模块
+    /// </summary>
+    /// <param name="module">要安装的模块</param>
+    public void InstallModule(IArchitectureModule module)
+    {
+        var logger = Configuration.LoggerFactory.GetLogger(nameof(Architecture));
+        logger.Debug($"Installing module: {module.GetType().Name}");
+        RegisterLifecycleHook(module);
+        Container.RegisterPlurality(module);
+        module.Install(this);
+        logger.Info($"Module installed: {module.GetType().Name}");
+    }
+
+    #endregion
+
+    #region IArchitectureLifecycle Implementation
+
+    /// <summary>
+    /// 处理架构阶段变更通知
+    /// </summary>
+    /// <param name="phase">当前架构阶段</param>
+    /// <param name="architecture">架构实例</param>
+    public virtual void OnPhase(ArchitecturePhase phase, IArchitecture architecture)
+    {
+    }
+
+    #endregion
 
     #region Fields and Properties
 
@@ -97,7 +128,7 @@ public abstract class Architecture(
     private ILogger _logger = null!;
 
     private IArchitectureContext? _context = context;
-    
+
     public IArchitectureContext Context => _context!;
 
     #endregion
@@ -209,31 +240,13 @@ public abstract class Architecture(
 
     #endregion
 
-    #region Module Management
-
-    /// <summary>
-    /// 安装架构模块
-    /// </summary>
-    /// <param name="module">要安装的模块</param>
-    public void InstallModule(IArchitectureModule module)
-    {
-        var logger = Configuration.LoggerFactory.GetLogger(nameof(Architecture));
-        logger.Debug($"Installing module: {module.GetType().Name}");
-        RegisterLifecycleHook(module);
-        Container.RegisterPlurality(module);
-        module.Install(this);
-        logger.Info($"Module installed: {module.GetType().Name}");
-    }
-
-    #endregion
-
     #region Component Registration
 
     public void Initialize()
     {
         _logger = Configuration.LoggerFactory.GetLogger(GetType().Name);
-        _context ??= new ArchitectureContext(Container, TypeEventSystem, _logger, Configuration.LoggerFactory);
-        
+        _context ??= new ArchitectureContext(Container, TypeEventSystem, Configuration.LoggerFactory);
+
         // 创建架构运行时实例
         Runtime = new ArchitectureRuntime(_context);
         ((ArchitectureContext)_context).Runtime = Runtime;
@@ -283,8 +296,8 @@ public abstract class Architecture(
     public async Task InitializeAsync()
     {
         _logger = Configuration.LoggerFactory.GetLogger(GetType().Name);
-        _context ??= new ArchitectureContext(Container, TypeEventSystem, _logger, Configuration.LoggerFactory);
-        
+        _context ??= new ArchitectureContext(Container, TypeEventSystem, Configuration.LoggerFactory);
+
         // 创建架构运行时实例
         Runtime = new ArchitectureRuntime(_context);
         ((ArchitectureContext)_context).Runtime = Runtime;
@@ -408,20 +421,6 @@ public abstract class Architecture(
         _logger.Debug($"Registering utility: {typeof(TUtility).Name}");
         Container.RegisterPlurality(utility);
         _logger.Info($"Utility registered: {typeof(TUtility).Name}");
-    }
-
-    #endregion
-
-    #region IArchitectureLifecycle Implementation
-
-    /// <summary>
-    /// 处理架构阶段变更通知
-    /// </summary>
-    /// <param name="phase">当前架构阶段</param>
-    /// <param name="architecture">架构实例</param>
-    public virtual void OnPhase(ArchitecturePhase phase, IArchitecture architecture)
-    {
-        
     }
 
     #endregion
