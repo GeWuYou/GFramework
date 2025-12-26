@@ -8,25 +8,6 @@ namespace GFramework.Godot.SourceGenerators.logging;
 internal static class GodotLoggerDiagnostics
 {
     /// <summary>
-    ///     诊断描述符：标识使用[GodotLog]特性的类必须声明为partial
-    /// </summary>
-    /// <remarks>
-    ///     ID: GFLOG001
-    ///     严重性: Error
-    ///     分类: GFramework.Godot.Logging
-    /// </remarks>
-    public static readonly DiagnosticDescriptor MustBePartial =
-        new(
-            "GFLOG001",
-            "Class must be partial",
-            "Class '{0}' must be declared as partial to use [GodotLog]",
-            "GFramework.Godot.Logging",
-            DiagnosticSeverity.Error,
-            true
-        );
-
-
-    /// <summary>
     ///     诊断描述符：标识GodotLogAttribute无法在指定类上生成Logger
     /// </summary>
     /// <remarks>
@@ -35,7 +16,7 @@ internal static class GodotLoggerDiagnostics
     ///     分类: GFramework.Godot.Logging
     /// </remarks>
     public static readonly DiagnosticDescriptor LogAttributeInvalid = new(
-        "GFW_LOG001",
+        "GF_Godot_Logging_001",
         "GodotLogAttribute cannot generate Logger",
         "GodotLogAttribute on class '{0}' is ineffective: {1}",
         "GFramework.Godot.Logging",

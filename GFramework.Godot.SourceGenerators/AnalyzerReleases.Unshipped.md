@@ -3,7 +3,6 @@
 
 ### New Rules
 
- Rule ID    | Category                 | Severity | Notes                  
-------------|--------------------------|----------|------------------------
- GFLOG001   | GFramework.Godot.Logging | Error    | GodotLoggerDiagnostics 
- GFW_LOG001 | GFramework.Godot.Logging | Warning  | GodotLoggerDiagnostics 
+ Rule ID              | Category                 | Severity | Notes                  
+----------------------|--------------------------|----------|------------------------
+ GF_Godot_Logging_001 | GFramework.Godot.Logging | Warning  | GodotLoggerDiagnostics 

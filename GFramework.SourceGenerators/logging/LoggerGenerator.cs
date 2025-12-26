@@ -4,6 +4,7 @@
 using System;
 using System.Linq;
 using System.Text;
+using GFramework.SourceGenerators.Common.diagnostics;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -64,7 +65,7 @@ public sealed class LoggerGenerator : IIncrementalGenerator
                 if (!classDecl.Modifiers.Any(SyntaxKind.PartialKeyword))
                 {
                     spc.ReportDiagnostic(Diagnostic.Create(
-                        LoggerDiagnostics.MustBePartial,
+                        CommonDiagnostics.ClassMustBePartial,
                         classDecl.Identifier.GetLocation(),
                         classSymbol.Name));
 

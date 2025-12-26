@@ -24,14 +24,10 @@
     </ItemGroup>
 
     <ItemGroup>
-        <AdditionalFiles Include="AnalyzerReleases.Shipped.md"/>
-        <AdditionalFiles Include="AnalyzerReleases.Unshipped.md"/>
-    </ItemGroup>
-
-    <ItemGroup>
         <!-- Generator 需要引用 Attributes 项目，但不作为运行时依赖 -->
         <ProjectReference Include="..\GFramework.Godot.SourceGenerators.Attributes\GFramework.Godot.SourceGenerators.Attributes.csproj"
                           PrivateAssets="all"/>
+        <ProjectReference Include="..\GFramework.SourceGenerators.Common\GFramework.SourceGenerators.Common.csproj"/>
     </ItemGroup>
     <!-- 将 Generator 和 Attributes DLL 打包为 Analyzer -->
     <ItemGroup>
@@ -40,5 +36,9 @@
         <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="lib/netstandard2.0"/>
         <None Include="$(OutputPath)\GFramework.Godot.SourceGenerators.Attributes.dll" Pack="true"
               PackagePath="analyzers/dotnet/cs" Visible="false"/>
+    </ItemGroup>
+    <ItemGroup>
+        <AdditionalFiles Include="AnalyzerReleases.Shipped.md"/>
+        <AdditionalFiles Include="AnalyzerReleases.Unshipped.md"/>
     </ItemGroup>
 </Project>
