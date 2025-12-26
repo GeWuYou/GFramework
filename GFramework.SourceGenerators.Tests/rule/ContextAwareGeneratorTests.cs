@@ -20,16 +20,26 @@ public class ContextAwareGeneratorTests
     {
         // 定义输入源代码，包含使用[ContextAware]特性的部分类
         const string source = """
-                              using GFramework.Core.rule;
-                              using GFramework.Core.architecture;
+                              using System;
+
+                              namespace GFramework.SourceGenerators.Attributes.rule
+                              {
+                                  [AttributeUsage(AttributeTargets.Class)]
+                                  public sealed class ContextAwareAttribute : Attribute
+                                  {
+                                  }
+                              }
 
                               namespace TestApp;
+
+                              using GFramework.SourceGenerators.Attributes.rule;
 
                               [ContextAware]
                               public partial class MyRule
                               {
                               }
                               """;
+
 
         // 定义期望的生成结果代码
         const string expected = """
@@ -40,7 +50,6 @@ public class ContextAwareGeneratorTests
                                 partial class MyRule : GFramework.Core.rule.IContextAware
                                 {
                                     protected GFramework.Core.architecture.IArchitectureContext Context { get; private set; } = null!;
-
                                     void GFramework.Core.rule.IContextAware.SetContext(
                                         GFramework.Core.architecture.IArchitectureContext context)
                                     {
@@ -48,6 +57,7 @@ public class ContextAwareGeneratorTests
                                     }
                                 }
                                 """;
+
 
         // 执行源代码生成器测试
         await GeneratorTest<ContextAwareGenerator>.RunAsync(

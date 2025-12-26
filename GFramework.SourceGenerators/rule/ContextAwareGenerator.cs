@@ -99,13 +99,12 @@ public sealed class ContextAwareGenerator : IIncrementalGenerator
         sb.AppendLine(
             "    protected GFramework.Core.architecture.IArchitectureContext Context { get; private set; } = null!;");
 
-        sb.AppendLine("""
-                          void GFramework.Core.rule.IContextAware.SetContext(
-                              GFramework.Core.architecture.IArchitectureContext context)
-                          {
-                              Context = context;
-                          }
-                      """);
+        sb.AppendLine("    void GFramework.Core.rule.IContextAware.SetContext(");
+        sb.AppendLine("        GFramework.Core.architecture.IArchitectureContext context)");
+        sb.AppendLine("    {");
+        sb.AppendLine("        Context = context;");
+        sb.AppendLine("    }");
+
 
         sb.AppendLine("}");
 
