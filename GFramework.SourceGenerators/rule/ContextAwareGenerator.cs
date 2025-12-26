@@ -105,9 +105,8 @@ public sealed class ContextAwareGenerator : IIncrementalGenerator
         sb.AppendLine("        Context = context;");
         sb.AppendLine("    }");
 
-
         sb.AppendLine("}");
 
-        return sb.ToString();
+        return sb.ToString().TrimEnd();
     }
 }
