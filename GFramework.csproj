@@ -45,6 +45,7 @@
         <None Remove="GFramework.SourceGenerators\**"/>
         <None Remove="GFramework.SourceGenerators.Attributes\**"/>
         <None Remove="GFramework.SourceGenerators.Common\**"/>
+        <None Remove="GFramework.SourceGenerators.Tests\**"/>
     </ItemGroup>
     <!-- 聚合核心模块 -->
     <ItemGroup>
@@ -70,6 +71,7 @@
         <Compile Remove="GFramework.SourceGenerators\**"/>
         <Compile Remove="GFramework.SourceGenerators.Attributes\**"/>
         <Compile Remove="GFramework.SourceGenerators.Common\**"/>
+        <Compile Remove="GFramework.SourceGenerators.Tests\**"/>
     </ItemGroup>
     <ItemGroup>
         <EmbeddedResource Remove="GFramework.Core\**"/>
@@ -81,6 +83,7 @@
         <EmbeddedResource Remove="GFramework.SourceGenerators\**"/>
         <EmbeddedResource Remove="GFramework.SourceGenerators.Attributes\**"/>
         <EmbeddedResource Remove="GFramework.SourceGenerators.Common\**"/>
+        <EmbeddedResource Remove="GFramework.SourceGenerators.Tests\**"/>
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="4.14.0"/>
