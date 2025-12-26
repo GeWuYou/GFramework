@@ -6,7 +6,7 @@ namespace GFramework.Core.query;
 ///     查询接口，定义了执行查询操作的契约
 /// </summary>
 /// <typeparam name="TResult">查询结果的类型</typeparam>
-public interface IQuery<out TResult>:IContextAware
+public interface IQuery<out TResult> : IContextAware
 {
     /// <summary>
     ///     执行查询操作并返回结果

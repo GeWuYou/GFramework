@@ -20,10 +20,10 @@
 
     <!-- 排除不需要参与打包/编译的目录 -->
     <ItemGroup>
-        <None Include="README.md" Pack="true" PackagePath="" />
-        <None Remove="GFramework.Core\**" />
-        <None Remove="GFramework.Game\**" />
-        <None Remove="GFramework.Godot\**" />
+        <None Include="README.md" Pack="true" PackagePath=""/>
+        <None Remove="GFramework.Core\**"/>
+        <None Remove="GFramework.Game\**"/>
+        <None Remove="GFramework.Godot\**"/>
         <None Update="GFramework.SourceGenerators\bin\Debug\netstandard2.0\GFramework.Generator.Attributes.dll">
             <Link>GFramework.SorceGenerators\bin\Debug\netstandard2.0\GFramework.Generator.Attributes.dll</Link>
         </None>
@@ -47,13 +47,13 @@
     </ItemGroup>
     <!-- 聚合核心模块 -->
     <ItemGroup>
-        <ProjectReference Include="GFramework.Core\GFramework.Core.csproj" />
-        <ProjectReference Include="GFramework.Game\GFramework.Game.csproj" />
+        <ProjectReference Include="GFramework.Core\GFramework.Core.csproj"/>
+        <ProjectReference Include="GFramework.Game\GFramework.Game.csproj"/>
     </ItemGroup>
     <ItemGroup>
-      <Compile Remove="GFramework.Core\**" />
-      <Compile Remove="GFramework.Game\**" />
-      <Compile Remove="GFramework.Godot\**" />
+        <Compile Remove="GFramework.Core\**"/>
+        <Compile Remove="GFramework.Game\**"/>
+        <Compile Remove="GFramework.Godot\**"/>
         <Compile Update="GFramework.SourceGenerators\enums\EnumExtensionsGenerator.cs">
             <Link>GFramework.SorceGenerators\enums\EnumExtensionsGenerator.cs</Link>
         </Compile>
@@ -70,9 +70,9 @@
         <Compile Remove="GFramework.SourceGenerators.Attributes\**"/>
     </ItemGroup>
     <ItemGroup>
-      <EmbeddedResource Remove="GFramework.Core\**" />
-      <EmbeddedResource Remove="GFramework.Game\**" />
-      <EmbeddedResource Remove="GFramework.Godot\**" />
+        <EmbeddedResource Remove="GFramework.Core\**"/>
+        <EmbeddedResource Remove="GFramework.Game\**"/>
+        <EmbeddedResource Remove="GFramework.Godot\**"/>
         <EmbeddedResource Remove="GFramework.Godot.SourceGenerators\**"/>
         <EmbeddedResource Remove="GFramework.Godot.SourceGenerators.Attributes\**"/>
         <EmbeddedResource Remove="GFramework.SorceGenerators\**"/>

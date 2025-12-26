@@ -10,7 +10,7 @@ using GFramework.Core.utility;
 namespace GFramework.Core.architecture;
 
 /// <summary>
-/// 架构上下文类，提供对系统、模型、工具等组件的访问以及命令、查询、事件的执行管理
+///     架构上下文类，提供对系统、模型、工具等组件的访问以及命令、查询、事件的执行管理
 /// </summary>
 public class ArchitectureContext(
     IIocContainer container,

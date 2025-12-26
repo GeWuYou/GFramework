@@ -1,7 +1,7 @@
 namespace GFramework.Core.logging;
 
 /// <summary>
-/// 控制台日志记录器
+///     控制台日志记录器
 /// </summary>
 public sealed class ConsoleLogger(
     string? name = null,
@@ -9,11 +9,11 @@ public sealed class ConsoleLogger(
     TextWriter? writer = null,
     bool useColors = true) : AbstractLogger(name ?? ILogger.RootLoggerName, minLevel)
 {
-    private readonly TextWriter _writer = writer ?? Console.Out;
     private readonly bool _useColors = useColors && writer == Console.Out;
-    
+    private readonly TextWriter _writer = writer ?? Console.Out;
+
     /// <summary>
-    /// 写入日志消息到控制台
+    ///     写入日志消息到控制台
     /// </summary>
     /// <param name="level">日志级别</param>
     /// <param name="message">日志消息</param>
@@ -25,24 +25,18 @@ public sealed class ConsoleLogger(
         var log = $"[{timestamp}] {levelStr} [{Name()}] {message}";
 
         // 添加异常信息到日志
-        if (exception != null)
-        {
-            log += Environment.NewLine + exception;
-        }
+        if (exception != null) log += Environment.NewLine + exception;
 
         if (_useColors)
-        {
             WriteColored(level, log);
-        }
         else
-        {
             _writer.WriteLine(log);
-        }
     }
-    
+
     #region Internal Core
+
     /// <summary>
-    /// 以指定颜色写入日志消息
+    ///     以指定颜色写入日志消息
     /// </summary>
     /// <param name="level">日志级别</param>
     /// <param name="message">日志消息</param>
@@ -61,20 +55,23 @@ public sealed class ConsoleLogger(
     }
 
     /// <summary>
-    /// 根据日志级别获取对应的颜色
+    ///     根据日志级别获取对应的颜色
     /// </summary>
     /// <param name="level">日志级别</param>
     /// <returns>控制台颜色</returns>
-    private static ConsoleColor GetColor(LogLevel level) => level switch
+    private static ConsoleColor GetColor(LogLevel level)
     {
-        LogLevel.Trace => ConsoleColor.DarkGray,
-        LogLevel.Debug => ConsoleColor.Cyan,
-        LogLevel.Info => ConsoleColor.White,
-        LogLevel.Warning => ConsoleColor.Yellow,
-        LogLevel.Error => ConsoleColor.Red,
-        LogLevel.Fatal => ConsoleColor.Magenta,
-        _ => ConsoleColor.White
-    };
+        return level switch
+        {
+            LogLevel.Trace => ConsoleColor.DarkGray,
+            LogLevel.Debug => ConsoleColor.Cyan,
+            LogLevel.Info => ConsoleColor.White,
+            LogLevel.Warning => ConsoleColor.Yellow,
+            LogLevel.Error => ConsoleColor.Red,
+            LogLevel.Fatal => ConsoleColor.Magenta,
+            _ => ConsoleColor.White
+        };
+    }
 
     #endregion
 }

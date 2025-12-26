@@ -5,11 +5,26 @@ using GFramework.Core.query;
 namespace GFramework.Core.architecture;
 
 /// <summary>
-/// 架构运行时默认实现，委托 ArchitectureContext 执行具体操作
+///     架构运行时默认实现，委托 ArchitectureContext 执行具体操作
 /// </summary>
 public class ArchitectureRuntime(IArchitectureContext context) : IArchitectureRuntime
 {
     private readonly IArchitectureContext _context = context ?? throw new ArgumentNullException(nameof(context));
+
+    #region Query Execution
+
+    /// <summary>
+    ///     发起一次查询请求并获得其结果
+    /// </summary>
+    /// <typeparam name="TResult">查询结果的数据类型</typeparam>
+    /// <param name="query">要发起的查询对象</param>
+    /// <returns>查询得到的结果数据</returns>
+    public TResult SendQuery<TResult>(IQuery<TResult> query)
+    {
+        return _context.SendQuery(query);
+    }
+
+    #endregion
 
     #region Command Execution
 
@@ -32,21 +47,6 @@ public class ArchitectureRuntime(IArchitectureContext context) : IArchitectureRu
     public TResult SendCommand<TResult>(ICommand<TResult> command)
     {
         return _context.SendCommand(command);
-    }
-
-    #endregion
-
-    #region Query Execution
-
-    /// <summary>
-    ///     发起一次查询请求并获得其结果
-    /// </summary>
-    /// <typeparam name="TResult">查询结果的数据类型</typeparam>
-    /// <param name="query">要发起的查询对象</param>
-    /// <returns>查询得到的结果数据</returns>
-    public TResult SendQuery<TResult>(IQuery<TResult> query)
-    {
-        return _context.SendQuery(query);
     }
 
     #endregion

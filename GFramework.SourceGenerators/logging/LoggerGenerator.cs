@@ -12,7 +12,7 @@ using Microsoft.CodeAnalysis.Text;
 namespace GFramework.SourceGenerators.logging;
 
 /// <summary>
-/// 日志生成器，用于为标记了LogAttribute的类自动生成日志字段
+///     日志生成器，用于为标记了LogAttribute的类自动生成日志字段
 /// </summary>
 [Generator]
 public sealed class LoggerGenerator : IIncrementalGenerator
@@ -22,7 +22,7 @@ public sealed class LoggerGenerator : IIncrementalGenerator
     private const string AttributeShortNameWithoutSuffix = "Log";
 
     /// <summary>
-    /// 初始化生成器，设置语法过滤和代码生成逻辑
+    ///     初始化生成器，设置语法过滤和代码生成逻辑
     /// </summary>
     /// <param name="context">增量生成器初始化上下文</param>
     public void Initialize(IncrementalGeneratorInitializationContext context)
@@ -87,7 +87,7 @@ public sealed class LoggerGenerator : IIncrementalGenerator
     }
 
     /// <summary>
-    /// 获取类符号上的LogAttribute特性
+    ///     获取类符号上的LogAttribute特性
     /// </summary>
     /// <param name="classSymbol">类符号</param>
     /// <returns>LogAttribute特性数据，如果不存在则返回null</returns>
@@ -105,7 +105,7 @@ public sealed class LoggerGenerator : IIncrementalGenerator
     }
 
     /// <summary>
-    /// 生成日志字段代码
+    ///     生成日志字段代码
     /// </summary>
     /// <param name="classSymbol">类符号</param>
     /// <param name="attr">LogAttribute特性数据</param>
@@ -160,7 +160,7 @@ public sealed class LoggerGenerator : IIncrementalGenerator
 
         sb.AppendLine($"    public partial class {className}");
         sb.AppendLine("    {");
-        sb.AppendLine($"        /// <summary>Auto-generated logger</summary>");
+        sb.AppendLine("        /// <summary>Auto-generated logger</summary>");
         sb.AppendLine(
             $"        {access} {staticKeyword}readonly ILogger {fieldName} = " +
             $"new ConsoleLoggerFactory().GetLogger(\"{name}\");");
@@ -173,7 +173,7 @@ public sealed class LoggerGenerator : IIncrementalGenerator
     }
 
     /// <summary>
-    /// 从特性数据中获取命名参数的值
+    ///     从特性数据中获取命名参数的值
     /// </summary>
     /// <param name="attr">特性数据</param>
     /// <param name="name">参数名称</param>

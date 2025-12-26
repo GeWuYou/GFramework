@@ -13,7 +13,7 @@ public interface ISystem : IContextAware
     ///     在系统被创建后调用，用于执行系统的初始化逻辑
     /// </summary>
     void Init();
-    
+
     /// <summary>
     ///     销毁系统
     ///     在系统被销毁前调用，用于执行系统的资源清理逻辑

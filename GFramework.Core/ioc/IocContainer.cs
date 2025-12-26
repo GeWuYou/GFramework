@@ -12,9 +12,9 @@ public class IocContainer : ContextAwareBase, IIocContainer
     #region Lock
 
     /// <summary>
-    /// 读写锁对象，用于控制多线程环境下对共享资源的访问
-    /// 使用ReaderWriterLockSlim提供高效的读写锁定机制
-    /// 配置为不支持递归锁，避免死锁风险
+    ///     读写锁对象，用于控制多线程环境下对共享资源的访问
+    ///     使用ReaderWriterLockSlim提供高效的读写锁定机制
+    ///     配置为不支持递归锁，避免死锁风险
     /// </summary>
     private readonly ReaderWriterLockSlim _lock = new(LockRecursionPolicy.NoRecursion);
 
@@ -23,8 +23,8 @@ public class IocContainer : ContextAwareBase, IIocContainer
     #region Flag
 
     /// <summary>
-    /// 冻结标志位，用于标识对象是否已被冻结
-    /// true表示对象已冻结，不可修改；false表示对象可正常修改
+    ///     冻结标志位，用于标识对象是否已被冻结
+    ///     true表示对象已冻结，不可修改；false表示对象可正常修改
     /// </summary>
     private volatile bool _frozen;
 
@@ -33,14 +33,14 @@ public class IocContainer : ContextAwareBase, IIocContainer
     #region Core
 
     /// <summary>
-    /// 存储所有已注册对象实例的集合，用于跟踪和管理容器中的所有对象
-    /// 使用HashSet确保对象唯一性，避免重复注册同一实例
+    ///     存储所有已注册对象实例的集合，用于跟踪和管理容器中的所有对象
+    ///     使用HashSet确保对象唯一性，避免重复注册同一实例
     /// </summary>
     private readonly HashSet<object> _objects = [];
 
     /// <summary>
-    /// 类型索引字典，用于快速查找指定类型的所有实例
-    /// 键为类型对象，值为该类型对应的所有实例集合
+    ///     类型索引字典，用于快速查找指定类型的所有实例
+    ///     键为类型对象，值为该类型对应的所有实例集合
     /// </summary>
     private readonly Dictionary<Type, HashSet<object>> _typeIndex = new();
 
@@ -57,8 +57,8 @@ public class IocContainer : ContextAwareBase, IIocContainer
     }
 
     /// <summary>
-    /// 注册单例
-    /// 一个类型只允许一个实例
+    ///     注册单例
+    ///     一个类型只允许一个实例
     /// </summary>
     /// <typeparam name="T">要注册为单例的类型</typeparam>
     /// <param name="instance">要注册的单例实例</param>
@@ -94,7 +94,7 @@ public class IocContainer : ContextAwareBase, IIocContainer
 
 
     /// <summary>
-    /// 注册一个实例及其所有可赋值的接口类型到容器中
+    ///     注册一个实例及其所有可赋值的接口类型到容器中
     /// </summary>
     /// <typeparam name="T">实例的类型</typeparam>
     /// <param name="instance">要注册的实例对象，不能为null</param>
@@ -126,7 +126,7 @@ public class IocContainer : ContextAwareBase, IIocContainer
     }
 
     /// <summary>
-    /// 在内部字典中注册指定类型和实例的映射关系
+    ///     在内部字典中注册指定类型和实例的映射关系
     /// </summary>
     /// <param name="type">要注册的类型</param>
     /// <param name="instance">要注册的实例</param>
@@ -152,7 +152,7 @@ public class IocContainer : ContextAwareBase, IIocContainer
 
 
     /// <summary>
-    /// 注册系统实例，将其绑定到其所有实现的接口上
+    ///     注册系统实例，将其绑定到其所有实现的接口上
     /// </summary>
     /// <param name="system">系统实例对象</param>
     public void RegisterSystem(ISystem system)
@@ -162,7 +162,7 @@ public class IocContainer : ContextAwareBase, IIocContainer
 
 
     /// <summary>
-    /// 注册指定类型的实例到容器中
+    ///     注册指定类型的实例到容器中
     /// </summary>
     /// <typeparam name="T">要注册的实例类型</typeparam>
     /// <param name="instance">要注册的实例对象，不能为null</param>
@@ -182,7 +182,7 @@ public class IocContainer : ContextAwareBase, IIocContainer
     }
 
     /// <summary>
-    /// 注册指定类型的实例到容器中
+    ///     注册指定类型的实例到容器中
     /// </summary>
     /// <param name="type">要注册的实例类型</param>
     /// <param name="instance">要注册的实例对象</param>
@@ -206,8 +206,8 @@ public class IocContainer : ContextAwareBase, IIocContainer
     #region Get
 
     /// <summary>
-    /// 获取单个实例（通常用于具体类型）
-    /// 如果存在多个，只返回第一个
+    ///     获取单个实例（通常用于具体类型）
+    ///     如果存在多个，只返回第一个
     /// </summary>
     /// <typeparam name="T">期望获取的实例类型</typeparam>
     /// <returns>找到的第一个实例；如果未找到则返回 null</returns>
@@ -234,7 +234,7 @@ public class IocContainer : ContextAwareBase, IIocContainer
 
 
     /// <summary>
-    /// 获取指定类型的必需实例
+    ///     获取指定类型的必需实例
     /// </summary>
     /// <typeparam name="T">期望获取的实例类型</typeparam>
     /// <returns>找到的唯一实例</returns>
@@ -262,7 +262,7 @@ public class IocContainer : ContextAwareBase, IIocContainer
     }
 
     /// <summary>
-    /// 获取指定类型的所有实例（接口 / 抽象类推荐使用）
+    ///     获取指定类型的所有实例（接口 / 抽象类推荐使用）
     /// </summary>
     /// <typeparam name="T">期望获取的实例类型</typeparam>
     /// <returns>所有符合条件的实例列表；如果没有则返回空数组</returns>
@@ -283,7 +283,7 @@ public class IocContainer : ContextAwareBase, IIocContainer
 
 
     /// <summary>
-    /// 获取并排序（系统调度专用）
+    ///     获取并排序（系统调度专用）
     /// </summary>
     /// <typeparam name="T">期望获取的实例类型</typeparam>
     /// <param name="comparison">比较器委托，定义排序规则</param>
@@ -301,7 +301,7 @@ public class IocContainer : ContextAwareBase, IIocContainer
     #region Utility
 
     /// <summary>
-    /// 检查容器中是否包含指定类型的实例
+    ///     检查容器中是否包含指定类型的实例
     /// </summary>
     /// <typeparam name="T">要检查的类型</typeparam>
     /// <returns>如果容器中包含指定类型的实例则返回true，否则返回false</returns>
@@ -319,7 +319,7 @@ public class IocContainer : ContextAwareBase, IIocContainer
     }
 
     /// <summary>
-    /// 清空容器中的所有实例
+    ///     清空容器中的所有实例
     /// </summary>
     public void Clear()
     {
@@ -336,7 +336,7 @@ public class IocContainer : ContextAwareBase, IIocContainer
     }
 
     /// <summary>
-    /// 判断容器中是否包含某个具体的实例对象
+    ///     判断容器中是否包含某个具体的实例对象
     /// </summary>
     /// <param name="instance">待查询的实例对象</param>
     /// <returns>若容器中包含该实例则返回true，否则返回false</returns>
@@ -355,7 +355,7 @@ public class IocContainer : ContextAwareBase, IIocContainer
 
 
     /// <summary>
-    /// 冻结容器，防止后续修改
+    ///     冻结容器，防止后续修改
     /// </summary>
     public void Freeze()
     {

@@ -4,15 +4,15 @@ using GFramework.Core.rule;
 namespace GFramework.Core.utility;
 
 /// <summary>
-/// 抽象上下文工具类，提供上下文相关的通用功能实现
-/// 继承自ContextAwareBase并实现IContextUtility接口
+///     抽象上下文工具类，提供上下文相关的通用功能实现
+///     继承自ContextAwareBase并实现IContextUtility接口
 /// </summary>
 public abstract class AbstractContextUtility : ContextAwareBase, IContextUtility
 {
     protected ILogger Logger = null !;
 
     /// <summary>
-    /// 初始化上下文工具类
+    ///     初始化上下文工具类
     /// </summary>
     void IContextUtility.Init()
     {

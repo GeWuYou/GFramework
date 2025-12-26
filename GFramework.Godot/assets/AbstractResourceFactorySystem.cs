@@ -7,29 +7,17 @@ using Godot;
 namespace GFramework.Godot.assets;
 
 /// <summary>
-/// 资源工厂系统抽象基类，用于统一管理各类资源的创建与预加载逻辑。
-/// 提供注册场景和资源的方法，并通过依赖的资源加载系统和资产目录系统完成实际资源的获取与构造。
+///     资源工厂系统抽象基类，用于统一管理各类资源的创建与预加载逻辑。
+///     提供注册场景和资源的方法，并通过依赖的资源加载系统和资产目录系统完成实际资源的获取与构造。
 /// </summary>
 public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceFactorySystem, IArchitectureLifecycle
 {
+    private IAssetCatalogSystem? _assetCatalogSystem;
     private ResourceFactory.Registry? _registry;
     private IResourceLoadSystem? _resourceLoadSystem;
-    private IAssetCatalogSystem? _assetCatalogSystem;
 
     /// <summary>
-    /// 系统初始化方法，在系统启动时执行一次。
-    /// 初始化资源注册表，并获取依赖的资源加载系统和资产目录系统。
-    /// 最后执行所有已注册资源的预加载操作。
-    /// </summary>
-    protected override void OnInit()
-    {
-        _registry = new ResourceFactory.Registry();
-        _resourceLoadSystem = Context.GetSystem<IResourceLoadSystem>();
-        _assetCatalogSystem = Context.GetSystem<IAssetCatalogSystem>();
-    }
-
-    /// <summary>
-    /// 架构阶段回调，在架构就绪时注册和预加载资源
+    ///     架构阶段回调，在架构就绪时注册和预加载资源
     /// </summary>
     /// <param name="phase">当前架构阶段</param>
     /// <param name="architecture">架构实例</param>
@@ -44,34 +32,51 @@ public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceF
         }
     }
 
-    /// <summary>
-    /// 注册系统所需的各种资源类型。由子类实现具体注册逻辑。
-    /// </summary>
-    protected abstract void RegisterResources();
-
 
     /// <summary>
-    /// 根据指定的键获取资源工厂函数。
+    ///     根据指定的键获取资源工厂函数。
     /// </summary>
     /// <typeparam name="T">资源类型</typeparam>
     /// <param name="key">资源键</param>
     /// <returns>返回创建指定类型资源的工厂函数</returns>
-    public Func<T> GetFactory<T>(string key) => _registry!.ResolveFactory<T>(key);
+    public Func<T> GetFactory<T>(string key)
+    {
+        return _registry!.ResolveFactory<T>(key);
+    }
 
     /// <summary>
-    /// 根据资产目录映射信息获取资源工厂函数。
+    ///     根据资产目录映射信息获取资源工厂函数。
     /// </summary>
     /// <typeparam name="T">资源类型</typeparam>
     /// <param name="mapping">资产目录映射信息</param>
     /// <returns>返回创建指定类型资源的工厂函数</returns>
-    public Func<T> GetFactory<T>(AssetCatalog.AssetCatalogMapping mapping) => _registry!.ResolveFactory<T>(mapping.Key);
+    public Func<T> GetFactory<T>(AssetCatalog.AssetCatalogMapping mapping)
+    {
+        return _registry!.ResolveFactory<T>(mapping.Key);
+    }
+
+    /// <summary>
+    ///     系统初始化方法，在系统启动时执行一次。
+    ///     初始化资源注册表，并获取依赖的资源加载系统和资产目录系统。
+    ///     最后执行所有已注册资源的预加载操作。
+    /// </summary>
+    protected override void OnInit()
+    {
+        _registry = new ResourceFactory.Registry();
+        _resourceLoadSystem = Context.GetSystem<IResourceLoadSystem>();
+        _assetCatalogSystem = Context.GetSystem<IAssetCatalogSystem>();
+    }
+
+    /// <summary>
+    ///     注册系统所需的各种资源类型。由子类实现具体注册逻辑。
+    /// </summary>
+    protected abstract void RegisterResources();
 
 
     #region Register Helpers（声明式）
 
-
     /// <summary>
-    /// 注册场景单元到资源管理系统中
+    ///     注册场景单元到资源管理系统中
     /// </summary>
     /// <typeparam name="T">场景单元类型，必须继承自Node</typeparam>
     /// <param name="sceneUnitKey">场景单元键值，用于标识特定的场景单元资源</param>
@@ -92,7 +97,7 @@ public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceF
 
 
     /// <summary>
-    /// 注册场景页面到资源管理系统中
+    ///     注册场景页面到资源管理系统中
     /// </summary>
     /// <typeparam name="T">场景页面类型，必须继承自Node</typeparam>
     /// <param name="scenePageKey">场景页面键值，用于标识特定的场景页面资源</param>
@@ -112,7 +117,7 @@ public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceF
     }
 
     /// <summary>
-    /// 注册通用资产资源到资源管理系统中
+    ///     注册通用资产资源到资源管理系统中
     /// </summary>
     /// <typeparam name="T">资产类型，必须继承自Resource</typeparam>
     /// <param name="assetKey">资产键值，用于标识特定的资产资源</param>
@@ -130,7 +135,6 @@ public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceF
             preload
         );
     }
-
 
     #endregion
 }

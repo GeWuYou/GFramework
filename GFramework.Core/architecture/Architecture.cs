@@ -8,9 +8,9 @@ using GFramework.Core.utility;
 namespace GFramework.Core.architecture;
 
 /// <summary>
-/// 架构基类，提供系统、模型、工具等组件的注册与管理功能。
-/// 专注于生命周期管理、初始化流程控制和架构阶段转换。
-/// 不直接提供业务操作方法，业务操作通过 ArchitectureRuntime 提供。
+///     架构基类，提供系统、模型、工具等组件的注册与管理功能。
+///     专注于生命周期管理、初始化流程控制和架构阶段转换。
+///     不直接提供业务操作方法，业务操作通过 ArchitectureRuntime 提供。
 /// </summary>
 public abstract class Architecture(
     IArchitectureConfiguration? configuration = null,
@@ -20,49 +20,49 @@ public abstract class Architecture(
     : IArchitecture, IArchitectureLifecycle
 {
     /// <summary>
-    /// 获取架构配置对象
+    ///     获取架构配置对象
     /// </summary>
     /// <value>
-    /// 返回一个IArchitectureConfiguration接口的实例，默认为DefaultArchitectureConfiguration类型
+    ///     返回一个IArchitectureConfiguration接口的实例，默认为DefaultArchitectureConfiguration类型
     /// </value>
     private IArchitectureConfiguration Configuration { get; } = configuration ?? new ArchitectureConfiguration();
 
     /// <summary>
-    /// 获取架构服务对象
+    ///     获取架构服务对象
     /// </summary>
     /// <value>
-    /// 返回一个IArchitectureServices接口的实例，默认为DefaultArchitectureServices类型
+    ///     返回一个IArchitectureServices接口的实例，默认为DefaultArchitectureServices类型
     /// </value>
     private IArchitectureServices Services { get; } = services ?? new ArchitectureServices();
 
     /// <summary>
-    /// 获取依赖注入容器
+    ///     获取依赖注入容器
     /// </summary>
     /// <value>
-    /// 通过Services属性获取的IArchitectureServices中的Container属性
+    ///     通过Services属性获取的IArchitectureServices中的Container属性
     /// </value>
     private IIocContainer Container => Services.Container;
 
     /// <summary>
-    /// 获取类型事件系统
+    ///     获取类型事件系统
     /// </summary>
     /// <value>
-    /// 通过Services属性获取的IArchitectureServices中的TypeEventSystem属性
+    ///     通过Services属性获取的IArchitectureServices中的TypeEventSystem属性
     /// </value>
     private ITypeEventSystem TypeEventSystem => Services.TypeEventSystem;
 
     /// <summary>
-    /// 获取架构运行时实例
+    ///     获取架构运行时实例
     /// </summary>
     /// <value>
-    /// 统一的操作入口，负责命令、查询、事件的执行
+    ///     统一的操作入口，负责命令、查询、事件的执行
     /// </value>
     public IArchitectureRuntime Runtime { get; private set; } = null!;
 
     #region Module Management
 
     /// <summary>
-    /// 安装架构模块
+    ///     安装架构模块
     /// </summary>
     /// <param name="module">要安装的模块</param>
     public void InstallModule(IArchitectureModule module)
@@ -80,7 +80,7 @@ public abstract class Architecture(
     #region IArchitectureLifecycle Implementation
 
     /// <summary>
-    /// 处理架构阶段变更通知
+    ///     处理架构阶段变更通知
     /// </summary>
     /// <param name="phase">当前架构阶段</param>
     /// <param name="architecture">架构实例</param>
@@ -123,7 +123,7 @@ public abstract class Architecture(
     private ArchitecturePhase CurrentPhase { get; set; }
 
     /// <summary>
-    /// 日志记录器实例，用于记录应用程序的运行日志
+    ///     日志记录器实例，用于记录应用程序的运行日志
     /// </summary>
     private ILogger _logger = null!;
 
@@ -136,7 +136,7 @@ public abstract class Architecture(
     #region Lifecycle Management
 
     /// <summary>
-    /// 进入指定的架构阶段，并执行相应的生命周期管理操作
+    ///     进入指定的架构阶段，并执行相应的生命周期管理操作
     /// </summary>
     /// <param name="next">要进入的下一个架构阶段</param>
     /// <exception cref="InvalidOperationException">当阶段转换不被允许时抛出异常</exception>
@@ -156,10 +156,7 @@ public abstract class Architecture(
         var previousPhase = CurrentPhase;
         CurrentPhase = next;
 
-        if (previousPhase != next)
-        {
-            logger.Info($"Architecture phase changed: {previousPhase} -> {next}");
-        }
+        if (previousPhase != next) logger.Info($"Architecture phase changed: {previousPhase} -> {next}");
 
         NotifyPhase(next);
 
@@ -172,7 +169,7 @@ public abstract class Architecture(
     }
 
     /// <summary>
-    /// 通知所有生命周期钩子当前阶段变更
+    ///     通知所有生命周期钩子当前阶段变更
     /// </summary>
     /// <param name="phase">当前架构阶段</param>
     private void NotifyPhase(ArchitecturePhase phase)
@@ -182,7 +179,7 @@ public abstract class Architecture(
     }
 
     /// <summary>
-    /// 注册生命周期钩子
+    ///     注册生命周期钩子
     /// </summary>
     /// <param name="hook">生命周期钩子实例</param>
     public void RegisterLifecycleHook(IArchitectureLifecycle hook)
@@ -200,11 +197,11 @@ public abstract class Architecture(
     protected abstract void Init();
 
     /// <summary>
-    /// 销毁架构并清理所有系统资源
+    ///     销毁架构并清理所有系统资源
     /// </summary>
     /// <remarks>
-    /// 此函数负责有序地销毁架构中的所有系统组件，并发送相应的生命周期事件。
-    /// 函数会确保只执行一次销毁操作，避免重复销毁。
+    ///     此函数负责有序地销毁架构中的所有系统组件，并发送相应的生命周期事件。
+    ///     函数会确保只执行一次销毁操作，避免重复销毁。
     /// </remarks>
     public virtual void Destroy()
     {
@@ -368,7 +365,9 @@ public abstract class Architecture(
         Container.RegisterPlurality(system);
         _allSystems.Add(system);
         if (!_mInited)
+        {
             _mSystems.Add(system);
+        }
         else
         {
             _logger.Debug($"Immediately initializing system: {typeof(TSystem).Name}");
@@ -400,7 +399,9 @@ public abstract class Architecture(
         Container.RegisterPlurality(model);
 
         if (!_mInited)
+        {
             _mModels.Add(model);
+        }
         else
         {
             _logger.Debug($"Immediately initializing model: {typeof(TModel).Name}");

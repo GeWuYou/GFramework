@@ -13,6 +13,14 @@ public abstract class AbstractModel : IModel
     protected IArchitecture Architecture;
 
     /// <summary>
+    ///     初始化模型，调用抽象方法OnInit执行具体初始化逻辑
+    /// </summary>
+    void IModel.Init()
+    {
+        OnInit();
+    }
+
+    /// <summary>
     ///     获取模型所属的架构实例
     /// </summary>
     /// <returns>返回当前模型关联的架构对象</returns>
@@ -28,14 +36,6 @@ public abstract class AbstractModel : IModel
     public void SetArchitecture(IArchitecture architecture)
     {
         Architecture = architecture;
-    }
-
-    /// <summary>
-    ///     初始化模型，调用抽象方法OnInit执行具体初始化逻辑
-    /// </summary>
-    void IModel.Init()
-    {
-        OnInit();
     }
 
     /// <summary>

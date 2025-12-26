@@ -2,7 +2,8 @@
 
 ## 概述
 
-GFramework.Core 提供了一个灵活、可配置的日志系统，支持多级别、多类别和多种输出方式的日志记录。默认日志级别为 `Info`，确保框架的关键操作都能被记录下来。
+GFramework.Core 提供了一个灵活、可配置的日志系统，支持多级别、多类别和多种输出方式的日志记录。默认日志级别为 `Info`
+，确保框架的关键操作都能被记录下来。
 
 ## 主要特性
 
@@ -241,27 +242,32 @@ paymentLogger.Info("支付成功", new { OrderId = "ORD_789", TransactionId = "t
 GFramework.Core 在以下关键位置自动添加了日志记录：
 
 ### 架构模块 (Architecture)
+
 - 架构初始化流程
 - 组件注册和初始化
 - 生命周期阶段变更
 - 模块安装和卸载
 
 ### IOC容器 (IOC)
+
 - 对象注册和获取
 - 容器冻结操作
 - 重复注册检测
 
 ### 事件系统 (Event)
+
 - 事件发送和接收
 - 事件处理器注册和注销
 
 ### 系统模块 (System)
+
 - 系统初始化和销毁
 - 组件生命周期管理
 
 ## 输出格式
 
 ### 控制台输出示例
+
 ```
 [2025-12-23 12:34:56.789] INFO     Architecture Architecture initialized
 [2025-12-23 12:34:56.790] INFO     Architecture Initializing 3 systems
@@ -271,6 +277,7 @@ GFramework.Core 在以下关键位置自动添加了日志记录：
 ```
 
 ### 日志输出级别颜色
+
 - **Trace**: 灰色
 - **Debug**: 青色
 - **Info**: 白色
@@ -281,11 +288,11 @@ GFramework.Core 在以下关键位置自动添加了日志记录：
 ## 最佳实践
 
 1. **使用合适的日志级别**:
-   - 使用 `Info` 记录重要业务流程
-   - 使用 `Debug` 记录调试信息
-   - 使用 `Warning` 记录异常情况
-   - 使用 `Error` 记录错误但不影响程序运行
-   - 使用 `Fatal` 记录严重错误
+    - 使用 `Info` 记录重要业务流程
+    - 使用 `Debug` 记录调试信息
+    - 使用 `Warning` 记录异常情况
+    - 使用 `Error` 记录错误但不影响程序运行
+    - 使用 `Fatal` 记录严重错误
 
 2. **提供上下文信息**:
    ```csharp
@@ -331,6 +338,7 @@ GFramework.Core 在以下关键位置自动添加了日志记录：
 ## 配置建议
 
 ### 开发环境
+
 ```csharp
 Log.Configure(
     minLevel: LogLevel.Debug,
@@ -341,6 +349,7 @@ Log.Configure(
 ```
 
 ### 生产环境
+
 ```csharp
 var config = new LogConfig
 {

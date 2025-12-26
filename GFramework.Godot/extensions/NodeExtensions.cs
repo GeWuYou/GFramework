@@ -243,7 +243,7 @@ public static class NodeExtensions
 
 
     /// <summary>
-    /// 将指定节点转换为目标类型T
+    ///     将指定节点转换为目标类型T
     /// </summary>
     /// <typeparam name="T">目标节点类型，必须继承自Node</typeparam>
     /// <param name="node">要转换的节点对象，可以为null</param>
@@ -252,10 +252,8 @@ public static class NodeExtensions
     public static T OfType<T>(this Node? node) where T : Node
     {
         // 检查节点是否有效且类型匹配
-        if (node.IsValidNode()&& node is T t)
+        if (node.IsValidNode() && node is T t)
             return t;
         throw new InvalidCastException($"Cannot cast {node} to {typeof(T)}");
     }
-
-
 }

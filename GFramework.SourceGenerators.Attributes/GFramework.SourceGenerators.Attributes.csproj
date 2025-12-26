@@ -6,6 +6,6 @@
         <LangVersion>10</LangVersion>
     </PropertyGroup>
     <ItemGroup>
-      <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="4.14.0" />
+        <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="4.14.0"/>
     </ItemGroup>
 </Project>

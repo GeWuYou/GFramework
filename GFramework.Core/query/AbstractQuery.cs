@@ -6,7 +6,7 @@ namespace GFramework.Core.query;
 ///     抽象查询类，提供查询操作的基础实现
 /// </summary>
 /// <typeparam name="T">查询结果的类型</typeparam>
-public abstract class AbstractQuery<T> :ContextAwareBase, IQuery<T>
+public abstract class AbstractQuery<T> : ContextAwareBase, IQuery<T>
 {
     /// <summary>
     ///     执行查询操作
@@ -16,7 +16,7 @@ public abstract class AbstractQuery<T> :ContextAwareBase, IQuery<T>
     {
         return OnDo();
     }
-    
+
     /// <summary>
     ///     抽象方法，由子类实现具体的查询逻辑
     /// </summary>

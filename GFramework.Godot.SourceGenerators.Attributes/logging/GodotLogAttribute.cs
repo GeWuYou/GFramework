@@ -4,20 +4,20 @@ using System;
 namespace GFramework.Godot.SourceGenerators.Attributes.logging;
 
 /// <summary>
-/// Godot日志特性，用于在类上标记以自动生成日志字段
+///     Godot日志特性，用于在类上标记以自动生成日志字段
 /// </summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
 public sealed class GodotLogAttribute : Attribute
 {
     /// <summary>
-    /// 初始化 GodotLogAttribute 类的新实例
+    ///     初始化 GodotLogAttribute 类的新实例
     /// </summary>
     public GodotLogAttribute()
     {
     }
 
     /// <summary>
-    /// 初始化 GodotLogAttribute 类的新实例
+    ///     初始化 GodotLogAttribute 类的新实例
     /// </summary>
     /// <param name="name">日志分类名</param>
     public GodotLogAttribute(string? name)
