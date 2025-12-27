@@ -51,8 +51,8 @@
               Visible="false"/>
     </ItemGroup>
     <ItemGroup>
-        <None Include="$(OutputPath)\$(AssemblyName).Attributes.dll" Pack="true" PackagePath="lib\netstandard2.0" Visible="true"/>
-        <None Include="$(OutputPath)\$(AssemblyName).Attributes.xml" Pack="true" PackagePath="lib\netstandard2.0" Visible="true"/>
+        <None Include="$(OutputPath)\$(AssemblyName).Abstractions.dll" Pack="true" PackagePath="lib\netstandard2.0" Visible="true"/>
+        <None Include="$(OutputPath)\$(AssemblyName).Abstractions.xml" Pack="true" PackagePath="lib\netstandard2.0" Visible="true"/>
         <None Include="GFramework.SourceGenerators.Common.dll" Pack="true" PackagePath="lib\netstandard2.0" Visible="true"/>
         <None Include="GFramework.SourceGenerators.Common.xml" Pack="true" PackagePath="lib\netstandard2.0" Visible="true"/>
         <!-- 包含targets文件 -->
