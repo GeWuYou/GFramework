@@ -16,7 +16,7 @@ public class ContextAwareGeneratorTests
     /// </summary>
     /// <returns>异步任务</returns>
     [Test]
-    public async Task Generates_ContextAware_Code()
+    public Task Generates_ContextAware_Code()
     {
         // 定义输入源代码，包含使用[ContextAware]特性的部分类
         const string source = """
@@ -72,16 +72,19 @@ public class ContextAwareGeneratorTests
                                 }
                                 """;
 
-
-        // 执行源代码生成器测试
-        await GeneratorTest<ContextAwareGenerator>.RunAsync(
-            source + "\n" + frameworkStub,
-            ("MyRule.ContextAware.g.cs", expected)
-        );
+        Assert.DoesNotThrowAsync(async () =>
+        {
+            // 执行源代码生成器测试
+            await GeneratorTest<ContextAwareGenerator>.RunAsync(
+                source + "\n" + frameworkStub,
+                ("MyRule.ContextAware.g.cs", expected)
+            );
+        });
+        return Task.CompletedTask;
     }
 
     [Test]
-    public async Task Generates_ContextAware_Code_When_Interface_Inherits_IContextAware()
+    public Task Generates_ContextAware_Code_When_Interface_Inherits_IContextAware()
     {
         const string source = """
                               using System;
@@ -141,10 +144,13 @@ public class ContextAwareGeneratorTests
                                     }
                                 }
                                 """;
-
-        await GeneratorTest<ContextAwareGenerator>.RunAsync(
-            source + "\n" + frameworkStub,
-            ("MyRule.ContextAware.g.cs", expected)
-        );
+        Assert.DoesNotThrowAsync(async () =>
+        {
+            await GeneratorTest<ContextAwareGenerator>.RunAsync(
+                source + "\n" + frameworkStub,
+                ("MyRule.ContextAware.g.cs", expected)
+            );
+        });
+        return Task.CompletedTask;
     }
 }
