@@ -1,5 +1,6 @@
-#nullable enable
-namespace GFramework.GFramework.Godot.SourceGenerators.Abstractions.logging;
+using System;
+
+namespace GFramework.Godot.SourceGenerators.Abstractions.logging;
 
 /// <summary>
 ///     Godot日志特性，用于在类上标记以自动生成日志字段

@@ -1,5 +1,7 @@
 #nullable enable
-namespace GFramework.GFramework.SourceGenerators.Abstractions.logging;
+using System;
+
+namespace GFramework.SourceGenerators.Abstractions.logging;
 
 /// <summary>
 ///     标注在类上，Source Generator 会为该类自动生成一个日志记录器字段。
@@ -7,6 +9,9 @@ namespace GFramework.GFramework.SourceGenerators.Abstractions.logging;
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
 public sealed class LogAttribute : Attribute
 {
+    /// <summary>
+    ///     初始化 LogAttribute 类的新实例
+    /// </summary>
     public LogAttribute()
     {
     }
@@ -19,6 +24,7 @@ public sealed class LogAttribute : Attribute
     {
         Name = name;
     }
+
 
     /// <summary>日志分类名（默认使用类名）</summary>
     public string? Name { get; set; }

@@ -1,12 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <!-- 
+    配置项目构建属性
+    设置项目不可打包、生成文档文件，并包含特定的Polyfill
+    -->
     <PropertyGroup>
-        <TargetFramework>netstandard2.0</TargetFramework>
-        <PackageId>GeWuYou.GFramework.SourceGenerators.Attributes</PackageId>
-        <Version>1.0.0</Version>
-        <LangVersion>10</LangVersion>
-        <RootNamespace>GFramework.SourceGenerators.Attributes</RootNamespace>
+        <IsPackable>false</IsPackable>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <MeziantouPolyfill_IncludedPolyfills>T:System.Diagnostics.CodeAnalysis.NotNullWhenAttribute</MeziantouPolyfill_IncludedPolyfills>
     </PropertyGroup>
+
+    <!-- 引入必要的命名空间 -->
     <ItemGroup>
-        <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="4.14.0"/>
+        <Using Include="GFramework.SourceGenerators.Abstractions"/>
     </ItemGroup>
 </Project>

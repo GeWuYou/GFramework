@@ -24,9 +24,6 @@
         <None Remove="GFramework.Core\**"/>
         <None Remove="GFramework.Game\**"/>
         <None Remove="GFramework.Godot\**"/>
-        <None Update="GFramework.SourceGenerators\bin\Debug\netstandard2.0\GFramework.Generator.Attributes.dll">
-            <Link>GFramework.SorceGenerators\bin\Debug\netstandard2.0\GFramework.Generator.Attributes.dll</Link>
-        </None>
         <None Update="GFramework.SourceGenerators\logging\README.md">
             <Link>GFramework.SorceGenerators\logging\README.md</Link>
         </None>
@@ -40,12 +37,12 @@
             <Link>GFramework.SorceGenerators\AnalyzerReleases.Unshipped.md</Link>
         </None>
         <None Remove="GFramework.Godot.SourceGenerators\**"/>
-        <None Remove="GFramework.Godot.SourceGenerators.Attributes\**"/>
         <None Remove="GFramework.SorceGenerators\**"/>
         <None Remove="GFramework.SourceGenerators\**"/>
-        <None Remove="GFramework.SourceGenerators.Attributes\**"/>
         <None Remove="GFramework.SourceGenerators.Common\**"/>
         <None Remove="GFramework.SourceGenerators.Tests\**"/>
+        <None Remove="GFramework.Godot.SourceGenerators.Abstractions\**"/>
+        <None Remove="GFramework.SourceGenerators.Abstractions\**"/>
     </ItemGroup>
     <!-- 聚合核心模块 -->
     <ItemGroup>
@@ -66,24 +63,24 @@
             <Link>GFramework.SorceGenerators\logging\LoggerGenerator.cs</Link>
         </Compile>
         <Compile Remove="GFramework.Godot.SourceGenerators\**"/>
-        <Compile Remove="GFramework.Godot.SourceGenerators.Attributes\**"/>
         <Compile Remove="GFramework.SorceGenerators\**"/>
         <Compile Remove="GFramework.SourceGenerators\**"/>
-        <Compile Remove="GFramework.SourceGenerators.Attributes\**"/>
         <Compile Remove="GFramework.SourceGenerators.Common\**"/>
         <Compile Remove="GFramework.SourceGenerators.Tests\**"/>
+        <Compile Remove="GFramework.Godot.SourceGenerators.Abstractions\**"/>
+        <Compile Remove="GFramework.SourceGenerators.Abstractions\**"/>
     </ItemGroup>
     <ItemGroup>
         <EmbeddedResource Remove="GFramework.Core\**"/>
         <EmbeddedResource Remove="GFramework.Game\**"/>
         <EmbeddedResource Remove="GFramework.Godot\**"/>
         <EmbeddedResource Remove="GFramework.Godot.SourceGenerators\**"/>
-        <EmbeddedResource Remove="GFramework.Godot.SourceGenerators.Attributes\**"/>
         <EmbeddedResource Remove="GFramework.SorceGenerators\**"/>
         <EmbeddedResource Remove="GFramework.SourceGenerators\**"/>
-        <EmbeddedResource Remove="GFramework.SourceGenerators.Attributes\**"/>
         <EmbeddedResource Remove="GFramework.SourceGenerators.Common\**"/>
         <EmbeddedResource Remove="GFramework.SourceGenerators.Tests\**"/>
+        <EmbeddedResource Remove="GFramework.Godot.SourceGenerators.Abstractions\**"/>
+        <EmbeddedResource Remove="GFramework.SourceGenerators.Abstractions\**"/>
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="4.14.0"/>
