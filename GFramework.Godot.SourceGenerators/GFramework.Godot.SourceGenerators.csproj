@@ -23,8 +23,7 @@
 
     <!-- Generator 编译期依赖 -->
     <ItemGroup>
-        <ProjectReference Include="..\GFramework.Godot.SourceGenerators.Attributes\GFramework.Godot.SourceGenerators.Attributes.csproj"
-                          PrivateAssets="all"/>
+        <ProjectReference Include="..\GFramework.Godot.SourceGenerators.Abstractions\GFramework.Godot.SourceGenerators.Abstractions.csproj" PrivateAssets="all"/>
         <ProjectReference Include="..\GFramework.SourceGenerators.Common\GFramework.SourceGenerators.Common.csproj"
                           PrivateAssets="all"/>
     </ItemGroup>
@@ -36,5 +35,8 @@
               PackagePath="analyzers/dotnet/cs"
               Visible="false"/>
     </ItemGroup>
-
+    <ItemGroup>
+        <None Include="$(OutputPath)\$(AssemblyName).Attributes.dll" Pack="true" PackagePath="lib\netstandard2.0" Visible="true"/>
+        <None Include="GFramework.SourceGenerators.Common.dll" Pack="true" PackagePath="lib\netstandard2.0" Visible="true"/>
+    </ItemGroup>
 </Project>

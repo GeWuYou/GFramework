@@ -4,7 +4,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework ", "GFramework.c
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.SourceGenerators", "GFramework.SourceGenerators\GFramework.SourceGenerators.csproj", "{E9D51809-0351-4B83-B85B-B5F469AAB3B8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.SourceGenerators.Attributes", "GFramework.SourceGenerators.Attributes\GFramework.SourceGenerators.Attributes.csproj", "{84C5C3C9-5620-4924-BA04-92F813F2B70F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.SourceGenerators.Abstractions", "GFramework.SourceGenerators.Abstractions\GFramework.SourceGenerators.Abstractions.csproj", "{84C5C3C9-5620-4924-BA04-92F813F2B70F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.Core", "GFramework.Core\GFramework.Core.csproj", "{A6D5854D-79EA-487A-9ED9-396E6A1F8031}"
 EndProject
@@ -14,7 +14,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.Game", "GFramewo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.Godot.SourceGenerators", "GFramework.Godot.SourceGenerators\GFramework.Godot.SourceGenerators.csproj", "{C56FD287-CBC6-4C44-B3DF-103FA3660CA0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.Godot.SourceGenerators.Attributes", "GFramework.Godot.SourceGenerators.Attributes\GFramework.Godot.SourceGenerators.Attributes.csproj", "{3A1132B7-EC3B-4BB6-A752-8ADC92BC08A0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.Godot.SourceGenerators.Abstractions", "GFramework.Godot.SourceGenerators.Abstractions\GFramework.Godot.SourceGenerators.Abstractions.csproj", "{3A1132B7-EC3B-4BB6-A752-8ADC92BC08A0}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.SourceGenerators.Common", "GFramework.SourceGenerators.Common\GFramework.SourceGenerators.Common.csproj", "{3DB57A3A-ACCF-47BE-A17B-2ADD68B6C8AA}"
 EndProject

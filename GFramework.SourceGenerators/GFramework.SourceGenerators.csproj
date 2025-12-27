@@ -24,8 +24,7 @@
 
     <!-- Generator 编译期引用 Attributes / Common，但不打包 -->
     <ItemGroup>
-        <ProjectReference Include="..\GFramework.SourceGenerators.Attributes\GFramework.SourceGenerators.Attributes.csproj"
-                          PrivateAssets="all"/>
+        <ProjectReference Include="..\GFramework.SourceGenerators.Abstractions\GFramework.SourceGenerators.Abstractions.csproj" PrivateAssets="all"/>
         <ProjectReference Include="..\GFramework.SourceGenerators.Common\GFramework.SourceGenerators.Common.csproj"
                           PrivateAssets="all"/>
     </ItemGroup>
@@ -37,5 +36,8 @@
               PackagePath="analyzers/dotnet/cs"
               Visible="false"/>
     </ItemGroup>
-
+    <ItemGroup>
+        <None Include="$(OutputPath)\$(AssemblyName).Attributes.dll" Pack="true" PackagePath="lib\netstandard2.0" Visible="true"/>
+        <None Include="GFramework.SourceGenerators.Common.dll" Pack="true" PackagePath="lib\netstandard2.0" Visible="true"/>
+    </ItemGroup>
 </Project>

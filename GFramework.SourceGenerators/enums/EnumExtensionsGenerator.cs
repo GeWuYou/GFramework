@@ -11,7 +11,7 @@ namespace GFramework.SourceGenerators.enums;
 public class EnumExtensionsGenerator : IIncrementalGenerator
 {
     private const string AttributeFullName =
-        "GFramework.SourceGenerators.Attributes.generator.enums.GenerateEnumExtensionsAttribute";
+        "GFramework.SourceGenerators.Abstractions.generator.enums.GenerateEnumExtensionsAttribute";
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {

@@ -5,6 +5,7 @@
         <PackageId>GeWuYou.GFramework.Godot.SourceGenerators.Attributes</PackageId>
         <Version>1.0.0</Version>
         <LangVersion>10</LangVersion>
+        <RootNamespace>GFramework.Godot.SourceGenerators.Attributes</RootNamespace>
     </PropertyGroup>
 
 </Project>

@@ -22,7 +22,7 @@ public class ContextAwareGeneratorTests
         const string source = """
                               using System;
 
-                              namespace GFramework.SourceGenerators.Attributes.rule
+                              namespace GFramework.SourceGenerators.Abstractions.rule
                               {
                                   [AttributeUsage(AttributeTargets.Class)]
                                   public sealed class ContextAwareAttribute : Attribute
@@ -32,7 +32,7 @@ public class ContextAwareGeneratorTests
 
                               namespace TestApp
                               {
-                                  using GFramework.SourceGenerators.Attributes.rule;
+                                  using GFramework.SourceGenerators.Abstractions.rule;
 
                                   [ContextAware]
                                   public partial class MyRule: GFramework.Core.rule.IContextAware
@@ -89,7 +89,7 @@ public class ContextAwareGeneratorTests
         const string source = """
                               using System;
 
-                              namespace GFramework.SourceGenerators.Attributes.rule
+                              namespace GFramework.SourceGenerators.Abstractions.rule
                               {
                                   [AttributeUsage(AttributeTargets.Class)]
                                   public sealed class ContextAwareAttribute : Attribute
@@ -99,7 +99,7 @@ public class ContextAwareGeneratorTests
 
                               namespace TestApp
                               {
-                                  using GFramework.SourceGenerators.Attributes.rule;
+                                  using GFramework.SourceGenerators.Abstractions.rule;
                                   using GFramework.Core.rule;
 
                                   // 间接接口：继承自 IContextAware

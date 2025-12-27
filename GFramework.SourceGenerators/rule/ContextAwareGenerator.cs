@@ -11,7 +11,7 @@ namespace GFramework.SourceGenerators.rule;
 public sealed class ContextAwareGenerator : IIncrementalGenerator
 {
     private const string AttributeMetadataName =
-        "GFramework.SourceGenerators.Attributes.rule.ContextAwareAttribute";
+        "GFramework.SourceGenerators.Abstractions.rule.ContextAwareAttribute";
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {

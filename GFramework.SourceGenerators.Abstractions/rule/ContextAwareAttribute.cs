@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace GFramework.SourceGenerators.Attributes.rule;
+﻿namespace GFramework.GFramework.SourceGenerators.Abstractions.rule;
 
 /// <summary>
 /// 标记该类需要自动实现 IContextAware
