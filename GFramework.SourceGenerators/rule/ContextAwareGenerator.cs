@@ -1,6 +1,6 @@
 ﻿using System.Linq;
 using System.Text;
-using GFramework.SourceGenerators.Common.diagnostics;
+using GFramework.SourceGenerators.diagnostics;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;

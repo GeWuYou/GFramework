@@ -27,8 +27,7 @@
 
     <!-- Generator 编译期引用 Attributes / Common，但不打包 -->
     <ItemGroup>
-        <ProjectReference Include="..\GFramework.Godot.SourceGenerators.Abstractions\GFramework.SourceGenerators.Abstractions.csproj" PrivateAssets="all"/>
-        <ProjectReference Include="..\GFramework.SourceGenerators.Common\GFramework.SourceGenerators.Common.csproj" PrivateAssets="all"/>
+        <ProjectReference Include="..\..\GFramework.Godot.SourceGenerators.Abstractions\GFramework.Godot.SourceGenerators.Abstractions.csproj" PrivateAssets="all"/>
     </ItemGroup>
 
     <!-- ★关键：只把 Generator DLL 放进 analyzers -->
@@ -44,17 +43,10 @@
               Pack="true"
               PackagePath="analyzers/dotnet/cs"
               Visible="false"/>
-
-        <None Include="$(OutputPath)\GFramework.SourceGenerators.Common.dll"
-              Pack="true"
-              PackagePath="analyzers/dotnet/cs"
-              Visible="false"/>
     </ItemGroup>
     <ItemGroup>
         <None Include="$(OutputPath)\$(AssemblyName).Abstractions.dll" Pack="true" PackagePath="lib\netstandard2.0" Visible="true"/>
         <None Include="$(OutputPath)\$(AssemblyName).Abstractions.xml" Pack="true" PackagePath="lib\netstandard2.0" Visible="true"/>
-        <None Include="GFramework.SourceGenerators.Common.dll" Pack="true" PackagePath="lib\netstandard2.0" Visible="true"/>
-        <None Include="GFramework.SourceGenerators.Common.xml" Pack="true" PackagePath="lib\netstandard2.0" Visible="true"/>
         <!-- 包含targets文件 -->
         <None Include="GFramework.Godot.SourceGenerators.targets" Pack="true" PackagePath="build" Visible="false"/>
     </ItemGroup>

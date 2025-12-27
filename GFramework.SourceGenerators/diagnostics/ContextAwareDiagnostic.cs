@@ -1,6 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 
-namespace GFramework.SourceGenerators.rule;
+namespace GFramework.SourceGenerators.diagnostics;
 
 /// <summary>
 /// 提供与上下文感知相关的诊断规则定义

@@ -43,6 +43,7 @@
         <None Remove="GFramework.SourceGenerators.Tests\**"/>
         <None Remove="GFramework.Godot.SourceGenerators.Abstractions\**"/>
         <None Remove="GFramework.SourceGenerators.Abstractions\**"/>
+        <None Remove="GFramework.Godot.SourceGenerators.targets"/>
     </ItemGroup>
     <!-- 聚合核心模块 -->
     <ItemGroup>

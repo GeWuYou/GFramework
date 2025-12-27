@@ -1,6 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 
-namespace GFramework.SourceGenerators.Common.diagnostics;
+namespace GFramework.SourceGenerators.diagnostics;
 
 /// <summary>
 /// 提供通用诊断描述符的静态类
@@ -19,7 +19,7 @@ public static class CommonDiagnostics
     /// </remarks>
     public static readonly DiagnosticDescriptor ClassMustBePartial =
         new(
-            "GFC001",
+            "GF_Common_Class_001",
             "Class must be partial",
             "Class '{0}' must be declared partial for code generation",
             "GFramework.Common",
