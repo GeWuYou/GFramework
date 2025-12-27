@@ -5,13 +5,13 @@
 	<s:String x:Key="/Default/CodeInspection/ExcludedFiles/FilesAndFoldersToSkip2/=7020124F_002D9FFC_002D4AC3_002D8F3D_002DAAB8E0240759_002Ff_003AInputEventAction_002Ecs_002Fl_003AD_0021_003FTool_003FDevelopment_0020Tools_003FJetBrains_003F_002EJetBrains_003F_002ERider_003Fconfig_003Fresharper_002Dhost_003FDecompilerCache_003Fdecompiler_003F1c378f459c054fecaf4484a0fa6d44c055a800_003F18_003F33b52a1c_003FInputEventAction_002Ecs/@EntryIndexedValue">ForceIncluded</s:String>
 	<s:String x:Key="/Default/CodeInspection/ExcludedFiles/FilesAndFoldersToSkip2/=7020124F_002D9FFC_002D4AC3_002D8F3D_002DAAB8E0240759_002Ff_003AIVerifierExtensions_002Ecs_002Fl_003AD_0021_003FTool_003FDevelopment_0020Tools_003FJetBrains_003F_002EJetBrains_003F_002ERider_003Fconfig_003Fresharper_002Dhost_003FSourcesCache_003F3a7fb23d304bcd1dd4fcb38114e45d28a6a1446eb6b71c918bcb1d73a6cbf3_003FIVerifierExtensions_002Ecs/@EntryIndexedValue">ForceIncluded</s:String>
 	<s:String x:Key="/Default/CodeInspection/ExcludedFiles/FilesAndFoldersToSkip2/=7020124F_002D9FFC_002D4AC3_002D8F3D_002DAAB8E0240759_002Ff_003ASolutionState_002Ecs_002Fl_003AD_0021_003FTool_003FDevelopment_0020Tools_003FJetBrains_003F_002EJetBrains_003F_002ERider_003Fconfig_003Fresharper_002Dhost_003FSourcesCache_003F59c43162311a41dc4e9a06273ab3fb541e6a64318777591f77584020ff865_003FSolutionState_002Ecs/@EntryIndexedValue">ForceIncluded</s:String>
-	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=c33c8ad6_002Dd992_002D4817_002D855f_002D764f7c7897fa/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" Name="Generates_ContextAware_Code" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;&#xD;
+	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=c33c8ad6_002Dd992_002D4817_002D855f_002D764f7c7897fa/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" IsActive="True" Name="Generates_ContextAware_Code" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;&#xD;
   &lt;TestAncestor&gt;&#xD;
     &lt;TestId&gt;NUnit3x::BB047F43-6AA0-4EA0-8AE9-E6B9784D9E8E::net8.0::GFramework.SourceGenerators.Tests.rule.ContextAwareGeneratorTests&lt;/TestId&gt;&#xD;
   &lt;/TestAncestor&gt;&#xD;
 &lt;/SessionState&gt;</s:String>
-	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=cb493c10_002D1cc7_002D408b_002Db1eb_002D2e8a3ffd30ee/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" IsActive="True" Name="Generates_ContextAware_Code" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;&#xD;
+	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=cb493c10_002D1cc7_002D408b_002Db1eb_002D2e8a3ffd30ee/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" Name="Generates_ContextAware_Code" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;&#xD;
   &lt;TestAncestor&gt;&#xD;
-    &lt;TestId&gt;NUnit3x::BB047F43-6AA0-4EA0-8AE9-E6B9784D9E8E::net8.0::GFramework.SourceGenerators.Tests.rule.ContextAwareGeneratorTests.Generates_ContextAware_Code&lt;/TestId&gt;&#xD;
+    &lt;TestId&gt;NUnit3x::BB047F43-6AA0-4EA0-8AE9-E6B9784D9E8E::net8.0::GFramework.SourceGenerators.Tests.rule.ContextAwareGeneratorTests&lt;/TestId&gt;&#xD;
   &lt;/TestAncestor&gt;&#xD;
 &lt;/SessionState&gt;</s:String></wpf:ResourceDictionary>

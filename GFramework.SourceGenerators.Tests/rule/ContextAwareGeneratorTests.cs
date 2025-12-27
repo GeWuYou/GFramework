@@ -35,13 +35,21 @@ public class ContextAwareGeneratorTests
                                   using GFramework.SourceGenerators.Attributes.rule;
 
                                   [ContextAware]
-                                  public partial class MyRule
+                                  public partial class MyRule: GFramework.Core.rule.IContextAware
                                   {
                                   }
                               }
                               """;
 
         const string frameworkStub = """
+                                     namespace GFramework.Core.rule
+                                     {
+                                         public interface IContextAware
+                                         {
+                                             void SetContext(GFramework.Core.architecture.IArchitectureContext context);
+                                         }
+                                     }
+
                                      namespace GFramework.Core.architecture
                                      {
                                          public interface IArchitectureContext {}
