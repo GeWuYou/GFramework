@@ -296,3 +296,7 @@ public class MoveCommand : AbstractCommand, IUndoableCommand
 - [`events`](../events/README.md) - 事件系统，命令执行后的通知机制
 - [`system`](../system/README.md) - 业务系统，命令的主要执行者
 - [`model`](../model/README.md) - 数据模型，命令操作的数据
+
+---
+
+**许可证**: Apache 2.0

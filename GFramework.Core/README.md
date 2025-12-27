@@ -1139,6 +1139,6 @@ public class Button : Control, IController
 
 ---
 
-**版本**: 1.0.0  
-**适用引擎**: Godot 4.x (C#)  
-**许可证**: MIT
+**版本**: 1.0.0
+**适用引擎**: Godot 4.x (C#)
+**许可证**: Apache 2.0

@@ -175,3 +175,7 @@ GameArchitecture.Interface.RegisterSystem(newSystem);
 - [`model`](../model/README.md) - 数据模型
 - [`system`](../system/README.md) - 业务系统
 - [`utility`](../utility/README.md) - 工具类
+
+---
+
+**许可证**: Apache 2.0
