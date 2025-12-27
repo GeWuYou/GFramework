@@ -34,7 +34,7 @@
     <!-- ★关键：只把 Generator DLL 放进 analyzers -->
     <ItemGroup>
         <!-- Generator 本体 -->
-        <None Include="$(OutputPath)\GeWuYou.GFramework.Godot.SourceGenerators.dll"
+        <None Include="$(OutputPath)\GFramework.Godot.SourceGenerators.dll"
               Pack="true"
               PackagePath="analyzers/dotnet/cs"
               Visible="false"/>
