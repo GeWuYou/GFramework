@@ -42,14 +42,6 @@ public class ContextAwareGeneratorTests
                               """;
 
         const string frameworkStub = """
-                                     namespace GFramework.Core.rule
-                                     {
-                                         public interface IContextAware
-                                         {
-                                             void SetContext(GFramework.Core.architecture.IArchitectureContext context);
-                                         }
-                                     }
-
                                      namespace GFramework.Core.architecture
                                      {
                                          public interface IArchitectureContext {}
@@ -61,7 +53,7 @@ public class ContextAwareGeneratorTests
                                 #nullable enable
                                 namespace TestApp;
 
-                                partial class MyRule : GFramework.Core.rule.IContextAware
+                                partial class MyRule
                                 {
                                     protected GFramework.Core.architecture.IArchitectureContext Context { get; private set; } = null!;
                                     void GFramework.Core.rule.IContextAware.SetContext(

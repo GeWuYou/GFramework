@@ -15,7 +15,7 @@ internal static class LoggerDiagnostics
             "GF_Logging_001",
             "LogAttribute cannot generate Logger",
             "LogAttribute on class '{0}' is ineffective: {1}",
-            "GFramework.Godot.Logging",
+            "GFramework.Godot.logging",
             DiagnosticSeverity.Warning,
             true);
 }
