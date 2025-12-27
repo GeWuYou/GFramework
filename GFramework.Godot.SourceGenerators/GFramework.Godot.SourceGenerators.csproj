@@ -3,42 +3,38 @@
     <PropertyGroup>
         <PackageId>GeWuYou.GFramework.Godot.SourceGenerators</PackageId>
         <TargetFramework>netstandard2.0</TargetFramework>
-        <IsRoslynAnalyzer>true</IsRoslynAnalyzer>
-        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <LangVersion>latest</LangVersion>
-        <IsRoslynComponent>true</IsRoslynComponent>
 
-        <!-- 对 generator 项目要启用扩展规则 -->
-        <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
-        <!-- 不把输出当作运行时库 -->
+        <!-- 这是 Roslyn Analyzer -->
+        <IsRoslynAnalyzer>true</IsRoslynAnalyzer>
         <IncludeBuildOutput>false</IncludeBuildOutput>
-        <!-- 有助于调试生成的代码（可选） -->
+
+        <LangVersion>latest</LangVersion>
+
+        <!-- 可选：调试生成代码 -->
         <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
         <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
-        <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     </PropertyGroup>
 
+    <!-- Roslyn 依赖（仅 Generator 自用） -->
     <ItemGroup>
-        <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="4.14.0"/>
-        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0"/>
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" PrivateAssets="all"/>
+        <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="4.14.0" PrivateAssets="all"/>
     </ItemGroup>
 
+    <!-- Generator 编译期依赖 -->
     <ItemGroup>
-        <!-- Generator 需要引用 Attributes 项目，但不作为运行时依赖 -->
         <ProjectReference Include="..\GFramework.Godot.SourceGenerators.Attributes\GFramework.Godot.SourceGenerators.Attributes.csproj"
                           PrivateAssets="all"/>
-        <ProjectReference Include="..\GFramework.SourceGenerators.Common\GFramework.SourceGenerators.Common.csproj"/>
+        <ProjectReference Include="..\GFramework.SourceGenerators.Common\GFramework.SourceGenerators.Common.csproj"
+                          PrivateAssets="all"/>
     </ItemGroup>
-    <!-- 将 Generator 和 Attributes DLL 打包为 Analyzer -->
+
+    <!-- ★唯一需要打包的东西：Generator DLL -->
     <ItemGroup>
-        <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true"
-              PackagePath="analyzers/dotnet/cs" Visible="false"/>
-        <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="lib/netstandard2.0"/>
-        <None Include="$(OutputPath)\GFramework.Godot.SourceGenerators.Attributes.dll" Pack="true"
-              PackagePath="analyzers/dotnet/cs" Visible="false"/>
+        <None Include="$(OutputPath)\$(AssemblyName).dll"
+              Pack="true"
+              PackagePath="analyzers/dotnet/cs"
+              Visible="false"/>
     </ItemGroup>
-    <ItemGroup>
-        <AdditionalFiles Include="AnalyzerReleases.Shipped.md"/>
-        <AdditionalFiles Include="AnalyzerReleases.Unshipped.md"/>
-    </ItemGroup>
+
 </Project>

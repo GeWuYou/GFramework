@@ -3,41 +3,39 @@
     <PropertyGroup>
         <PackageId>GeWuYou.GFramework.SourceGenerators</PackageId>
         <TargetFramework>netstandard2.0</TargetFramework>
-        <IsRoslynAnalyzer>true</IsRoslynAnalyzer>
-        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <LangVersion>latest</LangVersion>
-        <IsRoslynComponent>true</IsRoslynComponent>
 
-        <!-- 对 generator 项目要启用扩展规则 -->
-        <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
-        <!-- 不把输出当作运行时库 -->
+        <!-- 这是 Analyzer，不是运行时库 -->
+        <IsRoslynAnalyzer>true</IsRoslynAnalyzer>
         <IncludeBuildOutput>false</IncludeBuildOutput>
-        <!-- 有助于调试生成的代码（可选） -->
+
+        <LangVersion>latest</LangVersion>
+        <Nullable>enable</Nullable>
+
+        <!-- 可选：调试生成代码 -->
         <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
         <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
-        <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
-        <Nullable>enable</Nullable>
     </PropertyGroup>
+
+    <!-- Roslyn 依赖，只用于 Generator 自身 -->
     <ItemGroup>
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" PrivateAssets="all"/>
-        <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" PrivateAssets="all"/>
-        <PackageReference Include="System.Collections.Immutable" Version="9.0.0"/>
+        <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="4.14.0" PrivateAssets="all"/>
     </ItemGroup>
 
+    <!-- Generator 编译期引用 Attributes / Common，但不打包 -->
     <ItemGroup>
-        <!-- Generator 需要引用 Attributes 项目，但不作为运行时依赖 -->
         <ProjectReference Include="..\GFramework.SourceGenerators.Attributes\GFramework.SourceGenerators.Attributes.csproj"
                           PrivateAssets="all"/>
-        <ProjectReference Include="..\GFramework.SourceGenerators.Common\GFramework.SourceGenerators.Common.csproj"/>
+        <ProjectReference Include="..\GFramework.SourceGenerators.Common\GFramework.SourceGenerators.Common.csproj"
+                          PrivateAssets="all"/>
     </ItemGroup>
 
-    <!-- 将 Generator 和 Attributes DLL 打包为 Analyzer -->
+    <!-- ★关键：只把 Generator DLL 放进 analyzers -->
     <ItemGroup>
-        <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true"
-              PackagePath="analyzers/dotnet/cs" Visible="false"/>
-        <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="lib/netstandard2.0"/>
-        <None Include="$(OutputPath)\GFramework.SourceGenerators.Attributes.dll" Pack="true"
-              PackagePath="analyzers/dotnet/cs" Visible="false"/>
+        <None Include="$(OutputPath)\$(AssemblyName).dll"
+              Pack="true"
+              PackagePath="analyzers/dotnet/cs"
+              Visible="false"/>
     </ItemGroup>
 
 </Project>
