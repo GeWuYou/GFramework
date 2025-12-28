@@ -117,6 +117,7 @@ public abstract class AttributeClassGeneratorBase : IIncrementalGenerator
     ///     验证符号的有效性
     /// </summary>
     /// <param name="context">源生产上下文</param>
+    /// <param name="compilation">编译对象</param>
     /// <param name="syntax">类声明语法节点</param>
     /// <param name="symbol">命名类型符号</param>
     /// <param name="attr">属性数据</param>
