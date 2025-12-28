@@ -13,10 +13,10 @@ namespace GFramework.SourceGenerators.logging;
 ///     日志生成器，用于为标记了LogAttribute的类自动生成日志字段
 /// </summary>
 [Generator]
-public sealed class LoggerGenerator : AttributeClassGeneratorBase
+public sealed class LoggerGenerator : TypeAttributeClassGeneratorBase
 {
     /// <summary>
-    /// 强类型 Attribute
+    /// 获取属性元数据的完整名称，用于标识日志属性的完全限定名
     /// </summary>
     protected override Type AttributeType => typeof(LogAttribute);
 
@@ -24,6 +24,7 @@ public sealed class LoggerGenerator : AttributeClassGeneratorBase
     /// 用于语法快速筛选
     /// </summary>
     protected override string AttributeShortNameWithoutSuffix => "Log";
+
 
     /// <summary>
     /// 对类进行额外语义校验（可选）

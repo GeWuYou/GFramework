@@ -1,7 +1,6 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 using System.Text;
-using GFramework.SourceGenerators.Abstractions.enums;
+using GFramework.SourceGenerators.Common.constants;
 using GFramework.SourceGenerators.Common.diagnostics;
 using GFramework.SourceGenerators.Common.generator;
 using Microsoft.CodeAnalysis;
@@ -13,13 +12,10 @@ namespace GFramework.SourceGenerators.enums;
 /// 枚举扩展方法生成器，用于自动生成枚举相关的扩展方法
 /// </summary>
 [Generator]
-public sealed class EnumExtensionsGenerator : AttributeClassGeneratorBase
+public sealed class EnumExtensionsGenerator : MetadataAttributeClassGeneratorBase
 {
-    /// <summary>
-    /// 使用强类型 Attribute，替代字符串
-    /// </summary>
-    protected override Type AttributeType =>
-        typeof(GenerateEnumExtensionsAttribute);
+    protected override string AttributeMetadataName =>
+        $"{PathContests.SourceGeneratorsAbstractionsPath}.enums.GenerateEnumExtensionsAttribute";
 
     /// <summary>
     /// 仅用于 Syntax 粗筛选

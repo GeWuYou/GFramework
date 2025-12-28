@@ -1,25 +1,30 @@
-﻿using System;
+﻿using System.Linq;
 using System.Text;
-using GFramework.SourceGenerators.Abstractions.rule;
+using GFramework.Core.Abstractions.rule;
 using GFramework.SourceGenerators.Common.constants;
 using GFramework.SourceGenerators.Common.generator;
+using GFramework.SourceGenerators.diagnostics;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace GFramework.SourceGenerators.rule;
 
 [Generator]
-public sealed class ContextAwareGenerator : AttributeClassGeneratorBase
+public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
 {
     /// <summary>
-    ///     使用强类型 Attribute，替代字符串
+    /// 获取属性元数据的完整名称，用于标识ContextAwareAttribute的完全限定名
     /// </summary>
-    protected override Type AttributeType => typeof(ContextAwareAttribute);
+    /// <returns>返回ContextAwareAttribute的完全限定名字符串</returns>
+    protected override string AttributeMetadataName =>
+        $"{PathContests.SourceGeneratorsAbstractionsPath}.rule.ContextAwareAttribute";
 
     /// <summary>
     ///     仅用于 Syntax 粗筛选
     /// </summary>
+    /// <returns>返回属性的简短名称，不包含后缀</returns>
     protected override string AttributeShortNameWithoutSuffix => "ContextAware";
+
 
     /// <summary>
     ///     额外语义校验：必须实现 IContextAware
@@ -30,7 +35,13 @@ public sealed class ContextAwareGenerator : AttributeClassGeneratorBase
         INamedTypeSymbol symbol,
         AttributeData attr)
     {
-        return true;
+        if (symbol.AllInterfaces.Any(i =>
+                i.ToDisplayString() == typeof(IContextAware).FullName)) return true;
+        context.ReportDiagnostic(Diagnostic.Create(
+            ContextAwareDiagnostic.ClassMustImplementIContextAware,
+            syntax.Identifier.GetLocation(),
+            symbol.Name));
+        return false;
     }
 
     /// <summary>

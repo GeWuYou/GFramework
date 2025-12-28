@@ -1,5 +1,4 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 using GFramework.SourceGenerators.Common.diagnostics;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -13,13 +12,7 @@ namespace GFramework.SourceGenerators.Common.generator;
 public abstract class AttributeClassGeneratorBase : IIncrementalGenerator
 {
     /// <summary>
-    ///     获取属性的元数据名称
-    /// </summary>
-    protected abstract Type AttributeType { get; }
-
-    /// <summary>
-    ///     Attribute 的短名称（不含 Attribute 后缀）
-    ///     仅用于 Syntax 层宽松匹配
+    ///     获取属性的短名称（不包含后缀）
     /// </summary>
     protected abstract string AttributeShortNameWithoutSuffix { get; }
 
@@ -29,65 +22,69 @@ public abstract class AttributeClassGeneratorBase : IIncrementalGenerator
     /// <param name="context">增量生成器初始化上下文</param>
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var targets = context.SyntaxProvider.CreateSyntaxProvider(
+        // 创建语法提供程序，查找带有指定属性的类声明
+        var candidates = context.SyntaxProvider.CreateSyntaxProvider(
                 (node, _) =>
                     node is ClassDeclarationSyntax cls &&
                     cls.AttributeLists
                         .SelectMany(a => a.Attributes)
                         .Any(a => a.Name.ToString()
                             .Contains(AttributeShortNameWithoutSuffix)),
-                static (ctx, t) =>
+                (ctx, _) =>
                 {
                     var cls = (ClassDeclarationSyntax)ctx.Node;
-                    var symbol = ctx.SemanticModel.GetDeclaredSymbol(cls, t);
-                    return (ClassDecl: cls, Symbol: symbol);
-                }
-            )
-            .Where(x => x.Symbol is not null);
+                    var symbol = ctx.SemanticModel.GetDeclaredSymbol(cls);
+                    return (cls, symbol);
+                })
+            .Where(x => x.symbol is not null);
 
-        context.RegisterSourceOutput(targets, (spc, pair) =>
+        var combined = candidates.Combine(context.CompilationProvider);
+
+        context.RegisterSourceOutput(combined, (spc, pair) =>
         {
-            try
-            {
-                Execute(spc, pair.ClassDecl, pair.Symbol!);
-            }
-            catch (Exception ex)
-            {
-                EmitError(spc, pair.Symbol, ex);
-            }
+            var ((cls, symbol), compilation) = pair;
+            Execute(spc, compilation, cls, symbol!);
         });
     }
 
     /// <summary>
-    ///     执行源代码生成的主要逻辑
+    ///     解析指定符号上的属性数据
+    /// </summary>
+    /// <param name="compilation">编译对象</param>
+    /// <param name="symbol">命名类型符号</param>
+    /// <returns>属性数据，如果未找到则返回null</returns>
+    protected abstract AttributeData? ResolveAttribute(
+        Compilation compilation,
+        INamedTypeSymbol symbol);
+
+    /// <summary>
+    ///     执行源代码生成
     /// </summary>
     /// <param name="context">源生产上下文</param>
+    /// <param name="compilation">编译对象</param>
     /// <param name="classDecl">类声明语法节点</param>
     /// <param name="symbol">命名类型符号</param>
     private void Execute(
         SourceProductionContext context,
+        Compilation compilation,
         ClassDeclarationSyntax classDecl,
         INamedTypeSymbol symbol)
     {
-        var attr = GetAttribute(symbol);
-        if (attr == null) return;
+        var attr = ResolveAttribute(compilation, symbol);
+        if (attr is null)
+            return;
 
-        // partial 校验
         if (!classDecl.Modifiers.Any(SyntaxKind.PartialKeyword))
         {
             ReportClassMustBePartial(context, classDecl, symbol);
             return;
         }
 
-        // 子类校验
         if (!ValidateSymbol(context, classDecl, symbol, attr))
             return;
 
-        var source = Generate(symbol, attr);
-        context.AddSource(GetHintName(symbol), source);
+        context.AddSource(GetHintName(symbol), Generate(symbol, attr));
     }
-
-    #region 可覆写点
 
     /// <summary>
     ///     验证符号的有效性
@@ -101,10 +98,7 @@ public abstract class AttributeClassGeneratorBase : IIncrementalGenerator
         SourceProductionContext context,
         ClassDeclarationSyntax syntax,
         INamedTypeSymbol symbol,
-        AttributeData attr)
-    {
-        return true;
-    }
+        AttributeData attr) => true;
 
     /// <summary>
     ///     生成源代码
@@ -122,27 +116,10 @@ public abstract class AttributeClassGeneratorBase : IIncrementalGenerator
     /// <param name="symbol">命名类型符号</param>
     /// <returns>生成文件的提示名称</returns>
     protected virtual string GetHintName(INamedTypeSymbol symbol)
-    {
-        return $"{symbol.Name}.g.cs";
-    }
-
-    #endregion
-
-    #region Attribute / Diagnostic
+        => $"{symbol.Name}.g.cs";
 
     /// <summary>
-    ///     获取指定符号的属性数据
-    /// </summary>
-    /// <param name="symbol">命名类型符号</param>
-    /// <returns>属性数据，如果未找到则返回null</returns>
-    protected virtual AttributeData? GetAttribute(INamedTypeSymbol symbol)
-    {
-        return symbol.GetAttributes().FirstOrDefault(a =>
-            string.Equals(a.AttributeClass?.ToDisplayString(), AttributeType.FullName, StringComparison.Ordinal));
-    }
-
-    /// <summary>
-    ///     报告类必须是partial的诊断信息
+    ///     报告类必须是部分类的错误
     /// </summary>
     /// <param name="context">源生产上下文</param>
     /// <param name="syntax">类声明语法节点</param>
@@ -157,23 +134,4 @@ public abstract class AttributeClassGeneratorBase : IIncrementalGenerator
             syntax.Identifier.GetLocation(),
             symbol.Name));
     }
-
-    /// <summary>
-    ///     发出错误信息
-    /// </summary>
-    /// <param name="context">源生产上下文</param>
-    /// <param name="symbol">命名类型符号</param>
-    /// <param name="ex">异常对象</param>
-    protected virtual void EmitError(
-        SourceProductionContext context,
-        INamedTypeSymbol? symbol,
-        Exception ex)
-    {
-        var name = symbol?.Name ?? "Unknown";
-        var text =
-            $"// source generator error: {ex.Message}\n// {ex.StackTrace}";
-        context.AddSource($"{name}.Error.g.cs", text);
-    }
-
-    #endregion
 }

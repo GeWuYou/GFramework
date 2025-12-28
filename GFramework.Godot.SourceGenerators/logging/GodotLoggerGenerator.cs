@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Linq;
 using System.Text;
+using GFramework.Godot.SourceGenerators.Abstractions.logging;
 using GFramework.SourceGenerators.Common.constants;
-using GFramework.SourceGenerators.Common.diagnostics;
+using GFramework.SourceGenerators.Common.generator;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
 
 namespace GFramework.Godot.SourceGenerators.logging;
 
@@ -14,95 +12,25 @@ namespace GFramework.Godot.SourceGenerators.logging;
 /// 日志生成器，用于为标记了GodotLogAttribute的类自动生成日志字段
 /// </summary>
 [Generator]
-public sealed class GodotLoggerGenerator : IIncrementalGenerator
+public sealed class GodotLoggerGenerator : TypeAttributeClassGeneratorBase
 {
-    private const string AttributeMetadataName =
-        $"{PathContests.GodotSourceGeneratorsAbstractionsPath}.logging.GodotLogAttribute";
+    protected override Type AttributeType => typeof(GodotLogAttribute);
 
-    private const string AttributeShortNameWithoutSuffix = "GodotLog";
 
-    /// <summary>
-    /// 初始化源生成器，设置语法提供程序和源输出注册
-    /// </summary>
-    /// <param name="context">增量生成器初始化上下文</param>
-    public void Initialize(IncrementalGeneratorInitializationContext context)
-    {
-        // 创建语法提供程序，用于查找标记了GodotLogAttribute的类声明
-        var targets = context.SyntaxProvider
-            .CreateSyntaxProvider(
-                static (node, _) =>
-                {
-                    if (node is not ClassDeclarationSyntax cls) return false;
-                    return cls.AttributeLists
-                        .SelectMany(a => a.Attributes)
-                        .Any(a => a.Name.ToString().Contains(AttributeShortNameWithoutSuffix));
-                },
-                static (ctx, _) =>
-                {
-                    var cls = (ClassDeclarationSyntax)ctx.Node;
-                    var sym = ctx.SemanticModel.GetDeclaredSymbol(cls);
-                    return (ClassDecl: cls, Symbol: sym);
-                })
-            .Where(x => x.Symbol is not null);
-
-        // 注册源输出，为符合条件的类生成日志字段代码
-        context.RegisterSourceOutput(targets, (spc, pair) =>
-        {
-            try
-            {
-                var classDecl = pair.ClassDecl;
-                var classSymbol = pair.Symbol!;
-
-                var attr = GetAttribute(classSymbol);
-                if (attr is null) return;
-
-                if (!classDecl.Modifiers.Any(SyntaxKind.PartialKeyword))
-                {
-                    spc.ReportDiagnostic(Diagnostic.Create(
-                        CommonDiagnostics.ClassMustBePartial,
-                        classDecl.Identifier.GetLocation(),
-                        classSymbol.Name));
-                    return;
-                }
-
-                var source = Generate(classSymbol, attr);
-                spc.AddSource($"{classSymbol.Name}.Logger.g.cs", SourceText.From(source, Encoding.UTF8));
-            }
-            catch (Exception ex)
-            {
-                var safeName = pair.Symbol?.Name ?? "Unknown";
-                var errorSource = $"// Source generator error: {ex.Message}\n// StackTrace:\n// {ex.StackTrace}";
-                spc.AddSource($"{safeName}.Logger.Error.g.cs", SourceText.From(errorSource, Encoding.UTF8));
-            }
-        });
-    }
-
-    /// <summary>
-    /// 获取类符号上的GodotLogAttribute属性数据
-    /// </summary>
-    /// <param name="classSymbol">类符号</param>
-    /// <returns>GodotLogAttribute属性数据，如果未找到则返回null</returns>
-    private static AttributeData? GetAttribute(INamedTypeSymbol classSymbol)
-        => classSymbol.GetAttributes().FirstOrDefault(a =>
-        {
-            var cls = a.AttributeClass;
-            return cls != null &&
-                   (cls.ToDisplayString() == AttributeMetadataName ||
-                    cls.Name.StartsWith(AttributeShortNameWithoutSuffix));
-        });
+    protected override string AttributeShortNameWithoutSuffix => "GodotLog";
 
     /// <summary>
     /// 生成日志字段的源代码
     /// </summary>
-    /// <param name="classSymbol">类符号</param>
+    /// <param name="symbol">类符号</param>
     /// <param name="attr">GodotLogAttribute属性数据</param>
     /// <returns>生成的源代码字符串</returns>
-    private static string Generate(INamedTypeSymbol classSymbol, AttributeData attr)
+    protected override string Generate(INamedTypeSymbol symbol, AttributeData attr)
     {
-        var ns = classSymbol.ContainingNamespace.IsGlobalNamespace
+        var ns = symbol.ContainingNamespace.IsGlobalNamespace
             ? null
-            : classSymbol.ContainingNamespace.ToDisplayString();
-        var className = classSymbol.Name;
+            : symbol.ContainingNamespace.ToDisplayString();
+        var className = symbol.Name;
 
         // 解析构造函数参数
         var name = className;
@@ -144,11 +72,19 @@ public sealed class GodotLoggerGenerator : IIncrementalGenerator
     }
 
     /// <summary>
-    /// 从属性数据中获取指定名称的命名参数值
+    /// 获取生成文件的提示名称
+    /// </summary>
+    /// <param name="symbol">类型符号</param>
+    /// <returns>生成文件的提示名称</returns>
+    protected override string GetHintName(INamedTypeSymbol symbol)
+        => $"{symbol.Name}.Logger.g.cs";
+
+    /// <summary>
+    /// 获取属性的命名参数值
     /// </summary>
     /// <param name="attr">属性数据</param>
     /// <param name="name">参数名称</param>
-    /// <returns>参数值，如果未找到则返回null</returns>
+    /// <returns>参数值</returns>
     private static object? GetNamedArg(AttributeData attr, string name)
         => attr.NamedArguments.FirstOrDefault(kv => kv.Key == name).Value.Value;
 }
