@@ -1,4 +1,8 @@
-﻿namespace GFramework.Game.assets;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace GFramework.Game.Abstractions.assets;
 
 /// <summary>
 ///     资源工厂类，用于注册和解析各种资源的创建工厂

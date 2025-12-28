@@ -1,6 +1,6 @@
 ﻿using GFramework.Core.Abstractions.system;
 
-namespace GFramework.Game.assets;
+namespace GFramework.Game.Abstractions.assets;
 
 /// <summary>
 ///     资源目录系统接口，用于管理场景和资源的获取与查询

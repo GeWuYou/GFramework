@@ -11,15 +11,10 @@
         <Nullable>enable</Nullable>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="Godot.SourceGenerators" Version="4.5.1" PrivateAssets="all"/>
-        <PackageReference Include="GodotSharpEditor" Version="4.5.1" PrivateAssets="all"/>
-    </ItemGroup>
-    <ItemGroup>
         <ProjectReference Include="..\GFramework.Core.Abstractions\GFramework.Core.Abstractions.csproj" PrivateAssets="all"/>
-        <ProjectReference Include="..\GFramework.Game.Abstractions\GFramework.Game.Abstractions.csproj" PrivateAssets="all"/>
     </ItemGroup>
     <!-- 引入必要的命名空间 -->
     <ItemGroup>
-        <Using Include="GFramework.Godot.Abstractions"/>
+        <Using Include="GFramework.Game.Abstractions"/>
     </ItemGroup>
 </Project>

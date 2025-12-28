@@ -1,9 +1,9 @@
 ﻿using GFramework.Core.system;
-using GFramework.Game.assets;
+using GFramework.Game.Abstractions.assets;
 using GFramework.Godot.Abstractions.assets;
 using Godot;
 
-namespace GFramework.Godot.system;
+namespace GFramework.Godot.assets;
 
 /// <summary>
 ///     资源加载系统，用于统一管理和缓存Godot资源（如场景、纹理等）的加载与实例化。

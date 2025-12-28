@@ -1,5 +1,6 @@
 ﻿using GFramework.Core.Abstractions.architecture;
 using GFramework.Core.architecture;
+using GFramework.Godot.Abstractions.architecture;
 using Godot;
 
 namespace GFramework.Godot.architecture;
@@ -9,6 +10,11 @@ namespace GFramework.Godot.architecture;
 /// </summary>
 public abstract class AbstractGodotModule : IGodotModule
 {
+    /// <summary>
+    ///     获取模块关联的Godot节点
+    /// </summary>
+    public abstract Node Node { get; }
+
     /// <summary>
     ///     当架构阶段发生变化时调用此方法
     /// </summary>
@@ -33,22 +39,17 @@ public abstract class AbstractGodotModule : IGodotModule
     public abstract void Install(IArchitecture architecture);
 
     /// <summary>
-    ///     获取模块关联的Godot节点
+    ///     当模块从架构中分离时调用此方法
     /// </summary>
-    public abstract Node Node { get; }
+    public virtual void OnDetach()
+    {
+    }
 
     /// <summary>
     ///     当模块被附加到架构时调用此方法
     /// </summary>
     /// <param name="architecture">被附加到的架构实例</param>
     public virtual void OnAttach(Architecture architecture)
-    {
-    }
-
-    /// <summary>
-    ///     当模块从架构中分离时调用此方法
-    /// </summary>
-    public virtual void OnDetach()
     {
     }
 }
