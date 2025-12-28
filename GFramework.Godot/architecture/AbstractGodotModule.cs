@@ -1,6 +1,5 @@
 ﻿using GFramework.Core.Abstractions.architecture;
 using GFramework.Core.architecture;
-using GFramework.Godot.Abstractions.architecture;
 using Godot;
 
 namespace GFramework.Godot.architecture;
@@ -19,8 +18,8 @@ public abstract class AbstractGodotModule : IGodotModule
     ///     当架构阶段发生变化时调用此方法
     /// </summary>
     /// <param name="phase">当前的架构阶段</param>
-    /// <param name="arch">架构实例</param>
-    public virtual void OnPhase(ArchitecturePhase phase, IArchitecture arch)
+    /// <param name="architecture">架构实例</param>
+    public virtual void OnPhase(ArchitecturePhase phase, IArchitecture architecture)
     {
     }
 

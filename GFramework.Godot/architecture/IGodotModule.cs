@@ -1,6 +1,8 @@
 ﻿using GFramework.Core.Abstractions.architecture;
+using GFramework.Core.architecture;
+using Godot;
 
-namespace GFramework.Godot.Abstractions.architecture;
+namespace GFramework.Godot.architecture;
 
 /// <summary>
 ///     Godot模块接口，定义了Godot引擎中模块的基本行为和属性

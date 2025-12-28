@@ -22,8 +22,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.SourceGenerators
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.Core.Abstractions", "GFramework.Core.Abstractions\GFramework.Core.Abstractions.csproj", "{31BA9F62-153A-4943-A8A0-7571FC7D5FEE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.Godot.Abstractions", "GFramework.Godot.Abstractions\GFramework.Godot.Abstractions.csproj", "{EFE2EF31-CEAC-4BFD-851B-5E00FEBC945D}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.Game.Abstractions", "GFramework.Game.Abstractions\GFramework.Game.Abstractions.csproj", "{E20DBA4C-CEB9-4184-B614-5A99A9AE4472}"
 EndProject
 Global
@@ -76,10 +74,6 @@ Global
 		{31BA9F62-153A-4943-A8A0-7571FC7D5FEE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{31BA9F62-153A-4943-A8A0-7571FC7D5FEE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{31BA9F62-153A-4943-A8A0-7571FC7D5FEE}.Release|Any CPU.Build.0 = Release|Any CPU
-		{EFE2EF31-CEAC-4BFD-851B-5E00FEBC945D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{EFE2EF31-CEAC-4BFD-851B-5E00FEBC945D}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{EFE2EF31-CEAC-4BFD-851B-5E00FEBC945D}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{EFE2EF31-CEAC-4BFD-851B-5E00FEBC945D}.Release|Any CPU.Build.0 = Release|Any CPU
 		{E20DBA4C-CEB9-4184-B614-5A99A9AE4472}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{E20DBA4C-CEB9-4184-B614-5A99A9AE4472}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E20DBA4C-CEB9-4184-B614-5A99A9AE4472}.Release|Any CPU.ActiveCfg = Release|Any CPU

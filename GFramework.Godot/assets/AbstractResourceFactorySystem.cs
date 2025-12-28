@@ -1,6 +1,6 @@
 using GFramework.Core.Abstractions.architecture;
 using GFramework.Core.system;
-using GFramework.Game.assets;
+using GFramework.Game.Abstractions.assets;
 using GFramework.Godot.Abstractions.assets;
 using Godot;
 
