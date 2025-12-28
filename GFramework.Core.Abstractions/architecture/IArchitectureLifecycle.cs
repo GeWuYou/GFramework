@@ -1,4 +1,6 @@
-﻿namespace GFramework.Core.Abstractions.architecture;
+﻿using GFramework.Core.Abstractions.enums;
+
+namespace GFramework.Core.Abstractions.architecture;
 
 /// <summary>
 ///     架构生命周期接口，定义了架构在不同阶段的回调方法

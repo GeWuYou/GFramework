@@ -1,4 +1,6 @@
-﻿namespace GFramework.Core.Abstractions.architecture;
+﻿using GFramework.Core.Abstractions.enums;
+
+namespace GFramework.Core.Abstractions.architecture;
 
 /// <summary>
 ///     定义架构阶段感知接口，用于在架构的不同阶段执行相应的逻辑

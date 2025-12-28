@@ -1,5 +1,5 @@
 ﻿using System.Collections.Immutable;
-using GFramework.Core.Abstractions.architecture;
+using GFramework.Core.Abstractions.enums;
 
 namespace GFramework.Core.architecture;
 

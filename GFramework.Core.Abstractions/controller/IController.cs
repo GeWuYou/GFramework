@@ -1,6 +1,6 @@
 ﻿using GFramework.Core.Abstractions.rule;
 
-namespace GFramework.GFramework.Core.Abstractions.controller;
+namespace GFramework.Core.Abstractions.controller;
 
 /// <summary>
 ///     控制器接口，定义了控制器需要实现的所有功能契约

@@ -1,4 +1,4 @@
-﻿namespace GFramework.Core.Abstractions.architecture;
+﻿namespace GFramework.Core.Abstractions.enums;
 
 /// <summary>
 ///     架构阶段枚举，定义了系统架构初始化和运行过程中的各个关键阶段

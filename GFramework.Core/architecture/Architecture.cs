@@ -1,4 +1,5 @@
 using GFramework.Core.Abstractions.architecture;
+using GFramework.Core.Abstractions.enums;
 using GFramework.Core.Abstractions.events;
 using GFramework.Core.Abstractions.ioc;
 using GFramework.Core.Abstractions.logging;
