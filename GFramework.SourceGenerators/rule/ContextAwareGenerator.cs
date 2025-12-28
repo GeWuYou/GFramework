@@ -85,6 +85,8 @@ public sealed class ContextAwareGenerator : AttributeClassGeneratorBase
     /// </summary>
     protected override string GetHintName(INamedTypeSymbol symbol)
     {
-        return $"{symbol.Name}.ContextAware.g.cs";
+        // 包含命名空间和生成器类名路径
+        return
+            $@"GFramework.SourceGenerators\GFramework.SourceGenerators.rule.ContextAwareGenerator\{symbol.Name}.ContextAware.g.cs";
     }
 }

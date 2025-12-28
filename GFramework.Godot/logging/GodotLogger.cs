@@ -9,7 +9,7 @@ namespace GFramework.Godot.logging;
 /// </summary>
 public sealed class GodotLogger(
     string? name = null,
-    LogLevel minLevel = LogLevel.Info) : AbstractLogger(name ?? ILogger.RootLoggerName, minLevel)
+    LogLevel minLevel = LogLevel.Info) : AbstractLogger(name ?? RootLoggerName, minLevel)
 {
     protected override void Write(LogLevel level, string message, Exception? exception)
     {

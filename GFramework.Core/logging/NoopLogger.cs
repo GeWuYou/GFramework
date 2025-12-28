@@ -9,7 +9,7 @@ namespace GFramework.Core.logging;
 /// <param name="minLevel">最小日志级别，默认为Info</param>
 internal sealed class NoopLogger(
     string? name = null,
-    LogLevel minLevel = LogLevel.Info) : AbstractLogger(name ?? ILogger.RootLoggerName, minLevel)
+    LogLevel minLevel = LogLevel.Info) : AbstractLogger(name ?? RootLoggerName, minLevel)
 {
     /// <summary>
     ///     重写写入方法，空操作实现，不执行任何实际的日志记录操作

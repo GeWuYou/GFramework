@@ -9,7 +9,7 @@ public sealed class ConsoleLogger(
     string? name = null,
     LogLevel minLevel = LogLevel.Info,
     TextWriter? writer = null,
-    bool useColors = true) : AbstractLogger(name ?? ILogger.RootLoggerName, minLevel)
+    bool useColors = true) : AbstractLogger(name ?? RootLoggerName, minLevel)
 {
     private readonly bool _useColors = useColors && writer == Console.Out;
     private readonly TextWriter _writer = writer ?? Console.Out;
