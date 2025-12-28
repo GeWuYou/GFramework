@@ -7,6 +7,6 @@
         <Nullable>enable</Nullable>
     </PropertyGroup>
     <ItemGroup>
-        <ProjectReference Include="..\$(AssemblyName).Abstractions\$(AssemblyName).Abstractions.csproj" PrivateAssets="all"/>
+        <ProjectReference Include="..\$(AssemblyName).Abstractions\$(AssemblyName).Abstractions.csproj"/>
     </ItemGroup>
 </Project>

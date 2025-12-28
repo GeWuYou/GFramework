@@ -2,10 +2,10 @@
 
     <!-- 
     配置项目构建属性
-    设置项目不可打包、生成文档文件，并包含特定的Polyfill
+    设置项目生成文档文件，并包含特定的Polyfill
     -->
     <PropertyGroup>
-        <IsPackable>false</IsPackable>
+        <PackageId>GeWuYou.$(AssemblyName)</PackageId>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <MeziantouPolyfill_IncludedPolyfills>T:System.Diagnostics.CodeAnalysis.NotNullWhenAttribute</MeziantouPolyfill_IncludedPolyfills>
         <Nullable>enable</Nullable>
