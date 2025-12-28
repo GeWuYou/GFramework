@@ -1,4 +1,6 @@
-﻿namespace GFramework.Core.events;
+﻿using GFramework.Core.Abstractions.events;
+
+namespace GFramework.Core.events;
 
 /// <summary>
 ///     默认注销器类，用于执行注销操作

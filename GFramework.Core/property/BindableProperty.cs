@@ -1,4 +1,5 @@
-using GFramework.Core.events;
+using GFramework.Core.Abstractions.events;
+using GFramework.Core.Abstractions.property;
 
 namespace GFramework.Core.property;
 
@@ -49,6 +50,21 @@ public class BindableProperty<T>(T defaultValue = default!) : IBindableProperty<
     }
 
     /// <summary>
+    ///     实现IEasyEvent接口的注册方法，将无参事件转换为有参事件处理
+    /// </summary>
+    /// <param name="onEvent">无参事件回调</param>
+    /// <returns>可用于取消注册的接口</returns>
+    IUnRegister IEasyEvent.Register(Action onEvent)
+    {
+        return Register(Action);
+
+        void Action(T _)
+        {
+            onEvent();
+        }
+    }
+
+    /// <summary>
     ///     注册属性值变化事件回调
     /// </summary>
     /// <param name="onValueChanged">属性值变化时的回调函数</param>
@@ -77,21 +93,6 @@ public class BindableProperty<T>(T defaultValue = default!) : IBindableProperty<
     public void UnRegister(Action<T> onValueChanged)
     {
         _mOnValueChanged -= onValueChanged;
-    }
-
-    /// <summary>
-    ///     实现IEasyEvent接口的注册方法，将无参事件转换为有参事件处理
-    /// </summary>
-    /// <param name="onEvent">无参事件回调</param>
-    /// <returns>可用于取消注册的接口</returns>
-    IUnRegister IEasyEvent.Register(Action onEvent)
-    {
-        return Register(Action);
-
-        void Action(T _)
-        {
-            onEvent();
-        }
     }
 
     /// <summary>

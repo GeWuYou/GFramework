@@ -1,4 +1,6 @@
-﻿namespace GFramework.Core.events;
+﻿using GFramework.Core.Abstractions.events;
+
+namespace GFramework.Core.events;
 
 /// <summary>
 ///     取消注册列表类，用于管理多个需要取消注册的对象
@@ -10,7 +12,7 @@ public class UnRegisterList : IUnRegisterList
     /// <summary>
     ///     获取取消注册列表的只读属性
     /// </summary>
-    public List<IUnRegister> UnregisterList { get; }
+    public IList<IUnRegister> UnregisterList { get; }
 
     /// <summary>
     ///     向取消注册列表中添加一个新的可取消注册对象

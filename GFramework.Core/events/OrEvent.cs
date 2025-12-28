@@ -1,3 +1,4 @@
+using GFramework.Core.Abstractions.events;
 using GFramework.Core.extensions;
 
 namespace GFramework.Core.events;
@@ -12,7 +13,7 @@ public class OrEvent : IUnRegisterList
     /// <summary>
     ///     获取取消注册列表
     /// </summary>
-    public List<IUnRegister> UnregisterList { get; } = new();
+    public IList<IUnRegister> UnregisterList { get; }
 
     /// <summary>
     ///     将指定的事件与当前OrEvent进行或逻辑组合

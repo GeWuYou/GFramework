@@ -1,4 +1,6 @@
-﻿namespace GFramework.Core.logging;
+﻿using GFramework.Core.Abstractions.logging;
+
+namespace GFramework.Core.logging;
 
 /// <summary>
 ///     控制台日志提供程序，用于创建控制台日志记录器实例

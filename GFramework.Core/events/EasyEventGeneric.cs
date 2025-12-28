@@ -1,4 +1,6 @@
-﻿namespace GFramework.Core.events;
+﻿using GFramework.Core.Abstractions.events;
+
+namespace GFramework.Core.events;
 
 /// <summary>
 ///     泛型事件类，支持一个泛型参数 T 的事件注册、注销与触发。

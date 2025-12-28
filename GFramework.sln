@@ -20,6 +20,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.SourceGenerators
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.SourceGenerators.Common", "GFramework.SourceGenerators.Common\GFramework.SourceGenerators.Common.csproj", "{B6511C9A-40E1-4E51-8D1F-18EAFB3C5BFC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.Core.Abstractions", "GFramework.Core.Abstractions\GFramework.Core.Abstractions.csproj", "{31BA9F62-153A-4943-A8A0-7571FC7D5FEE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -66,5 +68,9 @@ Global
 		{B6511C9A-40E1-4E51-8D1F-18EAFB3C5BFC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B6511C9A-40E1-4E51-8D1F-18EAFB3C5BFC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B6511C9A-40E1-4E51-8D1F-18EAFB3C5BFC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{31BA9F62-153A-4943-A8A0-7571FC7D5FEE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{31BA9F62-153A-4943-A8A0-7571FC7D5FEE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{31BA9F62-153A-4943-A8A0-7571FC7D5FEE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{31BA9F62-153A-4943-A8A0-7571FC7D5FEE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

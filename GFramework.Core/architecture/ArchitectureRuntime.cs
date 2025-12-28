@@ -1,6 +1,7 @@
-using GFramework.Core.command;
-using GFramework.Core.events;
-using GFramework.Core.query;
+using GFramework.Core.Abstractions.architecture;
+using GFramework.Core.Abstractions.command;
+using GFramework.Core.Abstractions.events;
+using GFramework.Core.Abstractions.query;
 
 namespace GFramework.Core.architecture;
 

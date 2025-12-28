@@ -1,4 +1,6 @@
-﻿namespace GFramework.Core.events;
+﻿using GFramework.Core.Abstractions.events;
+
+namespace GFramework.Core.events;
 
 /// <summary>
 ///     类型事件系统，提供基于类型的事件发送、注册和注销功能

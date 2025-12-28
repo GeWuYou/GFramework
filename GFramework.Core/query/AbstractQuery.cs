@@ -1,3 +1,4 @@
+using GFramework.Core.Abstractions.query;
 using GFramework.Core.rule;
 
 namespace GFramework.Core.query;

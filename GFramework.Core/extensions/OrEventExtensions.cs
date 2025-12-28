@@ -1,4 +1,5 @@
-﻿using GFramework.Core.events;
+﻿using GFramework.Core.Abstractions.events;
+using GFramework.Core.events;
 
 namespace GFramework.Core.extensions;
 

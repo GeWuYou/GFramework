@@ -43,6 +43,7 @@
         <None Remove="GFramework.SourceGenerators.Tests\**"/>
         <None Remove="GFramework.Godot.SourceGenerators.Abstractions\**"/>
         <None Remove="GFramework.SourceGenerators.Abstractions\**"/>
+        <None Remove="GFramework.Core.Abstractions\**"/>
     </ItemGroup>
     <!-- 聚合核心模块 -->
     <ItemGroup>
@@ -69,6 +70,7 @@
         <Compile Remove="GFramework.SourceGenerators.Tests\**"/>
         <Compile Remove="GFramework.Godot.SourceGenerators.Abstractions\**"/>
         <Compile Remove="GFramework.SourceGenerators.Abstractions\**"/>
+        <Compile Remove="GFramework.Core.Abstractions\**"/>
     </ItemGroup>
     <ItemGroup>
         <EmbeddedResource Remove="GFramework.Core\**"/>
@@ -81,6 +83,7 @@
         <EmbeddedResource Remove="GFramework.SourceGenerators.Tests\**"/>
         <EmbeddedResource Remove="GFramework.Godot.SourceGenerators.Abstractions\**"/>
         <EmbeddedResource Remove="GFramework.SourceGenerators.Abstractions\**"/>
+        <EmbeddedResource Remove="GFramework.Core.Abstractions\**"/>
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="4.14.0"/>

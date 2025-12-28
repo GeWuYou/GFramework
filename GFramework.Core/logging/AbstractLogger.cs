@@ -1,4 +1,6 @@
-﻿namespace GFramework.Core.logging;
+﻿using GFramework.Core.Abstractions.logging;
+
+namespace GFramework.Core.logging;
 
 /// <summary>
 ///     日志抽象基类，封装日志级别判断、格式化与异常处理逻辑。

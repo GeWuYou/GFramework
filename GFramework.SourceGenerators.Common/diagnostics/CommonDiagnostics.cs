@@ -24,6 +24,6 @@ public static class CommonDiagnostics
             "Class '{0}' must be declared partial for code generation",
             "GFramework.Common",
             DiagnosticSeverity.Error,
-            true
+            isEnabledByDefault: true
         );
 }

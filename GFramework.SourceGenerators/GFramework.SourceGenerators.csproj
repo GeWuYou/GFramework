@@ -26,10 +26,11 @@
         </PackageReference>
     </ItemGroup>
 
-    <!-- Generator 编译期引用 Attributes / Common，但不打包 -->
+    <!-- Generator 编译期引用 SourceGenerators.Abstractions / Common / Core.Abstractions，但不打包 -->
     <ItemGroup>
         <ProjectReference Include="..\GFramework.SourceGenerators.Abstractions\GFramework.SourceGenerators.Abstractions.csproj" PrivateAssets="all"/>
         <ProjectReference Include="..\GFramework.SourceGenerators.Common\GFramework.SourceGenerators.Common.csproj" PrivateAssets="all"/>
+        <ProjectReference Include="..\GFramework.Core.Abstractions\GFramework.Core.Abstractions.csproj" PrivateAssets="all"/>
     </ItemGroup>
 
     <!-- ★关键：只把 Generator DLL 放进 analyzers -->

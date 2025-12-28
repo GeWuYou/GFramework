@@ -1,4 +1,5 @@
-using GFramework.Core.logging;
+using GFramework.Core.Abstractions.logging;
+using GFramework.Core.Abstractions.system;
 using GFramework.Core.rule;
 
 namespace GFramework.Core.system;

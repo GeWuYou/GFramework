@@ -1,4 +1,6 @@
-﻿namespace GFramework.Core.logging;
+﻿using GFramework.Core.Abstractions.logging;
+
+namespace GFramework.Core.logging;
 
 /// <summary>
 ///     空操作日志记录器实现，不执行任何实际的日志记录操作

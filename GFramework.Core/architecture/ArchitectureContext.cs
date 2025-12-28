@@ -1,11 +1,13 @@
-﻿using GFramework.Core.command;
-using GFramework.Core.events;
-using GFramework.Core.ioc;
+﻿using GFramework.Core.Abstractions.architecture;
+using GFramework.Core.Abstractions.command;
+using GFramework.Core.Abstractions.events;
+using GFramework.Core.Abstractions.ioc;
+using GFramework.Core.Abstractions.logging;
+using GFramework.Core.Abstractions.model;
+using GFramework.Core.Abstractions.query;
+using GFramework.Core.Abstractions.system;
+using GFramework.Core.Abstractions.utility;
 using GFramework.Core.logging;
-using GFramework.Core.model;
-using GFramework.Core.query;
-using GFramework.Core.system;
-using GFramework.Core.utility;
 
 namespace GFramework.Core.architecture;
 

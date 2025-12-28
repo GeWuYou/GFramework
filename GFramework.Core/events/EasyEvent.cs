@@ -1,4 +1,6 @@
-﻿namespace GFramework.Core.events;
+﻿using GFramework.Core.Abstractions.events;
+
+namespace GFramework.Core.events;
 
 /// <summary>
 ///     简单事件类，用于注册、注销和触发无参事件回调

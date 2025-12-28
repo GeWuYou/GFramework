@@ -1,4 +1,5 @@
 ﻿using System.Collections.Immutable;
+using GFramework.Core.Abstractions.architecture;
 
 namespace GFramework.Core.architecture;
 
