@@ -1,4 +1,5 @@
-﻿using GFramework.Core.architecture;
+﻿using GFramework.Core.Abstractions.architecture;
+using GFramework.Core.architecture;
 using Godot;
 
 namespace GFramework.Godot.architecture;

@@ -1,4 +1,4 @@
-﻿using GFramework.Core.logging;
+﻿using GFramework.Core.Abstractions.logging;
 
 namespace GFramework.Godot.logging;
 
