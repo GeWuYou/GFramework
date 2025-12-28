@@ -1,4 +1,4 @@
-﻿using GFramework.Core.system;
+﻿using GFramework.Core.Abstractions.system;
 
 namespace GFramework.Game.assets;
 

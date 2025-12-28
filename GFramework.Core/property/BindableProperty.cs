@@ -16,7 +16,7 @@ public class BindableProperty<T>(T defaultValue = default!) : IBindableProperty<
     /// <summary>
     ///     获取或设置属性值比较器，默认使用Equals方法进行比较
     /// </summary>
-    public static Func<T, T, bool> Comparer { get; set; } = (a, b) => a!.Equals(b)!;
+    public static Func<T, T, bool> Comparer { get; set; } = (a, b) => a!.Equals(b);
 
     /// <summary>
     ///     获取或设置属性值，当值发生变化时会触发注册的回调事件

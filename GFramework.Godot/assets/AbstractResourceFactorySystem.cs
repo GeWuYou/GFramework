@@ -1,7 +1,6 @@
-using GFramework.Core.architecture;
+using GFramework.Core.Abstractions.architecture;
 using GFramework.Core.system;
 using GFramework.Game.assets;
-using GFramework.Godot.system;
 using Godot;
 
 namespace GFramework.Godot.assets;

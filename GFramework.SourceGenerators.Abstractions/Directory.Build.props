@@ -1,16 +1,12 @@
 <Project>
-    <!-- import parent: https://docs.microsoft.com/en-us/visualstudio/msbuild/customize-your-build -->
+    <!-- 配置项目构建属性，包括目标框架、CI构建设置、源代码嵌入和语言版本 -->
     <PropertyGroup>
-        <TargetFramework>netstandard2.0</TargetFramework>
+        <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
         <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
         <EmbedUntrackedSources>true</EmbedUntrackedSources>
-        <!--
-        we use a higher version than supported by the target framework to have nullable types and other nice features
-        (a lot of features get polyfilled by Meziantou.Polyfill)
-        however we need to be careful with the available features!
-        -->
         <LangVersion>preview</LangVersion>
     </PropertyGroup>
+    <!-- 引用代码分析和Polyfill功能的NuGet包，用于增强代码质量和兼容性 -->
     <ItemGroup>
         <PackageReference Include="Meziantou.Analyzer" Version="2.0.264">
             <PrivateAssets>all</PrivateAssets>

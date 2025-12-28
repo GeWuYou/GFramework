@@ -1,5 +1,6 @@
 ﻿using GFramework.Core.system;
 using GFramework.Game.assets;
+using GFramework.Godot.assets;
 using Godot;
 
 namespace GFramework.Godot.system;

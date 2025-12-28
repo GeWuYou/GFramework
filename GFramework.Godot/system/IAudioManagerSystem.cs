@@ -1,4 +1,4 @@
-using GFramework.Core.system;
+using GFramework.Core.Abstractions.system;
 using Godot;
 
 namespace GFramework.Godot.system;

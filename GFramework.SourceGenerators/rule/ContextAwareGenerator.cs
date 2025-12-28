@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Text;
+using GFramework.Core.Abstractions.rule;
 using GFramework.SourceGenerators.Abstractions.rule;
 using GFramework.SourceGenerators.Common.generator;
 using GFramework.SourceGenerators.diagnostics;
