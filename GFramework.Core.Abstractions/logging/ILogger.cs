@@ -72,7 +72,7 @@ public interface ILogger
             LogLevel.Warning => IsWarnEnabled(),
             LogLevel.Error => IsErrorEnabled(),
             LogLevel.Fatal => IsFatalEnabled(),
-            _ => throw new ArgumentException($"Level [{level}] not recognized.", nameof(level)),
+            _ => throw new ArgumentException($"Level [{level}] not recognized.", nameof(level))
         };
     }
 

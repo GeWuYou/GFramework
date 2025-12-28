@@ -5,14 +5,14 @@ using NUnit.Framework;
 namespace GFramework.SourceGenerators.Tests.rule;
 
 /// <summary>
-/// 测试ContextAwareGenerator源代码生成器的功能
+///     测试ContextAwareGenerator源代码生成器的功能
 /// </summary>
 [TestFixture]
 public class ContextAwareGeneratorTests
 {
     /// <summary>
-    /// 测试ContextAware代码生成功能
-    /// 验证当使用[ContextAware]特性标记的类能够正确生成上下文感知的相关代码
+    ///     测试ContextAware代码生成功能
+    ///     验证当使用[ContextAware]特性标记的类能够正确生成上下文感知的相关代码
     /// </summary>
     /// <returns>异步任务</returns>
     [Test]

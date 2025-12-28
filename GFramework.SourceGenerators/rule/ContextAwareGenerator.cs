@@ -14,17 +14,17 @@ namespace GFramework.SourceGenerators.rule;
 public sealed class ContextAwareGenerator : AttributeClassGeneratorBase
 {
     /// <summary>
-    /// 使用强类型 Attribute，替代字符串
+    ///     使用强类型 Attribute，替代字符串
     /// </summary>
     protected override Type AttributeType => typeof(ContextAwareAttribute);
 
     /// <summary>
-    /// 仅用于 Syntax 粗筛选
+    ///     仅用于 Syntax 粗筛选
     /// </summary>
     protected override string AttributeShortNameWithoutSuffix => "ContextAware";
 
     /// <summary>
-    /// 额外语义校验：必须实现 IContextAware
+    ///     额外语义校验：必须实现 IContextAware
     /// </summary>
     protected override bool ValidateSymbol(
         SourceProductionContext context,
@@ -46,7 +46,7 @@ public sealed class ContextAwareGenerator : AttributeClassGeneratorBase
     }
 
     /// <summary>
-    /// 生成源码
+    ///     生成源码
     /// </summary>
     protected override string Generate(
         INamedTypeSymbol symbol,
@@ -81,8 +81,10 @@ public sealed class ContextAwareGenerator : AttributeClassGeneratorBase
     }
 
     /// <summary>
-    /// 自定义生成文件名
+    ///     自定义生成文件名
     /// </summary>
     protected override string GetHintName(INamedTypeSymbol symbol)
-        => $"{symbol.Name}.ContextAware.g.cs";
+    {
+        return $"{symbol.Name}.ContextAware.g.cs";
+    }
 }
