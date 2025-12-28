@@ -8,6 +8,7 @@
         <IsPackable>false</IsPackable>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <MeziantouPolyfill_IncludedPolyfills>T:System.Diagnostics.CodeAnalysis.NotNullWhenAttribute</MeziantouPolyfill_IncludedPolyfills>
+        <Nullable>enable</Nullable>
     </PropertyGroup>
 
     <!-- 引入必要的命名空间 -->

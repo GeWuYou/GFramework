@@ -4,18 +4,11 @@ using NUnit.Framework;
 
 namespace GFramework.SourceGenerators.Tests.rule;
 
-/// <summary>
-///     测试ContextAwareGenerator源代码生成器的功能
-/// </summary>
 [TestFixture]
 public class ContextAwareGeneratorTests
 {
-    /// <summary>
-    ///     测试ContextAware代码生成功能
-    ///     验证当使用[ContextAware]特性标记的类能够正确生成上下文感知的相关代码
-    /// </summary>
     [Test]
-    public Task Generates_ContextAware_Code()
+    public async Task Generates_ContextAware_Code()
     {
         const string source = """
                               using System;
@@ -33,7 +26,8 @@ public class ContextAwareGeneratorTests
                                   using GFramework.SourceGenerators.Abstractions.rule;
 
                                   [ContextAware]
-                                  public partial class MyRule: GFramework.Core.Abstractions.rule.IContextAware
+                                  public partial class MyRule
+                                      : GFramework.Core.Abstractions.rule.IContextAware
                                   {
                                   }
                               }
@@ -44,7 +38,8 @@ public class ContextAwareGeneratorTests
                                      {
                                          public interface IContextAware
                                          {
-                                             void SetContext(GFramework.Core.Abstractions.architecture.IArchitectureContext context);
+                                             void SetContext(
+                                                 GFramework.Core.Abstractions.architecture.IArchitectureContext context);
                                          }
                                      }
 
@@ -75,19 +70,14 @@ public class ContextAwareGeneratorTests
                                 }
                                 """;
 
-        Assert.DoesNotThrowAsync(async () =>
-        {
-            await GeneratorTest<ContextAwareGenerator>.RunAsync(
-                source + "\n" + frameworkStub,
-                ("MyRule.ContextAware.g.cs", expected)
-            );
-        });
-
-        return Task.CompletedTask;
+        await GeneratorTest<ContextAwareGenerator>.RunAsync(
+            source + "\n" + frameworkStub,
+            ("MyRule.ContextAware.g.cs", expected)
+        );
     }
 
     [Test]
-    public Task Generates_ContextAware_Code_When_Interface_Inherits_IContextAware()
+    public async Task Generates_ContextAware_Code_When_Interface_Inherits_IContextAware()
     {
         const string source = """
                               using System;
@@ -105,7 +95,6 @@ public class ContextAwareGeneratorTests
                                   using GFramework.SourceGenerators.Abstractions.rule;
                                   using GFramework.Core.Abstractions.rule;
 
-                                  // 间接接口：继承自 IContextAware
                                   public interface IMyRuleContextAware : IContextAware
                                   {
                                   }
@@ -122,7 +111,8 @@ public class ContextAwareGeneratorTests
                                      {
                                          public interface IContextAware
                                          {
-                                             void SetContext(GFramework.Core.Abstractions.architecture.IArchitectureContext context);
+                                             void SetContext(
+                                                 GFramework.Core.Abstractions.architecture.IArchitectureContext context);
                                          }
                                      }
 
@@ -153,14 +143,9 @@ public class ContextAwareGeneratorTests
                                 }
                                 """;
 
-        Assert.DoesNotThrowAsync(async () =>
-        {
-            await GeneratorTest<ContextAwareGenerator>.RunAsync(
-                source + "\n" + frameworkStub,
-                ("MyRule.ContextAware.g.cs", expected)
-            );
-        });
-
-        return Task.CompletedTask;
+        await GeneratorTest<ContextAwareGenerator>.RunAsync(
+            source + "\n" + frameworkStub,
+            ("MyRule.ContextAware.g.cs", expected)
+        );
     }
 }

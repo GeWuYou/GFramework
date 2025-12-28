@@ -34,14 +34,12 @@ public interface IAssetCatalogSystem : ISystem
     /// </summary>
     /// <param name="key">场景单元的唯一标识键</param>
     /// <param name="path">场景单元资源的路径</param>
-    /// <exception cref="InvalidOperationException">当指定的键已存在时抛出异常</exception>
     public void RegisterSceneUnit(string key, string path);
 
     /// <summary>
     ///     通过资产目录映射注册场景单元
     /// </summary>
     /// <param name="mapping">包含场景单元信息的资产目录映射对象</param>
-    /// <exception cref="InvalidOperationException">当映射ID不是SceneUnitId类型或键已存在时抛出异常</exception>
     public void RegisterSceneUnit(AssetCatalog.AssetCatalogMapping mapping);
 
     /// <summary>
@@ -49,14 +47,12 @@ public interface IAssetCatalogSystem : ISystem
     /// </summary>
     /// <param name="key">场景页面的唯一标识键</param>
     /// <param name="path">场景页面资源路径</param>
-    /// <exception cref="InvalidOperationException">当键已存在时抛出异常</exception>
     void RegisterScenePage(string key, string path);
 
     /// <summary>
     ///     通过资产目录映射注册场景页面
     /// </summary>
     /// <param name="mapping">包含场景页面信息的资产目录映射对象</param>
-    /// <exception cref="InvalidOperationException">当映射ID不是ScenePageId类型或键已存在时抛出异常</exception>
     void RegisterScenePage(AssetCatalog.AssetCatalogMapping mapping);
 
     /// <summary>

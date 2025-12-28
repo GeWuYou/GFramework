@@ -25,7 +25,8 @@ public static class GeneratorTest<TGenerator>
             TestState =
             {
                 Sources = { source }
-            }
+            },
+            DisabledDiagnostics = { "GF_Common_Trace_001" }
         };
 
         // 添加期望的生成源文件到测试状态中
