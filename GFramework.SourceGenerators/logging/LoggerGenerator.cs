@@ -31,6 +31,7 @@ public sealed class LoggerGenerator : TypeAttributeClassGeneratorBase
     /// </summary>
     protected override bool ValidateSymbol(
         SourceProductionContext context,
+        Compilation compilation,
         ClassDeclarationSyntax syntax,
         INamedTypeSymbol symbol,
         AttributeData attr)

@@ -1,6 +1,5 @@
 ﻿using System.Linq;
 using System.Text;
-using GFramework.Core.Abstractions.rule;
 using GFramework.SourceGenerators.Common.constants;
 using GFramework.SourceGenerators.Common.generator;
 using GFramework.SourceGenerators.diagnostics;
@@ -31,18 +30,39 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
     /// </summary>
     protected override bool ValidateSymbol(
         SourceProductionContext context,
+        Compilation compilation,
         ClassDeclarationSyntax syntax,
         INamedTypeSymbol symbol,
         AttributeData attr)
     {
-        if (symbol.AllInterfaces.Any(i =>
-                i.ToDisplayString() == typeof(IContextAware).FullName)) return true;
-        context.ReportDiagnostic(Diagnostic.Create(
-            ContextAwareDiagnostic.ClassMustImplementIContextAware,
-            syntax.Identifier.GetLocation(),
-            symbol.Name));
-        return false;
+        var iContextAware = compilation
+            .GetTypeByMetadataName(
+                $"{PathContests.CoreAbstractionsNamespace}.rule.IContextAware");
+
+        if (iContextAware is null)
+        {
+            context.ReportDiagnostic(Diagnostic.Create(
+                ContextAwareDiagnostic.ClassMustImplementIContextAware,
+                syntax.Identifier.GetLocation(),
+                symbol.Name));
+
+            return false;
+        }
+
+        if (!symbol.AllInterfaces.Any(i =>
+                SymbolEqualityComparer.Default.Equals(i, iContextAware)))
+        {
+            context.ReportDiagnostic(Diagnostic.Create(
+                ContextAwareDiagnostic.ClassMustImplementIContextAware,
+                syntax.Identifier.GetLocation(),
+                symbol.Name));
+
+            return false;
+        }
+
+        return true;
     }
+
 
     /// <summary>
     ///     生成源码

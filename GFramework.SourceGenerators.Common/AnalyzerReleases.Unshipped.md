@@ -6,3 +6,4 @@
  Rule ID             | Category          | Severity | Notes             
 ---------------------|-------------------|----------|-------------------
  GF_Common_Class_001 | GFramework.Common | Error    | CommonDiagnostics 
+ GF_Common_Trace_001 | GFramework.Trace  | Info     | CommonDiagnostics 

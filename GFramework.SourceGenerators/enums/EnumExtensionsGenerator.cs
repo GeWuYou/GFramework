@@ -26,12 +26,14 @@ public sealed class EnumExtensionsGenerator : MetadataAttributeClassGeneratorBas
     /// 验证符号是否为有效的枚举类型
     /// </summary>
     /// <param name="context">源生产上下文</param>
+    /// <param name="compilation">编译对象</param>
     /// <param name="syntax">类声明语法节点</param>
     /// <param name="symbol">命名类型符号</param>
     /// <param name="attr">属性数据</param>
     /// <returns>验证是否通过</returns>
     protected override bool ValidateSymbol(
         SourceProductionContext context,
+        Compilation compilation,
         ClassDeclarationSyntax syntax,
         INamedTypeSymbol symbol,
         AttributeData attr)

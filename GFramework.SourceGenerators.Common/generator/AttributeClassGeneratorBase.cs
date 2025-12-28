@@ -70,21 +70,48 @@ public abstract class AttributeClassGeneratorBase : IIncrementalGenerator
         ClassDeclarationSyntax classDecl,
         INamedTypeSymbol symbol)
     {
-        var attr = ResolveAttribute(compilation, symbol);
-        if (attr is null)
-            return;
+        // ① 进入 Execute
+        CommonDiagnostics.Trace(context, $"[GEN] Enter Execute: {symbol.ToDisplayString()}");
 
+        var attr = ResolveAttribute(compilation, symbol);
+
+        // ② 属性是否解析到
+        if (attr is null)
+        {
+            CommonDiagnostics.Trace(context,
+                $"[GEN] Attribute NOT resolved on {symbol.ToDisplayString()}");
+            return;
+        }
+
+        CommonDiagnostics.Trace(context,
+            $"[GEN] Attribute resolved: {attr.AttributeClass?.ToDisplayString()}");
+
+        // ③ partial 校验
         if (!classDecl.Modifiers.Any(SyntaxKind.PartialKeyword))
         {
+            CommonDiagnostics.Trace(context,
+                $"[GEN] Class is NOT partial: {symbol.Name}");
+
             ReportClassMustBePartial(context, classDecl, symbol);
             return;
         }
 
-        if (!ValidateSymbol(context, classDecl, symbol, attr))
+        // ④ ValidateSymbol
+        if (!ValidateSymbol(context, compilation, classDecl, symbol, attr))
+        {
+            CommonDiagnostics.Trace(context,
+                $"[GEN] ValidateSymbol FAILED: {symbol.ToDisplayString()}");
             return;
+        }
 
-        context.AddSource(GetHintName(symbol), Generate(symbol, attr));
+        // ⑤ Generate
+        var hintName = GetHintName(symbol);
+        CommonDiagnostics.Trace(context,
+            $"[GEN] Generating source: {hintName}");
+
+        context.AddSource(hintName, Generate(symbol, attr));
     }
+
 
     /// <summary>
     ///     验证符号的有效性
@@ -96,9 +123,11 @@ public abstract class AttributeClassGeneratorBase : IIncrementalGenerator
     /// <returns>验证是否通过</returns>
     protected virtual bool ValidateSymbol(
         SourceProductionContext context,
+        Compilation compilation,
         ClassDeclarationSyntax syntax,
         INamedTypeSymbol symbol,
-        AttributeData attr) => true;
+        AttributeData attr)
+        => true;
 
     /// <summary>
     ///     生成源代码

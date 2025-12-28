@@ -24,6 +24,37 @@ public static class CommonDiagnostics
             "Class '{0}' must be declared partial for code generation",
             "GFramework.Common",
             DiagnosticSeverity.Error,
-            true
+            isEnabledByDefault: true
         );
+
+    /// <summary>
+    ///     定义源代码生成器跟踪信息的诊断描述符
+    /// </summary>
+    /// <remarks>
+    ///     诊断ID: GF_Common_Trace_001
+    ///     诊断消息: "{0}"
+    ///     分类: GFramework.Trace
+    ///     严重性: Info
+    ///     是否启用: true
+    /// </remarks>
+    public static readonly DiagnosticDescriptor GeneratorTrace =
+        new(
+            "GF_Common_Trace_001",
+            "Source generator trace",
+            "{0}",
+            "GFramework.Trace",
+            DiagnosticSeverity.Info,
+            isEnabledByDefault: true
+        );
+
+    /// <summary>
+    ///     源代码生成器跟踪信息
+    /// </summary>
+    public static void Trace(SourceProductionContext context, string message)
+    {
+        context.ReportDiagnostic(Diagnostic.Create(
+            GeneratorTrace,
+            Location.None,
+            message));
+    }
 }
