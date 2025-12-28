@@ -8,6 +8,6 @@
     </PropertyGroup>
     <ItemGroup>
         <ProjectReference Include="..\GFramework.Core\GFramework.Core.csproj"/>
-        <ProjectReference Include="..\GFramework.Game.Abstractions\GFramework.Game.Abstractions.csproj"/>
+        <ProjectReference Include="..\$(AssemblyName).Abstractions\$(AssemblyName).Abstractions.csproj" PrivateAssets="all"/>
     </ItemGroup>
 </Project>
