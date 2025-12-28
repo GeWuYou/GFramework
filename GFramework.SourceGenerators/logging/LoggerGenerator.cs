@@ -2,8 +2,8 @@
 using System.Linq;
 using System.Text;
 using GFramework.SourceGenerators.Abstractions.logging;
+using GFramework.SourceGenerators.Common.constants;
 using GFramework.SourceGenerators.Common.generator;
-using GFramework.SourceGenerators.constants;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
