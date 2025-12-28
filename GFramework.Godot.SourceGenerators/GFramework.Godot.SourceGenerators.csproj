@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <PackageId>GeWuYou.GFramework.Godot.SourceGenerators</PackageId>
+        <PackageId>GeWuYou.$(AssemblyName)</PackageId>
         <TargetFramework>netstandard2.0</TargetFramework>
 
         <!-- 这是 Analyzer，不是运行时库 -->
@@ -28,20 +28,20 @@
 
     <!-- Generator 编译期引用 Godot.SourceGenerators.Abstractions / Common，但不打包 -->
     <ItemGroup>
-        <ProjectReference Include="..\GFramework.Godot.SourceGenerators.Abstractions\GFramework.Godot.SourceGenerators.Abstractions.csproj" PrivateAssets="all"/>
+        <ProjectReference Include="..\$(AssemblyName).Abstractions\$(AssemblyName).Abstractions.csproj" PrivateAssets="all"/>
         <ProjectReference Include="..\GFramework.SourceGenerators.Common\GFramework.SourceGenerators.Common.csproj" PrivateAssets="all"/>
     </ItemGroup>
 
     <!-- ★关键：只把 Generator DLL 放进 analyzers -->
     <ItemGroup>
         <!-- Generator 本体 -->
-        <None Include="$(OutputPath)\GFramework.Godot.SourceGenerators.dll"
+        <None Include="$(OutputPath)\$(AssemblyName).dll"
               Pack="true"
               PackagePath="analyzers/dotnet/cs"
               Visible="false"/>
 
         <!-- ★ Generator 运行期依赖 -->
-        <None Include="$(OutputPath)\GFramework.Godot.SourceGenerators.Abstractions.dll"
+        <None Include="$(OutputPath)\$(AssemblyName).Abstractions.dll"
               Pack="true"
               PackagePath="analyzers/dotnet/cs"
               Visible="false"/>
@@ -57,6 +57,6 @@
         <None Include="$(OutputPath)\GFramework.SourceGenerators.Common.dll" Pack="true" PackagePath="lib\netstandard2.0" Visible="true"/>
         <None Include="$(OutputPath)\GFramework.SourceGenerators.Common.xml" Pack="true" PackagePath="lib\netstandard2.0" Visible="true"/>
         <!-- 包含targets文件 -->
-        <None Include="GeWuYou.GFramework.Godot.SourceGenerators.targets" Pack="true" PackagePath="build" Visible="false"/>
+        <None Include="GeWuYou.$(AssemblyName).targets" Pack="true" PackagePath="build" Visible="false"/>
     </ItemGroup>
 </Project>

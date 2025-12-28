@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <PackageId>GeWuYou.GFramework.SourceGenerators</PackageId>
+        <PackageId>GeWuYou.$(AssemblyName)</PackageId>
         <TargetFramework>netstandard2.0</TargetFramework>
 
         <!-- 这是 Analyzer，不是运行时库 -->
@@ -28,26 +28,26 @@
 
     <!-- Generator 编译期引用 SourceGenerators.Abstractions / Common / Core.Abstractions，但不打包 -->
     <ItemGroup>
-        <ProjectReference Include="..\GFramework.SourceGenerators.Abstractions\GFramework.SourceGenerators.Abstractions.csproj" PrivateAssets="all"/>
-        <ProjectReference Include="..\GFramework.SourceGenerators.Common\GFramework.SourceGenerators.Common.csproj" PrivateAssets="all"/>
+        <ProjectReference Include="..\$(AssemblyName).Abstractions\$(AssemblyName).Abstractions.csproj" PrivateAssets="all"/>
+        <ProjectReference Include="..\$(AssemblyName).Common\$(AssemblyName).Common.csproj" PrivateAssets="all"/>
         <ProjectReference Include="..\GFramework.Core.Abstractions\GFramework.Core.Abstractions.csproj" PrivateAssets="all"/>
     </ItemGroup>
 
     <!-- ★关键：只把 Generator DLL 放进 analyzers -->
     <ItemGroup>
         <!-- Generator 本体 -->
-        <None Include="$(OutputPath)\GFramework.SourceGenerators.dll"
+        <None Include="$(OutputPath)\$(AssemblyName).dll"
               Pack="true"
               PackagePath="analyzers/dotnet/cs"
               Visible="false"/>
 
         <!-- ★ Generator 运行期依赖 -->
-        <None Include="$(OutputPath)\GFramework.SourceGenerators.Abstractions.dll"
+        <None Include="$(OutputPath)\$(AssemblyName).Abstractions.dll"
               Pack="true"
               PackagePath="analyzers/dotnet/cs"
               Visible="false"/>
         <!-- ★ Generator 运行期依赖 -->
-        <None Include="$(OutputPath)\GFramework.SourceGenerators.Common.dll"
+        <None Include="$(OutputPath)\$(AssemblyName).Common.dll"
               Pack="true"
               PackagePath="analyzers/dotnet/cs"
               Visible="false"/>
@@ -58,6 +58,6 @@
         <None Include="$(OutputPath)\$(AssemblyName).Abstractions.xml" Pack="true" PackagePath="lib\netstandard2.0" Visible="true"/>
         <None Include="$(OutputPath)\$(AssemblyName).Common.dll" Pack="true" PackagePath="lib\netstandard2.0" Visible="true"/>
         <None Include="$(OutputPath)\$(AssemblyName).Common.xml" Pack="true" PackagePath="lib\netstandard2.0" Visible="true"/>
-        <None Include="GeWuYou.GFramework.SourceGenerators.targets" Pack="true" PackagePath="build" Visible="false"/>
+        <None Include="GeWuYou.$(AssemblyName).targets" Pack="true" PackagePath="build" Visible="false"/>
     </ItemGroup>
 </Project>
