@@ -1,18 +1,10 @@
-﻿using System;
-using GFramework.Core.logging;
-
-namespace GFramework.Core.Abstractions.logging;
+﻿namespace GFramework.Core.Abstractions.logging;
 
 /// <summary>
 ///     定义日志记录接口，提供日志记录和级别检查功能
 /// </summary>
 public interface ILogger
 {
-    /// <summary>
-    ///     根日志记录器的名称常量
-    /// </summary>
-    public const string RootLoggerName = "ROOT";
-
     /// <summary>
     ///     获取日志记录器的名称
     /// </summary>
@@ -62,19 +54,7 @@ public interface ILogger
     /// </summary>
     /// <param name="level">要检查的日志级别</param>
     /// <returns>如果指定的日志级别已启用则返回true，否则返回false</returns>
-    bool IsEnabledForLevel(LogLevel level)
-    {
-        return level switch
-        {
-            LogLevel.Trace => IsTraceEnabled(),
-            LogLevel.Debug => IsDebugEnabled(),
-            LogLevel.Info => IsInfoEnabled(),
-            LogLevel.Warning => IsWarnEnabled(),
-            LogLevel.Error => IsErrorEnabled(),
-            LogLevel.Fatal => IsFatalEnabled(),
-            _ => throw new ArgumentException($"Level [{level}] not recognized.", nameof(level))
-        };
-    }
+    bool IsEnabledForLevel(LogLevel level);
 
     #endregion
 

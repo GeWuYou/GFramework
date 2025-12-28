@@ -1,6 +1,4 @@
-﻿using GFramework.Core.Abstractions.logging;
-
-namespace GFramework.Core.logging;
+﻿namespace GFramework.Core.logging;
 
 /// <summary>
 ///     日志抽象基类，封装日志级别判断、格式化与异常处理逻辑。
@@ -10,7 +8,12 @@ public abstract class AbstractLogger(
     string? name = null,
     LogLevel minLevel = LogLevel.Info) : ILogger
 {
-    private readonly string _name = name ?? ILogger.RootLoggerName;
+    /// <summary>
+    ///     根日志记录器的名称常量
+    /// </summary>
+    public const string RootLoggerName = "ROOT";
+
+    private readonly string _name = name ?? RootLoggerName;
 
     #region Metadata
 
@@ -97,6 +100,27 @@ public abstract class AbstractLogger(
     public bool IsFatalEnabled()
     {
         return IsEnabled(LogLevel.Fatal);
+    }
+
+    /// <summary>
+    ///     检查指定日志级别是否启用
+    /// </summary>
+    /// <param name="level">要检查的日志级别</param>
+    /// <returns>如果指定级别启用返回true，否则返回false</returns>
+    /// <exception cref="ArgumentException">当传入的日志级别不被识别时抛出</exception>
+    public bool IsEnabledForLevel(LogLevel level)
+    {
+        // 根据不同的日志级别调用对应的检查方法
+        return level switch
+        {
+            LogLevel.Trace => IsTraceEnabled(),
+            LogLevel.Debug => IsDebugEnabled(),
+            LogLevel.Info => IsInfoEnabled(),
+            LogLevel.Warning => IsWarnEnabled(),
+            LogLevel.Error => IsErrorEnabled(),
+            LogLevel.Fatal => IsFatalEnabled(),
+            _ => throw new ArgumentException($"Level [{level}] not recognized.", nameof(level))
+        };
     }
 
     #endregion

@@ -1,4 +1,4 @@
-﻿namespace GFramework.Core.logging;
+﻿namespace GFramework.Core.Abstractions.logging;
 
 /// <summary>
 ///     定义日志级别的枚举，用于标识不同严重程度的日志消息
