@@ -54,8 +54,8 @@
     <ItemGroup>
         <None Include="$(OutputPath)\$(AssemblyName).Abstractions.dll" Pack="true" PackagePath="lib\netstandard2.0" Visible="true"/>
         <None Include="$(OutputPath)\$(AssemblyName).Abstractions.xml" Pack="true" PackagePath="lib\netstandard2.0" Visible="true"/>
-        <None Include="$(OutputPath)\$(AssemblyName).Common.dll" Pack="true" PackagePath="lib\netstandard2.0" Visible="true"/>
-        <None Include="$(OutputPath)\$(AssemblyName).Common.xml" Pack="true" PackagePath="lib\netstandard2.0" Visible="true"/>
+        <None Include="$(OutputPath)\GFramework.SourceGenerators.Common.dll" Pack="true" PackagePath="lib\netstandard2.0" Visible="true"/>
+        <None Include="$(OutputPath)\GFramework.SourceGenerators.Common.xml" Pack="true" PackagePath="lib\netstandard2.0" Visible="true"/>
         <!-- 包含targets文件 -->
         <None Include="GeWuYou.GFramework.Godot.SourceGenerators.targets" Pack="true" PackagePath="build" Visible="false"/>
     </ItemGroup>
