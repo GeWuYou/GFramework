@@ -1,11 +1,8 @@
 ﻿using System;
-using System.Linq;
 using System.Text;
-using GFramework.Core.Abstractions.rule;
 using GFramework.SourceGenerators.Abstractions.rule;
 using GFramework.SourceGenerators.Common.constants;
 using GFramework.SourceGenerators.Common.generator;
-using GFramework.SourceGenerators.diagnostics;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -33,16 +30,6 @@ public sealed class ContextAwareGenerator : AttributeClassGeneratorBase
         INamedTypeSymbol symbol,
         AttributeData attr)
     {
-        if (!symbol.AllInterfaces.Any(i =>
-                i.ToDisplayString() == typeof(IContextAware).FullName))
-        {
-            context.ReportDiagnostic(Diagnostic.Create(
-                ContextAwareDiagnostic.ClassMustImplementIContextAware,
-                syntax.Identifier.GetLocation(),
-                symbol.Name));
-            return false;
-        }
-
         return true;
     }
 
