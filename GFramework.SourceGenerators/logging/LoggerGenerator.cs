@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Linq;
 using System.Text;
-using GFramework.SourceGenerators.Common.diagnostics;
-using GFramework.SourceGenerators.constants;
+using GFramework.SourceGenerators.Abstractions.logging;
+using GFramework.SourceGenerators.Common.generator;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
 
 namespace GFramework.SourceGenerators.logging;
 
@@ -14,171 +12,85 @@ namespace GFramework.SourceGenerators.logging;
 ///     日志生成器，用于为标记了LogAttribute的类自动生成日志字段
 /// </summary>
 [Generator]
-public sealed class LoggerGenerator : IIncrementalGenerator
+public sealed class LoggerGenerator : AttributeClassGeneratorBase
 {
-    private const string AttributeMetadataName = $"{PathContests.RootAbstractionsPath}.logging.LogAttribute";
-    private const string AttributeShortName = "LogAttribute";
-    private const string AttributeShortNameWithoutSuffix = "Log";
+    /// <summary>
+    /// 强类型 Attribute
+    /// </summary>
+    protected override Type AttributeType => typeof(LogAttribute);
 
     /// <summary>
-    ///     初始化生成器，设置语法过滤和代码生成逻辑
+    /// 用于语法快速筛选
     /// </summary>
-    /// <param name="context">增量生成器初始化上下文</param>
-    public void Initialize(IncrementalGeneratorInitializationContext context)
+    protected override string AttributeShortNameWithoutSuffix => "Log";
+
+    /// <summary>
+    /// 对类进行额外语义校验（可选）
+    /// </summary>
+    protected override bool ValidateSymbol(
+        SourceProductionContext context,
+        ClassDeclarationSyntax syntax,
+        INamedTypeSymbol symbol,
+        AttributeData attr)
     {
-        // 1. 语法过滤：快速筛选候选类
-        var targets = context.SyntaxProvider.CreateSyntaxProvider(
-                static (node, _) =>
-                {
-                    if (node is not ClassDeclarationSyntax cls) return false;
-                    // 只要包含 Log 字眼的 Attribute 就先放行
-                    return cls.AttributeLists.SelectMany(a => a.Attributes).Any(a =>
-                    {
-                        var name = a.Name.ToString();
-                        // 简单的字符串匹配，防止错过别名情况
-                        return name.Contains(AttributeShortNameWithoutSuffix);
-                    });
-                },
-                static (ctx, _) =>
-                {
-                    var classDecl = (ClassDeclarationSyntax)ctx.Node;
-                    var symbol = ctx.SemanticModel.GetDeclaredSymbol(classDecl);
-                    return (ClassDecl: classDecl, Symbol: symbol);
-                })
-            .Where(x => x.Symbol is not null);
-
-        // 2. 生成代码
-        context.RegisterSourceOutput(targets, (spc, pair) =>
-        {
-            try
-            {
-                var classDecl = pair.ClassDecl;
-                var classSymbol = pair.Symbol!;
-
-                // 再次确认是否真的含有目标 Attribute (语义检查)
-                var attr = GetAttribute(classSymbol);
-                if (attr == null) return; // 可能是名字相似但不是我们要的 Attribute
-
-                // 检查 partial
-                if (!classDecl.Modifiers.Any(SyntaxKind.PartialKeyword))
-                {
-                    spc.ReportDiagnostic(Diagnostic.Create(
-                        CommonDiagnostics.ClassMustBePartial,
-                        classDecl.Identifier.GetLocation(),
-                        classSymbol.Name));
-
-                    return;
-                }
-
-                var source = Generate(classSymbol, attr);
-                var hintName = $"{classSymbol.Name}.Logger.g.cs";
-                spc.AddSource(hintName, SourceText.From(source, Encoding.UTF8));
-            }
-            catch (Exception ex)
-            {
-                // === 关键修复：生成错误报告文件 ===
-                var errorSource = $"// source generator error: {ex.Message}\n// StackTrace:\n// {ex.StackTrace}";
-                // 替换非法字符以防文件名报错
-                var safeName = pair.Symbol?.Name ?? "Unknown";
-                spc.AddSource($"{safeName}.Logger.Error.g.cs", SourceText.From(errorSource, Encoding.UTF8));
-            }
-        });
+        // 可以加自定义规则，比如确保类是 public 或实现某接口
+        return true;
     }
 
     /// <summary>
-    ///     获取类符号上的LogAttribute特性
+    /// 生成 Logger 字段的代码
     /// </summary>
-    /// <param name="classSymbol">类符号</param>
-    /// <returns>LogAttribute特性数据，如果不存在则返回null</returns>
-    private static AttributeData? GetAttribute(INamedTypeSymbol classSymbol)
+    protected override string Generate(INamedTypeSymbol symbol, AttributeData attr)
     {
-        return classSymbol.GetAttributes().FirstOrDefault(a =>
-        {
-            var cls = a.AttributeClass;
-            if (cls == null) return false;
-
-            // 宽松匹配：全名匹配 OR 名字匹配
-            return cls.ToDisplayString() == AttributeMetadataName ||
-                   cls.Name == AttributeShortName;
-        });
-    }
-
-    /// <summary>
-    ///     生成日志字段代码
-    /// </summary>
-    /// <param name="classSymbol">类符号</param>
-    /// <param name="attr">LogAttribute特性数据</param>
-    /// <returns>生成的C#代码字符串</returns>
-    private static string Generate(INamedTypeSymbol classSymbol, AttributeData attr)
-    {
-        var ns = classSymbol.ContainingNamespace.IsGlobalNamespace
+        var ns = symbol.ContainingNamespace.IsGlobalNamespace
             ? null
-            : classSymbol.ContainingNamespace.ToDisplayString();
+            : symbol.ContainingNamespace.ToDisplayString();
 
-        var className = classSymbol.Name;
+        var className = symbol.Name;
 
-        // === 解析 Name ===
-        var name = className; // 默认使用类名
-
-        // 检查是否有构造函数参数
+        // 解析构造函数参数
+        var name = className;
         if (attr.ConstructorArguments.Length > 0)
         {
             var argValue = attr.ConstructorArguments[0].Value;
-
-            name = argValue switch
-            {
-                // 情况 1: 参数存在，但值为 null (例如 [Log] 且构造函数有默认值 null)
-                null => className,
-                // 情况 2: 参数存在，且是有效的字符串 (例如 [Log("MyCategory")])
-                string s when !string.IsNullOrWhiteSpace(s) => s,
-                _ => $"{className}_InvalidArg"
-            };
+            name = argValue is string s && !string.IsNullOrWhiteSpace(s)
+                ? s
+                : className;
         }
 
-        // === 解析 Named Arguments (更加安全的获取方式) ===
+        // 解析命名参数
         var fieldName = GetNamedArg(attr, "FieldName")?.ToString() ?? "_log";
-        var access =
-            GetNamedArg(attr, "AccessModifier")?.ToString() ??
-            "private"; // 注意：如果你的 AccessModifier 是枚举，这里得到的可能是 int 或枚举名
-
-        // 处理 bool 类型
+        var access = GetNamedArg(attr, "AccessModifier")?.ToString() ?? "private";
         var isStaticObj = GetNamedArg(attr, "IsStatic");
-        var isStatic = isStaticObj is not bool b || b; // 默认为 true
-
+        var isStatic = isStaticObj is not bool b || b; // 默认 true
         var staticKeyword = isStatic ? "static " : "";
 
         var sb = new StringBuilder();
         sb.AppendLine("// <auto-generated />");
-        sb.AppendLine("using GFramework.Core.logging;"); // 确保这里引用了 ILog 和 Log 类
+        sb.AppendLine("using GFramework.Core.logging;");
 
         if (ns is not null)
         {
-            sb.AppendLine($"namespace {ns}");
-            sb.AppendLine("{");
+            sb.AppendLine($"namespace {ns};");
+            sb.AppendLine();
         }
 
-        sb.AppendLine($"    public partial class {className}");
-        sb.AppendLine("    {");
-        sb.AppendLine("        /// <summary>Auto-generated logger</summary>");
+        sb.AppendLine($"partial class {className}");
+        sb.AppendLine("{");
+        sb.AppendLine("    /// <summary>Auto-generated logger</summary>");
         sb.AppendLine(
-            $"        {access} {staticKeyword}readonly ILogger {fieldName} = " +
-            $"new ConsoleLoggerFactory().GetLogger(\"{name}\");");
-        sb.AppendLine("    }");
+            $"    {access} {staticKeyword}readonly ILogger {fieldName} = new ConsoleLoggerFactory().GetLogger(\"{name}\");");
+        sb.AppendLine("}");
 
-        if (ns is not null)
-            sb.AppendLine("}");
-
-        return sb.ToString();
+        return sb.ToString().TrimEnd();
     }
 
     /// <summary>
-    ///     从特性数据中获取命名参数的值
+    /// 可以自定义生成文件名
     /// </summary>
-    /// <param name="attr">特性数据</param>
-    /// <param name="name">参数名称</param>
-    /// <returns>参数值，如果不存在则返回null</returns>
+    protected override string GetHintName(INamedTypeSymbol symbol)
+        => $"{symbol.Name}.Logger.g.cs";
+
     private static object? GetNamedArg(AttributeData attr, string name)
-    {
-        return (from kv in attr.NamedArguments where kv.Key == name select kv.Value.Value).FirstOrDefault();
-    }
+        => attr.NamedArguments.FirstOrDefault(kv => kv.Key == name).Value.Value;
 }

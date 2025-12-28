@@ -1,80 +1,82 @@
 ﻿using System;
 using System.Linq;
 using System.Text;
-using GFramework.SourceGenerators.constants;
+using GFramework.SourceGenerators.Abstractions.enums;
+using GFramework.SourceGenerators.Common.diagnostics;
+using GFramework.SourceGenerators.Common.generator;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
 
 namespace GFramework.SourceGenerators.enums;
 
+/// <summary>
+/// 枚举扩展方法生成器，用于自动生成枚举相关的扩展方法
+/// </summary>
 [Generator]
-public class EnumExtensionsGenerator : IIncrementalGenerator
+public sealed class EnumExtensionsGenerator : AttributeClassGeneratorBase
 {
-    private const string AttributeFullName =
-        $"{PathContests.RootAbstractionsPath}.enums.GenerateEnumExtensionsAttribute";
+    /// <summary>
+    /// 使用强类型 Attribute，替代字符串
+    /// </summary>
+    protected override Type AttributeType =>
+        typeof(GenerateEnumExtensionsAttribute);
 
-    public void Initialize(IncrementalGeneratorInitializationContext context)
+    /// <summary>
+    /// 仅用于 Syntax 粗筛选
+    /// </summary>
+    protected override string AttributeShortNameWithoutSuffix => "GenerateEnumExtensions";
+
+    /// <summary>
+    /// 验证符号是否为有效的枚举类型
+    /// </summary>
+    /// <param name="context">源生产上下文</param>
+    /// <param name="syntax">类声明语法节点</param>
+    /// <param name="symbol">命名类型符号</param>
+    /// <param name="attr">属性数据</param>
+    /// <returns>验证是否通过</returns>
+    protected override bool ValidateSymbol(
+        SourceProductionContext context,
+        ClassDeclarationSyntax syntax,
+        INamedTypeSymbol symbol,
+        AttributeData attr)
     {
-        // 1. 找到所有 EnumDeclarationSyntax 节点
-        var enumDecls = context.SyntaxProvider
-            .CreateSyntaxProvider(
-                (s, _) => s is EnumDeclarationSyntax,
-                (ctx, _) =>
-                    (EnumDecl: (EnumDeclarationSyntax)ctx.Node, ctx.SemanticModel))
-            .Where(t => t.EnumDecl != null);
-
-        // 2. 解析为 symbol 并过滤带 Attribute 的 enum
-        var enumSymbols = enumDecls
-            .Select((t, _) =>
-            {
-                var model = t.SemanticModel;
-                var enumDecl = t.EnumDecl;
-                var symbol = model.GetDeclaredSymbol(enumDecl) as INamedTypeSymbol;
-                return symbol;
-            })
-            .Where(symbol => symbol != null)
-            .Select((symbol, _) =>
-            {
-                var hasAttr = symbol!.GetAttributes().Any(ad =>
-                    ad.AttributeClass?.ToDisplayString() == AttributeFullName);
-                return (Symbol: symbol, HasAttr: hasAttr);
-            })
-            .Where(x => x.HasAttr)
-            .Collect();
-
-        // 3. 为每个 enum 生成代码
-        context.RegisterSourceOutput(enumSymbols, (spc, list) =>
+        if (symbol.TypeKind != TypeKind.Enum)
         {
-            foreach (var enumSymbol in list.Select(item => item.Symbol))
-                try
-                {
-                    var src = GenerateForEnum(enumSymbol);
-                    var hintName = $"{enumSymbol.Name}.EnumExtensions.g.cs";
-                    spc.AddSource(hintName, SourceText.From(src, Encoding.UTF8));
-                }
-                catch (Exception ex)
-                {
-                    // 发生异常时生成一个注释文件（避免完全静默失败）
-                    var err = $"// EnumExtensionsGenerator failed for {enumSymbol?.Name}: {ex.Message}";
-                    spc.AddSource($"{enumSymbol?.Name}.EnumExtensions.Error.g.cs",
-                        SourceText.From(err, Encoding.UTF8));
-                }
-        });
+            var loc = syntax.Identifier.GetLocation();
+            context.ReportDiagnostic(Diagnostic.Create(
+                CommonDiagnostics.ClassMustBePartial, // 可以定义一个新的 Enum 专用 Diagnostic
+                loc,
+                symbol.Name
+            ));
+            return false;
+        }
+
+        return true;
     }
 
-    private static string GenerateForEnum(INamedTypeSymbol enumSymbol)
+    /// <summary>
+    /// 生成枚举扩展方法的源代码
+    /// </summary>
+    /// <param name="symbol">枚举类型符号</param>
+    /// <param name="attr">属性数据</param>
+    /// <returns>生成的源代码字符串</returns>
+    protected override string Generate(INamedTypeSymbol symbol, AttributeData attr)
     {
-        var ns = enumSymbol.ContainingNamespace.IsGlobalNamespace
+        var ns = symbol.ContainingNamespace.IsGlobalNamespace
             ? null
-            : enumSymbol.ContainingNamespace.ToDisplayString();
-        var enumName = enumSymbol.Name;
-        var fullEnumName = enumSymbol.ToDisplayString(); // 包含命名空间
-        var members = enumSymbol.GetMembers().OfType<IFieldSymbol>().Where(f => f.ConstantValue != null).ToArray();
+            : symbol.ContainingNamespace.ToDisplayString();
+
+        var enumName = symbol.Name;
+        var fullEnumName = symbol.ToDisplayString();
+        var members = symbol.GetMembers()
+            .OfType<IFieldSymbol>()
+            .Where(f => f.ConstantValue != null)
+            .ToArray();
 
         var sb = new StringBuilder();
         sb.AppendLine("// <auto-generated />");
         sb.AppendLine("using System;");
+
         if (!string.IsNullOrEmpty(ns))
         {
             sb.AppendLine($"namespace {ns}");
@@ -89,25 +91,18 @@ public class EnumExtensionsGenerator : IIncrementalGenerator
         sb.AppendLine($"    public static partial class {enumName}Extensions");
         sb.AppendLine("    {");
 
-        // 1. 单项 IsX 方法
-// 替换原第93行开始的 foreach 块
-        var memberChecks = members.Select(m =>
+        // 生成 IsX 方法
+        foreach (var memberName in members.Select(m => m.Name))
         {
-            var memberName = m.Name;
-            var safeMethodName = $"Is{memberName}";
-            return $@"        /// <summary>Auto-generated: 是否为 {memberName}</summary>
-        public static bool {safeMethodName}(this {fullEnumName} value) => value == {fullEnumName}.{memberName};
+            sb.AppendLine($"        /// <summary>Auto-generated: 是否为 {memberName}</summary>");
+            sb.AppendLine(
+                $"        public static bool Is{memberName}(this {fullEnumName} value) => value == {fullEnumName}.{memberName};");
+            sb.AppendLine();
+        }
 
-";
-        }).ToArray();
-
-        sb.Append(string.Join("", memberChecks));
-
-
-        // 2. IsIn(params ...) 方法
+        // 生成 IsIn 方法
         sb.AppendLine("        /// <summary>Auto-generated: 判断是否属于指定集合</summary>");
-        sb.AppendLine(
-            $"        public static bool IsIn(this {fullEnumName} value, params {fullEnumName}[] values)");
+        sb.AppendLine($"        public static bool IsIn(this {fullEnumName} value, params {fullEnumName}[] values)");
         sb.AppendLine("        {");
         sb.AppendLine("            if (values == null) return false;");
         sb.AppendLine("            foreach (var v in values) if (value == v) return true;");
@@ -119,4 +114,12 @@ public class EnumExtensionsGenerator : IIncrementalGenerator
 
         return sb.ToString();
     }
+
+    /// <summary>
+    /// 获取生成文件的提示名称
+    /// </summary>
+    /// <param name="symbol">命名类型符号</param>
+    /// <returns>生成文件的提示名称</returns>
+    protected override string GetHintName(INamedTypeSymbol symbol)
+        => $"{symbol.Name}.EnumExtensions.g.cs";
 }
