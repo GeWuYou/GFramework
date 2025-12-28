@@ -81,14 +81,14 @@ public sealed class EnumExtensionsGenerator : AttributeEnumGeneratorBase
         // 生成 IsX 方法
         foreach (var memberName in members.Select(m => m.Name))
         {
-            sb.AppendLine($"        /// <summary>Auto-generated: 是否为 {memberName}</summary>");
+            sb.AppendLine($"        /// <summary>是否为 {memberName}</summary>");
             sb.AppendLine(
                 $"        public static bool Is{memberName}(this {fullEnumName} value) => value == {fullEnumName}.{memberName};");
             sb.AppendLine();
         }
 
         // 生成 IsIn 方法
-        sb.AppendLine("        /// <summary>Auto-generated: 判断是否属于指定集合</summary>");
+        sb.AppendLine("        /// <summary>判断是否属于指定集合</summary>");
         sb.AppendLine($"        public static bool IsIn(this {fullEnumName} value, params {fullEnumName}[] values)");
         sb.AppendLine("        {");
         sb.AppendLine("            if (values == null) return false;");
