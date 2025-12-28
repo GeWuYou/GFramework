@@ -1,6 +1,7 @@
 using GFramework.Core.system;
 using GFramework.Game.assets;
-using GFramework.Godot.assets;
+using GFramework.Godot.Abstractions.assets;
+using GFramework.Godot.Abstractions.system;
 using Godot;
 
 namespace GFramework.Godot.system;
@@ -192,26 +193,6 @@ public abstract class AbstractAudioManagerSystem : AbstractSystem, IAudioManager
         var player = AvailableSoundPlayers.Dequeue();
         player.Stream = audioStream;
         player.VolumeDb = LinearToDb(volume * AmbientVolume * MasterVolume);
-        player.Play();
-    }
-
-    /// <summary>
-    ///     播放3D音效
-    /// </summary>
-    /// <param name="audioPath">音频文件路径</param>
-    /// <param name="position">3D空间中的位置</param>
-    /// <param name="volume">音量大小，范围0-1</param>
-    public virtual void PlaySound3D(string audioPath, Vector3 position, float volume = 1.0f)
-    {
-        if (AvailableSound3DPlayers.Count == 0) return;
-
-        var audioStream = ResourceLoadSystem?.LoadResource<AudioStream>(audioPath);
-        if (audioStream == null) return;
-
-        var player = AvailableSound3DPlayers.Dequeue();
-        player.Stream = audioStream;
-        player.VolumeDb = LinearToDb(volume * SoundVolume * MasterVolume);
-        player.Position = position;
         player.Play();
     }
 
@@ -423,6 +404,26 @@ public abstract class AbstractAudioManagerSystem : AbstractSystem, IAudioManager
     {
         // TODO: 实现音频混响效果
         // 可以通过AudioEffectReverb实现
+    }
+
+    /// <summary>
+    ///     播放3D音效
+    /// </summary>
+    /// <param name="audioPath">音频文件路径</param>
+    /// <param name="position">3D空间中的位置</param>
+    /// <param name="volume">音量大小，范围0-1</param>
+    public virtual void PlaySound3D(string audioPath, Vector3 position, float volume = 1.0f)
+    {
+        if (AvailableSound3DPlayers.Count == 0) return;
+
+        var audioStream = ResourceLoadSystem?.LoadResource<AudioStream>(audioPath);
+        if (audioStream == null) return;
+
+        var player = AvailableSound3DPlayers.Dequeue();
+        player.Stream = audioStream;
+        player.VolumeDb = LinearToDb(volume * SoundVolume * MasterVolume);
+        player.Position = position;
+        player.Play();
     }
 
     /// <summary>

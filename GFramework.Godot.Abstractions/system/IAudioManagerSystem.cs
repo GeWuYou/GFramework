@@ -1,7 +1,6 @@
 using GFramework.Core.Abstractions.system;
-using Godot;
 
-namespace GFramework.Godot.system;
+namespace GFramework.Godot.Abstractions.system;
 
 /// <summary>
 ///     音频管理器系统接口，用于统一管理背景音乐和音效的播放

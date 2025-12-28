@@ -1,8 +1,6 @@
 ﻿using GFramework.Core.Abstractions.system;
-using GFramework.Game.assets;
-using Godot;
 
-namespace GFramework.Godot.assets;
+namespace GFramework.Godot.Abstractions.assets;
 
 /// <summary>
 ///     资源加载系统接口，提供资源和场景的加载、实例化、预加载等功能

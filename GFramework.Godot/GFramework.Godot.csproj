@@ -15,8 +15,8 @@
 
     <ItemGroup>
         <ProjectReference Include="..\GFramework.Game\GFramework.Game.csproj"/>
+        <ProjectReference Include="..\GFramework.Godot.Abstractions\GFramework.Godot.Abstractions.csproj"/>
     </ItemGroup>
-
     <ItemGroup>
         <Compile Remove="extensions\ControlExtensions.cs"/>
     </ItemGroup>
