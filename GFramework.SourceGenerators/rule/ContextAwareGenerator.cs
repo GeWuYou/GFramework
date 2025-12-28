@@ -1,5 +1,7 @@
 ﻿using System.Linq;
 using System.Text;
+using GFramework.SourceGenerators.Common.diagnostics;
+using GFramework.SourceGenerators.constants;
 using GFramework.SourceGenerators.diagnostics;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -11,7 +13,7 @@ namespace GFramework.SourceGenerators.rule;
 public sealed class ContextAwareGenerator : IIncrementalGenerator
 {
     private const string AttributeMetadataName =
-        "GFramework.SourceGenerators.Abstractions.rule.ContextAwareAttribute";
+        $"{PathContests.RootAbstractionsPath}.rule.ContextAwareAttribute";
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {

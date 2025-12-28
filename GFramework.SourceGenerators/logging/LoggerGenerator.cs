@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Linq;
 using System.Text;
-using GFramework.SourceGenerators.diagnostics;
+using GFramework.SourceGenerators.Common.diagnostics;
+using GFramework.SourceGenerators.constants;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -15,7 +16,7 @@ namespace GFramework.SourceGenerators.logging;
 [Generator]
 public sealed class LoggerGenerator : IIncrementalGenerator
 {
-    private const string AttributeMetadataName = "GFramework.SourceGenerators.Abstractions.logging.LogAttribute";
+    private const string AttributeMetadataName = $"{PathContests.RootAbstractionsPath}.logging.LogAttribute";
     private const string AttributeShortName = "LogAttribute";
     private const string AttributeShortNameWithoutSuffix = "Log";
 

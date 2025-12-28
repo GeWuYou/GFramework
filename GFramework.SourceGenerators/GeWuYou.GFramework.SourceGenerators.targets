@@ -6,6 +6,7 @@
     <ItemGroup>
         <Analyzer Include="$(MSBuildThisFileDirectory)../analyzers/dotnet/cs/GFramework.SourceGenerators.dll"/>
         <Analyzer Include="$(MSBuildThisFileDirectory)../analyzers/dotnet/cs/GFramework.SourceGenerators.Abstractions.dll"/>
+        <Analyzer Include="$(MSBuildThisFileDirectory)../analyzers/dotnet/cs/GFramework.SourceGenerators.Common.dll"/>
     </ItemGroup>
 
     <!-- Ensure the analyzers are loaded -->

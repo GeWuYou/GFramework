@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Linq;
 using System.Text;
-using GFramework.Godot.SourceGenerators.diagnostics;
+using GFramework.Godot.SourceGenerators.constants;
+using GFramework.SourceGenerators.Common.diagnostics;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -16,7 +17,7 @@ namespace GFramework.Godot.SourceGenerators.logging;
 public sealed class GodotLoggerGenerator : IIncrementalGenerator
 {
     private const string AttributeMetadataName =
-        "GFramework.Godot.SourceGenerators.Abstractions.logging.GodotLogAttribute";
+        $"{PathContests.RootAbstractionsPath}.logging.GodotLogAttribute";
 
     private const string AttributeShortName = "GodotLogAttribute";
     private const string AttributeShortNameWithoutSuffix = "GodotLog";

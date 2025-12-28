@@ -1,6 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 
-namespace GFramework.SourceGenerators.diagnostics;
+namespace GFramework.SourceGenerators.Common.diagnostics;
 
 /// <summary>
 /// 提供通用诊断描述符的静态类

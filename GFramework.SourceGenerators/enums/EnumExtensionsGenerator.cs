@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Text;
+using GFramework.SourceGenerators.constants;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
@@ -11,7 +12,7 @@ namespace GFramework.SourceGenerators.enums;
 public class EnumExtensionsGenerator : IIncrementalGenerator
 {
     private const string AttributeFullName =
-        "GFramework.SourceGenerators.Abstractions.generator.enums.GenerateEnumExtensionsAttribute";
+        $"{PathContests.RootAbstractionsPath}.enums.GenerateEnumExtensionsAttribute";
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
@@ -35,9 +36,8 @@ public class EnumExtensionsGenerator : IIncrementalGenerator
             .Where(symbol => symbol != null)
             .Select((symbol, _) =>
             {
-                var hasAttr = symbol.GetAttributes().Any(ad =>
-                    ad.AttributeClass?.ToDisplayString() == AttributeFullName ||
-                    ad.AttributeClass?.ToDisplayString().EndsWith(".GenerateEnumExtensionsAttribute") == true);
+                var hasAttr = symbol!.GetAttributes().Any(ad =>
+                    ad.AttributeClass?.ToDisplayString() == AttributeFullName);
                 return (Symbol: symbol, HasAttr: hasAttr);
             })
             .Where(x => x.HasAttr)
