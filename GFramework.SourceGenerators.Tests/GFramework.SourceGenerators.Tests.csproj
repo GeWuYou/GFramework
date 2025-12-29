@@ -22,4 +22,8 @@
         <ProjectReference Include="..\GFramework.SourceGenerators\GFramework.SourceGenerators.csproj"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <Folder Include="rule\snapshots\ContextAwareGenerator\"/>
+    </ItemGroup>
+
 </Project>
