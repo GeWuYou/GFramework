@@ -15,7 +15,9 @@ public class TypeEventSystem : ITypeEventSystem
     /// <typeparam name="T">事件类型，必须具有无参构造函数</typeparam>
     public void Send<T>() where T : new()
     {
-        _mEvents.GetEvent<EasyEvent<T>>().Trigger(new T());
+        _mEvents
+            .GetOrAddEvent<EasyEvent<T>>()
+            .Trigger(new T());
     }
 
     /// <summary>
@@ -25,7 +27,9 @@ public class TypeEventSystem : ITypeEventSystem
     /// <param name="e">事件实例</param>
     public void Send<T>(T e)
     {
-        _mEvents.GetEvent<EasyEvent<T>>().Trigger(e);
+        _mEvents
+            .GetOrAddEvent<EasyEvent<T>>()
+            .Trigger(e);
     }
 
     /// <summary>

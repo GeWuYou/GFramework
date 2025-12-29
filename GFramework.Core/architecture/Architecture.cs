@@ -250,6 +250,8 @@ public abstract class Architecture(
         // 创建架构运行时实例
         Runtime = new ArchitectureRuntime(_context);
         ((ArchitectureContext)_context).Runtime = Runtime;
+        //  设置服务的上下文
+        Services.SetContext(_context);
         // 调用用户实现的初始化
         Init();
 
@@ -301,6 +303,8 @@ public abstract class Architecture(
         // 创建架构运行时实例
         Runtime = new ArchitectureRuntime(_context);
         ((ArchitectureContext)_context).Runtime = Runtime;
+        //  设置服务的上下文
+        Services.SetContext(_context);
         // 调用用户实现的初始化
         Init();
 

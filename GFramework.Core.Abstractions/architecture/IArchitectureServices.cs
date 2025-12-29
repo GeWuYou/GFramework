@@ -1,12 +1,13 @@
 ﻿using GFramework.Core.Abstractions.events;
 using GFramework.Core.Abstractions.ioc;
+using GFramework.Core.Abstractions.rule;
 
 namespace GFramework.Core.Abstractions.architecture;
 
 /// <summary>
 ///     架构服务接口，定义了框架核心架构所需的服务组件
 /// </summary>
-public interface IArchitectureServices
+public interface IArchitectureServices : IContextAware
 {
     /// <summary>
     ///     获取依赖注入容器
