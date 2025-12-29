@@ -46,6 +46,7 @@
         <None Remove="GFramework.Core.Abstractions\**"/>
         <None Remove="GFramework.Godot.Abstractions\**"/>
         <None Remove="GFramework.Game.Abstractions\**"/>
+        <None Remove="GFramework.Core.Tests\**"/>
     </ItemGroup>
     <!-- 聚合核心模块 -->
     <ItemGroup>
@@ -75,6 +76,7 @@
         <Compile Remove="GFramework.Core.Abstractions\**"/>
         <Compile Remove="GFramework.Godot.Abstractions\**"/>
         <Compile Remove="GFramework.Game.Abstractions\**"/>
+        <Compile Remove="GFramework.Core.Tests\**"/>
     </ItemGroup>
     <ItemGroup>
         <EmbeddedResource Remove="GFramework.Core\**"/>
@@ -90,9 +92,13 @@
         <EmbeddedResource Remove="GFramework.Core.Abstractions\**"/>
         <EmbeddedResource Remove="GFramework.Godot.Abstractions\**"/>
         <EmbeddedResource Remove="GFramework.Game.Abstractions\**"/>
+        <EmbeddedResource Remove="GFramework.Core.Tests\**"/>
     </ItemGroup>
     <ItemGroup>
         <AdditionalFiles Remove="AnalyzerReleases.Shipped.md"/>
         <AdditionalFiles Remove="AnalyzerReleases.Unshipped.md"/>
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="NUnit" Version="4.4.0"/>
     </ItemGroup>
 </Project>

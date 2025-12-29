@@ -52,7 +52,7 @@ public class IocContainer : ContextAwareBase, IIocContainer
 
     #region Register
 
-    public void Init()
+    protected override void OnContextReady()
     {
         _logger = Context.LoggerFactory.GetLogger(nameof(IocContainer));
     }

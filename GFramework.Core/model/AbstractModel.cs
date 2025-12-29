@@ -11,7 +11,7 @@ public abstract class AbstractModel : IModel
     /// <summary>
     ///     模型所属的架构实例
     /// </summary>
-    protected IArchitecture Architecture;
+    protected IArchitectureContext _context { get; private set; }
 
     /// <summary>
     ///     初始化模型，调用抽象方法OnInit执行具体初始化逻辑
@@ -21,23 +21,16 @@ public abstract class AbstractModel : IModel
         OnInit();
     }
 
-    /// <summary>
-    ///     获取模型所属的架构实例
-    /// </summary>
-    /// <returns>返回当前模型关联的架构对象</returns>
-    public IArchitecture GetArchitecture()
+    public void SetContext(IArchitectureContext context)
     {
-        return Architecture;
+        _context = context;
     }
 
-    /// <summary>
-    ///     设置模型所属的架构实例
-    /// </summary>
-    /// <param name="architecture">要关联到此模型的架构实例</param>
-    public void SetArchitecture(IArchitecture architecture)
+    public IArchitectureContext GetContext()
     {
-        Architecture = architecture;
+        return _context;
     }
+
 
     /// <summary>
     ///     抽象初始化方法，由子类实现具体的初始化逻辑
