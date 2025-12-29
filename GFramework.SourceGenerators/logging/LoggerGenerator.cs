@@ -41,9 +41,18 @@ public sealed class LoggerGenerator : TypeAttributeClassGeneratorBase
     }
 
     /// <summary>
-    /// 生成 Logger 字段的代码
+    ///     生成源代码
     /// </summary>
-    protected override string Generate(INamedTypeSymbol symbol, AttributeData attr)
+    /// <param name="context">源生产上下文</param>
+    /// <param name="compilation">编译对象</param>
+    /// <param name="symbol">命名类型符号</param>
+    /// <param name="attr">属性数据</param>
+    /// <returns>生成的源代码字符串</returns>
+    protected override string Generate(
+        SourceProductionContext context,
+        Compilation compilation,
+        INamedTypeSymbol symbol,
+        AttributeData attr)
     {
         var ns = symbol.ContainingNamespace.IsGlobalNamespace
             ? null

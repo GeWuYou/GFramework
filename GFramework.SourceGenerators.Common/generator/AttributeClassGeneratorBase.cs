@@ -109,7 +109,7 @@ public abstract class AttributeClassGeneratorBase : IIncrementalGenerator
         CommonDiagnostics.Trace(context,
             $"[GEN] Generating source: {hintName}");
 
-        context.AddSource(hintName, Generate(symbol, attr));
+        context.AddSource(hintName, Generate(context, compilation, symbol, attr));
     }
 
 
@@ -133,10 +133,14 @@ public abstract class AttributeClassGeneratorBase : IIncrementalGenerator
     /// <summary>
     ///     生成源代码
     /// </summary>
+    /// <param name="context">源生产上下文</param>
+    /// <param name="compilation">编译对象</param>
     /// <param name="symbol">命名类型符号</param>
     /// <param name="attr">属性数据</param>
     /// <returns>生成的源代码字符串</returns>
     protected abstract string Generate(
+        SourceProductionContext context,
+        Compilation compilation,
         INamedTypeSymbol symbol,
         AttributeData attr);
 

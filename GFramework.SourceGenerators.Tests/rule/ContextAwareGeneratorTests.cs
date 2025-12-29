@@ -40,6 +40,8 @@ public class ContextAwareGeneratorTests
                                          {
                                              void SetContext(
                                                  GFramework.Core.Abstractions.architecture.IArchitectureContext context);
+
+                                             GFramework.Core.Abstractions.architecture.IArchitectureContext GetContext();
                                          }
                                      }
 
@@ -62,10 +64,16 @@ public class ContextAwareGeneratorTests
                                     /// </summary>
                                     protected GFramework.Core.Abstractions.architecture.IArchitectureContext Context { get; private set; } = null!;
 
-                                    void GFramework.Core.Abstractions.rule.IContextAware.SetContext(
-                                        GFramework.Core.Abstractions.architecture.IArchitectureContext context)
+                                    void global::GFramework.Core.Abstractions.rule.IContextAware.SetContext(
+                                        global::GFramework.Core.Abstractions.architecture.IArchitectureContext context)
                                     {
                                         Context = context;
+                                    }
+
+                                    global::GFramework.Core.Abstractions.architecture.IArchitectureContext
+                                        global::GFramework.Core.Abstractions.rule.IContextAware.GetContext()
+                                    {
+                                        return Context;
                                     }
                                 }
                                 """;
@@ -113,6 +121,8 @@ public class ContextAwareGeneratorTests
                                          {
                                              void SetContext(
                                                  GFramework.Core.Abstractions.architecture.IArchitectureContext context);
+
+                                             GFramework.Core.Abstractions.architecture.IArchitectureContext GetContext();
                                          }
                                      }
 
@@ -139,6 +149,12 @@ public class ContextAwareGeneratorTests
                                         GFramework.Core.Abstractions.architecture.IArchitectureContext context)
                                     {
                                         Context = context;
+                                    }
+
+                                    GFramework.Core.Abstractions.architecture.IArchitectureContext
+                                        GFramework.Core.Abstractions.rule.IContextAware.GetContext()
+                                    {
+                                        return Context;
                                     }
                                 }
                                 """;

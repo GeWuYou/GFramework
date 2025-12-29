@@ -24,6 +24,15 @@ public abstract class ContextAwareBase : IContextAware
     }
 
     /// <summary>
+    ///     获取架构上下文
+    /// </summary>
+    /// <returns>当前架构上下文对象</returns>
+    IArchitectureContext IContextAware.GetContext()
+    {
+        return Context;
+    }
+
+    /// <summary>
     ///     当上下文准备就绪时调用的虚方法，子类可以重写此方法来执行上下文相关的初始化逻辑
     /// </summary>
     protected virtual void OnContextReady()

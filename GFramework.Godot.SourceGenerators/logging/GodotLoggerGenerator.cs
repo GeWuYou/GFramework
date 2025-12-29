@@ -20,12 +20,18 @@ public sealed class GodotLoggerGenerator : TypeAttributeClassGeneratorBase
     protected override string AttributeShortNameWithoutSuffix => "GodotLog";
 
     /// <summary>
-    /// 生成日志字段的源代码
+    ///     生成源代码
     /// </summary>
-    /// <param name="symbol">类符号</param>
-    /// <param name="attr">GodotLogAttribute属性数据</param>
+    /// <param name="context">源生产上下文</param>
+    /// <param name="compilation">编译对象</param>
+    /// <param name="symbol">命名类型符号</param>
+    /// <param name="attr">属性数据</param>
     /// <returns>生成的源代码字符串</returns>
-    protected override string Generate(INamedTypeSymbol symbol, AttributeData attr)
+    protected override string Generate(
+        SourceProductionContext context,
+        Compilation compilation,
+        INamedTypeSymbol symbol,
+        AttributeData attr)
     {
         var ns = symbol.ContainingNamespace.IsGlobalNamespace
             ? null
