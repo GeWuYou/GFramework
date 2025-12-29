@@ -54,4 +54,14 @@ public class ArchitectureInitializationTests
         Assert.That(system, Is.Not.Null);
         Assert.That(system!.Inited, Is.True);
     }
+
+    [Test]
+    public void Architecture_Should_Register_Context_By_Type()
+    {
+        // Act
+        _architecture!.Initialize();
+        var ctx = GameContext.GetByType(_architecture!.GetType());
+
+        Assert.That(ctx, Is.Not.Null);
+    }
 }

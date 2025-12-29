@@ -246,7 +246,7 @@ public abstract class Architecture(
     {
         _logger = Configuration.LoggerFactory.GetLogger(GetType().Name);
         _context ??= new ArchitectureContext(Container, TypeEventSystem, Configuration.LoggerFactory);
-
+        GameContext.Bind(GetType(), _context);
         // 创建架构运行时实例
         Runtime = new ArchitectureRuntime(_context);
         ((ArchitectureContext)_context).Runtime = Runtime;
@@ -299,7 +299,7 @@ public abstract class Architecture(
     {
         _logger = Configuration.LoggerFactory.GetLogger(GetType().Name);
         _context ??= new ArchitectureContext(Container, TypeEventSystem, Configuration.LoggerFactory);
-
+        GameContext.Bind(GetType(), _context);
         // 创建架构运行时实例
         Runtime = new ArchitectureRuntime(_context);
         ((ArchitectureContext)_context).Runtime = Runtime;

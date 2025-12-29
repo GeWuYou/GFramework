@@ -117,13 +117,27 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
     /// <param name="sb">字符串构建器</param>
     private static void GenerateContextProperty(StringBuilder sb)
     {
+        sb.AppendLine("    private global::GFramework.Core.Abstractions.architecture.IArchitectureContext? _context;");
+        sb.AppendLine();
         sb.AppendLine("    /// <summary>");
-        sb.AppendLine("    /// 自动注入的架构上下文");
+        sb.AppendLine("    /// 自动获取的架构上下文（懒加载，默认使用第一个架构）");
         sb.AppendLine("    /// </summary>");
+        sb.AppendLine("    protected global::GFramework.Core.Abstractions.architecture.IArchitectureContext Context");
+        sb.AppendLine("    {");
+        sb.AppendLine("        get");
+        sb.AppendLine("        {");
+        sb.AppendLine("            if (_context == null)");
+        sb.AppendLine("            {");
         sb.AppendLine(
-            $"    protected {PathContests.CoreAbstractionsNamespace}.architecture.IArchitectureContext Context {{ get; private set; }} = null!;");
+            "                _context = global::GFramework.Core.architecture.GameContext.GetFirstArchitecture();");
+        sb.AppendLine("            }");
+        sb.AppendLine();
+        sb.AppendLine("            return _context;");
+        sb.AppendLine("        }");
+        sb.AppendLine("    }");
         sb.AppendLine();
     }
+
 
     // =========================
     // 显式接口实现（使用 global::）
@@ -189,7 +203,7 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
         switch (method.Name)
         {
             case "SetContext":
-                sb.AppendLine("        Context = context;");
+                sb.AppendLine("        _context = context;");
                 break;
 
             case "GetContext":

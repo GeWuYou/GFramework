@@ -55,6 +55,21 @@ public class ContextAwareGeneratorSnapshotTests
                                   {
                                   }
                               }
+                              namespace GFramework.Core.architecture
+                              {         
+                                   using GFramework.Core.Abstractions.architecture;
+                                   public class GameContext{
+                                      /// <summary>
+                                      /// 获取字典中的第一个架构上下文
+                                      /// </summary>
+                                      /// <returns>返回字典中的第一个架构上下文实例</returns>
+                                      /// <exception cref="InvalidOperationException">当字典为空时抛出</exception>
+                                      public static IArchitectureContext GetFirstArchitecture()
+                                      {
+                                          return null;
+                                      }
+                                  }
+                              }
                               """;
 
         // 执行生成器快照测试，将生成的代码与预期快照进行比较
