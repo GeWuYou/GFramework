@@ -58,7 +58,7 @@ public class ContextAwareGeneratorSnapshotTests
                               namespace GFramework.Core.architecture
                               {         
                                    using GFramework.Core.Abstractions.architecture;
-                                   public class GameContext{
+                                   public static class GameContext{
                                       /// <summary>
                                       /// 获取字典中的第一个架构上下文
                                       /// </summary>
