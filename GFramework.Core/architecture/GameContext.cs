@@ -102,11 +102,11 @@ public static class GameContext
         ArchitectureDictionary.TryRemove(architectureType, out _);
     }
 
-    // 测试专用
+
     /// <summary>
-    /// 为测试重置所有架构上下文（仅内部使用）
+    /// 清空所有架构上下文绑定
     /// </summary>
-    internal static void ResetForTests()
+    public static void Clear()
     {
         ArchitectureDictionary.Clear();
     }

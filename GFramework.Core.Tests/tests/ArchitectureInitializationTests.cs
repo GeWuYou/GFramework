@@ -15,14 +15,22 @@ public class ArchitectureInitializationTests
     [SetUp]
     public void SetUp()
     {
+        GameContext.Clear();
         _architecture = new TestArchitecture();
     }
 
     [TearDown]
     public void TearDown()
     {
-        _architecture!.Destroy();
-        _architecture = null;
+        try
+        {
+            _architecture?.Destroy();
+        }
+        finally
+        {
+            GameContext.Clear();
+            _architecture = null;
+        }
     }
 
     private TestArchitecture? _architecture;
