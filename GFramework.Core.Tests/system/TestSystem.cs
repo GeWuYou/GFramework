@@ -1,4 +1,5 @@
 ﻿using GFramework.Core.Abstractions.architecture;
+using GFramework.Core.Abstractions.enums;
 using GFramework.Core.Abstractions.system;
 
 namespace GFramework.Core.Tests.system;
@@ -55,5 +56,9 @@ public sealed class TestSystem : ISystem
     public void Destroy()
     {
         Destroyed = true;
+    }
+
+    public void OnArchitecturePhase(ArchitecturePhase phase)
+    {
     }
 }

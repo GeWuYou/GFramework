@@ -20,7 +20,7 @@ public abstract class Architecture(
     IArchitectureServices? services = null,
     IArchitectureContext? context = null
 )
-    : IArchitecture, IArchitectureLifecycle
+    : IArchitecture
 {
     /// <summary>
     ///     获取架构配置对象
@@ -76,19 +76,6 @@ public abstract class Architecture(
         Container.RegisterPlurality(module);
         module.Install(this);
         logger.Info($"Module installed: {module.GetType().Name}");
-    }
-
-    #endregion
-
-    #region IArchitectureLifecycle Implementation
-
-    /// <summary>
-    ///     处理架构阶段变更通知
-    /// </summary>
-    /// <param name="phase">当前架构阶段</param>
-    /// <param name="architecture">架构实例</param>
-    public virtual void OnPhase(ArchitecturePhase phase, IArchitecture architecture)
-    {
     }
 
     #endregion
@@ -362,7 +349,7 @@ public abstract class Architecture(
     {
         if (CurrentPhase >= ArchitecturePhase.Ready && !Configuration.Options.AllowLateRegistration)
         {
-            var errorMsg = "Cannot register system after Architecture is Ready";
+            const string errorMsg = "Cannot register system after Architecture is Ready";
             _logger.Error(errorMsg);
             throw new InvalidOperationException(errorMsg);
         }

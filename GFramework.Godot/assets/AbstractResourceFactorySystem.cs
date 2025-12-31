@@ -11,24 +11,23 @@ namespace GFramework.Godot.assets;
 ///     资源工厂系统抽象基类，用于统一管理各类资源的创建与预加载逻辑。
 ///     提供注册场景和资源的方法，并通过依赖的资源加载系统和资产目录系统完成实际资源的获取与构造。
 /// </summary>
-public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceFactorySystem, IArchitectureLifecycle
+public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceFactorySystem, IArchitecturePhaseAware
 {
     private IAssetCatalogSystem? _assetCatalogSystem;
     private ResourceFactory.Registry? _registry;
     private IResourceLoadSystem? _resourceLoadSystem;
 
+
     /// <summary>
-    ///     架构阶段回调，在架构就绪时注册和预加载资源
+    ///     在架构阶段发生变化时执行相应的处理逻辑。
     /// </summary>
-    /// <param name="phase">当前架构阶段</param>
-    /// <param name="architecture">架构实例</param>
-    public void OnPhase(ArchitecturePhase phase, IArchitecture architecture)
+    /// <param name="phase">当前的架构阶段</param>
+    public void OnArchitecturePhase(ArchitecturePhase phase)
     {
         if (phase == ArchitecturePhase.Ready)
         {
-            // 注册资源
+            // 在架构准备就绪阶段注册资源并预加载所有资源
             RegisterResources();
-            // 预加载所有资源
             _registry!.PreloadAll();
         }
     }
@@ -44,6 +43,7 @@ public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceF
     {
         return _registry!.ResolveFactory<T>(key);
     }
+
 
     /// <summary>
     ///     根据资产目录映射信息获取资源工厂函数。

@@ -1,4 +1,5 @@
 ﻿using GFramework.Core.Abstractions.architecture;
+using GFramework.Core.Abstractions.enums;
 using GFramework.Core.Abstractions.model;
 
 namespace GFramework.Core.model;
@@ -29,6 +30,14 @@ public abstract class AbstractModel : IModel
     public IArchitectureContext GetContext()
     {
         return _context;
+    }
+
+    /// <summary>
+    ///     处理架构阶段事件的虚拟方法
+    /// </summary>
+    /// <param name="phase">当前的架构阶段</param>
+    public virtual void OnArchitecturePhase(ArchitecturePhase phase)
+    {
     }
 
 

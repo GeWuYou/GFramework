@@ -1,4 +1,5 @@
 ﻿using GFramework.Core.Abstractions.architecture;
+using GFramework.Core.Abstractions.enums;
 using GFramework.Core.Abstractions.model;
 
 namespace GFramework.Core.Tests.model;
@@ -31,5 +32,9 @@ public sealed class TestModel : IModel
     public IArchitectureContext GetContext()
     {
         return _context;
+    }
+
+    public void OnArchitecturePhase(ArchitecturePhase phase)
+    {
     }
 }

@@ -1,3 +1,4 @@
+using GFramework.Core.Abstractions.enums;
 using GFramework.Core.Abstractions.logging;
 using GFramework.Core.Abstractions.system;
 using GFramework.Core.rule;
@@ -35,6 +36,14 @@ public abstract class AbstractSystem : ContextAwareBase, ISystem
         OnDestroy();
 
         _logger.Info($"System destroyed: {GetType().Name}");
+    }
+
+    /// <summary>
+    ///     处理架构阶段事件的虚拟方法
+    /// </summary>
+    /// <param name="phase">当前的架构阶段</param>
+    public virtual void OnArchitecturePhase(ArchitecturePhase phase)
+    {
     }
 
     /// <summary>

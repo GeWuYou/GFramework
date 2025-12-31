@@ -47,6 +47,10 @@
         <None Remove="GFramework.Godot.Abstractions\**"/>
         <None Remove="GFramework.Game.Abstractions\**"/>
         <None Remove="GFramework.Core.Tests\**"/>
+        <None Remove="GFramework.Generator\**"/>
+        <None Remove="GFramework.Generator.Attributes\**"/>
+        <None Remove="GFramework.Godot.SourceGenerators.Attributes\**"/>
+        <None Remove="GFramework.SourceGenerators.Attributes\**"/>
     </ItemGroup>
     <!-- 聚合核心模块 -->
     <ItemGroup>
@@ -77,6 +81,10 @@
         <Compile Remove="GFramework.Godot.Abstractions\**"/>
         <Compile Remove="GFramework.Game.Abstractions\**"/>
         <Compile Remove="GFramework.Core.Tests\**"/>
+        <Compile Remove="GFramework.Generator\**"/>
+        <Compile Remove="GFramework.Generator.Attributes\**"/>
+        <Compile Remove="GFramework.Godot.SourceGenerators.Attributes\**"/>
+        <Compile Remove="GFramework.SourceGenerators.Attributes\**"/>
     </ItemGroup>
     <ItemGroup>
         <EmbeddedResource Remove="GFramework.Core\**"/>
@@ -93,6 +101,10 @@
         <EmbeddedResource Remove="GFramework.Godot.Abstractions\**"/>
         <EmbeddedResource Remove="GFramework.Game.Abstractions\**"/>
         <EmbeddedResource Remove="GFramework.Core.Tests\**"/>
+        <EmbeddedResource Remove="GFramework.Generator\**"/>
+        <EmbeddedResource Remove="GFramework.Generator.Attributes\**"/>
+        <EmbeddedResource Remove="GFramework.Godot.SourceGenerators.Attributes\**"/>
+        <EmbeddedResource Remove="GFramework.SourceGenerators.Attributes\**"/>
     </ItemGroup>
     <ItemGroup>
         <AdditionalFiles Remove="AnalyzerReleases.Shipped.md"/>
