@@ -70,6 +70,7 @@ public class IocContainer : ContextAwareBase, IIocContainer
         _lock.EnterWriteLock();
         try
         {
+            // 检查容器是否已被冻结
             if (_frozen)
             {
                 var errorMsg = "IocContainer is frozen";
@@ -77,6 +78,7 @@ public class IocContainer : ContextAwareBase, IIocContainer
                 throw new InvalidOperationException(errorMsg);
             }
 
+            // 检查该类型是否已经注册过单例
             if (_typeIndex.TryGetValue(type, out var set) && set.Count > 0)
             {
                 var errorMsg = $"Singleton already registered for type: {type.Name}";
@@ -93,31 +95,26 @@ public class IocContainer : ContextAwareBase, IIocContainer
         }
     }
 
-
     /// <summary>
-    ///     注册一个实例及其所有可赋值的接口类型到容器中
+    ///     注册多个实例
+    ///     将实例注册到其实现的所有接口和具体类型上
     /// </summary>
-    /// <typeparam name="T">实例的类型</typeparam>
-    /// <param name="instance">要注册的实例对象，不能为null</param>
-    public void RegisterPlurality<T>(T instance)
+    /// <param name="instance">要注册的实例</param>
+    public void RegisterPlurality(object instance)
     {
-        var concreteType = instance!.GetType();
-        // 获取实例类型直接实现的所有接口，并筛选出可以赋值给T类型的接口
-        var interfaces = concreteType.GetInterfaces()
-            .Where(typeof(T).IsAssignableFrom);
+        var concreteType = instance.GetType();
+        var interfaces = concreteType.GetInterfaces();
 
         _lock.EnterWriteLock();
         try
         {
             // 注册具体类型
             RegisterInternal(concreteType, instance);
-            _logger.Debug($"Registered concrete type: {concreteType.Name}");
 
-            // 注册所有匹配的接口类型
+            // 注册所有接口类型
             foreach (var itf in interfaces)
             {
                 RegisterInternal(itf, instance);
-                _logger.Debug($"Registered interface: {itf.Name} for {concreteType.Name}");
             }
         }
         finally

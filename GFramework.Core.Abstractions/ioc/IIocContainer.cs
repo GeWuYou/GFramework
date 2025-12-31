@@ -23,11 +23,11 @@ public interface IIocContainer : IContextAware
 
 
     /// <summary>
-    ///     注册一个实例及其所有可赋值的接口类型到容器中
+    ///     注册多个实例
+    ///     将实例注册到其实现的所有接口和具体类型上
     /// </summary>
-    /// <typeparam name="T">实例的类型</typeparam>
-    /// <param name="instance">要注册的实例对象，不能为null</param>
-    void RegisterPlurality<T>(T instance);
+    /// <param name="instance">要注册的实例</param>
+    public void RegisterPlurality(object instance);
 
     /// <summary>
     ///     注册系统实例，将其绑定到其所有实现的接口上
