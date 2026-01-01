@@ -1,4 +1,3 @@
-using GFramework.Core.Abstractions.architecture;
 using GFramework.Core.Abstractions.enums;
 using GFramework.Core.system;
 using GFramework.Game.Abstractions.assets;
@@ -11,7 +10,7 @@ namespace GFramework.Godot.assets;
 ///     资源工厂系统抽象基类，用于统一管理各类资源的创建与预加载逻辑。
 ///     提供注册场景和资源的方法，并通过依赖的资源加载系统和资产目录系统完成实际资源的获取与构造。
 /// </summary>
-public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceFactorySystem, IArchitecturePhaseAware
+public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceFactorySystem
 {
     private IAssetCatalogSystem? _assetCatalogSystem;
     private ResourceFactory.Registry? _registry;
@@ -22,7 +21,7 @@ public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceF
     ///     在架构阶段发生变化时执行相应的处理逻辑。
     /// </summary>
     /// <param name="phase">当前的架构阶段</param>
-    public void OnArchitecturePhase(ArchitecturePhase phase)
+    public override void OnArchitecturePhase(ArchitecturePhase phase)
     {
         if (phase == ArchitecturePhase.Ready)
         {

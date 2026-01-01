@@ -110,7 +110,4 @@
         <AdditionalFiles Remove="AnalyzerReleases.Shipped.md"/>
         <AdditionalFiles Remove="AnalyzerReleases.Unshipped.md"/>
     </ItemGroup>
-    <ItemGroup>
-        <PackageReference Include="NUnit" Version="4.4.0"/>
-    </ItemGroup>
 </Project>
