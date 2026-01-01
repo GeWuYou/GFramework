@@ -12,8 +12,8 @@ public class GodotLoggerFactory : ILoggerFactory
     /// </summary>
     /// <param name="name">日志记录器的名称</param>
     /// <returns>返回GodotLogger类型的日志记录器实例</returns>
-    public ILogger GetLogger(string name)
+    public ILogger GetLogger(string name, LogLevel minLevel = LogLevel.Info)
     {
-        return new GodotLogger(name);
+        return new GodotLogger(name, minLevel);
     }
 }

@@ -14,4 +14,7 @@
     <ItemGroup>
         <Using Include="GFramework.SourceGenerators.Abstractions"/>
     </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\GFramework.Core.Abstractions\GFramework.Core.Abstractions.csproj" PrivateAssets="all"/>
+    </ItemGroup>
 </Project>

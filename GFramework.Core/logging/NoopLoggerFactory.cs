@@ -11,8 +11,9 @@ public class NoopLoggerFactory : ILoggerFactory
     ///     获取指定名称的无操作日志记录器
     /// </summary>
     /// <param name="name">日志记录器的名称</param>
+    /// <param name="minLevel">日志记录器的最小日志级别</param>
     /// <returns>返回一个NoopLogger实例，该实例不执行任何实际的日志记录操作</returns>
-    public ILogger GetLogger(string name)
+    public ILogger GetLogger(string name, LogLevel minLevel = LogLevel.Info)
     {
         return new NoopLogger();
     }

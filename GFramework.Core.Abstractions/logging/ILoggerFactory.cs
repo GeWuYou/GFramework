@@ -9,6 +9,7 @@ public interface ILoggerFactory
     ///     根据指定的名称获取日志记录器实例
     /// </summary>
     /// <param name="name">日志记录器的名称</param>
+    /// <param name="minLevel">最小日志级别</param>
     /// <returns>指定名称的日志记录器实例</returns>
-    ILogger GetLogger(string name);
+    ILogger GetLogger(string name, LogLevel minLevel = LogLevel.Info);
 }
