@@ -12,7 +12,7 @@ public abstract class AbstractModel : IModel
     /// <summary>
     ///     模型所属的架构实例
     /// </summary>
-    protected IArchitectureContext _context { get; private set; }
+    protected IArchitectureContext _context { get; private set; } = null!;
 
     /// <summary>
     ///     初始化模型，调用抽象方法OnInit执行具体初始化逻辑

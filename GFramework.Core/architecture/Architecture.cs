@@ -233,7 +233,7 @@ public abstract class Architecture(
         // 设置日志工厂提供程序，用于创建日志记录器
         LoggerFactoryResolver.Provider = Configuration.LoggerProperties.LoggerFactoryProvider;
         _logger = LoggerFactoryResolver.Provider.CreateLogger(GetType().Name);
-        _context ??= new ArchitectureContext(Container, TypeEventSystem, Configuration.LoggerProperties);
+        _context ??= new ArchitectureContext(Container, TypeEventSystem);
         GameContext.Bind(GetType(), _context);
         // 创建架构运行时实例
         Runtime = new ArchitectureRuntime(_context);
@@ -289,7 +289,7 @@ public abstract class Architecture(
         LoggerFactoryResolver.Provider = Configuration.LoggerProperties.LoggerFactoryProvider;
         // 创建日志记录器
         _logger = LoggerFactoryResolver.Provider.CreateLogger(GetType().Name);
-        _context ??= new ArchitectureContext(Container, TypeEventSystem, Configuration.LoggerProperties);
+        _context ??= new ArchitectureContext(Container, TypeEventSystem);
         GameContext.Bind(GetType(), _context);
         // 创建架构运行时实例
         Runtime = new ArchitectureRuntime(_context);

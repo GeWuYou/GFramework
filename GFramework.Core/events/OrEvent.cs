@@ -8,12 +8,12 @@ namespace GFramework.Core.events;
 /// </summary>
 public class OrEvent : IUnRegisterList
 {
-    private Action _mOnEvent = () => { };
+    private Action? _mOnEvent = () => { };
 
     /// <summary>
     ///     获取取消注册列表
     /// </summary>
-    public IList<IUnRegister> UnregisterList { get; }
+    public IList<IUnRegister> UnregisterList { get; } = new List<IUnRegister>();
 
     /// <summary>
     ///     将指定的事件与当前OrEvent进行或逻辑组合

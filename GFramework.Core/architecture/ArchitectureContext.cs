@@ -3,7 +3,6 @@ using GFramework.Core.Abstractions.command;
 using GFramework.Core.Abstractions.events;
 using GFramework.Core.Abstractions.ioc;
 using GFramework.Core.Abstractions.model;
-using GFramework.Core.Abstractions.properties;
 using GFramework.Core.Abstractions.query;
 using GFramework.Core.Abstractions.system;
 using GFramework.Core.Abstractions.utility;
@@ -15,8 +14,7 @@ namespace GFramework.Core.architecture;
 /// </summary>
 public class ArchitectureContext(
     IIocContainer container,
-    ITypeEventSystem typeEventSystem,
-    LoggerProperties loggerProperties)
+    ITypeEventSystem typeEventSystem)
     : IArchitectureContext
 {
     private readonly IIocContainer _container = container ?? throw new ArgumentNullException(nameof(container));

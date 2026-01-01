@@ -12,7 +12,7 @@ public class UnRegisterList : IUnRegisterList
     /// <summary>
     ///     获取取消注册列表的只读属性
     /// </summary>
-    public IList<IUnRegister> UnregisterList { get; }
+    public IList<IUnRegister> UnregisterList { get; } = null!;
 
     /// <summary>
     ///     向取消注册列表中添加一个新的可取消注册对象

@@ -7,7 +7,7 @@ namespace GFramework.Core.events;
 /// </summary>
 public class EasyEvent
 {
-    private Action _mOnEvent = () => { };
+    private Action? _mOnEvent = () => { };
 
     /// <summary>
     ///     注册事件回调函数

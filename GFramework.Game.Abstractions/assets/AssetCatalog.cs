@@ -1,10 +1,4 @@
-﻿namespace System.Runtime.CompilerServices
-{
-    // 这个类用于支持C# 9.0中的init访问器和记录类型功能
-    internal static class IsExternalInit;
-}
-
-namespace GFramework.Game.Abstractions.assets
+﻿namespace GFramework.Game.Abstractions.assets
 {
     /// <summary>
     ///     资源目录类，用于定义和管理游戏中的场景和资源标识符

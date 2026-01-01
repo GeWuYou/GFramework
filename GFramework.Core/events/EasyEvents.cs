@@ -53,7 +53,7 @@ public class EasyEvents
     /// <returns>指定类型的事件实例，如果不存在则返回默认值</returns>
     public T GetEvent<T>() where T : IEasyEvent
     {
-        return _mTypeEvents.TryGetValue(typeof(T), out var e) ? (T)e : default;
+        return _mTypeEvents.TryGetValue(typeof(T), out var e) ? (T)e : default!;
     }
 
     /// <summary>

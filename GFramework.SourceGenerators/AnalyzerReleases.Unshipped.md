@@ -3,6 +3,7 @@
 
 ### New Rules
 
- Rule ID     | Category                         | Severity | Notes                  
--------------|----------------------------------|----------|------------------------
- GF_Rule_001 | GFramework.SourceGenerators.rule | Error    | ContextAwareDiagnostic 
+ Rule ID        | Category                         | Severity | Notes                  
+----------------|----------------------------------|----------|------------------------
+ GF_Logging_001 | GFramework.Godot.logging         | Warning  | LoggerDiagnostics      
+ GF_Rule_001    | GFramework.SourceGenerators.rule | Error    | ContextAwareDiagnostic 

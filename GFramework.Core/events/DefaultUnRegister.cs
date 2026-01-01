@@ -8,7 +8,7 @@ namespace GFramework.Core.events;
 /// <param name="onUnRegister">注销时要执行的回调函数</param>
 public class DefaultUnRegister(Action onUnRegister) : IUnRegister
 {
-    private Action _mOnUnRegister = onUnRegister;
+    private Action? _mOnUnRegister = onUnRegister;
 
     /// <summary>
     ///     执行注销操作，调用注册的回调函数并清理引用
@@ -16,7 +16,7 @@ public class DefaultUnRegister(Action onUnRegister) : IUnRegister
     public void UnRegister()
     {
         // 调用注销回调函数并清理引用
-        _mOnUnRegister.Invoke();
+        _mOnUnRegister?.Invoke();
         _mOnUnRegister = null;
     }
 }
