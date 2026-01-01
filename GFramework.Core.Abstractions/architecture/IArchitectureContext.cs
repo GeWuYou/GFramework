@@ -1,7 +1,6 @@
 ﻿using System;
 using GFramework.Core.Abstractions.command;
 using GFramework.Core.Abstractions.events;
-using GFramework.Core.Abstractions.logging;
 using GFramework.Core.Abstractions.model;
 using GFramework.Core.Abstractions.query;
 using GFramework.Core.Abstractions.system;
@@ -14,11 +13,6 @@ namespace GFramework.Core.Abstractions.architecture;
 /// </summary>
 public interface IArchitectureContext
 {
-    /// <summary>
-    ///     获取日志工厂
-    /// </summary>
-    ILoggerFactory LoggerFactory { get; }
-
     /// <summary>
     ///     获取指定类型的系统实例
     /// </summary>

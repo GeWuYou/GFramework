@@ -1,5 +1,6 @@
 ﻿using GFramework.Core.Abstractions.logging;
 using GFramework.Core.Abstractions.utility;
+using GFramework.Core.logging;
 using GFramework.Core.rule;
 
 namespace GFramework.Core.utility;
@@ -18,7 +19,7 @@ public abstract class AbstractContextUtility : ContextAwareBase, IContextUtility
     void IContextUtility.Init()
     {
         // 获取上下文中的日志记录器
-        Logger = Context.LoggerFactory.GetLogger(nameof(AbstractContextUtility));
+        Logger = LoggerFactoryResolver.Provider.CreateLogger(nameof(GetType));
         Logger.Debug($"Initializing Context Utility: {GetType().Name}");
 
         // 执行子类实现的初始化逻辑

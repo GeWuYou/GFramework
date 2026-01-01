@@ -15,4 +15,12 @@ public static class LoggerFactoryResolver
     /// </value>
     public static ILoggerFactoryProvider Provider { get; set; }
         = new ConsoleLoggerFactoryProvider();
+
+    /// <summary>
+    /// 获取或设置日志记录的最小级别
+    /// </summary>
+    /// <value>
+    /// 日志级别枚举值，默认为Info级别
+    /// </value>
+    public static LogLevel MinLevel { get; set; } = LogLevel.Info;
 }

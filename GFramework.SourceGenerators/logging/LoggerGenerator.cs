@@ -92,7 +92,7 @@ public sealed class LoggerGenerator : TypeAttributeClassGeneratorBase
         sb.AppendLine("{");
         sb.AppendLine("    /// <summary>Auto-generated logger</summary>");
         sb.AppendLine(
-            $"    {access} {staticKeyword}readonly ILogger {fieldName} = new ConsoleLoggerFactory().GetLogger(\"{name}\");");
+            $"    {access} {staticKeyword}readonly ILogger {fieldName} = LoggerFactoryResolver.Provider.CreateLogger(\"{name}\");");
         sb.AppendLine("}");
 
         return sb.ToString().TrimEnd();

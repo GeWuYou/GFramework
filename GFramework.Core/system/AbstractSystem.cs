@@ -1,6 +1,7 @@
 using GFramework.Core.Abstractions.enums;
 using GFramework.Core.Abstractions.logging;
 using GFramework.Core.Abstractions.system;
+using GFramework.Core.logging;
 using GFramework.Core.rule;
 
 namespace GFramework.Core.system;
@@ -18,7 +19,7 @@ public abstract class AbstractSystem : ContextAwareBase, ISystem
     /// </summary>
     void ISystem.Init()
     {
-        _logger = Context.LoggerFactory.GetLogger(nameof(AbstractSystem));
+        _logger = LoggerFactoryResolver.Provider.CreateLogger(nameof(GetType));
         _logger.Debug($"Initializing system: {GetType().Name}");
 
         OnInit();

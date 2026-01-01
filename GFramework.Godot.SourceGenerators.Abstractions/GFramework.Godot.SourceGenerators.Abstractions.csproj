@@ -15,4 +15,7 @@
     <ItemGroup>
         <Using Include="GFramework.Godot.SourceGenerators.Abstractions"/>
     </ItemGroup>
+    <ItemGroup>
+        <Folder Include="logging\"/>
+    </ItemGroup>
 </Project>

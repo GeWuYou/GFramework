@@ -11,7 +11,7 @@ public abstract class ContextAwareBase : IContextAware
     /// <summary>
     ///     获取当前实例的架构上下文
     /// </summary>
-    protected IArchitectureContext Context { get; private set; } = null!;
+    protected IArchitectureContext Context { get; set; } = null!;
 
     /// <summary>
     ///     设置架构上下文的实现方法，由框架调用

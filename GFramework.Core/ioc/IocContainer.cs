@@ -1,6 +1,7 @@
 using GFramework.Core.Abstractions.ioc;
 using GFramework.Core.Abstractions.logging;
 using GFramework.Core.Abstractions.system;
+using GFramework.Core.logging;
 using GFramework.Core.rule;
 
 namespace GFramework.Core.ioc;
@@ -54,7 +55,8 @@ public class IocContainer : ContextAwareBase, IIocContainer
 
     protected override void OnContextReady()
     {
-        _logger = Context.LoggerFactory.GetLogger(nameof(IocContainer));
+        _logger =
+            LoggerFactoryResolver.Provider.CreateLogger(nameof(GetType));
     }
 
     /// <summary>

@@ -7,6 +7,7 @@ using GFramework.Core.Abstractions.model;
 using GFramework.Core.Abstractions.system;
 using GFramework.Core.Abstractions.utility;
 using GFramework.Core.events;
+using GFramework.Core.logging;
 
 namespace GFramework.Core.architecture;
 
@@ -70,7 +71,8 @@ public abstract class Architecture(
     /// <param name="module">要安装的模块</param>
     public void InstallModule(IArchitectureModule module)
     {
-        var logger = Configuration.LoggerFactory.GetLogger(nameof(Architecture));
+        var logger =
+            LoggerFactoryResolver.Provider.CreateLogger(nameof(GetType));
         logger.Debug($"Installing module: {module.GetType().Name}");
         RegisterLifecycleHook(module);
         Container.RegisterPlurality(module);
@@ -132,28 +134,27 @@ public abstract class Architecture(
     /// <exception cref="InvalidOperationException">当阶段转换不被允许时抛出异常</exception>
     private void EnterPhase(ArchitecturePhase next)
     {
-        var logger = Configuration.LoggerFactory.GetLogger(nameof(Architecture));
-        if (Configuration.Options.StrictPhaseValidation &&
+        if (Configuration.ArchitectureProperties.StrictPhaseValidation &&
             (!ArchitectureConstants.PhaseTransitions.TryGetValue(CurrentPhase, out var allowed) ||
              !allowed.Contains(next)))
         {
             // 验证阶段转换是否合法
             var errorMsg = $"Invalid phase transition: {CurrentPhase} -> {next}";
-            logger.Fatal(errorMsg);
+            _logger.Fatal(errorMsg);
             throw new InvalidOperationException(errorMsg);
         }
 
         var previousPhase = CurrentPhase;
         CurrentPhase = next;
 
-        if (previousPhase != next) logger.Info($"Architecture phase changed: {previousPhase} -> {next}");
+        if (previousPhase != next) _logger.Info($"Architecture phase changed: {previousPhase} -> {next}");
 
         NotifyPhase(next);
 
         // 通知所有架构阶段感知对象阶段变更
         foreach (var obj in Container.GetAll<IArchitecturePhaseAware>())
         {
-            logger.Debug($"Notifying phase-aware object {obj.GetType().Name} of phase change to {next}");
+            _logger.Debug($"Notifying phase-aware object {obj.GetType().Name} of phase change to {next}");
             obj.OnArchitecturePhase(next);
         }
     }
@@ -174,7 +175,7 @@ public abstract class Architecture(
     /// <param name="hook">生命周期钩子实例</param>
     public void RegisterLifecycleHook(IArchitectureLifecycle hook)
     {
-        if (CurrentPhase >= ArchitecturePhase.Ready && !Configuration.Options.AllowLateRegistration)
+        if (CurrentPhase >= ArchitecturePhase.Ready && !Configuration.ArchitectureProperties.AllowLateRegistration)
             throw new InvalidOperationException(
                 "Cannot register lifecycle hook after architecture is Ready");
         _lifecycleHooks.Add(hook);
@@ -195,25 +196,23 @@ public abstract class Architecture(
     /// </remarks>
     public virtual void Destroy()
     {
-        var logger = Configuration.LoggerFactory.GetLogger(nameof(Architecture));
-
         // 检查当前阶段，如果已经处于销毁或已销毁状态则直接返回
         if (CurrentPhase >= ArchitecturePhase.Destroying)
         {
-            logger.Warn("Architecture destroy called but already in destroying/destroyed state");
+            _logger.Warn("Architecture destroy called but already in destroying/destroyed state");
             return;
         }
 
         // 进入销毁阶段并发送销毁开始事件
-        logger.Info("Starting architecture destruction");
+        _logger.Info("Starting architecture destruction");
         EnterPhase(ArchitecturePhase.Destroying);
         TypeEventSystem.Send(new ArchitectureEvents.ArchitectureDestroyingEvent());
 
         // 销毁所有系统组件并清空系统列表
-        logger.Info($"Destroying {_allSystems.Count} systems");
+        _logger.Info($"Destroying {_allSystems.Count} systems");
         foreach (var system in _allSystems)
         {
-            logger.Debug($"Destroying system: {system.GetType().Name}");
+            _logger.Debug($"Destroying system: {system.GetType().Name}");
             system.Destroy();
         }
 
@@ -222,7 +221,7 @@ public abstract class Architecture(
         // 进入已销毁阶段并发送销毁完成事件
         EnterPhase(ArchitecturePhase.Destroyed);
         TypeEventSystem.Send(new ArchitectureEvents.ArchitectureDestroyedEvent());
-        logger.Info("Architecture destruction completed");
+        _logger.Info("Architecture destruction completed");
     }
 
     #endregion
@@ -231,8 +230,10 @@ public abstract class Architecture(
 
     public void Initialize()
     {
-        _logger = Configuration.LoggerFactory.GetLogger(GetType().Name);
-        _context ??= new ArchitectureContext(Container, TypeEventSystem, Configuration.LoggerFactory);
+        // 设置日志工厂提供程序，用于创建日志记录器
+        LoggerFactoryResolver.Provider = Configuration.LoggerProperties.LoggerFactoryProvider;
+        _logger = LoggerFactoryResolver.Provider.CreateLogger(GetType().Name);
+        _context ??= new ArchitectureContext(Container, TypeEventSystem, Configuration.LoggerProperties);
         GameContext.Bind(GetType(), _context);
         // 创建架构运行时实例
         Runtime = new ArchitectureRuntime(_context);
@@ -284,8 +285,11 @@ public abstract class Architecture(
 
     public async Task InitializeAsync()
     {
-        _logger = Configuration.LoggerFactory.GetLogger(GetType().Name);
-        _context ??= new ArchitectureContext(Container, TypeEventSystem, Configuration.LoggerFactory);
+        // 设置日志工厂提供程序，用于创建日志记录器
+        LoggerFactoryResolver.Provider = Configuration.LoggerProperties.LoggerFactoryProvider;
+        // 创建日志记录器
+        _logger = LoggerFactoryResolver.Provider.CreateLogger(GetType().Name);
+        _context ??= new ArchitectureContext(Container, TypeEventSystem, Configuration.LoggerProperties);
         GameContext.Bind(GetType(), _context);
         // 创建架构运行时实例
         Runtime = new ArchitectureRuntime(_context);
@@ -347,7 +351,7 @@ public abstract class Architecture(
     /// <param name="system">要注册的系统实例</param>
     public void RegisterSystem<TSystem>(TSystem system) where TSystem : ISystem
     {
-        if (CurrentPhase >= ArchitecturePhase.Ready && !Configuration.Options.AllowLateRegistration)
+        if (CurrentPhase >= ArchitecturePhase.Ready && !Configuration.ArchitectureProperties.AllowLateRegistration)
         {
             const string errorMsg = "Cannot register system after Architecture is Ready";
             _logger.Error(errorMsg);
@@ -379,7 +383,7 @@ public abstract class Architecture(
     /// <param name="model">要注册的模型实例</param>
     public void RegisterModel<TModel>(TModel model) where TModel : IModel
     {
-        if (CurrentPhase >= ArchitecturePhase.Ready && !Configuration.Options.AllowLateRegistration)
+        if (CurrentPhase >= ArchitecturePhase.Ready && !Configuration.ArchitectureProperties.AllowLateRegistration)
         {
             var errorMsg = "Cannot register model after Architecture is Ready";
             _logger.Error(errorMsg);

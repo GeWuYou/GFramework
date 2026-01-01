@@ -59,4 +59,12 @@
         <!-- 包含targets文件 -->
         <None Include="GeWuYou.$(AssemblyName).targets" Pack="true" PackagePath="build" Visible="false"/>
     </ItemGroup>
+    <ItemGroup>
+        <Folder Include="diagnostics\"/>
+        <Folder Include="logging\"/>
+    </ItemGroup>
+    <ItemGroup>
+        <AdditionalFiles Remove="AnalyzerReleases.Shipped.md"/>
+        <AdditionalFiles Remove="AnalyzerReleases.Unshipped.md"/>
+    </ItemGroup>
 </Project>

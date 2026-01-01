@@ -2,12 +2,11 @@
 using GFramework.Core.Abstractions.command;
 using GFramework.Core.Abstractions.events;
 using GFramework.Core.Abstractions.ioc;
-using GFramework.Core.Abstractions.logging;
 using GFramework.Core.Abstractions.model;
+using GFramework.Core.Abstractions.properties;
 using GFramework.Core.Abstractions.query;
 using GFramework.Core.Abstractions.system;
 using GFramework.Core.Abstractions.utility;
-using GFramework.Core.logging;
 
 namespace GFramework.Core.architecture;
 
@@ -17,7 +16,7 @@ namespace GFramework.Core.architecture;
 public class ArchitectureContext(
     IIocContainer container,
     ITypeEventSystem typeEventSystem,
-    ILoggerFactory? loggerFactory)
+    LoggerProperties loggerProperties)
     : IArchitectureContext
 {
     private readonly IIocContainer _container = container ?? throw new ArgumentNullException(nameof(container));
@@ -26,8 +25,6 @@ public class ArchitectureContext(
         typeEventSystem ?? throw new ArgumentNullException(nameof(typeEventSystem));
 
     internal IArchitectureRuntime Runtime { get; set; } = null!;
-
-    public ILoggerFactory LoggerFactory { get; } = loggerFactory ?? new NoopLoggerFactory();
 
     #region Query Execution
 

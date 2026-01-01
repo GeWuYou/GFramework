@@ -1,4 +1,4 @@
-﻿using GFramework.Core.Abstractions.logging;
+﻿using GFramework.Core.Abstractions.properties;
 
 namespace GFramework.Core.Abstractions.architecture;
 
@@ -8,12 +8,12 @@ namespace GFramework.Core.Abstractions.architecture;
 public interface IArchitectureConfiguration
 {
     /// <summary>
-    ///     获取或设置日志工厂，用于创建日志记录器实例
+    ///     获取或设置日志选项，包含日志相关的配置参数
     /// </summary>
-    ILoggerFactory LoggerFactory { get; set; }
+    LoggerProperties LoggerProperties { get; set; }
 
     /// <summary>
     ///     获取或设置架构选项，包含架构相关的配置参数
     /// </summary>
-    ArchitectureOptions Options { get; set; }
+    ArchitectureProperties ArchitectureProperties { get; set; }
 }

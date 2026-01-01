@@ -1,6 +1,5 @@
 #nullable enable
 using System;
-using GFramework.Core.Abstractions.logging;
 
 namespace GFramework.SourceGenerators.Abstractions.logging;
 
@@ -38,7 +37,4 @@ public sealed class LogAttribute : Attribute
 
     /// <summary>访问修饰符</summary>
     public string AccessModifier { get; set; } = "private";
-
-    /// <summary>最小日志级别</summary>
-    public LogLevel MinLevel { get; set; } = LogLevel.Info;
 }
