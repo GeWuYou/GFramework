@@ -1,9 +1,11 @@
 ﻿using System.Linq;
 using System.Text;
 using GFramework.SourceGenerators.Common.constants;
+using GFramework.SourceGenerators.Common.diagnostics;
 using GFramework.SourceGenerators.Common.generator;
 using GFramework.SourceGenerators.diagnostics;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace GFramework.SourceGenerators.rule;
@@ -41,15 +43,21 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
         INamedTypeSymbol symbol,
         AttributeData attr)
     {
-        var iContextAware = compilation.GetTypeByMetadataName(
-            $"{PathContests.CoreAbstractionsNamespace}.rule.IContextAware");
-
-        if (iContextAware is null ||
-            !symbol.AllInterfaces.Any(i =>
-                SymbolEqualityComparer.Default.Equals(i, iContextAware)))
+        // 1. 必须是 partial
+        if (!syntax.Modifiers.Any(SyntaxKind.PartialKeyword))
         {
             context.ReportDiagnostic(Diagnostic.Create(
-                ContextAwareDiagnostic.ClassMustImplementIContextAware,
+                CommonDiagnostics.ClassMustBePartial,
+                syntax.Identifier.GetLocation(),
+                symbol.Name));
+            return false;
+        }
+
+        // 2. 必须是 class
+        if (symbol.TypeKind != TypeKind.Class)
+        {
+            context.ReportDiagnostic(Diagnostic.Create(
+                ContextAwareDiagnostic.ContextAwareOnlyForClass,
                 syntax.Identifier.GetLocation(),
                 symbol.Name));
             return false;
@@ -57,6 +65,7 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
 
         return true;
     }
+
 
     /// <summary>
     /// 生成源代码
@@ -90,7 +99,9 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
             sb.AppendLine();
         }
 
-        sb.AppendLine($"partial class {symbol.Name}");
+        var interfaceName = iContextAware.ToDisplayString(
+            SymbolDisplayFormat.FullyQualifiedFormat);
+        sb.AppendLine($"partial class {symbol.Name} : {interfaceName}");
         sb.AppendLine("{");
 
         GenerateContextProperty(sb);

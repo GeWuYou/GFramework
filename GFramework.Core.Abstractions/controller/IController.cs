@@ -1,10 +1,10 @@
-﻿using GFramework.Core.Abstractions.rule;
-
-namespace GFramework.Core.Abstractions.controller;
+﻿namespace GFramework.Core.Abstractions.controller;
 
 /// <summary>
-///     控制器接口，定义了控制器需要实现的所有功能契约
-///     该接口继承了多个框架核心接口，用于支持控制器的各种能力
-///     包括架构归属、命令发送、系统获取、模型获取、事件注册、查询发送和工具获取等功能
+/// 控制器接口，定义了控制器的基本契约和行为规范
 /// </summary>
-public interface IController : IContextAware;
+/// <remarks>
+/// 该接口为框架中的控制器组件提供统一的抽象定义，
+/// 用于实现控制器的标准功能和生命周期管理
+/// </remarks>
+public interface IController;
