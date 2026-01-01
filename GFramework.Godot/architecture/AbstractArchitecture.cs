@@ -1,4 +1,5 @@
-﻿using GFramework.Core.architecture;
+﻿using GFramework.Core.Abstractions.architecture;
+using GFramework.Core.architecture;
 using GFramework.Core.constants;
 using GFramework.Godot.extensions;
 using Godot;
@@ -9,14 +10,12 @@ namespace GFramework.Godot.architecture;
 ///     抽象架构类，为特定类型的架构提供基础实现框架。
 ///     此类负责管理架构的初始化、生命周期绑定以及扩展模块的安装与销毁。
 /// </summary>
-public abstract class AbstractArchitecture : Architecture
+public abstract class AbstractArchitecture(
+    IArchitectureConfiguration? configuration = null,
+    IArchitectureServices? services = null,
+    IArchitectureContext? context = null
+) : Architecture(configuration, services, context)
 {
-    /// <summary>
-    ///     架构锚点节点的唯一标识名称
-    ///     用于在Godot场景树中创建和查找架构锚点节点
-    /// </summary>
-    private const string ArchitectureAnchorName = $"__{GFrameworkConstants.FrameworkName}__ArchitectureAnchor__";
-
     /// <summary>
     ///     存储所有已安装的Godot架构扩展组件列表
     ///     用于在架构销毁时正确清理所有扩展资源
@@ -28,6 +27,12 @@ public abstract class AbstractArchitecture : Architecture
     ///     用于将架构绑定到Godot生命周期并作为扩展节点的父节点
     /// </summary>
     private ArchitectureAnchor? _anchor;
+
+    /// <summary>
+    ///     架构锚点节点的唯一标识名称
+    ///     用于在Godot场景树中创建和查找架构锚点节点
+    /// </summary>
+    private string _architectureAnchorName = null!;
 
     /// <summary>
     ///     标记架构是否已被销毁的状态标志
@@ -48,6 +53,8 @@ public abstract class AbstractArchitecture : Architecture
     /// </summary>
     protected override void Init()
     {
+        _architectureAnchorName =
+            $"__{GFrameworkConstants.FrameworkName}__{GetType().Name}__{GetHashCode()}__ArchitectureAnchor__";
         AttachToGodotLifecycle();
         InstallModules();
     }
@@ -68,12 +75,12 @@ public abstract class AbstractArchitecture : Architecture
             return;
 
         // 防止重复挂载（热重载 / 多次 Init）
-        if (tree.Root.GetNodeOrNull(ArchitectureAnchorName) != null)
+        if (tree.Root.GetNodeOrNull(_architectureAnchorName) != null)
             return;
 
         _anchor = new ArchitectureAnchor
         {
-            Name = ArchitectureAnchorName
+            Name = _architectureAnchorName
         };
 
         _anchor.Bind(Destroy);
