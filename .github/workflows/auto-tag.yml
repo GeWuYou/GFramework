@@ -44,7 +44,23 @@ jobs:
             echo "No skip keyword found, proceeding with tag creation"
           fi
           echo "Last commit message: $LAST_COMMIT_MSG"
-
+      
+      # 运行测试
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+      - name: Cache NuGet packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+      - name: Restore dependencies
+        run: dotnet restore
+      - name: Build
+        run: dotnet build -c Release --no-restore -p:DebugType=portable
+      - name: Test
+        run: dotnet test --no-build -c Release --verbosity normal
       # 步骤三：计算下一个版本号（若未被跳过）
       # 自动解析当前最新标签并递增修订号生成新的语义化版本号
       - name: Get next version

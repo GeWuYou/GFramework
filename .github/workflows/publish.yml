@@ -35,16 +35,14 @@ jobs:
 
       - name: Install unzip (for reading .nuspec from .nupkg)
         run: sudo apt-get update && sudo apt-get install -y unzip
-
+      - name: Cache NuGet packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
       - name: Restore dependencies
         run: dotnet restore
-
-      - name: Build
-        run: dotnet build -c Release --no-restore -p:DebugType=portable
-
-      - name: Test
-        run: dotnet test --no-build -c Release --verbosity normal
-
+      
       - name: Determine tag version
         id: tag_version
         run: |
