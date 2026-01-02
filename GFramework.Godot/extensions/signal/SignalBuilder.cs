@@ -26,14 +26,16 @@ public sealed class SignalBuilder(GodotObject target, StringName signal)
     /// 连接信号到指定的可调用对象
     /// </summary>
     /// <param name="callable">要连接的可调用对象</param>
+    /// <param name="flags">连接标志</param>
     /// <returns>当前构建器实例</returns>
-    public SignalBuilder To(Callable callable)
+    public SignalBuilder To(Callable callable, GodotObject.ConnectFlags? flags = null)
     {
+        var finalFlags = flags ?? _flags;
         // 根据是否设置了标志来决定连接方式
-        if (_flags is null)
+        if (finalFlags is null)
             target.Connect(signal, callable);
         else
-            target.Connect(signal, callable, (uint)_flags);
+            target.Connect(signal, callable, (uint)finalFlags);
 
         return this;
     }
@@ -42,11 +44,12 @@ public sealed class SignalBuilder(GodotObject target, StringName signal)
     /// 连接信号到指定的可调用对象并立即调用
     /// </summary>
     /// <param name="callable">要连接的可调用对象</param>
+    /// <param name="flags">连接标志</param>
     /// <param name="args">调用参数</param>
     /// <returns>当前构建器实例</returns>
-    public SignalBuilder ToAndCall(Callable callable, params Variant[] args)
+    public SignalBuilder ToAndCall(Callable callable, GodotObject.ConnectFlags? flags = null, params Variant[] args)
     {
-        To(callable);
+        To(callable, flags);
         callable.Call(args);
         return this;
     }
