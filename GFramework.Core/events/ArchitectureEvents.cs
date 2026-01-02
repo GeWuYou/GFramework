@@ -22,4 +22,10 @@ public static class ArchitectureEvents
     ///     当架构完全销毁完成后触发此事件，表示系统已关闭
     /// </summary>
     public readonly struct ArchitectureDestroyedEvent;
+
+    /// <summary>
+    ///     架构初始化失败事件
+    ///     当架构初始化过程中发生错误时触发此事件
+    /// </summary>
+    public readonly struct ArchitectureFailedInitializationEvent;
 }

@@ -47,5 +47,10 @@ public enum ArchitecturePhase
     /// <summary>
     ///     已销毁 暂时不使用
     /// </summary>
-    Destroyed
+    Destroyed,
+
+    /// <summary>
+    ///     初始化失败 暂时不使用
+    /// </summary>
+    FailedInitialization
 }

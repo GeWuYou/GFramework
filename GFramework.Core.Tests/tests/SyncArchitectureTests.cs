@@ -1,38 +1,21 @@
-﻿using System.Reflection;
-using GFramework.Core.Abstractions.enums;
+﻿using GFramework.Core.Abstractions.enums;
 using GFramework.Core.architecture;
 using GFramework.Core.Tests.architecture;
 using GFramework.Core.Tests.model;
 using GFramework.Core.Tests.system;
 using NUnit.Framework;
+using NUnit.Framework.Legacy;
 
 namespace GFramework.Core.Tests.tests;
 
 /// <summary>
-/// 同步架构测试类，用于测试同步架构的功能和行为
+/// 同步架构测试类，用于测试同步架构的初始化、生命周期和组件注册等功能
 /// </summary>
-/// <remarks>
-/// 该测试类使用非并行执行模式，确保测试的隔离性和可靠性
-/// </remarks>
 [TestFixture]
 [NonParallelizable]
 public class SyncArchitectureTests : ArchitectureTestsBase<SyncTestArchitecture>
 {
-    /// <summary>
-    /// 创建同步测试架构实例
-    /// </summary>
-    /// <returns>SyncTestArchitecture实例</returns>
-    protected override SyncTestArchitecture CreateArchitecture() => new SyncTestArchitecture();
-
-    /// <summary>
-    /// 初始化架构异步方法
-    /// </summary>
-    /// <returns>表示异步操作的Task</returns>
-    protected override Task InitializeArchitecture()
-    {
-        Architecture!.Initialize();
-        return Task.CompletedTask;
-    }
+    protected override SyncTestArchitecture CreateArchitecture() => new();
 
     /// <summary>
     /// 测试架构是否正确初始化所有组件
@@ -49,11 +32,7 @@ public class SyncArchitectureTests : ArchitectureTestsBase<SyncTestArchitecture>
 
         Assert.That(Architecture.Runtime, Is.Not.Null);
 
-        // 通过反射获取当前架构阶段
-        var phaseProperty = typeof(Architecture)
-            .GetProperty("CurrentPhase", BindingFlags.Instance | BindingFlags.NonPublic);
-
-        var phase = (ArchitecturePhase)phaseProperty!.GetValue(Architecture)!;
+        var phase = Architecture.CurrentPhase;
         Assert.That(phase, Is.EqualTo(ArchitecturePhase.Ready));
 
         var context = Architecture.Context;
@@ -81,13 +60,76 @@ public class SyncArchitectureTests : ArchitectureTestsBase<SyncTestArchitecture>
     }
 
     /// <summary>
+    /// 测试架构是否按正确顺序进入各个阶段
+    /// 验证架构初始化过程中各阶段的执行顺序
+    /// </summary>
+    [Test]
+    public void Architecture_Should_Enter_Phases_In_Correct_Order()
+    {
+        Architecture!.Initialize();
+
+        var phases = Architecture.PhaseHistory;
+
+        CollectionAssert.AreEqual(
+            new[]
+            {
+                ArchitecturePhase.BeforeModelInit,
+                ArchitecturePhase.AfterModelInit,
+                ArchitecturePhase.BeforeSystemInit,
+                ArchitecturePhase.AfterSystemInit,
+                ArchitecturePhase.Ready
+            },
+            phases
+        );
+    }
+
+    /// <summary>
+    /// 测试在架构就绪后注册系统是否抛出异常（当不允许时）
+    /// </summary>
+    [Test]
+    public void RegisterSystem_AfterReady_Should_Throw_When_NotAllowed()
+    {
+        Architecture!.Initialize();
+
+        Assert.Throws<InvalidOperationException>(() => { Architecture.RegisterSystem(new TestSystem()); });
+    }
+
+    /// <summary>
+    /// 测试在架构就绪后注册模型是否抛出异常（当不允许时）
+    /// </summary>
+    [Test]
+    public void RegisterModel_AfterReady_Should_Throw_When_NotAllowed()
+    {
+        Architecture!.Initialize();
+
+        Assert.Throws<InvalidOperationException>(() => { Architecture.RegisterModel(new TestModel()); });
+    }
+
+    /// <summary>
+    /// 测试架构销毁功能，验证销毁后系统被正确销毁且架构进入销毁阶段
+    /// </summary>
+    [Test]
+    public void Architecture_Destroy_Should_Destroy_All_Systems_And_Enter_Destroyed()
+    {
+        Architecture!.Initialize();
+        Architecture.Destroy();
+
+        var system = Architecture.Context.GetSystem<TestSystem>();
+        Assert.That(system!.DestroyCalled, Is.True);
+
+        var phase = Architecture.CurrentPhase;
+        Assert.That(phase, Is.EqualTo(ArchitecturePhase.Destroyed));
+    }
+
+    /// <summary>
     /// 测试当模型初始化失败时架构是否停止初始化
     /// </summary>
     [Test]
     public void Architecture_Should_Stop_Initialization_When_Model_Init_Fails()
     {
-        Architecture!.RegisterModel(new FailingModel());
-
-        Assert.Throws<InvalidOperationException>(() => { Architecture!.Initialize(); });
+        Architecture!.AddPostRegistrationHook(architecture => { architecture.RegisterModel(new FailingModel()); });
+        // 调用初始化
+        Architecture.Initialize();
+        Assert.That(Architecture.CurrentPhase, Is.EqualTo(ArchitecturePhase.FailedInitialization));
     }
 }

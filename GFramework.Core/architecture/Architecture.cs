@@ -112,7 +112,7 @@ public abstract class Architecture(
     /// <summary>
     ///     当前架构的阶段
     /// </summary>
-    private ArchitecturePhase CurrentPhase { get; set; }
+    public ArchitecturePhase CurrentPhase { get; private set; }
 
     /// <summary>
     ///     日志记录器实例，用于记录应用程序的运行日志
@@ -236,7 +236,17 @@ public abstract class Architecture(
     /// </summary>
     public void Initialize()
     {
-        InitializeInternalAsync(asyncMode: false).GetAwaiter().GetResult();
+        try
+        {
+            InitializeInternalAsync(asyncMode: false).GetAwaiter().GetResult();
+        }
+        catch (Exception e)
+        {
+            _logger.Error("Architecture initialization failed:", e);
+            EnterPhase(ArchitecturePhase.FailedInitialization);
+            // 发送初始化失败事件
+            TypeEventSystem.Send(new ArchitectureEvents.ArchitectureFailedInitializationEvent());
+        }
     }
 
     /// <summary>
@@ -245,7 +255,18 @@ public abstract class Architecture(
     /// <returns>表示异步初始化操作的Task</returns>
     public Task InitializeAsync()
     {
-        return InitializeInternalAsync(asyncMode: true);
+        try
+        {
+            return InitializeInternalAsync(asyncMode: true);
+        }
+        catch (Exception e)
+        {
+            _logger.Error("Architecture initialization failed:", e);
+            EnterPhase(ArchitecturePhase.FailedInitialization);
+            // 发送初始化失败事件
+            TypeEventSystem.Send(new ArchitectureEvents.ArchitectureFailedInitializationEvent());
+            return Task.CompletedTask;
+        }
     }
 
     /// <summary>
