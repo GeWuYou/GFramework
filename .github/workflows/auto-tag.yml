@@ -6,16 +6,17 @@ name: Auto Increment Version and Tag
 on:
   push:
     branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
-    types: [ closed ]
-
+    tags-ignore:
+      - '*'
+concurrency:
+  group: auto-tag-main
+  cancel-in-progress: false
 jobs:
   auto-tag:
     name: Auto Increment Version and Create Tag
     runs-on: ubuntu-latest
     # 条件判断：仅在推送事件或已合并的 PR 关闭事件中执行
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true)
+    if: github.event_name == 'push'
     permissions:
       contents: write
     
@@ -68,16 +69,14 @@ jobs:
         if: steps.check_skip.outputs.skip_tag == 'false'
         run: |
           # 获取最新的标签版本号，如果没有标签则默认为 0.0.0
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          
-          # 移除可能存在的 v 前缀
+          LATEST_TAG=$(git tag --list "v*" --sort=-v:refname | head -n 1)
+          LATEST_TAG=${LATEST_TAG:-v0.0.0}
+           # 移除可能存在的 v 前缀
           VERSION_NUM=${LATEST_TAG#v}
           
           # 解析主版本号、次版本号和修订号
-          MAJOR=$(echo $VERSION_NUM | cut -d. -f1)
-          MINOR=$(echo $VERSION_NUM | cut -d. -f2)
-          PATCH=$(echo $VERSION_NUM | cut -d. -f3)
-          
+          IFS=. read MAJOR MINOR PATCH <<< "$VERSION_NUM"
+          unset IFS
           # 递增修订号
           PATCH=$((PATCH + 1))
           
@@ -105,7 +104,10 @@ jobs:
           set -e
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-
+          if git show-ref --tags --verify --quiet "refs/tags/$NEW_TAG"; then
+            echo "Tag $NEW_TAG already exists, skipping"
+            exit 0
+          fi
           echo "Creating annotated tag $NEW_TAG"
           git tag -a "$NEW_TAG" -m "Auto-generated tag: $NEW_TAG"
 
@@ -126,3 +128,4 @@ jobs:
         if: steps.check_skip.outputs.skip_tag == 'true'
         run: |
           echo "Tag creation skipped due to commit message containing skip keyword"
+

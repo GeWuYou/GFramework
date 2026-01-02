@@ -1,3 +1,8 @@
+# 发布工作流（NuGet + GitHub Release）
+# 
+# 功能：当推送标签时自动构建、打包并发布到 NuGet.org 和 GitHub Release
+# 触发条件：推送任何标签（如 v1.0.0 或 1.0.0）
+# 权限：允许写入内容、包和使用 OIDC 身份验证
 name: Publish (NuGet + GitHub Release)
 
 # 触发：推送 tag 时触发（例如 v1.0.0 或 1.0.0）
@@ -43,6 +48,9 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore
       
+      # 从 GitHub 引用中提取标签版本
+      # 提取逻辑：去除 refs/tags/ 前缀，然后去除 v/V 前缀
+      # 输出：version - 处理后的版本号
       - name: Determine tag version
         id: tag_version
         run: |
@@ -69,6 +77,9 @@ jobs:
         with:
           user: ${{ secrets.NUGET_USER }} # 推荐将用户名放 secrets
 
+      # 将所有生成的包推送到 nuget.org
+      # 使用临时 API 密钥进行身份验证
+      # 跳过重复包的上传
       - name: Push all packages to nuget.org
         env:
           NUGET_API_KEY: ${{ steps.nuget_login.outputs.NUGET_API_KEY }}
@@ -89,6 +100,12 @@ jobs:
             echo "No packages found to push."
           fi
 
+      # 从 .nupkg 文件中提取版本信息
+      # 通过解压 .nupkg（zip 格式）并读取 .nuspec 文件来获取版本
+      # 输出：
+      #   package_file - 第一个找到的包文件路径
+      #   package_basename - 包文件的基本名称
+      #   version - 从 nuspec 中解析出的版本号
       - name: Get Version and First Package Path
         id: get_version
         run: |
@@ -109,6 +126,9 @@ jobs:
           echo "package_basename=$BASENAME" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
+      # 创建 GitHub Release
+      # 使用从包中提取的版本信息和当前标签创建发布
+      # 发布包含描述信息和版本详情
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
@@ -121,6 +141,9 @@ jobs:
           draft: false
           prerelease: false
 
+      # 使用 curl 将所有 .nupkg 文件上传到 GitHub Release
+      # 从 create-release 步骤获取上传 URL 并移除模板部分
+      # 每个包文件作为资产上传到发布中
       - name: Upload all .nupkg to Release (curl)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -144,3 +167,4 @@ jobs:
               echo "Uploaded $basename"
             fi
           done
+
