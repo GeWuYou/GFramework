@@ -18,15 +18,16 @@ public abstract class AbstractContextUtility : ContextAwareBase, IContextUtility
     /// </summary>
     void IContextUtility.Init()
     {
+        var name = GetType().Name;
         // 获取上下文中的日志记录器
-        Logger = LoggerFactoryResolver.Provider.CreateLogger(nameof(GetType));
-        Logger.Debug($"Initializing Context Utility: {GetType().Name}");
+        Logger = LoggerFactoryResolver.Provider.CreateLogger(name);
+        Logger.Debug($"Initializing Context Utility: {name}");
 
         // 执行子类实现的初始化逻辑
         OnInit();
 
         // 记录初始化完成信息
-        Logger.Info($"Context Utility initialized: {GetType().Name}");
+        Logger.Info($"Context Utility initialized: {name}");
     }
 
     /// <summary>

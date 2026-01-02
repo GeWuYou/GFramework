@@ -19,12 +19,13 @@ public abstract class AbstractSystem : ContextAwareBase, ISystem
     /// </summary>
     void ISystem.Init()
     {
-        _logger = LoggerFactoryResolver.Provider.CreateLogger(nameof(GetType));
-        _logger.Debug($"Initializing system: {GetType().Name}");
+        var name = GetType().Name;
+        _logger = LoggerFactoryResolver.Provider.CreateLogger(name);
+        _logger.Debug($"Initializing system: {name}");
 
         OnInit();
 
-        _logger.Info($"System initialized: {GetType().Name}");
+        _logger.Info($"System initialized: {name}");
     }
 
     /// <summary>

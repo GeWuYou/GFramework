@@ -72,7 +72,7 @@ public abstract class Architecture(
     public void InstallModule(IArchitectureModule module)
     {
         var logger =
-            LoggerFactoryResolver.Provider.CreateLogger(nameof(GetType));
+            LoggerFactoryResolver.Provider.CreateLogger(nameof(module));
         logger.Debug($"Installing module: {module.GetType().Name}.Module");
         RegisterLifecycleHook(module);
         Container.RegisterPlurality(module);

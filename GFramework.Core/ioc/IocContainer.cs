@@ -56,7 +56,7 @@ public class IocContainer : ContextAwareBase, IIocContainer
     protected override void OnContextReady()
     {
         _logger =
-            LoggerFactoryResolver.Provider.CreateLogger(nameof(GetType));
+            LoggerFactoryResolver.Provider.CreateLogger(nameof(IocContainer));
     }
 
     /// <summary>
