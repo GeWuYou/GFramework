@@ -71,13 +71,14 @@ public abstract class Architecture(
     /// <param name="module">要安装的模块</param>
     public void InstallModule(IArchitectureModule module)
     {
+        var name = module.GetType().Name;
         var logger =
-            LoggerFactoryResolver.Provider.CreateLogger(nameof(module));
-        logger.Debug($"Installing module: {module.GetType().Name}.Module");
+            LoggerFactoryResolver.Provider.CreateLogger(name);
+        logger.Debug($"Installing module: {name}.Module");
         RegisterLifecycleHook(module);
         Container.RegisterPlurality(module);
         module.Install(this);
-        logger.Info($"Module installed: {module.GetType().Name}.Module");
+        logger.Info($"Module installed: {name}.Module");
     }
 
     #endregion
