@@ -14,7 +14,7 @@ public sealed class AsyncTestModel : IModel, IAsyncInitializable
     /// <summary>
     /// 获取模型是否已初始化的标志
     /// </summary>
-    public bool Inited { get; private set; }
+    public bool Initialized { get; private set; }
 
     /// <summary>
     /// 异步初始化方法，模拟异步初始化过程
@@ -23,7 +23,7 @@ public sealed class AsyncTestModel : IModel, IAsyncInitializable
     public async Task InitializeAsync()
     {
         await Task.Delay(10);
-        Inited = true;
+        Initialized = true;
     }
 
     /// <summary>
