@@ -44,7 +44,7 @@ jobs:
             echo "skip_tag=false" >> $GITHUB_OUTPUT
             echo "No skip keyword found, proceeding with tag creation"
           fi
-echo "Last commit message: $LAST_COMMIT_MSG"
+          echo "Last commit message: $LAST_COMMIT_MSG"
       
       # 运行测试
       - name: Setup .NET
