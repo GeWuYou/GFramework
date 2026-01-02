@@ -74,11 +74,11 @@ public abstract class Architecture(
         var name = module.GetType().Name;
         var logger =
             LoggerFactoryResolver.Provider.CreateLogger(name);
-        logger.Debug($"Installing module: {name}.Module");
+        logger.Debug($"Installing module: {name}");
         RegisterLifecycleHook(module);
         Container.RegisterPlurality(module);
         module.Install(this);
-        logger.Info($"Module installed: {name}.Module");
+        logger.Info($"Module installed: {name}");
     }
 
     #endregion
