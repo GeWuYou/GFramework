@@ -39,6 +39,19 @@ public sealed class SignalBuilder(GodotObject target, StringName signal)
     }
 
     /// <summary>
+    /// 连接信号到指定的可调用对象并立即调用
+    /// </summary>
+    /// <param name="callable">要连接的可调用对象</param>
+    /// <param name="args">调用参数</param>
+    /// <returns>当前构建器实例</returns>
+    public SignalBuilder ToAndCall(Callable callable, params Variant[] args)
+    {
+        To(callable);
+        callable.Call(args);
+        return this;
+    }
+
+    /// <summary>
     /// 显式结束，返回 Node
     /// </summary>
     /// <returns>目标节点</returns>
