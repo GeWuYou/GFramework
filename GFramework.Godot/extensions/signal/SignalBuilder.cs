@@ -7,7 +7,7 @@ namespace GFramework.Godot.extensions.signal;
 /// </summary>
 /// <param name="target">要连接信号的目标节点</param>
 /// <param name="signal">要连接的信号名称</param>
-public sealed class SignalBuilder(Node target, StringName signal)
+public sealed class SignalBuilder(GodotObject target, StringName signal)
 {
     private GodotObject.ConnectFlags? _flags;
 
@@ -42,5 +42,5 @@ public sealed class SignalBuilder(Node target, StringName signal)
     /// 显式结束，返回 Node
     /// </summary>
     /// <returns>目标节点</returns>
-    public Node End() => target;
+    public GodotObject End() => target;
 }

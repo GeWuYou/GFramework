@@ -10,11 +10,11 @@ public static class SignalFluentExtensions
     /// <summary>
     /// 为指定节点创建信号构建器
     /// </summary>
-    /// <param name="node">要创建信号的节点</param>
+    /// <param name="object">要创建信号构建器的Godot对象</param>
     /// <param name="signal">信号名称</param>
     /// <returns>信号构建器实例</returns>
     public static SignalBuilder Signal(
-        this Node node,
+        this GodotObject @object,
         StringName signal)
-        => new(node, signal);
+        => new(@object, signal);
 }
