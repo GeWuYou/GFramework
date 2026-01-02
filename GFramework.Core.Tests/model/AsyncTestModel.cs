@@ -1,0 +1,61 @@
+﻿using GFramework.Core.Abstractions.architecture;
+using GFramework.Core.Abstractions.enums;
+using GFramework.Core.Abstractions.model;
+
+namespace GFramework.Core.Tests.model;
+
+/// <summary>
+/// 异步测试模型类，实现了IModel和IAsyncInitializable接口
+/// </summary>
+public sealed class AsyncTestModel : IModel, IAsyncInitializable
+{
+    private IArchitectureContext _context = null!;
+
+    /// <summary>
+    /// 获取模型是否已初始化的标志
+    /// </summary>
+    public bool Inited { get; private set; }
+
+    /// <summary>
+    /// 异步初始化方法，模拟异步初始化过程
+    /// </summary>
+    /// <returns>表示异步操作的Task</returns>
+    public async Task InitializeAsync()
+    {
+        await Task.Delay(10);
+        Inited = true;
+    }
+
+    /// <summary>
+    /// 同步初始化方法，该方法不应该被调用
+    /// </summary>
+    /// <exception cref="InvalidOperationException">当该方法被调用时抛出异常</exception>
+    public void Init()
+    {
+        // sync Init 不应该被调用
+        throw new InvalidOperationException("Sync Init should not be called");
+    }
+
+    /// <summary>
+    /// 设置架构上下文
+    /// </summary>
+    /// <param name="context">架构上下文对象</param>
+    public void SetContext(IArchitectureContext context)
+    {
+        _context = context;
+    }
+
+    /// <summary>
+    /// 获取架构上下文
+    /// </summary>
+    /// <returns>架构上下文对象</returns>
+    public IArchitectureContext GetContext() => _context;
+
+    /// <summary>
+    /// 处理架构阶段事件
+    /// </summary>
+    /// <param name="phase">架构阶段枚举值</param>
+    public void OnArchitecturePhase(ArchitecturePhase phase)
+    {
+    }
+}

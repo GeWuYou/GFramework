@@ -73,11 +73,11 @@ public abstract class Architecture(
     {
         var logger =
             LoggerFactoryResolver.Provider.CreateLogger(nameof(GetType));
-        logger.Debug($"Installing module: {module.GetType().Name}");
+        logger.Debug($"Installing module: {module.GetType().Name}.Module");
         RegisterLifecycleHook(module);
         Container.RegisterPlurality(module);
         module.Install(this);
-        logger.Info($"Module installed: {module.GetType().Name}");
+        logger.Info($"Module installed: {module.GetType().Name}.Module");
     }
 
     #endregion
@@ -102,7 +102,7 @@ public abstract class Architecture(
     /// <summary>
     ///     标记架构是否已初始化完成
     /// </summary>
-    private bool _mInited;
+    private bool _mInitialized;
 
     /// <summary>
     ///     生命周期感知对象列表
@@ -132,7 +132,7 @@ public abstract class Architecture(
     /// </summary>
     /// <param name="next">要进入的下一个架构阶段</param>
     /// <exception cref="InvalidOperationException">当阶段转换不被允许时抛出异常</exception>
-    private void EnterPhase(ArchitecturePhase next)
+    protected virtual void EnterPhase(ArchitecturePhase next)
     {
         if (Configuration.ArchitectureProperties.StrictPhaseValidation &&
             (!ArchitectureConstants.PhaseTransitions.TryGetValue(CurrentPhase, out var allowed) ||
@@ -154,7 +154,7 @@ public abstract class Architecture(
         // 通知所有架构阶段感知对象阶段变更
         foreach (var obj in Container.GetAll<IArchitecturePhaseAware>())
         {
-            _logger.Debug($"Notifying phase-aware object {obj.GetType().Name} of phase change to {next}");
+            _logger.Trace($"Notifying phase-aware object {obj.GetType().Name} of phase change to {next}");
             obj.OnArchitecturePhase(next);
         }
     }
@@ -166,7 +166,10 @@ public abstract class Architecture(
     private void NotifyPhase(ArchitecturePhase phase)
     {
         foreach (var hook in _lifecycleHooks)
+        {
             hook.OnPhase(phase, this);
+            _logger.Trace($"Notifying lifecycle hook {hook.GetType().Name} of phase {phase}");
+        }
     }
 
     /// <summary>
@@ -228,78 +231,79 @@ public abstract class Architecture(
 
     #region Component Registration
 
+    /// <summary>
+    /// 同步初始化方法，阻塞当前线程直到初始化完成
+    /// </summary>
     public void Initialize()
     {
-        // 设置日志工厂提供程序，用于创建日志记录器
-        LoggerFactoryResolver.Provider = Configuration.LoggerProperties.LoggerFactoryProvider;
-        _logger = LoggerFactoryResolver.Provider.CreateLogger(GetType().Name);
-        _context ??= new ArchitectureContext(Container, TypeEventSystem);
-        GameContext.Bind(GetType(), _context);
-        // 创建架构运行时实例
-        Runtime = new ArchitectureRuntime(_context);
-        ((ArchitectureContext)_context).Runtime = Runtime;
-        //  设置服务的上下文
-        Services.SetContext(_context);
-        // 调用用户实现的初始化
-        Init();
-
-        // == Model Init ==
-        EnterPhase(ArchitecturePhase.BeforeModelInit);
-        _logger.Info($"Initializing {_mModels.Count} models");
-
-        // 初始化所有已注册但尚未初始化的模型
-        foreach (var model in _mModels)
-        {
-            _logger.Debug($"Initializing model: {model.GetType().Name}");
-            model.Init();
-        }
-
-        _mModels.Clear();
-        EnterPhase(ArchitecturePhase.AfterModelInit);
-        _logger.Info("All models initialized");
-
-        // == System Init ==
-        EnterPhase(ArchitecturePhase.BeforeSystemInit);
-        _logger.Info($"Initializing {_mSystems.Count} systems");
-
-        // 初始化所有已注册但尚未初始化的系统
-        foreach (var system in _mSystems)
-        {
-            _logger.Debug($"Initializing system: {system.GetType().Name}");
-            system.Init();
-        }
-
-        _mSystems.Clear();
-        EnterPhase(ArchitecturePhase.AfterSystemInit);
-        _logger.Info("All systems initialized");
-
-        // == Finalize ==
-        // 冻结IOC容器，不允许 anymore
-        Container.Freeze();
-        _mInited = true;
-        EnterPhase(ArchitecturePhase.Ready);
-        // 发送架构生命周期就绪事件
-        TypeEventSystem.Send(new ArchitectureEvents.ArchitectureLifecycleReadyEvent());
-        _logger.Info($"Architecture {GetType().Name} is ready - all components initialized");
+        InitializeInternalAsync(asyncMode: false).GetAwaiter().GetResult();
     }
 
-    public async Task InitializeAsync()
+    /// <summary>
+    /// 异步初始化方法，返回Task以便调用者可以等待初始化完成
+    /// </summary>
+    /// <returns>表示异步初始化操作的Task</returns>
+    public Task InitializeAsync()
     {
-        // 设置日志工厂提供程序，用于创建日志记录器
+        return InitializeInternalAsync(asyncMode: true);
+    }
+
+    /// <summary>
+    /// 异步初始化组件
+    /// </summary>
+    /// <param name="component">要初始化的组件对象</param>
+    /// <param name="asyncMode">是否启用异步模式</param>
+    /// <returns>表示异步操作的任务</returns>
+    private static async Task InitializeComponentAsync(object component, bool asyncMode)
+    {
+        // 根据组件类型和异步模式选择相应的初始化方法
+        if (asyncMode && component is IAsyncInitializable asyncInit)
+        {
+            await asyncInit.InitializeAsync();
+        }
+        else if (component is IModel model)
+        {
+            model.Init();
+        }
+        else if (component is ISystem system)
+        {
+            system.Init();
+        }
+    }
+
+    /// <summary>
+    /// 异步初始化架构内部组件，包括上下文、模型和系统的初始化
+    /// </summary>
+    /// <param name="asyncMode">是否启用异步模式进行组件初始化</param>
+    /// <returns>异步任务，表示初始化操作的完成</returns>
+    private async Task InitializeInternalAsync(bool asyncMode)
+    {
+        // === 基础上下文 & Logger ===
+        // 设置日志工厂提供程序
         LoggerFactoryResolver.Provider = Configuration.LoggerProperties.LoggerFactoryProvider;
-        // 创建日志记录器
+        // 创建日志记录器实例
         _logger = LoggerFactoryResolver.Provider.CreateLogger(GetType().Name);
+
+        // 初始化架构上下文（如果尚未初始化）
         _context ??= new ArchitectureContext(Container, TypeEventSystem);
+        // 将当前架构类型与上下文绑定到游戏上下文
         GameContext.Bind(GetType(), _context);
+
         // 创建架构运行时实例
         Runtime = new ArchitectureRuntime(_context);
+        // 设置上下文中的运行时引用
         ((ArchitectureContext)_context).Runtime = Runtime;
-        //  设置服务的上下文
+        // 为服务设置上下文
         Services.SetContext(_context);
-        // 调用用户实现的初始化
-        Init();
 
-        // == Model Init ==
+        // === 用户 Init ===
+        // 调用子类实现的初始化方法
+        _logger.Debug("Calling user Init()");
+        Init();
+        _logger.Debug("User Init() completed");
+
+        // === 模型初始化阶段 ===
+        // 在此阶段初始化所有注册的模型组件
         EnterPhase(ArchitecturePhase.BeforeModelInit);
         _logger.Info($"Initializing {_mModels.Count} models");
 
@@ -307,17 +311,15 @@ public abstract class Architecture(
         foreach (var model in _mModels)
         {
             _logger.Debug($"Initializing model: {model.GetType().Name}");
-            if (model is IAsyncInitializable asyncModel)
-                await asyncModel.InitializeAsync();
-            else
-                model.Init();
+            await InitializeComponentAsync(model, asyncMode);
         }
 
         _mModels.Clear();
         EnterPhase(ArchitecturePhase.AfterModelInit);
         _logger.Info("All models initialized");
 
-        // == System Init ==
+        // === 系统初始化阶段 ===
+        // 在此阶段初始化所有注册的系统组件
         EnterPhase(ArchitecturePhase.BeforeSystemInit);
         _logger.Info($"Initializing {_mSystems.Count} systems");
 
@@ -325,23 +327,25 @@ public abstract class Architecture(
         foreach (var system in _mSystems)
         {
             _logger.Debug($"Initializing system: {system.GetType().Name}");
-            if (system is IAsyncInitializable asyncSystem)
-                await asyncSystem.InitializeAsync();
-            else
-                system.Init();
+            await InitializeComponentAsync(system, asyncMode);
         }
 
         _mSystems.Clear();
         EnterPhase(ArchitecturePhase.AfterSystemInit);
         _logger.Info("All systems initialized");
 
-        // == Finalize ==
+        // === 初始化完成阶段 ===
+        // 冻结IOC容器并标记架构为就绪状态
         Container.Freeze();
-        _mInited = true;
+        _logger.Info("IOC container frozen");
+
+        _mInitialized = true;
         EnterPhase(ArchitecturePhase.Ready);
         TypeEventSystem.Send(new ArchitectureEvents.ArchitectureLifecycleReadyEvent());
+
         _logger.Info($"Architecture {GetType().Name} is ready - all components initialized");
     }
+
 
     /// <summary>
     ///     注册一个系统到架构中。
@@ -362,13 +366,13 @@ public abstract class Architecture(
         system.SetContext(Context);
         Container.RegisterPlurality(system);
         _allSystems.Add(system);
-        if (!_mInited)
+        if (!_mInitialized)
         {
             _mSystems.Add(system);
         }
         else
         {
-            _logger.Debug($"Immediately initializing system: {typeof(TSystem).Name}");
+            _logger.Trace($"Immediately initializing system: {typeof(TSystem).Name}");
             system.Init();
         }
 
@@ -396,13 +400,13 @@ public abstract class Architecture(
         setArchitectureMethod?.Invoke(model, [this]);
         Container.RegisterPlurality(model);
 
-        if (!_mInited)
+        if (!_mInitialized)
         {
             _mModels.Add(model);
         }
         else
         {
-            _logger.Debug($"Immediately initializing model: {typeof(TModel).Name}");
+            _logger.Trace($"Immediately initializing model: {typeof(TModel).Name}");
             model.Init();
         }
 

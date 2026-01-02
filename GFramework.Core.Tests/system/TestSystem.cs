@@ -17,12 +17,12 @@ public sealed class TestSystem : ISystem
     /// <summary>
     /// 获取系统是否已初始化的状态
     /// </summary>
-    public bool Inited { get; private set; }
+    public bool Initialized { get; private set; }
 
     /// <summary>
     /// 获取系统是否已销毁的状态
     /// </summary>
-    public bool Destroyed { get; private set; }
+    public bool DestroyCalled { get; private set; }
 
     /// <summary>
     /// 设置架构上下文
@@ -47,7 +47,7 @@ public sealed class TestSystem : ISystem
     /// </summary>
     public void Init()
     {
-        Inited = true;
+        Initialized = true;
     }
 
     /// <summary>
@@ -55,7 +55,7 @@ public sealed class TestSystem : ISystem
     /// </summary>
     public void Destroy()
     {
-        Destroyed = true;
+        DestroyCalled = true;
     }
 
     public void OnArchitecturePhase(ArchitecturePhase phase)
