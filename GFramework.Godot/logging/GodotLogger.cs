@@ -21,11 +21,13 @@ public sealed class GodotLogger(
         // 根据日志级别选择不同的输出方法
         switch (level)
         {
-            case LogLevel.Error:
             case LogLevel.Fatal:
-                GD.PrintErr($"{prefix} {message}");
+                GD.PushError($"{prefix} {message}");
                 break;
 
+            case LogLevel.Error:
+                GD.PrintErr($"{prefix} {message}");
+                break;
             case LogLevel.Warning:
                 GD.PushWarning($"{prefix} {message}");
                 break;
