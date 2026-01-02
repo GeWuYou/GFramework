@@ -23,18 +23,24 @@ public sealed class SignalBuilder(Node target, StringName signal)
     }
 
     /// <summary>
-    /// 将信号连接到指定的处理方法
+    /// 连接信号到指定的可调用对象
     /// </summary>
-    /// <param name="callable">信号触发时要调用的处理方法</param>
-    public void To(Callable callable)
+    /// <param name="callable">要连接的可调用对象</param>
+    /// <returns>当前构建器实例</returns>
+    public SignalBuilder To(Callable callable)
     {
-        // 根据是否设置了标志来决定使用哪种连接方法
+        // 根据是否设置了标志来决定连接方式
         if (_flags is null)
-        {
             target.Connect(signal, callable);
-            return;
-        }
+        else
+            target.Connect(signal, callable, (uint)_flags);
 
-        target.Connect(signal, callable, (uint)_flags);
+        return this;
     }
+
+    /// <summary>
+    /// 显式结束，返回 Node
+    /// </summary>
+    /// <returns>目标节点</returns>
+    public Node End() => target;
 }
