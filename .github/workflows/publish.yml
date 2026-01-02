@@ -129,42 +129,14 @@ jobs:
       # 创建 GitHub Release
       # 使用从包中提取的版本信息和当前标签创建发布
       # 发布包含描述信息和版本详情
-      - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create GitHub Release and Upload Assets
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          release_name: "Release ${{ github.ref_name }}"
+          name: "Release ${{ github.ref_name }}"
           body: "Release created by CI for tag ${{ github.ref_name }} (package version ${{ steps.get_version.outputs.version }})"
           draft: false
           prerelease: false
-
-      # 使用 curl 将所有 .nupkg 文件上传到 GitHub Release
-      # 从 create-release 步骤获取上传 URL 并移除模板部分
-      # 每个包文件作为资产上传到发布中
-      - name: Upload all .nupkg to Release (curl)
+          # 核心优化：直接支持通配符
+          files: ./packages/*.nupkg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          UPLOAD_URL_TEMPLATE: ${{ steps.create_release.outputs.upload_url }}
-        run: |
-          set -e
-          # upload_url from create-release is like: https://uploads.github.com/repos/OWNER/REPO/releases/ID/assets{?name,label}
-          # strip template part "{?name,label}"
-          UPLOAD_URL="${UPLOAD_URL_TEMPLATE%\{*}"
-          echo "Upload base URL: $UPLOAD_URL"
-
-          for package_file in ./packages/*.nupkg; do
-            if [ -f "$package_file" ]; then
-              basename=$(basename "$package_file")
-              echo "Uploading $basename to release..."
-              curl --fail -sS -X POST \
-                -H "Authorization: Bearer $GITHUB_TOKEN" \
-                -H "Content-Type: application/octet-stream" \
-                --data-binary @"$package_file" \
-                "$UPLOAD_URL?name=$basename"
-              echo "Uploaded $basename"
-            fi
-          done
-
