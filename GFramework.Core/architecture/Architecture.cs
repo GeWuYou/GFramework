@@ -253,11 +253,11 @@ public abstract class Architecture(
     /// 异步初始化方法，返回Task以便调用者可以等待初始化完成
     /// </summary>
     /// <returns>表示异步初始化操作的Task</returns>
-    public Task InitializeAsync()
+    public async Task InitializeAsync()
     {
         try
         {
-            return InitializeInternalAsync(asyncMode: true);
+            await InitializeInternalAsync(asyncMode: true);
         }
         catch (Exception e)
         {
@@ -265,7 +265,6 @@ public abstract class Architecture(
             EnterPhase(ArchitecturePhase.FailedInitialization);
             // 发送初始化失败事件
             TypeEventSystem.Send(new ArchitectureEvents.ArchitectureFailedInitializationEvent());
-            return Task.CompletedTask;
         }
     }
 
