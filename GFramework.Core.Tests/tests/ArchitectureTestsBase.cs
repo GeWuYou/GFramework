@@ -1,4 +1,5 @@
-﻿using GFramework.Core.architecture;
+﻿using GFramework.Core.Abstractions.enums;
+using GFramework.Core.architecture;
 using NUnit.Framework;
 
 namespace GFramework.Core.Tests.tests;
@@ -44,5 +45,17 @@ public abstract class ArchitectureTestsBase<TArchitecture> where TArchitecture :
             GameContext.Clear();
             Architecture = null;
         }
+    }
+
+    /// <summary>
+    /// 验证架构初始化失败的断言方法
+    /// 检查当前架构阶段是否为初始化失败状态
+    /// </summary>
+    protected void AssertInitializationFailed()
+    {
+        Assert.That(
+            Architecture!.CurrentPhase,
+            Is.EqualTo(ArchitecturePhase.FailedInitialization)
+        );
     }
 }

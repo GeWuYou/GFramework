@@ -133,13 +133,12 @@ public class AsyncArchitectureTests : ArchitectureTestsBase<AsyncTestArchitectur
     [Test]
     public async Task InitializeAsync_Should_Handle_Exception_Correctly()
     {
-        Architecture!.AddPostRegistrationHook(a => { a.RegisterModel(new FailingModel()); });
+        Architecture!.AddPostRegistrationHook(a =>
+            a.RegisterModel(new FailingModel())
+        );
 
         await Architecture.InitializeAsync();
 
-        Assert.That(
-            Architecture.CurrentPhase,
-            Is.EqualTo(ArchitecturePhase.FailedInitialization)
-        );
+        AssertInitializationFailed();
     }
 }

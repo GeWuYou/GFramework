@@ -127,9 +127,12 @@ public class SyncArchitectureTests : ArchitectureTestsBase<SyncTestArchitecture>
     [Test]
     public void Architecture_Should_Stop_Initialization_When_Model_Init_Fails()
     {
-        Architecture!.AddPostRegistrationHook(architecture => { architecture.RegisterModel(new FailingModel()); });
-        // 调用初始化
+        Architecture!.AddPostRegistrationHook(a =>
+            a.RegisterModel(new FailingModel())
+        );
+
         Architecture.Initialize();
-        Assert.That(Architecture.CurrentPhase, Is.EqualTo(ArchitecturePhase.FailedInitialization));
+
+        AssertInitializationFailed();
     }
 }
