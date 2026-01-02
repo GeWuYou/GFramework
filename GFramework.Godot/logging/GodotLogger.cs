@@ -13,26 +13,32 @@ public sealed class GodotLogger(
 {
     protected override void Write(LogLevel level, string message, Exception? exception)
     {
-        var prefix = $"[{level.ToString().ToUpper()}][{Name()}]";
+        var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+        var levelStr = level.ToString().ToUpper().PadRight(7);
+        var logPrefix = $"[{timestamp}] {levelStr} [{Name()}]";
 
-        // 将异常信息追加到日志消息中
-        if (exception != null) message += "\n" + exception;
+        // 添加异常信息
+        if (exception != null)
+        {
+            message += "\n" + exception;
+        }
 
-        // 根据日志级别选择不同的输出方法
+        var logMessage = $"{logPrefix} {message}";
+
+        // 根据日志级别选择 Godot 输出方法
         switch (level)
         {
             case LogLevel.Fatal:
-                GD.PushError($"{prefix} {message}");
+                GD.PushError(logMessage);
                 break;
-
             case LogLevel.Error:
-                GD.PrintErr($"{prefix} {message}");
+                GD.PrintErr(logMessage);
                 break;
             case LogLevel.Warning:
-                GD.PushWarning($"{prefix} {message}");
+                GD.PushWarning(logMessage);
                 break;
-            default:
-                GD.Print($"{prefix} {message}");
+            default: // Trace / Debug / Info
+                GD.Print(logMessage);
                 break;
         }
     }
