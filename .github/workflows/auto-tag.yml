@@ -37,14 +37,14 @@ jobs:
         run: |
           # 检查最近一次提交信息是否包含跳过关键词
           LAST_COMMIT_MSG=$(git log -1 --pretty=format:"%B")
-          if [[ "$LAST_COMMIT_MSG" == *"[skip release]"* ]] || [[ "$LAST_COMMIT_MSG" == *"[no tag]"* ] || [[ "$LAST_COMMIT_MSG" == *"[skip]"* ]]]; then
+          if [[ "$LAST_COMMIT_MSG" =~ (\[no tag\]|\[skip\]) ]]; then
             echo "skip_tag=true" >> $GITHUB_OUTPUT
             echo "Skipping tag creation due to skip keyword in commit message"
           else
             echo "skip_tag=false" >> $GITHUB_OUTPUT
             echo "No skip keyword found, proceeding with tag creation"
           fi
-          echo "Last commit message: $LAST_COMMIT_MSG"
+echo "Last commit message: $LAST_COMMIT_MSG"
       
       # 运行测试
       - name: Setup .NET
