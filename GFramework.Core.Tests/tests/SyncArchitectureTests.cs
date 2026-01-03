@@ -30,7 +30,6 @@ public class SyncArchitectureTests : ArchitectureTestsBase<SyncTestArchitecture>
         // Assert
         Assert.That(Architecture.InitCalled, Is.True);
 
-        Assert.That(Architecture.Runtime, Is.Not.Null);
 
         var phase = Architecture.CurrentPhase;
         Assert.That(phase, Is.EqualTo(ArchitecturePhase.Ready));

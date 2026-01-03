@@ -1,3 +1,4 @@
+using GFramework.Core.extensions;
 using GFramework.Core.system;
 using GFramework.Game.Abstractions.assets;
 using GFramework.Godot.Abstractions.assets;
@@ -431,9 +432,9 @@ public abstract class AbstractAudioManagerSystem : AbstractSystem, IAudioManager
     protected override void OnInit()
     {
         // 获取依赖的系统
-        ResourceLoadSystem = Context.GetSystem<IResourceLoadSystem>();
-        AssetCatalogSystem = Context.GetSystem<IAssetCatalogSystem>();
-        ResourceFactorySystem = Context.GetSystem<IResourceFactorySystem>();
+        ResourceLoadSystem = this.GetSystem<IResourceLoadSystem>();
+        AssetCatalogSystem = this.GetSystem<IAssetCatalogSystem>();
+        ResourceFactorySystem = this.GetSystem<IResourceFactorySystem>();
 
         // 初始化背景音乐播放器
         MusicPlayer = new AudioStreamPlayer();

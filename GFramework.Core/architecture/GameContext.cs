@@ -38,7 +38,7 @@ public static class GameContext
     /// </summary>
     /// <returns>返回字典中的第一个架构上下文实例</returns>
     /// <exception cref="InvalidOperationException">当字典为空时抛出</exception>
-    public static IArchitectureContext GetFirstArchitecture()
+    public static IArchitectureContext GetFirstArchitectureContext()
     {
         return ArchitectureDictionary.Values.First();
     }

@@ -140,7 +140,7 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
         sb.AppendLine("            if (_context == null)");
         sb.AppendLine("            {");
         sb.AppendLine(
-            "                _context = global::GFramework.Core.architecture.GameContext.GetFirstArchitecture();");
+            "                _context = global::GFramework.Core.architecture.GameContext.GetFirstArchitectureContext();");
         sb.AppendLine("            }");
         sb.AppendLine();
         sb.AppendLine("            return _context;");

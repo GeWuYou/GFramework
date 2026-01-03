@@ -1,5 +1,6 @@
 ﻿using GFramework.Core.Abstractions.architecture;
 using GFramework.Core.Abstractions.rule;
+using GFramework.Core.architecture;
 
 namespace GFramework.Core.rule;
 
@@ -11,7 +12,7 @@ public abstract class ContextAwareBase : IContextAware
     /// <summary>
     ///     获取当前实例的架构上下文
     /// </summary>
-    protected IArchitectureContext Context { get; set; } = null!;
+    protected IArchitectureContext? Context { get; set; }
 
     /// <summary>
     ///     设置架构上下文的实现方法，由框架调用
@@ -29,6 +30,7 @@ public abstract class ContextAwareBase : IContextAware
     /// <returns>当前架构上下文对象</returns>
     IArchitectureContext IContextAware.GetContext()
     {
+        Context ??= GameContext.GetFirstArchitectureContext();
         return Context;
     }
 

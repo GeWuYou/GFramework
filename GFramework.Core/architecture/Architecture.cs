@@ -1,9 +1,11 @@
 using GFramework.Core.Abstractions.architecture;
+using GFramework.Core.Abstractions.command;
 using GFramework.Core.Abstractions.enums;
 using GFramework.Core.Abstractions.events;
 using GFramework.Core.Abstractions.ioc;
 using GFramework.Core.Abstractions.logging;
 using GFramework.Core.Abstractions.model;
+using GFramework.Core.Abstractions.query;
 using GFramework.Core.Abstractions.system;
 using GFramework.Core.Abstractions.utility;
 using GFramework.Core.events;
@@ -55,13 +57,9 @@ public abstract class Architecture(
     /// </value>
     private ITypeEventSystem TypeEventSystem => Services.TypeEventSystem;
 
-    /// <summary>
-    ///     获取架构运行时实例
-    /// </summary>
-    /// <value>
-    ///     统一的操作入口，负责命令、查询、事件的执行
-    /// </value>
-    public IArchitectureRuntime Runtime { get; private set; } = null!;
+    private ICommandBus CommandBus => Services.CommandBus;
+
+    private IQueryBus QueryBus => Services.QueryBus;
 
     #region Module Management
 
@@ -282,14 +280,16 @@ public abstract class Architecture(
         {
             await asyncInit.InitializeAsync();
         }
-        else if (component is IModel model)
-        {
-            model.Init();
-        }
-        else if (component is ISystem system)
-        {
-            system.Init();
-        }
+        else
+            switch (component)
+            {
+                case IModel model:
+                    model.Init();
+                    break;
+                case ISystem system:
+                    system.Init();
+                    break;
+            }
     }
 
     /// <summary>
@@ -306,14 +306,10 @@ public abstract class Architecture(
         _logger = LoggerFactoryResolver.Provider.CreateLogger(GetType().Name);
 
         // 初始化架构上下文（如果尚未初始化）
-        _context ??= new ArchitectureContext(Container, TypeEventSystem);
+        _context ??= new ArchitectureContext(Container, TypeEventSystem, CommandBus, QueryBus);
         // 将当前架构类型与上下文绑定到游戏上下文
         GameContext.Bind(GetType(), _context);
 
-        // 创建架构运行时实例
-        Runtime = new ArchitectureRuntime(_context);
-        // 设置上下文中的运行时引用
-        ((ArchitectureContext)_context).Runtime = Runtime;
         // 为服务设置上下文
         Services.SetContext(_context);
 

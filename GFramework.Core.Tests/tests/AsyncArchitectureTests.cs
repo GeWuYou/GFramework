@@ -33,7 +33,6 @@ public class AsyncArchitectureTests : ArchitectureTestsBase<AsyncTestArchitectur
         await Architecture!.InitializeAsync();
 
         Assert.That(Architecture.InitCalled, Is.True);
-        Assert.That(Architecture.Runtime, Is.Not.Null);
         Assert.That(Architecture.CurrentPhase, Is.EqualTo(ArchitecturePhase.Ready));
 
         var context = Architecture.Context;

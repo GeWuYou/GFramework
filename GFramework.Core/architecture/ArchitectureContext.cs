@@ -14,15 +14,17 @@ namespace GFramework.Core.architecture;
 /// </summary>
 public class ArchitectureContext(
     IIocContainer container,
-    ITypeEventSystem typeEventSystem)
+    ITypeEventSystem typeEventSystem,
+    ICommandBus commandBus,
+    IQueryBus queryBus)
     : IArchitectureContext
 {
+    private readonly ICommandBus _commandBus = commandBus ?? throw new ArgumentNullException(nameof(commandBus));
     private readonly IIocContainer _container = container ?? throw new ArgumentNullException(nameof(container));
+    private readonly IQueryBus _queryBus = queryBus ?? throw new ArgumentNullException(nameof(queryBus));
 
     private readonly ITypeEventSystem _typeEventSystem =
         typeEventSystem ?? throw new ArgumentNullException(nameof(typeEventSystem));
-
-    internal IArchitectureRuntime Runtime { get; set; } = null!;
 
     #region Query Execution
 
@@ -34,7 +36,7 @@ public class ArchitectureContext(
     /// <returns>查询结果</returns>
     public TResult SendQuery<TResult>(IQuery<TResult> query)
     {
-        return query == null ? throw new ArgumentNullException(nameof(query)) : Runtime.SendQuery(query);
+        return query == null ? throw new ArgumentNullException(nameof(query)) : _queryBus.Send(query);
     }
 
     #endregion
@@ -76,17 +78,17 @@ public class ArchitectureContext(
     #region Command Execution
 
     /// <summary>
-    ///     发送一个无返回结果的命令
+    ///     发送一个命令请求
     /// </summary>
     /// <param name="command">要发送的命令</param>
     public void SendCommand(ICommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
-        Runtime.SendCommand(command);
+        _commandBus.Send(command);
     }
 
     /// <summary>
-    ///     发送一个带返回值的命令
+    ///     发送一个带返回值的命令请求
     /// </summary>
     /// <typeparam name="TResult">命令执行结果类型</typeparam>
     /// <param name="command">要发送的命令</param>
@@ -94,7 +96,7 @@ public class ArchitectureContext(
     public TResult SendCommand<TResult>(ICommand<TResult> command)
     {
         ArgumentNullException.ThrowIfNull(command);
-        return Runtime.SendCommand(command);
+        return _commandBus.Send(command);
     }
 
     #endregion
@@ -117,7 +119,7 @@ public class ArchitectureContext(
     /// <param name="e">事件参数</param>
     public void SendEvent<TEvent>(TEvent e) where TEvent : class
     {
-        if (e == null) throw new ArgumentNullException(nameof(e));
+        ArgumentNullException.ThrowIfNull(e);
         _typeEventSystem.Send(e);
     }
 

@@ -1,4 +1,5 @@
 using GFramework.Core.Abstractions.enums;
+using GFramework.Core.extensions;
 using GFramework.Core.system;
 using GFramework.Game.Abstractions.assets;
 using GFramework.Godot.Abstractions.assets;
@@ -63,8 +64,8 @@ public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceF
     protected override void OnInit()
     {
         _registry = new ResourceFactory.Registry();
-        _resourceLoadSystem = Context.GetSystem<IResourceLoadSystem>();
-        _assetCatalogSystem = Context.GetSystem<IAssetCatalogSystem>();
+        _assetCatalogSystem = this.GetSystem<IAssetCatalogSystem>();
+        _assetCatalogSystem = this.GetSystem<IAssetCatalogSystem>();
     }
 
     /// <summary>

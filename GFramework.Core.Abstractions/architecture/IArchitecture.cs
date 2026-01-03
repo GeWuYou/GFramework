@@ -16,11 +16,6 @@ public interface IArchitecture : IAsyncInitializable
     IArchitectureContext Context { get; }
 
     /// <summary>
-    ///     获取架构运行时实例
-    /// </summary>
-    IArchitectureRuntime Runtime { get; }
-
-    /// <summary>
     ///     初始化方法，用于执行对象的初始化操作
     /// </summary>
     /// <remarks>

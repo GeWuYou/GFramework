@@ -1,5 +1,7 @@
-﻿using GFramework.Core.Abstractions.events;
+﻿using GFramework.Core.Abstractions.command;
+using GFramework.Core.Abstractions.events;
 using GFramework.Core.Abstractions.ioc;
+using GFramework.Core.Abstractions.query;
 using GFramework.Core.Abstractions.rule;
 
 namespace GFramework.Core.Abstractions.architecture;
@@ -20,4 +22,14 @@ public interface IArchitectureServices : IContextAware
     /// </summary>
     /// <returns>ITypeEventSystem类型的事件系统实例</returns>
     ITypeEventSystem TypeEventSystem { get; }
+
+    /// <summary>
+    /// 获取命令总线
+    /// </summary>
+    public ICommandBus CommandBus { get; }
+
+    /// <summary>
+    /// 获取查询总线
+    /// </summary>
+    public IQueryBus QueryBus { get; }
 }
