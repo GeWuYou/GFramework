@@ -1,35 +1,20 @@
-﻿using GFramework.Core.Abstractions.architecture;
-using GFramework.Core.Abstractions.enums;
+﻿using GFramework.Core.Abstractions.enums;
 using GFramework.Core.Abstractions.model;
+using GFramework.Core.rule;
 
 namespace GFramework.Core.model;
 
 /// <summary>
 ///     抽象模型基类，实现IModel接口，提供模型的基本架构支持
 /// </summary>
-public abstract class AbstractModel : IModel
+public abstract class AbstractModel : ContextAwareBase, IModel
 {
-    /// <summary>
-    ///     模型所属的架构实例
-    /// </summary>
-    protected IArchitectureContext _context { get; private set; } = null!;
-
     /// <summary>
     ///     初始化模型，调用抽象方法OnInit执行具体初始化逻辑
     /// </summary>
     void IModel.Init()
     {
         OnInit();
-    }
-
-    public void SetContext(IArchitectureContext context)
-    {
-        _context = context;
-    }
-
-    public IArchitectureContext GetContext()
-    {
-        return _context;
     }
 
     /// <summary>

@@ -424,9 +424,7 @@ public abstract class Architecture(
         }
 
         _logger.Debug($"Registering model: {typeof(TModel).Name}");
-        // 对于有 SetArchitecture 方法的模型，尝试调用该方法
-        var setArchitectureMethod = typeof(TModel).GetMethod("SetArchitecture", [typeof(IArchitecture)]);
-        setArchitectureMethod?.Invoke(model, [this]);
+        model.SetContext(Context);
         Container.RegisterPlurality(model);
 
         if (!_mInitialized)
