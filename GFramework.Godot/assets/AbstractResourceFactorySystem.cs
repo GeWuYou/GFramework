@@ -1,3 +1,4 @@
+using System;
 using GFramework.Core.Abstractions.enums;
 using GFramework.Core.extensions;
 using GFramework.Core.system;
@@ -64,7 +65,7 @@ public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceF
     protected override void OnInit()
     {
         _registry = new ResourceFactory.Registry();
-        _assetCatalogSystem = this.GetSystem<IAssetCatalogSystem>();
+        _resourceLoadSystem = this.GetSystem<IResourceLoadSystem>();
         _assetCatalogSystem = this.GetSystem<IAssetCatalogSystem>();
     }
 
