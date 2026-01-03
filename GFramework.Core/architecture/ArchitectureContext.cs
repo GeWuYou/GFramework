@@ -1,5 +1,6 @@
 ﻿using GFramework.Core.Abstractions.architecture;
 using GFramework.Core.Abstractions.command;
+using GFramework.Core.Abstractions.environment;
 using GFramework.Core.Abstractions.events;
 using GFramework.Core.Abstractions.ioc;
 using GFramework.Core.Abstractions.model;
@@ -16,11 +17,14 @@ public class ArchitectureContext(
     IIocContainer container,
     ITypeEventSystem typeEventSystem,
     ICommandBus commandBus,
-    IQueryBus queryBus)
+    IQueryBus queryBus,
+    IEnvironment environment)
     : IArchitectureContext
 {
     private readonly ICommandBus _commandBus = commandBus ?? throw new ArgumentNullException(nameof(commandBus));
     private readonly IIocContainer _container = container ?? throw new ArgumentNullException(nameof(container));
+
+    private readonly IEnvironment _environment = environment ?? throw new ArgumentNullException(nameof(environment));
     private readonly IQueryBus _queryBus = queryBus ?? throw new ArgumentNullException(nameof(queryBus));
 
     private readonly ITypeEventSystem _typeEventSystem =
@@ -143,6 +147,15 @@ public class ArchitectureContext(
     {
         ArgumentNullException.ThrowIfNull(onEvent);
         _typeEventSystem.UnRegister(onEvent);
+    }
+
+    /// <summary>
+    /// 获取当前环境对象
+    /// </summary>
+    /// <returns>环境对象实例</returns>
+    public IEnvironment GetEnvironment()
+    {
+        return _environment;
     }
 
     #endregion

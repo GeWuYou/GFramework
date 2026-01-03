@@ -1,5 +1,6 @@
 ﻿using System;
 using GFramework.Core.Abstractions.command;
+using GFramework.Core.Abstractions.environment;
 using GFramework.Core.Abstractions.events;
 using GFramework.Core.Abstractions.model;
 using GFramework.Core.Abstractions.query;
@@ -83,4 +84,10 @@ public interface IArchitectureContext
     /// <typeparam name="TEvent">事件类型</typeparam>
     /// <param name="onEvent">要取消注册的事件回调方法</param>
     void UnRegisterEvent<TEvent>(Action<TEvent> onEvent);
+
+    /// <summary>
+    ///     获取环境对象
+    /// </summary>
+    /// <returns>环境对象实例</returns>
+    IEnvironment GetEnvironment();
 }

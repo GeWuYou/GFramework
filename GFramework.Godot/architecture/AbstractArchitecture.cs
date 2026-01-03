@@ -1,4 +1,8 @@
-﻿using GFramework.Core.Abstractions.architecture;
+﻿using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using GFramework.Core.Abstractions.architecture;
+using GFramework.Core.Abstractions.environment;
 using GFramework.Core.architecture;
 using GFramework.Core.constants;
 using GFramework.Godot.extensions;
@@ -12,9 +16,10 @@ namespace GFramework.Godot.architecture;
 /// </summary>
 public abstract class AbstractArchitecture(
     IArchitectureConfiguration? configuration = null,
+    IEnvironment? environment = null,
     IArchitectureServices? services = null,
     IArchitectureContext? context = null
-) : Architecture(configuration, services, context)
+) : Architecture(configuration, environment, services, context)
 {
     /// <summary>
     ///     存储所有已安装的Godot架构扩展组件列表

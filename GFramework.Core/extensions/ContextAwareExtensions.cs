@@ -1,4 +1,5 @@
 ﻿using GFramework.Core.Abstractions.command;
+using GFramework.Core.Abstractions.environment;
 using GFramework.Core.Abstractions.events;
 using GFramework.Core.Abstractions.model;
 using GFramework.Core.Abstractions.query;
@@ -22,7 +23,7 @@ public static class ContextAwareExtensions
     /// <exception cref="ArgumentNullException">当 contextAware 为 null 时抛出</exception>
     public static TSystem? GetSystem<TSystem>(this IContextAware contextAware) where TSystem : class, ISystem
     {
-        if (contextAware == null) throw new ArgumentNullException(nameof(contextAware));
+        ArgumentNullException.ThrowIfNull(contextAware);
         var context = contextAware.GetContext();
         return context.GetSystem<TSystem>();
     }
@@ -36,7 +37,7 @@ public static class ContextAwareExtensions
     /// <exception cref="ArgumentNullException">当 contextAware 为 null 时抛出</exception>
     public static TModel? GetModel<TModel>(this IContextAware contextAware) where TModel : class, IModel
     {
-        if (contextAware == null) throw new ArgumentNullException(nameof(contextAware));
+        ArgumentNullException.ThrowIfNull(contextAware);
         var context = contextAware.GetContext();
         return context.GetModel<TModel>();
     }
@@ -50,7 +51,7 @@ public static class ContextAwareExtensions
     /// <exception cref="ArgumentNullException">当 contextAware 为 null 时抛出</exception>
     public static TUtility? GetUtility<TUtility>(this IContextAware contextAware) where TUtility : class, IUtility
     {
-        if (contextAware == null) throw new ArgumentNullException(nameof(contextAware));
+        ArgumentNullException.ThrowIfNull(contextAware);
         var context = contextAware.GetContext();
         return context.GetUtility<TUtility>();
     }
@@ -65,8 +66,8 @@ public static class ContextAwareExtensions
     /// <exception cref="ArgumentNullException">当 contextAware 或 query 为 null 时抛出</exception>
     public static TResult SendQuery<TResult>(this IContextAware contextAware, IQuery<TResult> query)
     {
-        if (contextAware == null) throw new ArgumentNullException(nameof(contextAware));
-        if (query == null) throw new ArgumentNullException(nameof(query));
+        ArgumentNullException.ThrowIfNull(contextAware);
+        ArgumentNullException.ThrowIfNull(query);
 
         var context = contextAware.GetContext();
         return context.SendQuery(query);
@@ -80,8 +81,8 @@ public static class ContextAwareExtensions
     /// <exception cref="ArgumentNullException">当 contextAware 或 command 为 null 时抛出</exception>
     public static void SendCommand(this IContextAware contextAware, ICommand command)
     {
-        if (contextAware == null) throw new ArgumentNullException(nameof(contextAware));
-        if (command == null) throw new ArgumentNullException(nameof(command));
+        ArgumentNullException.ThrowIfNull(contextAware);
+        ArgumentNullException.ThrowIfNull(command);
 
         var context = contextAware.GetContext();
         context.SendCommand(command);
@@ -97,8 +98,8 @@ public static class ContextAwareExtensions
     /// <exception cref="ArgumentNullException">当 contextAware 或 command 为 null 时抛出</exception>
     public static TResult SendCommand<TResult>(this IContextAware contextAware, ICommand<TResult> command)
     {
-        if (contextAware == null) throw new ArgumentNullException(nameof(contextAware));
-        if (command == null) throw new ArgumentNullException(nameof(command));
+        ArgumentNullException.ThrowIfNull(contextAware);
+        ArgumentNullException.ThrowIfNull(command);
 
         var context = contextAware.GetContext();
         return context.SendCommand(command);
@@ -112,7 +113,7 @@ public static class ContextAwareExtensions
     /// <exception cref="ArgumentNullException">当 contextAware 为 null 时抛出</exception>
     public static void SendEvent<TEvent>(this IContextAware contextAware) where TEvent : new()
     {
-        if (contextAware == null) throw new ArgumentNullException(nameof(contextAware));
+        ArgumentNullException.ThrowIfNull(contextAware);
         var context = contextAware.GetContext();
         context.SendEvent<TEvent>();
     }
@@ -126,8 +127,8 @@ public static class ContextAwareExtensions
     /// <exception cref="ArgumentNullException">当 contextAware 或 e 为 null 时抛出</exception>
     public static void SendEvent<TEvent>(this IContextAware contextAware, TEvent e) where TEvent : class
     {
-        if (contextAware == null) throw new ArgumentNullException(nameof(contextAware));
-        if (e == null) throw new ArgumentNullException(nameof(e));
+        ArgumentNullException.ThrowIfNull(contextAware);
+        ArgumentNullException.ThrowIfNull(e);
 
         var context = contextAware.GetContext();
         context.SendEvent(e);
@@ -142,8 +143,8 @@ public static class ContextAwareExtensions
     /// <returns>事件注销接口</returns>
     public static IUnRegister RegisterEvent<TEvent>(this IContextAware contextAware, Action<TEvent> handler)
     {
-        if (contextAware == null) throw new ArgumentNullException(nameof(contextAware));
-        if (handler == null) throw new ArgumentNullException(nameof(handler));
+        ArgumentNullException.ThrowIfNull(contextAware);
+        ArgumentNullException.ThrowIfNull(handler);
 
         var context = contextAware.GetContext();
         return context.RegisterEvent(handler);
@@ -157,10 +158,39 @@ public static class ContextAwareExtensions
     /// <param name="onEvent">之前绑定的事件处理器</param>
     public static void UnRegisterEvent<TEvent>(this IContextAware contextAware, Action<TEvent> onEvent)
     {
-        if (contextAware == null) throw new ArgumentNullException(nameof(contextAware));
-        if (onEvent == null) throw new ArgumentNullException(nameof(onEvent));
+        ArgumentNullException.ThrowIfNull(contextAware);
+        ArgumentNullException.ThrowIfNull(onEvent);
 
+        // 获取上下文对象并取消事件注册
         var context = contextAware.GetContext();
         context.UnRegisterEvent(onEvent);
+    }
+
+
+    /// <summary>
+    /// 获取指定类型的环境对象
+    /// </summary>
+    /// <typeparam name="T">要获取的环境对象类型</typeparam>
+    /// <param name="contextAware">上下文感知对象</param>
+    /// <returns>指定类型的环境对象，如果无法转换则返回null</returns>
+    public static T? GetEnvironment<T>(this IContextAware contextAware) where T : class
+    {
+        ArgumentNullException.ThrowIfNull(contextAware);
+        // 获取上下文对象并返回其环境
+        var context = contextAware.GetContext();
+        return context.GetEnvironment() as T;
+    }
+
+    /// <summary>
+    /// 获取环境对象
+    /// </summary>
+    /// <param name="contextAware">上下文感知对象</param>
+    /// <returns>环境对象</returns>
+    public static IEnvironment GetEnvironment(this IContextAware contextAware)
+    {
+        ArgumentNullException.ThrowIfNull(contextAware);
+        // 获取上下文对象并返回其环境
+        var context = contextAware.GetContext();
+        return context.GetEnvironment();
     }
 }

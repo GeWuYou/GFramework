@@ -1,6 +1,7 @@
 using GFramework.Core.Abstractions.architecture;
 using GFramework.Core.Abstractions.command;
 using GFramework.Core.Abstractions.enums;
+using GFramework.Core.Abstractions.environment;
 using GFramework.Core.Abstractions.events;
 using GFramework.Core.Abstractions.ioc;
 using GFramework.Core.Abstractions.logging;
@@ -8,6 +9,7 @@ using GFramework.Core.Abstractions.model;
 using GFramework.Core.Abstractions.query;
 using GFramework.Core.Abstractions.system;
 using GFramework.Core.Abstractions.utility;
+using GFramework.Core.environment;
 using GFramework.Core.events;
 using GFramework.Core.logging;
 
@@ -20,18 +22,28 @@ namespace GFramework.Core.architecture;
 /// </summary>
 public abstract class Architecture(
     IArchitectureConfiguration? configuration = null,
+    IEnvironment? environment = null,
     IArchitectureServices? services = null,
     IArchitectureContext? context = null
 )
     : IArchitecture
 {
     /// <summary>
-    ///     获取架构配置对象
+    /// 获取架构配置对象
     /// </summary>
     /// <value>
-    ///     返回一个IArchitectureConfiguration接口的实例，默认为DefaultArchitectureConfiguration类型
+    /// 返回一个IArchitectureConfiguration接口的实例，默认为DefaultArchitectureConfiguration类型
     /// </value>
     private IArchitectureConfiguration Configuration { get; } = configuration ?? new ArchitectureConfiguration();
+
+    /// <summary>
+    /// 获取环境配置对象
+    /// </summary>
+    /// <value>
+    /// 返回一个IEnvironment接口的实例，默认为DefaultEnvironment类型
+    /// </value>
+    private IEnvironment Environment { get; } = environment ?? new DefaultEnvironment();
+
 
     /// <summary>
     ///     获取架构服务对象
@@ -304,9 +316,9 @@ public abstract class Architecture(
         LoggerFactoryResolver.Provider = Configuration.LoggerProperties.LoggerFactoryProvider;
         // 创建日志记录器实例
         _logger = LoggerFactoryResolver.Provider.CreateLogger(GetType().Name);
-
+        Environment.Initialize();
         // 初始化架构上下文（如果尚未初始化）
-        _context ??= new ArchitectureContext(Container, TypeEventSystem, CommandBus, QueryBus);
+        _context ??= new ArchitectureContext(Container, TypeEventSystem, CommandBus, QueryBus, Environment);
         // 将当前架构类型与上下文绑定到游戏上下文
         GameContext.Bind(GetType(), _context);
 
