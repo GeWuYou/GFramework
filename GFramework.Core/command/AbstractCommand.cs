@@ -6,40 +6,48 @@ namespace GFramework.Core.command;
 /// <summary>
 ///     抽象命令类，实现 ICommand 接口，为具体命令提供基础架构支持
 /// </summary>
-public abstract class AbstractCommand : ContextAwareBase, ICommand
+/// <typeparam name="TInput">命令输入参数类型，必须实现 ICommandInput 接口</typeparam>
+/// <param name="input">命令执行所需的输入参数</param>
+public abstract class AbstractCommand<TInput>(TInput input) : ContextAwareBase, ICommand
+    where TInput : ICommandInput
 {
     /// <summary>
-    ///     执行命令，调用抽象方法 OnExecute 来实现具体逻辑
+    ///     执行命令的入口方法，实现 ICommand 接口的 Execute 方法
     /// </summary>
     void ICommand.Execute()
     {
-        OnExecute();
+        OnExecute(input);
     }
 
     /// <summary>
-    ///     抽象方法，由子类实现具体的命令执行逻辑
+    ///     命令执行的抽象方法，由派生类实现具体的命令逻辑
     /// </summary>
-    protected abstract void OnExecute();
+    /// <param name="input">命令执行所需的输入参数</param>
+    protected abstract void OnExecute(TInput input);
 }
 
 /// <summary>
 ///     带返回值的抽象命令类，实现 ICommand{TResult} 接口，为需要返回结果的命令提供基础架构支持
 /// </summary>
+/// <typeparam name="TInput">命令输入参数类型，必须实现 ICommandInput 接口</typeparam>
 /// <typeparam name="TResult">命令执行后返回的结果类型</typeparam>
-public abstract class AbstractCommand<TResult> : ContextAwareBase, ICommand<TResult>
+/// <param name="input">命令执行所需的输入参数</param>
+public abstract class AbstractCommand<TInput, TResult>(TInput input) : ContextAwareBase, ICommand<TResult>
+    where TInput : ICommandInput
 {
     /// <summary>
-    ///     执行命令，调用抽象方法 OnExecute 来实现具体逻辑并返回结果
+    ///     执行命令的入口方法，实现 ICommand{TResult} 接口的 Execute 方法
     /// </summary>
-    /// <returns>TResult 类型的执行结果</returns>
+    /// <returns>命令执行后的结果</returns>
     TResult ICommand<TResult>.Execute()
     {
-        return OnExecute();
+        return OnExecute(input);
     }
 
     /// <summary>
-    ///     抽象方法，由子类实现具体的命令执行逻辑
+    ///     命令执行的抽象方法，由派生类实现具体的命令逻辑
     /// </summary>
-    /// <returns>TResult 类型的执行结果</returns>
-    protected abstract TResult OnExecute();
+    /// <param name="input">命令执行所需的输入参数</param>
+    /// <returns>命令执行后的结果</returns>
+    protected abstract TResult OnExecute(TInput input);
 }
