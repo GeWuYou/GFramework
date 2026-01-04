@@ -28,10 +28,8 @@ public class BindablePropertyUnRegister<T>(BindableProperty<T> bindableProperty,
     {
         // 检查两个引用都不为null时才执行注销操作
         if (BindableProperty != null && OnValueChanged != null)
-        {
             // 调用可绑定属性的注销方法，传入值变化回调函数
             BindableProperty.UnRegister(OnValueChanged);
-        }
 
         // 清理属性引用
         BindableProperty = null;

@@ -18,10 +18,7 @@ public sealed class GodotLogger(
         var logPrefix = $"[{timestamp}] {levelStr} [{Name()}]";
 
         // 添加异常信息
-        if (exception != null)
-        {
-            message += "\n" + exception;
-        }
+        if (exception != null) message += "\n" + exception;
 
         var logMessage = $"{logPrefix} {message}";
 

@@ -5,19 +5,19 @@ using GFramework.Core.Abstractions.model;
 namespace GFramework.Core.Tests.model;
 
 /// <summary>
-/// 测试模型类，用于框架测试目的
+///     测试模型类，用于框架测试目的
 /// </summary>
 public sealed class TestModel : IModel
 {
     private IArchitectureContext _context = null!;
 
     /// <summary>
-    /// 获取模型是否已初始化的状态
+    ///     获取模型是否已初始化的状态
     /// </summary>
     public bool Initialized { get; private set; }
 
     /// <summary>
-    /// 初始化模型
+    ///     初始化模型
     /// </summary>
     public void Init()
     {

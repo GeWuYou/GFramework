@@ -5,7 +5,7 @@ using GFramework.Core.Abstractions.system;
 namespace GFramework.Core.Tests.system;
 
 /// <summary>
-/// 异步测试系统，实现 ISystem 和 IAsyncInitializable
+///     异步测试系统，实现 ISystem 和 IAsyncInitializable
 /// </summary>
 public sealed class AsyncTestSystem : ISystem, IAsyncInitializable
 {
@@ -19,8 +19,15 @@ public sealed class AsyncTestSystem : ISystem, IAsyncInitializable
         Initialized = true;
     }
 
-    public void SetContext(IArchitectureContext context) => _context = context;
-    public IArchitectureContext GetContext() => _context;
+    public void SetContext(IArchitectureContext context)
+    {
+        _context = context;
+    }
+
+    public IArchitectureContext GetContext()
+    {
+        return _context;
+    }
 
     public void Init()
     {
@@ -28,7 +35,10 @@ public sealed class AsyncTestSystem : ISystem, IAsyncInitializable
         throw new InvalidOperationException("Sync Init should not be called");
     }
 
-    public void Destroy() => DestroyCalled = true;
+    public void Destroy()
+    {
+        DestroyCalled = true;
+    }
 
     public void OnArchitecturePhase(ArchitecturePhase phase)
     {

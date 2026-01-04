@@ -128,7 +128,9 @@ public abstract class AttributeClassGeneratorBase : IIncrementalGenerator
         ClassDeclarationSyntax syntax,
         INamedTypeSymbol symbol,
         AttributeData attr)
-        => true;
+    {
+        return true;
+    }
 
     /// <summary>
     ///     生成源代码
@@ -150,7 +152,9 @@ public abstract class AttributeClassGeneratorBase : IIncrementalGenerator
     /// <param name="symbol">命名类型符号</param>
     /// <returns>生成文件的提示名称</returns>
     protected virtual string GetHintName(INamedTypeSymbol symbol)
-        => $"{symbol.Name}.g.cs";
+    {
+        return $"{symbol.Name}.g.cs";
+    }
 
     /// <summary>
     ///     报告类必须是部分类的错误

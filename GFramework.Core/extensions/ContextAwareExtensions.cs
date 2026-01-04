@@ -10,12 +10,12 @@ using GFramework.Core.Abstractions.utility;
 namespace GFramework.Core.extensions;
 
 /// <summary>
-/// 提供对 IContextAware 接口的扩展方法
+///     提供对 IContextAware 接口的扩展方法
 /// </summary>
 public static class ContextAwareExtensions
 {
     /// <summary>
-    /// 获取架构上下文中的指定系统
+    ///     获取架构上下文中的指定系统
     /// </summary>
     /// <typeparam name="TSystem">目标系统类型</typeparam>
     /// <param name="contextAware">实现 IContextAware 接口的对象</param>
@@ -29,7 +29,7 @@ public static class ContextAwareExtensions
     }
 
     /// <summary>
-    /// 获取架构上下文中的指定模型
+    ///     获取架构上下文中的指定模型
     /// </summary>
     /// <typeparam name="TModel">目标模型类型</typeparam>
     /// <param name="contextAware">实现 IContextAware 接口的对象</param>
@@ -43,7 +43,7 @@ public static class ContextAwareExtensions
     }
 
     /// <summary>
-    /// 获取架构上下文中的指定工具
+    ///     获取架构上下文中的指定工具
     /// </summary>
     /// <typeparam name="TUtility">目标工具类型</typeparam>
     /// <param name="contextAware">实现 IContextAware 接口的对象</param>
@@ -57,7 +57,7 @@ public static class ContextAwareExtensions
     }
 
     /// <summary>
-    /// 发送一个查询请求
+    ///     发送一个查询请求
     /// </summary>
     /// <typeparam name="TResult">查询结果类型</typeparam>
     /// <param name="contextAware">实现 IContextAware 接口的对象</param>
@@ -74,7 +74,7 @@ public static class ContextAwareExtensions
     }
 
     /// <summary>
-    /// 发送一个无返回结果的命令
+    ///     发送一个无返回结果的命令
     /// </summary>
     /// <param name="contextAware">实现 IContextAware 接口的对象</param>
     /// <param name="command">要发送的命令</param>
@@ -89,7 +89,7 @@ public static class ContextAwareExtensions
     }
 
     /// <summary>
-    /// 发送一个带返回值的命令
+    ///     发送一个带返回值的命令
     /// </summary>
     /// <typeparam name="TResult">命令执行结果类型</typeparam>
     /// <param name="contextAware">实现 IContextAware 接口的对象</param>
@@ -106,7 +106,7 @@ public static class ContextAwareExtensions
     }
 
     /// <summary>
-    /// 发送一个事件
+    ///     发送一个事件
     /// </summary>
     /// <typeparam name="TEvent">事件类型</typeparam>
     /// <param name="contextAware">实现 IContextAware 接口的对象</param>
@@ -119,7 +119,7 @@ public static class ContextAwareExtensions
     }
 
     /// <summary>
-    /// 发送一个具体的事件实例
+    ///     发送一个具体的事件实例
     /// </summary>
     /// <typeparam name="TEvent">事件类型</typeparam>
     /// <param name="contextAware">实现 IContextAware 接口的对象</param>
@@ -135,7 +135,7 @@ public static class ContextAwareExtensions
     }
 
     /// <summary>
-    /// 注册事件处理器
+    ///     注册事件处理器
     /// </summary>
     /// <typeparam name="TEvent">事件类型</typeparam>
     /// <param name="contextAware">实现 IContextAware 接口的对象</param>
@@ -151,7 +151,7 @@ public static class ContextAwareExtensions
     }
 
     /// <summary>
-    /// 取消对某类型事件的监听
+    ///     取消对某类型事件的监听
     /// </summary>
     /// <typeparam name="TEvent">事件类型</typeparam>
     /// <param name="contextAware">实现 IContextAware 接口的对象</param>
@@ -168,7 +168,7 @@ public static class ContextAwareExtensions
 
 
     /// <summary>
-    /// 获取指定类型的环境对象
+    ///     获取指定类型的环境对象
     /// </summary>
     /// <typeparam name="T">要获取的环境对象类型</typeparam>
     /// <param name="contextAware">上下文感知对象</param>
@@ -182,7 +182,7 @@ public static class ContextAwareExtensions
     }
 
     /// <summary>
-    /// 获取环境对象
+    ///     获取环境对象
     /// </summary>
     /// <param name="contextAware">上下文感知对象</param>
     /// <returns>环境对象</returns>

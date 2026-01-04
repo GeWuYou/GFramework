@@ -8,7 +8,7 @@ namespace GFramework.SourceGenerators.diagnostics;
 public static class ContextAwareDiagnostic
 {
     /// <summary>
-    /// 诊断规则：ContextAwareAttribute只能应用于类
+    ///     诊断规则：ContextAwareAttribute只能应用于类
     /// </summary>
     public static readonly DiagnosticDescriptor ContextAwareOnlyForClass = new(
         "GF_Rule_001",

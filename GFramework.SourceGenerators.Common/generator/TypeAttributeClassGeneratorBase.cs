@@ -5,18 +5,18 @@ using Microsoft.CodeAnalysis;
 namespace GFramework.SourceGenerators.Common.generator;
 
 /// <summary>
-/// 基于类型特性的类生成器基类
+///     基于类型特性的类生成器基类
 /// </summary>
 public abstract class TypeAttributeClassGeneratorBase
     : AttributeClassGeneratorBase
 {
     /// <summary>
-    /// 获取要处理的特性类型
+    ///     获取要处理的特性类型
     /// </summary>
     protected abstract Type AttributeType { get; }
 
     /// <summary>
-    /// 解析指定符号上的特性
+    ///     解析指定符号上的特性
     /// </summary>
     /// <param name="compilation">编译对象（未使用）</param>
     /// <param name="symbol">要检查的命名类型符号</param>

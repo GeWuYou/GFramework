@@ -114,10 +114,7 @@ public class IocContainer : ContextAwareBase, IIocContainer
             RegisterInternal(concreteType, instance);
 
             // 注册所有接口类型
-            foreach (var itf in interfaces)
-            {
-                RegisterInternal(itf, instance);
-            }
+            foreach (var itf in interfaces) RegisterInternal(itf, instance);
         }
         finally
         {

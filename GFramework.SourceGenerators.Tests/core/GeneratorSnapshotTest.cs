@@ -5,14 +5,14 @@ using NUnit.Framework;
 namespace GFramework.SourceGenerators.Tests.core;
 
 /// <summary>
-/// 用于测试源代码生成器的快照测试类
+///     用于测试源代码生成器的快照测试类
 /// </summary>
 /// <typeparam name="TGenerator">要测试的源代码生成器类型</typeparam>
 public static class GeneratorSnapshotTest<TGenerator>
     where TGenerator : new()
 {
     /// <summary>
-    /// 运行源代码生成器的快照测试
+    ///     运行源代码生成器的快照测试
     /// </summary>
     /// <param name="source">输入的源代码字符串</param>
     /// <param name="snapshotFolder">快照文件存储的文件夹路径</param>
@@ -61,10 +61,12 @@ public static class GeneratorSnapshotTest<TGenerator>
     }
 
     /// <summary>
-    /// 标准化文本内容，将换行符统一为\n并去除首尾空白
+    ///     标准化文本内容，将换行符统一为\n并去除首尾空白
     /// </summary>
     /// <param name="text">要标准化的文本</param>
     /// <returns>标准化后的文本</returns>
     private static string Normalize(string text)
-        => text.Replace("\r\n", "\n").Trim();
+    {
+        return text.Replace("\r\n", "\n").Trim();
+    }
 }

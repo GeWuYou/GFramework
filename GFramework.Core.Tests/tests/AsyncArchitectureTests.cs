@@ -8,23 +8,26 @@ using NUnit.Framework.Legacy;
 namespace GFramework.Core.Tests.tests;
 
 /// <summary>
-/// 异步架构测试类，用于测试异步架构的相关功能
+///     异步架构测试类，用于测试异步架构的相关功能
 /// </summary>
 /// <remarks>
-/// 该测试类使用非并行执行模式，确保测试的隔离性
+///     该测试类使用非并行执行模式，确保测试的隔离性
 /// </remarks>
 [TestFixture]
 [NonParallelizable]
 public class AsyncArchitectureTests : ArchitectureTestsBase<AsyncTestArchitecture>
 {
     /// <summary>
-    /// 创建异步测试架构实例
+    ///     创建异步测试架构实例
     /// </summary>
     /// <returns>AsyncTestArchitecture实例</returns>
-    protected override AsyncTestArchitecture CreateArchitecture() => new();
+    protected override AsyncTestArchitecture CreateArchitecture()
+    {
+        return new AsyncTestArchitecture();
+    }
 
     /// <summary>
-    /// 测试架构是否正确初始化所有组件
+    ///     测试架构是否正确初始化所有组件
     /// </summary>
     /// <returns>异步任务</returns>
     [Test]
@@ -45,7 +48,7 @@ public class AsyncArchitectureTests : ArchitectureTestsBase<AsyncTestArchitectur
     }
 
     /// <summary>
-    /// 测试架构是否按正确顺序进入各个阶段
+    ///     测试架构是否按正确顺序进入各个阶段
     /// </summary>
     /// <returns>异步任务</returns>
     [Test]
@@ -68,7 +71,7 @@ public class AsyncArchitectureTests : ArchitectureTestsBase<AsyncTestArchitectur
     }
 
     /// <summary>
-    /// 测试在就绪状态后注册模型是否抛出异常
+    ///     测试在就绪状态后注册模型是否抛出异常
     /// </summary>
     /// <returns>异步任务</returns>
     [Test]
@@ -81,7 +84,7 @@ public class AsyncArchitectureTests : ArchitectureTestsBase<AsyncTestArchitectur
     }
 
     /// <summary>
-    /// 测试当模型初始化失败时架构是否停止初始化
+    ///     测试当模型初始化失败时架构是否停止初始化
     /// </summary>
     /// <returns>异步任务</returns>
     [Test]
@@ -98,7 +101,7 @@ public class AsyncArchitectureTests : ArchitectureTestsBase<AsyncTestArchitectur
     }
 
     /// <summary>
-    /// 测试架构销毁是否正确销毁所有系统
+    ///     测试架构销毁是否正确销毁所有系统
     /// </summary>
     /// <returns>异步任务</returns>
     [Test]
@@ -113,7 +116,7 @@ public class AsyncArchitectureTests : ArchitectureTestsBase<AsyncTestArchitectur
     }
 
     /// <summary>
-    /// 测试InitializeAsync方法是否不会阻塞
+    ///     测试InitializeAsync方法是否不会阻塞
     /// </summary>
     /// <returns>异步任务</returns>
     [Test]
@@ -126,7 +129,7 @@ public class AsyncArchitectureTests : ArchitectureTestsBase<AsyncTestArchitectur
     }
 
     /// <summary>
-    /// 测试InitializeAsync方法是否正确处理异常
+    ///     测试InitializeAsync方法是否正确处理异常
     /// </summary>
     /// <returns>异步任务</returns>
     [Test]

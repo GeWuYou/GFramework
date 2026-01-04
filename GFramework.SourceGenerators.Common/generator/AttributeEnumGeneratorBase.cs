@@ -5,17 +5,17 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace GFramework.SourceGenerators.Common.generator;
 
 /// <summary>
-/// 属性枚举生成器基类，用于基于特定属性的枚举进行源代码生成
+///     属性枚举生成器基类，用于基于特定属性的枚举进行源代码生成
 /// </summary>
 public abstract class AttributeEnumGeneratorBase : IIncrementalGenerator
 {
     /// <summary>
-    /// 获取属性的短名称（不包含后缀）
+    ///     获取属性的短名称（不包含后缀）
     /// </summary>
     protected abstract string AttributeShortNameWithoutSuffix { get; }
 
     /// <summary>
-    /// 初始化增量生成器
+    ///     初始化增量生成器
     /// </summary>
     /// <param name="context">增量生成器初始化上下文</param>
     public void Initialize(IncrementalGeneratorInitializationContext context)
@@ -31,7 +31,7 @@ public abstract class AttributeEnumGeneratorBase : IIncrementalGenerator
                 (ctx, _) =>
                 {
                     var syntax = (EnumDeclarationSyntax)ctx.Node;
-                    var symbol = ctx.SemanticModel.GetDeclaredSymbol(syntax, cancellationToken: _) as INamedTypeSymbol;
+                    var symbol = ctx.SemanticModel.GetDeclaredSymbol(syntax, _) as INamedTypeSymbol;
                     return (syntax, symbol);
                 })
             .Where(x => x.symbol is not null);
@@ -57,7 +57,7 @@ public abstract class AttributeEnumGeneratorBase : IIncrementalGenerator
     }
 
     /// <summary>
-    /// 解析指定符号上的属性数据
+    ///     解析指定符号上的属性数据
     /// </summary>
     /// <param name="compilation">编译对象</param>
     /// <param name="symbol">命名类型符号</param>
@@ -67,7 +67,7 @@ public abstract class AttributeEnumGeneratorBase : IIncrementalGenerator
         INamedTypeSymbol symbol);
 
     /// <summary>
-    /// 验证符号是否符合生成要求
+    ///     验证符号是否符合生成要求
     /// </summary>
     /// <param name="context">源生产上下文</param>
     /// <param name="compilation">编译对象</param>
@@ -83,7 +83,7 @@ public abstract class AttributeEnumGeneratorBase : IIncrementalGenerator
         AttributeData attr);
 
     /// <summary>
-    /// 生成源代码
+    ///     生成源代码
     /// </summary>
     /// <param name="symbol">命名类型符号</param>
     /// <param name="attr">属性数据</param>
@@ -93,10 +93,12 @@ public abstract class AttributeEnumGeneratorBase : IIncrementalGenerator
         AttributeData attr);
 
     /// <summary>
-    /// 获取生成文件的提示名称
+    ///     获取生成文件的提示名称
     /// </summary>
     /// <param name="symbol">命名类型符号</param>
     /// <returns>生成文件的提示名称</returns>
     protected virtual string GetHintName(INamedTypeSymbol symbol)
-        => $"{symbol.Name}.g.cs";
+    {
+        return $"{symbol.Name}.g.cs";
+    }
 }

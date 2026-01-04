@@ -24,12 +24,12 @@ public interface IArchitectureServices : IContextAware
     ITypeEventSystem TypeEventSystem { get; }
 
     /// <summary>
-    /// 获取命令总线
+    ///     获取命令总线
     /// </summary>
     public ICommandBus CommandBus { get; }
 
     /// <summary>
-    /// 获取查询总线
+    ///     获取查询总线
     /// </summary>
     public IQueryBus QueryBus { get; }
 }

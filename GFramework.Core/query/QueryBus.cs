@@ -3,12 +3,12 @@
 namespace GFramework.Core.query;
 
 /// <summary>
-/// 查询总线实现，负责执行查询并返回结果
+///     查询总线实现，负责执行查询并返回结果
 /// </summary>
 public sealed class QueryBus : IQueryBus
 {
     /// <summary>
-    /// 执行指定的查询并返回结果
+    ///     执行指定的查询并返回结果
     /// </summary>
     /// <typeparam name="TResult">查询结果的类型</typeparam>
     /// <param name="query">要执行的查询对象</param>

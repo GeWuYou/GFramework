@@ -17,7 +17,7 @@ public sealed class ArchitectureConfiguration : IArchitectureConfiguration
     /// </summary>
     public LoggerProperties LoggerProperties { get; set; } = new()
     {
-        LoggerFactoryProvider = new ConsoleLoggerFactoryProvider()
+        LoggerFactoryProvider = new ConsoleLoggerFactoryProvider
         {
             MinLevel = LogLevel.Info
         }

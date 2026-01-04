@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using GFramework.Core.Abstractions.system;
+﻿using GFramework.Core.Abstractions.system;
 using GFramework.Game.Abstractions.assets;
 using Godot;
 

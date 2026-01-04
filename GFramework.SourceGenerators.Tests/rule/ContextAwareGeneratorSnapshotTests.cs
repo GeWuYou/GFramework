@@ -5,15 +5,15 @@ using NUnit.Framework;
 namespace GFramework.SourceGenerators.Tests.rule;
 
 /// <summary>
-/// 上下文感知生成器快照测试类
-/// 用于测试ContextAwareGenerator源代码生成器的输出快照
+///     上下文感知生成器快照测试类
+///     用于测试ContextAwareGenerator源代码生成器的输出快照
 /// </summary>
 [TestFixture]
 public class ContextAwareGeneratorSnapshotTests
 {
     /// <summary>
-    /// 测试ContextAwareGenerator源代码生成器的快照功能
-    /// 验证生成器对带有ContextAware特性的类的处理结果
+    ///     测试ContextAwareGenerator源代码生成器的快照功能
+    ///     验证生成器对带有ContextAware特性的类的处理结果
     /// </summary>
     /// <returns>异步任务，无返回值</returns>
     [Test]
@@ -75,7 +75,7 @@ public class ContextAwareGeneratorSnapshotTests
         // 执行生成器快照测试，将生成的代码与预期快照进行比较
         await GeneratorSnapshotTest<ContextAwareGenerator>.RunAsync(
             source,
-            snapshotFolder: Path.Combine(
+            Path.Combine(
                 TestContext.CurrentContext.TestDirectory,
                 "rule",
                 "snapshots",

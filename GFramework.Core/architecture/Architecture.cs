@@ -29,18 +29,18 @@ public abstract class Architecture(
     : IArchitecture
 {
     /// <summary>
-    /// 获取架构配置对象
+    ///     获取架构配置对象
     /// </summary>
     /// <value>
-    /// 返回一个IArchitectureConfiguration接口的实例，默认为DefaultArchitectureConfiguration类型
+    ///     返回一个IArchitectureConfiguration接口的实例，默认为DefaultArchitectureConfiguration类型
     /// </value>
     private IArchitectureConfiguration Configuration { get; } = configuration ?? new ArchitectureConfiguration();
 
     /// <summary>
-    /// 获取环境配置对象
+    ///     获取环境配置对象
     /// </summary>
     /// <value>
-    /// 返回一个IEnvironment接口的实例，默认为DefaultEnvironment类型
+    ///     返回一个IEnvironment接口的实例，默认为DefaultEnvironment类型
     /// </value>
     private IEnvironment Environment { get; } = environment ?? new DefaultEnvironment();
 
@@ -243,13 +243,13 @@ public abstract class Architecture(
     #region Component Registration
 
     /// <summary>
-    /// 同步初始化方法，阻塞当前线程直到初始化完成
+    ///     同步初始化方法，阻塞当前线程直到初始化完成
     /// </summary>
     public void Initialize()
     {
         try
         {
-            InitializeInternalAsync(asyncMode: false).GetAwaiter().GetResult();
+            InitializeInternalAsync(false).GetAwaiter().GetResult();
         }
         catch (Exception e)
         {
@@ -261,14 +261,14 @@ public abstract class Architecture(
     }
 
     /// <summary>
-    /// 异步初始化方法，返回Task以便调用者可以等待初始化完成
+    ///     异步初始化方法，返回Task以便调用者可以等待初始化完成
     /// </summary>
     /// <returns>表示异步初始化操作的Task</returns>
     public async Task InitializeAsync()
     {
         try
         {
-            await InitializeInternalAsync(asyncMode: true);
+            await InitializeInternalAsync(true);
         }
         catch (Exception e)
         {
@@ -280,7 +280,7 @@ public abstract class Architecture(
     }
 
     /// <summary>
-    /// 异步初始化组件
+    ///     异步初始化组件
     /// </summary>
     /// <param name="component">要初始化的组件对象</param>
     /// <param name="asyncMode">是否启用异步模式</param>
@@ -289,9 +289,7 @@ public abstract class Architecture(
     {
         // 根据组件类型和异步模式选择相应的初始化方法
         if (asyncMode && component is IAsyncInitializable asyncInit)
-        {
             await asyncInit.InitializeAsync();
-        }
         else
             switch (component)
             {
@@ -305,7 +303,7 @@ public abstract class Architecture(
     }
 
     /// <summary>
-    /// 异步初始化架构内部组件，包括上下文、模型和系统的初始化
+    ///     异步初始化架构内部组件，包括上下文、模型和系统的初始化
     /// </summary>
     /// <param name="asyncMode">是否启用异步模式进行组件初始化</param>
     /// <returns>异步任务，表示初始化操作的完成</returns>

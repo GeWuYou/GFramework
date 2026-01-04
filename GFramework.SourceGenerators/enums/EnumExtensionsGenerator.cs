@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace GFramework.SourceGenerators.enums;
 
 /// <summary>
-/// 枚举扩展方法生成器，用于自动生成枚举相关的扩展方法
+///     枚举扩展方法生成器，用于自动生成枚举相关的扩展方法
 /// </summary>
 [Generator]
 public sealed class EnumExtensionsGenerator : AttributeEnumGeneratorBase
@@ -18,7 +18,7 @@ public sealed class EnumExtensionsGenerator : AttributeEnumGeneratorBase
         $"{PathContests.SourceGeneratorsAbstractionsPath}.enums.GenerateEnumExtensionsAttribute";
 
     /// <summary>
-    /// 仅用于 Syntax 粗筛选
+    ///     仅用于 Syntax 粗筛选
     /// </summary>
     protected override string AttributeShortNameWithoutSuffix => "GenerateEnumExtensions";
 
@@ -49,7 +49,7 @@ public sealed class EnumExtensionsGenerator : AttributeEnumGeneratorBase
     }
 
     /// <summary>
-    /// 生成枚举扩展方法的源代码
+    ///     生成枚举扩展方法的源代码
     /// </summary>
     /// <param name="symbol">枚举类型符号</param>
     /// <param name="attr">属性数据</param>
@@ -103,10 +103,12 @@ public sealed class EnumExtensionsGenerator : AttributeEnumGeneratorBase
     }
 
     /// <summary>
-    /// 获取生成文件的提示名称
+    ///     获取生成文件的提示名称
     /// </summary>
     /// <param name="symbol">命名类型符号</param>
     /// <returns>生成文件的提示名称</returns>
     protected override string GetHintName(INamedTypeSymbol symbol)
-        => $"{symbol.Name}.EnumExtensions.g.cs";
+    {
+        return $"{symbol.Name}.EnumExtensions.g.cs";
+    }
 }

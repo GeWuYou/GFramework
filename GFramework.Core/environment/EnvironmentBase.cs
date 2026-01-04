@@ -4,22 +4,22 @@ using GFramework.Core.rule;
 namespace GFramework.Core.environment;
 
 /// <summary>
-/// 环境基础抽象类，实现了IEnvironment接口，提供环境值的存储和获取功能
+///     环境基础抽象类，实现了IEnvironment接口，提供环境值的存储和获取功能
 /// </summary>
 public abstract class EnvironmentBase : ContextAwareBase, IEnvironment
 {
     /// <summary>
-    /// 存储环境值的字典，键为字符串，值为对象类型
+    ///     存储环境值的字典，键为字符串，值为对象类型
     /// </summary>
     protected readonly Dictionary<string, object> Values = new();
 
     /// <summary>
-    /// 获取环境名称的抽象属性
+    ///     获取环境名称的抽象属性
     /// </summary>
     public abstract string Name { get; }
 
     /// <summary>
-    /// 根据键获取指定类型的值
+    ///     根据键获取指定类型的值
     /// </summary>
     /// <typeparam name="T">要获取的值的类型，必须为引用类型</typeparam>
     /// <param name="key">用于查找值的键</param>
@@ -30,7 +30,7 @@ public abstract class EnvironmentBase : ContextAwareBase, IEnvironment
     }
 
     /// <summary>
-    /// 尝试根据键获取指定类型的值
+    ///     尝试根据键获取指定类型的值
     /// </summary>
     /// <typeparam name="T">要获取的值的类型，必须为引用类型</typeparam>
     /// <param name="key">用于查找值的键</param>
@@ -49,7 +49,7 @@ public abstract class EnvironmentBase : ContextAwareBase, IEnvironment
     }
 
     /// <summary>
-    /// 根据键获取必需的指定类型值，如果找不到则抛出异常
+    ///     根据键获取必需的指定类型值，如果找不到则抛出异常
     /// </summary>
     /// <typeparam name="T">要获取的值的类型，必须为引用类型</typeparam>
     /// <param name="key">用于查找值的键</param>
@@ -72,7 +72,7 @@ public abstract class EnvironmentBase : ContextAwareBase, IEnvironment
     public abstract void Initialize();
 
     /// <summary>
-    /// 注册键值对到环境值字典中
+    ///     注册键值对到环境值字典中
     /// </summary>
     /// <param name="key">要注册的键</param>
     /// <param name="value">要注册的值</param>

@@ -11,24 +11,24 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace GFramework.SourceGenerators.rule;
 
 /// <summary>
-/// 上下文感知生成器，用于为标记了ContextAware特性的类自动生成IContextAware接口实现
+///     上下文感知生成器，用于为标记了ContextAware特性的类自动生成IContextAware接口实现
 /// </summary>
 [Generator]
 public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
 {
     /// <summary>
-    /// 获取特性的元数据名称
+    ///     获取特性的元数据名称
     /// </summary>
     protected override string AttributeMetadataName =>
         $"{PathContests.SourceGeneratorsAbstractionsPath}.rule.ContextAwareAttribute";
 
     /// <summary>
-    /// 获取特性的短名称（不包含后缀）
+    ///     获取特性的短名称（不包含后缀）
     /// </summary>
     protected override string AttributeShortNameWithoutSuffix => "ContextAware";
 
     /// <summary>
-    /// 验证符号是否符合生成条件
+    ///     验证符号是否符合生成条件
     /// </summary>
     /// <param name="context">源生产上下文</param>
     /// <param name="compilation">编译对象</param>
@@ -68,7 +68,7 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
 
 
     /// <summary>
-    /// 生成源代码
+    ///     生成源代码
     /// </summary>
     /// <param name="context">源生产上下文</param>
     /// <param name="compilation">编译对象</param>
@@ -112,18 +112,20 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
     }
 
     /// <summary>
-    /// 获取生成文件的提示名称
+    ///     获取生成文件的提示名称
     /// </summary>
     /// <param name="symbol">命名类型符号</param>
     /// <returns>生成文件的提示名称</returns>
     protected override string GetHintName(INamedTypeSymbol symbol)
-        => $"{symbol.Name}.ContextAware.g.cs";
+    {
+        return $"{symbol.Name}.ContextAware.g.cs";
+    }
 
     // =========================
     // Context 属性（无 global::，与测试一致）
     // =========================
     /// <summary>
-    /// 生成Context属性
+    ///     生成Context属性
     /// </summary>
     /// <param name="sb">字符串构建器</param>
     private static void GenerateContextProperty(StringBuilder sb)
@@ -154,7 +156,7 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
     // 显式接口实现（使用 global::）
     // =========================
     /// <summary>
-    /// 生成接口实现
+    ///     生成接口实现
     /// </summary>
     /// <param name="sb">字符串构建器</param>
     /// <param name="interfaceSymbol">接口符号</param>
@@ -176,7 +178,7 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
     }
 
     /// <summary>
-    /// 生成方法实现
+    ///     生成方法实现
     /// </summary>
     /// <param name="sb">字符串构建器</param>
     /// <param name="interfaceName">接口名称</param>
@@ -203,7 +205,7 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
     }
 
     /// <summary>
-    /// 生成方法体
+    ///     生成方法体
     /// </summary>
     /// <param name="sb">字符串构建器</param>
     /// <param name="method">方法符号</param>
@@ -223,10 +225,8 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
 
             default:
                 if (!method.ReturnsVoid)
-                {
                     sb.AppendLine(
                         $"        throw new System.NotImplementedException(\"Method '{method.Name}' is not supported.\");");
-                }
 
                 break;
         }

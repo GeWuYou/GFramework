@@ -16,18 +16,18 @@ namespace GFramework.SourceGenerators.logging;
 public sealed class LoggerGenerator : TypeAttributeClassGeneratorBase
 {
     /// <summary>
-    /// 获取属性元数据的完整名称，用于标识日志属性的完全限定名
+    ///     获取属性元数据的完整名称，用于标识日志属性的完全限定名
     /// </summary>
     protected override Type AttributeType => typeof(LogAttribute);
 
     /// <summary>
-    /// 用于语法快速筛选
+    ///     用于语法快速筛选
     /// </summary>
     protected override string AttributeShortNameWithoutSuffix => "Log";
 
 
     /// <summary>
-    /// 对类进行额外语义校验（可选）
+    ///     对类进行额外语义校验（可选）
     /// </summary>
     protected override bool ValidateSymbol(
         SourceProductionContext context,
@@ -99,11 +99,15 @@ public sealed class LoggerGenerator : TypeAttributeClassGeneratorBase
     }
 
     /// <summary>
-    /// 可以自定义生成文件名
+    ///     可以自定义生成文件名
     /// </summary>
     protected override string GetHintName(INamedTypeSymbol symbol)
-        => $"{symbol.Name}.Logger.g.cs";
+    {
+        return $"{symbol.Name}.Logger.g.cs";
+    }
 
     private static object? GetNamedArg(AttributeData attr, string name)
-        => attr.NamedArguments.FirstOrDefault(kv => kv.Key == name).Value.Value;
+    {
+        return attr.NamedArguments.FirstOrDefault(kv => kv.Key == name).Value.Value;
+    }
 }

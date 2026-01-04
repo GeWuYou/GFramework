@@ -150,7 +150,7 @@ public class ArchitectureContext(
     }
 
     /// <summary>
-    /// 获取当前环境对象
+    ///     获取当前环境对象
     /// </summary>
     /// <returns>环境对象实例</returns>
     public IEnvironment GetEnvironment()

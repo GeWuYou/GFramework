@@ -4,12 +4,12 @@ using GFramework.Core.Tests.system;
 namespace GFramework.Core.Tests.architecture;
 
 /// <summary>
-/// 异步测试架构，用于测试异步模型和系统的初始化
+///     异步测试架构，用于测试异步模型和系统的初始化
 /// </summary>
 public class AsyncTestArchitecture : TestArchitectureBase
 {
     /// <summary>
-    /// 异步初始化架构
+    ///     异步初始化架构
     /// </summary>
     protected override void Init()
     {
