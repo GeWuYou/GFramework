@@ -196,6 +196,7 @@ public class SyncArchitectureTests : ArchitectureTestsBase<SyncTestArchitecture>
 
         // 验证取消注册后，计数没有增加
         Assert.That(count, Is.EqualTo(1), "Handler should not be called after unregistration");
+        return;
 
         void Handler(EmptyEvent _)
         {
