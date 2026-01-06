@@ -1,16 +1,14 @@
 ﻿using GFramework.Core.Abstractions.architecture;
 using GFramework.Core.Abstractions.enums;
-using GFramework.Core.Abstractions.model;
+using GFramework.Core.model;
 
 namespace GFramework.Core.Tests.model;
 
 /// <summary>
 ///     异步测试模型类，实现了IModel和IAsyncInitializable接口
 /// </summary>
-public sealed class AsyncTestModel : IModel, IAsyncInitializable
+public sealed class AsyncTestModel : AbstractModel, IAsyncInitializable
 {
-    private IArchitectureContext _context = null!;
-
     /// <summary>
     ///     获取模型是否已初始化的标志
     /// </summary>
@@ -37,28 +35,14 @@ public sealed class AsyncTestModel : IModel, IAsyncInitializable
     }
 
     /// <summary>
-    ///     设置架构上下文
-    /// </summary>
-    /// <param name="context">架构上下文对象</param>
-    public void SetContext(IArchitectureContext context)
-    {
-        _context = context;
-    }
-
-    /// <summary>
-    ///     获取架构上下文
-    /// </summary>
-    /// <returns>架构上下文对象</returns>
-    public IArchitectureContext GetContext()
-    {
-        return _context;
-    }
-
-    /// <summary>
     ///     处理架构阶段事件
     /// </summary>
     /// <param name="phase">架构阶段枚举值</param>
     public void OnArchitecturePhase(ArchitecturePhase phase)
+    {
+    }
+
+    protected override void OnInit()
     {
     }
 }

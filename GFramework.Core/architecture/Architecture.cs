@@ -18,7 +18,6 @@ namespace GFramework.Core.architecture;
 /// <summary>
 ///     架构基类，提供系统、模型、工具等组件的注册与管理功能。
 ///     专注于生命周期管理、初始化流程控制和架构阶段转换。
-///     不直接提供业务操作方法，业务操作通过 ArchitectureRuntime 提供。
 /// </summary>
 public abstract class Architecture(
     IArchitectureConfiguration? configuration = null,

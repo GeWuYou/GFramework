@@ -1,15 +1,14 @@
-﻿using GFramework.Core.Abstractions.architecture;
-using GFramework.Core.Abstractions.enums;
-using GFramework.Core.Abstractions.model;
+﻿using GFramework.Core.Abstractions.enums;
+using GFramework.Core.model;
 
 namespace GFramework.Core.Tests.model;
 
 /// <summary>
 ///     测试模型类，用于框架测试目的
 /// </summary>
-public sealed class TestModel : IModel
+public sealed class TestModel : AbstractModel, ITestModel
 {
-    private IArchitectureContext _context = null!;
+    public const int DefaultXp = 5;
 
     /// <summary>
     ///     获取模型是否已初始化的状态
@@ -24,17 +23,14 @@ public sealed class TestModel : IModel
         Initialized = true;
     }
 
-    public void SetContext(IArchitectureContext context)
-    {
-        _context = context;
-    }
-
-    public IArchitectureContext GetContext()
-    {
-        return _context;
-    }
 
     public void OnArchitecturePhase(ArchitecturePhase phase)
+    {
+    }
+
+    public int GetCurrentXp { get; } = DefaultXp;
+
+    protected override void OnInit()
     {
     }
 }
