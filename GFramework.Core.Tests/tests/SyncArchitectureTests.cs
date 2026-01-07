@@ -76,6 +76,8 @@ public class SyncArchitectureTests : ArchitectureTestsBase<SyncTestArchitecture>
         CollectionAssert.AreEqual(
             new[]
             {
+                ArchitecturePhase.BeforeUtilityInit,
+                ArchitecturePhase.AfterUtilityInit,
                 ArchitecturePhase.BeforeModelInit,
                 ArchitecturePhase.AfterModelInit,
                 ArchitecturePhase.BeforeSystemInit,

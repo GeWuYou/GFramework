@@ -111,6 +111,12 @@ public abstract class Architecture(
     private readonly HashSet<ISystem> _allSystems = [];
 
     /// <summary>
+    ///     存储尚未初始化的上下文工具集合
+    /// </summary>
+    private readonly HashSet<IContextUtility> _mContextUtilities = [];
+
+
+    /// <summary>
     ///     标记架构是否已初始化完成
     /// </summary>
     private bool _mInitialized;
@@ -328,6 +334,19 @@ public abstract class Architecture(
         _logger.Debug("Calling user Init()");
         Init();
         _logger.Debug("User Init() completed");
+        // === Context Utility 初始化阶段 ===
+        EnterPhase(ArchitecturePhase.BeforeUtilityInit);
+        _logger.Info($"Initializing {_mContextUtilities.Count} context utilities");
+
+        foreach (var utility in _mContextUtilities)
+        {
+            _logger.Debug($"Initializing context utility: {utility.GetType().Name}");
+            utility.Init();
+        }
+
+        _mContextUtilities.Clear();
+        EnterPhase(ArchitecturePhase.AfterUtilityInit);
+        _logger.Info("All context utilities initialized");
 
         // === 模型初始化阶段 ===
         // 在此阶段初始化所有注册的模型组件
@@ -447,7 +466,20 @@ public abstract class Architecture(
     public void RegisterUtility<TUtility>(TUtility utility) where TUtility : IUtility
     {
         _logger.Debug($"Registering utility: {typeof(TUtility).Name}");
-        utility.IfType<IContextUtility>(contextUtility => { contextUtility.SetContext(Context); });
+        utility.IfType<IContextUtility>(contextUtility =>
+        {
+            contextUtility.SetContext(Context);
+
+            if (!_mInitialized)
+            {
+                _mContextUtilities.Add(contextUtility);
+            }
+            else
+            {
+                _logger.Trace($"Immediately initializing context utility: {typeof(TUtility).Name}");
+                contextUtility.Init();
+            }
+        });
         Container.RegisterPlurality(utility);
         _logger.Info($"Utility registered: {typeof(TUtility).Name}");
     }

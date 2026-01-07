@@ -60,6 +60,8 @@ public class AsyncArchitectureTests : ArchitectureTestsBase<AsyncTestArchitectur
         CollectionAssert.AreEqual(
             new[]
             {
+                ArchitecturePhase.BeforeUtilityInit,
+                ArchitecturePhase.AfterUtilityInit,
                 ArchitecturePhase.BeforeModelInit,
                 ArchitecturePhase.AfterModelInit,
                 ArchitecturePhase.BeforeSystemInit,

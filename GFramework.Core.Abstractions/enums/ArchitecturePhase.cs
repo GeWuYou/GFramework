@@ -15,6 +15,16 @@ public enum ArchitecturePhase
     None = 0,
 
     /// <summary>
+    /// 工具类初始化之前阶段
+    /// </summary>
+    BeforeUtilityInit,
+
+    /// <summary>
+    /// 工具类初始化之后阶段
+    /// </summary>
+    AfterUtilityInit,
+
+    /// <summary>
     ///     模型初始化之前阶段
     /// </summary>
     BeforeModelInit,

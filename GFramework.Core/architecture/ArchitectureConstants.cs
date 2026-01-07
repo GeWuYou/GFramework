@@ -17,7 +17,15 @@ public static class ArchitectureConstants
     public static readonly ImmutableDictionary<ArchitecturePhase, ArchitecturePhase[]> PhaseTransitions =
         new Dictionary<ArchitecturePhase, ArchitecturePhase[]>
         {
-            { ArchitecturePhase.None, [ArchitecturePhase.BeforeModelInit] },
+            { ArchitecturePhase.None, [ArchitecturePhase.BeforeUtilityInit] },
+            {
+                ArchitecturePhase.BeforeUtilityInit,
+                [ArchitecturePhase.AfterUtilityInit, ArchitecturePhase.FailedInitialization]
+            },
+            {
+                ArchitecturePhase.AfterUtilityInit,
+                [ArchitecturePhase.BeforeModelInit, ArchitecturePhase.FailedInitialization]
+            },
             {
                 ArchitecturePhase.BeforeModelInit, [
                     ArchitecturePhase.AfterModelInit, ArchitecturePhase.FailedInitialization
