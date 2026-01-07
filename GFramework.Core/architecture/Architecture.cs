@@ -11,6 +11,7 @@ using GFramework.Core.Abstractions.system;
 using GFramework.Core.Abstractions.utility;
 using GFramework.Core.environment;
 using GFramework.Core.events;
+using GFramework.Core.extensions;
 using GFramework.Core.logging;
 
 namespace GFramework.Core.architecture;
@@ -446,6 +447,7 @@ public abstract class Architecture(
     public void RegisterUtility<TUtility>(TUtility utility) where TUtility : IUtility
     {
         _logger.Debug($"Registering utility: {typeof(TUtility).Name}");
+        utility.IfType<IContextUtility>(contextUtility => { contextUtility.SetContext(Context); });
         Container.RegisterPlurality(utility);
         _logger.Info($"Utility registered: {typeof(TUtility).Name}");
     }
