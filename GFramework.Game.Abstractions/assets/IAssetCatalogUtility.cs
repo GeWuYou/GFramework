@@ -1,11 +1,12 @@
-﻿using GFramework.Core.Abstractions.system;
+﻿using GFramework.Core.Abstractions.utility;
 
 namespace GFramework.Game.Abstractions.assets;
 
 /// <summary>
-///     资源目录系统接口，用于管理场景和资源的获取与查询
+/// 资产目录工具接口，提供对场景单元、场景页面和普通资产的管理功能
+/// 继承自IUtility接口，用于处理资产目录相关的操作
 /// </summary>
-public interface IAssetCatalogSystem : ISystem
+public interface IAssetCatalogUtility : IContextUtility
 {
     /// <summary>
     ///     根据指定的键获取场景单元标识符

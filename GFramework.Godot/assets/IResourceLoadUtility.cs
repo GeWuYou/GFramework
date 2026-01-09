@@ -1,4 +1,4 @@
-﻿using GFramework.Core.Abstractions.system;
+﻿using GFramework.Core.Abstractions.utility;
 using GFramework.Game.Abstractions.assets;
 using Godot;
 
@@ -7,7 +7,7 @@ namespace GFramework.Godot.assets;
 /// <summary>
 ///     资源加载系统接口，提供资源和场景的加载、实例化、预加载等功能
 /// </summary>
-public interface IResourceLoadSystem : ISystem
+public interface IResourceLoadUtility : IContextUtility
 {
     /// <summary>
     ///     加载指定路径的资源

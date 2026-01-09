@@ -1,6 +1,5 @@
-using GFramework.Core.Abstractions.enums;
 using GFramework.Core.extensions;
-using GFramework.Core.system;
+using GFramework.Core.utility;
 using GFramework.Game.Abstractions.assets;
 using Godot;
 
@@ -10,27 +9,11 @@ namespace GFramework.Godot.assets;
 ///     资源工厂系统抽象基类，用于统一管理各类资源的创建与预加载逻辑。
 ///     提供注册场景和资源的方法，并通过依赖的资源加载系统和资产目录系统完成实际资源的获取与构造。
 /// </summary>
-public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceFactorySystem
+public abstract class AbstractResourceFactoryUtility : AbstractContextUtility, IResourceFactoryUtility
 {
-    private IAssetCatalogSystem? _assetCatalogSystem;
+    private IAssetCatalogUtility? _assetCatalogUtility;
     private ResourceFactory.Registry? _registry;
-    private IResourceLoadSystem? _resourceLoadSystem;
-
-
-    /// <summary>
-    ///     在架构阶段发生变化时执行相应的处理逻辑。
-    /// </summary>
-    /// <param name="phase">当前的架构阶段</param>
-    public override void OnArchitecturePhase(ArchitecturePhase phase)
-    {
-        if (phase == ArchitecturePhase.Ready)
-        {
-            // 在架构准备就绪阶段注册资源并预加载所有资源
-            RegisterResources();
-            _registry!.PreloadAll();
-        }
-    }
-
+    private IResourceLoadUtility? _resourceLoadUtility;
 
     /// <summary>
     ///     根据指定的键获取资源工厂函数。
@@ -63,8 +46,10 @@ public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceF
     protected override void OnInit()
     {
         _registry = new ResourceFactory.Registry();
-        _resourceLoadSystem = this.GetSystem<IResourceLoadSystem>();
-        _assetCatalogSystem = this.GetSystem<IAssetCatalogSystem>();
+        _resourceLoadUtility = this.GetUtility<IResourceLoadUtility>();
+        _assetCatalogUtility = this.GetUtility<IAssetCatalogUtility>();
+        RegisterResources();
+        _registry!.PreloadAll();
     }
 
     /// <summary>
@@ -86,11 +71,11 @@ public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceF
         bool preload = false)
         where T : Node
     {
-        var id = _assetCatalogSystem!.GetSceneUnit(sceneUnitKey);
+        var id = _assetCatalogUtility!.GetSceneUnit(sceneUnitKey);
 
         _registry!.Register(
             sceneUnitKey,
-            _resourceLoadSystem!.GetOrRegisterGameUnitFactory<T>(id),
+            _resourceLoadUtility!.GetOrRegisterGameUnitFactory<T>(id),
             preload
         );
     }
@@ -107,11 +92,11 @@ public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceF
         bool preload = false)
         where T : Node
     {
-        var id = _assetCatalogSystem!.GetScenePage(scenePageKey);
+        var id = _assetCatalogUtility!.GetScenePage(scenePageKey);
 
         _registry!.Register(
             scenePageKey,
-            _resourceLoadSystem!.GetOrRegisterTemplateFactory<T>(id),
+            _resourceLoadUtility!.GetOrRegisterTemplateFactory<T>(id),
             preload
         );
     }
@@ -127,11 +112,11 @@ public abstract class AbstractResourceFactorySystem : AbstractSystem, IResourceF
         bool preload = false)
         where T : Resource
     {
-        var id = _assetCatalogSystem!.GetAsset(assetKey);
+        var id = _assetCatalogUtility!.GetAsset(assetKey);
 
         _registry!.Register(
             assetKey,
-            _resourceLoadSystem!.GetOrRegisterAssetFactory<T>(id),
+            _resourceLoadUtility!.GetOrRegisterAssetFactory<T>(id),
             preload
         );
     }

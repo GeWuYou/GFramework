@@ -1,12 +1,13 @@
 ﻿using System;
-using GFramework.Core.Abstractions.system;
+using GFramework.Core.Abstractions.utility;
 
 namespace GFramework.Game.Abstractions.assets;
 
 /// <summary>
-///     资源工厂系统接口，用于获取指定类型的资源创建函数
+/// 资源工厂工具接口，提供根据键名或资产目录映射获取资源创建函数的功能
+/// 继承自IContextUtility接口，用于在游戏框架中管理资源创建工厂
 /// </summary>
-public interface IResourceFactorySystem : ISystem
+public interface IResourceFactoryUtility : IContextUtility
 {
     /// <summary>
     ///     根据指定键名获取指定类型T的资源创建函数

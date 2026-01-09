@@ -1,4 +1,4 @@
-﻿using GFramework.Core.system;
+﻿using GFramework.Core.utility;
 using GFramework.Game.Abstractions.assets;
 using Godot;
 
@@ -8,7 +8,7 @@ namespace GFramework.Godot.assets;
 ///     资源加载系统，用于统一管理和缓存Godot资源（如场景、纹理等）的加载与实例化。
 ///     提供基础加载、场景实例化、资源工厂注册以及缓存管理功能。
 /// </summary>
-public class ResourceLoadSystem : AbstractSystem, IResourceLoadSystem
+public class ResourceLoadUtility : AbstractContextUtility, IResourceLoadUtility
 {
     /// <summary>
     ///     已加载的资源缓存字典，键为资源路径，值为已加载的Resource对象。
@@ -129,7 +129,7 @@ public class ResourceLoadSystem : AbstractSystem, IResourceLoadSystem
         var res = GD.Load<T>(path);
         if (res == null)
         {
-            GD.PrintErr($"[ResourceLoadSystem] Load failed: {path}");
+            GD.PrintErr($"[ResourceLoadUtility] Load failed: {path}");
             return null;
         }
 

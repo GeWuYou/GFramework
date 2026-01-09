@@ -1,4 +1,4 @@
-using GFramework.Core.system;
+using GFramework.Core.utility;
 using GFramework.Game.Abstractions.assets;
 
 namespace GFramework.Game.assets;
@@ -8,7 +8,7 @@ namespace GFramework.Game.assets;
 ///     提供了统一的接口来注册和查询不同类型的资产（如游戏单元、模板、普通资源）。
 ///     子类需要实现 <see cref="RegisterAssets" /> 方法以完成具体资产的注册逻辑。
 /// </summary>
-public abstract class AbstractAssetCatalogSystem : AbstractSystem, IAssetCatalogSystem
+public abstract class AbstractAssetCatalogUtility : AbstractContextUtility, IAssetCatalogUtility
 {
     private readonly Dictionary<string, AssetCatalog.AssetId> _assets = new();
     private readonly Dictionary<string, AssetCatalog.ScenePageId> _scenePages = new();
