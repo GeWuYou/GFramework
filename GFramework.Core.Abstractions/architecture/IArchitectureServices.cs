@@ -21,7 +21,7 @@ public interface IArchitectureServices : IContextAware
     ///     获取类型事件系统
     /// </summary>
     /// <returns>ITypeEventSystem类型的事件系统实例</returns>
-    ITypeEventSystem TypeEventSystem { get; }
+    IEventBus EventBus { get; }
 
     /// <summary>
     ///     获取命令总线

@@ -4,10 +4,10 @@ namespace GFramework.Core.events;
 
 /// <summary>
 ///     泛型事件类，支持一个泛型参数 T 的事件注册、注销与触发。
-///     实现了 IEasyEvent 接口以提供统一的事件操作接口。
+///     实现了 IEvent 接口以提供统一的事件操作接口。
 /// </summary>
 /// <typeparam name="T">事件回调函数的第一个参数类型。</typeparam>
-public class EasyEvent<T> : IEasyEvent
+public class Event<T> : IEvent
 {
     /// <summary>
     ///     存储已注册的事件处理委托。
@@ -16,12 +16,12 @@ public class EasyEvent<T> : IEasyEvent
     private Action<T>? _mOnEvent = _ => { };
 
     /// <summary>
-    ///     显式实现 IEasyEvent 接口中的 Register 方法。
+    ///     显式实现 IEvent 接口中的 Register 方法。
     ///     允许使用无参 Action 来订阅当前带参事件。
     /// </summary>
     /// <param name="onEvent">无参事件处理方法。</param>
     /// <returns>IUnRegister 对象，用于稍后注销该事件监听器。</returns>
-    IUnRegister IEasyEvent.Register(Action onEvent)
+    IUnRegister IEvent.Register(Action onEvent)
     {
         return Register(Action);
 
@@ -67,7 +67,7 @@ public class EasyEvent<T> : IEasyEvent
 /// </summary>
 /// <typeparam name="T">第一个参数类型。</typeparam>
 /// <typeparam name="TK">第二个参数类型。</typeparam>
-public class EasyEvent<T, TK> : IEasyEvent
+public class Event<T, TK> : IEvent
 {
     /// <summary>
     ///     存储已注册的双参数事件处理委托。
@@ -76,12 +76,12 @@ public class EasyEvent<T, TK> : IEasyEvent
     private Action<T, TK>? _mOnEvent = (_, _) => { };
 
     /// <summary>
-    ///     显式实现 IEasyEvent 接口中的 Register 方法。
+    ///     显式实现 IEvent 接口中的 Register 方法。
     ///     允许使用无参 Action 来订阅当前带参事件。
     /// </summary>
     /// <param name="onEvent">无参事件处理方法。</param>
     /// <returns>IUnRegister 对象，用于稍后注销该事件监听器。</returns>
-    IUnRegister IEasyEvent.Register(Action onEvent)
+    IUnRegister IEvent.Register(Action onEvent)
     {
         return Register(Action);
 

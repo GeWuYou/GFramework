@@ -25,7 +25,7 @@ public class ArchitectureServices : IArchitectureServices
     /// <summary>
     ///     获取类型事件系统
     /// </summary>
-    public ITypeEventSystem TypeEventSystem { get; } = new TypeEventSystem();
+    public IEventBus EventBus { get; } = new EventBus();
 
     /// <summary>
     ///     获取命令总线

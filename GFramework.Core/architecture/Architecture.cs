@@ -61,13 +61,7 @@ public abstract class Architecture(
     /// </value>
     private IIocContainer Container => Services.Container;
 
-    /// <summary>
-    ///     获取类型事件系统
-    /// </summary>
-    /// <value>
-    ///     通过Services属性获取的IArchitectureServices中的TypeEventSystem属性
-    /// </value>
-    private ITypeEventSystem TypeEventSystem => Services.TypeEventSystem;
+    private IEventBus EventBus => Services.EventBus;
 
     private ICommandBus CommandBus => Services.CommandBus;
 
@@ -226,7 +220,7 @@ public abstract class Architecture(
         // 进入销毁阶段并发送销毁开始事件
         _logger.Info("Starting architecture destruction");
         EnterPhase(ArchitecturePhase.Destroying);
-        TypeEventSystem.Send(new ArchitectureEvents.ArchitectureDestroyingEvent());
+        EventBus.Send(new ArchitectureEvents.ArchitectureDestroyingEvent());
 
         // 销毁所有系统组件并清空系统列表
         _logger.Info($"Destroying {_allSystems.Count} systems");
@@ -240,7 +234,7 @@ public abstract class Architecture(
 
         // 进入已销毁阶段并发送销毁完成事件
         EnterPhase(ArchitecturePhase.Destroyed);
-        TypeEventSystem.Send(new ArchitectureEvents.ArchitectureDestroyedEvent());
+        EventBus.Send(new ArchitectureEvents.ArchitectureDestroyedEvent());
         _logger.Info("Architecture destruction completed");
     }
 
@@ -262,7 +256,7 @@ public abstract class Architecture(
             _logger.Error("Architecture initialization failed:", e);
             EnterPhase(ArchitecturePhase.FailedInitialization);
             // 发送初始化失败事件
-            TypeEventSystem.Send(new ArchitectureEvents.ArchitectureFailedInitializationEvent());
+            EventBus.Send(new ArchitectureEvents.ArchitectureFailedInitializationEvent());
         }
     }
 
@@ -281,7 +275,7 @@ public abstract class Architecture(
             _logger.Error("Architecture initialization failed:", e);
             EnterPhase(ArchitecturePhase.FailedInitialization);
             // 发送初始化失败事件
-            TypeEventSystem.Send(new ArchitectureEvents.ArchitectureFailedInitializationEvent());
+            EventBus.Send(new ArchitectureEvents.ArchitectureFailedInitializationEvent());
         }
     }
 
@@ -322,7 +316,7 @@ public abstract class Architecture(
         _logger = LoggerFactoryResolver.Provider.CreateLogger(GetType().Name);
         Environment.Initialize();
         // 初始化架构上下文（如果尚未初始化）
-        _context ??= new ArchitectureContext(Container, TypeEventSystem, CommandBus, QueryBus, Environment);
+        _context ??= new ArchitectureContext(Container, EventBus, CommandBus, QueryBus, Environment);
         // 将当前架构类型与上下文绑定到游戏上下文
         GameContext.Bind(GetType(), _context);
 
@@ -387,7 +381,7 @@ public abstract class Architecture(
 
         _mInitialized = true;
         EnterPhase(ArchitecturePhase.Ready);
-        TypeEventSystem.Send(new ArchitectureEvents.ArchitectureLifecycleReadyEvent());
+        EventBus.Send(new ArchitectureEvents.ArchitectureLifecycleReadyEvent());
 
         _logger.Info($"Architecture {GetType().Name} is ready - all components initialized");
     }

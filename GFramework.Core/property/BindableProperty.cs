@@ -54,7 +54,7 @@ public class BindableProperty<T>(T defaultValue = default!) : IBindableProperty<
     /// </summary>
     /// <param name="onEvent">无参事件回调</param>
     /// <returns>可用于取消注册的接口</returns>
-    IUnRegister IEasyEvent.Register(Action onEvent)
+    IUnRegister IEvent.Register(Action onEvent)
     {
         return Register(Action);
 

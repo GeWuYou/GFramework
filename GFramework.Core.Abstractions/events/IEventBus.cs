@@ -3,9 +3,9 @@
 namespace GFramework.Core.Abstractions.events;
 
 /// <summary>
-///     类型事件系统接口，定义基于类型的事件发送、注册和注销功能
+/// 事件总线接口，提供事件的发送、注册和注销功能
 /// </summary>
-public interface ITypeEventSystem
+public interface IEventBus
 {
     /// <summary>
     ///     发送事件，自动创建事件实例

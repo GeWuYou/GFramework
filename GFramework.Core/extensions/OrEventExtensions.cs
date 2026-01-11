@@ -14,7 +14,7 @@ public static class OrEventExtensions
     /// <param name="self">当前的IEasyEvent事件实例</param>
     /// <param name="e">要与当前事件进行或运算的另一个IEasyEvent事件实例</param>
     /// <returns>返回一个新的OrEvent实例，表示两个事件的或运算结果</returns>
-    public static OrEvent Or(this IEasyEvent self, IEasyEvent e)
+    public static OrEvent Or(this IEvent self, IEvent e)
     {
         return new OrEvent().Or(self).Or(e);
     }

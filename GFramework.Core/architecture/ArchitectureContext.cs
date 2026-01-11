@@ -15,7 +15,7 @@ namespace GFramework.Core.architecture;
 /// </summary>
 public class ArchitectureContext(
     IIocContainer container,
-    ITypeEventSystem typeEventSystem,
+    IEventBus eventBus,
     ICommandBus commandBus,
     IQueryBus queryBus,
     IEnvironment environment)
@@ -25,10 +25,11 @@ public class ArchitectureContext(
     private readonly IIocContainer _container = container ?? throw new ArgumentNullException(nameof(container));
 
     private readonly IEnvironment _environment = environment ?? throw new ArgumentNullException(nameof(environment));
-    private readonly IQueryBus _queryBus = queryBus ?? throw new ArgumentNullException(nameof(queryBus));
 
-    private readonly ITypeEventSystem _typeEventSystem =
-        typeEventSystem ?? throw new ArgumentNullException(nameof(typeEventSystem));
+    private readonly IEventBus _eventBus =
+        eventBus ?? throw new ArgumentNullException(nameof(eventBus));
+
+    private readonly IQueryBus _queryBus = queryBus ?? throw new ArgumentNullException(nameof(queryBus));
 
     #region Query Execution
 
@@ -113,7 +114,7 @@ public class ArchitectureContext(
     /// <typeparam name="TEvent">事件类型</typeparam>
     public void SendEvent<TEvent>() where TEvent : new()
     {
-        _typeEventSystem.Send<TEvent>();
+        _eventBus.Send<TEvent>();
     }
 
     /// <summary>
@@ -124,7 +125,7 @@ public class ArchitectureContext(
     public void SendEvent<TEvent>(TEvent e) where TEvent : class
     {
         ArgumentNullException.ThrowIfNull(e);
-        _typeEventSystem.Send(e);
+        _eventBus.Send(e);
     }
 
     /// <summary>
@@ -135,7 +136,7 @@ public class ArchitectureContext(
     /// <returns>事件注销接口</returns>
     public IUnRegister RegisterEvent<TEvent>(Action<TEvent> handler)
     {
-        return handler == null ? throw new ArgumentNullException(nameof(handler)) : _typeEventSystem.Register(handler);
+        return handler == null ? throw new ArgumentNullException(nameof(handler)) : _eventBus.Register(handler);
     }
 
     /// <summary>
@@ -146,7 +147,7 @@ public class ArchitectureContext(
     public void UnRegisterEvent<TEvent>(Action<TEvent> onEvent)
     {
         ArgumentNullException.ThrowIfNull(onEvent);
-        _typeEventSystem.UnRegister(onEvent);
+        _eventBus.UnRegister(onEvent);
     }
 
     /// <summary>

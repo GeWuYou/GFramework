@@ -5,7 +5,7 @@ namespace GFramework.Core.Abstractions.events;
 /// <summary>
 ///     事件接口，定义了事件注册的基本功能
 /// </summary>
-public interface IEasyEvent
+public interface IEvent
 {
     /// <summary>
     ///     注册事件处理函数

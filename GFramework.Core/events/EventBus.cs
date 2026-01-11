@@ -5,7 +5,7 @@ namespace GFramework.Core.events;
 /// <summary>
 ///     类型事件系统，提供基于类型的事件发送、注册和注销功能
 /// </summary>
-public class TypeEventSystem : ITypeEventSystem
+public class EventBus : IEventBus
 {
     private readonly EasyEvents _mEvents = new();
 
@@ -16,7 +16,7 @@ public class TypeEventSystem : ITypeEventSystem
     public void Send<T>() where T : new()
     {
         _mEvents
-            .GetOrAddEvent<EasyEvent<T>>()
+            .GetOrAddEvent<Event<T>>()
             .Trigger(new T());
     }
 
@@ -28,7 +28,7 @@ public class TypeEventSystem : ITypeEventSystem
     public void Send<T>(T e)
     {
         _mEvents
-            .GetOrAddEvent<EasyEvent<T>>()
+            .GetOrAddEvent<Event<T>>()
             .Trigger(e);
     }
 
@@ -40,7 +40,7 @@ public class TypeEventSystem : ITypeEventSystem
     /// <returns>反注册接口，用于注销事件监听</returns>
     public IUnRegister Register<T>(Action<T> onEvent)
     {
-        return _mEvents.GetOrAddEvent<EasyEvent<T>>().Register(onEvent);
+        return _mEvents.GetOrAddEvent<Event<T>>().Register(onEvent);
     }
 
     /// <summary>
@@ -50,6 +50,6 @@ public class TypeEventSystem : ITypeEventSystem
     /// <param name="onEvent">要注销的事件处理回调函数</param>
     public void UnRegister<T>(Action<T> onEvent)
     {
-        _mEvents.GetEvent<EasyEvent<T>>().UnRegister(onEvent);
+        _mEvents.GetEvent<Event<T>>().UnRegister(onEvent);
     }
 }

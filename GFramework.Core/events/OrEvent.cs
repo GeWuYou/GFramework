@@ -18,11 +18,11 @@ public class OrEvent : IUnRegisterList
     /// <summary>
     ///     将指定的事件与当前OrEvent进行或逻辑组合
     /// </summary>
-    /// <param name="easyEvent">要组合的事件对象</param>
+    /// <param name="event">要组合的事件对象</param>
     /// <returns>返回当前OrEvent实例，支持链式调用</returns>
-    public OrEvent Or(IEasyEvent easyEvent)
+    public OrEvent Or(IEvent @event)
     {
-        easyEvent.Register(Trigger).AddToUnregisterList(this);
+        @event.Register(Trigger).AddToUnregisterList(this);
         return this;
     }
 

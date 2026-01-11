@@ -7,7 +7,7 @@ namespace GFramework.Core.Abstractions.property;
 ///     只读可绑定属性接口，提供属性值的读取和变更监听功能
 /// </summary>
 /// <typeparam name="T">属性值的类型</typeparam>
-public interface IReadonlyBindableProperty<out T> : IEasyEvent
+public interface IReadonlyBindableProperty<out T> : IEvent
 {
     /// <summary>
     ///     获取属性的当前值
