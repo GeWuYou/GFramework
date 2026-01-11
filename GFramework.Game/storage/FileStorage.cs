@@ -1,15 +1,19 @@
-﻿using System.Text;
+﻿using System.Collections.Concurrent;
+using System.Text;
 using GFramework.Core.Abstractions.storage;
 using GFramework.Game.Abstractions.serializer;
 
 namespace GFramework.Game.storage;
 
 /// <summary>
-/// 基于文件系统的存储实现，实现了IStorage接口
+/// 基于文件系统的存储实现，实现了IStorage接口，支持按key细粒度锁保证线程安全
 /// </summary>
 public sealed class FileStorage : IStorage
 {
     private readonly string _extension;
+
+    // 每个key对应的锁对象
+    private readonly ConcurrentDictionary<string, object> _keyLocks = new();
     private readonly string _rootPath;
     private readonly ISerializer _serializer;
 
@@ -37,8 +41,13 @@ public sealed class FileStorage : IStorage
     public void Delete(string key)
     {
         var path = ToPath(key);
-        if (File.Exists(path))
-            File.Delete(path);
+        var keyLock = _keyLocks.GetOrAdd(path, _ => new object());
+
+        lock (keyLock)
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
     }
 
     #endregion
@@ -52,7 +61,6 @@ public sealed class FileStorage : IStorage
     {
         return Path.GetInvalidFileNameChars().Aggregate(segment, (current, c) => current.Replace(c, '_'));
     }
-
 
     #region Helpers
 
@@ -102,15 +110,23 @@ public sealed class FileStorage : IStorage
     /// 检查指定键的存储项是否存在
     /// </summary>
     /// <param name="key">存储键</param>
-    /// <returns>存在返回true，否则返回false</returns>
+    /// <returns>如果存储项存在则返回true，否则返回false</returns>
     public bool Exists(string key)
-        => File.Exists(ToPath(key));
+    {
+        var path = ToPath(key);
+        var keyLock = _keyLocks.GetOrAdd(path, _ => new object());
+
+        lock (keyLock)
+        {
+            return File.Exists(path);
+        }
+    }
 
     /// <summary>
     /// 异步检查指定键的存储项是否存在
     /// </summary>
     /// <param name="key">存储键</param>
-    /// <returns>存在返回true，否则返回false</returns>
+    /// <returns>如果存储项存在则返回true，否则返回false</returns>
     public Task<bool> ExistsAsync(string key)
         => Task.FromResult(Exists(key));
 
@@ -124,16 +140,20 @@ public sealed class FileStorage : IStorage
     /// <typeparam name="T">要反序列化的类型</typeparam>
     /// <param name="key">存储键</param>
     /// <returns>反序列化后的对象</returns>
-    /// <exception cref="FileNotFoundException">当指定键不存在时抛出</exception>
+    /// <exception cref="FileNotFoundException">当存储键不存在时抛出</exception>
     public T Read<T>(string key)
     {
         var path = ToPath(key);
+        var keyLock = _keyLocks.GetOrAdd(path, _ => new object());
 
-        if (!File.Exists(path))
-            throw new FileNotFoundException($"Storage key not found: {key}", path);
+        lock (keyLock)
+        {
+            if (!File.Exists(path))
+                throw new FileNotFoundException($"Storage key not found: {key}", path);
 
-        var content = File.ReadAllText(path, Encoding.UTF8);
-        return _serializer.Deserialize<T>(content);
+            var content = File.ReadAllText(path, Encoding.UTF8);
+            return _serializer.Deserialize<T>(content);
+        }
     }
 
     /// <summary>
@@ -141,16 +161,21 @@ public sealed class FileStorage : IStorage
     /// </summary>
     /// <typeparam name="T">要反序列化的类型</typeparam>
     /// <param name="key">存储键</param>
-    /// <param name="defaultValue">默认值</param>
-    /// <returns>存在则返回反序列化后的对象，否则返回默认值</returns>
+    /// <param name="defaultValue">当存储键不存在时返回的默认值</param>
+    /// <returns>反序列化后的对象或默认值</returns>
     public T Read<T>(string key, T defaultValue)
     {
         var path = ToPath(key);
-        if (!File.Exists(path))
-            return defaultValue;
+        var keyLock = _keyLocks.GetOrAdd(path, _ => new object());
 
-        var content = File.ReadAllText(path, Encoding.UTF8);
-        return _serializer.Deserialize<T>(content);
+        lock (keyLock)
+        {
+            if (!File.Exists(path))
+                return defaultValue;
+
+            var content = File.ReadAllText(path, Encoding.UTF8);
+            return _serializer.Deserialize<T>(content);
+        }
     }
 
     /// <summary>
@@ -159,15 +184,27 @@ public sealed class FileStorage : IStorage
     /// <typeparam name="T">要反序列化的类型</typeparam>
     /// <param name="key">存储键</param>
     /// <returns>反序列化后的对象</returns>
-    /// <exception cref="FileNotFoundException">当指定键不存在时抛出</exception>
+    /// <exception cref="FileNotFoundException">当存储键不存在时抛出</exception>
     public async Task<T> ReadAsync<T>(string key)
     {
         var path = ToPath(key);
+        var keyLock = _keyLocks.GetOrAdd(path, _ => new object());
 
-        if (!File.Exists(path))
-            throw new FileNotFoundException($"Storage key not found: {key}", path);
+        // 异步操作依然使用lock保护文件读写
+        lock (keyLock)
+        {
+            if (!File.Exists(path))
+                throw new FileNotFoundException($"Storage key not found: {key}", path);
+        }
 
-        var content = await File.ReadAllTextAsync(path, Encoding.UTF8);
+        // 读取文件内容可以使用异步IO，但要注意锁范围
+        string content;
+        using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+        using (var sr = new StreamReader(fs, Encoding.UTF8))
+        {
+            content = await sr.ReadToEndAsync();
+        }
+
         return _serializer.Deserialize<T>(content);
     }
 
@@ -178,29 +215,43 @@ public sealed class FileStorage : IStorage
     /// <summary>
     /// 写入指定键的存储项
     /// </summary>
-    /// <typeparam name="T">要序列化的类型</typeparam>
+    /// <typeparam name="T">要序列化的对象类型</typeparam>
     /// <param name="key">存储键</param>
-    /// <param name="value">要存储的值</param>
+    /// <param name="value">要存储的对象</param>
     public void Write<T>(string key, T value)
     {
         var path = ToPath(key);
+        var keyLock = _keyLocks.GetOrAdd(path, _ => new object());
         var content = _serializer.Serialize(value);
 
-        File.WriteAllText(path, content, Encoding.UTF8);
+        lock (keyLock)
+        {
+            File.WriteAllText(path, content, Encoding.UTF8);
+        }
     }
 
     /// <summary>
     /// 异步写入指定键的存储项
     /// </summary>
-    /// <typeparam name="T">要序列化的类型</typeparam>
+    /// <typeparam name="T">要序列化的对象类型</typeparam>
     /// <param name="key">存储键</param>
-    /// <param name="value">要存储的值</param>
+    /// <param name="value">要存储的对象</param>
+    /// <returns>表示异步操作的任务</returns>
     public async Task WriteAsync<T>(string key, T value)
     {
         var path = ToPath(key);
+        var keyLock = _keyLocks.GetOrAdd(path, _ => new object());
         var content = _serializer.Serialize(value);
 
-        await File.WriteAllTextAsync(path, content, Encoding.UTF8);
+        // 异步写也需要锁
+        lock (keyLock)
+        {
+            using var fs = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
+            using var sw = new StreamWriter(fs, Encoding.UTF8);
+            sw.WriteAsync(content);
+        }
+
+        await Task.CompletedTask;
     }
 
     #endregion
