@@ -43,6 +43,17 @@ public sealed class FileStorage : IStorage
 
     #endregion
 
+    /// <summary>
+    /// 清理文件段字符串，将其中的无效文件名字符替换为下划线
+    /// </summary>
+    /// <param name="segment">需要清理的文件段字符串</param>
+    /// <returns>清理后的字符串，其中所有无效文件名字符都被替换为下划线</returns>
+    private static string SanitizeSegment(string segment)
+    {
+        return Path.GetInvalidFileNameChars().Aggregate(segment, (current, c) => current.Replace(c, '_'));
+    }
+
+
     #region Helpers
 
     /// <summary>
@@ -52,9 +63,35 @@ public sealed class FileStorage : IStorage
     /// <returns>对应的文件路径</returns>
     private string ToPath(string key)
     {
-        // 防止非法路径
-        key = Path.GetInvalidFileNameChars().Aggregate(key, (current, c) => current.Replace(c, '_'));
-        return Path.Combine(_rootPath, $"{key}{_extension}");
+        if (string.IsNullOrWhiteSpace(key))
+            throw new ArgumentException("Storage key cannot be empty", nameof(key));
+
+        // 统一分隔符
+        key = key.Replace('\\', '/');
+
+        // 防止路径逃逸
+        if (key.Contains(".."))
+            throw new ArgumentException("Storage key cannot contain '..'", nameof(key));
+
+        var segments = key
+            .Split('/', StringSplitOptions.RemoveEmptyEntries)
+            .Select(SanitizeSegment)
+            .ToArray();
+
+        if (segments.Length == 0)
+            throw new ArgumentException("Invalid storage key", nameof(key));
+
+        // 目录部分
+        var dirSegments = segments[..^1];
+        var fileName = segments[^1] + _extension;
+
+        var dirPath = dirSegments.Length == 0
+            ? _rootPath
+            : Path.Combine(_rootPath, Path.Combine(dirSegments));
+
+        Directory.CreateDirectory(dirPath);
+
+        return Path.Combine(dirPath, fileName);
     }
 
     #endregion
