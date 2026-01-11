@@ -2,8 +2,9 @@
 
 ## 概述
 
-Controller 包定义了控制器（Controller）的接口规范。控制器是 MVC 架构中的 C
-层，负责处理用户交互、协调视图和模型，是连接表现层和业务层的桥梁。在本框架中，Controller 通常对应 Godot 的节点脚本。
+Controller 包定义了控制器（Controller）的接口规范。控制器是 MVC 架构中的 C 层，负责处理用户交互、协调视图和模型，是连接表现层和业务层的桥梁。
+
+**注意**：本框架使用依赖注入模式，Controller 通过构造函数或属性注入获取架构实例，而非使用全局单例。
 
 ## 核心接口
 
@@ -33,51 +34,53 @@ Controller 包定义了控制器（Controller）的接口规范。控制器是 M
 
 ## 使用示例
 
-### 基础控制器实现
+### 基础控制器实现（依赖注入模式）
 
 ```csharp
-using Godot;
-using GFramework.framework.controller;
-using GFramework.framework.architecture;
+using GFramework.Core.architecture;
 
-// Godot 节点控制器
-public partial class PlayerController : Node, IController
+// 通过依赖注入获取架构
+public class PlayerController : IController
 {
-    private IUnRegisterList _unregisterList = new UnRegisterList();
+    private readonly IArchitecture _architecture;
+    private readonly IUnRegisterList _unregisterList = new UnRegisterList();
     
-    // 实现架构获取
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
+    // 通过构造函数注入架构
+    public PlayerController(IArchitecture architecture)
+    {
+        _architecture = architecture;
+    }
     
-    public override void _Ready()
+    public void Initialize()
     {
         // 获取模型
-        var playerModel = this.GetModel<PlayerModel>();
+        var playerModel = _architecture.GetModel<PlayerModel>();
         
         // 监听模型变化
         playerModel.Health.RegisterWithInitValue(OnHealthChanged)
             .AddToUnregisterList(_unregisterList);
         
         // 注册事件
-        this.RegisterEvent<PlayerLevelUpEvent>(OnPlayerLevelUp)
+        _architecture.RegisterEvent<PlayerLevelUpEvent>(OnPlayerLevelUp)
             .AddToUnregisterList(_unregisterList);
     }
     
     // 处理用户输入
-    public override void _Process(double delta)
+    public void ProcessInput(double delta)
     {
         if (Input.IsActionJustPressed("attack"))
         {
             // 发送命令
-            this.SendCommand(new AttackCommand());
+            _architecture.SendCommand(new AttackCommand());
         }
         
         if (Input.IsActionJustPressed("use_item"))
         {
             // 发送查询
-            var inventory = this.SendQuery(new GetInventoryQuery());
+            var inventory = _architecture.SendQuery(new GetInventoryQuery());
             if (inventory.HasItem("potion"))
             {
-                this.SendCommand(new UseItemCommand("potion"));
+                _architecture.SendCommand(new UseItemCommand("potion"));
             }
         }
     }
@@ -94,7 +97,7 @@ public partial class PlayerController : Node, IController
         ShowLevelUpEffect();
     }
     
-    public override void _ExitTree()
+    public void Cleanup()
     {
         // 清理事件注册
         _unregisterList.UnRegisterAll();
@@ -109,15 +112,16 @@ public partial class PlayerController : Node, IController
 
 ```csharp
 // UI 面板控制器
-public partial class MainMenuController : Control, IController
+public class MainMenuController : IController
 {
+    [Inject] private IArchitecture _architecture;
+    [Inject] private IUISystem _uiSystem;
+    
     [Export] private Button _startButton;
     [Export] private Button _settingsButton;
     [Export] private Button _quitButton;
     
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
-    
-    public override void _Ready()
+    public void Initialize()
     {
         // 绑定按钮事件
         _startButton.Pressed += OnStartButtonPressed;
@@ -125,30 +129,29 @@ public partial class MainMenuController : Control, IController
         _quitButton.Pressed += OnQuitButtonPressed;
         
         // 获取模型更新 UI
-        var gameModel = this.GetModel<GameModel>();
+        var gameModel = _architecture.GetModel<GameModel>();
         UpdateUI(gameModel);
     }
     
     private void OnStartButtonPressed()
     {
         // 通过命令启动游戏
-        this.SendCommand<StartGameCommand>();
+        _architecture.SendCommand<StartGameCommand>();
     }
     
     private void OnSettingsButtonPressed()
     {
         // 查询当前设置
-        var settings = this.SendQuery(new GetSettingsQuery());
+        var settings = _architecture.SendQuery(new GetSettingsQuery());
         
         // 打开设置面板
-        var uiSystem = this.GetSystem<UISystem>();
-        uiSystem.OpenSettingsPanel(settings);
+        _uiSystem.OpenSettingsPanel(settings);
     }
     
     private void OnQuitButtonPressed()
     {
         // 发送退出命令
-        this.SendCommand<QuitGameCommand>();
+        _architecture.SendCommand<QuitGameCommand>();
     }
     
     private void UpdateUI(GameModel model) { /* UI 更新逻辑 */ }
@@ -159,25 +162,26 @@ public partial class MainMenuController : Control, IController
 
 ```csharp
 // 战斗控制器
-public partial class CombatController : Node, IController
+public class CombatController : IController
 {
+    [Inject] protected IArchitecture _architecture;
+    
     private IUnRegisterList _unregisterList = new UnRegisterList();
     private PlayerModel _playerModel;
     private CombatSystem _combatSystem;
     
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
-    
-    public override void _Ready()
+    [PostConstruct]
+    public void Init()
     {
         // 缓存常用引用
-        _playerModel = this.GetModel<PlayerModel>();
-        _combatSystem = this.GetSystem<CombatSystem>();
+        _playerModel = _architecture.GetModel<PlayerModel>();
+        _combatSystem = _architecture.GetSystem<CombatSystem>();
         
         // 注册多个事件
-        this.RegisterEvent<EnemySpawnedEvent>(OnEnemySpawned)
+        _architecture.RegisterEvent<EnemySpawnedEvent>(OnEnemySpawned)
             .AddToUnregisterList(_unregisterList);
             
-        this.RegisterEvent<CombatEndedEvent>(OnCombatEnded)
+        _architecture.RegisterEvent<CombatEndedEvent>(OnCombatEnded)
             .AddToUnregisterList(_unregisterList);
         
         // 监听模型状态
@@ -188,7 +192,7 @@ public partial class CombatController : Node, IController
     private void OnEnemySpawned(EnemySpawnedEvent e)
     {
         // 进入战斗状态
-        this.SendCommand(new EnterCombatCommand(e.Enemy));
+        _architecture.SendCommand(new EnterCombatCommand(e.Enemy));
     }
     
     private void OnCombatEnded(CombatEndedEvent e)
@@ -196,26 +200,25 @@ public partial class CombatController : Node, IController
         if (e.Victory)
         {
             // 查询奖励
-            var rewards = this.SendQuery(new CalculateRewardsQuery(e.Enemy));
+            var rewards = _architecture.SendQuery(new CalculateRewardsQuery(e.Enemy));
             
             // 发放奖励
-            this.SendCommand(new GiveRewardsCommand(rewards));
+            _architecture.SendCommand(new GiveRewardsCommand(rewards));
         }
         else
         {
             // 处理失败
-            this.SendCommand<GameOverCommand>();
+            _architecture.SendCommand<GameOverCommand>();
         }
     }
     
     private void OnCombatStateChanged(CombatState state)
     {
         // 根据战斗状态更新 UI
-        var uiSystem = this.GetSystem<UISystem>();
-        uiSystem.UpdateCombatUI(state);
+        _architecture.GetSystem<UISystem>().UpdateCombatUI(state);
     }
     
-    public override void _ExitTree()
+    public void Cleanup()
     {
         _unregisterList.UnRegisterAll();
     }
@@ -267,107 +270,74 @@ public partial class CombatController : Node, IController
 ### 事件注销
 
 ```csharp
-public partial class MyController : Node, IController
+public class MyController : IController
 {
+    [Inject] private IArchitecture _architecture;
+    
     // 使用 UnRegisterList 统一管理
     private IUnRegisterList _unregisterList = new UnRegisterList();
     
-    public override void _Ready()
+    public void Initialize()
     {
         // 所有事件注册都添加到列表
-        this.RegisterEvent<GameEvent>(OnGameEvent)
+        _architecture.RegisterEvent<GameEvent>(OnGameEvent)
             .AddToUnregisterList(_unregisterList);
             
-        this.GetModel<PlayerModel>().Health.Register(OnHealthChanged)
+        _architecture.GetModel<PlayerModel>().Health.Register(OnHealthChanged)
             .AddToUnregisterList(_unregisterList);
     }
     
-    public override void _ExitTree()
+    public void Cleanup()
     {
-        // 节点销毁时统一注销所有事件
+        // 统一注销所有事件
         _unregisterList.UnRegisterAll();
-    }
-}
-```
-
-### Godot 特定的生命周期
-
-```csharp
-public partial class GameController : Node, IController
-{
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
-    
-    // 节点进入场景树
-    public override void _Ready()
-    {
-        // 初始化控制器
-        InitializeController();
-    }
-    
-    // 每帧更新
-    public override void _Process(double delta)
-    {
-        // 处理实时输入
-        HandleInput();
-    }
-    
-    // 物理帧更新
-    public override void _PhysicsProcess(double delta)
-    {
-        // 处理物理相关输入
-    }
-    
-    // 节点即将退出场景树
-    public override void _ExitTree()
-    {
-        // 清理资源
-        CleanupController();
     }
 }
 ```
 
 ## 最佳实践
 
-1. **一个控制器对应一个视图**
-    - 每个 Godot 场景/节点有对应的控制器
-    - 避免一个控制器管理多个不相关的视图
+1. **使用依赖注入获取依赖**
+    - 通过构造函数注入 `IArchitecture`
+    - 使用 `[Inject]` 属性标记注入字段
 
-2. **使用依赖注入获取依赖**
-    - 通过 `GetModel()`、`GetSystem()` 获取依赖
-    - 不要在构造函数中获取，应在 `_Ready()` 中
-
-3. **保持控制器轻量**
+2. **保持控制器轻量**
     - 复杂逻辑放在 Command、Query、System 中
     - 控制器只做协调和转发
 
-4. **合理使用缓存**
+3. **合理使用缓存**
     - 频繁使用的 Model、System 可以缓存引用
     - 平衡性能和内存占用
 
-5. **统一管理事件注销**
+4. **统一管理事件注销**
     - 使用 `IUnRegisterList` 统一管理
-    - 在 `_ExitTree()` 中统一注销
+    - 在 `Cleanup()` 中统一注销
 
-6. **命名规范**
+5. **命名规范**
     - 控制器类名：`XxxController`
-    - 继承 Godot 节点：`Node`、`Control`、`Node2D` 等
+    - 使用 `[Inject]` 或构造函数注入获取架构
 
 ## 常见模式
 
 ### 数据绑定模式
 
 ```csharp
-public partial class ScoreController : Label, IController
+public class ScoreController : IController
 {
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
+    [Inject] private IArchitecture _architecture;
     
-    public override void _Ready()
+    public void Initialize()
     {
         // 绑定模型数据到 UI
-        this.GetModel<GameModel>()
+        _architecture.GetModel<GameModel>()
             .Score
-            .RegisterWithInitValue(score => Text = $"Score: {score}")
-            .UnRegisterWhenNodeExitTree(this);
+            .RegisterWithInitValue(score => UpdateDisplay(score))
+            .AddToUnregisterList(_unregisterList);
+    }
+    
+    private void UpdateDisplay(int score)
+    {
+        // 更新分数显示
     }
 }
 ```
@@ -375,11 +345,12 @@ public partial class ScoreController : Label, IController
 ### 状态机模式
 
 ```csharp
-public partial class PlayerStateController : Node, IController
+public class PlayerStateController : IController
 {
+    [Inject] private IArchitecture _architecture;
     private Dictionary<PlayerState, Action> _stateHandlers;
     
-    public override void _Ready()
+    public void Initialize()
     {
         _stateHandlers = new Dictionary<PlayerState, Action>
         {
@@ -388,15 +359,40 @@ public partial class PlayerStateController : Node, IController
             { PlayerState.Attacking, HandleAttackingState }
         };
         
-        this.GetModel<PlayerModel>()
+        _architecture.GetModel<PlayerModel>()
             .State
             .Register(OnStateChanged)
-            .UnRegisterWhenNodeExitTree(this);
+            .AddToUnregisterList(_unregisterList);
     }
     
     private void OnStateChanged(PlayerState state)
     {
         _stateHandlers[state]?.Invoke();
+    }
+}
+```
+
+## 与 Godot 集成
+
+在 Godot 项目中，可以使用 GFramework.Godot 提供的扩展：
+
+```csharp
+using GFramework.Godot;
+
+public partial class GodotPlayerController : Node, IController
+{
+    [Inject] private IArchitecture _architecture;
+    
+    public override void _Ready()
+    {
+        // 使用 Godot 特定的自动注销扩展
+        _architecture.RegisterEvent<PlayerDiedEvent>(OnPlayerDied)
+            .UnRegisterWhenNodeExitTree(this);
+            
+        _architecture.GetModel<PlayerModel>()
+            .Health
+            .RegisterWithInitValue(OnHealthChanged)
+            .UnRegisterWhenNodeExitTree(this);
     }
 }
 ```
@@ -410,3 +406,8 @@ public partial class PlayerStateController : Node, IController
 - [`model`](../model/README.md) - 控制器读取模型数据
 - [`system`](../system/README.md) - 控制器调用系统服务
 - [`extensions`](../extensions/README.md) - 提供便捷的扩展方法
+- **GFramework.Godot** - Godot 特定的控制器扩展
+
+---
+
+**许可证**: Apache 2.0

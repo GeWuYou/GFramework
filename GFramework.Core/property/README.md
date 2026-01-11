@@ -2,7 +2,7 @@
 
 ## 概述
 
-Property 包提供了可绑定属性（BindableProperty）的实现，支持属性值的监听和响应式编程。这是实现 MVVM 模式和数据绑定的核心组件。
+Property 包提供了可绑定属性（BindableProperty）的实现，支持属性值的监听和响应式编程。这是实现数据绑定和响应式编程的核心组件。
 
 ## 核心接口
 
@@ -13,10 +13,17 @@ Property 包提供了可绑定属性（BindableProperty）的实现，支持属�
 **核心成员：**
 
 ```csharp
-T Value { get; }  // 获取属性值
-IUnRegister Register(Action<T> onValueChanged);  // 注册监听
-IUnRegister RegisterWithInitValue(Action<T> action);  // 注册并立即回调当前值
-void UnRegister(Action<T> onValueChanged);  // 取消监听
+// 获取属性值
+T Value { get; }
+
+// 注册监听（不立即触发回调）
+IUnRegister Register(Action<T> onValueChanged);
+
+// 注册监听并立即触发回调传递当前值
+IUnRegister RegisterWithInitValue(Action<T> action);
+
+// 取消监听
+void UnRegister(Action<T> onValueChanged);
 ```
 
 ### [`IBindableProperty<T>`](IBindableProperty.cs)
@@ -26,8 +33,11 @@ void UnRegister(Action<T> onValueChanged);  // 取消监听
 **核心成员：**
 
 ```csharp
-new T Value { get; set; }  // 可读写的属性值
-void SetValueWithoutEvent(T newValue);  // 设置值但不触发事件
+// 可读写的属性值
+new T Value { get; set; }
+
+// 设置值但不触发事件
+void SetValueWithoutEvent(T newValue);
 ```
 
 ## 核心类
@@ -42,13 +52,13 @@ void SetValueWithoutEvent(T newValue);  // 设置值但不触发事件
 // 创建可绑定属性
 var health = new BindableProperty<int>(100);
 
-// 监听值变化
+// 监听值变化（不会立即触发）
 var unregister = health.Register(newValue =>
 {
     GD.Print($"Health changed to: {newValue}");
 });
 
-// 修改值（会触发监听器）
+// 设置值（会触发监听器）
 health.Value = 50;  // 输出: Health changed to: 50
 
 // 取消监听
@@ -68,17 +78,25 @@ health.RegisterWithInitValue(value =>
     // 后续值变化时也会调用
 });
 
-// 2. 自定义比较器
+// 2. 自定义比较器（静态方法）
+BindableProperty<int>.Comparer = (a, b) => Math.Abs(a - b) < 1;
+
+// 3. 使用实例方法设置比较器
 var position = new BindableProperty<Vector3>(Vector3.Zero)
     .WithComparer((a, b) => a.DistanceTo(b) < 0.01f);  // 距离小于0.01认为相等
-
-// 3. 链式调用
-health.Value = 100;
 ```
 
 ### [`BindablePropertyUnRegister<T>`](BindablePropertyUnRegister.cs)
 
 可绑定属性的注销器，负责清理监听。
+
+**使用示例：**
+
+```csharp
+var unregister = health.Register(OnHealthChanged);
+// 当需要取消监听时
+unregister.UnRegister();
+```
 
 ## 在 Model 中使用
 
@@ -283,6 +301,26 @@ var position = new BindableProperty<Vector3>()
     .WithComparer((a, b) => a.DistanceTo(b) < 0.001f);
 ```
 
+## 实现原理
+
+### 值变化检测
+
+```csharp
+// 使用 EqualityComparer<T>.Default 进行比较
+if (!EqualityComparer<T>.Default.Equals(value, MValue))
+{
+    MValue = value;
+    _mOnValueChanged?.Invoke(value);
+}
+```
+
+### 事件触发机制
+
+```csharp
+// 当值变化时触发所有注册的回调
+_mOnValueChanged?.Invoke(value);
+```
+
 ## 最佳实践
 
 1. **在 Model 中定义属性** - BindableProperty 主要用于 Model 层
@@ -290,10 +328,14 @@ var position = new BindableProperty<Vector3>()
 3. **及时注销监听** - 使用 UnRegisterList 或 UnRegisterWhenNodeExitTree
 4. **使用 RegisterWithInitValue** - UI 绑定时立即获取初始值
 5. **避免循环依赖** - 属性监听器中修改其他属性要小心
+6. **使用自定义比较器** - 对于浮点数等需要精度控制的属性
 
 ## 相关包
 
 - [`model`](../model/README.md) - Model 中大量使用 BindableProperty
 - [`events`](../events/README.md) - BindableProperty 基于事件系统实现
-- [`controller`](../controller/README.md) - Controller 监听属性变化更新 UI
 - [`extensions`](../extensions/README.md) - 提供便捷的注销扩展方法
+
+---
+
+**许可证**: Apache 2.0
