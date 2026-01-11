@@ -10,4 +10,7 @@
         <ProjectReference Include="..\GFramework.Core\GFramework.Core.csproj"/>
         <ProjectReference Include="..\$(AssemblyName).Abstractions\$(AssemblyName).Abstractions.csproj"/>
     </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.3"/>
+    </ItemGroup>
 </Project>
