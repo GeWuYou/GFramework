@@ -1,4 +1,4 @@
-﻿using GFramework.Core.Abstractions.command;
+using GFramework.Core.Abstractions.command;
 
 namespace GFramework.Core.command;
 
@@ -9,4 +9,4 @@ namespace GFramework.Core.command;
 /// 该类实现了ICommandInput接口，作为命令模式中的输入参数载体
 /// 通常用于不需要额外输入参数的简单命令操作
 /// </remarks>
-public sealed class EmptyCommentInput : ICommandInput;
+public sealed class EmptyCommandInput : ICommandInput;

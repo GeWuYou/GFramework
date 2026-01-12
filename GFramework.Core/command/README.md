@@ -174,17 +174,16 @@ var result = commandBus.Send(new CalculateDamageCommand(new CalculateDamageComma
 
 ## EmptyCommandInput - 空命令输入
 
-当命令不需要输入参数时，可以使用 [EmptyCommentInput](file:///d:/Project/Rider/GFramework/GFramework.Core/command/EmptyCommentInput.cs#L7-L11)
-类：
+当命令不需要输入参数时，可以使用 `EmptyCommandInput` 类：
 
 ```csharp
-public class SimpleActionCommand : AbstractCommand<EmptyCommentInput>
+public class SimpleActionCommand : AbstractCommand<EmptyCommandInput>
 {
-    public SimpleActionCommand(EmptyCommentInput input) : base(input)
+    public SimpleActionCommand(EmptyCommandInput input) : base(input)
     {
     }
 
-    protected override void OnExecute(EmptyCommentInput input)
+    protected override void OnExecute(EmptyCommandInput input)
     {
         // 执行简单操作，无需额外参数
         this.SendEvent(new SimpleActionEvent());
