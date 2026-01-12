@@ -19,6 +19,7 @@
     </ItemGroup>
     <ItemGroup>
         <Compile Remove="extensions\ControlExtensions.cs"/>
+        <Compile Remove="setting\GodotAudioSettings.cs"/>
     </ItemGroup>
 
 </Project>
