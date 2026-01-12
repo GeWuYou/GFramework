@@ -205,6 +205,176 @@ public class GameController : IController
 }
 ```
 
+**核心方法与属性：**
+
+### 初始化方法
+
+#### `Initialize()`
+
+同步初始化方法，阻塞当前线程直到初始化完成。
+
+```csharp
+public void Initialize()
+```
+
+**使用示例：**
+
+```csharp
+var architecture = new GameArchitecture();
+architecture.Initialize(); // 阻塞等待初始化完成
+```
+
+**异常处理：**
+
+如果初始化过程中发生异常，架构会进入 `FailedInitialization` 阶段并发送 `ArchitectureFailedInitializationEvent` 事件。
+
+#### `InitializeAsync()`
+
+异步初始化方法，返回 Task 以便调用者可以等待初始化完成。
+
+```csharp
+public async Task InitializeAsync()
+```
+
+**使用示例：**
+
+```csharp
+var architecture = new GameArchitecture();
+await architecture.InitializeAsync(); // 异步等待初始化完成
+```
+
+**优势：**
+- 支持异步初始化 Model 和 System
+- 可以利用异步 I/O 操作（如异步加载数据）
+- 提高初始化性能
+
+### 模块管理
+
+#### `InstallModule(IArchitectureModule module)`
+
+安装架构模块，用于扩展架构功能。
+
+```csharp
+public void InstallModule(IArchitectureModule module)
+```
+
+**参数：**
+- `module`：要安装的模块实例
+
+**使用示例：**
+
+```csharp
+// 定义模块
+public class NetworkModule : IArchitectureModule
+{
+    public void Install(IArchitecture architecture)
+    {
+        // 注册网络相关的 System 和 Utility
+        architecture.RegisterSystem(new NetworkSystem());
+        architecture.RegisterUtility(new HttpClientUtility());
+    }
+}
+
+// 安装模块
+var architecture = new GameArchitecture();
+architecture.InstallModule(new NetworkModule());
+```
+
+### 生命周期钩子
+
+#### `RegisterLifecycleHook(IArchitectureLifecycle hook)`
+
+注册生命周期钩子，用于在架构阶段变化时执行自定义逻辑。
+
+```csharp
+public void RegisterLifecycleHook(IArchitectureLifecycle hook)
+```
+
+**参数：**
+- `hook`：生命周期钩子实例
+
+**使用示例：**
+
+```csharp
+// 定义生命周期钩子
+public class PerformanceMonitorHook : IArchitectureLifecycle
+{
+    public void OnPhase(ArchitecturePhase phase, IArchitecture architecture)
+    {
+        switch (phase)
+        {
+            case ArchitecturePhase.BeforeModelInit:
+                Console.WriteLine("开始监控 Model 初始化性能");
+                break;
+            case ArchitecturePhase.AfterModelInit:
+                Console.WriteLine("Model 初始化完成，停止监控");
+                break;
+            case ArchitecturePhase.Ready:
+                Console.WriteLine("架构就绪，开始性能统计");
+                break;
+        }
+    }
+}
+
+// 注册生命周期钩子
+var architecture = new GameArchitecture();
+architecture.RegisterLifecycleHook(new PerformanceMonitorHook());
+architecture.Initialize();
+```
+
+**注意：** 生命周期钩子只能在架构进入 Ready 阶段之前注册。
+
+### 属性
+
+#### `CurrentPhase`
+
+获取当前架构的阶段。
+
+```csharp
+public ArchitecturePhase CurrentPhase { get; }
+```
+
+**使用示例：**
+
+```csharp
+var architecture = new GameArchitecture();
+
+// 检查架构是否已就绪
+if (architecture.CurrentPhase == ArchitecturePhase.Ready)
+{
+    Console.WriteLine("架构已就绪，可以开始游戏");
+}
+
+// 在异步操作中检查阶段变化
+await Task.Run(async () =>
+{
+    while (architecture.CurrentPhase != ArchitecturePhase.Ready)
+    {
+        Console.WriteLine($"当前阶段: {architecture.CurrentPhase}");
+        await Task.Delay(100);
+    }
+});
+```
+
+#### `Context`
+
+获取架构上下文，提供对架构服务的访问。
+
+```csharp
+public IArchitectureContext Context { get; }
+```
+
+**使用示例：**
+
+```csharp
+// 通过 Context 访问服务
+var context = architecture.Context;
+var eventBus = context.EventBus;
+var commandBus = context.CommandBus;
+var queryBus = context.QueryBus;
+var environment = context.Environment;
+```
+
 **高级特性：**
 
 ``csharp

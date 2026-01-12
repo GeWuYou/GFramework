@@ -135,10 +135,10 @@ public class GameArchitecture : Architecture
     {
         // 注册 Model - 游戏数据
         RegisterModel(new PlayerModel());
-        
+
         // 注册 System - 业务逻辑
         RegisterSystem(new CombatSystem());
-        
+
         // 注册 Utility - 工具类
         RegisterUtility(new StorageUtility());
     }
