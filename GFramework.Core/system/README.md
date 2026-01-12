@@ -116,14 +116,14 @@ public class CombatSystem : AbstractSystem
 ### 2. 注册 System
 
 ```csharp
-public class GameArchitecture : Architecture<GameArchitecture>
+public class GameArchitecture : Architecture
 {
     protected override void Init()
     {
         // 注册 Model
         this.RegisterModel<PlayerModel>(new PlayerModel());
         this.RegisterModel<EnemyModel>(new EnemyModel());
-        
+
         // 注册 System（系统注册后会自动调用 Init）
         this.RegisterSystem<CombatSystem>(new CombatSystem());
         this.RegisterSystem<InventorySystem>(new InventorySystem());
