@@ -140,7 +140,7 @@ public class TimeUtility : IUtility
 ### 2. 注册 Utility
 
 ```csharp
-public class GameArchitecture : Architecture<GameArchitecture>
+public class GameArchitecture : Architecture
 {
     protected override void Init()
     {
