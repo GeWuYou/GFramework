@@ -31,17 +31,22 @@ Godot 设置模块是 GFramework.Godot 的核心组件之一，专门为 Godot �
 
 #### GodotAudioSettings
 
-Godot 音频设置实现类，继承自 AudioSettings 并实现 IApplyAbleSettings。
+Godot 音频设置实现类，接收 AudioSettings 配置并实现 IApplyAbleSettings 接口，负责将音频配置应用到 Godot 音频系统。
 
-**继承关系：**
+**实现关系：**
 
 ```
-AudioSettings (基础设置类)
-    ↓
-GodotAudioSettings (Godot 特定实现)
-    ↓
-IApplyAbleSettings (可应用设置接口)
+AudioSettings (配置数据)
+    ↓ [组合]
+GodotAudioSettings (Godot 特定实现) → IApplyAbleSettings (可应用设置接口)
 ```
+
+**功能：**
+
+- 接收 AudioSettings 配置对象和 AudioBusMap 总线映射
+- 实现 Apply() 方法，将音量设置应用到指定音频总线
+- 支持自定义音频总线映射
+- 自动处理音量格式转换（线性值到分贝）
 
 ### 图形设置系统
 
@@ -65,15 +70,14 @@ graph TD
     E[IApplyAbleSettings] --> B
     E --> D
     
-    F[AudioBusMap] --> G[GodotAudioApplier]
-    B --> G
+    G[AudioBusMap] --> B
     
-    G --> H[AudioServer API]
-    D --> I[DisplayServer API]
+    B --> I[AudioServer API]
+    D --> J[DisplayServer API]
     
-    J[SettingsSystem] --> K[Apply Method]
-    K --> G
-    K --> D
+    K[SettingsSystem] --> L[Apply Method]
+    L --> B
+    L --> D
 ```
 
 ## 使用示例
@@ -83,13 +87,16 @@ graph TD
 #### 基本音频设置
 
 ```csharp
-// 创建音频设置
-var audioSettings = new GodotAudioSettings
+// 创建音频配置数据
+var settings = new AudioSettings
 {
     MasterVolume = 0.8f,  // 80% 主音量
     BgmVolume = 0.6f,      // 60% 背景音乐音量
     SfxVolume = 0.9f       // 90% 音效音量
 };
+
+// 创建 Godot 音频设置应用器
+var audioSettings = new GodotAudioSettings(settings, new AudioBusMap());
 
 // 应用设置
 await audioSettings.Apply();
@@ -106,16 +113,17 @@ var customBusMap = new AudioBusMap
     Sfx = "Sound_Effects"
 };
 
-// 创建音频设置应用器
-var settings = new GodotAudioSettings
+// 创建音频配置
+var settings = new AudioSettings
 {
     MasterVolume = 0.7f,
     BgmVolume = 0.5f,
     SfxVolume = 0.8f
 };
 
-var applier = new GodotAudioApplier(settings, customBusMap);
-await applier.Apply();
+// 使用自定义总线映射应用设置
+var audioSettings = new GodotAudioSettings(settings, customBusMap);
+await audioSettings.Apply();
 ```
 
 #### 通过设置系统使用
@@ -123,14 +131,14 @@ await applier.Apply();
 ```csharp
 // 注册音频设置到设置模型
 var settingsModel = this.GetModel<ISettingsModel>();
-var audioSettings = settingsModel.Get<GodotAudioSettings>();
-audioSettings.MasterVolume = 0.8f;
-audioSettings.BgmVolume = 0.6f;
-audioSettings.SfxVolume = 0.9f;
+var audioSettingsData = settingsModel.Get<AudioSettings>();
+audioSettingsData.MasterVolume = 0.8f;
+audioSettingsData.BgmVolume = 0.6f;
+audioSettingsData.SfxVolume = 0.9f;
 
-// 通过设置系统应用
-var settingsSystem = this.GetSystem<ISettingsSystem>();
-await settingsSystem.Apply<GodotAudioSettings>();
+// 创建 Godot 音频设置应用器
+var godotAudioSettings = new GodotAudioSettings(audioSettingsData, new AudioBusMap());
+await godotAudioSettings.Apply();
 ```
 
 ### 图形设置配置
@@ -221,45 +229,30 @@ public sealed class AudioBusMap
 - 提供合理的默认值
 - 支持对象初始化语法
 
-### GodotAudioApplier
 
-```csharp
-public sealed class GodotAudioApplier(AudioSettings settings, AudioBusMap busMap) : IApplyAbleSettings
-{
-    public Task Apply();
-}
-```
-
-**实现细节：**
-
-- 将线性音量值（0-1）转换为分贝值
-- 使用 `AudioServer.GetBusIndex()` 查找总线
-- 使用 `AudioServer.SetBusVolumeDb()` 设置音量
-- 自动处理无效总线名称
 
 ### GodotAudioSettings
 
 ```csharp
-public class GodotAudioSettings : AudioSettings, IApplyAbleSettings
+public class GodotAudioSettings(AudioSettings settings, AudioBusMap busMap) : IApplyAbleSettings
 {
     public Task Apply();
 }
 ```
 
-**音量设置：**
+**构造函数参数：**
 
-- `MasterVolume` - 主音量控制
-- `BgmVolume` - 背景音乐音量控制
-- `SfxVolume` - 音效音量控制
+- `settings` - AudioSettings 配置对象，包含音量设置
+- `busMap` - AudioBusMap 对象，定义音频总线映射
 
 **Apply 方法实现：**
 
 ```csharp
 public Task Apply()
 {
-    SetBusVolume("Master", MasterVolume);
-    SetBusVolume("BGM", BgmVolume);
-    SetBusVolume("SFX", SfxVolume);
+    SetBus(busMap.Master, settings.MasterVolume);
+    SetBus(busMap.Bgm, settings.BgmVolume);
+    SetBus(busMap.Sfx, settings.SfxVolume);
     return Task.CompletedTask;
 }
 ```
@@ -341,7 +334,6 @@ public class AudioManager : Node
     
     public async Task SmoothVolumeTransition(float targetMasterVolume, float duration = 1.0f)
     {
-        var audioSettings = new GodotAudioSettings();
         var currentVolume = AudioServer.GetBusVolumeDb(AudioServer.GetBusIndex("Master"));
         var currentLinear = Mathf.DbToLinear(currentVolume);
         
@@ -358,8 +350,50 @@ public class AudioManager : Node
     
     private void SetMasterVolume(float linearVolume)
     {
-        var settings = new GodotAudioSettings { MasterVolume = linearVolume };
-        settings.Apply();
+        var settings = new AudioSettings { MasterVolume = linearVolume };
+        var audioSettings = new GodotAudioSettings(settings, new AudioBusMap());
+        audioSettings.Apply();
+    }
+}
+
+// 使用自定义总线映射的平滑过渡
+public class CustomAudioManager : Node
+{
+    private Tween _volumeTween;
+    private AudioBusMap _customBusMap;
+    
+    public override void _Ready()
+    {
+        _customBusMap = new AudioBusMap
+        {
+            Master = "Master_Bus",
+            Bgm = "Background_Music",
+            Sfx = "Sound_Effects"
+        };
+    }
+    
+    public async Task SmoothVolumeTransition(float targetMasterVolume, float duration = 1.0f)
+    {
+        var settings = new AudioSettings { MasterVolume = targetMasterVolume };
+        var currentVolume = AudioServer.GetBusVolumeDb(AudioServer.GetBusIndex(_customBusMap.Master));
+        var currentLinear = Mathf.DbToLinear(currentVolume);
+        
+        _volumeTween?.Kill();
+        _volumeTween = CreateTween();
+        
+        _volumeTween.TweenMethod(
+            new Callable(this, nameof(SetMasterVolume)),
+            currentLinear,
+            targetMasterVolume,
+            duration
+        );
+    }
+    
+    private void SetMasterVolume(float linearVolume)
+    {
+        var audioSettingsData = new AudioSettings { MasterVolume = linearVolume };
+        var audioSettings = new GodotAudioSettings(audioSettingsData, _customBusMap);
+        audioSettings.Apply();
     }
 }
 ```
