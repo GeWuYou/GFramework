@@ -17,9 +17,4 @@
         <ProjectReference Include="..\GFramework.Game.Abstractions\GFramework.Game.Abstractions.csproj" PrivateAssets="all"/>
         <ProjectReference Include="..\GFramework.Core.Abstractions\GFramework.Core.Abstractions.csproj" PrivateAssets="all"/>
     </ItemGroup>
-    <ItemGroup>
-        <Compile Remove="extensions\ControlExtensions.cs"/>
-        <Compile Remove="setting\GodotAudioSettings.cs"/>
-    </ItemGroup>
-
 </Project>
