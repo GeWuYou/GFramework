@@ -217,16 +217,16 @@ logger.Info("应用程序启动");
 ### 1. 在 Architecture 中使用
 
 ```csharp
-public class GameArchitecture : Architecture<GameArchitecture>
+public class GameArchitecture : Architecture
 {
     protected override void Init()
     {
         var logger = LoggerFactoryResolver.Provider.CreateLogger("GameArchitecture");
         logger.Info("游戏架构初始化开始");
-        
+
         RegisterModel(new PlayerModel());
         RegisterSystem(new GameSystem());
-        
+
         logger.Info("游戏架构初始化完成");
     }
 }
