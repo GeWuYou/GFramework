@@ -151,11 +151,11 @@ public IReadOnlyList<T> GetAllSorted<T>(Comparison<T> comparison) where T : clas
 IoC 容器是 [`Architecture`](../architecture/Architecture.cs) 类的核心组件，用于管理所有的 System、Model 和 Utility。
 
 ```csharp
-public abstract class Architecture<T> : IArchitecture where T : Architecture<T>, new()
+public abstract class Architecture : IArchitecture
 {
     // 内置 IoC 容器
     private readonly IocContainer _mContainer = new();
-    
+
     // 注册系统
     public void RegisterSystem<TSystem>(TSystem system) where TSystem : ISystem
     {
@@ -163,11 +163,11 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
         _mContainer.Register(system);  // 注册到容器
         // ...
     }
-    
+
     // 获取系统
-    public TSystem GetSystem<TSystem>() where TSystem : class, ISystem 
+    public TSystem GetSystem<TSystem>() where TSystem : class, ISystem
         => _mContainer.Get<TSystem>();  // 从容器获取
-    
+
     // Model 和 Utility 同理
 }
 ```
@@ -175,20 +175,20 @@ public abstract class Architecture<T> : IArchitecture where T : Architecture<T>,
 ### 注册组件到容器
 
 ```csharp
-public class GameArchitecture : Architecture<GameArchitecture>
+public class GameArchitecture : Architecture
 {
     protected override void Init()
     {
         // 这些方法内部都使用 IoC 容器
-        
+
         // 注册 Model（存储游戏数据）
         RegisterModel<IPlayerModel>(new PlayerModel());
         RegisterModel<IInventoryModel>(new InventoryModel());
-        
+
         // 注册 System（业务逻辑）
         RegisterSystem<IGameplaySystem>(new GameplaySystem());
         RegisterSystem<ISaveSystem>(new SaveSystem());
-        
+
         // 注册 Utility（工具类）
         RegisterUtility<ITimeUtility>(new TimeUtility());
         RegisterUtility<IStorageUtility>(new StorageUtility());
@@ -379,6 +379,122 @@ var singleService = container.Get<IDataService>();  // 返回第一个注册的�
 var allServices = container.GetAll<IDataService>();  // 返回两个实例的列表
 ```
 
+## 其他实用方法
+
+### `Contains<T>()`
+
+检查容器中是否包含指定类型的实例。
+
+```csharp
+public bool Contains<T>() where T : class
+```
+
+**参数：**
+- 无泛型参数
+
+**返回值：**
+- 如果容器中包含指定类型的实例则返回 `true`，否则返回 `false`
+
+**使用示例：**
+
+```csharp
+var container = new IocContainer();
+
+// 检查服务是否已注册
+if (container.Contains<IPlayerService>())
+{
+    Console.WriteLine("Player service is available");
+}
+
+// 根据检查结果决定是否注册
+if (!container.Contains<ISettingsService>())
+{
+    container.Register<ISettingsService>(new SettingsService());
+}
+```
+
+**应用场景：**
+- 条件注册服务
+- 检查依赖是否可用
+- 动态功能开关
+
+### `ContainsInstance(object instance)`
+
+判断容器中是否包含某个具体的实例对象。
+
+```csharp
+public bool ContainsInstance(object instance)
+```
+
+**参数：**
+- `instance`：待查询的实例对象
+
+**返回值：**
+- 若容器中包含该实例则返回 `true`，否则返回 `false`
+
+**使用示例：**
+
+```csharp
+var container = new IocContainer();
+
+var service = new MyService();
+container.Register<IMyService>(service);
+
+// 检查特定实例是否在容器中
+if (container.ContainsInstance(service))
+{
+    Console.WriteLine("This instance is registered in the container");
+}
+
+// 检查另一个实例
+var anotherService = new MyService();
+if (!container.ContainsInstance(anotherService))
+{
+    Console.WriteLine("This instance is not in the container");
+}
+```
+
+**应用场景：**
+- 避免重复注册同一实例
+- 检查对象是否已被管理
+- 调试和日志记录
+
+### `Clear()`
+
+清空容器中的所有实例。
+
+```csharp
+public void Clear()
+```
+
+**使用示例：**
+
+```csharp
+var container = new IocContainer();
+
+// 注册多个服务
+container.Register<IService1>(new Service1());
+container.Register<IService2>(new Service2());
+container.Register<IService3>(new Service3());
+
+// 清空容器
+container.Clear();
+
+// 检查是否清空成功
+Console.WriteLine($"Contains IService1: {container.Contains<IService1>()}");  // False
+Console.WriteLine($"Contains IService2: {container.Contains<IService2>()}");  // False
+```
+
+**应用场景：**
+- 重置容器状态
+- 内存清理
+- 测试环境准备
+
+**注意事项：**
+- 容器冻结后也可以调用 `Clear()` 方法
+- 清空后，所有已注册的实例都将丢失
+- 不会自动清理已注册对象的其他引用
+
 ## 设计特点
 
 ### 1. 简单轻量
@@ -463,7 +579,7 @@ var controller = container.Resolve<MyController>();
 ### 1. 在架构初始化时注册
 
 ```csharp
-public class GameArchitecture : Architecture<GameArchitecture>
+public class GameArchitecture : Architecture
 {
     protected override void Init()
     {
@@ -471,11 +587,11 @@ public class GameArchitecture : Architecture<GameArchitecture>
         // 1. 工具类（无依赖）
         RegisterUtility(new TimeUtility());
         RegisterUtility(new StorageUtility());
-        
+
         // 2. 模型（可能依赖工具）
         RegisterModel(new PlayerModel());
         RegisterModel(new GameModel());
-        
+
         // 3. 系统（可能依赖模型和工具）
         RegisterSystem(new GameplaySystem());
         RegisterSystem(new SaveSystem());
