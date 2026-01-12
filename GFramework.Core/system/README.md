@@ -24,6 +24,8 @@ System 接口，定义了系统的基本行为。
 
 ```csharp
 void Init();  // 系统初始化方法
+void Destroy();  // 系统销毁方法
+void OnArchitecturePhase(ArchitecturePhase phase);  // 处理架构阶段事件
 ```
 
 **继承的能力：**
@@ -39,15 +41,18 @@ void Init();  // 系统初始化方法
 
 ### [`AbstractSystem`](AbstractSystem.cs)
 
-抽象 System 基类，提供了 System 的基础实现。
+抽象 System 基类，提供了 System 的基础实现。继承自 ContextAwareBase，具有上下文感知能力。
 
 **使用方式：**
 
 ```csharp
-public abstract class AbstractSystem : ISystem
+public abstract class AbstractSystem : ContextAwareBase, ISystem
 {
-    void ISystem.Init() => OnInit();
+    void ISystem.Init() => OnInit();  // 系统初始化，内部调用抽象方法 OnInit()
+    void ISystem.Destroy() => OnDestroy();  // 系统销毁，内部调用 OnDestroy()
     protected abstract void OnInit();  // 子类实现初始化逻辑
+    protected virtual void OnDestroy();  // 子类可选择重写销毁逻辑
+    public virtual void OnArchitecturePhase(ArchitecturePhase phase);  // 处理架构阶段事件
 }
 ```
 
@@ -98,6 +103,12 @@ public class CombatSystem : AbstractSystem
     private int CalculateDamage(int attackPower, int defense)
     {
         return Math.Max(1, attackPower - defense / 2);
+    }
+
+    protected override void OnDestroy()
+    {
+        // 清理资源
+        base.OnDestroy();
     }
 }
 ```

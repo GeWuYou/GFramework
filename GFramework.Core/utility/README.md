@@ -7,17 +7,7 @@ Utility 包定义了工具类层。Utility 提供无状态的辅助功能，如�
 
 ## 核心接口
 
-### [`ICanGetUtility`](ICanGetUtility.cs)
-
-标记接口，表示该类型可以获取 Utility。
-
-**继承关系：**
-
-```csharp
-public interface ICanGetUtility : IBelongToArchitecture
-```
-
-### [`IUtility`](IUtility.cs)
+### IUtility
 
 Utility 标记接口，所有工具类都应实现此接口。
 
@@ -30,64 +20,98 @@ public interface IUtility
 }
 ```
 
+### IContextUtility
+
+上下文工具接口，扩展了IUtility接口，为需要感知架构上下文的工具类提供基础能力。
+
+**接口定义：**
+
+```csharp
+public interface IContextUtility : IUtility
+{
+    void Init();  // 初始化上下文工具
+}
+```
+
+## 核心类
+
+### [`AbstractContextUtility`](AbstractContextUtility.cs)
+
+抽象上下文工具类，提供上下文相关的通用功能实现。继承自 ContextAwareBase 并实现 IContextUtility 接口。
+
+**使用方式：**
+
+```csharp
+public abstract class AbstractContextUtility : ContextAwareBase, IContextUtility
+{
+    protected ILogger Logger = null!;
+    
+    void IContextUtility.Init() 
+    {
+        var name = GetType().Name;
+        Logger = LoggerFactoryResolver.Provider.CreateLogger(name);
+        Logger.Debug($"Initializing Context Utility: {name}");
+        
+        OnInit();  // 子类实现初始化逻辑
+        
+        Logger.Info($"Context Utility initialized: {name}");
+    }
+    
+    protected abstract void OnInit();  // 子类实现具体的初始化逻辑
+}
+```
+
 ## 基本使用
 
 ### 1. 定义 Utility
 
 ```csharp
-// 存储工具类
-public class StorageUtility : IUtility
+// 存储工具类，继承自AbstractContextUtility
+public class StorageUtility : AbstractContextUtility
 {
     private const string SavePath = "user://save_data.json";
     
-    public void Save<T>(T data)
+    protected override void OnInit()
     {
-        string json = Json.Stringify(data);
-        using var file = FileAccess.Open(SavePath, FileAccess.ModeFlags.Write);
-        file.StoreString(json);
+        Logger.Info("StorageUtility initialized");
     }
     
-    public T Load<T>() where T : new()
+    public void Save<T>(T data)
     {
-        if (!FileAccess.FileExists(SavePath))
-            return new T();
+        string json = JsonSerializer.Serialize(data);
+        // 实际保存逻辑
+        File.WriteAllText(SavePath, json);
+    }
+    
+    public T Load<T>()
+    {
+        if (!File.Exists(SavePath))
+            return default(T);
             
-        using var file = FileAccess.Open(SavePath, FileAccess.ModeFlags.Read);
-        string json = file.GetAsText();
-        return Json.Parse<T>(json);
+        string json = File.ReadAllText(SavePath);
+        return JsonSerializer.Deserialize<T>(json);
     }
     
     public void Delete()
     {
-        if (FileAccess.FileExists(SavePath))
+        if (File.Exists(SavePath))
         {
-            DirAccess.RemoveAbsolute(SavePath);
+            File.Delete(SavePath);
         }
     }
 }
 
-// 数学工具类
+// 数学工具类，作为普通Utility
 public class MathUtility : IUtility
 {
     public float Lerp(float a, float b, float t)
     {
-        return a + (b - a) * Mathf.Clamp(t, 0f, 1f);
+        return a + (b - a) * Math.Clamp(t, 0f, 1f);
     }
     
-    public Vector3 BezierCurve(Vector3 p0, Vector3 p1, Vector3 p2, float t)
+    public bool IsInRange(float value, float min, float max)
     {
-        float u = 1 - t;
-        return u * u * p0 + 2 * u * t * p1 + t * t * p2;
-    }
-    
-    public bool IsInRange(Vector3 point, Vector3 center, float radius)
-    {
-        return point.DistanceTo(center) <= radius;
-    }
-    
-    public int RollDice(int sides)
-    {
-        return GD.RandRange(1, sides);
+        return value >= min && value <= max;
     }
 }
 

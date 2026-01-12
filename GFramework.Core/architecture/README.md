@@ -8,7 +8,7 @@ Architecture 包是整个框架的核心，提供了基于 MVC 架构模式的�
 
 ## 核心接口
 
-### [`IArchitecture`](IArchitecture.cs)
+### IArchitecture
 
 架构接口，定义了框架的核心功能契约。
 
@@ -28,9 +28,9 @@ void RegisterSystem<TSystem>(TSystem system) where TSystem : ISystem;
 void RegisterModel<TModel>(TModel model) where TModel : IModel;
 void RegisterUtility<TUtility>(TUtility utility) where TUtility : IUtility;
 
-// 组件获取
-T GetSystem<T>() where T : class, ISystem;
+// 组件获取（通过容器）
 T GetModel<T>() where T : class, IModel;
+T GetSystem<T>() where T : class, ISystem;
 T GetUtility<T>() where T : class, IUtility;
 
 // 命令处理
@@ -47,7 +47,7 @@ IUnRegister RegisterEvent<T>(Action<T> onEvent);
 void UnRegisterEvent<T>(Action<T> onEvent);
 ```
 
-### [`IArchitecturePhaseAware`](IArchitecturePhaseAware.cs)
+### IArchitecturePhaseAware
 
 架构阶段感知接口，允许组件监听架构阶段变化。
 
@@ -57,7 +57,7 @@ void UnRegisterEvent<T>(Action<T> onEvent);
 void OnArchitecturePhase(ArchitecturePhase phase);
 ```
 
-### [`IArchitectureModule`](IArchitectureModule.cs)
+### IArchitectureModule
 
 架构模块接口，支持模块化架构扩展。
 
@@ -67,7 +67,7 @@ void OnArchitecturePhase(ArchitecturePhase phase);
 void Install(IArchitecture architecture);
 ```
 
-### [`IAsyncInitializable`](IAsyncInitializable.cs)
+### IAsyncInitializable
 
 异步初始化接口，支持组件异步初始化。
 
@@ -82,6 +82,17 @@ Task InitializeAsync();
 ### [`Architecture`](Architecture.cs)
 
 架构基类，实现了 `IArchitecture` 接口，提供完整的架构功能实现。
+
+**构造函数参数：**
+
+```csharp
+public abstract class Architecture(
+    IArchitectureConfiguration? configuration = null,
+    IEnvironment? environment = null,
+    IArchitectureServices? services = null,
+    IArchitectureContext? context = null
+)
+```
 
 **特性：**
 
@@ -132,7 +143,7 @@ public enum ArchitecturePhase
 
 **使用示例：**
 
-```csharp
+``csharp
 // 1. 定义你的架构（继承 Architecture 基类）
 public class GameArchitecture : Architecture
 {
@@ -196,7 +207,7 @@ public class GameController : IController
 
 **高级特性：**
 
-```csharp
+``csharp
 // 1. 使用自定义配置
 var config = new ArchitectureConfiguration();
 var architecture = new GameArchitecture(configuration: config);
@@ -238,7 +249,7 @@ public class LifecycleHook : IArchitectureLifecycle
 
 **使用示例：**
 
-```csharp
+``csharp
 var config = new ArchitectureConfiguration
 {
     // 严格阶段验证

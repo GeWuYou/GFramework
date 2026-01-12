@@ -6,7 +6,7 @@ Events 包提供了一套完整的事件系统，实现了观察者模式（Obse
 
 ## 核心接口
 
-### 1. [`IEasyEvent`](IEasyEvent.cs)
+### 1. [`IEvent`](file:///d:/Project/Rider/GFramework/GFramework.Core.Abstractions/events/IEvent.cs#L7-L11)
 
 基础事件接口，定义了事件注册的基本功能。
 
@@ -16,7 +16,7 @@ Events 包提供了一套完整的事件系统，实现了观察者模式（Obse
 IUnRegister Register(Action onEvent);  // 注册事件处理函数
 ```
 
-### 2. [`IUnRegister`](IUnRegister.cs)
+### 2. [`IUnRegister`](file:///d:/Project/Rider/GFramework/GFramework.Core.Abstractions/events/IUnRegister.cs#L6-L10)
 
 注销接口，用于取消事件注册。
 
@@ -26,20 +26,28 @@ IUnRegister Register(Action onEvent);  // 注册事件处理函数
 void UnRegister();  // 执行注销操作
 ```
 
-### 3. [`IUnRegisterList`](IUnRegisterList.cs)
+### 3. [
+`IUnRegisterList`](file:///d:/Project/Rider/GFramework/GFramework.Core.Abstractions/events/IUnRegisterList.cs#L6-L10)
 
 注销列表接口，用于批量管理注销对象。
 
 **属性：**
 
 ```csharp
-List<IUnRegister> UnregisterList { get; }  // 获取注销列表
+IList<IUnRegister> UnregisterList { get; }  // 获取注销列表
 ```
 
-### 4. 能力接口
+### 4. [`IEventBus`](file:///d:/Project/Rider/GFramework/GFramework.Core.Abstractions/events/IEventBus.cs#L6-L22)
 
-- [`ICanRegisterEvent`](ICanRegisterEvent.cs) - 标记可以注册事件的组件
-- [`ICanSendEvent`](ICanSendEvent.cs) - 标记可以发送事件的组件
+事件总线接口，提供基于类型的事件发送和注册。
+
+**核心方法：**
+
+```csharp
+IUnRegister Register<T>(Action<T> onEvent);  // 注册类型化事件
+void Send<T>(T e);                         // 发送事件实例
+void Send<T>() where T : new();           // 发送事件（自动创建实例）
+```
 
 ## 核心类
 
@@ -66,7 +74,7 @@ onClicked.Trigger();
 unregister.UnRegister();
 ```
 
-### 2. [`EasyEvent<T>`](EasyEventGeneric.cs)
+### 2. [`Event<T>`](EasyEventGeneric.cs)
 
 单参数泛型事件类，支持一个参数的事件。
 
@@ -74,7 +82,7 @@ unregister.UnRegister();
 
 ```csharp
 // 创建带参数的事件
-var onScoreChanged = new EasyEvent<int>();
+var onScoreChanged = new Event<int>();
 
 // 注册监听
 onScoreChanged.Register(newScore => 
@@ -86,7 +94,7 @@ onScoreChanged.Register(newScore =>
 onScoreChanged.Trigger(100);
 ```
 
-### 3. [`EasyEvent<T, TK>`](EasyEventGeneric.cs)
+### 3. [`Event<T, TK>`](EasyEventGeneric.cs)
 
 双参数泛型事件类。
 
@@ -94,7 +102,7 @@ onScoreChanged.Trigger(100);
 
 ```csharp
 // 伤害事件：攻击者、伤害值
-var onDamageDealt = new EasyEvent<string, int>();
+var onDamageDealt = new Event<string, int>();
 
 onDamageDealt.Register((attacker, damage) =>
 {
@@ -104,25 +112,7 @@ onDamageDealt.Register((attacker, damage) =>
 onDamageDealt.Trigger("Player", 50);
 ```
 
-### 4. [`EasyEvent<T, TK, TS>`](EasyEventGeneric.cs)
-
-三参数泛型事件类。
-
-**使用示例：**
-
-```csharp
-// 位置变化事件：对象、旧位置、新位置
-var onPositionChanged = new EasyEvent<string, Vector3, Vector3>();
-
-onPositionChanged.Register((obj, oldPos, newPos) =>
-{
-    GD.Print($"{obj} moved from {oldPos} to {newPos}");
-});
-
-onPositionChanged.Trigger("Player", Vector3.Zero, new Vector3(10, 0, 0));
-```
-
-### 5. [`EasyEvents`](EasyEvents.cs)
+### 4. [`EasyEvents`](EasyEvents.cs)
 
 全局事件管理器，提供类型安全的事件注册和获取。
 
@@ -145,7 +135,7 @@ gameStartEvent.Register(() =>
 gameStartEvent.Trigger();
 ```
 
-### 6. [`TypeEventSystem`](TypeEventSystem.cs)
+### 5. [`EventBus`](EventBus.cs)
 
 类型化事件系统，支持基于类型的事件发送和注册。
 
@@ -153,25 +143,25 @@ gameStartEvent.Trigger();
 
 ```csharp
 // 使用全局事件系统
-var eventSystem = TypeEventSystem.Global;
+var eventBus = new EventBus();
 
 // 注册类型化事件
-eventSystem.Register<PlayerDiedEvent>(e => 
+eventBus.Register<PlayerDiedEvent>(e => 
 {
     GD.Print($"Player died at position: {e.Position}");
 });
 
-// 发送事件（自动创建实例）
-eventSystem.Send<PlayerDiedEvent>();
-
 // 发送事件（传递实例）
-eventSystem.Send(new PlayerDiedEvent 
+eventBus.Send(new PlayerDiedEvent 
 { 
     Position = new Vector3(10, 0, 5) 
 });
+
+// 发送事件（自动创建实例）
+eventBus.Send<PlayerDiedEvent>();
 ```
 
-### 7. [`DefaultUnRegister`](DefaultUnRegister.cs)
+### 6. [`DefaultUnRegister`](DefaultUnRegister.cs)
 
 默认注销器实现，封装注销回调。
 
@@ -185,7 +175,7 @@ var unregister = new DefaultUnRegister(onUnregister);
 unregister.UnRegister();
 ```
 
-### 8. [`OrEvent`](OrEvent.cs)
+### 7. [`OrEvent`](OrEvent.cs)
 
 事件或运算组合器，当任意一个事件触发时触发。
 
@@ -203,6 +193,33 @@ onAnyInput.Register(() =>
     GD.Print("Input detected!");
 });
 ```
+
+### 8. [`UnRegisterList`](UnRegisterList.cs)
+
+批量管理注销对象的列表。
+
+**使用示例：**
+
+```csharp
+var unregisterList = new UnRegisterList();
+
+// 添加到列表
+someEvent.Register(OnEvent).AddToUnregisterList(unregisterList);
+
+// 批量注销
+unregisterList.UnRegisterAll();
+```
+
+### 9. [`ArchitectureEvents`](ArchitectureEvents.cs)
+
+定义了架构生命周期相关的事件。
+
+**包含事件：**
+
+- `ArchitectureLifecycleReadyEvent` - 架构生命周期准备就绪
+- `ArchitectureDestroyingEvent` - 架构销毁中
+- `ArchitectureDestroyedEvent` - 架构已销毁
+- `ArchitectureFailedInitializationEvent` - 架构初始化失败
 
 ## 在架构中使用事件
 

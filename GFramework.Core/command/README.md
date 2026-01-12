@@ -10,16 +10,6 @@ Command 包实现了命令模式（Command Pattern），用于封装用户操作
 
 无返回值命令接口，定义了命令的基本契约。
 
-**继承的能力接口：**
-
-- [`ICanSetArchitecture`](../rule/ICanSetArchitecture.cs) - 可设置架构
-- [`ICanGetSystem`](../system/ICanGetSystem.cs) - 可获取系统
-- [`ICanGetModel`](../model/ICanGetModel.cs) - 可获取模型
-- [`ICanGetUtility`](../utility/ICanGetUtility.cs) - 可获取工具
-- [`ICanSendEvent`](../events/ICanSendEvent.cs) - 可发送事件
-- [`ICanSendCommand`](ICanSendCommand.cs) - 可发送命令
-- [`ICanSendQuery`](../query/ICanSendQuery.cs) - 可发送查询
-
 **核心方法：**
 
 ```csharp
@@ -36,30 +26,39 @@ void Execute();  // 执行命令
 TResult Execute();  // 执行命令并返回结果
 ```
 
-### 3. [`ICanSendCommand`](ICanSendCommand.cs)
-
-标记接口，表示实现者可以发送命令。继承自 [`IBelongToArchitecture`](../rule/IBelongToArchitecture.cs)。
-
 ## 核心类
 
-### 1. [`AbstractCommand`](AbstractCommand.cs)
+### 1. [`AbstractCommand<TInput>`](AbstractCommand.cs)
 
-无返回值命令的抽象基类，提供了命令的基础实现。
+无返回值命令的抽象基类，提供了命令的基础实现。它继承自 [ContextAwareBase](file:///d:/Project/Rider/GFramework/GFramework.Core.Abstractions/rule/IContextAware.cs#L4-L28)
+，具有上下文感知能力。
 
 **使用示例：**
 
 ```csharp
-// 定义一个开始游戏的命令
-public class StartGameCommand : AbstractCommand
+// 定义一个命令输入参数
+public struct StartGameCommandInput : ICommandInput
 {
-    protected override void OnExecute()
+    public int LevelId { get; set; }
+    public string PlayerName { get; set; }
+}
+
+// 定义一个开始游戏的命令
+public class StartGameCommand : AbstractCommand<StartGameCommandInput>
+{
+    public StartGameCommand(StartGameCommandInput input) : base(input)
+    {
+    }
+
+    protected override void OnExecute(StartGameCommandInput input)
     {
         // 获取需要的模型
         var playerModel = this.GetModel<PlayerModel>();
         var gameModel = this.GetModel<GameModel>();
         
         // 执行业务逻辑
-        playerModel.Health.Value = 100;
+        playerModel.PlayerName.Value = input.PlayerName;
+        gameModel.CurrentLevel.Value = input.LevelId;
         gameModel.GameState.Value = GameState.Playing;
         
         // 发送事件通知其他模块
@@ -74,41 +73,44 @@ public class GameController : IController
     
     public void OnStartButtonClicked()
     {
-        // 方式1：发送命令实例
-        this.SendCommand(new StartGameCommand());
-        
-        // 方式2：通过泛型发送（需要无参构造函数）
-        this.SendCommand<StartGameCommand>();
+        // 发送命令实例
+        this.SendCommand(new StartGameCommand(new StartGameCommandInput 
+        { 
+            LevelId = 1, 
+            PlayerName = "Player1" 
+        }));
     }
 }
 ```
 
-### 2. [`AbstractCommand<TResult>`](AbstractCommand.cs)
+### 2. [`AbstractCommand<TInput, TResult>`](AbstractCommand.cs)
 
-带返回值命令的抽象基类。
+带返回值命令的抽象基类，同样继承自 [ContextAwareBase](file:///d:/Project/Rider/GFramework/GFramework.Core.Abstractions/rule/IContextAware.cs#L4-L28)。
 
 **使用示例：**
 
 ```csharp
-// 定义一个计算伤害的命令
-public class CalculateDamageCommand : AbstractCommand<int>
+// 定义一个计算伤害的命令输入
+public struct CalculateDamageCommandInput : ICommandInput
 {
-    private readonly int _attackPower;
-    private readonly int _defense;
-    
-    public CalculateDamageCommand(int attackPower, int defense)
+    public int AttackerAttackPower { get; set; }
+    public int DefenderDefense { get; set; }
+}
+
+// 定义一个计算伤害的命令
+public class CalculateDamageCommand : AbstractCommand<CalculateDamageCommandInput, int>
+{
+    public CalculateDamageCommand(CalculateDamageCommandInput input) : base(input)
     {
-        _attackPower = attackPower;
-        _defense = defense;
     }
-    
-    protected override int OnExecute()
+
+    protected override int OnExecute(CalculateDamageCommandInput input)
     {
         // 获取游戏配置
         var config = this.GetModel<GameConfigModel>();
         
         // 计算最终伤害
-        var baseDamage = _attackPower - _defense;
+        var baseDamage = input.AttackerAttackPower - input.DefenderDefense;
         var finalDamage = Math.Max(1, baseDamage * config.DamageMultiplier);
         
         return (int)finalDamage;
@@ -123,9 +125,11 @@ public class CombatSystem : AbstractSystem
     public void Attack(Character attacker, Character defender)
     {
         // 发送命令并获取返回值
-        var damage = this.SendCommand(
-            new CalculateDamageCommand(attacker.AttackPower, defender.Defense)
-        );
+        var damage = this.SendCommand(new CalculateDamageCommand(new CalculateDamageCommandInput
+        {
+            AttackerAttackPower = attacker.AttackPower,
+            DefenderDefense = defender.Defense
+        }));
         
         // 应用伤害
         defender.Health -= damage;
@@ -139,26 +143,78 @@ public class CombatSystem : AbstractSystem
 ## 命令的生命周期
 
 1. **创建命令**：实例化命令对象，传入必要的参数
-2. **设置架构**：框架自动调用 `SetArchitecture()` 设置架构引用
-3. **执行命令**：调用 `Execute()` 方法，内部委托给 `OnExecute()`
-4. **返回结果**：对于带返回值的命令，返回执行结果
-5. **命令销毁**：命令执行完毕后可以被垃圾回收
+2. **执行命令**：调用 `Execute()` 方法，内部委托给 `OnExecute()`
+3. **返回结果**：对于带返回值的命令，返回执行结果
+4. **命令销毁**：命令执行完毕后可以被垃圾回收
+
+## CommandBus - 命令总线
+
+### 功能说明
+
+[CommandBus](file:///d:/Project/Rider/GFramework/GFramework.Core/command/CommandBus.cs#L8-L34) 是命令执行的核心组件，负责发送和执行命令。
+
+**主要方法：**
+
+```csharp
+void Send(ICommand command);              // 发送无返回值命令
+TResult Send<TResult>(ICommand<TResult> command);  // 发送带返回值命令
+```
+
+### 使用示例
+
+```csharp
+var commandBus = new CommandBus();
+
+// 发送无返回值命令
+commandBus.Send(new StartGameCommand(new StartGameCommandInput()));
+
+// 发送带返回值命令
+var result = commandBus.Send(new CalculateDamageCommand(new CalculateDamageCommandInput()));
+```
+
+## EmptyCommandInput - 空命令输入
+
+当命令不需要输入参数时，可以使用 [EmptyCommentInput](file:///d:/Project/Rider/GFramework/GFramework.Core/command/EmptyCommentInput.cs#L7-L11)
+类：
+
+```csharp
+public class SimpleActionCommand : AbstractCommand<EmptyCommentInput>
+{
+    public SimpleActionCommand(EmptyCommentInput input) : base(input)
+    {
+    }
+
+    protected override void OnExecute(EmptyCommentInput input)
+    {
+        // 执行简单操作，无需额外参数
+        this.SendEvent(new SimpleActionEvent());
+    }
+}
+```
 
 ## 使用场景
 
 ### 1. 用户交互操作
 
 ```csharp
-// UI 按钮点击
-public class SaveGameCommand : AbstractCommand
+public struct SaveGameCommandInput : ICommandInput
 {
-    protected override void OnExecute()
+    public string SaveSlot { get; set; }
+}
+
+public class SaveGameCommand : AbstractCommand<SaveGameCommandInput>
+{
+    public SaveGameCommand(SaveGameCommandInput input) : base(input)
+    {
+    }
+
+    protected override void OnExecute(SaveGameCommandInput input)
     {
         var saveSystem = this.GetSystem<SaveSystem>();
         var playerModel = this.GetModel<PlayerModel>();
         
-        saveSystem.SavePlayerData(playerModel);
-        this.SendEvent(new GameSavedEvent());
+        saveSystem.SavePlayerData(playerModel, input.SaveSlot);
+        this.SendEvent(new GameSavedEvent(input.SaveSlot));
     }
 }
 ```
@@ -166,17 +222,18 @@ public class SaveGameCommand : AbstractCommand
 ### 2. 业务流程控制
 
 ```csharp
-// 关卡切换
-public class LoadLevelCommand : AbstractCommand
+public struct LoadLevelCommandInput : ICommandInput
 {
-    private readonly int _levelId;
-    
-    public LoadLevelCommand(int levelId)
+    public int LevelId { get; set; }
+}
+
+public class LoadLevelCommand : AbstractCommand<LoadLevelCommandInput>
+{
+    public LoadLevelCommand(LoadLevelCommandInput input) : base(input)
     {
-        _levelId = levelId;
     }
-    
-    protected override void OnExecute()
+
+    protected override void OnExecute(LoadLevelCommandInput input)
     {
         var levelSystem = this.GetSystem<LevelSystem>();
         var uiSystem = this.GetSystem<UISystem>();
@@ -185,67 +242,13 @@ public class LoadLevelCommand : AbstractCommand
         uiSystem.ShowLoadingScreen();
         
         // 加载关卡
-        levelSystem.LoadLevel(_levelId);
+        levelSystem.LoadLevel(input.LevelId);
         
         // 发送事件
-        this.SendEvent(new LevelLoadedEvent(_levelId));
+        this.SendEvent(new LevelLoadedEvent(input.LevelId));
     }
 }
 ```
-
-### 3. 网络请求封装
-
-```csharp
-// 登录命令
-public class LoginCommand : AbstractCommand<bool>
-{
-    private readonly string _username;
-    private readonly string _password;
-    
-    public LoginCommand(string username, string password)
-    {
-        _username = username;
-        _password = password;
-    }
-    
-    protected override bool OnExecute()
-    {
-        var networkSystem = this.GetSystem<NetworkSystem>();
-        var playerModel = this.GetModel<PlayerModel>();
-        
-        // 发送登录请求
-        var result = networkSystem.Login(_username, _password);
-        
-        if (result.Success)
-        {
-            playerModel.UserId = result.UserId;
-            playerModel.Username = _username;
-            this.SendEvent(new LoginSuccessEvent());
-            return true;
-        }
-        else
-        {
-            this.SendEvent(new LoginFailedEvent(result.ErrorMessage));
-            return false;
-        }
-    }
-}
-```
-
-## 命令 vs 系统方法
-
-**何时使用命令：**
-
-- 需要参数化操作
-- 需要记录操作历史（用于撤销/重做）
-- 操作需要跨多个系统协调
-- 用户触发的离散操作
-
-**何时使用系统方法：**
-
-- 持续运行的逻辑（如每帧更新）
-- 系统内部的私有逻辑
-- 不需要外部调用的功能
 
 ## 最佳实践
 
@@ -253,31 +256,36 @@ public class LoginCommand : AbstractCommand<bool>
 2. **命令无状态**：命令不应该保存长期状态，执行完即可丢弃
 3. **参数通过构造函数传递**：命令需要的参数应在创建时传入
 4. **避免命令嵌套**：命令内部尽量不要发送其他命令，使用事件通信
-5. **合理使用返回值**：只在确实需要返回结果时使用 `ICommand<TResult>`
+5. **合理使用返回值**：只在确实需要返回结果时使用 `AbstractCommand<TInput, TResult>`
 6. **命令命名规范**：使用动词+名词形式，如 `StartGameCommand`、`SavePlayerCommand`
+7. **输入参数结构化**：使用 `ICommandInput` 接口的实现类来组织命令参数
 
 ## 扩展功能
 
 ### 命令撤销/重做（可扩展）
 
 ```csharp
-// 可撤销命令接口
-public interface IUndoableCommand : ICommand
+public struct MoveCommandInput : ICommandInput
 {
-    void Undo();
+    public Vector3 NewPosition { get; set; }
 }
 
 // 实现可撤销命令
-public class MoveCommand : AbstractCommand, IUndoableCommand
+public class MoveCommand : AbstractCommand<MoveCommandInput>, IUndoableCommand
 {
     private Vector3 _oldPosition;
     private Vector3 _newPosition;
     
-    protected override void OnExecute()
+    public MoveCommand(MoveCommandInput input) : base(input)
+    {
+        _newPosition = input.NewPosition;
+    }
+
+    protected override void OnExecute(MoveCommandInput input)
     {
         var player = this.GetModel<PlayerModel>();
         _oldPosition = player.Position;
-        player.Position = _newPosition;
+        player.Position = input.NewPosition;
     }
     
     public void Undo()

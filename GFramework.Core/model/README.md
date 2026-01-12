@@ -13,14 +13,14 @@ Model 包定义了数据模型层的接口和基类。Model 是 MVC 架构中的
 
 **继承的能力接口：**
 
-- [`ICanSetArchitecture`](../rule/ICanSetArchitecture.cs) - 可设置架构引用
-- [`ICanGetUtility`](../utility/ICanGetUtility.cs) - 可获取工具类
-- [`ICanSendEvent`](../events/ICanSendEvent.cs) - 可发送事件
+- [`IContextAware`](../rule/IContextAware.cs) - 上下文感知接口
+- [`ILogAware`](../rule/ILogAware.cs) - 日志感知接口
 
 **核心方法：**
 
 ```csharp
 void Init();  // 初始化模型
+void OnArchitecturePhase(ArchitecturePhase phase);  // 处理架构阶段事件
 ```
 
 ### [`ICanGetModel`](ICanGetModel.cs)
@@ -31,7 +31,8 @@ void Init();  // 初始化模型
 
 ### [`AbstractModel`](AbstractModel.cs)
 
-抽象模型基类，提供模型的基础实现。
+抽象模型基类，实现IModel接口，提供模型的基础实现。该类继承自[
+`ContextAwareBase`](file:///d:/Project/Rider/GFramework/GFramework.Core/rule/ContextAwareBase.cs#L11-L37)，提供了上下文感知能力。
 
 **使用示例：**
 
@@ -55,6 +56,20 @@ public class PlayerModel : AbstractModel
             }
         });
     }
+    
+    public override void OnArchitecturePhase(ArchitecturePhase phase)
+    {
+        switch (phase)
+        {
+            case ArchitecturePhase.Initializing:
+                // 架构初始化阶段的处理
+                break;
+            case ArchitecturePhase.Ready:
+                // 架构就绪阶段的处理
+                break;
+            // ... 其他阶段处理
+        }
+    }
 }
 ```
 
@@ -66,6 +81,7 @@ public class PlayerModel : AbstractModel
 2. **提供数据访问接口**
 3. **监听自身属性变化并做出响应**
 4. **发送数据变化事件**
+5. **处理架构生命周期事件**
 
 ### ❌ 不应该做的事
 
@@ -99,6 +115,19 @@ public class PlayerModel : AbstractModel
             }
         });
     }
+    
+    public override void OnArchitecturePhase(ArchitecturePhase phase)
+    {
+        switch (phase)
+        {
+            case ArchitecturePhase.Ready:
+                // 模型准备好后的处理
+                _log?.Log("PlayerModel is ready.");
+                break;
+            default:
+                break;
+        }
+    }
 }
 ```
 
@@ -122,6 +151,18 @@ public class GameModel : AbstractModel
                 this.SendEvent(new NewHighScoreEvent { Score = newScore });
             }
         });
+    }
+    
+    public override void OnArchitecturePhase(ArchitecturePhase phase)
+    {
+        switch (phase)
+        {
+            case ArchitecturePhase.ShuttingDown:
+                // 游戏模型清理工作
+                break;
+            default:
+                break;
+        }
     }
 }
 ```

@@ -7,17 +7,7 @@ Query 包实现了 CQRS（命令查询职责分离）模式中的查询部分。
 
 ## 核心接口
 
-### [`ICanSendQuery`](ICanSendQuery.cs)
-
-标记接口，表示该类型可以发送查询。
-
-**继承关系：**
-
-```csharp
-public interface ICanSendQuery : IBelongToArchitecture
-```
-
-### [`IQuery<TResult>`](IQuery.cs)
+### IQuery<TResult>
 
 查询接口，定义了查询的基本契约。
 
@@ -27,26 +17,50 @@ public interface ICanSendQuery : IBelongToArchitecture
 TResult Do();  // 执行查询并返回结果
 ```
 
-**继承的能力：**
-
-- `ICanSetArchitecture` - 可设置架构
-- `ICanGetModel` - 可获取 Model
-- `ICanGetSystem` - 可获取 System
-- `ICanSendQuery` - 可发送其他 Query
-
 ## 核心类
 
-### [`AbstractQuery<T>`](AbstractQuery.cs)
+### [`AbstractQuery<TInput, TResult>`](AbstractQuery.cs)
 
-抽象查询基类，提供了查询的基础实现。
+抽象查询基类，提供了查询的基础实现。它接受一个泛型输入参数 TInput，该参数必须实现 IQueryInput 接口。
 
 **使用方式：**
 
 ```csharp
-public abstract class AbstractQuery<T> : IQuery<T>
+public abstract class AbstractQuery<TInput, TResult>(TInput input) : ContextAwareBase, IQuery<TResult>
+    where TInput : IQueryInput
 {
-    public T Do() => OnDo();
-    protected abstract T OnDo();  // 子类实现查询逻辑
+    public TResult Do() => OnDo(input);  // 执行查询，传入输入参数
+    protected abstract TResult OnDo(TInput input);  // 子类实现查询逻辑
+}
+```
+
+### [`EmptyQueryInput`](EmptyQueryInput.cs)
+
+空查询输入类，用于表示不需要任何输入参数的查询操作。
+
+**使用方式：**
+
+```csharp
+public sealed class EmptyQueryInput : IQueryInput
+{
+    // 作为占位符使用，适用于那些不需要额外输入参数的查询场景
+}
+```
+
+### [`QueryBus`](QueryBus.cs)
+
+查询总线实现，负责执行查询并返回结果。
+
+**使用方式：**
+
+```csharp
+public sealed class QueryBus : IQueryBus
+{
+    public TResult Send<TResult>(IQuery<TResult> query)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        return query.Do();
+    }
 }
 ```
 
@@ -54,41 +68,58 @@ public abstract class AbstractQuery<T> : IQuery<T>
 
 ### 1. 定义查询
 
-```csharp
+``csharp
+// 定义查询输入参数
+public record GetPlayerGoldQueryInput : IQueryInput;
+
 // 查询玩家金币数量
-public class GetPlayerGoldQuery : AbstractQuery<int>
+public class GetPlayerGoldQuery : AbstractQuery<GetPlayerGoldQueryInput, int>
 {
-    protected override int OnDo()
+public GetPlayerGoldQuery() : base(new EmptyQueryInput())
+{
+}
+
+    protected override int OnDo(GetPlayerGoldQueryInput input)
     {
         return this.GetModel<PlayerModel>().Gold.Value;
     }
 }
 
 // 查询玩家是否死亡
-public class IsPlayerDeadQuery : AbstractQuery<bool>
+public record IsPlayerDeadQueryInput : IQueryInput;
+
+public class IsPlayerDeadQuery : AbstractQuery<IsPlayerDeadQueryInput, bool>
 {
-    protected override bool OnDo()
+public IsPlayerDeadQuery() : base(new EmptyQueryInput())
+{
+}
+
+    protected override bool OnDo(IsPlayerDeadQueryInput input)
     {
         return this.GetModel<PlayerModel>().Health.Value <= 0;
     }
 }
 
 // 查询背包中指定物品的数量
-public class GetItemCountQuery : AbstractQuery<int>
+public record GetItemCountQueryInput(string ItemId) : IQueryInput;
+
+public class GetItemCountQuery : AbstractQuery<GetItemCountQueryInput, int>
 {
-    public string ItemId { get; set; }
-    
-    protected override int OnDo()
+public GetItemCountQuery(string itemId) : base(new GetItemCountQueryInput(itemId))
+{
+}
+
+    protected override int OnDo(GetItemCountQueryInput input)
     {
         var inventory = this.GetModel<InventoryModel>();
-        return inventory.GetItemCount(ItemId);
+        return inventory.GetItemCount(input.ItemId);
     }
 }
 ```
 
 ### 2. 发送查询（在 Controller 中）
 
-```csharp
+``csharp
 public partial class ShopUI : Control, IController
 {
     [Export] private Button _buyButton;
@@ -121,7 +152,7 @@ public partial class ShopUI : Control, IController
 
 ### 3. 在 System 中使用
 
-```csharp
+``csharp
 public class CombatSystem : AbstractSystem
 {
     protected override void OnInit()
@@ -148,7 +179,7 @@ public class CombatSystem : AbstractSystem
 
 ### 1. 带参数的复杂查询
 
-```csharp
+``csharp
 // 查询指定范围内的敌人列表
 public class GetEnemiesInRangeQuery : AbstractQuery<List<Enemy>>
 {
@@ -172,7 +203,7 @@ var enemies = this.SendQuery(new GetEnemiesInRangeQuery
 
 ### 2. 组合查询
 
-```csharp
+``csharp
 // 查询玩家是否可以使用技能
 public class CanUseSkillQuery : AbstractQuery<bool>
 {
@@ -215,7 +246,7 @@ public class IsSkillOnCooldownQuery : AbstractQuery<bool>
 
 ### 3. 聚合数据查询
 
-```csharp
+``csharp
 // 查询玩家战斗力
 public class GetPlayerPowerQuery : AbstractQuery<int>
 {
@@ -254,7 +285,7 @@ public class GetPlayerInfoQuery : AbstractQuery<PlayerInfo>
 
 ### 4. 跨 System 查询
 
-```csharp
+``csharp
 // 在 AI System 中查询玩家状态
 public class EnemyAISystem : AbstractSystem
 {
@@ -303,7 +334,7 @@ public class EnemyAISystem : AbstractSystem
 - **返回值**：有返回值
 - **示例**：获取金币数量、检查技能冷却、查询玩家位置
 
-```csharp
+``csharp
 // ❌ 错误：在 Query 中修改状态
 public class BadQuery : AbstractQuery<int>
 {
@@ -349,7 +380,7 @@ public class AddGoldCommand : AbstractCommand
 
 ### 1. 缓存查询结果
 
-```csharp
+``csharp
 // 在 Model 中缓存复杂计算
 public class PlayerModel : AbstractModel
 {
@@ -379,7 +410,7 @@ public class PlayerModel : AbstractModel
 
 ### 2. 批量查询
 
-```csharp
+``csharp
 // 一次查询多个数据，而不是多次单独查询
 public class GetMultipleItemCountsQuery : AbstractQuery<Dictionary<string, int>>
 {

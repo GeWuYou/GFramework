@@ -6,64 +6,69 @@ Extensions 包提供了一系列扩展方法，简化了框架各个接口的使
 
 ## 扩展方法类别
 
-### 1. 获取组件扩展 ([`CanGetExtensions.cs`](CanGetExtensions.cs))
+### 1. ContextAware 扩展 ([`ContextAwareExtensions.cs`](ContextAwareExtensions.cs))
 
-为 [`ICanGetModel`](../model/ICanGetModel.cs)、[`ICanGetSystem`](../system/ICanGetSystem.cs)、[
-`ICanGetUtility`](../utility/ICanGetUtility.cs) 提供扩展方法。
+为 [`IContextAware`](../../GFramework.Core.Abstractions/rule/IContextAware.cs)
+提供扩展方法，允许直接从实现了 [IContextAware](file:///d:/Project/Rider/GFramework/GFramework.Core.Abstractions/rule/IContextAware.cs)
+的对象获取架构组件。
 
-#### CanGetModelExtension
+#### GetSystem 扩展方法
 
 ```csharp
-public static T GetModel<T>(this ICanGetModel self) where T : class, IModel
+public static TSystem? GetSystem<TSystem>(this IContextAware contextAware) 
+    where TSystem : class, ISystem
 ```
 
 **使用示例：**
 
 ```csharp
-// 在 Controller、Command、Query 中使用
+// 在实现了 IContextAware 的类中使用
 public class PlayerController : IController
 {
     public void UpdateUI()
     {
         // 直接通过 this 调用
+        var playerSystem = this.GetSystem<PlayerSystem>();
+        var inventorySystem = this.GetSystem<InventorySystem>();
+    }
+}
+```
+
+#### GetModel 扩展方法
+
+```csharp
+public static TModel? GetModel<TModel>(this IContextAware contextAware) 
+    where TModel : class, IModel
+```
+
+**使用示例：**
+
+```csharp
+public class PlayerController : IController
+{
+    public void UpdateStats()
+    {
+        // 获取模型
         var playerModel = this.GetModel<PlayerModel>();
         var inventoryModel = this.GetModel<InventoryModel>();
-    }
-}
-```
-
-#### CanGetSystemExtension
-
-```csharp
-public static T GetSystem<T>(this ICanGetSystem self) where T : class, ISystem
-```
-
-**使用示例：**
-
-```csharp
-public class SaveCommand : AbstractCommand
-{
-    protected override void OnExecute()
-    {
-        // 获取系统
-        var saveSystem = this.GetSystem<SaveSystem>();
-        var networkSystem = this.GetSystem<NetworkSystem>();
         
-        saveSystem.SaveGame();
+        // 使用模型数据
+        playerModel.Health += 10;
     }
 }
 ```
 
-#### CanGetUtilityExtension
+#### GetUtility 扩展方法
 
 ```csharp
-public static T GetUtility<T>(this ICanGetUtility self) where T : class, IUtility
+public static TUtility? GetUtility<TUtility>(this IContextAware contextAware) 
+    where TUtility : class, IUtility
 ```
 
 **使用示例：**
 
 ```csharp
-public class GameModel : AbstractModel
+public class GameModel : AbstractModel, IContextAware
 {
     protected override void OnInit()
     {
@@ -74,24 +79,14 @@ public class GameModel : AbstractModel
 }
 ```
 
-### 2. 发送命令扩展 ([`CanSendExtensions.cs`](CanSendExtensions.cs))
-
-为 [`ICanSendCommand`](../command/ICanSendCommand.cs) 提供扩展方法。
-
-#### CanSendCommandExtension
+#### SendCommand 扩展方法
 
 ```csharp
-// 发送无参命令（通过类型）
-public static void SendCommand<T>(this ICanSendCommand self) 
-    where T : ICommand, new()
-
-// 发送命令实例
-public static void SendCommand<T>(this ICanSendCommand self, T command) 
-    where T : ICommand
+// 发送无返回值的命令
+public static void SendCommand(this IContextAware contextAware, ICommand command)
 
 // 发送带返回值的命令
-public static TResult SendCommand<TResult>(this ICanSendCommand self, 
-    ICommand<TResult> command)
+public static TResult SendCommand<TResult>(this IContextAware contextAware, ICommand<TResult> command)
 ```
 
 **使用示例：**
@@ -101,36 +96,51 @@ public class GameController : IController
 {
     public void OnStartButtonClicked()
     {
-        // 方式1：通过类型发送（需要无参构造函数）
-        this.SendCommand<StartGameCommand>();
+        // 发送命令实例
+        this.SendCommand(new StartGameCommand());
         
-        // 方式2：发送命令实例
-        this.SendCommand(new LoadLevelCommand(levelId: 1));
-        
-        // 方式3：发送带返回值的命令
-        var score = this.SendCommand(new CalculateScoreCommand());
+        // 发送带返回值的命令
+        var result = this.SendCommand(new CalculateScoreCommand());
     }
 }
 ```
 
-### 3. 发送事件扩展 ([`CanSendExtensions.cs`](CanSendExtensions.cs))
-
-为 [`ICanSendEvent`](../events/ICanSendEvent.cs) 提供扩展方法。
-
-#### CanSendEventExtension
+#### SendQuery 扩展方法
 
 ```csharp
-// 发送无参事件
-public static void SendEvent<T>(this ICanSendEvent self) where T : new()
-
-// 发送事件实例
-public static void SendEvent<T>(this ICanSendEvent self, T e)
+public static TResult SendQuery<TResult>(this IContextAware contextAware, IQuery<TResult> query)
 ```
 
 **使用示例：**
 
 ```csharp
-public class PlayerModel : AbstractModel
+public class InventoryController : IController
+{
+    public void ShowInventory()
+    {
+        // 发送查询获取数据
+        var items = this.SendQuery(new GetInventoryItemsQuery());
+        var gold = this.SendQuery(new GetPlayerGoldQuery());
+        
+        UpdateInventoryUI(items, gold);
+    }
+}
+```
+
+#### SendEvent 扩展方法
+
+```csharp
+// 发送无参事件
+public static void SendEvent<T>(this IContextAware contextAware) where T : new()
+
+// 发送事件实例
+public static void SendEvent<T>(this IContextAware contextAware, T e) where T : class
+```
+
+**使用示例：**
+
+```csharp
+public class PlayerModel : AbstractModel, IContextAware
 {
     public void TakeDamage(int damage)
     {
@@ -152,57 +162,20 @@ public class PlayerModel : AbstractModel
 }
 ```
 
-### 4. 发送查询扩展 ([`CanSendExtensions.cs`](CanSendExtensions.cs))
-
-为 [`ICanSendQuery`](../query/ICanSendQuery.cs) 提供扩展方法。
-
-#### CanSendQueryExtension
+#### RegisterEvent 扩展方法
 
 ```csharp
-public static TResult SendQuery<TResult>(this ICanSendQuery self, 
-    IQuery<TResult> query)
+public static IUnRegister RegisterEvent<TEvent>(this IContextAware contextAware, Action<TEvent> handler)
 ```
 
 **使用示例：**
 
 ```csharp
-public class InventoryController : IController
-{
-    public void ShowInventory()
-    {
-        // 发送查询获取数据
-        var items = this.SendQuery(new GetInventoryItemsQuery());
-        var gold = this.SendQuery(new GetPlayerGoldQuery());
-        
-        UpdateInventoryUI(items, gold);
-    }
-}
-```
-
-### 5. 注册事件扩展 ([`CanRegisterEventExtensions.cs`](CanRegisterEventExtensions.cs))
-
-为 [`ICanRegisterEvent`](../events/ICanRegisterEvent.cs) 提供扩展方法。
-
-#### CanRegisterEventExtensions
-
-```csharp
-// 注册事件
-public static IUnRegister RegisterEvent<T>(this ICanRegisterEvent self, 
-    Action<T> onEvent)
-
-// 注销事件
-public static void UnRegisterEvent<T>(this ICanRegisterEvent self, 
-    Action<T> onEvent)
-```
-
-**使用示例：**
-
-```csharp
-public class GameController : Node, IController
+public class GameController : IController
 {
     private IUnRegisterList _unregisterList = new UnRegisterList();
     
-    public override void _Ready()
+    public void Initialize()
     {
         // 注册事件监听
         this.RegisterEvent<GameStartedEvent>(OnGameStarted)
@@ -217,14 +190,143 @@ public class GameController : Node, IController
 }
 ```
 
-### 6. OrEvent 扩展 ([`OrEventExtensions.cs`](OrEventExtensions.cs))
+#### UnRegisterEvent 扩展方法
 
-为 [`IEasyEvent`](../events/IEasyEvent.cs) 提供事件组合功能。
+```csharp
+public static void UnRegisterEvent<TEvent>(this IContextAware contextAware, Action<TEvent> onEvent)
+```
+
+### GetEnvironment 扩展方法
+
+```csharp
+public static T? GetEnvironment<T>(this IContextAware contextAware) where T : class
+public static IEnvironment GetEnvironment(this IContextAware contextAware)
+```
+
+### 2. Object 扩展 ([`ObjectExtensions.cs`](ObjectExtensions.cs))
+
+提供基于运行时类型判断的对象扩展方法，用于简化类型分支、链式调用和架构分派逻辑。
+
+#### IfType 扩展方法
+
+```csharp
+// 最简单的类型判断
+public static bool IfType<T>(this object obj, Action<T> action)
+
+// 带条件的类型判断
+public static bool IfType<T>(
+    this object obj, 
+    Func<T, bool> predicate, 
+    Action<T> action
+)
+
+// 条件判断，带不匹配时的处理
+public static void IfType<T>(
+    this object obj, 
+    Action<T> whenMatch, 
+    Action<object>? whenNotMatch = null
+)
+```
+
+**使用示例：**
+
+```csharp
+object obj = new MyRule();
+
+// 简单类型判断
+bool executed = obj.IfType<MyRule>(rule =>
+{
+    rule.Initialize();
+});
+
+// 带条件的类型判断
+obj.IfType<MyRule>(
+    r => r.Enabled,      // 条件
+    r => r.Execute()     // 执行动作
+);
+
+// 带不匹配处理的类型判断
+obj.IfType<IRule>(
+    rule => rule.Execute(),
+    other => Logger.Warn($"Unsupported type: {other.GetType()}")
+);
+```
+
+#### IfType<T, TResult> 扩展方法
+
+```csharp
+public static TResult? IfType<T, TResult>(
+    this object obj,
+    Func<T, TResult> func
+)
+```
+
+**使用示例：**
+
+```csharp
+object obj = new MyRule { Name = "TestRule" };
+
+string? name = obj.IfType<MyRule, string>(r => r.Name);
+```
+
+#### As 和 Do 扩展方法
+
+```csharp
+// 安全类型转换
+public static T? As<T>(this object obj) where T : class
+
+// 流式调用
+public static T Do<T>(this T obj, Action<T> action)
+```
+
+**使用示例：**
+
+```csharp
+// 安全类型转换
+obj.As<MyRule>()
+   ?.Execute();
+
+// 流式调用
+obj.As<MyRule>()
+   ?.Do(r => r.Initialize())
+   ?.Do(r => r.Execute());
+
+// 组合使用
+obj.As<MyRule>()
+   ?.Do(rule => 
+   {
+       if (rule.Enabled)
+           rule.Execute();
+   });
+```
+
+#### SwitchType 扩展方法
+
+```csharp
+public static void SwitchType(
+    this object obj,
+    params (Type type, Action<object> action)[] handlers
+)
+```
+
+**使用示例：**
+
+```csharp
+obj.SwitchType(
+    (typeof(IRule), o => HandleRule((IRule)o)),
+    (typeof(ISystem), o => HandleSystem((ISystem)o)),
+    (typeof(IModel), o => HandleModel((IModel)o))
+);
+```
+
+### 3. OrEvent 扩展 ([`OrEventExtensions.cs`](OrEventExtensions.cs))
+
+为 [`IEvent`](../../GFramework.Core.Abstractions/events/IEvent.cs) 提供事件组合功能。
 
 #### OrEventExtensions
 
 ```csharp
-public static OrEvent Or(this IEasyEvent self, IEasyEvent e)
+public static OrEvent Or(this IEvent self, IEvent e)
 ```
 
 **使用示例：**
@@ -244,41 +346,7 @@ var onAnyDamage = onPhysicalDamage
     .Or(onPoisonDamage);
 ```
 
-### 7. UnRegister 扩展 ([`UnRegisterExtension.cs`](UnRegisterExtension.cs))
-
-为 [`IUnRegister`](../events/IUnRegister.cs) 提供 Godot 生命周期绑定。
-
-#### UnRegisterExtension
-
-```csharp
-public static IUnRegister UnRegisterWhenNodeExitTree(this IUnRegister unRegister, 
-    Node node)
-```
-
-**使用示例：**
-
-```csharp
-#if GODOT
-public class PlayerController : Node, IController
-{
-    public override void _Ready()
-    {
-        // 当节点退出场景树时自动注销
-        this.RegisterEvent<GameEvent>(OnGameEvent)
-            .UnRegisterWhenNodeExitTree(this);
-            
-        this.GetModel<PlayerModel>()
-            .Health
-            .Register(OnHealthChanged)
-            .UnRegisterWhenNodeExitTree(this);
-    }
-    
-    // 不需要手动在 _ExitTree 中注销
-}
-#endif
-```
-
-### 8. UnRegisterList 扩展 ([`UnRegisterListExtension.cs`](UnRegisterListExtension.cs))
+### 4. UnRegisterList 扩展 ([`UnRegisterListExtension.cs`](UnRegisterListExtension.cs))
 
 为 [`IUnRegister`](../events/IUnRegister.cs) 和 [`IUnRegisterList`](../events/IUnRegisterList.cs) 提供批量管理功能。
 
@@ -296,11 +364,11 @@ public static void UnRegisterAll(this IUnRegisterList self)
 **使用示例：**
 
 ```csharp
-public class ComplexController : Node, IController
+public class ComplexController : IController
 {
     private IUnRegisterList _unregisterList = new UnRegisterList();
     
-    public override void _Ready()
+    public void Initialize()
     {
         // 所有注册都添加到列表中
         this.RegisterEvent<Event1>(OnEvent1)
@@ -316,7 +384,7 @@ public class ComplexController : Node, IController
             .AddToUnregisterList(_unregisterList);
     }
     
-    public override void _ExitTree()
+    public void Cleanup()
     {
         // 一次性注销所有
         _unregisterList.UnRegisterAll();
@@ -329,13 +397,11 @@ public class ComplexController : Node, IController
 ### Controller 示例
 
 ```csharp
-public partial class GameplayController : Node, IController
+public partial class GameplayController : IController
 {
     private IUnRegisterList _unregisterList = new UnRegisterList();
     
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
-    
-    public override void _Ready()
+    public void Initialize()
     {
         // 使用扩展方法获取 Model
         var playerModel = this.GetModel<PlayerModel>();
@@ -348,34 +414,24 @@ public partial class GameplayController : Node, IController
         // 监听可绑定属性
         playerModel.Health.Register(OnHealthChanged)
             .AddToUnregisterList(_unregisterList);
-        
-        // 或者使用 Godot 特定的自动注销
-        gameModel.Score.Register(OnScoreChanged)
-            .UnRegisterWhenNodeExitTree(this);
     }
     
-    public override void _Process(double delta)
+    public void Process(double delta)
     {
-        if (Input.IsActionJustPressed("attack"))
-        {
-            // 使用扩展方法发送命令
-            this.SendCommand(new AttackCommand(targetId: 1));
-        }
+        // 发送命令
+        this.SendCommand(new AttackCommand(targetId: 1));
         
-        if (Input.IsActionJustPressed("use_item"))
+        // 发送查询
+        var hasPotion = this.SendQuery(new HasItemQuery("health_potion"));
+        if (hasPotion)
         {
-            // 使用扩展方法发送查询
-            var hasPotion = this.SendQuery(new HasItemQuery("health_potion"));
-            if (hasPotion)
-            {
-                this.SendCommand<UseHealthPotionCommand>();
-            }
+            this.SendCommand<UseHealthPotionCommand>();
         }
     }
     
     private void OnGameStarted(GameStartedEvent e)
     {
-        GD.Print("Game started!");
+        Console.WriteLine("Game started!");
     }
     
     private void OnHealthChanged(int health)
@@ -383,12 +439,7 @@ public partial class GameplayController : Node, IController
         UpdateHealthBar(health);
     }
     
-    private void OnScoreChanged(int score)
-    {
-        UpdateScoreDisplay(score);
-    }
-    
-    public override void _ExitTree()
+    public void Cleanup()
     {
         _unregisterList.UnRegisterAll();
     }
@@ -467,7 +518,8 @@ public class AchievementSystem : AbstractSystem
 
 ## 扩展方法的优势
 
-1. **简洁的语法**：不需要显式调用 `GetArchitecture()`
+1. **简洁的语法**
+   ：不需要显式调用 [GetContext()](file:///d:/Project/Rider/GFramework/GFramework.Core.Abstractions/rule/IContextAware.cs#L13-L15)
 2. **类型安全**：编译时检查类型
 3. **可读性高**：代码意图更清晰
 4. **智能提示**：IDE 可以提供完整的自动补全
@@ -475,21 +527,17 @@ public class AchievementSystem : AbstractSystem
 
 ## 注意事项
 
-1. **确保引用命名空间**：
+1. **确保引用命名空间：**
    ```csharp
-   using GFramework.framework.extensions;
+   using GFramework.Core.extensions;
    ```
 
-2. **理解扩展方法本质**：
+2. **理解扩展方法本质：**
     - 扩展方法是静态方法的语法糖
     - 不会改变原始类型的结构
     - 仅在编译时解析
 
-3. **Godot 特定功能**：
-    - `UnRegisterWhenNodeExitTree` 仅在 Godot 环境下可用
-    - 使用 `#if GODOT` 编译指令控制
-
-4. **性能考虑**：
+3. **性能考虑：**
     - 扩展方法本身无性能开销
     - 实际调用的是底层方法
 

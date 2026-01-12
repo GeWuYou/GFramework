@@ -6,85 +6,84 @@ Rule 包定义了框架的核心规则接口，这些接口规定了框架各个
 
 ## 核心接口
 
-### [`IBelongToArchitecture`](IBelongToArchitecture.cs)
+### IContextAware
 
-标记接口，表示某个对象属于特定的架构体系。
+标记接口，表示该类型可以感知架构上下文。
 
 **接口定义：**
 
 ```csharp
-public interface IBelongToArchitecture
+public interface IContextAware
 {
-    IArchitecture GetArchitecture();
+    void SetContext(IArchitectureContext context);
+    IArchitectureContext GetContext();
 }
 ```
 
 **实现此接口的类型：**
-
-- Controller
 - System
+- Query
 - Model
 - Command
-- Query
-- Event 处理器
+- 以及其他需要感知架构上下文的组件
 
 **作用：**
-所有实现此接口的类型都能够获取其所属的架构实例，从而访问架构提供的各种能力。
+所有实现此接口的类型都能够获取其所属的架构上下文实例，从而访问架构提供的各种能力。
 
-### [`ICanSetArchitecture`](ICanSetArchitecture.cs)
+## 核心类
 
-定义可以设置架构实例的能力。
+### [`ContextAwareBase`](ContextAwareBase.cs)
 
-**接口定义：**
+上下文感知基类，实现了 IContextAware 接口，为需要感知架构上下文的类提供基础实现。
+
+**使用方式：**
 
 ```csharp
-public interface ICanSetArchitecture
+public abstract class ContextAwareBase : IContextAware
 {
-    void SetArchitecture(IArchitecture architecture);
+    protected IArchitectureContext? Context { get; set; }
+    
+    void IContextAware.SetContext(IArchitectureContext context)
+    {
+        Context = context;
+        OnContextReady();  // 上下文准备好后调用此方法
+    }
+    
+    IArchitectureContext IContextAware.GetContext()
+    {
+        Context ??= GameContext.GetFirstArchitectureContext();
+        return Context;
+    }
+    
+    protected virtual void OnContextReady()  // 子类可以重写此方法进行初始化
+    {
+    }
 }
 ```
-
-**实现此接口的类型：**
-
-- Command
-- Query
-
-**作用：**
-在 Command 和 Query 执行前，框架会自动调用 `SetArchitecture` 方法注入架构实例，使其能够访问 Model、System 等组件。
 
 ## 接口关系图
 
 ```
-IBelongToArchitecture (属于架构)
-    ↓ 被继承
-    ├── ICanGetModel (可获取 Model)
-    ├── ICanGetSystem (可获取 System)
-    ├── ICanGetUtility (可获取 Utility)
-    ├── ICanSendCommand (可发送 Command)
-    ├── ICanSendEvent (可发送 Event)
-    ├── ICanSendQuery (可发送 Query)
-    └── ICanRegisterEvent (可注册 Event)
-
-ICanSetArchitecture (可设置架构)
-    ↓ 被继承
-    ├── ICommand (命令接口)
-    └── IQuery<T> (查询接口)
+IContextAware (上下文感知接口)
+    ↓ 被继承于
+    ├── AbstractSystem (抽象系统基类)
+    ├── AbstractQuery<TInput, TResult> (抽象查询基类)
+    ├── AbstractModel (抽象模型基类)
+    └── AbstractCommand (抽象命令基类)
 ```
 
 ## 使用场景
 
-### 1. Controller 实现 IBelongToArchitecture
+### 1. Component 继承 ContextAwareBase
 
 ```csharp
-// Controller 通过实现 IBelongToArchitecture 获得架构访问能力
+// 组件通过继承 ContextAwareBase 获得架构上下文访问能力
 public partial class PlayerController : Node, IController
 {
-    // 实现 IBelongToArchitecture 接口
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
-    
+    // 不再需要手动实现 IContextAware，基类已处理
+    // 可以直接使用扩展方法
     public override void _Ready()
     {
-        // 因为实现了 IBelongToArchitecture，所以可以使用扩展方法
         var playerModel = this.GetModel<PlayerModel>();
         this.SendCommand(new InitPlayerCommand());
         this.RegisterEvent<PlayerDiedEvent>(OnPlayerDied);
@@ -97,17 +96,17 @@ public partial class PlayerController : Node, IController
 }
 ```
 
-### 2. Command 实现 ICanSetArchitecture
+### 2. Command 继承 AbstractCommand (IContextAware)
 
 ```csharp
-// Command 实现 ICanSetArchitecture，框架会自动注入架构
+// Command 继承 AbstractCommand，自动成为 IContextAware
 public class BuyItemCommand : AbstractCommand
 {
     public string ItemId { get; set; }
     
     protected override void OnExecute()
     {
-        // 框架已经通过 SetArchitecture 注入了架构实例
+        // 框架或上下文系统会自动注入 IArchitectureContext
         // 所以这里可以直接使用 this.GetModel
         var playerModel = this.GetModel<PlayerModel>();
         var shopModel = this.GetModel<ShopModel>();
@@ -125,21 +124,15 @@ public class BuyItemCommand : AbstractCommand
 ### 3. 自定义组件遵循规则
 
 ```csharp
-// 自定义管理器遵循框架规则
-public class SaveManager : IBelongToArchitecture
+// 自定义管理器遵循框架规则，继承 ContextAwareBase
+public class SaveManager : ContextAwareBase
 {
-    private IArchitecture _architecture;
-    
-    public SaveManager(IArchitecture architecture)
-    {
-        _architecture = architecture;
-    }
-    
-    public IArchitecture GetArchitecture() => _architecture;
+    // 不再需要手动构造函数传参，上下文由框架注入
+    // protected override void OnContextReady() 可用于初始化
     
     public void SaveGame()
     {
-        // 因为实现了 IBelongToArchitecture，可以使用扩展方法
+        // 因为继承了 ContextAwareBase，可以使用扩展方法
         var playerModel = this.GetModel<PlayerModel>();
         var saveData = new SaveData
         {
@@ -219,9 +212,10 @@ Rule 接口体现了依赖注入（DI）的思想：
 
 ```csharp
 // 接口定义了"需要什么"
-public interface IBelongToArchitecture
+public interface IContextAware
 {
-    IArchitecture GetArchitecture();
+    void SetContext(IArchitectureContext context);
+    IArchitectureContext GetContext();
 }
 
 // 框架负责"提供什么"
@@ -230,8 +224,8 @@ public static class CanSendExtensions
     public static void SendCommand<T>(this ICanSendCommand self, T command) 
         where T : ICommand
     {
-        // 自动注入架构依赖
-        command.SetArchitecture(self.GetArchitecture());
+        // 自动注入架构上下文依赖
+        command.SetContext(self.GetContext());
         command.Execute();
     }
 }
@@ -245,8 +239,8 @@ Rule 接口遵循接口隔离原则，每个接口职责单一：
 // ❌ 不好的设计：一个大接口包含所有能力
 public interface IBigInterface
 {
-    IArchitecture GetArchitecture();
-    void SetArchitecture(IArchitecture architecture);
+    void SetContext(IArchitectureContext context);
+    IArchitectureContext GetContext();
     T GetModel<T>() where T : class, IModel;
     T GetSystem<T>() where T : class, ISystem;
     void SendCommand<T>(T command) where T : ICommand;
@@ -254,8 +248,7 @@ public interface IBigInterface
 }
 
 // ✅ 好的设计：小接口组合
-public interface IBelongToArchitecture { ... }  // 只负责获取架构
-public interface ICanSetArchitecture { ... }    // 只负责设置架构
+public interface IContextAware { ... }          // 只负责上下文的设置与获取
 public interface ICanGetModel { ... }           // 只负责获取 Model
 public interface ICanSendCommand { ... }        // 只负责发送 Command
 ```
@@ -271,14 +264,14 @@ public interface IController : ICanGetModel, ICanGetSystem, ICanSendCommand,
 {
 }
 
-// Command 需要设置架构和获取 Model/System
-public interface ICommand : ICanSetArchitecture, ICanGetModel, ICanGetSystem, 
+// Command 需要上下文感知和获取 Model/System
+public interface ICommand : IContextAware, ICanGetModel, ICanGetSystem, 
     ICanSendEvent, ICanSendQuery
 {
 }
 
 // System 只需要获取其他组件
-public interface ISystem : ICanGetModel, ICanGetUtility, ICanGetSystem, 
+public interface ISystem : IContextAware, ICanGetModel, ICanGetUtility, ICanGetSystem, 
     ICanRegisterEvent, ICanSendEvent, ICanSendQuery
 {
 }
@@ -324,10 +317,10 @@ public class DatabaseCommand : AbstractCommand, ICanAccessDatabase
 
 ## 相关包
 
-- [`architecture`](../architecture/README.md) - 定义 IArchitecture 接口
-- [`command`](../command/README.md) - Command 实现 ICanSetArchitecture
-- [`query`](../query/README.md) - Query 实现 ICanSetArchitecture
-- [`controller`](../controller/README.md) - Controller 实现 IBelongToArchitecture
-- [`system`](../system/README.md) - System 实现 IBelongToArchitecture
-- [`model`](../model/README.md) - Model 实现 IBelongToArchitecture
+- [`architecture`](../architecture/README.md) - 定义 IArchitectureContext 接口
+- [`command`](../command/README.md) - Command 继承 AbstractCommand (IContextAware)
+- [`query`](../query/README.md) - Query 继承 AbstractQuery (IContextAware)
+- [`controller`](../controller/README.md) - Controller 实现 ICanSendCommand 等接口
+- [`system`](../system/README.md) - System 继承 AbstractSystem (IContextAware)
+- [`model`](../model/README.md) - Model 继承 AbstractModel (IContextAware)
 - [`extensions`](../extensions/README.md) - 基于规则接口提供扩展方法

@@ -6,7 +6,7 @@ Logging 包提供了灵活的日志系统，支持多级别日志记录。默认
 
 ## 核心接口
 
-### [`ILogger`](ILogger.cs)
+### [ILogger](ILogger.cs)
 
 日志记录器接口，定义了日志记录的基本功能。
 
@@ -62,7 +62,7 @@ void Fatal(string msg, Exception t);
 string Name();
 ```
 
-### [`ILoggerFactory`](ILoggerFactory.cs)
+### [ILoggerFactory](ILoggerFactory.cs)
 
 日志工厂接口，用于创建日志记录器实例。
 
@@ -72,7 +72,7 @@ string Name();
 ILogger GetLogger(string name, LogLevel minLevel = LogLevel.Info);
 ```
 
-### [`ILoggerFactoryProvider`](ILoggerFactory.cs)
+### [ILoggerFactoryProvider](ILoggerFactoryProvider.cs)
 
 日志工厂提供程序接口，用于获取日志工厂。
 
@@ -83,7 +83,7 @@ ILoggerFactory GetLoggerFactory();
 ILogger CreateLogger(string name);
 ```
 
-### [`LogLevel`](LogLevel.cs)
+### [LogLevel](LogLevel.cs)
 
 日志级别枚举。
 
@@ -101,7 +101,7 @@ public enum LogLevel
 
 ## 核心类
 
-### [`AbstractLogger`](AbstractLogger.cs)
+### [AbstractLogger](AbstractLogger.cs)
 
 抽象日志基类，封装了日志级别判断、格式化与异常处理逻辑。平台日志器只需实现 `Write` 方法即可。
 
@@ -127,7 +127,7 @@ public class CustomLogger : AbstractLogger
 }
 ```
 
-### [`ConsoleLogger`](ConsoleLogger.cs)
+### [ConsoleLogger](ConsoleLogger.cs)
 
 控制台日志记录器实现，支持彩色输出。
 
@@ -162,7 +162,14 @@ logger.Fatal("致命错误");
 - **Error**: 红色
 - **Fatal**: 洋红色
 
-### [`ConsoleLoggerFactory`](ConsoleLoggerFactory.cs)
+**构造函数参数：**
+
+- `name`：日志器名称，默认为 "ROOT"
+- `minLevel`：最低日志级别，默认为 LogLevel.Info
+- `writer`：TextWriter 输出流，默认为 Console.Out
+- `useColors`：是否使用颜色，默认为 true（仅在输出到控制台时生效）
+
+### [ConsoleLoggerFactory](ConsoleLoggerFactory.cs)
 
 控制台日志工厂，用于创建控制台日志记录器实例。
 
@@ -174,7 +181,7 @@ var logger = factory.GetLogger("MyModule", LogLevel.Debug);
 logger.Info("日志记录器创建成功");
 ```
 
-### [`ConsoleLoggerFactoryProvider`](ConsoleLoggerFactoryProvider.cs)
+### [ConsoleLoggerFactoryProvider](ConsoleLoggerFactoryProvider.cs)
 
 控制台日志工厂提供程序实现。
 
@@ -182,11 +189,12 @@ logger.Info("日志记录器创建成功");
 
 ```csharp
 var provider = new ConsoleLoggerFactoryProvider();
-var factory = provider.GetLoggerFactory();
-var logger = factory.GetLogger("MyApp", LogLevel.Info);
+provider.MinLevel = LogLevel.Debug;  // 设置最低日志级别
+var logger = provider.CreateLogger("MyApp");
+logger.Info("应用程序启动");
 ```
 
-### [`LoggerFactoryResolver`](LoggerFactoryResolver.cs)
+### [LoggerFactoryResolver](LoggerFactoryResolver.cs)
 
 日志工厂提供程序解析器，用于管理和提供日志工厂提供程序实例。
 
@@ -270,9 +278,9 @@ public class DebugLogger : AbstractLogger
         // 只输出调试及更高级别的日志
         if (level >= LogLevel.Debug)
         {
-            GD.Print($"[{level}] {message}");
+            Console.WriteLine($"[{level}] {message}");
             if (exception != null)
-                GD.Print(exception);
+                Console.WriteLine(exception);
         }
     }
 }
@@ -341,14 +349,15 @@ public class DebugLogger : AbstractLogger
     - 支持字符串格式化参数
     - 支持异常信息传递
 
-3. **自定义比较器**：
-    - 在 `BindableProperty` 中可以使用 `WithComparer` 设置自定义比较器
+3. **ConsoleLogger 的额外参数**：
+    - ConsoleLogger 现在支持自定义TextWriter输出流
+    - 支持禁用颜色输出的功能（useColors参数）
 
 ## 相关包
 
-- [`architecture`](../architecture/README.md) - 架构核心，使用日志系统记录生命周期事件
-- [`property`](../property/README.md) - 可绑定属性基于事件系统实现
-- [`extensions`](../extensions/README.md) - 提供便捷的扩展方法
+- [architecture](../architecture/README.md) - 架构核心，使用日志系统记录生命周期事件
+- [property](../property/README.md) - 可绑定属性基于事件系统实现
+- [extensions](../extensions/README.md) - 提供便捷的扩展方法
 
 ---
 
