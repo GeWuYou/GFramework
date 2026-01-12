@@ -151,25 +151,14 @@ public class SaveManager : ContextAwareBase
 ### 1. 组件注册规则
 
 ```csharp
-public class GameArchitecture : Architecture<GameArchitecture>
+public class GameArchitecture : Architecture
 {
     protected override void Init()
     {
-        // ✅ 正确：Model/System/Utility 自动获得架构引用
+        // Model/System/Utility 自动获得架构引用
         this.RegisterModel<PlayerModel>(new PlayerModel());
         this.RegisterSystem<CombatSystem>(new CombatSystem());
         this.RegisterUtility<StorageUtility>(new StorageUtility());
-    }
-}
-
-// Model 继承 AbstractModel，AbstractModel 实现了 IBelongToArchitecture
-public class PlayerModel : AbstractModel
-{
-    // 无需手动实现 GetArchitecture，基类已实现
-    protected override void OnInit()
-    {
-        // 可以直接使用架构能力
-        this.SendEvent(new PlayerModelInitializedEvent());
     }
 }
 ```
