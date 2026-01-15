@@ -1,9 +1,9 @@
 ﻿namespace GFramework.Game.Abstractions.ui;
 
 /// <summary>
-/// UI页面接口，定义了UI页面的生命周期方法
+/// UI页面行为接口，定义了UI页面的生命周期方法和状态管理
 /// </summary>
-public interface IPageBehavior
+public interface IUiPageBehavior
 {
     /// <summary>
     /// 获取页面视图对象

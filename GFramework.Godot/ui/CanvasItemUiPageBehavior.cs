@@ -9,7 +9,7 @@ namespace GFramework.Godot.ui;
 /// 支持所有继承自 CanvasItem 的节点
 /// </summary>
 /// <typeparam name="T">CanvasItem 类型的视图节点</typeparam>
-public class CanvasItemPageBehavior<T>(T owner) : IPageBehavior
+public class CanvasItemUiPageBehavior<T>(T owner) : IUiPageBehavior
     where T : CanvasItem
 {
     private readonly IUiPage? _page = owner as IUiPage;

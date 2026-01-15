@@ -12,5 +12,5 @@ public interface IUiFactory : IContextUtility
     /// </summary>
     /// <param name="uiKey">UI标识键，用于确定要创建的具体UI页面类型</param>
     /// <returns>创建的UI页面实例，实现IUiPage接口</returns>
-    IPageBehavior Create(string uiKey);
+    IUiPageBehavior Create(string uiKey);
 }

@@ -9,5 +9,5 @@ public interface IUiPageBehaviorProvider
     /// 获取页面行为实例
     /// </summary>
     /// <returns>页面行为接口实例</returns>
-    IPageBehavior GetPage();
+    IUiPageBehavior GetPage();
 }

@@ -22,7 +22,7 @@ public class GodotUiFactory : AbstractContextUtility, IUiFactory
     /// <param name="uiKey">UI资源的唯一标识键</param>
     /// <returns>实现IUiPage接口的UI页面实例</returns>
     /// <exception cref="InvalidCastException">当UI场景没有继承IUiPage接口时抛出</exception>
-    public IPageBehavior Create(string uiKey)
+    public IUiPageBehavior Create(string uiKey)
     {
         // 从注册表中获取对应的场景资源
         var scene = _registry.Get(uiKey);

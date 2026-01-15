@@ -9,11 +9,11 @@ public interface IUiRoot
     /// 向UI根节点添加子页面
     /// </summary>
     /// <param name="child">要添加的UI页面子节点</param>
-    void AddUiPage(IPageBehavior child);
+    void AddUiPage(IUiPageBehavior child);
 
     /// <summary>
     /// 从UI根节点移除子页面
     /// </summary>
     /// <param name="child">要移除的UI页面子节点</param>
-    void RemoveUiPage(IPageBehavior child);
+    void RemoveUiPage(IUiPageBehavior child);
 }

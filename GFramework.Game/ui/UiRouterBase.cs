@@ -22,7 +22,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// <summary>
     /// 页面栈，用于管理UI页面的显示顺序
     /// </summary>
-    private readonly Stack<IPageBehavior> _stack = new();
+    private readonly Stack<IUiPageBehavior> _stack = new();
 
     /// <summary>
     /// UI工厂实例，用于创建UI相关的对象
