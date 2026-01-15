@@ -17,10 +17,8 @@ public class EasyEventsTests
     [Test]
     public void Get_EventT_Should_Trigger_With_Parameter()
     {
-        _easyEvents.GetOrAddEvent<Event<int>>();
-
         var receivedValue = 0;
-        var @event = EasyEvents.Get<Event<int>>();
+        var @event = EasyEvents.GetOrAdd<Event<int>>();
 
         @event.Register(value => { receivedValue = value; });
         @event.Trigger(42);
@@ -31,11 +29,9 @@ public class EasyEventsTests
     [Test]
     public void Get_EventTTK_Should_Trigger_With_Two_Parameters()
     {
-        _easyEvents.GetOrAddEvent<Event<int, string>>();
-
         var receivedInt = 0;
         var receivedString = string.Empty;
-        var @event = EasyEvents.Get<Event<int, string>>();
+        var @event = EasyEvents.GetOrAdd<Event<int, string>>();
 
         @event.Register((i, s) =>
         {
