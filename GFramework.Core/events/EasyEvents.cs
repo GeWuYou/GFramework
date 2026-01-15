@@ -1,4 +1,4 @@
-﻿using GFramework.Core.Abstractions.events;
+using GFramework.Core.Abstractions.events;
 
 namespace GFramework.Core.events;
 
@@ -35,6 +35,16 @@ public class EasyEvents
     public static void Register<T>() where T : IEvent, new()
     {
         MGlobalEvents.AddEvent<T>();
+    }
+
+    /// <summary>
+    ///     获取或添加指定类型的全局事件
+    /// </summary>
+    /// <typeparam name="T">事件类型，必须实现IEasyEvent接口且具有无参构造函数</typeparam>
+    /// <returns>指定类型的事件实例</returns>
+    public static T GetOrAdd<T>() where T : IEvent, new()
+    {
+        return MGlobalEvents.GetOrAddEvent<T>();
     }
 
     /// <summary>
