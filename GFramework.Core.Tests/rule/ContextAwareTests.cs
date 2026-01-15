@@ -1,5 +1,6 @@
 using GFramework.Core.Abstractions.architecture;
 using GFramework.Core.Abstractions.rule;
+using GFramework.Core.architecture;
 using GFramework.Core.rule;
 using GFramework.Core.Tests.architecture;
 using NUnit.Framework;
@@ -14,6 +15,13 @@ public class ContextAwareTests
     {
         _contextAware = new TestContextAware();
         _mockContext = new TestArchitectureContext();
+        GameContext.Bind(typeof(TestArchitectureContext), _mockContext);
+    }
+
+    [TearDown]
+    public void TearDown()
+    {
+        GameContext.Unbind(typeof(TestArchitectureContext));
     }
 
     private TestContextAware _contextAware = null!;
