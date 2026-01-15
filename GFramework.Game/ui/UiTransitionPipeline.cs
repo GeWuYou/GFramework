@@ -11,7 +11,7 @@ namespace GFramework.Game.ui;
 public class UiTransitionPipeline
 {
     private static readonly ILogger Log = LoggerFactoryResolver.Provider.CreateLogger("UiTransitionPipeline");
-    private readonly List<IUiTransitionHandler> _handlers = new();
+    private readonly List<IUiTransitionHandler> _handlers = [];
     private readonly Dictionary<IUiTransitionHandler, UiTransitionHandlerOptions> _options = new();
 
     /// <summary>
