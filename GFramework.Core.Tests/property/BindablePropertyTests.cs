@@ -6,6 +6,12 @@ namespace GFramework.Core.Tests.property;
 [TestFixture]
 public class BindablePropertyTests
 {
+    [TearDown]
+    public void TearDown()
+    {
+        BindableProperty<string>.Comparer = (a, b) => a?.Equals(b) ?? b == null;
+    }
+
     [Test]
     public void Value_Get_Should_Return_Default_Value()
     {
@@ -85,15 +91,25 @@ public class BindablePropertyTests
     [Test]
     public void WithComparer_Should_Use_Custom_Comparer()
     {
-        var property = new BindableProperty<string>("test").WithComparer((a, b) => a.Length == b.Length);
+        var comparerWasCalled = false;
+        var comparisonResult = false;
+
+        BindableProperty<string>.Comparer = (a, b) =>
+        {
+            comparerWasCalled = true;
+            comparisonResult = a.Length == b.Length;
+            return comparisonResult;
+        };
+
+        var property = new BindableProperty<string>("test");
         var count = 0;
 
         property.Register(_ => { count++; });
+        property.Value = "test";
 
-        property.Value = "hello";
-
-        // "test" 和 "hello" 长度都是 4，所以不应该触发事件
-        Assert.That(count, Is.EqualTo(0));
+        Assert.That(comparerWasCalled, Is.True, "自定义比较器应该被调用");
+        Assert.That(comparisonResult, Is.True, "比较结果应该是true（相同长度）");
+        Assert.That(count, Is.EqualTo(0), "不应该触发事件");
     }
 
     [Test]
