@@ -1,4 +1,4 @@
-﻿using GFramework.Core.Abstractions.architecture;
+using GFramework.Core.Abstractions.architecture;
 using GFramework.Core.Abstractions.enums;
 using GFramework.Core.model;
 
@@ -38,7 +38,7 @@ public sealed class AsyncTestModel : AbstractModel, IAsyncInitializable
     ///     处理架构阶段事件
     /// </summary>
     /// <param name="phase">架构阶段枚举值</param>
-    public void OnArchitecturePhase(ArchitecturePhase phase)
+    public override void OnArchitecturePhase(ArchitecturePhase phase)
     {
     }
 

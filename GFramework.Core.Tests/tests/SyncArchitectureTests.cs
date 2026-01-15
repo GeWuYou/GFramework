@@ -142,10 +142,10 @@ public class SyncArchitectureTests : ArchitectureTestsBase<SyncTestArchitecture>
     }
 
     /// <summary>
-    /// 测试事件是否能够被正确接收和处理
+    ///     测试事件是否能够被正确接收和处理
     /// </summary>
     /// <remarks>
-    /// 该测试验证了事件系统的注册和发送功能，确保事件能够被正确传递给注册的处理器
+    ///     该测试验证了事件系统的注册和发送功能，确保事件能够被正确传递给注册的处理器
     /// </remarks>
     [Test]
     public void Event_Should_Be_Received()
@@ -168,10 +168,10 @@ public class SyncArchitectureTests : ArchitectureTestsBase<SyncTestArchitecture>
     }
 
     /// <summary>
-    /// 测试事件取消注册功能是否正常工作
+    ///     测试事件取消注册功能是否正常工作
     /// </summary>
     /// <remarks>
-    /// 该测试验证了事件处理器的取消注册功能，确保取消注册后事件处理器不再被调用
+    ///     该测试验证了事件处理器的取消注册功能，确保取消注册后事件处理器不再被调用
     /// </remarks>
     [Test]
     public void Event_UnRegister_Should_Work()

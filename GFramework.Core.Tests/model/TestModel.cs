@@ -1,4 +1,4 @@
-﻿using GFramework.Core.Abstractions.enums;
+using GFramework.Core.Abstractions.enums;
 using GFramework.Core.model;
 
 namespace GFramework.Core.Tests.model;
@@ -24,7 +24,7 @@ public sealed class TestModel : AbstractModel, ITestModel
     }
 
 
-    public void OnArchitecturePhase(ArchitecturePhase phase)
+    public override void OnArchitecturePhase(ArchitecturePhase phase)
     {
     }
 
