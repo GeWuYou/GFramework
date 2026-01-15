@@ -11,10 +11,22 @@ public class EnumExtensionsGeneratorSnapshotTests
     public async Task Snapshot_BasicEnum_IsMethods()
     {
         const string source = """
-                              using GFramework.SourceGenerators.Abstractions.enums;
+                              using System;
+
+                              namespace GFramework.SourceGenerators.Abstractions.enums
+                              {
+                                  [AttributeUsage(AttributeTargets.Enum)]
+                                  public sealed class GenerateEnumExtensionsAttribute : Attribute
+                                  {
+                                      public bool GenerateIsMethods { get; set; } = true;
+                                      public bool GenerateIsInMethod { get; set; } = true;
+                                  }
+                              }
 
                               namespace TestApp
                               {
+                                  using GFramework.SourceGenerators.Abstractions.enums;
+
                                   [GenerateEnumExtensions]
                                   public enum Status
                                   {
@@ -39,10 +51,22 @@ public class EnumExtensionsGeneratorSnapshotTests
     public async Task Snapshot_BasicEnum_IsInMethod()
     {
         const string source = """
-                              using GFramework.SourceGenerators.Abstractions.enums;
+                              using System;
+
+                              namespace GFramework.SourceGenerators.Abstractions.enums
+                              {
+                                  [AttributeUsage(AttributeTargets.Enum)]
+                                  public sealed class GenerateEnumExtensionsAttribute : Attribute
+                                  {
+                                      public bool GenerateIsMethods { get; set; } = true;
+                                      public bool GenerateIsInMethod { get; set; } = true;
+                                  }
+                              }
 
                               namespace TestApp
                               {
+                                  using GFramework.SourceGenerators.Abstractions.enums;
+
                                   [GenerateEnumExtensions]
                                   public enum Status
                                   {
@@ -66,11 +90,22 @@ public class EnumExtensionsGeneratorSnapshotTests
     public async Task Snapshot_EnumWithFlagValues()
     {
         const string source = """
-                              using GFramework.SourceGenerators.Abstractions.enums;
                               using System;
+
+                              namespace GFramework.SourceGenerators.Abstractions.enums
+                              {
+                                  [AttributeUsage(AttributeTargets.Enum)]
+                                  public sealed class GenerateEnumExtensionsAttribute : Attribute
+                                  {
+                                      public bool GenerateIsMethods { get; set; } = true;
+                                      public bool GenerateIsInMethod { get; set; } = true;
+                                  }
+                              }
 
                               namespace TestApp
                               {
+                                  using GFramework.SourceGenerators.Abstractions.enums;
+
                                   [GenerateEnumExtensions]
                                   [Flags]
                                   public enum Permissions
@@ -97,10 +132,22 @@ public class EnumExtensionsGeneratorSnapshotTests
     public async Task Snapshot_DisableIsMethods()
     {
         const string source = """
-                              using GFramework.SourceGenerators.Abstractions.enums;
+                              using System;
+
+                              namespace GFramework.SourceGenerators.Abstractions.enums
+                              {
+                                  [AttributeUsage(AttributeTargets.Enum)]
+                                  public sealed class GenerateEnumExtensionsAttribute : Attribute
+                                  {
+                                      public bool GenerateIsMethods { get; set; } = true;
+                                      public bool GenerateIsInMethod { get; set; } = true;
+                                  }
+                              }
 
                               namespace TestApp
                               {
+                                  using GFramework.SourceGenerators.Abstractions.enums;
+
                                   [GenerateEnumExtensions(GenerateIsMethods = false)]
                                   public enum Status
                                   {
@@ -124,10 +171,22 @@ public class EnumExtensionsGeneratorSnapshotTests
     public async Task Snapshot_DisableIsInMethod()
     {
         const string source = """
-                              using GFramework.SourceGenerators.Abstractions.enums;
+                              using System;
+
+                              namespace GFramework.SourceGenerators.Abstractions.enums
+                              {
+                                  [AttributeUsage(AttributeTargets.Enum)]
+                                  public sealed class GenerateEnumExtensionsAttribute : Attribute
+                                  {
+                                      public bool GenerateIsMethods { get; set; } = true;
+                                      public bool GenerateIsInMethod { get; set; } = true;
+                                  }
+                              }
 
                               namespace TestApp
                               {
+                                  using GFramework.SourceGenerators.Abstractions.enums;
+
                                   [GenerateEnumExtensions(GenerateIsInMethod = false)]
                                   public enum Status
                                   {
