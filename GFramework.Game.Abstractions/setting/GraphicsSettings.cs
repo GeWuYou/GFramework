@@ -3,7 +3,7 @@ namespace GFramework.Game.Abstractions.setting;
 /// <summary>
 /// 图形设置类，用于管理游戏的图形相关配置
 /// </summary>
-public class GraphicsSettings : ISettingsSection
+public class GraphicsSettings : ISettingsData
 {
     /// <summary>
     /// 获取或设置是否启用全屏模式

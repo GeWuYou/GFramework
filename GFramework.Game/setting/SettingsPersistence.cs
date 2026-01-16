@@ -13,11 +13,11 @@ public class SettingsPersistence : AbstractContextUtility, ISettingsPersistence
     private IStorage _storage = null!;
 
     /// <summary>
-    /// 异步加载指定类型的设置节数据
+    /// 异步加载指定类型的设置数据
     /// </summary>
-    /// <typeparam name="T">设置节类型，必须实现ISettingsSection接口</typeparam>
-    /// <returns>如果存在则返回已保存的设置数据，否则返回新创建的默认设置实例</returns>
-    public async Task<T> LoadAsync<T>() where T : class, ISettingsSection, new()
+    /// <typeparam name="T">设置数据类型，必须实现ISettingsData接口</typeparam>
+    /// <returns>如果存在则返回存储的设置数据，否则返回新创建的实例</returns>
+    public async Task<T> LoadAsync<T>() where T : class, ISettingsData, new()
     {
         var key = GetKey<T>();
 
@@ -30,32 +30,32 @@ public class SettingsPersistence : AbstractContextUtility, ISettingsPersistence
     }
 
     /// <summary>
-    /// 异步保存设置节数据到存储中
+    /// 异步保存设置数据到存储中
     /// </summary>
-    /// <typeparam name="T">设置节类型，必须实现ISettingsSection接口</typeparam>
-    /// <param name="section">要保存的设置节实例</param>
-    public async Task SaveAsync<T>(T section) where T : class, ISettingsSection
+    /// <typeparam name="T">设置数据类型，必须实现ISettingsData接口</typeparam>
+    /// <param name="section">要保存的设置数据实例</param>
+    public async Task SaveAsync<T>(T section) where T : class, ISettingsData
     {
         var key = GetKey<T>();
         await _storage.WriteAsync(key, section);
     }
 
     /// <summary>
-    /// 异步检查指定类型的设置节是否存在
+    /// 检查指定类型的设置数据是否存在
     /// </summary>
-    /// <typeparam name="T">设置节类型，必须实现ISettingsSection接口</typeparam>
-    /// <returns>如果设置节存在返回true，否则返回false</returns>
-    public async Task<bool> ExistsAsync<T>() where T : class, ISettingsSection
+    /// <typeparam name="T">设置数据类型，必须实现ISettingsData接口</typeparam>
+    /// <returns>如果存在返回true，否则返回false</returns>
+    public async Task<bool> ExistsAsync<T>() where T : class, ISettingsData
     {
         var key = GetKey<T>();
         return await _storage.ExistsAsync(key);
     }
 
     /// <summary>
-    /// 异步删除指定类型的设置节数据
+    /// 异步删除指定类型的设置数据
     /// </summary>
-    /// <typeparam name="T">设置节类型，必须实现ISettingsSection接口</typeparam>
-    public async Task DeleteAsync<T>() where T : class, ISettingsSection
+    /// <typeparam name="T">设置数据类型，必须实现ISettingsData接口</typeparam>
+    public async Task DeleteAsync<T>() where T : class, ISettingsData
     {
         var key = GetKey<T>();
         _storage.Delete(key);
@@ -63,18 +63,66 @@ public class SettingsPersistence : AbstractContextUtility, ISettingsPersistence
     }
 
     /// <summary>
-    /// 初始化方法，获取存储服务实例
+    /// 异步保存所有设置数据到存储中
     /// </summary>
+    /// <param name="allData">包含所有设置数据的可枚举集合</param>
+    public async Task SaveAllAsync(IEnumerable<ISettingsData> allData)
+    {
+        foreach (var data in allData)
+        {
+            var type = data.GetType();
+            var key = GetKey(type);
+            await _storage.WriteAsync(key, data);
+        }
+    }
+
+    /// <summary>
+    /// 异步加载所有已知类型的设置数据
+    /// </summary>
+    /// <param name="knownTypes">已知设置数据类型的集合</param>
+    /// <returns>类型与对应设置数据的字典映射</returns>
+    public async Task<IDictionary<Type, ISettingsData>> LoadAllAsync(IEnumerable<Type> knownTypes)
+    {
+        var result = new Dictionary<Type, ISettingsData>();
+
+        foreach (var type in knownTypes)
+        {
+            var key = GetKey(type);
+
+            if (!await _storage.ExistsAsync(key)) continue;
+            // 使用反射调用泛型方法
+            var method = typeof(IStorage)
+                .GetMethod(nameof(IStorage.ReadAsync))!
+                .MakeGenericMethod(type);
+
+            var task = (Task)method.Invoke(_storage, [key])!;
+            await task;
+
+            var loaded = (ISettingsData)((dynamic)task).Result;
+            result[type] = loaded;
+        }
+
+        return result;
+    }
+
     protected override void OnInit()
     {
         _storage = this.GetUtility<IStorage>()!;
     }
 
     /// <summary>
-    /// 获取设置节对应的存储键名
+    /// 获取指定类型的存储键名
     /// </summary>
-    /// <typeparam name="T">设置节类型</typeparam>
-    /// <returns>格式为"Settings_类型名称"的键名字符串</returns>
-    private static string GetKey<T>() where T : ISettingsSection
-        => $"Settings_{typeof(T).Name}";
+    /// <typeparam name="T">设置数据类型</typeparam>
+    /// <returns>格式为"Settings_类型名称"的键名</returns>
+    private static string GetKey<T>() where T : ISettingsData
+        => GetKey(typeof(T));
+
+    /// <summary>
+    /// 获取指定类型的存储键名
+    /// </summary>
+    /// <param name="type">设置数据类型</param>
+    /// <returns>格式为"Settings_类型名称"的键名</returns>
+    private static string GetKey(Type type)
+        => $"Settings_{type.Name}";
 }

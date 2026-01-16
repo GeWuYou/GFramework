@@ -1,4 +1,6 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace GFramework.Game.Abstractions.setting;
 
@@ -9,31 +11,32 @@ namespace GFramework.Game.Abstractions.setting;
 public interface ISettingsPersistence
 {
     /// <summary>
-    /// 异步加载指定类型的设置节
+    /// 异步加载指定类型的设置数据
     /// </summary>
-    /// <typeparam name="T">设置节类型，必须实现ISettingsSection接口并具有无参构造函数</typeparam>
-    /// <returns>返回加载的设置节实例</returns>
-    Task<T> LoadAsync<T>() where T : class, ISettingsSection, new();
+    Task<T> LoadAsync<T>() where T : class, ISettingsData, new();
 
     /// <summary>
-    /// 异步保存指定的设置节
+    /// 异步保存指定的设置数据
     /// </summary>
-    /// <typeparam name="T">设置节类型，必须实现ISettingsSection接口</typeparam>
-    /// <param name="section">要保存的设置节实例</param>
-    /// <returns>异步操作任务</returns>
-    Task SaveAsync<T>(T section) where T : class, ISettingsSection;
+    Task SaveAsync<T>(T section) where T : class, ISettingsData;
 
     /// <summary>
-    /// 异步检查指定类型的设置节是否存在
+    /// 异步检查指定类型的设置数据是否存在
     /// </summary>
-    /// <typeparam name="T">设置节类型，必须实现ISettingsSection接口</typeparam>
-    /// <returns>如果设置节存在则返回true，否则返回false</returns>
-    Task<bool> ExistsAsync<T>() where T : class, ISettingsSection;
+    Task<bool> ExistsAsync<T>() where T : class, ISettingsData;
 
     /// <summary>
-    /// 异步删除指定类型的设置节
+    /// 异步删除指定类型的设置数据
     /// </summary>
-    /// <typeparam name="T">设置节类型，必须实现ISettingsSection接口</typeparam>
-    /// <returns>异步操作任务</returns>
-    Task DeleteAsync<T>() where T : class, ISettingsSection;
+    Task DeleteAsync<T>() where T : class, ISettingsData;
+
+    /// <summary>
+    /// 保存所有设置数据
+    /// </summary>
+    Task SaveAllAsync(IEnumerable<ISettingsData> allData);
+
+    /// <summary>
+    /// 加载所有已知类型的设置数据
+    /// </summary>
+    Task<IDictionary<Type, ISettingsData>> LoadAllAsync(IEnumerable<Type> knownTypes);
 }

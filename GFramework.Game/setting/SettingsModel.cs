@@ -8,53 +8,87 @@ namespace GFramework.Game.setting;
 /// </summary>
 public class SettingsModel : AbstractModel, ISettingsModel
 {
-    private readonly Dictionary<Type, ISettingsSection> _sections = new();
+    private readonly Dictionary<Type, IApplyAbleSettings> _applicators = new();
+    private readonly Dictionary<Type, ISettingsData> _dataSettings = new();
 
     /// <summary>
-    /// 获取指定类型的设置部分实例，如果不存在则创建新的实例
+    /// 获取或创建数据设置
     /// </summary>
-    /// <typeparam name="T">设置部分的类型，必须实现ISettingsSection接口并具有无参构造函数</typeparam>
-    /// <returns>指定类型的设置部分实例</returns>
-    public T Get<T>() where T : class, ISettingsSection, new()
+    /// <typeparam name="T">设置数据类型，必须实现ISettingsData接口并具有无参构造函数</typeparam>
+    /// <returns>指定类型的设置数据实例</returns>
+    public T GetData<T>() where T : class, ISettingsData, new()
     {
         var type = typeof(T);
 
-        // 尝试从字典中获取已存在的设置部分实例
-        if (_sections.TryGetValue(type, out var existing))
+        // 尝试从现有字典中获取已存在的设置数据
+        if (_dataSettings.TryGetValue(type, out var existing))
             return (T)existing;
 
-        // 创建新的设置部分实例并存储到字典中
+        // 创建新的设置数据实例并存储到字典中
         var created = new T();
-        _sections[type] = created;
+        _dataSettings[type] = created;
         return created;
     }
 
     /// <summary>
-    /// 尝试获取指定类型的设置部分实例
+    /// 注册可应用设置
     /// </summary>
-    /// <param name="type">设置部分的类型</param>
-    /// <param name="section">输出参数，如果找到则返回对应的设置部分实例，否则为null</param>
-    /// <returns>如果找到指定类型的设置部分则返回true，否则返回false</returns>
-    public bool TryGet(Type type, out ISettingsSection section)
-        => _sections.TryGetValue(type, out section!);
-
-    /// <summary>
-    /// 获取所有设置部分的集合
-    /// </summary>
-    /// <returns>包含所有设置部分的可枚举集合</returns>
-    public IEnumerable<ISettingsSection> All()
-        => _sections.Values;
-
-    /// <summary>
-    /// 注册一个可应用的设置对象到管理器中
-    /// </summary>
-    /// <param name="applyAble">要注册的可应用设置对象</param>
-    public void Register(IApplyAbleSettings applyAble)
+    /// <typeparam name="T">可应用设置类型，必须实现IApplyAbleSettings接口</typeparam>
+    /// <param name="applicator">要注册的可应用设置实例</param>
+    public void RegisterApplicator<T>(T applicator) where T : class, IApplyAbleSettings
     {
-        // 获取传入对象的类型信息
-        var type = applyAble.GetType();
-        // 尝试将类型和对象添加到线程安全的字典中
-        _sections.TryAdd(type, applyAble);
+        var type = typeof(T);
+        _applicators[type] = applicator;
+    }
+
+    /// <summary>
+    /// 获取已注册的可应用设置
+    /// </summary>
+    /// <typeparam name="T">可应用设置类型，必须实现IApplyAbleSettings接口</typeparam>
+    /// <returns>找到的可应用设置实例，如果未找到则返回null</returns>
+    public T? GetApplicator<T>() where T : class, IApplyAbleSettings
+    {
+        var type = typeof(T);
+        return _applicators.TryGetValue(type, out var applicator)
+            ? (T)applicator
+            : null;
+    }
+
+    /// <summary>
+    /// 尝试获取指定类型的设置节
+    /// </summary>
+    /// <param name="type">要查找的设置类型</param>
+    /// <param name="section">输出参数，找到的设置节实例</param>
+    /// <returns>如果找到设置节则返回true，否则返回false</returns>
+    public bool TryGet(Type type, out ISettingsSection section)
+    {
+        // 首先在数据设置字典中查找
+        if (_dataSettings.TryGetValue(type, out var data))
+        {
+            section = data;
+            return true;
+        }
+
+        // 然后在应用器字典中查找
+        if (_applicators.TryGetValue(type, out var applicator))
+        {
+            section = applicator;
+            return true;
+        }
+
+        section = null!;
+        return false;
+    }
+
+    /// <summary>
+    /// 获取所有设置节的集合
+    /// </summary>
+    /// <returns>包含所有设置节的可枚举集合</returns>
+    public IEnumerable<ISettingsSection> All()
+    {
+        // 合并数据设置和应用器设置的所有值
+        return _dataSettings.Values
+            .Concat(_applicators.Values.Cast<ISettingsSection>());
     }
 
 

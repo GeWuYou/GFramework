@@ -3,7 +3,7 @@
 /// <summary>
 /// 音频设置类，用于管理游戏中的音频配置
 /// </summary>
-public class AudioSettings : ISettingsSection
+public class AudioSettings : ISettingsData
 {
     /// <summary>
     /// 获取或设置主音量，控制所有音频的总体音量
