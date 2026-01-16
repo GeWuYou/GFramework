@@ -4,9 +4,15 @@ using NUnit.Framework;
 
 namespace GFramework.Core.Tests.logging;
 
+/// <summary>
+/// 测试LoggerFactory相关功能的测试类
+/// </summary>
 [TestFixture]
 public class LoggerFactoryTests
 {
+    /// <summary>
+    /// 测试ConsoleLoggerFactory的GetLogger方法是否返回ConsoleLogger实例
+    /// </summary>
     [Test]
     public void ConsoleLoggerFactory_GetLogger_ShouldReturnConsoleLogger()
     {
@@ -18,6 +24,9 @@ public class LoggerFactoryTests
         Assert.That(logger.Name(), Is.EqualTo("TestLogger"));
     }
 
+    /// <summary>
+    /// 测试ConsoleLoggerFactory使用不同名称获取不同的logger实例
+    /// </summary>
     [Test]
     public void ConsoleLoggerFactory_GetLogger_WithDifferentNames_ShouldReturnDifferentLoggers()
     {
@@ -29,6 +38,9 @@ public class LoggerFactoryTests
         Assert.That(logger2.Name(), Is.EqualTo("Logger2"));
     }
 
+    /// <summary>
+    /// 测试ConsoleLoggerFactory使用默认最小级别时的行为（默认为Info级别）
+    /// </summary>
     [Test]
     public void ConsoleLoggerFactory_GetLogger_WithDefaultMinLevel_ShouldUseInfo()
     {
@@ -38,6 +50,7 @@ public class LoggerFactoryTests
         var stringWriter = new StringWriter();
         var testLogger = new ConsoleLogger("TestLogger", LogLevel.Info, stringWriter, false);
 
+        // 验证Debug消息不会被记录，但Info消息会被记录
         testLogger.Debug("Debug message");
         testLogger.Info("Info message");
 
@@ -46,6 +59,9 @@ public class LoggerFactoryTests
         Assert.That(output, Does.Contain("Info message"));
     }
 
+    /// <summary>
+    /// 测试ConsoleLoggerFactoryProvider创建logger时使用提供者的最小级别设置
+    /// </summary>
     [Test]
     public void ConsoleLoggerFactoryProvider_CreateLogger_ShouldReturnLoggerWithProviderMinLevel()
     {
@@ -55,6 +71,7 @@ public class LoggerFactoryTests
         var stringWriter = new StringWriter();
         var testLogger = new ConsoleLogger("TestLogger", LogLevel.Debug, stringWriter, false);
 
+        // 验证Debug消息会被记录，但Trace消息不会被记录
         testLogger.Debug("Debug message");
         testLogger.Trace("Trace message");
 
@@ -63,6 +80,9 @@ public class LoggerFactoryTests
         Assert.That(output, Does.Not.Contain("Trace message"));
     }
 
+    /// <summary>
+    /// 测试ConsoleLoggerFactoryProvider创建logger时使用提供的名称
+    /// </summary>
     [Test]
     public void ConsoleLoggerFactoryProvider_CreateLogger_ShouldUseProvidedName()
     {
@@ -72,6 +92,9 @@ public class LoggerFactoryTests
         Assert.That(logger.Name(), Is.EqualTo("MyLogger"));
     }
 
+    /// <summary>
+    /// 测试LoggerFactoryResolver的Provider属性是否有默认值
+    /// </summary>
     [Test]
     public void LoggerFactoryResolver_Provider_ShouldHaveDefaultValue()
     {
@@ -79,6 +102,9 @@ public class LoggerFactoryTests
         Assert.That(LoggerFactoryResolver.Provider, Is.InstanceOf<ConsoleLoggerFactoryProvider>());
     }
 
+    /// <summary>
+    /// 测试LoggerFactoryResolver的Provider属性可以被更改
+    /// </summary>
     [Test]
     public void LoggerFactoryResolver_Provider_CanBeChanged()
     {
@@ -92,12 +118,18 @@ public class LoggerFactoryTests
         LoggerFactoryResolver.Provider = originalProvider;
     }
 
+    /// <summary>
+    /// 测试LoggerFactoryResolver的MinLevel属性是否有默认值
+    /// </summary>
     [Test]
     public void LoggerFactoryResolver_MinLevel_ShouldHaveDefaultValue()
     {
         Assert.That(LoggerFactoryResolver.MinLevel, Is.EqualTo(LogLevel.Info));
     }
 
+    /// <summary>
+    /// 测试LoggerFactoryResolver的MinLevel属性可以被更改
+    /// </summary>
     [Test]
     public void LoggerFactoryResolver_MinLevel_CanBeChanged()
     {
@@ -110,6 +142,9 @@ public class LoggerFactoryTests
         LoggerFactoryResolver.MinLevel = originalLevel;
     }
 
+    /// <summary>
+    /// 测试ConsoleLoggerFactoryProvider的MinLevel属性是否有默认值
+    /// </summary>
     [Test]
     public void ConsoleLoggerFactoryProvider_MinLevel_ShouldHaveDefaultValue()
     {
@@ -118,6 +153,9 @@ public class LoggerFactoryTests
         Assert.That(provider.MinLevel, Is.EqualTo(LogLevel.Info));
     }
 
+    /// <summary>
+    /// 测试ConsoleLoggerFactoryProvider的MinLevel属性可以被更改
+    /// </summary>
     [Test]
     public void ConsoleLoggerFactoryProvider_MinLevel_CanBeChanged()
     {
@@ -128,6 +166,9 @@ public class LoggerFactoryTests
         Assert.That(provider.MinLevel, Is.EqualTo(LogLevel.Debug));
     }
 
+    /// <summary>
+    /// 测试LoggerFactoryResolver的Provider创建logger时使用提供者设置
+    /// </summary>
     [Test]
     public void LoggerFactoryResolver_Provider_CreateLogger_ShouldUseProviderSettings()
     {
@@ -141,6 +182,7 @@ public class LoggerFactoryTests
         var stringWriter = new StringWriter();
         var testLogger = new ConsoleLogger("TestLogger", LogLevel.Warning, stringWriter, false);
 
+        // 验证Warn消息会被记录，但Info消息不会被记录
         testLogger.Warn("Warn message");
         testLogger.Info("Info message");
 
@@ -151,6 +193,9 @@ public class LoggerFactoryTests
         LoggerFactoryResolver.Provider = originalProvider;
     }
 
+    /// <summary>
+    /// 测试LoggerFactoryResolver的MinLevel属性影响新创建的logger
+    /// </summary>
     [Test]
     public void LoggerFactoryResolver_MinLevel_AffectsNewLoggers()
     {
@@ -164,6 +209,7 @@ public class LoggerFactoryTests
         var stringWriter = new StringWriter();
         var testLogger = new ConsoleLogger("TestLogger", LogLevel.Error, stringWriter, false);
 
+        // 验证Error消息会被记录，但Warn消息不会被记录
         testLogger.Error("Error message");
         testLogger.Warn("Warn message");
 
@@ -174,6 +220,9 @@ public class LoggerFactoryTests
         LoggerFactoryResolver.MinLevel = originalMinLevel;
     }
 
+    /// <summary>
+    /// 测试ConsoleLoggerFactory创建的多个logger实例是独立的
+    /// </summary>
     [Test]
     public void ConsoleLoggerFactory_MultipleLoggers_ShouldBeIndependent()
     {
@@ -185,6 +234,9 @@ public class LoggerFactoryTests
         Assert.That(logger2.Name(), Is.EqualTo("Logger2"));
     }
 
+    /// <summary>
+    /// 测试ConsoleLoggerFactoryProvider的MinLevel不会影响已创建的logger
+    /// </summary>
     [Test]
     public void ConsoleLoggerFactoryProvider_MinLevel_DoesNotAffectCreatedLogger()
     {
@@ -194,6 +246,7 @@ public class LoggerFactoryTests
         var stringWriter = new StringWriter();
         var testLogger = new ConsoleLogger("TestLogger", LogLevel.Error, stringWriter, false);
 
+        // 验证Error和Fatal消息都会被记录
         testLogger.Error("Error message");
         testLogger.Fatal("Fatal message");
 

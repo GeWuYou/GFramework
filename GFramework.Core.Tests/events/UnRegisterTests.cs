@@ -4,9 +4,15 @@ using NUnit.Framework;
 
 namespace GFramework.Core.Tests.events;
 
+/// <summary>
+/// 注销功能测试类，用于测试不同类型的注销行为
+/// </summary>
 [TestFixture]
 public class UnRegisterTests
 {
+    /// <summary>
+    /// 测试DefaultUnRegister在调用注销时是否正确触发回调函数
+    /// </summary>
     [Test]
     public void DefaultUnRegister_Should_InvokeCallback_When_UnRegisterCalled()
     {
@@ -18,6 +24,9 @@ public class UnRegisterTests
         Assert.That(invoked, Is.True);
     }
 
+    /// <summary>
+    /// 测试DefaultUnRegister在注销后是否清除回调函数，防止重复执行
+    /// </summary>
     [Test]
     public void DefaultUnRegister_Should_ClearCallback_After_UnRegister()
     {
@@ -30,6 +39,9 @@ public class UnRegisterTests
         Assert.That(callCount, Is.EqualTo(1));
     }
 
+    /// <summary>
+    /// 测试DefaultUnRegister在传入空回调函数时不会抛出异常
+    /// </summary>
     [Test]
     public void DefaultUnRegister_WithNullCallback_Should_NotThrow()
     {
@@ -38,6 +50,9 @@ public class UnRegisterTests
         Assert.DoesNotThrow(() => unRegister.UnRegister());
     }
 
+    /// <summary>
+    /// 测试BindablePropertyUnRegister是否能正确从属性中注销事件处理器
+    /// </summary>
     [Test]
     public void BindablePropertyUnRegister_Should_UnRegister_From_Property()
     {
@@ -55,6 +70,9 @@ public class UnRegisterTests
         Assert.That(callCount, Is.EqualTo(0));
     }
 
+    /// <summary>
+    /// 测试BindablePropertyUnRegister在注销后是否清除内部引用
+    /// </summary>
     [Test]
     public void BindablePropertyUnRegister_Should_Clear_References()
     {
@@ -65,10 +83,14 @@ public class UnRegisterTests
 
         unRegister.UnRegister();
 
+        // 验证注销后引用被清除
         Assert.That(unRegister.BindableProperty, Is.Null);
         Assert.That(unRegister.OnValueChanged, Is.Null);
     }
 
+    /// <summary>
+    /// 测试BindablePropertyUnRegister在传入空属性时不会抛出异常
+    /// </summary>
     [Test]
     public void BindablePropertyUnRegister_WithNull_Property_Should_NotThrow()
     {
@@ -78,6 +100,9 @@ public class UnRegisterTests
         Assert.DoesNotThrow(() => unRegister.UnRegister());
     }
 
+    /// <summary>
+    /// 测试BindablePropertyUnRegister在传入空处理器时不会抛出异常
+    /// </summary>
     [Test]
     public void BindablePropertyUnRegister_WithNull_Handler_Should_NotThrow()
     {

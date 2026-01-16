@@ -1,12 +1,19 @@
+using System.Reflection;
 using GFramework.Core.Abstractions.state;
 using GFramework.Core.state;
 using NUnit.Framework;
 
 namespace GFramework.Core.Tests.state;
 
+/// <summary>
+/// 测试状态机功能的单元测试类
+/// </summary>
 [TestFixture]
 public class StateMachineTests
 {
+    /// <summary>
+    /// 在每个测试方法执行前初始化状态机实例
+    /// </summary>
     [SetUp]
     public void SetUp()
     {
@@ -15,12 +22,18 @@ public class StateMachineTests
 
     private StateMachine _stateMachine = null!;
 
+    /// <summary>
+    /// 验证当没有活动状态时，当前状态应为null
+    /// </summary>
     [Test]
     public void Current_Should_BeNull_When_NoState_Active()
     {
         Assert.That(_stateMachine.Current, Is.Null);
     }
 
+    /// <summary>
+    /// 验证注册状态后，状态会被添加到状态字典中
+    /// </summary>
     [Test]
     public void Register_Should_AddState_To_StatesDictionary()
     {
@@ -30,6 +43,9 @@ public class StateMachineTests
         Assert.That(_stateMachine.ContainsState<TestStateV2>(), Is.True);
     }
 
+    /// <summary>
+    /// 验证ChangeTo方法能够正确设置当前状态
+    /// </summary>
     [Test]
     public void ChangeTo_Should_SetCurrentState()
     {
@@ -40,6 +56,9 @@ public class StateMachineTests
         Assert.That(_stateMachine.Current, Is.SameAs(state));
     }
 
+    /// <summary>
+    /// 验证ChangeTo方法会调用OnEnter回调
+    /// </summary>
     [Test]
     public void ChangeTo_Should_Invoke_OnEnter()
     {
@@ -51,6 +70,9 @@ public class StateMachineTests
         Assert.That(state.EnterFrom, Is.Null);
     }
 
+    /// <summary>
+    /// 验证当存在当前状态时，切换到新状态会调用原状态的OnExit回调
+    /// </summary>
     [Test]
     public void ChangeTo_When_CurrentStateExists_Should_Invoke_OnExit()
     {
@@ -66,6 +88,9 @@ public class StateMachineTests
         Assert.That(state1.ExitTo, Is.SameAs(state2));
     }
 
+    /// <summary>
+    /// 验证当存在当前状态时，切换到新状态会调用新状态的OnEnter回调
+    /// </summary>
     [Test]
     public void ChangeTo_When_CurrentStateExists_Should_Invoke_OnEnter()
     {
@@ -81,6 +106,9 @@ public class StateMachineTests
         Assert.That(state2.EnterFrom, Is.SameAs(state1));
     }
 
+    /// <summary>
+    /// 验证切换到相同状态时不应调用回调方法
+    /// </summary>
     [Test]
     public void ChangeTo_ToSameState_Should_NotInvoke_Callbacks()
     {
@@ -97,12 +125,18 @@ public class StateMachineTests
         Assert.That(state.ExitCallCount, Is.EqualTo(exitCount));
     }
 
+    /// <summary>
+    /// 验证切换到未注册状态时应抛出InvalidOperationException异常
+    /// </summary>
     [Test]
     public void ChangeTo_ToUnregisteredState_Should_ThrowInvalidOperationException()
     {
         Assert.Throws<InvalidOperationException>(() => _stateMachine.ChangeTo<TestStateV2>());
     }
 
+    /// <summary>
+    /// 验证当状态未注册时CanChangeTo方法应返回false
+    /// </summary>
     [Test]
     public void CanChangeTo_WhenStateNotRegistered_Should_ReturnFalse()
     {
@@ -110,6 +144,9 @@ public class StateMachineTests
         Assert.That(result, Is.False);
     }
 
+    /// <summary>
+    /// 验证当状态已注册时CanChangeTo方法应返回true
+    /// </summary>
     [Test]
     public void CanChangeTo_WhenStateRegistered_Should_ReturnTrue()
     {
@@ -120,6 +157,9 @@ public class StateMachineTests
         Assert.That(result, Is.True);
     }
 
+    /// <summary>
+    /// 验证当当前状态拒绝转换时CanChangeTo方法应返回false
+    /// </summary>
     [Test]
     public void CanChangeTo_WhenCurrentStateDeniesTransition_Should_ReturnFalse()
     {
@@ -133,6 +173,9 @@ public class StateMachineTests
         Assert.That(result, Is.False);
     }
 
+    /// <summary>
+    /// 验证当当前状态拒绝转换时不应发生状态变化
+    /// </summary>
     [Test]
     public void ChangeTo_WhenCurrentStateDeniesTransition_Should_NotChange()
     {
@@ -150,6 +193,9 @@ public class StateMachineTests
         Assert.That(state2.EnterCalled, Is.False);
     }
 
+    /// <summary>
+    /// 验证注销状态后应从字典中移除该状态
+    /// </summary>
     [Test]
     public void Unregister_Should_RemoveState_FromDictionary()
     {
@@ -160,6 +206,9 @@ public class StateMachineTests
         Assert.That(_stateMachine.ContainsState<TestStateV2>(), Is.False);
     }
 
+    /// <summary>
+    /// 验证当活动状态被注销时应调用OnExit并清除当前状态
+    /// </summary>
     [Test]
     public void Unregister_WhenStateIsActive_Should_Invoke_OnExit_AndClearCurrent()
     {
@@ -173,6 +222,9 @@ public class StateMachineTests
         Assert.That(_stateMachine.Current, Is.Null);
     }
 
+    /// <summary>
+    /// 验证当非活动状态被注销时不应调用OnExit
+    /// </summary>
     [Test]
     public void Unregister_WhenStateNotActive_Should_Not_Invoke_OnExit()
     {
@@ -188,6 +240,9 @@ public class StateMachineTests
         Assert.That(_stateMachine.Current, Is.SameAs(state1));
     }
 
+    /// <summary>
+    /// 验证多次状态转换应正确调用回调方法
+    /// </summary>
     [Test]
     public void MultipleStateChanges_Should_Invoke_Callbacks_Correctly()
     {
@@ -210,6 +265,9 @@ public class StateMachineTests
         Assert.That(state3.ExitCalled, Is.False);
     }
 
+    /// <summary>
+    /// 验证ChangeTo方法应遵循CanTransitionTo逻辑
+    /// </summary>
     [Test]
     public void ChangeTo_Should_Respect_CanTransitionTo_Logic()
     {
@@ -229,6 +287,9 @@ public class StateMachineTests
     }
 }
 
+/// <summary>
+/// 测试状态类V2版本，实现IState接口用于测试
+/// </summary>
 public sealed class TestStateV2 : IState
 {
     public bool AllowTransition { get; set; } = true;
@@ -239,6 +300,10 @@ public sealed class TestStateV2 : IState
     public IState? EnterFrom { get; private set; }
     public IState? ExitTo { get; private set; }
 
+    /// <summary>
+    /// 进入状态时的回调方法
+    /// </summary>
+    /// <param name="from">从哪个状态进入</param>
     public void OnEnter(IState? from)
     {
         EnterCalled = true;
@@ -246,6 +311,10 @@ public sealed class TestStateV2 : IState
         EnterFrom = from;
     }
 
+    /// <summary>
+    /// 离开状态时的回调方法
+    /// </summary>
+    /// <param name="to">离开到哪个状态</param>
     public void OnExit(IState? to)
     {
         ExitCalled = true;
@@ -253,12 +322,20 @@ public sealed class TestStateV2 : IState
         ExitTo = to;
     }
 
+    /// <summary>
+    /// 判断是否可以转换到目标状态
+    /// </summary>
+    /// <param name="target">目标状态</param>
+    /// <returns>是否允许转换</returns>
     public bool CanTransitionTo(IState target)
     {
         return AllowTransition;
     }
 }
 
+/// <summary>
+/// 测试状态类V3版本，实现IState接口用于测试
+/// </summary>
 public sealed class TestStateV3 : IState
 {
     public bool EnterCalled { get; private set; }
@@ -268,6 +345,10 @@ public sealed class TestStateV3 : IState
     public IState? EnterFrom { get; private set; }
     public IState? ExitTo { get; private set; }
 
+    /// <summary>
+    /// 进入状态时的回调方法
+    /// </summary>
+    /// <param name="from">从哪个状态进入</param>
     public void OnEnter(IState? from)
     {
         EnterCalled = true;
@@ -275,6 +356,10 @@ public sealed class TestStateV3 : IState
         EnterFrom = from;
     }
 
+    /// <summary>
+    /// 离开状态时的回调方法
+    /// </summary>
+    /// <param name="to">离开到哪个状态</param>
     public void OnExit(IState? to)
     {
         ExitCalled = true;
@@ -282,12 +367,20 @@ public sealed class TestStateV3 : IState
         ExitTo = to;
     }
 
+    /// <summary>
+    /// 判断是否可以转换到目标状态
+    /// </summary>
+    /// <param name="target">目标状态</param>
+    /// <returns>是否允许转换</returns>
     public bool CanTransitionTo(IState target)
     {
         return true;
     }
 }
 
+/// <summary>
+/// 测试状态类V4版本，实现IState接口用于测试
+/// </summary>
 public sealed class TestStateV4 : IState
 {
     public bool EnterCalled { get; private set; }
@@ -297,6 +390,10 @@ public sealed class TestStateV4 : IState
     public IState? EnterFrom { get; private set; }
     public IState? ExitTo { get; private set; }
 
+    /// <summary>
+    /// 进入状态时的回调方法
+    /// </summary>
+    /// <param name="from">从哪个状态进入</param>
     public void OnEnter(IState? from)
     {
         EnterCalled = true;
@@ -304,6 +401,10 @@ public sealed class TestStateV4 : IState
         EnterFrom = from;
     }
 
+    /// <summary>
+    /// 离开状态时的回调方法
+    /// </summary>
+    /// <param name="to">离开到哪个状态</param>
     public void OnExit(IState? to)
     {
         ExitCalled = true;
@@ -311,18 +412,32 @@ public sealed class TestStateV4 : IState
         ExitTo = to;
     }
 
+    /// <summary>
+    /// 判断是否可以转换到目标状态
+    /// </summary>
+    /// <param name="target">目标状态</param>
+    /// <returns>是否允许转换</returns>
     public bool CanTransitionTo(IState target)
     {
         return true;
     }
 }
 
+/// <summary>
+/// 状态机扩展方法类
+/// </summary>
 public static class StateMachineExtensions
 {
+    /// <summary>
+    /// 检查状态机是否包含指定类型的状态
+    /// </summary>
+    /// <typeparam name="T">要检查的状态类型</typeparam>
+    /// <param name="stateMachine">状态机实例</param>
+    /// <returns>如果包含指定类型的状态则返回true，否则返回false</returns>
     public static bool ContainsState<T>(this StateMachine stateMachine) where T : IState
     {
-        return stateMachine.GetType().GetField("States", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?
-                   .GetValue(stateMachine) is System.Collections.Generic.Dictionary<System.Type, IState> states &&
+        return stateMachine.GetType().GetField("States", BindingFlags.NonPublic | BindingFlags.Instance)?
+                   .GetValue(stateMachine) is Dictionary<Type, IState> states &&
                states.ContainsKey(typeof(T));
     }
 }
