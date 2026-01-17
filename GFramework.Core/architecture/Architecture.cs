@@ -101,14 +101,24 @@ public abstract class Architecture(
     #region Fields
 
     /// <summary>
-    ///     存储所有待初始化的组件（统一管理）
+    ///     待初始化组件的去重集合
     /// </summary>
-    private readonly HashSet<IInitializable> _pendingInitializableList = [];
+    private readonly HashSet<IInitializable> _pendingInitializableSet = [];
 
     /// <summary>
-    ///     存储所有需要销毁的组件（统一管理）
+    ///     存储所有待初始化的组件（统一管理，保持注册顺序）
     /// </summary>
-    private readonly HashSet<IDisposable> _disposables = [];
+    private readonly List<IInitializable> _pendingInitializableList = [];
+
+    /// <summary>
+    ///     可销毁组件的去重集合
+    /// </summary>
+    private readonly HashSet<IDisposable> _disposableSet = [];
+
+    /// <summary>
+    ///     存储所有需要销毁的组件（统一管理，保持注册逆序销毁）
+    /// </summary>
+    private readonly List<IDisposable> _disposables = [];
 
     /// <summary>
     ///     生命周期感知对象列表
@@ -232,8 +242,12 @@ public abstract class Architecture(
         {
             if (!_mInitialized)
             {
-                _pendingInitializableList.Add(initializable);
-                _logger.Trace($"Added {component.GetType().Name} to pending initialization queue");
+                // 原子去重：HashSet.Add 返回 true 表示添加成功（之前不存在）
+                if (_pendingInitializableSet.Add(initializable))
+                {
+                    _pendingInitializableList.Add(initializable);
+                    _logger.Trace($"Added {component.GetType().Name} to pending initialization queue");
+                }
             }
             else
             {
@@ -244,8 +258,12 @@ public abstract class Architecture(
 
         // 处理销毁
         if (component is not IDisposable disposable) return;
-        _disposables.Add(disposable);
-        _logger.Trace($"Registered {component.GetType().Name} for destruction");
+        // 原子去重：HashSet.Add 返回 true 表示添加成功（之前不存在）
+        if (_disposableSet.Add(disposable))
+        {
+            _disposables.Add(disposable);
+            _logger.Trace($"Registered {component.GetType().Name} for destruction");
+        }
     }
 
     /// <summary>
@@ -316,6 +334,7 @@ public abstract class Architecture(
         EnterPhase(ArchitecturePhase.AfterSystemInit);
 
         _pendingInitializableList.Clear();
+        _pendingInitializableSet.Clear();
         _logger.Info("All components initialized");
     }
 
@@ -358,11 +377,12 @@ public abstract class Architecture(
         EnterPhase(ArchitecturePhase.Destroying);
         EventBus.Send(new ArchitectureEvents.ArchitectureDestroyingEvent());
 
-        // 销毁所有实现了 IDisposable 的组件
+        // 销毁所有实现了 IDisposable 的组件（按注册逆序销毁）
         _logger.Info($"Destroying {_disposables.Count} disposable components");
 
-        foreach (var disposable in _disposables)
+        for (var i = _disposables.Count - 1; i >= 0; i--)
         {
+            var disposable = _disposables[i];
             try
             {
                 _logger.Debug($"Destroying component: {disposable.GetType().Name}");
@@ -376,6 +396,7 @@ public abstract class Architecture(
         }
 
         _disposables.Clear();
+        _disposableSet.Clear();
 
         // 进入已销毁阶段并发送销毁完成事件
         EnterPhase(ArchitecturePhase.Destroyed);
