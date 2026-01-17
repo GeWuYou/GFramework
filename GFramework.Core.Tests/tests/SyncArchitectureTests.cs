@@ -1,4 +1,5 @@
-﻿using GFramework.Core.Abstractions.enums;
+﻿using System;
+using GFramework.Core.Abstractions.enums;
 using GFramework.Core.architecture;
 using GFramework.Core.Tests.architecture;
 using GFramework.Core.Tests.events;

@@ -61,6 +61,20 @@ public class ContextAwareStateMachine : StateMachine, ISystem
     /// </summary>
     public virtual void Destroy()
     {
+        // 退出当前状态
+        if (Current != null)
+        {
+            Current.OnExit(null);
+            Current = null;
+        }
+
+        // 清理所有状态
+        foreach (var state in States.Values.OfType<IDisposable>())
+        {
+            state.Dispose();
+        }
+
+        States.Clear();
     }
 
     /// <summary>
