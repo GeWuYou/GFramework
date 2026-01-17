@@ -1,9 +1,11 @@
-﻿namespace GFramework.Game.Abstractions.serializer;
+﻿using GFramework.Core.Abstractions.utility;
+
+namespace GFramework.Game.Abstractions.serializer;
 
 /// <summary>
 /// 定义序列化器接口，提供对象序列化和反序列化的通用方法
 /// </summary>
-public interface ISerializer
+public interface ISerializer : IUtility
 {
     /// <summary>
     /// 将指定的对象序列化为字符串
