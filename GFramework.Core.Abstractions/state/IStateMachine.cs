@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace GFramework.Core.Abstractions.state;
@@ -36,7 +36,8 @@ public interface IStateMachine
     /// 切换到指定类型的状态
     /// </summary>
     /// <typeparam name="T">要切换到的状态类型，必须实现IState接口</typeparam>
-    void ChangeTo<T>() where T : IState;
+    /// <returns>如果成功切换则返回true，否则返回false</returns>
+    bool ChangeTo<T>() where T : IState;
 
     /// <summary>
     /// 检查指定类型的状态是否已注册

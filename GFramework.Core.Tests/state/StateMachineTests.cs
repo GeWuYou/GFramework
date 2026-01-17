@@ -174,7 +174,7 @@ public class StateMachineTests
     }
 
     /// <summary>
-    /// 验证当当前状态拒绝转换时不应发生状态变化
+    ///     验证当当前状态拒绝转换时不应发生状态变化
     /// </summary>
     [Test]
     public void ChangeTo_WhenCurrentStateDeniesTransition_Should_NotChange()
@@ -186,8 +186,9 @@ public class StateMachineTests
         _stateMachine.ChangeTo<TestStateV2>();
 
         var oldState = _stateMachine.Current;
-        _stateMachine.ChangeTo<TestStateV3>();
+        var result = _stateMachine.ChangeTo<TestStateV3>();
 
+        Assert.That(result, Is.False);
         Assert.That(_stateMachine.Current, Is.SameAs(oldState));
         Assert.That(_stateMachine.Current, Is.SameAs(state1));
         Assert.That(state2.EnterCalled, Is.False);

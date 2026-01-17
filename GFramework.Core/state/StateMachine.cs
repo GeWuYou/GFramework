@@ -1,4 +1,4 @@
-﻿using GFramework.Core.Abstractions.state;
+using GFramework.Core.Abstractions.state;
 
 namespace GFramework.Core.state;
 
@@ -79,8 +79,9 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     /// 切换到指定类型的状态
     /// </summary>
     /// <typeparam name="T">目标状态类型</typeparam>
+    /// <returns>如果成功切换则返回true，否则返回false</returns>
     /// <exception cref="InvalidOperationException">当目标状态未注册时抛出</exception>
-    public void ChangeTo<T>() where T : IState
+    public bool ChangeTo<T>() where T : IState
     {
         lock (_lock)
         {
@@ -90,10 +91,13 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
 
             // 验证当前状态是否可以转换到目标状态
             if (Current != null && !Current.CanTransitionTo(target))
-                throw new InvalidOperationException(
-                    $"Cannot transition from {Current.GetType().Name} to {typeof(T).Name}");
+            {
+                OnTransitionRejected(Current, target);
+                return false;
+            }
 
             ChangeInternal(target);
+            return true;
         }
     }
 
