@@ -1,4 +1,5 @@
 ﻿using GFramework.Core.Abstractions.enums;
+using GFramework.Core.Abstractions.lifecycle;
 using GFramework.Core.Abstractions.model;
 using GFramework.Core.rule;
 
@@ -12,7 +13,7 @@ public abstract class AbstractModel : ContextAwareBase, IModel
     /// <summary>
     ///     初始化模型，调用抽象方法OnInit执行具体初始化逻辑
     /// </summary>
-    void IModel.Init()
+    void IInitializable.Init()
     {
         OnInit();
     }

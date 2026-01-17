@@ -16,7 +16,7 @@ public abstract class AbstractContextUtility : ContextAwareBase, IContextUtility
     /// <summary>
     ///     初始化上下文工具类
     /// </summary>
-    void IContextUtility.Init()
+    public void Init()
     {
         var name = GetType().Name;
         // 获取上下文中的日志记录器
@@ -31,7 +31,25 @@ public abstract class AbstractContextUtility : ContextAwareBase, IContextUtility
     }
 
     /// <summary>
+    ///     销毁上下文工具类实例
+    /// </summary>
+    public void Destroy()
+    {
+        var name = GetType().Name;
+        Logger.Debug($"Destroying Context Utility: {name}");
+        OnDestroy();
+        Logger.Info($"Context Utility destroyed: {name}");
+    }
+
+    /// <summary>
     ///     抽象初始化方法，由子类实现具体的初始化逻辑
     /// </summary>
     protected abstract void OnInit();
+
+    /// <summary>
+    ///     虚拟销毁方法，可由子类重写以实现自定义销毁逻辑
+    /// </summary>
+    protected virtual void OnDestroy()
+    {
+    }
 }

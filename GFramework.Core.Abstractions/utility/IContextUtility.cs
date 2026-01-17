@@ -1,4 +1,5 @@
-﻿using GFramework.Core.Abstractions.rule;
+﻿using GFramework.Core.Abstractions.lifecycle;
+using GFramework.Core.Abstractions.rule;
 
 namespace GFramework.Core.Abstractions.utility;
 
@@ -6,10 +7,4 @@ namespace GFramework.Core.Abstractions.utility;
 ///     上下文工具接口，继承自IUtility和IContextAware接口
 ///     提供具有上下文感知能力的工具功能
 /// </summary>
-public interface IContextUtility : IUtility, IContextAware
-{
-    /// <summary>
-    ///     初始化上下文工具
-    /// </summary>
-    void Init();
-}
+public interface IContextUtility : IUtility, IContextAware, ILifecycle;
