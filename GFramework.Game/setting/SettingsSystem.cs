@@ -1,6 +1,7 @@
-﻿using GFramework.Core.extensions;
+using GFramework.Core.extensions;
 using GFramework.Core.system;
 using GFramework.Game.Abstractions.setting;
+using GFramework.Game.setting.events;
 
 namespace GFramework.Game.setting;
 
@@ -79,11 +80,22 @@ public class SettingsSystem : AbstractSystem, ISettingsSystem
     /// 尝试应用可应用的设置配置
     /// </summary>
     /// <param name="section">设置配置对象</param>
-    private static void TryApply(ISettingsSection section)
+    private void TryApply(ISettingsSection section)
     {
         if (section is IApplyAbleSettings applyable)
         {
-            applyable.Apply();
+            this.SendEvent(new SettingsApplyingEvent<ISettingsSection>(section));
+
+            try
+            {
+                applyable.Apply();
+                this.SendEvent(new SettingsAppliedEvent<ISettingsSection>(section, true));
+            }
+            catch (Exception ex)
+            {
+                this.SendEvent(new SettingsAppliedEvent<ISettingsSection>(section, false, ex));
+                throw;
+            }
         }
     }
 }

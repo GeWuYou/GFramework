@@ -1,7 +1,8 @@
-﻿using GFramework.Core.Abstractions.storage;
+using GFramework.Core.Abstractions.storage;
 using GFramework.Core.extensions;
 using GFramework.Core.utility;
 using GFramework.Game.Abstractions.setting;
+using GFramework.Game.setting.events;
 
 namespace GFramework.Game.setting;
 
@@ -23,10 +24,14 @@ public class SettingsPersistence : AbstractContextUtility, ISettingsPersistence
 
         if (await _storage.ExistsAsync(key))
         {
-            return await _storage.ReadAsync<T>(key);
+            var result = await _storage.ReadAsync<T>(key);
+            this.SendEvent(new SettingsLoadedEvent<T>(result));
+            return result;
         }
 
-        return new T();
+        var newSettings = new T();
+        this.SendEvent(new SettingsLoadedEvent<T>(newSettings));
+        return newSettings;
     }
 
     /// <summary>
@@ -38,6 +43,7 @@ public class SettingsPersistence : AbstractContextUtility, ISettingsPersistence
     {
         var key = GetKey<T>();
         await _storage.WriteAsync(key, section);
+        this.SendEvent(new SettingsSavedEvent<T>(section));
     }
 
     /// <summary>
@@ -59,6 +65,7 @@ public class SettingsPersistence : AbstractContextUtility, ISettingsPersistence
     {
         var key = GetKey<T>();
         _storage.Delete(key);
+        this.SendEvent(new SettingsDeletedEvent(typeof(T)));
         await Task.CompletedTask;
     }
 
@@ -68,12 +75,15 @@ public class SettingsPersistence : AbstractContextUtility, ISettingsPersistence
     /// <param name="allData">包含所有设置数据的可枚举集合</param>
     public async Task SaveAllAsync(IEnumerable<ISettingsData> allData)
     {
-        foreach (var data in allData)
+        var dataList = allData.ToList();
+        foreach (var data in dataList)
         {
             var type = data.GetType();
             var key = GetKey(type);
             await _storage.WriteAsync(key, data);
         }
+
+        this.SendEvent(new SettingsBatchSavedEvent(dataList));
     }
 
     /// <summary>
@@ -84,6 +94,7 @@ public class SettingsPersistence : AbstractContextUtility, ISettingsPersistence
     public async Task<IDictionary<Type, ISettingsData>> LoadAllAsync(IEnumerable<Type> knownTypes)
     {
         var result = new Dictionary<Type, ISettingsData>();
+        var allSettings = new List<ISettingsSection>();
 
         foreach (var type in knownTypes)
         {
@@ -100,9 +111,55 @@ public class SettingsPersistence : AbstractContextUtility, ISettingsPersistence
 
             var loaded = (ISettingsData)((dynamic)task).Result;
             result[type] = loaded;
+            allSettings.Add(loaded);
         }
 
+        this.SendEvent(new SettingsAllLoadedEvent(allSettings));
         return result;
+    }
+
+    public async Task<T> ResetAsync<T>() where T : class, ISettingsData, new()
+    {
+        var type = typeof(T);
+        var key = GetKey(type);
+
+        T oldSettings;
+        if (await _storage.ExistsAsync(key))
+        {
+            oldSettings = await _storage.ReadAsync<T>(key);
+        }
+        else
+        {
+            oldSettings = new T();
+        }
+
+        var newSettings = new T();
+        await _storage.WriteAsync(key, newSettings);
+
+        this.SendEvent(new SettingsResetEvent<T>(oldSettings, newSettings));
+        return newSettings;
+    }
+
+    public async Task ResetAllAsync()
+    {
+        var knownTypes = new List<Type>();
+
+        var audioSettings = await LoadAllAsync(knownTypes);
+        var allNewSettings = new List<ISettingsSection>();
+
+        foreach (var kvp in audioSettings)
+        {
+            var type = kvp.Key;
+            var key = GetKey(type);
+
+            var newSettings = Activator.CreateInstance(type) as ISettingsSection;
+            if (newSettings is null) continue;
+
+            await _storage.WriteAsync(key, newSettings);
+            allNewSettings.Add(newSettings);
+        }
+
+        this.SendEvent(new SettingsResetAllEvent(allNewSettings));
     }
 
     protected override void OnInit()
