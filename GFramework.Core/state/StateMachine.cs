@@ -24,24 +24,26 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     /// 注册一个状态到状态机中
     /// </summary>
     /// <param name="state">要注册的状态实例</param>
-    public void Register(IState state)
+    public IStateMachine Register(IState state)
     {
         lock (_lock)
         {
             States[state.GetType()] = state;
         }
+
+        return this;
     }
 
     /// <summary>
     /// 从状态机中注销指定类型的状态
     /// </summary>
     /// <typeparam name="T">要注销的状态类型</typeparam>
-    public void Unregister<T>() where T : IState
+    public IStateMachine Unregister<T>() where T : IState
     {
         lock (_lock)
         {
             var type = typeof(T);
-            if (!States.TryGetValue(type, out var state)) return;
+            if (!States.TryGetValue(type, out var state)) return this;
 
             // 如果当前状态是要注销的状态，则先执行退出逻辑
             if (Current == state)
@@ -60,6 +62,8 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
 
             States.Remove(type);
         }
+
+        return this;
     }
 
     /// <summary>
