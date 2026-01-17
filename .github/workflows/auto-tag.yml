@@ -60,9 +60,20 @@ jobs:
         run: dotnet restore
       - name: Build
         run: dotnet build -c Release --no-restore -p:DebugType=portable
-      - name: Test
-        # run: dotnet test --no-build -c Release --verbosity normal
-        run: dotnet test --no-build -c Release --verbosity normal 2>&1 | grep -E "测试总数|通过数|失败数"
+      - name: Run tests
+        run: |
+          dotnet test \
+            --no-build \
+            -c Release \
+            --logger "trx;LogFileName=test-results.trx"
+
+      - name: Test Report
+        uses: dorny/test-reporter@v2
+        if: always()
+        with:
+          name: .NET Test Results
+          path: TestResults/*.trx
+          reporter: dotnet-trx
       # 步骤三：计算下一个版本号（若未被跳过）
       # 自动解析当前最新标签并递增修订号生成新的语义化版本号
       - name: Get next version
