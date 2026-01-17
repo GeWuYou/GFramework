@@ -327,6 +327,16 @@ public class TestArchitectureContext : IArchitectureContext
     /// <returns>命令执行结果</returns>
     public TResult SendCommand<TResult>(ICommand<TResult> command) => default!;
 
+    public Task SendCommandAsync(IAsyncCommand command)
+    {
+        return Task.CompletedTask;
+    }
+
+    public Task<TResult> SendCommandAsync<TResult>(IAsyncCommand<TResult> command)
+    {
+        return (Task<TResult>)Task.CompletedTask;
+    }
+
     /// <summary>
     /// 发送查询请求
     /// </summary>

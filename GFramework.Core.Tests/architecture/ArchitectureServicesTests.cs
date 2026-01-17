@@ -250,6 +250,17 @@ public class TestArchitectureContextV3 : IArchitectureContext
     }
 
     public TResult SendCommand<TResult>(ICommand<TResult> command) => default!;
+
+    public Task SendCommandAsync(IAsyncCommand command)
+    {
+        return Task.CompletedTask;
+    }
+
+    public Task<TResult> SendCommandAsync<TResult>(IAsyncCommand<TResult> command)
+    {
+        return (Task<TResult>)Task.CompletedTask;
+    }
+
     public TResult SendQuery<TResult>(IQuery<TResult> query) => default!;
     public IEnvironment GetEnvironment() => _environment;
 }

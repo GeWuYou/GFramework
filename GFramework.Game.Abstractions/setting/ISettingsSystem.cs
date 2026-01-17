@@ -28,23 +28,5 @@ public interface ISettingsSystem : ISystem
     /// <summary>
     /// 批量应用多个设置类型
     /// </summary>
-    /// <param name="settingsTypes">设置配置类型集合</param>
     Task Apply(IEnumerable<Type> settingsTypes);
-
-    /// <summary>
-    /// 重置指定类型的设置
-    /// </summary>
-    /// <param name="settingsType">设置类型</param>
-    Task ResetAsync(Type settingsType);
-
-    /// <summary>
-    /// 重置指定类型的设置（泛型版本）
-    /// </summary>
-    /// <typeparam name="T">设置类型</typeparam>
-    Task ResetAsync<T>() where T : class, ISettingsData, new();
-
-    /// <summary>
-    /// 重置所有设置
-    /// </summary>
-    Task ResetAllAsync();
 }
