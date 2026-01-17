@@ -1,4 +1,4 @@
-﻿using GFramework.Core.Abstractions.model;
+using GFramework.Core.Abstractions.model;
 using GFramework.Core.Abstractions.system;
 using GFramework.Core.Abstractions.utility;
 
@@ -56,11 +56,13 @@ public interface IArchitecture : IAsyncInitializable
     ///     安装架构模块
     /// </summary>
     /// <param name="module">要安装的模块</param>
-    void InstallModule(IArchitectureModule module);
+    /// <returns>安装的模块实例</returns>
+    IArchitectureModule InstallModule(IArchitectureModule module);
 
     /// <summary>
     ///     注册生命周期钩子
     /// </summary>
     /// <param name="hook">生命周期钩子实例</param>
-    void RegisterLifecycleHook(IArchitectureLifecycle hook);
+    /// <returns>注册的钩子实例</returns>
+    IArchitectureLifecycle RegisterLifecycleHook(IArchitectureLifecycle hook);
 }

@@ -36,7 +36,8 @@ public abstract class Architecture(
     ///     安装架构模块
     /// </summary>
     /// <param name="module">要安装的模块</param>
-    public void InstallModule(IArchitectureModule module)
+    /// <returns>安装的模块实例</returns>
+    public IArchitectureModule InstallModule(IArchitectureModule module)
     {
         var name = module.GetType().Name;
         var logger = LoggerFactoryResolver.Provider.CreateLogger(name);
@@ -45,6 +46,7 @@ public abstract class Architecture(
         Container.RegisterPlurality(module);
         module.Install(this);
         logger.Info($"Module installed: {name}");
+        return module;
     }
 
     #endregion
@@ -222,12 +224,14 @@ public abstract class Architecture(
     ///     注册生命周期钩子
     /// </summary>
     /// <param name="hook">生命周期钩子实例</param>
-    public void RegisterLifecycleHook(IArchitectureLifecycle hook)
+    /// <returns>注册的钩子实例</returns>
+    public IArchitectureLifecycle RegisterLifecycleHook(IArchitectureLifecycle hook)
     {
         if (CurrentPhase >= ArchitecturePhase.Ready && !Configuration.ArchitectureProperties.AllowLateRegistration)
             throw new InvalidOperationException(
                 "Cannot register lifecycle hook after architecture is Ready");
         _lifecycleHooks.Add(hook);
+        return hook;
     }
 
     /// <summary>
