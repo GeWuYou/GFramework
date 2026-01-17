@@ -65,14 +65,15 @@ jobs:
           dotnet test \
             --no-build \
             -c Release \
-            --logger "trx;LogFileName=test-results.trx" \
-            --results-directory ./TestResults  # 指定统一的输出目录
+            --logger "trx;LogFileName={assembly}.trx" \
+            --results-directory ${{ github.workspace }}/TestResults
+
       - name: Test Report
         uses: dorny/test-reporter@v2
         if: always()
         with:
           name: .NET Test Results
-          path: TestResults/*.trx
+          path: ${{ github.workspace }}/TestResults/*.trx
           reporter: dotnet-trx
       # 步骤三：计算下一个版本号（若未被跳过）
       # 自动解析当前最新标签并递增修订号生成新的语义化版本号
