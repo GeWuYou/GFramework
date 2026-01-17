@@ -1,6 +1,7 @@
 using GFramework.Core.extensions;
 using GFramework.Core.system;
 using GFramework.Game.Abstractions.setting;
+using GFramework.Game.setting.commands;
 using GFramework.Game.setting.events;
 
 namespace GFramework.Game.setting;
@@ -27,59 +28,27 @@ public class SettingsSystem : AbstractSystem, ISettingsSystem
         return Task.CompletedTask;
     }
 
-    /// <summary>
-    /// 应用指定类型的设置配置
-    /// </summary>
-    /// <typeparam name="T">设置配置类型，必须是类且实现ISettingsSection接口</typeparam>
-    /// <returns>完成的任务</returns>
-    public Task Apply<T>() where T : class, ISettingsSection
-        => Apply(typeof(T));
-
-    /// <summary>
-    /// 应用指定类型的设置配置
-    /// </summary>
-    /// <param name="settingsType">设置配置类型</param>
-    /// <returns>完成的任务</returns>
-    public Task Apply(Type settingsType)
+    public Task ResetAsync(Type settingsType)
     {
-        if (!_model.TryGet(settingsType, out var section))
-            return Task.CompletedTask;
-
-        TryApply(section);
-        return Task.CompletedTask;
-    }
-
-    /// <summary>
-    /// 应用指定类型集合的设置配置
-    /// </summary>
-    /// <param name="settingsTypes">设置配置类型集合</param>
-    /// <returns>完成的任务</returns>
-    public Task Apply(IEnumerable<Type> settingsTypes)
-    {
-        // 去重后遍历设置类型，获取并应用对应的设置配置
-        foreach (var type in settingsTypes.Distinct())
+        return this.SendCommandAsync(new ResetSettingsCommand(new ResetSettingsInput
         {
-            if (_model.TryGet(type, out var section))
-            {
-                TryApply(section);
-            }
-        }
-
-        return Task.CompletedTask;
+            SettingsType = settingsType
+        }));
     }
 
-    /// <summary>
-    /// 初始化设置系统，获取设置模型实例
-    /// </summary>
-    protected override void OnInit()
+    public Task ResetAsync<T>() where T : class, ISettingsData, new()
     {
-        _model = this.GetModel<ISettingsModel>()!;
+        return ResetAsync(typeof(T));
     }
 
-    /// <summary>
-    /// 尝试应用可应用的设置配置
-    /// </summary>
-    /// <param name="section">设置配置对象</param>
+    public Task ResetAllAsync()
+    {
+        return this.SendCommandAsync(new ResetSettingsCommand(new ResetSettingsInput
+        {
+            SettingsType = null
+        }));
+    }
+
     private void TryApply(ISettingsSection section)
     {
         if (section is IApplyAbleSettings applyable)

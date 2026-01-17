@@ -19,4 +19,14 @@ public class GraphicsSettings : ISettingsData
     /// 获取或设置屏幕分辨率高度
     /// </summary>
     public int ResolutionHeight { get; set; } = 1080;
+
+    /// <summary>
+    /// 重置图形设置为默认值
+    /// </summary>
+    public void Reset()
+    {
+        Fullscreen = false;
+        ResolutionWidth = 1920;
+        ResolutionHeight = 1080;
+    }
 }

@@ -1,4 +1,4 @@
-﻿namespace GFramework.Game.Abstractions.setting;
+namespace GFramework.Game.Abstractions.setting;
 
 /// <summary>
 /// 音频设置类，用于管理游戏中的音频配置
@@ -19,4 +19,14 @@ public class AudioSettings : ISettingsData
     /// 获取或设置音效音量，控制SFX的播放音量
     /// </summary>
     public float SfxVolume { get; set; } = 0.8f;
+
+    /// <summary>
+    /// 重置音频设置为默认值
+    /// </summary>
+    public void Reset()
+    {
+        MasterVolume = 1.0f;
+        BgmVolume = 0.8f;
+        SfxVolume = 0.8f;
+    }
 }

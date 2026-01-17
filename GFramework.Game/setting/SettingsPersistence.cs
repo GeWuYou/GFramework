@@ -118,50 +118,6 @@ public class SettingsPersistence : AbstractContextUtility, ISettingsPersistence
         return result;
     }
 
-    public async Task<T> ResetAsync<T>() where T : class, ISettingsData, new()
-    {
-        var type = typeof(T);
-        var key = GetKey(type);
-
-        T oldSettings;
-        if (await _storage.ExistsAsync(key))
-        {
-            oldSettings = await _storage.ReadAsync<T>(key);
-        }
-        else
-        {
-            oldSettings = new T();
-        }
-
-        var newSettings = new T();
-        await _storage.WriteAsync(key, newSettings);
-
-        this.SendEvent(new SettingsResetEvent<T>(oldSettings, newSettings));
-        return newSettings;
-    }
-
-    public async Task ResetAllAsync()
-    {
-        var knownTypes = new List<Type>();
-
-        var audioSettings = await LoadAllAsync(knownTypes);
-        var allNewSettings = new List<ISettingsSection>();
-
-        foreach (var kvp in audioSettings)
-        {
-            var type = kvp.Key;
-            var key = GetKey(type);
-
-            var newSettings = Activator.CreateInstance(type) as ISettingsSection;
-            if (newSettings is null) continue;
-
-            await _storage.WriteAsync(key, newSettings);
-            allNewSettings.Add(newSettings);
-        }
-
-        this.SendEvent(new SettingsResetAllEvent(allNewSettings));
-    }
-
     protected override void OnInit()
     {
         _storage = this.GetUtility<IStorage>()!;

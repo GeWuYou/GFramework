@@ -1,4 +1,4 @@
-﻿using GFramework.Game.Abstractions.setting;
+using GFramework.Game.Abstractions.setting;
 
 namespace GFramework.Godot.setting;
 
@@ -25,4 +25,14 @@ public class AudioBusMapSettings : ISettingsData
     /// 默认值为"SFX"
     /// </summary>
     public string Sfx { get; set; } = "SFX";
+
+    /// <summary>
+    /// 重置音频总线映射设置为默认值
+    /// </summary>
+    public void Reset()
+    {
+        Master = "Master";
+        Bgm = "BGM";
+        Sfx = "SFX";
+    }
 }

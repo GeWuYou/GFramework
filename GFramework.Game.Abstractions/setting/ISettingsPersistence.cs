@@ -40,14 +40,4 @@ public interface ISettingsPersistence : IContextUtility
     /// 加载所有已知类型的设置数据
     /// </summary>
     Task<IDictionary<Type, ISettingsData>> LoadAllAsync(IEnumerable<Type> knownTypes);
-
-    /// <summary>
-    /// 重置指定类型的设置数据为默认值
-    /// </summary>
-    Task<T> ResetAsync<T>() where T : class, ISettingsData, new();
-
-    /// <summary>
-    /// 重置所有设置数据为默认值
-    /// </summary>
-    Task ResetAllAsync();
 }
