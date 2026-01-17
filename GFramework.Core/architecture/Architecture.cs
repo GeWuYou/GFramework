@@ -144,7 +144,6 @@ public abstract class Architecture(
 
     #region Lifecycle Management
 
-    // ==================== 方案1: 早期返回 (推荐) ====================
     /// <summary>
     ///     进入指定的架构阶段，并执行相应的生命周期管理操作
     /// </summary>
