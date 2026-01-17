@@ -425,9 +425,10 @@ public abstract class Architecture(
     ///     注册一个系统到架构中。
     ///     若当前未初始化，则暂存至待初始化列表；否则立即初始化该系统。
     /// </summary>
-    /// <typeparam name="TSystem">要注册的系统类型</typeparam>
+    /// <typeparam name="TSystem">要注册的系统类型，必须实现ISystem接口</typeparam>
     /// <param name="system">要注册的系统实例</param>
-    public void RegisterSystem<TSystem>(TSystem system) where TSystem : ISystem
+    /// <returns>注册成功的系统实例</returns>
+    public TSystem RegisterSystem<TSystem>(TSystem system) where TSystem : ISystem
     {
         ValidateRegistration("system");
 
@@ -440,15 +441,17 @@ public abstract class Architecture(
         RegisterLifecycleComponent(system);
 
         _logger.Info($"System registered: {typeof(TSystem).Name}");
+        return system;
     }
 
     /// <summary>
     ///     注册一个模型到架构中。
     ///     若当前未初始化，则暂存至待初始化列表；否则立即初始化该模型。
     /// </summary>
-    /// <typeparam name="TModel">要注册的模型类型</typeparam>
+    /// <typeparam name="TModel">要注册的模型类型，必须实现IModel接口</typeparam>
     /// <param name="model">要注册的模型实例</param>
-    public void RegisterModel<TModel>(TModel model) where TModel : IModel
+    /// <returns>注册成功的模型实例</returns>
+    public TModel RegisterModel<TModel>(TModel model) where TModel : IModel
     {
         ValidateRegistration("model");
 
@@ -461,18 +464,20 @@ public abstract class Architecture(
         RegisterLifecycleComponent(model);
 
         _logger.Info($"Model registered: {typeof(TModel).Name}");
+        return model;
     }
 
     /// <summary>
-    ///     注册一个工具到架构中。
-    ///     工具不会被延迟初始化，直接放入IOC容器供后续使用。
+    ///     注册一个工具到架构中
     /// </summary>
-    /// <typeparam name="TUtility">要注册的工具类型</typeparam>
+    /// <typeparam name="TUtility">要注册的工具类型，必须实现IUtility接口</typeparam>
     /// <param name="utility">要注册的工具实例</param>
-    public void RegisterUtility<TUtility>(TUtility utility) where TUtility : IUtility
+    /// <returns>注册成功的工具实例</returns>
+    public TUtility RegisterUtility<TUtility>(TUtility utility) where TUtility : IUtility
     {
         _logger.Debug($"Registering utility: {typeof(TUtility).Name}");
 
+        // 处理上下文工具类型的设置和生命周期管理
         utility.IfType<IContextUtility>(contextUtility =>
         {
             contextUtility.SetContext(Context);
@@ -482,6 +487,7 @@ public abstract class Architecture(
 
         Container.RegisterPlurality(utility);
         _logger.Info($"Utility registered: {typeof(TUtility).Name}");
+        return utility;
     }
 
     #endregion

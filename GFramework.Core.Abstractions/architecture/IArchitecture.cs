@@ -36,21 +36,21 @@ public interface IArchitecture : IAsyncInitializable
     /// </summary>
     /// <typeparam name="T">系统类型，必须实现ISystem接口</typeparam>
     /// <param name="system">要注册的系统实例</param>
-    void RegisterSystem<T>(T system) where T : ISystem;
+    T RegisterSystem<T>(T system) where T : ISystem;
 
     /// <summary>
     ///     注册模型实例到架构中
     /// </summary>
     /// <typeparam name="T">模型类型，必须实现IModel接口</typeparam>
     /// <param name="model">要注册的模型实例</param>
-    void RegisterModel<T>(T model) where T : IModel;
+    T RegisterModel<T>(T model) where T : IModel;
 
     /// <summary>
     ///     注册工具实例到架构中
     /// </summary>
     /// <typeparam name="T">工具类型，必须实现IUtility接口</typeparam>
     /// <param name="utility">要注册的工具实例</param>
-    void RegisterUtility<T>(T utility) where T : IUtility;
+    T RegisterUtility<T>(T utility) where T : IUtility;
 
     /// <summary>
     ///     安装架构模块
