@@ -4,6 +4,7 @@ using GFramework.Core.Abstractions.rule;
 using GFramework.Core.Abstractions.state;
 using GFramework.Core.Abstractions.system;
 using GFramework.Core.extensions;
+using IDisposable = GFramework.Core.Abstractions.lifecycle.IDisposable;
 
 namespace GFramework.Core.state;
 
@@ -71,7 +72,7 @@ public class ContextAwareStateMachine : StateMachine, ISystem
         // 清理所有状态
         foreach (var state in States.Values.OfType<IDisposable>())
         {
-            state.Dispose();
+            state.Destroy();
         }
 
         States.Clear();
