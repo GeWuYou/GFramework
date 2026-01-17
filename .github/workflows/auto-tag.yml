@@ -65,8 +65,8 @@ jobs:
           dotnet test \
             --no-build \
             -c Release \
-            --logger "trx;LogFileName=test-results.trx"
-
+            --logger "trx;LogFileName=test-results.trx" \
+            --results-directory ./TestResults  # 指定统一的输出目录
       - name: Test Report
         uses: dorny/test-reporter@v2
         if: always()
