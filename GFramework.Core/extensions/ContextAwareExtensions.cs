@@ -74,38 +74,6 @@ public static class ContextAwareExtensions
     }
 
     /// <summary>
-    ///     发送一个无返回结果的命令
-    /// </summary>
-    /// <param name="contextAware">实现 IContextAware 接口的对象</param>
-    /// <param name="command">要发送的命令</param>
-    /// <exception cref="ArgumentNullException">当 contextAware 或 command 为 null 时抛出</exception>
-    public static void SendCommand(this IContextAware contextAware, ICommand command)
-    {
-        ArgumentNullException.ThrowIfNull(contextAware);
-        ArgumentNullException.ThrowIfNull(command);
-
-        var context = contextAware.GetContext();
-        context.SendCommand(command);
-    }
-
-    /// <summary>
-    ///     发送一个带返回值的命令
-    /// </summary>
-    /// <typeparam name="TResult">命令执行结果类型</typeparam>
-    /// <param name="contextAware">实现 IContextAware 接口的对象</param>
-    /// <param name="command">要发送的命令</param>
-    /// <returns>命令执行结果</returns>
-    /// <exception cref="ArgumentNullException">当 contextAware 或 command 为 null 时抛出</exception>
-    public static TResult SendCommand<TResult>(this IContextAware contextAware, ICommand<TResult> command)
-    {
-        ArgumentNullException.ThrowIfNull(contextAware);
-        ArgumentNullException.ThrowIfNull(command);
-
-        var Context = contextAware.GetContext();
-        return Context.SendCommand(command);
-    }
-
-    /// <summary>
     ///     发送并异步执行一个无返回值的命令
     /// </summary>
     /// <param name="contextAware">实现 IContextAware 接口的对象</param>
@@ -116,8 +84,8 @@ public static class ContextAwareExtensions
         ArgumentNullException.ThrowIfNull(contextAware);
         ArgumentNullException.ThrowIfNull(command);
 
-        var Context = contextAware.GetContext();
-        await Context.SendCommandAsync(command);
+        var context = contextAware.GetContext();
+        await context.SendCommandAsync(command);
     }
 
     /// <summary>
@@ -134,26 +102,10 @@ public static class ContextAwareExtensions
         ArgumentNullException.ThrowIfNull(contextAware);
         ArgumentNullException.ThrowIfNull(command);
 
-        var Context = contextAware.GetContext();
-        return await Context.SendCommandAsync(command);
-    }
-
-    /// <summary>
-    ///     发送一个事件
-    /// </summary>
-    /// <typeparam name="TResult">命令执行结果类型</typeparam>
-    /// <param name="contextAware">实现 IContextAware 接口的对象</param>
-    /// <param name="command">要发送的命令</param>
-    /// <returns>命令执行结果</returns>
-    /// <exception cref="ArgumentNullException">当 contextAware 或 command 为 null 时抛出</exception>
-    public static TResult SendCommand<TResult>(this IContextAware contextAware, ICommand<TResult> command)
-    {
-        ArgumentNullException.ThrowIfNull(contextAware);
-        ArgumentNullException.ThrowIfNull(command);
-
         var context = contextAware.GetContext();
-        return context.SendCommand(command);
+        return await context.SendCommandAsync(command);
     }
+
 
     /// <summary>
     ///     发送一个事件
@@ -183,6 +135,39 @@ public static class ContextAwareExtensions
         var context = contextAware.GetContext();
         context.SendEvent(e);
     }
+
+    /// <summary>
+    ///     发送一个事件
+    /// </summary>
+    /// <typeparam name="TResult">命令执行结果类型</typeparam>
+    /// <param name="contextAware">实现 IContextAware 接口的对象</param>
+    /// <param name="command">要发送的命令</param>
+    /// <returns>命令执行结果</returns>
+    /// <exception cref="ArgumentNullException">当 contextAware 或 command 为 null 时抛出</exception>
+    public static TResult SendCommand<TResult>(this IContextAware contextAware, ICommand<TResult> command)
+    {
+        ArgumentNullException.ThrowIfNull(contextAware);
+        ArgumentNullException.ThrowIfNull(command);
+
+        var context = contextAware.GetContext();
+        return context.SendCommand(command);
+    }
+
+    /// <summary>
+    ///     发送一个无返回结果的命令
+    /// </summary>
+    /// <param name="contextAware">实现 IContextAware 接口的对象</param>
+    /// <param name="command">要发送的命令</param>
+    /// <exception cref="ArgumentNullException">当 contextAware 或 command 为 null 时抛出</exception>
+    public static void SendCommand(this IContextAware contextAware, ICommand command)
+    {
+        ArgumentNullException.ThrowIfNull(contextAware);
+        ArgumentNullException.ThrowIfNull(command);
+
+        var context = contextAware.GetContext();
+        context.SendCommand(command);
+    }
+
 
     /// <summary>
     ///     注册事件处理器
