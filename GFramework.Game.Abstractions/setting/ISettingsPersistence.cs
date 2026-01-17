@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using GFramework.Core.Abstractions.utility;
 
 namespace GFramework.Game.Abstractions.setting;
 
@@ -8,7 +9,7 @@ namespace GFramework.Game.Abstractions.setting;
 /// 设置持久化接口
 /// 定义了设置数据的异步加载、保存、检查存在性和删除操作
 /// </summary>
-public interface ISettingsPersistence
+public interface ISettingsPersistence : IContextUtility
 {
     /// <summary>
     /// 异步加载指定类型的设置数据

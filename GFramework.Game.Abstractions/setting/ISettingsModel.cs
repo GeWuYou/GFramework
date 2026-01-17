@@ -42,5 +42,6 @@ public interface ISettingsModel : IModel
     /// </summary>
     /// <typeparam name="T">可应用设置的类型，必须继承自class和IApplyAbleSettings</typeparam>
     /// <param name="applicator">要注册的可应用设置实例</param>
-    void RegisterApplicator<T>(T applicator) where T : class, IApplyAbleSettings;
+    /// <returns>返回当前设置模型实例，支持链式调用</returns>
+    ISettingsModel RegisterApplicator<T>(T applicator) where T : class, IApplyAbleSettings;
 }
