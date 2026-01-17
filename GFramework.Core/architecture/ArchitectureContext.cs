@@ -1,4 +1,4 @@
-﻿using GFramework.Core.Abstractions.architecture;
+using GFramework.Core.Abstractions.architecture;
 using GFramework.Core.Abstractions.command;
 using GFramework.Core.Abstractions.environment;
 using GFramework.Core.Abstractions.events;
@@ -102,6 +102,28 @@ public class ArchitectureContext(
     {
         ArgumentNullException.ThrowIfNull(command);
         return _commandBus.Send(command);
+    }
+
+    /// <summary>
+    ///     发送并异步执行一个命令请求
+    /// </summary>
+    /// <param name="command">要发送的命令</param>
+    public async Task SendCommandAsync(IAsyncCommand command)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        await _commandBus.SendAsync(command);
+    }
+
+    /// <summary>
+    ///     发送并异步执行一个带返回值的命令请求
+    /// </summary>
+    /// <typeparam name="TResult">命令执行结果类型</typeparam>
+    /// <param name="command">要发送的命令</param>
+    /// <returns>命令执行结果</returns>
+    public async Task<TResult> SendCommandAsync<TResult>(IAsyncCommand<TResult> command)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        return await _commandBus.SendAsync(command);
     }
 
     #endregion

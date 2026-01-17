@@ -1,4 +1,4 @@
-﻿using GFramework.Core.Abstractions.command;
+using GFramework.Core.Abstractions.command;
 using GFramework.Core.Abstractions.environment;
 using GFramework.Core.Abstractions.events;
 using GFramework.Core.Abstractions.model;
@@ -90,6 +90,56 @@ public static class ContextAwareExtensions
 
     /// <summary>
     ///     发送一个带返回值的命令
+    /// </summary>
+    /// <typeparam name="TResult">命令执行结果类型</typeparam>
+    /// <param name="contextAware">实现 IContextAware 接口的对象</param>
+    /// <param name="command">要发送的命令</param>
+    /// <returns>命令执行结果</returns>
+    /// <exception cref="ArgumentNullException">当 contextAware 或 command 为 null 时抛出</exception>
+    public static TResult SendCommand<TResult>(this IContextAware contextAware, ICommand<TResult> command)
+    {
+        ArgumentNullException.ThrowIfNull(contextAware);
+        ArgumentNullException.ThrowIfNull(command);
+
+        var Context = contextAware.GetContext();
+        return Context.SendCommand(command);
+    }
+
+    /// <summary>
+    ///     发送并异步执行一个无返回值的命令
+    /// </summary>
+    /// <param name="contextAware">实现 IContextAware 接口的对象</param>
+    /// <param name="command">要发送的命令</param>
+    /// <exception cref="ArgumentNullException">当 contextAware 或 command 为 null 时抛出</exception>
+    public static async Task SendCommandAsync(this IContextAware contextAware, IAsyncCommand command)
+    {
+        ArgumentNullException.ThrowIfNull(contextAware);
+        ArgumentNullException.ThrowIfNull(command);
+
+        var Context = contextAware.GetContext();
+        await Context.SendCommandAsync(command);
+    }
+
+    /// <summary>
+    ///     发送并异步执行一个带返回值的命令
+    /// </summary>
+    /// <typeparam name="TResult">命令执行结果类型</typeparam>
+    /// <param name="contextAware">实现 IContextAware 接口的对象</param>
+    /// <param name="command">要发送的命令</param>
+    /// <returns>命令执行结果</returns>
+    /// <exception cref="ArgumentNullException">当 contextAware 或 command 为 null 时抛出</exception>
+    public static async Task<TResult> SendCommandAsync<TResult>(this IContextAware contextAware,
+        IAsyncCommand<TResult> command)
+    {
+        ArgumentNullException.ThrowIfNull(contextAware);
+        ArgumentNullException.ThrowIfNull(command);
+
+        var Context = contextAware.GetContext();
+        return await Context.SendCommandAsync(command);
+    }
+
+    /// <summary>
+    ///     发送一个事件
     /// </summary>
     /// <typeparam name="TResult">命令执行结果类型</typeparam>
     /// <param name="contextAware">实现 IContextAware 接口的对象</param>

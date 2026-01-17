@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.Threading.Tasks;
 using GFramework.Core.Abstractions.command;
 using GFramework.Core.Abstractions.environment;
 using GFramework.Core.Abstractions.events;
@@ -48,6 +49,20 @@ public interface IArchitectureContext
     /// <param name="command">要发送的命令</param>
     /// <returns>命令执行结果</returns>
     TResult SendCommand<TResult>(ICommand<TResult> command);
+
+    /// <summary>
+    ///     发送并异步执行一个命令
+    /// </summary>
+    /// <param name="command">要发送的命令</param>
+    Task SendCommandAsync(IAsyncCommand command);
+
+    /// <summary>
+    ///     发送并异步执行一个带返回值的命令
+    /// </summary>
+    /// <typeparam name="TResult">命令执行结果类型</typeparam>
+    /// <param name="command">要发送的命令</param>
+    /// <returns>命令执行结果</returns>
+    Task<TResult> SendCommandAsync<TResult>(IAsyncCommand<TResult> command);
 
     /// <summary>
     ///     发送一个查询请求
