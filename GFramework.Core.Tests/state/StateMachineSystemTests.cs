@@ -30,7 +30,7 @@ namespace GFramework.Core.Tests.state;
 /// - 状态机生命周期完整性
 /// </summary>
 [TestFixture]
-public class ContextAwareStateMachineTests
+public class StateMachineSystemTests
 {
     [SetUp]
     public void SetUp()
@@ -43,11 +43,11 @@ public class ContextAwareStateMachineTests
             new QueryBus(),
             new DefaultEnvironment());
 
-        _stateMachine = new TestContextAwareStateMachineV5();
+        _stateMachine = new TestStateMachineSystemV5();
         _stateMachine.SetContext(_context);
     }
 
-    private TestContextAwareStateMachineV5? _stateMachine;
+    private TestStateMachineSystemV5? _stateMachine;
     private ArchitectureContext? _context;
     private EventBus? _eventBus;
 
@@ -263,7 +263,7 @@ public class ContextAwareStateMachineTests
 /// <summary>
 /// 测试用的ContextAwareStateMachine派生类，用于访问内部状态字典
 /// </summary>
-public class TestContextAwareStateMachineV5 : ContextAwareStateMachine
+public class TestStateMachineSystemV5 : StateMachineSystem
 {
     /// <summary>
     /// 获取状态机内部的状态字典

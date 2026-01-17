@@ -2,7 +2,6 @@
 using GFramework.Core.Abstractions.enums;
 using GFramework.Core.Abstractions.rule;
 using GFramework.Core.Abstractions.state;
-using GFramework.Core.Abstractions.system;
 using GFramework.Core.extensions;
 using IDisposable = GFramework.Core.Abstractions.lifecycle.IDisposable;
 
@@ -12,12 +11,12 @@ namespace GFramework.Core.state;
 /// 上下文感知状态机，继承自StateMachine并实现ISystem接口
 /// 该状态机能够感知架构上下文，并在状态切换时发送状态变更事件
 /// </summary>
-public class ContextAwareStateMachine : StateMachine, ISystem
+public class StateMachineSystem : StateMachine, IStateMachineSystem
 {
     /// <summary>
     /// 架构上下文对象，用于提供系统运行所需的上下文信息
     /// </summary>
-    protected IArchitectureContext Context = null!;
+    private IArchitectureContext _context = null!;
 
     /// <summary>
     /// 设置架构上下文的方法
@@ -25,7 +24,7 @@ public class ContextAwareStateMachine : StateMachine, ISystem
     /// <param name="context">要设置的架构上下文对象</param>
     public void SetContext(IArchitectureContext context)
     {
-        Context = context;
+        _context = context;
     }
 
     /// <summary>
@@ -34,7 +33,7 @@ public class ContextAwareStateMachine : StateMachine, ISystem
     /// <returns>当前的架构上下文对象</returns>
     public IArchitectureContext GetContext()
     {
-        return Context;
+        return _context;
     }
 
     /// <summary>
@@ -53,7 +52,7 @@ public class ContextAwareStateMachine : StateMachine, ISystem
     {
         foreach (var state in States.Values.OfType<IContextAware>())
         {
-            state.SetContext(Context);
+            state.SetContext(_context);
         }
     }
 

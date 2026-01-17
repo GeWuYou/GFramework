@@ -6,7 +6,7 @@ namespace GFramework.Game.state;
 /// <summary>
 /// 游戏状态机类，继承自ContextAwareStateMachine，用于管理游戏中的各种状态
 /// </summary>
-public sealed class GameStateMachine : ContextAwareStateMachine
+public sealed class GameStateMachineSystem : StateMachineSystem
 {
     /// <summary>
     /// 检查当前状态是否为指定类型的状态
