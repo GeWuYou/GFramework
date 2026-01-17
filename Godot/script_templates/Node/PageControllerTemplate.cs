@@ -42,7 +42,7 @@ public partial class _CLASS_ :_BASE_,IController,IUiPageBehaviorProvider,IUiPage
     /// <param name="param">页面进入参数，可能为空</param>
     public void OnEnter(IUiPageEnterParam? param)
     {
-        _log.Info("测试主菜单 OnEnter");
+        
     }
 	/// <summary>
     /// 页面退出时调用的方法
