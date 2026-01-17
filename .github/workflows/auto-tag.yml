@@ -65,7 +65,7 @@ jobs:
           dotnet test \
             --no-build \
             -c Release \
-            --logger "trx;LogFileName={assembly}.trx" \
+            --logger "trx" \
             --results-directory ${{ github.workspace }}/TestResults
 
       - name: Test Report
