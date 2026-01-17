@@ -1,4 +1,3 @@
-﻿using System;
 using GFramework.Core.Abstractions.enums;
 using GFramework.Core.architecture;
 using GFramework.Core.Tests.architecture;
@@ -137,7 +136,7 @@ public class SyncArchitectureTests : ArchitectureTestsBase<SyncTestArchitecture>
             a.RegisterModel(new FailingModel())
         );
 
-        Architecture.Initialize();
+        Assert.Throws<InvalidOperationException>(() => Architecture.Initialize());
 
         AssertInitializationFailed();
     }

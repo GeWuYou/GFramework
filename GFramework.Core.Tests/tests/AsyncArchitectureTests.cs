@@ -1,4 +1,4 @@
-﻿using GFramework.Core.Abstractions.enums;
+using GFramework.Core.Abstractions.enums;
 using GFramework.Core.Tests.architecture;
 using GFramework.Core.Tests.model;
 using GFramework.Core.Tests.system;
@@ -94,7 +94,7 @@ public class AsyncArchitectureTests : ArchitectureTestsBase<AsyncTestArchitectur
     {
         Architecture!.AddPostRegistrationHook(a => { a.RegisterModel(new FailingModel()); });
 
-        await Architecture.InitializeAsync();
+        Assert.ThrowsAsync<InvalidOperationException>(async () => await Architecture.InitializeAsync());
 
         Assert.That(
             Architecture.CurrentPhase,
@@ -141,7 +141,7 @@ public class AsyncArchitectureTests : ArchitectureTestsBase<AsyncTestArchitectur
             a.RegisterModel(new FailingModel())
         );
 
-        await Architecture.InitializeAsync();
+        Assert.ThrowsAsync<InvalidOperationException>(async () => await Architecture.InitializeAsync());
 
         AssertInitializationFailed();
     }

@@ -134,6 +134,7 @@ public abstract class Architecture(
 
     #region Lifecycle Management
 
+    // ==================== 方案1: 早期返回 (推荐) ====================
     /// <summary>
     ///     进入指定的架构阶段，并执行相应的生命周期管理操作
     /// </summary>
@@ -141,29 +142,57 @@ public abstract class Architecture(
     /// <exception cref="InvalidOperationException">当阶段转换不被允许时抛出异常</exception>
     protected virtual void EnterPhase(ArchitecturePhase next)
     {
-        if (Configuration.ArchitectureProperties.StrictPhaseValidation &&
-            (!ArchitectureConstants.PhaseTransitions.TryGetValue(CurrentPhase, out var allowed) ||
-             !allowed.Contains(next)))
-        {
-            // 验证阶段转换是否合法
-            var errorMsg = $"Invalid phase transition: {CurrentPhase} -> {next}";
-            _logger.Fatal(errorMsg);
-            throw new InvalidOperationException(errorMsg);
-        }
+        // 验证阶段转换
+        ValidatePhaseTransition(next);
 
+        // 执行阶段转换
         var previousPhase = CurrentPhase;
         CurrentPhase = next;
 
         if (previousPhase != next)
             _logger.Info($"Architecture phase changed: {previousPhase} -> {next}");
 
+        // 通知阶段变更
         NotifyPhase(next);
+        NotifyPhaseAwareObjects(next);
+    }
 
-        // 通知所有架构阶段感知对象阶段变更
+    /// <summary>
+    ///     验证阶段转换是否合法
+    /// </summary>
+    /// <param name="next">目标阶段</param>
+    /// <exception cref="InvalidOperationException">当阶段转换不合法时抛出</exception>
+    private void ValidatePhaseTransition(ArchitecturePhase next)
+    {
+        // 不需要严格验证，直接返回
+        if (!Configuration.ArchitectureProperties.StrictPhaseValidation)
+            return;
+
+        // FailedInitialization 可以从任何阶段转换，直接返回
+        if (next == ArchitecturePhase.FailedInitialization)
+            return;
+
+        // 检查转换是否在允许列表中
+        if (ArchitectureConstants.PhaseTransitions.TryGetValue(CurrentPhase, out var allowed) &&
+            allowed.Contains(next))
+            return;
+
+        // 转换不合法，抛出异常
+        var errorMsg = $"Invalid phase transition: {CurrentPhase} -> {next}";
+        _logger.Fatal(errorMsg);
+        throw new InvalidOperationException(errorMsg);
+    }
+
+    /// <summary>
+    ///     通知所有架构阶段感知对象阶段变更
+    /// </summary>
+    /// <param name="phase">新阶段</param>
+    private void NotifyPhaseAwareObjects(ArchitecturePhase phase)
+    {
         foreach (var obj in Container.GetAll<IArchitecturePhaseAware>())
         {
-            _logger.Trace($"Notifying phase-aware object {obj.GetType().Name} of phase change to {next}");
-            obj.OnArchitecturePhase(next);
+            _logger.Trace($"Notifying phase-aware object {obj.GetType().Name} of phase change to {phase}");
+            obj.OnArchitecturePhase(phase);
         }
     }
 
@@ -232,10 +261,11 @@ public abstract class Architecture(
         var models = _pendingInitializableList.OfType<IModel>().ToList();
         var systems = _pendingInitializableList.OfType<ISystem>().ToList();
 
-        // 1. 初始化工具
+        // 1. 工具初始化阶段（始终进入阶段，仅在有组件时执行初始化）
+        EnterPhase(ArchitecturePhase.BeforeUtilityInit);
+
         if (utilities.Count != 0)
         {
-            EnterPhase(ArchitecturePhase.BeforeUtilityInit);
             _logger.Info($"Initializing {utilities.Count} context utilities");
 
             foreach (var utility in utilities)
@@ -244,14 +274,16 @@ public abstract class Architecture(
                 await InitializeComponentAsync(utility, asyncMode);
             }
 
-            EnterPhase(ArchitecturePhase.AfterUtilityInit);
             _logger.Info("All context utilities initialized");
         }
 
-        // 2. 初始化模型
+        EnterPhase(ArchitecturePhase.AfterUtilityInit);
+
+        // 2. 模型初始化阶段（始终进入阶段，仅在有组件时执行初始化）
+        EnterPhase(ArchitecturePhase.BeforeModelInit);
+
         if (models.Count != 0)
         {
-            EnterPhase(ArchitecturePhase.BeforeModelInit);
             _logger.Info($"Initializing {models.Count} models");
 
             foreach (var model in models)
@@ -260,14 +292,16 @@ public abstract class Architecture(
                 await InitializeComponentAsync(model, asyncMode);
             }
 
-            EnterPhase(ArchitecturePhase.AfterModelInit);
             _logger.Info("All models initialized");
         }
 
-        // 3. 初始化系统
+        EnterPhase(ArchitecturePhase.AfterModelInit);
+
+        // 3. 系统初始化阶段（始终进入阶段，仅在有组件时执行初始化）
+        EnterPhase(ArchitecturePhase.BeforeSystemInit);
+
         if (systems.Count != 0)
         {
-            EnterPhase(ArchitecturePhase.BeforeSystemInit);
             _logger.Info($"Initializing {systems.Count} systems");
 
             foreach (var system in systems)
@@ -276,9 +310,10 @@ public abstract class Architecture(
                 await InitializeComponentAsync(system, asyncMode);
             }
 
-            EnterPhase(ArchitecturePhase.AfterSystemInit);
             _logger.Info("All systems initialized");
         }
+
+        EnterPhase(ArchitecturePhase.AfterSystemInit);
 
         _pendingInitializableList.Clear();
         _logger.Info("All components initialized");
