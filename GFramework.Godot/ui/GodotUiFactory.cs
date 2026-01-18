@@ -1,7 +1,6 @@
 ﻿using GFramework.Core.extensions;
 using GFramework.Core.utility;
 using GFramework.Game.Abstractions.ui;
-using Godot;
 
 namespace GFramework.Godot.ui;
 
@@ -14,7 +13,7 @@ public class GodotUiFactory : AbstractContextUtility, IUiFactory
     /// <summary>
     /// UI注册表，用于存储和获取PackedScene类型的UI资源
     /// </summary>
-    private IAssetRegistry<PackedScene> _registry = null!;
+    private IGodotUiRegistry _registry = null!;
 
     /// <summary>
     /// 根据指定的UI键创建UI页面实例
@@ -44,6 +43,6 @@ public class GodotUiFactory : AbstractContextUtility, IUiFactory
     /// </summary>
     protected override void OnInit()
     {
-        _registry = this.GetUtility<IAssetRegistry<PackedScene>>()!;
+        _registry = this.GetUtility<IGodotUiRegistry>()!;
     }
 }
