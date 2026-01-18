@@ -14,7 +14,7 @@ public class GodotUiFactory : AbstractContextUtility, IUiFactory
     /// <summary>
     /// UI注册表，用于存储和获取PackedScene类型的UI资源
     /// </summary>
-    private IWritableUiRegistry<PackedScene> _registry = null!;
+    private IUiRegistry<PackedScene> _registry = null!;
 
     /// <summary>
     /// 根据指定的UI键创建UI页面实例
@@ -44,6 +44,6 @@ public class GodotUiFactory : AbstractContextUtility, IUiFactory
     /// </summary>
     protected override void OnInit()
     {
-        _registry = this.GetUtility<IWritableUiRegistry<PackedScene>>()!;
+        _registry = this.GetUtility<IUiRegistry<PackedScene>>()!;
     }
 }
