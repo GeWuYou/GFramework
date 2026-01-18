@@ -39,11 +39,11 @@ public sealed class CommandBus : ICommandBus
     /// </summary>
     /// <param name="command">要执行的命令对象，不能为空</param>
     /// <exception cref="ArgumentNullException">当command参数为null时抛出</exception>
-    public async Task SendAsync(IAsyncCommand command)
+    public Task SendAsync(IAsyncCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        await command.ExecuteAsync();
+        return command.ExecuteAsync();
     }
 
     /// <summary>
@@ -53,10 +53,10 @@ public sealed class CommandBus : ICommandBus
     /// <param name="command">要执行的命令对象，不能为空</param>
     /// <returns>命令执行的结果</returns>
     /// <exception cref="ArgumentNullException">当command参数为null时抛出</exception>
-    public async Task<TResult> SendAsync<TResult>(IAsyncCommand<TResult> command)
+    public Task<TResult> SendAsync<TResult>(IAsyncCommand<TResult> command)
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        return await command.ExecuteAsync();
+        return command.ExecuteAsync();
     }
 }
