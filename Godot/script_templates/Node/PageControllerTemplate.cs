@@ -47,7 +47,7 @@ public partial class _CLASS_ :_BASE_,IController,IUiPageBehaviorProvider,IUiPage
 	/// <summary>
     /// 页面退出时调用的方法
     /// </summary>
-    public void IUiPage.OnExit()
+    public void OnExit()
     {
         
     }
@@ -56,7 +56,7 @@ public partial class _CLASS_ :_BASE_,IController,IUiPageBehaviorProvider,IUiPage
     /// <summary>
     /// 页面暂停时调用的方法
     /// </summary>
-    public void IUiPage.OnPause()
+    public void OnPause()
     {
         
     }
@@ -64,7 +64,7 @@ public partial class _CLASS_ :_BASE_,IController,IUiPageBehaviorProvider,IUiPage
     /// <summary>
     /// 页面恢复时调用的方法
     /// </summary>
-    public void IUiPage.OnResume()
+    public void OnResume()
     {
         
     }
@@ -72,7 +72,7 @@ public partial class _CLASS_ :_BASE_,IController,IUiPageBehaviorProvider,IUiPage
     /// <summary>
     /// 页面显示时调用的方法
     /// </summary>
-    public void IUiPage.OnShow()
+    public void OnShow()
     {
        
     }
@@ -80,7 +80,7 @@ public partial class _CLASS_ :_BASE_,IController,IUiPageBehaviorProvider,IUiPage
     /// <summary>
     /// 页面隐藏时调用的方法
     /// </summary>
-    public void IUiPage.OnHide()
+    public void OnHide()
     {
         
     }
