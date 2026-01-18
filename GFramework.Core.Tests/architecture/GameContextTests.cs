@@ -257,6 +257,13 @@ public class TestArchitectureContext : IArchitectureContext
     public IEnvironment Environment => new DefaultEnvironment();
 
     /// <summary>
+    /// 获取指定类型的服务
+    /// </summary>
+    /// <typeparam name="TService">服务类型</typeparam>
+    /// <returns>服务实例或null</returns>
+    public TService? GetService<TService>() where TService : class => _container.Get<TService>();
+
+    /// <summary>
     /// 获取指定类型的模型
     /// </summary>
     /// <typeparam name="TModel">模型类型</typeparam>

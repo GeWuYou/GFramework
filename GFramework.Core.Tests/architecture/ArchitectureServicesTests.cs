@@ -227,6 +227,7 @@ public class TestArchitectureContextV3 : IArchitectureContext
     public ICommandBus CommandBus => new CommandBus();
     public IQueryBus QueryBus => new QueryBus();
 
+    public TService? GetService<TService>() where TService : class => _container.Get<TService>();
     public TModel? GetModel<TModel>() where TModel : class, IModel => _container.Get<TModel>();
     public TSystem? GetSystem<TSystem>() where TSystem : class, ISystem => _container.Get<TSystem>();
     public TUtility? GetUtility<TUtility>() where TUtility : class, IUtility => _container.Get<TUtility>();

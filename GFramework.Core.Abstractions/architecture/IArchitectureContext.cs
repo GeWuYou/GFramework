@@ -16,6 +16,13 @@ namespace GFramework.Core.Abstractions.architecture;
 public interface IArchitectureContext
 {
     /// <summary>
+    ///     获取指定类型的服务实例
+    /// </summary>
+    /// <typeparam name="TService">服务类型</typeparam>
+    /// <returns>服务实例，如果不存在则返回null</returns>
+    TService? GetService<TService>() where TService : class;
+
+    /// <summary>
     ///     获取指定类型的系统实例
     /// </summary>
     /// <typeparam name="TSystem">系统类型，必须继承自ISystem接口</typeparam>

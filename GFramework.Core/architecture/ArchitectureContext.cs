@@ -7,34 +7,38 @@ using GFramework.Core.Abstractions.model;
 using GFramework.Core.Abstractions.query;
 using GFramework.Core.Abstractions.system;
 using GFramework.Core.Abstractions.utility;
-using IAsyncQueryBus = GFramework.Core.Abstractions.query.IAsyncQueryBus;
 
 namespace GFramework.Core.architecture;
 
 /// <summary>
 ///     架构上下文类，提供对系统、模型、工具等组件的访问以及命令、查询、事件的执行管理
 /// </summary>
-public class ArchitectureContext(
-    IIocContainer container,
-    IEventBus eventBus,
-    ICommandBus commandBus,
-    IQueryBus queryBus,
-    IEnvironment environment,
-    IAsyncQueryBus asyncQueryBus)
-    : IArchitectureContext
+public class ArchitectureContext : IArchitectureContext
 {
-    private readonly IAsyncQueryBus _asyncQueryBus =
-        asyncQueryBus ?? throw new ArgumentNullException(nameof(asyncQueryBus));
+    private readonly IIocContainer _container;
+    private readonly Dictionary<Type, object> _serviceCache = new();
 
-    private readonly ICommandBus _commandBus = commandBus ?? throw new ArgumentNullException(nameof(commandBus));
-    private readonly IIocContainer _container = container ?? throw new ArgumentNullException(nameof(container));
+    public ArchitectureContext(IIocContainer container)
+    {
+        _container = container ?? throw new ArgumentNullException(nameof(container));
+    }
 
-    private readonly IEnvironment _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+    public TService? GetService<TService>() where TService : class
+    {
+        return GetOrCache<TService>();
+    }
 
-    private readonly IEventBus _eventBus =
-        eventBus ?? throw new ArgumentNullException(nameof(eventBus));
+    private TService? GetOrCache<TService>() where TService : class
+    {
+        if (_serviceCache.TryGetValue(typeof(TService), out var cached))
+            return (TService)cached;
 
-    private readonly IQueryBus _queryBus = queryBus ?? throw new ArgumentNullException(nameof(queryBus));
+        var service = _container.Get<TService>();
+        if (service != null)
+            _serviceCache[typeof(TService)] = service;
+
+        return service;
+    }
 
     #region Query Execution
 
@@ -46,7 +50,10 @@ public class ArchitectureContext(
     /// <returns>查询结果</returns>
     public TResult SendQuery<TResult>(IQuery<TResult> query)
     {
-        return query == null ? throw new ArgumentNullException(nameof(query)) : _queryBus.Send(query);
+        if (query == null) throw new ArgumentNullException(nameof(query));
+        var queryBus = GetOrCache<IQueryBus>();
+        if (queryBus == null) throw new InvalidOperationException("IQueryBus not registered");
+        return queryBus.Send(query);
     }
 
     /// <summary>
@@ -55,9 +62,12 @@ public class ArchitectureContext(
     /// <typeparam name="TResult">查询结果类型</typeparam>
     /// <param name="query">要发送的异步查询</param>
     /// <returns>查询结果</returns>
-    public Task<TResult> SendQueryAsync<TResult>(IAsyncQuery<TResult> query)
+    public async Task<TResult> SendQueryAsync<TResult>(IAsyncQuery<TResult> query)
     {
-        return query == null ? throw new ArgumentNullException(nameof(query)) : _asyncQueryBus.SendAsync(query);
+        if (query == null) throw new ArgumentNullException(nameof(query));
+        var asyncQueryBus = GetOrCache<IAsyncQueryBus>();
+        if (asyncQueryBus == null) throw new InvalidOperationException("IAsyncQueryBus not registered");
+        return await asyncQueryBus.SendAsync(query);
     }
 
     #endregion
@@ -71,7 +81,7 @@ public class ArchitectureContext(
     /// <returns>对应的系统实例</returns>
     public TSystem? GetSystem<TSystem>() where TSystem : class, ISystem
     {
-        return _container.Get<TSystem>();
+        return GetService<TSystem>();
     }
 
     /// <summary>
@@ -81,7 +91,7 @@ public class ArchitectureContext(
     /// <returns>对应的模型实例</returns>
     public TModel? GetModel<TModel>() where TModel : class, IModel
     {
-        return _container.Get<TModel>();
+        return GetService<TModel>();
     }
 
     /// <summary>
@@ -91,7 +101,7 @@ public class ArchitectureContext(
     /// <returns>对应的工具实例</returns>
     public TUtility? GetUtility<TUtility>() where TUtility : class, IUtility
     {
-        return _container.Get<TUtility>();
+        return GetService<TUtility>();
     }
 
     #endregion
@@ -105,7 +115,8 @@ public class ArchitectureContext(
     public void SendCommand(ICommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
-        _commandBus.Send(command);
+        var commandBus = GetOrCache<ICommandBus>();
+        commandBus?.Send(command);
     }
 
     /// <summary>
@@ -117,7 +128,9 @@ public class ArchitectureContext(
     public TResult SendCommand<TResult>(ICommand<TResult> command)
     {
         ArgumentNullException.ThrowIfNull(command);
-        return _commandBus.Send(command);
+        var commandBus = GetOrCache<ICommandBus>();
+        if (commandBus == null) throw new InvalidOperationException("ICommandBus not registered");
+        return commandBus.Send(command);
     }
 
     /// <summary>
@@ -127,7 +140,9 @@ public class ArchitectureContext(
     public async Task SendCommandAsync(IAsyncCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
-        await _commandBus.SendAsync(command);
+        var commandBus = GetOrCache<ICommandBus>();
+        if (commandBus == null) throw new InvalidOperationException("ICommandBus not registered");
+        await commandBus.SendAsync(command);
     }
 
     /// <summary>
@@ -139,7 +154,9 @@ public class ArchitectureContext(
     public async Task<TResult> SendCommandAsync<TResult>(IAsyncCommand<TResult> command)
     {
         ArgumentNullException.ThrowIfNull(command);
-        return await _commandBus.SendAsync(command);
+        var commandBus = GetOrCache<ICommandBus>();
+        if (commandBus == null) throw new InvalidOperationException("ICommandBus not registered");
+        return await commandBus.SendAsync(command);
     }
 
     #endregion
@@ -152,7 +169,8 @@ public class ArchitectureContext(
     /// <typeparam name="TEvent">事件类型</typeparam>
     public void SendEvent<TEvent>() where TEvent : new()
     {
-        _eventBus.Send<TEvent>();
+        var eventBus = GetOrCache<IEventBus>();
+        eventBus?.Send<TEvent>();
     }
 
     /// <summary>
@@ -163,7 +181,8 @@ public class ArchitectureContext(
     public void SendEvent<TEvent>(TEvent e) where TEvent : class
     {
         ArgumentNullException.ThrowIfNull(e);
-        _eventBus.Send(e);
+        var eventBus = GetOrCache<IEventBus>();
+        eventBus?.Send(e);
     }
 
     /// <summary>
@@ -174,7 +193,10 @@ public class ArchitectureContext(
     /// <returns>事件注销接口</returns>
     public IUnRegister RegisterEvent<TEvent>(Action<TEvent> handler)
     {
-        return handler == null ? throw new ArgumentNullException(nameof(handler)) : _eventBus.Register(handler);
+        ArgumentNullException.ThrowIfNull(handler);
+        var eventBus = GetOrCache<IEventBus>();
+        if (eventBus == null) throw new InvalidOperationException("IEventBus not registered");
+        return eventBus.Register(handler);
     }
 
     /// <summary>
@@ -185,7 +207,8 @@ public class ArchitectureContext(
     public void UnRegisterEvent<TEvent>(Action<TEvent> onEvent)
     {
         ArgumentNullException.ThrowIfNull(onEvent);
-        _eventBus.UnRegister(onEvent);
+        var eventBus = GetOrCache<IEventBus>();
+        eventBus?.UnRegister(onEvent);
     }
 
     /// <summary>
@@ -194,7 +217,8 @@ public class ArchitectureContext(
     /// <returns>环境对象实例</returns>
     public IEnvironment GetEnvironment()
     {
-        return _environment;
+        var environment = GetOrCache<IEnvironment>();
+        return environment ?? throw new InvalidOperationException("IEnvironment not registered");
     }
 
     #endregion

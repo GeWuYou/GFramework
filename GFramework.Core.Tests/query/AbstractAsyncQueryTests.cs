@@ -31,13 +31,12 @@ public class AbstractAsyncQueryTests
     public void SetUp()
     {
         _container = new IocContainer();
-        _context = new ArchitectureContext(
-            _container,
-            new EventBus(),
-            new CommandBus(),
-            new QueryBus(),
-            new DefaultEnvironment(),
-            new AsyncQueryBus());
+        _container.RegisterPlurality(new EventBus());
+        _container.RegisterPlurality(new CommandBus());
+        _container.RegisterPlurality(new QueryBus());
+        _container.RegisterPlurality(new DefaultEnvironment());
+        _container.RegisterPlurality(new AsyncQueryBus());
+        _context = new ArchitectureContext(_container);
     }
 
     private ArchitectureContext _context = null!;

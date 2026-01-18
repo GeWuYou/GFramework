@@ -1,5 +1,4 @@
 using GFramework.Core.Abstractions.architecture;
-using GFramework.Core.Abstractions.command;
 using GFramework.Core.Abstractions.enums;
 using GFramework.Core.Abstractions.environment;
 using GFramework.Core.Abstractions.events;
@@ -7,14 +6,12 @@ using GFramework.Core.Abstractions.ioc;
 using GFramework.Core.Abstractions.lifecycle;
 using GFramework.Core.Abstractions.logging;
 using GFramework.Core.Abstractions.model;
-using GFramework.Core.Abstractions.query;
 using GFramework.Core.Abstractions.system;
 using GFramework.Core.Abstractions.utility;
 using GFramework.Core.environment;
 using GFramework.Core.events;
 using GFramework.Core.extensions;
 using GFramework.Core.logging;
-using IAsyncQueryBus = GFramework.Core.Abstractions.query.IAsyncQueryBus;
 using IDisposable = GFramework.Core.Abstractions.lifecycle.IDisposable;
 
 namespace GFramework.Core.architecture;
@@ -78,21 +75,6 @@ public abstract class Architecture(
     ///     获取事件总线
     /// </summary>
     private IEventBus EventBus => Services.EventBus;
-
-    /// <summary>
-    ///     获取命令总线
-    /// </summary>
-    private ICommandBus CommandBus => Services.CommandBus;
-
-    /// <summary>
-    ///     获取查询总线
-    /// </summary>
-    private IQueryBus QueryBus => Services.QueryBus;
-
-    /// <summary>
-    ///     获取异步查询总线
-    /// </summary>
-    private IAsyncQueryBus AsyncQueryBus => Services.AsyncQueryBus;
 
     /// <summary>
     ///     当前架构的阶段
@@ -553,8 +535,12 @@ public abstract class Architecture(
         _logger = LoggerFactoryResolver.Provider.CreateLogger(GetType().Name);
         Environment.Initialize();
 
+        // 将 Environment 注册到容器（如果尚未注册）
+        if (!Container.Contains<IEnvironment>())
+            Container.RegisterPlurality(Environment);
+
         // 初始化架构上下文（如果尚未初始化）
-        _context ??= new ArchitectureContext(Container, EventBus, CommandBus, QueryBus, Environment, AsyncQueryBus);
+        _context ??= new ArchitectureContext(Container);
         GameContext.Bind(GetType(), _context);
 
         // 为服务设置上下文

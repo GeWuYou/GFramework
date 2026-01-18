@@ -57,12 +57,21 @@ public class ArchitectureContextTests
         loggerField?.SetValue(_container,
             LoggerFactoryResolver.Provider.CreateLogger(nameof(ArchitectureContextTests)));
 
+        // 创建服务实例
         _eventBus = new EventBus();
         _commandBus = new CommandBus();
         _queryBus = new QueryBus();
         _asyncQueryBus = new AsyncQueryBus();
         _environment = new DefaultEnvironment();
-        _context = new ArchitectureContext(_container, _eventBus, _commandBus, _queryBus, _environment, _asyncQueryBus);
+
+        // 将服务注册到容器
+        _container.RegisterPlurality(_eventBus);
+        _container.RegisterPlurality(_commandBus);
+        _container.RegisterPlurality(_queryBus);
+        _container.RegisterPlurality(_asyncQueryBus);
+        _container.RegisterPlurality(_environment);
+
+        _context = new ArchitectureContext(_container);
     }
 
     private ArchitectureContext? _context;
@@ -79,10 +88,7 @@ public class ArchitectureContextTests
     [Test]
     public void Constructor_Should_NotThrow_When_AllParameters_AreValid()
     {
-        Assert.That(
-            () => new ArchitectureContext(_container!, _eventBus!, _commandBus!, _queryBus!, _environment!,
-                _asyncQueryBus!),
-            Throws.Nothing);
+        Assert.That(() => new ArchitectureContext(_container!), Throws.Nothing);
     }
 
     /// <summary>
@@ -91,53 +97,7 @@ public class ArchitectureContextTests
     [Test]
     public void Constructor_Should_Throw_When_Container_IsNull()
     {
-        Assert.That(
-            () => new ArchitectureContext(null!, _eventBus!, _commandBus!, _queryBus!, _environment!, _asyncQueryBus!),
-            Throws.ArgumentNullException);
-    }
-
-    /// <summary>
-    /// 测试构造函数在 eventBus 为 null 时应抛出 ArgumentNullException
-    /// </summary>
-    [Test]
-    public void Constructor_Should_Throw_When_EventBus_IsNull()
-    {
-        Assert.That(
-            () => new ArchitectureContext(_container!, null!, _commandBus!, _queryBus!, _environment!, _asyncQueryBus!),
-            Throws.ArgumentNullException);
-    }
-
-    /// <summary>
-    /// 测试构造函数在 commandBus 为 null 时应抛出 ArgumentNullException
-    /// </summary>
-    [Test]
-    public void Constructor_Should_Throw_When_CommandBus_IsNull()
-    {
-        Assert.That(
-            () => new ArchitectureContext(_container!, _eventBus!, null!, _queryBus!, _environment!, _asyncQueryBus!),
-            Throws.ArgumentNullException);
-    }
-
-    /// <summary>
-    /// 测试构造函数在 queryBus 为 null 时应抛出 ArgumentNullException
-    /// </summary>
-    [Test]
-    public void Constructor_Should_Throw_When_QueryBus_IsNull()
-    {
-        Assert.That(
-            () => new ArchitectureContext(_container!, _eventBus!, _commandBus!, null!, _environment!, _asyncQueryBus!),
-            Throws.ArgumentNullException);
-    }
-
-    /// <summary>
-    /// 测试构造函数在 environment 为 null 时应抛出 ArgumentNullException
-    /// </summary>
-    [Test]
-    public void Constructor_Should_Throw_When_Environment_IsNull()
-    {
-        Assert.That(
-            () => new ArchitectureContext(_container!, _eventBus!, _commandBus!, _queryBus!, null!, _asyncQueryBus!),
-            Throws.ArgumentNullException);
+        Assert.That(() => new ArchitectureContext(null!), Throws.ArgumentNullException);
     }
 
     /// <summary>
@@ -146,53 +106,8 @@ public class ArchitectureContextTests
     [Test]
     public void Constructor_Should_ThrowArgumentNullException_When_Container_IsNull()
     {
-        Assert.That(
-            () => new ArchitectureContext(null!, _eventBus!, _commandBus!, _queryBus!, _environment!, _asyncQueryBus!),
+        Assert.That(() => new ArchitectureContext(null!),
             Throws.ArgumentNullException.With.Property("ParamName").EqualTo("container"));
-    }
-
-    /// <summary>
-    /// 测试构造函数在EventBus为null时应抛出ArgumentNullException
-    /// </summary>
-    [Test]
-    public void Constructor_Should_ThrowArgumentNullException_When_EventBus_IsNull()
-    {
-        Assert.That(
-            () => new ArchitectureContext(_container!, null!, _commandBus!, _queryBus!, _environment!, _asyncQueryBus!),
-            Throws.ArgumentNullException.With.Property("ParamName").EqualTo("eventBus"));
-    }
-
-    /// <summary>
-    /// 测试构造函数在CommandBus为null时应抛出ArgumentNullException
-    /// </summary>
-    [Test]
-    public void Constructor_Should_ThrowArgumentNullException_When_CommandBus_IsNull()
-    {
-        Assert.That(
-            () => new ArchitectureContext(_container!, _eventBus!, null!, _queryBus!, _environment!, _asyncQueryBus!),
-            Throws.ArgumentNullException.With.Property("ParamName").EqualTo("commandBus"));
-    }
-
-    /// <summary>
-    /// 测试构造函数在QueryBus为null时应抛出ArgumentNullException
-    /// </summary>
-    [Test]
-    public void Constructor_Should_ThrowArgumentNullException_When_QueryBus_IsNull()
-    {
-        Assert.That(
-            () => new ArchitectureContext(_container!, _eventBus!, _commandBus!, null!, _environment!, _asyncQueryBus!),
-            Throws.ArgumentNullException.With.Property("ParamName").EqualTo("queryBus"));
-    }
-
-    /// <summary>
-    /// 测试构造函数在Environment为null时应抛出ArgumentNullException
-    /// </summary>
-    [Test]
-    public void Constructor_Should_ThrowArgumentNullException_When_Environment_IsNull()
-    {
-        Assert.That(
-            () => new ArchitectureContext(_container!, _eventBus!, _commandBus!, _queryBus!, null!, _asyncQueryBus!),
-            Throws.ArgumentNullException.With.Property("ParamName").EqualTo("environment"));
     }
 
     /// <summary>
@@ -439,14 +354,6 @@ public class TestUtilityV2 : IUtility
 
     public void SetContext(IArchitectureContext context) => _context = context;
     public IArchitectureContext GetContext() => _context;
-
-    public void Init()
-    {
-    }
-
-    public void Destroy()
-    {
-    }
 }
 
 public class TestQueryV2 : IQuery<int>

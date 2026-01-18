@@ -1,3 +1,4 @@
+using System.Reflection;
 using GFramework.Core.Abstractions.enums;
 using GFramework.Core.Abstractions.state;
 using GFramework.Core.Abstractions.system;
@@ -6,6 +7,7 @@ using GFramework.Core.command;
 using GFramework.Core.environment;
 using GFramework.Core.events;
 using GFramework.Core.ioc;
+using GFramework.Core.logging;
 using GFramework.Core.query;
 using GFramework.Core.state;
 using NUnit.Framework;
@@ -35,14 +37,25 @@ public class StateMachineSystemTests
     [SetUp]
     public void SetUp()
     {
+        // 初始化 LoggerFactoryResolver 以支持 IocContainer
+        LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider();
+
         _eventBus = new EventBus();
-        _context = new ArchitectureContext(
-            new IocContainer(),
-            _eventBus,
-            new CommandBus(),
-            new QueryBus(),
-            new DefaultEnvironment(),
-            new AsyncQueryBus());
+        var container = new IocContainer();
+
+        // 直接初始化 logger 字段
+        var loggerField = typeof(IocContainer).GetField("_logger",
+            BindingFlags.NonPublic | BindingFlags.Instance);
+        loggerField?.SetValue(container,
+            LoggerFactoryResolver.Provider.CreateLogger(nameof(StateMachineSystemTests)));
+
+        container.RegisterPlurality(_eventBus);
+        container.RegisterPlurality(new CommandBus());
+        container.RegisterPlurality(new QueryBus());
+        container.RegisterPlurality(new DefaultEnvironment());
+        container.RegisterPlurality(new AsyncQueryBus());
+
+        _context = new ArchitectureContext(container);
 
         _stateMachine = new TestStateMachineSystemV5();
         _stateMachine.SetContext(_context);
