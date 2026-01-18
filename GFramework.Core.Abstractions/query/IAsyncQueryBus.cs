@@ -1,6 +1,6 @@
-﻿using GFramework.Core.Abstractions.query;
+﻿using System.Threading.Tasks;
 
-namespace GFramework.Core.query;
+namespace GFramework.Core.Abstractions.query;
 
 /// <summary>
 /// 异步查询总线接口，用于处理异步查询请求
