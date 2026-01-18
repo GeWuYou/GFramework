@@ -11,6 +11,10 @@ namespace GFramework.Core.Tests.command;
 /// - Send方法处理null命令
 /// - Send方法（带返回值）返回值
 /// - Send方法（带返回值）处理null命令
+/// - SendAsync方法执行异步命令
+/// - SendAsync方法处理null异步命令
+/// - SendAsync方法（带返回值）返回值
+/// - SendAsync方法（带返回值）处理null异步命令
 /// </summary>
 [TestFixture]
 public class CommandBusTests
@@ -68,6 +72,54 @@ public class CommandBusTests
     public void Send_WithResult_AndNullCommand_Should_ThrowArgumentNullException()
     {
         Assert.Throws<ArgumentNullException>(() => _commandBus.Send<int>(null!));
+    }
+
+    /// <summary>
+    /// 测试SendAsync方法执行异步命令
+    /// </summary>
+    [Test]
+    public async Task SendAsync_Should_Execute_AsyncCommand()
+    {
+        var input = new TestCommandInput { Value = 42 };
+        var command = new TestAsyncCommand(input);
+
+        await _commandBus.SendAsync(command);
+
+        Assert.That(command.Executed, Is.True);
+        Assert.That(command.ExecutedValue, Is.EqualTo(42));
+    }
+
+    /// <summary>
+    /// 测试SendAsync方法处理null异步命令时抛出ArgumentNullException异常
+    /// </summary>
+    [Test]
+    public void SendAsync_WithNullCommand_Should_ThrowArgumentNullException()
+    {
+        Assert.ThrowsAsync<ArgumentNullException>(async () => await _commandBus.SendAsync(null!));
+    }
+
+    /// <summary>
+    /// 测试SendAsync方法（带返回值）正确返回值
+    /// </summary>
+    [Test]
+    public async Task SendAsync_WithResult_Should_Return_Value()
+    {
+        var input = new TestCommandInput { Value = 100 };
+        var command = new TestAsyncCommandWithResult(input);
+
+        var result = await _commandBus.SendAsync(command);
+
+        Assert.That(command.Executed, Is.True);
+        Assert.That(result, Is.EqualTo(200));
+    }
+
+    /// <summary>
+    /// 测试SendAsync方法（带返回值）处理null异步命令时抛出ArgumentNullException异常
+    /// </summary>
+    [Test]
+    public void SendAsync_WithResult_AndNullCommand_Should_ThrowArgumentNullException()
+    {
+        Assert.ThrowsAsync<ArgumentNullException>(async () => await _commandBus.SendAsync<int>(null!));
     }
 }
 
@@ -143,5 +195,71 @@ public sealed class TestCommandWithResult : AbstractCommand<TestCommandInput, in
     {
         Executed = true;
         return input.Value * 2;
+    }
+}
+
+/// <summary>
+/// 测试用异步命令类，继承AbstractAsyncCommand
+/// </summary>
+public sealed class TestAsyncCommand : AbstractAsyncCommand<TestCommandInput>
+{
+    /// <summary>
+    /// 构造函数
+    /// </summary>
+    /// <param name="input">命令输入</param>
+    public TestAsyncCommand(TestCommandInput input) : base(input)
+    {
+    }
+
+    /// <summary>
+    /// 获取命令是否已执行
+    /// </summary>
+    public bool Executed { get; private set; }
+
+    /// <summary>
+    /// 获取执行的值
+    /// </summary>
+    public int ExecutedValue { get; private set; }
+
+    /// <summary>
+    /// 执行异步命令的重写方法
+    /// </summary>
+    /// <param name="input">命令输入</param>
+    /// <returns>表示异步操作的任务</returns>
+    protected override Task OnExecuteAsync(TestCommandInput input)
+    {
+        Executed = true;
+        ExecutedValue = 42;
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>
+/// 测试用带返回值的异步命令类，继承AbstractAsyncCommand
+/// </summary>
+public sealed class TestAsyncCommandWithResult : AbstractAsyncCommand<TestCommandInput, int>
+{
+    /// <summary>
+    /// 构造函数
+    /// </summary>
+    /// <param name="input">命令输入</param>
+    public TestAsyncCommandWithResult(TestCommandInput input) : base(input)
+    {
+    }
+
+    /// <summary>
+    /// 获取命令是否已执行
+    /// </summary>
+    public bool Executed { get; private set; }
+
+    /// <summary>
+    /// 执行异步命令并返回结果的重写方法
+    /// </summary>
+    /// <param name="input">命令输入</param>
+    /// <returns>执行结果的异步任务</returns>
+    protected override Task<int> OnExecuteAsync(TestCommandInput input)
+    {
+        Executed = true;
+        return Task.FromResult(input.Value * 2);
     }
 }
