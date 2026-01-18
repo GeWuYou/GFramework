@@ -1,4 +1,4 @@
-﻿using GFramework.Core.Abstractions.architecture;
+using GFramework.Core.Abstractions.architecture;
 using GFramework.Core.Abstractions.command;
 using GFramework.Core.Abstractions.events;
 using GFramework.Core.Abstractions.ioc;
@@ -7,6 +7,7 @@ using GFramework.Core.command;
 using GFramework.Core.events;
 using GFramework.Core.ioc;
 using GFramework.Core.query;
+using IAsyncQueryBus = GFramework.Core.Abstractions.query.IAsyncQueryBus;
 
 namespace GFramework.Core.architecture;
 
@@ -36,6 +37,11 @@ public class ArchitectureServices : IArchitectureServices
     ///     获取查询总线
     /// </summary>
     public IQueryBus QueryBus { get; } = new QueryBus();
+
+    /// <summary>
+    ///     获取异步查询总线
+    /// </summary>
+    public IAsyncQueryBus AsyncQueryBus { get; } = new AsyncQueryBus();
 
     /// <summary>
     ///     设置架构上下文

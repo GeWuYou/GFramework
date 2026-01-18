@@ -73,6 +73,14 @@ public interface IArchitectureContext
     TResult SendQuery<TResult>(IQuery<TResult> query);
 
     /// <summary>
+    ///     异步发送一个查询请求
+    /// </summary>
+    /// <typeparam name="TResult">查询结果类型</typeparam>
+    /// <param name="query">要发送的异步查询</param>
+    /// <returns>查询结果</returns>
+    Task<TResult> SendQueryAsync<TResult>(IAsyncQuery<TResult> query);
+
+    /// <summary>
     ///     发送一个事件
     /// </summary>
     /// <typeparam name="TEvent">事件类型，必须具有无参构造函数</typeparam>

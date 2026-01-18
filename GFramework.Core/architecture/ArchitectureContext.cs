@@ -7,6 +7,7 @@ using GFramework.Core.Abstractions.model;
 using GFramework.Core.Abstractions.query;
 using GFramework.Core.Abstractions.system;
 using GFramework.Core.Abstractions.utility;
+using IAsyncQueryBus = GFramework.Core.Abstractions.query.IAsyncQueryBus;
 
 namespace GFramework.Core.architecture;
 
@@ -18,9 +19,13 @@ public class ArchitectureContext(
     IEventBus eventBus,
     ICommandBus commandBus,
     IQueryBus queryBus,
-    IEnvironment environment)
+    IEnvironment environment,
+    IAsyncQueryBus asyncQueryBus)
     : IArchitectureContext
 {
+    private readonly IAsyncQueryBus _asyncQueryBus =
+        asyncQueryBus ?? throw new ArgumentNullException(nameof(asyncQueryBus));
+
     private readonly ICommandBus _commandBus = commandBus ?? throw new ArgumentNullException(nameof(commandBus));
     private readonly IIocContainer _container = container ?? throw new ArgumentNullException(nameof(container));
 
@@ -42,6 +47,17 @@ public class ArchitectureContext(
     public TResult SendQuery<TResult>(IQuery<TResult> query)
     {
         return query == null ? throw new ArgumentNullException(nameof(query)) : _queryBus.Send(query);
+    }
+
+    /// <summary>
+    ///     异步发送一个查询请求
+    /// </summary>
+    /// <typeparam name="TResult">查询结果类型</typeparam>
+    /// <param name="query">要发送的异步查询</param>
+    /// <returns>查询结果</returns>
+    public Task<TResult> SendQueryAsync<TResult>(IAsyncQuery<TResult> query)
+    {
+        return query == null ? throw new ArgumentNullException(nameof(query)) : _asyncQueryBus.SendAsync(query);
     }
 
     #endregion

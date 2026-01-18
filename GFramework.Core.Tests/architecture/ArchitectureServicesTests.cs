@@ -262,6 +262,9 @@ public class TestArchitectureContextV3 : IArchitectureContext
     }
 
     public TResult SendQuery<TResult>(IQuery<TResult> query) => default!;
+
+    public Task<TResult> SendQueryAsync<TResult>(IAsyncQuery<TResult> query) => (Task<TResult>)Task.CompletedTask;
+
     public IEnvironment GetEnvironment() => _environment;
 }
 

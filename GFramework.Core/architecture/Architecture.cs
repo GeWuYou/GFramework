@@ -14,6 +14,7 @@ using GFramework.Core.environment;
 using GFramework.Core.events;
 using GFramework.Core.extensions;
 using GFramework.Core.logging;
+using IAsyncQueryBus = GFramework.Core.Abstractions.query.IAsyncQueryBus;
 using IDisposable = GFramework.Core.Abstractions.lifecycle.IDisposable;
 
 namespace GFramework.Core.architecture;
@@ -87,6 +88,11 @@ public abstract class Architecture(
     ///     获取查询总线
     /// </summary>
     private IQueryBus QueryBus => Services.QueryBus;
+
+    /// <summary>
+    ///     获取异步查询总线
+    /// </summary>
+    private IAsyncQueryBus AsyncQueryBus => Services.AsyncQueryBus;
 
     /// <summary>
     ///     当前架构的阶段
@@ -548,7 +554,7 @@ public abstract class Architecture(
         Environment.Initialize();
 
         // 初始化架构上下文（如果尚未初始化）
-        _context ??= new ArchitectureContext(Container, EventBus, CommandBus, QueryBus, Environment);
+        _context ??= new ArchitectureContext(Container, EventBus, CommandBus, QueryBus, Environment, AsyncQueryBus);
         GameContext.Bind(GetType(), _context);
 
         // 为服务设置上下文

@@ -346,6 +346,14 @@ public class TestArchitectureContext : IArchitectureContext
     public TResult SendQuery<TResult>(IQuery<TResult> query) => default!;
 
     /// <summary>
+    /// 异步发送查询请求
+    /// </summary>
+    /// <typeparam name="TResult">查询结果类型</typeparam>
+    /// <param name="query">异步查询对象</param>
+    /// <returns>查询结果</returns>
+    public Task<TResult> SendQueryAsync<TResult>(IAsyncQuery<TResult> query) => (Task<TResult>)Task.CompletedTask;
+
+    /// <summary>
     /// 获取环境对象
     /// </summary>
     /// <returns>环境对象</returns>

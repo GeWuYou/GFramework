@@ -41,7 +41,8 @@ public class StateMachineSystemTests
             _eventBus,
             new CommandBus(),
             new QueryBus(),
-            new DefaultEnvironment());
+            new DefaultEnvironment(),
+            new AsyncQueryBus());
 
         _stateMachine = new TestStateMachineSystemV5();
         _stateMachine.SetContext(_context);

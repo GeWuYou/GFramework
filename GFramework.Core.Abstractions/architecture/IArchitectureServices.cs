@@ -1,4 +1,4 @@
-﻿using GFramework.Core.Abstractions.command;
+using GFramework.Core.Abstractions.command;
 using GFramework.Core.Abstractions.events;
 using GFramework.Core.Abstractions.ioc;
 using GFramework.Core.Abstractions.query;
@@ -32,4 +32,9 @@ public interface IArchitectureServices : IContextAware
     ///     获取查询总线
     /// </summary>
     public IQueryBus QueryBus { get; }
+
+    /// <summary>
+    ///     获取异步查询总线
+    /// </summary>
+    public IAsyncQueryBus AsyncQueryBus { get; }
 }
