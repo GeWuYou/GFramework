@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using GFramework.Core.Abstractions.logging;
 
 namespace GFramework.Core.logging;
