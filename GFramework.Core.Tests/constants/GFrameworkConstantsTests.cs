@@ -52,7 +52,8 @@ public class GFrameworkConstantsTests
         // 如果常量不存在或不是公共的，编译会失败或抛出异常
         Assert.DoesNotThrow(() =>
         {
-            var name = GFrameworkConstants.FrameworkName;
+            const string name = GFrameworkConstants.FrameworkName;
+            Console.WriteLine(name);
         });
     }
 

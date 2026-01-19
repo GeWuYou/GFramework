@@ -1,14 +1,14 @@
 ﻿using System.Collections.Concurrent;
 using System.Text;
-using GFramework.Core.Abstractions.storage;
 using GFramework.Game.Abstractions.serializer;
+using GFramework.Game.Abstractions.storage;
 
 namespace GFramework.Game.storage;
 
 /// <summary>
-/// 基于文件系统的存储实现，实现了IStorage接口，支持按key细粒度锁保证线程安全
+/// 基于文件系统的存储实现，实现了IFileStorage接口，支持按key细粒度锁保证线程安全
 /// </summary>
-public sealed class FileStorage : IStorage
+public sealed class FileStorage : IFileStorage
 {
     private readonly string _extension;
 

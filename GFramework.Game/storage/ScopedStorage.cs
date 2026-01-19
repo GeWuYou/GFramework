@@ -1,4 +1,5 @@
 ﻿using GFramework.Core.Abstractions.storage;
+using GFramework.Game.Abstractions.storage;
 
 namespace GFramework.Game.storage;
 
@@ -7,7 +8,7 @@ namespace GFramework.Game.storage;
 /// </summary>
 /// <param name="inner">内部的实际存储实现</param>
 /// <param name="prefix">用于所有键的前缀字符串</param>
-public sealed class ScopedStorage(IStorage inner, string prefix) : IStorage
+public sealed class ScopedStorage(IStorage inner, string prefix) : IScopedStorage
 {
     /// <summary>
     /// 检查指定键是否存在
