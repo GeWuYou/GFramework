@@ -80,7 +80,14 @@ public interface IUiRouter : ISystem
     /// 获取当前栈顶UI的Key
     /// </summary>
     /// <returns>当前UI Key，如果栈为空返回空字符串</returns>
-    string Peek();
+    string PeekKey();
+
+    /// <summary>
+    /// 获取当前栈顶的UI页面行为对象
+    /// </summary>
+    /// <returns>栈顶的IUiPageBehavior对象，如果栈为空则返回null</returns>
+    IUiPageBehavior Peek();
+
 
     /// <summary>
     /// 判断指定UI是否为当前栈顶UI

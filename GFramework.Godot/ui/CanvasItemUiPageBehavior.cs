@@ -9,15 +9,23 @@ namespace GFramework.Godot.ui;
 /// 支持所有继承自 CanvasItem 的节点
 /// </summary>
 /// <typeparam name="T">CanvasItem 类型的视图节点</typeparam>
-public class CanvasItemUiPageBehavior<T>(T owner) : IUiPageBehavior
+public class CanvasItemUiPageBehavior<T>(T owner, string key) : IUiPageBehavior
     where T : CanvasItem
 {
     private readonly IUiPage? _page = owner as IUiPage;
 
     /// <summary>
-    /// 页面视图对象
+    /// 获取页面视图对象
     /// </summary>
+    /// <returns>返回与当前实例关联的视图对象</returns>
     public object View => owner;
+
+    /// <summary>
+    /// 获取当前实例的键值标识符
+    /// </summary>
+    /// <returns>返回用于标识当前实例的键字符串</returns>
+    public string Key => key;
+
 
     /// <summary>
     /// 获取页面是否存活状态

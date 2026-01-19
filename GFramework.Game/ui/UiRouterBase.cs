@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using GFramework.Core.Abstractions.logging;
 using GFramework.Core.extensions;
 using GFramework.Core.logging;
@@ -201,14 +205,25 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         AfterChange(@event);
     }
 
+
     /// <summary>
-    /// 获取栈顶元素的视图类型名称
+    /// 获取页面栈顶元素的键值，但不移除该元素
     /// </summary>
-    /// <returns>如果栈为空则返回空字符串，否则返回栈顶元素视图类型的名称</returns>
-    public string Peek()
+    /// <returns>如果页面栈为空则返回空字符串，否则返回栈顶元素的键值</returns>
+    public string PeekKey()
     {
-        return _stack.Count == 0 ? string.Empty : _stack.Peek().View.GetType().Name;
+        return _stack.Count == 0 ? string.Empty : _stack.Peek().Key;
     }
+
+    /// <summary>
+    /// 获取页面栈顶元素，但不移除该元素
+    /// </summary>
+    /// <returns>返回栈顶的IUiPageBehavior元素</returns>
+    public IUiPageBehavior Peek()
+    {
+        return _stack.Peek();
+    }
+
 
     /// <summary>
     /// 判断栈顶元素是否指定的UI类型
@@ -217,10 +232,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// <returns>如果栈为空或栈顶元素类型不匹配则返回false，否则返回true</returns>
     public bool IsTop(string uiKey)
     {
-        if (_stack.Count == 0)
-            return false;
-
-        return _stack.Peek().View.GetType().Name == uiKey;
+        return _stack.Count != 0 && _stack.Peek().Key.Equals(uiKey);
     }
 
     /// <summary>
@@ -230,7 +242,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// <returns>如果栈中存在指定类型的UI元素则返回true，否则返回false</returns>
     public bool Contains(string uiKey)
     {
-        return _stack.Any(p => p.View.GetType().Name == uiKey);
+        return _stack.Any(p => p.Key.Equals(uiKey));
     }
 
     /// <summary>
@@ -265,7 +277,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     {
         return new UiTransitionEvent
         {
-            FromUiKey = Peek(),
+            FromUiKey = PeekKey(),
             ToUiKey = toUiKey,
             TransitionType = type,
             Policy = policy ?? UiTransitionPolicy.Exclusive,
@@ -289,7 +301,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     private void AfterChange(UiTransitionEvent @event)
     {
         Log.Debug("AfterChange phases started: {0}", @event.TransitionType);
-        _ = Task.Run(async () =>
+        _ = Task.Run<Task>(async () =>
         {
             try
             {

@@ -12,6 +12,13 @@ public interface IUiPageBehavior
     object View { get; }
 
     /// <summary>
+    /// 获取键值
+    /// </summary>
+    /// <value>返回当前对象的键标识符</value>
+    string Key { get; }
+
+
+    /// <summary>
     /// 获取页面是否处于活动状态
     /// </summary>
     bool IsAlive { get; }
