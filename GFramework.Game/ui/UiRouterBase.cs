@@ -85,10 +85,47 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         );
 
         BeforeChange(@event);
-        DoPushInternal(uiKey, param, policy);
+
+        // 先创建页面，然后使用统一的Push逻辑
+        var page = _factory.Create(uiKey);
+        Log.Debug("Create UI Page instance: {0}", page.GetType().Name);
+
+        DoPushPageInternal(page, param, policy);
+
         AfterChange(@event);
     }
 
+    /// <summary>
+    /// 将已存在的UI页面压入栈顶并显示
+    /// </summary>
+    /// <param name="page">已创建的UI页面行为实例</param>
+    /// <param name="param">页面进入参数，可为空</param>
+    /// <param name="policy">页面切换策略</param>
+    public void Push(
+        IUiPageBehavior page,
+        IUiPageEnterParam? param = null,
+        UiTransitionPolicy policy = UiTransitionPolicy.Exclusive
+    )
+    {
+        var uiKey = page.View.GetType().Name;
+
+        if (IsTop(uiKey))
+        {
+            Log.Warn("Push ignored: UI already on top: {0}", uiKey);
+            return;
+        }
+
+        var @event = CreateEvent(uiKey, UiTransitionType.Push, policy, param);
+
+        Log.Debug(
+            "Push existing UI Page: key={0}, policy={1}, stackBefore={2}",
+            uiKey, policy, _stack.Count
+        );
+
+        BeforeChange(@event);
+        DoPushPageInternal(page, param, policy);
+        AfterChange(@event);
+    }
 
     /// <summary>
     /// 弹出栈顶页面并根据策略处理页面
@@ -139,7 +176,10 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
 
         // 使用内部方法，避免触发额外的Pipeline
         DoClearInternal(popPolicy);
-        DoPushInternal(uiKey, param, pushPolicy);
+
+        var page = _factory.Create(uiKey);
+        Log.Debug("Create UI Page instance for Replace: {0}", page.GetType().Name);
+        DoPushPageInternal(page, param, pushPolicy);
 
         AfterChange(@event);
     }
@@ -264,32 +304,36 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    /// 执行Push的核心逻辑（不触发Pipeline）
+    /// 执行Push页面的核心逻辑（统一处理）
+    /// 这个方法同时服务于工厂创建和已存在页面两种情况
     /// </summary>
-    private void DoPushInternal(string uiKey, IUiPageEnterParam? param, UiTransitionPolicy policy)
+    private void DoPushPageInternal(IUiPageBehavior page, IUiPageEnterParam? param, UiTransitionPolicy policy)
     {
+        // 1. 处理当前栈顶页面
         if (_stack.Count > 0)
         {
             var current = _stack.Peek();
-            Log.Debug("Pause current page: {0}", current.GetType().Name);
+            Log.Debug("Pause current page: {0}", current.View.GetType().Name);
             current.OnPause();
 
             if (policy == UiTransitionPolicy.Exclusive)
             {
-                Log.Debug("Hide current page (Exclusive): {0}", current.GetType().Name);
+                Log.Debug("Hide current page (Exclusive): {0}", current.View.GetType().Name);
                 current.OnHide();
             }
         }
 
-        var page = _factory.Create(uiKey);
-        Log.Debug("Create UI Page instance: {0}", page.GetType().Name);
-
+        // 2. 将新页面添加到UiRoot
+        Log.Debug("Add page to UiRoot: {0}", page.View.GetType().Name);
         _uiRoot.AddUiPage(page);
+
+        // 3. 压入栈
         _stack.Push(page);
 
+        // 4. 触发页面生命周期
         Log.Debug(
             "Enter & Show page: {0}, stackAfter={1}",
-            page.GetType().Name, _stack.Count
+            page.View.GetType().Name, _stack.Count
         );
 
         page.OnEnter(param);

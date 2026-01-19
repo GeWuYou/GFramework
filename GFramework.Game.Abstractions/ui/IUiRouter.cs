@@ -27,6 +27,15 @@ public interface IUiRouter : ISystem
     /// <param name="policy">界面切换策略，默认为Exclusive（独占）</param>
     void Push(string uiKey, IUiPageEnterParam? param = null, UiTransitionPolicy policy = UiTransitionPolicy.Exclusive);
 
+    /// <summary>
+    /// 将已存在的UI页面压入路由栈
+    /// 用于预挂载节点或调试场景
+    /// </summary>
+    /// <param name="page">已创建的UI页面行为实例</param>
+    /// <param name="param">进入界面的参数,可为空</param>
+    /// <param name="policy">界面切换策略,默认为Exclusive(独占)</param>
+    void Push(IUiPageBehavior page, IUiPageEnterParam? param = null,
+        UiTransitionPolicy policy = UiTransitionPolicy.Exclusive);
 
     /// <summary>
     /// 弹出路由栈顶的UI界面，返回到上一个界面
