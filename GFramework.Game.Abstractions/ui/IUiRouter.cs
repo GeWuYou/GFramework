@@ -9,6 +9,11 @@ namespace GFramework.Game.Abstractions.ui;
 public interface IUiRouter : ISystem
 {
     /// <summary>
+    /// 获取当前UI栈深度
+    /// </summary>
+    int Count { get; }
+
+    /// <summary>
     /// 绑定UI根节点
     /// </summary>
     /// <param name="root">UI根节点接口实例</param>
@@ -61,4 +66,20 @@ public interface IUiRouter : ISystem
     /// </summary>
     /// <param name="handler">处理器实例</param>
     void UnregisterHandler(IUiTransitionHandler handler);
+
+    /// <summary>
+    /// 获取当前栈顶UI的Key
+    /// </summary>
+    /// <returns>当前UI Key，如果栈为空返回空字符串</returns>
+    string Peek();
+
+    /// <summary>
+    /// 判断指定UI是否为当前栈顶UI
+    /// </summary>
+    bool IsTop(string uiKey);
+
+    /// <summary>
+    /// 判断指定UI是否存在于UI栈中
+    /// </summary>
+    bool Contains(string uiKey);
 }

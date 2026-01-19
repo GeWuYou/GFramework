@@ -71,6 +71,12 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         UiTransitionPolicy policy = UiTransitionPolicy.Exclusive
     )
     {
+        if (IsTop(uiKey))
+        {
+            Log.Warn("Push ignored: UI already on top: {0}", uiKey);
+            return;
+        }
+
         var @event = CreateEvent(uiKey, UiTransitionType.Push, policy, param);
 
         Log.Debug(
@@ -79,9 +85,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         );
 
         BeforeChange(@event);
-
         DoPushInternal(uiKey, param, policy);
-
         AfterChange(@event);
     }
 
@@ -158,6 +162,43 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
+    /// 获取栈顶元素的视图类型名称
+    /// </summary>
+    /// <returns>如果栈为空则返回空字符串，否则返回栈顶元素视图类型的名称</returns>
+    public string Peek()
+    {
+        return _stack.Count == 0 ? string.Empty : _stack.Peek().View.GetType().Name;
+    }
+
+    /// <summary>
+    /// 判断栈顶元素是否指定的UI类型
+    /// </summary>
+    /// <param name="uiKey">要比较的UI类型名称</param>
+    /// <returns>如果栈为空或栈顶元素类型不匹配则返回false，否则返回true</returns>
+    public bool IsTop(string uiKey)
+    {
+        if (_stack.Count == 0)
+            return false;
+
+        return _stack.Peek().View.GetType().Name == uiKey;
+    }
+
+    /// <summary>
+    /// 判断栈中是否包含指定类型的UI元素
+    /// </summary>
+    /// <param name="uiKey">要查找的UI类型名称</param>
+    /// <returns>如果栈中存在指定类型的UI元素则返回true，否则返回false</returns>
+    public bool Contains(string uiKey)
+    {
+        return _stack.Any(p => p.View.GetType().Name == uiKey);
+    }
+
+    /// <summary>
+    /// 获取栈中元素的数量
+    /// </summary>
+    public int Count => _stack.Count;
+
+    /// <summary>
     /// 初始化方法，在页面初始化时获取UI工厂实例
     /// </summary>
     protected override void OnInit()
@@ -173,18 +214,6 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     protected abstract void RegisterHandlers();
 
     /// <summary>
-    /// 获取当前栈顶UI的key
-    /// </summary>
-    /// <returns>当前UI key，如果栈为空则返回空字符串</returns>
-    private string GetCurrentUiKey()
-    {
-        if (_stack.Count == 0)
-            return string.Empty;
-        var page = _stack.Peek();
-        return page.View.GetType().Name;
-    }
-
-    /// <summary>
     /// 创建UI切换事件
     /// </summary>
     private UiTransitionEvent CreateEvent(
@@ -196,7 +225,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     {
         return new UiTransitionEvent
         {
-            FromUiKey = GetCurrentUiKey(),
+            FromUiKey = Peek(),
             ToUiKey = toUiKey,
             TransitionType = type,
             Policy = policy ?? UiTransitionPolicy.Exclusive,
@@ -310,9 +339,11 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// <summary>
     /// 执行Clear的核心逻辑（不触发Pipeline）
     /// </summary>
+    /// <param name="policy">UI弹出策略</param>
     private void DoClearInternal(UiPopPolicy policy)
     {
         Log.Debug("Clear UI Stack internal, count={0}", _stack.Count);
+        // 循环执行弹出操作直到栈为空
         while (_stack.Count > 0)
             DoPopInternal(policy);
     }
