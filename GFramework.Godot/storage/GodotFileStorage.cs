@@ -3,6 +3,7 @@ using System.Text;
 using GFramework.Core.Abstractions.storage;
 using GFramework.Game.Abstractions.serializer;
 using GFramework.Godot.extensions;
+using Godot;
 using FileAccess = Godot.FileAccess;
 
 namespace GFramework.Godot.storage;
@@ -37,7 +38,31 @@ public sealed class GodotFileStorage : IStorage
     /// <param name="key">存储键</param>
     public void Delete(string key)
     {
-        throw new NotImplementedException();
+        var path = ToAbsolutePath(key);
+        var keyLock = GetLock(path);
+
+        lock (keyLock)
+        {
+            if (path.IsGodotPath())
+            {
+                if (FileAccess.FileExists(path))
+                {
+                    var err = DirAccess.RemoveAbsolute(path);
+                    if (err != Error.Ok)
+                        throw new IOException($"Failed to delete Godot file: {path}, error: {err}");
+                }
+            }
+            else
+            {
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+            }
+        }
+
+        // 删除完成后尝试移除锁，防止锁字典无限增长
+        _keyLocks.TryRemove(path, out _);
     }
 
     #endregion
