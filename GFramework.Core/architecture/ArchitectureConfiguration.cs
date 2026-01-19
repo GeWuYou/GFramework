@@ -1,4 +1,5 @@
-﻿using GFramework.Core.Abstractions.architecture;
+using GFramework.Core.Abstractions.architecture;
+using GFramework.Core.Abstractions.Coroutine.Config;
 using GFramework.Core.Abstractions.logging;
 using GFramework.Core.Abstractions.properties;
 using GFramework.Core.logging;
@@ -31,5 +32,16 @@ public sealed class ArchitectureConfiguration : IArchitectureConfiguration
     {
         AllowLateRegistration = false,
         StrictPhaseValidation = true
+    };
+
+    /// <summary>
+    ///     获取或设置协程选项
+    ///     默认配置为1000个最大协程数，启用泄漏检测，泄漏警告时间300秒
+    /// </summary>
+    public CoroutineProperties CoroutineProperties { get; set; } = new()
+    {
+        MaxCoroutines = 1000,
+        EnableLeakDetection = true,
+        LeakWarningDuration = 300f
     };
 }

@@ -1,4 +1,5 @@
-﻿using GFramework.Core.Abstractions.properties;
+using GFramework.Core.Abstractions.Coroutine.Config;
+using GFramework.Core.Abstractions.properties;
 
 namespace GFramework.Core.Abstractions.architecture;
 
@@ -16,4 +17,9 @@ public interface IArchitectureConfiguration
     ///     获取或设置架构选项，包含架构相关的配置参数
     /// </summary>
     ArchitectureProperties ArchitectureProperties { get; set; }
+
+    /// <summary>
+    ///     获取或设置协程选项，包含协程相关的配置参数
+    /// </summary>
+    CoroutineProperties CoroutineProperties { get; set; }
 }
