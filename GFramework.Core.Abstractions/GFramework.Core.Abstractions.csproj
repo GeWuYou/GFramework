@@ -16,11 +16,11 @@
         <Using Include="GFramework.Core.Abstractions"/>
     </ItemGroup>
     <ItemGroup>
-        <PackageReference Update="Meziantou.Analyzer" Version="2.0.279">
+        <PackageReference Update="Meziantou.Analyzer" Version="2.0.283">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
         </PackageReference>
-        <PackageReference Update="Meziantou.Polyfill" Version="1.0.84">
+        <PackageReference Update="Meziantou.Polyfill" Version="1.0.100">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
         </PackageReference>
