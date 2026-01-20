@@ -22,7 +22,7 @@ public sealed class UiTransitionEvent
     /// <summary>
     /// 目标UI的标识符，切换后的UI key
     /// </summary>
-    public string ToUiKey { get; init; } = string.Empty;
+    public string? ToUiKey { get; init; } = string.Empty;
 
     /// <summary>
     /// UI切换类型

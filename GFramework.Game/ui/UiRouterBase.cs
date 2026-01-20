@@ -15,6 +15,16 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     private static readonly ILogger Log = LoggerFactoryResolver.Provider.CreateLogger("UiRouterBase");
 
     /// <summary>
+    /// 路由守卫列表
+    /// </summary>
+    private readonly List<IUiRouteGuard> _guards = new();
+
+    /// <summary>
+    /// 层级管理（非栈层级），用于Overlay、Modal、Toast等浮层
+    /// </summary>
+    private readonly Dictionary<UiLayer, Dictionary<string, IUiPageBehavior>> _layers = new();
+
+    /// <summary>
     /// UI切换处理器管道
     /// </summary>
     private readonly UiTransitionPipeline _pipeline = new();
@@ -25,21 +35,11 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     private readonly Stack<IUiPageBehavior> _stack = new();
 
     /// <summary>
-    /// 层级管理（非栈层级），用于Overlay、Modal、Toast等浮层
-    /// </summary>
-    private readonly Dictionary<UiLayer, Dictionary<string, IUiPageBehavior>> _layers = new();
-
-    /// <summary>
     /// UI工厂实例，用于创建UI相关的对象
     /// </summary>
     private IUiFactory _factory = null!;
 
     private IUiRoot _uiRoot = null!;
-
-    /// <summary>
-    /// 路由守卫列表
-    /// </summary>
-    private readonly List<IUiRouteGuard> _guards = new();
 
     /// <summary>
     /// 注册UI切换处理器
@@ -143,19 +143,23 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
             return;
         }
 
-        var topUiKey = _stack.Peek().Key;
+        var leavingUiKey = _stack.Peek().Key;
 
-        // 执行离开守卫
-        if (!ExecuteLeaveGuardsAsync(topUiKey).GetAwaiter().GetResult())
+        if (!ExecuteLeaveGuardsAsync(leavingUiKey).GetAwaiter().GetResult())
         {
-            Log.Warn("Pop blocked by guard: {0}", topUiKey);
+            Log.Warn("Pop blocked by guard: {0}", leavingUiKey);
             return;
         }
 
+        // ⚠️ 注意：nextUiKey 现在是可选的
         var nextUiKey = _stack.Count > 1
-            ? _stack.ElementAt(1).Key // 使用 Key 而不是 View.GetType().Name
-            : throw new InvalidOperationException("Stack is empty");
-        var @event = CreateEvent(nextUiKey, UiTransitionType.Pop);
+            ? _stack.ElementAt(1).Key
+            : null;
+
+        var @event = CreateEvent(
+            nextUiKey,
+            type: UiTransitionType.Pop
+        );
 
         BeforeChange(@event);
 
@@ -163,6 +167,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
 
         AfterChange(@event);
     }
+
 
     /// <summary>
     /// 替换当前所有页面为新页面（基于uiKey）
@@ -312,7 +317,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// 创建UI切换事件
     /// </summary>
     private UiTransitionEvent CreateEvent(
-        string toUiKey,
+        string? toUiKey,
         UiTransitionType type,
         UiTransitionPolicy? policy = null,
         IUiPageEnterParam? param = null
