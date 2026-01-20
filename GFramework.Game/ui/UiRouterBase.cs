@@ -73,8 +73,9 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// <param name="param">进入界面的参数，可为空</param>
     /// <param name="policy">界面切换策略，默认为Exclusive（独占）</param>
     /// <param name="instancePolicy">实例管理策略，默认为Reuse（复用）</param>
+    /// <param name="animationPolicy">动画策略，可为空</param>
     public void Push(string uiKey, IUiPageEnterParam? param = null, UiTransitionPolicy policy = UiTransitionPolicy.Exclusive,
-        UiInstancePolicy instancePolicy = UiInstancePolicy.Reuse)
+        UiInstancePolicy instancePolicy = UiInstancePolicy.Reuse, UiAnimationPolicy? animationPolicy = null)
     {
         if (IsTop(uiKey))
         {
@@ -83,6 +84,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         }
 
         var @event = CreateEvent(uiKey, UiTransitionType.Push, policy, param);
+        @event.Set("AnimationPolicy", animationPolicy);
 
         Log.Debug(
             "Push UI Page: key={0}, policy={1}, instancePolicy={2}, stackBefore={3}",
@@ -106,10 +108,12 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// <param name="page">已创建的UI页面行为实例</param>
     /// <param name="param">页面进入参数，可为空</param>
     /// <param name="policy">页面切换策略</param>
+    /// <param name="animationPolicy">动画策略，可为空</param>
     public void Push(
         IUiPageBehavior page,
         IUiPageEnterParam? param = null,
-        UiTransitionPolicy policy = UiTransitionPolicy.Exclusive
+        UiTransitionPolicy policy = UiTransitionPolicy.Exclusive,
+        UiAnimationPolicy? animationPolicy = null
     )
     {
         var uiKey = page.View.GetType().Name;
@@ -121,6 +125,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         }
 
         var @event = CreateEvent(uiKey, UiTransitionType.Push, policy, param);
+        @event.Set("AnimationPolicy", animationPolicy);
 
         Log.Debug(
             "Push existing UI Page: key={0}, policy={1}, stackBefore={2}",
@@ -164,14 +169,17 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// <param name="popPolicy">弹出页面时的销毁策略，默认为销毁</param>
     /// <param name="pushPolicy">推入页面时的过渡策略，默认为独占</param>
     /// <param name="instancePolicy">实例管理策略</param>
+    /// <param name="animationPolicy">动画策略，可为空</param>
     public void Replace(
         string uiKey,
         IUiPageEnterParam? param = null,
         UiPopPolicy popPolicy = UiPopPolicy.Destroy,
         UiTransitionPolicy pushPolicy = UiTransitionPolicy.Exclusive,
-        UiInstancePolicy instancePolicy = UiInstancePolicy.Reuse)
+        UiInstancePolicy instancePolicy = UiInstancePolicy.Reuse,
+        UiAnimationPolicy? animationPolicy = null)
     {
         var @event = CreateEvent(uiKey, UiTransitionType.Replace, pushPolicy, param);
+        @event.Set("AnimationPolicy", animationPolicy);
 
         Log.Debug(
             "Replace UI Stack with page: key={0}, popPolicy={1}, pushPolicy={2}, instancePolicy={3}",
@@ -186,7 +194,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         // 使用工厂的增强方法获取实例
         var page = _factory.GetOrCreate(uiKey, instancePolicy);
         Log.Debug("Get/Create UI Page instance for Replace: {0}", page.GetType().Name);
-        
+
         DoPushPageInternal(page, param, pushPolicy);
 
         AfterChange(@event);
@@ -198,14 +206,17 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// <param name="param">页面进入参数，可为空</param>
     /// <param name="popPolicy">弹出页面时的销毁策略，默认为销毁</param>
     /// <param name="pushPolicy">推入页面时的过渡策略，默认为独占</param>
+    /// <param name="animationPolicy">动画策略，可为空</param>
     public void Replace(
         IUiPageBehavior page,
         IUiPageEnterParam? param = null,
         UiPopPolicy popPolicy = UiPopPolicy.Destroy,
-        UiTransitionPolicy pushPolicy = UiTransitionPolicy.Exclusive)
+        UiTransitionPolicy pushPolicy = UiTransitionPolicy.Exclusive,
+        UiAnimationPolicy? animationPolicy = null)
     {
         var uiKey = page.Key;
         var @event = CreateEvent(uiKey, UiTransitionType.Replace, pushPolicy, param);
+        @event.Set("AnimationPolicy", animationPolicy);
 
         Log.Debug(
             "Replace UI Stack with existing page: key={0}, popPolicy={1}, pushPolicy={2}",
