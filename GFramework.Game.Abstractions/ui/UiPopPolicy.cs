@@ -6,12 +6,12 @@
 public enum UiPopPolicy
 {
     /// <summary>
-    /// 销毁模式：关闭时完全销毁UI对象
+    /// 销毁实例
     /// </summary>
     Destroy,
-
+    
     /// <summary>
-    /// 隐藏模式：关闭时仅隐藏UI对象，保留实例
+    /// 隐藏但保留实例（下次Push可复用）
     /// </summary>
-    Hide
+    Cache
 }

@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using GFramework.Core.Abstractions.logging;
 using GFramework.Core.extensions;
 using GFramework.Core.logging;
@@ -62,18 +58,17 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         _uiRoot = root;
         Log.Debug("Bind UI Root: {0}", root.GetType().Name);
     }
+    
 
     /// <summary>
-    /// 将指定UI页面压入栈顶并显示
+    /// 将指定的UI界面压入路由栈，显示新的UI界面
     /// </summary>
-    /// <param name="uiKey">UI页面标识符</param>
-    /// <param name="param">页面进入参数，可为空</param>
-    /// <param name="policy">页面切换策略</param>
-    public void Push(
-        string uiKey,
-        IUiPageEnterParam? param = null,
-        UiTransitionPolicy policy = UiTransitionPolicy.Exclusive
-    )
+    /// <param name="uiKey">UI界面的唯一标识符</param>
+    /// <param name="param">进入界面的参数，可为空</param>
+    /// <param name="policy">界面切换策略，默认为Exclusive（独占）</param>
+    /// <param name="instancePolicy">实例管理策略，默认为Reuse（复用）</param>
+    public void Push(string uiKey, IUiPageEnterParam? param = null, UiTransitionPolicy policy = UiTransitionPolicy.Exclusive,
+        UiInstancePolicy instancePolicy = UiInstancePolicy.Reuse)
     {
         if (IsTop(uiKey))
         {
@@ -84,15 +79,15 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         var @event = CreateEvent(uiKey, UiTransitionType.Push, policy, param);
 
         Log.Debug(
-            "Push UI Page: key={0}, policy={1}, stackBefore={2}",
-            uiKey, policy, _stack.Count
+            "Push UI Page: key={0}, policy={1}, instancePolicy={2}, stackBefore={3}",
+            uiKey, policy, instancePolicy, _stack.Count
         );
 
         BeforeChange(@event);
 
-        // 先创建页面，然后使用统一的Push逻辑
-        var page = _factory.Create(uiKey);
-        Log.Debug("Create UI Page instance: {0}", page.GetType().Name);
+        // 使用工厂的增强方法获取实例
+        var page = _factory.GetOrCreate(uiKey, instancePolicy);
+        Log.Debug("Get/Create UI Page instance: {0}", page.GetType().Name);
 
         DoPushPageInternal(page, param, policy);
 
@@ -144,8 +139,8 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         }
 
         var nextUiKey = _stack.Count > 1
-            ? _stack.ElementAt(1).View.GetType().Name
-            : string.Empty;
+            ? _stack.ElementAt(1).Key // 使用 Key 而不是 View.GetType().Name
+            : throw new InvalidOperationException("Stack is empty");
         var @event = CreateEvent(nextUiKey, UiTransitionType.Pop);
 
         BeforeChange(@event);
@@ -156,33 +151,67 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    /// 替换当前所有页面为新页面
+    /// 替换当前所有页面为新页面（基于uiKey）
     /// </summary>
     /// <param name="uiKey">新UI页面标识符</param>
     /// <param name="param">页面进入参数，可为空</param>
     /// <param name="popPolicy">弹出页面时的销毁策略，默认为销毁</param>
     /// <param name="pushPolicy">推入页面时的过渡策略，默认为独占</param>
+    /// <param name="instancePolicy">实例管理策略</param>
     public void Replace(
         string uiKey,
         IUiPageEnterParam? param = null,
         UiPopPolicy popPolicy = UiPopPolicy.Destroy,
-        UiTransitionPolicy pushPolicy = UiTransitionPolicy.Exclusive
-    )
+        UiTransitionPolicy pushPolicy = UiTransitionPolicy.Exclusive,
+        UiInstancePolicy instancePolicy = UiInstancePolicy.Reuse)
     {
         var @event = CreateEvent(uiKey, UiTransitionType.Replace, pushPolicy, param);
 
         Log.Debug(
-            "Replace UI Stack with page: key={0}, popPolicy={1}, pushPolicy={2}",
+            "Replace UI Stack with page: key={0}, popPolicy={1}, pushPolicy={2}, instancePolicy={3}",
+            uiKey, popPolicy, pushPolicy, instancePolicy
+        );
+
+        BeforeChange(@event);
+
+        // 使用内部方法清空栈，避免触发额外的Pipeline
+        DoClearInternal(popPolicy);
+
+        // 使用工厂的增强方法获取实例
+        var page = _factory.GetOrCreate(uiKey, instancePolicy);
+        Log.Debug("Get/Create UI Page instance for Replace: {0}", page.GetType().Name);
+        
+        DoPushPageInternal(page, param, pushPolicy);
+
+        AfterChange(@event);
+    }
+    /// <summary>
+    /// 替换当前所有页面为已存在的页面（基于实例）
+    /// </summary>
+    /// <param name="page">已创建的UI页面行为实例</param>
+    /// <param name="param">页面进入参数，可为空</param>
+    /// <param name="popPolicy">弹出页面时的销毁策略，默认为销毁</param>
+    /// <param name="pushPolicy">推入页面时的过渡策略，默认为独占</param>
+    public void Replace(
+        IUiPageBehavior page,
+        IUiPageEnterParam? param = null,
+        UiPopPolicy popPolicy = UiPopPolicy.Destroy,
+        UiTransitionPolicy pushPolicy = UiTransitionPolicy.Exclusive)
+    {
+        var uiKey = page.Key;
+        var @event = CreateEvent(uiKey, UiTransitionType.Replace, pushPolicy, param);
+
+        Log.Debug(
+            "Replace UI Stack with existing page: key={0}, popPolicy={1}, pushPolicy={2}",
             uiKey, popPolicy, pushPolicy
         );
 
         BeforeChange(@event);
 
-        // 使用内部方法，避免触发额外的Pipeline
+        // 清空栈
         DoClearInternal(popPolicy);
 
-        var page = _factory.Create(uiKey);
-        Log.Debug("Create UI Page instance for Replace: {0}", page.GetType().Name);
+        Log.Debug("Use existing UI Page instance for Replace: {0}", page.GetType().Name);
         DoPushPageInternal(page, param, pushPolicy);
 
         AfterChange(@event);
@@ -372,11 +401,13 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         {
             Log.Debug("Destroy UI Page: {0}", top.GetType().Name);
             _uiRoot.RemoveUiPage(top);
+            // 不回收，直接销毁
         }
-        else
+        else // UiPopPolicy.Cache
         {
-            Log.Debug("Hide UI Page: {0}", top.GetType().Name);
-            top.OnHide();
+            Log.Debug("Cache UI Page: {0}", top.GetType().Name);
+            _uiRoot.RemoveUiPage(top);
+            _factory.Recycle(top); // 回收到池中
         }
 
         if (_stack.Count > 0)
