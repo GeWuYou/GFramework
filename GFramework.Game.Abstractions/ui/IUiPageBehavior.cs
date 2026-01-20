@@ -53,4 +53,20 @@ public interface IUiPageBehavior
     /// 页面重新显示时调用的方法
     /// </summary>
     void OnShow();
+    
+    /// <summary>
+    /// 获取页面是否为模态页面
+    /// </summary>
+    bool IsModal { get; }
+    
+    /// <summary>
+    /// 获取页面是否阻断下层交互
+    /// </summary>
+    bool BlocksInput { get; }
+    
+    /// <summary>
+    /// 获取页面是否需要蒙版
+    /// </summary>
+    bool RequiresMask { get; }
+
 }

@@ -94,4 +94,20 @@ public class CanvasItemUiPageBehavior<T>(T owner, string key) : IUiPageBehavior
         owner.Show();
         OnResume();
     }
+
+    /// <summary>
+    /// 获取或设置页面是否为模态对话框
+    /// </summary>
+    public bool IsModal { get; set; }
+
+    /// <summary>
+    /// 获取或设置页面是否阻止输入
+    /// </summary>
+    public bool BlocksInput { get; set; } = true;
+    
+    /// <summary>
+    /// 获取或设置页面是否需要遮罩层
+    /// </summary>
+    public bool RequiresMask { get; set; }
+
 }
