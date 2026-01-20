@@ -38,6 +38,11 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     private IUiRoot _uiRoot = null!;
 
     /// <summary>
+    /// 路由守卫列表
+    /// </summary>
+    private readonly List<IUiRouteGuard> _guards = new();
+
+    /// <summary>
     /// 注册UI切换处理器
     /// </summary>
     /// <param name="handler">处理器实例</param>
@@ -92,13 +97,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         );
 
         BeforeChange(@event);
-
-        // 使用工厂的增强方法获取实例
-        var page = _factory.GetOrCreate(uiKey, instancePolicy);
-        Log.Debug("Get/Create UI Page instance: {0}", page.GetType().Name);
-
-        DoPushPageInternal(page, param, policy);
-
+        DoPushPageInternal(uiKey, param, policy, instancePolicy, animationPolicy);
         AfterChange(@event);
     }
 
@@ -146,6 +145,15 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         if (_stack.Count == 0)
         {
             Log.Debug("Pop ignored: stack is empty");
+            return;
+        }
+
+        var topUiKey = _stack.Peek().Key;
+
+        // 执行离开守卫
+        if (!ExecuteLeaveGuardsAsync(topUiKey).GetAwaiter().GetResult())
+        {
+            Log.Warn("Pop blocked by guard: {0}", topUiKey);
             return;
         }
 
@@ -362,8 +370,27 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    /// 执行Push页面的核心逻辑（统一处理）
-    /// 这个方法同时服务于工厂创建和已存在页面两种情况
+    /// 执行Push页面的核心逻辑（基于 uiKey）
+    /// </summary>
+    private void DoPushPageInternal(string uiKey, IUiPageEnterParam? param, UiTransitionPolicy policy,
+        UiInstancePolicy instancePolicy, UiAnimationPolicy? animationPolicy)
+    {
+        // 执行进入守卫
+        if (!ExecuteEnterGuardsAsync(uiKey, param).GetAwaiter().GetResult())
+        {
+            Log.Warn("Push blocked by guard: {0}", uiKey);
+            return;
+        }
+
+        // 使用工厂的增强方法获取实例
+        var page = _factory.GetOrCreate(uiKey, instancePolicy);
+        Log.Debug("Get/Create UI Page instance: {0}", page.GetType().Name);
+
+        DoPushPageInternal(page, param, policy);
+    }
+
+    /// <summary>
+    /// 执行Push页面的核心逻辑（基于 page）
     /// </summary>
     private void DoPushPageInternal(IUiPageBehavior page, IUiPageEnterParam? param, UiTransitionPolicy policy)
     {
@@ -582,4 +609,124 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     #endregion
+
+    #region 路由守卫
+
+
+/// <summary>
+/// 注册路由守卫
+/// </summary>
+public void AddGuard(IUiRouteGuard guard)
+{
+    ArgumentNullException.ThrowIfNull(guard);
+    
+    if (_guards.Contains(guard))
+    {
+        Log.Debug("Guard already registered: {0}", guard.GetType().Name);
+        return;
+    }
+    
+    _guards.Add(guard);
+    // 按优先级排序
+    _guards.Sort((a, b) => a.Priority.CompareTo(b.Priority));
+    Log.Debug("Guard registered: {0}, Priority={1}", guard.GetType().Name, guard.Priority);
+}
+
+/// <summary>
+/// 移除路由守卫
+/// </summary>
+public void RemoveGuard(IUiRouteGuard guard)
+{
+    ArgumentNullException.ThrowIfNull(guard);
+    
+    if (_guards.Remove(guard))
+    {
+        Log.Debug("Guard removed: {0}", guard.GetType().Name);
+    }
+}
+
+/// <summary>
+/// 注册路由守卫（泛型方法）
+/// </summary>
+public void AddGuard<T>() where T : IUiRouteGuard, new()
+{
+    var guard = new T();
+    AddGuard(guard);
+}
+
+/// <summary>
+/// 执行进入守卫
+/// </summary>
+private async Task<bool> ExecuteEnterGuardsAsync(string uiKey, IUiPageEnterParam? param)
+{
+    foreach (var guard in _guards)
+    {
+        try
+        {
+            Log.Debug("Executing enter guard: {0} for {1}", guard.GetType().Name, uiKey);
+            var canEnter = await guard.CanEnterAsync(uiKey, param);
+            
+            if (!canEnter)
+            {
+                Log.Debug("Enter guard blocked: {0}", guard.GetType().Name);
+                return false;
+            }
+            
+            if (guard.CanInterrupt)
+            {
+                Log.Debug("Enter guard {0} passed, can interrupt = true", guard.GetType().Name);
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Enter guard {0} failed: {1}", guard.GetType().Name, ex.Message);
+            if (guard.CanInterrupt)
+            {
+                return false;
+            }
+        }
+    }
+    
+    return true;
+}
+
+/// <summary>
+/// 执行离开守卫
+/// </summary>
+private async Task<bool> ExecuteLeaveGuardsAsync(string uiKey)
+{
+    foreach (var guard in _guards)
+    {
+        try
+        {
+            Log.Debug("Executing leave guard: {0} for {1}", guard.GetType().Name, uiKey);
+            var canLeave = await guard.CanLeaveAsync(uiKey);
+            
+            if (!canLeave)
+            {
+                Log.Debug("Leave guard blocked: {0}", guard.GetType().Name);
+                return false;
+            }
+            
+            if (guard.CanInterrupt)
+            {
+                Log.Debug("Leave guard {0} passed, can interrupt = true", guard.GetType().Name);
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Leave guard {0} failed: {1}", guard.GetType().Name, ex.Message);
+            if (guard.CanInterrupt)
+            {
+                return false;
+            }
+        }
+    }
+    
+    return true;
+}
+
+#endregion
 }

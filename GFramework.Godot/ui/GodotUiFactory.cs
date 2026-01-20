@@ -1,4 +1,5 @@
-﻿using GFramework.Core.Abstractions.logging;
+using System;
+using GFramework.Core.Abstractions.logging;
 using GFramework.Core.extensions;
 using GFramework.Core.logging;
 using GFramework.Core.utility;
@@ -14,6 +15,18 @@ namespace GFramework.Godot.ui;
 /// </summary>
 public class GodotUiFactory : AbstractContextUtility, IUiFactory
 {
+    /// <summary>
+    /// 缓存统计信息实现类
+    /// </summary>
+    private class CacheStatisticsInfo : IUiCacheStatistics
+    {
+        public int CacheSize { get; set; }
+        public int HitCount { get; set; }
+        public int MissCount { get; set; }
+        public double HitRate => HitCount + MissCount > 0 ? (double)HitCount / (HitCount + MissCount) : 0;
+        public DateTime? LastAccessTime { get; set; }
+    }
+    
     private static readonly ILogger Log = LoggerFactoryResolver.Provider.CreateLogger("GodotUiFactory");
     
     private IGodotUiRegistry _registry = null!;
@@ -27,6 +40,26 @@ public class GodotUiFactory : AbstractContextUtility, IUiFactory
     /// 追踪所有创建的实例（用于清理）
     /// </summary>
     private readonly Dictionary<string, HashSet<IUiPageBehavior>> _allInstances = new();
+    
+    /// <summary>
+    /// 缓存配置：uiKey -> 配置
+    /// </summary>
+    private readonly Dictionary<string, UiCacheConfig> _cacheConfigs = new();
+    
+    /// <summary>
+    /// 缓存统计：uiKey -> 统计信息
+    /// </summary>
+    private readonly Dictionary<string, CacheStatisticsInfo> _cacheStatistics = new();
+    
+    /// <summary>
+    /// LRU访问时间队列：uiKey -> 按访问时间排序的实例列表
+    /// </summary>
+    private readonly Dictionary<string, List<(IUiPageBehavior instance, DateTime accessTime)>> _accessTimeQueue = new();
+    
+    /// <summary>
+    /// LFU访问计数：instance -> 访问次数
+    /// </summary>
+    private readonly Dictionary<IUiPageBehavior, int> _accessCount = new();
 
     /// <summary>
     /// 创建或获取UI页面实例
@@ -110,10 +143,63 @@ public class GodotUiFactory : AbstractContextUtility, IUiFactory
         // 确保实例处于隐藏状态
         page.OnHide();
         
+        // 更新统计信息
+        UpdateStatisticsOnRecycle(uiKey);
+        
+        // 更新访问追踪
+        UpdateAccessTracking(uiKey, page);
+        
         _cachedInstances[uiKey].Enqueue(page);
         Log.Debug("Recycled UI instance to pool: {0}, poolSize={1}", uiKey, _cachedInstances[uiKey].Count);
+        
+        // 检查是否需要淘汰
+        CheckAndEvict(uiKey);
     }
 
+    /// <summary>
+    /// 获取UI的缓存配置
+    /// </summary>
+    public UiCacheConfig GetCacheConfig(string uiKey)
+    {
+        return _cacheConfigs.TryGetValue(uiKey, out var config) ? config : UiCacheConfig.Default;
+    }
+    
+    /// <summary>
+    /// 设置UI的缓存配置
+    /// </summary>
+    public void SetCacheConfig(string uiKey, UiCacheConfig config)
+    {
+        _cacheConfigs[uiKey] = config;
+        Log.Debug("Set cache config for UI: {0}, MaxSize={1}, Policy={2}", uiKey, config.MaxCacheSize, config.EvictionPolicy);
+        
+        // 检查是否需要淘汰
+        CheckAndEvict(uiKey);
+    }
+    
+    /// <summary>
+    /// 移除UI的缓存配置
+    /// </summary>
+    public void RemoveCacheConfig(string uiKey)
+    {
+        if (_cacheConfigs.Remove(uiKey))
+        {
+            Log.Debug("Removed cache config for UI: {0}", uiKey);
+        }
+    }
+    
+    /// <summary>
+    /// 获取所有UI的缓存统计信息
+    /// </summary>
+    public IDictionary<string, IUiCacheStatistics> GetCacheStatistics()
+    {
+        var result = new Dictionary<string, IUiCacheStatistics>();
+        foreach (var kvp in _cacheStatistics)
+        {
+            result[kvp.Key] = kvp.Value;
+        }
+        return result;
+    }
+    
     /// <summary>
     /// 清理指定UI的缓存
     /// </summary>
@@ -170,11 +256,19 @@ public class GodotUiFactory : AbstractContextUtility, IUiFactory
         if (_cachedInstances.TryGetValue(uiKey, out var queue) && queue.Count > 0)
         {
             var cached = queue.Dequeue();
+            
+            // 更新统计：缓存命中
+            UpdateStatisticsOnHit(uiKey);
+            
+            // 更新访问追踪
+            UpdateAccessTracking(uiKey, cached);
+            
             Log.Debug("Reused cached UI instance: {0}, remainingInPool={1}", uiKey, queue.Count);
             return cached;
         }
 
         // 没有缓存则创建新实例
+        UpdateStatisticsOnMiss(uiKey);
         Log.Debug("No cached instance, creating new: {0}", uiKey);
         return Create(uiKey);
     }
@@ -205,11 +299,165 @@ public class GodotUiFactory : AbstractContextUtility, IUiFactory
         {
             set.Remove(page);
         }
+        
+        // 从访问追踪移除
+        _accessCount.Remove(page);
+        if (_accessTimeQueue.TryGetValue(uiKey, out var queue))
+        {
+            queue.RemoveAll(x => x.instance == page);
+        }
 
         // 销毁Godot节点
         if (page.View is Node node)
         {
             node.QueueFreeX();
+        }
+    }
+    
+    /// <summary>
+    /// 更新统计信息：回收
+    /// </summary>
+    private void UpdateStatisticsOnRecycle(string uiKey)
+    {
+        if (!_cacheStatistics.ContainsKey(uiKey))
+            _cacheStatistics[uiKey] = new CacheStatisticsInfo();
+        
+        var stats = _cacheStatistics[uiKey];
+        stats.CacheSize = _cachedInstances[uiKey].Count + 1;
+        stats.LastAccessTime = DateTime.Now;
+    }
+    
+    /// <summary>
+    /// 更新统计信息：命中
+    /// </summary>
+    private void UpdateStatisticsOnHit(string uiKey)
+    {
+        if (!_cacheStatistics.ContainsKey(uiKey))
+            _cacheStatistics[uiKey] = new CacheStatisticsInfo();
+        
+        var stats = _cacheStatistics[uiKey];
+        stats.HitCount++;
+        stats.CacheSize = _cachedInstances[uiKey].Count;
+        stats.LastAccessTime = DateTime.Now;
+    }
+    
+    /// <summary>
+    /// 更新统计信息：未命中
+    /// </summary>
+    private void UpdateStatisticsOnMiss(string uiKey)
+    {
+        if (!_cacheStatistics.ContainsKey(uiKey))
+            _cacheStatistics[uiKey] = new CacheStatisticsInfo();
+        
+        var stats = _cacheStatistics[uiKey];
+        stats.MissCount++;
+        stats.CacheSize = _cachedInstances.TryGetValue(uiKey, out var queue) ? queue.Count : 0;
+    }
+    
+    /// <summary>
+    /// 更新访问追踪
+    /// </summary>
+    private void UpdateAccessTracking(string uiKey, IUiPageBehavior instance)
+    {
+        var now = DateTime.Now;
+        
+        // LRU: 更新访问时间队列
+        if (!_accessTimeQueue.ContainsKey(uiKey))
+            _accessTimeQueue[uiKey] = new List<(IUiPageBehavior, DateTime)>();
+        
+        var timeQueue = _accessTimeQueue[uiKey];
+        timeQueue.RemoveAll(x => x.instance == instance);
+        timeQueue.Add((instance, now));
+        
+        // LFU: 更新访问计数
+        _accessCount.TryGetValue(instance, out var count);
+        _accessCount[instance] = count + 1;
+    }
+    
+    /// <summary>
+    /// 检查并执行淘汰
+    /// </summary>
+    private void CheckAndEvict(string uiKey)
+    {
+        var config = GetCacheConfig(uiKey);
+        var currentSize = _cachedInstances.TryGetValue(uiKey, out var queue) ? queue.Count : 0;
+        
+        if (currentSize > config.MaxCacheSize)
+        {
+            var toEvict = currentSize - config.MaxCacheSize;
+            
+            for (int i = 0; i < toEvict; i++)
+            {
+                if (config.EvictionPolicy == CacheEvictionPolicy.LRU)
+                    EvictLRU(uiKey);
+                else
+                    EvictLFU(uiKey);
+            }
+            
+            Log.Debug("Evicted {0} instances for UI: {1}", toEvict, uiKey);
+        }
+    }
+    
+    /// <summary>
+    /// LRU淘汰策略
+    /// </summary>
+    private void EvictLRU(string uiKey)
+    {
+        if (!_accessTimeQueue.TryGetValue(uiKey, out var timeQueue) || timeQueue.Count == 0)
+            return;
+        
+        var oldest = timeQueue.OrderBy(x => x.accessTime).First();
+        
+        // 从队列中移除
+        if (_cachedInstances.TryGetValue(uiKey, out var queue))
+        {
+            var tempQueue = new Queue<IUiPageBehavior>();
+            var removed = false;
+            
+            while (queue.Count > 0)
+            {
+                var item = queue.Dequeue();
+                if (!removed && item == oldest.instance)
+                {
+                    DestroyInstance(item);
+                    removed = true;
+                }
+                else
+                {
+                    tempQueue.Enqueue(item);
+                }
+            }
+            
+            // 重新填充队列
+            while (tempQueue.Count > 0)
+                queue.Enqueue(tempQueue.Dequeue());
+        }
+    }
+    
+    /// <summary>
+    /// LFU淘汰策略
+    /// </summary>
+    private void EvictLFU(string uiKey)
+    {
+        if (!_cachedInstances.TryGetValue(uiKey, out var queue) || queue.Count == 0)
+            return;
+        
+        // 找到访问次数最少的实例
+        IUiPageBehavior? toRemove = null;
+        var minCount = int.MaxValue;
+        
+        foreach (var instance in queue)
+        {
+            if (_accessCount.TryGetValue(instance, out var count) && count < minCount)
+            {
+                minCount = count;
+                toRemove = instance;
+            }
+        }
+        
+        if (toRemove != null)
+        {
+            DestroyInstance(toRemove);
         }
     }
 
