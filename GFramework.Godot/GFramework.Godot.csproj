@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <PackageId>GeWuYou.$(AssemblyName)</PackageId>
@@ -9,6 +9,7 @@
 
     <ItemGroup>
         <PackageReference Include="Godot.SourceGenerators" Version="4.5.1" PrivateAssets="all"/>
+        <PackageReference Include="GodotSharp" Version="4.5.1"/>
         <PackageReference Include="GodotSharpEditor" Version="4.5.1" PrivateAssets="all"/>
     </ItemGroup>
 

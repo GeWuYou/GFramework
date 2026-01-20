@@ -114,4 +114,58 @@ public interface IUiRouter : ISystem
     /// 判断指定UI是否存在于UI栈中
     /// </summary>
     bool Contains(string uiKey);
+
+    #region 层级管理
+
+    /// <summary>
+    /// 在指定层级显示UI（非栈管理）
+    /// </summary>
+    /// <param name="uiKey">UI标识符</param>
+    /// <param name="layer">UI层级</param>
+    /// <param name="param">进入参数</param>
+    /// <param name="instancePolicy">实例策略</param>
+    void Show(
+        string uiKey,
+        UiLayer layer,
+        IUiPageEnterParam? param = null,
+        UiInstancePolicy instancePolicy = UiInstancePolicy.Reuse);
+
+    /// <summary>
+    /// 在指定层级显示UI（基于实例）
+    /// </summary>
+    /// <param name="page">UI页面实例</param>
+    /// <param name="layer">UI层级</param>
+    void Show(IUiPageBehavior page, UiLayer layer);
+
+    /// <summary>
+    /// 隐藏指定层级的UI
+    /// </summary>
+    /// <param name="uiKey">UI标识符</param>
+    /// <param name="layer">UI层级</param>
+    /// <param name="destroy">是否销毁实例</param>
+    void Hide(string uiKey, UiLayer layer, bool destroy = false);
+
+    /// <summary>
+    /// 清空指定层级的所有UI
+    /// </summary>
+    /// <param name="layer">UI层级</param>
+    /// <param name="destroy">是否销毁实例</param>
+    void ClearLayer(UiLayer layer, bool destroy = false);
+
+    /// <summary>
+    /// 获取指定层级的UI实例
+    /// </summary>
+    /// <param name="uiKey">UI标识符</param>
+    /// <param name="layer">UI层级</param>
+    /// <returns>UI实例，不存在则返回null</returns>
+    IUiPageBehavior? GetFromLayer(string uiKey, UiLayer layer);
+
+    /// <summary>
+    /// 判断指定层级是否有UI显示
+    /// </summary>
+    /// <param name="layer">UI层级</param>
+    /// <returns>是否有UI显示</returns>
+    bool HasVisibleInLayer(UiLayer layer);
+
+    #endregion
 }

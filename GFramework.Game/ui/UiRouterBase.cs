@@ -4,6 +4,7 @@ using GFramework.Core.logging;
 using GFramework.Core.system;
 using GFramework.Game.Abstractions.enums;
 using GFramework.Game.Abstractions.ui;
+using System.Linq;
 
 namespace GFramework.Game.ui;
 
@@ -23,6 +24,11 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// 页面栈，用于管理UI页面的显示顺序
     /// </summary>
     private readonly Stack<IUiPageBehavior> _stack = new();
+
+    /// <summary>
+    /// 层级管理（非栈层级），用于Overlay、Modal、Toast等浮层
+    /// </summary>
+    private readonly Dictionary<UiLayer, Dictionary<string, IUiPageBehavior>> _layers = new();
 
     /// <summary>
     /// UI工厂实例，用于创建UI相关的对象
@@ -434,4 +440,135 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         while (_stack.Count > 0)
             DoPopInternal(policy);
     }
+
+    #region 层级管理
+
+    /// <summary>
+    /// 在指定层级显示UI（非栈管理）
+    /// </summary>
+    public void Show(
+        string uiKey,
+        Game.Abstractions.enums.UiLayer layer,
+        IUiPageEnterParam? param = null,
+        UiInstancePolicy instancePolicy = UiInstancePolicy.Reuse)
+    {
+        if (layer == Game.Abstractions.enums.UiLayer.Page)
+        {
+            throw new ArgumentException("Use Push() for Page layer");
+        }
+
+        // 初始化层级字典
+        if (!_layers.ContainsKey(layer))
+            _layers[layer] = new Dictionary<string, IUiPageBehavior>();
+
+        var layerDict = _layers[layer];
+
+        // 检查是否已存在
+        if (layerDict.TryGetValue(uiKey, out var existing))
+        {
+            Log.Debug("UI already visible in layer: {0}, layer={1}", uiKey, layer);
+            existing.OnEnter(param);
+            existing.OnShow();
+            return;
+        }
+
+        // 获取或创建实例
+        var page = _factory.GetOrCreate(uiKey, instancePolicy);
+        layerDict[uiKey] = page;
+
+        // 添加到UiRoot，传入层级Z-order
+        _uiRoot.AddUiPage(page, (int)layer);
+
+        page.OnEnter(param);
+        page.OnShow();
+
+        Log.Debug("Show UI in layer: {0}, layer={1}", uiKey, layer);
+    }
+
+    /// <summary>
+    /// 在指定层级显示UI（基于实例）
+    /// </summary>
+    public void Show(IUiPageBehavior page, UiLayer layer)
+    {
+        if (layer == UiLayer.Page)
+            throw new ArgumentException("Use Push() for Page layer");
+
+        var uiKey = page.Key;
+
+        if (!_layers.ContainsKey(layer))
+            _layers[layer] = new Dictionary<string, IUiPageBehavior>();
+
+        _layers[layer][uiKey] = page;
+        _uiRoot.AddUiPage(page, (int)layer);
+        page.OnShow();
+
+        Log.Debug("Show existing UI instance in layer: {0}, layer={1}", uiKey, layer);
+    }
+
+    /// <summary>
+    /// 隐藏指定层级的UI
+    /// </summary>
+    public void Hide(string uiKey, Game.Abstractions.enums.UiLayer layer, bool destroy = false)
+    {
+        if (!_layers.TryGetValue(layer, out var layerDict))
+            return;
+
+        if (!layerDict.TryGetValue(uiKey, out var page))
+            return;
+
+        page.OnExit();
+        page.OnHide();
+
+        if (destroy)
+        {
+            _uiRoot.RemoveUiPage(page);
+            layerDict.Remove(uiKey);
+            Log.Debug("Hide & Destroy UI from layer: {0}, layer={1}", uiKey, layer);
+        }
+        else
+        {
+            _uiRoot.RemoveUiPage(page);
+            _factory.Recycle(page);
+            layerDict.Remove(uiKey);
+            Log.Debug("Hide & Cache UI from layer: {0}, layer={1}", uiKey, layer);
+        }
+    }
+
+    /// <summary>
+    /// 清空指定层级的所有UI
+    /// </summary>
+    public void ClearLayer(Game.Abstractions.enums.UiLayer layer, bool destroy = false)
+    {
+        if (!_layers.TryGetValue(layer, out var layerDict))
+            return;
+
+        var keys = layerDict.Keys.ToArray();
+        foreach (var key in keys)
+        {
+            Hide(key, layer, destroy);
+        }
+
+        Log.Debug("Cleared layer: {0}, destroyed={1}", layer, destroy);
+    }
+
+    /// <summary>
+    /// 获取指定层级的UI实例
+    /// </summary>
+    public IUiPageBehavior? GetFromLayer(string uiKey, UiLayer layer)
+    {
+        return _layers.TryGetValue(layer, out var layerDict) &&
+               layerDict.TryGetValue(uiKey, out var page)
+            ? page
+            : null;
+    }
+
+    /// <summary>
+    /// 判断指定层级是否有UI显示
+    /// </summary>
+    public bool HasVisibleInLayer(UiLayer layer)
+    {
+        return _layers.TryGetValue(layer, out var layerDict) && layerDict.Count > 0;
+    }
+
+    #endregion
 }
