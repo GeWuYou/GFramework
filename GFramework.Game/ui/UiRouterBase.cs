@@ -4,7 +4,6 @@ using GFramework.Core.logging;
 using GFramework.Core.system;
 using GFramework.Game.Abstractions.enums;
 using GFramework.Game.Abstractions.ui;
-using System.Linq;
 
 namespace GFramework.Game.ui;
 
@@ -69,7 +68,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         _uiRoot = root;
         Log.Debug("Bind UI Root: {0}", root.GetType().Name);
     }
-    
+
 
     /// <summary>
     /// 将指定的UI界面压入路由栈，显示新的UI界面
@@ -78,9 +77,9 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// <param name="param">进入界面的参数，可为空</param>
     /// <param name="policy">界面切换策略，默认为Exclusive（独占）</param>
     /// <param name="instancePolicy">实例管理策略，默认为Reuse（复用）</param>
-    /// <param name="animationPolicy">动画策略，可为空</param>
-    public void Push(string uiKey, IUiPageEnterParam? param = null, UiTransitionPolicy policy = UiTransitionPolicy.Exclusive,
-        UiInstancePolicy instancePolicy = UiInstancePolicy.Reuse, UiAnimationPolicy? animationPolicy = null)
+    public void Push(string uiKey, IUiPageEnterParam? param = null,
+        UiTransitionPolicy policy = UiTransitionPolicy.Exclusive,
+        UiInstancePolicy instancePolicy = UiInstancePolicy.Reuse)
     {
         if (IsTop(uiKey))
         {
@@ -89,7 +88,6 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         }
 
         var @event = CreateEvent(uiKey, UiTransitionType.Push, policy, param);
-        @event.Set("AnimationPolicy", animationPolicy);
 
         Log.Debug(
             "Push UI Page: key={0}, policy={1}, instancePolicy={2}, stackBefore={3}",
@@ -97,7 +95,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         );
 
         BeforeChange(@event);
-        DoPushPageInternal(uiKey, param, policy, instancePolicy, animationPolicy);
+        DoPushPageInternal(uiKey, param, policy, instancePolicy);
         AfterChange(@event);
     }
 
@@ -107,12 +105,10 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// <param name="page">已创建的UI页面行为实例</param>
     /// <param name="param">页面进入参数，可为空</param>
     /// <param name="policy">页面切换策略</param>
-    /// <param name="animationPolicy">动画策略，可为空</param>
     public void Push(
         IUiPageBehavior page,
         IUiPageEnterParam? param = null,
-        UiTransitionPolicy policy = UiTransitionPolicy.Exclusive,
-        UiAnimationPolicy? animationPolicy = null
+        UiTransitionPolicy policy = UiTransitionPolicy.Exclusive
     )
     {
         var uiKey = page.View.GetType().Name;
@@ -124,7 +120,6 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         }
 
         var @event = CreateEvent(uiKey, UiTransitionType.Push, policy, param);
-        @event.Set("AnimationPolicy", animationPolicy);
 
         Log.Debug(
             "Push existing UI Page: key={0}, policy={1}, stackBefore={2}",
@@ -177,18 +172,14 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// <param name="popPolicy">弹出页面时的销毁策略，默认为销毁</param>
     /// <param name="pushPolicy">推入页面时的过渡策略，默认为独占</param>
     /// <param name="instancePolicy">实例管理策略</param>
-    /// <param name="animationPolicy">动画策略，可为空</param>
     public void Replace(
         string uiKey,
         IUiPageEnterParam? param = null,
         UiPopPolicy popPolicy = UiPopPolicy.Destroy,
         UiTransitionPolicy pushPolicy = UiTransitionPolicy.Exclusive,
-        UiInstancePolicy instancePolicy = UiInstancePolicy.Reuse,
-        UiAnimationPolicy? animationPolicy = null)
+        UiInstancePolicy instancePolicy = UiInstancePolicy.Reuse)
     {
         var @event = CreateEvent(uiKey, UiTransitionType.Replace, pushPolicy, param);
-        @event.Set("AnimationPolicy", animationPolicy);
-
         Log.Debug(
             "Replace UI Stack with page: key={0}, popPolicy={1}, pushPolicy={2}, instancePolicy={3}",
             uiKey, popPolicy, pushPolicy, instancePolicy
@@ -207,6 +198,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
 
         AfterChange(@event);
     }
+
     /// <summary>
     /// 替换当前所有页面为已存在的页面（基于实例）
     /// </summary>
@@ -214,17 +206,14 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// <param name="param">页面进入参数，可为空</param>
     /// <param name="popPolicy">弹出页面时的销毁策略，默认为销毁</param>
     /// <param name="pushPolicy">推入页面时的过渡策略，默认为独占</param>
-    /// <param name="animationPolicy">动画策略，可为空</param>
     public void Replace(
         IUiPageBehavior page,
         IUiPageEnterParam? param = null,
         UiPopPolicy popPolicy = UiPopPolicy.Destroy,
-        UiTransitionPolicy pushPolicy = UiTransitionPolicy.Exclusive,
-        UiAnimationPolicy? animationPolicy = null)
+        UiTransitionPolicy pushPolicy = UiTransitionPolicy.Exclusive)
     {
         var uiKey = page.Key;
         var @event = CreateEvent(uiKey, UiTransitionType.Replace, pushPolicy, param);
-        @event.Set("AnimationPolicy", animationPolicy);
 
         Log.Debug(
             "Replace UI Stack with existing page: key={0}, popPolicy={1}, pushPolicy={2}",
@@ -373,7 +362,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// 执行Push页面的核心逻辑（基于 uiKey）
     /// </summary>
     private void DoPushPageInternal(string uiKey, IUiPageEnterParam? param, UiTransitionPolicy policy,
-        UiInstancePolicy instancePolicy, UiAnimationPolicy? animationPolicy)
+        UiInstancePolicy instancePolicy)
     {
         // 执行进入守卫
         if (!ExecuteEnterGuardsAsync(uiKey, param).GetAwaiter().GetResult())
@@ -486,11 +475,11 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// </summary>
     public void Show(
         string uiKey,
-        Game.Abstractions.enums.UiLayer layer,
+        UiLayer layer,
         IUiPageEnterParam? param = null,
         UiInstancePolicy instancePolicy = UiInstancePolicy.Reuse)
     {
-        if (layer == Game.Abstractions.enums.UiLayer.Page)
+        if (layer == UiLayer.Page)
         {
             throw new ArgumentException("Use Push() for Page layer");
         }
@@ -546,7 +535,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// <summary>
     /// 隐藏指定层级的UI
     /// </summary>
-    public void Hide(string uiKey, Game.Abstractions.enums.UiLayer layer, bool destroy = false)
+    public void Hide(string uiKey, UiLayer layer, bool destroy = false)
     {
         if (!_layers.TryGetValue(layer, out var layerDict))
             return;
@@ -575,7 +564,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// <summary>
     /// 清空指定层级的所有UI
     /// </summary>
-    public void ClearLayer(Game.Abstractions.enums.UiLayer layer, bool destroy = false)
+    public void ClearLayer(UiLayer layer, bool destroy = false)
     {
         if (!_layers.TryGetValue(layer, out var layerDict))
             return;
@@ -612,121 +601,120 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
 
     #region 路由守卫
 
-
-/// <summary>
-/// 注册路由守卫
-/// </summary>
-public void AddGuard(IUiRouteGuard guard)
-{
-    ArgumentNullException.ThrowIfNull(guard);
-    
-    if (_guards.Contains(guard))
+    /// <summary>
+    /// 注册路由守卫
+    /// </summary>
+    public void AddGuard(IUiRouteGuard guard)
     {
-        Log.Debug("Guard already registered: {0}", guard.GetType().Name);
-        return;
-    }
-    
-    _guards.Add(guard);
-    // 按优先级排序
-    _guards.Sort((a, b) => a.Priority.CompareTo(b.Priority));
-    Log.Debug("Guard registered: {0}, Priority={1}", guard.GetType().Name, guard.Priority);
-}
+        ArgumentNullException.ThrowIfNull(guard);
 
-/// <summary>
-/// 移除路由守卫
-/// </summary>
-public void RemoveGuard(IUiRouteGuard guard)
-{
-    ArgumentNullException.ThrowIfNull(guard);
-    
-    if (_guards.Remove(guard))
-    {
-        Log.Debug("Guard removed: {0}", guard.GetType().Name);
-    }
-}
-
-/// <summary>
-/// 注册路由守卫（泛型方法）
-/// </summary>
-public void AddGuard<T>() where T : IUiRouteGuard, new()
-{
-    var guard = new T();
-    AddGuard(guard);
-}
-
-/// <summary>
-/// 执行进入守卫
-/// </summary>
-private async Task<bool> ExecuteEnterGuardsAsync(string uiKey, IUiPageEnterParam? param)
-{
-    foreach (var guard in _guards)
-    {
-        try
+        if (_guards.Contains(guard))
         {
-            Log.Debug("Executing enter guard: {0} for {1}", guard.GetType().Name, uiKey);
-            var canEnter = await guard.CanEnterAsync(uiKey, param);
-            
-            if (!canEnter)
-            {
-                Log.Debug("Enter guard blocked: {0}", guard.GetType().Name);
-                return false;
-            }
-            
-            if (guard.CanInterrupt)
-            {
-                Log.Debug("Enter guard {0} passed, can interrupt = true", guard.GetType().Name);
-                return true;
-            }
+            Log.Debug("Guard already registered: {0}", guard.GetType().Name);
+            return;
         }
-        catch (Exception ex)
+
+        _guards.Add(guard);
+        // 按优先级排序
+        _guards.Sort((a, b) => a.Priority.CompareTo(b.Priority));
+        Log.Debug("Guard registered: {0}, Priority={1}", guard.GetType().Name, guard.Priority);
+    }
+
+    /// <summary>
+    /// 注册路由守卫（泛型方法）
+    /// </summary>
+    public void AddGuard<T>() where T : IUiRouteGuard, new()
+    {
+        var guard = new T();
+        AddGuard(guard);
+    }
+
+    /// <summary>
+    /// 移除路由守卫
+    /// </summary>
+    public void RemoveGuard(IUiRouteGuard guard)
+    {
+        ArgumentNullException.ThrowIfNull(guard);
+
+        if (_guards.Remove(guard))
         {
-            Log.Error("Enter guard {0} failed: {1}", guard.GetType().Name, ex.Message);
-            if (guard.CanInterrupt)
-            {
-                return false;
-            }
+            Log.Debug("Guard removed: {0}", guard.GetType().Name);
         }
     }
-    
-    return true;
-}
 
-/// <summary>
-/// 执行离开守卫
-/// </summary>
-private async Task<bool> ExecuteLeaveGuardsAsync(string uiKey)
-{
-    foreach (var guard in _guards)
+    /// <summary>
+    /// 执行进入守卫
+    /// </summary>
+    private async Task<bool> ExecuteEnterGuardsAsync(string uiKey, IUiPageEnterParam? param)
     {
-        try
+        foreach (var guard in _guards)
         {
-            Log.Debug("Executing leave guard: {0} for {1}", guard.GetType().Name, uiKey);
-            var canLeave = await guard.CanLeaveAsync(uiKey);
-            
-            if (!canLeave)
+            try
             {
-                Log.Debug("Leave guard blocked: {0}", guard.GetType().Name);
-                return false;
-            }
-            
-            if (guard.CanInterrupt)
-            {
-                Log.Debug("Leave guard {0} passed, can interrupt = true", guard.GetType().Name);
-                return true;
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Error("Leave guard {0} failed: {1}", guard.GetType().Name, ex.Message);
-            if (guard.CanInterrupt)
-            {
-                return false;
-            }
-        }
-    }
-    
-    return true;
-}
+                Log.Debug("Executing enter guard: {0} for {1}", guard.GetType().Name, uiKey);
+                var canEnter = await guard.CanEnterAsync(uiKey, param);
 
-#endregion
+                if (!canEnter)
+                {
+                    Log.Debug("Enter guard blocked: {0}", guard.GetType().Name);
+                    return false;
+                }
+
+                if (guard.CanInterrupt)
+                {
+                    Log.Debug("Enter guard {0} passed, can interrupt = true", guard.GetType().Name);
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Enter guard {0} failed: {1}", guard.GetType().Name, ex.Message);
+                if (guard.CanInterrupt)
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// 执行离开守卫
+    /// </summary>
+    private async Task<bool> ExecuteLeaveGuardsAsync(string uiKey)
+    {
+        foreach (var guard in _guards)
+        {
+            try
+            {
+                Log.Debug("Executing leave guard: {0} for {1}", guard.GetType().Name, uiKey);
+                var canLeave = await guard.CanLeaveAsync(uiKey);
+
+                if (!canLeave)
+                {
+                    Log.Debug("Leave guard blocked: {0}", guard.GetType().Name);
+                    return false;
+                }
+
+                if (guard.CanInterrupt)
+                {
+                    Log.Debug("Leave guard {0} passed, can interrupt = true", guard.GetType().Name);
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Leave guard {0} failed: {1}", guard.GetType().Name, ex.Message);
+                if (guard.CanInterrupt)
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    #endregion
 }

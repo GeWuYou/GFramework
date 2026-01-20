@@ -1,8 +1,8 @@
-using System;
 using GFramework.Core.Abstractions.logging;
 using GFramework.Core.extensions;
 using GFramework.Core.logging;
 using GFramework.Core.utility;
+using GFramework.Game.Abstractions.enums;
 using GFramework.Game.Abstractions.ui;
 using GFramework.Godot.extensions;
 using Godot;
@@ -18,7 +18,7 @@ public class GodotUiFactory : AbstractContextUtility, IUiFactory
     /// <summary>
     /// 缓存统计信息实现类
     /// </summary>
-    private class CacheStatisticsInfo : IUiCacheStatistics
+    private sealed class CacheStatisticsInfo : IUiCacheStatistics
     {
         public int CacheSize { get; set; }
         public int HitCount { get; set; }
@@ -381,27 +381,25 @@ public class GodotUiFactory : AbstractContextUtility, IUiFactory
     {
         var config = GetCacheConfig(uiKey);
         var currentSize = _cachedInstances.TryGetValue(uiKey, out var queue) ? queue.Count : 0;
-        
-        if (currentSize > config.MaxCacheSize)
+
+        if (currentSize <= config.MaxCacheSize) return;
+        var toEvict = currentSize - config.MaxCacheSize;
+            
+        for (var i = 0; i < toEvict; i++)
         {
-            var toEvict = currentSize - config.MaxCacheSize;
-            
-            for (int i = 0; i < toEvict; i++)
-            {
-                if (config.EvictionPolicy == CacheEvictionPolicy.LRU)
-                    EvictLRU(uiKey);
-                else
-                    EvictLFU(uiKey);
-            }
-            
-            Log.Debug("Evicted {0} instances for UI: {1}", toEvict, uiKey);
+            if (config.EvictionPolicy == CacheEvictionPolicy.Lru)
+                EvictLru(uiKey);
+            else
+                EvictLfu(uiKey);
         }
+            
+        Log.Debug("Evicted {0} instances for UI: {1}", toEvict, uiKey);
     }
     
     /// <summary>
     /// LRU淘汰策略
     /// </summary>
-    private void EvictLRU(string uiKey)
+    private void EvictLru(string uiKey)
     {
         if (!_accessTimeQueue.TryGetValue(uiKey, out var timeQueue) || timeQueue.Count == 0)
             return;
@@ -437,7 +435,7 @@ public class GodotUiFactory : AbstractContextUtility, IUiFactory
     /// <summary>
     /// LFU淘汰策略
     /// </summary>
-    private void EvictLFU(string uiKey)
+    private void EvictLfu(string uiKey)
     {
         if (!_cachedInstances.TryGetValue(uiKey, out var queue) || queue.Count == 0)
             return;

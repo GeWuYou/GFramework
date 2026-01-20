@@ -1,4 +1,5 @@
 using System;
+using GFramework.Game.Abstractions.enums;
 
 namespace GFramework.Game.Abstractions.ui;
 
@@ -16,20 +17,20 @@ public class UiCacheConfig
     /// <summary>
     /// 缓存淘汰策略
     /// </summary>
-    public CacheEvictionPolicy EvictionPolicy { get; set; } = CacheEvictionPolicy.LRU;
+    public CacheEvictionPolicy EvictionPolicy { get; set; } = CacheEvictionPolicy.Lru;
 
     /// <summary>
     /// 访问后过期时间（可选，null 表示不启用）
     /// </summary>
-    public TimeSpan? ExpireAfterAccess { get; set; } = null;
+    public TimeSpan? ExpireAfterAccess { get; set; }
 
     /// <summary>
     /// 创建默认配置（LRU 策略，最大 10 个实例）
     /// </summary>
-    public static UiCacheConfig Default => new UiCacheConfig
+    public static UiCacheConfig Default => new()
     {
         MaxCacheSize = 10,
-        EvictionPolicy = CacheEvictionPolicy.LRU,
+        EvictionPolicy = CacheEvictionPolicy.Lru,
         ExpireAfterAccess = null
     };
 
@@ -39,10 +40,10 @@ public class UiCacheConfig
     /// <param name="maxSize">最大缓存数量</param>
     /// <param name="expireAfter">访问后过期时间</param>
     public static UiCacheConfig Lru(int maxSize = 10, TimeSpan? expireAfter = null)
-        => new UiCacheConfig
+        => new()
         {
             MaxCacheSize = maxSize,
-            EvictionPolicy = CacheEvictionPolicy.LRU,
+            EvictionPolicy = CacheEvictionPolicy.Lru,
             ExpireAfterAccess = expireAfter
         };
 
@@ -52,26 +53,10 @@ public class UiCacheConfig
     /// <param name="maxSize">最大缓存数量</param>
     /// <param name="expireAfter">访问后过期时间</param>
     public static UiCacheConfig Lfu(int maxSize = 10, TimeSpan? expireAfter = null)
-        => new UiCacheConfig
+        => new()
         {
             MaxCacheSize = maxSize,
-            EvictionPolicy = CacheEvictionPolicy.LFU,
+            EvictionPolicy = CacheEvictionPolicy.Lfu,
             ExpireAfterAccess = expireAfter
         };
-}
-
-/// <summary>
-/// 缓存淘汰策略枚举
-/// </summary>
-public enum CacheEvictionPolicy
-{
-    /// <summary>
-    /// 最近最少使用
-    /// </summary>
-    LRU,
-
-    /// <summary>
-    /// 最少使用频率
-    /// </summary>
-    LFU
 }

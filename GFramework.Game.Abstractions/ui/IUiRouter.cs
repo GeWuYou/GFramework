@@ -26,9 +26,8 @@ public interface IUiRouter : ISystem
     /// <param name="param">进入界面的参数，可为空</param>
     /// <param name="policy">界面切换策略，默认为Exclusive（独占）</param>
     /// <param name="instancePolicy">实例管理策略，默认为Reuse（复用）</param>
-    /// <param name="animationPolicy">动画策略，可为空</param>
     void Push(string uiKey, IUiPageEnterParam? param = null, UiTransitionPolicy policy = UiTransitionPolicy.Exclusive,
-        UiInstancePolicy instancePolicy = UiInstancePolicy.Reuse, UiAnimationPolicy? animationPolicy = null);
+        UiInstancePolicy instancePolicy = UiInstancePolicy.Reuse);
 
 
     /// <summary>
@@ -38,9 +37,8 @@ public interface IUiRouter : ISystem
     /// <param name="page">已创建的UI页面行为实例</param>
     /// <param name="param">进入界面的参数,可为空</param>
     /// <param name="policy">界面切换策略,默认为Exclusive(独占)</param>
-    /// <param name="animationPolicy">动画策略，可为空</param>
     void Push(IUiPageBehavior page, IUiPageEnterParam? param = null,
-        UiTransitionPolicy policy = UiTransitionPolicy.Exclusive, UiAnimationPolicy? animationPolicy = null);
+        UiTransitionPolicy policy = UiTransitionPolicy.Exclusive);
 
 
     /// <summary>
@@ -57,14 +55,12 @@ public interface IUiRouter : ISystem
     /// <param name="popPolicy">弹出页面时的销毁策略，默认为销毁</param>
     /// <param name="pushPolicy">推入页面时的过渡策略，默认为独占</param>
     /// <param name="instancePolicy">实例管理策略</param>
-    /// <param name="animationPolicy">动画策略，可为空</param>
     public void Replace(
         string uiKey,
         IUiPageEnterParam? param = null,
         UiPopPolicy popPolicy = UiPopPolicy.Destroy,
         UiTransitionPolicy pushPolicy = UiTransitionPolicy.Exclusive,
-        UiInstancePolicy instancePolicy = UiInstancePolicy.Reuse,
-        UiAnimationPolicy? animationPolicy = null);
+        UiInstancePolicy instancePolicy = UiInstancePolicy.Reuse);
 
     /// <summary>
     /// 替换当前所有页面为已存在的页面（基于实例）
@@ -73,13 +69,11 @@ public interface IUiRouter : ISystem
     /// <param name="param">页面进入参数，可为空</param>
     /// <param name="popPolicy">弹出页面时的销毁策略，默认为销毁</param>
     /// <param name="pushPolicy">推入页面时的过渡策略，默认为独占</param>
-    /// <param name="animationPolicy">动画策略，可为空</param>
     public void Replace(
         IUiPageBehavior page,
         IUiPageEnterParam? param = null,
         UiPopPolicy popPolicy = UiPopPolicy.Destroy,
-        UiTransitionPolicy pushPolicy = UiTransitionPolicy.Exclusive,
-        UiAnimationPolicy? animationPolicy = null);
+        UiTransitionPolicy pushPolicy = UiTransitionPolicy.Exclusive);
     /// <summary>
     /// 清空所有UI界面，重置路由状态
     /// </summary>
@@ -130,16 +124,15 @@ public interface IUiRouter : ISystem
     void AddGuard(IUiRouteGuard guard);
 
     /// <summary>
-    /// 移除路由守卫
-    /// </summary>
-    /// <param name="guard">守卫实例</param>
-    void RemoveGuard(IUiRouteGuard guard);
-
-    /// <summary>
     /// 注册路由守卫（泛型方法）
     /// </summary>
     /// <typeparam name="T">守卫类型，必须实现 IUiRouteGuard 且有无参构造函数</typeparam>
     void AddGuard<T>() where T : IUiRouteGuard, new();
+    /// <summary>
+    /// 移除路由守卫
+    /// </summary>
+    /// <param name="guard">守卫实例</param>
+    void RemoveGuard(IUiRouteGuard guard);
 
     #endregion
 }
