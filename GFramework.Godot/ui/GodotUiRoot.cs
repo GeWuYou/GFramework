@@ -1,5 +1,4 @@
-using System.Collections.Generic;
-using System;
+using GFramework.Game.Abstractions.enums;
 using GFramework.Game.Abstractions.ui;
 using Godot;
 
@@ -20,6 +19,15 @@ public partial class GodotUiRoot : Node, IUiRoot
     /// UI页面的追踪字典，记录每个页面的节点
     /// </summary>
     private readonly Dictionary<IUiPageBehavior, Node> _pageNodes = new();
+    private static readonly IReadOnlyDictionary<UiLayer, int> LayerZOrderMap =
+        new Dictionary<UiLayer, int>
+        {
+            { UiLayer.Page,     0 },
+            { UiLayer.Overlay,  100 },
+            { UiLayer.Modal,    200 },
+            { UiLayer.Toast,    300 },
+            { UiLayer.Topmost,  400 },
+        };
 
     public override void _Ready()
     {
@@ -44,10 +52,8 @@ public partial class GodotUiRoot : Node, IUiRoot
         if (node == null)
             throw new InvalidOperationException($"Page node is null: {child.Key}");
 
-        if (_pageNodes.ContainsKey(child))
+        if (!_pageNodes.TryAdd(child, node))
             return;
-
-        _pageNodes[child] = node;
 
         if (node.GetParent() != _uiContainer)
         {
@@ -58,21 +64,25 @@ public partial class GodotUiRoot : Node, IUiRoot
     /// <summary>
     /// 向UI根节点添加子页面到指定层级
     /// </summary>
-    public void AddUiPage(IUiPageBehavior child, int zOrder = 0)
+    public void AddUiPage(
+        IUiPageBehavior child,
+        UiLayer layer,
+        int orderInLayer = 0)
     {
         AddUiPage(child);
-        SetZOrder(child, zOrder);
+
+        var z = GetBaseZOrder(layer) + orderInLayer;
+        SetZOrder(child, z);
     }
+
 
     /// <summary>
     /// 从UI根节点移除子页面
     /// </summary>
     public void RemoveUiPage(IUiPageBehavior child)
     {
-        if (!_pageNodes.TryGetValue(child, out var node))
+        if (!_pageNodes.Remove(child, out var node))
             return;
-
-        _pageNodes.Remove(child);
 
         if (_uiContainer != null && node.GetParent() == _uiContainer)
         {
@@ -101,17 +111,8 @@ public partial class GodotUiRoot : Node, IUiRoot
     {
         return _pageNodes.Keys.ToList().AsReadOnly();
     }
+    
 
-    /// <summary>
-    /// 强制刷新UI层级排序
-    /// </summary>
-    public void RefreshLayerOrder()
-    {
-        if (_uiContainer == null)
-            return;
-
-        _uiContainer.MoveChild(_uiContainer.GetChild(0), 0);
-    }
 
     /// <summary>
     /// 从页面行为获取对应的节点
@@ -119,5 +120,9 @@ public partial class GodotUiRoot : Node, IUiRoot
     private static Node? GetNodeFromPage(IUiPageBehavior page)
     {
         return page.View as Node;
+    }
+    private static int GetBaseZOrder(UiLayer layer)
+    {
+        return !LayerZOrderMap.TryGetValue(layer, out var z) ? throw new ArgumentOutOfRangeException(nameof(layer), layer, null) : z;
     }
 }

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using GFramework.Game.Abstractions.enums;
 
 namespace GFramework.Game.Abstractions.ui;
 
@@ -17,8 +18,9 @@ public interface IUiRoot
     /// 向UI根节点添加子页面到指定层级
     /// </summary>
     /// <param name="child">要添加的UI页面子节点</param>
-    /// <param name="zOrder">Z-order值，用于控制UI显示层级</param>
-    void AddUiPage(IUiPageBehavior child, int zOrder = 0);
+    /// <param name="layer">层级</param>
+    /// <param name="orderInLayer">层级内排序</param>
+    void AddUiPage(IUiPageBehavior child, UiLayer layer, int orderInLayer = 0);
 
     /// <summary>
     /// 从UI根节点移除子页面
@@ -38,9 +40,4 @@ public interface IUiRoot
     /// </summary>
     /// <returns>所有显示的页面列表</returns>
     IReadOnlyList<IUiPageBehavior> GetVisiblePages();
-
-    /// <summary>
-    /// 强制刷新UI层级排序
-    /// </summary>
-    void RefreshLayerOrder();
 }

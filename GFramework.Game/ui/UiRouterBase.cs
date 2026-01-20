@@ -504,7 +504,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         layerDict[uiKey] = page;
 
         // 添加到UiRoot，传入层级Z-order
-        _uiRoot.AddUiPage(page, (int)layer);
+        _uiRoot.AddUiPage(page, layer);
 
         page.OnEnter(param);
         page.OnShow();
@@ -526,7 +526,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
             _layers[layer] = new Dictionary<string, IUiPageBehavior>();
 
         _layers[layer][uiKey] = page;
-        _uiRoot.AddUiPage(page, (int)layer);
+        _uiRoot.AddUiPage(page, layer);
         page.OnShow();
 
         Log.Debug("Show existing UI instance in layer: {0}, layer={1}", uiKey, layer);
