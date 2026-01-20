@@ -8,7 +8,7 @@ namespace GFramework.Godot.ui;
 /// Godot平台的UI根节点实现
 /// 用于管理UI页面的添加、移除和层级排序
 /// </summary>
-public partial class GodotUiRoot : Node, IUiRoot
+public partial class GodotUiRoot(IReadOnlyDictionary<UiLayer, int>? layerZOrderMap) : Node, IUiRoot
 {
     /// <summary>
     /// UI节点的父容器，所有UI页面都添加到这个节点下
@@ -19,7 +19,19 @@ public partial class GodotUiRoot : Node, IUiRoot
     /// UI页面的追踪字典，记录每个页面的节点
     /// </summary>
     private readonly Dictionary<IUiPageBehavior, Node> _pageNodes = new();
-    private static readonly IReadOnlyDictionary<UiLayer, int> LayerZOrderMap =
+    
+    /// <summary>
+    /// UI层级与Z轴顺序的映射表，定义了不同UI层的渲染优先级
+    /// </summary>
+    /// <remarks>
+    /// 默认层级映射关系：
+    /// - Page: 0 (基础页面层)
+    /// - Overlay: 100 (覆盖层)
+    /// - Modal: 200 (模态窗口层)
+    /// - Toast: 300 (提示消息层)
+    /// - Topmost: 400 (最顶层)
+    /// </remarks>
+    private readonly IReadOnlyDictionary<UiLayer, int> _layerZOrderMap =layerZOrderMap ??
         new Dictionary<UiLayer, int>
         {
             { UiLayer.Page,     0 },
@@ -28,6 +40,7 @@ public partial class GodotUiRoot : Node, IUiRoot
             { UiLayer.Toast,    300 },
             { UiLayer.Topmost,  400 },
         };
+
 
     public override void _Ready()
     {
@@ -121,8 +134,8 @@ public partial class GodotUiRoot : Node, IUiRoot
     {
         return page.View as Node;
     }
-    private static int GetBaseZOrder(UiLayer layer)
+    private int GetBaseZOrder(UiLayer layer)
     {
-        return !LayerZOrderMap.TryGetValue(layer, out var z) ? throw new ArgumentOutOfRangeException(nameof(layer), layer, null) : z;
+        return !_layerZOrderMap.TryGetValue(layer, out var z) ? throw new ArgumentOutOfRangeException(nameof(layer), layer, null) : z;
     }
 }
