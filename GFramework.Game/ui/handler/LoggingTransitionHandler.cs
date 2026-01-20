@@ -39,7 +39,7 @@ public sealed class LoggingTransitionHandler : UiTransitionHandlerBase
             @event.Get<string>("Phases", "Unknown"),
             @event.TransitionType,
             @event.FromUiKey,
-            @event.ToUiKey,
+            @event.ToUiKey ?? "None",
             @event.Policy
         );
 

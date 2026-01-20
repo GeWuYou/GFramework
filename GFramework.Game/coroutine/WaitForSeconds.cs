@@ -1,4 +1,4 @@
-﻿using GFramework.Game.Abstractions.coroutine;
+using GFramework.Game.Abstractions.coroutine;
 
 namespace GFramework.Game.coroutine;
 
@@ -9,10 +9,14 @@ namespace GFramework.Game.coroutine;
 public class WaitForSeconds(float seconds) : IYieldInstruction
 {
     private float _elapsed;
+
+    /// <summary>
+    /// 获取当前等待是否已完成
+    /// </summary>
     public bool IsDone { get; private set; }
 
     /// <summary>
-    /// 更新时间进度，当累计时间达到指定秒数时标记完成
+    /// 更新时间进度
     /// </summary>
     /// <param name="deltaTime">自上次更新以来经过的时间（秒）</param>
     public void Update(float deltaTime)
@@ -20,5 +24,14 @@ public class WaitForSeconds(float seconds) : IYieldInstruction
         if (IsDone) return;
         _elapsed += deltaTime;
         if (_elapsed >= seconds) IsDone = true;
+    }
+
+    /// <summary>
+    /// 重置等待状态到初始状态
+    /// </summary>
+    public void Reset()
+    {
+        _elapsed = 0;
+        IsDone = false;
     }
 }

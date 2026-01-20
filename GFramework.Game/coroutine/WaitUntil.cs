@@ -1,24 +1,33 @@
-﻿using GFramework.Game.Abstractions.coroutine;
+using GFramework.Game.Abstractions.coroutine;
 
 namespace GFramework.Game.coroutine;
 
 /// <summary>
 /// 等待直到指定条件满足的协程等待指令
 /// </summary>
-/// <param name="predicate">用于判断等待条件是否满足的布尔函数委托</param>
+/// <param name="predicate">用于判断等待是否完成的条件函数</param>
 public class WaitUntil(Func<bool> predicate) : IYieldInstruction
 {
     /// <summary>
-    /// 获取等待指令是否已完成
+    /// 获取当前等待指令是否已完成
     /// </summary>
     public bool IsDone { get; private set; }
 
     /// <summary>
-    /// 更新等待状态，在每一帧调用以检查条件是否满足
+    /// 更新等待状态
     /// </summary>
-    /// <param name="deltaTime">自上一帧以来的时间间隔</param>
+    /// <param name="deltaTime">时间增量</param>
     public void Update(float deltaTime)
     {
+        // 只有在未完成状态下才检查条件
         if (!IsDone) IsDone = predicate();
+    }
+
+    /// <summary>
+    /// 重置等待指令状态
+    /// </summary>
+    public void Reset()
+    {
+        IsDone = false;
     }
 }

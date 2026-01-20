@@ -1,4 +1,4 @@
-﻿using GFramework.Core.Abstractions.system;
+using GFramework.Core.Abstractions.system;
 
 namespace GFramework.Game.Abstractions.coroutine;
 
@@ -10,6 +10,6 @@ public interface ICoroutineSystem : ISystem
     /// <summary>
     /// 更新协程系统，在每一帧调用以处理协程逻辑
     /// </summary>
-    /// <param name="deltaTime">距离上一帧的时间间隔（秒）</param>
+    /// <param name="deltaTime">自上一帧以来的时间间隔（秒）</param>
     void OnUpdate(float deltaTime);
 }
