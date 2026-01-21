@@ -5,24 +5,53 @@ using Godot;
 
 namespace GFramework.Godot.coroutine;
 
+/// <summary>
+/// Godot协程管理器，提供基于不同更新循环的协程调度功能
+/// 支持Process、PhysicsProcess和DeferredProcess三种执行段的协程管理
+/// </summary>
 public partial class Timing : Node
 {
     private static Timing? _instance;
     private static readonly Timing?[] ActiveInstances = new Timing?[16];
-    private CoroutineScheduler _deferredScheduler;
+    private CoroutineScheduler? _deferredScheduler;
     private GodotTimeSource? _deferredTimeSource;
     private ushort _frameCounter;
 
     private byte _instanceId = 1;
-    private CoroutineScheduler _physicsScheduler;
+    private CoroutineScheduler? _physicsScheduler;
     private GodotTimeSource? _physicsTimeSource;
 
-    private CoroutineScheduler _processScheduler;
+    private CoroutineScheduler? _processScheduler;
 
     private GodotTimeSource? _processTimeSource;
 
+    /// <summary>
+    /// 获取Process调度器，如果未初始化则抛出异常
+    /// </summary>
+    private CoroutineScheduler ProcessScheduler =>
+        _processScheduler ?? throw new InvalidOperationException(
+            "Timing not yet initialized (_Ready not executed)");
+
+    /// <summary>
+    /// 获取Physics调度器，如果未初始化则抛出异常
+    /// </summary>
+    private CoroutineScheduler PhysicsScheduler =>
+        _physicsScheduler ?? throw new InvalidOperationException(
+            "Timing not yet initialized (_Ready not executed)");
+
+    /// <summary>
+    /// 获取Deferred调度器，如果未初始化则抛出异常
+    /// </summary>
+    private CoroutineScheduler DeferredScheduler =>
+        _deferredScheduler ?? throw new InvalidOperationException(
+            "Timing not yet initialized (_Ready not executed)");
+
     #region 单例
 
+    /// <summary>
+    /// 获取Timing单例实例
+    /// 如果实例不存在则自动创建并添加到场景树根节点
+    /// </summary>
     public static Timing Instance
     {
         get
@@ -50,16 +79,29 @@ public partial class Timing : Node
 
     #region Debug 信息
 
+    /// <summary>
+    /// 获取Process段活跃协程数量
+    /// </summary>
     public int ProcessCoroutines => _processScheduler?.ActiveCoroutineCount ?? 0;
 
+    /// <summary>
+    /// 获取Physics段活跃协程数量
+    /// </summary>
     public int PhysicsCoroutines => _physicsScheduler?.ActiveCoroutineCount ?? 0;
 
+    /// <summary>
+    /// 获取Deferred段活跃协程数量
+    /// </summary>
     public int DeferredCoroutines => _deferredScheduler?.ActiveCoroutineCount ?? 0;
 
     #endregion
 
     #region 生命周期
 
+    /// <summary>
+    /// 节点就绪时的初始化方法
+    /// 设置处理优先级，初始化调度器，并注册实例
+    /// </summary>
     public override void _Ready()
     {
         ProcessPriority = -1;
@@ -70,6 +112,10 @@ public partial class Timing : Node
         RegisterInstance();
     }
 
+    /// <summary>
+    /// 节点退出场景树时的清理方法
+    /// 从活动实例数组中移除当前实例并清理必要资源
+    /// </summary>
     public override void _ExitTree()
     {
         if (_instanceId < ActiveInstances.Length)
@@ -78,11 +124,19 @@ public partial class Timing : Node
         CleanupInstanceIfNecessary();
     }
 
+    /// <summary>
+    /// 清理实例引用
+    /// </summary>
     private static void CleanupInstanceIfNecessary()
     {
         _instance = null;
     }
 
+    /// <summary>
+    /// 每帧处理逻辑
+    /// 更新Process调度器，增加帧计数器，并安排延迟处理
+    /// </summary>
+    /// <param name="delta">时间增量</param>
     public override void _Process(double delta)
     {
         _processScheduler?.Update();
@@ -91,11 +145,20 @@ public partial class Timing : Node
         CallDeferred(nameof(ProcessDeferred));
     }
 
+    /// <summary>
+    /// 物理处理逻辑
+    /// 更新Physics调度器
+    /// </summary>
+    /// <param name="delta">物理时间增量</param>
     public override void _PhysicsProcess(double delta)
     {
         _physicsScheduler?.Update();
     }
 
+    /// <summary>
+    /// 延迟处理逻辑
+    /// 更新Deferred调度器
+    /// </summary>
     private void ProcessDeferred()
     {
         _deferredScheduler?.Update();
@@ -105,6 +168,10 @@ public partial class Timing : Node
 
     #region 初始化
 
+    /// <summary>
+    /// 初始化所有调度器和时间源
+    /// 创建Process、Physics和Deferred三个调度器实例
+    /// </summary>
     private void InitializeSchedulers()
     {
         _processTimeSource = new GodotTimeSource(GetProcessDeltaTime);
@@ -130,6 +197,10 @@ public partial class Timing : Node
         );
     }
 
+    /// <summary>
+    /// 注册当前实例到活动实例数组中
+    /// 如果当前ID已被占用则寻找可用ID
+    /// </summary>
     private void RegisterInstance()
     {
         if (ActiveInstances[_instanceId] == null)
@@ -151,6 +222,11 @@ public partial class Timing : Node
         throw new OverflowException("最多只能存在 15 个 Timing 实例");
     }
 
+    /// <summary>
+    /// 尝试设置物理处理优先级
+    /// 使用反射方式设置ProcessPhysicsPriority属性
+    /// </summary>
+    /// <param name="priority">物理处理优先级</param>
     private static void TrySetPhysicsPriority(int priority)
     {
         try
@@ -172,6 +248,13 @@ public partial class Timing : Node
 
     #region 协程启动 API
 
+    /// <summary>
+    /// 在指定段运行协程
+    /// </summary>
+    /// <param name="coroutine">要运行的协程枚举器</param>
+    /// <param name="segment">协程执行段（Process/PhysicsProcess/DeferredProcess）</param>
+    /// <param name="tag">协程标签，用于批量操作</param>
+    /// <returns>协程句柄</returns>
     public static CoroutineHandle RunCoroutine(
         IEnumerator<IYieldInstruction> coroutine,
         Segment segment = Segment.Process,
@@ -180,6 +263,14 @@ public partial class Timing : Node
         return Instance.RunCoroutineOnInstance(coroutine, segment, tag);
     }
 
+    /// <summary>
+    /// 在当前实例上运行协程
+    /// 根据指定的段选择对应的调度器运行协程
+    /// </summary>
+    /// <param name="coroutine">要运行的协程枚举器</param>
+    /// <param name="segment">协程执行段</param>
+    /// <param name="tag">协程标签</param>
+    /// <returns>协程句柄</returns>
     public CoroutineHandle RunCoroutineOnInstance(
         IEnumerator<IYieldInstruction>? coroutine,
         Segment segment = Segment.Process,
@@ -190,9 +281,9 @@ public partial class Timing : Node
 
         return segment switch
         {
-            Segment.Process => _processScheduler.Run(coroutine, tag),
-            Segment.PhysicsProcess => _physicsScheduler.Run(coroutine, tag),
-            Segment.DeferredProcess => _deferredScheduler.Run(coroutine, tag),
+            Segment.Process => ProcessScheduler.Run(coroutine, tag),
+            Segment.PhysicsProcess => PhysicsScheduler.Run(coroutine, tag),
+            Segment.DeferredProcess => DeferredScheduler.Run(coroutine, tag),
             _ => default
         };
     }
@@ -201,67 +292,120 @@ public partial class Timing : Node
 
     #region 协程控制 API
 
+    /// <summary>
+    /// 暂停指定的协程
+    /// </summary>
+    /// <param name="handle">协程句柄</param>
+    /// <returns>是否成功暂停</returns>
     public static bool PauseCoroutine(CoroutineHandle handle)
     {
         return GetInstance(handle.Key)?.PauseOnInstance(handle) ?? false;
     }
 
+    /// <summary>
+    /// 恢复指定的协程
+    /// </summary>
+    /// <param name="handle">协程句柄</param>
+    /// <returns>是否成功恢复</returns>
     public static bool ResumeCoroutine(CoroutineHandle handle)
     {
         return GetInstance(handle.Key)?.ResumeOnInstance(handle) ?? false;
     }
 
+    /// <summary>
+    /// 终止指定的协程
+    /// </summary>
+    /// <param name="handle">协程句柄</param>
+    /// <returns>是否成功终止</returns>
     public static bool KillCoroutine(CoroutineHandle handle)
     {
         return GetInstance(handle.Key)?.KillOnInstance(handle) ?? false;
     }
 
+    /// <summary>
+    /// 终止所有具有指定标签的协程
+    /// </summary>
+    /// <param name="tag">协程标签</param>
+    /// <returns>被终止的协程数量</returns>
     public static int KillCoroutines(string tag)
     {
         return Instance.KillByTagOnInstance(tag);
     }
 
+    /// <summary>
+    /// 终止所有协程
+    /// </summary>
+    /// <returns>被终止的协程总数</returns>
     public static int KillAllCoroutines()
     {
         return Instance.ClearOnInstance();
     }
 
+    /// <summary>
+    /// 在当前实例上暂停协程
+    /// 尝试在所有调度器中查找并暂停指定协程
+    /// </summary>
+    /// <param name="handle">协程句柄</param>
+    /// <returns>是否成功暂停</returns>
     private bool PauseOnInstance(CoroutineHandle handle)
     {
-        return _processScheduler.Pause(handle)
-               || _physicsScheduler.Pause(handle)
-               || _deferredScheduler.Pause(handle);
+        return ProcessScheduler.Pause(handle)
+               || PhysicsScheduler.Pause(handle)
+               || DeferredScheduler.Pause(handle);
     }
 
+    /// <summary>
+    /// 在当前实例上恢复协程
+    /// 尝试在所有调度器中查找并恢复指定协程
+    /// </summary>
+    /// <param name="handle">协程句柄</param>
+    /// <returns>是否成功恢复</returns>
     private bool ResumeOnInstance(CoroutineHandle handle)
     {
-        return _processScheduler.Resume(handle)
-               || _physicsScheduler.Resume(handle)
-               || _deferredScheduler.Resume(handle);
+        return ProcessScheduler.Resume(handle)
+               || PhysicsScheduler.Resume(handle)
+               || DeferredScheduler.Resume(handle);
     }
 
+    /// <summary>
+    /// 在当前实例上终止协程
+    /// 尝试在所有调度器中查找并终止指定协程
+    /// </summary>
+    /// <param name="handle">协程句柄</param>
+    /// <returns>是否成功终止</returns>
     private bool KillOnInstance(CoroutineHandle handle)
     {
-        return _processScheduler.Kill(handle)
-               || _physicsScheduler.Kill(handle)
-               || _deferredScheduler.Kill(handle);
+        return ProcessScheduler.Kill(handle)
+               || PhysicsScheduler.Kill(handle)
+               || DeferredScheduler.Kill(handle);
     }
 
+    /// <summary>
+    /// 在当前实例上根据标签终止协程
+    /// 在所有调度器中查找并终止具有指定标签的协程
+    /// </summary>
+    /// <param name="tag">协程标签</param>
+    /// <returns>被终止的协程数量</returns>
     private int KillByTagOnInstance(string tag)
     {
         int count = 0;
-        count += _processScheduler.KillByTag(tag);
-        count += _physicsScheduler.KillByTag(tag);
-        count += _deferredScheduler.KillByTag(tag);
+        count += ProcessScheduler.KillByTag(tag);
+        count += PhysicsScheduler.KillByTag(tag);
+        count += DeferredScheduler.KillByTag(tag);
         return count;
     }
 
+    /// <summary>
+    /// 清空当前实例上的所有协程
+    /// 从所有调度器中清除协程
+    /// </summary>
+    /// <returns>被清除的协程总数</returns>
     private int ClearOnInstance()
     {
         int count = 0;
-        count += _processScheduler.Clear();
-        count += _physicsScheduler.Clear();
-        count += _deferredScheduler.Clear();
+        count += ProcessScheduler.Clear();
+        count += PhysicsScheduler.Clear();
+        count += DeferredScheduler.Clear();
         return count;
     }
 
@@ -269,53 +413,25 @@ public partial class Timing : Node
 
     #region 工具方法
 
+    /// <summary>
+    /// 根据ID获取Timing实例
+    /// </summary>
+    /// <param name="id">实例ID</param>
+    /// <returns>对应的Timing实例或null</returns>
     public static Timing? GetInstance(byte id)
     {
         return id < ActiveInstances.Length ? ActiveInstances[id] : null;
     }
 
-    /// <summary>
-    /// 创建等待指定秒数的指令
-    /// </summary>
-    public static Delay WaitForSeconds(double seconds)
-    {
-        return new Delay(seconds);
-    }
 
     /// <summary>
-    /// 创建等待一帧的指令
+    /// 检查节点是否处于有效状态
     /// </summary>
-    public static WaitOneFrame WaitForOneFrame()
-    {
-        return new WaitOneFrame();
-    }
-
-    /// <summary>
-    /// 创建等待指定帧数的指令
-    /// </summary>
-    public static WaitForFrames WaitForFrames(int frames)
-    {
-        return new WaitForFrames(frames);
-    }
-
-    /// <summary>
-    /// 创建等待直到条件满足的指令
-    /// </summary>
-    public static WaitUntil WaitUntil(Func<bool> predicate)
-    {
-        return new WaitUntil(predicate);
-    }
-
-    /// <summary>
-    /// 创建等待当条件为真时持续等待的指令
-    /// </summary>
-    public static WaitWhile WaitWhile(Func<bool> predicate)
-    {
-        return new WaitWhile(predicate);
-    }
-
+    /// <param name="node">要检查的节点</param>
+    /// <returns>如果节点存在且有效则返回true，否则返回false</returns>
     public static bool IsNodeAlive(Node? node)
     {
+        // 验证节点是否存在、实例是否有效、未被标记为删除且在场景树中
         return node != null
                && IsInstanceValid(node)
                && !node.IsQueuedForDeletion()
@@ -326,6 +442,13 @@ public partial class Timing : Node
 
     #region 延迟调用
 
+    /// <summary>
+    /// 延迟调用指定动作
+    /// </summary>
+    /// <param name="delay">延迟时间（秒）</param>
+    /// <param name="action">要执行的动作</param>
+    /// <param name="segment">执行段</param>
+    /// <returns>协程句柄</returns>
     public static CoroutineHandle CallDelayed(
         double delay,
         Action? action,
@@ -337,6 +460,14 @@ public partial class Timing : Node
         return RunCoroutine(DelayedCallCoroutine(delay, action), segment);
     }
 
+    /// <summary>
+    /// 延迟调用指定动作，支持取消条件
+    /// </summary>
+    /// <param name="delay">延迟时间（秒）</param>
+    /// <param name="action">要执行的动作</param>
+    /// <param name="cancelWith">取消条件节点</param>
+    /// <param name="segment">执行段</param>
+    /// <returns>协程句柄</returns>
     public static CoroutineHandle CallDelayed(
         double delay,
         Action? action,
@@ -351,6 +482,12 @@ public partial class Timing : Node
             segment);
     }
 
+    /// <summary>
+    /// 延迟调用协程实现
+    /// </summary>
+    /// <param name="delay">延迟时间</param>
+    /// <param name="action">要执行的动作</param>
+    /// <returns>协程枚举器</returns>
     private static IEnumerator<IYieldInstruction> DelayedCallCoroutine(
         double delay,
         Action action)
@@ -359,6 +496,13 @@ public partial class Timing : Node
         action();
     }
 
+    /// <summary>
+    /// 带取消条件的延迟调用协程实现
+    /// </summary>
+    /// <param name="delay">延迟时间</param>
+    /// <param name="action">要执行的动作</param>
+    /// <param name="cancelWith">取消条件节点</param>
+    /// <returns>协程枚举器</returns>
     private static IEnumerator<IYieldInstruction> DelayedCallWithCancelCoroutine(
         double delay,
         Action action,
