@@ -111,33 +111,85 @@ public class CoroutineHandle : IYieldInstruction, ICoroutineHandle
     {
         if (IsDone) return false;
 
-        // 检查并更新当前等待的指令
+        // 如果有等待指令，先更新等待指令
         if (_waitingInstruction != null)
         {
             _waitingInstruction.Update(deltaTime);
-            if (!_waitingInstruction.IsDone) return true;
+            
+            // 如果等待指令还未完成，继续等待
+            if (!_waitingInstruction.IsDone)
+            {
+                return true;
+            }
+            
+            // 等待指令已完成，清除它
             _waitingInstruction = null;
         }
 
-        // 循环执行直到需要等待或协程完成
-        while (_stack.Count > 0 && !IsDone)
+        // 每帧只推进一步（执行一个 MoveNext）
+        if (_stack.Count > 0)
         {
             try
             {
                 var current = _stack.Peek();
-                if (current.MoveNext())
+                bool hasNext = current.MoveNext();
+                
+                if (!hasNext)
                 {
-                    var yielded = current.Current;
-                    var needsWait = ProcessYieldValue(yielded);
+                    // 当前枚举器已完成，弹出栈
+                    _stack.Pop();
+                    
+                    // 如果栈为空，协程完成
+                    if (_stack.Count == 0)
+                    {
+                        Complete();
+                        return false;
+                    }
+                    
+                    // 否则继续执行下一个枚举器（在下一帧）
+                    return true;
+                }
+                
+                // MoveNext() 返回 true，有下一个值
+                var yielded = current.Current;
+                var needsWait = ProcessYieldValue(yielded);
 
-                    // 如果需要等待，则暂停执行
-                    if (needsWait) return true;
-
-                    // 否则继续执行下一个步骤
-                    continue;
+                // 如果需要等待，则暂停执行
+                if (needsWait)
+                {
+                    return true;
                 }
 
-                _stack.Pop();
+                // 如果不需要等待（yield null 或嵌套协程），继续处理
+                // 处理 yield null 的情况：yield null 后需要再调用一次 MoveNext 才能知道是否完成
+                if (yielded == null)
+                {
+                    // yield null 意味着等待一帧，但协程可能还没有完成
+                    // 需要再次检查是否还有更多步骤
+                    bool stillHasNext = current.MoveNext();
+                    if (!stillHasNext)
+                    {
+                        // 协程确实完成了
+                        _stack.Pop();
+                        if (_stack.Count == 0)
+                        {
+                            Complete();
+                            return false;
+                        }
+                    }
+                    else
+                    {
+                        // 还有更多内容，yield 出来的值需要处理
+                        yielded = current.Current;
+                        needsWait = ProcessYieldValue(yielded);
+                        if (needsWait)
+                        {
+                            return true;
+                        }
+                    }
+                }
+
+                return true;
             }
             catch (Exception ex)
             {
@@ -146,13 +198,9 @@ public class CoroutineHandle : IYieldInstruction, ICoroutineHandle
             }
         }
 
-        if (_stack.Count == 0)
-        {
-            Complete();
-            return false;
-        }
-
-        return true;
+        // 栈为空，协程完成
+        Complete();
+        return false;
     }
 
     /// <summary>
@@ -165,25 +213,31 @@ public class CoroutineHandle : IYieldInstruction, ICoroutineHandle
         switch (yielded)
         {
             case CoroutineHandle otherHandle:
-                // 标记子协程由父协程管理
-                if (!otherHandle.IsDone)
+                // 处理 yield return CoroutineHandle
+                if (otherHandle.IsDone)
                 {
-                    otherHandle.MarkAsManagedByParent();
-                    _waitingInstruction = otherHandle;
-                    return true; // 需要等待子协程完成
+                    // 子协程已完成，不需要等待
+                    return false;
                 }
-                return false; // 子协程已完成，不需要等待
+                
+                // 标记子协程由父协程管理
+                otherHandle.MarkAsManagedByParent();
+                _waitingInstruction = otherHandle;
+                return true; // 需要等待子协程完成
 
             case IEnumerator nested:
+                // 处理 yield return IEnumerator（嵌套协程）
                 _stack.Push(nested);
-                return false; // 压入嵌套协程，立即执行
+                return false; // 压入嵌套协程，在下一帧继续执行
 
             case IYieldInstruction instruction:
+                // 处理 yield return IYieldInstruction
                 _waitingInstruction = instruction;
                 return true; // 需要等待指令完成
 
             case null:
-                return false; // null，立即继续
+                // 处理 yield return null（等待一帧）
+                return false; // null 立即继续，但会返回 true 让协程继续执行
 
             default:
                 throw new InvalidOperationException($"Unsupported yield type: {yielded.GetType()}");

@@ -19,7 +19,7 @@ public class WaitUntil(Func<bool> predicate) : IYieldInstruction
     /// <param name="deltaTime">时间增量</param>
     public void Update(float deltaTime)
     {
-        // 只有在未完成状态下才检查条件
+        // 每次更新都重新评估条件，但一旦完成就保持完成状态
         if (!IsDone) IsDone = predicate();
     }
 

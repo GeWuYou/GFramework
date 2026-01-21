@@ -30,6 +30,7 @@ public static class CoroutineScopeExtensions
     {
         yield return new WaitForSeconds(delay);
         action?.Invoke();
+        yield break; // 确保协程正确结束
     }
 
     /// <summary>
@@ -52,11 +53,11 @@ public static class CoroutineScopeExtensions
     /// <returns>协程迭代器</returns>
     private static IEnumerator RepeatingRoutine(float interval, Action action)
     {
-        // 持续循环执行动作并等待指定间隔
+        // 持续循环等待指定间隔后执行动作
         while (true)
         {
-            action?.Invoke();
             yield return new WaitForSeconds(interval);
+            action?.Invoke();  // 先等待，再执行
         }
     }
 }
