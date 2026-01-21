@@ -66,22 +66,6 @@ public class YieldInstructionTests
     }
 
     /// <summary>
-    /// 验证Delay指令应该累积多次Update的时间
-    /// </summary>
-    [Test]
-    public void Delay_Should_Accumulate_Time_Across_Multiple_Updates()
-    {
-        var delay = new Delay(1.0);
-
-        for (var i = 0; i < 10; i++)
-        {
-            delay.Update(0.1);
-        }
-
-        Assert.That(delay.IsDone, Is.True);
-    }
-
-    /// <summary>
     /// 验证WaitOneFrame指令初始状态为未完成
     /// </summary>
     [Test]

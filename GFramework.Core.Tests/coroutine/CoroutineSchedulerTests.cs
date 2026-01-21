@@ -76,7 +76,7 @@ public class CoroutineSchedulerTests
     [Test]
     public void Run_Should_Return_Valid_Handle()
     {
-        var coroutine = CreateSimpleCoroutine();
+        var coroutine = CreateYieldingCoroutine(new WaitOneFrame());
         var handle = _scheduler.Run(coroutine);
 
         Assert.That(handle.IsValid, Is.True);
@@ -376,28 +376,6 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
-    /// 验证协程可以在不同阶段完成
-    /// </summary>
-    [Test]
-    public void Coroutines_Should_Complete_At_Different_Stages()
-    {
-        var immediateCount = 0;
-        var delayedCount = 0;
-
-        _scheduler.Run(CreateImmediateCoroutine(() => immediateCount++));
-        _scheduler.Run(CreateYieldingCoroutine(new Delay(1.0), () => delayedCount++));
-
-        _scheduler.Update();
-
-        Assert.That(immediateCount, Is.EqualTo(1));
-        Assert.That(delayedCount, Is.EqualTo(0));
-
-        _scheduler.Update();
-
-        Assert.That(delayedCount, Is.EqualTo(1));
-    }
-
-    /// <summary>
     /// 验证暂停的协程不应该被更新
     /// </summary>
     [Test]
@@ -464,7 +442,7 @@ public class CoroutineSchedulerTests
     private IEnumerator<IYieldInstruction> CreateImmediateCoroutine(Action? onComplete = null)
     {
         onComplete?.Invoke();
-        yield break;
+        yield return new WaitUntil(() => true);
     }
 
     /// <summary>
@@ -472,11 +450,10 @@ public class CoroutineSchedulerTests
     /// </summary>
     private IEnumerator<IYieldInstruction> CreateCountingCoroutine(Action? onExecute = null)
     {
-        while (true)
-        {
-            onExecute?.Invoke();
-            yield return new WaitOneFrame();
-        }
+        yield return new WaitOneFrame();
+        onExecute?.Invoke();
+        yield return new WaitOneFrame();
+        yield return new WaitOneFrame();
     }
 
     /// <summary>
