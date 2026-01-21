@@ -1,6 +1,6 @@
 using System;
 
-namespace GFramework.Game.Abstractions.coroutine;
+namespace GFramework.Core.Abstractions.coroutine;
 
 /// <summary>
 /// 协程句柄接口，用于管理和控制协程的执行状态

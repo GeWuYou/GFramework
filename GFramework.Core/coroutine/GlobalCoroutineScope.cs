@@ -1,7 +1,7 @@
 using System.Collections;
-using GFramework.Game.Abstractions.coroutine;
+using GFramework.Core.Abstractions.coroutine;
 
-namespace GFramework.Game.coroutine;
+namespace GFramework.Core.coroutine;
 
 /// <summary>
 /// 全局协程作用域管理器，提供全局唯一的协程执行环境

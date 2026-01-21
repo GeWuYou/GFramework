@@ -1,6 +1,6 @@
 using GFramework.Core.Abstractions.system;
 
-namespace GFramework.Game.Abstractions.coroutine;
+namespace GFramework.Core.Abstractions.coroutine;
 
 /// <summary>
 /// 协程系统接口，继承自ISystem，用于管理游戏中的协程执行

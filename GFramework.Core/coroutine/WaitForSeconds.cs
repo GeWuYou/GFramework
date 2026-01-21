@@ -1,6 +1,6 @@
-using GFramework.Game.Abstractions.coroutine;
+using GFramework.Core.Abstractions.coroutine;
 
-namespace GFramework.Game.coroutine;
+namespace GFramework.Core.coroutine;
 
 /// <summary>
 /// 表示一个等待指定秒数的时间延迟指令

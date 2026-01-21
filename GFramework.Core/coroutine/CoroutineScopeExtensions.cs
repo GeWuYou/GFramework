@@ -1,7 +1,7 @@
 using System.Collections;
-using GFramework.Game.Abstractions.coroutine;
+using GFramework.Core.Abstractions.coroutine;
 
-namespace GFramework.Game.coroutine;
+namespace GFramework.Core.coroutine;
 
 /// <summary>
 /// 为ICoroutineScope提供扩展方法，支持延迟执行和重复执行协程功能

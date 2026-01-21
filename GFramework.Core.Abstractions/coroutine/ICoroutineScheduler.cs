@@ -1,4 +1,4 @@
-namespace GFramework.Game.Abstractions.coroutine;
+namespace GFramework.Core.Abstractions.coroutine;
 
 /// <summary>
 /// 协程调度器接口，用于管理和执行协程任务

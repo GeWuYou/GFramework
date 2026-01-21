@@ -1,4 +1,4 @@
-namespace GFramework.Game.Abstractions.coroutine;
+namespace GFramework.Core.Abstractions.coroutine;
 
 /// <summary>
 /// 表示一个可等待的指令接口，用于协程中的等待操作

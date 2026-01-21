@@ -1,6 +1,6 @@
-using GFramework.Game.Abstractions.coroutine;
+using GFramework.Core.Abstractions.coroutine;
 
-namespace GFramework.Game.coroutine;
+namespace GFramework.Core.coroutine;
 
 /// <summary>
 /// 协程上下文类，用于封装协程执行所需的环境信息

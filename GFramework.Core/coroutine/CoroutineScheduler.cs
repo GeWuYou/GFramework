@@ -1,7 +1,7 @@
 using System.Collections;
-using GFramework.Game.Abstractions.coroutine;
+using GFramework.Core.Abstractions.coroutine;
 
-namespace GFramework.Game.coroutine;
+namespace GFramework.Core.coroutine;
 
 public class CoroutineScheduler : ICoroutineScheduler
 {
@@ -41,6 +41,10 @@ public class CoroutineScheduler : ICoroutineScheduler
                 _toRemove.Add(c);
                 continue;
             }
+
+            // 跳过由父协程管理的协程
+            if (c.IsManagedByParent)
+                continue;
 
             ((IYieldInstruction)c).Update(deltaTime);
             if (c.IsDone)

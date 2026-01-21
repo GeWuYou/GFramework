@@ -1,7 +1,7 @@
 using System.Collections;
-using GFramework.Game.Abstractions.coroutine;
+using GFramework.Core.Abstractions.coroutine;
 
-namespace GFramework.Game.coroutine;
+namespace GFramework.Core.coroutine;
 
 /// <summary>
 /// 协程作用域管理器，用于管理和控制协程的生命周期

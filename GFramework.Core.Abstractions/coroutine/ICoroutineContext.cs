@@ -1,4 +1,4 @@
-namespace GFramework.Game.Abstractions.coroutine;
+namespace GFramework.Core.Abstractions.coroutine;
 
 /// <summary>
 /// 协程上下文接口，提供协程执行所需的上下文信息

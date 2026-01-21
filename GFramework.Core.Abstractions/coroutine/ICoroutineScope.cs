@@ -1,6 +1,6 @@
 using System.Collections;
 
-namespace GFramework.Game.Abstractions.coroutine;
+namespace GFramework.Core.Abstractions.coroutine;
 
 /// <summary>
 /// 协程作用域接口，用于管理协程的生命周期和执行
