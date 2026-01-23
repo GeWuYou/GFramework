@@ -83,16 +83,42 @@ public static class CoroutineHelper
             yield return new Delay(interval);
         }
     }
-
+    
     /// <summary>
-    /// 无限重复调用指定的委托
+    /// 无限重复调用指定的委托，直到条件不满足
     /// </summary>
     /// <param name="interval">每次调用之间的间隔时间（秒）</param>
     /// <param name="action">要执行的动作委托</param>
+    /// <param name="shouldContinue">继续执行的条件，返回false时停止</param>
     /// <returns>返回一个枚举器，用于协程执行</returns>
-    public static IEnumerator<IYieldInstruction> RepeatCallForever(double interval, Action? action)
+    public static IEnumerator<IYieldInstruction> RepeatCallForever(
+        double interval, 
+        Action? action, 
+        Func<bool>? shouldContinue = null)
     {
-        while (true)
+        // 循环执行动作直到条件不再满足
+        while (shouldContinue?.Invoke() ?? true)
+        {
+            action?.Invoke();
+            yield return new Delay(interval);
+        }
+    }
+    
+    /// <summary>
+    /// 无限重复调用指定的委托，直到取消令牌被触发
+    /// </summary>
+    /// <param name="interval">每次调用之间的间隔时间（秒）</param>
+    /// <param name="action">要执行的动作委托</param>
+    /// <param name="token">用于控制循环执行的取消令牌</param>
+    /// <returns>返回一个枚举器，用于协程执行</returns>
+    public static IEnumerator<IYieldInstruction> RepeatCallForever(
+        double interval,
+        Action? action,
+        CancellationToken token
+    )
+    {
+        // 循环执行动作直到取消令牌被请求取消
+        while (!token.IsCancellationRequested)
         {
             action?.Invoke();
             yield return new Delay(interval);
