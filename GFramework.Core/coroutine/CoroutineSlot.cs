@@ -21,4 +21,9 @@ internal sealed class CoroutineSlot
     /// 当前等待的指令，用于控制协程的暂停和恢复
     /// </summary>
     public IYieldInstruction? Waiting;
+    
+    /// <summary>
+    /// 协程句柄，用于标识和管理协程实例
+    /// </summary>
+    public CoroutineHandle Handle;
 }

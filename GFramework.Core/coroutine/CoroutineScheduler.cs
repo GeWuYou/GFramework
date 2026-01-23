@@ -56,7 +56,8 @@ public sealed class CoroutineScheduler(
         var slot = new CoroutineSlot
         {
             Enumerator = coroutine,
-            State = CoroutineState.Running
+            State = CoroutineState.Running,
+            Handle = handle
         };
 
         _slots[slotIndex] = slot;
@@ -88,7 +89,7 @@ public sealed class CoroutineScheduler(
         for (var i = 0; i < _nextSlot; i++)
         {
             var slot = _slots[i];
-            if (slot == null || slot.State != CoroutineState.Running)
+            if (slot is not { State: CoroutineState.Running })
                 continue;
 
             try
@@ -207,7 +208,7 @@ public sealed class CoroutineScheduler(
 
         if (!_waiting.TryGetValue(target, out var set))
         {
-            set = new HashSet<CoroutineHandle>();
+            set = [];
             _waiting[target] = set;
         }
 
@@ -223,15 +224,8 @@ public sealed class CoroutineScheduler(
     {
         if (!_tagged.TryGetValue(tag, out var handles))
             return 0;
-
         var copy = handles.ToArray();
-        var count = 0;
-
-        foreach (var h in copy)
-            if (Kill(h))
-                count++;
-
-        return count;
+        return copy.Count(Kill);
     }
 
     /// <summary>
@@ -294,43 +288,28 @@ public sealed class CoroutineScheduler(
         if (slot == null)
             return;
 
-        _slots[slotIndex] = null;
-        _activeCount--;
-
-        CoroutineHandle handle = default;
-        foreach (var kv in _metadata)
-        {
-            if (kv.Value.SlotIndex == slotIndex)
-            {
-                handle = kv.Key;
-                break;
-            }
-        }
-
+        var handle = slot.Handle;
         if (!handle.IsValid)
             return;
+
+        _slots[slotIndex] = null;
+        _activeCount--;
 
         RemoveTag(handle);
         _metadata.Remove(handle);
 
         // 唤醒等待者
-        if (_waiting.TryGetValue(handle, out var waiters))
+        if (!_waiting.TryGetValue(handle, out var waiters)) return;
+        foreach (var waiter in waiters)
         {
-            foreach (var waiter in waiters)
-            {
-                if (_metadata.TryGetValue(waiter, out var meta))
-                {
-                    var s = _slots[meta.SlotIndex];
-                    if (s != null)
-                    {
-                        s.State = CoroutineState.Running;
-                        meta.State = CoroutineState.Running;
-                    }
-                }
-            }
-
-            _waiting.Remove(handle);
+            if (!_metadata.TryGetValue(waiter, out var meta)) continue;
+            var s = _slots[meta.SlotIndex];
+            if (s == null) continue;
+            s.State = CoroutineState.Running;
+            meta.State = CoroutineState.Running;
         }
+
+        _waiting.Remove(handle);
     }
 
     /// <summary>
