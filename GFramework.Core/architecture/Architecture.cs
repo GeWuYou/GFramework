@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using GFramework.Core.Abstractions.architecture;
 using GFramework.Core.Abstractions.enums;
 using GFramework.Core.Abstractions.environment;
@@ -70,11 +74,6 @@ public abstract class Architecture(
     ///     获取依赖注入容器
     /// </summary>
     private IIocContainer Container => Services.Container;
-
-    /// <summary>
-    ///     获取事件总线
-    /// </summary>
-    private IEventBus EventBus => Services.EventBus;
 
     /// <summary>
     ///     当前架构的阶段
@@ -363,10 +362,9 @@ public abstract class Architecture(
             return;
         }
 
-        // 进入销毁阶段并发送销毁开始事件
+        // 进入销毁阶段
         _logger.Info("Starting architecture destruction");
         EnterPhase(ArchitecturePhase.Destroying);
-        EventBus.Send(new ArchitectureEvents.ArchitectureDestroyingEvent());
 
         // 销毁所有实现了 IDisposable 的组件（按注册逆序销毁）
         _logger.Info($"Destroying {_disposables.Count} disposable components");
@@ -389,9 +387,8 @@ public abstract class Architecture(
         _disposables.Clear();
         _disposableSet.Clear();
 
-        // 进入已销毁阶段并发送销毁完成事件
+        // 进入已销毁阶段
         EnterPhase(ArchitecturePhase.Destroyed);
-        EventBus.Send(new ArchitectureEvents.ArchitectureDestroyedEvent());
         _logger.Info("Architecture destruction completed");
     }
 
@@ -499,7 +496,6 @@ public abstract class Architecture(
         {
             _logger.Error("Architecture initialization failed:", e);
             EnterPhase(ArchitecturePhase.FailedInitialization);
-            EventBus.Send(new ArchitectureEvents.ArchitectureFailedInitializationEvent());
             throw;
         }
     }
@@ -518,7 +514,6 @@ public abstract class Architecture(
         {
             _logger.Error("Architecture initialization failed:", e);
             EnterPhase(ArchitecturePhase.FailedInitialization);
-            EventBus.Send(new ArchitectureEvents.ArchitectureFailedInitializationEvent());
             throw;
         }
     }
@@ -560,7 +555,6 @@ public abstract class Architecture(
 
         _mInitialized = true;
         EnterPhase(ArchitecturePhase.Ready);
-        EventBus.Send(new ArchitectureEvents.ArchitectureLifecycleReadyEvent());
 
         _logger.Info($"Architecture {GetType().Name} is ready - all components initialized");
     }

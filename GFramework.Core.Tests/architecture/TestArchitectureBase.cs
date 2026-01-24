@@ -42,7 +42,6 @@ public abstract class TestArchitectureBase : Architecture
     {
         InitCalled = true;
         _postRegistrationHook?.Invoke(this);
-        Context.RegisterEvent<ArchitectureEvents.ArchitectureLifecycleReadyEvent>(_ => { ReadyEventFired = true; });
     }
 
     /// <summary>
