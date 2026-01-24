@@ -1,4 +1,6 @@
-﻿namespace GFramework.Core.extensions;
+﻿using System;
+
+namespace GFramework.Core.extensions;
 
 /// <summary>
 ///     提供基于运行时类型判断的对象扩展方法，
