@@ -86,7 +86,9 @@ public abstract class Architecture(
     #endregion
 
     #region Fields
+    private readonly TaskCompletionSource _readyTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
+    public bool IsReady => CurrentPhase == ArchitecturePhase.Ready;
     /// <summary>
     ///     待初始化组件的去重集合
     /// </summary>
@@ -553,9 +555,18 @@ public abstract class Architecture(
 
         _mInitialized = true;
         EnterPhase(ArchitecturePhase.Ready);
-
+        // 🔥 释放 Ready await
+        _readyTcs.TrySetResult();
+        
         _logger.Info($"Architecture {GetType().Name} is ready - all components initialized");
     }
-
+    
+    /// <summary>
+    /// 等待架构初始化完成（Ready 阶段）
+    /// </summary>
+    public Task WaitUntilReadyAsync()
+    {
+        return IsReady ? Task.CompletedTask : _readyTcs.Task;
+    }
     #endregion
 }
