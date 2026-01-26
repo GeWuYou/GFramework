@@ -1,6 +1,6 @@
 ﻿using GFramework.Core.Abstractions.coroutine;
 
-namespace GFramework.Core.coroutine;
+namespace GFramework.Core.coroutine.instructions;
 
 /// <summary>
 /// 延迟等待指令，实现IYieldInstruction接口，用于协程中的时间延迟

@@ -1,5 +1,6 @@
 using GFramework.Core.Abstractions.coroutine;
 using GFramework.Core.coroutine;
+using GFramework.Core.coroutine.instructions;
 using NUnit.Framework;
 
 namespace GFramework.Core.Tests.coroutine;

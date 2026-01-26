@@ -1,6 +1,6 @@
 ﻿using GFramework.Core.Abstractions.coroutine;
 
-namespace GFramework.Core.coroutine;
+namespace GFramework.Core.coroutine.instructions;
 
 /// <summary>
 /// 表示一个等待条件为假时才完成的协程指令

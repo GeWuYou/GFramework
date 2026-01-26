@@ -1,6 +1,6 @@
 ﻿using GFramework.Core.Abstractions.coroutine;
 
-namespace GFramework.Core.coroutine;
+namespace GFramework.Core.coroutine.instructions;
 
 /// <summary>
 /// 表示一个等待直到指定条件满足的协程指令

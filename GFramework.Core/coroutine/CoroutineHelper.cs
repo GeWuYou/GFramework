@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading;
 using GFramework.Core.Abstractions.coroutine;
+using GFramework.Core.coroutine.instructions;
 
 namespace GFramework.Core.coroutine;
 
@@ -57,6 +55,17 @@ public static class CoroutineHelper
     public static WaitWhile WaitWhile(Func<bool> predicate)
     {
         return new WaitWhile(predicate);
+    }
+
+    /// <summary>
+    /// 等待指定时间并提供进度回调
+    /// </summary>
+    /// <param name="duration">等待的持续时间（秒）</param>
+    /// <param name="onProgress">进度回调函数，接收0-1之间的进度值</param>
+    /// <returns>等待进度指令</returns>
+    public static WaitForProgress WaitForProgress(double duration, Action<float> onProgress)
+    {
+        return new WaitForProgress(duration, onProgress);
     }
 
     /// <summary>

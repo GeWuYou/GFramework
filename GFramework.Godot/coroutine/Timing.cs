@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using GFramework.Core.Abstractions.coroutine;
 using GFramework.Core.coroutine;
+using GFramework.Core.coroutine.instructions;
 using Godot;
 
 namespace GFramework.Godot.coroutine;

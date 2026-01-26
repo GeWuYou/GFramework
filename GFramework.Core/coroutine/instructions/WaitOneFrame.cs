@@ -1,6 +1,6 @@
 ﻿using GFramework.Core.Abstractions.coroutine;
 
-namespace GFramework.Core.coroutine;
+namespace GFramework.Core.coroutine.instructions;
 
 /// <summary>
 /// 表示等待一帧的等待指令实现

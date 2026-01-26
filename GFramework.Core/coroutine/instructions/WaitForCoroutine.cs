@@ -1,6 +1,6 @@
 ﻿using GFramework.Core.Abstractions.coroutine;
 
-namespace GFramework.Core.coroutine;
+namespace GFramework.Core.coroutine.instructions;
 
 /// <summary>
 /// 等待协程完成的指令类，实现IYieldInstruction接口

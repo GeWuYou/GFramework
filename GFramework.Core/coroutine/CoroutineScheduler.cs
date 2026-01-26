@@ -368,4 +368,8 @@ public sealed class CoroutineScheduler(
     }
 
     #endregion
+    public bool IsCoroutineAlive(CoroutineHandle handle)
+    {
+        return _metadata.ContainsKey(handle);
+    }
 }
