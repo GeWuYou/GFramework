@@ -13,16 +13,16 @@ using NUnit.Framework;
 namespace GFramework.Core.Tests.utility;
 
 /// <summary>
-/// AbstractContextUtility类的单元测试
-/// 测试内容包括：
-/// - 抽象工具类实现
-/// - IContextUtility接口实现
-/// - Init方法调用
-/// - 日志初始化
-/// - 上下文感知功能（SetContext, GetContext）
-/// - 子类继承行为
-/// - 工具初始化日志记录
-/// - 工具生命周期完整性
+///     AbstractContextUtility类的单元测试
+///     测试内容包括：
+///     - 抽象工具类实现
+///     - IContextUtility接口实现
+///     - Init方法调用
+///     - 日志初始化
+///     - 上下文感知功能（SetContext, GetContext）
+///     - 子类继承行为
+///     - 工具初始化日志记录
+///     - 工具生命周期完整性
 /// </summary>
 [TestFixture]
 public class AbstractContextUtilityTests
@@ -43,7 +43,7 @@ public class AbstractContextUtilityTests
     private IocContainer _container = null!;
 
     /// <summary>
-    /// 测试AbstractContextUtility实现IContextUtility接口
+    ///     测试AbstractContextUtility实现IContextUtility接口
     /// </summary>
     [Test]
     public void AbstractContextUtility_Should_Implement_IContextUtility_Interface()
@@ -54,7 +54,7 @@ public class AbstractContextUtilityTests
     }
 
     /// <summary>
-    /// 测试Init方法调用
+    ///     测试Init方法调用
     /// </summary>
     [Test]
     public void Init_Should_Call_OnInit_Method()
@@ -69,7 +69,7 @@ public class AbstractContextUtilityTests
     }
 
     /// <summary>
-    /// 测试Init方法设置Logger属性
+    ///     测试Init方法设置Logger属性
     /// </summary>
     [Test]
     public void Init_Should_Set_Logger_Property()
@@ -84,7 +84,7 @@ public class AbstractContextUtilityTests
     }
 
     /// <summary>
-    /// 测试Init方法记录初始化日志
+    ///     测试Init方法记录初始化日志
     /// </summary>
     [Test]
     public void Init_Should_Log_Initialization()
@@ -99,7 +99,7 @@ public class AbstractContextUtilityTests
     }
 
     /// <summary>
-    /// 测试Destroy方法调用
+    ///     测试Destroy方法调用
     /// </summary>
     [Test]
     public void Destroy_Should_Call_OnDestroy_Method()
@@ -115,7 +115,7 @@ public class AbstractContextUtilityTests
     }
 
     /// <summary>
-    /// 测试上下文感知功能 - SetContext方法
+    ///     测试上下文感知功能 - SetContext方法
     /// </summary>
     [Test]
     public void SetContext_Should_Set_Context_Property()
@@ -130,7 +130,7 @@ public class AbstractContextUtilityTests
     }
 
     /// <summary>
-    /// 测试上下文感知功能 - GetContext方法
+    ///     测试上下文感知功能 - GetContext方法
     /// </summary>
     [Test]
     public void GetContext_Should_Return_Context_Property()
@@ -146,7 +146,7 @@ public class AbstractContextUtilityTests
     }
 
     /// <summary>
-    /// 测试子类继承行为
+    ///     测试子类继承行为
     /// </summary>
     [Test]
     public void Child_Class_Should_Override_OnInit_Method()
@@ -163,7 +163,7 @@ public class AbstractContextUtilityTests
     }
 
     /// <summary>
-    /// 测试工具生命周期完整性
+    ///     测试工具生命周期完整性
     /// </summary>
     [Test]
     public void ContextUtility_Should_Complete_Full_Lifecycle()
@@ -186,7 +186,7 @@ public class AbstractContextUtilityTests
     }
 
     /// <summary>
-    /// 测试工具类可以多次初始化和销毁
+    ///     测试工具类可以多次初始化和销毁
     /// </summary>
     [Test]
     public void ContextUtility_Should_Be_Initializable_And_Destroyable_Multiple_Times()
@@ -211,27 +211,27 @@ public class AbstractContextUtilityTests
 }
 
 /// <summary>
-/// 测试用上下文工具类V1
+///     测试用上下文工具类V1
 /// </summary>
 public sealed class TestContextUtilityV1 : AbstractContextUtility
 {
     /// <summary>
-    /// 获取工具是否已初始化
+    ///     获取工具是否已初始化
     /// </summary>
     public bool Initialized { get; private set; }
 
     /// <summary>
-    /// 获取工具是否已销毁
+    ///     获取工具是否已销毁
     /// </summary>
     public bool Destroyed { get; set; }
 
     /// <summary>
-    /// 获取Init方法是否被调用
+    ///     获取Init方法是否被调用
     /// </summary>
     public bool InitCalled { get; private set; }
 
     /// <summary>
-    /// 获取Logger对象（用于测试）
+    ///     获取Logger对象（用于测试）
     /// </summary>
     public ILogger? GetLogger()
     {
@@ -239,7 +239,7 @@ public sealed class TestContextUtilityV1 : AbstractContextUtility
     }
 
     /// <summary>
-    /// 初始化方法
+    ///     初始化方法
     /// </summary>
     protected override void OnInit()
     {
@@ -248,7 +248,7 @@ public sealed class TestContextUtilityV1 : AbstractContextUtility
     }
 
     /// <summary>
-    /// 销毁方法
+    ///     销毁方法
     /// </summary>
     protected override void OnDestroy()
     {
@@ -257,27 +257,27 @@ public sealed class TestContextUtilityV1 : AbstractContextUtility
 }
 
 /// <summary>
-/// 测试用上下文工具类V2，自定义初始化逻辑
+///     测试用上下文工具类V2，自定义初始化逻辑
 /// </summary>
 public sealed class TestContextUtilityV2 : AbstractContextUtility
 {
     /// <summary>
-    /// 获取工具是否已初始化
+    ///     获取工具是否已初始化
     /// </summary>
     public bool Initialized { get; private set; }
 
     /// <summary>
-    /// 获取工具是否已销毁
+    ///     获取工具是否已销毁
     /// </summary>
     public bool Destroyed { get; set; }
 
     /// <summary>
-    /// 获取自定义初始化是否完成
+    ///     获取自定义初始化是否完成
     /// </summary>
     public bool CustomInitializationDone { get; private set; }
 
     /// <summary>
-    /// 初始化方法（自定义逻辑）
+    ///     初始化方法（自定义逻辑）
     /// </summary>
     protected override void OnInit()
     {
@@ -286,7 +286,7 @@ public sealed class TestContextUtilityV2 : AbstractContextUtility
     }
 
     /// <summary>
-    /// 销毁方法
+    ///     销毁方法
     /// </summary>
     protected override void OnDestroy()
     {

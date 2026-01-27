@@ -8,7 +8,7 @@ namespace GFramework.Core.query;
 /// </summary>
 /// <typeparam name="TResult">查询结果的类型</typeparam>
 public abstract class AbstractQuery<TResult> : ContextAwareBase, IQuery<TResult>
-    
+
 {
     /// <summary>
     ///     执行查询操作

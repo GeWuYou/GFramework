@@ -7,7 +7,7 @@ namespace GFramework.Godot.coroutine;
 public static class CoroutineExtensions
 {
     /// <summary>
-    /// 启动协程的扩展方法
+    ///     启动协程的扩展方法
     /// </summary>
     public static CoroutineHandle RunCoroutine(
         this IEnumerator<IYieldInstruction> coroutine,
@@ -18,7 +18,7 @@ public static class CoroutineExtensions
     }
 
     /// <summary>
-    /// 让协程在指定节点被销毁时自动取消
+    ///     让协程在指定节点被销毁时自动取消
     /// </summary>
     public static IEnumerator<IYieldInstruction> CancelWith(
         this IEnumerator<IYieldInstruction> coroutine,
@@ -29,7 +29,7 @@ public static class CoroutineExtensions
     }
 
     /// <summary>
-    /// 让协程在任一节点被销毁时自动取消
+    ///     让协程在任一节点被销毁时自动取消
     /// </summary>
     public static IEnumerator<IYieldInstruction> CancelWith(
         this IEnumerator<IYieldInstruction> coroutine,
@@ -43,7 +43,7 @@ public static class CoroutineExtensions
     }
 
     /// <summary>
-    /// 让协程在多个节点都被销毁时自动取消
+    ///     让协程在多个节点都被销毁时自动取消
     /// </summary>
     public static IEnumerator<IYieldInstruction> CancelWith(
         this IEnumerator<IYieldInstruction> coroutine,
@@ -56,10 +56,8 @@ public static class CoroutineExtensions
     private static bool AllNodesAlive(Node[] nodes)
     {
         foreach (var node in nodes)
-        {
             if (!Timing.IsNodeAlive(node))
                 return false;
-        }
 
         return true;
     }

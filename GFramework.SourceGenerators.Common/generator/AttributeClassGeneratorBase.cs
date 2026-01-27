@@ -1,5 +1,4 @@
-﻿using System.Linq;
-using GFramework.SourceGenerators.Common.diagnostics;
+﻿using GFramework.SourceGenerators.Common.diagnostics;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;

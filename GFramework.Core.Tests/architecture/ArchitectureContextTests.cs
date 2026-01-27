@@ -19,26 +19,26 @@ using NUnit.Framework;
 namespace GFramework.Core.Tests.architecture;
 
 /// <summary>
-/// ArchitectureContext类的单元测试
-/// 测试内容包括：
-/// - 构造函数参数验证（所有5个参数）
-/// - 构造函数空参数异常
-/// - SendQuery方法 - 正常查询发送
-/// - SendQuery方法 - 空查询异常
-/// - SendCommand方法 - 正常命令发送
-/// - SendCommand方法 - 空命令异常
-/// - SendCommand_WithResult方法 - 正常命令发送
-/// - SendCommand_WithResult方法 - 空命令异常
-/// - SendEvent方法 - 正常事件发送
-/// - SendEvent_WithInstance方法 - 正常事件发送
-/// - SendEvent_WithInstance方法 - 空事件异常
-/// - GetSystem方法 - 获取已注册系统
-/// - GetSystem方法 - 获取未注册系统
-/// - GetModel方法 - 获取已注册模型
-/// - GetModel方法 - 获取未注册模型
-/// - GetUtility方法 - 获取已注册工具
-/// - GetUtility方法 - 获取未注册工具
-/// - GetEnvironment方法 - 获取环境对象
+///     ArchitectureContext类的单元测试
+///     测试内容包括：
+///     - 构造函数参数验证（所有5个参数）
+///     - 构造函数空参数异常
+///     - SendQuery方法 - 正常查询发送
+///     - SendQuery方法 - 空查询异常
+///     - SendCommand方法 - 正常命令发送
+///     - SendCommand方法 - 空命令异常
+///     - SendCommand_WithResult方法 - 正常命令发送
+///     - SendCommand_WithResult方法 - 空命令异常
+///     - SendEvent方法 - 正常事件发送
+///     - SendEvent_WithInstance方法 - 正常事件发送
+///     - SendEvent_WithInstance方法 - 空事件异常
+///     - GetSystem方法 - 获取已注册系统
+///     - GetSystem方法 - 获取未注册系统
+///     - GetModel方法 - 获取已注册模型
+///     - GetModel方法 - 获取未注册模型
+///     - GetUtility方法 - 获取已注册工具
+///     - GetUtility方法 - 获取未注册工具
+///     - GetEnvironment方法 - 获取环境对象
 /// </summary>
 [TestFixture]
 public class ArchitectureContextTests
@@ -83,7 +83,7 @@ public class ArchitectureContextTests
     private DefaultEnvironment? _environment;
 
     /// <summary>
-    /// 测试构造函数在所有参数都有效时不应抛出异常
+    ///     测试构造函数在所有参数都有效时不应抛出异常
     /// </summary>
     [Test]
     public void Constructor_Should_NotThrow_When_AllParameters_AreValid()
@@ -92,7 +92,7 @@ public class ArchitectureContextTests
     }
 
     /// <summary>
-    /// 测试构造函数在 container 为 null 时应抛出 ArgumentNullException
+    ///     测试构造函数在 container 为 null 时应抛出 ArgumentNullException
     /// </summary>
     [Test]
     public void Constructor_Should_Throw_When_Container_IsNull()
@@ -101,7 +101,7 @@ public class ArchitectureContextTests
     }
 
     /// <summary>
-    /// 测试构造函数在Container为null时应抛出ArgumentNullException
+    ///     测试构造函数在Container为null时应抛出ArgumentNullException
     /// </summary>
     [Test]
     public void Constructor_Should_ThrowArgumentNullException_When_Container_IsNull()
@@ -111,7 +111,7 @@ public class ArchitectureContextTests
     }
 
     /// <summary>
-    /// 测试SendQuery方法在查询有效时返回正确结果
+    ///     测试SendQuery方法在查询有效时返回正确结果
     /// </summary>
     [Test]
     public void SendQuery_Should_ReturnResult_When_Query_IsValid()
@@ -123,7 +123,7 @@ public class ArchitectureContextTests
     }
 
     /// <summary>
-    /// 测试SendQuery方法在查询为null时应抛出ArgumentNullException
+    ///     测试SendQuery方法在查询为null时应抛出ArgumentNullException
     /// </summary>
     [Test]
     public void SendQuery_Should_ThrowArgumentNullException_When_Query_IsNull()
@@ -133,7 +133,7 @@ public class ArchitectureContextTests
     }
 
     /// <summary>
-    /// 测试SendCommand方法在命令有效时正确执行
+    ///     测试SendCommand方法在命令有效时正确执行
     /// </summary>
     [Test]
     public void SendCommand_Should_ExecuteCommand_When_Command_IsValid()
@@ -144,17 +144,17 @@ public class ArchitectureContextTests
     }
 
     /// <summary>
-    /// 测试SendCommand方法在命令为null时应抛出ArgumentNullException
+    ///     测试SendCommand方法在命令为null时应抛出ArgumentNullException
     /// </summary>
     [Test]
     public void SendCommand_Should_ThrowArgumentNullException_When_Command_IsNull()
     {
-        Assert.That(() => _context!.SendCommand((ICommand)null!),
+        Assert.That(() => _context!.SendCommand(null!),
             Throws.ArgumentNullException.With.Property("ParamName").EqualTo("command"));
     }
 
     /// <summary>
-    /// 测试SendCommand方法（带返回值）在命令有效时返回正确结果
+    ///     测试SendCommand方法（带返回值）在命令有效时返回正确结果
     /// </summary>
     [Test]
     public void SendCommand_WithResult_Should_ReturnResult_When_Command_IsValid()
@@ -166,7 +166,7 @@ public class ArchitectureContextTests
     }
 
     /// <summary>
-    /// 测试SendCommand方法（带返回值）在命令为null时应抛出ArgumentNullException
+    ///     测试SendCommand方法（带返回值）在命令为null时应抛出ArgumentNullException
     /// </summary>
     [Test]
     public void SendCommand_WithResult_Should_ThrowArgumentNullException_When_Command_IsNull()
@@ -176,12 +176,12 @@ public class ArchitectureContextTests
     }
 
     /// <summary>
-    /// 测试SendEvent方法在事件类型有效时正确发送事件
+    ///     测试SendEvent方法在事件类型有效时正确发送事件
     /// </summary>
     [Test]
     public void SendEvent_Should_SendEvent_When_EventType_IsValid()
     {
-        bool eventReceived = false;
+        var eventReceived = false;
         _context!.RegisterEvent<TestEventV2>(_ => eventReceived = true);
         _context.SendEvent<TestEventV2>();
 
@@ -189,12 +189,12 @@ public class ArchitectureContextTests
     }
 
     /// <summary>
-    /// 测试SendEvent方法（带实例）在事件实例有效时正确发送事件
+    ///     测试SendEvent方法（带实例）在事件实例有效时正确发送事件
     /// </summary>
     [Test]
     public void SendEvent_WithInstance_Should_SendEvent_When_EventInstance_IsValid()
     {
-        bool eventReceived = false;
+        var eventReceived = false;
         var testEvent = new TestEventV2();
         _context!.RegisterEvent<TestEventV2>(_ => eventReceived = true);
         _context.SendEvent(testEvent);
@@ -203,7 +203,7 @@ public class ArchitectureContextTests
     }
 
     /// <summary>
-    /// 测试SendEvent方法（带实例）在事件实例为null时应抛出ArgumentNullException
+    ///     测试SendEvent方法（带实例）在事件实例为null时应抛出ArgumentNullException
     /// </summary>
     [Test]
     public void SendEvent_WithInstance_Should_ThrowArgumentNullException_When_EventInstance_IsNull()
@@ -213,7 +213,7 @@ public class ArchitectureContextTests
     }
 
     /// <summary>
-    /// 测试GetSystem方法在系统已注册时返回注册的系统
+    ///     测试GetSystem方法在系统已注册时返回注册的系统
     /// </summary>
     [Test]
     public void GetSystem_Should_ReturnRegisteredSystem_When_SystemIsRegistered()
@@ -228,7 +228,7 @@ public class ArchitectureContextTests
     }
 
     /// <summary>
-    /// 测试GetSystem方法在系统未注册时返回null
+    ///     测试GetSystem方法在系统未注册时返回null
     /// </summary>
     [Test]
     public void GetSystem_Should_ReturnNull_When_SystemIsNotRegistered()
@@ -239,7 +239,7 @@ public class ArchitectureContextTests
     }
 
     /// <summary>
-    /// 测试GetModel方法在模型已注册时返回注册的模型
+    ///     测试GetModel方法在模型已注册时返回注册的模型
     /// </summary>
     [Test]
     public void GetModel_Should_ReturnRegisteredModel_When_ModelIsRegistered()
@@ -254,7 +254,7 @@ public class ArchitectureContextTests
     }
 
     /// <summary>
-    /// 测试GetModel方法在模型未注册时返回null
+    ///     测试GetModel方法在模型未注册时返回null
     /// </summary>
     [Test]
     public void GetModel_Should_ReturnNull_When_ModelIsNotRegistered()
@@ -265,7 +265,7 @@ public class ArchitectureContextTests
     }
 
     /// <summary>
-    /// 测试GetUtility方法在工具已注册时返回注册的工具
+    ///     测试GetUtility方法在工具已注册时返回注册的工具
     /// </summary>
     [Test]
     public void GetUtility_Should_ReturnRegisteredUtility_When_UtilityIsRegistered()
@@ -280,7 +280,7 @@ public class ArchitectureContextTests
     }
 
     /// <summary>
-    /// 测试GetUtility方法在工具未注册时返回null
+    ///     测试GetUtility方法在工具未注册时返回null
     /// </summary>
     [Test]
     public void GetUtility_Should_ReturnNull_When_UtilityIsNotRegistered()
@@ -291,7 +291,7 @@ public class ArchitectureContextTests
     }
 
     /// <summary>
-    /// 测试GetEnvironment方法返回环境实例
+    ///     测试GetEnvironment方法返回环境实例
     /// </summary>
     [Test]
     public void GetEnvironment_Should_Return_EnvironmentInstance()
@@ -310,8 +310,15 @@ public class TestSystemV2 : ISystem
     private IArchitectureContext _context = null!;
     public int Id { get; init; }
 
-    public void SetContext(IArchitectureContext context) => _context = context;
-    public IArchitectureContext GetContext() => _context;
+    public void SetContext(IArchitectureContext context)
+    {
+        _context = context;
+    }
+
+    public IArchitectureContext GetContext()
+    {
+        return _context;
+    }
 
     public void Init()
     {
@@ -331,8 +338,15 @@ public class TestModelV2 : IModel
     private IArchitectureContext _context = null!;
     public int Id { get; init; }
 
-    public void SetContext(IArchitectureContext context) => _context = context;
-    public IArchitectureContext GetContext() => _context;
+    public void SetContext(IArchitectureContext context)
+    {
+        _context = context;
+    }
+
+    public IArchitectureContext GetContext()
+    {
+        return _context;
+    }
 
     public void Init()
     {
@@ -352,8 +366,15 @@ public class TestUtilityV2 : IUtility
     private IArchitectureContext _context = null!;
     public int Id { get; init; }
 
-    public void SetContext(IArchitectureContext context) => _context = context;
-    public IArchitectureContext GetContext() => _context;
+    public void SetContext(IArchitectureContext context)
+    {
+        _context = context;
+    }
+
+    public IArchitectureContext GetContext()
+    {
+        return _context;
+    }
 }
 
 public class TestQueryV2 : IQuery<int>
@@ -361,9 +382,20 @@ public class TestQueryV2 : IQuery<int>
     private IArchitectureContext _context = null!;
     public int Result { get; init; }
 
-    public int Do() => Result;
-    public void SetContext(IArchitectureContext context) => _context = context;
-    public IArchitectureContext GetContext() => _context;
+    public int Do()
+    {
+        return Result;
+    }
+
+    public void SetContext(IArchitectureContext context)
+    {
+        _context = context;
+    }
+
+    public IArchitectureContext GetContext()
+    {
+        return _context;
+    }
 }
 
 public class TestCommandV2 : ICommand
@@ -371,9 +403,20 @@ public class TestCommandV2 : ICommand
     private IArchitectureContext _context = null!;
     public bool Executed { get; private set; }
 
-    public void Execute() => Executed = true;
-    public void SetContext(IArchitectureContext context) => _context = context;
-    public IArchitectureContext GetContext() => _context;
+    public void Execute()
+    {
+        Executed = true;
+    }
+
+    public void SetContext(IArchitectureContext context)
+    {
+        _context = context;
+    }
+
+    public IArchitectureContext GetContext()
+    {
+        return _context;
+    }
 }
 
 public class TestCommandWithResultV2 : ICommand<int>
@@ -381,9 +424,20 @@ public class TestCommandWithResultV2 : ICommand<int>
     private IArchitectureContext _context = null!;
     public int Result { get; init; }
 
-    public int Execute() => Result;
-    public void SetContext(IArchitectureContext context) => _context = context;
-    public IArchitectureContext GetContext() => _context;
+    public int Execute()
+    {
+        return Result;
+    }
+
+    public void SetContext(IArchitectureContext context)
+    {
+        _context = context;
+    }
+
+    public IArchitectureContext GetContext()
+    {
+        return _context;
+    }
 }
 
 public class TestEventV2

@@ -138,13 +138,13 @@ public partial class CustomLoggerExample
 
 ### 配置选项说明
 
-| 参数 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `fieldName` | string | "Logger" | 生成的日志字段名称 |
-| `accessModifier` | AccessModifier | Private | 字段访问修饰符 |
-| `isStatic` | bool | true | 是否生成静态字段 |
-| `loggerName` | string | null | 自定义日志器名称，null 时使用类名 |
-| `includeLoggerInterface` | bool | false | 是否包含 ILogger 接口实现 |
+| 参数                       | 类型             | 默认值      | 说明                  |
+|--------------------------|----------------|----------|---------------------|
+| `fieldName`              | string         | "Logger" | 生成的日志字段名称           |
+| `accessModifier`         | AccessModifier | Private  | 字段访问修饰符             |
+| `isStatic`               | bool           | true     | 是否生成静态字段            |
+| `loggerName`             | string         | null     | 自定义日志器名称，null 时使用类名 |
+| `includeLoggerInterface` | bool           | false    | 是否包含 ILogger 接口实现   |
 
 ### 静态类支持
 
@@ -422,14 +422,14 @@ public static class PlayerAbilitiesExtensions
 
 ### 配置选项说明
 
-| 参数 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `generateIsMethods` | bool | true | 是否生成 IsX() 方法 |
-| `generateHasMethod` | bool | true | 是否生成 HasX() 方法 |
-| `generateInMethod` | bool | true | 是否生成 In(params T[]) 方法 |
-| `customPrefix` | string | "Is" | 方法名前缀 |
-| `includeToString` | bool | false | 是否生成 ToString 扩展 |
-| `namespace` | string | null | 生成扩展类的命名空间 |
+| 参数                  | 类型     | 默认值   | 说明                     |
+|---------------------|--------|-------|------------------------|
+| `generateIsMethods` | bool   | true  | 是否生成 IsX() 方法          |
+| `generateHasMethod` | bool   | true  | 是否生成 HasX() 方法         |
+| `generateInMethod`  | bool   | true  | 是否生成 In(params T[]) 方法 |
+| `customPrefix`      | string | "Is"  | 方法名前缀                  |
+| `includeToString`   | bool   | false | 是否生成 ToString 扩展       |
+| `namespace`         | string | null  | 生成扩展类的命名空间             |
 
 ## 诊断信息
 
@@ -515,13 +515,13 @@ public enum ConflictEnum
 
 ### 编译时 vs 运行时对比
 
-| 特性 | 手动实现 | 反射实现 | 源码生成器 |
-|------|----------|----------|------------|
-| **运行时性能** | 最优 | 最差 | 最优 |
-| **内存开销** | 最小 | 最大 | 最小 |
-| **类型安全** | 编译时 | 运行时 | 编译时 |
-| **开发效率** | 低 | 中 | 高 |
-| **调试友好** | 好 | 差 | 好 |
+| 特性        | 手动实现 | 反射实现 | 源码生成器 |
+|-----------|------|------|-------|
+| **运行时性能** | 最优   | 最差   | 最优    |
+| **内存开销**  | 最小   | 最大   | 最小    |
+| **类型安全**  | 编译时  | 运行时  | 编译时   |
+| **开发效率**  | 低    | 中    | 高     |
+| **调试友好**  | 好    | 差    | 好     |
 
 ### 基准测试结果
 

@@ -4,16 +4,16 @@ using NUnit.Framework;
 namespace GFramework.Core.Tests.coroutine;
 
 /// <summary>
-/// 协程状态枚举的单元测试类
-/// 测试内容包括：
-/// - 枚举值存在性验证
-/// - 枚举值正确性
+///     协程状态枚举的单元测试类
+///     测试内容包括：
+///     - 枚举值存在性验证
+///     - 枚举值正确性
 /// </summary>
 [TestFixture]
 public class CoroutineStateTests
 {
     /// <summary>
-    /// 验证协程状态枚举包含所有预期值
+    ///     验证协程状态枚举包含所有预期值
     /// </summary>
     [Test]
     public void CoroutineState_Should_Have_All_Expected_Values()
@@ -29,7 +29,7 @@ public class CoroutineStateTests
     }
 
     /// <summary>
-    /// 验证枚举基础值为整数类型
+    ///     验证枚举基础值为整数类型
     /// </summary>
     [Test]
     public void CoroutineState_Should_Be_Integer_Based_Enum()

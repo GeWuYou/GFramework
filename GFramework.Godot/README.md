@@ -20,7 +20,8 @@ GFramework.Godot 是 GFramework 框架的 Godot 特定实现，将框架的架�
 
 ## 概述
 
-GFramework.Godot 提供了与 Godot 引擎的深度集成，让开发者能够在保持 GFramework 架构优势的同时，充分利用 Godot 的节点系统、信号机制和场景管理功能。
+GFramework.Godot 提供了与 Godot 引擎的深度集成，让开发者能够在保持 GFramework 架构优势的同时，充分利用 Godot
+的节点系统、信号机制和场景管理功能。
 
 ### 核心设计理念
 
@@ -32,33 +33,39 @@ GFramework.Godot 提供了与 Godot 引擎的深度集成，让开发者能够�
 ## 核心特性
 
 ### 🎯 架构生命周期绑定
+
 - 自动将框架初始化与 Godot 场景树绑定
 - 支持节点销毁时的自动清理
 - 阶段式架构初始化与 Godot `_Ready` 周期同步
 
 ### 🔧 丰富的 Node 扩展方法
+
 - **50+** 个实用扩展方法
 - 安全的节点操作和验证
 - 流畅的场景树遍历和查找
 - 简化的输入处理
 
 ### 📡 流畅的信号 API
+
 - 类型安全的信号连接
 - 链式调用支持
 - 自动生命周期管理
 - Godot 信号与框架事件系统的桥接
 
 ### 🏊‍♂️ 高效的节点池化
+
 - 专用的 Node 对象池
 - 自动回收和重用机制
 - 内存友好的高频节点创建/销毁
 
 ### 📦 智能资源管理
+
 - 简化的 Godot 资源加载
 - 类型安全的资源工厂
 - 缓存和预加载支持
 
 ### 📝 Godot 原生日志
+
 - 与 Godot 日志系统完全集成
 - 框架日志自动输出到 Godot 控制台
 - 可配置的日志级别
@@ -725,6 +732,7 @@ public partial class MainScene : Node2D
 ### 🏗️ 架构设计最佳实践
 
 #### 1. 模块化设计
+
 ```csharp
 // 好的做法：按功能分组模块
 public class AudioModule : AbstractGodotModule { }
@@ -739,6 +747,7 @@ public class GameModule : AbstractGodotModule // ❌ 太大
 ```
 
 #### 2. 生命周期管理
+
 ```csharp
 // 好的做法：使用自动清理
 this.RegisterEvent<GameEvent>(OnGameEvent)
@@ -763,6 +772,7 @@ public override void _ExitTree()
 ### 🎮 Godot 集成最佳实践
 
 #### 1. 节点安全操作
+
 ```csharp
 // 好的做法：使用安全扩展
 var player = GetNodeX<Player>("Player");
@@ -773,6 +783,7 @@ var player = GetNode<Player>("Player"); // 可能抛出异常
 ```
 
 #### 2. 信号连接模式
+
 ```csharp
 // 好的做法：使用 SignalBuilder
 this.CreateSignalBuilder(Button.SignalName.Pressed)
@@ -786,6 +797,7 @@ Button.Pressed += OnButtonPressed; // 容易忘记清理
 ### 🏊‍♂️ 性能优化最佳实践
 
 #### 1. 节点池化策略
+
 ```csharp
 // 好的做法：高频创建对象使用池化
 public class BulletPool : AbstractNodePoolSystem<string, Bullet>
@@ -803,6 +815,7 @@ public void Shoot()
 ```
 
 #### 2. 资源预加载
+
 ```csharp
 // 好的做法：预加载常用资源
 public override void _Ready()
@@ -816,6 +829,7 @@ public override void _Ready()
 ### 🔧 调试和错误处理
 
 #### 1. 日志使用策略
+
 ```csharp
 // 好的做法：分级别记录
 Logger.Debug($"Player position: {Position}"); // 调试信息
@@ -828,6 +842,7 @@ Logger.Debug($"Frame: {Engine.GetProcessFrames()}"); // 太频繁
 ```
 
 #### 2. 异常处理
+
 ```csharp
 // 好的做法：优雅的错误处理
 public T LoadResource<T>(string path) where T : Resource

@@ -1,5 +1,4 @@
-﻿using System;
-using System.Text;
+﻿using System.Text;
 using GFramework.SourceGenerators.Abstractions.logging;
 using GFramework.SourceGenerators.Common.constants;
 using GFramework.SourceGenerators.Common.extensions;
@@ -71,10 +70,8 @@ public sealed class LoggerGenerator : TypeAttributeClassGeneratorBase
             .AppendLine($"using {PathContests.CoreNamespace}.logging;");
 
         if (ns is not null)
-        {
             sb.AppendLine()
                 .AppendLine($"namespace {ns};");
-        }
 
         sb.AppendLine()
             .AppendLine($"partial {typeKind} {className}{generics.Parameters}");

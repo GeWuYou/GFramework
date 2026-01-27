@@ -6,19 +6,19 @@ using NUnit.Framework;
 namespace GFramework.Core.Tests.logging;
 
 /// <summary>
-/// 测试LoggerFactory相关功能的测试类
+///     测试LoggerFactory相关功能的测试类
 /// </summary>
 [TestFixture]
 public class LoggerFactoryTests
 {
     /// <summary>
-    /// 测试ConsoleLoggerFactory的GetLogger方法是否返回ConsoleLogger实例
+    ///     测试ConsoleLoggerFactory的GetLogger方法是否返回ConsoleLogger实例
     /// </summary>
     [Test]
     public void ConsoleLoggerFactory_GetLogger_ShouldReturnConsoleLogger()
     {
         var factory = new ConsoleLoggerFactory();
-        var logger = factory.GetLogger("TestLogger", LogLevel.Info);
+        var logger = factory.GetLogger("TestLogger");
 
         Assert.That(logger, Is.Not.Null);
         Assert.That(logger, Is.InstanceOf<ConsoleLogger>());
@@ -26,7 +26,7 @@ public class LoggerFactoryTests
     }
 
     /// <summary>
-    /// 测试ConsoleLoggerFactory使用不同名称获取不同的logger实例
+    ///     测试ConsoleLoggerFactory使用不同名称获取不同的logger实例
     /// </summary>
     [Test]
     public void ConsoleLoggerFactory_GetLogger_WithDifferentNames_ShouldReturnDifferentLoggers()
@@ -40,7 +40,7 @@ public class LoggerFactoryTests
     }
 
     /// <summary>
-    /// 测试ConsoleLoggerFactory使用默认最小级别时的行为（默认为Info级别）
+    ///     测试ConsoleLoggerFactory使用默认最小级别时的行为（默认为Info级别）
     /// </summary>
     [Test]
     public void ConsoleLoggerFactory_GetLogger_WithDefaultMinLevel_ShouldUseInfo()
@@ -61,7 +61,7 @@ public class LoggerFactoryTests
     }
 
     /// <summary>
-    /// 测试ConsoleLoggerFactoryProvider创建logger时使用提供者的最小级别设置
+    ///     测试ConsoleLoggerFactoryProvider创建logger时使用提供者的最小级别设置
     /// </summary>
     [Test]
     public void ConsoleLoggerFactoryProvider_CreateLogger_ShouldReturnLoggerWithProviderMinLevel()
@@ -82,7 +82,7 @@ public class LoggerFactoryTests
     }
 
     /// <summary>
-    /// 测试ConsoleLoggerFactoryProvider创建logger时使用提供的名称
+    ///     测试ConsoleLoggerFactoryProvider创建logger时使用提供的名称
     /// </summary>
     [Test]
     public void ConsoleLoggerFactoryProvider_CreateLogger_ShouldUseProvidedName()
@@ -94,7 +94,7 @@ public class LoggerFactoryTests
     }
 
     /// <summary>
-    /// 测试LoggerFactoryResolver的Provider属性是否有默认值
+    ///     测试LoggerFactoryResolver的Provider属性是否有默认值
     /// </summary>
     [Test]
     public void LoggerFactoryResolver_Provider_ShouldHaveDefaultValue()
@@ -104,7 +104,7 @@ public class LoggerFactoryTests
     }
 
     /// <summary>
-    /// 测试LoggerFactoryResolver的Provider属性可以被更改
+    ///     测试LoggerFactoryResolver的Provider属性可以被更改
     /// </summary>
     [Test]
     public void LoggerFactoryResolver_Provider_CanBeChanged()
@@ -120,7 +120,7 @@ public class LoggerFactoryTests
     }
 
     /// <summary>
-    /// 测试LoggerFactoryResolver的MinLevel属性是否有默认值
+    ///     测试LoggerFactoryResolver的MinLevel属性是否有默认值
     /// </summary>
     [Test]
     public void LoggerFactoryResolver_MinLevel_ShouldHaveDefaultValue()
@@ -129,7 +129,7 @@ public class LoggerFactoryTests
     }
 
     /// <summary>
-    /// 测试LoggerFactoryResolver的MinLevel属性可以被更改
+    ///     测试LoggerFactoryResolver的MinLevel属性可以被更改
     /// </summary>
     [Test]
     public void LoggerFactoryResolver_MinLevel_CanBeChanged()
@@ -144,7 +144,7 @@ public class LoggerFactoryTests
     }
 
     /// <summary>
-    /// 测试ConsoleLoggerFactoryProvider的MinLevel属性是否有默认值
+    ///     测试ConsoleLoggerFactoryProvider的MinLevel属性是否有默认值
     /// </summary>
     [Test]
     public void ConsoleLoggerFactoryProvider_MinLevel_ShouldHaveDefaultValue()
@@ -155,7 +155,7 @@ public class LoggerFactoryTests
     }
 
     /// <summary>
-    /// 测试ConsoleLoggerFactoryProvider的MinLevel属性可以被更改
+    ///     测试ConsoleLoggerFactoryProvider的MinLevel属性可以被更改
     /// </summary>
     [Test]
     public void ConsoleLoggerFactoryProvider_MinLevel_CanBeChanged()
@@ -168,7 +168,7 @@ public class LoggerFactoryTests
     }
 
     /// <summary>
-    /// 测试LoggerFactoryResolver的Provider创建logger时使用提供者设置
+    ///     测试LoggerFactoryResolver的Provider创建logger时使用提供者设置
     /// </summary>
     [Test]
     public void LoggerFactoryResolver_Provider_CreateLogger_ShouldUseProviderSettings()
@@ -195,7 +195,7 @@ public class LoggerFactoryTests
     }
 
     /// <summary>
-    /// 测试LoggerFactoryResolver的MinLevel属性影响新创建的logger
+    ///     测试LoggerFactoryResolver的MinLevel属性影响新创建的logger
     /// </summary>
     [Test]
     public void LoggerFactoryResolver_MinLevel_AffectsNewLoggers()
@@ -222,13 +222,13 @@ public class LoggerFactoryTests
     }
 
     /// <summary>
-    /// 测试ConsoleLoggerFactory创建的多个logger实例是独立的
+    ///     测试ConsoleLoggerFactory创建的多个logger实例是独立的
     /// </summary>
     [Test]
     public void ConsoleLoggerFactory_MultipleLoggers_ShouldBeIndependent()
     {
         var factory = new ConsoleLoggerFactory();
-        var logger1 = factory.GetLogger("Logger1", LogLevel.Info);
+        var logger1 = factory.GetLogger("Logger1");
         var logger2 = factory.GetLogger("Logger2", LogLevel.Debug);
 
         Assert.That(logger1.Name(), Is.EqualTo("Logger1"));
@@ -236,7 +236,7 @@ public class LoggerFactoryTests
     }
 
     /// <summary>
-    /// 测试ConsoleLoggerFactoryProvider的MinLevel不会影响已创建的logger
+    ///     测试ConsoleLoggerFactoryProvider的MinLevel不会影响已创建的logger
     /// </summary>
     [Test]
     public void ConsoleLoggerFactoryProvider_MinLevel_DoesNotAffectCreatedLogger()

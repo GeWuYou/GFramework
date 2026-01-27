@@ -4,13 +4,13 @@ using Godot;
 namespace GFramework.Godot.setting;
 
 /// <summary>
-/// Godot图形设置应用器
+///     Godot图形设置应用器
 /// </summary>
 /// <param name="settings">图形设置配置对象</param>
 public class GodotGraphicsSettings(GraphicsSettings settings) : IApplyAbleSettings
 {
     /// <summary>
-    /// 应用图形设置到Godot引擎
+    ///     应用图形设置到Godot引擎
     /// </summary>
     /// <returns>异步任务</returns>
     public async Task Apply()

@@ -5,13 +5,13 @@ using NUnit.Framework;
 namespace GFramework.Core.Tests.pool;
 
 /// <summary>
-/// 对象池功能测试类，用于验证对象池的基本操作和行为
+///     对象池功能测试类，用于验证对象池的基本操作和行为
 /// </summary>
 [TestFixture]
 public class ObjectPoolTests
 {
     /// <summary>
-    /// 测试初始化方法，在每个测试方法执行前设置测试环境
+    ///     测试初始化方法，在每个测试方法执行前设置测试环境
     /// </summary>
     [SetUp]
     public void SetUp()
@@ -20,12 +20,12 @@ public class ObjectPoolTests
     }
 
     /// <summary>
-    /// 测试用的对象池实例
+    ///     测试用的对象池实例
     /// </summary>
     private TestObjectPool _pool = null!;
 
     /// <summary>
-    /// 验证当对象池为空时，Acquire方法应该创建新对象
+    ///     验证当对象池为空时，Acquire方法应该创建新对象
     /// </summary>
     [Test]
     public void Acquire_Should_Create_New_Object_When_Pool_Empty()
@@ -38,7 +38,7 @@ public class ObjectPoolTests
     }
 
     /// <summary>
-    /// 验证Acquire方法应该返回池中的可用对象
+    ///     验证Acquire方法应该返回池中的可用对象
     /// </summary>
     [Test]
     public void Acquire_Should_Return_Pooled_Object()
@@ -56,7 +56,7 @@ public class ObjectPoolTests
     }
 
     /// <summary>
-    /// 验证Release方法应该调用对象的OnRelease回调
+    ///     验证Release方法应该调用对象的OnRelease回调
     /// </summary>
     [Test]
     public void Release_Should_Call_OnRelease()
@@ -69,7 +69,7 @@ public class ObjectPoolTests
     }
 
     /// <summary>
-    /// 验证Clear方法应该销毁所有对象
+    ///     验证Clear方法应该销毁所有对象
     /// </summary>
     [Test]
     public void Clear_Should_Destroy_All_Objects()
@@ -87,7 +87,7 @@ public class ObjectPoolTests
     }
 
     /// <summary>
-    /// 验证多个池键应该相互独立
+    ///     验证多个池键应该相互独立
     /// </summary>
     [Test]
     public void Multiple_Pools_Should_Be_Independent()
@@ -105,7 +105,7 @@ public class ObjectPoolTests
     }
 
     /// <summary>
-    /// 验证OnAcquire回调应该在新对象和池中对象上都被调用
+    ///     验证OnAcquire回调应该在新对象和池中对象上都被调用
     /// </summary>
     [Test]
     public void OnAcquire_Should_Be_Called_On_New_And_Pooled_Objects()
@@ -122,12 +122,12 @@ public class ObjectPoolTests
 }
 
 /// <summary>
-/// 测试用对象池实现类，继承自AbstractObjectPoolSystem
+///     测试用对象池实现类，继承自AbstractObjectPoolSystem
 /// </summary>
 public class TestObjectPool : AbstractObjectPoolSystem<string, TestPoolableObject>
 {
     /// <summary>
-    /// 创建新的池化对象
+    ///     创建新的池化对象
     /// </summary>
     /// <param name="key">用于标识对象的键</param>
     /// <returns>新创建的TestPoolableObject实例</returns>
@@ -137,7 +137,7 @@ public class TestObjectPool : AbstractObjectPoolSystem<string, TestPoolableObjec
     }
 
     /// <summary>
-    /// 初始化方法，用于对象池初始化时的操作
+    ///     初始化方法，用于对象池初始化时的操作
     /// </summary>
     protected override void OnInit()
     {
@@ -145,37 +145,37 @@ public class TestObjectPool : AbstractObjectPoolSystem<string, TestPoolableObjec
 }
 
 /// <summary>
-/// 测试用池化对象类，实现了IPoolableObject接口
+///     测试用池化对象类，实现了IPoolableObject接口
 /// </summary>
 public class TestPoolableObject : IPoolableObject
 {
     /// <summary>
-    /// 获取或设置对象的池键
+    ///     获取或设置对象的池键
     /// </summary>
     public string PoolKey { get; set; } = string.Empty;
 
     /// <summary>
-    /// 获取或设置测试用的整数值
+    ///     获取或设置测试用的整数值
     /// </summary>
     public int TestValue { get; set; }
 
     /// <summary>
-    /// 获取或设置OnAcquire方法是否被调用的标志
+    ///     获取或设置OnAcquire方法是否被调用的标志
     /// </summary>
     public bool OnAcquireCalled { get; set; }
 
     /// <summary>
-    /// 获取或设置OnRelease方法是否被调用的标志
+    ///     获取或设置OnRelease方法是否被调用的标志
     /// </summary>
     public bool OnReleaseCalled { get; set; }
 
     /// <summary>
-    /// 获取或设置OnPoolDestroy方法是否被调用的标志
+    ///     获取或设置OnPoolDestroy方法是否被调用的标志
     /// </summary>
     public bool OnPoolDestroyCalled { get; set; }
 
     /// <summary>
-    /// 对象被获取时的回调方法
+    ///     对象被获取时的回调方法
     /// </summary>
     public void OnAcquire()
     {
@@ -183,7 +183,7 @@ public class TestPoolableObject : IPoolableObject
     }
 
     /// <summary>
-    /// 对象被释放时的回调方法
+    ///     对象被释放时的回调方法
     /// </summary>
     public void OnRelease()
     {
@@ -191,7 +191,7 @@ public class TestPoolableObject : IPoolableObject
     }
 
     /// <summary>
-    /// 对象被销毁时的回调方法
+    ///     对象被销毁时的回调方法
     /// </summary>
     public void OnPoolDestroy()
     {

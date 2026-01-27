@@ -10,20 +10,20 @@ using FileAccess = Godot.FileAccess;
 namespace GFramework.Godot.storage;
 
 /// <summary>
-/// Godot 特化的文件存储实现，支持 res://、user:// 和普通文件路径
-/// 支持按 key 细粒度锁保证线程安全
+///     Godot 特化的文件存储实现，支持 res://、user:// 和普通文件路径
+///     支持按 key 细粒度锁保证线程安全
 /// </summary>
 public sealed class GodotFileStorage : IStorage
 {
     /// <summary>
-    /// 每个 key 对应的锁对象
+    ///     每个 key 对应的锁对象
     /// </summary>
     private readonly ConcurrentDictionary<string, object> _keyLocks = new();
 
     private readonly ISerializer _serializer;
 
     /// <summary>
-    /// 初始化 Godot 文件存储
+    ///     初始化 Godot 文件存储
     /// </summary>
     /// <param name="serializer">序列化器实例</param>
     public GodotFileStorage(ISerializer serializer)
@@ -34,7 +34,7 @@ public sealed class GodotFileStorage : IStorage
     #region Delete
 
     /// <summary>
-    /// 删除指定键对应的文件
+    ///     删除指定键对应的文件
     /// </summary>
     /// <param name="key">存储键</param>
     public void Delete(string key)
@@ -55,10 +55,7 @@ public sealed class GodotFileStorage : IStorage
             }
             else
             {
-                if (File.Exists(path))
-                {
-                    File.Delete(path);
-                }
+                if (File.Exists(path)) File.Delete(path);
             }
         }
 
@@ -71,15 +68,17 @@ public sealed class GodotFileStorage : IStorage
     #region Helpers
 
     /// <summary>
-    /// 清理路径段中的无效字符，将无效文件名字符替换为下划线
+    ///     清理路径段中的无效字符，将无效文件名字符替换为下划线
     /// </summary>
     /// <param name="segment">要清理的路径段</param>
     /// <returns>清理后的路径段</returns>
     private static string SanitizeSegment(string segment)
-        => Path.GetInvalidFileNameChars().Aggregate(segment, (current, c) => current.Replace(c, '_'));
+    {
+        return Path.GetInvalidFileNameChars().Aggregate(segment, (current, c) => current.Replace(c, '_'));
+    }
 
     /// <summary>
-    /// 将存储键转换为绝对路径，处理 Godot 虚拟路径和普通文件系统路径
+    ///     将存储键转换为绝对路径，处理 Godot 虚拟路径和普通文件系统路径
     /// </summary>
     /// <param name="key">存储键</param>
     /// <returns>绝对路径字符串</returns>
@@ -115,18 +114,21 @@ public sealed class GodotFileStorage : IStorage
     }
 
     /// <summary>
-    /// 获取指定路径对应的锁对象，如果不存在则创建新的锁对象
+    ///     获取指定路径对应的锁对象，如果不存在则创建新的锁对象
     /// </summary>
     /// <param name="path">文件路径</param>
     /// <returns>对应路径的锁对象</returns>
-    private object GetLock(string path) => _keyLocks.GetOrAdd(path, _ => new object());
+    private object GetLock(string path)
+    {
+        return _keyLocks.GetOrAdd(path, _ => new object());
+    }
 
     #endregion
 
     #region Exists
 
     /// <summary>
-    /// 检查指定键对应的文件是否存在
+    ///     检查指定键对应的文件是否存在
     /// </summary>
     /// <param name="key">存储键</param>
     /// <returns>文件存在返回 true，否则返回 false</returns>
@@ -144,19 +146,21 @@ public sealed class GodotFileStorage : IStorage
     }
 
     /// <summary>
-    /// 异步检查指定键对应的文件是否存在
+    ///     异步检查指定键对应的文件是否存在
     /// </summary>
     /// <param name="key">存储键</param>
     /// <returns>表示异步操作的任务，结果为布尔值表示文件是否存在</returns>
     public Task<bool> ExistsAsync(string key)
-        => Task.FromResult(Exists(key));
+    {
+        return Task.FromResult(Exists(key));
+    }
 
     #endregion
 
     #region Read
 
     /// <summary>
-    /// 读取指定键对应的序列化数据并反序列化为指定类型
+    ///     读取指定键对应的序列化数据并反序列化为指定类型
     /// </summary>
     /// <typeparam name="T">要反序列化的类型</typeparam>
     /// <param name="key">存储键</param>
@@ -189,7 +193,7 @@ public sealed class GodotFileStorage : IStorage
     }
 
     /// <summary>
-    /// 读取指定键对应的序列化数据，如果文件不存在则返回默认值
+    ///     读取指定键对应的序列化数据，如果文件不存在则返回默认值
     /// </summary>
     /// <typeparam name="T">要反序列化的类型</typeparam>
     /// <param name="key">存储键</param>
@@ -202,7 +206,7 @@ public sealed class GodotFileStorage : IStorage
 
         lock (keyLock)
         {
-            if (path.IsGodotPath() && !FileAccess.FileExists(path) || !path.IsGodotPath() && !File.Exists(path))
+            if ((path.IsGodotPath() && !FileAccess.FileExists(path)) || (!path.IsGodotPath() && !File.Exists(path)))
                 return defaultValue;
 
             return Read<T>(key);
@@ -210,7 +214,7 @@ public sealed class GodotFileStorage : IStorage
     }
 
     /// <summary>
-    /// 异步读取指定键对应的序列化数据并反序列化为指定类型
+    ///     异步读取指定键对应的序列化数据并反序列化为指定类型
     /// </summary>
     /// <typeparam name="T">要反序列化的类型</typeparam>
     /// <param name="key">存储键</param>
@@ -249,7 +253,7 @@ public sealed class GodotFileStorage : IStorage
     #region Write
 
     /// <summary>
-    /// 将指定对象序列化并写入到指定键对应的文件中
+    ///     将指定对象序列化并写入到指定键对应的文件中
     /// </summary>
     /// <typeparam name="T">要序列化的对象类型</typeparam>
     /// <param name="key">存储键</param>
@@ -277,7 +281,7 @@ public sealed class GodotFileStorage : IStorage
     }
 
     /// <summary>
-    /// 异步将指定对象序列化并写入到指定键对应的文件中
+    ///     异步将指定对象序列化并写入到指定键对应的文件中
     /// </summary>
     /// <typeparam name="T">要序列化的对象类型</typeparam>
     /// <param name="key">存储键</param>

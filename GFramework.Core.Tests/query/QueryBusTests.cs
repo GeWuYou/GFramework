@@ -5,13 +5,13 @@ using NUnit.Framework;
 namespace GFramework.Core.Tests.query;
 
 /// <summary>
-/// 查询总线测试类，用于测试QueryBus的功能和异常处理
+///     查询总线测试类，用于测试QueryBus的功能和异常处理
 /// </summary>
 [TestFixture]
 public class QueryBusTests
 {
     /// <summary>
-    /// 测试设置方法，在每个测试方法执行前初始化查询总线实例
+    ///     测试设置方法，在每个测试方法执行前初始化查询总线实例
     /// </summary>
     [SetUp]
     public void SetUp()
@@ -22,8 +22,8 @@ public class QueryBusTests
     private QueryBus _queryBus = null!;
 
     /// <summary>
-    /// 测试Send方法是否能正确返回查询结果
-    /// 验证当传入有效查询对象时，能够得到预期的计算结果
+    ///     测试Send方法是否能正确返回查询结果
+    ///     验证当传入有效查询对象时，能够得到预期的计算结果
     /// </summary>
     [Test]
     public void Send_Should_Return_Query_Result()
@@ -37,8 +37,8 @@ public class QueryBusTests
     }
 
     /// <summary>
-    /// 测试Send方法在传入空查询对象时是否会抛出ArgumentNullException异常
-    /// 验证参数验证功能的正确性
+    ///     测试Send方法在传入空查询对象时是否会抛出ArgumentNullException异常
+    ///     验证参数验证功能的正确性
     /// </summary>
     [Test]
     public void Send_WithNullQuery_Should_ThrowArgumentNullException()
@@ -47,8 +47,8 @@ public class QueryBusTests
     }
 
     /// <summary>
-    /// 测试Send方法是否能正确返回字符串类型的查询结果
-    /// 验证不同返回类型的支持情况
+    ///     测试Send方法是否能正确返回字符串类型的查询结果
+    ///     验证不同返回类型的支持情况
     /// </summary>
     [Test]
     public void Send_WithStringResult_Should_Return_String()
@@ -63,25 +63,25 @@ public class QueryBusTests
 }
 
 /// <summary>
-/// 测试用查询输入类，实现IQueryInput接口
-/// 用于传递查询所需的参数信息
+///     测试用查询输入类，实现IQueryInput接口
+///     用于传递查询所需的参数信息
 /// </summary>
 public sealed class TestQueryInput : IQueryInput
 {
     /// <summary>
-    /// 获取或设置查询值
+    ///     获取或设置查询值
     /// </summary>
     public int Value { get; init; }
 }
 
 /// <summary>
-/// 整数类型测试查询类，继承自AbstractQuery
-/// 实现具体的查询逻辑并返回整数结果
+///     整数类型测试查询类，继承自AbstractQuery
+///     实现具体的查询逻辑并返回整数结果
 /// </summary>
 public sealed class TestQuery : AbstractQuery<TestQueryInput, int>
 {
     /// <summary>
-    /// 初始化TestQuery的新实例
+    ///     初始化TestQuery的新实例
     /// </summary>
     /// <param name="input">查询输入参数</param>
     public TestQuery(TestQueryInput input) : base(input)
@@ -89,7 +89,7 @@ public sealed class TestQuery : AbstractQuery<TestQueryInput, int>
     }
 
     /// <summary>
-    /// 执行查询操作的具体实现
+    ///     执行查询操作的具体实现
     /// </summary>
     /// <param name="input">查询输入参数</param>
     /// <returns>查询结果，将输入值乘以2</returns>
@@ -100,13 +100,13 @@ public sealed class TestQuery : AbstractQuery<TestQueryInput, int>
 }
 
 /// <summary>
-/// 字符串类型测试查询类，继承自AbstractQuery
-/// 实现具体的查询逻辑并返回字符串结果
+///     字符串类型测试查询类，继承自AbstractQuery
+///     实现具体的查询逻辑并返回字符串结果
 /// </summary>
 public sealed class TestStringQuery : AbstractQuery<TestQueryInput, string>
 {
     /// <summary>
-    /// 初始化TestStringQuery的新实例
+    ///     初始化TestStringQuery的新实例
     /// </summary>
     /// <param name="input">查询输入参数</param>
     public TestStringQuery(TestQueryInput input) : base(input)
@@ -114,7 +114,7 @@ public sealed class TestStringQuery : AbstractQuery<TestQueryInput, string>
     }
 
     /// <summary>
-    /// 执行查询操作的具体实现
+    ///     执行查询操作的具体实现
     /// </summary>
     /// <param name="input">查询输入参数</param>
     /// <returns>格式化的字符串结果</returns>

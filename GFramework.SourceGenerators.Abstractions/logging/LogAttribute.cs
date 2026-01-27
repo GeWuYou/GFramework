@@ -1,6 +1,4 @@
 #nullable enable
-using System;
-
 namespace GFramework.SourceGenerators.Abstractions.logging;
 
 /// <summary>

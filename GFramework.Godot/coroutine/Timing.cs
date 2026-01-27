@@ -7,8 +7,8 @@ using Godot;
 namespace GFramework.Godot.coroutine;
 
 /// <summary>
-/// Godot协程管理器，提供基于不同更新循环的协程调度功能
-/// 支持Process、PhysicsProcess和DeferredProcess三种执行段的协程管理
+///     Godot协程管理器，提供基于不同更新循环的协程调度功能
+///     支持Process、PhysicsProcess和DeferredProcess三种执行段的协程管理
 /// </summary>
 public partial class Timing : Node
 {
@@ -27,21 +27,21 @@ public partial class Timing : Node
     private GodotTimeSource? _processTimeSource;
 
     /// <summary>
-    /// 获取Process调度器，如果未初始化则抛出异常
+    ///     获取Process调度器，如果未初始化则抛出异常
     /// </summary>
     private CoroutineScheduler ProcessScheduler =>
         _processScheduler ?? throw new InvalidOperationException(
             "Timing not yet initialized (_Ready not executed)");
 
     /// <summary>
-    /// 获取Physics调度器，如果未初始化则抛出异常
+    ///     获取Physics调度器，如果未初始化则抛出异常
     /// </summary>
     private CoroutineScheduler PhysicsScheduler =>
         _physicsScheduler ?? throw new InvalidOperationException(
             "Timing not yet initialized (_Ready not executed)");
 
     /// <summary>
-    /// 获取Deferred调度器，如果未初始化则抛出异常
+    ///     获取Deferred调度器，如果未初始化则抛出异常
     /// </summary>
     private CoroutineScheduler DeferredScheduler =>
         _deferredScheduler ?? throw new InvalidOperationException(
@@ -50,8 +50,8 @@ public partial class Timing : Node
     #region 单例
 
     /// <summary>
-    /// 获取Timing单例实例
-    /// 如果实例不存在则自动创建并添加到场景树根节点
+    ///     获取Timing单例实例
+    ///     如果实例不存在则自动创建并添加到场景树根节点
     /// </summary>
     public static Timing Instance
     {
@@ -81,17 +81,17 @@ public partial class Timing : Node
     #region Debug 信息
 
     /// <summary>
-    /// 获取Process段活跃协程数量
+    ///     获取Process段活跃协程数量
     /// </summary>
     public int ProcessCoroutines => _processScheduler?.ActiveCoroutineCount ?? 0;
 
     /// <summary>
-    /// 获取Physics段活跃协程数量
+    ///     获取Physics段活跃协程数量
     /// </summary>
     public int PhysicsCoroutines => _physicsScheduler?.ActiveCoroutineCount ?? 0;
 
     /// <summary>
-    /// 获取Deferred段活跃协程数量
+    ///     获取Deferred段活跃协程数量
     /// </summary>
     public int DeferredCoroutines => _deferredScheduler?.ActiveCoroutineCount ?? 0;
 
@@ -100,8 +100,8 @@ public partial class Timing : Node
     #region 生命周期
 
     /// <summary>
-    /// 节点就绪时的初始化方法
-    /// 设置处理优先级，初始化调度器，并注册实例
+    ///     节点就绪时的初始化方法
+    ///     设置处理优先级，初始化调度器，并注册实例
     /// </summary>
     public override void _Ready()
     {
@@ -114,8 +114,8 @@ public partial class Timing : Node
     }
 
     /// <summary>
-    /// 节点退出场景树时的清理方法
-    /// 从活动实例数组中移除当前实例并清理必要资源
+    ///     节点退出场景树时的清理方法
+    ///     从活动实例数组中移除当前实例并清理必要资源
     /// </summary>
     public override void _ExitTree()
     {
@@ -126,7 +126,7 @@ public partial class Timing : Node
     }
 
     /// <summary>
-    /// 清理实例引用
+    ///     清理实例引用
     /// </summary>
     private static void CleanupInstanceIfNecessary()
     {
@@ -134,8 +134,8 @@ public partial class Timing : Node
     }
 
     /// <summary>
-    /// 每帧处理逻辑
-    /// 更新Process调度器，增加帧计数器，并安排延迟处理
+    ///     每帧处理逻辑
+    ///     更新Process调度器，增加帧计数器，并安排延迟处理
     /// </summary>
     /// <param name="delta">时间增量</param>
     public override void _Process(double delta)
@@ -147,8 +147,8 @@ public partial class Timing : Node
     }
 
     /// <summary>
-    /// 物理处理逻辑
-    /// 更新Physics调度器
+    ///     物理处理逻辑
+    ///     更新Physics调度器
     /// </summary>
     /// <param name="delta">物理时间增量</param>
     public override void _PhysicsProcess(double delta)
@@ -157,8 +157,8 @@ public partial class Timing : Node
     }
 
     /// <summary>
-    /// 延迟处理逻辑
-    /// 更新Deferred调度器
+    ///     延迟处理逻辑
+    ///     更新Deferred调度器
     /// </summary>
     private void ProcessDeferred()
     {
@@ -170,8 +170,8 @@ public partial class Timing : Node
     #region 初始化
 
     /// <summary>
-    /// 初始化所有调度器和时间源
-    /// 创建Process、Physics和Deferred三个调度器实例
+    ///     初始化所有调度器和时间源
+    ///     创建Process、Physics和Deferred三个调度器实例
     /// </summary>
     private void InitializeSchedulers()
     {
@@ -182,25 +182,25 @@ public partial class Timing : Node
         _processScheduler = new CoroutineScheduler(
             _processTimeSource,
             _instanceId,
-            initialCapacity: 256
+            256
         );
 
         _physicsScheduler = new CoroutineScheduler(
             _physicsTimeSource,
             _instanceId,
-            initialCapacity: 128
+            128
         );
 
         _deferredScheduler = new CoroutineScheduler(
             _deferredTimeSource,
             _instanceId,
-            initialCapacity: 64
+            64
         );
     }
 
     /// <summary>
-    /// 注册当前实例到活动实例数组中
-    /// 如果当前ID已被占用则寻找可用ID
+    ///     注册当前实例到活动实例数组中
+    ///     如果当前ID已被占用则寻找可用ID
     /// </summary>
     private void RegisterInstance()
     {
@@ -211,21 +211,19 @@ public partial class Timing : Node
         }
 
         for (byte i = 1; i < ActiveInstances.Length; i++)
-        {
             if (ActiveInstances[i] == null)
             {
                 _instanceId = i;
                 ActiveInstances[i] = this;
                 return;
             }
-        }
 
         throw new OverflowException("最多只能存在 15 个 Timing 实例");
     }
 
     /// <summary>
-    /// 尝试设置物理处理优先级
-    /// 使用反射方式设置ProcessPhysicsPriority属性
+    ///     尝试设置物理处理优先级
+    ///     使用反射方式设置ProcessPhysicsPriority属性
     /// </summary>
     /// <param name="priority">物理处理优先级</param>
     private static void TrySetPhysicsPriority(int priority)
@@ -250,7 +248,7 @@ public partial class Timing : Node
     #region 协程启动 API
 
     /// <summary>
-    /// 在指定段运行协程
+    ///     在指定段运行协程
     /// </summary>
     /// <param name="coroutine">要运行的协程枚举器</param>
     /// <param name="segment">协程执行段（Process/PhysicsProcess/DeferredProcess）</param>
@@ -265,8 +263,8 @@ public partial class Timing : Node
     }
 
     /// <summary>
-    /// 在当前实例上运行协程
-    /// 根据指定的段选择对应的调度器运行协程
+    ///     在当前实例上运行协程
+    ///     根据指定的段选择对应的调度器运行协程
     /// </summary>
     /// <param name="coroutine">要运行的协程枚举器</param>
     /// <param name="segment">协程执行段</param>
@@ -294,7 +292,7 @@ public partial class Timing : Node
     #region 协程控制 API
 
     /// <summary>
-    /// 暂停指定的协程
+    ///     暂停指定的协程
     /// </summary>
     /// <param name="handle">协程句柄</param>
     /// <returns>是否成功暂停</returns>
@@ -304,7 +302,7 @@ public partial class Timing : Node
     }
 
     /// <summary>
-    /// 恢复指定的协程
+    ///     恢复指定的协程
     /// </summary>
     /// <param name="handle">协程句柄</param>
     /// <returns>是否成功恢复</returns>
@@ -314,7 +312,7 @@ public partial class Timing : Node
     }
 
     /// <summary>
-    /// 终止指定的协程
+    ///     终止指定的协程
     /// </summary>
     /// <param name="handle">协程句柄</param>
     /// <returns>是否成功终止</returns>
@@ -324,7 +322,7 @@ public partial class Timing : Node
     }
 
     /// <summary>
-    /// 终止所有具有指定标签的协程
+    ///     终止所有具有指定标签的协程
     /// </summary>
     /// <param name="tag">协程标签</param>
     /// <returns>被终止的协程数量</returns>
@@ -334,7 +332,7 @@ public partial class Timing : Node
     }
 
     /// <summary>
-    /// 终止所有协程
+    ///     终止所有协程
     /// </summary>
     /// <returns>被终止的协程总数</returns>
     public static int KillAllCoroutines()
@@ -343,8 +341,8 @@ public partial class Timing : Node
     }
 
     /// <summary>
-    /// 在当前实例上暂停协程
-    /// 尝试在所有调度器中查找并暂停指定协程
+    ///     在当前实例上暂停协程
+    ///     尝试在所有调度器中查找并暂停指定协程
     /// </summary>
     /// <param name="handle">协程句柄</param>
     /// <returns>是否成功暂停</returns>
@@ -356,8 +354,8 @@ public partial class Timing : Node
     }
 
     /// <summary>
-    /// 在当前实例上恢复协程
-    /// 尝试在所有调度器中查找并恢复指定协程
+    ///     在当前实例上恢复协程
+    ///     尝试在所有调度器中查找并恢复指定协程
     /// </summary>
     /// <param name="handle">协程句柄</param>
     /// <returns>是否成功恢复</returns>
@@ -369,8 +367,8 @@ public partial class Timing : Node
     }
 
     /// <summary>
-    /// 在当前实例上终止协程
-    /// 尝试在所有调度器中查找并终止指定协程
+    ///     在当前实例上终止协程
+    ///     尝试在所有调度器中查找并终止指定协程
     /// </summary>
     /// <param name="handle">协程句柄</param>
     /// <returns>是否成功终止</returns>
@@ -382,14 +380,14 @@ public partial class Timing : Node
     }
 
     /// <summary>
-    /// 在当前实例上根据标签终止协程
-    /// 在所有调度器中查找并终止具有指定标签的协程
+    ///     在当前实例上根据标签终止协程
+    ///     在所有调度器中查找并终止具有指定标签的协程
     /// </summary>
     /// <param name="tag">协程标签</param>
     /// <returns>被终止的协程数量</returns>
     private int KillByTagOnInstance(string tag)
     {
-        int count = 0;
+        var count = 0;
         count += ProcessScheduler.KillByTag(tag);
         count += PhysicsScheduler.KillByTag(tag);
         count += DeferredScheduler.KillByTag(tag);
@@ -397,13 +395,13 @@ public partial class Timing : Node
     }
 
     /// <summary>
-    /// 清空当前实例上的所有协程
-    /// 从所有调度器中清除协程
+    ///     清空当前实例上的所有协程
+    ///     从所有调度器中清除协程
     /// </summary>
     /// <returns>被清除的协程总数</returns>
     private int ClearOnInstance()
     {
-        int count = 0;
+        var count = 0;
         count += ProcessScheduler.Clear();
         count += PhysicsScheduler.Clear();
         count += DeferredScheduler.Clear();
@@ -415,7 +413,7 @@ public partial class Timing : Node
     #region 工具方法
 
     /// <summary>
-    /// 根据ID获取Timing实例
+    ///     根据ID获取Timing实例
     /// </summary>
     /// <param name="id">实例ID</param>
     /// <returns>对应的Timing实例或null</returns>
@@ -426,7 +424,7 @@ public partial class Timing : Node
 
 
     /// <summary>
-    /// 检查节点是否处于有效状态
+    ///     检查节点是否处于有效状态
     /// </summary>
     /// <param name="node">要检查的节点</param>
     /// <returns>如果节点存在且有效则返回true，否则返回false</returns>
@@ -444,7 +442,7 @@ public partial class Timing : Node
     #region 延迟调用
 
     /// <summary>
-    /// 延迟调用指定动作
+    ///     延迟调用指定动作
     /// </summary>
     /// <param name="delay">延迟时间（秒）</param>
     /// <param name="action">要执行的动作</param>
@@ -462,7 +460,7 @@ public partial class Timing : Node
     }
 
     /// <summary>
-    /// 延迟调用指定动作，支持取消条件
+    ///     延迟调用指定动作，支持取消条件
     /// </summary>
     /// <param name="delay">延迟时间（秒）</param>
     /// <param name="action">要执行的动作</param>
@@ -484,7 +482,7 @@ public partial class Timing : Node
     }
 
     /// <summary>
-    /// 延迟调用协程实现
+    ///     延迟调用协程实现
     /// </summary>
     /// <param name="delay">延迟时间</param>
     /// <param name="action">要执行的动作</param>
@@ -498,7 +496,7 @@ public partial class Timing : Node
     }
 
     /// <summary>
-    /// 带取消条件的延迟调用协程实现
+    ///     带取消条件的延迟调用协程实现
     /// </summary>
     /// <param name="delay">延迟时间</param>
     /// <param name="action">要执行的动作</param>

@@ -147,12 +147,12 @@ public enum ArchitecturePhase
 // 1. 定义你的架构（继承 Architecture 基类）
 public class GameArchitecture : Architecture
 {
-    protected override void Init()
-    {
-        // 注册 Model
-        RegisterModel(new PlayerModel());
-        RegisterModel(new InventoryModel());
-        
+protected override void Init()
+{
+// 注册 Model
+RegisterModel(new PlayerModel());
+RegisterModel(new InventoryModel());
+
         // 注册 System
         RegisterSystem(new GameplaySystem());
         RegisterSystem(new SaveSystem());
@@ -161,6 +161,7 @@ public class GameArchitecture : Architecture
         RegisterUtility(new StorageUtility());
         RegisterUtility(new TimeUtility());
     }
+
 }
 
 // 2. 创建并初始化架构
@@ -175,8 +176,8 @@ architecture.Initialize();
 // 在 Controller 或其他组件中注入架构实例
 public class GameController : IController
 {
-    private readonly IArchitecture _architecture;
-    
+private readonly IArchitecture _architecture;
+
     // 通过构造函数注入架构
     public GameController(IArchitecture architecture)
     {
@@ -202,7 +203,9 @@ public class GameController : IController
     {
         // 处理玩家死亡事件
     }
+
 }
+
 ```
 
 **核心方法与属性：**
@@ -244,6 +247,7 @@ await architecture.InitializeAsync(); // 异步等待初始化完成
 ```
 
 **优势：**
+
 - 支持异步初始化 Model 和 System
 - 可以利用异步 I/O 操作（如异步加载数据）
 - 提高初始化性能
@@ -259,6 +263,7 @@ public void InstallModule(IArchitectureModule module)
 ```
 
 **参数：**
+
 - `module`：要安装的模块实例
 
 **使用示例：**
@@ -291,6 +296,7 @@ public void RegisterLifecycleHook(IArchitectureLifecycle hook)
 ```
 
 **参数：**
+
 - `hook`：生命周期钩子实例
 
 **使用示例：**
@@ -389,28 +395,29 @@ architecture.InstallModule(module);
 // 3. 监听架构阶段变化
 public class GamePhaseListener : IArchitecturePhaseAware
 {
-    public void OnArchitecturePhase(ArchitecturePhase phase)
-    {
-        switch (phase)
-        {
-            case ArchitecturePhase.Ready:
-                GD.Print("架构已就绪，可以开始游戏了");
-                break;
-            case ArchitecturePhase.Destroying:
-                GD.Print("架构正在销毁");
-                break;
-        }
-    }
+public void OnArchitecturePhase(ArchitecturePhase phase)
+{
+switch (phase)
+{
+case ArchitecturePhase.Ready:
+GD.Print("架构已就绪，可以开始游戏了");
+break;
+case ArchitecturePhase.Destroying:
+GD.Print("架构正在销毁");
+break;
+}
+}
 }
 
 // 4. 生命周期钩子
 public class LifecycleHook : IArchitectureLifecycle
 {
-    public void OnPhase(ArchitecturePhase phase, IArchitecture architecture)
-    {
-        GD.Print($"架构阶段变化: {phase}");
-    }
+public void OnPhase(ArchitecturePhase phase, IArchitecture architecture)
+{
+GD.Print($"架构阶段变化: {phase}");
 }
+}
+
 ```
 
 ### [`ArchitectureConfiguration`](ArchitectureConfiguration.cs)
@@ -477,9 +484,9 @@ var architecture = new GameArchitecture(configuration: config);
 
 1. **保持架构类简洁**：只在 `Init()` 中注册组件，不要包含业务逻辑
 2. **合理划分职责**：
-   - Model：数据和状态
-   - System：业务逻辑和规则
-   - Utility：无状态的工具方法
+    - Model：数据和状态
+    - System：业务逻辑和规则
+    - Utility：无状态的工具方法
 3. **使用依赖注入**：通过构造函数注入架构实例，便于测试
 4. **事件命名规范**：使用过去式命名事件类，如 `PlayerDiedEvent`
 5. **避免循环依赖**：System 不应直接引用 System，应通过事件通信

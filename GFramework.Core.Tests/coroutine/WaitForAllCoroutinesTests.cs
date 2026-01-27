@@ -7,26 +7,26 @@ using NUnit.Framework;
 namespace GFramework.Core.Tests.coroutine;
 
 /// <summary>
-/// WaitForAllCoroutines的单元测试类
-/// 测试内容包括：
-/// - 初始化和基本功能
-/// - IsDone属性行为
-/// - 空句柄集合处理
-/// - 单个协程处理
-/// - 多个协程处理
-/// - 与CoroutineScheduler集成
+///     WaitForAllCoroutines的单元测试类
+///     测试内容包括：
+///     - 初始化和基本功能
+///     - IsDone属性行为
+///     - 空句柄集合处理
+///     - 单个协程处理
+///     - 多个协程处理
+///     - 与CoroutineScheduler集成
 /// </summary>
 [TestFixture]
 public class WaitForAllCoroutinesTests
 {
     /// <summary>
-    /// 验证WaitForAllCoroutines初始状态为未完成
+    ///     验证WaitForAllCoroutines初始状态为未完成
     /// </summary>
     [Test]
     public void WaitForAllCoroutines_Should_Not_Be_Done_Initially_With_Running_Coroutines()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
+        var scheduler = new CoroutineScheduler(timeSource, 1);
         var coroutine1 = CreateDelayedCoroutine(() => { }, 1.0);
         var coroutine2 = CreateDelayedCoroutine(() => { }, 1.0);
 
@@ -42,13 +42,13 @@ public class WaitForAllCoroutinesTests
     }
 
     /// <summary>
-    /// 验证WaitForAllCoroutines应该在所有协程完成后完成
+    ///     验证WaitForAllCoroutines应该在所有协程完成后完成
     /// </summary>
     [Test]
     public void WaitForAllCoroutines_Should_Be_Done_When_All_Coroutines_Complete()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
+        var scheduler = new CoroutineScheduler(timeSource, 1);
         var coroutine1 = CreateSimpleCoroutine();
         var coroutine2 = CreateSimpleCoroutine();
 
@@ -67,13 +67,13 @@ public class WaitForAllCoroutinesTests
     }
 
     /// <summary>
-    /// 验证WaitForAllCoroutines应该在所有协程完成后完成（使用Delay）
+    ///     验证WaitForAllCoroutines应该在所有协程完成后完成（使用Delay）
     /// </summary>
     [Test]
     public void WaitForAllCoroutines_Should_Wait_For_All_Delayed_Coroutines()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
+        var scheduler = new CoroutineScheduler(timeSource, 1);
 
         var executionCount = 0;
         var coroutine1 = CreateDelayedCoroutine(() => executionCount++, 1.0);
@@ -92,23 +92,20 @@ public class WaitForAllCoroutinesTests
         Assert.That(wait.IsDone, Is.False);
         Assert.That(executionCount, Is.EqualTo(0));
 
-        for (var i = 0; i < 12; i++)
-        {
-            scheduler.Update();
-        }
+        for (var i = 0; i < 12; i++) scheduler.Update();
 
         Assert.That(wait.IsDone, Is.True);
         Assert.That(executionCount, Is.EqualTo(3));
     }
 
     /// <summary>
-    /// 验证WaitForAllCoroutines应该处理空句柄列表
+    ///     验证WaitForAllCoroutines应该处理空句柄列表
     /// </summary>
     [Test]
     public void WaitForAllCoroutines_Should_Handle_Empty_Handles_List()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
+        var scheduler = new CoroutineScheduler(timeSource, 1);
         var handles = Array.Empty<CoroutineHandle>();
 
         var wait = new WaitForAllCoroutines(scheduler, handles);
@@ -117,19 +114,19 @@ public class WaitForAllCoroutinesTests
     }
 
     /// <summary>
-    /// 验证WaitForAllCoroutines应该抛出ArgumentNullException当handles为null
+    ///     验证WaitForAllCoroutines应该抛出ArgumentNullException当handles为null
     /// </summary>
     [Test]
     public void WaitForAllCoroutines_Should_Throw_ArgumentNullException_When_Handles_Is_Null()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
+        var scheduler = new CoroutineScheduler(timeSource, 1);
 
         Assert.Throws<ArgumentNullException>(() => new WaitForAllCoroutines(scheduler, null!));
     }
 
     /// <summary>
-    /// 验证WaitForAllCoroutines应该抛出ArgumentNullException当scheduler为null
+    ///     验证WaitForAllCoroutines应该抛出ArgumentNullException当scheduler为null
     /// </summary>
     [Test]
     public void WaitForAllCoroutines_Should_Throw_ArgumentNullException_When_Scheduler_Is_Null()
@@ -140,13 +137,13 @@ public class WaitForAllCoroutinesTests
     }
 
     /// <summary>
-    /// 验证WaitForAllCoroutines应该处理单个协程
+    ///     验证WaitForAllCoroutines应该处理单个协程
     /// </summary>
     [Test]
     public void WaitForAllCoroutines_Should_Handle_Single_Coroutine()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
+        var scheduler = new CoroutineScheduler(timeSource, 1);
         var coroutine = CreateSimpleCoroutine();
 
         var handles = new List<CoroutineHandle> { scheduler.Run(coroutine) };
@@ -159,13 +156,13 @@ public class WaitForAllCoroutinesTests
     }
 
     /// <summary>
-    /// 验证WaitForAllCoroutines应该在部分协程完成时未完成
+    ///     验证WaitForAllCoroutines应该在部分协程完成时未完成
     /// </summary>
     [Test]
     public void WaitForAllCoroutines_Should_Not_Be_Done_When_Some_Coroutines_Complete()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
+        var scheduler = new CoroutineScheduler(timeSource, 1);
 
         var executionCount = 0;
         var coroutine1 = CreateSimpleCoroutine();
@@ -188,13 +185,13 @@ public class WaitForAllCoroutinesTests
     }
 
     /// <summary>
-    /// 验证WaitForAllCoroutines应该处理被终止的协程
+    ///     验证WaitForAllCoroutines应该处理被终止的协程
     /// </summary>
     [Test]
     public void WaitForAllCoroutines_Should_Handle_Killed_Coroutines()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
+        var scheduler = new CoroutineScheduler(timeSource, 1);
 
         var coroutine1 = CreateDelayedCoroutine(() => { }, 1.0);
         var coroutine2 = CreateDelayedCoroutine(() => { }, 1.0);
@@ -219,13 +216,13 @@ public class WaitForAllCoroutinesTests
     }
 
     /// <summary>
-    /// 验证WaitForAllCoroutines应该处理被暂停和恢复的协程
+    ///     验证WaitForAllCoroutines应该处理被暂停和恢复的协程
     /// </summary>
     [Test]
     public void WaitForAllCoroutines_Should_Handle_Paused_And_Resumed_Coroutines()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
+        var scheduler = new CoroutineScheduler(timeSource, 1);
 
         var executionCount = 0;
         var coroutine1 = CreateDelayedCoroutine(() => executionCount++, 1.0);
@@ -241,33 +238,27 @@ public class WaitForAllCoroutinesTests
 
         scheduler.Pause(handles[0]);
 
-        for (var i = 0; i < 12; i++)
-        {
-            scheduler.Update();
-        }
+        for (var i = 0; i < 12; i++) scheduler.Update();
 
         Assert.That(wait.IsDone, Is.False);
         Assert.That(executionCount, Is.EqualTo(1));
 
         scheduler.Resume(handles[0]);
 
-        for (var i = 0; i < 12; i++)
-        {
-            scheduler.Update();
-        }
+        for (var i = 0; i < 12; i++) scheduler.Update();
 
         Assert.That(wait.IsDone, Is.True);
         Assert.That(executionCount, Is.EqualTo(2));
     }
 
     /// <summary>
-    /// 验证WaitForAllCoroutines的Update方法不影响状态
+    ///     验证WaitForAllCoroutines的Update方法不影响状态
     /// </summary>
     [Test]
     public void WaitForAllCoroutines_Update_Should_Not_Affect_State()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
+        var scheduler = new CoroutineScheduler(timeSource, 1);
         var coroutine = CreateDelayedCoroutine(() => { }, 1.0);
 
         var handles = new List<CoroutineHandle> { scheduler.Run(coroutine) };
@@ -281,13 +272,13 @@ public class WaitForAllCoroutinesTests
     }
 
     /// <summary>
-    /// 验证WaitForAllCoroutines应该处理无效句柄
+    ///     验证WaitForAllCoroutines应该处理无效句柄
     /// </summary>
     [Test]
     public void WaitForAllCoroutines_Should_Handle_Invalid_Handles()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
+        var scheduler = new CoroutineScheduler(timeSource, 1);
 
         var handles = new List<CoroutineHandle> { default };
 
@@ -297,13 +288,13 @@ public class WaitForAllCoroutinesTests
     }
 
     /// <summary>
-    /// 验证WaitForAllCoroutines应该处理混合的有效和无效句柄
+    ///     验证WaitForAllCoroutines应该处理混合的有效和无效句柄
     /// </summary>
     [Test]
     public void WaitForAllCoroutines_Should_Handle_Mixed_Valid_And_Invalid_Handles()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
+        var scheduler = new CoroutineScheduler(timeSource, 1);
         var coroutine = CreateSimpleCoroutine();
 
         var handles = new List<CoroutineHandle>
@@ -320,42 +311,36 @@ public class WaitForAllCoroutinesTests
     }
 
     /// <summary>
-    /// 验证WaitForAllCoroutines应该处理大量协程
+    ///     验证WaitForAllCoroutines应该处理大量协程
     /// </summary>
     [Test]
     public void WaitForAllCoroutines_Should_Handle_Many_Coroutines()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
+        var scheduler = new CoroutineScheduler(timeSource, 1);
         var executionCount = 0;
 
         var handles = new List<CoroutineHandle>();
-        for (var i = 0; i < 20; i++)
-        {
-            handles.Add(scheduler.Run(CreateDelayedCoroutine(() => executionCount++, 1.0)));
-        }
+        for (var i = 0; i < 20; i++) handles.Add(scheduler.Run(CreateDelayedCoroutine(() => executionCount++, 1.0)));
 
         var wait = new WaitForAllCoroutines(scheduler, handles);
 
         Assert.That(wait.IsDone, Is.False);
 
-        for (var i = 0; i < 120; i++)
-        {
-            scheduler.Update();
-        }
+        for (var i = 0; i < 120; i++) scheduler.Update();
 
         Assert.That(wait.IsDone, Is.True);
         Assert.That(executionCount, Is.EqualTo(20));
     }
 
     /// <summary>
-    /// 验证WaitForAllCoroutines应该处理抛出异常的协程
+    ///     验证WaitForAllCoroutines应该处理抛出异常的协程
     /// </summary>
     [Test]
     public void WaitForAllCoroutines_Should_Handle_Coroutines_With_Exceptions()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
+        var scheduler = new CoroutineScheduler(timeSource, 1);
 
         var coroutine1 = CreateSimpleCoroutine();
         var coroutine2 = CreateExceptionCoroutine();
@@ -376,13 +361,13 @@ public class WaitForAllCoroutinesTests
     }
 
     /// <summary>
-    /// 验证WaitForAllCoroutines应该与ParallelCoroutines扩展方法一起工作
+    ///     验证WaitForAllCoroutines应该与ParallelCoroutines扩展方法一起工作
     /// </summary>
     [Test]
     public void WaitForAllCoroutines_Should_Work_With_ParallelCoroutines()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
+        var scheduler = new CoroutineScheduler(timeSource, 1);
 
         var executionOrder = new List<int>();
         var coroutine1 = CreateDelayedCoroutine(() => executionOrder.Add(1), 0.5);
@@ -406,13 +391,13 @@ public class WaitForAllCoroutinesTests
     }
 
     /// <summary>
-    /// 验证WaitForAllCoroutines应该实现IYieldInstruction接口
+    ///     验证WaitForAllCoroutines应该实现IYieldInstruction接口
     /// </summary>
     [Test]
     public void WaitForAllCoroutines_Should_Implement_IYieldInstruction()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
+        var scheduler = new CoroutineScheduler(timeSource, 1);
         var handles = Array.Empty<CoroutineHandle>();
 
         var wait = new WaitForAllCoroutines(scheduler, handles);
@@ -421,13 +406,13 @@ public class WaitForAllCoroutinesTests
     }
 
     /// <summary>
-    /// 验证WaitForAllCoroutines应该在所有协程立即完成时立即完成
+    ///     验证WaitForAllCoroutines应该在所有协程立即完成时立即完成
     /// </summary>
     [Test]
     public void WaitForAllCoroutines_Should_Be_Done_Immediately_When_All_Coroutines_Complete_Immediately()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
+        var scheduler = new CoroutineScheduler(timeSource, 1);
 
         var coroutine1 = CreateSimpleCoroutine();
         var coroutine2 = CreateSimpleCoroutine();
@@ -447,13 +432,13 @@ public class WaitForAllCoroutinesTests
     }
 
     /// <summary>
-    /// 验证WaitForAllCoroutines应该处理重复的句柄
+    ///     验证WaitForAllCoroutines应该处理重复的句柄
     /// </summary>
     [Test]
     public void WaitForAllCoroutines_Should_Handle_Duplicate_Handles()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
+        var scheduler = new CoroutineScheduler(timeSource, 1);
         var coroutine = CreateDelayedCoroutine(() => { }, 1.0);
 
         var handle = scheduler.Run(coroutine);
@@ -461,16 +446,13 @@ public class WaitForAllCoroutinesTests
 
         var wait = new WaitForAllCoroutines(scheduler, handles);
 
-        for (var i = 0; i < 12; i++)
-        {
-            scheduler.Update();
-        }
+        for (var i = 0; i < 12; i++) scheduler.Update();
 
         Assert.That(wait.IsDone, Is.True);
     }
 
     /// <summary>
-    /// 创建简单的立即完成协程
+    ///     创建简单的立即完成协程
     /// </summary>
     private IEnumerator<IYieldInstruction> CreateSimpleCoroutine()
     {
@@ -478,7 +460,7 @@ public class WaitForAllCoroutinesTests
     }
 
     /// <summary>
-    /// 创建带回调的协程
+    ///     创建带回调的协程
     /// </summary>
     private IEnumerator<IYieldInstruction> CreateCoroutineWithCallback(int id, Action callback)
     {
@@ -487,7 +469,7 @@ public class WaitForAllCoroutinesTests
     }
 
     /// <summary>
-    /// 创建延迟协程
+    ///     创建延迟协程
     /// </summary>
     private IEnumerator<IYieldInstruction> CreateDelayedCoroutine(Action callback, double delay)
     {
@@ -496,7 +478,7 @@ public class WaitForAllCoroutinesTests
     }
 
     /// <summary>
-    /// 创建抛出异常的协程
+    ///     创建抛出异常的协程
     /// </summary>
     private IEnumerator<IYieldInstruction> CreateExceptionCoroutine()
     {
@@ -505,7 +487,7 @@ public class WaitForAllCoroutinesTests
     }
 
     /// <summary>
-    /// 测试用时间源类
+    ///     测试用时间源类
     /// </summary>
     private class TestTimeSource : ITimeSource
     {

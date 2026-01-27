@@ -14,8 +14,8 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\GFramework.Game\GFramework.Game.csproj" />
-        <ProjectReference Include="..\GFramework.Game.Abstractions\GFramework.Game.Abstractions.csproj" PrivateAssets="all" />
-        <ProjectReference Include="..\GFramework.Core.Abstractions\GFramework.Core.Abstractions.csproj" PrivateAssets="all" />
+        <ProjectReference Include="..\GFramework.Game\GFramework.Game.csproj"/>
+        <ProjectReference Include="..\GFramework.Game.Abstractions\GFramework.Game.Abstractions.csproj" PrivateAssets="all"/>
+        <ProjectReference Include="..\GFramework.Core.Abstractions\GFramework.Core.Abstractions.csproj" PrivateAssets="all"/>
     </ItemGroup>
 </Project>

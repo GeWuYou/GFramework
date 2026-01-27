@@ -7,7 +7,7 @@ using GFramework.Game.Abstractions.storage;
 namespace GFramework.Game.storage;
 
 /// <summary>
-/// 基于文件系统的存储实现，实现了IFileStorage接口，支持按key细粒度锁保证线程安全
+///     基于文件系统的存储实现，实现了IFileStorage接口，支持按key细粒度锁保证线程安全
 /// </summary>
 public sealed class FileStorage : IFileStorage
 {
@@ -19,7 +19,7 @@ public sealed class FileStorage : IFileStorage
     private readonly ISerializer _serializer;
 
     /// <summary>
-    /// 初始化FileStorage实例
+    ///     初始化FileStorage实例
     /// </summary>
     /// <param name="rootPath">存储根目录路径</param>
     /// <param name="serializer">序列化器实例</param>
@@ -36,7 +36,7 @@ public sealed class FileStorage : IFileStorage
     #region Delete
 
     /// <summary>
-    /// 删除指定键的存储项
+    ///     删除指定键的存储项
     /// </summary>
     /// <param name="key">存储键</param>
     public void Delete(string key)
@@ -54,7 +54,7 @@ public sealed class FileStorage : IFileStorage
     #endregion
 
     /// <summary>
-    /// 清理文件段字符串，将其中的无效文件名字符替换为下划线
+    ///     清理文件段字符串，将其中的无效文件名字符替换为下划线
     /// </summary>
     /// <param name="segment">需要清理的文件段字符串</param>
     /// <returns>清理后的字符串，其中所有无效文件名字符都被替换为下划线</returns>
@@ -66,7 +66,7 @@ public sealed class FileStorage : IFileStorage
     #region Helpers
 
     /// <summary>
-    /// 将存储键转换为文件路径
+    ///     将存储键转换为文件路径
     /// </summary>
     /// <param name="key">存储键</param>
     /// <returns>对应的文件路径</returns>
@@ -108,7 +108,7 @@ public sealed class FileStorage : IFileStorage
     #region Exists
 
     /// <summary>
-    /// 检查指定键的存储项是否存在
+    ///     检查指定键的存储项是否存在
     /// </summary>
     /// <param name="key">存储键</param>
     /// <returns>如果存储项存在则返回true，否则返回false</returns>
@@ -124,19 +124,21 @@ public sealed class FileStorage : IFileStorage
     }
 
     /// <summary>
-    /// 异步检查指定键的存储项是否存在
+    ///     异步检查指定键的存储项是否存在
     /// </summary>
     /// <param name="key">存储键</param>
     /// <returns>如果存储项存在则返回true，否则返回false</returns>
     public Task<bool> ExistsAsync(string key)
-        => Task.FromResult(Exists(key));
+    {
+        return Task.FromResult(Exists(key));
+    }
 
     #endregion
 
     #region Read
 
     /// <summary>
-    /// 读取指定键的存储项
+    ///     读取指定键的存储项
     /// </summary>
     /// <typeparam name="T">要反序列化的类型</typeparam>
     /// <param name="key">存储键</param>
@@ -158,7 +160,7 @@ public sealed class FileStorage : IFileStorage
     }
 
     /// <summary>
-    /// 读取指定键的存储项，如果不存在则返回默认值
+    ///     读取指定键的存储项，如果不存在则返回默认值
     /// </summary>
     /// <typeparam name="T">要反序列化的类型</typeparam>
     /// <param name="key">存储键</param>
@@ -180,7 +182,7 @@ public sealed class FileStorage : IFileStorage
     }
 
     /// <summary>
-    /// 异步读取指定键的存储项
+    ///     异步读取指定键的存储项
     /// </summary>
     /// <typeparam name="T">要反序列化的类型</typeparam>
     /// <param name="key">存储键</param>
@@ -214,7 +216,7 @@ public sealed class FileStorage : IFileStorage
     #region Write
 
     /// <summary>
-    /// 写入指定键的存储项
+    ///     写入指定键的存储项
     /// </summary>
     /// <typeparam name="T">要序列化的对象类型</typeparam>
     /// <param name="key">存储键</param>
@@ -232,7 +234,7 @@ public sealed class FileStorage : IFileStorage
     }
 
     /// <summary>
-    /// 异步写入指定键的存储项
+    ///     异步写入指定键的存储项
     /// </summary>
     /// <typeparam name="T">要序列化的对象类型</typeparam>
     /// <param name="key">存储键</param>

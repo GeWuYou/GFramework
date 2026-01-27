@@ -1,17 +1,15 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using GFramework.SourceGenerators.Common.info;
+﻿using GFramework.SourceGenerators.Common.info;
 using Microsoft.CodeAnalysis;
 
 namespace GFramework.SourceGenerators.Common.extensions;
 
 /// <summary>
-/// 提供INamedTypeSymbol类型的扩展方法
+///     提供INamedTypeSymbol类型的扩展方法
 /// </summary>
 public static class INamedTypeSymbolExtensions
 {
     /// <summary>
-    /// 根据类型种类解析对应的类型关键字
+    ///     根据类型种类解析对应的类型关键字
     /// </summary>
     /// <param name="symbol">要解析类型的命名类型符号</param>
     /// <returns>对应类型的字符串表示，如"class"、"struct"或"record"</returns>
@@ -24,12 +22,12 @@ public static class INamedTypeSymbolExtensions
 #if NET5_0_OR_GREATER || ROSLYN_3_7_OR_GREATER
             TypeKind.Record => "record",
 #endif
-            _ => "class",
+            _ => "class"
         };
     }
 
     /// <summary>
-    /// 解析泛型信息，包括泛型参数和约束条件
+    ///     解析泛型信息，包括泛型参数和约束条件
     /// </summary>
     /// <param name="symbol">要解析泛型信息的命名类型符号</param>
     /// <returns>包含泛型参数和约束条件的GenericInfo对象</returns>
@@ -53,7 +51,7 @@ public static class INamedTypeSymbolExtensions
     }
 
     /// <summary>
-    /// 构建单个类型参数的约束条件字符串
+    ///     构建单个类型参数的约束条件字符串
     /// </summary>
     /// <param name="tp">类型参数符号</param>
     /// <returns>约束条件的字符串表示，如果没有约束则返回null</returns>
@@ -75,7 +73,7 @@ public static class INamedTypeSymbolExtensions
     extension(INamedTypeSymbol symbol)
     {
         /// <summary>
-        /// 获取命名类型符号的完整类名（包括嵌套类型名称）
+        ///     获取命名类型符号的完整类名（包括嵌套类型名称）
         /// </summary>
         /// <returns>完整的类名，格式为"外层类名.内层类名.当前类名"</returns>
         public string GetFullClassName()
@@ -95,7 +93,7 @@ public static class INamedTypeSymbolExtensions
         }
 
         /// <summary>
-        /// 获取命名类型符号的命名空间名称
+        ///     获取命名类型符号的命名空间名称
         /// </summary>
         /// <returns>命名空间名称，如果是全局命名空间则返回null</returns>
         public string? GetNamespace()

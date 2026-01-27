@@ -6,19 +6,19 @@ using NUnit.Framework;
 namespace GFramework.Core.Tests.architecture;
 
 /// <summary>
-/// ArchitectureConstants类的单元测试
-/// 测试内容包括：
-/// - 常量值的正确性
-/// - 常量类型验证
-/// - 常量可访问性
-/// - 常量命名规范
-/// - 架构阶段定义常量
+///     ArchitectureConstants类的单元测试
+///     测试内容包括：
+///     - 常量值的正确性
+///     - 常量类型验证
+///     - 常量可访问性
+///     - 常量命名规范
+///     - 架构阶段定义常量
 /// </summary>
 [TestFixture]
 public class ArchitectureConstantsTests
 {
     /// <summary>
-    /// 测试PhaseOrder数组不为空
+    ///     测试PhaseOrder数组不为空
     /// </summary>
     [Test]
     public void PhaseOrder_Should_Not_Be_Empty()
@@ -28,7 +28,7 @@ public class ArchitectureConstantsTests
     }
 
     /// <summary>
-    /// 测试PhaseOrder包含所有预期的架构阶段
+    ///     测试PhaseOrder包含所有预期的架构阶段
     /// </summary>
     [Test]
     public void PhaseOrder_Should_Contain_All_Expected_Phases()
@@ -50,13 +50,11 @@ public class ArchitectureConstantsTests
         Assert.That(ArchitectureConstants.PhaseOrder.Length, Is.EqualTo(expectedPhases.Length));
 
         foreach (var expectedPhase in expectedPhases)
-        {
             Assert.That(ArchitectureConstants.PhaseOrder, Does.Contain(expectedPhase));
-        }
     }
 
     /// <summary>
-    /// 测试PhaseOrder数组是只读的
+    ///     测试PhaseOrder数组是只读的
     /// </summary>
     [Test]
     public void PhaseOrder_Should_Be_Immutable()
@@ -67,7 +65,7 @@ public class ArchitectureConstantsTests
     }
 
     /// <summary>
-    /// 测试PhaseOrder的顺序是正确的
+    ///     测试PhaseOrder的顺序是正确的
     /// </summary>
     [Test]
     public void PhaseOrder_Should_Be_In_Correct_Sequence()
@@ -91,7 +89,7 @@ public class ArchitectureConstantsTests
     }
 
     /// <summary>
-    /// 测试PhaseTransitions字典不为空
+    ///     测试PhaseTransitions字典不为空
     /// </summary>
     [Test]
     public void PhaseTransitions_Should_Not_Be_Empty()
@@ -101,7 +99,7 @@ public class ArchitectureConstantsTests
     }
 
     /// <summary>
-    /// 测试PhaseTransitions是只读的
+    ///     测试PhaseTransitions是只读的
     /// </summary>
     [Test]
     public void PhaseTransitions_Should_Be_Immutable()
@@ -111,7 +109,7 @@ public class ArchitectureConstantsTests
     }
 
     /// <summary>
-    /// 测试PhaseTransitions包含正常线性流程的转换
+    ///     测试PhaseTransitions包含正常线性流程的转换
     /// </summary>
     [Test]
     public void PhaseTransitions_Should_Contain_Normal_Linear_Transitions()
@@ -128,7 +126,7 @@ public class ArchitectureConstantsTests
     }
 
     /// <summary>
-    /// 测试PhaseTransitions中的转换方向是正确的
+    ///     测试PhaseTransitions中的转换方向是正确的
     /// </summary>
     [Test]
     public void PhaseTransitions_Should_Have_Correct_Directions()
@@ -147,7 +145,7 @@ public class ArchitectureConstantsTests
     }
 
     /// <summary>
-    /// 测试PhaseTransitions包含失败初始化的转换路径
+    ///     测试PhaseTransitions包含失败初始化的转换路径
     /// </summary>
     [Test]
     public void PhaseTransitions_Should_Contain_FailedInitialization_Transition()
@@ -158,20 +156,18 @@ public class ArchitectureConstantsTests
     }
 
     /// <summary>
-    /// 测试每个阶段的转换数量不超过1个（线性转换）
+    ///     测试每个阶段的转换数量不超过1个（线性转换）
     /// </summary>
     [Test]
     public void PhaseTransitions_Should_Have_Maximum_One_Transition_Per_Phase()
     {
         foreach (var transition in ArchitectureConstants.PhaseTransitions)
-        {
             Assert.That(transition.Value, Has.Length.LessThanOrEqualTo(1),
                 $"Phase {transition.Key} should have at most 1 transition");
-        }
     }
 
     /// <summary>
-    /// 测试PhaseOrder和PhaseTransitions的一致性
+    ///     测试PhaseOrder和PhaseTransitions的一致性
     /// </summary>
     [Test]
     public void PhaseOrder_And_PhaseTransitions_Should_Be_Consistent()
@@ -179,7 +175,7 @@ public class ArchitectureConstantsTests
         var phaseOrder = ArchitectureConstants.PhaseOrder;
         var transitions = ArchitectureConstants.PhaseTransitions;
 
-        for (int i = 0; i < phaseOrder.Length - 1; i++)
+        for (var i = 0; i < phaseOrder.Length - 1; i++)
         {
             var currentPhase = phaseOrder[i];
             var nextPhase = phaseOrder[i + 1];

@@ -4,13 +4,13 @@ using NUnit.Framework;
 namespace GFramework.Core.Tests.state;
 
 /// <summary>
-/// 测试状态模式实现的功能和行为
+///     测试状态模式实现的功能和行为
 /// </summary>
 [TestFixture]
 public class StateTests
 {
     /// <summary>
-    /// 验证状态类是否正确实现了IState接口
+    ///     验证状态类是否正确实现了IState接口
     /// </summary>
     [Test]
     public void State_Should_Implement_IState_Interface()
@@ -21,7 +21,7 @@ public class StateTests
     }
 
     /// <summary>
-    /// 验证进入状态时OnEnter方法被正确调用并记录来源状态
+    ///     验证进入状态时OnEnter方法被正确调用并记录来源状态
     /// </summary>
     [Test]
     public void OnEnter_Should_BeCalled_When_State_Enters()
@@ -36,7 +36,7 @@ public class StateTests
     }
 
     /// <summary>
-    /// 验证当传入null作为来源状态时的处理情况
+    ///     验证当传入null作为来源状态时的处理情况
     /// </summary>
     [Test]
     public void OnEnter_WithNull_Should_Set_EnterFrom_ToNull()
@@ -50,7 +50,7 @@ public class StateTests
     }
 
     /// <summary>
-    /// 验证退出状态时OnExit方法被正确调用并记录目标状态
+    ///     验证退出状态时OnExit方法被正确调用并记录目标状态
     /// </summary>
     [Test]
     public void OnExit_Should_BeCalled_When_State_Exits()
@@ -65,7 +65,7 @@ public class StateTests
     }
 
     /// <summary>
-    /// 验证当传入null作为目标状态时的处理情况
+    ///     验证当传入null作为目标状态时的处理情况
     /// </summary>
     [Test]
     public void OnExit_WithNull_Should_Set_ExitTo_ToNull()
@@ -79,7 +79,7 @@ public class StateTests
     }
 
     /// <summary>
-    /// 验证允许转换时CanTransitionTo方法返回true
+    ///     验证允许转换时CanTransitionTo方法返回true
     /// </summary>
     [Test]
     public void CanTransitionTo_WithAllowTrue_Should_ReturnTrue()
@@ -93,7 +93,7 @@ public class StateTests
     }
 
     /// <summary>
-    /// 验证不允许转换时CanTransitionTo方法返回false
+    ///     验证不允许转换时CanTransitionTo方法返回false
     /// </summary>
     [Test]
     public void CanTransitionTo_WithAllowFalse_Should_ReturnFalse()
@@ -107,7 +107,7 @@ public class StateTests
     }
 
     /// <summary>
-    /// 验证CanTransitionTo方法正确接收目标状态参数
+    ///     验证CanTransitionTo方法正确接收目标状态参数
     /// </summary>
     [Test]
     public void CanTransitionTo_Should_Receive_TargetState()
@@ -123,7 +123,7 @@ public class StateTests
     }
 
     /// <summary>
-    /// 验证具有复杂转换规则的状态类功能
+    ///     验证具有复杂转换规则的状态类功能
     /// </summary>
     [Test]
     public void State_WithComplexTransitionRules_Should_Work()
@@ -137,7 +137,7 @@ public class StateTests
     }
 
     /// <summary>
-    /// 验证多个状态之间的协作功能
+    ///     验证多个状态之间的协作功能
     /// </summary>
     [Test]
     public void MultipleStates_Should_WorkTogether()
@@ -159,7 +159,7 @@ public class StateTests
     }
 
     /// <summary>
-    /// 验证状态对多次转换的跟踪能力
+    ///     验证状态对多次转换的跟踪能力
     /// </summary>
     [Test]
     public void State_Should_Track_MultipleTransitions()
@@ -177,7 +177,7 @@ public class StateTests
     }
 
     /// <summary>
-    /// 验证相同类型状态间的转换处理
+    ///     验证相同类型状态间的转换处理
     /// </summary>
     [Test]
     public void State_Should_Handle_SameState_Transition()
@@ -197,42 +197,42 @@ public class StateTests
 }
 
 /// <summary>
-/// 具体状态实现类V2版本，用于测试状态的基本功能
+///     具体状态实现类V2版本，用于测试状态的基本功能
 /// </summary>
 public sealed class ConcreteStateV2 : IState
 {
     /// <summary>
-    /// 获取或设置是否允许转换
+    ///     获取或设置是否允许转换
     /// </summary>
     public bool AllowTransitions { get; set; } = true;
 
     /// <summary>
-    /// 获取进入状态是否被调用的标志
+    ///     获取进入状态是否被调用的标志
     /// </summary>
     public bool EnterCalled { get; private set; }
 
     /// <summary>
-    /// 获取退出状态是否被调用的标志
+    ///     获取退出状态是否被调用的标志
     /// </summary>
     public bool ExitCalled { get; private set; }
 
     /// <summary>
-    /// 获取进入此状态的来源状态
+    ///     获取进入此状态的来源状态
     /// </summary>
     public IState? EnterFrom { get; private set; }
 
     /// <summary>
-    /// 获取从此状态退出的目标状态
+    ///     获取从此状态退出的目标状态
     /// </summary>
     public IState? ExitTo { get; private set; }
 
     /// <summary>
-    /// 获取或设置转换到目标状态时执行的动作
+    ///     获取或设置转换到目标状态时执行的动作
     /// </summary>
     public Action<IState>? CanTransitionToAction { get; set; }
 
     /// <summary>
-    /// 进入当前状态时调用的方法
+    ///     进入当前状态时调用的方法
     /// </summary>
     /// <param name="from">从哪个状态进入</param>
     public void OnEnter(IState? from)
@@ -242,7 +242,7 @@ public sealed class ConcreteStateV2 : IState
     }
 
     /// <summary>
-    /// 退出当前状态时调用的方法
+    ///     退出当前状态时调用的方法
     /// </summary>
     /// <param name="to">退出到哪个状态</param>
     public void OnExit(IState? to)
@@ -252,7 +252,7 @@ public sealed class ConcreteStateV2 : IState
     }
 
     /// <summary>
-    /// 判断是否可以转换到目标状态
+    ///     判断是否可以转换到目标状态
     /// </summary>
     /// <param name="target">目标状态</param>
     /// <returns>如果可以转换则返回true，否则返回false</returns>
@@ -264,32 +264,32 @@ public sealed class ConcreteStateV2 : IState
 }
 
 /// <summary>
-/// 具体状态实现类V3版本，用于测试状态的基本功能
+///     具体状态实现类V3版本，用于测试状态的基本功能
 /// </summary>
 public sealed class ConcreteStateV3 : IState
 {
     /// <summary>
-    /// 获取进入状态是否被调用的标志
+    ///     获取进入状态是否被调用的标志
     /// </summary>
     public bool EnterCalled { get; private set; }
 
     /// <summary>
-    /// 获取退出状态是否被调用的标志
+    ///     获取退出状态是否被调用的标志
     /// </summary>
     public bool ExitCalled { get; private set; }
 
     /// <summary>
-    /// 获取进入此状态的来源状态
+    ///     获取进入此状态的来源状态
     /// </summary>
     public IState? EnterFrom { get; private set; }
 
     /// <summary>
-    /// 获取从此状态退出的目标状态
+    ///     获取从此状态退出的目标状态
     /// </summary>
     public IState? ExitTo { get; private set; }
 
     /// <summary>
-    /// 进入当前状态时调用的方法
+    ///     进入当前状态时调用的方法
     /// </summary>
     /// <param name="from">从哪个状态进入</param>
     public void OnEnter(IState? from)
@@ -299,7 +299,7 @@ public sealed class ConcreteStateV3 : IState
     }
 
     /// <summary>
-    /// 退出当前状态时调用的方法
+    ///     退出当前状态时调用的方法
     /// </summary>
     /// <param name="to">退出到哪个状态</param>
     public void OnExit(IState? to)
@@ -309,7 +309,7 @@ public sealed class ConcreteStateV3 : IState
     }
 
     /// <summary>
-    /// 判断是否可以转换到目标状态
+    ///     判断是否可以转换到目标状态
     /// </summary>
     /// <param name="target">目标状态</param>
     /// <returns>如果可以转换则返回true，否则返回false</returns>
@@ -320,32 +320,32 @@ public sealed class ConcreteStateV3 : IState
 }
 
 /// <summary>
-/// 具体状态实现类V4版本，用于测试状态的基本功能
+///     具体状态实现类V4版本，用于测试状态的基本功能
 /// </summary>
 public sealed class ConcreteStateV4 : IState
 {
     /// <summary>
-    /// 获取进入状态是否被调用的标志
+    ///     获取进入状态是否被调用的标志
     /// </summary>
     public bool EnterCalled { get; private set; }
 
     /// <summary>
-    /// 获取退出状态是否被调用的标志
+    ///     获取退出状态是否被调用的标志
     /// </summary>
     public bool ExitCalled { get; private set; }
 
     /// <summary>
-    /// 获取进入此状态的来源状态
+    ///     获取进入此状态的来源状态
     /// </summary>
     public IState? EnterFrom { get; private set; }
 
     /// <summary>
-    /// 获取从此状态退出的目标状态
+    ///     获取从此状态退出的目标状态
     /// </summary>
     public IState? ExitTo { get; private set; }
 
     /// <summary>
-    /// 进入当前状态时调用的方法
+    ///     进入当前状态时调用的方法
     /// </summary>
     /// <param name="from">从哪个状态进入</param>
     public void OnEnter(IState? from)
@@ -355,7 +355,7 @@ public sealed class ConcreteStateV4 : IState
     }
 
     /// <summary>
-    /// 退出当前状态时调用的方法
+    ///     退出当前状态时调用的方法
     /// </summary>
     /// <param name="to">退出到哪个状态</param>
     public void OnExit(IState? to)
@@ -365,7 +365,7 @@ public sealed class ConcreteStateV4 : IState
     }
 
     /// <summary>
-    /// 判断是否可以转换到目标状态
+    ///     判断是否可以转换到目标状态
     /// </summary>
     /// <param name="target">目标状态</param>
     /// <returns>如果可以转换则返回true，否则返回false</returns>
@@ -376,37 +376,37 @@ public sealed class ConcreteStateV4 : IState
 }
 
 /// <summary>
-/// 条件状态实现类V2版本，支持基于类型的条件转换规则
+///     条件状态实现类V2版本，支持基于类型的条件转换规则
 /// </summary>
 public sealed class ConditionalStateV2 : IState
 {
     /// <summary>
-    /// 获取或设置允许转换到的状态类型数组
+    ///     获取或设置允许转换到的状态类型数组
     /// </summary>
     public Type[] AllowedTransitions { get; set; } = Array.Empty<Type>();
 
     /// <summary>
-    /// 获取进入状态是否被调用的标志
+    ///     获取进入状态是否被调用的标志
     /// </summary>
     public bool EnterCalled { get; private set; }
 
     /// <summary>
-    /// 获取退出状态是否被调用的标志
+    ///     获取退出状态是否被调用的标志
     /// </summary>
     public bool ExitCalled { get; private set; }
 
     /// <summary>
-    /// 获取进入此状态的来源状态
+    ///     获取进入此状态的来源状态
     /// </summary>
     public IState? EnterFrom { get; private set; }
 
     /// <summary>
-    /// 获取从此状态退出的目标状态
+    ///     获取从此状态退出的目标状态
     /// </summary>
     public IState? ExitTo { get; private set; }
 
     /// <summary>
-    /// 进入当前状态时调用的方法
+    ///     进入当前状态时调用的方法
     /// </summary>
     /// <param name="from">从哪个状态进入</param>
     public void OnEnter(IState? from)
@@ -416,7 +416,7 @@ public sealed class ConditionalStateV2 : IState
     }
 
     /// <summary>
-    /// 退出当前状态时调用的方法
+    ///     退出当前状态时调用的方法
     /// </summary>
     /// <param name="to">退出到哪个状态</param>
     public void OnExit(IState? to)
@@ -426,7 +426,7 @@ public sealed class ConditionalStateV2 : IState
     }
 
     /// <summary>
-    /// 判断是否可以转换到目标状态
+    ///     判断是否可以转换到目标状态
     /// </summary>
     /// <param name="target">目标状态</param>
     /// <returns>如果目标状态类型在允许列表中则返回true，否则返回false</returns>
@@ -437,32 +437,32 @@ public sealed class ConditionalStateV2 : IState
 }
 
 /// <summary>
-/// 跟踪状态实现类V2版本，用于跟踪状态转换次数
+///     跟踪状态实现类V2版本，用于跟踪状态转换次数
 /// </summary>
 public sealed class TrackingStateV2 : IState
 {
     /// <summary>
-    /// 获取进入状态被调用的次数
+    ///     获取进入状态被调用的次数
     /// </summary>
     public int EnterCallCount { get; private set; }
 
     /// <summary>
-    /// 获取退出状态被调用的次数
+    ///     获取退出状态被调用的次数
     /// </summary>
     public int ExitCallCount { get; private set; }
 
     /// <summary>
-    /// 获取进入此状态的来源状态
+    ///     获取进入此状态的来源状态
     /// </summary>
     public IState? EnterFrom { get; private set; }
 
     /// <summary>
-    /// 获取从此状态退出的目标状态
+    ///     获取从此状态退出的目标状态
     /// </summary>
     public IState? ExitTo { get; private set; }
 
     /// <summary>
-    /// 进入当前状态时调用的方法
+    ///     进入当前状态时调用的方法
     /// </summary>
     /// <param name="from">从哪个状态进入</param>
     public void OnEnter(IState? from)
@@ -472,7 +472,7 @@ public sealed class TrackingStateV2 : IState
     }
 
     /// <summary>
-    /// 退出当前状态时调用的方法
+    ///     退出当前状态时调用的方法
     /// </summary>
     /// <param name="to">退出到哪个状态</param>
     public void OnExit(IState? to)
@@ -482,7 +482,7 @@ public sealed class TrackingStateV2 : IState
     }
 
     /// <summary>
-    /// 判断是否可以转换到目标状态
+    ///     判断是否可以转换到目标状态
     /// </summary>
     /// <param name="target">目标状态</param>
     /// <returns>总是返回true</returns>

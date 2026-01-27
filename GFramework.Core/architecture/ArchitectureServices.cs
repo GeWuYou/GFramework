@@ -26,8 +26,6 @@ public class ArchitectureServices : IArchitectureServices
     /// </summary>
     private readonly ICommandBus _commandBus;
 
-    private readonly IIocContainer _container;
-
     /// <summary>
     ///     事件总线实例
     /// </summary>
@@ -45,7 +43,7 @@ public class ArchitectureServices : IArchitectureServices
     /// </summary>
     public ArchitectureServices()
     {
-        _container = new IocContainer();
+        Container = new IocContainer();
 
         // 创建服务实例
         _eventBus = new EventBus();
@@ -54,16 +52,16 @@ public class ArchitectureServices : IArchitectureServices
         _asyncQueryBus = new AsyncQueryBus();
 
         // 将服务注册到容器
-        _container.RegisterPlurality(_eventBus);
-        _container.RegisterPlurality(_commandBus);
-        _container.RegisterPlurality(_queryBus);
-        _container.RegisterPlurality(_asyncQueryBus);
+        Container.RegisterPlurality(_eventBus);
+        Container.RegisterPlurality(_commandBus);
+        Container.RegisterPlurality(_queryBus);
+        Container.RegisterPlurality(_asyncQueryBus);
     }
 
     /// <summary>
     ///     获取依赖注入容器
     /// </summary>
-    public IIocContainer Container => _container;
+    public IIocContainer Container { get; }
 
     /// <summary>
     ///     获取类型事件系统

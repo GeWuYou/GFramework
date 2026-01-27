@@ -83,6 +83,7 @@ public GetPlayerGoldQuery() : base(new EmptyQueryInput())
     {
         return this.GetModel<PlayerModel>().Gold.Value;
     }
+
 }
 
 // 查询玩家是否死亡
@@ -98,6 +99,7 @@ public IsPlayerDeadQuery() : base(new EmptyQueryInput())
     {
         return this.GetModel<PlayerModel>().Health.Value <= 0;
     }
+
 }
 
 // 查询背包中指定物品的数量
@@ -114,7 +116,9 @@ public GetItemCountQuery(string itemId) : base(new GetItemCountQueryInput(itemId
         var inventory = this.GetModel<InventoryModel>();
         return inventory.GetItemCount(input.ItemId);
     }
+
 }
+
 ```
 
 ### 2. 发送查询（在 Controller 中）
@@ -155,12 +159,12 @@ public partial class ShopUI : Control, IController
 ``csharp
 public class CombatSystem : AbstractSystem
 {
-    protected override void OnInit()
-    {
-        // 注册事件监听
-        this.RegisterEvent<EnemyAttackEvent>(OnEnemyAttack);
-    }
-    
+protected override void OnInit()
+{
+// 注册事件监听
+this.RegisterEvent<EnemyAttackEvent>(OnEnemyAttack);
+}
+
     private void OnEnemyAttack(EnemyAttackEvent e)
     {
         // 查询玩家是否已经死亡
@@ -172,7 +176,9 @@ public class CombatSystem : AbstractSystem
             this.SendCommand(new TakeDamageCommand { Damage = e.Damage });
         }
     }
+
 }
+
 ```
 
 ## 高级用法
@@ -207,8 +213,8 @@ var enemies = this.SendQuery(new GetEnemiesInRangeQuery
 // 查询玩家是否可以使用技能
 public class CanUseSkillQuery : AbstractQuery<bool>
 {
-    public string SkillId { get; set; }
-    
+public string SkillId { get; set; }
+
     protected override bool OnDo()
     {
         var playerModel = this.GetModel<PlayerModel>();
@@ -221,27 +227,31 @@ public class CanUseSkillQuery : AbstractQuery<bool>
         return playerModel.Mana.Value >= skillCost.ManaCost
             && !this.SendQuery(new IsSkillOnCooldownQuery { SkillId = SkillId });
     }
+
 }
 
 public class GetSkillCostQuery : AbstractQuery<SkillCost>
 {
-    public string SkillId { get; set; }
-    
+public string SkillId { get; set; }
+
     protected override SkillCost OnDo()
     {
         return this.GetModel<SkillModel>().GetSkillCost(SkillId);
     }
+
 }
 
 public class IsSkillOnCooldownQuery : AbstractQuery<bool>
 {
-    public string SkillId { get; set; }
-    
+public string SkillId { get; set; }
+
     protected override bool OnDo()
     {
         return this.GetModel<SkillModel>().IsOnCooldown(SkillId);
     }
+
 }
+
 ```
 
 ### 3. 聚合数据查询
@@ -289,8 +299,8 @@ public class GetPlayerInfoQuery : AbstractQuery<PlayerInfo>
 // 在 AI System 中查询玩家状态
 public class EnemyAISystem : AbstractSystem
 {
-    protected override void OnInit() { }
-    
+protected override void OnInit() { }
+
     public void UpdateEnemyBehavior(Enemy enemy)
     {
         // 查询玩家位置
@@ -317,7 +327,9 @@ public class EnemyAISystem : AbstractSystem
             }
         }
     }
+
 }
+
 ```
 
 ## Command vs Query
@@ -384,8 +396,8 @@ public class AddGoldCommand : AbstractCommand
 // 在 Model 中缓存复杂计算
 public class PlayerModel : AbstractModel
 {
-    private int? _cachedPower;
-    
+private int? _cachedPower;
+
     public int GetPower()
     {
         if (_cachedPower == null)
@@ -405,7 +417,9 @@ public class PlayerModel : AbstractModel
     {
         _cachedPower = null;
     }
+
 }
+
 ```
 
 ### 2. 批量查询

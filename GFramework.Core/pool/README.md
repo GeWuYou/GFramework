@@ -477,6 +477,7 @@ public class DebuggablePoolSystem : AbstractObjectPoolSystem<string, PoolableObj
 ### 1. 游戏对象池
 
 **适用对象：**
+
 - 子弹、箭矢、投射物
 - 敌人、NPC
 - 爆炸效果、粒子系统
@@ -559,6 +560,7 @@ public class ShootingSystem : AbstractSystem
 ### 2. UI 元素池
 
 **适用对象：**
+
 - 对话框
 - 提示框
 - 菜单项
@@ -617,6 +619,7 @@ public class UISystem : AbstractSystem
 ### 3. 网络消息对象池
 
 **适用对象：**
+
 - 网络包
 - 协议消息
 - 数据包

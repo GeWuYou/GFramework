@@ -6,7 +6,7 @@ using GFramework.Game.Abstractions.ui;
 namespace GFramework.Game.ui;
 
 /// <summary>
-/// UI切换处理器管道，负责管理和执行UI切换扩展点
+///     UI切换处理器管道，负责管理和执行UI切换扩展点
 /// </summary>
 public class UiTransitionPipeline
 {
@@ -15,7 +15,7 @@ public class UiTransitionPipeline
     private readonly Dictionary<IUiTransitionHandler, UiTransitionHandlerOptions> _options = new();
 
     /// <summary>
-    /// 注册UI切换处理器
+    ///     注册UI切换处理器
     /// </summary>
     /// <param name="handler">处理器实例</param>
     /// <param name="options">执行选项</param>
@@ -41,7 +41,7 @@ public class UiTransitionPipeline
     }
 
     /// <summary>
-    /// 注销UI切换处理器
+    ///     注销UI切换处理器
     /// </summary>
     /// <param name="handler">处理器实例</param>
     public void UnregisterHandler(IUiTransitionHandler handler)
@@ -54,7 +54,7 @@ public class UiTransitionPipeline
     }
 
     /// <summary>
-    /// 执行指定阶段的所有Handler
+    ///     执行指定阶段的所有Handler
     /// </summary>
     /// <param name="event">UI切换事件</param>
     /// <param name="phases">执行阶段</param>

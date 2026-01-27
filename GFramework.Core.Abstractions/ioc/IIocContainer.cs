@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using GFramework.Core.Abstractions.rule;
+﻿using GFramework.Core.Abstractions.rule;
 using GFramework.Core.Abstractions.system;
 
 namespace GFramework.Core.Abstractions.ioc;

@@ -1,4 +1,3 @@
-using System;
 using GFramework.Core.Abstractions.events;
 
 namespace GFramework.Core.Abstractions.property;

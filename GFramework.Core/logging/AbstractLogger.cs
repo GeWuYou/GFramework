@@ -1,5 +1,4 @@
-﻿using System;
-using GFramework.Core.Abstractions.logging;
+﻿using GFramework.Core.Abstractions.logging;
 
 namespace GFramework.Core.logging;
 

@@ -8,15 +8,15 @@ using NUnit.Framework;
 namespace GFramework.Core.Tests.architecture;
 
 /// <summary>
-/// ArchitectureConfiguration类的单元测试
-/// 测试内容包括：
-/// - 构造函数默认值
-/// - LoggerProperties默认配置（ConsoleLoggerFactoryProvider + Info级别）
-/// - ArchitectureProperties默认配置（AllowLateRegistration=false, StrictPhaseValidation=true）
-/// - 自定义配置替换
-/// - LoggerProperties独立修改
-/// - ArchitectureProperties独立修改
-/// - IArchitectureConfiguration接口实现验证
+///     ArchitectureConfiguration类的单元测试
+///     测试内容包括：
+///     - 构造函数默认值
+///     - LoggerProperties默认配置（ConsoleLoggerFactoryProvider + Info级别）
+///     - ArchitectureProperties默认配置（AllowLateRegistration=false, StrictPhaseValidation=true）
+///     - 自定义配置替换
+///     - LoggerProperties独立修改
+///     - ArchitectureProperties独立修改
+///     - IArchitectureConfiguration接口实现验证
 /// </summary>
 [TestFixture]
 public class ArchitectureConfigurationTests
@@ -30,7 +30,7 @@ public class ArchitectureConfigurationTests
     private ArchitectureConfiguration? _configuration;
 
     /// <summary>
-    /// 测试构造函数是否正确初始化LoggerProperties
+    ///     测试构造函数是否正确初始化LoggerProperties
     /// </summary>
     [Test]
     public void Constructor_Should_Initialize_LoggerProperties_With_Default_Values()
@@ -40,7 +40,7 @@ public class ArchitectureConfigurationTests
     }
 
     /// <summary>
-    /// 测试LoggerProperties默认使用ConsoleLoggerFactoryProvider
+    ///     测试LoggerProperties默认使用ConsoleLoggerFactoryProvider
     /// </summary>
     [Test]
     public void LoggerProperties_Should_Use_ConsoleLoggerFactoryProvider_By_Default()
@@ -50,7 +50,7 @@ public class ArchitectureConfigurationTests
     }
 
     /// <summary>
-    /// 测试LoggerProperties默认使用Info日志级别
+    ///     测试LoggerProperties默认使用Info日志级别
     /// </summary>
     [Test]
     public void LoggerProperties_Should_Use_Info_LogLevel_By_Default()
@@ -63,7 +63,7 @@ public class ArchitectureConfigurationTests
     }
 
     /// <summary>
-    /// 测试ArchitectureProperties的AllowLateRegistration默认为false
+    ///     测试ArchitectureProperties的AllowLateRegistration默认为false
     /// </summary>
     [Test]
     public void ArchitectureProperties_Should_Have_AllowLateRegistration_Set_To_False_By_Default()
@@ -73,7 +73,7 @@ public class ArchitectureConfigurationTests
     }
 
     /// <summary>
-    /// 测试ArchitectureProperties的StrictPhaseValidation默认为true
+    ///     测试ArchitectureProperties的StrictPhaseValidation默认为true
     /// </summary>
     [Test]
     public void ArchitectureProperties_Should_Have_StrictPhaseValidation_Set_To_True_By_Default()
@@ -83,7 +83,7 @@ public class ArchitectureConfigurationTests
     }
 
     /// <summary>
-    /// 测试LoggerProperties可以被自定义配置替换
+    ///     测试LoggerProperties可以被自定义配置替换
     /// </summary>
     [Test]
     public void LoggerProperties_Should_Be_Replaced_With_Custom_Configuration()
@@ -105,7 +105,7 @@ public class ArchitectureConfigurationTests
     }
 
     /// <summary>
-    /// 测试ArchitectureProperties可以被自定义配置替换
+    ///     测试ArchitectureProperties可以被自定义配置替换
     /// </summary>
     [Test]
     public void ArchitectureProperties_Should_Be_Replaced_With_Custom_Configuration()
@@ -126,7 +126,7 @@ public class ArchitectureConfigurationTests
     }
 
     /// <summary>
-    /// 测试LoggerProperties可以独立修改
+    ///     测试LoggerProperties可以独立修改
     /// </summary>
     [Test]
     public void LoggerProperties_Should_Be_Modifiable_Independently()
@@ -142,7 +142,7 @@ public class ArchitectureConfigurationTests
     }
 
     /// <summary>
-    /// 测试ArchitectureProperties可以独立修改
+    ///     测试ArchitectureProperties可以独立修改
     /// </summary>
     [Test]
     public void ArchitectureProperties_Should_Be_Modifiable_Independently()
@@ -157,7 +157,7 @@ public class ArchitectureConfigurationTests
     }
 
     /// <summary>
-    /// 测试ArchitectureConfiguration实现IArchitectureConfiguration接口
+    ///     测试ArchitectureConfiguration实现IArchitectureConfiguration接口
     /// </summary>
     [Test]
     public void ArchitectureConfiguration_Should_Implement_IArchitectureConfiguration_Interface()
@@ -166,7 +166,7 @@ public class ArchitectureConfigurationTests
     }
 
     /// <summary>
-    /// 测试新实例不与其他实例共享LoggerProperties
+    ///     测试新实例不与其他实例共享LoggerProperties
     /// </summary>
     [Test]
     public void New_Instance_Should_Not_Share_LoggerProperties_With_Other_Instance()
@@ -178,7 +178,7 @@ public class ArchitectureConfigurationTests
     }
 
     /// <summary>
-    /// 测试新实例不与其他实例共享ArchitectureProperties
+    ///     测试新实例不与其他实例共享ArchitectureProperties
     /// </summary>
     [Test]
     public void New_Instance_Should_Not_Share_ArchitectureProperties_With_Other_Instance()

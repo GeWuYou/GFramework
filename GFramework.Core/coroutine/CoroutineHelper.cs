@@ -1,16 +1,15 @@
-using System.Threading;
 using GFramework.Core.Abstractions.coroutine;
 using GFramework.Core.coroutine.instructions;
 
 namespace GFramework.Core.coroutine;
 
 /// <summary>
-/// 协程辅助方法
+///     协程辅助方法
 /// </summary>
 public static class CoroutineHelper
 {
     /// <summary>
-    /// 等待指定秒数
+    ///     等待指定秒数
     /// </summary>
     /// <param name="seconds">要等待的秒数</param>
     /// <returns>延迟等待指令</returns>
@@ -20,7 +19,7 @@ public static class CoroutineHelper
     }
 
     /// <summary>
-    /// 等待一帧
+    ///     等待一帧
     /// </summary>
     /// <returns>等待一帧的指令</returns>
     public static WaitOneFrame WaitForOneFrame()
@@ -29,7 +28,7 @@ public static class CoroutineHelper
     }
 
     /// <summary>
-    /// 等待指定帧数
+    ///     等待指定帧数
     /// </summary>
     /// <param name="frames">要等待的帧数</param>
     /// <returns>等待帧数指令</returns>
@@ -39,7 +38,7 @@ public static class CoroutineHelper
     }
 
     /// <summary>
-    /// 等待直到条件满足
+    ///     等待直到条件满足
     /// </summary>
     /// <param name="predicate">条件判断函数</param>
     /// <returns>等待条件指令</returns>
@@ -49,7 +48,7 @@ public static class CoroutineHelper
     }
 
     /// <summary>
-    /// 等待当条件为真时持续等待
+    ///     等待当条件为真时持续等待
     /// </summary>
     /// <param name="predicate">条件判断函数</param>
     /// <returns>等待条件指令</returns>
@@ -59,7 +58,7 @@ public static class CoroutineHelper
     }
 
     /// <summary>
-    /// 等待指定时间并提供进度回调
+    ///     等待指定时间并提供进度回调
     /// </summary>
     /// <param name="duration">等待的持续时间（秒）</param>
     /// <param name="onProgress">进度回调函数，接收0-1之间的进度值</param>
@@ -70,7 +69,7 @@ public static class CoroutineHelper
     }
 
     /// <summary>
-    /// 延迟调用指定的委托
+    ///     延迟调用指定的委托
     /// </summary>
     /// <param name="delay">延迟时间（秒）</param>
     /// <param name="action">要执行的动作委托</param>
@@ -82,7 +81,7 @@ public static class CoroutineHelper
     }
 
     /// <summary>
-    /// 重复调用指定的委托指定次数
+    ///     重复调用指定的委托指定次数
     /// </summary>
     /// <param name="interval">每次调用之间的间隔时间（秒）</param>
     /// <param name="count">调用次数</param>
@@ -96,17 +95,17 @@ public static class CoroutineHelper
             yield return new Delay(interval);
         }
     }
-    
+
     /// <summary>
-    /// 无限重复调用指定的委托，直到条件不满足
+    ///     无限重复调用指定的委托，直到条件不满足
     /// </summary>
     /// <param name="interval">每次调用之间的间隔时间（秒）</param>
     /// <param name="action">要执行的动作委托</param>
     /// <param name="shouldContinue">继续执行的条件，返回false时停止</param>
     /// <returns>返回一个枚举器，用于协程执行</returns>
     public static IEnumerator<IYieldInstruction> RepeatCallForever(
-        double interval, 
-        Action? action, 
+        double interval,
+        Action? action,
         Func<bool>? shouldContinue = null)
     {
         // 循环执行动作直到条件不再满足
@@ -116,9 +115,9 @@ public static class CoroutineHelper
             yield return new Delay(interval);
         }
     }
-    
+
     /// <summary>
-    /// 无限重复调用指定的委托，直到取消令牌被触发
+    ///     无限重复调用指定的委托，直到取消令牌被触发
     /// </summary>
     /// <param name="interval">每次调用之间的间隔时间（秒）</param>
     /// <param name="action">要执行的动作委托</param>

@@ -1,5 +1,4 @@
-﻿using System;
-using GFramework.Core.Abstractions.events;
+﻿using GFramework.Core.Abstractions.events;
 
 namespace GFramework.Core.events;
 

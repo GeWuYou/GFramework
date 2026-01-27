@@ -1,9 +1,7 @@
-﻿using System;
-
-namespace GFramework.Core.Abstractions.events;
+﻿namespace GFramework.Core.Abstractions.events;
 
 /// <summary>
-/// 事件总线接口，提供事件的发送、注册和注销功能
+///     事件总线接口，提供事件的发送、注册和注销功能
 /// </summary>
 public interface IEventBus
 {

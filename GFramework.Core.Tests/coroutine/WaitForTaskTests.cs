@@ -5,18 +5,20 @@ using NUnit.Framework;
 namespace GFramework.Core.Tests.coroutine;
 
 /// <summary>
-/// WaitForTask的单元测试类
-/// 测试内容包括：
-/// - WaitForTask初始化和等待
-/// - WaitForTask<T>初始化、等待和结果获取
-/// - 异常处理
-/// - 边界条件
+///     WaitForTask的单元测试类
+///     测试内容包括：
+///     - WaitForTask初始化和等待
+///     - WaitForTask
+///     <T>
+///         初始化、等待和结果获取
+///         - 异常处理
+///         - 边界条件
 /// </summary>
 [TestFixture]
 public class WaitForTaskTests
 {
     /// <summary>
-    /// 验证WaitForTask初始状态为未完成
+    ///     验证WaitForTask初始状态为未完成
     /// </summary>
     [Test]
     public void WaitForTask_Should_Not_Be_Done_Initially()
@@ -26,9 +28,9 @@ public class WaitForTaskTests
 
         Assert.That(wait.IsDone, Is.False);
     }
-    
+
     /// <summary>
-    /// 验证WaitForTask应该在Task完成后完成
+    ///     验证WaitForTask应该在Task完成后完成
     /// </summary>
     [Test]
     public void WaitForTask_Should_Be_Done_After_Task_Completes()
@@ -46,7 +48,7 @@ public class WaitForTaskTests
     }
 
     /// <summary>
-    /// 验证WaitForTask应该处理已完成的Task
+    ///     验证WaitForTask应该处理已完成的Task
     /// </summary>
     [Test]
     public void WaitForTask_Should_Handle_Already_Completed_Task()
@@ -63,7 +65,7 @@ public class WaitForTaskTests
     }
 
     /// <summary>
-    /// 验证WaitForTask应该处理失败的Task
+    ///     验证WaitForTask应该处理失败的Task
     /// </summary>
     [Test]
     public void WaitForTask_Should_Handle_Faulted_Task()
@@ -79,7 +81,7 @@ public class WaitForTaskTests
     }
 
     /// <summary>
-    /// 验证WaitForTask应该处理取消的Task
+    ///     验证WaitForTask应该处理取消的Task
     /// </summary>
     [Test]
     public void WaitForTask_Should_Handle_Cancelled_Task()
@@ -98,7 +100,7 @@ public class WaitForTaskTests
     }
 
     /// <summary>
-    /// 验证WaitForTask应该抛出ArgumentNullException当task为null
+    ///     验证WaitForTask应该抛出ArgumentNullException当task为null
     /// </summary>
     [Test]
     public void WaitForTask_Should_Throw_ArgumentNullException_When_Task_Is_Null()
@@ -107,7 +109,7 @@ public class WaitForTaskTests
     }
 
     /// <summary>
-    /// 验证WaitForTask<T>初始状态为未完成
+    ///     验证WaitForTask<T>初始状态为未完成
     /// </summary>
     [Test]
     public void WaitForTaskOfT_Should_Not_Be_Done_Initially()
@@ -119,7 +121,7 @@ public class WaitForTaskTests
     }
 
     /// <summary>
-    /// 验证WaitForTask<T>应该在Task完成后完成
+    ///     验证WaitForTask<T>应该在Task完成后完成
     /// </summary>
     [Test]
     public void WaitForTaskOfT_Should_Be_Done_After_Task_Completes()
@@ -137,7 +139,7 @@ public class WaitForTaskTests
     }
 
     /// <summary>
-    /// 验证WaitForTask<T>应该返回Task的结果
+    ///     验证WaitForTask<T>应该返回Task的结果
     /// </summary>
     [Test]
     public void WaitForTaskOfT_Should_Return_Task_Result()
@@ -153,7 +155,7 @@ public class WaitForTaskTests
     }
 
     /// <summary>
-    /// 验证WaitForTask<T>应该处理已完成的Task
+    ///     验证WaitForTask<T>应该处理已完成的Task
     /// </summary>
     [Test]
     public void WaitForTaskOfT_Should_Handle_Already_Completed_Task()
@@ -171,7 +173,7 @@ public class WaitForTaskTests
     }
 
     /// <summary>
-    /// 验证WaitForTask<T>应该处理失败的Task
+    ///     验证WaitForTask<T>应该处理失败的Task
     /// </summary>
     [Test]
     public void WaitForTaskOfT_Should_Handle_Faulted_Task()
@@ -185,11 +187,14 @@ public class WaitForTaskTests
 
         Assert.That(wait.IsDone, Is.True);
 
-        Assert.Throws<InvalidOperationException>(() => { var _ = wait.Result; });
+        Assert.Throws<InvalidOperationException>(() =>
+        {
+            var _ = wait.Result;
+        });
     }
 
     /// <summary>
-    /// 验证WaitForTask<T>应该抛出ArgumentNullException当task为null
+    ///     验证WaitForTask<T>应该抛出ArgumentNullException当task为null
     /// </summary>
     [Test]
     public void WaitForTaskOfT_Should_Throw_ArgumentNullException_When_Task_Is_Null()
@@ -198,7 +203,7 @@ public class WaitForTaskTests
     }
 
     /// <summary>
-    /// 验证WaitForTask实现IYieldInstruction接口
+    ///     验证WaitForTask实现IYieldInstruction接口
     /// </summary>
     [Test]
     public void WaitForTask_Should_Implement_IYieldInstruction()
@@ -210,7 +215,7 @@ public class WaitForTaskTests
     }
 
     /// <summary>
-    /// 验证WaitForTask<T>实现IYieldInstruction接口
+    ///     验证WaitForTask<T>实现IYieldInstruction接口
     /// </summary>
     [Test]
     public void WaitForTaskOfT_Should_Implement_IYieldInstruction()
@@ -222,7 +227,7 @@ public class WaitForTaskTests
     }
 
     /// <summary>
-    /// 验证WaitForTask的Update方法不影响状态
+    ///     验证WaitForTask的Update方法不影响状态
     /// </summary>
     [Test]
     public void WaitForTask_Update_Should_Not_Affect_State()
@@ -238,7 +243,7 @@ public class WaitForTaskTests
     }
 
     /// <summary>
-    /// 验证WaitForTask<T>的Update方法不影响状态
+    ///     验证WaitForTask<T>的Update方法不影响状态
     /// </summary>
     [Test]
     public void WaitForTaskOfT_Update_Should_Not_Affect_State()
@@ -254,7 +259,7 @@ public class WaitForTaskTests
     }
 
     /// <summary>
-    /// 验证WaitForTask在延迟完成后能够正确等待
+    ///     验证WaitForTask在延迟完成后能够正确等待
     /// </summary>
     [Test]
     public void WaitForTask_Should_Wait_For_Delayed_Task()
@@ -271,7 +276,7 @@ public class WaitForTaskTests
     }
 
     /// <summary>
-    /// 验证WaitForTask<T>在异步操作完成后能够正确获取结果
+    ///     验证WaitForTask<T>在异步操作完成后能够正确获取结果
     /// </summary>
     [Test]
     public async Task WaitForTaskOfT_Should_Get_Result_From_Async_Operation()
@@ -294,7 +299,7 @@ public class WaitForTaskTests
     }
 
     /// <summary>
-    /// 验证WaitForTask应该处理长时间运行的Task
+    ///     验证WaitForTask应该处理长时间运行的Task
     /// </summary>
     [Test]
     public void WaitForTask_Should_Handle_Long_Running_Task()

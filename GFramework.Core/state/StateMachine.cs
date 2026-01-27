@@ -3,7 +3,7 @@ using GFramework.Core.Abstractions.state;
 namespace GFramework.Core.state;
 
 /// <summary>
-/// 状态机实现类，用于管理状态的注册、切换和生命周期
+///     状态机实现类，用于管理状态的注册、切换和生命周期
 /// </summary>
 public class StateMachine(int maxHistorySize = 10) : IStateMachine
 {
@@ -11,17 +11,17 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     private readonly Stack<IState> _stateHistory = new();
 
     /// <summary>
-    /// 存储所有已注册状态的字典，键为状态类型，值为状态实例
+    ///     存储所有已注册状态的字典，键为状态类型，值为状态实例
     /// </summary>
     protected readonly Dictionary<Type, IState> States = new();
 
     /// <summary>
-    /// 获取当前激活的状态
+    ///     获取当前激活的状态
     /// </summary>
     public IState? Current { get; protected set; }
 
     /// <summary>
-    /// 注册一个状态到状态机中
+    ///     注册一个状态到状态机中
     /// </summary>
     /// <param name="state">要注册的状态实例</param>
     public IStateMachine Register(IState state)
@@ -35,7 +35,7 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     }
 
     /// <summary>
-    /// 从状态机中注销指定类型的状态
+    ///     从状态机中注销指定类型的状态
     /// </summary>
     /// <typeparam name="T">要注销的状态类型</typeparam>
     public IStateMachine Unregister<T>() where T : IState
@@ -55,10 +55,7 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
             // 从历史记录中移除该状态的所有引用
             var tempStack = new Stack<IState>(_stateHistory.Reverse());
             _stateHistory.Clear();
-            foreach (var historyState in tempStack.Where(s => s != state))
-            {
-                _stateHistory.Push(historyState);
-            }
+            foreach (var historyState in tempStack.Where(s => s != state)) _stateHistory.Push(historyState);
 
             States.Remove(type);
         }
@@ -67,7 +64,7 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     }
 
     /// <summary>
-    /// 检查是否可以切换到指定类型的状态
+    ///     检查是否可以切换到指定类型的状态
     /// </summary>
     /// <typeparam name="T">目标状态类型</typeparam>
     /// <returns>如果可以切换则返回true，否则返回false</returns>
@@ -80,7 +77,7 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     }
 
     /// <summary>
-    /// 切换到指定类型的状态
+    ///     切换到指定类型的状态
     /// </summary>
     /// <typeparam name="T">目标状态类型</typeparam>
     /// <returns>如果成功切换则返回true，否则返回false</returns>
@@ -106,27 +103,36 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     }
 
     /// <summary>
-    /// 检查指定类型的状态是否已注册
+    ///     检查指定类型的状态是否已注册
     /// </summary>
     /// <typeparam name="T">要检查的状态类型</typeparam>
     /// <returns>如果状态已注册则返回true，否则返回false</returns>
-    public bool IsRegistered<T>() where T : IState => States.ContainsKey(typeof(T));
+    public bool IsRegistered<T>() where T : IState
+    {
+        return States.ContainsKey(typeof(T));
+    }
 
     /// <summary>
-    /// 获取指定类型的已注册状态实例
+    ///     获取指定类型的已注册状态实例
     /// </summary>
     /// <typeparam name="T">要获取的状态类型</typeparam>
     /// <returns>如果状态存在则返回对应实例，否则返回null</returns>
-    public T? GetState<T>() where T : class, IState => States.TryGetValue(typeof(T), out var state) ? state as T : null;
+    public T? GetState<T>() where T : class, IState
+    {
+        return States.TryGetValue(typeof(T), out var state) ? state as T : null;
+    }
 
     /// <summary>
-    /// 获取所有已注册状态的类型集合
+    ///     获取所有已注册状态的类型集合
     /// </summary>
     /// <returns>包含所有已注册状态类型的枚举器</returns>
-    public IEnumerable<Type> GetRegisteredStateTypes() => States.Keys;
+    public IEnumerable<Type> GetRegisteredStateTypes()
+    {
+        return States.Keys;
+    }
 
     /// <summary>
-    /// 获取上一个状态
+    ///     获取上一个状态
     /// </summary>
     /// <returns>如果历史记录存在则返回上一个状态，否则返回null</returns>
     public IState? GetPreviousState()
@@ -138,7 +144,7 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     }
 
     /// <summary>
-    /// 获取状态历史记录
+    ///     获取状态历史记录
     /// </summary>
     /// <returns>状态历史记录的只读副本，从最近到最远排序</returns>
     public IReadOnlyList<IState> GetStateHistory()
@@ -150,7 +156,7 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     }
 
     /// <summary>
-    /// 回退到上一个状态
+    ///     回退到上一个状态
     /// </summary>
     /// <returns>如果成功回退则返回true，否则返回false</returns>
     public bool GoBack()
@@ -163,10 +169,8 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
 
             // 检查上一个状态是否仍然注册
             if (!States.ContainsValue(previousState))
-            {
                 // 如果状态已被注销，继续尝试更早的状态
                 return GoBack();
-            }
 
             // 回退时不添加到历史记录
             ChangeInternalWithoutHistory(previousState);
@@ -175,7 +179,7 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     }
 
     /// <summary>
-    /// 清空状态历史记录
+    ///     清空状态历史记录
     /// </summary>
     public void ClearHistory()
     {
@@ -186,7 +190,7 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     }
 
     /// <summary>
-    /// 内部状态切换方法（不记录历史），用于回退操作
+    ///     内部状态切换方法（不记录历史），用于回退操作
     /// </summary>
     /// <param name="next">下一个状态实例</param>
     protected virtual void ChangeInternalWithoutHistory(IState next)
@@ -204,7 +208,7 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     }
 
     /// <summary>
-    /// 内部状态切换方法，处理状态切换的核心逻辑
+    ///     内部状态切换方法，处理状态切换的核心逻辑
     /// </summary>
     /// <param name="next">下一个状态实例</param>
     protected virtual void ChangeInternal(IState next)
@@ -233,10 +237,7 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
                 // 移除最旧的记录（栈底元素）
                 var tempStack = new Stack<IState>(_stateHistory.Reverse().Skip(1));
                 _stateHistory.Clear();
-                foreach (var state in tempStack.Reverse())
-                {
-                    _stateHistory.Push(state);
-                }
+                foreach (var state in tempStack.Reverse()) _stateHistory.Push(state);
             }
         }
 
@@ -248,7 +249,7 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     }
 
     /// <summary>
-    /// 当状态转换被拒绝时的回调方法
+    ///     当状态转换被拒绝时的回调方法
     /// </summary>
     /// <param name="from">源状态</param>
     /// <param name="to">目标状态</param>
@@ -257,7 +258,7 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     }
 
     /// <summary>
-    /// 当状态即将发生改变时的回调方法
+    ///     当状态即将发生改变时的回调方法
     /// </summary>
     /// <param name="from">源状态</param>
     /// <param name="to">目标状态</param>
@@ -266,7 +267,7 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     }
 
     /// <summary>
-    /// 当状态改变完成后的回调方法
+    ///     当状态改变完成后的回调方法
     /// </summary>
     /// <param name="from">源状态</param>
     /// <param name="to">目标状态</param>

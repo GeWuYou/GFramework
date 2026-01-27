@@ -229,8 +229,6 @@ public sealed class AudioBusMap
 - 提供合理的默认值
 - 支持对象初始化语法
 
-
-
 ### GodotAudioSettings
 
 ```csharp

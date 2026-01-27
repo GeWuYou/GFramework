@@ -4,7 +4,7 @@ using GFramework.Game.Abstractions.setting;
 namespace GFramework.Game.setting;
 
 /// <summary>
-/// 设置模型类，用于管理不同类型的应用程序设置部分
+///     设置模型类，用于管理不同类型的应用程序设置部分
 /// </summary>
 public class SettingsModel : AbstractModel, ISettingsModel
 {
@@ -12,7 +12,7 @@ public class SettingsModel : AbstractModel, ISettingsModel
     private readonly Dictionary<Type, ISettingsData> _dataSettings = new();
 
     /// <summary>
-    /// 获取或创建数据设置
+    ///     获取或创建数据设置
     /// </summary>
     /// <typeparam name="T">设置数据类型，必须实现ISettingsData接口并具有无参构造函数</typeparam>
     /// <returns>指定类型的设置数据实例</returns>
@@ -31,7 +31,7 @@ public class SettingsModel : AbstractModel, ISettingsModel
     }
 
     /// <summary>
-    /// 注册可应用设置（必须手动注册）
+    ///     注册可应用设置（必须手动注册）
     /// </summary>
     /// <typeparam name="T">可应用设置的类型，必须继承自class和IApplyAbleSettings</typeparam>
     /// <param name="applicator">要注册的可应用设置实例</param>
@@ -44,7 +44,7 @@ public class SettingsModel : AbstractModel, ISettingsModel
     }
 
     /// <summary>
-    /// 获取已注册的可应用设置
+    ///     获取已注册的可应用设置
     /// </summary>
     /// <typeparam name="T">可应用设置类型，必须实现IApplyAbleSettings接口</typeparam>
     /// <returns>找到的可应用设置实例，如果未找到则返回null</returns>
@@ -57,7 +57,7 @@ public class SettingsModel : AbstractModel, ISettingsModel
     }
 
     /// <summary>
-    /// 尝试获取指定类型的设置节
+    ///     尝试获取指定类型的设置节
     /// </summary>
     /// <param name="type">要查找的设置类型</param>
     /// <param name="section">输出参数，找到的设置节实例</param>
@@ -83,7 +83,7 @@ public class SettingsModel : AbstractModel, ISettingsModel
     }
 
     /// <summary>
-    /// 获取所有设置节的集合
+    ///     获取所有设置节的集合
     /// </summary>
     /// <returns>包含所有设置节的可枚举集合</returns>
     public IEnumerable<ISettingsSection> All()
@@ -95,7 +95,7 @@ public class SettingsModel : AbstractModel, ISettingsModel
 
 
     /// <summary>
-    /// 初始化方法，用于执行模型的初始化逻辑
+    ///     初始化方法，用于执行模型的初始化逻辑
     /// </summary>
     protected override void OnInit()
     {

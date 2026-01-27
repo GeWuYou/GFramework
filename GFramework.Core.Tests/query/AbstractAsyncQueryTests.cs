@@ -11,18 +11,18 @@ using NUnit.Framework;
 namespace GFramework.Core.Tests.query;
 
 /// <summary>
-/// AbstractAsyncQuery类的单元测试
-/// 测试内容包括：
-/// - 异步查询的基础实现
-/// - DoAsync方法调用
-/// - DoAsync方法的异常处理
-/// - 上下文感知功能（SetContext, GetContext）
-/// - 日志功能（Logger属性）
-/// - 子类继承行为验证
-/// - 查询执行前日志记录
-/// - 查询执行后日志记录
-/// - 返回值类型验证
-/// - 错误情况下的日志记录
+///     AbstractAsyncQuery类的单元测试
+///     测试内容包括：
+///     - 异步查询的基础实现
+///     - DoAsync方法调用
+///     - DoAsync方法的异常处理
+///     - 上下文感知功能（SetContext, GetContext）
+///     - 日志功能（Logger属性）
+///     - 子类继承行为验证
+///     - 查询执行前日志记录
+///     - 查询执行后日志记录
+///     - 返回值类型验证
+///     - 错误情况下的日志记录
 /// </summary>
 [TestFixture]
 public class AbstractAsyncQueryTests
@@ -43,7 +43,7 @@ public class AbstractAsyncQueryTests
     private IocContainer _container = null!;
 
     /// <summary>
-    /// 测试异步查询的基础实现
+    ///     测试异步查询的基础实现
     /// </summary>
     [Test]
     public async Task AbstractAsyncQuery_Should_Implement_IAsyncQuery_Interface()
@@ -55,7 +55,7 @@ public class AbstractAsyncQueryTests
     }
 
     /// <summary>
-    /// 测试DoAsync方法调用
+    ///     测试DoAsync方法调用
     /// </summary>
     [Test]
     public async Task DoAsync_Should_Invoke_OnDoAsync_Method()
@@ -71,7 +71,7 @@ public class AbstractAsyncQueryTests
     }
 
     /// <summary>
-    /// 测试DoAsync方法的异常处理
+    ///     测试DoAsync方法的异常处理
     /// </summary>
     [Test]
     public void DoAsync_Should_Propagate_Exception_From_OnDoAsync()
@@ -84,7 +84,7 @@ public class AbstractAsyncQueryTests
     }
 
     /// <summary>
-    /// 测试上下文感知功能 - SetContext方法
+    ///     测试上下文感知功能 - SetContext方法
     /// </summary>
     [Test]
     public void SetContext_Should_Set_Context_Property()
@@ -100,7 +100,7 @@ public class AbstractAsyncQueryTests
     }
 
     /// <summary>
-    /// 测试上下文感知功能 - GetContext方法
+    ///     测试上下文感知功能 - GetContext方法
     /// </summary>
     [Test]
     public void GetContext_Should_Return_Context_Property()
@@ -117,7 +117,7 @@ public class AbstractAsyncQueryTests
     }
 
     /// <summary>
-    /// 测试子类继承行为验证
+    ///     测试子类继承行为验证
     /// </summary>
     [Test]
     public async Task Child_Class_Should_Inherit_And_Override_OnDoAsync_Method()
@@ -133,7 +133,7 @@ public class AbstractAsyncQueryTests
     }
 
     /// <summary>
-    /// 测试异步查询执行生命周期完整性
+    ///     测试异步查询执行生命周期完整性
     /// </summary>
     [Test]
     public async Task AsyncQuery_Should_Complete_Execution_Lifecycle()
@@ -151,7 +151,7 @@ public class AbstractAsyncQueryTests
     }
 
     /// <summary>
-    /// 测试异步查询多次执行
+    ///     测试异步查询多次执行
     /// </summary>
     [Test]
     public async Task AsyncQuery_Should_Be_Executable_Multiple_Times()
@@ -168,7 +168,7 @@ public class AbstractAsyncQueryTests
     }
 
     /// <summary>
-    /// 测试异步查询的返回值类型
+    ///     测试异步查询的返回值类型
     /// </summary>
     [Test]
     public async Task AsyncQuery_Should_Return_Correct_Type()
@@ -184,7 +184,7 @@ public class AbstractAsyncQueryTests
     }
 
     /// <summary>
-    /// 测试异步查询的字符串返回值
+    ///     测试异步查询的字符串返回值
     /// </summary>
     [Test]
     public async Task AsyncQuery_WithStringResult_Should_Return_String()
@@ -200,7 +200,7 @@ public class AbstractAsyncQueryTests
     }
 
     /// <summary>
-    /// 测试异步查询的复杂对象返回值
+    ///     测试异步查询的复杂对象返回值
     /// </summary>
     [Test]
     public async Task AsyncQuery_WithComplexResult_Should_Return_ComplexObject()
@@ -217,7 +217,7 @@ public class AbstractAsyncQueryTests
     }
 
     /// <summary>
-    /// 测试异步查询在不同实例之间的独立性
+    ///     测试异步查询在不同实例之间的独立性
     /// </summary>
     [Test]
     public async Task AsyncQuery_Should_Maintain_Independence_Between_Different_Instances()
@@ -238,23 +238,23 @@ public class AbstractAsyncQueryTests
 }
 
 /// <summary>
-/// 测试用异步查询输入类V2
+///     测试用异步查询输入类V2
 /// </summary>
 public sealed class TestAsyncQueryInputV2 : IQueryInput
 {
     /// <summary>
-    /// 获取或设置值
+    ///     获取或设置值
     /// </summary>
     public int Value { get; init; }
 }
 
 /// <summary>
-/// 整数类型测试异步查询类V4，继承AbstractAsyncQuery
+///     整数类型测试异步查询类V4，继承AbstractAsyncQuery
 /// </summary>
 public sealed class TestAsyncQueryV4 : AbstractAsyncQuery<TestAsyncQueryInputV2, int>
 {
     /// <summary>
-    /// 初始化TestAsyncQueryV4的新实例
+    ///     初始化TestAsyncQueryV4的新实例
     /// </summary>
     /// <param name="input">查询输入参数</param>
     public TestAsyncQueryV4(TestAsyncQueryInputV2 input) : base(input)
@@ -262,12 +262,12 @@ public sealed class TestAsyncQueryV4 : AbstractAsyncQuery<TestAsyncQueryInputV2,
     }
 
     /// <summary>
-    /// 获取查询是否已执行
+    ///     获取查询是否已执行
     /// </summary>
     public bool Executed { get; private set; }
 
     /// <summary>
-    /// 执行异步查询操作的具体实现
+    ///     执行异步查询操作的具体实现
     /// </summary>
     /// <param name="input">查询输入参数</param>
     /// <returns>查询结果，将输入值乘以2</returns>
@@ -279,12 +279,12 @@ public sealed class TestAsyncQueryV4 : AbstractAsyncQuery<TestAsyncQueryInputV2,
 }
 
 /// <summary>
-/// 字符串类型测试异步查询类V4，继承AbstractAsyncQuery
+///     字符串类型测试异步查询类V4，继承AbstractAsyncQuery
 /// </summary>
 public sealed class TestAsyncStringQueryV4 : AbstractAsyncQuery<TestAsyncQueryInputV2, string>
 {
     /// <summary>
-    /// 初始化TestAsyncStringQueryV4的新实例
+    ///     初始化TestAsyncStringQueryV4的新实例
     /// </summary>
     /// <param name="input">查询输入参数</param>
     public TestAsyncStringQueryV4(TestAsyncQueryInputV2 input) : base(input)
@@ -292,12 +292,12 @@ public sealed class TestAsyncStringQueryV4 : AbstractAsyncQuery<TestAsyncQueryIn
     }
 
     /// <summary>
-    /// 获取查询是否已执行
+    ///     获取查询是否已执行
     /// </summary>
     public bool Executed { get; private set; }
 
     /// <summary>
-    /// 执行异步查询操作的具体实现
+    ///     执行异步查询操作的具体实现
     /// </summary>
     /// <param name="input">查询输入参数</param>
     /// <returns>格式化的字符串结果</returns>
@@ -309,12 +309,12 @@ public sealed class TestAsyncStringQueryV4 : AbstractAsyncQuery<TestAsyncQueryIn
 }
 
 /// <summary>
-/// 复杂对象类型测试异步查询类V4，继承AbstractAsyncQuery
+///     复杂对象类型测试异步查询类V4，继承AbstractAsyncQuery
 /// </summary>
 public sealed class TestAsyncComplexQueryV4 : AbstractAsyncQuery<TestAsyncQueryInputV2, TestAsyncQueryResultV2>
 {
     /// <summary>
-    /// 初始化TestAsyncComplexQueryV4的新实例
+    ///     初始化TestAsyncComplexQueryV4的新实例
     /// </summary>
     /// <param name="input">查询输入参数</param>
     public TestAsyncComplexQueryV4(TestAsyncQueryInputV2 input) : base(input)
@@ -322,12 +322,12 @@ public sealed class TestAsyncComplexQueryV4 : AbstractAsyncQuery<TestAsyncQueryI
     }
 
     /// <summary>
-    /// 获取查询是否已执行
+    ///     获取查询是否已执行
     /// </summary>
     public bool Executed { get; private set; }
 
     /// <summary>
-    /// 执行异步查询操作的具体实现
+    ///     执行异步查询操作的具体实现
     /// </summary>
     /// <param name="input">查询输入参数</param>
     /// <returns>复杂对象查询结果</returns>
@@ -344,12 +344,12 @@ public sealed class TestAsyncComplexQueryV4 : AbstractAsyncQuery<TestAsyncQueryI
 }
 
 /// <summary>
-/// 测试用异步查询类（抛出异常）
+///     测试用异步查询类（抛出异常）
 /// </summary>
 public sealed class TestAsyncQueryWithExceptionV4 : AbstractAsyncQuery<TestAsyncQueryInputV2, int>
 {
     /// <summary>
-    /// 初始化TestAsyncQueryWithExceptionV4的新实例
+    ///     初始化TestAsyncQueryWithExceptionV4的新实例
     /// </summary>
     /// <param name="input">查询输入参数</param>
     public TestAsyncQueryWithExceptionV4(TestAsyncQueryInputV2 input) : base(input)
@@ -357,7 +357,7 @@ public sealed class TestAsyncQueryWithExceptionV4 : AbstractAsyncQuery<TestAsync
     }
 
     /// <summary>
-    /// 执行异步查询操作并抛出异常
+    ///     执行异步查询操作并抛出异常
     /// </summary>
     /// <param name="input">查询输入参数</param>
     /// <exception cref="InvalidOperationException">总是抛出异常</exception>
@@ -368,12 +368,12 @@ public sealed class TestAsyncQueryWithExceptionV4 : AbstractAsyncQuery<TestAsync
 }
 
 /// <summary>
-/// 测试用异步查询子类V4，继承AbstractAsyncQuery
+///     测试用异步查询子类V4，继承AbstractAsyncQuery
 /// </summary>
 public sealed class TestAsyncQueryChildV4 : AbstractAsyncQuery<TestAsyncQueryInputV2, int>
 {
     /// <summary>
-    /// 初始化TestAsyncQueryChildV4的新实例
+    ///     初始化TestAsyncQueryChildV4的新实例
     /// </summary>
     /// <param name="input">查询输入参数</param>
     public TestAsyncQueryChildV4(TestAsyncQueryInputV2 input) : base(input)
@@ -381,12 +381,12 @@ public sealed class TestAsyncQueryChildV4 : AbstractAsyncQuery<TestAsyncQueryInp
     }
 
     /// <summary>
-    /// 获取查询是否已执行
+    ///     获取查询是否已执行
     /// </summary>
     public bool Executed { get; private set; }
 
     /// <summary>
-    /// 执行异步查询操作的具体实现（子类实现，乘以3）
+    ///     执行异步查询操作的具体实现（子类实现，乘以3）
     /// </summary>
     /// <param name="input">查询输入参数</param>
     /// <returns>查询结果，将输入值乘以3</returns>
@@ -398,17 +398,17 @@ public sealed class TestAsyncQueryChildV4 : AbstractAsyncQuery<TestAsyncQueryInp
 }
 
 /// <summary>
-/// 测试用复杂查询结果类V2
+///     测试用复杂查询结果类V2
 /// </summary>
 public sealed class TestAsyncQueryResultV2
 {
     /// <summary>
-    /// 获取或设置值
+    ///     获取或设置值
     /// </summary>
     public int Value { get; init; }
 
     /// <summary>
-    /// 获取或设置双倍值
+    ///     获取或设置双倍值
     /// </summary>
     public int DoubleValue { get; init; }
 }

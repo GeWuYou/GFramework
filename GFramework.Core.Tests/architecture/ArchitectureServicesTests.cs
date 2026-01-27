@@ -18,17 +18,17 @@ using NUnit.Framework;
 namespace GFramework.Core.Tests.architecture;
 
 /// <summary>
-/// ArchitectureServices类的单元测试
-/// 测试内容包括：
-/// - 服务容器初始化
-/// - 所有服务实例创建（Container, EventBus, CommandBus, QueryBus）
-/// - SetContext方法 - 设置上下文
-/// - SetContext方法 - 重复设置上下文
-/// - GetContext方法 - 获取已设置上下文
-/// - GetContext方法 - 未设置上下文时返回null
-/// - 上下文传播到容器
-/// - IArchitectureServices接口实现验证
-/// - 服务独立性验证（多个实例）
+///     ArchitectureServices类的单元测试
+///     测试内容包括：
+///     - 服务容器初始化
+///     - 所有服务实例创建（Container, EventBus, CommandBus, QueryBus）
+///     - SetContext方法 - 设置上下文
+///     - SetContext方法 - 重复设置上下文
+///     - GetContext方法 - 获取已设置上下文
+///     - GetContext方法 - 未设置上下文时返回null
+///     - 上下文传播到容器
+///     - IArchitectureServices接口实现验证
+///     - 服务独立性验证（多个实例）
 /// </summary>
 [TestFixture]
 public class ArchitectureServicesTests
@@ -44,7 +44,7 @@ public class ArchitectureServicesTests
     private TestArchitectureContextV3? _context;
 
     /// <summary>
-    /// 测试构造函数初始化所有服务
+    ///     测试构造函数初始化所有服务
     /// </summary>
     [Test]
     public void Constructor_Should_Initialize_AllServices()
@@ -63,7 +63,7 @@ public class ArchitectureServicesTests
     }
 
     /// <summary>
-    /// 测试EventBus是EventBus的实例
+    ///     测试EventBus是EventBus的实例
     /// </summary>
     [Test]
     public void EventBus_Should_Be_Instance_Of_EventBus()
@@ -73,7 +73,7 @@ public class ArchitectureServicesTests
     }
 
     /// <summary>
-    /// 测试CommandBus是CommandBus的实例
+    ///     测试CommandBus是CommandBus的实例
     /// </summary>
     [Test]
     public void CommandBus_Should_Be_Instance_Of_CommandBus()
@@ -83,7 +83,7 @@ public class ArchitectureServicesTests
     }
 
     /// <summary>
-    /// 测试QueryBus是QueryBus的实例
+    ///     测试QueryBus是QueryBus的实例
     /// </summary>
     [Test]
     public void QueryBus_Should_Be_Instance_Of_QueryBus()
@@ -93,7 +93,7 @@ public class ArchitectureServicesTests
     }
 
     /// <summary>
-    /// 测试SetContext设置内部Context字段
+    ///     测试SetContext设置内部Context字段
     /// </summary>
     [Test]
     public void SetContext_Should_Set_Context_Internal_Field()
@@ -105,7 +105,7 @@ public class ArchitectureServicesTests
     }
 
     /// <summary>
-    /// 测试SetContext将上下文传播到Container
+    ///     测试SetContext将上下文传播到Container
     /// </summary>
     [Test]
     public void SetContext_Should_Propagate_Context_To_Container()
@@ -117,7 +117,7 @@ public class ArchitectureServicesTests
     }
 
     /// <summary>
-    /// 测试GetContext在SetContext后返回上下文
+    ///     测试GetContext在SetContext后返回上下文
     /// </summary>
     [Test]
     public void GetContext_Should_Return_Context_After_SetContext()
@@ -130,7 +130,7 @@ public class ArchitectureServicesTests
     }
 
     /// <summary>
-    /// 测试GetContext在未设置上下文时返回null
+    ///     测试GetContext在未设置上下文时返回null
     /// </summary>
     [Test]
     public void GetContext_Should_ReturnNull_When_Context_Not_Set()
@@ -141,7 +141,7 @@ public class ArchitectureServicesTests
     }
 
     /// <summary>
-    /// 测试SetContext替换已存在的上下文
+    ///     测试SetContext替换已存在的上下文
     /// </summary>
     [Test]
     public void SetContext_Should_Replace_Existing_Context()
@@ -157,7 +157,7 @@ public class ArchitectureServicesTests
     }
 
     /// <summary>
-    /// 测试ArchitectureServices实现IArchitectureServices接口
+    ///     测试ArchitectureServices实现IArchitectureServices接口
     /// </summary>
     [Test]
     public void ArchitectureServices_Should_Implement_IArchitectureServices_Interface()
@@ -166,7 +166,7 @@ public class ArchitectureServicesTests
     }
 
     /// <summary>
-    /// 测试多个实例有独立的Container
+    ///     测试多个实例有独立的Container
     /// </summary>
     [Test]
     public void Multiple_Instances_Should_Have_Independent_Container()
@@ -178,7 +178,7 @@ public class ArchitectureServicesTests
     }
 
     /// <summary>
-    /// 测试多个实例有独立的EventBus
+    ///     测试多个实例有独立的EventBus
     /// </summary>
     [Test]
     public void Multiple_Instances_Should_Have_Independent_EventBus()
@@ -190,7 +190,7 @@ public class ArchitectureServicesTests
     }
 
     /// <summary>
-    /// 测试多个实例有独立的CommandBus
+    ///     测试多个实例有独立的CommandBus
     /// </summary>
     [Test]
     public void Multiple_Instances_Should_Have_Independent_CommandBus()
@@ -202,7 +202,7 @@ public class ArchitectureServicesTests
     }
 
     /// <summary>
-    /// 测试多个实例有独立的QueryBus
+    ///     测试多个实例有独立的QueryBus
     /// </summary>
     [Test]
     public void Multiple_Instances_Should_Have_Independent_QueryBus()
@@ -227,10 +227,25 @@ public class TestArchitectureContextV3 : IArchitectureContext
     public ICommandBus CommandBus => new CommandBus();
     public IQueryBus QueryBus => new QueryBus();
 
-    public TService? GetService<TService>() where TService : class => _container.Get<TService>();
-    public TModel? GetModel<TModel>() where TModel : class, IModel => _container.Get<TModel>();
-    public TSystem? GetSystem<TSystem>() where TSystem : class, ISystem => _container.Get<TSystem>();
-    public TUtility? GetUtility<TUtility>() where TUtility : class, IUtility => _container.Get<TUtility>();
+    public TService? GetService<TService>() where TService : class
+    {
+        return _container.Get<TService>();
+    }
+
+    public TModel? GetModel<TModel>() where TModel : class, IModel
+    {
+        return _container.Get<TModel>();
+    }
+
+    public TSystem? GetSystem<TSystem>() where TSystem : class, ISystem
+    {
+        return _container.Get<TSystem>();
+    }
+
+    public TUtility? GetUtility<TUtility>() where TUtility : class, IUtility
+    {
+        return _container.Get<TUtility>();
+    }
 
     public void SendEvent<TEvent>() where TEvent : new()
     {
@@ -240,7 +255,10 @@ public class TestArchitectureContextV3 : IArchitectureContext
     {
     }
 
-    public IUnRegister RegisterEvent<TEvent>(Action<TEvent> handler) => new DefaultUnRegister(() => { });
+    public IUnRegister RegisterEvent<TEvent>(Action<TEvent> handler)
+    {
+        return new DefaultUnRegister(() => { });
+    }
 
     public void UnRegisterEvent<TEvent>(Action<TEvent> onEvent)
     {
@@ -250,7 +268,10 @@ public class TestArchitectureContextV3 : IArchitectureContext
     {
     }
 
-    public TResult SendCommand<TResult>(ICommand<TResult> command) => default!;
+    public TResult SendCommand<TResult>(ICommand<TResult> command)
+    {
+        return default!;
+    }
 
     public Task SendCommandAsync(IAsyncCommand command)
     {
@@ -262,11 +283,20 @@ public class TestArchitectureContextV3 : IArchitectureContext
         return (Task<TResult>)Task.CompletedTask;
     }
 
-    public TResult SendQuery<TResult>(IQuery<TResult> query) => default!;
+    public TResult SendQuery<TResult>(IQuery<TResult> query)
+    {
+        return default!;
+    }
 
-    public Task<TResult> SendQueryAsync<TResult>(IAsyncQuery<TResult> query) => (Task<TResult>)Task.CompletedTask;
+    public Task<TResult> SendQueryAsync<TResult>(IAsyncQuery<TResult> query)
+    {
+        return (Task<TResult>)Task.CompletedTask;
+    }
 
-    public IEnvironment GetEnvironment() => _environment;
+    public IEnvironment GetEnvironment()
+    {
+        return _environment;
+    }
 }
 
 #endregion

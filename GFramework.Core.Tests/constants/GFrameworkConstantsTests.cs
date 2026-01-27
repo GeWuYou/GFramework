@@ -4,19 +4,19 @@ using NUnit.Framework;
 namespace GFramework.Core.Tests.constants;
 
 /// <summary>
-/// GFrameworkConstants类的单元测试
-/// 测试内容包括：
-/// - 版本号常量格式正确性
-/// - 其他框架常量
-/// - 常量值正确性
-/// - 常量类型验证
-/// - 常量可访问性
+///     GFrameworkConstants类的单元测试
+///     测试内容包括：
+///     - 版本号常量格式正确性
+///     - 其他框架常量
+///     - 常量值正确性
+///     - 常量类型验证
+///     - 常量可访问性
 /// </summary>
 [TestFixture]
 public class GFrameworkConstantsTests
 {
     /// <summary>
-    /// 测试FrameworkName常量的值正确性
+    ///     测试FrameworkName常量的值正确性
     /// </summary>
     [Test]
     public void FrameworkName_Should_Have_Correct_Value()
@@ -25,7 +25,7 @@ public class GFrameworkConstantsTests
     }
 
     /// <summary>
-    /// 测试FrameworkName常量的类型
+    ///     测试FrameworkName常量的类型
     /// </summary>
     [Test]
     public void FrameworkName_Should_Be_String_Type()
@@ -34,7 +34,7 @@ public class GFrameworkConstantsTests
     }
 
     /// <summary>
-    /// 测试FrameworkName常量不为空
+    ///     测试FrameworkName常量不为空
     /// </summary>
     [Test]
     public void FrameworkName_Should_Not_Be_Null_Or_Empty()
@@ -44,7 +44,7 @@ public class GFrameworkConstantsTests
     }
 
     /// <summary>
-    /// 测试FrameworkName常量是公共可访问的
+    ///     测试FrameworkName常量是公共可访问的
     /// </summary>
     [Test]
     public void FrameworkName_Should_Be_Publicly_Accessible()
@@ -58,7 +58,7 @@ public class GFrameworkConstantsTests
     }
 
     /// <summary>
-    /// 测试FrameworkName常量是只读的（const）
+    ///     测试FrameworkName常量是只读的（const）
     /// </summary>
     [Test]
     public void FrameworkName_Should_Be_Constant()

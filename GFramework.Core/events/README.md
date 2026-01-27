@@ -27,6 +27,7 @@ void UnRegister();  // 执行注销操作
 ```
 
 ### 3. [
+
 `IUnRegisterList`](file:///d:/Project/Rider/GFramework/GFramework.Core.Abstractions/events/IUnRegisterList.cs#L6-L10)
 
 注销列表接口，用于批量管理注销对象。

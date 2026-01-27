@@ -1,5 +1,4 @@
-﻿using System.Linq;
-using System.Text;
+﻿using System.Text;
 using GFramework.SourceGenerators.Common.constants;
 using GFramework.SourceGenerators.Common.diagnostics;
 using GFramework.SourceGenerators.Common.generator;

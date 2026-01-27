@@ -1,46 +1,44 @@
-using System;
-using System.Collections.Generic;
 using GFramework.Game.Abstractions.enums;
 
 namespace GFramework.Game.Abstractions.ui;
 
 /// <summary>
-/// UI切换事件，包含UI切换过程中的上下文信息
+///     UI切换事件，包含UI切换过程中的上下文信息
 /// </summary>
 public sealed class UiTransitionEvent
 {
     /// <summary>
-    /// 用户自定义数据字典，用于Handler之间传递数据
+    ///     用户自定义数据字典，用于Handler之间传递数据
     /// </summary>
     private readonly Dictionary<string, object> _context = new(StringComparer.Ordinal);
 
     /// <summary>
-    /// 源UI的标识符，切换前的UI key
+    ///     源UI的标识符，切换前的UI key
     /// </summary>
     public string FromUiKey { get; init; } = string.Empty;
 
     /// <summary>
-    /// 目标UI的标识符，切换后的UI key
+    ///     目标UI的标识符，切换后的UI key
     /// </summary>
     public string? ToUiKey { get; init; } = string.Empty;
 
     /// <summary>
-    /// UI切换类型
+    ///     UI切换类型
     /// </summary>
     public UiTransitionType TransitionType { get; init; }
 
     /// <summary>
-    /// UI切换策略
+    ///     UI切换策略
     /// </summary>
     public UiTransitionPolicy Policy { get; init; }
 
     /// <summary>
-    /// UI进入参数
+    ///     UI进入参数
     /// </summary>
     public IUiPageEnterParam? EnterParam { get; init; }
 
     /// <summary>
-    /// 获取用户自定义数据
+    ///     获取用户自定义数据
     /// </summary>
     /// <typeparam name="T">数据类型</typeparam>
     /// <param name="key">数据键</param>
@@ -54,7 +52,7 @@ public sealed class UiTransitionEvent
     }
 
     /// <summary>
-    /// 尝试获取用户自定义数据
+    ///     尝试获取用户自定义数据
     /// </summary>
     /// <typeparam name="T">数据类型</typeparam>
     /// <param name="key">数据键</param>
@@ -73,7 +71,7 @@ public sealed class UiTransitionEvent
     }
 
     /// <summary>
-    /// 设置用户自定义数据
+    ///     设置用户自定义数据
     /// </summary>
     /// <typeparam name="T">数据类型</typeparam>
     /// <param name="key">数据键</param>
@@ -84,7 +82,7 @@ public sealed class UiTransitionEvent
     }
 
     /// <summary>
-    /// 检查是否存在指定的用户数据键
+    ///     检查是否存在指定的用户数据键
     /// </summary>
     /// <param name="key">数据键</param>
     /// <returns>是否存在</returns>
@@ -94,7 +92,7 @@ public sealed class UiTransitionEvent
     }
 
     /// <summary>
-    /// 移除指定的用户数据
+    ///     移除指定的用户数据
     /// </summary>
     /// <param name="key">数据键</param>
     /// <returns>是否成功移除</returns>

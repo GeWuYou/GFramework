@@ -7,19 +7,19 @@ using NUnit.Framework;
 namespace GFramework.Core.Tests.coroutine;
 
 /// <summary>
-/// 协程扩展方法的单元测试类
-/// 测试内容包括：
-/// - RepeatEvery方法
-/// - ExecuteAfter方法
-/// - Sequence方法
-/// - ParallelCoroutines方法
-/// - WaitForSecondsWithProgress方法
+///     协程扩展方法的单元测试类
+///     测试内容包括：
+///     - RepeatEvery方法
+///     - ExecuteAfter方法
+///     - Sequence方法
+///     - ParallelCoroutines方法
+///     - WaitForSecondsWithProgress方法
 /// </summary>
 [TestFixture]
 public class CoroutineExtensionsTests
 {
     /// <summary>
-    /// 验证RepeatEvery应该返回有效的协程
+    ///     验证RepeatEvery应该返回有效的协程
     /// </summary>
     [Test]
     public void RepeatEvery_Should_Return_Valid_Coroutine()
@@ -31,7 +31,7 @@ public class CoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证RepeatEvery应该执行指定次数
+    ///     验证RepeatEvery应该执行指定次数
     /// </summary>
     [Test]
     public void RepeatEvery_Should_Execute_Specified_Times()
@@ -39,16 +39,13 @@ public class CoroutineExtensionsTests
         var callCount = 0;
         var coroutine = CoroutineExtensions.RepeatEvery(0.1, () => callCount++, 3);
 
-        while (coroutine.MoveNext())
-        {
-            coroutine.Current.Update(0.1);
-        }
+        while (coroutine.MoveNext()) coroutine.Current.Update(0.1);
 
         Assert.That(callCount, Is.EqualTo(3));
     }
 
     /// <summary>
-    /// 验证RepeatEvery应该无限执行当count为null
+    ///     验证RepeatEvery应该无限执行当count为null
     /// </summary>
     [Test]
     public void RepeatEvery_Should_Execute_Forever_When_Count_Is_Null()
@@ -67,7 +64,7 @@ public class CoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证RepeatEvery应该处理负数count
+    ///     验证RepeatEvery应该处理负数count
     /// </summary>
     [Test]
     public void RepeatEvery_Should_Handle_Negative_Count()
@@ -80,7 +77,7 @@ public class CoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证RepeatEvery应该处理零count
+    ///     验证RepeatEvery应该处理零count
     /// </summary>
     [Test]
     public void RepeatEvery_Should_Handle_Zero_Count()
@@ -93,24 +90,21 @@ public class CoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证RepeatEvery应该处理null action
+    ///     验证RepeatEvery应该处理null action
     /// </summary>
     [Test]
     public void RepeatEvery_Should_Handle_Null_Action()
     {
         var coroutine = CoroutineExtensions.RepeatEvery(0.1, null, 3);
 
-        Assert.DoesNotThrow(() => 
+        Assert.DoesNotThrow(() =>
         {
-            while (coroutine.MoveNext())
-            {
-                coroutine.Current.Update(0.1);
-            }
+            while (coroutine.MoveNext()) coroutine.Current.Update(0.1);
         });
     }
 
     /// <summary>
-    /// 验证ExecuteAfter应该返回有效的协程
+    ///     验证ExecuteAfter应该返回有效的协程
     /// </summary>
     [Test]
     public void ExecuteAfter_Should_Return_Valid_Coroutine()
@@ -122,7 +116,7 @@ public class CoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证ExecuteAfter应该在延迟后执行action
+    ///     验证ExecuteAfter应该在延迟后执行action
     /// </summary>
     [Test]
     public void ExecuteAfter_Should_Execute_Action_After_Delay()
@@ -144,7 +138,7 @@ public class CoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证ExecuteAfter应该处理零延迟
+    ///     验证ExecuteAfter应该处理零延迟
     /// </summary>
     [Test]
     public void ExecuteAfter_Should_Handle_Zero_Delay()
@@ -159,7 +153,7 @@ public class CoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证ExecuteAfter应该处理负数延迟
+    ///     验证ExecuteAfter应该处理负数延迟
     /// </summary>
     [Test]
     public void ExecuteAfter_Should_Handle_Negative_Delay()
@@ -172,14 +166,14 @@ public class CoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证ExecuteAfter应该处理null action
+    ///     验证ExecuteAfter应该处理null action
     /// </summary>
     [Test]
     public void ExecuteAfter_Should_Handle_Null_Action()
     {
         var coroutine = CoroutineExtensions.ExecuteAfter(1.0, null);
 
-        Assert.DoesNotThrow(() => 
+        Assert.DoesNotThrow(() =>
         {
             coroutine.MoveNext();
             coroutine.Current.Update(1.0);
@@ -187,7 +181,7 @@ public class CoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证Sequence应该返回有效的协程
+    ///     验证Sequence应该返回有效的协程
     /// </summary>
     [Test]
     public void Sequence_Should_Return_Valid_Coroutine()
@@ -200,7 +194,7 @@ public class CoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证Sequence应该按顺序执行多个协程
+    ///     验证Sequence应该按顺序执行多个协程
     /// </summary>
     [Test]
     public void Sequence_Should_Execute_Coroutines_In_Order()
@@ -212,16 +206,13 @@ public class CoroutineExtensionsTests
 
         var sequence = CoroutineExtensions.Sequence(coroutine1, coroutine2, coroutine3);
 
-        while (sequence.MoveNext())
-        {
-            sequence.Current.Update(0.1);
-        }
+        while (sequence.MoveNext()) sequence.Current.Update(0.1);
 
         Assert.That(executionOrder, Is.EqualTo(new List<int> { 1, 2, 3 }));
     }
 
     /// <summary>
-    /// 验证Sequence应该处理空协程数组
+    ///     验证Sequence应该处理空协程数组
     /// </summary>
     [Test]
     public void Sequence_Should_Handle_Empty_Coroutines()
@@ -232,7 +223,7 @@ public class CoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证Sequence应该处理单个协程
+    ///     验证Sequence应该处理单个协程
     /// </summary>
     [Test]
     public void Sequence_Should_Handle_Single_Coroutine()
@@ -244,7 +235,7 @@ public class CoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证Sequence应该处理null协程
+    ///     验证Sequence应该处理null协程
     /// </summary>
     [Test]
     public void Sequence_Should_Handle_Null_Coroutine()
@@ -252,23 +243,20 @@ public class CoroutineExtensionsTests
         var coroutine1 = CreateSimpleCoroutine();
         var sequence = CoroutineExtensions.Sequence(coroutine1, null!);
 
-        Assert.Throws<NullReferenceException>(() => 
+        Assert.Throws<NullReferenceException>(() =>
         {
-            while (sequence.MoveNext())
-            {
-                sequence.Current.Update(0.1);
-            }
+            while (sequence.MoveNext()) sequence.Current.Update(0.1);
         });
     }
 
     /// <summary>
-    /// 验证ParallelCoroutines应该返回有效的协程
+    ///     验证ParallelCoroutines应该返回有效的协程
     /// </summary>
     [Test]
     public void ParallelCoroutines_Should_Return_Valid_Coroutine()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
+        var scheduler = new CoroutineScheduler(timeSource, 1);
         var coroutine1 = CreateSimpleCoroutine();
         var coroutine2 = CreateSimpleCoroutine();
 
@@ -278,13 +266,13 @@ public class CoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证ParallelCoroutines应该并行执行多个协程
+    ///     验证ParallelCoroutines应该并行执行多个协程
     /// </summary>
     [Test]
     public void ParallelCoroutines_Should_Execute_Coroutines_In_Parallel()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
+        var scheduler = new CoroutineScheduler(timeSource, 1);
 
         var executionCounts = new Dictionary<int, int> { { 1, 0 }, { 2, 0 }, { 3, 0 } };
         var coroutine1 = CreateDelayedCoroutine(() => executionCounts[1]++, 0.5);
@@ -297,10 +285,7 @@ public class CoroutineExtensionsTests
 
         Assert.That(scheduler.ActiveCoroutineCount, Is.GreaterThan(0));
 
-        while (scheduler.ActiveCoroutineCount > 0)
-        {
-            scheduler.Update();
-        }
+        while (scheduler.ActiveCoroutineCount > 0) scheduler.Update();
 
         Assert.That(executionCounts[1], Is.EqualTo(1));
         Assert.That(executionCounts[2], Is.EqualTo(1));
@@ -308,13 +293,13 @@ public class CoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证ParallelCoroutines应该处理空数组
+    ///     验证ParallelCoroutines应该处理空数组
     /// </summary>
     [Test]
     public void ParallelCoroutines_Should_Handle_Empty_Array()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
+        var scheduler = new CoroutineScheduler(timeSource, 1);
 
         var parallel = scheduler.ParallelCoroutines();
 
@@ -322,13 +307,13 @@ public class CoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证ParallelCoroutines应该处理null数组
+    ///     验证ParallelCoroutines应该处理null数组
     /// </summary>
     [Test]
     public void ParallelCoroutines_Should_Handle_Null_Array()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
+        var scheduler = new CoroutineScheduler(timeSource, 1);
 
         var parallel = scheduler.ParallelCoroutines(null);
 
@@ -336,7 +321,7 @@ public class CoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证WaitForSecondsWithProgress应该返回有效的协程
+    ///     验证WaitForSecondsWithProgress应该返回有效的协程
     /// </summary>
     [Test]
     public void WaitForSecondsWithProgress_Should_Return_Valid_Coroutine()
@@ -348,7 +333,7 @@ public class CoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证WaitForSecondsWithProgress应该在指定时间后完成
+    ///     验证WaitForSecondsWithProgress应该在指定时间后完成
     /// </summary>
     [Test]
     public void WaitForSecondsWithProgress_Should_Complete_After_Duration()
@@ -364,7 +349,7 @@ public class CoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证WaitForSecondsWithProgress应该调用进度回调
+    ///     验证WaitForSecondsWithProgress应该调用进度回调
     /// </summary>
     [Test]
     public void WaitForSecondsWithProgress_Should_Call_Progress_Callback()
@@ -374,10 +359,7 @@ public class CoroutineExtensionsTests
 
         coroutine.MoveNext();
 
-        while (!coroutine.Current.IsDone)
-        {
-            coroutine.Current.Update(0.1);
-        }
+        while (!coroutine.Current.IsDone) coroutine.Current.Update(0.1);
 
         Assert.That(progressValues.Count, Is.GreaterThan(0));
         Assert.That(progressValues[0], Is.EqualTo(0.0f).Within(0.01f));
@@ -385,7 +367,7 @@ public class CoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证WaitForSecondsWithProgress应该处理零时间
+    ///     验证WaitForSecondsWithProgress应该处理零时间
     /// </summary>
     [Test]
     public void WaitForSecondsWithProgress_Should_Handle_Zero_Duration()
@@ -398,7 +380,7 @@ public class CoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证WaitForSecondsWithProgress应该处理负数时间
+    ///     验证WaitForSecondsWithProgress应该处理负数时间
     /// </summary>
     [Test]
     public void WaitForSecondsWithProgress_Should_Handle_Negative_Duration()
@@ -411,7 +393,7 @@ public class CoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证WaitForSecondsWithProgress应该处理null回调
+    ///     验证WaitForSecondsWithProgress应该处理null回调
     /// </summary>
     [Test]
     public void WaitForSecondsWithProgress_Should_Handle_Null_Callback()
@@ -427,7 +409,7 @@ public class CoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证RepeatEvery应该使用Delay指令
+    ///     验证RepeatEvery应该使用Delay指令
     /// </summary>
     [Test]
     public void RepeatEvery_Should_Use_Delay_Instruction()
@@ -439,7 +421,7 @@ public class CoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证ExecuteAfter应该使用Delay指令
+    ///     验证ExecuteAfter应该使用Delay指令
     /// </summary>
     [Test]
     public void ExecuteAfter_Should_Use_Delay_Instruction()
@@ -451,7 +433,7 @@ public class CoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证Sequence应该清理已完成的协程
+    ///     验证Sequence应该清理已完成的协程
     /// </summary>
     [Test]
     public void Sequence_Should_Dispose_Completed_Coroutines()
@@ -461,16 +443,13 @@ public class CoroutineExtensionsTests
 
         var sequence = CoroutineExtensions.Sequence(coroutine1, coroutine2);
 
-        while (sequence.MoveNext())
-        {
-            sequence.Current.Update(0.1);
-        }
+        while (sequence.MoveNext()) sequence.Current.Update(0.1);
 
         Assert.That(sequence.MoveNext(), Is.False);
     }
 
     /// <summary>
-    /// 验证RepeatEvery的间隔时间
+    ///     验证RepeatEvery的间隔时间
     /// </summary>
     [Test]
     public void RepeatEvery_Should_Respect_Interval()
@@ -489,7 +468,7 @@ public class CoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证ExecuteAfter的延迟时间
+    ///     验证ExecuteAfter的延迟时间
     /// </summary>
     [Test]
     public void ExecuteAfter_Should_Respect_Delay()
@@ -513,7 +492,7 @@ public class CoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 创建简单的立即完成协程
+    ///     创建简单的立即完成协程
     /// </summary>
     private IEnumerator<IYieldInstruction> CreateSimpleCoroutine()
     {
@@ -521,7 +500,7 @@ public class CoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 创建带回调的协程
+    ///     创建带回调的协程
     /// </summary>
     private IEnumerator<IYieldInstruction> CreateCoroutineWithCallback(int id, Action callback)
     {
@@ -530,7 +509,7 @@ public class CoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 创建计数协程
+    ///     创建计数协程
     /// </summary>
     private IEnumerator<IYieldInstruction> CreateCountingCoroutine(int id, Action callback)
     {
@@ -539,7 +518,7 @@ public class CoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 创建延迟协程
+    ///     创建延迟协程
     /// </summary>
     private IEnumerator<IYieldInstruction> CreateDelayedCoroutine(Action callback, double delay)
     {
@@ -548,7 +527,7 @@ public class CoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 测试用时间源类
+    ///     测试用时间源类
     /// </summary>
     private class TestTimeSource : ITimeSource
     {

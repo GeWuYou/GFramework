@@ -3,7 +3,7 @@
 namespace GFramework.Core.coroutine;
 
 /// <summary>
-/// 协程调度器，用于管理和执行协程
+///     协程调度器，用于管理和执行协程
 /// </summary>
 /// <param name="timeSource">时间源接口，提供时间相关数据</param>
 /// <param name="instanceId">实例ID，默认为1</param>
@@ -17,25 +17,29 @@ public sealed class CoroutineScheduler(
     private readonly Dictionary<string, HashSet<CoroutineHandle>> _tagged = new();
     private readonly ITimeSource _timeSource = timeSource ?? throw new ArgumentNullException(nameof(timeSource));
     private readonly Dictionary<CoroutineHandle, HashSet<CoroutineHandle>> _waiting = new();
-    private int _activeCount;
     private int _nextSlot;
 
     private CoroutineSlot?[] _slots = new CoroutineSlot?[initialCapacity];
 
     /// <summary>
-    /// 获取时间差值
+    ///     获取时间差值
     /// </summary>
     public double DeltaTime => _timeSource.DeltaTime;
 
     /// <summary>
-    /// 获取活跃协程数量
+    ///     获取活跃协程数量
     /// </summary>
-    public int ActiveCoroutineCount => _activeCount;
+    public int ActiveCoroutineCount { get; private set; }
+
+    public bool IsCoroutineAlive(CoroutineHandle handle)
+    {
+        return _metadata.ContainsKey(handle);
+    }
 
     #region Run / Update
 
     /// <summary>
-    /// 运行协程
+    ///     运行协程
     /// </summary>
     /// <param name="coroutine">要运行的协程枚举器</param>
     /// <param name="tag">协程标签，可选</param>
@@ -72,13 +76,13 @@ public sealed class CoroutineScheduler(
             AddTag(tag, handle);
 
         Prewarm(slotIndex);
-        _activeCount++;
+        ActiveCoroutineCount++;
 
         return handle;
     }
 
     /// <summary>
-    /// 更新所有协程状态
+    ///     更新所有协程状态
     /// </summary>
     public void Update()
     {
@@ -106,13 +110,9 @@ public sealed class CoroutineScheduler(
 
                 // 2️⃣ 推进协程
                 if (!slot.Enumerator.MoveNext())
-                {
                     Complete(i);
-                }
                 else
-                {
                     slot.Waiting = slot.Enumerator.Current;
-                }
             }
             catch (Exception ex)
             {
@@ -126,7 +126,7 @@ public sealed class CoroutineScheduler(
     #region Pause / Resume / Kill
 
     /// <summary>
-    /// 暂停指定协程
+    ///     暂停指定协程
     /// </summary>
     /// <param name="handle">协程句柄</param>
     /// <returns>是否成功暂停</returns>
@@ -145,7 +145,7 @@ public sealed class CoroutineScheduler(
     }
 
     /// <summary>
-    /// 恢复指定协程
+    ///     恢复指定协程
     /// </summary>
     /// <param name="handle">协程句柄</param>
     /// <returns>是否成功恢复</returns>
@@ -164,7 +164,7 @@ public sealed class CoroutineScheduler(
     }
 
     /// <summary>
-    /// 终止指定协程
+    ///     终止指定协程
     /// </summary>
     /// <param name="handle">协程句柄</param>
     /// <returns>是否成功终止</returns>
@@ -182,7 +182,7 @@ public sealed class CoroutineScheduler(
     #region Wait / Tag / Clear
 
     /// <summary>
-    /// 让当前协程等待目标协程完成
+    ///     让当前协程等待目标协程完成
     /// </summary>
     /// <param name="current">当前协程句柄</param>
     /// <param name="target">目标协程句柄</param>
@@ -216,7 +216,7 @@ public sealed class CoroutineScheduler(
     }
 
     /// <summary>
-    /// 根据标签终止协程
+    ///     根据标签终止协程
     /// </summary>
     /// <param name="tag">协程标签</param>
     /// <returns>被终止的协程数量</returns>
@@ -229,12 +229,12 @@ public sealed class CoroutineScheduler(
     }
 
     /// <summary>
-    /// 清空所有协程
+    ///     清空所有协程
     /// </summary>
     /// <returns>被清除的协程数量</returns>
     public int Clear()
     {
-        var count = _activeCount;
+        var count = ActiveCoroutineCount;
 
         Array.Clear(_slots);
         _metadata.Clear();
@@ -242,7 +242,7 @@ public sealed class CoroutineScheduler(
         _waiting.Clear();
 
         _nextSlot = 0;
-        _activeCount = 0;
+        ActiveCoroutineCount = 0;
 
         return count;
     }
@@ -252,7 +252,7 @@ public sealed class CoroutineScheduler(
     #region Internal
 
     /// <summary>
-    /// 预热协程槽位，执行协程的第一步
+    ///     预热协程槽位，执行协程的第一步
     /// </summary>
     /// <param name="slotIndex">槽位索引</param>
     private void Prewarm(int slotIndex)
@@ -264,13 +264,9 @@ public sealed class CoroutineScheduler(
         try
         {
             if (!slot.Enumerator.MoveNext())
-            {
                 Complete(slotIndex);
-            }
             else
-            {
                 slot.Waiting = slot.Enumerator.Current;
-            }
         }
         catch (Exception ex)
         {
@@ -279,7 +275,7 @@ public sealed class CoroutineScheduler(
     }
 
     /// <summary>
-    /// 完成指定槽位的协程
+    ///     完成指定槽位的协程
     /// </summary>
     /// <param name="slotIndex">槽位索引</param>
     private void Complete(int slotIndex)
@@ -293,7 +289,7 @@ public sealed class CoroutineScheduler(
             return;
 
         _slots[slotIndex] = null;
-        _activeCount--;
+        ActiveCoroutineCount--;
 
         RemoveTag(handle);
         _metadata.Remove(handle);
@@ -313,7 +309,7 @@ public sealed class CoroutineScheduler(
     }
 
     /// <summary>
-    /// 处理协程执行中的错误
+    ///     处理协程执行中的错误
     /// </summary>
     /// <param name="slotIndex">槽位索引</param>
     /// <param name="ex">异常对象</param>
@@ -324,7 +320,7 @@ public sealed class CoroutineScheduler(
     }
 
     /// <summary>
-    /// 扩展协程槽位数组容量
+    ///     扩展协程槽位数组容量
     /// </summary>
     private void Expand()
     {
@@ -332,7 +328,7 @@ public sealed class CoroutineScheduler(
     }
 
     /// <summary>
-    /// 为协程添加标签
+    ///     为协程添加标签
     /// </summary>
     /// <param name="tag">标签名称</param>
     /// <param name="handle">协程句柄</param>
@@ -349,7 +345,7 @@ public sealed class CoroutineScheduler(
     }
 
     /// <summary>
-    /// 移除协程标签
+    ///     移除协程标签
     /// </summary>
     /// <param name="handle">协程句柄</param>
     private void RemoveTag(CoroutineHandle handle)
@@ -368,8 +364,4 @@ public sealed class CoroutineScheduler(
     }
 
     #endregion
-    public bool IsCoroutineAlive(CoroutineHandle handle)
-    {
-        return _metadata.ContainsKey(handle);
-    }
 }

@@ -1,6 +1,4 @@
-﻿using System.Threading.Tasks;
-
-namespace GFramework.Core.Abstractions.architecture;
+﻿namespace GFramework.Core.Abstractions.architecture;
 
 /// <summary>
 ///     定义异步初始化接口，用于需要异步初始化的组件或服务

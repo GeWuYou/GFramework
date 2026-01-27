@@ -6,46 +6,46 @@ using NUnit.Framework;
 namespace GFramework.Core.Tests.coroutine;
 
 /// <summary>
-/// 协程调度器的单元测试类
-/// 测试内容包括：
-/// - 协程调度器的创建和初始化
-/// - 运行协程
-/// - 更新协程状态
-/// - 暂停和恢复协程
-/// - 终止协程
-/// - 协程等待机制
-/// - 标签管理
-/// - 清空所有协程
-/// - 异常处理
-/// - 扩展容量
-/// - 主动协程计数
-/// - 时间差值属性
+///     协程调度器的单元测试类
+///     测试内容包括：
+///     - 协程调度器的创建和初始化
+///     - 运行协程
+///     - 更新协程状态
+///     - 暂停和恢复协程
+///     - 终止协程
+///     - 协程等待机制
+///     - 标签管理
+///     - 清空所有协程
+///     - 异常处理
+///     - 扩展容量
+///     - 主动协程计数
+///     - 时间差值属性
 /// </summary>
 [TestFixture]
 public class CoroutineSchedulerTests
 {
     /// <summary>
-    /// 测试初始化方法，在每个测试方法执行前设置测试环境
+    ///     测试初始化方法，在每个测试方法执行前设置测试环境
     /// </summary>
     [SetUp]
     public void SetUp()
     {
         _timeSource = new TestTimeSource();
-        _scheduler = new CoroutineScheduler(_timeSource, instanceId: 1, initialCapacity: 4);
+        _scheduler = new CoroutineScheduler(_timeSource, 1, 4);
     }
 
     /// <summary>
-    /// 测试用的时间源实例
+    ///     测试用的时间源实例
     /// </summary>
     private TestTimeSource _timeSource = null!;
 
     /// <summary>
-    /// 测试用的协程调度器实例
+    ///     测试用的协程调度器实例
     /// </summary>
     private CoroutineScheduler _scheduler = null!;
 
     /// <summary>
-    /// 验证协程调度器创建时应该有正确的初始状态
+    ///     验证协程调度器创建时应该有正确的初始状态
     /// </summary>
     [Test]
     public void CoroutineScheduler_Should_Initialize_With_Correct_State()
@@ -54,7 +54,7 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
-    /// 验证协程调度器应该在创建时接受有效的时间源
+    ///     验证协程调度器应该在创建时接受有效的时间源
     /// </summary>
     [Test]
     public void CoroutineScheduler_Should_Accept_Valid_TimeSource()
@@ -63,7 +63,7 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
-    /// 验证协程调度器应该抛出ArgumentNullException当timeSource为null
+    ///     验证协程调度器应该抛出ArgumentNullException当timeSource为null
     /// </summary>
     [Test]
     public void CoroutineScheduler_Should_Throw_ArgumentNullException_When_TimeSource_Is_Null()
@@ -72,7 +72,7 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
-    /// 验证运行协程应该返回有效的句柄
+    ///     验证运行协程应该返回有效的句柄
     /// </summary>
     [Test]
     public void Run_Should_Return_Valid_Handle()
@@ -85,7 +85,7 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
-    /// 验证运行null协程应该返回无效的句柄
+    ///     验证运行null协程应该返回无效的句柄
     /// </summary>
     [Test]
     public void Run_Should_Return_Invalid_Handle_For_Null_Coroutine()
@@ -97,7 +97,7 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
-    /// 验证Update方法应该推进时间并更新协程状态
+    ///     验证Update方法应该推进时间并更新协程状态
     /// </summary>
     [Test]
     public void Update_Should_Advance_Time_And_Update_Coroutines()
@@ -111,7 +111,7 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
-    /// 验证暂停协程应该成功
+    ///     验证暂停协程应该成功
     /// </summary>
     [Test]
     public void Pause_Should_Succeed_For_Valid_Handle()
@@ -125,7 +125,7 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
-    /// 验证暂停无效的句柄应该失败
+    ///     验证暂停无效的句柄应该失败
     /// </summary>
     [Test]
     public void Pause_Should_Fail_For_Invalid_Handle()
@@ -136,7 +136,7 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
-    /// 验证恢复协程应该成功
+    ///     验证恢复协程应该成功
     /// </summary>
     [Test]
     public void Resume_Should_Succeed_For_Valid_Handle()
@@ -151,7 +151,7 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
-    /// 验证恢复无效的句柄应该失败
+    ///     验证恢复无效的句柄应该失败
     /// </summary>
     [Test]
     public void Resume_Should_Fail_For_Invalid_Handle()
@@ -162,7 +162,7 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
-    /// 验证终止协程应该成功
+    ///     验证终止协程应该成功
     /// </summary>
     [Test]
     public void Kill_Should_Succeed_For_Valid_Handle()
@@ -177,7 +177,7 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
-    /// 验证终止无效的句柄应该失败
+    ///     验证终止无效的句柄应该失败
     /// </summary>
     [Test]
     public void Kill_Should_Fail_For_Invalid_Handle()
@@ -188,7 +188,7 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
-    /// 验证WaitForCoroutine方法应该正确设置等待状态
+    ///     验证WaitForCoroutine方法应该正确设置等待状态
     /// </summary>
     [Test]
     public void WaitForCoroutine_Should_Set_Waiting_State()
@@ -205,7 +205,7 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
-    /// 验证WaitForCoroutine方法应该抛出异常当等待自己
+    ///     验证WaitForCoroutine方法应该抛出异常当等待自己
     /// </summary>
     [Test]
     public void WaitForCoroutine_Should_Throw_When_Waiting_For_Self()
@@ -217,7 +217,7 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
-    /// 验证WaitForCoroutine方法应该处理无效的目标句柄
+    ///     验证WaitForCoroutine方法应该处理无效的目标句柄
     /// </summary>
     [Test]
     public void WaitForCoroutine_Should_Handle_Invalid_Target_Handle()
@@ -229,7 +229,7 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
-    /// 验证根据标签终止协程应该正确工作
+    ///     验证根据标签终止协程应该正确工作
     /// </summary>
     [Test]
     public void KillByTag_Should_Kill_All_Coroutines_With_Tag()
@@ -249,7 +249,7 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
-    /// 验证根据不存在的标签终止协程应该返回0
+    ///     验证根据不存在的标签终止协程应该返回0
     /// </summary>
     [Test]
     public void KillByTag_Should_Return_Zero_For_Nonexistent_Tag()
@@ -264,7 +264,7 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
-    /// 验证清空所有协程应该正确工作
+    ///     验证清空所有协程应该正确工作
     /// </summary>
     [Test]
     public void Clear_Should_Remove_All_Coroutines()
@@ -282,7 +282,7 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
-    /// 验证清空空的调度器应该返回0
+    ///     验证清空空的调度器应该返回0
     /// </summary>
     [Test]
     public void Clear_Should_Return_Zero_For_Empty_Scheduler()
@@ -293,7 +293,7 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
-    /// 验证协程调度器应该正确处理协程异常
+    ///     验证协程调度器应该正确处理协程异常
     /// </summary>
     [Test]
     public void Scheduler_Should_Handle_Coroutine_Exceptions()
@@ -305,7 +305,7 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
-    /// 验证协程调度器应该在协程抛出异常后减少活跃协程计数
+    ///     验证协程调度器应该在协程抛出异常后减少活跃协程计数
     /// </summary>
     [Test]
     public void Scheduler_Should_Decrement_ActiveCount_After_Exception()
@@ -321,27 +321,21 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
-    /// 验证协程调度器应该扩展容量当槽位已满
+    ///     验证协程调度器应该扩展容量当槽位已满
     /// </summary>
     [Test]
     public void Scheduler_Should_Expand_Capacity_When_Slots_Full()
     {
         var coroutines = new List<IEnumerator<IYieldInstruction>>();
-        for (var i = 0; i < 10; i++)
-        {
-            coroutines.Add(CreateYieldingCoroutine(new Delay(1.0)));
-        }
+        for (var i = 0; i < 10; i++) coroutines.Add(CreateYieldingCoroutine(new Delay(1.0)));
 
-        foreach (var coroutine in coroutines)
-        {
-            _scheduler.Run(coroutine);
-        }
+        foreach (var coroutine in coroutines) _scheduler.Run(coroutine);
 
         Assert.That(_scheduler.ActiveCoroutineCount, Is.EqualTo(10));
     }
 
     /// <summary>
-    /// 验证协程调度器应该使用提供的时间源
+    ///     验证协程调度器应该使用提供的时间源
     /// </summary>
     [Test]
     public void Scheduler_Should_Use_Provided_TimeSource()
@@ -355,7 +349,7 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
-    /// 验证协程调度器应该正确计算活跃协程计数
+    ///     验证协程调度器应该正确计算活跃协程计数
     /// </summary>
     [Test]
     public void ActiveCoroutineCount_Should_Reflect_Active_Coroutines()
@@ -377,7 +371,7 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
-    /// 验证暂停的协程不应该被更新
+    ///     验证暂停的协程不应该被更新
     /// </summary>
     [Test]
     public void Paused_Coroutine_Should_Not_Be_Updated()
@@ -393,7 +387,7 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
-    /// 验证恢复的协程应该继续执行
+    ///     验证恢复的协程应该继续执行
     /// </summary>
     [Test]
     public void Resumed_Coroutine_Should_Continue_Execution()
@@ -412,7 +406,7 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
-    /// 创建简单的立即完成协程
+    ///     创建简单的立即完成协程
     /// </summary>
     private IEnumerator<IYieldInstruction> CreateSimpleCoroutine()
     {
@@ -420,7 +414,7 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
-    /// 创建带等待指令的协程
+    ///     创建带等待指令的协程
     /// </summary>
     private IEnumerator<IYieldInstruction> CreateYieldingCoroutine(IYieldInstruction yieldInstruction)
     {
@@ -428,7 +422,7 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
-    /// 创建带等待指令和回调的协程
+    ///     创建带等待指令和回调的协程
     /// </summary>
     private IEnumerator<IYieldInstruction> CreateYieldingCoroutine(IYieldInstruction yieldInstruction,
         Action? onComplete = null)
@@ -438,7 +432,7 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
-    /// 创建立即完成并执行回调的协程
+    ///     创建立即完成并执行回调的协程
     /// </summary>
     private IEnumerator<IYieldInstruction> CreateImmediateCoroutine(Action? onComplete = null)
     {
@@ -447,7 +441,7 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
-    /// 创建计数协程
+    ///     创建计数协程
     /// </summary>
     private IEnumerator<IYieldInstruction> CreateCountingCoroutine(Action? onExecute = null)
     {
@@ -458,7 +452,7 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
-    /// 创建抛出异常的协程
+    ///     创建抛出异常的协程
     /// </summary>
     private IEnumerator<IYieldInstruction> CreateExceptionCoroutine()
     {
@@ -468,22 +462,22 @@ public class CoroutineSchedulerTests
 }
 
 /// <summary>
-/// 测试用时间源类，实现ITimeSource接口
+///     测试用时间源类，实现ITimeSource接口
 /// </summary>
 public class TestTimeSource : ITimeSource
 {
     /// <summary>
-    /// 获取当前时间
+    ///     获取当前时间
     /// </summary>
     public double CurrentTime { get; private set; }
 
     /// <summary>
-    /// 获取时间增量
+    ///     获取时间增量
     /// </summary>
     public double DeltaTime { get; private set; }
 
     /// <summary>
-    /// 更新时间源状态
+    ///     更新时间源状态
     /// </summary>
     public void Update()
     {

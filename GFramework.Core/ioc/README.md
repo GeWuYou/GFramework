@@ -390,9 +390,11 @@ public bool Contains<T>() where T : class
 ```
 
 **参数：**
+
 - 无泛型参数
 
 **返回值：**
+
 - 如果容器中包含指定类型的实例则返回 `true`，否则返回 `false`
 
 **使用示例：**
@@ -414,6 +416,7 @@ if (!container.Contains<ISettingsService>())
 ```
 
 **应用场景：**
+
 - 条件注册服务
 - 检查依赖是否可用
 - 动态功能开关
@@ -427,9 +430,11 @@ public bool ContainsInstance(object instance)
 ```
 
 **参数：**
+
 - `instance`：待查询的实例对象
 
 **返回值：**
+
 - 若容器中包含该实例则返回 `true`，否则返回 `false`
 
 **使用示例：**
@@ -455,6 +460,7 @@ if (!container.ContainsInstance(anotherService))
 ```
 
 **应用场景：**
+
 - 避免重复注册同一实例
 - 检查对象是否已被管理
 - 调试和日志记录
@@ -486,11 +492,13 @@ Console.WriteLine($"Contains IService2: {container.Contains<IService2>()}");  //
 ```
 
 **应用场景：**
+
 - 重置容器状态
 - 内存清理
 - 测试环境准备
 
 **注意事项：**
+
 - 容器冻结后也可以调用 `Clear()` 方法
 - 清空后，所有已注册的实例都将丢失
 - 不会自动清理已注册对象的其他引用

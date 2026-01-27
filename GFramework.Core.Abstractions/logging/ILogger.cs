@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace GFramework.Core.Abstractions.logging;
+﻿namespace GFramework.Core.Abstractions.logging;
 
 /// <summary>
 ///     定义日志记录接口，提供日志记录和级别检查功能

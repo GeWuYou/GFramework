@@ -11,20 +11,20 @@ using NUnit.Framework;
 namespace GFramework.Core.Tests.command;
 
 /// <summary>
-/// AbstractAsyncCommand类的单元测试
-/// 测试内容包括：
-/// - 异步命令无返回值版本的基础实现
-/// - 异步命令有返回值版本的基础实现
-/// - ExecuteAsync方法调用
-/// - ExecuteAsync方法的异常处理
-/// - 上下文感知功能（SetContext, GetContext）
-/// - 日志功能（Logger属性）
-/// - 子类继承行为验证（两个版本）
-/// - 命令执行前日志记录
-/// - 命令执行后日志记录
-/// - 错误情况下的日志记录
-/// - 无返回值版本的行为
-/// - 有返回值版本的行为
+///     AbstractAsyncCommand类的单元测试
+///     测试内容包括：
+///     - 异步命令无返回值版本的基础实现
+///     - 异步命令有返回值版本的基础实现
+///     - ExecuteAsync方法调用
+///     - ExecuteAsync方法的异常处理
+///     - 上下文感知功能（SetContext, GetContext）
+///     - 日志功能（Logger属性）
+///     - 子类继承行为验证（两个版本）
+///     - 命令执行前日志记录
+///     - 命令执行后日志记录
+///     - 错误情况下的日志记录
+///     - 无返回值版本的行为
+///     - 有返回值版本的行为
 /// </summary>
 [TestFixture]
 public class AbstractAsyncCommandTests
@@ -45,7 +45,7 @@ public class AbstractAsyncCommandTests
     private IocContainer _container = null!;
 
     /// <summary>
-    /// 测试异步命令无返回值版本的基础实现
+    ///     测试异步命令无返回值版本的基础实现
     /// </summary>
     [Test]
     public async Task AbstractAsyncCommand_Should_Implement_IAsyncCommand_Interface()
@@ -57,7 +57,7 @@ public class AbstractAsyncCommandTests
     }
 
     /// <summary>
-    /// 测试异步命令有返回值版本的基础实现
+    ///     测试异步命令有返回值版本的基础实现
     /// </summary>
     [Test]
     public async Task AbstractAsyncCommand_WithResult_Should_Implement_IAsyncCommand_Interface()
@@ -69,7 +69,7 @@ public class AbstractAsyncCommandTests
     }
 
     /// <summary>
-    /// 测试ExecuteAsync方法调用
+    ///     测试ExecuteAsync方法调用
     /// </summary>
     [Test]
     public async Task ExecuteAsync_Should_Invoke_OnExecuteAsync_Method()
@@ -85,7 +85,7 @@ public class AbstractAsyncCommandTests
     }
 
     /// <summary>
-    /// 测试ExecuteAsync方法（带返回值）调用
+    ///     测试ExecuteAsync方法（带返回值）调用
     /// </summary>
     [Test]
     public async Task ExecuteAsync_WithResult_Should_Invoke_OnExecuteAsync_Method_And_Return_Result()
@@ -101,7 +101,7 @@ public class AbstractAsyncCommandTests
     }
 
     /// <summary>
-    /// 测试ExecuteAsync方法的异常处理
+    ///     测试ExecuteAsync方法的异常处理
     /// </summary>
     [Test]
     public void ExecuteAsync_Should_Propagate_Exception_From_OnExecuteAsync()
@@ -114,7 +114,7 @@ public class AbstractAsyncCommandTests
     }
 
     /// <summary>
-    /// 测试上下文感知功能 - SetContext方法
+    ///     测试上下文感知功能 - SetContext方法
     /// </summary>
     [Test]
     public void SetContext_Should_Set_Context_Property()
@@ -130,7 +130,7 @@ public class AbstractAsyncCommandTests
     }
 
     /// <summary>
-    /// 测试上下文感知功能 - GetContext方法
+    ///     测试上下文感知功能 - GetContext方法
     /// </summary>
     [Test]
     public void GetContext_Should_Return_Context_Property()
@@ -147,7 +147,7 @@ public class AbstractAsyncCommandTests
     }
 
     /// <summary>
-    /// 测试子类继承行为验证 - 无返回值版本
+    ///     测试子类继承行为验证 - 无返回值版本
     /// </summary>
     [Test]
     public async Task Child_Class_Should_Inherit_And_Override_OnExecuteAsync_Method()
@@ -163,7 +163,7 @@ public class AbstractAsyncCommandTests
     }
 
     /// <summary>
-    /// 测试子类继承行为验证 - 有返回值版本
+    ///     测试子类继承行为验证 - 有返回值版本
     /// </summary>
     [Test]
     public async Task Child_Class_WithResult_Should_Inherit_And_Override_OnExecuteAsync_Method()
@@ -179,7 +179,7 @@ public class AbstractAsyncCommandTests
     }
 
     /// <summary>
-    /// 测试异步命令执行生命周期完整性
+    ///     测试异步命令执行生命周期完整性
     /// </summary>
     [Test]
     public async Task AsyncCommand_Should_Complete_Execution_Lifecycle()
@@ -197,7 +197,7 @@ public class AbstractAsyncCommandTests
     }
 
     /// <summary>
-    /// 测试异步命令多次执行
+    ///     测试异步命令多次执行
     /// </summary>
     [Test]
     public async Task AsyncCommand_Should_Be_Executable_Multiple_Times()
@@ -214,7 +214,7 @@ public class AbstractAsyncCommandTests
     }
 
     /// <summary>
-    /// 测试异步命令（带返回值）的返回值类型
+    ///     测试异步命令（带返回值）的返回值类型
     /// </summary>
     [Test]
     public async Task AsyncCommand_WithResult_Should_Return_Correct_Type()
@@ -231,23 +231,23 @@ public class AbstractAsyncCommandTests
 }
 
 /// <summary>
-/// 测试用命令输入类V2
+///     测试用命令输入类V2
 /// </summary>
 public sealed class TestCommandInputV2 : ICommandInput
 {
     /// <summary>
-    /// 获取或设置值
+    ///     获取或设置值
     /// </summary>
     public int Value { get; init; }
 }
 
 /// <summary>
-/// 测试用异步命令类V3（无返回值）
+///     测试用异步命令类V3（无返回值）
 /// </summary>
 public sealed class TestAsyncCommandV3 : AbstractAsyncCommand<TestCommandInputV2>
 {
     /// <summary>
-    /// 构造函数
+    ///     构造函数
     /// </summary>
     /// <param name="input">命令输入</param>
     public TestAsyncCommandV3(TestCommandInputV2 input) : base(input)
@@ -255,17 +255,17 @@ public sealed class TestAsyncCommandV3 : AbstractAsyncCommand<TestCommandInputV2
     }
 
     /// <summary>
-    /// 获取命令是否已执行
+    ///     获取命令是否已执行
     /// </summary>
     public bool Executed { get; private set; }
 
     /// <summary>
-    /// 获取执行的值
+    ///     获取执行的值
     /// </summary>
     public int ExecutedValue { get; private set; }
 
     /// <summary>
-    /// 执行异步命令的重写方法
+    ///     执行异步命令的重写方法
     /// </summary>
     /// <param name="input">命令输入</param>
     /// <returns>表示异步操作的任务</returns>
@@ -278,12 +278,12 @@ public sealed class TestAsyncCommandV3 : AbstractAsyncCommand<TestCommandInputV2
 }
 
 /// <summary>
-/// 测试用异步命令类V3（有返回值）
+///     测试用异步命令类V3（有返回值）
 /// </summary>
 public sealed class TestAsyncCommandWithResultV3 : AbstractAsyncCommand<TestCommandInputV2, int>
 {
     /// <summary>
-    /// 构造函数
+    ///     构造函数
     /// </summary>
     /// <param name="input">命令输入</param>
     public TestAsyncCommandWithResultV3(TestCommandInputV2 input) : base(input)
@@ -291,12 +291,12 @@ public sealed class TestAsyncCommandWithResultV3 : AbstractAsyncCommand<TestComm
     }
 
     /// <summary>
-    /// 获取命令是否已执行
+    ///     获取命令是否已执行
     /// </summary>
     public bool Executed { get; private set; }
 
     /// <summary>
-    /// 执行异步命令并返回结果的重写方法
+    ///     执行异步命令并返回结果的重写方法
     /// </summary>
     /// <param name="input">命令输入</param>
     /// <returns>执行结果的异步任务</returns>
@@ -308,12 +308,12 @@ public sealed class TestAsyncCommandWithResultV3 : AbstractAsyncCommand<TestComm
 }
 
 /// <summary>
-/// 测试用异步命令类（抛出异常）
+///     测试用异步命令类（抛出异常）
 /// </summary>
 public sealed class TestAsyncCommandWithExceptionV3 : AbstractAsyncCommand<TestCommandInputV2>
 {
     /// <summary>
-    /// 构造函数
+    ///     构造函数
     /// </summary>
     /// <param name="input">命令输入</param>
     public TestAsyncCommandWithExceptionV3(TestCommandInputV2 input) : base(input)
@@ -321,7 +321,7 @@ public sealed class TestAsyncCommandWithExceptionV3 : AbstractAsyncCommand<TestC
     }
 
     /// <summary>
-    /// 执行异步命令并抛出异常的重写方法
+    ///     执行异步命令并抛出异常的重写方法
     /// </summary>
     /// <param name="input">命令输入</param>
     /// <returns>表示异步操作的任务</returns>
@@ -333,12 +333,12 @@ public sealed class TestAsyncCommandWithExceptionV3 : AbstractAsyncCommand<TestC
 }
 
 /// <summary>
-/// 测试用异步命令子类（无返回值）
+///     测试用异步命令子类（无返回值）
 /// </summary>
 public sealed class TestAsyncCommandChildV3 : AbstractAsyncCommand<TestCommandInputV2>
 {
     /// <summary>
-    /// 构造函数
+    ///     构造函数
     /// </summary>
     /// <param name="input">命令输入</param>
     public TestAsyncCommandChildV3(TestCommandInputV2 input) : base(input)
@@ -346,17 +346,17 @@ public sealed class TestAsyncCommandChildV3 : AbstractAsyncCommand<TestCommandIn
     }
 
     /// <summary>
-    /// 获取命令是否已执行
+    ///     获取命令是否已执行
     /// </summary>
     public bool Executed { get; private set; }
 
     /// <summary>
-    /// 获取执行的值
+    ///     获取执行的值
     /// </summary>
     public int ExecutedValue { get; private set; }
 
     /// <summary>
-    /// 执行异步命令的重写方法（子类实现）
+    ///     执行异步命令的重写方法（子类实现）
     /// </summary>
     /// <param name="input">命令输入</param>
     /// <returns>表示异步操作的任务</returns>
@@ -369,12 +369,12 @@ public sealed class TestAsyncCommandChildV3 : AbstractAsyncCommand<TestCommandIn
 }
 
 /// <summary>
-/// 测试用异步命令子类（有返回值）
+///     测试用异步命令子类（有返回值）
 /// </summary>
 public sealed class TestAsyncCommandWithResultChildV3 : AbstractAsyncCommand<TestCommandInputV2, int>
 {
     /// <summary>
-    /// 构造函数
+    ///     构造函数
     /// </summary>
     /// <param name="input">命令输入</param>
     public TestAsyncCommandWithResultChildV3(TestCommandInputV2 input) : base(input)
@@ -382,12 +382,12 @@ public sealed class TestAsyncCommandWithResultChildV3 : AbstractAsyncCommand<Tes
     }
 
     /// <summary>
-    /// 获取命令是否已执行
+    ///     获取命令是否已执行
     /// </summary>
     public bool Executed { get; private set; }
 
     /// <summary>
-    /// 执行异步命令并返回结果的重写方法（子类实现）
+    ///     执行异步命令并返回结果的重写方法（子类实现）
     /// </summary>
     /// <param name="input">命令输入</param>
     /// <returns>执行结果的异步任务</returns>

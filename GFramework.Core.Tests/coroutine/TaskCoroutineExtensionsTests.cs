@@ -7,16 +7,16 @@ using NUnit.Framework;
 namespace GFramework.Core.Tests.coroutine;
 
 /// <summary>
-/// TaskCoroutineExtensions的单元测试类
-/// 测试内容包括：
-/// - AsCoroutineInstruction方法
-/// - StartTaskAsCoroutine方法
+///     TaskCoroutineExtensions的单元测试类
+///     测试内容包括：
+///     - AsCoroutineInstruction方法
+///     - StartTaskAsCoroutine方法
 /// </summary>
 [TestFixture]
 public class TaskCoroutineExtensionsTests
 {
     /// <summary>
-    /// 验证AsCoroutineInstruction应该返回WaitForTask
+    ///     验证AsCoroutineInstruction应该返回WaitForTask
     /// </summary>
     [Test]
     public void AsCoroutineInstruction_Should_Return_WaitForTask()
@@ -28,19 +28,19 @@ public class TaskCoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证AsCoroutineInstruction<T>应该返回WaitForTask<T>
+    ///     验证AsCoroutineInstruction<T>应该返回WaitForTask<T>
     /// </summary>
     [Test]
     public void AsCoroutineInstructionOfT_Should_Return_WaitForTaskOfT()
     {
         var task = Task.FromResult(42);
-        var instruction = task.AsCoroutineInstruction<int>();
+        var instruction = task.AsCoroutineInstruction();
 
         Assert.That(instruction, Is.InstanceOf<WaitForTask<int>>());
     }
 
     /// <summary>
-    /// 验证AsCoroutineInstruction可以处理已完成的Task并验证其状态
+    ///     验证AsCoroutineInstruction可以处理已完成的Task并验证其状态
     /// </summary>
     [Test]
     public void AsCoroutineInstruction_Should_Handle_Completed_Task()
@@ -50,21 +50,21 @@ public class TaskCoroutineExtensionsTests
 
         // 验证指令类型
         Assert.That(instruction, Is.InstanceOf<WaitForTask>());
-    
+
         // 验证已完成的任务是否立即可用
         Assert.That(task.IsCompleted, Is.True);
         Assert.That(task.Status, Is.EqualTo(TaskStatus.RanToCompletion));
     }
-    
+
 
     /// <summary>
-    /// 验证AsCoroutineInstruction<T>应该能够访问Task结果
+    ///     验证AsCoroutineInstruction<T>应该能够访问Task结果
     /// </summary>
     [Test]
     public void AsCoroutineInstructionOfT_Should_Access_Task_Result()
     {
         var task = Task.FromResult(42);
-        var instruction = task.AsCoroutineInstruction<int>();
+        var instruction = task.AsCoroutineInstruction();
 
         task.Wait();
 
@@ -72,7 +72,7 @@ public class TaskCoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证AsCoroutineInstruction应该处理null Task（抛出异常）
+    ///     验证AsCoroutineInstruction应该处理null Task（抛出异常）
     /// </summary>
     [Test]
     public void AsCoroutineInstruction_Should_Handle_Null_Task()
@@ -83,18 +83,18 @@ public class TaskCoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证AsCoroutineInstruction<T>应该处理null Task（抛出异常）
+    ///     验证AsCoroutineInstruction<T>应该处理null Task（抛出异常）
     /// </summary>
     [Test]
     public void AsCoroutineInstructionOfT_Should_Handle_Null_Task()
     {
         Task<int> task = null!;
 
-        Assert.Throws<ArgumentNullException>(() => task.AsCoroutineInstruction<int>());
+        Assert.Throws<ArgumentNullException>(() => task.AsCoroutineInstruction());
     }
 
     /// <summary>
-    /// 验证AsCoroutineInstruction应该处理失败的Task
+    ///     验证AsCoroutineInstruction应该处理失败的Task
     /// </summary>
     [Test]
     public void AsCoroutineInstruction_Should_Handle_Faulted_Task()
@@ -106,25 +106,25 @@ public class TaskCoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证AsCoroutineInstruction<T>应该处理失败的Task
+    ///     验证AsCoroutineInstruction<T>应该处理失败的Task
     /// </summary>
     [Test]
     public void AsCoroutineInstructionOfT_Should_Handle_Faulted_Task()
     {
         var task = Task.FromException<int>(new InvalidOperationException("Test exception"));
-        var instruction = task.AsCoroutineInstruction<int>();
+        var instruction = task.AsCoroutineInstruction();
 
         Assert.That(instruction, Is.InstanceOf<WaitForTask<int>>());
     }
 
     /// <summary>
-    /// 验证StartTaskAsCoroutine应该返回有效的协程句柄
+    ///     验证StartTaskAsCoroutine应该返回有效的协程句柄
     /// </summary>
     [Test]
     public void StartTaskAsCoroutine_Should_Return_Valid_Handle()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
+        var scheduler = new CoroutineScheduler(timeSource);
         var task = Task.CompletedTask;
 
         var handle = scheduler.StartTaskAsCoroutine(task);
@@ -133,13 +133,13 @@ public class TaskCoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证StartTaskAsCoroutine<T>应该返回有效的协程句柄
+    ///     验证StartTaskAsCoroutine<T>应该返回有效的协程句柄
     /// </summary>
     [Test]
     public void StartTaskAsCoroutineOfT_Should_Return_Valid_Handle()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
+        var scheduler = new CoroutineScheduler(timeSource);
         var task = Task.FromResult(42);
 
         var handle = scheduler.StartTaskAsCoroutine(task);
@@ -148,13 +148,13 @@ public class TaskCoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证StartTaskAsCoroutine应该等待Task完成
+    ///     验证StartTaskAsCoroutine应该等待Task完成
     /// </summary>
     [Test]
     public void StartTaskAsCoroutine_Should_Wait_For_Task_Completion()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
+        var scheduler = new CoroutineScheduler(timeSource);
 
         var completed = false;
         var tcs = new TaskCompletionSource<object?>();
@@ -174,13 +174,13 @@ public class TaskCoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证StartTaskAsCoroutine<T>应该等待Task完成
+    ///     验证StartTaskAsCoroutine<T>应该等待Task完成
     /// </summary>
     [Test]
     public void StartTaskAsCoroutineOfT_Should_Wait_For_Task_Completion()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
+        var scheduler = new CoroutineScheduler(timeSource);
 
         var tcs = new TaskCompletionSource<int>();
 
@@ -198,13 +198,13 @@ public class TaskCoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证StartTaskAsCoroutine应该处理已完成的Task
+    ///     验证StartTaskAsCoroutine应该处理已完成的Task
     /// </summary>
     [Test]
     public void StartTaskAsCoroutine_Should_Handle_Completed_Task()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
+        var scheduler = new CoroutineScheduler(timeSource);
         var task = Task.CompletedTask;
 
         scheduler.StartTaskAsCoroutine(task);
@@ -215,13 +215,13 @@ public class TaskCoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证StartTaskAsCoroutine应该处理失败的Task
+    ///     验证StartTaskAsCoroutine应该处理失败的Task
     /// </summary>
     [Test]
     public void StartTaskAsCoroutine_Should_Handle_Faulted_Task()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
+        var scheduler = new CoroutineScheduler(timeSource);
         var task = Task.FromException(new InvalidOperationException("Test"));
 
         scheduler.StartTaskAsCoroutine(task);
@@ -230,29 +230,29 @@ public class TaskCoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证StartTaskAsCoroutine<T>应该处理失败的Task
+    ///     验证StartTaskAsCoroutine<T>应该处理失败的Task
     /// </summary>
     [Test]
     public void StartTaskAsCoroutineOfT_Should_Handle_Faulted_Task()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
+        var scheduler = new CoroutineScheduler(timeSource);
         var task = Task.FromException<int>(new InvalidOperationException("Test"));
 
         scheduler.StartTaskAsCoroutine(task);
 
         Assert.DoesNotThrow(() => scheduler.Update());
     }
-    
-    
+
+
     /// <summary>
-    /// 验证StartTaskAsCoroutine应该与调度器正常协作
+    ///     验证StartTaskAsCoroutine应该与调度器正常协作
     /// </summary>
     [Test]
     public void StartTaskAsCoroutine_Should_Work_With_Scheduler()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
+        var scheduler = new CoroutineScheduler(timeSource);
 
         var tcs = new TaskCompletionSource<object?>();
         scheduler.StartTaskAsCoroutine(tcs.Task);
@@ -273,7 +273,7 @@ public class TaskCoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 测试用时间源类
+    ///     测试用时间源类
     /// </summary>
     private class TestTimeSource : ITimeSource
     {

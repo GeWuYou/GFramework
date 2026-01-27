@@ -8,41 +8,41 @@ using GFramework.Game.Abstractions.ui;
 namespace GFramework.Game.ui;
 
 /// <summary>
-/// UI路由类，提供页面栈管理功能
+///     UI路由类，提供页面栈管理功能
 /// </summary>
 public abstract class UiRouterBase : AbstractSystem, IUiRouter
 {
     private static readonly ILogger Log = LoggerFactoryResolver.Provider.CreateLogger("UiRouterBase");
 
     /// <summary>
-    /// 路由守卫列表
+    ///     路由守卫列表
     /// </summary>
     private readonly List<IUiRouteGuard> _guards = new();
 
     /// <summary>
-    /// 层级管理（非栈层级），用于Overlay、Modal、Toast等浮层
+    ///     层级管理（非栈层级），用于Overlay、Modal、Toast等浮层
     /// </summary>
     private readonly Dictionary<UiLayer, Dictionary<string, IUiPageBehavior>> _layers = new();
 
     /// <summary>
-    /// UI切换处理器管道
+    ///     UI切换处理器管道
     /// </summary>
     private readonly UiTransitionPipeline _pipeline = new();
 
     /// <summary>
-    /// 页面栈，用于管理UI页面的显示顺序
+    ///     页面栈，用于管理UI页面的显示顺序
     /// </summary>
     private readonly Stack<IUiPageBehavior> _stack = new();
 
     /// <summary>
-    /// UI工厂实例，用于创建UI相关的对象
+    ///     UI工厂实例，用于创建UI相关的对象
     /// </summary>
     private IUiFactory _factory = null!;
 
     private IUiRoot _uiRoot = null!;
 
     /// <summary>
-    /// 注册UI切换处理器
+    ///     注册UI切换处理器
     /// </summary>
     /// <param name="handler">处理器实例</param>
     /// <param name="options">执行选项</param>
@@ -52,7 +52,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    /// 注销UI切换处理器
+    ///     注销UI切换处理器
     /// </summary>
     /// <param name="handler">处理器实例</param>
     public void UnregisterHandler(IUiTransitionHandler handler)
@@ -61,7 +61,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    /// 绑定UI根节点
+    ///     绑定UI根节点
     /// </summary>
     public void BindRoot(IUiRoot root)
     {
@@ -71,7 +71,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
 
 
     /// <summary>
-    /// 将指定的UI界面压入路由栈，显示新的UI界面
+    ///     将指定的UI界面压入路由栈，显示新的UI界面
     /// </summary>
     /// <param name="uiKey">UI界面的唯一标识符</param>
     /// <param name="param">进入界面的参数，可为空</param>
@@ -100,7 +100,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    /// 将已存在的UI页面压入栈顶并显示
+    ///     将已存在的UI页面压入栈顶并显示
     /// </summary>
     /// <param name="page">已创建的UI页面行为实例</param>
     /// <param name="param">页面进入参数，可为空</param>
@@ -132,7 +132,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    /// 弹出栈顶页面并根据策略处理页面
+    ///     弹出栈顶页面并根据策略处理页面
     /// </summary>
     /// <param name="policy">弹出策略，默认为销毁策略</param>
     public void Pop(UiPopPolicy policy = UiPopPolicy.Destroy)
@@ -158,7 +158,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
 
         var @event = CreateEvent(
             nextUiKey,
-            type: UiTransitionType.Pop
+            UiTransitionType.Pop
         );
 
         BeforeChange(@event);
@@ -170,7 +170,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
 
 
     /// <summary>
-    /// 替换当前所有页面为新页面（基于uiKey）
+    ///     替换当前所有页面为新页面（基于uiKey）
     /// </summary>
     /// <param name="uiKey">新UI页面标识符</param>
     /// <param name="param">页面进入参数，可为空</param>
@@ -205,7 +205,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    /// 替换当前所有页面为已存在的页面（基于实例）
+    ///     替换当前所有页面为已存在的页面（基于实例）
     /// </summary>
     /// <param name="page">已创建的UI页面行为实例</param>
     /// <param name="param">页面进入参数，可为空</param>
@@ -237,7 +237,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    /// 清空所有页面栈中的页面
+    ///     清空所有页面栈中的页面
     /// </summary>
     public void Clear()
     {
@@ -255,7 +255,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
 
 
     /// <summary>
-    /// 获取页面栈顶元素的键值，但不移除该元素
+    ///     获取页面栈顶元素的键值，但不移除该元素
     /// </summary>
     /// <returns>如果页面栈为空则返回空字符串，否则返回栈顶元素的键值</returns>
     public string PeekKey()
@@ -264,7 +264,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    /// 获取页面栈顶元素，但不移除该元素
+    ///     获取页面栈顶元素，但不移除该元素
     /// </summary>
     /// <returns>返回栈顶的IUiPageBehavior元素</returns>
     public IUiPageBehavior Peek()
@@ -274,7 +274,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
 
 
     /// <summary>
-    /// 判断栈顶元素是否指定的UI类型
+    ///     判断栈顶元素是否指定的UI类型
     /// </summary>
     /// <param name="uiKey">要比较的UI类型名称</param>
     /// <returns>如果栈为空或栈顶元素类型不匹配则返回false，否则返回true</returns>
@@ -284,7 +284,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    /// 判断栈中是否包含指定类型的UI元素
+    ///     判断栈中是否包含指定类型的UI元素
     /// </summary>
     /// <param name="uiKey">要查找的UI类型名称</param>
     /// <returns>如果栈中存在指定类型的UI元素则返回true，否则返回false</returns>
@@ -294,12 +294,12 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    /// 获取栈中元素的数量
+    ///     获取栈中元素的数量
     /// </summary>
     public int Count => _stack.Count;
 
     /// <summary>
-    /// 初始化方法，在页面初始化时获取UI工厂实例
+    ///     初始化方法，在页面初始化时获取UI工厂实例
     /// </summary>
     protected override void OnInit()
     {
@@ -309,12 +309,12 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    /// 注册默认的UI切换处理器
+    ///     注册默认的UI切换处理器
     /// </summary>
     protected abstract void RegisterHandlers();
 
     /// <summary>
-    /// 创建UI切换事件
+    ///     创建UI切换事件
     /// </summary>
     private UiTransitionEvent CreateEvent(
         string? toUiKey,
@@ -334,7 +334,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    /// 执行UI切换前的Handler（阻塞）
+    ///     执行UI切换前的Handler（阻塞）
     /// </summary>
     private void BeforeChange(UiTransitionEvent @event)
     {
@@ -344,7 +344,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    /// 执行UI切换后的Handler（不阻塞）
+    ///     执行UI切换后的Handler（不阻塞）
     /// </summary>
     private void AfterChange(UiTransitionEvent @event)
     {
@@ -364,7 +364,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    /// 执行Push页面的核心逻辑（基于 uiKey）
+    ///     执行Push页面的核心逻辑（基于 uiKey）
     /// </summary>
     private void DoPushPageInternal(string uiKey, IUiPageEnterParam? param, UiTransitionPolicy policy,
         UiInstancePolicy instancePolicy)
@@ -384,7 +384,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    /// 执行Push页面的核心逻辑（基于 page）
+    ///     执行Push页面的核心逻辑（基于 page）
     /// </summary>
     private void DoPushPageInternal(IUiPageBehavior page, IUiPageEnterParam? param, UiTransitionPolicy policy)
     {
@@ -420,7 +420,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    /// 执行Pop的核心逻辑（不触发Pipeline）
+    ///     执行Pop的核心逻辑（不触发Pipeline）
     /// </summary>
     private void DoPopInternal(UiPopPolicy policy)
     {
@@ -462,7 +462,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    /// 执行Clear的核心逻辑（不触发Pipeline）
+    ///     执行Clear的核心逻辑（不触发Pipeline）
     /// </summary>
     /// <param name="policy">UI弹出策略</param>
     private void DoClearInternal(UiPopPolicy policy)
@@ -476,7 +476,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     #region 层级管理
 
     /// <summary>
-    /// 在指定层级显示UI（非栈管理）
+    ///     在指定层级显示UI（非栈管理）
     /// </summary>
     public void Show(
         string uiKey,
@@ -484,10 +484,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         IUiPageEnterParam? param = null,
         UiInstancePolicy instancePolicy = UiInstancePolicy.Reuse)
     {
-        if (layer == UiLayer.Page)
-        {
-            throw new ArgumentException("Use Push() for Page layer");
-        }
+        if (layer == UiLayer.Page) throw new ArgumentException("Use Push() for Page layer");
 
         // 初始化层级字典
         if (!_layers.ContainsKey(layer))
@@ -518,7 +515,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    /// 在指定层级显示UI（基于实例）
+    ///     在指定层级显示UI（基于实例）
     /// </summary>
     public void Show(IUiPageBehavior page, UiLayer layer)
     {
@@ -538,7 +535,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    /// 隐藏指定层级的UI
+    ///     隐藏指定层级的UI
     /// </summary>
     public void Hide(string uiKey, UiLayer layer, bool destroy = false)
     {
@@ -567,7 +564,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    /// 清空指定层级的所有UI
+    ///     清空指定层级的所有UI
     /// </summary>
     public void ClearLayer(UiLayer layer, bool destroy = false)
     {
@@ -575,16 +572,13 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
             return;
 
         var keys = layerDict.Keys.ToArray();
-        foreach (var key in keys)
-        {
-            Hide(key, layer, destroy);
-        }
+        foreach (var key in keys) Hide(key, layer, destroy);
 
         Log.Debug("Cleared layer: {0}, destroyed={1}", layer, destroy);
     }
 
     /// <summary>
-    /// 获取指定层级的UI实例
+    ///     获取指定层级的UI实例
     /// </summary>
     public IUiPageBehavior? GetFromLayer(string uiKey, UiLayer layer)
     {
@@ -595,7 +589,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    /// 判断指定层级是否有UI显示
+    ///     判断指定层级是否有UI显示
     /// </summary>
     public bool HasVisibleInLayer(UiLayer layer)
     {
@@ -607,7 +601,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     #region 路由守卫
 
     /// <summary>
-    /// 注册路由守卫
+    ///     注册路由守卫
     /// </summary>
     public void AddGuard(IUiRouteGuard guard)
     {
@@ -626,7 +620,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    /// 注册路由守卫（泛型方法）
+    ///     注册路由守卫（泛型方法）
     /// </summary>
     public void AddGuard<T>() where T : IUiRouteGuard, new()
     {
@@ -635,25 +629,21 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    /// 移除路由守卫
+    ///     移除路由守卫
     /// </summary>
     public void RemoveGuard(IUiRouteGuard guard)
     {
         ArgumentNullException.ThrowIfNull(guard);
 
-        if (_guards.Remove(guard))
-        {
-            Log.Debug("Guard removed: {0}", guard.GetType().Name);
-        }
+        if (_guards.Remove(guard)) Log.Debug("Guard removed: {0}", guard.GetType().Name);
     }
 
     /// <summary>
-    /// 执行进入守卫
+    ///     执行进入守卫
     /// </summary>
     private async Task<bool> ExecuteEnterGuardsAsync(string uiKey, IUiPageEnterParam? param)
     {
         foreach (var guard in _guards)
-        {
             try
             {
                 Log.Debug("Executing enter guard: {0} for {1}", guard.GetType().Name, uiKey);
@@ -674,23 +664,18 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
             catch (Exception ex)
             {
                 Log.Error("Enter guard {0} failed: {1}", guard.GetType().Name, ex.Message);
-                if (guard.CanInterrupt)
-                {
-                    return false;
-                }
+                if (guard.CanInterrupt) return false;
             }
-        }
 
         return true;
     }
 
     /// <summary>
-    /// 执行离开守卫
+    ///     执行离开守卫
     /// </summary>
     private async Task<bool> ExecuteLeaveGuardsAsync(string uiKey)
     {
         foreach (var guard in _guards)
-        {
             try
             {
                 Log.Debug("Executing leave guard: {0} for {1}", guard.GetType().Name, uiKey);
@@ -711,12 +696,8 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
             catch (Exception ex)
             {
                 Log.Error("Leave guard {0} failed: {1}", guard.GetType().Name, ex.Message);
-                if (guard.CanInterrupt)
-                {
-                    return false;
-                }
+                if (guard.CanInterrupt) return false;
             }
-        }
 
         return true;
     }

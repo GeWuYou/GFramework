@@ -5,20 +5,20 @@ using NUnit.Framework;
 namespace GFramework.Core.Tests.coroutine;
 
 /// <summary>
-/// AsyncOperation的单元测试类
-/// 测试内容包括：
-/// - 初始化状态
-/// - 完成和状态检查
-/// - 异常处理
-/// - 延续操作
-/// - GetAwaiter
-/// - IsCompleted属性
+///     AsyncOperation的单元测试类
+///     测试内容包括：
+///     - 初始化状态
+///     - 完成和状态检查
+///     - 异常处理
+///     - 延续操作
+///     - GetAwaiter
+///     - IsCompleted属性
 /// </summary>
 [TestFixture]
 public class AsyncOperationTests
 {
     /// <summary>
-    /// 验证AsyncOperation初始状态为未完成
+    ///     验证AsyncOperation初始状态为未完成
     /// </summary>
     [Test]
     public void AsyncOperation_Should_Not_Be_Done_Initially()
@@ -29,7 +29,7 @@ public class AsyncOperationTests
     }
 
     /// <summary>
-    /// 验证AsyncOperation初始状态IsCompleted为false
+    ///     验证AsyncOperation初始状态IsCompleted为false
     /// </summary>
     [Test]
     public void AsyncOperation_Should_Not_Be_Completed_Initially()
@@ -40,7 +40,7 @@ public class AsyncOperationTests
     }
 
     /// <summary>
-    /// 验证SetCompleted后IsDone应该为true
+    ///     验证SetCompleted后IsDone应该为true
     /// </summary>
     [Test]
     public void SetCompleted_Should_Set_IsDone_To_True()
@@ -53,7 +53,7 @@ public class AsyncOperationTests
     }
 
     /// <summary>
-    /// 验证SetCompleted后IsCompleted应该为true
+    ///     验证SetCompleted后IsCompleted应该为true
     /// </summary>
     [Test]
     public void SetCompleted_Should_Set_IsCompleted_To_True()
@@ -66,7 +66,7 @@ public class AsyncOperationTests
     }
 
     /// <summary>
-    /// 验证SetCompleted只能被调用一次
+    ///     验证SetCompleted只能被调用一次
     /// </summary>
     [Test]
     public void SetCompleted_Should_Be_Idempotent()
@@ -81,7 +81,7 @@ public class AsyncOperationTests
     }
 
     /// <summary>
-    /// 验证SetException后IsDone应该为true
+    ///     验证SetException后IsDone应该为true
     /// </summary>
     [Test]
     public void SetException_Should_Set_IsDone_To_True()
@@ -94,7 +94,7 @@ public class AsyncOperationTests
     }
 
     /// <summary>
-    /// 验证SetException后Task应该包含异常
+    ///     验证SetException后Task应该包含异常
     /// </summary>
     [Test]
     public void SetException_Should_Set_Exception_On_Task()
@@ -108,7 +108,7 @@ public class AsyncOperationTests
     }
 
     /// <summary>
-    /// 验证OnCompleted应该在已完成时立即执行延续
+    ///     验证OnCompleted应该在已完成时立即执行延续
     /// </summary>
     [Test]
     public void OnCompleted_Should_Execute_Immediately_When_Already_Completed()
@@ -123,7 +123,7 @@ public class AsyncOperationTests
     }
 
     /// <summary>
-    /// 验证OnCompleted应该在未完成时不立即执行延续
+    ///     验证OnCompleted应该在未完成时不立即执行延续
     /// </summary>
     [Test]
     public void OnCompleted_Should_Not_Execute_Immediately_When_Not_Completed()
@@ -137,7 +137,7 @@ public class AsyncOperationTests
     }
 
     /// <summary>
-    /// 验证延续应该在SetCompleted后被调用
+    ///     验证延续应该在SetCompleted后被调用
     /// </summary>
     [Test]
     public void Continuation_Should_Be_Called_After_SetCompleted()
@@ -152,7 +152,7 @@ public class AsyncOperationTests
     }
 
     /// <summary>
-    /// 验证多个延续应该都能被调用
+    ///     验证多个延续应该都能被调用
     /// </summary>
     [Test]
     public void Multiple_Continuations_Should_All_Be_Called()
@@ -169,7 +169,7 @@ public class AsyncOperationTests
     }
 
     /// <summary>
-    /// 验证延续应该在SetException后被调用
+    ///     验证延续应该在SetException后被调用
     /// </summary>
     [Test]
     public void Continuation_Should_Be_Called_After_SetException()
@@ -184,7 +184,7 @@ public class AsyncOperationTests
     }
 
     /// <summary>
-    /// 验证SetCompleted后设置的延续也应该被调用
+    ///     验证SetCompleted后设置的延续也应该被调用
     /// </summary>
     [Test]
     public void Continuation_Registered_After_Completed_Should_Be_Called()
@@ -202,7 +202,7 @@ public class AsyncOperationTests
     }
 
     /// <summary>
-    /// 验证GetAwaiter应该返回自身
+    ///     验证GetAwaiter应该返回自身
     /// </summary>
     [Test]
     public void GetAwaiter_Should_Return_Self()
@@ -215,7 +215,7 @@ public class AsyncOperationTests
     }
 
     /// <summary>
-    /// 验证Update方法不应该改变状态
+    ///     验证Update方法不应该改变状态
     /// </summary>
     [Test]
     public void Update_Should_Not_Change_State()
@@ -228,7 +228,7 @@ public class AsyncOperationTests
     }
 
     /// <summary>
-    /// 验证AsyncOperation实现IYieldInstruction接口
+    ///     验证AsyncOperation实现IYieldInstruction接口
     /// </summary>
     [Test]
     public void AsyncOperation_Should_Implement_IYieldInstruction()
@@ -239,7 +239,7 @@ public class AsyncOperationTests
     }
 
     /// <summary>
-    /// 验证Task属性应该返回有效的Task
+    ///     验证Task属性应该返回有效的Task
     /// </summary>
     [Test]
     public void Task_Property_Should_Return_Valid_Task()
@@ -250,7 +250,7 @@ public class AsyncOperationTests
     }
 
     /// <summary>
-    /// 验证SetCompleted后Task应该完成
+    ///     验证SetCompleted后Task应该完成
     /// </summary>
     [Test]
     public async Task Task_Should_Complete_After_SetCompleted()
@@ -265,7 +265,7 @@ public class AsyncOperationTests
     }
 
     /// <summary>
-    /// 验证SetException后Task应该失败
+    ///     验证SetException后Task应该失败
     /// </summary>
     [Test]
     public void Task_Should_Fault_After_SetException()
@@ -278,7 +278,7 @@ public class AsyncOperationTests
     }
 
     /// <summary>
-    /// 验证SetCompleted只能设置一次
+    ///     验证SetCompleted只能设置一次
     /// </summary>
     [Test]
     public void SetCompleted_Should_Only_Set_Once()
@@ -298,7 +298,7 @@ public class AsyncOperationTests
     }
 
     /// <summary>
-    /// 验证SetException只能在未完成时设置
+    ///     验证SetException只能在未完成时设置
     /// </summary>
     [Test]
     public void SetException_Should_Not_Work_After_SetCompleted()
@@ -313,7 +313,7 @@ public class AsyncOperationTests
     }
 
     /// <summary>
-    /// 验证SetCompleted不能在SetException后设置
+    ///     验证SetCompleted不能在SetException后设置
     /// </summary>
     [Test]
     public void SetCompleted_Should_Not_Work_After_SetException()
@@ -328,7 +328,7 @@ public class AsyncOperationTests
     }
 
     /// <summary>
-    /// 验证延续抛出的异常应该被捕获
+    ///     验证延续抛出的异常应该被捕获
     /// </summary>
     [Test]
     public void Continuation_Exception_Should_Be_Caught()

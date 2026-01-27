@@ -6,22 +6,22 @@ using NUnit.Framework;
 namespace GFramework.Core.Tests.coroutine;
 
 /// <summary>
-/// 协程辅助方法的单元测试类
-/// 测试内容包括：
-/// - WaitForSeconds方法
-/// - WaitForOneFrame方法
-/// - WaitForFrames方法
-/// - WaitUntil方法
-/// - WaitWhile方法
-/// - DelayedCall方法
-/// - RepeatCall方法
-/// - RepeatCallForever方法
+///     协程辅助方法的单元测试类
+///     测试内容包括：
+///     - WaitForSeconds方法
+///     - WaitForOneFrame方法
+///     - WaitForFrames方法
+///     - WaitUntil方法
+///     - WaitWhile方法
+///     - DelayedCall方法
+///     - RepeatCall方法
+///     - RepeatCallForever方法
 /// </summary>
 [TestFixture]
 public class CoroutineHelperTests
 {
     /// <summary>
-    /// 验证WaitForSeconds应该返回Delay实例
+    ///     验证WaitForSeconds应该返回Delay实例
     /// </summary>
     [Test]
     public void WaitForSeconds_Should_Return_Delay_Instance()
@@ -32,7 +32,7 @@ public class CoroutineHelperTests
     }
 
     /// <summary>
-    /// 验证WaitForSeconds可以处理正数秒数
+    ///     验证WaitForSeconds可以处理正数秒数
     /// </summary>
     [Test]
     public void WaitForSeconds_Should_Handle_Positive_Seconds()
@@ -44,7 +44,7 @@ public class CoroutineHelperTests
     }
 
     /// <summary>
-    /// 验证WaitForSeconds可以处理零秒数
+    ///     验证WaitForSeconds可以处理零秒数
     /// </summary>
     [Test]
     public void WaitForSeconds_Should_Handle_Zero_Seconds()
@@ -55,7 +55,7 @@ public class CoroutineHelperTests
     }
 
     /// <summary>
-    /// 验证WaitForOneFrame应该返回WaitOneFrame实例
+    ///     验证WaitForOneFrame应该返回WaitOneFrame实例
     /// </summary>
     [Test]
     public void WaitForOneFrame_Should_Return_WaitOneFrame_Instance()
@@ -66,7 +66,7 @@ public class CoroutineHelperTests
     }
 
     /// <summary>
-    /// 验证WaitForFrames应该返回WaitForFrames实例
+    ///     验证WaitForFrames应该返回WaitForFrames实例
     /// </summary>
     [Test]
     public void WaitForFrames_Should_Return_WaitForFrames_Instance()
@@ -77,7 +77,7 @@ public class CoroutineHelperTests
     }
 
     /// <summary>
-    /// 验证WaitForFrames可以处理正数帧数
+    ///     验证WaitForFrames可以处理正数帧数
     /// </summary>
     [Test]
     public void WaitForFrames_Should_Handle_Positive_Frames()
@@ -89,7 +89,7 @@ public class CoroutineHelperTests
     }
 
     /// <summary>
-    /// 验证WaitForFrames可以处理最小帧数1
+    ///     验证WaitForFrames可以处理最小帧数1
     /// </summary>
     [Test]
     public void WaitForFrames_Should_Handle_Minimum_Frame_Count_Of_1()
@@ -101,7 +101,7 @@ public class CoroutineHelperTests
     }
 
     /// <summary>
-    /// 验证WaitUntil应该返回WaitUntil实例
+    ///     验证WaitUntil应该返回WaitUntil实例
     /// </summary>
     [Test]
     public void WaitUntil_Should_Return_WaitUntil_Instance()
@@ -113,7 +113,7 @@ public class CoroutineHelperTests
     }
 
     /// <summary>
-    /// 验证WaitUntil应该使用提供的谓词函数
+    ///     验证WaitUntil应该使用提供的谓词函数
     /// </summary>
     [Test]
     public void WaitUntil_Should_Use_Provided_Predicate()
@@ -129,7 +129,7 @@ public class CoroutineHelperTests
     }
 
     /// <summary>
-    /// 验证WaitWhile应该返回WaitWhile实例
+    ///     验证WaitWhile应该返回WaitWhile实例
     /// </summary>
     [Test]
     public void WaitWhile_Should_Return_WaitWhile_Instance()
@@ -141,7 +141,7 @@ public class CoroutineHelperTests
     }
 
     /// <summary>
-    /// 验证WaitWhile应该在条件为假时完成
+    ///     验证WaitWhile应该在条件为假时完成
     /// </summary>
     [Test]
     public void WaitWhile_Should_Complete_When_Condition_Is_False()
@@ -157,7 +157,7 @@ public class CoroutineHelperTests
     }
 
     /// <summary>
-    /// 验证DelayedCall应该返回IEnumerator实例
+    ///     验证DelayedCall应该返回IEnumerator实例
     /// </summary>
     [Test]
     public void DelayedCall_Should_Return_IEnumerator()
@@ -169,7 +169,7 @@ public class CoroutineHelperTests
     }
 
     /// <summary>
-    /// 验证DelayedCall的action可以在延迟后执行
+    ///     验证DelayedCall的action可以在延迟后执行
     /// </summary>
     [Test]
     public void DelayedCall_Should_Execute_Action_After_Delay()
@@ -187,7 +187,7 @@ public class CoroutineHelperTests
     }
 
     /// <summary>
-    /// 验证DelayedCall可以处理null action
+    ///     验证DelayedCall可以处理null action
     /// </summary>
     [Test]
     public void DelayedCall_Should_Handle_Null_Action()
@@ -199,7 +199,7 @@ public class CoroutineHelperTests
     }
 
     /// <summary>
-    /// 验证RepeatCall应该返回IEnumerator实例
+    ///     验证RepeatCall应该返回IEnumerator实例
     /// </summary>
     [Test]
     public void RepeatCall_Should_Return_IEnumerator()
@@ -211,7 +211,7 @@ public class CoroutineHelperTests
     }
 
     /// <summary>
-    /// 验证RepeatCall应该执行指定次数
+    ///     验证RepeatCall应该执行指定次数
     /// </summary>
     [Test]
     public void RepeatCall_Should_Execute_Specified_Times()
@@ -219,16 +219,13 @@ public class CoroutineHelperTests
         var callCount = 0;
         var coroutine = CoroutineHelper.RepeatCall(0.1, 3, () => callCount++);
 
-        while (coroutine.MoveNext())
-        {
-            coroutine.Current.Update(0.1);
-        }
+        while (coroutine.MoveNext()) coroutine.Current.Update(0.1);
 
         Assert.That(callCount, Is.EqualTo(3));
     }
 
     /// <summary>
-    /// 验证RepeatCall可以处理0次调用
+    ///     验证RepeatCall可以处理0次调用
     /// </summary>
     [Test]
     public void RepeatCall_Should_Handle_Zero_Count()
@@ -241,7 +238,7 @@ public class CoroutineHelperTests
     }
 
     /// <summary>
-    /// 验证RepeatCallForever应该返回IEnumerator实例
+    ///     验证RepeatCallForever应该返回IEnumerator实例
     /// </summary>
     [Test]
     public void RepeatCallForever_Should_Return_IEnumerator()
@@ -253,7 +250,7 @@ public class CoroutineHelperTests
     }
 
     /// <summary>
-    /// 验证RepeatCallForever应该无限执行
+    ///     验证RepeatCallForever应该无限执行
     /// </summary>
     [Test]
     public void RepeatCallForever_Should_Execute_Forever()
@@ -273,7 +270,7 @@ public class CoroutineHelperTests
     }
 
     /// <summary>
-    /// 验证RepeatCallForever可以处理null action
+    ///     验证RepeatCallForever可以处理null action
     /// </summary>
     [Test]
     public void RepeatCallForever_Should_Handle_Null_Action()
@@ -285,7 +282,7 @@ public class CoroutineHelperTests
     }
 
     /// <summary>
-    /// 验证RepeatCallForever可以处理负数间隔
+    ///     验证RepeatCallForever可以处理负数间隔
     /// </summary>
     [Test]
     public void RepeatCallForever_Should_Handle_Negative_Interval()
@@ -298,7 +295,7 @@ public class CoroutineHelperTests
     }
 
     /// <summary>
-    /// 验证DelayedCall可以处理负数延迟
+    ///     验证DelayedCall可以处理负数延迟
     /// </summary>
     [Test]
     public void DelayedCall_Should_Handle_Negative_Delay()
@@ -311,7 +308,7 @@ public class CoroutineHelperTests
     }
 
     /// <summary>
-    /// 验证RepeatCall可以处理负数间隔
+    ///     验证RepeatCall可以处理负数间隔
     /// </summary>
     [Test]
     public void RepeatCall_Should_Handle_Negative_Interval()
@@ -324,7 +321,7 @@ public class CoroutineHelperTests
     }
 
     /// <summary>
-    /// 验证WaitUntil应该抛出ArgumentNullException当predicate为null
+    ///     验证WaitUntil应该抛出ArgumentNullException当predicate为null
     /// </summary>
     [Test]
     public void WaitUntil_Should_Throw_ArgumentNullException_When_Predicate_Is_Null()
@@ -333,7 +330,7 @@ public class CoroutineHelperTests
     }
 
     /// <summary>
-    /// 验证WaitWhile应该抛出ArgumentNullException当predicate为null
+    ///     验证WaitWhile应该抛出ArgumentNullException当predicate为null
     /// </summary>
     [Test]
     public void WaitWhile_Should_Throw_ArgumentNullException_When_Predicate_Is_Null()

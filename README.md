@@ -15,22 +15,26 @@
 ### 📚 学习路径
 
 #### 🎯 新手入门
+
 1. 📚 [从零开始教程](docs/tutorials/getting-started.md) - 完整的项目创建和开发指南
 2. 📖 [基本概念](GFramework.Core/README.md#核心概念) - 理解核心概念
 3. 💡 [快速示例](#快速开始-getting-started) - 5分钟上手体验
 
 #### 🏗️ 进阶开发
+
 4. 📖 [Godot 集成教程](docs/tutorials/godot-integration.md) - 深度 Godot 集成和最佳实践
 5. ⚡ [高级模式教程](docs/tutorials/advanced-patterns.md) - CQRS、事件溯源、插件系统等
 6. 🏗️ [架构模式最佳实践](docs/best-practices/architecture-patterns.md) - 推荐的架构设计模式
 7. 🏗️ [性能优化技巧](docs/best-practices/performance-tips.md) - 内存和性能优化
 
 #### 🏗️ 专家指南
+
 8. 📊 [API 参考](docs/api-reference/) - 详细的类和接口说明
 
 ### 📖 详细文档
 
 #### 🏛️ 核心项目 Core Projects
+
 - [📖 **GFramework.Core** - 核心框架功能，架构、事件、命令、查询等（平台无关）](GFramework.Core/README.md)
 - [📖 **GFramework.Core.Abstractions** - 核心接口定义
 - [📖 **GFramework.Game** - 游戏特定抽象和系统
@@ -40,21 +44,25 @@
 - [📖 **GFramework.Godot.SourceGenerators** - Godot 特定的代码生成器
 
 #### 📖 源代码生成器 Source Generators
+
 - [📖 **日志生成器** - 自动 ILogger 字段生成
 - [📖 **上下文感知生成器** - 自动 IContextAware 实现
 - [📖 **枚举扩展生成器** - 自动枚举扩展方法
 
 #### 📖 API 参考
+
 - [📖 **Core API 参考** - 核心类和接口详细说明
 - [📖 **Godot API 参考** - Godot 模块 API 详细说明
 - [📖 **Source Generators API 参考** - 源码生成器 API 详细说明
 - [📖 **Game API 参考** - Game 模块 API 详细说明
 
 #### 🏗️ 教程和指南
+
 - [🏗️ **架构模式最佳实践** - 推荐的架构设计模式
 - [🏗️ **性能优化技巧** - 内存和性能优化
 
 #### 🏗️ 常见问题解决
+
 - [🏗️ **错误处理策略** - 异常处理和错误恢复
 - [🏗️ **调试技巧** - 调试和测试指南
 
@@ -286,6 +294,7 @@ GFramework.Core 是纯 .NET 库，可以轻松移植到：
 ## 📖 版本历史 Version History
 
 ### v1.0.0 (2026-01-12)
+
 - ✅ 完整的文档体系创建完成
 - ✅ 核心项目文档完善
 - ✅ 源码生成器文档完成
@@ -309,6 +318,7 @@ GFramework.Core 是纯 .NET 库，可以轻松移植到：
 ---
 
 **📚 文档统计**
+
 - **新增文档**: 10+ 个文件
 - **代码示例**: 150+ 个可直接使用的代码片段
 - **文档总量**: 6000+ 行

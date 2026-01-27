@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace GFramework.Core.Abstractions.events;
+﻿namespace GFramework.Core.Abstractions.events;
 
 /// <summary>
 ///     事件接口，定义了事件注册的基本功能

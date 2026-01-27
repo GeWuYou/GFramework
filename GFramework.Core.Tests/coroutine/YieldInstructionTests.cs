@@ -5,20 +5,20 @@ using NUnit.Framework;
 namespace GFramework.Core.Tests.coroutine;
 
 /// <summary>
-/// 等待指令的单元测试类
-/// 测试内容包括：
-/// - Delay指令
-/// - WaitOneFrame指令
-/// - WaitForFrames指令
-/// - WaitUntil指令
-/// - WaitWhile指令
-/// - WaitForCoroutine指令
+///     等待指令的单元测试类
+///     测试内容包括：
+///     - Delay指令
+///     - WaitOneFrame指令
+///     - WaitForFrames指令
+///     - WaitUntil指令
+///     - WaitWhile指令
+///     - WaitForCoroutine指令
 /// </summary>
 [TestFixture]
 public class YieldInstructionTests
 {
     /// <summary>
-    /// 验证Delay指令初始状态为未完成
+    ///     验证Delay指令初始状态为未完成
     /// </summary>
     [Test]
     public void Delay_Should_Not_Be_Done_Initially()
@@ -29,7 +29,7 @@ public class YieldInstructionTests
     }
 
     /// <summary>
-    /// 验证Delay指令应该在指定时间后完成
+    ///     验证Delay指令应该在指定时间后完成
     /// </summary>
     [Test]
     public void Delay_Should_Be_Done_After_Specified_Time()
@@ -44,7 +44,7 @@ public class YieldInstructionTests
     }
 
     /// <summary>
-    /// 验证Delay指令可以处理零秒延迟
+    ///     验证Delay指令可以处理零秒延迟
     /// </summary>
     [Test]
     public void Delay_Should_Handle_Zero_Seconds()
@@ -55,7 +55,7 @@ public class YieldInstructionTests
     }
 
     /// <summary>
-    /// 验证Delay指令可以处理负数秒数
+    ///     验证Delay指令可以处理负数秒数
     /// </summary>
     [Test]
     public void Delay_Should_Handle_Negative_Seconds()
@@ -66,7 +66,7 @@ public class YieldInstructionTests
     }
 
     /// <summary>
-    /// 验证WaitOneFrame指令初始状态为未完成
+    ///     验证WaitOneFrame指令初始状态为未完成
     /// </summary>
     [Test]
     public void WaitOneFrame_Should_Not_Be_Done_Initially()
@@ -77,7 +77,7 @@ public class YieldInstructionTests
     }
 
     /// <summary>
-    /// 验证WaitOneFrame指令应该在第一次Update后完成
+    ///     验证WaitOneFrame指令应该在第一次Update后完成
     /// </summary>
     [Test]
     public void WaitOneFrame_Should_Be_Done_After_First_Update()
@@ -89,7 +89,7 @@ public class YieldInstructionTests
     }
 
     /// <summary>
-    /// 验证WaitForFrames指令初始状态为未完成
+    ///     验证WaitForFrames指令初始状态为未完成
     /// </summary>
     [Test]
     public void WaitForFrames_Should_Not_Be_Done_Initially()
@@ -100,7 +100,7 @@ public class YieldInstructionTests
     }
 
     /// <summary>
-    /// 验证WaitForFrames指令应该在指定帧数后完成
+    ///     验证WaitForFrames指令应该在指定帧数后完成
     /// </summary>
     [Test]
     public void WaitForFrames_Should_Be_Done_After_Specified_Frames()
@@ -118,7 +118,7 @@ public class YieldInstructionTests
     }
 
     /// <summary>
-    /// 验证WaitForFrames指令可以处理最小帧数1
+    ///     验证WaitForFrames指令可以处理最小帧数1
     /// </summary>
     [Test]
     public void WaitForFrames_Should_Handle_Minimum_Frames_Of_1()
@@ -130,7 +130,7 @@ public class YieldInstructionTests
     }
 
     /// <summary>
-    /// 验证WaitForFrames指令可以处理0帧数（会被修正为1）
+    ///     验证WaitForFrames指令可以处理0帧数（会被修正为1）
     /// </summary>
     [Test]
     public void WaitForFrames_Should_Handle_Zero_Frames_As_1()
@@ -142,7 +142,7 @@ public class YieldInstructionTests
     }
 
     /// <summary>
-    /// 验证WaitForFrames指令可以处理负数帧数（会被修正为1）
+    ///     验证WaitForFrames指令可以处理负数帧数（会被修正为1）
     /// </summary>
     [Test]
     public void WaitForFrames_Should_Handle_Negative_Frames_As_1()
@@ -154,7 +154,7 @@ public class YieldInstructionTests
     }
 
     /// <summary>
-    /// 验证WaitForFrames指令每次Update减少剩余帧数
+    ///     验证WaitForFrames指令每次Update减少剩余帧数
     /// </summary>
     [Test]
     public void WaitForFrames_Should_Decrement_On_Each_Update()
@@ -171,7 +171,7 @@ public class YieldInstructionTests
     }
 
     /// <summary>
-    /// 验证WaitUntil指令使用谓词函数
+    ///     验证WaitUntil指令使用谓词函数
     /// </summary>
     [Test]
     public void WaitUntil_Should_Use_Predicate_Function()
@@ -186,7 +186,7 @@ public class YieldInstructionTests
     }
 
     /// <summary>
-    /// 验证WaitUntil指令应该在条件满足时完成
+    ///     验证WaitUntil指令应该在条件满足时完成
     /// </summary>
     [Test]
     public void WaitUntil_Should_Be_Done_When_Condition_Is_True()
@@ -207,7 +207,7 @@ public class YieldInstructionTests
     }
 
     /// <summary>
-    /// 验证WaitUntil指令抛出ArgumentNullException当predicate为null
+    ///     验证WaitUntil指令抛出ArgumentNullException当predicate为null
     /// </summary>
     [Test]
     public void WaitUntil_Should_Throw_ArgumentNullException_When_Predicate_Is_Null()
@@ -216,7 +216,7 @@ public class YieldInstructionTests
     }
 
     /// <summary>
-    /// 验证WaitWhile指令使用谓词函数
+    ///     验证WaitWhile指令使用谓词函数
     /// </summary>
     [Test]
     public void WaitWhile_Should_Use_Predicate_Function()
@@ -246,7 +246,7 @@ public class YieldInstructionTests
     }
 
     /// <summary>
-    /// 验证WaitWhile指令应该在条件为假时完成
+    ///     验证WaitWhile指令应该在条件为假时完成
     /// </summary>
     [Test]
     public void WaitWhile_Should_Be_Done_When_Condition_Is_False()
@@ -261,7 +261,7 @@ public class YieldInstructionTests
     }
 
     /// <summary>
-    /// 验证WaitWhile指令应该在条件为真时持续等待
+    ///     验证WaitWhile指令应该在条件为真时持续等待
     /// </summary>
     [Test]
     public void WaitWhile_Should_Continue_Waiting_While_Condition_Is_True()
@@ -271,17 +271,14 @@ public class YieldInstructionTests
 
         Assert.That(wait.IsDone, Is.False);
 
-        for (var i = 0; i < 10; i++)
-        {
-            Assert.That(wait.IsDone, Is.False);
-        }
+        for (var i = 0; i < 10; i++) Assert.That(wait.IsDone, Is.False);
 
         continueWaiting = false;
         Assert.That(wait.IsDone, Is.True);
     }
 
     /// <summary>
-    /// 验证WaitWhile指令抛出ArgumentNullException当predicate为null
+    ///     验证WaitWhile指令抛出ArgumentNullException当predicate为null
     /// </summary>
     [Test]
     public void WaitWhile_Should_Throw_ArgumentNullException_When_Predicate_Is_Null()
@@ -290,7 +287,7 @@ public class YieldInstructionTests
     }
 
     /// <summary>
-    /// 验证WaitForCoroutine指令初始状态为未完成
+    ///     验证WaitForCoroutine指令初始状态为未完成
     /// </summary>
     [Test]
     public void WaitForCoroutine_Should_Not_Be_Done_Initially()
@@ -301,7 +298,7 @@ public class YieldInstructionTests
     }
 
     /// <summary>
-    /// 验证WaitForCoroutine指令的Update方法不影响状态
+    ///     验证WaitForCoroutine指令的Update方法不影响状态
     /// </summary>
     [Test]
     public void WaitForCoroutine_Update_Should_Not_Affect_State()
@@ -316,7 +313,7 @@ public class YieldInstructionTests
     }
 
     /// <summary>
-    /// 验证Delay指令实现IYieldInstruction接口
+    ///     验证Delay指令实现IYieldInstruction接口
     /// </summary>
     [Test]
     public void Delay_Should_Implement_IYieldInstruction_Interface()
@@ -327,7 +324,7 @@ public class YieldInstructionTests
     }
 
     /// <summary>
-    /// 验证WaitOneFrame指令实现IYieldInstruction接口
+    ///     验证WaitOneFrame指令实现IYieldInstruction接口
     /// </summary>
     [Test]
     public void WaitOneFrame_Should_Implement_IYieldInstruction_Interface()
@@ -338,7 +335,7 @@ public class YieldInstructionTests
     }
 
     /// <summary>
-    /// 验证WaitForFrames指令实现IYieldInstruction接口
+    ///     验证WaitForFrames指令实现IYieldInstruction接口
     /// </summary>
     [Test]
     public void WaitForFrames_Should_Implement_IYieldInstruction_Interface()
@@ -349,7 +346,7 @@ public class YieldInstructionTests
     }
 
     /// <summary>
-    /// 验证WaitUntil指令实现IYieldInstruction接口
+    ///     验证WaitUntil指令实现IYieldInstruction接口
     /// </summary>
     [Test]
     public void WaitUntil_Should_Implement_IYieldInstruction_Interface()
@@ -360,7 +357,7 @@ public class YieldInstructionTests
     }
 
     /// <summary>
-    /// 验证WaitWhile指令实现IYieldInstruction接口
+    ///     验证WaitWhile指令实现IYieldInstruction接口
     /// </summary>
     [Test]
     public void WaitWhile_Should_Implement_IYieldInstruction_Interface()
@@ -371,7 +368,7 @@ public class YieldInstructionTests
     }
 
     /// <summary>
-    /// 验证WaitForCoroutine指令实现IYieldInstruction接口
+    ///     验证WaitForCoroutine指令实现IYieldInstruction接口
     /// </summary>
     [Test]
     public void WaitForCoroutine_Should_Implement_IYieldInstruction_Interface()
@@ -382,7 +379,7 @@ public class YieldInstructionTests
     }
 
     /// <summary>
-    /// 验证WaitUntil指令在Update后立即检查条件
+    ///     验证WaitUntil指令在Update后立即检查条件
     /// </summary>
     [Test]
     public void WaitUntil_Should_Evaluate_Condition_Immediately()
@@ -397,7 +394,7 @@ public class YieldInstructionTests
     }
 
     /// <summary>
-    /// 验证WaitWhile指令在Update后立即检查条件
+    ///     验证WaitWhile指令在Update后立即检查条件
     /// </summary>
     [Test]
     public void WaitWhile_Should_Evaluate_Condition_Immediately()
