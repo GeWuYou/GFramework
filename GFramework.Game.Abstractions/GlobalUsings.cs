@@ -16,3 +16,17 @@ global using System.Collections.Generic;
 global using System.Linq;
 global using System.Threading;
 global using System.Threading.Tasks;
+#if NETSTANDARD2_0 || NETFRAMEWORK || NETCOREAPP2_0
+using System.ComponentModel;
+
+namespace System.Runtime.CompilerServices
+{
+    /// <summary>
+    /// 用于标记仅初始化 setter 的特殊类型
+    /// </summary>
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public static class IsExternalInit
+    {
+    }
+}
+#endif
