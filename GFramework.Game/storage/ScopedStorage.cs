@@ -96,6 +96,16 @@ public sealed class ScopedStorage(IStorage inner, string prefix) : IScopedStorag
     }
 
     /// <summary>
+    ///     异步删除指定键
+    /// </summary>
+    /// <param name="key">要删除的键</param>
+    /// <returns>异步操作任务</returns>
+    public async Task DeleteAsync(string key)
+    {
+        await inner.DeleteAsync(Key(key));
+    }
+
+    /// <summary>
     ///     为给定的键添加前缀
     /// </summary>
     /// <param name="key">原始键</param>

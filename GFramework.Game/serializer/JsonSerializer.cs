@@ -1,4 +1,4 @@
-﻿using GFramework.Game.Abstractions.serializer;
+﻿using GFramework.Core.Abstractions.serializer;
 using Newtonsoft.Json;
 
 namespace GFramework.Game.serializer;

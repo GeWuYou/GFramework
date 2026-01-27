@@ -64,7 +64,7 @@ public class SettingsPersistence : AbstractContextUtility, ISettingsPersistence
     public async Task DeleteAsync<T>() where T : class, ISettingsData
     {
         var key = GetKey<T>();
-        _storage.Delete(key);
+        await _storage.DeleteAsync(key);
         this.SendEvent(new SettingsDeletedEvent(typeof(T)));
         await Task.CompletedTask;
     }
@@ -84,38 +84,6 @@ public class SettingsPersistence : AbstractContextUtility, ISettingsPersistence
         }
 
         this.SendEvent(new SettingsBatchSavedEvent(dataList));
-    }
-
-    /// <summary>
-    ///     异步加载所有已知类型的设置数据
-    /// </summary>
-    /// <param name="knownTypes">已知设置数据类型的集合</param>
-    /// <returns>类型与对应设置数据的字典映射</returns>
-    public async Task<IDictionary<Type, ISettingsData>> LoadAllAsync(IEnumerable<Type> knownTypes)
-    {
-        var result = new Dictionary<Type, ISettingsData>();
-        var allSettings = new List<ISettingsSection>();
-
-        foreach (var type in knownTypes)
-        {
-            var key = GetKey(type);
-
-            if (!await _storage.ExistsAsync(key)) continue;
-            // 使用反射调用泛型方法
-            var method = typeof(IStorage)
-                .GetMethod(nameof(IStorage.ReadAsync))!
-                .MakeGenericMethod(type);
-
-            var task = (Task)method.Invoke(_storage, [key])!;
-            await task;
-
-            var loaded = (ISettingsData)((dynamic)task).Result;
-            result[type] = loaded;
-            allSettings.Add(loaded);
-        }
-
-        this.SendEvent(new SettingsAllLoadedEvent(allSettings));
-        return result;
     }
 
     protected override void OnInit()

@@ -68,4 +68,11 @@ public interface IStorage : IUtility
     /// </summary>
     /// <param name="key">要删除的键</param>
     void Delete(string key);
+
+    /// <summary>
+    ///     异步删除指定键的存储项
+    /// </summary>
+    /// <param name="key">要删除的键</param>
+    /// <returns>表示异步操作的Task</returns>
+    Task DeleteAsync(string key);
 }

@@ -7,7 +7,7 @@ namespace GFramework.Godot.setting;
 ///     Godot图形设置应用器
 /// </summary>
 /// <param name="settings">图形设置配置对象</param>
-public class GodotGraphicsSettings(GraphicsSettings settings) : IApplyAbleSettings
+public class GodotGraphicsSettings(GraphicsSettings settings) : IPersistentApplyAbleSettings
 {
     /// <summary>
     ///     应用图形设置到Godot引擎
@@ -39,5 +39,10 @@ public class GodotGraphicsSettings(GraphicsSettings settings) : IApplyAbleSettin
         }
 
         await Task.CompletedTask;
+    }
+
+    public void Reset()
+    {
+        settings.Reset();
     }
 }

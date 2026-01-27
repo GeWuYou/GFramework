@@ -32,9 +32,4 @@ public interface ISettingsPersistence : IContextUtility
     ///     保存所有设置数据
     /// </summary>
     Task SaveAllAsync(IEnumerable<ISettingsData> allData);
-
-    /// <summary>
-    ///     加载所有已知类型的设置数据
-    /// </summary>
-    Task<IDictionary<Type, ISettingsData>> LoadAllAsync(IEnumerable<Type> knownTypes);
 }

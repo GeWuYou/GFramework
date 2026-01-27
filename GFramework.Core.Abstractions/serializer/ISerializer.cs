@@ -1,6 +1,6 @@
 ﻿using GFramework.Core.Abstractions.utility;
 
-namespace GFramework.Game.Abstractions.serializer;
+namespace GFramework.Core.Abstractions.serializer;
 
 /// <summary>
 ///     定义序列化器接口，提供对象序列化和反序列化的通用方法

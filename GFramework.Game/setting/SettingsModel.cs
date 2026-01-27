@@ -1,4 +1,5 @@
-﻿using GFramework.Core.model;
+﻿using GFramework.Core.extensions;
+using GFramework.Core.model;
 using GFramework.Game.Abstractions.setting;
 
 namespace GFramework.Game.setting;
@@ -10,6 +11,7 @@ public class SettingsModel : AbstractModel, ISettingsModel
 {
     private readonly Dictionary<Type, IApplyAbleSettings> _applicators = new();
     private readonly Dictionary<Type, ISettingsData> _dataSettings = new();
+    private ISettingsPersistence? _persistence;
 
     /// <summary>
     ///     获取或创建数据设置
@@ -40,6 +42,13 @@ public class SettingsModel : AbstractModel, ISettingsModel
     {
         var type = typeof(T);
         _applicators[type] = applicator;
+
+        // 如果这个应用设置同时也是数据设置，也注册到数据字典中
+        if (applicator is ISettingsData data)
+        {
+            _dataSettings[type] = data;
+        }
+
         return this;
     }
 
@@ -88,9 +97,41 @@ public class SettingsModel : AbstractModel, ISettingsModel
     /// <returns>包含所有设置节的可枚举集合</returns>
     public IEnumerable<ISettingsSection> All()
     {
-        // 合并数据设置和应用器设置的所有值
-        return _dataSettings.Values
-            .Concat(_applicators.Values.Cast<ISettingsSection>());
+        // 使用 HashSet 去重（避免同时实现两个接口的设置被重复返回）
+        var sections = new HashSet<ISettingsSection>();
+
+        foreach (var applicator in _applicators.Values)
+            sections.Add(applicator);
+
+        foreach (var data in _dataSettings.Values)
+            sections.Add(data);
+
+        return sections;
+    }
+
+    /// <summary>
+    ///     初始化并加载指定类型的设置数据
+    /// </summary>
+    public async Task InitializeAsync(params Type[] settingTypes)
+    {
+        foreach (var type in settingTypes)
+        {
+            if (!typeof(ISettingsData).IsAssignableFrom(type) ||
+                !type.IsClass ||
+                type.GetConstructor(Type.EmptyTypes) == null)
+                continue;
+
+            // 使用反射调用泛型方法 LoadAsync<T>
+            var method = typeof(ISettingsPersistence)
+                .GetMethod(nameof(ISettingsPersistence.LoadAsync))!
+                .MakeGenericMethod(type);
+
+            var task = (Task)method.Invoke(_persistence, null)!;
+            await task;
+
+            var loaded = (ISettingsData)((dynamic)task).Result;
+            _dataSettings[type] = loaded;
+        }
     }
 
 
@@ -99,5 +140,6 @@ public class SettingsModel : AbstractModel, ISettingsModel
     /// </summary>
     protected override void OnInit()
     {
+        _persistence = this.GetUtility<ISettingsPersistence>();
     }
 }

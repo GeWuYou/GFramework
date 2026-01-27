@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
 using System.IO;
 using System.Text;
+using GFramework.Core.Abstractions.serializer;
 using GFramework.Core.Abstractions.storage;
-using GFramework.Game.Abstractions.serializer;
 using GFramework.Godot.extensions;
 using Godot;
 using FileAccess = Godot.FileAccess;
@@ -44,6 +44,7 @@ public sealed class GodotFileStorage : IStorage
 
         lock (keyLock)
         {
+            // 处理Godot文件系统路径的删除操作
             if (path.IsGodotPath())
             {
                 if (FileAccess.FileExists(path))
@@ -53,6 +54,7 @@ public sealed class GodotFileStorage : IStorage
                         throw new IOException($"Failed to delete Godot file: {path}, error: {err}");
                 }
             }
+            // 处理标准文件系统路径的删除操作
             else
             {
                 if (File.Exists(path)) File.Delete(path);
@@ -61,6 +63,16 @@ public sealed class GodotFileStorage : IStorage
 
         // 删除完成后尝试移除锁，防止锁字典无限增长
         _keyLocks.TryRemove(path, out _);
+    }
+
+    /// <summary>
+    ///     异步删除指定键对应的文件
+    /// </summary>
+    /// <param name="key">存储键</param>
+    /// <returns>异步任务</returns>
+    public async Task DeleteAsync(string key)
+    {
+        await Task.Run(() => Delete(key));
     }
 
     #endregion

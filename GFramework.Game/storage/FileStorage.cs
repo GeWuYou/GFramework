@@ -1,7 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.IO;
 using System.Text;
-using GFramework.Game.Abstractions.serializer;
+using GFramework.Core.Abstractions.serializer;
 using GFramework.Game.Abstractions.storage;
 
 namespace GFramework.Game.storage;
@@ -32,26 +32,6 @@ public sealed class FileStorage : IFileStorage
 
         Directory.CreateDirectory(_rootPath);
     }
-
-    #region Delete
-
-    /// <summary>
-    ///     删除指定键的存储项
-    /// </summary>
-    /// <param name="key">存储键</param>
-    public void Delete(string key)
-    {
-        var path = ToPath(key);
-        var keyLock = _keyLocks.GetOrAdd(path, _ => new object());
-
-        lock (keyLock)
-        {
-            if (File.Exists(path))
-                File.Delete(path);
-        }
-    }
-
-    #endregion
 
     /// <summary>
     ///     清理文件段字符串，将其中的无效文件名字符替换为下划线
@@ -101,6 +81,31 @@ public sealed class FileStorage : IFileStorage
         Directory.CreateDirectory(dirPath);
 
         return Path.Combine(dirPath, fileName);
+    }
+
+    #endregion
+
+    #region Delete
+
+    /// <summary>
+    ///     删除指定键的存储项
+    /// </summary>
+    /// <param name="key">存储键</param>
+    public void Delete(string key)
+    {
+        var path = ToPath(key);
+        var keyLock = _keyLocks.GetOrAdd(path, _ => new object());
+
+        lock (keyLock)
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+    }
+
+    public Task DeleteAsync(string key)
+    {
+        return Task.Run(() => Delete(key));
     }
 
     #endregion
