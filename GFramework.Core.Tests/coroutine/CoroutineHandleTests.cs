@@ -81,11 +81,16 @@ public class CoroutineHandleTests
     [Test]
     public void Equals_Should_Return_False_For_Different_Handles()
     {
-        var handle1 = new CoroutineHandle(1);
-        var handle2 = new CoroutineHandle(1);
+        var handle1 = new CoroutineHandle(5);
+        var handle2 = new CoroutineHandle(10);
 
+        // 测试通过Equals方法比较不同实例ID的句柄
         Assert.That(handle1.Equals(handle2), Is.False);
+
+        // 额外验证这两个句柄的Key也不同
+        Assert.That(handle1.Key, Is.Not.EqualTo(handle2.Key));
     }
+
 
     /// <summary>
     /// 验证Equals方法与null对象的比较

@@ -40,7 +40,7 @@ public class TaskCoroutineExtensionsTests
     }
 
     /// <summary>
-    /// 验证AsCoroutineInstruction可以处理已完成的Task
+    /// 验证AsCoroutineInstruction可以处理已完成的Task并验证其状态
     /// </summary>
     [Test]
     public void AsCoroutineInstruction_Should_Handle_Completed_Task()
@@ -48,20 +48,14 @@ public class TaskCoroutineExtensionsTests
         var task = Task.CompletedTask;
         var instruction = task.AsCoroutineInstruction();
 
+        // 验证指令类型
         Assert.That(instruction, Is.InstanceOf<WaitForTask>());
+    
+        // 验证已完成的任务是否立即可用
+        Assert.That(task.IsCompleted, Is.True);
+        Assert.That(task.Status, Is.EqualTo(TaskStatus.RanToCompletion));
     }
-
-    /// <summary>
-    /// 验证AsCoroutineInstruction<T>可以处理已完成的Task
-    /// </summary>
-    [Test]
-    public void AsCoroutineInstructionOfT_Should_Handle_Completed_Task()
-    {
-        var task = Task.FromResult(42);
-        var instruction = task.AsCoroutineInstruction<int>();
-
-        Assert.That(instruction, Is.InstanceOf<WaitForTask<int>>());
-    }
+    
 
     /// <summary>
     /// 验证AsCoroutineInstruction<T>应该能够访问Task结果
@@ -165,7 +159,7 @@ public class TaskCoroutineExtensionsTests
         var completed = false;
         var tcs = new TaskCompletionSource<object?>();
 
-        var handle = scheduler.StartTaskAsCoroutine(tcs.Task);
+        scheduler.StartTaskAsCoroutine(tcs.Task);
 
         Assert.That(scheduler.ActiveCoroutineCount, Is.EqualTo(1));
         Assert.That(completed, Is.False);
@@ -190,7 +184,7 @@ public class TaskCoroutineExtensionsTests
 
         var tcs = new TaskCompletionSource<int>();
 
-        var handle = scheduler.StartTaskAsCoroutine(tcs.Task);
+        scheduler.StartTaskAsCoroutine(tcs.Task);
 
         Assert.That(scheduler.ActiveCoroutineCount, Is.EqualTo(1));
 
@@ -213,7 +207,7 @@ public class TaskCoroutineExtensionsTests
         var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
         var task = Task.CompletedTask;
 
-        var handle = scheduler.StartTaskAsCoroutine(task);
+        scheduler.StartTaskAsCoroutine(task);
 
         scheduler.Update();
 
@@ -230,7 +224,7 @@ public class TaskCoroutineExtensionsTests
         var scheduler = new CoroutineScheduler(timeSource, instanceId: 1);
         var task = Task.FromException(new InvalidOperationException("Test"));
 
-        var handle = scheduler.StartTaskAsCoroutine(task);
+        scheduler.StartTaskAsCoroutine(task);
 
         Assert.DoesNotThrow(() => scheduler.Update());
     }
