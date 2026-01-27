@@ -1,9 +1,11 @@
+using GFramework.Core.Abstractions.versioning;
+
 namespace GFramework.Game.Abstractions.setting;
 
 /// <summary>
 ///     图形设置类，用于管理游戏的图形相关配置
 /// </summary>
-public class GraphicsSettings : ISettingsData
+public class GraphicsSettings : ISettingsData, IVersioned
 {
     /// <summary>
     ///     获取或设置是否启用全屏模式
@@ -29,4 +31,6 @@ public class GraphicsSettings : ISettingsData
         ResolutionWidth = 1920;
         ResolutionHeight = 1080;
     }
+
+    public int Version { get; set; } = 1;
 }

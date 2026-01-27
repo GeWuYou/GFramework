@@ -1,12 +1,10 @@
-using GFramework.Game.Abstractions.setting;
-
 namespace GFramework.Godot.setting;
 
 /// <summary>
 ///     音频总线映射设置
 ///     定义了游戏中不同音频类型的总线名称配置
 /// </summary>
-public class AudioBusMapSettings : ISettingsData
+public class AudioBusMap
 {
     /// <summary>
     ///     主音频总线名称

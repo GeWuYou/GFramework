@@ -1,9 +1,11 @@
+using GFramework.Core.Abstractions.versioning;
+
 namespace GFramework.Game.Abstractions.setting;
 
 /// <summary>
 ///     音频设置类，用于管理游戏中的音频配置
 /// </summary>
-public class AudioSettings : ISettingsData
+public class AudioSettings : ISettingsData, IVersioned
 {
     /// <summary>
     ///     获取或设置主音量，控制所有音频的总体音量
@@ -25,8 +27,11 @@ public class AudioSettings : ISettingsData
     /// </summary>
     public void Reset()
     {
+        // 重置所有音量设置为默认值
         MasterVolume = 1.0f;
         BgmVolume = 0.8f;
         SfxVolume = 0.8f;
     }
+
+    public int Version { get; set; } = 1;
 }

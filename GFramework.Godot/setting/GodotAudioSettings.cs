@@ -7,8 +7,8 @@ namespace GFramework.Godot.setting;
 ///     Godot音频设置实现类，用于应用音频配置到Godot音频系统
 /// </summary>
 /// <param name="settings">音频设置对象，包含主音量、背景音乐音量和音效音量</param>
-/// <param name="audioBusMapSettings">音频总线映射对象，定义了不同音频类型的总线名称</param>
-public class GodotAudioSettings(AudioSettings settings, AudioBusMapSettings audioBusMapSettings)
+/// <param name="audioBusMap">音频总线映射对象，定义了不同音频类型的总线名称</param>
+public class GodotAudioSettings(AudioSettings settings, AudioBusMap audioBusMap)
     : IPersistentApplyAbleSettings
 {
     /// <summary>
@@ -17,15 +17,15 @@ public class GodotAudioSettings(AudioSettings settings, AudioBusMapSettings audi
     /// <returns>表示异步操作的任务</returns>
     public Task Apply()
     {
-        SetBus(audioBusMapSettings.Master, settings.MasterVolume);
-        SetBus(audioBusMapSettings.Bgm, settings.BgmVolume);
-        SetBus(audioBusMapSettings.Sfx, settings.SfxVolume);
+        SetBus(audioBusMap.Master, settings.MasterVolume);
+        SetBus(audioBusMap.Bgm, settings.BgmVolume);
+        SetBus(audioBusMap.Sfx, settings.SfxVolume);
         return Task.CompletedTask;
     }
 
     public void Reset()
     {
-        audioBusMapSettings.Reset();
+        settings.Reset();
     }
 
     /// <summary>
