@@ -221,13 +221,28 @@ public class YieldInstructionTests
     [Test]
     public void WaitWhile_Should_Use_Predicate_Function()
     {
-        var continueWaiting = true;
-        var wait = new WaitWhile(() => continueWaiting);
+        var callCount = 0;
+        var shouldContinue = true;
 
+        var wait = new WaitWhile(() =>
+        {
+            callCount++;
+            return shouldContinue;
+        });
+
+        // 访问 IsDone，会触发 predicate
         Assert.That(wait.IsDone, Is.False);
+        Assert.That(callCount, Is.GreaterThan(0),
+            "Predicate should be evaluated when checking IsDone");
 
-        continueWaiting = false;
+        var previousCount = callCount;
+
+        shouldContinue = false;
+
+        // 再次访问 IsDone，应再次调用 predicate，并改变结果
         Assert.That(wait.IsDone, Is.True);
+        Assert.That(callCount, Is.GreaterThan(previousCount),
+            "Predicate should be re-evaluated when condition changes");
     }
 
     /// <summary>
@@ -387,12 +402,21 @@ public class YieldInstructionTests
     [Test]
     public void WaitWhile_Should_Evaluate_Condition_Immediately()
     {
+        var callCount = 0;
         var continueWaiting = true;
-        var wait = new WaitWhile(() => continueWaiting);
+        var wait = new WaitWhile(() =>
+        {
+            callCount++;
+            return continueWaiting;
+        });
 
+        // 初始检查，确保谓词被调用
         Assert.That(wait.IsDone, Is.False);
+        Assert.That(callCount, Is.EqualTo(1), "Predicate should be called once initially");
 
+        // 改变条件并验证谓词再次被调用
         continueWaiting = false;
         Assert.That(wait.IsDone, Is.True);
+        Assert.That(callCount, Is.EqualTo(2), "Predicate should be called again after condition change");
     }
 }
