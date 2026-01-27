@@ -21,12 +21,12 @@ public class WaitForTaskTests
     [Test]
     public void WaitForTask_Should_Not_Be_Done_Initially()
     {
-        var task = Task.Run(() => { });
-        var wait = new WaitForTask(task);
+        var tcs = new TaskCompletionSource<object?>();
+        var wait = new WaitForTask(tcs.Task);
 
         Assert.That(wait.IsDone, Is.False);
     }
-
+    
     /// <summary>
     /// 验证WaitForTask应该在Task完成后完成
     /// </summary>
