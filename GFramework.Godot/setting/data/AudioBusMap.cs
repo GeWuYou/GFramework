@@ -1,4 +1,4 @@
-namespace GFramework.Godot.setting;
+namespace GFramework.Godot.setting.data;
 
 /// <summary>
 ///     音频总线映射设置

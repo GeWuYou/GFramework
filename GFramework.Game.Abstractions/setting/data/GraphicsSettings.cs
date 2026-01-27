@@ -1,6 +1,6 @@
 using GFramework.Core.Abstractions.versioning;
 
-namespace GFramework.Game.Abstractions.setting;
+namespace GFramework.Game.Abstractions.setting.data;
 
 /// <summary>
 ///     图形设置类，用于管理游戏的图形相关配置

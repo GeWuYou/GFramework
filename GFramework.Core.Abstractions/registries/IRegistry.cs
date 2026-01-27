@@ -1,6 +1,6 @@
 ﻿using GFramework.Core.Abstractions.bases;
 
-namespace GFramework.Game.Abstractions.registry;
+namespace GFramework.Core.Abstractions.registries;
 
 /// <summary>
 ///     表示一个通用的注册表接口，用于根据键类型T获取值类型TR的对象

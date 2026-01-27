@@ -1,5 +1,5 @@
-﻿using GFramework.Core.Abstractions.utility;
-using GFramework.Game.Abstractions.registry;
+﻿using GFramework.Core.Abstractions.registries;
+using GFramework.Core.Abstractions.utility;
 
 namespace GFramework.Game.Abstractions.ui;
 

@@ -1,4 +1,4 @@
-﻿using GFramework.Game.Abstractions.registry;
+﻿using GFramework.Core.Abstractions.registries;
 
 namespace GFramework.Game.Abstractions.scene;
 

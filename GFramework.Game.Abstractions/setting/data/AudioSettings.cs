@@ -1,6 +1,6 @@
 using GFramework.Core.Abstractions.versioning;
 
-namespace GFramework.Game.Abstractions.setting;
+namespace GFramework.Game.Abstractions.setting.data;
 
 /// <summary>
 ///     音频设置类，用于管理游戏中的音频配置

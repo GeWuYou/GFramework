@@ -1,5 +1,4 @@
 ﻿using GFramework.Core.Abstractions.bases;
-using GFramework.Game.Abstractions.registry;
 
 namespace GFramework.Core.Abstractions.registries;
 

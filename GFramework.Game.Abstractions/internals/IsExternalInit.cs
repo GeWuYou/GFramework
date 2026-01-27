@@ -3,7 +3,7 @@
 // when targeting netstandard2.0 or older frameworks.
 
 #pragma warning disable S2094 // Remove this empty class
-namespace System.Runtime.CompilerServices;
+namespace GFramework.Game.Abstractions.internals;
 
 internal static class IsExternalInit
 {

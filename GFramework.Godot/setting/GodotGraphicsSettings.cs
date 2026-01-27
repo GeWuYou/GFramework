@@ -1,4 +1,5 @@
 ﻿using GFramework.Game.Abstractions.setting;
+using GFramework.Game.Abstractions.setting.data;
 using Godot;
 
 namespace GFramework.Godot.setting;
