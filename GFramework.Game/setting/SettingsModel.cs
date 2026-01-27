@@ -1,5 +1,9 @@
-﻿using GFramework.Core.Abstractions.versioning;
+﻿using System.Collections.Concurrent;
+using System.Reflection;
+using GFramework.Core.Abstractions.logging;
+using GFramework.Core.Abstractions.versioning;
 using GFramework.Core.extensions;
+using GFramework.Core.logging;
 using GFramework.Core.model;
 using GFramework.Game.Abstractions.setting;
 
@@ -8,13 +12,23 @@ namespace GFramework.Game.setting;
 /// <summary>
 ///     设置模型类，用于管理不同类型的应用程序设置部分
 /// </summary>
-public class SettingsModel : AbstractModel, ISettingsModel
+public class SettingsModel : AbstractModel, ISettingsModel, IDisposable
 {
-    private readonly Dictionary<Type, IApplyAbleSettings> _applicators = new();
-    private readonly Dictionary<Type, ISettingsData> _dataSettings = new();
-    private readonly Dictionary<(Type type, int from), ISettingsMigration> _migrations = new();
-
+    private static readonly ILogger Log = LoggerFactoryResolver.Provider.CreateLogger(nameof(SettingsModel));
+    private readonly ConcurrentDictionary<Type, IApplyAbleSettings> _applicators = new();
+    private readonly ConcurrentDictionary<Type, ISettingsData> _dataSettings = new();
+    private readonly ConcurrentDictionary<Type, MethodInfo> _loadAsyncMethodCache = new();
+    private readonly ConcurrentDictionary<Type, Dictionary<int, ISettingsMigration>> _migrationCache = new();
+    private readonly ConcurrentDictionary<(Type type, int from), ISettingsMigration> _migrations = new();
+    private bool _disposed;
     private ISettingsPersistence? _persistence;
+
+    public void Dispose()
+    {
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
+    }
+
 
     // -----------------------------
     // Data
@@ -27,13 +41,7 @@ public class SettingsModel : AbstractModel, ISettingsModel
     /// <returns>指定类型的设置数据实例</returns>
     public T GetData<T>() where T : class, ISettingsData, new()
     {
-        var type = typeof(T);
-        if (_dataSettings.TryGetValue(type, out var data))
-            return (T)data;
-
-        var created = new T();
-        _dataSettings[type] = created;
-        return created;
+        return (T)_dataSettings.GetOrAdd(typeof(T), _ => new T());
     }
 
     /// <summary>
@@ -135,7 +143,16 @@ public class SettingsModel : AbstractModel, ISettingsModel
         var type = section.GetType();
         var current = section;
 
-        while (_migrations.TryGetValue((type, versioned.Version), out var migration))
+        if (!_migrationCache.TryGetValue(type, out var versionMap))
+        {
+            versionMap = _migrations
+                .Where(kv => kv.Key.type == type)
+                .ToDictionary(kv => kv.Key.from, kv => kv.Value);
+
+            _migrationCache[type] = versionMap;
+        }
+
+        while (versionMap.TryGetValue(versioned.Version, out var migration))
         {
             current = migration.Migrate(current);
             versioned = (IVersioned)current;
@@ -143,6 +160,7 @@ public class SettingsModel : AbstractModel, ISettingsModel
 
         return current;
     }
+
 
     // -----------------------------
     // Load / Init
@@ -161,20 +179,24 @@ public class SettingsModel : AbstractModel, ISettingsModel
                 type.GetConstructor(Type.EmptyTypes) == null)
                 continue;
 
-            // Load<T>()
-            var method = typeof(ISettingsPersistence)
-                .GetMethod(nameof(ISettingsPersistence.LoadAsync))!
-                .MakeGenericMethod(type);
+            try
+            {
+                var method = _loadAsyncMethodCache.GetOrAdd(type, t => typeof(ISettingsPersistence)
+                    .GetMethod(nameof(ISettingsPersistence.LoadAsync))!
+                    .MakeGenericMethod(t));
 
-            var task = (Task)method.Invoke(_persistence, null)!;
-            await task;
+                var task = (Task)method.Invoke(_persistence, null)!;
+                await task;
 
-            var loaded = (ISettingsSection)((dynamic)task).Result;
-
-            // ★ 关键：迁移
-            var migrated = MigrateIfNeeded(loaded);
-
-            _dataSettings[type] = (ISettingsData)migrated;
+                var loaded = (ISettingsSection)((dynamic)task).Result;
+                var migrated = MigrateIfNeeded(loaded);
+                _dataSettings[type] = (ISettingsData)migrated;
+                _migrationCache.TryRemove(type, out _);
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"Failed to load settings for {type.Name}: {ex}", ex);
+            }
         }
     }
 
@@ -184,5 +206,23 @@ public class SettingsModel : AbstractModel, ISettingsModel
     protected override void OnInit()
     {
         _persistence = this.GetUtility<ISettingsPersistence>();
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed) return;
+        if (disposing)
+        {
+            // 清理托管资源
+            _dataSettings.Clear();
+            _applicators.Clear();
+            _migrations.Clear();
+            _migrationCache.Clear();
+            _loadAsyncMethodCache.Clear();
+        }
+
+        // 清理非托管资源（如果有）
+
+        _disposed = true;
     }
 }
