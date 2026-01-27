@@ -207,7 +207,7 @@ public sealed class FileStorage : IFileStorage
 
         // 读取文件内容可以使用异步IO，但要注意锁范围
         string content;
-        using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+        await using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
         using (var sr = new StreamReader(fs, Encoding.UTF8))
         {
             content = await sr.ReadToEndAsync();
