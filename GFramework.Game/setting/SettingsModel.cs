@@ -1,4 +1,5 @@
-﻿using GFramework.Core.extensions;
+﻿using GFramework.Core.Abstractions.versioning;
+using GFramework.Core.extensions;
 using GFramework.Core.model;
 using GFramework.Game.Abstractions.setting;
 
@@ -11,87 +12,91 @@ public class SettingsModel : AbstractModel, ISettingsModel
 {
     private readonly Dictionary<Type, IApplyAbleSettings> _applicators = new();
     private readonly Dictionary<Type, ISettingsData> _dataSettings = new();
+    private readonly Dictionary<(Type type, int from), ISettingsMigration> _migrations = new();
+
     private ISettingsPersistence? _persistence;
 
+    // -----------------------------
+    // Data
+    // -----------------------------
+
     /// <summary>
-    ///     获取或创建数据设置
+    /// 获取指定类型的设置数据实例，如果不存在则创建新的实例
     /// </summary>
-    /// <typeparam name="T">设置数据类型，必须实现ISettingsData接口并具有无参构造函数</typeparam>
+    /// <typeparam name="T">设置数据类型，必须实现ISettingsData接口并提供无参构造函数</typeparam>
     /// <returns>指定类型的设置数据实例</returns>
     public T GetData<T>() where T : class, ISettingsData, new()
     {
         var type = typeof(T);
+        if (_dataSettings.TryGetValue(type, out var data))
+            return (T)data;
 
-        // 尝试从现有字典中获取已存在的设置数据
-        if (_dataSettings.TryGetValue(type, out var existing))
-            return (T)existing;
-
-        // 创建新的设置数据实例并存储到字典中
         var created = new T();
         _dataSettings[type] = created;
         return created;
     }
 
     /// <summary>
-    ///     获取所有已注册的可应用设置
+    /// 获取所有设置数据的枚举集合
     /// </summary>
-    /// <returns>所有可应用设置的枚举集合</returns>
-    public IEnumerable<IApplyAbleSettings> AllApplicators()
-    {
-        return _applicators.Values;
-    }
+    /// <returns>所有设置数据的枚举集合</returns>
+    public IEnumerable<ISettingsData> AllData()
+        => _dataSettings.Values;
+
+    // -----------------------------
+    // Applicator
+    // -----------------------------
 
     /// <summary>
-    ///     注册可应用设置（必须手动注册）
+    /// 获取所有设置应用器的枚举集合
     /// </summary>
-    /// <typeparam name="T">可应用设置的类型，必须继承自class和IApplyAbleSettings</typeparam>
-    /// <param name="applicator">要注册的可应用设置实例</param>
-    /// <returns>返回当前设置模型实例，支持链式调用</returns>
-    public ISettingsModel RegisterApplicator<T>(T applicator) where T : class, IApplyAbleSettings
+    /// <returns>所有设置应用器的枚举集合</returns>
+    public IEnumerable<IApplyAbleSettings> AllApplicators()
+        => _applicators.Values;
+
+    /// <summary>
+    /// 注册设置应用器到模型中
+    /// </summary>
+    /// <typeparam name="T">设置应用器类型，必须实现IApplyAbleSettings接口</typeparam>
+    /// <param name="applicator">要注册的设置应用器实例</param>
+    /// <returns>当前设置模型实例，支持链式调用</returns>
+    public ISettingsModel RegisterApplicator<T>(T applicator)
+        where T : class, IApplyAbleSettings
     {
-        var type = typeof(T);
-        _applicators[type] = applicator;
+        _applicators[typeof(T)] = applicator;
         return this;
     }
 
     /// <summary>
-    ///     获取已注册的可应用设置
+    /// 获取指定类型的设置应用器实例
     /// </summary>
-    /// <typeparam name="T">可应用设置类型，必须实现IApplyAbleSettings接口</typeparam>
-    /// <returns>找到的可应用设置实例，如果未找到则返回null</returns>
+    /// <typeparam name="T">设置应用器类型，必须实现IApplyAbleSettings接口</typeparam>
+    /// <returns>指定类型的设置应用器实例，如果不存在则返回null</returns>
     public T? GetApplicator<T>() where T : class, IApplyAbleSettings
     {
-        var type = typeof(T);
-        return _applicators.TryGetValue(type, out var applicator)
-            ? (T)applicator
+        return _applicators.TryGetValue(typeof(T), out var app)
+            ? (T)app
             : null;
     }
 
-    /// <summary>
-    ///     获取所有设置数据
-    /// </summary>
-    /// <returns>所有设置数据的枚举集合</returns>
-    public IEnumerable<ISettingsData> AllData()
-    {
-        return _dataSettings.Values;
-    }
+    // -----------------------------
+    // Section lookup
+    // -----------------------------
 
     /// <summary>
-    ///     尝试获取指定类型的设置节
+    /// 尝试获取指定类型的设置节
     /// </summary>
     /// <param name="type">要查找的设置类型</param>
     /// <param name="section">输出参数，找到的设置节实例</param>
-    /// <returns>如果找到设置节则返回true，否则返回false</returns>
+    /// <returns>如果找到对应类型的设置节则返回true，否则返回false</returns>
     public bool TryGet(Type type, out ISettingsSection section)
     {
-        // 首先在数据设置字典中查找
         if (_dataSettings.TryGetValue(type, out var data))
         {
             section = data;
             return true;
         }
 
-        // 然后在应用器字典中查找
         if (_applicators.TryGetValue(type, out var applicator))
         {
             section = applicator;
@@ -102,9 +107,49 @@ public class SettingsModel : AbstractModel, ISettingsModel
         return false;
     }
 
+    // -----------------------------
+    // Migration
+    // -----------------------------
 
     /// <summary>
-    ///     初始化并加载指定类型的设置数据
+    /// 注册设置迁移器到模型中
+    /// </summary>
+    /// <param name="migration">要注册的设置迁移器实例</param>
+    /// <returns>当前设置模型实例，支持链式调用</returns>
+    public ISettingsModel RegisterMigration(ISettingsMigration migration)
+    {
+        _migrations[(migration.SettingsType, migration.FromVersion)] = migration;
+        return this;
+    }
+
+    /// <summary>
+    /// 如果需要的话，对设置节进行版本迁移
+    /// </summary>
+    /// <param name="section">待检查和迁移的设置节</param>
+    /// <returns>迁移后的设置节</returns>
+    private ISettingsSection MigrateIfNeeded(ISettingsSection section)
+    {
+        if (section is not IVersioned versioned)
+            return section;
+
+        var type = section.GetType();
+        var current = section;
+
+        while (_migrations.TryGetValue((type, versioned.Version), out var migration))
+        {
+            current = migration.Migrate(current);
+            versioned = (IVersioned)current;
+        }
+
+        return current;
+    }
+
+    // -----------------------------
+    // Load / Init
+    // -----------------------------
+
+    /// <summary>
+    /// 异步初始化设置模型，加载指定类型的设置数据
     /// </summary>
     /// <param name="settingTypes">要初始化的设置类型数组</param>
     public async Task InitializeAsync(params Type[] settingTypes)
@@ -116,7 +161,7 @@ public class SettingsModel : AbstractModel, ISettingsModel
                 type.GetConstructor(Type.EmptyTypes) == null)
                 continue;
 
-            // 使用反射调用泛型方法 LoadAsync<T>
+            // Load<T>()
             var method = typeof(ISettingsPersistence)
                 .GetMethod(nameof(ISettingsPersistence.LoadAsync))!
                 .MakeGenericMethod(type);
@@ -124,14 +169,17 @@ public class SettingsModel : AbstractModel, ISettingsModel
             var task = (Task)method.Invoke(_persistence, null)!;
             await task;
 
-            var loaded = (ISettingsData)((dynamic)task).Result;
-            _dataSettings[type] = loaded;
+            var loaded = (ISettingsSection)((dynamic)task).Result;
+
+            // ★ 关键：迁移
+            var migrated = MigrateIfNeeded(loaded);
+
+            _dataSettings[type] = (ISettingsData)migrated;
         }
     }
 
-
     /// <summary>
-    ///     初始化方法，用于执行模型的初始化逻辑
+    /// 初始化方法，用于获取设置持久化服务
     /// </summary>
     protected override void OnInit()
     {
