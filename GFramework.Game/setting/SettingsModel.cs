@@ -33,6 +33,15 @@ public class SettingsModel : AbstractModel, ISettingsModel
     }
 
     /// <summary>
+    ///     获取所有已注册的可应用设置
+    /// </summary>
+    /// <returns>所有可应用设置的枚举集合</returns>
+    public IEnumerable<IApplyAbleSettings> AllApplicators()
+    {
+        return _applicators.Values;
+    }
+
+    /// <summary>
     ///     注册可应用设置（必须手动注册）
     /// </summary>
     /// <typeparam name="T">可应用设置的类型，必须继承自class和IApplyAbleSettings</typeparam>
@@ -42,13 +51,6 @@ public class SettingsModel : AbstractModel, ISettingsModel
     {
         var type = typeof(T);
         _applicators[type] = applicator;
-
-        // 如果这个应用设置同时也是数据设置，也注册到数据字典中
-        if (applicator is ISettingsData data)
-        {
-            _dataSettings[type] = data;
-        }
-
         return this;
     }
 
@@ -63,6 +65,15 @@ public class SettingsModel : AbstractModel, ISettingsModel
         return _applicators.TryGetValue(type, out var applicator)
             ? (T)applicator
             : null;
+    }
+
+    /// <summary>
+    ///     获取所有设置数据
+    /// </summary>
+    /// <returns>所有设置数据的枚举集合</returns>
+    public IEnumerable<ISettingsData> AllData()
+    {
+        return _dataSettings.Values;
     }
 
     /// <summary>
@@ -91,27 +102,11 @@ public class SettingsModel : AbstractModel, ISettingsModel
         return false;
     }
 
-    /// <summary>
-    ///     获取所有设置节的集合
-    /// </summary>
-    /// <returns>包含所有设置节的可枚举集合</returns>
-    public IEnumerable<ISettingsSection> All()
-    {
-        // 使用 HashSet 去重（避免同时实现两个接口的设置被重复返回）
-        var sections = new HashSet<ISettingsSection>();
-
-        foreach (var applicator in _applicators.Values)
-            sections.Add(applicator);
-
-        foreach (var data in _dataSettings.Values)
-            sections.Add(data);
-
-        return sections;
-    }
 
     /// <summary>
     ///     初始化并加载指定类型的设置数据
     /// </summary>
+    /// <param name="settingTypes">要初始化的设置类型数组</param>
     public async Task InitializeAsync(params Type[] settingTypes)
     {
         foreach (var type in settingTypes)

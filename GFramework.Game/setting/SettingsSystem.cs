@@ -18,8 +18,10 @@ public class SettingsSystem : AbstractSystem, ISettingsSystem
     /// <returns>完成的任务</returns>
     public async Task ApplyAll()
     {
-        // 遍历所有设置配置并尝试应用
-        foreach (var section in _model.All()) await TryApplyAsync(section);
+        foreach (var applicator in _model.AllApplicators())
+        {
+            await TryApplyAsync(applicator);
+        }
     }
 
     /// <summary>
@@ -27,40 +29,14 @@ public class SettingsSystem : AbstractSystem, ISettingsSystem
     /// </summary>
     /// <typeparam name="T">设置配置类型，必须是类且实现ISettingsSection接口</typeparam>
     /// <returns>完成的任务</returns>
-    public Task Apply<T>() where T : class, ISettingsSection
+    public Task Apply<T>() where T : class, IApplyAbleSettings
     {
-        return Apply(typeof(T));
+        var applicator = _model.GetApplicator<T>();
+        return applicator != null
+            ? TryApplyAsync(applicator)
+            : Task.CompletedTask;
     }
 
-    /// <summary>
-    ///     应用指定类型的设置配置
-    /// </summary>
-    /// <param name="settingsType">设置配置类型</param>
-    /// <returns>完成的任务</returns>
-    public async Task Apply(Type settingsType)
-    {
-        if (_model.TryGet(settingsType, out var section))
-        {
-            await TryApplyAsync(section);
-        }
-    }
-
-    /// <summary>
-    ///     应用指定类型集合的设置配置
-    /// </summary>
-    /// <param name="settingsTypes">设置配置类型集合</param>
-    /// <returns>完成的任务</returns>
-    public async Task Apply(IEnumerable<Type> settingsTypes)
-    {
-        // 去重后遍历设置类型，获取并应用对应的设置配置
-        foreach (var type in settingsTypes.Distinct())
-        {
-            if (_model.TryGet(type, out var section))
-            {
-                await TryApplyAsync(section);
-            }
-        }
-    }
 
     /// <summary>
     ///     初始化设置系统，获取设置模型实例

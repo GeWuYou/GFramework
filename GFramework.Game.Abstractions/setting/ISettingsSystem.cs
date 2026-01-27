@@ -13,17 +13,7 @@ public interface ISettingsSystem : ISystem
     Task ApplyAll();
 
     /// <summary>
-    ///     应用指定类型的设置
-    /// </summary>
-    Task Apply(Type settingsType);
-
-    /// <summary>
     ///     应用指定类型的设置（泛型版本）
     /// </summary>
-    Task Apply<T>() where T : class, ISettingsSection;
-
-    /// <summary>
-    ///     批量应用多个设置类型
-    /// </summary>
-    Task Apply(IEnumerable<Type> settingsTypes);
+    Task Apply<T>() where T : class, IApplyAbleSettings;
 }
