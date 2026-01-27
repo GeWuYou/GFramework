@@ -1,3 +1,4 @@
+using System.IO;
 using GFramework.Core.Abstractions.logging;
 using GFramework.Core.logging;
 using NUnit.Framework;

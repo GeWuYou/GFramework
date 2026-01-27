@@ -188,6 +188,7 @@ public class YieldInstructionTests
     /// <summary>
     /// 验证WaitUntil指令应该在条件满足时完成
     /// </summary>
+    [Test]
     public void WaitUntil_Should_Be_Done_When_Condition_Is_True()
     {
         var counter = 0;

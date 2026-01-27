@@ -1,3 +1,4 @@
+using System.IO;
 using GFramework.SourceGenerators.enums;
 using GFramework.SourceGenerators.Tests.core;
 using NUnit.Framework;

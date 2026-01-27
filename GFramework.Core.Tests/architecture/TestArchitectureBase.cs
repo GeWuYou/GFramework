@@ -1,6 +1,5 @@
 ﻿using GFramework.Core.Abstractions.enums;
 using GFramework.Core.architecture;
-using GFramework.Core.events;
 
 namespace GFramework.Core.Tests.architecture;
 

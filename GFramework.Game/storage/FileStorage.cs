@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.IO;
 using System.Text;
 using GFramework.Game.Abstractions.serializer;
 using GFramework.Game.Abstractions.storage;

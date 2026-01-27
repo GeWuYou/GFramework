@@ -1,3 +1,4 @@
+using System.IO;
 using GFramework.SourceGenerators.logging;
 using GFramework.SourceGenerators.Tests.core;
 using NUnit.Framework;

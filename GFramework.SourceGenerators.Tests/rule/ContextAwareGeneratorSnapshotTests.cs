@@ -1,4 +1,5 @@
-﻿using GFramework.SourceGenerators.rule;
+﻿using System.IO;
+using GFramework.SourceGenerators.rule;
 using GFramework.SourceGenerators.Tests.core;
 using NUnit.Framework;
 

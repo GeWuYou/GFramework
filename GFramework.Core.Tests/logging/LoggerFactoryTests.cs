@@ -1,3 +1,4 @@
+using System.IO;
 using GFramework.Core.Abstractions.logging;
 using GFramework.Core.logging;
 using NUnit.Framework;
@@ -45,7 +46,7 @@ public class LoggerFactoryTests
     public void ConsoleLoggerFactory_GetLogger_WithDefaultMinLevel_ShouldUseInfo()
     {
         var factory = new ConsoleLoggerFactory();
-        var logger = (ConsoleLogger)factory.GetLogger("TestLogger");
+        _ = (ConsoleLogger)factory.GetLogger("TestLogger");
 
         var stringWriter = new StringWriter();
         var testLogger = new ConsoleLogger("TestLogger", LogLevel.Info, stringWriter, false);
@@ -66,7 +67,7 @@ public class LoggerFactoryTests
     public void ConsoleLoggerFactoryProvider_CreateLogger_ShouldReturnLoggerWithProviderMinLevel()
     {
         var provider = new ConsoleLoggerFactoryProvider { MinLevel = LogLevel.Debug };
-        var logger = (ConsoleLogger)provider.CreateLogger("TestLogger");
+        _ = (ConsoleLogger)provider.CreateLogger("TestLogger");
 
         var stringWriter = new StringWriter();
         var testLogger = new ConsoleLogger("TestLogger", LogLevel.Debug, stringWriter, false);
@@ -177,7 +178,7 @@ public class LoggerFactoryTests
 
         LoggerFactoryResolver.Provider = provider;
 
-        var logger = (ConsoleLogger)provider.CreateLogger("TestLogger");
+        _ = (ConsoleLogger)provider.CreateLogger("TestLogger");
 
         var stringWriter = new StringWriter();
         var testLogger = new ConsoleLogger("TestLogger", LogLevel.Warning, stringWriter, false);
@@ -204,7 +205,7 @@ public class LoggerFactoryTests
         LoggerFactoryResolver.MinLevel = LogLevel.Error;
 
         var provider = LoggerFactoryResolver.Provider;
-        var logger = (ConsoleLogger)provider.CreateLogger("TestLogger");
+        _ = (ConsoleLogger)provider.CreateLogger("TestLogger");
 
         var stringWriter = new StringWriter();
         var testLogger = new ConsoleLogger("TestLogger", LogLevel.Error, stringWriter, false);
@@ -241,7 +242,7 @@ public class LoggerFactoryTests
     public void ConsoleLoggerFactoryProvider_MinLevel_DoesNotAffectCreatedLogger()
     {
         var provider = new ConsoleLoggerFactoryProvider { MinLevel = LogLevel.Error };
-        var logger = provider.CreateLogger("TestLogger");
+        provider.CreateLogger("TestLogger");
 
         var stringWriter = new StringWriter();
         var testLogger = new ConsoleLogger("TestLogger", LogLevel.Error, stringWriter, false);

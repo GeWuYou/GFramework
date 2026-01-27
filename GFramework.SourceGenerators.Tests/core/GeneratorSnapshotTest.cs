@@ -1,4 +1,5 @@
-﻿using Microsoft.CodeAnalysis.CSharp.Testing;
+﻿using System.IO;
+using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Testing;
 using NUnit.Framework;
 
