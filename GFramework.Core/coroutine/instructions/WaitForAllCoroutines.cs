@@ -1,5 +1,4 @@
-﻿
-using GFramework.Core.Abstractions.coroutine;
+﻿using GFramework.Core.Abstractions.coroutine;
 
 namespace GFramework.Core.coroutine.instructions;
 
