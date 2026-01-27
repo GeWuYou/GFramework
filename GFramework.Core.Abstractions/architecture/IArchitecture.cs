@@ -36,6 +36,7 @@ public interface IArchitecture : IAsyncInitializable
     /// </summary>
     /// <typeparam name="T">系统类型，必须实现ISystem接口</typeparam>
     /// <param name="system">要注册的系统实例</param>
+    /// <returns>注册的系统实例</returns>
     T RegisterSystem<T>(T system) where T : ISystem;
 
     /// <summary>
@@ -43,6 +44,7 @@ public interface IArchitecture : IAsyncInitializable
     /// </summary>
     /// <typeparam name="T">模型类型，必须实现IModel接口</typeparam>
     /// <param name="model">要注册的模型实例</param>
+    /// <returns>注册的模型实例</returns>
     T RegisterModel<T>(T model) where T : IModel;
 
     /// <summary>
@@ -50,6 +52,7 @@ public interface IArchitecture : IAsyncInitializable
     /// </summary>
     /// <typeparam name="T">工具类型，必须实现IUtility接口</typeparam>
     /// <param name="utility">要注册的工具实例</param>
+    /// <returns>注册的工具实例</returns>
     T RegisterUtility<T>(T utility) where T : IUtility;
 
     /// <summary>
@@ -65,4 +68,10 @@ public interface IArchitecture : IAsyncInitializable
     /// <param name="hook">生命周期钩子实例</param>
     /// <returns>注册的钩子实例</returns>
     IArchitectureLifecycle RegisterLifecycleHook(IArchitectureLifecycle hook);
+
+    /// <summary>
+    ///     等待直到架构准备就绪的异步操作
+    /// </summary>
+    /// <returns>表示异步等待操作的任务</returns>
+    Task WaitUntilReadyAsync();
 }
