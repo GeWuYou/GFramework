@@ -1,5 +1,6 @@
 using GFramework.Core.extensions;
 using GFramework.Core.system;
+using GFramework.Game.Abstractions.data;
 using GFramework.Game.Abstractions.setting;
 using GFramework.Game.setting.events;
 
@@ -8,9 +9,12 @@ namespace GFramework.Game.setting;
 /// <summary>
 ///     设置系统，负责管理和应用各种设置配置
 /// </summary>
-public class SettingsSystem : AbstractSystem, ISettingsSystem
+public class SettingsSystem<TRepository>(IDataRepository? repository)
+    : AbstractSystem, ISettingsSystem where TRepository : class, IDataRepository
 {
     private ISettingsModel _model = null!;
+    private IDataRepository? _repository = repository;
+    private IDataRepository Repository => _repository ?? throw new InvalidOperationException("Repository is not set");
 
     /// <summary>
     ///     应用所有设置配置
@@ -18,6 +22,7 @@ public class SettingsSystem : AbstractSystem, ISettingsSystem
     /// <returns>完成的任务</returns>
     public async Task ApplyAll()
     {
+        // 遍历所有设置应用器并尝试应用
         foreach (var applicator in _model.AllApplicators())
         {
             await TryApplyAsync(applicator);
@@ -37,6 +42,22 @@ public class SettingsSystem : AbstractSystem, ISettingsSystem
             : Task.CompletedTask;
     }
 
+    /// <summary>
+    ///     保存所有设置数据到存储库
+    /// </summary>
+    /// <returns>完成的任务</returns>
+    public async Task SaveAll()
+    {
+        // 遍历所有设置数据并保存可持久化的数据
+        foreach (var data in _model.AllData())
+        {
+            if (data is IData persistable)
+            {
+                await Repository.SaveAsync(persistable);
+            }
+        }
+    }
+
 
     /// <summary>
     ///     初始化设置系统，获取设置模型实例
@@ -44,6 +65,7 @@ public class SettingsSystem : AbstractSystem, ISettingsSystem
     protected override void OnInit()
     {
         _model = this.GetModel<ISettingsModel>()!;
+        _repository ??= this.GetUtility<TRepository>()!;
     }
 
     /// <summary>
@@ -54,15 +76,18 @@ public class SettingsSystem : AbstractSystem, ISettingsSystem
     {
         if (section is not IApplyAbleSettings applyAbleSettings) return;
 
+        // 发送设置应用中事件
         this.SendEvent(new SettingsApplyingEvent<ISettingsSection>(section));
 
         try
         {
             await applyAbleSettings.Apply();
+            // 发送设置应用成功事件
             this.SendEvent(new SettingsAppliedEvent<ISettingsSection>(section, true));
         }
         catch (Exception ex)
         {
+            // 发送设置应用失败事件
             this.SendEvent(new SettingsAppliedEvent<ISettingsSection>(section, false, ex));
         }
     }
