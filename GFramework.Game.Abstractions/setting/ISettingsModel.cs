@@ -49,4 +49,18 @@ public interface ISettingsModel : IModel
     /// <param name="applicator">要注册的可应用设置实例</param>
     /// <returns>返回当前设置模型实例，支持链式调用</returns>
     ISettingsModel RegisterApplicator<T>(T applicator) where T : class, IApplyAbleSettings;
+
+    /// <summary>
+    ///     注册设置迁移器
+    /// </summary>
+    /// <param name="migration">要注册的设置迁移实例</param>
+    /// <returns>返回当前设置模型实例，支持链式调用</returns>
+    ISettingsModel RegisterMigration(ISettingsMigration migration);
+
+    /// <summary>
+    ///     异步初始化指定类型的设置
+    /// </summary>
+    /// <param name="settingTypes">要初始化的设置类型数组</param>
+    /// <returns>异步操作任务</returns>
+    Task InitializeAsync(params Type[] settingTypes);
 }
