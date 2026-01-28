@@ -1,10 +1,10 @@
 ﻿using System.Collections.Concurrent;
-using System.Reflection;
 using GFramework.Core.Abstractions.logging;
 using GFramework.Core.Abstractions.versioning;
 using GFramework.Core.extensions;
 using GFramework.Core.logging;
 using GFramework.Core.model;
+using GFramework.Game.Abstractions.data;
 using GFramework.Game.Abstractions.setting;
 
 namespace GFramework.Game.setting;
@@ -12,15 +12,18 @@ namespace GFramework.Game.setting;
 /// <summary>
 ///     设置模型类，用于管理不同类型的应用程序设置部分
 /// </summary>
-public class SettingsModel : AbstractModel, ISettingsModel
+public class SettingsModel<TRepository>(IDataRepository? repository)
+    : AbstractModel, ISettingsModel where TRepository : class, IDataRepository
 {
-    private static readonly ILogger Log = LoggerFactoryResolver.Provider.CreateLogger(nameof(SettingsModel));
+    private static readonly ILogger Log =
+        LoggerFactoryResolver.Provider.CreateLogger(nameof(SettingsModel<TRepository>));
+
     private readonly ConcurrentDictionary<Type, IApplyAbleSettings> _applicators = new();
     private readonly ConcurrentDictionary<Type, IResettable> _dataSettings = new();
-    private readonly ConcurrentDictionary<Type, MethodInfo> _loadAsyncMethodCache = new();
     private readonly ConcurrentDictionary<Type, Dictionary<int, ISettingsMigration>> _migrationCache = new();
     private readonly ConcurrentDictionary<(Type type, int from), ISettingsMigration> _migrations = new();
-    private ISettingsPersistence? _persistence;
+    private IDataRepository? _repository = repository;
+    private IDataRepository Repository => _repository ?? throw new InvalidOperationException("Repository is not set");
 
     // -----------------------------
     // Data
@@ -167,36 +170,29 @@ public class SettingsModel : AbstractModel, ISettingsModel
         foreach (var type in settingTypes)
         {
             if (!typeof(IResettable).IsAssignableFrom(type) ||
-                !type.IsClass ||
-                type.GetConstructor(Type.EmptyTypes) == null)
+                !typeof(IData).IsAssignableFrom(type))
                 continue;
 
             try
             {
-                var method = _loadAsyncMethodCache.GetOrAdd(type, t => typeof(ISettingsPersistence)
-                    .GetMethod(nameof(ISettingsPersistence.LoadAsync))!
-                    .MakeGenericMethod(t));
-
-                var task = (Task)method.Invoke(_persistence, null)!;
-                await task;
-
-                var loaded = (ISettingsSection)((dynamic)task).Result;
+                var loaded = (ISettingsSection)await Repository.LoadAsync(type);
                 var migrated = MigrateIfNeeded(loaded);
                 _dataSettings[type] = (IResettable)migrated;
                 _migrationCache.TryRemove(type, out _);
             }
             catch (Exception ex)
             {
-                Log.Error($"Failed to load settings for {type.Name}: {ex}", ex);
+                Log.Error($"Failed to load settings for {type.Name}", ex);
             }
         }
     }
+
 
     /// <summary>
     /// 初始化方法，用于获取设置持久化服务
     /// </summary>
     protected override void OnInit()
     {
-        _persistence = this.GetUtility<ISettingsPersistence>();
+        _repository ??= this.GetUtility<TRepository>()!;
     }
 }

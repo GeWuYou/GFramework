@@ -44,6 +44,7 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
         var key = GetKey<T>();
 
         T result;
+        // 检查存储中是否存在指定键的数据
         if (await Storage.ExistsAsync(key))
         {
             result = await Storage.ReadAsync<T>(key);
@@ -53,11 +54,46 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
             result = new T();
         }
 
+        // 如果启用事件功能，则发送数据加载完成事件
         if (_options.EnableEvents)
             this.SendEvent(new DataLoadedEvent<T>(result));
 
         return result;
     }
+
+    /// <summary>
+    /// 异步加载指定类型的数据（通过Type参数）
+    /// </summary>
+    /// <param name="type">要加载的数据类型</param>
+    /// <returns>加载的数据对象</returns>
+    public async Task<IData> LoadAsync(Type type)
+    {
+        if (!typeof(IData).IsAssignableFrom(type))
+            throw new ArgumentException($"{type.Name} does not implement IData");
+
+        if (!type.IsClass || type.GetConstructor(Type.EmptyTypes) == null)
+            throw new ArgumentException($"{type.Name} must be a class with parameterless constructor");
+
+        var key = GetKey(type);
+
+        IData result;
+        // 检查存储中是否存在指定键的数据
+        if (await Storage.ExistsAsync(key))
+        {
+            result = await Storage.ReadAsync<IData>(key);
+        }
+        else
+        {
+            result = (IData)Activator.CreateInstance(type)!;
+        }
+
+        // 如果启用事件功能，则发送数据加载完成事件
+        if (_options.EnableEvents)
+            this.SendEvent(new DataLoadedEvent<IData>(result));
+
+        return result;
+    }
+
 
     /// <summary>
     /// 异步保存指定类型的数据
