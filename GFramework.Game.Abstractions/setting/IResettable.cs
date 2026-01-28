@@ -1,9 +1,10 @@
 namespace GFramework.Game.Abstractions.setting;
 
 /// <summary>
-///     设置数据接口 - 纯数据，可自动创建
+/// 可重置设置接口，继承自ISettingsSection接口
+/// 提供将设置重置为默认值的功能
 /// </summary>
-public interface ISettingsData : ISettingsSection
+public interface IResettable : ISettingsSection
 {
     /// <summary>
     ///     重置设置为默认值

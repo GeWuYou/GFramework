@@ -16,7 +16,7 @@ public class SettingsModel : AbstractModel, ISettingsModel
 {
     private static readonly ILogger Log = LoggerFactoryResolver.Provider.CreateLogger(nameof(SettingsModel));
     private readonly ConcurrentDictionary<Type, IApplyAbleSettings> _applicators = new();
-    private readonly ConcurrentDictionary<Type, ISettingsData> _dataSettings = new();
+    private readonly ConcurrentDictionary<Type, IResettable> _dataSettings = new();
     private readonly ConcurrentDictionary<Type, MethodInfo> _loadAsyncMethodCache = new();
     private readonly ConcurrentDictionary<Type, Dictionary<int, ISettingsMigration>> _migrationCache = new();
     private readonly ConcurrentDictionary<(Type type, int from), ISettingsMigration> _migrations = new();
@@ -31,7 +31,7 @@ public class SettingsModel : AbstractModel, ISettingsModel
     /// </summary>
     /// <typeparam name="T">设置数据类型，必须实现ISettingsData接口并提供无参构造函数</typeparam>
     /// <returns>指定类型的设置数据实例</returns>
-    public T GetData<T>() where T : class, ISettingsData, new()
+    public T GetData<T>() where T : class, IResettable, new()
     {
         return (T)_dataSettings.GetOrAdd(typeof(T), _ => new T());
     }
@@ -40,7 +40,7 @@ public class SettingsModel : AbstractModel, ISettingsModel
     /// 获取所有设置数据的枚举集合
     /// </summary>
     /// <returns>所有设置数据的枚举集合</returns>
-    public IEnumerable<ISettingsData> AllData()
+    public IEnumerable<IResettable> AllData()
         => _dataSettings.Values;
 
     // -----------------------------
@@ -166,7 +166,7 @@ public class SettingsModel : AbstractModel, ISettingsModel
     {
         foreach (var type in settingTypes)
         {
-            if (!typeof(ISettingsData).IsAssignableFrom(type) ||
+            if (!typeof(IResettable).IsAssignableFrom(type) ||
                 !type.IsClass ||
                 type.GetConstructor(Type.EmptyTypes) == null)
                 continue;
@@ -182,7 +182,7 @@ public class SettingsModel : AbstractModel, ISettingsModel
 
                 var loaded = (ISettingsSection)((dynamic)task).Result;
                 var migrated = MigrateIfNeeded(loaded);
-                _dataSettings[type] = (ISettingsData)migrated;
+                _dataSettings[type] = (IResettable)migrated;
                 _migrationCache.TryRemove(type, out _);
             }
             catch (Exception ex)

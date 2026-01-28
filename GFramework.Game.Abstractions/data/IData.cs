@@ -11,10 +11,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace GFramework.Game.Abstractions.setting;
+namespace GFramework.Game.Abstractions.data;
 
 /// <summary>
-///     可持久化的应用设置接口
-///     同时具备数据持久化和应用逻辑能力
+/// 通用数据标记接口
 /// </summary>
-public interface IPersistentApplyAbleSettings : IResettable, IApplyAbleSettings;
+public interface IData;

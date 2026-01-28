@@ -11,10 +11,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace GFramework.Game.Abstractions.setting;
+namespace GFramework.Game.Abstractions.data.events;
 
 /// <summary>
-///     可持久化的应用设置接口
-///     同时具备数据持久化和应用逻辑能力
+/// 表示数据保存事件的记录类型
 /// </summary>
-public interface IPersistentApplyAbleSettings : IResettable, IApplyAbleSettings;
+/// <typeparam name="T">保存的数据类型</typeparam>
+/// <param name="Data">保存的数据实例</param>
+public sealed record DataSavedEvent<T>(T Data);

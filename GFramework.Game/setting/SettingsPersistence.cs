@@ -18,7 +18,7 @@ public class SettingsPersistence : AbstractContextUtility, ISettingsPersistence
     /// </summary>
     /// <typeparam name="T">设置数据类型，必须实现ISettingsData接口</typeparam>
     /// <returns>如果存在则返回存储的设置数据，否则返回新创建的实例</returns>
-    public async Task<T> LoadAsync<T>() where T : class, ISettingsData, new()
+    public async Task<T> LoadAsync<T>() where T : class, IResettable, new()
     {
         var key = GetKey<T>();
 
@@ -39,7 +39,7 @@ public class SettingsPersistence : AbstractContextUtility, ISettingsPersistence
     /// </summary>
     /// <typeparam name="T">设置数据类型，必须实现ISettingsData接口</typeparam>
     /// <param name="section">要保存的设置数据实例</param>
-    public async Task SaveAsync<T>(T section) where T : class, ISettingsData
+    public async Task SaveAsync<T>(T section) where T : class, IResettable
     {
         var key = GetKey<T>();
         await _storage.WriteAsync(key, section);
@@ -51,7 +51,7 @@ public class SettingsPersistence : AbstractContextUtility, ISettingsPersistence
     /// </summary>
     /// <typeparam name="T">设置数据类型，必须实现ISettingsData接口</typeparam>
     /// <returns>如果存在返回true，否则返回false</returns>
-    public async Task<bool> ExistsAsync<T>() where T : class, ISettingsData
+    public async Task<bool> ExistsAsync<T>() where T : class, IResettable
     {
         var key = GetKey<T>();
         return await _storage.ExistsAsync(key);
@@ -61,7 +61,7 @@ public class SettingsPersistence : AbstractContextUtility, ISettingsPersistence
     ///     异步删除指定类型的设置数据
     /// </summary>
     /// <typeparam name="T">设置数据类型，必须实现ISettingsData接口</typeparam>
-    public async Task DeleteAsync<T>() where T : class, ISettingsData
+    public async Task DeleteAsync<T>() where T : class, IResettable
     {
         var key = GetKey<T>();
         await _storage.DeleteAsync(key);
@@ -73,7 +73,7 @@ public class SettingsPersistence : AbstractContextUtility, ISettingsPersistence
     ///     异步保存所有设置数据到存储中
     /// </summary>
     /// <param name="allData">包含所有设置数据的可枚举集合</param>
-    public async Task SaveAllAsync(IEnumerable<ISettingsData> allData)
+    public async Task SaveAllAsync(IEnumerable<IResettable> allData)
     {
         var dataList = allData.ToList();
         foreach (var data in dataList)
@@ -96,7 +96,7 @@ public class SettingsPersistence : AbstractContextUtility, ISettingsPersistence
     /// </summary>
     /// <typeparam name="T">设置数据类型</typeparam>
     /// <returns>格式为"Settings_类型名称"的键名</returns>
-    private static string GetKey<T>() where T : ISettingsData
+    private static string GetKey<T>() where T : IResettable
     {
         return GetKey(typeof(T));
     }

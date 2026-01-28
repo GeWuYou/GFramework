@@ -19,7 +19,7 @@ namespace GFramework.Game.Abstractions.setting.data;
 /// 本地化设置类，用于管理游戏的语言本地化配置
 /// 实现了ISettingsData接口提供设置数据功能，实现IVersioned接口提供版本控制功能
 /// </summary>
-public class LocalizationSettings : ISettingsData, IVersioned
+public class LocalizationSettings : IResettable, IVersioned
 {
     /// <summary>
     /// 获取或设置当前使用的语言

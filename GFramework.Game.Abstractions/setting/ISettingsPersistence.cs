@@ -11,25 +11,25 @@ public interface ISettingsPersistence : IContextUtility
     /// <summary>
     ///     异步加载指定类型的设置数据
     /// </summary>
-    Task<T> LoadAsync<T>() where T : class, ISettingsData, new();
+    Task<T> LoadAsync<T>() where T : class, IResettable, new();
 
     /// <summary>
     ///     异步保存指定的设置数据
     /// </summary>
-    Task SaveAsync<T>(T section) where T : class, ISettingsData;
+    Task SaveAsync<T>(T section) where T : class, IResettable;
 
     /// <summary>
     ///     异步检查指定类型的设置数据是否存在
     /// </summary>
-    Task<bool> ExistsAsync<T>() where T : class, ISettingsData;
+    Task<bool> ExistsAsync<T>() where T : class, IResettable;
 
     /// <summary>
     ///     异步删除指定类型的设置数据
     /// </summary>
-    Task DeleteAsync<T>() where T : class, ISettingsData;
+    Task DeleteAsync<T>() where T : class, IResettable;
 
     /// <summary>
     ///     保存所有设置数据
     /// </summary>
-    Task SaveAllAsync(IEnumerable<ISettingsData> allData);
+    Task SaveAllAsync(IEnumerable<IResettable> allData);
 }

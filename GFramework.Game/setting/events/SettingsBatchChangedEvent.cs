@@ -7,12 +7,12 @@ namespace GFramework.Game.setting.events;
 ///     表示多个设置项同时发生变更的事件
 /// </summary>
 /// <param name="settings">发生变更的设置数据集合</param>
-public class SettingsBatchChangedEvent(IEnumerable<ISettingsData> settings) : ISettingsChangedEvent
+public class SettingsBatchChangedEvent(IEnumerable<IResettable> settings) : ISettingsChangedEvent
 {
     /// <summary>
     ///     获取发生变更的具体设置数据列表
     /// </summary>
-    public IEnumerable<ISettingsData> ChangedSettings { get; } = settings.ToList();
+    public IEnumerable<IResettable> ChangedSettings { get; } = settings.ToList();
 
     /// <summary>
     ///     获取设置类型，对于批量变更事件，固定返回ISettingsSection类型

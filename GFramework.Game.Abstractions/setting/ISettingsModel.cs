@@ -12,7 +12,7 @@ public interface ISettingsModel : IModel
     /// </summary>
     /// <typeparam name="T">设置数据的类型，必须继承自class、ISettingsData且具有无参构造函数</typeparam>
     /// <returns>指定类型的设置数据实例</returns>
-    T GetData<T>() where T : class, ISettingsData, new();
+    T GetData<T>() where T : class, IResettable, new();
 
     /// <summary>
     ///     尝试获取指定类型的设置节实例
@@ -33,7 +33,7 @@ public interface ISettingsModel : IModel
     /// 获取所有设置数据的集合
     /// </summary>
     /// <returns>包含所有设置数据的可枚举集合</returns>
-    IEnumerable<ISettingsData> AllData();
+    IEnumerable<IResettable> AllData();
 
     /// <summary>
     /// 获取所有可应用设置的集合
