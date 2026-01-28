@@ -12,7 +12,7 @@ namespace GFramework.Game.setting;
 /// <summary>
 ///     设置模型类，用于管理不同类型的应用程序设置部分
 /// </summary>
-public class SettingsModel : AbstractModel, ISettingsModel, IDisposable
+public class SettingsModel : AbstractModel, ISettingsModel
 {
     private static readonly ILogger Log = LoggerFactoryResolver.Provider.CreateLogger(nameof(SettingsModel));
     private readonly ConcurrentDictionary<Type, IApplyAbleSettings> _applicators = new();
@@ -20,15 +20,7 @@ public class SettingsModel : AbstractModel, ISettingsModel, IDisposable
     private readonly ConcurrentDictionary<Type, MethodInfo> _loadAsyncMethodCache = new();
     private readonly ConcurrentDictionary<Type, Dictionary<int, ISettingsMigration>> _migrationCache = new();
     private readonly ConcurrentDictionary<(Type type, int from), ISettingsMigration> _migrations = new();
-    private bool _disposed;
     private ISettingsPersistence? _persistence;
-
-    public void Dispose()
-    {
-        Dispose(disposing: true);
-        GC.SuppressFinalize(this);
-    }
-
 
     // -----------------------------
     // Data
@@ -206,23 +198,5 @@ public class SettingsModel : AbstractModel, ISettingsModel, IDisposable
     protected override void OnInit()
     {
         _persistence = this.GetUtility<ISettingsPersistence>();
-    }
-
-    protected virtual void Dispose(bool disposing)
-    {
-        if (_disposed) return;
-        if (disposing)
-        {
-            // 清理托管资源
-            _dataSettings.Clear();
-            _applicators.Clear();
-            _migrations.Clear();
-            _migrationCache.Clear();
-            _loadAsyncMethodCache.Clear();
-        }
-
-        // 清理非托管资源（如果有）
-
-        _disposed = true;
     }
 }
