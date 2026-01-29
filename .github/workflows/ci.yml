@@ -64,6 +64,7 @@ jobs:
             --no-build \
             --logger trx \
             --results-directory TestResults
+          dotnet tool run DotnetCtrfJsonReporter -t "TestResults/testResults.trx"
 
       # 生成并发布测试报告，无论测试成功或失败都会执行
       - name: Test Report
@@ -73,3 +74,17 @@ jobs:
           name: .NET Test Results
           path: TestResults/*.trx
           reporter: dotnet-trx
+      - name: Publish Test Report
+        uses: ctrf-io/github-test-reporter@v1
+        with:
+          report-path: './ctrf/*.json'
+          github-report: true
+          pull-request-report: true
+          summary-delta-report: true
+          insights-report: true
+          flaky-rate-report: true
+          fail-rate-report: true
+          slowest-report: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: always()
