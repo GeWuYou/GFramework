@@ -23,7 +23,7 @@ namespace GFramework.Game.data;
 /// <summary>
 /// 使用单一文件存储所有设置数据的仓库实现
 /// </summary>
-public sealed class UnifiedSettingsRepository(
+public class UnifiedSettingsRepository(
     IStorage? storage,
     IRuntimeTypeSerializer? serializer,
     DataRepositoryOptions? options = null,
