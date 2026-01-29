@@ -48,14 +48,7 @@ public class SettingsSystem<TRepository>(IDataRepository? repository)
     /// <returns>完成的任务</returns>
     public async Task SaveAll()
     {
-        // 遍历所有设置数据并保存可持久化的数据
-        foreach (var data in _model.AllData())
-        {
-            if (data is IData persistable)
-            {
-                await Repository.SaveAsync(persistable);
-            }
-        }
+        await Repository.SaveAllAsync(_model.AllData());
     }
 
     /// <summary>
