@@ -21,9 +21,9 @@ namespace GFramework.Godot.setting;
 /// <summary>
 /// Godot本地化设置类，负责应用本地化配置到Godot引擎
 /// </summary>
-/// <param name="settings">本地化设置对象</param>
+/// <param name="model">设置模型</param>
 /// <param name="localizationMap">本地化映射表</param>
-public class GodotLocalizationSettings(LocalizationSettings settings, LocalizationMap localizationMap)
+public class GodotLocalizationSettings(ISettingsModel model, LocalizationMap localizationMap)
     : IPersistentApplyAbleSettings
 {
     /// <summary>
@@ -32,6 +32,7 @@ public class GodotLocalizationSettings(LocalizationSettings settings, Localizati
     /// <returns>完成的任务</returns>
     public Task Apply()
     {
+        var settings = model.GetData<LocalizationSettings>();
         // 尝试从映射表获取 Godot locale
         var locale = localizationMap.LanguageMap.GetValueOrDefault(settings.Language, "en");
         // 默认值
@@ -42,5 +43,5 @@ public class GodotLocalizationSettings(LocalizationSettings settings, Localizati
     /// <summary>
     /// 重置本地化设置
     /// </summary>
-    public void Reset() => settings.Reset();
+    public void Reset() => model.GetData<LocalizationSettings>().Reset();
 }

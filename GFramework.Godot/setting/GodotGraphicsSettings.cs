@@ -7,8 +7,8 @@ namespace GFramework.Godot.setting;
 /// <summary>
 ///     Godot图形设置应用器
 /// </summary>
-/// <param name="settings">图形设置配置对象</param>
-public class GodotGraphicsSettings(GraphicsSettings settings) : IPersistentApplyAbleSettings
+/// <param name="model">设置模型接口</param>
+public class GodotGraphicsSettings(ISettingsModel model) : IPersistentApplyAbleSettings
 {
     /// <summary>
     ///     应用图形设置到Godot引擎
@@ -16,6 +16,7 @@ public class GodotGraphicsSettings(GraphicsSettings settings) : IPersistentApply
     /// <returns>异步任务</returns>
     public async Task Apply()
     {
+        var settings = model.GetData<GraphicsSettings>();
         // 创建分辨率向量
         var size = new Vector2I(settings.ResolutionWidth, settings.ResolutionHeight);
 
@@ -42,8 +43,8 @@ public class GodotGraphicsSettings(GraphicsSettings settings) : IPersistentApply
         await Task.CompletedTask;
     }
 
-    public void Reset()
-    {
-        settings.Reset();
-    }
+    /// <summary>
+    ///     重置图形设置
+    /// </summary>
+    public void Reset() => model.GetData<GraphicsSettings>().Reset();
 }

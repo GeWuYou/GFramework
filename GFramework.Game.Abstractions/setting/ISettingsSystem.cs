@@ -25,4 +25,17 @@ public interface ISettingsSystem : ISystem
     /// </summary>
     /// <returns>表示异步操作的任务</returns>
     Task SaveAll();
+
+    /// <summary>
+    ///     重置指定类型的设置
+    /// </summary>
+    /// <typeparam name="T">设置类型，必须继承自class并实现IPersistentApplyAbleSettings接口</typeparam>
+    /// <returns>表示异步操作的任务</returns>
+    Task Reset<T>() where T : class, IPersistentApplyAbleSettings, new();
+
+    /// <summary>
+    ///     重置所有设置
+    /// </summary>
+    /// <returns>表示异步操作的任务</returns>
+    Task ResetAll();
 }

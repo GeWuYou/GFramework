@@ -63,4 +63,15 @@ public interface ISettingsModel : IModel
     /// <param name="settingTypes">要初始化的设置类型数组</param>
     /// <returns>异步操作任务</returns>
     Task InitializeAsync(params Type[] settingTypes);
+
+    /// <summary>
+    ///     重置指定类型的设置
+    /// </summary>
+    /// <typeparam name="T">要重置的设置类型，必须实现IResettable接口并具有无参构造函数</typeparam>
+    void Reset<T>() where T : class, IResettable, new();
+
+    /// <summary>
+    ///     重置所有设置
+    /// </summary>
+    void ResetAll();
 }

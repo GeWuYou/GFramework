@@ -125,37 +125,6 @@ public class SettingsModel<TRepository>(IDataRepository? repository)
         return this;
     }
 
-    /// <summary>
-    /// 如果需要的话，对设置节进行版本迁移
-    /// </summary>
-    /// <param name="section">待检查和迁移的设置节</param>
-    /// <returns>迁移后的设置节</returns>
-    private ISettingsSection MigrateIfNeeded(ISettingsSection section)
-    {
-        if (section is not IVersioned versioned)
-            return section;
-
-        var type = section.GetType();
-        var current = section;
-
-        if (!_migrationCache.TryGetValue(type, out var versionMap))
-        {
-            versionMap = _migrations
-                .Where(kv => kv.Key.type == type)
-                .ToDictionary(kv => kv.Key.from, kv => kv.Value);
-
-            _migrationCache[type] = versionMap;
-        }
-
-        while (versionMap.TryGetValue(versioned.Version, out var migration))
-        {
-            current = migration.Migrate(current);
-            versioned = (IVersioned)current;
-        }
-
-        return current;
-    }
-
 
     // -----------------------------
     // Load / Init
@@ -185,6 +154,58 @@ public class SettingsModel<TRepository>(IDataRepository? repository)
                 Log.Error($"Failed to load settings for {type.Name}", ex);
             }
         }
+    }
+
+    /// <summary>
+    /// 重置指定类型的可重置对象
+    /// </summary>
+    /// <typeparam name="T">要重置的对象类型，必须是class类型，实现IResettable接口，并具有无参构造函数</typeparam>
+    public void Reset<T>() where T : class, IResettable, new()
+    {
+        var data = GetData<T>();
+        data.Reset();
+    }
+
+    /// <summary>
+    /// 重置所有存储的数据设置对象
+    /// </summary>
+    public void ResetAll()
+    {
+        foreach (var data in _dataSettings.Values)
+        {
+            data.Reset();
+        }
+    }
+
+    /// <summary>
+    /// 如果需要的话，对设置节进行版本迁移
+    /// </summary>
+    /// <param name="section">待检查和迁移的设置节</param>
+    /// <returns>迁移后的设置节</returns>
+    private ISettingsSection MigrateIfNeeded(ISettingsSection section)
+    {
+        if (section is not IVersioned versioned)
+            return section;
+
+        var type = section.GetType();
+        var current = section;
+
+        if (!_migrationCache.TryGetValue(type, out var versionMap))
+        {
+            versionMap = _migrations
+                .Where(kv => kv.Key.type == type)
+                .ToDictionary(kv => kv.Key.from, kv => kv.Value);
+
+            _migrationCache[type] = versionMap;
+        }
+
+        while (versionMap.TryGetValue(versioned.Version, out var migration))
+        {
+            current = migration.Migrate(current);
+            versioned = (IVersioned)current;
+        }
+
+        return current;
     }
 
 

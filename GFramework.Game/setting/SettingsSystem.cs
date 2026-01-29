@@ -58,6 +58,27 @@ public class SettingsSystem<TRepository>(IDataRepository? repository)
         }
     }
 
+    /// <summary>
+    /// 重置所有设置并应用更改
+    /// </summary>
+    /// <returns>异步任务</returns>
+    public async Task ResetAll()
+    {
+        _model.ResetAll();
+        await ApplyAll();
+    }
+
+    /// <summary>
+    /// 重置指定类型的设置并应用更改
+    /// </summary>
+    /// <typeparam name="T">设置类型，必须实现IPersistentApplyAbleSettings接口且具有无参构造函数</typeparam>
+    /// <returns>异步任务</returns>
+    public async Task Reset<T>() where T : class, IPersistentApplyAbleSettings, new()
+    {
+        _model.Reset<T>();
+        await Apply<T>();
+    }
+
 
     /// <summary>
     ///     初始化设置系统，获取设置模型实例
