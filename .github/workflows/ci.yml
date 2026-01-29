@@ -95,8 +95,10 @@ jobs:
             dotnet tool run DotnetCtrfJsonReporter \
               -p "$trx" \
               -t nunit \
-              -o "ctrf/$name.json"
+              -d ctrf \
+              -f "$name.json"
           done
+      
       
       # 生成并发布测试报告，无论测试成功或失败都会执行
       - name: Test Report
