@@ -132,6 +132,7 @@ jobs:
       - name: Create GitHub Release and Upload Assets
         uses: softprops/action-gh-release@v2
         with:
+          generate_release_notes: true
           name: "Release ${{ github.ref_name }}"
           body: "Release created by CI for tag ${{ github.ref_name }} (package version ${{ steps.get_version.outputs.version }})"
           draft: false
