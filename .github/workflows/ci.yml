@@ -71,24 +71,18 @@ jobs:
       # 运行单元测试，输出TRX格式结果到TestResults目录
       - name: Test
         run: |
+          REPORT_FILE="testResults-$(date +%s).trx"
+
           dotnet test \
             -c Release \
             --no-build \
-            --logger "trx;LogFileName=testResults_{assembly}_{framework}-$(date +%s).trx" \
+            --logger "trx;LogFileName=$REPORT_FILE" \
             --results-directory TestResults
       - name: Generate CTRF report
         run: |
-          # 为每个 TRX 文件生成对应的 CTRF 报告
-          for trx in TestResults/*.trx; do
-          echo "Processing $trx..."
+          trx=$(ls -t TestResults/*.trx | head -n 1)
+          echo "Using TRX: $trx"
           dotnet tool run DotnetCtrfJsonReporter -p "$trx" -t nunit
-          done
-      - name: Debug - Verify CTRF files
-        if: always()
-        run: |
-          echo "Checking for CTRF files..."
-          find . -name "*.json" -path "*/ctrf/*" -ls
-          ls -la ctrf/ 2>/dev/null || echo "No ctrf directory found"
       # 生成并发布测试报告，无论测试成功或失败都会执行
       - name: Test Report
         uses: dorny/test-reporter@v2
