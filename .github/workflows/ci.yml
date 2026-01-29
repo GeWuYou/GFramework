@@ -22,6 +22,18 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+      # TruffleHog OSS 扫描步骤
+      # 使用 TruffleHog 工具扫描代码库中的敏感信息泄露，如API密钥、密码等
+      # 该步骤会比较基础分支和当前提交之间的差异，检测新增内容中是否包含敏感数据
+      - name: TruffleHog OSS
+        uses: trufflesecurity/trufflehog@v3.92.5
+        with:
+          # 扫描路径，. 表示扫描整个仓库
+          path: .
+          # 基础提交哈希，用于与当前提交进行比较
+          base: ${{ github.event.before }}
+          # 当前提交哈希，作为扫描的目标版本
+          head: ${{ github.sha }}
 
       # 安装和配置.NET SDK版本9.0.x
       - name: Setup .NET
