@@ -26,7 +26,7 @@ public class WaitForAllCoroutinesTests
     public void WaitForAllCoroutines_Should_Not_Be_Done_Initially_With_Running_Coroutines()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, 1);
+        var scheduler = new CoroutineScheduler(timeSource);
         var coroutine1 = CreateDelayedCoroutine(() => { }, 1.0);
         var coroutine2 = CreateDelayedCoroutine(() => { }, 1.0);
 
@@ -48,7 +48,7 @@ public class WaitForAllCoroutinesTests
     public void WaitForAllCoroutines_Should_Be_Done_When_All_Coroutines_Complete()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, 1);
+        var scheduler = new CoroutineScheduler(timeSource);
         var coroutine1 = CreateSimpleCoroutine();
         var coroutine2 = CreateSimpleCoroutine();
 
@@ -73,7 +73,7 @@ public class WaitForAllCoroutinesTests
     public void WaitForAllCoroutines_Should_Wait_For_All_Delayed_Coroutines()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, 1);
+        var scheduler = new CoroutineScheduler(timeSource);
 
         var executionCount = 0;
         var coroutine1 = CreateDelayedCoroutine(() => executionCount++, 1.0);
@@ -105,7 +105,7 @@ public class WaitForAllCoroutinesTests
     public void WaitForAllCoroutines_Should_Handle_Empty_Handles_List()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, 1);
+        var scheduler = new CoroutineScheduler(timeSource);
         var handles = Array.Empty<CoroutineHandle>();
 
         var wait = new WaitForAllCoroutines(scheduler, handles);
@@ -120,7 +120,7 @@ public class WaitForAllCoroutinesTests
     public void WaitForAllCoroutines_Should_Throw_ArgumentNullException_When_Handles_Is_Null()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, 1);
+        var scheduler = new CoroutineScheduler(timeSource);
 
         Assert.Throws<ArgumentNullException>(() => new WaitForAllCoroutines(scheduler, null!));
     }
@@ -143,7 +143,7 @@ public class WaitForAllCoroutinesTests
     public void WaitForAllCoroutines_Should_Handle_Single_Coroutine()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, 1);
+        var scheduler = new CoroutineScheduler(timeSource);
         var coroutine = CreateSimpleCoroutine();
 
         var handles = new List<CoroutineHandle> { scheduler.Run(coroutine) };
@@ -162,7 +162,7 @@ public class WaitForAllCoroutinesTests
     public void WaitForAllCoroutines_Should_Not_Be_Done_When_Some_Coroutines_Complete()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, 1);
+        var scheduler = new CoroutineScheduler(timeSource);
 
         var executionCount = 0;
         var coroutine1 = CreateSimpleCoroutine();
@@ -191,7 +191,7 @@ public class WaitForAllCoroutinesTests
     public void WaitForAllCoroutines_Should_Handle_Killed_Coroutines()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, 1);
+        var scheduler = new CoroutineScheduler(timeSource);
 
         var coroutine1 = CreateDelayedCoroutine(() => { }, 1.0);
         var coroutine2 = CreateDelayedCoroutine(() => { }, 1.0);
@@ -222,7 +222,7 @@ public class WaitForAllCoroutinesTests
     public void WaitForAllCoroutines_Should_Handle_Paused_And_Resumed_Coroutines()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, 1);
+        var scheduler = new CoroutineScheduler(timeSource);
 
         var executionCount = 0;
         var coroutine1 = CreateDelayedCoroutine(() => executionCount++, 1.0);
@@ -258,7 +258,7 @@ public class WaitForAllCoroutinesTests
     public void WaitForAllCoroutines_Update_Should_Not_Affect_State()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, 1);
+        var scheduler = new CoroutineScheduler(timeSource);
         var coroutine = CreateDelayedCoroutine(() => { }, 1.0);
 
         var handles = new List<CoroutineHandle> { scheduler.Run(coroutine) };
@@ -278,7 +278,7 @@ public class WaitForAllCoroutinesTests
     public void WaitForAllCoroutines_Should_Handle_Invalid_Handles()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, 1);
+        var scheduler = new CoroutineScheduler(timeSource);
 
         var handles = new List<CoroutineHandle> { default };
 
@@ -294,7 +294,7 @@ public class WaitForAllCoroutinesTests
     public void WaitForAllCoroutines_Should_Handle_Mixed_Valid_And_Invalid_Handles()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, 1);
+        var scheduler = new CoroutineScheduler(timeSource);
         var coroutine = CreateSimpleCoroutine();
 
         var handles = new List<CoroutineHandle>
@@ -317,7 +317,7 @@ public class WaitForAllCoroutinesTests
     public void WaitForAllCoroutines_Should_Handle_Many_Coroutines()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, 1);
+        var scheduler = new CoroutineScheduler(timeSource);
         var executionCount = 0;
 
         var handles = new List<CoroutineHandle>();
@@ -340,7 +340,7 @@ public class WaitForAllCoroutinesTests
     public void WaitForAllCoroutines_Should_Handle_Coroutines_With_Exceptions()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, 1);
+        var scheduler = new CoroutineScheduler(timeSource);
 
         var coroutine1 = CreateSimpleCoroutine();
         var coroutine2 = CreateExceptionCoroutine();
@@ -367,7 +367,7 @@ public class WaitForAllCoroutinesTests
     public void WaitForAllCoroutines_Should_Work_With_ParallelCoroutines()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, 1);
+        var scheduler = new CoroutineScheduler(timeSource);
 
         var executionOrder = new List<int>();
         var coroutine1 = CreateDelayedCoroutine(() => executionOrder.Add(1), 0.5);
@@ -397,7 +397,7 @@ public class WaitForAllCoroutinesTests
     public void WaitForAllCoroutines_Should_Implement_IYieldInstruction()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, 1);
+        var scheduler = new CoroutineScheduler(timeSource);
         var handles = Array.Empty<CoroutineHandle>();
 
         var wait = new WaitForAllCoroutines(scheduler, handles);
@@ -412,7 +412,7 @@ public class WaitForAllCoroutinesTests
     public void WaitForAllCoroutines_Should_Be_Done_Immediately_When_All_Coroutines_Complete_Immediately()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, 1);
+        var scheduler = new CoroutineScheduler(timeSource);
 
         var coroutine1 = CreateSimpleCoroutine();
         var coroutine2 = CreateSimpleCoroutine();
@@ -438,7 +438,7 @@ public class WaitForAllCoroutinesTests
     public void WaitForAllCoroutines_Should_Handle_Duplicate_Handles()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, 1);
+        var scheduler = new CoroutineScheduler(timeSource);
         var coroutine = CreateDelayedCoroutine(() => { }, 1.0);
 
         var handle = scheduler.Run(coroutine);

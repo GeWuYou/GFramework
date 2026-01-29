@@ -30,7 +30,7 @@ public class SettingsModel<TRepository>(IDataRepository? repository)
     // -----------------------------
 
     /// <summary>
-    /// 获取指定类型的设置数据实例，如果不存在则创建新的实例
+    ///     获取指定类型的设置数据实例，如果不存在则创建新的实例
     /// </summary>
     /// <typeparam name="T">设置数据类型，必须实现ISettingsData接口并提供无参构造函数</typeparam>
     /// <returns>指定类型的设置数据实例</returns>
@@ -40,25 +40,29 @@ public class SettingsModel<TRepository>(IDataRepository? repository)
     }
 
     /// <summary>
-    /// 获取所有设置数据的枚举集合
+    ///     获取所有设置数据的枚举集合
     /// </summary>
     /// <returns>所有设置数据的枚举集合</returns>
     public IEnumerable<IResettable> AllData()
-        => _dataSettings.Values;
+    {
+        return _dataSettings.Values;
+    }
 
     // -----------------------------
     // Applicator
     // -----------------------------
 
     /// <summary>
-    /// 获取所有设置应用器的枚举集合
+    ///     获取所有设置应用器的枚举集合
     /// </summary>
     /// <returns>所有设置应用器的枚举集合</returns>
     public IEnumerable<IApplyAbleSettings> AllApplicators()
-        => _applicators.Values;
+    {
+        return _applicators.Values;
+    }
 
     /// <summary>
-    /// 注册设置应用器到模型中
+    ///     注册设置应用器到模型中
     /// </summary>
     /// <typeparam name="T">设置应用器类型，必须实现IApplyAbleSettings接口</typeparam>
     /// <param name="applicator">要注册的设置应用器实例</param>
@@ -71,7 +75,7 @@ public class SettingsModel<TRepository>(IDataRepository? repository)
     }
 
     /// <summary>
-    /// 获取指定类型的设置应用器实例
+    ///     获取指定类型的设置应用器实例
     /// </summary>
     /// <typeparam name="T">设置应用器类型，必须实现IApplyAbleSettings接口</typeparam>
     /// <returns>指定类型的设置应用器实例，如果不存在则返回null</returns>
@@ -87,7 +91,7 @@ public class SettingsModel<TRepository>(IDataRepository? repository)
     // -----------------------------
 
     /// <summary>
-    /// 尝试获取指定类型的设置节
+    ///     尝试获取指定类型的设置节
     /// </summary>
     /// <param name="type">要查找的设置类型</param>
     /// <param name="section">输出参数，找到的设置节实例</param>
@@ -115,7 +119,7 @@ public class SettingsModel<TRepository>(IDataRepository? repository)
     // -----------------------------
 
     /// <summary>
-    /// 注册设置迁移器到模型中
+    ///     注册设置迁移器到模型中
     /// </summary>
     /// <param name="migration">要注册的设置迁移器实例</param>
     /// <returns>当前设置模型实例，支持链式调用</returns>
@@ -131,7 +135,7 @@ public class SettingsModel<TRepository>(IDataRepository? repository)
     // -----------------------------
 
     /// <summary>
-    /// 异步初始化设置模型，加载指定类型的设置数据
+    ///     异步初始化设置模型，加载指定类型的设置数据
     /// </summary>
     /// <param name="settingTypes">要初始化的设置类型数组</param>
     public async Task InitializeAsync(params Type[] settingTypes)
@@ -157,7 +161,7 @@ public class SettingsModel<TRepository>(IDataRepository? repository)
     }
 
     /// <summary>
-    /// 重置指定类型的可重置对象
+    ///     重置指定类型的可重置对象
     /// </summary>
     /// <typeparam name="T">要重置的对象类型，必须是class类型，实现IResettable接口，并具有无参构造函数</typeparam>
     public void Reset<T>() where T : class, IResettable, new()
@@ -167,18 +171,15 @@ public class SettingsModel<TRepository>(IDataRepository? repository)
     }
 
     /// <summary>
-    /// 重置所有存储的数据设置对象
+    ///     重置所有存储的数据设置对象
     /// </summary>
     public void ResetAll()
     {
-        foreach (var data in _dataSettings.Values)
-        {
-            data.Reset();
-        }
+        foreach (var data in _dataSettings.Values) data.Reset();
     }
 
     /// <summary>
-    /// 如果需要的话，对设置节进行版本迁移
+    ///     如果需要的话，对设置节进行版本迁移
     /// </summary>
     /// <param name="section">待检查和迁移的设置节</param>
     /// <returns>迁移后的设置节</returns>
@@ -210,7 +211,7 @@ public class SettingsModel<TRepository>(IDataRepository? repository)
 
 
     /// <summary>
-    /// 初始化方法，用于获取设置持久化服务
+    ///     初始化方法，用于获取设置持久化服务
     /// </summary>
     protected override void OnInit()
     {

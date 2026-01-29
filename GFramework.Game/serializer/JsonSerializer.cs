@@ -16,7 +16,9 @@ public sealed class JsonSerializer
     /// <param name="value">要序列化的对象实例</param>
     /// <returns>序列化后的JSON字符串</returns>
     public string Serialize<T>(T value)
-        => JsonConvert.SerializeObject(value);
+    {
+        return JsonConvert.SerializeObject(value);
+    }
 
     /// <summary>
     ///     将JSON字符串反序列化为指定类型的对象
@@ -26,8 +28,10 @@ public sealed class JsonSerializer
     /// <returns>反序列化后的对象实例</returns>
     /// <exception cref="ArgumentException">当无法反序列化数据时抛出</exception>
     public T Deserialize<T>(string data)
-        => JsonConvert.DeserializeObject<T>(data)
-           ?? throw new ArgumentException("Cannot deserialize data");
+    {
+        return JsonConvert.DeserializeObject<T>(data)
+               ?? throw new ArgumentException("Cannot deserialize data");
+    }
 
     /// <summary>
     ///     将对象序列化为JSON字符串（使用运行时类型）
@@ -36,7 +40,9 @@ public sealed class JsonSerializer
     /// <param name="type">对象的运行时类型</param>
     /// <returns>序列化后的JSON字符串</returns>
     public string Serialize(object obj, Type type)
-        => JsonConvert.SerializeObject(obj, type, null);
+    {
+        return JsonConvert.SerializeObject(obj, type, null);
+    }
 
     /// <summary>
     ///     将JSON字符串反序列化为指定类型的对象（使用运行时类型）
@@ -46,6 +52,8 @@ public sealed class JsonSerializer
     /// <returns>反序列化后的对象实例</returns>
     /// <exception cref="ArgumentException">当无法反序列化到指定类型时抛出</exception>
     public object Deserialize(string data, Type type)
-        => JsonConvert.DeserializeObject(data, type)
-           ?? throw new ArgumentException($"Cannot deserialize to {type.Name}");
+    {
+        return JsonConvert.DeserializeObject(data, type)
+               ?? throw new ArgumentException($"Cannot deserialize to {type.Name}");
+    }
 }

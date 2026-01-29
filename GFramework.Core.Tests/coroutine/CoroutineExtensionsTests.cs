@@ -256,7 +256,7 @@ public class CoroutineExtensionsTests
     public void ParallelCoroutines_Should_Return_Valid_Coroutine()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, 1);
+        var scheduler = new CoroutineScheduler(timeSource);
         var coroutine1 = CreateSimpleCoroutine();
         var coroutine2 = CreateSimpleCoroutine();
 
@@ -272,7 +272,7 @@ public class CoroutineExtensionsTests
     public void ParallelCoroutines_Should_Execute_Coroutines_In_Parallel()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, 1);
+        var scheduler = new CoroutineScheduler(timeSource);
 
         var executionCounts = new Dictionary<int, int> { { 1, 0 }, { 2, 0 }, { 3, 0 } };
         var coroutine1 = CreateDelayedCoroutine(() => executionCounts[1]++, 0.5);
@@ -299,7 +299,7 @@ public class CoroutineExtensionsTests
     public void ParallelCoroutines_Should_Handle_Empty_Array()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, 1);
+        var scheduler = new CoroutineScheduler(timeSource);
 
         var parallel = scheduler.ParallelCoroutines();
 
@@ -313,7 +313,7 @@ public class CoroutineExtensionsTests
     public void ParallelCoroutines_Should_Handle_Null_Array()
     {
         var timeSource = new TestTimeSource();
-        var scheduler = new CoroutineScheduler(timeSource, 1);
+        var scheduler = new CoroutineScheduler(timeSource);
 
         var parallel = scheduler.ParallelCoroutines(null);
 

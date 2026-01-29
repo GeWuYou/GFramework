@@ -14,27 +14,27 @@
 namespace GFramework.Game.Abstractions.data;
 
 /// <summary>
-/// 数据仓库配置选项
+///     数据仓库配置选项
 /// </summary>
 public class DataRepositoryOptions
 {
     /// <summary>
-    /// 存储基础路径（如 "user://data/"）
+    ///     存储基础路径（如 "user://data/"）
     /// </summary>
     public string BasePath { get; set; } = "";
 
     /// <summary>
-    /// 键名前缀（如 "Game"，生成的键为 "Game_SettingsData"）
+    ///     键名前缀（如 "Game"，生成的键为 "Game_SettingsData"）
     /// </summary>
     public string KeyPrefix { get; set; } = "";
 
     /// <summary>
-    /// 是否在保存时自动备份
+    ///     是否在保存时自动备份
     /// </summary>
     public bool AutoBackup { get; set; } = false;
 
     /// <summary>
-    /// 是否启用加载/保存事件
+    ///     是否启用加载/保存事件
     /// </summary>
     public bool EnableEvents { get; set; } = true;
 }

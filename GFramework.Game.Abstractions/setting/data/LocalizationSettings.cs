@@ -16,20 +16,20 @@ using GFramework.Core.Abstractions.versioning;
 namespace GFramework.Game.Abstractions.setting.data;
 
 /// <summary>
-/// 本地化设置类，用于管理游戏的语言本地化配置
-/// 实现了ISettingsData接口提供设置数据功能，实现IVersioned接口提供版本控制功能
+///     本地化设置类，用于管理游戏的语言本地化配置
+///     实现了ISettingsData接口提供设置数据功能，实现IVersioned接口提供版本控制功能
 /// </summary>
 public class LocalizationSettings : IResettable, IVersioned
 {
     /// <summary>
-    /// 获取或设置当前使用的语言
+    ///     获取或设置当前使用的语言
     /// </summary>
     /// <value>默认值为"简体中文"</value>
     public string Language { get; set; } = "简体中文";
 
     /// <summary>
-    /// 重置本地化设置到默认状态
-    /// 将Language属性恢复为默认的"简体中文"值
+    ///     重置本地化设置到默认状态
+    ///     将Language属性恢复为默认的"简体中文"值
     /// </summary>
     public void Reset()
     {
@@ -37,7 +37,7 @@ public class LocalizationSettings : IResettable, IVersioned
     }
 
     /// <summary>
-    /// 获取或设置设置数据的版本号
+    ///     获取或设置设置数据的版本号
     /// </summary>
     /// <value>默认版本号为1</value>
     public int Version { get; set; } = 1;

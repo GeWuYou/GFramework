@@ -14,7 +14,7 @@
 namespace GFramework.Game.Abstractions.data.events;
 
 /// <summary>
-/// 表示数据保存事件的记录类型
+///     表示数据保存事件的记录类型
 /// </summary>
 /// <typeparam name="T">保存的数据类型</typeparam>
 /// <param name="Data">保存的数据实例</param>

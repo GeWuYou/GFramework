@@ -14,6 +14,6 @@
 namespace GFramework.Game.Abstractions.data;
 
 /// <summary>
-/// 通用数据标记接口
+///     通用数据标记接口
 /// </summary>
 public interface IData;

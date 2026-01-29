@@ -14,12 +14,12 @@
 namespace GFramework.Core.Abstractions.versioning;
 
 /// <summary>
-/// 定义具有版本信息的接口
+///     定义具有版本信息的接口
 /// </summary>
 public interface IVersioned
 {
     /// <summary>
-    /// 获取对象的版本号
+    ///     获取对象的版本号
     /// </summary>
     int Version { get; }
 }

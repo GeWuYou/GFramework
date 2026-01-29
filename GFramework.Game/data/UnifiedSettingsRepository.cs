@@ -21,7 +21,7 @@ using GFramework.Game.Abstractions.data.events;
 namespace GFramework.Game.data;
 
 /// <summary>
-/// 使用单一文件存储所有设置数据的仓库实现
+///     使用单一文件存储所有设置数据的仓库实现
 /// </summary>
 public class UnifiedSettingsRepository(
     IStorage? storage,
@@ -48,7 +48,7 @@ public class UnifiedSettingsRepository(
     // =========================
 
     /// <summary>
-    /// 异步加载指定类型的数据
+    ///     异步加载指定类型的数据
     /// </summary>
     /// <typeparam name="T">要加载的数据类型，必须继承自IData接口并具有无参构造函数</typeparam>
     /// <returns>加载的数据实例</returns>
@@ -67,7 +67,7 @@ public class UnifiedSettingsRepository(
     }
 
     /// <summary>
-    /// 异步加载指定类型的数据（通过Type参数）
+    ///     异步加载指定类型的数据（通过Type参数）
     /// </summary>
     /// <param name="type">要加载的数据类型</param>
     /// <returns>加载的数据实例</returns>
@@ -86,13 +86,9 @@ public class UnifiedSettingsRepository(
 
         IData result;
         if (_cache.TryGetValue(key, out var json))
-        {
             result = (IData)Serializer.Deserialize(json, type);
-        }
         else
-        {
             result = (IData)Activator.CreateInstance(type)!;
-        }
 
         if (_options.EnableEvents)
             this.SendEvent(new DataLoadedEvent<IData>(result));
@@ -101,7 +97,7 @@ public class UnifiedSettingsRepository(
     }
 
     /// <summary>
-    /// 异步保存数据到存储
+    ///     异步保存数据到存储
     /// </summary>
     /// <typeparam name="T">要保存的数据类型</typeparam>
     /// <param name="data">要保存的数据实例</param>
@@ -119,7 +115,7 @@ public class UnifiedSettingsRepository(
     }
 
     /// <summary>
-    /// 异步批量保存多个数据实例
+    ///     异步批量保存多个数据实例
     /// </summary>
     /// <param name="dataList">要保存的数据实例集合</param>
     public async Task SaveAllAsync(IEnumerable<IData> dataList)
@@ -140,7 +136,7 @@ public class UnifiedSettingsRepository(
     }
 
     /// <summary>
-    /// 检查指定类型的数据是否存在
+    ///     检查指定类型的数据是否存在
     /// </summary>
     /// <typeparam name="T">要检查的数据类型</typeparam>
     /// <returns>如果存在返回true，否则返回false</returns>
@@ -151,7 +147,7 @@ public class UnifiedSettingsRepository(
     }
 
     /// <summary>
-    /// 删除指定类型的数据
+    ///     删除指定类型的数据
     /// </summary>
     /// <typeparam name="T">要删除的数据类型</typeparam>
     public async Task DeleteAsync<T>() where T : class, IData
@@ -176,7 +172,7 @@ public class UnifiedSettingsRepository(
     // =========================
 
     /// <summary>
-    /// 确保数据已从存储中加载到缓存
+    ///     确保数据已从存储中加载到缓存
     /// </summary>
     private async Task EnsureLoadedAsync()
     {
@@ -204,7 +200,7 @@ public class UnifiedSettingsRepository(
     }
 
     /// <summary>
-    /// 将缓存中的所有数据保存到统一文件
+    ///     将缓存中的所有数据保存到统一文件
     /// </summary>
     private async Task SaveUnifiedFileAsync()
     {
@@ -220,7 +216,7 @@ public class UnifiedSettingsRepository(
     }
 
     /// <summary>
-    /// 获取统一文件的存储键名
+    ///     获取统一文件的存储键名
     /// </summary>
     /// <returns>完整的存储键名</returns>
     private string GetUnifiedKey()
@@ -230,10 +226,13 @@ public class UnifiedSettingsRepository(
     }
 
     /// <summary>
-    /// 获取类型的唯一标识键
+    ///     获取类型的唯一标识键
     /// </summary>
     /// <param name="type">要获取键的类型</param>
     /// <returns>类型的全名作为键</returns>
     private static string GetTypeKey(Type type)
-        => type.FullName!; // ⚠️ 刻意不用 AssemblyQualifiedName
+    {
+        return type.FullName!;
+        // ⚠️ 刻意不用 AssemblyQualifiedName
+    }
 }

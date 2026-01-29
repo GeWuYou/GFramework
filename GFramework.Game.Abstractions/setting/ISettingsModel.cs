@@ -30,13 +30,13 @@ public interface ISettingsModel : IModel
     T? GetApplicator<T>() where T : class, IApplyAbleSettings;
 
     /// <summary>
-    /// 获取所有设置数据的集合
+    ///     获取所有设置数据的集合
     /// </summary>
     /// <returns>包含所有设置数据的可枚举集合</returns>
     IEnumerable<IResettable> AllData();
 
     /// <summary>
-    /// 获取所有可应用设置的集合
+    ///     获取所有可应用设置的集合
     /// </summary>
     /// <returns>包含所有可应用设置的可枚举集合</returns>
     IEnumerable<IApplyAbleSettings> AllApplicators();

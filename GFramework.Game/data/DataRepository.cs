@@ -20,7 +20,7 @@ using GFramework.Game.Abstractions.data.events;
 namespace GFramework.Game.data;
 
 /// <summary>
-/// 数据仓库类，用于管理游戏数据的存储和读取
+///     数据仓库类，用于管理游戏数据的存储和读取
 /// </summary>
 /// <param name="storage">存储接口实例</param>
 /// <param name="options">数据仓库配置选项</param>
@@ -35,7 +35,7 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
                                     "Failed to initialize storage. No IStorage utility found in context.");
 
     /// <summary>
-    /// 异步加载指定类型的数据
+    ///     异步加载指定类型的数据
     /// </summary>
     /// <typeparam name="T">要加载的数据类型，必须实现IData接口</typeparam>
     /// <returns>加载的数据对象</returns>
@@ -46,13 +46,9 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
         T result;
         // 检查存储中是否存在指定键的数据
         if (await Storage.ExistsAsync(key))
-        {
             result = await Storage.ReadAsync<T>(key);
-        }
         else
-        {
             result = new T();
-        }
 
         // 如果启用事件功能，则发送数据加载完成事件
         if (_options.EnableEvents)
@@ -62,7 +58,7 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
     }
 
     /// <summary>
-    /// 异步加载指定类型的数据（通过Type参数）
+    ///     异步加载指定类型的数据（通过Type参数）
     /// </summary>
     /// <param name="type">要加载的数据类型</param>
     /// <returns>加载的数据对象</returns>
@@ -79,13 +75,9 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
         IData result;
         // 检查存储中是否存在指定键的数据
         if (await Storage.ExistsAsync(key))
-        {
             result = await Storage.ReadAsync<IData>(key);
-        }
         else
-        {
             result = (IData)Activator.CreateInstance(type)!;
-        }
 
         // 如果启用事件功能，则发送数据加载完成事件
         if (_options.EnableEvents)
@@ -96,7 +88,7 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
 
 
     /// <summary>
-    /// 异步保存指定类型的数据
+    ///     异步保存指定类型的数据
     /// </summary>
     /// <typeparam name="T">要保存的数据类型</typeparam>
     /// <param name="data">要保存的数据对象</param>
@@ -119,7 +111,7 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
     }
 
     /// <summary>
-    /// 检查指定类型的数据是否存在
+    ///     检查指定类型的数据是否存在
     /// </summary>
     /// <typeparam name="T">要检查的数据类型</typeparam>
     /// <returns>如果数据存在返回true，否则返回false</returns>
@@ -130,7 +122,7 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
     }
 
     /// <summary>
-    /// 异步删除指定类型的数据
+    ///     异步删除指定类型的数据
     /// </summary>
     /// <typeparam name="T">要删除的数据类型</typeparam>
     public async Task DeleteAsync<T>() where T : class, IData
@@ -143,7 +135,7 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
     }
 
     /// <summary>
-    /// 批量异步保存多个数据对象
+    ///     批量异步保存多个数据对象
     /// </summary>
     /// <param name="dataList">要保存的数据对象集合</param>
     public async Task SaveAllAsync(IEnumerable<IData> dataList)
@@ -166,14 +158,17 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
     }
 
     /// <summary>
-    /// 根据类型生成存储键
+    ///     根据类型生成存储键
     /// </summary>
     /// <typeparam name="T">数据类型</typeparam>
     /// <returns>生成的存储键</returns>
-    private string GetKey<T>() where T : IData => GetKey(typeof(T));
+    private string GetKey<T>() where T : IData
+    {
+        return GetKey(typeof(T));
+    }
 
     /// <summary>
-    /// 根据类型生成存储键
+    ///     根据类型生成存储键
     /// </summary>
     /// <param name="type">数据类型</param>
     /// <returns>生成的存储键</returns>

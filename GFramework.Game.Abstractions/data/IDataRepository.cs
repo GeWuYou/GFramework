@@ -16,26 +16,26 @@ using GFramework.Core.Abstractions.utility;
 namespace GFramework.Game.Abstractions.data;
 
 /// <summary>
-/// 定义数据仓库接口，提供异步的数据加载、保存、检查存在性和删除操作
+///     定义数据仓库接口，提供异步的数据加载、保存、检查存在性和删除操作
 /// </summary>
 public interface IDataRepository : IUtility
 {
     /// <summary>
-    /// 异步加载指定类型的数据对象
+    ///     异步加载指定类型的数据对象
     /// </summary>
     /// <typeparam name="T">要加载的数据类型，必须实现IData接口并具有无参构造函数</typeparam>
     /// <returns>返回加载的数据对象的Task</returns>
     Task<T> LoadAsync<T>() where T : class, IData, new();
 
     /// <summary>
-    /// 根据类型异步加载数据
+    ///     根据类型异步加载数据
     /// </summary>
     /// <param name="type">要加载的数据类型</param>
     /// <returns>异步操作任务，返回实现IData接口的数据对象</returns>
     Task<IData> LoadAsync(Type type);
 
     /// <summary>
-    /// 异步保存指定的数据对象
+    ///     异步保存指定的数据对象
     /// </summary>
     /// <typeparam name="T">要保存的数据类型，必须实现IData接口</typeparam>
     /// <param name="data">要保存的数据对象</param>
@@ -43,21 +43,21 @@ public interface IDataRepository : IUtility
     Task SaveAsync<T>(T data) where T : class, IData;
 
     /// <summary>
-    /// 异步检查指定类型的数据是否存在
+    ///     异步检查指定类型的数据是否存在
     /// </summary>
     /// <typeparam name="T">要检查的数据类型，必须实现IData接口</typeparam>
     /// <returns>返回表示数据是否存在布尔值的Task</returns>
     Task<bool> ExistsAsync<T>() where T : class, IData;
 
     /// <summary>
-    /// 异步删除指定类型的数据
+    ///     异步删除指定类型的数据
     /// </summary>
     /// <typeparam name="T">要删除的数据类型，必须实现IData接口</typeparam>
     /// <returns>表示异步删除操作的Task</returns>
     Task DeleteAsync<T>() where T : class, IData;
 
     /// <summary>
-    /// 批量保存多个数据
+    ///     批量保存多个数据
     /// </summary>
     /// <param name="dataList">要保存的数据列表，实现IData接口的对象集合</param>
     /// <returns>异步操作任务</returns>

@@ -14,7 +14,7 @@
 namespace GFramework.Game.Abstractions.data.events;
 
 /// <summary>
-/// 表示数据加载完成事件的泛型类
+///     表示数据加载完成事件的泛型类
 /// </summary>
 /// <typeparam name="T">数据类型参数</typeparam>
 /// <param name="Data">加载完成的数据对象</param>

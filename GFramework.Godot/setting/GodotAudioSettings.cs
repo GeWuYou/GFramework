@@ -29,8 +29,10 @@ public class GodotAudioSettings(ISettingsModel model, AudioBusMap audioBusMap)
     /// <summary>
     ///     重置音频设置为默认值
     /// </summary>
-    public void Reset() =>
+    public void Reset()
+    {
         model.GetData<AudioSettings>().Reset();
+    }
 
     /// <summary>
     ///     设置指定音频总线的音量

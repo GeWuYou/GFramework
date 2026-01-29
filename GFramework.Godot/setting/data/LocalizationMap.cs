@@ -14,12 +14,12 @@
 namespace GFramework.Godot.setting.data;
 
 /// <summary>
-/// 本地化映射设置
+///     本地化映射设置
 /// </summary>
 public class LocalizationMap
 {
     /// <summary>
-    /// 用户语言 -> Godot locale 映射表
+    ///     用户语言 -> Godot locale 映射表
     /// </summary>
     public Dictionary<string, string> LanguageMap { get; set; } = new()
     {

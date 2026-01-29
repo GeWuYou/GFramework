@@ -181,8 +181,7 @@ public partial class Timing : Node
 
         _processScheduler = new CoroutineScheduler(
             _processTimeSource,
-            _instanceId,
-            256
+            _instanceId
         );
 
         _physicsScheduler = new CoroutineScheduler(

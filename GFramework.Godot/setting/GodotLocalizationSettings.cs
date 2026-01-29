@@ -19,7 +19,7 @@ using Godot;
 namespace GFramework.Godot.setting;
 
 /// <summary>
-/// Godot本地化设置类，负责应用本地化配置到Godot引擎
+///     Godot本地化设置类，负责应用本地化配置到Godot引擎
 /// </summary>
 /// <param name="model">设置模型</param>
 /// <param name="localizationMap">本地化映射表</param>
@@ -27,7 +27,7 @@ public class GodotLocalizationSettings(ISettingsModel model, LocalizationMap loc
     : IPersistentApplyAbleSettings
 {
     /// <summary>
-    /// 应用本地化设置到Godot引擎
+    ///     应用本地化设置到Godot引擎
     /// </summary>
     /// <returns>完成的任务</returns>
     public Task Apply()
@@ -41,7 +41,10 @@ public class GodotLocalizationSettings(ISettingsModel model, LocalizationMap loc
     }
 
     /// <summary>
-    /// 重置本地化设置
+    ///     重置本地化设置
     /// </summary>
-    public void Reset() => model.GetData<LocalizationSettings>().Reset();
+    public void Reset()
+    {
+        model.GetData<LocalizationSettings>().Reset();
+    }
 }

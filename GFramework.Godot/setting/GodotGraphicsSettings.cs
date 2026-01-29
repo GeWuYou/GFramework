@@ -46,5 +46,8 @@ public class GodotGraphicsSettings(ISettingsModel model) : IPersistentApplyAbleS
     /// <summary>
     ///     重置图形设置
     /// </summary>
-    public void Reset() => model.GetData<GraphicsSettings>().Reset();
+    public void Reset()
+    {
+        model.GetData<GraphicsSettings>().Reset();
+    }
 }

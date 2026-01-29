@@ -23,10 +23,7 @@ public class SettingsSystem<TRepository>(IDataRepository? repository)
     public async Task ApplyAll()
     {
         // 遍历所有设置应用器并尝试应用
-        foreach (var applicator in _model.AllApplicators())
-        {
-            await TryApplyAsync(applicator);
-        }
+        foreach (var applicator in _model.AllApplicators()) await TryApplyAsync(applicator);
     }
 
     /// <summary>
@@ -52,7 +49,7 @@ public class SettingsSystem<TRepository>(IDataRepository? repository)
     }
 
     /// <summary>
-    /// 重置所有设置并应用更改
+    ///     重置所有设置并应用更改
     /// </summary>
     /// <returns>异步任务</returns>
     public async Task ResetAll()
@@ -62,7 +59,7 @@ public class SettingsSystem<TRepository>(IDataRepository? repository)
     }
 
     /// <summary>
-    /// 重置指定类型的设置并应用更改
+    ///     重置指定类型的设置并应用更改
     /// </summary>
     /// <typeparam name="T">设置类型，必须实现IPersistentApplyAbleSettings接口且具有无参构造函数</typeparam>
     /// <returns>异步任务</returns>
