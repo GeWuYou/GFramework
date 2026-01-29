@@ -1,0 +1,19 @@
+version: 2
+updates:
+  # ===== NuGet 依赖（所有项目）=====
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    ignore:
+      # 忽略所有依赖的大版本升级（框架项目非常建议）
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+
+  # ===== GitHub Actions =====
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
