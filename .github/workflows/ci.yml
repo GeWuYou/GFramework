@@ -119,6 +119,8 @@ jobs:
           flaky-rate-report: true
           fail-rate-report: true
           slowest-report: true
+          upload-artifact: true
+          fetch-previous-results: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: always()
