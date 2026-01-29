@@ -66,8 +66,19 @@ jobs:
             --no-build \
             --logger trx \
             --results-directory TestResults
-          dotnet tool run DotnetCtrfJsonReporter -t "TestResults/testResults.trx"
-
+          # 创建输出目录
+          mkdir -p ctrf
+          
+          # 生成 CTRF 报告 (根据工具文档调整参数)
+          dotnet tool run DotnetCtrfJsonReporter \
+            --trx-file-path "TestResults/*.trx" \
+            --output-file "ctrf/report.json"
+      - name: Debug - Verify CTRF files
+        if: always()
+        run: |
+          echo "Checking for CTRF files..."
+          find . -name "*.json" -path "*/ctrf/*" -ls
+          ls -la ctrf/ 2>/dev/null || echo "No ctrf directory found"
       # 生成并发布测试报告，无论测试成功或失败都会执行
       - name: Test Report
         uses: dorny/test-reporter@v2
