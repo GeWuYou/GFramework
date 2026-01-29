@@ -19,7 +19,7 @@ jobs:
     steps:
       # 检出源代码，设置fetch-depth为0以获取完整的git历史
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 

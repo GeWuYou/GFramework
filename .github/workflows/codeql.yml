@@ -27,7 +27,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # 设置.NET运行时环境
       # 配置.NET 8.0.x、9.0.x和10.0.x版本支持
