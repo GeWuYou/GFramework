@@ -24,11 +24,6 @@ public class DataRepositoryOptions
     public string BasePath { get; set; } = "";
 
     /// <summary>
-    ///     键名前缀（如 "Game"，生成的键为 "Game_SettingsData"）
-    /// </summary>
-    public string KeyPrefix { get; set; } = "";
-
-    /// <summary>
     ///     是否在保存时自动备份
     /// </summary>
     public bool AutoBackup { get; set; } = false;

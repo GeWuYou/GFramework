@@ -162,7 +162,7 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
     /// </summary>
     /// <typeparam name="T">数据类型</typeparam>
     /// <returns>生成的存储键</returns>
-    private string GetKey<T>() where T : IData
+    protected virtual string GetKey<T>() where T : IData
     {
         return GetKey(typeof(T));
     }
@@ -172,13 +172,9 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
     /// </summary>
     /// <param name="type">数据类型</param>
     /// <returns>生成的存储键</returns>
-    private string GetKey(Type type)
+    protected virtual string GetKey(Type type)
     {
-        var fileName = $"{_options.KeyPrefix}_{type.Name}";
-
-        if (string.IsNullOrEmpty(_options.BasePath))
-            return fileName;
-        var basePath = _options.BasePath.TrimEnd('/');
-        return $"{basePath}/{fileName}";
+        var fileName = type.FullName!;
+        return string.IsNullOrEmpty(_options.BasePath) ? fileName : $"{_options.BasePath}/{fileName}";
     }
 }

@@ -219,10 +219,9 @@ public class UnifiedSettingsRepository(
     ///     获取统一文件的存储键名
     /// </summary>
     /// <returns>完整的存储键名</returns>
-    private string GetUnifiedKey()
+    protected virtual string GetUnifiedKey()
     {
-        var name = string.IsNullOrEmpty(_options.KeyPrefix) ? fileName : $"{_options.KeyPrefix}_{fileName}";
-        return string.IsNullOrEmpty(_options.BasePath) ? name : $"{_options.BasePath.TrimEnd('/')}/{name}";
+        return string.IsNullOrEmpty(_options.BasePath) ? fileName : $"{_options.BasePath}/{fileName}";
     }
 
     /// <summary>
@@ -230,9 +229,8 @@ public class UnifiedSettingsRepository(
     /// </summary>
     /// <param name="type">要获取键的类型</param>
     /// <returns>类型的全名作为键</returns>
-    private static string GetTypeKey(Type type)
+    protected virtual string GetTypeKey(Type type)
     {
         return type.FullName!;
-        // ⚠️ 刻意不用 AssemblyQualifiedName
     }
 }
