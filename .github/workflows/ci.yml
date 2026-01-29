@@ -1,4 +1,4 @@
-﻿# CI/CD工作流配置：构建和测试.NET项目
+# CI/CD工作流配置：构建和测试.NET项目
 # 该工作流在push到main/master分支或创建pull request时触发
 name: CI - Build & Test
 
@@ -25,7 +25,7 @@ jobs:
 
       # 安装和配置.NET SDK版本9.0.x
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 9.0.x
 
