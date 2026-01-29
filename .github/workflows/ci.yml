@@ -66,13 +66,7 @@ jobs:
             --no-build \
             --logger trx \
             --results-directory TestResults
-          # 创建输出目录
-          mkdir -p ctrf
-          
-          # 生成 CTRF 报告 (根据工具文档调整参数)
-          dotnet tool run DotnetCtrfJsonReporter \
-            --trx-file-path "TestResults/*.trx" \
-            --output-file "ctrf/report.json"
+          dotnet tool run DotnetCtrfJsonReporter -t "TestResults/testResults.trx"
       - name: Debug - Verify CTRF files
         if: always()
         run: |
