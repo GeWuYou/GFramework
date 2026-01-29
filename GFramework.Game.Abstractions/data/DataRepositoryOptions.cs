@@ -26,7 +26,7 @@ public class DataRepositoryOptions
     /// <summary>
     /// 键名前缀（如 "Game"，生成的键为 "Game_SettingsData"）
     /// </summary>
-    public string KeyPrefix { get; set; } = "Data";
+    public string KeyPrefix { get; set; } = "";
 
     /// <summary>
     /// 是否在保存时自动备份
