@@ -1,0 +1,53 @@
+﻿# GitHub Actions工作流配置：CodeQL静态代码分析
+# 该工作流用于对C#项目进行安全漏洞和代码质量分析
+name: "CodeQL"
+
+# 触发事件配置
+# 在以下情况下触发工作流：
+# 1. 推送到main分支时
+# 2. 针对main分支的拉取请求时  
+# 3. 每周二凌晨4点41分定时执行
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    - cron: '41 4 * * 2'
+
+jobs:
+  # 分析任务配置
+  # 对C#代码进行静态分析扫描
+  analyze:
+    name: Analyze (C#)
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 设置.NET运行时环境
+      # 配置.NET 8.0.x、9.0.x和10.0.x版本支持
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+
+      # 初始化CodeQL分析环境
+      # 配置C#语言支持并启用自动构建模式
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: csharp
+          build-mode: autobuild
+
+      # 执行CodeQL代码分析
+      # 运行静态分析并生成结果报告
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
