@@ -1,4 +1,4 @@
-﻿# CI/CD工作流配置：构建和测试.NET项目
+# CI/CD工作流配置：构建和测试.NET项目
 # 该工作流在push到main/master分支或创建pull request时触发
 name: CI - Build & Test
 
@@ -28,7 +28,7 @@ jobs:
 
       # 配置NuGet包缓存以加速后续构建
       - name: Cache NuGet packages
-        uses: actions/cache@v3
+        uses: actions/cache@v5
         with:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
