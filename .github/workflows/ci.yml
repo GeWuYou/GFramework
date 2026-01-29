@@ -87,10 +87,17 @@ jobs:
       - name: Generate CTRF report
         run: |
           mkdir -p ctrf
+
           for trx in TestResults/*.trx; do
-            echo "Processing $trx"
-            dotnet tool run DotnetCtrfJsonReporter -p "$trx" -t nunit
+            name=$(basename "$trx" .trx)
+            echo "Processing $trx -> ctrf/$name.json"
+
+            dotnet tool run DotnetCtrfJsonReporter \
+              -p "$trx" \
+              -t nunit \
+              -o "ctrf/$name.json"
           done
+      
       # 生成并发布测试报告，无论测试成功或失败都会执行
       - name: Test Report
         uses: dorny/test-reporter@v2
