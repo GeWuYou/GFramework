@@ -69,16 +69,21 @@ jobs:
         run: dotnet build -c Release --no-restore
 
       # 运行单元测试，输出TRX格式结果到TestResults目录
-      - name: Test
+      - name: Test - Core
         run: |
-          REPORT_FILE="testResults-$(date +%s).trx"
-
-          dotnet test \
-          -c Release \
-          --no-build \
-          --logger "trx;LogFileName=testResults-$(date +%s)-$RANDOM.trx" \
-          --results-directory TestResults
-
+          dotnet test GFramework.Core.Tests \
+            -c Release \
+            --no-build \
+            --logger "trx;LogFileName=core-$RANDOM.trx" \
+            --results-directory TestResults
+    
+      - name: Test - SourceGenerators
+        run: |
+          dotnet test GFramework.SourceGenerators.Tests \
+            -c Release \
+            --no-build \
+            --logger "trx;LogFileName=sg-$RANDOM.trx" \
+            --results-directory TestResults
       - name: Generate CTRF report
         run: |
           mkdir -p ctrf
