@@ -1,0 +1,60 @@
+﻿# CI/CD工作流配置：构建和测试.NET项目
+# 该工作流在push到main/master分支或创建pull request时触发
+name: CI - Build & Test
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      # 检出源代码，设置fetch-depth为0以获取完整的git历史
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 安装和配置.NET SDK版本9.0.x
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      # 配置NuGet包缓存以加速后续构建
+      - name: Cache NuGet packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+
+      # 执行NuGet包恢复操作
+      - name: Restore
+        run: dotnet restore
+
+      # 构建项目，使用Release配置且跳过恢复步骤
+      - name: Build
+        run: dotnet build -c Release --no-restore
+
+      # 运行单元测试，输出TRX格式结果到TestResults目录
+      - name: Test
+        run: |
+          dotnet test \
+            -c Release \
+            --no-build \
+            --logger trx \
+            --results-directory TestResults
+
+      # 生成并发布测试报告，无论测试成功或失败都会执行
+      - name: Test Report
+        uses: dorny/test-reporter@v2
+        if: always()
+        with:
+          name: .NET Test Results
+          path: TestResults/*.trx
+          reporter: dotnet-trx
