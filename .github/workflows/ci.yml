@@ -35,12 +35,13 @@ jobs:
           # 当前提交哈希，作为扫描的目标版本
           head: ${{ github.sha }}
 
-      # 安装和配置.NET SDK版本9.0.x
+      # 安装和配置.NET SDK版本
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
         with:
+          dotnet-version: 8.0.x
           dotnet-version: 9.0.x
-
+          dotnet-version: 10.0.x
       # 配置NuGet包缓存以加速后续构建
       - name: Cache NuGet packages
         uses: actions/cache@v5
@@ -64,9 +65,12 @@ jobs:
           dotnet test \
             -c Release \
             --no-build \
-            --logger trx \
+            --logger "trx;LogFileName=testResults-$(date +%s).trx" \
             --results-directory TestResults
-          dotnet tool run DotnetCtrfJsonReporter -t "TestResults/testResults.trx"
+      - name: Generate CTRF report
+        run: |
+          latest=$(ls -t TestResults/*.trx | head -n 1)
+          dotnet tool run DotnetCtrfJsonReporter -p "$latest" -t nunit
       - name: Debug - Verify CTRF files
         if: always()
         run: |
