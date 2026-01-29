@@ -1,4 +1,4 @@
-﻿# GitHub Actions工作流配置：CodeQL静态代码分析
+# GitHub Actions工作流配置：CodeQL静态代码分析
 # 该工作流用于对C#项目进行安全漏洞和代码质量分析
 name: "CodeQL"
 
@@ -27,7 +27,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # 设置.NET运行时环境
       # 配置.NET 8.0.x、9.0.x和10.0.x版本支持
