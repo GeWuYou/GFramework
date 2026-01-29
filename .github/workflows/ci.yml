@@ -51,7 +51,9 @@ jobs:
       # 执行NuGet包恢复操作
       - name: Restore
         run: dotnet restore
-
+      # 恢复.NET本地工具
+      - name: Restore .NET tools
+        run: dotnet tool restore
       # 构建项目，使用Release配置且跳过恢复步骤
       - name: Build
         run: dotnet build -c Release --no-restore
