@@ -8,7 +8,7 @@ namespace GFramework.Godot.setting;
 ///     Godot图形设置应用器
 /// </summary>
 /// <param name="model">设置模型接口</param>
-public class GodotGraphicsSettings(ISettingsModel model) : IPersistentApplyAbleSettings
+public class GodotGraphicsSettings(ISettingsModel model) : IResetApplyAbleSettings
 {
     /// <summary>
     ///     应用图形设置到Godot引擎

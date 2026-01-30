@@ -30,7 +30,7 @@ public class UnifiedSettingsRepository(
     string fileName = "settings.json")
     : AbstractContextUtility, IDataRepository
 {
-    private readonly Dictionary<string, string> _cache = new();
+    private UnifiedSettingsFile? _file;
     private readonly SemaphoreSlim _lock = new(1, 1);
     private readonly DataRepositoryOptions _options = options ?? new DataRepositoryOptions();
     private bool _loaded;
@@ -43,129 +43,83 @@ public class UnifiedSettingsRepository(
     private IRuntimeTypeSerializer Serializer =>
         _serializer ?? throw new InvalidOperationException("ISerializer not initialized.");
 
-    // =========================
-    // IDataRepository
-    // =========================
-
-    /// <summary>
-    ///     异步加载指定类型的数据
-    /// </summary>
-    /// <typeparam name="T">要加载的数据类型，必须继承自IData接口并具有无参构造函数</typeparam>
-    /// <returns>加载的数据实例</returns>
-    public async Task<T> LoadAsync<T>() where T : class, IData, new()
-    {
-        await EnsureLoadedAsync();
-
-        var key = GetTypeKey(typeof(T));
-
-        var result = _cache.TryGetValue(key, out var json) ? Serializer.Deserialize<T>(json) : new T();
-
-        if (_options.EnableEvents)
-            this.SendEvent(new DataLoadedEvent<T>(result));
-
-        return result;
-    }
-
-    /// <summary>
-    ///     异步加载指定类型的数据（通过Type参数）
-    /// </summary>
-    /// <param name="type">要加载的数据类型</param>
-    /// <returns>加载的数据实例</returns>
-    /// <exception cref="ArgumentException">当类型不符合要求时抛出异常</exception>
-    public async Task<IData> LoadAsync(Type type)
-    {
-        if (!typeof(IData).IsAssignableFrom(type))
-            throw new ArgumentException($"{type.Name} does not implement IData");
-
-        if (!type.IsClass || type.GetConstructor(Type.EmptyTypes) == null)
-            throw new ArgumentException($"{type.Name} must have parameterless ctor");
-
-        await EnsureLoadedAsync();
-
-        var key = GetTypeKey(type);
-
-        IData result;
-        if (_cache.TryGetValue(key, out var json))
-            result = (IData)Serializer.Deserialize(json, type);
-        else
-            result = (IData)Activator.CreateInstance(type)!;
-
-        if (_options.EnableEvents)
-            this.SendEvent(new DataLoadedEvent<IData>(result));
-
-        return result;
-    }
-
-    /// <summary>
-    ///     异步保存数据到存储
-    /// </summary>
-    /// <typeparam name="T">要保存的数据类型</typeparam>
-    /// <param name="data">要保存的数据实例</param>
-    public async Task SaveAsync<T>(T data) where T : class, IData
-    {
-        await EnsureLoadedAsync();
-
-        var key = GetTypeKey(typeof(T));
-        _cache[key] = Serializer.Serialize(data);
-
-        await SaveUnifiedFileAsync();
-
-        if (_options.EnableEvents)
-            this.SendEvent(new DataSavedEvent<T>(data));
-    }
-
-    /// <summary>
-    ///     异步批量保存多个数据实例
-    /// </summary>
-    /// <param name="dataList">要保存的数据实例集合</param>
-    public async Task SaveAllAsync(IEnumerable<IData> dataList)
-    {
-        await EnsureLoadedAsync();
-
-        var list = dataList.ToList();
-        foreach (var data in list)
-        {
-            var key = GetTypeKey(data.GetType());
-            _cache[key] = Serializer.Serialize(data);
-        }
-
-        await SaveUnifiedFileAsync();
-
-        if (_options.EnableEvents)
-            this.SendEvent(new DataBatchSavedEvent(list));
-    }
-
-    /// <summary>
-    ///     检查指定类型的数据是否存在
-    /// </summary>
-    /// <typeparam name="T">要检查的数据类型</typeparam>
-    /// <returns>如果存在返回true，否则返回false</returns>
-    public async Task<bool> ExistsAsync<T>() where T : class, IData
-    {
-        await EnsureLoadedAsync();
-        return _cache.ContainsKey(GetTypeKey(typeof(T)));
-    }
-
-    /// <summary>
-    ///     删除指定类型的数据
-    /// </summary>
-    /// <typeparam name="T">要删除的数据类型</typeparam>
-    public async Task DeleteAsync<T>() where T : class, IData
-    {
-        await EnsureLoadedAsync();
-
-        _cache.Remove(GetTypeKey(typeof(T)));
-        await SaveUnifiedFileAsync();
-
-        if (_options.EnableEvents)
-            this.SendEvent(new DataDeletedEvent(typeof(T)));
-    }
+    private UnifiedSettingsFile File =>
+        _file ?? throw new InvalidOperationException("UnifiedSettingsFile not set.");
 
     protected override void OnInit()
     {
         _storage ??= this.GetUtility<IStorage>()!;
         _serializer ??= this.GetUtility<IRuntimeTypeSerializer>()!;
     }
+    // =========================
+    // IDataRepository
+    // =========================
+
+    public async Task<T> LoadAsync<T>(IDataLocation location)
+        where T : class, IData, new()
+    {
+        await EnsureLoadedAsync();
+        var key = location.Key;
+        var result = _file!.Sections.TryGetValue(key, out var raw) ? Serializer.Deserialize<T>(raw) : new T();
+        if (_options.EnableEvents)
+            this.SendEvent(new DataLoadedEvent<IData>(result));
+        return result;
+    }
+
+    public async Task SaveAsync<T>(IDataLocation location, T data)
+        where T : class, IData
+    {
+        await EnsureLoadedAsync();
+
+        var key = location.Key;
+        var serialized = Serializer.Serialize(data);
+
+        _file!.Sections[key] = serialized;
+
+        await Storage.WriteAsync(fileName, _file);
+        if (_options.EnableEvents)
+            this.SendEvent(new DataSavedEvent<T>(data));
+    }
+
+    public async Task<bool> ExistsAsync(IDataLocation location)
+    {
+        await EnsureLoadedAsync();
+        return File.Sections.ContainsKey(location.Key);
+    }
+
+
+    public async Task DeleteAsync(IDataLocation location)
+    {
+        await EnsureLoadedAsync();
+
+        if (File.Sections.Remove(location.Key))
+        {
+            await SaveUnifiedFileAsync();
+
+            if (_options.EnableEvents)
+                this.SendEvent(new DataDeletedEvent(location));
+        }
+    }
+
+
+    public async Task SaveAllAsync(
+        IEnumerable<(IDataLocation location, IData data)> dataList)
+    {
+        await EnsureLoadedAsync();
+
+        var valueTuples = dataList.ToList();
+        foreach (var (location, data) in valueTuples)
+        {
+            var serialized = Serializer.Serialize(data);
+            File.Sections[location.Key] = serialized;
+        }
+
+        await SaveUnifiedFileAsync();
+
+        if (_options.EnableEvents)
+            this.SendEvent(new DataBatchSavedEvent(valueTuples.ToList()));
+    }
+
 
     // =========================
     // Internals
@@ -183,12 +137,13 @@ public class UnifiedSettingsRepository(
         {
             if (_loaded) return;
 
-            if (await Storage.ExistsAsync(GetUnifiedKey()))
+            if (await Storage.ExistsAsync(fileName))
             {
-                var data = await Storage.ReadAsync<Dictionary<string, string>>(GetUnifiedKey());
-                _cache.Clear();
-                foreach (var (k, v) in data)
-                    _cache[k] = v;
+                _file = await Storage.ReadAsync<UnifiedSettingsFile>(fileName);
+            }
+            else
+            {
+                _file = new UnifiedSettingsFile { Version = 1 };
             }
 
             _loaded = true;
@@ -199,6 +154,7 @@ public class UnifiedSettingsRepository(
         }
     }
 
+
     /// <summary>
     ///     将缓存中的所有数据保存到统一文件
     /// </summary>
@@ -207,7 +163,7 @@ public class UnifiedSettingsRepository(
         await _lock.WaitAsync();
         try
         {
-            await Storage.WriteAsync(GetUnifiedKey(), _cache);
+            await Storage.WriteAsync(GetUnifiedKey(), File);
         }
         finally
         {
@@ -222,15 +178,5 @@ public class UnifiedSettingsRepository(
     protected virtual string GetUnifiedKey()
     {
         return string.IsNullOrEmpty(_options.BasePath) ? fileName : $"{_options.BasePath}/{fileName}";
-    }
-
-    /// <summary>
-    ///     获取类型的唯一标识键
-    /// </summary>
-    /// <param name="type">要获取键的类型</param>
-    /// <returns>类型的全名作为键</returns>
-    protected virtual string GetTypeKey(Type type)
-    {
-        return type.FullName!;
     }
 }

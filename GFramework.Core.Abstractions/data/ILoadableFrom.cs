@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2026 GeWuYou
+﻿// Copyright (c) 2025 GeWuYou
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,10 +11,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace GFramework.Game.Abstractions.setting;
+namespace GFramework.Core.Abstractions.data;
 
-/// <summary>
-///     可持久化的应用设置接口
-///     同时具备数据持久化和应用逻辑能力
-/// </summary>
-public interface IPersistentApplyAbleSettings : IResettable, IApplyAbleSettings;
+public interface ILoadableFrom<in T>
+{
+    void LoadFrom(T source);
+}

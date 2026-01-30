@@ -11,15 +11,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using GFramework.Core.Abstractions.versioning;
-
 namespace GFramework.Game.Abstractions.setting.data;
 
 /// <summary>
 ///     本地化设置类，用于管理游戏的语言本地化配置
 ///     实现了ISettingsData接口提供设置数据功能，实现IVersioned接口提供版本控制功能
 /// </summary>
-public class LocalizationSettings : IResettable, IVersioned
+public class LocalizationSettings : ISettingsData
 {
     /// <summary>
     ///     获取或设置当前使用的语言
@@ -39,6 +37,10 @@ public class LocalizationSettings : IResettable, IVersioned
     /// <summary>
     ///     获取或设置设置数据的版本号
     /// </summary>
-    /// <value>默认版本号为1</value>
     public int Version { get; set; } = 1;
+    
+    /// <summary>
+    ///     获取设置数据最后修改的时间
+    /// </summary>
+    public DateTime LastModified { get; } = DateTime.Now;
 }

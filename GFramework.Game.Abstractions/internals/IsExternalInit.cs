@@ -2,10 +2,16 @@
 // This type is required to support init-only setters and record types
 // when targeting netstandard2.0 or older frameworks.
 
-#pragma warning disable S2094 // Remove this empty class
-namespace GFramework.Game.Abstractions.internals;
+#if NETSTANDARD2_0 || NETFRAMEWORK || NETCOREAPP2_0
+using System.ComponentModel;
 
-internal static class IsExternalInit
+namespace System.Runtime.CompilerServices;
+
+/// <summary>
+///     用于标记仅初始化 setter 的特殊类型
+/// </summary>
+[EditorBrowsable(EditorBrowsableState.Never)]
+public static class IsExternalInit
 {
 }
-#pragma warning restore S2094
+#endif

@@ -24,7 +24,7 @@ namespace GFramework.Godot.setting;
 /// <param name="model">设置模型</param>
 /// <param name="localizationMap">本地化映射表</param>
 public class GodotLocalizationSettings(ISettingsModel model, LocalizationMap localizationMap)
-    : IPersistentApplyAbleSettings
+    : IResetApplyAbleSettings
 {
     /// <summary>
     ///     应用本地化设置到Godot引擎

@@ -31,7 +31,7 @@ public interface ISettingsSystem : ISystem
     /// </summary>
     /// <typeparam name="T">设置类型，必须继承自class并实现IPersistentApplyAbleSettings接口</typeparam>
     /// <returns>表示异步操作的任务</returns>
-    Task Reset<T>() where T : class, IPersistentApplyAbleSettings, new();
+    Task Reset<T>() where T : class, IResetApplyAbleSettings, new();
 
     /// <summary>
     ///     重置所有设置

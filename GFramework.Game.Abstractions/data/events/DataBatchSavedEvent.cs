@@ -16,5 +16,5 @@ namespace GFramework.Game.Abstractions.data.events;
 /// <summary>
 ///     表示数据批次保存事件的记录类型
 /// </summary>
-/// <param name="List">包含已保存数据项的集合，实现了IData接口</param>
-public sealed record DataBatchSavedEvent(ICollection<IData> List);
+/// <param name="DataList">包含已保存数据项的集合，实现了IData接口</param>
+public sealed record DataBatchSavedEvent(ICollection<(IDataLocation location, IData data)> DataList);

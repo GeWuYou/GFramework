@@ -1,11 +1,9 @@
-using GFramework.Core.Abstractions.versioning;
-
 namespace GFramework.Game.Abstractions.setting.data;
 
 /// <summary>
 ///     音频设置类，用于管理游戏中的音频配置
 /// </summary>
-public class AudioSettings : IResettable, IVersioned
+public class AudioSettings : ISettingsData
 {
     /// <summary>
     ///     获取或设置主音量，控制所有音频的总体音量
@@ -33,5 +31,13 @@ public class AudioSettings : IResettable, IVersioned
         SfxVolume = 0.8f;
     }
 
+    /// <summary>
+    ///     获取或设置设置数据的版本号
+    /// </summary>
     public int Version { get; set; } = 1;
+    
+    /// <summary>
+    ///     获取设置数据最后修改的时间
+    /// </summary>
+    public DateTime LastModified { get; } = DateTime.Now;
 }

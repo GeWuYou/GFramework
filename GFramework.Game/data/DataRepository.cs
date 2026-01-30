@@ -16,6 +16,7 @@ using GFramework.Core.extensions;
 using GFramework.Core.utility;
 using GFramework.Game.Abstractions.data;
 using GFramework.Game.Abstractions.data.events;
+using GFramework.Game.extensions;
 
 namespace GFramework.Game.data;
 
@@ -34,14 +35,21 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
                                 throw new InvalidOperationException(
                                     "Failed to initialize storage. No IStorage utility found in context.");
 
-    /// <summary>
-    ///     异步加载指定类型的数据
-    /// </summary>
-    /// <typeparam name="T">要加载的数据类型，必须实现IData接口</typeparam>
-    /// <returns>加载的数据对象</returns>
-    public async Task<T> LoadAsync<T>() where T : class, IData, new()
+    protected override void OnInit()
     {
-        var key = GetKey<T>();
+        _storage ??= this.GetUtility<IStorage>()!;
+    }
+
+    /// <summary>
+    /// 异步加载指定位置的数据
+    /// </summary>
+    /// <typeparam name="T">数据类型，必须实现IData接口</typeparam>
+    /// <param name="location">数据位置信息</param>
+    /// <returns>加载的数据对象</returns>
+    public async Task<T> LoadAsync<T>(IDataLocation location)
+        where T : class, IData, new()
+    {
+        var key = location.ToStorageKey();
 
         T result;
         // 检查存储中是否存在指定键的数据
@@ -58,43 +66,15 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
     }
 
     /// <summary>
-    ///     异步加载指定类型的数据（通过Type参数）
+    /// 异步保存数据到指定位置
     /// </summary>
-    /// <param name="type">要加载的数据类型</param>
-    /// <returns>加载的数据对象</returns>
-    public async Task<IData> LoadAsync(Type type)
-    {
-        if (!typeof(IData).IsAssignableFrom(type))
-            throw new ArgumentException($"{type.Name} does not implement IData");
-
-        if (!type.IsClass || type.GetConstructor(Type.EmptyTypes) == null)
-            throw new ArgumentException($"{type.Name} must be a class with parameterless constructor");
-
-        var key = GetKey(type);
-
-        IData result;
-        // 检查存储中是否存在指定键的数据
-        if (await Storage.ExistsAsync(key))
-            result = await Storage.ReadAsync<IData>(key);
-        else
-            result = (IData)Activator.CreateInstance(type)!;
-
-        // 如果启用事件功能，则发送数据加载完成事件
-        if (_options.EnableEvents)
-            this.SendEvent(new DataLoadedEvent<IData>(result));
-
-        return result;
-    }
-
-
-    /// <summary>
-    ///     异步保存指定类型的数据
-    /// </summary>
-    /// <typeparam name="T">要保存的数据类型</typeparam>
+    /// <typeparam name="T">数据类型，必须实现IData接口</typeparam>
+    /// <param name="location">数据位置信息</param>
     /// <param name="data">要保存的数据对象</param>
-    public async Task SaveAsync<T>(T data) where T : class, IData
+    public async Task SaveAsync<T>(IDataLocation location, T data)
+        where T : class, IData
     {
-        var key = GetKey<T>();
+        var key = location.ToStorageKey();
 
         // 自动备份
         if (_options.AutoBackup && await Storage.ExistsAsync(key))
@@ -111,70 +91,38 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
     }
 
     /// <summary>
-    ///     检查指定类型的数据是否存在
+    /// 检查指定位置的数据是否存在
     /// </summary>
-    /// <typeparam name="T">要检查的数据类型</typeparam>
+    /// <param name="location">数据位置信息</param>
     /// <returns>如果数据存在返回true，否则返回false</returns>
-    public async Task<bool> ExistsAsync<T>() where T : class, IData
-    {
-        var key = GetKey<T>();
-        return await Storage.ExistsAsync(key);
-    }
+    public Task<bool> ExistsAsync(IDataLocation location)
+        => Storage.ExistsAsync(location.ToStorageKey());
 
     /// <summary>
-    ///     异步删除指定类型的数据
+    /// 异步删除指定位置的数据
     /// </summary>
-    /// <typeparam name="T">要删除的数据类型</typeparam>
-    public async Task DeleteAsync<T>() where T : class, IData
+    /// <param name="location">数据位置信息</param>
+    public async Task DeleteAsync(IDataLocation location)
     {
-        var key = GetKey<T>();
+        var key = location.ToStorageKey();
         await Storage.DeleteAsync(key);
-
         if (_options.EnableEvents)
-            this.SendEvent(new DataDeletedEvent(typeof(T)));
+            this.SendEvent(new DataDeletedEvent(location));
     }
 
     /// <summary>
-    ///     批量异步保存多个数据对象
+    /// 异步批量保存多个数据项
     /// </summary>
-    /// <param name="dataList">要保存的数据对象集合</param>
-    public async Task SaveAllAsync(IEnumerable<IData> dataList)
+    /// <param name="dataList">包含数据位置和数据对象的枚举集合</param>
+    public async Task SaveAllAsync(IEnumerable<(IDataLocation location, IData data)> dataList)
     {
-        var list = dataList.ToList();
-        foreach (var data in list)
+        var valueTuples = dataList.ToList();
+        foreach (var (location, data) in valueTuples)
         {
-            var type = data.GetType();
-            var key = GetKey(type);
-            await Storage.WriteAsync(key, data);
+            await SaveAsync(location, data);
         }
 
         if (_options.EnableEvents)
-            this.SendEvent(new DataBatchSavedEvent(list));
-    }
-
-    protected override void OnInit()
-    {
-        _storage ??= this.GetUtility<IStorage>()!;
-    }
-
-    /// <summary>
-    ///     根据类型生成存储键
-    /// </summary>
-    /// <typeparam name="T">数据类型</typeparam>
-    /// <returns>生成的存储键</returns>
-    protected virtual string GetKey<T>() where T : IData
-    {
-        return GetKey(typeof(T));
-    }
-
-    /// <summary>
-    ///     根据类型生成存储键
-    /// </summary>
-    /// <param name="type">数据类型</param>
-    /// <returns>生成的存储键</returns>
-    protected virtual string GetKey(Type type)
-    {
-        var fileName = type.FullName!;
-        return string.IsNullOrEmpty(_options.BasePath) ? fileName : $"{_options.BasePath}/{fileName}";
+            this.SendEvent(new DataBatchSavedEvent(valueTuples));
     }
 }

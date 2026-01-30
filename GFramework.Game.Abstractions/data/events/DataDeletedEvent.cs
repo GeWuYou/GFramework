@@ -16,5 +16,6 @@ namespace GFramework.Game.Abstractions.data.events;
 /// <summary>
 ///     表示数据删除事件的记录类型
 /// </summary>
-/// <param name="Type">被删除数据的类型</param>
-public sealed record DataDeletedEvent(Type Type);
+/// <param name="Location">数据位置信息，标识被删除数据的位置</param>
+public sealed record DataDeletedEvent(IDataLocation Location);
+

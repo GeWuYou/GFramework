@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025 GeWuYou
+﻿// Copyright (c) 2026 GeWuYou
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,8 +11,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-global using System;
-global using System.Collections.Generic;
-global using System.Linq;
-global using System.Threading;
-global using System.Threading.Tasks;
+namespace GFramework.Game.Abstractions.setting;
+
+/// <summary>
+/// 定义一个可重置且可应用设置的接口
+/// 该接口继承自IResettable和IApplyAbleSettings接口，组合了重置功能和应用设置功能
+/// </summary>
+public interface IResetApplyAbleSettings : IResettable, IApplyAbleSettings;

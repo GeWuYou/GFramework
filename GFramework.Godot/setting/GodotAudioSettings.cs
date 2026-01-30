@@ -11,7 +11,7 @@ namespace GFramework.Godot.setting;
 /// <param name="model">设置模型对象，提供音频设置数据访问</param>
 /// <param name="audioBusMap">音频总线映射对象，定义了不同音频类型的总线名称</param>
 public class GodotAudioSettings(ISettingsModel model, AudioBusMap audioBusMap)
-    : IPersistentApplyAbleSettings
+    : IResetApplyAbleSettings
 {
     /// <summary>
     ///     应用音频设置到Godot音频系统

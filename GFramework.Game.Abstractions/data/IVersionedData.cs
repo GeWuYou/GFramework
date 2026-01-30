@@ -10,9 +10,23 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+namespace GFramework.Game.Abstractions.data;
 
-global using System;
-global using System.Collections.Generic;
-global using System.Linq;
-global using System.Threading;
-global using System.Threading.Tasks;
+/// <summary>
+/// 版本化数据接口，继承自IData接口
+/// 提供版本控制和修改时间跟踪功能
+/// </summary>
+public interface IVersionedData : IData
+{
+    /// <summary>
+    /// 获取数据的版本号
+    /// </summary>
+    /// <returns>当前数据的版本号，用于标识数据的版本状态</returns>
+    int Version { get; }
+    
+    /// <summary>
+    /// 获取数据最后修改的时间
+    /// </summary>
+    /// <returns>DateTime类型的最后修改时间戳</returns>
+    DateTime LastModified { get; }
+}

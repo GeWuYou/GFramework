@@ -11,8 +11,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-global using System;
-global using System.Collections.Generic;
-global using System.Linq;
-global using System.Threading;
-global using System.Threading.Tasks;
+using GFramework.Core.Abstractions.utility;
+
+namespace GFramework.Game.Abstractions.data;
+
+/// <summary>
+/// 定义数据位置提供者的接口，用于获取指定类型的数据位置信息
+/// </summary>
+public interface IDataLocationProvider:IUtility
+{
+    /// <summary>
+    /// 获取指定类型的数据位置
+    /// </summary>
+    /// <param name="type">需要获取位置信息的类型</param>
+    /// <returns>与指定类型关联的数据位置对象</returns>
+    IDataLocation GetLocation(Type type);
+}

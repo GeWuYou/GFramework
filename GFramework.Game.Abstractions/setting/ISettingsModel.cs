@@ -3,75 +3,85 @@
 namespace GFramework.Game.Abstractions.setting;
 
 /// <summary>
-///     定义设置模型的接口，提供获取特定类型设置节的功能
+/// 设置模型接口：
+/// - 管理 Settings Data 的生命周期
+/// - 管理并编排 Settings Applicator
+/// - 管理 Settings Migration
 /// </summary>
 public interface ISettingsModel : IModel
 {
+    // =========================
+    // Data
+    // =========================
+
     /// <summary>
-    ///     获取或创建数据设置（自动创建）
+    /// 获取指定类型的设置数据（唯一实例）
     /// </summary>
-    /// <typeparam name="T">设置数据的类型，必须继承自class、ISettingsData且具有无参构造函数</typeparam>
+    /// <typeparam name="T">设置数据类型，必须继承自ISettingsData并具有无参构造函数</typeparam>
     /// <returns>指定类型的设置数据实例</returns>
-    T GetData<T>() where T : class, IResettable, new();
+    T GetData<T>() where T : class, ISettingsData, new();
 
     /// <summary>
-    ///     尝试获取指定类型的设置节实例
+    /// 获取所有已创建的设置数据
     /// </summary>
-    /// <param name="type">要获取的设置节类型</param>
-    /// <param name="section">输出参数，如果成功则包含找到的设置节实例，否则为null</param>
-    /// <returns>如果找到指定类型的设置节则返回true，否则返回false</returns>
-    bool TryGet(Type type, out ISettingsSection section);
+    /// <returns>所有已创建的设置数据集合</returns>
+    IEnumerable<ISettingsData> AllData();
+
+
+    // =========================
+    // Applicator
+    // =========================
 
     /// <summary>
-    ///     获取已注册的可应用设置
+    /// 注册设置应用器
     /// </summary>
-    /// <typeparam name="T">可应用设置的类型，必须继承自class和IApplyAbleSettings</typeparam>
-    /// <returns>指定类型的可应用设置实例，如果不存在则返回null</returns>
-    T? GetApplicator<T>() where T : class, IApplyAbleSettings;
+    /// <param name="applicator">要注册的设置应用器</param>
+    /// <returns>当前设置模型实例，支持链式调用</returns>
+    ISettingsModel RegisterApplicator(IResetApplyAbleSettings applicator);
 
     /// <summary>
-    ///     获取所有设置数据的集合
+    /// 获取所有设置应用器
     /// </summary>
-    /// <returns>包含所有设置数据的可枚举集合</returns>
-    IEnumerable<IResettable> AllData();
+    /// <returns>所有设置应用器的集合</returns>
+    IEnumerable<IResetApplyAbleSettings> AllApplicators();
+
+
+    // =========================
+    // Migration
+    // =========================
 
     /// <summary>
-    ///     获取所有可应用设置的集合
+    /// 注册设置迁移器
     /// </summary>
-    /// <returns>包含所有可应用设置的可枚举集合</returns>
-    IEnumerable<IApplyAbleSettings> AllApplicators();
-
-
-    /// <summary>
-    ///     注册可应用设置（必须手动注册）
-    /// </summary>
-    /// <typeparam name="T">可应用设置的类型，必须继承自class和IApplyAbleSettings</typeparam>
-    /// <param name="applicator">要注册的可应用设置实例</param>
-    /// <returns>返回当前设置模型实例，支持链式调用</returns>
-    ISettingsModel RegisterApplicator<T>(T applicator) where T : class, IApplyAbleSettings;
-
-    /// <summary>
-    ///     注册设置迁移器
-    /// </summary>
-    /// <param name="migration">要注册的设置迁移实例</param>
-    /// <returns>返回当前设置模型实例，支持链式调用</returns>
+    /// <param name="migration">要注册的设置迁移器</param>
+    /// <returns>当前设置模型实例，支持链式调用</returns>
     ISettingsModel RegisterMigration(ISettingsMigration migration);
 
+
+    // =========================
+    // Lifecycle
+    // =========================
+
     /// <summary>
-    ///     异步初始化指定类型的设置
+    /// 初始化所有设置数据（加载 + 迁移）
     /// </summary>
-    /// <param name="settingTypes">要初始化的设置类型数组</param>
     /// <returns>异步操作任务</returns>
-    Task InitializeAsync(params Type[] settingTypes);
+    Task InitializeAsync();
 
     /// <summary>
-    ///     重置指定类型的设置
+    /// 保存所有设置数据
     /// </summary>
-    /// <typeparam name="T">要重置的设置类型，必须实现IResettable接口并具有无参构造函数</typeparam>
-    void Reset<T>() where T : class, IResettable, new();
+    /// <returns>异步操作任务</returns>
+    Task SaveAllAsync();
 
     /// <summary>
-    ///     重置所有设置
+    /// 应用所有设置
+    /// </summary>
+    /// <returns>异步操作任务</returns>
+    Task ApplyAllAsync();
+
+    /// <summary>
+    /// 重置所有设置数据与应用器
     /// </summary>
     void ResetAll();
 }

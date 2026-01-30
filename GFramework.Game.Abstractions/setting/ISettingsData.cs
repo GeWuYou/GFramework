@@ -11,8 +11,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-global using System;
-global using System.Collections.Generic;
-global using System.Linq;
-global using System.Threading;
-global using System.Threading.Tasks;
+using GFramework.Core.Abstractions.data;
+using GFramework.Game.Abstractions.data;
+
+namespace GFramework.Game.Abstractions.setting;
+
+/// <summary>
+/// 定义游戏设置数据的接口
+/// 该接口继承自IData和IResettable接口，提供数据管理和重置功能
+/// </summary>
+public interface ISettingsData : IResettable, IVersionedData, ILoadableFrom<ISettingsData>;

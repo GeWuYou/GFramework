@@ -63,7 +63,7 @@ public class SettingsSystem<TRepository>(IDataRepository? repository)
     /// </summary>
     /// <typeparam name="T">设置类型，必须实现IPersistentApplyAbleSettings接口且具有无参构造函数</typeparam>
     /// <returns>异步任务</returns>
-    public async Task Reset<T>() where T : class, IPersistentApplyAbleSettings, new()
+    public async Task Reset<T>() where T : class, IResetApplyAbleSettings, new()
     {
         _model.Reset<T>();
         await Apply<T>();
