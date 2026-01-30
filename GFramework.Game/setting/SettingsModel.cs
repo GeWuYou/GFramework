@@ -13,7 +13,7 @@ namespace GFramework.Game.setting;
 ///     - 管理 Settings Data 的生命周期（Load / Save / Reset / Migration）
 ///     - 编排 Settings Applicator 的 Apply 行为
 /// </summary>
-public class SettingsModel<TRepository>(IDataLocationProvider locationProvider, TRepository repository)
+public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider, TRepository? repository)
     : AbstractModel, ISettingsModel
     where TRepository : class, ISettingsDataRepository
 {
