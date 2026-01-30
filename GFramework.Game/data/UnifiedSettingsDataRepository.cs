@@ -45,6 +45,9 @@ public class UnifiedSettingsDataRepository(
 
     private UnifiedSettingsFile File =>
         _file ?? throw new InvalidOperationException("UnifiedSettingsFile not set.");
+
+    private string UnifiedKey => GetUnifiedKey();
+
     // =========================
     // IDataRepository
     // =========================
@@ -76,16 +79,24 @@ public class UnifiedSettingsDataRepository(
     public async Task SaveAsync<T>(IDataLocation location, T data)
         where T : class, IData
     {
-        await EnsureLoadedAsync();
+        await _lock.WaitAsync();
+        try
+        {
+            await EnsureLoadedAsync();
 
-        var key = location.Key;
-        var serialized = Serializer.Serialize(data);
+            var key = location.Key;
+            var serialized = Serializer.Serialize(data);
 
-        _file!.Sections[key] = serialized;
+            _file!.Sections[key] = serialized;
 
-        await Storage.WriteAsync(fileName, _file);
-        if (_options.EnableEvents)
-            this.SendEvent(new DataSavedEvent<T>(data));
+            await Storage.WriteAsync(UnifiedKey, _file);
+            if (_options.EnableEvents)
+                this.SendEvent(new DataSavedEvent<T>(data));
+        }
+        finally
+        {
+            _lock.Release();
+        }
     }
 
     /// <summary>
@@ -175,9 +186,11 @@ public class UnifiedSettingsDataRepository(
         {
             if (_loaded) return;
 
-            if (await Storage.ExistsAsync(fileName))
+            var key = UnifiedKey;
+
+            if (await Storage.ExistsAsync(key))
             {
-                _file = await Storage.ReadAsync<UnifiedSettingsFile>(fileName);
+                _file = await Storage.ReadAsync<UnifiedSettingsFile>(key);
             }
             else
             {
@@ -192,6 +205,7 @@ public class UnifiedSettingsDataRepository(
         }
     }
 
+
     /// <summary>
     ///     将缓存中的所有数据保存到统一文件
     /// </summary>
@@ -200,7 +214,7 @@ public class UnifiedSettingsDataRepository(
         await _lock.WaitAsync();
         try
         {
-            await Storage.WriteAsync(GetUnifiedKey(), File);
+            await Storage.WriteAsync(UnifiedKey, _file);
         }
         finally
         {
