@@ -35,10 +35,11 @@ public interface ISettingsModel : IModel
     /// <summary>
     /// 注册设置应用器
     /// </summary>
-    /// <typeparam name="T">设置数据类型，必须实现ISettingsData接口且具有无参构造函数</typeparam>
+    /// <typeparam name="T">设置数据类型，必须实现IResetApplyAbleSettings接口且具有无参构造函数</typeparam>
     /// <param name="applicator">要注册的设置应用器</param>
     /// <returns>当前设置模型实例，支持链式调用</returns>
-    ISettingsModel RegisterApplicator<T>(IResetApplyAbleSettings applicator) where T : class, ISettingsData, new();
+    ISettingsModel RegisterApplicator<T>(IResetApplyAbleSettings applicator)
+        where T : class, IResetApplyAbleSettings, new();
 
 
     /// <summary>
