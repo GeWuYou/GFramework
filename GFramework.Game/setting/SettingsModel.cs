@@ -63,7 +63,7 @@ public class SettingsModel<TRepository> : AbstractModel, ISettingsModel
     ///     注册设置应用器
     /// </summary>
     public ISettingsModel RegisterApplicator<T>(IResetApplyAbleSettings applicator)
-        where T : class, IResetApplyAbleSettings, new()
+        where T : class, IResetApplyAbleSettings
     {
         _applicators[typeof(T)] = applicator;
         return this;

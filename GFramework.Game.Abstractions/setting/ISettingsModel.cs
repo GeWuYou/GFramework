@@ -39,7 +39,7 @@ public interface ISettingsModel : IModel
     /// <param name="applicator">要注册的设置应用器</param>
     /// <returns>当前设置模型实例，支持链式调用</returns>
     ISettingsModel RegisterApplicator<T>(IResetApplyAbleSettings applicator)
-        where T : class, IResetApplyAbleSettings, new();
+        where T : class, IResetApplyAbleSettings;
 
 
     /// <summary>
