@@ -33,10 +33,29 @@ public class GraphicsSettings : ISettingsData
     /// <summary>
     ///     获取或设置设置数据的版本号
     /// </summary>
-    public int Version { get; set; } = 1;
-    
+    public int Version { get; private set; } = 1;
+
     /// <summary>
     ///     获取设置数据最后修改的时间
     /// </summary>
     public DateTime LastModified { get; } = DateTime.Now;
+
+    /// <summary>
+    ///     从指定的数据源加载图形设置
+    /// </summary>
+    /// <param name="source">要从中加载设置的源数据对象</param>
+    public void LoadFrom(ISettingsData source)
+    {
+        // 检查源数据是否为GraphicsSettings类型，如果不是则直接返回
+        if (source is not GraphicsSettings settings)
+        {
+            return;
+        }
+
+        // 将源设置中的属性值复制到当前对象
+        Fullscreen = settings.Fullscreen;
+        ResolutionWidth = settings.ResolutionWidth;
+        ResolutionHeight = settings.ResolutionHeight;
+        Version = settings.Version;
+    }
 }

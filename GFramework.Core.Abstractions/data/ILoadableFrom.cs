@@ -13,7 +13,15 @@
 
 namespace GFramework.Core.Abstractions.data;
 
+/// <summary>
+/// 定义从指定类型数据源加载数据的接口
+/// </summary>
+/// <typeparam name="T">数据源的类型</typeparam>
 public interface ILoadableFrom<in T>
 {
+    /// <summary>
+    /// 从指定的数据源加载数据到当前对象
+    /// </summary>
+    /// <param name="source">用作数据源的对象，类型为T</param>
     void LoadFrom(T source);
 }

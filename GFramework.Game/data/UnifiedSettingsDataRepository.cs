@@ -23,16 +23,16 @@ namespace GFramework.Game.data;
 /// <summary>
 ///     使用单一文件存储所有设置数据的仓库实现
 /// </summary>
-public class UnifiedSettingsRepository(
+public class UnifiedSettingsDataRepository(
     IStorage? storage,
     IRuntimeTypeSerializer? serializer,
     DataRepositoryOptions? options = null,
     string fileName = "settings.json")
-    : AbstractContextUtility, IDataRepository
+    : AbstractContextUtility, ISettingsDataRepository
 {
-    private UnifiedSettingsFile? _file;
     private readonly SemaphoreSlim _lock = new(1, 1);
     private readonly DataRepositoryOptions _options = options ?? new DataRepositoryOptions();
+    private UnifiedSettingsFile? _file;
     private bool _loaded;
     private IRuntimeTypeSerializer? _serializer = serializer;
     private IStorage? _storage = storage;
@@ -45,16 +45,16 @@ public class UnifiedSettingsRepository(
 
     private UnifiedSettingsFile File =>
         _file ?? throw new InvalidOperationException("UnifiedSettingsFile not set.");
-
-    protected override void OnInit()
-    {
-        _storage ??= this.GetUtility<IStorage>()!;
-        _serializer ??= this.GetUtility<IRuntimeTypeSerializer>()!;
-    }
     // =========================
     // IDataRepository
     // =========================
 
+    /// <summary>
+    ///     异步加载指定位置的数据
+    /// </summary>
+    /// <typeparam name="T">数据类型，必须继承自IData接口</typeparam>
+    /// <param name="location">数据位置信息</param>
+    /// <returns>加载的数据对象</returns>
     public async Task<T> LoadAsync<T>(IDataLocation location)
         where T : class, IData, new()
     {
@@ -66,6 +66,13 @@ public class UnifiedSettingsRepository(
         return result;
     }
 
+    /// <summary>
+    ///     异步保存数据到指定位置
+    /// </summary>
+    /// <typeparam name="T">数据类型，必须继承自IData接口</typeparam>
+    /// <param name="location">数据位置信息</param>
+    /// <param name="data">要保存的数据对象</param>
+    /// <returns>异步操作任务</returns>
     public async Task SaveAsync<T>(IDataLocation location, T data)
         where T : class, IData
     {
@@ -81,13 +88,22 @@ public class UnifiedSettingsRepository(
             this.SendEvent(new DataSavedEvent<T>(data));
     }
 
+    /// <summary>
+    ///     检查指定位置的数据是否存在
+    /// </summary>
+    /// <param name="location">数据位置信息</param>
+    /// <returns>如果数据存在则返回true，否则返回false</returns>
     public async Task<bool> ExistsAsync(IDataLocation location)
     {
         await EnsureLoadedAsync();
         return File.Sections.ContainsKey(location.Key);
     }
 
-
+    /// <summary>
+    ///     删除指定位置的数据
+    /// </summary>
+    /// <param name="location">数据位置信息</param>
+    /// <returns>异步操作任务</returns>
     public async Task DeleteAsync(IDataLocation location)
     {
         await EnsureLoadedAsync();
@@ -101,7 +117,11 @@ public class UnifiedSettingsRepository(
         }
     }
 
-
+    /// <summary>
+    ///     批量保存多个数据项到存储
+    /// </summary>
+    /// <param name="dataList">包含数据位置和数据对象的枚举集合</param>
+    /// <returns>异步操作任务</returns>
     public async Task SaveAllAsync(
         IEnumerable<(IDataLocation location, IData data)> dataList)
     {
@@ -120,6 +140,24 @@ public class UnifiedSettingsRepository(
             this.SendEvent(new DataBatchSavedEvent(valueTuples.ToList()));
     }
 
+    /// <summary>
+    ///     加载所有存储的数据项
+    /// </summary>
+    /// <returns>包含所有数据项的字典，键为数据位置键，值为数据对象</returns>
+    public async Task<IDictionary<string, IData>> LoadAllAsync()
+    {
+        await EnsureLoadedAsync();
+        return File.Sections.ToDictionary(
+            kv => kv.Key,
+            kv => Serializer.Deserialize<IData>(kv.Value)
+        );
+    }
+
+    protected override void OnInit()
+    {
+        _storage ??= this.GetUtility<IStorage>()!;
+        _serializer ??= this.GetUtility<IRuntimeTypeSerializer>()!;
+    }
 
     // =========================
     // Internals
@@ -153,7 +191,6 @@ public class UnifiedSettingsRepository(
             _lock.Release();
         }
     }
-
 
     /// <summary>
     ///     将缓存中的所有数据保存到统一文件

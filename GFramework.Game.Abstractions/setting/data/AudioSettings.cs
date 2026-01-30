@@ -34,10 +34,29 @@ public class AudioSettings : ISettingsData
     /// <summary>
     ///     获取或设置设置数据的版本号
     /// </summary>
-    public int Version { get; set; } = 1;
-    
+    public int Version { get; private set; } = 1;
+
     /// <summary>
     ///     获取设置数据最后修改的时间
     /// </summary>
     public DateTime LastModified { get; } = DateTime.Now;
+
+    /// <summary>
+    ///     从指定的数据源加载音频设置
+    /// </summary>
+    /// <param name="source">包含设置数据的源对象</param>
+    public void LoadFrom(ISettingsData source)
+    {
+        // 检查数据源是否为音频设置类型
+        if (source is not AudioSettings audioSettings)
+        {
+            return;
+        }
+
+        // 将源数据中的各个音量设置复制到当前对象
+        MasterVolume = audioSettings.MasterVolume;
+        BgmVolume = audioSettings.BgmVolume;
+        SfxVolume = audioSettings.SfxVolume;
+        Version = audioSettings.Version;
+    }
 }

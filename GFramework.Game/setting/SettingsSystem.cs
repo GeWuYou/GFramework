@@ -1,6 +1,5 @@
 using GFramework.Core.extensions;
 using GFramework.Core.system;
-using GFramework.Game.Abstractions.data;
 using GFramework.Game.Abstractions.setting;
 using GFramework.Game.setting.events;
 
@@ -9,12 +8,9 @@ namespace GFramework.Game.setting;
 /// <summary>
 ///     设置系统，负责管理和应用各种设置配置
 /// </summary>
-public class SettingsSystem<TRepository>(IDataRepository? repository)
-    : AbstractSystem, ISettingsSystem where TRepository : class, IDataRepository
+public class SettingsSystem : AbstractSystem, ISettingsSystem
 {
     private ISettingsModel _model = null!;
-    private IDataRepository? _repository = repository;
-    private IDataRepository Repository => _repository ?? throw new InvalidOperationException("Repository is not set");
 
     /// <summary>
     ///     应用所有设置配置
@@ -29,9 +25,9 @@ public class SettingsSystem<TRepository>(IDataRepository? repository)
     /// <summary>
     ///     应用指定类型的设置配置
     /// </summary>
-    /// <typeparam name="T">设置配置类型，必须是类且实现ISettingsSection接口</typeparam>
+    /// <typeparam name="T">设置配置类型，必须是类且实现IResetApplyAbleSettings接口</typeparam>
     /// <returns>完成的任务</returns>
-    public Task Apply<T>() where T : class, IApplyAbleSettings
+    public Task Apply<T>() where T : class, IResetApplyAbleSettings
     {
         var applicator = _model.GetApplicator<T>();
         return applicator != null
@@ -45,7 +41,7 @@ public class SettingsSystem<TRepository>(IDataRepository? repository)
     /// <returns>完成的任务</returns>
     public async Task SaveAll()
     {
-        await Repository.SaveAllAsync(_model.AllData());
+        await _model.SaveAllAsync();
     }
 
     /// <summary>
@@ -63,7 +59,7 @@ public class SettingsSystem<TRepository>(IDataRepository? repository)
     /// </summary>
     /// <typeparam name="T">设置类型，必须实现IPersistentApplyAbleSettings接口且具有无参构造函数</typeparam>
     /// <returns>异步任务</returns>
-    public async Task Reset<T>() where T : class, IResetApplyAbleSettings, new()
+    public async Task Reset<T>() where T : class, ISettingsData, IResetApplyAbleSettings, new()
     {
         _model.Reset<T>();
         await Apply<T>();
@@ -76,7 +72,6 @@ public class SettingsSystem<TRepository>(IDataRepository? repository)
     protected override void OnInit()
     {
         _model = this.GetModel<ISettingsModel>()!;
-        _repository ??= this.GetUtility<TRepository>()!;
     }
 
     /// <summary>

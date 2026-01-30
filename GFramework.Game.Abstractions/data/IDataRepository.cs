@@ -29,6 +29,7 @@ public interface IDataRepository : IUtility
     Task<T> LoadAsync<T>(IDataLocation location)
         where T : class, IData, new();
 
+
     /// <summary>
     /// 异步保存数据到指定位置
     /// </summary>

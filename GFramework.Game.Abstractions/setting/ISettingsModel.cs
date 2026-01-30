@@ -35,9 +35,19 @@ public interface ISettingsModel : IModel
     /// <summary>
     /// 注册设置应用器
     /// </summary>
+    /// <typeparam name="T">设置数据类型，必须实现ISettingsData接口且具有无参构造函数</typeparam>
     /// <param name="applicator">要注册的设置应用器</param>
     /// <returns>当前设置模型实例，支持链式调用</returns>
-    ISettingsModel RegisterApplicator(IResetApplyAbleSettings applicator);
+    ISettingsModel RegisterApplicator<T>(IResetApplyAbleSettings applicator) where T : class, ISettingsData, new();
+
+
+    /// <summary>
+    /// 获取指定类型的设置应用器
+    /// </summary>
+    /// <typeparam name="T">要获取的设置应用器类型，必须继承自IResetApplyAbleSettings</typeparam>
+    /// <returns>设置应用器实例，如果不存在则返回null</returns>
+    T? GetApplicator<T>() where T : class, IResetApplyAbleSettings;
+
 
     /// <summary>
     /// 获取所有设置应用器
@@ -79,6 +89,13 @@ public interface ISettingsModel : IModel
     /// </summary>
     /// <returns>异步操作任务</returns>
     Task ApplyAllAsync();
+
+    /// <summary>
+    ///     重置指定类型的设置
+    /// </summary>
+    /// <typeparam name="T">要重置的设置类型，必须实现IResettable接口并具有无参构造函数</typeparam>
+    void Reset<T>() where T : class, ISettingsData, new();
+
 
     /// <summary>
     /// 重置所有设置数据与应用器

@@ -16,9 +16,9 @@ public interface ISettingsSystem : ISystem
     /// <summary>
     ///     应用指定类型的设置（泛型版本）
     /// </summary>
-    /// <typeparam name="T">设置类型，必须是class且实现IApplyAbleSettings接口</typeparam>
+    /// <typeparam name="T">设置类型，必须是class且实现IResetApplyAbleSettings接口</typeparam>
     /// <returns>表示异步操作的任务</returns>
-    Task Apply<T>() where T : class, IApplyAbleSettings;
+    Task Apply<T>() where T : class, IResetApplyAbleSettings;
 
     /// <summary>
     ///     保存所有设置
@@ -31,7 +31,7 @@ public interface ISettingsSystem : ISystem
     /// </summary>
     /// <typeparam name="T">设置类型，必须继承自class并实现IPersistentApplyAbleSettings接口</typeparam>
     /// <returns>表示异步操作的任务</returns>
-    Task Reset<T>() where T : class, IResetApplyAbleSettings, new();
+    Task Reset<T>() where T : class, ISettingsData, IResetApplyAbleSettings, new();
 
     /// <summary>
     ///     重置所有设置

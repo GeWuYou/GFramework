@@ -37,10 +37,29 @@ public class LocalizationSettings : ISettingsData
     /// <summary>
     ///     获取或设置设置数据的版本号
     /// </summary>
-    public int Version { get; set; } = 1;
-    
+    public int Version { get; private set; } = 1;
+
     /// <summary>
     ///     获取设置数据最后修改的时间
     /// </summary>
     public DateTime LastModified { get; } = DateTime.Now;
+
+    /// <summary>
+    ///     从指定的数据源加载本地化设置
+    /// </summary>
+    /// <param name="source">要从中加载设置的源对象</param>
+    /// <remarks>
+    ///     该方法仅处理类型为LocalizationSettings的对象，
+    ///     如果源对象不是LocalizationSettings类型，则直接返回不执行任何操作
+    /// </remarks>
+    public void LoadFrom(ISettingsData source)
+    {
+        if (source is not LocalizationSettings settings)
+        {
+            return;
+        }
+
+        Language = settings.Language;
+        Version = settings.Version;
+    }
 }
