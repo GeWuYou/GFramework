@@ -13,7 +13,8 @@ namespace GFramework.Game.setting;
 ///     - 管理 Settings Data 的生命周期（Load / Save / Reset / Migration）
 ///     - 编排 Settings Applicator 的 Apply 行为
 /// </summary>
-public class SettingsModel<TRepository> : AbstractModel, ISettingsModel
+public class SettingsModel<TRepository>(IDataLocationProvider locationProvider, TRepository repository)
+    : AbstractModel, ISettingsModel
     where TRepository : class, ISettingsDataRepository
 {
     private static readonly ILogger Log =
@@ -28,9 +29,9 @@ public class SettingsModel<TRepository> : AbstractModel, ISettingsModel
     private readonly ConcurrentDictionary<Type, ISettingsData> _data = new();
     private readonly ConcurrentDictionary<Type, Dictionary<int, ISettingsMigration>> _migrationCache = new();
     private readonly ConcurrentDictionary<(Type type, int from), ISettingsMigration> _migrations = new();
-    private IDataLocationProvider? _locationProvider;
+    private IDataLocationProvider? _locationProvider = locationProvider;
 
-    private ISettingsDataRepository? _repository;
+    private ISettingsDataRepository? _repository = repository;
 
     private ISettingsDataRepository DataRepository =>
         _repository ?? throw new InvalidOperationException("ISettingsDataRepository not initialized.");
