@@ -66,21 +66,6 @@ public class PipeExtensionsTests
         int AddTwo(int x) => x + 2;
     }
 
-    /// <summary>
-    /// 测试Apply方法 - 验证函数能够正确应用到参数上
-    /// </summary>
-    [Test]
-    public void Apply_Should_Apply_Function_To_Argument()
-    {
-        // Arrange
-        Func<int, int> multiplyByTwo = x => x * 2;
-
-        // Act
-        var result = multiplyByTwo.Apply(5);
-
-        // Assert
-        Assert.That(result, Is.EqualTo(10));
-    }
 
     /// <summary>
     /// 测试Also方法 - 验证执行操作后返回原值功能

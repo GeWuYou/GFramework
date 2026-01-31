@@ -60,32 +60,6 @@ public static class PipeExtensions
         => x => second(first(x));
 
     /// <summary>
-    /// Apply：将函数应用于值（柯里化辅助）
-    /// </summary>
-    /// <typeparam name="TSource">输入值的类型</typeparam>
-    /// <typeparam name="TResult">函数返回结果的类型</typeparam>
-    /// <param name="func">要应用的函数</param>
-    /// <param name="value">要传递给函数的输入值</param>
-    /// <returns>函数执行后的结果</returns>
-    public static TResult Apply<TSource, TResult>(
-        this Func<TSource, TResult> func,
-        TSource value)
-        => func(value);
-
-    /// <summary>
-    /// On：将值应用于函数（与Apply功能相同，但参数顺序相反）
-    /// </summary>
-    /// <typeparam name="TSource">输入值的类型</typeparam>
-    /// <typeparam name="TResult">函数返回结果的类型</typeparam>
-    /// <param name="value">要传递给函数的输入值</param>
-    /// <param name="func">要应用的函数</param>
-    /// <returns>函数执行后的结果</returns>
-    public static TResult On<TSource, TResult>(
-        this TSource value,
-        Func<TSource, TResult> func)
-        => func(value);
-
-    /// <summary>
     /// Also：执行操作并返回原值
     /// </summary>
     /// <typeparam name="TSource">输入值的类型</typeparam>
