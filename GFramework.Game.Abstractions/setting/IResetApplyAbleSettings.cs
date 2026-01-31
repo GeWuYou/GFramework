@@ -24,4 +24,10 @@ public interface IResetApplyAbleSettings : IResettable, IApplyAbleSettings
     /// </summary>
     /// <returns>ISettingsData类型的设置数据</returns>
     ISettingsData Data { get; }
+
+    /// <summary>
+    /// 获取数据类型信息
+    /// </summary>
+    /// <returns>表示数据类型的Type对象</returns>
+    Type DataType { get; }
 }

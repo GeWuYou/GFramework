@@ -49,4 +49,5 @@ public class GodotLocalizationSettings(ISettingsModel model, LocalizationMap loc
     }
 
     public ISettingsData Data { get; } = model.GetData<LocalizationSettings>();
+    public Type DataType { get; } = typeof(LocalizationSettings);
 }

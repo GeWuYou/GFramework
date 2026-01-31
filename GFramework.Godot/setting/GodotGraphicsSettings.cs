@@ -52,4 +52,5 @@ public class GodotGraphicsSettings(ISettingsModel model) : IResetApplyAbleSettin
     }
 
     public ISettingsData Data { get; } = model.GetData<GraphicsSettings>();
+    public Type DataType { get; } = typeof(GraphicsSettings);
 }
