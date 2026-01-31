@@ -19,71 +19,16 @@ namespace GFramework.Core.functional.pipe;
 public static class PipeExtensions
 {
     /// <summary>
-    /// Pipe：把值送进函数（value.Pipe(func)）
+    /// Also：
+    /// 对值执行副作用操作并返回原值
+    ///
+    /// 适用于日志、调试、状态同步等场景
     /// </summary>
-    /// <typeparam name="TSource">输入值的类型</typeparam>
-    /// <typeparam name="TResult">函数返回结果的类型</typeparam>
-    /// <param name="value">要传递给函数的输入值</param>
-    /// <param name="func">接收输入值并返回结果的函数</param>
-    /// <returns>函数执行后的结果</returns>
-    public static TResult Pipe<TSource, TResult>(
-        this TSource value,
-        Func<TSource, TResult> func)
-        => func(value);
-
-    /// <summary>
-    /// Compose：函数组合（f1.Then(f2)）
-    /// </summary>
-    /// <typeparam name="TSource">第一个函数的输入类型</typeparam>
-    /// <typeparam name="TMiddle">第一个函数的输出类型，也是第二个函数的输入类型</typeparam>
-    /// <typeparam name="TResult">第二个函数的输出类型</typeparam>
-    /// <param name="first">第一个要执行的函数</param>
-    /// <param name="second">第二个要执行的函数</param>
-    /// <returns>组合后的新函数，先执行first再执行second</returns>
-    public static Func<TSource, TResult> Then<TSource, TMiddle, TResult>(
-        this Func<TSource, TMiddle> first,
-        Func<TMiddle, TResult> second)
-        => x => second(first(x));
-
-    /// <summary>
-    /// Compose：反向组合（f2.After(f1)）
-    /// </summary>
-    /// <typeparam name="TSource">第一个函数的输入类型</typeparam>
-    /// <typeparam name="TMiddle">第一个函数的输出类型，也是第二个函数的输入类型</typeparam>
-    /// <typeparam name="TResult">第二个函数的输出类型</typeparam>
-    /// <param name="second">第二个要执行的函数</param>
-    /// <param name="first">第一个要执行的函数</param>
-    /// <returns>组合后的新函数，先执行first再执行second</returns>
-    public static Func<TSource, TResult> After<TSource, TMiddle, TResult>(
-        this Func<TMiddle, TResult> second,
-        Func<TSource, TMiddle> first)
-        => x => second(first(x));
-
-    /// <summary>
-    /// Also：执行操作并返回原值
-    /// </summary>
-    /// <typeparam name="TSource">输入值的类型</typeparam>
-    /// <param name="value">要执行操作的输入值</param>
-    /// <param name="action">要执行的操作</param>
-    /// <returns>原始输入值</returns>
-    public static TSource Also<TSource>(
-        this TSource value,
-        Action<TSource> action)
+    public static T Also<T>(
+        this T value,
+        Action<T> action)
     {
         action(value);
         return value;
     }
-
-    /// <summary>
-    /// Let：将值转换为另一个值
-    /// </summary>
-    /// <typeparam name="TSource">输入值的类型</typeparam>
-    /// <typeparam name="TResult">转换结果的类型</typeparam>
-    /// <param name="value">要进行转换的输入值</param>
-    /// <param name="transform">用于转换值的函数</param>
-    /// <returns>转换后的结果</returns>
-    public static TResult Let<TSource, TResult>(
-        this TSource value,
-        Func<TSource, TResult> transform)
-        => transform(value);
 }

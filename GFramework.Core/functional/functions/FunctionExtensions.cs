@@ -20,42 +20,23 @@ namespace GFramework.Core.functional.functions;
 /// </summary>
 public static class FunctionExtensions
 {
-    #region 部分应用 - Partial
+    #region Repeat
 
     /// <summary>
-    /// Partial：部分应用函数（固定第一个参数）
+    /// Repeat：对值重复应用函数 n 次
     /// </summary>
-    /// <typeparam name="T1">第一个参数的类型</typeparam>
-    /// <typeparam name="T2">第二个参数的类型</typeparam>
-    /// <typeparam name="TResult">函数返回结果的类型</typeparam>
-    /// <param name="func">要部分应用的二参数函数</param>
-    /// <param name="firstArg">要固定的第一个参数值</param>
-    /// <returns>部分应用后的函数，只接受第二个参数</returns>
-    public static Func<T2, TResult> Partial<T1, T2, TResult>(
-        this Func<T1, T2, TResult> func,
-        T1 firstArg)
-        => x => func(firstArg, x);
-
-    #endregion
-
-    #region 重复执行 - Repeat
-
-    /// <summary>
-    /// Repeat：重复执行函数n次
-    /// </summary>
-    /// <typeparam name="TSource">输入值的类型</typeparam>
-    /// <param name="value">初始输入值</param>
-    /// <param name="times">重复执行的次数</param>
-    /// <param name="func">要重复执行的函数</param>
-    /// <returns>经过多次变换后的最终值</returns>
-    public static TSource Repeat<TSource>(
-        this TSource value,
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// 当 times 小于 0 时抛出
+    /// </exception>
+    public static T Repeat<T>(
+        this T value,
         int times,
-        Func<TSource, TSource> func)
+        Func<T, T> func)
     {
+        ArgumentOutOfRangeException.ThrowIfNegative(times);
+
         var result = value;
-        // 循环执行指定次数的函数调用
-        for (int i = 0; i < times; i++)
+        for (var i = 0; i < times; i++)
         {
             result = func(result);
         }
@@ -65,97 +46,59 @@ public static class FunctionExtensions
 
     #endregion
 
-    #region 安全执行 - Try
+    #region Try → Result
 
     /// <summary>
-    /// Try：安全执行，捕获异常
+    /// Try：安全执行并返回 language-ext 的 Result
     /// </summary>
-    /// <typeparam name="TSource">输入值的类型</typeparam>
-    /// <typeparam name="TResult">函数返回结果的类型</typeparam>
-    /// <param name="value">要传递给函数的输入值</param>
-    /// <param name="func">要安全执行的函数</param>
-    /// <returns>包含执行状态、结果和错误信息的元组</returns>
-    public static (bool success, TResult? result, Exception? error) Try<TSource, TResult>(
+    public static Result<TResult> Try<TSource, TResult>(
         this TSource value,
         Func<TSource, TResult> func)
     {
         try
         {
-            return (true, func(value), null);
+            return new Result<TResult>(func(value));
         }
         catch (Exception ex)
         {
-            return (false, default, ex);
+            return new Result<TResult>(ex);
         }
     }
 
     #endregion
 
-    #region 缓存 - Memoize
+    #region Memoize (Unbounded / Unsafe)
 
     /// <summary>
-    /// Memoize：缓存函数结果（线程安全版本）
+    /// MemoizeUnbounded：
+    /// 对函数结果进行无界缓存（线程安全）
+    ///
+    /// ⚠ 注意：
+    /// - 缓存永不释放
+    /// - TSource 必须具有稳定的 Equals / GetHashCode
+    /// - 仅适用于纯函数
     /// </summary>
-    /// <typeparam name="TSource">函数输入参数的类型</typeparam>
-    /// <typeparam name="TResult">函数返回结果的类型</typeparam>
-    /// <param name="func">要缓存结果的函数</param>
-    /// <returns>带有缓存功能的包装函数</returns>
-    /// <remarks>
-    /// 此版本使用ConcurrentDictionary确保线程安全。
-    /// GetOrAdd是原子操作，可以安全地在多线程环境中使用。
-    /// </remarks>
-    public static Func<TSource, TResult> Memoize<TSource, TResult>(
+    public static Func<TSource, TResult> MemoizeUnbounded<TSource, TResult>(
         this Func<TSource, TResult> func)
         where TSource : notnull
     {
         var cache = new ConcurrentDictionary<TSource, TResult>();
-        return x => cache.GetOrAdd(x, func);
+        return key => cache.GetOrAdd(key, func);
     }
 
     #endregion
 
-    #region 映射 - Map
+    #region Partial (Advanced)
 
     /// <summary>
-    /// Map：对单个对象应用函数
+    /// Partial：部分应用（二参数函数固定第一个参数）
+    ///
+    /// ⚠ 偏函数应用属于高级用法，不建议在业务代码滥用
     /// </summary>
-    /// <typeparam name="TSource">源对象类型</typeparam>
-    /// <typeparam name="TResult">映射后的类型</typeparam>
-    /// <param name="source">要映射的源对象</param>
-    /// <param name="selector">转换函数</param>
-    /// <returns>映射后的对象</returns>
-    public static TResult Map<TSource, TResult>(
-        this TSource source,
-        Func<TSource, TResult> selector)
-        => selector(source);
-
-    #endregion
-
-    #region 柯里化 - Curry/Uncurry
-
-    /// <summary>
-    /// Curry：将二参数函数转换为柯里化形式
-    /// </summary>
-    /// <typeparam name="T1">第一个参数的类型</typeparam>
-    /// <typeparam name="T2">第二个参数的类型</typeparam>
-    /// <typeparam name="TResult">函数返回结果的类型</typeparam>
-    /// <param name="func">要柯里化的二参数函数</param>
-    /// <returns>柯里化后的函数，接受一个参数并返回另一个函数</returns>
-    public static Func<T1, Func<T2, TResult>> Curry<T1, T2, TResult>(
-        this Func<T1, T2, TResult> func)
-        => x => y => func(x, y);
-
-    /// <summary>
-    /// Uncurry：将柯里化函数转换回二参数函数
-    /// </summary>
-    /// <typeparam name="T1">第一个参数的类型</typeparam>
-    /// <typeparam name="T2">第二个参数的类型</typeparam>
-    /// <typeparam name="TResult">函数返回结果的类型</typeparam>
-    /// <param name="func">要取消柯里化的函数</param>
-    /// <returns>恢复为二参数的函数</returns>
-    public static Func<T1, T2, TResult> Uncurry<T1, T2, TResult>(
-        this Func<T1, Func<T2, TResult>> func)
-        => (x, y) => func(x)(y);
+    public static Func<T2, TResult> Partial<T1, T2, TResult>(
+        this Func<T1, T2, TResult> func,
+        T1 firstArg)
+        => second => func(firstArg, second);
 
     #endregion
 }

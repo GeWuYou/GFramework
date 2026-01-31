@@ -9,4 +9,7 @@
     <ItemGroup>
         <ProjectReference Include="..\$(AssemblyName).Abstractions\$(AssemblyName).Abstractions.csproj"/>
     </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="LanguageExt.Core" Version="4.4.9"/>
+    </ItemGroup>
 </Project>

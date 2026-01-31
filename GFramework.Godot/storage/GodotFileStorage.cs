@@ -5,6 +5,7 @@ using GFramework.Core.Abstractions.serializer;
 using GFramework.Core.Abstractions.storage;
 using GFramework.Godot.extensions;
 using Godot;
+using Error = Godot.Error;
 using FileAccess = Godot.FileAccess;
 
 namespace GFramework.Godot.storage;

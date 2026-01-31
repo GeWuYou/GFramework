@@ -235,7 +235,6 @@ public sealed class CoroutineScheduler(
     public int Clear()
     {
         var count = ActiveCoroutineCount;
-
         Array.Clear(_slots);
         _metadata.Clear();
         _tagged.Clear();

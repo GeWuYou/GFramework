@@ -11,6 +11,7 @@
         <ProjectReference Include="..\$(AssemblyName).Abstractions\$(AssemblyName).Abstractions.csproj"/>
     </ItemGroup>
     <ItemGroup>
+        <PackageReference Include="LanguageExt.Core" Version="4.4.9"/>
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4"/>
     </ItemGroup>
 </Project>

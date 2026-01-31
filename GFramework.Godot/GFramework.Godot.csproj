@@ -11,6 +11,7 @@
         <PackageReference Include="Godot.SourceGenerators" Version="4.6.0" PrivateAssets="all"/>
         <PackageReference Include="GodotSharp" Version="4.6.0"/>
         <PackageReference Include="GodotSharpEditor" Version="4.6.0" PrivateAssets="all"/>
+        <PackageReference Include="LanguageExt.Core" Version="4.4.9"/>
     </ItemGroup>
 
     <ItemGroup>
