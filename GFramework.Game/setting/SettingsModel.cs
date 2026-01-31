@@ -29,6 +29,7 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
     private readonly ConcurrentDictionary<Type, ISettingsData> _data = new();
     private readonly ConcurrentDictionary<Type, Dictionary<int, ISettingsMigration>> _migrationCache = new();
     private readonly ConcurrentDictionary<(Type type, int from), ISettingsMigration> _migrations = new();
+
     private IDataLocationProvider? _locationProvider = locationProvider;
 
     private ISettingsDataRepository? _repository = repository;
@@ -215,6 +216,11 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
     {
         _repository ??= this.GetUtility<TRepository>()!;
         _locationProvider ??= this.GetUtility<IDataLocationProvider>()!;
+        foreach (var type in _data.Keys)
+        {
+            var location = _locationProvider.GetLocation(type);
+            DataRepository.RegisterDataType(location, type);
+        }
     }
 
     private ISettingsData MigrateIfNeeded(ISettingsData data)

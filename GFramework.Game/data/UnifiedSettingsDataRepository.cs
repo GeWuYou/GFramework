@@ -32,6 +32,7 @@ public class UnifiedSettingsDataRepository(
 {
     private readonly SemaphoreSlim _lock = new(1, 1);
     private readonly DataRepositoryOptions _options = options ?? new DataRepositoryOptions();
+    private readonly Dictionary<string, Type> _typeRegistry = new();
     private UnifiedSettingsFile? _file;
     private bool _loaded;
     private IRuntimeTypeSerializer? _serializer = serializer;
@@ -158,10 +159,29 @@ public class UnifiedSettingsDataRepository(
     public async Task<IDictionary<string, IData>> LoadAllAsync()
     {
         await EnsureLoadedAsync();
-        return File.Sections.ToDictionary(
-            kv => kv.Key,
-            kv => Serializer.Deserialize<IData>(kv.Value)
-        );
+
+        var result = new Dictionary<string, IData>();
+
+        foreach (var (key, raw) in File.Sections)
+        {
+            if (!_typeRegistry.TryGetValue(key, out var type))
+                continue;
+
+            var data = (IData)Serializer.Deserialize(raw, type);
+            result[key] = data;
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    ///     注册数据类型到类型注册表中
+    /// </summary>
+    /// <param name="location">数据位置信息，用于获取键值</param>
+    /// <param name="type">数据类型</param>
+    public void RegisterDataType(IDataLocation location, Type type)
+    {
+        _typeRegistry[location.Key] = type;
     }
 
     protected override void OnInit()

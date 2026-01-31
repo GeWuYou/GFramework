@@ -31,4 +31,11 @@ public interface ISettingsDataRepository : IDataRepository
     /// 此方法将从数据源中异步读取所有可用的设置项，并将其组织成字典格式返回
     /// </remarks>
     Task<IDictionary<string, IData>> LoadAllAsync();
+
+    /// <summary>
+    ///     注册数据类型到类型注册表中
+    /// </summary>
+    /// <param name="location">数据位置信息，用于获取键值</param>
+    /// <param name="type">数据类型</param>
+    void RegisterDataType(IDataLocation location, Type type);
 }
