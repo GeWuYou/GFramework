@@ -10,8 +10,6 @@ namespace GFramework.Core.Tests.functional.pipe;
 [TestFixture]
 public class PipeExtensionsTests
 {
-    #region Pipe Tests
-    
     /// <summary>
     /// 测试Pipe方法 - 验证值能够正确传递给函数并返回结果
     /// </summary>
@@ -20,18 +18,14 @@ public class PipeExtensionsTests
     {
         // Arrange
         var value = 5;
-        
+
         // Act
         var result = value.Pipe(x => x * 2);
-        
+
         // Assert
         Assert.That(result, Is.EqualTo(10));
     }
 
-    #endregion
-
-    #region Then Tests
-    
     /// <summary>
     /// 测试Then方法 - 验证两个函数能够正确组合执行
     /// </summary>
@@ -44,7 +38,7 @@ public class PipeExtensionsTests
         // Act
         var composed = addTwo.Then((Func<int, int>)MultiplyByThree);
         var result = composed(5);
-        
+
         // Assert
         Assert.That(result, Is.EqualTo(21)); // (5+2)*3 = 21
         return;
@@ -52,10 +46,6 @@ public class PipeExtensionsTests
         int MultiplyByThree(int x) => x * 3;
     }
 
-    #endregion
-
-    #region After Tests
-    
     /// <summary>
     /// 测试After方法 - 验证反向函数组合的正确性
     /// </summary>
@@ -68,7 +58,7 @@ public class PipeExtensionsTests
         // Act
         var composed = multiplyByThree.After((Func<int, int>)AddTwo);
         var result = composed(5);
-        
+
         // Assert
         Assert.That(result, Is.EqualTo(21)); // (5+2)*3 = 21
         return;
@@ -76,32 +66,6 @@ public class PipeExtensionsTests
         int AddTwo(int x) => x + 2;
     }
 
-    #endregion
-
-    #region Tap Tests
-    
-    /// <summary>
-    /// 测试Tap方法 - 验证副作用操作执行后返回原值
-    /// </summary>
-    [Test]
-    public void Tap_Should_Execute_Action_And_Return_Original_Value()
-    {
-        // Arrange
-        var value = 42;
-        var capturedValue = 0;
-        
-        // Act
-        var result = value.Tap(x => capturedValue = x);
-        
-        // Assert
-        Assert.That(result, Is.EqualTo(42));
-        Assert.That(capturedValue, Is.EqualTo(42));
-    }
-
-    #endregion
-
-    #region Apply Tests
-    
     /// <summary>
     /// 测试Apply方法 - 验证函数能够正确应用到参数上
     /// </summary>
@@ -110,18 +74,14 @@ public class PipeExtensionsTests
     {
         // Arrange
         Func<int, int> multiplyByTwo = x => x * 2;
-        
+
         // Act
         var result = multiplyByTwo.Apply(5);
-        
+
         // Assert
         Assert.That(result, Is.EqualTo(10));
     }
 
-    #endregion
-
-    #region Also Tests
-    
     /// <summary>
     /// 测试Also方法 - 验证执行操作后返回原值功能
     /// </summary>
@@ -131,19 +91,15 @@ public class PipeExtensionsTests
         // Arrange
         var value = 42;
         var capturedValue = 0;
-        
+
         // Act
         var result = value.Also(x => capturedValue = x);
-        
+
         // Assert
         Assert.That(result, Is.EqualTo(42));
         Assert.That(capturedValue, Is.EqualTo(42));
     }
 
-    #endregion
-
-    #region Let Tests
-    
     /// <summary>
     /// 测试Let方法 - 验证值转换功能
     /// </summary>
@@ -152,13 +108,11 @@ public class PipeExtensionsTests
     {
         // Arrange
         var value = 5;
-        
+
         // Act
         var result = value.Let(x => x * 2);
-        
+
         // Assert
         Assert.That(result, Is.EqualTo(10));
     }
-
-    #endregion
 }

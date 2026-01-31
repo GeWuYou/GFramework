@@ -50,4 +50,6 @@ public class GodotGraphicsSettings(ISettingsModel model) : IResetApplyAbleSettin
     {
         model.GetData<GraphicsSettings>().Reset();
     }
+
+    public ISettingsData Data { get; } = model.GetData<GraphicsSettings>();
 }

@@ -10,6 +10,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 namespace GFramework.Core.functional.pipe;
 
 /// <summary>
@@ -43,7 +44,7 @@ public static class PipeExtensions
         this Func<TSource, TMiddle> first,
         Func<TMiddle, TResult> second)
         => x => second(first(x));
-    
+
     /// <summary>
     /// Compose：反向组合（f2.After(f1)）
     /// </summary>
@@ -57,21 +58,6 @@ public static class PipeExtensions
         this Func<TMiddle, TResult> second,
         Func<TSource, TMiddle> first)
         => x => second(first(x));
-    
-    /// <summary>
-    /// Tap：执行副作用操作但返回原值（用于调试、日志等）
-    /// </summary>
-    /// <typeparam name="TSource">输入值的类型</typeparam>
-    /// <param name="value">要执行操作的输入值</param>
-    /// <param name="action">要执行的副作用操作</param>
-    /// <returns>原始输入值</returns>
-    public static TSource Tap<TSource>(
-        this TSource value,
-        Action<TSource> action)
-    {
-        action(value);
-        return value;
-    }
 
     /// <summary>
     /// Apply：将函数应用于值（柯里化辅助）
@@ -85,7 +71,20 @@ public static class PipeExtensions
         this Func<TSource, TResult> func,
         TSource value)
         => func(value);
-    
+
+    /// <summary>
+    /// On：将值应用于函数（与Apply功能相同，但参数顺序相反）
+    /// </summary>
+    /// <typeparam name="TSource">输入值的类型</typeparam>
+    /// <typeparam name="TResult">函数返回结果的类型</typeparam>
+    /// <param name="value">要传递给函数的输入值</param>
+    /// <param name="func">要应用的函数</param>
+    /// <returns>函数执行后的结果</returns>
+    public static TResult On<TSource, TResult>(
+        this TSource value,
+        Func<TSource, TResult> func)
+        => func(value);
+
     /// <summary>
     /// Also：执行操作并返回原值
     /// </summary>
@@ -113,6 +112,4 @@ public static class PipeExtensions
         this TSource value,
         Func<TSource, TResult> transform)
         => transform(value);
-
-    
 }

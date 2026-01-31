@@ -47,4 +47,6 @@ public class GodotLocalizationSettings(ISettingsModel model, LocalizationMap loc
     {
         model.GetData<LocalizationSettings>().Reset();
     }
+
+    public ISettingsData Data { get; } = model.GetData<LocalizationSettings>();
 }

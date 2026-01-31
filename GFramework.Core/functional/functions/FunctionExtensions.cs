@@ -10,6 +10,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 namespace GFramework.Core.functional.functions;
 
 /// <summary>
@@ -54,7 +55,7 @@ public static class FunctionExtensions
         this Func<T1, T2, TResult> func,
         T1 firstArg)
         => x => func(firstArg, x);
-    
+
     /// <summary>
     /// Repeat：重复执行函数n次
     /// </summary>
@@ -74,6 +75,7 @@ public static class FunctionExtensions
         {
             result = func(result);
         }
+
         return result;
     }
 
@@ -122,4 +124,17 @@ public static class FunctionExtensions
             return result;
         };
     }
+
+    /// <summary>
+    /// Map：对单个对象应用函数
+    /// </summary>
+    /// <typeparam name="TSource">源对象类型</typeparam>
+    /// <typeparam name="TResult">映射后的类型</typeparam>
+    /// <param name="source">要映射的源对象</param>
+    /// <param name="selector">转换函数</param>
+    /// <returns>映射后的对象</returns>
+    public static TResult Map<TSource, TResult>(
+        this TSource source,
+        Func<TSource, TResult> selector)
+        => selector(source);
 }
