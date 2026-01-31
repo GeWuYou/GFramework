@@ -4,6 +4,7 @@ using GFramework.Core.logging;
 using GFramework.Core.model;
 using GFramework.Game.Abstractions.data;
 using GFramework.Game.Abstractions.setting;
+using GFramework.Game.setting.events;
 
 namespace GFramework.Game.setting;
 
@@ -135,6 +136,8 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
                 Log.Error($"Failed to initialize settings data: {data.GetType().Name}", ex);
             }
         }
+
+        this.SendEvent(new SettingsInitializedEvent());
     }
 
 
@@ -155,6 +158,8 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
                 Log.Error($"Failed to save settings data: {data.GetType().Name}", ex);
             }
         }
+
+        this.SendEvent(new SettingsSavedAllEvent());
     }
 
     /// <summary>
@@ -173,6 +178,8 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
                 Log.Error($"Failed to apply settings: {applicator.GetType().Name}", ex);
             }
         }
+
+        this.SendEvent(new SettingsAppliedAllEvent());
     }
 
     /// <summary>
@@ -183,6 +190,7 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
     {
         var data = GetData<T>();
         data.Reset();
+        this.SendEvent(new SettingsResetEvent<T>(data));
     }
 
     /// <summary>
@@ -195,6 +203,7 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
 
         foreach (var applicator in _applicators)
             applicator.Value.Reset();
+        this.SendEvent(new SettingsResetAllEvent(_data.Values));
     }
 
     /// <summary>
