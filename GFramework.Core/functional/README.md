@@ -207,6 +207,182 @@ object obj = "Hello";
 var str = obj.Cast<string>(); // "Hello"
 ```
 
+### 6. Option Type - 可选值类型
+
+位于 `GFramework.Core.functional.types` 命名空间，提供表示可能存在或不存在的值的类型。
+
+#### 核心类型及用法：
+
+- **Option&lt;T&gt;** - 表示可能包含值或不包含值的类型
+
+```csharp
+// 创建包含值的Option
+var someValue = Option&lt;string&gt;.Some("Hello");
+Console.WriteLine(someValue.IsSome); // True
+Console.WriteLine(someValue.Value);  // "Hello"
+
+// 创建空的Option
+var noValue = Option&lt;string&gt;.None();
+Console.WriteLine(noValue.IsNone); // True
+```
+
+#### Option扩展方法：
+
+- **Map** - 对Option中的值进行映射转换
+
+```csharp
+var someValue = Option&lt;string&gt;.Some("hello");
+var lengthOption = someValue.Map(s => s.Length); // Some(5)
+
+var noneValue = Option&lt;string&gt;.None();
+var noneLength = noneValue.Map(s => s.Length); // None
+```
+
+- **Bind** - 将Option中的值转换为另一个Option
+
+```csharp
+var someValue = Option&lt;string&gt;.Some("hello");
+var result = someValue.Bind(s => s.Length > 3 ? Option&lt;int&gt;.Some(s.Length) : Option&lt;int&gt;.None()); // Some(5)
+
+var shortValue = Option&lt;string&gt;.Some("hi");
+var result2 = shortValue.Bind(s => s.Length > 3 ? Option&lt;int&gt;.Some(s.Length) : Option&lt;int&gt;.None()); // None
+```
+
+- **Filter** - 根据条件过滤Option中的值
+
+```csharp
+var someValue = Option&lt;string&gt;.Some("hello");
+var filtered = someValue.Filter(s => s.Length > 3); // Some("hello")
+var filtered2 = someValue.Filter(s => s.Length > 10); // None
+```
+
+- **Match** - 模式匹配Option的状态
+
+```csharp
+var someValue = Option&lt;string&gt;.Some("hello");
+var result = someValue.Match(
+    some: s => $"Value: {s}",
+    none: () => "No value"
+); // "Value: hello"
+
+var noneValue = Option&lt;string&gt;.None();
+var result2 = noneValue.Match(
+    some: s => $"Value: {s}",
+    none: () => "No value"
+); // "No value"
+```
+
+- **GetOrElse** - 获取值或返回默认值
+
+```csharp
+var someValue = Option&lt;string&gt;.Some("hello");
+var value1 = someValue.GetOrElse("default"); // "hello"
+
+var noneValue = Option&lt;string&gt;.None();
+var value2 = noneValue.GetOrElse("default"); // "default"
+```
+
+- **OrElse** - 当前Option为空时返回备选Option
+
+```csharp
+var someValue = Option&lt;string&gt;.Some("primary");
+var result1 = someValue.OrElse(Option&lt;string&gt;.Some("fallback")); // Some("primary")
+
+var noneValue = Option&lt;string&gt;.None();
+var result2 = noneValue.OrElse(Option&lt;string&gt;.Some("fallback")); // Some("fallback")
+```
+
+### 7. Result Type - 结果类型
+
+位于 `GFramework.Core.functional.types` 命名空间，提供表示成功或失败结果的类型。
+
+#### 核心类型及用法：
+
+- **Result&lt;TSuccess, TError&gt;** - 表示可能成功或失败的计算结果
+
+```csharp
+// 创建成功的结果
+var successResult = Result&lt;string, string&gt;.Success("Operation successful");
+Console.WriteLine(successResult.IsSuccess);     // True
+Console.WriteLine(successResult.SuccessValue);  // "Operation successful"
+
+// 创建失败的结果
+var failureResult = Result&lt;string, string&gt;.Failure("Operation failed");
+Console.WriteLine(failureResult.IsFailure);    // True
+Console.WriteLine(failureResult.ErrorValue);   // "Operation failed"
+```
+
+#### Result扩展方法：
+
+- **Map** - 对成功值进行映射转换
+
+```csharp
+var successResult = Result&lt;string, string&gt;.Success("hello");
+var lengthResult = successResult.Map(s => s.Length); // Success(5)
+
+var failureResult = Result&lt;string, string&gt;.Failure("error");
+var lengthResult2 = failureResult.Map(s => s.Length); // Failure("error")
+```
+
+- **Bind** - 将成功值转换为另一个Result
+
+```csharp
+var successResult = Result&lt;string, string&gt;.Success("hello");
+var result = successResult.Bind(s => 
+    s.Length > 3 ? 
+    Result&lt;int, string&gt;.Success(s.Length) : 
+    Result&lt;int, string&gt;.Failure("Length too small"));
+// Result&lt;int, string&gt;.Success(5)
+```
+
+- **MapError** - 对错误值进行映射转换
+
+```csharp
+var failureResult = Result&lt;string, string&gt;.Failure("original error");
+var mappedErrorResult = failureResult.MapError(err => $"Mapped: {err}");
+// Result&lt;string, string&gt;.Failure("Mapped: original error")
+```
+
+- **Match** - 模式匹配Result的状态
+
+```csharp
+var successResult = Result&lt;string, string&gt;.Success("data");
+var result = successResult.Match(
+    onSuccess: data => $"Success: {data}",
+    onFailure: error => $"Error: {error}"
+); // "Success: data"
+
+var failureResult = Result&lt;string, string&gt;.Failure("error");
+var result2 = failureResult.Match(
+    onSuccess: data => $"Success: {data}",
+    onFailure: error => $"Error: {error}"
+); // "Error: error"
+```
+
+### 8. Nullable Extensions - 可空类型扩展
+
+位于 `GFramework.Core.functional.types` 命名空间，提供将可空类型转换为Option类型的方法。
+
+#### 方法列表及用法：
+
+- **ToOption** - 将可空类型转换为Option
+
+```csharp
+// 引用类型可空转换
+string? stringValue = "Hello";
+var someOption = stringValue.ToOption(); // Some("Hello")
+
+string? nullString = null;
+var noneOption = nullString.ToOption(); // None
+
+// 值类型可空转换
+int? intValue = 42;
+var someIntOption = intValue.ToOption(); // Some(42)
+
+int? nullInt = null;
+var noneIntOption = nullInt.ToOption(); // None
+```
+
 ## 使用示例
 
 ### 链式操作
