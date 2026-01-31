@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using GFramework.Core.functional.types;
+using System.Collections.Concurrent;
 
 namespace GFramework.Core.functional.functions;
 
@@ -20,29 +20,7 @@ namespace GFramework.Core.functional.functions;
 /// </summary>
 public static class FunctionExtensions
 {
-    /// <summary>
-    /// Curry：将二参数函数转换为柯里化形式
-    /// </summary>
-    /// <typeparam name="T1">第一个参数的类型</typeparam>
-    /// <typeparam name="T2">第二个参数的类型</typeparam>
-    /// <typeparam name="TResult">函数返回结果的类型</typeparam>
-    /// <param name="func">要柯里化的二参数函数</param>
-    /// <returns>柯里化后的函数，接受一个参数并返回另一个函数</returns>
-    public static Func<T1, Func<T2, TResult>> Curry<T1, T2, TResult>(
-        this Func<T1, T2, TResult> func)
-        => x => y => func(x, y);
-
-    /// <summary>
-    /// Uncurry：将柯里化函数转换回二参数函数
-    /// </summary>
-    /// <typeparam name="T1">第一个参数的类型</typeparam>
-    /// <typeparam name="T2">第二个参数的类型</typeparam>
-    /// <typeparam name="TResult">函数返回结果的类型</typeparam>
-    /// <param name="func">要取消柯里化的函数</param>
-    /// <returns>恢复为二参数的函数</returns>
-    public static Func<T1, T2, TResult> Uncurry<T1, T2, TResult>(
-        this Func<T1, Func<T2, TResult>> func)
-        => (x, y) => func(x)(y);
+    #region 部分应用 - Partial
 
     /// <summary>
     /// Partial：部分应用函数（固定第一个参数）
@@ -57,6 +35,10 @@ public static class FunctionExtensions
         this Func<T1, T2, TResult> func,
         T1 firstArg)
         => x => func(firstArg, x);
+
+    #endregion
+
+    #region 重复执行 - Repeat
 
     /// <summary>
     /// Repeat：重复执行函数n次
@@ -81,54 +63,58 @@ public static class FunctionExtensions
         return result;
     }
 
+    #endregion
+
+    #region 安全执行 - Try
 
     /// <summary>
-    /// 尝试执行一个转换函数，并将结果包装在Result对象中，捕获可能发生的异常
+    /// Try：安全执行，捕获异常
     /// </summary>
     /// <typeparam name="TSource">输入值的类型</typeparam>
-    /// <typeparam name="TResult">转换函数返回值的类型</typeparam>
-    /// <param name="value">要进行转换操作的源值</param>
-    /// <param name="func">用于转换源值的函数委托</param>
-    /// <returns>如果转换成功则返回包含结果的成功状态，如果发生异常则返回包含异常信息的失败状态</returns>
-    public static Result<TResult, Exception> TryResult<TSource, TResult>(
+    /// <typeparam name="TResult">函数返回结果的类型</typeparam>
+    /// <param name="value">要传递给函数的输入值</param>
+    /// <param name="func">要安全执行的函数</param>
+    /// <returns>包含执行状态、结果和错误信息的元组</returns>
+    public static (bool success, TResult? result, Exception? error) Try<TSource, TResult>(
         this TSource value,
         Func<TSource, TResult> func)
     {
-        // 执行转换函数并处理可能的异常
         try
         {
-            return Result<TResult, Exception>.Success(func(value));
+            return (true, func(value), null);
         }
         catch (Exception ex)
         {
-            return Result<TResult, Exception>.Failure(ex);
+            return (false, default, ex);
         }
     }
 
+    #endregion
+
+    #region 缓存 - Memoize
 
     /// <summary>
-    /// Memoize：缓存函数结果
+    /// Memoize：缓存函数结果（线程安全版本）
     /// </summary>
     /// <typeparam name="TSource">函数输入参数的类型</typeparam>
     /// <typeparam name="TResult">函数返回结果的类型</typeparam>
     /// <param name="func">要缓存结果的函数</param>
     /// <returns>带有缓存功能的包装函数</returns>
+    /// <remarks>
+    /// 此版本使用ConcurrentDictionary确保线程安全。
+    /// GetOrAdd是原子操作，可以安全地在多线程环境中使用。
+    /// </remarks>
     public static Func<TSource, TResult> Memoize<TSource, TResult>(
         this Func<TSource, TResult> func)
         where TSource : notnull
     {
-        var cache = new Dictionary<TSource, TResult>();
-        return x =>
-        {
-            // 尝试从缓存中获取结果
-            if (cache.TryGetValue(x, out var result))
-                return result;
-            // 缓存未命中时计算结果并存储
-            result = func(x);
-            cache[x] = result;
-            return result;
-        };
+        var cache = new ConcurrentDictionary<TSource, TResult>();
+        return x => cache.GetOrAdd(x, func);
     }
+
+    #endregion
+
+    #region 映射 - Map
 
     /// <summary>
     /// Map：对单个对象应用函数
@@ -142,4 +128,34 @@ public static class FunctionExtensions
         this TSource source,
         Func<TSource, TResult> selector)
         => selector(source);
+
+    #endregion
+
+    #region 柯里化 - Curry/Uncurry
+
+    /// <summary>
+    /// Curry：将二参数函数转换为柯里化形式
+    /// </summary>
+    /// <typeparam name="T1">第一个参数的类型</typeparam>
+    /// <typeparam name="T2">第二个参数的类型</typeparam>
+    /// <typeparam name="TResult">函数返回结果的类型</typeparam>
+    /// <param name="func">要柯里化的二参数函数</param>
+    /// <returns>柯里化后的函数，接受一个参数并返回另一个函数</returns>
+    public static Func<T1, Func<T2, TResult>> Curry<T1, T2, TResult>(
+        this Func<T1, T2, TResult> func)
+        => x => y => func(x, y);
+
+    /// <summary>
+    /// Uncurry：将柯里化函数转换回二参数函数
+    /// </summary>
+    /// <typeparam name="T1">第一个参数的类型</typeparam>
+    /// <typeparam name="T2">第二个参数的类型</typeparam>
+    /// <typeparam name="TResult">函数返回结果的类型</typeparam>
+    /// <param name="func">要取消柯里化的函数</param>
+    /// <returns>恢复为二参数的函数</returns>
+    public static Func<T1, T2, TResult> Uncurry<T1, T2, TResult>(
+        this Func<T1, Func<T2, TResult>> func)
+        => (x, y) => func(x)(y);
+
+    #endregion
 }
