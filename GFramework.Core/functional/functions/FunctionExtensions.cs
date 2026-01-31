@@ -11,6 +11,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using GFramework.Core.functional.types;
+
 namespace GFramework.Core.functional.functions;
 
 /// <summary>
@@ -79,27 +81,30 @@ public static class FunctionExtensions
         return result;
     }
 
+
     /// <summary>
-    /// Try：安全执行，捕获异常
+    /// 尝试执行一个转换函数，并将结果包装在Result对象中，捕获可能发生的异常
     /// </summary>
     /// <typeparam name="TSource">输入值的类型</typeparam>
-    /// <typeparam name="TResult">函数返回结果的类型</typeparam>
-    /// <param name="value">要传递给函数的输入值</param>
-    /// <param name="func">要安全执行的函数</param>
-    /// <returns>包含执行状态、结果和错误信息的元组</returns>
-    public static (bool success, TResult? result, Exception? error) Try<TSource, TResult>(
+    /// <typeparam name="TResult">转换函数返回值的类型</typeparam>
+    /// <param name="value">要进行转换操作的源值</param>
+    /// <param name="func">用于转换源值的函数委托</param>
+    /// <returns>如果转换成功则返回包含结果的成功状态，如果发生异常则返回包含异常信息的失败状态</returns>
+    public static Result<TResult, Exception> TryResult<TSource, TResult>(
         this TSource value,
         Func<TSource, TResult> func)
     {
+        // 执行转换函数并处理可能的异常
         try
         {
-            return (true, func(value), null);
+            return Result<TResult, Exception>.Success(func(value));
         }
         catch (Exception ex)
         {
-            return (false, default, ex);
+            return Result<TResult, Exception>.Failure(ex);
         }
     }
+
 
     /// <summary>
     /// Memoize：缓存函数结果
