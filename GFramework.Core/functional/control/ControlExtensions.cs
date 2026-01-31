@@ -10,6 +10,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+using GFramework.Core.functional.types;
+
 namespace GFramework.Core.functional.control;
 
 /// <summary>
@@ -26,17 +29,19 @@ public static class ControlExtensions
     /// <param name="cases">匹配案例数组，每个包含谓词和处理器</param>
     /// <returns>匹配到的处理结果</returns>
     /// <exception cref="InvalidOperationException">当没有匹配的案例时抛出</exception>
-    public static TResult Match<TSource, TResult>(
+    public static Option<TResult> Match<TSource, TResult>(
         this TSource value,
         params (Func<TSource, bool> predicate, Func<TSource, TResult> handler)[] cases)
     {
         foreach (var (predicate, handler) in cases)
         {
             if (predicate(value))
-                return handler(value);
+                return Option<TResult>.Some(handler(value));
         }
-        throw new InvalidOperationException("No matching case found");
+
+        return Option<TResult>.None();
     }
+
 
     /// <summary>
     /// MatchOrDefault：带默认值的模式匹配
@@ -57,6 +62,7 @@ public static class ControlExtensions
             if (predicate(value))
                 return handler(value);
         }
+
         return defaultValue;
     }
 
@@ -89,7 +95,7 @@ public static class ControlExtensions
         Func<TSource, TSource> thenFunc,
         Func<TSource, TSource> elseFunc)
         => predicate(value) ? thenFunc(value) : elseFunc(value);
-    
+
     /// <summary>
     /// TakeIf：条件返回值或null
     /// </summary>
