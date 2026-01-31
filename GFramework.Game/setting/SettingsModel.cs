@@ -67,6 +67,7 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
         where T : class, IResetApplyAbleSettings
     {
         _applicators[typeof(T)] = applicator;
+        _data[typeof(T)] = applicator.Data;
         return this;
     }
 
