@@ -15,6 +15,20 @@ namespace GFramework.Core.extensions;
 public static class ContextAwareExtensions
 {
     /// <summary>
+    ///     从上下文感知对象中获取指定类型的服务
+    /// </summary>
+    /// <typeparam name="TService">要获取的服务类型</typeparam>
+    /// <param name="contextAware">实现 IContextAware 接口的上下文感知对象</param>
+    /// <returns>指定类型的服务实例，如果未找到则返回 null</returns>
+    /// <exception cref="ArgumentNullException">当 contextAware 参数为 null 时抛出</exception>
+    public static TService? GetService<TService>(this IContextAware contextAware) where TService : class
+    {
+        ArgumentNullException.ThrowIfNull(contextAware);
+        var context = contextAware.GetContext();
+        return context.GetService<TService>();
+    }
+
+    /// <summary>
     ///     获取架构上下文中的指定系统
     /// </summary>
     /// <typeparam name="TSystem">目标系统类型</typeparam>
@@ -27,6 +41,7 @@ public static class ContextAwareExtensions
         var context = contextAware.GetContext();
         return context.GetSystem<TSystem>();
     }
+
 
     /// <summary>
     ///     获取架构上下文中的指定模型
