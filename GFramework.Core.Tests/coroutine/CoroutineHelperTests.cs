@@ -162,8 +162,7 @@ public class CoroutineHelperTests
     [Test]
     public void DelayedCall_Should_Return_IEnumerator()
     {
-        var called = false;
-        var coroutine = CoroutineHelper.DelayedCall(1.0, () => called = true);
+        var coroutine = CoroutineHelper.DelayedCall(1.0, () => _ = true);
 
         Assert.That(coroutine, Is.InstanceOf<IEnumerator<IYieldInstruction>>());
     }
@@ -300,8 +299,7 @@ public class CoroutineHelperTests
     [Test]
     public void DelayedCall_Should_Handle_Negative_Delay()
     {
-        var called = false;
-        var coroutine = CoroutineHelper.DelayedCall(-1.0, () => called = true);
+        var coroutine = CoroutineHelper.DelayedCall(-1.0, () => _ = true);
 
         Assert.That(coroutine, Is.Not.Null);
         Assert.DoesNotThrow(() => coroutine.MoveNext());

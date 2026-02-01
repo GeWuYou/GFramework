@@ -17,7 +17,7 @@ public static class CoroutineExtensions
     /// <returns>协程枚举器</returns>
     public static IEnumerator<IYieldInstruction> RepeatEvery(
         double interval,
-        Action action,
+        Action? action,
         int? count = null)
     {
         if (count is < 0) yield break;

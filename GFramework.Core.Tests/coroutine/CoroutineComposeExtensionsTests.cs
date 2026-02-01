@@ -117,7 +117,7 @@ public class CoroutineComposeExtensionsTests
             combined.Current.Update(0.016);
         }
 
-        Assert.That(executionOrder, Is.EqualTo(new[] { 1, 2, 3 }));
+        Assert.That(executionOrder, Is.EqualTo([1, 2, 3]));
     }
 
     /// <summary>

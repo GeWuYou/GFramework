@@ -109,8 +109,7 @@ public class CoroutineExtensionsTests
     [Test]
     public void ExecuteAfter_Should_Return_Valid_Coroutine()
     {
-        var called = false;
-        var coroutine = CoroutineExtensions.ExecuteAfter(1.0, () => called = true);
+        var coroutine = CoroutineExtensions.ExecuteAfter(1.0, () => _ = true);
 
         Assert.That(coroutine, Is.InstanceOf<IEnumerator<IYieldInstruction>>());
     }
