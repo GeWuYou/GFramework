@@ -6,14 +6,14 @@ name: "CodeQL"
 # 在以下情况下触发工作流：
 # 1. 推送到main分支时
 # 2. 针对main分支的拉取请求时  
-# 3. 每周二凌晨4点41分定时执行
+# 3. 每天凌晨2点执行一次
 on:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
   schedule:
-    - cron: '41 4 * * 2'
+    - cron: '0 2 * * *'
 
 jobs:
   # 分析任务配置

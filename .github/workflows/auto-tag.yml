@@ -27,16 +27,6 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      
-      - name: Check for skip keyword
-        id: check_skip
-        run: |
-          LAST_COMMIT_MSG=$(git log -1 --pretty=format:"%B")
-          if [[ "$LAST_COMMIT_MSG" == *"[skip]"* ]] || [[ "$LAST_COMMIT_MSG" == *"[no tag]"* ]]; then
-            echo "skip_tag=true" >> $GITHUB_OUTPUT
-          else
-            echo "skip_tag=false" >> $GITHUB_OUTPUT
-          fi
 
       - name: Get next version
         if: steps.check_skip.outputs.skip_tag == 'false'
