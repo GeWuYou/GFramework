@@ -36,7 +36,7 @@ public static class CommandCoroutineExtensions
     public static IEnumerator<IYieldInstruction> SendCommandCoroutineWithErrorHandler<TCommand>(
         this IContextAware contextAware,
         TCommand command,
-        Action<Exception>? onError)
+        Action<Exception>? onError = null)
         where TCommand : class, IAsyncCommand
     {
         var task = contextAware.GetContext().SendCommandAsync(command);
