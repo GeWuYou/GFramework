@@ -86,9 +86,13 @@ public class CommandCoroutineExtensionsTests
 
         // 迭代协程直到完成
         while (coroutine.MoveNext())
-            if (coroutine.Current is WaitForTask)
+        {
+            if (coroutine.Current is WaitForTask waitForTask)
+            {
                 // 等待任务完成
                 await Task.Delay(10);
+            }
+        }
 
         Assert.That(capturedException, Is.Null);
     }
@@ -113,9 +117,13 @@ public class CommandCoroutineExtensionsTests
 
         // 迭代协程直到完成
         while (coroutine.MoveNext())
-            if (coroutine.Current is WaitForTask)
+        {
+            if (coroutine.Current is WaitForTask waitForTask)
+            {
                 // 等待任务完成
                 await Task.Delay(10);
+            }
+        }
 
         Assert.That(capturedException, Is.Not.Null);
         // 异常被包装为 AggregateException
@@ -144,9 +152,13 @@ public class CommandCoroutineExtensionsTests
 
         // 迭代协程直到完成
         while (coroutine.MoveNext())
-            if (coroutine.Current is WaitForTask)
+        {
+            if (coroutine.Current is WaitForTask waitForTask)
+            {
                 // 等待任务完成
                 await Task.Delay(10);
+            }
+        }
 
         // 应该不会抛出异常
         Assert.Pass();
@@ -192,7 +204,7 @@ public class CommandCoroutineExtensionsTests
 
         // 启动协程并等待命令执行完成
         coroutine.MoveNext(); // 进入命令发送阶段
-        if (coroutine.Current is WaitForTask) await Task.Delay(10); // 等待命令任务完成
+        if (coroutine.Current is WaitForTask waitForTask) await Task.Delay(10); // 等待命令任务完成
 
         // 此时协程应该在等待事件
         Assert.That(coroutine.MoveNext(), Is.True); // 等待事件阶段
@@ -285,7 +297,7 @@ public class CommandCoroutineExtensionsTests
 
         // 启动协程
         coroutine.MoveNext(); // 进入命令发送阶段
-        if (coroutine.Current is WaitForTask) await Task.Delay(10); // 等待命令任务完成
+        if (coroutine.Current is WaitForTask waitForTask) await Task.Delay(10); // 等待命令任务完成
 
         // 触发事件
         var testEvent = new TestEvent { Data = "TestData" };
@@ -328,7 +340,7 @@ public class CommandCoroutineExtensionsTests
 
         // 启动协程 - 命令失败时协程仍然继续
         coroutine.MoveNext(); // 进入命令发送阶段
-        if (coroutine.Current is WaitForTask) await Task.Delay(10); // 等待命令任务完成
+        if (coroutine.Current is WaitForTask waitForTask) await Task.Delay(10); // 等待命令任务完成
 
         // 命令执行失败后，协程继续执行
         Assert.Pass();

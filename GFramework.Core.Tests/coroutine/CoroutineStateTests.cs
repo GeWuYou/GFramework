@@ -20,10 +20,9 @@ public class CoroutineStateTests
     {
         var values = Enum.GetValues<CoroutineState>();
 
-        Assert.That(values, Has.Length.EqualTo(5), "CoroutineState should have 5 values");
+        Assert.That(values, Has.Length.EqualTo(4), "CoroutineState should have 4 values");
         Assert.That(values.Contains(CoroutineState.Running), Is.True, "Should contain Running");
         Assert.That(values.Contains(CoroutineState.Paused), Is.True, "Should contain Paused");
-        Assert.That(values.Contains(CoroutineState.Held), Is.True, "Should contain Held");
         Assert.That(values.Contains(CoroutineState.Completed), Is.True, "Should contain Completed");
         Assert.That(values.Contains(CoroutineState.Cancelled), Is.True, "Should contain Cancelled");
     }
@@ -36,14 +35,12 @@ public class CoroutineStateTests
     {
         var runningValue = (int)CoroutineState.Running;
         var pausedValue = (int)CoroutineState.Paused;
-        var heldValue = (int)CoroutineState.Held;
         var completedValue = (int)CoroutineState.Completed;
         var cancelledValue = (int)CoroutineState.Cancelled;
 
         Assert.That(runningValue, Is.EqualTo(0));
         Assert.That(pausedValue, Is.EqualTo(1));
-        Assert.That(heldValue, Is.EqualTo(2));
-        Assert.That(completedValue, Is.EqualTo(3));
-        Assert.That(cancelledValue, Is.EqualTo(4));
+        Assert.That(completedValue, Is.EqualTo(2));
+        Assert.That(cancelledValue, Is.EqualTo(3));
     }
 }

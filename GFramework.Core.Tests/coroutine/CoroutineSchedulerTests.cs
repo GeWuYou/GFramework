@@ -1,6 +1,8 @@
 using GFramework.Core.Abstractions.coroutine;
+using GFramework.Core.Abstractions.events;
 using GFramework.Core.coroutine;
 using GFramework.Core.coroutine.instructions;
+using Moq;
 using NUnit.Framework;
 
 namespace GFramework.Core.Tests.coroutine;
@@ -43,6 +45,14 @@ public class CoroutineSchedulerTests
     ///     测试用的协程调度器实例
     /// </summary>
     private CoroutineScheduler _scheduler = null!;
+
+    /// <summary>
+    ///     测试用的简单事件类
+    /// </summary>
+    private class TestEvent
+    {
+        public string Data { get; set; } = string.Empty;
+    }
 
     /// <summary>
     ///     验证协程调度器创建时应该有正确的初始状态
@@ -292,6 +302,7 @@ public class CoroutineSchedulerTests
         Assert.That(clearedCount, Is.EqualTo(0));
     }
 
+
     /// <summary>
     ///     验证协程调度器应该正确处理协程异常
     /// </summary>
@@ -405,6 +416,46 @@ public class CoroutineSchedulerTests
         Assert.That(executeCount, Is.EqualTo(1));
     }
 
+
+    /// <summary>
+    ///     验证协程可以等待事件
+    /// </summary>
+    [Test]
+    public void Coroutine_Should_Wait_For_Event()
+    {
+        var timeSource = new TestTimeSource();
+        var scheduler = new CoroutineScheduler(timeSource);
+
+        // 创建模拟事件总线
+        var eventBusMock = new Mock<IEventBus>();
+        var unRegisterMock = new Mock<IUnRegister>();
+
+        Action<TestEvent>? eventCallback = null;
+        eventBusMock.Setup(bus => bus.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+            .Returns(unRegisterMock.Object)
+            .Callback<Action<TestEvent>>(cb => eventCallback = cb);
+
+        TestEvent? receivedEvent = null;
+        var coroutine = CreateWaitForEventCoroutine<TestEvent>(eventBusMock.Object, ev => receivedEvent = ev);
+
+        var handle = scheduler.Run(coroutine);
+
+        // 协程应该在等待事件，因此仍然存活
+        Assert.That(scheduler.IsCoroutineAlive(handle), Is.True);
+
+        // 触发事件
+        var testEvent = new TestEvent { Data = "TestData" };
+        eventCallback?.Invoke(testEvent);
+
+        // 更新调度器
+        scheduler.Update();
+
+        // 协程应该已完成，事件数据应该被接收
+        Assert.That(scheduler.IsCoroutineAlive(handle), Is.False);
+        Assert.That(receivedEvent, Is.Not.Null);
+        Assert.That(receivedEvent?.Data, Is.EqualTo("TestData"));
+    }
+
     /// <summary>
     ///     创建简单的立即完成协程
     /// </summary>
@@ -449,6 +500,34 @@ public class CoroutineSchedulerTests
         onExecute?.Invoke();
         yield return new WaitOneFrame();
         yield return new WaitOneFrame();
+    }
+
+    /// <summary>
+    ///     创建延迟协程
+    /// </summary>
+    private IEnumerator<IYieldInstruction> CreateDelayedCoroutine(Action callback, double delay)
+    {
+        yield return new Delay(delay);
+        callback();
+    }
+
+    /// <summary>
+    ///     创建等待另一个协程的协程
+    /// </summary>
+    private IEnumerator<IYieldInstruction> CreateWaitForCoroutine(IEnumerator<IYieldInstruction> targetCoroutine)
+    {
+        yield return new WaitForCoroutine(targetCoroutine);
+    }
+
+    /// <summary>
+    ///     创建等待事件的协程
+    /// </summary>
+    private IEnumerator<IYieldInstruction> CreateWaitForEventCoroutine<TEvent>(IEventBus eventBus,
+        Action<TEvent>? callback = null)
+    {
+        var waitForEvent = new WaitForEvent<TEvent>(eventBus);
+        yield return waitForEvent;
+        callback?.Invoke(waitForEvent.EventData!);
     }
 
     /// <summary>

@@ -292,7 +292,8 @@ public class YieldInstructionTests
     [Test]
     public void WaitForCoroutine_Should_Not_Be_Done_Initially()
     {
-        var wait = new WaitForCoroutine();
+        var simpleCoroutine = CreateSimpleCoroutine();
+        var wait = new WaitForCoroutine(simpleCoroutine);
 
         Assert.That(wait.IsDone, Is.False);
     }
@@ -303,7 +304,8 @@ public class YieldInstructionTests
     [Test]
     public void WaitForCoroutine_Update_Should_Not_Affect_State()
     {
-        var wait = new WaitForCoroutine();
+        var simpleCoroutine = CreateSimpleCoroutine();
+        var wait = new WaitForCoroutine(simpleCoroutine);
 
         wait.Update(0.1);
         Assert.That(wait.IsDone, Is.False);
@@ -373,7 +375,8 @@ public class YieldInstructionTests
     [Test]
     public void WaitForCoroutine_Should_Implement_IYieldInstruction_Interface()
     {
-        var wait = new WaitForCoroutine();
+        var simpleCoroutine = CreateSimpleCoroutine();
+        var wait = new WaitForCoroutine(simpleCoroutine);
 
         Assert.That(wait, Is.InstanceOf<IYieldInstruction>());
     }
@@ -415,5 +418,13 @@ public class YieldInstructionTests
         continueWaiting = false;
         Assert.That(wait.IsDone, Is.True);
         Assert.That(callCount, Is.EqualTo(2), "Predicate should be called again after condition change");
+    }
+
+    /// <summary>
+    ///     创建简单的立即完成协程
+    /// </summary>
+    private IEnumerator<IYieldInstruction> CreateSimpleCoroutine()
+    {
+        yield break;
     }
 }
