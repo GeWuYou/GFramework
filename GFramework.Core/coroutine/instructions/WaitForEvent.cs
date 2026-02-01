@@ -20,7 +20,6 @@ public sealed class WaitForEvent<TEvent> : IYieldInstruction, IDisposable
 {
     private bool _disposed;
     private volatile bool _done;
-    private TEvent? _eventData;
     private IUnRegister? _unRegister;
 
     /// <summary>
@@ -38,7 +37,7 @@ public sealed class WaitForEvent<TEvent> : IYieldInstruction, IDisposable
     /// <summary>
     ///     获取接收到的事件数据
     /// </summary>
-    public TEvent? EventData => _eventData;
+    public TEvent? EventData { get; private set; }
 
     /// <summary>
     ///     释放资源
@@ -77,7 +76,7 @@ public sealed class WaitForEvent<TEvent> : IYieldInstruction, IDisposable
     /// <param name="eventData">事件数据</param>
     private void OnEventTriggered(TEvent eventData)
     {
-        _eventData = eventData;
+        EventData = eventData;
         _done = true;
     }
 }

@@ -16,12 +16,12 @@ using GFramework.Game.Abstractions.data;
 namespace GFramework.Game.extensions;
 
 /// <summary>
-/// 提供数据位置相关的扩展方法
+///     提供数据位置相关的扩展方法
 /// </summary>
 public static class DataLocationExtensions
 {
     /// <summary>
-    /// 将数据位置转换为存储键
+    ///     将数据位置转换为存储键
     /// </summary>
     /// <param name="location">数据位置对象</param>
     /// <returns>格式化的存储键字符串，如果命名空间为空则返回键值，否则返回"命名空间/键值"格式</returns>

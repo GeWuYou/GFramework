@@ -14,19 +14,19 @@
 namespace GFramework.Game.Abstractions.setting;
 
 /// <summary>
-/// 定义一个可重置且可应用设置的接口
-/// 该接口继承自IResettable和IApplyAbleSettings接口，组合了重置功能和应用设置功能
+///     定义一个可重置且可应用设置的接口
+///     该接口继承自IResettable和IApplyAbleSettings接口，组合了重置功能和应用设置功能
 /// </summary>
 public interface IResetApplyAbleSettings : IResettable, IApplyAbleSettings
 {
     /// <summary>
-    /// 获取设置数据对象
+    ///     获取设置数据对象
     /// </summary>
     /// <returns>ISettingsData类型的设置数据</returns>
     ISettingsData Data { get; }
 
     /// <summary>
-    /// 获取数据类型信息
+    ///     获取数据类型信息
     /// </summary>
     /// <returns>表示数据类型的Type对象</returns>
     Type DataType { get; }

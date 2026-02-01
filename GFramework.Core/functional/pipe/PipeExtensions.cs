@@ -14,15 +14,14 @@
 namespace GFramework.Core.functional.pipe;
 
 /// <summary>
-/// 提供函数式编程中的管道和组合操作扩展方法
+///     提供函数式编程中的管道和组合操作扩展方法
 /// </summary>
 public static class PipeExtensions
 {
     /// <summary>
-    /// Also：
-    /// 对值执行副作用操作并返回原值
-    ///
-    /// 适用于日志、调试、状态同步等场景
+    ///     Also：
+    ///     对值执行副作用操作并返回原值
+    ///     适用于日志、调试、状态同步等场景
     /// </summary>
     public static T Also<T>(
         this T value,

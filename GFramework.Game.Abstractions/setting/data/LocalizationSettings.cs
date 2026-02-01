@@ -54,10 +54,7 @@ public class LocalizationSettings : ISettingsData
     /// </remarks>
     public void LoadFrom(ISettingsData source)
     {
-        if (source is not LocalizationSettings settings)
-        {
-            return;
-        }
+        if (source is not LocalizationSettings settings) return;
 
         Language = settings.Language;
         Version = settings.Version;

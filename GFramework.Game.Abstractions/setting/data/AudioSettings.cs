@@ -48,10 +48,7 @@ public class AudioSettings : ISettingsData
     public void LoadFrom(ISettingsData source)
     {
         // 检查数据源是否为音频设置类型
-        if (source is not AudioSettings audioSettings)
-        {
-            return;
-        }
+        if (source is not AudioSettings audioSettings) return;
 
         // 将源数据中的各个音量设置复制到当前对象
         MasterVolume = audioSettings.MasterVolume;

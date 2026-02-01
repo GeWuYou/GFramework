@@ -14,21 +14,21 @@
 namespace GFramework.Game.Abstractions.data;
 
 /// <summary>
-/// 定义设置数据仓库接口，用于管理应用程序设置数据的存储和检索
+///     定义设置数据仓库接口，用于管理应用程序设置数据的存储和检索
 /// </summary>
 /// <remarks>
-/// 该接口继承自IDataRepository，专门用于处理配置设置相关的数据操作
+///     该接口继承自IDataRepository，专门用于处理配置设置相关的数据操作
 /// </remarks>
 public interface ISettingsDataRepository : IDataRepository
 {
     /// <summary>
-    /// 异步加载所有设置项
+    ///     异步加载所有设置项
     /// </summary>
     /// <returns>
-    /// 返回一个包含所有设置键值对的字典，其中键为设置名称，值为对应的设置数据对象
+    ///     返回一个包含所有设置键值对的字典，其中键为设置名称，值为对应的设置数据对象
     /// </returns>
     /// <remarks>
-    /// 此方法将从数据源中异步读取所有可用的设置项，并将其组织成字典格式返回
+    ///     此方法将从数据源中异步读取所有可用的设置项，并将其组织成字典格式返回
     /// </remarks>
     Task<IDictionary<string, IData>> LoadAllAsync();
 

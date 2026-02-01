@@ -25,8 +25,16 @@ public class CommandCoroutineExtensionsTests
     private class TestCommand : IAsyncCommand
     {
         private IArchitectureContext? _context;
-        public void SetContext(IArchitectureContext context) => _context = context;
-        public IArchitectureContext GetContext() => _context!;
+
+        public void SetContext(IArchitectureContext context)
+        {
+            _context = context;
+        }
+
+        public IArchitectureContext GetContext()
+        {
+            return _context!;
+        }
 
         public Task ExecuteAsync()
         {
@@ -47,7 +55,7 @@ public class CommandCoroutineExtensionsTests
     /// </summary>
     private class TestContextAware : IContextAware
     {
-        public Mock<IArchitectureContext> _mockContext = new();
+        public readonly Mock<IArchitectureContext> _mockContext = new();
 
         public IArchitectureContext GetContext()
         {
@@ -78,13 +86,9 @@ public class CommandCoroutineExtensionsTests
 
         // 迭代协程直到完成
         while (coroutine.MoveNext())
-        {
             if (coroutine.Current is WaitForTask)
-            {
                 // 等待任务完成
                 await Task.Delay(10);
-            }
-        }
 
         Assert.That(capturedException, Is.Null);
     }
@@ -109,13 +113,9 @@ public class CommandCoroutineExtensionsTests
 
         // 迭代协程直到完成
         while (coroutine.MoveNext())
-        {
             if (coroutine.Current is WaitForTask)
-            {
                 // 等待任务完成
                 await Task.Delay(10);
-            }
-        }
 
         Assert.That(capturedException, Is.Not.Null);
         // 异常被包装为 AggregateException
@@ -140,17 +140,13 @@ public class CommandCoroutineExtensionsTests
             .Returns(Task.FromException(expectedException));
 
         // 使用null作为错误处理程序
-        var coroutine = contextAware.SendCommandCoroutineWithErrorHandler(command, null);
+        var coroutine = contextAware.SendCommandCoroutineWithErrorHandler(command);
 
         // 迭代协程直到完成
         while (coroutine.MoveNext())
-        {
             if (coroutine.Current is WaitForTask)
-            {
                 // 等待任务完成
                 await Task.Delay(10);
-            }
-        }
 
         // 应该不会抛出异常
         Assert.Pass();
@@ -172,7 +168,7 @@ public class CommandCoroutineExtensionsTests
         var unRegisterMock = new Mock<IUnRegister>();
 
         Action<TestEvent>? eventCallback = null;
-        eventBusMock.Setup(bus => bus.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        eventBusMock.Setup(bus => bus.Register(It.IsAny<Action<TestEvent>>()))
             .Returns(unRegisterMock.Object)
             .Callback<Action<TestEvent>>(callback => eventCallback = callback);
 
@@ -196,10 +192,7 @@ public class CommandCoroutineExtensionsTests
 
         // 启动协程并等待命令执行完成
         coroutine.MoveNext(); // 进入命令发送阶段
-        if (coroutine.Current is WaitForTask)
-        {
-            await Task.Delay(10); // 等待命令任务完成
-        }
+        if (coroutine.Current is WaitForTask) await Task.Delay(10); // 等待命令任务完成
 
         // 此时协程应该在等待事件
         Assert.That(coroutine.MoveNext(), Is.True); // 等待事件阶段
@@ -252,13 +245,9 @@ public class CommandCoroutineExtensionsTests
 
             // 运行协程直到完成
             while (coroutine.MoveNext())
-            {
                 if (coroutine.Current is WaitForEventWithTimeout<TestEvent> timeoutWait)
-                {
                     // 模拟超时
                     timeoutWait.Update(0.2); // 更新时间超过超时限制
-                }
-            }
         });
     }
 
@@ -292,15 +281,11 @@ public class CommandCoroutineExtensionsTests
 
         // 使用null作为事件回调
         var coroutine = contextAware.SendCommandAndWaitEventCoroutine<TestCommand, TestEvent>(
-            command,
-            null); // null回调
+            command); // null回调
 
         // 启动协程
         coroutine.MoveNext(); // 进入命令发送阶段
-        if (coroutine.Current is WaitForTask)
-        {
-            await Task.Delay(10); // 等待命令任务完成
-        }
+        if (coroutine.Current is WaitForTask) await Task.Delay(10); // 等待命令任务完成
 
         // 触发事件
         var testEvent = new TestEvent { Data = "TestData" };
@@ -343,10 +328,7 @@ public class CommandCoroutineExtensionsTests
 
         // 启动协程 - 命令失败时协程仍然继续
         coroutine.MoveNext(); // 进入命令发送阶段
-        if (coroutine.Current is WaitForTask)
-        {
-            await Task.Delay(10); // 等待命令任务完成
-        }
+        if (coroutine.Current is WaitForTask) await Task.Delay(10); // 等待命令任务完成
 
         // 命令执行失败后，协程继续执行
         Assert.Pass();
@@ -384,7 +366,7 @@ public class CommandCoroutineExtensionsTests
         var eventBusMock = new Mock<IEventBus>();
         var unRegisterMock = new Mock<IUnRegister>();
 
-        eventBusMock.Setup(bus => bus.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        eventBusMock.Setup(bus => bus.Register(It.IsAny<Action<TestEvent>>()))
             .Returns(unRegisterMock.Object);
 
         // 设置上下文服务以返回事件总线

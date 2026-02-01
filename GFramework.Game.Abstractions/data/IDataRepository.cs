@@ -21,7 +21,7 @@ namespace GFramework.Game.Abstractions.data;
 public interface IDataRepository : IUtility
 {
     /// <summary>
-    /// 异步加载指定位置的数据
+    ///     异步加载指定位置的数据
     /// </summary>
     /// <typeparam name="T">要加载的数据类型，必须实现IData接口并具有无参构造函数</typeparam>
     /// <param name="location">数据位置信息</param>
@@ -31,7 +31,7 @@ public interface IDataRepository : IUtility
 
 
     /// <summary>
-    /// 异步保存数据到指定位置
+    ///     异步保存数据到指定位置
     /// </summary>
     /// <typeparam name="T">要保存的数据类型，必须实现IData接口</typeparam>
     /// <param name="location">数据位置信息</param>
@@ -41,21 +41,21 @@ public interface IDataRepository : IUtility
         where T : class, IData;
 
     /// <summary>
-    /// 异步检查指定位置是否存在数据
+    ///     异步检查指定位置是否存在数据
     /// </summary>
     /// <param name="location">数据位置信息</param>
     /// <returns>返回布尔值，表示数据是否存在</returns>
     Task<bool> ExistsAsync(IDataLocation location);
 
     /// <summary>
-    /// 异步删除指定位置的数据
+    ///     异步删除指定位置的数据
     /// </summary>
     /// <param name="location">数据位置信息</param>
     /// <returns>返回异步操作任务</returns>
     Task DeleteAsync(IDataLocation location);
 
     /// <summary>
-    /// 异步批量保存多个数据项到各自的位置
+    ///     异步批量保存多个数据项到各自的位置
     /// </summary>
     /// <param name="dataList">包含数据位置和对应数据对象的可枚举集合</param>
     /// <returns>返回异步操作任务</returns>

@@ -18,4 +18,3 @@ namespace GFramework.Game.Abstractions.data.events;
 /// </summary>
 /// <param name="Location">数据位置信息，标识被删除数据的位置</param>
 public sealed record DataDeletedEvent(IDataLocation Location);
-

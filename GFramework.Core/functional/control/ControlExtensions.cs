@@ -14,12 +14,12 @@
 namespace GFramework.Core.functional.control;
 
 /// <summary>
-/// 控制流扩展方法类，提供函数式编程风格的控制结构
+///     控制流扩展方法类，提供函数式编程风格的控制结构
 /// </summary>
 public static class ControlExtensions
 {
     /// <summary>
-    /// TakeIf：条件返回值或null
+    ///     TakeIf：条件返回值或null
     /// </summary>
     /// <typeparam name="TSource">输入值的类型</typeparam>
     /// <param name="value">要进行条件判断的输入值</param>
@@ -29,10 +29,12 @@ public static class ControlExtensions
         this TSource value,
         Func<TSource, bool> predicate)
         where TSource : class
-        => predicate(value) ? value : null;
+    {
+        return predicate(value) ? value : null;
+    }
 
     /// <summary>
-    /// TakeUnless：条件相反的TakeIf
+    ///     TakeUnless：条件相反的TakeIf
     /// </summary>
     /// <typeparam name="TSource">输入值的类型</typeparam>
     /// <param name="value">要进行条件判断的输入值</param>
@@ -42,5 +44,7 @@ public static class ControlExtensions
         this TSource value,
         Func<TSource, bool> predicate)
         where TSource : class
-        => !predicate(value) ? value : null;
+    {
+        return !predicate(value) ? value : null;
+    }
 }

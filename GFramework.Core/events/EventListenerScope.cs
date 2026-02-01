@@ -16,17 +16,16 @@ using GFramework.Core.Abstractions.events;
 namespace GFramework.Core.events;
 
 /// <summary>
-/// 事件监听器作用域，用于监听特定类型的事件并在触发时提供事件数据
+///     事件监听器作用域，用于监听特定类型的事件并在触发时提供事件数据
 /// </summary>
 /// <typeparam name="TEvent">要监听的事件类型</typeparam>
 public sealed class EventListenerScope<TEvent> : IDisposable
 {
     private readonly IUnRegister? _unRegister;
-    private TEvent? _eventData;
     private volatile bool _triggered;
 
     /// <summary>
-    /// 初始化事件监听器作用域的新实例
+    ///     初始化事件监听器作用域的新实例
     /// </summary>
     /// <param name="eventBus">事件总线实例，用于注册事件监听器</param>
     public EventListenerScope(IEventBus eventBus)
@@ -35,17 +34,17 @@ public sealed class EventListenerScope<TEvent> : IDisposable
     }
 
     /// <summary>
-    /// 获取接收到的事件数据
+    ///     获取接收到的事件数据
     /// </summary>
-    public TEvent? EventData => _eventData;
+    public TEvent? EventData { get; private set; }
 
     /// <summary>
-    /// 获取事件是否已被触发
+    ///     获取事件是否已被触发
     /// </summary>
     public bool IsTriggered => _triggered;
 
     /// <summary>
-    /// 释放资源，取消事件监听器的注册
+    ///     释放资源，取消事件监听器的注册
     /// </summary>
     public void Dispose()
     {
@@ -53,12 +52,12 @@ public sealed class EventListenerScope<TEvent> : IDisposable
     }
 
     /// <summary>
-    /// 事件触发时的回调方法，用于存储事件数据并标记已触发状态
+    ///     事件触发时的回调方法，用于存储事件数据并标记已触发状态
     /// </summary>
     /// <param name="eventData">接收到的事件数据</param>
     private void OnEventTriggered(TEvent eventData)
     {
-        _eventData = eventData;
+        EventData = eventData;
         _triggered = true;
     }
 }

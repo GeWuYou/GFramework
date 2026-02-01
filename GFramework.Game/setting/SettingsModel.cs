@@ -114,7 +114,6 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
         }
 
         foreach (var data in _data.Values)
-        {
             try
             {
                 var type = data.GetType();
@@ -135,7 +134,6 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
             {
                 Log.Error($"Failed to initialize settings data: {data.GetType().Name}", ex);
             }
-        }
 
         this.SendEvent(new SettingsInitializedEvent());
     }
@@ -147,7 +145,6 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
     public async Task SaveAllAsync()
     {
         foreach (var data in _data.Values)
-        {
             try
             {
                 var location = LocationProvider.GetLocation(data.GetType());
@@ -157,7 +154,6 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
             {
                 Log.Error($"Failed to save settings data: {data.GetType().Name}", ex);
             }
-        }
 
         this.SendEvent(new SettingsSavedAllEvent());
     }
@@ -168,7 +164,6 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
     public async Task ApplyAllAsync()
     {
         foreach (var applicator in _applicators)
-        {
             try
             {
                 await applicator.Value.Apply();
@@ -177,7 +172,6 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
             {
                 Log.Error($"Failed to apply settings: {applicator.GetType().Name}", ex);
             }
-        }
 
         this.SendEvent(new SettingsAppliedAllEvent());
     }
@@ -207,7 +201,7 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
     }
 
     /// <summary>
-    /// 获取指定类型的设置应用器
+    ///     获取指定类型的设置应用器
     /// </summary>
     /// <typeparam name="T">要获取的设置应用器类型，必须继承自IResetApplyAbleSettings</typeparam>
     /// <returns>设置应用器实例，如果不存在则返回null</returns>

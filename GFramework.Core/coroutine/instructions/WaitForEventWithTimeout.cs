@@ -16,7 +16,7 @@ using GFramework.Core.Abstractions.coroutine;
 namespace GFramework.Core.coroutine.instructions;
 
 /// <summary>
-/// 带超时的事件等待指令
+///     带超时的事件等待指令
 /// </summary>
 /// <typeparam name="TEvent">事件类型</typeparam>
 /// <param name="waitForEvent">要包装的事件等待指令</param>
@@ -30,31 +30,28 @@ public sealed class WaitForEventWithTimeout<TEvent>(WaitForEvent<TEvent> waitFor
     private float _elapsedTime;
 
     /// <summary>
-    /// 获取是否已超时
+    ///     获取是否已超时
     /// </summary>
     public bool IsTimeout => _elapsedTime >= timeout;
 
     /// <summary>
-    /// 获取接收到的事件数据
+    ///     获取接收到的事件数据
     /// </summary>
     public TEvent? EventData => _waitForEvent.EventData;
 
     /// <summary>
-    /// 获取指令是否已完成（事件已触发或超时）
+    ///     获取指令是否已完成（事件已触发或超时）
     /// </summary>
     public bool IsDone => _waitForEvent.IsDone || IsTimeout;
 
     /// <summary>
-    /// 更新指令状态
+    ///     更新指令状态
     /// </summary>
     /// <param name="deltaTime">时间增量</param>
     public void Update(double deltaTime)
     {
         // 只有在事件未完成时才累加经过的时间
-        if (!_waitForEvent.IsDone)
-        {
-            _elapsedTime += (float)deltaTime;
-        }
+        if (!_waitForEvent.IsDone) _elapsedTime += (float)deltaTime;
 
         _waitForEvent.Update(deltaTime);
     }

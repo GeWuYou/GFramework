@@ -35,13 +35,8 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
                                 throw new InvalidOperationException(
                                     "Failed to initialize storage. No IStorage utility found in context.");
 
-    protected override void OnInit()
-    {
-        _storage ??= this.GetUtility<IStorage>()!;
-    }
-
     /// <summary>
-    /// 异步加载指定位置的数据
+    ///     异步加载指定位置的数据
     /// </summary>
     /// <typeparam name="T">数据类型，必须实现IData接口</typeparam>
     /// <param name="location">数据位置信息</param>
@@ -66,7 +61,7 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
     }
 
     /// <summary>
-    /// 异步保存数据到指定位置
+    ///     异步保存数据到指定位置
     /// </summary>
     /// <typeparam name="T">数据类型，必须实现IData接口</typeparam>
     /// <param name="location">数据位置信息</param>
@@ -91,15 +86,17 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
     }
 
     /// <summary>
-    /// 检查指定位置的数据是否存在
+    ///     检查指定位置的数据是否存在
     /// </summary>
     /// <param name="location">数据位置信息</param>
     /// <returns>如果数据存在返回true，否则返回false</returns>
     public Task<bool> ExistsAsync(IDataLocation location)
-        => Storage.ExistsAsync(location.ToStorageKey());
+    {
+        return Storage.ExistsAsync(location.ToStorageKey());
+    }
 
     /// <summary>
-    /// 异步删除指定位置的数据
+    ///     异步删除指定位置的数据
     /// </summary>
     /// <param name="location">数据位置信息</param>
     public async Task DeleteAsync(IDataLocation location)
@@ -111,18 +108,20 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
     }
 
     /// <summary>
-    /// 异步批量保存多个数据项
+    ///     异步批量保存多个数据项
     /// </summary>
     /// <param name="dataList">包含数据位置和数据对象的枚举集合</param>
     public async Task SaveAllAsync(IEnumerable<(IDataLocation location, IData data)> dataList)
     {
         var valueTuples = dataList.ToList();
-        foreach (var (location, data) in valueTuples)
-        {
-            await SaveAsync(location, data);
-        }
+        foreach (var (location, data) in valueTuples) await SaveAsync(location, data);
 
         if (_options.EnableEvents)
             this.SendEvent(new DataBatchSavedEvent(valueTuples));
+    }
+
+    protected override void OnInit()
+    {
+        _storage ??= this.GetUtility<IStorage>()!;
     }
 }

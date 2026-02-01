@@ -16,19 +16,19 @@ using GFramework.Core.Abstractions.versioning;
 namespace GFramework.Game.data;
 
 /// <summary>
-/// 统一设置文件类，用于管理应用程序的配置设置
-/// 实现了版本控制接口，支持配置文件的版本管理
+///     统一设置文件类，用于管理应用程序的配置设置
+///     实现了版本控制接口，支持配置文件的版本管理
 /// </summary>
-internal sealed class UnifiedSettingsFile:IVersioned
+internal sealed class UnifiedSettingsFile : IVersioned
 {
     /// <summary>
-    /// 配置节集合，存储不同类型的配置数据
-    /// 键为配置节名称，值为配置对象
+    ///     配置节集合，存储不同类型的配置数据
+    ///     键为配置节名称，值为配置对象
     /// </summary>
     public Dictionary<string, string> Sections { get; set; } = new();
-    
+
     /// <summary>
-    /// 配置文件版本号，用于版本控制和兼容性检查
+    ///     配置文件版本号，用于版本控制和兼容性检查
     /// </summary>
     public int Version { get; set; }
 }

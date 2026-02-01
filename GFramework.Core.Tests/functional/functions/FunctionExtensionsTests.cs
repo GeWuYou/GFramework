@@ -4,14 +4,14 @@ using NUnit.Framework;
 namespace GFramework.Core.Tests.functional.functions;
 
 /// <summary>
-/// FunctionExtensions扩展方法测试类，用于验证高级函数式编程扩展方法的正确性
-/// 包括柯里化、偏函数应用、重复执行、安全执行和缓存等功能的测试
+///     FunctionExtensions扩展方法测试类，用于验证高级函数式编程扩展方法的正确性
+///     包括柯里化、偏函数应用、重复执行、安全执行和缓存等功能的测试
 /// </summary>
 [TestFixture]
 public class FunctionExtensionsTests
 {
     /// <summary>
-    /// 测试Partial方法 - 验证部分应用函数功能
+    ///     测试Partial方法 - 验证部分应用函数功能
     /// </summary>
     [Test]
     public void Partial_Should_Fix_First_Argument_Of_Binary_Function()
@@ -28,7 +28,7 @@ public class FunctionExtensionsTests
     }
 
     /// <summary>
-    /// 测试Repeat方法 - 验证重复执行函数功能
+    ///     测试Repeat方法 - 验证重复执行函数功能
     /// </summary>
     [Test]
     public void Repeat_Should_Execute_Function_N_Times()

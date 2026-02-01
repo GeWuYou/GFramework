@@ -16,27 +16,27 @@ using GFramework.Game.Abstractions.enums;
 namespace GFramework.Game.Abstractions.data;
 
 /// <summary>
-/// 数据位置接口，定义了数据存储的位置信息和相关属性
+///     数据位置接口，定义了数据存储的位置信息和相关属性
 /// </summary>
 public interface IDataLocation
 {
     /// <summary>
-    /// 存储键（文件路径 / redis key / db key）
+    ///     存储键（文件路径 / redis key / db key）
     /// </summary>
     string Key { get; }
 
     /// <summary>
-    /// 存储类型（Local / Remote / Database / Memory）
+    ///     存储类型（Local / Remote / Database / Memory）
     /// </summary>
-    StorageKind Kind { get; }
+    StorageKinds Kinds { get; }
 
     /// <summary>
-    /// 命名空间/分区
+    ///     命名空间/分区
     /// </summary>
     string? Namespace { get; }
 
     /// <summary>
-    /// 扩展元数据（用于存储额外信息，如压缩、加密等）
+    ///     扩展元数据（用于存储额外信息，如压缩、加密等）
     /// </summary>
     IReadOnlyDictionary<string, string>? Metadata { get; }
 }

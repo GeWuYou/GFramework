@@ -14,34 +14,34 @@
 namespace GFramework.Game.Abstractions.enums;
 
 /// <summary>
-/// 存储类型枚举，用于标识不同的存储方式
-/// 此枚举使用 Flags 特性，支持位运算组合多个存储类型
+///     存储类型枚举，用于标识不同的存储方式
+///     此枚举使用 Flags 特性，支持位运算组合多个存储类型
 /// </summary>
 [Flags]
-public enum StorageKind
+public enum StorageKinds
 {
     /// <summary>
-    /// 无存储类型
+    ///     无存储类型
     /// </summary>
     None = 0,
-    
+
     /// <summary>
-    /// 本地文件系统存储
+    ///     本地文件系统存储
     /// </summary>
     Local = 1 << 0,
-    
+
     /// <summary>
-    /// 内存存储
+    ///     内存存储
     /// </summary>
     Memory = 1 << 1,
-    
+
     /// <summary>
-    /// 远程存储
+    ///     远程存储
     /// </summary>
     Remote = 1 << 2,
-    
+
     /// <summary>
-    /// 数据库存储
+    ///     数据库存储
     /// </summary>
-    Database = 1 << 3,
+    Database = 1 << 3
 }

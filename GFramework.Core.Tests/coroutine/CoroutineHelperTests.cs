@@ -443,7 +443,7 @@ public class CoroutineHelperTests
     public void RepeatCallForever_Should_Execute_Forever_When_ShouldContinue_Is_Null()
     {
         var callCount = 0;
-        var coroutine = CoroutineHelper.RepeatCallForever(0.1, () => callCount++, (Func<bool>?)null);
+        var coroutine = CoroutineHelper.RepeatCallForever(0.1, () => callCount++);
 
         for (var i = 0; i < 5; i++)
         {

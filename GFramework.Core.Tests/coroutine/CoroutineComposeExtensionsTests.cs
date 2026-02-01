@@ -50,10 +50,7 @@ public class CoroutineComposeExtensionsTests
         var combined = first.Then(() => executionOrder.Add("action"));
 
         // 执行组合协程
-        while (combined.MoveNext())
-        {
-            combined.Current.Update(0.016);
-        }
+        while (combined.MoveNext()) combined.Current.Update(0.016);
 
         Assert.That(executionOrder.Count, Is.EqualTo(3));
         Assert.That(executionOrder[0], Is.EqualTo("coroutine"));
@@ -112,10 +109,7 @@ public class CoroutineComposeExtensionsTests
             .Then(() => executionOrder.Add(2))
             .Then(() => executionOrder.Add(3));
 
-        while (combined.MoveNext())
-        {
-            combined.Current.Update(0.016);
-        }
+        while (combined.MoveNext()) combined.Current.Update(0.016);
 
         Assert.That(executionOrder, Is.EqualTo([1, 2, 3]));
     }
@@ -162,10 +156,7 @@ public class CoroutineComposeExtensionsTests
         var second = CreateTestCoroutine(2, () => executionOrder.Add("second"));
         var combined = first.Then(second);
 
-        while (combined.MoveNext())
-        {
-            combined.Current.Update(0.016);
-        }
+        while (combined.MoveNext()) combined.Current.Update(0.016);
 
         Assert.That(executionOrder.Count, Is.EqualTo(4));
         Assert.That(executionOrder[0], Is.EqualTo("first"));
@@ -206,10 +197,7 @@ public class CoroutineComposeExtensionsTests
         var second = CreateTestCoroutine(0);
         var combined = first.Then(second);
 
-        while (combined.MoveNext())
-        {
-            combined.Current.Update(0.016);
-        }
+        while (combined.MoveNext()) combined.Current.Update(0.016);
 
         Assert.That(firstExecuteCount, Is.EqualTo(2));
     }
@@ -262,10 +250,7 @@ public class CoroutineComposeExtensionsTests
 
         var combined = first.Then(second).Then(third);
 
-        while (combined.MoveNext())
-        {
-            combined.Current.Update(0.016);
-        }
+        while (combined.MoveNext()) combined.Current.Update(0.016);
 
         Assert.That(executionOrder, Is.EqualTo(new[] { 1, 2, 3 }));
     }
@@ -286,10 +271,7 @@ public class CoroutineComposeExtensionsTests
             .Then(second)
             .Then(() => executionOrder.Add("action2"));
 
-        while (combined.MoveNext())
-        {
-            combined.Current.Update(0.016);
-        }
+        while (combined.MoveNext()) combined.Current.Update(0.016);
 
         Assert.That(executionOrder, Is.EqualTo(new[] { "coroutine1", "action1", "coroutine2", "action2" }));
     }
@@ -339,10 +321,7 @@ public class CoroutineComposeExtensionsTests
             coroutine = coroutine.Then(nextCoroutine);
         }
 
-        while (coroutine.MoveNext())
-        {
-            coroutine.Current.Update(0.016);
-        }
+        while (coroutine.MoveNext()) coroutine.Current.Update(0.016);
 
         Assert.That(count, Is.EqualTo(11));
     }

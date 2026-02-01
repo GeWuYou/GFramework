@@ -23,9 +23,21 @@ public class QueryCoroutineExtensionsTests
     {
         private IArchitectureContext? _context;
         public string QueryData { get; set; } = string.Empty;
-        public void SetContext(IArchitectureContext context) => _context = context;
-        public IArchitectureContext GetContext() => _context!;
-        public string Do() => QueryData;
+
+        public void SetContext(IArchitectureContext context)
+        {
+            _context = context;
+        }
+
+        public IArchitectureContext GetContext()
+        {
+            return _context!;
+        }
+
+        public string Do()
+        {
+            return QueryData;
+        }
     }
 
     /// <summary>
@@ -33,7 +45,7 @@ public class QueryCoroutineExtensionsTests
     /// </summary>
     private class TestContextAware : IContextAware
     {
-        public Mock<IArchitectureContext> _mockContext = new Mock<IArchitectureContext>();
+        public readonly Mock<IArchitectureContext> _mockContext = new();
 
         public IArchitectureContext GetContext()
         {
@@ -58,7 +70,7 @@ public class QueryCoroutineExtensionsTests
 
         // 设置上下文发送查询的模拟行为
         contextAware._mockContext
-            .Setup(ctx => ctx.SendQuery<string>(It.IsAny<TestQuery>()))
+            .Setup(ctx => ctx.SendQuery(It.IsAny<TestQuery>()))
             .Returns("TestResult");
 
         var coroutine = contextAware.SendQueryCoroutine<TestQuery, string>(query, result =>
@@ -90,7 +102,7 @@ public class QueryCoroutineExtensionsTests
 
         // 设置上下文发送查询的模拟行为
         contextAware._mockContext
-            .Setup(ctx => ctx.SendQuery<bool>(It.IsAny<IntQuery>()))
+            .Setup(ctx => ctx.SendQuery(It.IsAny<IntQuery>()))
             .Returns(true);
 
         var coroutine = contextAware.SendQueryCoroutine<IntQuery, bool>(query, result =>
@@ -118,7 +130,7 @@ public class QueryCoroutineExtensionsTests
 
         // 设置上下文发送查询的模拟行为
         contextAware._mockContext
-            .Setup(ctx => ctx.SendQuery<string>(It.IsAny<TestQuery>()))
+            .Setup(ctx => ctx.SendQuery(It.IsAny<TestQuery>()))
             .Returns("TestResult");
 
         // 使用null作为结果回调，应该抛出NullReferenceException
@@ -141,7 +153,7 @@ public class QueryCoroutineExtensionsTests
 
         // 设置上下文发送查询的模拟行为
         contextAware._mockContext
-            .Setup(ctx => ctx.SendQuery<string>(It.IsAny<TestQuery>()))
+            .Setup(ctx => ctx.SendQuery(It.IsAny<TestQuery>()))
             .Returns("ProcessedResult");
 
         var coroutine = contextAware.SendQueryCoroutine<TestQuery, string>(query, result =>
@@ -168,7 +180,7 @@ public class QueryCoroutineExtensionsTests
 
         // 设置上下文发送查询的模拟行为
         contextAware._mockContext
-            .Setup(ctx => ctx.SendQuery<string>(It.IsAny<TestQuery>()))
+            .Setup(ctx => ctx.SendQuery(It.IsAny<TestQuery>()))
             .Returns("TestResult");
 
         var coroutine = contextAware.SendQueryCoroutine<TestQuery, string>(query, result => { });
@@ -189,7 +201,7 @@ public class QueryCoroutineExtensionsTests
 
         // 设置上下文发送查询的模拟行为，让它抛出异常
         contextAware._mockContext
-            .Setup(ctx => ctx.SendQuery<string>(It.IsAny<TestQuery>()))
+            .Setup(ctx => ctx.SendQuery(It.IsAny<TestQuery>()))
             .Throws(expectedException);
 
         // 由于SendQueryCoroutine会直接执行查询，这可能导致异常
@@ -216,7 +228,7 @@ public class QueryCoroutineExtensionsTests
 
         // 设置上下文发送查询的模拟行为，并捕获传入的查询参数
         contextAware._mockContext
-            .Setup(ctx => ctx.SendQuery<string>(It.IsAny<TestQuery>()))
+            .Setup(ctx => ctx.SendQuery(It.IsAny<TestQuery>()))
             .Returns((IQuery<string> q) =>
             {
                 capturedQuery = (TestQuery)q;
@@ -258,7 +270,7 @@ public class QueryCoroutineExtensionsTests
 
         // 设置上下文发送查询的模拟行为
         contextAware._mockContext
-            .Setup(ctx => ctx.SendQuery<ComplexResult>(It.IsAny<ComplexQuery>()))
+            .Setup(ctx => ctx.SendQuery(It.IsAny<ComplexQuery>()))
             .Returns(expectedResult);
 
         var coroutine =
@@ -284,7 +296,7 @@ public class QueryCoroutineExtensionsTests
 
         // 设置上下文发送查询的模拟行为，返回空字符串
         contextAware._mockContext
-            .Setup(ctx => ctx.SendQuery<string>(It.IsAny<TestQuery>()))
+            .Setup(ctx => ctx.SendQuery(It.IsAny<TestQuery>()))
             .Returns(string.Empty);
 
         var coroutine =
@@ -302,12 +314,12 @@ public class QueryCoroutineExtensionsTests
     public void SendQueryCoroutine_Should_Handle_Null_Result()
     {
         var query = new TestQuery { QueryData = "TestQueryData" };
-        string? receivedResult = "initial";
+        var receivedResult = "initial";
         var contextAware = new TestContextAware();
 
         // 设置上下文发送查询的模拟行为，返回null
         contextAware._mockContext
-            .Setup(ctx => ctx.SendQuery<string>(It.IsAny<TestQuery>()))
+            .Setup(ctx => ctx.SendQuery(It.IsAny<TestQuery>()))
             .Returns((string)null!);
 
         var coroutine =
@@ -326,9 +338,21 @@ internal class IntQuery : IQuery<bool>
 {
     private IArchitectureContext? _context;
     public int Value { get; set; }
-    public void SetContext(IArchitectureContext context) => _context = context;
-    public IArchitectureContext GetContext() => _context!;
-    public bool Do() => Value > 0;
+
+    public void SetContext(IArchitectureContext context)
+    {
+        _context = context;
+    }
+
+    public IArchitectureContext GetContext()
+    {
+        return _context!;
+    }
+
+    public bool Do()
+    {
+        return Value > 0;
+    }
 }
 
 /// <summary>
@@ -338,11 +362,23 @@ internal class ComplexQuery : IQuery<ComplexResult>
 {
     private IArchitectureContext? _context;
     public string Name { get; set; } = string.Empty;
-    public List<int> Values { get; set; } = new List<int>();
-    public Dictionary<string, object> Metadata { get; set; } = new Dictionary<string, object>();
-    public void SetContext(IArchitectureContext context) => _context = context;
-    public IArchitectureContext GetContext() => _context!;
-    public ComplexResult Do() => new ComplexResult { ProcessedName = Name, Sum = Values.Sum(), Count = Values.Count };
+    public List<int> Values { get; set; } = new();
+    public Dictionary<string, object> Metadata { get; set; } = new();
+
+    public void SetContext(IArchitectureContext context)
+    {
+        _context = context;
+    }
+
+    public IArchitectureContext GetContext()
+    {
+        return _context!;
+    }
+
+    public ComplexResult Do()
+    {
+        return new ComplexResult { ProcessedName = Name, Sum = Values.Sum(), Count = Values.Count };
+    }
 }
 
 /// <summary>

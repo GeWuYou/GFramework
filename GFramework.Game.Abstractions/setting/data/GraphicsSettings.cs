@@ -47,10 +47,7 @@ public class GraphicsSettings : ISettingsData
     public void LoadFrom(ISettingsData source)
     {
         // 检查源数据是否为GraphicsSettings类型，如果不是则直接返回
-        if (source is not GraphicsSettings settings)
-        {
-            return;
-        }
+        if (source is not GraphicsSettings settings) return;
 
         // 将源设置中的属性值复制到当前对象
         Fullscreen = settings.Fullscreen;

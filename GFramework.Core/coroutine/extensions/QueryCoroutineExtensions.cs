@@ -18,13 +18,13 @@ using GFramework.Core.Abstractions.rule;
 namespace GFramework.Core.coroutine.extensions;
 
 /// <summary>
-/// 查询协程扩展方法类
-/// 提供将查询操作包装为协程的扩展方法
+///     查询协程扩展方法类
+///     提供将查询操作包装为协程的扩展方法
 /// </summary>
 public static class QueryCoroutineExtensions
 {
     /// <summary>
-    /// 将 Query 包装为协程（立即返回结果）
+    ///     将 Query 包装为协程（立即返回结果）
     /// </summary>
     /// <typeparam name="TQuery">查询类型，必须实现 IQuery&lt;TResult&gt; 接口</typeparam>
     /// <typeparam name="TResult">查询结果类型</typeparam>

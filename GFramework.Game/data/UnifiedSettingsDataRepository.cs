@@ -209,13 +209,9 @@ public class UnifiedSettingsDataRepository(
             var key = UnifiedKey;
 
             if (await Storage.ExistsAsync(key))
-            {
                 _file = await Storage.ReadAsync<UnifiedSettingsFile>(key);
-            }
             else
-            {
                 _file = new UnifiedSettingsFile { Version = 1 };
-            }
 
             _loaded = true;
         }

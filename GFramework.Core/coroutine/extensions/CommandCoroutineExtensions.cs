@@ -20,13 +20,13 @@ using GFramework.Core.coroutine.instructions;
 namespace GFramework.Core.coroutine.extensions;
 
 /// <summary>
-/// 命令协程扩展方法类
-/// 提供将命令的异步执行包装为协程的功能
+///     命令协程扩展方法类
+///     提供将命令的异步执行包装为协程的功能
 /// </summary>
 public static class CommandCoroutineExtensions
 {
     /// <summary>
-    /// 将 Command 的异步执行包装为协程，并处理异常
+    ///     将 Command 的异步执行包装为协程，并处理异常
     /// </summary>
     /// <typeparam name="TCommand">命令类型，必须实现 IAsyncCommand 接口</typeparam>
     /// <param name="contextAware">上下文感知对象</param>
@@ -43,14 +43,11 @@ public static class CommandCoroutineExtensions
 
         yield return task.AsCoroutineInstruction();
 
-        if (task.IsFaulted)
-        {
-            onError?.Invoke(task.Exception!);
-        }
+        if (task.IsFaulted) onError?.Invoke(task.Exception!);
     }
 
     /// <summary>
-    /// 发送 Command 并等待指定 Event
+    ///     发送 Command 并等待指定 Event
     /// </summary>
     /// <typeparam name="TCommand">命令类型，必须实现 IAsyncCommand 接口</typeparam>
     /// <typeparam name="TEvent">事件类型</typeparam>
@@ -89,10 +86,8 @@ public static class CommandCoroutineExtensions
 
                 // 检查是否超时
                 if (timeoutWait.IsTimeout)
-                {
                     // 超时处理
                     throw new TimeoutException($"wait for the event ${typeof(TEvent).Name} timeout.");
-                }
             }
             else
             {
@@ -101,10 +96,7 @@ public static class CommandCoroutineExtensions
             }
 
             // 调用事件回调
-            if (onEvent != null && wait.EventData != null)
-            {
-                onEvent.Invoke(wait.EventData);
-            }
+            if (onEvent != null && wait.EventData != null) onEvent.Invoke(wait.EventData);
         }
         finally
         {

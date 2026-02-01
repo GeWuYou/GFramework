@@ -16,12 +16,12 @@ using GFramework.Core.Abstractions.coroutine;
 namespace GFramework.Core.coroutine.extensions;
 
 /// <summary>
-/// 提供协程组合扩展方法的静态类
+///     提供协程组合扩展方法的静态类
 /// </summary>
 public static class CoroutineComposeExtensions
 {
     /// <summary>
-    /// 将一个协程枚举器与一个动作组合，先执行完第一个协程，然后执行指定的动作
+    ///     将一个协程枚举器与一个动作组合，先执行完第一个协程，然后执行指定的动作
     /// </summary>
     /// <param name="first">第一个协程枚举器</param>
     /// <param name="next">在第一个协程完成后要执行的动作</param>
@@ -39,7 +39,7 @@ public static class CoroutineComposeExtensions
     }
 
     /// <summary>
-    /// 将两个协程枚举器顺序组合，先执行完第一个协程，再执行第二个协程
+    ///     将两个协程枚举器顺序组合，先执行完第一个协程，再执行第二个协程
     /// </summary>
     /// <param name="first">第一个协程枚举器</param>
     /// <param name="second">第二个协程枚举器</param>

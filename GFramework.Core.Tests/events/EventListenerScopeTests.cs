@@ -217,7 +217,7 @@ public class EventListenerScopeTests
         var eventBusMock = new Mock<IEventBus>();
         var unRegisterMock = new Mock<IUnRegister>();
 
-        eventBusMock.Setup(x => x.Register<int>(It.IsAny<Action<int>>()))
+        eventBusMock.Setup(x => x.Register(It.IsAny<Action<int>>()))
             .Returns(unRegisterMock.Object)
             .Callback<Action<int>>(action => registeredAction = action);
 
@@ -242,7 +242,7 @@ public class EventListenerScopeTests
         var eventBusMock = new Mock<IEventBus>();
         var unRegisterMock = new Mock<IUnRegister>();
 
-        eventBusMock.Setup(x => x.Register<StructEvent>(It.IsAny<Action<StructEvent>>()))
+        eventBusMock.Setup(x => x.Register(It.IsAny<Action<StructEvent>>()))
             .Returns(unRegisterMock.Object)
             .Callback<Action<StructEvent>>(action => registeredAction = action);
 
@@ -268,7 +268,7 @@ public class EventListenerScopeTests
         var eventBusMock = new Mock<IEventBus>();
         var unRegisterMock = new Mock<IUnRegister>();
 
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        eventBusMock.Setup(x => x.Register(It.IsAny<Action<TestEvent>>()))
             .Returns(unRegisterMock.Object)
             .Callback<Action<TestEvent>>(action => registeredAction = action);
 
@@ -290,7 +290,7 @@ public class EventListenerScopeTests
     {
         var eventBusMock = new Mock<IEventBus>();
         var unRegisterMock = new Mock<IUnRegister>();
-        eventBusMock.Setup(x => x.Register<TestEvent>(It.IsAny<Action<TestEvent>>()))
+        eventBusMock.Setup(x => x.Register(It.IsAny<Action<TestEvent>>()))
             .Returns(unRegisterMock.Object);
 
         var scope = new EventListenerScope<TestEvent>(eventBusMock.Object);
