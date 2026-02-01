@@ -27,6 +27,5 @@ internal class CoroutineMetadata
     /// </summary>
     public bool IsActive =>
         State is CoroutineState.Running
-            or CoroutineState.Paused
-            or CoroutineState.Held;
+            or CoroutineState.Paused;
 }

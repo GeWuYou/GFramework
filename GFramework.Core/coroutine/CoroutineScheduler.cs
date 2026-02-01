@@ -162,16 +162,39 @@ public sealed class CoroutineScheduler(
     /// <param name="instruction">yield指令</param>
     private void HandleYieldInstruction(CoroutineSlot slot, IYieldInstruction instruction)
     {
-        // 处理 WaitForCoroutine 指令
-        if (instruction is WaitForCoroutine waitForCoroutine)
+        switch (instruction)
         {
-            // 启动被等待的协程并建立等待关系
-            var targetHandle = Run(waitForCoroutine.Coroutine);
-            WaitForCoroutine(slot.Handle, targetHandle);
-        }
-        else
-        {
-            slot.Waiting = instruction;
+            // 处理 WaitForCoroutine 指令
+            case WaitForCoroutine waitForCoroutine:
+            {
+                // 启动被等待的协程并建立等待关系
+                var targetHandle = Run(waitForCoroutine.Coroutine);
+                slot.Waiting = waitForCoroutine;
+                WaitForCoroutine(slot.Handle, targetHandle);
+                break;
+            }
+            case WaitForAllCoroutines waitForAll:
+            {
+                slot.Waiting = waitForAll;
+                // 为所有待完成的协程建立等待关系
+                foreach (var handle in waitForAll.PendingHandles)
+                {
+                    if (_metadata.ContainsKey(handle))
+                    {
+                        WaitForCoroutine(slot.Handle, handle);
+                    }
+                    else
+                    {
+                        // 协程已完成，立即通知
+                        waitForAll.NotifyCoroutineComplete(handle);
+                    }
+                }
+
+                break;
+            }
+            default:
+                slot.Waiting = instruction;
+                break;
         }
     }
 
@@ -249,16 +272,6 @@ public sealed class CoroutineScheduler(
 
         if (!_metadata.ContainsKey(target))
             return;
-
-        if (_metadata.TryGetValue(current, out var meta))
-        {
-            var slot = _slots[meta.SlotIndex];
-            if (slot != null)
-            {
-                slot.State = CoroutineState.Held;
-                meta.State = CoroutineState.Held;
-            }
-        }
 
         if (!_waiting.TryGetValue(target, out var set))
         {
@@ -354,10 +367,15 @@ public sealed class CoroutineScheduler(
             if (!_metadata.TryGetValue(waiter, out var meta)) continue;
             var s = _slots[meta.SlotIndex];
             if (s == null) continue;
-            // 通知 WaitForCoroutine 指令协程已完成
-            if (s.Waiting is WaitForCoroutine wfc)
+            switch (s.Waiting)
             {
-                wfc.Complete();
+                // 通知 WaitForCoroutine 指令协程已完成
+                case WaitForCoroutine wfc:
+                    wfc.Complete();
+                    break;
+                case WaitForAllCoroutines wfa:
+                    wfa.NotifyCoroutineComplete(handle);
+                    break;
             }
 
             s.State = CoroutineState.Running;

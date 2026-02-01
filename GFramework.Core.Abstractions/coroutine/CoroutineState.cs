@@ -16,11 +16,6 @@ public enum CoroutineState
     Paused,
 
     /// <summary>
-    ///     协程被锁定或等待其他协程完成
-    /// </summary>
-    Held,
-
-    /// <summary>
     ///     协程已完成执行
     /// </summary>
     Completed,
