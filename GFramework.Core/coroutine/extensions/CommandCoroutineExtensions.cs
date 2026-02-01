@@ -52,10 +52,18 @@ public static class CommandCoroutineExtensions
     /// <summary>
     /// 发送 Command 并等待指定 Event
     /// </summary>
+    /// <typeparam name="TCommand">命令类型，必须实现 IAsyncCommand 接口</typeparam>
+    /// <typeparam name="TEvent">事件类型</typeparam>
+    /// <param name="contextAware">上下文感知对象</param>
+    /// <param name="command">要执行的命令实例</param>
+    /// <param name="onEvent">事件触发时的回调处理</param>
+    /// <param name="timeout">等待超时时间（秒），0表示无限等待</param>
+    /// <returns>返回协程指令枚举器</returns>
     public static IEnumerator<IYieldInstruction> SendCommandAndWaitEventCoroutine<TCommand, TEvent>(
         this IContextAware contextAware,
         TCommand command,
-        Action<TEvent>? onEvent = null)
+        Action<TEvent>? onEvent = null,
+        float timeout = 0f)
         where TCommand : IAsyncCommand
         where TEvent : class
     {
@@ -73,10 +81,26 @@ public static class CommandCoroutineExtensions
             var task = context.SendCommandAsync(command);
             yield return task.AsCoroutineInstruction();
 
-            // 等待事件触发
-            yield return wait;
+            // 如果有超时设置，使用超时等待
+            if (timeout > 0f)
+            {
+                var timeoutWait = new WaitForEventWithTimeout<TEvent>(wait, timeout);
+                yield return timeoutWait;
 
-            // 调用回调
+                // 检查是否超时
+                if (timeoutWait.IsTimeout)
+                {
+                    // 超时处理
+                    throw new TimeoutException($"wait for the event ${typeof(TEvent).Name} timeout.");
+                }
+            }
+            else
+            {
+                // 等待事件触发（无超时）
+                yield return wait;
+            }
+
+            // 调用事件回调
             if (onEvent != null && wait.EventData != null)
             {
                 onEvent.Invoke(wait.EventData);
