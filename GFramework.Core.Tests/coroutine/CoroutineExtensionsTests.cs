@@ -199,9 +199,9 @@ public class CoroutineExtensionsTests
     public void Sequence_Should_Execute_Coroutines_In_Order()
     {
         var executionOrder = new List<int>();
-        var coroutine1 = CreateCoroutineWithCallback(1, () => executionOrder.Add(1));
-        var coroutine2 = CreateCoroutineWithCallback(2, () => executionOrder.Add(2));
-        var coroutine3 = CreateCoroutineWithCallback(3, () => executionOrder.Add(3));
+        var coroutine1 = CreateCoroutineWithCallback(() => executionOrder.Add(1));
+        var coroutine2 = CreateCoroutineWithCallback(() => executionOrder.Add(2));
+        var coroutine3 = CreateCoroutineWithCallback(() => executionOrder.Add(3));
 
         var sequence = CoroutineExtensions.Sequence(coroutine1, coroutine2, coroutine3);
 
@@ -397,14 +397,22 @@ public class CoroutineExtensionsTests
     [Test]
     public void WaitForSecondsWithProgress_Should_Handle_Null_Callback()
     {
+        // 测试传入null回调参数时不会抛出异常
         var coroutine = CoroutineExtensions.WaitForSecondsWithProgress(1.0, null);
 
-        coroutine.MoveNext();
-        coroutine.Current.Update(0.5);
-        Assert.That(coroutine.Current.IsDone, Is.False);
+        // 验证协程可以正常启动和执行
+        Assert.That(coroutine, Is.Not.Null);
 
-        coroutine.Current.Update(0.5);
-        Assert.That(coroutine.Current.IsDone, Is.True);
+        // 执行协程并验证不会因为null回调而抛出异常
+        Assert.DoesNotThrow(() =>
+        {
+            coroutine.MoveNext();
+            coroutine.Current.Update(0.5);
+            Assert.That(coroutine.Current.IsDone, Is.False);
+
+            coroutine.Current.Update(0.5);
+            Assert.That(coroutine.Current.IsDone, Is.True);
+        });
     }
 
     /// <summary>
@@ -493,7 +501,7 @@ public class CoroutineExtensionsTests
     /// <summary>
     ///     创建简单的立即完成协程
     /// </summary>
-    private IEnumerator<IYieldInstruction> CreateSimpleCoroutine()
+    private static IEnumerator<IYieldInstruction> CreateSimpleCoroutine()
     {
         yield break;
     }
@@ -501,25 +509,17 @@ public class CoroutineExtensionsTests
     /// <summary>
     ///     创建带回调的协程
     /// </summary>
-    private IEnumerator<IYieldInstruction> CreateCoroutineWithCallback(int id, Action callback)
+    private static IEnumerator<IYieldInstruction> CreateCoroutineWithCallback(Action callback)
     {
         yield return new WaitOneFrame();
         callback();
     }
 
-    /// <summary>
-    ///     创建计数协程
-    /// </summary>
-    private IEnumerator<IYieldInstruction> CreateCountingCoroutine(int id, Action callback)
-    {
-        yield return new WaitOneFrame();
-        callback();
-    }
 
     /// <summary>
     ///     创建延迟协程
     /// </summary>
-    private IEnumerator<IYieldInstruction> CreateDelayedCoroutine(Action callback, double delay)
+    private static IEnumerator<IYieldInstruction> CreateDelayedCoroutine(Action callback, double delay)
     {
         yield return new Delay(delay);
         callback();

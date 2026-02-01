@@ -335,4 +335,176 @@ public class CoroutineHelperTests
     {
         Assert.Throws<ArgumentNullException>(() => CoroutineHelper.WaitWhile(null!));
     }
+
+    /// <summary>
+    ///     验证WaitForProgress应该返回WaitForProgress实例
+    /// </summary>
+    [Test]
+    public void WaitForProgress_Should_Return_WaitForProgress_Instance()
+    {
+        var wait = CoroutineHelper.WaitForProgress(1.0, _ => { });
+
+        Assert.That(wait, Is.InstanceOf<WaitForProgress>());
+    }
+
+    /// <summary>
+    ///     验证WaitForProgress应该调用进度回调
+    /// </summary>
+    [Test]
+    public void WaitForProgress_Should_Call_Progress_Callback()
+    {
+        var progressValues = new List<float>();
+        var wait = CoroutineHelper.WaitForProgress(1.0, progress => progressValues.Add(progress));
+
+        // 更新直到完成
+        while (!wait.IsDone) wait.Update(0.1);
+
+        Assert.That(progressValues.Count, Is.GreaterThan(0));
+        // 进度值应该递增
+        for (var i = 1; i < progressValues.Count; i++)
+            Assert.That(progressValues[i], Is.GreaterThanOrEqualTo(progressValues[i - 1]));
+        Assert.That(progressValues[^1], Is.EqualTo(1.0f).Within(0.01f));
+    }
+
+    /// <summary>
+    ///     验证WaitForProgress应该在指定时间后完成
+    /// </summary>
+    [Test]
+    public void WaitForProgress_Should_Complete_After_Duration()
+    {
+        var wait = CoroutineHelper.WaitForProgress(1.0, _ => { });
+
+        wait.Update(0.5);
+        Assert.That(wait.IsDone, Is.False);
+
+        wait.Update(0.5);
+        Assert.That(wait.IsDone, Is.True);
+    }
+
+    /// <summary>
+    ///     验证WaitForProgress应该在零持续时间时抛出ArgumentException
+    /// </summary>
+    [Test]
+    public void WaitForProgress_Should_Throw_ArgumentException_When_Zero_Duration()
+    {
+        Assert.Throws<ArgumentException>(() => CoroutineHelper.WaitForProgress(0, _ => { }));
+    }
+
+    /// <summary>
+    ///     验证WaitForProgress应该在负数持续时间时抛出ArgumentException
+    /// </summary>
+    [Test]
+    public void WaitForProgress_Should_Throw_ArgumentException_When_Negative_Duration()
+    {
+        Assert.Throws<ArgumentException>(() => CoroutineHelper.WaitForProgress(-1.0, _ => { }));
+    }
+
+    /// <summary>
+    ///     验证WaitForProgress应该在null回调时抛出ArgumentNullException
+    /// </summary>
+    [Test]
+    public void WaitForProgress_Should_Throw_ArgumentNullException_When_Null_Callback()
+    {
+        Assert.Throws<ArgumentNullException>(() => CoroutineHelper.WaitForProgress(1.0, null!));
+    }
+
+    /// <summary>
+    ///     验证RepeatCallForever应该在shouldContinue返回false时停止
+    /// </summary>
+    [Test]
+    public void RepeatCallForever_Should_Stop_When_ShouldContinue_Returns_False()
+    {
+        var callCount = 0;
+        var maxCalls = 3;
+        var coroutine = CoroutineHelper.RepeatCallForever(0.1, () => callCount++, () => callCount < maxCalls);
+
+        while (coroutine.MoveNext()) coroutine.Current.Update(0.1);
+
+        Assert.That(callCount, Is.EqualTo(maxCalls));
+    }
+
+    /// <summary>
+    ///     验证RepeatCallForever应该在shouldContinue初始返回false时不执行
+    /// </summary>
+    [Test]
+    public void RepeatCallForever_Should_Not_Execute_When_ShouldContinue_Initially_False()
+    {
+        var callCount = 0;
+        var coroutine = CoroutineHelper.RepeatCallForever(0.1, () => callCount++, () => false);
+
+        Assert.That(coroutine.MoveNext(), Is.False);
+        Assert.That(callCount, Is.EqualTo(0));
+    }
+
+    /// <summary>
+    ///     验证RepeatCallForever应该处理null shouldContinue（无限执行）
+    /// </summary>
+    [Test]
+    public void RepeatCallForever_Should_Execute_Forever_When_ShouldContinue_Is_Null()
+    {
+        var callCount = 0;
+        var coroutine = CoroutineHelper.RepeatCallForever(0.1, () => callCount++, (Func<bool>?)null);
+
+        for (var i = 0; i < 5; i++)
+        {
+            Assert.That(coroutine.MoveNext(), Is.True);
+            coroutine.Current.Update(0.1);
+        }
+
+        Assert.That(callCount, Is.EqualTo(5));
+        Assert.That(coroutine.MoveNext(), Is.True);
+    }
+
+    /// <summary>
+    ///     验证RepeatCallForever应该在CancellationToken取消时停止
+    /// </summary>
+    [Test]
+    public void RepeatCallForever_Should_Stop_When_CancellationToken_Cancelled()
+    {
+        var callCount = 0;
+        using var cts = new CancellationTokenSource();
+        var coroutine = CoroutineHelper.RepeatCallForever(0.1, () =>
+        {
+            callCount++;
+            if (callCount >= 3) cts.Cancel();
+        }, cts.Token);
+
+        while (coroutine.MoveNext()) coroutine.Current.Update(0.1);
+
+        Assert.That(callCount, Is.EqualTo(3));
+    }
+
+    /// <summary>
+    ///     验证RepeatCallForever应该在CancellationToken已取消时不执行
+    /// </summary>
+    [Test]
+    public void RepeatCallForever_Should_Not_Execute_When_CancellationToken_Already_Cancelled()
+    {
+        var callCount = 0;
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        var coroutine = CoroutineHelper.RepeatCallForever(0.1, () => callCount++, cts.Token);
+
+        Assert.That(coroutine.MoveNext(), Is.False);
+        Assert.That(callCount, Is.EqualTo(0));
+    }
+
+    /// <summary>
+    ///     验证RepeatCallForever应该正常执行当CancellationToken未取消时
+    /// </summary>
+    [Test]
+    public void RepeatCallForever_Should_Execute_When_CancellationToken_Not_Cancelled()
+    {
+        var callCount = 0;
+        using var cts = new CancellationTokenSource();
+        var coroutine = CoroutineHelper.RepeatCallForever(0.1, () => callCount++, cts.Token);
+
+        for (var i = 0; i < 5; i++)
+        {
+            Assert.That(coroutine.MoveNext(), Is.True);
+            coroutine.Current.Update(0.1);
+        }
+
+        Assert.That(callCount, Is.EqualTo(5));
+    }
 }
