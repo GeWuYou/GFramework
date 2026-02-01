@@ -173,25 +173,6 @@ public sealed class CoroutineScheduler(
                 WaitForCoroutine(slot.Handle, targetHandle);
                 break;
             }
-            case WaitForAllCoroutines waitForAll:
-            {
-                slot.Waiting = waitForAll;
-                // 为所有待完成的协程建立等待关系
-                foreach (var handle in waitForAll.PendingHandles)
-                {
-                    if (_metadata.ContainsKey(handle))
-                    {
-                        WaitForCoroutine(slot.Handle, handle);
-                    }
-                    else
-                    {
-                        // 协程已完成，立即通知
-                        waitForAll.NotifyCoroutineComplete(handle);
-                    }
-                }
-
-                break;
-            }
             default:
                 slot.Waiting = instruction;
                 break;
@@ -372,9 +353,6 @@ public sealed class CoroutineScheduler(
                 // 通知 WaitForCoroutine 指令协程已完成
                 case WaitForCoroutine wfc:
                     wfc.Complete();
-                    break;
-                case WaitForAllCoroutines wfa:
-                    wfa.NotifyCoroutineComplete(handle);
                     break;
             }
 

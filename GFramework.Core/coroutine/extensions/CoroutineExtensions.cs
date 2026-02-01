@@ -86,7 +86,7 @@ public static class CoroutineExtensions
         }
 
         // 等待所有协程完成
-        yield return new WaitForAllCoroutines(handles);
+        yield return new WaitForAllCoroutines(scheduler, handles);
     }
 
     /// <summary>
