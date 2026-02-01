@@ -49,10 +49,39 @@ public static class NodeExtensions
     ///     如果节点尚未进入场景树，则等待 ready 信号。
     ///     如果已经在场景树中，则立刻返回。
     /// </summary>
+    /// <param name="node">要等待其准备就绪的节点</param>
+    /// <returns>表示异步操作的任务</returns>
     public static async Task WaitUntilReady(this Node node)
     {
         if (!node.IsInsideTree()) await node.ToSignal(node, Node.SignalName.Ready);
     }
+
+    /// <summary>
+    ///     如果节点尚未进入场景树，则等待 ready 信号后执行回调函数。
+    ///     如果已经在场景树中，则立即执行回调函数。
+    /// </summary>
+    /// <param name="node">要等待其准备就绪的节点</param>
+    /// <param name="callback">节点准备就绪后要执行的回调函数</param>
+    public static void WaitUntilReady(this Node node, Action callback)
+    {
+        // 检查节点是否已经在场景树中
+        if (node.IsInsideTree())
+        {
+            callback();
+            return;
+        }
+
+        _ = WaitAsync();
+        return;
+
+        // 异步等待节点准备就绪并执行回调
+        async Task WaitAsync()
+        {
+            await node.ToSignal(node, Node.SignalName.Ready);
+            callback();
+        }
+    }
+
 
     /// <summary>
     ///     检查节点是否有效：

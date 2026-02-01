@@ -2,6 +2,7 @@
 using GFramework.Core.Abstractions.coroutine;
 using GFramework.Core.coroutine;
 using GFramework.Core.coroutine.instructions;
+using GFramework.Godot.extensions;
 using Godot;
 
 namespace GFramework.Godot.coroutine;
@@ -62,15 +63,16 @@ public partial class Timing : Node
 
             var tree = (SceneTree)Engine.GetMainLoop();
             _instance = tree.Root.GetNodeOrNull<Timing>(nameof(Timing));
-
-            if (_instance == null)
+            if (_instance != null)
             {
-                _instance = new Timing
-                {
-                    Name = nameof(Timing)
-                };
-                tree.Root.AddChild(_instance);
+                return _instance;
             }
+
+            _instance = new Timing
+            {
+                Name = nameof(Timing)
+            };
+            tree.Root.WaitUntilReady(() => { tree.Root.AddChild(_instance); });
 
             return _instance;
         }
