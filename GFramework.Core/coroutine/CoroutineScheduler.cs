@@ -1,4 +1,5 @@
 ﻿using GFramework.Core.Abstractions.coroutine;
+using GFramework.Core.coroutine.instructions;
 
 namespace GFramework.Core.coroutine;
 
@@ -98,26 +99,79 @@ public sealed class CoroutineScheduler(
 
             try
             {
-                // 1️⃣ 处理等待指令
-                if (slot.Waiting != null)
+                ProcessWaitingInstruction(slot, delta);
+
+                if (!IsWaiting(slot))
                 {
-                    slot.Waiting.Update(delta);
-                    if (!slot.Waiting.IsDone)
-                        continue;
-
-                    slot.Waiting = null;
+                    ProcessCoroutineStep(slot, i);
                 }
-
-                // 2️⃣ 推进协程
-                if (!slot.Enumerator.MoveNext())
-                    Complete(i);
-                else
-                    slot.Waiting = slot.Enumerator.Current;
             }
             catch (Exception ex)
             {
                 OnError(i, ex);
             }
+        }
+    }
+
+    /// <summary>
+    ///     处理协程的等待指令
+    /// </summary>
+    /// <param name="slot">协程槽位</param>
+    /// <param name="delta">时间差值</param>
+    private static void ProcessWaitingInstruction(CoroutineSlot slot, double delta)
+    {
+        if (slot.Waiting == null)
+            return;
+
+        slot.Waiting.Update(delta);
+        if (slot.Waiting.IsDone)
+            slot.Waiting = null;
+    }
+
+    /// <summary>
+    ///     判断协程是否正在等待
+    /// </summary>
+    /// <param name="slot">协程槽位</param>
+    /// <returns>是否正在等待</returns>
+    private static bool IsWaiting(CoroutineSlot slot)
+    {
+        return slot.Waiting != null && !slot.Waiting.IsDone;
+    }
+
+    /// <summary>
+    ///     处理协程步骤推进
+    /// </summary>
+    /// <param name="slot">协程槽位</param>
+    /// <param name="slotIndex">槽位索引</param>
+    private void ProcessCoroutineStep(CoroutineSlot slot, int slotIndex)
+    {
+        if (!slot.Enumerator.MoveNext())
+        {
+            Complete(slotIndex);
+            return;
+        }
+
+        var current = slot.Enumerator.Current;
+        HandleYieldInstruction(slot, current);
+    }
+
+    /// <summary>
+    ///     处理协程的yield指令
+    /// </summary>
+    /// <param name="slot">协程槽位</param>
+    /// <param name="instruction">yield指令</param>
+    private void HandleYieldInstruction(CoroutineSlot slot, IYieldInstruction instruction)
+    {
+        // 处理 WaitForCoroutine 指令
+        if (instruction is WaitForCoroutine waitForCoroutine)
+        {
+            // 启动被等待的协程并建立等待关系
+            var targetHandle = Run(waitForCoroutine.Coroutine);
+            WaitForCoroutine(slot.Handle, targetHandle);
+        }
+        else
+        {
+            slot.Waiting = instruction;
         }
     }
 
@@ -300,6 +354,12 @@ public sealed class CoroutineScheduler(
             if (!_metadata.TryGetValue(waiter, out var meta)) continue;
             var s = _slots[meta.SlotIndex];
             if (s == null) continue;
+            // 通知 WaitForCoroutine 指令协程已完成
+            if (s.Waiting is WaitForCoroutine wfc)
+            {
+                wfc.Complete();
+            }
+
             s.State = CoroutineState.Running;
             meta.State = CoroutineState.Running;
         }
