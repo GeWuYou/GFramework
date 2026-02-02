@@ -49,7 +49,7 @@ jobs:
           base: ${{ github.event.before }}
           # 当前提交哈希，作为扫描的目标版本
           head: ${{ github.sha }}
-
+    
       # 安装和配置.NET SDK版本
       - name: Setup .NET 8
         uses: actions/setup-dotnet@v5
@@ -79,6 +79,52 @@ jobs:
       # 恢复.NET本地工具
       - name: Restore .NET tools
         run: dotnet tool restore
+
+      # 使用Feluda许可证扫描器检查项目依赖的许可证合规性
+      # 配置参数：
+      # - project-license: 设置项目许可证为Apache-2.0
+      # - fail-on-restrictive: 发现限制性许可证时失败
+      # - fail-on-incompatible: 发现不兼容许可证时失败  
+      # - update-badge: 自动更新许可证徽章
+      - name: Feluda License Scanner
+        uses: anistark/feluda@v1.11.1
+        with:
+          project-license: 'Apache-2.0'
+          fail-on-restrictive: true
+          fail-on-incompatible: true
+          update-badge: true
+          
+      # 生成合规性文件，执行两次feluda generate命令
+      - name: Generate compliance files
+        run: |
+          echo "1" | feluda generate
+          echo "2" | feluda generate
+
+      # 生成软件物料清单(SBOM)文件，输出SPDX和CycloneDX两种格式
+      - name: Generate SBOM
+        run: |
+          feluda sbom spdx --output sbom.spdx.json
+          feluda sbom cyclonedx --output sbom.cyclonedx.json
+
+      # 验证生成的SBOM文件的有效性，并输出验证结果到文本文件
+      - name: Validate SBOM files
+        run: |
+          feluda sbom validate sbom.spdx.json --output sbom-spdx-validation.txt
+          feluda sbom validate sbom.cyclonedx.json --output sbom-cyclonedx-validation.txt
+
+      # 上传许可证合规相关的工件文件，包括通知文件、第三方许可证、SBOM文件及验证结果
+      - name: Upload compliance artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-compliance
+          path: |
+            NOTICE
+            THIRD_PARTY_LICENSES.md
+            sbom.spdx.json
+            sbom.cyclonedx.json
+            sbom-spdx-validation.txt
+            sbom-cyclonedx-validation.txt
+
       # 构建项目，使用Release配置且跳过恢复步骤
       - name: Build
         run: dotnet build -c Release --no-restore
