@@ -36,7 +36,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 9.0.x
+          dotnet-version: 10.0.x
 
       - name: Install unzip (for reading .nuspec from .nupkg)
         run: sudo apt-get update && sudo apt-get install -y unzip
@@ -106,7 +106,7 @@ jobs:
         id: nuget_login
         uses: NuGet/login@v1
         with:
-          user: ${{ secrets.NUGET_USER }} # 推荐将用户名放 secrets
+          user: ${{ secrets.NUGET_USER }}
 
       # 将所有生成的包推送到 nuget.org
       # 使用临时 API 密钥进行身份验证
