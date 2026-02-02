@@ -92,7 +92,6 @@ jobs:
           project-license: 'Apache-2.0'
           fail-on-restrictive: true
           fail-on-incompatible: true
-          update-badge: true
           update-badge: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
 
       # 构建项目，使用Release配置且跳过恢复步骤
