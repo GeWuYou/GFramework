@@ -93,7 +93,7 @@ jobs:
           fail-on-restrictive: false
           fail-on-incompatible: false
           verbose: true
-          update-badge: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          update-badge: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.workflow_run.head_commit.message, '[release ci] }}
       - name: Feluda License Scanner Incompatible Licenses
         run: |
           feluda --incompatible
