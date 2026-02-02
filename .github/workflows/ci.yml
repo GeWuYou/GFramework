@@ -94,6 +94,8 @@ jobs:
           fail-on-incompatible: false
           verbose: true
           update-badge: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        run: |
+          feluda --incompatible
 
       # 构建项目，使用Release配置且跳过恢复步骤
       - name: Build
