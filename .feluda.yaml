@@ -1,0 +1,11 @@
+﻿license_overrides:
+  NETStandard.Library: MIT
+  Microsoft.NETCore.Platforms: MIT
+  System.Buffers: MIT
+  System.Memory: MIT
+  System.Numerics.Vectors: MIT
+  System.Threading.Tasks.Extensions: MIT
+  System.ComponentModel.Composition: MIT
+  System.Security.Cryptography.ProtectedData: MIT
+  System.Security.Permissions: MIT
+  Microsoft.VisualStudio.Validation: MIT
