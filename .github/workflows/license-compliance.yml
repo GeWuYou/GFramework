@@ -34,7 +34,7 @@ jobs:
           update-badge: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
       - name: Feluda License Scanner Incompatible Licenses
         run: |
-          feluda --incompatible
+          feluda --incompatible --config .feluda.yaml
 
       # 生成合规性文件（NOTICE / THIRD_PARTY_LICENSES）
       - name: Generate compliance files
