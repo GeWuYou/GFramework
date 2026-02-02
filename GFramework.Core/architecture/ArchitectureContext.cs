@@ -13,32 +13,42 @@ namespace GFramework.Core.architecture;
 /// <summary>
 ///     架构上下文类，提供对系统、模型、工具等组件的访问以及命令、查询、事件的执行管理
 /// </summary>
-public class ArchitectureContext : IArchitectureContext
+public class ArchitectureContext(IIocContainer container) : IArchitectureContext
 {
-    private readonly IIocContainer _container;
+    private readonly IIocContainer _container = container ?? throw new ArgumentNullException(nameof(container));
     private readonly Dictionary<Type, object> _serviceCache = new();
 
-    public ArchitectureContext(IIocContainer container)
-    {
-        _container = container ?? throw new ArgumentNullException(nameof(container));
-    }
-
+    /// <summary>
+    /// 获取指定类型的服务实例，如果缓存中存在则直接返回，否则从容器中获取并缓存
+    /// </summary>
+    /// <typeparam name="TService">服务类型，必须为引用类型</typeparam>
+    /// <returns>服务实例，如果未找到则返回null</returns>
     public TService? GetService<TService>() where TService : class
     {
         return GetOrCache<TService>();
     }
 
+    /// <summary>
+    /// 从缓存中获取或创建指定类型的服务实例
+    /// 首先尝试从缓存中获取服务实例，如果缓存中不存在则从容器中获取并存入缓存
+    /// </summary>
+    /// <typeparam name="TService">服务类型，必须为引用类型</typeparam>
+    /// <returns>服务实例，如果未找到则返回null</returns>
     private TService? GetOrCache<TService>() where TService : class
     {
+        // 尝试从服务缓存中获取已存在的服务实例
         if (_serviceCache.TryGetValue(typeof(TService), out var cached))
             return (TService)cached;
 
+        // 从依赖注入容器中获取服务实例
         var service = _container.Get<TService>();
+        // 如果服务实例存在，则将其存入缓存以供后续使用
         if (service != null)
             _serviceCache[typeof(TService)] = service;
 
         return service;
     }
+
 
     #region Query Execution
 
