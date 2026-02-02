@@ -9,7 +9,7 @@ on:
     branches: [ main, master ]
 
 permissions:
-  contents: write
+  contents: read
   security-events: write
 
 jobs:

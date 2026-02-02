@@ -2,7 +2,7 @@ name: Auto Increment Version and Tag
 
 on:
   workflow_run:
-    workflows: ["CI - Build & Test"]
+    workflows: ["License Compliance (Feluda)"]
     types:
       - completed
 
@@ -55,9 +55,3 @@ jobs:
 
           git tag -a "$TAG" -m "Auto tag $TAG"
           git push "https://x-access-token:${PAT}@github.com/${{ github.repository }}.git" "$TAG"
-  license-compliance:
-    needs: auto-tag
-    if: needs.auto-tag.outputs.tagged == 'true'
-    uses: ./.github/workflows/license-compliance.yml
-    permissions:
-      contents: read
