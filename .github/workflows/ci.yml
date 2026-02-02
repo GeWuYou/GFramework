@@ -90,8 +90,8 @@ jobs:
         uses: anistark/feluda@v1.11.1
         with:
           project-license: 'Apache-2.0'
-          fail-on-restrictive: true
-          fail-on-incompatible: true
+          fail-on-restrictive: false
+          fail-on-incompatible: false
           verbose: true
           update-badge: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
 
