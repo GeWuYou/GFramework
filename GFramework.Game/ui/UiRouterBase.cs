@@ -267,9 +267,9 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     ///     获取页面栈顶元素，但不移除该元素
     /// </summary>
     /// <returns>返回栈顶的IUiPageBehavior元素</returns>
-    public IUiPageBehavior Peek()
+    public IUiPageBehavior? Peek()
     {
-        return _stack.Peek();
+        return _stack.Count == 0 ? null : _stack.Peek();
     }
 
 

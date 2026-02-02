@@ -103,7 +103,7 @@ public interface IUiRouter : ISystem
     ///     获取当前栈顶的UI页面行为对象
     /// </summary>
     /// <returns>栈顶的IUiPageBehavior对象，如果栈为空则返回null</returns>
-    IUiPageBehavior Peek();
+    IUiPageBehavior? Peek();
 
 
     /// <summary>
@@ -135,6 +135,44 @@ public interface IUiRouter : ISystem
     /// </summary>
     /// <param name="guard">守卫实例</param>
     void RemoveGuard(IUiRouteGuard guard);
+
+    #endregion
+
+    #region Layer UI
+
+    /// <summary>
+    ///     在指定层级显示UI（Overlay / Modal / Toast等）
+    /// </summary>
+    void Show(
+        string uiKey,
+        UiLayer layer,
+        IUiPageEnterParam? param = null,
+        UiInstancePolicy instancePolicy = UiInstancePolicy.Reuse);
+
+    /// <summary>
+    ///     在指定层级显示UI（基于已存在实例）
+    /// </summary>
+    void Show(IUiPageBehavior page, UiLayer layer);
+
+    /// <summary>
+    ///     隐藏指定层级的UI
+    /// </summary>
+    void Hide(string uiKey, UiLayer layer, bool destroy = false);
+
+    /// <summary>
+    ///     清空指定层级的所有UI
+    /// </summary>
+    void ClearLayer(UiLayer layer, bool destroy = false);
+
+    /// <summary>
+    ///     从指定层级获取UI实例
+    /// </summary>
+    IUiPageBehavior? GetFromLayer(string uiKey, UiLayer layer);
+
+    /// <summary>
+    ///     判断指定层级是否存在可见UI
+    /// </summary>
+    bool HasVisibleInLayer(UiLayer layer);
 
     #endregion
 }
