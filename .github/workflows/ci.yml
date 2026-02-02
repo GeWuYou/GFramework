@@ -9,7 +9,7 @@ on:
     branches: [ main, master ]
 
 permissions:
-  contents: read
+  contents: write
   security-events: write
 
 jobs:
@@ -93,37 +93,7 @@ jobs:
           fail-on-restrictive: true
           fail-on-incompatible: true
           update-badge: true
-          
-      # 生成合规性文件，执行两次feluda generate命令
-      - name: Generate compliance files
-        run: |
-          echo "1" | feluda generate
-          echo "2" | feluda generate
-
-      # 生成软件物料清单(SBOM)文件，输出SPDX和CycloneDX两种格式
-      - name: Generate SBOM
-        run: |
-          feluda sbom spdx --output sbom.spdx.json
-          feluda sbom cyclonedx --output sbom.cyclonedx.json
-
-      # 验证生成的SBOM文件的有效性，并输出验证结果到文本文件
-      - name: Validate SBOM files
-        run: |
-          feluda sbom validate sbom.spdx.json --output sbom-spdx-validation.txt
-          feluda sbom validate sbom.cyclonedx.json --output sbom-cyclonedx-validation.txt
-
-      # 上传许可证合规相关的工件文件，包括通知文件、第三方许可证、SBOM文件及验证结果
-      - name: Upload compliance artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: license-compliance
-          path: |
-            NOTICE
-            THIRD_PARTY_LICENSES.md
-            sbom.spdx.json
-            sbom.cyclonedx.json
-            sbom-spdx-validation.txt
-            sbom-cyclonedx-validation.txt
+          update-badge: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
 
       # 构建项目，使用Release配置且跳过恢复步骤
       - name: Build

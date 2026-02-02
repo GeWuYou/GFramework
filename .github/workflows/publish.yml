@@ -67,7 +67,38 @@ jobs:
           set -e
           echo "Packing with version=${{ steps.tag_version.outputs.version }}"
           dotnet pack -c Release -o ./packages -p:PackageVersion=${{ steps.tag_version.outputs.version }} -p:IncludeSymbols=false
+      - name: Setup Feluda
+        uses: anistark/feluda@v1.11.1
+      # 生成合规性文件，执行两次feluda generate命令
+      - name: Generate compliance files
+        run: |
+          echo "1" | feluda generate
+          echo "2" | feluda generate
 
+      # 生成软件物料清单(SBOM)文件，输出SPDX和CycloneDX两种格式
+      - name: Generate SBOM
+        run: |
+          feluda sbom spdx --output sbom.spdx.json
+          feluda sbom cyclonedx --output sbom.cyclonedx.json
+
+      # 验证生成的SBOM文件的有效性，并输出验证结果到文本文件
+      - name: Validate SBOM files
+        run: |
+          feluda sbom validate sbom.spdx.json --output sbom-spdx-validation.txt
+          feluda sbom validate sbom.cyclonedx.json --output sbom-cyclonedx-validation.txt
+
+      # 上传许可证合规相关的工件文件，包括通知文件、第三方许可证、SBOM文件及验证结果
+      - name: Upload compliance artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-compliance
+          path: |
+            NOTICE
+            THIRD_PARTY_LICENSES.md
+            sbom.spdx.json
+            sbom.cyclonedx.json
+            sbom-spdx-validation.txt
+            sbom-cyclonedx-validation.txt
       - name: Show packages
         run: ls -la ./packages || true
 
@@ -99,7 +130,7 @@ jobs:
           if [ "$pushed_any" = false ]; then
             echo "No packages found to push."
           fi
-
+      
       # 从 .nupkg 文件中提取版本信息
       # 通过解压 .nupkg（zip 格式）并读取 .nuspec 文件来获取版本
       # 输出：
@@ -134,10 +165,21 @@ jobs:
         with:
           generate_release_notes: true
           name: "Release ${{ github.ref_name }}"
-          body: "Release created by CI for tag ${{ github.ref_name }} (package version ${{ steps.get_version.outputs.version }})"
+          body: |
+            Release created by CI for tag ${{ github.ref_name }}
+            Package version: ${{ steps.get_version.outputs.version }}
+
+            ## Compliance
+            - NOTICE
+            - THIRD_PARTY_LICENSES
+            - SPDX & CycloneDX SBOM
           draft: false
           prerelease: false
-          # 核心优化：直接支持通配符
-          files: ./packages/*.nupkg
+          files: |
+            ./packages/*.nupkg
+            NOTICE
+            THIRD_PARTY_LICENSES.md
+            sbom.spdx.json
+            sbom.cyclonedx.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
