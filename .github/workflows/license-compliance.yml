@@ -1,0 +1,69 @@
+﻿name: License Compliance (Feluda)
+
+on:
+  workflow_call:
+    inputs:
+      upload-artifacts:
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  compliance:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 使用Feluda许可证扫描器检查项目依赖的许可证合规性
+      # 配置参数：
+      # - project-license: 设置项目许可证为Apache-2.0
+      # - fail-on-restrictive: 发现限制性许可证时失败
+      # - fail-on-incompatible: 发现不兼容许可证时失败  
+      # - update-badge: 自动更新许可证徽章
+      - name: Feluda License Scanner
+        uses: anistark/feluda@v1.11.1
+        with:
+          project-license: 'Apache-2.0'
+          fail-on-restrictive: false
+          fail-on-incompatible: false
+          update-badge: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      - name: Feluda License Scanner Incompatible Licenses
+        run: |
+          feluda --incompatible
+
+      # 生成合规性文件（NOTICE / THIRD_PARTY_LICENSES）
+      - name: Generate compliance files
+        run: |
+          echo "1" | feluda generate
+          echo "2" | feluda generate
+
+      # 生成 SBOM（SPDX + CycloneDX）
+      - name: Generate SBOM
+        run: |
+          feluda sbom spdx --output sbom.spdx.json
+          feluda sbom cyclonedx --output sbom.cyclonedx.json
+
+      # 校验 SBOM
+      - name: Validate SBOM files
+        run: |
+          feluda sbom validate sbom.spdx.json --output sbom-spdx-validation.txt
+          feluda sbom validate sbom.cyclonedx.json --output sbom-cyclonedx-validation.txt
+
+      # 上传合规产物
+      - name: Upload compliance artifacts
+        if: inputs.upload-artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-compliance
+          path: |
+            NOTICE
+            THIRD_PARTY_LICENSES.md
+            sbom.spdx.json
+            sbom.cyclonedx.json
+            sbom-spdx-validation.txt
+            sbom-cyclonedx-validation.txt

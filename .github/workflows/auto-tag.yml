@@ -20,7 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
+    outputs:
+      tagged: ${{ steps.create_tag.outcome == 'success' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -29,7 +30,6 @@ jobs:
           persist-credentials: false
 
       - name: Get next version
-        if: steps.check_skip.outputs.skip_tag == 'false'
         id: version
         run: |
           LATEST_TAG=$(git tag --list "v*" --sort=-v:refname | head -n 1)
@@ -40,7 +40,6 @@ jobs:
           echo "new_tag=v$MAJOR.$MINOR.$PATCH" >> $GITHUB_OUTPUT
 
       - name: Create tag
-        if: steps.check_skip.outputs.skip_tag == 'false'
         env:
           PAT: ${{ secrets.PAT_TOKEN }}
           TAG: ${{ steps.version.outputs.new_tag }}
@@ -56,3 +55,9 @@ jobs:
 
           git tag -a "$TAG" -m "Auto tag $TAG"
           git push "https://x-access-token:${PAT}@github.com/${{ github.repository }}.git" "$TAG"
+  license-compliance:
+    needs: auto-tag
+    if: needs.auto-tag.outputs.tagged == 'true'
+    uses: ./.github/workflows/license-compliance.yml
+    permissions:
+      contents: read

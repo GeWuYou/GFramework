@@ -79,25 +79,7 @@ jobs:
       # 恢复.NET本地工具
       - name: Restore .NET tools
         run: dotnet tool restore
-
-      # 使用Feluda许可证扫描器检查项目依赖的许可证合规性
-      # 配置参数：
-      # - project-license: 设置项目许可证为Apache-2.0
-      # - fail-on-restrictive: 发现限制性许可证时失败
-      # - fail-on-incompatible: 发现不兼容许可证时失败  
-      # - update-badge: 自动更新许可证徽章
-      - name: Feluda License Scanner
-        uses: anistark/feluda@v1.11.1
-        with:
-          project-license: 'Apache-2.0'
-          fail-on-restrictive: false
-          fail-on-incompatible: false
-          verbose: true
-          update-badge: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[release ci]') }}
-      - name: Feluda License Scanner Incompatible Licenses
-        run: |
-          feluda --incompatible
-
+        
       # 构建项目，使用Release配置且跳过恢复步骤
       - name: Build
         run: dotnet build -c Release --no-restore
