@@ -1,4 +1,4 @@
-﻿[allowlist]
+[allowlist]
 description = "Ignore test/demo secrets"
 
 paths = [
