@@ -1,3 +1,5 @@
+# Allowlist for fake/test/demo secrets only
+# DO NOT add real credentials here
 [allowlist]
 description = "Ignore test/demo secrets"
 

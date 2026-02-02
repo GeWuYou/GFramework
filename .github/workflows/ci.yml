@@ -23,11 +23,19 @@ jobs:
         with:
           fetch-depth: 0
       # MegaLinter扫描步骤
+      # 执行代码质量检查和安全扫描，生成SARIF格式报告
       - name: MegaLinter
         uses: oxsecurity/megalinter@v9.3.0
         continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FAIL_ON_ERROR: ${{ github.ref == 'refs/heads/main' }}
+      # 上传SARIF格式的安全和代码质量问题报告到GitHub安全中心
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: megalinter-reports/sarif
+
       # TruffleHog OSS 扫描步骤
       # 使用 TruffleHog 工具扫描代码库中的敏感信息泄露，如API密钥、密码等
       # 该步骤会比较基础分支和当前提交之间的差异，检测新增内容中是否包含敏感数据
