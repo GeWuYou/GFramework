@@ -1,12 +1,13 @@
 ﻿[allowlist]
 description = "Ignore test/demo secrets"
+
 paths = [
-  '''docs/.*''',
-  '''.*Test.*\.json''',
-  '''.*Development.*'''
+  "docs/.*",
+  ".*Test.*\\.json",
+  ".*Development.*"
 ]
 
 regexes = [
-  '''FAKE_.*_KEY''',
-  '''TEST_.*_TOKEN'''
+  "FAKE_.*_KEY",
+  "TEST_.*_TOKEN"
 ]
