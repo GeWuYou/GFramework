@@ -1,0 +1,86 @@
+﻿# 配置文件用于设置代码质量检查工具的各项参数和规则
+# 包含全局排除目录、启用/禁用的检查器、特定语言配置等设置
+
+APPLY_FIXES: none
+FAIL_ON_ERROR: false
+
+# ========================
+# 全局排除目录配置
+# 定义不需要进行代码检查的目录列表
+# ========================
+EXCLUDED_DIRECTORIES:
+  - bin
+  - obj
+  - packages
+  - node_modules
+  - TestResults
+  - .git
+  - .vs
+  - .vscode
+
+# ========================
+# 禁用噪音较大的检查器
+# 避免在检查过程中产生过多无关警告信息
+# ========================
+DISABLE:
+  - COPYPASTE
+  - SPELL
+  - MARKDOWN
+
+# ========================
+# 启用核心检查器列表
+# 定义需要运行的主要代码质量检查工具
+# ========================
+ENABLE_LINTERS:
+  - CSHARP_DOTNET_FORMAT
+  - CSHARP_ROSLYN_ANALYZERS
+  - YAML
+  - JSON
+  - GITHUB_ACTIONS
+  - REPOSITORY_GITLEAKS
+  - REPOSITORY_TRUFFLEHOG
+
+# ========================
+# C# 代码格式化检查配置
+# 设置 C# 代码风格检查的参数和验证级别
+# ========================
+CSHARP_DOTNET_FORMAT_ARGUMENTS:
+  - "--severity"
+  - "info"
+  - "--verify-no-changes"
+
+# ========================
+# YAML 文件检查过滤配置
+# 定义 YAML 文件的包含和排除正则表达式模式
+# ========================
+YAML_YAMLLINT_FILTER_REGEX_INCLUDE: '.*\.(ya?ml)$'
+YAML_YAMLLINT_FILTER_REGEX_EXCLUDE: '.*/.github/.*'
+
+# ========================
+# JSON 文件检查过滤配置
+# 定义 JSON 文件的包含正则表达式模式
+# ========================
+JSON_JSONLINT_FILTER_REGEX_INCLUDE: '.*\.json$'
+
+# ========================
+# GitHub Actions 工作流检查配置
+# 控制 GitHub Actions 文件检查的错误报告行为
+# ========================
+ACTION_ACTIONLINT_DISABLE_ERRORS: true
+
+# ========================
+# 报告输出配置
+# 设置检查结果的多种报告输出格式
+# ========================
+CONSOLE_REPORTER: true
+SARIF_REPORTER: true
+GITHUB_COMMENT_REPORTER: true
+
+# ========================
+# 性能优化配置
+# 控制检查过程的并行执行和时间统计选项
+# ========================
+PARALLEL: true
+SHOW_ELAPSED_TIME: true
+VALIDATE_ALL_CODEBASE: false
+

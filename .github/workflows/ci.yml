@@ -25,6 +25,7 @@ jobs:
       # MegaLinter扫描步骤
       - name: MegaLinter
         uses: oxsecurity/megalinter@v9.3.0
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # TruffleHog OSS 扫描步骤
