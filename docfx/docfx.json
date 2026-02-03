@@ -1,19 +1,54 @@
-﻿{
+{
   "metadata": [
     {
       "src": [
         {
-          "files": [ "GFramework.sln" ]
+          "src": "..",
+          "files": [
+            "GFramework.Core/GFramework.Core.csproj",
+            "GFramework.Core.Abstractions/GFramework.Core.Abstractions.csproj",
+            "GFramework.Game/GFramework.Game.csproj",
+            "GFramework.Game.Abstractions/GFramework.Game.Abstractions.csproj",
+            "GFramework.Godot/GFramework.Godot.csproj"
+          ]
         }
       ],
-      "dest": "api"
+      "dest": "api",
+      "filter": "filterConfig.yml",
+      "properties": {
+        "TargetFramework": "net8.0"
+      }
     }
   ],
   "build": {
     "content": [
-      { "files": [ "api/**.yml", "api/index.md" ] },
-      { "files": [ "docs/**.md", "docs/**/toc.yml" ] }
+      {
+        "files": [ "api/**.yml", "api/index.md" ]
+      },
+      {
+        "files": [ "../docs/**.md", "../docs/**/toc.yml" ],
+        "src": "../docs"
+      },
+      {
+        "files": [ "toc.yml", "*.md" ]
+      }
     ],
-    "dest": "_site"
+    "resource": [
+      {
+        "files": [ "../README.md" ],
+        "src": ".."
+      }
+    ],
+    "dest": "_site",
+    "template": [ "default" ],
+    "globalMetadata": {
+      "_appTitle": "GFramework Documentation",
+      "_enableSearch": true,
+      "_appFooter": "Copyright © 2026 GeWuYou. All rights reserved.",
+      "pdf": false
+    },
+    "xref": [
+      "https://learn.microsoft.com/en-us/dotnet/.xrefmap.json"
+    ]
   }
 }

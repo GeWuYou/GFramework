@@ -1,0 +1,13 @@
+apiRules:
+- exclude:
+    # 排除测试项目
+    uidRegex: ^.*Tests$
+    type: Namespace
+- exclude:
+    # 排除生成器项目
+    uidRegex: ^.*SourceGenerators.*$
+    type: Namespace
+- exclude:
+    # 排除内部实现细节
+    uidRegex: ^.*Internals.*$
+    type: Namespace

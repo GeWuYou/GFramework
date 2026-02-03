@@ -1,0 +1,29 @@
+- name: Home
+  href: index.md
+- name: API Documentation
+  href: api/
+  homepage: api/index.md
+- name: Core Framework
+  items:
+    - name: Architecture
+      href: GFramework.Core/architecture/README.md
+    - name: Commands
+      href: GFramework.Core/command/README.md
+    - name: Events
+      href: GFramework.Core/events/README.md
+    - name: Properties
+      href: GFramework.Core/property/README.md
+    - name: Systems
+      href: GFramework.Core/system/README.md
+    - name: Models
+      href: GFramework.Core/model/README.md
+    - name: Queries
+      href: GFramework.Core/query/README.md
+    - name: Coroutines
+      href: GFramework.Core/coroutine/
+    - name: Logging
+      href: GFramework.Core/logging/README.md
+    - name: IOC Container
+      href: GFramework.Core/ioc/README.md
+    - name: Pool System
+      href: GFramework.Core/pool/README.md
