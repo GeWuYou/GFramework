@@ -535,6 +535,34 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
+    /// 在指定层级显示UI（基于实例）
+    /// </summary>
+    public void Show(
+        IUiPageBehavior page,
+        UiLayer layer,
+        IUiPageEnterParam? param,
+        bool enter = false)
+    {
+        if (layer == UiLayer.Page)
+            throw new ArgumentException("Use Push() for Page layer");
+
+        var uiKey = page.Key;
+
+        if (!_layers.ContainsKey(layer))
+            _layers[layer] = new Dictionary<string, IUiPageBehavior>();
+
+        _layers[layer][uiKey] = page;
+        _uiRoot.AddUiPage(page, layer);
+
+        if (enter)
+            page.OnEnter(param);
+
+        page.OnShow();
+
+        Log.Debug("Show existing UI instance in layer: {0}, layer={1}", uiKey, layer);
+    }
+
+    /// <summary>
     ///     隐藏指定层级的UI
     /// </summary>
     public void Hide(string uiKey, UiLayer layer, bool destroy = false)

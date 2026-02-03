@@ -143,11 +143,28 @@ public interface IUiRouter : ISystem
     /// <summary>
     ///     在指定层级显示UI（Overlay / Modal / Toast等）
     /// </summary>
+    /// <param name="uiKey">要显示的UI页面的唯一标识符</param>
+    /// <param name="layer">UI显示的层级，例如 Overlay、Modal 或 Toast</param>
+    /// <param name="param">可选参数，用于传递给UI页面的初始化数据</param>
+    /// <param name="instancePolicy">UI实例策略，默认为复用已存在的实例</param>
     void Show(
         string uiKey,
         UiLayer layer,
         IUiPageEnterParam? param = null,
         UiInstancePolicy instancePolicy = UiInstancePolicy.Reuse);
+
+    /// <summary>
+    ///     在指定层级显示UI（Overlay / Modal / Toast等）
+    /// </summary>
+    /// <param name="page">要显示的UI页面行为对象</param>
+    /// <param name="layer">UI显示的层级，例如 Overlay、Modal 或 Toast</param>
+    /// <param name="param">传递给UI页面的初始化数据</param>
+    /// <param name="enter">是否立即进入UI页面，默认为 false</param>
+    void Show(
+        IUiPageBehavior page,
+        UiLayer layer,
+        IUiPageEnterParam? param,
+        bool enter = false);
 
     /// <summary>
     ///     在指定层级显示UI（基于已存在实例）
