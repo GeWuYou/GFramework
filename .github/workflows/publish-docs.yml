@@ -8,13 +8,13 @@ name: Publish Docs
 # 定义工作流的触发规则。当代码仓库发生特定事件时，将自动执行相关操作。
 # 此处配置表示：当向仓库推送（push）带有标签（tag）的提交时触发工作流。
 # 标签匹配规则为通配符 '*'，即任意标签都会触发。
-#on:
+on:
 #  push:
 #    branches:
 #      - '**'
 #    tags:
 #      - '*'
-#  workflow_dispatch:
+  workflow_dispatch:
 
 # 权限配置：指定工作流所需的权限。
 # actions: read - 允许读取 GitHub Actions 相关信息。

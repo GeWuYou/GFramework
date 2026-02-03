@@ -57,7 +57,6 @@ jobs:
 
       # 上传合规产物
       - name: Upload compliance artifacts
-        if: inputs.upload-artifacts
         uses: actions/upload-artifact@v4
         with:
           name: license-compliance
