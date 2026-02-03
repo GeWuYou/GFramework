@@ -22,15 +22,18 @@
   ],
   "build": {
     "content": [
-    { "files": [ "index.md" ] },
-    { "files": [ "api/**.yml", "api/index.md" ] },
-    {
-      "files": [ "**.md", "**/toc.yml" ],
-      "src": "../docs"
-    }
-  ],
-  "dest": "_site",
-    "template": [ "default" ],
+      { "files": [ "index.md" ] },
+      { "files": [ "api/**.yml" ] },
+      {
+        "files": [ "**/*.md", "**/toc.yml" ],
+        "src": "../docs"
+      }
+    ],
+    "resource": [
+      { "files": [ "images/**", "**/*.png", "**/*.jpg", "**/*.jpeg", "**/*.gif", "**/*.svg" ] }
+    ],
+    "dest": "_site",
+    "template": [ "default", "templates/material" ],
     "globalMetadata": {
       "_appTitle": "GFramework Documentation",
       "_enableSearch": true,
