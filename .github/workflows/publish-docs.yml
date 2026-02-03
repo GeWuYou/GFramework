@@ -77,7 +77,20 @@ jobs:
       - name: Build DocFX
         run: |
           export PATH="$PATH:$HOME/.dotnet/tools"
-          docfx docfx/docfx.json
+          cd docfx
+          docfx metadata
+          docfx build
+
+      - name: Debug DocFX output
+        run: |
+          echo "==== docfx directory ===="
+          ls -la docfx || true
+
+          echo "==== _site directory ===="
+          ls -la docfx/_site || echo "_site not found"
+
+          echo "==== _site content ===="
+          find docfx/_site | head -n 50 || true
 
       # 步骤 7：上传构建好的静态站点文件作为工件。
       - name: Upload Pages Artifact
