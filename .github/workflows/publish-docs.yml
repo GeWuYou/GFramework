@@ -13,6 +13,7 @@ on:
       - '**'
     tags:
       - '*'
+  workflow_dispatch:
 
 # 权限配置：指定工作流所需的权限。
 # actions: read - 允许读取 GitHub Actions 相关信息。
