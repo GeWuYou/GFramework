@@ -37,15 +37,13 @@ concurrency:
 # 2. contains(github.event.head_commit.message, '[release doc]')：检查提交信息中是否包含 '[release doc]' 字符串。
 # 若任一条件满足，则执行该作业。
 jobs:
-  if: |
-    startsWith(github.ref, 'refs/tags/')
-    || contains(github.event.head_commit.message, '[release doc]')
-
   # 作业名称：publish-docs，负责构建和发布文档。
   publish-docs:
+    if: |
+      startsWith(github.ref, 'refs/tags/')
+      || contains(github.event.head_commit.message, '[release doc]')
     # 运行环境：使用最新版本的 Ubuntu 虚拟机。
     runs-on: ubuntu-latest
-
     # 环境配置：指定部署的目标环境为 github-pages，并设置页面 URL。
     environment:
       name: github-pages
