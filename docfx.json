@@ -1,0 +1,19 @@
+﻿{
+  "metadata": [
+    {
+      "src": [
+        {
+          "files": [ "GFramework.sln" ]
+        }
+      ],
+      "dest": "api"
+    }
+  ],
+  "build": {
+    "content": [
+      { "files": [ "api/**.yml", "api/index.md" ] },
+      { "files": [ "docs/**.md", "docs/**/toc.yml" ] }
+    ],
+    "dest": "_site"
+  }
+}

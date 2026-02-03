@@ -1,0 +1,93 @@
+﻿# 工作流名称：Publish Docs
+# 该工作流用于在推送到 main 分支时自动构建并发布文档到 GitHub Pages。
+
+name: Publish Docs
+
+# 触发条件：
+# 定义工作流的触发规则。当代码仓库发生特定事件时，将自动执行相关操作。
+# 此处配置表示：当向仓库推送（push）带有标签（tag）的提交时触发工作流。
+# 标签匹配规则为通配符 '*'，即任意标签都会触发。
+on:
+  push:
+    branches:
+      - '**'
+    tags:
+      - '*'
+
+# 权限配置：指定工作流所需的权限。
+# actions: read - 允许读取 GitHub Actions 相关信息。
+# pages: write - 允许写入 GitHub Pages 内容。
+# id-token: write - 允许写入身份令牌（用于部署认证）。
+permissions:
+  actions: read
+  pages: write
+  id-token: write
+
+# 并发控制：确保同一组任务不会同时运行。
+# group: "pages" - 将并发任务分组为 "pages"。
+# cancel-in-progress: false - 不取消正在进行的任务。
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+# 定义工作流中的作业。
+# if 条件表达式用于判断是否执行该作业。
+# 表达式逻辑如下：
+# 1. startsWith(github.ref, 'refs/tags/')：检查当前引用是否以 'refs/tags/' 开头，即是否为标签推送。
+# 2. contains(github.event.head_commit.message, '[release doc]')：检查提交信息中是否包含 '[release doc]' 字符串。
+# 若任一条件满足，则执行该作业。
+jobs:
+  if: |
+    startsWith(github.ref, 'refs/tags/')
+    || contains(github.event.head_commit.message, '[release doc]')
+
+  # 作业名称：publish-docs，负责构建和发布文档。
+  publish-docs:
+    # 运行环境：使用最新版本的 Ubuntu 虚拟机。
+    runs-on: ubuntu-latest
+
+    # 环境配置：指定部署的目标环境为 github-pages，并设置页面 URL。
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    # 步骤定义：按顺序执行一系列操作以完成文档构建与发布。
+    steps:
+      # 步骤 1：检出代码仓库。
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 步骤 2：安装 .NET SDK。
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      # 步骤 3：恢复项目依赖项。
+      - name: Restore
+        run: dotnet restore
+
+      # 步骤 4：构建项目并生成 XML 文档。
+      - name: Build (generate XML docs)
+        run: dotnet build -c Release
+
+      # 步骤 5：安装 DocFX 工具。
+      - name: Install DocFX
+        run: dotnet tool update -g docfx
+
+      # 步骤 6：使用 DocFX 构建静态站点。
+      - name: Build DocFX
+        run: |
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          docfx docfx/docfx.json
+
+      # 步骤 7：上传构建好的静态站点文件作为工件。
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docfx/_site
+
+      # 步骤 8：将静态站点部署到 GitHub Pages。
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
