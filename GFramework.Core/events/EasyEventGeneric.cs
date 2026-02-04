@@ -66,14 +66,14 @@ public class Event<T> : IEvent
 ///     提供事件注册、注销和触发功能。
 /// </summary>
 /// <typeparam name="T">第一个参数类型。</typeparam>
-/// <typeparam name="TK">第二个参数类型。</typeparam>
-public class Event<T, TK> : IEvent
+/// <typeparam name="Tk">第二个参数类型。</typeparam>
+public class Event<T, Tk> : IEvent
 {
     /// <summary>
     ///     存储已注册的双参数事件处理委托。
     ///     默认为空操作（no-op）委托。
     /// </summary>
-    private Action<T, TK>? _mOnEvent = (_, _) => { };
+    private Action<T, Tk>? _mOnEvent = (_, _) => { };
 
     /// <summary>
     ///     显式实现 IEvent 接口中的 Register 方法。
@@ -85,7 +85,7 @@ public class Event<T, TK> : IEvent
     {
         return Register(Action);
 
-        void Action(T _, TK __)
+        void Action(T _, Tk __)
         {
             onEvent();
         }
@@ -96,7 +96,7 @@ public class Event<T, TK> : IEvent
     /// </summary>
     /// <param name="onEvent">要注册的事件处理方法。</param>
     /// <returns>IUnRegister 对象，用于稍后注销该事件监听器。</returns>
-    public IUnRegister Register(Action<T, TK> onEvent)
+    public IUnRegister Register(Action<T, Tk> onEvent)
     {
         _mOnEvent += onEvent;
         return new DefaultUnRegister(() => { UnRegister(onEvent); });
@@ -106,7 +106,7 @@ public class Event<T, TK> : IEvent
     ///     取消指定的双参数事件监听器。
     /// </summary>
     /// <param name="onEvent">需要被注销的事件处理方法。</param>
-    public void UnRegister(Action<T, TK> onEvent)
+    public void UnRegister(Action<T, Tk> onEvent)
     {
         _mOnEvent -= onEvent;
     }
@@ -116,7 +116,7 @@ public class Event<T, TK> : IEvent
     /// </summary>
     /// <param name="t">第一个参数。</param>
     /// <param name="k">第二个参数。</param>
-    public void Trigger(T t, TK k)
+    public void Trigger(T t, Tk k)
     {
         _mOnEvent?.Invoke(t, k);
     }

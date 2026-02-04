@@ -10,7 +10,14 @@ namespace GFramework.Core.property;
 /// <param name="defaultValue">属性的默认值</param>
 public class BindableProperty<T>(T defaultValue = default!) : IBindableProperty<T>
 {
+    /// <summary>
+    ///     属性值变化事件回调委托，当属性值发生变化时被调用
+    /// </summary>
     private Action<T>? _mOnValueChanged;
+    
+    /// <summary>
+    ///     存储属性实际值的受保护字段
+    /// </summary>
     protected T MValue = defaultValue;
 
     /// <summary>
