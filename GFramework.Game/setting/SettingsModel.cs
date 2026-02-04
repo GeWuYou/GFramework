@@ -29,6 +29,7 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
     private readonly ConcurrentDictionary<Type, ISettingsData> _data = new();
     private readonly ConcurrentDictionary<Type, Dictionary<int, ISettingsMigration>> _migrationCache = new();
     private readonly ConcurrentDictionary<(Type type, int from), ISettingsMigration> _migrations = new();
+    private volatile bool _initialized;
 
     private IDataLocationProvider? _locationProvider = locationProvider;
 
@@ -39,6 +40,13 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
 
     private IDataLocationProvider LocationProvider =>
         _locationProvider ?? throw new InvalidOperationException("IDataLocationProvider not initialized.");
+
+    /// <summary>
+    /// 获取一个布尔值，指示当前对象是否已初始化。
+    /// </summary>
+    /// <returns>如果对象已初始化则返回 true，否则返回 false。</returns>
+    public bool IsInitialized => _initialized;
+
     // =========================
     // Data access
     // =========================
@@ -46,14 +54,21 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
     /// <summary>
     ///     获取指定类型的设置数据实例（唯一实例）
     /// </summary>
+    /// <typeparam name="T">实现ISettingsData接口且具有无参构造函数的类型</typeparam>
+    /// <returns>指定类型的设置数据实例</returns>
     public T GetData<T>() where T : class, ISettingsData, new()
     {
+        // 使用_data字典获取或添加指定类型的实例，确保唯一性
         return (T)_data.GetOrAdd(typeof(T), _ => new T());
     }
 
-
+    /// <summary>
+    ///     获取所有设置数据实例的集合
+    /// </summary>
+    /// <returns>包含所有ISettingsData实例的可枚举集合</returns>
     public IEnumerable<ISettingsData> AllData()
     {
+        // 返回_data字典中所有值的集合
         return _data.Values;
     }
 
@@ -73,8 +88,11 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
     }
 
     /// <summary>
-    ///     获取所有设置应用器
+    ///     获取所有设置应用器的集合。
     /// </summary>
+    /// <returns>
+    ///     返回一个包含所有设置应用器的可枚举集合。
+    /// </returns>
     public IEnumerable<IResetApplyAbleSettings> AllApplicators()
     {
         return _applicators.Values;
@@ -84,6 +102,15 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
     // Migration
     // =========================
 
+    /// <summary>
+    ///     注册一个设置迁移对象，并将其与指定的设置类型和版本关联。
+    /// </summary>
+    /// <param name="migration">
+    ///     要注册的设置迁移对象，需实现 ISettingsMigration 接口。
+    /// </param>
+    /// <returns>
+    ///     返回当前 ISettingsModel 实例，支持链式调用。
+    /// </returns>
     public ISettingsModel RegisterMigration(ISettingsMigration migration)
     {
         _migrations[(migration.SettingsType, migration.FromVersion)] = migration;
@@ -135,6 +162,7 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
                 Log.Error($"Failed to initialize settings data: {data.GetType().Name}", ex);
             }
 
+        _initialized = true;
         this.SendEvent(new SettingsInitializedEvent());
     }
 
@@ -215,10 +243,19 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
     // Init
     // =========================
 
+    /// <summary>
+    /// 初始化函数，在对象创建时调用。该函数负责初始化数据仓库和位置提供者，
+    /// 并注册所有已知数据类型到数据仓库中。
+    /// </summary>
     protected override void OnInit()
     {
+        // 初始化数据仓库实例，如果尚未赋值则通过依赖注入获取
         _repository ??= this.GetUtility<TRepository>()!;
+
+        // 初始化位置提供者实例，如果尚未赋值则通过依赖注入获取
         _locationProvider ??= this.GetUtility<IDataLocationProvider>()!;
+
+        // 遍历所有已知的数据类型，为其分配位置并注册到数据仓库中
         foreach (var type in _data.Keys)
         {
             var location = _locationProvider.GetLocation(type);
