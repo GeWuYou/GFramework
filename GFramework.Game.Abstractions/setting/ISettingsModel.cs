@@ -10,6 +10,13 @@ namespace GFramework.Game.Abstractions.setting;
 /// </summary>
 public interface ISettingsModel : IModel
 {
+    /// <summary>
+    /// 获取一个布尔值，指示当前对象是否已初始化。
+    /// </summary>
+    /// <returns>
+    /// 如果对象已初始化，则返回 true；否则返回 false。
+    /// </returns>
+    public bool IsInitialized { get; }
     // =========================
     // Data
     // =========================
