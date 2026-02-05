@@ -32,10 +32,10 @@ public class AbstractContextUtilityTests
     {
         _container = new IocContainer();
         _container.RegisterPlurality(new EventBus());
-        _container.RegisterPlurality(new CommandBus());
-        _container.RegisterPlurality(new QueryBus());
+        _container.RegisterPlurality(new CommandExecutor());
+        _container.RegisterPlurality(new QueryExecutor());
         _container.RegisterPlurality(new DefaultEnvironment());
-        _container.RegisterPlurality(new AsyncQueryBus());
+        _container.RegisterPlurality(new AsyncQueryExecutor());
         _context = new ArchitectureContext(_container);
     }
 

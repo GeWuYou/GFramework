@@ -61,8 +61,8 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     public TResult SendQuery<TResult>(IQuery<TResult> query)
     {
         if (query == null) throw new ArgumentNullException(nameof(query));
-        var queryBus = GetOrCache<IQueryBus>();
-        if (queryBus == null) throw new InvalidOperationException("IQueryBus not registered");
+        var queryBus = GetOrCache<IQueryExecutor>();
+        if (queryBus == null) throw new InvalidOperationException("IQueryExecutor not registered");
         return queryBus.Send(query);
     }
 
@@ -75,8 +75,8 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     public async Task<TResult> SendQueryAsync<TResult>(IAsyncQuery<TResult> query)
     {
         if (query == null) throw new ArgumentNullException(nameof(query));
-        var asyncQueryBus = GetOrCache<IAsyncQueryBus>();
-        if (asyncQueryBus == null) throw new InvalidOperationException("IAsyncQueryBus not registered");
+        var asyncQueryBus = GetOrCache<IAsyncQueryExecutor>();
+        if (asyncQueryBus == null) throw new InvalidOperationException("IAsyncQueryExecutor not registered");
         return await asyncQueryBus.SendAsync(query);
     }
 
@@ -125,7 +125,7 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     public void SendCommand(ICommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
-        var commandBus = GetOrCache<ICommandBus>();
+        var commandBus = GetOrCache<ICommandExecutor>();
         commandBus?.Send(command);
     }
 
@@ -138,8 +138,8 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     public TResult SendCommand<TResult>(ICommand<TResult> command)
     {
         ArgumentNullException.ThrowIfNull(command);
-        var commandBus = GetOrCache<ICommandBus>();
-        if (commandBus == null) throw new InvalidOperationException("ICommandBus not registered");
+        var commandBus = GetOrCache<ICommandExecutor>();
+        if (commandBus == null) throw new InvalidOperationException("ICommandExecutor not registered");
         return commandBus.Send(command);
     }
 
@@ -150,8 +150,8 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     public async Task SendCommandAsync(IAsyncCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
-        var commandBus = GetOrCache<ICommandBus>();
-        if (commandBus == null) throw new InvalidOperationException("ICommandBus not registered");
+        var commandBus = GetOrCache<ICommandExecutor>();
+        if (commandBus == null) throw new InvalidOperationException("ICommandExecutor not registered");
         await commandBus.SendAsync(command);
     }
 
@@ -164,8 +164,8 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     public async Task<TResult> SendCommandAsync<TResult>(IAsyncCommand<TResult> command)
     {
         ArgumentNullException.ThrowIfNull(command);
-        var commandBus = GetOrCache<ICommandBus>();
-        if (commandBus == null) throw new InvalidOperationException("ICommandBus not registered");
+        var commandBus = GetOrCache<ICommandExecutor>();
+        if (commandBus == null) throw new InvalidOperationException("ICommandExecutor not registered");
         return await commandBus.SendAsync(command);
     }
 

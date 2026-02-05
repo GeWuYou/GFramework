@@ -26,15 +26,15 @@ public interface IArchitectureServices : IContextAware
     /// <summary>
     ///     获取命令总线
     /// </summary>
-    public ICommandBus CommandBus { get; }
+    public ICommandExecutor CommandExecutor { get; }
 
     /// <summary>
     ///     获取查询总线
     /// </summary>
-    public IQueryBus QueryBus { get; }
+    public IQueryExecutor QueryExecutor { get; }
 
     /// <summary>
     ///     获取异步查询总线
     /// </summary>
-    public IAsyncQueryBus AsyncQueryBus { get; }
+    public IAsyncQueryExecutor AsyncQueryExecutor { get; }
 }

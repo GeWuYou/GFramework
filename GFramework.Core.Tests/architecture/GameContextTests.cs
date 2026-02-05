@@ -244,12 +244,12 @@ public class TestArchitectureContext : IArchitectureContext
     /// <summary>
     ///     获取命令总线
     /// </summary>
-    public ICommandBus CommandBus => new CommandBus();
+    public ICommandExecutor CommandExecutor => new CommandExecutor();
 
     /// <summary>
     ///     获取查询总线
     /// </summary>
-    public IQueryBus QueryBus => new QueryBus();
+    public IQueryExecutor QueryExecutor => new QueryExecutor();
 
     /// <summary>
     ///     获取环境对象

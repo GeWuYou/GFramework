@@ -59,9 +59,9 @@ public class ArchitectureContextTests
 
         // 创建服务实例
         _eventBus = new EventBus();
-        _commandBus = new CommandBus();
-        _queryBus = new QueryBus();
-        _asyncQueryBus = new AsyncQueryBus();
+        _commandBus = new CommandExecutor();
+        _queryBus = new QueryExecutor();
+        _asyncQueryBus = new AsyncQueryExecutor();
         _environment = new DefaultEnvironment();
 
         // 将服务注册到容器
@@ -77,9 +77,9 @@ public class ArchitectureContextTests
     private ArchitectureContext? _context;
     private IocContainer? _container;
     private EventBus? _eventBus;
-    private CommandBus? _commandBus;
-    private QueryBus? _queryBus;
-    private AsyncQueryBus? _asyncQueryBus;
+    private CommandExecutor? _commandBus;
+    private QueryExecutor? _queryBus;
+    private AsyncQueryExecutor? _asyncQueryBus;
     private DefaultEnvironment? _environment;
 
     /// <summary>

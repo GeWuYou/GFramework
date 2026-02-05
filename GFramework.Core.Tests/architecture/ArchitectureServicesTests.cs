@@ -21,7 +21,7 @@ namespace GFramework.Core.Tests.architecture;
 ///     ArchitectureServices类的单元测试
 ///     测试内容包括：
 ///     - 服务容器初始化
-///     - 所有服务实例创建（Container, EventBus, CommandBus, QueryBus）
+///     - 所有服务实例创建（Container, EventBus, CommandExecutor, QueryExecutor）
 ///     - SetContext方法 - 设置上下文
 ///     - SetContext方法 - 重复设置上下文
 ///     - GetContext方法 - 获取已设置上下文
@@ -51,8 +51,8 @@ public class ArchitectureServicesTests
     {
         Assert.That(_services!.Container, Is.Not.Null);
         Assert.That(_services.EventBus, Is.Not.Null);
-        Assert.That(_services.CommandBus, Is.Not.Null);
-        Assert.That(_services.QueryBus, Is.Not.Null);
+        Assert.That(_services.CommandExecutor, Is.Not.Null);
+        Assert.That(_services.QueryExecutor, Is.Not.Null);
     }
 
     [Test]
@@ -78,8 +78,8 @@ public class ArchitectureServicesTests
     [Test]
     public void CommandBus_Should_Be_Instance_Of_CommandBus()
     {
-        Assert.That(_services!.CommandBus, Is.InstanceOf<ICommandBus>());
-        Assert.That(_services.CommandBus, Is.InstanceOf<CommandBus>());
+        Assert.That(_services!.CommandExecutor, Is.InstanceOf<ICommandExecutor>());
+        Assert.That(_services.CommandExecutor, Is.InstanceOf<CommandExecutor>());
     }
 
     /// <summary>
@@ -88,8 +88,8 @@ public class ArchitectureServicesTests
     [Test]
     public void QueryBus_Should_Be_Instance_Of_QueryBus()
     {
-        Assert.That(_services!.QueryBus, Is.InstanceOf<IQueryBus>());
-        Assert.That(_services.QueryBus, Is.InstanceOf<QueryBus>());
+        Assert.That(_services!.QueryExecutor, Is.InstanceOf<IQueryExecutor>());
+        Assert.That(_services.QueryExecutor, Is.InstanceOf<QueryExecutor>());
     }
 
     /// <summary>
@@ -198,7 +198,7 @@ public class ArchitectureServicesTests
         var services1 = new ArchitectureServices();
         var services2 = new ArchitectureServices();
 
-        Assert.That(services1.CommandBus, Is.Not.SameAs(services2.CommandBus));
+        Assert.That(services1.CommandExecutor, Is.Not.SameAs(services2.CommandExecutor));
     }
 
     /// <summary>
@@ -210,7 +210,7 @@ public class ArchitectureServicesTests
         var services1 = new ArchitectureServices();
         var services2 = new ArchitectureServices();
 
-        Assert.That(services1.QueryBus, Is.Not.SameAs(services2.QueryBus));
+        Assert.That(services1.QueryExecutor, Is.Not.SameAs(services2.QueryExecutor));
     }
 }
 
@@ -224,8 +224,8 @@ public class TestArchitectureContextV3 : IArchitectureContext
 
     public IIocContainer Container => _container;
     public IEventBus EventBus => new EventBus();
-    public ICommandBus CommandBus => new CommandBus();
-    public IQueryBus QueryBus => new QueryBus();
+    public ICommandExecutor CommandExecutor => new CommandExecutor();
+    public IQueryExecutor QueryExecutor => new QueryExecutor();
 
     public TService? GetService<TService>() where TService : class
     {

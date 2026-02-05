@@ -15,15 +15,15 @@ namespace GFramework.Core.Tests.query;
 ///     - 异步查询的上下文传递
 /// </summary>
 [TestFixture]
-public class AsyncQueryBusTests
+public class AsyncQueryExecutorTests
 {
     [SetUp]
     public void SetUp()
     {
-        _asyncQueryBus = new AsyncQueryBus();
+        _asyncQueryExecutor = new AsyncQueryExecutor();
     }
 
-    private AsyncQueryBus _asyncQueryBus = null!;
+    private AsyncQueryExecutor _asyncQueryExecutor = null!;
 
     /// <summary>
     ///     测试SendAsync方法正确返回查询结果
@@ -34,7 +34,7 @@ public class AsyncQueryBusTests
         var input = new TestAsyncQueryInput { Value = 10 };
         var query = new TestAsyncQuery(input);
 
-        var result = await _asyncQueryBus.SendAsync(query);
+        var result = await _asyncQueryExecutor.SendAsync(query);
 
         Assert.That(result, Is.EqualTo(20));
     }
@@ -45,7 +45,7 @@ public class AsyncQueryBusTests
     [Test]
     public void SendAsync_WithNullQuery_Should_ThrowArgumentNullException()
     {
-        Assert.ThrowsAsync<ArgumentNullException>(async () => await _asyncQueryBus.SendAsync<int>(null!));
+        Assert.ThrowsAsync<ArgumentNullException>(async () => await _asyncQueryExecutor.SendAsync<int>(null!));
     }
 
     /// <summary>
@@ -57,7 +57,7 @@ public class AsyncQueryBusTests
         var input = new TestAsyncQueryInput { Value = 5 };
         var query = new TestAsyncStringQuery(input);
 
-        var result = await _asyncQueryBus.SendAsync(query);
+        var result = await _asyncQueryExecutor.SendAsync(query);
 
         Assert.That(result, Is.EqualTo("Result: 10"));
     }
@@ -71,7 +71,7 @@ public class AsyncQueryBusTests
         var input = new TestAsyncQueryInput { Value = 42 };
         var query = new TestAsyncBooleanQuery(input);
 
-        var result = await _asyncQueryBus.SendAsync(query);
+        var result = await _asyncQueryExecutor.SendAsync(query);
 
         Assert.That(result, Is.True);
     }
@@ -85,7 +85,7 @@ public class AsyncQueryBusTests
         var input = new TestAsyncQueryInput { Value = 100 };
         var query = new TestAsyncComplexQuery(input);
 
-        var result = await _asyncQueryBus.SendAsync(query);
+        var result = await _asyncQueryExecutor.SendAsync(query);
 
         Assert.That(result, Is.Not.Null);
         Assert.That(result.Value, Is.EqualTo(200));
@@ -101,7 +101,7 @@ public class AsyncQueryBusTests
         var input = new TestAsyncQueryInput { Value = 0 };
         var query = new TestAsyncQueryWithException(input);
 
-        Assert.ThrowsAsync<InvalidOperationException>(async () => await _asyncQueryBus.SendAsync(query));
+        Assert.ThrowsAsync<InvalidOperationException>(async () => await _asyncQueryExecutor.SendAsync(query));
     }
 
     /// <summary>
@@ -113,8 +113,8 @@ public class AsyncQueryBusTests
         var input = new TestAsyncQueryInput { Value = 10 };
         var query = new TestAsyncQuery(input);
 
-        var result1 = await _asyncQueryBus.SendAsync(query);
-        var result2 = await _asyncQueryBus.SendAsync(query);
+        var result1 = await _asyncQueryExecutor.SendAsync(query);
+        var result2 = await _asyncQueryExecutor.SendAsync(query);
 
         Assert.That(result1, Is.EqualTo(20));
         Assert.That(result2, Is.EqualTo(20));
@@ -131,8 +131,8 @@ public class AsyncQueryBusTests
         var query1 = new TestAsyncQuery(input1);
         var query2 = new TestAsyncQuery(input2);
 
-        var result1 = await _asyncQueryBus.SendAsync(query1);
-        var result2 = await _asyncQueryBus.SendAsync(query2);
+        var result1 = await _asyncQueryExecutor.SendAsync(query1);
+        var result2 = await _asyncQueryExecutor.SendAsync(query2);
 
         Assert.That(result1, Is.EqualTo(20));
         Assert.That(result2, Is.EqualTo(40));

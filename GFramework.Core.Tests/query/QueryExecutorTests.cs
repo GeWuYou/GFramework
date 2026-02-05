@@ -8,7 +8,7 @@ namespace GFramework.Core.Tests.query;
 ///     查询总线测试类，用于测试QueryBus的功能和异常处理
 /// </summary>
 [TestFixture]
-public class QueryBusTests
+public class QueryExecutorTests
 {
     /// <summary>
     ///     测试设置方法，在每个测试方法执行前初始化查询总线实例
@@ -16,10 +16,10 @@ public class QueryBusTests
     [SetUp]
     public void SetUp()
     {
-        _queryBus = new QueryBus();
+        _queryExecutor = new QueryExecutor();
     }
 
-    private QueryBus _queryBus = null!;
+    private QueryExecutor _queryExecutor = null!;
 
     /// <summary>
     ///     测试Send方法是否能正确返回查询结果
@@ -31,7 +31,7 @@ public class QueryBusTests
         var input = new TestQueryInput { Value = 10 };
         var query = new TestQuery(input);
 
-        var result = _queryBus.Send(query);
+        var result = _queryExecutor.Send(query);
 
         Assert.That(result, Is.EqualTo(20));
     }
@@ -43,7 +43,7 @@ public class QueryBusTests
     [Test]
     public void Send_WithNullQuery_Should_ThrowArgumentNullException()
     {
-        Assert.Throws<ArgumentNullException>(() => _queryBus.Send<int>(null!));
+        Assert.Throws<ArgumentNullException>(() => _queryExecutor.Send<int>(null!));
     }
 
     /// <summary>
@@ -56,7 +56,7 @@ public class QueryBusTests
         var input = new TestQueryInput { Value = 5 };
         var query = new TestStringQuery(input);
 
-        var result = _queryBus.Send(query);
+        var result = _queryExecutor.Send(query);
 
         Assert.That(result, Is.EqualTo("Result: 10"));
     }

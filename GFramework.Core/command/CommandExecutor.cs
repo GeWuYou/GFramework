@@ -4,9 +4,10 @@ using IAsyncCommand = GFramework.Core.Abstractions.command.IAsyncCommand;
 namespace GFramework.Core.command;
 
 /// <summary>
-///     命令总线实现类，用于发送和执行命令
+/// 表示一个命令执行器，用于执行命令操作。
+/// 该类实现了 ICommandExecutor 接口，提供命令执行的核心功能。
 /// </summary>
-public sealed class CommandBus : ICommandBus
+public sealed class CommandExecutor : ICommandExecutor
 {
     /// <summary>
     ///     发送并执行无返回值的命令

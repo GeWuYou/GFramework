@@ -5,7 +5,7 @@ namespace GFramework.Core.query;
 /// <summary>
 ///     异步查询总线实现，用于处理异步查询请求
 /// </summary>
-public sealed class AsyncQueryBus : IAsyncQueryBus
+public sealed class AsyncQueryExecutor : IAsyncQueryExecutor
 {
     /// <summary>
     ///     异步发送查询请求并返回结果

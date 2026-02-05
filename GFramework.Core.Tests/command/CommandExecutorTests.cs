@@ -17,15 +17,15 @@ namespace GFramework.Core.Tests.command;
 ///     - SendAsync方法（带返回值）处理null异步命令
 /// </summary>
 [TestFixture]
-public class CommandBusTests
+public class CommandExecutorTests
 {
     [SetUp]
     public void SetUp()
     {
-        _commandBus = new CommandBus();
+        _commandExecutor = new CommandExecutor();
     }
 
-    private CommandBus _commandBus = null!;
+    private CommandExecutor _commandExecutor = null!;
 
     /// <summary>
     ///     测试Send方法执行命令
@@ -36,7 +36,7 @@ public class CommandBusTests
         var input = new TestCommandInput { Value = 42 };
         var command = new TestCommand(input);
 
-        Assert.DoesNotThrow(() => _commandBus.Send(command));
+        Assert.DoesNotThrow(() => _commandExecutor.Send(command));
         Assert.That(command.Executed, Is.True);
         Assert.That(command.ExecutedValue, Is.EqualTo(42));
     }
@@ -47,7 +47,7 @@ public class CommandBusTests
     [Test]
     public void Send_WithNullCommand_Should_ThrowArgumentNullException()
     {
-        Assert.Throws<ArgumentNullException>(() => _commandBus.Send(null!));
+        Assert.Throws<ArgumentNullException>(() => _commandExecutor.Send(null!));
     }
 
     /// <summary>
@@ -59,7 +59,7 @@ public class CommandBusTests
         var input = new TestCommandInput { Value = 100 };
         var command = new TestCommandWithResult(input);
 
-        var result = _commandBus.Send(command);
+        var result = _commandExecutor.Send(command);
 
         Assert.That(command.Executed, Is.True);
         Assert.That(result, Is.EqualTo(200));
@@ -71,7 +71,7 @@ public class CommandBusTests
     [Test]
     public void Send_WithResult_AndNullCommand_Should_ThrowArgumentNullException()
     {
-        Assert.Throws<ArgumentNullException>(() => _commandBus.Send<int>(null!));
+        Assert.Throws<ArgumentNullException>(() => _commandExecutor.Send<int>(null!));
     }
 
     /// <summary>
@@ -83,7 +83,7 @@ public class CommandBusTests
         var input = new TestCommandInput { Value = 42 };
         var command = new TestAsyncCommand(input);
 
-        await _commandBus.SendAsync(command);
+        await _commandExecutor.SendAsync(command);
 
         Assert.That(command.Executed, Is.True);
         Assert.That(command.ExecutedValue, Is.EqualTo(42));
@@ -95,7 +95,7 @@ public class CommandBusTests
     [Test]
     public void SendAsync_WithNullCommand_Should_ThrowArgumentNullException()
     {
-        Assert.ThrowsAsync<ArgumentNullException>(async () => await _commandBus.SendAsync(null!));
+        Assert.ThrowsAsync<ArgumentNullException>(async () => await _commandExecutor.SendAsync(null!));
     }
 
     /// <summary>
@@ -107,7 +107,7 @@ public class CommandBusTests
         var input = new TestCommandInput { Value = 100 };
         var command = new TestAsyncCommandWithResult(input);
 
-        var result = await _commandBus.SendAsync(command);
+        var result = await _commandExecutor.SendAsync(command);
 
         Assert.That(command.Executed, Is.True);
         Assert.That(result, Is.EqualTo(200));
@@ -119,7 +119,7 @@ public class CommandBusTests
     [Test]
     public void SendAsync_WithResult_AndNullCommand_Should_ThrowArgumentNullException()
     {
-        Assert.ThrowsAsync<ArgumentNullException>(async () => await _commandBus.SendAsync<int>(null!));
+        Assert.ThrowsAsync<ArgumentNullException>(async () => await _commandExecutor.SendAsync<int>(null!));
     }
 }
 

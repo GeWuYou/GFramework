@@ -50,10 +50,10 @@ public class StateMachineSystemTests
             LoggerFactoryResolver.Provider.CreateLogger(nameof(StateMachineSystemTests)));
 
         container.RegisterPlurality(_eventBus);
-        container.RegisterPlurality(new CommandBus());
-        container.RegisterPlurality(new QueryBus());
+        container.RegisterPlurality(new CommandExecutor());
+        container.RegisterPlurality(new QueryExecutor());
         container.RegisterPlurality(new DefaultEnvironment());
-        container.RegisterPlurality(new AsyncQueryBus());
+        container.RegisterPlurality(new AsyncQueryExecutor());
 
         _context = new ArchitectureContext(container);
 
