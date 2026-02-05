@@ -11,29 +11,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using GFramework.Core.Abstractions.utility;
-
-namespace GFramework.Core.Abstractions.scene;
+namespace GFramework.Game.Abstractions.scene;
 
 /// <summary>
-/// 定义场景加载器的接口，用于管理场景的加载、替换和卸载操作。
+/// 定义场景根接口，用于管理场景的加载和卸载操作。
 /// </summary>
-public interface ISceneLoader<out T> : IUtility
+public interface ISceneRoot
 {
-    /// <summary>
-    /// 获取当前加载的场景对象。
-    /// </summary>
-    /// <returns>当前场景对象，如果未加载任何场景则返回 null。</returns>
-    T? Current { get; }
-
     /// <summary>
     /// 替换当前场景为指定键对应的场景。
     /// </summary>
-    /// <param name="key">场景的唯一标识符或键值。</param>
+    /// <param name="key">场景的唯一标识符，用于定位要加载的场景。</param>
     void Replace(string key);
 
     /// <summary>
-    /// 卸载当前加载的场景。
+    /// 卸载当前场景。
     /// </summary>
     void Unload();
 }
