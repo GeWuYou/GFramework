@@ -1,4 +1,4 @@
-﻿name: License Compliance (Feluda)
+name: License Compliance (Feluda)
 
 on:
   push:
@@ -67,7 +67,7 @@ jobs:
       #     name: 工件名称，用于标识上传的文件集合
       #     path: 指定需要上传的文件路径列表（支持多行格式）
       - name: Upload compliance artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: license-compliance
           path: |
