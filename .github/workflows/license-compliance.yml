@@ -1,6 +1,9 @@
 ﻿name: License Compliance (Feluda)
 
 on:
+  push:
+    tags:
+      - '*'
   workflow_run:
     workflows: ["CI - Build & Test"]
     types:
@@ -55,7 +58,14 @@ jobs:
           feluda sbom validate sbom.spdx.json --output sbom-spdx-validation.txt
           feluda sbom validate sbom.cyclonedx.json --output sbom-cyclonedx-validation.txt
 
-      # 上传合规产物
+      # 上传合规产物到 GitHub Actions 工件存储
+      # 此步骤将指定的合规文件打包并上传为工件，供后续流程使用
+      # 参数说明：
+      #   name: 步骤名称，用于标识该操作
+      #   uses: 指定使用的 GitHub Action，此处为上传工件的官方动作
+      #   with: 配置上传的具体内容
+      #     name: 工件名称，用于标识上传的文件集合
+      #     path: 指定需要上传的文件路径列表（支持多行格式）
       - name: Upload compliance artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -67,3 +77,27 @@ jobs:
             sbom.cyclonedx.json
             sbom-spdx-validation.txt
             sbom-cyclonedx-validation.txt
+      
+      # 将合规产物上传至 GitHub Release
+      # 此步骤将指定的合规文件附加到当前标签对应的 GitHub Release 中
+      # 参数说明：
+      #   name: 步骤名称，用于标识该操作
+      #   uses: 指定使用的 GitHub Action，此处为发布 Release 的第三方动作
+      #   with: 配置发布的具体信息
+      #     tag_name: 指定 Release 对应的 Git 标签名
+      #     files: 指定需要附加到 Release 的文件路径列表（支持多行格式）
+      #   env: 设置环境变量
+      #     GITHUB_TOKEN: GitHub 访问令牌，用于授权发布操作
+      - name: Upload compliance assets to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: |
+            NOTICE
+            THIRD_PARTY_LICENSES.md
+            sbom.spdx.json
+            sbom.cyclonedx.json
+            sbom-spdx-validation.txt
+            sbom-cyclonedx-validation.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
