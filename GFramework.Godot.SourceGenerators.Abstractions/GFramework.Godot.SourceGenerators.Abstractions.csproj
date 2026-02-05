@@ -19,7 +19,7 @@
         <Folder Include="logging\"/>
     </ItemGroup>
     <ItemGroup>
-        <PackageReference Update="Meziantou.Analyzer" Version="2.0.296">
+        <PackageReference Update="Meziantou.Analyzer" Version="2.0.298">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
         </PackageReference>
