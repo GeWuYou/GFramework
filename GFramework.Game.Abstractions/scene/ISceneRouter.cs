@@ -11,12 +11,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using GFramework.Core.Abstractions.system;
+
 namespace GFramework.Game.Abstractions.scene;
 
 /// <summary>
 /// 定义场景路由接口，用于管理场景的切换、卸载以及根节点绑定。
 /// </summary>
-public interface ISceneRouter
+public interface ISceneRouter : ISystem
 {
     /// <summary>
     /// 获取当前场景的唯一标识符（键）。
