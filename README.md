@@ -2,7 +2,8 @@
 
 > 面向游戏开发场景的模块化 C# 框架，核心能力与具体引擎解耦，可按需组合 Core / Game / Godot / Source Generators。
 
-[![NuGet](https://img.shields.io/badge/NuGet-GeWuYou.GFramework-blue)](https://www.nuget.org/packages/GeWuYou.GFramework)
+[![NuGet Core](https://img.shields.io/badge/NuGet-GeWuYou.GFramework.Core-2C7BE5)](https://www.nuget.org/packages/GeWuYou.GFramework.Core)
+[![NuGet Meta](https://img.shields.io/badge/NuGet-GeWuYou.GFramework-1F9D55)](https://www.nuget.org/packages/GeWuYou.GFramework)
 [![Godot](https://img.shields.io/badge/Godot-4.5+-green)](https://godotengine.org/)
 [![.NET](https://img.shields.io/badge/.NET-6.0+-purple)](https://dotnet.microsoft.com/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue)](LICENSE)
@@ -29,10 +30,10 @@ GFramework 采用清晰分层与模块化设计，强调：
 | `GFramework.Core` | 平台无关的核心架构能力（架构、命令、查询、事件、属性、IOC、日志等） | [查看](GFramework.Core/README.md) |
 | `GFramework.Core.Abstractions` | Core 对应的抽象接口定义 | [查看](GFramework.Core.Abstractions/README.md) |
 | `GFramework.Game` | 游戏业务侧扩展（状态、配置、存储、UI 等） | [查看](GFramework.Game/README.md) |
-| `GFramework.Game.Abstractions` | Game 模块抽象接口定义 | 源码目录：`GFramework.Game.Abstractions/` |
+| `GFramework.Game.Abstractions` | Game 模块抽象接口定义 | [查看](GFramework.Game.Abstractions/README.md) |
 | `GFramework.Godot` | Godot 集成层（节点扩展、场景/设置/存储适配等） | [查看](GFramework.Godot/README.md) |
 | `GFramework.SourceGenerators` | 通用源码生成器（日志、枚举扩展、规则等） | [查看](GFramework.SourceGenerators/README.md) |
-| `GFramework.Godot.SourceGenerators` | Godot 场景下的源码生成器扩展 | 源码目录：`GFramework.Godot.SourceGenerators/` |
+| `GFramework.Godot.SourceGenerators` | Godot 场景下的源码生成器扩展 | [查看](GFramework.Godot.SourceGenerators/README.md) |
 
 ## 文档导航
 
@@ -43,6 +44,13 @@ GFramework 采用清晰分层与模块化设计，强调：
 - API 参考：[`docs/api-reference/`](docs/api-reference/)
 
 > 如果你更偏好按模块阅读，建议从各子项目 `README.md` 开始，再回到 `docs/` 查阅专题文档。
+
+## 包选择说明（避免混淆）
+
+- **`GeWuYou.GFramework`**：聚合元包（Meta Package），用于一键引入常用能力集合，适合快速试用或原型阶段。
+- **`GeWuYou.GFramework.Core`**：核心起步包，适合希望按模块精细控制依赖的项目（推荐生产项目从此起步）。
+
+如果你已明确技术栈，建议优先按模块安装（Core / Game / Godot / SourceGenerators），避免不必要依赖。
 
 ## 快速安装
 
