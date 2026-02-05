@@ -170,7 +170,16 @@ public partial class Timing : Node
     #endregion
 
     #region 初始化
-
+    /// <summary>
+    /// 预热函数，用于确保实例已初始化。
+    /// 此函数通过访问 Instance 属性来触发可能的延迟初始化逻辑，
+    /// 从而避免在首次使用时产生性能开销。
+    /// </summary>
+    public static void Prewarm()
+    {
+        // 访问 Instance 属性以触发初始化逻辑
+        _ = Instance;
+    }
     /// <summary>
     ///     初始化所有调度器和时间源
     ///     创建Process、Physics和Deferred三个调度器实例
