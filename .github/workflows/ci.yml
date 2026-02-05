@@ -33,7 +33,7 @@ jobs:
           FAIL_ON_ERROR: ${{ github.ref == 'refs/heads/main' }}
       # 上传SARIF格式的安全和代码质量问题报告到GitHub安全中心
       - name: Upload SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: megalinter-reports/sarif
 
