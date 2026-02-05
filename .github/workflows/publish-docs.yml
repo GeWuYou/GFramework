@@ -1,4 +1,4 @@
-﻿# 工作流名称：Publish Docs
+# 工作流名称：Publish Docs
 # 该工作流用于在推送到 main 分支时自动构建并发布文档到 GitHub Pages。
 # 暂时关了，目前这个文档生成有问题，以后再改
 
@@ -59,7 +59,7 @@ jobs:
 
       # 步骤 2：安装 .NET SDK。
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
 
