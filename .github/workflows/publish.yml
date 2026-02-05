@@ -69,7 +69,7 @@ jobs:
           dotnet pack -c Release -o ./packages -p:PackageVersion=${{ steps.tag_version.outputs.version }} -p:IncludeSymbols=false
       # 上传许可证合规相关的工件文件，包括通知文件、第三方许可证、SBOM文件及验证结果
       - name: Upload compliance artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: license-compliance
           path: |
