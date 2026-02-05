@@ -11,12 +11,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using GFramework.Core.Abstractions.utility;
+
 namespace GFramework.Core.Abstractions.scene;
 
 /// <summary>
 /// 定义场景加载器的接口，用于管理场景的加载、替换和卸载操作。
 /// </summary>
-public interface ISceneLoader<out T>
+public interface ISceneLoader<out T> : IUtility
 {
     /// <summary>
     /// 获取当前加载的场景对象。
