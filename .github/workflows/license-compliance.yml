@@ -1,4 +1,4 @@
-﻿name: License Compliance (Feluda)
+name: License Compliance (Feluda)
 
 on:
   push:
@@ -21,7 +21,7 @@ jobs:
       contains(github.event.workflow_run.head_commit.message, '[release ci]')
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # 使用Feluda许可证扫描器检查项目依赖的许可证合规性
       # 配置参数：
