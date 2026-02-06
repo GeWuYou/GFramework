@@ -91,7 +91,6 @@ jobs:
       - name: Upload compliance assets to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
           files: |
             NOTICE
             THIRD_PARTY_LICENSES.md
