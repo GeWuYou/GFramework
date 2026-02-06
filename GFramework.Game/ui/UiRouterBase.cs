@@ -518,47 +518,24 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    /// 在指定层级显示UI（基于实例）
+    ///     隐藏指定层级的UI。
     /// </summary>
-    public void Show(
-        IUiPageBehavior page,
-        UiLayer layer,
-        IUiPageEnterParam? param,
-        bool enter = false)
-    {
-        if (layer == UiLayer.Page)
-            throw new ArgumentException("Use Push() for Page layer");
-
-        var uiKey = page.Key;
-
-        if (!_layers.ContainsKey(layer))
-            _layers[layer] = new Dictionary<string, IUiPageBehavior>();
-
-        _layers[layer][uiKey] = page;
-        _uiRoot.AddUiPage(page, layer);
-
-        if (enter)
-            page.OnEnter(param);
-
-        page.OnShow();
-
-        Log.Debug("Show existing UI instance in layer: {0}, layer={1}", uiKey, layer);
-    }
-
-    /// <summary>
-    ///     隐藏指定层级的UI
-    /// </summary>
+    /// <param name="uiKey">要隐藏的UI的唯一标识符。</param>
+    /// <param name="layer">UI所在的层级。</param>
+    /// <param name="destroy">是否永久销毁UI。如果为true，则UI将被彻底移除；如果为false，则UI仅被隐藏，可后续恢复。</param>
     public void Hide(string uiKey, UiLayer layer, bool destroy = false)
     {
+        // 尝试获取指定层级的UI字典，若不存在则直接返回
         if (!_layers.TryGetValue(layer, out var layerDict))
             return;
 
+        // 尝试获取指定UI键对应的页面对象，若不存在则直接返回
         if (!layerDict.TryGetValue(uiKey, out var page))
             return;
 
         if (destroy)
         {
-            // 永久移除
+            // 永久移除UI：调用OnExit方法并从UI根节点和层级字典中移除该UI
             page.OnExit(); // ✅ 只在 Destroy 时 Exit
             _uiRoot.RemoveUiPage(page);
             layerDict.Remove(uiKey);
@@ -570,7 +547,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         }
         else
         {
-            // 临时隐藏（可恢复）
+            // 临时隐藏UI：调用OnHide方法，保留UI状态以便后续恢复
             page.OnHide(); // ✅ Hide ≠ Exit
 
             Log.Debug(
@@ -578,6 +555,28 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
                 uiKey, layer
             );
         }
+    }
+
+    /// <summary>
+    ///     恢复指定层级中已隐藏的UI。
+    /// </summary>
+    /// <param name="uiKey">要恢复的UI的唯一标识符。</param>
+    /// <param name="layer">UI所在的层级。</param>
+    public void Resume(string uiKey, UiLayer layer)
+    {
+        // 尝试获取指定层级的UI字典，若不存在则直接返回
+        if (!_layers.TryGetValue(layer, out var layerDict))
+            return;
+
+        // 尝试获取指定UI键对应的页面对象，若不存在则直接返回
+        if (!layerDict.TryGetValue(uiKey, out var page))
+            return;
+
+        // 调用OnShow和OnResume方法以恢复UI的显示和状态
+        page.OnShow();
+        page.OnResume();
+
+        Log.Debug("Resume UI in layer: {0}, layer={1}", uiKey, layer);
     }
 
     /// <summary>
