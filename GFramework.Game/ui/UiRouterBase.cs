@@ -556,18 +556,27 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         if (!layerDict.TryGetValue(uiKey, out var page))
             return;
 
-        page.OnExit();
-        page.OnHide();
-
         if (destroy)
         {
+            // 永久移除
+            page.OnExit(); // ✅ 只在 Destroy 时 Exit
             _uiRoot.RemoveUiPage(page);
             layerDict.Remove(uiKey);
-            Log.Debug("Suspend & Destroy UI from layer: {0}, layer={1}", uiKey, layer);
+
+            Log.Debug(
+                "Hide & Destroy UI from layer: {0}, layer={1}",
+                uiKey, layer
+            );
         }
         else
         {
-            Log.Debug("Suspend & Suspend UI from layer: {0}, layer={1}", uiKey, layer);
+            // 临时隐藏（可恢复）
+            page.OnHide(); // ✅ Hide ≠ Exit
+
+            Log.Debug(
+                "Hide UI from layer (suspend): {0}, layer={1}",
+                uiKey, layer
+            );
         }
     }
 
@@ -695,11 +704,9 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
                     return false;
                 }
 
-                if (guard.CanInterrupt)
-                {
-                    Log.Debug("Leave guard {0} passed, can interrupt = true", guard.GetType().Name);
-                    return true;
-                }
+                if (!guard.CanInterrupt) continue;
+                Log.Debug("Leave guard {0} passed, can interrupt = true", guard.GetType().Name);
+                return true;
             }
             catch (Exception ex)
             {
