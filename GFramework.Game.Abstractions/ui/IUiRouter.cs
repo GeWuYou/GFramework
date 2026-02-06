@@ -25,9 +25,7 @@ public interface IUiRouter : ISystem
     /// <param name="uiKey">UI界面的唯一标识符</param>
     /// <param name="param">进入界面的参数，可为空</param>
     /// <param name="policy">界面切换策略，默认为Exclusive（独占）</param>
-    /// <param name="instancePolicy">实例管理策略，默认为Reuse（复用）</param>
-    void Push(string uiKey, IUiPageEnterParam? param = null, UiTransitionPolicy policy = UiTransitionPolicy.Exclusive,
-        UiInstancePolicy instancePolicy = UiInstancePolicy.Reuse);
+    void Push(string uiKey, IUiPageEnterParam? param = null, UiTransitionPolicy policy = UiTransitionPolicy.Exclusive);
 
 
     /// <summary>
@@ -54,13 +52,11 @@ public interface IUiRouter : ISystem
     /// <param name="param">页面进入参数，可为空</param>
     /// <param name="popPolicy">弹出页面时的销毁策略，默认为销毁</param>
     /// <param name="pushPolicy">推入页面时的过渡策略，默认为独占</param>
-    /// <param name="instancePolicy">实例管理策略</param>
     public void Replace(
         string uiKey,
         IUiPageEnterParam? param = null,
         UiPopPolicy popPolicy = UiPopPolicy.Destroy,
-        UiTransitionPolicy pushPolicy = UiTransitionPolicy.Exclusive,
-        UiInstancePolicy instancePolicy = UiInstancePolicy.Reuse);
+        UiTransitionPolicy pushPolicy = UiTransitionPolicy.Exclusive);
 
     /// <summary>
     ///     替换当前所有页面为已存在的页面（基于实例）
@@ -146,12 +142,10 @@ public interface IUiRouter : ISystem
     /// <param name="uiKey">要显示的UI页面的唯一标识符</param>
     /// <param name="layer">UI显示的层级，例如 Overlay、Modal 或 Toast</param>
     /// <param name="param">可选参数，用于传递给UI页面的初始化数据</param>
-    /// <param name="instancePolicy">UI实例策略，默认为复用已存在的实例</param>
     void Show(
         string uiKey,
         UiLayer layer,
-        IUiPageEnterParam? param = null,
-        UiInstancePolicy instancePolicy = UiInstancePolicy.Reuse);
+        IUiPageEnterParam? param = null);
 
     /// <summary>
     ///     在指定层级显示UI（Overlay / Modal / Toast等）

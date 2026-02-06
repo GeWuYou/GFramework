@@ -76,10 +76,8 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// <param name="uiKey">UI界面的唯一标识符</param>
     /// <param name="param">进入界面的参数，可为空</param>
     /// <param name="policy">界面切换策略，默认为Exclusive（独占）</param>
-    /// <param name="instancePolicy">实例管理策略，默认为Reuse（复用）</param>
     public void Push(string uiKey, IUiPageEnterParam? param = null,
-        UiTransitionPolicy policy = UiTransitionPolicy.Exclusive,
-        UiInstancePolicy instancePolicy = UiInstancePolicy.Reuse)
+        UiTransitionPolicy policy = UiTransitionPolicy.Exclusive)
     {
         if (IsTop(uiKey))
         {
@@ -90,12 +88,12 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         var @event = CreateEvent(uiKey, UiTransitionType.Push, policy, param);
 
         Log.Debug(
-            "Push UI Page: key={0}, policy={1}, instancePolicy={2}, stackBefore={3}",
-            uiKey, policy, instancePolicy, _stack.Count
+            "Push UI Page: key={0}, policy={1}, stackBefore={2}",
+            uiKey, policy, _stack.Count
         );
 
         BeforeChange(@event);
-        DoPushPageInternal(uiKey, param, policy, instancePolicy);
+        DoPushPageInternal(uiKey, param, policy);
         AfterChange(@event);
     }
 
@@ -176,18 +174,16 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// <param name="param">页面进入参数，可为空</param>
     /// <param name="popPolicy">弹出页面时的销毁策略，默认为销毁</param>
     /// <param name="pushPolicy">推入页面时的过渡策略，默认为独占</param>
-    /// <param name="instancePolicy">实例管理策略</param>
     public void Replace(
         string uiKey,
         IUiPageEnterParam? param = null,
         UiPopPolicy popPolicy = UiPopPolicy.Destroy,
-        UiTransitionPolicy pushPolicy = UiTransitionPolicy.Exclusive,
-        UiInstancePolicy instancePolicy = UiInstancePolicy.Reuse)
+        UiTransitionPolicy pushPolicy = UiTransitionPolicy.Exclusive)
     {
         var @event = CreateEvent(uiKey, UiTransitionType.Replace, pushPolicy, param);
         Log.Debug(
-            "Replace UI Stack with page: key={0}, popPolicy={1}, pushPolicy={2}, instancePolicy={3}",
-            uiKey, popPolicy, pushPolicy, instancePolicy
+            "Replace UI Stack with page: key={0}, popPolicy={1}, pushPolicy={2}",
+            uiKey, popPolicy, pushPolicy
         );
 
         BeforeChange(@event);
@@ -196,7 +192,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         DoClearInternal(popPolicy);
 
         // 使用工厂的增强方法获取实例
-        var page = _factory.GetOrCreate(uiKey, instancePolicy);
+        var page = _factory.Create(uiKey);
         Log.Debug("Get/Create UI Page instance for Replace: {0}", page.GetType().Name);
 
         DoPushPageInternal(page, param, pushPolicy);
@@ -366,8 +362,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// <summary>
     ///     执行Push页面的核心逻辑（基于 uiKey）
     /// </summary>
-    private void DoPushPageInternal(string uiKey, IUiPageEnterParam? param, UiTransitionPolicy policy,
-        UiInstancePolicy instancePolicy)
+    private void DoPushPageInternal(string uiKey, IUiPageEnterParam? param, UiTransitionPolicy policy)
     {
         // 执行进入守卫
         if (!ExecuteEnterGuardsAsync(uiKey, param).GetAwaiter().GetResult())
@@ -377,7 +372,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         }
 
         // 使用工厂的增强方法获取实例
-        var page = _factory.GetOrCreate(uiKey, instancePolicy);
+        var page = _factory.Create(uiKey);
         Log.Debug("Get/Create UI Page instance: {0}", page.GetType().Name);
 
         DoPushPageInternal(page, param, policy);
@@ -397,7 +392,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
 
             if (policy == UiTransitionPolicy.Exclusive)
             {
-                Log.Debug("Hide current page (Exclusive): {0}", current.View.GetType().Name);
+                Log.Debug("Suspend current page (Exclusive): {0}", current.View.GetType().Name);
                 current.OnHide();
             }
         }
@@ -428,37 +423,26 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
             return;
 
         var top = _stack.Pop();
+
         Log.Debug(
             "Pop UI Page internal: {0}, policy={1}, stackAfterPop={2}",
             top.GetType().Name, policy, _stack.Count
         );
 
-        top.OnExit();
-
         if (policy == UiPopPolicy.Destroy)
         {
-            Log.Debug("Destroy UI Page: {0}", top.GetType().Name);
+            top.OnExit();
             _uiRoot.RemoveUiPage(top);
-            // 不回收，直接销毁
         }
-        else // UiPopPolicy.Cache
+        else // Suspend
         {
-            Log.Debug("Cache UI Page: {0}", top.GetType().Name);
-            _uiRoot.RemoveUiPage(top);
-            _factory.Recycle(top); // 回收到池中
+            top.OnHide();
         }
 
-        if (_stack.Count > 0)
-        {
-            var next = _stack.Peek();
-            Log.Debug("Resume & Show page: {0}", next.GetType().Name);
-            next.OnResume();
-            next.OnShow();
-        }
-        else
-        {
-            Log.Debug("UI stack is now empty");
-        }
+        if (_stack.Count <= 0) return;
+        var next = _stack.Peek();
+        next.OnResume();
+        next.OnShow();
     }
 
     /// <summary>
@@ -481,8 +465,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     public void Show(
         string uiKey,
         UiLayer layer,
-        IUiPageEnterParam? param = null,
-        UiInstancePolicy instancePolicy = UiInstancePolicy.Reuse)
+        IUiPageEnterParam? param = null)
     {
         if (layer == UiLayer.Page) throw new ArgumentException("Use Push() for Page layer");
 
@@ -502,7 +485,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         }
 
         // 获取或创建实例
-        var page = _factory.GetOrCreate(uiKey, instancePolicy);
+        var page = _factory.Create(uiKey);
         layerDict[uiKey] = page;
 
         // 添加到UiRoot，传入层级Z-order
@@ -580,14 +563,11 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         {
             _uiRoot.RemoveUiPage(page);
             layerDict.Remove(uiKey);
-            Log.Debug("Hide & Destroy UI from layer: {0}, layer={1}", uiKey, layer);
+            Log.Debug("Suspend & Destroy UI from layer: {0}, layer={1}", uiKey, layer);
         }
         else
         {
-            _uiRoot.RemoveUiPage(page);
-            _factory.Recycle(page);
-            layerDict.Remove(uiKey);
-            Log.Debug("Hide & Cache UI from layer: {0}, layer={1}", uiKey, layer);
+            Log.Debug("Suspend & Suspend UI from layer: {0}, layer={1}", uiKey, layer);
         }
     }
 

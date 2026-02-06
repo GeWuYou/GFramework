@@ -7,7 +7,7 @@
 public enum UiTransitionPolicy
 {
     /// <summary>
-    ///     独占显示（下层页面 Pause + Hide）
+    ///     独占显示（下层页面 Pause + Suspend）
     /// </summary>
     Exclusive,
 

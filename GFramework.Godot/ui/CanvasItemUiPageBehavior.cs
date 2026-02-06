@@ -68,6 +68,11 @@ public class CanvasItemUiPageBehavior<T>(T owner, string key) : IUiPageBehavior
     /// </summary>
     public void OnResume()
     {
+        if (owner.IsInvalidNode())
+        {
+            return;
+        }
+
         _page?.OnResume();
 
         // 恢复节点的处理、物理处理和输入处理

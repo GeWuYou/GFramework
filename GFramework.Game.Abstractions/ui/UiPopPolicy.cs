@@ -11,7 +11,7 @@ public enum UiPopPolicy
     Destroy,
 
     /// <summary>
-    ///     隐藏但保留实例（下次Push可复用）
+    ///     可恢复
     /// </summary>
-    Cache
+    Suspend
 }
