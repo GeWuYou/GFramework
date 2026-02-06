@@ -58,6 +58,7 @@ public class CanvasItemUiPageBehavior<T>(T owner, string key) : IUiPageBehavior
         _page?.OnPause();
 
         // 暂停节点的处理、物理处理和输入处理
+        if (!BlocksInput) return;
         owner.SetProcess(false);
         owner.SetPhysicsProcess(false);
         owner.SetProcessInput(false);
