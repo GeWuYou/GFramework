@@ -1,4 +1,4 @@
-﻿using GFramework.Game.Abstractions.ui;
+using GFramework.Game.Abstractions.ui;
 using GFramework.Godot.extensions;
 using Godot;
 
@@ -30,7 +30,14 @@ public class CanvasItemUiPageBehavior<T>(T owner, string key) : IUiPageBehavior
     /// <summary>
     ///     获取页面是否存活状态
     /// </summary>
+    /// <returns>如果页面节点有效则返回true，否则返回false</returns>
     public bool IsAlive => owner.IsValidNode();
+
+    /// <summary>
+    ///     获取页面是否可见状态
+    /// </summary>
+    /// <returns>如果页面可见则返回true，否则返回false</returns>
+    public bool IsVisible => owner.Visible;
 
     /// <summary>
     ///     页面进入时调用
@@ -110,9 +117,4 @@ public class CanvasItemUiPageBehavior<T>(T owner, string key) : IUiPageBehavior
     ///     获取或设置页面是否阻止输入
     /// </summary>
     public bool BlocksInput { get; set; } = true;
-
-    /// <summary>
-    ///     获取或设置页面是否需要遮罩层
-    /// </summary>
-    public bool RequiresMask { get; set; }
 }

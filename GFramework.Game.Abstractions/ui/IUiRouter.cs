@@ -171,17 +171,25 @@ public interface IUiRouter : ISystem
     /// <summary>
     ///     清空指定层级的所有UI
     /// </summary>
+    /// <param name="layer">要清空的UI层级。</param>
+    /// <param name="destroy">是否销毁UI实例。如果为true，则会销毁UI实例；否则仅从层级中移除。</param>
     void ClearLayer(UiLayer layer, bool destroy = false);
 
     /// <summary>
     ///     从指定层级获取UI实例
     /// </summary>
+    /// <param name="uiKey">UI的唯一标识符。</param>
+    /// <param name="layer">要查询的UI层级。</param>
+    /// <returns>返回与指定键关联的UI行为接口实例；如果未找到则返回null。</returns>
     IUiPageBehavior? GetFromLayer(string uiKey, UiLayer layer);
 
     /// <summary>
     ///     判断指定层级是否存在可见UI
     /// </summary>
-    bool HasVisibleInLayer(UiLayer layer);
+    /// <param name="uiKey">要检查的UI的唯一标识符</param>
+    /// <param name="layer">要检查的UI层级</param>
+    /// <returns>如果在指定层级中存在可见的UI，则返回true；否则返回false</returns>
+    bool HasVisibleInLayer(string uiKey, UiLayer layer);
 
     #endregion
 }

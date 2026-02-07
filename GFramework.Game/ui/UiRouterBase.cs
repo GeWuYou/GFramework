@@ -607,9 +607,13 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// <summary>
     ///     判断指定层级是否有UI显示
     /// </summary>
-    public bool HasVisibleInLayer(UiLayer layer)
+    public bool HasVisibleInLayer(string uiKey, UiLayer layer)
     {
-        return _layers.TryGetValue(layer, out var layerDict) && layerDict.Count > 0;
+        if (!_layers.TryGetValue(layer, out var layerDict) ||
+            !layerDict.TryGetValue(uiKey, out var page))
+            return false;
+
+        return page.IsVisible;
     }
 
     #endregion

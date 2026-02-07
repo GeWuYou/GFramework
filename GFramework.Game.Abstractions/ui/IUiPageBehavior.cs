@@ -24,6 +24,11 @@ public interface IUiPageBehavior
     bool IsAlive { get; }
 
     /// <summary>
+    ///     获取页面是否可见
+    /// </summary>
+    bool IsVisible { get; }
+
+    /// <summary>
     ///     获取页面是否为模态页面
     /// </summary>
     bool IsModal { get; }
@@ -32,11 +37,6 @@ public interface IUiPageBehavior
     ///     获取页面是否阻断下层交互
     /// </summary>
     bool BlocksInput { get; }
-
-    /// <summary>
-    ///     获取页面是否需要蒙版
-    /// </summary>
-    bool RequiresMask { get; }
 
     /// <summary>
     ///     页面进入时调用的方法
