@@ -41,7 +41,7 @@ public readonly struct UiHandle
     /// <param name="key">UI的键值，用于标识UI的类型或名称。</param>
     /// <param name="instanceId">UI实例的唯一标识符。</param>
     /// <param name="layer">UI所在的层级，用于控制UI的显示顺序。</param>
-    internal UiHandle(string key, string instanceId, UiLayer layer)
+    public UiHandle(string key, string instanceId, UiLayer layer)
     {
         Key = key;
         InstanceId = instanceId;
