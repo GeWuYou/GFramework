@@ -28,34 +28,35 @@ public partial class Timing : Node
     private GodotTimeSource? _processTimeSource;
     private CoroutineScheduler? _processIgnorePauseScheduler;
     private GodotTimeSource? _processIgnorePauseTimeSource;
+    private const string NotInitializedMessage = "Timing not yet initialized (_Ready not executed)";
 
     /// <summary>
     ///     获取Process调度器，如果未初始化则抛出异常
     /// </summary>
     private CoroutineScheduler ProcessScheduler =>
         _processScheduler ?? throw new InvalidOperationException(
-            "Timing not yet initialized (_Ready not executed)");
+            NotInitializedMessage);
 
     /// <summary>
     ///     获取忽略暂停的Process调度器，如果未初始化则抛出异常
     /// </summary>
     private CoroutineScheduler ProcessIgnorePauseScheduler =>
         _processIgnorePauseScheduler ?? throw new InvalidOperationException(
-            "Timing not yet initialized (_Ready not executed)");
+            NotInitializedMessage);
 
     /// <summary>
     ///     获取Physics调度器，如果未初始化则抛出异常
     /// </summary>
     private CoroutineScheduler PhysicsScheduler =>
         _physicsScheduler ?? throw new InvalidOperationException(
-            "Timing not yet initialized (_Ready not executed)");
+            NotInitializedMessage);
 
     /// <summary>
     ///     获取Deferred调度器，如果未初始化则抛出异常
     /// </summary>
     private CoroutineScheduler DeferredScheduler =>
         _deferredScheduler ?? throw new InvalidOperationException(
-            "Timing not yet initialized (_Ready not executed)");
+            NotInitializedMessage);
 
     #region 单例
 
