@@ -70,6 +70,27 @@ jobs:
             sbom-spdx-validation.txt
             sbom-cyclonedx-validation.txt
       
+      # 将合规文件打包为 ZIP 压缩包
+      # 此步骤通过 zip 命令将多个合规文件压缩为一个 ZIP 文件，便于分发或存档
+      # 压缩包中包含以下文件：
+      #   - NOTICE: 项目声明文件
+      #   - THIRD_PARTY_LICENSES.md: 第三方许可证列表
+      #   - sbom.spdx.json: SPDX 格式的软件物料清单
+      #   - sbom.cyclonedx.json: CycloneDX 格式的软件物料清单
+      #   - sbom-spdx-validation.txt: SPDX 格式验证结果
+      #   - sbom-cyclonedx-validation.txt: CycloneDX 格式验证结果
+      - name: Package compliance bundle
+        run: |
+          zip license-compliance.zip \
+            NOTICE \
+            THIRD_PARTY_LICENSES.md \
+            sbom.spdx.json \
+            sbom.cyclonedx.json \
+            sbom-spdx-validation.txt \
+            sbom-cyclonedx-validation.txt
+
+    
+    
       # 将合规产物上传至 GitHub Release
       # 此步骤将指定的合规文件附加到当前标签对应的 GitHub Release 中
       # 参数说明：
@@ -91,5 +112,6 @@ jobs:
             sbom.cyclonedx.json
             sbom-spdx-validation.txt
             sbom-cyclonedx-validation.txt
+            license-compliance.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
