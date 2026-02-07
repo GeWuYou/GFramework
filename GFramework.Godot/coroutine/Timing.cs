@@ -26,12 +26,21 @@ public partial class Timing : Node
     private CoroutineScheduler? _processScheduler;
 
     private GodotTimeSource? _processTimeSource;
+    private CoroutineScheduler? _processIgnorePauseScheduler;
+    private GodotTimeSource? _processIgnorePauseTimeSource;
 
     /// <summary>
     ///     获取Process调度器，如果未初始化则抛出异常
     /// </summary>
     private CoroutineScheduler ProcessScheduler =>
         _processScheduler ?? throw new InvalidOperationException(
+            "Timing not yet initialized (_Ready not executed)");
+
+    /// <summary>
+    ///     获取忽略暂停的Process调度器，如果未初始化则抛出异常
+    /// </summary>
+    private CoroutineScheduler ProcessIgnorePauseScheduler =>
+        _processIgnorePauseScheduler ?? throw new InvalidOperationException(
             "Timing not yet initialized (_Ready not executed)");
 
     /// <summary>
@@ -108,6 +117,7 @@ public partial class Timing : Node
     public override void _Ready()
     {
         ProcessPriority = -1;
+        ProcessMode = ProcessModeEnum.Always;
 
         TrySetPhysicsPriority(-1);
 
@@ -142,7 +152,12 @@ public partial class Timing : Node
     /// <param name="delta">时间增量</param>
     public override void _Process(double delta)
     {
-        _processScheduler?.Update();
+        var paused = GetTree().Paused;
+
+        if (!paused)
+            _processScheduler?.Update();
+
+        _processIgnorePauseScheduler?.Update();
         _frameCounter++;
 
         CallDeferred(nameof(ProcessDeferred));
@@ -164,6 +179,9 @@ public partial class Timing : Node
     /// </summary>
     private void ProcessDeferred()
     {
+        if (GetTree().Paused)
+            return;
+
         _deferredScheduler?.Update();
     }
 
@@ -187,11 +205,17 @@ public partial class Timing : Node
     private void InitializeSchedulers()
     {
         _processTimeSource = new GodotTimeSource(GetProcessDeltaTime);
+        _processIgnorePauseTimeSource = new GodotTimeSource(GetProcessDeltaTime);
         _physicsTimeSource = new GodotTimeSource(GetPhysicsProcessDeltaTime);
         _deferredTimeSource = new GodotTimeSource(GetProcessDeltaTime);
 
         _processScheduler = new CoroutineScheduler(
             _processTimeSource,
+            _instanceId
+        );
+
+        _processIgnorePauseScheduler = new CoroutineScheduler(
+            _processIgnorePauseTimeSource,
             _instanceId
         );
 
@@ -206,6 +230,7 @@ public partial class Timing : Node
             _instanceId,
             64
         );
+
     }
 
     /// <summary>
@@ -258,6 +283,32 @@ public partial class Timing : Node
     #region 协程启动 API
 
     /// <summary>
+    ///     运行游戏级协程（受暂停影响）
+    /// </summary>
+    /// <param name="coroutine">要运行的协程枚举器</param>
+    /// <param name="tag">协程标签，用于批量操作</param>
+    /// <returns>协程句柄</returns>
+    public static CoroutineHandle RunGameCoroutine(
+        IEnumerator<IYieldInstruction> coroutine,
+        string? tag = null)
+    {
+        return RunCoroutine(coroutine, Segment.Process, tag);
+    }
+
+    /// <summary>
+    ///     运行UI级协程（忽略暂停）
+    /// </summary>
+    /// <param name="coroutine">要运行的协程枚举器</param>
+    /// <param name="tag">协程标签，用于批量操作</param>
+    /// <returns>协程句柄</returns>
+    public static CoroutineHandle RunUiCoroutine(
+        IEnumerator<IYieldInstruction> coroutine,
+        string? tag = null)
+    {
+        return RunCoroutine(coroutine, Segment.ProcessIgnorePause, tag);
+    }
+
+    /// <summary>
     ///     在指定段运行协程
     /// </summary>
     /// <param name="coroutine">要运行的协程枚举器</param>
@@ -291,6 +342,7 @@ public partial class Timing : Node
         return segment switch
         {
             Segment.Process => ProcessScheduler.Run(coroutine, tag),
+            Segment.ProcessIgnorePause => ProcessIgnorePauseScheduler.Run(coroutine, tag),
             Segment.PhysicsProcess => PhysicsScheduler.Run(coroutine, tag),
             Segment.DeferredProcess => DeferredScheduler.Run(coroutine, tag),
             _ => default
@@ -359,6 +411,7 @@ public partial class Timing : Node
     private bool PauseOnInstance(CoroutineHandle handle)
     {
         return ProcessScheduler.Pause(handle)
+               || ProcessIgnorePauseScheduler.Pause(handle)
                || PhysicsScheduler.Pause(handle)
                || DeferredScheduler.Pause(handle);
     }
@@ -372,6 +425,7 @@ public partial class Timing : Node
     private bool ResumeOnInstance(CoroutineHandle handle)
     {
         return ProcessScheduler.Resume(handle)
+               || ProcessIgnorePauseScheduler.Resume(handle)
                || PhysicsScheduler.Resume(handle)
                || DeferredScheduler.Resume(handle);
     }
@@ -385,6 +439,7 @@ public partial class Timing : Node
     private bool KillOnInstance(CoroutineHandle handle)
     {
         return ProcessScheduler.Kill(handle)
+               || ProcessIgnorePauseScheduler.Kill(handle)
                || PhysicsScheduler.Kill(handle)
                || DeferredScheduler.Kill(handle);
     }
@@ -399,6 +454,7 @@ public partial class Timing : Node
     {
         var count = 0;
         count += ProcessScheduler.KillByTag(tag);
+        count += ProcessIgnorePauseScheduler.KillByTag(tag);
         count += PhysicsScheduler.KillByTag(tag);
         count += DeferredScheduler.KillByTag(tag);
         return count;
@@ -413,6 +469,7 @@ public partial class Timing : Node
     {
         var count = 0;
         count += ProcessScheduler.Clear();
+        count += ProcessIgnorePauseScheduler.Clear();
         count += PhysicsScheduler.Clear();
         count += DeferredScheduler.Clear();
         return count;
