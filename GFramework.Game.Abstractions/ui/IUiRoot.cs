@@ -26,17 +26,4 @@ public interface IUiRoot
     /// </summary>
     /// <param name="child">要移除的UI页面子节点</param>
     void RemoveUiPage(IUiPageBehavior child);
-
-    /// <summary>
-    ///     设置页面的Z-order（层级顺序）
-    /// </summary>
-    /// <param name="page">UI页面</param>
-    /// <param name="zOrder">Z-order值</param>
-    void SetZOrder(IUiPageBehavior page, int zOrder);
-
-    /// <summary>
-    ///     获取当前所有显示的页面
-    /// </summary>
-    /// <returns>所有显示的页面列表</returns>
-    IReadOnlyList<IUiPageBehavior> GetVisiblePages();
 }

@@ -17,30 +17,36 @@ using Godot;
 namespace GFramework.Godot.ui;
 
 /// <summary>
-///     顶层 UI 行为 - 不可重入,最高优先级,用于系统级弹窗
+///     顶层 UI 行为类，继承自 CanvasItemUiPageBehaviorBase。
+///     此类用于实现系统级弹窗行为，具有不可重入、最高优先级和模态特性。
 /// </summary>
+/// <typeparam name="T">泛型参数，表示拥有此行为的 CanvasItem 类型。</typeparam>
+/// <param name="owner">拥有此行为的 CanvasItem 实例。</param>
+/// <param name="key">用于标识此行为的唯一键。</param>
 public class TopmostLayerUiPageBehavior<T>(T owner, string key) : CanvasItemUiPageBehaviorBase<T>(owner, key)
     where T : CanvasItem
 {
+    /// <summary>
+    ///     获取当前 UI 行为所在的层级。
+    ///     返回值为 UiLayer.Topmost，表示该行为位于最顶层。
+    /// </summary>
     public override UiLayer Layer => UiLayer.Topmost;
-    public override bool IsReentrant => false; // ❌ 顶层不支持重入
-    public override bool IsModal => true; // 顶层通常是模态的
-    public override bool BlocksInput => true; // 必须阻止所有下层交互
 
     /// <summary>
-    ///     顶层显示时,可以禁用所有下层 UI
+    ///     指示此行为是否可重入。
+    ///     返回值为 false，表示不可重入。
     /// </summary>
-    public override void OnShow()
-    {
-        base.OnShow();
-        // TODO: 可在此禁用其他所有层级
-        // DisableAllLowerLayers();
-    }
+    public override bool IsReentrant => false;
 
-    public override void OnHide()
-    {
-        // TODO: 恢复其他层级
-        // EnableAllLowerLayers();
-        base.OnHide();
-    }
+    /// <summary>
+    ///     指示此行为是否为模态行为。
+    ///     返回值为 true，表示为模态行为，会阻止其他交互。
+    /// </summary>
+    public override bool IsModal => true;
+
+    /// <summary>
+    ///     指示此行为是否会阻塞输入。
+    ///     返回值为 true，表示会阻塞用户输入。
+    /// </summary>
+    public override bool BlocksInput => true;
 }

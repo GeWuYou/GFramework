@@ -17,30 +17,35 @@ using Godot;
 namespace GFramework.Godot.ui;
 
 /// <summary>
-///     模态层 UI 行为 - 可重入但需谨慎,带遮罩阻止下层交互
+///     模态层 UI 行为类，用于管理模态界面的行为。
+///     此类继承自 CanvasItemUiPageBehaviorBase，提供模态层特有的功能：
+///     - 支持可重入（IsReentrant = true）
+///     - 带有遮罩以阻止下层交互（BlocksInput = true）
+///     - 属于模态层级（Layer = UiLayer.Modal）
 /// </summary>
+/// <typeparam name="T">拥有者类型，必须是 CanvasItem 的子类</typeparam>
+/// <param name="owner">当前行为的拥有者对象</param>
+/// <param name="key">用于标识此行为的键值</param>
 public class ModalLayerUiPageBehavior<T>(T owner, string key) : CanvasItemUiPageBehaviorBase<T>(owner, key)
     where T : CanvasItem
 {
+    /// <summary>
+    ///     获取当前 UI 所属的层级，此处固定为模态层。
+    /// </summary>
     public override UiLayer Layer => UiLayer.Modal;
-    public override bool IsReentrant => true; // ✅ 支持重入(如多层确认弹窗)
-    public override bool IsModal => true; // 模态窗口
-    public override bool BlocksInput => true; // 必须阻止下层交互
 
     /// <summary>
-    ///     模态窗口显示时,可以添加遮罩逻辑
+    ///     指示当前 UI 是否支持可重入。设置为 true 表示允许重复进入同一界面。
     /// </summary>
-    public override void OnShow()
-    {
-        base.OnShow();
-        // TODO: 可在此添加半透明遮罩层
-        // AddModalMask();
-    }
+    public override bool IsReentrant => true;
 
-    public override void OnHide()
-    {
-        // TODO: 移除遮罩层
-        // RemoveModalMask();
-        base.OnHide();
-    }
+    /// <summary>
+    ///     指示当前 UI 是否为模态界面。设置为 true 表示该界面会阻止用户与下层界面交互。
+    /// </summary>
+    public override bool IsModal => true;
+
+    /// <summary>
+    ///     指示当前 UI 是否阻止输入事件传递到下层界面。设置为 true 表示启用遮罩功能。
+    /// </summary>
+    public override bool BlocksInput => true;
 }
