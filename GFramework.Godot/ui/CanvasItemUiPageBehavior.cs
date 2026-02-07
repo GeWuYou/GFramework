@@ -1,3 +1,4 @@
+using GFramework.Game.Abstractions.enums;
 using GFramework.Game.Abstractions.ui;
 using GFramework.Godot.extensions;
 using Godot;
@@ -13,6 +14,19 @@ public class CanvasItemUiPageBehavior<T>(T owner, string key) : IUiPageBehavior
     where T : CanvasItem
 {
     private readonly IUiPage? _page = owner as IUiPage;
+
+    /// <summary>
+    ///     获取当前UI层的类型。
+    ///     返回值表示当前页面所属的UI层级，此处固定返回UiLayer.Page。
+    /// </summary>
+    public UiLayer Layer => UiLayer.Page;
+
+    /// <summary>
+    ///     判断当前Page是否允许重入。
+    ///     返回值为false，表示该Page不支持重入操作。
+    /// </summary>
+    public bool IsReentrant => false;
+
 
     /// <summary>
     ///     获取页面视图对象

@@ -142,7 +142,7 @@ public interface IUiRouter : ISystem
     /// <param name="uiKey">要显示的UI页面的唯一标识符</param>
     /// <param name="layer">UI显示的层级，例如 Overlay、Modal 或 Toast</param>
     /// <param name="param">可选参数，用于传递给UI页面的初始化数据</param>
-    void Show(
+    UiHandle Show(
         string uiKey,
         UiLayer layer,
         IUiPageEnterParam? param = null);
@@ -150,46 +150,53 @@ public interface IUiRouter : ISystem
     /// <summary>
     ///     在指定层级显示UI（基于已存在实例）
     /// </summary>
-    void Show(IUiPageBehavior page, UiLayer layer);
+    UiHandle Show(IUiPageBehavior page, UiLayer layer);
 
     /// <summary>
     ///     隐藏指定层级的UI。
     /// </summary>
-    /// <param name="uiKey">要隐藏的UI的唯一标识符。</param>
+    /// <param name="handle">UI句柄，用于标识具体的UI实例。</param>
     /// <param name="layer">指定UI所在的层级。</param>
     /// <param name="destroy">是否销毁UI对象，默认为false，表示仅隐藏而不销毁。</param>
-    void Hide(string uiKey, UiLayer layer, bool destroy = false);
+    void Hide(UiHandle handle, UiLayer layer, bool destroy = false);
 
     /// <summary>
     ///     恢复指定层级的UI显示。
     /// </summary>
-    /// <param name="uiKey">要恢复显示的UI的唯一标识符。</param>
+    /// <param name="handle">UI句柄，用于标识具体的UI实例。</param>
     /// <param name="layer">指定UI所在的层级。</param>
-    void Resume(string uiKey, UiLayer layer);
-
+    void Resume(UiHandle handle, UiLayer layer);
 
     /// <summary>
-    ///     清空指定层级的所有UI
+    ///     清空指定层级的所有UI。
     /// </summary>
     /// <param name="layer">要清空的UI层级。</param>
     /// <param name="destroy">是否销毁UI实例。如果为true，则会销毁UI实例；否则仅从层级中移除。</param>
     void ClearLayer(UiLayer layer, bool destroy = false);
 
     /// <summary>
-    ///     从指定层级获取UI实例
+    ///     从指定层级获取UI实例。
     /// </summary>
-    /// <param name="uiKey">UI的唯一标识符。</param>
+    /// <param name="handle">UI句柄，用于标识具体的UI实例。</param>
     /// <param name="layer">要查询的UI层级。</param>
     /// <returns>返回与指定键关联的UI行为接口实例；如果未找到则返回null。</returns>
-    IUiPageBehavior? GetFromLayer(string uiKey, UiLayer layer);
+    UiHandle? GetFromLayer(UiHandle handle, UiLayer layer);
 
     /// <summary>
-    ///     判断指定层级是否存在可见UI
+    ///     从指定层级获取所有与给定UI键关联的UI实例。
     /// </summary>
-    /// <param name="uiKey">要检查的UI的唯一标识符</param>
-    /// <param name="layer">要检查的UI层级</param>
-    /// <returns>如果在指定层级中存在可见的UI，则返回true；否则返回false</returns>
-    bool HasVisibleInLayer(string uiKey, UiLayer layer);
+    /// <param name="uiKey">用于标识UI实例的键。</param>
+    /// <param name="layer">要查询的UI层级。</param>
+    /// <returns>返回一个只读列表，包含所有与指定键和层级关联的UI句柄；如果未找到则返回空列表。</returns>
+    IReadOnlyList<UiHandle> GetAllFromLayer(string uiKey, UiLayer layer);
+
+    /// <summary>
+    ///     判断指定层级是否存在可见UI。
+    /// </summary>
+    /// <param name="handle">UI句柄，用于标识具体的UI实例。</param>
+    /// <param name="layer">要检查的UI层级。</param>
+    /// <returns>如果在指定层级中存在可见的UI，则返回true；否则返回false。</returns>
+    bool HasVisibleInLayer(UiHandle handle, UiLayer layer);
 
     #endregion
 }
