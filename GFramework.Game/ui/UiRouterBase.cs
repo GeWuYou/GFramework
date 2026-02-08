@@ -457,9 +457,13 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// <summary>
     ///     生成唯一实例ID
     /// </summary>
+    /// <returns>格式为"ui_000001"的唯一实例标识符</returns>
     private string GenerateInstanceId()
     {
-        return $"ui_{++_instanceCounter:D6}";
+        // 原子操作递增实例计数器，确保多线程环境下的唯一性
+        var id = Interlocked.Increment(ref _instanceCounter);
+        // 返回格式化的实例ID字符串
+        return $"ui_{id:D6}";
     }
 
     /// <summary>
