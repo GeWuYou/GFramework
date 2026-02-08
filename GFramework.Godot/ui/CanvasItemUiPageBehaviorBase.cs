@@ -56,8 +56,20 @@ public abstract class CanvasItemUiPageBehaviorBase<T> : IUiPageBehavior
     #region 抽象属性 - 子类必须实现
 
     /// <summary>
+    ///     获取或设置当前UI句柄。
+    /// </summary>
+    /// <value>
+    ///     表示当前UI句柄的可空类型 <see cref="UiHandle"/>。
+    /// </value>
+    /// <remarks>
+    ///     此属性允许获取或设置与当前上下文关联的UI句柄。若未设置，则其值为 null。不可重入的ui句柄通常为null
+    /// </remarks>
+    public UiHandle? Handle { get; set; }
+
+    /// <summary>
     ///     获取 UI 所属的层级。
-    ///     由子类指定具体值。
+    ///     该属性由子类实现并指定具体的层级值。
+    ///     层级用于确定 UI 元素在界面中的显示顺序和逻辑分组。
     /// </summary>
     public abstract UiLayer Layer { get; }
 

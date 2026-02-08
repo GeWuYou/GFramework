@@ -8,10 +8,24 @@ namespace GFramework.Game.Abstractions.ui;
 public interface IUiPageBehavior
 {
     /// <summary>
+    ///     获取或设置当前UI句柄。
+    /// </summary>
+    /// <value>
+    ///     表示当前UI句柄的可空类型 <see cref="UiHandle"/>。
+    /// </value>
+    /// <remarks>
+    ///     此属性允许获取或设置与当前上下文关联的UI句柄。若未设置，则其值为 null。不可重入的ui句柄通常为null
+    /// </remarks>
+    UiHandle? Handle { get; set; }
+
+    /// <summary>
     ///     获取当前UI层的实例。
     /// </summary>
+    /// <value>
+    ///     返回与当前上下文关联的 <see cref="UiLayer"/> 实例。
+    /// </value>
     /// <remarks>
-    ///     此属性用于访问与当前上下文关联的UI层对象。
+    ///     此属性用于访问与当前上下文关联的UI层对象，通常用于管理UI的层次结构和交互逻辑。
     /// </remarks>
     UiLayer Layer { get; }
 

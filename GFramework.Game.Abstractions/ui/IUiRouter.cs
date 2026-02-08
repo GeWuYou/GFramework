@@ -198,5 +198,14 @@ public interface IUiRouter : ISystem
     /// <returns>如果在指定层级中存在可见的UI，则返回true；否则返回false。</returns>
     bool HasVisibleInLayer(UiHandle handle, UiLayer layer);
 
+    /// <summary>
+    ///     根据UI键隐藏指定层级中的UI。
+    /// </summary>
+    /// <param name="uiKey">UI的唯一标识键。</param>
+    /// <param name="layer">要操作的UI层级。</param>
+    /// <param name="destroy">是否销毁UI实例，默认为false。</param>
+    /// <param name="hideAll">是否隐藏所有匹配的UI实例，默认为false。</param>
+    void HideByKey(string uiKey, UiLayer layer, bool destroy = false, bool hideAll = false);
+
     #endregion
 }

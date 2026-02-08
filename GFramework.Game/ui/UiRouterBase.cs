@@ -363,6 +363,27 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         return page.IsVisible;
     }
 
+    /// <summary>
+    ///     根据UI键隐藏指定层级中的UI。
+    /// </summary>
+    /// <param name="uiKey">UI的唯一标识键。</param>
+    /// <param name="layer">要操作的UI层级。</param>
+    /// <param name="destroy">是否销毁UI实例，默认为false。</param>
+    /// <param name="hideAll">是否隐藏所有匹配的UI实例，默认为false。</param>
+    public void HideByKey(string uiKey, UiLayer layer, bool destroy = false, bool hideAll = false)
+    {
+        var handles = GetAllFromLayer(uiKey, layer);
+        if (handles.Count == 0) return;
+
+        if (hideAll)
+            foreach (var h in handles)
+            {
+                Hide(h, layer, destroy);
+            }
+        else
+            Hide(handles[0], layer, destroy);
+    }
+
     #endregion
 
     #region Route Guards
@@ -452,7 +473,8 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         // 初始化层级字典
         if (!_layers.ContainsKey(layer))
             _layers[layer] = new Dictionary<string, IUiPageBehavior>();
-
+        // 设置句柄
+        page.Handle = handle;
         var layerDict = _layers[layer];
 
         // 检查重入性
