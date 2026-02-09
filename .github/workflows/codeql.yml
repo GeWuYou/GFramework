@@ -28,16 +28,16 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       # 设置.NET运行时环境
-      # 配置.NET 8.0.x、9.0.x和10.0.x版本支持
+      # 配置.NET 8.0.x版本支持
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: |
             8.0.x
-            9.0.x
-            10.0.x
 
       # 初始化CodeQL分析环境
       # 配置C#语言支持并启用自动构建模式
@@ -45,7 +45,10 @@ jobs:
         uses: github/codeql-action/init@v4
         with:
           languages: csharp
-          build-mode: autobuild
+          build-mode: manual
+      # 手动构建项目
+      - name: Build
+        run: dotnet build -c Release
 
       # 执行CodeQL代码分析
       # 运行静态分析并生成结果报告

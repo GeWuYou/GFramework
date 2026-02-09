@@ -23,6 +23,16 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+      # 缓存MegaLinter
+      - name: Cache MegaLinter
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/megalinter
+          key: ${{ runner.os }}-megalinter-v9
+          restore-keys: |
+            ${{ runner.os }}-megalinter-
+      
+      
       # MegaLinter扫描步骤
       # 执行代码质量检查和安全扫描，生成SARIF格式报告
       - name: MegaLinter
@@ -36,6 +46,12 @@ jobs:
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: megalinter-reports/sarif
+      # 缓存TruffleHog
+      - name: Cache TruffleHog
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/trufflehog
+          key: ${{ runner.os }}-trufflehog
 
       # TruffleHog OSS 扫描步骤
       # 使用 TruffleHog 工具扫描代码库中的敏感信息泄露，如API密钥、密码等
@@ -70,8 +86,17 @@ jobs:
       - name: Cache NuGet packages
         uses: actions/cache@v5
         with:
-          path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          path: |
+            ~/.nuget/packages
+            ~/.local/share/NuGet
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/nuget.config') }}
+      
+      # 配置.NET本地工具缓存以加速后续构建
+      - name: Cache dotnet tools
+        uses: actions/cache@v5
+        with:
+          path: ~/.dotnet/tools
+          key: ${{ runner.os }}-dotnet-tools-${{ hashFiles('.config/dotnet-tools.json') }}
 
       # 执行NuGet包恢复操作
       - name: Restore
