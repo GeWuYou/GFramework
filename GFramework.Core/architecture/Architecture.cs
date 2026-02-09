@@ -85,10 +85,15 @@ public abstract class Architecture(
 
     private readonly TaskCompletionSource _readyTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
+    /// <summary>
+    ///     获取一个布尔值，指示当前架构是否处于就绪状态。
+    ///     当前架构的阶段等于 ArchitecturePhase.Ready 时返回 true，否则返回 false。
+    /// </summary>
     public bool IsReady => CurrentPhase == ArchitecturePhase.Ready;
 
     /// <summary>
-    ///     待初始化组件的去重集合
+    ///     待初始化组件的去重集合。
+    ///     用于存储需要初始化的组件实例，确保每个组件仅被初始化一次。
     /// </summary>
     private readonly HashSet<IInitializable> _pendingInitializableSet = [];
 

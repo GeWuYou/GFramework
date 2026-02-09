@@ -69,15 +69,19 @@ public abstract class EnvironmentBase : ContextAwareBase, IEnvironment
         Register(key, value);
     }
 
+    /// <summary>
+    ///     抽象方法，用于初始化操作。具体实现由派生类提供。
+    /// </summary>
     public abstract void Initialize();
 
     /// <summary>
     ///     注册键值对到环境值字典中
     /// </summary>
-    /// <param name="key">要注册的键</param>
-    /// <param name="value">要注册的值</param>
+    /// <param name="key">要注册的键，作为字典中的唯一标识符</param>
+    /// <param name="value">要注册的值，与键关联的数据</param>
     protected void Register(string key, object value)
     {
+        // 将键值对添加到Values字典中
         Values[key] = value;
     }
 }

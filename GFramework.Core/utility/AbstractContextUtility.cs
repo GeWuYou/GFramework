@@ -11,6 +11,9 @@ namespace GFramework.Core.utility;
 /// </summary>
 public abstract class AbstractContextUtility : ContextAwareBase, IContextUtility
 {
+    /// <summary>
+    ///  日志记录器
+    /// </summary>
     protected ILogger Logger = null !;
 
     /// <summary>

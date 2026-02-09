@@ -32,10 +32,17 @@ public sealed class CoroutineScheduler(
     /// </summary>
     public int ActiveCoroutineCount { get; private set; }
 
+    /// <summary>
+    ///     检查指定的协程句柄是否仍然存活
+    /// </summary>
+    /// <param name="handle">要检查的协程句柄</param>
+    /// <returns>如果协程仍然存活则返回 true，否则返回 false</returns>
     public bool IsCoroutineAlive(CoroutineHandle handle)
     {
+        // 检查元数据字典中是否包含指定的协程句柄
         return _metadata.ContainsKey(handle);
     }
+
 
     #region Run / Update
 

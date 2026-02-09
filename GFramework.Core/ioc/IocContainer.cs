@@ -53,11 +53,16 @@ public class IocContainer : ContextAwareBase, IIocContainer
 
     #region Register
 
+    /// <summary>
+    /// 当上下文准备就绪时调用此方法，用于初始化日志记录器。
+    /// </summary>
     protected override void OnContextReady()
     {
+        // 创建日志记录器实例，并将其赋值给_logger字段
         _logger =
             LoggerFactoryResolver.Provider.CreateLogger(nameof(IocContainer));
     }
+
 
     /// <summary>
     ///     注册单例

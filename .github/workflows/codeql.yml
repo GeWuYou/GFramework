@@ -45,10 +45,7 @@ jobs:
         uses: github/codeql-action/init@v4
         with:
           languages: csharp
-          build-mode: manual
-      # 手动构建项目
-      - name: Build
-        run: dotnet build -c Release
+          build-mode: autobuild
 
       # 执行CodeQL代码分析
       # 运行静态分析并生成结果报告
