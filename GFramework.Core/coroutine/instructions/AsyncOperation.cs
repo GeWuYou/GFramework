@@ -28,27 +28,32 @@ public class AsyncOperation : IYieldInstruction, INotifyCompletion
     /// <param name="continuation">要执行的延续操作</param>
     public void OnCompleted(Action continuation)
     {
-        // 尝试添加延续
-        var current = _continuation;
-        var newContinuation = current == null ? continuation : current + continuation;
-
-        if (Interlocked.CompareExchange(ref _continuation, newContinuation, current) != current)
+        while (true)
         {
-            // 如果CAS失败，说明可能已经完成，直接执行
+            // 尝试添加延续
+            var current = _continuation;
+            var newContinuation = current == null ? continuation : current + continuation;
+
+            if (Interlocked.CompareExchange(ref _continuation, newContinuation, current) != current)
+            {
+                // 如果CAS失败，说明可能已经完成，直接执行
+                if (_completed)
+                    continuation();
+                else
+                    // 重试
+                    continue;
+
+                return;
+            }
+
+            // 双重检查：如果在设置延续后发现已完成，需要执行延续
             if (_completed)
-                continuation();
-            else
-                // 重试
-                OnCompleted(continuation);
+            {
+                var cont = Interlocked.Exchange(ref _continuation, null);
+                cont?.Invoke();
+            }
 
-            return;
-        }
-
-        // 双重检查：如果在设置延续后发现已完成，需要执行延续
-        if (_completed)
-        {
-            var cont = Interlocked.Exchange(ref _continuation, null);
-            if (cont != null) cont();
+            break;
         }
     }
 
