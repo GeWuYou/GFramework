@@ -82,9 +82,18 @@ public sealed class WaitForMultipleEvents<TEvent1, TEvent2> : IYieldInstruction,
     /// </summary>
     private void OnFirstEvent(TEvent1 eventData)
     {
+        // 如果已经完成或者被释放，则直接返回
+        if (_done || _disposed) return;
+
         FirstEventData = eventData;
         TriggeredBy = 1;
         _done = true;
+
+        // 立即注销事件监听器
+        _unRegister1?.UnRegister();
+        _unRegister2?.UnRegister();
+        _unRegister1 = null;
+        _unRegister2 = null;
     }
 
     /// <summary>
@@ -92,8 +101,17 @@ public sealed class WaitForMultipleEvents<TEvent1, TEvent2> : IYieldInstruction,
     /// </summary>
     private void OnSecondEvent(TEvent2 eventData)
     {
+        // 如果已经完成或者被释放，则直接返回
+        if (_done || _disposed) return;
+
         SecondEventData = eventData;
         TriggeredBy = 2;
         _done = true;
+
+        // 立即注销事件监听器
+        _unRegister1?.UnRegister();
+        _unRegister2?.UnRegister();
+        _unRegister1 = null;
+        _unRegister2 = null;
     }
 }
