@@ -34,7 +34,7 @@ namespace GFramework.Core.Tests.coroutine
         }
 
         [Test]
-        public Task FirstEventWins_WhenBothEventsFired()
+        public async Task FirstEventWins_WhenBothEventsFired()
         {
             // Arrange
             var waitForMultipleEvents = new WaitForMultipleEvents<TestEvent1, TestEvent2>(eventBus);
@@ -48,11 +48,10 @@ namespace GFramework.Core.Tests.coroutine
             Assert.That(waitForMultipleEvents.TriggeredBy, Is.EqualTo(1)); // First event should win
             Assert.That(waitForMultipleEvents.FirstEventData?.Data, Is.EqualTo("first_event"));
             Assert.That(waitForMultipleEvents.SecondEventData, Is.Null);
-            return Task.CompletedTask;
         }
 
         [Test]
-        public Task SecondEventWins_WhenOnlySecondEventFired()
+        public async Task SecondEventWins_WhenOnlySecondEventFired()
         {
             // Arrange
             var waitForMultipleEvents = new WaitForMultipleEvents<TestEvent1, TestEvent2>(eventBus);
@@ -65,11 +64,10 @@ namespace GFramework.Core.Tests.coroutine
             Assert.That(waitForMultipleEvents.TriggeredBy, Is.EqualTo(2)); // Second event should win
             Assert.That(waitForMultipleEvents.SecondEventData?.Data, Is.EqualTo("second_event"));
             Assert.That(waitForMultipleEvents.FirstEventData, Is.Null);
-            return Task.CompletedTask;
         }
 
         [Test]
-        public Task FirstEventWins_WhenBothEventsFiredInReverseOrder()
+        public async Task FirstEventWins_WhenBothEventsFiredInReverseOrder()
         {
             // Arrange
             var waitForMultipleEvents = new WaitForMultipleEvents<TestEvent1, TestEvent2>(eventBus);
@@ -80,16 +78,14 @@ namespace GFramework.Core.Tests.coroutine
 
             // Assert
             Assert.That(waitForMultipleEvents.IsDone, Is.True);
-            // Second event should win because it fired first and set _done = true
-            Assert.That(waitForMultipleEvents.TriggeredBy,
-                Is.EqualTo(2)); // Second event actually won since it fired first
+            // Actually, the second event should win because it fired first and set _done = true
+            Assert.That(waitForMultipleEvents.TriggeredBy, Is.EqualTo(2)); // Second event wins since it fired first
             Assert.That(waitForMultipleEvents.SecondEventData?.Data, Is.EqualTo("second_event"));
             Assert.That(waitForMultipleEvents.FirstEventData, Is.Null);
-            return Task.CompletedTask;
         }
 
         [Test]
-        public Task MultipleEvents_AfterCompletion_DoNotOverrideState()
+        public async Task MultipleEvents_AfterCompletion_DoNotOverrideState()
         {
             // Arrange
             var waitForMultipleEvents = new WaitForMultipleEvents<TestEvent1, TestEvent2>(eventBus);
@@ -111,11 +107,10 @@ namespace GFramework.Core.Tests.coroutine
             Assert.That(waitForMultipleEvents.FirstEventData?.Data,
                 Is.EqualTo("first_event")); // Should remain unchanged
             Assert.That(waitForMultipleEvents.SecondEventData, Is.Null); // Should remain null
-            return Task.CompletedTask;
         }
 
         [Test]
-        public Task Disposal_PreventsFurtherEventHandling()
+        public async Task Disposal_PreventsFurtherEventHandling()
         {
             // Arrange
             var waitForMultipleEvents = new WaitForMultipleEvents<TestEvent1, TestEvent2>(eventBus);
@@ -130,19 +125,17 @@ namespace GFramework.Core.Tests.coroutine
             // Since we disposed, no event data should be captured
             Assert.That(waitForMultipleEvents.FirstEventData, Is.Null);
             Assert.That(waitForMultipleEvents.IsDone, Is.False); // Should remain false after disposal
-
-            return Task.CompletedTask;
         }
 
         // Test event classes
         private class TestEvent1
         {
-            public string Data { get; init; } = string.Empty;
+            public string Data { get; set; } = string.Empty;
         }
 
         private class TestEvent2
         {
-            public string Data { get; init; } = string.Empty;
+            public string Data { get; set; } = string.Empty;
         }
     }
 }
