@@ -7,7 +7,7 @@ IoC（Inversion of Control，控制反转）包提供了一个轻量级的依赖
 
 ## 核心类
 
-### [`IocContainer`](IocContainer.cs)
+### [`IocContainer`](../../GFramework.Core/ioc/IocContainer.cs)
 
 IoC 容器类，负责管理对象的注册和获取。
 
@@ -21,7 +21,7 @@ IoC 容器类，负责管理对象的注册和获取。
 
 ## 核心方法
 
-### 1. Register<T> 和 Register(Type, object)
+### 1. Register`<T>` 和 Register(Type, object)
 
 注册一个实例到容器中。
 
@@ -46,7 +46,7 @@ container.Register<IGameSystem>(new GameSystem());
 container.Register<IStorageUtility>(new StorageUtility());
 ```
 
-### 2. RegisterSingleton<T>
+### 2. RegisterSingleton`<T>`
 
 注册单例实例到容器中。一个类型只允许一个实例。
 
@@ -91,7 +91,7 @@ public void RegisterSystem(ISystem system)
 
 - `system`: 系统实例对象
 
-### 5. Get<T> 和 GetAll<T>
+### 5. Get`<T>` 和 GetAll`<T>`
 
 从容器中获取指定类型的实例。
 
@@ -116,7 +116,7 @@ var gameSystems = container.GetAll<IGameSystem>();
 var unknownService = container.Get<IUnknownService>();  // null
 ```
 
-### 6. GetRequired<T>
+### 6. GetRequired`<T>`
 
 获取指定类型的必需实例，如果没有注册或注册了多个实例会抛出异常。
 
@@ -128,7 +128,7 @@ public T GetRequired<T>() where T : class
 
 - 返回找到的唯一实例
 
-### 7. GetAllSorted<T>
+### 7. GetAllSorted`<T>`
 
 获取并排序（系统调度专用）。
 
@@ -439,7 +439,7 @@ public bool ContainsInstance(object instance)
 
 **使用示例：**
 
-```csharp
+``csharp
 var container = new IocContainer();
 
 var service = new MyService();
@@ -609,7 +609,7 @@ public class GameArchitecture : Architecture
 
 ### 2. 使用接口类型注册
 
-```csharp
+``csharp
 // ❌ 不推荐：直接使用实现类
 RegisterSystem(new ConcreteSystem());
 var system = GetSystem<ConcreteSystem>();
@@ -621,7 +621,7 @@ var system = GetSystem<IGameSystem>();
 
 ### 3. 避免运行时频繁注册
 
-```csharp
+``csharp
 // ❌ 不好：游戏运行时频繁注册
 void Update()
 {
