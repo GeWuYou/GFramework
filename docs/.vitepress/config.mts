@@ -139,8 +139,21 @@ export default defineConfig({
             {
               text: '教程',
               items: [
-                { text: '入门教程', link: '/zh-CN/tutorials/getting-started' },
-                { text: '基础教程', link: '/zh-CN/tutorials/basic-tutorial' },
+                {
+                  text: '基础教程',
+                  link: '/zh-CN/tutorials/basic/',
+                  collapsed: false,
+                  items: [
+                    { text: '教程概览', link: '/zh-CN/tutorials/basic/' },
+                    { text: '1. 环境准备', link: '/zh-CN/tutorials/basic/01-environment' },
+                    { text: '2. 项目创建与初始化', link: '/zh-CN/tutorials/basic/02-project-setup' },
+                    { text: '3. 基础计数器实现', link: '/zh-CN/tutorials/basic/03-counter-basic' },
+                    { text: '4. 引入 Model 重构', link: '/zh-CN/tutorials/basic/04-model-refactor' },
+                    { text: '5. 命令系统优化', link: '/zh-CN/tutorials/basic/05-command-system' },
+                    { text: '6. Utility 与 System', link: '/zh-CN/tutorials/basic/06-utility-system' },
+                    { text: '7. 总结与最佳实践', link: '/zh-CN/tutorials/basic/07-summary' }
+                  ]
+                },
                 { text: 'Godot集成', link: '/zh-CN/tutorials/godot-integration' },
                 { text: '高级模式', link: '/zh-CN/tutorials/advanced-patterns' }
               ]
