@@ -185,7 +185,7 @@ public class PlayerDiedEvent : IEvent
 
 **相关文档**：
 
-- [Core 概述](../core)
+- [Core 概述](../core/index.md)
 - [Architecture](../core/architecture)
 - [Events](../core/events)
 - [Command](../core/command)
