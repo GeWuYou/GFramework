@@ -47,7 +47,7 @@ export default defineConfig({
           { text: 'Core', link: '/zh-CN/core/' },
           { text: 'Game', link: '/zh-CN/game/' },
           { text: 'Godot', link: '/zh-CN/godot/' },
-          { text: '源码生成器', link: '/zh-CN/source-generators/overview' },
+          { text: '源码生成器', link: '/zh-CN/source-generators' },
           { text: '教程', link: '/zh-CN/tutorials/basic-tutorial' },
         ],
 
