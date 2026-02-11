@@ -6,10 +6,10 @@ Extensions 包提供了一系列扩展方法，简化了框架各个接口的使
 
 ## 扩展方法类别
 
-### 1. ContextAware 扩展 ([ContextAwareExtensions.cs](ContextAwareExtensions.cs))
+### 1. ContextAware 扩展 (ContextAwareExtensions.cs)
 
-为 [IContextAware](../GFramework.Core.Abstractions/rule/IContextAware.cs)
-提供扩展方法，允许直接从实现了 [IContextAware](../GFramework.Core.Abstractions/rule/IContextAware.cs)
+为 IContextAware
+提供扩展方法，允许直接从实现了 IContextAware
 的对象获取架构组件。
 
 #### GetSystem 扩展方法
@@ -203,7 +203,7 @@ public static T? GetEnvironment<T>(this IContextAware contextAware) where T : cl
 public static IEnvironment GetEnvironment(this IContextAware contextAware)
 ```
 
-### 2. Object 扩展 ([`ObjectExtensions.cs`](ObjectExtensions.cs))
+### 2. Object 扩展 (`ObjectExtensions.cs`)
 
 提供基于运行时类型判断的对象扩展方法，用于简化类型分支、链式调用和架构分派逻辑。
 
@@ -319,9 +319,9 @@ obj.SwitchType(
 );
 ```
 
-### 3. OrEvent 扩展 ([`OrEventExtensions.cs`](OrEventExtensions.cs))
+### 3. OrEvent 扩展 (`OrEventExtensions.cs`)
 
-为 [`IEvent`](../../GFramework.Core.Abstractions/events/IEvent.cs) 提供事件组合功能。
+为 `IEvent` 提供事件组合功能。
 
 #### OrEventExtensions
 
@@ -346,9 +346,9 @@ var onAnyDamage = onPhysicalDamage
     .Or(onPoisonDamage);
 ```
 
-### 4. UnRegisterList 扩展 ([`UnRegisterListExtension.cs`](UnRegisterListExtension.cs))
+### 4. UnRegisterList 扩展 (`UnRegisterListExtension.cs`)
 
-为 [`IUnRegister`](../events/IUnRegister.cs) 和 [`IUnRegisterList`](../events/IUnRegisterList.cs) 提供批量管理功能。
+为 `IUnRegister` 和 `IUnRegisterList` 提供批量管理功能。
 
 #### UnRegisterListExtension
 
@@ -519,7 +519,7 @@ public class AchievementSystem : AbstractSystem
 ## 扩展方法的优势
 
 1. **简洁的语法**
-   ：不需要显式调用 [GetContext()](file:///d:/Project/Rider/GFramework/GFramework.Core.Abstractions/rule/IContextAware.cs#L13-L15)
+   ：不需要显式调用 `GetContext()`
 2. **类型安全**：编译时检查类型
 3. **可读性高**：代码意图更清晰
 4. **智能提示**：IDE 可以提供完整的自动补全

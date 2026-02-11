@@ -7,7 +7,7 @@ IoC（Inversion of Control，控制反转）包提供了一个轻量级的依赖
 
 ## 核心类
 
-### [`IocContainer`](../../GFramework.Core/ioc/IocContainer.cs)
+### `IocContainer`
 
 IoC 容器类，负责管理对象的注册和获取。
 
@@ -520,8 +520,8 @@ Console.WriteLine($"Contains IService2: {container.Contains<IService2>()}");  //
 ### 3. 多实例支持
 
 - 每个类型可以注册多个实例
-- 提供 [GetAll](file:///d:/Project/Rider/GFramework/GFramework.Core/ioc/IocContainer.cs#L244-L261) 方法获取所有实例
-- 提供 [Get](file:///d:/Project/Rider/GFramework/GFramework.Core/ioc/IocContainer.cs#L208-L225) 方法获取单个实例
+- 提供 `GetAll` 方法获取所有实例
+- 提供 `Get` 方法获取单个实例
 
 ### 4. 类型安全
 
@@ -537,7 +537,7 @@ Console.WriteLine($"Contains IService2: {container.Contains<IService2>()}");  //
 
 ### 6. 容器冻结
 
-- 提供 [Freeze](file:///d:/Project/Rider/GFramework/GFramework.Core/ioc/IocContainer.cs#L359-L372) 方法，防止进一步修改容器内容
+- 提供 `Freeze` 方法，防止进一步修改容器内容
 - 防止在初始化后意外修改注册内容
 
 ## 与其他 IoC 容器的区别
@@ -670,11 +670,11 @@ protected override void OnInit()
 
 1. **线程安全操作**：容器内部使用读写锁确保线程安全，无需额外同步
 
-2. **容器冻结**：一旦调用 [Freeze](file:///d:/Project/Rider/GFramework/GFramework.Core/ioc/IocContainer.cs#L359-L372)
+2. **容器冻结**：一旦调用 `Freeze`
    方法，将不能再注册新实例
 
 3. **单例注册限制
-   **：[RegisterSingleton](file:///d:/Project/Rider/GFramework/GFramework.Core/ioc/IocContainer.cs#L84-L106)
+   **：`RegisterSingleton`
    方法确保一个类型只能有一个实例，重复注册会抛出异常
 
 4. **内存管理**：容器持有的实例不会自动释放，需要注意内存泄漏问题

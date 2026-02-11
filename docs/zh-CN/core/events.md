@@ -6,7 +6,7 @@ Events 包提供了一套完整的事件系统，实现了观察者模式（Obse
 
 ## 核心接口
 
-### 1. [IEvent](../GFramework.Core.Abstractions/events/IEvent.cs)
+### 1. IEvent
 
 基础事件接口，定义了事件注册的基本功能。
 
@@ -16,7 +16,7 @@ Events 包提供了一套完整的事件系统，实现了观察者模式（Obse
 IUnRegister Register(Action onEvent);  // 注册事件处理函数
 ```
 
-### 2. [IUnRegister](../GFramework.Core.Abstractions/events/IUnRegister.cs)
+### 2. IUnRegister
 
 注销接口，用于取消事件注册。
 
@@ -26,7 +26,7 @@ IUnRegister Register(Action onEvent);  // 注册事件处理函数
 void UnRegister();  // 执行注销操作
 ```
 
-### 3. [IUnRegisterList](../GFramework.Core.Abstractions/events/IUnRegisterList.cs)
+### 3. IUnRegisterList
 
 注销列表接口，用于批量管理注销对象。
 
@@ -36,7 +36,7 @@ void UnRegister();  // 执行注销操作
 IList<IUnRegister> UnregisterList { get; }  // 获取注销列表
 ```
 
-### 4. [IEventBus](../GFramework.Core.Abstractions/events/IEventBus.cs)
+### 4. IEventBus
 
 事件总线接口，提供基于类型的事件发送和注册。
 
@@ -50,7 +50,7 @@ void Send<T>() where T : new();           // 发送事件（自动创建实例�
 
 ## 核心类
 
-### 1. [EasyEvent](EasyEvent.cs)
+### 1. EasyEvent
 
 无参事件类，支持注册、注销和触发无参事件。
 
@@ -73,7 +73,7 @@ onClicked.Trigger();
 unregister.UnRegister();
 ```
 
-### 2. [Event`<T>`](EasyEvent.cs)
+### 2. Event`<T>`
 
 单参数泛型事件类，支持一个参数的事件。
 
@@ -93,7 +93,7 @@ onScoreChanged.Register(newScore =>
 onScoreChanged.Trigger(100);
 ```
 
-### 3. [Event<T, TK>](EasyEvent.cs)
+### 3. Event<T, TK>
 
 双参数泛型事件类。
 
@@ -111,7 +111,7 @@ onDamageDealt.Register((attacker, damage) =>
 onDamageDealt.Trigger("Player", 50);
 ```
 
-### 4. [`EasyEvents`](EasyEvents.cs)
+### 4. `EasyEvents`
 
 全局事件管理器，提供类型安全的事件注册和获取。
 
@@ -134,7 +134,7 @@ gameStartEvent.Register(() =>
 gameStartEvent.Trigger();
 ```
 
-### 5. [`EventBus`](EventBus.cs)
+### 5. `EventBus`
 
 类型化事件系统，支持基于类型的事件发送和注册。
 
@@ -160,7 +160,7 @@ eventBus.Send(new PlayerDiedEvent
 eventBus.Send<PlayerDiedEvent>();
 ```
 
-### 6. [`DefaultUnRegister`](DefaultUnRegister.cs)
+### 6. `DefaultUnRegister`
 
 默认注销器实现，封装注销回调。
 
@@ -174,7 +174,7 @@ var unregister = new DefaultUnRegister(onUnregister);
 unregister.UnRegister();
 ```
 
-### 7. [`OrEvent`](OrEvent.cs)
+### 7. `OrEvent`
 
 事件或运算组合器，当任意一个事件触发时触发。
 
@@ -193,7 +193,7 @@ onAnyInput.Register(() =>
 });
 ```
 
-### 8. [`UnRegisterList`](UnRegisterList.cs)
+### 8. `UnRegisterList`
 
 批量管理注销对象的列表。
 
@@ -209,7 +209,7 @@ someEvent.Register(OnEvent).AddToUnregisterList(unregisterList);
 unregisterList.UnRegisterAll();
 ```
 
-### 9. [`ArchitectureEvents`](ArchitectureEvents.cs)
+### 9. `ArchitectureEvents`
 
 定义了架构生命周期相关的事件。
 

@@ -151,7 +151,7 @@ public class CombatSystem : AbstractSystem
 
 ### 功能说明
 
-[CommandBus](file:///d:/Project/Rider/GFramework/GFramework.Core/command/CommandBus.cs#L8-L34) 是命令执行的核心组件，负责发送和执行命令。
+`CommandBus` 是命令执行的核心组件，负责发送和执行命令。
 
 **主要方法：**
 

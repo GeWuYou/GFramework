@@ -6,7 +6,7 @@ Logging 包提供了灵活的日志系统，支持多级别日志记录。默认
 
 ## 核心接口
 
-### [ILogger](../GFramework.Core.Abstractions/logging/ILogger.cs)
+### ILogger
 
 日志记录器接口，定义了日志记录的基本功能。
 
@@ -62,7 +62,7 @@ void Fatal(string msg, Exception t);
 string Name();
 ```
 
-### [ILoggerFactory](../GFramework.Core.Abstractions/logging/ILoggerFactory.cs)
+### ILoggerFactory
 
 日志工厂接口，用于创建日志记录器实例。
 
@@ -72,7 +72,7 @@ string Name();
 ILogger GetLogger(string name, LogLevel minLevel = LogLevel.Info);
 ```
 
-### [ILoggerFactoryProvider](../GFramework.Core.Abstractions/logging/ILoggerFactoryProvider.cs)
+### ILoggerFactoryProvider
 
 日志工厂提供程序接口，用于获取日志工厂。
 
@@ -83,7 +83,7 @@ ILoggerFactory GetLoggerFactory();
 ILogger CreateLogger(string name);
 ```
 
-### [LogLevel](../GFramework.Core.Abstractions/logging/LogLevel.cs)
+### LogLevel
 
 日志级别枚举。
 
@@ -101,7 +101,7 @@ public enum LogLevel
 
 ## 核心类
 
-### [AbstractLogger](AbstractLogger.cs)
+### AbstractLogger
 
 抽象日志基类，封装了日志级别判断、格式化与异常处理逻辑。平台日志器只需实现 `Write` 方法即可。
 
@@ -127,7 +127,7 @@ public class CustomLogger : AbstractLogger
 }
 ```
 
-### [ConsoleLogger](ConsoleLogger.cs)
+### ConsoleLogger
 
 控制台日志记录器实现，支持彩色输出。
 
@@ -169,7 +169,7 @@ logger.Fatal("致命错误");
 - `writer`：TextWriter 输出流，默认为 Console.Out
 - `useColors`：是否使用颜色，默认为 true（仅在输出到控制台时生效）
 
-### [ConsoleLoggerFactory](ConsoleLoggerFactory.cs)
+### ConsoleLoggerFactory
 
 控制台日志工厂，用于创建控制台日志记录器实例。
 
@@ -181,7 +181,7 @@ var logger = factory.GetLogger("MyModule", LogLevel.Debug);
 logger.Info("日志记录器创建成功");
 ```
 
-### [ConsoleLoggerFactoryProvider](ConsoleLoggerFactoryProvider.cs)
+### ConsoleLoggerFactoryProvider
 
 控制台日志工厂提供程序实现。
 
@@ -194,7 +194,7 @@ var logger = provider.CreateLogger("MyApp");
 logger.Info("应用程序启动");
 ```
 
-### [LoggerFactoryResolver](LoggerFactoryResolver.cs)
+### LoggerFactoryResolver
 
 日志工厂提供程序解析器，用于管理和提供日志工厂提供程序实例。
 
