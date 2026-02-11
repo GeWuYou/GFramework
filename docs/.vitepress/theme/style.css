@@ -48,11 +48,15 @@
   --vp-c-default-2: var(--vp-c-gray-2);
   --vp-c-default-3: var(--vp-c-gray-3);
   --vp-c-default-soft: var(--vp-c-gray-soft);
-
-  --vp-c-brand-1: var(--vp-c-indigo-1);
-  --vp-c-brand-2: var(--vp-c-indigo-2);
-  --vp-c-brand-3: var(--vp-c-indigo-3);
-  --vp-c-brand-soft: var(--vp-c-indigo-soft);
+  /* GFramework Brand Colors */
+  --vp-c-brand-1: #1e40af;        /* 深蓝：文字 / active */
+  --vp-c-brand-2: #2563eb;        /* 蓝：hover */
+  --vp-c-brand-3: #3b82f6;        /* 主蓝：按钮 / 主色 */
+  --vp-c-brand-soft: rgba(59, 130, 246, 0.14);
+  /*--vp-c-brand-1: var(--vp-c-indigo-1);*/
+  /*--vp-c-brand-2: var(--vp-c-indigo-2);*/
+  /*--vp-c-brand-3: var(--vp-c-indigo-3);*/
+  /*--vp-c-brand-soft: var(--vp-c-indigo-soft);*/
 
   --vp-c-tip-1: var(--vp-c-brand-1);
   --vp-c-tip-2: var(--vp-c-brand-2);
@@ -92,17 +96,30 @@
 
 :root {
   --vp-home-hero-name-color: transparent;
-  --vp-home-hero-name-background: -webkit-linear-gradient(
-    120deg,
-    #bd34fe 30%,
-    #41d1ff
+  /*--vp-home-hero-name-background: -webkit-linear-gradient(*/
+  /*  120deg,*/
+  /*  #bd34fe 30%,*/
+  /*  #41d1ff*/
+  /*);*/
+  --vp-home-hero-name-background: linear-gradient(
+          120deg,
+          #22c55e 0%,
+          #3b82f6 45%,
+          #8b5cf6 100%
   );
 
+  /*--vp-home-hero-image-background-image: linear-gradient(*/
+  /*  -45deg,*/
+  /*  #bd34fe 50%,*/
+  /*  #47caff 50%*/
+  /*);*/
   --vp-home-hero-image-background-image: linear-gradient(
-    -45deg,
-    #bd34fe 50%,
-    #47caff 50%
+          -45deg,
+          rgba(34, 197, 94, 0.6),
+          rgba(59, 130, 246, 0.6),
+          rgba(139, 92, 246, 0.6)
   );
+
   --vp-home-hero-image-filter: blur(44px);
 }
 
@@ -127,5 +144,16 @@
   --vp-custom-block-tip-text: var(--vp-c-text-1);
   --vp-custom-block-tip-bg: var(--vp-c-brand-soft);
   --vp-custom-block-tip-code-bg: var(--vp-c-brand-soft);
+  
+  
+  --vp-button-brand-bg: linear-gradient(
+          135deg,
+          #3b82f6,
+          #2563eb
+  );
+}
+.VPFeature:hover {
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25),
+  0 8px 32px rgba(59, 130, 246, 0.25);
 }
 
