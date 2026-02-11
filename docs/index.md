@@ -1,38 +1,42 @@
----
-# https://vitepress.dev/reference/default-theme-home-page
-layout: home
-
-hero:
-  name: "GFramework"
-  text: "面向游戏开发场景的模块化 C# 框架"
-  tagline: 基于清洁架构和CQRS模式的现代化游戏开发框架
-  image:
-    src: /logo.png
-    alt: GFramework Logo
-  actions:
-    - theme: brand
-      text: 快速开始
-      link: /getting-started/quick-start
-    - theme: alt
-      text: 架构概览
-      link: /getting-started/architecture-overview
-    - theme: alt
-      text: API 参考
-      link: /api-reference/core-api
-
-features:
-  - title: 🏗️ 清洁架构
-    details: 基于Model-View-Controller-System-Utility五层架构，实现清晰的职责分离和高内聚低耦合
-  - title: 🔧 CQRS模式
-    details: 命令查询职责分离，提供类型安全的命令和查询系统，支持可撤销操作
-  - title: 📡 事件驱动
-    details: 强大的事件总线系统，支持类型安全的事件发布订阅，实现组件间松耦合通信
-  - title: 🎮 Godot集成
-    details: 深度集成Godot引擎，提供丰富的节点扩展方法和对象池化支持
-  - title: 🔄 响应式编程
-    details: 可绑定属性系统，自动化的数据绑定和UI更新机制
-  - title: ⚡ 源码生成器
-    details: 基于Roslyn的源码生成器，自动生成日志、枚举扩展等样板代码
-
+﻿---
+layout: page
 ---
 
+<script setup>
+import { onMounted } from 'vue'
+
+onMounted(() => {
+  if (typeof window !== 'undefined') {
+    // 检测浏览器语言
+    const browserLang = navigator.language.toLowerCase()
+    
+    // 目前只有中文，未来可以根据语言跳转
+    if (browserLang.startsWith('zh-CN')) {
+      window.location.href = '/GFramework/zh-CN/'
+    } else if (browserLang.startsWith('en')) {
+      // 未来如果有英文版
+      // window.location.href = '/GFramework/en/'
+      window.location.href = '/GFramework/zh-CN/' // 暂时跳转到中文
+    } else {
+      // 默认跳转到中文
+      window.location.href = '/GFramework/zh-CN/'
+    }
+  }
+})
+</script>
+
+<div style="text-align: center; padding: 100px 20px;">
+  <h1>🌐 Language Selection / 语言选择</h1>
+  <div style="margin-top: 40px; display: flex; gap: 20px; justify-content: center; flex-wrap: wrap;">
+    <a href="/GFramework/zh-CN/" style="padding: 12px 24px; background: #3451b2; color: white; border-radius: 8px; text-decoration: none; font-size: 16px;">
+      简体中文 🇨🇳
+    </a>
+    <!-- 未来添加英文版本时取消注释 -->
+    <!-- <a href="/GFramework/en/" style="padding: 12px 24px; background: #3451b2; color: white; border-radius: 8px; text-decoration: none; font-size: 16px;">
+      English 🇺🇸
+    </a> -->
+  </div>
+  <p style="margin-top: 40px; color: #666;">
+    Auto-redirecting... / 自动跳转中...
+  </p>
+</div>
