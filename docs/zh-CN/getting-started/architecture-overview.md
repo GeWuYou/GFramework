@@ -348,7 +348,7 @@ public class PlayerManager
 
 ## 下一步学习
 
-- [深入了解 Architecture 组件](/core/architecture/architecture)
-- [掌握事件系统](/core/events/event-bus)
-- [学习命令查询模式](/core/command-query/commands)
-- [探索属性系统](/core/property/bindable-property)
+- [深入了解 Architecture 组件](./core/architecture)
+- [掌握事件系统](./core/events)
+- [学习命令查询模式](./core/command)
+- [探索属性系统](./core/property)

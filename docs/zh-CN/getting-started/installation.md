@@ -182,6 +182,6 @@ dotnet build
 
 安装完成后，建议：
 
-1. [快速开始](/getting-started/quick-start) - 构建第一个应用
-2. [架构概览](/getting-started/architecture-overview) - 了解核心概念
-3. [Core 模块文档](/core/overview) - 深入学习核心功能
+1. [快速开始](./getting-started/quick-start) - 构建第一个应用
+2. [架构概览](./getting-started/architecture-overview) - 了解核心概念
+3. [Core 模块文档](./core) - 深入学习核心功能
