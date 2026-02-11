@@ -6,10 +6,10 @@ Extensions 包提供了一系列扩展方法，简化了框架各个接口的使
 
 ## 扩展方法类别
 
-### 1. ContextAware 扩展 ([`ContextAwareExtensions.cs`](./extensions.md))
+### 1. ContextAware 扩展 ([ContextAwareExtensions.cs](ContextAwareExtensions.cs))
 
-为 [`IContextAware`](./rule.md)
-提供扩展方法，允许直接从实现了 [IContextAware](./rule.md)
+为 [IContextAware](../GFramework.Core.Abstractions/rule/IContextAware.cs)
+提供扩展方法，允许直接从实现了 [IContextAware](../GFramework.Core.Abstractions/rule/IContextAware.cs)
 的对象获取架构组件。
 
 #### GetSystem 扩展方法
@@ -91,7 +91,7 @@ public static TResult SendCommand<TResult>(this IContextAware contextAware, ICom
 
 **使用示例：**
 
-```csharp
+```
 public class GameController : IController
 {
     public void OnStartButtonClicked()

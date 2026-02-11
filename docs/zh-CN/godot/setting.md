@@ -86,7 +86,7 @@ graph TD
 
 #### 基本音频设置
 
-```csharp
+``csharp
 // 创建音频配置数据
 var settings = new AudioSettings
 {
@@ -99,12 +99,12 @@ var settings = new AudioSettings
 var audioSettings = new GodotAudioSettings(settings, new AudioBusMap());
 
 // 应用设置
-await audioSettings.Apply();
+audioSettings.Apply();
 ```
 
 #### 自定义音频总线映射
 
-```csharp
+``csharp
 // 自定义音频总线映射
 var customBusMap = new AudioBusMap
 {
@@ -128,7 +128,7 @@ await audioSettings.Apply();
 
 #### 通过设置系统使用
 
-```csharp
+``csharp
 // 注册音频设置到设置模型
 var settingsModel = this.GetModel<ISettingsModel>();
 var audioSettingsData = settingsModel.Get<AudioSettings>();
@@ -145,7 +145,7 @@ await godotAudioSettings.Apply();
 
 #### 基本图形设置
 
-```csharp
+``csharp
 // 创建图形设置
 var graphicsSettings = new GodotGraphicsSettings
 {
@@ -160,7 +160,7 @@ await graphicsSettings.Apply();
 
 #### 窗口模式切换
 
-```csharp
+``csharp
 public class DisplayManager : Node
 {
     private GodotGraphicsSettings _graphicsSettings;
@@ -188,7 +188,7 @@ public class DisplayManager : Node
 
 #### 预设分辨率配置
 
-```csharp
+``csharp
 public class ResolutionPresets
 {
     public static readonly (int width, int height)[] CommonResolutions = 
@@ -214,7 +214,7 @@ public class ResolutionPresets
 
 ### AudioBusMap
 
-```csharp
+``csharp
 public sealed class AudioBusMap
 {
     public string Master { get; init; } = "Master";
@@ -231,7 +231,7 @@ public sealed class AudioBusMap
 
 ### GodotAudioSettings
 
-```csharp
+``csharp
 public class GodotAudioSettings(AudioSettings settings, AudioBusMap busMap) : IApplyAbleSettings
 {
     public Task Apply();
@@ -245,7 +245,7 @@ public class GodotAudioSettings(AudioSettings settings, AudioBusMap busMap) : IA
 
 **Apply 方法实现：**
 
-```csharp
+``csharp
 public Task Apply()
 {
     SetBus(busMap.Master, settings.MasterVolume);
@@ -257,7 +257,7 @@ public Task Apply()
 
 ### GodotGraphicsSettings
 
-```csharp
+``csharp
 public class GodotGraphicsSettings : GraphicsSettings, IApplyAbleSettings
 {
     public Task Apply();
@@ -277,7 +277,7 @@ public class GodotGraphicsSettings : GraphicsSettings, IApplyAbleSettings
 
 Godot 音频系统使用分贝（dB）作为音量单位，而我们通常使用线性值（0-1）：
 
-```csharp
+``csharp
 // 线性值到分贝转换
 float linearVolume = 0.5f;  // 50% 音量
 float dbVolume = Mathf.LinearToDb(linearVolume); // 转换为分贝
@@ -290,7 +290,7 @@ AudioServer.SetBusVolumeDb(busIndex, dbVolume);
 
 为避免完全静音（-inf dB），应用了最小音量限制：
 
-```csharp
+``csharp
 float clampedVolume = Mathf.Clamp(linear, 0.0001f, 1f);
 float dbVolume = Mathf.LinearToDb(clampedVolume);
 ```
@@ -299,7 +299,7 @@ float dbVolume = Mathf.LinearToDb(clampedVolume);
 
 #### 全屏模式
 
-```csharp
+``csharp
 // 设置全屏
 DisplayServer.WindowSetMode(DisplayServer.WindowMode.ExclusiveFullscreen);
 DisplayServer.WindowSetFlag(DisplayServer.WindowFlags.Borderless, true);
@@ -307,7 +307,7 @@ DisplayServer.WindowSetFlag(DisplayServer.WindowFlags.Borderless, true);
 
 #### 窗口化模式
 
-```csharp
+``csharp
 // 设置窗口化
 DisplayServer.WindowSetMode(DisplayServer.WindowMode.Windowed);
 DisplayServer.WindowSetSize(newSize);
@@ -325,7 +325,7 @@ DisplayServer.WindowSetPosition(position);
 
 #### 音量变化平滑过渡
 
-```csharp
+``csharp
 public class AudioManager : Node
 {
     private Tween _volumeTween;
@@ -398,7 +398,7 @@ public class CustomAudioManager : Node
 
 #### 音频设置验证
 
-```csharp
+``csharp
 public static class AudioSettingsValidator
 {
     public static bool ValidateBusNames(AudioBusMap busMap)
@@ -428,7 +428,7 @@ public static class AudioSettingsValidator
 
 #### 分辨率变更安全检查
 
-```csharp
+``csharp
 public static class DisplayValidator
 {
     public static bool IsResolutionSupported(int width, int height)
@@ -451,7 +451,7 @@ public static class DisplayValidator
 
 #### 图形设置持久化
 
-```csharp
+``csharp
 public class GraphicsSettingsManager : Node
 {
     private const string SettingsKey = "graphics_settings";
@@ -545,7 +545,7 @@ public class GraphicsSettingsManager : Node
 
 #### 音频调试
 
-```csharp
+``csharp
 // 打印所有音频总线信息
 for (int i = 0; i < AudioServer.GetBusCount(); i++)
 {
@@ -557,7 +557,7 @@ for (int i = 0; i < AudioServer.GetBusCount(); i++)
 
 #### 图形调试
 
-```csharp
+``csharp
 // 打印当前显示信息
 var screen = DisplayServer.GetPrimaryScreen();
 var screenSize = DisplayServer.ScreenGetSize(screen);

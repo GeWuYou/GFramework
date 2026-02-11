@@ -95,36 +95,48 @@ public class PlayerModel : AbstractModel
 
 应用的业务逻辑处理层。
 
-```csharp
+``csharp
 public class CombatSystem : AbstractSystem
 {
     protected override void OnInit()
     {
-        // 监听战斗相关事件
-        this.RegisterEvent<EnemyAttackEvent>(OnEnemyAttack);
-        this.RegisterEvent<PlayerAttackEvent>(OnPlayerAttack);
+// 订阅相关事件
+this.GetEvent<AttackEvent>().Register(OnAttack);
+}
+
+    private void OnAttack(AttackEvent e)
+    {
+        var attacker = e.Attacker;
+        var target = e.Target;
+        
+        // 计算伤害
+        var damage = CalculateDamage(attacker, target);
+        
+        // 更新目标生命值
+        target.Health.Value -= damage;
+        
+        // 发送伤害事件
+        this.SendEvent(new DamageEvent(target, damage));
     }
     
-    private void OnEnemyAttack(EnemyAttackEvent e)
+    private int CalculateDamage(Entity attacker, Entity target)
     {
-        var playerModel = this.GetModel<PlayerModel>();
-        playerModel.Health.Value -= e.Damage;
-        this.SendEvent(new PlayerTookDamageEvent { Damage = e.Damage });
+        return Mathf.Max(1, attacker.Attack.Value - target.Defense.Value);
     }
 }
 ```
 
-**职责范围：**
+**设计原则：**
 
-- 处理具体的业务逻辑
-- 响应事件并修改模型数据
-- 发送新的事件通知其他组件
+- 处理业务逻辑，不直接存储数据
+- 通过事件与其他组件通信
+- 从 Model 获取数据，向 Model 发送更新
 
 ### 4. Controller（控制器）
 
 连接 UI 和业务逻辑的桥梁。
 
-```csharp
+``csharp
 public class PlayerController : IController
 {
     private IArchitecture _architecture;
@@ -164,7 +176,7 @@ public class PlayerController : IController
 
 提供无状态的辅助功能。
 
-```csharp
+``csharp
 public class StorageUtility : IUtility
 {
     public void SaveData<T>(string key, T data)
@@ -193,7 +205,7 @@ public class StorageUtility : IUtility
 
 用于修改应用状态的操作：
 
-```csharp
+``csharp
 public class MovePlayerCommand : AbstractCommand
 {
     public Vector2 Direction { get; set; }
@@ -208,9 +220,9 @@ public class MovePlayerCommand : AbstractCommand
 
 ### 2. Query（查询）
 
-用于查询应用状态：
+用于查询应用状态：`
 
-```csharp
+``csharp
 public class GetPlayerHealthQuery : AbstractQuery<int>
 {
     protected override int OnDo()
@@ -223,9 +235,9 @@ public class GetPlayerHealthQuery : AbstractQuery<int>
 
 ### 3. Event（事件）
 
-组件间通信的主要机制：
+组件间通信的主要机制：`
 
-```csharp
+```
 // 发送事件
 this.SendEvent(new PlayerDiedEvent());
 
@@ -237,7 +249,7 @@ this.RegisterEvent<PlayerDiedEvent>(OnPlayerDied);
 
 ### BindableProperty
 
-```csharp
+``csharp
 public class PlayerModel : AbstractModel
 {
     public BindableProperty<int> Health { get; } = new(100);
@@ -262,7 +274,7 @@ playerModel.Health.Register(newValue => {
 
 ### 1. 分层职责明确
 
-```csharp
+``csharp
 // ✅ 正确：Model 只存储数据
 public class PlayerModel : AbstractModel
 {
@@ -281,7 +293,7 @@ public class PlayerModel : AbstractModel
 
 ### 2. 事件驱动设计
 
-```csharp
+``csharp
 // ✅ 正确：使用事件解耦
 public class CombatSystem : AbstractSystem
 {
@@ -305,7 +317,7 @@ public class CombatSystem : AbstractSystem
 
 ### 3. 命令查询分离
 
-```csharp
+``csharp
 // ✅ 正确：明确区分命令和查询
 public class MovePlayerCommand : AbstractCommand { }  // 修改状态
 public class GetPlayerPositionQuery : AbstractQuery<Vector2> { }  // 查询状态

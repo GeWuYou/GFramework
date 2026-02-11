@@ -65,7 +65,7 @@ public interface IGameSettings
 public interface ISceneManager
 {
     void SwitchScene<TScene>() where TScene : IScene;
-    Task SwitchSceneAsync<TScene>() where TScnee : IScene;
+    Task SwitchSceneAsync<TScene>() where TScene : IScene;
     
     void PushScene<TScene>() where TScene : IScene;
     void PopScene();
@@ -108,6 +108,6 @@ public interface IAssetManager
 **相关文档**：
 
 - [Game 概述](../game)
-- [Core Abstractions](./core-abstractions)
+- [核心抽象](./core-abstractions)
 - [存档系统](../game/storage)
 - [场景管理](../game/scene-management)

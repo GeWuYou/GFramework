@@ -6,7 +6,7 @@ Logging 包提供了灵活的日志系统，支持多级别日志记录。默认
 
 ## 核心接口
 
-### [ILogger](./logging.md)
+### [ILogger](../GFramework.Core.Abstractions/logging/ILogger.cs)
 
 日志记录器接口，定义了日志记录的基本功能。
 
@@ -62,7 +62,7 @@ void Fatal(string msg, Exception t);
 string Name();
 ```
 
-### [ILoggerFactory](./logging.md)
+### [ILoggerFactory](../GFramework.Core.Abstractions/logging/ILoggerFactory.cs)
 
 日志工厂接口，用于创建日志记录器实例。
 
@@ -72,7 +72,7 @@ string Name();
 ILogger GetLogger(string name, LogLevel minLevel = LogLevel.Info);
 ```
 
-### [ILoggerFactoryProvider](./logging.md)
+### [ILoggerFactoryProvider](../GFramework.Core.Abstractions/logging/ILoggerFactoryProvider.cs)
 
 日志工厂提供程序接口，用于获取日志工厂。
 
@@ -83,7 +83,7 @@ ILoggerFactory GetLoggerFactory();
 ILogger CreateLogger(string name);
 ```
 
-### [LogLevel](./logging.md)
+### [LogLevel](../GFramework.Core.Abstractions/logging/LogLevel.cs)
 
 日志级别枚举。
 

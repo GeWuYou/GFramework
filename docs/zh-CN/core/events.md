@@ -6,7 +6,7 @@ Events 包提供了一套完整的事件系统，实现了观察者模式（Obse
 
 ## 核心接口
 
-### 1. [`IEvent`](./events.md)
+### 1. [IEvent](../GFramework.Core.Abstractions/events/IEvent.cs)
 
 基础事件接口，定义了事件注册的基本功能。
 
@@ -16,7 +16,7 @@ Events 包提供了一套完整的事件系统，实现了观察者模式（Obse
 IUnRegister Register(Action onEvent);  // 注册事件处理函数
 ```
 
-### 2. [`IUnRegister`](./events.md)
+### 2. [IUnRegister](../GFramework.Core.Abstractions/events/IUnRegister.cs)
 
 注销接口，用于取消事件注册。
 
@@ -26,7 +26,7 @@ IUnRegister Register(Action onEvent);  // 注册事件处理函数
 void UnRegister();  // 执行注销操作
 ```
 
-### 3. [`IUnRegisterList`](./events.md)
+### 3. [IUnRegisterList](../GFramework.Core.Abstractions/events/IUnRegisterList.cs)
 
 注销列表接口，用于批量管理注销对象。
 
@@ -36,7 +36,7 @@ void UnRegister();  // 执行注销操作
 IList<IUnRegister> UnregisterList { get; }  // 获取注销列表
 ```
 
-### 4. [`IEventBus`](./events.md)
+### 4. [IEventBus](../GFramework.Core.Abstractions/events/IEventBus.cs)
 
 事件总线接口，提供基于类型的事件发送和注册。
 
@@ -50,7 +50,7 @@ void Send<T>() where T : new();           // 发送事件（自动创建实例�
 
 ## 核心类
 
-### 1. [`EasyEvent`](./events.md)
+### 1. [EasyEvent](EasyEvent.cs)
 
 无参事件类，支持注册、注销和触发无参事件。
 
@@ -73,7 +73,7 @@ onClicked.Trigger();
 unregister.UnRegister();
 ```
 
-### 2. [`Event<T>`](./events.md)
+### 2. [Event<T>](EasyEvent.cs)
 
 单参数泛型事件类，支持一个参数的事件。
 
@@ -93,13 +93,13 @@ onScoreChanged.Register(newScore =>
 onScoreChanged.Trigger(100);
 ```
 
-### 3. [`Event<T, TK>`](./events.md)
+### 3. [Event<T, TK>](EasyEvent.cs)
 
 双参数泛型事件类。
 
 **使用示例：**
 
-```csharp
+```
 // 伤害事件：攻击者、伤害值
 var onDamageDealt = new Event<string, int>();
 
@@ -117,7 +117,7 @@ onDamageDealt.Trigger("Player", 50);
 
 **使用示例：**
 
-```csharp
+``csharp
 // 注册全局事件类型
 EasyEvents.Register<GameStartEvent>();
 
@@ -140,7 +140,7 @@ gameStartEvent.Trigger();
 
 **使用示例：**
 
-```csharp
+``csharp
 // 使用全局事件系统
 var eventBus = new EventBus();
 
@@ -166,7 +166,7 @@ eventBus.Send<PlayerDiedEvent>();
 
 **使用示例：**
 
-```csharp
+``csharp
 Action onUnregister = () => GD.Print("Unregistered");
 var unregister = new DefaultUnRegister(onUnregister);
 
@@ -180,7 +180,7 @@ unregister.UnRegister();
 
 **使用示例：**
 
-```csharp
+``csharp
 var onAnyInput = new OrEvent()
     .Or(onKeyPressed)
     .Or(onMouseClicked)
@@ -199,7 +199,7 @@ onAnyInput.Register(() =>
 
 **使用示例：**
 
-```csharp
+``csharp
 var unregisterList = new UnRegisterList();
 
 // 添加到列表
