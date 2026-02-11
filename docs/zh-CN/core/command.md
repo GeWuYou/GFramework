@@ -6,7 +6,7 @@ Command 包实现了命令模式（Command Pattern），用于封装用户操作
 
 ## 核心接口
 
-### 1. [`ICommand`](ICommand.cs)
+### 1. [`ICommand`](./command.md)
 
 无返回值命令接口，定义了命令的基本契约。
 
@@ -16,7 +16,7 @@ Command 包实现了命令模式（Command Pattern），用于封装用户操作
 void Execute();  // 执行命令
 ```
 
-### 2. [`ICommand<TResult>`](ICommand.cs)
+### 2. [`ICommand<TResult>`](./command.md)
 
 带返回值的命令接口，用于需要返回执行结果的命令。
 
@@ -28,9 +28,9 @@ TResult Execute();  // 执行命令并返回结果
 
 ## 核心类
 
-### 1. [`AbstractCommand<TInput>`](AbstractCommand.cs)
+### 1. [`AbstractCommand<TInput>`](./command.md)
 
-无返回值命令的抽象基类，提供了命令的基础实现。它继承自 [ContextAwareBase](file:///d:/Project/Rider/GFramework/GFramework.Core.Abstractions/rule/IContextAware.cs#L4-L28)
+无返回值命令的抽象基类，提供了命令的基础实现。它继承自 [ContextAwareBase](./rule.md)
 ，具有上下文感知能力。
 
 **使用示例：**
@@ -83,9 +83,9 @@ public class GameController : IController
 }
 ```
 
-### 2. [`AbstractCommand<TInput, TResult>`](AbstractCommand.cs)
+### 2. [`AbstractCommand<TInput, TResult>`](./command.md)
 
-带返回值命令的抽象基类，同样继承自 [ContextAwareBase](file:///d:/Project/Rider/GFramework/GFramework.Core.Abstractions/rule/IContextAware.cs#L4-L28)。
+带返回值命令的抽象基类，同样继承自 [ContextAwareBase](./rule.md)。
 
 **使用示例：**
 

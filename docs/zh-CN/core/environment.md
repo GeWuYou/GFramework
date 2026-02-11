@@ -23,7 +23,7 @@ void Initialize();  // 初始化环境
 
 ## 核心类
 
-### [`EnvironmentBase`](EnvironmentBase.cs)
+### [`EnvironmentBase`](./environment.md)
 
 环境基础抽象类，实现了 IEnvironment 接口，提供环境值的存储和获取功能。
 
@@ -68,7 +68,7 @@ public abstract class EnvironmentBase : ContextAwareBase, IEnvironment
 }
 ```
 
-### [`DefaultEnvironment`](DefaultEnvironment.cs)
+### [`DefaultEnvironment`](./environment.md)
 
 默认环境实现类，继承自 EnvironmentBase。
 
@@ -90,7 +90,7 @@ public class DefaultEnvironment : EnvironmentBase
 
 ### 1. 定义自定义环境
 
-```csharp
+```
 public class GameEnvironment : EnvironmentBase
 {
     public override string Name { get; } = "Game";
@@ -112,7 +112,7 @@ public class GameEnvironment : EnvironmentBase
 
 ### 2. 在架构中使用环境
 
-```csharp
+```
 public class GameArchitecture : Architecture
 {
     protected override void Init()
@@ -130,7 +130,7 @@ public class GameArchitecture : Architecture
 
 ### 3. 使用环境值
 
-```csharp
+```
 public class NetworkSystem : AbstractSystem
 {
     private string _serverAddress;
@@ -183,7 +183,7 @@ public class NetworkSystem : AbstractSystem
 
 ## 错误示例
 
-```csharp
+```
 // ❌ 错误：获取必需值但不存在
 public class BadExampleSystem : AbstractSystem
 {

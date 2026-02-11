@@ -1,11 +1,11 @@
 # GFramework 存储模块使用指南
 
-本模块提供了基于文件系统的存储功能，包括两个主要类：[FileStorage](./FileStorage.cs)
-和 [ScopedStorage](./ScopedStorage.cs)。
+本模块提供了基于文件系统的存储功能，包括两个主要类：FileStorage
+和 ScopedStorage。
 
 ## FileStorage
 
-[FileStorage](./FileStorage.cs) 是一个基于文件系统的存储实现，它将数据以序列化形式保存到磁盘上的指定目录。
+FileStorage 是一个基于文件系统的存储实现，它将数据以序列化形式保存到磁盘上的指定目录。
 
 ### 特性
 
@@ -59,7 +59,7 @@ storage.WriteAsync("player_score", 1200);
 
 ## ScopedStorage
 
-[ScopedStorage](./ScopedStorage.cs) 是一个装饰器模式的实现，它为所有存储键添加前缀，从而实现逻辑分组和命名空间隔离。
+ScopedStorage 是一个装饰器模式的实现，它为所有存储键添加前缀，从而实现逻辑分组和命名空间隔离。
 
 ### 特性
 
@@ -122,13 +122,13 @@ settingsStorage.Write("level", "high");
 
 ## 注意事项
 
-1. **序列化器选择**：确保使用的 [ISerializer](../GFramework.Game.Abstractions/serializer/ISerializer.cs)
+1. **序列化器选择**：确保使用的 ISerializer
    实现能够正确处理你要存储的数据类型。
-2. **错误处理**：[FileStorage](./FileStorage.cs) 的 `Read<T>(string key)` 方法会在键不存在时抛出异常，可以使用
+2. **错误处理**：FileStorage 的 `Read<T>(string key)` 方法会在键不存在时抛出异常，可以使用
    `Read<T>(string key, T defaultValue)` 来避免异常。
-3. **线程安全**：[FileStorage](./FileStorage.cs) 通过细粒度锁机制保证线程安全，每个键都有独立的锁，因此不同键的操作可以并发执行。
+3. **线程安全**：FileStorage 通过细粒度锁机制保证线程安全，每个键都有独立的锁，因此不同键的操作可以并发执行。
 4. **文件权限**：确保应用程序对指定的存储目录有读写权限。
-5. **路径安全**：[FileStorage](./FileStorage.cs) 会自动防止路径遍历攻击，因此键不能包含 `..`，并且特殊字符会被替换为下划线。
+5. **路径安全**：FileStorage 会自动防止路径遍历攻击，因此键不能包含 `..`，并且特殊字符会被替换为下划线。
 6. **存储键格式**：键可以包含 `/` 作为分隔符，这将被转换为相应的目录层级，例如 `"player/profile"` 会存储在
    `player/profile.dat` 文件中。
 7. **异步操作**：尽管异步读写操作使用了异步IO，但仍会使用锁来保证对同一键的并发访问安全。

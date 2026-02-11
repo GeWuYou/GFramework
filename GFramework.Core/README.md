@@ -28,4 +28,4 @@ GFramework 框架的核心模块，提供MVC架构的基础设施。
 
 ## 详细文档
 
-参见 [docs/core/](../docs/core/) 目录下的详细文档。
+参见 [docs/zh-CN/core/](../docs/zh-CN/core/) 目录下的详细文档。

@@ -79,7 +79,7 @@ Task InitializeAsync();
 
 ## 核心类
 
-### [`Architecture`](Architecture.cs)
+### [`Architecture`](./architecture.md)
 
 架构基类，实现了 `IArchitecture` 接口，提供完整的架构功能实现。
 
@@ -268,7 +268,7 @@ public void InstallModule(IArchitectureModule module)
 
 **使用示例：**
 
-```csharp
+```
 // 定义模块
 public class NetworkModule : IArchitectureModule
 {
@@ -301,7 +301,7 @@ public void RegisterLifecycleHook(IArchitectureLifecycle hook)
 
 **使用示例：**
 
-```csharp
+```
 // 定义生命周期钩子
 public class PerformanceMonitorHook : IArchitectureLifecycle
 {
@@ -342,7 +342,7 @@ public ArchitecturePhase CurrentPhase { get; }
 
 **使用示例：**
 
-```csharp
+```
 var architecture = new GameArchitecture();
 
 // 检查架构是否已就绪
@@ -372,7 +372,7 @@ public IArchitectureContext Context { get; }
 
 **使用示例：**
 
-```csharp
+```
 // 通过 Context 访问服务
 var context = architecture.Context;
 var eventBus = context.EventBus;
@@ -383,7 +383,7 @@ var environment = context.Environment;
 
 **高级特性：**
 
-``csharp
+```
 // 1. 使用自定义配置
 var config = new ArchitectureConfiguration();
 var architecture = new GameArchitecture(configuration: config);

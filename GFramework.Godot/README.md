@@ -16,4 +16,4 @@ GFramework 框架的 Godot 引擎集成模块，提供Godot特定的功能和扩
 
 ## 详细文档
 
-参见 [docs/godot/](../docs/godot/) 目录下的详细文档。
+参见 [docs/zh-CN/godot/](../docs/zh-CN/godot/) 目录下的详细文档。

@@ -6,7 +6,7 @@ System 包定义了业务逻辑层（Business Logic Layer）。System 负责处�
 
 ## 核心接口
 
-### [`ICanGetSystem`](ICanGetSystem.cs)
+### [`ICanGetSystem`](./system.md)
 
 标记接口，表示该类型可以获取其他 System。
 
@@ -16,7 +16,7 @@ System 包定义了业务逻辑层（Business Logic Layer）。System 负责处�
 public interface ICanGetSystem : IBelongToArchitecture
 ```
 
-### [`ISystem`](ISystem.cs)
+### [`ISystem`](./system.md)
 
 System 接口，定义了系统的基本行为。
 
@@ -39,7 +39,7 @@ void OnArchitecturePhase(ArchitecturePhase phase);  // 处理架构阶段事件
 
 ## 核心类
 
-### [`AbstractSystem`](AbstractSystem.cs)
+### [`AbstractSystem`](./system.md)
 
 抽象 System 基类，提供了 System 的基础实现。继承自 ContextAwareBase，具有上下文感知能力。
 
@@ -60,7 +60,7 @@ public abstract class AbstractSystem : ContextAwareBase, ISystem
 
 ### 1. 定义 System
 
-```csharp
+```
 // 战斗系统
 public class CombatSystem : AbstractSystem
 {
@@ -115,7 +115,7 @@ public class CombatSystem : AbstractSystem
 
 ### 2. 注册 System
 
-```csharp
+```
 public class GameArchitecture : Architecture
 {
     protected override void Init()
@@ -134,7 +134,7 @@ public class GameArchitecture : Architecture
 
 ### 3. 在其他组件中获取 System
 
-```csharp
+```
 // 在 Controller 中
 public partial class GameController : Node, IController
 {
@@ -163,7 +163,7 @@ public class StartBattleCommand : AbstractCommand
 
 ### 1. 事件驱动的 System
 
-```csharp
+```
 public class InventorySystem : AbstractSystem
 {
     protected override void OnInit()
@@ -229,7 +229,7 @@ public class InventorySystem : AbstractSystem
 
 ### 2. 定时更新的 System
 
-```csharp
+```
 public class BuffSystem : AbstractSystem
 {
     private List<BuffData> _activeBuffs = new();
@@ -281,7 +281,7 @@ public class BuffSystem : AbstractSystem
 
 ### 3. 跨 System 协作
 
-```csharp
+```
 public class QuestSystem : AbstractSystem
 {
     protected override void OnInit()
@@ -366,7 +366,7 @@ public class RewardSystem : AbstractSystem
 
 ### 4. 管理复杂状态机
 
-```csharp
+```
 public class GameStateSystem : AbstractSystem
 {
     private GameState _currentState = GameState.MainMenu;
@@ -445,7 +445,7 @@ public class GameStateSystem : AbstractSystem
 - **特点**：主动，响应事件
 - **示例**：CombatSystem、QuestSystem
 
-```csharp
+```
 // ✅ 正确的职责划分
 
 // Model: 存储数据
@@ -493,7 +493,7 @@ public class CombatSystem : AbstractSystem
 
 ### 1. 避免频繁的 GetModel/GetSystem
 
-```csharp
+```
 // ❌ 不好：每次都获取
 private void OnUpdate(GameUpdateEvent e)
 {
@@ -518,7 +518,7 @@ private void OnUpdate(GameUpdateEvent e)
 
 ### 2. 批量处理
 
-```csharp
+```
 public class ParticleSystem : AbstractSystem
 {
     private List<Particle> _particles = new();

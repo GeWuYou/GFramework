@@ -6,7 +6,7 @@ Logging 包提供了灵活的日志系统，支持多级别日志记录。默认
 
 ## 核心接口
 
-### [ILogger](ILogger.cs)
+### [ILogger](./logging.md)
 
 日志记录器接口，定义了日志记录的基本功能。
 
@@ -62,7 +62,7 @@ void Fatal(string msg, Exception t);
 string Name();
 ```
 
-### [ILoggerFactory](ILoggerFactory.cs)
+### [ILoggerFactory](./logging.md)
 
 日志工厂接口，用于创建日志记录器实例。
 
@@ -72,7 +72,7 @@ string Name();
 ILogger GetLogger(string name, LogLevel minLevel = LogLevel.Info);
 ```
 
-### [ILoggerFactoryProvider](ILoggerFactoryProvider.cs)
+### [ILoggerFactoryProvider](./logging.md)
 
 日志工厂提供程序接口，用于获取日志工厂。
 
@@ -83,7 +83,7 @@ ILoggerFactory GetLoggerFactory();
 ILogger CreateLogger(string name);
 ```
 
-### [LogLevel](LogLevel.cs)
+### [LogLevel](./logging.md)
 
 日志级别枚举。
 
@@ -266,7 +266,7 @@ public class PlayerModel : AbstractModel
 
 ### 4. 自定义日志级别
 
-```csharp
+```
 public class DebugLogger : AbstractLogger
 {
     public DebugLogger() : base("Debug", LogLevel.Debug)

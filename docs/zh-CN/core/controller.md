@@ -8,18 +8,18 @@ Controller 包定义了控制器（Controller）的接口规范。控制器是 M
 
 ## 核心接口
 
-### [`IController`](IController.cs)
+### [`IController`](./controller.md)
 
 控制器接口，定义了控制器需要实现的所有功能契约。
 
 **继承的能力接口：**
 
-- [`ICanSendCommand`](../command/ICanSendCommand.cs) - 可发送命令
-- [`ICanGetSystem`](../system/ICanGetSystem.cs) - 可获取系统
-- [`ICanGetModel`](../model/ICanGetModel.cs) - 可获取模型
-- [`ICanRegisterEvent`](../events/ICanRegisterEvent.cs) - 可注册事件
-- [`ICanSendQuery`](../query/ICanSendQuery.cs) - 可发送查询
-- [`ICanGetUtility`](../utility/ICanGetUtility.cs) - 可获取工具
+- [`ICanSendCommand`](./command.md) - 可发送命令
+- [`ICanGetSystem`](./system.md) - 可获取系统
+- [`ICanGetModel`](./model.md) - 可获取模型
+- [`ICanRegisterEvent`](./events.md) - 可注册事件
+- [`ICanSendQuery`](./query.md) - 可发送查询
+- [`ICanGetUtility`](./utility.md) - 可获取工具
 
 **能力说明：**
 
@@ -110,7 +110,7 @@ public class PlayerController : IController
 
 ### UI 控制器示例
 
-```csharp
+``csharp
 // UI 面板控制器
 public class MainMenuController : IController
 {
@@ -160,7 +160,7 @@ public class MainMenuController : IController
 
 ### 复杂交互控制器
 
-```csharp
+``csharp
 // 战斗控制器
 public class CombatController : IController
 {
@@ -269,7 +269,7 @@ public class CombatController : IController
 
 ### 事件注销
 
-```csharp
+``csharp
 public class MyController : IController
 {
     [Inject] private IArchitecture _architecture;
@@ -321,7 +321,7 @@ public class MyController : IController
 
 ### 数据绑定模式
 
-```csharp
+``csharp
 public class ScoreController : IController
 {
     [Inject] private IArchitecture _architecture;
@@ -344,7 +344,7 @@ public class ScoreController : IController
 
 ### 状态机模式
 
-```csharp
+``csharp
 public class PlayerStateController : IController
 {
     [Inject] private IArchitecture _architecture;
@@ -376,7 +376,7 @@ public class PlayerStateController : IController
 
 在 Godot 项目中，可以使用 GFramework.Godot 提供的扩展：
 
-```csharp
+``csharp
 using GFramework.Godot;
 
 public partial class GodotPlayerController : Node, IController

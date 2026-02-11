@@ -19,7 +19,7 @@ TResult Do();  // 执行查询并返回结果
 
 ## 核心类
 
-### [`AbstractQuery<TInput, TResult>`](AbstractQuery.cs)
+### [`AbstractQuery<TInput, TResult>`](./query.md)
 
 抽象查询基类，提供了查询的基础实现。它接受一个泛型输入参数 TInput，该参数必须实现 IQueryInput 接口。
 
@@ -34,7 +34,7 @@ public abstract class AbstractQuery<TInput, TResult>(TInput input) : ContextAwar
 }
 ```
 
-### [`EmptyQueryInput`](EmptyQueryInput.cs)
+### [`EmptyQueryInput`](./query.md)
 
 空查询输入类，用于表示不需要任何输入参数的查询操作。
 
@@ -47,7 +47,7 @@ public sealed class EmptyQueryInput : IQueryInput
 }
 ```
 
-### [`QueryBus`](QueryBus.cs)
+### [`QueryBus`](./query.md)
 
 查询总线实现，负责执行查询并返回结果。
 
@@ -156,7 +156,7 @@ public partial class ShopUI : Control, IController
 
 ### 3. 在 System 中使用
 
-```csharp
+``csharp
 public class CombatSystem : AbstractSystem
 {
 protected override void OnInit()
@@ -185,7 +185,7 @@ this.RegisterEvent<EnemyAttackEvent>(OnEnemyAttack);
 
 ### 1. 带参数的复杂查询
 
-```csharp
+``csharp
 // 查询指定范围内的敌人列表
 public class GetEnemiesInRangeQuery : AbstractQuery<List<Enemy>>
 {
@@ -209,7 +209,7 @@ var enemies = this.SendQuery(new GetEnemiesInRangeQuery
 
 ### 2. 组合查询
 
-```csharp
+``csharp
 // 查询玩家是否可以使用技能
 public class CanUseSkillQuery : AbstractQuery<bool>
 {
@@ -256,7 +256,7 @@ public string SkillId { get; set; }
 
 ### 3. 聚合数据查询
 
-```csharp
+``csharp
 // 查询玩家战斗力
 public class GetPlayerPowerQuery : AbstractQuery<int>
 {
@@ -295,7 +295,7 @@ public class GetPlayerInfoQuery : AbstractQuery<PlayerInfo>
 
 ### 4. 跨 System 查询
 
-```csharp
+``csharp
 // 在 AI System 中查询玩家状态
 public class EnemyAISystem : AbstractSystem
 {
@@ -346,7 +346,7 @@ protected override void OnInit() { }
 - **返回值**：有返回值
 - **示例**：获取金币数量、检查技能冷却、查询玩家位置
 
-```csharp
+``csharp
 // ❌ 错误：在 Query 中修改状态
 public class BadQuery : AbstractQuery<int>
 {
@@ -392,7 +392,7 @@ public class AddGoldCommand : AbstractCommand
 
 ### 1. 缓存查询结果
 
-```csharp
+``csharp
 // 在 Model 中缓存复杂计算
 public class PlayerModel : AbstractModel
 {
@@ -424,7 +424,7 @@ private int? _cachedPower;
 
 ### 2. 批量查询
 
-```csharp
+``csharp
 // 一次查询多个数据，而不是多次单独查询
 public class GetMultipleItemCountsQuery : AbstractQuery<Dictionary<string, int>>
 {

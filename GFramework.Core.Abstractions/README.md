@@ -23,4 +23,4 @@ GFramework 框架的抽象层定义模块，包含所有核心组件的接口定
 
 ## 详细文档
 
-参见 [docs/core/](../docs/core/) 目录下的详细文档。
+参见 [docs/zh-CN/abstractions/](../docs/zh-CN/abstractions/) 目录下的详细文档。

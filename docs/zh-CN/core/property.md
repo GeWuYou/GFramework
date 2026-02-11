@@ -6,7 +6,7 @@ Property 包提供了可绑定属性（BindableProperty）的实现，支持属�
 
 ## 核心接口
 
-### [`IReadonlyBindableProperty<T>`](IReadonlyBindableProperty.cs)
+### [`IReadonlyBindableProperty<T>`](./property.md)
 
 只读可绑定属性接口，提供属性值的读取和变更监听功能。
 
@@ -26,7 +26,7 @@ IUnRegister RegisterWithInitValue(Action<T> action);
 void UnRegister(Action<T> onValueChanged);
 ```
 
-### [`IBindableProperty<T>`](IBindableProperty.cs)
+### [`IBindableProperty<T>`](./property.md)
 
 可绑定属性接口，继承自只读接口，增加了修改能力。
 
@@ -42,7 +42,7 @@ void SetValueWithoutEvent(T newValue);
 
 ## 核心类
 
-### [`BindableProperty<T>`](BindableProperty.cs)
+### [`BindableProperty<T>`](./property.md)
 
 可绑定属性的完整实现。
 
@@ -86,7 +86,7 @@ var position = new BindableProperty<Vector3>(Vector3.Zero)
     .WithComparer((a, b) => a.DistanceTo(b) < 0.01f);  // 距离小于0.01认为相等
 ```
 
-### [`BindablePropertyUnRegister<T>`](BindablePropertyUnRegister.cs)
+### [`BindablePropertyUnRegister<T>`](./property.md)
 
 可绑定属性的注销器，负责清理监听。
 
@@ -174,7 +174,7 @@ public partial class PlayerUI : Control, IController
 
 ### 1. 双向绑定
 
-```csharp
+```
 // Model
 public class SettingsModel : AbstractModel
 {
@@ -203,7 +203,7 @@ public partial class VolumeSlider : HSlider, IController
 
 ### 2. 计算属性
 
-```csharp
+```
 public class PlayerModel : AbstractModel
 {
     public BindableProperty<int> Health { get; } = new(100);
@@ -228,7 +228,7 @@ public class PlayerModel : AbstractModel
 
 ### 3. 属性验证
 
-```csharp
+```
 public class PlayerModel : AbstractModel
 {
     private BindableProperty<int> _health = new(100);
@@ -252,7 +252,7 @@ public class PlayerModel : AbstractModel
 
 ### 4. 条件监听
 
-```csharp
+```
 public class CombatController : Node, IController
 {
     public override void _Ready()
@@ -279,7 +279,7 @@ public class CombatController : Node, IController
 
 ### 1. 避免频繁触发
 
-```csharp
+```
 // 使用 SetValueWithoutEvent 批量修改
 public void LoadPlayerData(SaveData data)
 {
@@ -295,7 +295,7 @@ public void LoadPlayerData(SaveData data)
 
 ### 2. 自定义比较器
 
-```csharp
+```
 // 避免浮点数精度问题导致的频繁触发
 var position = new BindableProperty<Vector3>()
     .WithComparer((a, b) => a.DistanceTo(b) < 0.001f);
@@ -305,7 +305,7 @@ var position = new BindableProperty<Vector3>()
 
 ### 值变化检测
 
-```csharp
+```
 // 使用 EqualityComparer<T>.Default 进行比较
 if (!EqualityComparer<T>.Default.Equals(value, MValue))
 {
@@ -316,7 +316,7 @@ if (!EqualityComparer<T>.Default.Equals(value, MValue))
 
 ### 事件触发机制
 
-```csharp
+```
 // 当值变化时触发所有注册的回调
 _mOnValueChanged?.Invoke(value);
 ```

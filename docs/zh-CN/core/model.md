@@ -7,14 +7,14 @@ Model 包定义了数据模型层的接口和基类。Model 是 MVC 架构中的
 
 ## 核心接口
 
-### [`IModel`](IModel.cs)
+### [`IModel`](./model.md)
 
 模型接口，定义了模型的基本行为和功能。
 
 **继承的能力接口：**
 
-- [`IContextAware`](../rule/IContextAware.cs) - 上下文感知接口
-- [`ILogAware`](../rule/ILogAware.cs) - 日志感知接口
+- [`IContextAware`](./rule.md) - 上下文感知接口
+- [`ILogAware`](./rule.md) - 日志感知接口
 
 **核心方法：**
 
@@ -23,16 +23,16 @@ void Init();  // 初始化模型
 void OnArchitecturePhase(ArchitecturePhase phase);  // 处理架构阶段事件
 ```
 
-### [`ICanGetModel`](ICanGetModel.cs)
+### [`ICanGetModel`](./model.md)
 
-标记接口，表示实现者可以获取模型。继承自 [`IBelongToArchitecture`](../rule/IBelongToArchitecture.cs)。
+标记接口，表示实现者可以获取模型。继承自 [`IBelongToArchitecture`](./rule.md)。
 
 ## 核心类
 
-### [`AbstractModel`](AbstractModel.cs)
+### [`AbstractModel`](./model.md)
 
 抽象模型基类，实现IModel接口，提供模型的基础实现。该类继承自[
-`ContextAwareBase`](file:///d:/Project/Rider/GFramework/GFramework.Core/rule/ContextAwareBase.cs#L11-L37)，提供了上下文感知能力。
+`ContextAwareBase`](./rule.md)，提供了上下文感知能力。
 
 **使用示例：**
 

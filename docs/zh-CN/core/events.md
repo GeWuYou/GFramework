@@ -6,7 +6,7 @@ Events 包提供了一套完整的事件系统，实现了观察者模式（Obse
 
 ## 核心接口
 
-### 1. [`IEvent`](file:///d:/Project/Rider/GFramework/GFramework.Core.Abstractions/events/IEvent.cs#L7-L11)
+### 1. [`IEvent`](./events.md)
 
 基础事件接口，定义了事件注册的基本功能。
 
@@ -16,7 +16,7 @@ Events 包提供了一套完整的事件系统，实现了观察者模式（Obse
 IUnRegister Register(Action onEvent);  // 注册事件处理函数
 ```
 
-### 2. [`IUnRegister`](file:///d:/Project/Rider/GFramework/GFramework.Core.Abstractions/events/IUnRegister.cs#L6-L10)
+### 2. [`IUnRegister`](./events.md)
 
 注销接口，用于取消事件注册。
 
@@ -26,9 +26,7 @@ IUnRegister Register(Action onEvent);  // 注册事件处理函数
 void UnRegister();  // 执行注销操作
 ```
 
-### 3. [
-
-`IUnRegisterList`](file:///d:/Project/Rider/GFramework/GFramework.Core.Abstractions/events/IUnRegisterList.cs#L6-L10)
+### 3. [`IUnRegisterList`](./events.md)
 
 注销列表接口，用于批量管理注销对象。
 
@@ -38,7 +36,7 @@ void UnRegister();  // 执行注销操作
 IList<IUnRegister> UnregisterList { get; }  // 获取注销列表
 ```
 
-### 4. [`IEventBus`](file:///d:/Project/Rider/GFramework/GFramework.Core.Abstractions/events/IEventBus.cs#L6-L22)
+### 4. [`IEventBus`](./events.md)
 
 事件总线接口，提供基于类型的事件发送和注册。
 
@@ -52,7 +50,7 @@ void Send<T>() where T : new();           // 发送事件（自动创建实例�
 
 ## 核心类
 
-### 1. [`EasyEvent`](EasyEvent.cs)
+### 1. [`EasyEvent`](./events.md)
 
 无参事件类，支持注册、注销和触发无参事件。
 
@@ -75,7 +73,7 @@ onClicked.Trigger();
 unregister.UnRegister();
 ```
 
-### 2. [`Event<T>`](EasyEventGeneric.cs)
+### 2. [`Event<T>`](./events.md)
 
 单参数泛型事件类，支持一个参数的事件。
 
@@ -95,7 +93,7 @@ onScoreChanged.Register(newScore =>
 onScoreChanged.Trigger(100);
 ```
 
-### 3. [`Event<T, TK>`](EasyEventGeneric.cs)
+### 3. [`Event<T, TK>`](./events.md)
 
 双参数泛型事件类。
 
@@ -226,7 +224,7 @@ unregisterList.UnRegisterAll();
 
 ### 定义事件类
 
-```csharp
+``csharp
 // 简单事件
 public struct GameStartedEvent { }
 
@@ -249,7 +247,7 @@ public struct LevelCompletedEvent
 
 ### Model 中发送事件
 
-```csharp
+``csharp
 public class PlayerModel : AbstractModel
 {
     public BindableProperty<int> Health { get; } = new(100);
@@ -275,7 +273,7 @@ public class PlayerModel : AbstractModel
 
 ### System 中发送事件
 
-```csharp
+``csharp
 public class CombatSystem : AbstractSystem
 {
     protected override void OnInit() { }
@@ -297,7 +295,7 @@ public class CombatSystem : AbstractSystem
 
 ### Controller 中注册事件
 
-```csharp
+``csharp
 public partial class GameController : Node, IController
 {
     private IUnRegisterList _unregisterList = new UnRegisterList();
@@ -345,7 +343,7 @@ public partial class GameController : Node, IController
 
 ### 1. 事件链式组合
 
-```csharp
+``csharp
 // 使用 Or 组合多个事件
 var onAnyDamage = new OrEvent()
     .Or(onPhysicalDamage)
@@ -360,7 +358,7 @@ onAnyDamage.Register(() =>
 
 ### 2. 事件过滤
 
-```csharp
+``csharp
 // 只处理高伤害事件
 this.RegisterEvent<DamageDealtEvent>(e =>
 {
@@ -373,7 +371,7 @@ this.RegisterEvent<DamageDealtEvent>(e =>
 
 ### 3. 事件转发
 
-```csharp
+``csharp
 public class EventBridge : AbstractSystem
 {
     protected override void OnInit()
@@ -393,7 +391,7 @@ public class EventBridge : AbstractSystem
 
 ### 4. 临时事件监听
 
-```csharp
+``csharp
 public class TutorialController : Node, IController
 {
     public override void _Ready()
@@ -411,7 +409,7 @@ public class TutorialController : Node, IController
 
 ### 5. 条件事件
 
-```csharp
+``csharp
 public class AchievementSystem : AbstractSystem
 {
     private int _killCount = 0;
@@ -439,7 +437,7 @@ public class AchievementSystem : AbstractSystem
 
 ### 使用 UnRegisterList
 
-```csharp
+``csharp
 public class MyController : Node, IController
 {
     // 统一管理所有注销对象
@@ -465,7 +463,7 @@ public class MyController : Node, IController
 
 ### 使用 Godot 节点生命周期
 
-```csharp
+``csharp
 public override void _Ready()
 {
     // 当节点退出场景树时自动注销
