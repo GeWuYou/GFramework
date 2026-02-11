@@ -89,21 +89,32 @@ public sealed class FileStorage : IFileStorage
     /// <summary>
     ///     删除指定键的存储项
     /// </summary>
-    /// <param name="key">存储键</param>
+    /// <param name="key">存储键，用于标识要删除的存储项</param>
     public void Delete(string key)
     {
+        // 将键转换为文件路径
         var path = ToPath(key);
+
+        // 获取或创建与路径关联的锁对象，确保线程安全
         var keyLock = _keyLocks.GetOrAdd(path, _ => new object());
 
+        // 使用锁确保同一时间只有一个线程操作该路径的文件
         lock (keyLock)
         {
+            // 如果文件存在，则删除该文件
             if (File.Exists(path))
                 File.Delete(path);
         }
     }
 
+    /// <summary>
+    ///     异步删除指定键的存储项
+    /// </summary>
+    /// <param name="key">存储键，用于标识要删除的存储项</param>
+    /// <returns>表示异步操作的任务</returns>
     public Task DeleteAsync(string key)
     {
+        // 在线程池中运行同步删除方法以实现异步操作
         return Task.Run(() => Delete(key));
     }
 
