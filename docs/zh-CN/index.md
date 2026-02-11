@@ -15,7 +15,7 @@ hero:
       link: /zh-CN/getting-started/quick-start
     - theme: alt
       text: 架构概览
-      link: /zh-CN/getting-started/architecture
+      link: /zh-CN/getting-started
 
 features:
   - title: 🏗 清洁架构分层
