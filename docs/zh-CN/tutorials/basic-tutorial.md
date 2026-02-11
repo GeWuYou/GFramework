@@ -1,14 +1,38 @@
-# 基础教程
+# GFramework 基础教程
 
-这是一个完整的从零开始的教程，将带领你创建一个使用 GFramework 的简单的计数器应用。
+这是一个循序渐进的教程，将带你从零开始学习 GFramework，通过构建一个计数器应用来理解框架的核心概念和最佳实践。
 
 ## 目录
 
+### 第一部分：入门准备
+
 - [环境准备](#环境准备)
-- [项目创建](#项目创建)
-- [项目初始化](#项目初始化)
-- [功能实现](#功能实现)
-- [测试验证](#测试验证)
+- [GFramework 核心概念](#gframework-核心概念)
+
+### 第二部分：基础实践
+
+- [创建第一个项目](#创建第一个项目)
+- [实现基础计数器](#实现基础计数器)
+
+### 第三部分：架构深化
+
+- [Model层设计](#model层设计)
+
+### 第四部分：架构完善
+
+- [System层实现](#system层实现)
+- [Utility层设计](#utility层设计)
+
+### 第五部分：架构整合
+
+- [完整架构集成](#完整架构集成)
+
+### 第六部分：进阶理解
+
+- [架构原理深入](#架构原理深入)
+- [最佳实践总结](#最佳实践总结)
+
+---
 
 ## 环境准备
 
@@ -46,7 +70,7 @@ dotnet --version
 dotnet new console -n TestProject
 cd TestProject
 
-# 如果使用 Godot，添加 Godot 引用
+# 添加 GFramework 引用
 dotnet add package GeWuYou.GFramework.Core
 dotnet add package GeWuYou.GFramework.Godot
 
@@ -54,1310 +78,656 @@ dotnet add package GeWuYou.GFramework.Godot
 dotnet build
 ```
 
-## 项目创建
+---
 
-### 1. 创建新的 Godot 项目
+## GFramework 核心概念
 
-1. 打开 Godot 编辑器
+### MVC 架构模式简介
 
-2. 点击 "新建项目"
+在传统的 MVC（Model-View-Controller）架构中：
 
-3. 创建项目文件夹，命名为 "MyGFrameworkGame"
+- **Model（模型）**: 管理应用程序的数据和业务逻辑
+- **View（视图）**: 负责数据的展示和用户界面
+- **Controller（控制器）**: 处理用户输入，协调 Model 和 View
 
-4. 创建项目后初始化C#项目
+### GFramework 架构组件概述
 
-   ![image-20260211210657387](assets/basic-tutorial/image-20260211210657387.png)
+GFramework 在传统 MVC 基础上进行了扩展，包含以下核心组件：
 
-### 2. 配置项目结构
-
-在项目根目录创建以下文件夹结构：
-
+```mermaid
+graph TD
+    A[GFramework Architecture] --> B[Model]
+    A --> C[View]
+    A --> D[Controller]
+    A --> E[System]
+    A --> F[Utility]
+    A --> G[EventBus]
+    
+    B --> B1[数据模型层]
+    C --> C1[视图层]
+    D --> D1[控制器层]
+    E --> E1[系统业务逻辑层]
+    F --> F1[工具服务层]
+    G --> G1[事件总线]
 ```
+
+### 为什么选择事件驱动架构
+
+传统的直接调用方式存在耦合问题：
+
+```csharp
+// 传统方式 - 强耦合
+Model.Increment();
+View.UpdateDisplay(Model.Count);
+```
+
+事件驱动架构的优势：
+
+```csharp
+// 事件驱动 - 松耦合
+Model.Increment();  // 只关心业务逻辑
+// View 通过事件订阅自动更新
+```
+
+---
+
+## 创建第一个项目
+
+### 项目结构规划
+
+创建以下文件夹结构：
+
+```text
 MyGFrameworkGame/
-├── sripts/				# 脚本
-├── scenes/				# 场景
-├── assets/             # 游戏资源
-├── global/             # 全局类
-└── project.godot
+├── scripts/           # 脚本代码
+│   ├── architecture/  # 架构定义
+│   ├── model/         # 数据模型
+│   ├── system/        # 业务系统
+│   ├── utility/       # 工具服务
+│   ├── module/        # 模块定义
+│   └── app/           # 应用入口
+├── scenes/            # 场景文件
+├── assets/            # 游戏资源
+└── global/            # 全局类
 ```
 
-当然，你也可以选择你喜欢的代码组织方式
+### 包管理配置
 
-### 3. 引入GFramework
+推荐使用以下包配置：
 
-一般我们有两种引入方式
-
-第一种是使用命令的方式引入
-
-```sh
-# 核心能力（推荐最小起步）
-dotnet add package GeWuYou.GFramework.Core
-dotnet add package GeWuYou.GFramework.Core.Abstractions
-
-# 游戏扩展
-dotnet add package GeWuYou.GFramework.Game
-dotnet add package GeWuYou.GFramework.Game.Abstractions
-
-# Godot 集成（仅 Godot 项目需要）
-dotnet add package GeWuYou.GFramework.Godot
-
-# 源码生成器（可选，但推荐）
-dotnet add package GeWuYou.GFramework.SourceGenerators
-```
-
-当然这样包太多了，太费劲了，因此可以通过下方的命令直接将Core和Game模块都引入到项目中，再通过另外两个引入godot支持和源代码生成器
-
-```sh
-# Core+Game
+```bash
+# 核心框架
 dotnet add package GeWuYou.GFramework
-# Godot
+
+# Godot 集成
 dotnet add package GeWuYou.GFramework.Godot
-# 源码生成器
+
+# 源码生成器（可选但推荐）
 dotnet add package GeWuYou.GFramework.SourceGenerators
 ```
 
-第二种方法可以通过ide（比如VS和Rider）
+### 基础场景搭建
 
-它们都提供NuGet管理，允许你基于图形界面来搜索并下载相关的NuGet包
+创建一个简单的 UI 场景：
 
-![image-20260211211756993](assets/basic-tutorial/image-20260211211756993.png)
+```text
+Control (App)
+├── VBoxContainer
+│   ├── Label ("%Label")
+│   ├── HBoxContainer
+│   │   ├── Button ("%AddButton")
+│   │   └── Button ("%SubButton")
+```
 
-## 项目初始化
+---
 
-### 1. 定义游戏架构
+## 实现基础计数器
 
-创建 `scripts/architecture/GameArchitecture.cs`:
+### 传统 MVC 实现方式
+
+让我们先用传统方式实现一个简单的计数器：
 
 ```csharp
-using GFramework.Godot.architecture;
-
-namespace MyGFrameworkGame.scripts.architecture;
-
-public class GameArchitecture : AbstractArchitecture
-{
-    protected override void InstallModules()
-    {
-        
-    }
-}
-```
-
-游戏架构类提供一个InstallModules方法用于注册模块，模块可以看作是一个个相关的Model、System、Utility的集合，按照开发者的意愿进行组织。
-
-这里以一个示例代码进行说明
-
-```C#
-using GFramework.Core.Abstractions.architecture;
-using GFramework.Core.Abstractions.environment;
-using GFramework.Godot.architecture;
-using GFrameworkGodotTemplate.scripts.module;
-
-namespace GFrameworkGodotTemplate.scripts.core;
-
-/// <summary>
-///     游戏架构类，负责安装和管理游戏所需的各种模块
-///     继承自AbstractArchitecture，用于构建游戏的整体架构体系
-/// </summary>
-public sealed class GameArchitecture(IArchitectureConfiguration configuration, IEnvironment environment)
-    : AbstractArchitecture(configuration, environment)
-{
-    public IArchitectureConfiguration Configuration { get; set; } = configuration;
-
-    /// <summary>
-    ///     安装游戏所需的各个功能模块
-    ///     该方法在架构初始化时被调用，用于注册系统、模型和工具模块
-    /// </summary>
-    protected override void InstallModules()
-    {
-        // 安装数据模型相关的Godot模块
-        InstallModule(new ModelModule());
-        // 安装系统相关的Godot模块
-        InstallModule(new SystemModule());
-        // 安装工具类相关的Godot模块
-        InstallModule(new UtilityModule());
-        // 安装状态相关的Godot模块
-        InstallModule(new StateModule());
-    }
-}
-```
-
-从这里可以看到我们把 Model、 System、 Utility 进行了拆分，这是一种方式，使用这种方式的前提是，项目依赖不复杂，如果项目依赖复杂可能就得拆分多个Module来控制初始化顺序
-
-### 2. 创建模型模块
-
-创建 `scripts/module/ModelModule.cs`:
-
-```csharp
-using GFramework.Core.Abstractions.architecture;
-using GFramework.Game.architecture;
-
-namespace MyGFrameworkGame.scripts.module;
-
-public class ModelModule: AbstractModule
-{
-    public override void Install(IArchitecture architecture)
-    {
-        
-    }
-}
-```
-
-这个Install(IArchitecture architecture)方法用于注册所需要的类即各种model
-
-> Model在框架中表示游戏的状态和数据。模型是简单的数据容器，它们公开描述游戏实体当前状态的属性。
-
-这里以一个示例代码进行说明
-
-```C#
-using GFramework.Core.Abstractions.architecture;
-using GFramework.Core.functional.pipe;
-using GFramework.Game.Abstractions.data;
-using GFramework.Game.architecture;
-using GFramework.Game.setting;
-using GFramework.Godot.setting;
-using GFramework.Godot.setting.data;
-using GFrameworkGodotTemplate.scripts.setting;
-
-namespace GFrameworkGodotTemplate.scripts.module;
-
-
-/// <summary>
-/// ModelModule 类继承自 AbstractModule，用于在架构中安装和注册模型。
-/// 该模块主要负责初始化设置相关的模型，并将其注册到架构中。
-/// </summary>
-public class ModelModule : AbstractModule
-{
-    /// <summary>
-    /// 安装方法，用于将模型注册到指定的架构中。
-    /// </summary>
-    /// <param name="architecture">IArchitecture 接口实例，表示当前的应用程序架构。</param>
-    public override void Install(IArchitecture architecture)
-    {
-        // 获取设置数据仓库的实例，用于后续模型的初始化
-        var settingsDataRepository = architecture.Context.GetUtility<ISettingsDataRepository>()!;
-
-        // 注册设置模型，并配置其应用器（Applicator）
-        architecture.RegisterModel(
-            new SettingsModel<ISettingsDataRepository>(new SettingDataLocationProvider(), settingsDataRepository)
-                .Also(it =>
-                {
-                    // 注册音频设置应用器，用于处理音频相关配置
-                    it.RegisterApplicator(new GodotAudioSettings(it, new AudioBusMap()))
-                        // 注册图形设置应用器，用于处理图形相关配置
-                        .RegisterApplicator(new GodotGraphicsSettings(it))
-                        // 注册本地化设置应用器，用于处理语言和区域相关配置
-                        .RegisterApplicator(new GodotLocalizationSettings(it, new LocalizationMap()));
-                })
-        );
-    }
-}
-
-```
-
-可以看到这里把设置数据模型注册进了架构中
-
-### 3. 创建系统模块
-
-创建 `scripts/module/SystemModule.cs`:
-
-```C#
-using GFramework.Core.Abstractions.architecture;
-using GFramework.Game.architecture;
-
-namespace MyGFrameworkGame.scripts.module;
-
-public class SystemModule: AbstractModule
-{
-    public override void Install(IArchitecture architecture)
-    {
-        
-    }
-}
-```
-
-这个Install(IArchitecture architecture)方法用于注册所需要的类即各种system
-
-> System 包含游戏的业务逻辑和规则。系统操作模型并实现核心机制，如战斗、物理、库存管理或进度系统。
-
-这里以一个示例代码进行说明
-
-```C#
-using GFramework.Core.Abstractions.architecture;
-using GFramework.Game.architecture;
-using GFramework.Game.setting;
-using GFrameworkGodotTemplate.scripts.core.scene;
-using GFrameworkGodotTemplate.scripts.core.ui;
-
-namespace GFrameworkGodotTemplate.scripts.module;
-
-/// <summary>
-///     系统Godot模块类，负责安装和注册游戏所需的各种系统组件
-///     继承自AbstractGodotModule，用于在游戏架构中集成系统功能
-/// </summary>
-public class SystemModule : AbstractModule
-{
-    /// <summary>
-    ///     安装方法，用于向游戏架构注册各种系统组件
-    /// </summary>
-    /// <param name="architecture">游戏架构接口实例，用于注册系统</param>
-    public override void Install(IArchitecture architecture)
-    {
-        architecture.RegisterSystem(new UiRouter());
-        architecture.RegisterSystem(new SceneRouter());
-        architecture.RegisterSystem(new SettingsSystem());
-    }
-}
-```
-
-可以看到我们向框架里注册了ui路由，场景路由，设置系统，这便是系统模块的作用
-
-### 4. 创建工具模块
-
-创建 `scripts/module/UtilityModule.cs`:
-
-```C#
-using GFramework.Core.Abstractions.architecture;
-using GFramework.Game.architecture;
-
-namespace MyGFrameworkGame.scripts.module;
-
-public class UtilityModule: AbstractModule
-{
-    public override void Install(IArchitecture architecture)
-    {
-        
-    }
-}
-```
-
-同理这个Install(IArchitecture architecture)方法用于注册所需要的类即各种utility
-
-> Utility 提供可在整个应用程序中使用的无状态辅助函数和算法——数学计算、路径查找、数据验证和其他纯函数。
-
-这里以一个示例代码进行说明
-
-```C#
-using GFramework.Core.Abstractions.architecture;
-using GFramework.Game.Abstractions.data;
-using GFramework.Game.architecture;
-using GFramework.Game.data;
-using GFramework.Game.serializer;
-using GFramework.Godot.scene;
-using GFramework.Godot.storage;
-using GFramework.Godot.ui;
-using GFrameworkGodotTemplate.scripts.data;
-using GFrameworkGodotTemplate.scripts.utility;
 using Godot;
 
-namespace GFrameworkGodotTemplate.scripts.module;
-
-/// <summary>
-///     工具模块类，负责安装和管理游戏中的实用工具组件
-/// </summary>
-public class UtilityModule : AbstractModule
+public partial class App : Control
 {
-    /// <summary>
-    ///     安装模块到指定的游戏架构中
-    /// </summary>
-    /// <param name="architecture">要安装模块的目标游戏架构实例</param>
-    public override void Install(IArchitecture architecture)
-    {
-        architecture.RegisterUtility(new GodotUiRegistry());
-        architecture.RegisterUtility(new GodotSceneRegistry());
-        architecture.RegisterUtility(new GodotTextureRegistry());
-        architecture.RegisterUtility(new GodotUiFactory());
-        var jsonSerializer = new JsonSerializer();
-        architecture.RegisterUtility(jsonSerializer);
-        var storage = new GodotFileStorage(jsonSerializer);
-        architecture.RegisterUtility(storage);
-        architecture.RegisterUtility(new UnifiedSettingsDataRepository(storage, jsonSerializer,
-            new DataRepositoryOptions
-            {
-                BasePath = ProjectSettings.GetSetting("application/config/save/setting_path").AsString(),
-                AutoBackup = true
-            }));
-        architecture.RegisterUtility(new SaveStorageUtility());
-    }
-}
-```
+    private Button _addButton => GetNode<Button>("%AddButton");
+    private Button _subButton => GetNode<Button>("%SubButton");
+    private Label _label => GetNode<Label>("%Label");
+    
+    private int _count = 0;
 
-这里安装了非常多的工具，特别是对于工具之间相互依赖的情况下，集中处理是一种比较好的方式。
-
-### 5. 创建游戏入口点
-
-在Godot创建一个全局类GameEntryPoint.cs
-
-![image-20260211222402064](assets/basic-tutorial/image-20260211222402064.png)
-
-全局类代码
-
-```C#
-using GFramework.Core.Abstractions.architecture;
-using Godot;
-using MyGFrameworkGame.scripts.architecture;
-
-namespace MyGFrameworkGame.global;
-
-/// <summary>
-/// 游戏入口点类，继承自Node类。
-/// 该类负责初始化游戏架构，并在节点首次进入场景树时执行相关逻辑。
-/// </summary>
-public partial class GameEntryPoint : Node
-{
-    /// <summary>
-    /// 获取游戏架构的静态属性。
-    /// 该属性在类初始化时被赋值，用于全局访问游戏架构实例。
-    /// </summary>
-    public static IArchitecture Architecture { get; private set; } = null!;
-
-    /// <summary>
-    /// 当节点首次进入场景树时调用此方法。
-    /// 在此方法中，创建并初始化游戏架构实例。
-    /// </summary>
     public override void _Ready()
     {
-       // 创建游戏架构实例
-       Architecture = new GameArchitecture();
-       // 初始化游戏架构
-       Architecture.Initialize();
+        _addButton.Pressed += () => {
+            _count++;
+            UpdateView();
+        };
+        
+        _subButton.Pressed += () => {
+            _count--;
+            UpdateView();
+        };
+        
+        UpdateView();
     }
-}
-```
 
-### 6. 安装模块
-
-```C#
-using GFramework.Godot.architecture;
-using MyGFrameworkGame.scripts.module;
-
-namespace MyGFrameworkGame.scripts.architecture;
-
-/// <summary>
-/// 游戏架构类，继承自抽象架构类 AbstractArchitecture。
-/// 负责安装和管理游戏中的各个模块。
-/// </summary>
-public class GameArchitecture : AbstractArchitecture
-{
-    /// <summary>
-    /// 安装游戏所需的模块。
-    /// 该方法在架构初始化时被调用，用于注册模型、系统和工具模块。
-    /// </summary>
-    protected override void InstallModules()
+    private void UpdateView()
     {
-        // 安装模型模块，负责处理游戏数据和业务逻辑
-        InstallModule(new ModelModule());
-       
-        // 安装系统模块，负责处理游戏的核心系统功能
-        InstallModule(new SystemModule());
-       
-        // 安装工具模块，提供通用的辅助功能和工具方法
-        InstallModule(new UtilityModule());
+        _label.Text = $"Count: {_count}";
     }
 }
 ```
 
-这样我们的准备工作就完成了
+### 识别设计问题
 
-## 功能实现
+上述实现存在以下问题：
 
-### 1. 实现基础功能
+1. **View 与 Controller 耦合过紧**
+   - UI 控件和业务逻辑直接耦合
+   - 难以维护和扩展
 
-首先让我们搭建一个非常简单的场景
+2. **数据状态没有抽象**
+   - 状态直接存在控制器中
+   - 无法复用和独立测试
 
-![image-20260211215031192](assets/basic-tutorial/image-20260211215031192.png)
+3. **缺乏统一上下文管理**
+   - 状态管理分散
+   - 跨组件通信困难
 
-这个是大致结构
+4. **可测试性低**
+   - 业务逻辑与 Godot 节点耦合
+   - 难以进行单元测试
 
-![image-20260211214905664](assets/basic-tutorial/image-20260211214905664.png)
+### 引入 GFramework 改进
 
-这个是效果图
+让我们用 GFramework 来解决这些问题：
 
-接着我们创建对应的代码
-
-```C#
+```csharp
 using GFramework.Core.Abstractions.controller;
+using GFramework.Core.extensions;
 using GFramework.SourceGenerators.Abstractions.logging;
 using GFramework.SourceGenerators.Abstractions.rule;
 using Godot;
 
-namespace MyGFrameworkGame.scripts.app;
-
-/// <summary>
-/// App 类继承自 Control 并实现 IController 接口，用于管理应用程序的核心逻辑。
-/// 该类通过按钮控制计数器的增减，并更新界面上的标签显示。
-/// </summary>
 [ContextAware]
 [Log]
 public partial class App : Control, IController
 {
-    /// <summary>
-    /// 获取场景中的 AddButton 节点，用于增加计数器值。
-    /// </summary>
     private Button AddButton => GetNode<Button>("%AddButton");
-
-    /// <summary>
-    /// 获取场景中的 SubButton 节点，用于减少计数器值。
-    /// </summary>
     private Button SubButton => GetNode<Button>("%SubButton");
-
-    /// <summary>
-    /// 获取场景中的 Label 节点，用于显示当前计数器的值。
-    /// </summary>
     private Label Label => GetNode<Label>("%Label");
 
-    /// <summary>
-    /// 计数器的当前值。
-    /// </summary>
-    private int _count;
-
-    /// <summary>
-    /// 当节点准备就绪时调用此方法。
-    /// 初始化按钮点击事件并更新界面显示。
-    /// </summary>
     public override void _Ready()
     {
-        // 为 AddButton 添加点击事件，每次点击将计数器加一并更新视图
-        AddButton.Pressed += () =>
-        {
-            _count++;
-            UpdateView();
+        // 事件驱动的视图更新
+        this.RegisterEvent<CounterModel.ChangedCountEvent>(e => {
+            UpdateView(e.Count);
+        });
+
+        // 命令驱动的用户交互
+        AddButton.Pressed += () => {
+            this.SendCommand(new IncreaseCountCommand());
         };
 
-        // 为 SubButton 添加点击事件，每次点击将计数器减一并更新视图
-        SubButton.Pressed += () =>
-        {
-            _count--;
-            UpdateView();
+        SubButton.Pressed += () => {
+            this.SendCommand(new DecreaseCountCommand());
         };
 
-        // 初始更新界面显示
         UpdateView();
     }
 
-    /// <summary>
-    /// 更新界面上 Label 的文本内容，显示当前计数器的值。
-    /// </summary>
-    private void UpdateView()
+    private void UpdateView(int count = 0)
     {
-        Label.Text = $"Count: {_count}";
+        Label.Text = $"Count: {count}";
     }
 }
 ```
 
-接着我们启动游戏
+---
 
-![image-20260211215626940](assets/basic-tutorial/image-20260211215626940.png)
+## Model层设计
 
-可以看到数量正确变化，我们基础功能已经实现了
+### 抽象模型接口
 
-根据MVC的定义
+首先定义计数器模型接口：
 
-#### 1.1. **View（界面显示）**
-
-负责呈现 UI 并接受用户输入：
-
-- **节点引用**（按钮、标签）：
-
-```
-private Button AddButton => GetNode<Button>("%AddButton");
-private Button SubButton => GetNode<Button>("%SubButton");
-private Label Label => GetNode<Label>("%Label");
-```
-
-这些都是界面元素本身，属于 View。
-
-- **UpdateView 方法**：
-
-```
-private void UpdateView()
-{
-    Label.Text = $"Count: {_count}";
-}
-```
-
-这个方法是把 Model 的数据 `_count` 渲染到界面上，也属于 View 的逻辑。
-
-#### 1.2. **Model（数据状态）**
-
-负责存储业务数据或应用状态：
-
-- **计数器状态**：
-
-```
-private int _count;
-```
-
-`_count` 就是你的 Model 数据，它保存了应用的核心状态（计数器的值）。
-
-#### 1.3. **Controller（控制器）**
-
-负责响应事件、处理逻辑、协调 Model 与 View：
-
-- **按钮事件绑定和逻辑**：
-
-```C#
-AddButton.Pressed += () =>
-{
-    _count++;
-    UpdateView();
-};
-
-SubButton.Pressed += () =>
-{
-    _count--;
-    UpdateView();
-};
-```
-
-这里是响应用户输入（按钮点击）、更新 Model（`_count++` / `--`）并通知 View（`UpdateView()`），属于 Controller 或 System。
-
-- **_Ready 方法整体**：
-
-```C#
-public override void _Ready()
-{
-    // 添加按钮事件绑定
-    ...
-    // 初始更新界面显示
-    UpdateView();
-}
-```
-
-`_Ready` 是 Godot 的生命周期方法，用于初始化 Controller 系统。
-
-接着让我们回顾一下代码
-
-```C#
-using GFramework.Core.Abstractions.controller;
-using GFramework.SourceGenerators.Abstractions.logging;
-using GFramework.SourceGenerators.Abstractions.rule;
-using Godot;
-
-namespace MyGFrameworkGame.scripts.app;
-
-/// <summary>
-/// App 类继承自 Control 并实现 IController 接口，用于管理应用程序的核心逻辑。
-/// 该类通过按钮控制计数器的增减，并更新界面上的标签显示。
-/// </summary>
-[ContextAware]
-[Log]
-public partial class App : Control, IController
-{
-    /// <summary>
-    /// 获取场景中的 AddButton 节点，用于增加计数器值。
-    /// </summary>
-    private Button AddButton => GetNode<Button>("%AddButton");
-
-    /// <summary>
-    /// 获取场景中的 SubButton 节点，用于减少计数器值。
-    /// </summary>
-    private Button SubButton => GetNode<Button>("%SubButton");
-
-    /// <summary>
-    /// 获取场景中的 Label 节点，用于显示当前计数器的值。
-    /// </summary>
-    private Label Label => GetNode<Label>("%Label");
-
-    /// <summary>
-    /// 计数器的当前值。
-    /// </summary>
-    private int _count;
-
-    /// <summary>
-    /// 当节点准备就绪时调用此方法。
-    /// 初始化按钮点击事件并更新界面显示。
-    /// </summary>
-    public override void _Ready()
-    {
-        // 为 AddButton 添加点击事件，每次点击将计数器加一并更新视图
-        AddButton.Pressed += () =>
-        {
-            _count++;
-            UpdateView();
-        };
-
-        // 为 SubButton 添加点击事件，每次点击将计数器减一并更新视图
-        SubButton.Pressed += () =>
-        {
-            _count--;
-            UpdateView();
-        };
-
-        // 初始更新界面显示
-        UpdateView();
-    }
-
-    /// <summary>
-    /// 更新界面上 Label 的文本内容，显示当前计数器的值。
-    /// </summary>
-    private void UpdateView()
-    {
-        Label.Text = $"Count: {_count}";
-    }
-}
-
-```
-
-虽然看以上代码非常简洁明了，但其实存在诸多设计上的缺点
-
-##### **1. View 与 Controller 耦合过紧**
-
-```
-AddButton.Pressed += () =>
-{
-    _count++;
-    UpdateView();
-};
-```
-
-- **问题**：UI 控件和业务逻辑（计数器）直接耦合在一起。
-- **结果**：一旦界面复杂化（多个按钮、多个 Label、多个功能），代码难以维护，修改逻辑容易影响界面，反之亦然。
-
-##### **2. 数据状态 Model 没有抽象**
-
-```
-private int _count;
-```
-
-- **问题**：计数器直接存在控制器里，没有独立的 Model 层。
-- **结果**：无法单独测试逻辑，也无法在不同界面或不同场景复用数据。
-
-------
-
-##### **3. 缺乏统一的上下文管理**
-
-- 事件绑定和视图更新直接在 `_Ready` 里写死。
-- **问题**：当应用复杂，涉及异步操作、多场景或者跨协程调用时，很容易出现状态不一致或上下文丢失。
-- **例子**：如果计数器状态需要在多个 Controller 或 Service 之间共享，这种写法就很麻烦。
-
-------
-
-##### **4. 可测试性低**
-
-- `_count` 逻辑和按钮点击事件紧密耦合，**无法在单元测试中独立测试计数器逻辑**，只能在运行场景里手动点击按钮验证。
-
-因此为了解决这些痛点，我们可以引入GFramework来解决它们
-
-首先创建对应的模型接口
-
-```C#
+```csharp
 using GFramework.Core.Abstractions.model;
 
-namespace MyGFrameworkGame.scripts.model;
-
-/// <summary>
-/// 定义一个计数器模型接口，用于提供计数器的基本操作。
-/// </summary>
-public interface ICounterModel: IModel
+public interface ICounterModel : IModel
 {
-    /// <summary>
-    /// 获取当前计数器的值。
-    /// </summary>
-    public int Count { get; }
-    
-    /// <summary>
-    /// 将计数器的值增加1。
-    /// </summary>
-    public void Increment();
-
-    /// <summary>
-    /// 将计数器的值减少1。
-    /// </summary>
-    public void Decrement();
+    int Count { get; }
+    void Increment();
+    void Decrement();
 }
-
 ```
 
-实现类
+### 具体模型实现
 
-```C#
+实现具体的计数器模型：
+
+```csharp
 using GFramework.Core.extensions;
 using GFramework.Core.model;
 
-namespace MyGFrameworkGame.scripts.model;
-
-/// <summary>
-/// CounterModel 类表示一个计数器模型，继承自 AbstractModel 并实现 ICounterModel 接口。
-/// 该类用于管理计数器的状态，并提供增加和减少计数的功能。
-/// </summary>
 public class CounterModel : AbstractModel, ICounterModel
 {
-    /// <summary>
-    /// 获取当前计数器的值。该属性为只读，只能通过 Increment 和 Decrement 方法修改。
-    /// </summary>
     public int Count { get; private set; }
 
-    /// <summary>
-    /// 初始化方法，在模型初始化时调用。当前实现为空，可根据需要扩展初始化逻辑。
-    /// </summary>
-    protected override void OnInit()
-    {
-        
-    }
+    protected override void OnInit() { }
 
-    /// <summary>
-    /// ChangedCountEvent 记录类用于表示计数器值发生变化的事件。
-    /// </summary>
     public sealed record ChangedCountEvent
     {
         public int Count { get; init; }
     }
 
-    /// <summary>
-    /// 增加计数器的值，并发送 ChangedCountEvent 事件通知监听者。
-    /// </summary>
     public void Increment()
     {
         Count++;
         this.SendEvent(new ChangedCountEvent { Count = Count });
     }
 
-    /// <summary>
-    /// 减少计数器的值，并发送 ChangedCountEvent 事件通知监听者。
-    /// </summary>
     public void Decrement()
     {
         Count--;
         this.SendEvent(new ChangedCountEvent { Count = Count });
     }
 }
-
 ```
 
-注册模型
+### 模型注册与使用
 
-```C#
+在模块中注册模型：
+
+```csharp
 using GFramework.Core.Abstractions.architecture;
 using GFramework.Game.architecture;
-using MyGFrameworkGame.scripts.model;
 
-namespace MyGFrameworkGame.scripts.module;
-
-/// <summary>
-/// ModelModule 类继承自 AbstractModule，用于安装和注册模型。
-/// </summary>
-public class ModelModule: AbstractModule
+public class ModelModule : AbstractModule
 {
-    /// <summary>
-    /// 安装方法，用于向架构中注册模型。
-    /// </summary>
-    /// <param name="architecture">IArchitecture 接口的实例，表示当前的架构。</param>
     public override void Install(IArchitecture architecture)
     {
-        // 向架构中注册 CounterModel 实例
         architecture.RegisterModel(new CounterModel());
     }
 }
 ```
 
-重构App.cs
+---
 
-```C#
-using GFramework.Core.Abstractions.controller;
-using GFramework.Core.extensions;
-using GFramework.SourceGenerators.Abstractions.logging;
-using GFramework.SourceGenerators.Abstractions.rule;
-using Godot;
-using MyGFrameworkGame.scripts.model;
+## System层实现
 
-namespace MyGFrameworkGame.scripts.app;
+### 系统模块概念
 
-/// <summary>
-/// App 类继承自 Control 并实现 IController 接口，用于管理应用程序的核心逻辑。
-/// 该类通过按钮控制计数器的增减，并更新界面上的标签显示。
-/// </summary>
-[ContextAware]
-[Log]
-public partial class App : Control, IController
+System 层负责处理业务逻辑和规则：
+
+```csharp
+using GFramework.Core.Abstractions.architecture;
+using GFramework.Game.architecture;
+
+public class SystemModule : AbstractModule
 {
-    /// <summary>
-    /// 获取场景中的 AddButton 节点，用于增加计数器值。
-    /// </summary>
-    private Button AddButton => GetNode<Button>("%AddButton");
-
-    /// <summary>
-    /// 获取场景中的 SubButton 节点，用于减少计数器值。
-    /// </summary>
-    private Button SubButton => GetNode<Button>("%SubButton");
-
-    /// <summary>
-    /// 获取场景中的 Label 节点，用于显示当前计数器的值。
-    /// </summary>
-    private Label Label => GetNode<Label>("%Label");
-    
-    
-    private ICounterModel _counterModel = null!;
-
-    /// <summary>
-    /// 当节点准备就绪时调用此方法。
-    /// 初始化按钮点击事件并更新界面显示。
-    /// </summary>
-    public override void _Ready()
+    public override void Install(IArchitecture architecture)
     {
-        _counterModel = this.GetModel<ICounterModel>();
-        this.RegisterEvent<CounterModel.ChangedCountEvent>(e =>
-        {
-            UpdateView(e.Count);
-        });
-        // 为 AddButton 添加点击事件，每次点击将计数器加一并更新视图
-        AddButton.Pressed += () =>
-        {
-            _counterModel.Increment();
-        };
-
-        // 为 SubButton 添加点击事件，每次点击将计数器减一并更新视图
-        SubButton.Pressed += () =>
-        {
-            _counterModel.Decrement();
-        };
-
-        // 初始更新界面显示
-        UpdateView();
-    }
-
-    /// <summary>
-    /// 更新界面上 Label 的文本内容，显示当前计数器的值。
-    /// </summary>
-    private void UpdateView(int count = 0)
-    {
-        Label.Text = $"Count: {count}";
+        // 注册业务系统
+        architecture.RegisterSystem(new CounterBusinessSystem());
     }
 }
 ```
 
-然后我们启动游戏
+### 业务逻辑封装
 
-![image-20260211223654625](assets/basic-tutorial/image-20260211223654625.png)
+创建业务逻辑系统：
 
-可以看到功能还是正常的，但此时我们已经解决了刚刚的那几个问题.
-
-问题 1：View 与 Controller 耦合过紧
-
-原始问题
-
-```
-_count++;
-UpdateView();
-```
-
-UI 直接操作数据，UI 和状态强耦合。
-
-------
-
-现在的实现
-
-```
-AddButton.Pressed += () =>
-{
-    _counterModel.Increment();
-};
-```
-
-UI 只做一件事：
-
-> 把“用户行为”转交给 Model
-
-视图更新通过事件：
-
-```
-this.RegisterEvent<CounterModel.ChangedCountEvent>(e =>
-{
-    UpdateView(e.Count);
-});
-```
-
-现在的流程变成：
-
-```
-Button → Model → Event → View
-```
-
-结论
-
-已解决耦合问题
-UI 不再直接修改状态
-UI 不再主动刷新
-UI 只是订阅结果
-
-这是典型的 **单向数据流**。
-
-问题 2：Model 没有抽象
-
-原始问题
-
-```
-private int _count;
-```
-
-状态在 UI 控制器里。
-
-------
-
-现在
-
-```
-private ICounterModel _counterModel;
-_counterModel = this.GetModel<ICounterModel>();
-```
-
-- 状态完全移动到 Model
-- 通过接口依赖（而不是具体类）
-- Controller 不关心具体实现
-
-结论
-
-现在：
-
-- Model 可复用
-- Model 可替换
-- Controller 不依赖具体实现
-- 可以单独测试 Model
-
-问题 3：缺乏统一上下文管理
-
-现在使用了：
-
-```
-[ContextAware]
-this.GetModel<T>()
-this.RegisterEvent<T>()
-```
-
-说明：
-
-- Model 由 Context 提供
-- 事件系统由框架管理
-- 生命周期由框架管理
-
-这意味着：
-
-- 不需要手动 new Model
-- 不需要手动维护单例
-- 不需要自己管理事件总线
-- 不会出现跨 Controller 状态错乱
-
-问题 4：可测试性
-
-现在 Controller 不再依赖按钮逻辑，理论上可以：
-
-```
-var model = new CounterModel();
-model.Increment();
-Assert.Equal(1, model.Count);
-```
-
-Model 已完全可测试。
-
-但 Controller 呢？
-
-`App : Control` 仍然继承 Godot 节点。
-
-这意味着：
-
-- 它仍然依赖 Godot 生命周期
-- 仍然不能纯粹在普通单元测试里 new 出来
-
-所以：
-
-| 层级            | 可测试性        |
-|---------------|-------------|
-| Model         | ✅ 完全可测试     |
-| Controller 逻辑 | ⚠️ 部分改善     |
-| View          | ❌ 仍依赖 Godot |
-
-但这是合理的，因为：
-
-> View 本来就不应该被单元测试
-
-真正重要的是：
-
-- 业务逻辑在 Model
-- Model 可测试
-- Controller 只是桥梁
-
-但即使是这样的代码也存在可能臃肿的情况，因为它同时承担着表现逻辑和交互逻辑。
-
-表现逻辑（View Binding）
-
-```
-AddButton.Pressed += ...
-UpdateView(...)
-RegisterEvent(...)
-```
-
-交互逻辑（Interaction Logic）
-
-```
-_counterModel.Increment();
-_counterModel.Decrement();
-```
-
-现在只是加减计数器，很简单。
-
-但如果变成：
-
-- 保存设置
-- 切换语言
-- 读取配置文件
-- 异步加载资源
-- 网络请求
-- 存档
-- 播放音效
-- 埋点统计
-
-`App` 会变成：
-
-```
-AddButton.Pressed += async () =>
-{
-    await DoSomething();
-    UpdateSomething();
-    SaveSomething();
-    LogSomething();
-    ...
-};
-```
-
-Controller 会迅速膨胀。
-
-这个时候就可以引入框架提供的命令来解决 Controller 的臃肿，即通过命令来分担 Controller 的交互逻辑的职责。
-
-```C#
-using GFramework.Core.command;
+```csharp
+using GFramework.Core.system;
 using GFramework.Core.extensions;
-using MyGFrameworkGame.scripts.model;
 
-namespace MyGFrameworkGame.scripts.command;
-
-/// <summary>
-/// 表示一个用于减少计数器值的命令类。
-/// 该类继承自抽象命令类 <see cref="AbstractCommand"/>，并实现了具体的执行逻辑。
-/// </summary>
-public class DecreaseCountCommand : AbstractCommand
+public class CounterBusinessSystem : AbstractSystem
 {
-    /// <summary>
-    /// 执行命令的核心方法。
-    /// 该方法通过获取计数器模型并调用其递减方法来实现计数器值的减少。
-    /// </summary>
-    protected override void OnExecute()
+    protected override void OnInit()
     {
-        // 获取计数器模型实例，并调用其递减方法
-        this.GetModel<ICounterModel>()!.Decrement();
+        // 系统初始化逻辑
+    }
+
+    public void ValidateCount(int count)
+    {
+        // 业务验证逻辑
+        if (count < 0)
+            throw new InvalidOperationException("计数不能为负数");
     }
 }
-
 ```
 
-```C#
+### 命令模式应用
+
+创建计数命令：
+
+```csharp
 using GFramework.Core.command;
 using GFramework.Core.extensions;
-using MyGFrameworkGame.scripts.model;
 
-namespace MyGFrameworkGame.scripts.command;
-
-/// <summary>
-/// 表示一个用于增加计数器值的命令类。
-/// 该类继承自抽象命令类 <see cref="AbstractCommand"/>，并实现了具体的执行逻辑。
-/// </summary>
 public class IncreaseCountCommand : AbstractCommand
 {
-    /// <summary>
-    /// 执行命令的核心逻辑。
-    /// 通过获取计数器模型实例并调用其递增方法来实现计数器值的增加。
-    /// </summary>
     protected override void OnExecute()
     {
-        // 获取计数器模型实例，并调用其 Increment 方法以增加计数器的值
-        this.GetModel<ICounterModel>()!.Increment();
+        var model = this.GetModel<ICounterModel>();
+        model.Increment();
+    }
+}
+
+public class DecreaseCountCommand : AbstractCommand
+{
+    protected override void OnExecute()
+    {
+        var model = this.GetModel<ICounterModel>();
+        model.Decrement();
     }
 }
 ```
 
-```C#
-using GFramework.Core.Abstractions.controller;
-using GFramework.Core.extensions;
-using GFramework.SourceGenerators.Abstractions.logging;
-using GFramework.SourceGenerators.Abstractions.rule;
-using Godot;
-using MyGFrameworkGame.scripts.command;
-using MyGFrameworkGame.scripts.model;
+---
 
-namespace MyGFrameworkGame.scripts.app;
+## Utility层设计
 
-/// <summary>
-/// App 类继承自 Control 并实现 IController 接口，用于管理应用程序的核心逻辑。
-/// 该类通过按钮控制计数器的增减，并更新界面上的标签显示。
-/// </summary>
-[ContextAware]
-[Log]
-public partial class App : Control, IController
+### 工具类职责
+
+Utility 层提供无状态的辅助功能：
+
+```csharp
+using GFramework.Core.Abstractions.architecture;
+using GFramework.Game.architecture;
+
+public class UtilityModule : AbstractModule
 {
-    /// <summary>
-    /// 获取场景中的 AddButton 节点，用于增加计数器值。
-    /// </summary>
-    private Button AddButton => GetNode<Button>("%AddButton");
+    public override void Install(IArchitecture architecture)
+    {
+        // 注册工具服务
+        architecture.RegisterUtility(new MathUtility());
+        architecture.RegisterUtility(new StringUtility());
+    }
+}
+```
 
-    /// <summary>
-    /// 获取场景中的 SubButton 节点，用于减少计数器值。
-    /// </summary>
-    private Button SubButton => GetNode<Button>("%SubButton");
+### 依赖注入管理
 
-    /// <summary>
-    /// 获取场景中的 Label 节点，用于显示当前计数器的值。
-    /// </summary>
-    private Label Label => GetNode<Label>("%Label");
+工具类的依赖注入示例：
 
-    /// <summary>
-    /// 当节点准备就绪时调用此方法。
-    /// 初始化按钮点击事件并更新界面显示。
-    /// </summary>
+```csharp
+public class MathUtility
+{
+    public int Clamp(int value, int min, int max)
+    {
+        return Math.Max(min, Math.Min(max, value));
+    }
+    
+    public float Lerp(float a, float b, float t)
+    {
+        return a + (b - a) * t;
+    }
+}
+```
+
+### 通用功能封装
+
+常用的工具方法：
+
+```csharp
+public class StringUtility
+{
+    public string FormatCount(int count)
+    {
+        return count >= 1000 
+            ? $"{count / 1000.0:F1}K" 
+            : count.ToString();
+    }
+    
+    public bool IsValidName(string name)
+    {
+        return !string.IsNullOrWhiteSpace(name) && name.Length <= 20;
+    }
+}
+```
+
+---
+
+## 完整架构集成
+
+### 模块化架构设计
+
+整合所有模块：
+
+```csharp
+using GFramework.Godot.architecture;
+
+public class GameArchitecture : AbstractArchitecture
+{
+    protected override void InstallModules()
+    {
+        InstallModule(new ModelModule());
+        InstallModule(new SystemModule());
+        InstallModule(new UtilityModule());
+    }
+}
+```
+
+### 依赖关系管理
+
+清晰的依赖层次：
+
+```text
+GameArchitecture
+├── ModelModule
+│   └── CounterModel
+├── SystemModule
+│   └── CounterBusinessSystem
+└── UtilityModule
+    ├── MathUtility
+    └── StringUtility
+```
+
+### 初始化流程
+
+游戏入口点：
+
+```csharp
+using GFramework.Core.Abstractions.architecture;
+using Godot;
+
+public partial class GameEntryPoint : Node
+{
+    public static IArchitecture Architecture { get; private set; }
+
     public override void _Ready()
     {
-        this.RegisterEvent<CounterModel.ChangedCountEvent>(e =>
-        {
-            UpdateView(e.Count);
-        });
-        // 为 AddButton 添加点击事件，每次点击将计数器加一并更新视图
-        AddButton.Pressed += () =>
-        {
-            this.SendCommand(new IncreaseCountCommand());
-        };
-
-        // 为 SubButton 添加点击事件，每次点击将计数器减一并更新视图
-        SubButton.Pressed += () =>
-        {
-            this.SendCommand(new DecreaseCountCommand());
-        };
-
-        // 初始更新界面显示
-        UpdateView();
-    }
-
-    /// <summary>
-    /// 更新界面上 Label 的文本内容，显示当前计数器的值。
-    /// </summary>
-    private void UpdateView(int count = 0)
-    {
-        Label.Text = $"Count: {count}";
+        Architecture = new GameArchitecture();
+        Architecture.Initialize();
     }
 }
 ```
 
-这样你会发现，控制器不需要再获取Model了，这样控制器不必再去关心如何增加计数
+### 上下文管理
 
-即Controller 不再关心：
+使用上下文感知特性：
 
-- 如何加
-- 是否要保存
-- 是否要同步服务器
-- 是否要记录日志
-- 是否要触发动画
-
-全部委托给命令去处理，可以大幅减少控制器的代码量
-
-这里举一个命令的例子，因为上面的计数增加可能看起来太简单了
-
-```C#
-using GFramework.Core.command;
-using GFramework.Core.extensions;
-using GFramework.Game.Abstractions.setting;
-using GFramework.Game.Abstractions.setting.data;
-using GFramework.Godot.setting;
-using GFrameworkGodotTemplate.scripts.command.setting.input;
-
-namespace GFrameworkGodotTemplate.scripts.command.setting;
-
-/// <summary>
-///     更改语言命令类
-///     用于处理更改语言的业务逻辑
-/// </summary>
-/// <param name="input">语言更改命令输入参数</param>
-public sealed class ChangeLanguageCommand(ChangeLanguageCommandInput input)
-    : AbstractAsyncCommand<ChangeLanguageCommandInput>(input)
+```csharp
+[ContextAware]
+public partial class App : Control, IController
 {
-    /// <summary>
-    ///     执行命令的异步方法
-    /// </summary>
-    /// <param name="input">命令输入参数</param>
-    protected override async Task OnExecuteAsync(ChangeLanguageCommandInput input)
-    {
-        var model = this.GetModel<ISettingsModel>()!;
-        var settings = model.GetData<LocalizationSettings>();
-        settings.Language = input.Language;
-        await this.GetSystem<ISettingsSystem>()!.Apply<GodotLocalizationSettings>().ConfigureAwait(false);
-    }
+    // 框架自动注入上下文
+    // 可以直接使用 this.GetModel<T>() 等方法
 }
 ```
 
-从这个类可以看到切换一个语言我们需要获取设置模型，获取语言设置，变更配置，最后获取设置系统应用语言配置，如果这些全部写到控制器，会非常臃肿。特别是当逻辑越来越复杂的时候。
+---
 
-在前面的例子中，我们已经使用了这样一段代码：
+## 架构原理深入
 
-```
-this.RegisterEvent<CounterModel.ChangedCountEvent>(e =>
-{
-    UpdateView(e.Count);
+### 事件驱动架构优势
+
+事件驱动的核心价值：
+
+```csharp
+// 发布事件
+this.SendEvent(new GameEvent.LevelCompleted { Level = 1 });
+
+// 订阅事件（多个订阅者）
+this.RegisterEvent<GameEvent.LevelCompleted>(e => {
+    // 更新UI
+});
+
+this.RegisterEvent<GameEvent.LevelCompleted>(e => {
+    // 保存进度
+});
+
+this.RegisterEvent<GameEvent.LevelCompleted>(e => {
+    // 播放音效
 });
 ```
 
-我们当时只是用它来更新界面。
+### 解耦设计思想
 
-但实际上，这一行代码引入了一个更重要的机制：
+组件间的松耦合关系：
 
-> **事件驱动架构（Event-Driven Architecture）**
-
-大家可能有个困惑。
-
-为什么 Model 不直接调用 UpdateView？
-为什么要多绕一层 Event？
-
-没有事件
-
-Model：
-
+```text
+Model ←→ EventBus ←→ View
+  ↑                     ↑
+  └───────System────────┘
 ```
-public void Increment()
+
+### 可测试性提升
+
+各层组件的可测试性：
+
+```csharp
+// Model 层测试
+[Test]
+public void CounterModel_Increment_ShouldIncreaseCount()
 {
-    Count++;
-    _view.UpdateView(Count);
+    var model = new CounterModel();
+    model.Initialize();
+    
+    model.Increment();
+    
+    Assert.Equal(1, model.Count);
+}
+
+// System 层测试
+[Test]
+public void CounterBusinessSystem_ValidateCount_ShouldThrowForNegative()
+{
+    var system = new CounterBusinessSystem();
+    system.Initialize();
+    
+    Assert.Throws<InvalidOperationException>(() => 
+        system.ValidateCount(-1));
 }
 ```
 
-问题：
+### 扩展性考虑
 
-- Model 依赖 View
-- 强耦合
-- 无法复用
-- 无法扩展
+易于扩展的架构设计：
 
-------
-
-使用事件
-
-Model：
-
-```
-public void Increment()
+```csharp
+// 添加新功能只需扩展相应层
+public class SaveSystem : AbstractSystem
 {
-    Count++;
-    this.SendEvent(new ChangedCountEvent(Count));
+    public void SaveGame()
+    {
+        var counterModel = this.GetModel<ICounterModel>();
+        // 保存逻辑
+    }
+}
+
+// 在模块中注册
+public override void Install(IArchitecture architecture)
+{
+    architecture.RegisterSystem(new SaveSystem());
 }
 ```
 
-View：
+---
 
+## 最佳实践总结
+
+### 代码组织规范
+
+推荐的项目结构：
+
+```text
+Project/
+├── scripts/
+│   ├── architecture/
+│   │   ├── GameArchitecture.cs
+│   │   └── GameModule.cs
+│   ├── model/
+│   │   ├── ICounterModel.cs
+│   │   └── CounterModel.cs
+│   ├── system/
+│   │   ├── CounterBusinessSystem.cs
+│   │   └── SaveSystem.cs
+│   ├── utility/
+│   │   ├── MathUtility.cs
+│   │   └── StringUtility.cs
+│   ├── command/
+│   │   ├── IncreaseCountCommand.cs
+│   │   └── DecreaseCountCommand.cs
+│   └── app/
+│       └── App.cs
+└── scenes/
 ```
-this.RegisterEvent<ChangedCountEvent>(...)
+
+### 设计模式应用
+
+核心设计模式：
+
+1. **观察者模式**: 事件系统
+2. **命令模式**: 业务操作封装
+3. **工厂模式**: 对象创建
+4. **单例模式**: 架构上下文
+
+### 性能优化建议
+
+```csharp
+// 避免频繁事件发送
+public void BatchUpdate()
+{
+    // 批量处理逻辑
+    this.SendEvent(new BatchUpdateEvent { Data = batchData });
+}
+
+// 合理使用事件过滤
+this.RegisterEvent<CounterModel.ChangedCountEvent>(
+    e => UpdateView(e.Count),
+    filter: e => e.Count % 10 == 0  // 每10次更新一次
+);
 ```
 
-现在：
+### 常见问题解答
 
-- Model 不知道 View
-- View 订阅结果
-- 可以有多个订阅者
-- 完全解耦
+**Q: 什么时候使用 Model vs System?**
+A: Model 管理状态数据，System 处理业务逻辑
 
-因此我们可以知道事件不是为了通知 UI，事件是为了解耦系统。
+**Q: 如何处理异步操作?**
+A: 使用 AbstractAsyncCommand 和协程调度器
+
+**Q: 如何进行模块间通信?**
+A: 通过事件总线，避免直接依赖
+
+**Q: 如何管理复杂的依赖关系?**
+A: 使用模块化设计，明确依赖方向
+
+---
 
 ## 总结
 
+通过本教程，你已经学习了：
+
+1. **基础概念**: MVC 架构和事件驱动设计
+2. **实践应用**: 从传统实现到框架改进
+3. **架构分层**: Model、System、Utility 各层职责
+4. **核心原理**: 解耦设计和可测试性
+5. **最佳实践**: 代码组织和设计模式应用
+
+现在你已经具备了使用 GFramework 构建游戏应用的基础知识，可以开始创建更复杂的游戏功能了！
