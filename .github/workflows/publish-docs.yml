@@ -19,7 +19,7 @@ jobs:
   build-and-deploy:
     if: |
       (startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-'))
-      || (github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[release doc]'))
+      || contains(github.event.head_commit.message, '[release doc]'))
     runs-on: ubuntu-latest
 
     environment:
@@ -34,7 +34,7 @@ jobs:
       # 2️⃣ 安装 Bun.js
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: 2.1.x
       # 3️⃣ 安装依赖
       - name: Install Dependencies
         run: |
