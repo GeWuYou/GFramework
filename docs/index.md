@@ -1,33 +1,25 @@
-# GFramework Documentation
+---
+# https://vitepress.dev/reference/default-theme-home-page
+layout: home
 
-Welcome to the GFramework documentation!
+hero:
+  name: "GFramework"
+  text: "A developer-oriented framework for structured game development"
+  tagline: My great project tagline
+  actions:
+    - theme: brand
+      text: Markdown Examples
+      link: /markdown-examples
+    - theme: alt
+      text: API Examples
+      link: /api-examples
 
-## Overview
+features:
+  - title: Feature A
+    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
+  - title: Feature B
+    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
+  - title: Feature C
+    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
+---
 
-GFramework is a comprehensive game development framework built with clean architecture principles. It provides a solid foundation for building scalable and maintainable game applications.
-
-## Key Features
-
-- **Clean Architecture**: Well-defined separation of concerns
-- **Modular Design**: Pluggable architecture modules
-- **Event System**: Robust event-driven programming
-- **Command Pattern**: Structured command execution
-- **Property Binding**: Reactive property system
-- **Coroutine Support**: Asynchronous programming utilities
-- **IOC Container**: Dependency injection support
-- **Logging System**: Comprehensive logging capabilities
-
-## Getting Started
-
-Check out the [API Documentation](api/) for detailed reference, or explore the specific modules in the navigation menu.
-
-## Modules
-
-- **Core**: Fundamental framework components
-- **Game**: Game-specific extensions
-- **Godot**: Godot engine integration
-- **Source Generators**: Compile-time code generation
-
-## Contributing
-
-Please read our contributing guidelines before submitting pull requests.
