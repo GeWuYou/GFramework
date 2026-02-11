@@ -49,8 +49,11 @@
   --vp-c-default-3: var(--vp-c-gray-3);
   --vp-c-default-soft: var(--vp-c-gray-soft);
 
-  --vp-c-brand-1: var(--vp-c-indigo-1);
-  --vp-c-brand-2: var(--vp-c-indigo-2);
+  /*--vp-c-brand-1: var(--vp-c-indigo-1);*/
+  /*--vp-c-brand-2: var(--vp-c-indigo-2);*/
+  --vp-c-brand-1: #1e40af;        /* 深蓝：文字 / active */
+  --vp-c-brand-2: #2563eb;        /* 蓝：hover */
+  
   --vp-c-brand-3: var(--vp-c-indigo-3);
   --vp-c-brand-soft: var(--vp-c-indigo-soft);
 
