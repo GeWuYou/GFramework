@@ -95,7 +95,7 @@ public class PlayerModel : AbstractModel
 
 应用的业务逻辑处理层。
 
-``csharp
+```csharp
 public class CombatSystem : AbstractSystem
 {
     protected override void OnInit()
@@ -136,7 +136,7 @@ this.GetEvent<AttackEvent>().Register(OnAttack);
 
 连接 UI 和业务逻辑的桥梁。
 
-``csharp
+```csharp
 public class PlayerController : IController
 {
     private IArchitecture _architecture;
@@ -176,7 +176,7 @@ public class PlayerController : IController
 
 提供无状态的辅助功能。
 
-``csharp
+```csharp
 public class StorageUtility : IUtility
 {
     public void SaveData<T>(string key, T data)
@@ -205,7 +205,7 @@ public class StorageUtility : IUtility
 
 用于修改应用状态的操作：
 
-``csharp
+```csharp
 public class MovePlayerCommand : AbstractCommand
 {
     public Vector2 Direction { get; set; }
@@ -222,7 +222,7 @@ public class MovePlayerCommand : AbstractCommand
 
 用于查询应用状态：`
 
-``csharp
+```csharp
 public class GetPlayerHealthQuery : AbstractQuery<int>
 {
     protected override int OnDo()
@@ -249,7 +249,7 @@ this.RegisterEvent<PlayerDiedEvent>(OnPlayerDied);
 
 ### BindableProperty
 
-``csharp
+```csharp
 public class PlayerModel : AbstractModel
 {
     public BindableProperty<int> Health { get; } = new(100);
@@ -274,7 +274,7 @@ playerModel.Health.Register(newValue => {
 
 ### 1. 分层职责明确
 
-``csharp
+```csharp
 // ✅ 正确：Model 只存储数据
 public class PlayerModel : AbstractModel
 {
@@ -293,7 +293,7 @@ public class PlayerModel : AbstractModel
 
 ### 2. 事件驱动设计
 
-``csharp
+```csharp
 // ✅ 正确：使用事件解耦
 public class CombatSystem : AbstractSystem
 {
@@ -317,7 +317,7 @@ public class CombatSystem : AbstractSystem
 
 ### 3. 命令查询分离
 
-``csharp
+```csharp
 // ✅ 正确：明确区分命令和查询
 public class MovePlayerCommand : AbstractCommand { }  // 修改状态
 public class GetPlayerPositionQuery : AbstractQuery<Vector2> { }  // 查询状态

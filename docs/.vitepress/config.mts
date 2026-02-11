@@ -8,7 +8,7 @@ export default defineConfig({
   /** GitHub Pages / 子路径部署 */
   base: '/GFramework/',
   vite: {
-    plugins: [markdownEscapePlugin()]
+    plugins: [safeGenericEscapePlugin()]
   },
   /** 多语言 */
   locales: {
@@ -172,33 +172,48 @@ export default defineConfig({
 })
 import { defineConfig } from 'vitepress'
 
-function markdownEscapePlugin() {
+function safeGenericEscapePlugin() {
   return {
-    name: 'markdown-escape-plugin',
-    enforce: 'pre', // 在 vitepress 之前执行
+    name: 'safe-generic-escape',
+    enforce: 'pre',
+
     transform(code: string, id: string) {
       if (!id.endsWith('.md')) return
 
       const codeBlocks: string[] = []
+      const htmlBlocks: string[] = []
 
-      // 1️⃣ 替换代码块
-      const replaced = code.replace(/```[\s\S]*?```/g, (match) => {
-        const index = codeBlocks.length
+      // 1️⃣ 保护代码块 ``` ```
+      let processed = code.replace(/```[\s\S]*?```/g, (match) => {
+        const i = codeBlocks.length
         codeBlocks.push(match)
-        return `__CODE_BLOCK_${index}__`
+        return `__CODE_BLOCK_${i}__`
       })
 
-      // 2️⃣ 转义普通文本中的 < >
-      let escaped = replaced
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-
-      // 3️⃣ 恢复代码块
-      codeBlocks.forEach((block, index) => {
-        escaped = escaped.replace(`__CODE_BLOCK_${index}__`, block)
+      // 2️⃣ 保护 HTML 标签（避免破坏 Vue SFC）
+      processed = processed.replace(/<\/?[a-zA-Z][^>]*>/g, (match) => {
+        const i = htmlBlocks.length
+        htmlBlocks.push(match)
+        return `__HTML_BLOCK_${i}__`
       })
 
-      return escaped
+      // 3️⃣ 只转义“泛型形式”的 <T> 或 <K, V>
+      processed = processed.replace(
+          /<([A-Z][A-Za-z0-9_,\s]*)>/g,
+          (_, inner) => `&lt;${inner}&gt;`
+      )
+
+      // 4️⃣ 恢复 HTML
+      htmlBlocks.forEach((block, i) => {
+        processed = processed.replace(`__HTML_BLOCK_${i}__`, block)
+      })
+
+      // 5️⃣ 恢复代码块
+      codeBlocks.forEach((block, i) => {
+        processed = processed.replace(`__CODE_BLOCK_${i}__`, block)
+      })
+
+      return processed
     }
   }
 }

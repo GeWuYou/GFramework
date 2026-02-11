@@ -77,7 +77,7 @@ IContextAware (上下文感知接口)
 
 ### 1. Component 继承 ContextAwareBase
 
-``csharp
+```csharp
 // 组件通过继承 ContextAwareBase 获得架构上下文访问能力
 public partial class PlayerController : Node, IController
 {
@@ -99,7 +99,7 @@ public partial class PlayerController : Node, IController
 
 ### 2. Command 继承 AbstractCommand (IContextAware)
 
-``csharp
+```csharp
 // Command 继承 AbstractCommand，自动成为 IContextAware
 public class BuyItemCommand : AbstractCommand
 {
@@ -124,7 +124,7 @@ public class BuyItemCommand : AbstractCommand
 
 ### 3. 自定义组件遵循规则
 
-``csharp
+```csharp
 // 自定义管理器遵循框架规则，继承 ContextAwareBase
 public class SaveManager : ContextAwareBase
 {
@@ -151,7 +151,7 @@ public class SaveManager : ContextAwareBase
 
 ### 1. 组件注册规则
 
-``csharp
+```csharp
 public class GameArchitecture : Architecture
 {
     protected override void Init()
@@ -166,7 +166,7 @@ public class GameArchitecture : Architecture
 
 ### 2. Command/Query 自动注入规则
 
-``csharp
+```csharp
 // Controller 中发送 Command
 public class ShopUI : Control, IController
 {
@@ -200,7 +200,7 @@ public class BuyItemCommand : AbstractCommand
 
 Rule 接口体现了依赖注入（DI）的思想：
 
-``csharp
+```csharp
 // 接口定义了"需要什么"
 public interface IContextAware
 {
@@ -225,7 +225,7 @@ public static class CanSendExtensions
 
 Rule 接口遵循接口隔离原则，每个接口职责单一：
 
-``csharp
+```csharp
 // ❌ 不好的设计：一个大接口包含所有能力
 public interface IBigInterface
 {
@@ -247,7 +247,7 @@ public interface ICanSendCommand { ... }        // 只负责发送 Command
 
 通过接口组合实现不同能力：
 
-``csharp
+```csharp
 // Controller 需要获取 Model 和发送 Command
 public interface IController : ICanGetModel, ICanGetSystem, ICanSendCommand, 
     ICanSendQuery, ICanRegisterEvent
@@ -271,7 +271,7 @@ public interface ISystem : IContextAware, ICanGetModel, ICanGetUtility, ICanGetS
 
 ### 自定义规则接口
 
-``csharp
+```csharp
 // 定义新的规则接口
 public interface ICanAccessDatabase : IBelongToArchitecture
 {

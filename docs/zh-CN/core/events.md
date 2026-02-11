@@ -73,7 +73,7 @@ onClicked.Trigger();
 unregister.UnRegister();
 ```
 
-### 2. [Event<T>](EasyEvent.cs)
+### 2. [Event`<T>`](EasyEvent.cs)
 
 单参数泛型事件类，支持一个参数的事件。
 
@@ -99,7 +99,7 @@ onScoreChanged.Trigger(100);
 
 **使用示例：**
 
-```
+```csharp
 // 伤害事件：攻击者、伤害值
 var onDamageDealt = new Event<string, int>();
 
@@ -117,7 +117,7 @@ onDamageDealt.Trigger("Player", 50);
 
 **使用示例：**
 
-``csharp
+```csharp
 // 注册全局事件类型
 EasyEvents.Register<GameStartEvent>();
 
@@ -140,7 +140,7 @@ gameStartEvent.Trigger();
 
 **使用示例：**
 
-``csharp
+```csharp
 // 使用全局事件系统
 var eventBus = new EventBus();
 
@@ -166,7 +166,7 @@ eventBus.Send<PlayerDiedEvent>();
 
 **使用示例：**
 
-``csharp
+```csharp
 Action onUnregister = () => GD.Print("Unregistered");
 var unregister = new DefaultUnRegister(onUnregister);
 
@@ -180,7 +180,7 @@ unregister.UnRegister();
 
 **使用示例：**
 
-``csharp
+```csharp
 var onAnyInput = new OrEvent()
     .Or(onKeyPressed)
     .Or(onMouseClicked)
@@ -199,7 +199,7 @@ onAnyInput.Register(() =>
 
 **使用示例：**
 
-``csharp
+```csharp
 var unregisterList = new UnRegisterList();
 
 // 添加到列表
@@ -224,7 +224,7 @@ unregisterList.UnRegisterAll();
 
 ### 定义事件类
 
-``csharp
+```csharp
 // 简单事件
 public struct GameStartedEvent { }
 
@@ -247,7 +247,7 @@ public struct LevelCompletedEvent
 
 ### Model 中发送事件
 
-``csharp
+```csharp
 public class PlayerModel : AbstractModel
 {
     public BindableProperty<int> Health { get; } = new(100);
@@ -273,7 +273,7 @@ public class PlayerModel : AbstractModel
 
 ### System 中发送事件
 
-``csharp
+```csharp
 public class CombatSystem : AbstractSystem
 {
     protected override void OnInit() { }
@@ -295,7 +295,7 @@ public class CombatSystem : AbstractSystem
 
 ### Controller 中注册事件
 
-``csharp
+```csharp
 public partial class GameController : Node, IController
 {
     private IUnRegisterList _unregisterList = new UnRegisterList();
@@ -343,7 +343,7 @@ public partial class GameController : Node, IController
 
 ### 1. 事件链式组合
 
-``csharp
+```csharp
 // 使用 Or 组合多个事件
 var onAnyDamage = new OrEvent()
     .Or(onPhysicalDamage)
@@ -358,7 +358,7 @@ onAnyDamage.Register(() =>
 
 ### 2. 事件过滤
 
-``csharp
+```csharp
 // 只处理高伤害事件
 this.RegisterEvent<DamageDealtEvent>(e =>
 {
@@ -371,7 +371,7 @@ this.RegisterEvent<DamageDealtEvent>(e =>
 
 ### 3. 事件转发
 
-``csharp
+```csharp
 public class EventBridge : AbstractSystem
 {
     protected override void OnInit()
@@ -391,7 +391,7 @@ public class EventBridge : AbstractSystem
 
 ### 4. 临时事件监听
 
-``csharp
+```csharp
 public class TutorialController : Node, IController
 {
     public override void _Ready()
@@ -409,7 +409,7 @@ public class TutorialController : Node, IController
 
 ### 5. 条件事件
 
-``csharp
+```csharp
 public class AchievementSystem : AbstractSystem
 {
     private int _killCount = 0;
@@ -437,7 +437,7 @@ public class AchievementSystem : AbstractSystem
 
 ### 使用 UnRegisterList
 
-``csharp
+```csharp
 public class MyController : Node, IController
 {
     // 统一管理所有注销对象
@@ -463,7 +463,7 @@ public class MyController : Node, IController
 
 ### 使用 Godot 节点生命周期
 
-``csharp
+```csharp
 public override void _Ready()
 {
     // 当节点退出场景树时自动注销

@@ -13,7 +13,7 @@ Utility 标记接口，所有工具类都应实现此接口。
 
 **接口定义：**
 
-``csharp
+```csharp
 public interface IUtility
 {
     // 标记接口，无方法定义
@@ -26,7 +26,7 @@ public interface IUtility
 
 **接口定义：**
 
-``csharp
+```csharp
 public interface IContextUtility : IUtility
 {
     void Init();  // 初始化上下文工具
@@ -139,7 +139,7 @@ public class TimeUtility : IUtility
 
 ### 2. 注册 Utility
 
-``csharp
+```csharp
 public class GameArchitecture : Architecture
 {
     protected override void Init()
@@ -154,7 +154,7 @@ public class GameArchitecture : Architecture
 
 ### 3. 使用 Utility
 
-``csharp
+```csharp
 // 在 System 中使用
 public class SaveSystem : AbstractSystem
 {
@@ -223,7 +223,7 @@ public class MovePlayerCommand : AbstractCommand
 
 ### 1. 序列化/反序列化工具
 
-``csharp
+```csharp
 public class JsonUtility : IUtility
 {
     public string Serialize<T>(T obj)
@@ -254,7 +254,7 @@ public class JsonUtility : IUtility
 
 ### 2. 随机数工具
 
-``csharp
+```csharp
 public class RandomUtility : IUtility
 {
     private Random _random = new Random();
@@ -294,7 +294,7 @@ public class RandomUtility : IUtility
 
 ### 3. 字符串工具
 
-``csharp
+```csharp
 public class StringUtility : IUtility
 {
     public string Truncate(string text, int maxLength, string suffix = "...")
@@ -327,7 +327,7 @@ public class StringUtility : IUtility
 
 ### 4. 加密工具
 
-``csharp
+```csharp
 public class EncryptionUtility : IUtility
 {
     private const string EncryptionKey = "YourSecretKey123";
@@ -367,7 +367,7 @@ public class EncryptionUtility : IUtility
 
 ### 5. 对象池工具
 
-``csharp
+```csharp
 public class ObjectPoolUtility : IUtility
 {
     private Dictionary<Type, Queue<object>> _pools = new();
@@ -410,7 +410,7 @@ public class ObjectPoolUtility : IUtility
 
 ### 6. 日志工具
 
-``csharp
+```csharp
 public class LogUtility : IUtility
 {
     public enum LogLevel
@@ -503,7 +503,7 @@ public class CombatSystem : AbstractSystem
 
 ## 错误示例
 
-``csharp
+```csharp
 // ❌ 错误：Utility 中存储状态
 public class BadUtility : IUtility
 {
@@ -543,7 +543,7 @@ public class IdGeneratorSystem : AbstractSystem
 
 ### 1. 缓存计算结果
 
-``csharp
+```csharp
 public class PathfindingUtility : IUtility
 {
     private Dictionary<(Vector3, Vector3), List<Vector3>> _pathCache = new();
@@ -582,7 +582,7 @@ public class PathfindingUtility : IUtility
 
 ### 2. 对象复用
 
-``csharp
+```csharp
 public class CollectionUtility : IUtility
 {
     private List<Vector3> _tempList = new();
