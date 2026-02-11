@@ -98,9 +98,6 @@ await settingsSystem.Apply(types);
 ### 创建自定义设置
 
 ```csharp
-/// <summary>
-/// 游戏设置类
-/// </summary>
 public class GameSettings : ISettingsSection
 {
     public float GameSpeed { get; set; } = 1.0f;
@@ -116,9 +113,6 @@ gameSettings.GameSpeed = 1.5f;
 ### 创建可应用设置
 
 ```csharp
-/// <summary>
-/// 游戏设置应用器
-/// </summary>
 public class GameSettings : ISettingsSection, IApplyAbleSettings
 {
     public float GameSpeed { get; set; } = 1.0f;
@@ -187,7 +181,7 @@ public interface ISettingsSystem
 
 1. **Repository Pattern** - SettingsModel 作为设置数据的仓库
 2. **Command Pattern** - IApplyAbleSettings 的 Apply 方法作为命令
-3. **Factory Pattern** - Get<T>() 方法创建设置实例
+3. **Factory Pattern** - Get`<T>`() 方法创建设置实例
 4. **Template Method** - AbstractSystem 提供初始化模板
 
 ## 最佳实践
