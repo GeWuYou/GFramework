@@ -4,7 +4,9 @@ export default defineConfig({
   
   title: 'GFramework',
   description: '面向游戏开发场景的模块化 C# 框架',
-
+  head: [
+    ['link', { rel: 'icon', type: 'image/png', href: '/GFramework/favicon.png' }],
+  ],
   /** GitHub Pages / 子路径部署 */
   base: '/GFramework/',
   vite: {
