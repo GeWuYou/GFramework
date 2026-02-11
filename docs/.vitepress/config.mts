@@ -42,8 +42,8 @@ export default defineConfig({
           { text: '首页', link: '/zh-CN/' },
           { text: '入门指南', link: '/zh-CN/getting-started/installation' },
           { text: 'Core', link: '/zh-CN/core/' },
-          { text: 'Game', link: '/zh-CN/game/overview' },
-          { text: 'Godot', link: '/zh-CN/godot/overview' },
+          { text: 'Game', link: '/zh-CN/game/' },
+          { text: 'Godot', link: '/zh-CN/godot/' },
           { text: '源码生成器', link: '/zh-CN/source-generators/overview' },
           { text: '教程', link: '/zh-CN/tutorials/basic-tutorial' },
         ],
@@ -88,7 +88,7 @@ export default defineConfig({
             {
               text: 'Game 游戏模块',
               items: [
-                { text: '概览', link: '/zh-CN/game/overview' },
+                { text: '概览', link: '/zh-CN/game/' },
                 { text: '场景管理', link: '/zh-CN/game/scene-management' },
                 { text: '游戏设置', link: '/zh-CN/game/setting' }
               ]
@@ -99,7 +99,7 @@ export default defineConfig({
             {
               text: 'Godot 集成',
               items: [
-                { text: '概览', link: '/zh-CN/godot/overview' },
+                { text: '概览', link: '/zh-CN/godot/' },
                 { text: '协程系统', link: '/zh-CN/godot/coroutine' },
                 { text: '节点扩展', link: '/zh-CN/godot/extensions' },
                 { text: '信号系统', link: '/zh-CN/godot/signal' },
@@ -142,18 +142,6 @@ export default defineConfig({
               ]
             }
           ],
-
-          '/zh-CN/api-reference/': [
-            {
-              text: 'API 参考',
-              items: [
-                { text: 'Core API', link: '/zh-CN/api-reference/core-api' },
-                { text: 'Game API', link: '/zh-CN/api-reference/game-api' },
-                { text: 'Godot API', link: '/zh-CN/api-reference/godot-api' },
-                { text: '生成器 API', link: '/zh-CN/api-reference/source-generators-api' }
-              ]
-            }
-          ]
         },
 
         socialLinks: [

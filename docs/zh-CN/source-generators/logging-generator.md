@@ -158,4 +158,3 @@ public partial class MyClass
 - [Source Generators 概述](./overview)
 - [枚举扩展生成器](./enum-generator)
 - [规则生成器](./rule-generator)
-- [API 参考](../api-reference/source-generators-api)
