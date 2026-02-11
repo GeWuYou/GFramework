@@ -4,9 +4,11 @@
 
 Events 包提供了一套完整的事件系统，实现了观察者模式（Observer Pattern）。通过事件系统，可以实现组件间的松耦合通信，支持无参和带参事件、事件注册/注销、以及灵活的事件组合。
 
+事件系统是 GFramework 架构中组件间通信的核心机制，与命令模式和查询模式共同构成了完整的 CQRS 架构。
+
 ## 核心接口
 
-### 1. IEvent
+### IEvent
 
 基础事件接口，定义了事件注册的基本功能。
 
@@ -16,7 +18,7 @@ Events 包提供了一套完整的事件系统，实现了观察者模式（Obse
 IUnRegister Register(Action onEvent);  // 注册事件处理函数
 ```
 
-### 2. IUnRegister
+### IUnRegister
 
 注销接口，用于取消事件注册。
 
@@ -26,7 +28,7 @@ IUnRegister Register(Action onEvent);  // 注册事件处理函数
 void UnRegister();  // 执行注销操作
 ```
 
-### 3. IUnRegisterList
+### IUnRegisterList
 
 注销列表接口，用于批量管理注销对象。
 
@@ -36,7 +38,7 @@ void UnRegister();  // 执行注销操作
 IList<IUnRegister> UnregisterList { get; }  // 获取注销列表
 ```
 
-### 4. IEventBus
+### IEventBus
 
 事件总线接口，提供基于类型的事件发送和注册。
 
@@ -46,13 +48,21 @@ IList<IUnRegister> UnregisterList { get; }  // 获取注销列表
 IUnRegister Register<T>(Action<T> onEvent);  // 注册类型化事件
 void Send<T>(T e);                         // 发送事件实例
 void Send<T>() where T : new();           // 发送事件（自动创建实例）
+void UnRegister<T>(Action<T> onEvent);     // 注销事件监听器
 ```
 
 ## 核心类
 
-### 1. EasyEvent
+### EasyEvent
 
 无参事件类，支持注册、注销和触发无参事件。
+
+**核心方法：**
+
+```csharp
+IUnRegister Register(Action onEvent);  // 注册事件监听器
+void Trigger();                       // 触发事件
+```
 
 **使用示例：**
 
@@ -63,7 +73,7 @@ var onClicked = new EasyEvent();
 // 注册监听
 var unregister = onClicked.Register(() => 
 {
-    GD.Print("Button clicked!");
+    Console.WriteLine("Button clicked!");
 });
 
 // 触发事件
@@ -73,9 +83,16 @@ onClicked.Trigger();
 unregister.UnRegister();
 ```
 
-### 2. Event`<T>`
+### Event`<T>`
 
 单参数泛型事件类，支持一个参数的事件。
+
+**核心方法：**
+
+```csharp
+IUnRegister Register(Action<T> onEvent);  // 注册事件监听器
+void Trigger(T eventData);               // 触发事件并传递参数
+```
 
 **使用示例：**
 
@@ -86,16 +103,23 @@ var onScoreChanged = new Event<int>();
 // 注册监听
 onScoreChanged.Register(newScore => 
 {
-    GD.Print($"Score changed to: {newScore}");
+    Console.WriteLine($"Score changed to: {newScore}");
 });
 
 // 触发事件并传递参数
 onScoreChanged.Trigger(100);
 ```
 
-### 3. Event<T, TK>
+### Event<T, TK>
 
 双参数泛型事件类。
+
+**核心方法：**
+
+```csharp
+IUnRegister Register(Action<T, TK> onEvent);  // 注册事件监听器
+void Trigger(T param1, TK param2);           // 触发事件并传递两个参数
+```
 
 **使用示例：**
 
@@ -105,15 +129,23 @@ var onDamageDealt = new Event<string, int>();
 
 onDamageDealt.Register((attacker, damage) =>
 {
-    GD.Print($"{attacker} dealt {damage} damage!");
+    Console.WriteLine($"{attacker} dealt {damage} damage!");
 });
 
 onDamageDealt.Trigger("Player", 50);
 ```
 
-### 4. `EasyEvents`
+### EasyEvents
 
 全局事件管理器，提供类型安全的事件注册和获取。
+
+**核心方法：**
+
+```csharp
+static void Register<T>() where T : IEvent, new();  // 注册事件类型
+static T Get<T>() where T : IEvent, new();         // 获取事件实例
+static T GetOrAddEvent<T>() where T : IEvent, new(); // 获取或创建事件实例
+```
 
 **使用示例：**
 
@@ -127,16 +159,25 @@ var gameStartEvent = EasyEvents.Get<GameStartEvent>();
 // 注册监听
 gameStartEvent.Register(() => 
 {
-    GD.Print("Game started!");
+    Console.WriteLine("Game started!");
 });
 
 // 触发事件
 gameStartEvent.Trigger();
 ```
 
-### 5. `EventBus`
+### EventBus
 
-类型化事件系统，支持基于类型的事件发送和注册。
+类型化事件系统，支持基于类型的事件发送和注册。这是架构中默认的事件总线实现。
+
+**核心方法：**
+
+```csharp
+IUnRegister Register<T>(Action<T> onEvent);  // 注册类型化事件
+void Send<T>(T e);                         // 发送事件实例
+void Send<T>() where T : new();           // 发送事件（自动创建实例）
+void UnRegister<T>(Action<T> onEvent);     // 注销事件监听器
+```
 
 **使用示例：**
 
@@ -147,7 +188,7 @@ var eventBus = new EventBus();
 // 注册类型化事件
 eventBus.Register<PlayerDiedEvent>(e => 
 {
-    GD.Print($"Player died at position: {e.Position}");
+    Console.WriteLine($"Player died at position: {e.Position}");
 });
 
 // 发送事件（传递实例）
@@ -158,25 +199,34 @@ eventBus.Send(new PlayerDiedEvent
 
 // 发送事件（自动创建实例）
 eventBus.Send<PlayerDiedEvent>();
+
+// 注销事件监听器
+eventBus.UnRegister<PlayerDiedEvent>(OnPlayerDied);
 ```
 
-### 6. `DefaultUnRegister`
+### DefaultUnRegister
 
 默认注销器实现，封装注销回调。
 
 **使用示例：**
 
 ```csharp
-Action onUnregister = () => GD.Print("Unregistered");
+Action onUnregister = () => Console.WriteLine("Unregistered");
 var unregister = new DefaultUnRegister(onUnregister);
 
 // 执行注销
 unregister.UnRegister();
 ```
 
-### 7. `OrEvent`
+### OrEvent
 
 事件或运算组合器，当任意一个事件触发时触发。
+
+**核心方法：**
+
+```csharp
+OrEvent Or(IEvent @event);  // 添加要组合的事件
+```
 
 **使用示例：**
 
@@ -189,13 +239,20 @@ var onAnyInput = new OrEvent()
 // 当上述任意事件触发时，执行回调
 onAnyInput.Register(() => 
 {
-    GD.Print("Input detected!");
+    Console.WriteLine("Input detected!");
 });
 ```
 
-### 8. `UnRegisterList`
+### UnRegisterList
 
 批量管理注销对象的列表。
+
+**核心方法：**
+
+```csharp
+void Add(IUnRegister unRegister);      // 添加注销器到列表
+void UnRegisterAll();                 // 批量注销所有事件
+```
 
 **使用示例：**
 
@@ -209,7 +266,7 @@ someEvent.Register(OnEvent).AddToUnregisterList(unregisterList);
 unregisterList.UnRegisterAll();
 ```
 
-### 9. `ArchitectureEvents`
+### ArchitectureEvents
 
 定义了架构生命周期相关的事件。
 
@@ -317,18 +374,18 @@ public partial class GameController : Node, IController
     
     private void OnGameStarted(GameStartedEvent e)
     {
-        GD.Print("Game started!");
+        Console.WriteLine("Game started!");
     }
     
     private void OnPlayerDied(PlayerDiedEvent e)
     {
-        GD.Print($"Player died at {e.Position}: {e.Cause}");
+        Console.WriteLine($"Player died at {e.Position}: {e.Cause}");
         ShowGameOverScreen();
     }
     
     private void OnLevelCompleted(LevelCompletedEvent e)
     {
-        GD.Print($"Level {e.LevelId} completed! Score: {e.Score}");
+        Console.WriteLine($"Level {e.LevelId} completed! Score: {e.Score}");
         ShowVictoryScreen(e);
     }
     
@@ -503,6 +560,11 @@ public override void _Ready()
     - 事件处理器保持轻量
     - 使用结构体事件减少 GC
 
+7. **事件设计原则**
+   - 高内聚：事件应该代表一个完整的业务概念
+   - 低耦合：事件发送者不需要知道接收者
+   - 可测试：事件应该易于模拟和测试
+
 ## 事件 vs 其他通信方式
 
 | 方式                   | 适用场景         | 优点        | 缺点      |
@@ -512,6 +574,23 @@ public override void _Ready()
 | **Query**            | 查询数据         | 职责清晰、有返回值 | 同步调用    |
 | **BindableProperty** | UI 数据绑定      | 自动更新、响应式  | 仅限单一属性  |
 
+## 事件系统架构
+
+事件系统在 GFramework 中的架构位置：
+
+```
+Architecture (架构核心)
+├── EventBus (事件总线)
+├── CommandBus (命令总线)
+├── QueryBus (查询总线)
+└── IocContainer (IoC容器)
+
+Components (组件)
+├── Model (发送事件)
+├── System (发送/接收事件)
+└── Controller (接收事件)
+```
+
 ## 相关包
 
 - [`architecture`](./architecture.md) - 提供全局事件系统
@@ -520,3 +599,5 @@ public override void _Ready()
 - [`controller`](./controller.md) - 控制器监听事件
 - [`model`](./model.md) - 模型发送事件
 - [`system`](./system.md) - 系统发送和监听事件
+- [`command`](./command.md) - 与事件配合实现 CQRS
+- [`query`](./query.md) - 与事件配合实现 CQRS

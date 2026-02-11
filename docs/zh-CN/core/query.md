@@ -5,6 +5,8 @@
 Query 包实现了 CQRS（命令查询职责分离）模式中的查询部分。Query 用于封装数据查询逻辑，与 Command 不同的是，Query
 有返回值且不应该修改系统状态。
 
+查询系统是 GFramework CQRS 架构的重要组成部分，专门负责数据读取操作，与命令系统和事件系统协同工作。
+
 ## 核心接口
 
 ### IQuery`<TResult>`
@@ -19,22 +21,28 @@ TResult Do();  // 执行查询并返回结果
 
 ## 核心类
 
-### [`AbstractQuery<TInput, TResult>`](./query.md)
+### AbstractQuery`<TResult>`
 
-抽象查询基类，提供了查询的基础实现。它接受一个泛型输入参数 TInput，该参数必须实现 IQueryInput 接口。
+抽象查询基类，提供了查询的基础实现。
+
+**核心方法：**
+
+```csharp
+TResult IQuery<TResult>.Do();           // 实现 IQuery 接口
+protected abstract TResult OnDo();      // 抽象查询方法，由子类实现
+```
 
 **使用方式：**
 
 ```csharp
-public abstract class AbstractQuery<TInput, TResult>(TInput input) : ContextAwareBase, IQuery<TResult>
-    where TInput : IQueryInput
+public abstract class AbstractQuery<TResult> : ContextAwareBase, IQuery<TResult>
 {
-    public TResult Do() => OnDo(input);  // 执行查询，传入输入参数
-    protected abstract TResult OnDo(TInput input);  // 子类实现查询逻辑
+    public TResult Do() => OnDo();          // 执行查询
+    protected abstract TResult OnDo();      // 子类实现查询逻辑
 }
 ```
 
-### [`EmptyQueryInput`](./query.md)
+### EmptyQueryInput
 
 空查询输入类，用于表示不需要任何输入参数的查询操作。
 
@@ -47,9 +55,15 @@ public sealed class EmptyQueryInput : IQueryInput
 }
 ```
 
-### [`QueryBus`](./query.md)
+### QueryBus
 
 查询总线实现，负责执行查询并返回结果。
+
+**核心方法：**
+
+```csharp
+TResult Send<TResult>(IQuery<TResult> query);  // 发送并执行查询
+```
 
 **使用方式：**
 
@@ -69,56 +83,41 @@ public sealed class QueryBus : IQueryBus
 ### 1. 定义查询
 
 ```csharp
-// 定义查询输入参数
-public record GetPlayerGoldQueryInput : IQueryInput;
-
 // 查询玩家金币数量
-public class GetPlayerGoldQuery : AbstractQuery<GetPlayerGoldQueryInput, int>
+public class GetPlayerGoldQuery : AbstractQuery<int>
 {
-public GetPlayerGoldQuery() : base(new EmptyQueryInput())
-{
-}
-
-    protected override int OnDo(GetPlayerGoldQueryInput input)
+    protected override int OnDo()
     {
         return this.GetModel<PlayerModel>().Gold.Value;
     }
-
 }
 
 // 查询玩家是否死亡
-public record IsPlayerDeadQueryInput : IQueryInput;
-
-public class IsPlayerDeadQuery : AbstractQuery<IsPlayerDeadQueryInput, bool>
+public class IsPlayerDeadQuery : AbstractQuery<bool>
 {
-public IsPlayerDeadQuery() : base(new EmptyQueryInput())
-{
-}
-
-    protected override bool OnDo(IsPlayerDeadQueryInput input)
+    protected override bool OnDo()
     {
         return this.GetModel<PlayerModel>().Health.Value <= 0;
     }
-
 }
 
 // 查询背包中指定物品的数量
-public record GetItemCountQueryInput(string ItemId) : IQueryInput;
-
-public class GetItemCountQuery : AbstractQuery<GetItemCountQueryInput, int>
+public class GetItemCountQuery : AbstractQuery<int>
 {
-public GetItemCountQuery(string itemId) : base(new GetItemCountQueryInput(itemId))
-{
-}
-
-    protected override int OnDo(GetItemCountQueryInput input)
+    private readonly string _itemId;
+    
+    public GetItemCountQuery(string itemId)
     {
-        var inventory = this.GetModel<InventoryModel>();
-        return inventory.GetItemCount(input.ItemId);
+        _itemId = itemId;
     }
 
+    protected override int OnDo()
+    {
+        var inventory = this.GetModel<InventoryModel>();
+        return inventory.GetItemCount(_itemId);
+    }
 }
-
+```
 ```
 
 ### 2. 发送查询
@@ -144,11 +143,11 @@ public partial class ShopUI : Control, IController
         if (playerGold >= _itemPrice)
         {
             // 发送购买命令
-            this.SendCommand(new BuyItemCommand { ItemId = "sword_01" });
+            this.SendCommand(new BuyItemCommand("sword_01"));
         }
         else
         {
-            GD.Print("金币不足！");
+            Console.WriteLine("金币不足！");
         }
     }
 }
@@ -159,11 +158,11 @@ public partial class ShopUI : Control, IController
 ```csharp
 public class CombatSystem : AbstractSystem
 {
-protected override void OnInit()
-{
-// 注册事件监听
-this.RegisterEvent<EnemyAttackEvent>(OnEnemyAttack);
-}
+    protected override void OnInit()
+    {
+        // 注册事件监听
+        this.RegisterEvent<EnemyAttackEvent>(OnEnemyAttack);
+    }
 
     private void OnEnemyAttack(EnemyAttackEvent e)
     {
@@ -173,12 +172,11 @@ this.RegisterEvent<EnemyAttackEvent>(OnEnemyAttack);
         if (!isDead)
         {
             // 执行伤害逻辑
-            this.SendCommand(new TakeDamageCommand { Damage = e.Damage });
+            this.SendCommand(new TakeDamageCommand(e.Damage));
         }
     }
-
 }
-
+```
 ```
 
 ## 高级用法
@@ -189,22 +187,24 @@ this.RegisterEvent<EnemyAttackEvent>(OnEnemyAttack);
 // 查询指定范围内的敌人列表
 public class GetEnemiesInRangeQuery : AbstractQuery<List<Enemy>>
 {
-    public Vector3 Center { get; set; }
-    public float Radius { get; set; }
+    private readonly Vector3 _center;
+    private readonly float _radius;
+    
+    public GetEnemiesInRangeQuery(Vector3 center, float radius)
+    {
+        _center = center;
+        _radius = radius;
+    }
     
     protected override List<Enemy> OnDo()
     {
         var enemySystem = this.GetSystem<EnemySpawnSystem>();
-        return enemySystem.GetEnemiesInRange(Center, Radius);
+        return enemySystem.GetEnemiesInRange(_center, _radius);
     }
 }
 
 // 使用
-var enemies = this.SendQuery(new GetEnemiesInRangeQuery
-{
-    Center = playerPosition,
-    Radius = 10.0f
-});
+var enemies = this.SendQuery(new GetEnemiesInRangeQuery(playerPosition, 10.0f));
 ```
 
 ### 2. 组合查询
@@ -213,7 +213,12 @@ var enemies = this.SendQuery(new GetEnemiesInRangeQuery
 // 查询玩家是否可以使用技能
 public class CanUseSkillQuery : AbstractQuery<bool>
 {
-public string SkillId { get; set; }
+    private readonly string _skillId;
+
+    public CanUseSkillQuery(string skillId)
+    {
+        _skillId = skillId;
+    }
 
     protected override bool OnDo()
     {
@@ -221,37 +226,44 @@ public string SkillId { get; set; }
         var skillModel = this.GetModel<SkillModel>();
         
         // 查询技能消耗
-        var skillCost = this.SendQuery(new GetSkillCostQuery { SkillId = SkillId });
+        var skillCost = this.SendQuery(new GetSkillCostQuery(_skillId));
         
         // 检查是否满足条件
         return playerModel.Mana.Value >= skillCost.ManaCost
-            && !this.SendQuery(new IsSkillOnCooldownQuery { SkillId = SkillId });
+            && !this.SendQuery(new IsSkillOnCooldownQuery(_skillId));
     }
-
 }
 
 public class GetSkillCostQuery : AbstractQuery<SkillCost>
 {
-public string SkillId { get; set; }
+    private readonly string _skillId;
+
+    public GetSkillCostQuery(string skillId)
+    {
+        _skillId = skillId;
+    }
 
     protected override SkillCost OnDo()
     {
-        return this.GetModel<SkillModel>().GetSkillCost(SkillId);
+        return this.GetModel<SkillModel>().GetSkillCost(_skillId);
     }
-
 }
 
 public class IsSkillOnCooldownQuery : AbstractQuery<bool>
 {
-public string SkillId { get; set; }
+    private readonly string _skillId;
+
+    public IsSkillOnCooldownQuery(string skillId)
+    {
+        _skillId = skillId;
+    }
 
     protected override bool OnDo()
     {
-        return this.GetModel<SkillModel>().IsOnCooldown(SkillId);
+        return this.GetModel<SkillModel>().IsOnCooldown(_skillId);
     }
-
 }
-
+```
 ```
 
 ### 3. 聚合数据查询
@@ -332,18 +344,38 @@ protected override void OnInit() { }
 
 ```
 
+## Query 的执行机制
+
+所有发送给查询总线的查询最终都会通过 `QueryExecutor` 来执行：
+
+```csharp
+public class QueryExecutor
+{
+    public static TResult Execute<TResult>(IQuery<TResult> query)
+    {
+        return query.Do();
+    }
+}
+```
+
+**特点：**
+
+- 提供统一的查询执行机制
+- 支持同步查询执行
+- 与架构上下文集成
+
 ## Command vs Query
 
 ### Command（命令）
 
 - **用途**：修改系统状态
-- **返回值**：无返回值（void）
+- **返回值**：无返回值（void）或有返回值
 - **示例**：购买物品、造成伤害、升级角色
 
 ### Query（查询）
 
 - **用途**：读取数据，不修改状态
-- **返回值**：有返回值
+- **返回值**：必须有返回值
 - **示例**：获取金币数量、检查技能冷却、查询玩家位置
 
 ```csharp
@@ -370,12 +402,17 @@ public class GoodQuery : AbstractQuery<int>
 // ✅ 修改数据应该使用 Command
 public class AddGoldCommand : AbstractCommand
 {
-    public int Amount { get; set; }
+    private readonly int _amount;
+    
+    public AddGoldCommand(int amount)
+    {
+        _amount = amount;
+    }
     
     protected override void OnExecute()
     {
         var model = this.GetModel<PlayerModel>();
-        model.Gold.Value += Amount;
+        model.Gold.Value += _amount;
     }
 }
 ```
@@ -387,6 +424,9 @@ public class AddGoldCommand : AbstractCommand
 3. **可组合** - 复杂查询可以通过组合简单查询实现
 4. **避免过度查询** - 如果需要频繁查询，考虑使用 BindableProperty
 5. **命名清晰** - Query 名称应该清楚表达查询意图（Get、Is、Can、Has等前缀）
+6. **参数通过构造函数传递** - 查询需要的参数应在创建时传入
+7. **查询无状态** - 查询不应该保存长期状态，执行完即可丢弃
+8. **合理使用缓存** - 对于复杂计算，可以在 Model 中缓存结果
 
 ## 性能优化
 
@@ -396,7 +436,7 @@ public class AddGoldCommand : AbstractCommand
 // 在 Model 中缓存复杂计算
 public class PlayerModel : AbstractModel
 {
-private int? _cachedPower;
+    private int? _cachedPower;
 
     public int GetPower()
     {
@@ -417,9 +457,8 @@ private int? _cachedPower;
     {
         _cachedPower = null;
     }
-
 }
-
+```
 ```
 
 ### 2. 批量查询
@@ -428,15 +467,40 @@ private int? _cachedPower;
 // 一次查询多个数据，而不是多次单独查询
 public class GetMultipleItemCountsQuery : AbstractQuery<Dictionary<string, int>>
 {
-    public List<string> ItemIds { get; set; }
+    private readonly List<string> _itemIds;
+    
+    public GetMultipleItemCountsQuery(List<string> itemIds)
+    {
+        _itemIds = itemIds;
+    }
     
     protected override Dictionary<string, int> OnDo()
     {
         var inventory = this.GetModel<InventoryModel>();
-        return ItemIds.ToDictionary(id => id, id => inventory.GetItemCount(id));
+        return _itemIds.ToDictionary(id => id, id => inventory.GetItemCount(id));
     }
 }
 ```
+
+## 查询模式优势
+
+### 1. 职责分离
+
+- 读写操作明确分离
+- 便于优化读写性能
+- 降低系统复杂度
+
+### 2. 可扩展性
+
+- 读写可以独立扩展
+- 支持不同的数据存储策略
+- 便于实现读写分离
+
+### 3. 可维护性
+
+- 查询逻辑集中管理
+- 便于重构和优化
+- 降低组件间耦合
 
 ## 相关包
 
@@ -445,3 +509,4 @@ public class GetMultipleItemCountsQuery : AbstractQuery<Dictionary<string, int>>
 - [`system`](./system.md) - System 中可以发送 Query
 - [`controller`](./controller.md) - Controller 中可以发送 Query
 - [`extensions`](./extensions.md) - 提供 SendQuery 扩展方法
+- [`architecture`](./architecture.md) - 架构核心，负责查询的分发和执行

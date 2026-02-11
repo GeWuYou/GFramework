@@ -5,11 +5,19 @@
 IoC（Inversion of Control，控制反转）包提供了一个轻量级的依赖注入容器，用于管理框架中各种组件的注册和获取。通过 IoC
 容器，可以实现组件间的解耦，便于测试和维护。
 
+IoC 容器是 GFramework 架构的核心组件之一，为整个框架提供依赖管理和组件解析服务。
+
 ## 核心类
 
-### `IocContainer`
+### IocContainer
 
 IoC 容器类，负责管理对象的注册和获取。
+
+**继承关系：**
+
+```csharp
+public class IocContainer : ContextAwareBase, IIocContainer
+```
 
 **主要功能：**
 
@@ -18,12 +26,15 @@ IoC 容器类，负责管理对象的注册和获取。
 - 类型安全的依赖管理
 - 线程安全操作
 - 容器冻结保护
+- 多实例注册支持
 
 ## 核心方法
 
-### 1. Register`<T>` 和 Register(Type, object)
+### Register`<T>` 和 Register(Type, object)
 
 注册一个实例到容器中。
+
+**方法签名：**
 
 ```csharp
 public void Register<T>(T instance)
@@ -35,6 +46,13 @@ public void Register(Type type, object instance)
 - `instance`: 要注册的实例对象
 - `type`: 要注册的类型（重载方法）
 
+**特点：**
+
+- 支持泛型和非泛型注册
+- 自动注册到实例的所有接口类型
+- 线程安全操作
+- 容器冻结后抛出异常
+
 **使用示例：**
 
 ```csharp
@@ -44,11 +62,16 @@ var container = new IocContainer();
 container.Register<IPlayerModel>(new PlayerModel());
 container.Register<IGameSystem>(new GameSystem());
 container.Register<IStorageUtility>(new StorageUtility());
+
+// 非泛型注册
+container.Register(typeof(ICustomService), new CustomService());
 ```
 
-### 2. RegisterSingleton`<T>`
+### RegisterSingleton`<T>`
 
 注册单例实例到容器中。一个类型只允许一个实例。
+
+**方法签名：**
 
 ```csharp
 public void RegisterSingleton<T>(T instance)
@@ -58,6 +81,12 @@ public void RegisterSingleton<T>(T instance)
 
 - `instance`: 要注册的单例实例
 
+**特点：**
+
+- 严格单例约束：同一类型只能注册一个实例
+- 重复注册会抛出 `InvalidOperationException`
+- 适用于全局服务和配置对象
+
 **使用示例：**
 
 ```csharp
@@ -65,11 +94,17 @@ var container = new IocContainer();
 
 // 注册单例
 container.RegisterSingleton<IPlayerModel>(new PlayerModel());
+container.RegisterSingleton<IGameConfiguration>(new GameConfiguration());
+
+// 以下会抛出异常（重复注册）
+// container.RegisterSingleton<IPlayerModel>(new AnotherPlayerModel());
 ```
 
-### 3. RegisterPlurality
+### RegisterPlurality
 
 注册多个实例，将实例注册到其实现的所有接口和具体类型上。
+
+**方法签名：**
 
 ```csharp
 public void RegisterPlurality(object instance)
@@ -79,9 +114,33 @@ public void RegisterPlurality(object instance)
 
 - `instance`: 要注册的实例
 
-### 4. RegisterSystem
+**特点：**
+
+- 自动注册到所有实现的接口
+- 同时注册具体类型
+- 支持多态注册
+- 常用于 System 和 Utility 注册
+
+**使用示例：**
+
+```csharp
+var container = new IocContainer();
+
+// 假设 GameSystem 实现了 IGameSystem 和 IUpdateable 接口
+var gameSystem = new GameSystem();
+container.RegisterPlurality(gameSystem);
+
+// 现在可以通过任一接口获取
+var system1 = container.Get<IGameSystem>();  // 返回 gameSystem
+var system2 = container.Get<IUpdateable>();   // 返回 gameSystem
+var system3 = container.Get<GameSystem>();    // 返回 gameSystem
+```
+
+### RegisterSystem
 
 注册系统实例，将其绑定到其所有实现的接口上。
+
+**方法签名：**
 
 ```csharp
 public void RegisterSystem(ISystem system)
@@ -91,9 +150,28 @@ public void RegisterSystem(ISystem system)
 
 - `system`: 系统实例对象
 
-### 5. Get`<T>` 和 GetAll`<T>`
+**特点：**
+
+- 专门为 System 设计的注册方法
+- 内部调用 `RegisterPlurality`
+- 提供语义化的 API
+
+**使用示例：**
+
+```csharp
+var container = new IocContainer();
+
+// 注册系统
+container.RegisterSystem(new CombatSystem());
+container.RegisterSystem(new InventorySystem());
+container.RegisterSystem(new QuestSystem());
+```
+
+### Get`<T>` 和 GetAll`<T>`
 
 从容器中获取指定类型的实例。
+
+**方法签名：**
 
 ```csharp
 public T? Get<T>() where T : class
@@ -105,6 +183,12 @@ public IReadOnlyList<T> GetAll<T>() where T : class
 - `Get<T>`: 返回指定类型的实例，如果未找到则返回 `null`
 - `GetAll<T>`: 返回指定类型的所有实例列表，如果未找到则返回空数组
 
+**特点：**
+
+- 线程安全读取
+- 支持接口和具体类型查询
+- 返回值快照（线程安全）
+
 **使用示例：**
 
 ```csharp
@@ -114,11 +198,14 @@ var gameSystems = container.GetAll<IGameSystem>();
 
 // 如果类型未注册，Get 返回 null，GetAll 返回空数组
 var unknownService = container.Get<IUnknownService>();  // null
+var allUnknownServices = container.GetAll<IUnknownService>();  // 空数组
 ```
 
-### 6. GetRequired`<T>`
+### GetRequired`<T>`
 
 获取指定类型的必需实例，如果没有注册或注册了多个实例会抛出异常。
+
+**方法签名：**
 
 ```csharp
 public T GetRequired<T>() where T : class
@@ -128,9 +215,29 @@ public T GetRequired<T>() where T : class
 
 - 返回找到的唯一实例
 
-### 7. GetAllSorted`<T>`
+**特点：**
+
+- 严格模式获取
+- 无实例时抛出 `InvalidOperationException`
+- 多实例时抛出 `InvalidOperationException`
+- 适用于必需的单例依赖
+
+**使用示例：**
+
+```csharp
+// 获取必需的服务
+var config = container.GetRequired<IGameConfiguration>();  // 必须存在且唯一
+
+// 以下情况会抛出异常：
+// 1. IGameConfiguration 未注册
+// 2. IGameConfiguration 注册了多个实例
+```
+
+### GetAllSorted`<T>`
 
 获取并排序（系统调度专用）。
+
+**方法签名：**
 
 ```csharp
 public IReadOnlyList<T> GetAllSorted<T>(Comparison<T> comparison) where T : class
@@ -144,24 +251,71 @@ public IReadOnlyList<T> GetAllSorted<T>(Comparison<T> comparison) where T : clas
 
 - 按指定方式排序后的实例列表
 
+**特点：**
+
+- 支持自定义排序
+- 适用于需要按优先级执行的场景
+- 常用于 System 更新顺序控制
+
+**使用示例：**
+
+```csharp
+// 按优先级排序系统
+var sortedSystems = container.GetAllSorted<ISystem>((a, b) =>
+{
+    var priorityA = GetSystemPriority(a);
+    var priorityB = GetSystemPriority(b);
+    return priorityA.CompareTo(priorityB);
+});
+```
+
+## IoC 容器架构
+
+```
+Architecture (架构层)
+├── IocContainer (IoC容器)
+│   ├── Register<T>()          // 泛型注册
+│   ├── Register(Type, obj)    // 非泛型注册
+│   ├── RegisterSingleton<T>() // 单例注册
+│   ├── RegisterPlurality()    // 多态注册
+│   ├── RegisterSystem()       // 系统注册
+│   ├── Get<T>()              // 获取实例
+│   ├── GetAll<T>()           // 获取所有实例
+│   ├── GetRequired<T>()      // 获取必需实例
+│   ├── GetAllSorted<T>()     // 排序获取
+│   ├── Contains<T>()         // 检查存在性
+│   ├── ContainsInstance()    // 检查实例
+│   ├── Clear()               // 清空容器
+│   └── Freeze()              // 冻结容器
+│
+├── Components (组件)
+│   ├── Model (数据模型)
+│   ├── System (业务系统)
+│   └── Utility (工具类)
+│
+└── Context (上下文)
+    └── 提供容器访问
+```
+
 ## 在框架中的使用
 
 ### Architecture 中的应用
 
 IoC 容器是 [`Architecture`](./architecture.md) 类的核心组件，用于管理所有的 System、Model 和 Utility。
 
-```
+```csharp
 public abstract class Architecture : IArchitecture
 {
     // 内置 IoC 容器
     private readonly IocContainer _mContainer = new();
 
     // 注册系统
-    public void RegisterSystem<TSystem>(TSystem system) where TSystem : ISystem
+    public TSystem RegisterSystem<TSystem>(TSystem system) where TSystem : ISystem
     {
-        system.SetArchitecture(this);
-        _mContainer.Register(system);  // 注册到容器
-        // ...
+        system.SetContext(Context);
+        _mContainer.RegisterPlurality(system);  // 注册到容器
+        RegisterLifecycleComponent(system);     // 处理生命周期
+        return system;
     }
 
     // 获取系统
@@ -169,6 +323,16 @@ public abstract class Architecture : IArchitecture
         => _mContainer.Get<TSystem>();  // 从容器获取
 
     // Model 和 Utility 同理
+    public TModel RegisterModel<TModel>(TModel model) where TModel : IModel
+    {
+        model.SetContext(Context);
+        _mContainer.RegisterPlurality(model);
+        RegisterLifecycleComponent(model);
+        return model;
+    }
+    
+    public TModel GetModel<TModel>() where TModel : class, IModel
+        => _mContainer.Get<TModel>();
 }
 ```
 

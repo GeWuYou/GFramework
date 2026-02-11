@@ -4,9 +4,11 @@
 
 Property 包提供了可绑定属性（BindableProperty）的实现，支持属性值的监听和响应式编程。这是实现数据绑定和响应式编程的核心组件。
 
+BindableProperty 是 GFramework 中 Model 层数据管理的基础，通过事件机制实现属性变化的通知。
+
 ## 核心接口
 
-### [`IReadonlyBindableProperty<T>`](./property.md)
+### IReadonlyBindableProperty`<T>`
 
 只读可绑定属性接口，提供属性值的读取和变更监听功能。
 
@@ -26,7 +28,7 @@ IUnRegister RegisterWithInitValue(Action<T> action);
 void UnRegister(Action<T> onValueChanged);
 ```
 
-### [`IBindableProperty<T>`](./property.md)
+### IBindableProperty`<T>`
 
 可绑定属性接口，继承自只读接口，增加了修改能力。
 
@@ -42,9 +44,32 @@ void SetValueWithoutEvent(T newValue);
 
 ## 核心类
 
-### [`BindableProperty<T>`](./property.md)
+### BindableProperty`<T>`
 
 可绑定属性的完整实现。
+
+**核心方法：**
+
+```csharp
+// 构造函数
+BindableProperty(T defaultValue = default!);
+
+// 属性值
+T Value { get; set; }
+
+// 注册监听
+IUnRegister Register(Action<T> onValueChanged);
+IUnRegister RegisterWithInitValue(Action<T> action);
+
+// 取消监听
+void UnRegister(Action<T> onValueChanged);
+
+// 设置值但不触发事件
+void SetValueWithoutEvent(T newValue);
+
+// 设置自定义比较器
+BindableProperty<T> WithComparer(Func<T, T, bool> comparer);
+```
 
 **使用示例：**
 
@@ -55,7 +80,7 @@ var health = new BindableProperty<int>(100);
 // 监听值变化（不会立即触发）
 var unregister = health.Register(newValue =>
 {
-    GD.Print($"Health changed to: {newValue}");
+    Console.WriteLine($"Health changed to: {newValue}");
 });
 
 // 设置值（会触发监听器）
@@ -74,7 +99,7 @@ health.SetValueWithoutEvent(75);
 // 1. 注册并立即获得当前值
 health.RegisterWithInitValue(value =>
 {
-    GD.Print($"Current health: {value}");  // 立即输出当前值
+    Console.WriteLine($"Current health: {value}");  // 立即输出当前值
     // 后续值变化时也会调用
 });
 
@@ -84,9 +109,13 @@ BindableProperty<int>.Comparer = (a, b) => Math.Abs(a - b) < 1;
 // 3. 使用实例方法设置比较器
 var position = new BindableProperty<Vector3>(Vector3.Zero)
     .WithComparer((a, b) => a.DistanceTo(b) < 0.01f);  // 距离小于0.01认为相等
+
+// 4. 字符串比较器示例
+var name = new BindableProperty<string>("Player")
+    .WithComparer((a, b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase));
 ```
 
-### [`BindablePropertyUnRegister<T>`](./property.md)
+### BindablePropertyUnRegister`<T>`
 
 可绑定属性的注销器，负责清理监听。
 
@@ -97,6 +126,15 @@ var unregister = health.Register(OnHealthChanged);
 // 当需要取消监听时
 unregister.UnRegister();
 ```
+
+## BindableProperty 工作原理
+
+BindableProperty 基于事件系统实现属性变化通知：
+
+1. **值设置**：当设置 `Value` 属性时，首先进行值比较
+2. **变化检测**：使用 `EqualityComparer<T>.Default` 或自定义比较器检测值变化
+3. **事件触发**：如果值发生变化，调用所有注册的回调函数
+4. **内存管理**：通过 `IUnRegister` 机制管理监听器的生命周期
 
 ## 在 Model 中使用
 
@@ -110,6 +148,7 @@ public class PlayerModel : AbstractModel
     public BindableProperty<int> Level { get; } = new(1);
     public BindableProperty<int> Health { get; } = new(100);
     public BindableProperty<int> MaxHealth { get; } = new(100);
+    public BindableProperty<Vector3> Position { get; } = new(Vector3.Zero);
     
     // 只读属性（外部只能读取和监听）
     public IReadonlyBindableProperty<int> ReadonlyHealth => Health;
@@ -123,7 +162,33 @@ public class PlayerModel : AbstractModel
             {
                 this.SendEvent(new PlayerDiedEvent());
             }
+            else if (hp < MaxHealth.Value * 0.3f)
+            {
+                this.SendEvent(new LowHealthWarningEvent());
+            }
         });
+        
+        // 监听等级变化
+        Level.Register(newLevel =>
+        {
+            this.SendEvent(new PlayerLevelUpEvent { NewLevel = newLevel });
+        });
+    }
+    
+    // 业务方法
+    public void TakeDamage(int damage)
+    {
+        Health.Value = Math.Max(0, Health.Value - damage);
+    }
+    
+    public void Heal(int amount)
+    {
+        Health.Value = Math.Min(MaxHealth.Value, Health.Value + amount);
+    }
+    
+    public float GetHealthPercentage()
+    {
+        return (float)Health.Value / MaxHealth.Value;
     }
 }
 ```
@@ -137,6 +202,7 @@ public partial class PlayerUI : Control, IController
 {
     [Export] private Label _healthLabel;
     [Export] private Label _nameLabel;
+    [Export] private ProgressBar _healthBar;
     
     private IUnRegisterList _unregisterList = new UnRegisterList();
     
@@ -151,6 +217,15 @@ public partial class PlayerUI : Control, IController
             .RegisterWithInitValue(health =>
             {
                 _healthLabel.Text = $"HP: {health}/{playerModel.MaxHealth.Value}";
+                _healthBar.Value = (float)health / playerModel.MaxHealth.Value * 100;
+            })
+            .AddToUnregisterList(_unregisterList);
+        
+        // 绑定最大生命值
+        playerModel.MaxHealth
+            .RegisterWithInitValue(maxHealth =>
+            {
+                _healthBar.MaxValue = maxHealth;
             })
             .AddToUnregisterList(_unregisterList);
         
@@ -159,6 +234,17 @@ public partial class PlayerUI : Control, IController
             .RegisterWithInitValue(name =>
             {
                 _nameLabel.Text = name;
+            })
+            .AddToUnregisterList(_unregisterList);
+        
+        // 绑定位置（仅用于调试显示）
+        playerModel.Position
+            .RegisterWithInitValue(pos =>
+            {
+                // 仅在调试模式下显示
+                #if DEBUG
+                Console.WriteLine($"Player position: {pos}");
+                #endif
             })
             .AddToUnregisterList(_unregisterList);
     }

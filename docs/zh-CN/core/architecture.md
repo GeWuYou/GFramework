@@ -2,24 +2,26 @@
 
 ## 概述
 
-Architecture 包是整个框架的核心,提供了基于 MVC 架构模式的应用程序架构基础。它实现了依赖注入(IoC)
-容器、组件生命周期管理,以及命令、查询、事件的统一调度机制。
+Architecture 包是整个框架的核心，提供了基于分层架构模式的应用程序架构基础。它实现了依赖注入(IoC)
+容器、组件生命周期管理，以及命令、查询、事件的统一调度机制。
 
-**注意**:本框架的 Core 模块与 Godot 解耦,Godot 相关集成在 GFramework.Godot 包中实现。
+**注意**：本框架的 Core 模块与 Godot 解耦，Godot 相关集成在 GFramework.Godot 包中实现。
 
 ## 核心接口
 
 ### IArchitecture
 
-架构接口,定义了框架的核心功能契约。
+架构接口，定义了框架的核心功能契约。
 
-**主要职责:**
+**主要职责：**
 
-- 组件注册:注册 System、Model、Utility
-- 组件获取:从容器中获取已注册的组件
-- 命令处理:发送并执行命令
-- 查询处理:发送并执行查询
-- 事件管理:发送、注册、注销事件
+- **组件注册**：注册 System、Model、Utility
+- **组件获取**：从容器中获取已注册的组件
+- **命令处理**：发送并执行命令
+- **查询处理**：发送并执行查询
+- **事件管理**：发送、注册、注销事件
+- **模块管理**：安装和管理架构模块
+- **生命周期管理**：管理架构的初始化、运行和销毁阶段
 
 **核心方法:**
 ```csharp
@@ -49,27 +51,27 @@ void UnRegisterEvent<T>(Action<T> onEvent);
 
 ### IArchitecturePhaseAware
 
-架构阶段感知接口,允许组件监听架构阶段变化。
+架构阶段感知接口，允许组件监听架构阶段变化。
 
-**核心方法:**
+**核心方法：**
 ```csharp
 void OnArchitecturePhase(ArchitecturePhase phase);
 ```
 
 ### IArchitectureModule
 
-架构模块接口,支持模块化架构扩展。
+架构模块接口，支持模块化架构扩展。
 
-**核心方法:**
+**核心方法：**
 ```csharp
 void Install(IArchitecture architecture);
 ```
 
 ### IAsyncInitializable
 
-异步初始化接口,支持组件异步初始化。
+异步初始化接口，支持组件异步初始化。
 
-**核心方法:**
+**核心方法：**
 ```csharp
 Task InitializeAsync();
 ```
@@ -78,9 +80,9 @@ Task InitializeAsync();
 
 ### Architecture 架构基类
 
-架构基类,实现了 `IArchitecture` 接口,提供完整的架构功能实现。
+架构基类，实现了 `IArchitecture` 接口，提供完整的架构功能实现。
 
-**构造函数参数:**
+**构造函数参数：**
 ```csharp
 public abstract class Architecture(
     IArchitectureConfiguration? configuration = null,
@@ -90,17 +92,19 @@ public abstract class Architecture(
 )
 ```
 
-**特性:**
+**特性：**
 
-- **阶段式生命周期管理**:支持多个架构阶段(
-  BeforeUtilityInit、AfterUtilityInit、BeforeModelInit、AfterModelInit、BeforeSystemInit、AfterSystemInit、Ready、Destroying、Destroyed)
-- **模块安装系统**:支持通过 `InstallModule` 扩展架构功能
-- **异步初始化**:支持同步和异步两种初始化方式
-- **IoC 容器集成**:内置依赖注入容器
-- **事件系统集成**:集成类型化事件系统
-- **与平台无关**:Core 模块不依赖 Godot,可以在任何 .NET 环境中使用
+- **阶段式生命周期管理**
+  ：支持多个架构阶段（BeforeUtilityInit、AfterUtilityInit、BeforeModelInit、AfterModelInit、BeforeSystemInit、AfterSystemInit、Ready、FailedInitialization、Destroying、Destroyed）
+- **模块安装系统**：支持通过 `InstallModule` 扩展架构功能
+- **异步初始化**：支持同步和异步两种初始化方式
+- **IoC 容器集成**：内置依赖注入容器
+- **事件系统集成**：集成类型化事件系统
+- **与平台无关**：Core 模块不依赖 Godot，可以在任何 .NET 环境中使用
+- **严格的阶段验证**：可配置的阶段转换验证机制
+- **组件生命周期管理**：自动管理组件的初始化和销毁
 
-**架构阶段:**
+**架构阶段：**
 ```csharp
 public enum ArchitecturePhase
 {
@@ -118,28 +122,29 @@ public enum ArchitecturePhase
 }
 ```
 
-**初始化流程:**
+**初始化流程：**
 
-1. 创建架构实例(传入配置或使用默认配置)
-2. 调用用户自定义的 `Init()` 方法
-3. 初始化上下文工具(Context Utility)
-4. 初始化所有注册的 Model
-5. 初始化所有注册的 System
-6. 冻结 IOC 容器
-7. 进入 Ready 阶段
+1. 创建架构实例（传入配置或使用默认配置）
+2. 初始化基础上下文和日志系统
+3. 调用用户自定义的 `Init()` 方法
+4. 按顺序初始化组件：
+    - 工具初始化（BeforeUtilityInit → AfterUtilityInit）
+    - 模型初始化（BeforeModelInit → AfterModelInit）
+    - 系统初始化（BeforeSystemInit → AfterSystemInit）
+5. 冻结 IOC 容器
+6. 进入 Ready 阶段
 
-**销毁流程:**
+**销毁流程：**
 
 1. 进入 Destroying 阶段
-2. 发送 `ArchitectureDestroyingEvent` 事件
-3. 销毁所有 System
-4. 进入 Destroyed 阶段
-5. 发送 `ArchitectureDestroyedEvent` 事件
+2. 按注册逆序销毁所有实现了 `IDisposable` 的组件
+3. 进入 Destroyed 阶段
+4. 清理所有资源
 
 **使用示例:**
 
 ```csharp
-// 1. 定义你的架构(继承 Architecture 基类)
+// 1. 定义你的架构（继承 Architecture 基类）
 public class GameArchitecture : Architecture
 {
     protected override void Init()
@@ -166,31 +171,28 @@ architecture.Initialize();
 // var architecture = new GameArchitecture();
 // await architecture.InitializeAsync();
 
-// 3. 通过依赖注入使用架构
-// 在 Controller 或其他组件中注入架构实例
+// 3. 等待架构就绪
+await architecture.WaitUntilReadyAsync();
+
+// 4. 通过依赖注入使用架构
+// 在 Controller 或其他组件中获取架构实例
 public class GameController : IController
 {
-    private readonly IArchitecture _architecture;
-
-    // 通过构造函数注入架构
-    public GameController(IArchitecture architecture)
-    {
-        _architecture = architecture;
-    }
+    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
     
     public void Start()
     {
         // 获取 Model
-        var playerModel = _architecture.GetModel<PlayerModel>();
+        var playerModel = this.GetModel<PlayerModel>();
         
         // 发送命令
-        _architecture.SendCommand(new StartGameCommand());
+        this.SendCommand(new StartGameCommand());
         
         // 发送查询
-        var score = _architecture.SendQuery(new GetScoreQuery());
+        var score = this.SendQuery(new GetScoreQuery());
         
         // 注册事件
-        _architecture.RegisterEvent<PlayerDiedEvent>(OnPlayerDied);
+        this.RegisterEvent<PlayerDiedEvent>(OnPlayerDied);
     }
     
     private void OnPlayerDied(PlayerDiedEvent e)
@@ -206,52 +208,73 @@ public class GameController : IController
 
 **Initialize()**
 
-同步初始化方法,阻塞当前线程直到初始化完成。
+同步初始化方法，阻塞当前线程直到初始化完成。
 ```csharp
 public void Initialize()
 ```
 
-使用示例:
+**特点：**
+
+- 阻塞式初始化
+- 适用于简单场景或控制台应用
+- 初始化失败时抛出异常并进入 `FailedInitialization` 阶段
+
+使用示例：
 ```csharp
 var architecture = new GameArchitecture();
 architecture.Initialize(); // 阻塞等待初始化完成
 ```
 
-异常处理: 如果初始化过程中发生异常,架构会进入 `FailedInitialization` 阶段并发送 `ArchitectureFailedInitializationEvent`
-事件。
+异常处理：如果初始化过程中发生异常，架构会进入 `FailedInitialization` 阶段。
 
 **InitializeAsync()**
 
-异步初始化方法,返回 Task 以便调用者可以等待初始化完成。
+异步初始化方法，返回 Task 以便调用者可以等待初始化完成。
 ```csharp
 public async Task InitializeAsync()
 ```
 
-使用示例:
+**特点：**
+
+- 非阻塞式初始化
+- 支持异步组件初始化
+- 适用于需要异步加载资源的场景
+- 初始化失败时抛出异常并进入 `FailedInitialization` 阶段
+
+使用示例：
 ```csharp
 var architecture = new GameArchitecture();
 await architecture.InitializeAsync(); // 异步等待初始化完成
 ```
 
-优势:
+优势：
 - 支持异步初始化 Model 和 System
-- 可以利用异步 I/O 操作(如异步加载数据)
+- 可以利用异步 I/O 操作（如异步加载数据）
 - 提高初始化性能
+- 不会阻塞主线程
 
 #### 模块管理
 
 **InstallModule(IArchitectureModule module)**
 
-安装架构模块,用于扩展架构功能。
+安装架构模块，用于扩展架构功能。
 ```csharp
-public void InstallModule(IArchitectureModule module)
+public IArchitectureModule InstallModule(IArchitectureModule module)
 ```
 
-参数:
+**返回值：** 返回安装的模块实例
 
-- `module`:要安装的模块实例
+**特点：**
 
-使用示例:
+- 模块安装时会自动注册生命周期钩子
+- 模块可以注册额外的组件到架构中
+- 只能在架构进入 Ready 阶段之前安装模块
+
+参数：
+
+- `module`：要安装的模块实例
+
+使用示例：
 
 ```csharp
 // 定义模块
@@ -267,23 +290,31 @@ public class NetworkModule : IArchitectureModule
 
 // 安装模块
 var architecture = new GameArchitecture();
-architecture.InstallModule(new NetworkModule());
+var installedModule = architecture.InstallModule(new NetworkModule());
 ```
 
 #### 生命周期钩子
 
 **RegisterLifecycleHook(IArchitectureLifecycle hook)**
 
-注册生命周期钩子,用于在架构阶段变化时执行自定义逻辑。
+注册生命周期钩子，用于在架构阶段变化时执行自定义逻辑。
 ```csharp
-public void RegisterLifecycleHook(IArchitectureLifecycle hook)
+public IArchitectureLifecycle RegisterLifecycleHook(IArchitectureLifecycle hook)
 ```
 
-参数:
+**返回值：** 返回注册的生命周期钩子实例
 
-- `hook`:生命周期钩子实例
+**特点：**
 
-使用示例:
+- 生命周期钩子可以监听所有架构阶段变化
+- 只能在架构进入 Ready 阶段之前注册
+- 架构会按注册顺序通知所有钩子
+
+参数：
+
+- `hook`：生命周期钩子实例
+
+使用示例：
 
 ```csharp
 // 定义生命周期钩子
@@ -308,11 +339,11 @@ public class PerformanceMonitorHook : IArchitectureLifecycle
 
 // 注册生命周期钩子
 var architecture = new GameArchitecture();
-architecture.RegisterLifecycleHook(new PerformanceMonitorHook());
+var registeredHook = architecture.RegisterLifecycleHook(new PerformanceMonitorHook());
 architecture.Initialize();
 ```
 
-**注意:** 生命周期钩子只能在架构进入 Ready 阶段之前注册。
+**注意：** 生命周期钩子只能在架构进入 Ready 阶段之前注册。
 
 #### 属性
 
@@ -320,10 +351,16 @@ architecture.Initialize();
 
 获取当前架构的阶段。
 ```csharp
-public ArchitecturePhase CurrentPhase { get; }
+public ArchitecturePhase CurrentPhase { get; private set; }
 ```
 
-使用示例:
+**特点：**
+
+- 只读属性，外部无法直接修改
+- 实时反映架构的当前状态
+- 可用于条件判断和状态检查
+
+使用示例：
 
 ```csharp
 var architecture = new GameArchitecture();
@@ -347,12 +384,18 @@ await Task.Run(async () =>
 
 **Context**
 
-获取架构上下文,提供对架构服务的访问。
+获取架构上下文，提供对架构服务的访问。
 ```csharp
 public IArchitectureContext Context { get; }
 ```
 
-使用示例:
+**特点：**
+
+- 提供对架构核心服务的访问
+- 包含事件总线、命令总线、查询总线等
+- 是架构内部服务的统一入口
+
+使用示例：
 
 ```csharp
 // 通过 Context 访问服务
@@ -367,7 +410,14 @@ var environment = context.Environment;
 
 ```csharp
 // 1. 使用自定义配置
-var config = new ArchitectureConfiguration();
+var config = new ArchitectureConfiguration
+{
+    ArchitectureProperties = new ArchitectureProperties
+    {
+        StrictPhaseValidation = true,      // 启用严格阶段验证
+        AllowLateRegistration = false      // 禁止就绪后注册组件
+    }
+};
 var architecture = new GameArchitecture(configuration: config);
 
 // 2. 模块安装
@@ -382,10 +432,10 @@ public class GamePhaseListener : IArchitecturePhaseAware
         switch (phase)
         {
             case ArchitecturePhase.Ready:
-                GD.Print("架构已就绪,可以开始游戏了");
+                Console.WriteLine("架构已就绪,可以开始游戏了");
                 break;
             case ArchitecturePhase.Destroying:
-                GD.Print("架构正在销毁");
+                Console.WriteLine("架构正在销毁");
                 break;
         }
     }
@@ -396,24 +446,57 @@ public class LifecycleHook : IArchitectureLifecycle
 {
     public void OnPhase(ArchitecturePhase phase, IArchitecture architecture)
     {
-        GD.Print($"架构阶段变化: {phase}");
+        Console.WriteLine($"架构阶段变化: {phase}");
     }
+}
+
+// 5. 等待架构就绪
+public async Task WaitForArchitectureReady()
+{
+    var architecture = new GameArchitecture();
+    var initTask = architecture.InitializeAsync();
+    
+    // 可以在其他地方等待架构就绪
+    await architecture.WaitUntilReadyAsync();
+    Console.WriteLine("架构已就绪");
 }
 ```
 
 ### ArchitectureConfiguration 架构配置类
 
-架构配置类,用于配置架构的行为。
+架构配置类，用于配置架构的行为。
 
-**使用示例:**
+**主要配置项：**
+
+```csharp
+public class ArchitectureConfiguration : IArchitectureConfiguration
+{
+    public IArchitectureProperties ArchitectureProperties { get; set; } = new ArchitectureProperties();
+    public IEnvironmentProperties EnvironmentProperties { get; set; } = new EnvironmentProperties();
+    public ILoggerProperties LoggerProperties { get; set; } = new LoggerProperties();
+}
+
+public class ArchitectureProperties
+{
+    public bool StrictPhaseValidation { get; set; } = false;     // 严格阶段验证
+    public bool AllowLateRegistration { get; set; } = true;      // 允许延迟注册
+}
+```
+
+**使用示例：**
 
 ```csharp
 var config = new ArchitectureConfiguration
 {
-    // 严格阶段验证
-    StrictPhaseValidation = true,
-    // 允许延迟注册
-    AllowLateRegistration = false
+    ArchitectureProperties = new ArchitectureProperties
+    {
+        StrictPhaseValidation = true,      // 启用严格阶段验证
+        AllowLateRegistration = false      // 禁止就绪后注册组件
+    },
+    LoggerProperties = new LoggerProperties
+    {
+        LoggerFactoryProvider = new ConsoleLoggerFactoryProvider()  // 自定义日志工厂
+    }
 };
 
 var architecture = new GameArchitecture(configuration: config);
@@ -421,15 +504,34 @@ var architecture = new GameArchitecture(configuration: config);
 
 ### ArchitectureServices 架构服务类
 
-架构服务类,管理命令总线、查询总线、IOC容器和类型事件系统。
+架构服务类，管理命令总线、查询总线、IOC容器和类型事件系统。
+
+**核心服务：**
+
+- `IIocContainer Container`：依赖注入容器
+- `IEventBus EventBus`：事件总线
+- `ICommandBus CommandBus`：命令总线
+- `IQueryBus QueryBus`：查询总线
 
 ### ArchitectureContext 架构上下文类
 
-架构上下文类,提供对架构服务的访问。
+架构上下文类，提供对架构服务的访问。
+
+**功能：**
+
+- 统一访问架构核心服务
+- 管理服务实例的生命周期
+- 提供服务解析功能
 
 ### GameContext 游戏上下文类
 
-游戏上下文类,管理架构上下文与类型的绑定关系。
+游戏上下文类，管理架构上下文与类型的绑定关系。
+
+**功能：**
+
+- 维护架构类型与上下文实例的映射
+- 提供全局上下文访问
+- 支持多架构实例管理
 
 ## 设计模式
 
@@ -459,20 +561,31 @@ var architecture = new GameArchitecture(configuration: config);
 
 ### 7. 组合优于继承
 
-通过接口组合获得不同能力,而不是深层继承链。
+通过接口组合获得不同能力，而不是深层继承链。
+
+### 8. 模块化设计
+
+通过 `IArchitectureModule` 实现架构的可扩展性。
+
+### 9. 工厂模式
+
+通过配置对象和工厂方法创建架构实例。
 
 ## 最佳实践
 
-1. **保持架构类简洁**:只在 `Init()` 中注册组件,不要包含业务逻辑
-2. **合理划分职责**:
-   - Model:数据和状态
-   - System:业务逻辑和规则
-   - Utility:无状态的工具方法
-3. **使用依赖注入**:通过构造函数注入架构实例,便于测试
-4. **事件命名规范**:使用过去式命名事件类,如 `PlayerDiedEvent`
-5. **避免循环依赖**:System 不应直接引用 System,应通过事件通信
-6. **使用模块扩展**:通过 `IArchitectureModule` 实现架构的可扩展性
-7. **Core 模块与平台解耦**:GFramework.Core 不包含 Godot 相关代码,Godot 集成在单独模块中
+1. **保持架构类简洁**：只在 `Init()` 中注册组件，不要包含业务逻辑
+2. **合理划分职责**：
+    - Model：数据和状态
+    - System：业务逻辑和规则
+    - Utility：无状态的工具方法
+3. **使用依赖注入**：通过构造函数注入架构实例，便于测试
+4. **事件命名规范**：使用过去式命名事件类，如 `PlayerDiedEvent`
+5. **避免循环依赖**：System 不应直接引用 System，应通过事件通信
+6. **使用模块扩展**：通过 `IArchitectureModule` 实现架构的可扩展性
+7. **Core 模块与平台解耦**：GFramework.Core 不包含 Godot 相关代码，Godot 集成在单独模块中
+8. **合理配置阶段验证**：根据项目需求配置 `StrictPhaseValidation` 和 `AllowLateRegistration`
+9. **及时处理初始化异常**：捕获并处理架构初始化过程中的异常
+10. **使用异步初始化**：对于需要加载大量资源的场景，优先使用 `InitializeAsync()`
 
 ## 相关包
 
@@ -483,8 +596,11 @@ var architecture = new GameArchitecture(configuration: config);
 - **model** - 数据模型
 - **system** - 业务系统
 - **utility** - 工具类
-- **GFramework.Godot** - Godot 特定集成(GodotNode 扩展、GodotLogger 等)
+- **GFramework.Godot** - Godot 特定集成（GodotNode 扩展、GodotLogger 等）
+- **extensions** - 扩展方法
+- **logging** - 日志系统
+- **environment** - 环境管理
 
 ---
 
-**许可证**: Apache 2.0
+**许可证**：Apache 2.0

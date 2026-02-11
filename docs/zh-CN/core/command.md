@@ -4,9 +4,11 @@
 
 Command 包实现了命令模式（Command Pattern），用于封装用户操作和业务逻辑。通过命令模式，可以将请求封装为对象，实现操作的参数化、队列化、日志记录、撤销等功能。
 
+命令系统是 GFramework CQRS 架构的重要组成部分，与事件系统和查询系统协同工作，实现完整的业务逻辑处理流程。
+
 ## 核心接口
 
-### 1. [`ICommand`](./command.md)
+### ICommand
 
 无返回值命令接口，定义了命令的基本契约。
 
@@ -16,7 +18,7 @@ Command 包实现了命令模式（Command Pattern），用于封装用户操作
 void Execute();  // 执行命令
 ```
 
-### 2. [`ICommand<TResult>`](./command.md)
+### ICommand`<TResult>`
 
 带返回值的命令接口，用于需要返回执行结果的命令。
 
@@ -28,37 +30,41 @@ TResult Execute();  // 执行命令并返回结果
 
 ## 核心类
 
-### 1. [`AbstractCommand<TInput>`](./command.md)
+### AbstractCommand
 
-无返回值命令的抽象基类，提供了命令的基础实现。它继承自 [ContextAwareBase](./rule.md)
-，具有上下文感知能力。
+无返回值命令的抽象基类，提供了命令的基础实现。它继承自 ContextAwareBase，具有上下文感知能力。
+
+**核心方法：**
+
+```csharp
+void ICommand.Execute();                    // 实现 ICommand 接口
+protected abstract void OnExecute();        // 抽象执行方法，由子类实现
+```
 
 **使用示例：**
 
 ```csharp
-// 定义一个命令输入参数
-public struct StartGameCommandInput : ICommandInput
-{
-    public int LevelId { get; set; }
-    public string PlayerName { get; set; }
-}
-
 // 定义一个开始游戏的命令
-public class StartGameCommand : AbstractCommand<StartGameCommandInput>
+public class StartGameCommand : AbstractCommand
 {
-    public StartGameCommand(StartGameCommandInput input) : base(input)
+    private readonly int _levelId;
+    private readonly string _playerName;
+
+    public StartGameCommand(int levelId, string playerName)
     {
+        _levelId = levelId;
+        _playerName = playerName;
     }
 
-    protected override void OnExecute(StartGameCommandInput input)
+    protected override void OnExecute()
     {
         // 获取需要的模型
         var playerModel = this.GetModel<PlayerModel>();
         var gameModel = this.GetModel<GameModel>();
         
         // 执行业务逻辑
-        playerModel.PlayerName.Value = input.PlayerName;
-        gameModel.CurrentLevel.Value = input.LevelId;
+        playerModel.PlayerName.Value = _playerName;
+        gameModel.CurrentLevel.Value = _levelId;
         gameModel.GameState.Value = GameState.Playing;
         
         // 发送事件通知其他模块
@@ -74,43 +80,44 @@ public class GameController : IController
     public void OnStartButtonClicked()
     {
         // 发送命令实例
-        this.SendCommand(new StartGameCommand(new StartGameCommandInput 
-        { 
-            LevelId = 1, 
-            PlayerName = "Player1" 
-        }));
+        this.SendCommand(new StartGameCommand(1, "Player1"));
     }
 }
 ```
 
-### 2. [`AbstractCommand<TInput, TResult>`](./command.md)
+### AbstractCommandWithResult`<TResult>`
 
-带返回值命令的抽象基类，同样继承自 [ContextAwareBase](./rule.md)。
+带返回值命令的抽象基类，同样继承自 ContextAwareBase。
+
+**核心方法：**
+
+```csharp
+TResult ICommand<TResult>.Execute();        // 实现 ICommand<TResult> 接口
+protected abstract TResult OnExecute();     // 抽象执行方法，由子类实现
+```
 
 **使用示例：**
 
 ```csharp
-// 定义一个计算伤害的命令输入
-public struct CalculateDamageCommandInput : ICommandInput
-{
-    public int AttackerAttackPower { get; set; }
-    public int DefenderDefense { get; set; }
-}
-
 // 定义一个计算伤害的命令
-public class CalculateDamageCommand : AbstractCommand<CalculateDamageCommandInput, int>
+public class CalculateDamageCommand : AbstractCommandWithResult<int>
 {
-    public CalculateDamageCommand(CalculateDamageCommandInput input) : base(input)
+    private readonly int _attackerAttackPower;
+    private readonly int _defenderDefense;
+
+    public CalculateDamageCommand(int attackerAttackPower, int defenderDefense)
     {
+        _attackerAttackPower = attackerAttackPower;
+        _defenderDefense = defenderDefense;
     }
 
-    protected override int OnExecute(CalculateDamageCommandInput input)
+    protected override int OnExecute()
     {
         // 获取游戏配置
         var config = this.GetModel<GameConfigModel>();
         
         // 计算最终伤害
-        var baseDamage = input.AttackerAttackPower - input.DefenderDefense;
+        var baseDamage = _attackerAttackPower - _defenderDefense;
         var finalDamage = Math.Max(1, baseDamage * config.DamageMultiplier);
         
         return (int)finalDamage;
@@ -125,11 +132,10 @@ public class CombatSystem : AbstractSystem
     public void Attack(Character attacker, Character defender)
     {
         // 发送命令并获取返回值
-        var damage = this.SendCommand(new CalculateDamageCommand(new CalculateDamageCommandInput
-        {
-            AttackerAttackPower = attacker.AttackPower,
-            DefenderDefense = defender.Defense
-        }));
+        var damage = this.SendCommand(new CalculateDamageCommand(
+            attacker.AttackPower,
+            defender.Defense
+        ));
         
         // 应用伤害
         defender.Health -= damage;
@@ -147,6 +153,12 @@ public class CombatSystem : AbstractSystem
 3. **返回结果**：对于带返回值的命令，返回执行结果
 4. **命令销毁**：命令执行完毕后可以被垃圾回收
 
+**注意事项：**
+
+- 命令应该是无状态的，执行完即可丢弃
+- 避免在命令中保存长期引用
+- 命令执行应该是原子操作
+
 ## CommandBus - 命令总线
 
 ### 功能说明
@@ -156,64 +168,122 @@ public class CombatSystem : AbstractSystem
 **主要方法：**
 
 ```csharp
-void Send(ICommand command);              // 发送无返回值命令
+void Send(ICommand command);                    // 发送无返回值命令
 TResult Send<TResult>(ICommand<TResult> command);  // 发送带返回值命令
 ```
+
+**特点：**
+
+- 统一的命令执行入口
+- 支持同步命令执行
+- 与架构上下文集成
 
 ### 使用示例
 
 ```csharp
-var commandBus = new CommandBus();
+// 通过架构获取命令总线
+var commandBus = architecture.Context.CommandBus;
 
 // 发送无返回值命令
-commandBus.Send(new StartGameCommand(new StartGameCommandInput()));
+commandBus.Send(new StartGameCommand(1, "Player1"));
 
 // 发送带返回值命令
-var result = commandBus.Send(new CalculateDamageCommand(new CalculateDamageCommandInput()));
+var damage = commandBus.Send(new CalculateDamageCommand(100, 50));
 ```
 
-## EmptyCommandInput - 空命令输入
+## 命令基类变体
 
-当命令不需要输入参数时，可以使用 `EmptyCommandInput` 类：
+框架提供了多种命令基类以满足不同需求：
+
+### AbstractCommand
+
+最基础的无返回值命令类
+
+### AbstractCommandWithResult`<TResult>`
+
+带返回值的命令基类
+
+### AbstractCommandWithInput`<TInput>`
+
+带输入参数的无返回值命令类
+
+### AbstractCommandWithInputAndResult`<TInput, TResult>`
+
+既带输入参数又带返回值的命令类
+
+### AbstractAsyncCommand
+
+支持异步执行的命令基类
+
+### AbstractAsyncCommandWithResult`<TResult>`
+
+支持异步执行的带返回值命令基类
 
 ```csharp
-public class SimpleActionCommand : AbstractCommand<EmptyCommandInput>
+// 异步命令示例
+public class LoadSaveDataCommand : AbstractAsyncCommandWithResult<SaveData>
 {
-    public SimpleActionCommand(EmptyCommandInput input) : base(input)
+    private readonly string _saveSlot;
+
+    public LoadSaveDataCommand(string saveSlot)
     {
+        _saveSlot = saveSlot;
     }
 
-    protected override void OnExecute(EmptyCommandInput input)
+    protected override async Task<SaveData> OnExecuteAsync()
     {
-        // 执行简单操作，无需额外参数
-        this.SendEvent(new SimpleActionEvent());
+        var storage = this.GetUtility<IStorageUtility>();
+        return await storage.LoadSaveDataAsync(_saveSlot);
     }
 }
 ```
+
+## 命令处理器执行
+
+所有发送给命令总线的命令最终都会通过 `CommandExecutor` 来执行：
+
+```csharp
+public class CommandExecutor
+{
+    public static void Execute(ICommand command)
+    {
+        command.Execute();
+    }
+    
+    public static TResult Execute<TResult>(ICommand<TResult> command)
+    {
+        return command.Execute();
+    }
+}
+```
+
+**特点：**
+
+- 提供统一的命令执行机制
+- 支持同步和异步命令执行
+- 可以扩展添加中间件逻辑
 
 ## 使用场景
 
 ### 1. 用户交互操作
 
 ```csharp
-public struct SaveGameCommandInput : ICommandInput
+public class SaveGameCommand : AbstractCommand
 {
-    public string SaveSlot { get; set; }
-}
+    private readonly string _saveSlot;
 
-public class SaveGameCommand : AbstractCommand<SaveGameCommandInput>
-{
-    public SaveGameCommand(SaveGameCommandInput input) : base(input)
+    public SaveGameCommand(string saveSlot)
     {
+        _saveSlot = saveSlot;
     }
 
-    protected override void OnExecute(SaveGameCommandInput input)
+    protected override void OnExecute()
     {
         var saveSystem = this.GetSystem<SaveSystem>();
         var playerModel = this.GetModel<PlayerModel>();
         
-        saveSystem.SavePlayerData(playerModel, input.SaveSlot);
-        this.SendEvent(new GameSavedEvent(input.SaveSlot));
+        saveSystem.SavePlayerData(playerModel, _saveSlot);
+        this.SendEvent(new GameSavedEvent(_saveSlot));
     }
 }
 ```
@@ -221,18 +291,16 @@ public class SaveGameCommand : AbstractCommand<SaveGameCommandInput>
 ### 2. 业务流程控制
 
 ```csharp
-public struct LoadLevelCommandInput : ICommandInput
+public class LoadLevelCommand : AbstractCommand
 {
-    public int LevelId { get; set; }
-}
+    private readonly int _levelId;
 
-public class LoadLevelCommand : AbstractCommand<LoadLevelCommandInput>
-{
-    public LoadLevelCommand(LoadLevelCommandInput input) : base(input)
+    public LoadLevelCommand(int levelId)
     {
+        _levelId = levelId;
     }
 
-    protected override void OnExecute(LoadLevelCommandInput input)
+    protected override void OnExecute()
     {
         var levelSystem = this.GetSystem<LevelSystem>();
         var uiSystem = this.GetSystem<UISystem>();
@@ -241,10 +309,10 @@ public class LoadLevelCommand : AbstractCommand<LoadLevelCommandInput>
         uiSystem.ShowLoadingScreen();
         
         // 加载关卡
-        levelSystem.LoadLevel(input.LevelId);
+        levelSystem.LoadLevel(_levelId);
         
         // 发送事件
-        this.SendEvent(new LevelLoadedEvent(input.LevelId));
+        this.SendEvent(new LevelLoadedEvent(_levelId));
     }
 }
 ```
@@ -255,45 +323,32 @@ public class LoadLevelCommand : AbstractCommand<LoadLevelCommandInput>
 2. **命令无状态**：命令不应该保存长期状态，执行完即可丢弃
 3. **参数通过构造函数传递**：命令需要的参数应在创建时传入
 4. **避免命令嵌套**：命令内部尽量不要发送其他命令，使用事件通信
-5. **合理使用返回值**：只在确实需要返回结果时使用 `AbstractCommand<TInput, TResult>`
+5. **合理使用返回值**：只在确实需要返回结果时使用带返回值的命令
 6. **命令命名规范**：使用动词+名词形式，如 `StartGameCommand`、`SavePlayerCommand`
-7. **输入参数结构化**：使用 `ICommandInput` 接口的实现类来组织命令参数
+7. **单一职责原则**：每个命令只负责一个特定的业务操作
+8. **使用异步命令**：对于需要长时间执行的操作，使用异步命令避免阻塞
+9. **命令验证**：在命令执行前验证输入参数的有效性
+10. **错误处理**：在命令中适当处理异常情况
 
-## 扩展功能
+## 命令模式优势
 
-### 命令撤销/重做（可扩展）
+### 1. 可扩展性
 
-```csharp
-public struct MoveCommandInput : ICommandInput
-{
-    public Vector3 NewPosition { get; set; }
-}
+- 命令可以被序列化和存储
+- 支持命令队列和批处理
+- 便于实现撤销/重做功能
 
-// 实现可撤销命令
-public class MoveCommand : AbstractCommand<MoveCommandInput>, IUndoableCommand
-{
-    private Vector3 _oldPosition;
-    private Vector3 _newPosition;
-    
-    public MoveCommand(MoveCommandInput input) : base(input)
-    {
-        _newPosition = input.NewPosition;
-    }
+### 2. 可测试性
 
-    protected override void OnExecute(MoveCommandInput input)
-    {
-        var player = this.GetModel<PlayerModel>();
-        _oldPosition = player.Position;
-        player.Position = input.NewPosition;
-    }
-    
-    public void Undo()
-    {
-        var player = this.GetModel<PlayerModel>();
-        player.Position = _oldPosition;
-    }
-}
-```
+- 命令逻辑独立，易于单元测试
+- 可以模拟命令执行结果
+- 支持行为驱动开发
+
+### 3. 可维护性
+
+- 业务逻辑集中管理
+- 降低组件间耦合度
+- 便于重构和扩展
 
 ## 相关包
 
@@ -306,4 +361,4 @@ public class MoveCommand : AbstractCommand<MoveCommandInput>, IUndoableCommand
 
 ---
 
-**许可证**: Apache 2.0
+**许可证**：Apache 2.0

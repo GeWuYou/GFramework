@@ -4,9 +4,11 @@
 
 System 包定义了业务逻辑层（Business Logic Layer）。System 负责处理游戏的核心业务逻辑，协调 Model 之间的交互，响应事件并执行复杂的业务流程。
 
+System 是 GFramework 架构中业务逻辑的核心组件，通过事件系统与 Model 和 Controller 进行通信。
+
 ## 核心接口
 
-### [`ICanGetSystem`](./system.md)
+### ICanGetSystem
 
 标记接口，表示该类型可以获取其他 System。
 
@@ -16,7 +18,7 @@ System 包定义了业务逻辑层（Business Logic Layer）。System 负责处�
 public interface ICanGetSystem : IBelongToArchitecture
 ```
 
-### [`ISystem`](./system.md)
+### ISystem
 
 System 接口，定义了系统的基本行为。
 
@@ -30,7 +32,10 @@ void OnArchitecturePhase(ArchitecturePhase phase);  // 处理架构阶段事件
 
 **继承的能力：**
 
-- `ICanSetArchitecture` - 可设置架构
+- `IContextAware` - 上下文感知
+- `IInitializable` - 可初始化
+- `IDisposable` - 可销毁
+- `IArchitecturePhaseAware` - 架构阶段感知
 - `ICanGetModel` - 可获取 Model
 - `ICanGetUtility` - 可获取 Utility
 - `ICanGetSystem` - 可获取其他 System
@@ -39,33 +44,57 @@ void OnArchitecturePhase(ArchitecturePhase phase);  // 处理架构阶段事件
 
 ## 核心类
 
-### [`AbstractSystem`](./system.md)
+### AbstractSystem
 
 抽象 System 基类，提供了 System 的基础实现。继承自 ContextAwareBase，具有上下文感知能力。
+
+**核心方法：**
+
+```csharp
+void IInitializable.Init();                    // 实现初始化接口
+void IDisposable.Destroy();                   // 实现销毁接口
+protected abstract void OnInit();             // 抽象初始化方法，由子类实现
+protected virtual void OnDestroy();           // 虚拟销毁方法，子类可重写
+public virtual void OnArchitecturePhase(ArchitecturePhase phase);  // 处理架构阶段事件
+```
 
 **使用方式：**
 
 ```csharp
 public abstract class AbstractSystem : ContextAwareBase, ISystem
 {
-    void ISystem.Init() => OnInit();  // 系统初始化，内部调用抽象方法 OnInit()
-    void ISystem.Destroy() => OnDestroy();  // 系统销毁，内部调用 OnDestroy()
-    protected abstract void OnInit();  // 子类实现初始化逻辑
-    protected virtual void OnDestroy();  // 子类可选择重写销毁逻辑
+    void IInitializable.Init() => OnInit();     // 系统初始化，内部调用抽象方法 OnInit()
+    void IDisposable.Destroy() => OnDestroy();  // 系统销毁，内部调用 OnDestroy()
+    protected abstract void OnInit();           // 子类实现初始化逻辑
+    protected virtual void OnDestroy();         // 子类可选择重写销毁逻辑
     public virtual void OnArchitecturePhase(ArchitecturePhase phase);  // 处理架构阶段事件
 }
 ```
+
+## System 生命周期
+
+System 的生命周期由架构管理：
+
+1. **注册阶段**：通过 `architecture.RegisterSystem()` 注册到架构
+2. **初始化阶段**：架构调用 `Init()` 方法，内部执行 `OnInit()`
+3. **运行阶段**：处理事件和执行业务逻辑
+4. **销毁阶段**：架构调用 `Destroy()` 方法，内部执行 `OnDestroy()`
 
 ## 基本使用
 
 ### 1. 定义 System
 
-```
+```csharp
 // 战斗系统
 public class CombatSystem : AbstractSystem
 {
+    private ILogger _logger;
+    
     protected override void OnInit()
     {
+        _logger = this.GetUtility<ILogger>();
+        _logger.Info("CombatSystem initialized");
+        
         // 注册事件监听
         this.RegisterEvent<EnemyAttackEvent>(OnEnemyAttack);
         this.RegisterEvent<PlayerAttackEvent>(OnPlayerAttack);
@@ -83,6 +112,8 @@ public class CombatSystem : AbstractSystem
         
         // 发送伤害事件
         this.SendEvent(new PlayerTookDamageEvent { Damage = damage });
+        
+        _logger.Debug($"Player took {damage} damage from enemy attack");
     }
     
     private void OnPlayerAttack(PlayerAttackEvent e)
@@ -98,6 +129,8 @@ public class CombatSystem : AbstractSystem
             EnemyId = e.Enemy.Id, 
             Damage = damage 
         });
+        
+        _logger.Debug($"Enemy {e.Enemy.Id} took {damage} damage from player attack");
     }
     
     private int CalculateDamage(int attackPower, int defense)
@@ -107,34 +140,50 @@ public class CombatSystem : AbstractSystem
 
     protected override void OnDestroy()
     {
+        _logger.Info("CombatSystem destroyed");
         // 清理资源
         base.OnDestroy();
+    }
+    
+    public override void OnArchitecturePhase(ArchitecturePhase phase)
+    {
+        switch (phase)
+        {
+            case ArchitecturePhase.AfterSystemInit:
+                _logger.Info("CombatSystem is ready");
+                break;
+            case ArchitecturePhase.Destroying:
+                _logger.Info("CombatSystem is shutting down");
+                break;
+        }
     }
 }
 ```
 
 ### 2. 注册 System
 
-```
+```csharp
 public class GameArchitecture : Architecture
 {
     protected override void Init()
     {
         // 注册 Model
-        this.RegisterModel<PlayerModel>(new PlayerModel());
-        this.RegisterModel<EnemyModel>(new EnemyModel());
+        this.RegisterModel(new PlayerModel());
+        this.RegisterModel(new EnemyModel());
+        this.RegisterModel(new InventoryModel());
 
         // 注册 System（系统注册后会自动调用 Init）
-        this.RegisterSystem<CombatSystem>(new CombatSystem());
-        this.RegisterSystem<InventorySystem>(new InventorySystem());
-        this.RegisterSystem<QuestSystem>(new QuestSystem());
+        this.RegisterSystem(new CombatSystem());
+        this.RegisterSystem(new InventorySystem());
+        this.RegisterSystem(new QuestSystem());
+        this.RegisterSystem(new UISystem());
     }
 }
 ```
 
 ### 3. 在其他组件中获取 System
 
-```
+```csharp
 // 在 Controller 中
 public partial class GameController : Node, IController
 {
@@ -145,6 +194,9 @@ public partial class GameController : Node, IController
         // 获取 System
         var combatSystem = this.GetSystem<CombatSystem>();
         var questSystem = this.GetSystem<QuestSystem>();
+        
+        // 使用 System
+        combatSystem.StartBattle();
     }
 }
 
@@ -154,7 +206,17 @@ public class StartBattleCommand : AbstractCommand
     protected override void OnExecute()
     {
         var combatSystem = this.GetSystem<CombatSystem>();
-        // 使用 System...
+        combatSystem.StartBattle();
+    }
+}
+
+// 在其他 System 中
+public class AISystem : AbstractSystem
+{
+    protected override void OnInit()
+    {
+        var combatSystem = this.GetSystem<CombatSystem>();
+        // 与其他 System 协作
     }
 }
 ```
