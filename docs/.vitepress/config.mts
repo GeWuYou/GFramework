@@ -50,7 +50,7 @@ export default defineConfig({
           { text: 'Game', link: '/zh-CN/game/' },
           { text: 'Godot', link: '/zh-CN/godot/' },
           { text: '源码生成器', link: '/zh-CN/source-generators' },
-          { text: '教程', link: '/zh-CN/tutorials/basic' },
+          { text: '教程', link: '/zh-CN/tutorials/' },
         ],
 
         sidebar: {
@@ -139,6 +139,7 @@ export default defineConfig({
             {
               text: '教程',
               items: [
+                { text: '教程概览', link: '/zh-CN/tutorials/' },
                 {
                   text: '基础教程',
                   link: '/zh-CN/tutorials/basic/',
