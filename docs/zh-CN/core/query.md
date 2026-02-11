@@ -7,7 +7,7 @@ Query 包实现了 CQRS（命令查询职责分离）模式中的查询部分。
 
 ## 核心接口
 
-### IQuery<TResult>
+### IQuery`<TResult>`
 
 查询接口，定义了查询的基本契约。
 

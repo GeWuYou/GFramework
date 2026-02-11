@@ -252,7 +252,7 @@ obj.IfType<IRule>(
 );
 ```
 
-#### IfType<T, TResult> 扩展方法
+#### IfType`<T, TResult>` 扩展方法
 
 ```csharp
 public static TResult? IfType<T, TResult>(

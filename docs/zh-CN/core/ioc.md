@@ -381,7 +381,7 @@ var allServices = container.GetAll<IDataService>();  // 返回两个实例的列
 
 ## 其他实用方法
 
-### `Contains<T>()`
+### Contains`<T>`()
 
 检查容器中是否包含指定类型的实例。
 
@@ -439,7 +439,7 @@ public bool ContainsInstance(object instance)
 
 **使用示例：**
 
-``csharp
+```csharp
 var container = new IocContainer();
 
 var service = new MyService();
@@ -609,7 +609,7 @@ public class GameArchitecture : Architecture
 
 ### 2. 使用接口类型注册
 
-``csharp
+```csharp
 // ❌ 不推荐：直接使用实现类
 RegisterSystem(new ConcreteSystem());
 var system = GetSystem<ConcreteSystem>();
@@ -621,7 +621,7 @@ var system = GetSystem<IGameSystem>();
 
 ### 3. 避免运行时频繁注册
 
-``csharp
+``` csharp
 // ❌ 不好：游戏运行时频繁注册
 void Update()
 {
