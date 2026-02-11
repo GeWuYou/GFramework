@@ -1,12 +1,15 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
+  
   title: 'GFramework',
   description: '面向游戏开发场景的模块化 C# 框架',
 
   /** GitHub Pages / 子路径部署 */
   base: '/GFramework/',
-
+  vite: {
+    plugins: [markdownEscapePlugin()]
+  },
   /** 多语言 */
   locales: {
     root: {
@@ -167,3 +170,35 @@ export default defineConfig({
     }
   }
 })
+import { defineConfig } from 'vitepress'
+
+function markdownEscapePlugin() {
+  return {
+    name: 'markdown-escape-plugin',
+    enforce: 'pre', // 在 vitepress 之前执行
+    transform(code: string, id: string) {
+      if (!id.endsWith('.md')) return
+
+      const codeBlocks: string[] = []
+
+      // 1️⃣ 替换代码块
+      const replaced = code.replace(/```[\s\S]*?```/g, (match) => {
+        const index = codeBlocks.length
+        codeBlocks.push(match)
+        return `__CODE_BLOCK_${index}__`
+      })
+
+      // 2️⃣ 转义普通文本中的 < >
+      let escaped = replaced
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+
+      // 3️⃣ 恢复代码块
+      codeBlocks.forEach((block, index) => {
+        escaped = escaped.replace(`__CODE_BLOCK_${index}__`, block)
+      })
+
+      return escaped
+    }
+  }
+}
