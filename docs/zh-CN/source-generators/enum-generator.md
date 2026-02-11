@@ -168,6 +168,6 @@ public enum Difficulty
 
 **相关文档**：
 
-- [Source Generators 概述](./overview)
+- [Source Generators 概述](./index)
 - [日志生成器](./logging-generator)
 - [规则生成器](./rule-generator)

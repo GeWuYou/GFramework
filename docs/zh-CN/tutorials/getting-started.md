@@ -1608,17 +1608,3 @@ namespace MyGFrameworkGame.Core.Systems
 3. **添加网络功能**：多人游戏、排行榜
 4. **完善 UI**：更丰富的界面和动画
 5. **发布游戏**：在各个平台发布你的作品
-
-### 学习资源
-
-- [GFramework 主文档](../../README.md)
-- [GFramework.Core 文档](../../GFramework.Core/README.md)
-- [GFramework.Godot 文档](../../GFramework.Godot/README.md)
-- [GFramework.SourceGenerators 文档](../../GFramework.SourceGenerators/README.md)
-
-享受游戏开发的乐趣吧！🎮
-
----
-
-**教程版本**: 1.0.0  
-**更新日期**: 2026-01-12

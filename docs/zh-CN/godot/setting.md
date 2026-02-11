@@ -569,11 +569,3 @@ GD.Print($"Screen: {screenSize}");
 GD.Print($"Window: {windowSize} at {windowPos}");
 GD.Print($"Mode: {windowMode}");
 ```
-
-## 相关链接
-
-- [设置系统](../../GFramework.Game/setting/README.md) - 通用设置框架
-- [存储模块](../storage/README.md) - 设置持久化存储
-- [扩展方法](../extensions/README.md) - Godot 扩展功能
-- [Godot 音频文档](https://docs.godotengine.org/en/stable/tutorials/audio/audio_buses.html) - Godot 音频总线系统
-- [Godot 显示文档](https://docs.godotengine.org/en/stable/tutorials/rendering/window_management.html) - Godot 窗口管理

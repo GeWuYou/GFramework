@@ -273,9 +273,3 @@ catch (Exception ex)
 4. **序列化器选择**
     - JSON：人类可读，调试友好
     - 二进制：性能更好，文件更小
-
-## 相关链接
-
-- [路径扩展](../extensions/README.md#godotpathextensions)
-- [设置系统](../setting/README.md)
-- [抽象接口定义](../../../GFramework.Core/Abstractions/storage/)

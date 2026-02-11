@@ -418,10 +418,3 @@ player.Signal(Player.SignalName.HealthChanged)
 node.Signal(CustomSignal.Signal1).WithFlags(Flags1).To(callable1)
      .Signal(CustomSignal.Signal2).WithFlags(Flags2).To(callable2);
 ```
-
-## 相关链接
-
-- [Godot 扩展方法](../README.md) - 扩展方法总览
-- [节点扩展](../README.md#nodeextensions) - 更多节点操作方法
-- [取消注册扩展](../README.md#unregisterextension) - 事件生命周期管理
-- [Godot 官方信号文档](https://docs.godotengine.org/en/stable/tutorials/scripting_signals.html) - Godot 信号系统基础

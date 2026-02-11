@@ -155,6 +155,6 @@ public partial class MyClass
 
 **相关文档**：
 
-- [Source Generators 概述](./overview)
+- [Source Generators 概述](./index)
 - [枚举扩展生成器](./enum-generator)
 - [规则生成器](./rule-generator)

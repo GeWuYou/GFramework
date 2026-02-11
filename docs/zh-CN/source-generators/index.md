@@ -49,31 +49,33 @@ GFramework.SourceGenerators 利用 Roslyn 源代码生成器技术，在编译�
 ### NuGet 包安装
 
 ```xml
+
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
-  </PropertyGroup>
-  
-  <ItemGroup>
-    <PackageReference Include="GeWuYou.GFramework.SourceGenerators" Version="1.0.0" />
-    <PackageReference Include="GeWuYou.GFramework.SourceGenerators.Attributes" Version="1.0.0" />
-  </ItemGroup>
+    <PropertyGroup>
+        <TargetFramework>net6.0</TargetFramework>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="GeWuYou.GFramework.SourceGenerators" Version="1.0.0"/>
+        <PackageReference Include="GeWuYou.GFramework.SourceGenerators.Attributes" Version="1.0.0"/>
+    </ItemGroup>
 </Project>
 ```
 
 ### 项目文件配置
 
 ```xml
+
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
-    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-    <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
-  </PropertyGroup>
-  
-  <ItemGroup>
-    <Compile Remove="$(CompilerGeneratedFilesOutputPath)/**/*.cs" />
-  </ItemGroup>
+    <PropertyGroup>
+        <TargetFramework>net6.0</TargetFramework>
+        <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+        <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Remove="$(CompilerGeneratedFilesOutputPath)/**/*.cs"/>
+    </ItemGroup>
 </Project>
 ```
 
@@ -916,8 +918,9 @@ public class MyClass { } // ❌ 编译错误，无法添加生成代码
 **A**: 生成的代码在编译过程中创建，默认位置在 `obj/Debug/net6.0/generated/` 目录下。可以在项目文件中配置输出位置：
 
 ```xml
+
 <PropertyGroup>
-  <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
+    <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
 </PropertyGroup>
 ```
 
@@ -930,8 +933,9 @@ public class MyClass { } // ❌ 编译错误，无法添加生成代码
 3. **启用详细日志**：在项目文件中添加：
 
 ```xml
+
 <PropertyGroup>
-  <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
 </PropertyGroup>
 ```
 
@@ -986,12 +990,3 @@ graph TD
 - **Visual Studio**: 2022 17.0+
 - **Rider**: 2022.3+
 - **Roslyn**: 4.0+
-
-## 许可证
-
-本项目基于 Apache 2.0 许可证 - 详情请参阅 [LICENSE](../LICENSE) 文件。
-
----
-
-**版本**: 1.0.0  
-**更新日期**: 2026-01-12
