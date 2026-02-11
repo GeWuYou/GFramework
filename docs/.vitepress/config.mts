@@ -41,12 +41,11 @@ export default defineConfig({
         nav: [
           { text: '首页', link: '/zh-CN/' },
           { text: '入门指南', link: '/zh-CN/getting-started/installation' },
-          { text: 'Core', link: '/zh-CN/core/overview' },
+          { text: 'Core', link: '/zh-CN/core/' },
           { text: 'Game', link: '/zh-CN/game/overview' },
           { text: 'Godot', link: '/zh-CN/godot/overview' },
           { text: '源码生成器', link: '/zh-CN/source-generators/overview' },
           { text: '教程', link: '/zh-CN/tutorials/basic-tutorial' },
-          { text: 'API参考', link: '/zh-CN/api-reference/core-api' }
         ],
 
         sidebar: {
@@ -65,12 +64,22 @@ export default defineConfig({
             {
               text: 'Core 核心框架',
               items: [
-                { text: '概览', link: '/zh-CN/core/overview' },
-                { text: '架构组件', link: '/zh-CN/core/architecture/architecture' },
-                { text: '命令查询系统', link: '/zh-CN/core/command-query/commands' },
-                { text: '事件系统', link: '/zh-CN/core/events/event-bus' },
-                { text: '属性系统', link: '/zh-CN/core/property/bindable-property' },
-                { text: '工具类', link: '/zh-CN/core/utilities/ioc-container' }
+                { text: '概览', link: '/zh-CN/core/' },
+                { text: '架构组件', link: '/zh-CN/core/architecture' },
+                { text: '命令系统', link: '/zh-CN/core/command' },
+                { text: '查询系统', link: '/zh-CN/core/query' },
+                { text: '事件系统', link: '/zh-CN/core/events' },
+                { text: '属性系统', link: '/zh-CN/core/property' },
+                { text: 'IoC容器', link: '/zh-CN/core/ioc' },
+                { text: '对象池', link: '/zh-CN/core/pool' },
+                { text: '日志系统', link: '/zh-CN/core/logging' },
+                { text: '扩展方法', link: '/zh-CN/core/extensions' },
+                { text: '工具类', link: '/zh-CN/core/utility' },
+                { text: '模型层', link: '/zh-CN/core/model' },
+                { text: '系统层', link: '/zh-CN/core/system' },
+                { text: '控制器', link: '/zh-CN/core/controller' },
+                { text: '规则系统', link: '/zh-CN/core/rule' },
+                { text: '环境接口', link: '/zh-CN/core/environment' }
               ]
             }
           ],
@@ -80,10 +89,8 @@ export default defineConfig({
               text: 'Game 游戏模块',
               items: [
                 { text: '概览', link: '/zh-CN/game/overview' },
-                { text: '模块系统', link: '/zh-CN/game/modules/architecture-modules' },
-                { text: '存储系统', link: '/zh-CN/game/storage/scoped-storage' },
-                { text: '资源管理', link: '/zh-CN/game/assets/asset-catalog' },
-                { text: '序列化', link: '/zh-CN/game/serialization/json-serializer' }
+                { text: '场景管理', link: '/zh-CN/game/scene-management' },
+                { text: '游戏设置', link: '/zh-CN/game/setting' }
               ]
             }
           ],
@@ -93,10 +100,11 @@ export default defineConfig({
               text: 'Godot 集成',
               items: [
                 { text: '概览', link: '/zh-CN/godot/overview' },
-                { text: '集成指南', link: '/zh-CN/godot/integration/architecture-integration' },
-                { text: '节点扩展', link: '/zh-CN/godot/node-extensions/node-extensions' },
-                { text: '对象池', link: '/zh-CN/godot/pooling/node-pool' },
-                { text: '日志系统', link: '/zh-CN/godot/logging/godot-logger' }
+                { text: '协程系统', link: '/zh-CN/godot/coroutine' },
+                { text: '节点扩展', link: '/zh-CN/godot/extensions' },
+                { text: '信号系统', link: '/zh-CN/godot/signal' },
+                { text: '存储系统', link: '/zh-CN/godot/storage' },
+                { text: '设置系统', link: '/zh-CN/godot/setting' }
               ]
             }
           ],
@@ -105,10 +113,20 @@ export default defineConfig({
             {
               text: '源码生成器',
               items: [
-                { text: '概览', link: '/zh-CN/source-generators/overview' },
+                { text: '概览', link: '/zh-CN/source-generators/' },
                 { text: '日志生成器', link: '/zh-CN/source-generators/logging-generator' },
-                { text: '枚举扩展', link: '/zh-CN/source-generators/enum-extensions' },
+                { text: '枚举扩展', link: '/zh-CN/source-generators/enum-generator' },
                 { text: '规则生成器', link: '/zh-CN/source-generators/rule-generator' }
+              ]
+            }
+          ],
+
+          '/zh-CN/abstractions/': [
+            {
+              text: '抽象接口',
+              items: [
+                { text: 'Core Abstractions', link: '/zh-CN/abstractions/core-abstractions' },
+                { text: 'Game Abstractions', link: '/zh-CN/abstractions/game-abstractions' }
               ]
             }
           ],
@@ -117,9 +135,10 @@ export default defineConfig({
             {
               text: '教程',
               items: [
+                { text: '入门教程', link: '/zh-CN/tutorials/getting-started' },
                 { text: '基础教程', link: '/zh-CN/tutorials/basic-tutorial' },
-                { text: '高级模式', link: '/zh-CN/tutorials/advanced-patterns' },
-                { text: '最佳实践', link: '/zh-CN/tutorials/best-practices' }
+                { text: 'Godot集成', link: '/zh-CN/tutorials/godot-integration' },
+                { text: '高级模式', link: '/zh-CN/tutorials/advanced-patterns' }
               ]
             }
           ],
@@ -131,7 +150,7 @@ export default defineConfig({
                 { text: 'Core API', link: '/zh-CN/api-reference/core-api' },
                 { text: 'Game API', link: '/zh-CN/api-reference/game-api' },
                 { text: 'Godot API', link: '/zh-CN/api-reference/godot-api' },
-                { text: '生成器 API', link: '/zh-CN/api-reference/generators-api' }
+                { text: '生成器 API', link: '/zh-CN/api-reference/source-generators-api' }
               ]
             }
           ]

@@ -437,9 +437,9 @@ dotnet test
 
 ### 学习资源
 
-- [GFramework 主文档](/)
-- [Core 模块文档](/core/overview)
-- [Godot 集成文档](/godot/overview)
-- [API 参考](/api-reference/core-api)
+- [GFramework 主文档](../)
+- [Core 模块文档](../core)
+- [Godot 集成文档](../godot/overview)
+- [API 参考](../api-reference/core-api)
 
 享受游戏开发的乐趣吧！🎮

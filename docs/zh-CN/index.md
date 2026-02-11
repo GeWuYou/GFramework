@@ -16,9 +16,6 @@ hero:
     - theme: alt
       text: 架构概览
       link: /getting-started/architecture-overview
-    - theme: alt
-      text: API 参考
-      link: /api-reference/core-api
 
 features:
   - title: 🏗️ 清洁架构

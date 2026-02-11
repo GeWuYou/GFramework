@@ -321,7 +321,7 @@ Press any key to exit...
 
 接下来您可以：
 
-- [深入了解架构组件](/core/architecture/architecture)
-- [学习事件系统](/core/events/event-bus)
-- [探索 Godot 集成](/godot/overview)（如果您使用 Godot）
-- [查看完整教程](/tutorials/basic-tutorial)
+- [深入了解架构组件](./core/architecture)
+- [学习事件系统](./core/events)
+- [探索 Godot 集成](./godot/overview)
+- [查看完整教程](./tutorials/basic-tutorial)
