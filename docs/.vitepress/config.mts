@@ -6,6 +6,7 @@ export default defineConfig({
   description: "面向游戏开发场景的模块化 C# 框架",
   base: "/GFramework/",
   themeConfig: {
+    logo: '/logo-icon.png',
     // https://vitepress.dev/reference/default-theme-config
     nav: [
       { text: '首页', link: '/' },
