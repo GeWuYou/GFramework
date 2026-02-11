@@ -12,10 +12,10 @@ hero:
   actions:
     - theme: brand
       text: 快速开始
-      link: /getting-started/quick-start
+      link: /zh-CN/getting-started/quick-start
     - theme: alt
       text: 架构概览
-      link: /getting-started/architecture-overview
+      link: /zh-CN/getting-started/architecture-overview
 
 features:
   - title: 🏗️ 清洁架构
