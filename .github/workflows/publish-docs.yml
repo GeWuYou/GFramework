@@ -1,59 +1,79 @@
-# 工作流名称：Publish Docs (VitePress)
+# 工作流名称：Publish Docs
+# 该工作流用于在推送标签或手动触发时构建并部署文档到 GitHub Pages
 
 name: Publish Docs
 
+# 触发条件配置
+# 当推送以 'v' 开头的标签时触发，或者通过 GitHub UI 手动触发
 on:
   push:
     tags:
       - 'v*'
   workflow_dispatch:
+
+# 权限配置
+# 配置工作流所需的权限：
+# - contents: read（读取仓库内容）
+# - pages: write（写入 GitHub Pages）
+# - id-token: write（写入身份令牌）
 permissions:
   contents: read
   pages: write
   id-token: write
 
+# 并发控制配置
+# 设置并发组为 "pages"，并且不允许取消正在进行的任务
 concurrency:
-  group: "pages"
+  group: pages
   cancel-in-progress: false
 
+# 定义工作流中的任务
 jobs:
+  # 构建和部署任务
   build-and-deploy:
+    # 条件判断：仅当推送的是正式版本标签（不包含预发布标识）或手动触发时执行
     if: |
       (startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-'))
-      || contains(github.event.head_commit.message, '[release doc]'))
+      || github.event_name == 'workflow_dispatch'
+
+    # 指定运行环境为最新版 Ubuntu
     runs-on: ubuntu-latest
 
+    # 环境配置
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
 
+    # 步骤定义
     steps:
-      # 1️⃣ 拉取仓库代码
+      # 检出代码
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2️⃣ 安装 Bun.js
-      - uses: oven-sh/setup-bun@v2
+      # 安装 Bun 运行时
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
           bun-version: 2.1.x
-      # 3️⃣ 安装依赖
-      - name: Install Dependencies
-        run: |
-          cd docs
-          bun install
-      # 4️⃣ 构建 VitePress
-      - name: Build VitePress
-        run: |
-          cd docs
-          bun run build
+          cache: true
 
-      # 5️⃣ 上传构建产物
+      # 安装项目依赖
+      - name: Install Dependencies
+        working-directory: docs
+        run: bun install
+
+      # 构建 VitePress 文档
+      - name: Build VitePress
+        working-directory: docs
+        run: bun run build
+
+      # 上传构建产物作为 Pages 部署工件
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: docs/.vitepress/dist
 
-      # 6️⃣ 部署到 GitHub Pages
+      # 将文档部署到 GitHub Pages
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
