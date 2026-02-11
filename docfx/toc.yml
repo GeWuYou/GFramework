@@ -1,5 +1,0 @@
-- name: Home
-  href: ../docs/index.md
-- name: API Documentation
-  href: api/
-  homepage: api/namespaces.md
