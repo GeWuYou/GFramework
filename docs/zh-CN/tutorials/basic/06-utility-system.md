@@ -413,7 +413,7 @@ public class SystemModule : AbstractModule
 
 启动游戏，当计数超过 10 或小于 -10 时，输出面板会显示提示信息：
 
-![阈值提示](../assets/basic-tutorial/image-20260211234946253.png)
+![阈值提示](../assets/basic/image-20260211234946253.png)
 
 ## System 的优势
 

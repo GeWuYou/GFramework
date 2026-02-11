@@ -274,7 +274,7 @@ public partial class App : Control, IController
 
 按 **F5** 运行游戏，测试功能：
 
-![运行效果](../assets/basic-tutorial/image-20260211223654625.png)
+![运行效果](../assets/basic/image-20260211223654625.png)
 
 功能依然正常！但现在架构更清晰了。
 

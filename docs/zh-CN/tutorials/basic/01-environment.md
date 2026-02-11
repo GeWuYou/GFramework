@@ -230,7 +230,7 @@ dotnet build
 
 项目创建后，Godot 会提示初始化 C# 项目：
 
-![初始化 C# 项目](../assets/basic-tutorial/image-20260211210657387.png)
+![初始化 C# 项目](../assets/basic/image-20260211210657387.png)
 
 点击 **创建 C# 解决方案**，Godot 会自动生成 `.csproj` 文件。
 

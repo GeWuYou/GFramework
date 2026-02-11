@@ -27,7 +27,7 @@ next:
 
 项目创建后，Godot 会提示初始化 C# 支持：
 
-![初始化 C# 项目](../assets/basic-tutorial/image-20260211210657387.png)
+![初始化 C# 项目](../assets/basic/image-20260211210657387.png)
 
 点击 **创建 C# 解决方案**，Godot 会自动生成：
 
@@ -110,7 +110,7 @@ dotnet add package GeWuYou.GFramework.SourceGenerators
     - `GeWuYou.GFramework.Godot`
     - `GeWuYou.GFramework.SourceGenerators`
 
-![NuGet 包管理](../assets/basic-tutorial/image-20260211211756993.png)
+![NuGet 包管理](../assets/basic/image-20260211211756993.png)
 
 ### 验证安装
 
@@ -316,7 +316,7 @@ public class GameArchitecture : AbstractArchitecture
 5. 点击 **创建**
 6. 将脚本添加为自动加载单例
 
-![创建全局类](../assets/basic-tutorial/image-20260211222402064.png)
+![创建全局类](../assets/basic/image-20260211222402064.png)
 
 ### 2. 实现入口点逻辑
 
