@@ -86,28 +86,9 @@ public interface IScene
     void OnUpdate(float delta);
 }
 ```
-
-## 资源管理接口
-
-### IAssetManager
-
-资源管理器接口：
-
-```csharp
-public interface IAssetManager
-{
-    T Load<T>(string path) where T : Resource;
-    void Preload<T>(string path) where T : Resource;
-    void Unload(string path);
-    bool IsLoaded(string path);
-}
-```
-
 ---
 
 **相关文档**：
 
-- [Game 概述](../game)
-- [核心抽象](./core-abstractions)
-- [存档系统](../game/storage)
-- [场景管理](../game/scene-management)
+- [Game 概述](../game/index.md)
+- [核心抽象](./core-abstractions.md)

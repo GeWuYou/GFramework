@@ -190,9 +190,3 @@ public interface ISettingsSystem
 2. **延迟应用** - 批量修改后再应用，而不是每次修改都应用
 3. **类型安全** - 使用泛型方法确保类型安全
 4. **可测试性** - 通过接口实现便于单元测试
-
-## 相关链接
-
-- [Godot 设置模块](../../GFramework.Godot/setting/README.md)
-- [存储模块](../../GFramework.Godot/storage/README.md)
-- [抽象接口定义](../../../GFramework.Core/Abstractions/)

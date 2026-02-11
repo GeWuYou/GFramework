@@ -133,7 +133,7 @@ var sprite = childNode.OfType<Sprite2D>();
 
 ### 3. 信号扩展 (SignalFluentExtensions)
 
-提供流畅的信号连接 API，详见 [signal/README.md](signal/README.md)。
+提供流畅的信号连接 API，详见 [信号扩展](signal.md)。
 
 **快速示例：**
 
@@ -326,10 +326,3 @@ unRegister.UnRegisterWhenNodeExitTree(node);
 // ❌ 避免：手动管理事件生命周期
 // 可能导致内存泄漏
 ```
-
-## 相关链接
-
-- [信号连接系统](signal/README.md) - 详细的信号连接 API 文档
-- [存储模块](../storage/README.md) - 文件存储系统
-- [设置模块](../setting/README.md) - 游戏设置系统
-- [设置系统](../../GFramework.Game/setting/README.md) - 通用设置框架

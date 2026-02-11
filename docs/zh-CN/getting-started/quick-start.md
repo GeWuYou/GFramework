@@ -318,10 +318,3 @@ Press any key to exit...
 2. **响应式数据** - BindableProperty 自动更新
 3. **事件驱动** - 松耦合的组件通信
 4. **命令模式** - 封装用户操作
-
-接下来您可以：
-
-- [深入了解架构组件](./core/architecture)
-- [学习事件系统](./core/events)
-- [探索 Godot 集成](./godot/overview)
-- [查看完整教程](./tutorials/basic-tutorial)

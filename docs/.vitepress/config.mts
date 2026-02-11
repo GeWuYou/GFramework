@@ -58,7 +58,7 @@ export default defineConfig({
               items: [
                 { text: '安装配置', link: '/zh-CN/getting-started/installation' },
                 { text: '快速开始', link: '/zh-CN/getting-started/quick-start' },
-                { text: '架构概览', link: '/zh-CN/getting-started/architecture-overview' }
+                { text: '架构概览', link: '/zh-CN/getting-started' }
               ]
             }
           ],
@@ -92,7 +92,6 @@ export default defineConfig({
               text: 'Game 游戏模块',
               items: [
                 { text: '概览', link: '/zh-CN/game/' },
-                { text: '场景管理', link: '/zh-CN/game/scene-management' },
                 { text: '游戏设置', link: '/zh-CN/game/setting' }
               ]
             }
