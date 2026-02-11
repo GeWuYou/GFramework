@@ -4,8 +4,6 @@ name: Publish Docs
 
 on:
   push:
-    branches:
-      - '**'
     tags:
       - '*'
 permissions:
