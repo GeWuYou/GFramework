@@ -45,7 +45,7 @@ export default defineConfig({
 
         nav: [
           { text: '首页', link: '/zh-CN/' },
-          { text: '入门指南', link: '/zh-CN/getting-started/installation' },
+          { text: '入门指南', link: '/zh-CN/getting-started' },
           { text: 'Core', link: '/zh-CN/core/' },
           { text: 'Game', link: '/zh-CN/game/' },
           { text: 'Godot', link: '/zh-CN/godot/' },
@@ -58,9 +58,9 @@ export default defineConfig({
             {
               text: '入门指南',
               items: [
+                { text: '架构概览', link: '/zh-CN/getting-started' },
                 { text: '安装配置', link: '/zh-CN/getting-started/installation' },
                 { text: '快速开始', link: '/zh-CN/getting-started/quick-start' },
-                { text: '架构概览', link: '/zh-CN/getting-started' }
               ]
             }
           ],
