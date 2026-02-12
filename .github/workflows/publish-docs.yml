@@ -74,7 +74,7 @@ jobs:
       
       # 上传构建产物作为 Pages 部署工件
       - name: Upload Pages Artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: docs/.vitepress/dist
 
