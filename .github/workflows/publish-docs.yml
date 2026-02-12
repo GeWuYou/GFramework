@@ -55,7 +55,6 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-          cache: true
 
       # 安装项目依赖
       - name: Install Dependencies
