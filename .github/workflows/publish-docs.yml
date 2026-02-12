@@ -71,8 +71,8 @@ jobs:
       - name: Make docs LLM ready
         uses: demodrive-ai/llms-txt-action@v1
         with:
-          docs-path: docs/.vitepress/dist
-
+          docs_dir: docs/.vitepress/dist 
+      
       # 上传构建产物作为 Pages 部署工件
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
