@@ -57,7 +57,7 @@ jobs:
       # 使用 TruffleHog 工具扫描代码库中的敏感信息泄露，如API密钥、密码等
       # 该步骤会比较基础分支和当前提交之间的差异，检测新增内容中是否包含敏感数据
       - name: TruffleHog OSS
-        uses: trufflesecurity/trufflehog@v3.93.0
+        uses: trufflesecurity/trufflehog@v3.93.3
         with:
           # 扫描路径，. 表示扫描整个仓库
           path: .
