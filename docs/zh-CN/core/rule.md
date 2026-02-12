@@ -2,138 +2,280 @@
 
 ## 概述
 
-Rule 包定义了框架的核心规则接口，这些接口规定了框架各个组件之间的关系和约束。所有框架组件都需要遵循这些规则接口。
+Rule 包定义了框架的核心规则接口 `IContextAware`，这是所有框架组件的基础。通过这个接口，框架实现了统一的上下文管理和能力访问机制。所有框架组件（Command、Query、Model、System）都实现此接口，并通过扩展方法获得访问架构服务的能力。
 
-## 核心接口
+## 核心接口：IContextAware
 
-### IContextAware
-
-标记接口，表示该类型可以感知架构上下文。
+`IContextAware` 是框架的核心规则接口，定义了上下文的设置和获取能力。
 
 **接口定义：**
 
 ```csharp
 public interface IContextAware
 {
+    /// <summary>
+    ///     设置架构上下文
+    /// </summary>
+    /// <param name="context">架构上下文对象，用于提供架构级别的服务和功能访问</param>
     void SetContext(IArchitectureContext context);
+
+    /// <summary>
+    ///     获取架构上下文
+    /// </summary>
+    /// <returns>当前的架构上下文对象</returns>
     IArchitectureContext GetContext();
 }
 ```
 
+**作用：**
+
+- `SetContext()` - 框架在初始化组件时调用此方法，注入架构上下文
+- `GetContext()` - 组件通过此方法获取上下文，进而访问所有架构服务
+
 **实现此接口的类型：**
 
-- System
-- Query
-- Model
-- Command
-- 以及其他需要感知架构上下文的组件
+- `AbstractCommand` / `AbstractAsyncCommand` - 命令基类
+- `AbstractQuery<TResult>` - 查询基类
+- `AbstractModel` - 模型基类
+- `AbstractSystem` - 系统基类
+- 以及其他需要感知架构上下文的自定义组件
 
-**作用：**
-所有实现此接口的类型都能够获取其所属的架构上下文实例，从而访问架构提供的各种能力。
+## 基类实现：ContextAwareBase
 
-## 核心类
+`ContextAwareBase` 是实现 `IContextAware` 的标准基类，为所有需要感知架构上下文的类提供基础实现。
 
-### [`ContextAwareBase`](./rule.md)
-
-上下文感知基类，实现了 IContextAware 接口，为需要感知架构上下文的类提供基础实现。
-
-**使用方式：**
+**类定义：**
 
 ```csharp
 public abstract class ContextAwareBase : IContextAware
 {
+    /// <summary>
+    ///     获取当前实例的架构上下文
+    /// </summary>
     protected IArchitectureContext? Context { get; set; }
-    
+
+    /// <summary>
+    ///     设置架构上下文的实现方法，由框架调用
+    /// </summary>
     void IContextAware.SetContext(IArchitectureContext context)
     {
         Context = context;
         OnContextReady();  // 上下文准备好后调用此方法
     }
-    
+
+    /// <summary>
+    ///     获取架构上下文
+    /// </summary>
     IArchitectureContext IContextAware.GetContext()
     {
         Context ??= GameContext.GetFirstArchitectureContext();
         return Context;
     }
-    
-    protected virtual void OnContextReady()  // 子类可以重写此方法进行初始化
+
+    /// <summary>
+    ///     当上下文准备就绪时调用的虚方法，子类可以重写此方法来执行上下文相关的初始化逻辑
+    /// </summary>
+    protected virtual void OnContextReady()
     {
     }
 }
 ```
 
-## 接口关系图
+**关键特性：**
 
-```
-IContextAware (上下文感知接口)
-    ↓ 被继承于
-    ├── AbstractSystem (抽象系统基类)
-    ├── AbstractQuery<TInput, TResult> (抽象查询基类)
-    ├── AbstractModel (抽象模型基类)
-    └── AbstractCommand (抽象命令基类)
-```
+- `Context` 属性 - 存储架构上下文的引用
+- `OnContextReady()` 钩子 - 在上下文设置完成后调用，用于初始化逻辑
+- 自动回退机制 - 如果上下文未被显式设置，会自动从 `GameContext.GetFirstArchitectureContext()` 获取
 
-## 使用场景
+## 扩展方法：框架能力的来源
 
-### 1. Component 继承 ContextAwareBase
+所有框架能力都通过 `ContextAwareExtensions` 类的扩展方法提供。这种设计使得 `IContextAware` 接口保持简洁，同时能够灵活地添加新能力。
+
+### 获取架构组件
 
 ```csharp
-// 组件通过继承 ContextAwareBase 获得架构上下文访问能力
-public partial class PlayerController : Node, IController
-{
-    // 不再需要手动实现 IContextAware，基类已处理
-    // 可以直接使用扩展方法
-    public override void _Ready()
-    {
-        var playerModel = this.GetModel<PlayerModel>();
-        this.SendCommand(new InitPlayerCommand());
-        this.RegisterEvent<PlayerDiedEvent>(OnPlayerDied);
-    }
-    
-    private void OnPlayerDied(PlayerDiedEvent e)
-    {
-        GD.Print("Player died!");
-    }
-}
+// 获取指定类型的模型
+public static TModel? GetModel<TModel>(this IContextAware contextAware)
+    where TModel : class, IModel
+
+// 获取指定类型的系统
+public static TSystem? GetSystem<TSystem>(this IContextAware contextAware)
+    where TSystem : class, ISystem
+
+// 获取指定类型的工具
+public static TUtility? GetUtility<TUtility>(this IContextAware contextAware)
+    where TUtility : class, IUtility
+
+// 获取指定类型的服务
+public static TService? GetService<TService>(this IContextAware contextAware)
+    where TService : class
 ```
 
-### 2. Command 继承 AbstractCommand (IContextAware)
+### 发送命令
 
 ```csharp
-// Command 继承 AbstractCommand，自动成为 IContextAware
-public class BuyItemCommand : AbstractCommand
+// 发送无返回值的命令
+public static void SendCommand(this IContextAware contextAware, ICommand command)
+
+// 发送有返回值的命令
+public static TResult SendCommand<TResult>(this IContextAware contextAware,
+    ICommand<TResult> command)
+
+// 异步发送无返回值的命令
+public static async Task SendCommandAsync(this IContextAware contextAware,
+    IAsyncCommand command)
+
+// 异步发送有返回值的命令
+public static async Task<TResult> SendCommandAsync<TResult>(this IContextAware contextAware,
+    IAsyncCommand<TResult> command)
+```
+
+### 发送查询
+
+```csharp
+// 发送查询并获取结果
+public static TResult SendQuery<TResult>(this IContextAware contextAware,
+    IQuery<TResult> query)
+```
+
+### 事件系统
+
+```csharp
+// 注册事件处理器
+public static IUnRegister RegisterEvent<TEvent>(this IContextAware contextAware,
+    Action<TEvent> handler)
+
+// 取消事件注册
+public static void UnRegisterEvent<TEvent>(this IContextAware contextAware,
+    Action<TEvent> onEvent)
+
+// 发送无参数的事件
+public static void SendEvent<TEvent>(this IContextAware contextAware)
+    where TEvent : new()
+
+// 发送具体的事件实例
+public static void SendEvent<TEvent>(this IContextAware contextAware, TEvent e)
+    where TEvent : class
+```
+
+### 环境访问
+
+```csharp
+// 获取环境对象（泛型版本）
+public static T? GetEnvironment<T>(this IContextAware contextAware)
+    where T : class
+
+// 获取环境对象
+public static IEnvironment GetEnvironment(this IContextAware contextAware)
+```
+
+## 框架组件如何使用 IContextAware
+
+### Command 和 AsyncCommand
+
+所有命令都继承自 `AbstractCommand` 或 `AbstractAsyncCommand`，这些基类实现了 `IContextAware`。
+
+```csharp
+public class BuyItemCommand : AbstractCommand<BuyItemInput, bool>
 {
-    public string ItemId { get; set; }
-    
-    protected override void OnExecute()
+    protected override bool OnExecute()
     {
-        // 框架或上下文系统会自动注入 IArchitectureContext
-        // 所以这里可以直接使用 this.GetModel
+        // 通过扩展方法访问 Model
         var playerModel = this.GetModel<PlayerModel>();
         var shopModel = this.GetModel<ShopModel>();
-        
-        int price = shopModel.GetItemPrice(ItemId);
-        if (playerModel.Gold.Value >= price)
+
+        // 业务逻辑
+        if (playerModel.Gold.Value >= Input.Price)
         {
-            playerModel.Gold.Value -= price;
-            this.SendCommand(new AddItemCommand { ItemId = ItemId });
+            playerModel.Gold.Value -= Input.Price;
+            // 发送其他命令
+            this.SendCommand(new AddItemCommand { ItemId = Input.ItemId });
+            return true;
         }
+        return false;
     }
 }
 ```
 
-### 3. 自定义组件遵循规则
+### Query
+
+所有查询都继承自 `AbstractQuery<TResult>`，实现了 `IContextAware`。
 
 ```csharp
-// 自定义管理器遵循框架规则，继承 ContextAwareBase
+public class GetPlayerLevelQuery : AbstractQuery<int>
+{
+    public override int OnQuery()
+    {
+        var playerModel = this.GetModel<PlayerModel>();
+        return playerModel.Level.Value;
+    }
+}
+```
+
+### Model
+
+所有模型都继承自 `AbstractModel`，实现了 `IContextAware`。
+
+```csharp
+public class PlayerModel : AbstractModel
+{
+    public ReactiveProperty<int> Level { get; } = new(1);
+    public ReactiveProperty<int> Gold { get; } = new(0);
+
+    protected override void OnContextReady()
+    {
+        // 模型初始化时的逻辑
+        Console.WriteLine("PlayerModel initialized");
+    }
+}
+```
+
+### System
+
+所有系统都继承自 `AbstractSystem`，实现了 `IContextAware`。
+
+```csharp
+public class CombatSystem : AbstractSystem
+{
+    protected override void OnInit()
+    {
+        // 注册事件监听
+        this.RegisterEvent<PlayerAttackEvent>(OnPlayerAttack);
+        this.RegisterEvent<EnemyDefeatedEvent>(OnEnemyDefeated);
+    }
+
+    private void OnPlayerAttack(PlayerAttackEvent e)
+    {
+        var playerModel = this.GetModel<PlayerModel>();
+        var combatModel = this.GetModel<CombatModel>();
+
+        // 处理攻击逻辑
+        combatModel.ApplyDamage(e.Damage);
+    }
+
+    private void OnEnemyDefeated(EnemyDefeatedEvent e)
+    {
+        var playerModel = this.GetModel<PlayerModel>();
+        playerModel.Gold.Value += e.RewardGold;
+    }
+}
+```
+
+## 自定义组件使用 IContextAware
+
+任何自定义类都可以继承 `ContextAwareBase` 来获得架构上下文访问能力。
+
+```csharp
 public class SaveManager : ContextAwareBase
 {
-    // 不再需要手动构造函数传参，上下文由框架注入
-    // protected override void OnContextReady() 可用于初始化
-    
+    protected override void OnContextReady()
+    {
+        // 上下文准备好后的初始化
+        Console.WriteLine("SaveManager initialized");
+    }
+
     public void SaveGame()
     {
-        // 因为继承了 ContextAwareBase，可以使用扩展方法
         var playerModel = this.GetModel<PlayerModel>();
         var saveData = new SaveData
         {
@@ -141,182 +283,69 @@ public class SaveManager : ContextAwareBase
             Level = playerModel.Level.Value,
             Gold = playerModel.Gold.Value
         };
-        
         // 保存逻辑...
     }
-}
-```
 
-## 规则约束
-
-### 1. 组件注册规则
-
-```csharp
-public class GameArchitecture : Architecture
-{
-    protected override void Init()
+    public void LoadGame()
     {
-        // Model/System/Utility 自动获得架构引用
-        this.RegisterModel<PlayerModel>(new PlayerModel());
-        this.RegisterSystem<CombatSystem>(new CombatSystem());
-        this.RegisterUtility<StorageUtility>(new StorageUtility());
+        var playerModel = this.GetModel<PlayerModel>();
+        // 加载逻辑...
     }
 }
 ```
 
-### 2. Command/Query 自动注入规则
+## 上下文注入机制
+
+### 自动注入流程
+
+1. **组件创建** - 框架创建 Command、Query、Model、System 等组件
+2. **上下文注入** - 框架调用组件的 `SetContext()` 方法，传入 `IArchitectureContext`
+3. **初始化回调** - `ContextAwareBase` 在 `SetContext()` 中调用 `OnContextReady()` 钩子
+4. **能力访问** - 组件现在可以通过扩展方法访问所有架构服务
+
+### 回退机制
+
+如果组件的上下文未被显式设置，`GetContext()` 会自动尝试从 `GameContext.GetFirstArchitectureContext()` 获取。这提供了一个安全的回退机制。
 
 ```csharp
-// Controller 中发送 Command
-public class ShopUI : Control, IController
+IArchitectureContext IContextAware.GetContext()
 {
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
-    
-    private void OnBuyButtonPressed()
-    {
-        var command = new BuyItemCommand { ItemId = "sword_01" };
-        
-        // SendCommand 内部会自动调用 command.SetArchitecture(this.GetArchitecture())
-        this.SendCommand(command);
-    }
-}
-
-// Command 执行时已经有了架构引用
-public class BuyItemCommand : AbstractCommand
-{
-    public string ItemId { get; set; }
-    
-    protected override void OnExecute()
-    {
-        // 此时 GetArchitecture() 已经可用
-        var model = this.GetModel<ShopModel>();
-    }
+    Context ??= GameContext.GetFirstArchitectureContext();
+    return Context;
 }
 ```
 
-## 设计模式
+## 设计优势
 
-### 1. 依赖注入模式
+### 1. 简洁性
 
-Rule 接口体现了依赖注入（DI）的思想：
+框架只定义了一个核心接口 `IContextAware`，包含两个方法。所有其他能力都通过扩展方法提供，使得接口定义保持简洁易懂。
 
-```csharp
-// 接口定义了"需要什么"
-public interface IContextAware
-{
-    void SetContext(IArchitectureContext context);
-    IArchitectureContext GetContext();
-}
+### 2. 灵活性
 
-// 框架负责"提供什么"
-/// <summary>
-///     发送一个事件
-/// </summary>
-/// <typeparam name="TResult">命令执行结果类型</typeparam>
-/// <param name="contextAware">实现 IContextAware 接口的对象</param>
-/// <param name="command">要发送的命令</param>
-/// <returns>命令执行结果</returns>
-/// <exception cref="ArgumentNullException">当 contextAware 或 command 为 null 时抛出</exception>
-public static TResult SendCommand<TResult>(this IContextAware contextAware, ICommand<TResult> command)
-{
-    ArgumentNullException.ThrowIfNull(contextAware);
-    ArgumentNullException.ThrowIfNull(command);
+扩展方法可以在不修改接口的情况下添加新能力。需要新功能时，只需添加新的扩展方法，无需修改 `IContextAware` 接口。
 
-    var context = contextAware.GetContext();
-    return context.SendCommand(command);
-}
-```
+### 3. 一致性
 
-### 2. 接口隔离原则（ISP）
+所有框架组件使用相同的方式访问架构服务，通过 `IContextAware` 接口和扩展方法。这提供了统一的编程体验。
 
-Rule 接口遵循接口隔离原则，每个接口职责单一：
+### 4. 可扩展性
 
-```csharp
-// ❌ 不好的设计：一个大接口包含所有能力
-public interface IBigInterface
-{
-    void SetContext(IArchitectureContext context);
-    IArchitectureContext GetContext();
-    T GetModel<T>() where T : class, IModel;
-    T GetSystem<T>() where T : class, ISystem;
-    void SendCommand<T>(T command) where T : ICommand;
-    // ... 更多方法
-}
-
-// ✅ 好的设计：小接口组合
-public interface IContextAware { ... }          // 只负责上下文的设置与获取
-public interface ICanGetModel { ... }           // 只负责获取 Model
-public interface ICanSendCommand { ... }        // 只负责发送 Command
-```
-
-### 3. 组合优于继承
-
-通过接口组合实现不同能力：
-
-```csharp
-// Controller 需要获取 Model 和发送 Command
-public interface IController : ICanGetModel, ICanGetSystem, ICanSendCommand, 
-    ICanSendQuery, ICanRegisterEvent
-{
-}
-
-// Command 需要上下文感知和获取 Model/System
-public interface ICommand : IContextAware, ICanGetModel, ICanGetSystem, 
-    ICanSendEvent, ICanSendQuery
-{
-}
-
-// System 只需要获取其他组件
-public interface ISystem : IContextAware, ICanGetModel, ICanGetUtility, ICanGetSystem, 
-    ICanRegisterEvent, ICanSendEvent, ICanSendQuery
-{
-}
-```
-
-## 扩展规则
-
-### 自定义规则接口
-
-```csharp
-// 定义新的规则接口
-public interface ICanAccessDatabase : IBelongToArchitecture
-{
-}
-
-// 提供扩展方法
-public static class CanAccessDatabaseExtensions
-{
-    public static DatabaseUtility GetDatabase(this ICanAccessDatabase self)
-    {
-        return self.GetArchitecture().GetUtility<DatabaseUtility>();
-    }
-}
-
-// 让特定组件实现这个接口
-public class DatabaseCommand : AbstractCommand, ICanAccessDatabase
-{
-    protected override void OnExecute()
-    {
-        var db = this.GetDatabase();
-        // 使用数据库...
-    }
-}
-```
+自定义组件可以轻松继承 `ContextAwareBase` 并使用所有扩展方法，与框架组件保持一致的设计。
 
 ## 最佳实践
 
-1. **遵循既有规则** - 优先使用框架提供的规则接口
-2. **不要绕过规则** - 不要直接存储架构引用，使用接口获取
-3. **接口组合** - 通过实现多个小接口获得所需能力
-4. **扩展规则** - 需要新能力时，定义新的规则接口
-5. **保持一致** - 自定义组件也应遵循相同的规则体系
+1. **继承 ContextAwareBase** - 自定义组件应继承 `ContextAwareBase` 而不是直接实现 `IContextAware`
+2. **使用 OnContextReady()** - 在 `OnContextReady()` 中进行初始化，而不是在构造函数中
+3. **使用扩展方法** - 通过扩展方法访问架构服务，不要手动存储 `IArchitectureContext` 引用
+4. **避免循环依赖** - 在设计系统和模型时，避免创建循环依赖关系
+5. **遵循单一职责** - 每个组件应该有明确的职责，不要让一个组件做太多事情
 
 ## 相关包
 
-- [`architecture`](./architecture.md) - 定义 IArchitectureContext 接口
-- [`command`](./command.md) - Command 继承 AbstractCommand (IContextAware)
-- [`query`](./query.md) - Query 继承 AbstractQuery (IContextAware)
-- **Controller** - Controller 实现 ICanSendCommand 等接口（接口定义在 Core.Abstractions 中）
-- [`system`](./system.md) - System 继承 AbstractSystem (IContextAware)
-- [`model`](./model.md) - Model 继承 AbstractModel (IContextAware)
-- [`extensions`](./extensions.md) - 基于规则接口提供扩展方法
+- [`architecture`](./architecture.md) - 定义 `IArchitectureContext` 接口
+- [`command`](./command.md) - Command 继承 `AbstractCommand` (实现 `IContextAware`)
+- [`query`](./query.md) - Query 继承 `AbstractQuery<TResult>` (实现 `IContextAware`)
+- [`model`](./model.md) - Model 继承 `AbstractModel` (实现 `IContextAware`)
+- [`system`](./system.md) - System 继承 `AbstractSystem` (实现 `IContextAware`)
+- [`extensions`](./extensions.md) - 提供 `ContextAwareExtensions` 扩展方法
