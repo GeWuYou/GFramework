@@ -90,11 +90,11 @@ public class DefaultEnvironment : EnvironmentBase
 
 ### 1. 定义自定义环境
 
-```
+```csharp
 public class GameEnvironment : EnvironmentBase
 {
     public override string Name { get; } = "Game";
-    
+
     public override void Initialize()
     {
         // 注册一些环境特定的值
@@ -102,7 +102,7 @@ public class GameEnvironment : EnvironmentBase
         Register("MaxPlayers", 4);
         Register("ServerAddress", "localhost");
     }
-    
+
     // 便捷方法
     public string GameMode => Get<string>("GameMode") ?? "Default";
     public int MaxPlayers => Get<int>("MaxPlayers") ?? 1;
@@ -112,7 +112,7 @@ public class GameEnvironment : EnvironmentBase
 
 ### 2. 在架构中使用环境
 
-```
+```csharp
 public class GameArchitecture : Architecture
 {
     protected override void Init()
@@ -120,7 +120,7 @@ public class GameArchitecture : Architecture
         // 环境已经在架构初始化过程中自动初始化
         // 但是我们可以在需要的时候获取环境值
         var gameMode = this.Context.Environment.Get<string>("GameMode");
-        
+
         // 注册模型和系统
         RegisterModel(new PlayerModel());
         RegisterSystem(new GameplaySystem());
@@ -130,26 +130,26 @@ public class GameArchitecture : Architecture
 
 ### 3. 使用环境值
 
-```
+```csharp
 public class NetworkSystem : AbstractSystem
 {
     private string _serverAddress;
-    
+
     protected override void OnInit()
     {
         // 从环境中获取服务器地址
         _serverAddress = this.GetContext().Environment.Get<string>("ServerAddress") ?? "localhost";
-        
+
         // 注册事件
         this.RegisterEvent<ConnectToServerEvent>(OnConnectToServer);
     }
-    
+
     private void OnConnectToServer(ConnectToServerEvent e)
     {
         // 使用环境中的服务器地址
         Connect(_serverAddress, e.Port);
     }
-    
+
     private void Connect(string address, int port)
     {
         // 连接逻辑
@@ -183,7 +183,7 @@ public class NetworkSystem : AbstractSystem
 
 ## 错误示例
 
-```
+```csharp
 // ❌ 错误：获取必需值但不存在
 public class BadExampleSystem : AbstractSystem
 {
@@ -204,7 +204,7 @@ public class GoodExampleSystem : AbstractSystem
         {
             // 处理值
         }
-        
+
         // 或者提供默认值
         var gameMode = this.GetContext().Environment.Get<string>("GameMode") ?? "Default";
     }

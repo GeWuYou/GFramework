@@ -82,7 +82,6 @@ export default defineConfig({
                 { text: '工具类', link: '/zh-CN/core/utility' },
                 { text: '模型层', link: '/zh-CN/core/model' },
                 { text: '系统层', link: '/zh-CN/core/system' },
-                { text: '控制器', link: '/zh-CN/core/controller' },
                 { text: '规则系统', link: '/zh-CN/core/rule' },
                 { text: '环境接口', link: '/zh-CN/core/environment' }
               ]

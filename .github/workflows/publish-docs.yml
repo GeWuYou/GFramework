@@ -66,6 +66,12 @@ jobs:
       - name: Build VitePress
         working-directory: docs
         run: bun run build
+      
+      # 生成 LLM 索引文件
+      - name: Make docs LLM ready
+        uses: demodrive-ai/llms-txt-action@v1
+        with:
+          docs-path: docs/.vitepress/dist
 
       # 上传构建产物作为 Pages 部署工件
       - name: Upload Pages Artifact

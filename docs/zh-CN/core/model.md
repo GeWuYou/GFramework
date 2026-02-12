@@ -61,13 +61,18 @@ public class PlayerModel : AbstractModel
     {
         switch (phase)
         {
-            case ArchitecturePhase.Initializing:
-                // 架构初始化阶段的处理
+            case ArchitecturePhase.BeforeModelInit:
+                // 模型初始化前的处理
+                break;
+            case ArchitecturePhase.AfterModelInit:
+                // 模型初始化后的处理
                 break;
             case ArchitecturePhase.Ready:
                 // 架构就绪阶段的处理
                 break;
-            // ... 其他阶段处理
+            case ArchitecturePhase.Destroying:
+                // 架构销毁阶段的处理
+                break;
         }
     }
 }
@@ -157,7 +162,7 @@ public class GameModel : AbstractModel
     {
         switch (phase)
         {
-            case ArchitecturePhase.ShuttingDown:
+            case ArchitecturePhase.Destroying:
                 // 游戏模型清理工作
                 break;
             default:
@@ -167,6 +172,48 @@ public class GameModel : AbstractModel
 }
 ```
 
+## 异步 Model
+
+Model 支持异步初始化，通过实现 `IAsyncInitializable` 接口可以在初始化时执行异步操作。
+
+```csharp
+// 异步模型示例
+public class ConfigModel : AbstractModel, IAsyncInitializable
+{
+    public BindableProperty<GameConfig> Config { get; } = new(null);
+
+    protected override void OnInit()
+    {
+        // 同步初始化逻辑
+    }
+
+    public async Task InitializeAsync()
+    {
+        // 异步加载配置
+        var storage = this.GetUtility<IStorageUtility>();
+        var config = await storage.LoadConfigAsync();
+        Config.Value = config;
+
+        // 配置加载完成后发送事件
+        this.SendEvent(new ConfigLoadedEvent { Config = config });
+    }
+}
+
+// 在架构中使用异步 Model
+public class GameArchitecture : Architecture
+{
+    protected override void Init()
+    {
+        RegisterModel(new ConfigModel());
+        RegisterModel(new PlayerModel());
+    }
+}
+
+// 异步初始化架构
+var architecture = new GameArchitecture();
+await architecture.InitializeAsync();
+```
+
 ## 最佳实践
 
 1. **使用 BindableProperty 存储需要监听的数据**
@@ -174,6 +221,7 @@ public class GameModel : AbstractModel
 3. **复杂计算和业务逻辑放在 System 中**
 4. **使用事件通知数据的重要变化**
 5. **保持 Model 简单纯粹，只做数据管理**
+6. **对于需要异步加载的数据，实现 IAsyncInitializable 接口**
 
 ## 相关包
 

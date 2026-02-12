@@ -21,25 +21,38 @@ TResult Do();  // 执行查询并返回结果
 
 ## 核心类
 
-### AbstractQuery`<TResult>`
+### AbstractQuery`<TInput, TResult>`
 
-抽象查询基类，提供了查询的基础实现。
+抽象查询基类，提供了查询的基础实现。通过 `IQueryInput` 接口传递参数。
 
 **核心方法：**
 
 ```csharp
 TResult IQuery<TResult>.Do();           // 实现 IQuery 接口
-protected abstract TResult OnDo();      // 抽象查询方法，由子类实现
+protected abstract TResult OnDo(TInput input);  // 抽象查询方法，接收输入参数
 ```
 
 **使用方式：**
 
 ```csharp
-public abstract class AbstractQuery<TResult> : ContextAwareBase, IQuery<TResult>
+public abstract class AbstractQuery<TInput, TResult> : ContextAwareBase, IQuery<TResult>
+    where TInput : IQueryInput
 {
-    public TResult Do() => OnDo();          // 执行查询
-    protected abstract TResult OnDo();      // 子类实现查询逻辑
+    public TResult Do() => OnDo(Input);          // 执行查询
+    public TInput Input { get; set; }            // 输入参数
+    protected abstract TResult OnDo(TInput input);  // 子类实现查询逻辑
 }
+```
+
+### AbstractAsyncQuery`<TInput, TResult>`
+
+支持异步执行的查询基类。
+
+**核心方法：**
+
+```csharp
+Task<TResult> IAsyncQuery<TResult>.DoAsync();  // 实现异步查询接口
+protected abstract Task<TResult> OnDoAsync(TInput input);  // 抽象异步查询方法
 ```
 
 ### EmptyQueryInput
@@ -83,67 +96,76 @@ public sealed class QueryBus : IQueryBus
 ### 1. 定义查询
 
 ```csharp
+// 定义查询输入
+public class GetPlayerGoldInput : IQueryInput { }
+
 // 查询玩家金币数量
-public class GetPlayerGoldQuery : AbstractQuery<int>
+public class GetPlayerGoldQuery : AbstractQuery<GetPlayerGoldInput, int>
 {
-    protected override int OnDo()
+    protected override int OnDo(GetPlayerGoldInput input)
     {
         return this.GetModel<PlayerModel>().Gold.Value;
     }
 }
 
-// 查询玩家是否死亡
-public class IsPlayerDeadQuery : AbstractQuery<bool>
+// 定义查询输入
+public class GetItemCountInput : IQueryInput
 {
-    protected override bool OnDo()
-    {
-        return this.GetModel<PlayerModel>().Health.Value <= 0;
-    }
+    public string ItemId { get; set; }
 }
 
 // 查询背包中指定物品的数量
-public class GetItemCountQuery : AbstractQuery<int>
+public class GetItemCountQuery : AbstractQuery<GetItemCountInput, int>
 {
-    private readonly string _itemId;
-    
-    public GetItemCountQuery(string itemId)
-    {
-        _itemId = itemId;
-    }
-
-    protected override int OnDo()
+    protected override int OnDo(GetItemCountInput input)
     {
         var inventory = this.GetModel<InventoryModel>();
-        return inventory.GetItemCount(_itemId);
+        return inventory.GetItemCount(input.ItemId);
     }
 }
-```
+
+// 定义异步查询输入
+public class LoadPlayerDataInput : IQueryInput
+{
+    public string PlayerId { get; set; }
+}
+
+// 异步查询玩家数据
+public class LoadPlayerDataQuery : AbstractAsyncQuery<LoadPlayerDataInput, PlayerData>
+{
+    protected override async Task<PlayerData> OnDoAsync(LoadPlayerDataInput input)
+    {
+        var storage = this.GetUtility<IStorageUtility>();
+        return await storage.LoadPlayerDataAsync(input.PlayerId);
+    }
+}
 ```
 
 ### 2. 发送查询
 
 ```csharp
-public partial class ShopUI : Control, IController
+public class ShopUI : IController
 {
     [Export] private Button _buyButton;
     [Export] private int _itemPrice = 100;
-    
+
     public IArchitecture GetArchitecture() => GameArchitecture.Interface;
-    
-    public override void _Ready()
+
+    public void OnReady()
     {
         _buyButton.Pressed += OnBuyButtonPressed;
     }
-    
+
     private void OnBuyButtonPressed()
     {
         // 查询玩家金币
-        int playerGold = this.SendQuery(new GetPlayerGoldQuery());
-        
+        var query = new GetPlayerGoldQuery { Input = new GetPlayerGoldInput() };
+        int playerGold = this.SendQuery(query);
+
         if (playerGold >= _itemPrice)
         {
             // 发送购买命令
-            this.SendCommand(new BuyItemCommand("sword_01"));
+            this.SendCommand(new BuyItemCommand { Input = new BuyItemInput { ItemId = "sword_01" } });
         }
         else
         {
@@ -167,13 +189,22 @@ public class CombatSystem : AbstractSystem
     private void OnEnemyAttack(EnemyAttackEvent e)
     {
         // 查询玩家是否已经死亡
-        bool isDead = this.SendQuery(new IsPlayerDeadQuery());
-        
+        var query = new IsPlayerDeadQuery { Input = new EmptyQueryInput() };
+        bool isDead = this.SendQuery(query);
+
         if (!isDead)
         {
             // 执行伤害逻辑
-            this.SendCommand(new TakeDamageCommand(e.Damage));
+            this.SendCommand(new TakeDamageCommand { Input = new TakeDamageInput { Damage = e.Damage } });
         }
+    }
+}
+
+public class IsPlayerDeadQuery : AbstractQuery<EmptyQueryInput, bool>
+{
+    protected override bool OnDo(EmptyQueryInput input)
+    {
+        return this.GetModel<PlayerModel>().Health.Value <= 0;
     }
 }
 ```
@@ -184,122 +215,116 @@ public class CombatSystem : AbstractSystem
 ### 1. 带参数的复杂查询
 
 ```csharp
-// 查询指定范围内的敌人列表
-public class GetEnemiesInRangeQuery : AbstractQuery<List<Enemy>>
+// 定义查询输入
+public class GetEnemiesInRangeInput : IQueryInput
 {
-    private readonly Vector3 _center;
-    private readonly float _radius;
-    
-    public GetEnemiesInRangeQuery(Vector3 center, float radius)
-    {
-        _center = center;
-        _radius = radius;
-    }
-    
-    protected override List<Enemy> OnDo()
+    public Vector3 Center { get; set; }
+    public float Radius { get; set; }
+}
+
+// 查询指定范围内的敌人列表
+public class GetEnemiesInRangeQuery : AbstractQuery<GetEnemiesInRangeInput, List<Enemy>>
+{
+    protected override List<Enemy> OnDo(GetEnemiesInRangeInput input)
     {
         var enemySystem = this.GetSystem<EnemySpawnSystem>();
-        return enemySystem.GetEnemiesInRange(_center, _radius);
+        return enemySystem.GetEnemiesInRange(input.Center, input.Radius);
     }
 }
 
 // 使用
-var enemies = this.SendQuery(new GetEnemiesInRangeQuery(playerPosition, 10.0f));
+var input = new GetEnemiesInRangeInput { Center = playerPosition, Radius = 10.0f };
+var query = new GetEnemiesInRangeQuery { Input = input };
+var enemies = this.SendQuery(query);
 ```
 
 ### 2. 组合查询
 
 ```csharp
-// 查询玩家是否可以使用技能
-public class CanUseSkillQuery : AbstractQuery<bool>
+// 定义查询输入
+public class CanUseSkillInput : IQueryInput
 {
-    private readonly string _skillId;
+    public string SkillId { get; set; }
+}
 
-    public CanUseSkillQuery(string skillId)
-    {
-        _skillId = skillId;
-    }
-
-    protected override bool OnDo()
+// 查询玩家是否可以使用技能
+public class CanUseSkillQuery : AbstractQuery<CanUseSkillInput, bool>
+{
+    protected override bool OnDo(CanUseSkillInput input)
     {
         var playerModel = this.GetModel<PlayerModel>();
-        var skillModel = this.GetModel<SkillModel>();
-        
+
         // 查询技能消耗
-        var skillCost = this.SendQuery(new GetSkillCostQuery(_skillId));
-        
+        var skillCostQuery = new GetSkillCostQuery { Input = new GetSkillCostInput { SkillId = input.SkillId } };
+        var skillCost = this.SendQuery(skillCostQuery);
+
         // 检查是否满足条件
         return playerModel.Mana.Value >= skillCost.ManaCost
-            && !this.SendQuery(new IsSkillOnCooldownQuery(_skillId));
+            && !this.SendQuery(new IsSkillOnCooldownQuery { Input = new IsSkillOnCooldownInput { SkillId = input.SkillId } });
     }
 }
 
-public class GetSkillCostQuery : AbstractQuery<SkillCost>
+public class GetSkillCostInput : IQueryInput
 {
-    private readonly string _skillId;
-
-    public GetSkillCostQuery(string skillId)
-    {
-        _skillId = skillId;
-    }
-
-    protected override SkillCost OnDo()
-    {
-        return this.GetModel<SkillModel>().GetSkillCost(_skillId);
-    }
+    public string SkillId { get; set; }
 }
 
-public class IsSkillOnCooldownQuery : AbstractQuery<bool>
+public class GetSkillCostQuery : AbstractQuery<GetSkillCostInput, SkillCost>
 {
-    private readonly string _skillId;
-
-    public IsSkillOnCooldownQuery(string skillId)
+    protected override SkillCost OnDo(GetSkillCostInput input)
     {
-        _skillId = skillId;
-    }
-
-    protected override bool OnDo()
-    {
-        return this.GetModel<SkillModel>().IsOnCooldown(_skillId);
+        return this.GetModel<SkillModel>().GetSkillCost(input.SkillId);
     }
 }
-```
+
+public class IsSkillOnCooldownInput : IQueryInput
+{
+    public string SkillId { get; set; }
+}
+
+public class IsSkillOnCooldownQuery : AbstractQuery<IsSkillOnCooldownInput, bool>
+{
+    protected override bool OnDo(IsSkillOnCooldownInput input)
+    {
+        return this.GetModel<SkillModel>().IsOnCooldown(input.SkillId);
+    }
+}
 ```
 
 ### 3. 聚合数据查询
 
 ```csharp
 // 查询玩家战斗力
-public class GetPlayerPowerQuery : AbstractQuery<int>
+public class GetPlayerPowerQuery : AbstractQuery<EmptyQueryInput, int>
 {
-    protected override int OnDo()
+    protected override int OnDo(EmptyQueryInput input)
     {
         var playerModel = this.GetModel<PlayerModel>();
         var equipmentModel = this.GetModel<EquipmentModel>();
-        
+
         int basePower = playerModel.Level.Value * 10;
         int equipmentPower = equipmentModel.GetTotalPower();
-        int buffPower = this.SendQuery(new GetBuffPowerQuery());
-        
+        int buffPower = this.SendQuery(new GetBuffPowerQuery { Input = new EmptyQueryInput() });
+
         return basePower + equipmentPower + buffPower;
     }
 }
 
 // 查询玩家详细信息（用于UI显示）
-public class GetPlayerInfoQuery : AbstractQuery<PlayerInfo>
+public class GetPlayerInfoQuery : AbstractQuery<EmptyQueryInput, PlayerInfo>
 {
-    protected override PlayerInfo OnDo()
+    protected override PlayerInfo OnDo(EmptyQueryInput input)
     {
         var playerModel = this.GetModel<PlayerModel>();
-        
+
         return new PlayerInfo
         {
             Name = playerModel.Name.Value,
             Level = playerModel.Level.Value,
             Health = playerModel.Health.Value,
             MaxHealth = playerModel.MaxHealth.Value,
-            Gold = this.SendQuery(new GetPlayerGoldQuery()),
-            Power = this.SendQuery(new GetPlayerPowerQuery())
+            Gold = this.SendQuery(new GetPlayerGoldQuery { Input = new GetPlayerGoldInput() }),
+            Power = this.SendQuery(new GetPlayerPowerQuery { Input = new EmptyQueryInput() })
         };
     }
 }
@@ -311,37 +336,31 @@ public class GetPlayerInfoQuery : AbstractQuery<PlayerInfo>
 // 在 AI System 中查询玩家状态
 public class EnemyAISystem : AbstractSystem
 {
-protected override void OnInit() { }
+    protected override void OnInit() { }
 
     public void UpdateEnemyBehavior(Enemy enemy)
     {
         // 查询玩家位置
-        var playerPos = this.SendQuery(new GetPlayerPositionQuery());
-        
+        var playerPosQuery = new GetPlayerPositionQuery { Input = new EmptyQueryInput() };
+        var playerPos = this.SendQuery(playerPosQuery);
+
         // 查询玩家是否在攻击范围内
-        bool inRange = this.SendQuery(new IsPlayerInRangeQuery
-        {
-            Position = enemy.Position,
-            Range = enemy.AttackRange
-        });
-        
+        var inRangeInput = new IsPlayerInRangeInput { Position = enemy.Position, Range = enemy.AttackRange };
+        bool inRange = this.SendQuery(new IsPlayerInRangeQuery { Input = inRangeInput });
+
         if (inRange)
         {
             // 查询是否可以攻击
-            bool canAttack = this.SendQuery(new CanEnemyAttackQuery
-            {
-                EnemyId = enemy.Id
-            });
-            
+            var canAttackInput = new CanEnemyAttackInput { EnemyId = enemy.Id };
+            bool canAttack = this.SendQuery(new CanEnemyAttackQuery { Input = canAttackInput });
+
             if (canAttack)
             {
-                this.SendCommand(new EnemyAttackCommand { EnemyId = enemy.Id });
+                this.SendCommand(new EnemyAttackCommand { Input = new EnemyAttackInput { EnemyId = enemy.Id } });
             }
         }
     }
-
 }
-
 ```
 
 ## Query 的执行机制

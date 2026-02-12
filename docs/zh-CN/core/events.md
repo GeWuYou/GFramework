@@ -353,43 +353,43 @@ public class CombatSystem : AbstractSystem
 ### Controller 中注册事件
 
 ```csharp
-public partial class GameController : Node, IController
+public class GameController : IController
 {
     private IUnRegisterList _unregisterList = new UnRegisterList();
-    
+
     public IArchitecture GetArchitecture() => GameArchitecture.Interface;
-    
-    public override void _Ready()
+
+    public void Initialize()
     {
         // 注册多个事件
         this.RegisterEvent<GameStartedEvent>(OnGameStarted)
             .AddToUnregisterList(_unregisterList);
-            
+
         this.RegisterEvent<PlayerDiedEvent>(OnPlayerDied)
             .AddToUnregisterList(_unregisterList);
-            
+
         this.RegisterEvent<LevelCompletedEvent>(OnLevelCompleted)
             .AddToUnregisterList(_unregisterList);
     }
-    
+
     private void OnGameStarted(GameStartedEvent e)
     {
         Console.WriteLine("Game started!");
     }
-    
+
     private void OnPlayerDied(PlayerDiedEvent e)
     {
         Console.WriteLine($"Player died at {e.Position}: {e.Cause}");
         ShowGameOverScreen();
     }
-    
+
     private void OnLevelCompleted(LevelCompletedEvent e)
     {
         Console.WriteLine($"Level {e.LevelId} completed! Score: {e.Score}");
         ShowVictoryScreen(e);
     }
-    
-    public override void _ExitTree()
+
+    public void Cleanup()
     {
         _unregisterList.UnRegisterAll();
     }
@@ -449,9 +449,11 @@ public class EventBridge : AbstractSystem
 ### 4. 临时事件监听
 
 ```csharp
-public class TutorialController : Node, IController
+public class TutorialController : IController
 {
-    public override void _Ready()
+    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
+
+    public void Initialize()
     {
         // 只监听一次
         IUnRegister unregister = null;
@@ -495,37 +497,26 @@ public class AchievementSystem : AbstractSystem
 ### 使用 UnRegisterList
 
 ```csharp
-public class MyController : Node, IController
+public class MyController : IController
 {
     // 统一管理所有注销对象
     private IUnRegisterList _unregisterList = new UnRegisterList();
-    
-    public override void _Ready()
+
+    public void Initialize()
     {
         // 所有注册都添加到列表
         this.RegisterEvent<Event1>(OnEvent1)
             .AddToUnregisterList(_unregisterList);
-            
+
         this.RegisterEvent<Event2>(OnEvent2)
             .AddToUnregisterList(_unregisterList);
     }
-    
-    public override void _ExitTree()
+
+    public void Cleanup()
     {
         // 一次性注销所有
         _unregisterList.UnRegisterAll();
     }
-}
-```
-
-### 使用 Godot 节点生命周期
-
-```csharp
-public override void _Ready()
-{
-    // 当节点退出场景树时自动注销
-    this.RegisterEvent<GameEvent>(OnGameEvent)
-        .UnRegisterWhenNodeExitTree(this);
 }
 ```
 
@@ -553,7 +544,7 @@ public override void _Ready()
 5. **注销管理**
     - 始终注销事件监听
     - 使用 `IUnRegisterList` 批量管理
-    - 利用 Godot 节点生命周期
+   - 在适当的生命周期点调用 `Cleanup()`
 
 6. **性能考虑**
     - 避免频繁触发的事件（如每帧）

@@ -38,17 +38,15 @@ public class IocContainer : ContextAwareBase, IIocContainer
 
 ```csharp
 public void Register<T>(T instance)
-public void Register(Type type, object instance)
 ```
 
 **参数：**
 
 - `instance`: 要注册的实例对象
-- `type`: 要注册的类型（重载方法）
 
 **特点：**
 
-- 支持泛型和非泛型注册
+- 支持泛型注册
 - 自动注册到实例的所有接口类型
 - 线程安全操作
 - 容器冻结后抛出异常
@@ -62,10 +60,9 @@ var container = new IocContainer();
 container.Register<IPlayerModel>(new PlayerModel());
 container.Register<IGameSystem>(new GameSystem());
 container.Register<IStorageUtility>(new StorageUtility());
-
-// 非泛型注册
-container.Register(typeof(ICustomService), new CustomService());
 ```
+
+**注意：** 非泛型的 `Register(Type, object)` 方法是内部方法 `RegisterInternal`，不作为公开 API 使用。
 
 ### RegisterSingleton`<T>`
 
@@ -136,35 +133,36 @@ var system2 = container.Get<IUpdateable>();   // 返回 gameSystem
 var system3 = container.Get<GameSystem>();    // 返回 gameSystem
 ```
 
-### RegisterSystem
+### RegisterSystem（Architecture 方法）
 
-注册系统实例，将其绑定到其所有实现的接口上。
+**注意：** `RegisterSystem` 是 `Architecture` 类的方法，不是 `IocContainer` 的方法。它用于在架构中注册系统实例。
 
-**方法签名：**
+**方法签名（在 Architecture 中）：**
 
 ```csharp
-public void RegisterSystem(ISystem system)
+public TSystem RegisterSystem<TSystem>(TSystem system) where TSystem : ISystem
 ```
-
-**参数：**
-
-- `system`: 系统实例对象
 
 **特点：**
 
 - 专门为 System 设计的注册方法
-- 内部调用 `RegisterPlurality`
+- 内部调用 `IocContainer.RegisterPlurality`
+- 自动处理 System 的生命周期
 - 提供语义化的 API
 
 **使用示例：**
 
 ```csharp
-var container = new IocContainer();
-
-// 注册系统
-container.RegisterSystem(new CombatSystem());
-container.RegisterSystem(new InventorySystem());
-container.RegisterSystem(new QuestSystem());
+public class GameArchitecture : Architecture
+{
+    protected override void Init()
+    {
+        // 注册系统
+        RegisterSystem(new CombatSystem());
+        RegisterSystem(new InventorySystem());
+        RegisterSystem(new QuestSystem());
+    }
+}
 ```
 
 ### Get`<T>` 和 GetAll`<T>`

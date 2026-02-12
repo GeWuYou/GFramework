@@ -185,16 +185,16 @@ public class GameArchitecture : Architecture
 
 ```csharp
 // 在 Controller 中
-public partial class GameController : Node, IController
+public class GameController : IController
 {
     public IArchitecture GetArchitecture() => GameArchitecture.Interface;
-    
-    public override void _Ready()
+
+    public void Start()
     {
         // 获取 System
         var combatSystem = this.GetSystem<CombatSystem>();
         var questSystem = this.GetSystem<QuestSystem>();
-        
+
         // 使用 System
         combatSystem.StartBattle();
     }
@@ -222,6 +222,61 @@ public class AISystem : AbstractSystem
 ```
 
 ## 常见使用模式
+
+### 异步 System
+
+System 支持异步初始化，通过实现 `IAsyncInitializable` 接口可以在初始化时执行异步操作。
+
+```csharp
+// 异步系统示例
+public class DataLoadSystem : AbstractSystem, IAsyncInitializable
+{
+    private GameData _gameData;
+
+    protected override void OnInit()
+    {
+        // 同步初始化逻辑
+        this.RegisterEvent<GameStartedEvent>(OnGameStarted);
+    }
+
+    public async Task InitializeAsync()
+    {
+        // 异步加载游戏数据
+        var storage = this.GetUtility<IStorageUtility>();
+        _gameData = await storage.LoadGameDataAsync();
+
+        // 数据加载完成后发送事件
+        this.SendEvent(new GameDataLoadedEvent { Data = _gameData });
+    }
+
+    private void OnGameStarted(GameStartedEvent e)
+    {
+        // 使用已加载的数据
+        Console.WriteLine($"Game data loaded: {_gameData.Version}");
+    }
+
+    protected override void OnDestroy()
+    {
+        // 清理资源
+        _gameData = null;
+    }
+}
+
+// 在架构中使用异步 System
+public class GameArchitecture : Architecture
+{
+    protected override void Init()
+    {
+        RegisterModel(new PlayerModel());
+        RegisterSystem(new DataLoadSystem());
+        RegisterSystem(new CombatSystem());
+    }
+}
+
+// 异步初始化架构
+var architecture = new GameArchitecture();
+await architecture.InitializeAsync();
+```
 
 ### 1. 事件驱动的 System
 

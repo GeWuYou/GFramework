@@ -44,31 +44,14 @@ protected abstract void OnExecute();        // 抽象执行方法，由子类实
 **使用示例：**
 
 ```csharp
-// 定义一个开始游戏的命令
-public class StartGameCommand : AbstractCommand
+// 定义一个无返回值的基础命令
+public class SimpleCommand : AbstractCommand
 {
-    private readonly int _levelId;
-    private readonly string _playerName;
-
-    public StartGameCommand(int levelId, string playerName)
-    {
-        _levelId = levelId;
-        _playerName = playerName;
-    }
-
     protected override void OnExecute()
     {
-        // 获取需要的模型
         var playerModel = this.GetModel<PlayerModel>();
-        var gameModel = this.GetModel<GameModel>();
-        
-        // 执行业务逻辑
-        playerModel.PlayerName.Value = _playerName;
-        gameModel.CurrentLevel.Value = _levelId;
-        gameModel.GameState.Value = GameState.Playing;
-        
-        // 发送事件通知其他模块
-        this.SendEvent(new GameStartedEvent());
+        playerModel.Health.Value = playerModel.MaxHealth.Value;
+        this.SendEvent(new PlayerHealthRestoredEvent());
     }
 }
 
@@ -76,18 +59,17 @@ public class StartGameCommand : AbstractCommand
 public class GameController : IController
 {
     public IArchitecture GetArchitecture() => GameArchitecture.Interface;
-    
-    public void OnStartButtonClicked()
+
+    public void OnRestoreHealthButtonClicked()
     {
-        // 发送命令实例
-        this.SendCommand(new StartGameCommand(1, "Player1"));
+        this.SendCommand(new SimpleCommand());
     }
 }
 ```
 
-### AbstractCommandWithResult`<TResult>`
+### AbstractCommand`<TResult>`
 
-带返回值命令的抽象基类，同样继承自 ContextAwareBase。
+无输入参数但带返回值的命令基类。
 
 **核心方法：**
 
@@ -99,49 +81,28 @@ protected abstract TResult OnExecute();     // 抽象执行方法，由子类实
 **使用示例：**
 
 ```csharp
-// 定义一个计算伤害的命令
-public class CalculateDamageCommand : AbstractCommandWithResult<int>
+// 定义一个无输入但有返回值的命令
+public class GetPlayerHealthQuery : AbstractCommand<int>
 {
-    private readonly int _attackerAttackPower;
-    private readonly int _defenderDefense;
-
-    public CalculateDamageCommand(int attackerAttackPower, int defenderDefense)
-    {
-        _attackerAttackPower = attackerAttackPower;
-        _defenderDefense = defenderDefense;
-    }
-
     protected override int OnExecute()
     {
-        // 获取游戏配置
-        var config = this.GetModel<GameConfigModel>();
-        
-        // 计算最终伤害
-        var baseDamage = _attackerAttackPower - _defenderDefense;
-        var finalDamage = Math.Max(1, baseDamage * config.DamageMultiplier);
-        
-        return (int)finalDamage;
+        var playerModel = this.GetModel<PlayerModel>();
+        return playerModel.Health.Value;
     }
 }
 
-// 使用带返回值的命令
-public class CombatSystem : AbstractSystem
+// 使用命令
+public class UISystem : AbstractSystem
 {
-    protected override void OnInit() { }
-    
-    public void Attack(Character attacker, Character defender)
+    protected override void OnInit()
     {
-        // 发送命令并获取返回值
-        var damage = this.SendCommand(new CalculateDamageCommand(
-            attacker.AttackPower,
-            defender.Defense
-        ));
-        
-        // 应用伤害
-        defender.Health -= damage;
-        
-        // 发送伤害事件
-        this.SendEvent(new DamageDealtEvent(attacker, defender, damage));
+        this.RegisterEvent<UpdateUIEvent>(OnUpdateUI);
+    }
+
+    private void OnUpdateUI(UpdateUIEvent e)
+    {
+        var health = this.SendCommand(new GetPlayerHealthQuery());
+        Console.WriteLine($"Player health: {health}");
     }
 }
 ```
@@ -195,45 +156,167 @@ var damage = commandBus.Send(new CalculateDamageCommand(100, 50));
 
 框架提供了多种命令基类以满足不同需求：
 
-### AbstractCommand
+### AbstractCommand`<TInput>`
 
-最基础的无返回值命令类
+带输入参数的无返回值命令类。通过 `ICommandInput` 接口传递参数。
 
-### AbstractCommandWithResult`<TResult>`
-
-带返回值的命令基类
-
-### AbstractCommandWithInput`<TInput>`
-
-带输入参数的无返回值命令类
-
-### AbstractCommandWithInputAndResult`<TInput, TResult>`
-
-既带输入参数又带返回值的命令类
-
-### AbstractAsyncCommand
-
-支持异步执行的命令基类
-
-### AbstractAsyncCommandWithResult`<TResult>`
-
-支持异步执行的带返回值命令基类
+**核心方法：**
 
 ```csharp
-// 异步命令示例
-public class LoadSaveDataCommand : AbstractAsyncCommandWithResult<SaveData>
+void ICommand.Execute();                    // 实现 ICommand 接口
+protected abstract void OnExecute(TInput input);  // 抽象执行方法，接收输入参数
+```
+
+**使用示例：**
+
+```csharp
+// 定义输入对象
+public class StartGameInput : ICommandInput
 {
-    private readonly string _saveSlot;
+    public int LevelId { get; set; }
+    public string PlayerName { get; set; }
+}
 
-    public LoadSaveDataCommand(string saveSlot)
+// 定义命令
+public class StartGameCommand : AbstractCommand<StartGameInput>
+{
+    protected override void OnExecute(StartGameInput input)
     {
-        _saveSlot = saveSlot;
-    }
+        var playerModel = this.GetModel<PlayerModel>();
+        var gameModel = this.GetModel<GameModel>();
 
-    protected override async Task<SaveData> OnExecuteAsync()
+        playerModel.PlayerName.Value = input.PlayerName;
+        gameModel.CurrentLevel.Value = input.LevelId;
+        gameModel.GameState.Value = GameState.Playing;
+
+        this.SendEvent(new GameStartedEvent());
+    }
+}
+
+// 使用命令
+public class GameController : IController
+{
+    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
+
+    public void OnStartButtonClicked()
+    {
+        var input = new StartGameInput { LevelId = 1, PlayerName = "Player1" };
+        this.SendCommand(new StartGameCommand { Input = input });
+    }
+}
+```
+
+### AbstractCommand`<TInput, TResult>`
+
+既带输入参数又带返回值的命令类。
+
+**核心方法：**
+
+```csharp
+TResult ICommand<TResult>.Execute();        // 实现 ICommand<TResult> 接口
+protected abstract TResult OnExecute(TInput input);  // 抽象执行方法，接收输入参数
+```
+
+**使用示例：**
+
+```csharp
+// 定义输入对象
+public class CalculateDamageInput : ICommandInput
+{
+    public int AttackerAttackPower { get; set; }
+    public int DefenderDefense { get; set; }
+}
+
+// 定义命令
+public class CalculateDamageCommand : AbstractCommand<CalculateDamageInput, int>
+{
+    protected override int OnExecute(CalculateDamageInput input)
+    {
+        var config = this.GetModel<GameConfigModel>();
+        var baseDamage = input.AttackerAttackPower - input.DefenderDefense;
+        var finalDamage = Math.Max(1, baseDamage * config.DamageMultiplier);
+        return (int)finalDamage;
+    }
+}
+
+// 使用命令
+public class CombatSystem : AbstractSystem
+{
+    protected override void OnInit() { }
+
+    public void Attack(Character attacker, Character defender)
+    {
+        var input = new CalculateDamageInput
+        {
+            AttackerAttackPower = attacker.AttackPower,
+            DefenderDefense = defender.Defense
+        };
+
+        var damage = this.SendCommand(new CalculateDamageCommand { Input = input });
+        defender.Health -= damage;
+        this.SendEvent(new DamageDealtEvent(attacker, defender, damage));
+    }
+}
+```
+
+### AbstractAsyncCommand`<TInput>`
+
+支持异步执行的带输入参数的无返回值命令基类。
+
+**核心方法：**
+
+```csharp
+Task IAsyncCommand.ExecuteAsync();          // 实现异步命令接口
+protected abstract Task OnExecuteAsync(TInput input);  // 抽象异步执行方法
+```
+
+### AbstractAsyncCommand`<TInput, TResult>`
+
+支持异步执行的既带输入参数又带返回值的命令基类。
+
+**核心方法：**
+
+```csharp
+Task<TResult> IAsyncCommand<TResult>.ExecuteAsync();  // 实现异步命令接口
+protected abstract Task<TResult> OnExecuteAsync(TInput input);  // 抽象异步执行方法
+```
+
+**使用示例：**
+
+```csharp
+// 定义输入对象
+public class LoadSaveDataInput : ICommandInput
+{
+    public string SaveSlot { get; set; }
+}
+
+// 定义异步命令
+public class LoadSaveDataCommand : AbstractAsyncCommand<LoadSaveDataInput, SaveData>
+{
+    protected override async Task<SaveData> OnExecuteAsync(LoadSaveDataInput input)
     {
         var storage = this.GetUtility<IStorageUtility>();
-        return await storage.LoadSaveDataAsync(_saveSlot);
+        return await storage.LoadSaveDataAsync(input.SaveSlot);
+    }
+}
+
+// 使用异步命令
+public class SaveSystem : AbstractSystem
+{
+    protected override void OnInit()
+    {
+        this.RegisterEvent<LoadGameRequestEvent>(OnLoadGameRequest);
+    }
+
+    private async void OnLoadGameRequest(LoadGameRequestEvent e)
+    {
+        var input = new LoadSaveDataInput { SaveSlot = e.SaveSlot };
+        var saveData = await this.SendCommandAsync(new LoadSaveDataCommand { Input = input });
+
+        if (saveData != null)
+        {
+            this.SendEvent(new GameLoadedEvent { SaveData = saveData });
+        }
     }
 }
 ```
