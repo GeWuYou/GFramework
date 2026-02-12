@@ -209,15 +209,21 @@ public interface IContextAware
 }
 
 // 框架负责"提供什么"
-public static class CanSendExtensions
+/// <summary>
+///     发送一个事件
+/// </summary>
+/// <typeparam name="TResult">命令执行结果类型</typeparam>
+/// <param name="contextAware">实现 IContextAware 接口的对象</param>
+/// <param name="command">要发送的命令</param>
+/// <returns>命令执行结果</returns>
+/// <exception cref="ArgumentNullException">当 contextAware 或 command 为 null 时抛出</exception>
+public static TResult SendCommand<TResult>(this IContextAware contextAware, ICommand<TResult> command)
 {
-    public static void SendCommand<T>(this ICanSendCommand self, T command) 
-        where T : ICommand
-    {
-        // 自动注入架构上下文依赖
-        command.SetContext(self.GetContext());
-        command.Execute();
-    }
+    ArgumentNullException.ThrowIfNull(contextAware);
+    ArgumentNullException.ThrowIfNull(command);
+
+    var context = contextAware.GetContext();
+    return context.SendCommand(command);
 }
 ```
 
@@ -310,7 +316,7 @@ public class DatabaseCommand : AbstractCommand, ICanAccessDatabase
 - [`architecture`](./architecture.md) - 定义 IArchitectureContext 接口
 - [`command`](./command.md) - Command 继承 AbstractCommand (IContextAware)
 - [`query`](./query.md) - Query 继承 AbstractQuery (IContextAware)
-- [`controller`](./controller.md) - Controller 实现 ICanSendCommand 等接口
+- **Controller** - Controller 实现 ICanSendCommand 等接口（接口定义在 Core.Abstractions 中）
 - [`system`](./system.md) - System 继承 AbstractSystem (IContextAware)
 - [`model`](./model.md) - Model 继承 AbstractModel (IContextAware)
 - [`extensions`](./extensions.md) - 基于规则接口提供扩展方法

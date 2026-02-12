@@ -292,10 +292,10 @@ public void Update()
 
 如果问题仍未解决：
 
-1. 查看 [常见问题](../faq.md)
-2. 查看 [API 参考](../api-reference/index.md)
+1. 查看 [Core 文档](/zh-CN/core/) 了解更多细节
+2. 查看 [架构组件](/zh-CN/core/architecture) 了解架构设计
 3. 在 [GitHub Issues](https://github.com/GeWuYou/GFramework/issues) 提交问题
-4. 查看 [教程](../tutorials/index.md) 中的示例代码
+4. 查看 [教程](/zh-CN/tutorials/) 中的示例代码
 
 ---
 

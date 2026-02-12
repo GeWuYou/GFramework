@@ -197,7 +197,7 @@ public abstract class AbstractCommand : IBelongToArchitecture
 }
 ```
 
-### AbstractQuery<T>
+### AbstractQuery`<T>`
 
 ```csharp
 public abstract class AbstractQuery<T> : IBelongToArchitecture
@@ -222,7 +222,7 @@ public abstract class AbstractQuery<T> : IBelongToArchitecture
 }
 ```
 
-### BindableProperty<T>
+### BindableProperty`<T>`
 
 ```csharp
 public class BindableProperty<T>

@@ -71,6 +71,8 @@ export default defineConfig({
               items: [
                 { text: '概览', link: '/zh-CN/core/' },
                 { text: '架构组件', link: '/zh-CN/core/architecture' },
+                { text: 'Context 上下文', link: '/zh-CN/core/context' },
+                { text: '异步初始化', link: '/zh-CN/core/async-initialization' },
                 { text: '命令系统', link: '/zh-CN/core/command' },
                 { text: '查询系统', link: '/zh-CN/core/query' },
                 { text: '事件系统', link: '/zh-CN/core/events' },

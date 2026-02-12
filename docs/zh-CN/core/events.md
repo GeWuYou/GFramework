@@ -587,7 +587,7 @@ Components (组件)
 - [`architecture`](./architecture.md) - 提供全局事件系统
 - [`extensions`](./extensions.md) - 提供事件扩展方法
 - [`property`](./property.md) - 可绑定属性基于事件实现
-- [`controller`](./controller.md) - 控制器监听事件
+- **Controller** - 控制器监听事件（接口定义在 Core.Abstractions 中）
 - [`model`](./model.md) - 模型发送事件
 - [`system`](./system.md) - 系统发送和监听事件
 - [`command`](./command.md) - 与事件配合实现 CQRS

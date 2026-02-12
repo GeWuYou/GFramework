@@ -478,7 +478,6 @@ public class PlayerModel : AbstractModel
     }
 }
 ```
-```
 
 ### 2. 批量查询
 
@@ -526,6 +525,6 @@ public class GetMultipleItemCountsQuery : AbstractQuery<Dictionary<string, int>>
 - [`command`](./command.md) - CQRS 的命令部分
 - [`model`](./model.md) - Query 主要从 Model 获取数据
 - [`system`](./system.md) - System 中可以发送 Query
-- [`controller`](./controller.md) - Controller 中可以发送 Query
+- **Controller** - Controller 中可以发送 Query（接口定义在 Core.Abstractions 中）
 - [`extensions`](./extensions.md) - 提供 SendQuery 扩展方法
 - [`architecture`](./architecture.md) - 架构核心，负责查询的分发和执行
