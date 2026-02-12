@@ -260,7 +260,7 @@ public partial class PlayerUI : Control, IController
 
 ### 1. 双向绑定
 
-```
+```c#
 // Model
 public class SettingsModel : AbstractModel
 {
@@ -289,7 +289,7 @@ public partial class VolumeSlider : HSlider, IController
 
 ### 2. 计算属性
 
-```
+```c#
 public class PlayerModel : AbstractModel
 {
     public BindableProperty<int> Health { get; } = new(100);
@@ -314,7 +314,7 @@ public class PlayerModel : AbstractModel
 
 ### 3. 属性验证
 
-```
+```c#
 public class PlayerModel : AbstractModel
 {
     private BindableProperty<int> _health = new(100);
@@ -338,7 +338,7 @@ public class PlayerModel : AbstractModel
 
 ### 4. 条件监听
 
-```
+```c#
 public class CombatController : Node, IController
 {
     public override void _Ready()
@@ -365,7 +365,7 @@ public class CombatController : Node, IController
 
 ### 1. 避免频繁触发
 
-```
+```c#
 // 使用 SetValueWithoutEvent 批量修改
 public void LoadPlayerData(SaveData data)
 {
@@ -381,7 +381,7 @@ public void LoadPlayerData(SaveData data)
 
 ### 2. 自定义比较器
 
-```
+```c#
 // 避免浮点数精度问题导致的频繁触发
 var position = new BindableProperty<Vector3>()
     .WithComparer((a, b) => a.DistanceTo(b) < 0.001f);
@@ -391,7 +391,7 @@ var position = new BindableProperty<Vector3>()
 
 ### 值变化检测
 
-```
+```c#
 // 使用 EqualityComparer<T>.Default 进行比较
 if (!EqualityComparer<T>.Default.Equals(value, MValue))
 {
@@ -402,7 +402,7 @@ if (!EqualityComparer<T>.Default.Equals(value, MValue))
 
 ### 事件触发机制
 
-```
+```c#
 // 当值变化时触发所有注册的回调
 _mOnValueChanged?.Invoke(value);
 ```
