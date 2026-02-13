@@ -60,6 +60,15 @@ public interface IIocContainer : IContextAware
     T? Get<T>() where T : class;
 
     /// <summary>
+    ///     根据指定类型获取单个实例
+    ///     如果存在多个，只返回第一个
+    /// </summary>
+    /// <param name="type">期望获取的实例类型</param>
+    /// <returns>找到的第一个实例；如果未找到则返回 null</returns>
+    object? Get(Type type);
+
+
+    /// <summary>
     ///     获取指定类型的必需实例
     /// </summary>
     /// <typeparam name="T">期望获取的实例类型</typeparam>
@@ -68,11 +77,28 @@ public interface IIocContainer : IContextAware
     T GetRequired<T>() where T : class;
 
     /// <summary>
+    ///     获取指定类型的必需实例
+    /// </summary>
+    /// <param name="type">期望获取的实例类型</param>
+    /// <returns>找到的唯一实例</returns>
+    /// <exception cref="InvalidOperationException">当没有注册实例或注册了多个实例时抛出</exception>
+    object GetRequired(Type type);
+
+
+    /// <summary>
     ///     获取指定类型的所有实例（接口 / 抽象类推荐使用）
     /// </summary>
     /// <typeparam name="T">期望获取的实例类型</typeparam>
     /// <returns>所有符合条件的实例列表；如果没有则返回空数组</returns>
     IReadOnlyList<T> GetAll<T>() where T : class;
+
+    /// <summary>
+    ///     获取指定类型的所有实例
+    /// </summary>
+    /// <param name="type">期望获取的实例类型</param>
+    /// <returns>所有符合条件的实例列表；如果没有则返回空数组</returns>
+    IReadOnlyList<object> GetAll(Type type);
+
 
     /// <summary>
     ///     获取并排序（系统调度专用）

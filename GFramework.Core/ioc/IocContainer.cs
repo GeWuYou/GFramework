@@ -233,6 +233,33 @@ public class IocContainer : ContextAwareBase, IIocContainer
         }
     }
 
+    /// <summary>
+    ///     获取指定类型的单个实例
+    ///     如果存在多个，只返回第一个
+    /// </summary>
+    /// <param name="type">期望获取的实例类型</param>
+    /// <returns>找到的第一个实例；如果未找到则返回 null</returns>
+    public object? Get(Type type)
+    {
+        _lock.EnterReadLock();
+        try
+        {
+            if (_typeIndex.TryGetValue(type, out var set) && set.Count > 0)
+            {
+                var result = set.First();
+                _logger.Debug($"Retrieved instance: {type.Name}");
+                return result;
+            }
+
+            _logger.Debug($"No instance found for type: {type.Name}");
+            return null;
+        }
+        finally
+        {
+            _lock.ExitReadLock();
+        }
+    }
+
 
     /// <summary>
     ///     获取指定类型的必需实例
@@ -263,6 +290,34 @@ public class IocContainer : ContextAwareBase, IIocContainer
     }
 
     /// <summary>
+    ///     获取指定类型的必需实例
+    /// </summary>
+    /// <param name="type">期望获取的实例类型</param>
+    /// <returns>找到的唯一实例</returns>
+    /// <exception cref="InvalidOperationException">当没有注册实例或注册了多个实例时抛出</exception>
+    public object GetRequired(Type type)
+    {
+        var list = GetAll(type);
+
+        switch (list.Count)
+        {
+            case 0:
+                var notFoundMsg = $"No instance registered for {type.Name}";
+                _logger.Error(notFoundMsg);
+                throw new InvalidOperationException(notFoundMsg);
+
+            case 1:
+                _logger.Debug($"Retrieved required instance: {type.Name}");
+                return list[0];
+
+            default:
+                var multipleMsg = $"Multiple instances registered for {type.Name}";
+                _logger.Error(multipleMsg);
+                throw new InvalidOperationException(multipleMsg);
+        }
+    }
+
+    /// <summary>
     ///     获取指定类型的所有实例（接口 / 抽象类推荐使用）
     /// </summary>
     /// <typeparam name="T">期望获取的实例类型</typeparam>
@@ -275,6 +330,26 @@ public class IocContainer : ContextAwareBase, IIocContainer
             return _typeIndex.TryGetValue(typeof(T), out var set)
                 ? set.Cast<T>().ToList() // 快照
                 : Array.Empty<T>();
+        }
+        finally
+        {
+            _lock.ExitReadLock();
+        }
+    }
+
+    /// <summary>
+    ///     获取指定类型的所有实例
+    /// </summary>
+    /// <param name="type">期望获取的实例类型</param>
+    /// <returns>所有符合条件的实例列表；如果没有则返回空数组</returns>
+    public IReadOnlyList<object> GetAll(Type type)
+    {
+        _lock.EnterReadLock();
+        try
+        {
+            return _typeIndex.TryGetValue(type, out var set)
+                ? set.ToList() // 快照
+                : Array.Empty<object>();
         }
         finally
         {
