@@ -16,7 +16,7 @@ namespace GFramework.Core.architecture;
 public class ArchitectureServices : IArchitectureServices
 {
     /// <summary>
-    ///     异步查询总线实例
+    ///     异步查询执行器实例
     /// </summary>
     private readonly IAsyncQueryExecutor _asyncQueryExecutor;
 

@@ -24,17 +24,20 @@ public interface IArchitectureServices : IContextAware
     IEventBus EventBus { get; }
 
     /// <summary>
-    ///     获取命令总线
+    ///     获取命令执行器
     /// </summary>
+    /// <returns>ICommandExecutor类型的命令执行器实例</returns>
     public ICommandExecutor CommandExecutor { get; }
 
     /// <summary>
-    ///     获取查询总线
+    ///     获取查询执行器
     /// </summary>
+    /// <returns>IQueryExecutor类型的查询执行器实例</returns>
     public IQueryExecutor QueryExecutor { get; }
 
     /// <summary>
-    ///     获取异步查询总线
+    ///     获取异步查询执行器
     /// </summary>
+    /// <returns>IAsyncQueryExecutor类型的异步查询执行器实例</returns>
     public IAsyncQueryExecutor AsyncQueryExecutor { get; }
 }
