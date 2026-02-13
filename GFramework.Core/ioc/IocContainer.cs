@@ -50,7 +50,6 @@ public class IocContainer : ContextAwareBase, IIocContainer
 
     #endregion
 
-
     #region Register
 
     /// <summary>
