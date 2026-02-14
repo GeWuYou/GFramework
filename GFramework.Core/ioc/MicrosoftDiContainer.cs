@@ -15,15 +15,21 @@ namespace GFramework.Core.ioc;
 /// <param name="serviceCollection">可选的IServiceCollection实例，默认创建新的ServiceCollection</param>
 public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) : ContextAwareBase, IIocContainer
 {
-    #region Context Ready
+    #region Helper Methods
 
     /// <summary>
-    /// 上下文准备就绪时的回调方法
-    /// 初始化日志记录器实例
+    /// 检查容器是否已冻结，如果已冻结则抛出异常
+    /// 用于保护注册操作的安全性
     /// </summary>
-    protected override void OnContextReady()
+    /// <exception cref="InvalidOperationException">当容器已冻结时抛出</exception>
+    private void ThrowIfFrozen()
     {
-        _logger = LoggerFactoryResolver.Provider.CreateLogger(nameof(MicrosoftDiContainer));
+        if (_frozen)
+        {
+            const string errorMsg = "MicrosoftDiContainer is frozen";
+            _logger.Error(errorMsg);
+            throw new InvalidOperationException(errorMsg);
+        }
     }
 
     #endregion
@@ -53,7 +59,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// <summary>
     /// 日志记录器，用于记录容器操作日志
     /// </summary>
-    private ILogger _logger = null!;
+    private readonly ILogger _logger = LoggerFactoryResolver.Provider.CreateLogger(nameof(MicrosoftDiContainer));
 
     #endregion
 
@@ -245,10 +251,24 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// </summary>
     /// <typeparam name="T">服务类型</typeparam>
     /// <returns>服务实例或null</returns>
-    /// <exception cref="InvalidOperationException">当容器未冻结时抛出</exception>
     public T? Get<T>() where T : class
     {
-        EnsureProvider();
+        if (_provider == null)
+        {
+            // 如果容器未冻结，从服务集合中查找已注册的实例
+            var serviceType = typeof(T);
+            var descriptor = Services.FirstOrDefault(s =>
+                s.ServiceType == serviceType || serviceType.IsAssignableFrom(s.ServiceType));
+
+            if (descriptor?.ImplementationInstance is T instance)
+            {
+                return instance;
+            }
+
+            // 在未冻结状态下无法调用工厂方法或创建实例，返回null
+            return null;
+        }
+
         _lock.EnterReadLock();
         try
         {
@@ -270,10 +290,17 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// </summary>
     /// <param name="type">服务类型</param>
     /// <returns>服务实例或null</returns>
-    /// <exception cref="InvalidOperationException">当容器未冻结时抛出</exception>
     public object? Get(Type type)
     {
-        EnsureProvider();
+        if (_provider == null)
+        {
+            // 如果容器未冻结，从服务集合中查找已注册的实例
+            var descriptor =
+                Services.FirstOrDefault(s => s.ServiceType == type || type.IsAssignableFrom(s.ServiceType));
+
+            return descriptor?.ImplementationInstance;
+        }
+
         _lock.EnterReadLock();
         try
         {
@@ -352,10 +379,35 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// </summary>
     /// <typeparam name="T">服务类型</typeparam>
     /// <returns>只读的服务实例列表</returns>
-    /// <exception cref="InvalidOperationException">当容器未冻结时抛出</exception>
     public IReadOnlyList<T> GetAll<T>() where T : class
     {
-        EnsureProvider();
+        if (_provider == null)
+        {
+            // 如果容器未冻结，从服务集合中获取已注册的实例
+            var serviceType = typeof(T);
+            var registeredServices = Services
+                .Where(s => s.ServiceType == serviceType || serviceType.IsAssignableFrom(s.ServiceType)).ToList();
+
+            var result = new List<T>();
+            foreach (var descriptor in registeredServices)
+            {
+                if (descriptor.ImplementationInstance is T instance)
+                {
+                    result.Add(instance);
+                }
+                else if (descriptor.ImplementationFactory != null)
+                {
+                    // 在未冻结状态下无法调用工厂方法，跳过
+                }
+                else if (descriptor.ImplementationType != null)
+                {
+                    // 在未冻结状态下无法创建实例，跳过
+                }
+            }
+
+            return result;
+        }
+
         _lock.EnterReadLock();
         try
         {
@@ -377,7 +429,32 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// <exception cref="InvalidOperationException">当容器未冻结时抛出</exception>
     public IReadOnlyList<object> GetAll(Type type)
     {
-        EnsureProvider();
+        if (_provider == null)
+        {
+            // 如果容器未冻结，从服务集合中获取已注册的实例
+            var registeredServices = Services.Where(s => s.ServiceType == type || type.IsAssignableFrom(s.ServiceType))
+                .ToList();
+
+            var result = new List<object>();
+            foreach (var descriptor in registeredServices)
+            {
+                if (descriptor.ImplementationInstance != null)
+                {
+                    result.Add(descriptor.ImplementationInstance);
+                }
+                else if (descriptor.ImplementationFactory != null)
+                {
+                    // 在未冻结状态下无法调用工厂方法，跳过
+                }
+                else if (descriptor.ImplementationType != null)
+                {
+                    // 在未冻结状态下无法创建实例，跳过
+                }
+            }
+
+            return result;
+        }
+
         _lock.EnterReadLock();
         try
         {
@@ -509,39 +586,6 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// </summary>
     /// <returns>底层的IServiceCollection实例</returns>
     public IServiceCollection Services { get; } = serviceCollection ?? new ServiceCollection();
-
-    #endregion
-
-    #region Helper Methods
-
-    /// <summary>
-    /// 检查容器是否已冻结，如果已冻结则抛出异常
-    /// 用于保护注册操作的安全性
-    /// </summary>
-    /// <exception cref="InvalidOperationException">当容器已冻结时抛出</exception>
-    private void ThrowIfFrozen()
-    {
-        if (_frozen)
-        {
-            const string errorMsg = "MicrosoftDiContainer is frozen";
-            _logger.Error(errorMsg);
-            throw new InvalidOperationException(errorMsg);
-        }
-    }
-
-    /// <summary>
-    /// 确保ServiceProvider已构建，如果未构建则抛出异常
-    /// 用于保护获取服务操作的安全性
-    /// </summary>
-    /// <exception cref="InvalidOperationException">当ServiceProvider未构建时抛出</exception>
-    private void EnsureProvider()
-    {
-        if (_provider == null)
-        {
-            throw new InvalidOperationException(
-                "Container has not been frozen yet. Call Freeze() before retrieving services.");
-        }
-    }
 
     #endregion
 }
