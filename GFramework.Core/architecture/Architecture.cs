@@ -434,6 +434,35 @@ public abstract class Architecture(
     }
 
     /// <summary>
+    /// 注册系统类型，由 DI 容器自动创建实例
+    /// </summary>
+    /// <typeparam name="T">系统类型</typeparam>
+    /// <param name="onCreated">可选的实例创建后回调，用于自定义配置</param>
+    public void RegisterSystem<T>(Action<T>? onCreated = null) where T : class, ISystem
+    {
+        ValidateRegistration("system");
+        _logger.Debug($"Registering system type: {typeof(T).Name}");
+
+        Container.RegisterFactory<T>(sp =>
+        {
+            // 1. DI 创建实例
+            var system = ActivatorUtilities.CreateInstance<T>(sp);
+
+            // 2. 框架默认处理
+            system.SetContext(Context);
+            RegisterLifecycleComponent(system);
+
+            // 3. 用户自定义处理（钩子）
+            onCreated?.Invoke(system);
+
+            _logger.Debug($"System created: {typeof(T).Name}");
+            return system;
+        });
+
+        _logger.Info($"System type registered: {typeof(T).Name}");
+    }
+
+    /// <summary>
     ///     注册一个模型到架构中。
     ///     若当前未初始化，则暂存至待初始化列表；否则立即初始化该模型。
     /// </summary>
@@ -457,6 +486,32 @@ public abstract class Architecture(
     }
 
     /// <summary>
+    /// 注册模型类型，由 DI 容器自动创建实例
+    /// </summary>
+    /// <typeparam name="T">模型类型</typeparam>
+    /// <param name="onCreated">可选的实例创建后回调，用于自定义配置</param>
+    public void RegisterModel<T>(Action<T>? onCreated = null) where T : class, IModel
+    {
+        ValidateRegistration("model");
+        _logger.Debug($"Registering model type: {typeof(T).Name}");
+
+        Container.RegisterFactory<T>(sp =>
+        {
+            var model = ActivatorUtilities.CreateInstance<T>(sp);
+            model.SetContext(Context);
+            RegisterLifecycleComponent(model);
+
+            // 用户自定义钩子
+            onCreated?.Invoke(model);
+
+            _logger.Debug($"Model created: {typeof(T).Name}");
+            return model;
+        });
+
+        _logger.Info($"Model type registered: {typeof(T).Name}");
+    }
+
+    /// <summary>
     ///     注册一个工具到架构中
     /// </summary>
     /// <typeparam name="TUtility">要注册的工具类型，必须实现IUtility接口</typeparam>
@@ -477,6 +532,36 @@ public abstract class Architecture(
         Container.RegisterPlurality(utility);
         _logger.Info($"Utility registered: {typeof(TUtility).Name}");
         return utility;
+    }
+
+    /// <summary>
+    /// 注册工具类型，由 DI 容器自动创建实例
+    /// </summary>
+    /// <typeparam name="T">工具类型</typeparam>
+    /// <param name="onCreated">可选的实例创建后回调，用于自定义配置</param>
+    public void RegisterUtility<T>(Action<T>? onCreated = null) where T : class, IUtility
+    {
+        _logger.Debug($"Registering utility type: {typeof(T).Name}");
+
+        Container.RegisterFactory<T>(sp =>
+        {
+            var utility = ActivatorUtilities.CreateInstance<T>(sp);
+
+            // 如果是 IContextUtility，设置上下文
+            if (utility is IContextUtility contextUtility)
+            {
+                contextUtility.SetContext(Context);
+                RegisterLifecycleComponent(contextUtility);
+            }
+
+            // 用户自定义钩子
+            onCreated?.Invoke(utility);
+
+            _logger.Debug($"Utility created: {typeof(T).Name}");
+            return utility;
+        });
+
+        _logger.Info($"Utility type registered: {typeof(T).Name}");
     }
 
     #endregion

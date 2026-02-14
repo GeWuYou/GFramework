@@ -139,6 +139,37 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     }
 
     /// <summary>
+    /// 注册多个实例到其所有接口
+    /// 实现一个实例支持多种接口类型的解析
+    /// </summary>
+    public void RegisterPlurality<T>() where T : class
+    {
+        _lock.EnterWriteLock();
+        try
+        {
+            ThrowIfFrozen();
+
+            var concreteType = typeof(T);
+            var interfaces = concreteType.GetInterfaces();
+
+            // 注册具体类型
+            Services.AddSingleton<T>();
+
+            // 注册所有接口（指向同一个实例）
+            foreach (var interfaceType in interfaces)
+            {
+                Services.AddSingleton(interfaceType, sp => sp.GetRequiredService<T>());
+            }
+
+            _logger.Debug($"Type registered: {concreteType.Name} with {interfaces.Length} interfaces");
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
+    }
+
+    /// <summary>
     /// 注册系统实例
     /// 通过RegisterPlurality方法注册ISystem类型实例
     /// </summary>
@@ -198,7 +229,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// </summary>
     /// <typeparam name="TService">服务类型</typeparam>
     /// <param name="factory">创建服务实例的工厂委托函数，接收IServiceProvider参数</param>
-    public void RegisterFactory<TService>(Func<IServiceProvider, TService> factory)
+    public void RegisterFactory<TService>(Func<IServiceProvider, TService> factory) where TService : class
     {
         ThrowIfFrozen();
         Services.AddSingleton(factory);

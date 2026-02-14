@@ -40,6 +40,13 @@ public interface IArchitecture : IAsyncInitializable
     T RegisterSystem<T>(T system) where T : ISystem;
 
     /// <summary>
+    ///     注册系统实例到架构中
+    /// </summary>
+    /// <typeparam name="T">系统类型，必须实现ISystem接口</typeparam>
+    /// <param name="onCreated">系统实例创建后的回调函数，可为null</param>
+    void RegisterSystem<T>(Action<T>? onCreated = null) where T : class, ISystem;
+
+    /// <summary>
     ///     注册模型实例到架构中
     /// </summary>
     /// <typeparam name="T">模型类型，必须实现IModel接口</typeparam>
@@ -48,12 +55,28 @@ public interface IArchitecture : IAsyncInitializable
     T RegisterModel<T>(T model) where T : IModel;
 
     /// <summary>
+    ///     注册模型实例到架构中
+    /// </summary>
+    /// <typeparam name="T">模型类型，必须实现IModel接口</typeparam>
+    /// <param name="onCreated">模型实例创建后的回调函数，可为null</param>
+    void RegisterModel<T>(Action<T>? onCreated = null) where T : class, IModel;
+
+    /// <summary>
     ///     注册工具实例到架构中
     /// </summary>
     /// <typeparam name="T">工具类型，必须实现IUtility接口</typeparam>
     /// <param name="utility">要注册的工具实例</param>
     /// <returns>注册的工具实例</returns>
     T RegisterUtility<T>(T utility) where T : IUtility;
+
+
+    /// <summary>
+    ///     注册工具类型并可选地指定创建回调
+    ///     当工具实例被创建时会调用指定的回调函数
+    /// </summary>
+    /// <typeparam name="T">工具类型，必须是引用类型且实现IUtility接口</typeparam>
+    /// <param name="onCreated">工具实例创建后的回调函数，可为null</param>
+    void RegisterUtility<T>(Action<T>? onCreated = null) where T : class, IUtility;
 
     /// <summary>
     ///     安装架构模块
