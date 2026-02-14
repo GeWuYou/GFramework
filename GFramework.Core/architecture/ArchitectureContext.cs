@@ -103,68 +103,6 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     }
 
     /// <summary>
-    /// [Mediator] 异步发送命令并返回结果
-    /// 通过Mediator模式发送命令请求，支持取消操作
-    /// </summary>
-    /// <typeparam name="TResponse">命令响应类型</typeparam>
-    /// <param name="command">要发送的命令对象</param>
-    /// <param name="cancellationToken">取消令牌，用于取消操作</param>
-    /// <returns>包含命令执行结果的ValueTask</returns>
-    public async ValueTask<TResponse> SendCommandAsync<TResponse>(Mediator.ICommand<TResponse> command,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(command);
-
-        var sender = Sender;
-        if (sender == null)
-            throw new InvalidOperationException("Sender not registered.");
-
-        return await sender.Send(command, cancellationToken);
-    }
-
-    /// <summary>
-    /// [Mediator] 发送命令的同步版本（不推荐，仅用于兼容性）
-    /// </summary>
-    /// <typeparam name="TResponse">命令响应类型</typeparam>
-    /// <param name="command">要发送的命令对象</param>
-    /// <returns>命令执行结果</returns>
-    public TResponse SendCommand<TResponse>(Mediator.ICommand<TResponse> command)
-    {
-        return SendCommandAsync(command).AsTask().GetAwaiter().GetResult();
-    }
-
-    /// <summary>
-    /// [Mediator] 异步发送查询并返回结果
-    /// 通过Mediator模式发送查询请求，支持取消操作
-    /// </summary>
-    /// <typeparam name="TResponse">查询响应类型</typeparam>
-    /// <param name="command">要发送的查询对象</param>
-    /// <param name="cancellationToken">取消令牌，用于取消操作</param>
-    /// <returns>包含查询结果的ValueTask</returns>
-    public async ValueTask<TResponse> SendQueryAsync<TResponse>(Mediator.IQuery<TResponse> command,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(command);
-
-        var sender = Sender;
-        if (sender == null)
-            throw new InvalidOperationException("Sender not registered.");
-
-        return await sender.Send(command, cancellationToken);
-    }
-
-    /// <summary>
-    /// [Mediator] 发送查询的同步版本（不推荐，仅用于兼容性）
-    /// </summary>
-    /// <typeparam name="TResponse">查询响应类型</typeparam>
-    /// <param name="command">要发送的查询对象</param>
-    /// <returns>查询结果</returns>
-    public TResponse SendQuery<TResponse>(Mediator.IQuery<TResponse> command)
-    {
-        return SendQueryAsync(command).AsTask().GetAwaiter().GetResult();
-    }
-
-    /// <summary>
     /// [Mediator] 发布通知（一对多）
     /// 用于事件驱动场景，多个处理器可以同时处理同一个通知
     /// </summary>
@@ -204,10 +142,6 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
 
         return mediator.CreateStream(request, cancellationToken);
     }
-
-    #endregion
-
-    #region Mediator Extension Methods (便捷方法)
 
     /// <summary>
     /// [扩展] 发送命令（无返回值）
@@ -274,6 +208,17 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     }
 
     /// <summary>
+    /// [Mediator] 发送查询的同步版本（不推荐，仅用于兼容性）
+    /// </summary>
+    /// <typeparam name="TResponse">查询响应类型</typeparam>
+    /// <param name="command">要发送的查询对象</param>
+    /// <returns>查询结果</returns>
+    public TResponse SendQuery<TResponse>(Mediator.IQuery<TResponse> command)
+    {
+        return SendQueryAsync(command).AsTask().GetAwaiter().GetResult();
+    }
+
+    /// <summary>
     ///     异步发送一个查询请求
     /// </summary>
     /// <typeparam name="TResult">查询结果类型</typeparam>
@@ -285,6 +230,26 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
         var asyncQueryBus = GetOrCache<IAsyncQueryExecutor>();
         if (asyncQueryBus == null) throw new InvalidOperationException("IAsyncQueryExecutor not registered");
         return await asyncQueryBus.SendAsync(query);
+    }
+
+    /// <summary>
+    /// [Mediator] 异步发送查询并返回结果
+    /// 通过Mediator模式发送查询请求，支持取消操作
+    /// </summary>
+    /// <typeparam name="TResponse">查询响应类型</typeparam>
+    /// <param name="command">要发送的查询对象</param>
+    /// <param name="cancellationToken">取消令牌，用于取消操作</param>
+    /// <returns>包含查询结果的ValueTask</returns>
+    public async ValueTask<TResponse> SendQueryAsync<TResponse>(Mediator.IQuery<TResponse> command,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+
+        var sender = Sender;
+        if (sender == null)
+            throw new InvalidOperationException("Sender not registered.");
+
+        return await sender.Send(command, cancellationToken);
     }
 
     #endregion
@@ -326,28 +291,23 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     #region Command Execution
 
     /// <summary>
-    ///     发送一个命令请求
+    /// [Mediator] 异步发送命令并返回结果
+    /// 通过Mediator模式发送命令请求，支持取消操作
     /// </summary>
-    /// <param name="command">要发送的命令</param>
-    public void SendCommand(ICommand command)
+    /// <typeparam name="TResponse">命令响应类型</typeparam>
+    /// <param name="command">要发送的命令对象</param>
+    /// <param name="cancellationToken">取消令牌，用于取消操作</param>
+    /// <returns>包含命令执行结果的ValueTask</returns>
+    public async ValueTask<TResponse> SendCommandAsync<TResponse>(Mediator.ICommand<TResponse> command,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
-        var commandBus = GetOrCache<ICommandExecutor>();
-        commandBus?.Send(command);
-    }
 
-    /// <summary>
-    ///     发送一个带返回值的命令请求
-    /// </summary>
-    /// <typeparam name="TResult">命令执行结果类型</typeparam>
-    /// <param name="command">要发送的命令</param>
-    /// <returns>命令执行结果</returns>
-    public TResult SendCommand<TResult>(Abstractions.command.ICommand<TResult> command)
-    {
-        ArgumentNullException.ThrowIfNull(command);
-        var commandBus = GetOrCache<ICommandExecutor>();
-        if (commandBus == null) throw new InvalidOperationException("ICommandExecutor not registered");
-        return commandBus.Send(command);
+        var sender = Sender;
+        if (sender == null)
+            throw new InvalidOperationException("Sender not registered.");
+
+        return await sender.Send(command, cancellationToken);
     }
 
     /// <summary>
@@ -374,6 +334,42 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
         var commandBus = GetOrCache<ICommandExecutor>();
         if (commandBus == null) throw new InvalidOperationException("ICommandExecutor not registered");
         return await commandBus.SendAsync(command);
+    }
+
+    /// <summary>
+    /// [Mediator] 发送命令的同步版本（不推荐，仅用于兼容性）
+    /// </summary>
+    /// <typeparam name="TResponse">命令响应类型</typeparam>
+    /// <param name="command">要发送的命令对象</param>
+    /// <returns>命令执行结果</returns>
+    public TResponse SendCommand<TResponse>(Mediator.ICommand<TResponse> command)
+    {
+        return SendCommandAsync(command).AsTask().GetAwaiter().GetResult();
+    }
+
+    /// <summary>
+    ///     发送一个命令请求
+    /// </summary>
+    /// <param name="command">要发送的命令</param>
+    public void SendCommand(ICommand command)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        var commandBus = GetOrCache<ICommandExecutor>();
+        commandBus?.Send(command);
+    }
+
+    /// <summary>
+    ///     发送一个带返回值的命令请求
+    /// </summary>
+    /// <typeparam name="TResult">命令执行结果类型</typeparam>
+    /// <param name="command">要发送的命令</param>
+    /// <returns>命令执行结果</returns>
+    public TResult SendCommand<TResult>(Abstractions.command.ICommand<TResult> command)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        var commandBus = GetOrCache<ICommandExecutor>();
+        if (commandBus == null) throw new InvalidOperationException("ICommandExecutor not registered");
+        return commandBus.Send(command);
     }
 
     #endregion
