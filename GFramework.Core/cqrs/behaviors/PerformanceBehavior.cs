@@ -38,22 +38,27 @@ public sealed class PerformanceBehavior<TRequest, TResponse> : IPipelineBehavior
     /// <param name="next">下一个处理委托，用于继续管道执行</param>
     /// <param name="cancellationToken">取消令牌，用于取消操作</param>
     /// <returns>处理结果的ValueTask</returns>
-    public ValueTask<TResponse> Handle(TRequest message, MessageHandlerDelegate<TRequest, TResponse> next,
+    public async ValueTask<TResponse> Handle(
+        TRequest message,
+        MessageHandlerDelegate<TRequest, TResponse> next,
         CancellationToken cancellationToken)
     {
-        var stopwatch = Stopwatch.StartNew();
+        var start = Stopwatch.GetTimestamp();
 
-        var response = next(message, cancellationToken);
+        try
+        {
+            return await next(message, cancellationToken);
+        }
+        finally
+        {
+            var elapsed = Stopwatch.GetElapsedTime(start);
 
-        stopwatch.Stop();
-
-        var elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
-
-        // 只有当执行时间超过500毫秒时才记录警告日志
-        if (elapsedMilliseconds <= 500) return response;
-        var requestName = typeof(TRequest).Name;
-        _logger.Warn($"Long Running Request: {requestName} ({elapsedMilliseconds} ms)");
-
-        return response;
+            if (elapsed.TotalMilliseconds > 500)
+            {
+                var requestName = typeof(TRequest).Name;
+                _logger.Warn(
+                    $"Long Running Request: {requestName} ({elapsed.TotalMilliseconds:F2} ms)");
+            }
+        }
     }
 }
