@@ -37,7 +37,7 @@ public abstract class Architecture(
     public void RegisterMediatorBehavior<TBehavior>() where TBehavior : class
     {
         _logger.Debug($"Registering mediator behavior: {typeof(TBehavior).Name}");
-        Container.RegisterPlurality<TBehavior>();
+        Container.RegisterMediatorBehavior<TBehavior>();
     }
 
     /// <summary>
