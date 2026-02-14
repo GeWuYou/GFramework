@@ -37,6 +37,13 @@ public interface IIocContainer : IContextAware
     public void RegisterPlurality(object instance);
 
     /// <summary>
+    ///     注册多个实例
+    ///     将实例注册到其实现所有接口
+    /// </summary>
+    /// <typeparam name="T">要注册的实例类型</typeparam>
+    public void RegisterPlurality<T>() where T : class;
+
+    /// <summary>
     ///     注册系统实例，将其绑定到其所有实现的接口上
     /// </summary>
     /// <param name="system">系统实例对象</param>
@@ -62,7 +69,7 @@ public interface IIocContainer : IContextAware
     /// </summary>
     /// <typeparam name="TService">服务类型</typeparam>
     /// <param name="factory">创建服务实例的工厂委托函数</param>
-    void RegisterFactory<TService>(Func<IServiceProvider, TService> factory);
+    void RegisterFactory<TService>(Func<IServiceProvider, TService> factory) where TService : class;
 
     #endregion
 
