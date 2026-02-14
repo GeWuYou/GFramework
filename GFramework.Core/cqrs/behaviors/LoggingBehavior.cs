@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Diagnostics;
 using GFramework.Core.Abstractions.logging;
 using GFramework.Core.logging;
 using Mediator;
@@ -37,22 +38,34 @@ public sealed class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRe
     /// <param name="next">下一个处理委托，用于继续管道执行</param>
     /// <param name="cancellationToken">取消令牌，用于取消操作</param>
     /// <returns>处理结果的ValueTask</returns>
-    public ValueTask<TResponse> Handle(TRequest message, MessageHandlerDelegate<TRequest, TResponse> next,
+    public async ValueTask<TResponse> Handle(
+        TRequest message,
+        MessageHandlerDelegate<TRequest, TResponse> next,
         CancellationToken cancellationToken)
     {
         var requestName = typeof(TRequest).Name;
+        var start = Stopwatch.GetTimestamp();
 
         _logger.Debug($"Handling {requestName}");
 
         try
         {
-            var response = next(message, cancellationToken);
-            _logger.Debug($"Handled {requestName} successfully");
+            var response = await next(message, cancellationToken);
+
+            var elapsed = Stopwatch.GetElapsedTime(start);
+            _logger.Debug($"Handled {requestName} successfully in {elapsed.TotalMilliseconds} ms");
+
             return response;
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.Warn($"Handling {requestName} was cancelled");
+            throw;
         }
         catch (Exception ex)
         {
-            _logger.Error($"Error handling {requestName}", ex);
+            var elapsed = Stopwatch.GetElapsedTime(start);
+            _logger.Error($"Error handling {requestName} after {elapsed.TotalMilliseconds} ms", ex);
             throw;
         }
     }
