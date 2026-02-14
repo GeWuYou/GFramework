@@ -10,6 +10,7 @@ using GFramework.Core.Abstractions.utility;
 using GFramework.Core.environment;
 using GFramework.Core.extensions;
 using GFramework.Core.logging;
+using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using IDisposable = GFramework.Core.Abstractions.lifecycle.IDisposable;
 
@@ -625,9 +626,14 @@ public abstract class Architecture(
 
         // 为服务设置上下文
         Services.SetContext(_context);
-
         // 添加 Mediator
-        Container.Services.AddMediator();
+        Container.Services.AddMediator(options =>
+        {
+            options.Namespace = "GFramework.Core.Mediator";
+            options.ServiceLifetime = ServiceLifetime.Singleton;
+            options.GenerateTypesAsInternal = true;
+            options.NotificationPublisherType = typeof(ForeachAwaitPublisher);
+        });
 
         // === 用户 Init ===
         _logger.Debug("Calling user Init()");
