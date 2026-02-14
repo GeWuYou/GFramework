@@ -128,7 +128,8 @@ public class ArchitectureContextTests
     [Test]
     public void SendQuery_Should_ThrowArgumentNullException_When_Query_IsNull()
     {
-        Assert.That(() => _context!.SendQuery<int>(null!),
+        // 明确指定调用旧的 IQuery<int> 重载
+        Assert.That(() => _context!.SendQuery((Mediator.IQuery<int>)null!),
             Throws.ArgumentNullException.With.Property("ParamName").EqualTo("query"));
     }
 
