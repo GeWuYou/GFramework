@@ -13,7 +13,9 @@ using GFramework.Core.environment;
 using GFramework.Core.events;
 using GFramework.Core.ioc;
 using GFramework.Core.query;
+using Mediator;
 using NUnit.Framework;
+using ICommand = GFramework.Core.Abstractions.command.ICommand;
 
 namespace GFramework.Core.Tests.architecture;
 
@@ -333,6 +335,75 @@ public class TestArchitectureContext : IArchitectureContext
     {
     }
 
+    public ValueTask<TResponse> SendRequestAsync<TResponse>(IRequest<TResponse> request,
+        CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public TResponse SendRequest<TResponse>(IRequest<TResponse> request)
+    {
+        throw new NotImplementedException();
+    }
+
+    public ValueTask<TResponse> SendCommandAsync<TResponse>(Mediator.ICommand<TResponse> command,
+        CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public TResponse SendCommand<TResponse>(Mediator.ICommand<TResponse> command)
+    {
+        throw new NotImplementedException();
+    }
+
+    public ValueTask<TResponse> SendQueryAsync<TResponse>(Mediator.IQuery<TResponse> command,
+        CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public TResponse SendQuery<TResponse>(Mediator.IQuery<TResponse> command)
+    {
+        throw new NotImplementedException();
+    }
+
+    public ValueTask PublishAsync<TNotification>(TNotification notification,
+        CancellationToken cancellationToken = default) where TNotification : INotification
+    {
+        throw new NotImplementedException();
+    }
+
+    public IAsyncEnumerable<TResponse> CreateStream<TResponse>(IStreamRequest<TResponse> request,
+        CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public ValueTask SendAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
+        where TCommand : IRequest<Unit>
+    {
+        throw new NotImplementedException();
+    }
+
+    public ValueTask<TResponse> SendAsync<TResponse>(IRequest<TResponse> command,
+        CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public ValueTask<TResponse> QueryAsync<TResponse>(IRequest<TResponse> query,
+        CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public ValueTask PublishEventAsync<TNotification>(TNotification notification,
+        CancellationToken cancellationToken = default) where TNotification : INotification
+    {
+        throw new NotImplementedException();
+    }
+
     /// <summary>
     ///     发送命令
     /// </summary>
@@ -347,7 +418,7 @@ public class TestArchitectureContext : IArchitectureContext
     /// <typeparam name="TResult">返回值类型</typeparam>
     /// <param name="command">命令对象</param>
     /// <returns>命令执行结果</returns>
-    public TResult SendCommand<TResult>(ICommand<TResult> command)
+    public TResult SendCommand<TResult>(Abstractions.command.ICommand<TResult> command)
     {
         return default!;
     }
@@ -368,7 +439,7 @@ public class TestArchitectureContext : IArchitectureContext
     /// <typeparam name="TResult">查询结果类型</typeparam>
     /// <param name="query">查询对象</param>
     /// <returns>查询结果</returns>
-    public TResult SendQuery<TResult>(IQuery<TResult> query)
+    public TResult SendQuery<TResult>(Abstractions.query.IQuery<TResult> query)
     {
         return default!;
     }
