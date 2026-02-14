@@ -181,7 +181,7 @@ public interface IIocContainer : IContextAware
     ///     提供对内部IServiceCollection的访问权限，用于高级配置和自定义操作
     /// </summary>
     /// <returns>底层的IServiceCollection实例</returns>
-    IServiceCollection Services { get; }
+    IServiceCollection GetServicesUnsafe { get; }
 
     #endregion
 }

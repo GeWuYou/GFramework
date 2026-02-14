@@ -80,14 +80,14 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
             ThrowIfFrozen();
 
             // 检查是否已注册该类型，防止重复注册
-            if (Services.Any(s => s.ServiceType == type))
+            if (GetServicesUnsafe.Any(s => s.ServiceType == type))
             {
                 var errorMsg = $"Singleton already registered for type: {type.Name}";
                 _logger.Error(errorMsg);
                 throw new InvalidOperationException(errorMsg);
             }
 
-            Services.AddSingleton(type, instance!);
+            GetServicesUnsafe.AddSingleton(type, instance!);
             _registeredInstances.Add(instance!);
             _logger.Debug($"Singleton registered: {type.Name}");
         }
@@ -111,7 +111,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
         try
         {
             ThrowIfFrozen();
-            Services.AddSingleton<TService, TImpl>();
+            GetServicesUnsafe.AddSingleton<TService, TImpl>();
             _logger.Debug($"Singleton registered: {typeof(TService).Name}");
         }
         finally
@@ -138,12 +138,12 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
             ThrowIfFrozen();
 
             // 注册具体类型映射
-            Services.AddSingleton(concreteType, instance);
+            GetServicesUnsafe.AddSingleton(concreteType, instance);
 
             // 注册所有接口类型映射（指向同一实例）
             foreach (var interfaceType in interfaces)
             {
-                Services.AddSingleton(interfaceType, _ => instance);
+                GetServicesUnsafe.AddSingleton(interfaceType, _ => instance);
             }
 
             _registeredInstances.Add(instance);
@@ -170,12 +170,12 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
             var interfaces = concreteType.GetInterfaces();
 
             // 注册具体类型
-            Services.AddSingleton<T>();
+            GetServicesUnsafe.AddSingleton<T>();
 
             // 注册所有接口（指向同一个实例）
             foreach (var interfaceType in interfaces)
             {
-                Services.AddSingleton(interfaceType, sp => sp.GetRequiredService<T>());
+                GetServicesUnsafe.AddSingleton(interfaceType, sp => sp.GetRequiredService<T>());
             }
 
             _logger.Debug($"Type registered: {concreteType.Name} with {interfaces.Length} interfaces");
@@ -208,7 +208,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
         try
         {
             ThrowIfFrozen();
-            Services.AddSingleton(typeof(T), instance!);
+            GetServicesUnsafe.AddSingleton(typeof(T), instance!);
             _registeredInstances.Add(instance!);
             _logger.Debug($"Registered: {typeof(T).Name}");
         }
@@ -230,7 +230,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
         try
         {
             ThrowIfFrozen();
-            Services.AddSingleton(type, instance);
+            GetServicesUnsafe.AddSingleton(type, instance);
             _registeredInstances.Add(instance);
             _logger.Debug($"Registered: {type.Name}");
         }
@@ -253,7 +253,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
         try
         {
             ThrowIfFrozen();
-            Services.AddSingleton(factory);
+            GetServicesUnsafe.AddSingleton(factory);
         }
         finally
         {
@@ -274,7 +274,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
         {
             ThrowIfFrozen();
 
-            Services.AddSingleton(
+            GetServicesUnsafe.AddSingleton(
                 typeof(IPipelineBehavior<,>),
                 typeof(TBehavior)
             );
@@ -297,7 +297,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
         try
         {
             ThrowIfFrozen();
-            configurator?.Invoke(Services);
+            configurator?.Invoke(GetServicesUnsafe);
         }
         finally
         {
@@ -321,7 +321,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
         {
             // 如果容器未冻结，从服务集合中查找已注册的实例
             var serviceType = typeof(T);
-            var descriptor = Services.FirstOrDefault(s =>
+            var descriptor = GetServicesUnsafe.FirstOrDefault(s =>
                 s.ServiceType == serviceType || serviceType.IsAssignableFrom(s.ServiceType));
 
             if (descriptor?.ImplementationInstance is T instance)
@@ -360,7 +360,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
         {
             // 如果容器未冻结，从服务集合中查找已注册的实例
             var descriptor =
-                Services.FirstOrDefault(s => s.ServiceType == type || type.IsAssignableFrom(s.ServiceType));
+                GetServicesUnsafe.FirstOrDefault(s => s.ServiceType == type || type.IsAssignableFrom(s.ServiceType));
 
             return descriptor?.ImplementationInstance;
         }
@@ -449,7 +449,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
         {
             // 如果容器未冻结，从服务集合中获取已注册的实例
             var serviceType = typeof(T);
-            var registeredServices = Services
+            var registeredServices = GetServicesUnsafe
                 .Where(s => s.ServiceType == serviceType || serviceType.IsAssignableFrom(s.ServiceType)).ToList();
 
             var result = new List<T>();
@@ -496,7 +496,8 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
         if (_provider == null)
         {
             // 如果容器未冻结，从服务集合中获取已注册的实例
-            var registeredServices = Services.Where(s => s.ServiceType == type || type.IsAssignableFrom(s.ServiceType))
+            var registeredServices = GetServicesUnsafe
+                .Where(s => s.ServiceType == type || type.IsAssignableFrom(s.ServiceType))
                 .ToList();
 
             var result = new List<object>();
@@ -559,7 +560,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     public bool Contains<T>() where T : class
     {
         if (_provider == null)
-            return Services.Any(s => s.ServiceType == typeof(T));
+            return GetServicesUnsafe.Any(s => s.ServiceType == typeof(T));
 
         _lock.EnterReadLock();
         try
@@ -607,7 +608,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
                 return;
             }
 
-            Services.Clear();
+            GetServicesUnsafe.Clear();
             _registeredInstances.Clear();
             _provider = null;
             _logger.Info("Container cleared");
@@ -634,7 +635,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
                 return;
             }
 
-            _provider = Services.BuildServiceProvider();
+            _provider = GetServicesUnsafe.BuildServiceProvider();
             _frozen = true;
             _logger.Info("IOC Container frozen - ServiceProvider built");
         }
@@ -649,7 +650,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     ///     提供对内部IServiceCollection的访问权限，用于高级配置和自定义操作
     /// </summary>
     /// <returns>底层的IServiceCollection实例</returns>
-    public IServiceCollection Services { get; } = serviceCollection ?? new ServiceCollection();
+    public IServiceCollection GetServicesUnsafe { get; } = serviceCollection ?? new ServiceCollection();
 
     #endregion
 }
