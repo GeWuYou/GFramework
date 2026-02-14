@@ -59,7 +59,7 @@ public class ArchitectureServicesTests
     public void Container_Should_Be_Instance_Of_IocContainer()
     {
         Assert.That(_services!.Container, Is.InstanceOf<IIocContainer>());
-        Assert.That(_services.Container, Is.InstanceOf<IocContainer>());
+        Assert.That(_services.Container, Is.InstanceOf<MicrosoftDiContainer>());
     }
 
     /// <summary>
@@ -218,7 +218,7 @@ public class ArchitectureServicesTests
 
 public class TestArchitectureContextV3 : IArchitectureContext
 {
-    private readonly IocContainer _container = new();
+    private readonly MicrosoftDiContainer _container = new();
     private readonly DefaultEnvironment _environment = new();
     public int Id { get; init; }
 

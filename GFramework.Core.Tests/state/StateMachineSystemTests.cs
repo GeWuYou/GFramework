@@ -37,14 +37,14 @@ public class StateMachineSystemTests
     [SetUp]
     public void SetUp()
     {
-        // 初始化 LoggerFactoryResolver 以支持 IocContainer
+        // 初始化 LoggerFactoryResolver 以支持 MicrosoftDiContainer
         LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider();
 
         _eventBus = new EventBus();
-        var container = new IocContainer();
+        var container = new MicrosoftDiContainer();
 
         // 直接初始化 logger 字段
-        var loggerField = typeof(IocContainer).GetField("_logger",
+        var loggerField = typeof(MicrosoftDiContainer).GetField("_logger",
             BindingFlags.NonPublic | BindingFlags.Instance);
         loggerField?.SetValue(container,
             LoggerFactoryResolver.Provider.CreateLogger(nameof(StateMachineSystemTests)));

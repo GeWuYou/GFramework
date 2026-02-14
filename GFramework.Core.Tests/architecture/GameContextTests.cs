@@ -229,7 +229,7 @@ public class TestArchitecture : Architecture
 /// </summary>
 public class TestArchitectureContext : IArchitectureContext
 {
-    private readonly IocContainer _container = new();
+    private readonly MicrosoftDiContainer _container = new();
 
     /// <summary>
     ///     获取依赖注入容器

@@ -47,7 +47,7 @@ public class ArchitectureServices : IArchitectureServices
     /// </summary>
     public ArchitectureServices()
     {
-        Container = new IocContainer();
+        Container = new MicrosoftDiContainer();
 
         // 创建服务实例
         _eventBus = new EventBus();

@@ -30,7 +30,7 @@ public class AbstractContextUtilityTests
     [SetUp]
     public void SetUp()
     {
-        _container = new IocContainer();
+        _container = new MicrosoftDiContainer();
         _container.RegisterPlurality(new EventBus());
         _container.RegisterPlurality(new CommandExecutor());
         _container.RegisterPlurality(new QueryExecutor());
@@ -40,7 +40,7 @@ public class AbstractContextUtilityTests
     }
 
     private ArchitectureContext _context = null!;
-    private IocContainer _container = null!;
+    private MicrosoftDiContainer _container = null!;
 
     /// <summary>
     ///     测试AbstractContextUtility实现IContextUtility接口

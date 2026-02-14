@@ -46,13 +46,13 @@ public class ArchitectureContextTests
     [SetUp]
     public void SetUp()
     {
-        // 初始化 LoggerFactoryResolver 以支持 IocContainer
+        // 初始化 LoggerFactoryResolver 以支持 MicrosoftDiContainer
         LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider();
 
-        _container = new IocContainer();
+        _container = new MicrosoftDiContainer();
 
         // 直接初始化 logger 字段
-        var loggerField = typeof(IocContainer).GetField("_logger",
+        var loggerField = typeof(MicrosoftDiContainer).GetField("_logger",
             BindingFlags.NonPublic | BindingFlags.Instance);
         loggerField?.SetValue(_container,
             LoggerFactoryResolver.Provider.CreateLogger(nameof(ArchitectureContextTests)));
@@ -75,7 +75,7 @@ public class ArchitectureContextTests
     }
 
     private ArchitectureContext? _context;
-    private IocContainer? _container;
+    private MicrosoftDiContainer? _container;
     private EventBus? _eventBus;
     private CommandExecutor? _commandBus;
     private QueryExecutor? _queryBus;
