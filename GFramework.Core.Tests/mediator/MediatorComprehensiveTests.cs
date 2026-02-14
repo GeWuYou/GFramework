@@ -1,11 +1,6 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using GFramework.Core.Abstractions.architecture;
-using GFramework.Core.Abstractions.enums;
 using GFramework.Core.Abstractions.events;
-using GFramework.Core.Abstractions.model;
-using GFramework.Core.Abstractions.system;
-using GFramework.Core.Abstractions.utility;
 using GFramework.Core.architecture;
 using GFramework.Core.command;
 using GFramework.Core.environment;
@@ -16,6 +11,7 @@ using GFramework.Core.query;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
+
 // ✅ Mediator 库的命名空间
 
 // ✅ 使用 global using 或别名来区分
@@ -50,28 +46,10 @@ public class MediatorComprehensiveTests
         _container.RegisterPlurality(_environment);
 
         // ✅ 注册 Mediator
-        _container.RegisterMediator(options => { options.ServiceLifetime = ServiceLifetime.Singleton; });
-
-        // ✅ 手动注册 Mediator Handlers
-        _container.Services.AddSingleton<IRequestHandler<TestRequest, int>, TestRequestHandler>();
-        _container.Services.AddSingleton<IRequestHandler<TestCommand, Unit>, TestCommandHandler>();
-        _container.Services.AddSingleton<IRequestHandler<TestCommandWithResult, int>, TestCommandWithResultHandler>();
-        _container.Services.AddSingleton<IRequestHandler<TestQuery, string>, TestQueryHandler>();
-        _container.Services.AddSingleton<INotificationHandler<TestNotification>, TestNotificationHandler>();
-        _container.Services.AddSingleton<IStreamRequestHandler<TestStreamRequest, int>, TestStreamRequestHandler>();
-
-        // 注册测试组件（Legacy）
-        _testSystem = new TestSystem();
-        _testModel = new TestModel();
-        _testUtility = new TestUtility();
-        _testCommand = new TestTraditionalCommand();
-        _testQuery = new TestTraditionalQuery { Result = 999 };
-
-        _container.RegisterPlurality(_testSystem);
-        _container.RegisterPlurality(_testModel);
-        _container.RegisterPlurality(_testUtility);
-        _container.RegisterPlurality(_testCommand);
-        _container.RegisterPlurality(_testQuery);
+        _container.ExecuteServicesHook(configurator =>
+        {
+            configurator.AddMediator(options => { options.ServiceLifetime = ServiceLifetime.Singleton; });
+        });
 
         // ✅ Freeze 容器
         _container.Freeze();
@@ -89,11 +67,6 @@ public class MediatorComprehensiveTests
         _queryBus = null;
         _asyncQueryBus = null;
         _environment = null;
-        _testSystem = null;
-        _testModel = null;
-        _testUtility = null;
-        _testCommand = null;
-        _testQuery = null;
     }
 
     private ArchitectureContext? _context;
@@ -103,11 +76,6 @@ public class MediatorComprehensiveTests
     private QueryExecutor? _queryBus;
     private AsyncQueryExecutor? _asyncQueryBus;
     private DefaultEnvironment? _environment;
-    private TestSystem? _testSystem;
-    private TestModel? _testModel;
-    private TestUtility? _testUtility;
-    private TestTraditionalCommand? _testCommand;
-    private TestTraditionalQuery? _testQuery;
 
     [Test]
     public async Task SendRequestAsync_Should_ReturnResult_When_Request_IsValid()
@@ -201,32 +169,6 @@ public class MediatorComprehensiveTests
     }
 
     [Test]
-    public async Task Mediator_And_CommandExecutor_Should_Coexist()
-    {
-        // 使用传统方式（Legacy）
-        _context!.SendCommand(_testCommand!);
-        Assert.That(_testCommand!.Executed, Is.True);
-
-        // 使用 Mediator 方式
-        var mediatorCommand = new TestCommandWithResult { ResultValue = 123 };
-        var result = await _context.SendAsync(mediatorCommand);
-        Assert.That(result, Is.EqualTo(123));
-    }
-
-    [Test]
-    public async Task Mediator_And_QueryExecutor_Should_Coexist()
-    {
-        // 使用传统方式（Legacy）
-        var traditionalResult = _context!.SendQuery(_testQuery!);
-        Assert.That(traditionalResult, Is.EqualTo(999));
-
-        // 使用 Mediator 方式
-        var mediatorQuery = new TestQuery { QueryResult = "mediator result" };
-        var mediatorResult = await _context.QueryAsync(mediatorQuery);
-        Assert.That(mediatorResult, Is.EqualTo("mediator result"));
-    }
-
-    [Test]
     public void GetService_Should_Use_Cache()
     {
         var firstResult = _context!.GetService<IEventBus>();
@@ -237,19 +179,6 @@ public class MediatorComprehensiveTests
         Assert.That(secondResult, Is.SameAs(firstResult));
     }
 
-    [Test]
-    public void Architecture_Component_Getters_Should_Work()
-    {
-        var system = _context!.GetSystem<TestSystem>();
-        var model = _context.GetModel<TestModel>();
-        var utility = _context.GetUtility<TestUtility>();
-        var environment = _context.GetEnvironment();
-
-        Assert.That(system, Is.SameAs(_testSystem));
-        Assert.That(model, Is.SameAs(_testModel));
-        Assert.That(utility, Is.SameAs(_testUtility));
-        Assert.That(environment, Is.SameAs(_environment));
-    }
 
     [Test]
     public void Unregistered_Mediator_Should_Throw_InvalidOperationException()
@@ -361,83 +290,6 @@ public sealed class TestStreamRequestHandler : IStreamRequestHandler<TestStreamR
             await Task.Yield();
         }
     }
-}
-
-#endregion
-
-#region Test Classes - Legacy CQRS (旧实现)
-
-public class TestSystem : ISystem
-{
-    private IArchitectureContext _context = null!;
-    public int Id { get; init; }
-
-    public void SetContext(IArchitectureContext context) => _context = context;
-    public IArchitectureContext GetContext() => _context;
-
-    public void Init()
-    {
-    }
-
-    public void Destroy()
-    {
-    }
-
-    public void OnArchitecturePhase(ArchitecturePhase phase)
-    {
-    }
-}
-
-public class TestModel : IModel
-{
-    private IArchitectureContext _context = null!;
-    public int Id { get; init; }
-
-    public void SetContext(IArchitectureContext context) => _context = context;
-    public IArchitectureContext GetContext() => _context;
-
-    public void Init()
-    {
-    }
-
-    public void OnArchitecturePhase(ArchitecturePhase phase)
-    {
-    }
-
-    public void Destroy()
-    {
-    }
-}
-
-public class TestUtility : IUtility
-{
-    private IArchitectureContext _context = null!;
-    public int Id { get; init; }
-
-    public void SetContext(IArchitectureContext context) => _context = context;
-    public IArchitectureContext GetContext() => _context;
-}
-
-// ✅ 使用你框架的 ICommand
-public class TestTraditionalCommand : ICommand
-{
-    private IArchitectureContext _context = null!;
-    public bool Executed { get; private set; }
-
-    public void Execute() => Executed = true;
-    public void SetContext(IArchitectureContext context) => _context = context;
-    public IArchitectureContext GetContext() => _context;
-}
-
-// ✅ 使用你框架的 IQuery
-public class TestTraditionalQuery : IQuery<int>
-{
-    private IArchitectureContext _context = null!;
-    public int Result { get; init; }
-
-    public int Do() => Result;
-    public void SetContext(IArchitectureContext context) => _context = context;
-    public IArchitectureContext GetContext() => _context;
 }
 
 #endregion

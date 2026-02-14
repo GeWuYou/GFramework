@@ -2,8 +2,6 @@
 using GFramework.Core.Abstractions.logging;
 using GFramework.Core.Abstractions.properties;
 using GFramework.Core.logging;
-using Mediator;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace GFramework.Core.architecture;
 
@@ -33,18 +31,5 @@ public sealed class ArchitectureConfiguration : IArchitectureConfiguration
     {
         AllowLateRegistration = false,
         StrictPhaseValidation = true
-    };
-
-    /// <summary>
-    ///     获取或设置Mediator配置委托
-    ///     用于自定义Mediator框架的配置选项
-    /// </summary>
-    /// <returns>配置Mediator选项的委托函数，可为null</returns>
-    public Action<MediatorOptions>? Configurator { get; set; } = options =>
-    {
-        options.Namespace = "GFramework.Core.Mediator";
-        options.ServiceLifetime = ServiceLifetime.Singleton;
-        options.GenerateTypesAsInternal = true;
-        options.NotificationPublisherType = typeof(ForeachAwaitPublisher);
     };
 }
