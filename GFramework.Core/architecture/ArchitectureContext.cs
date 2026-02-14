@@ -7,6 +7,8 @@ using GFramework.Core.Abstractions.model;
 using GFramework.Core.Abstractions.query;
 using GFramework.Core.Abstractions.system;
 using GFramework.Core.Abstractions.utility;
+using Mediator;
+using ICommand = GFramework.Core.Abstractions.command.ICommand;
 
 namespace GFramework.Core.architecture;
 
@@ -17,6 +19,18 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
 {
     private readonly IIocContainer _container = container ?? throw new ArgumentNullException(nameof(container));
     private readonly Dictionary<Type, object> _serviceCache = new();
+
+    #region Mediator Integration (新实现)
+
+    /// <summary>
+    /// 获取 Mediator 实例（延迟加载）
+    /// </summary>
+    private IMediator? Mediator => GetOrCache<IMediator>();
+
+    /// <summary>
+    /// 获取 IPublisher 实例（用于发布通知）
+    /// </summary>
+    private IPublisher? Publisher => GetOrCache<IPublisher>();
 
     /// <summary>
     /// 获取指定类型的服务实例，如果缓存中存在则直接返回，否则从容器中获取并缓存
@@ -49,6 +63,132 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
         return service;
     }
 
+    /// <summary>
+    /// [Mediator] 发送请求（Command/Query）
+    /// 这是推荐的新方式，统一处理命令和查询
+    /// </summary>
+    /// <typeparam name="TResponse">响应类型</typeparam>
+    /// <param name="request">请求对象（Command 或 Query）</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>响应结果</returns>
+    /// <exception cref="InvalidOperationException">当 Mediator 未注册时抛出</exception>
+    public async ValueTask<TResponse> SendRequestAsync<TResponse>(
+        IRequest<TResponse> request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var mediator = Mediator;
+        if (mediator == null)
+            throw new InvalidOperationException(
+                "Mediator not registered. Call EnableMediator() in your Architecture.Init() method.");
+
+        return await mediator.Send(request, cancellationToken);
+    }
+
+    /// <summary>
+    /// [Mediator] 发送请求的同步版本（不推荐，仅用于兼容性）
+    /// </summary>
+    /// <typeparam name="TResponse">响应类型</typeparam>
+    /// <param name="request">请求对象</param>
+    /// <returns>响应结果</returns>
+    public TResponse SendRequest<TResponse>(IRequest<TResponse> request)
+    {
+        return SendRequestAsync(request).AsTask().GetAwaiter().GetResult();
+    }
+
+    /// <summary>
+    /// [Mediator] 发布通知（一对多）
+    /// 用于事件驱动场景，多个处理器可以同时处理同一个通知
+    /// </summary>
+    /// <typeparam name="TNotification">通知类型</typeparam>
+    /// <param name="notification">通知对象</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    public async ValueTask PublishAsync<TNotification>(
+        TNotification notification,
+        CancellationToken cancellationToken = default)
+        where TNotification : INotification
+    {
+        ArgumentNullException.ThrowIfNull(notification);
+
+        var publisher = Publisher;
+        if (publisher == null)
+            throw new InvalidOperationException("Publisher not registered.");
+
+        await publisher.Publish(notification, cancellationToken);
+    }
+
+    /// <summary>
+    /// [Mediator] 发送请求并返回流（用于大数据集）
+    /// </summary>
+    /// <typeparam name="TResponse">响应项类型</typeparam>
+    /// <param name="request">流式请求</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>异步流</returns>
+    public IAsyncEnumerable<TResponse> CreateStream<TResponse>(
+        IStreamRequest<TResponse> request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var mediator = Mediator;
+        if (mediator == null)
+            throw new InvalidOperationException("Mediator not registered.");
+
+        return mediator.CreateStream(request, cancellationToken);
+    }
+
+    #endregion
+
+    #region Mediator Extension Methods (便捷方法)
+
+    /// <summary>
+    /// [扩展] 发送命令（无返回值）
+    /// 语法糖，等同于 SendRequestAsync&lt;Unit&gt;
+    /// </summary>
+    public async ValueTask SendAsync<TCommand>(
+        TCommand command,
+        CancellationToken cancellationToken = default)
+        where TCommand : IRequest<Unit>
+    {
+        await SendRequestAsync(command, cancellationToken);
+    }
+
+    /// <summary>
+    /// [扩展] 发送命令（有返回值）
+    /// 语法糖，等同于 SendRequestAsync&lt;TResponse&gt;
+    /// </summary>
+    public async ValueTask<TResponse> SendAsync<TResponse>(
+        IRequest<TResponse> command,
+        CancellationToken cancellationToken = default)
+    {
+        return await SendRequestAsync(command, cancellationToken);
+    }
+
+    /// <summary>
+    /// [扩展] 发送查询
+    /// 语法糖，等同于 SendRequestAsync，语义更清晰
+    /// </summary>
+    public async ValueTask<TResponse> QueryAsync<TResponse>(
+        IRequest<TResponse> query,
+        CancellationToken cancellationToken = default)
+    {
+        return await SendRequestAsync(query, cancellationToken);
+    }
+
+    /// <summary>
+    /// [扩展] 发布事件通知
+    /// 语法糖，等同于 PublishAsync
+    /// </summary>
+    public async ValueTask PublishEventAsync<TNotification>(
+        TNotification notification,
+        CancellationToken cancellationToken = default)
+        where TNotification : INotification
+    {
+        await PublishAsync(notification, cancellationToken);
+    }
+
+    #endregion
 
     #region Query Execution
 
@@ -58,7 +198,7 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     /// <typeparam name="TResult">查询结果类型</typeparam>
     /// <param name="query">要发送的查询</param>
     /// <returns>查询结果</returns>
-    public TResult SendQuery<TResult>(IQuery<TResult> query)
+    public TResult SendQuery<TResult>(Abstractions.query.IQuery<TResult> query)
     {
         if (query == null) throw new ArgumentNullException(nameof(query));
         var queryBus = GetOrCache<IQueryExecutor>();
@@ -135,7 +275,7 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     /// <typeparam name="TResult">命令执行结果类型</typeparam>
     /// <param name="command">要发送的命令</param>
     /// <returns>命令执行结果</returns>
-    public TResult SendCommand<TResult>(ICommand<TResult> command)
+    public TResult SendCommand<TResult>(Abstractions.command.ICommand<TResult> command)
     {
         ArgumentNullException.ThrowIfNull(command);
         var commandBus = GetOrCache<ICommandExecutor>();

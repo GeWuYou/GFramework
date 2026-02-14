@@ -5,6 +5,8 @@ using GFramework.Core.Abstractions.model;
 using GFramework.Core.Abstractions.query;
 using GFramework.Core.Abstractions.system;
 using GFramework.Core.Abstractions.utility;
+using Mediator;
+using ICommand = GFramework.Core.Abstractions.command.ICommand;
 
 namespace GFramework.Core.Abstractions.architecture;
 
@@ -53,7 +55,7 @@ public interface IArchitectureContext
     /// <typeparam name="TResult">命令执行结果类型</typeparam>
     /// <param name="command">要发送的命令</param>
     /// <returns>命令执行结果</returns>
-    TResult SendCommand<TResult>(ICommand<TResult> command);
+    TResult SendCommand<TResult>(command.ICommand<TResult> command);
 
     /// <summary>
     ///     发送并异步执行一个命令
@@ -75,7 +77,7 @@ public interface IArchitectureContext
     /// <typeparam name="TResult">查询结果类型</typeparam>
     /// <param name="query">要发送的查询</param>
     /// <returns>查询结果</returns>
-    TResult SendQuery<TResult>(IQuery<TResult> query);
+    TResult SendQuery<TResult>(query.IQuery<TResult> query);
 
     /// <summary>
     ///     异步发送一个查询请求
@@ -112,6 +114,65 @@ public interface IArchitectureContext
     /// <typeparam name="TEvent">事件类型</typeparam>
     /// <param name="onEvent">要取消注册的事件回调方法</param>
     void UnRegisterEvent<TEvent>(Action<TEvent> onEvent);
+
+    /// <summary>
+    /// 发送请求（统一处理 Command/Query）
+    /// </summary>
+    ValueTask<TResponse> SendRequestAsync<TResponse>(
+        IRequest<TResponse> request,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 发送请求（同步版本，不推荐）
+    /// </summary>
+    TResponse SendRequest<TResponse>(IRequest<TResponse> request);
+
+    /// <summary>
+    /// 发布通知（一对多事件）
+    /// </summary>
+    ValueTask PublishAsync<TNotification>(
+        TNotification notification,
+        CancellationToken cancellationToken = default)
+        where TNotification : INotification;
+
+    /// <summary>
+    /// 创建流式请求（用于大数据集）
+    /// </summary>
+    IAsyncEnumerable<TResponse> CreateStream<TResponse>(
+        IStreamRequest<TResponse> request,
+        CancellationToken cancellationToken = default);
+
+    // === 便捷扩展方法 ===
+
+    /// <summary>
+    /// 发送命令（无返回值）
+    /// </summary>
+    ValueTask SendAsync<TCommand>(
+        TCommand command,
+        CancellationToken cancellationToken = default)
+        where TCommand : IRequest<Unit>;
+
+    /// <summary>
+    /// 发送命令（有返回值）
+    /// </summary>
+    ValueTask<TResponse> SendAsync<TResponse>(
+        IRequest<TResponse> command,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 发送查询
+    /// </summary>
+    ValueTask<TResponse> QueryAsync<TResponse>(
+        IRequest<TResponse> query,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 发布事件通知
+    /// </summary>
+    ValueTask PublishEventAsync<TNotification>(
+        TNotification notification,
+        CancellationToken cancellationToken = default)
+        where TNotification : INotification;
 
     /// <summary>
     ///     获取环境对象
