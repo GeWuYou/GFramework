@@ -10,6 +10,7 @@ using GFramework.Core.Abstractions.utility;
 using GFramework.Core.environment;
 using GFramework.Core.extensions;
 using GFramework.Core.logging;
+using Microsoft.Extensions.DependencyInjection;
 using IDisposable = GFramework.Core.Abstractions.lifecycle.IDisposable;
 
 namespace GFramework.Core.architecture;
@@ -539,6 +540,9 @@ public abstract class Architecture(
 
         // 为服务设置上下文
         Services.SetContext(_context);
+
+        // 添加 Mediator
+        Container.Services.AddMediator();
 
         // === 用户 Init ===
         _logger.Debug("Calling user Init()");

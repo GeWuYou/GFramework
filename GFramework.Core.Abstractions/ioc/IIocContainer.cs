@@ -1,5 +1,6 @@
 ﻿using GFramework.Core.Abstractions.rule;
 using GFramework.Core.Abstractions.system;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GFramework.Core.Abstractions.ioc;
 
@@ -19,6 +20,14 @@ public interface IIocContainer : IContextAware
     /// <exception cref="InvalidOperationException">当该类型已经注册过单例时抛出异常</exception>
     void RegisterSingleton<T>(T instance);
 
+    /// <summary>
+    ///     注册单例服务，指定服务类型和实现类型
+    ///     创建单例实例并在容器中注册
+    /// </summary>
+    /// <typeparam name="TService">服务接口或基类类型</typeparam>
+    /// <typeparam name="TImpl">具体的实现类型</typeparam>
+    void RegisterSingleton<TService, TImpl>()
+        where TImpl : class, TService where TService : class;
 
     /// <summary>
     ///     注册多个实例
@@ -46,6 +55,14 @@ public interface IIocContainer : IContextAware
     /// <param name="type">要注册的实例类型</param>
     /// <param name="instance">要注册的实例对象</param>
     void Register(Type type, object instance);
+
+    /// <summary>
+    ///     注册工厂方法来创建服务实例
+    ///     通过委托函数动态创建服务实例
+    /// </summary>
+    /// <typeparam name="TService">服务类型</typeparam>
+    /// <param name="factory">创建服务实例的工厂委托函数</param>
+    void RegisterFactory<TService>(Func<IServiceProvider, TService> factory);
 
     #endregion
 
@@ -117,7 +134,7 @@ public interface IIocContainer : IContextAware
     /// </summary>
     /// <typeparam name="T">要检查的类型</typeparam>
     /// <returns>如果容器中包含指定类型的实例则返回true，否则返回false</returns>
-    bool Contains<T>();
+    bool Contains<T>() where T : class;
 
     /// <summary>
     ///     判断容器中是否包含某个具体的实例对象
@@ -133,8 +150,16 @@ public interface IIocContainer : IContextAware
 
     /// <summary>
     ///     冻结容器，防止后续修改
+    ///     调用此方法后，容器将变为只读状态，不能再注册新的服务实例
     /// </summary>
     void Freeze();
+
+    /// <summary>
+    ///     获取底层的服务集合
+    ///     提供对内部IServiceCollection的访问权限，用于高级配置和自定义操作
+    /// </summary>
+    /// <returns>底层的IServiceCollection实例</returns>
+    IServiceCollection Services { get; }
 
     #endregion
 }

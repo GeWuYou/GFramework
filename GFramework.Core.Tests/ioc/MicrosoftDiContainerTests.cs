@@ -10,7 +10,7 @@ namespace GFramework.Core.Tests.ioc;
 ///     测试 IoC 容器功能的单元测试类
 /// </summary>
 [TestFixture]
-public class IocContainerTests
+public class MicrosoftDiContainerTests
 {
     /// <summary>
     ///     在每个测试方法执行前进行设置
@@ -18,18 +18,18 @@ public class IocContainerTests
     [SetUp]
     public void SetUp()
     {
-        // 初始化 LoggerFactoryResolver 以支持 IocContainer
+        // 初始化 LoggerFactoryResolver 以支持 MicrosoftDiContainer
         LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider();
-        _container = new IocContainer();
+        _container = new MicrosoftDiContainer();
 
         // 直接初始化 logger 字段
-        var loggerField = typeof(IocContainer).GetField("_logger",
+        var loggerField = typeof(MicrosoftDiContainer).GetField("_logger",
             BindingFlags.NonPublic | BindingFlags.Instance);
         loggerField?.SetValue(_container,
-            LoggerFactoryResolver.Provider.CreateLogger(nameof(IocContainer)));
+            LoggerFactoryResolver.Provider.CreateLogger(nameof(MicrosoftDiContainer)));
     }
 
-    private IocContainer _container = null!;
+    private MicrosoftDiContainer _container = null!;
     private readonly Dictionary<Type, object> _mockContextServices = new();
 
     /// <summary>

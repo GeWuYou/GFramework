@@ -32,7 +32,7 @@ public class AbstractAsyncCommandTests
     [SetUp]
     public void SetUp()
     {
-        _container = new IocContainer();
+        _container = new MicrosoftDiContainer();
         _container.RegisterPlurality(new EventBus());
         _container.RegisterPlurality(new CommandExecutor());
         _container.RegisterPlurality(new QueryExecutor());
@@ -42,7 +42,7 @@ public class AbstractAsyncCommandTests
     }
 
     private ArchitectureContext _context = null!;
-    private IocContainer _container = null!;
+    private MicrosoftDiContainer _container = null!;
 
     /// <summary>
     ///     测试异步命令无返回值版本的基础实现
