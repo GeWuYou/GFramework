@@ -58,10 +58,31 @@ public interface IArchitectureContext
     TResult SendCommand<TResult>(command.ICommand<TResult> command);
 
     /// <summary>
+    /// [Mediator] 发送命令的同步版本（不推荐，仅用于兼容性）
+    /// </summary>
+    /// <typeparam name="TResponse">命令响应类型</typeparam>
+    /// <param name="command">要发送的命令对象</param>
+    /// <returns>命令执行结果</returns>
+    TResponse SendCommand<TResponse>(Mediator.ICommand<TResponse> command);
+
+
+    /// <summary>
     ///     发送并异步执行一个命令
     /// </summary>
     /// <param name="command">要发送的命令</param>
     Task SendCommandAsync(IAsyncCommand command);
+
+    /// <summary>
+    /// [Mediator] 异步发送命令并返回结果
+    /// 通过Mediator模式发送命令请求，支持取消操作
+    /// </summary>
+    /// <typeparam name="TResponse">命令响应类型</typeparam>
+    /// <param name="command">要发送的命令对象</param>
+    /// <param name="cancellationToken">取消令牌，用于取消操作</param>
+    /// <returns>包含命令执行结果的ValueTask</returns>
+    ValueTask<TResponse> SendCommandAsync<TResponse>(Mediator.ICommand<TResponse> command,
+        CancellationToken cancellationToken = default);
+
 
     /// <summary>
     ///     发送并异步执行一个带返回值的命令
@@ -80,12 +101,31 @@ public interface IArchitectureContext
     TResult SendQuery<TResult>(query.IQuery<TResult> query);
 
     /// <summary>
+    /// [Mediator] 发送查询的同步版本（不推荐，仅用于兼容性）
+    /// </summary>
+    /// <typeparam name="TResponse">查询响应类型</typeparam>
+    /// <param name="command">要发送的查询对象</param>
+    /// <returns>查询结果</returns>
+    TResponse SendQuery<TResponse>(Mediator.IQuery<TResponse> command);
+
+    /// <summary>
     ///     异步发送一个查询请求
     /// </summary>
     /// <typeparam name="TResult">查询结果类型</typeparam>
     /// <param name="query">要发送的异步查询</param>
     /// <returns>查询结果</returns>
     Task<TResult> SendQueryAsync<TResult>(IAsyncQuery<TResult> query);
+
+    /// <summary>
+    /// [Mediator] 异步发送查询并返回结果
+    /// 通过Mediator模式发送查询请求，支持取消操作
+    /// </summary>
+    /// <typeparam name="TResponse">查询响应类型</typeparam>
+    /// <param name="command">要发送的查询对象</param>
+    /// <param name="cancellationToken">取消令牌，用于取消操作</param>
+    /// <returns>包含查询结果的ValueTask</returns>
+    ValueTask<TResponse> SendQueryAsync<TResponse>(Mediator.IQuery<TResponse> command,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     ///     发送一个事件
@@ -126,44 +166,6 @@ public interface IArchitectureContext
     /// 发送请求（同步版本，不推荐）
     /// </summary>
     TResponse SendRequest<TResponse>(IRequest<TResponse> request);
-
-    /// <summary>
-    /// [Mediator] 异步发送命令并返回结果
-    /// 通过Mediator模式发送命令请求，支持取消操作
-    /// </summary>
-    /// <typeparam name="TResponse">命令响应类型</typeparam>
-    /// <param name="command">要发送的命令对象</param>
-    /// <param name="cancellationToken">取消令牌，用于取消操作</param>
-    /// <returns>包含命令执行结果的ValueTask</returns>
-    ValueTask<TResponse> SendCommandAsync<TResponse>(Mediator.ICommand<TResponse> command,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// [Mediator] 发送命令的同步版本（不推荐，仅用于兼容性）
-    /// </summary>
-    /// <typeparam name="TResponse">命令响应类型</typeparam>
-    /// <param name="command">要发送的命令对象</param>
-    /// <returns>命令执行结果</returns>
-    TResponse SendCommand<TResponse>(Mediator.ICommand<TResponse> command);
-
-    /// <summary>
-    /// [Mediator] 异步发送查询并返回结果
-    /// 通过Mediator模式发送查询请求，支持取消操作
-    /// </summary>
-    /// <typeparam name="TResponse">查询响应类型</typeparam>
-    /// <param name="command">要发送的查询对象</param>
-    /// <param name="cancellationToken">取消令牌，用于取消操作</param>
-    /// <returns>包含查询结果的ValueTask</returns>
-    ValueTask<TResponse> SendQueryAsync<TResponse>(Mediator.IQuery<TResponse> command,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// [Mediator] 发送查询的同步版本（不推荐，仅用于兼容性）
-    /// </summary>
-    /// <typeparam name="TResponse">查询响应类型</typeparam>
-    /// <param name="command">要发送的查询对象</param>
-    /// <returns>查询结果</returns>
-    TResponse SendQuery<TResponse>(Mediator.IQuery<TResponse> command);
 
     /// <summary>
     /// 发布通知（一对多事件）
