@@ -104,10 +104,22 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// <typeparam name="TService">服务接口或基类类型</typeparam>
     /// <typeparam name="TImpl">具体的实现类型</typeparam>
     public void RegisterSingleton<TService, TImpl>()
-        where TImpl : class, TService where TService : class
+        where TImpl : class, TService
+        where TService : class
     {
-        Services.AddSingleton<TService, TImpl>();
+        _lock.EnterWriteLock();
+        try
+        {
+            ThrowIfFrozen();
+            Services.AddSingleton<TService, TImpl>();
+            _logger.Debug($"Singleton registered: {typeof(TService).Name}");
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
     }
+
 
     /// <summary>
     /// 注册多个实例到其所有接口和具体类型
@@ -234,11 +246,21 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// </summary>
     /// <typeparam name="TService">服务类型</typeparam>
     /// <param name="factory">创建服务实例的工厂委托函数，接收IServiceProvider参数</param>
-    public void RegisterFactory<TService>(Func<IServiceProvider, TService> factory) where TService : class
+    public void RegisterFactory<TService>(
+        Func<IServiceProvider, TService> factory) where TService : class
     {
-        ThrowIfFrozen();
-        Services.AddSingleton(factory);
+        _lock.EnterWriteLock();
+        try
+        {
+            ThrowIfFrozen();
+            Services.AddSingleton(factory);
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
     }
+
 
     /// <summary>
     ///     注册中介行为管道
@@ -269,9 +291,18 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     ///     配置服务
     /// </summary>
     /// <param name="configurator">服务配置委托</param>
-    public void ExecuteServicesHook(Action<IServiceCollection>? configurator = null)
+    public void ExecuteServicesHook(Action<IServiceCollection>? configurator)
     {
-        configurator?.Invoke(Services);
+        _lock.EnterWriteLock();
+        try
+        {
+            ThrowIfFrozen();
+            configurator?.Invoke(Services);
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
     }
 
     #endregion
