@@ -1,6 +1,5 @@
 ﻿using GFramework.Core.Abstractions.rule;
 using GFramework.Core.Abstractions.system;
-using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GFramework.Core.Abstractions.ioc;
@@ -80,12 +79,12 @@ public interface IIocContainer : IContextAware
     void RegisterMediatorBehavior<TBehavior>()
         where TBehavior : class;
 
+
     /// <summary>
-    ///     注册并配置Mediator框架
-    ///     提供自定义配置选项来调整Mediator的行为
+    ///     配置服务
     /// </summary>
-    /// <param name="configurator">可选的配置委托函数，用于自定义Mediator选项</param>
-    void RegisterMediator(Action<MediatorOptions>? configurator = null);
+    /// <param name="configurator">服务配置委托</param>
+    void ExecuteServicesHook(Action<IServiceCollection>? configurator = null);
 
     #endregion
 

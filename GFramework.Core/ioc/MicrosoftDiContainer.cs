@@ -266,29 +266,12 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     }
 
     /// <summary>
-    /// 注册 Mediator（基于 Source Generator）
+    ///     配置服务
     /// </summary>
-    /// <param name="configurator">可选的配置委托</param>
-    public void RegisterMediator(Action<MediatorOptions>? configurator = null)
+    /// <param name="configurator">服务配置委托</param>
+    public void ExecuteServicesHook(Action<IServiceCollection>? configurator = null)
     {
-        _lock.EnterWriteLock();
-        try
-        {
-            ThrowIfFrozen();
-
-            // 添加 Mediator
-            Services.AddMediator(options =>
-            {
-                // 用户自定义配置
-                configurator?.Invoke(options);
-            });
-
-            _logger.Info("Mediator registered with Source Generator");
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
-        }
+        configurator?.Invoke(Services);
     }
 
     #endregion

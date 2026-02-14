@@ -636,8 +636,13 @@ public abstract class Architecture(
 
         // 为服务设置上下文
         Services.SetContext(_context);
-        // 添加 Mediator
-        Container.RegisterMediator(Configuration.Configurator);
+        if (Configurator is null)
+        {
+            _logger.Debug("Mediator-based cqrs will not take effect without the service setter configured!");
+        }
+
+        // 执行服务钩子
+        Container.ExecuteServicesHook(Configurator);
         // === 用户 Init ===
         _logger.Debug("Calling user Init()");
         Init();
@@ -660,11 +665,23 @@ public abstract class Architecture(
 
     /// <summary>
     ///     等待架构初始化完成（Ready 阶段）
+    ///     如果架构已经处于就绪状态，则立即返回已完成的任务；
+    ///     否则返回一个任务，该任务将在架构进入就绪状态时完成。
     /// </summary>
+    /// <returns>表示等待操作的Task对象</returns>
     public Task WaitUntilReadyAsync()
     {
         return IsReady ? Task.CompletedTask : _readyTcs.Task;
     }
+
+    /// <summary>
+    ///     获取用于配置服务集合的委托
+    ///     默认实现返回null，子类可以重写此属性以提供自定义配置逻辑
+    /// </summary>
+    /// <value>
+    ///     一个可为空的Action委托，用于配置IServiceCollection实例
+    /// </value>
+    public virtual Action<IServiceCollection>? Configurator => null;
 
     #endregion
 }
