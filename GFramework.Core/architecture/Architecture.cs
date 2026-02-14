@@ -10,7 +10,6 @@ using GFramework.Core.Abstractions.utility;
 using GFramework.Core.environment;
 using GFramework.Core.extensions;
 using GFramework.Core.logging;
-using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using IDisposable = GFramework.Core.Abstractions.lifecycle.IDisposable;
 
@@ -29,6 +28,17 @@ public abstract class Architecture(
     : IArchitecture
 {
     #region Module Management
+
+    /// <summary>
+    ///     注册中介行为管道
+    ///     用于配置Mediator框架的行为拦截和处理逻辑
+    /// </summary>
+    /// <typeparam name="TBehavior">行为类型，必须是引用类型</typeparam>
+    public void RegisterMediatorBehavior<TBehavior>() where TBehavior : class
+    {
+        _logger.Debug($"Registering mediator behavior: {typeof(TBehavior).Name}");
+        Container.RegisterPlurality<TBehavior>();
+    }
 
     /// <summary>
     ///     安装架构模块
@@ -627,14 +637,7 @@ public abstract class Architecture(
         // 为服务设置上下文
         Services.SetContext(_context);
         // 添加 Mediator
-        Container.Services.AddMediator(options =>
-        {
-            options.Namespace = "GFramework.Core.Mediator";
-            options.ServiceLifetime = ServiceLifetime.Singleton;
-            options.GenerateTypesAsInternal = true;
-            options.NotificationPublisherType = typeof(ForeachAwaitPublisher);
-        });
-
+        Container.RegisterMediator(Configuration.Configurator);
         // === 用户 Init ===
         _logger.Debug("Calling user Init()");
         Init();

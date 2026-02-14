@@ -3,6 +3,7 @@ using GFramework.Core.Abstractions.logging;
 using GFramework.Core.Abstractions.system;
 using GFramework.Core.logging;
 using GFramework.Core.rule;
+using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GFramework.Core.ioc;
@@ -24,12 +25,10 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// <exception cref="InvalidOperationException">当容器已冻结时抛出</exception>
     private void ThrowIfFrozen()
     {
-        if (_frozen)
-        {
-            const string errorMsg = "MicrosoftDiContainer is frozen";
-            _logger.Error(errorMsg);
-            throw new InvalidOperationException(errorMsg);
-        }
+        if (!_frozen) return;
+        const string errorMsg = "MicrosoftDiContainer is frozen";
+        _logger.Error(errorMsg);
+        throw new InvalidOperationException(errorMsg);
     }
 
     #endregion
@@ -239,6 +238,57 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     {
         ThrowIfFrozen();
         Services.AddSingleton(factory);
+    }
+
+    /// <summary>
+    ///     注册中介行为管道
+    ///     用于配置Mediator框架的行为拦截和处理逻辑
+    /// </summary>
+    /// <typeparam name="TBehavior">行为类型，必须是引用类型</typeparam>
+    public void RegisterMediatorBehavior<TBehavior>() where TBehavior : class
+    {
+        _lock.EnterWriteLock();
+        try
+        {
+            ThrowIfFrozen();
+
+            Services.AddSingleton(
+                typeof(IPipelineBehavior<,>),
+                typeof(TBehavior)
+            );
+
+            _logger.Debug($"Mediator behavior registered: {typeof(TBehavior).Name}");
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
+    }
+
+    /// <summary>
+    /// 注册 Mediator（基于 Source Generator）
+    /// </summary>
+    /// <param name="configurator">可选的配置委托</param>
+    public void RegisterMediator(Action<MediatorOptions>? configurator = null)
+    {
+        _lock.EnterWriteLock();
+        try
+        {
+            ThrowIfFrozen();
+
+            // 添加 Mediator
+            Services.AddMediator(options =>
+            {
+                // 用户自定义配置
+                configurator?.Invoke(options);
+            });
+
+            _logger.Info("Mediator registered with Source Generator");
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
     }
 
     #endregion
