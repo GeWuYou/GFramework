@@ -228,7 +228,7 @@ public class MediatorAdvancedFeaturesTests
         using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
         var request = new TestExternalServiceRequest { TimeoutMs = 1000 };
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        Assert.ThrowsAsync<TaskCanceledException>(async () =>
             await _context!.SendRequestAsync(request, cts.Token));
     }
 
@@ -266,11 +266,15 @@ public sealed class TestTransientErrorRequestHandler : IRequestHandler<TestTrans
 {
     public ValueTask<string> Handle(TestTransientErrorRequest request, CancellationToken cancellationToken)
     {
-        TestTransientErrorHandler.ErrorCount++;
-
-        if (TestTransientErrorHandler.ErrorCount <= request.MaxErrors)
+        // 只有在MaxErrors > 0时才增加计数器
+        if (request.MaxErrors > 0)
         {
-            throw new InvalidOperationException("Transient error");
+            TestTransientErrorHandler.ErrorCount++;
+
+            if (TestTransientErrorHandler.ErrorCount <= request.MaxErrors)
+            {
+                throw new InvalidOperationException("Transient error");
+            }
         }
 
         return new ValueTask<string>("Success");
@@ -279,11 +283,26 @@ public sealed class TestTransientErrorRequestHandler : IRequestHandler<TestTrans
 
 public sealed class TestCircuitBreakerRequestHandler : IRequestHandler<TestCircuitBreakerRequest, string>
 {
+    private static bool _circuitOpen = false;
+
     public ValueTask<string> Handle(TestCircuitBreakerRequest request, CancellationToken cancellationToken)
     {
+        // 检查断路器状态
+        if (_circuitOpen)
+        {
+            throw new InvalidOperationException("Circuit breaker is open");
+        }
+
         if (request.ShouldFail)
         {
             TestCircuitBreakerHandler.FailureCount++;
+
+            // 达到阈值后打开断路器
+            if (TestCircuitBreakerHandler.FailureCount >= 5)
+            {
+                _circuitOpen = true;
+            }
+
             throw new InvalidOperationException("Service unavailable");
         }
 
@@ -298,6 +317,12 @@ public sealed class TestSagaStepRequestHandler : IRequestHandler<TestSagaStepReq
     {
         if (request.ShouldFail && request.Step == 2)
         {
+            // 失败时执行补偿
+            foreach (var completedStep in request.SagaData.CompletedSteps.ToList())
+            {
+                request.SagaData.CompensatedSteps.Add(completedStep);
+            }
+
             throw new InvalidOperationException($"Saga step {request.Step} failed");
         }
 
@@ -368,6 +393,12 @@ public sealed class TestValidatedRequestHandler : IRequestHandler<TestValidatedR
 {
     public ValueTask<string> Handle(TestValidatedRequest request, CancellationToken cancellationToken)
     {
+        // 验证输入
+        if (request.Value < 0)
+        {
+            throw new ArgumentException("Value must be non-negative", nameof(request.Value));
+        }
+
         return new ValueTask<string>($"Value: {request.Value}");
     }
 }

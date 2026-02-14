@@ -234,7 +234,7 @@ public class MediatorComprehensiveTests
         var stream = _context!.CreateStream(longStreamRequest, cts.Token);
         var results = new List<int>();
 
-        // 流应该在100ms后被取消
+        // 流应该在100ms后被取消（TaskCanceledException 继承自 OperationCanceledException）
         Assert.ThrowsAsync<TaskCanceledException>(async () =>
         {
             await foreach (var item in stream.WithCancellation(cts.Token))

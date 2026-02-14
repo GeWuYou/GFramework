@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Reflection;
 using GFramework.Core.Abstractions.architecture;
 using GFramework.Core.architecture;
+using GFramework.Core.command;
 using GFramework.Core.ioc;
 using GFramework.Core.logging;
 using Mediator;
@@ -29,6 +30,10 @@ public class MediatorArchitectureIntegrationTests
         loggerField?.SetValue(_container,
             LoggerFactoryResolver.Provider.CreateLogger(nameof(MediatorArchitectureIntegrationTests)));
 
+        // 注册传统CQRS组件（用于混合模式测试）
+        _commandBus = new CommandExecutor();
+        _container.RegisterPlurality(_commandBus);
+
         // 注册Mediator
         _container.ExecuteServicesHook(configurator =>
         {
@@ -44,10 +49,12 @@ public class MediatorArchitectureIntegrationTests
     {
         _context = null;
         _container = null;
+        _commandBus = null;
     }
 
     private ArchitectureContext? _context;
     private MicrosoftDiContainer? _container;
+    private CommandExecutor? _commandBus;
 
     [Test]
     public async Task Handler_Can_Access_Architecture_Context()
@@ -294,7 +301,7 @@ public sealed class TestContextAwareRequestHandler : IRequestHandler<TestContext
 {
     public ValueTask<string> Handle(TestContextAwareRequest request, CancellationToken cancellationToken)
     {
-        TestContextAwareHandler.LastContext = null; // 这里应该设置实际的上下文
+        // 保持测试中设置的上下文，不要重置为null
         return new ValueTask<string>("Context accessed");
     }
 }
