@@ -79,6 +79,14 @@ public interface IArchitecture : IAsyncInitializable
     void RegisterUtility<T>(Action<T>? onCreated = null) where T : class, IUtility;
 
     /// <summary>
+    ///     注册中介行为管道
+    ///     用于配置Mediator框架的行为拦截和处理逻辑
+    /// </summary>
+    /// <typeparam name="TBehavior">行为类型，必须是引用类型</typeparam>
+    void RegisterMediatorBehavior<TBehavior>()
+        where TBehavior : class;
+
+    /// <summary>
     ///     安装架构模块
     /// </summary>
     /// <param name="module">要安装的模块</param>

@@ -13,10 +13,6 @@
     <ItemGroup>
         <PackageReference Include="LanguageExt.Core" Version="4.4.9"/>
         <PackageReference Include="Mediator.Abstractions" Version="3.0.1"/>
-        <PackageReference Include="Mediator.SourceGenerator" Version="3.0.1">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </PackageReference>
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.3"/>
     </ItemGroup>
 </Project>

@@ -1,5 +1,6 @@
 ﻿using GFramework.Core.Abstractions.rule;
 using GFramework.Core.Abstractions.system;
+using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GFramework.Core.Abstractions.ioc;
@@ -70,6 +71,21 @@ public interface IIocContainer : IContextAware
     /// <typeparam name="TService">服务类型</typeparam>
     /// <param name="factory">创建服务实例的工厂委托函数</param>
     void RegisterFactory<TService>(Func<IServiceProvider, TService> factory) where TService : class;
+
+    /// <summary>
+    ///     注册中介行为管道
+    ///     用于配置Mediator框架的行为拦截和处理逻辑
+    /// </summary>
+    /// <typeparam name="TBehavior">行为类型，必须是引用类型</typeparam>
+    void RegisterMediatorBehavior<TBehavior>()
+        where TBehavior : class;
+
+    /// <summary>
+    ///     注册并配置Mediator框架
+    ///     提供自定义配置选项来调整Mediator的行为
+    /// </summary>
+    /// <param name="configurator">可选的配置委托函数，用于自定义Mediator选项</param>
+    void RegisterMediator(Action<MediatorOptions>? configurator = null);
 
     #endregion
 
