@@ -35,8 +35,15 @@ public enum SceneTransitionPhases
     AfterChange = 2,
 
     /// <summary>
+    /// 中间件阶段（阻塞执行）。
+    /// 用于包裹整个场景切换过程的逻辑，如性能监控、事务管理、权限验证等。
+    /// Around 处理器在变更前后都会执行，可以控制是否继续执行变更。
+    /// </summary>
+    Around = 4,
+
+    /// <summary>
     /// 所有阶段的组合标志。
     /// 表示处理器适用于场景切换的所有阶段。
     /// </summary>
-    All = BeforeChange | AfterChange
+    All = BeforeChange | AfterChange | Around
 }

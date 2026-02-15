@@ -89,9 +89,12 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         var @event = CreateEvent(uiKey, UiTransitionType.Push, policy, param);
         Log.Debug("Push UI Page: key={0}, policy={1}, stackBefore={2}", uiKey, policy, _stack.Count);
 
-        BeforeChange(@event);
-        DoPushPageInternal(uiKey, param, policy);
-        AfterChange(@event);
+        _pipeline.ExecuteAroundAsync(@event, async () =>
+        {
+            BeforeChange(@event);
+            DoPushPageInternal(uiKey, param, policy);
+            AfterChange(@event);
+        }).GetAwaiter().GetResult();
     }
 
     /// <summary>
@@ -111,9 +114,12 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         var @event = CreateEvent(uiKey, UiTransitionType.Push, policy, param);
         Log.Debug("Push existing UI Page: key={0}, policy={1}, stackBefore={2}", uiKey, policy, _stack.Count);
 
-        BeforeChange(@event);
-        DoPushPageInternal(page, param, policy);
-        AfterChange(@event);
+        _pipeline.ExecuteAroundAsync(@event, async () =>
+        {
+            BeforeChange(@event);
+            DoPushPageInternal(page, param, policy);
+            AfterChange(@event);
+        }).GetAwaiter().GetResult();
     }
 
     /// <summary>
@@ -138,9 +144,12 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         var nextUiKey = _stack.Count > 1 ? _stack.ElementAt(1).Key : null;
         var @event = CreateEvent(nextUiKey, UiTransitionType.Pop);
 
-        BeforeChange(@event);
-        DoPopInternal(policy);
-        AfterChange(@event);
+        _pipeline.ExecuteAroundAsync(@event, async () =>
+        {
+            BeforeChange(@event);
+            DoPopInternal(policy);
+            AfterChange(@event);
+        }).GetAwaiter().GetResult();
     }
 
     /// <summary>
@@ -153,14 +162,17 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         var @event = CreateEvent(uiKey, UiTransitionType.Replace, pushPolicy, param);
         Log.Debug("Replace UI Stack with page: key={0}, popPolicy={1}, pushPolicy={2}", uiKey, popPolicy, pushPolicy);
 
-        BeforeChange(@event);
-        DoClearInternal(popPolicy);
+        _pipeline.ExecuteAroundAsync(@event, async () =>
+        {
+            BeforeChange(@event);
+            DoClearInternal(popPolicy);
 
-        var page = _factory.Create(uiKey);
-        Log.Debug("Get/Create UI Page instance for Replace: {0}", page.GetType().Name);
+            var page = _factory.Create(uiKey);
+            Log.Debug("Get/Create UI Page instance for Replace: {0}", page.GetType().Name);
 
-        DoPushPageInternal(page, param, pushPolicy);
-        AfterChange(@event);
+            DoPushPageInternal(page, param, pushPolicy);
+            AfterChange(@event);
+        }).GetAwaiter().GetResult();
     }
 
     /// <summary>
@@ -175,11 +187,14 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         Log.Debug("Replace UI Stack with existing page: key={0}, popPolicy={1}, pushPolicy={2}",
             uiKey, popPolicy, pushPolicy);
 
-        BeforeChange(@event);
-        DoClearInternal(popPolicy);
-        Log.Debug("Use existing UI Page instance for Replace: {0}", page.GetType().Name);
-        DoPushPageInternal(page, param, pushPolicy);
-        AfterChange(@event);
+        _pipeline.ExecuteAroundAsync(@event, async () =>
+        {
+            BeforeChange(@event);
+            DoClearInternal(popPolicy);
+            Log.Debug("Use existing UI Page instance for Replace: {0}", page.GetType().Name);
+            DoPushPageInternal(page, param, pushPolicy);
+            AfterChange(@event);
+        }).GetAwaiter().GetResult();
     }
 
     /// <summary>
@@ -190,9 +205,12 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         var @event = CreateEvent(string.Empty, UiTransitionType.Clear);
         Log.Debug("Clear UI Stack, stackCount={0}", _stack.Count);
 
-        BeforeChange(@event);
-        DoClearInternal(UiPopPolicy.Destroy);
-        AfterChange(@event);
+        _pipeline.ExecuteAroundAsync(@event, async () =>
+        {
+            BeforeChange(@event);
+            DoClearInternal(UiPopPolicy.Destroy);
+            AfterChange(@event);
+        }).GetAwaiter().GetResult();
     }
 
     /// <summary>

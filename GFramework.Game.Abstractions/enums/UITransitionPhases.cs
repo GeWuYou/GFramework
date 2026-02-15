@@ -19,7 +19,14 @@ public enum UiTransitionPhases
     AfterChange = 2,
 
     /// <summary>
-    ///     所有阶段，Handler将在BeforeChange和AfterChange阶段都执行
+    ///     中间件阶段，支持包裹整个变更过程的逻辑（阻塞执行）
+    ///     适用于：性能监控、事务管理、权限验证、日志记录开始/结束等需要控制流程的操作
+    ///     Around 处理器在变更前后都会执行，可以决定是否继续执行后续逻辑
     /// </summary>
-    All = BeforeChange | AfterChange
+    Around = 4,
+
+    /// <summary>
+    ///     所有阶段，Handler将在BeforeChange、AfterChange和Around阶段都执行
+    /// </summary>
+    All = BeforeChange | AfterChange | Around
 }
