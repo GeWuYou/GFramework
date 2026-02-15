@@ -222,7 +222,7 @@ public abstract class SceneRouterBase
 
     /// <summary>
     /// 内部推送场景实现方法。
-    /// 执行守卫检查、场景加载、暂停当前场景、压入栈等操作。
+    /// 执行守卫检查、场景创建、添加到场景树、加载资源、暂停当前场景、压入栈等操作。
     /// </summary>
     /// <param name="sceneKey">场景键名。</param>
     /// <param name="param">场景进入参数。</param>
@@ -244,8 +244,11 @@ public abstract class SceneRouterBase
             return;
         }
 
-        // 通过 Root 加载场景（Root.LoadAsync 返回 ISceneBehavior）
-        var scene = await Root!.LoadAsync(sceneKey);
+        // 通过 Factory 创建场景实例
+        var scene = _factory.Create(sceneKey);
+
+        // 添加到场景树
+        Root!.AddScene(scene);
 
         // 加载资源
         await scene.OnLoadAsync(param);
@@ -297,7 +300,7 @@ public abstract class SceneRouterBase
 
     /// <summary>
     /// 内部弹出场景实现方法。
-    /// 执行守卫检查、退出场景、卸载资源、恢复下一个场景等操作。
+    /// 执行守卫检查、退出场景、卸载资源、从场景树移除、恢复下一个场景等操作。
     /// </summary>
     /// <returns>异步任务。</returns>
     private async ValueTask PopInternalAsync()
@@ -322,8 +325,8 @@ public abstract class SceneRouterBase
         // 卸载资源
         await top.OnUnloadAsync();
 
-        // 从场景树卸载
-        await Root!.UnloadAsync(top);
+        // 从场景树移除
+        Root!.RemoveScene(top);
 
         // 恢复下一个场景
         if (_stack.Count > 0)
