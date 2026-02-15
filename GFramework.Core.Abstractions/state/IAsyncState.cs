@@ -16,7 +16,7 @@ namespace GFramework.Core.Abstractions.state;
 /// <summary>
 ///     异步状态机状态接口，定义了状态的异步行为和转换规则
 /// </summary>
-public interface IAsyncState
+public interface IAsyncState : IState
 {
     /// <summary>
     ///     当状态被激活进入时异步调用
