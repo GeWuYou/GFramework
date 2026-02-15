@@ -53,10 +53,9 @@ public abstract class SceneRouterBase
     public string? CurrentKey => Current?.Key;
 
     /// <summary>
-    /// 获取场景栈的只读列表，按压入顺序排列。
+    /// 获取场景栈的只读视图，按压入顺序排列（从栈底到栈顶）。
     /// </summary>
-    public IReadOnlyList<ISceneBehavior> Stack =>
-        _stack.Reverse().ToList();
+    public IEnumerable<ISceneBehavior> Stack => _stack.Reverse();
 
     /// <summary>
     /// 获取是否正在进行场景转换。

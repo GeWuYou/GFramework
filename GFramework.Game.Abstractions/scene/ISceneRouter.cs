@@ -38,7 +38,7 @@ public interface ISceneRouter : ISystem
     /// 获取场景行为对象的只读列表，表示当前的场景栈结构。
     /// 列表中第一个元素为栈底场景，最后一个元素为当前活动场景。
     /// </summary>
-    IReadOnlyList<ISceneBehavior> Stack { get; }
+    IEnumerable<ISceneBehavior> Stack { get; }
 
     /// <summary>
     /// 获取场景路由器是否正在进行场景切换操作。
