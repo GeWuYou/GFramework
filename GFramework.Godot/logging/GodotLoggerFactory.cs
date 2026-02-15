@@ -11,6 +11,7 @@ public class GodotLoggerFactory : ILoggerFactory
     ///     获取指定名称的日志记录器实例
     /// </summary>
     /// <param name="name">日志记录器的名称</param>
+    /// <param name="minLevel">日志记录器的最小日志级别</param>
     /// <returns>返回GodotLogger类型的日志记录器实例</returns>
     public ILogger GetLogger(string name, LogLevel minLevel = LogLevel.Info)
     {

@@ -51,6 +51,15 @@ public class GodotGraphicsSettings(ISettingsModel model) : IResetApplyAbleSettin
         model.GetData<GraphicsSettings>().Reset();
     }
 
+    /// <summary>
+    ///     获取图形设置的数据对象。
+    ///     该属性提供对图形设置数据的只读访问。
+    /// </summary>
     public ISettingsData Data { get; } = model.GetData<GraphicsSettings>();
+
+    /// <summary>
+    ///     获取图形设置数据的类型。
+    ///     该属性返回图形设置数据的具体类型信息。
+    /// </summary>
     public Type DataType { get; } = typeof(GraphicsSettings);
 }

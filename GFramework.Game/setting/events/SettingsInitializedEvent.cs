@@ -13,4 +13,8 @@
 
 namespace GFramework.Game.setting.events;
 
+/// <summary>
+/// 表示设置已初始化的事件。
+/// 此事件用于通知系统或组件，所有设置已完成初始化。
+/// </summary>
 public sealed class SettingsInitializedEvent;
