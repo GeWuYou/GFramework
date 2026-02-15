@@ -5,7 +5,7 @@ on:
     workflows: ["CI - Build & Test"]
     types:
       - completed
-
+  workflow_dispatch:
 concurrency:
   group: auto-tag-main
   cancel-in-progress: false
@@ -13,10 +13,12 @@ concurrency:
 jobs:
   auto-tag:
     if: >
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.head_branch == 'main'&&
-      contains(github.event.workflow_run.head_commit.message, '[release ci]')
-
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       contains(github.event.workflow_run.head_commit.message, '[release ci]'))
+      ||
+      (github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     permissions:
       contents: write
