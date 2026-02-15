@@ -111,8 +111,8 @@ public class StateMachineSystemTests
         _stateMachine!.Register(state1);
         _stateMachine.Register(state2);
 
-        Assert.That(state1.GetContext(), Is.Null);
-        Assert.That(state2.GetContext(), Is.Null);
+        Assert.Throws<InvalidOperationException>(() => state1.GetContext());
+        Assert.Throws<InvalidOperationException>(() => state2.GetContext());
 
         _stateMachine.Init();
 
