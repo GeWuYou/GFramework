@@ -37,7 +37,7 @@ public static class TaskCoroutineExtensions
     /// <returns>协程句柄</returns>
     public static CoroutineHandle StartTaskAsCoroutine(this CoroutineScheduler scheduler, Task task)
     {
-        return scheduler.Run(task.AsCoroutine());
+        return scheduler.Run(task.ToCoroutineEnumerator());
     }
 
     /// <summary>
@@ -49,21 +49,28 @@ public static class TaskCoroutineExtensions
     /// <returns>协程句柄</returns>
     public static CoroutineHandle StartTaskAsCoroutine<T>(this CoroutineScheduler scheduler, Task<T> task)
     {
-        return scheduler.Run(task.AsCoroutine());
+        return scheduler.Run(task.ToCoroutineEnumerator());
     }
 
+
     /// <summary>
-    ///     创建等待Task的协程
+    ///     将Task转换为协程枚举器
     /// </summary>
-    public static IEnumerator<IYieldInstruction> AsCoroutine(this Task task)
+    /// <param name="task">要转换的Task</param>
+    /// <returns>协程枚举器</returns>
+    public static IEnumerator<IYieldInstruction> ToCoroutineEnumerator(this Task task)
     {
         yield return task.AsCoroutineInstruction();
     }
 
+
     /// <summary>
-    ///     创建等待泛型Task的协程
+    ///     将泛型Task转换为协程枚举器
     /// </summary>
-    public static IEnumerator<IYieldInstruction> AsCoroutine<T>(this Task<T> task)
+    /// <typeparam name="T">Task返回值的类型</typeparam>
+    /// <param name="task">要转换的泛型Task</param>
+    /// <returns>协程枚举器</returns>
+    public static IEnumerator<IYieldInstruction> ToCoroutineEnumerator<T>(this Task<T> task)
     {
         yield return task.AsCoroutineInstruction();
     }
