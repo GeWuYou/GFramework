@@ -40,10 +40,10 @@ public interface IUiPageBehavior
 
 
     /// <summary>
-    ///     获取页面视图对象。
+    ///     获取原始对象。
     /// </summary>
-    /// <returns>页面视图实例。</returns>
-    object View { get; }
+    /// <returns>原始对象。</returns>
+    object Original { get; }
 
 
     /// <summary>

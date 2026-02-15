@@ -71,8 +71,16 @@ public abstract class SceneBehaviorBase<T> : ISceneBehavior
 
     /// <summary>
     ///     获取场景的唯一标识键。
+    ///     该属性返回场景的唯一标识符，用于区分不同的场景实例。
     /// </summary>
     public string Key => _key;
+
+    /// <summary>
+    ///     获取场景的原始数据对象。
+    ///     该属性返回场景的底层数据对象，通常用于序列化或反序列化操作。
+    /// </summary>
+    public object Original => Owner;
+
 
     /// <summary>
     ///     获取场景是否已加载完成的状态。
