@@ -194,6 +194,137 @@ public class StateTests
         Assert.That(state2.EnterFrom, Is.SameAs(state1));
         Assert.That(state3.EnterFrom, Is.SameAs(state2));
     }
+
+    /// <summary>
+    ///     验证异步状态类是否正确实现了IAsyncState接口
+    /// </summary>
+    [Test]
+    public void AsyncState_Should_Implement_IAsyncState_Interface()
+    {
+        var state = new ConcreteAsyncStateV2();
+
+        Assert.That(state is IAsyncState);
+    }
+
+    /// <summary>
+    ///     验证进入异步状态时OnEnterAsync方法被正确调用并记录来源状态
+    /// </summary>
+    [Test]
+    public async Task OnEnterAsync_Should_BeCalled_When_AsyncState_Enters()
+    {
+        var state = new ConcreteAsyncStateV2();
+        var otherState = new ConcreteStateV3();
+
+        await state.OnEnterAsync(otherState);
+
+        Assert.That(state.EnterCalled, Is.True);
+        Assert.That(state.EnterFrom, Is.SameAs(otherState));
+    }
+
+    /// <summary>
+    ///     验证当传入null作为来源状态时异步状态的处理情况
+    /// </summary>
+    [Test]
+    public async Task OnEnterAsync_WithNull_Should_Set_EnterFrom_ToNull()
+    {
+        var state = new ConcreteAsyncStateV2();
+
+        await state.OnEnterAsync(null);
+
+        Assert.That(state.EnterCalled, Is.True);
+        Assert.That(state.EnterFrom, Is.Null);
+    }
+
+    /// <summary>
+    ///     验证退出异步状态时OnExitAsync方法被正确调用并记录目标状态
+    /// </summary>
+    [Test]
+    public async Task OnExitAsync_Should_BeCalled_When_AsyncState_Exits()
+    {
+        var state = new ConcreteAsyncStateV2();
+        var otherState = new ConcreteStateV3();
+
+        await state.OnExitAsync(otherState);
+
+        Assert.That(state.ExitCalled, Is.True);
+        Assert.That(state.ExitTo, Is.SameAs(otherState));
+    }
+
+    /// <summary>
+    ///     验证当传入null作为目标状态时异步状态的处理情况
+    /// </summary>
+    [Test]
+    public async Task OnExitAsync_WithNull_Should_Set_ExitTo_ToNull()
+    {
+        var state = new ConcreteAsyncStateV2();
+
+        await state.OnExitAsync(null);
+
+        Assert.That(state.ExitCalled, Is.True);
+        Assert.That(state.ExitTo, Is.Null);
+    }
+
+    /// <summary>
+    ///     验证允许转换时CanTransitionToAsync方法返回true
+    /// </summary>
+    [Test]
+    public async Task CanTransitionToAsync_WithAllowTrue_Should_ReturnTrue()
+    {
+        var state = new ConcreteAsyncStateV2 { AllowTransitions = true };
+        var target = new ConcreteStateV3();
+
+        var result = await state.CanTransitionToAsync(target);
+
+        Assert.That(result, Is.True);
+    }
+
+    /// <summary>
+    ///     验证不允许转换时CanTransitionToAsync方法返回false
+    /// </summary>
+    [Test]
+    public async Task CanTransitionToAsync_WithAllowFalse_Should_ReturnFalse()
+    {
+        var state = new ConcreteAsyncStateV2 { AllowTransitions = false };
+        var target = new ConcreteStateV3();
+
+        var result = await state.CanTransitionToAsync(target);
+
+        Assert.That(result, Is.False);
+    }
+
+    /// <summary>
+    ///     验证CanTransitionToAsync方法正确接收目标状态参数
+    /// </summary>
+    [Test]
+    public async Task CanTransitionToAsync_Should_Receive_TargetState()
+    {
+        var state = new ConcreteAsyncStateV2 { AllowTransitions = true };
+        var target = new ConcreteStateV3();
+        IState? receivedTarget = null;
+
+        state.CanTransitionToAsyncAction = s => receivedTarget = s;
+        await state.CanTransitionToAsync(target);
+
+        Assert.That(receivedTarget, Is.SameAs(target));
+    }
+
+    /// <summary>
+    ///     验证异步状态对多次转换的跟踪能力
+    /// </summary>
+    [Test]
+    public async Task AsyncState_Should_Track_MultipleTransitions()
+    {
+        var state = new ConcreteAsyncStateV2();
+        var other = new ConcreteStateV3();
+
+        await state.OnEnterAsync(other);
+        await state.OnExitAsync(other);
+        await state.OnEnterAsync(other);
+        await state.OnExitAsync(null);
+
+        Assert.That(state.EnterCallCount, Is.EqualTo(2));
+        Assert.That(state.ExitCallCount, Is.EqualTo(2));
+    }
 }
 
 /// <summary>
@@ -489,5 +620,115 @@ public sealed class TrackingStateV2 : IState
     public bool CanTransitionTo(IState target)
     {
         return true;
+    }
+}
+
+/// <summary>
+///     异步具体状态实现类V2版本，用于测试异步状态的基本功能
+/// </summary>
+public sealed class ConcreteAsyncStateV2 : IState, IAsyncState
+{
+    /// <summary>
+    ///     获取或设置是否允许转换
+    /// </summary>
+    public bool AllowTransitions { get; set; } = true;
+
+    /// <summary>
+    ///     获取进入状态是否被调用的标志
+    /// </summary>
+    public bool EnterCalled { get; private set; }
+
+    /// <summary>
+    ///     获取退出状态是否被调用的标志
+    /// </summary>
+    public bool ExitCalled { get; private set; }
+
+    /// <summary>
+    ///     获取进入状态被调用的次数
+    /// </summary>
+    public int EnterCallCount { get; private set; }
+
+    /// <summary>
+    ///     获取退出状态被调用的次数
+    /// </summary>
+    public int ExitCallCount { get; private set; }
+
+    /// <summary>
+    ///     获取进入此状态的来源状态
+    /// </summary>
+    public IState? EnterFrom { get; private set; }
+
+    /// <summary>
+    ///     获取从此状态退出的目标状态
+    /// </summary>
+    public IState? ExitTo { get; private set; }
+
+    /// <summary>
+    ///     获取或设置转换到目标状态时执行的动作
+    /// </summary>
+    public Action<IState>? CanTransitionToAsyncAction { get; set; }
+
+    /// <summary>
+    ///     异步进入当前状态时调用的方法
+    /// </summary>
+    /// <param name="from">从哪个状态进入</param>
+    public async Task OnEnterAsync(IState? from)
+    {
+        await Task.Delay(1);
+        EnterCalled = true;
+        EnterCallCount++;
+        EnterFrom = from;
+    }
+
+    /// <summary>
+    ///     异步退出当前状态时调用的方法
+    /// </summary>
+    /// <param name="to">退出到哪个状态</param>
+    public async Task OnExitAsync(IState? to)
+    {
+        await Task.Delay(1);
+        ExitCalled = true;
+        ExitCallCount++;
+        ExitTo = to;
+    }
+
+    /// <summary>
+    ///     异步判断是否可以转换到目标状态
+    /// </summary>
+    /// <param name="target">目标状态</param>
+    /// <returns>如果可以转换则返回true，否则返回false</returns>
+    public async Task<bool> CanTransitionToAsync(IState target)
+    {
+        await Task.Delay(1);
+        CanTransitionToAsyncAction?.Invoke(target);
+        return AllowTransitions;
+    }
+
+    /// <summary>
+    ///     进入当前状态时调用的方法（同步版本，抛出异常表示不应被调用）
+    /// </summary>
+    /// <param name="from">从哪个状态进入</param>
+    public void OnEnter(IState? from)
+    {
+        throw new InvalidOperationException("Sync OnEnter should not be called for async state");
+    }
+
+    /// <summary>
+    ///     退出当前状态时调用的方法（同步版本，抛出异常表示不应被调用）
+    /// </summary>
+    /// <param name="to">退出到哪个状态</param>
+    public void OnExit(IState? to)
+    {
+        throw new InvalidOperationException("Sync OnExit should not be called for async state");
+    }
+
+    /// <summary>
+    ///     判断是否可以转换到目标状态（同步版本，抛出异常表示不应被调用）
+    /// </summary>
+    /// <param name="target">目标状态</param>
+    /// <returns>如果可以转换则返回true，否则返回false</returns>
+    public bool CanTransitionTo(IState target)
+    {
+        throw new InvalidOperationException("Sync CanTransitionTo should not be called for async state");
     }
 }

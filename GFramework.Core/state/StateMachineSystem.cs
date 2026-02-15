@@ -1,4 +1,4 @@
-﻿using GFramework.Core.Abstractions.architecture;
+using GFramework.Core.Abstractions.architecture;
 using GFramework.Core.Abstractions.enums;
 using GFramework.Core.Abstractions.rule;
 using GFramework.Core.Abstractions.state;
@@ -79,6 +79,23 @@ public class StateMachineSystem : StateMachine, IStateMachineSystem
     {
         var old = Current;
         base.ChangeInternal(next);
+
+        // 发送状态变更事件，通知监听者状态已发生改变
+        this.SendEvent(new StateChangedEvent
+        {
+            OldState = old,
+            NewState = Current
+        });
+    }
+
+    /// <summary>
+    ///     异步内部状态切换方法，重写基类方法以添加状态变更事件通知功能
+    /// </summary>
+    /// <param name="next">要切换到的下一个状态</param>
+    protected override async Task ChangeInternalAsync(IState next)
+    {
+        var old = Current;
+        await base.ChangeInternalAsync(next);
 
         // 发送状态变更事件，通知监听者状态已发生改变
         this.SendEvent(new StateChangedEvent

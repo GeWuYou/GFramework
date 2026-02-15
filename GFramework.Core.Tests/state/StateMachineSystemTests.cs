@@ -270,6 +270,93 @@ public class StateMachineSystemTests
 
         _stateMachine.Destroy();
     }
+
+    /// <summary>
+    ///     测试异步ChangeToAsync发送StateChangedEvent事件
+    ///     验证当状态机使用异步方法切换到新状态时，会正确触发StateChangedEvent事件
+    /// </summary>
+    [Test]
+    public async Task ChangeToAsync_Should_Send_StateChangedEvent()
+    {
+        var eventReceived = false;
+        StateChangedEvent? receivedEvent = null;
+
+        _eventBus!.Register<StateChangedEvent>(e =>
+        {
+            eventReceived = true;
+            receivedEvent = e;
+        });
+
+        var state1 = new TestStateV5();
+        var state2 = new TestStateV5();
+
+        _stateMachine!.Register(state1);
+        _stateMachine.Register(state2);
+
+        _stateMachine.Init();
+        await _stateMachine.ChangeToAsync<TestStateV5>();
+
+        Assert.That(eventReceived, Is.True);
+        Assert.That(receivedEvent!.OldState, Is.Null);
+        Assert.That(receivedEvent.NewState, Is.InstanceOf<TestStateV5>());
+    }
+
+    /// <summary>
+    ///     测试异步ChangeToAsync发送StateChangedEvent事件（包含旧状态）
+    ///     验证当状态机使用异步方法从一个状态切换到另一个状态时，会正确触发StateChangedEvent事件
+    /// </summary>
+    [Test]
+    public async Task ChangeToAsync_Should_Send_StateChangedEvent_With_OldState()
+    {
+        var eventReceived = false;
+        StateChangedEvent? receivedEvent = null;
+
+        _eventBus!.Register<StateChangedEvent>(e =>
+        {
+            eventReceived = true;
+            receivedEvent = e;
+        });
+
+        var state1 = new TestStateV5();
+        var state2 = new TestStateV5_2();
+
+        _stateMachine!.Register(state1);
+        _stateMachine.Register(state2);
+
+        _stateMachine.Init();
+        await _stateMachine.ChangeToAsync<TestStateV5>();
+
+        eventReceived = false;
+        await _stateMachine.ChangeToAsync<TestStateV5_2>();
+
+        Assert.That(eventReceived, Is.True);
+        Assert.That(receivedEvent!.OldState, Is.InstanceOf<TestStateV5>());
+        Assert.That(receivedEvent.NewState, Is.InstanceOf<TestStateV5_2>());
+    }
+
+    /// <summary>
+    ///     测试异步切换时多次状态变更都能正确触发事件
+    /// </summary>
+    [Test]
+    public async Task ChangeToAsync_MultipleChanges_Should_Send_Events_Correctly()
+    {
+        var eventCount = 0;
+
+        _eventBus!.Register<StateChangedEvent>(_ => { eventCount++; });
+
+        var state1 = new TestStateV5();
+        var state2 = new TestStateV5_2();
+
+        _stateMachine!.Register(state1);
+        _stateMachine.Register(state2);
+
+        _stateMachine.Init();
+        await _stateMachine.ChangeToAsync<TestStateV5>();
+        await _stateMachine.ChangeToAsync<TestStateV5_2>();
+        await _stateMachine.ChangeToAsync<TestStateV5>();
+
+        Assert.That(eventCount, Is.EqualTo(3));
+    }
 }
 
 #region Test Classes
@@ -337,6 +424,43 @@ public class TestContextAwareStateV5_2 : ContextAwareStateBase
 ///     测试用的普通状态实现
 /// </summary>
 public class TestStateV5 : IState
+{
+    /// <summary>
+    ///     状态标识符
+    /// </summary>
+    public int Id { get; set; }
+
+    /// <summary>
+    ///     检查是否可以转换到指定状态
+    /// </summary>
+    /// <param name="next">目标状态</param>
+    /// <returns>始终返回true表示允许转换</returns>
+    public bool CanTransitionTo(IState next)
+    {
+        return true;
+    }
+
+    /// <summary>
+    ///     进入状态时调用
+    /// </summary>
+    /// <param name="previous">前一个状态</param>
+    public void OnEnter(IState? previous)
+    {
+    }
+
+    /// <summary>
+    ///     退出状态时调用
+    /// </summary>
+    /// <param name="next">下一个状态</param>
+    public void OnExit(IState? next)
+    {
+    }
+}
+
+/// <summary>
+///     第二个测试用的普通状态实现，用于区分不同状态类型
+/// </summary>
+public class TestStateV5_2 : IState
 {
     /// <summary>
     ///     状态标识符
