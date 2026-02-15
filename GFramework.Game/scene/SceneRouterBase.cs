@@ -92,10 +92,13 @@ public abstract class SceneRouterBase
 
             var @event = CreateEvent(sceneKey, SceneTransitionType.Replace, param);
 
-            await BeforeChangeAsync(@event);
-            await ClearInternalAsync();
-            await PushInternalAsync(sceneKey, param);
-            AfterChange(@event);
+            await _pipeline.ExecuteAroundAsync(@event, async () =>
+            {
+                await BeforeChangeAsync(@event);
+                await ClearInternalAsync();
+                await PushInternalAsync(sceneKey, param);
+                AfterChange(@event);
+            });
         }
         finally
         {
@@ -209,9 +212,12 @@ public abstract class SceneRouterBase
 
             var @event = CreateEvent(sceneKey, SceneTransitionType.Push, param);
 
-            await BeforeChangeAsync(@event);
-            await PushInternalAsync(sceneKey, param);
-            AfterChange(@event);
+            await _pipeline.ExecuteAroundAsync(@event, async () =>
+            {
+                await BeforeChangeAsync(@event);
+                await PushInternalAsync(sceneKey, param);
+                AfterChange(@event);
+            });
         }
         finally
         {
@@ -287,9 +293,12 @@ public abstract class SceneRouterBase
 
             var @event = CreateEvent(null, SceneTransitionType.Pop);
 
-            await BeforeChangeAsync(@event);
-            await PopInternalAsync();
-            AfterChange(@event);
+            await _pipeline.ExecuteAroundAsync(@event, async () =>
+            {
+                await BeforeChangeAsync(@event);
+                await PopInternalAsync();
+                AfterChange(@event);
+            });
         }
         finally
         {
@@ -355,9 +364,12 @@ public abstract class SceneRouterBase
 
             var @event = CreateEvent(null, SceneTransitionType.Clear);
 
-            await BeforeChangeAsync(@event);
-            await ClearInternalAsync();
-            AfterChange(@event);
+            await _pipeline.ExecuteAroundAsync(@event, async () =>
+            {
+                await BeforeChangeAsync(@event);
+                await ClearInternalAsync();
+                AfterChange(@event);
+            });
         }
         finally
         {

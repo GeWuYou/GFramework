@@ -25,6 +25,8 @@ namespace GFramework.Game.scene;
 public class SceneTransitionPipeline
 {
     private static readonly ILogger Log = LoggerFactoryResolver.Provider.CreateLogger(nameof(SceneTransitionPipeline));
+    private readonly List<ISceneAroundTransitionHandler> _aroundHandlers = [];
+    private readonly Dictionary<ISceneAroundTransitionHandler, SceneTransitionHandlerOptions> _aroundOptions = new();
     private readonly List<ISceneTransitionHandler> _handlers = [];
     private readonly Dictionary<ISceneTransitionHandler, SceneTransitionHandlerOptions> _options = new();
 
@@ -65,6 +67,44 @@ public class SceneTransitionPipeline
         if (!_handlers.Remove(handler)) return;
         _options.Remove(handler);
         Log.Debug("Handler unregistered: {0}", handler.GetType().Name);
+    }
+
+    /// <summary>
+    /// 注册 Around 中间件处理器。
+    /// </summary>
+    /// <param name="handler">处理器实例。</param>
+    /// <param name="options">执行选项，如果为 null 则使用默认选项。</param>
+    public void RegisterAroundHandler(ISceneAroundTransitionHandler handler,
+        SceneTransitionHandlerOptions? options = null)
+    {
+        ArgumentNullException.ThrowIfNull(handler);
+
+        if (_aroundHandlers.Contains(handler))
+        {
+            Log.Debug("Around handler already registered: {0}", handler.GetType().Name);
+            return;
+        }
+
+        _aroundHandlers.Add(handler);
+        _aroundOptions[handler] = options ?? new SceneTransitionHandlerOptions();
+        Log.Debug(
+            "Around handler registered: {0}, Priority={1}",
+            handler.GetType().Name,
+            handler.Priority
+        );
+    }
+
+    /// <summary>
+    /// 注销 Around 中间件处理器。
+    /// </summary>
+    /// <param name="handler">处理器实例。</param>
+    public void UnregisterAroundHandler(ISceneAroundTransitionHandler handler)
+    {
+        ArgumentNullException.ThrowIfNull(handler);
+
+        if (!_aroundHandlers.Remove(handler)) return;
+        _aroundOptions.Remove(handler);
+        Log.Debug("Around handler unregistered: {0}", handler.GetType().Name);
     }
 
     /// <summary>
@@ -112,6 +152,53 @@ public class SceneTransitionPipeline
         }
 
         Log.Debug("Pipeline execution completed for phases: {0}", phases);
+    }
+
+    /// <summary>
+    /// 执行 Around 中间件处理器，包裹核心操作。
+    /// </summary>
+    /// <param name="event">场景过渡事件。</param>
+    /// <param name="coreAction">核心操作委托。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>异步任务。</returns>
+    public async Task ExecuteAroundAsync(
+        SceneTransitionEvent @event,
+        Func<Task> coreAction,
+        CancellationToken cancellationToken = default)
+    {
+        var handlers = _aroundHandlers
+            .Where(h => h.ShouldHandle(@event))
+            .OrderBy(h => h.Priority)
+            .ToList();
+
+        if (handlers.Count == 0)
+        {
+            await coreAction();
+            return;
+        }
+
+        Log.Debug(
+            "Executing {0} around handlers for event: {1}",
+            handlers.Count,
+            @event.TransitionType
+        );
+
+        // 构建中间件链
+        Func<Task> pipeline = coreAction;
+        for (int i = handlers.Count - 1; i >= 0; i--)
+        {
+            var handler = handlers[i];
+            var options = _aroundOptions[handler];
+            var next = pipeline;
+
+            pipeline = async () =>
+            {
+                await ExecuteSingleAroundHandlerAsync(
+                    handler, options, @event, next, cancellationToken);
+            };
+        }
+
+        await pipeline();
     }
 
     private List<ISceneTransitionHandler> FilterAndSortHandlers(
@@ -177,6 +264,39 @@ public class SceneTransitionPipeline
             if (options.ContinueOnError) return;
             Log.Error("Stopping pipeline due to error and ContinueOnError=false");
             throw;
+        }
+    }
+
+    private static async Task ExecuteSingleAroundHandlerAsync(
+        ISceneAroundTransitionHandler handler,
+        SceneTransitionHandlerOptions options,
+        SceneTransitionEvent @event,
+        Func<Task> next,
+        CancellationToken cancellationToken)
+    {
+        Log.Debug("Executing around handler: {0}", handler.GetType().Name);
+
+        try
+        {
+            using var timeoutCts = options.TimeoutMs > 0
+                ? new CancellationTokenSource(options.TimeoutMs)
+                : null;
+
+            using var linkedCts = timeoutCts != null && cancellationToken.CanBeCanceled
+                ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token)
+                : null;
+
+            await handler.HandleAsync(@event, next, linkedCts?.Token ?? cancellationToken);
+
+            Log.Debug("Around handler completed: {0}", handler.GetType().Name);
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Around handler failed: {0}, Error: {1}",
+                handler.GetType().Name, ex.Message);
+
+            if (!options.ContinueOnError)
+                throw;
         }
     }
 }
