@@ -24,7 +24,7 @@ namespace GFramework.Game.scene;
 /// </summary>
 public class SceneTransitionPipeline
 {
-    private static readonly ILogger Log = LoggerFactoryResolver.Provider.CreateLogger("SceneTransitionPipeline");
+    private static readonly ILogger Log = LoggerFactoryResolver.Provider.CreateLogger(nameof(SceneTransitionPipeline));
     private readonly List<ISceneTransitionHandler> _handlers = [];
     private readonly Dictionary<ISceneTransitionHandler, SceneTransitionHandlerOptions> _options = new();
 
