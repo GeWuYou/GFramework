@@ -71,22 +71,6 @@ public class StateMachineSystem : StateMachine, IStateMachineSystem
         States.Clear();
     }
 
-    /// <summary>
-    ///     内部状态切换方法，重写基类方法以添加状态变更事件通知功能
-    /// </summary>
-    /// <param name="next">要切换到的下一个状态</param>
-    protected override void ChangeInternal(IState next)
-    {
-        var old = Current;
-        base.ChangeInternal(next);
-
-        // 发送状态变更事件，通知监听者状态已发生改变
-        this.SendEvent(new StateChangedEvent
-        {
-            OldState = old,
-            NewState = Current
-        });
-    }
 
     /// <summary>
     ///     异步内部状态切换方法，重写基类方法以添加状态变更事件通知功能
