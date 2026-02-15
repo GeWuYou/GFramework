@@ -184,6 +184,9 @@ public class UnifiedSettingsDataRepository(
         _typeRegistry[location.Key] = type;
     }
 
+    /// <summary>
+    ///     初始化
+    /// </summary>
     protected override void OnInit()
     {
         _storage ??= this.GetUtility<IStorage>()!;

@@ -16,7 +16,7 @@ public class GodotUiFactory : AbstractContextUtility, IUiFactory
     ///     日志记录器，用于记录调试信息。
     /// </summary>
     private static readonly ILogger Log =
-        LoggerFactoryResolver.Provider.CreateLogger("GodotUiFactory");
+        LoggerFactoryResolver.Provider.CreateLogger(nameof(GodotUiFactory));
 
     /// <summary>
     ///     UI注册表，用于管理UI场景资源。

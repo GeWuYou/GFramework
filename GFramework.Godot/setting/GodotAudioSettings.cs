@@ -34,7 +34,16 @@ public class GodotAudioSettings(ISettingsModel model, AudioBusMap audioBusMap)
         model.GetData<AudioSettings>().Reset();
     }
 
+    /// <summary>
+    ///     获取音频设置的数据对象。
+    ///     该属性提供对音频设置数据的只读访问。
+    /// </summary>
     public ISettingsData Data { get; } = model.GetData<AudioSettings>();
+
+    /// <summary>
+    ///     获取音频设置数据的类型。
+    ///     该属性返回音频设置数据的具体类型信息。
+    /// </summary>
     public Type DataType { get; } = typeof(AudioSettings);
 
     /// <summary>

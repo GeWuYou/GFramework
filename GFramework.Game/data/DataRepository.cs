@@ -120,6 +120,9 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
             this.SendEvent(new DataBatchSavedEvent(valueTuples));
     }
 
+    /// <summary>
+    ///     初始化
+    /// </summary>
     protected override void OnInit()
     {
         _storage ??= this.GetUtility<IStorage>()!;

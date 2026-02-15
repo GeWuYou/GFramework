@@ -21,7 +21,7 @@ namespace GFramework.Game.Abstractions.scene;
 /// </summary>
 public sealed class SceneTransitionEvent
 {
-    private readonly Dictionary<string, object> _context = new();
+    private readonly Dictionary<string, object> _context = new(StringComparer.Ordinal);
 
     /// <summary>
     /// 获取或初始化源场景的唯一标识符。

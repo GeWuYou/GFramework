@@ -48,6 +48,15 @@ public class GodotLocalizationSettings(ISettingsModel model, LocalizationMap loc
         model.GetData<LocalizationSettings>().Reset();
     }
 
+    /// <summary>
+    ///     获取本地化设置的数据对象。
+    ///     该属性提供对本地化设置数据的只读访问。
+    /// </summary>
     public ISettingsData Data { get; } = model.GetData<LocalizationSettings>();
+
+    /// <summary>
+    ///     获取本地化设置数据的类型。
+    ///     该属性返回本地化设置数据的具体类型信息。
+    /// </summary>
     public Type DataType { get; } = typeof(LocalizationSettings);
 }

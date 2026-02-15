@@ -13,4 +13,8 @@
 
 namespace GFramework.Game.setting.events;
 
+/// <summary>
+/// 表示所有设置已保存的事件。
+/// 此事件用于通知系统或组件，所有设置数据已成功保存。
+/// </summary>
 public sealed class SettingsSavedAllEvent;
