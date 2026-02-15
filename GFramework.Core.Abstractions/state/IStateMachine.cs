@@ -2,6 +2,7 @@ namespace GFramework.Core.Abstractions.state;
 
 /// <summary>
 ///     状态机接口，用于管理状态的注册、切换和验证
+///     支持同步和异步状态操作
 /// </summary>
 public interface IStateMachine
 {
@@ -23,6 +24,12 @@ public interface IStateMachine
     IStateMachine Unregister<T>() where T : IState;
 
     /// <summary>
+    ///     异步从状态机中注销指定类型的状态
+    /// </summary>
+    /// <typeparam name="T">要注销的状态类型，必须实现IState接口</typeparam>
+    Task<IStateMachine> UnregisterAsync<T>() where T : IState;
+
+    /// <summary>
     ///     检查是否可以切换到指定类型的状态
     /// </summary>
     /// <typeparam name="T">目标状态类型，必须实现IState接口</typeparam>
@@ -30,11 +37,25 @@ public interface IStateMachine
     bool CanChangeTo<T>() where T : IState;
 
     /// <summary>
+    ///     异步检查是否可以切换到指定类型的状态
+    /// </summary>
+    /// <typeparam name="T">目标状态类型，必须实现IState接口</typeparam>
+    /// <returns>如果可以切换则返回true，否则返回false</returns>
+    Task<bool> CanChangeToAsync<T>() where T : IState;
+
+    /// <summary>
     ///     切换到指定类型的状态
     /// </summary>
     /// <typeparam name="T">要切换到的状态类型，必须实现IState接口</typeparam>
     /// <returns>如果成功切换则返回true，否则返回false</returns>
     bool ChangeTo<T>() where T : IState;
+
+    /// <summary>
+    ///     异步切换到指定类型的状态
+    /// </summary>
+    /// <typeparam name="T">要切换到的状态类型，必须实现IState接口</typeparam>
+    /// <returns>如果成功切换则返回true，否则返回false</returns>
+    Task<bool> ChangeToAsync<T>() where T : IState;
 
     /// <summary>
     ///     检查指定类型的状态是否已注册
@@ -73,6 +94,12 @@ public interface IStateMachine
     /// </summary>
     /// <returns>如果成功回退则返回true，否则返回false</returns>
     bool GoBack();
+
+    /// <summary>
+    ///     异步回退到上一个状态
+    /// </summary>
+    /// <returns>如果成功回退则返回true，否则返回false</returns>
+    Task<bool> GoBackAsync();
 
     /// <summary>
     ///     清空状态历史记录
