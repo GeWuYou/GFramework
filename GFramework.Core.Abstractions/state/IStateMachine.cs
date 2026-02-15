@@ -18,23 +18,10 @@ public interface IStateMachine
     IStateMachine Register(IState state);
 
     /// <summary>
-    ///     从状态机中注销指定类型的状态
-    /// </summary>
-    /// <typeparam name="T">要注销的状态类型，必须实现IState接口</typeparam>
-    IStateMachine Unregister<T>() where T : IState;
-
-    /// <summary>
     ///     异步从状态机中注销指定类型的状态
     /// </summary>
     /// <typeparam name="T">要注销的状态类型，必须实现IState接口</typeparam>
     Task<IStateMachine> UnregisterAsync<T>() where T : IState;
-
-    /// <summary>
-    ///     检查是否可以切换到指定类型的状态
-    /// </summary>
-    /// <typeparam name="T">目标状态类型，必须实现IState接口</typeparam>
-    /// <returns>如果可以切换则返回true，否则返回false</returns>
-    bool CanChangeTo<T>() where T : IState;
 
     /// <summary>
     ///     异步检查是否可以切换到指定类型的状态
@@ -42,13 +29,6 @@ public interface IStateMachine
     /// <typeparam name="T">目标状态类型，必须实现IState接口</typeparam>
     /// <returns>如果可以切换则返回true，否则返回false</returns>
     Task<bool> CanChangeToAsync<T>() where T : IState;
-
-    /// <summary>
-    ///     切换到指定类型的状态
-    /// </summary>
-    /// <typeparam name="T">要切换到的状态类型，必须实现IState接口</typeparam>
-    /// <returns>如果成功切换则返回true，否则返回false</returns>
-    bool ChangeTo<T>() where T : IState;
 
     /// <summary>
     ///     异步切换到指定类型的状态
@@ -88,12 +68,6 @@ public interface IStateMachine
     /// </summary>
     /// <returns>状态历史记录的只读副本</returns>
     IReadOnlyList<IState> GetStateHistory();
-
-    /// <summary>
-    ///     回退到上一个状态
-    /// </summary>
-    /// <returns>如果成功回退则返回true，否则返回false</returns>
-    bool GoBack();
 
     /// <summary>
     ///     异步回退到上一个状态
