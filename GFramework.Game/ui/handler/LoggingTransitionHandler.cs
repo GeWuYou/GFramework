@@ -13,7 +13,7 @@ public sealed class LoggingTransitionHandler : UiTransitionHandlerBase
     /// <summary>
     ///     日志记录器实例，用于记录UI切换相关信息
     /// </summary>
-    private static readonly ILogger Log = LoggerFactoryResolver.Provider.CreateLogger("LoggingTransitionHandler");
+    private static readonly ILogger Log = LoggerFactoryResolver.Provider.CreateLogger(nameof(LoggingTransitionHandler));
 
     /// <summary>
     ///     获取处理器优先级，数值越大优先级越高
@@ -23,7 +23,7 @@ public sealed class LoggingTransitionHandler : UiTransitionHandlerBase
     /// <summary>
     ///     获取处理器处理的UI切换阶段，处理所有阶段
     /// </summary>
-    public override UITransitionPhases Phases => UITransitionPhases.All;
+    public override UiTransitionPhases Phases => UiTransitionPhases.All;
 
     /// <summary>
     ///     处理UI切换事件的异步方法

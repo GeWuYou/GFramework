@@ -11,7 +11,7 @@ public abstract class UiTransitionHandlerBase : IUiTransitionHandler
     /// <summary>
     ///     处理器适用的阶段，默认为所有阶段
     /// </summary>
-    public virtual UITransitionPhases Phases => UITransitionPhases.All;
+    public virtual UiTransitionPhases Phases => UiTransitionPhases.All;
 
     /// <summary>
     ///     优先级，需要在子类中实现
@@ -21,7 +21,7 @@ public abstract class UiTransitionHandlerBase : IUiTransitionHandler
     /// <summary>
     ///     判断是否应该处理当前事件，默认返回true
     /// </summary>
-    public virtual bool ShouldHandle(UiTransitionEvent @event, UITransitionPhases phases)
+    public virtual bool ShouldHandle(UiTransitionEvent @event, UiTransitionPhases phases)
     {
         return true;
     }

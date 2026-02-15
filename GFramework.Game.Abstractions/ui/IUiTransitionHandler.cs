@@ -16,7 +16,7 @@ public interface IUiTransitionHandler
     ///     处理器适用的阶段，默认为所有阶段
     ///     可以使用Flags枚举指定多个阶段
     /// </summary>
-    UITransitionPhases Phases { get; }
+    UiTransitionPhases Phases { get; }
 
     /// <summary>
     ///     判断是否应该处理当前事件
@@ -25,7 +25,7 @@ public interface IUiTransitionHandler
     /// <param name="event">UI切换事件</param>
     /// <param name="phases">当前阶段</param>
     /// <returns>是否处理</returns>
-    bool ShouldHandle(UiTransitionEvent @event, UITransitionPhases phases);
+    bool ShouldHandle(UiTransitionEvent @event, UiTransitionPhases phases);
 
     /// <summary>
     ///     处理UI切换事件
