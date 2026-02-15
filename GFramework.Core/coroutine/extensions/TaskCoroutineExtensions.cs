@@ -37,7 +37,7 @@ public static class TaskCoroutineExtensions
     /// <returns>协程句柄</returns>
     public static CoroutineHandle StartTaskAsCoroutine(this CoroutineScheduler scheduler, Task task)
     {
-        return scheduler.Run(CreateTaskCoroutine(task));
+        return scheduler.Run(task.AsCoroutine());
     }
 
     /// <summary>
@@ -49,13 +49,13 @@ public static class TaskCoroutineExtensions
     /// <returns>协程句柄</returns>
     public static CoroutineHandle StartTaskAsCoroutine<T>(this CoroutineScheduler scheduler, Task<T> task)
     {
-        return scheduler.Run(CreateTaskCoroutine(task));
+        return scheduler.Run(task.AsCoroutine());
     }
 
     /// <summary>
     ///     创建等待Task的协程
     /// </summary>
-    private static IEnumerator<IYieldInstruction> CreateTaskCoroutine(Task task)
+    public static IEnumerator<IYieldInstruction> AsCoroutine(this Task task)
     {
         yield return task.AsCoroutineInstruction();
     }
@@ -63,7 +63,7 @@ public static class TaskCoroutineExtensions
     /// <summary>
     ///     创建等待泛型Task的协程
     /// </summary>
-    private static IEnumerator<IYieldInstruction> CreateTaskCoroutine<T>(Task<T> task)
+    public static IEnumerator<IYieldInstruction> AsCoroutine<T>(this Task<T> task)
     {
         yield return task.AsCoroutineInstruction();
     }
