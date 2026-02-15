@@ -32,7 +32,8 @@ public class ContextAwareStateBase : IState, IContextAware, IDisposable
     /// <returns>架构上下文实例</returns>
     public IArchitectureContext GetContext()
     {
-        return _context!;
+        return _context ?? throw new InvalidOperationException(
+            $"Architecture context has not been set. Call {nameof(SetContext)} before accessing the context.");
     }
 
     /// <summary>
