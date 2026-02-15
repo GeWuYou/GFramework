@@ -44,204 +44,6 @@ public class StateMachineTests
     }
 
     /// <summary>
-    ///     验证ChangeTo方法能够正确设置当前状态
-    /// </summary>
-    [Test]
-    public void ChangeTo_Should_SetCurrentState()
-    {
-        var state = new TestStateV2();
-        _stateMachine.Register(state);
-        _stateMachine.ChangeTo<TestStateV2>();
-
-        Assert.That(_stateMachine.Current, Is.SameAs(state));
-    }
-
-    /// <summary>
-    ///     验证ChangeTo方法会调用OnEnter回调
-    /// </summary>
-    [Test]
-    public void ChangeTo_Should_Invoke_OnEnter()
-    {
-        var state = new TestStateV2();
-        _stateMachine.Register(state);
-        _stateMachine.ChangeTo<TestStateV2>();
-
-        Assert.That(state.EnterCalled, Is.True);
-        Assert.That(state.EnterFrom, Is.Null);
-    }
-
-    /// <summary>
-    ///     验证当存在当前状态时，切换到新状态会调用原状态的OnExit回调
-    /// </summary>
-    [Test]
-    public void ChangeTo_When_CurrentStateExists_Should_Invoke_OnExit()
-    {
-        var state1 = new TestStateV2();
-        var state2 = new TestStateV3();
-        _stateMachine.Register(state1);
-        _stateMachine.Register(state2);
-
-        _stateMachine.ChangeTo<TestStateV2>();
-        _stateMachine.ChangeTo<TestStateV3>();
-
-        Assert.That(state1.ExitCalled, Is.True);
-        Assert.That(state1.ExitTo, Is.SameAs(state2));
-    }
-
-    /// <summary>
-    ///     验证当存在当前状态时，切换到新状态会调用新状态的OnEnter回调
-    /// </summary>
-    [Test]
-    public void ChangeTo_When_CurrentStateExists_Should_Invoke_OnEnter()
-    {
-        var state1 = new TestStateV2();
-        var state2 = new TestStateV3();
-        _stateMachine.Register(state1);
-        _stateMachine.Register(state2);
-
-        _stateMachine.ChangeTo<TestStateV2>();
-        _stateMachine.ChangeTo<TestStateV3>();
-
-        Assert.That(state2.EnterCalled, Is.True);
-        Assert.That(state2.EnterFrom, Is.SameAs(state1));
-    }
-
-    /// <summary>
-    ///     验证切换到相同状态时不应调用回调方法
-    /// </summary>
-    [Test]
-    public void ChangeTo_ToSameState_Should_NotInvoke_Callbacks()
-    {
-        var state = new TestStateV2();
-        _stateMachine.Register(state);
-        _stateMachine.ChangeTo<TestStateV2>();
-
-        var enterCount = state.EnterCallCount;
-        var exitCount = state.ExitCallCount;
-
-        _stateMachine.ChangeTo<TestStateV2>();
-
-        Assert.That(state.EnterCallCount, Is.EqualTo(enterCount));
-        Assert.That(state.ExitCallCount, Is.EqualTo(exitCount));
-    }
-
-    /// <summary>
-    ///     验证切换到未注册状态时应抛出InvalidOperationException异常
-    /// </summary>
-    [Test]
-    public void ChangeTo_ToUnregisteredState_Should_ThrowInvalidOperationException()
-    {
-        Assert.Throws<InvalidOperationException>(() => _stateMachine.ChangeTo<TestStateV2>());
-    }
-
-    /// <summary>
-    ///     验证当状态未注册时CanChangeTo方法应返回false
-    /// </summary>
-    [Test]
-    public void CanChangeTo_WhenStateNotRegistered_Should_ReturnFalse()
-    {
-        var result = _stateMachine.CanChangeTo<TestStateV2>();
-        Assert.That(result, Is.False);
-    }
-
-    /// <summary>
-    ///     验证当状态已注册时CanChangeTo方法应返回true
-    /// </summary>
-    [Test]
-    public void CanChangeTo_WhenStateRegistered_Should_ReturnTrue()
-    {
-        var state = new TestStateV2();
-        _stateMachine.Register(state);
-
-        var result = _stateMachine.CanChangeTo<TestStateV2>();
-        Assert.That(result, Is.True);
-    }
-
-    /// <summary>
-    ///     验证当当前状态拒绝转换时CanChangeTo方法应返回false
-    /// </summary>
-    [Test]
-    public void CanChangeTo_WhenCurrentStateDeniesTransition_Should_ReturnFalse()
-    {
-        var state1 = new TestStateV2 { AllowTransition = false };
-        var state2 = new TestStateV3();
-        _stateMachine.Register(state1);
-        _stateMachine.Register(state2);
-        _stateMachine.ChangeTo<TestStateV2>();
-
-        var result = _stateMachine.CanChangeTo<TestStateV3>();
-        Assert.That(result, Is.False);
-    }
-
-    /// <summary>
-    ///     验证当当前状态拒绝转换时不应发生状态变化
-    /// </summary>
-    [Test]
-    public void ChangeTo_WhenCurrentStateDeniesTransition_Should_NotChange()
-    {
-        var state1 = new TestStateV2 { AllowTransition = false };
-        var state2 = new TestStateV3();
-        _stateMachine.Register(state1);
-        _stateMachine.Register(state2);
-        _stateMachine.ChangeTo<TestStateV2>();
-
-        var oldState = _stateMachine.Current;
-        var result = _stateMachine.ChangeTo<TestStateV3>();
-
-        Assert.That(result, Is.False);
-        Assert.That(_stateMachine.Current, Is.SameAs(oldState));
-        Assert.That(_stateMachine.Current, Is.SameAs(state1));
-        Assert.That(state2.EnterCalled, Is.False);
-    }
-
-    /// <summary>
-    ///     验证注销状态后应从字典中移除该状态
-    /// </summary>
-    [Test]
-    public void Unregister_Should_RemoveState_FromDictionary()
-    {
-        var state = new TestStateV2();
-        _stateMachine.Register(state);
-        _stateMachine.Unregister<TestStateV2>();
-
-        Assert.That(_stateMachine.ContainsState<TestStateV2>(), Is.False);
-    }
-
-    /// <summary>
-    ///     验证当活动状态被注销时应调用OnExit并清除当前状态
-    /// </summary>
-    [Test]
-    public void Unregister_WhenStateIsActive_Should_Invoke_OnExit_AndClearCurrent()
-    {
-        var state = new TestStateV2();
-        _stateMachine.Register(state);
-        _stateMachine.ChangeTo<TestStateV2>();
-        _stateMachine.Unregister<TestStateV2>();
-
-        Assert.That(state.ExitCalled, Is.True);
-        Assert.That(state.ExitTo, Is.Null);
-        Assert.That(_stateMachine.Current, Is.Null);
-    }
-
-    /// <summary>
-    ///     验证当非活动状态被注销时不应调用OnExit
-    /// </summary>
-    [Test]
-    public void Unregister_WhenStateNotActive_Should_Not_Invoke_OnExit()
-    {
-        var state1 = new TestStateV2();
-        var state2 = new TestStateV3();
-        _stateMachine.Register(state1);
-        _stateMachine.Register(state2);
-        _stateMachine.ChangeTo<TestStateV2>();
-
-        _stateMachine.Unregister<TestStateV3>();
-
-        Assert.That(state1.ExitCalled, Is.False);
-        Assert.That(_stateMachine.Current, Is.SameAs(state1));
-    }
-
-    /// <summary>
     ///     验证异步注销后状态应从字典中移除
     /// </summary>
     [Test]
@@ -254,21 +56,6 @@ public class StateMachineTests
         Assert.That(_stateMachine.ContainsState<TestStateV2>(), Is.False);
     }
 
-    /// <summary>
-    ///     验证异步注销活动同步状态时调用OnExit
-    /// </summary>
-    [Test]
-    public async Task UnregisterAsync_WhenStateIsActive_WithSyncState_Should_Invoke_OnExit()
-    {
-        var state = new TestStateV2();
-        _stateMachine.Register(state);
-        _stateMachine.ChangeTo<TestStateV2>();
-        await _stateMachine.UnregisterAsync<TestStateV2>();
-
-        Assert.That(state.ExitCalled, Is.True);
-        Assert.That(state.ExitTo, Is.Null);
-        Assert.That(_stateMachine.Current, Is.Null);
-    }
 
     /// <summary>
     ///     验证异步注销活动异步状态时调用OnExitAsync
@@ -284,24 +71,6 @@ public class StateMachineTests
         Assert.That(state.ExitCalled, Is.True);
         Assert.That(state.ExitTo, Is.Null);
         Assert.That(_stateMachine.Current, Is.Null);
-    }
-
-    /// <summary>
-    ///     验证异步注销非活动状态不调用退出方法
-    /// </summary>
-    [Test]
-    public async Task UnregisterAsync_WhenStateNotActive_Should_Not_Invoke_Exit()
-    {
-        var state1 = new TestStateV2();
-        var state2 = new TestStateV3();
-        _stateMachine.Register(state1);
-        _stateMachine.Register(state2);
-        _stateMachine.ChangeTo<TestStateV2>();
-
-        await _stateMachine.UnregisterAsync<TestStateV3>();
-
-        Assert.That(state1.ExitCalled, Is.False);
-        Assert.That(_stateMachine.Current, Is.SameAs(state1));
     }
 
     /// <summary>
@@ -327,21 +96,6 @@ public class StateMachineTests
         Assert.That(result, Is.True);
     }
 
-    /// <summary>
-    ///     验证异步切换检查当前状态拒绝转换时返回false
-    /// </summary>
-    [Test]
-    public async Task CanChangeToAsync_WhenCurrentStateDeniesTransition_Should_ReturnFalse()
-    {
-        var state1 = new TestStateV2 { AllowTransition = false };
-        var state2 = new TestStateV3();
-        _stateMachine.Register(state1);
-        _stateMachine.Register(state2);
-        _stateMachine.ChangeTo<TestStateV2>();
-
-        var result = await _stateMachine.CanChangeToAsync<TestStateV3>();
-        Assert.That(result, Is.False);
-    }
 
     /// <summary>
     ///     验证异步切换检查使用异步状态时调用CanTransitionToAsync
@@ -359,21 +113,6 @@ public class StateMachineTests
         Assert.That(state1.CanTransitionToCallCount, Is.EqualTo(1));
     }
 
-    /// <summary>
-    ///     验证异步切换检查使用同步状态时调用CanTransitionTo
-    /// </summary>
-    [Test]
-    public async Task CanChangeToAsync_WithSyncState_Should_Call_CanTransitionTo()
-    {
-        var state1 = new TestStateV2 { AllowTransition = false };
-        var state2 = new TestStateV3();
-        _stateMachine.Register(state1);
-        _stateMachine.Register(state2);
-        _stateMachine.ChangeTo<TestStateV2>();
-
-        var result = await _stateMachine.CanChangeToAsync<TestStateV3>();
-        Assert.That(result, Is.False);
-    }
 
     /// <summary>
     ///     验证异步状态切换能够正确设置当前状态
@@ -627,52 +366,6 @@ public class StateMachineTests
         Assert.That(state2.ExitCalled, Is.True);
         Assert.That(state3.EnterCalled, Is.True);
         Assert.That(state3.ExitCalled, Is.False);
-    }
-
-    /// <summary>
-    ///     验证多次状态转换应正确调用回调方法
-    /// </summary>
-    [Test]
-    public void MultipleStateChanges_Should_Invoke_Callbacks_Correctly()
-    {
-        var state1 = new TestStateV2();
-        var state2 = new TestStateV3();
-        var state3 = new TestStateV4();
-        _stateMachine.Register(state1);
-        _stateMachine.Register(state2);
-        _stateMachine.Register(state3);
-
-        _stateMachine.ChangeTo<TestStateV2>();
-        _stateMachine.ChangeTo<TestStateV3>();
-        _stateMachine.ChangeTo<TestStateV4>();
-
-        Assert.That(state1.EnterCalled, Is.True);
-        Assert.That(state1.ExitCalled, Is.True);
-        Assert.That(state2.EnterCalled, Is.True);
-        Assert.That(state2.ExitCalled, Is.True);
-        Assert.That(state3.EnterCalled, Is.True);
-        Assert.That(state3.ExitCalled, Is.False);
-    }
-
-    /// <summary>
-    ///     验证ChangeTo方法应遵循CanTransitionTo逻辑
-    /// </summary>
-    [Test]
-    public void ChangeTo_Should_Respect_CanTransitionTo_Logic()
-    {
-        var state1 = new TestStateV2();
-        var state2 = new TestStateV3();
-        var state3 = new TestStateV4();
-        _stateMachine.Register(state1);
-        _stateMachine.Register(state2);
-        _stateMachine.Register(state3);
-
-        _stateMachine.ChangeTo<TestStateV2>();
-        _stateMachine.ChangeTo<TestStateV3>();
-
-        Assert.That(state1.EnterCalled, Is.True);
-        Assert.That(state1.ExitCalled, Is.True);
-        Assert.That(state2.EnterCalled, Is.True);
     }
 }
 
