@@ -138,20 +138,23 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     public async Task<bool> ChangeToAsync<T>() where T : IState
     {
         IState target;
+        IState? currentSnapshot;
 
         lock (_lock)
         {
             if (!States.TryGetValue(typeof(T), out target!))
                 throw new InvalidOperationException($"State {typeof(T).Name} not registered.");
+
+            currentSnapshot = Current; // 在锁内获取当前状态的快照
         }
 
         // 验证转换（在锁外执行异步操作）
-        if (Current != null)
+        if (currentSnapshot != null)
         {
-            var canTransition = await CanTransitionToAsync(Current, target);
+            var canTransition = await CanTransitionToAsync(currentSnapshot, target);
             if (!canTransition)
             {
-                await OnTransitionRejectedAsync(Current, target);
+                await OnTransitionRejectedAsync(currentSnapshot, target);
                 return false;
             }
         }

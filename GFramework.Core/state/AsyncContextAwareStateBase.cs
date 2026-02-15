@@ -62,6 +62,39 @@ public class AsyncContextAwareStateBase : IAsyncState, IContextAware, IDisposabl
     }
 
     /// <summary>
+    ///     同步进入状态（不推荐使用）
+    ///     异步状态应该使用 OnEnterAsync 方法
+    /// </summary>
+    /// <exception cref="NotSupportedException">异步状态不支持同步操作</exception>
+    public virtual void OnEnter(IState? from)
+    {
+        throw new NotSupportedException(
+            $"This is an async state ({GetType().Name}). Use OnEnterAsync instead of OnEnter.");
+    }
+
+    /// <summary>
+    ///     同步退出状态（不推荐使用）
+    ///     异步状态应该使用 OnExitAsync 方法
+    /// </summary>
+    /// <exception cref="NotSupportedException">异步状态不支持同步操作</exception>
+    public virtual void OnExit(IState? to)
+    {
+        throw new NotSupportedException(
+            $"This is an async state ({GetType().Name}). Use OnExitAsync instead of OnExit.");
+    }
+
+    /// <summary>
+    ///     同步判断是否可以转换（不推荐使用）
+    ///     异步状态应该使用 CanTransitionToAsync 方法
+    /// </summary>
+    /// <exception cref="NotSupportedException">异步状态不支持同步操作</exception>
+    public virtual bool CanTransitionTo(IState target)
+    {
+        throw new NotSupportedException(
+            $"This is an async state ({GetType().Name}). Use CanTransitionToAsync instead of CanTransitionTo.");
+    }
+
+    /// <summary>
     ///     设置架构上下文
     /// </summary>
     /// <param name="context">架构上下文实例</param>
