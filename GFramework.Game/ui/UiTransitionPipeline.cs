@@ -62,7 +62,7 @@ public class UiTransitionPipeline
     /// <returns>异步任务</returns>
     public async Task ExecuteAsync(
         UiTransitionEvent @event,
-        UITransitionPhases phases,
+        UiTransitionPhases phases,
         CancellationToken cancellationToken = default
     )
     {
@@ -102,7 +102,7 @@ public class UiTransitionPipeline
 
     private List<IUiTransitionHandler> FilterAndSortHandlers(
         UiTransitionEvent @event,
-        UITransitionPhases phases)
+        UiTransitionPhases phases)
     {
         return _handlers
             .Where(h => h.Phases.HasFlag(phases) && h.ShouldHandle(@event, phases))

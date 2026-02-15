@@ -12,7 +12,7 @@ namespace GFramework.Game.ui;
 /// </summary>
 public abstract class UiRouterBase : AbstractSystem, IUiRouter
 {
-    private static readonly ILogger Log = LoggerFactoryResolver.Provider.CreateLogger("UiRouterBase");
+    private static readonly ILogger Log = LoggerFactoryResolver.Provider.CreateLogger(nameof(UiRouterBase));
 
     /// <summary>
     ///     路由守卫列表
@@ -519,7 +519,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     private void BeforeChange(UiTransitionEvent @event)
     {
         Log.Debug("BeforeChange phases started: {0}", @event.TransitionType);
-        _pipeline.ExecuteAsync(@event, UITransitionPhases.BeforeChange).GetAwaiter().GetResult();
+        _pipeline.ExecuteAsync(@event, UiTransitionPhases.BeforeChange).GetAwaiter().GetResult();
         Log.Debug("BeforeChange phases completed: {0}", @event.TransitionType);
     }
 
@@ -530,7 +530,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         {
             try
             {
-                await _pipeline.ExecuteAsync(@event, UITransitionPhases.AfterChange).ConfigureAwait(false);
+                await _pipeline.ExecuteAsync(@event, UiTransitionPhases.AfterChange).ConfigureAwait(false);
                 Log.Debug("AfterChange phases completed: {0}", @event.TransitionType);
             }
             catch (Exception ex)

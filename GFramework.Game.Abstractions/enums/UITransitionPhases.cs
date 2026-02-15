@@ -4,7 +4,7 @@ namespace GFramework.Game.Abstractions.enums;
 ///     UI切换阶段枚举，定义UI切换过程中的不同阶段
 /// </summary>
 [Flags]
-public enum UITransitionPhases
+public enum UiTransitionPhases
 {
     /// <summary>
     ///     UI切换前阶段，在此阶段执行的Handler可以阻塞UI切换流程

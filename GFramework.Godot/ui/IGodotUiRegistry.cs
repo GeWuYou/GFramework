@@ -1,4 +1,4 @@
-﻿using GFramework.Game.Abstractions.ui;
+﻿using GFramework.Game.Abstractions.asset;
 using Godot;
 
 namespace GFramework.Godot.ui;

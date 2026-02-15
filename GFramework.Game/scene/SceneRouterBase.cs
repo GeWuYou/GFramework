@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2026 GeWuYou
+// Copyright (c) 2026 GeWuYou
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,6 +11,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using GFramework.Core.Abstractions.logging;
+using GFramework.Core.logging;
 using GFramework.Core.system;
 using GFramework.Game.Abstractions.scene;
 
@@ -23,70 +25,174 @@ namespace GFramework.Game.scene;
 public abstract class SceneRouterBase
     : AbstractSystem, ISceneRouter
 {
-    /// <summary>
-    /// 当前绑定的场景根节点。
-    /// </summary>
+    private static readonly ILogger Log =
+        LoggerFactoryResolver.Provider.CreateLogger(nameof(SceneRouterBase));
+
+    private readonly Stack<ISceneBehavior> _stack = new();
+    private readonly SemaphoreSlim _transitionLock = new(1, 1);
+
     protected ISceneRoot? Root;
 
-    /// <summary>
-    /// 当前激活场景的键值。
-    /// </summary>
-    public string? CurrentKey { get; private set; }
+    public ISceneBehavior? Current => _stack.Count > 0 ? _stack.Peek() : null;
 
-    /// <summary>
-    /// 绑定场景根节点。
-    /// </summary>
-    /// <param name="root">要绑定的场景根节点。</param>
+    public string? CurrentKey => Current?.Key;
+
+    public IReadOnlyList<ISceneBehavior> Stack =>
+        _stack.Reverse().ToList();
+
+    public bool IsTransitioning { get; private set; }
+
     public void BindRoot(ISceneRoot root)
     {
         Root = root;
+        Log.Debug("Bind Scene Root: {0}", root.GetType().Name);
     }
 
-    /// <summary>
-    /// 替换当前场景为指定键值的新场景。
-    /// 在替换前后会调用相应的虚方法以支持扩展逻辑。
-    /// </summary>
-    /// <param name="sceneKey">目标场景的键值。</param>
-    public void Replace(string sceneKey)
+    #region Replace
+
+    public async ValueTask ReplaceAsync(
+        string sceneKey,
+        ISceneEnterParam? param = null)
     {
-        // 调用替换前的钩子方法
-        OnBeforeReplace(sceneKey);
+        await _transitionLock.WaitAsync();
+        try
+        {
+            IsTransitioning = true;
 
-        // 执行场景替换操作
-        Root!.Replace(sceneKey);
+            Log.Debug("Replace Scene: {0}", sceneKey);
 
-        // 更新当前场景键值
-        CurrentKey = sceneKey;
-
-        // 调用替换后的钩子方法
-        OnAfterReplace(sceneKey);
+            await ClearInternalAsync();
+            await PushInternalAsync(sceneKey, param);
+        }
+        finally
+        {
+            IsTransitioning = false;
+            _transitionLock.Release();
+        }
     }
 
-    /// <summary>
-    /// 卸载当前场景，并将当前场景键值置为空。
-    /// </summary>
-    public void Unload()
+    #endregion
+
+    #region Query
+
+    public bool Contains(string sceneKey)
     {
-        // 执行场景卸载操作
-        Root!.Unload();
-
-        // 清空当前场景键值
-        CurrentKey = null;
+        return _stack.Any(s => s.Key == sceneKey);
     }
 
-    /// <summary>
-    /// 场景替换前的虚方法，可在子类中重写以实现自定义逻辑。
-    /// </summary>
-    /// <param name="key">即将被替换的场景键值。</param>
-    protected virtual void OnBeforeReplace(string key)
+    #endregion
+
+    #region Push
+
+    public async ValueTask PushAsync(
+        string sceneKey,
+        ISceneEnterParam? param = null)
     {
+        await _transitionLock.WaitAsync();
+        try
+        {
+            IsTransitioning = true;
+            await PushInternalAsync(sceneKey, param);
+        }
+        finally
+        {
+            IsTransitioning = false;
+            _transitionLock.Release();
+        }
     }
 
-    /// <summary>
-    /// 场景替换后的虚方法，可在子类中重写以实现自定义逻辑。
-    /// </summary>
-    /// <param name="key">已替换的场景键值。</param>
-    protected virtual void OnAfterReplace(string key)
+    private async ValueTask PushInternalAsync(
+        string sceneKey,
+        ISceneEnterParam? param)
     {
+        if (Contains(sceneKey))
+        {
+            Log.Warn("Scene already in stack: {0}", sceneKey);
+            return;
+        }
+
+        var scene = await Root!.LoadAsync(sceneKey);
+
+        if (_stack.Count > 0)
+        {
+            var current = _stack.Peek();
+            await current.OnPauseAsync();
+        }
+
+        _stack.Push(scene);
+
+        await scene.OnEnterAsync(param);
+        await scene.OnShowAsync();
+
+        Log.Debug("Push Scene: {0}, stackCount={1}",
+            sceneKey, _stack.Count);
     }
+
+    #endregion
+
+    #region Pop
+
+    public async ValueTask PopAsync()
+    {
+        await _transitionLock.WaitAsync();
+        try
+        {
+            IsTransitioning = true;
+            await PopInternalAsync();
+        }
+        finally
+        {
+            IsTransitioning = false;
+            _transitionLock.Release();
+        }
+    }
+
+    private async ValueTask PopInternalAsync()
+    {
+        if (_stack.Count == 0)
+            return;
+
+        var top = _stack.Pop();
+
+        await top.OnExitAsync();
+        await Root!.UnloadAsync(top);
+
+        if (_stack.Count > 0)
+        {
+            var next = _stack.Peek();
+            await next.OnResumeAsync();
+            await next.OnShowAsync();
+        }
+
+        Log.Debug("Pop Scene, stackCount={0}", _stack.Count);
+    }
+
+    #endregion
+
+    #region Clear
+
+    public async ValueTask ClearAsync()
+    {
+        await _transitionLock.WaitAsync();
+        try
+        {
+            IsTransitioning = true;
+            await ClearInternalAsync();
+        }
+        finally
+        {
+            IsTransitioning = false;
+            _transitionLock.Release();
+        }
+    }
+
+    private async ValueTask ClearInternalAsync()
+    {
+        while (_stack.Count > 0)
+        {
+            await PopInternalAsync();
+        }
+    }
+
+    #endregion
 }

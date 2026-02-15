@@ -1,7 +1,7 @@
 ﻿using GFramework.Core.Abstractions.registries;
 using GFramework.Core.Abstractions.utility;
 
-namespace GFramework.Game.Abstractions.ui;
+namespace GFramework.Game.Abstractions.asset;
 
 /// <summary>
 ///     资源注册表接口，用于管理指定类型T的资源注册和查找
