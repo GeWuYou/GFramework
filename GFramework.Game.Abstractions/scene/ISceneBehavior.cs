@@ -26,6 +26,12 @@ public interface ISceneBehavior
     string Key { get; }
 
     /// <summary>
+    /// 获取场景的原始对象。
+    /// </summary>
+    object Original { get; }
+
+
+    /// <summary>
     /// 获取场景是否已加载完成的状态。
     /// true表示场景资源已加载，false表示未加载或正在加载中。
     /// </summary>

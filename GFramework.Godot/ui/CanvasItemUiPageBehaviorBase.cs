@@ -98,7 +98,7 @@ public abstract class CanvasItemUiPageBehaviorBase<T> : IUiPageBehavior
     /// <summary>
     ///     获取视图节点实例。
     /// </summary>
-    public object View => Owner;
+    public object Original => Owner;
 
     /// <summary>
     ///     获取 UI 的唯一标识键。

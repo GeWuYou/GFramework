@@ -576,22 +576,22 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         if (_stack.Count > 0)
         {
             var current = _stack.Peek();
-            Log.Debug("Pause current page: {0}", current.View.GetType().Name);
+            Log.Debug("Pause current page: {0}", current.Original.GetType().Name);
             current.OnPause();
 
             if (policy == UiTransitionPolicy.Exclusive)
             {
-                Log.Debug("Suspend current page (Exclusive): {0}", current.View.GetType().Name);
+                Log.Debug("Suspend current page (Exclusive): {0}", current.Original.GetType().Name);
                 current.OnHide();
             }
         }
 
-        Log.Debug("Add page to UiRoot: {0}", page.View.GetType().Name);
+        Log.Debug("Add page to UiRoot: {0}", page.Original.GetType().Name);
         _uiRoot.AddUiPage(page);
 
         _stack.Push(page);
 
-        Log.Debug("Enter & Show page: {0}, stackAfter={1}", page.View.GetType().Name, _stack.Count);
+        Log.Debug("Enter & Show page: {0}, stackAfter={1}", page.Original.GetType().Name, _stack.Count);
         page.OnEnter(param);
         page.OnShow();
     }
