@@ -40,15 +40,6 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     }
 
     /// <summary>
-    ///     从状态机中注销指定类型的状态
-    /// </summary>
-    /// <typeparam name="T">要注销的状态类型</typeparam>
-    public IStateMachine Unregister<T>() where T : IState
-    {
-        return UnregisterAsync<T>().GetAwaiter().GetResult();
-    }
-
-    /// <summary>
     ///     异步注销指定类型的状态
     /// </summary>
     /// <typeparam name="T">要注销的状态类型</typeparam>
@@ -75,17 +66,6 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
         }
     }
 
-
-    /// <summary>
-    ///     检查是否可以切换到指定类型的状态
-    /// </summary>
-    /// <typeparam name="T">目标状态类型</typeparam>
-    /// <returns>如果可以切换则返回true，否则返回false</returns>
-    public bool CanChangeTo<T>() where T : IState
-    {
-        return CanChangeToAsync<T>().GetAwaiter().GetResult();
-    }
-
     /// <summary>
     ///     异步检查是否可以切换到指定类型的状态
     /// </summary>
@@ -107,18 +87,6 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
         {
             _transitionLock.Release();
         }
-    }
-
-
-    /// <summary>
-    ///     切换到指定类型的状态
-    /// </summary>
-    /// <typeparam name="T">目标状态类型</typeparam>
-    /// <returns>如果成功切换则返回true，否则返回false</returns>
-    /// <exception cref="InvalidOperationException">当目标状态未注册时抛出</exception>
-    public bool ChangeTo<T>() where T : IState
-    {
-        return ChangeToAsync<T>().GetAwaiter().GetResult();
     }
 
 
@@ -214,15 +182,6 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
         {
             return _stateHistory.ToList().AsReadOnly();
         }
-    }
-
-    /// <summary>
-    ///     回退到上一个状态
-    /// </summary>
-    /// <returns>如果成功回退则返回true，否则返回false</returns>
-    public bool GoBack()
-    {
-        return GoBackAsync().GetAwaiter().GetResult();
     }
 
     /// <summary>
