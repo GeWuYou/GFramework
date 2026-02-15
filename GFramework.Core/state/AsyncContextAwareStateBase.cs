@@ -21,7 +21,7 @@ namespace GFramework.Core.state;
 /// <summary>
 ///     上下文感知异步状态基类
 ///     提供基础的异步状态管理功能和架构上下文访问能力
-///     实现了IAsyncState和IContextAware接口
+///     实现了IAsyncState（继承IState）和IContextAware接口
 /// </summary>
 public class AsyncContextAwareStateBase : IAsyncState, IContextAware, IDisposable
 {
@@ -29,6 +29,49 @@ public class AsyncContextAwareStateBase : IAsyncState, IContextAware, IDisposabl
     ///     架构上下文引用，用于访问架构相关的服务和数据
     /// </summary>
     private IArchitectureContext? _context;
+
+    // ============ IState 同步方法显式实现（隐藏 + 运行时保护） ============
+
+    /// <summary>
+    ///     同步进入状态（显式实现，不推荐直接调用）
+    ///     异步状态应该使用 OnEnterAsync 方法
+    /// </summary>
+    /// <exception cref="NotSupportedException">异步状态不支持同步操作</exception>
+    [Obsolete("This is an async state. Use OnEnterAsync instead.", error: true)]
+    void IState.OnEnter(IState? from)
+    {
+        throw new NotSupportedException(
+            $"Async state '{GetType().Name}' does not support synchronous OnEnter. " +
+            $"Use {nameof(OnEnterAsync)} instead.");
+    }
+
+    /// <summary>
+    ///     同步退出状态（显式实现，不推荐直接调用）
+    ///     异步状态应该使用 OnExitAsync 方法
+    /// </summary>
+    /// <exception cref="NotSupportedException">异步状态不支持同步操作</exception>
+    [Obsolete("This is an async state. Use OnExitAsync instead.", error: true)]
+    void IState.OnExit(IState? to)
+    {
+        throw new NotSupportedException(
+            $"Async state '{GetType().Name}' does not support synchronous OnExit. " +
+            $"Use {nameof(OnExitAsync)} instead.");
+    }
+
+    /// <summary>
+    ///     同步判断是否可以转换（显式实现，不推荐直接调用）
+    ///     异步状态应该使用 CanTransitionToAsync 方法
+    /// </summary>
+    /// <exception cref="NotSupportedException">异步状态不支持同步操作</exception>
+    [Obsolete("This is an async state. Use CanTransitionToAsync instead.", error: true)]
+    bool IState.CanTransitionTo(IState target)
+    {
+        throw new NotSupportedException(
+            $"Async state '{GetType().Name}' does not support synchronous CanTransitionTo. " +
+            $"Use {nameof(CanTransitionToAsync)} instead.");
+    }
+
+    // ============ IAsyncState 异步方法实现 ============
 
     /// <summary>
     ///     异步进入状态时调用的方法
@@ -62,51 +105,19 @@ public class AsyncContextAwareStateBase : IAsyncState, IContextAware, IDisposabl
     }
 
     /// <summary>
-    ///     同步进入状态（不推荐使用）
-    ///     异步状态应该使用 OnEnterAsync 方法
-    /// </summary>
-    /// <exception cref="NotSupportedException">异步状态不支持同步操作</exception>
-    public virtual void OnEnter(IState? from)
-    {
-        throw new NotSupportedException(
-            $"This is an async state ({GetType().Name}). Use OnEnterAsync instead of OnEnter.");
-    }
-
-    /// <summary>
-    ///     同步退出状态（不推荐使用）
-    ///     异步状态应该使用 OnExitAsync 方法
-    /// </summary>
-    /// <exception cref="NotSupportedException">异步状态不支持同步操作</exception>
-    public virtual void OnExit(IState? to)
-    {
-        throw new NotSupportedException(
-            $"This is an async state ({GetType().Name}). Use OnExitAsync instead of OnExit.");
-    }
-
-    /// <summary>
-    ///     同步判断是否可以转换（不推荐使用）
-    ///     异步状态应该使用 CanTransitionToAsync 方法
-    /// </summary>
-    /// <exception cref="NotSupportedException">异步状态不支持同步操作</exception>
-    public virtual bool CanTransitionTo(IState target)
-    {
-        throw new NotSupportedException(
-            $"This is an async state ({GetType().Name}). Use CanTransitionToAsync instead of CanTransitionTo.");
-    }
-
-    /// <summary>
     ///     设置架构上下文
     /// </summary>
     /// <param name="context">架构上下文实例</param>
     public void SetContext(IArchitectureContext context)
     {
-        _context = context;
+        _context = context ?? throw new ArgumentNullException(nameof(context));
     }
 
     /// <summary>
     ///     获取架构上下文
     /// </summary>
     /// <returns>架构上下文实例</returns>
+    /// <exception cref="InvalidOperationException">当上下文未设置时抛出</exception>
     public IArchitectureContext GetContext()
     {
         return _context ?? throw new InvalidOperationException(
