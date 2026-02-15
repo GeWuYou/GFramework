@@ -24,7 +24,7 @@ public interface ISceneFactory : IContextUtility
     /// <summary>
     /// 根据指定的场景键值创建场景行为实例。
     /// </summary>
-    /// <param name="sceneKy">场景的唯一标识符键值。</param>
+    /// <param name="sceneKey">场景的唯一标识符键值。</param>
     /// <returns>创建的场景行为对象，如果无法创建则返回null。</returns>
-    ISceneBehavior Create(string sceneKy);
+    ISceneBehavior Create(string sceneKey);
 }
