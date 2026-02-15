@@ -9,8 +9,10 @@ namespace GFramework.Core.state;
 public class StateMachine(int maxHistorySize = 10) : IStateMachine
 {
     private readonly object _lock = new();
-    private readonly HashSet<IState> _registeredStates = new(); // 优化：用于快速检查状态是否注册
+
+    private readonly HashSet<IState> _registeredStates = [];
     private readonly Stack<IState> _stateHistory = new();
+    private readonly SemaphoreSlim _transitionLock = new(1, 1);
 
     /// <summary>
     ///     存储所有已注册状态的字典，键为状态类型，值为状态实例
@@ -43,18 +45,7 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     /// <typeparam name="T">要注销的状态类型</typeparam>
     public IStateMachine Unregister<T>() where T : IState
     {
-        var stateToUnregister = PrepareUnregister<T>(out var isCurrentState);
-        if (stateToUnregister == null) return this;
-
-        // 如果是当前状态，执行同步退出
-        if (isCurrentState)
-        {
-            Current!.OnExit(null);
-            Current = null;
-        }
-
-        CompleteUnregister(stateToUnregister);
-        return this;
+        return UnregisterAsync<T>().GetAwaiter().GetResult();
     }
 
     /// <summary>
@@ -63,19 +54,27 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     /// <typeparam name="T">要注销的状态类型</typeparam>
     public async Task<IStateMachine> UnregisterAsync<T>() where T : IState
     {
-        var stateToUnregister = PrepareUnregister<T>(out var isCurrentState);
-        if (stateToUnregister == null) return this;
-
-        // 如果是当前状态，执行异步退出
-        if (isCurrentState)
+        await _transitionLock.WaitAsync();
+        try
         {
-            await ExecuteExitAsync(Current!, null);
-            Current = null;
-        }
+            var stateToUnregister = PrepareUnregister<T>(out var isCurrentState);
+            if (stateToUnregister == null) return this;
 
-        CompleteUnregister(stateToUnregister);
-        return this;
+            if (isCurrentState)
+            {
+                await ExecuteExitAsync(Current!, null);
+                Current = null;
+            }
+
+            CompleteUnregister(stateToUnregister);
+            return this;
+        }
+        finally
+        {
+            _transitionLock.Release();
+        }
     }
+
 
     /// <summary>
     ///     检查是否可以切换到指定类型的状态
@@ -84,10 +83,7 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     /// <returns>如果可以切换则返回true，否则返回false</returns>
     public bool CanChangeTo<T>() where T : IState
     {
-        if (!States.TryGetValue(typeof(T), out var target))
-            return false;
-
-        return Current?.CanTransitionTo(target) ?? true;
+        return CanChangeToAsync<T>().GetAwaiter().GetResult();
     }
 
     /// <summary>
@@ -97,13 +93,22 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     /// <returns>如果可以切换则返回true，否则返回false</returns>
     public async Task<bool> CanChangeToAsync<T>() where T : IState
     {
-        if (!States.TryGetValue(typeof(T), out var target))
-            return false;
+        await _transitionLock.WaitAsync();
+        try
+        {
+            if (!States.TryGetValue(typeof(T), out var target))
+                return false;
 
-        if (Current == null) return true;
+            if (Current == null) return true;
 
-        return await CanTransitionToAsync(Current, target);
+            return await CanTransitionToAsync(Current, target);
+        }
+        finally
+        {
+            _transitionLock.Release();
+        }
     }
+
 
     /// <summary>
     ///     切换到指定类型的状态
@@ -113,21 +118,9 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     /// <exception cref="InvalidOperationException">当目标状态未注册时抛出</exception>
     public bool ChangeTo<T>() where T : IState
     {
-        lock (_lock)
-        {
-            if (!States.TryGetValue(typeof(T), out var target))
-                throw new InvalidOperationException($"State {typeof(T).Name} not registered.");
-
-            if (Current != null && !Current.CanTransitionTo(target))
-            {
-                OnTransitionRejected(Current, target);
-                return false;
-            }
-
-            ChangeInternal(target);
-            return true;
-        }
+        return ChangeToAsync<T>().GetAwaiter().GetResult();
     }
+
 
     /// <summary>
     ///     异步切换到指定类型的状态
@@ -137,30 +130,37 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     /// <exception cref="InvalidOperationException">当目标状态未注册时抛出</exception>
     public async Task<bool> ChangeToAsync<T>() where T : IState
     {
-        IState target;
-        IState? currentSnapshot;
-
-        lock (_lock)
+        await _transitionLock.WaitAsync();
+        try
         {
-            if (!States.TryGetValue(typeof(T), out target!))
-                throw new InvalidOperationException($"State {typeof(T).Name} not registered.");
+            IState target;
+            IState? currentSnapshot;
 
-            currentSnapshot = Current; // 在锁内获取当前状态的快照
-        }
-
-        // 验证转换（在锁外执行异步操作）
-        if (currentSnapshot != null)
-        {
-            var canTransition = await CanTransitionToAsync(currentSnapshot, target);
-            if (!canTransition)
+            lock (_lock)
             {
-                await OnTransitionRejectedAsync(currentSnapshot, target);
-                return false;
-            }
-        }
+                if (!States.TryGetValue(typeof(T), out target!))
+                    throw new InvalidOperationException($"State {typeof(T).Name} not registered.");
 
-        await ChangeInternalAsync(target);
-        return true;
+                currentSnapshot = Current;
+            }
+
+            if (currentSnapshot != null)
+            {
+                var canTransition = await CanTransitionToAsync(currentSnapshot, target);
+                if (!canTransition)
+                {
+                    await OnTransitionRejectedAsync(currentSnapshot, target);
+                    return false;
+                }
+            }
+
+            await ChangeInternalAsync(target);
+            return true;
+        }
+        finally
+        {
+            _transitionLock.Release();
+        }
     }
 
     /// <summary>
@@ -222,11 +222,7 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     /// <returns>如果成功回退则返回true，否则返回false</returns>
     public bool GoBack()
     {
-        var previousState = FindValidPreviousState();
-        if (previousState == null) return false;
-
-        ChangeInternalWithoutHistory(previousState);
-        return true;
+        return GoBackAsync().GetAwaiter().GetResult();
     }
 
     /// <summary>
@@ -235,11 +231,19 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     /// <returns>如果成功回退则返回true，否则返回false</returns>
     public async Task<bool> GoBackAsync()
     {
-        var previousState = FindValidPreviousState();
-        if (previousState == null) return false;
+        await _transitionLock.WaitAsync();
+        try
+        {
+            var previousState = FindValidPreviousState();
+            if (previousState == null) return false;
 
-        await ChangeInternalWithoutHistoryAsync(previousState);
-        return true;
+            await ChangeInternalWithoutHistoryAsync(previousState);
+            return true;
+        }
+        finally
+        {
+            _transitionLock.Release();
+        }
     }
 
     /// <summary>
@@ -311,24 +315,6 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     }
 
     /// <summary>
-    ///     内部状态切换方法（不记录历史），用于回退操作
-    /// </summary>
-    /// <param name="next">下一个状态实例</param>
-    protected virtual void ChangeInternalWithoutHistory(IState next)
-    {
-        if (Current == next) return;
-
-        var old = Current;
-        OnStateChanging(old, next);
-
-        old?.OnExit(next);
-        Current = next;
-        Current.OnEnter(old);
-
-        OnStateChanged(old, Current);
-    }
-
-    /// <summary>
     ///     异步内部状态切换方法（不记录历史），用于回退操作
     /// </summary>
     /// <param name="next">下一个状态实例</param>
@@ -347,32 +333,6 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     }
 
     /// <summary>
-    ///     内部状态切换方法，处理状态切换的核心逻辑
-    /// </summary>
-    /// <param name="next">下一个状态实例</param>
-    protected virtual void ChangeInternal(IState next)
-    {
-        if (Current == next) return;
-
-        if (Current != null && !Current.CanTransitionTo(next))
-        {
-            OnTransitionRejected(Current, next);
-            return;
-        }
-
-        var old = Current;
-        OnStateChanging(old, next);
-
-        AddToHistory(Current);
-
-        old?.OnExit(next);
-        Current = next;
-        Current.OnEnter(old);
-
-        OnStateChanged(old, Current);
-    }
-
-    /// <summary>
     ///     异步内部状态切换方法，处理状态切换的核心逻辑
     /// </summary>
     /// <param name="next">下一个状态实例</param>
@@ -383,11 +343,14 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
         var old = Current;
         await OnStateChangingAsync(old, next);
 
-        AddToHistory(Current);
-
         await ExecuteExitAsync(old, next);
+
+        AddToHistory(old);
+
         Current = next;
+
         await ExecuteEnterAsync(Current, old);
+
 
         await OnStateChangedAsync(old, Current);
     }
