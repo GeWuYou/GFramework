@@ -1,4 +1,4 @@
-﻿using GFramework.Core.Abstractions.query;
+﻿using GFramework.Core.Abstractions.cqrs.query;
 
 namespace GFramework.Core.query;
 

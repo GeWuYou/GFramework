@@ -1,4 +1,4 @@
-using GFramework.Core.Abstractions.query;
+using GFramework.Core.Abstractions.cqrs.query;
 using GFramework.Core.query;
 using NUnit.Framework;
 

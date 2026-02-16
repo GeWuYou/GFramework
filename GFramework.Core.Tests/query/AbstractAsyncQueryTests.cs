@@ -1,3 +1,4 @@
+using GFramework.Core.Abstractions.cqrs.query;
 using GFramework.Core.Abstractions.query;
 using GFramework.Core.Abstractions.rule;
 using GFramework.Core.architecture;
