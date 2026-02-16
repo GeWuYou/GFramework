@@ -43,19 +43,30 @@ public static class CommandCoroutineExtensions
 
         yield return task.AsCoroutineInstruction();
 
-        if (task.IsFaulted) onError?.Invoke(task.Exception!);
+        if (!task.IsFaulted) yield break;
+        if (onError != null)
+            onError.Invoke(task.Exception!);
+        else
+            throw task.Exception!.InnerException ?? task.Exception;
     }
 
     /// <summary>
-    ///     发送 Command 并等待指定 Event
+    /// 发送 Command 并等待指定 Event。
     /// </summary>
-    /// <typeparam name="TCommand">命令类型，必须实现 IAsyncCommand 接口</typeparam>
+    /// <typeparam name="TCommand">命令类型，必须实现 IAsyncCommand</typeparam>
     /// <typeparam name="TEvent">事件类型</typeparam>
     /// <param name="contextAware">上下文感知对象</param>
     /// <param name="command">要执行的命令实例</param>
     /// <param name="onEvent">事件触发时的回调处理</param>
-    /// <param name="timeout">等待超时时间（秒），0表示无限等待</param>
-    /// <returns>返回协程指令枚举器</returns>
+    /// <param name="timeout">
+    /// 超时时间（秒）:
+    /// <list type="bullet">
+    /// <item><description>timeout &lt; 0: 无效，将抛出 ArgumentOutOfRangeException</description></item>
+    /// <item><description>timeout == 0: 无超时，永久等待</description></item>
+    /// <item><description>timeout &gt; 0: 启用超时机制</description></item>
+    /// </list>
+    /// </param>
+    /// <exception cref="ArgumentOutOfRangeException">当 timeout 小于 0 时抛出。</exception>
     public static IEnumerator<IYieldInstruction> SendCommandAndWaitEventCoroutine<TCommand, TEvent>(
         this IContextAware contextAware,
         TCommand command,
@@ -64,43 +75,63 @@ public static class CommandCoroutineExtensions
         where TCommand : IAsyncCommand
         where TEvent : class
     {
+        // 参数检查部分
+        if (timeout < 0f)
+            throw new ArgumentOutOfRangeException(
+                nameof(timeout),
+                timeout,
+                "Timeout must be greater than or equal to 0.");
+
+        // 迭代器逻辑部分
+        return SendCommandAndWaitEventIterator(contextAware, command, onEvent, timeout);
+    }
+
+    /// <summary>
+    /// 发送 Command 并等待指定 Event 的迭代器实现。
+    /// </summary>
+    private static IEnumerator<IYieldInstruction> SendCommandAndWaitEventIterator<TCommand, TEvent>(
+        IContextAware contextAware,
+        TCommand command,
+        Action<TEvent>? onEvent,
+        float timeout)
+        where TCommand : IAsyncCommand
+        where TEvent : class
+    {
         var context = contextAware.GetContext();
-        var eventBus = context.GetService<IEventBus>()!;
+        var eventBus = context.GetService<IEventBus>()
+                       ?? throw new InvalidOperationException("IEventBus not found.");
 
         WaitForEvent<TEvent>? wait = null;
 
         try
         {
-            // 先注册事件监听器
+            // 先注册事件监听
             wait = new WaitForEvent<TEvent>(eventBus);
 
-            // 发送异步命令并等待完成
+            // 发送命令
             var task = context.SendCommandAsync(command);
             yield return task.AsCoroutineInstruction();
 
-            // 如果有超时设置，使用超时等待
+            // 等待事件
             if (timeout > 0f)
             {
                 var timeoutWait = new WaitForEventWithTimeout<TEvent>(wait, timeout);
                 yield return timeoutWait;
 
-                // 检查是否超时
                 if (timeoutWait.IsTimeout)
-                    // 超时处理
-                    throw new TimeoutException($"wait for the event ${typeof(TEvent).Name} timeout.");
+                    throw new TimeoutException(
+                        $"Wait for event {typeof(TEvent).Name} timeout.");
             }
             else
             {
-                // 等待事件触发（无超时）
                 yield return wait;
             }
 
-            // 调用事件回调
-            if (onEvent != null && wait.EventData != null) onEvent.Invoke(wait.EventData);
+            if (wait.EventData != null)
+                onEvent?.Invoke(wait.EventData);
         }
         finally
         {
-            // 确保清理事件监听器
             wait?.Dispose();
         }
     }
