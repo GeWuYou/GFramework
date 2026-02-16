@@ -47,12 +47,6 @@ public class MediatorAdvancedFeaturesTests
     private ArchitectureContext? _context;
     private MicrosoftDiContainer? _container;
 
-    [Test]
-    public async Task Request_With_Logging_Behavior_Should_Log_Correctly()
-    {
-        // 由于我们没有实现实际的日志行为，这个测试暂时跳过
-        Assert.Ignore("Logging behavior not implemented in this test setup");
-    }
 
     [Test]
     public async Task Request_With_Validation_Behavior_Should_Validate_Input()
