@@ -1,4 +1,5 @@
 ﻿using GFramework.Core.Abstractions.command;
+using GFramework.Core.Abstractions.cqrs.command;
 using GFramework.Core.rule;
 
 namespace GFramework.Core.command;
