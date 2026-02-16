@@ -23,7 +23,7 @@ namespace GFramework.Core.cqrs.request;
 /// <typeparam name="TInput">请求输入数据的类型，必须实现 IRequestInput 接口</typeparam>
 /// <typeparam name="TResponse">请求执行后返回结果的类型</typeparam>
 /// <param name="input">请求执行所需的输入数据</param>
-public class RequestBase<TInput, TResponse>(TInput input) : IRequest<TResponse> where TInput : IRequestInput
+public abstract class RequestBase<TInput, TResponse>(TInput input) : IRequest<TResponse> where TInput : IRequestInput
 {
     /// <summary>
     /// 获取请求的输入数据。

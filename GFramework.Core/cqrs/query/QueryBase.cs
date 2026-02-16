@@ -23,7 +23,7 @@ namespace GFramework.Core.cqrs.query;
 /// <typeparam name="TInput">查询输入数据的类型，必须实现 IQueryInput 接口</typeparam>
 /// <typeparam name="TResponse">查询执行后返回结果的类型</typeparam>
 /// <param name="input">查询执行所需的输入数据</param>
-public class QueryBase<TInput, TResponse>(TInput input) : IQuery<TResponse> where TInput : IQueryInput
+public abstract class QueryBase<TInput, TResponse>(TInput input) : IQuery<TResponse> where TInput : IQueryInput
 {
     /// <summary>
     /// 获取查询的输入数据。
