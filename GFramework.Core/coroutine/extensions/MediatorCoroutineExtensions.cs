@@ -12,9 +12,7 @@
 // limitations under the License.
 
 using GFramework.Core.Abstractions.coroutine;
-using GFramework.Core.Abstractions.events;
 using GFramework.Core.Abstractions.rule;
-using GFramework.Core.coroutine.instructions;
 using Mediator;
 
 namespace GFramework.Core.coroutine.extensions;
@@ -53,111 +51,4 @@ public static class MediatorCoroutineExtensions
         else
             throw task.Exception!.InnerException ?? task.Exception;
     }
-
-    // ... existing code ...
-    /// <summary>
-    /// 发送命令并等待特定事件的协程实现。
-    /// </summary>
-    /// <typeparam name="TCommand">命令类型</typeparam>
-    /// <typeparam name="TEvent">要等待的事件类型</typeparam>
-    /// <param name="contextAware">上下文对象</param>
-    /// <param name="command">要发送的命令</param>
-    /// <param name="onEvent">事件触发时的回调</param>
-    /// <param name="timeout">
-    /// 超时时间（秒）:
-    /// <list type="bullet">
-    /// <item><description>timeout &lt; 0: 无效，将抛出 ArgumentOutOfRangeException</description></item>
-    /// <item><description>timeout == 0: 无超时，永久等待</description></item>
-    /// <item><description>timeout &gt; 0: 启用超时机制</description></item>
-    /// </list>
-    /// </param>
-    /// <exception cref="ArgumentOutOfRangeException">当 timeout 小于 0 时抛出。</exception>
-    public static IEnumerator<IYieldInstruction> SendCommandAndWaitEventCoroutine<TCommand, TEvent>(
-        this IContextAware contextAware,
-        TCommand command,
-        Action<TEvent>? onEvent = null,
-        float timeout = 0f)
-        where TCommand : notnull
-        where TEvent : class
-    {
-        // 参数验证
-        ValidateParameters(timeout);
-
-        // 获取必要的服务
-        var context = contextAware.GetContext();
-        var mediator = context.GetService<IMediator>()
-                       ?? throw new InvalidOperationException("IMediator not found.");
-        var eventBus = context.GetService<IEventBus>()
-                       ?? throw new InvalidOperationException("IEventBus not found.");
-
-        // 执行协程逻辑
-        return ExecuteSendCommandAndWaitEventCoroutine(mediator, eventBus, command, onEvent, timeout);
-    }
-
-    /// <summary>
-    /// 验证方法参数的有效性。
-    /// </summary>
-    /// <param name="timeout">超时时间</param>
-    /// <exception cref="ArgumentOutOfRangeException">当 timeout 小于 0 时抛出。</exception>
-    private static void ValidateParameters(float timeout)
-    {
-        if (timeout < 0f)
-            throw new ArgumentOutOfRangeException(
-                nameof(timeout),
-                timeout,
-                "Timeout must be greater than or equal to 0.");
-    }
-
-    /// <summary>
-    /// 执行发送命令并等待事件的协程逻辑。
-    /// </summary>
-    /// <typeparam name="TCommand">命令类型</typeparam>
-    /// <typeparam name="TEvent">事件类型</typeparam>
-    /// <param name="mediator">中介者服务</param>
-    /// <param name="eventBus">事件总线服务</param>
-    /// <param name="command">要发送的命令</param>
-    /// <param name="onEvent">事件回调</param>
-    /// <param name="timeout">超时时间</param>
-    /// <returns>协程枚举器</returns>
-    private static IEnumerator<IYieldInstruction> ExecuteSendCommandAndWaitEventCoroutine<TCommand, TEvent>(
-        IMediator mediator,
-        IEventBus eventBus,
-        TCommand command,
-        Action<TEvent>? onEvent,
-        float timeout)
-        where TCommand : notnull
-        where TEvent : class
-    {
-        WaitForEvent<TEvent>? wait = null;
-
-        try
-        {
-            wait = new WaitForEvent<TEvent>(eventBus);
-
-            var task = mediator.Send(command).AsTask();
-            yield return task.AsCoroutineInstruction();
-
-            if (timeout > 0f)
-            {
-                var timeoutWait = new WaitForEventWithTimeout<TEvent>(wait, timeout);
-                yield return timeoutWait;
-
-                if (timeoutWait.IsTimeout)
-                    throw new TimeoutException(
-                        $"Wait for event {typeof(TEvent).Name} timeout.");
-            }
-            else
-            {
-                yield return wait;
-            }
-
-            if (wait.EventData != null)
-                onEvent?.Invoke(wait.EventData);
-        }
-        finally
-        {
-            wait?.Dispose();
-        }
-    }
-// ... existing code ...
 }
