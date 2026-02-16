@@ -22,7 +22,7 @@ namespace GFramework.Core.cqrs.notification;
 /// </summary>
 /// <typeparam name="TInput">通知输入数据的类型，必须实现 INotificationInput 接口</typeparam>
 /// <param name="input">通知执行所需的输入数据</param>
-public class NotificationBase<TInput>(TInput input) : INotification where TInput : INotificationInput
+public abstract class NotificationBase<TInput>(TInput input) : INotification where TInput : INotificationInput
 {
     /// <summary>
     /// 获取通知的输入数据。

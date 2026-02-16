@@ -23,7 +23,7 @@ namespace GFramework.Core.cqrs.command;
 /// <typeparam name="TInput">命令输入数据的类型</typeparam>
 /// <typeparam name="TResponse">命令执行后返回结果的类型</typeparam>
 /// <param name="input">命令执行所需的输入数据</param>
-public class CommandBase<TInput, TResponse>(TInput input) : ICommand<TResponse> where TInput : ICommandInput
+public abstract class CommandBase<TInput, TResponse>(TInput input) : ICommand<TResponse> where TInput : ICommandInput
 {
     /// <summary>
     /// 获取命令的输入数据。
