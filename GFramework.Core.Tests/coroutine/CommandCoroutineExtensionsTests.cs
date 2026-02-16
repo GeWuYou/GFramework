@@ -133,10 +133,10 @@ public class CommandCoroutineExtensionsTests
     }
 
     /// <summary>
-    ///     验证SendCommandCoroutineWithErrorHandler应该处理null错误回调
+    ///     验证SendCommandCoroutineWithErrorHandler在无错误处理程序时应该抛出异常
     /// </summary>
     [Test]
-    public async Task SendCommandCoroutineWithErrorHandler_Should_Handle_Null_Error_Handler()
+    public void SendCommandCoroutineWithErrorHandler_Should_Throw_Exception_Without_Handler()
     {
         var command = new TestCommand();
         var contextAware = new TestContextAware();
@@ -147,21 +147,19 @@ public class CommandCoroutineExtensionsTests
             .Setup(ctx => ctx.SendCommandAsync(It.IsAny<IAsyncCommand>()))
             .Returns(Task.FromException(expectedException));
 
-        // 使用null作为错误处理程序
         var coroutine = contextAware.SendCommandCoroutineWithErrorHandler(command);
 
-        // 迭代协程直到完成
-        while (coroutine.MoveNext())
+        // 迭代协程应该抛出异常
+        Assert.Throws<InvalidOperationException>(() =>
         {
-            if (coroutine.Current is WaitForTask waitForTask)
+            while (coroutine.MoveNext())
             {
-                // 等待任务完成
-                await Task.Delay(10);
+                if (coroutine.Current is WaitForTask waitForTask)
+                {
+                    Task.Delay(10).Wait();
+                }
             }
-        }
-
-        // 应该不会抛出异常
-        Assert.Pass();
+        });
     }
 
     /// <summary>
@@ -194,7 +192,8 @@ public class CommandCoroutineExtensionsTests
             .Setup(ctx => ctx.SendCommandAsync(It.IsAny<IAsyncCommand>()))
             .Returns(Task.CompletedTask);
 
-        var coroutine = contextAware.SendCommandAndWaitEventCoroutine<TestCommand, TestEvent>(
+        var coroutine = CommandCoroutineExtensions.SendCommandAndWaitEventCoroutine<TestCommand, TestEvent>(
+            contextAware,
             command,
             ev =>
             {
@@ -250,7 +249,8 @@ public class CommandCoroutineExtensionsTests
         // 对于超时情况，我们期望抛出TimeoutException
         Assert.Throws<TimeoutException>(() =>
         {
-            var coroutine = contextAware.SendCommandAndWaitEventCoroutine<TestCommand, TestEvent>(
+            var coroutine = CommandCoroutineExtensions.SendCommandAndWaitEventCoroutine<TestCommand, TestEvent>(
+                contextAware,
                 command,
                 null,
                 0.1f); // 0.1秒超时
@@ -292,7 +292,8 @@ public class CommandCoroutineExtensionsTests
             .Returns(Task.CompletedTask);
 
         // 使用null作为事件回调
-        var coroutine = contextAware.SendCommandAndWaitEventCoroutine<TestCommand, TestEvent>(
+        var coroutine = CommandCoroutineExtensions.SendCommandAndWaitEventCoroutine<TestCommand, TestEvent>(
+            contextAware,
             command); // null回调
 
         // 启动协程
@@ -334,7 +335,8 @@ public class CommandCoroutineExtensionsTests
             .Setup(ctx => ctx.SendCommandAsync(It.IsAny<IAsyncCommand>()))
             .Returns(Task.FromException(expectedException));
 
-        var coroutine = contextAware.SendCommandAndWaitEventCoroutine<TestCommand, TestEvent>(
+        var coroutine = CommandCoroutineExtensions.SendCommandAndWaitEventCoroutine<TestCommand, TestEvent>(
+            contextAware,
             command,
             _ => { });
 
@@ -391,7 +393,8 @@ public class CommandCoroutineExtensionsTests
             .Setup(ctx => ctx.SendCommandAsync(It.IsAny<IAsyncCommand>()))
             .Returns(Task.CompletedTask);
 
-        var coroutine = contextAware.SendCommandAndWaitEventCoroutine<TestCommand, TestEvent>(
+        var coroutine = CommandCoroutineExtensions.SendCommandAndWaitEventCoroutine<TestCommand, TestEvent>(
+            contextAware,
             command,
             ev => { });
 
@@ -399,10 +402,30 @@ public class CommandCoroutineExtensionsTests
     }
 
     /// <summary>
-    ///     验证SendCommandAndWaitEventCoroutine应该在事件总线为null时处理异常
+    ///     验证SendCommandAndWaitEventCoroutine应该在timeout小于0时抛出ArgumentOutOfRangeException
     /// </summary>
     [Test]
-    public void SendCommandAndWaitEventCoroutine_Should_Handle_Null_EventBus()
+    public void SendCommandAndWaitEventCoroutine_Should_Throw_ArgumentOutOfRange_When_Timeout_Negative()
+    {
+        var command = new TestCommand();
+        var contextAware = new TestContextAware();
+
+        // 在创建协程时就应该抛出异常
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+        {
+            CommandCoroutineExtensions.SendCommandAndWaitEventCoroutine<TestCommand, TestEvent>(
+                contextAware,
+                command,
+                null,
+                -1.0f);
+        });
+    }
+
+    /// <summary>
+    ///     验证SendCommandAndWaitEventCoroutine应该在事件总线为null时抛出InvalidOperationException
+    /// </summary>
+    [Test]
+    public void SendCommandAndWaitEventCoroutine_Should_Throw_When_EventBus_Null()
     {
         var command = new TestCommand();
         var contextAware = new TestContextAware();
@@ -413,11 +436,12 @@ public class CommandCoroutineExtensionsTests
             .Returns((IEventBus?)null);
 
         // 创建协程
-        var coroutine = contextAware.SendCommandAndWaitEventCoroutine<TestCommand, TestEvent>(
+        var coroutine = CommandCoroutineExtensions.SendCommandAndWaitEventCoroutine<TestCommand, TestEvent>(
+            contextAware,
             command,
             ev => { });
 
-        // 调用 MoveNext 时应该抛出异常，因为事件总线为null
-        Assert.Throws<ArgumentNullException>(() => coroutine.MoveNext());
+        // 调用 MoveNext 时应该抛出 InvalidOperationException
+        Assert.Throws<InvalidOperationException>(() => coroutine.MoveNext());
     }
 }
