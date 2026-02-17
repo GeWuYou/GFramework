@@ -288,13 +288,13 @@ public class TestArchitectureContextV3 : IArchitectureContext
         throw new NotImplementedException();
     }
 
-    public ValueTask<TResponse> SendQueryAsync<TResponse>(Mediator.IQuery<TResponse> command,
+    public ValueTask<TResponse> SendQueryAsync<TResponse>(Mediator.IQuery<TResponse> query,
         CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }
 
-    public TResponse SendQuery<TResponse>(Mediator.IQuery<TResponse> command)
+    public TResponse SendQuery<TResponse>(Mediator.IQuery<TResponse> query)
     {
         throw new NotImplementedException();
     }
@@ -319,18 +319,6 @@ public class TestArchitectureContextV3 : IArchitectureContext
 
     public ValueTask<TResponse> SendAsync<TResponse>(IRequest<TResponse> command,
         CancellationToken cancellationToken = default)
-    {
-        throw new NotImplementedException();
-    }
-
-    public ValueTask<TResponse> QueryAsync<TResponse>(IRequest<TResponse> query,
-        CancellationToken cancellationToken = default)
-    {
-        throw new NotImplementedException();
-    }
-
-    public ValueTask PublishEventAsync<TNotification>(TNotification notification,
-        CancellationToken cancellationToken = default) where TNotification : INotification
     {
         throw new NotImplementedException();
     }
@@ -367,6 +355,18 @@ public class TestArchitectureContextV3 : IArchitectureContext
     public IEnvironment GetEnvironment()
     {
         return _environment;
+    }
+
+    public ValueTask<TResponse> QueryAsync<TResponse>(IRequest<TResponse> query,
+        CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public ValueTask PublishEventAsync<TNotification>(TNotification notification,
+        CancellationToken cancellationToken = default) where TNotification : INotification
+    {
+        throw new NotImplementedException();
     }
 }
 

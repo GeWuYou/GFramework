@@ -166,29 +166,6 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
         return await SendRequestAsync(command, cancellationToken);
     }
 
-    /// <summary>
-    /// [扩展] 发送查询
-    /// 语法糖，等同于 SendRequestAsync，语义更清晰
-    /// </summary>
-    public async ValueTask<TResponse> QueryAsync<TResponse>(
-        IRequest<TResponse> query,
-        CancellationToken cancellationToken = default)
-    {
-        return await SendRequestAsync(query, cancellationToken);
-    }
-
-    /// <summary>
-    /// [扩展] 发布事件通知
-    /// 语法糖，等同于 PublishAsync
-    /// </summary>
-    public async ValueTask PublishEventAsync<TNotification>(
-        TNotification notification,
-        CancellationToken cancellationToken = default)
-        where TNotification : INotification
-    {
-        await PublishAsync(notification, cancellationToken);
-    }
-
     #endregion
 
     #region Query Execution
@@ -211,11 +188,11 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     /// [Mediator] 发送查询的同步版本（不推荐，仅用于兼容性）
     /// </summary>
     /// <typeparam name="TResponse">查询响应类型</typeparam>
-    /// <param name="command">要发送的查询对象</param>
+    /// <param name="query">要发送的查询对象</param>
     /// <returns>查询结果</returns>
-    public TResponse SendQuery<TResponse>(Mediator.IQuery<TResponse> command)
+    public TResponse SendQuery<TResponse>(Mediator.IQuery<TResponse> query)
     {
-        return SendQueryAsync(command).AsTask().GetAwaiter().GetResult();
+        return SendQueryAsync(query).AsTask().GetAwaiter().GetResult();
     }
 
     /// <summary>
@@ -237,19 +214,19 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     /// 通过Mediator模式发送查询请求，支持取消操作
     /// </summary>
     /// <typeparam name="TResponse">查询响应类型</typeparam>
-    /// <param name="command">要发送的查询对象</param>
+    /// <param name="query">要发送的查询对象</param>
     /// <param name="cancellationToken">取消令牌，用于取消操作</param>
     /// <returns>包含查询结果的ValueTask</returns>
-    public async ValueTask<TResponse> SendQueryAsync<TResponse>(Mediator.IQuery<TResponse> command,
+    public async ValueTask<TResponse> SendQueryAsync<TResponse>(Mediator.IQuery<TResponse> query,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(command);
+        ArgumentNullException.ThrowIfNull(query);
 
         var sender = Sender;
         if (sender == null)
             throw new InvalidOperationException("Sender not registered.");
 
-        return await sender.Send(command, cancellationToken);
+        return await sender.Send(query, cancellationToken);
     }
 
     #endregion

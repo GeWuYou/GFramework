@@ -99,7 +99,7 @@ public static class ContextAwareCoroutineExtensions
         CancellationToken cancellationToken = default)
     {
         return contextAware
-            .PublishEventAsync(notification, cancellationToken)
+            .PublishAsync(notification, cancellationToken)
             .AsTask()
             .ToCoroutineEnumerator()
             .RunCoroutine(segment, tag);

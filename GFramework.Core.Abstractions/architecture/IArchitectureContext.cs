@@ -104,9 +104,9 @@ public interface IArchitectureContext
     /// [Mediator] 发送查询的同步版本（不推荐，仅用于兼容性）
     /// </summary>
     /// <typeparam name="TResponse">查询响应类型</typeparam>
-    /// <param name="command">要发送的查询对象</param>
+    /// <param name="query">要发送的查询对象</param>
     /// <returns>查询结果</returns>
-    TResponse SendQuery<TResponse>(Mediator.IQuery<TResponse> command);
+    TResponse SendQuery<TResponse>(Mediator.IQuery<TResponse> query);
 
     /// <summary>
     ///     异步发送一个查询请求
@@ -121,10 +121,10 @@ public interface IArchitectureContext
     /// 通过Mediator模式发送查询请求，支持取消操作
     /// </summary>
     /// <typeparam name="TResponse">查询响应类型</typeparam>
-    /// <param name="command">要发送的查询对象</param>
+    /// <param name="query">要发送的查询对象</param>
     /// <param name="cancellationToken">取消令牌，用于取消操作</param>
     /// <returns>包含查询结果的ValueTask</returns>
-    ValueTask<TResponse> SendQueryAsync<TResponse>(Mediator.IQuery<TResponse> command,
+    ValueTask<TResponse> SendQueryAsync<TResponse>(Mediator.IQuery<TResponse> query,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -199,20 +199,6 @@ public interface IArchitectureContext
         IRequest<TResponse> command,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// 发送查询
-    /// </summary>
-    ValueTask<TResponse> QueryAsync<TResponse>(
-        IRequest<TResponse> query,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 发布事件通知
-    /// </summary>
-    ValueTask PublishEventAsync<TNotification>(
-        TNotification notification,
-        CancellationToken cancellationToken = default)
-        where TNotification : INotification;
 
     /// <summary>
     ///     获取环境对象

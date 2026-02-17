@@ -456,43 +456,4 @@ public static class ContextAwareExtensions
         var context = contextAware.GetContext();
         return context.SendAsync(command, cancellationToken);
     }
-
-    /// <summary>
-    ///     发送查询
-    /// </summary>
-    /// <typeparam name="TResponse">响应类型</typeparam>
-    /// <param name="contextAware">实现 IContextAware 接口的对象</param>
-    /// <param name="query">要发送的查询</param>
-    /// <param name="cancellationToken">取消令牌</param>
-    /// <returns>查询结果</returns>
-    /// <exception cref="ArgumentNullException">当 contextAware 或 query 为 null 时抛出</exception>
-    public static ValueTask<TResponse> QueryAsync<TResponse>(this IContextAware contextAware,
-        IRequest<TResponse> query, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(contextAware);
-        ArgumentNullException.ThrowIfNull(query);
-
-        var context = contextAware.GetContext();
-        return context.QueryAsync(query, cancellationToken);
-    }
-
-    /// <summary>
-    ///     发布事件通知
-    /// </summary>
-    /// <typeparam name="TNotification">通知类型</typeparam>
-    /// <param name="contextAware">实现 IContextAware 接口的对象</param>
-    /// <param name="notification">要发布的通知</param>
-    /// <param name="cancellationToken">取消令牌</param>
-    /// <returns>异步任务</returns>
-    /// <exception cref="ArgumentNullException">当 contextAware 或 notification 为 null 时抛出</exception>
-    public static ValueTask PublishEventAsync<TNotification>(this IContextAware contextAware,
-        TNotification notification, CancellationToken cancellationToken = default)
-        where TNotification : INotification
-    {
-        ArgumentNullException.ThrowIfNull(contextAware);
-        ArgumentNullException.ThrowIfNull(notification);
-
-        var context = contextAware.GetContext();
-        return context.PublishEventAsync(notification, cancellationToken);
-    }
 }
