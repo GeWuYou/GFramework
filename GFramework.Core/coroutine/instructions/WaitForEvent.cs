@@ -15,9 +15,10 @@ using GFramework.Core.Abstractions.coroutine;
 using GFramework.Core.Abstractions.events;
 
 namespace GFramework.Core.coroutine.instructions;
+
 /// <summary>
 ///     WaitForEvent 类用于等待特定事件的发生，并提供事件数据和完成状态。
-///     实现了 IYieldInstruction 和 IDisposable 接口，支持协程等待和资源释放。
+///     实现了 IYieldInstruction 和 IDestroyable 接口，支持协程等待和资源释放。
 /// </summary>
 /// <typeparam name="TEvent">事件类型</typeparam>
 public sealed class WaitForEvent<TEvent> : IYieldInstruction, IDisposable

@@ -1,7 +1,7 @@
 ﻿using GFramework.Core.Abstractions.architecture;
+using GFramework.Core.Abstractions.lifecycle;
 using GFramework.Core.Abstractions.rule;
 using GFramework.Core.Abstractions.state;
-using IDisposable = GFramework.Core.Abstractions.lifecycle.IDisposable;
 
 namespace GFramework.Core.state;
 
@@ -10,7 +10,7 @@ namespace GFramework.Core.state;
 ///     提供基础的状态管理功能和架构上下文访问能力
 ///     实现了IState和IContextAware接口
 /// </summary>
-public class ContextAwareStateBase : IState, IContextAware, IDisposable
+public class ContextAwareStateBase : IState, IContextAware, IDestroyable
 {
     /// <summary>
     ///     架构上下文引用，用于访问架构相关的服务和数据

@@ -12,9 +12,9 @@
 // limitations under the License.
 
 using GFramework.Core.Abstractions.architecture;
+using GFramework.Core.Abstractions.lifecycle;
 using GFramework.Core.Abstractions.rule;
 using GFramework.Core.Abstractions.state;
-using IDisposable = GFramework.Core.Abstractions.lifecycle.IDisposable;
 
 namespace GFramework.Core.state;
 
@@ -23,7 +23,7 @@ namespace GFramework.Core.state;
 ///     提供基础的异步状态管理功能和架构上下文访问能力
 ///     实现了IAsyncState（继承IState）和IContextAware接口
 /// </summary>
-public class AsyncContextAwareStateBase : IAsyncState, IContextAware, IDisposable
+public class AsyncContextAwareStateBase : IAsyncState, IContextAware, IDestroyable
 {
     /// <summary>
     ///     架构上下文引用，用于访问架构相关的服务和数据
