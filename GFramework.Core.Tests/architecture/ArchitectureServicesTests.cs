@@ -356,18 +356,6 @@ public class TestArchitectureContextV3 : IArchitectureContext
     {
         return _environment;
     }
-
-    public ValueTask<TResponse> QueryAsync<TResponse>(IRequest<TResponse> query,
-        CancellationToken cancellationToken = default)
-    {
-        throw new NotImplementedException();
-    }
-
-    public ValueTask PublishEventAsync<TNotification>(TNotification notification,
-        CancellationToken cancellationToken = default) where TNotification : INotification
-    {
-        throw new NotImplementedException();
-    }
 }
 
 #endregion
