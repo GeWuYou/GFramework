@@ -1,9 +1,9 @@
 using GFramework.Core.Abstractions.architecture;
 using GFramework.Core.Abstractions.enums;
+using GFramework.Core.Abstractions.lifecycle;
 using GFramework.Core.Abstractions.rule;
 using GFramework.Core.Abstractions.state;
 using GFramework.Core.extensions;
-using IDisposable = GFramework.Core.Abstractions.lifecycle.IDisposable;
 
 namespace GFramework.Core.state;
 
@@ -74,7 +74,7 @@ public class StateMachineSystem : StateMachine, IStateMachineSystem
         }
 
         // 清理所有状态
-        foreach (var state in States.Values.OfType<IDisposable>()) state.Destroy();
+        foreach (var state in States.Values.OfType<IDestroyable>()) state.Destroy();
 
         States.Clear();
     }

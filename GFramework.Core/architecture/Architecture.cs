@@ -11,7 +11,6 @@ using GFramework.Core.environment;
 using GFramework.Core.extensions;
 using GFramework.Core.logging;
 using Microsoft.Extensions.DependencyInjection;
-using IDisposable = GFramework.Core.Abstractions.lifecycle.IDisposable;
 
 namespace GFramework.Core.architecture;
 
@@ -117,12 +116,12 @@ public abstract class Architecture(
     /// <summary>
     ///     可销毁组件的去重集合
     /// </summary>
-    private readonly HashSet<IDisposable> _disposableSet = [];
+    private readonly HashSet<IDestroyable> _disposableSet = [];
 
     /// <summary>
     ///     存储所有需要销毁的组件（统一管理，保持注册逆序销毁）
     /// </summary>
-    private readonly List<IDisposable> _disposables = [];
+    private readonly List<IDestroyable> _disposables = [];
 
     /// <summary>
     ///     生命周期感知对象列表
@@ -262,7 +261,7 @@ public abstract class Architecture(
         }
 
         // 处理销毁
-        if (component is not IDisposable disposable) return;
+        if (component is not IDestroyable disposable) return;
         // 原子去重：HashSet.Add 返回 true 表示添加成功（之前不存在）
         if (_disposableSet.Add(disposable))
         {
@@ -377,7 +376,7 @@ public abstract class Architecture(
         _logger.Info("Starting architecture destruction");
         EnterPhase(ArchitecturePhase.Destroying);
 
-        // 销毁所有实现了 IDisposable 的组件（按注册逆序销毁）
+        // 销毁所有实现了 IDestroyable 的组件（按注册逆序销毁）
         _logger.Info($"Destroying {_disposables.Count} disposable components");
 
         for (var i = _disposables.Count - 1; i >= 0; i--)

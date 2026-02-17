@@ -5,7 +5,7 @@ namespace GFramework.Core.coroutine.instructions;
 
 /// <summary>
 ///     等待多个事件中的任意一个触发的指令
-///     实现了 IDisposable 接口，支持资源释放
+///     实现了 IDestroyable 接口，支持资源释放
 /// </summary>
 /// <typeparam name="TEvent1">第一个事件类型</typeparam>
 /// <typeparam name="TEvent2">第二个事件类型</typeparam>
