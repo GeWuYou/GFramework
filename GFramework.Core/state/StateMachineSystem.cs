@@ -61,7 +61,15 @@ public class StateMachineSystem : StateMachine, IStateMachineSystem
         // 退出当前状态
         if (Current != null)
         {
-            Current.OnExit(null);
+            if (Current is IAsyncState asyncState)
+            {
+                asyncState.OnExitAsync(null);
+            }
+            else
+            {
+                Current.OnExit(null);
+            }
+
             Current = null;
         }
 
