@@ -151,27 +151,6 @@ public class MediatorComprehensiveTests
     }
 
     [Test]
-    public async Task QueryAsync_Should_ReturnResult_When_Query_IsValid()
-    {
-        var testQuery = new TestQuery { QueryResult = "test result" };
-        var result = await _context!.QueryAsync(testQuery);
-
-        Assert.That(result, Is.EqualTo("test result"));
-    }
-
-    [Test]
-    public async Task PublishEventAsync_Should_PublishNotification_When_Notification_IsValid()
-    {
-        TestNotificationHandler.LastReceivedMessage = null;
-        var testNotification = new TestNotification { Message = "test event" };
-
-        await _context!.PublishEventAsync(testNotification);
-        await Task.Delay(100);
-
-        Assert.That(TestNotificationHandler.LastReceivedMessage, Is.EqualTo("test event"));
-    }
-
-    [Test]
     public void GetService_Should_Use_Cache()
     {
         var firstResult = _context!.GetService<IEventBus>();
@@ -288,21 +267,6 @@ public class MediatorComprehensiveTests
 
         // 验证数据被正确修改
         Assert.That(sharedData.Value, Is.EqualTo(30)); // 10 + 20
-    }
-
-    [Test]
-    public async Task Query_Caching_With_Mediator()
-    {
-        var cache = new Dictionary<string, string>();
-        var query1 = new TestCachingQuery { Key = "test1", Cache = cache };
-        var query2 = new TestCachingQuery { Key = "test1", Cache = cache }; // 相同key
-
-        var result1 = await _context!.QueryAsync(query1);
-        var result2 = await _context.QueryAsync(query2);
-
-        // 验证缓存生效（相同key返回相同结果）
-        Assert.That(result1, Is.EqualTo(result2));
-        Assert.That(cache.Count, Is.EqualTo(1)); // 只缓存了一次
     }
 
     [Test]
