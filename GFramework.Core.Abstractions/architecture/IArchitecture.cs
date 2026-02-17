@@ -1,3 +1,4 @@
+using GFramework.Core.Abstractions.lifecycle;
 using GFramework.Core.Abstractions.model;
 using GFramework.Core.Abstractions.system;
 using GFramework.Core.Abstractions.utility;

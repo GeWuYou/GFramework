@@ -114,14 +114,14 @@ public abstract class Architecture(
     private readonly List<IInitializable> _pendingInitializableList = [];
 
     /// <summary>
-    ///     可销毁组件的去重集合
+    ///     可销毁组件的去重集合（支持 IDestroyable 和 IAsyncDestroyable）
     /// </summary>
-    private readonly HashSet<IDestroyable> _disposableSet = [];
+    private readonly HashSet<object> _disposableSet = [];
 
     /// <summary>
     ///     存储所有需要销毁的组件（统一管理，保持注册逆序销毁）
     /// </summary>
-    private readonly List<IDestroyable> _disposables = [];
+    private readonly List<object> _disposables = [];
 
     /// <summary>
     ///     生命周期感知对象列表
@@ -260,13 +260,15 @@ public abstract class Architecture(
             }
         }
 
-        // 处理销毁
-        if (component is not IDestroyable disposable) return;
-        // 原子去重：HashSet.Add 返回 true 表示添加成功（之前不存在）
-        if (_disposableSet.Add(disposable))
+        // 处理销毁（支持 IDestroyable 或 IAsyncDestroyable）
+        if (component is IDestroyable or IAsyncDestroyable)
         {
-            _disposables.Add(disposable);
-            _logger.Trace($"Registered {component.GetType().Name} for destruction");
+            // 原子去重：HashSet.Add 返回 true 表示添加成功（之前不存在）
+            if (_disposableSet.Add(component))
+            {
+                _disposables.Add(component);
+                _logger.Trace($"Registered {component.GetType().Name} for destruction");
+            }
         }
     }
 
@@ -361,9 +363,9 @@ public abstract class Architecture(
     protected abstract void Init();
 
     /// <summary>
-    ///     销毁架构并清理所有组件资源
+    ///     异步销毁架构及所有组件
     /// </summary>
-    public virtual void Destroy()
+    public virtual async ValueTask DestroyAsync()
     {
         // 检查当前阶段，如果已经处于销毁或已销毁状态则直接返回
         if (CurrentPhase >= ArchitecturePhase.Destroying)
@@ -376,30 +378,49 @@ public abstract class Architecture(
         _logger.Info("Starting architecture destruction");
         EnterPhase(ArchitecturePhase.Destroying);
 
-        // 销毁所有实现了 IDestroyable 的组件（按注册逆序销毁）
+        // 销毁所有实现了 IAsyncDestroyable 或 IDestroyable 的组件（按注册逆序销毁）
         _logger.Info($"Destroying {_disposables.Count} disposable components");
 
         for (var i = _disposables.Count - 1; i >= 0; i--)
         {
-            var disposable = _disposables[i];
+            var component = _disposables[i];
             try
             {
-                _logger.Debug($"Destroying component: {disposable.GetType().Name}");
-                disposable.Destroy();
+                _logger.Debug($"Destroying component: {component.GetType().Name}");
+
+                // 优先使用异步销毁
+                if (component is IAsyncDestroyable asyncDestroyable)
+                {
+                    await asyncDestroyable.DestroyAsync();
+                }
+                else if (component is IDestroyable destroyable)
+                {
+                    destroyable.Destroy();
+                }
             }
             catch (Exception ex)
             {
-                _logger.Error($"Error destroying {disposable.GetType().Name}", ex);
+                _logger.Error($"Error destroying {component.GetType().Name}", ex);
                 // 继续销毁其他组件，不会因为一个组件失败而中断
             }
         }
 
         _disposables.Clear();
         _disposableSet.Clear();
+        Container.Clear();
 
         // 进入已销毁阶段
         EnterPhase(ArchitecturePhase.Destroyed);
         _logger.Info("Architecture destruction completed");
+    }
+
+    /// <summary>
+    ///     销毁架构并清理所有组件资源（同步方法，保留用于向后兼容）
+    /// </summary>
+    [Obsolete("建议使用 DestroyAsync() 以支持异步清理")]
+    public virtual void Destroy()
+    {
+        DestroyAsync().AsTask().GetAwaiter().GetResult();
     }
 
     #endregion

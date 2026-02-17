@@ -114,10 +114,10 @@ public class SyncArchitectureTests : ArchitectureTestsBase<SyncTestArchitecture>
     ///     测试架构销毁功能，验证销毁后系统被正确销毁且架构进入销毁阶段
     /// </summary>
     [Test]
-    public void Architecture_Destroy_Should_Destroy_All_Systems_And_Enter_Destroyed()
+    public async Task Architecture_Destroy_Should_Destroy_All_Systems_And_Enter_Destroyed()
     {
         Architecture!.Initialize();
-        Architecture.Destroy();
+        await Architecture.DestroyAsync();
 
         var system = Architecture.Context.GetSystem<TestSystem>();
         Assert.That(system!.DestroyCalled, Is.True);

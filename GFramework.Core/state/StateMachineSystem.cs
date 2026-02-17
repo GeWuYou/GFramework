@@ -54,16 +54,25 @@ public class StateMachineSystem : StateMachine, IStateMachineSystem
     }
 
     /// <summary>
-    ///     销毁方法，在系统关闭时调用
+    ///     销毁方法，在系统关闭时调用（同步方法，保留用于向后兼容）
     /// </summary>
+    [Obsolete("建议使用 DestroyAsync() 以支持异步清理")]
     public virtual void Destroy()
+    {
+        DestroyAsync().AsTask().GetAwaiter().GetResult();
+    }
+
+    /// <summary>
+    ///     异步销毁方法，在系统关闭时调用
+    /// </summary>
+    public virtual async ValueTask DestroyAsync()
     {
         // 退出当前状态
         if (Current != null)
         {
             if (Current is IAsyncState asyncState)
             {
-                asyncState.OnExitAsync(null);
+                await asyncState.OnExitAsync(null); // ✅ 正确等待异步清理
             }
             else
             {
@@ -74,7 +83,17 @@ public class StateMachineSystem : StateMachine, IStateMachineSystem
         }
 
         // 清理所有状态
-        foreach (var state in States.Values.OfType<IDestroyable>()) state.Destroy();
+        foreach (var state in States.Values)
+        {
+            if (state is IAsyncDestroyable asyncDestroyable)
+            {
+                await asyncDestroyable.DestroyAsync();
+            }
+            else if (state is IDestroyable destroyable)
+            {
+                destroyable.Destroy();
+            }
+        }
 
         States.Clear();
     }

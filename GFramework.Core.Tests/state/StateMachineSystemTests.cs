@@ -133,12 +133,12 @@ public class StateMachineSystemTests
     }
 
     /// <summary>
-    ///     测试Destroy方法不抛出异常
+    ///     测试DestroyAsync方法不抛出异常
     /// </summary>
     [Test]
-    public void Destroy_Should_Not_Throw_Exception()
+    public async Task DestroyAsync_Should_Not_Throw_Exception()
     {
-        Assert.That(() => _stateMachine!.Destroy(), Throws.Nothing);
+        Assert.That(async () => await _stateMachine!.DestroyAsync(), Throws.Nothing);
     }
 
     /// <summary>

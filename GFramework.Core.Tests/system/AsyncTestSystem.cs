@@ -1,5 +1,6 @@
 ﻿using GFramework.Core.Abstractions.architecture;
 using GFramework.Core.Abstractions.enums;
+using GFramework.Core.Abstractions.lifecycle;
 using GFramework.Core.Abstractions.system;
 
 namespace GFramework.Core.Tests.system;

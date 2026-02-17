@@ -21,14 +21,25 @@ namespace GFramework.Core.state;
 /// <summary>
 ///     上下文感知异步状态基类
 ///     提供基础的异步状态管理功能和架构上下文访问能力
-///     实现了IAsyncState（继承IState）和IContextAware接口
+///     实现了IAsyncState（继承IState）、IContextAware和IAsyncDestroyable接口
 /// </summary>
-public class AsyncContextAwareStateBase : IAsyncState, IContextAware, IDestroyable
+public class AsyncContextAwareStateBase : IAsyncState, IContextAware, IDestroyable, IAsyncDestroyable
 {
     /// <summary>
     ///     架构上下文引用，用于访问架构相关的服务和数据
     /// </summary>
     private IArchitectureContext? _context;
+
+    /// <summary>
+    ///     异步销毁当前状态，释放相关资源
+    ///     子类可重写此方法以执行特定的异步清理操作
+    /// </summary>
+    public virtual ValueTask DestroyAsync()
+    {
+        // 默认实现：调用同步 Destroy()
+        Destroy();
+        return ValueTask.CompletedTask;
+    }
 
     // ============ IState 同步方法显式实现（隐藏 + 运行时保护） ============
 
@@ -125,7 +136,7 @@ public class AsyncContextAwareStateBase : IAsyncState, IContextAware, IDestroyab
     }
 
     /// <summary>
-    ///     销毁当前状态，释放相关资源
+    ///     销毁当前状态，释放相关资源（同步方法，保留用于向后兼容）
     ///     子类可重写此方法以执行特定的清理操作
     /// </summary>
     public virtual void Destroy()
