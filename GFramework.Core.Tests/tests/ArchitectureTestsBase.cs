@@ -34,11 +34,14 @@ public abstract class ArchitectureTestsBase<TArchitecture> where TArchitecture :
     ///     销毁架构实例并清理游戏上下文
     /// </summary>
     [TearDown]
-    public void TearDown()
+    public async Task TearDown()
     {
         try
         {
-            Architecture?.Destroy();
+            if (Architecture != null)
+            {
+                await Architecture.DestroyAsync();
+            }
         }
         finally
         {
