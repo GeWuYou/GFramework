@@ -451,16 +451,4 @@ public class TestArchitectureContext : IArchitectureContext
     {
         return Environment;
     }
-
-    public ValueTask<TResponse> QueryAsync<TResponse>(IRequest<TResponse> query,
-        CancellationToken cancellationToken = default)
-    {
-        throw new NotImplementedException();
-    }
-
-    public ValueTask PublishEventAsync<TNotification>(TNotification notification,
-        CancellationToken cancellationToken = default) where TNotification : INotification
-    {
-        throw new NotImplementedException();
-    }
 }
