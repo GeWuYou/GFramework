@@ -7,8 +7,18 @@ namespace GFramework.Core.Abstractions.registries;
 /// </summary>
 /// <typeparam name="T">注册表中用作键的类型</typeparam>
 /// <typeparam name="Tr">注册表中存储的值的类型</typeparam>
-public interface IRegistry<in T, Tr>
+public interface IRegistry<T, Tr>
 {
+    /// <summary>
+    ///     获取注册表中所有的键
+    /// </summary>
+    IEnumerable<T> Keys { get; }
+
+    /// <summary>
+    ///     获取注册表中项的数量
+    /// </summary>
+    int Count { get; }
+
     /// <summary>
     ///     根据指定的键获取对应的值
     /// </summary>
@@ -35,4 +45,24 @@ public interface IRegistry<in T, Tr>
     /// <param name="key">要添加的键</param>
     /// <param name="value">要添加的值</param>
     IRegistry<T, Tr> Registry(T key, Tr value);
+
+    /// <summary>
+    ///     从注册表中移除指定键的项
+    /// </summary>
+    /// <param name="key">要移除的键</param>
+    /// <returns>如果成功移除则返回true，否则返回false</returns>
+    bool Unregister(T key);
+
+    /// <summary>
+    ///     获取注册表中所有的键值对
+    /// </summary>
+    /// <returns>包含所有注册键值对的只读字典</returns>
+    IReadOnlyDictionary<T, Tr> GetAll();
+
+
+    /// <summary>
+    ///     获取注册表中所有的值
+    /// </summary>
+    /// <returns>包含所有注册值的只读集合</returns>
+    IReadOnlyCollection<Tr> Values();
 }
