@@ -98,7 +98,7 @@ public abstract class KeyValueRegistryBase<TKey, TValue>
     /// <returns>包含所有注册值的只读集合</returns>
     public IReadOnlyCollection<TValue> Values()
     {
-        return Map.Values as IReadOnlyCollection<TValue> ?? new ReadOnlyCollection<TValue>([]);
+        return Map.Values as IReadOnlyCollection<TValue> ?? new ReadOnlyCollection<TValue>(Map.Values.ToList());
     }
 
     /// <summary>
