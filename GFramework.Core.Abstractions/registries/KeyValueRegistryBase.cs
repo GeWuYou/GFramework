@@ -1,4 +1,5 @@
-﻿using GFramework.Core.Abstractions.bases;
+﻿using System.Collections.ObjectModel;
+using GFramework.Core.Abstractions.bases;
 
 namespace GFramework.Core.Abstractions.registries;
 
@@ -61,6 +62,7 @@ public abstract class KeyValueRegistryBase<TKey, TValue>
         return this;
     }
 
+
     /// <summary>
     ///     注册键值对映射对象到注册表中
     /// </summary>
@@ -70,4 +72,42 @@ public abstract class KeyValueRegistryBase<TKey, TValue>
     {
         return Registry(mapping.Key, mapping.Value);
     }
+
+    /// <summary>
+    ///     从注册表中移除指定键的项
+    /// </summary>
+    /// <param name="key">要移除的键</param>
+    /// <returns>如果成功移除则返回true，否则返回false</returns>
+    public bool Unregister(TKey key)
+    {
+        return Map.Remove(key);
+    }
+
+    /// <summary>
+    ///     获取注册表中所有的键值对
+    /// </summary>
+    /// <returns>包含所有注册键值对的只读字典</returns>
+    public IReadOnlyDictionary<TKey, TValue> GetAll()
+    {
+        return Map as IReadOnlyDictionary<TKey, TValue> ?? new ReadOnlyDictionary<TKey, TValue>(Map);
+    }
+
+    /// <summary>
+    ///     获取注册表中所有的值
+    /// </summary>
+    /// <returns>包含所有注册值的只读集合</returns>
+    public IReadOnlyCollection<TValue> Values()
+    {
+        return Map.Values as IReadOnlyCollection<TValue> ?? new ReadOnlyCollection<TValue>([]);
+    }
+
+    /// <summary>
+    ///     获取注册表中所有的键
+    /// </summary>
+    public IEnumerable<TKey> Keys => Map.Keys;
+
+    /// <summary>
+    ///     获取注册表中项的数量
+    /// </summary>
+    public int Count => Map.Count;
 }
