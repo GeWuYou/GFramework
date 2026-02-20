@@ -142,6 +142,28 @@ public abstract class SceneRouterBase
     }
 
     /// <summary>
+    /// 注册环绕场景过渡处理器。
+    /// </summary>
+    /// <param name="handler">环绕处理器实例。</param>
+    /// <param name="options">处理器选项配置。</param>
+    public void RegisterAroundHandler(
+        ISceneAroundTransitionHandler handler,
+        SceneTransitionHandlerOptions? options = null)
+    {
+        _pipeline.RegisterAroundHandler(handler, options);
+    }
+
+    /// <summary>
+    /// 注销环绕场景过渡处理器。
+    /// </summary>
+    /// <param name="handler">环绕处理器实例。</param>
+    public void UnregisterAroundHandler(
+        ISceneAroundTransitionHandler handler)
+    {
+        _pipeline.UnregisterAroundHandler(handler);
+    }
+
+    /// <summary>
     /// 添加场景路由守卫。
     /// </summary>
     /// <param name="guard">守卫实例。</param>
