@@ -8,64 +8,72 @@ using GFramework.Game.Abstractions.ui;
 namespace GFramework.Game.ui;
 
 /// <summary>
-///     UI路由类，提供页面栈管理功能
+/// UI路由基类，提供页面栈管理和层级UI管理功能
+/// 负责UI页面的导航、显示、隐藏以及生命周期管理
 /// </summary>
 public abstract class UiRouterBase : AbstractSystem, IUiRouter
 {
     private static readonly ILogger Log = LoggerFactoryResolver.Provider.CreateLogger(nameof(UiRouterBase));
 
     /// <summary>
-    ///     路由守卫列表
+    /// 路由守卫列表，用于控制UI页面的进入和离开
     /// </summary>
     private readonly List<IUiRouteGuard> _guards = new();
 
     /// <summary>
-    ///     层级管理（非栈层级），用于Overlay、Modal、Toast等浮层
-    ///     Key: UiLayer, Value: Dictionary of InstanceId -> PageBehavior
+    /// 层级管理字典（非栈层级），用于管理Overlay、Modal、Toast等浮层UI
+    /// Key: UiLayer枚举值, Value: InstanceId到PageBehavior的映射字典
     /// </summary>
     private readonly Dictionary<UiLayer, Dictionary<string, IUiPageBehavior>> _layers = new();
 
     /// <summary>
-    ///     UI切换处理器管道
+    /// UI切换处理器管道，用于执行UI过渡动画和逻辑
     /// </summary>
     private readonly UiTransitionPipeline _pipeline = new();
 
     /// <summary>
-    ///     页面栈，用于管理UI页面的显示顺序
+    /// 页面栈，用于管理UI页面的显示顺序和导航历史
     /// </summary>
     private readonly Stack<IUiPageBehavior> _stack = new();
 
     /// <summary>
-    ///     UI工厂实例，用于创建UI相关的对象
+    /// UI工厂实例，用于创建UI页面和相关对象
     /// </summary>
     private IUiFactory _factory = null!;
 
     /// <summary>
-    ///     实例ID计数器，用于生成唯一ID
+    /// 实例ID计数器，用于生成唯一的UI实例标识符
     /// </summary>
     private int _instanceCounter;
 
+    /// <summary>
+    /// UI根节点引用，用于添加和移除UI页面
+    /// </summary>
     private IUiRoot _uiRoot = null!;
 
     /// <summary>
-    ///     注册UI切换处理器
+    /// 注册UI切换处理器
     /// </summary>
+    /// <param name="handler">UI切换处理器实例</param>
+    /// <param name="options">处理器选项配置</param>
     public void RegisterHandler(IUiTransitionHandler handler, UiTransitionHandlerOptions? options = null)
     {
         _pipeline.RegisterHandler(handler, options);
     }
 
     /// <summary>
-    ///     注销UI切换处理器
+    /// 注销UI切换处理器
     /// </summary>
+    /// <param name="handler">要注销的UI切换处理器实例</param>
     public void UnregisterHandler(IUiTransitionHandler handler)
     {
         _pipeline.UnregisterHandler(handler);
     }
 
     /// <summary>
-    ///     绑定UI根节点
+    /// 绑定UI根节点
     /// </summary>
+    /// <param name="root">UI根节点实例</param>
     public void BindRoot(IUiRoot root)
     {
         _uiRoot = root;
@@ -75,9 +83,12 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     #region Page Stack Management
 
     /// <summary>
-    ///     将指定的UI界面压入路由栈
+    /// 将指定的UI界面压入路由栈
     /// </summary>
-    public void Push(string uiKey, IUiPageEnterParam? param = null,
+    /// <param name="uiKey">UI页面的唯一标识键</param>
+    /// <param name="param">页面进入参数</param>
+    /// <param name="policy">UI过渡策略</param>
+    public async ValueTask PushAsync(string uiKey, IUiPageEnterParam? param = null,
         UiTransitionPolicy policy = UiTransitionPolicy.Exclusive)
     {
         if (IsTop(uiKey))
@@ -89,18 +100,21 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         var @event = CreateEvent(uiKey, UiTransitionType.Push, policy, param);
         Log.Debug("Push UI Page: key={0}, policy={1}, stackBefore={2}", uiKey, policy, _stack.Count);
 
-        _pipeline.ExecuteAroundAsync(@event, async () =>
+        await _pipeline.ExecuteAroundAsync(@event, async () =>
         {
-            BeforeChange(@event);
-            DoPushPageInternal(uiKey, param, policy);
-            AfterChange(@event);
-        }).GetAwaiter().GetResult();
+            await BeforeChangeAsync(@event);
+            await DoPushPageInternalAsync(uiKey, param, policy);
+            await AfterChangeAsync(@event);
+        });
     }
 
     /// <summary>
-    ///     将已存在的UI页面压入栈顶
+    /// 将已存在的UI页面压入栈顶
     /// </summary>
-    public void Push(IUiPageBehavior page, IUiPageEnterParam? param = null,
+    /// <param name="page">已存在的UI页面行为实例</param>
+    /// <param name="param">页面进入参数</param>
+    /// <param name="policy">UI过渡策略</param>
+    public async ValueTask PushAsync(IUiPageBehavior page, IUiPageEnterParam? param = null,
         UiTransitionPolicy policy = UiTransitionPolicy.Exclusive)
     {
         var uiKey = page.Key;
@@ -114,18 +128,19 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         var @event = CreateEvent(uiKey, UiTransitionType.Push, policy, param);
         Log.Debug("Push existing UI Page: key={0}, policy={1}, stackBefore={2}", uiKey, policy, _stack.Count);
 
-        _pipeline.ExecuteAroundAsync(@event, async () =>
+        await _pipeline.ExecuteAroundAsync(@event, async () =>
         {
-            BeforeChange(@event);
+            await BeforeChangeAsync(@event);
             DoPushPageInternal(page, param, policy);
-            AfterChange(@event);
-        }).GetAwaiter().GetResult();
+            await AfterChangeAsync(@event);
+        });
     }
 
     /// <summary>
-    ///     弹出栈顶页面
+    /// 弹出栈顶页面
     /// </summary>
-    public void Pop(UiPopPolicy policy = UiPopPolicy.Destroy)
+    /// <param name="policy">页面弹出策略</param>
+    public async ValueTask PopAsync(UiPopPolicy policy = UiPopPolicy.Destroy)
     {
         if (_stack.Count == 0)
         {
@@ -135,7 +150,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
 
         var leavingUiKey = _stack.Peek().Key;
 
-        if (!ExecuteLeaveGuardsAsync(leavingUiKey).GetAwaiter().GetResult())
+        if (!await ExecuteLeaveGuardsAsync(leavingUiKey))
         {
             Log.Warn("Pop blocked by guard: {0}", leavingUiKey);
             return;
@@ -144,41 +159,49 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         var nextUiKey = _stack.Count > 1 ? _stack.ElementAt(1).Key : null;
         var @event = CreateEvent(nextUiKey, UiTransitionType.Pop);
 
-        _pipeline.ExecuteAroundAsync(@event, async () =>
+        await _pipeline.ExecuteAroundAsync(@event, async () =>
         {
-            BeforeChange(@event);
+            await BeforeChangeAsync(@event);
             DoPopInternal(policy);
-            AfterChange(@event);
-        }).GetAwaiter().GetResult();
+            await AfterChangeAsync(@event);
+        });
     }
 
     /// <summary>
-    ///     替换当前所有页面为新页面（基于uiKey）
+    /// 替换当前所有页面为新页面（基于uiKey）
     /// </summary>
-    public void Replace(string uiKey, IUiPageEnterParam? param = null,
+    /// <param name="uiKey">新UI页面的唯一标识键</param>
+    /// <param name="param">页面进入参数</param>
+    /// <param name="popPolicy">页面弹出策略</param>
+    /// <param name="pushPolicy">页面压入策略</param>
+    public async ValueTask ReplaceAsync(string uiKey, IUiPageEnterParam? param = null,
         UiPopPolicy popPolicy = UiPopPolicy.Destroy,
         UiTransitionPolicy pushPolicy = UiTransitionPolicy.Exclusive)
     {
         var @event = CreateEvent(uiKey, UiTransitionType.Replace, pushPolicy, param);
         Log.Debug("Replace UI Stack with page: key={0}, popPolicy={1}, pushPolicy={2}", uiKey, popPolicy, pushPolicy);
 
-        _pipeline.ExecuteAroundAsync(@event, async () =>
+        await _pipeline.ExecuteAroundAsync(@event, async () =>
         {
-            BeforeChange(@event);
+            await BeforeChangeAsync(@event);
             DoClearInternal(popPolicy);
 
             var page = _factory.Create(uiKey);
             Log.Debug("Get/Create UI Page instance for Replace: {0}", page.GetType().Name);
 
             DoPushPageInternal(page, param, pushPolicy);
-            AfterChange(@event);
-        }).GetAwaiter().GetResult();
+            await AfterChangeAsync(@event);
+        });
     }
 
     /// <summary>
-    ///     替换当前所有页面为已存在的页面
+    /// 替换当前所有页面为已存在的页面
     /// </summary>
-    public void Replace(IUiPageBehavior page, IUiPageEnterParam? param = null,
+    /// <param name="page">已存在的UI页面行为实例</param>
+    /// <param name="param">页面进入参数</param>
+    /// <param name="popPolicy">页面弹出策略</param>
+    /// <param name="pushPolicy">页面压入策略</param>
+    public async ValueTask ReplaceAsync(IUiPageBehavior page, IUiPageEnterParam? param = null,
         UiPopPolicy popPolicy = UiPopPolicy.Destroy,
         UiTransitionPolicy pushPolicy = UiTransitionPolicy.Exclusive)
     {
@@ -187,66 +210,72 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         Log.Debug("Replace UI Stack with existing page: key={0}, popPolicy={1}, pushPolicy={2}",
             uiKey, popPolicy, pushPolicy);
 
-        _pipeline.ExecuteAroundAsync(@event, async () =>
+        await _pipeline.ExecuteAroundAsync(@event, async () =>
         {
-            BeforeChange(@event);
+            await BeforeChangeAsync(@event);
             DoClearInternal(popPolicy);
             Log.Debug("Use existing UI Page instance for Replace: {0}", page.GetType().Name);
             DoPushPageInternal(page, param, pushPolicy);
-            AfterChange(@event);
-        }).GetAwaiter().GetResult();
+            await AfterChangeAsync(@event);
+        });
     }
 
     /// <summary>
-    ///     清空所有页面栈
+    /// 清空所有页面栈
     /// </summary>
-    public void Clear()
+    public async ValueTask ClearAsync()
     {
         var @event = CreateEvent(string.Empty, UiTransitionType.Clear);
         Log.Debug("Clear UI Stack, stackCount={0}", _stack.Count);
 
-        _pipeline.ExecuteAroundAsync(@event, async () =>
+        await _pipeline.ExecuteAroundAsync(@event, async () =>
         {
-            BeforeChange(@event);
+            await BeforeChangeAsync(@event);
             DoClearInternal(UiPopPolicy.Destroy);
-            AfterChange(@event);
-        }).GetAwaiter().GetResult();
+            await AfterChangeAsync(@event);
+        });
     }
 
     /// <summary>
-    ///     获取栈顶元素的键值
+    /// 获取栈顶元素的键值
     /// </summary>
+    /// <returns>栈顶UI页面的键值，如果栈为空则返回空字符串</returns>
     public string PeekKey()
     {
         return _stack.Count == 0 ? string.Empty : _stack.Peek().Key;
     }
 
     /// <summary>
-    ///     获取栈顶元素
+    /// 获取栈顶元素
     /// </summary>
+    /// <returns>栈顶UI页面行为实例，如果栈为空则返回null</returns>
     public IUiPageBehavior? Peek()
     {
         return _stack.Count == 0 ? null : _stack.Peek();
     }
 
     /// <summary>
-    ///     判断栈顶是否为指定UI
+    /// 判断栈顶是否为指定UI
     /// </summary>
+    /// <param name="uiKey">要检查的UI页面键值</param>
+    /// <returns>如果栈顶是指定UI则返回true，否则返回false</returns>
     public bool IsTop(string uiKey)
     {
         return _stack.Count != 0 && _stack.Peek().Key.Equals(uiKey);
     }
 
     /// <summary>
-    ///     判断栈中是否包含指定UI
+    /// 判断栈中是否包含指定UI
     /// </summary>
+    /// <param name="uiKey">要检查的UI页面键值</param>
+    /// <returns>如果栈中包含指定UI则返回true，否则返回false</returns>
     public bool Contains(string uiKey)
     {
         return _stack.Any(p => p.Key.Equals(uiKey));
     }
 
     /// <summary>
-    ///     获取栈深度
+    /// 获取栈深度
     /// </summary>
     public int Count => _stack.Count;
 
@@ -255,8 +284,13 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     #region Layer UI Management
 
     /// <summary>
-    ///     在指定层级显示UI（基于 uiKey）
+    /// 在指定层级显示UI（基于 uiKey）
     /// </summary>
+    /// <param name="uiKey">UI页面的唯一标识键</param>
+    /// <param name="layer">UI显示层级</param>
+    /// <param name="param">页面进入参数</param>
+    /// <returns>UI句柄实例</returns>
+    /// <exception cref="ArgumentException">当尝试在Page层级使用此方法时抛出</exception>
     public UiHandle Show(string uiKey, UiLayer layer, IUiPageEnterParam? param = null)
     {
         if (layer == UiLayer.Page)
@@ -269,8 +303,12 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    ///     在指定层级显示UI（基于实例）
+    /// 在指定层级显示UI（基于实例）
     /// </summary>
+    /// <param name="page">UI页面行为实例</param>
+    /// <param name="layer">UI显示层级</param>
+    /// <returns>UI句柄实例</returns>
+    /// <exception cref="ArgumentException">当尝试在Page层级使用此方法时抛出</exception>
     public UiHandle Show(IUiPageBehavior page, UiLayer layer)
     {
         if (layer == UiLayer.Page)
@@ -280,8 +318,11 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    ///     隐藏指定层级的UI
+    /// 隐藏指定层级的UI
     /// </summary>
+    /// <param name="handle">UI句柄</param>
+    /// <param name="layer">UI层级</param>
+    /// <param name="destroy">是否销毁UI实例，默认为false</param>
     public void Hide(UiHandle handle, UiLayer layer, bool destroy = false)
     {
         if (!_layers.TryGetValue(layer, out var layerDict))
@@ -305,8 +346,10 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    ///     恢复指定UI的显示
+    /// 恢复指定UI的显示
     /// </summary>
+    /// <param name="handle">UI句柄</param>
+    /// <param name="layer">UI层级</param>
     public void Resume(UiHandle handle, UiLayer layer)
     {
         if (!_layers.TryGetValue(layer, out var layerDict))
@@ -321,8 +364,10 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    ///     清空指定层级的所有UI
+    /// 清空指定层级的所有UI
     /// </summary>
+    /// <param name="layer">要清空的UI层级</param>
+    /// <param name="destroy">是否销毁UI实例，默认为false</param>
     public void ClearLayer(UiLayer layer, bool destroy = false)
     {
         if (!_layers.TryGetValue(layer, out var layerDict))
@@ -343,8 +388,11 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    ///     获取指定层级的UI实例
+    /// 获取指定层级的UI实例
     /// </summary>
+    /// <param name="handle">UI句柄</param>
+    /// <param name="layer">UI层级</param>
+    /// <returns>如果找到则返回UI句柄，否则返回null</returns>
     public UiHandle? GetFromLayer(UiHandle handle, UiLayer layer)
     {
         if (!_layers.TryGetValue(layer, out var layerDict))
@@ -354,8 +402,11 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    ///     获取指定 uiKey 在指定层级的所有实例
+    /// 获取指定 uiKey 在指定层级的所有实例
     /// </summary>
+    /// <param name="uiKey">UI页面的唯一标识键</param>
+    /// <param name="layer">UI层级</param>
+    /// <returns>指定UI在该层级的所有实例句柄列表</returns>
     public IReadOnlyList<UiHandle> GetAllFromLayer(string uiKey, UiLayer layer)
     {
         if (!_layers.TryGetValue(layer, out var layerDict))
@@ -368,8 +419,11 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    ///     判断指定UI是否在层级中可见
+    /// 判断指定UI是否在层级中可见
     /// </summary>
+    /// <param name="handle">UI句柄</param>
+    /// <param name="layer">UI层级</param>
+    /// <returns>如果UI在层级中且可见则返回true，否则返回false</returns>
     public bool HasVisibleInLayer(UiHandle handle, UiLayer layer)
     {
         if (!_layers.TryGetValue(layer, out var layerDict))
@@ -382,7 +436,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    ///     根据UI键隐藏指定层级中的UI。
+    /// 根据UI键隐藏指定层级中的UI。
     /// </summary>
     /// <param name="uiKey">UI的唯一标识键。</param>
     /// <param name="layer">要操作的UI层级。</param>
@@ -407,8 +461,10 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     #region Route Guards
 
     /// <summary>
-    ///     注册路由守卫
+    /// 注册路由守卫
     /// </summary>
+    /// <param name="guard">路由守卫实例</param>
+    /// <exception cref="ArgumentNullException">当守卫实例为null时抛出</exception>
     public void AddGuard(IUiRouteGuard guard)
     {
         ArgumentNullException.ThrowIfNull(guard);
@@ -425,16 +481,19 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    ///     注册路由守卫（泛型）
+    /// 注册路由守卫（泛型）
     /// </summary>
+    /// <typeparam name="T">路由守卫类型，必须实现IUiRouteGuard接口且有无参构造函数</typeparam>
     public void AddGuard<T>() where T : IUiRouteGuard, new()
     {
         AddGuard(new T());
     }
 
     /// <summary>
-    ///     移除路由守卫
+    /// 移除路由守卫
     /// </summary>
+    /// <param name="guard">要移除的路由守卫实例</param>
+    /// <exception cref="ArgumentNullException">当守卫实例为null时抛出</exception>
     public void RemoveGuard(IUiRouteGuard guard)
     {
         ArgumentNullException.ThrowIfNull(guard);
@@ -473,7 +532,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     #region Internal Helpers
 
     /// <summary>
-    ///     生成唯一实例ID
+    /// 生成唯一实例ID
     /// </summary>
     /// <returns>格式为"ui_000001"的唯一实例标识符</returns>
     private string GenerateInstanceId()
@@ -485,8 +544,13 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     }
 
     /// <summary>
-    ///     内部Show实现，支持重入
+    /// 内部Show实现，支持重入
     /// </summary>
+    /// <param name="page">UI页面行为实例</param>
+    /// <param name="layer">UI显示层级</param>
+    /// <param name="param">页面进入参数</param>
+    /// <returns>UI句柄实例</returns>
+    /// <exception cref="InvalidOperationException">当UI不支持重入且已在该层级存在时抛出</exception>
     private UiHandle ShowInternal(IUiPageBehavior page, UiLayer layer, IUiPageEnterParam? param)
     {
         var instanceId = GenerateInstanceId();
@@ -521,6 +585,14 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         return handle;
     }
 
+    /// <summary>
+    /// 创建UI过渡事件
+    /// </summary>
+    /// <param name="toUiKey">目标UI键值</param>
+    /// <param name="type">过渡类型</param>
+    /// <param name="policy">过渡策略</param>
+    /// <param name="param">进入参数</param>
+    /// <returns>UI过渡事件实例</returns>
     private UiTransitionEvent CreateEvent(string? toUiKey, UiTransitionType type,
         UiTransitionPolicy? policy = null, IUiPageEnterParam? param = null)
     {
@@ -534,33 +606,37 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         };
     }
 
-    private void BeforeChange(UiTransitionEvent @event)
+    /// <summary>
+    /// 执行过渡前阶段
+    /// </summary>
+    /// <param name="event">UI过渡事件</param>
+    private async Task BeforeChangeAsync(UiTransitionEvent @event)
     {
         Log.Debug("BeforeChange phases started: {0}", @event.TransitionType);
-        _pipeline.ExecuteAsync(@event, UiTransitionPhases.BeforeChange).GetAwaiter().GetResult();
+        await _pipeline.ExecuteAsync(@event, UiTransitionPhases.BeforeChange);
         Log.Debug("BeforeChange phases completed: {0}", @event.TransitionType);
     }
 
-    private void AfterChange(UiTransitionEvent @event)
+    /// <summary>
+    /// 执行过渡后阶段
+    /// </summary>
+    /// <param name="event">UI过渡事件</param>
+    private async Task AfterChangeAsync(UiTransitionEvent @event)
     {
         Log.Debug("AfterChange phases started: {0}", @event.TransitionType);
-        _ = Task.Run<Task>(async () =>
-        {
-            try
-            {
-                await _pipeline.ExecuteAsync(@event, UiTransitionPhases.AfterChange).ConfigureAwait(false);
-                Log.Debug("AfterChange phases completed: {0}", @event.TransitionType);
-            }
-            catch (Exception ex)
-            {
-                Log.Error("AfterChange phases failed: {0}, Error: {1}", @event.TransitionType, ex.Message);
-            }
-        });
+        await _pipeline.ExecuteAsync(@event, UiTransitionPhases.AfterChange);
+        Log.Debug("AfterChange phases completed: {0}", @event.TransitionType);
     }
 
-    private void DoPushPageInternal(string uiKey, IUiPageEnterParam? param, UiTransitionPolicy policy)
+    /// <summary>
+    /// 内部异步压入页面实现
+    /// </summary>
+    /// <param name="uiKey">UI页面键值</param>
+    /// <param name="param">页面进入参数</param>
+    /// <param name="policy">过渡策略</param>
+    private async Task DoPushPageInternalAsync(string uiKey, IUiPageEnterParam? param, UiTransitionPolicy policy)
     {
-        if (!ExecuteEnterGuardsAsync(uiKey, param).GetAwaiter().GetResult())
+        if (!await ExecuteEnterGuardsAsync(uiKey, param))
         {
             Log.Warn("Push blocked by guard: {0}", uiKey);
             return;
@@ -571,6 +647,12 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         DoPushPageInternal(page, param, policy);
     }
 
+    /// <summary>
+    /// 内部压入页面实现
+    /// </summary>
+    /// <param name="page">UI页面行为实例</param>
+    /// <param name="param">页面进入参数</param>
+    /// <param name="policy">过渡策略</param>
     private void DoPushPageInternal(IUiPageBehavior page, IUiPageEnterParam? param, UiTransitionPolicy policy)
     {
         if (_stack.Count > 0)
@@ -596,6 +678,10 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         page.OnShow();
     }
 
+    /// <summary>
+    /// 内部弹出页面实现
+    /// </summary>
+    /// <param name="policy">页面弹出策略</param>
     private void DoPopInternal(UiPopPolicy policy)
     {
         if (_stack.Count == 0)
@@ -623,6 +709,10 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         }
     }
 
+    /// <summary>
+    /// 内部清空页面实现
+    /// </summary>
+    /// <param name="policy">页面弹出策略</param>
     private void DoClearInternal(UiPopPolicy policy)
     {
         Log.Debug("Clear UI Stack internal, count={0}", _stack.Count);
@@ -630,6 +720,12 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
             DoPopInternal(policy);
     }
 
+    /// <summary>
+    /// 执行进入守卫检查
+    /// </summary>
+    /// <param name="uiKey">UI页面键值</param>
+    /// <param name="param">页面进入参数</param>
+    /// <returns>如果允许进入则返回true，否则返回false</returns>
     private async Task<bool> ExecuteEnterGuardsAsync(string uiKey, IUiPageEnterParam? param)
     {
         foreach (var guard in _guards)
@@ -662,6 +758,11 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         return true;
     }
 
+    /// <summary>
+    /// 执行离开守卫检查
+    /// </summary>
+    /// <param name="uiKey">UI页面键值</param>
+    /// <returns>如果允许离开则返回true，否则返回false</returns>
     private async Task<bool> ExecuteLeaveGuardsAsync(string uiKey)
     {
         foreach (var guard in _guards)
