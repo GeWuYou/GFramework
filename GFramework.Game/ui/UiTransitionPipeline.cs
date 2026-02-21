@@ -110,7 +110,7 @@ public class UiTransitionPipeline
         Log.Debug(
             "Execute pipeline: Phases={0}, From={1}, To={2}, Type={3}, HandlerCount={4}",
             phases,
-            @event.FromUiKey,
+            @event.FromUiKey ?? "None",
             @event.ToUiKey ?? "None",
             @event.TransitionType,
             _handlers.Count
