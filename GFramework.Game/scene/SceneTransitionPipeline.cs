@@ -122,15 +122,14 @@ public class SceneTransitionPipeline
     {
         @event.Set("Phases", phases.ToString());
 
-        if (@event.FromSceneKey != null)
-            Log.Debug(
-                "Execute pipeline: Phases={0}, From={1}, To={2}, Type={3}, HandlerCount={4}",
-                phases,
-                @event.FromSceneKey,
-                @event.ToSceneKey ?? "None",
-                @event.TransitionType,
-                _handlers.Count
-            );
+        Log.Debug(
+            "Execute pipeline: Phases={0}, From={1}, To={2}, Type={3}, HandlerCount={4}",
+            phases,
+            @event.FromSceneKey ?? "None",
+            @event.ToSceneKey ?? "None",
+            @event.TransitionType,
+            _handlers.Count
+        );
 
         var sortedHandlers = FilterAndSortHandlers(@event, phases);
 

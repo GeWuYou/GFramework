@@ -96,7 +96,7 @@ public abstract class SceneRouterBase
                 await BeforeChangeAsync(@event);
                 await ClearInternalAsync();
                 await PushInternalAsync(sceneKey, param);
-                AfterChange(@event);
+                await AfterChangeAsync(@event);
             });
         }
         finally
@@ -237,7 +237,7 @@ public abstract class SceneRouterBase
             {
                 await BeforeChangeAsync(@event);
                 await PushInternalAsync(sceneKey, param);
-                AfterChange(@event);
+                await AfterChangeAsync(@event);
             });
         }
         finally
@@ -318,7 +318,7 @@ public abstract class SceneRouterBase
             {
                 await BeforeChangeAsync(@event);
                 await PopInternalAsync();
-                AfterChange(@event);
+                await AfterChangeAsync(@event);
             });
         }
         finally
@@ -389,7 +389,7 @@ public abstract class SceneRouterBase
             {
                 await BeforeChangeAsync(@event);
                 await ClearInternalAsync();
-                AfterChange(@event);
+                await AfterChangeAsync(@event);
             });
         }
         finally
@@ -451,25 +451,13 @@ public abstract class SceneRouterBase
 
     /// <summary>
     /// 执行转换后阶段的处理逻辑。
-    /// 在后台线程中异步执行，避免阻塞主线程。
     /// </summary>
     /// <param name="event">场景转换事件。</param>
-    private void AfterChange(SceneTransitionEvent @event)
+    private async Task AfterChangeAsync(SceneTransitionEvent @event)
     {
         Log.Debug("AfterChange phases started: {0}", @event.TransitionType);
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await _pipeline.ExecuteAsync(@event, SceneTransitionPhases.AfterChange);
-                Log.Debug("AfterChange phases completed: {0}", @event.TransitionType);
-            }
-            catch (Exception ex)
-            {
-                Log.Error("AfterChange phases failed: {0}, Error: {1}",
-                    @event.TransitionType, ex.Message);
-            }
-        });
+        await _pipeline.ExecuteAsync(@event, SceneTransitionPhases.AfterChange);
+        Log.Debug("AfterChange phases completed: {0}", @event.TransitionType);
     }
 
     /// <summary>

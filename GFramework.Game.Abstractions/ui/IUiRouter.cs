@@ -25,7 +25,8 @@ public interface IUiRouter : ISystem
     /// <param name="uiKey">UI界面的唯一标识符</param>
     /// <param name="param">进入界面的参数，可为空</param>
     /// <param name="policy">界面切换策略，默认为Exclusive（独占）</param>
-    void Push(string uiKey, IUiPageEnterParam? param = null, UiTransitionPolicy policy = UiTransitionPolicy.Exclusive);
+    ValueTask PushAsync(string uiKey, IUiPageEnterParam? param = null,
+        UiTransitionPolicy policy = UiTransitionPolicy.Exclusive);
 
 
     /// <summary>
@@ -35,7 +36,7 @@ public interface IUiRouter : ISystem
     /// <param name="page">已创建的UI页面行为实例</param>
     /// <param name="param">进入界面的参数,可为空</param>
     /// <param name="policy">界面切换策略,默认为Exclusive(独占)</param>
-    void Push(IUiPageBehavior page, IUiPageEnterParam? param = null,
+    ValueTask PushAsync(IUiPageBehavior page, IUiPageEnterParam? param = null,
         UiTransitionPolicy policy = UiTransitionPolicy.Exclusive);
 
 
@@ -43,7 +44,7 @@ public interface IUiRouter : ISystem
     ///     弹出路由栈顶的UI界面，返回到上一个界面
     /// </summary>
     /// <param name="policy">界面弹出策略，默认为Destroy（销毁）</param>
-    void Pop(UiPopPolicy policy = UiPopPolicy.Destroy);
+    ValueTask PopAsync(UiPopPolicy policy = UiPopPolicy.Destroy);
 
     /// <summary>
     ///     替换当前所有页面为新页面（基于uiKey）
@@ -52,7 +53,7 @@ public interface IUiRouter : ISystem
     /// <param name="param">页面进入参数，可为空</param>
     /// <param name="popPolicy">弹出页面时的销毁策略，默认为销毁</param>
     /// <param name="pushPolicy">推入页面时的过渡策略，默认为独占</param>
-    public void Replace(
+    public ValueTask ReplaceAsync(
         string uiKey,
         IUiPageEnterParam? param = null,
         UiPopPolicy popPolicy = UiPopPolicy.Destroy,
@@ -65,7 +66,7 @@ public interface IUiRouter : ISystem
     /// <param name="param">页面进入参数，可为空</param>
     /// <param name="popPolicy">弹出页面时的销毁策略，默认为销毁</param>
     /// <param name="pushPolicy">推入页面时的过渡策略，默认为独占</param>
-    public void Replace(
+    public ValueTask ReplaceAsync(
         IUiPageBehavior page,
         IUiPageEnterParam? param = null,
         UiPopPolicy popPolicy = UiPopPolicy.Destroy,
@@ -74,7 +75,7 @@ public interface IUiRouter : ISystem
     /// <summary>
     ///     清空所有UI界面，重置路由状态
     /// </summary>
-    void Clear();
+    ValueTask ClearAsync();
 
     /// <summary>
     ///     注册UI切换处理器
