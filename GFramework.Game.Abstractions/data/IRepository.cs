@@ -11,6 +11,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using GFramework.Core.Abstractions.utility;
+
 namespace GFramework.Game.Abstractions.data;
 
 /// <summary>
@@ -18,7 +20,7 @@ namespace GFramework.Game.Abstractions.data;
 /// </summary>
 /// <typeparam name="TKey">键的类型</typeparam>
 /// <typeparam name="TValue">值的类型</typeparam>
-public interface IRepository<in TKey, TValue>
+public interface IRepository<in TKey, TValue> : IUtility
 {
     /// <summary>
     /// 添加键值对到仓储中
