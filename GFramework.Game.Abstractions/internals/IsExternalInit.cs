@@ -2,7 +2,7 @@
 // This type is required to support init-only setters and record types
 // when targeting netstandard2.0 or older frameworks.
 
-#if NETSTANDARD2_0 || NETFRAMEWORK || NETCOREAPP2_0
+#if NETSTANDARD2_1 || NETFRAMEWORK || NETCOREAPP2_1
 using System.ComponentModel;
 
 namespace System.Runtime.CompilerServices;
