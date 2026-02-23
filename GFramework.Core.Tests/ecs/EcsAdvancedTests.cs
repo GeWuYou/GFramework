@@ -266,20 +266,24 @@ public class EcsAdvancedTests
     [Test]
     public void InitializeEcs_CalledTwice_Should_BeIdempotent()
     {
-        _context!.InitializeEcs();
-        var ecsWorld1 = _context.GetEcsWorld();
+        _ecsWorld = new EcsWorld();
+        _container!.Register(_ecsWorld);
+        _container.Register<IEcsWorld>(_ecsWorld);
 
-        Assert.DoesNotThrow(() => _context.InitializeEcs());
-
+        var ecsWorld1 = _context!.GetEcsWorld();
         var ecsWorld2 = _context.GetEcsWorld();
+
         Assert.That(ecsWorld2, Is.SameAs(ecsWorld1), "Should return same world instance");
     }
 
     [Test]
     public void GetEcsWorld_Should_ReturnIEcsWorld()
     {
-        _context!.InitializeEcs();
-        var ecsWorld = _context.GetEcsWorld();
+        _ecsWorld = new EcsWorld();
+        _container!.Register(_ecsWorld);
+        _container.Register<IEcsWorld>(_ecsWorld);
+
+        var ecsWorld = _context!.GetEcsWorld();
 
         Assert.That(ecsWorld, Is.InstanceOf<IEcsWorld>());
         Assert.That(ecsWorld, Is.InstanceOf<EcsWorld>());

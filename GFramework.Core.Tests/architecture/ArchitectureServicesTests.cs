@@ -5,6 +5,7 @@ using GFramework.Core.Abstractions.environment;
 using GFramework.Core.Abstractions.events;
 using GFramework.Core.Abstractions.ioc;
 using GFramework.Core.Abstractions.model;
+using GFramework.Core.Abstractions.properties;
 using GFramework.Core.Abstractions.query;
 using GFramework.Core.Abstractions.system;
 using GFramework.Core.Abstractions.utility;
@@ -46,16 +47,19 @@ public class ArchitectureServicesTests
     private ArchitectureServices? _services;
     private TestArchitectureContextV3? _context;
 
+    private void RegisterBuiltInServices()
+    {
+        var properties = new ArchitectureProperties();
+        _services!.ModuleManager.RegisterBuiltInModules(_services.Container, properties);
+    }
+
     /// <summary>
-    ///     测试构造函数初始化所有服务
+    ///     测试构造函数初始化容器
     /// </summary>
     [Test]
-    public void Constructor_Should_Initialize_AllServices()
+    public void Constructor_Should_Initialize_Container()
     {
         Assert.That(_services!.Container, Is.Not.Null);
-        Assert.That(_services.EventBus, Is.Not.Null);
-        Assert.That(_services.CommandExecutor, Is.Not.Null);
-        Assert.That(_services.QueryExecutor, Is.Not.Null);
     }
 
     [Test]
@@ -66,33 +70,60 @@ public class ArchitectureServicesTests
     }
 
     /// <summary>
-    ///     测试EventBus是EventBus的实例
+    ///     测试注册内置服务后EventBus可用
     /// </summary>
     [Test]
-    public void EventBus_Should_Be_Instance_Of_EventBus()
+    public void After_RegisterBuiltInModules_EventBus_Should_Be_Available()
     {
+        RegisterBuiltInServices();
+
         Assert.That(_services!.EventBus, Is.InstanceOf<IEventBus>());
         Assert.That(_services.EventBus, Is.InstanceOf<EventBus>());
     }
 
     /// <summary>
-    ///     测试CommandBus是CommandBus的实例
+    ///     测试注册内置服务后CommandExecutor可用
     /// </summary>
     [Test]
-    public void CommandBus_Should_Be_Instance_Of_CommandBus()
+    public void After_RegisterBuiltInModules_CommandExecutor_Should_Be_Available()
     {
+        RegisterBuiltInServices();
+
         Assert.That(_services!.CommandExecutor, Is.InstanceOf<ICommandExecutor>());
         Assert.That(_services.CommandExecutor, Is.InstanceOf<CommandExecutor>());
     }
 
     /// <summary>
-    ///     测试QueryBus是QueryBus的实例
+    ///     测试注册内置服务后QueryExecutor可用
     /// </summary>
     [Test]
-    public void QueryBus_Should_Be_Instance_Of_QueryBus()
+    public void After_RegisterBuiltInModules_QueryExecutor_Should_Be_Available()
     {
+        RegisterBuiltInServices();
+
         Assert.That(_services!.QueryExecutor, Is.InstanceOf<IQueryExecutor>());
         Assert.That(_services.QueryExecutor, Is.InstanceOf<QueryExecutor>());
+    }
+
+    /// <summary>
+    ///     测试注册内置服务后AsyncQueryExecutor可用
+    /// </summary>
+    [Test]
+    public void After_RegisterBuiltInModules_AsyncQueryExecutor_Should_Be_Available()
+    {
+        RegisterBuiltInServices();
+
+        Assert.That(_services!.AsyncQueryExecutor, Is.InstanceOf<IAsyncQueryExecutor>());
+        Assert.That(_services.AsyncQueryExecutor, Is.InstanceOf<AsyncQueryExecutor>());
+    }
+
+    /// <summary>
+    ///     测试未注册服务时EventBus为null
+    /// </summary>
+    [Test]
+    public void Without_RegisterBuiltInModules_EventBus_Should_Be_Null()
+    {
+        Assert.That(_services!.EventBus, Is.Null);
     }
 
     /// <summary>
@@ -186,8 +217,13 @@ public class ArchitectureServicesTests
     [Test]
     public void Multiple_Instances_Should_Have_Independent_EventBus()
     {
+        var properties = new ArchitectureProperties();
+
         var services1 = new ArchitectureServices();
+        services1.ModuleManager.RegisterBuiltInModules(services1.Container, properties);
+
         var services2 = new ArchitectureServices();
+        services2.ModuleManager.RegisterBuiltInModules(services2.Container, properties);
 
         Assert.That(services1.EventBus, Is.Not.SameAs(services2.EventBus));
     }
@@ -198,8 +234,13 @@ public class ArchitectureServicesTests
     [Test]
     public void Multiple_Instances_Should_Have_Independent_CommandBus()
     {
+        var properties = new ArchitectureProperties();
+
         var services1 = new ArchitectureServices();
+        services1.ModuleManager.RegisterBuiltInModules(services1.Container, properties);
+
         var services2 = new ArchitectureServices();
+        services2.ModuleManager.RegisterBuiltInModules(services2.Container, properties);
 
         Assert.That(services1.CommandExecutor, Is.Not.SameAs(services2.CommandExecutor));
     }
@@ -210,10 +251,45 @@ public class ArchitectureServicesTests
     [Test]
     public void Multiple_Instances_Should_Have_Independent_QueryBus()
     {
+        var properties = new ArchitectureProperties();
+
         var services1 = new ArchitectureServices();
+        services1.ModuleManager.RegisterBuiltInModules(services1.Container, properties);
+
         var services2 = new ArchitectureServices();
+        services2.ModuleManager.RegisterBuiltInModules(services2.Container, properties);
 
         Assert.That(services1.QueryExecutor, Is.Not.SameAs(services2.QueryExecutor));
+    }
+
+    /// <summary>
+    ///     测试ModuleManager属性不为空
+    /// </summary>
+    [Test]
+    public void ModuleManager_Should_Not_Be_Null()
+    {
+        Assert.That(_services!.ModuleManager, Is.Not.Null);
+    }
+
+    /// <summary>
+    ///     测试EnableEcs配置开关
+    /// </summary>
+    [Test]
+    public void EnableEcs_Should_Control_Ecs_Module_Registration()
+    {
+        var propertiesWithEcs = new ArchitectureProperties { EnableEcs = true };
+        var propertiesWithoutEcs = new ArchitectureProperties { EnableEcs = false };
+
+        var servicesWithEcs = new ArchitectureServices();
+        servicesWithEcs.ModuleManager.RegisterBuiltInModules(servicesWithEcs.Container, propertiesWithEcs);
+
+        var servicesWithoutEcs = new ArchitectureServices();
+        servicesWithoutEcs.ModuleManager.RegisterBuiltInModules(servicesWithoutEcs.Container, propertiesWithoutEcs);
+
+        var modulesWithEcs = servicesWithEcs.ModuleManager.GetModules();
+        var modulesWithoutEcs = servicesWithoutEcs.ModuleManager.GetModules();
+
+        Assert.That(modulesWithEcs.Count, Is.GreaterThan(modulesWithoutEcs.Count));
     }
 }
 
@@ -224,11 +300,6 @@ public class TestArchitectureContextV3 : IArchitectureContext
     private readonly MicrosoftDiContainer _container = new();
     private readonly DefaultEnvironment _environment = new();
     public int Id { get; init; }
-
-    public IIocContainer Container => _container;
-    public IEventBus EventBus => new EventBus();
-    public ICommandExecutor CommandExecutor => new CommandExecutor();
-    public IQueryExecutor QueryExecutor => new QueryExecutor();
 
     public TService? GetService<TService>() where TService : class
     {

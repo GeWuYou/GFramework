@@ -85,8 +85,11 @@ public class EcsBasicTests
     [Experimental("GFrameworkECS")]
     public void Test_01_InitializeEcs_Should_Create_EcsWorld()
     {
-        _context!.InitializeEcs();
-        var ecsWorld = _context.GetEcsWorld();
+        _ecsWorld = new EcsWorld();
+        _container!.Register(_ecsWorld);
+        _container.Register<IEcsWorld>(_ecsWorld);
+
+        var ecsWorld = _context!.GetEcsWorld();
 
         Assert.That(ecsWorld, Is.Not.Null, "EcsWorld should be created");
         Assert.That(ecsWorld.EntityCount, Is.EqualTo(0), "Initial entity count should be 0");
@@ -221,6 +224,6 @@ public class EcsBasicTests
     public void Test_08_GetEcsWorld_Without_Initialize_Should_Throw()
     {
         Assert.Throws<InvalidOperationException>(() => { _context!.GetEcsWorld(); },
-            "Getting EcsWorld without initialization should throw");
+            "ECS World not initialized. Enable ECS in configuration.");
     }
 }

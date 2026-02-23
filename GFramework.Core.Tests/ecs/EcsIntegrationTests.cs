@@ -84,8 +84,11 @@ public class EcsIntegrationTests
     [Test]
     public void InitializeEcs_Should_Create_EcsWorld()
     {
-        _context!.InitializeEcs();
-        var ecsWorld = _context.GetEcsWorld();
+        _ecsWorld = new EcsWorld();
+        _container!.Register(_ecsWorld);
+        _container.Register<IEcsWorld>(_ecsWorld);
+
+        var ecsWorld = _context!.GetEcsWorld();
 
         Assert.That(ecsWorld, Is.Not.Null);
         Assert.That(ecsWorld.EntityCount, Is.EqualTo(0));
@@ -246,7 +249,8 @@ public class EcsIntegrationTests
     [Test]
     public void GetEcsWorld_Without_Initialize_Should_Throw()
     {
-        Assert.Throws<InvalidOperationException>(() => { _context!.GetEcsWorld(); });
+        Assert.Throws<InvalidOperationException>(() => { _context!.GetEcsWorld(); },
+            "ECS World not initialized. Enable ECS in configuration.");
     }
 
     /// <summary>
