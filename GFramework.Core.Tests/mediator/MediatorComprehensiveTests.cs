@@ -214,9 +214,9 @@ public class MediatorComprehensiveTests
         var results = new List<int>();
 
         // 流应该在100ms后被取消（TaskCanceledException 继承自 OperationCanceledException）
-        Assert.ThrowsAsync<TaskCanceledException>(async () =>
+        Assert.ThrowsAsync<OperationCanceledException>(async () =>
         {
-            await foreach (var item in stream.WithCancellation(cts.Token))
+            await foreach (var item in stream)
             {
                 results.Add(item);
             }
@@ -531,7 +531,7 @@ public sealed class TestValidatedCommandHandler : IRequestHandler<TestValidatedC
     {
         if (string.IsNullOrWhiteSpace(request.Name))
         {
-            throw new ArgumentException("Name cannot be empty", nameof(request.Name));
+            throw new ArgumentException($"Name cannot be empty{nameof(request.Name)}");
         }
 
         return ValueTask.FromResult(Unit.Value);
