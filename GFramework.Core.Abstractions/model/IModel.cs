@@ -7,4 +7,4 @@ namespace GFramework.Core.Abstractions.model;
 /// <summary>
 ///     模型接口，定义了模型的基本行为和功能
 /// </summary>
-public interface IModel : IContextAware, IArchitecturePhaseAware, IInitializable;
+public interface IModel : IContextAware, IArchitecturePhaseListener, IInitializable;

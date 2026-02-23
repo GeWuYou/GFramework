@@ -92,7 +92,7 @@ public interface IArchitecture : IAsyncInitializable, IAsyncDestroyable, IInitia
     /// </summary>
     /// <param name="hook">生命周期钩子实例</param>
     /// <returns>注册的钩子实例</returns>
-    IArchitectureLifecycle RegisterLifecycleHook(IArchitectureLifecycle hook);
+    IArchitectureLifecycleHook RegisterLifecycleHook(IArchitectureLifecycleHook hook);
 
     /// <summary>
     ///     等待直到架构准备就绪的异步操作
