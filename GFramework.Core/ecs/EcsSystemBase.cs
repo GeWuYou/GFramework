@@ -13,7 +13,7 @@ public abstract class EcsSystemBase : AbstractSystem, IEcsSystem
     /// <summary>
     ///     ECS世界实例
     /// </summary>
-    protected EcsWorld EcsWorld { get; private set; } = null!;
+    protected IEcsWorld EcsWorld { get; private set; } = null!;
 
     /// <summary>
     ///     快捷访问内部World
@@ -35,7 +35,7 @@ public abstract class EcsSystemBase : AbstractSystem, IEcsSystem
     /// </summary>
     protected override void OnInit()
     {
-        EcsWorld = this.GetService<EcsWorld>() ?? throw new InvalidOperationException(
+        EcsWorld = this.GetService<IEcsWorld>() ?? throw new InvalidOperationException(
             "EcsWorld not found in context. Make sure ECS is properly initialized.");
 
         OnEcsInit();
