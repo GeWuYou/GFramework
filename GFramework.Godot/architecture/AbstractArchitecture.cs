@@ -85,7 +85,7 @@ public abstract class AbstractArchitecture(
             Name = _architectureAnchorName
         };
 
-        _anchor.Bind(Destroy);
+        _anchor.Bind(() => DestroyAsync().AsTask());
 
         tree.Root.CallDeferred(Node.MethodName.AddChild, _anchor);
     }
@@ -124,17 +124,18 @@ public abstract class AbstractArchitecture(
     ///     调用所有已安装扩展的OnDetach方法，并清空扩展列表。
     ///     若已被销毁则直接返回。
     /// </summary>
-    public override void Destroy()
+    public override async ValueTask DestroyAsync()
     {
         if (_destroyed)
             return;
 
         _destroyed = true;
+
         foreach (var ext in _extensions)
             ext.OnDetach();
 
         _extensions.Clear();
 
-        base.Destroy();
+        await base.DestroyAsync();
     }
 }
