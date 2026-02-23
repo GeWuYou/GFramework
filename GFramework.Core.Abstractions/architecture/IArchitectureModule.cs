@@ -4,7 +4,7 @@
 ///     架构模块接口，继承自架构生命周期接口。
 ///     定义了模块安装到架构中的标准方法。
 /// </summary>
-public interface IArchitectureModule : IArchitectureLifecycle, IArchitecturePhaseAware
+public interface IArchitectureModule
 {
     /// <summary>
     ///     将当前模块安装到指定的架构中。

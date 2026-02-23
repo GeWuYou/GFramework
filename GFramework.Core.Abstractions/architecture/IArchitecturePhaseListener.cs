@@ -3,12 +3,13 @@
 namespace GFramework.Core.Abstractions.architecture;
 
 /// <summary>
-///     定义架构阶段感知接口，用于在架构的不同阶段执行相应的逻辑
+/// 架构阶段监听器接口，用于监听和响应架构生命周期中的不同阶段变化。
+/// 实现此接口的类可以在架构进入特定阶段时执行相应的逻辑处理。
 /// </summary>
-public interface IArchitecturePhaseAware
+public interface IArchitecturePhaseListener
 {
     /// <summary>
-    ///     当架构进入指定阶段时触发的回调方法
+    /// 当架构进入指定阶段时触发的回调方法。
     /// </summary>
     /// <param name="phase">架构阶段枚举值，表示当前所处的架构阶段</param>
     void OnArchitecturePhase(ArchitecturePhase phase);

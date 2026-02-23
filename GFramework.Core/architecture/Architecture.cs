@@ -49,8 +49,6 @@ public abstract class Architecture(
         var name = module.GetType().Name;
         var logger = LoggerFactoryResolver.Provider.CreateLogger(name);
         logger.Debug($"Installing module: {name}");
-        RegisterLifecycleHook(module);
-        Container.RegisterPlurality(module);
         module.Install(this);
         logger.Info($"Module installed: {name}");
         return module;
@@ -126,7 +124,7 @@ public abstract class Architecture(
     /// <summary>
     ///     生命周期感知对象列表
     /// </summary>
-    private readonly List<IArchitectureLifecycle> _lifecycleHooks = [];
+    private readonly List<IArchitectureLifecycleHook> _lifecycleHooks = [];
 
     /// <summary>
     ///     标记架构是否已初始化完成
@@ -201,7 +199,7 @@ public abstract class Architecture(
     /// <param name="phase">新阶段</param>
     private void NotifyPhaseAwareObjects(ArchitecturePhase phase)
     {
-        foreach (var obj in Container.GetAll<IArchitecturePhaseAware>())
+        foreach (var obj in Container.GetAll<IArchitecturePhaseListener>())
         {
             _logger.Trace($"Notifying phase-aware object {obj.GetType().Name} of phase change to {phase}");
             obj.OnArchitecturePhase(phase);
@@ -226,7 +224,7 @@ public abstract class Architecture(
     /// </summary>
     /// <param name="hook">生命周期钩子实例</param>
     /// <returns>注册的钩子实例</returns>
-    public IArchitectureLifecycle RegisterLifecycleHook(IArchitectureLifecycle hook)
+    public IArchitectureLifecycleHook RegisterLifecycleHook(IArchitectureLifecycleHook hook)
     {
         if (CurrentPhase >= ArchitecturePhase.Ready && !Configuration.ArchitectureProperties.AllowLateRegistration)
             throw new InvalidOperationException(
