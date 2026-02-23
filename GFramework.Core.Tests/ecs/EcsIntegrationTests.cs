@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using Arch.Core;
 using GFramework.Core.Abstractions.ecs;
@@ -16,6 +17,7 @@ namespace GFramework.Core.Tests.ecs;
 /// 包括实体管理、组件操作、系统调度、优先级控制以及性能基准测试。
 /// </summary>
 [TestFixture]
+[Experimental("GFrameworkECS")]
 public class EcsIntegrationTests
 {
     /// <summary>

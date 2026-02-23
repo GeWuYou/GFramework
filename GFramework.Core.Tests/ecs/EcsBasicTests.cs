@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using Arch.Core;
 using GFramework.Core.Abstractions.ecs;
@@ -16,6 +17,7 @@ namespace GFramework.Core.Tests.ecs;
 /// 包括实体创建、组件设置、系统更新、实体销毁等基本操作。
 /// </summary>
 [TestFixture]
+[Experimental("GFrameworkECS")]
 public class EcsBasicTests
 {
     /// <summary>
@@ -80,6 +82,7 @@ public class EcsBasicTests
     /// 测试ECS初始化功能，验证是否能正确创建EcsWorld实例。
     /// </summary>
     [Test]
+    [Experimental("GFrameworkECS")]
     public void Test_01_InitializeEcs_Should_Create_EcsWorld()
     {
         _context!.InitializeEcs();

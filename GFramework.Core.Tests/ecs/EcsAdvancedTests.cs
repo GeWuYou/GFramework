@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using Arch.Core;
 using GFramework.Core.Abstractions.ecs;
@@ -13,6 +14,7 @@ using NUnit.Framework;
 namespace GFramework.Core.Tests.ecs;
 
 [TestFixture]
+[Experimental("GFrameworkECS")]
 public class EcsAdvancedTests
 {
     [SetUp]

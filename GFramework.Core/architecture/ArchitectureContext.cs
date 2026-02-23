@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using GFramework.Core.Abstractions.architecture;
 using GFramework.Core.Abstractions.command;
 using GFramework.Core.Abstractions.ecs;
@@ -423,6 +424,7 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     ///     获取ECS世界实例
     /// </summary>
     /// <returns>ECS世界实例</returns>
+    [Experimental("GFrameworkECS")]
     public IEcsWorld GetEcsWorld()
     {
         return _ecsWorld ??
@@ -433,6 +435,7 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     ///     注册ECS系统
     /// </summary>
     /// <typeparam name="T">ECS系统类型</typeparam>
+    [Experimental("GFrameworkECS")]
     public void RegisterEcsSystem<T>() where T : class, IEcsSystem
     {
         // 使用RegisterPlurality注册到所有接口
@@ -442,6 +445,7 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     /// <summary>
     ///     初始化ECS（在架构初始化时调用）
     /// </summary>
+    [Experimental("GFrameworkECS")]
     public void InitializeEcs()
     {
         if (_ecsWorld != null) return;
@@ -463,6 +467,7 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     /// <summary>
     ///     销毁ECS资源
     /// </summary>
+    [Experimental("GFrameworkECS")]
     private void DisposeEcs()
     {
         _ecsWorld?.Dispose();
