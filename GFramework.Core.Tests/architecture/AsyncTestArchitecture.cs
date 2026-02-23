@@ -11,12 +11,12 @@ public class AsyncTestArchitecture : TestArchitectureBase
     /// <summary>
     ///     异步初始化架构
     /// </summary>
-    protected override void Init()
+    protected override void OnInitialize()
     {
         // 注册模型
         RegisterModel(new AsyncTestModel());
         // 注册系统
         RegisterSystem(new AsyncTestSystem());
-        base.Init();
+        base.OnInitialize();
     }
 }

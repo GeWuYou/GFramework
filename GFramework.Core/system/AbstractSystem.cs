@@ -17,7 +17,7 @@ public abstract class AbstractSystem : ContextAwareBase, ISystem
     /// <summary>
     ///     系统初始化方法，调用抽象初始化方法
     /// </summary>
-    public void Init()
+    public void Initialize()
     {
         var name = GetType().Name;
         _logger = LoggerFactoryResolver.Provider.CreateLogger(name);

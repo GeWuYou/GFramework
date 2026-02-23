@@ -8,5 +8,5 @@ public interface IInitializable
     /// <summary>
     ///     初始化组件
     /// </summary>
-    void Init();
+    void Initialize();
 }

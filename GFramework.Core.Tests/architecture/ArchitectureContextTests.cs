@@ -321,7 +321,7 @@ public class TestSystemV2 : ISystem
         return _context;
     }
 
-    public void Init()
+    public void Initialize()
     {
     }
 
@@ -349,7 +349,7 @@ public class TestModelV2 : IModel
         return _context;
     }
 
-    public void Init()
+    public void Initialize()
     {
     }
 

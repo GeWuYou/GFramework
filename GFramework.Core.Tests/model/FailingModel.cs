@@ -15,7 +15,7 @@ public sealed class FailingModel : IModel
     ///     该方法会故意抛出InvalidOperationException异常
     /// </summary>
     /// <exception cref="InvalidOperationException">总是抛出此异常以模拟初始化失败</exception>
-    public void Init()
+    public void Initialize()
     {
         throw new InvalidOperationException("Model init failed intentionally");
     }

@@ -30,10 +30,10 @@ public sealed class AsyncTestSystem : ISystem, IAsyncInitializable
         return _context;
     }
 
-    public void Init()
+    public void Initialize()
     {
-        // 同步 Init 不应该被调用
-        throw new InvalidOperationException("Sync Init should not be called");
+        // 同步 OnInitialize 不应该被调用
+        throw new InvalidOperationException("Sync OnInitialize should not be called");
     }
 
     public void Destroy()

@@ -240,7 +240,7 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
             : null;
     }
     // =========================
-    // Init
+    // OnInitialize
     // =========================
 
     /// <summary>

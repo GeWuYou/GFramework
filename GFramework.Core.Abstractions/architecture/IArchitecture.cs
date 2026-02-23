@@ -10,7 +10,7 @@ namespace GFramework.Core.Abstractions.architecture;
 ///     架构接口，专注于生命周期管理，包括系统、模型、工具的注册和获取
 ///     业务操作通过 ArchitectureRuntime 提供
 /// </summary>
-public interface IArchitecture : IAsyncInitializable
+public interface IArchitecture : IAsyncInitializable, IAsyncDestroyable, IInitializable, IDestroyable
 {
     /// <summary>
     ///     获取架构上下文
@@ -24,22 +24,6 @@ public interface IArchitecture : IAsyncInitializable
     ///     一个可为空的委托，用于配置IServiceCollection实例
     /// </value>
     Action<IServiceCollection>? Configurator { get; }
-
-    /// <summary>
-    ///     初始化方法，用于执行对象的初始化操作
-    /// </summary>
-    /// <remarks>
-    ///     该方法通常用于设置初始状态、初始化成员变量或执行必要的预处理操作
-    /// </remarks>
-    void Initialize();
-
-    /// <summary>
-    ///     销毁方法，用于执行对象的清理和销毁操作
-    /// </summary>
-    /// <remarks>
-    ///     该方法通常用于释放资源、清理内存或执行必要的清理操作
-    /// </remarks>
-    void Destroy();
 
     /// <summary>
     ///     注册系统实例到架构中

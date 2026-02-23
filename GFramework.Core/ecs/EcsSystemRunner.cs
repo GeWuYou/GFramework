@@ -1,4 +1,5 @@
 using GFramework.Core.Abstractions.ecs;
+using GFramework.Core.extensions;
 using GFramework.Core.system;
 
 namespace GFramework.Core.ecs;
@@ -17,8 +18,8 @@ public sealed class EcsSystemRunner : AbstractSystem
     protected override void OnInit()
     {
         // 从容器获取所有已注册的ECS系统
-        var systemsList = Context.GetService<IReadOnlyList<IEcsSystem>>();
-        if (systemsList != null && systemsList.Count > 0)
+        var systemsList = this.GetService<IReadOnlyList<IEcsSystem>>();
+        if (systemsList is { Count: > 0 })
         {
             // 按优先级排序
             _systems.AddRange(systemsList.OrderBy(s => s.Priority));

@@ -11,10 +11,10 @@ public sealed class SyncTestArchitecture : TestArchitectureBase
     /// <summary>
     ///     初始化架构组件，注册模型、系统并设置事件监听器
     /// </summary>
-    protected override void Init()
+    protected override void OnInitialize()
     {
         RegisterModel(new TestModel());
         RegisterSystem(new TestSystem());
-        base.Init();
+        base.OnInitialize();
     }
 }

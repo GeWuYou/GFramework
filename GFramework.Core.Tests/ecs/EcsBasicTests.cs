@@ -68,7 +68,7 @@ public class EcsBasicTests
         {
             var system = (IEcsSystem)Activator.CreateInstance(systemType)!;
             system.SetContext(_context!);
-            system.Init();
+            system.Initialize();
             systems.Add(system);
             _container.RegisterPlurality(system);
         }

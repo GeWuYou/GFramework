@@ -45,7 +45,7 @@ public sealed class TestSystem : ISystem
     /// <summary>
     ///     初始化系统
     /// </summary>
-    public void Init()
+    public void Initialize()
     {
         Initialized = true;
     }

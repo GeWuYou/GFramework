@@ -18,7 +18,7 @@ public sealed class TestModel : AbstractModel, ITestModel
     /// <summary>
     ///     初始化模型
     /// </summary>
-    public void Init()
+    public void Initialize()
     {
         Initialized = true;
     }

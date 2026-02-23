@@ -30,8 +30,8 @@ public sealed class AsyncTestModel : AbstractModel, IAsyncInitializable
     /// <exception cref="InvalidOperationException">当该方法被调用时抛出异常</exception>
     public void Init()
     {
-        // sync Init 不应该被调用
-        throw new InvalidOperationException("Sync Init should not be called");
+        // sync OnInitialize 不应该被调用
+        throw new InvalidOperationException("Sync OnInitialize should not be called");
     }
 
     /// <summary>

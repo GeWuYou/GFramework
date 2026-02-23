@@ -214,7 +214,7 @@ public class MediatorComprehensiveTests
         var results = new List<int>();
 
         // 流应该在100ms后被取消（TaskCanceledException 继承自 OperationCanceledException）
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        Assert.CatchAsync<OperationCanceledException>(async () =>
         {
             await foreach (var item in stream)
             {

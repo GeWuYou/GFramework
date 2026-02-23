@@ -114,7 +114,7 @@ public class StateMachineSystemTests
         Assert.Throws<InvalidOperationException>(() => state1.GetContext());
         Assert.Throws<InvalidOperationException>(() => state2.GetContext());
 
-        _stateMachine.Init();
+        _stateMachine.Initialize();
 
         Assert.That(state1.GetContext(), Is.SameAs(_context));
         Assert.That(state2.GetContext(), Is.SameAs(_context));
@@ -129,7 +129,7 @@ public class StateMachineSystemTests
         var state = new TestStateV5();
 
         _stateMachine!.Register(state);
-        _stateMachine.Init();
+        _stateMachine.Initialize();
     }
 
     /// <summary>
@@ -173,7 +173,7 @@ public class StateMachineSystemTests
         _stateMachine!.Register(state1);
         _stateMachine.Register(state2);
 
-        _stateMachine.Init();
+        _stateMachine.Initialize();
         await _stateMachine.ChangeToAsync<TestStateV5>();
 
         Assert.That(eventReceived, Is.True);
@@ -203,7 +203,7 @@ public class StateMachineSystemTests
         _stateMachine!.Register(state1);
         _stateMachine.Register(state2);
 
-        _stateMachine.Init();
+        _stateMachine.Initialize();
         await _stateMachine.ChangeToAsync<TestStateV5>();
 
         eventReceived = false;
@@ -230,7 +230,7 @@ public class StateMachineSystemTests
         _stateMachine!.Register(state1);
         _stateMachine.Register(state2);
 
-        _stateMachine.Init();
+        _stateMachine.Initialize();
         await _stateMachine.ChangeToAsync<TestStateV5>();
         await _stateMachine.ChangeToAsync<TestStateV5_2>();
         await _stateMachine.ChangeToAsync<TestStateV5>();

@@ -48,7 +48,7 @@ public class StateMachineSystem : StateMachine, IStateMachineSystem
     ///     初始化方法，在系统启动时调用
     ///     遍历所有状态实例，为实现了IContextAware接口的状态设置上下文
     /// </summary>
-    public virtual void Init()
+    public virtual void Initialize()
     {
         foreach (var state in States.Values.OfType<IContextAware>()) state.SetContext(_context);
     }

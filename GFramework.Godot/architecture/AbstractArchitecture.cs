@@ -53,7 +53,7 @@ public abstract class AbstractArchitecture(
     ///     初始化架构，按顺序注册模型、系统和工具。
     ///     包括将架构绑定到Godot生命周期并调用模块安装逻辑。
     /// </summary>
-    protected override void Init()
+    protected override void OnInitialize()
     {
         _architectureAnchorName =
             $"__{GFrameworkConstants.FrameworkName}__{GetType().Name}__{GetHashCode()}__ArchitectureAnchor__";
@@ -76,7 +76,7 @@ public abstract class AbstractArchitecture(
         if (Engine.GetMainLoop() is not SceneTree tree)
             return;
 
-        // 防止重复挂载（热重载 / 多次 Init）
+        // 防止重复挂载（热重载 / 多次 OnInitialize）
         if (tree.Root.GetNodeOrNull(_architectureAnchorName) != null)
             return;
 

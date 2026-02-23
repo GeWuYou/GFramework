@@ -261,15 +261,11 @@ public abstract class Architecture(
         }
 
         // 处理销毁（支持 IDestroyable 或 IAsyncDestroyable）
-        if (component is IDestroyable or IAsyncDestroyable)
-        {
-            // 原子去重：HashSet.Add 返回 true 表示添加成功（之前不存在）
-            if (_disposableSet.Add(component))
-            {
-                _disposables.Add(component);
-                _logger.Trace($"Registered {component.GetType().Name} for destruction");
-            }
-        }
+        if (component is not (IDestroyable or IAsyncDestroyable)) return;
+        // 原子去重：HashSet.Add 返回 true 表示添加成功（之前不存在）
+        if (!_disposableSet.Add(component)) return;
+        _disposables.Add(component);
+        _logger.Trace($"Registered {component.GetType().Name} for destruction");
     }
 
     /// <summary>
@@ -354,13 +350,13 @@ public abstract class Architecture(
         if (asyncMode && component is IAsyncInitializable asyncInit)
             await asyncInit.InitializeAsync();
         else
-            component.Init();
+            component.Initialize();
     }
 
     /// <summary>
     ///     抽象初始化方法，由子类重写以进行自定义初始化操作
     /// </summary>
-    protected abstract void Init();
+    protected abstract void OnInitialize();
 
     /// <summary>
     ///     异步销毁架构及所有组件
@@ -663,10 +659,10 @@ public abstract class Architecture(
 
         // 执行服务钩子
         Container.ExecuteServicesHook(Configurator);
-        // === 用户 Init ===
-        _logger.Debug("Calling user Init()");
-        Init();
-        _logger.Debug("User Init() completed");
+        // === 用户 OnInitialize ===
+        _logger.Debug("Calling user OnInitialize()");
+        OnInitialize();
+        _logger.Debug("User OnInitialize() completed");
 
         // === 组件初始化阶段 ===
         await InitializeAllComponentsAsync(asyncMode);

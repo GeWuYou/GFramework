@@ -53,7 +53,7 @@ public class EcsAdvancedTests
         {
             var system = (IEcsSystem)Activator.CreateInstance(systemType)!;
             ((IContextAware)system).SetContext(_context!);
-            system.Init();
+            system.Initialize();
             systems.Add(system);
             _container.RegisterPlurality(system);
         }
@@ -65,7 +65,7 @@ public class EcsAdvancedTests
     {
         var runner = new EcsSystemRunner();
         ((IContextAware)runner).SetContext(_context!);
-        runner.Init();
+        runner.Initialize();
         return runner;
     }
 
@@ -220,7 +220,7 @@ public class EcsAdvancedTests
         foreach (var system in new[] { systemA, systemB, systemC })
         {
             ((IContextAware)system).SetContext(_context!);
-            system.Init();
+            system.Initialize();
             _container.RegisterPlurality(system);
         }
 
@@ -247,7 +247,7 @@ public class EcsAdvancedTests
 
         var movementSystem = new MovementSystem();
         ((IContextAware)movementSystem).SetContext(_context!);
-        movementSystem.Init();
+        movementSystem.Initialize();
         _container.RegisterPlurality(movementSystem);
 
         _container.Register(new List<IEcsSystem> { movementSystem } as IReadOnlyList<IEcsSystem>);

@@ -37,7 +37,7 @@ public abstract class TestArchitectureBase : Architecture
     /// <summary>
     ///     初始化架构组件，注册模型、系统并设置事件监听器
     /// </summary>
-    protected override void Init()
+    protected override void OnInitialize()
     {
         InitCalled = true;
         _postRegistrationHook?.Invoke(this);

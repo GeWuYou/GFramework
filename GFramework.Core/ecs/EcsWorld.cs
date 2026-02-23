@@ -8,25 +8,24 @@ namespace GFramework.Core.ecs;
 /// </summary>
 public sealed class EcsWorld : IEcsWorld
 {
-    private readonly World _world = World.Create();
     private bool _disposed;
 
     /// <summary>
     ///     获取内部的Arch World实例
     /// </summary>
-    public World InternalWorld => _world;
+    public World InternalWorld { get; } = World.Create();
 
     /// <summary>
     ///     当前实体数量
     /// </summary>
-    public int EntityCount => _world.Size;
+    public int EntityCount => InternalWorld.Size;
 
     /// <summary>
     ///     创建一个新实体
     /// </summary>
     public Entity CreateEntity(params ComponentType[] types)
     {
-        return _world.Create(types);
+        return InternalWorld.Create(types);
     }
 
     /// <summary>
@@ -34,7 +33,7 @@ public sealed class EcsWorld : IEcsWorld
     /// </summary>
     public void DestroyEntity(Entity entity)
     {
-        _world.Destroy(entity);
+        InternalWorld.Destroy(entity);
     }
 
     /// <summary>
@@ -42,7 +41,7 @@ public sealed class EcsWorld : IEcsWorld
     /// </summary>
     public bool IsAlive(Entity entity)
     {
-        return _world.IsAlive(entity);
+        return InternalWorld.IsAlive(entity);
     }
 
     /// <summary>
@@ -50,7 +49,7 @@ public sealed class EcsWorld : IEcsWorld
     /// </summary>
     public void Clear()
     {
-        _world.Clear();
+        InternalWorld.Clear();
     }
 
     /// <summary>
@@ -60,7 +59,7 @@ public sealed class EcsWorld : IEcsWorld
     {
         if (_disposed) return;
 
-        World.Destroy(_world);
+        World.Destroy(InternalWorld);
         _disposed = true;
     }
 }

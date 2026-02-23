@@ -222,7 +222,7 @@ public class TestArchitecture : Architecture
     /// <summary>
     ///     初始化方法，当前为空实现
     /// </summary>
-    protected override void Init()
+    protected override void OnInitialize()
     {
     }
 }

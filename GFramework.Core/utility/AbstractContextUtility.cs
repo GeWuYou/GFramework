@@ -19,7 +19,7 @@ public abstract class AbstractContextUtility : ContextAwareBase, IContextUtility
     /// <summary>
     ///     初始化上下文工具类
     /// </summary>
-    public void Init()
+    public void Initialize()
     {
         var name = GetType().Name;
         // 获取上下文中的日志记录器

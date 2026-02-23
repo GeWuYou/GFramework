@@ -90,7 +90,7 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
         var mediator = Mediator;
         if (mediator == null)
             throw new InvalidOperationException(
-                "Mediator not registered. Call EnableMediator() in your Architecture.Init() method.");
+                "Mediator not registered. Call EnableMediator() in your Architecture.OnInitialize() method.");
 
         return await mediator.Send(request, cancellationToken);
     }

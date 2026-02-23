@@ -1,5 +1,6 @@
 using Arch.Core;
 using GFramework.Core.Abstractions.ecs;
+using GFramework.Core.extensions;
 using GFramework.Core.system;
 
 namespace GFramework.Core.ecs;
@@ -34,7 +35,7 @@ public abstract class EcsSystemBase : AbstractSystem, IEcsSystem
     /// </summary>
     protected override void OnInit()
     {
-        EcsWorld = Context.GetService<EcsWorld>() ?? throw new InvalidOperationException(
+        EcsWorld = this.GetService<EcsWorld>() ?? throw new InvalidOperationException(
             "EcsWorld not found in context. Make sure ECS is properly initialized.");
 
         OnEcsInit();

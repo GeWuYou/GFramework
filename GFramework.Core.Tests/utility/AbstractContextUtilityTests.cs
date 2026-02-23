@@ -61,11 +61,11 @@ public class AbstractContextUtilityTests
     {
         var utility = new TestContextUtilityV1();
 
-        Assert.That(utility.Initialized, Is.False, "Utility should not be initialized before Init");
+        Assert.That(utility.Initialized, Is.False, "Utility should not be initialized before OnInitialize");
 
-        utility.Init();
+        utility.Initialize();
 
-        Assert.That(utility.Initialized, Is.True, "Utility should be initialized after Init");
+        Assert.That(utility.Initialized, Is.True, "Utility should be initialized after OnInitialize");
     }
 
     /// <summary>
@@ -76,11 +76,11 @@ public class AbstractContextUtilityTests
     {
         var utility = new TestContextUtilityV1();
 
-        Assert.That(utility.GetLogger(), Is.Null, "Logger should be null before Init");
+        Assert.That(utility.GetLogger(), Is.Null, "Logger should be null before OnInitialize");
 
-        utility.Init();
+        utility.Initialize();
 
-        Assert.That(utility.GetLogger(), Is.Not.Null, "Logger should be set after Init");
+        Assert.That(utility.GetLogger(), Is.Not.Null, "Logger should be set after OnInitialize");
     }
 
     /// <summary>
@@ -91,11 +91,11 @@ public class AbstractContextUtilityTests
     {
         var utility = new TestContextUtilityV1();
 
-        Assert.That(utility.InitCalled, Is.False, "InitCalled should be false before Init");
+        Assert.That(utility.InitCalled, Is.False, "InitCalled should be false before OnInitialize");
 
-        utility.Init();
+        utility.Initialize();
 
-        Assert.That(utility.InitCalled, Is.True, "InitCalled should be true after Init");
+        Assert.That(utility.InitCalled, Is.True, "InitCalled should be true after OnInitialize");
     }
 
     /// <summary>
@@ -106,7 +106,7 @@ public class AbstractContextUtilityTests
     {
         var utility = new TestContextUtilityV1();
 
-        utility.Init();
+        utility.Initialize();
         Assert.That(utility.Destroyed, Is.False, "Utility should not be destroyed before Destroy");
 
         utility.Destroy();
@@ -156,7 +156,7 @@ public class AbstractContextUtilityTests
         Assert.That(utility.Initialized, Is.False);
         Assert.That(utility.CustomInitializationDone, Is.False);
 
-        utility.Init();
+        utility.Initialize();
 
         Assert.That(utility.Initialized, Is.True);
         Assert.That(utility.CustomInitializationDone, Is.True);
@@ -175,7 +175,7 @@ public class AbstractContextUtilityTests
         Assert.That(utility.Destroyed, Is.False);
 
         // 初始化
-        utility.Init();
+        utility.Initialize();
         Assert.That(utility.Initialized, Is.True);
         Assert.That(utility.Destroyed, Is.False);
 
@@ -194,7 +194,7 @@ public class AbstractContextUtilityTests
         var utility = new TestContextUtilityV1();
 
         // 第一次初始化和销毁
-        utility.Init();
+        utility.Initialize();
         Assert.That(utility.Initialized, Is.True);
         utility.Destroy();
         Assert.That(utility.Destroyed, Is.True);
@@ -203,7 +203,7 @@ public class AbstractContextUtilityTests
         utility.Destroyed = false;
 
         // 第二次初始化和销毁
-        utility.Init();
+        utility.Initialize();
         Assert.That(utility.Initialized, Is.True);
         utility.Destroy();
         Assert.That(utility.Destroyed, Is.True);
