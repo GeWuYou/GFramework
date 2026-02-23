@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using GFramework.Core.Abstractions.architecture;
 using GFramework.Core.Abstractions.command;
 using GFramework.Core.Abstractions.ecs;
@@ -9,7 +8,6 @@ using GFramework.Core.Abstractions.model;
 using GFramework.Core.Abstractions.query;
 using GFramework.Core.Abstractions.system;
 using GFramework.Core.Abstractions.utility;
-using GFramework.Core.ecs;
 using Mediator;
 using ICommand = GFramework.Core.Abstractions.command.ICommand;
 
@@ -22,10 +20,8 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
 {
     private readonly IIocContainer _container = container ?? throw new ArgumentNullException(nameof(container));
     private readonly Dictionary<Type, object> _serviceCache = new();
-    private EcsSystemRunner? _ecsRunner;
-    private EcsWorld? _ecsWorld;
 
-    #region Mediator Integration (新实现)
+    #region Mediator Integration
 
     /// <summary>
     /// 获取 Mediator 实例（延迟加载）
@@ -424,55 +420,21 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     ///     获取ECS世界实例
     /// </summary>
     /// <returns>ECS世界实例</returns>
-    [Experimental("GFrameworkECS")]
     public IEcsWorld GetEcsWorld()
     {
-        return _ecsWorld ??
-               throw new InvalidOperationException("ECS World not initialized. Call InitializeEcs() first.");
+        var ecsWorld = GetOrCache<IEcsWorld>();
+        return ecsWorld ??
+               throw new InvalidOperationException("ECS World not initialized. Enable ECS in configuration.");
     }
 
     /// <summary>
     ///     注册ECS系统
     /// </summary>
     /// <typeparam name="T">ECS系统类型</typeparam>
-    [Experimental("GFrameworkECS")]
     public void RegisterEcsSystem<T>() where T : class, IEcsSystem
     {
         // 使用RegisterPlurality注册到所有接口
         _container.RegisterPlurality<T>();
-    }
-
-    /// <summary>
-    ///     初始化ECS（在架构初始化时调用）
-    /// </summary>
-    [Experimental("GFrameworkECS")]
-    public void InitializeEcs()
-    {
-        if (_ecsWorld != null) return;
-
-        // 创建ECS世界
-        _ecsWorld = new EcsWorld();
-        _container.Register(_ecsWorld);
-
-        // 注册系统调度器
-        _container.RegisterPlurality<EcsSystemRunner>();
-        _ecsRunner = _container.Get<EcsSystemRunner>();
-    }
-
-    /// <summary>
-    ///     获取ECS系统调度器
-    /// </summary>
-    internal EcsSystemRunner? GetEcsRunner() => _ecsRunner;
-
-    /// <summary>
-    ///     销毁ECS资源
-    /// </summary>
-    [Experimental("GFrameworkECS")]
-    private void DisposeEcs()
-    {
-        _ecsWorld?.Dispose();
-        _ecsWorld = null;
-        _ecsRunner = null;
     }
 
     #endregion

@@ -68,10 +68,7 @@ public abstract class Architecture(
     /// </summary>
     private IEnvironment Environment { get; } = environment ?? new DefaultEnvironment();
 
-    /// <summary>
-    ///     获取架构服务对象
-    /// </summary>
-    private IArchitectureServices Services { get; } = services ?? new ArchitectureServices();
+    private ArchitectureServices Services { get; } = services as ArchitectureServices ?? new ArchitectureServices();
 
     /// <summary>
     ///     获取依赖注入容器
@@ -401,6 +398,10 @@ public abstract class Architecture(
 
         _disposables.Clear();
         _disposableSet.Clear();
+
+        // 销毁服务模块
+        await Services.ModuleManager.DestroyAllAsync();
+
         Container.Clear();
 
         // 进入已销毁阶段
@@ -640,6 +641,9 @@ public abstract class Architecture(
         _logger = LoggerFactoryResolver.Provider.CreateLogger(GetType().Name);
         Environment.Initialize();
 
+        // 注册内置服务模块（根据配置）
+        Services.ModuleManager.RegisterBuiltInModules(Container, Configuration.ArchitectureProperties);
+
         // 将 Environment 注册到容器（如果尚未注册）
         if (!Container.Contains<IEnvironment>())
             Container.RegisterPlurality(Environment);
@@ -657,6 +661,10 @@ public abstract class Architecture(
 
         // 执行服务钩子
         Container.ExecuteServicesHook(Configurator);
+
+        // 初始化服务模块
+        await Services.ModuleManager.InitializeAllAsync(asyncMode);
+
         // === 用户 OnInitialize ===
         _logger.Debug("Calling user OnInitialize()");
         OnInitialize();
