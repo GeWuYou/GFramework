@@ -531,7 +531,7 @@ public sealed class TestValidatedCommandHandler : IRequestHandler<TestValidatedC
     {
         if (string.IsNullOrWhiteSpace(request.Name))
         {
-            throw new ArgumentException($"Name cannot be empty{nameof(request.Name)}");
+            throw new ArgumentException($"Name cannot be empty {nameof(request.Name)}");
         }
 
         return ValueTask.FromResult(Unit.Value);
