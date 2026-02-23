@@ -68,7 +68,7 @@ public abstract class Architecture(
     /// </summary>
     private IEnvironment Environment { get; } = environment ?? new DefaultEnvironment();
 
-    private ArchitectureServices Services { get; } = services as ArchitectureServices ?? new ArchitectureServices();
+    private IArchitectureServices Services { get; } = services ?? new ArchitectureServices();
 
     /// <summary>
     ///     获取依赖注入容器

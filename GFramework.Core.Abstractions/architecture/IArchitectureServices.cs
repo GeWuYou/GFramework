@@ -27,17 +27,23 @@ public interface IArchitectureServices : IContextAware
     ///     获取命令执行器
     /// </summary>
     /// <returns>ICommandExecutor类型的命令执行器实例</returns>
-    public ICommandExecutor CommandExecutor { get; }
+    ICommandExecutor CommandExecutor { get; }
 
     /// <summary>
     ///     获取查询执行器
     /// </summary>
     /// <returns>IQueryExecutor类型的查询执行器实例</returns>
-    public IQueryExecutor QueryExecutor { get; }
+    IQueryExecutor QueryExecutor { get; }
 
     /// <summary>
     ///     获取异步查询执行器
     /// </summary>
     /// <returns>IAsyncQueryExecutor类型的异步查询执行器实例</returns>
-    public IAsyncQueryExecutor AsyncQueryExecutor { get; }
+    IAsyncQueryExecutor AsyncQueryExecutor { get; }
+
+    /// <summary>
+    ///     获取服务模块管理器
+    /// </summary>
+    /// <returns>IServiceModuleManager类型的服务模块管理器实例</returns>
+    IServiceModuleManager ModuleManager { get; }
 }
