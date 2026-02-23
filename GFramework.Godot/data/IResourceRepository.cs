@@ -25,17 +25,26 @@ namespace GFramework.Godot.data;
 public interface IResourceRepository<in TKey, TResource> : IRepository<TKey, TResource> where TResource : Resource
 {
     /// <summary>
-    /// 从指定路径加载资源到仓储中
+    /// 从指定路径集合加载资源
     /// </summary>
-    /// <param name="paths">资源文件的路径集合</param>
-    /// <param name="recursive">是否递归加载子目录中的资源</param>
-    void LoadFromPath(IEnumerable<string> paths, bool recursive = false);
+    /// <param name="paths">资源文件路径集合</param>
+    void LoadFromPath(IEnumerable<string> paths);
 
     /// <summary>
-    /// 从指定路径数组加载资源到仓储中
-    /// 提供便捷的参数数组重载方法
+    /// 从指定路径数组加载资源
     /// </summary>
-    /// <param name="recursive">是否递归加载子目录中的资源</param>
-    /// <param name="paths">资源文件路径的参数数组</param>
-    void LoadFromPath(bool recursive = false, params string[] paths);
+    /// <param name="paths">资源文件路径数组</param>
+    void LoadFromPath(params string[] paths);
+
+    /// <summary>
+    /// 递归从指定路径集合加载资源
+    /// </summary>
+    /// <param name="paths">资源文件路径集合</param>
+    void LoadFromPathRecursive(IEnumerable<string> paths);
+
+    /// <summary>
+    /// 递归从指定路径数组加载资源
+    /// </summary>
+    /// <param name="paths">资源文件路径数组</param>
+    void LoadFromPathRecursive(params string[] paths);
 }

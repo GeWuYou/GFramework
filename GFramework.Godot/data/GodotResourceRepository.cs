@@ -12,6 +12,8 @@
 // limitations under the License.
 
 using GFramework.Core.Abstractions.bases;
+using GFramework.Core.Abstractions.logging;
+using GFramework.Core.logging;
 using Godot;
 
 namespace GFramework.Godot.data;
@@ -27,6 +29,9 @@ public class GodotResourceRepository<TKey, TResource>
     where TResource : Resource, IHasKey<TKey>
     where TKey : notnull
 {
+    private static readonly ILogger Log =
+        LoggerFactoryResolver.Provider.CreateLogger(nameof(GodotResourceRepository<TKey, TResource>));
+
     /// <summary>
     /// 内部存储字典，用于保存键值对形式的资源
     /// </summary>
@@ -72,7 +77,7 @@ public class GodotResourceRepository<TKey, TResource>
     /// </summary>
     /// <returns>包含所有资源的只读集合</returns>
     public IReadOnlyCollection<TResource> GetAll()
-        => _storage.Values;
+        => _storage.Values.ToArray();
 
     /// <summary>
     /// 检查是否包含指定键的资源
@@ -100,27 +105,52 @@ public class GodotResourceRepository<TKey, TResource>
         => _storage.Clear();
 
     /// <summary>
-    /// 从指定路径集合加载资源到仓储中
+    /// 从指定路径集合加载资源（非递归）
     /// </summary>
-    /// <param name="paths">资源文件路径的集合</param>
+    /// <param name="paths">资源文件路径集合</param>
+    public void LoadFromPath(IEnumerable<string> paths)
+    {
+        LoadFromPathInternal(paths, recursive: false);
+    }
+
+    /// <summary>
+    /// 从指定路径数组加载资源（非递归）
+    /// </summary>
+    /// <param name="paths">资源文件路径数组</param>
+    public void LoadFromPath(params string[] paths)
+    {
+        LoadFromPathInternal(paths, recursive: false);
+    }
+
+    /// <summary>
+    /// 递归从指定路径集合加载资源
+    /// </summary>
+    /// <param name="paths">资源文件路径集合</param>
+    public void LoadFromPathRecursive(IEnumerable<string> paths)
+    {
+        LoadFromPathInternal(paths, recursive: true);
+    }
+
+    /// <summary>
+    /// 递归从指定路径数组加载资源
+    /// </summary>
+    /// <param name="paths">资源文件路径数组</param>
+    public void LoadFromPathRecursive(params string[] paths)
+    {
+        LoadFromPathInternal(paths, recursive: true);
+    }
+
+    /// <summary>
+    /// 内部方法，根据路径集合和递归标志加载资源
+    /// </summary>
+    /// <param name="paths">资源文件路径集合</param>
     /// <param name="recursive">是否递归加载子目录中的资源</param>
-    public void LoadFromPath(IEnumerable<string> paths, bool recursive = false)
+    private void LoadFromPathInternal(IEnumerable<string> paths, bool recursive)
     {
         foreach (var path in paths)
         {
             LoadSinglePath(path, recursive);
         }
-    }
-
-    /// <summary>
-    /// 从指定路径数组加载资源到仓储中
-    /// 提供便捷的参数数组重载方法
-    /// </summary>
-    /// <param name="recursive">是否递归加载子目录中的资源</param>
-    /// <param name="paths">资源文件路径的参数数组</param>
-    public void LoadFromPath(bool recursive = false, params string[] paths)
-    {
-        LoadFromPath(paths, recursive);
     }
 
     /// <summary>
@@ -131,54 +161,67 @@ public class GodotResourceRepository<TKey, TResource>
     /// <param name="recursive">是否递归加载子目录中的资源</param>
     private void LoadSinglePath(string path, bool recursive)
     {
-        // 打开目录访问对象
+        // 尝试打开指定路径的目录
         var dir = DirAccess.Open(path);
         if (dir == null)
         {
-            GD.PushWarning($"Path not found: {path}");
+            Log.Warn($"Path not found: {path}");
             return;
         }
 
         // 开始遍历目录
         dir.ListDirBegin();
-
+        // 循环读取目录中的每个条目
         while (true)
         {
             var entry = dir.GetNext();
             if (string.IsNullOrEmpty(entry))
                 break;
-
-            var fullPath = $"{path}/{entry}";
-
-            // 处理目录项
-            if (dir.CurrentIsDir())
-            {
-                // 递归处理子目录（排除.和..目录）
-                if (recursive && entry != "." && entry != "..")
-                {
-                    LoadSinglePath(fullPath, true);
-                }
-
-                continue;
-            }
-
-            // 只处理.tres和.res文件
-            if (!entry.EndsWith(".tres") && !entry.EndsWith(".res"))
-                continue;
-
-            // 加载资源文件
-            var resource = GD.Load<TResource>(fullPath);
-
-            if (resource == null)
-            {
-                GD.PushWarning($"Failed to load resource: {fullPath}");
-                continue;
-            }
-
-            Add(resource.Key, resource);
+            // 跳过当前目录和父目录的特殊条目
+            if (entry is not ("." or ".."))
+                ProcessEntry(path, entry, dir.CurrentIsDir(), recursive);
         }
 
         // 结束目录遍历
         dir.ListDirEnd();
+    }
+
+    /// <summary>
+    /// 处理目录中的单个条目
+    /// 如果是目录且启用递归则继续深入处理，如果是资源文件则加载到存储中
+    /// </summary>
+    /// <param name="basePath">基础路径</param>
+    /// <param name="entry">当前处理的条目名称</param>
+    /// <param name="isDir">当前条目是否为目录</param>
+    /// <param name="recursive">是否递归处理子目录</param>
+    private void ProcessEntry(string basePath, string entry, bool isDir, bool recursive)
+    {
+        // 构建完整的文件路径
+        var fullPath = $"{basePath}/{entry}";
+
+        // 处理目录条目
+        if (isDir)
+        {
+            // 如果启用递归，则递归处理子目录
+            if (recursive)
+                LoadSinglePath(fullPath, true);
+            return;
+        }
+
+        // 只处理.tres和.res扩展名的资源文件
+        if (!entry.EndsWith(".tres") && !entry.EndsWith(".res"))
+            return;
+
+        // 加载资源文件
+        var resource = GD.Load<TResource>(fullPath);
+        if (resource == null)
+        {
+            Log.Warn($"Failed to load resource: {fullPath}");
+            return;
+        }
+
+        // 将资源添加到存储中，如果键已存在则记录警告
+        if (!_storage.TryAdd(resource.Key, resource))
+            Log.Warn($"Duplicate key detected: {resource.Key}");
     }
 }
