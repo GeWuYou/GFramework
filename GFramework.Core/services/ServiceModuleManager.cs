@@ -16,6 +16,7 @@ public sealed class ServiceModuleManager : IServiceModuleManager
 {
     private readonly ILogger _logger = LoggerFactoryResolver.Provider.CreateLogger(nameof(ServiceModuleManager));
     private readonly List<IServiceModule> _modules = [];
+    private bool _builtInModulesRegistered;
 
     /// <summary>
     ///     注册单个服务模块。
@@ -41,13 +42,20 @@ public sealed class ServiceModuleManager : IServiceModuleManager
     }
 
     /// <summary>
-    ///     注册内置服务模块。
-    ///     根据配置属性决定是否启用特定模块（如ECS模块），并对模块按优先级排序后注册到容器中。
+    ///     注册内置服务模块，并根据优先级排序后完成服务注册。
+    ///     内置模块包括事件总线、命令执行器、查询执行器等核心模块，
+    ///     并根据配置决定是否启用ECS模块。
     /// </summary>
-    /// <param name="container">依赖注入容器，用于注册模块提供的服务。</param>
-    /// <param name="properties">架构配置属性，用于控制模块的启用状态。</param>
+    /// <param name="container">IoC容器实例，用于模块服务注册。</param>
+    /// <param name="properties">架构属性配置，用于判断是否启用ECS模块。</param>
     public void RegisterBuiltInModules(IIocContainer container, ArchitectureProperties properties)
     {
+        if (_builtInModulesRegistered)
+        {
+            _logger.Warn("Built-in modules already registered, skipping duplicate registration");
+            return;
+        }
+
         RegisterModule(new EventBusModule());
         RegisterModule(new CommandExecutorModule());
         RegisterModule(new QueryExecutorModule());
@@ -69,11 +77,12 @@ public sealed class ServiceModuleManager : IServiceModuleManager
             module.Register(container);
         }
 
+        _builtInModulesRegistered = true;
         _logger.Info($"Registered {_modules.Count} built-in service modules");
     }
 
     /// <summary>
-    ///     获取所有已注册的服务模块列表。
+    ///     获取当前已注册的所有服务模块。
     /// </summary>
     /// <returns>只读的服务模块列表。</returns>
     public IReadOnlyList<IServiceModule> GetModules()
@@ -82,10 +91,10 @@ public sealed class ServiceModuleManager : IServiceModuleManager
     }
 
     /// <summary>
-    ///     异步初始化所有启用的服务模块。
-    ///     支持同步和异步初始化模式，优先使用异步接口（如果模块实现了IAsyncInitializable）。
+    ///     异步初始化所有已启用的服务模块。
+    ///     根据模块是否实现异步初始化接口，选择同步或异步初始化方式。
     /// </summary>
-    /// <param name="asyncMode">是否启用异步初始化模式。</param>
+    /// <param name="asyncMode">是否以异步模式初始化模块。</param>
     /// <returns>表示异步操作的任务。</returns>
     public async Task InitializeAllAsync(bool asyncMode)
     {
@@ -109,8 +118,8 @@ public sealed class ServiceModuleManager : IServiceModuleManager
     }
 
     /// <summary>
-    ///     异步销毁所有启用的服务模块。
-    ///     按逆序销毁模块以确保依赖关系正确释放，并捕获异常避免中断整个销毁流程。
+    ///     异步销毁所有已启用的服务模块。
+    ///     按照逆序销毁模块，确保依赖关系正确处理，并捕获销毁过程中的异常。
     /// </summary>
     /// <returns>表示异步操作的值任务。</returns>
     public async ValueTask DestroyAllAsync()
@@ -134,6 +143,7 @@ public sealed class ServiceModuleManager : IServiceModuleManager
         }
 
         _modules.Clear();
+        _builtInModulesRegistered = false;
         _logger.Info("All service modules destroyed");
     }
 }
