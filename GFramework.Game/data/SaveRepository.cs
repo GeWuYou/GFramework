@@ -118,8 +118,9 @@ public class SaveRepository<TSaveData> : AbstractContextUtility, ISaveRepository
             if (!int.TryParse(slotStr, CultureInfo.InvariantCulture, out var slot))
                 continue;
 
-            // 检查槽位中是否存在存档文件
-            if (await ExistsAsync(slot))
+            // 直接检查存档文件是否存在，避免重复创建 ScopedStorage
+            var saveFilePath = $"{dirName}/{_config.SaveFileName}";
+            if (await _rootStorage.ExistsAsync(saveFilePath))
                 slots.Add(slot);
         }
 
