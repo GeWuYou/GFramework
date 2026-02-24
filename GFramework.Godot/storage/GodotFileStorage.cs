@@ -263,6 +263,94 @@ public sealed class GodotFileStorage : IStorage
 
     #endregion
 
+    #region Directory Operations
+
+    /// <summary>
+    ///     列举指定路径下的所有子目录名称
+    /// </summary>
+    /// <param name="path">要列举的路径，空字符串表示根目录</param>
+    /// <returns>子目录名称列表</returns>
+    public async Task<IReadOnlyList<string>> ListDirectoriesAsync(string path = "")
+    {
+        return await Task.Run(() =>
+        {
+            var fullPath = string.IsNullOrEmpty(path) ? "user://" : ToAbsolutePath(path);
+            var dir = DirAccess.Open(fullPath);
+            if (dir == null) return Array.Empty<string>();
+
+            dir.ListDirBegin();
+            var result = new List<string>();
+
+            while (true)
+            {
+                var name = dir.GetNext();
+                if (string.IsNullOrEmpty(name)) break;
+                if (dir.CurrentIsDir() && !name.StartsWith(".", StringComparison.Ordinal))
+                    result.Add(name);
+            }
+
+            dir.ListDirEnd();
+            return (IReadOnlyList<string>)result;
+        });
+    }
+
+    /// <summary>
+    ///     列举指定路径下的所有文件名称
+    /// </summary>
+    /// <param name="path">要列举的路径，空字符串表示根目录</param>
+    /// <returns>文件名称列表</returns>
+    public async Task<IReadOnlyList<string>> ListFilesAsync(string path = "")
+    {
+        return await Task.Run(() =>
+        {
+            var fullPath = string.IsNullOrEmpty(path) ? "user://" : ToAbsolutePath(path);
+            var dir = DirAccess.Open(fullPath);
+            if (dir == null) return Array.Empty<string>();
+
+            dir.ListDirBegin();
+            var result = new List<string>();
+
+            while (true)
+            {
+                var name = dir.GetNext();
+                if (string.IsNullOrEmpty(name)) break;
+                if (!dir.CurrentIsDir())
+                    result.Add(name);
+            }
+
+            dir.ListDirEnd();
+            return (IReadOnlyList<string>)result;
+        });
+    }
+
+    /// <summary>
+    ///     检查指定路径的目录是否存在
+    /// </summary>
+    /// <param name="path">要检查的目录路径</param>
+    /// <returns>如果目录存在则返回true，否则返回false</returns>
+    public Task<bool> DirectoryExistsAsync(string path)
+    {
+        var fullPath = ToAbsolutePath(path);
+        return Task.FromResult(DirAccess.DirExistsAbsolute(fullPath));
+    }
+
+    /// <summary>
+    ///     创建目录（递归创建父目录）
+    /// </summary>
+    /// <param name="path">要创建的目录路径</param>
+    /// <returns>表示异步操作的Task</returns>
+    public async Task CreateDirectoryAsync(string path)
+    {
+        await Task.Run(() =>
+        {
+            var fullPath = ToAbsolutePath(path);
+            if (!DirAccess.DirExistsAbsolute(fullPath))
+                DirAccess.MakeDirRecursiveAbsolute(fullPath);
+        });
+    }
+
+    #endregion
+
     #region Write
 
     /// <summary>

@@ -228,6 +228,71 @@ public sealed class FileStorage : IFileStorage
 
     #endregion
 
+    #region Directory Operations
+
+    /// <summary>
+    ///     列举指定路径下的所有子目录名称
+    /// </summary>
+    /// <param name="path">要列举的路径，空字符串表示根目录</param>
+    /// <returns>子目录名称列表</returns>
+    public Task<IReadOnlyList<string>> ListDirectoriesAsync(string path = "")
+    {
+        var fullPath = string.IsNullOrEmpty(path) ? _rootPath : Path.Combine(_rootPath, path);
+        if (!Directory.Exists(fullPath))
+            return Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
+
+        var dirs = Directory.GetDirectories(fullPath)
+            .Select(Path.GetFileName)
+            .Where(name => !string.IsNullOrEmpty(name))
+            .ToList();
+
+        return Task.FromResult<IReadOnlyList<string>>(dirs);
+    }
+
+    /// <summary>
+    ///     列举指定路径下的所有文件名称
+    /// </summary>
+    /// <param name="path">要列举的路径，空字符串表示根目录</param>
+    /// <returns>文件名称列表</returns>
+    public Task<IReadOnlyList<string>> ListFilesAsync(string path = "")
+    {
+        var fullPath = string.IsNullOrEmpty(path) ? _rootPath : Path.Combine(_rootPath, path);
+        if (!Directory.Exists(fullPath))
+            return Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
+
+        var files = Directory.GetFiles(fullPath)
+            .Select(Path.GetFileName)
+            .Where(name => !string.IsNullOrEmpty(name))
+            .ToList();
+
+        return Task.FromResult<IReadOnlyList<string>>(files);
+    }
+
+    /// <summary>
+    ///     检查指定路径的目录是否存在
+    /// </summary>
+    /// <param name="path">要检查的目录路径</param>
+    /// <returns>如果目录存在则返回true，否则返回false</returns>
+    public Task<bool> DirectoryExistsAsync(string path)
+    {
+        var fullPath = string.IsNullOrEmpty(path) ? _rootPath : Path.Combine(_rootPath, path);
+        return Task.FromResult(Directory.Exists(fullPath));
+    }
+
+    /// <summary>
+    ///     创建目录（递归创建父目录）
+    /// </summary>
+    /// <param name="path">要创建的目录路径</param>
+    /// <returns>表示异步操作的Task</returns>
+    public Task CreateDirectoryAsync(string path)
+    {
+        var fullPath = string.IsNullOrEmpty(path) ? _rootPath : Path.Combine(_rootPath, path);
+        Directory.CreateDirectory(fullPath);
+        return Task.CompletedTask;
+    }
+
+    #endregion
+
     #region Write
 
     /// <summary>
