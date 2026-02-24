@@ -243,7 +243,7 @@ public sealed class FileStorage : IFileStorage
 
         var dirs = Directory.GetDirectories(fullPath)
             .Select(Path.GetFileName)
-            .Where(name => !string.IsNullOrEmpty(name))
+            .Where(name => !string.IsNullOrEmpty(name) && !name.StartsWith(".", StringComparison.Ordinal))
             .ToList();
 
         return Task.FromResult<IReadOnlyList<string>>(dirs);
