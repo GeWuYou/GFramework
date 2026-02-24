@@ -106,6 +106,46 @@ public sealed class ScopedStorage(IStorage inner, string prefix) : IScopedStorag
     }
 
     /// <summary>
+    ///     列举指定路径下的所有子目录名称
+    /// </summary>
+    /// <param name="path">要列举的路径，空字符串表示根目录</param>
+    /// <returns>子目录名称列表</returns>
+    public Task<IReadOnlyList<string>> ListDirectoriesAsync(string path = "")
+    {
+        return inner.ListDirectoriesAsync(Key(path));
+    }
+
+    /// <summary>
+    ///     列举指定路径下的所有文件名称
+    /// </summary>
+    /// <param name="path">要列举的路径，空字符串表示根目录</param>
+    /// <returns>文件名称列表</returns>
+    public Task<IReadOnlyList<string>> ListFilesAsync(string path = "")
+    {
+        return inner.ListFilesAsync(Key(path));
+    }
+
+    /// <summary>
+    ///     检查指定路径的目录是否存在
+    /// </summary>
+    /// <param name="path">要检查的目录路径</param>
+    /// <returns>如果目录存在则返回true，否则返回false</returns>
+    public Task<bool> DirectoryExistsAsync(string path)
+    {
+        return inner.DirectoryExistsAsync(Key(path));
+    }
+
+    /// <summary>
+    ///     创建目录（递归创建父目录）
+    /// </summary>
+    /// <param name="path">要创建的目录路径</param>
+    /// <returns>表示异步操作的Task</returns>
+    public Task CreateDirectoryAsync(string path)
+    {
+        return inner.CreateDirectoryAsync(Key(path));
+    }
+
+    /// <summary>
     ///     为给定的键添加前缀
     /// </summary>
     /// <param name="key">原始键</param>
