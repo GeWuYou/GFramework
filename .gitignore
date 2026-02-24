@@ -6,4 +6,4 @@ riderModule.iml
 GFramework.sln.DotSettings.user
 .idea/
 .opencode.json
-.claude/
+.claude/settings.local.json
