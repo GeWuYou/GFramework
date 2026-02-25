@@ -9,88 +9,91 @@ public static class AsyncExtensions
     ///     为任务添加超时限制
     /// </summary>
     /// <typeparam name="T">任务结果类型</typeparam>
-    /// <param name="task">要执行的任务</param>
+    /// <param name="taskFactory">接收取消令牌并返回任务的工厂方法，令牌将在超时或外部取消时触发</param>
     /// <param name="timeout">超时时间</param>
-    /// <param name="cancellationToken">取消令牌</param>
+    /// <param name="cancellationToken">外部取消令牌</param>
     /// <returns>任务结果</returns>
-    /// <exception cref="ArgumentNullException">当 task 为 null 时抛出</exception>
+    /// <exception cref="ArgumentNullException">当 taskFactory 为 null 时抛出</exception>
     /// <exception cref="TimeoutException">当任务超时时抛出</exception>
     /// <exception cref="OperationCanceledException">当操作被取消时抛出</exception>
     /// <example>
     /// <code>
-    /// var result = await SomeAsyncOperation().WithTimeout(TimeSpan.FromSeconds(5));
+    /// var result = await WithTimeout(
+    ///     ct => SomeAsyncOperation(ct),
+    ///     TimeSpan.FromSeconds(5));
     /// </code>
     /// </example>
     public static async Task<T> WithTimeout<T>(
-        this Task<T> task,
+        Func<CancellationToken, Task<T>> taskFactory,
         TimeSpan timeout,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(task);
+        ArgumentNullException.ThrowIfNull(taskFactory);
 
-        using var timeoutCts = new CancellationTokenSource();
-        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+        // linkedCts 同时响应：超时 + 外部取消
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        linkedCts.CancelAfter(timeout);
 
-        var delayTask = Task.Delay(timeout, linkedCts.Token);
-        var completedTask = await Task.WhenAny(task, delayTask);
-
-        if (completedTask == delayTask)
+        Task<T> task;
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            // 将联合令牌传入实际任务，超时时任务会收到取消信号
+            task = taskFactory(linkedCts.Token);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
             throw new TimeoutException($"操作在 {timeout.TotalSeconds} 秒后超时");
         }
 
-        await linkedCts.CancelAsync();
         try
         {
-            await task;
+            return await task.ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested &&
-                                                 timeoutCts.Token.IsCancellationRequested)
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested
+                                                 && linkedCts.IsCancellationRequested)
         {
-            // ignore
+            // linkedCts 触发但外部未取消 → 超时
+            throw new TimeoutException($"操作在 {timeout.TotalSeconds} 秒后超时");
         }
-
-        return task.Result;
     }
 
     /// <summary>
     ///     为任务添加超时限制（无返回值版本）
     /// </summary>
-    /// <param name="task">要执行的任务</param>
+    /// <param name="taskFactory">接收取消令牌并返回任务的工厂方法</param>
     /// <param name="timeout">超时时间</param>
-    /// <param name="cancellationToken">取消令牌</param>
-    /// <exception cref="ArgumentNullException">当 task 为 null 时抛出</exception>
+    /// <param name="cancellationToken">外部取消令牌</param>
+    /// <exception cref="ArgumentNullException">当 taskFactory 为 null 时抛出</exception>
     /// <exception cref="TimeoutException">当任务超时时抛出</exception>
     /// <exception cref="OperationCanceledException">当操作被取消时抛出</exception>
     public static async Task WithTimeout(
-        this Task task,
+        Func<CancellationToken, Task> taskFactory,
         TimeSpan timeout,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(task);
+        ArgumentNullException.ThrowIfNull(taskFactory);
 
-        using var timeoutCts = new CancellationTokenSource();
-        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        linkedCts.CancelAfter(timeout);
 
-        var delayTask = Task.Delay(timeout, linkedCts.Token);
-        var completedTask = await Task.WhenAny(task, delayTask);
-
-        if (completedTask == delayTask)
+        Task task;
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            task = taskFactory(linkedCts.Token);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
             throw new TimeoutException($"操作在 {timeout.TotalSeconds} 秒后超时");
         }
 
-        await linkedCts.CancelAsync();
         try
         {
-            await task;
+            await task.ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested &&
-                                                 timeoutCts.Token.IsCancellationRequested)
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested
+                                                 && linkedCts.IsCancellationRequested)
         {
-            // ignore
+            throw new TimeoutException($"操作在 {timeout.TotalSeconds} 秒后超时");
         }
     }
 
