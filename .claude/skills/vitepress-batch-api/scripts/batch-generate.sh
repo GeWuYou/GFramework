@@ -4,33 +4,27 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../../_shared/module-config.sh
+source "$SCRIPT_DIR/../../_shared/module-config.sh"
+
 MODULE="$1"
 
 if [ -z "$MODULE" ]; then
     echo "用法: $0 <模块名>"
-    echo "可用模块: Core, Game, Godot, SourceGenerators"
+    echo "可用模块: $(get_all_modules)"
     exit 1
 fi
 
-# 确定源代码目录
-case "$MODULE" in
-    Core)
-        SOURCE_DIR="GFramework.Core"
-        ;;
-    Game)
-        SOURCE_DIR="GFramework.Game"
-        ;;
-    Godot)
-        SOURCE_DIR="GFramework.Godot"
-        ;;
-    SourceGenerators)
-        SOURCE_DIR="GFramework.SourceGenerators"
-        ;;
-    *)
-        echo "错误: 未知的模块: $MODULE"
-        exit 1
-        ;;
-esac
+# 验证模块名
+if ! is_valid_module "$MODULE"; then
+    echo "错误: 未知的模块: $MODULE"
+    echo "可用模块: $(get_all_modules)"
+    exit 1
+fi
+
+# 获取源代码目录
+SOURCE_DIR=$(get_source_dir "$MODULE")
 
 if [ ! -d "$SOURCE_DIR" ]; then
     echo "错误: 源代码目录不存在: $SOURCE_DIR"
@@ -43,14 +37,14 @@ echo "=========================================="
 echo ""
 
 # 查找所有 C# 文件
-FILES=$(find "$SOURCE_DIR" -name "*.cs" -type f \
+mapfile -t FILES < <(find "$SOURCE_DIR" -name "*.cs" -type f \
     ! -name "*.g.cs" \
     ! -name "*.Designer.cs" \
     ! -name "*Test.cs" \
     ! -name "*.Tests.cs" \
     ! -name "AssemblyInfo.cs")
 
-FILE_COUNT=$(echo "$FILES" | wc -l)
+FILE_COUNT=${#FILES[@]}
 echo "找到 $FILE_COUNT 个文件"
 echo ""
 
@@ -58,7 +52,7 @@ GENERATED=0
 SKIPPED=0
 FAILED=0
 
-for FILE in $FILES; do
+for FILE in "${FILES[@]}"; do
     echo "处理: $FILE"
 
     # 检查是否包含公共类型

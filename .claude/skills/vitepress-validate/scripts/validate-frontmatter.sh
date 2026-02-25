@@ -18,8 +18,8 @@ fi
 
 echo "验证 Frontmatter: $FILE"
 
-# 检查是否有 Frontmatter
-if ! grep -q "^---$" "$FILE"; then
+# 检查是否有 Frontmatter（限制在前几行，避免匹配正文中的 '---'）
+if ! head -n 5 "$FILE" | grep -q "^---$"; then
     echo "✗ 错误: 文件缺少 Frontmatter"
     exit 1
 fi

@@ -63,7 +63,7 @@ for FILE in "${FILES[@]}"; do
     fi
 
     # 3. 代码块验证
-    OUTPUT=$(bash "$SCRIPT_DIR/validate-code-blocks.sh" "$FILE" 2>&1)
+    OUTPUT=$(bash "$SCRIPT_DIR/validate-code-blocks.sh" "$FILE" 2>&1 || true)
     if echo "$OUTPUT" | grep -q "✗"; then
         FILE_ERRORS=$((FILE_ERRORS + 1))
     fi

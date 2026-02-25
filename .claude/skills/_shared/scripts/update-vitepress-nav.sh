@@ -10,7 +10,7 @@ CONFIG_FILE="docs/.vitepress/config.mts"
 
 if [ -z "$DOC_PATH" ] || [ -z "$DOC_TITLE" ]; then
     echo "用法: $0 <文档路径> <文档标题>"
-    echo "示例: $0 /zh-CN/api-reference/core/architecture.md Architecture"
+    echo "示例: $0 /zh-CN/api-reference/core/architecture Architecture"
     exit 1
 fi
 
@@ -27,16 +27,31 @@ if [ -z "$MODULE" ]; then
     exit 1
 fi
 
-echo "正在更新 VitePress 配置..."
-echo "  模块: $MODULE"
-echo "  路径: $DOC_PATH"
-echo "  标题: $DOC_TITLE"
+echo "=========================================="
+echo "VitePress 导航配置更新"
+echo "=========================================="
+echo "模块: $MODULE"
+echo "路径: $DOC_PATH"
+echo "标题: $DOC_TITLE"
+echo ""
 
-# 注意: 此脚本仅输出提示信息
-# 实际的配置更新由 AI 直接编辑 config.mts 文件完成
-# 因为 TypeScript 配置文件的复杂性，使用脚本解析和修改容易出错
+# 检查配置文件中是否已存在该路径
+if grep -q "link: '$DOC_PATH'" "$CONFIG_FILE"; then
+    echo "✓ 该文档已存在于导航配置中"
+    exit 0
+fi
 
-echo "提示: 请手动更新 $CONFIG_FILE 中的侧边栏配置"
-echo "或者让 AI 使用 Edit 工具直接修改配置文件"
+echo "提示: 需要在 VitePress 配置中添加新条目"
+echo ""
+echo "建议的配置条目:"
+echo "{ text: '$DOC_TITLE', link: '$DOC_PATH' }"
+echo ""
+echo "请使用以下方式之一更新配置:"
+echo "1. 让 AI 使用 Edit 工具直接修改 $CONFIG_FILE"
+echo "2. 手动编辑配置文件并添加上述条目到对应的 sidebar 部分"
+echo ""
+
+# 输出相关的 sidebar 配置路径
+echo "相关的 sidebar 配置路径: '/zh-CN/$MODULE/'"
 
 exit 0
