@@ -46,8 +46,11 @@ public static class ResultExtensions
             if (result.IsFaulted)
                 return Result<List<T>>.Fail(result.Exception);
 
+            if (result.IsBottom)
+                return Result<List<T>>.Fail(new InvalidOperationException("Cannot combine Bottom results"));
+
             if (result.IsSuccess)
-                values.Add(result.Match(succ: v => v, fail: _ => throw new InvalidOperationException()));
+                result.IfSucc(values.Add);
         }
 
         return Result<List<T>>.Succeed(values);
@@ -101,7 +104,7 @@ public static class ResultExtensions
     /// var result = Result&lt;int&gt;.Succeed(42);
     /// var bound = await result.BindAsync(async x =>
     ///     await GetUserAsync(x) is User user
-    ///         User&gt;.Succeed(user)
+    ///         ? Result&lt;User&gt;.Succeed(user)
     ///         : Result&lt;User&gt;.Fail(new Exception("User not found")));
     /// </code>
     /// </example>
@@ -262,7 +265,7 @@ public static class ResultExtensions
         string errorMessage = "Value is null") where T : class =>
         value is not null
             ? Result<T>.Succeed(value)
-            : Result<T>.Fail(new ArgumentNullException(errorMessage));
+            : Result<T>.Fail(new ArgumentNullException(nameof(value), errorMessage));
 
     /// <summary>
     ///     将可空值类型转换为 Result
@@ -272,7 +275,7 @@ public static class ResultExtensions
         string errorMessage = "Value is null") where T : struct =>
         value.HasValue
             ? Result<T>.Succeed(value.Value)
-            : Result<T>.Fail(new ArgumentNullException(errorMessage));
+            : Result<T>.Fail(new ArgumentNullException(nameof(value), errorMessage));
 
     #endregion
 }

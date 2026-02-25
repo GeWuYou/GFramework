@@ -101,11 +101,17 @@ public readonly struct Result<A> : IEquatable<Result<A>>, IComparable<Result<A>>
     public bool IsBottom => _state == ResultState.Bottom;
 
     /// <summary>
-    ///     获取内部异常，若为 Bottom 状态则抛出 InvalidOperationException
+    ///     获取内部异常：
+    ///     - 若为 Failure 状态，则返回内部异常
+    ///     - 若为 Bottom 状态，则返回带有 "Result is in Bottom state." 消息的 InvalidOperationException
+    ///     - 若为 Success 状态，则返回带有 "Cannot access Exception on a successful Result." 消息的 InvalidOperationException
     /// </summary>
     [Pure]
     public Exception Exception => _exception
-                                  ?? new InvalidOperationException("Result is in Bottom state.");
+                                  ?? (IsBottom
+                                      ? new InvalidOperationException("Result is in Bottom state.")
+                                      : new InvalidOperationException(
+                                          "Cannot access Exception on a successful Result."));
 
     // ------------------------------------------------------------------ 取值
 
@@ -266,6 +272,7 @@ public readonly struct Result<A> : IEquatable<Result<A>>, IComparable<Result<A>>
     /// <returns>执行结果</returns>
     public static Result<A> Try(Func<A> f)
     {
+        ArgumentNullException.ThrowIfNull(f);
         try
         {
             return new Result<A>(f());
