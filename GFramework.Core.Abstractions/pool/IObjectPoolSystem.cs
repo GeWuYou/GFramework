@@ -46,7 +46,7 @@ public interface IObjectPoolSystem<in TKey, TObject>
     ///     设置指定池的最大容量
     /// </summary>
     /// <param name="key">对象池的键</param>
-    /// <param name="maxCapacity">最大容量，超过此容量的对象将被销毁而不是放回池中</param>
+    /// <param name="maxCapacity">池中保留的最大对象数量。超过此数量时，释放的对象将被销毁而不是放回池中。设置为 0 表示无限制。</param>
     void SetMaxCapacity(TKey key, int maxCapacity);
 
     /// <summary>

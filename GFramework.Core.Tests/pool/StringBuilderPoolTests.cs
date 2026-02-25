@@ -113,4 +113,85 @@ public class StringBuilderPoolTests
         // Assert
         Assert.That(result, Is.EqualTo("Hello World"));
     }
+
+    /// <summary>
+    ///     验证 Rent 方法会复用已归还的 StringBuilder 实例
+    /// </summary>
+    [Test]
+    public void Rent_Should_Reuse_Returned_StringBuilder()
+    {
+        // Arrange
+        var sb1 = StringBuilderPool.Rent();
+        var originalInstance = sb1;
+        StringBuilderPool.Return(sb1);
+
+        // Act
+        var sb2 = StringBuilderPool.Rent();
+
+        // Assert
+        Assert.That(sb2, Is.SameAs(originalInstance), "应该复用同一个实例");
+    }
+
+    /// <summary>
+    ///     验证 Rent 方法会确保返回的 StringBuilder 满足最小容量要求
+    /// </summary>
+    [Test]
+    public void Rent_Should_Ensure_Minimum_Capacity()
+    {
+        // Arrange
+        var sb1 = StringBuilderPool.Rent(100);
+        StringBuilderPool.Return(sb1);
+
+        // Act - 请求更大容量
+        var sb2 = StringBuilderPool.Rent(500);
+
+        // Assert
+        Assert.That(sb2.Capacity, Is.GreaterThanOrEqualTo(500));
+    }
+
+    /// <summary>
+    ///     验证超过最大保留容量的 StringBuilder 不会被池化
+    /// </summary>
+    [Test]
+    public void Return_Should_Not_Pool_Large_Capacity_StringBuilder()
+    {
+        // Arrange
+        var sb1 = StringBuilderPool.Rent(10000);
+        StringBuilderPool.Return(sb1);
+
+        // Act - 租用新的小容量 StringBuilder
+        var sb2 = StringBuilderPool.Rent(100);
+
+        // Assert
+        Assert.That(sb2, Is.Not.SameAs(sb1), "大容量实例不应被池化");
+    }
+
+    /// <summary>
+    ///     验证对象池在多线程环境下的线程安全性
+    /// </summary>
+    [Test]
+    public void Pool_Should_Be_Thread_Safe()
+    {
+        // Arrange
+        const int threadCount = 10;
+        const int operationsPerThread = 100;
+        var tasks = new Task[threadCount];
+
+        // Act
+        for (int i = 0; i < threadCount; i++)
+        {
+            tasks[i] = Task.Run(() =>
+            {
+                for (int j = 0; j < operationsPerThread; j++)
+                {
+                    var sb = StringBuilderPool.Rent();
+                    sb.Append("Test");
+                    StringBuilderPool.Return(sb);
+                }
+            });
+        }
+
+        // Assert
+        Assert.DoesNotThrow(() => Task.WaitAll(tasks));
+    }
 }
