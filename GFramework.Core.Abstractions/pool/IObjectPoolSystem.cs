@@ -27,4 +27,39 @@ public interface IObjectPoolSystem<in TKey, TObject>
     ///     清空所有对象池
     /// </summary>
     void Clear();
+
+    /// <summary>
+    ///     获取指定池的当前大小
+    /// </summary>
+    /// <param name="key">对象池的键</param>
+    /// <returns>池中可用对象的数量</returns>
+    int GetPoolSize(TKey key);
+
+    /// <summary>
+    ///     获取指定池的活跃对象数量
+    /// </summary>
+    /// <param name="key">对象池的键</param>
+    /// <returns>已被获取但未释放的对象数量</returns>
+    int GetActiveCount(TKey key);
+
+    /// <summary>
+    ///     设置指定池的最大容量
+    /// </summary>
+    /// <param name="key">对象池的键</param>
+    /// <param name="maxCapacity">最大容量，超过此容量的对象将被销毁而不是放回池中</param>
+    void SetMaxCapacity(TKey key, int maxCapacity);
+
+    /// <summary>
+    ///     预热对象池，提前创建指定数量的对象
+    /// </summary>
+    /// <param name="key">对象池的键</param>
+    /// <param name="count">要预创建的对象数量</param>
+    void Prewarm(TKey key, int count);
+
+    /// <summary>
+    ///     获取指定池的统计信息
+    /// </summary>
+    /// <param name="key">对象池的键</param>
+    /// <returns>池的统计信息</returns>
+    PoolStatistics GetStatistics(TKey key);
 }
