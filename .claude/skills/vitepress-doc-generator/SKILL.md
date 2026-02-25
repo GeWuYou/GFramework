@@ -1,4 +1,4 @@
-﻿---
+---
 name: vitepress-doc-generator
 description: Generate standardized VitePress documentation from source code.
 disable-model-invocation: true
