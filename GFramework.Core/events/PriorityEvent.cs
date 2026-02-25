@@ -191,11 +191,13 @@ public class PriorityEvent<T> : IEvent
     private List<(int Priority, Action? Handler, Action<EventContext<T>>? ContextHandler, bool IsContext)>
         MergeAndSortHandlers(T t)
     {
+        var normalSnapshot = _handlers.ToArray();
+        var contextSnapshot = _contextHandlers.ToArray();
         // 使用快照避免迭代期间修改
-        return _handlers
+        return normalSnapshot
             .Select(h => (h.Priority, Handler: (Action?)(() => h.Handler.Invoke(t)),
                 ContextHandler: (Action<EventContext<T>>?)null, IsContext: false))
-            .Concat(_contextHandlers
+            .Concat(contextSnapshot
                 .Select(h => (h.Priority, Handler: (Action?)null,
                     ContextHandler: (Action<EventContext<T>>?)h.Handler, IsContext: true)))
             .OrderByDescending(h => h.Priority)
