@@ -36,13 +36,22 @@ public static class AsyncExtensions
 
         if (completedTask == delayTask)
         {
-            // 优先检查外部取消令牌，若已取消则抛出 OperationCanceledException
             cancellationToken.ThrowIfCancellationRequested();
             throw new TimeoutException($"操作在 {timeout.TotalSeconds} 秒后超时");
         }
 
-        await timeoutCts.CancelAsync();
-        return await task;
+        await linkedCts.CancelAsync();
+        try
+        {
+            await task;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested &&
+                                                 timeoutCts.Token.IsCancellationRequested)
+        {
+            // ignore
+        }
+
+        return task.Result;
     }
 
     /// <summary>
@@ -69,13 +78,20 @@ public static class AsyncExtensions
 
         if (completedTask == delayTask)
         {
-            // 优先检查外部取消令牌，若已取消则抛出 OperationCanceledException
             cancellationToken.ThrowIfCancellationRequested();
             throw new TimeoutException($"操作在 {timeout.TotalSeconds} 秒后超时");
         }
 
-        await timeoutCts.CancelAsync();
-        await task;
+        await linkedCts.CancelAsync();
+        try
+        {
+            await task;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested &&
+                                                 timeoutCts.Token.IsCancellationRequested)
+        {
+            // ignore
+        }
     }
 
     /// <summary>
@@ -86,6 +102,7 @@ public static class AsyncExtensions
     /// <param name="maxRetries">最大重试次数</param>
     /// <param name="delay">重试间隔</param>
     /// <param name="shouldRetry">判断是否应该重试的函数，默认对所有异常重试</param>
+    /// <param name="throwOriginal">当为 true 时直接抛出原始异常，否则包装为 AggregateException</param>
     /// <returns>任务结果</returns>
     /// <exception cref="ArgumentNullException">当 taskFactory 为 null 时抛出</exception>
     /// <exception cref="ArgumentOutOfRangeException">当 maxRetries 小于 0 时抛出</exception>
@@ -99,7 +116,8 @@ public static class AsyncExtensions
         this Func<Task<T>> taskFactory,
         int maxRetries,
         TimeSpan delay,
-        Func<Exception, bool>? shouldRetry = null)
+        Func<Exception, bool>? shouldRetry = null,
+        bool throwOriginal = false)
     {
         ArgumentNullException.ThrowIfNull(taskFactory);
 
@@ -123,6 +141,9 @@ public static class AsyncExtensions
                 }
                 else
                 {
+                    if (throwOriginal)
+                        throw;
+
                     throw new AggregateException($"操作在 {attempt} 次重试后仍然失败", ex);
                 }
             }
