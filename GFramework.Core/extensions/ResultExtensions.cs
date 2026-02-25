@@ -45,7 +45,9 @@ public static class ResultExtensions
         {
             if (result.IsFaulted)
                 return Result<List<T>>.Fail(result.Exception);
-            values.Add(result.Match(succ: v => v, fail: _ => default!));
+
+            if (result.IsSuccess)
+                values.Add(result.Match(succ: v => v, fail: _ => throw new InvalidOperationException()));
         }
 
         return Result<List<T>>.Succeed(values);
@@ -89,6 +91,28 @@ public static class ResultExtensions
     {
         ArgumentNullException.ThrowIfNull(binder);
         return result.Bind(binder);
+    }
+
+    /// <summary>
+    ///     异步绑定操作，将结果链式转换为异步结果
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// var result = Result&lt;int&gt;.Succeed(42);
+    /// var bound = await result.BindAsync(async x =>
+    ///     await GetUserAsync(x) is User user
+    ///         User&gt;.Succeed(user)
+    ///         : Result&lt;User&gt;.Fail(new Exception("User not found")));
+    /// </code>
+    /// </example>
+    public static async Task<Result<TResult>> BindAsync<T, TResult>(
+        this Result<T> result,
+        Func<T, Task<Result<TResult>>> binder)
+    {
+        ArgumentNullException.ThrowIfNull(binder);
+        return result.IsSuccess
+            ? await binder(result.Match(succ: v => v, fail: _ => throw new InvalidOperationException()))
+            : Result<TResult>.Fail(result.Exception);
     }
 
     #endregion

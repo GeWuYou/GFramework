@@ -27,12 +27,13 @@ public readonly struct Result<A> : IEquatable<Result<A>>, IComparable<Result<A>>
 
     /// <summary>
     ///     结果状态枚举，表示结果的不同状态
+    ///     排序: Bottom < Faulted < Success
     /// </summary>
     private enum ResultState : byte
     {
         Bottom,
-        Success,
-        Faulted
+        Faulted,
+        Success
     }
 
     private readonly ResultState _state;
@@ -151,8 +152,11 @@ public readonly struct Result<A> : IEquatable<Result<A>>, IComparable<Result<A>>
     /// <param name="f">映射函数</param>
     /// <returns>映射后的结果</returns>
     [Pure]
-    public Result<B> Map<B>(Func<A, B> f) =>
-        IsSuccess ? new Result<B>(f(_value!)) : new Result<B>(Exception);
+    public Result<B> Map<B>(Func<A, B> f)
+    {
+        ArgumentNullException.ThrowIfNull(f);
+        return IsSuccess ? new Result<B>(f(_value!)) : new Result<B>(Exception);
+    }
 
     /// <summary>
     ///     成功时绑定到新 Result，失败时透传异常
@@ -161,8 +165,11 @@ public readonly struct Result<A> : IEquatable<Result<A>>, IComparable<Result<A>>
     /// <param name="binder">绑定函数</param>
     /// <returns>绑定后的结果</returns>
     [Pure]
-    public Result<B> Bind<B>(Func<A, Result<B>> binder) =>
-        IsSuccess ? binder(_value!) : new Result<B>(Exception);
+    public Result<B> Bind<B>(Func<A, Result<B>> binder)
+    {
+        ArgumentNullException.ThrowIfNull(binder);
+        return IsSuccess ? binder(_value!) : new Result<B>(Exception);
+    }
 
     /// <summary>
     ///     异步映射
@@ -171,8 +178,20 @@ public readonly struct Result<A> : IEquatable<Result<A>>, IComparable<Result<A>>
     /// <param name="f">异步映射函数</param>
     /// <returns>异步映射后的结果</returns>
     [Pure]
-    public async Task<Result<B>> MapAsync<B>(Func<A, Task<B>> f) =>
-        IsSuccess ? new Result<B>(await f(_value!)) : new Result<B>(Exception);
+    public async Task<Result<B>> MapAsync<B>(Func<A, Task<B>> f)
+    {
+        ArgumentNullException.ThrowIfNull(f);
+        if (!IsSuccess) return new Result<B>(Exception);
+
+        try
+        {
+            return new Result<B>(await f(_value!));
+        }
+        catch (Exception ex)
+        {
+            return new Result<B>(ex);
+        }
+    }
 
     // ------------------------------------------------------------------ 模式匹配
 
@@ -303,7 +322,16 @@ public readonly struct Result<A> : IEquatable<Result<A>>, IComparable<Result<A>>
         // Bottom < Faulted < Success
         if (_state != other._state) return _state.CompareTo(other._state);
         if (!IsSuccess) return 0;
-        return Comparer<A>.Default.Compare(_value, other._value);
+
+        try
+        {
+            return Comparer<A>.Default.Compare(_value, other._value);
+        }
+        catch (ArgumentException)
+        {
+            // 类型不可比较时返回 0
+            return 0;
+        }
     }
 
     /// <summary>
