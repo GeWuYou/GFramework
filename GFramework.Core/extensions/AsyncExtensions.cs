@@ -1,3 +1,5 @@
+using GFramework.Core.Functional;
+
 namespace GFramework.Core.extensions;
 
 /// <summary>
