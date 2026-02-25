@@ -13,11 +13,10 @@ public class AsyncExtensionsTests
     [Test]
     public async Task WithTimeout_Should_Return_Result_When_Task_Completes_Before_Timeout()
     {
-        // Arrange
-        var task = Task.FromResult(42);
-
         // Act
-        var result = await task.WithTimeout(TimeSpan.FromSeconds(1));
+        var result = await AsyncExtensions.WithTimeout(
+            _ => Task.FromResult(42),
+            TimeSpan.FromSeconds(1));
 
         // Assert
         Assert.That(result, Is.EqualTo(42));
@@ -26,12 +25,15 @@ public class AsyncExtensionsTests
     [Test]
     public void WithTimeout_Should_Throw_TimeoutException_When_Task_Exceeds_Timeout()
     {
-        // Arrange
-        var task = Task.Delay(TimeSpan.FromSeconds(2)).ContinueWith(_ => 42);
-
         // Act & Assert
         Assert.ThrowsAsync<TimeoutException>(async () =>
-            await task.WithTimeout(TimeSpan.FromMilliseconds(100)));
+            await AsyncExtensions.WithTimeout(
+                async ct =>
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(2), ct);
+                    return 42;
+                },
+                TimeSpan.FromMilliseconds(100)));
     }
 
     [Test]
@@ -39,23 +41,57 @@ public class AsyncExtensionsTests
     {
         // Arrange
         using var cts = new CancellationTokenSource();
-        var task = Task.Delay(TimeSpan.FromSeconds(2)).ContinueWith(_ => 42);
         cts.Cancel();
 
         // Act & Assert
         Assert.ThrowsAsync<OperationCanceledException>(async () =>
-            await task.WithTimeout(TimeSpan.FromSeconds(1), cts.Token));
+            await AsyncExtensions.WithTimeout(
+                async ct =>
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(2), ct);
+                    return 42;
+                },
+                TimeSpan.FromSeconds(1),
+                cts.Token));
+    }
+
+    [Test]
+    public void WithTimeout_Should_Cancel_Inner_Task_When_Timeout_Elapses()
+    {
+        // Arrange
+        var innerTaskCanceled = false;
+
+        // Act & Assert
+        Assert.ThrowsAsync<TimeoutException>(async () =>
+            await AsyncExtensions.WithTimeout(
+                async ct =>
+                {
+                    try
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(5), ct);
+                        return 0;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        innerTaskCanceled = true;
+                        throw;
+                    }
+                },
+                TimeSpan.FromMilliseconds(100)));
+
+        Assert.That(innerTaskCanceled, Is.True, "内部任务应在超时时收到取消信号");
     }
 
     [Test]
     public async Task WithTimeout_NoResult_Should_Complete_When_Task_Completes_Before_Timeout()
     {
         // Arrange
-        var task = Task.CompletedTask;
         var stopwatch = Stopwatch.StartNew();
 
         // Act
-        await task.WithTimeout(TimeSpan.FromSeconds(1));
+        await AsyncExtensions.WithTimeout(
+            _ => Task.CompletedTask,
+            TimeSpan.FromSeconds(1));
         stopwatch.Stop();
 
         // Assert
@@ -66,12 +102,37 @@ public class AsyncExtensionsTests
     [Test]
     public void WithTimeout_NoResult_Should_Throw_TimeoutException_When_Task_Exceeds_Timeout()
     {
+        // Act & Assert
+        Assert.ThrowsAsync<TimeoutException>(async () =>
+            await AsyncExtensions.WithTimeout(
+                ct => Task.Delay(TimeSpan.FromSeconds(2), ct),
+                TimeSpan.FromMilliseconds(100)));
+    }
+
+    [Test]
+    public void WithTimeout_NoResult_Should_Cancel_Inner_Task_When_Timeout_Elapses()
+    {
         // Arrange
-        var task = Task.Delay(TimeSpan.FromSeconds(2));
+        var innerTaskCanceled = false;
 
         // Act & Assert
         Assert.ThrowsAsync<TimeoutException>(async () =>
-            await task.WithTimeout(TimeSpan.FromMilliseconds(100)));
+            await AsyncExtensions.WithTimeout(
+                async ct =>
+                {
+                    try
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(5), ct);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        innerTaskCanceled = true;
+                        throw;
+                    }
+                },
+                TimeSpan.FromMilliseconds(100)));
+
+        Assert.That(innerTaskCanceled, Is.True, "内部任务应在超时时收到取消信号");
     }
 
     [Test]
@@ -231,7 +292,7 @@ public class AsyncExtensionsTests
         var task = Task.FromException<int>(new InvalidOperationException("Test error"));
 
         // Act
-        var result = await task.WithFallback(ex => -1);
+        var result = await task.WithFallback(_ => -1);
 
         // Assert
         Assert.That(result, Is.EqualTo(-1));
