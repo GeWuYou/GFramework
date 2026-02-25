@@ -67,7 +67,11 @@ public readonly struct Result : IEquatable<Result>
     /// <param name="ex">失败的异常</param>
     /// <returns>失败结果</returns>
     [Pure]
-    public static Result Failure(Exception ex) => new(false, ex);
+    public static Result Failure(Exception ex)
+    {
+        ArgumentNullException.ThrowIfNull(ex);
+        return new(false, ex);
+    }
 
     /// <summary>
     ///     根据错误消息创建失败结果
@@ -75,7 +79,11 @@ public readonly struct Result : IEquatable<Result>
     /// <param name="message">错误消息</param>
     /// <returns>失败结果</returns>
     [Pure]
-    public static Result Failure(string message) => new(false, new Exception(message));
+    public static Result Failure(string message)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(message);
+        return new(false, new Exception(message));
+    }
 
     /// <summary>
     ///     根据成功或失败状态分别执行不同的处理逻辑
