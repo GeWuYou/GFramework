@@ -120,6 +120,52 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
         }
     }
 
+    /// <summary>
+    /// 注册瞬态服务，指定服务类型和实现类型
+    /// 每次解析时都会创建新的实例
+    /// </summary>
+    /// <typeparam name="TService">服务接口或基类类型</typeparam>
+    /// <typeparam name="TImpl">具体的实现类型</typeparam>
+    public void RegisterTransient<TService, TImpl>()
+        where TImpl : class, TService
+        where TService : class
+    {
+        _lock.EnterWriteLock();
+        try
+        {
+            ThrowIfFrozen();
+            GetServicesUnsafe.AddTransient<TService, TImpl>();
+            _logger.Debug($"Transient registered: {typeof(TService).Name}");
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
+    }
+
+    /// <summary>
+    /// 注册作用域服务，指定服务类型和实现类型
+    /// 在同一作用域内共享实例，不同作用域使用不同实例
+    /// </summary>
+    /// <typeparam name="TService">服务接口或基类类型</typeparam>
+    /// <typeparam name="TImpl">具体的实现类型</typeparam>
+    public void RegisterScoped<TService, TImpl>()
+        where TImpl : class, TService
+        where TService : class
+    {
+        _lock.EnterWriteLock();
+        try
+        {
+            ThrowIfFrozen();
+            GetServicesUnsafe.AddScoped<TService, TImpl>();
+            _logger.Debug($"Scoped registered: {typeof(TService).Name}");
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
+    }
+
 
     /// <summary>
     /// 注册多个实例到其所有接口和具体类型
@@ -291,7 +337,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     ///     配置服务
     /// </summary>
     /// <param name="configurator">服务配置委托</param>
-    public void ExecuteServicesHook(Action<IServiceCollection>? configurator)
+    public void ExecuteServicesHook(Action<IServiceCollection>? configurator = null)
     {
         _lock.EnterWriteLock();
         try
@@ -651,6 +697,34 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// </summary>
     /// <returns>底层的IServiceCollection实例</returns>
     public IServiceCollection GetServicesUnsafe { get; } = serviceCollection ?? new ServiceCollection();
+
+    /// <summary>
+    ///     创建一个新的服务作用域
+    ///     作用域内的 Scoped 服务将共享同一实例
+    /// </summary>
+    /// <returns>服务作用域实例</returns>
+    /// <exception cref="InvalidOperationException">当容器未冻结时抛出</exception>
+    public IServiceScope CreateScope()
+    {
+        if (_provider == null)
+        {
+            const string errorMsg = "Cannot create scope before container is frozen";
+            _logger.Error(errorMsg);
+            throw new InvalidOperationException(errorMsg);
+        }
+
+        _lock.EnterReadLock();
+        try
+        {
+            var scope = _provider.CreateScope();
+            _logger.Debug("Service scope created");
+            return scope;
+        }
+        finally
+        {
+            _lock.ExitReadLock();
+        }
+    }
 
     #endregion
 }

@@ -30,6 +30,24 @@ public interface IIocContainer : IContextAware
         where TImpl : class, TService where TService : class;
 
     /// <summary>
+    ///     注册瞬态服务，指定服务类型和实现类型
+    ///     每次解析时都会创建新的实例
+    /// </summary>
+    /// <typeparam name="TService">服务接口或基类类型</typeparam>
+    /// <typeparam name="TImpl">具体的实现类型</typeparam>
+    void RegisterTransient<TService, TImpl>()
+        where TImpl : class, TService where TService : class;
+
+    /// <summary>
+    ///     注册作用域服务，指定服务类型和实现类型
+    ///     在同一作用域内共享实例，不同作用域使用不同实例
+    /// </summary>
+    /// <typeparam name="TService">服务接口或基类类型</typeparam>
+    /// <typeparam name="TImpl">具体的实现类型</typeparam>
+    void RegisterScoped<TService, TImpl>()
+        where TImpl : class, TService where TService : class;
+
+    /// <summary>
     ///     注册多个实例
     ///     将实例注册到其实现的所有接口和具体类型上
     /// </summary>
@@ -182,6 +200,13 @@ public interface IIocContainer : IContextAware
     /// </summary>
     /// <returns>底层的IServiceCollection实例</returns>
     IServiceCollection GetServicesUnsafe { get; }
+
+    /// <summary>
+    ///     创建一个新的服务作用域
+    ///     作用域内的 Scoped 服务将共享同一实例
+    /// </summary>
+    /// <returns>服务作用域实例</returns>
+    IServiceScope CreateScope();
 
     #endregion
 }
