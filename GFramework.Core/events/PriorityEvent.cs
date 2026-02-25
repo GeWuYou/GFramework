@@ -107,91 +107,148 @@ public class PriorityEvent<T> : IEvent
         switch (propagation)
         {
             case EventPropagation.All:
-                // 使用快照避免迭代期间修改
-                // 合并所有处理器并按优先级排序
-                var allHandlersForAll = _handlers
-                    .Select(h => (h.Priority, Handler: (Action?)(() => h.Handler.Invoke(t)),
-                        ContextHandler: (Action<EventContext<T>>?)null, IsContext: false))
-                    .Concat(_contextHandlers
-                        .Select(h => (h.Priority, Handler: (Action?)null,
-                            ContextHandler: (Action<EventContext<T>>?)h.Handler, IsContext: true)))
-                    .OrderByDescending(h => h.Priority)
-                    .ToList();
-
-                var contextAll = new EventContext<T>(t);
-                foreach (var item in allHandlersForAll)
-                {
-                    if (item.IsContext)
-                    {
-                        item.ContextHandler?.Invoke(contextAll);
-                    }
-                    else
-                    {
-                        item.Handler?.Invoke();
-                    }
-                }
-
+                TriggerAll(t);
                 break;
 
             case EventPropagation.UntilHandled:
-                // 合并所有处理器并按优先级排序
-                var allHandlers = _handlers
-                    .Select(h => (h.Priority, Handler: (Action?)(() => h.Handler.Invoke(t)),
-                        ContextHandler: (Action<EventContext<T>>?)null, IsContext: false))
-                    .Concat(_contextHandlers
-                        .Select(h => (h.Priority, Handler: (Action?)null,
-                            ContextHandler: (Action<EventContext<T>>?)h.Handler, IsContext: true)))
-                    .OrderByDescending(h => h.Priority)
-                    .ToList();
-
-                var context = new EventContext<T>(t);
-                foreach (var item in allHandlers)
-                {
-                    if (item.IsContext)
-                    {
-                        item.ContextHandler?.Invoke(context);
-                        if (context.IsHandled) break;
-                    }
-                    else
-                    {
-                        item.Handler?.Invoke();
-                        if (_handled) break; // 保持向后兼容
-                    }
-                }
-
+                TriggerUntilHandled(t);
                 break;
 
             case EventPropagation.Highest:
-                // 使用快照避免迭代期间修改
-                var normalSnapshot = _handlers.ToArray();
-                var contextSnapshot = _contextHandlers.ToArray();
-
-                // 找到最高优先级
-                var highestPriority = int.MinValue;
-                if (normalSnapshot.Length > 0)
-                    highestPriority = Math.Max(highestPriority, normalSnapshot[0].Priority);
-                if (contextSnapshot.Length > 0)
-                    highestPriority = Math.Max(highestPriority, contextSnapshot[0].Priority);
-
-                if (highestPriority != int.MinValue)
-                {
-                    // 触发最高优先级的普通处理器
-                    foreach (var handler in normalSnapshot)
-                    {
-                        if (handler.Priority < highestPriority) break;
-                        handler.Handler.Invoke(t);
-                    }
-
-                    // 触发最高优先级的上下文处理器
-                    var contextHighest = new EventContext<T>(t);
-                    foreach (var handler in contextSnapshot)
-                    {
-                        if (handler.Priority < highestPriority) break;
-                        handler.Handler.Invoke(contextHighest);
-                    }
-                }
-
+                TriggerHighest(t);
                 break;
+        }
+    }
+
+    /// <summary>
+    ///     触发所有事件处理器（按优先级顺序）
+    /// </summary>
+    /// <param name="t">事件参数</param>
+    private void TriggerAll(T t)
+    {
+        var allHandlers = MergeAndSortHandlers(t);
+        var context = new EventContext<T>(t);
+
+        foreach (var item in allHandlers)
+        {
+            if (item.IsContext)
+            {
+                item.ContextHandler?.Invoke(context);
+            }
+            else
+            {
+                item.Handler?.Invoke();
+            }
+        }
+    }
+
+    /// <summary>
+    ///     触发事件处理器直到被处理
+    /// </summary>
+    /// <param name="t">事件参数</param>
+    private void TriggerUntilHandled(T t)
+    {
+        var allHandlers = MergeAndSortHandlers(t);
+        var context = new EventContext<T>(t);
+
+        foreach (var item in allHandlers)
+        {
+            if (item.IsContext)
+            {
+                item.ContextHandler?.Invoke(context);
+                if (context.IsHandled) break;
+            }
+            else
+            {
+                item.Handler?.Invoke();
+                if (_handled) break; // 保持向后兼容
+            }
+        }
+    }
+
+    /// <summary>
+    ///     仅触发最高优先级的事件处理器
+    /// </summary>
+    /// <param name="t">事件参数</param>
+    private void TriggerHighest(T t)
+    {
+        var normalSnapshot = _handlers.ToArray();
+        var contextSnapshot = _contextHandlers.ToArray();
+        var highestPriority = GetHighestPriority(normalSnapshot, contextSnapshot);
+
+        if (highestPriority != int.MinValue)
+        {
+            ExecuteHighPriorityNormalHandlers(normalSnapshot, t, highestPriority);
+            ExecuteHighPriorityContextHandlers(contextSnapshot, t, highestPriority);
+        }
+    }
+
+    /// <summary>
+    ///     合并并排序所有事件处理器
+    /// </summary>
+    /// <param name="t">事件参数</param>
+    /// <returns>合并排序后的处理器列表</returns>
+    private List<(int Priority, Action? Handler, Action<EventContext<T>>? ContextHandler, bool IsContext)>
+        MergeAndSortHandlers(T t)
+    {
+        // 使用快照避免迭代期间修改
+        return _handlers
+            .Select(h => (h.Priority, Handler: (Action?)(() => h.Handler.Invoke(t)),
+                ContextHandler: (Action<EventContext<T>>?)null, IsContext: false))
+            .Concat(_contextHandlers
+                .Select(h => (h.Priority, Handler: (Action?)null,
+                    ContextHandler: (Action<EventContext<T>>?)h.Handler, IsContext: true)))
+            .OrderByDescending(h => h.Priority)
+            .ToList();
+    }
+
+    /// <summary>
+    ///     获取最高优先级
+    /// </summary>
+    /// <param name="normalHandlers">普通事件处理器数组</param>
+    /// <param name="contextHandlers">上下文事件处理器数组</param>
+    /// <returns>最高优先级值</returns>
+    private static int GetHighestPriority(EventHandler[] normalHandlers, ContextEventHandler[] contextHandlers)
+    {
+        var highestPriority = int.MinValue;
+
+        if (normalHandlers.Length > 0)
+            highestPriority = Math.Max(highestPriority, normalHandlers[0].Priority);
+
+        if (contextHandlers.Length > 0)
+            highestPriority = Math.Max(highestPriority, contextHandlers[0].Priority);
+
+        return highestPriority;
+    }
+
+    /// <summary>
+    ///     执行高优先级的普通事件处理器
+    /// </summary>
+    /// <param name="handlers">处理器数组</param>
+    /// <param name="t">事件参数</param>
+    /// <param name="highestPriority">最高优先级</param>
+    private static void ExecuteHighPriorityNormalHandlers(EventHandler[] handlers, T t, int highestPriority)
+    {
+        foreach (var handler in handlers)
+        {
+            if (handler.Priority < highestPriority) break;
+            handler.Handler.Invoke(t);
+        }
+    }
+
+    /// <summary>
+    ///     执行高优先级的上下文事件处理器
+    /// </summary>
+    /// <param name="handlers">处理器数组</param>
+    /// <param name="t">事件参数</param>
+    /// <param name="highestPriority">最高优先级</param>
+    private static void ExecuteHighPriorityContextHandlers(ContextEventHandler[] handlers, T t, int highestPriority)
+    {
+        var context = new EventContext<T>(t);
+        foreach (var handler in handlers)
+        {
+            if (handler.Priority < highestPriority) break;
+            handler.Handler.Invoke(context);
         }
     }
 
