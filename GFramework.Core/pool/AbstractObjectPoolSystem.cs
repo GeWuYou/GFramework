@@ -1,4 +1,5 @@
-﻿using GFramework.Core.Abstractions.pool;
+﻿using System.Diagnostics;
+using GFramework.Core.Abstractions.pool;
 using GFramework.Core.system;
 
 namespace GFramework.Core.pool;
@@ -11,49 +12,6 @@ namespace GFramework.Core.pool;
 public abstract class AbstractObjectPoolSystem<TKey, TObject>
     : AbstractSystem, IObjectPoolSystem<TKey, TObject> where TObject : IPoolableObject where TKey : notnull
 {
-    /// <summary>
-    ///     池信息类，用于管理对象池的核心数据结构和统计信息。
-    ///     包含对象栈、容量限制以及各类操作的统计计数。
-    /// </summary>
-    protected class PoolInfo
-    {
-        /// <summary>
-        ///     对象栈，用于存储可复用的对象实例。
-        /// </summary>
-        public Stack<TObject> Stack { get; } = new();
-
-        /// <summary>
-        ///     池的最大容量限制，超过此数量时将不再创建新对象。
-        /// </summary>
-        public int MaxCapacity { get; set; }
-
-        /// <summary>
-        ///     总共创建的对象数量统计。
-        /// </summary>
-        public int TotalCreated { get; set; }
-
-        /// <summary>
-        ///     总共从池中获取的对象数量统计。
-        /// </summary>
-        public int TotalAcquired { get; set; }
-
-        /// <summary>
-        ///     总共归还到池中的对象数量统计。
-        /// </summary>
-        public int TotalReleased { get; set; }
-
-        /// <summary>
-        ///     总共销毁的对象数量统计。
-        /// </summary>
-        public int TotalDestroyed { get; set; }
-
-        /// <summary>
-        ///     当前活跃（正在使用）的对象数量统计。
-        /// </summary>
-        public int ActiveCount { get; set; }
-    }
-
-
     /// <summary>
     ///     存储对象池的字典，键为池标识，值为池信息
     /// </summary>
@@ -105,7 +63,19 @@ public abstract class AbstractObjectPoolSystem<TKey, TObject>
         }
 
         poolInfo.TotalReleased++;
-        poolInfo.ActiveCount--;
+
+        // 防止 ActiveCount 变为负数
+        if (poolInfo.ActiveCount > 0)
+        {
+            poolInfo.ActiveCount--;
+        }
+        else
+        {
+            // 记录警告：检测到可能的双重释放或错误释放
+            Debug.WriteLine(
+                $"[ObjectPool] Warning: Attempting to release object for key '{key}' " +
+                $"but ActiveCount is already 0. Possible double-release or incorrect key.");
+        }
 
         // 检查容量限制
         if (poolInfo.MaxCapacity > 0 && poolInfo.Stack.Count >= poolInfo.MaxCapacity)
@@ -161,7 +131,7 @@ public abstract class AbstractObjectPoolSystem<TKey, TObject>
     ///     设置指定池的最大容量
     /// </summary>
     /// <param name="key">对象池的键</param>
-    /// <param name="maxCapacity">最大容量，超过此容量的对象将被销毁而不是放回池中</param>
+    /// <param name="maxCapacity">池中保留的最大对象数量。超过此数量时，释放的对象将被销毁而不是放回池中。设置为 0 表示无限制。</param>
     public void SetMaxCapacity(TKey key, int maxCapacity)
     {
         if (!Pools.TryGetValue(key, out var poolInfo))
@@ -241,5 +211,48 @@ public abstract class AbstractObjectPoolSystem<TKey, TObject>
     protected override void OnDestroy()
     {
         Clear();
+    }
+
+    /// <summary>
+    ///     池信息类，用于管理对象池的核心数据结构和统计信息。
+    ///     包含对象栈、容量限制以及各类操作的统计计数。
+    /// </summary>
+    protected class PoolInfo
+    {
+        /// <summary>
+        ///     对象栈，用于存储可复用的对象实例。
+        /// </summary>
+        public Stack<TObject> Stack { get; } = new();
+
+        /// <summary>
+        ///     池中保留的最大对象数量。当释放对象时，如果池中对象数已达到此限制，
+        ///     对象将被销毁而不是放回池中。设置为 0 表示无限制。
+        /// </summary>
+        public int MaxCapacity { get; set; }
+
+        /// <summary>
+        ///     总共创建的对象数量统计。
+        /// </summary>
+        public int TotalCreated { get; set; }
+
+        /// <summary>
+        ///     总共从池中获取的对象数量统计。
+        /// </summary>
+        public int TotalAcquired { get; set; }
+
+        /// <summary>
+        ///     总共归还到池中的对象数量统计。
+        /// </summary>
+        public int TotalReleased { get; set; }
+
+        /// <summary>
+        ///     总共销毁的对象数量统计。
+        /// </summary>
+        public int TotalDestroyed { get; set; }
+
+        /// <summary>
+        ///     当前活跃（正在使用）的对象数量统计。
+        /// </summary>
+        public int ActiveCount { get; set; }
     }
 }

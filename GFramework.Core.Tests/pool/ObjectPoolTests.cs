@@ -250,6 +250,40 @@ public class ObjectPoolTests
         Assert.That(stats.TotalReleased, Is.EqualTo(0));
         Assert.That(stats.TotalDestroyed, Is.EqualTo(0));
     }
+
+    /// <summary>
+    ///     验证双重释放不会导致 ActiveCount 变为负数
+    /// </summary>
+    [Test]
+    public void Release_Should_Not_Make_ActiveCount_Negative_On_Double_Release()
+    {
+        // Arrange
+        var obj = _pool.Acquire("test");
+        _pool.Release("test", obj);
+
+        // Act - 双重释放
+        _pool.Release("test", obj);
+
+        // Assert
+        Assert.That(_pool.GetActiveCount("test"), Is.EqualTo(0));
+    }
+
+    /// <summary>
+    ///     验证使用错误的 key 释放不会影响原 key 的 ActiveCount
+    /// </summary>
+    [Test]
+    public void Release_With_Wrong_Key_Should_Not_Affect_Original_Key_ActiveCount()
+    {
+        // Arrange
+        var obj = _pool.Acquire("key1");
+
+        // Act - 使用错误的 key 释放
+        _pool.Release("key2", obj);
+
+        // Assert
+        Assert.That(_pool.GetActiveCount("key1"), Is.EqualTo(1));
+        Assert.That(_pool.GetActiveCount("key2"), Is.EqualTo(0));
+    }
 }
 
 /// <summary>
