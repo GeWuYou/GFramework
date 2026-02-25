@@ -234,4 +234,127 @@ public class EventBusPriorityTests
         // Assert
         Assert.That(executionOrder, Is.EqualTo(new[] { "first", "second", "third" }));
     }
+
+    [Test]
+    public void UntilHandled_Should_Stop_After_MarkAsHandled()
+    {
+        // Arrange
+        var eventBus = new EventBus();
+        var executionOrder = new List<int>();
+
+        eventBus.RegisterWithContext<TestEvent>(ctx =>
+        {
+            executionOrder.Add(1);
+            ctx.MarkAsHandled();
+        }, priority: 10);
+
+        eventBus.RegisterWithContext<TestEvent>(ctx =>
+        {
+            executionOrder.Add(2); // 不应该执行
+        }, priority: 5);
+
+        // Act
+        eventBus.Send(new TestEvent(), EventPropagation.UntilHandled);
+
+        // Assert
+        Assert.That(executionOrder, Is.EqualTo(new[] { 1 }));
+    }
+
+    [Test]
+    public void UntilHandled_Should_Execute_All_If_Not_Handled()
+    {
+        // Arrange
+        var eventBus = new EventBus();
+        var executionOrder = new List<int>();
+
+        eventBus.RegisterWithContext<TestEvent>(ctx => executionOrder.Add(1), priority: 10);
+        eventBus.RegisterWithContext<TestEvent>(ctx => executionOrder.Add(2), priority: 5);
+
+        // Act
+        eventBus.Send(new TestEvent(), EventPropagation.UntilHandled);
+
+        // Assert
+        Assert.That(executionOrder, Is.EqualTo(new[] { 1, 2 }));
+    }
+
+    [Test]
+    public void RegisterWithContext_Should_Receive_Event_Data()
+    {
+        // Arrange
+        var eventBus = new EventBus();
+        string? receivedMessage = null;
+
+        eventBus.RegisterWithContext<TestEvent>(ctx => { receivedMessage = ctx.Data.Message; });
+
+        // Act
+        eventBus.Send(new TestEvent { Message = "Hello" }, EventPropagation.All);
+
+        // Assert
+        Assert.That(receivedMessage, Is.EqualTo("Hello"));
+    }
+
+    [Test]
+    public void UntilHandled_Should_Respect_Priority_Order()
+    {
+        // Arrange
+        var eventBus = new EventBus();
+        var executionOrder = new List<int>();
+
+        eventBus.RegisterWithContext<TestEvent>(ctx => executionOrder.Add(1), priority: 1);
+        eventBus.RegisterWithContext<TestEvent>(ctx =>
+        {
+            executionOrder.Add(3);
+            ctx.MarkAsHandled();
+        }, priority: 3);
+        eventBus.RegisterWithContext<TestEvent>(ctx => executionOrder.Add(2), priority: 2);
+
+        // Act
+        eventBus.Send(new TestEvent(), EventPropagation.UntilHandled);
+
+        // Assert
+        Assert.That(executionOrder, Is.EqualTo(new[] { 3 }));
+    }
+
+    [Test]
+    public void Handler_Can_Unregister_Itself_Without_Exception()
+    {
+        // Arrange
+        var eventBus = new EventBus();
+        var executionCount = 0;
+        IUnRegister? unregister = null;
+
+        unregister = eventBus.Register<TestEvent>(_ =>
+        {
+            executionCount++;
+            unregister?.UnRegister();
+        }, priority: 1);
+
+        // Act & Assert
+        Assert.DoesNotThrow(() => eventBus.Send(new TestEvent(), EventPropagation.All));
+        Assert.That(executionCount, Is.EqualTo(1));
+
+        // 第二次触发不应执行
+        eventBus.Send(new TestEvent(), EventPropagation.All);
+        Assert.That(executionCount, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void Concurrent_Trigger_And_Register_Should_Be_Thread_Safe()
+    {
+        // Arrange
+        var eventBus = new EventBus();
+        var counter = 0;
+        eventBus.Register<TestEvent>(_ => Interlocked.Increment(ref counter), priority: 1);
+
+        // Act
+        var tasks = Enumerable.Range(0, 100).Select(_ => Task.Run(() =>
+        {
+            eventBus.Send(new TestEvent(), EventPropagation.All);
+            eventBus.Register<TestEvent>(_ => { }, priority: 1);
+        })).ToArray();
+
+        // Assert
+        Assert.DoesNotThrow(() => Task.WaitAll(tasks));
+        Assert.That(counter, Is.GreaterThan(0));
+    }
 }

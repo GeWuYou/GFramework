@@ -10,7 +10,7 @@ public static class SpanExtensions
     /// </summary>
     /// <typeparam name="T">目标类型，必须实现 ISpanParsable 接口</typeparam>
     /// <param name="span">要解析的字符 span</param>
-    /// <param name="result">解析结果</param>
+    /// <param name="result">解析结果，失败时为 default(T)</param>
     /// <returns>如果解析成功返回 true，否则返回 false</returns>
     /// <example>
     /// <code>
@@ -21,7 +21,7 @@ public static class SpanExtensions
     /// }
     /// </code>
     /// </example>
-    public static bool TryParseValue<T>(this ReadOnlySpan<char> span, out T? result) where T : ISpanParsable<T>
+    public static bool TryParseValue<T>(this ReadOnlySpan<char> span, out T result) where T : ISpanParsable<T>
     {
         return T.TryParse(span, null, out result);
     }
@@ -47,6 +47,7 @@ public static class SpanExtensions
             if (item.Equals(value))
                 count++;
         }
+
         return count;
     }
 }

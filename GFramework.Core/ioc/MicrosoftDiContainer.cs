@@ -363,25 +363,25 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// <returns>服务实例或null</returns>
     public T? Get<T>() where T : class
     {
-        if (_provider == null)
-        {
-            // 如果容器未冻结，从服务集合中查找已注册的实例
-            var serviceType = typeof(T);
-            var descriptor = GetServicesUnsafe.FirstOrDefault(s =>
-                s.ServiceType == serviceType || serviceType.IsAssignableFrom(s.ServiceType));
-
-            if (descriptor?.ImplementationInstance is T instance)
-            {
-                return instance;
-            }
-
-            // 在未冻结状态下无法调用工厂方法或创建实例，返回null
-            return null;
-        }
-
         _lock.EnterReadLock();
         try
         {
+            if (_provider == null)
+            {
+                // 如果容器未冻结，从服务集合中查找已注册的实例
+                var serviceType = typeof(T);
+                var descriptor = GetServicesUnsafe.FirstOrDefault(s =>
+                    s.ServiceType == serviceType || serviceType.IsAssignableFrom(s.ServiceType));
+
+                if (descriptor?.ImplementationInstance is T instance)
+                {
+                    return instance;
+                }
+
+                // 在未冻结状态下无法调用工厂方法或创建实例，返回null
+                return null;
+            }
+
             var result = _provider!.GetService<T>();
             _logger.Debug(result != null
                 ? $"Retrieved instance: {typeof(T).Name}"
@@ -402,18 +402,19 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// <returns>服务实例或null</returns>
     public object? Get(Type type)
     {
-        if (_provider == null)
-        {
-            // 如果容器未冻结，从服务集合中查找已注册的实例
-            var descriptor =
-                GetServicesUnsafe.FirstOrDefault(s => s.ServiceType == type || type.IsAssignableFrom(s.ServiceType));
-
-            return descriptor?.ImplementationInstance;
-        }
-
         _lock.EnterReadLock();
         try
         {
+            if (_provider == null)
+            {
+                // 如果容器未冻结，从服务集合中查找已注册的实例
+                var descriptor =
+                    GetServicesUnsafe.FirstOrDefault(s =>
+                        s.ServiceType == type || type.IsAssignableFrom(s.ServiceType));
+
+                return descriptor?.ImplementationInstance;
+            }
+
             var result = _provider!.GetService(type);
             _logger.Debug(result != null
                 ? $"Retrieved instance: {type.Name}"
@@ -491,36 +492,36 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// <returns>只读的服务实例列表</returns>
     public IReadOnlyList<T> GetAll<T>() where T : class
     {
-        if (_provider == null)
-        {
-            // 如果容器未冻结，从服务集合中获取已注册的实例
-            var serviceType = typeof(T);
-            var registeredServices = GetServicesUnsafe
-                .Where(s => s.ServiceType == serviceType || serviceType.IsAssignableFrom(s.ServiceType)).ToList();
-
-            var result = new List<T>();
-            foreach (var descriptor in registeredServices)
-            {
-                if (descriptor.ImplementationInstance is T instance)
-                {
-                    result.Add(instance);
-                }
-                else if (descriptor.ImplementationFactory != null)
-                {
-                    // 在未冻结状态下无法调用工厂方法，跳过
-                }
-                else if (descriptor.ImplementationType != null)
-                {
-                    // 在未冻结状态下无法创建实例，跳过
-                }
-            }
-
-            return result;
-        }
-
         _lock.EnterReadLock();
         try
         {
+            if (_provider == null)
+            {
+                // 如果容器未冻结，从服务集合中获取已注册的实例
+                var serviceType = typeof(T);
+                var registeredServices = GetServicesUnsafe
+                    .Where(s => s.ServiceType == serviceType || serviceType.IsAssignableFrom(s.ServiceType)).ToList();
+
+                var result = new List<T>();
+                foreach (var descriptor in registeredServices)
+                {
+                    if (descriptor.ImplementationInstance is T instance)
+                    {
+                        result.Add(instance);
+                    }
+                    else if (descriptor.ImplementationFactory != null)
+                    {
+                        // 在未冻结状态下无法调用工厂方法，跳过
+                    }
+                    else if (descriptor.ImplementationType != null)
+                    {
+                        // 在未冻结状态下无法创建实例，跳过
+                    }
+                }
+
+                return result;
+            }
+
             var services = _provider!.GetServices<T>().ToList();
             _logger.Debug($"Retrieved {services.Count} instances of {typeof(T).Name}");
             return services;
@@ -539,36 +540,36 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// <exception cref="InvalidOperationException">当容器未冻结时抛出</exception>
     public IReadOnlyList<object> GetAll(Type type)
     {
-        if (_provider == null)
-        {
-            // 如果容器未冻结，从服务集合中获取已注册的实例
-            var registeredServices = GetServicesUnsafe
-                .Where(s => s.ServiceType == type || type.IsAssignableFrom(s.ServiceType))
-                .ToList();
-
-            var result = new List<object>();
-            foreach (var descriptor in registeredServices)
-            {
-                if (descriptor.ImplementationInstance != null)
-                {
-                    result.Add(descriptor.ImplementationInstance);
-                }
-                else if (descriptor.ImplementationFactory != null)
-                {
-                    // 在未冻结状态下无法调用工厂方法，跳过
-                }
-                else if (descriptor.ImplementationType != null)
-                {
-                    // 在未冻结状态下无法创建实例，跳过
-                }
-            }
-
-            return result;
-        }
-
         _lock.EnterReadLock();
         try
         {
+            if (_provider == null)
+            {
+                // 如果容器未冻结，从服务集合中获取已注册的实例
+                var registeredServices = GetServicesUnsafe
+                    .Where(s => s.ServiceType == type || type.IsAssignableFrom(s.ServiceType))
+                    .ToList();
+
+                var result = new List<object>();
+                foreach (var descriptor in registeredServices)
+                {
+                    if (descriptor.ImplementationInstance != null)
+                    {
+                        result.Add(descriptor.ImplementationInstance);
+                    }
+                    else if (descriptor.ImplementationFactory != null)
+                    {
+                        // 在未冻结状态下无法调用工厂方法，跳过
+                    }
+                    else if (descriptor.ImplementationType != null)
+                    {
+                        // 在未冻结状态下无法创建实例，跳过
+                    }
+                }
+
+                return result;
+            }
+
             var services = _provider!.GetServices(type).ToList();
             _logger.Debug($"Retrieved {services.Count} instances of {type.Name}");
             return services.Where(o => o != null).Cast<object>().ToList();
@@ -605,12 +606,12 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// <returns>true表示包含该类型实例，false表示不包含</returns>
     public bool Contains<T>() where T : class
     {
-        if (_provider == null)
-            return GetServicesUnsafe.Any(s => s.ServiceType == typeof(T));
-
         _lock.EnterReadLock();
         try
         {
+            if (_provider == null)
+                return GetServicesUnsafe.Any(s => s.ServiceType == typeof(T));
+
             return _provider.GetService<T>() != null;
         }
         finally
@@ -706,16 +707,17 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// <exception cref="InvalidOperationException">当容器未冻结时抛出</exception>
     public IServiceScope CreateScope()
     {
-        if (_provider == null)
-        {
-            const string errorMsg = "Cannot create scope before container is frozen";
-            _logger.Error(errorMsg);
-            throw new InvalidOperationException(errorMsg);
-        }
-
         _lock.EnterReadLock();
         try
         {
+            // 在锁内检查，避免竞态条件
+            if (!_frozen || _provider == null)
+            {
+                const string errorMsg = "Cannot create scope before container is frozen";
+                _logger.Error(errorMsg);
+                throw new InvalidOperationException(errorMsg);
+            }
+
             var scope = _provider.CreateScope();
             _logger.Debug("Service scope created");
             return scope;

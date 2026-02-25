@@ -30,7 +30,6 @@ public class MicrosoftDiContainerTests
     }
 
     private MicrosoftDiContainer _container = null!;
-    private readonly Dictionary<Type, object> _mockContextServices = new();
 
     /// <summary>
     ///     测试注册单例实例的功能
@@ -249,11 +248,17 @@ public class MicrosoftDiContainerTests
     [Test]
     public void Contains_WithExistingInstance_Should_ReturnTrue()
     {
+        // 使用 RegisterSingleton 方法来避免与其他测试方法重复
         var instance = new TestService();
-        _container.Register(instance);
 
+        _container.RegisterSingleton(instance);
+
+        // 验证容器包含该实例
         Assert.That(_container.Contains<TestService>(), Is.True);
+        // 验证实例确实是单例
+        Assert.That(_container.Get<TestService>(), Is.SameAs(instance));
     }
+
 
     /// <summary>
     ///     测试当不存在实例时检查包含关系应返回 false 的功能
@@ -326,6 +331,107 @@ public class MicrosoftDiContainerTests
         _container.RegisterSystem(system);
 
         Assert.That(_container.Contains<TestSystem>(), Is.True);
+    }
+
+    /// <summary>
+    ///     测试在容器未冻结时调用 CreateScope 应抛出异常
+    /// </summary>
+    [Test]
+    public void CreateScope_Should_Throw_When_Not_Frozen()
+    {
+        // Arrange
+        var container = new MicrosoftDiContainer();
+
+        // Act & Assert
+        Assert.Throws<InvalidOperationException>(() => container.CreateScope());
+    }
+
+    /// <summary>
+    ///     测试 CreateScope 在多线程环境下的线程安全性
+    /// </summary>
+    [Test]
+    public void CreateScope_Should_Be_Thread_Safe()
+    {
+        // Arrange
+        var container = new MicrosoftDiContainer();
+        container.RegisterSingleton<IService>(new TestService());
+        container.Freeze();
+
+        // Act
+        var tasks = Enumerable.Range(0, 100).Select(_ => Task.Run(() =>
+        {
+            using var scope = container.CreateScope();
+            Assert.That(scope, Is.Not.Null);
+        })).ToArray();
+
+        // Assert
+        Assert.DoesNotThrow(() => Task.WaitAll(tasks));
+    }
+
+    /// <summary>
+    ///     测试 Get 方法在多线程环境下的线程安全性
+    /// </summary>
+    [Test]
+    public void Get_Should_Be_Thread_Safe()
+    {
+        // Arrange
+        var container = new MicrosoftDiContainer();
+        container.RegisterSingleton<IService>(new TestService());
+        container.Freeze();
+
+        // Act
+        var tasks = Enumerable.Range(0, 100).Select(_ => Task.Run(() =>
+        {
+            var service = container.Get<IService>();
+            Assert.That(service, Is.Not.Null);
+        })).ToArray();
+
+        // Assert
+        Assert.DoesNotThrow(() => Task.WaitAll(tasks));
+    }
+
+    /// <summary>
+    ///     测试 GetAll 方法在多线程环境下的线程安全性
+    /// </summary>
+    [Test]
+    public void GetAll_Should_Be_Thread_Safe()
+    {
+        // Arrange
+        var container = new MicrosoftDiContainer();
+        container.RegisterSingleton<IService>(new TestService());
+        container.Freeze();
+
+        // Act
+        var tasks = Enumerable.Range(0, 100).Select(_ => Task.Run(() =>
+        {
+            var services = container.GetAll<IService>();
+            Assert.That(services, Is.Not.Null);
+        })).ToArray();
+
+        // Assert
+        Assert.DoesNotThrow(() => Task.WaitAll(tasks));
+    }
+
+    /// <summary>
+    ///     测试 Contains 方法在多线程环境下的线程安全性
+    /// </summary>
+    [Test]
+    public void Contains_Should_Be_Thread_Safe()
+    {
+        // Arrange
+        var container = new MicrosoftDiContainer();
+        container.RegisterSingleton<IService>(new TestService());
+        container.Freeze();
+
+        // Act
+        var tasks = Enumerable.Range(0, 100).Select(_ => Task.Run(() =>
+        {
+            var contains = container.Contains<IService>();
+            Assert.That(contains, Is.True);
+        })).ToArray();
+
+        // Assert
+        Assert.DoesNotThrow(() => Task.WaitAll(tasks));
     }
 }
 

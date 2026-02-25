@@ -78,4 +78,27 @@ public class EventBus : IEventBus
     {
         _mEvents.GetEvent<Event<T>>().UnRegister(onEvent);
     }
+
+    /// <summary>
+    ///     注册上下文事件监听器，默认优先级为 0
+    /// </summary>
+    /// <typeparam name="T">事件类型</typeparam>
+    /// <param name="onEvent">事件处理回调函数，接收 EventContext 参数</param>
+    /// <returns>反注册接口，用于注销事件监听</returns>
+    public IUnRegister RegisterWithContext<T>(Action<EventContext<T>> onEvent)
+    {
+        return _mPriorityEvents.GetOrAddEvent<PriorityEvent<T>>().RegisterWithContext(onEvent);
+    }
+
+    /// <summary>
+    ///     注册上下文事件监听器，并指定优先级
+    /// </summary>
+    /// <typeparam name="T">事件类型</typeparam>
+    /// <param name="onEvent">事件处理回调函数，接收 EventContext 参数</param>
+    /// <param name="priority">优先级，数值越大优先级越高</param>
+    /// <returns>反注册接口，用于注销事件监听</returns>
+    public IUnRegister RegisterWithContext<T>(Action<EventContext<T>> onEvent, int priority)
+    {
+        return _mPriorityEvents.GetOrAddEvent<PriorityEvent<T>>().RegisterWithContext(onEvent, priority);
+    }
 }
