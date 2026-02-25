@@ -42,9 +42,8 @@ public class AsyncExtensionsTests
         // Arrange
         using var cts = new CancellationTokenSource();
         cts.Cancel();
-
         // Act & Assert
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        Assert.ThrowsAsync<TaskCanceledException>(async () =>
             await AsyncExtensions.WithTimeout(
                 async ct =>
                 {
