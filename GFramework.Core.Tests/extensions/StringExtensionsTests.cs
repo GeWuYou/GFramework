@@ -55,7 +55,7 @@ public class StringExtensionsTests
         string? text = null;
 
         // Act
-        var result = text.IsNullOrWhiteSpace();
+        var result = string.IsNullOrWhiteSpace(text);
 
         // Assert
         Assert.That(result, Is.True);
@@ -68,7 +68,7 @@ public class StringExtensionsTests
         var text = "   ";
 
         // Act
-        var result = text.IsNullOrWhiteSpace();
+        var result = string.IsNullOrWhiteSpace(text);
 
         // Assert
         Assert.That(result, Is.True);
@@ -81,7 +81,7 @@ public class StringExtensionsTests
         var text = "Hello";
 
         // Act
-        var result = text.IsNullOrWhiteSpace();
+        var result = string.IsNullOrWhiteSpace(text);
 
         // Assert
         Assert.That(result, Is.False);

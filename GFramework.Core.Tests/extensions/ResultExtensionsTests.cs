@@ -11,8 +11,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using GFramework.Core.Extensions;
 using GFramework.Core.Functional;
+using GFramework.Core.functional.result;
 using NUnit.Framework;
 
 namespace GFramework.Core.Tests.Extensions;

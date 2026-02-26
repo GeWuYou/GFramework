@@ -1,4 +1,5 @@
 using GFramework.Core.extensions;
+using GFramework.Core.functional.pipe;
 using NUnit.Framework;
 
 namespace GFramework.Core.Tests.extensions;
@@ -138,29 +139,29 @@ public class ObjectExtensionsTests
     }
 
     /// <summary>
-    ///     验证Do方法执行操作并返回对象本身
+    ///     验证Also方法执行操作并返回对象本身
     /// </summary>
     [Test]
     public void Do_Should_Execute_Action_And_Return_Object()
     {
         var obj = new TestClass { Value = 5 };
 
-        var result = obj.Do(x => x.Value = 10);
+        var result = obj.Also(x => x.Value = 10);
 
         Assert.That(result, Is.SameAs(obj));
         Assert.That(obj.Value, Is.EqualTo(10));
     }
 
     /// <summary>
-    ///     验证Do方法支持链式调用
+    ///     验证Also方法支持链式调用
     /// </summary>
     [Test]
     public void Do_Should_Support_Chaining()
     {
         var obj = new TestClass { Value = 1, Name = "A" };
 
-        obj.Do(x => x.Value = 2)
-            .Do(x => x.Name = "B");
+        obj.Also(x => x.Value = 2)
+            .Also(x => x.Name = "B");
 
         Assert.That(obj.Value, Is.EqualTo(2));
         Assert.That(obj.Name, Is.EqualTo("B"));

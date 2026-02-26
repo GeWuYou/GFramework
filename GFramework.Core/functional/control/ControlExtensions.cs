@@ -57,10 +57,10 @@ public static class ControlExtensions
     /// <returns>条件为真时返回原值，否则返回 null</returns>
     /// <exception cref="ArgumentNullException">当 predicate 为 null 时抛出</exception>
     /// <example>
-    /// <code>
+    /// <code><![CDATA[
     /// var result = 42.TakeIfValue(x => x > 0); // 42
     /// var result2 = -5.TakeIfValue(x => x > 0); // null
-    /// </code>
+    /// ]]></code>
     /// </example>
     public static TSource? TakeIfValue<TSource>(
         this TSource value,
