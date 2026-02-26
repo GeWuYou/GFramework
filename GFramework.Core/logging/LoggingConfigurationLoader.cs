@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using GFramework.Core.Abstractions.logging;
 using GFramework.Core.logging.appenders;
 using GFramework.Core.logging.filters;
@@ -16,7 +17,8 @@ public static class LoggingConfigurationLoader
     {
         PropertyNameCaseInsensitive = true,
         ReadCommentHandling = JsonCommentHandling.Skip,
-        AllowTrailingCommas = true
+        AllowTrailingCommas = true,
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: true) }
     };
 
     /// <summary>
@@ -129,10 +131,11 @@ public static class LoggingConfigurationLoader
 /// <summary>
 ///     可配置的 Logger 工厂
 /// </summary>
-internal sealed class ConfigurableLoggerFactory : ILoggerFactory
+internal sealed class ConfigurableLoggerFactory : ILoggerFactory, IDisposable
 {
     private readonly ILogAppender[] _appenders;
     private readonly LoggingConfiguration _config;
+    private bool _disposed;
 
     public ConfigurableLoggerFactory(LoggingConfiguration config)
     {
@@ -140,12 +143,36 @@ internal sealed class ConfigurableLoggerFactory : ILoggerFactory
         _appenders = config.Appenders.Select(LoggingConfigurationLoader.CreateAppender).ToArray();
     }
 
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        foreach (var appender in _appenders)
+        {
+            if (appender is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
+        }
+
+        _disposed = true;
+    }
+
     public ILogger GetLogger(string name, LogLevel minLevel = LogLevel.Info)
     {
-        // 检查是否有特定 Logger 的级别配置
-        var effectiveLevel = _config.LoggerLevels.TryGetValue(name, out var level)
-            ? level
-            : _config.MinLevel;
+        // 检查是否有特定 Logger 的级别配置（支持前缀匹配）
+        var effectiveLevel = _config.MinLevel;
+
+        foreach (var kvp in _config.LoggerLevels)
+        {
+            // 精确匹配或前缀匹配（命名空间层级）
+            if (name == kvp.Key || name.StartsWith(kvp.Key + ".", StringComparison.Ordinal))
+            {
+                effectiveLevel = kvp.Value;
+                break;
+            }
+        }
 
         // 如果没有 Appender，返回简单的 ConsoleLogger
         if (_appenders.Length == 0)

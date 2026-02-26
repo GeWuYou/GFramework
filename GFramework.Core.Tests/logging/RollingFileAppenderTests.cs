@@ -151,11 +151,13 @@ public class RollingFileAppenderTests
     [Test]
     public void Flush_ShouldEnsureDataWritten()
     {
-        using var appender = new RollingFileAppender(_testFilePath);
-        var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger", "Test message", null, null);
+        using (var appender = new RollingFileAppender(_testFilePath))
+        {
+            var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger", "Test message", null, null);
 
-        appender.Append(entry);
-        appender.Flush();
+            appender.Append(entry);
+            appender.Flush();
+        }
 
         Assert.That(File.Exists(_testFilePath), Is.True);
         var content = File.ReadAllText(_testFilePath);

@@ -11,9 +11,9 @@ namespace GFramework.Core.Tests.logging;
 public class NamespaceFilterTests
 {
     [Test]
-    public void Constructor_WithNullNamespaces_ShouldThrowArgumentNullException()
+    public void Constructor_WithNullNamespaces_ShouldThrowArgumentException()
     {
-        Assert.Throws<ArgumentNullException>(() => new NamespaceFilter(null!));
+        Assert.Throws<ArgumentException>(() => new NamespaceFilter(null!));
     }
 
     [Test]
