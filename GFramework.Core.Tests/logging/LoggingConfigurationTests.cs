@@ -183,11 +183,23 @@ public class LoggingConfigurationTests
             }}";
 
             var config = LoggingConfigurationLoader.LoadFromJsonString(json);
-            var factory = LoggingConfigurationLoader.CreateFactory(config);
+            ILoggerFactory? factory = null;
+            try
+            {
+                factory = LoggingConfigurationLoader.CreateFactory(config);
 
-            var logger = factory.GetLogger("TestLogger");
-            logger.Info("Info message");
-            logger.Warn("Warning message");
+                var logger = factory.GetLogger("TestLogger");
+                logger.Info("Info message");
+                logger.Warn("Warning message");
+            }
+            finally
+            {
+                // 确保释放 factory 和所有 appenders
+                if (factory is IDisposable disposable)
+                {
+                    disposable.Dispose();
+                }
+            }
 
             // 只有 Warning 应该被写入
             var content = File.ReadAllText(testFile);

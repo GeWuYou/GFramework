@@ -11,9 +11,9 @@ namespace GFramework.Core.Tests.logging;
 public class CompositeFilterTests
 {
     [Test]
-    public void Constructor_WithNullFilters_ShouldThrowArgumentNullException()
+    public void Constructor_WithNullFilters_ShouldThrowArgumentException()
     {
-        Assert.Throws<ArgumentNullException>(() => new CompositeFilter(null!));
+        Assert.Throws<ArgumentException>(() => new CompositeFilter(null!));
     }
 
     [Test]

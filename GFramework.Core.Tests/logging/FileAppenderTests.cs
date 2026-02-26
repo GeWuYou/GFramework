@@ -159,11 +159,13 @@ public class FileAppenderTests
     [Test]
     public void Flush_ShouldEnsureDataWritten()
     {
-        using var appender = new FileAppender(_testFilePath);
-        var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger", "Test message", null, null);
+        using (var appender = new FileAppender(_testFilePath))
+        {
+            var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger", "Test message", null, null);
 
-        appender.Append(entry);
-        appender.Flush();
+            appender.Append(entry);
+            appender.Flush();
+        }
 
         // 立即读取文件应该能看到内容
         var content = File.ReadAllText(_testFilePath);
