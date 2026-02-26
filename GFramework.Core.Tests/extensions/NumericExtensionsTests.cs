@@ -10,55 +10,6 @@ namespace GFramework.Core.Tests.extensions;
 public class NumericExtensionsTests
 {
     [Test]
-    public void Clamp_Should_Return_Min_When_Value_Is_Less_Than_Min()
-    {
-        // Arrange
-        var value = -10;
-
-        // Act
-        var result = value.Clamp(0, 100);
-
-        // Assert
-        Assert.That(result, Is.EqualTo(0));
-    }
-
-    [Test]
-    public void Clamp_Should_Return_Max_When_Value_Is_Greater_Than_Max()
-    {
-        // Arrange
-        var value = 150;
-
-        // Act
-        var result = value.Clamp(0, 100);
-
-        // Assert
-        Assert.That(result, Is.EqualTo(100));
-    }
-
-    [Test]
-    public void Clamp_Should_Return_Value_When_Value_Is_Within_Range()
-    {
-        // Arrange
-        var value = 50;
-
-        // Act
-        var result = value.Clamp(0, 100);
-
-        // Assert
-        Assert.That(result, Is.EqualTo(50));
-    }
-
-    [Test]
-    public void Clamp_Should_Throw_ArgumentException_When_Min_Is_Greater_Than_Max()
-    {
-        // Arrange
-        var value = 50;
-
-        // Act & Assert
-        Assert.Throws<ArgumentException>(() => value.Clamp(100, 0));
-    }
-
-    [Test]
     public void Between_Should_Return_True_When_Value_Is_Within_Range()
     {
         // Arrange

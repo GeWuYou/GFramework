@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using GFramework.Core.extensions;
+using GFramework.Core.Functional.Async;
 using NUnit.Framework;
 
 namespace GFramework.Core.Tests.extensions;
@@ -235,40 +236,6 @@ public class AsyncExtensionsTests
 
         // Assert
         Assert.That(result.IsFaulted, Is.True);
-    }
-
-    [Test]
-    public async Task WhenAll_Should_Wait_For_All_Tasks()
-    {
-        // Arrange
-        var task1 = Task.Delay(10);
-        var task2 = Task.Delay(20);
-        var task3 = Task.Delay(30);
-        var tasks = new[] { task1, task2, task3 };
-
-        // Act
-        await tasks.WhenAll();
-
-        // Assert
-        Assert.That(task1.IsCompleted, Is.True);
-        Assert.That(task2.IsCompleted, Is.True);
-        Assert.That(task3.IsCompleted, Is.True);
-    }
-
-    [Test]
-    public async Task WhenAll_WithResults_Should_Return_All_Results()
-    {
-        // Arrange
-        var task1 = Task.FromResult(1);
-        var task2 = Task.FromResult(2);
-        var task3 = Task.FromResult(3);
-        var tasks = new[] { task1, task2, task3 };
-
-        // Act
-        var results = await tasks.WhenAll();
-
-        // Assert
-        Assert.That(results, Is.EqualTo(new[] { 1, 2, 3 }));
     }
 
     [Test]
