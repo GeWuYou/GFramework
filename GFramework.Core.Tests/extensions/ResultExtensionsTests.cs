@@ -23,6 +23,9 @@ namespace GFramework.Core.Tests.Extensions;
 [TestFixture]
 public class ResultExtensionsTests
 {
+    /// <summary>
+    ///     测试Combine方法在所有结果成功时返回成功列表
+    /// </summary>
     [Test]
     public void Combine_Should_Return_Success_List_When_All_Results_Succeed()
     {
@@ -54,6 +57,9 @@ public class ResultExtensionsTests
         Assert.That(combined.Exception, Is.SameAs(exception));
     }
 
+    /// <summary>
+    ///     测试Combine方法处理空集合
+    /// </summary>
     [Test]
     public void Combine_Should_Handle_Empty_Collection()
     {
@@ -64,12 +70,18 @@ public class ResultExtensionsTests
         Assert.That(list, Is.Empty);
     }
 
+    /// <summary>
+    ///     测试Combine方法在集合为null时抛出ArgumentNullException
+    /// </summary>
     [Test]
     public void Combine_Should_Throw_ArgumentNullException_When_Collection_Is_Null()
     {
         Assert.Throws<ArgumentNullException>(() => ((IEnumerable<Result<int>>)null!).Combine());
     }
 
+    /// <summary>
+    ///     测试Combine方法保留值的顺序
+    /// </summary>
     [Test]
     public void Combine_Should_Preserve_Order_Of_Values()
     {
@@ -84,6 +96,9 @@ public class ResultExtensionsTests
         Assert.That(list, Is.EqualTo(new[] { 3, 1, 2 }));
     }
 
+    /// <summary>
+    ///     测试Combine方法在第一个失败时短路
+    /// </summary>
     [Test]
     public void Combine_Should_Short_Circuit_On_First_Failure()
     {
@@ -102,6 +117,9 @@ public class ResultExtensionsTests
         Assert.That(combined.IsFaulted, Is.True);
     }
 
+    /// <summary>
+    ///     测试Map方法转换成功值
+    /// </summary>
     [Test]
     public void Map_Should_Transform_Success_Value()
     {
@@ -111,6 +129,9 @@ public class ResultExtensionsTests
         Assert.That(mapped.Match(succ: v => v, fail: _ => ""), Is.EqualTo("42"));
     }
 
+    /// <summary>
+    ///     测试Map方法传播失败
+    /// </summary>
     [Test]
     public void Map_Should_Propagate_Failure()
     {
@@ -121,6 +142,9 @@ public class ResultExtensionsTests
         Assert.That(mapped.Exception, Is.SameAs(exception));
     }
 
+    /// <summary>
+    ///     测试Map方法在映射器为null时抛出ArgumentNullException
+    /// </summary>
     [Test]
     public void Map_Should_Throw_ArgumentNullException_When_Mapper_Is_Null()
     {
@@ -128,6 +152,9 @@ public class ResultExtensionsTests
         Assert.Throws<ArgumentNullException>(() => result.Map<string>(null!));
     }
 
+    /// <summary>
+    ///     测试Bind方法链接成功结果
+    /// </summary>
     [Test]
     public void Bind_Should_Chain_Success_Results()
     {
@@ -137,6 +164,9 @@ public class ResultExtensionsTests
         Assert.That(bound.Match(succ: v => v, fail: _ => ""), Is.EqualTo("42"));
     }
 
+    /// <summary>
+    ///     测试Bind方法传播失败
+    /// </summary>
     [Test]
     public void Bind_Should_Propagate_Failure()
     {
@@ -147,6 +177,9 @@ public class ResultExtensionsTests
         Assert.That(bound.Exception, Is.SameAs(exception));
     }
 
+    /// <summary>
+    ///     测试Bind方法在绑定器为null时抛出ArgumentNullException
+    /// </summary>
     [Test]
     public void Bind_Should_Throw_ArgumentNullException_When_Binder_Is_Null()
     {
@@ -154,6 +187,9 @@ public class ResultExtensionsTests
         Assert.Throws<ArgumentNullException>(() => result.Bind<string>(null!));
     }
 
+    /// <summary>
+    ///     测试OnSuccess方法在成功时执行操作
+    /// </summary>
     [Test]
     public void OnSuccess_Should_Execute_Action_When_Success()
     {
@@ -163,6 +199,9 @@ public class ResultExtensionsTests
         Assert.That(executed, Is.True);
     }
 
+    /// <summary>
+    ///     测试OnSuccess方法在失败时不执行操作
+    /// </summary>
     [Test]
     public void OnSuccess_Should_Not_Execute_Action_When_Faulted()
     {
@@ -172,6 +211,9 @@ public class ResultExtensionsTests
         Assert.That(executed, Is.False);
     }
 
+    /// <summary>
+    ///     测试OnSuccess方法返回原始结果用于链式调用
+    /// </summary>
     [Test]
     public void OnSuccess_Should_Return_Original_Result_For_Chaining()
     {
@@ -180,6 +222,9 @@ public class ResultExtensionsTests
         Assert.That(returned, Is.EqualTo(result));
     }
 
+    /// <summary>
+    ///     测试OnSuccess方法在操作为null时抛出ArgumentNullException
+    /// </summary>
     [Test]
     public void OnSuccess_Should_Throw_ArgumentNullException_When_Action_Is_Null()
     {
@@ -187,6 +232,9 @@ public class ResultExtensionsTests
         Assert.Throws<ArgumentNullException>(() => result.OnSuccess(null!));
     }
 
+    /// <summary>
+    ///     测试OnFailure方法在失败时执行操作
+    /// </summary>
     [Test]
     public void OnFailure_Should_Execute_Action_When_Faulted()
     {
@@ -196,6 +244,9 @@ public class ResultExtensionsTests
         Assert.That(executed, Is.True);
     }
 
+    /// <summary>
+    ///     测试OnFailure方法在成功时不执行操作
+    /// </summary>
     [Test]
     public void OnFailure_Should_Not_Execute_Action_When_Success()
     {
@@ -205,6 +256,9 @@ public class ResultExtensionsTests
         Assert.That(executed, Is.False);
     }
 
+    /// <summary>
+    ///     测试OnFailure方法返回原始结果用于链式调用
+    /// </summary>
     [Test]
     public void OnFailure_Should_Return_Original_Result_For_Chaining()
     {
@@ -213,6 +267,9 @@ public class ResultExtensionsTests
         Assert.That(returned, Is.EqualTo(result));
     }
 
+    /// <summary>
+    ///     测试OnFailure方法在操作为null时抛出ArgumentNullException
+    /// </summary>
     [Test]
     public void OnFailure_Should_Throw_ArgumentNullException_When_Action_Is_Null()
     {
@@ -220,6 +277,9 @@ public class ResultExtensionsTests
         Assert.Throws<ArgumentNullException>(() => result.OnFailure(null!));
     }
 
+    /// <summary>
+    ///     测试Ensure方法在谓词为true时返回成功
+    /// </summary>
     [Test]
     public void Ensure_Should_Return_Success_When_Predicate_Is_True()
     {
@@ -228,6 +288,9 @@ public class ResultExtensionsTests
         Assert.That(ensured.IsSuccess, Is.True);
     }
 
+    /// <summary>
+    ///     测试Ensure方法在谓词为false时返回失败
+    /// </summary>
     [Test]
     public void Ensure_Should_Return_Failure_When_Predicate_Is_False()
     {
@@ -237,6 +300,9 @@ public class ResultExtensionsTests
         Assert.That(ensured.Exception, Is.TypeOf<ArgumentException>());
     }
 
+    /// <summary>
+    ///     测试Ensure方法传播现有失败
+    /// </summary>
     [Test]
     public void Ensure_Should_Propagate_Existing_Failure()
     {
@@ -247,6 +313,9 @@ public class ResultExtensionsTests
         Assert.That(ensured.Exception, Is.SameAs(exception));
     }
 
+    /// <summary>
+    ///     测试Ensure方法创建带消息的ArgumentException
+    /// </summary>
     [Test]
     public void Ensure_Should_Create_ArgumentException_With_Message()
     {
@@ -255,6 +324,9 @@ public class ResultExtensionsTests
         Assert.That(ensured.Exception.Message, Is.EqualTo("Value must be positive"));
     }
 
+    /// <summary>
+    ///     测试Ensure方法在谓词为null时抛出ArgumentNullException
+    /// </summary>
     [Test]
     public void Ensure_Should_Throw_ArgumentNullException_When_Predicate_Is_Null()
     {
@@ -262,6 +334,9 @@ public class ResultExtensionsTests
         Assert.Throws<ArgumentNullException>(() => result.Ensure(null!, "Error"));
     }
 
+    /// <summary>
+    ///     测试Ensure方法在消息为null或空白时抛出ArgumentException
+    /// </summary>
     [Test]
     public void Ensure_Should_Throw_ArgumentException_When_Message_Is_NullOrWhiteSpace()
     {
@@ -270,6 +345,9 @@ public class ResultExtensionsTests
         Assert.Throws<ArgumentException>(() => result.Ensure(x => true, "   "));
     }
 
+    /// <summary>
+    ///     测试带工厂的Ensure方法在谓词为true时返回成功
+    /// </summary>
     [Test]
     public void Ensure_WithFactory_Should_Return_Success_When_Predicate_Is_True()
     {
@@ -278,6 +356,9 @@ public class ResultExtensionsTests
         Assert.That(ensured.IsSuccess, Is.True);
     }
 
+    /// <summary>
+    ///     测试带工厂的Ensure方法返回带自定义异常的成功
+    /// </summary>
     [Test]
     public void Ensure_WithFactory_Should_Return_Failure_With_Custom_Exception()
     {
@@ -287,6 +368,9 @@ public class ResultExtensionsTests
         Assert.That(ensured.Exception, Is.TypeOf<InvalidOperationException>());
     }
 
+    /// <summary>
+    ///     测试带工厂的Ensure方法传递值给异常工厂
+    /// </summary>
     [Test]
     public void Ensure_WithFactory_Should_Pass_Value_To_Exception_Factory()
     {
@@ -300,6 +384,9 @@ public class ResultExtensionsTests
         Assert.That(capturedValue, Is.EqualTo(-1));
     }
 
+    /// <summary>
+    ///     测试带工厂的Ensure方法传播现有失败
+    /// </summary>
     [Test]
     public void Ensure_WithFactory_Should_Propagate_Existing_Failure()
     {
@@ -309,6 +396,9 @@ public class ResultExtensionsTests
         Assert.That(ensured.Exception, Is.SameAs(exception));
     }
 
+    /// <summary>
+    ///     测试带工厂的Ensure方法在参数为null时抛出ArgumentNullException
+    /// </summary>
     [Test]
     public void Ensure_WithFactory_Should_Throw_ArgumentNullException_When_Parameters_Are_Null()
     {
@@ -317,6 +407,9 @@ public class ResultExtensionsTests
         Assert.Throws<ArgumentNullException>(() => result.Ensure(x => true, (Func<int, Exception>)null!));
     }
 
+    /// <summary>
+    ///     测试Try方法在函数成功时返回成功
+    /// </summary>
     [Test]
     public void Try_Should_Return_Success_When_Function_Succeeds()
     {
@@ -325,6 +418,9 @@ public class ResultExtensionsTests
         Assert.That(result.Match(succ: v => v, fail: _ => 0), Is.EqualTo(42));
     }
 
+    /// <summary>
+    ///     测试Try方法在函数抛出异常时返回失败
+    /// </summary>
     [Test]
     public void Try_Should_Return_Failure_When_Function_Throws()
     {
@@ -333,12 +429,18 @@ public class ResultExtensionsTests
         Assert.That(result.Exception, Is.TypeOf<InvalidOperationException>());
     }
 
+    /// <summary>
+    ///     测试Try方法在函数为null时抛出ArgumentNullException
+    /// </summary>
     [Test]
     public void Try_Should_Throw_ArgumentNullException_When_Function_Is_Null()
     {
         Assert.Throws<ArgumentNullException>(() => ResultExtensions.Try<int>(null!));
     }
 
+    /// <summary>
+    ///     测试TryAsync方法在异步函数成功时返回成功
+    /// </summary>
     [Test]
     public async Task TryAsync_Should_Return_Success_When_Async_Function_Succeeds()
     {
@@ -351,6 +453,9 @@ public class ResultExtensionsTests
         Assert.That(result.Match(succ: v => v, fail: _ => 0), Is.EqualTo(42));
     }
 
+    /// <summary>
+    ///     测试TryAsync方法在异步函数抛出异常时返回失败
+    /// </summary>
     [Test]
     public async Task TryAsync_Should_Return_Failure_When_Async_Function_Throws()
     {
@@ -363,6 +468,9 @@ public class ResultExtensionsTests
         Assert.That(result.Exception, Is.TypeOf<InvalidOperationException>());
     }
 
+    /// <summary>
+    ///     测试TryAsync方法处理同步异常
+    /// </summary>
     [Test]
     public async Task TryAsync_Should_Handle_Synchronous_Exceptions()
     {
@@ -370,12 +478,18 @@ public class ResultExtensionsTests
         Assert.That(result.IsFaulted, Is.True);
     }
 
+    /// <summary>
+    ///     测试TryAsync方法在函数为null时抛出ArgumentNullException
+    /// </summary>
     [Test]
     public void TryAsync_Should_Throw_ArgumentNullException_When_Function_Is_Null()
     {
         Assert.ThrowsAsync<ArgumentNullException>(async () => await ResultExtensions.TryAsync<int>(null!));
     }
 
+    /// <summary>
+    ///     测试ToNullable方法在成功时返回值
+    /// </summary>
     [Test]
     public void ToNullable_Should_Return_Value_When_Success()
     {
@@ -384,6 +498,9 @@ public class ResultExtensionsTests
         Assert.That(nullable, Is.EqualTo(42));
     }
 
+    /// <summary>
+    ///     测试ToNullable方法在失败时返回null
+    /// </summary>
     [Test]
     public void ToNullable_Should_Return_Null_When_Faulted()
     {
@@ -392,6 +509,9 @@ public class ResultExtensionsTests
         Assert.That(nullable, Is.Null);
     }
 
+    /// <summary>
+    ///     测试ToNullable方法与值类型一起工作
+    /// </summary>
     [Test]
     public void ToNullable_Should_Work_With_Value_Types()
     {
@@ -399,10 +519,13 @@ public class ResultExtensionsTests
         var nullable = result.ToNullable();
         Assert.That(nullable, Is.Not.Null);
         Assert.That(nullable!.Value.Year, Is.EqualTo(2025));
-        Assert.That(nullable!.Value.Kind, Is.EqualTo(DateTimeKind.Utc)); // 验证 DateTimeKind
+        Assert.That(nullable!.Value.Kind, Is.EqualTo(DateTimeKind.Utc));
     }
 
 
+    /// <summary>
+    ///     测试ToResult方法在值不为null时返回成功
+    /// </summary>
     [Test]
     public void ToResult_Should_Return_Success_When_Value_Is_Not_Null()
     {
@@ -412,6 +535,9 @@ public class ResultExtensionsTests
         Assert.That(result.Match(succ: v => v, fail: _ => ""), Is.EqualTo("test"));
     }
 
+    /// <summary>
+    ///     测试ToResult方法在值为null时返回失败
+    /// </summary>
     [Test]
     public void ToResult_Should_Return_Failure_When_Value_Is_Null()
     {
@@ -421,6 +547,9 @@ public class ResultExtensionsTests
         Assert.That(result.Exception, Is.TypeOf<ArgumentNullException>());
     }
 
+    /// <summary>
+    ///     测试ToResult方法使用自定义错误消息
+    /// </summary>
     [Test]
     public void ToResult_Should_Use_Custom_Error_Message()
     {
@@ -429,6 +558,9 @@ public class ResultExtensionsTests
         Assert.That(result.Exception.Message, Does.Contain("Custom error"));
     }
 
+    /// <summary>
+    ///     测试ToResult方法在可空类型有值时返回成功
+    /// </summary>
     [Test]
     public void ToResult_Should_Return_Success_When_Nullable_Has_Value()
     {
@@ -438,6 +570,9 @@ public class ResultExtensionsTests
         Assert.That(result.Match(succ: v => v, fail: _ => 0), Is.EqualTo(42));
     }
 
+    /// <summary>
+    ///     测试ToResult方法在可空类型为null时返回失败
+    /// </summary>
     [Test]
     public void ToResult_Should_Return_Failure_When_Nullable_Is_Null()
     {
@@ -447,6 +582,9 @@ public class ResultExtensionsTests
         Assert.That(result.Exception, Is.TypeOf<ArgumentNullException>());
     }
 
+    /// <summary>
+    ///     测试ToResult方法对可空类型使用自定义错误消息
+    /// </summary>
     [Test]
     public void ToResult_Should_Use_Custom_Error_Message_For_Nullable()
     {
@@ -455,6 +593,9 @@ public class ResultExtensionsTests
         Assert.That(result.Exception.Message, Does.Contain("Custom nullable error"));
     }
 
+    /// <summary>
+    ///     测试支持多个操作的复杂链式调用
+    /// </summary>
     [Test]
     public void Should_Support_Complex_Chaining_With_Multiple_Operations()
     {
@@ -469,6 +610,9 @@ public class ResultExtensionsTests
         Assert.That(result.Match(succ: v => v, fail: _ => 0), Is.EqualTo(25));
     }
 
+    /// <summary>
+    ///     测试支持OnSuccess和OnFailure链式调用
+    /// </summary>
     [Test]
     public void Should_Support_OnSuccess_And_OnFailure_Chaining()
     {

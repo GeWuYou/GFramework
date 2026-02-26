@@ -11,6 +11,9 @@ namespace GFramework.Core.Tests.extensions;
 [TestFixture]
 public class AsyncExtensionsTests
 {
+    /// <summary>
+    ///     测试WithTimeout方法在任务超时前完成时返回结果
+    /// </summary>
     [Test]
     public async Task WithTimeout_Should_Return_Result_When_Task_Completes_Before_Timeout()
     {
@@ -23,6 +26,9 @@ public class AsyncExtensionsTests
         Assert.That(result, Is.EqualTo(42));
     }
 
+    /// <summary>
+    ///     测试WithTimeout方法在任务超过超时时抛出TimeoutException
+    /// </summary>
     [Test]
     public void WithTimeout_Should_Throw_TimeoutException_When_Task_Exceeds_Timeout()
     {
@@ -37,6 +43,9 @@ public class AsyncExtensionsTests
                 TimeSpan.FromMilliseconds(100)));
     }
 
+    /// <summary>
+    ///     测试WithTimeout方法在取消请求时抛出OperationCanceledException
+    /// </summary>
     [Test]
     public void WithTimeout_Should_Throw_OperationCanceledException_When_Cancellation_Requested()
     {
@@ -55,6 +64,9 @@ public class AsyncExtensionsTests
                 cts.Token));
     }
 
+    /// <summary>
+    ///     测试WithTimeout方法在超时时取消内部任务
+    /// </summary>
     [Test]
     public void WithTimeout_Should_Cancel_Inner_Task_When_Timeout_Elapses()
     {
@@ -82,6 +94,9 @@ public class AsyncExtensionsTests
         Assert.That(innerTaskCanceled, Is.True, "内部任务应在超时时收到取消信号");
     }
 
+    /// <summary>
+    ///     测试无返回值的WithTimeout在任务超时前完成
+    /// </summary>
     [Test]
     public async Task WithTimeout_NoResult_Should_Complete_When_Task_Completes_Before_Timeout()
     {
@@ -99,6 +114,9 @@ public class AsyncExtensionsTests
         Assert.Pass("Task completed successfully within timeout period");
     }
 
+    /// <summary>
+    ///     测试无返回值的WithTimeout在任务超时时抛出TimeoutException
+    /// </summary>
     [Test]
     public void WithTimeout_NoResult_Should_Throw_TimeoutException_When_Task_Exceeds_Timeout()
     {
@@ -109,6 +127,9 @@ public class AsyncExtensionsTests
                 TimeSpan.FromMilliseconds(100)));
     }
 
+    /// <summary>
+    ///     测试无返回值的WithTimeout在超时时取消内部任务
+    /// </summary>
     [Test]
     public void WithTimeout_NoResult_Should_Cancel_Inner_Task_When_Timeout_Elapses()
     {
@@ -135,6 +156,9 @@ public class AsyncExtensionsTests
         Assert.That(innerTaskCanceled, Is.True, "内部任务应在超时时收到取消信号");
     }
 
+    /// <summary>
+    ///     测试WithRetry方法在任务成功时返回结果
+    /// </summary>
     [Test]
     public async Task WithRetry_Should_Return_Result_When_Task_Succeeds()
     {
@@ -154,6 +178,9 @@ public class AsyncExtensionsTests
         Assert.That(attemptCount, Is.EqualTo(1));
     }
 
+    /// <summary>
+    ///     测试WithRetry方法在失败时重试
+    /// </summary>
     [Test]
     public async Task WithRetry_Should_Retry_On_Failure()
     {
@@ -175,6 +202,9 @@ public class AsyncExtensionsTests
         Assert.That(attemptCount, Is.EqualTo(3));
     }
 
+    /// <summary>
+    ///     测试WithRetry方法在所有重试都失败时抛出AggregateException
+    /// </summary>
     [Test]
     public void WithRetry_Should_Throw_AggregateException_When_All_Retries_Fail()
     {
@@ -191,6 +221,9 @@ public class AsyncExtensionsTests
             await taskFactory.WithRetry(2, TimeSpan.FromMilliseconds(10)));
     }
 
+    /// <summary>
+    ///     测试WithRetry方法遵守ShouldRetry谓词
+    /// </summary>
     [Test]
     public async Task WithRetry_Should_Respect_ShouldRetry_Predicate()
     {
@@ -211,6 +244,9 @@ public class AsyncExtensionsTests
         Assert.That(attemptCount, Is.EqualTo(1)); // 不应该重试
     }
 
+    /// <summary>
+    ///     测试TryAsync方法在任务成功时返回成功结果
+    /// </summary>
     [Test]
     public async Task TryAsync_Should_Return_Success_When_Task_Succeeds()
     {
@@ -225,6 +261,9 @@ public class AsyncExtensionsTests
         Assert.That(result.IfFail(0), Is.EqualTo(42));
     }
 
+    /// <summary>
+    ///     测试TryAsync方法在任务抛出异常时返回失败结果
+    /// </summary>
     [Test]
     public async Task TryAsync_Should_Return_Failure_When_Task_Throws()
     {
@@ -238,6 +277,9 @@ public class AsyncExtensionsTests
         Assert.That(result.IsFaulted, Is.True);
     }
 
+    /// <summary>
+    ///     测试WithFallback方法在任务成功时返回结果
+    /// </summary>
     [Test]
     public async Task WithFallback_Should_Return_Result_When_Task_Succeeds()
     {
@@ -251,6 +293,9 @@ public class AsyncExtensionsTests
         Assert.That(result, Is.EqualTo(42));
     }
 
+    /// <summary>
+    ///     测试WithFallback方法在任务失败时返回备用值
+    /// </summary>
     [Test]
     public async Task WithFallback_Should_Return_Fallback_Value_When_Task_Fails()
     {
@@ -264,6 +309,9 @@ public class AsyncExtensionsTests
         Assert.That(result, Is.EqualTo(-1));
     }
 
+    /// <summary>
+    ///     测试WithFallback方法将异常传递给备用函数
+    /// </summary>
     [Test]
     public async Task WithFallback_Should_Pass_Exception_To_Fallback()
     {

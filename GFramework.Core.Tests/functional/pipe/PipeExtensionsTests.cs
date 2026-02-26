@@ -28,6 +28,9 @@ public class PipeExtensionsTests
         Assert.That(capturedValue, Is.EqualTo(42));
     }
 
+    /// <summary>
+    ///     测试Tap方法执行操作并返回原值
+    /// </summary>
     [Test]
     public void Tap_Should_Execute_Action_And_Return_Original_Value()
     {
@@ -43,6 +46,9 @@ public class PipeExtensionsTests
         Assert.That(capturedValue, Is.EqualTo(42));
     }
 
+    /// <summary>
+    ///     测试Tap方法在操作为null时抛出ArgumentNullException
+    /// </summary>
     [Test]
     public void Tap_WithNullAction_Should_Throw_ArgumentNullException()
     {
@@ -53,6 +59,9 @@ public class PipeExtensionsTests
         Assert.Throws<ArgumentNullException>(() => value.Tap(null!));
     }
 
+    /// <summary>
+    ///     测试Tap方法支持链式调用
+    /// </summary>
     [Test]
     public void Tap_Should_Allow_Chaining()
     {
@@ -72,6 +81,9 @@ public class PipeExtensionsTests
         Assert.That(log[1], Is.EqualTo("Step 2: 10"));
     }
 
+    /// <summary>
+    ///     测试Pipe方法转换值
+    /// </summary>
     [Test]
     public void Pipe_Should_Transform_Value()
     {
@@ -85,6 +97,9 @@ public class PipeExtensionsTests
         Assert.That(result, Is.EqualTo(84));
     }
 
+    /// <summary>
+    ///     测试Pipe方法在函数为null时抛出ArgumentNullException
+    /// </summary>
     [Test]
     public void Pipe_WithNullFunction_Should_Throw_ArgumentNullException()
     {
@@ -95,6 +110,9 @@ public class PipeExtensionsTests
         Assert.Throws<ArgumentNullException>(() => value.Pipe<int, int>(null!));
     }
 
+    /// <summary>
+    ///     测试Pipe方法支持链式调用
+    /// </summary>
     [Test]
     public void Pipe_Should_Allow_Chaining()
     {
@@ -111,6 +129,9 @@ public class PipeExtensionsTests
         Assert.That(result, Is.EqualTo("20"));
     }
 
+    /// <summary>
+    ///     测试Let方法转换值
+    /// </summary>
     [Test]
     public void Let_Should_Transform_Value()
     {
@@ -124,6 +145,9 @@ public class PipeExtensionsTests
         Assert.That(result, Is.EqualTo("42"));
     }
 
+    /// <summary>
+    ///     测试Let方法在转换函数为null时抛出ArgumentNullException
+    /// </summary>
     [Test]
     public void Let_WithNullTransform_Should_Throw_ArgumentNullException()
     {
@@ -134,6 +158,9 @@ public class PipeExtensionsTests
         Assert.Throws<ArgumentNullException>(() => value.Let<int, string>(null!));
     }
 
+    /// <summary>
+    ///     测试Let方法支持复杂转换
+    /// </summary>
     [Test]
     public void Let_Should_Allow_Complex_Transformations()
     {
@@ -154,6 +181,9 @@ public class PipeExtensionsTests
         Assert.That(result.Length, Is.EqualTo(5));
     }
 
+    /// <summary>
+    ///     测试PipeIf方法在谓词为true时应用IfTrue函数
+    /// </summary>
     [Test]
     public void PipeIf_WithTruePredicate_Should_Apply_IfTrue_Function()
     {
@@ -171,6 +201,9 @@ public class PipeExtensionsTests
         Assert.That(result, Is.EqualTo("Positive: 42"));
     }
 
+    /// <summary>
+    ///     测试PipeIf方法在谓词为false时应用IfFalse函数
+    /// </summary>
     [Test]
     public void PipeIf_WithFalsePredicate_Should_Apply_IfFalse_Function()
     {
@@ -188,6 +221,9 @@ public class PipeExtensionsTests
         Assert.That(result, Is.EqualTo("Non-positive: -5"));
     }
 
+    /// <summary>
+    ///     测试PipeIf方法在谓词为null时抛出ArgumentNullException
+    /// </summary>
     [Test]
     public void PipeIf_WithNullPredicate_Should_Throw_ArgumentNullException()
     {
@@ -199,6 +235,9 @@ public class PipeExtensionsTests
             value.PipeIf<int, string>(null!, x => "", x => ""));
     }
 
+    /// <summary>
+    ///     测试PipeIf方法在IfTrue函数为null时抛出ArgumentNullException
+    /// </summary>
     [Test]
     public void PipeIf_WithNullIfTrue_Should_Throw_ArgumentNullException()
     {
@@ -210,6 +249,9 @@ public class PipeExtensionsTests
             value.PipeIf(x => true, null!, x => ""));
     }
 
+    /// <summary>
+    ///     测试PipeIf方法在IfFalse函数为null时抛出ArgumentNullException
+    /// </summary>
     [Test]
     public void PipeIf_WithNullIfFalse_Should_Throw_ArgumentNullException()
     {
@@ -221,6 +263,9 @@ public class PipeExtensionsTests
             value.PipeIf(x => true, x => "", null!));
     }
 
+    /// <summary>
+    ///     测试PipeIf方法支持链式调用
+    /// </summary>
     [Test]
     public void PipeIf_Should_Allow_Chaining()
     {

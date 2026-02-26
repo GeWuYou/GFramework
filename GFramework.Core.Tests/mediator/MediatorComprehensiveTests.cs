@@ -24,6 +24,10 @@ namespace GFramework.Core.Tests.mediator;
 [TestFixture]
 public class MediatorComprehensiveTests
 {
+    /// <summary>
+    ///     测试初始化方法，在每个测试方法执行前运行。
+    ///     负责初始化日志工厂、依赖注入容器、Mediator以及各种总线服务。
+    /// </summary>
     [SetUp]
     public void SetUp()
     {
@@ -60,6 +64,10 @@ public class MediatorComprehensiveTests
         _context = new ArchitectureContext(_container);
     }
 
+    /// <summary>
+    ///     测试清理方法，在每个测试方法执行后运行。
+    ///     负责释放容器和上下文资源。
+    /// </summary>
     [TearDown]
     public void TearDown()
     {
@@ -80,6 +88,9 @@ public class MediatorComprehensiveTests
     private AsyncQueryExecutor? _asyncQueryBus;
     private DefaultEnvironment? _environment;
 
+    /// <summary>
+    ///     测试SendRequestAsync方法在请求有效时返回结果
+    /// </summary>
     [Test]
     public async Task SendRequestAsync_Should_ReturnResult_When_Request_IsValid()
     {
@@ -89,6 +100,9 @@ public class MediatorComprehensiveTests
         Assert.That(result, Is.EqualTo(42));
     }
 
+    /// <summary>
+    ///     测试SendRequestAsync方法在请求为null时抛出ArgumentNullException
+    /// </summary>
     [Test]
     public void SendRequestAsync_Should_ThrowArgumentNullException_When_Request_IsNull()
     {
@@ -96,6 +110,9 @@ public class MediatorComprehensiveTests
             await _context!.SendRequestAsync<int>(null!));
     }
 
+    /// <summary>
+    ///     测试SendRequest方法在请求有效时返回结果
+    /// </summary>
     [Test]
     public void SendRequest_Should_ReturnResult_When_Request_IsValid()
     {
@@ -105,6 +122,9 @@ public class MediatorComprehensiveTests
         Assert.That(result, Is.EqualTo(123));
     }
 
+    /// <summary>
+    ///     测试PublishAsync方法在通知有效时发布通知
+    /// </summary>
     [Test]
     public async Task PublishAsync_Should_PublishNotification_When_Notification_IsValid()
     {
@@ -117,6 +137,9 @@ public class MediatorComprehensiveTests
         Assert.That(TestNotificationHandler.LastReceivedMessage, Is.EqualTo("test"));
     }
 
+    /// <summary>
+    ///     测试CreateStream方法在流请求有效时返回流
+    /// </summary>
     [Test]
     public async Task CreateStream_Should_ReturnStream_When_StreamRequest_IsValid()
     {
@@ -132,6 +155,9 @@ public class MediatorComprehensiveTests
         Assert.That(results, Is.EqualTo(new[] { 1, 2, 3, 4, 5 }));
     }
 
+    /// <summary>
+    ///     测试SendAsync方法（无返回值命令）在命令有效时执行
+    /// </summary>
     [Test]
     public async Task SendAsync_CommandWithoutResult_Should_Execute_When_Command_IsValid()
     {
@@ -141,6 +167,9 @@ public class MediatorComprehensiveTests
         Assert.That(testCommand.Executed, Is.True);
     }
 
+    /// <summary>
+    ///     测试SendAsync方法（带返回值命令）在命令有效时返回结果
+    /// </summary>
     [Test]
     public async Task SendAsync_CommandWithResult_Should_ReturnResult_When_Command_IsValid()
     {
@@ -150,6 +179,9 @@ public class MediatorComprehensiveTests
         Assert.That(result, Is.EqualTo(42));
     }
 
+    /// <summary>
+    ///     测试GetService方法使用缓存
+    /// </summary>
     [Test]
     public void GetService_Should_Use_Cache()
     {
@@ -162,6 +194,9 @@ public class MediatorComprehensiveTests
     }
 
 
+    /// <summary>
+    ///     测试未注册的Mediator抛出InvalidOperationException
+    /// </summary>
     [Test]
     public void Unregistered_Mediator_Should_Throw_InvalidOperationException()
     {
@@ -175,6 +210,9 @@ public class MediatorComprehensiveTests
             await contextWithoutMediator.SendRequestAsync(testRequest));
     }
 
+    /// <summary>
+    ///     测试多个通知处理器都被调用
+    /// </summary>
     [Test]
     public async Task Multiple_Notification_Handlers_Should_All_Be_Invoked()
     {
@@ -193,6 +231,9 @@ public class MediatorComprehensiveTests
         Assert.That(TestNotificationHandler3.LastReceivedMessage, Is.EqualTo("multi-handler test"));
     }
 
+    /// <summary>
+    ///     测试CancellationToken取消长时间运行的请求
+    /// </summary>
     [Test]
     public async Task CancellationToken_Should_Cancel_Long_Running_Request()
     {
@@ -204,6 +245,9 @@ public class MediatorComprehensiveTests
             await _context!.SendRequestAsync(longRequest, cts.Token));
     }
 
+    /// <summary>
+    ///     测试CancellationToken取消流请求
+    /// </summary>
     [Test]
     public async Task CancellationToken_Should_Cancel_Stream_Request()
     {
@@ -226,6 +270,9 @@ public class MediatorComprehensiveTests
         Assert.That(results.Count, Is.LessThan(1000));
     }
 
+    /// <summary>
+    ///     测试并发Mediator请求不会相互干扰
+    /// </summary>
     [Test]
     public async Task Concurrent_Mediator_Requests_Should_Not_Interfere()
     {
@@ -246,6 +293,9 @@ public class MediatorComprehensiveTests
         Assert.That(results.OrderBy(x => x), Is.EqualTo(Enumerable.Range(0, requestCount)));
     }
 
+    /// <summary>
+    ///     测试处理器异常被正确传播
+    /// </summary>
     [Test]
     public async Task Handler_Exception_Should_Be_Propagated()
     {
@@ -255,6 +305,9 @@ public class MediatorComprehensiveTests
             await _context!.SendRequestAsync(faultyRequest));
     }
 
+    /// <summary>
+    ///     测试多个命令处理器可以修改同一对象
+    /// </summary>
     [Test]
     public async Task Multiple_Command_Handlers_Can_Modify_Same_Object()
     {
@@ -269,6 +322,9 @@ public class MediatorComprehensiveTests
         Assert.That(sharedData.Value, Is.EqualTo(30)); // 10 + 20
     }
 
+    /// <summary>
+    ///     测试通知顺序被保留
+    /// </summary>
     [Test]
     public async Task Notification_Ordering_Should_Be_Preserved()
     {
@@ -296,6 +352,9 @@ public class MediatorComprehensiveTests
         Assert.That(receivedOrder[2], Is.EqualTo("Third"));
     }
 
+    /// <summary>
+    ///     测试流请求带过滤功能
+    /// </summary>
     [Test]
     public async Task Stream_Request_With_Filtering()
     {
@@ -318,6 +377,9 @@ public class MediatorComprehensiveTests
         Assert.That(results, Is.EqualTo(new[] { 2, 4, 6, 8, 10 }));
     }
 
+    /// <summary>
+    ///     测试请求验证使用Behaviors
+    /// </summary>
     [Test]
     public async Task Request_Validation_With_Behaviors()
     {
@@ -327,6 +389,9 @@ public class MediatorComprehensiveTests
             await _context!.SendAsync(invalidCommand));
     }
 
+    /// <summary>
+    ///     测试Mediator性能基准
+    /// </summary>
     [Test]
     public async Task Performance_Benchmark_For_Mediator()
     {
@@ -348,6 +413,9 @@ public class MediatorComprehensiveTests
         Console.WriteLine($"Average time per request: {avgTime:F2}ms");
     }
 
+    /// <summary>
+    ///     测试Mediator和传统CQRS可以共存
+    /// </summary>
     [Test]
     public async Task Mediator_And_Legacy_CQRS_Can_Coexist()
     {

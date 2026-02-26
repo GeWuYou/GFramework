@@ -3,9 +3,15 @@ using NUnit.Framework;
 
 namespace GFramework.Core.Tests.coroutine
 {
+    /// <summary>
+    ///     Delay类的单元测试，用于验证延迟指令的功能
+    /// </summary>
     [TestFixture]
     public class DelayTests
     {
+        /// <summary>
+        ///     测试构造函数设置初始剩余时间
+        /// </summary>
         [Test]
         public void Constructor_SetsInitialRemainingTime()
         {
@@ -16,6 +22,9 @@ namespace GFramework.Core.Tests.coroutine
             Assert.That(delay.IsDone, Is.False);
         }
 
+        /// <summary>
+        ///     测试Update方法减少剩余时间
+        /// </summary>
         [Test]
         public void Update_ReducesRemainingTime()
         {
@@ -29,6 +38,9 @@ namespace GFramework.Core.Tests.coroutine
             Assert.That(delay.IsDone, Is.False);
         }
 
+        /// <summary>
+        ///     测试多次Update后最终完成
+        /// </summary>
         [Test]
         public void Update_MultipleTimes_EventuallyCompletes()
         {
@@ -43,6 +55,9 @@ namespace GFramework.Core.Tests.coroutine
             Assert.That(delay.IsDone, Is.True);
         }
 
+        /// <summary>
+        ///     测试负数时间被视为零
+        /// </summary>
         [Test]
         public void NegativeTime_TreatedAsZero()
         {
@@ -53,6 +68,9 @@ namespace GFramework.Core.Tests.coroutine
             Assert.That(delay.IsDone, Is.True);
         }
 
+        /// <summary>
+        ///     测试零时间立即完成
+        /// </summary>
         [Test]
         public void ZeroTime_CompletesImmediately()
         {
