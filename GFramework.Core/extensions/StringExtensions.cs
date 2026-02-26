@@ -6,38 +6,6 @@ namespace GFramework.Core.extensions;
 public static class StringExtensions
 {
     /// <summary>
-    ///     指示指定的字符串是 null 还是空字符串
-    /// </summary>
-    /// <param name="str">要测试的字符串</param>
-    /// <returns>如果 str 参数为 null 或空字符串 ("")，则为 true；否则为 false</returns>
-    /// <example>
-    /// <code>
-    /// string? text = null;
-    /// if (text.IsNullOrEmpty()) { /* ... */ }
-    /// </code>
-    /// </example>
-    public static bool IsNullOrEmpty(this string? str)
-    {
-        return string.IsNullOrEmpty(str);
-    }
-
-    /// <summary>
-    ///     指示指定的字符串是 null、空还是仅由空白字符组成
-    /// </summary>
-    /// <param name="str">要测试的字符串</param>
-    /// <returns>如果 str 参数为 null、空字符串或仅包含空白字符，则为 true；否则为 false</returns>
-    /// <example>
-    /// <code>
-    /// string? text = "   ";
-    /// if (text.IsNullOrWhiteSpace()) { /* ... */ }
-    /// </code>
-    /// </example>
-    public static bool IsNullOrWhiteSpace(this string? str)
-    {
-        return string.IsNullOrWhiteSpace(str);
-    }
-
-    /// <summary>
     ///     如果字符串为空，则返回 null；否则返回原字符串
     /// </summary>
     /// <param name="str">要检查的字符串</param>

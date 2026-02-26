@@ -6,36 +6,6 @@ namespace GFramework.Core.extensions;
 public static class NumericExtensions
 {
     /// <summary>
-    ///     将值限制在指定的范围内
-    /// </summary>
-    /// <typeparam name="T">实现 IComparable 的类型</typeparam>
-    /// <param name="value">要限制的值</param>
-    /// <param name="min">最小值</param>
-    /// <param name="max">最大值</param>
-    /// <returns>限制后的值</returns>
-    /// <exception cref="ArgumentNullException">当 value、min 或 max 为 null 时抛出</exception>
-    /// <exception cref="ArgumentException">当 min 大于 max 时抛出</exception>
-    /// <example>
-    /// <code>
-    /// var value = 150;
-    /// var clamped = value.Clamp(0, 100); // 返回 100
-    /// </code>
-    /// </example>
-    public static T Clamp<T>(this T value, T min, T max) where T : IComparable<T>
-    {
-        if (min.CompareTo(max) > 0)
-            throw new ArgumentException($"最小值 ({min}) 不能大于最大值 ({max})");
-
-        if (value.CompareTo(min) < 0)
-            return min;
-
-        if (value.CompareTo(max) > 0)
-            return max;
-
-        return value;
-    }
-
-    /// <summary>
     ///     检查值是否在指定范围内
     /// </summary>
     /// <typeparam name="T">实现 IComparable 的类型</typeparam>
