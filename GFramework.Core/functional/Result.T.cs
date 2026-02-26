@@ -26,13 +26,23 @@ public readonly struct Result<A> : IEquatable<Result<A>>, IComparable<Result<A>>
     // ------------------------------------------------------------------ 状态枚举
 
     /// <summary>
-    ///     结果状态枚举，表示结果的不同状态
-    ///     排序: Bottom < Faulted < Success
+    ///     表示 Result 结构体的内部状态
     /// </summary>
     private enum ResultState : byte
     {
+        /// <summary>
+        ///     未初始化状态，表示 Result 尚未被赋值
+        /// </summary>
         Bottom,
+
+        /// <summary>
+        ///     失败状态，表示操作执行失败并包含异常信息
+        /// </summary>
         Faulted,
+
+        /// <summary>
+        ///     成功状态，表示操作执行成功并包含返回值
+        /// </summary>
         Success
     }
 

@@ -239,11 +239,12 @@ public sealed class FileStorage : IFileStorage
     {
         var fullPath = string.IsNullOrEmpty(path) ? _rootPath : Path.Combine(_rootPath, path);
         if (!Directory.Exists(fullPath))
-            return Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
+            return Task.FromResult<IReadOnlyList<string>>([]);
 
         var dirs = Directory.GetDirectories(fullPath)
             .Select(Path.GetFileName)
-            .Where(name => !string.IsNullOrEmpty(name) && !name.StartsWith(".", StringComparison.Ordinal))
+            .OfType<string>()
+            .Where(name => !string.IsNullOrEmpty(name) && !name.StartsWith('.'))
             .ToList();
 
         return Task.FromResult<IReadOnlyList<string>>(dirs);
@@ -262,6 +263,7 @@ public sealed class FileStorage : IFileStorage
 
         var files = Directory.GetFiles(fullPath)
             .Select(Path.GetFileName)
+            .OfType<string>()
             .Where(name => !string.IsNullOrEmpty(name))
             .ToList();
 

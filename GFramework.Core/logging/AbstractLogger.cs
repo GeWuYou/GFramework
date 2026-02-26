@@ -8,7 +8,7 @@ namespace GFramework.Core.logging;
 /// </summary>
 public abstract class AbstractLogger(
     string? name = null,
-    LogLevel minLevel = LogLevel.Info) : ILogger
+    LogLevel minLevel = LogLevel.Info) : IStructuredLogger
 {
     /// <summary>
     ///     根日志记录器的名称常量
@@ -451,42 +451,121 @@ public abstract class AbstractLogger(
 
     #endregion
 
-    #region Core Pipeline
+    #region Generic Log Methods
 
     /// <summary>
-    ///     核心日志记录方法（无参数）
+    ///     使用指定的日志级别记录消息
     /// </summary>
     /// <param name="level">日志级别</param>
-    /// <param name="message">日志消息</param>
-    private void Log(LogLevel level, string message)
+    /// <param name="message">要记录的消息字符串</param>
+    public void Log(LogLevel level, string message)
     {
         if (!IsEnabled(level)) return;
         Write(level, message, null);
     }
 
     /// <summary>
-    ///     核心日志记录方法（带参数格式化）
+    ///     使用指定的日志级别根据格式和参数记录消息
     /// </summary>
     /// <param name="level">日志级别</param>
-    /// <param name="format">格式化字符串</param>
-    /// <param name="args">格式化参数数组</param>
-    private void Log(LogLevel level, string format, params object[] args)
+    /// <param name="format">格式字符串</param>
+    /// <param name="arg">参数</param>
+    public void Log(LogLevel level, string format, object arg)
     {
         if (!IsEnabled(level)) return;
-        Write(level, string.Format(format, args), null);
+        Write(level, string.Format(format, arg), null);
     }
 
     /// <summary>
-    ///     核心日志记录方法（带异常）
+    ///     使用指定的日志级别根据格式和参数记录消息
     /// </summary>
     /// <param name="level">日志级别</param>
-    /// <param name="message">日志消息</param>
-    /// <param name="exception">异常对象</param>
-    private void Log(LogLevel level, string message, Exception exception)
+    /// <param name="format">格式字符串</param>
+    /// <param name="arg1">第一个参数</param>
+    /// <param name="arg2">第二个参数</param>
+    public void Log(LogLevel level, string format, object arg1, object arg2)
+    {
+        if (!IsEnabled(level)) return;
+        Write(level, string.Format(format, arg1, arg2), null);
+    }
+
+    /// <summary>
+    ///     使用指定的日志级别根据格式和参数数组记录消息
+    /// </summary>
+    /// <param name="level">日志级别</param>
+    /// <param name="format">格式字符串</param>
+    /// <param name="arguments">参数数组</param>
+    public void Log(LogLevel level, string format, params object[] arguments)
+    {
+        if (!IsEnabled(level)) return;
+        Write(level, string.Format(format, arguments), null);
+    }
+
+    /// <summary>
+    ///     使用指定的日志级别记录消息和异常
+    /// </summary>
+    /// <param name="level">日志级别</param>
+    /// <param name="message">伴随异常的消息</param>
+    /// <param name="exception">要记录的异常</param>
+    public void Log(LogLevel level, string message, Exception exception)
     {
         if (!IsEnabled(level)) return;
         Write(level, message, exception);
     }
+
+    #endregion
+
+    #region Structured Log Methods
+
+    /// <summary>
+    ///     使用指定的日志级别记录消息和结构化属性
+    /// </summary>
+    /// <param name="level">日志级别</param>
+    /// <param name="message">日志消息</param>
+    /// <param name="properties">结构化属性键值对</param>
+    public virtual void Log(LogLevel level, string message, params (string Key, object? Value)[] properties)
+    {
+        if (!IsEnabled(level)) return;
+
+        // 默认实现：将属性附加到消息后面
+        if (properties.Length > 0)
+        {
+            var propsStr = string.Join(", ", properties.Select(p => $"{p.Key}={p.Value}"));
+            Write(level, $"{message} | {propsStr}", null);
+        }
+        else
+        {
+            Write(level, message, null);
+        }
+    }
+
+    /// <summary>
+    ///     使用指定的日志级别记录消息、异常和结构化属性
+    /// </summary>
+    /// <param name="level">日志级别</param>
+    /// <param name="message">日志消息</param>
+    /// <param name="exception">异常对象</param>
+    /// <param name="properties">结构化属性键值对</param>
+    public virtual void Log(LogLevel level, string message, Exception? exception,
+        params (string Key, object? Value)[] properties)
+    {
+        if (!IsEnabled(level)) return;
+
+        // 默认实现：将属性附加到消息后面
+        if (properties.Length > 0)
+        {
+            var propsStr = string.Join(", ", properties.Select(p => $"{p.Key}={p.Value}"));
+            Write(level, $"{message} | {propsStr}", exception);
+        }
+        else
+        {
+            Write(level, message, exception);
+        }
+    }
+
+    #endregion
+
+    #region Core Pipeline (Private)
 
     #endregion
 }

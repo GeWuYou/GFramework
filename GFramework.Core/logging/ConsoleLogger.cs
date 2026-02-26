@@ -12,6 +12,17 @@ public sealed class ConsoleLogger(
     TextWriter? writer = null,
     bool useColors = true) : AbstractLogger(name ?? RootLoggerName, minLevel)
 {
+    // 静态缓存日志级别字符串，避免重复格式化
+    private static readonly string[] LevelStrings =
+    [
+        "TRACE  ",
+        "DEBUG  ",
+        "INFO   ",
+        "WARNING",
+        "ERROR  ",
+        "FATAL  "
+    ];
+
     private readonly bool _useColors = useColors && writer == Console.Out;
     private readonly TextWriter _writer = writer ?? Console.Out;
 
@@ -24,7 +35,7 @@ public sealed class ConsoleLogger(
     protected override void Write(LogLevel level, string message, Exception? exception)
     {
         var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
-        var levelStr = level.ToString().ToUpper().PadRight(7);
+        var levelStr = LevelStrings[(int)level];
         var log = $"[{timestamp}] {levelStr} [{Name()}] {message}";
 
         // 添加异常信息到日志
@@ -39,40 +50,32 @@ public sealed class ConsoleLogger(
     #region Internal Core
 
     /// <summary>
-    ///     以指定颜色写入日志消息
+    ///     以指定颜色写入日志消息（使用 ANSI 转义码）
     /// </summary>
     /// <param name="level">日志级别</param>
     /// <param name="message">日志消息</param>
     private void WriteColored(LogLevel level, string message)
     {
-        var original = Console.ForegroundColor;
-        try
-        {
-            Console.ForegroundColor = GetColor(level);
-            _writer.WriteLine(message);
-        }
-        finally
-        {
-            Console.ForegroundColor = original;
-        }
+        var colorCode = GetAnsiColorCode(level);
+        _writer.WriteLine($"\x1b[{colorCode}m{message}\x1b[0m");
     }
 
     /// <summary>
-    ///     根据日志级别获取对应的颜色
+    ///     根据日志级别获取对应的 ANSI 颜色代码
     /// </summary>
     /// <param name="level">日志级别</param>
-    /// <returns>控制台颜色</returns>
-    private static ConsoleColor GetColor(LogLevel level)
+    /// <returns>ANSI 颜色代码</returns>
+    private static string GetAnsiColorCode(LogLevel level)
     {
         return level switch
         {
-            LogLevel.Trace => ConsoleColor.DarkGray,
-            LogLevel.Debug => ConsoleColor.Cyan,
-            LogLevel.Info => ConsoleColor.White,
-            LogLevel.Warning => ConsoleColor.Yellow,
-            LogLevel.Error => ConsoleColor.Red,
-            LogLevel.Fatal => ConsoleColor.Magenta,
-            _ => ConsoleColor.White
+            LogLevel.Trace => "90", // 暗灰色
+            LogLevel.Debug => "36", // 青色
+            LogLevel.Info => "37", // 白色
+            LogLevel.Warning => "33", // 黄色
+            LogLevel.Error => "31", // 红色
+            LogLevel.Fatal => "35", // 洋红色
+            _ => "37"
         };
     }
 

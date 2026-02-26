@@ -15,6 +15,17 @@ public sealed class GodotLogger(
     string? name = null,
     LogLevel minLevel = LogLevel.Info) : AbstractLogger(name ?? RootLoggerName, minLevel)
 {
+    // 静态缓存日志级别字符串，避免重复格式化
+    private static readonly string[] LevelStrings =
+    [
+        "TRACE  ",
+        "DEBUG  ",
+        "INFO   ",
+        "WARNING",
+        "ERROR  ",
+        "FATAL  "
+    ];
+
     /// <summary>
     ///     写入日志的核心方法。
     ///     格式化日志消息并根据日志级别调用 Godot 的输出方法。
@@ -26,7 +37,7 @@ public sealed class GodotLogger(
     {
         // 构造时间戳和日志前缀
         var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
-        var levelStr = level.ToString().ToUpper().PadRight(7);
+        var levelStr = LevelStrings[(int)level];
         var logPrefix = $"[{timestamp}] {levelStr} [{Name()}]";
 
         // 添加异常信息到日志消息中
@@ -46,7 +57,16 @@ public sealed class GodotLogger(
             case LogLevel.Warning:
                 GD.PushWarning(logMessage);
                 break;
-            default: // Trace / Debug / Info
+            case LogLevel.Trace:
+                GD.PrintRich($"[color=gray]{logMessage}[/color]");
+                break;
+            case LogLevel.Debug:
+                GD.PrintRich($"[color=cyan]{logMessage}[/color]");
+                break;
+            case LogLevel.Info:
+                GD.Print(logMessage);
+                break;
+            default:
                 GD.Print(logMessage);
                 break;
         }
