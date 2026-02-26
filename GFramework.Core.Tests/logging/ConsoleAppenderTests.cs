@@ -39,7 +39,7 @@ public class ConsoleAppenderTests
     [Test]
     public void Append_ShouldWriteToWriter()
     {
-        var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger", "Test message", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Test message", null, null);
 
         _appender.Append(entry);
 
@@ -54,8 +54,8 @@ public class ConsoleAppenderTests
         var filter = new LogLevelFilter(LogLevel.Warning);
         var appender = new ConsoleAppender(new DefaultLogFormatter(), _stringWriter, useColors: false, filter: filter);
 
-        var infoEntry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger", "Info message", null, null);
-        var warningEntry = new LogEntry(DateTime.Now, LogLevel.Warning, "TestLogger", "Warning message", null, null);
+        var infoEntry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Info message", null, null);
+        var warningEntry = new LogEntry(DateTime.UtcNow, LogLevel.Warning, "TestLogger", "Warning message", null, null);
 
         appender.Append(infoEntry);
         appender.Append(warningEntry);
@@ -70,7 +70,7 @@ public class ConsoleAppenderTests
     [Test]
     public void Flush_ShouldFlushWriter()
     {
-        var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger", "Test message", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Test message", null, null);
 
         _appender.Append(entry);
         _appender.Flush();
@@ -82,7 +82,7 @@ public class ConsoleAppenderTests
     [Test]
     public void Dispose_ShouldFlushWriter()
     {
-        var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger", "Test message", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Test message", null, null);
 
         _appender.Append(entry);
         _appender.Dispose();
@@ -96,7 +96,7 @@ public class ConsoleAppenderTests
     {
         for (int i = 0; i < 10; i++)
         {
-            var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger", $"Message {i}", null, null);
+            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", $"Message {i}", null, null);
             _appender.Append(entry);
         }
 

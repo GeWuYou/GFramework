@@ -26,7 +26,7 @@ public class NamespaceFilterTests
     public void ShouldLog_WithMatchingNamespace_ShouldReturnTrue()
     {
         var filter = new NamespaceFilter("GFramework.Core", "MyApp");
-        var entry = new LogEntry(DateTime.Now, LogLevel.Info, "GFramework.Core.Logging", "Test", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "GFramework.Core.Logging", "Test", null, null);
 
         Assert.That(filter.ShouldLog(entry), Is.True);
     }
@@ -35,7 +35,7 @@ public class NamespaceFilterTests
     public void ShouldLog_WithNonMatchingNamespace_ShouldReturnFalse()
     {
         var filter = new NamespaceFilter("GFramework.Core", "MyApp");
-        var entry = new LogEntry(DateTime.Now, LogLevel.Info, "OtherNamespace", "Test", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "OtherNamespace", "Test", null, null);
 
         Assert.That(filter.ShouldLog(entry), Is.False);
     }
@@ -44,7 +44,7 @@ public class NamespaceFilterTests
     public void ShouldLog_WithExactMatch_ShouldReturnTrue()
     {
         var filter = new NamespaceFilter("GFramework.Core");
-        var entry = new LogEntry(DateTime.Now, LogLevel.Info, "GFramework.Core", "Test", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "GFramework.Core", "Test", null, null);
 
         Assert.That(filter.ShouldLog(entry), Is.True);
     }
@@ -53,7 +53,7 @@ public class NamespaceFilterTests
     public void ShouldLog_WithPrefixMatch_ShouldReturnTrue()
     {
         var filter = new NamespaceFilter("GFramework");
-        var entry = new LogEntry(DateTime.Now, LogLevel.Info, "GFramework.Core.Logging", "Test", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "GFramework.Core.Logging", "Test", null, null);
 
         Assert.That(filter.ShouldLog(entry), Is.True);
     }
@@ -62,7 +62,7 @@ public class NamespaceFilterTests
     public void ShouldLog_IsCaseInsensitive()
     {
         var filter = new NamespaceFilter("gframework.core");
-        var entry = new LogEntry(DateTime.Now, LogLevel.Info, "GFramework.Core.Logging", "Test", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "GFramework.Core.Logging", "Test", null, null);
 
         Assert.That(filter.ShouldLog(entry), Is.True);
     }
@@ -72,10 +72,10 @@ public class NamespaceFilterTests
     {
         var filter = new NamespaceFilter("GFramework.Core", "MyApp.Services", "ThirdParty");
 
-        var entry1 = new LogEntry(DateTime.Now, LogLevel.Info, "GFramework.Core.Logging", "Test", null, null);
-        var entry2 = new LogEntry(DateTime.Now, LogLevel.Info, "MyApp.Services.UserService", "Test", null, null);
-        var entry3 = new LogEntry(DateTime.Now, LogLevel.Info, "ThirdParty.Library", "Test", null, null);
-        var entry4 = new LogEntry(DateTime.Now, LogLevel.Info, "OtherNamespace", "Test", null, null);
+        var entry1 = new LogEntry(DateTime.UtcNow, LogLevel.Info, "GFramework.Core.Logging", "Test", null, null);
+        var entry2 = new LogEntry(DateTime.UtcNow, LogLevel.Info, "MyApp.Services.UserService", "Test", null, null);
+        var entry3 = new LogEntry(DateTime.UtcNow, LogLevel.Info, "ThirdParty.Library", "Test", null, null);
+        var entry4 = new LogEntry(DateTime.UtcNow, LogLevel.Info, "OtherNamespace", "Test", null, null);
 
         Assert.That(filter.ShouldLog(entry1), Is.True);
         Assert.That(filter.ShouldLog(entry2), Is.True);

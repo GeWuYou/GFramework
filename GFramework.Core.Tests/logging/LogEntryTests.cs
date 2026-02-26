@@ -12,7 +12,7 @@ public class LogEntryTests
     [Test]
     public void Constructor_WithAllParameters_ShouldCreateEntry()
     {
-        var timestamp = DateTime.Now;
+        var timestamp = DateTime.UtcNow;
         var properties = new Dictionary<string, object?> { ["Key1"] = "Value1" };
         var exception = new InvalidOperationException("Test");
 
@@ -29,7 +29,7 @@ public class LogEntryTests
     [Test]
     public void Constructor_WithNullException_ShouldWork()
     {
-        var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger", "Test message", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Test message", null, null);
 
         Assert.That(entry.Exception, Is.Null);
     }
@@ -37,7 +37,7 @@ public class LogEntryTests
     [Test]
     public void Constructor_WithNullProperties_ShouldWork()
     {
-        var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger", "Test message", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Test message", null, null);
 
         Assert.That(entry.Properties, Is.Null);
     }
@@ -48,7 +48,7 @@ public class LogEntryTests
         LogContext.Clear();
         using (LogContext.Push("ContextKey", "ContextValue"))
         {
-            var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger", "Test message", null, null);
+            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Test message", null, null);
 
             var allProps = entry.GetAllProperties();
 
@@ -64,7 +64,7 @@ public class LogEntryTests
     {
         LogContext.Clear();
         var properties = new Dictionary<string, object?> { ["PropKey"] = "PropValue" };
-        var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger", "Test message", null, properties);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Test message", null, properties);
 
         var allProps = entry.GetAllProperties();
 
@@ -79,7 +79,7 @@ public class LogEntryTests
         using (LogContext.Push("ContextKey", "ContextValue"))
         {
             var properties = new Dictionary<string, object?> { ["PropKey"] = "PropValue" };
-            var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger", "Test message", null, properties);
+            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Test message", null, properties);
 
             var allProps = entry.GetAllProperties();
 
@@ -98,7 +98,7 @@ public class LogEntryTests
         using (LogContext.Push("Key1", "ContextValue"))
         {
             var properties = new Dictionary<string, object?> { ["Key1"] = "PropValue" };
-            var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger", "Test message", null, properties);
+            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Test message", null, properties);
 
             var allProps = entry.GetAllProperties();
 
@@ -113,7 +113,7 @@ public class LogEntryTests
     public void GetAllProperties_WithEmptyPropertiesAndEmptyContext_ShouldReturnEmpty()
     {
         LogContext.Clear();
-        var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger", "Test message", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Test message", null, null);
 
         var allProps = entry.GetAllProperties();
 
@@ -123,7 +123,7 @@ public class LogEntryTests
     [Test]
     public void RecordEquality_WithSameValues_ShouldBeEqual()
     {
-        var timestamp = DateTime.Now;
+        var timestamp = DateTime.UtcNow;
         var properties = new Dictionary<string, object?> { ["Key1"] = "Value1" };
 
         var entry1 = new LogEntry(timestamp, LogLevel.Info, "TestLogger", "Test message", null, properties);
@@ -135,7 +135,7 @@ public class LogEntryTests
     [Test]
     public void RecordEquality_WithDifferentValues_ShouldNotBeEqual()
     {
-        var timestamp = DateTime.Now;
+        var timestamp = DateTime.UtcNow;
 
         var entry1 = new LogEntry(timestamp, LogLevel.Info, "TestLogger", "Test message 1", null, null);
         var entry2 = new LogEntry(timestamp, LogLevel.Info, "TestLogger", "Test message 2", null, null);

@@ -432,7 +432,7 @@ public class LogUtility : IUtility
             _ => ""
         };
         
-        string timestamp = DateTime.Now.ToString("HH:mm:ss");
+        string timestamp = DateTime.UtcNow.ToString("HH:mm:ss");
         GD.Print($"{timestamp} {prefix} {message}");
     }
     

@@ -36,7 +36,7 @@ public sealed class GodotLogger(
     protected override void Write(LogLevel level, string message, Exception? exception)
     {
         // 构造时间戳和日志前缀
-        var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+        var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff");
         var levelStr = LevelStrings[(int)level];
         var logPrefix = $"[{timestamp}] {levelStr} [{Name()}]";
 

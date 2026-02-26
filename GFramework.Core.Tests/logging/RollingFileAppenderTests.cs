@@ -59,7 +59,7 @@ public class RollingFileAppenderTests
             // 写入足够多的日志触发轮转
             for (int i = 0; i < 20; i++)
             {
-                var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger",
+                var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger",
                     $"This is a test message number {i} with some padding to increase size", null, null);
                 appender.Append(entry);
             }
@@ -81,7 +81,7 @@ public class RollingFileAppenderTests
             // 写入大量日志触发多次轮转
             for (int i = 0; i < 50; i++)
             {
-                var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger",
+                var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger",
                     $"This is a test message number {i} with some padding to increase size significantly", null, null);
                 appender.Append(entry);
             }
@@ -100,7 +100,7 @@ public class RollingFileAppenderTests
         {
             for (int i = 0; i < 30; i++)
             {
-                var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger",
+                var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger",
                     $"Test message {i} with padding to trigger rolling", null, null);
                 appender.Append(entry);
             }
@@ -124,7 +124,7 @@ public class RollingFileAppenderTests
         var appender = new RollingFileAppender(_testFilePath);
         appender.Dispose();
 
-        var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger", "Test message", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Test message", null, null);
 
         Assert.Throws<ObjectDisposedException>(() => appender.Append(entry));
     }
@@ -136,7 +136,7 @@ public class RollingFileAppenderTests
         {
             for (int i = 0; i < 10; i++)
             {
-                var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger",
+                var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger",
                     "This is a longer message to trigger rolling more frequently", null, null);
                 appender.Append(entry);
             }
@@ -153,7 +153,7 @@ public class RollingFileAppenderTests
     {
         using (var appender = new RollingFileAppender(_testFilePath))
         {
-            var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger", "Test message", null, null);
+            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Test message", null, null);
 
             appender.Append(entry);
             appender.Flush();

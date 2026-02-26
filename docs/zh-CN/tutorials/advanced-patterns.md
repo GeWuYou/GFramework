@@ -51,7 +51,7 @@ public class CreatePlayerCommand : AbstractCommand
             MaxHealth = 100,
             Mana = 50,
             MaxMana = 50,
-            CreatedAt = DateTime.Now
+            CreatedAt = DateTime.UtcNow
         };
         
         // 保存玩家数据
@@ -440,13 +440,13 @@ public interface IDomainEvent
 public record PlayerCreatedDomainEvent(PlayerId PlayerId, PlayerName PlayerName, PlayerClass Class) 
     : IDomainEvent
 {
-    public DateTime OccurredAt { get; } = DateTime.Now;
+    public DateTime OccurredAt { get; } = DateTime.UtcNow;
 }
 
 public record PlayerLevelUpDomainEvent(PlayerId PlayerId, PlayerName PlayerName, int NewLevel, int OldLevel) 
     : IDomainEvent
 {
-    public DateTime OccurredAt { get; } = DateTime.Now;
+    public DateTime OccurredAt { get; } = DateTime.UtcNow;
 }
 
 // 领域服务
@@ -620,7 +620,7 @@ public interface IEventStore
 
 public record AggregateSnapshot(string StreamId, int Version) : IDomainEvent
 {
-    public DateTime OccurredAt { get; } = DateTime.Now;
+    public DateTime OccurredAt { get; } = DateTime.UtcNow;
 }
 
 public class ConcurrencyException : Exception
@@ -855,7 +855,7 @@ public class PlayerEventHandler : IEventHandler<PlayerLevelUpEvent>,
         if (player != null)
         {
             player.IsAlive = false;
-            player.DeathTime = DateTime.Now;
+            player.DeathTime = DateTime.UtcNow;
             _playerRepository.Update(player);
             
             // 发送通知
@@ -1160,7 +1160,7 @@ public class ChatService : IChatService
         {
             PlayerId = playerId,
             Message = FilterMessage(message),
-            Timestamp = DateTime.Now,
+            Timestamp = DateTime.UtcNow,
             Channel = channel
         };
         
@@ -1176,7 +1176,7 @@ public class ChatService : IChatService
         {
             PlayerId = "system",
             Message = message,
-            Timestamp = DateTime.Now,
+            Timestamp = DateTime.UtcNow,
             Channel = "system"
         };
         

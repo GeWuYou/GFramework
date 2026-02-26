@@ -439,7 +439,7 @@ public class EventBridge : AbstractSystem
             this.SendEvent(new PublicPlayerDiedEvent
             {
                 PlayerId = e.Id,
-                Timestamp = DateTime.Now
+                Timestamp = DateTime.UtcNow
             });
         });
     }

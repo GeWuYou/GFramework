@@ -42,7 +42,7 @@ public class LocalizationSettings : ISettingsData
     /// <summary>
     ///     获取设置数据最后修改的时间
     /// </summary>
-    public DateTime LastModified { get; } = DateTime.Now;
+    public DateTime LastModified { get; } = DateTime.UtcNow;
 
     /// <summary>
     ///     从指定的数据源加载本地化设置

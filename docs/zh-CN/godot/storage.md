@@ -144,7 +144,7 @@ storage.Write("user://saves/slot_001.dat", saveData);
 
 // 存储调试信息（普通路径）
 var debugLog = new DebugLog { /* ... */ };
-storage.Write("logs/debug_" + DateTime.Now.Ticks + ".json", debugLog);
+storage.Write("logs/debug_" + DateTime.UtcNow.Ticks + ".json", debugLog);
 ```
 
 ### 存在性检查
