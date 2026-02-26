@@ -24,7 +24,7 @@ public sealed class JsonLogFormatter : ILogFormatter
         var logObject = new Dictionary<string, object?>
         {
             ["timestamp"] = entry.Timestamp.ToString("O"), // ISO 8601 格式
-            ["level"] = entry.Level.ToString().ToUpper(),
+            ["level"] = entry.Level.ToString().ToUpperInvariant(),
             ["logger"] = entry.LoggerName,
             ["message"] = entry.Message
         };

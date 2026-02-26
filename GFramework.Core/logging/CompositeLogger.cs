@@ -50,7 +50,7 @@ public sealed class CompositeLogger : AbstractLogger, IDisposable
     protected override void Write(LogLevel level, string message, Exception? exception)
     {
         var entry = new LogEntry(
-            DateTime.Now,
+            DateTime.UtcNow,
             level,
             Name(),
             message,
@@ -78,7 +78,7 @@ public sealed class CompositeLogger : AbstractLogger, IDisposable
             : null;
 
         var entry = new LogEntry(
-            DateTime.Now,
+            DateTime.UtcNow,
             level,
             Name(),
             message,
@@ -108,7 +108,7 @@ public sealed class CompositeLogger : AbstractLogger, IDisposable
             : null;
 
         var entry = new LogEntry(
-            DateTime.Now,
+            DateTime.UtcNow,
             level,
             Name(),
             message,

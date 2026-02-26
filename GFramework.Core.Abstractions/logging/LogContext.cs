@@ -15,7 +15,7 @@ public sealed class LogContext : IDisposable
         _key = key;
 
         var current = _context.Value;
-        if (current != null && current.TryGetValue(key, out var prev))
+        if (current?.TryGetValue(key, out var prev) == true)
         {
             _previousValue = prev;
             _hadPreviousValue = true;
@@ -103,21 +103,14 @@ public sealed class LogContext : IDisposable
     /// <summary>
     ///     组合多个可释放对象
     /// </summary>
-    private sealed class CompositeDisposable : IDisposable
+    private sealed class CompositeDisposable(IDisposable[] disposables) : IDisposable
     {
-        private readonly IDisposable[] _disposables;
-
-        public CompositeDisposable(IDisposable[] disposables)
-        {
-            _disposables = disposables;
-        }
-
         public void Dispose()
         {
             // 按相反顺序释放
-            for (int i = _disposables.Length - 1; i >= 0; i--)
+            for (int i = disposables.Length - 1; i >= 0; i--)
             {
-                _disposables[i].Dispose();
+                disposables[i].Dispose();
             }
         }
     }
