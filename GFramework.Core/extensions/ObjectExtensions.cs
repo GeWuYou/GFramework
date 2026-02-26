@@ -137,27 +137,6 @@ public static class ObjectExtensions
     }
 
     /// <summary>
-    ///     对对象执行指定操作后返回对象本身，
-    ///     用于构建流式（链式）调用。
-    /// </summary>
-    /// <typeparam name="T">对象类型</typeparam>
-    /// <param name="obj">源对象</param>
-    /// <param name="action">要执行的操作</param>
-    /// <returns>原对象</returns>
-    /// <example>
-    ///     <code>
-    /// obj.As&lt;MyRule&gt;()
-    ///    ?.Do(r => r.Initialize())
-    ///    ?.Do(r => r.Execute());
-    /// </code>
-    /// </example>
-    public static T Do<T>(this T obj, Action<T> action)
-    {
-        action(obj);
-        return obj;
-    }
-
-    /// <summary>
     ///     根据对象的运行时类型，依次匹配并执行对应的处理逻辑，
     ///     只会执行第一个匹配成功的处理器。
     /// </summary>

@@ -2,18 +2,19 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 using GFramework.Core.Functional;
 
-namespace GFramework.Core.Extensions;
+namespace GFramework.Core.functional.result;
 
 /// <summary>
 ///     Result 类型的扩展方法，提供函数式编程支持
@@ -46,11 +47,8 @@ public static class ResultExtensions
             if (result.IsFaulted)
                 return Result<List<T>>.Fail(result.Exception);
 
-            if (result.IsBottom)
-                return Result<List<T>>.Fail(new InvalidOperationException("Cannot combine Bottom results"));
-
             if (result.IsSuccess)
-                result.IfSucc(values.Add);
+                values.Add(result.Match(succ: v => v, fail: _ => throw new InvalidOperationException()));
         }
 
         return Result<List<T>>.Succeed(values);
@@ -265,7 +263,7 @@ public static class ResultExtensions
         string errorMessage = "Value is null") where T : class =>
         value is not null
             ? Result<T>.Succeed(value)
-            : Result<T>.Fail(new ArgumentNullException(nameof(value), errorMessage));
+            : Result<T>.Fail(new ArgumentNullException(errorMessage));
 
     /// <summary>
     ///     将可空值类型转换为 Result
@@ -275,7 +273,7 @@ public static class ResultExtensions
         string errorMessage = "Value is null") where T : struct =>
         value.HasValue
             ? Result<T>.Succeed(value.Value)
-            : Result<T>.Fail(new ArgumentNullException(nameof(value), errorMessage));
+            : Result<T>.Fail(new ArgumentNullException(errorMessage));
 
     #endregion
 }
