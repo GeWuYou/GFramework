@@ -21,7 +21,7 @@ public static class SpanExtensions
     /// }
     /// </code>
     /// </example>
-    public static bool TryParseValue<T>(this ReadOnlySpan<char> span, out T result) where T : ISpanParsable<T>
+    public static bool TryParseValue<T>(this ReadOnlySpan<char> span, out T? result) where T : ISpanParsable<T>
     {
         return T.TryParse(span, null, out result);
     }

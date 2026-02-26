@@ -309,4 +309,48 @@ public interface ILogger
     void Fatal(string msg, Exception t);
 
     #endregion
+
+    #region Generic Log Methods
+
+    /// <summary>
+    ///     使用指定的日志级别记录消息
+    /// </summary>
+    /// <param name="level">日志级别</param>
+    /// <param name="message">要记录的消息字符串</param>
+    void Log(LogLevel level, string message);
+
+    /// <summary>
+    ///     使用指定的日志级别根据格式和参数记录消息
+    /// </summary>
+    /// <param name="level">日志级别</param>
+    /// <param name="format">格式字符串</param>
+    /// <param name="arg">参数</param>
+    void Log(LogLevel level, string format, object arg);
+
+    /// <summary>
+    ///     使用指定的日志级别根据格式和参数记录消息
+    /// </summary>
+    /// <param name="level">日志级别</param>
+    /// <param name="format">格式字符串</param>
+    /// <param name="arg1">第一个参数</param>
+    /// <param name="arg2">第二个参数</param>
+    void Log(LogLevel level, string format, object arg1, object arg2);
+
+    /// <summary>
+    ///     使用指定的日志级别根据格式和参数数组记录消息
+    /// </summary>
+    /// <param name="level">日志级别</param>
+    /// <param name="format">格式字符串</param>
+    /// <param name="arguments">参数数组</param>
+    void Log(LogLevel level, string format, params object[] arguments);
+
+    /// <summary>
+    ///     使用指定的日志级别记录消息和异常
+    /// </summary>
+    /// <param name="level">日志级别</param>
+    /// <param name="message">伴随异常的消息</param>
+    /// <param name="exception">要记录的异常</param>
+    void Log(LogLevel level, string message, Exception exception);
+
+    #endregion
 }
