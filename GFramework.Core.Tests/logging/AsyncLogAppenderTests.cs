@@ -30,14 +30,14 @@ public class AsyncLogAppenderTests
         var innerAppender = new SlowAppender(delayMs: 100);
         using var asyncAppender = new AsyncLogAppender(innerAppender, bufferSize: 1000);
 
-        var startTime = DateTime.Now;
+        var startTime = DateTime.UtcNow;
         for (int i = 0; i < 10; i++)
         {
-            var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger", $"Message {i}", null, null);
+            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", $"Message {i}", null, null);
             asyncAppender.Append(entry);
         }
 
-        var elapsed = (DateTime.Now - startTime).TotalMilliseconds;
+        var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
 
         // 异步写入应该非常快（< 100ms），不应该等待内部 Appender
         Assert.That(elapsed, Is.LessThan(100));
@@ -51,7 +51,7 @@ public class AsyncLogAppenderTests
         {
             for (int i = 0; i < 10; i++)
             {
-                var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger", $"Message {i}", null, null);
+                var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", $"Message {i}", null, null);
                 asyncAppender.Append(entry);
             }
 
@@ -69,7 +69,7 @@ public class AsyncLogAppenderTests
 
         for (int i = 0; i < 100; i++)
         {
-            var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger", $"Message {i}", null, null);
+            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", $"Message {i}", null, null);
             asyncAppender.Append(entry);
         }
 
@@ -86,7 +86,7 @@ public class AsyncLogAppenderTests
         {
             for (int i = 0; i < 50; i++)
             {
-                var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger", $"Message {i}", null, null);
+                var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", $"Message {i}", null, null);
                 asyncAppender.Append(entry);
             }
         } // Dispose 会等待所有日志处理完成
@@ -101,7 +101,7 @@ public class AsyncLogAppenderTests
         var asyncAppender = new AsyncLogAppender(innerAppender);
         asyncAppender.Dispose();
 
-        var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger", "Test", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Test", null, null);
 
         Assert.Throws<ObjectDisposedException>(() => asyncAppender.Append(entry));
     }
@@ -114,7 +114,7 @@ public class AsyncLogAppenderTests
 
         for (int i = 0; i < 10; i++)
         {
-            var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger", $"Message {i}", null, null);
+            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", $"Message {i}", null, null);
             asyncAppender.Append(entry);
         }
 
@@ -136,7 +136,7 @@ public class AsyncLogAppenderTests
             {
                 for (int i = 0; i < 100; i++)
                 {
-                    var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger",
+                    var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger",
                         $"Thread {threadId} Message {i}", null, null);
                     asyncAppender.Append(entry);
                 }
@@ -160,7 +160,7 @@ public class AsyncLogAppenderTests
         {
             for (int i = 0; i < 10; i++)
             {
-                var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger", $"Message {i}", null, null);
+                var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", $"Message {i}", null, null);
                 asyncAppender.Append(entry);
             }
         });
