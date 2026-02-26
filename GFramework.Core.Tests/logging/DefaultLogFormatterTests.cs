@@ -36,7 +36,7 @@ public class DefaultLogFormatterTests
     public void Format_WithException_ShouldIncludeException()
     {
         var exception = new InvalidOperationException("Test exception");
-        var entry = new LogEntry(DateTime.Now, LogLevel.Error, "TestLogger", "Error occurred", exception, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Error, "TestLogger", "Error occurred", exception, null);
 
         var result = _formatter.Format(entry);
 
@@ -53,7 +53,7 @@ public class DefaultLogFormatterTests
             ["UserId"] = 12345,
             ["UserName"] = "TestUser"
         };
-        var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger", "User action", null, properties);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "User action", null, properties);
 
         var result = _formatter.Format(entry);
 
@@ -70,7 +70,7 @@ public class DefaultLogFormatterTests
         {
             ["Key1"] = null
         };
-        var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger", "Test message", null, properties);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Test message", null, properties);
 
         var result = _formatter.Format(entry);
 
@@ -86,7 +86,7 @@ public class DefaultLogFormatterTests
 
         for (int i = 0; i < levels.Length; i++)
         {
-            var entry = new LogEntry(DateTime.Now, levels[i], "TestLogger", "Test", null, null);
+            var entry = new LogEntry(DateTime.UtcNow, levels[i], "TestLogger", "Test", null, null);
             var result = _formatter.Format(entry);
 
             Assert.That(result, Does.Contain(expectedStrings[i]));
@@ -97,7 +97,7 @@ public class DefaultLogFormatterTests
     public void Format_WithLongMessage_ShouldNotTruncate()
     {
         var longMessage = new string('A', 1000);
-        var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger", longMessage, null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", longMessage, null, null);
 
         var result = _formatter.Format(entry);
 
@@ -108,7 +108,7 @@ public class DefaultLogFormatterTests
     public void Format_WithSpecialCharacters_ShouldPreserveCharacters()
     {
         var message = "Test\nNew\tLine\r\nSpecial: <>&\"'";
-        var entry = new LogEntry(DateTime.Now, LogLevel.Info, "TestLogger", message, null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", message, null, null);
 
         var result = _formatter.Format(entry);
 

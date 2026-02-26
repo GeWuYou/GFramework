@@ -452,7 +452,7 @@ public class GameDataManager
     public void SaveGame(int slotId, SaveData data)
     {
         _saveStorage.Write($"slot_{slotId}", data);
-        _saveStorage.Write($"slot_{slotId}/timestamp", DateTime.Now);
+        _saveStorage.Write($"slot_{slotId}/timestamp", DateTime.UtcNow);
         _saveStorage.Write($"slot_{slotId}/version", data.Version);
     }
     
@@ -639,13 +639,13 @@ public class CachedStorage : IStorage
         if (!_cacheTimestamps.TryGetValue(key, out var timestamp))
             return true;
             
-        return DateTime.Now - timestamp > _cacheExpiry;
+        return DateTime.UtcNow - timestamp > _cacheExpiry;
     }
     
     private void UpdateCache<T>(string key, T value)
     {
         _cache[key] = value;
-        _cacheTimestamps[key] = DateTime.Now;
+        _cacheTimestamps[key] = DateTime.UtcNow;
     }
 }
 ```
@@ -928,7 +928,7 @@ public partial class GameManager : Node, IController
         var profile = new GameProfile
         {
             PlayerName = playerName,
-            LastPlayed = DateTime.Now,
+            LastPlayed = DateTime.UtcNow,
             TotalPlayTime = 0
         };
         
@@ -1029,7 +1029,7 @@ public partial class GameManager : Node, IController
             PlayerHealth = Context.GetModel<PlayerModel>().Health.Value,
             CurrentLevel = Context.GetModel<GameModel>().CurrentLevel.Value,
             Inventory = Context.GetModel<InventoryModel>().GetData(),
-            Timestamp = DateTime.Now,
+            Timestamp = DateTime.UtcNow,
             Version = 1
         };
     }
@@ -1096,7 +1096,7 @@ public class AutoSaveSystem : AbstractSystem
             // 保存到自动存档槽
             var storage = Context.GetUtility<IStorage>();
             storage.Write("autosave", saveData);
-            storage.Write("autosave/timestamp", DateTime.Now);
+            storage.Write("autosave/timestamp", DateTime.UtcNow);
             
             Logger.Debug("Auto-save completed successfully");
         }

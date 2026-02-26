@@ -118,7 +118,7 @@ public class CustomLogger : AbstractLogger
     protected override void Write(LogLevel level, string message, Exception? exception)
     {
         // 自定义日志输出逻辑
-        var logMessage = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{level}] {message}";
+        var logMessage = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] [{level}] {message}";
         if (exception != null)
             logMessage += $"\n{exception}";
         

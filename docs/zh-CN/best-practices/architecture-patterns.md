@@ -1012,7 +1012,7 @@ public class SaveSystem : AbstractSystem
             Level = 1,
             Health = 100,
             Position = Vector3.Zero,
-            CreatedAt = DateTime.Now
+            CreatedAt = DateTime.UtcNow
         };
     }
 }

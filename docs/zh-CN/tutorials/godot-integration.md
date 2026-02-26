@@ -569,7 +569,7 @@ public partial class SmartResourceLoader : Node, IController
         {
             Path = path,
             Priority = priority,
-            RequestTime = DateTime.Now
+            RequestTime = DateTime.UtcNow
         };
         
         _loadQueue.Enqueue(request);
