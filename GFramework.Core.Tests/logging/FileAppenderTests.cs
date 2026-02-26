@@ -48,16 +48,17 @@ public class FileAppenderTests
     }
 
     [Test]
-    public void Constructor_ShouldCreateDirectoryIfNotExists()
+    public void Constructor_WhenDirectoryDoesNotExist_ShouldCreateIt()
     {
         var dirPath = Path.Combine(Path.GetTempPath(), $"test_dir_{Guid.NewGuid()}");
         var filePath = Path.Combine(dirPath, "test.log");
 
         try
         {
-            using var appender = new FileAppender(filePath);
-
-            Assert.That(Directory.Exists(dirPath), Is.True);
+            using (new FileAppender(filePath))
+            {
+                Assert.That(Directory.Exists(dirPath), Is.True);
+            }
         }
         finally
         {
