@@ -12,7 +12,6 @@
 // limitations under the License.
 
 using System.Collections.Concurrent;
-using GFramework.Core.Functional;
 
 namespace GFramework.Core.functional.functions;
 

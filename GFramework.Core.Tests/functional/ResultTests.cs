@@ -11,10 +11,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using GFramework.Core.Functional;
+using GFramework.Core.functional;
 using NUnit.Framework;
 
-namespace GFramework.Core.Tests.Functional;
+namespace GFramework.Core.Tests.functional;
 
 /// <summary>
 ///     Result 类型测试类

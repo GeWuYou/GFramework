@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace GFramework.Core.Functional.Async;
+namespace GFramework.Core.functional.async;
 
 /// <summary>
 ///     异步函数式编程扩展方法

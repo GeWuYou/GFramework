@@ -13,7 +13,7 @@
 
 using System.Diagnostics.Contracts;
 
-namespace GFramework.Core.Functional;
+namespace GFramework.Core.functional;
 
 /// <summary>
 ///     表示一个操作的结果，可能是成功值或异常
