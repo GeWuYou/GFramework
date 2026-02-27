@@ -12,8 +12,6 @@
 // limitations under the License.
 
 
-using GFramework.Core.Functional;
-
 namespace GFramework.Core.functional.result;
 
 /// <summary>

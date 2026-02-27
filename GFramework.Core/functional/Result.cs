@@ -13,7 +13,7 @@
 
 using System.Diagnostics.Contracts;
 
-namespace GFramework.Core.Functional;
+namespace GFramework.Core.functional;
 
 /// <summary>
 ///     表示一个无值的操作结果，仅包含成功或失败状态

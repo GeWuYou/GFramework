@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using GFramework.Core.extensions;
-using GFramework.Core.Functional.Async;
+using GFramework.Core.functional.async;
 using NUnit.Framework;
 
 namespace GFramework.Core.Tests.extensions;

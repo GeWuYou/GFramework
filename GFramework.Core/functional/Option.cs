@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace GFramework.Core.Functional;
+namespace GFramework.Core.functional;
 
 /// <summary>
 ///     表示可能存在或不存在的值，用于替代 null 引用的函数式编程类型
