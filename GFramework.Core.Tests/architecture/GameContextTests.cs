@@ -294,7 +294,7 @@ public class TestArchitectureContext : IArchitectureContext
     /// </summary>
     /// <typeparam name="TUtility">工具类型</typeparam>
     /// <returns>工具实例或null</returns>
-    public TUtility? GetUtility<TUtility>() where TUtility : class, IUtility
+    public virtual TUtility? GetUtility<TUtility>() where TUtility : class, IUtility
     {
         return _container.Get<TUtility>();
     }

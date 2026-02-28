@@ -44,6 +44,32 @@ public class ContextAwareGeneratorSnapshotTests
                               namespace GFramework.Core.Abstractions.architecture
                               {
                                   public interface IArchitectureContext { }
+
+                                  public interface IArchitectureContextProvider
+                                  {
+                                      IArchitectureContext GetContext();
+                                      bool TryGetContext<T>(out T? context) where T : class, IArchitectureContext;
+                                  }
+                              }
+
+                              namespace GFramework.Core.architecture
+                              {
+                                  using GFramework.Core.Abstractions.architecture;
+
+                                  public sealed class GameContextProvider : IArchitectureContextProvider
+                                  {
+                                      public IArchitectureContext GetContext() => null;
+                                      public bool TryGetContext<T>(out T? context) where T : class, IArchitectureContext
+                                      {
+                                          context = null;
+                                          return false;
+                                      }
+                                  }
+
+                                  public static class GameContext
+                                  {
+                                      public static IArchitectureContext GetFirstArchitectureContext() => null;
+                                  }
                               }
 
                               namespace TestApp
@@ -54,21 +80,6 @@ public class ContextAwareGeneratorSnapshotTests
                                   [ContextAware]
                                   public partial class MyRule : IContextAware
                                   {
-                                  }
-                              }
-                              namespace GFramework.Core.architecture
-                              {         
-                                   using GFramework.Core.Abstractions.architecture;
-                                   public static class GameContext{
-                                      /// <summary>
-                                      /// 获取字典中的第一个架构上下文
-                                      /// </summary>
-                                      /// <returns>返回字典中的第一个架构上下文实例</returns>
-                                      /// <exception cref="InvalidOperationException">当字典为空时抛出</exception>
-                                      public static IArchitectureContext GetFirstArchitectureContext()
-                                      {
-                                          return null;
-                                      }
                                   }
                               }
                               """;
