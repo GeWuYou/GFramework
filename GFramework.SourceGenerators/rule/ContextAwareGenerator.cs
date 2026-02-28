@@ -121,7 +121,7 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
     }
 
     // =========================
-    // Context 属性（无 global::，与测试一致）
+    // Context 属性（使用 IArchitectureContextProvider）
     // =========================
     /// <summary>
     ///     生成Context属性
@@ -130,9 +130,11 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
     private static void GenerateContextProperty(StringBuilder sb)
     {
         sb.AppendLine("    private global::GFramework.Core.Abstractions.architecture.IArchitectureContext? _context;");
+        sb.AppendLine(
+            "    private static global::GFramework.Core.Abstractions.architecture.IArchitectureContextProvider? _contextProvider;");
         sb.AppendLine();
         sb.AppendLine("    /// <summary>");
-        sb.AppendLine("    /// 自动获取的架构上下文（懒加载，默认使用第一个架构）");
+        sb.AppendLine("    /// 自动获取的架构上下文（懒加载，默认使用 GameContextProvider）");
         sb.AppendLine("    /// </summary>");
         sb.AppendLine("    protected global::GFramework.Core.Abstractions.architecture.IArchitectureContext Context");
         sb.AppendLine("    {");
@@ -141,11 +143,22 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
         sb.AppendLine("            if (_context == null)");
         sb.AppendLine("            {");
         sb.AppendLine(
-            "                _context = global::GFramework.Core.architecture.GameContext.GetFirstArchitectureContext();");
+            "                _contextProvider ??= new global::GFramework.Core.architecture.GameContextProvider();");
+        sb.AppendLine("                _context = _contextProvider.GetContext();");
         sb.AppendLine("            }");
         sb.AppendLine();
         sb.AppendLine("            return _context;");
         sb.AppendLine("        }");
+        sb.AppendLine("    }");
+        sb.AppendLine();
+        sb.AppendLine("    /// <summary>");
+        sb.AppendLine("    /// 配置上下文提供者（用于测试或多架构场景）");
+        sb.AppendLine("    /// </summary>");
+        sb.AppendLine("    /// <param name=\"provider\">上下文提供者实例</param>");
+        sb.AppendLine(
+            "    public static void SetContextProvider(global::GFramework.Core.Abstractions.architecture.IArchitectureContextProvider provider)");
+        sb.AppendLine("    {");
+        sb.AppendLine("        _contextProvider = provider;");
         sb.AppendLine("    }");
         sb.AppendLine();
     }
