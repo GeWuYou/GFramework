@@ -3,6 +3,7 @@ using GFramework.Core.Abstractions.ioc;
 using GFramework.Core.Abstractions.lifecycle;
 using GFramework.Core.Abstractions.logging;
 using GFramework.Core.Abstractions.properties;
+using GFramework.Core.ecs;
 using GFramework.Core.logging;
 using GFramework.Core.services.modules;
 
@@ -63,7 +64,7 @@ public sealed class ServiceModuleManager : IServiceModuleManager
 
         if (properties.EnableEcs)
         {
-            RegisterModule(new EcsServiceModule(enabled: true));
+            RegisterModule(new ArchEcsModule(enabled: true));
             _logger.Info("ECS module enabled via configuration");
         }
 

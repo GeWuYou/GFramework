@@ -1,6 +1,5 @@
 using GFramework.Core.Abstractions.architecture;
 using GFramework.Core.Abstractions.command;
-using GFramework.Core.Abstractions.ecs;
 using GFramework.Core.Abstractions.environment;
 using GFramework.Core.Abstractions.events;
 using GFramework.Core.Abstractions.ioc;
@@ -410,31 +409,6 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     {
         var environment = GetOrCache<IEnvironment>();
         return environment ?? throw new InvalidOperationException("IEnvironment not registered");
-    }
-
-    #endregion
-
-    #region ECS Support
-
-    /// <summary>
-    ///     获取ECS世界实例
-    /// </summary>
-    /// <returns>ECS世界实例</returns>
-    public IEcsWorld GetEcsWorld()
-    {
-        var ecsWorld = GetOrCache<IEcsWorld>();
-        return ecsWorld ??
-               throw new InvalidOperationException("ECS World not initialized. Enable ECS in configuration.");
-    }
-
-    /// <summary>
-    ///     注册ECS系统
-    /// </summary>
-    /// <typeparam name="T">ECS系统类型</typeparam>
-    public void RegisterEcsSystem<T>() where T : class, IEcsSystem
-    {
-        // 使用RegisterPlurality注册到所有接口
-        _container.RegisterPlurality<T>();
     }
 
     #endregion

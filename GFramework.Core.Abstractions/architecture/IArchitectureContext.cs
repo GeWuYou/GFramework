@@ -1,5 +1,4 @@
 using GFramework.Core.Abstractions.command;
-using GFramework.Core.Abstractions.ecs;
 using GFramework.Core.Abstractions.environment;
 using GFramework.Core.Abstractions.events;
 using GFramework.Core.Abstractions.model;
@@ -206,18 +205,4 @@ public interface IArchitectureContext
     /// </summary>
     /// <returns>环境对象实例</returns>
     IEnvironment GetEnvironment();
-
-    // === ECS 支持 ===
-
-    /// <summary>
-    ///     获取ECS世界实例
-    /// </summary>
-    /// <returns>ECS世界实例</returns>
-    IEcsWorld GetEcsWorld();
-
-    /// <summary>
-    ///     注册ECS系统
-    /// </summary>
-    /// <typeparam name="T">ECS系统类型</typeparam>
-    void RegisterEcsSystem<T>() where T : class, IEcsSystem;
 }
