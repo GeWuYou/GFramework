@@ -10,7 +10,7 @@ namespace GFramework.Core.services.modules;
 ///     ECS（Entity Component System）模块，用于注册、初始化和管理ECS相关服务。
 ///     该模块负责创建ECS世界和系统运行器，并将其注册到依赖注入容器中。
 /// </summary>
-public sealed class EcsModule : IServiceModule
+public sealed class EcsServiceModule : IServiceModule
 {
     private EcsSystemRunner? _ecsRunner;
 
@@ -20,7 +20,7 @@ public sealed class EcsModule : IServiceModule
     ///     构造函数，初始化ECS模块。
     /// </summary>
     /// <param name="enabled">指定模块是否启用，默认为 true。</param>
-    public EcsModule(bool enabled = true)
+    public EcsServiceModule(bool enabled = true)
     {
         IsEnabled = enabled;
     }
@@ -28,7 +28,7 @@ public sealed class EcsModule : IServiceModule
     /// <summary>
     ///     获取模块名称。
     /// </summary>
-    public string ModuleName => nameof(EcsModule);
+    public string ModuleName => nameof(EcsServiceModule);
 
     /// <summary>
     ///     获取模块优先级，数值越小优先级越高。

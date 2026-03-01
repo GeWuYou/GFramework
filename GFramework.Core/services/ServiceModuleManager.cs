@@ -63,7 +63,7 @@ public sealed class ServiceModuleManager : IServiceModuleManager
 
         if (properties.EnableEcs)
         {
-            RegisterModule(new EcsModule(enabled: true));
+            RegisterModule(new EcsServiceModule(enabled: true));
             _logger.Info("ECS module enabled via configuration");
         }
 
