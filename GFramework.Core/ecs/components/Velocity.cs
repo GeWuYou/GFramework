@@ -1,19 +1,21 @@
+using System.Runtime.InteropServices;
+
 namespace GFramework.Core.ecs.components;
 
 /// <summary>
-/// 速度组件，用于表示实体在二维空间中的运动速度。
+///     速度结构体，用于表示二维空间中实体的瞬时速度向量
+///     包含X轴和Y轴的速度分量，通常用于物理计算和运动系统
 /// </summary>
-/// <param name="x">X轴方向的速度分量</param>
-/// <param name="y">Y轴方向的速度分量</param>
+[StructLayout(LayoutKind.Sequential)]
 public struct Velocity(float x, float y)
 {
     /// <summary>
-    /// X轴方向的速度分量
+    ///     X轴速度分量，单位为距离单位/秒
     /// </summary>
     public float X { get; set; } = x;
 
     /// <summary>
-    /// Y轴方向的速度分量
+    ///     Y轴速度分量，单位为距离单位/秒
     /// </summary>
     public float Y { get; set; } = y;
 }
