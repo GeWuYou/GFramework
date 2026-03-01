@@ -1,6 +1,5 @@
 using GFramework.Core.Abstractions.architecture;
 using GFramework.Core.Abstractions.command;
-using GFramework.Core.Abstractions.ecs;
 using GFramework.Core.Abstractions.environment;
 using GFramework.Core.Abstractions.events;
 using GFramework.Core.Abstractions.ioc;
@@ -451,15 +450,5 @@ public class TestArchitectureContext : IArchitectureContext
     public IEnvironment GetEnvironment()
     {
         return Environment;
-    }
-
-    public IEcsWorld GetEcsWorld()
-    {
-        throw new NotImplementedException("ECS not implemented in test context");
-    }
-
-    public void RegisterEcsSystem<T>() where T : class, IEcsSystem
-    {
-        throw new NotImplementedException("ECS not implemented in test context");
     }
 }
