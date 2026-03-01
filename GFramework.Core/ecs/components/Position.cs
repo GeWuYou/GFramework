@@ -1,3 +1,5 @@
+using System.Runtime.InteropServices;
+
 namespace GFramework.Core.ecs.components;
 
 /// <summary>
@@ -5,6 +7,7 @@ namespace GFramework.Core.ecs.components;
 /// </summary>
 /// <param name="x">X轴坐标值</param>
 /// <param name="y">Y轴坐标值</param>
+[StructLayout(LayoutKind.Sequential)]
 public struct Position(float x, float y)
 {
     /// <summary>
