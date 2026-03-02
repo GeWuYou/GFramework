@@ -84,9 +84,12 @@ public sealed class ArchEcsModule : IServiceModule
     /// <summary>
     ///     异步销毁
     /// </summary>
-    public async ValueTask DestroyAsync()
+    public ValueTask DestroyAsync()
     {
-        if (!IsEnabled || !_isInitialized) return;
+        if (!IsEnabled || !_isInitialized)
+        {
+            return ValueTask.CompletedTask;
+        }
 
         // 销毁所有系统
         foreach (var system in _systems)
@@ -105,7 +108,7 @@ public sealed class ArchEcsModule : IServiceModule
 
         _isInitialized = false;
 
-        await ValueTask.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     /// <summary>
