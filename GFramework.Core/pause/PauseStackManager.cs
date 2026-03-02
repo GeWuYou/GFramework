@@ -17,6 +17,7 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
     private readonly ILogger _logger = LoggerFactoryResolver.Provider.CreateLogger(nameof(PauseStackManager));
     private readonly Dictionary<PauseGroup, Stack<PauseEntry>> _pauseStacks = new();
     private readonly Dictionary<Guid, PauseEntry> _tokenMap = new();
+    private volatile bool _disposed;
 
     /// <summary>
     /// 异步销毁方法，在组件销毁时调用。
@@ -24,7 +25,32 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
     /// <returns>表示异步操作完成的任务。</returns>
     public ValueTask DestroyAsync()
     {
+        if (_disposed)
+            return ValueTask.CompletedTask;
+
+        _lock.EnterWriteLock();
+        try
+        {
+            if (_disposed)
+                return ValueTask.CompletedTask;
+
+            _disposed = true;
+
+            // 清理所有数据结构
+            _pauseStacks.Clear();
+            _tokenMap.Clear();
+            _handlers.Clear();
+
+            _logger.Debug("PauseStackManager destroyed");
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
+
+        // 释放锁资源
         _lock.Dispose();
+
         return ValueTask.CompletedTask;
     }
 
@@ -41,9 +67,14 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
     /// <returns>表示此次暂停请求的令牌。</returns>
     public PauseToken Push(string reason, PauseGroup group = PauseGroup.Global)
     {
+        PauseToken token;
+        bool shouldNotify = false;
+
         _lock.EnterWriteLock();
         try
         {
+            ThrowIfDisposed();
+
             var wasPaused = IsPausedInternal(group);
 
             var entry = new PauseEntry
@@ -65,18 +96,23 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
 
             _logger.Debug($"Pause pushed: {reason} (Group: {group}, Depth: {stack.Count})");
 
-            // 状态变化检测：从未暂停 → 暂停
-            if (!wasPaused)
-            {
-                NotifyHandlers(group, true);
-            }
+            token = new PauseToken(entry.TokenId);
 
-            return new PauseToken(entry.TokenId);
+            // 状态变化检测：从未暂停 → 暂停
+            shouldNotify = !wasPaused;
         }
         finally
         {
             _lock.ExitWriteLock();
         }
+
+        // 在锁外通知处理器，避免死锁
+        if (shouldNotify)
+        {
+            NotifyHandlers(group, true);
+        }
+
+        return token;
     }
 
     /// <summary>
@@ -89,9 +125,15 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
         if (!token.IsValid)
             return false;
 
+        bool found;
+        bool shouldNotify = false;
+        PauseGroup notifyGroup = PauseGroup.Global;
+
         _lock.EnterWriteLock();
         try
         {
+            ThrowIfDisposed();
+
             if (!_tokenMap.TryGetValue(token.Id, out var entry))
             {
                 _logger.Warn($"Attempted to pop invalid/expired token: {token.Id}");
@@ -104,7 +146,7 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
 
             // 从栈中移除
             var tempStack = new Stack<PauseEntry>();
-            bool found = false;
+            found = false;
 
             while (stack.Count > 0)
             {
@@ -132,16 +174,23 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
                 // 状态变化检测：从暂停 → 未暂停
                 if (wasPaused && stack.Count == 0)
                 {
-                    NotifyHandlers(group, false);
+                    shouldNotify = true;
+                    notifyGroup = group;
                 }
             }
-
-            return found;
         }
         finally
         {
             _lock.ExitWriteLock();
         }
+
+        // 在锁外通知处理器，避免死锁
+        if (shouldNotify)
+        {
+            NotifyHandlers(notifyGroup, false);
+        }
+
+        return found;
     }
 
     /// <summary>
@@ -154,6 +203,7 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
         _lock.EnterReadLock();
         try
         {
+            ThrowIfDisposed();
             return IsPausedInternal(group);
         }
         finally
@@ -172,6 +222,7 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
         _lock.EnterReadLock();
         try
         {
+            ThrowIfDisposed();
             return _pauseStacks.TryGetValue(group, out var stack) ? stack.Count : 0;
         }
         finally
@@ -190,6 +241,8 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
         _lock.EnterReadLock();
         try
         {
+            ThrowIfDisposed();
+
             if (!_pauseStacks.TryGetValue(group, out var stack))
                 return Array.Empty<string>();
 
@@ -209,6 +262,10 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
     /// <returns>表示暂停作用域的 IDisposable 对象。</returns>
     public IDisposable PauseScope(string reason, PauseGroup group = PauseGroup.Global)
     {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(PauseStackManager),
+                "Cannot use PauseStackManager after it has been destroyed");
+
         return new PauseScope(this, reason, group);
     }
 
@@ -218,9 +275,13 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
     /// <param name="group">要清空的暂停组。</param>
     public void ClearGroup(PauseGroup group)
     {
+        bool shouldNotify = false;
+
         _lock.EnterWriteLock();
         try
         {
+            ThrowIfDisposed();
+
             if (!_pauseStacks.TryGetValue(group, out var stack))
                 return;
 
@@ -237,14 +298,17 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
             _logger.Warn($"Cleared all pauses for group: {group}");
 
             // 状态变化检测
-            if (wasPaused)
-            {
-                NotifyHandlers(group, false);
-            }
+            shouldNotify = wasPaused;
         }
         finally
         {
             _lock.ExitWriteLock();
+        }
+
+        // 在锁外通知处理器，避免死锁
+        if (shouldNotify)
+        {
+            NotifyHandlers(group, false);
         }
     }
 
@@ -253,10 +317,14 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
     /// </summary>
     public void ClearAll()
     {
+        List<PauseGroup> pausedGroups;
+
         _lock.EnterWriteLock();
         try
         {
-            var pausedGroups = _pauseStacks
+            ThrowIfDisposed();
+
+            pausedGroups = _pauseStacks
                 .Where(kvp => kvp.Value.Count > 0)
                 .Select(kvp => kvp.Key)
                 .ToList();
@@ -265,16 +333,16 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
             _tokenMap.Clear();
 
             _logger.Warn("Cleared all pauses for all groups");
-
-            // 通知所有之前暂停的组
-            foreach (var group in pausedGroups)
-            {
-                NotifyHandlers(group, false);
-            }
         }
         finally
         {
             _lock.ExitWriteLock();
+        }
+
+        // 在锁外通知所有之前暂停的组，避免死锁
+        foreach (var group in pausedGroups)
+        {
+            NotifyHandlers(group, false);
         }
     }
 
@@ -287,6 +355,8 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
         _lock.EnterWriteLock();
         try
         {
+            ThrowIfDisposed();
+
             if (!_handlers.Contains(handler))
             {
                 _handlers.Add(handler);
@@ -308,6 +378,8 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
         _lock.EnterWriteLock();
         try
         {
+            ThrowIfDisposed();
+
             if (_handlers.Remove(handler))
             {
                 _logger.Debug($"Unregistered pause handler: {handler.GetType().Name}");
@@ -316,6 +388,18 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
         finally
         {
             _lock.ExitWriteLock();
+        }
+    }
+
+    /// <summary>
+    /// 检查是否已销毁，如果已销毁则抛出异常
+    /// </summary>
+    private void ThrowIfDisposed()
+    {
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(PauseStackManager),
+                "Cannot use PauseStackManager after it has been destroyed");
         }
     }
 
