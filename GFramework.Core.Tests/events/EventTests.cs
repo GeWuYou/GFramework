@@ -45,7 +45,7 @@ public class EventTests
     public void EasyEvent_UnRegister_Should_Remove_Handler()
     {
         var count = 0;
-        var handler = () => count++;
+        var handler = () => { count++; };
 
         _easyEvent.Register(handler);
         _easyEvent.Trigger();
