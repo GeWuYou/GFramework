@@ -62,9 +62,9 @@ public class UnRegisterListExtensionTests
         var invoked2 = false;
         var invoked3 = false;
 
-        var unRegister1 = new DefaultUnRegister(() => { invoked1 = true; });
-        var unRegister2 = new DefaultUnRegister(() => { invoked2 = true; });
-        var unRegister3 = new DefaultUnRegister(() => { invoked3 = true; });
+        var unRegister1 = new DefaultUnRegister(() => invoked1 = true);
+        var unRegister2 = new DefaultUnRegister(() => invoked2 = true);
+        var unRegister3 = new DefaultUnRegister(() => invoked3 = true);
 
         unRegister1.AddToUnregisterList(_unRegisterList);
         unRegister2.AddToUnregisterList(_unRegisterList);
@@ -109,7 +109,7 @@ public class UnRegisterListExtensionTests
     public void UnRegisterAll_Should_Invoke_Once_Per_Element()
     {
         var callCount = 0;
-        var unRegister = new DefaultUnRegister(() => { callCount++; });
+        var unRegister = new DefaultUnRegister(() => callCount++);
 
         unRegister.AddToUnregisterList(_unRegisterList);
 

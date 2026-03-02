@@ -412,13 +412,11 @@ public class CommandCoroutineExtensionsTests
 
         // 在创建协程时就应该抛出异常
         Assert.Throws<ArgumentOutOfRangeException>(() =>
-        {
             CommandCoroutineExtensions.SendCommandAndWaitEventCoroutine<TestCommand, TestEvent>(
                 contextAware,
                 command,
                 null,
-                -1.0f);
-        });
+                -1.0f));
     }
 
     /// <summary>

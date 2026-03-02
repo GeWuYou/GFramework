@@ -39,7 +39,7 @@ public class Event<T> : IEvent
     public IUnRegister Register(Action<T> onEvent)
     {
         _mOnEvent += onEvent;
-        return new DefaultUnRegister(() => { UnRegister(onEvent); });
+        return new DefaultUnRegister(() => UnRegister(onEvent));
     }
 
     /// <summary>
@@ -99,7 +99,7 @@ public class Event<T, Tk> : IEvent
     public IUnRegister Register(Action<T, Tk> onEvent)
     {
         _mOnEvent += onEvent;
-        return new DefaultUnRegister(() => { UnRegister(onEvent); });
+        return new DefaultUnRegister(() => UnRegister(onEvent));
     }
 
     /// <summary>

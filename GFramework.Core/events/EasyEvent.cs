@@ -17,7 +17,7 @@ public class EasyEvent
     public IUnRegister Register(Action onEvent)
     {
         _mOnEvent += onEvent;
-        return new DefaultUnRegister(() => { UnRegister(onEvent); });
+        return new DefaultUnRegister(() => UnRegister(onEvent));
     }
 
     /// <summary>

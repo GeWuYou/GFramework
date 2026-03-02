@@ -21,7 +21,7 @@ public class OrEventTests
         var orEvent = new OrEvent();
 
         var triggered = false;
-        orEvent.Register(() => { triggered = true; });
+        orEvent.Register(() => triggered = true);
 
         // 将两个事件添加到OrEvent中
         orEvent.Or(event1).Or(event2);
@@ -43,7 +43,7 @@ public class OrEventTests
         var orEvent = new OrEvent();
 
         var triggered = false;
-        orEvent.Register(() => { triggered = true; });
+        orEvent.Register(() => triggered = true);
 
         // 将两个事件添加到OrEvent中
         orEvent.Or(event1).Or(event2);
@@ -66,8 +66,8 @@ public class OrEventTests
         var count1 = 0;
         var count2 = 0;
 
-        orEvent.Register(() => { count1++; });
-        orEvent.Register(() => { count2++; });
+        orEvent.Register(() => count1++);
+        orEvent.Register(() => count2++);
 
         // 将事件添加到OrEvent中
         orEvent.Or(@event);
@@ -88,7 +88,7 @@ public class OrEventTests
         var orEvent = new OrEvent();
 
         var count = 0;
-        var handler = () => { count++; };
+        var handler = () => count++;
 
         orEvent.Register(handler);
         orEvent.Or(@event);

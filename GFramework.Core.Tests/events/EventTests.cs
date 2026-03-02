@@ -31,7 +31,7 @@ public class EventTests
     public void EasyEvent_Register_Should_Add_Handler()
     {
         var called = false;
-        _easyEvent.Register(() => { called = true; });
+        _easyEvent.Register(() => called = true);
 
         _easyEvent.Trigger();
 
@@ -45,7 +45,7 @@ public class EventTests
     public void EasyEvent_UnRegister_Should_Remove_Handler()
     {
         var count = 0;
-        var handler = () => { count++; };
+        var handler = () => count++;
 
         _easyEvent.Register(handler);
         _easyEvent.Trigger();
@@ -65,8 +65,8 @@ public class EventTests
         var count1 = 0;
         var count2 = 0;
 
-        _easyEvent.Register(() => { count1++; });
-        _easyEvent.Register(() => { count2++; });
+        _easyEvent.Register(() => count1++);
+        _easyEvent.Register(() => count2++);
 
         _easyEvent.Trigger();
 
@@ -151,7 +151,7 @@ public class EventTests
     public void EventTTK_UnRegister_Should_Remove_Handler()
     {
         var count = 0;
-        Action<int, string> handler = (i, s) => { count++; };
+        Action<int, string> handler = (i, s) => count++;
 
         _eventIntString.Register(handler);
         _eventIntString.Trigger(1, "a");

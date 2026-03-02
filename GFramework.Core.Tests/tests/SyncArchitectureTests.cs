@@ -96,7 +96,7 @@ public class SyncArchitectureTests : ArchitectureTestsBase<SyncTestArchitecture>
     {
         Architecture!.Initialize();
 
-        Assert.Throws<InvalidOperationException>(() => { Architecture.RegisterSystem(new TestSystem()); });
+        Assert.Throws<InvalidOperationException>(() => Architecture.RegisterSystem(new TestSystem()));
     }
 
     /// <summary>
@@ -107,7 +107,7 @@ public class SyncArchitectureTests : ArchitectureTestsBase<SyncTestArchitecture>
     {
         Architecture!.Initialize();
 
-        Assert.Throws<InvalidOperationException>(() => { Architecture.RegisterModel(new TestModel()); });
+        Assert.Throws<InvalidOperationException>(() => Architecture.RegisterModel(new TestModel()));
     }
 
     /// <summary>
