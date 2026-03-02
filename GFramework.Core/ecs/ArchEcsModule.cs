@@ -11,6 +11,7 @@ public sealed class ArchEcsModule : IServiceModule
 {
     private readonly List<ArchSystemAdapter<float>> _systems = [];
     private IIocContainer? _container;
+    private bool _isInitialized;
     private World? _world;
 
     /// <summary>
@@ -58,6 +59,12 @@ public sealed class ArchEcsModule : IServiceModule
     {
         if (!IsEnabled || _world == null || _container == null) return;
 
+        // 防止重复初始化
+        if (_isInitialized)
+        {
+            return;
+        }
+
         // 从容器获取所有适配器
         var adapters = _container.GetAll<ArchSystemAdapter<float>>();
         if (adapters.Count > 0)
@@ -70,6 +77,8 @@ public sealed class ArchEcsModule : IServiceModule
                 system.Initialize();
             }
         }
+
+        _isInitialized = true;
     }
 
     /// <summary>
@@ -77,7 +86,7 @@ public sealed class ArchEcsModule : IServiceModule
     /// </summary>
     public async ValueTask DestroyAsync()
     {
-        if (!IsEnabled) return;
+        if (!IsEnabled || !_isInitialized) return;
 
         // 销毁所有系统
         foreach (var system in _systems)
@@ -93,6 +102,8 @@ public sealed class ArchEcsModule : IServiceModule
             World.Destroy(_world);
             _world = null;
         }
+
+        _isInitialized = false;
 
         await ValueTask.CompletedTask;
     }

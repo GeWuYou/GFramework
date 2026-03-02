@@ -39,7 +39,7 @@ public abstract class ArchSystemAdapter<T> : AbstractSystem, ArchSys.ISystem<T>
 
     /// <summary>
     ///     显式实现 Arch.System.ISystem&lt;T&gt; 的主更新方法
-    ///     调用受保护的抽象方法 OnUpdate 以强制子类实现核心更新逻辑
+    ///     调用受保护的虚方法 OnUpdate 以强制子类实现核心更新逻辑
     /// </summary>
     /// <param name="t">系统数据参数（通常是 deltaTime）</param>
     public void Update(in T t)

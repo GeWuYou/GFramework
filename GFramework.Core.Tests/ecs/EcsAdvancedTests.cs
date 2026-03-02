@@ -126,7 +126,7 @@ public class EcsAdvancedTests
 
         _world = _container!.Get<World>();
 
-        Assert.DoesNotThrow(() => { _ecsModule.Update(1.0f); });
+        Assert.DoesNotThrow(() => _ecsModule.Update(1.0f));
     }
 
     [Test]
