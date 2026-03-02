@@ -1,5 +1,6 @@
-﻿**/*.Tests.cs
+﻿**/*.Test.cs
+**/*.Tests.cs
 **/*Test.cs
-**/tests/**
 **/*Tests.cs
-**/Tests/**
+**/*.Tests/**
+**/*.Test/**

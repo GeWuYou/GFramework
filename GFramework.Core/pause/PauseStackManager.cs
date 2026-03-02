@@ -28,6 +28,9 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
         if (_disposed)
             return ValueTask.CompletedTask;
 
+        List<PauseGroup> pausedGroups;
+        IPauseHandler[] handlersSnapshot;
+
         _lock.EnterWriteLock();
         try
         {
@@ -35,6 +38,15 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
                 return ValueTask.CompletedTask;
 
             _disposed = true;
+
+            // 收集所有当前暂停的组
+            pausedGroups = _pauseStacks
+                .Where(kvp => kvp.Value.Count > 0)
+                .Select(kvp => kvp.Key)
+                .ToList();
+
+            // 获取处理器快照
+            handlersSnapshot = _handlers.ToArray();
 
             // 清理所有数据结构
             _pauseStacks.Clear();
@@ -46,6 +58,34 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
         finally
         {
             _lock.ExitWriteLock();
+        }
+
+        // 在锁外通知所有之前暂停的组恢复，保持生命周期信号一致
+        foreach (var group in pausedGroups)
+        {
+            _logger.Debug($"Notifying handlers of destruction: Group={group}, IsPaused=false");
+
+            foreach (var handler in handlersSnapshot.OrderBy(h => h.Priority))
+            {
+                try
+                {
+                    handler.OnPauseStateChanged(group, false);
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error($"Handler {handler.GetType().Name} failed during destruction", ex);
+                }
+            }
+
+            // 触发事件
+            try
+            {
+                OnPauseStateChanged?.Invoke(group, false);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Event subscriber failed during destruction for group {group}", ex);
+            }
         }
 
         // 释放锁资源
@@ -422,8 +462,20 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
     {
         _logger.Debug($"Notifying handlers: Group={group}, IsPaused={isPaused}");
 
-        // 按优先级排序后通知
-        foreach (var handler in _handlers.OrderBy(h => h.Priority))
+        // 在锁内获取处理器快照，避免并发修改异常
+        IPauseHandler[] handlersSnapshot;
+        _lock.EnterReadLock();
+        try
+        {
+            handlersSnapshot = _handlers.OrderBy(h => h.Priority).ToArray();
+        }
+        finally
+        {
+            _lock.ExitReadLock();
+        }
+
+        // 在锁外遍历快照并通知处理器
+        foreach (var handler in handlersSnapshot)
         {
             try
             {
