@@ -1,0 +1,5 @@
+﻿**/*.Tests.cs
+**/*Test.cs
+**/tests/**
+**/*Tests.cs
+**/Tests/**
