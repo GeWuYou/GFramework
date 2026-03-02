@@ -161,6 +161,14 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
         sb.AppendLine("        _contextProvider = provider;");
         sb.AppendLine("    }");
         sb.AppendLine();
+        sb.AppendLine("    /// <summary>");
+        sb.AppendLine("    /// 重置上下文提供者为默认值（用于测试清理）");
+        sb.AppendLine("    /// </summary>");
+        sb.AppendLine("    public static void ResetContextProvider()");
+        sb.AppendLine("    {");
+        sb.AppendLine("        _contextProvider = null;");
+        sb.AppendLine("    }");
+        sb.AppendLine();
     }
 
 
