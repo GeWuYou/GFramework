@@ -109,8 +109,8 @@ public abstract class ArchSystemAdapter<T> : AbstractSystem, ArchSys.ISystem<T>
     }
 
     /// <summary>
-    ///     核心更新逻辑的受保护抽象方法
-    ///     子类必须重写此方法以实现具体的系统更新功能
+    ///     受保护虚方法，在系统更新时被调用。
+    ///     默认实现不执行任何操作，子类可以根据需要选择性地重写此方法以实现具体的系统逻辑。
     /// </summary>
     /// <param name="t">系统数据参数（通常是 deltaTime）</param>
     protected virtual void OnUpdate(in T t)
