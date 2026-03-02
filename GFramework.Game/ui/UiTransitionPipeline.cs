@@ -176,11 +176,8 @@ public class UiTransitionPipeline
             var options = _aroundOptions[handler];
             var next = pipeline;
 
-            pipeline = async () =>
-            {
-                await ExecuteSingleAroundHandlerAsync(
-                    handler, options, @event, next, cancellationToken);
-            };
+            pipeline = async () => await ExecuteSingleAroundHandlerAsync(
+                handler, options, @event, next, cancellationToken);
         }
 
         await pipeline();

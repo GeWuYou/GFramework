@@ -17,7 +17,7 @@ public class UnRegisterTests
     public void DefaultUnRegister_Should_InvokeCallback_When_UnRegisterCalled()
     {
         var invoked = false;
-        var unRegister = new DefaultUnRegister(() => { invoked = true; });
+        var unRegister = new DefaultUnRegister(() => invoked = true);
 
         unRegister.UnRegister();
 
@@ -31,7 +31,7 @@ public class UnRegisterTests
     public void DefaultUnRegister_Should_ClearCallback_After_UnRegister()
     {
         var callCount = 0;
-        var unRegister = new DefaultUnRegister(() => { callCount++; });
+        var unRegister = new DefaultUnRegister(() => callCount++);
 
         unRegister.UnRegister();
         unRegister.UnRegister();

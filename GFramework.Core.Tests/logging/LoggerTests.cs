@@ -118,7 +118,7 @@ public class LoggerTests
     [Test]
     public void IsEnabledForLevel_WithInvalidLevel_Should_ThrowArgumentException()
     {
-        Assert.Throws<ArgumentException>(() => { _logger.IsEnabledForLevel((LogLevel)999); });
+        Assert.Throws<ArgumentException>(() => _logger.IsEnabledForLevel((LogLevel)999));
     }
 
     /// <summary>

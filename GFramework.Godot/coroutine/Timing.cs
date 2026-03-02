@@ -82,7 +82,7 @@ public partial class Timing : Node
             {
                 Name = nameof(Timing)
             };
-            tree.Root.WaitUntilReady(() => { tree.Root.AddChild(_instance); });
+            tree.Root.WaitUntilReady(() => tree.Root.AddChild(_instance));
 
             return _instance;
         }
