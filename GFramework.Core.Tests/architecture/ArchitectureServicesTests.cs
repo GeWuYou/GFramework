@@ -305,9 +305,19 @@ public class TestArchitectureContextV3 : IArchitectureContext
         return _container.Get<TService>();
     }
 
+    public IReadOnlyList<TService> GetServices<TService>() where TService : class
+    {
+        return _container.GetAll<TService>();
+    }
+
     public TModel? GetModel<TModel>() where TModel : class, IModel
     {
         return _container.Get<TModel>();
+    }
+
+    public IReadOnlyList<TModel> GetModels<TModel>() where TModel : class, IModel
+    {
+        return _container.GetAll<TModel>();
     }
 
     public TSystem? GetSystem<TSystem>() where TSystem : class, ISystem
@@ -315,9 +325,19 @@ public class TestArchitectureContextV3 : IArchitectureContext
         return _container.Get<TSystem>();
     }
 
+    public IReadOnlyList<TSystem> GetSystems<TSystem>() where TSystem : class, ISystem
+    {
+        return _container.GetAll<TSystem>();
+    }
+
     public TUtility? GetUtility<TUtility>() where TUtility : class, IUtility
     {
         return _container.Get<TUtility>();
+    }
+
+    public IReadOnlyList<TUtility> GetUtilities<TUtility>() where TUtility : class, IUtility
+    {
+        return _container.GetAll<TUtility>();
     }
 
     public void SendEvent<TEvent>() where TEvent : new()

@@ -269,6 +269,16 @@ public class TestArchitectureContext : IArchitectureContext
     }
 
     /// <summary>
+    ///     获取指定类型的所有服务
+    /// </summary>
+    /// <typeparam name="TService">服务类型</typeparam>
+    /// <returns>所有服务实例列表</returns>
+    public IReadOnlyList<TService> GetServices<TService>() where TService : class
+    {
+        return _container.GetAll<TService>();
+    }
+
+    /// <summary>
     ///     获取指定类型的模型
     /// </summary>
     /// <typeparam name="TModel">模型类型</typeparam>
@@ -276,6 +286,16 @@ public class TestArchitectureContext : IArchitectureContext
     public TModel? GetModel<TModel>() where TModel : class, IModel
     {
         return _container.Get<TModel>();
+    }
+
+    /// <summary>
+    ///     获取指定类型的所有模型
+    /// </summary>
+    /// <typeparam name="TModel">模型类型</typeparam>
+    /// <returns>所有模型实例列表</returns>
+    public IReadOnlyList<TModel> GetModels<TModel>() where TModel : class, IModel
+    {
+        return _container.GetAll<TModel>();
     }
 
     /// <summary>
@@ -289,6 +309,16 @@ public class TestArchitectureContext : IArchitectureContext
     }
 
     /// <summary>
+    ///     获取指定类型的所有系统
+    /// </summary>
+    /// <typeparam name="TSystem">系统类型</typeparam>
+    /// <returns>所有系统实例列表</returns>
+    public IReadOnlyList<TSystem> GetSystems<TSystem>() where TSystem : class, ISystem
+    {
+        return _container.GetAll<TSystem>();
+    }
+
+    /// <summary>
     ///     获取指定类型的工具
     /// </summary>
     /// <typeparam name="TUtility">工具类型</typeparam>
@@ -296,6 +326,16 @@ public class TestArchitectureContext : IArchitectureContext
     public virtual TUtility? GetUtility<TUtility>() where TUtility : class, IUtility
     {
         return _container.Get<TUtility>();
+    }
+
+    /// <summary>
+    ///     获取指定类型的所有工具
+    /// </summary>
+    /// <typeparam name="TUtility">工具类型</typeparam>
+    /// <returns>所有工具实例列表</returns>
+    public IReadOnlyList<TUtility> GetUtilities<TUtility>() where TUtility : class, IUtility
+    {
+        return _container.GetAll<TUtility>();
     }
 
     /// <summary>

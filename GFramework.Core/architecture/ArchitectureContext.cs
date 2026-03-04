@@ -234,6 +234,16 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     #region Component Retrieval
 
     /// <summary>
+    ///     获取指定类型的所有服务实例
+    /// </summary>
+    /// <typeparam name="TService">服务类型</typeparam>
+    /// <returns>所有符合条件的服务实例列表</returns>
+    public IReadOnlyList<TService> GetServices<TService>() where TService : class
+    {
+        return _container.GetAll<TService>();
+    }
+
+    /// <summary>
     ///     从IOC容器中获取指定类型的系统实例
     /// </summary>
     /// <typeparam name="TSystem">目标系统类型</typeparam>
@@ -241,6 +251,16 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     public TSystem? GetSystem<TSystem>() where TSystem : class, ISystem
     {
         return GetService<TSystem>();
+    }
+
+    /// <summary>
+    ///     获取指定类型的所有系统实例
+    /// </summary>
+    /// <typeparam name="TSystem">系统类型</typeparam>
+    /// <returns>所有符合条件的系统实例列表</returns>
+    public IReadOnlyList<TSystem> GetSystems<TSystem>() where TSystem : class, ISystem
+    {
+        return _container.GetAll<TSystem>();
     }
 
     /// <summary>
@@ -254,6 +274,16 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     }
 
     /// <summary>
+    ///     获取指定类型的所有模型实例
+    /// </summary>
+    /// <typeparam name="TModel">模型类型</typeparam>
+    /// <returns>所有符合条件的模型实例列表</returns>
+    public IReadOnlyList<TModel> GetModels<TModel>() where TModel : class, IModel
+    {
+        return _container.GetAll<TModel>();
+    }
+
+    /// <summary>
     ///     从IOC容器中获取指定类型的工具实例
     /// </summary>
     /// <typeparam name="TUtility">目标工具类型</typeparam>
@@ -261,6 +291,16 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     public TUtility? GetUtility<TUtility>() where TUtility : class, IUtility
     {
         return GetService<TUtility>();
+    }
+
+    /// <summary>
+    ///     获取指定类型的所有工具实例
+    /// </summary>
+    /// <typeparam name="TUtility">工具类型</typeparam>
+    /// <returns>所有符合条件的工具实例列表</returns>
+    public IReadOnlyList<TUtility> GetUtilities<TUtility>() where TUtility : class, IUtility
+    {
+        return _container.GetAll<TUtility>();
     }
 
     #endregion
