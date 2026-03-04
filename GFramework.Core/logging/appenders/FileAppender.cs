@@ -23,6 +23,8 @@ public sealed class FileAppender : ILogAppender, IDisposable
     /// <param name="filePath">日志文件路径</param>
     /// <param name="formatter">日志格式化器</param>
     /// <param name="filter">日志过滤器（可选）</param>
+    /// <exception cref="ArgumentException">当文件路径为空或无效时抛出</exception>
+    /// <exception cref="IOException">当无法创建或打开日志文件时抛出</exception>
     public FileAppender(
         string filePath,
         ILogFormatter? formatter = null,
@@ -35,8 +37,18 @@ public sealed class FileAppender : ILogAppender, IDisposable
         _formatter = formatter ?? new DefaultLogFormatter();
         _filter = filter;
 
-        EnsureDirectoryExists();
-        InitializeWriter();
+        try
+        {
+            EnsureDirectoryExists();
+            InitializeWriter();
+        }
+        catch
+        {
+            // 确保在初始化失败时清理资源
+            _writer?.Dispose();
+            _writer = null;
+            throw;
+        }
     }
 
     /// <summary>

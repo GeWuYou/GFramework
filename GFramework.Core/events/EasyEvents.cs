@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using GFramework.Core.Abstractions.events;
 
 namespace GFramework.Core.events;
@@ -5,6 +6,7 @@ namespace GFramework.Core.events;
 /// <summary>
 ///     EasyEvents事件管理器类，用于全局事件的注册、获取和管理
 ///     提供了类型安全的事件系统，支持泛型事件的自动创建和检索
+///     线程安全：所有公共方法都是线程安全的
 /// </summary>
 public class EasyEvents
 {
@@ -14,9 +16,9 @@ public class EasyEvents
     private static readonly EasyEvents MGlobalEvents = new();
 
     /// <summary>
-    ///     存储事件类型与事件实例映射关系的字典
+    ///     存储事件类型与事件实例映射关系的字典（线程安全）
     /// </summary>
-    private readonly Dictionary<Type, IEvent> _mTypeEvents = new();
+    private readonly ConcurrentDictionary<Type, IEvent> _mTypeEvents = new();
 
     /// <summary>
     ///     获取指定类型的全局事件实例
@@ -51,9 +53,13 @@ public class EasyEvents
     ///     添加指定类型的事件到事件字典中
     /// </summary>
     /// <typeparam name="T">事件类型，必须实现IEasyEvent接口且具有无参构造函数</typeparam>
+    /// <exception cref="ArgumentException">当事件类型已存在时抛出</exception>
     public void AddEvent<T>() where T : IEvent, new()
     {
-        _mTypeEvents.Add(typeof(T), new T());
+        if (!_mTypeEvents.TryAdd(typeof(T), new T()))
+        {
+            throw new ArgumentException($"Event type {typeof(T).Name} already registered.");
+        }
     }
 
     /// <summary>
@@ -73,13 +79,6 @@ public class EasyEvents
     /// <returns>指定类型的事件实例</returns>
     public T GetOrAddEvent<T>() where T : IEvent, new()
     {
-        var eType = typeof(T);
-        // 尝试从字典中获取事件实例
-        if (_mTypeEvents.TryGetValue(eType, out var e)) return (T)e;
-
-        // 如果不存在则创建新实例并添加到字典中
-        var t = new T();
-        _mTypeEvents.Add(eType, t);
-        return t;
+        return (T)_mTypeEvents.GetOrAdd(typeof(T), _ => new T());
     }
 }

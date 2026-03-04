@@ -91,19 +91,39 @@ public sealed class AsyncLogAppender : ILogAppender, IDisposable
     }
 
     /// <summary>
+    ///     刷新缓冲区（ILogAppender 接口实现）
+    /// </summary>
+    void ILogAppender.Flush()
+    {
+        Flush();
+    }
+
+    /// <summary>
     ///     刷新缓冲区，等待所有日志写入完成
     /// </summary>
-    public void Flush()
+    /// <param name="timeout">超时时间（默认30秒）</param>
+    /// <returns>是否成功刷新所有日志</returns>
+    public bool Flush(TimeSpan? timeout = null)
     {
-        if (_disposed) return;
+        if (_disposed) return false;
 
-        // 等待 Channel 中的所有消息被处理
+        var actualTimeout = timeout ?? TimeSpan.FromSeconds(30);
+        var startTime = DateTime.UtcNow;
+
+        // 使用 SpinWait 替代忙轮询，更高效
+        var spinWait = new SpinWait();
         while (_channel.Reader.Count > 0)
         {
-            Thread.Sleep(10);
+            if (DateTime.UtcNow - startTime > actualTimeout)
+            {
+                return false; // 超时
+            }
+
+            spinWait.SpinOnce();
         }
 
         _innerAppender.Flush();
+        return true;
     }
 
     /// <summary>
