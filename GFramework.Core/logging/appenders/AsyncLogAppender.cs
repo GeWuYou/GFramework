@@ -10,9 +10,11 @@ public sealed class AsyncLogAppender : ILogAppender, IDisposable
 {
     private readonly Channel<LogEntry> _channel;
     private readonly CancellationTokenSource _cts;
+    private readonly SemaphoreSlim _flushSemaphore = new(0, 1);
     private readonly ILogAppender _innerAppender;
     private readonly Task _processingTask;
     private bool _disposed;
+    private volatile bool _flushRequested;
 
     /// <summary>
     ///     创建异步日志输出器
@@ -74,6 +76,7 @@ public sealed class AsyncLogAppender : ILogAppender, IDisposable
         }
 
         _cts.Dispose();
+        _flushSemaphore.Dispose();
         _disposed = true;
     }
 
@@ -92,38 +95,46 @@ public sealed class AsyncLogAppender : ILogAppender, IDisposable
 
     /// <summary>
     ///     刷新缓冲区（ILogAppender 接口实现）
+    ///     注意：此方法会阻塞直到所有待处理日志写入完成，或超时（默认30秒）
+    ///     超时结果可通过 OnFlushCompleted 事件观察
     /// </summary>
     void ILogAppender.Flush()
     {
-        Flush();
+        var success = Flush();
+        OnFlushCompleted?.Invoke(success);
     }
 
     /// <summary>
+    ///     Flush 操作完成事件，参数指示是否成功（true）或超时（false）
+    /// </summary>
+    public event Action<bool>? OnFlushCompleted;
+
+    /// <summary>
     ///     刷新缓冲区，等待所有日志写入完成
+    ///     使用信号量机制确保可靠的完成通知，避免竞态条件
     /// </summary>
     /// <param name="timeout">超时时间（默认30秒）</param>
-    /// <returns>是否成功刷新所有日志</returns>
+    /// <returns>是否成功刷新所有日志（true=成功，false=超时）</returns>
     public bool Flush(TimeSpan? timeout = null)
     {
         if (_disposed) return false;
 
         var actualTimeout = timeout ?? TimeSpan.FromSeconds(30);
-        var startTime = DateTime.UtcNow;
 
-        // 使用 SpinWait 替代忙轮询，更高效
-        var spinWait = new SpinWait();
-        while (_channel.Reader.Count > 0)
+        // 请求刷新
+        _flushRequested = true;
+
+        try
         {
-            if (DateTime.UtcNow - startTime > actualTimeout)
-            {
-                return false; // 超时
-            }
-
-            spinWait.SpinOnce();
+            // 等待处理任务发出完成信号
+            var success = _flushSemaphore.Wait(actualTimeout);
+            OnFlushCompleted?.Invoke(success);
+            return success;
         }
-
-        _innerAppender.Flush();
-        return true;
+        finally
+        {
+            _flushRequested = false;
+        }
     }
 
     /// <summary>
@@ -143,6 +154,18 @@ public sealed class AsyncLogAppender : ILogAppender, IDisposable
                 {
                     // 记录内部错误到控制台（避免递归）
                     await Console.Error.WriteLineAsync($"[AsyncLogAppender] Error processing log entry: {ex.Message}");
+                }
+
+                // 检查是否有刷新请求且通道已空
+                if (_flushRequested && _channel.Reader.Count == 0)
+                {
+                    _innerAppender.Flush();
+
+                    // 发出完成信号
+                    if (_flushSemaphore.CurrentCount == 0)
+                    {
+                        _flushSemaphore.Release();
+                    }
                 }
             }
         }

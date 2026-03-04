@@ -35,6 +35,7 @@ public sealed class CoroutineScheduler(
 
     /// <summary>
     ///     协程异常处理回调，当协程执行过程中发生异常时触发
+    ///     注意：事件处理程序会在独立任务中异步调用，以避免阻塞调度器主循环
     /// </summary>
     public event Action<CoroutineHandle, Exception>? OnCoroutineException;
 
@@ -386,15 +387,22 @@ public sealed class CoroutineScheduler(
         var slot = _slots[slotIndex];
         var handle = slot?.Handle ?? default;
 
-        try
+        // 将异常回调派发到线程池，避免阻塞调度器主循环
+        var handler = OnCoroutineException;
+        if (handler != null)
         {
-            // 触发异常回调
-            OnCoroutineException?.Invoke(handle, ex);
-        }
-        catch (Exception callbackEx)
-        {
-            // 防止回调异常导致调度器崩溃
-            Console.Error.WriteLine($"[CoroutineScheduler] Exception in error callback: {callbackEx}");
+            Task.Run(() =>
+            {
+                try
+                {
+                    handler(handle, ex);
+                }
+                catch (Exception callbackEx)
+                {
+                    // 防止回调异常传播，记录到控制台
+                    Console.Error.WriteLine($"[CoroutineScheduler] Exception in error callback: {callbackEx}");
+                }
+            });
         }
 
         // 输出到控制台作为后备

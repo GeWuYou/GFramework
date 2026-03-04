@@ -67,7 +67,10 @@ public class BindableProperty<T>(T defaultValue = default!) : IBindableProperty<
     /// <param name="newValue">新的属性值</param>
     public void SetValueWithoutEvent(T newValue)
     {
-        MValue = newValue;
+        lock (_lock)
+        {
+            MValue = newValue;
+        }
     }
 
     /// <summary>
@@ -155,7 +158,10 @@ public class BindableProperty<T>(T defaultValue = default!) : IBindableProperty<
     /// <returns>当前属性值</returns>
     protected virtual T GetValue()
     {
-        return MValue;
+        lock (_lock)
+        {
+            return MValue;
+        }
     }
 
     /// <summary>
