@@ -3,6 +3,8 @@ using System.IO;
 using System.Text.Json;
 using GFramework.Core.Abstractions.configuration;
 using GFramework.Core.Abstractions.events;
+using GFramework.Core.Abstractions.logging;
+using GFramework.Core.logging;
 
 namespace GFramework.Core.configuration;
 
@@ -31,6 +33,8 @@ public class ConfigurationManager : IConfigurationManager
     ///     配置存储字典（线程安全）
     /// </summary>
     private readonly ConcurrentDictionary<string, object> _configs = new();
+
+    private readonly ILogger _logger = LoggerFactoryResolver.Provider.CreateLogger(nameof(ConfigurationManager));
 
     /// <summary>
     ///     用于保护监听器列表的锁
@@ -289,7 +293,7 @@ public class ConfigurationManager : IConfigurationManager
             catch (Exception ex)
             {
                 // 防止监听器异常影响其他监听器
-                Console.Error.WriteLine(
+                _logger.Error(
                     $"[ConfigurationManager] Error in config watcher for key '{key}': {ex.Message}");
             }
         }

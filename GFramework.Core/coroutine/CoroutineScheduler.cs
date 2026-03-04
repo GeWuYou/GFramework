@@ -1,5 +1,7 @@
 ﻿using GFramework.Core.Abstractions.coroutine;
+using GFramework.Core.Abstractions.logging;
 using GFramework.Core.coroutine.instructions;
+using GFramework.Core.logging;
 
 namespace GFramework.Core.coroutine;
 
@@ -15,6 +17,7 @@ public sealed class CoroutineScheduler(
     byte instanceId = 1,
     int initialCapacity = 256)
 {
+    private readonly ILogger _logger = LoggerFactoryResolver.Provider.CreateLogger(nameof(CoroutineScheduler));
     private readonly Dictionary<CoroutineHandle, CoroutineMetadata> _metadata = new();
     private readonly Dictionary<string, HashSet<CoroutineHandle>> _tagged = new();
     private readonly ITimeSource _timeSource = timeSource ?? throw new ArgumentNullException(nameof(timeSource));
@@ -400,13 +403,13 @@ public sealed class CoroutineScheduler(
                 catch (Exception callbackEx)
                 {
                     // 防止回调异常传播，记录到控制台
-                    Console.Error.WriteLine($"[CoroutineScheduler] Exception in error callback: {callbackEx}");
+                    _logger.Error($"[CoroutineScheduler] Exception in error callback: {callbackEx}");
                 }
             });
         }
 
         // 输出到控制台作为后备
-        Console.Error.WriteLine($"[CoroutineScheduler] Coroutine {handle} failed with exception: {ex}");
+        _logger.Error($"[CoroutineScheduler] Coroutine {handle} failed with exception: {ex}");
 
         // 完成协程
         Complete(slotIndex);
