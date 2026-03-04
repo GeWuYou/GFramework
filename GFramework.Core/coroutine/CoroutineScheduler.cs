@@ -5,6 +5,7 @@ namespace GFramework.Core.coroutine;
 
 /// <summary>
 ///     协程调度器，用于管理和执行协程
+///     线程安全说明：此类设计为单线程使用，所有方法应在同一线程中调用
 /// </summary>
 /// <param name="timeSource">时间源接口，提供时间相关数据</param>
 /// <param name="instanceId">实例ID，默认为1</param>
@@ -31,6 +32,11 @@ public sealed class CoroutineScheduler(
     ///     获取活跃协程数量
     /// </summary>
     public int ActiveCoroutineCount { get; private set; }
+
+    /// <summary>
+    ///     协程异常处理回调，当协程执行过程中发生异常时触发
+    /// </summary>
+    public event Action<CoroutineHandle, Exception>? OnCoroutineException;
 
     /// <summary>
     ///     检查指定的协程句柄是否仍然存活
@@ -377,7 +383,24 @@ public sealed class CoroutineScheduler(
     /// <param name="ex">异常对象</param>
     private void OnError(int slotIndex, Exception ex)
     {
-        Console.Error.WriteLine(ex);
+        var slot = _slots[slotIndex];
+        var handle = slot?.Handle ?? default;
+
+        try
+        {
+            // 触发异常回调
+            OnCoroutineException?.Invoke(handle, ex);
+        }
+        catch (Exception callbackEx)
+        {
+            // 防止回调异常导致调度器崩溃
+            Console.Error.WriteLine($"[CoroutineScheduler] Exception in error callback: {callbackEx}");
+        }
+
+        // 输出到控制台作为后备
+        Console.Error.WriteLine($"[CoroutineScheduler] Coroutine {handle} failed with exception: {ex}");
+
+        // 完成协程
         Complete(slotIndex);
     }
 

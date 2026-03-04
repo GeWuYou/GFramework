@@ -5,16 +5,22 @@ namespace GFramework.Core.property;
 
 /// <summary>
 ///     可绑定属性类，用于实现数据绑定功能
+///     线程安全：所有公共方法都是线程安全的
 /// </summary>
 /// <typeparam name="T">属性值的类型</typeparam>
 /// <param name="defaultValue">属性的默认值</param>
 public class BindableProperty<T>(T defaultValue = default!) : IBindableProperty<T>
 {
     /// <summary>
+    ///     用于保护委托链和值访问的锁对象
+    /// </summary>
+    private readonly object _lock = new();
+
+    /// <summary>
     ///     属性值变化事件回调委托，当属性值发生变化时被调用
     /// </summary>
     private Action<T>? _mOnValueChanged;
-    
+
     /// <summary>
     ///     存储属性实际值的受保护字段
     /// </summary>
@@ -33,17 +39,25 @@ public class BindableProperty<T>(T defaultValue = default!) : IBindableProperty<
         get => GetValue();
         set
         {
-            // 使用 default(T) 替代 null 比较，避免 SonarQube 警告
-            if (EqualityComparer<T>.Default.Equals(value, default!) &&
-                EqualityComparer<T>.Default.Equals(MValue, default!))
-                return;
+            Action<T>? callback = null;
 
-            // 若新值与旧值相等则不执行后续操作
-            if (!EqualityComparer<T>.Default.Equals(value, default!) && Comparer(value, MValue))
-                return;
+            lock (_lock)
+            {
+                // 使用 default(T) 替代 null 比较，避免 SonarQube 警告
+                if (EqualityComparer<T>.Default.Equals(value, default!) &&
+                    EqualityComparer<T>.Default.Equals(MValue, default!))
+                    return;
 
-            SetValue(value);
-            _mOnValueChanged?.Invoke(value);
+                // 若新值与旧值相等则不执行后续操作
+                if (!EqualityComparer<T>.Default.Equals(value, default!) && Comparer(value, MValue))
+                    return;
+
+                SetValue(value);
+                callback = _mOnValueChanged;
+            }
+
+            // 在锁外调用回调，避免死锁
+            callback?.Invoke(value);
         }
     }
 
@@ -78,7 +92,11 @@ public class BindableProperty<T>(T defaultValue = default!) : IBindableProperty<
     /// <returns>可用于取消注册的接口</returns>
     public IUnRegister Register(Action<T> onValueChanged)
     {
-        _mOnValueChanged += onValueChanged;
+        lock (_lock)
+        {
+            _mOnValueChanged += onValueChanged;
+        }
+
         return new BindablePropertyUnRegister<T>(this, onValueChanged);
     }
 
@@ -89,7 +107,13 @@ public class BindableProperty<T>(T defaultValue = default!) : IBindableProperty<
     /// <returns>可用于取消注册的接口</returns>
     public IUnRegister RegisterWithInitValue(Action<T> action)
     {
-        action(MValue);
+        T currentValue;
+        lock (_lock)
+        {
+            currentValue = MValue;
+        }
+
+        action(currentValue);
         return Register(action);
     }
 
@@ -99,7 +123,10 @@ public class BindableProperty<T>(T defaultValue = default!) : IBindableProperty<
     /// <param name="onValueChanged">要取消注册的回调函数</param>
     public void UnRegister(Action<T> onValueChanged)
     {
-        _mOnValueChanged -= onValueChanged;
+        lock (_lock)
+        {
+            _mOnValueChanged -= onValueChanged;
+        }
     }
 
     /// <summary>

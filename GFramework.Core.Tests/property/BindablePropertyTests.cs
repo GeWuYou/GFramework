@@ -183,4 +183,166 @@ public class BindablePropertyTests
 
         Assert.That(result, Is.EqualTo("42"));
     }
+
+    /// <summary>
+    ///     测试并发场景下的属性值设置
+    /// </summary>
+    [Test]
+    public void Concurrent_Value_Set_Should_Be_Thread_Safe()
+    {
+        var property = new BindableProperty<int>(0);
+        const int threadCount = 10;
+        const int iterationsPerThread = 100;
+        var tasks = new Task[threadCount];
+        var exceptions = new List<Exception>();
+
+        for (var i = 0; i < threadCount; i++)
+        {
+            var threadId = i;
+            tasks[i] = Task.Run(() =>
+            {
+                try
+                {
+                    for (var j = 0; j < iterationsPerThread; j++)
+                    {
+                        property.Value = threadId * iterationsPerThread + j;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    lock (exceptions)
+                    {
+                        exceptions.Add(ex);
+                    }
+                }
+            });
+        }
+
+        Task.WaitAll(tasks);
+
+        Assert.That(exceptions, Is.Empty, $"并发测试中发生异常: {string.Join(", ", exceptions.Select(e => e.Message))}");
+    }
+
+    /// <summary>
+    ///     测试并发场景下的事件注册和触发
+    /// </summary>
+    [Test]
+    public void Concurrent_Register_And_Trigger_Should_Be_Thread_Safe()
+    {
+        var property = new BindableProperty<int>(0);
+        const int threadCount = 5;
+        var tasks = new Task[threadCount];
+        var exceptions = new List<Exception>();
+        var callCounts = new int[threadCount];
+
+        for (var i = 0; i < threadCount; i++)
+        {
+            var threadId = i;
+            tasks[i] = Task.Run(() =>
+            {
+                try
+                {
+                    property.Register(value => { Interlocked.Increment(ref callCounts[threadId]); });
+                }
+                catch (Exception ex)
+                {
+                    lock (exceptions)
+                    {
+                        exceptions.Add(ex);
+                    }
+                }
+            });
+        }
+
+        Task.WaitAll(tasks);
+
+        // 触发事件
+        property.Value = 42;
+
+        Assert.That(exceptions, Is.Empty);
+        Assert.That(callCounts.Sum(), Is.EqualTo(threadCount), "所有注册的处理器都应该被调用");
+    }
+
+    /// <summary>
+    ///     测试并发场景下的注册和取消注册
+    /// </summary>
+    [Test]
+    public void Concurrent_Register_And_UnRegister_Should_Be_Thread_Safe()
+    {
+        var property = new BindableProperty<int>(0);
+        const int threadCount = 10;
+        const int iterationsPerThread = 50;
+        var tasks = new Task[threadCount];
+        var exceptions = new List<Exception>();
+
+        for (var i = 0; i < threadCount; i++)
+        {
+            tasks[i] = Task.Run(() =>
+            {
+                try
+                {
+                    for (var j = 0; j < iterationsPerThread; j++)
+                    {
+                        Action<int> handler = _ => { };
+                        property.Register(handler);
+                        property.UnRegister(handler);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    lock (exceptions)
+                    {
+                        exceptions.Add(ex);
+                    }
+                }
+            });
+        }
+
+        Task.WaitAll(tasks);
+
+        Assert.That(exceptions, Is.Empty);
+    }
+
+    /// <summary>
+    ///     测试并发场景下RegisterWithInitValue的线程安全性
+    /// </summary>
+    [Test]
+    public void Concurrent_RegisterWithInitValue_Should_Be_Thread_Safe()
+    {
+        var property = new BindableProperty<int>(42);
+        const int threadCount = 10;
+        var tasks = new Task[threadCount];
+        var exceptions = new List<Exception>();
+        var receivedValues = new List<int>();
+
+        for (var i = 0; i < threadCount; i++)
+        {
+            tasks[i] = Task.Run(() =>
+            {
+                try
+                {
+                    property.RegisterWithInitValue(value =>
+                    {
+                        lock (receivedValues)
+                        {
+                            receivedValues.Add(value);
+                        }
+                    });
+                }
+                catch (Exception ex)
+                {
+                    lock (exceptions)
+                    {
+                        exceptions.Add(ex);
+                    }
+                }
+            });
+        }
+
+        Task.WaitAll(tasks);
+
+        Assert.That(exceptions, Is.Empty);
+        Assert.That(receivedValues.Count, Is.EqualTo(threadCount));
+        Assert.That(receivedValues.All(v => v == 42), Is.True, "所有初始值都应该是42");
+    }
 }
