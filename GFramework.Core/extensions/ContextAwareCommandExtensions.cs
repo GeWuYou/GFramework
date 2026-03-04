@@ -59,24 +59,6 @@ public static class ContextAwareCommandExtensions
         context.SendCommand(command);
     }
 
-    /// <summary>
-    ///     [Mediator] 异步发送命令并返回结果
-    /// </summary>
-    /// <typeparam name="TResponse">命令响应类型</typeparam>
-    /// <param name="contextAware">实现 IContextAware 接口的对象</param>
-    /// <param name="command">要发送的命令对象</param>
-    /// <param name="cancellationToken">取消令牌,用于取消操作</param>
-    /// <returns>包含命令执行结果的ValueTask</returns>
-    /// <exception cref="ArgumentNullException">当 contextAware 或 command 为 null 时抛出</exception>
-    public static ValueTask<TResponse> SendCommandAsync<TResponse>(this IContextAware contextAware,
-        Mediator.ICommand<TResponse> command, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(contextAware);
-        ArgumentNullException.ThrowIfNull(command);
-
-        var context = contextAware.GetContext();
-        return context.SendCommandAsync(command, cancellationToken);
-    }
 
     /// <summary>
     ///     发送并异步执行一个无返回值的命令
