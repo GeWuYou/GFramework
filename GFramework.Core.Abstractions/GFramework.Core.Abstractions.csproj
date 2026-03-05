@@ -17,7 +17,7 @@
         <Using Include="GFramework.Core.Abstractions"/>
     </ItemGroup>
     <ItemGroup>
-        <PackageReference Update="Meziantou.Analyzer" Version="3.0.17">
+        <PackageReference Update="Meziantou.Analyzer" Version="3.0.19">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
         </PackageReference>
