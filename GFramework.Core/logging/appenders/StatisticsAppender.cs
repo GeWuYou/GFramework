@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 using System.Text;
 using GFramework.Core.Abstractions.logging;
+using GFramework.Core.Abstractions.time;
+using GFramework.Core.time;
 
 namespace GFramework.Core.logging.appenders;
 
@@ -12,9 +14,20 @@ public sealed class StatisticsAppender : ILogAppender
 {
     private readonly ConcurrentDictionary<LogLevel, long> _levelCounts = new();
     private readonly ConcurrentDictionary<string, long> _loggerCounts = new();
+    private readonly ITimeProvider _timeProvider;
     private long _errorCount;
-    private DateTime _startTime = DateTime.UtcNow;
+    private long _startTimeTicks;
     private long _totalCount;
+
+    /// <summary>
+    ///     创建日志统计 Appender
+    /// </summary>
+    /// <param name="timeProvider">时间提供者，默认使用系统时间</param>
+    public StatisticsAppender(ITimeProvider? timeProvider = null)
+    {
+        _timeProvider = timeProvider ?? new SystemTimeProvider();
+        _startTimeTicks = _timeProvider.UtcNow.Ticks;
+    }
 
     /// <summary>
     ///     获取总日志数量
@@ -29,12 +42,12 @@ public sealed class StatisticsAppender : ILogAppender
     /// <summary>
     ///     获取统计开始时间
     /// </summary>
-    public DateTime StartTime => _startTime;
+    public DateTime StartTime => new(Interlocked.Read(ref _startTimeTicks), DateTimeKind.Utc);
 
     /// <summary>
     ///     获取运行时长
     /// </summary>
-    public TimeSpan Uptime => DateTime.UtcNow - _startTime;
+    public TimeSpan Uptime => _timeProvider.UtcNow - StartTime;
 
     /// <summary>
     ///     获取错误率（错误数 / 总数）
@@ -78,6 +91,14 @@ public sealed class StatisticsAppender : ILogAppender
     }
 
     /// <summary>
+    ///     释放资源
+    /// </summary>
+    public void Dispose()
+    {
+        // 无需释放资源
+    }
+
+    /// <summary>
     ///     获取指定级别的日志数量
     /// </summary>
     public long GetCountByLevel(LogLevel level)
@@ -118,7 +139,7 @@ public sealed class StatisticsAppender : ILogAppender
         Interlocked.Exchange(ref _errorCount, 0);
         _levelCounts.Clear();
         _loggerCounts.Clear();
-        _startTime = DateTime.UtcNow;
+        Interlocked.Exchange(ref _startTimeTicks, _timeProvider.UtcNow.Ticks);
     }
 
     /// <summary>
@@ -127,8 +148,11 @@ public sealed class StatisticsAppender : ILogAppender
     public string GenerateReport()
     {
         var report = new StringBuilder();
+        var startTime = StartTime;
+        var now = _timeProvider.UtcNow;
+
         report.AppendLine("=== 日志统计报告 ===");
-        report.AppendLine($"统计时间: {_startTime:yyyy-MM-dd HH:mm:ss} - {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}");
+        report.AppendLine($"统计时间: {startTime:yyyy-MM-dd HH:mm:ss} - {now:yyyy-MM-dd HH:mm:ss}");
         report.AppendLine($"运行时长: {Uptime}");
         report.AppendLine($"总日志数: {TotalCount}");
         report.AppendLine($"错误日志数: {ErrorCount}");

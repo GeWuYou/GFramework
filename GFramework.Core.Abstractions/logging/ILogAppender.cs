@@ -3,7 +3,7 @@ namespace GFramework.Core.Abstractions.logging;
 /// <summary>
 ///     日志输出器接口，负责将日志条目写入特定目标
 /// </summary>
-public interface ILogAppender
+public interface ILogAppender : IDisposable
 {
     /// <summary>
     ///     追加日志条目
