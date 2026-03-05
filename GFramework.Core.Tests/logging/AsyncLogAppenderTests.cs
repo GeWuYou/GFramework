@@ -184,6 +184,10 @@ public class AsyncLogAppenderTests
         public void Flush()
         {
         }
+
+        public void Dispose()
+        {
+        }
     }
 
     private class SlowAppender : ILogAppender
@@ -203,6 +207,10 @@ public class AsyncLogAppenderTests
         public void Flush()
         {
         }
+
+        public void Dispose()
+        {
+        }
     }
 
     private class ThrowingAppender : ILogAppender
@@ -213,6 +221,10 @@ public class AsyncLogAppenderTests
         }
 
         public void Flush()
+        {
+        }
+
+        public void Dispose()
         {
         }
     }

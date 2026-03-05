@@ -160,6 +160,10 @@ public class CompositeLoggerTests
         {
             FlushCalled = true;
         }
+
+        public void Dispose()
+        {
+        }
     }
 
     private class TestDisposableAppender : ILogAppender, IDisposable

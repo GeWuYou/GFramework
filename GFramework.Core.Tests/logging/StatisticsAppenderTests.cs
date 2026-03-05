@@ -1,5 +1,6 @@
 using GFramework.Core.Abstractions.logging;
 using GFramework.Core.logging.appenders;
+using GFramework.Core.Tests.time;
 using NUnit.Framework;
 
 namespace GFramework.Core.Tests.logging;
@@ -10,14 +11,17 @@ public class StatisticsAppenderTests
     [SetUp]
     public void SetUp()
     {
-        _appender = new StatisticsAppender();
+        _timeProvider = new FakeTimeProvider();
+        _appender = new StatisticsAppender(_timeProvider);
     }
 
     [TearDown]
     public void TearDown()
     {
+        _appender.Dispose();
     }
 
+    private FakeTimeProvider _timeProvider = null!;
     private StatisticsAppender _appender = null!;
 
     [Test]
@@ -86,9 +90,9 @@ public class StatisticsAppenderTests
     public void StatisticsAppender_Should_Track_Uptime()
     {
         var startTime = _appender.StartTime;
-        Thread.Sleep(100);
+        _timeProvider.Advance(TimeSpan.FromSeconds(100));
 
-        Assert.That(_appender.Uptime, Is.GreaterThanOrEqualTo(TimeSpan.FromMilliseconds(100)));
+        Assert.That(_appender.Uptime, Is.EqualTo(TimeSpan.FromSeconds(100)));
         Assert.That(_appender.StartTime, Is.EqualTo(startTime));
     }
 
@@ -102,7 +106,7 @@ public class StatisticsAppenderTests
         Assert.That(_appender.ErrorCount, Is.EqualTo(1));
 
         var oldStartTime = _appender.StartTime;
-        Thread.Sleep(10);
+        _timeProvider.Advance(TimeSpan.FromSeconds(10));
         _appender.Reset();
 
         Assert.That(_appender.TotalCount, Is.EqualTo(0));
@@ -172,10 +176,10 @@ public class StatisticsAppenderTests
         Assert.DoesNotThrow(() => _appender.Flush());
     }
 
-    private static LogEntry CreateLogEntry(LogLevel level, string loggerName, string message)
+    private LogEntry CreateLogEntry(LogLevel level, string loggerName, string message)
     {
         return new LogEntry(
-            DateTime.UtcNow,
+            _timeProvider.UtcNow,
             level,
             loggerName,
             message,
