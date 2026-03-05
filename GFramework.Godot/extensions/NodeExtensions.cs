@@ -51,7 +51,7 @@ public static class NodeExtensions
     /// </summary>
     /// <param name="node">要等待其准备就绪的节点</param>
     /// <returns>表示异步操作的任务</returns>
-    public static async Task WaitUntilReady(this Node node)
+    public static async Task WaitUntilReadyAsync(this Node node)
     {
         if (!node.IsInsideTree()) await node.ToSignal(node, Node.SignalName.Ready);
     }
@@ -173,10 +173,10 @@ public static class NodeExtensions
     /// <param name="parent">父节点</param>
     /// <param name="child">要添加的子节点</param>
     /// <returns>异步任务</returns>
-    public static async Task AddChildX(this Node parent, Node child)
+    public static async Task AddChildXAsync(this Node parent, Node child)
     {
         parent.AddChild(child);
-        await child.WaitUntilReady();
+        await child.WaitUntilReadyAsync();
     }
 
     /// <summary>

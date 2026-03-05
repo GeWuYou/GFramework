@@ -18,12 +18,12 @@ public static class AsyncExtensions
     /// <exception cref="OperationCanceledException">当操作被取消时抛出</exception>
     /// <example>
     /// <code>
-    /// var result = await WithTimeout(
+    /// var result = await WithTimeoutAsync(
     ///     ct => SomeAsyncOperation(ct),
     ///     TimeSpan.FromSeconds(5));
     /// </code>
     /// </example>
-    public static async Task<T> WithTimeout<T>(
+    public static async Task<T> WithTimeoutAsync<T>(
         Func<CancellationToken, Task<T>> taskFactory,
         TimeSpan timeout,
         CancellationToken cancellationToken = default)
@@ -66,7 +66,7 @@ public static class AsyncExtensions
     /// <exception cref="ArgumentNullException">当 taskFactory 为 null 时抛出</exception>
     /// <exception cref="TimeoutException">当任务超时时抛出</exception>
     /// <exception cref="OperationCanceledException">当操作被取消时抛出</exception>
-    public static async Task WithTimeout(
+    public static async Task WithTimeoutAsync(
         Func<CancellationToken, Task> taskFactory,
         TimeSpan timeout,
         CancellationToken cancellationToken = default)
@@ -108,10 +108,10 @@ public static class AsyncExtensions
     /// <example>
     /// <code>
     /// var result = await RiskyOperation()
-    ///     .WithFallback(ex => DefaultValue);
+    ///     .WithFallbackAsync(ex => DefaultValue);
     /// </code>
     /// </example>
-    public static async Task<T> WithFallback<T>(this Task<T> task, Func<Exception, T> fallback)
+    public static async Task<T> WithFallbackAsync<T>(this Task<T> task, Func<Exception, T> fallback)
     {
         ArgumentNullException.ThrowIfNull(task);
         ArgumentNullException.ThrowIfNull(fallback);

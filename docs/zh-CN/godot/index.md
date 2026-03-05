@@ -234,7 +234,7 @@ var bullet = bulletScene.Instantiate<Bullet>();
 AddChildX(bullet);
 
 // 等待节点准备就绪
-await bullet.WaitUntilReady();
+await bullet.WaitUntilReadyAsync();
 
 // 获取父节点
 var parent = GetParentX<GameLevel>();
