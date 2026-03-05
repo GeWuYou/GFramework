@@ -28,7 +28,7 @@ public readonly struct Result<A> : IEquatable<Result<A>>, IComparable<Result<A>>
     /// <summary>
     ///     表示 Result 结构体的内部状态
     /// </summary>
-    private enum ResultState : byte
+    private enum ResultState
     {
         /// <summary>
         ///     未初始化状态，表示 Result 尚未被赋值
