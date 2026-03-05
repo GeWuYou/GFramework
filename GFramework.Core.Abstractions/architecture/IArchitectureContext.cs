@@ -72,6 +72,38 @@ public interface IArchitectureContext
     IReadOnlyList<TUtility> GetUtilities<TUtility>() where TUtility : class, IUtility;
 
     /// <summary>
+    ///     获取指定类型的所有服务实例，并按优先级排序
+    ///     实现 IPrioritized 接口的服务将按优先级排序（数值越小优先级越高）
+    /// </summary>
+    /// <typeparam name="TService">服务类型</typeparam>
+    /// <returns>按优先级排序后的服务实例列表</returns>
+    IReadOnlyList<TService> GetServicesByPriority<TService>() where TService : class;
+
+    /// <summary>
+    ///     获取指定类型的所有系统实例，并按优先级排序
+    ///     实现 IPrioritized 接口的系统将按优先级排序（数值越小优先级越高）
+    /// </summary>
+    /// <typeparam name="TSystem">系统类型，必须继承自ISystem接口</typeparam>
+    /// <returns>按优先级排序后的系统实例列表</returns>
+    IReadOnlyList<TSystem> GetSystemsByPriority<TSystem>() where TSystem : class, ISystem;
+
+    /// <summary>
+    ///     获取指定类型的所有模型实例，并按优先级排序
+    ///     实现 IPrioritized 接口的模型将按优先级排序（数值越小优先级越高）
+    /// </summary>
+    /// <typeparam name="TModel">模型类型，必须继承自IModel接口</typeparam>
+    /// <returns>按优先级排序后的模型实例列表</returns>
+    IReadOnlyList<TModel> GetModelsByPriority<TModel>() where TModel : class, IModel;
+
+    /// <summary>
+    ///     获取指定类型的所有工具类实例，并按优先级排序
+    ///     实现 IPrioritized 接口的工具将按优先级排序（数值越小优先级越高）
+    /// </summary>
+    /// <typeparam name="TUtility">工具类类型，必须继承自IUtility接口</typeparam>
+    /// <returns>按优先级排序后的工具类实例列表</returns>
+    IReadOnlyList<TUtility> GetUtilitiesByPriority<TUtility>() where TUtility : class, IUtility;
+
+    /// <summary>
     ///     发送一个命令
     /// </summary>
     /// <param name="command">要发送的命令</param>

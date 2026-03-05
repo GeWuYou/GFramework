@@ -303,6 +303,50 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
         return _container.GetAll<TUtility>();
     }
 
+    /// <summary>
+    /// 获取指定类型的所有服务实例，并按优先级排序
+    /// 实现 IPrioritized 接口的服务将按优先级排序（数值越小优先级越高）
+    /// </summary>
+    /// <typeparam name="TService">服务类型</typeparam>
+    /// <returns>按优先级排序后的服务实例列表</returns>
+    public IReadOnlyList<TService> GetServicesByPriority<TService>() where TService : class
+    {
+        return _container.GetAllByPriority<TService>();
+    }
+
+    /// <summary>
+    /// 获取指定类型的所有系统实例，并按优先级排序
+    /// 实现 IPrioritized 接口的系统将按优先级排序（数值越小优先级越高）
+    /// </summary>
+    /// <typeparam name="TSystem">系统类型</typeparam>
+    /// <returns>按优先级排序后的系统实例列表</returns>
+    public IReadOnlyList<TSystem> GetSystemsByPriority<TSystem>() where TSystem : class, ISystem
+    {
+        return _container.GetAllByPriority<TSystem>();
+    }
+
+    /// <summary>
+    /// 获取指定类型的所有模型实例，并按优先级排序
+    /// 实现 IPrioritized 接口的模型将按优先级排序（数值越小优先级越高）
+    /// </summary>
+    /// <typeparam name="TModel">模型类型</typeparam>
+    /// <returns>按优先级排序后的模型实例列表</returns>
+    public IReadOnlyList<TModel> GetModelsByPriority<TModel>() where TModel : class, IModel
+    {
+        return _container.GetAllByPriority<TModel>();
+    }
+
+    /// <summary>
+    /// 获取指定类型的所有工具实例，并按优先级排序
+    /// 实现 IPrioritized 接口的工具将按优先级排序（数值越小优先级越高）
+    /// </summary>
+    /// <typeparam name="TUtility">工具类型</typeparam>
+    /// <returns>按优先级排序后的工具实例列表</returns>
+    public IReadOnlyList<TUtility> GetUtilitiesByPriority<TUtility>() where TUtility : class, IUtility
+    {
+        return _container.GetAllByPriority<TUtility>();
+    }
+
     #endregion
 
     #region Command Execution

@@ -1,3 +1,4 @@
+using GFramework.Core.Abstractions.bases;
 using GFramework.Core.Abstractions.ioc;
 using GFramework.Core.Abstractions.logging;
 using GFramework.Core.Abstractions.system;
@@ -591,6 +592,56 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     {
         var list = GetAll<T>().ToList();
         list.Sort(comparison);
+        return list;
+    }
+
+    /// <summary>
+    /// 获取指定类型的所有实例，并按优先级排序
+    /// 实现 IPrioritized 接口的服务将按优先级排序（数值越小优先级越高）
+    /// 未实现 IPrioritized 的服务将使用默认优先级 0
+    /// </summary>
+    /// <typeparam name="T">期望获取的实例类型</typeparam>
+    /// <returns>按优先级排序后的实例列表</returns>
+    public IReadOnlyList<T> GetAllByPriority<T>() where T : class
+    {
+        var services = GetAll<T>();
+        return SortByPriority(services);
+    }
+
+    /// <summary>
+    /// 获取指定类型的所有实例，并按优先级排序
+    /// 实现 IPrioritized 接口的服务将按值越小优先级越高）
+    /// 未实现 IPrioritized 的服务将使用默认优先级 0
+    /// </summary>
+    /// <param name="type">期望获取的实例类型</param>
+    /// <returns>按优先级排序后的实例列表</returns>
+    public IReadOnlyList<object> GetAllByPriority(Type type)
+    {
+        var services = GetAll(type);
+        return SortByPriority(services);
+    }
+
+    /// <summary>
+    /// 按优先级排序服务列表
+    /// 实现 IPrioritized 接口的服务按 Priority 属性排序（升序）
+    /// 未实现接口的服务使用默认优先级 0
+    /// 相同优先级保持原有注册顺序（稳定排序）
+    /// </summary>
+    private static IReadOnlyList<T> SortByPriority<T>(IReadOnlyList<T> services) where T : class
+    {
+        if (services.Count <= 1)
+            return services;
+
+        var list = services.ToList();
+
+        // 稳定排序：相同优先级保持注册顺序
+        list.Sort((a, b) =>
+        {
+            var priorityA = a is IPrioritized pa ? pa.Priority : 0;
+            var priorityB = b is IPrioritized pb ? pb.Priority : 0;
+            return priorityA.CompareTo(priorityB); // 升序
+        });
+
         return list;
     }
 

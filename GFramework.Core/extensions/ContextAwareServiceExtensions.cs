@@ -133,5 +133,65 @@ public static class ContextAwareServiceExtensions
         return context.GetUtilities<TUtility>();
     }
 
+    /// <summary>
+    /// 获取指定类型的所有服务实例，并按优先级排序
+    /// 实现 IPrioritized 接口的服务将按优先级排序（数值越小优先级越高）
+    /// </summary>
+    /// <typeparam name="TService">服务类型</typeparam>
+    /// <param name="contextAware">上下文感知对象</param>
+    /// <returns>按优先级排序后的服务实例列表</returns>
+    public static IReadOnlyList<TService> GetServicesByPriority<TService>(this IContextAware contextAware)
+        where TService : class
+    {
+        ArgumentNullException.ThrowIfNull(contextAware);
+        var context = contextAware.GetContext();
+        return context.GetServicesByPriority<TService>();
+    }
+
+    /// <summary>
+    /// 获取指定类型的所有系统实例，并按优先级排序
+    /// 实现 IPrioritized 接口的系统将按优先级排序（数值越小优先级越高）
+    /// </summary>
+    /// <typeparam name="TSystem">系统类型</typeparam>
+    /// <param name="contextAware">上下文感知对象</param>
+    /// <returns>按优先级排序后的系统实例列表</returns>
+    public static IReadOnlyList<TSystem> GetSystemsByPriority<TSystem>(this IContextAware contextAware)
+        where TSystem : class, ISystem
+    {
+        ArgumentNullException.ThrowIfNull(contextAware);
+        var context = contextAware.GetContext();
+        return context.GetSystemsByPriority<TSystem>();
+    }
+
+    /// <summary>
+    /// 获取指定类型的所有模型实例，并按优先级排序
+    /// 实现 IPrioritized 接口的模型将按优先级排序（数值越小优先级越高）
+    /// </summary>
+    /// <typeparam name="TModel">模型类型</typeparam>
+    /// <param name="contextAware">上下文感知对象</param>
+    /// <returns>按优先级排序后的模型实例列表</returns>
+    public static IReadOnlyList<TModel> GetModelsByPriority<TModel>(this IContextAware contextAware)
+        where TModel : class, IModel
+    {
+        ArgumentNullException.ThrowIfNull(contextAware);
+        var context = contextAware.GetContext();
+        return context.GetModelsByPriority<TModel>();
+    }
+
+    /// <summary>
+    /// 获取指定类型的所有工具实例，并按优先级排序
+    /// 实现 IPrioritized 接口的工具将按优先级排序（数值越小优先级越高）
+    /// </summary>
+    /// <typeparam name="TUtility">工具类型</typeparam>
+    /// <param name="contextAware">上下文感知对象</param>
+    /// <returns>按优先级排序后的工具实例列表</returns>
+    public static IReadOnlyList<TUtility> GetUtilitiesByPriority<TUtility>(this IContextAware contextAware)
+        where TUtility : class, IUtility
+    {
+        ArgumentNullException.ThrowIfNull(contextAware);
+        var context = contextAware.GetContext();
+        return context.GetUtilitiesByPriority<TUtility>();
+    }
+
     #endregion
 }

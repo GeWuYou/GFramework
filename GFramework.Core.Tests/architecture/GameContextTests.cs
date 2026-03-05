@@ -338,6 +338,26 @@ public class TestArchitectureContext : IArchitectureContext
         return _container.GetAll<TUtility>();
     }
 
+    public IReadOnlyList<TService> GetServicesByPriority<TService>() where TService : class
+    {
+        return _container.GetAllByPriority<TService>();
+    }
+
+    public IReadOnlyList<TSystem> GetSystemsByPriority<TSystem>() where TSystem : class, ISystem
+    {
+        return _container.GetAllByPriority<TSystem>();
+    }
+
+    public IReadOnlyList<TModel> GetModelsByPriority<TModel>() where TModel : class, IModel
+    {
+        return _container.GetAllByPriority<TModel>();
+    }
+
+    public IReadOnlyList<TUtility> GetUtilitiesByPriority<TUtility>() where TUtility : class, IUtility
+    {
+        return _container.GetAllByPriority<TUtility>();
+    }
+
     /// <summary>
     ///     发送事件
     /// </summary>
