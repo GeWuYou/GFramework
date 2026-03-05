@@ -9,24 +9,6 @@ namespace GFramework.Core.extensions;
 public static class ContextAwareCommandExtensions
 {
     /// <summary>
-    ///     [Mediator] 发送命令的同步版本（不推荐,仅用于兼容性）
-    /// </summary>
-    /// <typeparam name="TResponse">命令响应类型</typeparam>
-    /// <param name="contextAware">实现 IContextAware 接口的对象</param>
-    /// <param name="command">要发送的命令对象</param>
-    /// <returns>命令执行结果</returns>
-    /// <exception cref="ArgumentNullException">当 contextAware 或 command 为 null 时抛出</exception>
-    public static TResponse SendCommand<TResponse>(this IContextAware contextAware,
-        Mediator.ICommand<TResponse> command)
-    {
-        ArgumentNullException.ThrowIfNull(contextAware);
-        ArgumentNullException.ThrowIfNull(command);
-
-        var context = contextAware.GetContext();
-        return context.SendCommand(command);
-    }
-
-    /// <summary>
     ///     发送一个带返回结果的命令
     /// </summary>
     /// <typeparam name="TResult">命令执行结果类型</typeparam>
@@ -35,7 +17,7 @@ public static class ContextAwareCommandExtensions
     /// <returns>命令执行结果</returns>
     /// <exception cref="ArgumentNullException">当 contextAware 或 command 为 null 时抛出</exception>
     public static TResult SendCommand<TResult>(this IContextAware contextAware,
-        Abstractions.command.ICommand<TResult> command)
+        ICommand<TResult> command)
     {
         ArgumentNullException.ThrowIfNull(contextAware);
         ArgumentNullException.ThrowIfNull(command);
@@ -50,7 +32,7 @@ public static class ContextAwareCommandExtensions
     /// <param name="contextAware">实现 IContextAware 接口的对象</param>
     /// <param name="command">要发送的命令</param>
     /// <exception cref="ArgumentNullException">当 contextAware 或 command 为 null 时抛出</exception>
-    public static void SendCommand(this IContextAware contextAware, Abstractions.command.ICommand command)
+    public static void SendCommand(this IContextAware contextAware, ICommand command)
     {
         ArgumentNullException.ThrowIfNull(contextAware);
         ArgumentNullException.ThrowIfNull(command);
