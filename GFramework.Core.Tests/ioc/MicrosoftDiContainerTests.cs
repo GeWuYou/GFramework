@@ -1,4 +1,5 @@
 using System.Reflection;
+using GFramework.Core.Abstractions.bases;
 using GFramework.Core.ioc;
 using GFramework.Core.logging;
 using GFramework.Core.Tests.system;
@@ -433,6 +434,200 @@ public class MicrosoftDiContainerTests
         // Assert
         Assert.DoesNotThrow(() => Task.WaitAll(tasks));
     }
+
+    /// <summary>
+    ///     测试按优先级排序功能 - 升序排序
+    /// </summary>
+    [Test]
+    public void GetAllByPriority_Should_Sort_By_Priority_Ascending()
+    {
+        // Arrange
+        var service1 = new PrioritizedService { Priority = 30 };
+        var service2 = new PrioritizedService { Priority = 10 };
+        var service3 = new PrioritizedService { Priority = 20 };
+
+        _container.Register<IPrioritizedService>(service1);
+        _container.Register<IPrioritizedService>(service2);
+        _container.Register<IPrioritizedService>(service3);
+        _container.Freeze();
+
+        // Act
+        var services = _container.GetAllByPriority<IPrioritizedService>();
+
+        // Assert
+        Assert.That(services, Has.Count.EqualTo(3));
+        Assert.That(services[0].Priority, Is.EqualTo(10)); // 最小优先级在前
+        Assert.That(services[1].Priority, Is.EqualTo(20));
+        Assert.That(services[2].Priority, Is.EqualTo(30));
+    }
+
+    /// <summary>
+    ///     测试未实现 IPrioritized 的服务使用默认优先级 0
+    /// </summary>
+    [Test]
+    public void GetAllByPriority_Should_Use_Default_Priority_For_Non_Prioritized()
+    {
+        // Arrange
+        var service1 = new PrioritizedService { Priority = 10 };
+        var service2 = new NonPrioritizedService();
+        var service3 = new PrioritizedService { Priority = -10 };
+
+        _container.Register<IMixedService>(service1);
+        _container.Register<IMixedService>(service2);
+        _container.Register<IMixedService>(service3);
+        _container.Freeze();
+
+        // Act
+        var services = _container.GetAllByPriority<IMixedService>();
+
+        // Assert
+        Assert.That(services, Has.Count.EqualTo(3));
+        Assert.That(services[0], Is.SameAs(service3)); // -10
+        Assert.That(services[1], Is.SameAs(service2)); // 0 (默认)
+        Assert.That(services[2], Is.SameAs(service1)); // 10
+    }
+
+    /// <summary>
+    ///     测试相同优先级保持注册顺序（稳定排序）
+    /// </summary>
+    [Test]
+    public void GetAllByPriority_Should_Preserve_Registration_Order_For_Equal_Priorities()
+    {
+        // Arrange
+        var service1 = new PrioritizedService { Priority = 10, Name = "First" };
+        var service2 = new PrioritizedService { Priority = 10, Name = "Second" };
+        var service3 = new PrioritizedService { Priority = 10, Name = "Third" };
+
+        _container.Register<IPrioritizedService>(service1);
+        _container.Register<IPrioritizedService>(service2);
+        _container.Register<IPrioritizedService>(service3);
+        _container.Freeze();
+
+        // Act
+        var services = _container.GetAllByPriority<IPrioritizedService>();
+
+        // Assert
+        Assert.That(services, Has.Count.EqualTo(3));
+        Assert.That(services[0].Name, Is.EqualTo("First"));
+        Assert.That(services[1].Name, Is.EqualTo("Second"));
+        Assert.That(services[2].Name, Is.EqualTo("Third"));
+    }
+
+    /// <summary>
+    ///     测试空列表处理
+    /// </summary>
+    [Test]
+    public void GetAllByPriority_Should_Handle_Empty_List()
+    {
+        // Arrange
+        _container.Freeze();
+
+        // Act
+        var services = _container.GetAllByPriority<IPrioritizedService>();
+
+        // Assert
+        Assert.That(services, Is.Empty);
+    }
+
+    /// <summary>
+    ///     测试单项列表处理
+    /// </summary>
+    [Test]
+    public void GetAllByPriority_Should_Handle_Single_Item()
+    {
+        // Arrange
+        var service = new PrioritizedService { Priority = 42 };
+        _container.RegisterSingleton<IPrioritizedService>(service);
+        _container.Freeze();
+
+        // Act
+        var services = _container.GetAllByPriority<IPrioritizedService>();
+
+        // Assert
+        Assert.That(services, Has.Count.EqualTo(1));
+        Assert.That(services[0], Is.SameAs(service));
+    }
+
+    /// <summary>
+    ///     测试负数优先级处理
+    /// </summary>
+    [Test]
+    public void GetAllByPriority_Should_Handle_Negative_Priorities()
+    {
+        // Arrange
+        var service1 = new PrioritizedService { Priority = -100 };
+        var service2 = new PrioritizedService { Priority = 0 };
+        var service3 = new PrioritizedService { Priority = 100 };
+        var service4 = new PrioritizedService { Priority = -50 };
+
+        _container.Register<IPrioritizedService>(service1);
+        _container.Register<IPrioritizedService>(service2);
+        _container.Register<IPrioritizedService>(service3);
+        _container.Register<IPrioritizedService>(service4);
+        _container.Freeze();
+
+        // Act
+        var services = _container.GetAllByPriority<IPrioritizedService>();
+
+        // Assert
+        Assert.That(services, Has.Count.EqualTo(4));
+        Assert.That(services[0].Priority, Is.EqualTo(-100));
+        Assert.That(services[1].Priority, Is.EqualTo(-50));
+        Assert.That(services[2].Priority, Is.EqualTo(0));
+        Assert.That(services[3].Priority, Is.EqualTo(100));
+    }
+
+    /// <summary>
+    ///     测试混合优先级和非优先级服务
+    /// </summary>
+    [Test]
+    public void GetAllByPriority_Should_Handle_Mixed_Prioritized_And_Non_Prioritized()
+    {
+        // Arrange
+        var service1 = new PrioritizedService { Priority = 50, Name = "P50" };
+        var service2 = new NonPrioritizedService { Name = "NP1" };
+        var service3 = new PrioritizedService { Priority = -50, Name = "P-50" };
+        var service4 = new NonPrioritizedService { Name = "NP2" };
+
+        _container.Register<IMixedService>(service1);
+        _container.Register<IMixedService>(service2);
+        _container.Register<IMixedService>(service3);
+        _container.Register<IMixedService>(service4);
+        _container.Freeze();
+
+        // Act
+        var services = _container.GetAllByPriority<IMixedService>();
+
+        // Assert
+        Assert.That(services, Has.Count.EqualTo(4));
+        Assert.That(services[0].Name, Is.EqualTo("P-50")); // -50
+        Assert.That(services[1].Name, Is.EqualTo("NP1")); // 0 (默认)
+        Assert.That(services[2].Name, Is.EqualTo("NP2")); // 0 (默认)
+        Assert.That(services[3].Name, Is.EqualTo("P50")); // 50
+    }
+
+    /// <summary>
+    ///     测试 GetAllByPriority(Type) 重载方法
+    /// </summary>
+    [Test]
+    public void GetAllByPriority_Type_Should_Sort_Correctly()
+    {
+        // Arrange
+        var service1 = new PrioritizedService { Priority = 30 };
+        var service2 = new PrioritizedService { Priority = 10 };
+
+        _container.Register<IPrioritizedService>(service1);
+        _container.Register<IPrioritizedService>(service2);
+        _container.Freeze();
+
+        // Act
+        var services = _container.GetAllByPriority(typeof(IPrioritizedService));
+
+        // Assert
+        Assert.That(services, Has.Count.EqualTo(2));
+        Assert.That(((IPrioritizedService)services[0]).Priority, Is.EqualTo(10));
+        Assert.That(((IPrioritizedService)services[1]).Priority, Is.EqualTo(30));
+    }
 }
 
 /// <summary>
@@ -449,4 +644,37 @@ public sealed class TestService : IService
     ///     获取或设置优先级
     /// </summary>
     public int Priority { get; set; }
+}
+
+/// <summary>
+///     优先级服务接口
+/// </summary>
+public interface IPrioritizedService : IPrioritized
+{
+    string? Name { get; set; }
+}
+
+/// <summary>
+///     混合服务接口（用于测试优先级和非优先级混合）
+/// </summary>
+public interface IMixedService
+{
+    string? Name { get; set; }
+}
+
+/// <summary>
+///     实现优先级的服务
+/// </summary>
+public sealed class PrioritizedService : IPrioritizedService, IMixedService
+{
+    public int Priority { get; set; }
+    public string? Name { get; set; }
+}
+
+/// <summary>
+///     不实现优先级的服务
+/// </summary>
+public sealed class NonPrioritizedService : IMixedService
+{
+    public string? Name { get; set; }
 }

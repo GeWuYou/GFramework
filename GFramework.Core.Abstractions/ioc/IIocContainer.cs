@@ -165,6 +165,24 @@ public interface IIocContainer : IContextAware
     /// <returns>按指定方式排序后的实例列表</returns>
     IReadOnlyList<T> GetAllSorted<T>(Comparison<T> comparison) where T : class;
 
+    /// <summary>
+    ///     获取指定类型的所有实例，并按优先级排序
+    ///     实现 IPrioritized 接口的服务将按优先级排序（数值越小优先级越高）
+    ///     未实现 IPrioritized 的服务将使用默认优先级 0
+    /// </summary>
+    /// <typeparam name="T">期望获取的实例类型</typeparam>
+    /// <returns>按优先级排序后的实例列表</returns>
+    IReadOnlyList<T> GetAllByPriority<T>() where T : class;
+
+    /// <summary>
+    ///     获取指定类型的所有实例，并按优先级排序
+    ///     实现 IPrioritized 接口的服务将按优先级排序（数值越小优先级越高）
+    ///     未实现 IPrioritized 的服务将使用默认优先级 0
+    /// </summary>
+    /// <param name="type">期望获取的实例类型</param>
+    /// <returns>按优先级排序后的实例列表</returns>
+    IReadOnlyList<object> GetAllByPriority(Type type);
+
     #endregion
 
     #region Utility Methods
