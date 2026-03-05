@@ -306,7 +306,7 @@ public partial class SafeNodeOperations : Node
         AddChildX(bullet);
         
         // 安全的异步操作
-        this.WaitUntilReady()
+        this.WaitUntilReadyAsync()
             .Then(() => {
                 // 节点准备就绪后的操作
                 InitializeAfterReady();

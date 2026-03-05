@@ -18,7 +18,7 @@ public class AsyncExtensionsTests
     public async Task WithTimeout_Should_Return_Result_When_Task_Completes_Before_Timeout()
     {
         // Act
-        var result = await AsyncExtensions.WithTimeout(
+        var result = await AsyncExtensions.WithTimeoutAsync(
             _ => Task.FromResult(42),
             TimeSpan.FromSeconds(1));
 
@@ -34,7 +34,7 @@ public class AsyncExtensionsTests
     {
         // Act & Assert
         Assert.ThrowsAsync<TimeoutException>(async () =>
-            await AsyncExtensions.WithTimeout(
+            await AsyncExtensions.WithTimeoutAsync(
                 async ct =>
                 {
                     await Task.Delay(TimeSpan.FromSeconds(2), ct);
@@ -54,7 +54,7 @@ public class AsyncExtensionsTests
         cts.Cancel();
         // Act & Assert
         Assert.ThrowsAsync<TaskCanceledException>(async () =>
-            await AsyncExtensions.WithTimeout(
+            await AsyncExtensions.WithTimeoutAsync(
                 async ct =>
                 {
                     await Task.Delay(TimeSpan.FromSeconds(2), ct);
@@ -75,7 +75,7 @@ public class AsyncExtensionsTests
 
         // Act & Assert
         Assert.ThrowsAsync<TimeoutException>(async () =>
-            await AsyncExtensions.WithTimeout(
+            await AsyncExtensions.WithTimeoutAsync(
                 async ct =>
                 {
                     try
@@ -104,7 +104,7 @@ public class AsyncExtensionsTests
         var stopwatch = Stopwatch.StartNew();
 
         // Act
-        await AsyncExtensions.WithTimeout(
+        await AsyncExtensions.WithTimeoutAsync(
             _ => Task.CompletedTask,
             TimeSpan.FromSeconds(1));
         stopwatch.Stop();
@@ -122,7 +122,7 @@ public class AsyncExtensionsTests
     {
         // Act & Assert
         Assert.ThrowsAsync<TimeoutException>(async () =>
-            await AsyncExtensions.WithTimeout(
+            await AsyncExtensions.WithTimeoutAsync(
                 ct => Task.Delay(TimeSpan.FromSeconds(2), ct),
                 TimeSpan.FromMilliseconds(100)));
     }
@@ -138,7 +138,7 @@ public class AsyncExtensionsTests
 
         // Act & Assert
         Assert.ThrowsAsync<TimeoutException>(async () =>
-            await AsyncExtensions.WithTimeout(
+            await AsyncExtensions.WithTimeoutAsync(
                 async ct =>
                 {
                     try
@@ -171,7 +171,7 @@ public class AsyncExtensionsTests
         };
 
         // Act
-        var result = await taskFactory.WithRetry(3, TimeSpan.FromMilliseconds(10));
+        var result = await taskFactory.WithRetryAsync(3, TimeSpan.FromMilliseconds(10));
 
         // Assert
         Assert.That(result, Is.EqualTo(42));
@@ -195,7 +195,7 @@ public class AsyncExtensionsTests
         };
 
         // Act
-        var result = await taskFactory.WithRetry(3, TimeSpan.FromMilliseconds(10));
+        var result = await taskFactory.WithRetryAsync(3, TimeSpan.FromMilliseconds(10));
 
         // Assert
         Assert.That(result, Is.EqualTo(42));
@@ -218,7 +218,7 @@ public class AsyncExtensionsTests
 
         // Act & Assert
         Assert.ThrowsAsync<AggregateException>(async () =>
-            await taskFactory.WithRetry(2, TimeSpan.FromMilliseconds(10)));
+            await taskFactory.WithRetryAsync(2, TimeSpan.FromMilliseconds(10)));
     }
 
     /// <summary>
@@ -237,7 +237,7 @@ public class AsyncExtensionsTests
 
         // Act & Assert
         Assert.ThrowsAsync<AggregateException>(async () =>
-            await taskFactory.WithRetry(3, TimeSpan.FromMilliseconds(10),
+            await taskFactory.WithRetryAsync(3, TimeSpan.FromMilliseconds(10),
                 ex => ex is not ArgumentException));
 
         await Task.Delay(50); // 等待任务完成
@@ -287,7 +287,7 @@ public class AsyncExtensionsTests
         var task = Task.FromResult(42);
 
         // Act
-        var result = await task.WithFallback(_ => -1);
+        var result = await task.WithFallbackAsync(_ => -1);
 
         // Assert
         Assert.That(result, Is.EqualTo(42));
@@ -303,7 +303,7 @@ public class AsyncExtensionsTests
         var task = Task.FromException<int>(new InvalidOperationException("Test error"));
 
         // Act
-        var result = await task.WithFallback(_ => -1);
+        var result = await task.WithFallbackAsync(_ => -1);
 
         // Assert
         Assert.That(result, Is.EqualTo(-1));
@@ -321,7 +321,7 @@ public class AsyncExtensionsTests
         Exception? capturedEx = null;
 
         // Act
-        await task.WithFallback(ex =>
+        await task.WithFallbackAsync(ex =>
         {
             capturedEx = ex;
             return -1;

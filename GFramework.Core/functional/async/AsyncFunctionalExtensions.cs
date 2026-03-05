@@ -33,10 +33,10 @@ public static class AsyncFunctionalExtensions
     /// <example>
     /// <code>
     /// var result = await (() => UnreliableOperation())
-    ///     .WithRetry(maxRetries: 3, delay: TimeSpan.FromSeconds(1));
+    ///     .WithRetryAsync(maxRetries: 3, delay: TimeSpan.FromSeconds(1));
     /// </code>
     /// </example>
-    public static async Task<T> WithRetry<T>(
+    public static async Task<T> WithRetryAsync<T>(
         this Func<Task<T>> taskFactory,
         int maxRetries,
         TimeSpan delay,

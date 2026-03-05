@@ -106,7 +106,7 @@ public abstract class AbstractArchitecture(
             throw new InvalidOperationException("Anchor not initialized");
 
         // 等待锚点准备就绪
-        await _anchor.WaitUntilReady();
+        await _anchor.WaitUntilReadyAsync();
 
         // 延迟调用将扩展节点添加为锚点的子节点
         _anchor.CallDeferred(Node.MethodName.AddChild, module.Node);

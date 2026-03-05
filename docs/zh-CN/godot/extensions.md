@@ -62,7 +62,7 @@ node.QueueFreeX();  // 延迟释放
 node.FreeX();       // 立即释放
 
 // 等待节点就绪
-await node.WaitUntilReady();
+await node.WaitUntilReadyAsync();
 
 // 检查节点有效性
 if (node.IsValidNode()) Console.WriteLine("节点有效");
@@ -92,7 +92,7 @@ node.ForEachChild<Sprite2D>(sprite => {
 var root = node.GetRootNodeX();
 
 // 异步添加子节点
-await parent.AddChildX(childNode);
+await parent.AddChildXAsync(childNode);
 
 // 设置场景树暂停状态
 node.Paused(true);   // 暂停
@@ -178,7 +178,7 @@ public class GameManager : Node
         
         // 安全添加子节点
         var player = new Player();
-        await AddChildX(player);
+        await AddChildXAsync(player);
         
         // 查找并配置玩家
         var sprite = player.FindChildX<Sprite2D>("Sprite");
@@ -237,7 +237,7 @@ public class SceneManager : Node
         var instance = packedScene.Instantiate<T>();
         
         // 等待场景加载完成
-        await instance.WaitUntilReady();
+        await instance.WaitUntilReadyAsync();
         
         return instance;
     }
@@ -250,7 +250,7 @@ public class SceneManager : Node
         ForEachChild<Node>(child => child.QueueFreeX());
         
         // 加载新场景
-        await AddChildX(newScene);
+        await AddChildXAsync(newScene);
         
         // 设置输入处理
         newScene.SetInputAsHandled();
@@ -310,7 +310,7 @@ var button = node.FindChild("Button") as Button;
 
 ```csharp
 // ✅ 推荐：等待节点就绪
-await child.WaitUntilReady();
+await child.WaitUntilReadyAsync();
 
 // ❌ 避免：假设节点已就绪
 child.DoSomething();
