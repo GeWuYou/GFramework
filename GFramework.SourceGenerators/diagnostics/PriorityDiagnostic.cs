@@ -60,4 +60,30 @@ internal static class PriorityDiagnostic
         isEnabledByDefault: true,
         description: "Priority 特性必须提供一个有效的整数值。"
     );
+
+    /// <summary>
+    /// GF_Priority_005: Priority 不支持嵌套类
+    /// </summary>
+    public static readonly DiagnosticDescriptor NestedClassNotSupported = new(
+        id: "GF_Priority_005",
+        title: "Priority 不支持嵌套类",
+        messageFormat: "Priority 特性不支持嵌套类 '{0}'，请将类移至顶层",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "Priority 特性仅支持顶层类，不支持嵌套类。请将嵌套类移至命名空间级别。"
+    );
+
+    /// <summary>
+    /// GF_Priority_Usage_001: 建议使用 GetAllByPriority
+    /// </summary>
+    public static readonly DiagnosticDescriptor SuggestGetAllByPriority = new(
+        id: "GF_Priority_Usage_001",
+        title: "建议使用 GetAllByPriority",
+        messageFormat: "类型 '{0}' 实现了 IPrioritized 接口，建议使用 GetAllByPriority<{0}>() 而非 GetAll<{0}>()",
+        category: "GFramework.Usage",
+        defaultSeverity: DiagnosticSeverity.Info,
+        isEnabledByDefault: true,
+        description: "当获取实现了 IPrioritized 接口的服务时，应使用 GetAllByPriority 方法以确保按优先级排序。"
+    );
 }

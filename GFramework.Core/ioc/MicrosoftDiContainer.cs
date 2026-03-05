@@ -610,7 +610,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
 
     /// <summary>
     /// 获取指定类型的所有实例，并按优先级排序
-    /// 实现 IPrioritized 接口的服务将按值越小优先级越高）
+    /// 实现 IPrioritized 接口的服务将按优先级排序（数值越小优先级越高）
     /// 未实现 IPrioritized 的服务将使用默认优先级 0
     /// </summary>
     /// <param name="type">期望获取的实例类型</param>
@@ -632,17 +632,16 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
         if (services.Count <= 1)
             return services;
 
-        var list = services.ToList();
-
-        // 稳定排序：相同优先级保持注册顺序
-        list.Sort((a, b) =>
-        {
-            var priorityA = a is IPrioritized pa ? pa.Priority : 0;
-            var priorityB = b is IPrioritized pb ? pb.Priority : 0;
-            return priorityA.CompareTo(priorityB); // 升序
-        });
-
-        return list;
+        // 使用 OrderBy 确保稳定排序（相同优先级保持原有顺序）
+        return services
+            .Select((service, index) => new { Service = service, Index = index })
+            .OrderBy(x =>
+            {
+                var priority = x.Service is IPrioritized p ? p.Priority : 0;
+                return (priority, x.Index); // 先按优先级，再按索引
+            })
+            .Select(x => x.Service)
+            .ToList();
     }
 
     #endregion

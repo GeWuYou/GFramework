@@ -45,8 +45,18 @@ public sealed class PriorityGenerator : MetadataAttributeClassGeneratorBase
             return false;
         }
 
-        // 2. 必须是 partial
-        if (!syntax.Modifiers.Any(SyntaxKind.PartialKeyword))
+        // 2. 不支持嵌套类
+        if (symbol.ContainingType != null)
+        {
+            context.ReportDiagnostic(Diagnostic.Create(
+                PriorityDiagnostic.NestedClassNotSupported,
+                syntax.Identifier.GetLocation(),
+                symbol.Name));
+            return false;
+        }
+
+        // 3. 必须是 partial
+        if (syntax.Modifiers.All(m => m.Kind() != SyntaxKind.PartialKeyword))
         {
             context.ReportDiagnostic(Diagnostic.Create(
                 PriorityDiagnostic.MustBePartial,
@@ -55,7 +65,7 @@ public sealed class PriorityGenerator : MetadataAttributeClassGeneratorBase
             return false;
         }
 
-        // 3. 检查是否已手动实现 IPrioritized
+        // 4. 检查是否已手动实现 IPrioritized
         var iPrioritized = compilation.GetTypeByMetadataName(
             $"{PathContests.CoreAbstractionsNamespace}.bases.IPrioritized");
 
@@ -68,7 +78,7 @@ public sealed class PriorityGenerator : MetadataAttributeClassGeneratorBase
             return false;
         }
 
-        // 4. 验证特性参数
+        // 5. 验证特性参数
         if (attr.ConstructorArguments.Length == 0 ||
             attr.ConstructorArguments[0].Value is not int)
         {
@@ -129,6 +139,15 @@ public sealed class PriorityGenerator : MetadataAttributeClassGeneratorBase
     /// </summary>
     protected override string GetHintName(INamedTypeSymbol symbol)
     {
-        return $"{symbol.Name}.Priority.g.cs";
+        // 使用完整的元数据名称以避免冲突
+        var metadataName = symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+            .Replace("global::", "")
+            .Replace("<", "_")
+            .Replace(">", "_")
+            .Replace(",", "_")
+            .Replace(" ", "")
+            .Replace(".", "_");
+
+        return $"{metadataName}.Priority.g.cs";
     }
 }

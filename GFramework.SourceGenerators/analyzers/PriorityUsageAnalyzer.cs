@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using GFramework.SourceGenerators.diagnostics;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
@@ -12,26 +13,10 @@ namespace GFramework.SourceGenerators.analyzers;
 public sealed class PriorityUsageAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>
-    /// 诊断 ID
-    /// </summary>
-    private const string DiagnosticId = "GF_Priority_Usage_001";
-
-    /// <summary>
-    /// 诊断规则
-    /// </summary>
-    private static readonly DiagnosticDescriptor Rule = new(
-        id: DiagnosticId,
-        title: "建议使用 GetAllByPriority",
-        messageFormat: "类型 '{0}' 实现了 IPrioritized 接口，建议使用 GetAllByPriority<{0}>() 而非 GetAll<{0}>()",
-        category: "GFramework.Usage",
-        defaultSeverity: DiagnosticSeverity.Info,
-        isEnabledByDefault: true,
-        description: "当获取实现了 IPrioritized 接口的服务时，应使用 GetAllByPriority 方法以确保按优先级排序。");
-
-    /// <summary>
     /// 支持的诊断规则
     /// </summary>
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
+        ImmutableArray.Create(PriorityDiagnostic.SuggestGetAllByPriority);
 
     /// <summary>
     /// 初始化分析器
@@ -112,7 +97,7 @@ public sealed class PriorityUsageAnalyzer : DiagnosticAnalyzer
 
         // 报告诊断
         var diagnostic = Diagnostic.Create(
-            Rule,
+            PriorityDiagnostic.SuggestGetAllByPriority,
             invocation.Syntax.GetLocation(),
             typeArgument.ToDisplayString());
 

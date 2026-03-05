@@ -11,4 +11,5 @@
  GF_Priority_002       | GFramework.Priority              | Warning  | PriorityDiagnostic     
  GF_Priority_003       | GFramework.Priority              | Error    | PriorityDiagnostic     
  GF_Priority_004       | GFramework.Priority              | Error    | PriorityDiagnostic     
+ GF_Priority_005       | GFramework.Priority              | Error    | PriorityDiagnostic     
  GF_Priority_Usage_001 | GFramework.Usage                 | Info     | PriorityUsageAnalyzer  
