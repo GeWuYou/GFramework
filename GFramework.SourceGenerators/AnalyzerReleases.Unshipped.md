@@ -3,7 +3,12 @@
 
 ### New Rules
 
- Rule ID        | Category                         | Severity | Notes                  
-----------------|----------------------------------|----------|------------------------
- GF_Logging_001 | GFramework.Godot.logging         | Warning  | LoggerDiagnostics      
- GF_Rule_001    | GFramework.SourceGenerators.rule | Error    | ContextAwareDiagnostic 
+ Rule ID               | Category                         | Severity | Notes                  
+-----------------------|----------------------------------|----------|------------------------
+ GF_Logging_001        | GFramework.Godot.logging         | Warning  | LoggerDiagnostics      
+ GF_Rule_001           | GFramework.SourceGenerators.rule | Error    | ContextAwareDiagnostic 
+ GF_Priority_001       | GFramework.Priority              | Error    | PriorityDiagnostic     
+ GF_Priority_002       | GFramework.Priority              | Warning  | PriorityDiagnostic     
+ GF_Priority_003       | GFramework.Priority              | Error    | PriorityDiagnostic     
+ GF_Priority_004       | GFramework.Priority              | Error    | PriorityDiagnostic     
+ GF_Priority_Usage_001 | GFramework.Usage                 | Info     | PriorityUsageAnalyzer  
