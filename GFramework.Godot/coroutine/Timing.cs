@@ -361,7 +361,7 @@ public partial class Timing : Node
     /// <returns>是否成功暂停</returns>
     public static bool PauseCoroutine(CoroutineHandle handle)
     {
-        return GetInstance(handle.Key)?.PauseOnInstance(handle) ?? false;
+        return GetInstance(handle.Key)?.PauseOnInstance(handle) == true;
     }
 
     /// <summary>
@@ -371,7 +371,7 @@ public partial class Timing : Node
     /// <returns>是否成功恢复</returns>
     public static bool ResumeCoroutine(CoroutineHandle handle)
     {
-        return GetInstance(handle.Key)?.ResumeOnInstance(handle) ?? false;
+        return GetInstance(handle.Key)?.ResumeOnInstance(handle) == true;
     }
 
     /// <summary>
@@ -381,7 +381,7 @@ public partial class Timing : Node
     /// <returns>是否成功终止</returns>
     public static bool KillCoroutine(CoroutineHandle handle)
     {
-        return GetInstance(handle.Key)?.KillOnInstance(handle) ?? false;
+        return GetInstance(handle.Key)?.KillOnInstance(handle) == true;
     }
 
     /// <summary>
