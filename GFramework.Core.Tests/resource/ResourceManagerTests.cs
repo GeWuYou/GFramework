@@ -200,7 +200,7 @@ public class ResourceManagerTests
         var handle = _resourceManager.GetHandle<TestResource>("test/resource1.txt");
         handle!.Dispose();
 
-        // 资源应该仍然存在，因为还有一个初始引用
+        // 引用计数降为 0，但手动释放策略不会自动卸载
         Assert.That(_resourceManager.IsLoaded("test/resource1.txt"), Is.True);
     }
 

@@ -1,6 +1,6 @@
 using GFramework.Core.Abstractions.events;
 
-namespace GFramework.Core.Abstractions.configuration;
+namespace GFramework.Core.configuration;
 
 /// <summary>
 ///     配置监听取消注册接口

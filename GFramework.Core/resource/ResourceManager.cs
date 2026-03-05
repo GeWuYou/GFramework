@@ -48,7 +48,6 @@ public class ResourceManager : IResourceManager
         var cached = _cache.Get<T>(path);
         if (cached != null)
         {
-            _cache.AddReference(path);
             return cached;
         }
 
@@ -59,7 +58,6 @@ public class ResourceManager : IResourceManager
             cached = _cache.Get<T>(path);
             if (cached != null)
             {
-                _cache.AddReference(path);
                 return cached;
             }
 
@@ -73,12 +71,11 @@ public class ResourceManager : IResourceManager
             {
                 var resource = loader.Load(path);
                 _cache.Add(path, resource);
-                _cache.AddReference(path);
                 return resource;
             }
             catch (Exception ex)
             {
-                _logger.Error($"[ResourceManager] Failed to load resource '{path}': {ex.Message}");
+                _logger.Error($"Failed to load resource '{path}'", ex);
                 return null;
             }
         }
@@ -96,7 +93,6 @@ public class ResourceManager : IResourceManager
         var cached = _cache.Get<T>(path);
         if (cached != null)
         {
-            _cache.AddReference(path);
             return cached;
         }
 
@@ -117,19 +113,17 @@ public class ResourceManager : IResourceManager
                 {
                     // 已经被其他线程加载了，卸载当前加载的资源
                     loader.Unload(resource);
-                    _cache.AddReference(path);
                     return cached;
                 }
 
                 _cache.Add(path, resource);
-                _cache.AddReference(path);
             }
 
             return resource;
         }
         catch (Exception ex)
         {
-            _logger.Error($"[ResourceManager] Failed to load resource '{path}': {ex.Message}");
+            _logger.Error($"Failed to load resource '{path}'", ex);
             return null;
         }
     }
@@ -168,8 +162,7 @@ public class ResourceManager : IResourceManager
             var refCount = _cache.GetReferenceCount(path);
             if (refCount > 0)
             {
-                _logger.Error(
-                    $"[ResourceManager] Cannot unload resource '{path}' with {refCount} active references");
+                _logger.Error($"Cannot unload resource '{path}' with {refCount} active references");
                 return false;
             }
 
@@ -287,7 +280,7 @@ public class ResourceManager : IResourceManager
             }
             catch (Exception ex)
             {
-                _logger.Error($"[ResourceManager] Error unloading resource: {ex.Message}");
+                _logger.Error("Error unloading resource", ex);
             }
         }
 
@@ -300,7 +293,7 @@ public class ResourceManager : IResourceManager
             }
             catch (Exception ex)
             {
-                _logger.Error($"[ResourceManager] Error disposing resource: {ex.Message}");
+                _logger.Error("Error disposing resource", ex);
             }
         }
     }

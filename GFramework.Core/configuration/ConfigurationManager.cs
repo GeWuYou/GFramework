@@ -92,9 +92,13 @@ public class ConfigurationManager : IConfigurationManager
         if (string.IsNullOrWhiteSpace(key))
             throw new ArgumentException(KeyCannotBeNullOrEmptyMessage, nameof(key));
 
-        var oldValue = _configs.AddOrUpdate(key, value!, (_, _) => value!);
+        // 先获取旧值，以便正确检测变更
+        _configs.TryGetValue(key, out var oldValue);
 
-        // 触发监听器
+        // 更新配置值
+        _configs[key] = value!;
+
+        // 只有在值真正变化时才触发监听器
         if (!EqualityComparer<object>.Default.Equals(oldValue, value))
         {
             NotifyWatchers(key, value);
@@ -293,8 +297,7 @@ public class ConfigurationManager : IConfigurationManager
             catch (Exception ex)
             {
                 // 防止监听器异常影响其他监听器
-                _logger.Error(
-                    $"[ConfigurationManager] Error in config watcher for key '{key}': {ex.Message}");
+                _logger.Error($"Error in config watcher for key '{key}'", ex);
             }
         }
     }
