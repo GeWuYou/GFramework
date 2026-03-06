@@ -83,7 +83,7 @@ internal sealed class StatisticsEventDecorator<T>
         }
         else if (_innerEvent is PriorityEvent<T> priorityEvent)
         {
-            priorityEvent.Trigger(data, EventPropagation.Continue);
+            priorityEvent.Trigger(data, EventPropagation.All);
         }
     }
 
