@@ -59,6 +59,15 @@ public class Event<T> : IEvent
     {
         _mOnEvent?.Invoke(t);
     }
+
+    /// <summary>
+    ///     获取当前已注册的监听器数量
+    /// </summary>
+    /// <returns>监听器数量</returns>
+    public int GetListenerCount()
+    {
+        return _mOnEvent?.GetInvocationList().Length ?? 0;
+    }
 }
 
 /// <summary>
@@ -119,5 +128,14 @@ public class Event<T, Tk> : IEvent
     public void Trigger(T t, Tk k)
     {
         _mOnEvent?.Invoke(t, k);
+    }
+
+    /// <summary>
+    ///     获取当前已注册的监听器数量
+    /// </summary>
+    /// <returns>监听器数量</returns>
+    public int GetListenerCount()
+    {
+        return _mOnEvent?.GetInvocationList().Length ?? 0;
     }
 }

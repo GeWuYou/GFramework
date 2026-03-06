@@ -255,6 +255,15 @@ public class PriorityEvent<T> : IEvent
     }
 
     /// <summary>
+    ///     获取当前已注册的监听器总数量（包括普通监听器和上下文监听器）
+    /// </summary>
+    /// <returns>监听器总数量</returns>
+    public int GetListenerCount()
+    {
+        return _handlers.Count + _contextHandlers.Count;
+    }
+
+    /// <summary>
     ///     事件处理器包装类，包含处理器和优先级
     /// </summary>
     private sealed class EventHandler(Action<T> handler, int priority)
