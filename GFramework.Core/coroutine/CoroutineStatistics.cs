@@ -12,7 +12,9 @@ internal sealed class CoroutineStatistics : ICoroutineStatistics
     private readonly Dictionary<CoroutinePriority, int> _countByPriority = new();
     private readonly Dictionary<string, int> _countByTag = new();
     private readonly object _lock = new();
+    private int _activeCount;
     private double _maxExecutionTimeMs;
+    private int _pausedCount;
     private long _totalCompleted;
     private long _totalExecutionTimeMs;
     private long _totalFailed;
@@ -28,10 +30,18 @@ internal sealed class CoroutineStatistics : ICoroutineStatistics
     public long TotalFailed => Interlocked.Read(ref _totalFailed);
 
     /// <inheritdoc />
-    public int ActiveCount { get; set; }
+    public int ActiveCount
+    {
+        get => Interlocked.CompareExchange(ref _activeCount, 0, 0);
+        set => Interlocked.Exchange(ref _activeCount, value);
+    }
 
     /// <inheritdoc />
-    public int PausedCount { get; set; }
+    public int PausedCount
+    {
+        get => Interlocked.CompareExchange(ref _pausedCount, 0, 0);
+        set => Interlocked.Exchange(ref _pausedCount, value);
+    }
 
     /// <inheritdoc />
     public double AverageExecutionTimeMs
@@ -84,14 +94,14 @@ internal sealed class CoroutineStatistics : ICoroutineStatistics
         Interlocked.Exchange(ref _totalCompleted, 0);
         Interlocked.Exchange(ref _totalFailed, 0);
         Interlocked.Exchange(ref _totalExecutionTimeMs, 0);
+        Interlocked.Exchange(ref _activeCount, 0);
+        Interlocked.Exchange(ref _pausedCount, 0);
 
         lock (_lock)
         {
             _maxExecutionTimeMs = 0;
             _countByPriority.Clear();
             _countByTag.Clear();
-            ActiveCount = 0;
-            PausedCount = 0;
         }
     }
 

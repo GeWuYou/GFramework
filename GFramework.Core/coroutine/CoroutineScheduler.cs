@@ -27,6 +27,7 @@ public sealed class CoroutineScheduler(
     private readonly ITimeSource _timeSource = timeSource ?? throw new ArgumentNullException(nameof(timeSource));
     private readonly Dictionary<CoroutineHandle, HashSet<CoroutineHandle>> _waiting = new();
     private int _nextSlot;
+    private int _pausedCount;
 
     private CoroutineSlot?[] _slots = new CoroutineSlot?[initialCapacity];
 
@@ -133,7 +134,7 @@ public sealed class CoroutineScheduler(
         if (_statistics != null)
         {
             _statistics.ActiveCount = ActiveCoroutineCount;
-            _statistics.PausedCount = _metadata.Count(m => m.Value.State == CoroutineState.Paused);
+            _statistics.PausedCount = _pausedCount;
         }
 
         // 按优先级排序槽位索引（高优先级优先执行）
@@ -264,6 +265,7 @@ public sealed class CoroutineScheduler(
 
         slot.State = CoroutineState.Paused;
         meta.State = CoroutineState.Paused;
+        _pausedCount++;
         return true;
     }
 
@@ -283,6 +285,7 @@ public sealed class CoroutineScheduler(
 
         slot.State = CoroutineState.Running;
         meta.State = CoroutineState.Running;
+        _pausedCount--;
         return true;
     }
 
@@ -340,7 +343,8 @@ public sealed class CoroutineScheduler(
         if (!_grouped.TryGetValue(group, out var handles))
             return 0;
 
-        return handles.Count(Kill);
+        var copy = handles.ToArray();
+        return copy.Count(Kill);
     }
 
     /// <summary>
@@ -409,6 +413,7 @@ public sealed class CoroutineScheduler(
 
         _nextSlot = 0;
         ActiveCoroutineCount = 0;
+        _pausedCount = 0;
 
         return count;
     }
