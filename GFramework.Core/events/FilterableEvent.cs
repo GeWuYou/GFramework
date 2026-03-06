@@ -1,0 +1,155 @@
+using GFramework.Core.Abstractions.events;
+
+namespace GFramework.Core.events;
+
+/// <summary>
+///     支持过滤器和统计的泛型事件类
+///     线程安全：使用锁保护监听器列表和过滤器列表的修改
+/// </summary>
+/// <typeparam name="T">事件数据类型</typeparam>
+public sealed class FilterableEvent<T>
+{
+    private readonly List<IEventFilter<T>> _filters = new();
+    private readonly object _lock = new();
+    private readonly EventStatistics? _statistics;
+    private Action<T>? _onEvent;
+
+    /// <summary>
+    ///     构造函数
+    /// </summary>
+    /// <param name="statistics">事件统计对象（可选）</param>
+    public FilterableEvent(EventStatistics? statistics = null)
+    {
+        _statistics = statistics;
+    }
+
+    /// <summary>
+    ///     注册事件监听器
+    /// </summary>
+    /// <param name="onEvent">事件处理回调</param>
+    /// <returns>反注册接口</returns>
+    public IUnRegister Register(Action<T> onEvent)
+    {
+        lock (_lock)
+        {
+            _onEvent += onEvent;
+            UpdateListenerCount();
+        }
+
+        return new DefaultUnRegister(() => UnRegister(onEvent));
+    }
+
+    /// <summary>
+    ///     注销事件监听器
+    /// </summary>
+    /// <param name="onEvent">事件处理回调</param>
+    public void UnRegister(Action<T> onEvent)
+    {
+        lock (_lock)
+        {
+            _onEvent -= onEvent;
+            UpdateListenerCount();
+        }
+    }
+
+    /// <summary>
+    ///     触发事件
+    /// </summary>
+    /// <param name="data">事件数据</param>
+    public void Trigger(T data)
+    {
+        // 记录发布统计
+        _statistics?.RecordPublish(typeof(T).Name);
+
+        // 应用过滤器
+        lock (_lock)
+        {
+            // 事件被过滤，不触发监听器
+            if (_filters.Any(filter => filter.ShouldFilter(data)))
+                return;
+        }
+
+        // 获取当前监听器快照（在锁外调用）
+        Action<T>? handlers;
+        lock (_lock)
+        {
+            handlers = _onEvent;
+        }
+
+        if (handlers == null)
+            return;
+
+        // 在锁外调用监听器，避免死锁
+        foreach (var handler in handlers.GetInvocationList().Cast<Action<T>>())
+        {
+            try
+            {
+                handler(data);
+                _statistics?.RecordHandle();
+            }
+            catch
+            {
+                _statistics?.RecordFailure();
+                throw;
+            }
+        }
+    }
+
+    /// <summary>
+    ///     添加事件过滤器
+    /// </summary>
+    /// <param name="filter">过滤器</param>
+    public void AddFilter(IEventFilter<T> filter)
+    {
+        lock (_lock)
+        {
+            _filters.Add(filter);
+        }
+    }
+
+    /// <summary>
+    ///     移除事件过滤器
+    /// </summary>
+    /// <param name="filter">过滤器</param>
+    public void RemoveFilter(IEventFilter<T> filter)
+    {
+        lock (_lock)
+        {
+            _filters.Remove(filter);
+        }
+    }
+
+    /// <summary>
+    ///     清除所有过滤器
+    /// </summary>
+    public void ClearFilters()
+    {
+        lock (_lock)
+        {
+            _filters.Clear();
+        }
+    }
+
+    /// <summary>
+    ///     获取当前监听器数量
+    /// </summary>
+    public int GetListenerCount()
+    {
+        lock (_lock)
+        {
+            return _onEvent?.GetInvocationList().Length ?? 0;
+        }
+    }
+
+    /// <summary>
+    ///     更新监听器数量统计
+    /// </summary>
+    private void UpdateListenerCount()
+    {
+        if (_statistics == null)
+            return;
+
+        var count = _onEvent?.GetInvocationList().Length ?? 0;
+        _statistics.UpdateListenerCount(typeof(T).Name, count);
+    }
+}
