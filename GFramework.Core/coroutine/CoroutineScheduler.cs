@@ -395,7 +395,8 @@ public sealed class CoroutineScheduler(
         if (!_tagged.TryGetValue(tag, out var handles))
             return 0;
 
-        return handles.Count(Kill);
+        var copy = handles.ToArray();
+        return copy.Count(Kill);
     }
 
     /// <summary>
@@ -485,6 +486,9 @@ public sealed class CoroutineScheduler(
                 // 通知 WaitForCoroutine 指令协程已完成
                 case WaitForCoroutine wfc:
                     wfc.Complete();
+                    break;
+                default:
+                    // 其他类型的等待指令不需要特殊处理
                     break;
             }
 
