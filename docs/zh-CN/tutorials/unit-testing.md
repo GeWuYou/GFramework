@@ -1143,5 +1143,5 @@ public void CalculateBonus_Should_Return_Double(int input, int expected)
 
 - [NUnit 官方文档](https://docs.nunit.org/)
 - [Moq 快速入门](https://github.com/moq/moq4/wiki/Quickstart)
-- [测试驱动开发实践](/zh-CN/best-practices/tdd)
-- [持续集成配置](/zh-CN/best-practices/ci-cd)
+- [架构设计模式](/zh-CN/best-practices/architecture-patterns)
+- [性能优化最佳实践](/zh-CN/best-practices/performance)
