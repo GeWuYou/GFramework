@@ -8,6 +8,7 @@ GFramework.sln.DotSettings.user
 # ai
 opencode.json
 .claude/settings.local.json
+.claude/settings.json
 .omc/
 docs/.omc/
 docs/.vitepress/cache/
