@@ -51,6 +51,17 @@ export default defineConfig({
           { text: 'Godot', link: '/zh-CN/godot/' },
           { text: '源码生成器', link: '/zh-CN/source-generators' },
           { text: '教程', link: '/zh-CN/tutorials/' },
+          { text: '最佳实践', link: '/zh-CN/best-practices/' },
+          {
+            text: '更多',
+            items: [
+              { text: 'API 参考', link: '/zh-CN/api-reference' },
+              { text: '常见问题', link: '/zh-CN/faq' },
+              { text: '故障排查', link: '/zh-CN/troubleshooting' },
+              { text: '迁移指南', link: '/zh-CN/migration-guide' },
+              { text: '贡献指南', link: '/zh-CN/contributing' }
+            ]
+          }
         ],
 
         sidebar: {
@@ -73,13 +84,20 @@ export default defineConfig({
                 { text: '架构组件', link: '/zh-CN/core/architecture' },
                 { text: 'Context 上下文', link: '/zh-CN/core/context' },
                 { text: '异步初始化', link: '/zh-CN/core/async-initialization' },
+                { text: '生命周期', link: '/zh-CN/core/lifecycle' },
                 { text: '命令系统', link: '/zh-CN/core/command' },
                 { text: '查询系统', link: '/zh-CN/core/query' },
+                { text: 'CQRS 模式', link: '/zh-CN/core/cqrs' },
                 { text: '事件系统', link: '/zh-CN/core/events' },
                 { text: '属性系统', link: '/zh-CN/core/property' },
                 { text: 'IoC容器', link: '/zh-CN/core/ioc' },
                 { text: 'ECS 系统集成', link: '/zh-CN/core/ecs' },
+                { text: '协程系统', link: '/zh-CN/core/coroutine' },
+                { text: '状态机', link: '/zh-CN/core/state-machine' },
+                { text: '暂停系统', link: '/zh-CN/core/pause' },
                 { text: '对象池', link: '/zh-CN/core/pool' },
+                { text: '资源管理', link: '/zh-CN/core/resource' },
+                { text: '配置管理', link: '/zh-CN/core/configuration' },
                 { text: '日志系统', link: '/zh-CN/core/logging' },
                 { text: '函数式编程', link: '/zh-CN/core/functional' },
                 { text: '扩展方法', link: '/zh-CN/core/extensions' },
@@ -97,6 +115,11 @@ export default defineConfig({
               text: 'Game 游戏模块',
               items: [
                 { text: '概览', link: '/zh-CN/game/' },
+                { text: '数据管理', link: '/zh-CN/game/data' },
+                { text: '场景系统', link: '/zh-CN/game/scene' },
+                { text: 'UI 系统', link: '/zh-CN/game/ui' },
+                { text: '存储系统', link: '/zh-CN/game/storage' },
+                { text: '序列化', link: '/zh-CN/game/serialization' },
                 { text: '游戏设置', link: '/zh-CN/game/setting' }
               ]
             }
@@ -115,6 +138,9 @@ export default defineConfig({
                 { text: '节点扩展', link: '/zh-CN/godot/extensions' },
                 { text: '信号系统', link: '/zh-CN/godot/signal' },
                 { text: '存储系统', link: '/zh-CN/godot/storage' },
+                { text: '暂停系统', link: '/zh-CN/godot/pause' },
+                { text: '对象池', link: '/zh-CN/godot/pool' },
+                { text: '日志系统', link: '/zh-CN/godot/logging' },
                 { text: '设置系统', link: '/zh-CN/godot/setting' }
               ]
             }
@@ -127,7 +153,7 @@ export default defineConfig({
                 { text: '概览', link: '/zh-CN/source-generators/' },
                 { text: '日志生成器', link: '/zh-CN/source-generators/logging-generator' },
                 { text: '枚举扩展', link: '/zh-CN/source-generators/enum-generator' },
-                { text: '规则生成器', link: '/zh-CN/source-generators/rule-generator' }
+                { text: 'ContextAware 生成器', link: '/zh-CN/source-generators/context-aware-generator' }
               ]
             }
           ],
@@ -164,12 +190,30 @@ export default defineConfig({
                 },
                 { text: '使用协程系统', link: '/zh-CN/tutorials/coroutine-tutorial' },
                 { text: '实现状态机', link: '/zh-CN/tutorials/state-machine-tutorial' },
+                { text: '暂停系统实践', link: '/zh-CN/tutorials/pause-system' },
                 { text: '函数式编程实践', link: '/zh-CN/tutorials/functional-programming' },
                 { text: '资源管理最佳实践', link: '/zh-CN/tutorials/resource-management' },
                 { text: '实现存档系统', link: '/zh-CN/tutorials/save-system' },
+                { text: '数据迁移', link: '/zh-CN/tutorials/data-migration' },
                 { text: 'Godot 集成', link: '/zh-CN/tutorials/godot-integration' },
                 { text: 'Godot 完整项目', link: '/zh-CN/tutorials/godot-complete-project' },
-                { text: '高级模式', link: '/zh-CN/tutorials/advanced-patterns' }
+                { text: '高级模式', link: '/zh-CN/tutorials/advanced-patterns' },
+                { text: '大型项目组织', link: '/zh-CN/tutorials/large-project-organization' },
+                { text: '单元测试', link: '/zh-CN/tutorials/unit-testing' }
+              ]
+            }
+          ],
+
+          '/zh-CN/best-practices/': [
+            {
+              text: '最佳实践',
+              items: [
+                { text: '概览', link: '/zh-CN/best-practices/' },
+                { text: '架构模式', link: '/zh-CN/best-practices/architecture-patterns' },
+                { text: '错误处理', link: '/zh-CN/best-practices/error-handling' },
+                { text: '性能优化', link: '/zh-CN/best-practices/performance' },
+                { text: '移动端优化', link: '/zh-CN/best-practices/mobile-optimization' },
+                { text: '多人游戏', link: '/zh-CN/best-practices/multiplayer' }
               ]
             }
           ],
