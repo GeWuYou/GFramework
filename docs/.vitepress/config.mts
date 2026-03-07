@@ -55,7 +55,7 @@ export default defineConfig({
           {
             text: '更多',
             items: [
-              { text: 'API 参考', link: '/zh-CN/api-reference/' },
+              { text: 'API 参考', link: '/zh-CN/api-reference' },
               { text: '常见问题', link: '/zh-CN/faq' },
               { text: '故障排查', link: '/zh-CN/troubleshooting' },
               { text: '迁移指南', link: '/zh-CN/migration-guide' },
@@ -214,15 +214,6 @@ export default defineConfig({
                 { text: '性能优化', link: '/zh-CN/best-practices/performance' },
                 { text: '移动端优化', link: '/zh-CN/best-practices/mobile-optimization' },
                 { text: '多人游戏', link: '/zh-CN/best-practices/multiplayer' }
-              ]
-            }
-          ],
-
-          '/zh-CN/api-reference/': [
-            {
-              text: 'API 参考',
-              items: [
-                { text: 'API 文档', link: '/zh-CN/api-reference/' }
               ]
             }
           ],
