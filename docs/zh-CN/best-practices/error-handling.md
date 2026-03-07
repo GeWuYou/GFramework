@@ -1301,3 +1301,385 @@ public class CircuitBreaker
 }
 ```
 
+## 最佳实践
+
+### 1. 选择合适的错误处理方式
+
+根据错误类型选择处理方式：
+
+| 错误类型      | 处理方式            | 示例          |
+|-----------|-----------------|-------------|
+| 可预期的业务错误  | Result&lt;T&gt; | 用户输入验证、权限检查 |
+| 可能不存在的值   | Option&lt;T&gt; | 查找操作、配置读取   |
+| 不可预期的系统错误 | Exception       | 文件 IO、网络错误  |
+| 不可恢复的错误   | Exception + 日志  | 初始化失败、资源耗尽  |
+
+### 2. 错误处理的层次结构
+
+```csharp
+// 底层：使用 Result 处理业务错误
+public class InventoryRepository
+{
+    public Result&lt;Item&gt; GetItem(string itemId)
+    {
+        var item = _items.FirstOrDefault(i => i.Id == itemId);
+        return item != null
+            ? Result&lt;Item&gt;.Success(item)
+            : Result&lt;Item&gt;.Failure("物品不存在");
+    }
+}
+
+// 中层：组合多个操作
+public class InventorySystem : AbstractSystem
+{
+    public Result&lt;Item&gt; UseItem(string itemId)
+    {
+        return _repository.GetItem(itemId)
+            .Bind(item => ValidateItemUsage(item))
+            .Bind(item => ConsumeItem(item))
+            .OnSuccess(item => this.SendEvent(new ItemUsedEvent { Item = item }))
+            .OnFailure(ex => _logger.Warn($"使用物品失败: {ex.Message}"));
+    }
+}
+
+// 上层：处理用户交互
+public class InventoryController : IController
+{
+    public void OnUseItemButtonClicked(string itemId)
+    {
+        var result = _inventorySystem.UseItem(itemId);
+
+        result.Match(
+            succ: item => ShowSuccessMessage($"使用了 {item.Name}"),
+            fail: ex => ShowErrorMessage(ex.Message)
+        );
+    }
+}
+```
+
+### 3. 避免过度使用异常
+
+```csharp
+// ❌ 避免：用异常处理正常流程
+public Player GetPlayerById(string playerId)
+{
+    var player = _players.FirstOrDefault(p => p.Id == playerId);
+    if (player == null)
+        throw new PlayerNotFoundException(playerId); // 不应该用异常
+
+    return player;
+}
+
+// ✅ 好的做法：使用 Option
+public Option&lt;Player&gt; GetPlayerById(string playerId)
+{
+    var player = _players.FirstOrDefault(p => p.Id == playerId);
+    return player != null
+        ? Option&lt;Player&gt;.Some(player)
+        : Option&lt;Player&gt;.None;
+}
+```
+
+### 4. 提供有意义的错误消息
+
+```csharp
+// ❌ 避免：模糊的错误消息
+return Result&lt;Item&gt;.Failure("错误");
+return Result&lt;Item&gt;.Failure("操作失败");
+
+// ✅ 好的做法：具体的错误消息
+return Result&lt;Item&gt;.Failure("物品不存在");
+return Result&lt;Item&gt;.Failure($"背包空间不足，需要 {required} 格，当前 {available} 格");
+return Result&lt;Item&gt;.Failure($"物品 {itemName} 不可交易");
+```
+
+### 5. 记录错误上下文
+
+```csharp
+// ❌ 避免：缺少上下文
+_logger.Error("保存失败", ex);
+
+// ✅ 好的做法：包含完整上下文
+_logger.Log(
+    LogLevel.Error,
+    "保存玩家数据失败",
+    ex,
+    ("playerId", playerId),
+    ("saveSlot", saveSlot),
+    ("dataSize", data.Length),
+    ("timestamp", DateTime.UtcNow)
+);
+```
+
+### 6. 优雅降级
+
+```csharp
+// ✅ 好的做法：提供降级方案
+public async Task&lt;Texture&gt; LoadTextureAsync(string path)
+{
+    // 1. 尝试加载指定纹理
+    var result = await TryLoadTextureAsync(path);
+    if (result.IsSuccess)
+        return result.Match(succ: t => t, fail: _ => null);
+
+    // 2. 尝试加载备用纹理
+    _logger.Warn($"加载纹理失败: {path}，使用备用纹理");
+    var fallbackResult = await TryLoadTextureAsync(_fallbackTexturePath);
+    if (fallbackResult.IsSuccess)
+        return fallbackResult.Match(succ: t => t, fail: _ => null);
+
+    // 3. 使用默认纹理
+    _logger.Error("所有纹理加载失败，使用默认纹理");
+    return _defaultTexture;
+}
+```
+
+### 7. 测试错误处理
+
+```csharp
+[TestFixture]
+public class InventorySystemTests
+{
+    [Test]
+    public void UseItem_ItemNotFound_ShouldReturnFailure()
+    {
+        // Arrange
+        var system = new InventorySystem();
+        var invalidItemId = "invalid_item";
+
+        // Act
+        var result = system.UseItem(invalidItemId);
+
+        // Assert
+        Assert.That(result.IsFaulted, Is.True);
+        Assert.That(result.Exception.Message, Contains.Substring("物品不存在"));
+    }
+
+    [Test]
+    public void UseItem_ItemNotUsable_ShouldReturnFailure()
+    {
+        // Arrange
+        var system = new InventorySystem();
+        var item = new Item { Id = "item1", IsUsable = false };
+        system.AddItem(item);
+
+        // Act
+        var result = system.UseItem("item1");
+
+        // Assert
+        Assert.That(result.IsFaulted, Is.True);
+        Assert.That(result.Exception.Message, Contains.Substring("不可使用"));
+    }
+
+    [Test]
+    public void UseItem_ValidItem_ShouldReturnSuccess()
+    {
+        // Arrange
+        var system = new InventorySystem();
+        var item = new Item { Id = "item1", IsUsable = true };
+        system.AddItem(item);
+
+        // Act
+        var result = system.UseItem("item1");
+
+        // Assert
+        Assert.That(result.IsSuccess, Is.True);
+    }
+}
+```
+
+## 常见问题
+
+### Q1: 何时使用 Result，何时使用 Option？
+
+**A:**
+
+- 使用 **Result&lt;T&gt;** 当操作可能失败，需要返回错误信息时
+- 使用 **Option&lt;T&gt;** 当值可能不存在，但不需要错误信息时
+
+```csharp
+// 使用 Result：需要知道为什么失败
+public Result&lt;User&gt; RegisterUser(string username, string password)
+{
+    if (string.IsNullOrEmpty(username))
+        return Result&lt;User&gt;.Failure("用户名不能为空");
+
+    if (password.Length &lt; 8)
+        return Result&lt;User&gt;.Failure("密码长度至少为 8 个字符");
+
+    // ...
+}
+
+// 使用 Option：只需要知道是否存在
+public Option&lt;User&gt; FindUserById(string userId)
+{
+    var user = _users.FirstOrDefault(u => u.Id == userId);
+    return user != null ? Option&lt;User&gt;.Some(user) : Option&lt;User&gt;.None;
+}
+```
+
+### Q2: 如何处理异步操作中的错误？
+
+**A:** 使用 Result 的异步扩展方法：
+
+```csharp
+public async Task&lt;Result&lt;PlayerData&gt;&gt; LoadPlayerDataAsync(string playerId)
+{
+    return await ResultExtensions.TryAsync(async () =>
+    {
+        var data = await _httpClient.GetStringAsync($"/api/players/{playerId}");
+        return JsonSerializer.Deserialize&lt;PlayerData&gt;(data);
+    });
+}
+
+// 链式异步操作
+public async Task&lt;Result&lt;Player&gt;&gt; LoadAndValidatePlayerAsync(string playerId)
+{
+    var result = await LoadPlayerDataAsync(playerId);
+    return await result.BindAsync(async data =>
+    {
+        var isValid = await ValidatePlayerDataAsync(data);
+        return isValid
+            ? Result&lt;Player&gt;.Success(CreatePlayer(data))
+            : Result&lt;Player&gt;.Failure("玩家数据验证失败");
+    });
+}
+```
+
+### Q3: 如何在 Command 和 Query 中处理错误？
+
+**A:** Command 和 Query 可以返回 Result：
+
+```csharp
+// Command 返回 Result
+public class SaveGameCommand : AbstractCommand&lt;Result&lt;SaveData&gt;&gt;
+{
+    protected override Result&lt;SaveData&gt; OnDo()
+    {
+        try
+        {
+            var data = CollectSaveData();
+            var saveSystem = this.GetSystem&lt;SaveSystem&gt;();
+            return saveSystem.SaveGame(data);
+        }
+        catch (Exception ex)
+        {
+            this.GetUtility&lt;ILogger&gt;().Error("保存游戏失败", ex);
+            return Result&lt;SaveData&gt;.Failure(ex);
+        }
+    }
+}
+
+// Query 返回 Option
+public class GetPlayerQuery : AbstractQuery&lt;Option&lt;Player&gt;&gt;
+{
+    public string PlayerId { get; set; }
+
+    protected override Option&lt;Player&gt; OnDo()
+    {
+        var playerSystem = this.GetSystem&lt;PlayerSystem&gt;();
+        return playerSystem.FindPlayerById(PlayerId);
+    }
+}
+```
+
+### Q4: 如何处理多个可能失败的操作？
+
+**A:** 使用 Result 的链式操作：
+
+```csharp
+public Result&lt;Trade&gt; ExecuteTrade(string sellerId, string buyerId, string itemId, int price)
+{
+    return ValidateSeller(sellerId)
+        .Bind(_ => ValidateBuyer(buyerId))
+        .Bind(_ => ValidateItem(itemId))
+        .Bind(_ => ValidatePrice(price))
+        .Bind(_ => TransferItem(sellerId, buyerId, itemId))
+        .Bind(_ => TransferCurrency(buyerId, sellerId, price))
+        .Map(_ => CreateTradeRecord(sellerId, buyerId, itemId, price));
+}
+```
+
+### Q5: 如何避免 Result 嵌套过深？
+
+**A:** 使用 Bind 扁平化嵌套：
+
+```csharp
+// ❌ 避免：嵌套过深
+public Result&lt;string&gt; ProcessData(string input)
+{
+    var result1 = Step1(input);
+    if (result1.IsSuccess)
+    {
+        var result2 = Step2(result1.Match(succ: v => v, fail: _ => ""));
+        if (result2.IsSuccess)
+        {
+            var result3 = Step3(result2.Match(succ: v => v, fail: _ => ""));
+            return result3;
+        }
+        return Result&lt;string&gt;.Failure(result2.Exception);
+    }
+    return Result&lt;string&gt;.Failure(result1.Exception);
+}
+
+// ✅ 好的做法：使用 Bind 扁平化
+public Result&lt;string&gt; ProcessData(string input)
+{
+    return Step1(input)
+        .Bind(Step2)
+        .Bind(Step3);
+}
+```
+
+### Q6: 如何在 UI 层处理错误？
+
+**A:** 将错误转换为用户友好的消息：
+
+```csharp
+public class UIController : IController
+{
+    private readonly ErrorMessageService _errorMessageService;
+
+    public void OnSaveButtonClicked()
+    {
+        var result = this.SendCommand(new SaveGameCommand());
+
+        result.Match(
+            succ: data => {
+                ShowSuccessToast("游戏保存成功");
+            },
+            fail: ex => {
+                var userMessage = _errorMessageService.GetUserFriendlyMessage(ex);
+                ShowErrorDialog("保存失败", userMessage);
+            }
+        );
+    }
+}
+```
+
+---
+
+## 总结
+
+良好的错误处理是构建健壮应用的基础。遵循本指南的最佳实践：
+
+- ✅ 使用 **Result&lt;T&gt;** 处理可预期的业务错误
+- ✅ 使用 **Option&lt;T&gt;** 处理可能不存在的值
+- ✅ 使用 **异常** 处理不可预期的系统错误
+- ✅ 记录详细的 **日志** 信息
+- ✅ 提供友好的 **用户反馈**
+- ✅ 实现 **错误恢复** 和降级策略
+- ✅ 编写 **测试** 验证错误处理逻辑
+
+通过这些实践，你将构建出更加稳定、可维护、用户友好的游戏应用。
+
+---
+
+**相关文档**：
+
+- [架构模式最佳实践](./architecture-patterns.md)
+- [扩展方法使用指南](../core/extensions.md)
+- [日志系统](../core/logging.md)
+
+**文档版本**: 1.0.0
+**更新日期**: 2026-03-07

@@ -382,3 +382,601 @@ public enum ResourcePriority
 
 ### 2. 纹理压缩和优化
 
+使用合适的纹理格式和压缩：
+
+```csharp
+public class TextureOptimizer
+{
+    public static TextureSettings GetOptimalSettings(string platform)
+    {
+        return platform switch
+        {
+            "iOS" => new TextureSettings
+            {
+                Format = TextureFormat.PVRTC_RGB4,
+                MaxSize = 2048,
+                MipmapEnabled = true,
+                Compression = TextureCompression.High
+            },
+            "Android" => new TextureSettings
+            {
+                Format = TextureFormat.ETC2_RGB,
+                MaxSize = 2048,
+                MipmapEnabled = true,
+                Compression = TextureCompression.High
+            },
+            _ => new TextureSettings
+            {
+                Format = TextureFormat.RGB24,
+                MaxSize = 4096,
+                MipmapEnabled = true,
+                Compression = TextureCompression.Normal
+            }
+        };
+    }
+}
+```
+
+### 3. 对象池优化
+
+针对移动平台优化对象池，限制池大小并定期清理：
+
+```csharp
+public class MobileObjectPool&lt;T&gt; : AbstractObjectPoolSystem&lt;string, T&gt;
+    where T : IPoolableObject
+{
+    private const int MaxPoolSize = 50;
+
+    public new void Release(string key, T obj)
+    {
+        if (Pools.TryGetValue(key, out var pool) && pool.Count >= MaxPoolSize)
+        {
+            obj.OnPoolDestroy();
+            return;
+        }
+        base.Release(key, obj);
+    }
+
+    protected override T Create(string key)
+    {
+        throw new NotImplementedException();
+    }
+}
+```
+
+### 4. 避免内存泄漏
+
+确保正确释放资源和取消事件订阅：
+
+```csharp
+public class LeakFreeSystem : AbstractSystem
+{
+    private IResourceHandle&lt;Texture&gt;? _textureHandle;
+    private IUnRegister? _eventUnregister;
+
+    protected override void OnInit()
+    {
+        _eventUnregister = this.RegisterEvent&lt;GameEvent&gt;(OnGameEvent);
+    }
+
+    protected override void OnDestroy()
+    {
+        // 释放资源句柄
+        _textureHandle?.Dispose();
+        _textureHandle = null;
+
+        // 取消事件订阅
+        _eventUnregister?.UnRegister();
+        _eventUnregister = null;
+
+        base.OnDestroy();
+    }
+
+    private void OnGameEvent(GameEvent e)
+    {
+        // 处理事件
+    }
+}
+```
+
+## 性能优化
+
+### 1. CPU 优化
+
+减少 CPU 计算负担：
+
+```csharp
+public class CPUOptimizer : AbstractSystem
+{
+    private const int UpdateInterval = 5; // 每 5 帧更新一次
+    private int _frameCount;
+
+    protected override void OnInit()
+    {
+        this.RegisterEvent&lt;GameUpdateEvent&gt;(OnUpdate);
+    }
+
+    private void OnUpdate(GameUpdateEvent e)
+    {
+        _frameCount++;
+
+        // 降低更新频率
+        if (_frameCount % UpdateInterval == 0)
+        {
+            UpdateNonCriticalSystems();
+        }
+
+        // 关键系统每帧更新
+        UpdateCriticalSystems();
+    }
+
+    private void UpdateCriticalSystems()
+    {
+        // 玩家输入、物理等关键系统
+    }
+
+    private void UpdateNonCriticalSystems()
+    {
+        // AI、动画等非关键系统
+    }
+}
+```
+
+### 2. 批量处理
+
+使用批量操作减少函数调用：
+
+```csharp
+public class BatchProcessor : AbstractSystem
+{
+    private readonly List&lt;Entity&gt; _entitiesToUpdate = new();
+
+    public void ProcessEntities()
+    {
+        // 批量处理，减少函数调用开销
+        for (int i = 0; i < _entitiesToUpdate.Count; i++)
+        {
+            var entity = _entitiesToUpdate[i];
+            entity.Update();
+        }
+    }
+}
+```
+
+### 3. 缓存计算结果
+
+避免重复计算：
+
+```csharp
+public class CachedCalculator
+{
+    private readonly Dictionary&lt;string, float&gt; _cache = new();
+
+    public float GetDistance(Vector3 a, Vector3 b)
+    {
+        var key = $"{a}_{b}";
+
+        if (_cache.TryGetValue(key, out var distance))
+        {
+            return distance;
+        }
+
+        distance = Vector3.Distance(a, b);
+        _cache[key] = distance;
+
+        return distance;
+    }
+
+    public void ClearCache()
+    {
+        _cache.Clear();
+    }
+}
+```
+
+## 电池优化
+
+### 1. 动态帧率调整
+
+根据场景复杂度调整帧率：
+
+```csharp
+public class DynamicFrameRateSystem : AbstractSystem
+{
+    private int _targetFrameRate = 60;
+
+    public void AdjustFrameRate(SceneComplexity complexity)
+    {
+        _targetFrameRate = complexity switch
+        {
+            SceneComplexity.Low => 60,
+            SceneComplexity.Medium => 45,
+            SceneComplexity.High => 30,
+            _ => 60
+        };
+
+        Application.targetFrameRate = _targetFrameRate;
+    }
+}
+
+public enum SceneComplexity
+{
+    Low,
+    Medium,
+    High
+}
+```
+
+### 2. 后台优化
+
+应用进入后台时降低性能消耗：
+
+```csharp
+public class BackgroundOptimizer : AbstractSystem
+{
+    protected override void OnInit()
+    {
+        Application.focusChanged += OnFocusChanged;
+    }
+
+    private void OnFocusChanged(bool hasFocus)
+    {
+        if (hasFocus)
+        {
+            OnApplicationForeground();
+        }
+        else
+        {
+            OnApplicationBackground();
+        }
+    }
+
+    private void OnApplicationBackground()
+    {
+        // 降低帧率
+        Application.targetFrameRate = 10;
+
+        // 暂停音频
+        AudioListener.pause = true;
+
+        // 暂停非关键系统
+        PauseNonCriticalSystems();
+    }
+
+    private void OnApplicationForeground()
+    {
+        // 恢复帧率
+        Application.targetFrameRate = 60;
+
+        // 恢复音频
+        AudioListener.pause = false;
+
+        // 恢复系统
+        ResumeNonCriticalSystems();
+    }
+
+    private void PauseNonCriticalSystems()
+    {
+        SendEvent(new PauseNonCriticalSystemsEvent());
+    }
+
+    private void ResumeNonCriticalSystems()
+    {
+        SendEvent(new ResumeNonCriticalSystemsEvent());
+    }
+
+    protected override void OnDestroy()
+    {
+        Application.focusChanged -= OnFocusChanged;
+        base.OnDestroy();
+    }
+}
+```
+
+## UI 优化
+
+### 1. 触摸优化
+
+优化触摸输入处理：
+
+```csharp
+public class TouchInputSystem : AbstractSystem
+{
+    private const float TouchThreshold = 10f; // 最小移动距离
+    private Vector2 _lastTouchPosition;
+
+    protected override void OnInit()
+    {
+        this.RegisterEvent&lt;TouchEvent&gt;(OnTouch);
+    }
+
+    private void OnTouch(TouchEvent e)
+    {
+        switch (e.Phase)
+        {
+            case TouchPhase.Began:
+                _lastTouchPosition = e.Position;
+                break;
+
+            case TouchPhase.Moved:
+                var delta = e.Position - _lastTouchPosition;
+                if (delta.magnitude > TouchThreshold)
+                {
+                    ProcessTouchMove(delta);
+                    _lastTouchPosition = e.Position;
+                }
+                break;
+
+            case TouchPhase.Ended:
+                ProcessTouchEnd(e.Position);
+                break;
+        }
+    }
+
+    private void ProcessTouchMove(Vector2 delta)
+    {
+        SendEvent(new TouchMoveEvent { Delta = delta });
+    }
+
+    private void ProcessTouchEnd(Vector2 position)
+    {
+        SendEvent(new TouchEndEvent { Position = position });
+    }
+}
+```
+
+### 2. UI 元素池化
+
+复用 UI 元素减少创建开销：
+
+```csharp
+public class UIElementPool : AbstractObjectPoolSystem&lt;string, UIElement&gt;
+{
+    protected override UIElement Create(string key)
+    {
+        return new UIElement(key);
+    }
+
+    public UIElement GetButton()
+    {
+        return Acquire("button");
+    }
+
+    public void ReturnButton(UIElement button)
+    {
+        Release("button", button);
+    }
+}
+
+public class UIElement : IPoolableObject
+{
+    public string Type { get; }
+
+    public UIElement(string type)
+    {
+        Type = type;
+    }
+
+    public void OnAcquire()
+    {
+        // 激活 UI 元素
+    }
+
+    public void OnRelease()
+    {
+        // 重置状态
+    }
+
+    public void OnPoolDestroy()
+    {
+        // 清理资源
+    }
+}
+```
+
+## 平台适配
+
+### iOS 优化
+
+```csharp
+public class iOSOptimizer
+{
+    public static void ApplyOptimizations()
+    {
+        // 注意：图形 API 和多线程渲染需要在 Player Settings 中配置
+        // 在 Unity Editor 中：Edit > Project Settings > Player > Other Settings
+        // - Graphics APIs: 选择 Metal
+        // - Multithreaded Rendering: 启用
+
+        // 运行时可以调整的设置：
+
+        // 优化纹理质量（0 = 最高质量）
+        QualitySettings.masterTextureLimit = 0;
+
+        // 设置目标帧率
+        Application.targetFrameRate = 60;
+
+        // 启用 VSync（0 = 关闭，1 = 每帧同步，2 = 每两帧同步）
+        QualitySettings.vSyncCount = 1;
+
+        // 优化阴影质量
+        QualitySettings.shadowDistance = 50f;
+        QualitySettings.shadowResolution = ShadowResolution.Medium;
+    }
+}
+```
+
+### Android 优化
+
+```csharp
+public class AndroidOptimizer
+{
+    public static void ApplyOptimizations()
+    {
+        // 注意：图形 API 和多线程渲染需要在 Player Settings 中配置
+        // 在 Unity Editor 中：Edit > Project Settings > Player > Other Settings
+        // - Graphics APIs: 选择 Vulkan 或 OpenGL ES 3.0
+        // - Multithreaded Rendering: 启用
+
+        // 运行时可以调整的设置：
+
+        // 优化纹理质量
+        QualitySettings.masterTextureLimit = 0;
+
+        // 设置目标帧率
+        Application.targetFrameRate = 60;
+
+        // 根据设备性能调整质量等级
+        var devicePerformance = GetDevicePerformance();
+        QualitySettings.SetQualityLevel(devicePerformance switch
+        {
+            DevicePerformance.Low => 0,
+            DevicePerformance.Medium => 1,
+            DevicePerformance.High => 2,
+            _ => 1
+        });
+
+        // GC 优化建议：
+        // 警告：完全禁用 GC (GarbageCollector.Mode.Disabled) 在内存受限设备上有风险
+        // 仅在以下情况考虑使用：
+        // 1. 高端设备（4GB+ RAM）
+        // 2. 配合自定义内存管理策略
+        // 3. 经过充分测试
+
+        // 推荐的 GC 优化方式：
+        // 1. 使用增量 GC 减少卡顿
+        GarbageCollector.GCMode = GarbageCollector.Mode.Enabled;
+
+        // 2. 调整 GC 增量时间片（微秒）
+        GarbageCollector.incrementalTimeSliceNanoseconds = 2000000; // 2ms
+
+        // 3. 定期在合适的时机手动触发 GC（如加载界面）
+        // GC.Collect();
+    }
+
+    private static DevicePerformance GetDevicePerformance()
+    {
+        var memory = SystemInfo.systemMemorySize;
+        var processorCount = SystemInfo.processorCount;
+
+        if (memory < 2048 || processorCount < 4)
+            return DevicePerformance.Low;
+        else if (memory < 4096 || processorCount < 6)
+            return DevicePerformance.Medium;
+        else
+            return DevicePerformance.High;
+    }
+}
+```
+
+## 最佳实践
+
+### 1. 资源管理
+
+- 使用资源优先级系统
+- 及时卸载不用的资源
+- 使用资源压缩
+- 实现资源预加载
+
+### 2. 内存管理
+
+- 监控内存使用
+- 限制对象池大小
+- 避免内存泄漏
+- 定期执行 GC
+
+### 3. 性能优化
+
+- 降低更新频率
+- 使用批量处理
+- 缓存计算结果
+- 优化算法复杂度
+
+### 4. 电池优化
+
+- 动态调整帧率
+- 后台降低性能
+- 减少渲染开销
+- 优化网络请求
+
+### 5. UI 优化
+
+- 优化触摸处理
+- 池化 UI 元素
+- 减少 UI 层级
+- 使用异步加载
+
+## 常见问题
+
+### 问题：如何监控移动设备的内存使用？
+
+**解答**：
+
+使用 `GC.GetTotalMemory()` 监控托管内存，结合平台 API 监控总内存：
+
+```csharp
+var managedMemory = GC.GetTotalMemory(false);
+Console.WriteLine($"托管内存: {managedMemory / 1024 / 1024}MB");
+```
+
+### 问题：如何优化移动游戏的启动时间？
+
+**解答**：
+
+- 延迟加载非关键资源
+- 使用异步初始化
+- 减少启动时的计算
+- 优化资源包大小
+
+### 问题：如何处理不同设备的性能差异？
+
+**解答**：
+
+实现设备性能分级系统：
+
+```csharp
+public enum DevicePerformance
+{
+    Low,
+    Medium,
+    High
+}
+
+public class DeviceProfiler
+{
+    public static DevicePerformance GetDevicePerformance()
+    {
+        var memory = SystemInfo.systemMemorySize;
+        var processorCount = SystemInfo.processorCount;
+
+        if (memory < 2048 || processorCount < 4)
+            return DevicePerformance.Low;
+        else if (memory < 4096 || processorCount < 6)
+            return DevicePerformance.Medium;
+        else
+            return DevicePerformance.High;
+    }
+}
+```
+
+### 问题：如何优化移动游戏的网络性能？
+
+**解答**：
+
+- 使用数据压缩
+- 批量发送请求
+- 实现请求队列
+- 处理网络中断
+
+## 相关文档
+
+- [资源管理系统](/zh-CN/core/resource) - 资源管理详细说明
+- [对象池系统](/zh-CN/core/pool) - 对象池优化
+- [协程系统](/zh-CN/core/coroutine) - 异步操作优化
+- [架构模式最佳实践](/zh-CN/best-practices/architecture-patterns) - 架构设计
+
+---
+
+**文档版本**: 1.0.0
+**更新日期**: 2026-03-07
+
