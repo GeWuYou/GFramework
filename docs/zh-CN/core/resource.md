@@ -503,5 +503,5 @@ Parallel.For(0, 10, i =>
 
 - [对象池系统](/zh-CN/core/pool) - 结合对象池复用资源
 - [协程系统](/zh-CN/core/coroutine) - 异步加载资源
-- [Godot 资源仓储](/zh-CN/godot/resource) - Godot 引擎的资源管理
+- [Godot 扩展](/zh-CN/godot/extensions) - Godot 引擎的资源管理
 - [资源管理最佳实践](/zh-CN/tutorials/resource-management) - 详细教程

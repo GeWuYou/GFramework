@@ -582,7 +582,7 @@ public async Task SaveWithBackup(int slot, SaveData data)
 
 ## 相关文档
 
-- [存储系统](/zh-CN/game/storage) - 底层存储实现
-- [序列化系统](/zh-CN/game/serialization) - 数据序列化
+- [设置系统](/zh-CN/game/setting) - 游戏设置管理
 - [场景系统](/zh-CN/game/scene) - 场景切换时保存
 - [存档系统实现教程](/zh-CN/tutorials/save-system) - 完整示例
+- [Godot 集成](/zh-CN/godot/index) - Godot 中的数据管理

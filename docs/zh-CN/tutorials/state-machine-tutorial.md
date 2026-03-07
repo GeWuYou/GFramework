@@ -20,7 +20,7 @@ description: 学习如何使用状态机系统管理游戏状态和场景切换
 
 - 已安装 GFramework.Core NuGet 包
 - 了解 C# 基础语法和 async/await
-- 阅读过[架构概览](/zh-CN/getting-started)
+- 阅读过[快速开始](/zh-CN/getting-started/quick-start)
 - 了解[生命周期管理](/zh-CN/core/lifecycle)
 
 ## 步骤 1：定义游戏状态

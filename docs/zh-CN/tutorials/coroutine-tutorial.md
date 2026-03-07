@@ -19,7 +19,7 @@ description: 学习如何使用协程系统实现异步操作和时间控制
 
 - 已安装 GFramework.Core NuGet 包
 - 了解 C# 基础语法和迭代器（IEnumerator）
-- 阅读过[架构概览](/zh-CN/getting-started)
+- 阅读过[快速开始](/zh-CN/getting-started/quick-start)
 - 了解[生命周期管理](/zh-CN/core/lifecycle)
 
 ## 步骤 1：创建第一个协程
@@ -588,7 +588,7 @@ gameFlowSystem.StartGame();
 
 - [实现状态机](/zh-CN/tutorials/state-machine-tutorial) - 使用协程实现状态转换
 - [资源管理最佳实践](/zh-CN/tutorials/resource-management) - 在协程中加载资源
-- [使用命令系统](/zh-CN/tutorials/command-tutorial) - 协程与命令系统集成
+- [使用事件系统](/zh-CN/core/events) - 协程与事件系统集成
 
 ## 相关文档
 
