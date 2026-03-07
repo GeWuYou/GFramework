@@ -5,5 +5,9 @@ riderModule.iml
 /_ReSharper.Caches/
 GFramework.sln.DotSettings.user
 .idea/
+# ai
 opencode.json
 .claude/settings.local.json
+.omc/
+docs/.omc/
+docs/.vitepress/cache/

@@ -78,8 +78,10 @@ export default defineConfig({
                 { text: '事件系统', link: '/zh-CN/core/events' },
                 { text: '属性系统', link: '/zh-CN/core/property' },
                 { text: 'IoC容器', link: '/zh-CN/core/ioc' },
+                { text: 'ECS 系统集成', link: '/zh-CN/core/ecs' },
                 { text: '对象池', link: '/zh-CN/core/pool' },
                 { text: '日志系统', link: '/zh-CN/core/logging' },
+                { text: '函数式编程', link: '/zh-CN/core/functional' },
                 { text: '扩展方法', link: '/zh-CN/core/extensions' },
                 { text: '工具类', link: '/zh-CN/core/utility' },
                 { text: '模型层', link: '/zh-CN/core/model' },
@@ -105,6 +107,10 @@ export default defineConfig({
               text: 'Godot 集成',
               items: [
                 { text: '概览', link: '/zh-CN/godot/' },
+                { text: '架构集成', link: '/zh-CN/godot/architecture' },
+                { text: '场景系统', link: '/zh-CN/godot/scene' },
+                { text: 'UI 系统', link: '/zh-CN/godot/ui' },
+                { text: '资源仓储', link: '/zh-CN/godot/resource' },
                 { text: '协程系统', link: '/zh-CN/godot/coroutine' },
                 { text: '节点扩展', link: '/zh-CN/godot/extensions' },
                 { text: '信号系统', link: '/zh-CN/godot/signal' },
@@ -156,7 +162,13 @@ export default defineConfig({
                     { text: '7. 总结与最佳实践', link: '/zh-CN/tutorials/basic/07-summary' }
                   ]
                 },
-                { text: 'Godot集成', link: '/zh-CN/tutorials/godot-integration' },
+                { text: '使用协程系统', link: '/zh-CN/tutorials/coroutine-tutorial' },
+                { text: '实现状态机', link: '/zh-CN/tutorials/state-machine-tutorial' },
+                { text: '函数式编程实践', link: '/zh-CN/tutorials/functional-programming' },
+                { text: '资源管理最佳实践', link: '/zh-CN/tutorials/resource-management' },
+                { text: '实现存档系统', link: '/zh-CN/tutorials/save-system' },
+                { text: 'Godot 集成', link: '/zh-CN/tutorials/godot-integration' },
+                { text: 'Godot 完整项目', link: '/zh-CN/tutorials/godot-complete-project' },
                 { text: '高级模式', link: '/zh-CN/tutorials/advanced-patterns' }
               ]
             }

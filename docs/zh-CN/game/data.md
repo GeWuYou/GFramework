@@ -1,0 +1,588 @@
+---
+title: 数据与存档系统
+description: 数据与存档系统提供了完整的数据持久化解决方案，支持多槽位存档、版本管理和数据迁移。
+---
+
+# 数据与存档系统
+
+## 概述
+
+数据与存档系统是 GFramework.Game 中用于管理游戏数据持久化的核心组件。它提供了统一的数据加载和保存接口，支持多槽位存档管理、数据版本控制和自动迁移，让你可以轻松实现游戏存档、设置保存等功能。
+
+通过数据系统，你可以将游戏数据保存到本地存储，支持多个存档槽位，并在数据结构变化时自动进行版本迁移。
+
+**主要特性**：
+
+- 统一的数据持久化接口
+- 多槽位存档管理
+- 数据版本控制和迁移
+- 异步加载和保存
+- 批量数据操作
+- 与存储系统集成
+
+## 核心概念
+
+### 数据接口
+
+`IData` 标记数据类型：
+
+```csharp
+public interface IData
+{
+    // 标记接口，用于标识可持久化的数据
+}
+```
+
+### 数据仓库
+
+`IDataRepository` 提供通用的数据操作：
+
+```csharp
+public interface IDataRepository : IUtility
+{
+    Task<T> LoadAsync<T>(IDataLocation location) where T : class, IData, new();
+    Task SaveAsync<T>(IDataLocation location, T data) where T : class, IData;
+    Task<bool> ExistsAsync(IDataLocation location);
+    Task DeleteAsync(IDataLocation location);
+    Task SaveAllAsync(IEnumerable<(IDataLocation, IData)> dataList);
+}
+```
+
+### 存档仓库
+
+`ISaveRepository<T>` 专门用于管理游戏存档：
+
+```csharp
+public interface ISaveRepository<TSaveData> : IUtility
+    where TSaveData : class, IData, new()
+{
+    Task<bool> ExistsAsync(int slot);
+    Task<TSaveData> LoadAsync(int slot);
+    Task SaveAsync(int slot, TSaveData data);
+    Task DeleteAsync(int slot);
+    Task<IReadOnlyList<int>> ListSlotsAsync();
+}
+```
+
+### 版本化数据
+
+`IVersionedData` 支持数据版本管理：
+
+```csharp
+public interface IVersionedData : IData
+{
+    int Version { get; set; }
+}
+```
+
+## 基本用法
+
+### 定义数据类型
+
+```csharp
+using GFramework.Game.Abstractions.data;
+
+// 简单数据
+public class PlayerData : IData
+{
+    public string Name { get; set; }
+    public int Level { get; set; }
+    public int Experience { get; set; }
+}
+
+// 版本化数据
+public class SaveData : IVersionedData
+{
+    public int Version { get; set; } = 1;
+    public PlayerData Player { get; set; }
+    public DateTime SaveTime { get; set; }
+}
+```
+
+### 使用存档仓库
+
+```csharp
+public class SaveController : IController
+{
+    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
+
+    public async Task SaveGame(int slot)
+    {
+        var saveRepo = this.GetUtility<ISaveRepository<SaveData>>();
+
+        // 创建存档数据
+        var saveData = new SaveData
+        {
+            Player = new PlayerData
+            {
+                Name = "Player1",
+                Level = 10,
+                Experience = 1000
+            },
+            SaveTime = DateTime.Now
+        };
+
+        // 保存到指定槽位
+        await saveRepo.SaveAsync(slot, saveData);
+        Console.WriteLine($"游戏已保存到槽位 {slot}");
+    }
+
+    public async Task LoadGame(int slot)
+    {
+        var saveRepo = this.GetUtility<ISaveRepository<SaveData>>();
+
+        // 检查存档是否存在
+        if (!await saveRepo.ExistsAsync(slot))
+        {
+            Console.WriteLine($"槽位 {slot} 不存在存档");
+            return;
+        }
+
+        // 加载存档
+        var saveData = await saveRepo.LoadAsync(slot);
+        Console.WriteLine($"加载存档: {saveData.Player.Name}, 等级 {saveData.Player.Level}");
+    }
+
+    public async Task DeleteSave(int slot)
+    {
+        var saveRepo = this.GetUtility<ISaveRepository<SaveData>>();
+
+        // 删除存档
+        await saveRepo.DeleteAsync(slot);
+        Console.WriteLine($"已删除槽位 {slot} 的存档");
+    }
+}
+```
+
+### 注册存档仓库
+
+```csharp
+using GFramework.Game.data;
+
+public class GameArchitecture : Architecture
+{
+    protected override void Init()
+    {
+        // 获取存储系统
+        var storage = this.GetUtility<IStorage>();
+
+        // 创建存档配置
+        var saveConfig = new SaveConfiguration
+        {
+            SaveRoot = "saves",
+            SaveSlotPrefix = "slot_",
+            SaveFileName = "save.json"
+        };
+
+        // 注册存档仓库
+        var saveRepo = new SaveRepository<SaveData>(storage, saveConfig);
+        RegisterUtility<ISaveRepository<SaveData>>(saveRepo);
+    }
+}
+```
+
+## 高级用法
+
+### 列出所有存档
+
+```csharp
+public async Task ShowSaveList()
+{
+    var saveRepo = this.GetUtility<ISaveRepository<SaveData>>();
+
+    // 获取所有存档槽位
+    var slots = await saveRepo.ListSlotsAsync();
+
+    Console.WriteLine($"找到 {slots.Count} 个存档:");
+    foreach (var slot in slots)
+    {
+        var saveData = await saveRepo.LoadAsync(slot);
+        Console.WriteLine($"槽位 {slot}: {saveData.Player.Name}, " +
+                         $"等级 {saveData.Player.Level}, " +
+                         $"保存时间 {saveData.SaveTime}");
+    }
+}
+```
+
+### 自动保存
+
+```csharp
+public class AutoSaveController : IController
+{
+    private CancellationTokenSource? _autoSaveCts;
+
+    public void StartAutoSave(int slot, TimeSpan interval)
+    {
+        _autoSaveCts = new CancellationTokenSource();
+
+        Task.Run(async () =>
+        {
+            while (!_autoSaveCts.Token.IsCancellationRequested)
+            {
+                await Task.Delay(interval, _autoSaveCts.Token);
+
+                try
+                {
+                    await SaveGame(slot);
+                    Console.WriteLine("自动保存完成");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"自动保存失败: {ex.Message}");
+                }
+            }
+        }, _autoSaveCts.Token);
+    }
+
+    public void StopAutoSave()
+    {
+        _autoSaveCts?.Cancel();
+        _autoSaveCts?.Dispose();
+        _autoSaveCts = null;
+    }
+
+    private async Task SaveGame(int slot)
+    {
+        var saveRepo = this.GetUtility<ISaveRepository<SaveData>>();
+        var saveData = CreateSaveData();
+        await saveRepo.SaveAsync(slot, saveData);
+    }
+
+    private SaveData CreateSaveData()
+    {
+        // 从游戏状态创建存档数据
+        return new SaveData();
+    }
+}
+```
+
+### 数据版本迁移
+
+```csharp
+// 版本 1 的数据
+public class SaveDataV1 : IVersionedData
+{
+    public int Version { get; set; } = 1;
+    public string PlayerName { get; set; }
+    public int Level { get; set; }
+}
+
+// 版本 2 的数据（添加了新字段）
+public class SaveDataV2 : IVersionedData
+{
+    public int Version { get; set; } = 2;
+    public string PlayerName { get; set; }
+    public int Level { get; set; }
+    public int Experience { get; set; }  // 新增字段
+    public DateTime LastPlayTime { get; set; }  // 新增字段
+}
+
+// 数据迁移器
+public class SaveDataMigrator
+{
+    public SaveDataV2 Migrate(SaveDataV1 oldData)
+    {
+        return new SaveDataV2
+        {
+            Version = 2,
+            PlayerName = oldData.PlayerName,
+            Level = oldData.Level,
+            Experience = oldData.Level * 100,  // 根据等级计算经验
+            LastPlayTime = DateTime.Now
+        };
+    }
+}
+
+// 加载时自动迁移
+public async Task<SaveDataV2> LoadWithMigration(int slot)
+{
+    var saveRepo = this.GetUtility<ISaveRepository<SaveDataV2>>();
+    var data = await saveRepo.LoadAsync(slot);
+
+    if (data.Version < 2)
+    {
+        // 需要迁移
+        var oldData = data as SaveDataV1;
+        var migrator = new SaveDataMigrator();
+        var newData = migrator.Migrate(oldData);
+
+        // 保存迁移后的数据
+        await saveRepo.SaveAsync(slot, newData);
+        return newData;
+    }
+
+    return data;
+}
+```
+
+### 使用数据仓库
+
+```csharp
+public class SettingsController : IController
+{
+    public async Task SaveSettings()
+    {
+        var dataRepo = this.GetUtility<IDataRepository>();
+
+        var settings = new GameSettings
+        {
+            MasterVolume = 0.8f,
+            MusicVolume = 0.6f,
+            SfxVolume = 0.7f
+        };
+
+        // 定义数据位置
+        var location = new DataLocation("settings", "game_settings.json");
+
+        // 保存设置
+        await dataRepo.SaveAsync(location, settings);
+    }
+
+    public async Task<GameSettings> LoadSettings()
+    {
+        var dataRepo = this.GetUtility<IDataRepository>();
+        var location = new DataLocation("settings", "game_settings.json");
+
+        // 检查是否存在
+        if (!await dataRepo.ExistsAsync(location))
+        {
+            return new GameSettings(); // 返回默认设置
+        }
+
+        // 加载设置
+        return await dataRepo.LoadAsync<GameSettings>(location);
+    }
+}
+```
+
+### 批量保存数据
+
+```csharp
+public async Task SaveAllGameData()
+{
+    var dataRepo = this.GetUtility<IDataRepository>();
+
+    var dataList = new List<(IDataLocation, IData)>
+    {
+        (new DataLocation("player", "profile.json"), playerData),
+        (new DataLocation("inventory", "items.json"), inventoryData),
+        (new DataLocation("quests", "progress.json"), questData)
+    };
+
+    // 批量保存
+    await dataRepo.SaveAllAsync(dataList);
+    Console.WriteLine("所有数据已保存");
+}
+```
+
+### 存档备份
+
+```csharp
+public async Task BackupSave(int slot)
+{
+    var saveRepo = this.GetUtility<ISaveRepository<SaveData>>();
+
+    if (!await saveRepo.ExistsAsync(slot))
+    {
+        Console.WriteLine("存档不存在");
+        return;
+    }
+
+    // 加载原存档
+    var saveData = await saveRepo.LoadAsync(slot);
+
+    // 保存到备份槽位
+    int backupSlot = slot + 100;
+    await saveRepo.SaveAsync(backupSlot, saveData);
+
+    Console.WriteLine($"存档已备份到槽位 {backupSlot}");
+}
+
+public async Task RestoreBackup(int slot)
+{
+    int backupSlot = slot + 100;
+    var saveRepo = this.GetUtility<ISaveRepository<SaveData>>();
+
+    if (!await saveRepo.ExistsAsync(backupSlot))
+    {
+        Console.WriteLine("备份不存在");
+        return;
+    }
+
+    // 加载备份
+    var backupData = await saveRepo.LoadAsync(backupSlot);
+
+    // 恢复到原槽位
+    await saveRepo.SaveAsync(slot, backupData);
+
+    Console.WriteLine($"已从备份恢复到槽位 {slot}");
+}
+```
+
+## 最佳实践
+
+1. **使用版本化数据**：为存档数据实现 `IVersionedData`
+   ```csharp
+   ✓ public class SaveData : IVersionedData { public int Version { get; set; } = 1; }
+   ✗ public class SaveData : IData { } // 无法进行版本管理
+   ```
+
+2. **定期自动保存**：避免玩家数据丢失
+   ```csharp
+   // 每 5 分钟自动保存
+   StartAutoSave(currentSlot, TimeSpan.FromMinutes(5));
+   ```
+
+3. **保存前验证数据**：确保数据完整性
+   ```csharp
+   public async Task SaveGame(int slot)
+   {
+       var saveData = CreateSaveData();
+
+       if (!ValidateSaveData(saveData))
+       {
+           throw new InvalidOperationException("存档数据无效");
+       }
+
+       await saveRepo.SaveAsync(slot, saveData);
+   }
+   ```
+
+4. **处理保存失败**：使用 try-catch 捕获异常
+   ```csharp
+   try
+   {
+       await saveRepo.SaveAsync(slot, saveData);
+   }
+   catch (Exception ex)
+   {
+       Logger.Error($"保存失败: {ex.Message}");
+       ShowErrorMessage("保存失败，请重试");
+   }
+   ```
+
+5. **提供多个存档槽位**：让玩家可以管理多个存档
+   ```csharp
+   // 支持 10 个存档槽位
+   for (int i = 1; i <= 10; i++)
+   {
+       if (await saveRepo.ExistsAsync(i))
+       {
+           ShowSaveSlot(i);
+       }
+   }
+   ```
+
+6. **在关键时刻保存**：场景切换、关卡完成等
+   ```csharp
+   public async Task OnLevelComplete()
+   {
+       // 关卡完成时自动保存
+       await SaveGame(currentSlot);
+   }
+   ```
+
+## 常见问题
+
+### 问题：如何实现多个存档槽位？
+
+**解答**：
+使用 `ISaveRepository<T>` 的槽位参数：
+
+```csharp
+// 保存到不同槽位
+await saveRepo.SaveAsync(1, saveData);  // 槽位 1
+await saveRepo.SaveAsync(2, saveData);  // 槽位 2
+await saveRepo.SaveAsync(3, saveData);  // 槽位 3
+```
+
+### 问题：如何处理数据版本升级？
+
+**解答**：
+实现 `IVersionedData` 并在加载时检查版本：
+
+```csharp
+var data = await saveRepo.LoadAsync(slot);
+if (data.Version < CurrentVersion)
+{
+    data = MigrateData(data);
+    await saveRepo.SaveAsync(slot, data);
+}
+```
+
+### 问题：存档数据保存在哪里？
+
+**解答**：
+由存储系统决定，通常在：
+
+- Windows: `%AppData%/GameName/saves/`
+- Linux: `~/.local/share/GameName/saves/`
+- macOS: `~/Library/Application Support/GameName/saves/`
+
+### 问题：如何实现云存档？
+
+**解答**：
+实现自定义的 `IStorage`，将数据保存到云端：
+
+```csharp
+public class CloudStorage : IStorage
+{
+    public async Task WriteAsync(string path, byte[] data)
+    {
+        await UploadToCloud(path, data);
+    }
+
+    public async Task<byte[]> ReadAsync(string path)
+    {
+        return await DownloadFromCloud(path);
+    }
+}
+```
+
+### 问题：如何加密存档数据？
+
+**解答**：
+在保存和加载时进行加密/解密：
+
+```csharp
+public async Task SaveEncrypted(int slot, SaveData data)
+{
+    var json = JsonSerializer.Serialize(data);
+    var encrypted = Encrypt(json);
+    await storage.WriteAsync(path, encrypted);
+}
+
+public async Task<SaveData> LoadEncrypted(int slot)
+{
+    var encrypted = await storage.ReadAsync(path);
+    var json = Decrypt(encrypted);
+    return JsonSerializer.Deserialize<SaveData>(json);
+}
+```
+
+### 问题：存档损坏怎么办？
+
+**解答**：
+实现备份和恢复机制：
+
+```csharp
+public async Task SaveWithBackup(int slot, SaveData data)
+{
+    // 先备份旧存档
+    if (await saveRepo.ExistsAsync(slot))
+    {
+        var oldData = await saveRepo.LoadAsync(slot);
+        await saveRepo.SaveAsync(slot + 100, oldData);
+    }
+
+    // 保存新存档
+    await saveRepo.SaveAsync(slot, data);
+}
+```
+
+## 相关文档
+
+- [设置系统](/zh-CN/game/setting) - 游戏设置管理
+- [场景系统](/zh-CN/game/scene) - 场景切换时保存
+- [存档系统实现教程](/zh-CN/tutorials/save-system) - 完整示例
+- [Godot 集成](/zh-CN/godot/index) - Godot 中的数据管理
