@@ -46,6 +46,9 @@ public sealed class ArchEcsModule : IArchEcsModule
 
         _container = container;
 
+        // 注册模块自身
+        container.RegisterPlurality(this);
+
         // 创建并注册 World
         _world = World.Create();
         container.Register(_world);
