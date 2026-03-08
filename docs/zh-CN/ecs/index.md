@@ -283,15 +283,9 @@ public class ScoreSystem : AbstractSystem
 ## 下一步
 
 - [Arch ECS 集成指南](./arch.md) - 详细的 Arch ECS 使用文档
-- [ECS 最佳实践](./best-practices.md) - ECS 设计模式和优化技巧
-- [性能优化](./performance.md) - ECS 性能优化指南
 
 ## 相关资源
 
 - [Architecture 架构系统](../core/architecture.md)
 - [System 系统](../core/system.md)
 - [事件系统](../core/events.md)
-
----
-
-**许可证**：MIT License

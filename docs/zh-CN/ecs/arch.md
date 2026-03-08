@@ -109,7 +109,7 @@ public struct Health(float current, float max)
 
 ### 4. 创建系统
 
-系统继承自 `ArchSystemAdapter<T>`：
+系统继承自 `ArchSystemAdapter&lt;T&gt;`：
 
 ```csharp
 using Arch.Core;
@@ -349,9 +349,9 @@ world.Clear();
 
 ## 系统适配器
 
-### ArchSystemAdapter<T>
+### ArchSystemAdapter&lt;T&gt;
 
-`ArchSystemAdapter<T>` 桥接 Arch.System.ISystem<T> 到 GFramework 架构：
+`ArchSystemAdapter&lt;T&gt;` 桥接 Arch.System.ISystem&lt;T&gt; 到 GFramework 架构：
 
 ```csharp
 public sealed class MySystem : ArchSystemAdapter<float>
@@ -415,7 +415,7 @@ public sealed class MySystem : ArchSystemAdapter<float>
 
 ### 访问框架服务
 
-`ArchSystemAdapter<T>` 继承自 `AbstractSystem`，可以使用所有 GFramework 的扩展方法：
+`ArchSystemAdapter&lt;T&gt;` 继承自 `AbstractSystem`，可以使用所有 GFramework 的扩展方法：
 
 ```csharp
 public sealed class ServiceAccessSystem : ArchSystemAdapter<float>
@@ -743,9 +743,3 @@ protected override void OnUpdate(in float deltaTime)
 
 - [Arch.Core 官方文档](https://github.com/genaray/Arch)
 - [ECS 概述](./index.md)
-- [ECS 最佳实践](./best-practices.md)
-- [性能优化指南](./performance.md)
-
----
-
-**许可证**：MIT License
