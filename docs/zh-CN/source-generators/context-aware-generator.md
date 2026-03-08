@@ -227,6 +227,32 @@ public partial class GameFlowController : IController
 }
 ```
 
+### 与 IController 配合使用
+
+在 Godot 项目中，控制器通常同时实现 `IController` 和使用 `[ContextAware]`：
+
+```csharp
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class PlayerController : Node, IController
+{
+    public override void _Ready()
+    {
+        // Context 属性由 [ContextAware] 自动生成
+        var playerModel = Context.GetModel<PlayerModel>();
+        var combatSystem = Context.GetSystem<CombatSystem>();
+    }
+}
+```
+
+**说明**：
+
+- `IController` 是标记接口，标识这是一个控制器
+- `[ContextAware]` 提供架构访问能力
+- 两者配合使用是推荐的模式
+
 ### 何时继承 ContextAwareBase
 
 如果类需要更多框架功能（如生命周期管理），应继承 `ContextAwareBase`：

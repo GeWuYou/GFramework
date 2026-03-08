@@ -126,13 +126,15 @@ public class MainMenuPage : IUiPage
 使用 UI 路由进行导航：
 
 ```csharp
-public class UiController : IController
-{
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
 
+[ContextAware]
+public partial class UiController : IController
+{
     public async Task ShowSettings()
     {
-        var uiRouter = this.GetSystem<IUiRouter>();
+        var uiRouter = Context.GetSystem<IUiRouter>();
 
         // 压入设置页面（保留当前页面）
         await uiRouter.PushAsync("Settings");
@@ -140,7 +142,7 @@ public class UiController : IController
 
     public async Task CloseSettings()
     {
-        var uiRouter = this.GetSystem<IUiRouter>();
+        var uiRouter = Context.GetSystem<IUiRouter>();
 
         // 弹出当前页面（返回上一页）
         await uiRouter.PopAsync();
@@ -148,7 +150,7 @@ public class UiController : IController
 
     public async Task ShowMainMenu()
     {
-        var uiRouter = this.GetSystem<IUiRouter>();
+        var uiRouter = Context.GetSystem<IUiRouter>();
 
         // 替换所有页面（清空 UI 栈）
         await uiRouter.ReplaceAsync("MainMenu");
@@ -159,13 +161,12 @@ public class UiController : IController
 ### 显示不同层级的 UI
 
 ```csharp
-public class UiController : IController
+[ContextAware]
+public partial class UiController : IController
 {
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
-
     public void ShowDialog()
     {
-        var uiRouter = this.GetSystem<IUiRouter>();
+        var uiRouter = Context.GetSystem<IUiRouter>();
 
         // 在 Modal 层显示对话框
         var handle = uiRouter.Show("ConfirmDialog", UiLayer.Modal);
@@ -173,7 +174,7 @@ public class UiController : IController
 
     public void ShowToast(string message)
     {
-        var uiRouter = this.GetSystem<IUiRouter>();
+        var uiRouter = Context.GetSystem<IUiRouter>();
 
         // 在 Toast 层显示提示
         var handle = uiRouter.Show("ToastMessage", UiLayer.Toast,
@@ -182,7 +183,7 @@ public class UiController : IController
 
     public void ShowLoading()
     {
-        var uiRouter = this.GetSystem<IUiRouter>();
+        var uiRouter = Context.GetSystem<IUiRouter>();
 
         // 在 Topmost 层显示加载界面
         var handle = uiRouter.Show("LoadingScreen", UiLayer.Topmost);
@@ -303,13 +304,17 @@ uiRouter.RegisterHandler(new FadeTransitionHandler());
 ### UI 句柄管理
 
 ```csharp
-public class DialogController : IController
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class DialogController : IController
 {
     private UiHandle? _dialogHandle;
 
     public void ShowDialog()
     {
-        var uiRouter = this.GetSystem<IUiRouter>();
+        var uiRouter = Context.GetSystem<IUiRouter>();
 
         // 显示对话框并保存句柄
         _dialogHandle = uiRouter.Show("ConfirmDialog", UiLayer.Modal);
@@ -319,7 +324,7 @@ public class DialogController : IController
     {
         if (_dialogHandle.HasValue)
         {
-            var uiRouter = this.GetSystem<IUiRouter>();
+            var uiRouter = Context.GetSystem<IUiRouter>();
 
             // 使用句柄关闭对话框
             uiRouter.Hide(_dialogHandle.Value, UiLayer.Modal, destroy: true);
@@ -332,11 +337,15 @@ public class DialogController : IController
 ### UI 栈管理
 
 ```csharp
-public class NavigationController : IController
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class NavigationController : IController
 {
     public void ShowUiStack()
     {
-        var uiRouter = this.GetSystem<IUiRouter>();
+        var uiRouter = Context.GetSystem<IUiRouter>();
 
         Console.WriteLine($"UI 栈深度: {uiRouter.Count}");
 
@@ -349,13 +358,13 @@ public class NavigationController : IController
 
     public bool IsSettingsOpen()
     {
-        var uiRouter = this.GetSystem<IUiRouter>();
+        var uiRouter = Context.GetSystem<IUiRouter>();
         return uiRouter.Contains("Settings");
     }
 
     public bool IsTopPage(string uiKey)
     {
-        var uiRouter = this.GetSystem<IUiRouter>();
+        var uiRouter = Context.GetSystem<IUiRouter>();
         return uiRouter.IsTop(uiKey);
     }
 }
@@ -364,11 +373,15 @@ public class NavigationController : IController
 ### 多层级 UI 管理
 
 ```csharp
-public class LayerController : IController
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class LayerController : IController
 {
     public void ShowMultipleToasts()
     {
-        var uiRouter = this.GetSystem<IUiRouter>();
+        var uiRouter = Context.GetSystem<IUiRouter>();
 
         // Toast 层支持重入，可以同时显示多个
         uiRouter.Show("Toast1", UiLayer.Toast);
@@ -378,7 +391,7 @@ public class LayerController : IController
 
     public void ClearAllToasts()
     {
-        var uiRouter = this.GetSystem<IUiRouter>();
+        var uiRouter = Context.GetSystem<IUiRouter>();
 
         // 清空 Toast 层的所有 UI
         uiRouter.ClearLayer(UiLayer.Toast, destroy: true);
@@ -386,7 +399,7 @@ public class LayerController : IController
 
     public void HideAllDialogs()
     {
-        var uiRouter = this.GetSystem<IUiRouter>();
+        var uiRouter = Context.GetSystem<IUiRouter>();
 
         // 隐藏 Modal 层的所有对话框
         uiRouter.HideByKey("ConfirmDialog", UiLayer.Modal, hideAll: true);

@@ -128,13 +128,15 @@ public class GameArchitecture : Architecture
 ### 切换状态
 
 ```csharp
-public class GameController : IController
-{
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
 
+[ContextAware]
+public partial class GameController : IController
+{
     public async Task StartGame()
     {
-        var stateMachine = this.GetSystem<IStateMachineSystem>();
+        var stateMachine = Context.GetSystem<IStateMachineSystem>();
 
         // 切换到游戏状态
         var success = await stateMachine.ChangeToAsync<GameplayState>();
@@ -218,11 +220,15 @@ public class LoadingState : AsyncContextAwareStateBase
 ### 状态历史和回退
 
 ```csharp
-public class GameController : IController
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class GameController : IController
 {
     public async Task NavigateBack()
     {
-        var stateMachine = this.GetSystem<IStateMachineSystem>();
+        var stateMachine = Context.GetSystem<IStateMachineSystem>();
 
         // 回退到上一个状态
         var success = await stateMachine.GoBackAsync();
@@ -235,7 +241,7 @@ public class GameController : IController
 
     public void ShowHistory()
     {
-        var stateMachine = this.GetSystem<IStateMachineSystem>();
+        var stateMachine = Context.GetSystem<IStateMachineSystem>();
 
         // 获取状态历史
         var history = stateMachine.GetStateHistory();

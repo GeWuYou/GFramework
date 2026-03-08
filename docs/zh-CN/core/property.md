@@ -198,20 +198,22 @@ public class PlayerModel : AbstractModel
 ### UI 数据绑定
 
 ```csharp
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
 public partial class PlayerUI : Control, IController
 {
     [Export] private Label _healthLabel;
     [Export] private Label _nameLabel;
     [Export] private ProgressBar _healthBar;
-    
+
     private IUnRegisterList _unregisterList = new UnRegisterList();
-    
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
-    
+
     public override void _Ready()
     {
-        var playerModel = this.GetModel<PlayerModel>();
-        
+        var playerModel = Context.GetModel<PlayerModel>();
+
         // 绑定生命值到UI（立即显示当前值）
         playerModel.Health
             .RegisterWithInitValue(health =>
@@ -220,7 +222,7 @@ public partial class PlayerUI : Control, IController
                 _healthBar.Value = (float)health / playerModel.MaxHealth.Value * 100;
             })
             .AddToUnregisterList(_unregisterList);
-        
+
         // 绑定最大生命值
         playerModel.MaxHealth
             .RegisterWithInitValue(maxHealth =>
@@ -228,7 +230,7 @@ public partial class PlayerUI : Control, IController
                 _healthBar.MaxValue = maxHealth;
             })
             .AddToUnregisterList(_unregisterList);
-        
+
         // 绑定名称
         playerModel.Name
             .RegisterWithInitValue(name =>
@@ -236,7 +238,7 @@ public partial class PlayerUI : Control, IController
                 _nameLabel.Text = name;
             })
             .AddToUnregisterList(_unregisterList);
-        
+
         // 绑定位置（仅用于调试显示）
         playerModel.Position
             .RegisterWithInitValue(pos =>
@@ -248,7 +250,7 @@ public partial class PlayerUI : Control, IController
             })
             .AddToUnregisterList(_unregisterList);
     }
-    
+
     public override void _ExitTree()
     {
         _unregisterList.UnRegisterAll();
@@ -269,18 +271,19 @@ public class SettingsModel : AbstractModel
 }
 
 // UI Controller
+[ContextAware]
 public partial class VolumeSlider : HSlider, IController
 {
     private BindableProperty<float> _volumeProperty;
-    
+
     public override void _Ready()
     {
-        _volumeProperty = this.GetModel<SettingsModel>().MasterVolume;
-        
+        _volumeProperty = Context.GetModel<SettingsModel>().MasterVolume;
+
         // Model -> UI
         _volumeProperty.RegisterWithInitValue(vol => Value = vol)
             .UnRegisterWhenNodeExitTree(this);
-        
+
         // UI -> Model
         ValueChanged += newValue => _volumeProperty.Value = (float)newValue;
     }
@@ -339,12 +342,16 @@ public class PlayerModel : AbstractModel
 ### 4. 条件监听
 
 ```c#
-public class CombatController : Node, IController
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class CombatController : Node, IController
 {
     public override void _Ready()
     {
-        var playerModel = this.GetModel<PlayerModel>();
-        
+        var playerModel = Context.GetModel<PlayerModel>();
+
         // 只在生命值低于30%时显示警告
         playerModel.Health.Register(hp =>
         {

@@ -323,24 +323,23 @@ namespace MyGame.Systems
 
 ```csharp
 using GFramework.Core.Abstractions.pause;
-using GFramework.Core.extensions;
 using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
 
 namespace MyGame.Controllers
 {
     /// <summary>
     /// 暂停控制器，管理复杂的暂停场景
     /// </summary>
-    public class PauseController : IController
+    [ContextAware]
+    public partial class PauseController : IController
     {
-        public IArchitecture GetArchitecture() => GameArchitecture.Interface;
-
         /// <summary>
         /// 显示暂停状态信息
         /// </summary>
         public void ShowPauseStatus()
         {
-            var pauseManager = this.GetUtility<IPauseStackManager>();
+            var pauseManager = Context.GetUtility<IPauseStackManager>();
 
             Console.WriteLine("\n=== 暂停状态 ===");
             Console.WriteLine($"全局暂停: {pauseManager.IsPaused(PauseGroup.Global)}");
@@ -370,7 +369,7 @@ namespace MyGame.Controllers
         /// </summary>
         public void TestNestedPause()
         {
-            var pauseManager = this.GetUtility<IPauseStackManager>();
+            var pauseManager = Context.GetUtility<IPauseStackManager>();
 
             Console.WriteLine("--- 测试嵌套暂停 ---\n");
 
@@ -410,7 +409,7 @@ namespace MyGame.Controllers
         /// </summary>
         public void TestPauseScope()
         {
-            var pauseManager = this.GetUtility<IPauseStackManager>();
+            var pauseManager = Context.GetUtility<IPauseStackManager>();
 
             Console.WriteLine("--- 测试暂停作用域 ---\n");
 
@@ -438,7 +437,7 @@ namespace MyGame.Controllers
         /// </summary>
         public void EmergencyClearAll()
         {
-            var pauseManager = this.GetUtility<IPauseStackManager>();
+            var pauseManager = Context.GetUtility<IPauseStackManager>();
 
             Console.WriteLine("⚠️ 紧急清除所有暂停状态");
             pauseManager.ClearAll();
@@ -451,7 +450,7 @@ namespace MyGame.Controllers
         /// </summary>
         public void ClearGroup(PauseGroup group)
         {
-            var pauseManager = this.GetUtility<IPauseStackManager>();
+            var pauseManager = Context.GetUtility<IPauseStackManager>();
 
             Console.WriteLine($"清除 {group} 组的所有暂停");
             pauseManager.ClearGroup(group);
@@ -664,8 +663,8 @@ namespace MyGame
 
 ```csharp
 using GFramework.Core.Abstractions.pause;
-using GFramework.Core.extensions;
 using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
 using System.Threading.Tasks;
 
 namespace MyGame.Controllers
@@ -673,10 +672,9 @@ namespace MyGame.Controllers
     /// <summary>
     /// 游戏场景控制器
     /// </summary>
-    public class GameSceneController : IController
+    [ContextAware]
+    public partial class GameSceneController : IController
     {
-        public IArchitecture GetArchitecture() => GameArchitecture.Interface;
-
         private PauseToken? _pauseMenuToken;
         private PauseToken? _dialogToken;
 
@@ -685,7 +683,7 @@ namespace MyGame.Controllers
         /// </summary>
         public void TogglePauseMenu()
         {
-            var pauseManager = this.GetUtility<IPauseStackManager>();
+            var pauseManager = Context.GetUtility<IPauseStackManager>();
 
             if (_pauseMenuToken.HasValue)
             {
@@ -707,7 +705,7 @@ namespace MyGame.Controllers
         /// </summary>
         public void ShowDialog(string message)
         {
-            var pauseManager = this.GetUtility<IPauseStackManager>();
+            var pauseManager = Context.GetUtility<IPauseStackManager>();
 
             // 对话框使用全局暂停
             _dialogToken = pauseManager.Push($"对话框: {message}", PauseGroup.Global);
@@ -725,7 +723,7 @@ namespace MyGame.Controllers
                 return;
             }
 
-            var pauseManager = this.GetUtility<IPauseStackManager>();
+            var pauseManager = Context.GetUtility<IPauseStackManager>();
             pauseManager.Pop(_dialogToken.Value);
             _dialogToken = null;
             Console.WriteLine("对话框已关闭");
@@ -736,7 +734,7 @@ namespace MyGame.Controllers
         /// </summary>
         public async Task RunGameLoop()
         {
-            var pauseManager = this.GetUtility<IPauseStackManager>();
+            var pauseManager = Context.GetUtility<IPauseStackManager>();
             int frame = 0;
 
             Console.WriteLine("\n=== 游戏循环开始 ===\n");

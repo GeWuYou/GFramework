@@ -164,13 +164,15 @@ public class GameSceneRegistry : IGameSceneRegistry
 使用场景路由进行导航：
 
 ```csharp
-public class GameController : IController
-{
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
 
+[ContextAware]
+public partial class GameController : IController
+{
     public async Task StartGame()
     {
-        var sceneRouter = this.GetSystem<ISceneRouter>();
+        var sceneRouter = Context.GetSystem<ISceneRouter>();
 
         // 替换当前场景（清空场景栈）
         await sceneRouter.ReplaceAsync("Gameplay");
@@ -178,7 +180,7 @@ public class GameController : IController
 
     public async Task ShowPauseMenu()
     {
-        var sceneRouter = this.GetSystem<ISceneRouter>();
+        var sceneRouter = Context.GetSystem<ISceneRouter>();
 
         // 压入新场景（保留当前场景）
         await sceneRouter.PushAsync("Pause");
@@ -186,7 +188,7 @@ public class GameController : IController
 
     public async Task ClosePauseMenu()
     {
-        var sceneRouter = this.GetSystem<ISceneRouter>();
+        var sceneRouter = Context.GetSystem<ISceneRouter>();
 
         // 弹出当前场景（恢复上一个场景）
         await sceneRouter.PopAsync();
@@ -350,13 +352,15 @@ sceneRouter.AddTransitionHandler(new FadeTransitionHandler());
 ### 场景栈管理
 
 ```csharp
-public class SceneNavigationController : IController
-{
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
 
+[ContextAware]
+public partial class SceneNavigationController : IController
+{
     public async Task NavigateToSettings()
     {
-        var sceneRouter = this.GetSystem<ISceneRouter>();
+        var sceneRouter = Context.GetSystem<ISceneRouter>();
 
         // 检查场景是否已在栈中
         if (sceneRouter.Contains("Settings"))
@@ -371,7 +375,7 @@ public class SceneNavigationController : IController
 
     public void ShowSceneStack()
     {
-        var sceneRouter = this.GetSystem<ISceneRouter>();
+        var sceneRouter = Context.GetSystem<ISceneRouter>();
 
         Console.WriteLine("当前场景栈:");
         foreach (var scene in sceneRouter.Stack)
@@ -382,7 +386,7 @@ public class SceneNavigationController : IController
 
     public async Task ReturnToMainMenu()
     {
-        var sceneRouter = this.GetSystem<ISceneRouter>();
+        var sceneRouter = Context.GetSystem<ISceneRouter>();
 
         // 清空所有场景并加载主菜单
         await sceneRouter.ClearAsync();
@@ -432,13 +436,15 @@ public class GameplayScene : IScene
 ### 场景预加载
 
 ```csharp
-public class PreloadController : IController
-{
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
 
+[ContextAware]
+public partial class PreloadController : IController
+{
     public async Task PreloadNextLevel()
     {
-        var sceneFactory = this.GetUtility<ISceneFactory>();
+        var sceneFactory = Context.GetUtility<ISceneFactory>();
 
         // 预加载下一关场景
         var scene = sceneFactory.Create("Level2");
@@ -556,7 +562,7 @@ await sceneRouter.ReplaceAsync("Gameplay", new GameplayEnterParam
 2. **通过 Model**：
 
 ```csharp
-var gameModel = this.GetModel<GameModel>();
+var gameModel = Context.GetModel<GameModel>();
 gameModel.CurrentLevel = 5;
 await sceneRouter.ReplaceAsync("Gameplay");
 ```
@@ -564,7 +570,7 @@ await sceneRouter.ReplaceAsync("Gameplay");
 3. **通过事件**：
 
 ```csharp
-this.SendEvent(new LevelSelectedEvent { Level = 5 });
+Context.SendEvent(new LevelSelectedEvent { Level = 5 });
 await sceneRouter.ReplaceAsync("Gameplay");
 ```
 
@@ -598,7 +604,7 @@ public class LoadingScreenHandler : ISceneTransitionHandler
 ```csharp
 public async Task ChangeScene(string sceneKey)
 {
-    var sceneRouter = this.GetSystem<ISceneRouter>();
+    var sceneRouter = Context.GetSystem<ISceneRouter>();
 
     if (sceneRouter.IsTransitioning)
     {
@@ -635,7 +641,7 @@ catch (Exception ex)
 
 ```csharp
 // 在当前场景中预加载下一个场景
-var factory = this.GetUtility<ISceneFactory>();
+var factory = Context.GetUtility<ISceneFactory>();
 var nextScene = factory.Create("NextLevel");
 await nextScene.OnLoadAsync(null);
 

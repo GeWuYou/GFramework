@@ -164,8 +164,8 @@ public static partial class MathHelper
 ### 基础使用
 
 ```csharp
-using GFramework.SourceGenerators.Abstractions.rule;
 using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
 
 [ContextAware]
 public partial class PlayerController : IController
@@ -272,6 +272,10 @@ public async Task TestPlayerController()
 ### 与其他属性组合
 
 ```csharp
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.logging;
+using GFramework.SourceGenerators.Abstractions.rule;
+
 [Log]
 [ContextAware]
 public partial class AdvancedController : IController
@@ -279,10 +283,10 @@ public partial class AdvancedController : IController
     public void ProcessRequest()
     {
         Logger.Info("Processing request");
-        
+
         var model = Context.GetModel<PlayerModel>();
         Logger.Info($"Player health: {model.Health}");
-        
+
         Context.SendCommand(new ProcessCommand());
         Logger.Debug("Command sent");
     }
@@ -506,8 +510,9 @@ public class InefficientController : IController
 ### 完整的游戏控制器示例
 
 ```csharp
-using GFramework.SourceGenerators.Attributes;
-using GFramework.Core.Abstractions;
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.logging;
+using GFramework.SourceGenerators.Abstractions.rule;
 
 [Log]
 [ContextAware]
@@ -515,24 +520,24 @@ public partial class GameController : Node, IController
 {
     private PlayerModel _playerModel;
     private CombatSystem _combatSystem;
-    
+
     public override void _Ready()
     {
         // 初始化模型和系统引用
         _playerModel = Context.GetModel<PlayerModel>();
         _combatSystem = Context.GetSystem<CombatSystem>();
-        
+
         // 监听事件
         this.RegisterEvent<PlayerInputEvent>(OnPlayerInput)
             .UnRegisterWhenNodeExitTree(this);
-            
+
         Logger.Info("Game controller initialized");
     }
-    
+
     private void OnPlayerInput(PlayerInputEvent e)
     {
         Logger.Debug($"Processing player input: {e.Action}");
-        
+
         switch (e.Action)
         {
             case "attack":
@@ -543,7 +548,7 @@ public partial class GameController : Node, IController
                 break;
         }
     }
-    
+
     private void HandleAttack()
     {
         if (_playerModel.CanAttack())
@@ -557,7 +562,7 @@ public partial class GameController : Node, IController
             Logger.Warning("Player cannot attack - cooldown");
         }
     }
-    
+
     private void HandleDefend()
     {
         if (_playerModel.CanDefend())
@@ -595,16 +600,20 @@ public enum CharacterState
     Dead
 }
 
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.logging;
+using GFramework.SourceGenerators.Abstractions.rule;
+
 [Log]
 [ContextAware]
 public partial class CharacterController : Node, IController
 {
     private CharacterModel _characterModel;
-    
+
     public override void _Ready()
     {
         _characterModel = Context.GetModel<CharacterModel>();
-        
+
         // 监听状态变化
         _characterModel.State.Register(OnStateChanged);
     }

@@ -94,6 +94,8 @@ public class GameArchitecture : Architecture
 使用泛型 API 序列化对象：
 
 ```csharp
+using GFramework.SourceGenerators.Abstractions.rule;
+
 public class PlayerData
 {
     public string Name { get; set; }
@@ -101,13 +103,12 @@ public class PlayerData
     public int Experience { get; set; }
 }
 
-public class SaveController : IController
+[ContextAware]
+public partial class SaveController : IController
 {
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
-
     public void SavePlayer()
     {
-        var serializer = this.GetUtility<ISerializer>();
+        var serializer = Context.GetUtility<ISerializer>();
 
         var player = new PlayerData
         {
@@ -131,7 +132,7 @@ public class SaveController : IController
 ```csharp
 public void LoadPlayer()
 {
-    var serializer = this.GetUtility<ISerializer>();
+    var serializer = Context.GetUtility<ISerializer>();
 
     string json = "{\"Name\":\"Player1\",\"Level\":10,\"Experience\":1000}";
 
@@ -149,7 +150,7 @@ public void LoadPlayer()
 ```csharp
 public void SerializeRuntimeType()
 {
-    var serializer = this.GetUtility<IRuntimeTypeSerializer>();
+    var serializer = Context.GetUtility<IRuntimeTypeSerializer>();
 
     object data = new PlayerData { Name = "Player1", Level = 10 };
     Type dataType = data.GetType();
@@ -174,15 +175,15 @@ public void SerializeRuntimeType()
 ```csharp
 using GFramework.Core.Abstractions.storage;
 using GFramework.Game.storage;
+using GFramework.SourceGenerators.Abstractions.rule;
 
-public class DataManager : IController
+[ContextAware]
+public partial class DataManager : IController
 {
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
-
     public async Task SaveData()
     {
-        var serializer = this.GetUtility<ISerializer>();
-        var storage = this.GetUtility<IStorage>();
+        var serializer = Context.GetUtility<ISerializer>();
+        var storage = Context.GetUtility<IStorage>();
 
         var gameData = new GameData
         {
@@ -199,8 +200,8 @@ public class DataManager : IController
 
     public async Task<GameData> LoadData()
     {
-        var serializer = this.GetUtility<ISerializer>();
-        var storage = this.GetUtility<IStorage>();
+        var serializer = Context.GetUtility<ISerializer>();
+        var storage = Context.GetUtility<IStorage>();
 
         // 从存储读取
         string json = await storage.ReadAsync<string>("game_data");

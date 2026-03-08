@@ -144,12 +144,14 @@ public class LoadPlayerDataQuery : AbstractAsyncQuery<LoadPlayerDataInput, Playe
 ### 2. 发送查询
 
 ```csharp
-public class ShopUI : IController
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class ShopUI : IController
 {
     [Export] private Button _buyButton;
     [Export] private int _itemPrice = 100;
-
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
 
     public void OnReady()
     {
@@ -160,12 +162,12 @@ public class ShopUI : IController
     {
         // 查询玩家金币
         var query = new GetPlayerGoldQuery { Input = new GetPlayerGoldInput() };
-        int playerGold = this.SendQuery(query);
+        int playerGold = Context.SendQuery(query);
 
         if (playerGold >= _itemPrice)
         {
             // 发送购买命令
-            this.SendCommand(new BuyItemCommand { Input = new BuyItemInput { ItemId = "sword_01" } });
+            Context.SendCommand(new BuyItemCommand { Input = new BuyItemInput { ItemId = "sword_01" } });
         }
         else
         {

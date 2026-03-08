@@ -622,13 +622,14 @@ public class SettingsSystem : AbstractSystem
 ### 在 Controller 中使用
 
 ```csharp
-public class SettingsController : IController
-{
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
+using GFramework.SourceGenerators.Abstractions.rule;
 
+[ContextAware]
+public partial class SettingsController : IController
+{
     public void ApplyGraphicsSettings(int quality, bool fullscreen)
     {
-        var config = this.GetUtility<IConfigurationManager>();
+        var config = Context.GetUtility<IConfigurationManager>();
 
         // 更新配置（会自动触发监听器）
         config.SetConfig("graphics.quality", quality);
@@ -640,7 +641,7 @@ public class SettingsController : IController
 
     public void ResetToDefaults()
     {
-        var config = this.GetUtility<IConfigurationManager>();
+        var config = Context.GetUtility<IConfigurationManager>();
 
         // 清空所有配置
         config.Clear();

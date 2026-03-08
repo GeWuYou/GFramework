@@ -232,17 +232,18 @@ public class GameArchitecture : Architecture
 using Arch.Core;
 using GFramework.Core.Abstractions.controller;
 using MyGame.Components;
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
 
-public class GameController : IController
+[ContextAware]
+public partial class GameController : IController
 {
     private World _world;
-
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
 
     public void Start()
     {
         // 获取 World
-        _world = this.GetService<World>();
+        _world = Context.GetService<World>();
 
         // 创建玩家实体
         var player = _world.Create(

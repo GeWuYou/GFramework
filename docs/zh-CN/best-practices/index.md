@@ -32,12 +32,16 @@ public class CombatSystem : AbstractSystem
     }
 }
 
-public class PlayerController : IController
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class PlayerController : IController
 {
     // Controller：连接 UI 和逻辑
     public void Initialize()
     {
-        var player = _architecture.GetModel<PlayerModel>();
+        var player = Context.GetModel<PlayerModel>();
         player.Health.RegisterWithInitValue(OnHealthChanged);
     }
 
@@ -177,16 +181,20 @@ public class StorageUtility : IUtility { }
 ### 1. 正确的注销管理
 
 ```csharp
-public class MyController : IController
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class MyController : IController
 {
     private IUnRegisterList _unregisterList = new UnRegisterList();
 
     public void Initialize()
     {
-        var model = _architecture.GetModel<PlayerModel>();
+        var model = Context.GetModel<PlayerModel>();
 
         // 注册事件并添加到注销列表
-        this.RegisterEvent<PlayerDiedEvent>(OnPlayerDied)
+        Context.RegisterEvent<PlayerDiedEvent>(OnPlayerDied)
             .AddToUnregisterList(_unregisterList);
 
         // 注册属性监听并添加到注销列表
@@ -235,7 +243,7 @@ public class GameManager
 // ❌ 低效：每次都查询
 public void Update()
 {
-    var model = _architecture.GetModel<PlayerModel>();
+    var model = Context.GetModel<PlayerModel>();
     model.Health.Value -= 1;
 }
 
@@ -244,7 +252,7 @@ private PlayerModel _playerModel;
 
 public void Initialize()
 {
-    _playerModel = _architecture.GetModel<PlayerModel>();
+    _playerModel = Context.GetModel<PlayerModel>();
 }
 
 public void Update()
@@ -259,7 +267,7 @@ public void Update()
 // ❌ 低效：每帧创建新事件
 public void Update()
 {
-    this.SendEvent(new UpdateEvent()); // 频繁分配内存
+    Context.SendEvent(new UpdateEvent()); // 频繁分配内存
 }
 
 // ✅ 高效：复用事件或使用对象池
@@ -267,7 +275,7 @@ private UpdateEvent _updateEvent = new UpdateEvent();
 
 public void Update()
 {
-    this.SendEvent(_updateEvent);
+    Context.SendEvent(_updateEvent);
 }
 ```
 
@@ -437,7 +445,7 @@ public class CombatSystem : AbstractSystem
 // ❌ 错误：可能导致内存泄漏
 public void Initialize()
 {
-    this.RegisterEvent<Event1>(OnEvent1); // 未注销
+    Context.RegisterEvent<Event1>(OnEvent1); // 未注销
 }
 
 // ✅ 正确
@@ -445,7 +453,7 @@ private IUnRegisterList _unregisterList = new UnRegisterList();
 
 public void Initialize()
 {
-    this.RegisterEvent<Event1>(OnEvent1)
+    Context.RegisterEvent<Event1>(OnEvent1)
         .AddToUnregisterList(_unregisterList);
 }
 

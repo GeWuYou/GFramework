@@ -398,19 +398,19 @@ using GFramework.Core.Abstractions.state;
 using GFramework.Core.extensions;
 using MyGame.States;
 using System.Threading.Tasks;
+using GFramework.SourceGenerators.Abstractions.rule;
 
 namespace MyGame.Controllers
 {
-    public class GameFlowController : IController
+    [ContextAware]
+    public partial class GameFlowController : IController
     {
-        public IArchitecture GetArchitecture() => GameArchitecture.Interface;
-
         /// <summary>
         /// 开始游戏
         /// </summary>
         public async Task StartGame(int level = 1)
         {
-            var stateMachine = this.GetSystem<IStateMachineSystem>();
+            var stateMachine = Context.GetSystem<IStateMachineSystem>();
 
             // 设置加载状态的目标关卡
             var loadingState = stateMachine.GetState<LoadingState>();

@@ -473,14 +473,15 @@ namespace MyShooterGame.Systems
 ```csharp
 // Scripts/Controllers/PlayerController.cs
 using GFramework.Core.Abstractions.controller;
-using GFramework.Core.Abstractions.architecture;
 using GFramework.Core.extensions;
+using GFramework.SourceGenerators.Abstractions.rule;
 using MyShooterGame.Architecture;
 using MyShooterGame.Models;
 using Godot;
 
 namespace MyShooterGame.Controllers
 {
+    [ContextAware]
     public partial class PlayerController : CharacterBody2D, IController
     {
         [Export] public float Speed = 300f;
@@ -489,12 +490,10 @@ namespace MyShooterGame.Controllers
         private float _shootCooldown = 0f;
         private const float ShootInterval = 0.2f;
 
-        public IArchitecture GetArchitecture() => GameArchitecture.Interface;
-
         public override void _Ready()
         {
-            // 监听玩家死亡
-            var playerModel = this.GetModel<PlayerModel>();
+            // 监听玩家死亡（通过 Context 属性访问架构）
+            var playerModel = Context.GetModel<PlayerModel>();
             playerModel.IsAlive.RegisterOnValueChanged(isAlive =>
             {
                 if (!isAlive)
@@ -630,15 +629,14 @@ public partial class Main : Node
 // Scripts/UI/MenuController.cs
 using Godot;
 using GFramework.Core.Abstractions.controller;
-using GFramework.Core.Abstractions.architecture;
 using GFramework.Core.extensions;
+using GFramework.SourceGenerators.Abstractions.rule;
 using MyShooterGame.Architecture;
 using MyShooterGame.Systems;
 
+[ContextAware]
 public partial class MenuController : Control, IController
 {
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
-
     public override void _Ready()
     {
         // 连接按钮信号
@@ -650,8 +648,8 @@ public partial class MenuController : Control, IController
     {
         GD.Print("开始游戏");
 
-        // 初始化游戏
-        var gameplaySystem = this.GetSystem<GameplaySystem>();
+        // 初始化游戏（通过 Context 属性访问架构）
+        var gameplaySystem = Context.GetSystem<GameplaySystem>();
         gameplaySystem.StartNewGame();
 
         // 切换到游戏场景
@@ -675,27 +673,27 @@ using Godot;
 using GFramework.Core.Abstractions.controller;
 using GFramework.Core.Abstractions.architecture;
 using GFramework.Core.extensions;
+using GFramework.SourceGenerators.Abstractions.rule;
 using MyShooterGame.Architecture;
 using MyShooterGame.Systems;
 using MyShooterGame.Models;
 
+[ContextAware]
 public partial class GameScene : Node2D, IController
 {
     [Export] public PackedScene EnemyScene;
 
     private SpawnSystem _spawnSystem;
 
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
-
     public override void _Ready()
     {
-        // 初始化生成系统
-        _spawnSystem = this.GetSystem<SpawnSystem>();
+        // 初始化生成系统（通过 Context 属性访问架构）
+        _spawnSystem = Context.GetSystem<SpawnSystem>();
         _spawnSystem.Initialize(this, EnemyScene);
         _spawnSystem.StartSpawning();
 
         // 监听游戏状态
-        var gameModel = this.GetModel<GameModel>();
+        var gameModel = Context.GetModel<GameModel>();
         gameModel.IsPlaying.RegisterOnValueChanged(isPlaying =>
         {
             if (!isPlaying)

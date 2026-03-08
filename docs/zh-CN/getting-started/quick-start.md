@@ -151,22 +151,24 @@ public class EnemyDamagedEvent : IEvent
 实现控制器来连接 UI 和业务逻辑：
 
 ```csharp
-public class GameController : IController
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class GameController : IController
 {
-    private IArchitecture _architecture;
     private PlayerModel _playerModel;
     private GameStateModel _gameStateModel;
-    
-    public GameController(IArchitecture architecture)
+
+    public void Initialize()
     {
-        _architecture = architecture;
-        _playerModel = architecture.GetModel<PlayerModel>();
-        _gameStateModel = architecture.GetModel<GameStateModel>();
-        
+        _playerModel = Context.GetModel<PlayerModel>();
+        _gameStateModel = Context.GetModel<GameStateModel>();
+
         // 初始化事件监听
         InitializeEventListeners();
     }
-    
+
     private void InitializeEventListeners()
     {
         // 监听模型变化并更新 UI
@@ -174,52 +176,52 @@ public class GameController : IController
         _playerModel.Score.RegisterWithInitValue(OnScoreChanged);
         _gameStateModel.IsGameRunning.Register(OnGameStateChanged);
     }
-    
+
     public void StartGame()
     {
         _gameStateModel.IsGameRunning.Value = true;
-        _architecture.SendEvent(new GameStartEvent());
+        Context.SendEvent(new GameStartEvent());
         Console.WriteLine("Game started!");
     }
-    
+
     public void MovePlayer(Vector2 direction)
     {
-        _architecture.SendCommand(new MovePlayerCommand { Direction = direction });
+        Context.SendCommand(new MovePlayerCommand { Direction = direction });
     }
-    
+
     public void PlayerAttack(Vector2 target)
     {
-        _architecture.SendCommand(new AttackCommand { TargetPosition = target });
+        Context.SendCommand(new AttackCommand { TargetPosition = target });
     }
-    
+
     // UI 更新回调
     private void OnHealthChanged(int health)
     {
         UpdateHealthDisplay(health);
     }
-    
+
     private void OnScoreChanged(int score)
     {
         UpdateScoreDisplay(score);
     }
-    
+
     private void OnGameStateChanged(bool isRunning)
     {
         UpdateGameStatusDisplay(isRunning);
     }
-    
+
     private void UpdateHealthDisplay(int health)
     {
         // 更新血条 UI
         Console.WriteLine($"Health: {health}");
     }
-    
+
     private void UpdateScoreDisplay(int score)
     {
         // 更新分数显示
         Console.WriteLine($"Score: {score}");
     }
-    
+
     private void UpdateGameStatusDisplay(bool isRunning)
     {
         // 更新游戏状态显示
@@ -270,7 +272,8 @@ class Program
         architecture.Initialize();
         
         // 创建控制器
-        var gameController = new GameController(architecture);
+        var gameController = new GameController();
+        gameController.Initialize();
         
         // 开始游戏
         gameController.StartGame();
