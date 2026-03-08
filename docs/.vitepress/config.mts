@@ -47,6 +47,7 @@ export default defineConfig({
           { text: '首页', link: '/zh-CN/' },
           { text: '入门指南', link: '/zh-CN/getting-started' },
           { text: 'Core', link: '/zh-CN/core/' },
+          { text: 'ECS', link: '/zh-CN/ecs/' },
           { text: 'Game', link: '/zh-CN/game/' },
           { text: 'Godot', link: '/zh-CN/godot/' },
           { text: '源码生成器', link: '/zh-CN/source-generators' },
@@ -91,7 +92,6 @@ export default defineConfig({
                 { text: '事件系统', link: '/zh-CN/core/events' },
                 { text: '属性系统', link: '/zh-CN/core/property' },
                 { text: 'IoC容器', link: '/zh-CN/core/ioc' },
-                { text: 'ECS 系统集成', link: '/zh-CN/core/ecs' },
                 { text: '协程系统', link: '/zh-CN/core/coroutine' },
                 { text: '状态机', link: '/zh-CN/core/state-machine' },
                 { text: '暂停系统', link: '/zh-CN/core/pause' },
@@ -106,6 +106,16 @@ export default defineConfig({
                 { text: '系统层', link: '/zh-CN/core/system' },
                 { text: '规则系统', link: '/zh-CN/core/rule' },
                 { text: '环境接口', link: '/zh-CN/core/environment' }
+              ]
+            }
+          ],
+
+          '/zh-CN/ecs/': [
+            {
+              text: 'ECS 系统集成',
+              items: [
+                { text: 'ECS 概述', link: '/zh-CN/ecs/' },
+                { text: 'Arch ECS 集成', link: '/zh-CN/ecs/arch' }
               ]
             }
           ],
