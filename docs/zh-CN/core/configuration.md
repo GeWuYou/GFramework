@@ -622,10 +622,11 @@ public class SettingsSystem : AbstractSystem
 ### 在 Controller 中使用
 
 ```csharp
-public class SettingsController : IController
-{
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
+using GFramework.SourceGenerators.Abstractions.rule;
 
+[ContextAware]
+public partial class SettingsController : IController
+{
     public void ApplyGraphicsSettings(int quality, bool fullscreen)
     {
         var config = this.GetUtility<IConfigurationManager>();

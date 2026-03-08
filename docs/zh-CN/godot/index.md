@@ -162,7 +162,7 @@ public partial class PlayerController : Node, IController
     public override void _Ready()
     {
         // 获取模型引用
-        _playerModel = Context.GetModel<PlayerModel>();
+        _playerModel = this.GetModel<PlayerModel>();
         
         // 注册事件监听，自动与节点生命周期绑定
         this.RegisterEvent<PlayerInputEvent>(OnPlayerInput)
@@ -185,7 +185,7 @@ public partial class PlayerController : Node, IController
                 MovePlayer(1, 0);
                 break;
             case "attack":
-                Context.SendCommand(new AttackCommand());
+                this.SendCommand(new AttackCommand());
                 break;
         }
     }
@@ -312,7 +312,7 @@ public partial class UIController : Node, IController
         // Godot 信号 -> 框架事件
         this.CreateSignalBuilder(Button.SignalName.Pressed)
             .Connect(() => {
-                Context.SendEvent(new UIButtonClickEvent { ButtonId = "start_game" });
+                this.SendEvent(new UIButtonClickEvent { ButtonId = "start_game" });
             })
             .UnRegisterWhenNodeExitTree(this);
             
@@ -392,7 +392,7 @@ public partial class WeaponController : Node, IController
     
     protected override void OnInit()
     {
-        _bulletPool = Context.GetSystem<BulletPoolSystem>();
+        _bulletPool = this.GetSystem<BulletPoolSystem>();
     }
     
     public void Shoot(Vector3 direction)
@@ -528,7 +528,7 @@ public partial class GameController : Node, IController
         Logger.Debug("Starting game");
         
         // 发送游戏开始事件
-        Context.SendEvent(new GameStartEvent());
+        this.SendEvent(new GameStartEvent());
         
         Logger.Info("Game started");
     }
@@ -536,7 +536,7 @@ public partial class GameController : Node, IController
     public void PauseGame()
     {
         Logger.Info("Game paused");
-        Context.SendEvent(new GamePauseEvent());
+        this.SendEvent(new GamePauseEvent());
     }
 }
 ```
@@ -610,7 +610,7 @@ public partial class PlayerController : CharacterBody2D, IController
     
     public override void _Ready()
     {
-        _playerModel = Context.GetModel<PlayerModel>();
+        _playerModel = this.GetModel<PlayerModel>();
         
         // 输入处理
         SetProcessInput(true);
@@ -639,7 +639,7 @@ public partial class PlayerController : CharacterBody2D, IController
     {
         if (CanShoot())
         {
-            var bulletPool = Context.GetSystem<BulletPoolSystem>();
+            var bulletPool = this.GetSystem<BulletPoolSystem>();
             var bullet = bulletPool.Spawn("player");
             
             if (bullet != null)
@@ -648,7 +648,7 @@ public partial class PlayerController : CharacterBody2D, IController
                 bullet.Initialize(GlobalPosition, direction.Normalized());
                 GetTree().Root.AddChild(bullet);
                 
-                Context.SendEvent(new BulletFiredEvent());
+                this.SendEvent(new BulletFiredEvent());
             }
         }
     }
@@ -666,7 +666,7 @@ public partial class PlayerController : CharacterBody2D, IController
     private void Die()
     {
         Logger.Info("Player died");
-        Context.SendEvent(new PlayerDeathEvent());
+        this.SendEvent(new PlayerDeathEvent());
         QueueFreeX();
     }
 }

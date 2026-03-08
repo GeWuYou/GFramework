@@ -323,18 +323,17 @@ namespace MyGame.Systems
 
 ```csharp
 using GFramework.Core.Abstractions.pause;
-using GFramework.Core.extensions;
 using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
 
 namespace MyGame.Controllers
 {
     /// <summary>
     /// 暂停控制器，管理复杂的暂停场景
     /// </summary>
-    public class PauseController : IController
+    [ContextAware]
+    public partial class PauseController : IController
     {
-        public IArchitecture GetArchitecture() => GameArchitecture.Interface;
-
         /// <summary>
         /// 显示暂停状态信息
         /// </summary>
@@ -664,8 +663,8 @@ namespace MyGame
 
 ```csharp
 using GFramework.Core.Abstractions.pause;
-using GFramework.Core.extensions;
 using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
 using System.Threading.Tasks;
 
 namespace MyGame.Controllers
@@ -673,10 +672,9 @@ namespace MyGame.Controllers
     /// <summary>
     /// 游戏场景控制器
     /// </summary>
-    public class GameSceneController : IController
+    [ContextAware]
+    public partial class GameSceneController : IController
     {
-        public IArchitecture GetArchitecture() => GameArchitecture.Interface;
-
         private PauseToken? _pauseMenuToken;
         private PauseToken? _dialogToken;
 

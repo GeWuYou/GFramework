@@ -94,6 +94,8 @@ public class GameArchitecture : Architecture
 使用泛型 API 序列化对象：
 
 ```csharp
+using GFramework.SourceGenerators.Abstractions.rule;
+
 public class PlayerData
 {
     public string Name { get; set; }
@@ -101,10 +103,9 @@ public class PlayerData
     public int Experience { get; set; }
 }
 
-public class SaveController : IController
+[ContextAware]
+public partial class SaveController : IController
 {
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
-
     public void SavePlayer()
     {
         var serializer = this.GetUtility<ISerializer>();
@@ -174,11 +175,11 @@ public void SerializeRuntimeType()
 ```csharp
 using GFramework.Core.Abstractions.storage;
 using GFramework.Game.storage;
+using GFramework.SourceGenerators.Abstractions.rule;
 
-public class DataManager : IController
+[ContextAware]
+public partial class DataManager : IController
 {
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
-
     public async Task SaveData()
     {
         var serializer = this.GetUtility<ISerializer>();

@@ -29,17 +29,17 @@ public partial class PlayerController : IController
 {
     public void Initialize()
     {
-        // Context 属性自动生成，提供架构上下文访问
-        var playerModel = Context.GetModel<PlayerModel>();
-        var combatSystem = Context.GetSystem<CombatSystem>();
+        // 使用扩展方法访问架构（[ContextAware] 实现 IContextAware 接口）
+        var playerModel = this.GetModel<PlayerModel>();
+        var combatSystem = this.GetSystem<CombatSystem>();
 
-        Context.SendEvent(new PlayerInitializedEvent());
+        this.SendEvent(new PlayerInitializedEvent());
     }
 
     public void Attack(Enemy target)
     {
-        var damage = Context.GetUtility<DamageCalculator>().Calculate(this, target);
-        Context.SendCommand(new DealDamageCommand(target, damage));
+        var damage = this.GetUtility<DamageCalculator>().Calculate(this, target);
+        this.SendCommand(new DealDamageCommand(target, damage));
     }
 }
 ```
@@ -218,14 +218,40 @@ public partial class GameFlowController : IController
 {
     public async Task StartGame()
     {
-        var saveSystem = Context.GetSystem<SaveSystem>();
-        var uiSystem = Context.GetSystem<UISystem>();
+        var saveSystem = this.GetSystem<SaveSystem>();
+        var uiSystem = this.GetSystem<UISystem>();
 
         await saveSystem.LoadAsync();
         await uiSystem.ShowMainMenuAsync();
     }
 }
 ```
+
+### 与 IController 配合使用
+
+在 Godot 项目中，控制器通常同时实现 `IController` 和使用 `[ContextAware]`：
+
+```csharp
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class PlayerController : Node, IController
+{
+    public override void _Ready()
+    {
+        // 使用扩展方法访问架构（[ContextAware] 实现 IContextAware 接口）
+        var playerModel = this.GetModel<PlayerModel>();
+        var combatSystem = this.GetSystem<CombatSystem>();
+    }
+}
+```
+
+**说明**：
+
+- `IController` 是标记接口，标识这是一个控制器
+- `[ContextAware]` 提供架构访问能力
+- 两者配合使用是推荐的模式
 
 ### 何时继承 ContextAwareBase
 
@@ -238,7 +264,7 @@ public class PlayerModel : AbstractModel
     // AbstractModel 已经继承了 ContextAwareBase
     protected override void OnInit()
     {
-        var config = Context.GetUtility<ConfigLoader>().Load<PlayerConfig>();
+        var config = this.GetUtility<ConfigLoader>().Load<PlayerConfig>();
     }
 }
 
@@ -248,7 +274,7 @@ public partial class SimpleHelper
 {
     public void DoSomething()
     {
-        Context.SendEvent(new SomethingHappenedEvent());
+        this.SendEvent(new SomethingHappenedEvent());
     }
 }
 ```
@@ -308,13 +334,13 @@ public partial class MyController
     // ❌ 错误：构造函数执行时上下文可能未初始化
     public MyController()
     {
-        var model = Context.GetModel<SomeModel>(); // 可能为 null
+        var model = this.GetModel<SomeModel>(); // 可能为 null
     }
 
     // ✅ 正确：在初始化方法中访问
     public void Initialize()
     {
-        var model = Context.GetModel<SomeModel>(); // 安全
+        var model = this.GetModel<SomeModel>(); // 安全
     }
 }
 ```
@@ -327,8 +353,8 @@ public partial class MyController
 {
     public void DoSomething()
     {
-        // ✅ 推荐：使用生成的 Context 属性
-        var model = Context.GetModel<SomeModel>();
+        // ✅ 推荐：使用扩展方法
+        var model = this.GetModel<SomeModel>();
 
         // ❌ 不推荐：显式调用接口方法
         var context = ((IContextAware)this).GetContext();

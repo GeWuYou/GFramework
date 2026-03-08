@@ -186,7 +186,7 @@ public partial class PlayerController : CharacterBody2D, IController
     public override void _Ready()
     {
         // 设置上下文
-        _playerModel = Context.GetModel<PlayerModel>();
+        _playerModel = this.GetModel<PlayerModel>();
         
         // 注册事件监听，自动与节点生命周期绑定
         this.RegisterEvent<PlayerInputEvent>(OnPlayerInput)
@@ -396,7 +396,7 @@ public partial class SignalController : Node, IController
         _timer.Start();
         
         // 发送框架事件
-        Context.SendEvent(new ButtonClickEvent { ButtonId = "main_button" });
+        this.SendEvent(new ButtonClickEvent { ButtonId = "main_button" });
     }
     
     private void OnTimerTimeout()
@@ -407,7 +407,7 @@ public partial class SignalController : Node, IController
         _progressBar.Value += 10;
         
         // 发送框架事件
-        Context.SendEvent(new TimerTimeoutEvent());
+        this.SendEvent(new TimerTimeoutEvent());
     }
     
     private void OnProgressChanged(double value)
@@ -415,7 +415,7 @@ public partial class SignalController : Node, IController
         Logger.Debug($"Progress changed: {value}");
         
         // 发送框架事件
-        Context.SendEvent(new ProgressChangeEvent { Value = value });
+        this.SendEvent(new ProgressChangeEvent { Value = value });
     }
 }
 ```
@@ -450,7 +450,7 @@ public partial class SignalEventBridge : Node, IController
         // Godot 信号 -> 框架事件
         this.CreateSignalBuilder(_uiButton.SignalName.Pressed)
             .Connect(() => {
-                Context.SendEvent(new UIActionEvent { 
+                this.SendEvent(new UIActionEvent { 
                     Action = "button_click", 
                     Source = "main_button" 
                 });
@@ -459,7 +459,7 @@ public partial class SignalEventBridge : Node, IController
             
         this.CreateSignalBuilder(_healthBar.SignalName.HealthDepleted)
             .Connect(() => {
-                Context.SendEvent(new PlayerDeathEvent { Source = "health_system" });
+                this.SendEvent(new PlayerDeathEvent { Source = "health_system" });
             })
             .UnRegisterWhenNodeExitTree(this);
     }
@@ -599,7 +599,7 @@ public partial class SmartResourceLoader : Node, IController
                     Logger.Info($"Resource loaded: {request.Path}");
                     
                     // 发送资源加载完成事件
-                    Context.SendEvent(new ResourceLoadedEvent { 
+                    this.SendEvent(new ResourceLoadedEvent { 
                         Path = request.Path, 
                         Resource = resource 
                     });
@@ -608,7 +608,7 @@ public partial class SmartResourceLoader : Node, IController
             catch (Exception ex)
             {
                 Logger.Error($"Failed to load resource {request.Path}: {ex.Message}");
-                Context.SendEvent(new ResourceLoadFailedEvent { 
+                this.SendEvent(new ResourceLoadFailedEvent { 
                     Path = request.Path, 
                     Error = ex.Message 
                 });
@@ -751,7 +751,7 @@ public partial class SceneResourcePreloader : Node, IController
         
         foreach (var assetPath in resourceSet.RequiredAssets)
         {
-            Context.SendEvent(new ResourceLoadRequestEvent { 
+            this.SendEvent(new ResourceLoadRequestEvent { 
                 Path = assetPath, 
                 Priority = ResourcePriority.High 
             });
@@ -977,7 +977,7 @@ public partial class MemoryOptimizedController : Node, IController
             Logger.Warning($"High memory usage detected: {memoryUsage / 1024 / 1024} MB");
             
             // 触发内存清理
-            Context.SendEvent(new HighMemoryUsageEvent { 
+            this.SendEvent(new HighMemoryUsageEvent { 
                 CurrentUsage = memoryUsage,
                 Threshold = threshold 
             });
@@ -1163,7 +1163,7 @@ public class PlayingState : IGameState
     public void Enter(StateMachineController controller)
     {
         controller.GetTree().Paused = false;
-        controller.Context.SendEvent(new GameStartEvent());
+        controller.this.SendEvent(new GameStartEvent());
     }
     
     public void Update(StateMachineController controller, double delta) { }
@@ -1178,7 +1178,7 @@ public class PlayingState : IGameState
     
     public void Exit(StateMachineController controller)
     {
-        controller.Context.SendEvent(new GamePauseEvent());
+        controller.this.SendEvent(new GamePauseEvent());
     }
 }
 ```

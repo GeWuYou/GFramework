@@ -353,11 +353,13 @@ public class CombatSystem : AbstractSystem
 ### Controller 中注册事件
 
 ```csharp
-public class GameController : IController
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class GameController : IController
 {
     private IUnRegisterList _unregisterList = new UnRegisterList();
-
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
 
     public void Initialize()
     {
@@ -449,10 +451,12 @@ public class EventBridge : AbstractSystem
 ### 4. 临时事件监听
 
 ```csharp
-public class TutorialController : IController
-{
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
 
+[ContextAware]
+public partial class TutorialController : IController
+{
     public void Initialize()
     {
         // 只监听一次
@@ -497,7 +501,11 @@ public class AchievementSystem : AbstractSystem
 ### 使用 UnRegisterList
 
 ```csharp
-public class MyController : IController
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class MyController : IController
 {
     // 统一管理所有注销对象
     private IUnRegisterList _unregisterList = new UnRegisterList();

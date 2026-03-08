@@ -232,12 +232,13 @@ public class GameArchitecture : Architecture
 using Arch.Core;
 using GFramework.Core.Abstractions.controller;
 using MyGame.Components;
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
 
-public class GameController : IController
+[ContextAware]
+public partial class GameController : IController
 {
     private World _world;
-
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
 
     public void Start()
     {

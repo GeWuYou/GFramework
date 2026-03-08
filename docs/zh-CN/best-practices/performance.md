@@ -277,18 +277,22 @@ public class PoolMonitorSystem : AbstractSystem
 ### 1. 避免事件订阅泄漏
 
 ```csharp
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
+
 // ✅ 好的做法：正确管理事件订阅
-public class PlayerController : Node, IController
+[ContextAware]
+public partial class PlayerController : Node, IController
 {
     private IUnRegisterList _unRegisterList = new UnRegisterList();
     private PlayerModel _playerModel;
 
-    public void Initialize(IArchitectureContext context)
+    public void Initialize()
     {
-        _playerModel = context.GetModel&lt;PlayerModel&gt;();
+        _playerModel = this.GetModel&lt;PlayerModel&gt;();
 
         // 使用 UnRegisterList 管理订阅
-        context.RegisterEvent&lt;PlayerDamagedEvent&gt;(OnPlayerDamaged)
+        this.RegisterEvent&lt;PlayerDamagedEvent&gt;(OnPlayerDamaged)
             .AddTo(_unRegisterList);
 
         _playerModel.Health.Register(OnHealthChanged)
@@ -306,14 +310,15 @@ public class PlayerController : Node, IController
 }
 
 // ❌ 避免：忘记取消订阅
-public class PlayerController : Node, IController
+[ContextAware]
+public partial class PlayerController : Node, IController
 {
-    public void Initialize(IArchitectureContext context)
+    public void Initialize()
     {
         // 订阅事件但从不取消订阅
-        context.RegisterEvent&lt;PlayerDamagedEvent&gt;(OnPlayerDamaged);
+        this.RegisterEvent&lt;PlayerDamagedEvent&gt;(OnPlayerDamaged);
 
-        var playerModel = context.GetModel&lt;PlayerModel&gt;();
+        var playerModel = this.GetModel&lt;PlayerModel&gt;();
         playerModel.Health.Register(OnHealthChanged);
 
         // 当对象被销毁时，这些订阅仍然存在，导致内存泄漏

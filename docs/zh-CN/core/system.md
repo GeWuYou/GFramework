@@ -185,10 +185,12 @@ public class GameArchitecture : Architecture
 
 ```csharp
 // 在 Controller 中
-public class GameController : IController
-{
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
 
+[ContextAware]
+public partial class GameController : IController
+{
     public void Start()
     {
         // 获取 System

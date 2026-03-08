@@ -164,10 +164,12 @@ public class GameSceneRegistry : IGameSceneRegistry
 使用场景路由进行导航：
 
 ```csharp
-public class GameController : IController
-{
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
 
+[ContextAware]
+public partial class GameController : IController
+{
     public async Task StartGame()
     {
         var sceneRouter = this.GetSystem<ISceneRouter>();
@@ -350,10 +352,12 @@ sceneRouter.AddTransitionHandler(new FadeTransitionHandler());
 ### 场景栈管理
 
 ```csharp
-public class SceneNavigationController : IController
-{
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
 
+[ContextAware]
+public partial class SceneNavigationController : IController
+{
     public async Task NavigateToSettings()
     {
         var sceneRouter = this.GetSystem<ISceneRouter>();
@@ -432,10 +436,12 @@ public class GameplayScene : IScene
 ### 场景预加载
 
 ```csharp
-public class PreloadController : IController
-{
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
 
+[ContextAware]
+public partial class PreloadController : IController
+{
     public async Task PreloadNextLevel()
     {
         var sceneFactory = this.GetUtility<ISceneFactory>();

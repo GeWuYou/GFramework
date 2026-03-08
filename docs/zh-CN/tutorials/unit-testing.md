@@ -832,7 +832,7 @@ public class ArchitectureIntegrationTests
         await _architecture.DestroyAsync();
 
         // Assert
-        var system = _architecture.Context.GetSystem&lt;TestSystem&gt;();
+        var system = _architecture.this.GetSystem&lt;TestSystem&gt;();
         Assert.That(system!.DestroyCalled, Is.True);
         Assert.That(_architecture.CurrentPhase, Is.EqualTo(ArchitecturePhase.Destroyed));
     }

@@ -144,12 +144,14 @@ public class LoadPlayerDataQuery : AbstractAsyncQuery<LoadPlayerDataInput, Playe
 ### 2. 发送查询
 
 ```csharp
-public class ShopUI : IController
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class ShopUI : IController
 {
     [Export] private Button _buyButton;
     [Export] private int _itemPrice = 100;
-
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
 
     public void OnReady()
     {

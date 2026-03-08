@@ -102,10 +102,12 @@ public class SaveData : IVersionedData
 ### 使用存档仓库
 
 ```csharp
-public class SaveController : IController
-{
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
 
+[ContextAware]
+public partial class SaveController : IController
+{
     public async Task SaveGame(int slot)
     {
         var saveRepo = this.GetUtility<ISaveRepository<SaveData>>();
@@ -207,7 +209,11 @@ public async Task ShowSaveList()
 ### 自动保存
 
 ```csharp
-public class AutoSaveController : IController
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class AutoSaveController : IController
 {
     private CancellationTokenSource? _autoSaveCts;
 
@@ -318,7 +324,11 @@ public async Task<SaveDataV2> LoadWithMigration(int slot)
 ### 使用数据仓库
 
 ```csharp
-public class SettingsController : IController
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class SettingsController : IController
 {
     public async Task SaveSettings()
     {

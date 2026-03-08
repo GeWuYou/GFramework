@@ -168,7 +168,7 @@ public partial class PlayerService : IController
         
         try
         {
-            Context.SendCommand(command);
+            this.SendCommand(command);
             Logger.Info($"Player {name} created successfully");
         }
         catch (Exception ex)
@@ -181,7 +181,7 @@ public partial class PlayerService : IController
     public PlayerData GetPlayer(string name)
     {
         var query = new GetPlayerQuery { PlayerName = name };
-        return Context.SendQuery(query);
+        return this.SendQuery(query);
     }
     
     public List<PlayerData> GetAllPlayers(PlayerClass? classFilter = null, int? minLevel = null)
@@ -191,13 +191,13 @@ public partial class PlayerService : IController
             FilterByClass = classFilter, 
             MinLevel = minLevel 
         };
-        return Context.SendQuery(query);
+        return this.SendQuery(query);
     }
     
     public PlayerStatistics GetPlayerStatistics(string playerName)
     {
         var query = new GetPlayerStatisticsQuery { PlayerName = playerName };
-        return Context.SendQuery(query);
+        return this.SendQuery(query);
     }
 }
 ```
@@ -1046,13 +1046,13 @@ public class PluginManager : IPluginContext
         }
         
         // 尝试从架构中获取
-        return _architecture.Context.GetUtility<T>();
+        return _architecture.this.GetUtility<T>();
     }
     
     public void RegisterEventHandler<T>(IEventHandler<T> handler) where T : IEvent
     {
         _eventHandlers.Add(handler);
-        _architecture.Context.RegisterEvent<T>(handler.Handle);
+        _architecture.this.RegisterEvent<T>(handler.Handle);
         _logger.Debug($"Event handler for {typeof(T).Name} registered by plugin system");
     }
     
@@ -1167,7 +1167,7 @@ public class ChatService : IChatService
         chatChannel.AddMessage(chatMessage);
         
         // 发送事件
-        _architecture.Context.SendEvent(new ChatMessageReceivedEvent(chatMessage));
+        _architecture.this.SendEvent(new ChatMessageReceivedEvent(chatMessage));
     }
     
     public void SendSystemMessage(string message)
@@ -1181,7 +1181,7 @@ public class ChatService : IChatService
         };
         
         _channels["global"].AddMessage(systemMessage);
-        _architecture.Context.SendEvent(new ChatMessageReceivedEvent(systemMessage));
+        _architecture.this.SendEvent(new ChatMessageReceivedEvent(systemMessage));
     }
     
     private string FilterMessage(string message)
@@ -1444,7 +1444,7 @@ public class NetworkManager : Node, INetworkManager
     private void HandlePlayerPosition(PlayerPositionMessage message)
     {
         // 更新其他玩家位置
-        Context.SendEvent(new NetworkPlayerPositionEvent
+        this.SendEvent(new NetworkPlayerPositionEvent
         {
             PlayerId = message.PlayerId,
             Position = new Vector2(message.X, message.Y)
@@ -1454,7 +1454,7 @@ public class NetworkManager : Node, INetworkManager
     private void HandleChatMessage(ChatMessageMessage message)
     {
         // 显示聊天消息
-        Context.SendEvent(new NetworkChatEvent
+        this.SendEvent(new NetworkChatEvent
         {
             PlayerName = message.PlayerName,
             Message = message.Content,
@@ -1465,7 +1465,7 @@ public class NetworkManager : Node, INetworkManager
     private void HandlePlayerAction(PlayerActionMessage message)
     {
         // 处理玩家动作
-        Context.SendEvent(new NetworkPlayerActionEvent
+        this.SendEvent(new NetworkPlayerActionEvent
         {
             PlayerId = message.PlayerId,
             Action = message.Action,
@@ -1476,7 +1476,7 @@ public class NetworkManager : Node, INetworkManager
     private void HandleGameState(GameStateMessage message)
     {
         // 更新游戏状态
-        Context.SendEvent(new NetworkGameStateEvent
+        this.SendEvent(new NetworkGameStateEvent
         {
             State = message.State,
             Data = message.Data
@@ -1574,7 +1574,7 @@ public partial class NetworkController : Node, IController
     {
         var message = new PlayerPositionMessage
         {
-            PlayerId = Context.GetModel<PlayerModel>().PlayerId,
+            PlayerId = this.GetModel<PlayerModel>().PlayerId,
             X = position.X,
             Y = position.Y,
             Rotation = 0f // 根据实际需要设置
@@ -1587,7 +1587,7 @@ public partial class NetworkController : Node, IController
     {
         var chatMessage = new ChatMessageMessage
         {
-            PlayerName = Context.GetModel<PlayerModel>().Name,
+            PlayerName = this.GetModel<PlayerModel>().Name,
             Content = message,
             Channel = channel
         };
@@ -1598,13 +1598,13 @@ public partial class NetworkController : Node, IController
     private void OnNetworkConnected()
     {
         Logger.Info("Connected to network server");
-        Context.SendEvent(new NetworkConnectedEvent());
+        this.SendEvent(new NetworkConnectedEvent());
     }
     
     private void OnNetworkDisconnected(string reason)
     {
         Logger.Info($"Disconnected from network server: {reason}");
-        Context.SendEvent(new NetworkDisconnectedEvent { Reason = reason });
+        this.SendEvent(new NetworkDisconnectedEvent { Reason = reason });
     }
     
     private void OnNetworkMessageReceived(NetworkMessage message)
@@ -1615,7 +1615,7 @@ public partial class NetworkController : Node, IController
     private void OnConnectionFailed(string error)
     {
         Logger.Error($"Network connection failed: {error}");
-        Context.SendEvent(new NetworkConnectionFailedEvent { Error = error });
+        this.SendEvent(new NetworkConnectionFailedEvent { Error = error });
     }
 }
 ```

@@ -164,19 +164,19 @@ public static partial class MathHelper
 ### 基础使用
 
 ```csharp
-using GFramework.SourceGenerators.Abstractions.rule;
 using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
 
 [ContextAware]
 public partial class PlayerController : IController
 {
     public void Initialize()
     {
-        // Context 属性自动生成，提供架构上下文访问
-        var playerModel = Context.GetModel<PlayerModel>();
-        var combatSystem = Context.GetSystem<CombatSystem>();
+        // 使用扩展方法访问架构（[ContextAware] 实现 IContextAware 接口）
+        var playerModel = this.GetModel<PlayerModel>();
+        var combatSystem = this.GetSystem<CombatSystem>();
 
-        Context.SendEvent(new PlayerInitializedEvent());
+        this.SendEvent(new PlayerInitializedEvent());
     }
 }
 ```
@@ -272,6 +272,10 @@ public async Task TestPlayerController()
 ### 与其他属性组合
 
 ```csharp
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.logging;
+using GFramework.SourceGenerators.Abstractions.rule;
+
 [Log]
 [ContextAware]
 public partial class AdvancedController : IController
@@ -279,11 +283,11 @@ public partial class AdvancedController : IController
     public void ProcessRequest()
     {
         Logger.Info("Processing request");
-        
-        var model = Context.GetModel<PlayerModel>();
+
+        var model = this.GetModel<PlayerModel>();
         Logger.Info($"Player health: {model.Health}");
-        
-        Context.SendCommand(new ProcessCommand());
+
+        this.SendCommand(new ProcessCommand());
         Logger.Debug("Command sent");
     }
 }
@@ -486,7 +490,7 @@ public partial class EfficientController : IController
     public void Process()
     {
         Logger.Info("Processing");      // 0 分配
-        var model = Context.GetModel<PlayerModel>(); // 0 分配
+        var model = this.GetModel<PlayerModel>(); // 0 分配
     }
 }
 
@@ -506,8 +510,9 @@ public class InefficientController : IController
 ### 完整的游戏控制器示例
 
 ```csharp
-using GFramework.SourceGenerators.Attributes;
-using GFramework.Core.Abstractions;
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.logging;
+using GFramework.SourceGenerators.Abstractions.rule;
 
 [Log]
 [ContextAware]
@@ -515,24 +520,24 @@ public partial class GameController : Node, IController
 {
     private PlayerModel _playerModel;
     private CombatSystem _combatSystem;
-    
+
     public override void _Ready()
     {
         // 初始化模型和系统引用
-        _playerModel = Context.GetModel<PlayerModel>();
-        _combatSystem = Context.GetSystem<CombatSystem>();
-        
+        _playerModel = this.GetModel<PlayerModel>();
+        _combatSystem = this.GetSystem<CombatSystem>();
+
         // 监听事件
         this.RegisterEvent<PlayerInputEvent>(OnPlayerInput)
             .UnRegisterWhenNodeExitTree(this);
-            
+
         Logger.Info("Game controller initialized");
     }
-    
+
     private void OnPlayerInput(PlayerInputEvent e)
     {
         Logger.Debug($"Processing player input: {e.Action}");
-        
+
         switch (e.Action)
         {
             case "attack":
@@ -543,28 +548,28 @@ public partial class GameController : Node, IController
                 break;
         }
     }
-    
+
     private void HandleAttack()
     {
         if (_playerModel.CanAttack())
         {
             Logger.Info("Player attacks");
             _combatSystem.ProcessAttack();
-            Context.SendEvent(new AttackEvent());
+            this.SendEvent(new AttackEvent());
         }
         else
         {
             Logger.Warning("Player cannot attack - cooldown");
         }
     }
-    
+
     private void HandleDefend()
     {
         if (_playerModel.CanDefend())
         {
             Logger.Info("Player defends");
             _playerModel.IsDefending.Value = true;
-            Context.SendEvent(new DefendEvent());
+            this.SendEvent(new DefendEvent());
         }
         else
         {
@@ -595,16 +600,20 @@ public enum CharacterState
     Dead
 }
 
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.logging;
+using GFramework.SourceGenerators.Abstractions.rule;
+
 [Log]
 [ContextAware]
 public partial class CharacterController : Node, IController
 {
     private CharacterModel _characterModel;
-    
+
     public override void _Ready()
     {
-        _characterModel = Context.GetModel<CharacterModel>();
-        
+        _characterModel = this.GetModel<CharacterModel>();
+
         // 监听状态变化
         _characterModel.State.Register(OnStateChanged);
     }
@@ -649,7 +658,7 @@ public partial class CharacterController : Node, IController
         Logger.Info("Character died");
         DisableInput();
         PlayDeathAnimation();
-        Context.SendEvent(new CharacterDeathEvent());
+        this.SendEvent(new CharacterDeathEvent());
     }
 }
 ```
@@ -783,14 +792,14 @@ public partial class RobustComponent : IComponent
     {
         try
         {
-            var model = Context.GetModel<RiskyModel>();
+            var model = this.GetModel<RiskyModel>();
             model.PerformRiskyOperation();
             Logger.Info("Operation completed successfully");
         }
         catch (Exception ex)
         {
             Logger.Error($"Operation failed: {ex.Message}");
-            Context.SendEvent(new OperationFailedEvent { Error = ex.Message });
+            this.SendEvent(new OperationFailedEvent { Error = ex.Message });
         }
     }
 }

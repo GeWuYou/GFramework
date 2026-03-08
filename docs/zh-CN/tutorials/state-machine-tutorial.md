@@ -398,13 +398,13 @@ using GFramework.Core.Abstractions.state;
 using GFramework.Core.extensions;
 using MyGame.States;
 using System.Threading.Tasks;
+using GFramework.SourceGenerators.Abstractions.rule;
 
 namespace MyGame.Controllers
 {
-    public class GameFlowController : IController
+    [ContextAware]
+    public partial class GameFlowController : IController
     {
-        public IArchitecture GetArchitecture() => GameArchitecture.Interface;
-
         /// <summary>
         /// 开始游戏
         /// </summary>

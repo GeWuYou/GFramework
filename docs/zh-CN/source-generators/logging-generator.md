@@ -164,6 +164,10 @@ public partial class MySystem : AbstractSystem
 ### 游戏控制器
 
 ```csharp
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.logging;
+using GFramework.SourceGenerators.Abstractions.rule;
+
 [Log]
 [ContextAware]
 public partial class PlayerController : IController

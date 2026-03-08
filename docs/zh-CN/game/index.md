@@ -937,7 +937,7 @@ public partial class GameManager : Node, IController
         // 加载初始场景
         LoadInitialScene();
         
-        Context.SendEvent(new NewGameStartedEvent { PlayerName = playerName });
+        this.SendEvent(new NewGameStartedEvent { PlayerName = playerName });
     }
     
     public void LoadGame(int slotId)
@@ -952,19 +952,19 @@ public partial class GameManager : Node, IController
                 // 恢复游戏状态
                 RestoreGameState(saveData);
                 
-                Context.SendEvent(new GameLoadedEvent { SlotId = slotId });
+                this.SendEvent(new GameLoadedEvent { SlotId = slotId });
                 Logger.Info("Game loaded successfully");
             }
             else
             {
                 Logger.Warning($"No save data found in slot {slotId}");
-                Context.SendEvent(new GameLoadFailedEvent { SlotId = slotId });
+                this.SendEvent(new GameLoadFailedEvent { SlotId = slotId });
             }
         }
         catch (Exception ex)
         {
             Logger.Error($"Failed to load game: {ex.Message}");
-            Context.SendEvent(new GameLoadFailedEvent { SlotId = slotId, Error = ex.Message });
+            this.SendEvent(new GameLoadFailedEvent { SlotId = slotId, Error = ex.Message });
         }
     }
     
@@ -977,13 +977,13 @@ public partial class GameManager : Node, IController
             var saveData = CreateSaveData();
             _dataManager.SaveGame(slotId, saveData);
             
-            Context.SendEvent(new GameSavedEvent { SlotId = slotId });
+            this.SendEvent(new GameSavedEvent { SlotId = slotId });
             Logger.Info("Game saved successfully");
         }
         catch (Exception ex)
         {
             Logger.Error($"Failed to save game: {ex.Message}");
-            Context.SendEvent(new GameSaveFailedEvent { SlotId = slotId, Error = ex.Message });
+            this.SendEvent(new GameSaveFailedEvent { SlotId = slotId, Error = ex.Message });
         }
     }
     
@@ -1014,9 +1014,9 @@ public partial class GameManager : Node, IController
         gameWorld.AddChild(player);
         
         // 恢复其他游戏状态
-        Context.GetModel<PlayerModel>().Health.Value = saveData.PlayerHealth;
-        Context.GetModel<GameModel>().CurrentLevel.Value = saveData.CurrentLevel;
-        Context.GetModel<InventoryModel>().LoadFromData(saveData.Inventory);
+        this.GetModel<PlayerModel>().Health.Value = saveData.PlayerHealth;
+        this.GetModel<GameModel>().CurrentLevel.Value = saveData.CurrentLevel;
+        this.GetModel<InventoryModel>().LoadFromData(saveData.Inventory);
     }
     
     private SaveData CreateSaveData()
@@ -1026,9 +1026,9 @@ public partial class GameManager : Node, IController
         return new SaveData
         {
             PlayerPosition = player?.Position ?? Vector2.Zero,
-            PlayerHealth = Context.GetModel<PlayerModel>().Health.Value,
-            CurrentLevel = Context.GetModel<GameModel>().CurrentLevel.Value,
-            Inventory = Context.GetModel<InventoryModel>().GetData(),
+            PlayerHealth = this.GetModel<PlayerModel>().Health.Value,
+            CurrentLevel = this.GetModel<GameModel>().CurrentLevel.Value,
+            Inventory = this.GetModel<InventoryModel>().GetData(),
             Timestamp = DateTime.UtcNow,
             Version = 1
         };
@@ -1094,7 +1094,7 @@ public class AutoSaveSystem : AbstractSystem
             var saveData = CreateAutoSaveData();
             
             // 保存到自动存档槽
-            var storage = Context.GetUtility<IStorage>();
+            var storage = this.GetUtility<IStorage>();
             storage.Write("autosave", saveData);
             storage.Write("autosave/timestamp", DateTime.UtcNow);
             
@@ -1330,7 +1330,7 @@ public class PlayerModule : AbstractModule
     private void OnPlayerDeath(PlayerDeathEvent e)
     {
         // 触发保存模块的事件
-        Context.SendEvent(new RequestAutoSaveEvent { Reason = "Player Death" });
+        this.SendEvent(new RequestAutoSaveEvent { Reason = "Player Death" });
     }
 }
 ```

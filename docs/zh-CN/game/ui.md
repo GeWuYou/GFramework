@@ -126,10 +126,12 @@ public class MainMenuPage : IUiPage
 使用 UI 路由进行导航：
 
 ```csharp
-public class UiController : IController
-{
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
 
+[ContextAware]
+public partial class UiController : IController
+{
     public async Task ShowSettings()
     {
         var uiRouter = this.GetSystem<IUiRouter>();
@@ -159,10 +161,9 @@ public class UiController : IController
 ### 显示不同层级的 UI
 
 ```csharp
-public class UiController : IController
+[ContextAware]
+public partial class UiController : IController
 {
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
-
     public void ShowDialog()
     {
         var uiRouter = this.GetSystem<IUiRouter>();
@@ -303,7 +304,11 @@ uiRouter.RegisterHandler(new FadeTransitionHandler());
 ### UI 句柄管理
 
 ```csharp
-public class DialogController : IController
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class DialogController : IController
 {
     private UiHandle? _dialogHandle;
 
@@ -332,7 +337,11 @@ public class DialogController : IController
 ### UI 栈管理
 
 ```csharp
-public class NavigationController : IController
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class NavigationController : IController
 {
     public void ShowUiStack()
     {
@@ -364,7 +373,11 @@ public class NavigationController : IController
 ### 多层级 UI 管理
 
 ```csharp
-public class LayerController : IController
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class LayerController : IController
 {
     public void ShowMultipleToasts()
     {

@@ -75,7 +75,7 @@ private System.Collections.IEnumerator WaitUntilCondition()
     GD.Print("等待生命值恢复");
     
     // 等待生命值大于 50
-    var playerModel = Context.GetModel<PlayerModel>();
+    var playerModel = this.GetModel<PlayerModel>();
     yield return new WaitUntil(() => playerModel.Health.Value > 50);
     
     GD.Print("生命值已恢复！");
@@ -140,7 +140,7 @@ private System.Collections.IEnumerator EndOfFrameExample()
 ```csharp
 private System.Collections.IEnumerator WaitUntilExample()
 {
-    var health = Context.GetModel<PlayerModel>().Health;
+    var health = this.GetModel<PlayerModel>().Health;
     
     // 持续等待直到条件满足
     yield return new WaitUntil(() => health.Value > 0);
@@ -156,7 +156,7 @@ private System.Collections.IEnumerator WaitUntilExample()
 ```csharp
 private System.Collections.IEnumerator WaitWhileExample()
 {
-    var gameState = Context.GetModel<GameModel>();
+    var gameState = this.GetModel<GameModel>();
     
     // 等待游戏不再暂停
     yield return new WaitWhile(() => gameState.IsPaused.Value);
@@ -174,7 +174,7 @@ private System.Collections.IEnumerator WaitWhileExample()
 ```csharp
 private System.Collections.IEnumerator CombinedWait()
 {
-    var health = Context.GetModel<PlayerModel>().Health;
+    var health = this.GetModel<PlayerModel>().Health;
     var button = GetNode<Button>("Button");
     
     // 等待生命值恢复或按钮点击（任一条件满足即可）

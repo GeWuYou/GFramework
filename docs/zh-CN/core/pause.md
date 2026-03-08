@@ -109,11 +109,12 @@ event Action<PauseGroup, bool>? OnPauseStateChanged;
 ### 1. 获取暂停管理器
 
 ```csharp
-public class GameController : IController
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class GameController : IController
 {
     private IPauseStackManager _pauseManager;
-
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
 
     public void Initialize()
     {
@@ -126,12 +127,13 @@ public class GameController : IController
 ### 2. 简单的暂停/恢复
 
 ```csharp
-public class PauseMenuController : IController
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class PauseMenuController : IController
 {
     private IPauseStackManager _pauseManager;
     private PauseToken _pauseToken;
-
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
 
     public void Initialize()
     {
@@ -161,11 +163,12 @@ public class PauseMenuController : IController
 ### 3. 使用作用域自动管理
 
 ```csharp
-public class DialogController : IController
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class DialogController : IController
 {
     private IPauseStackManager _pauseManager;
-
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
 
     public void ShowDialog(string message)
     {
@@ -212,11 +215,12 @@ public class GameplaySystem : AbstractSystem
 ### 1. 嵌套暂停
 
 ```csharp
-public class UIManager : IController
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class UIManager : IController
 {
     private IPauseStackManager _pauseManager;
-
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
 
     public void ShowNestedMenus()
     {
@@ -250,11 +254,12 @@ public class UIManager : IController
 ### 2. 分组暂停
 
 ```csharp
-public class GameManager : IController
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class GameManager : IController
 {
     private IPauseStackManager _pauseManager;
-
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
 
     public void OpenInventory()
     {
@@ -357,11 +362,12 @@ public class GameInitializer
 ### 4. 监听暂停状态变化
 
 ```csharp
-public class PauseIndicator : IController
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class PauseIndicator : IController
 {
     private IPauseStackManager _pauseManager;
-
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
 
     public void Initialize()
     {
@@ -398,11 +404,12 @@ public class PauseIndicator : IController
 ### 5. 调试暂停状态
 
 ```csharp
-public class PauseDebugger : IController
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class PauseDebugger : IController
 {
     private IPauseStackManager _pauseManager;
-
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
 
     public void PrintPauseStatus()
     {
@@ -434,11 +441,12 @@ public class PauseDebugger : IController
 ### 6. 紧急恢复
 
 ```csharp
-public class EmergencyController : IController
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class EmergencyController : IController
 {
     private IPauseStackManager _pauseManager;
-
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
 
     public void ForceResumeAll()
     {
@@ -674,12 +682,13 @@ public class ThreadSafeUsage
 在组件销毁时注销处理器和事件：
 
 ```csharp
-public class ProperCleanup : IController
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class ProperCleanup : IController
 {
     private IPauseStackManager _pauseManager;
     private IPauseHandler _customHandler;
-
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
 
     public void Initialize()
     {
@@ -775,11 +784,12 @@ public class SelectiveSystem : AbstractSystem
 A: 暂停系统控制是否执行，时间缩放需要使用时间系统：
 
 ```csharp
-public class SlowMotionController : IController
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class SlowMotionController : IController
 {
     private ITimeProvider _timeProvider;
-
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
 
     public void EnableSlowMotion()
     {
@@ -819,11 +829,12 @@ _pauseManager.Push("AI 系统", PauseGroup.Custom3);
 A: 使用 `PauseScope` 配合 `async/await`：
 
 ```csharp
-public class AsyncPauseExample : IController
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class AsyncPauseExample : IController
 {
     private IPauseStackManager _pauseManager;
-
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
 
     public async Task ShowAsyncDialog()
     {

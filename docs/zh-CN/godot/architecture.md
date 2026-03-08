@@ -340,13 +340,15 @@ public class GameArchitecture : AbstractArchitecture
 
 ```csharp
 using Godot;
-using GFramework.Godot.extensions;
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
 
-public partial class Player : CharacterBody2D
+[ContextAware]
+public partial class Player : CharacterBody2D, IController
 {
     public override void _Ready()
     {
-        // 通过扩展方法访问架构组件
+        // 使用扩展方法访问架构（[ContextAware] 实现 IContextAware 接口）
         var playerModel = this.GetModel<PlayerModel>();
         var gameplaySystem = this.GetSystem<GameplaySystem>();
 
@@ -407,14 +409,24 @@ public class UiArchitecture : AbstractArchitecture
 }
 
 // 在不同节点中使用不同架构
+[ContextAware]
 public partial class GameNode : Node, IController
 {
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
+    // 配置使用 GameArchitecture 的上下文提供者
+    static GameNode()
+    {
+        SetContextProvider(new GameContextProvider());
+    }
 }
 
+[ContextAware]
 public partial class UiNode : Control, IController
 {
-    public IArchitecture GetArchitecture() => UiArchitecture.Interface;
+    // 配置使用 UiArchitecture 的上下文提供者
+    static UiNode()
+    {
+        SetContextProvider(new UiContextProvider());
+    }
 }
 ```
 
@@ -504,17 +516,20 @@ public partial class GameRoot : Node
 ### 问题：如何在节点中访问架构？
 
 **解答**：
-实现 `IController` 接口或使用扩展方法：
+使用 `[ContextAware]` 特性或直接使用单例：
 
 ```csharp
-// 方式 1: 实现 IController
+using GFramework.SourceGenerators.Abstractions.rule;
+
+// 方式 1: 使用 [ContextAware] 特性（推荐）
+[ContextAware]
 public partial class Player : Node, IController
 {
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
-
     public override void _Ready()
     {
+        // 使用扩展方法访问架构（[ContextAware] 实现 IContextAware 接口）
         var model = this.GetModel<PlayerModel>();
+        var system = this.GetSystem<GameplaySystem>();
     }
 }
 
@@ -527,6 +542,13 @@ public partial class Enemy : Node
     }
 }
 ```
+
+**注意**：
+
+- `IController` 是标记接口，不包含任何方法
+- 架构访问能力由 `[ContextAware]` 特性提供
+- `[ContextAware]` 会自动生成 `Context` 属性和实现 `IContextAware` 接口
+- 扩展方法（如 `this.GetModel()`）基于 `IContextAware` 接口，而非 `IController`
 
 ### 问题：架构锚点节点是什么？
 

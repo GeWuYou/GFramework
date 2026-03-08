@@ -92,7 +92,7 @@ public partial class PlayerController : Node, IController
 
     public override void _Ready()
     {
-        _playerModel = Context.GetModel&lt;PlayerModel&gt;();
+        _playerModel = this.GetModel&lt;PlayerModel&gt;();
 
         // 监听数据变化，更新视图
         _playerModel.Health.Register(UpdateHealthUI);
@@ -107,7 +107,7 @@ public partial class PlayerController : Node, IController
             if (keyEvent.Keycode == Key.Space)
             {
                 // 发送命令修改 Model
-                Context.SendCommand(new AttackCommand());
+                this.SendCommand(new AttackCommand());
             }
         }
     }
@@ -238,7 +238,7 @@ public partial class PlayerView : Control, IController
 
     public override void _Ready()
     {
-        _viewModel = Context.GetModel&lt;PlayerViewModel&gt;();
+        _viewModel = this.GetModel&lt;PlayerViewModel&gt;();
 
         _healthLabel = GetNode&lt;Label&gt;("HealthLabel");
         _healthBar = GetNode&lt;ProgressBar&gt;("HealthBar");
@@ -319,10 +319,9 @@ public class BuyItemCommand : AbstractCommand&lt;BuyItemInput&gt;
 }
 
 // 使用命令
-public class ShopController : IController
+[ContextAware]
+public partial class ShopController : IController
 {
-    public IArchitecture GetArchitecture() =&gt; GameArchitecture.Interface;
-
     public void OnBuyButtonClicked(string itemId, int quantity)
     {
         // 创建并发送命令
@@ -456,10 +455,9 @@ public class GetPlayerStatsQuery : AbstractQuery&lt;GetPlayerStatsInput, PlayerS
 }
 
 // 使用查询
-public class CharacterPanelController : IController
+[ContextAware]
+public partial class CharacterPanelController : IController
 {
-    public IArchitecture GetArchitecture() =&gt; GameArchitecture.Interface;
-
     public void ShowCharacterStats()
     {
         var input = new GetPlayerStatsInput { PlayerId = "player1" };
@@ -623,20 +621,19 @@ public class AchievementSystem : AbstractSystem
 }
 
 // Controller 监听事件
-public class UIController : IController
+[ContextAware]
+public partial class UIController : IController
 {
     private IUnRegisterList _unregisterList = new UnRegisterList();
-
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
 
     public void Initialize()
     {
         // 监听成就解锁事件
-        this.RegisterEvent&lt;AchievementUnlockedEvent&gt;(OnAchievementUnlocked)
+        this.RegisterEvent<AchievementUnlockedEvent>(OnAchievementUnlocked)
             .AddToUnregisterList(_unregisterList);
 
         // 监听玩家死亡事件
-        this.RegisterEvent&lt;PlayerDiedEvent&gt;(OnPlayerDied)
+        this.RegisterEvent<PlayerDiedEvent>(OnPlayerDied)
             .AddToUnregisterList(_unregisterList);
     }
 
@@ -660,8 +657,11 @@ public class UIController : IController
 ### 事件组合
 
 ```csharp
+using GFramework.SourceGenerators.Abstractions.rule;
+
 // 使用 OrEvent 组合多个事件
-public class InputController : IController
+[ContextAware]
+public partial class InputController : IController
 {
     public void Initialize()
     {
@@ -877,14 +877,13 @@ public class GameplaySystem : AbstractSystem
 }
 
 // 在 Controller 中使用
-public class MenuController : IController
+[ContextAware]
+public partial class MenuController : IController
 {
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
-
     public void OnStartButtonClicked()
     {
         // 通过架构获取服务
-        var gameModel = this.GetModel&lt;GameModel&gt;();
+        var gameModel = this.GetModel<GameModel>();
         gameModel.GameState.Value = GameState.Playing;
 
         // 发送命令
@@ -1259,26 +1258,25 @@ public class GameArchitecture : Architecture
 }
 
 // 使用状态机
-public class GameController : IController
+[ContextAware]
+public partial class GameController : IController
 {
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
-
     public async Task StartGame()
     {
-        var stateMachine = this.GetSystem&lt;IStateMachineSystem&gt;();
-        await stateMachine.ChangeToAsync&lt;GameplayState&gt;();
+        var stateMachine = this.GetSystem<IStateMachineSystem>();
+        await stateMachine.ChangeToAsync<GameplayState>();
     }
 
     public async Task PauseGame()
     {
-        var stateMachine = this.GetSystem&lt;IStateMachineSystem&gt;();
-        await stateMachine.ChangeToAsync&lt;PauseState&gt;();
+        var stateMachine = this.GetSystem<IStateMachineSystem>();
+        await stateMachine.ChangeToAsync<PauseState>();
     }
 
     public async Task ResumeGame()
     {
-        var stateMachine = this.GetSystem&lt;IStateMachineSystem&gt;();
-        await stateMachine.ChangeToAsync&lt;GameplayState&gt;();
+        var stateMachine = this.GetSystem<IStateMachineSystem>();
+        await stateMachine.ChangeToAsync<GameplayState>();
     }
 }
 ```
@@ -1710,7 +1708,7 @@ namespace Game.Controllers
         
         public override void _Ready()
         {
-            _playerModel = Context.GetModel<PlayerModel>();
+            _playerModel = this.GetModel<PlayerModel>();
             
             // 监听用户输入
             SetProcessInput(true);
@@ -1725,7 +1723,7 @@ namespace Game.Controllers
             if (@event is InputEventKey keyEvent && keyEvent.Pressed)
             {
                 var direction = GetInputDirection(keyEvent);
-                Context.SendEvent(new PlayerInputEvent { Direction = direction });
+                this.SendEvent(new PlayerInputEvent { Direction = direction });
             }
         }
         

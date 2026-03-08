@@ -176,25 +176,27 @@ await architecture.WaitUntilReadyAsync();
 
 // 4. 通过依赖注入使用架构
 // 在 Controller 或其他组件中获取架构实例
-public class GameController : IController
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class GameController : IController
 {
-    public IArchitecture GetArchitecture() => GameArchitecture.Interface;
-    
     public void Start()
     {
-        // 获取 Model
+        // 获取 Model（使用扩展方法访问架构（[ContextAware] 实现 IContextAware 接口））
         var playerModel = this.GetModel<PlayerModel>();
-        
+
         // 发送命令
         this.SendCommand(new StartGameCommand());
-        
+
         // 发送查询
         var score = this.SendQuery(new GetScoreQuery());
-        
+
         // 注册事件
         this.RegisterEvent<PlayerDiedEvent>(OnPlayerDied);
     }
-    
+
     private void OnPlayerDied(PlayerDiedEvent e)
     {
         // 处理玩家死亡事件

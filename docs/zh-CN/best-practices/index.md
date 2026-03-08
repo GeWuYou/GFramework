@@ -32,12 +32,16 @@ public class CombatSystem : AbstractSystem
     }
 }
 
-public class PlayerController : IController
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class PlayerController : IController
 {
     // Controller：连接 UI 和逻辑
     public void Initialize()
     {
-        var player = _architecture.GetModel<PlayerModel>();
+        var player = this.GetModel<PlayerModel>();
         player.Health.RegisterWithInitValue(OnHealthChanged);
     }
 
@@ -177,13 +181,17 @@ public class StorageUtility : IUtility { }
 ### 1. 正确的注销管理
 
 ```csharp
-public class MyController : IController
+using GFramework.Core.Abstractions.controller;
+using GFramework.SourceGenerators.Abstractions.rule;
+
+[ContextAware]
+public partial class MyController : IController
 {
     private IUnRegisterList _unregisterList = new UnRegisterList();
 
     public void Initialize()
     {
-        var model = _architecture.GetModel<PlayerModel>();
+        var model = this.GetModel<PlayerModel>();
 
         // 注册事件并添加到注销列表
         this.RegisterEvent<PlayerDiedEvent>(OnPlayerDied)
@@ -235,7 +243,7 @@ public class GameManager
 // ❌ 低效：每次都查询
 public void Update()
 {
-    var model = _architecture.GetModel<PlayerModel>();
+    var model = this.GetModel<PlayerModel>();
     model.Health.Value -= 1;
 }
 
@@ -244,7 +252,7 @@ private PlayerModel _playerModel;
 
 public void Initialize()
 {
-    _playerModel = _architecture.GetModel<PlayerModel>();
+    _playerModel = this.GetModel<PlayerModel>();
 }
 
 public void Update()
