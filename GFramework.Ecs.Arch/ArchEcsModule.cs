@@ -8,9 +8,9 @@ namespace GFramework.Ecs.Arch;
 /// </summary>
 public sealed class ArchEcsModule : IArchEcsModule
 {
-    private readonly List<ArchSystemAdapter<float>> _systems = [];
     private IIocContainer? _container;
     private bool _isInitialized;
+    private IReadOnlyList<ArchSystemAdapter<float>> _systems = [];
     private World? _world;
 
     /// <summary>
@@ -67,17 +67,13 @@ public sealed class ArchEcsModule : IArchEcsModule
             return;
         }
 
-        // 从容器获取所有适配器
-        var adapters = _container.GetAll<ArchSystemAdapter<float>>();
-        if (adapters.Count > 0)
-        {
-            _systems.AddRange(adapters);
+        // 从容器按优先级获取所有适配器
+        _systems = _container.GetAllByPriority<ArchSystemAdapter<float>>();
 
-            // 初始化所有系统（会调用 Arch 系统的 Initialize）
-            foreach (var system in _systems)
-            {
-                system.Initialize();
-            }
+        // 初始化所有系统（会调用 Arch 系统的 Initialize）
+        foreach (var system in _systems)
+        {
+            system.Initialize();
         }
 
         _isInitialized = true;
@@ -99,7 +95,7 @@ public sealed class ArchEcsModule : IArchEcsModule
             system.Destroy();
         }
 
-        _systems.Clear();
+        _systems = [];
 
         // 销毁 World
         if (_world != null)
