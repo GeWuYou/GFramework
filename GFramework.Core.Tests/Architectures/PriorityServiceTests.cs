@@ -7,7 +7,7 @@ using GFramework.Core.IoC;
 using GFramework.Core.Logging;
 using GFramework.Core.Model;
 
-namespace GFramework.Core.Tests.Architecture;
+namespace GFramework.Core.Tests.Architectures;
 
 /// <summary>
 ///     优先级服务排序的集成测试

@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 using GFramework.Core.Abstractions.Enums;
 using GFramework.Core.Architectures;
 
-namespace GFramework.Core.Tests.Architecture;
+namespace GFramework.Core.Tests.Architectures;
 
 /// <summary>
 ///     ArchitectureConstants类的单元测试

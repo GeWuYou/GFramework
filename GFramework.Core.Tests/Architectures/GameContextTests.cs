@@ -16,7 +16,7 @@ using GFramework.Core.Query;
 using Mediator;
 using ICommand = GFramework.Core.Abstractions.Command.ICommand;
 
-namespace GFramework.Core.Tests.Architecture;
+namespace GFramework.Core.Tests.Architectures;
 
 /// <summary>
 ///     GameContext类的单元测试
@@ -215,7 +215,7 @@ public class GameContextTests
 /// <summary>
 ///     测试用的架构类，继承自Architecture
 /// </summary>
-public class TestArchitecture : Architectures.Architecture
+public class TestArchitecture : Architecture
 {
     /// <summary>
     ///     初始化方法，当前为空实现

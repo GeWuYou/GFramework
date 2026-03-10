@@ -4,7 +4,7 @@ using GFramework.Core.Abstractions.Properties;
 using GFramework.Core.Architectures;
 using GFramework.Core.Logging;
 
-namespace GFramework.Core.Tests.Architecture;
+namespace GFramework.Core.Tests.Architectures;
 
 /// <summary>
 ///     ArchitectureConfiguration类的单元测试

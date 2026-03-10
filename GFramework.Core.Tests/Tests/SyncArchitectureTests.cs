@@ -1,6 +1,6 @@
 using GFramework.Core.Abstractions.Enums;
 using GFramework.Core.Architectures;
-using GFramework.Core.Tests.Architecture;
+using GFramework.Core.Tests.Architectures;
 using GFramework.Core.Tests.Events;
 using GFramework.Core.Tests.Model;
 using GFramework.Core.Tests.Systems;

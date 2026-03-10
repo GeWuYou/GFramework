@@ -1,7 +1,7 @@
 ﻿using GFramework.Core.Tests.Model;
 using GFramework.Core.Tests.Systems;
 
-namespace GFramework.Core.Tests.Architecture;
+namespace GFramework.Core.Tests.Architectures;
 
 /// <summary>
 ///     同步测试架构类，用于测试架构的生命周期和事件处理

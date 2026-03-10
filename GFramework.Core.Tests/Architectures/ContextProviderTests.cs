@@ -1,7 +1,7 @@
 using GFramework.Core.Abstractions.Architecture;
 using GFramework.Core.Architectures;
 
-namespace GFramework.Core.Tests.Architecture;
+namespace GFramework.Core.Tests.Architectures;
 
 /// <summary>
 /// ContextProvider 相关类的单元测试

@@ -1,5 +1,5 @@
 using GFramework.Core.Abstractions.Enums;
-using GFramework.Core.Tests.Architecture;
+using GFramework.Core.Tests.Architectures;
 using GFramework.Core.Tests.Model;
 using GFramework.Core.Tests.Systems;
 using NUnit.Framework.Legacy;

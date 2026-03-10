@@ -1,7 +1,7 @@
 ﻿using GFramework.Core.Tests.Model;
 using GFramework.Core.Tests.Systems;
 
-namespace GFramework.Core.Tests.Architecture;
+namespace GFramework.Core.Tests.Architectures;
 
 /// <summary>
 ///     异步测试架构，用于测试异步模型和系统的初始化

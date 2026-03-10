@@ -15,7 +15,7 @@ using GFramework.Core.IoC;
 using GFramework.Core.Logging;
 using GFramework.Core.Query;
 
-namespace GFramework.Core.Tests.Architecture;
+namespace GFramework.Core.Tests.Architectures;
 
 /// <summary>
 ///     ArchitectureContext类的单元测试

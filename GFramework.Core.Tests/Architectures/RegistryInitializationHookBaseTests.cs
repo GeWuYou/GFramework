@@ -7,7 +7,7 @@ using GFramework.Core.Abstractions.Utility;
 using GFramework.Core.Architectures;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace GFramework.Core.Tests.Architecture;
+namespace GFramework.Core.Tests.Architectures;
 
 /// <summary>
 /// RegistryInitializationHookBase 抽象基类的单元测试

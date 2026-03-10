@@ -16,7 +16,7 @@ using GFramework.Core.Query;
 using Mediator;
 using ICommand = GFramework.Core.Abstractions.Command.ICommand;
 
-namespace GFramework.Core.Tests.Architecture;
+namespace GFramework.Core.Tests.Architectures;
 
 /// <summary>
 ///     ArchitectureServices类的单元测试

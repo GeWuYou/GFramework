@@ -2,7 +2,7 @@ using GFramework.Core.Abstractions.Architecture;
 using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Architectures;
 using GFramework.Core.Rule;
-using GFramework.Core.Tests.Architecture;
+using GFramework.Core.Tests.Architectures;
 
 namespace GFramework.Core.Tests.Rule;
 

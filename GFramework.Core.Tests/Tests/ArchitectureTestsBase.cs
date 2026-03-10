@@ -7,7 +7,7 @@ namespace GFramework.Core.Tests.Tests;
 ///     架构测试基类，封装同步/异步共通测试逻辑
 /// </summary>
 /// <typeparam name="TArchitecture">架构类型，必须继承自Architecture</typeparam>
-public abstract class ArchitectureTestsBase<TArchitecture> where TArchitecture : Architectures.Architecture
+public abstract class ArchitectureTestsBase<TArchitecture> where TArchitecture : Architecture
 {
     protected TArchitecture? Architecture;
 

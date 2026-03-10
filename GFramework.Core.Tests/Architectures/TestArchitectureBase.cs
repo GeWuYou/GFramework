@@ -1,11 +1,12 @@
 ﻿using GFramework.Core.Abstractions.Enums;
+using GFramework.Core.Architectures;
 
-namespace GFramework.Core.Tests.Architecture;
+namespace GFramework.Core.Tests.Architectures;
 
 /// <summary>
 ///     测试架构基类，提供通用的测试架构功能
 /// </summary>
-public abstract class TestArchitectureBase : Architectures.Architecture
+public abstract class TestArchitectureBase : Architecture
 {
     private Action<TestArchitectureBase>? _postRegistrationHook;
 
