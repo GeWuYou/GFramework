@@ -46,12 +46,8 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
     {
         var key = location.ToStorageKey();
 
-        T result;
         // 检查存储中是否存在指定键的数据
-        if (await Storage.ExistsAsync(key))
-            result = await Storage.ReadAsync<T>(key);
-        else
-            result = new T();
+        T result = await Storage.ExistsAsync(key) ? await Storage.ReadAsync<T>(key) : new T();
 
         // 如果启用事件功能，则发送数据加载完成事件
         if (_options.EnableEvents)
