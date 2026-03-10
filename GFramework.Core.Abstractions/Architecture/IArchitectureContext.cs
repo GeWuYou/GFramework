@@ -19,8 +19,8 @@ public interface IArchitectureContext
     ///     获取指定类型的服务实例
     /// </summary>
     /// <typeparam name="TService">服务类型</typeparam>
-    /// <returns>服务实例，如果不存在则返回null</returns>
-    TService? GetService<TService>() where TService : class;
+    /// <returns>服务实例，如果不存在则抛出异常</returns>
+    TService GetService<TService>() where TService : class;
 
     /// <summary>
     ///     获取指定类型的所有服务实例
@@ -33,8 +33,8 @@ public interface IArchitectureContext
     ///     获取指定类型的系统实例
     /// </summary>
     /// <typeparam name="TSystem">系统类型，必须继承自ISystem接口</typeparam>
-    /// <returns>系统实例，如果不存在则返回null</returns>
-    TSystem? GetSystem<TSystem>() where TSystem : class, ISystem;
+    /// <returns>系统实例，如果不存在则抛出异常</returns>
+    TSystem GetSystem<TSystem>() where TSystem : class, ISystem;
 
     /// <summary>
     ///     获取指定类型的所有系统实例
@@ -47,8 +47,8 @@ public interface IArchitectureContext
     ///     获取指定类型的模型实例
     /// </summary>
     /// <typeparam name="TModel">模型类型，必须继承自IModel接口</typeparam>
-    /// <returns>模型实例，如果不存在则返回null</returns>
-    TModel? GetModel<TModel>() where TModel : class, IModel;
+    /// <returns>模型实例，如果不存在则抛出异常</returns>
+    TModel GetModel<TModel>() where TModel : class, IModel;
 
     /// <summary>
     ///     获取指定类型的所有模型实例
@@ -61,8 +61,8 @@ public interface IArchitectureContext
     ///     获取指定类型的工具类实例
     /// </summary>
     /// <typeparam name="TUtility">工具类类型，必须继承自IUtility接口</typeparam>
-    /// <returns>工具类实例，如果不存在则返回null</returns>
-    TUtility? GetUtility<TUtility>() where TUtility : class, IUtility;
+    /// <returns>工具类实例，如果不存在则抛出异常</returns>
+    TUtility GetUtility<TUtility>() where TUtility : class, IUtility;
 
     /// <summary>
     ///     获取指定类型的所有工具类实例

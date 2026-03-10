@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using GFramework.Core.Abstractions.Architecture;
 using GFramework.Core.Abstractions.Command;
 using GFramework.Core.Abstractions.Environment;
@@ -18,31 +19,31 @@ namespace GFramework.Core.Architectures;
 public class ArchitectureContext(IIocContainer container) : IArchitectureContext
 {
     private readonly IIocContainer _container = container ?? throw new ArgumentNullException(nameof(container));
-    private readonly Dictionary<Type, object> _serviceCache = new();
+    private readonly ConcurrentDictionary<Type, object> _serviceCache = new();
 
     #region Mediator Integration
 
     /// <summary>
     /// 获取 Mediator 实例（延迟加载）
     /// </summary>
-    private IMediator? Mediator => GetOrCache<IMediator>();
+    private IMediator Mediator => GetOrCache<IMediator>();
 
     /// <summary>
     /// 获取 ISender 实例（更轻量的发送器）
     /// </summary>
-    private ISender? Sender => GetOrCache<ISender>();
+    private ISender Sender => GetOrCache<ISender>();
 
     /// <summary>
     /// 获取 IPublisher 实例（用于发布通知）
     /// </summary>
-    private IPublisher? Publisher => GetOrCache<IPublisher>();
+    private IPublisher Publisher => GetOrCache<IPublisher>();
 
     /// <summary>
     /// 获取指定类型的服务实例，如果缓存中存在则直接返回，否则从容器中获取并缓存
     /// </summary>
     /// <typeparam name="TService">服务类型，必须为引用类型</typeparam>
-    /// <returns>服务实例，如果未找到则返回null</returns>
-    public TService? GetService<TService>() where TService : class
+    /// <returns>服务实例，如果不存在则抛出异常</returns>
+    public TService GetService<TService>() where TService : class
     {
         return GetOrCache<TService>();
     }
@@ -52,20 +53,14 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     /// 首先尝试从缓存中获取服务实例，如果缓存中不存在则从容器中获取并存入缓存
     /// </summary>
     /// <typeparam name="TService">服务类型，必须为引用类型</typeparam>
-    /// <returns>服务实例，如果未找到则返回null</returns>
-    private TService? GetOrCache<TService>() where TService : class
+    /// <returns>服务实例，如果不存在则抛出异常</returns>
+    private TService GetOrCache<TService>() where TService : class
     {
-        // 尝试从服务缓存中获取已存在的服务实例
-        if (_serviceCache.TryGetValue(typeof(TService), out var cached))
-            return (TService)cached;
-
-        // 从依赖注入容器中获取服务实例
-        var service = _container.Get<TService>();
-        // 如果服务实例存在，则将其存入缓存以供后续使用
-        if (service != null)
-            _serviceCache[typeof(TService)] = service;
-
-        return service;
+        return (TService)_serviceCache.GetOrAdd(
+            typeof(TService),
+            _ => _container.Get<TService>()
+                 ?? throw new InvalidOperationException(
+                     $"Service {typeof(TService)} not registered"));
     }
 
     /// <summary>
@@ -248,7 +243,7 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     /// </summary>
     /// <typeparam name="TSystem">目标系统类型</typeparam>
     /// <returns>对应的系统实例</returns>
-    public TSystem? GetSystem<TSystem>() where TSystem : class, ISystem
+    public TSystem GetSystem<TSystem>() where TSystem : class, ISystem
     {
         return GetService<TSystem>();
     }
@@ -268,7 +263,7 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     /// </summary>
     /// <typeparam name="TModel">目标模型类型</typeparam>
     /// <returns>对应的模型实例</returns>
-    public TModel? GetModel<TModel>() where TModel : class, IModel
+    public TModel GetModel<TModel>() where TModel : class, IModel
     {
         return GetService<TModel>();
     }
@@ -288,7 +283,7 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     /// </summary>
     /// <typeparam name="TUtility">目标工具类型</typeparam>
     /// <returns>对应的工具实例</returns>
-    public TUtility? GetUtility<TUtility>() where TUtility : class, IUtility
+    public TUtility GetUtility<TUtility>() where TUtility : class, IUtility
     {
         return GetService<TUtility>();
     }
@@ -416,7 +411,7 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     {
         ArgumentNullException.ThrowIfNull(command);
         var commandBus = GetOrCache<ICommandExecutor>();
-        commandBus?.Send(command);
+        commandBus.Send(command);
     }
 
     /// <summary>
@@ -444,7 +439,7 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     public void SendEvent<TEvent>() where TEvent : new()
     {
         var eventBus = GetOrCache<IEventBus>();
-        eventBus?.Send<TEvent>();
+        eventBus.Send<TEvent>();
     }
 
     /// <summary>
@@ -456,7 +451,7 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     {
         ArgumentNullException.ThrowIfNull(e);
         var eventBus = GetOrCache<IEventBus>();
-        eventBus?.Send(e);
+        eventBus.Send(e);
     }
 
     /// <summary>
@@ -482,7 +477,7 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     {
         ArgumentNullException.ThrowIfNull(onEvent);
         var eventBus = GetOrCache<IEventBus>();
-        eventBus?.UnRegister(onEvent);
+        eventBus.UnRegister(onEvent);
     }
 
     /// <summary>
