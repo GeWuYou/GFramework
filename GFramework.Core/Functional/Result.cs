@@ -12,12 +12,14 @@
 // limitations under the License.
 
 using System.Diagnostics.Contracts;
+using System.Runtime.InteropServices;
 
 namespace GFramework.Core.Functional;
 
 /// <summary>
 ///     表示一个无值的操作结果，仅包含成功或失败状态
 /// </summary>
+[StructLayout(LayoutKind.Auto)]
 public readonly struct Result : IEquatable<Result>
 {
     private readonly Exception? _exception;
@@ -82,7 +84,7 @@ public readonly struct Result : IEquatable<Result>
     public static Result Failure(string message)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(message);
-        return new(false, new Exception(message));
+        return new Result(false, new InvalidOperationException(message));
     }
 
     /// <summary>
@@ -113,10 +115,14 @@ public readonly struct Result : IEquatable<Result>
     [Pure]
     public bool Equals(Result other)
     {
-        // 比较状态和异常信息
-        return _isSuccess == other._isSuccess &&
-               (!IsFailure || (_exception?.GetType() == other._exception?.GetType() &&
-                               _exception?.Message == other._exception?.Message));
+        if (_isSuccess != other._isSuccess)
+            return false;
+
+        if (_isSuccess)
+            return true;
+
+        return _exception!.GetType() == other._exception!.GetType() &&
+               _exception.Message == other._exception.Message;
     }
 
     /// <summary>
@@ -134,10 +140,7 @@ public readonly struct Result : IEquatable<Result>
     [Pure]
     public override int GetHashCode()
     {
-        // 根据状态和异常信息生成哈希码
-        return IsSuccess
-            ? HashCode.Combine(true)
-            : HashCode.Combine(false, _exception?.GetType(), _exception?.Message);
+        return _isSuccess ? 1 : HashCode.Combine(_exception!.GetType(), _exception.Message);
     }
 
     /// <summary>
@@ -164,5 +167,42 @@ public readonly struct Result : IEquatable<Result>
     /// <returns>Result 的字符串表示</returns>
     [Pure]
     public override string ToString() =>
-        IsSuccess ? "Success" : $"Fail({_exception?.Message ?? "Unknown"})";
+        _isSuccess ? "Success" : $"Fail({_exception!.Message})";
+
+    /// <summary>
+    ///     尝试执行一个无返回值的操作，并根据执行结果返回成功或失败的 Result
+    /// </summary>
+    /// <param name="action">要执行的无返回值操作</param>
+    /// <returns>若操作成功执行返回成功的 Result，若执行过程中抛出异常则返回失败的 Result</returns>
+    [Pure]
+    public static Result Try(Action action)
+    {
+        try
+        {
+            action();
+            return Success();
+        }
+        catch (Exception ex)
+        {
+            return Failure(ex);
+        }
+    }
+
+    /// <summary>
+    ///     将当前 Result 的成功结果映射为另一种类型的 Result
+    /// </summary>
+    /// <typeparam name="B">映射后的目标类型</typeparam>
+    /// <param name="func">用于转换值的函数</param>
+    /// <returns>若当前为成功状态，返回包含转换后值的成功 Result；若为失败状态，返回保持原有错误的失败 Result</returns>
+    public Result<B> Map<B>(Func<B> func) =>
+        IsSuccess ? Result<B>.Success(func()) : Result<B>.Failure(_exception!);
+
+    /// <summary>
+    ///     将当前 Result 绑定到一个返回 Result 的函数上
+    /// </summary>
+    /// <typeparam name="B">Result 中值的类型</typeparam>
+    /// <param name="func">返回 Result 的函数</param>
+    /// <returns>若当前为成功状态，返回函数执行的结果；若为失败状态，返回保持原有错误的失败 Result</returns>
+    public Result<B> Bind<B>(Func<Result<B>> func) =>
+        IsSuccess ? func() : Result<B>.Failure(_exception!);
 }
