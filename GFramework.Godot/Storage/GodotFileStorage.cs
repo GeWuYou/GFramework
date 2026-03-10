@@ -38,12 +38,14 @@ public sealed class GodotFileStorage : IStorage
     ///     删除指定键对应的文件
     /// </summary>
     /// <param name="key">存储键</param>
+    private readonly object lockObject = new object();
+
     public void Delete(string key)
     {
         var path = ToAbsolutePath(key);
         var keyLock = GetLock(path);
 
-        lock (keyLock)
+        lock (lockObject)
         {
             // 处理Godot文件系统路径的删除操作
             if (path.IsGodotPath())
@@ -65,7 +67,6 @@ public sealed class GodotFileStorage : IStorage
         // 删除完成后尝试移除锁，防止锁字典无限增长
         _keyLocks.TryRemove(path, out _);
     }
-
     /// <summary>
     ///     异步删除指定键对应的文件
     /// </summary>
@@ -145,12 +146,14 @@ public sealed class GodotFileStorage : IStorage
     /// </summary>
     /// <param name="key">存储键</param>
     /// <returns>文件存在返回 true，否则返回 false</returns>
+    private readonly object lockObject = new object();
+
     public bool Exists(string key)
     {
         var path = ToAbsolutePath(key);
         var keyLock = GetLock(path);
 
-        lock (keyLock)
+        lock (lockObject)
         {
             if (!path.IsGodotPath()) return File.Exists(path);
             using var file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
@@ -179,12 +182,13 @@ public sealed class GodotFileStorage : IStorage
     /// <param name="key">存储键</param>
     /// <returns>反序列化后的对象实例</returns>
     /// <exception cref="FileNotFoundException">当指定键对应的文件不存在时抛出</exception>
+    private readonly object lockObject = new object();
+
     public T Read<T>(string key)
     {
         var path = ToAbsolutePath(key);
-        var keyLock = GetLock(path);
 
-        lock (keyLock)
+        lock (lockObject)
         {
             string content;
 
@@ -212,12 +216,13 @@ public sealed class GodotFileStorage : IStorage
     /// <param name="key">存储键</param>
     /// <param name="defaultValue">当文件不存在时返回的默认值</param>
     /// <returns>反序列化后的对象实例或默认值</returns>
+    private readonly object lockObject = new object();
     public T Read<T>(string key, T defaultValue)
     {
         var path = ToAbsolutePath(key);
         var keyLock = GetLock(path);
 
-        lock (keyLock)
+        lock (lockObject)
         {
             if ((path.IsGodotPath() && !FileAccess.FileExists(path)) || (!path.IsGodotPath() && !File.Exists(path)))
                 return defaultValue;
@@ -232,6 +237,8 @@ public sealed class GodotFileStorage : IStorage
     /// <typeparam name="T">要反序列化的类型</typeparam>
     /// <param name="key">存储键</param>
     /// <returns>表示异步操作的任务，结果为反序列化后的对象实例</returns>
+    private readonly object lockObject = new object();
+
     public async Task<T> ReadAsync<T>(string key)
     {
         var path = ToAbsolutePath(key);
@@ -239,7 +246,7 @@ public sealed class GodotFileStorage : IStorage
 
         return await Task.Run(() =>
         {
-            lock (keyLock)
+            lock (lockObject)
             {
                 string content;
 
@@ -359,12 +366,13 @@ public sealed class GodotFileStorage : IStorage
     /// <typeparam name="T">要序列化的对象类型</typeparam>
     /// <param name="key">存储键</param>
     /// <param name="value">要写入的对象实例</param>
+    private readonly object lockObject = new object();
+
     public void Write<T>(string key, T value)
     {
         var path = ToAbsolutePath(key);
-        var keyLock = GetLock(path);
 
-        lock (keyLock)
+        lock (lockObject)
         {
             var content = _serializer.Serialize(value);
             if (path.IsGodotPath())

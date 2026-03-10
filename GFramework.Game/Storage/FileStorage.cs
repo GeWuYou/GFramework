@@ -90,6 +90,8 @@ public sealed class FileStorage : IFileStorage
     ///     删除指定键的存储项
     /// </summary>
     /// <param name="key">存储键，用于标识要删除的存储项</param>
+    private readonly object lockObject = new object();
+
     public void Delete(string key)
     {
         // 将键转换为文件路径
@@ -99,7 +101,7 @@ public sealed class FileStorage : IFileStorage
         var keyLock = _keyLocks.GetOrAdd(path, _ => new object());
 
         // 使用锁确保同一时间只有一个线程操作该路径的文件
-        lock (keyLock)
+        lock (lockObject)
         {
             // 如果文件存在，则删除该文件
             if (File.Exists(path))
@@ -127,12 +129,12 @@ public sealed class FileStorage : IFileStorage
     /// </summary>
     /// <param name="key">存储键</param>
     /// <returns>如果存储项存在则返回true，否则返回false</returns>
+    private readonly object lockObject = new object();
+
     public bool Exists(string key)
     {
         var path = ToPath(key);
-        var keyLock = _keyLocks.GetOrAdd(path, _ => new object());
-
-        lock (keyLock)
+        lock (lockObject)
         {
             return File.Exists(path);
         }
@@ -159,12 +161,13 @@ public sealed class FileStorage : IFileStorage
     /// <param name="key">存储键</param>
     /// <returns>反序列化后的对象</returns>
     /// <exception cref="FileNotFoundException">当存储键不存在时抛出</exception>
+    private readonly object lockObject = new object();
     public T Read<T>(string key)
     {
         var path = ToPath(key);
         var keyLock = _keyLocks.GetOrAdd(path, _ => new object());
 
-        lock (keyLock)
+        lock (lockObject)
         {
             if (!File.Exists(path))
                 throw new FileNotFoundException($"Storage key not found: {key}", path);
@@ -181,12 +184,14 @@ public sealed class FileStorage : IFileStorage
     /// <param name="key">存储键</param>
     /// <param name="defaultValue">当存储键不存在时返回的默认值</param>
     /// <returns>反序列化后的对象或默认值</returns>
+    private readonly object lockObject = new object();
+
     public T Read<T>(string key, T defaultValue)
     {
         var path = ToPath(key);
         var keyLock = _keyLocks.GetOrAdd(path, _ => new object());
 
-        lock (keyLock)
+        lock (lockObject)
         {
             if (!File.Exists(path))
                 return defaultValue;
@@ -203,13 +208,14 @@ public sealed class FileStorage : IFileStorage
     /// <param name="key">存储键</param>
     /// <returns>反序列化后的对象</returns>
     /// <exception cref="FileNotFoundException">当存储键不存在时抛出</exception>
+    private readonly object lockObject = new object();
+
     public async Task<T> ReadAsync<T>(string key)
     {
         var path = ToPath(key);
-        var keyLock = _keyLocks.GetOrAdd(path, _ => new object());
 
         // 异步操作依然使用lock保护文件读写
-        lock (keyLock)
+        lock (lockObject)
         {
             if (!File.Exists(path))
                 throw new FileNotFoundException($"Storage key not found: {key}", path);
@@ -303,13 +309,14 @@ public sealed class FileStorage : IFileStorage
     /// <typeparam name="T">要序列化的对象类型</typeparam>
     /// <param name="key">存储键</param>
     /// <param name="value">要存储的对象</param>
+    private readonly object lockObject = new object();
     public void Write<T>(string key, T value)
     {
         var path = ToPath(key);
         var keyLock = _keyLocks.GetOrAdd(path, _ => new object());
         var content = _serializer.Serialize(value);
 
-        lock (keyLock)
+        lock (lockObject)
         {
             File.WriteAllText(path, content, Encoding.UTF8);
         }
@@ -322,6 +329,7 @@ public sealed class FileStorage : IFileStorage
     /// <param name="key">存储键</param>
     /// <param name="value">要存储的对象</param>
     /// <returns>表示异步操作的任务</returns>
+    private readonly object lockObject = new object();
     public async Task WriteAsync<T>(string key, T value)
     {
         var path = ToPath(key);
@@ -329,7 +337,7 @@ public sealed class FileStorage : IFileStorage
         var content = _serializer.Serialize(value);
 
         // 异步写也需要锁
-        lock (keyLock)
+        lock (lockObject)
         {
             using var fs = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
             using var sw = new StreamWriter(fs, Encoding.UTF8);
@@ -338,6 +346,5 @@ public sealed class FileStorage : IFileStorage
 
         await Task.CompletedTask;
     }
-
     #endregion
 }
