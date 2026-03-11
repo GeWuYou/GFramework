@@ -1,8 +1,4 @@
-﻿using System.IO;
-using System.Text;
-using GFramework.Core.Abstractions.Concurrency;
-using GFramework.Core.Abstractions.Serializer;
-using GFramework.Core.Concurrency;
+﻿using GFramework.Core.Concurrency;
 using GFramework.Game.Abstractions.Storage;
 
 namespace GFramework.Game.Storage;
@@ -16,6 +12,7 @@ public sealed class FileStorage : IFileStorage, IDisposable
     private readonly int _bufferSize;
     private readonly string _extension;
     private readonly IAsyncKeyLockManager _lockManager;
+    private readonly bool _ownsLockManager;
     private readonly string _rootPath;
     private readonly ISerializer _serializer;
     private bool _disposed;
@@ -35,7 +32,17 @@ public sealed class FileStorage : IFileStorage, IDisposable
         _serializer = serializer;
         _extension = extension;
         _bufferSize = bufferSize;
-        _lockManager = lockManager ?? new AsyncKeyLockManager();
+
+        if (lockManager == null)
+        {
+            _lockManager = new AsyncKeyLockManager();
+            _ownsLockManager = true;
+        }
+        else
+        {
+            _lockManager = lockManager;
+            _ownsLockManager = false;
+        }
 
         Directory.CreateDirectory(_rootPath);
     }
@@ -47,7 +54,12 @@ public sealed class FileStorage : IFileStorage, IDisposable
     {
         if (_disposed) return;
         _disposed = true;
-        _lockManager.Dispose();
+
+        // 只释放内部创建的锁管理器
+        if (_ownsLockManager)
+        {
+            _lockManager.Dispose();
+        }
     }
 
     /// <summary>
@@ -108,9 +120,13 @@ public sealed class FileStorage : IFileStorage, IDisposable
     ///     删除指定键的存储项
     /// </summary>
     /// <param name="key">存储键，用于标识要删除的存储项</param>
+    /// <remarks>
+    ///     此方法通过同步等待异步操作完成，可能在具有同步上下文的环境（例如 UI 线程、经典 ASP.NET）中导致死锁。
+    ///     仅在无法使用异步 API 时使用。如果可能，请优先使用 <see cref="DeleteAsync"/>。
+    /// </remarks>
     public void Delete(string key)
     {
-        DeleteAsync(key).GetAwaiter().GetResult();
+        DeleteAsync(key).ConfigureAwait(false).GetAwaiter().GetResult();
     }
 
     /// <summary>
@@ -123,7 +139,7 @@ public sealed class FileStorage : IFileStorage, IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         var path = ToPath(key);
 
-        await using (await _lockManager.AcquireLockAsync(path))
+        await using (await _lockManager.AcquireLockAsync(path).ConfigureAwait(false))
         {
             if (File.Exists(path))
                 File.Delete(path);
@@ -139,9 +155,13 @@ public sealed class FileStorage : IFileStorage, IDisposable
     /// </summary>
     /// <param name="key">存储键</param>
     /// <returns>如果存储项存在则返回true，否则返回false</returns>
+    /// <remarks>
+    ///     此方法通过同步等待异步操作完成，可能在具有同步上下文的环境（例如 UI 线程、经典 ASP.NET）中导致死锁。
+    ///     仅在无法使用异步 API 时使用。如果可能，请优先使用 <see cref="ExistsAsync"/>。
+    /// </remarks>
     public bool Exists(string key)
     {
-        return ExistsAsync(key).GetAwaiter().GetResult();
+        return ExistsAsync(key).ConfigureAwait(false).GetAwaiter().GetResult();
     }
 
     /// <summary>
@@ -154,7 +174,7 @@ public sealed class FileStorage : IFileStorage, IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         var path = ToPath(key);
 
-        await using (await _lockManager.AcquireLockAsync(path))
+        await using (await _lockManager.AcquireLockAsync(path).ConfigureAwait(false))
         {
             return File.Exists(path);
         }
@@ -171,9 +191,13 @@ public sealed class FileStorage : IFileStorage, IDisposable
     /// <param name="key">存储键</param>
     /// <returns>反序列化后的对象</returns>
     /// <exception cref="FileNotFoundException">当存储键不存在时抛出</exception>
+    /// <remarks>
+    ///     此方法通过同步等待异步操作完成，可能在具有同步上下文的环境（例如 UI 线程、经典 ASP.NET）中导致死锁。
+    ///     仅在无法使用异步 API 时使用。如果可能，请优先使用 <see cref="ReadAsync{T}(string)"/>。
+    /// </remarks>
     public T Read<T>(string key)
     {
-        return ReadAsync<T>(key).GetAwaiter().GetResult();
+        return ReadAsync<T>(key).ConfigureAwait(false).GetAwaiter().GetResult();
     }
 
     /// <summary>
@@ -208,7 +232,7 @@ public sealed class FileStorage : IFileStorage, IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         var path = ToPath(key);
 
-        await using (await _lockManager.AcquireLockAsync(path))
+        await using (await _lockManager.AcquireLockAsync(path).ConfigureAwait(false))
         {
             if (!File.Exists(path))
                 throw new FileNotFoundException($"Storage key not found: {key}", path);
@@ -222,7 +246,7 @@ public sealed class FileStorage : IFileStorage, IDisposable
                 useAsync: true);
 
             using var sr = new StreamReader(fs, Encoding.UTF8);
-            var content = await sr.ReadToEndAsync();
+            var content = await sr.ReadToEndAsync().ConfigureAwait(false);
             return _serializer.Deserialize<T>(content);
         }
     }
@@ -304,9 +328,13 @@ public sealed class FileStorage : IFileStorage, IDisposable
     /// <typeparam name="T">要序列化的对象类型</typeparam>
     /// <param name="key">存储键</param>
     /// <param name="value">要存储的对象</param>
+    /// <remarks>
+    ///     此方法通过同步等待异步操作完成，可能在具有同步上下文的环境（例如 UI 线程、经典 ASP.NET）中导致死锁。
+    ///     仅在无法使用异步 API 时使用。如果可能，请优先使用 <see cref="WriteAsync{T}"/>。
+    /// </remarks>
     public void Write<T>(string key, T value)
     {
-        WriteAsync(key, value).GetAwaiter().GetResult();
+        WriteAsync(key, value).ConfigureAwait(false).GetAwaiter().GetResult();
     }
 
     /// <summary>
@@ -322,7 +350,7 @@ public sealed class FileStorage : IFileStorage, IDisposable
         var path = ToPath(key);
         var tempPath = path + ".tmp";
 
-        await using (await _lockManager.AcquireLockAsync(path))
+        await using (await _lockManager.AcquireLockAsync(path).ConfigureAwait(false))
         {
             try
             {
@@ -338,8 +366,8 @@ public sealed class FileStorage : IFileStorage, IDisposable
                                  useAsync: true))
                 {
                     await using var sw = new StreamWriter(fs, Encoding.UTF8);
-                    await sw.WriteAsync(content);
-                    await sw.FlushAsync();
+                    await sw.WriteAsync(content).ConfigureAwait(false);
+                    await sw.FlushAsync().ConfigureAwait(false);
                 }
 
                 // 原子性替换目标文件
