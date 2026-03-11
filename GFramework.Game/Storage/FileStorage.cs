@@ -1,21 +1,24 @@
 ﻿using System.IO;
 using System.Text;
+using GFramework.Core.Abstractions.Concurrency;
 using GFramework.Core.Abstractions.Serializer;
+using GFramework.Core.Concurrency;
 using GFramework.Game.Abstractions.Storage;
 
 namespace GFramework.Game.Storage;
 
 /// <summary>
 ///     基于文件系统的存储实现，实现了IFileStorage接口，支持按key细粒度锁保证线程安全
+///     使用异步安全的锁机制、原子写入和自动清理
 /// </summary>
-public sealed class FileStorage : IFileStorage
+public sealed class FileStorage : IFileStorage, IDisposable
 {
+    private readonly int _bufferSize;
     private readonly string _extension;
-
-    // 每个key对应的锁对象
-    private readonly ConcurrentDictionary<string, object> _keyLocks = new();
+    private readonly IAsyncKeyLockManager _lockManager;
     private readonly string _rootPath;
     private readonly ISerializer _serializer;
+    private bool _disposed;
 
     /// <summary>
     ///     初始化FileStorage实例
@@ -23,13 +26,28 @@ public sealed class FileStorage : IFileStorage
     /// <param name="rootPath">存储根目录路径</param>
     /// <param name="serializer">序列化器实例</param>
     /// <param name="extension">存储文件的扩展名</param>
-    public FileStorage(string rootPath, ISerializer serializer, string extension = ".dat")
+    /// <param name="bufferSize">IO 缓冲区大小，默认 8KB</param>
+    /// <param name="lockManager">可选的锁管理器，用于依赖注入</param>
+    public FileStorage(string rootPath, ISerializer serializer, string extension = ".dat", int bufferSize = 8192,
+        IAsyncKeyLockManager? lockManager = null)
     {
         _rootPath = rootPath;
         _serializer = serializer;
         _extension = extension;
+        _bufferSize = bufferSize;
+        _lockManager = lockManager ?? new AsyncKeyLockManager();
 
         Directory.CreateDirectory(_rootPath);
+    }
+
+    /// <summary>
+    ///     释放资源
+    /// </summary>
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        _lockManager.Dispose();
     }
 
     /// <summary>
@@ -92,19 +110,7 @@ public sealed class FileStorage : IFileStorage
     /// <param name="key">存储键，用于标识要删除的存储项</param>
     public void Delete(string key)
     {
-        // 将键转换为文件路径
-        var path = ToPath(key);
-
-        // 获取或创建与路径关联的锁对象，确保线程安全
-        var keyLock = _keyLocks.GetOrAdd(path, _ => new object());
-
-        // 使用锁确保同一时间只有一个线程操作该路径的文件
-        lock (keyLock)
-        {
-            // 如果文件存在，则删除该文件
-            if (File.Exists(path))
-                File.Delete(path);
-        }
+        DeleteAsync(key).GetAwaiter().GetResult();
     }
 
     /// <summary>
@@ -112,10 +118,16 @@ public sealed class FileStorage : IFileStorage
     /// </summary>
     /// <param name="key">存储键，用于标识要删除的存储项</param>
     /// <returns>表示异步操作的任务</returns>
-    public Task DeleteAsync(string key)
+    public async Task DeleteAsync(string key)
     {
-        // 在线程池中运行同步删除方法以实现异步操作
-        return Task.Run(() => Delete(key));
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        var path = ToPath(key);
+
+        await using (await _lockManager.AcquireLockAsync(path))
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
     }
 
     #endregion
@@ -129,13 +141,7 @@ public sealed class FileStorage : IFileStorage
     /// <returns>如果存储项存在则返回true，否则返回false</returns>
     public bool Exists(string key)
     {
-        var path = ToPath(key);
-        var keyLock = _keyLocks.GetOrAdd(path, _ => new object());
-
-        lock (keyLock)
-        {
-            return File.Exists(path);
-        }
+        return ExistsAsync(key).GetAwaiter().GetResult();
     }
 
     /// <summary>
@@ -143,9 +149,15 @@ public sealed class FileStorage : IFileStorage
     /// </summary>
     /// <param name="key">存储键</param>
     /// <returns>如果存储项存在则返回true，否则返回false</returns>
-    public Task<bool> ExistsAsync(string key)
+    public async Task<bool> ExistsAsync(string key)
     {
-        return Task.FromResult(Exists(key));
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        var path = ToPath(key);
+
+        await using (await _lockManager.AcquireLockAsync(path))
+        {
+            return File.Exists(path);
+        }
     }
 
     #endregion
@@ -161,17 +173,7 @@ public sealed class FileStorage : IFileStorage
     /// <exception cref="FileNotFoundException">当存储键不存在时抛出</exception>
     public T Read<T>(string key)
     {
-        var path = ToPath(key);
-        var keyLock = _keyLocks.GetOrAdd(path, _ => new object());
-
-        lock (keyLock)
-        {
-            if (!File.Exists(path))
-                throw new FileNotFoundException($"Storage key not found: {key}", path);
-
-            var content = File.ReadAllText(path, Encoding.UTF8);
-            return _serializer.Deserialize<T>(content);
-        }
+        return ReadAsync<T>(key).GetAwaiter().GetResult();
     }
 
     /// <summary>
@@ -183,16 +185,14 @@ public sealed class FileStorage : IFileStorage
     /// <returns>反序列化后的对象或默认值</returns>
     public T Read<T>(string key, T defaultValue)
     {
-        var path = ToPath(key);
-        var keyLock = _keyLocks.GetOrAdd(path, _ => new object());
-
-        lock (keyLock)
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        try
         {
-            if (!File.Exists(path))
-                return defaultValue;
-
-            var content = File.ReadAllText(path, Encoding.UTF8);
-            return _serializer.Deserialize<T>(content);
+            return Read<T>(key);
+        }
+        catch (FileNotFoundException)
+        {
+            return defaultValue;
         }
     }
 
@@ -205,25 +205,26 @@ public sealed class FileStorage : IFileStorage
     /// <exception cref="FileNotFoundException">当存储键不存在时抛出</exception>
     public async Task<T> ReadAsync<T>(string key)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
         var path = ToPath(key);
-        var keyLock = _keyLocks.GetOrAdd(path, _ => new object());
 
-        // 异步操作依然使用lock保护文件读写
-        lock (keyLock)
+        await using (await _lockManager.AcquireLockAsync(path))
         {
             if (!File.Exists(path))
                 throw new FileNotFoundException($"Storage key not found: {key}", path);
-        }
 
-        // 读取文件内容可以使用异步IO，但要注意锁范围
-        string content;
-        await using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
-        using (var sr = new StreamReader(fs, Encoding.UTF8))
-        {
-            content = await sr.ReadToEndAsync();
-        }
+            await using var fs = new FileStream(
+                path,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                _bufferSize,
+                useAsync: true);
 
-        return _serializer.Deserialize<T>(content);
+            using var sr = new StreamReader(fs, Encoding.UTF8);
+            var content = await sr.ReadToEndAsync();
+            return _serializer.Deserialize<T>(content);
+        }
     }
 
     #endregion
@@ -305,18 +306,11 @@ public sealed class FileStorage : IFileStorage
     /// <param name="value">要存储的对象</param>
     public void Write<T>(string key, T value)
     {
-        var path = ToPath(key);
-        var keyLock = _keyLocks.GetOrAdd(path, _ => new object());
-        var content = _serializer.Serialize(value);
-
-        lock (keyLock)
-        {
-            File.WriteAllText(path, content, Encoding.UTF8);
-        }
+        WriteAsync(key, value).GetAwaiter().GetResult();
     }
 
     /// <summary>
-    ///     异步写入指定键的存储项
+    ///     异步写入指定键的存储项，使用原子写入防止文件损坏
     /// </summary>
     /// <typeparam name="T">要序列化的对象类型</typeparam>
     /// <param name="key">存储键</param>
@@ -324,19 +318,41 @@ public sealed class FileStorage : IFileStorage
     /// <returns>表示异步操作的任务</returns>
     public async Task WriteAsync<T>(string key, T value)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
         var path = ToPath(key);
-        var keyLock = _keyLocks.GetOrAdd(path, _ => new object());
-        var content = _serializer.Serialize(value);
+        var tempPath = path + ".tmp";
 
-        // 异步写也需要锁
-        lock (keyLock)
+        await using (await _lockManager.AcquireLockAsync(path))
         {
-            using var fs = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
-            using var sw = new StreamWriter(fs, Encoding.UTF8);
-            sw.WriteAsync(content);
-        }
+            try
+            {
+                var content = _serializer.Serialize(value);
 
-        await Task.CompletedTask;
+                // 先写入临时文件
+                await using (var fs = new FileStream(
+                                 tempPath,
+                                 FileMode.Create,
+                                 FileAccess.Write,
+                                 FileShare.None,
+                                 _bufferSize,
+                                 useAsync: true))
+                {
+                    await using var sw = new StreamWriter(fs, Encoding.UTF8);
+                    await sw.WriteAsync(content);
+                    await sw.FlushAsync();
+                }
+
+                // 原子性替换目标文件
+                File.Move(tempPath, path, overwrite: true);
+            }
+            catch
+            {
+                // 清理临时文件
+                if (File.Exists(tempPath))
+                    File.Delete(tempPath);
+                throw;
+            }
+        }
     }
 
     #endregion
