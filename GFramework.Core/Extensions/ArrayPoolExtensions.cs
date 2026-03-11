@@ -89,15 +89,18 @@ public static class ArrayPoolExtensions
     ///     可自动释放的数组包装器
     /// </summary>
     /// <typeparam name="T">数组元素类型</typeparam>
-    public readonly struct ScopedArray<T> : IDisposable
+    public ref struct ScopedArray<T>
     {
         private readonly ArrayPool<T> _pool;
         private readonly bool _clearOnReturn;
+        private T[]? _array;
 
+#pragma warning disable CA1819
         /// <summary>
         ///     获取租用的数组
         /// </summary>
-        public T[] Array { get; }
+        public T[] Array => GetArray();
+#pragma warning restore CA1819
 
         /// <summary>
         ///     获取数组的长度
@@ -108,7 +111,7 @@ public static class ArrayPoolExtensions
         {
             _pool = pool;
             _clearOnReturn = clearOnReturn;
-            Array = pool.Rent(minimumLength);
+            _array = pool.Rent(minimumLength);
         }
 
         /// <summary>
@@ -116,7 +119,11 @@ public static class ArrayPoolExtensions
         /// </summary>
         public void Dispose()
         {
-            _pool.Return(Array, _clearOnReturn);
+            if (_array is null)
+                return;
+
+            _pool.Return(_array, _clearOnReturn);
+            _array = null;
         }
 
         /// <summary>
@@ -131,6 +138,24 @@ public static class ArrayPoolExtensions
         /// <param name="start">起始索引</param>
         /// <param name="length">长度</param>
         /// <returns>数组指定范围的 Span</returns>
-        public Span<T> AsSpan(int start, int length) => Array.AsSpan(start, length);
+        public Span<T> AsSpan(int start, int length)
+            => Array.AsSpan(start, length);
+
+        /// <summary>
+        ///     获取数组指定索引处的引用
+        /// </summary>
+        /// <param name="index">要获取引用的索引位置</param>
+        /// <returns>指定索引处元素的引用</returns>
+        public ref T this[int index] => ref Array[index];
+
+        /// <summary>
+        ///     获取内部数组实例
+        /// </summary>
+        /// <returns>内部数组实例</returns>
+        /// <exception cref="ObjectDisposedException">当对象已被丢弃时抛出</exception>
+        private T[] GetArray()
+        {
+            return _array ?? throw new ObjectDisposedException(nameof(ScopedArray<T>));
+        }
     }
 }
