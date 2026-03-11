@@ -89,7 +89,7 @@ public static class ArrayPoolExtensions
     ///     可自动释放的数组包装器
     /// </summary>
     /// <typeparam name="T">数组元素类型</typeparam>
-    public ref struct ScopedArray<T>
+    public ref struct ScopedArray<T> : IDisposable
     {
         private readonly ArrayPool<T> _pool;
         private readonly bool _clearOnReturn;
@@ -99,13 +99,13 @@ public static class ArrayPoolExtensions
         /// <summary>
         ///     获取租用的数组
         /// </summary>
-        public T[] Array => _array!;
+        public T[] Array => GetArray();
 #pragma warning restore CA1819
 
         /// <summary>
         ///     获取数组的长度
         /// </summary>
-        public int Length => _array!.Length;
+        public int Length => Array.Length;
 
         internal ScopedArray(ArrayPool<T> pool, int minimumLength, bool clearOnReturn)
         {
@@ -130,7 +130,7 @@ public static class ArrayPoolExtensions
         ///     获取数组的 Span 视图
         /// </summary>
         /// <returns>数组的 Span</returns>
-        public Span<T> AsSpan() => _array!;
+        public Span<T> AsSpan() => Array.AsSpan();
 
         /// <summary>
         ///     获取数组指定范围的 Span 视图
@@ -139,13 +139,23 @@ public static class ArrayPoolExtensions
         /// <param name="length">长度</param>
         /// <returns>数组指定范围的 Span</returns>
         public Span<T> AsSpan(int start, int length)
-            => _array!.AsSpan(start, length);
+            => Array.AsSpan(start, length);
 
         /// <summary>
         ///     获取数组指定索引处的引用
         /// </summary>
         /// <param name="index">要获取引用的索引位置</param>
         /// <returns>指定索引处元素的引用</returns>
-        public ref T this[int index] => ref _array![index];
+        public ref T this[int index] => ref Array[index];
+
+        /// <summary>
+        ///     获取内部数组实例
+        /// </summary>
+        /// <returns>内部数组实例</returns>
+        /// <exception cref="ObjectDisposedException">当对象已被丢弃时抛出</exception>
+        private T[] GetArray()
+        {
+            return _array ?? throw new ObjectDisposedException(nameof(ScopedArray<T>));
+        }
     }
 }
