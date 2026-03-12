@@ -1,63 +1,63 @@
 ---
 title: 协程系统
-description: 协程系统提供了轻量级的异步操作管理机制，支持时间延迟、事件等待、任务等待等多种场景。
+description: 协程系统提供基于 IEnumerator<IYieldInstruction> 的调度、等待和组合能力，可与事件、Task、命令与查询集成。
 ---
 
 # 协程系统
 
 ## 概述
 
-协程系统是 GFramework 中用于管理异步操作的核心机制。通过协程，你可以编写看起来像同步代码的异步逻辑，避免回调地狱，使代码更加清晰易读。
+GFramework 的 Core 协程系统基于 `IEnumerator<IYieldInstruction>` 构建，通过 `CoroutineScheduler`
+统一推进协程执行。它适合处理分帧逻辑、时间等待、条件等待、Task 桥接，以及事件驱动的异步流程。
 
-协程系统基于 C# 的迭代器（IEnumerator）实现，提供了丰富的等待指令（YieldInstruction），可以轻松处理时间延迟、事件等待、任务等待等各种异步场景。
+协程系统主要由以下部分组成：
 
-**主要特性**：
-
-- 轻量级协程调度器
-- 丰富的等待指令（30+ 种）
-- 支持协程嵌套和组合
-- 协程标签和批量管理
-- 与事件系统、命令系统、CQRS 深度集成
-- 异常处理和错误恢复
+- `CoroutineScheduler`：负责运行、更新和控制协程
+- `CoroutineHandle`：用于标识协程实例并控制其状态
+- `IYieldInstruction`：定义等待行为的统一接口
+- `Instructions`：内置等待指令集合
+- `CoroutineHelper`：提供常用等待与生成器辅助方法
+- `Extensions`：提供 Task、组合、命令、查询和 Mediator 场景下的扩展方法
 
 ## 核心概念
 
-### 协程调度器
+### CoroutineScheduler
 
-`CoroutineScheduler` 是协程系统的核心，负责管理和执行所有协程：
+`CoroutineScheduler` 是协程系统的核心调度器。构造时需要提供 `ITimeSource`，调度器会在每次 `Update()` 时读取时间增量并推进所有活跃协程。
 
 ```csharp
+using GFramework.Core.Abstractions.Coroutine;
 using GFramework.Core.Coroutine;
 
-// 创建调度器（通常由架构自动管理）
+ITimeSource timeSource = /* 你的时间源实现 */;
 var scheduler = new CoroutineScheduler(timeSource);
 
-// 运行协程
 var handle = scheduler.Run(MyCoroutine());
 
-// 每帧更新
+// 在你的主循环中推进协程
 scheduler.Update();
 ```
 
-### 协程句柄
+如果需要统计信息，可以启用构造函数的 `enableStatistics` 参数。
 
-`CoroutineHandle` 用于标识和控制协程：
+### CoroutineHandle
+
+`CoroutineHandle` 用于引用具体协程，并配合调度器进行控制：
 
 ```csharp
-// 运行协程并获取句柄
-var handle = scheduler.Run(MyCoroutine());
+var handle = scheduler.Run(MyCoroutine(), tag: "gameplay", group: "battle");
 
-// 检查协程是否存活
 if (scheduler.IsCoroutineAlive(handle))
 {
-    // 停止协程
-    scheduler.Stop(handle);
+    scheduler.Pause(handle);
+    scheduler.Resume(handle);
+    scheduler.Kill(handle);
 }
 ```
 
-### 等待指令
+### IYieldInstruction
 
-等待指令（YieldInstruction）定义了协程的等待行为：
+协程通过 `yield return IYieldInstruction` 表达等待逻辑：
 
 ```csharp
 public interface IYieldInstruction
@@ -79,172 +79,160 @@ public IEnumerator<IYieldInstruction> SimpleCoroutine()
 {
     Console.WriteLine("开始");
 
-    // 等待 2 秒
     yield return new Delay(2.0);
-
     Console.WriteLine("2 秒后");
 
-    // 等待 1 帧
     yield return new WaitOneFrame();
-
     Console.WriteLine("下一帧");
 }
 ```
 
-### 使用协程辅助方法
+### 使用 CoroutineHelper
+
+`CoroutineHelper` 提供了一组常用等待和生成器辅助方法：
 
 ```csharp
 using GFramework.Core.Coroutine;
 
 public IEnumerator<IYieldInstruction> HelperCoroutine()
 {
-    // 等待指定秒数
     yield return CoroutineHelper.WaitForSeconds(1.5);
-
-    // 等待一帧
     yield return CoroutineHelper.WaitForOneFrame();
-
-    // 等待多帧
     yield return CoroutineHelper.WaitForFrames(10);
-
-    // 等待条件满足
     yield return CoroutineHelper.WaitUntil(() => isReady);
-
-    // 等待条件不满足
     yield return CoroutineHelper.WaitWhile(() => isLoading);
 }
 ```
 
-### 在架构组件中使用
+除了直接返回等待指令，`CoroutineHelper` 也可以直接生成可运行的协程枚举器：
 
 ```csharp
-using GFramework.Core.Model;
-using GFramework.Core.Extensions;
+scheduler.Run(CoroutineHelper.DelayedCall(2.0, () => Console.WriteLine("延迟执行")));
+scheduler.Run(CoroutineHelper.RepeatCall(1.0, 5, () => Console.WriteLine("重复执行")));
 
-public class PlayerModel : AbstractModel
-{
-    protected override void OnInit()
-    {
-        // 启动协程
-        this.StartCoroutine(RegenerateHealth());
-    }
-
-    private IEnumerator<IYieldInstruction> RegenerateHealth()
-    {
-        while (true)
-        {
-            // 每秒恢复 1 点生命值
-            yield return CoroutineHelper.WaitForSeconds(1.0);
-            Health = Math.Min(Health + 1, MaxHealth);
-        }
-    }
-}
+using var cts = new CancellationTokenSource();
+scheduler.Run(CoroutineHelper.RepeatCallForever(1.0, () => Console.WriteLine("持续执行"), cts.Token));
 ```
 
-## 高级用法
+### 控制协程状态
+
+```csharp
+var handle = scheduler.Run(LoadResources(), tag: "loading", group: "bootstrap");
+
+scheduler.Pause(handle);
+scheduler.Resume(handle);
+scheduler.Kill(handle);
+
+scheduler.KillByTag("loading");
+scheduler.PauseGroup("bootstrap");
+scheduler.ResumeGroup("bootstrap");
+scheduler.KillGroup("bootstrap");
+
+var cleared = scheduler.Clear();
+```
+
+## 常用等待指令
+
+### 时间与帧
+
+```csharp
+yield return new Delay(1.0);
+yield return new WaitForSecondsRealtime(1.0);
+yield return new WaitOneFrame();
+yield return new WaitForNextFrame();
+yield return new WaitForFrames(5);
+yield return new WaitForEndOfFrame();
+yield return new WaitForFixedUpdate();
+```
+
+### 条件等待
+
+```csharp
+yield return new WaitUntil(() => health > 0);
+yield return new WaitWhile(() => isLoading);
+yield return new WaitForPredicate(() => hp >= maxHp);
+yield return new WaitForPredicate(() => isBusy, waitForTrue: false);
+yield return new WaitUntilOrTimeout(() => connected, timeoutSeconds: 5.0);
+yield return new WaitForConditionChange(() => isPaused, waitForTransitionTo: true);
+```
+
+### Task 桥接
+
+```csharp
+using System.Threading.Tasks;
+using GFramework.Core.Coroutine.Extensions;
+
+Task loadTask = LoadDataAsync();
+yield return loadTask.AsCoroutineInstruction();
+```
+
+也可以将 `Task` 转成协程枚举器后直接交给调度器：
+
+```csharp
+var coroutine = LoadDataAsync().ToCoroutineEnumerator();
+var handle1 = scheduler.Run(coroutine);
+
+var handle2 = scheduler.StartTaskAsCoroutine(LoadDataAsync());
+```
 
 ### 等待事件
 
 ```csharp
+using GFramework.Core.Abstractions.Events;
 using GFramework.Core.Coroutine.Instructions;
 
-public IEnumerator<IYieldInstruction> WaitForEventExample()
+public IEnumerator<IYieldInstruction> WaitForEventExample(IEventBus eventBus)
 {
-    Console.WriteLine("等待玩家死亡事件...");
-
-    // 等待事件触发
-    var waitEvent = new WaitForEvent<PlayerDiedEvent>(eventBus);
+    using var waitEvent = new WaitForEvent<PlayerDiedEvent>(eventBus);
     yield return waitEvent;
 
-    // 获取事件数据
     var eventData = waitEvent.EventData;
-    Console.WriteLine($"玩家 {eventData.PlayerId} 死亡");
+    Console.WriteLine($"玩家 {eventData!.PlayerId} 死亡");
 }
 ```
 
-### 等待事件（带超时）
+为事件等待附加超时：
 
 ```csharp
-public IEnumerator<IYieldInstruction> WaitForEventWithTimeout()
+public IEnumerator<IYieldInstruction> WaitForEventWithTimeoutExample(IEventBus eventBus)
 {
-    var waitEvent = new WaitForEventWithTimeout<PlayerJoinedEvent>(
-        eventBus,
-        timeout: 5.0
-    );
+    using var waitEvent = new WaitForEvent<PlayerJoinedEvent>(eventBus);
+    var timeoutWait = new WaitForEventWithTimeout<PlayerJoinedEvent>(waitEvent, 5.0f);
 
-    yield return waitEvent;
+    yield return timeoutWait;
 
-    if (waitEvent.IsTimeout)
-    {
+    if (timeoutWait.IsTimeout)
         Console.WriteLine("等待超时");
-    }
     else
-    {
-        Console.WriteLine($"玩家加入: {waitEvent.EventData.PlayerName}");
-    }
+        Console.WriteLine($"玩家加入: {timeoutWait.EventData!.PlayerName}");
 }
 ```
 
-### 等待 Task
+等待两个事件中的任意一个：
 
 ```csharp
-public IEnumerator<IYieldInstruction> WaitForTaskExample()
+public IEnumerator<IYieldInstruction> WaitForEitherEvent(IEventBus eventBus)
 {
-    // 创建异步任务
-    var task = LoadDataAsync();
+    using var wait = new WaitForMultipleEvents<PlayerReadyEvent, PlayerQuitEvent>(eventBus);
+    yield return wait;
 
-    // 在协程中等待 Task 完成
-    var waitTask = new WaitForTask(task);
-    yield return waitTask;
-
-    // 检查异常
-    if (waitTask.Exception != null)
-    {
-        Console.WriteLine($"任务失败: {waitTask.Exception.Message}");
-    }
+    if (wait.TriggeredBy == 1)
+        Console.WriteLine($"Ready: {wait.FirstEventData}");
     else
-    {
-        Console.WriteLine("任务完成");
-    }
-}
-
-private async Task LoadDataAsync()
-{
-    await Task.Delay(1000);
-    // 加载数据...
+        Console.WriteLine($"Quit: {wait.SecondEventData}");
 }
 ```
 
-### 等待多个协程
+### 协程组合
 
-```csharp
-public IEnumerator<IYieldInstruction> WaitForMultipleCoroutines()
-{
-    var coroutine1 = LoadTexture();
-    var coroutine2 = LoadAudio();
-    var coroutine3 = LoadModel();
-
-    // 等待所有协程完成
-    yield return new WaitForAllCoroutines(
-        scheduler,
-        coroutine1,
-        coroutine2,
-        coroutine3
-    );
-
-    Console.WriteLine("所有资源加载完成");
-}
-```
-
-### 协程嵌套
+等待子协程完成：
 
 ```csharp
 public IEnumerator<IYieldInstruction> ParentCoroutine()
 {
     Console.WriteLine("父协程开始");
 
-    // 等待子协程完成
-    yield return new WaitForCoroutine(scheduler, ChildCoroutine());
+    yield return new WaitForCoroutine(ChildCoroutine());
 
     Console.WriteLine("子协程完成");
 }
@@ -256,251 +244,175 @@ private IEnumerator<IYieldInstruction> ChildCoroutine()
 }
 ```
 
-### 带进度的等待
+等待多个句柄全部完成：
+
+```csharp
+public IEnumerator<IYieldInstruction> WaitForMultipleCoroutines(CoroutineScheduler scheduler)
+{
+    var handles = new List<CoroutineHandle>
+    {
+        scheduler.Run(LoadTexture()),
+        scheduler.Run(LoadAudio()),
+        scheduler.Run(LoadModel())
+    };
+
+    yield return new WaitForAllCoroutines(scheduler, handles);
+
+    Console.WriteLine("所有资源加载完成");
+}
+```
+
+### 进度等待
 
 ```csharp
 public IEnumerator<IYieldInstruction> LoadingWithProgress()
 {
-    Console.WriteLine("开始加载...");
-
     yield return CoroutineHelper.WaitForProgress(
         duration: 3.0,
-        onProgress: progress =>
-        {
-            Console.WriteLine($"加载进度: {progress * 100:F0}%");
-        }
-    );
-
-    Console.WriteLine("加载完成");
+        onProgress: progress => Console.WriteLine($"加载进度: {progress * 100:F0}%"));
 }
 ```
 
-### 协程标签管理
+## 扩展方法
 
-```csharp
-// 使用标签运行协程
-var handle1 = scheduler.Run(Coroutine1(), tag: "gameplay");
-var handle2 = scheduler.Run(Coroutine2(), tag: "gameplay");
-var handle3 = scheduler.Run(Coroutine3(), tag: "ui");
+### 组合扩展
 
-// 停止所有带特定标签的协程
-scheduler.StopAllWithTag("gameplay");
-
-// 获取标签下的所有协程
-var gameplayCoroutines = scheduler.GetCoroutinesByTag("gameplay");
-```
-
-### 延迟调用和重复调用
-
-```csharp
-// 延迟 2 秒后执行
-scheduler.Run(CoroutineHelper.DelayedCall(2.0, () =>
-{
-    Console.WriteLine("延迟执行");
-}));
-
-// 每隔 1 秒执行一次，共执行 5 次
-scheduler.Run(CoroutineHelper.RepeatCall(1.0, 5, () =>
-{
-    Console.WriteLine("重复执行");
-}));
-
-// 无限重复，直到条件不满足
-scheduler.Run(CoroutineHelper.RepeatCallWhile(1.0, () => isRunning, () =>
-{
-    Console.WriteLine("条件重复");
-}));
-```
-
-### 与命令系统集成
+`CoroutineComposeExtensions` 提供链式顺序组合能力：
 
 ```csharp
 using GFramework.Core.Coroutine.Extensions;
 
-public IEnumerator<IYieldInstruction> ExecuteCommandInCoroutine()
-{
-    // 在协程中执行命令
-    var command = new LoadSceneCommand();
-    yield return command.ExecuteAsCoroutine(this);
+var chained =
+    LoadConfig()
+        .Then(() => Console.WriteLine("配置加载完成"))
+        .Then(StartBattle());
 
-    Console.WriteLine("场景加载完成");
+scheduler.Run(chained);
+```
+
+### 协程生成扩展
+
+`CoroutineExtensions` 提供了一些常用的协程生成器：
+
+```csharp
+using GFramework.Core.Coroutine.Extensions;
+
+var delayed = CoroutineExtensions.ExecuteAfter(2.0, () => Console.WriteLine("延迟执行"));
+var repeated = CoroutineExtensions.RepeatEvery(1.0, () => Console.WriteLine("tick"), count: 5);
+var progress = CoroutineExtensions.WaitForSecondsWithProgress(3.0, p => Console.WriteLine(p));
+
+scheduler.Run(delayed);
+scheduler.Run(repeated);
+scheduler.Run(progress);
+```
+
+顺序或并行组合多个协程：
+
+```csharp
+var sequence = CoroutineExtensions.Sequence(LoadConfig(), LoadScene(), StartBattle());
+scheduler.Run(sequence);
+
+var parallel = scheduler.ParallelCoroutines(LoadTexture(), LoadAudio(), LoadModel());
+scheduler.Run(parallel);
+```
+
+### Task 扩展
+
+`TaskCoroutineExtensions` 提供了三类扩展：
+
+- `AsCoroutineInstruction()`：把 `Task` / `Task<T>` 包装成等待指令
+- `ToCoroutineEnumerator()`：把 `Task` / `Task<T>` 转成协程枚举器
+- `StartTaskAsCoroutine()`：直接通过调度器启动 Task 协程
+
+### 命令、查询与 Mediator 扩展
+
+这些扩展都定义在 `GFramework.Core.Coroutine.Extensions` 命名空间中。
+
+### 命令协程
+
+```csharp
+using GFramework.Core.Coroutine.Extensions;
+
+public IEnumerator<IYieldInstruction> ExecuteCommand(IContextAware contextAware)
+{
+    yield return contextAware.SendCommandCoroutineWithErrorHandler(
+        new LoadSceneCommand(),
+        ex => Console.WriteLine(ex.Message));
 }
 ```
 
-### 与 CQRS 集成
+如果命令执行后需要等待事件：
 
 ```csharp
-public IEnumerator<IYieldInstruction> QueryInCoroutine()
+public IEnumerator<IYieldInstruction> ExecuteCommandAndWaitEvent(IContextAware contextAware)
 {
-    // 在协程中执行查询
-    var query = new GetPlayerDataQuery { PlayerId = 1 };
-    var waitQuery = query.SendAsCoroutine<GetPlayerDataQuery, PlayerData>(this);
-
-    yield return waitQuery;
-
-    var playerData = waitQuery.Result;
-    Console.WriteLine($"玩家名称: {playerData.Name}");
+    yield return contextAware.SendCommandAndWaitEventCoroutine<LoadSceneCommand, SceneLoadedEvent>(
+        new LoadSceneCommand(),
+        evt => Console.WriteLine($"场景加载完成: {evt.SceneName}"),
+        timeout: 5.0f);
 }
 ```
 
-## 最佳实践
+### 查询协程
 
-1. **使用扩展方法启动协程**：通过架构组件的扩展方法启动协程更简洁
-   ```csharp
-   ✓ this.StartCoroutine(MyCoroutine());
-   ✗ scheduler.Run(MyCoroutine());
-   ```
-
-2. **合理使用协程标签**：为相关协程添加标签，便于批量管理
-   ```csharp
-   this.StartCoroutine(BattleCoroutine(), tag: "battle");
-   this.StartCoroutine(EffectCoroutine(), tag: "battle");
-
-   // 战斗结束时停止所有战斗相关协程
-   this.StopCoroutinesWithTag("battle");
-   ```
-
-3. **避免在协程中执行耗时操作**：协程在主线程执行，不要阻塞
-   ```csharp
-   ✗ public IEnumerator<IYieldInstruction> BadCoroutine()
-   {
-       Thread.Sleep(1000); // 阻塞主线程
-       yield return null;
-   }
-
-   ✓ public IEnumerator<IYieldInstruction> GoodCoroutine()
-   {
-       yield return CoroutineHelper.WaitForSeconds(1.0); // 非阻塞
-   }
-   ```
-
-4. **正确处理协程异常**：使用 try-catch 捕获异常
-   ```csharp
-   public IEnumerator<IYieldInstruction> SafeCoroutine()
-   {
-       var waitTask = new WaitForTask(riskyTask);
-       yield return waitTask;
-
-       if (waitTask.Exception != null)
-       {
-           // 处理异常
-           Logger.Error($"任务失败: {waitTask.Exception.Message}");
-       }
-   }
-   ```
-
-5. **及时停止不需要的协程**：避免资源泄漏
-   ```csharp
-   private CoroutineHandle? _healthRegenHandle;
-
-   public void StartHealthRegen()
-   {
-       _healthRegenHandle = this.StartCoroutine(RegenerateHealth());
-   }
-
-   public void StopHealthRegen()
-   {
-       if (_healthRegenHandle.HasValue)
-       {
-           this.StopCoroutine(_healthRegenHandle.Value);
-           _healthRegenHandle = null;
-       }
-   }
-   ```
-
-6. **使用 WaitForEvent 时记得释放资源**：避免内存泄漏
-   ```csharp
-   public IEnumerator<IYieldInstruction> WaitEventExample()
-   {
-       using var waitEvent = new WaitForEvent<GameEvent>(eventBus);
-       yield return waitEvent;
-       // using 确保资源被释放
-   }
-   ```
-
-## 常见问题
-
-### 问题：协程什么时候执行？
-
-**解答**：
-协程在调度器的 `Update()` 方法中执行。在 GFramework 中，架构会自动在每帧调用调度器的更新方法。
-
-### 问题：协程是多线程的吗？
-
-**解答**：
-不是。协程在主线程中执行，是单线程的。它们通过分帧执行来实现异步效果，不会阻塞主线程。
-
-### 问题：如何在协程中等待异步方法？
-
-**解答**：
-使用 `WaitForTask` 等待 Task 完成：
+`SendQueryCoroutine` 会同步执行查询，并通过回调返回结果：
 
 ```csharp
-public IEnumerator<IYieldInstruction> WaitAsyncMethod()
+public IEnumerator<IYieldInstruction> QueryPlayer(IContextAware contextAware)
 {
-    var task = SomeAsyncMethod();
-    yield return new WaitForTask(task);
+    yield return contextAware.SendQueryCoroutine<GetPlayerDataQuery, PlayerData>(
+        new GetPlayerDataQuery { PlayerId = 1 },
+        playerData => Console.WriteLine($"玩家名称: {playerData.Name}"));
 }
 ```
 
-### 问题：协程可以返回值吗？
+### Mediator 协程
 
-**解答**：
-协程本身不能直接返回值，但可以通过闭包或类成员变量传递结果：
+如果项目使用 `Mediator.IMediator`，还可以使用 `MediatorCoroutineExtensions`：
 
 ```csharp
-private int _result;
-
-public IEnumerator<IYieldInstruction> CoroutineWithResult()
+public IEnumerator<IYieldInstruction> ExecuteMediatorCommand(IContextAware contextAware)
 {
-    yield return CoroutineHelper.WaitForSeconds(1.0);
-    _result = 42;
+    yield return contextAware.SendCommandCoroutine(
+        new SaveArchiveCommand(),
+        ex => Console.WriteLine(ex.Message));
 }
-
-// 使用
-this.StartCoroutine(CoroutineWithResult());
-// 稍后访问 _result
 ```
 
-### 问题：如何停止所有协程？
+## 异常处理
 
-**解答**：
-使用调度器的 `StopAll()` 方法：
-
-```csharp
-// 停止所有协程
-scheduler.StopAll();
-
-// 或通过扩展方法
-this.StopAllCoroutines();
-```
-
-### 问题：协程中的异常会怎样？
-
-**解答**：
-协程中未捕获的异常会触发 `OnCoroutineException` 事件，并停止该协程：
+调度器会在协程抛出未捕获异常时触发 `OnCoroutineException`：
 
 ```csharp
 scheduler.OnCoroutineException += (handle, exception) =>
 {
-    Logger.Error($"协程异常: {exception.Message}");
+    Console.WriteLine($"协程 {handle} 异常: {exception.Message}");
 };
 ```
 
-### 问题：WaitForSeconds 和 Delay 有什么区别？
+如果协程等待的是 `Task`，也可以通过 `WaitForTask` / `WaitForTask<T>` 检查任务异常。
 
-**解答**：
-它们是相同的，`WaitForSeconds` 是辅助方法，内部创建 `Delay` 实例：
+## 常见问题
 
-```csharp
-// 两者等价
-yield return CoroutineHelper.WaitForSeconds(1.0);
-yield return new Delay(1.0);
-```
+### 协程什么时候执行？
+
+协程在调度器的 `Update()` 中推进。调度器每次更新都会先更新 `ITimeSource`，再推进所有活跃协程。
+
+### 协程是多线程的吗？
+
+不是。协程本身仍由调用 `Update()` 的线程推进，通常用于主线程上的分帧流程控制。
+
+### `Delay` 和 `CoroutineHelper.WaitForSeconds()` 有什么区别？
+
+两者表达的是同一类等待语义。`CoroutineHelper.WaitForSeconds()` 只是 `Delay` 的辅助构造方法。
+
+### 如何等待异步方法？
+
+可以直接 `yield return task.AsCoroutineInstruction()`，也可以使用 `scheduler.StartTaskAsCoroutine(task)` 启动一个以 Task
+为主体的协程。
 
 ## 相关文档
 
-- [事件系统](/zh-CN/core/events) - 协程与事件系统集成
-- [命令系统](/zh-CN/core/command) - 在协程中执行命令
-- [CQRS](/zh-CN/core/cqrs) - 在协程中执行查询和命令
-- [协程系统教程](/zh-CN/tutorials/coroutine-tutorial) - 分步教程
+- [事件系统](/zh-CN/core/events)
+- [CQRS](/zh-CN/core/cqrs)
+- [协程系统教程](/zh-CN/tutorials/coroutine-tutorial)
