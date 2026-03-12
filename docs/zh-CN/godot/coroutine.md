@@ -1,406 +1,286 @@
 # Godot 协程系统
 
-> GFramework 在 Godot 引擎中的协程支持，实现异步操作的优雅管理
-
 ## 概述
 
-GFramework.Godot 提供了与 Godot 引擎深度集成的协程系统，让异步编程变得简单直观。通过协程，您可以暂停执行、等待条件满足、或延迟执行操作，而不会阻塞主线程。
+GFramework 的协程系统由两层组成：
 
-## 核心特性
+- `GFramework.Core.Coroutine` 提供通用调度器、`IYieldInstruction` 和一组等待指令。
+- `GFramework.Godot.Coroutine` 提供 Godot 环境下的运行入口、分段调度以及节点生命周期辅助方法。
 
-- **无缝集成**：与 Godot 的 `_Process`、`_Ready` 等生命周期方法完美配合
-- **类型安全**：强类型的协程返回结果处理
-- **自动清理**：协程与节点生命周期自动绑定，避免内存泄漏
-- **丰富的等待条件**：支持等待信号、时间延迟、帧结束等多种条件
+Godot 集成层的核心入口包括：
+
+- `RunCoroutine(...)`
+- `Timing.RunGameCoroutine(...)`
+- `Timing.RunUiCoroutine(...)`
+- `Timing.CallDelayed(...)`
+- `CancelWith(...)`
+
+协程本身使用 `IEnumerator<IYieldInstruction>`。
+
+## 主要能力
+
+- 在 Godot 中按不同更新阶段运行协程
+- 等待时间、帧、条件、Task 和事件总线事件
+- 显式将协程与一个或多个 `Node` 的生命周期绑定
+- 通过 `CoroutineHandle` 暂停、恢复、终止协程
+- 将命令、查询、发布操作直接包装为协程运行
 
 ## 基本用法
 
-### 创建协程
-
-使用 `StartCoroutine` 方法启动协程：
+### 启动协程
 
 ```csharp
+using System.Collections.Generic;
+using GFramework.Core.Abstractions.Coroutine;
+using GFramework.Core.Coroutine.Instructions;
 using GFramework.Godot.Coroutine;
+using Godot;
 
-[ContextAware]
 public partial class MyNode : Node
 {
     public override void _Ready()
     {
-        // 启动协程
-        this.StartCoroutine(DoSomethingAsync());
+        Demo().RunCoroutine();
     }
 
-    private System.Collections.IEnumerator DoSomethingAsync()
+    private IEnumerator<IYieldInstruction> Demo()
     {
         GD.Print("开始执行");
-        
-        // 等待 2 秒
-        yield return new WaitForSeconds(2.0f);
-        
+
+        yield return new Delay(2.0);
         GD.Print("2 秒后继续执行");
-        
-        // 等待下一帧
+
         yield return new WaitForEndOfFrame();
-        
-        GD.Print("下一帧继续");
+        GD.Print("当前帧结束后继续执行");
     }
 }
 ```
 
-### 等待信号
+`RunCoroutine()` 默认在 `Segment.Process` 上运行，也就是普通帧更新阶段。
 
-协程可以等待 Godot 信号：
+除了枚举器扩展方法，也可以直接使用 `Timing` 的静态入口：
 
 ```csharp
-private System.Collections.IEnumerator WaitForSignalExample()
-{
-    GD.Print("等待按钮点击");
-    
-    // 等待按钮被点击
-    var button = GetNode<Button>("Button");
-    yield return new WaitSignal(button, Button.SignalName.Pressed);
-    
-    GD.Print("按钮被点击了！");
-}
+Timing.RunCoroutine(Demo());
+Timing.RunGameCoroutine(GameLoop());
+Timing.RunUiCoroutine(MenuAnimation());
 ```
 
-### 等待条件
+### 显式绑定节点生命周期
 
-等待自定义条件满足：
-
-```csharp
-private System.Collections.IEnumerator WaitUntilCondition()
-{
-    GD.Print("等待生命值恢复");
-    
-    // 等待生命值大于 50
-    var playerModel = this.GetModel<PlayerModel>();
-    yield return new WaitUntil(() => playerModel.Health.Value > 50);
-    
-    GD.Print("生命值已恢复！");
-}
-```
-
-## 等待类型
-
-### WaitForSeconds
-
-等待指定时间（秒）：
+可以使用 `CancelWith(...)` 将协程与一个或多个节点的生命周期关联。
 
 ```csharp
-private System.Collections.IEnumerator DelayExample()
-{
-    GD.Print("开始倒计时");
-    
-    yield return new WaitForSeconds(1.0f);
-    GD.Print("1 秒过去了");
-    
-    yield return new WaitForSeconds(0.5f);
-    GD.Print("又过去了 0.5 秒");
-}
-```
+using System.Collections.Generic;
+using GFramework.Core.Abstractions.Coroutine;
+using GFramework.Core.Coroutine.Instructions;
+using GFramework.Godot.Coroutine;
+using Godot;
 
-### WaitForSecondsRealtime
-
-等待实时时间（不受游戏暂停影响）：
-
-```csharp
-private System.Collections.IEnumerator RealTimeDelay()
-{
-    // 暂停游戏时也会继续计时
-    yield return new WaitForSecondsRealtime(5.0f);
-    
-    GD.Print("5 秒真实时间已过");
-}
-```
-
-### WaitForEndOfFrame
-
-等待当前帧结束：
-
-```csharp
-private System.Collections.IEnumerator EndOfFrameExample()
-{
-    // 修改数据
-    someData.Value = 100;
-    
-    // 等待帧结束后再执行渲染相关操作
-    yield return new WaitForEndOfFrame();
-    
-    // 现在可以安全地执行渲染操作
-    UpdateRendering();
-}
-```
-
-### WaitUntil
-
-等待条件满足：
-
-```csharp
-private System.Collections.IEnumerator WaitUntilExample()
-{
-    var health = this.GetModel<PlayerModel>().Health;
-    
-    // 持续等待直到条件满足
-    yield return new WaitUntil(() => health.Value > 0);
-    
-    GD.Print("玩家复活了！");
-}
-```
-
-### WaitWhile
-
-等待条件不再满足：
-
-```csharp
-private System.Collections.IEnumerator WaitWhileExample()
-{
-    var gameState = this.GetModel<GameModel>();
-    
-    // 等待游戏不再暂停
-    yield return new WaitWhile(() => gameState.IsPaused.Value);
-    
-    GD.Print("游戏继续");
-}
-```
-
-## 进阶用法
-
-### 组合等待
-
-可以组合多种等待条件：
-
-```csharp
-private System.Collections.IEnumerator CombinedWait()
-{
-    var health = this.GetModel<PlayerModel>().Health;
-    var button = GetNode<Button>("Button");
-    
-    // 等待生命值恢复或按钮点击（任一条件满足即可）
-    yield return new WaitAny(
-        new WaitUntil(() => health.Value > 50),
-        new WaitSignal(button, Button.SignalName.Pressed)
-    );
-    
-    GD.Print("条件满足，继续执行");
-}
-```
-
-### 超时处理
-
-为等待添加超时：
-
-```csharp
-private System.Collections.IEnumerator WithTimeout()
-{
-    var task = new WaitForSeconds(5.0f);
-    var timeout = new WaitForSeconds(5.0f);
-    
-    // 等待任务完成，最多等 5 秒
-    bool completed = yield return new WaitRace(task, timeout);
-    
-    if (completed)
-    {
-        GD.Print("任务完成");
-    }
-    else
-    {
-        GD.Print("任务超时");
-    }
-}
-```
-
-### 协程取消
-
-支持取消正在执行的协程：
-
-```csharp
-private CoroutineHandle _coroutine;
-
-public override void _Ready()
-{
-    _coroutine = this.StartCoroutine(LongRunningTask());
-}
-
-public void CancelTask()
-{
-    _coroutine?.Cancel();
-}
-
-private System.Collections.IEnumerator LongRunningTask()
-{
-    try
-    {
-        for (int i = 0; i < 100; i++)
-        {
-            GD.Print($"进度: {i}%");
-            yield return new WaitForSeconds(0.1f);
-        }
-    }
-    catch (CoroutineCancelledException)
-    {
-        GD.Print("协程被取消");
-        throw;
-    }
-}
-```
-
-## 最佳实践
-
-### 1. 自动生命周期管理
-
-使用 `[ContextAware]` 特性确保协程在节点离开场景树时自动取消：
-
-```csharp
-[ContextAware]
-public partial class MyController : Node
-{
-    public override void _Ready()
-    {
-        // 当节点离开场景树时，协程会自动取消
-        this.StartCoroutine(AutoCleanupCoroutine());
-    }
-}
-```
-
-### 2. 避免在协程中直接修改 UI
-
-```csharp
-// 不推荐：直接在协程中频繁更新 UI
-private System.Collections.IEnumerator BadExample()
-{
-    for (int i = 0; i < 100; i++)
-    {
-        label.Text = $"进度: {i}"; // 可能导致性能问题
-        yield return new WaitForEndOfFrame();
-    }
-}
-
-// 推荐：使用 BindableProperty 自动更新
-private System.Collections.IEnumerator GoodExample()
-{
-    var progress = new BindableProperty<int>(0);
-    
-    // 使用 BindableProperty 注册 UI 更新
-    progress.Register(value => label.Text = $"进度: {value}")
-        .UnRegisterWhenNodeExitTree(this);
-    
-    for (int i = 0; i < 100; i++)
-    {
-        progress.Value = i; // 自动更新 UI
-        yield return new WaitForEndOfFrame();
-    }
-}
-```
-
-### 3. 使用协程进行资源加载
-
-```csharp
-private System.Collections.IEnumerator LoadResourcesAsync()
-{
-    GD.Print("开始加载资源");
-    
-    // 显示加载界面
-    loadingScreen.Visible = true;
-    
-    // 异步加载资源
-    var textures = new List<Texture2D>();
-    foreach (var path in resourcePaths)
-    {
-        var texture = ResourceLoader.LoadThreadedGet<Texture2D>(path);
-        
-        // 等待每张图片加载完成
-        yield return new WaitUntil(() => texture.GetLoadingStatus() == ResourceLoader.Loaded);
-        
-        textures.Add(texture);
-        
-        // 更新加载进度
-        UpdateProgress(textures.Count, resourcePaths.Length);
-    }
-    
-    // 加载完成
-    loadingScreen.Visible = false;
-    OnResourcesLoaded(textures);
-}
-```
-
-### 4. 场景切换处理
-
-```csharp
-private System.Collections.IEnumerator SceneTransitionAsync()
-{
-    GD.Print("开始场景切换");
-    
-    // 淡出当前场景
-    fadeAnimation.Play("FadeOut");
-    yield return new WaitSignal(fadeAnimation, AnimationPlayer.SignalName.AnimationFinished);
-    
-    // 卸载当前场景
-    GetTree().CurrentScene.QueueFree();
-    
-    // 加载新场景
-    var nextScene = ResourceLoader.Load<PackedScene>("res://scenes/NextScene.tscn");
-    var instance = nextScene.Instantiate();
-    GetTree().Root.AddChild(instance);
-    
-    // 淡入新场景
-    fadeAnimation.Play("FadeIn");
-    yield return new WaitSignal(fadeAnimation, AnimationPlayer.SignalName.AnimationFinished);
-    
-    GD.Print("场景切换完成");
-}
-```
-
-## 与 Source Generators 集成
-
-GFramework.SourceGenerators 可以自动为您的节点生成协程相关代码：
-
-```csharp
-[Log]
-[ContextAware]
 public partial class MyNode : Node
 {
-    // Source Generator 会自动生成 Logger 字段
-    // 无需手动编写日志代码
-    
     public override void _Ready()
     {
-        Logger.Info("节点已准备就绪");
-        
-        this.StartCoroutine(ComplexAsyncOperation());
+        LongRunningTask()
+            .CancelWith(this)
+            .RunCoroutine();
     }
-    
-    private System.Collections.IEnumerator ComplexAsyncOperation()
+
+    private IEnumerator<IYieldInstruction> LongRunningTask()
     {
-        Logger.Debug("开始复杂异步操作");
-        
-        yield return new WaitForSeconds(1.0f);
-        
-        Logger.Debug("操作完成");
+        while (true)
+        {
+            GD.Print("tick");
+            yield return new Delay(1.0);
+        }
     }
 }
 ```
 
-## 常见问题
+`CancelWith` 目前有三种重载：
 
-### Q: 协程会在游戏暂停时继续执行吗？
+- `CancelWith(Node node)`
+- `CancelWith(Node node1, Node node2)`
+- `CancelWith(params Node[] nodes)`
 
-A: 默认情况下，`WaitForSeconds` 会受到游戏暂停的影响。如果您需要在暂停时继续计时，请使用 `WaitForSecondsRealtime`。
+`CancelWith(...)` 内部通过 `Timing.IsNodeAlive(...)` 判断节点是否仍然有效。只要任一被监视的节点出现以下任一情况，包装后的协程就会停止继续枚举：
 
-### Q: 如何调试协程？
+- 节点引用为 `null`
+- Godot 实例已经失效或已被释放
+- 节点已进入 `queue_free` / `IsQueuedForDeletion()`
+- 节点已退出场景树，`IsInsideTree()` 返回 `false`
 
-A: 您可以在协程内部使用 `GD.Print()` 或 `Logger.Debug()` 来输出调试信息。VS Code 和 Rider 也支持在协程中设置断点。
+这意味着协程不只会在节点真正释放时停止；节点一旦退出场景树，下一次推进时也会停止。
 
-### Q: 协程中出现异常会怎样？
+## Segment 分段
 
-A: 未捕获的异常会导致协程停止执行，并可能传播到调用方。建议使用 try-catch 包装可能抛出异常的代码。
+Godot 层通过 `Segment` 决定协程挂在哪个调度器上：
 
----
+```csharp
+public enum Segment
+{
+    Process,
+    ProcessIgnorePause,
+    PhysicsProcess,
+    DeferredProcess
+}
+```
 
-**相关文档**：
+- `Process`：普通 `_Process` 段，场景树暂停时不会推进。
+- `ProcessIgnorePause`：同样使用 process delta，但即使场景树暂停也会推进。
+- `PhysicsProcess`：在 `_PhysicsProcess` 段推进。
+- `DeferredProcess`：通过 `CallDeferred` 在当前帧之后推进，场景树暂停时不会推进。
+
+示例：
+
+```csharp
+UiAnimation().RunCoroutine(Segment.ProcessIgnorePause);
+PhysicsRoutine().RunCoroutine(Segment.PhysicsProcess);
+```
+
+如果你更偏向语义化入口，也可以直接使用：
+
+```csharp
+Timing.RunGameCoroutine(GameLoop());
+Timing.RunUiCoroutine(MenuAnimation());
+```
+
+### 延迟调用
+
+`Timing` 还提供了两个延迟调用快捷方法：
+
+```csharp
+Timing.CallDelayed(1.0, () => GD.Print("1 秒后执行"));
+Timing.CallDelayed(1.0, () => GD.Print("节点仍然有效时执行"), this);
+```
+
+第二个重载会在执行前检查传入节点是否仍然存活。
+
+## 常用等待指令
+
+以下类型可直接用于 `yield return`：
+
+### 时间与帧
+
+```csharp
+yield return new Delay(1.0);
+yield return new WaitForSecondsRealtime(1.0);
+yield return new WaitOneFrame();
+yield return new WaitForNextFrame();
+yield return new WaitForFrames(5);
+yield return new WaitForEndOfFrame();
+```
+
+说明：
+
+- `Delay` 是最直接的秒级等待。
+- `WaitForSecondsRealtime` 常用于需要独立计时语义的协程场景。
+- `WaitOneFrame`、`WaitForNextFrame`、`WaitForEndOfFrame` 用于帧级调度控制。
+
+### 条件等待
+
+```csharp
+yield return new WaitUntil(() => health > 0);
+yield return new WaitWhile(() => isLoading);
+```
+
+### Task 等待
+
+```csharp
+using System.Threading.Tasks;
+using GFramework.Core.Coroutine.Extensions;
+
+Task loadTask = LoadSomethingAsync();
+yield return loadTask.AsCoroutineInstruction();
+```
+
+也可以先把 `Task` 转成协程枚举器，再直接运行：
+
+```csharp
+LoadSomethingAsync()
+    .ToCoroutineEnumerator()
+    .RunCoroutine();
+```
+
+- 已经在一个协程内部时，优先使用 `yield return task.AsCoroutineInstruction()`，这样可以直接把 `Task` 嵌入当前协程流程。
+- 如果要把一个现成的 `Task` 当作独立协程入口交给 Godot 协程系统运行，再使用
+  `task.ToCoroutineEnumerator().RunCoroutine()`。
+
+### 等待事件总线事件
+
+可以通过事件总线等待业务事件：
+
+```csharp
+using System.Collections.Generic;
+using GFramework.Core.Abstractions.Coroutine;
+using GFramework.Core.Abstractions.Events;
+using GFramework.Core.Coroutine.Instructions;
+
+private IEnumerator<IYieldInstruction> WaitForGameEvent(IEventBus eventBus)
+{
+    using var wait = new WaitForEvent<PlayerSpawnedEvent>(eventBus);
+    yield return wait;
+
+    var evt = wait.EventData;
+}
+```
+
+如需为事件等待附加超时控制，可结合 `WaitForEventWithTimeout<TEvent>`。
+
+## 协程控制
+
+协程启动后会返回 `CoroutineHandle`，可用于控制运行状态：
+
+```csharp
+var handle = Demo().RunCoroutine(tag: "demo");
+
+Timing.PauseCoroutine(handle);
+Timing.ResumeCoroutine(handle);
+Timing.KillCoroutine(handle);
+
+Timing.KillCoroutines("demo");
+Timing.KillAllCoroutines();
+```
+
+如果希望在场景初始化阶段主动确保调度器存在，也可以调用：
+
+```csharp
+Timing.Prewarm();
+```
+
+## 与 IContextAware 集成
+
+`GFramework.Godot.Coroutine` 还提供了一组扩展方法，用于把命令、查询和通知直接包装成协程：
+
+- `RunCommandCoroutine(...)`
+- `RunCommandCoroutine<TResponse>(...)`
+- `RunQueryCoroutine<TResponse>(...)`
+- `RunPublishCoroutine(...)`
+
+这些方法会把异步操作转换为协程，并交给 `RunCoroutine(...)` 调度执行。
+
+例如：
+
+```csharp
+public void StartCoroutines(IContextAware contextAware)
+{
+    contextAware.RunCommandCoroutine(
+        new EnterBattleCommand(),
+        Segment.Process,
+        tag: "battle");
+
+    contextAware.RunQueryCoroutine(
+        new LoadPlayerQuery(),
+        Segment.ProcessIgnorePause,
+        tag: "ui");
+}
+```
+
+这些扩展适合在 Godot 节点或控制器中直接启动和跟踪业务协程。
+
+## 相关文档
 
 - [Godot 概述](./index.md)
-- [Node 扩展方法](./extensions.md)
+- [Godot 扩展方法](./extensions.md)
 - [信号扩展](./signal.md)
 - [事件系统](../core/events.md)
