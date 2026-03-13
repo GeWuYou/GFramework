@@ -59,7 +59,6 @@ export default defineConfig({
               { text: 'API 参考', link: '/zh-CN/api-reference' },
               { text: '常见问题', link: '/zh-CN/faq' },
               { text: '故障排查', link: '/zh-CN/troubleshooting' },
-              { text: '迁移指南', link: '/zh-CN/migration-guide' },
               { text: '贡献指南', link: '/zh-CN/contributing' }
             ]
           }
