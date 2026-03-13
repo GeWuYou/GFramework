@@ -1,6 +1,6 @@
 using GFramework.Core.Abstractions.Command;
 using GFramework.Core.Abstractions.Events;
-using GFramework.Core.Abstractions.IoC;
+using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Abstractions.Query;
 using GFramework.Core.Abstractions.Rule;
 

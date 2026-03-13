@@ -1,7 +1,7 @@
 using Arch.Core;
 using GFramework.Core.Abstractions.Architecture;
 using GFramework.Core.Architectures;
-using GFramework.Core.IoC;
+using GFramework.Core.Ioc;
 using GFramework.Ecs.Arch.Abstractions;
 using GFramework.Ecs.Arch.Extensions;
 

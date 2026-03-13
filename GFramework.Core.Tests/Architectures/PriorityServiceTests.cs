@@ -3,7 +3,7 @@ using GFramework.Core.Abstractions.Bases;
 using GFramework.Core.Abstractions.Model;
 using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Abstractions.Utility;
-using GFramework.Core.IoC;
+using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
 using GFramework.Core.Model;
 

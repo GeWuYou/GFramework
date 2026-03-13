@@ -3,7 +3,7 @@ using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Architectures;
 using GFramework.Core.Events;
 using GFramework.Core.Extensions;
-using GFramework.Core.IoC;
+using GFramework.Core.Ioc;
 using GFramework.Core.Rule;
 
 namespace GFramework.Core.Tests.Rule;

@@ -3,7 +3,7 @@ using System.Reflection;
 using GFramework.Core.Abstractions.Architecture;
 using GFramework.Core.Architectures;
 using GFramework.Core.Command;
-using GFramework.Core.IoC;
+using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;

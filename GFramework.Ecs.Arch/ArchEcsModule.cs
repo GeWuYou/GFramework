@@ -1,5 +1,5 @@
 using Arch.Core;
-using GFramework.Core.Abstractions.IoC;
+using GFramework.Core.Abstractions.Ioc;
 
 namespace GFramework.Ecs.Arch;
 

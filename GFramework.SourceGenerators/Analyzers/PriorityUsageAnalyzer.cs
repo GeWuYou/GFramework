@@ -36,7 +36,7 @@ public sealed class PriorityUsageAnalyzer : DiagnosticAnalyzer
                 return;
 
             var iocContainer = compilationContext.Compilation.GetTypeByMetadataName(
-                "GFramework.Core.Abstractions.IoC.IIocContainer");
+                "GFramework.Core.Abstractions.Ioc.IIocContainer");
 
             var architectureContext = compilationContext.Compilation.GetTypeByMetadataName(
                 "GFramework.Core.Abstractions.Architecture.IArchitectureContext");

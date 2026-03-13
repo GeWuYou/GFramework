@@ -1,6 +1,5 @@
-using GFramework.Core.Abstractions.CQRS.Command;
+using GFramework.Core.Abstractions.Cqrs.Command;
 using GFramework.Core.Command;
-using NUnit.Framework;
 
 namespace GFramework.Core.Tests.Command;
 

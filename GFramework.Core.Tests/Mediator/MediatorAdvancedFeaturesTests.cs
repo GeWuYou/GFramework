@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Reflection;
 using GFramework.Core.Architectures;
-using GFramework.Core.IoC;
+using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;

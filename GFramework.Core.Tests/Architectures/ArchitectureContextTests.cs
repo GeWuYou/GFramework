@@ -11,7 +11,7 @@ using GFramework.Core.Architectures;
 using GFramework.Core.Command;
 using GFramework.Core.Environment;
 using GFramework.Core.Events;
-using GFramework.Core.IoC;
+using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
 using GFramework.Core.Query;
 

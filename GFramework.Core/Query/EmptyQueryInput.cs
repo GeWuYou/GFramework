@@ -1,4 +1,4 @@
-﻿using GFramework.Core.Abstractions.CQRS.Query;
+﻿using GFramework.Core.Abstractions.Cqrs.Query;
 
 namespace GFramework.Core.Query;
 

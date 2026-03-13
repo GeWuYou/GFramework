@@ -23,6 +23,9 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+      # 校验C#命名空间与源码目录是否符合命名规范
+      - name: Validate C# naming
+        run: bash scripts/validate-csharp-naming.sh
       # 缓存MegaLinter
       - name: Cache MegaLinter
         uses: actions/cache@v5

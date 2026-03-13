@@ -2,11 +2,11 @@ using System.Diagnostics.CodeAnalysis;
 using Arch.Core;
 using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Architectures;
-using GFramework.Core.IoC;
+using GFramework.Core.Ioc;
 using GFramework.Ecs.Arch.Components;
 using GFramework.Ecs.Arch.Systems;
 
-namespace GFramework.Ecs.Arch.Tests.ECS;
+namespace GFramework.Ecs.Arch.Tests.Ecs;
 
 /// <summary>
 /// ECS 基础功能测试类 - 使用 Arch 原生 API

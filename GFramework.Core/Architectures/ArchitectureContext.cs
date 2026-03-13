@@ -3,7 +3,7 @@ using GFramework.Core.Abstractions.Architecture;
 using GFramework.Core.Abstractions.Command;
 using GFramework.Core.Abstractions.Environment;
 using GFramework.Core.Abstractions.Events;
-using GFramework.Core.Abstractions.IoC;
+using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Abstractions.Model;
 using GFramework.Core.Abstractions.Query;
 using GFramework.Core.Abstractions.Systems;

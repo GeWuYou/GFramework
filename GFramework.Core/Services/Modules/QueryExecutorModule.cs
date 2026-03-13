@@ -1,5 +1,5 @@
 using GFramework.Core.Abstractions.Architecture;
-using GFramework.Core.Abstractions.IoC;
+using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Query;
 
 namespace GFramework.Core.Services.Modules;

@@ -1,9 +1,9 @@
 using GFramework.Core.Abstractions.Architecture;
 using GFramework.Core.Abstractions.Command;
 using GFramework.Core.Abstractions.Events;
-using GFramework.Core.Abstractions.IoC;
+using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Abstractions.Query;
-using GFramework.Core.IoC;
+using GFramework.Core.Ioc;
 using GFramework.Core.Services;
 
 namespace GFramework.Core.Architectures;

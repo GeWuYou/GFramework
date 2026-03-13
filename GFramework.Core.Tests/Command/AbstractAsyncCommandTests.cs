@@ -1,11 +1,11 @@
 using GFramework.Core.Abstractions.Command;
-using GFramework.Core.Abstractions.CQRS.Command;
+using GFramework.Core.Abstractions.Cqrs.Command;
 using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Architectures;
 using GFramework.Core.Command;
 using GFramework.Core.Environment;
 using GFramework.Core.Events;
-using GFramework.Core.IoC;
+using GFramework.Core.Ioc;
 using GFramework.Core.Query;
 
 namespace GFramework.Core.Tests.Command;

@@ -1,4 +1,4 @@
-using GFramework.Core.Abstractions.IoC;
+using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Abstractions.Lifecycle;
 
 namespace GFramework.Core.Abstractions.Architecture;
