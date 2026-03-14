@@ -1,8 +1,9 @@
 ﻿using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Enums;
+using GFramework.Core.Architectures;
 using Godot;
 
-namespace GFramework.Godot.Architecture;
+namespace GFramework.Godot.Architectures;
 
 /// <summary>
 ///     抽象的Godot模块基类，用于定义Godot框架中的模块行为
@@ -31,7 +32,7 @@ public abstract class AbstractGodotModule : IGodotModule
     ///     当模块被附加到架构时调用此方法
     /// </summary>
     /// <param name="architecture">被附加到的架构实例</param>
-    public virtual void OnAttach(Core.Architectures.Architecture architecture)
+    public virtual void OnAttach(Architecture architecture)
     {
     }
 
