@@ -1,6 +1,6 @@
 ﻿using Godot;
 
-namespace GFramework.Godot.Architecture;
+namespace GFramework.Godot.Architectures;
 
 /// <summary>
 ///     架构锚点节点类，用于在Godot场景树中作为架构组件的根节点

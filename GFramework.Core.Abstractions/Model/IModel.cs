@@ -1,4 +1,4 @@
-﻿using GFramework.Core.Abstractions.Architecture;
+﻿using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Lifecycle;
 using GFramework.Core.Abstractions.Rule;
 

@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using GFramework.Core.Abstractions.Architecture;
+using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Events;
 using GFramework.Core.Architectures;
 using GFramework.Core.Command;

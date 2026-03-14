@@ -1,4 +1,4 @@
-using GFramework.Core.Abstractions.Architecture;
+using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Command;
 using GFramework.Core.Abstractions.Coroutine;
 using GFramework.Core.Abstractions.Events;
@@ -6,7 +6,6 @@ using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Coroutine.Extensions;
 using GFramework.Core.Coroutine.Instructions;
 using Moq;
-using NUnit.Framework;
 
 namespace GFramework.Core.Tests.Coroutine;
 

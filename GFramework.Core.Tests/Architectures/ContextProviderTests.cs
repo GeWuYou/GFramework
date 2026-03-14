@@ -1,4 +1,4 @@
-using GFramework.Core.Abstractions.Architecture;
+using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Architectures;
 
 namespace GFramework.Core.Tests.Architectures;

@@ -1,6 +1,6 @@
 ﻿using GFramework.Core.Abstractions.Enums;
 
-namespace GFramework.Core.Abstractions.Architecture;
+namespace GFramework.Core.Abstractions.Architectures;
 
 /// <summary>
 /// 架构生命周期钩子接口，用于在架构的不同生命周期阶段执行自定义逻辑。

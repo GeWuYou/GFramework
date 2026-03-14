@@ -1,4 +1,4 @@
-﻿namespace GFramework.Core.Abstractions.Architecture;
+﻿namespace GFramework.Core.Abstractions.Architectures;
 
 /// <summary>
 ///     架构模块接口，继承自架构生命周期接口。

@@ -4,7 +4,7 @@ using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Abstractions.Utility;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace GFramework.Core.Abstractions.Architecture;
+namespace GFramework.Core.Abstractions.Architectures;
 
 /// <summary>
 ///     架构接口，专注于生命周期管理，包括系统、模型、工具的注册和获取

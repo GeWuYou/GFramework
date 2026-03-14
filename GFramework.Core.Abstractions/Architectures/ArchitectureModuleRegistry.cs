@@ -1,13 +1,13 @@
 using System.Collections.Concurrent;
 
-namespace GFramework.Core.Abstractions.Architecture;
+namespace GFramework.Core.Abstractions.Architectures;
 
 /// <summary>
 ///     架构模块注册表 - 用于外部模块的自动注册
 /// </summary>
 public static class ArchitectureModuleRegistry
 {
-    private static readonly ConcurrentDictionary<string, Func<IServiceModule>> _factories = new();
+    private static readonly ConcurrentDictionary<string, Func<IServiceModule>> Factories = new(StringComparer.Ordinal);
 
     /// <summary>
     ///     注册模块工厂（幂等操作，相同模块名只会注册一次）
@@ -20,7 +20,7 @@ public static class ArchitectureModuleRegistry
         var moduleName = tempModule.ModuleName;
 
         // 幂等注册：相同模块名只注册一次
-        _factories.TryAdd(moduleName, factory);
+        Factories.TryAdd(moduleName, factory);
     }
 
     /// <summary>
@@ -29,7 +29,7 @@ public static class ArchitectureModuleRegistry
     /// <returns>模块实例集合</returns>
     public static IEnumerable<IServiceModule> CreateModules()
     {
-        return _factories.Values.Select(f => f());
+        return Factories.Values.Select(f => f());
     }
 
     /// <summary>
@@ -37,6 +37,6 @@ public static class ArchitectureModuleRegistry
     /// </summary>
     public static void Clear()
     {
-        _factories.Clear();
+        Factories.Clear();
     }
 }

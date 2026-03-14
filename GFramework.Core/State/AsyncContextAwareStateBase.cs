@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using GFramework.Core.Abstractions.Architecture;
+using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Lifecycle;
 using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Abstractions.State;

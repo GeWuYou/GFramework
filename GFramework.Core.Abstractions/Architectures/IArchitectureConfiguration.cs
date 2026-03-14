@@ -1,6 +1,6 @@
 ﻿using GFramework.Core.Abstractions.Properties;
 
-namespace GFramework.Core.Abstractions.Architecture;
+namespace GFramework.Core.Abstractions.Architectures;
 
 /// <summary>
 ///     定义架构配置的接口，提供日志工厂、日志级别和架构选项的配置功能

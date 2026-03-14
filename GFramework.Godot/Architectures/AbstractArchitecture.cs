@@ -1,10 +1,11 @@
-﻿using GFramework.Core.Abstractions.Architecture;
+﻿using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Environment;
+using GFramework.Core.Architectures;
 using GFramework.Core.Constants;
 using GFramework.Godot.Extensions;
 using Godot;
 
-namespace GFramework.Godot.Architecture;
+namespace GFramework.Godot.Architectures;
 
 /// <summary>
 ///     抽象架构类，为特定类型的架构提供基础实现框架。
@@ -15,7 +16,7 @@ public abstract class AbstractArchitecture(
     IEnvironment? environment = null,
     IArchitectureServices? services = null,
     IArchitectureContext? context = null
-) : Core.Architectures.Architecture(configuration, environment, services, context)
+) : Architecture(configuration, environment, services, context)
 {
     /// <summary>
     ///     存储所有已安装的Godot架构扩展组件列表

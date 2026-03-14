@@ -8,7 +8,7 @@ using GFramework.Core.Abstractions.Utility;
 using Mediator;
 using ICommand = GFramework.Core.Abstractions.Command.ICommand;
 
-namespace GFramework.Core.Abstractions.Architecture;
+namespace GFramework.Core.Abstractions.Architectures;
 
 /// <summary>
 ///     架构上下文接口，提供对系统、模型、工具类的访问以及命令、查询、事件的发送和注册功能

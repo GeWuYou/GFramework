@@ -35,13 +35,13 @@ public class ContextAwareGeneratorSnapshotTests
                                   public interface IContextAware
                                   {
                                       void SetContext(
-                                          GFramework.Core.Abstractions.Architecture.IArchitectureContext context);
+                                          GFramework.Core.Abstractions.Architectures.IArchitectureContext context);
 
-                                      GFramework.Core.Abstractions.Architecture.IArchitectureContext GetContext();
+                                      GFramework.Core.Abstractions.Architectures.IArchitectureContext GetContext();
                                   }
                               }
 
-                              namespace GFramework.Core.Abstractions.Architecture
+                              namespace GFramework.Core.Abstractions.Architectures
                               {
                                   public interface IArchitectureContext { }
 
@@ -52,9 +52,9 @@ public class ContextAwareGeneratorSnapshotTests
                                   }
                               }
 
-                              namespace GFramework.Core.Architecture
+                              namespace GFramework.Core.Architectures
                               {
-                                  using GFramework.Core.Abstractions.Architecture;
+                                  using GFramework.Core.Abstractions.Architectures;
 
                                   public sealed class GameContextProvider : IArchitectureContextProvider
                                   {

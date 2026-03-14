@@ -1,4 +1,4 @@
-namespace GFramework.Core.Abstractions.Architecture;
+namespace GFramework.Core.Abstractions.Architectures;
 
 /// <summary>
 /// 架构上下文提供者接口，用于解耦上下文获取逻辑

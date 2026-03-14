@@ -4,7 +4,7 @@ using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Abstractions.Query;
 using GFramework.Core.Abstractions.Rule;
 
-namespace GFramework.Core.Abstractions.Architecture;
+namespace GFramework.Core.Abstractions.Architectures;
 
 /// <summary>
 ///     架构服务接口，定义了框架核心架构所需的服务组件

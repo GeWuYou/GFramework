@@ -1,6 +1,6 @@
 ﻿using GFramework.Core.Abstractions.Enums;
 
-namespace GFramework.Core.Abstractions.Architecture;
+namespace GFramework.Core.Abstractions.Architectures;
 
 /// <summary>
 /// 架构阶段监听器接口，用于监听和响应架构生命周期中的不同阶段变化。

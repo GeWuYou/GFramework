@@ -1,6 +1,6 @@
 using GFramework.Core.Abstractions.Ioc;
 
-namespace GFramework.Core.Abstractions.Architecture;
+namespace GFramework.Core.Abstractions.Architectures;
 
 /// <summary>
 ///     服务模块管理器接口，用于管理架构中的服务模块。

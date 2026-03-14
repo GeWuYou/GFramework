@@ -1,7 +1,7 @@
 using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Abstractions.Lifecycle;
 
-namespace GFramework.Core.Abstractions.Architecture;
+namespace GFramework.Core.Abstractions.Architectures;
 
 /// <summary>
 ///     服务模块接口，定义了服务模块的基本契约。
