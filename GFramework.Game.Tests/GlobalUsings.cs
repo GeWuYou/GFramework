@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2026 GeWuYou
+// Copyright (c) 2026 GeWuYou
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,12 +11,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using GFramework.Game.Abstractions.Routing;
-
-namespace GFramework.Game.Abstractions.Scene;
-
-/// <summary>
-/// 场景进入参数接口
-/// 该接口用于定义场景跳转时传递的参数数据结构
-/// </summary>
-public interface ISceneEnterParam : IRouteContext;
+global using NUnit.Framework;
+global using Moq;
+global using System;
+global using System.Collections.Generic;
+global using System.Linq;
+global using System.Threading.Tasks;

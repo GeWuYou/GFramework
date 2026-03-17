@@ -113,28 +113,6 @@ public interface IUiRouter : ISystem
     /// </summary>
     bool Contains(string uiKey);
 
-    #region 路由守卫
-
-    /// <summary>
-    ///     注册路由守卫
-    /// </summary>
-    /// <param name="guard">守卫实例</param>
-    void AddGuard(IUiRouteGuard guard);
-
-    /// <summary>
-    ///     注册路由守卫（泛型方法）
-    /// </summary>
-    /// <typeparam name="T">守卫类型，必须实现 IUiRouteGuard 且有无参构造函数</typeparam>
-    void AddGuard<T>() where T : IUiRouteGuard, new();
-
-    /// <summary>
-    ///     移除路由守卫
-    /// </summary>
-    /// <param name="guard">守卫实例</param>
-    void RemoveGuard(IUiRouteGuard guard);
-
-    #endregion
-
     #region Layer UI
 
     /// <summary>

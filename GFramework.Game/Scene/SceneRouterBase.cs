@@ -14,9 +14,9 @@
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Extensions;
 using GFramework.Core.Logging;
-using GFramework.Core.Systems;
 using GFramework.Game.Abstractions.Enums;
 using GFramework.Game.Abstractions.Scene;
+using GFramework.Game.Routing;
 
 namespace GFramework.Game.Scene;
 
@@ -25,15 +25,13 @@ namespace GFramework.Game.Scene;
 /// 实现了 <see cref="ISceneRouter"/> 接口，用于管理场景的加载、替换和卸载操作。
 /// </summary>
 public abstract class SceneRouterBase
-    : AbstractSystem, ISceneRouter
+    : RouterBase<ISceneBehavior, ISceneEnterParam>, ISceneRouter
 {
     private static readonly ILogger Log =
         LoggerFactoryResolver.Provider.CreateLogger(nameof(SceneRouterBase));
 
-    private readonly List<ISceneRouteGuard> _guards = new();
     private readonly SceneTransitionPipeline _pipeline = new();
 
-    private readonly Stack<ISceneBehavior> _stack = new();
     private readonly SemaphoreSlim _transitionLock = new(1, 1);
     private ISceneFactory _factory = null!;
 
@@ -45,17 +43,17 @@ public abstract class SceneRouterBase
     /// <summary>
     /// 获取当前场景行为对象。
     /// </summary>
-    public ISceneBehavior? Current => _stack.Count > 0 ? _stack.Peek() : null;
+    public new ISceneBehavior? Current => Stack.Count > 0 ? Stack.Peek() : null;
 
     /// <summary>
     /// 获取当前场景的键名。
     /// </summary>
-    public string? CurrentKey => Current?.Key;
+    public new string? CurrentKey => Current?.Key;
 
     /// <summary>
     /// 获取场景栈的只读视图，按压入顺序排列（从栈底到栈顶）。
     /// </summary>
-    public IEnumerable<ISceneBehavior> Stack => _stack.Reverse();
+    IEnumerable<ISceneBehavior> ISceneRouter.Stack => base.Stack.Reverse();
 
     /// <summary>
     /// 获取是否正在进行场景转换。
@@ -115,9 +113,9 @@ public abstract class SceneRouterBase
     /// </summary>
     /// <param name="sceneKey">场景键名。</param>
     /// <returns>如果场景在栈中返回true，否则返回false。</returns>
-    public bool Contains(string sceneKey)
+    public new bool Contains(string sceneKey)
     {
-        return _stack.Any(s => s.Key == sceneKey);
+        return Stack.Any(s => s.Key == sceneKey);
     }
 
     #endregion
@@ -164,45 +162,9 @@ public abstract class SceneRouterBase
     }
 
     /// <summary>
-    /// 添加场景路由守卫。
-    /// </summary>
-    /// <param name="guard">守卫实例。</param>
-    public void AddGuard(ISceneRouteGuard guard)
-    {
-        ArgumentNullException.ThrowIfNull(guard);
-        if (!_guards.Contains(guard))
-        {
-            _guards.Add(guard);
-            _guards.Sort((a, b) => a.Priority.CompareTo(b.Priority));
-            Log.Debug("Guard added: {0}, Priority={1}", guard.GetType().Name, guard.Priority);
-        }
-    }
-
-    /// <summary>
-    /// 添加场景路由守卫（泛型版本）。
-    /// </summary>
-    /// <typeparam name="T">守卫类型。</typeparam>
-    public void AddGuard<T>() where T : ISceneRouteGuard, new()
-    {
-        AddGuard(new T());
-    }
-
-    /// <summary>
-    /// 移除场景路由守卫。
-    /// </summary>
-    /// <param name="guard">守卫实例。</param>
-    public void RemoveGuard(ISceneRouteGuard guard)
-    {
-        if (_guards.Remove(guard))
-        {
-            Log.Debug("Guard removed: {0}", guard.GetType().Name);
-        }
-    }
-
-    /// <summary>
     /// 注册场景过渡处理器的抽象方法，由子类实现。
     /// </summary>
-    protected abstract void RegisterHandlers();
+    protected override abstract void RegisterHandlers();
 
     /// <summary>
     /// 系统初始化方法，获取场景工厂并注册处理器。
@@ -281,20 +243,20 @@ public abstract class SceneRouterBase
         await scene.OnLoadAsync(param);
 
         // 暂停当前场景
-        if (_stack.Count > 0)
+        if (Stack.Count > 0)
         {
-            var current = _stack.Peek();
+            var current = Stack.Peek();
             await current.OnPauseAsync();
         }
 
         // 压入栈
-        _stack.Push(scene);
+        Stack.Push(scene);
 
         // 进入场景
         await scene.OnEnterAsync();
 
         Log.Debug("Push Scene: {0}, stackCount={1}",
-            sceneKey, _stack.Count);
+            sceneKey, Stack.Count);
     }
 
     #endregion
@@ -335,10 +297,10 @@ public abstract class SceneRouterBase
     /// <returns>异步任务。</returns>
     private async ValueTask PopInternalAsync()
     {
-        if (_stack.Count == 0)
+        if (Stack.Count == 0)
             return;
 
-        var top = _stack.Peek();
+        var top = Stack.Peek();
 
         // 守卫检查
         if (!await ExecuteLeaveGuardsAsync(top.Key))
@@ -347,7 +309,7 @@ public abstract class SceneRouterBase
             return;
         }
 
-        _stack.Pop();
+        Stack.Pop();
 
         // 退出场景
         await top.OnExitAsync();
@@ -359,13 +321,13 @@ public abstract class SceneRouterBase
         Root!.RemoveScene(top);
 
         // 恢复下一个场景
-        if (_stack.Count > 0)
+        if (Stack.Count > 0)
         {
-            var next = _stack.Peek();
+            var next = Stack.Peek();
             await next.OnResumeAsync();
         }
 
-        Log.Debug("Pop Scene, stackCount={0}", _stack.Count);
+        Log.Debug("Pop Scene, stackCount={0}", Stack.Count);
     }
 
     #endregion
@@ -406,7 +368,7 @@ public abstract class SceneRouterBase
     /// <returns>异步任务。</returns>
     private async ValueTask ClearInternalAsync()
     {
-        while (_stack.Count > 0)
+        while (Stack.Count > 0)
         {
             await PopInternalAsync();
         }
@@ -458,83 +420,6 @@ public abstract class SceneRouterBase
         Log.Debug("AfterChange phases started: {0}", @event.TransitionType);
         await _pipeline.ExecuteAsync(@event, SceneTransitionPhases.AfterChange);
         Log.Debug("AfterChange phases completed: {0}", @event.TransitionType);
-    }
-
-    /// <summary>
-    /// 执行进入场景的守卫检查。
-    /// 按优先级顺序执行所有守卫的CanEnterAsync方法。
-    /// </summary>
-    /// <param name="sceneKey">场景键名。</param>
-    /// <param name="param">进入参数。</param>
-    /// <returns>如果所有守卫都允许进入返回true，否则返回false。</returns>
-    private async Task<bool> ExecuteEnterGuardsAsync(string sceneKey, ISceneEnterParam? param)
-    {
-        foreach (var guard in _guards)
-        {
-            try
-            {
-                Log.Debug("Executing enter guard: {0} for {1}", guard.GetType().Name, sceneKey);
-                var canEnter = await guard.CanEnterAsync(sceneKey, param);
-
-                if (!canEnter)
-                {
-                    Log.Debug("Enter guard blocked: {0}", guard.GetType().Name);
-                    return false;
-                }
-
-                if (guard.CanInterrupt)
-                {
-                    Log.Debug("Enter guard {0} passed, can interrupt = true", guard.GetType().Name);
-                    return true;
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Error("Enter guard {0} failed: {1}", guard.GetType().Name, ex.Message);
-                if (guard.CanInterrupt)
-                    return false;
-            }
-        }
-
-        return true;
-    }
-
-    /// <summary>
-    /// 执行离开场景的守卫检查。
-    /// 按优先级顺序执行所有守卫的CanLeaveAsync方法。
-    /// </summary>
-    /// <param name="sceneKey">场景键名。</param>
-    /// <returns>如果所有守卫都允许离开返回true，否则返回false。</returns>
-    private async Task<bool> ExecuteLeaveGuardsAsync(string sceneKey)
-    {
-        foreach (var guard in _guards)
-        {
-            try
-            {
-                Log.Debug("Executing leave guard: {0} for {1}", guard.GetType().Name, sceneKey);
-                var canLeave = await guard.CanLeaveAsync(sceneKey);
-
-                if (!canLeave)
-                {
-                    Log.Debug("Leave guard blocked: {0}", guard.GetType().Name);
-                    return false;
-                }
-
-                if (guard.CanInterrupt)
-                {
-                    Log.Debug("Leave guard {0} passed, can interrupt = true", guard.GetType().Name);
-                    return true;
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Error("Leave guard {0} failed: {1}", guard.GetType().Name, ex.Message);
-                if (guard.CanInterrupt)
-                    return false;
-            }
-        }
-
-        return true;
     }
 
     #endregion

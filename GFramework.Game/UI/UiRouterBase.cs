@@ -1,9 +1,9 @@
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Extensions;
 using GFramework.Core.Logging;
-using GFramework.Core.Systems;
 using GFramework.Game.Abstractions.Enums;
 using GFramework.Game.Abstractions.UI;
+using GFramework.Game.Routing;
 
 namespace GFramework.Game.UI;
 
@@ -11,14 +11,9 @@ namespace GFramework.Game.UI;
 /// UI路由基类，提供页面栈管理和层级UI管理功能
 /// 负责UI页面的导航、显示、隐藏以及生命周期管理
 /// </summary>
-public abstract class UiRouterBase : AbstractSystem, IUiRouter
+public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterParam>, IUiRouter
 {
     private static readonly ILogger Log = LoggerFactoryResolver.Provider.CreateLogger(nameof(UiRouterBase));
-
-    /// <summary>
-    /// 路由守卫列表，用于控制UI页面的进入和离开
-    /// </summary>
-    private readonly List<IUiRouteGuard> _guards = new();
 
     /// <summary>
     /// 层级管理字典（非栈层级），用于管理Overlay、Modal、Toast等浮层UI
@@ -30,11 +25,6 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// UI切换处理器管道，用于执行UI过渡动画和逻辑
     /// </summary>
     private readonly UiTransitionPipeline _pipeline = new();
-
-    /// <summary>
-    /// 页面栈，用于管理UI页面的显示顺序和导航历史
-    /// </summary>
-    private readonly Stack<IUiPageBehavior> _stack = new();
 
     /// <summary>
     /// UI工厂实例，用于创建UI页面和相关对象
@@ -98,7 +88,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         }
 
         var @event = CreateEvent(uiKey, UiTransitionType.Push, policy, param);
-        Log.Debug("Push UI Page: key={0}, policy={1}, stackBefore={2}", uiKey, policy, _stack.Count);
+        Log.Debug("Push UI Page: key={0}, policy={1}, stackBefore={2}", uiKey, policy, Stack.Count);
 
         await _pipeline.ExecuteAroundAsync(@event, async () =>
         {
@@ -126,7 +116,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         }
 
         var @event = CreateEvent(uiKey, UiTransitionType.Push, policy, param);
-        Log.Debug("Push existing UI Page: key={0}, policy={1}, stackBefore={2}", uiKey, policy, _stack.Count);
+        Log.Debug("Push existing UI Page: key={0}, policy={1}, stackBefore={2}", uiKey, policy, Stack.Count);
 
         await _pipeline.ExecuteAroundAsync(@event, async () =>
         {
@@ -142,13 +132,13 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// <param name="policy">页面弹出策略</param>
     public async ValueTask PopAsync(UiPopPolicy policy = UiPopPolicy.Destroy)
     {
-        if (_stack.Count == 0)
+        if (Stack.Count == 0)
         {
             Log.Debug("Pop ignored: stack is empty");
             return;
         }
 
-        var leavingUiKey = _stack.Peek().Key;
+        var leavingUiKey = Stack.Peek().Key;
 
         if (!await ExecuteLeaveGuardsAsync(leavingUiKey))
         {
@@ -156,7 +146,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
             return;
         }
 
-        var nextUiKey = _stack.Count > 1 ? _stack.ElementAt(1).Key : null;
+        var nextUiKey = Stack.Count > 1 ? Stack.ElementAt(1).Key : null;
         var @event = CreateEvent(nextUiKey, UiTransitionType.Pop);
 
         await _pipeline.ExecuteAroundAsync(@event, async () =>
@@ -226,7 +216,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     public async ValueTask ClearAsync()
     {
         var @event = CreateEvent(string.Empty, UiTransitionType.Clear);
-        Log.Debug("Clear UI Stack, stackCount={0}", _stack.Count);
+        Log.Debug("Clear UI Stack, stackCount={0}", Stack.Count);
 
         await _pipeline.ExecuteAroundAsync(@event, async () =>
         {
@@ -240,9 +230,9 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// 获取栈顶元素的键值
     /// </summary>
     /// <returns>栈顶UI页面的键值，如果栈为空则返回空字符串</returns>
-    public string PeekKey()
+    public new string PeekKey()
     {
-        return _stack.Count == 0 ? string.Empty : _stack.Peek().Key;
+        return Stack.Count == 0 ? string.Empty : Stack.Peek().Key;
     }
 
     /// <summary>
@@ -251,7 +241,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// <returns>栈顶UI页面行为实例，如果栈为空则返回null</returns>
     public IUiPageBehavior? Peek()
     {
-        return _stack.Count == 0 ? null : _stack.Peek();
+        return Stack.Count == 0 ? null : Stack.Peek();
     }
 
     /// <summary>
@@ -259,9 +249,9 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// </summary>
     /// <param name="uiKey">要检查的UI页面键值</param>
     /// <returns>如果栈顶是指定UI则返回true，否则返回false</returns>
-    public bool IsTop(string uiKey)
+    public new bool IsTop(string uiKey)
     {
-        return _stack.Count != 0 && _stack.Peek().Key.Equals(uiKey);
+        return Stack.Count != 0 && Stack.Peek().Key.Equals(uiKey);
     }
 
     /// <summary>
@@ -269,15 +259,15 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// </summary>
     /// <param name="uiKey">要检查的UI页面键值</param>
     /// <returns>如果栈中包含指定UI则返回true，否则返回false</returns>
-    public bool Contains(string uiKey)
+    public new bool Contains(string uiKey)
     {
-        return _stack.Any(p => p.Key.Equals(uiKey));
+        return Stack.Any(p => p.Key.Equals(uiKey));
     }
 
     /// <summary>
     /// 获取栈深度
     /// </summary>
-    public int Count => _stack.Count;
+    public new int Count => Stack.Count;
 
     #endregion
 
@@ -458,51 +448,6 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
 
     #endregion
 
-    #region Route Guards
-
-    /// <summary>
-    /// 注册路由守卫
-    /// </summary>
-    /// <param name="guard">路由守卫实例</param>
-    /// <exception cref="ArgumentNullException">当守卫实例为null时抛出</exception>
-    public void AddGuard(IUiRouteGuard guard)
-    {
-        ArgumentNullException.ThrowIfNull(guard);
-
-        if (_guards.Contains(guard))
-        {
-            Log.Debug("Guard already registered: {0}", guard.GetType().Name);
-            return;
-        }
-
-        _guards.Add(guard);
-        _guards.Sort((a, b) => a.Priority.CompareTo(b.Priority));
-        Log.Debug("Guard registered: {0}, Priority={1}", guard.GetType().Name, guard.Priority);
-    }
-
-    /// <summary>
-    /// 注册路由守卫（泛型）
-    /// </summary>
-    /// <typeparam name="T">路由守卫类型，必须实现IUiRouteGuard接口且有无参构造函数</typeparam>
-    public void AddGuard<T>() where T : IUiRouteGuard, new()
-    {
-        AddGuard(new T());
-    }
-
-    /// <summary>
-    /// 移除路由守卫
-    /// </summary>
-    /// <param name="guard">要移除的路由守卫实例</param>
-    /// <exception cref="ArgumentNullException">当守卫实例为null时抛出</exception>
-    public void RemoveGuard(IUiRouteGuard guard)
-    {
-        ArgumentNullException.ThrowIfNull(guard);
-        if (_guards.Remove(guard))
-            Log.Debug("Guard removed: {0}", guard.GetType().Name);
-    }
-
-    #endregion
-
     #region Initialization
 
     /// <summary>
@@ -525,7 +470,7 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// 抽象方法，用于注册具体的处理程序。
     /// 子类必须实现此方法以完成特定的处理逻辑注册。
     /// </summary>
-    protected abstract void RegisterHandlers();
+    protected override abstract void RegisterHandlers();
 
     #endregion
 
@@ -655,9 +600,9 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// <param name="policy">过渡策略</param>
     private void DoPushPageInternal(IUiPageBehavior page, IUiPageEnterParam? param, UiTransitionPolicy policy)
     {
-        if (_stack.Count > 0)
+        if (Stack.Count > 0)
         {
-            var current = _stack.Peek();
+            var current = Stack.Peek();
             Log.Debug("Pause current page: {0}", current.View.GetType().Name);
             current.OnPause();
 
@@ -671,9 +616,9 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
         Log.Debug("Add page to UiRoot: {0}", page.View.GetType().Name);
         _uiRoot.AddUiPage(page);
 
-        _stack.Push(page);
+        Stack.Push(page);
 
-        Log.Debug("Enter & Show page: {0}, stackAfter={1}", page.View.GetType().Name, _stack.Count);
+        Log.Debug("Enter & Show page: {0}, stackAfter={1}", page.View.GetType().Name, Stack.Count);
         page.OnEnter(param);
         page.OnShow();
     }
@@ -684,12 +629,12 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// <param name="policy">页面弹出策略</param>
     private void DoPopInternal(UiPopPolicy policy)
     {
-        if (_stack.Count == 0)
+        if (Stack.Count == 0)
             return;
 
-        var top = _stack.Pop();
+        var top = Stack.Pop();
         Log.Debug("Pop UI Page internal: {0}, policy={1}, stackAfterPop={2}",
-            top.GetType().Name, policy, _stack.Count);
+            top.GetType().Name, policy, Stack.Count);
 
         if (policy == UiPopPolicy.Destroy)
         {
@@ -701,9 +646,9 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
             top.OnHide();
         }
 
-        if (_stack.Count > 0)
+        if (Stack.Count > 0)
         {
-            var next = _stack.Peek();
+            var next = Stack.Peek();
             next.OnResume();
             next.OnShow();
         }
@@ -715,84 +660,9 @@ public abstract class UiRouterBase : AbstractSystem, IUiRouter
     /// <param name="policy">页面弹出策略</param>
     private void DoClearInternal(UiPopPolicy policy)
     {
-        Log.Debug("Clear UI Stack internal, count={0}", _stack.Count);
-        while (_stack.Count > 0)
+        Log.Debug("Clear UI Stack internal, count={0}", Stack.Count);
+        while (Stack.Count > 0)
             DoPopInternal(policy);
-    }
-
-    /// <summary>
-    /// 执行进入守卫检查
-    /// </summary>
-    /// <param name="uiKey">UI页面键值</param>
-    /// <param name="param">页面进入参数</param>
-    /// <returns>如果允许进入则返回true，否则返回false</returns>
-    private async Task<bool> ExecuteEnterGuardsAsync(string uiKey, IUiPageEnterParam? param)
-    {
-        foreach (var guard in _guards)
-        {
-            try
-            {
-                Log.Debug("Executing enter guard: {0} for {1}", guard.GetType().Name, uiKey);
-                var canEnter = await guard.CanEnterAsync(uiKey, param);
-
-                if (!canEnter)
-                {
-                    Log.Debug("Enter guard blocked: {0}", guard.GetType().Name);
-                    return false;
-                }
-
-                if (guard.CanInterrupt)
-                {
-                    Log.Debug("Enter guard {0} passed, can interrupt = true", guard.GetType().Name);
-                    return true;
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Error("Enter guard {0} failed: {1}", guard.GetType().Name, ex.Message);
-                if (guard.CanInterrupt)
-                    return false;
-            }
-        }
-
-        return true;
-    }
-
-    /// <summary>
-    /// 执行离开守卫检查
-    /// </summary>
-    /// <param name="uiKey">UI页面键值</param>
-    /// <returns>如果允许离开则返回true，否则返回false</returns>
-    private async Task<bool> ExecuteLeaveGuardsAsync(string uiKey)
-    {
-        foreach (var guard in _guards)
-        {
-            try
-            {
-                Log.Debug("Executing leave guard: {0} for {1}", guard.GetType().Name, uiKey);
-                var canLeave = await guard.CanLeaveAsync(uiKey);
-
-                if (!canLeave)
-                {
-                    Log.Debug("Leave guard blocked: {0}", guard.GetType().Name);
-                    return false;
-                }
-
-                if (guard.CanInterrupt)
-                {
-                    Log.Debug("Leave guard {0} passed, can interrupt = true", guard.GetType().Name);
-                    return true;
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Error("Leave guard {0} failed: {1}", guard.GetType().Name, ex.Message);
-                if (guard.CanInterrupt)
-                    return false;
-            }
-        }
-
-        return true;
     }
 
     #endregion

@@ -1,11 +1,12 @@
 ﻿using GFramework.Game.Abstractions.Enums;
+using GFramework.Game.Abstractions.Routing;
 
 namespace GFramework.Game.Abstractions.UI;
 
 /// <summary>
 ///     UI页面行为接口，定义了UI页面的生命周期方法和状态管理
 /// </summary>
-public interface IUiPageBehavior
+public interface IUiPageBehavior : IRoute
 {
     /// <summary>
     ///     获取或设置当前UI句柄。

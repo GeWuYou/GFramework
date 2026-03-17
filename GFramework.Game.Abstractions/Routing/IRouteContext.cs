@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2026 GeWuYou
+// Copyright (c) 2026 GeWuYou
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,12 +11,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using GFramework.Game.Abstractions.Routing;
-
-namespace GFramework.Game.Abstractions.Scene;
+namespace GFramework.Game.Abstractions.Routing;
 
 /// <summary>
-/// 场景进入参数接口
-/// 该接口用于定义场景跳转时传递的参数数据结构
+/// 路由上下文接口,表示路由进入时的参数
 /// </summary>
-public interface ISceneEnterParam : IRouteContext;
+/// <remarks>
+/// 这是一个标记接口,用于类型约束。
+/// 具体的路由上下文类型应该实现此接口。
+/// </remarks>
+public interface IRouteContext
+{
+    // 标记接口,用于类型约束
+}
