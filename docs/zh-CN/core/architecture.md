@@ -1,608 +1,231 @@
-# Architecture 包使用说明
+# Architecture 架构详解
+
+> 深入了解 GFramework 的核心架构设计和实现
+
+## 目录
+
+- [概述](#概述)
+- [架构设计](#架构设计)
+- [生命周期管理](#生命周期管理)
+- [组件注册](#组件注册)
+- [模块系统](#模块系统)
+- [最佳实践](#最佳实践)
+- [API 参考](#api-参考)
 
 ## 概述
 
-Architecture 包是整个框架的核心，提供了基于分层架构模式的应用程序架构基础。它实现了依赖注入(IoC)
-容器、组件生命周期管理，以及命令、查询、事件的统一调度机制。
+Architecture 是 GFramework 的核心类,负责管理整个应用的生命周期、组件注册和模块管理。从 v1.1.0 开始,Architecture
+采用模块化设计,将职责分离到专门的管理器中。
 
-**注意**：本框架的 Core 模块与 Godot 解耦，Godot 相关集成在 GFramework.Godot 包中实现。
+### 设计目标
 
-## 核心接口
+- **单一职责**: 每个管理器只负责一个明确的功能
+- **类型安全**: 基于泛型的组件获取和注册
+- **生命周期管理**: 自动的初始化和销毁机制
+- **可扩展性**: 支持模块和钩子扩展
+- **向后兼容**: 保持公共 API 稳定
 
-### IArchitecture
+### 核心组件
 
-架构接口，定义了框架的核心功能契约。
-
-**主要职责：**
-
-- **组件注册**：注册 System、Model、Utility
-- **组件获取**：从容器中获取已注册的组件
-- **命令处理**：发送并执行命令
-- **查询处理**：发送并执行查询
-- **事件管理**：发送、注册、注销事件
-- **模块管理**：安装和管理架构模块
-- **生命周期管理**：管理架构的初始化、运行和销毁阶段
-
-**核心方法:**
-```csharp
-// 组件注册
-void RegisterSystem<TSystem>(TSystem system) where TSystem : ISystem;
-void RegisterModel<TModel>(TModel model) where TModel : IModel;
-void RegisterUtility<TUtility>(TUtility utility) where TUtility : IUtility;
-
-// 组件获取(通过容器)
-T GetModel<T>() where T : class, IModel;
-T GetSystem<T>() where T : class, ISystem;
-T GetUtility<T>() where T : class, IUtility;
-
-// 命令处理
-void SendCommand(ICommand command);
-TResult SendCommand<TResult>(ICommand<TResult> command);
-
-// 查询处理
-TResult SendQuery<TResult>(IQuery<TResult> query);
-
-// 事件管理
-void SendEvent<T>() where T : new();
-void SendEvent<T>(T e);
-IUnRegister RegisterEvent<T>(Action<T> onEvent);
-void UnRegisterEvent<T>(Action<T> onEvent);
+```
+Architecture (核心协调器)
+    ├── ArchitectureLifecycle (生命周期管理)
+    ├── ArchitectureComponentRegistry (组件注册)
+    └── ArchitectureModules (模块管理)
 ```
 
-### IArchitecturePhaseAware
+## 架构设计
 
-架构阶段感知接口，允许组件监听架构阶段变化。
+### 设计模式
 
-**核心方法：**
-```csharp
-void OnArchitecturePhase(ArchitecturePhase phase);
+Architecture 采用以下设计模式:
+
+1. **组合模式 (Composition)**: Architecture 组合三个管理器
+2. **委托模式 (Delegation)**: 方法调用委托给专门的管理器
+3. **协调器模式 (Coordinator)**: Architecture 作为协调器统一对外接口
+
+### 类图
+
+```
+┌─────────────────────────────────────────────────────┐
+│                   Architecture                       │
+│  - _lifecycle: ArchitectureLifecycle                │
+│  - _componentRegistry: ArchitectureComponentRegistry│
+│  - _modules: ArchitectureModules                    │
+│  - _logger: ILogger                                 │
+│                                                     │
+│  + RegisterSystem<T>()                              │
+│  + RegisterModel<T>()                               │
+│  + RegisterUtility<T>()                             │
+│  + InstallModule()                                  │
+│  + InitializeAsync()                                │
+│  + DestroyAsync()                                   │
+│  + event PhaseChanged                               │
+└─────────────────────────────────────────────────────┘
+         │                    │                    │
+         │                    │                    │
+         ▼                    ▼                    ▼
+┌──────────────┐   ┌──────────────────┐   ┌──────────────┐
+│ Lifecycle    │   │ ComponentRegistry│   │   Modules    │
+│              │   │                  │   │              │
+│ - 阶段管理    │   │ - System 注册    │   │ - 模块安装    │
+│ - 钩子管理    │   │ - Model 注册     │   │ - 行为注册    │
+│ - 初始化      │   │ - Utility 注册   │   │              │
+│ - 销毁        │   │ - 生命周期注册   │   │              │
+└──────────────┘   └──────────────────┘   └──────────────┘
 ```
 
-### IArchitectureModule
+### 构造函数初始化
 
-架构模块接口，支持模块化架构扩展。
+从 v1.1.0 开始,所有管理器在构造函数中初始化:
 
-**核心方法：**
 ```csharp
-void Install(IArchitecture architecture);
-```
-
-### IAsyncInitializable
-
-异步初始化接口，支持组件异步初始化。
-
-**核心方法：**
-```csharp
-Task InitializeAsync();
-```
-
-## 核心类
-
-### Architecture 架构基类
-
-架构基类，实现了 `IArchitecture` 接口，提供完整的架构功能实现。
-
-**构造函数参数：**
-```csharp
-public abstract class Architecture(
+protected Architecture(
     IArchitectureConfiguration? configuration = null,
     IEnvironment? environment = null,
     IArchitectureServices? services = null,
-    IArchitectureContext? context = null
-)
-```
-
-**特性：**
-
-- **阶段式生命周期管理**
-  ：支持多个架构阶段（BeforeUtilityInit、AfterUtilityInit、BeforeModelInit、AfterModelInit、BeforeSystemInit、AfterSystemInit、Ready、FailedInitialization、Destroying、Destroyed）
-- **模块安装系统**：支持通过 `InstallModule` 扩展架构功能
-- **异步初始化**：支持同步和异步两种初始化方式
-- **IoC 容器集成**：内置依赖注入容器
-- **事件系统集成**：集成类型化事件系统
-- **与平台无关**：Core 模块不依赖 Godot，可以在任何 .NET 环境中使用
-- **严格的阶段验证**：可配置的阶段转换验证机制
-- **组件生命周期管理**：自动管理组件的初始化和销毁
-
-**架构阶段：**
-```csharp
-public enum ArchitecturePhase
+    IArchitectureContext? context = null)
 {
-    None = 0,                    // 初始阶段
-    BeforeUtilityInit = 1,       // 工具初始化前
-    AfterUtilityInit = 2,        // 工具初始化后
-    BeforeModelInit = 3,         // 模型初始化前
-    AfterModelInit = 4,          // 模型初始化后
-    BeforeSystemInit = 5,        // 系统初始化前
-    AfterSystemInit = 6,         // 系统初始化后
-    Ready = 7,                   // 就绪状态
-    FailedInitialization = 8,    // 初始化失败
-    Destroying = 9,              // 正在销毁
-    Destroyed = 10               // 已销毁
+    Configuration = configuration ?? new ArchitectureConfiguration();
+    Environment = environment ?? new DefaultEnvironment();
+    Services = services ?? new ArchitectureServices();
+    _context = context;
+
+    // 初始化 Logger
+    LoggerFactoryResolver.Provider = Configuration.LoggerProperties.LoggerFactoryProvider;
+    _logger = LoggerFactoryResolver.Provider.CreateLogger(GetType().Name);
+
+    // 初始化管理器
+    _lifecycle = new ArchitectureLifecycle(this, Configuration, Services, _logger);
+    _componentRegistry = new ArchitectureComponentRegistry(this, Configuration, Services, _lifecycle, _logger);
+    _modules = new ArchitectureModules(this, Services, _logger);
 }
 ```
 
-**初始化流程：**
+**优势**:
 
-1. 创建架构实例（传入配置或使用默认配置）
-2. 初始化基础上下文和日志系统
-3. 调用用户自定义的 `Init()` 方法
-4. 按顺序初始化组件：
-    - 工具初始化（BeforeUtilityInit → AfterUtilityInit）
-    - 模型初始化（BeforeModelInit → AfterModelInit）
-    - 系统初始化（BeforeSystemInit → AfterSystemInit）
-5. 冻结 IOC 容器
-6. 进入 Ready 阶段
+- 消除 `null!` 断言,提高代码安全性
+- 对象在构造后立即可用
+- 符合"构造即完整"原则
+- 可以在 InitializeAsync 之前访问事件
 
-**销毁流程：**
+## 生命周期管理
 
-1. 进入 Destroying 阶段
-2. 按注册逆序销毁所有实现了 `IDisposable` 的组件
-3. 进入 Destroyed 阶段
-4. 清理所有资源
+### 架构阶段
 
-**使用示例:**
+Architecture 定义了 11 个生命周期阶段:
+
+| 阶段                     | 说明           | 触发时机             |
+|------------------------|--------------|------------------|
+| `None`                 | 初始状态         | 构造函数完成后          |
+| `BeforeUtilityInit`    | Utility 初始化前 | 开始初始化 Utility    |
+| `AfterUtilityInit`     | Utility 初始化后 | 所有 Utility 初始化完成 |
+| `BeforeModelInit`      | Model 初始化前   | 开始初始化 Model      |
+| `AfterModelInit`       | Model 初始化后   | 所有 Model 初始化完成   |
+| `BeforeSystemInit`     | System 初始化前  | 开始初始化 System     |
+| `AfterSystemInit`      | System 初始化后  | 所有 System 初始化完成  |
+| `Ready`                | 就绪状态         | 所有组件初始化完成        |
+| `Destroying`           | 销毁中          | 开始销毁             |
+| `Destroyed`            | 已销毁          | 销毁完成             |
+| `FailedInitialization` | 初始化失败        | 初始化过程中发生异常       |
+
+### 阶段转换
+
+```
+正常流程:
+None → BeforeUtilityInit → AfterUtilityInit → BeforeModelInit → AfterModelInit
+     → BeforeSystemInit → AfterSystemInit → Ready → Destroying → Destroyed
+
+异常流程:
+Any → FailedInitialization
+```
+
+### 阶段事件
+
+可以通过 `PhaseChanged` 事件监听阶段变化:
 
 ```csharp
-// 1. 定义你的架构（继承 Architecture 基类）
-public class GameArchitecture : Architecture
+public class MyArchitecture : Architecture
 {
-    protected override void Init()
+    protected override void OnInitialize()
     {
-        // 注册 Model
-        RegisterModel(new PlayerModel());
-        RegisterModel(new InventoryModel());
-
-        // 注册 System
-        RegisterSystem(new GameplaySystem());
-        RegisterSystem(new SaveSystem());
-        
-        // 注册 Utility
-        RegisterUtility(new StorageUtility());
-        RegisterUtility(new TimeUtility());
-    }
-}
-
-// 2. 创建并初始化架构
-var architecture = new GameArchitecture();
-architecture.Initialize();
-
-// 或者异步初始化
-// var architecture = new GameArchitecture();
-// await architecture.InitializeAsync();
-
-// 3. 等待架构就绪
-await architecture.WaitUntilReadyAsync();
-
-// 4. 通过依赖注入使用架构
-// 在 Controller 或其他组件中获取架构实例
-using GFramework.Core.Abstractions.Controller;
-using GFramework.SourceGenerators.Abstractions.Rule;
-
-[ContextAware]
-public partial class GameController : IController
-{
-    public void Start()
-    {
-        // 获取 Model（使用扩展方法访问架构（[ContextAware] 实现 IContextAware 接口））
-        var playerModel = this.GetModel<PlayerModel>();
-
-        // 发送命令
-        this.SendCommand(new StartGameCommand());
-
-        // 发送查询
-        var score = this.SendQuery(new GetScoreQuery());
-
-        // 注册事件
-        this.RegisterEvent<PlayerDiedEvent>(OnPlayerDied);
-    }
-
-    private void OnPlayerDied(PlayerDiedEvent e)
-    {
-        // 处理玩家死亡事件
+        // 监听阶段变化
+        PhaseChanged += phase =>
+        {
+            Console.WriteLine($"Phase changed to: {phase}");
+        };
     }
 }
 ```
 
-**核心方法与属性:**
+### 生命周期钩子
 
-#### 初始化方法
-
-**Initialize()**
-
-同步初始化方法，阻塞当前线程直到初始化完成。
-```csharp
-public void Initialize()
-```
-
-**特点：**
-
-- 阻塞式初始化
-- 适用于简单场景或控制台应用
-- 初始化失败时抛出异常并进入 `FailedInitialization` 阶段
-
-使用示例：
-```csharp
-var architecture = new GameArchitecture();
-architecture.Initialize(); // 阻塞等待初始化完成
-```
-
-异常处理：如果初始化过程中发生异常，架构会进入 `FailedInitialization` 阶段。
-
-**InitializeAsync()**
-
-异步初始化方法，返回 Task 以便调用者可以等待初始化完成。
-```csharp
-public async Task InitializeAsync()
-```
-
-**特点：**
-
-- 非阻塞式初始化
-- 支持异步组件初始化
-- 适用于需要异步加载资源的场景
-- 初始化失败时抛出异常并进入 `FailedInitialization` 阶段
-
-使用示例：
-```csharp
-var architecture = new GameArchitecture();
-await architecture.InitializeAsync(); // 异步等待初始化完成
-```
-
-优势：
-- 支持异步初始化 Model 和 System
-- 可以利用异步 I/O 操作（如异步加载数据）
-- 提高初始化性能
-- 不会阻塞主线程
-
-#### 模块管理
-
-**InstallModule(IArchitectureModule module)**
-
-安装架构模块，用于扩展架构功能。
-```csharp
-public IArchitectureModule InstallModule(IArchitectureModule module)
-```
-
-**返回值：** 返回安装的模块实例
-
-**特点：**
-
-- 模块安装时会自动注册生命周期钩子
-- 模块可以注册额外的组件到架构中
-- 只能在架构进入 Ready 阶段之前安装模块
-
-参数：
-
-- `module`：要安装的模块实例
-
-使用示例：
+实现 `IArchitectureLifecycleHook` 接口可以在阶段变化时执行自定义逻辑:
 
 ```csharp
-// 定义模块
-public class NetworkModule : IArchitectureModule
-{
-    public void Install(IArchitecture architecture)
-    {
-        // 注册网络相关的 System 和 Utility
-        architecture.RegisterSystem(new NetworkSystem());
-        architecture.RegisterUtility(new HttpClientUtility());
-    }
-}
-
-// 安装模块
-var architecture = new GameArchitecture();
-var installedModule = architecture.InstallModule(new NetworkModule());
-```
-
-#### 生命周期钩子
-
-**RegisterLifecycleHook(IArchitectureLifecycle hook)**
-
-注册生命周期钩子，用于在架构阶段变化时执行自定义逻辑。
-```csharp
-public IArchitectureLifecycle RegisterLifecycleHook(IArchitectureLifecycle hook)
-```
-
-**返回值：** 返回注册的生命周期钩子实例
-
-**特点：**
-
-- 生命周期钩子可以监听所有架构阶段变化
-- 只能在架构进入 Ready 阶段之前注册
-- 架构会按注册顺序通知所有钩子
-
-参数：
-
-- `hook`：生命周期钩子实例
-
-使用示例：
-
-```csharp
-// 定义生命周期钩子
-public class PerformanceMonitorHook : IArchitectureLifecycle
+public class MyLifecycleHook : IArchitectureLifecycleHook
 {
     public void OnPhase(ArchitecturePhase phase, IArchitecture architecture)
     {
         switch (phase)
         {
-            case ArchitecturePhase.BeforeModelInit:
-                Console.WriteLine("开始监控 Model 初始化性能");
-                break;
-            case ArchitecturePhase.AfterModelInit:
-                Console.WriteLine("Model 初始化完成,停止监控");
-                break;
             case ArchitecturePhase.Ready:
-                Console.WriteLine("架构就绪,开始性能统计");
-                break;
-        }
-    }
-}
-
-// 注册生命周期钩子
-var architecture = new GameArchitecture();
-var registeredHook = architecture.RegisterLifecycleHook(new PerformanceMonitorHook());
-architecture.Initialize();
-```
-
-**注意：** 生命周期钩子只能在架构进入 Ready 阶段之前注册。
-
-#### 属性
-
-**CurrentPhase**
-
-获取当前架构的阶段。
-```csharp
-public ArchitecturePhase CurrentPhase { get; private set; }
-```
-
-**特点：**
-
-- 只读属性，外部无法直接修改
-- 实时反映架构的当前状态
-- 可用于条件判断和状态检查
-
-使用示例：
-
-```csharp
-var architecture = new GameArchitecture();
-
-// 检查架构是否已就绪
-if (architecture.CurrentPhase == ArchitecturePhase.Ready)
-{
-    Console.WriteLine("架构已就绪,可以开始游戏");
-}
-
-// 在异步操作中检查阶段变化
-await Task.Run(async () =>
-{
-    while (architecture.CurrentPhase != ArchitecturePhase.Ready)
-    {
-        Console.WriteLine($"当前阶段: {architecture.CurrentPhase}");
-        await Task.Delay(100);
-    }
-});
-```
-
-**Context**
-
-获取架构上下文，提供对架构服务的访问。
-```csharp
-public IArchitectureContext Context { get; }
-```
-
-**特点：**
-
-- 提供对架构核心服务的访问
-- 包含事件总线、命令总线、查询总线等
-- 是架构内部服务的统一入口
-
-使用示例：
-
-```csharp
-// 通过 Context 访问服务
-var context = architecture.Context;
-var eventBus = context.EventBus;
-var commandBus = context.CommandBus;
-var queryBus = context.QueryBus;
-var environment = context.Environment;
-```
-
-#### 高级特性
-
-```csharp
-// 1. 使用自定义配置
-var config = new ArchitectureConfiguration
-{
-    ArchitectureProperties = new ArchitectureProperties
-    {
-        StrictPhaseValidation = true,      // 启用严格阶段验证
-        AllowLateRegistration = false      // 禁止就绪后注册组件
-    }
-};
-var architecture = new GameArchitecture(configuration: config);
-
-// 2. 模块安装
-var module = new GameModule();
-architecture.InstallModule(module);
-
-// 3. 监听架构阶段变化
-public class GamePhaseListener : IArchitecturePhaseAware
-{
-    public void OnArchitecturePhase(ArchitecturePhase phase)
-    {
-        switch (phase)
-        {
-            case ArchitecturePhase.Ready:
-                Console.WriteLine("架构已就绪,可以开始游戏了");
+                Console.WriteLine("Architecture is ready!");
                 break;
             case ArchitecturePhase.Destroying:
-                Console.WriteLine("架构正在销毁");
+                Console.WriteLine("Architecture is being destroyed!");
                 break;
         }
     }
 }
 
-// 4. 生命周期钩子
-public class LifecycleHook : IArchitectureLifecycle
-{
-    public void OnPhase(ArchitecturePhase phase, IArchitecture architecture)
-    {
-        Console.WriteLine($"架构阶段变化: {phase}");
-    }
-}
-
-// 5. 等待架构就绪
-public async Task WaitForArchitectureReady()
-{
-    var architecture = new GameArchitecture();
-    var initTask = architecture.InitializeAsync();
-    
-    // 可以在其他地方等待架构就绪
-    await architecture.WaitUntilReadyAsync();
-    Console.WriteLine("架构已就绪");
-}
+// 注册钩子
+architecture.RegisterLifecycleHook(new MyLifecycleHook());
 ```
 
-### ArchitectureConfiguration 架构配置类
+### 初始化流程
 
-架构配置类，用于配置架构的行为。
+```
+1. 创建 Architecture 实例
+   └─> 构造函数初始化管理器
 
-**主要配置项：**
+2. 调用 InitializeAsync() 或 Initialize()
+   ├─> 初始化环境 (Environment.Initialize())
+   ├─> 注册内置服务模块
+   ├─> 初始化架构上下文
+   ├─> 执行服务钩子
+   ├─> 初始化服务模块
+   ├─> 调用 OnInitialize() (用户注册组件)
+   ├─> 初始化所有组件
+   │   ├─> BeforeUtilityInit → 初始化 Utility → AfterUtilityInit
+   │   ├─> BeforeModelInit → 初始化 Model → AfterModelInit
+   │   └─> BeforeSystemInit → 初始化 System → AfterSystemInit
+   ├─> 冻结 IOC 容器
+   └─> 进入 Ready 阶段
 
-```csharp
-public class ArchitectureConfiguration : IArchitectureConfiguration
-{
-    public IArchitectureProperties ArchitectureProperties { get; set; } = new ArchitectureProperties();
-    public IEnvironmentProperties EnvironmentProperties { get; set; } = new EnvironmentProperties();
-    public ILoggerProperties LoggerProperties { get; set; } = new LoggerProperties();
-}
-
-public class ArchitectureProperties
-{
-    public bool StrictPhaseValidation { get; set; } = false;     // 严格阶段验证
-    public bool AllowLateRegistration { get; set; } = true;      // 允许延迟注册
-}
+3. 等待就绪 (可选)
+   └─> await architecture.WaitUntilReadyAsync()
 ```
 
-**使用示例：**
+### 销毁流程
 
-```csharp
-var config = new ArchitectureConfiguration
-{
-    ArchitectureProperties = new ArchitectureProperties
-    {
-        StrictPhaseValidation = true,      // 启用严格阶段验证
-        AllowLateRegistration = false      // 禁止就绪后注册组件
-    },
-    LoggerProperties = new LoggerProperties
-    {
-        LoggerFactoryProvider = new ConsoleLoggerFactoryProvider()  // 自定义日志工厂
-    }
-};
-
-var architecture = new GameArchitecture(configuration: config);
 ```
-
-### ArchitectureServices 架构服务类
-
-架构服务类，管理命令总线、查询总线、IOC容器和类型事件系统。
-
-**核心服务：**
-
-- `IIocContainer Container`：依赖注入容器
-- `IEventBus EventBus`：事件总线
-- `ICommandBus CommandBus`：命令总线
-- `IQueryBus QueryBus`：查询总线
-
-### ArchitectureContext 架构上下文类
-
-架构上下文类，提供对架构服务的访问。
-
-**功能：**
-
-- 统一访问架构核心服务
-- 管理服务实例的生命周期
-- 提供服务解析功能
-
-### GameContext 游戏上下文类
-
-游戏上下文类，管理架构上下文与类型的绑定关系。
-
-**功能：**
-
-- 维护架构类型与上下文实例的映射
-- 提供全局上下文访问
-- 支持多架构实例管理
-
-## 设计模式
-
-### 1. 依赖注入
-
-通过构造函数注入或容器解析获取架构实例。
-
-### 2. 控制反转 (IoC)
-
-使用内置 IoC 容器管理组件生命周期和依赖关系。
-
-### 3. 命令模式
-
-通过 `ICommand` 封装所有用户操作。
-
-### 4. 查询模式 (CQRS)
-
-通过 `IQuery<T>` 分离查询和命令操作。
-
-### 5. 观察者模式
-
-通过事件系统实现组件间的松耦合通信。
-
-### 6. 阶段式生命周期管理
-
-通过 `ArchitecturePhase` 枚举和生命周期钩子管理架构状态。
-
-### 7. 组合优于继承
-
-通过接口组合获得不同能力，而不是深层继承链。
-
-### 8. 模块化设计
-
-通过 `IArchitectureModule` 实现架构的可扩展性。
-
-### 9. 工厂模式
-
-通过配置对象和工厂方法创建架构实例。
-
-## 最佳实践
-
-1. **保持架构类简洁**：只在 `Init()` 中注册组件，不要包含业务逻辑
-2. **合理划分职责**：
-    - Model：数据和状态
-    - System：业务逻辑和规则
-    - Utility：无状态的工具方法
-3. **使用依赖注入**：通过构造函数注入架构实例，便于测试
-4. **事件命名规范**：使用过去式命名事件类，如 `PlayerDiedEvent`
-5. **避免循环依赖**：System 不应直接引用 System，应通过事件通信
-6. **使用模块扩展**：通过 `IArchitectureModule` 实现架构的可扩展性
-7. **Core 模块与平台解耦**：GFramework.Core 不包含 Godot 相关代码，Godot 集成在单独模块中
-8. **合理配置阶段验证**：根据项目需求配置 `StrictPhaseValidation` 和 `AllowLateRegistration`
-9. **及时处理初始化异常**：捕获并处理架构初始化过程中的异常
-10. **使用异步初始化**：对于需要加载大量资源的场景，优先使用 `InitializeAsync()`
-
-## 相关包
-
-- **command** - 命令模式实现
-- **query** - 查询模式实现
-- **events** - 事件系统
-- **ioc** - IoC 容器
-- **model** - 数据模型
-- **system** - 业务系统
-- **utility** - 工具类
-- **GFramework.Godot** - Godot 特定集成（GodotNode 扩展、GodotLogger 等）
-- **extensions** - 扩展方法
-- **logging** - 日志系统
-- **environment** - 环境管理
+1. 调用 DestroyAsync() 或 Destroy()
+   ├─> 检查当前阶段 (如果是 None 或已销毁则直接返回)
+   ├─> 进入 Destroying 阶段
+   ├─> 逆序销毁所有组件
+   │   ├─> 优先调用 IAsyncDestroyable.DestroyAsync()
+   │   └─> 否则调用 IDestroyable.Destroy()
+   ├─> 销毁服务模块
+   ├─> 清空 IOC 容器
+   └─> 进入 Destroyed 阶段
+```
 
 ---
 
-**许可证**：Apache 2.0
+**版本**: 1.1.0
+**更新日期**: 2026-03-17
+**相关文档**:
+
+- [核心框架概述](./index.md)
+- [ADR-001: 拆分 Architecture 核心类](/docs/adr/001-split-architecture-class.md)

@@ -41,16 +41,8 @@ public abstract class TestArchitectureBase : Architecture
     {
         InitCalled = true;
         _postRegistrationHook?.Invoke(this);
-    }
 
-    /// <summary>
-    ///     进入指定架构阶段时的处理方法，记录阶段历史
-    /// </summary>
-    /// <param name="next">要进入的下一个架构阶段</param>
-    protected override void EnterPhase(ArchitecturePhase next)
-    {
-        base.EnterPhase(next);
-        // 记录进入的架构阶段到历史列表中
-        PhaseHistory.Add(next);
+        // 订阅阶段变更事件以记录历史
+        PhaseChanged += phase => PhaseHistory.Add(phase);
     }
 }

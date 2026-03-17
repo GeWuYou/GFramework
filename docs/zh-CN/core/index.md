@@ -65,14 +65,47 @@ Event   ──┘
 
 ### 架构阶段
 
+框架提供了精细化的生命周期管理,包含 11 个阶段:
+
 ```
-初始化：Init → BeforeUtilityInit → AfterUtilityInit → BeforeModelInit → AfterModelInit → BeforeSystemInit → AfterSystemInit → Ready
-销毁：Destroy → Destroying → Destroyed
+初始化流程:
+None → BeforeUtilityInit → AfterUtilityInit → BeforeModelInit → AfterModelInit → BeforeSystemInit → AfterSystemInit → Ready
+
+销毁流程:
+Ready → Destroying → Destroyed
+
+异常流程:
+Any → FailedInitialization
 ```
+
+每个阶段都会触发 `PhaseChanged` 事件,允许组件监听架构状态变化。
 
 ## 架构图
 
 ### 整体架构
+
+从 v1.1.0 开始,Architecture 类采用模块化设计,将职责分离到专门的管理器中:
+
+```
+                     ┌──────────────────┐
+                     │   Architecture   │ ← 核心协调器
+                     └────────┬─────────┘
+                              │
+         ┌────────────────────┼────────────────────┐
+         │                    │                    │
+    ┌────▼────────┐   ┌──────▼──────┐   ┌────────▼────────┐
+    │ Lifecycle   │   │ Component   │   │    Modules      │
+    │  Manager    │   │  Registry   │   │    Manager      │
+    └─────────────┘   └─────────────┘   └─────────────────┘
+         │                    │                    │
+         │                    │                    │
+    生命周期管理          组件注册管理            模块管理
+    - 阶段转换            - System 注册          - 模块安装
+    - 钩子管理            - Model 注册           - 行为注册
+    - 初始化/销毁         - Utility 注册
+```
+
+这种设计遵循单一职责原则,使代码更易维护和测试。详见 [ADR-001](/docs/adr/001-split-architecture-class.md)。
 
 ```
                      ┌──────────────────┐
@@ -284,6 +317,93 @@ public class PlayerController : IController
 
 ## 包说明
 
+### Architecture 内部结构 (v1.1.0+)
+
+从 v1.1.0 开始,Architecture 类采用模块化设计,将原本 708 行的单一类拆分为 4 个职责清晰的类:
+
+#### 1. Architecture (核心协调器)
+
+**职责**: 提供统一的公共 API,协调各个管理器
+
+**主要方法**:
+
+- `RegisterSystem<T>()` - 注册系统
+- `RegisterModel<T>()` - 注册模型
+- `RegisterUtility<T>()` - 注册工具
+- `InstallModule()` - 安装模块
+- `InitializeAsync()` / `Initialize()` - 初始化架构
+- `DestroyAsync()` / `Destroy()` - 销毁架构
+
+**事件**:
+
+- `PhaseChanged` - 阶段变更事件
+
+#### 2. ArchitectureLifecycle (生命周期管理器)
+
+**职责**: 管理架构的生命周期和阶段转换
+
+**核心功能**:
+
+- 11 个架构阶段的管理和转换
+- 生命周期钩子 (IArchitectureLifecycleHook) 管理
+- 组件初始化 (按 Utility → Model → System 顺序)
+- 组件销毁 (逆序销毁)
+- 就绪状态管理
+
+**关键方法**:
+
+- `EnterPhase()` - 进入指定阶段
+- `RegisterLifecycleHook()` - 注册生命周期钩子
+- `InitializeAllComponentsAsync()` - 初始化所有组件
+- `DestroyAsync()` - 异步销毁
+
+#### 3. ArchitectureComponentRegistry (组件注册管理器)
+
+**职责**: 管理 System、Model、Utility 的注册
+
+**核心功能**:
+
+- 组件注册和验证
+- 自动设置组件上下文 (IContextAware)
+- 自动注册组件生命周期 (IInitializable、IDestroyable)
+- 支持实例注册和类型注册
+
+**关键方法**:
+
+- `RegisterSystem<T>()` - 注册系统
+- `RegisterModel<T>()` - 注册模型
+- `RegisterUtility<T>()` - 注册工具
+
+#### 4. ArchitectureModules (模块管理器)
+
+**职责**: 管理架构模块和中介行为
+
+**核心功能**:
+
+- 模块安装 (IArchitectureModule)
+- 中介行为注册 (Mediator Behaviors)
+
+**关键方法**:
+
+- `InstallModule()` - 安装模块
+- `RegisterMediatorBehavior<T>()` - 注册中介行为
+
+#### 设计优势
+
+这种模块化设计带来以下优势:
+
+1. **单一职责**: 每个类只负责一个明确的功能
+2. **易于测试**: 可以独立测试每个管理器
+3. **易于维护**: 修改某个功能不影响其他功能
+4. **易于扩展**: 添加新功能更容易
+5. **代码安全**: 消除了 `null!` 断言,所有字段在构造后立即可用
+
+详细的设计决策请参考 [ADR-001: 拆分 Architecture 核心类](/docs/adr/001-split-architecture-class.md)。
+
+---
+
+## 包说明
+
 | 包名               | 职责              | 文档                   |
 |------------------|-----------------|----------------------|
 | **architecture** | 架构核心，管理所有组件生命周期 | [查看](./architecture) |
@@ -308,11 +428,24 @@ public class PlayerController : IController
 
 ```
 创建 Architecture 实例
-    └─> Init()
-        ├─> RegisterModel → Model.SetContext() → Model.Init()
-        ├─> RegisterSystem → System.SetContext() → System.Init()
-        └─> RegisterUtility → Utility 注册到容器
+    └─> 构造函数
+        ├─> 初始化 Logger
+        ├─> 创建 ArchitectureLifecycle
+        ├─> 创建 ArchitectureComponentRegistry
+        └─> 创建 ArchitectureModules
+    └─> InitializeAsync()
+        ├─> OnInitialize() (用户注册组件)
+        │   ├─> RegisterModel → Model.SetContext()
+        │   ├─> RegisterSystem → System.SetContext()
+        │   └─> RegisterUtility → 注册到容器
+        └─> InitializeAllComponentsAsync()
+            ├─> BeforeUtilityInit → Utility.Initialize()
+            ├─> BeforeModelInit → Model.Initialize()
+            ├─> BeforeSystemInit → System.Initialize()
+            └─> Ready
 ```
+
+**重要变更 (v1.1.0)**: 管理器现在在构造函数中初始化,而不是在 InitializeAsync 中。这消除了 `null!` 断言,提高了代码安全性。
 
 ### 2. Command 执行流程
 
@@ -503,5 +636,21 @@ public interface IController :
 
 ---
 
-**版本**: 1.0.0
+**版本**: 1.1.0
+**更新日期**: 2026-03-17
 **许可证**: Apache 2.0
+
+## 更新日志
+
+### v1.1.0 (2026-03-17)
+
+**重大重构**:
+
+- 拆分 Architecture 类为 4 个职责清晰的类
+- 消除 3 处 `null!` 强制断言,提高代码安全性
+- 在构造函数中初始化管理器,符合"构造即完整"原则
+- 添加 `PhaseChanged` 事件,支持阶段监听
+
+**向后兼容**: 所有公共 API 保持不变,现有代码无需修改。
+
+详见 [ADR-001: 拆分 Architecture 核心类](/docs/adr/001-split-architecture-class.md)
