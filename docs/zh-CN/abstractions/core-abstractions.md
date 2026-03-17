@@ -129,7 +129,7 @@ public interface IQuery<TResult>
 
 ### IIocContainer
 
-IOC 容器接口：
+IoC 容器接口：
 
 ```csharp
 public interface IIocContainer

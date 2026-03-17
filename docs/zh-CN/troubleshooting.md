@@ -189,7 +189,7 @@ public class GameArchitecture : Architecture
     }
 }
 
-// ✅ 使用 IOC 容器注册
+// ✅ 使用 IoC 容器注册
 protected override void ConfigureServices(IServiceCollection services)
 {
     services.AddSingleton&lt;IPlayerService, PlayerService&gt;();
