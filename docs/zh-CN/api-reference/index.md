@@ -66,6 +66,23 @@ IoC 容器命名空间。
 | `IObjectPool<T>` | 对象池接口 |
 | `ObjectPool<T>`  | 对象池实现 |
 
+### GFramework.Core.Localization
+
+本地化系统命名空间。
+
+#### 主要类型
+
+| 类型                       | 说明       |
+|--------------------------|----------|
+| `ILocalizationManager`   | 本地化管理器接口 |
+| `ILocalizationTable`     | 本地化表接口   |
+| `ILocalizationString`    | 本地化字符串接口 |
+| `ILocalizationFormatter` | 格式化器接口   |
+| `LocalizationConfig`     | 本地化配置类   |
+| `LocalizationManager`    | 本地化管理器实现 |
+| `LocalizationTable`      | 本地化表实现   |
+| `LocalizationString`     | 本地化字符串实现 |
+
 ## 常用 API
 
 ### Architecture
@@ -247,6 +264,99 @@ public class BindableProperty<T>
 }
 ```
 
+### ILocalizationManager
+
+```csharp
+public interface ILocalizationManager : ISystem
+{
+    // 获取当前语言代码
+    string CurrentLanguage { get; }
+
+    // 获取当前文化信息
+    CultureInfo CurrentCulture { get; }
+
+    // 获取可用语言列表
+    IReadOnlyList<string> AvailableLanguages { get; }
+
+    // 设置当前语言
+    void SetLanguage(string languageCode);
+
+    // 获取本地化表
+    ILocalizationTable GetTable(string tableName);
+
+    // 获取本地化文本
+    string GetText(string table, string key);
+
+    // 获取本地化字符串（支持变量）
+    ILocalizationString GetString(string table, string key);
+
+    // 尝试获取本地化文本
+    bool TryGetText(string table, string key, out string text);
+
+    // 注册格式化器
+    void RegisterFormatter(string name, ILocalizationFormatter formatter);
+
+    // 订阅语言变化事件
+    void SubscribeToLanguageChange(Action<string> callback);
+
+    // 取消订阅语言变化事件
+    void UnsubscribeFromLanguageChange(Action<string> callback);
+}
+```
+
+### ILocalizationString
+
+```csharp
+public interface ILocalizationString
+{
+    // 获取表名
+    string Table { get; }
+
+    // 获取键名
+    string Key { get; }
+
+    // 添加变量
+    ILocalizationString WithVariable(string name, object value);
+
+    // 批量添加变量
+    ILocalizationString WithVariables(params (string name, object value)[] variables);
+
+    // 格式化并返回文本
+    string Format();
+
+    // 获取原始文本
+    string GetRaw();
+
+    // 检查键是否存在
+    bool Exists();
+}
+```
+
+### LocalizationConfig
+
+```csharp
+public class LocalizationConfig
+{
+    // 默认语言代码
+    public string DefaultLanguage { get; set; } = "eng";
+
+    // 回退语言代码
+    public string FallbackLanguage { get; set; } = "eng";
+
+    // 本地化文件路径
+    public string LocalizationPath { get; set; } = "res://localization";
+
+    // 用户覆盖路径
+    public string OverridePath { get; set; } = "user://localization_override";
+
+    // 是否启用热重载
+    public bool EnableHotReload { get; set; } = true;
+
+    // 是否在加载时验证
+    public bool ValidateOnLoad { get; set; } = true;
+}
+```
+
 ## 扩展方法
 
 ### 架构扩展
@@ -404,6 +514,36 @@ public class PlayerSystem : AbstractSystem
         Console.WriteLine("Player died!");
     }
 }
+```
+
+### 使用本地化
+
+```csharp
+// 初始化本地化管理器
+var config = new LocalizationConfig
+{
+    DefaultLanguage = "eng",
+    LocalizationPath = "res://localization"
+};
+var locManager = new LocalizationManager(config);
+locManager.Initialize();
+
+// 获取简单文本
+string title = locManager.GetText("common", "game.title");
+
+// 使用变量
+var message = locManager.GetString("common", "ui.message.welcome")
+    .WithVariable("playerName", "Alice")
+    .Format();
+
+// 切换语言
+locManager.SetLanguage("zhs");
+
+// 监听语言变化
+locManager.SubscribeToLanguageChange(language =>
+{
+    Console.WriteLine($"Language changed to: {language}");
+});
 ```
 
 ---
