@@ -79,9 +79,9 @@ public class LocalizationTable : ILocalizationTable
         }
 
         // 最后尝试回退表
-        if (Fallback != null && Fallback.ContainsKey(key))
+        if (Fallback is { } fb && fb.ContainsKey(key))
         {
-            return Fallback.GetRawText(key);
+            return fb.GetRawText(key);
         }
 
         throw new LocalizationKeyNotFoundException(Name, key);
@@ -96,7 +96,7 @@ public class LocalizationTable : ILocalizationTable
     {
         return _overrides.ContainsKey(key)
                || _data.ContainsKey(key)
-               || (Fallback?.ContainsKey(key) ?? false);
+               || (Fallback is { } fb && fb.ContainsKey(key));
     }
 
     /// <summary>
