@@ -19,6 +19,11 @@ public class PriorityEvent<T> : IEvent
     private readonly List<EventHandler> _handlers = new();
 
     /// <summary>
+    ///     保护处理器集合的并发访问
+    /// </summary>
+    private readonly object _syncRoot = new();
+
+    /// <summary>
     ///     标记事件是否已被处理（用于 UntilHandled 传播模式）
     /// </summary>
     private bool _handled;
@@ -52,10 +57,13 @@ public class PriorityEvent<T> : IEvent
     public IUnRegister Register(Action<T> onEvent, int priority)
     {
         var handler = new EventHandler(onEvent, priority);
-        _handlers.Add(handler);
+        lock (_syncRoot)
+        {
+            _handlers.Add(handler);
 
-        // 按优先级降序排序（高优先级在前）
-        _handlers.Sort((a, b) => b.Priority.CompareTo(a.Priority));
+            // 按优先级降序排序（高优先级在前）
+            _handlers.Sort((a, b) => b.Priority.CompareTo(a.Priority));
+        }
 
         return new DefaultUnRegister(() => UnRegister(onEvent));
     }
@@ -66,7 +74,10 @@ public class PriorityEvent<T> : IEvent
     /// <param name="onEvent">需要被注销的事件处理方法</param>
     public void UnRegister(Action<T> onEvent)
     {
-        _handlers.RemoveAll(h => h.Handler == onEvent);
+        lock (_syncRoot)
+        {
+            _handlers.RemoveAll(h => h.Handler == onEvent);
+        }
     }
 
     /// <summary>
@@ -78,10 +89,13 @@ public class PriorityEvent<T> : IEvent
     public IUnRegister RegisterWithContext(Action<EventContext<T>> onEvent, int priority = 0)
     {
         var handler = new ContextEventHandler(onEvent, priority);
-        _contextHandlers.Add(handler);
+        lock (_syncRoot)
+        {
+            _contextHandlers.Add(handler);
 
-        // 按优先级降序排序（高优先级在前）
-        _contextHandlers.Sort((a, b) => b.Priority.CompareTo(a.Priority));
+            // 按优先级降序排序（高优先级在前）
+            _contextHandlers.Sort((a, b) => b.Priority.CompareTo(a.Priority));
+        }
 
         return new DefaultUnRegister(() => UnRegisterContext(onEvent));
     }
@@ -92,7 +106,10 @@ public class PriorityEvent<T> : IEvent
     /// <param name="onEvent">需要被注销的事件处理方法</param>
     public void UnRegisterContext(Action<EventContext<T>> onEvent)
     {
-        _contextHandlers.RemoveAll(h => h.Handler == onEvent);
+        lock (_syncRoot)
+        {
+            _contextHandlers.RemoveAll(h => h.Handler == onEvent);
+        }
     }
 
     /// <summary>
@@ -172,8 +189,7 @@ public class PriorityEvent<T> : IEvent
     /// <param name="t">事件参数</param>
     private void TriggerHighest(T t)
     {
-        var normalSnapshot = _handlers.ToArray();
-        var contextSnapshot = _contextHandlers.ToArray();
+        var (normalSnapshot, contextSnapshot) = CreateSnapshots();
         var highestPriority = GetHighestPriority(normalSnapshot, contextSnapshot);
 
         if (highestPriority != int.MinValue)
@@ -191,8 +207,7 @@ public class PriorityEvent<T> : IEvent
     private List<(int Priority, Action? Handler, Action<EventContext<T>>? ContextHandler, bool IsContext)>
         MergeAndSortHandlers(T t)
     {
-        var normalSnapshot = _handlers.ToArray();
-        var contextSnapshot = _contextHandlers.ToArray();
+        var (normalSnapshot, contextSnapshot) = CreateSnapshots();
         // 使用快照避免迭代期间修改
         return normalSnapshot
             .Select(h => (h.Priority, Handler: (Action?)(() => h.Handler.Invoke(t)),
@@ -260,7 +275,18 @@ public class PriorityEvent<T> : IEvent
     /// <returns>监听器总数量</returns>
     public int GetListenerCount()
     {
-        return _handlers.Count + _contextHandlers.Count;
+        lock (_syncRoot)
+        {
+            return _handlers.Count + _contextHandlers.Count;
+        }
+    }
+
+    private (EventHandler[] NormalHandlers, ContextEventHandler[] ContextHandlers) CreateSnapshots()
+    {
+        lock (_syncRoot)
+        {
+            return (_handlers.ToArray(), _contextHandlers.ToArray());
+        }
     }
 
     /// <summary>

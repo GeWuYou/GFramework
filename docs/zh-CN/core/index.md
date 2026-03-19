@@ -421,6 +421,7 @@ public class PlayerController : IController
 | **extensions**   | 扩展方法，简化 API 调用  | [查看](./extensions)   |
 | **logging**      | 日志系统，记录运行日志     | [查看](./logging)      |
 | **environment**  | 环境接口，提供运行环境信息   | [查看](./environment)  |
+| **localization** | 本地化系统，多语言支持     | [查看](./localization) |
 
 ## 组件联动
 
