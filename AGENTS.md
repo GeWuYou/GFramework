@@ -36,7 +36,7 @@ generators, and integration paths.
 
 ## Commit & Pull Request Guidelines
 
-Recent history follows Conventional Commit style such as `feat(events): ...`, `refactor(localization): ...`,
+Recent history follows Conventional Commits style such as `feat(events): ...`, `refactor(localization): ...`,
 `docs(guide): ...`, and `test(localization): ...`. Keep commits scoped and imperative. PRs should explain the
 motivation, implementation, and validation commands run; link related issues; and include screenshots when docs, UI, or
 Godot-facing behavior changes.
