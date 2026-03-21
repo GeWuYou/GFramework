@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <PackageId>GeWuYou.$(AssemblyName)</PackageId>
-        <TargetFramework>netstandard2.1</TargetFramework>
+        <TargetFramework>netstandard2.0</TargetFramework>
 
         <!-- 这是 Analyzer，不是运行时库 -->
         <IsRoslynAnalyzer>true</IsRoslynAnalyzer>

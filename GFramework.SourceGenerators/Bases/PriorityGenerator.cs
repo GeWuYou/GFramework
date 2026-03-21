@@ -56,7 +56,7 @@ public sealed class PriorityGenerator : MetadataAttributeClassGeneratorBase
         }
 
         // 3. 必须是 partial
-        if (syntax.Modifiers.All(m => m.Kind() != SyntaxKind.PartialKeyword))
+        if (!syntax.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)))
         {
             context.ReportDiagnostic(Diagnostic.Create(
                 PriorityDiagnostic.MustBePartial,

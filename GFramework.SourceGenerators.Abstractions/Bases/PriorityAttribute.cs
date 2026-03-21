@@ -1,7 +1,7 @@
 namespace GFramework.SourceGenerators.Abstractions.Bases;
 
 /// <summary>
-/// 标记类的优先级，自动生成 <see cref="GFramework.Core.Abstractions.Bases.IPrioritized"/> 接口实现
+/// 标记类的优先级，自动生成 <c>GFramework.Core.Abstractions.Bases.IPrioritized</c> 接口实现。
 /// </summary>
 /// <remarks>
 /// 使用此特性可以避免手动实现 IPrioritized 接口。

@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <PackageId>GeWuYou.$(AssemblyName)</PackageId>
-        <TargetFramework>netstandard2.1</TargetFramework>
+        <TargetFramework>netstandard2.0</TargetFramework>
 
         <!-- 这是 Analyzer，不是运行时库 -->
         <IsRoslynAnalyzer>true</IsRoslynAnalyzer>
@@ -30,7 +30,6 @@
     <ItemGroup>
         <ProjectReference Include="..\$(AssemblyName).Abstractions\$(AssemblyName).Abstractions.csproj" PrivateAssets="all"/>
         <ProjectReference Include="..\$(AssemblyName).Common\$(AssemblyName).Common.csproj" PrivateAssets="all"/>
-        <ProjectReference Include="..\GFramework.Core.Abstractions\GFramework.Core.Abstractions.csproj" PrivateAssets="all"/>
     </ItemGroup>
 
     <!-- ★关键：只把 Generator DLL 放进 analyzers -->
