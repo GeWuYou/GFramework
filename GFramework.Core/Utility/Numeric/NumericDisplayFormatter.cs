@@ -37,7 +37,7 @@ public sealed class NumericDisplayFormatter : INumericDisplayFormatter
         }
 
         var resolvedOptions = NormalizeOptions(options);
-        var rule = resolvedOptions.Rule ?? _defaultRule;
+        var rule = ResolveRule(resolvedOptions);
 
         if (rule.TryFormat(value, resolvedOptions, out var result))
         {
@@ -111,6 +111,22 @@ public sealed class NumericDisplayFormatter : INumericDisplayFormatter
         }
 
         return resolved;
+    }
+
+    private INumericFormatRule ResolveRule(NumericFormatOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        if (options.Rule is not null)
+        {
+            return options.Rule;
+        }
+
+        return options.Style switch
+        {
+            NumericDisplayStyle.Compact => _defaultRule,
+            _ => throw new ArgumentOutOfRangeException(nameof(options), options.Style, "不支持的数值显示风格。")
+        };
     }
 
     private static string FormatFallback(object value, IFormatProvider? provider)

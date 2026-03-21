@@ -52,6 +52,7 @@ public class LocalizationIntegrationTests
                                                                   "status.health": "Health: {current}/{max}",
                                                                   "status.gold": "Gold: {gold:compact}",
                                                                   "status.damage": "Damage: {damage:compact:maxDecimals=2}",
+                                                                  "status.unknownCompact": "Gold: {gold:compact:maxDecimalss=2}",
                                                                   "status.invalidCompact": "Gold: {gold:compact:maxDecimals=abc}"
                                                                 }
                                                                 """);
@@ -63,6 +64,7 @@ public class LocalizationIntegrationTests
                                                                   "status.health": "生命值: {current}/{max}",
                                                                   "status.gold": "金币: {gold:compact}",
                                                                   "status.damage": "伤害: {damage:compact:maxDecimals=2}",
+                                                                  "status.unknownCompact": "金币: {gold:compact:maxDecimalss=2}",
                                                                   "status.invalidCompact": "金币: {gold:compact:maxDecimals=abc}"
                                                                 }
                                                                 """);
@@ -132,6 +134,16 @@ public class LocalizationIntegrationTests
             .Format();
 
         Assert.That(damage, Is.EqualTo("Damage: 1.23K"));
+    }
+
+    [Test]
+    public void GetString_WithUnknownCompactFormatterArgs_ShouldIgnoreUnknownOptions()
+    {
+        var gold = _manager!.GetString("common", "status.unknownCompact")
+            .WithVariable("gold", 1_250)
+            .Format();
+
+        Assert.That(gold, Is.EqualTo("Gold: 1.3K"));
     }
 
     [Test]

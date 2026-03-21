@@ -33,7 +33,7 @@ public sealed class NumericSuffixFormatRule : INumericFormatRule
     }
 
     /// <summary>
-    /// 默认国际缩写规则。
+    /// 默认国际缩写规则，使用标准的K、M、B、T后缀表示千、百万、十亿、万亿。
     /// </summary>
     public static NumericSuffixFormatRule InternationalCompact { get; } = new(
         "compact",
@@ -44,10 +44,19 @@ public sealed class NumericSuffixFormatRule : INumericFormatRule
             new NumericSuffixThreshold(1_000_000_000_000m, "T")
         ]);
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// 获取此格式化规则的名称。
+    /// </summary>
     public string Name { get; }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// 尝试将指定的数值按照当前规则进行格式化。
+    /// </summary>
+    /// <typeparam name="T">数值的类型</typeparam>
+    /// <param name="value">要格式化的数值</param>
+    /// <param name="options">格式化选项，包含小数位数、舍入模式等设置</param>
+    /// <param name="result">格式化后的字符串结果</param>
+    /// <returns>如果格式化成功则返回true；如果输入无效或格式化失败则返回false</returns>
     public bool TryFormat<T>(T value, NumericFormatOptions options, out string result)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -164,15 +173,13 @@ public sealed class NumericSuffixFormatRule : INumericFormatRule
         }
         catch (OverflowException)
         {
-            try
+            var doubleValue = (double)value;
+            if (TryFormatSpecialFloatingPoint(doubleValue, options.FormatProvider, out result))
             {
-                return TryFormatDouble((double)value, options, out result);
-            }
-            catch (OverflowException)
-            {
-                result = value.ToString(options.FormatProvider ?? CultureInfo.CurrentCulture);
                 return true;
             }
+
+            return TryFormatDouble(doubleValue, options, out result);
         }
     }
 

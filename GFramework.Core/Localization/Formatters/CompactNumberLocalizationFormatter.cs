@@ -146,7 +146,7 @@ public sealed class CompactNumberLocalizationFormatter : ILocalizationFormatter
     /// <param name="minDecimalPlaces">最小小数位数的引用参数</param>
     /// <param name="trimTrailingZeros">是否去除尾随零的引用参数</param>
     /// <param name="useGroupingBelowThreshold">是否在阈值以下使用分组的引用参数</param>
-    /// <returns>如果键名有效且值成功解析则返回true；如果键名无效或值解析失败则返回false</returns>
+    /// <returns>如果值成功解析或键名未知则返回true；如果键名已知但值解析失败则返回false</returns>
     private static bool TryApplyOption(
         string key,
         string value,
@@ -161,7 +161,7 @@ public sealed class CompactNumberLocalizationFormatter : ILocalizationFormatter
             "minDecimals" => int.TryParse(value, out minDecimalPlaces),
             "trimZeros" => bool.TryParse(value, out trimTrailingZeros),
             "grouping" => bool.TryParse(value, out useGroupingBelowThreshold),
-            _ => false
+            _ => true
         };
     }
 }
