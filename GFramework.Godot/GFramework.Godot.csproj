@@ -6,6 +6,9 @@
         <Nullable>enable</Nullable>
         <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <!-- Godot.SourceGenerators expects this property from Godot.NET.Sdk.
+             Provide a safe default so source generators can run in plain SDK-style builds as well. -->
+        <GodotProjectDir Condition="'$(GodotProjectDir)' == ''">$(MSBuildProjectDirectory)</GodotProjectDir>
     </PropertyGroup>
 
     <ItemGroup>

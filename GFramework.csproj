@@ -16,11 +16,16 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
         <IncludeBuildOutput>false</IncludeBuildOutput>
+        <!-- This package is a pure meta-package that only aggregates dependencies. -->
+        <NoPackageAnalysis>false</NoPackageAnalysis>
     </PropertyGroup>
 
     <!-- 排除不需要参与打包/编译的目录 -->
     <ItemGroup>
         <None Include="README.md" Pack="true" PackagePath=""/>
+        <None Include="packaging/_._" Pack="true" PackagePath="lib/net8.0/_._"/>
+        <None Include="packaging/_._" Pack="true" PackagePath="lib/net9.0/_._"/>
+        <None Include="packaging/_._" Pack="true" PackagePath="lib/net10.0/_._"/>
         <None Remove="GFramework.Core\**"/>
         <None Remove="GFramework.Game\**"/>
         <None Remove="GFramework.Godot\**"/>
