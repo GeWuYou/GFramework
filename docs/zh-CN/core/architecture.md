@@ -228,4 +228,3 @@ architecture.RegisterLifecycleHook(new MyLifecycleHook());
 **相关文档**:
 
 - [核心框架概述](./index.md)
-- [ADR-001: 拆分 Architecture 核心类](/docs/adr/001-split-architecture-class.md)

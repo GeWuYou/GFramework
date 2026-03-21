@@ -105,7 +105,7 @@ Any → FailedInitialization
     - 初始化/销毁         - Utility 注册
 ```
 
-这种设计遵循单一职责原则,使代码更易维护和测试。详见 [ADR-001](/docs/adr/001-split-architecture-class.md)。
+这种设计遵循单一职责原则,使代码更易维护和测试。
 
 ```
                      ┌──────────────────┐
@@ -398,7 +398,7 @@ public class PlayerController : IController
 4. **易于扩展**: 添加新功能更容易
 5. **代码安全**: 消除了 `null!` 断言,所有字段在构造后立即可用
 
-详细的设计决策请参考 [ADR-001: 拆分 Architecture 核心类](/docs/adr/001-split-architecture-class.md)。
+详细的设计决策已在架构实现重构中落地。
 
 ---
 
@@ -654,4 +654,3 @@ public interface IController :
 
 **向后兼容**: 所有公共 API 保持不变,现有代码无需修改。
 
-详见 [ADR-001: 拆分 Architecture 核心类](/docs/adr/001-split-architecture-class.md)
