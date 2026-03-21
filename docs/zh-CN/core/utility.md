@@ -365,6 +365,42 @@ public class EncryptionUtility : IUtility
 }
 ```
 
+### 内置数值显示工具
+
+对于 UI 中常见的数值缩写显示，优先使用 `GFramework.Core` 提供的数值显示工具，而不是在业务层重复拼接字符串。
+
+```csharp
+using System.Globalization;
+using GFramework.Core.Abstractions.Utility.Numeric;
+using GFramework.Core.Extensions;
+using GFramework.Core.Utility.Numeric;
+
+var gold = NumericDisplay.FormatCompact(1250);             // "1.3K"
+var damage = 15320.ToCompactString();                      // "15.3K"
+
+var exact = NumericDisplay.Format(1234.56m, new NumericFormatOptions
+{
+    MaxDecimalPlaces = 2,
+    FormatProvider = CultureInfo.InvariantCulture
+}); // "1.23K"
+
+var grouped = NumericDisplay.Format(12345, new NumericFormatOptions
+{
+    CompactThreshold = 1000000m,
+    UseGroupingBelowThreshold = true,
+    FormatProvider = CultureInfo.InvariantCulture
+}); // "12,345"
+```
+
+如果你在本地化文本中展示数值，也可以直接使用内置 formatter：
+
+```json
+{
+  "status.gold": "Gold: {gold:compact}",
+  "status.damage": "Damage: {damage:compact:maxDecimals=2}"
+}
+```
+
 ### 5. 对象池工具
 
 ```csharp
