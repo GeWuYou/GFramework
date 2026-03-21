@@ -22,12 +22,6 @@ namespace GFramework.Game.Abstractions.Scene;
 public interface ISceneBehavior : IRoute
 {
     /// <summary>
-    /// 获取场景的唯一标识符。
-    /// 该成员显式细化了 <see cref="IRoute.Key"/> 在场景路由中的语义，用于区分不同的场景实例。
-    /// </summary>
-    new string Key { get; }
-
-    /// <summary>
     /// 获取场景的原始对象。
     /// </summary>
     object Original { get; }

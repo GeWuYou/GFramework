@@ -11,14 +11,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Runtime.InteropServices;
-
 namespace GFramework.Core.Abstractions.Concurrency;
 
 /// <summary>
 ///     锁信息（用于调试）
 /// </summary>
-[StructLayout(LayoutKind.Auto)]
 public readonly struct LockInfo
 {
     /// <summary>
