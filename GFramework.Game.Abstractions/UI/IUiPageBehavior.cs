@@ -46,14 +46,6 @@ public interface IUiPageBehavior : IRoute
     /// <returns>页面视图实例。</returns>
     object View { get; }
 
-
-    /// <summary>
-    ///     获取页面的唯一键值，并显式细化 <see cref="IRoute.Key"/> 在 UI 路由中的语义。
-    /// </summary>
-    /// <value>返回当前对象的键标识符</value>
-    new string Key { get; }
-
-
     /// <summary>
     ///     获取页面是否处于活动状态
     /// </summary>
