@@ -2,6 +2,7 @@ using System.Globalization;
 using System.IO;
 using System.Text.Json;
 using GFramework.Core.Abstractions.Localization;
+using GFramework.Core.Localization.Formatters;
 using GFramework.Core.Systems;
 
 namespace GFramework.Core.Localization;
@@ -11,11 +12,11 @@ namespace GFramework.Core.Localization;
 /// </summary>
 public class LocalizationManager : AbstractSystem, ILocalizationManager
 {
+    private readonly List<string> _availableLanguages;
     private readonly LocalizationConfig _config;
     private readonly Dictionary<string, ILocalizationFormatter> _formatters;
     private readonly List<Action<string>> _languageChangeCallbacks;
     private readonly Dictionary<string, Dictionary<string, ILocalizationTable>> _tables;
-    private List<string> _availableLanguages;
     private CultureInfo _currentCulture;
     private string _currentLanguage;
 
@@ -32,6 +33,7 @@ public class LocalizationManager : AbstractSystem, ILocalizationManager
         _currentLanguage = _config.DefaultLanguage;
         _currentCulture = GetCultureInfo(_currentLanguage);
         _availableLanguages = new List<string>();
+        RegisterBuiltInFormatters();
     }
 
     /// <inheritdoc/>
@@ -176,6 +178,13 @@ public class LocalizationManager : AbstractSystem, ILocalizationManager
         _tables.Clear();
         _formatters.Clear();
         _languageChangeCallbacks.Clear();
+    }
+
+    private void RegisterBuiltInFormatters()
+    {
+        RegisterFormatter("if", new ConditionalFormatter());
+        RegisterFormatter("plural", new PluralFormatter());
+        RegisterFormatter("compact", new CompactNumberLocalizationFormatter());
     }
 
     /// <summary>

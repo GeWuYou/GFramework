@@ -49,7 +49,10 @@ public class LocalizationIntegrationTests
                                                                 {
                                                                   "game.title": "My Game",
                                                                   "ui.message.welcome": "Welcome, {playerName}!",
-                                                                  "status.health": "Health: {current}/{max}"
+                                                                  "status.health": "Health: {current}/{max}",
+                                                                  "status.gold": "Gold: {gold:compact}",
+                                                                  "status.damage": "Damage: {damage:compact:maxDecimals=2}",
+                                                                  "status.invalidCompact": "Gold: {gold:compact:maxDecimals=abc}"
                                                                 }
                                                                 """);
 
@@ -57,7 +60,10 @@ public class LocalizationIntegrationTests
                                                                 {
                                                                   "game.title": "我的游戏",
                                                                   "ui.message.welcome": "欢迎, {playerName}!",
-                                                                  "status.health": "生命值: {current}/{max}"
+                                                                  "status.health": "生命值: {current}/{max}",
+                                                                  "status.gold": "金币: {gold:compact}",
+                                                                  "status.damage": "伤害: {damage:compact:maxDecimals=2}",
+                                                                  "status.invalidCompact": "金币: {gold:compact:maxDecimals=abc}"
                                                                 }
                                                                 """);
     }
@@ -106,6 +112,36 @@ public class LocalizationIntegrationTests
 
         // Assert
         Assert.That(health, Is.EqualTo("Health: 80/100"));
+    }
+
+    [Test]
+    public void GetString_WithCompactFormatter_ShouldFormatCorrectly()
+    {
+        var gold = _manager!.GetString("common", "status.gold")
+            .WithVariable("gold", 1_250)
+            .Format();
+
+        Assert.That(gold, Is.EqualTo("Gold: 1.3K"));
+    }
+
+    [Test]
+    public void GetString_WithCompactFormatterArgs_ShouldApplyOptions()
+    {
+        var damage = _manager!.GetString("common", "status.damage")
+            .WithVariable("damage", 1_234)
+            .Format();
+
+        Assert.That(damage, Is.EqualTo("Damage: 1.23K"));
+    }
+
+    [Test]
+    public void GetString_WithInvalidCompactFormatterArgs_ShouldFallbackToDefaultFormatting()
+    {
+        var gold = _manager!.GetString("common", "status.invalidCompact")
+            .WithVariable("gold", 1_250)
+            .Format();
+
+        Assert.That(gold, Is.EqualTo("Gold: 1250"));
     }
 
     [Test]
