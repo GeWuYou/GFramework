@@ -266,13 +266,3 @@ if [[ "${MODE}" == "--write" ]]; then
 else
     collect_inventory
 fi
-
-ensure_supported_mode
-
-if [[ "${MODE}" == "--write" ]]; then
-    mkdir -p "$(dirname "${OUTPUT_PATH}")"
-    collect_inventory > "${OUTPUT_PATH}"
-    printf 'Wrote %s\n' "${OUTPUT_PATH}"
-else
-    collect_inventory
-fi

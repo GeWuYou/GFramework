@@ -76,6 +76,18 @@ def available_tool(raw: dict[str, Any], section: str, name: str) -> bool:
     return bool_value(raw, section, name, "installed")
 
 
+def select_tool(
+    use_for: str,
+    preferred: str | None,
+    fallback: str | None,
+) -> dict[str, str]:
+    return {
+        "preferred": choose(preferred, fallback),
+        "fallback": fallback or "unavailable",
+        "use_for": use_for,
+    }
+
+
 def build_ai_inventory(raw: dict[str, Any]) -> dict[str, Any]:
     has_python = available_tool(raw, "required_runtimes", "python3")
     has_node = available_tool(raw, "required_runtimes", "node")
@@ -86,36 +98,36 @@ def build_ai_inventory(raw: dict[str, Any]) -> dict[str, Any]:
     has_bash = available_tool(raw, "required_tools", "bash")
     has_docker = available_tool(raw, "project_tools", "docker")
 
-    search = {
-        "preferred": choose("rg" if has_rg else None, "grep"),
-        "fallback": "grep" if has_rg else "unavailable",
-        "use_for": "Repository text search.",
-    }
-    json = {
-        "preferred": choose("jq" if has_jq else None, "python3" if has_python else None),
-        "fallback": "python3" if has_jq and has_python else "unavailable",
-        "use_for": "Inspecting or transforming JSON command output.",
-    }
-    scripting = {
-        "preferred": choose("python3" if has_python else None, "bash" if has_bash else None),
-        "fallback": "bash" if has_python and has_bash else "unavailable",
-        "use_for": "Non-trivial local automation and helper scripts.",
-    }
-    shell = {
-        "preferred": choose("bash" if has_bash else None, "sh"),
-        "fallback": "sh" if has_bash else "unavailable",
-        "use_for": "Repository shell scripts and command execution.",
-    }
-    docs = {
-        "preferred": choose("bun" if has_bun else None, "npm" if has_node else None),
-        "fallback": "npm" if has_bun and has_node else "unavailable",
-        "use_for": "Installing and previewing the docs site.",
-    }
-    build = {
-        "preferred": choose("dotnet" if has_dotnet else None, None),
-        "fallback": "unavailable",
-        "use_for": "Build, test, restore, and solution validation.",
-    }
+    search = select_tool(
+        use_for="Repository text search.",
+        preferred="rg" if has_rg else None,
+        fallback="grep",
+    )
+    json = select_tool(
+        use_for="Inspecting or transforming JSON command output.",
+        preferred="jq" if has_jq else None,
+        fallback="python3" if has_python else None,
+    )
+    scripting = select_tool(
+        use_for="Non-trivial local automation and helper scripts.",
+        preferred="python3" if has_python else None,
+        fallback="bash" if has_bash else None,
+    )
+    shell = select_tool(
+        use_for="Repository shell scripts and command execution.",
+        preferred="bash" if has_bash else None,
+        fallback="sh",
+    )
+    docs = select_tool(
+        use_for="Installing and previewing the docs site.",
+        preferred="bun" if has_bun else None,
+        fallback="npm" if has_node else None,
+    )
+    build = select_tool(
+        use_for="Build, test, restore, and solution validation.",
+        preferred="dotnet" if has_dotnet else None,
+        fallback=None,
+    )
 
     if bool_value(raw, "platform", "wsl"):
         platform_family = "wsl-linux"
