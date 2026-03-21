@@ -19,7 +19,7 @@ internal static class PriorityDiagnostic
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "Priority 特性设计用于类级别的优先级标记，不支持其他类型。"
+        description: "Priority 特性设计用于类级别的优先级标记，不支持其他类型。."
     );
 
     /// <summary>
@@ -32,7 +32,7 @@ internal static class PriorityDiagnostic
         category: Category,
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "当类已经手动实现 IPrioritized 接口时，源生成器将跳过代码生成以避免冲突。"
+        description: "当类已经手动实现 IPrioritized 接口时，源生成器将跳过代码生成以避免冲突。."
     );
 
     /// <summary>
@@ -45,7 +45,7 @@ internal static class PriorityDiagnostic
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "源生成器需要在 partial 类中生成 IPrioritized 接口实现。"
+        description: "源生成器需要在 partial 类中生成 IPrioritized 接口实现。."
     );
 
     /// <summary>
@@ -58,7 +58,7 @@ internal static class PriorityDiagnostic
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "Priority 特性必须提供一个有效的整数值。"
+        description: "Priority 特性必须提供一个有效的整数值。."
     );
 
     /// <summary>
@@ -71,7 +71,7 @@ internal static class PriorityDiagnostic
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "Priority 特性仅支持顶层类，不支持嵌套类。请将嵌套类移至命名空间级别。"
+        description: "Priority 特性仅支持顶层类，不支持嵌套类。请将嵌套类移至命名空间级别。."
     );
 
     /// <summary>
@@ -84,6 +84,6 @@ internal static class PriorityDiagnostic
         category: "GFramework.Usage",
         defaultSeverity: DiagnosticSeverity.Info,
         isEnabledByDefault: true,
-        description: "当获取实现了 IPrioritized 接口的服务时，应使用 GetAllByPriority 方法以确保按优先级排序。"
+        description: "当获取实现了 IPrioritized 接口的服务时，应使用 GetAllByPriority 方法以确保按优先级排序。."
     );
 }
