@@ -1,6 +1,5 @@
 using GFramework.Core.Abstractions.Pause;
 using GFramework.Core.Pause;
-using NUnit.Framework;
 
 namespace GFramework.Core.Tests.Pause;
 
@@ -220,11 +219,11 @@ public class PauseStackManagerTests
         PauseGroup? eventGroup = null;
         bool? eventIsPaused = null;
 
-        _manager.OnPauseStateChanged += (group, isPaused) =>
+        _manager.OnPauseStateChanged += (_, e) =>
         {
             eventTriggered = true;
-            eventGroup = group;
-            eventIsPaused = isPaused;
+            eventGroup = e.Group;
+            eventIsPaused = e.IsPaused;
         };
 
         _manager.Push("Test", PauseGroup.Gameplay);
@@ -243,10 +242,10 @@ public class PauseStackManagerTests
         var token = _manager.Push("Test");
 
         bool eventTriggered = false;
-        _manager.OnPauseStateChanged += (group, isPaused) =>
+        _manager.OnPauseStateChanged += (_, e) =>
         {
             eventTriggered = true;
-            Assert.That(isPaused, Is.False);
+            Assert.That(e.IsPaused, Is.False);
         };
 
         _manager.Pop(token);

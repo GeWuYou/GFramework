@@ -31,8 +31,9 @@ public interface ISceneRouteGuard : IRouteGuard<ISceneBehavior>
 
     /// <summary>
     /// 异步检查是否允许离开指定场景。
+    /// 该成员显式细化了通用路由守卫的离开检查，使场景守卫在 API 文档中保持场景语义。
     /// </summary>
     /// <param name="sceneKey">当前场景的唯一标识符。</param>
     /// <returns>如果允许离开则返回 true，否则返回 false。</returns>
-    ValueTask<bool> CanLeaveAsync(string sceneKey);
+    new ValueTask<bool> CanLeaveAsync(string sceneKey);
 }

@@ -44,7 +44,7 @@ public interface IPauseStackManager : IContextUtility
     int GetPauseDepth(PauseGroup group = PauseGroup.Global);
 
     // 暂停状态变化事件
-    event Action<PauseGroup, bool>? OnPauseStateChanged;
+    event EventHandler<PauseStateChangedEventArgs>? OnPauseStateChanged;
 }
 ```
 
@@ -477,12 +477,12 @@ public partial class PauseIndicator : Label
         pauseManager.OnPauseStateChanged -= OnPauseStateChanged;
     }
 
-    private void OnPauseStateChanged(PauseGroup group, bool isPaused)
+    private void OnPauseStateChanged(object? sender, PauseStateChangedEventArgs e)
     {
-        if (group == PauseGroup.Global)
+        if (e.Group == PauseGroup.Global)
         {
-            Text = isPaused ? "游戏已暂停" : "游戏运行中";
-            Visible = isPaused;
+            Text = e.IsPaused ? "游戏已暂停" : "游戏运行中";
+            Visible = e.IsPaused;
         }
     }
 }
@@ -502,16 +502,16 @@ public partial class PauseDebugger : Node
         pauseManager.OnPauseStateChanged += OnPauseStateChanged;
     }
 
-    private void OnPauseStateChanged(PauseGroup group, bool isPaused)
+    private void OnPauseStateChanged(object? sender, PauseStateChangedEventArgs e)
     {
         var pauseManager = this.GetUtility<IPauseStackManager>();
 
         GD.Print($"=== 暂停状态变化 ===");
-        GD.Print($"组: {group}");
-        GD.Print($"状态: {(isPaused ? "暂停" : "恢复")}");
-        GD.Print($"深度: {pauseManager.GetPauseDepth(group)}");
+        GD.Print($"组: {e.Group}");
+        GD.Print($"状态: {(e.IsPaused ? "暂停" : "恢复")}");
+        GD.Print($"深度: {pauseManager.GetPauseDepth(e.Group)}");
 
-        var reasons = pauseManager.GetPauseReasons(group);
+        var reasons = pauseManager.GetPauseReasons(e.Group);
         if (reasons.Count > 0)
         {
             GD.Print($"原因:");
@@ -609,9 +609,9 @@ public partial class PauseDebugger : Node
 
 7. **使用事件监听暂停状态**：实现响应式 UI
    ```csharp
-   pauseManager.OnPauseStateChanged += (group, isPaused) =>
+   pauseManager.OnPauseStateChanged += (_, e) =>
    {
-       UpdateUI(isPaused);
+       UpdateUI(e.IsPaused);
    };
    ```
 

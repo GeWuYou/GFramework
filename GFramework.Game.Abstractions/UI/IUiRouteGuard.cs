@@ -17,9 +17,10 @@ public interface IUiRouteGuard : IRouteGuard<IUiPageBehavior>
     ValueTask<bool> CanEnterAsync(string uiKey, IUiPageEnterParam? param);
 
     /// <summary>
-    /// 离开UI前的检查
+    /// 离开UI前的检查。
+    /// 该成员显式细化了通用路由守卫的离开检查，使 UI 守卫在 API 文档中保持 UI 语义。
     /// </summary>
     /// <param name="uiKey">当前UI标识符</param>
     /// <returns>true表示允许离开，false表示拦截</returns>
-    ValueTask<bool> CanLeaveAsync(string uiKey);
+    new ValueTask<bool> CanLeaveAsync(string uiKey);
 }

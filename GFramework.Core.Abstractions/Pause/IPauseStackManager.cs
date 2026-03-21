@@ -75,7 +75,9 @@ public interface IPauseStackManager : IContextUtility
     void UnregisterHandler(IPauseHandler handler);
 
     /// <summary>
-    /// 暂停状态变化事件
+    /// 暂停状态变化事件。
+    /// 事件遵循标准 .NET 事件模式，事件源为触发通知的暂停管理器实例，
+    /// 事件数据由 <see cref="PauseStateChangedEventArgs"/> 提供。
     /// </summary>
-    event Action<PauseGroup, bool>? OnPauseStateChanged;
+    event EventHandler<PauseStateChangedEventArgs>? OnPauseStateChanged;
 }

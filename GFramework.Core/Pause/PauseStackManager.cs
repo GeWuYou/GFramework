@@ -80,7 +80,7 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
             // 触发事件
             try
             {
-                OnPauseStateChanged?.Invoke(group, false);
+                RaisePauseStateChanged(group, false);
             }
             catch (Exception ex)
             {
@@ -97,7 +97,7 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
     /// <summary>
     /// 暂停状态变化事件，当暂停状态发生改变时触发。
     /// </summary>
-    public event Action<PauseGroup, bool>? OnPauseStateChanged;
+    public event EventHandler<PauseStateChangedEventArgs>? OnPauseStateChanged;
 
     /// <summary>
     /// 推入一个新的暂停请求到指定的暂停组中。
@@ -488,7 +488,18 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
         }
 
         // 触发事件
-        OnPauseStateChanged?.Invoke(group, isPaused);
+        RaisePauseStateChanged(group, isPaused);
+    }
+
+    /// <summary>
+    ///     以标准事件模式发布暂停状态变化事件。
+    ///     所有状态变更路径都通过该方法创建统一的事件参数，避免不同调用点出现不一致的载荷。
+    /// </summary>
+    /// <param name="group">发生状态变化的暂停组。</param>
+    /// <param name="isPaused">暂停组变化后的新状态。</param>
+    private void RaisePauseStateChanged(PauseGroup group, bool isPaused)
+    {
+        OnPauseStateChanged?.Invoke(this, new PauseStateChangedEventArgs(group, isPaused));
     }
 
     /// <summary>

@@ -208,13 +208,10 @@ public class PriorityEvent<T> : IEvent
         MergeAndSortHandlers(T t)
     {
         var (normalSnapshot, contextSnapshot) = CreateSnapshots();
-        // 使用快照避免迭代期间修改
+        // 使用统一的投影方法显式固定元组的可空标注，避免 LINQ 在 Concat 时推断出不兼容的签名。
         return normalSnapshot
-            .Select(h => (h.Priority, Handler: (Action?)(() => h.Handler.Invoke(t)),
-                ContextHandler: (Action<EventContext<T>>?)null, IsContext: false))
-            .Concat(contextSnapshot
-                .Select(h => (h.Priority, Handler: (Action?)null,
-                    ContextHandler: (Action<EventContext<T>>?)h.Handler, IsContext: true)))
+            .Select(h => CreateNormalHandlerInvocation(h, t))
+            .Concat(contextSnapshot.Select(CreateContextHandlerInvocation))
             .OrderByDescending(h => h.Priority)
             .ToList();
     }
@@ -287,6 +284,29 @@ public class PriorityEvent<T> : IEvent
         {
             return (_handlers.ToArray(), _contextHandlers.ToArray());
         }
+    }
+
+    /// <summary>
+    ///     将普通事件处理器转换为统一的调用描述。
+    /// </summary>
+    /// <param name="handler">要包装的普通处理器。</param>
+    /// <param name="t">当前触发的事件数据。</param>
+    /// <returns>可与上下文处理器合并排序的统一调用描述。</returns>
+    private static (int Priority, Action? Handler, Action<EventContext<T>>? ContextHandler, bool IsContext)
+        CreateNormalHandlerInvocation(EventHandler handler, T t)
+    {
+        return (handler.Priority, () => handler.Handler.Invoke(t), null, false);
+    }
+
+    /// <summary>
+    ///     将上下文事件处理器转换为统一的调用描述。
+    /// </summary>
+    /// <param name="handler">要包装的上下文处理器。</param>
+    /// <returns>可与普通处理器合并排序的统一调用描述。</returns>
+    private static (int Priority, Action? Handler, Action<EventContext<T>>? ContextHandler, bool IsContext)
+        CreateContextHandlerInvocation(ContextEventHandler handler)
+    {
+        return (handler.Priority, null, handler.Handler, true);
     }
 
     /// <summary>

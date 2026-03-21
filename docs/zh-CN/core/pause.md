@@ -101,7 +101,7 @@ void RegisterHandler(IPauseHandler handler);
 void UnregisterHandler(IPauseHandler handler);
 
 // 状态变化事件
-event Action<PauseGroup, bool>? OnPauseStateChanged;
+event EventHandler<PauseStateChangedEventArgs>? OnPauseStateChanged;
 ```
 
 ## 基本用法
@@ -377,13 +377,13 @@ public partial class PauseIndicator : IController
         _pauseManager.OnPauseStateChanged += OnPauseStateChanged;
     }
 
-    private void OnPauseStateChanged(PauseGroup group, bool isPaused)
+    private void OnPauseStateChanged(object? sender, PauseStateChangedEventArgs e)
     {
-        Console.WriteLine($"暂停状态变化: 组={group}, 暂停={isPaused}");
+        Console.WriteLine($"暂停状态变化: 组={e.Group}, 暂停={e.IsPaused}");
 
-        if (group == PauseGroup.Global)
+        if (e.Group == PauseGroup.Global)
         {
-            if (isPaused)
+            if (e.IsPaused)
             {
                 ShowPauseIndicator();
             }
@@ -705,7 +705,7 @@ public partial class ProperCleanup : IController
         _pauseManager.OnPauseStateChanged -= OnPauseChanged;
     }
 
-    private void OnPauseChanged(PauseGroup group, bool isPaused) { }
+    private void OnPauseChanged(object? sender, PauseStateChangedEventArgs e) { }
 }
 ```
 
@@ -743,11 +743,11 @@ public partial class PauseMenu : Control
 
         // 方案 2: 监听暂停事件
         var pauseManager = this.GetUtility<IPauseStackManager>();
-        pauseManager.OnPauseStateChanged += (group, isPaused) =>
+        pauseManager.OnPauseStateChanged += (_, e) =>
         {
-            if (group == PauseGroup.Global)
+            if (e.Group == PauseGroup.Global)
             {
-                Visible = isPaused;
+                Visible = e.IsPaused;
             }
         };
     }
@@ -887,13 +887,13 @@ public class PauseEventBridge : AbstractSystem
     {
         var pauseManager = this.GetUtility<IPauseStackManager>();
 
-        pauseManager.OnPauseStateChanged += (group, isPaused) =>
+        pauseManager.OnPauseStateChanged += (_, e) =>
         {
             // 发送暂停事件
             this.SendEvent(new GamePausedEvent
             {
-                Group = group,
-                IsPaused = isPaused
+                Group = e.Group,
+                IsPaused = e.IsPaused
             });
         };
     }

@@ -16,28 +16,31 @@ using System.Runtime.InteropServices;
 namespace GFramework.Core.Abstractions.Concurrency;
 
 /// <summary>
-///     锁统计信息
+///     锁信息（用于调试）
 /// </summary>
 [StructLayout(LayoutKind.Auto)]
-public readonly struct LockStatistics
+public readonly struct LockInfo
 {
     /// <summary>
-    ///     当前活跃的锁数量
+    ///     锁的键。
     /// </summary>
-    public int ActiveLockCount { get; init; }
+    public string Key { get; init; }
 
     /// <summary>
-    ///     累计获取锁的次数
+    ///     当前引用计数。
     /// </summary>
-    public int TotalAcquired { get; init; }
+    public int ReferenceCount { get; init; }
 
     /// <summary>
-    ///     累计释放锁的次数
+    ///     最后访问时间戳（Environment.TickCount64）。
     /// </summary>
-    public int TotalReleased { get; init; }
+    public long LastAccessTicks { get; init; }
 
     /// <summary>
-    ///     累计清理的锁数量
+    ///     等待队列长度（近似值）。
+    ///     注意：这是一个基于 SemaphoreSlim.CurrentCount 的近似指示器，
+    ///     当 CurrentCount == 0 时表示锁被持有且可能有等待者，返回 1；
+    ///     否则返回 0。这不是精确的等待者数量，仅用于调试参考。
     /// </summary>
-    public int TotalCleaned { get; init; }
+    public int WaitingCount { get; init; }
 }

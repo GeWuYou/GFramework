@@ -48,10 +48,10 @@ public interface IUiPageBehavior : IRoute
 
 
     /// <summary>
-    ///     获取键值
+    ///     获取页面的唯一键值，并显式细化 <see cref="IRoute.Key"/> 在 UI 路由中的语义。
     /// </summary>
     /// <value>返回当前对象的键标识符</value>
-    string Key { get; }
+    new string Key { get; }
 
 
     /// <summary>
