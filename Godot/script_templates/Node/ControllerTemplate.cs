@@ -2,6 +2,7 @@
 // meta-description: 负责管理场景的生命周期和架构关联
 using Godot;
 using GFramework.Core.Abstractions.Controller;
+using GFramework.Godot.SourceGenerators.Abstractions;
 using GFramework.SourceGenerators.Abstractions.Logging;
 using GFramework.SourceGenerators.Abstractions.Rule;
 
@@ -16,7 +17,15 @@ public partial class _CLASS_ :_BASE_,IController
     /// </summary>
     public override void _Ready()
     {
-        
+        __InjectGetNodes_Generated();
+        OnReadyAfterGetNode();
+    }
+
+    /// <summary>
+    /// 节点注入完成后的初始化钩子。
+    /// </summary>
+    private void OnReadyAfterGetNode()
+    {
     }
 }
 

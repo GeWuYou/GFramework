@@ -63,8 +63,4 @@
         <Folder Include="diagnostics\"/>
         <Folder Include="logging\"/>
     </ItemGroup>
-    <ItemGroup>
-        <AdditionalFiles Remove="AnalyzerReleases.Shipped.md"/>
-        <AdditionalFiles Remove="AnalyzerReleases.Unshipped.md"/>
-    </ItemGroup>
 </Project>
