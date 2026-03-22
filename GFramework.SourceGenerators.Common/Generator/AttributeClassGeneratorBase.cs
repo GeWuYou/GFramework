@@ -86,7 +86,7 @@ public abstract class AttributeClassGeneratorBase : IIncrementalGenerator
             $"[GEN] Attribute resolved: {attr.AttributeClass?.ToDisplayString()}");
 
         // ③ partial 校验
-        if (!classDecl.Modifiers.Any(SyntaxKind.PartialKeyword))
+        if (classDecl.Modifiers.All(m => m.Kind() != SyntaxKind.PartialKeyword))
         {
             CommonDiagnostics.Trace(context,
                 $"[GEN] Class is NOT partial: {symbol.Name}");

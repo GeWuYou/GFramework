@@ -43,7 +43,7 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
         AttributeData attr)
     {
         // 1. 必须是 partial
-        if (!syntax.Modifiers.Any(SyntaxKind.PartialKeyword))
+        if (syntax.Modifiers.All(m => m.Kind() != SyntaxKind.PartialKeyword))
         {
             context.ReportDiagnostic(Diagnostic.Create(
                 CommonDiagnostics.ClassMustBePartial,
