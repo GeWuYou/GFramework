@@ -30,12 +30,6 @@ public sealed class WaitForAllCoroutines(
     ///     获取一个值，指示所有协程是否已完成执行
     /// </summary>
     /// <returns>当所有协程都已完成时返回true，否则返回false</returns>
-    public bool IsDone
-    {
-        get
-        {
-            // 检查所有协程句柄是否都不在调度器中存活
-            return _handles.All(handle => !_scheduler.IsCoroutineAlive(handle));
-        }
-    }
+    // 检查所有协程句柄是否都不在调度器中存活
+    public bool IsDone => _handles.All(handle => !_scheduler.IsCoroutineAlive(handle));
 }
