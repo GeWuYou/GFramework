@@ -60,7 +60,6 @@
         <None Include="GeWuYou.$(AssemblyName).targets" Pack="true" PackagePath="build" Visible="false"/>
     </ItemGroup>
     <ItemGroup>
-        <Folder Include="diagnostics\"/>
-        <Folder Include="logging\"/>
+        <Folder Include="Diagnostics\"/>
     </ItemGroup>
 </Project>
