@@ -38,7 +38,7 @@ public sealed class GetNodeGenerator : IIncrementalGenerator
         var compilationAndCandidates = context.CompilationProvider.Combine(candidates.Collect());
 
         context.RegisterSourceOutput(compilationAndCandidates,
-            static (spc, pair) => { Execute(spc, pair.Left, pair.Right); });
+            static (spc, pair) => Execute(spc, pair.Left, pair.Right));
     }
 
     private static bool IsCandidate(SyntaxNode node)
