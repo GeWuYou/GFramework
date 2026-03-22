@@ -5,6 +5,7 @@ using GFramework.Core.Abstractions.Controller;
 using GFramework.Core.Extensions;
 using GFramework.Game.Abstractions.UI;
 using GFramework.Godot.UI;
+using GFramework.Godot.SourceGenerators.Abstractions;
 using GFramework.SourceGenerators.Abstractions.Logging;
 using GFramework.SourceGenerators.Abstractions.Rule;
 
@@ -19,7 +20,15 @@ public partial class _CLASS_ :_BASE_,IController,IUiPageBehaviorProvider,IUiPage
     /// </summary>
     public override void _Ready()
     {
-        
+        __InjectGetNodes_Generated();
+        OnReadyAfterGetNode();
+    }
+
+    /// <summary>
+    /// 节点注入完成后的初始化钩子。
+    /// </summary>
+    private void OnReadyAfterGetNode()
+    {
     }
 	/// <summary>
     /// 页面行为实例的私有字段
