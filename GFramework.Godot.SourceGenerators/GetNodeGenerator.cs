@@ -270,18 +270,32 @@ public sealed class GetNodeGenerator : IIncrementalGenerator
             if (syntaxReference.GetSyntax() is not MethodDeclarationSyntax methodSyntax)
                 continue;
 
-            var bodyText = methodSyntax.Body?.ToString();
-            if (!string.IsNullOrEmpty(bodyText) &&
-                bodyText.Contains(InjectionMethodName, StringComparison.Ordinal))
-                return true;
-
-            var expressionBodyText = methodSyntax.ExpressionBody?.ToString();
-            if (!string.IsNullOrEmpty(expressionBodyText) &&
-                expressionBodyText.Contains(InjectionMethodName, StringComparison.Ordinal))
+            if (methodSyntax.DescendantNodes()
+                .OfType<InvocationExpressionSyntax>()
+                .Any(IsGeneratedInjectionInvocation))
                 return true;
         }
 
         return false;
+    }
+
+    private static bool IsGeneratedInjectionInvocation(InvocationExpressionSyntax invocation)
+    {
+        switch (invocation.Expression)
+        {
+            case IdentifierNameSyntax identifierName:
+                return string.Equals(
+                    identifierName.Identifier.ValueText,
+                    InjectionMethodName,
+                    StringComparison.Ordinal);
+            case MemberAccessExpressionSyntax memberAccess:
+                return string.Equals(
+                    memberAccess.Name.Identifier.ValueText,
+                    InjectionMethodName,
+                    StringComparison.Ordinal);
+            default:
+                return false;
+        }
     }
 
     private static bool ResolveRequired(AttributeData attribute)
@@ -479,23 +493,23 @@ public sealed class GetNodeGenerator : IIncrementalGenerator
 
     private static IReadOnlyList<TypeGroup> GroupByContainingType(IEnumerable<FieldCandidate> candidates)
     {
-        var groups = new List<TypeGroup>();
+        var groupMap = new Dictionary<INamedTypeSymbol, TypeGroup>(SymbolEqualityComparer.Default);
+        var orderedGroups = new List<TypeGroup>();
 
         foreach (var candidate in candidates)
         {
-            var group = groups.FirstOrDefault(existing =>
-                SymbolEqualityComparer.Default.Equals(existing.TypeSymbol, candidate.FieldSymbol.ContainingType));
-
-            if (group is null)
+            var typeSymbol = candidate.FieldSymbol.ContainingType;
+            if (!groupMap.TryGetValue(typeSymbol, out var group))
             {
-                group = new TypeGroup(candidate.FieldSymbol.ContainingType);
-                groups.Add(group);
+                group = new TypeGroup(typeSymbol);
+                groupMap.Add(typeSymbol, group);
+                orderedGroups.Add(group);
             }
 
             group.Fields.Add(candidate);
         }
 
-        return groups;
+        return orderedGroups;
     }
 
     private sealed class FieldCandidate
