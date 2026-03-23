@@ -147,6 +147,43 @@ var store = (Store<PlayerState>)Store<PlayerState>
 - 测试里快速组装不同配置的 Store
 - 不希望把 Store 的装配细节散落在多个调用点
 
+## 运行时临时注册与注销
+
+如果某个 reducer 或 middleware 只需要在一段生命周期内生效，例如调试探针、临时玩法规则、
+或场景级模块扩展，可以直接使用 `Store<TState>` 提供的句柄式注册 API：
+
+```csharp
+public sealed class LoggingMiddleware<TState> : IStoreMiddleware<TState>
+{
+    public void Invoke(StoreDispatchContext<TState> context, Action next)
+    {
+        Console.WriteLine($"Dispatching: {context.ActionType.Name}");
+        next();
+    }
+}
+
+var store = new Store<PlayerState>(new PlayerState(100, "Player"));
+
+var reducerHandle = store.RegisterReducerHandle<DamageAction>((state, action) =>
+    state with { Health = Math.Max(0, state.Health - action.Amount) });
+
+var middlewareHandle = store.RegisterMiddleware(new LoggingMiddleware<PlayerState>());
+
+store.Dispatch(new DamageAction(10));
+
+reducerHandle.UnRegister();
+middlewareHandle.UnRegister();
+```
+
+这里有两个重要约束：
+
+- `RegisterReducerHandle()` 和 `RegisterMiddleware()` 返回的是当前这一次注册的精确注销句柄
+- 如果在某次 `Dispatch()` 已经开始后再调用 `UnRegister()`，当前这次 dispatch 仍会继续使用开始时抓取的快照，注销只影响后续新的
+  dispatch
+
+如果你只需要初始化阶段的链式配置，继续使用 `RegisterReducer()` 和 `UseMiddleware()` 即可；
+如果你需要运行时清理，就使用上面的句柄式 API。
+
 ## 官方示例：角色面板状态
 
 下面给出一个更贴近 GFramework 实战的完整示例，展示如何把 `Store<TState>` 放进 Model，

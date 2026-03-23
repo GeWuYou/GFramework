@@ -1,9 +1,3 @@
-using GFramework.Core.Abstractions.Property;
-using GFramework.Core.Abstractions.StateManagement;
-using GFramework.Core.Extensions;
-using GFramework.Core.Property;
-using GFramework.Core.StateManagement;
-
 namespace GFramework.Core.Tests.StateManagement;
 
 /// <summary>
@@ -257,6 +251,137 @@ public class StoreTests
         Assert.That(store.LastDispatchRecord, Is.Not.Null);
         Assert.That(store.LastDispatchRecord!.HasStateChanged, Is.True);
         Assert.That(store.LastDispatchRecord.NextState.Count, Is.EqualTo(2));
+    }
+
+    /// <summary>
+    ///     测试 reducer 句柄注销后，后续同类型 action 不会再命中该 reducer。
+    /// </summary>
+    [Test]
+    public void RegisterReducerHandle_UnRegister_Should_Stop_Future_Reductions()
+    {
+        var store = new Store<CounterState>(new CounterState(0, "Player"));
+        var reducerHandle = store.RegisterReducerHandle<IncrementAction>((state, action) =>
+            state with { Count = state.Count + action.Amount });
+
+        store.Dispatch(new IncrementAction(2));
+        reducerHandle.UnRegister();
+        store.Dispatch(new IncrementAction(2));
+
+        Assert.That(store.State.Count, Is.EqualTo(2));
+    }
+
+    /// <summary>
+    ///     测试 middleware 句柄注销后，后续 dispatch 不会再经过该中间件。
+    /// </summary>
+    [Test]
+    public void RegisterMiddleware_UnRegister_Should_Stop_Future_Pipeline_Execution()
+    {
+        var store = CreateStore();
+        var logs = new List<string>();
+        var middlewareHandle = store.RegisterMiddleware(new RecordingMiddleware(logs, "dynamic"));
+
+        store.Dispatch(new IncrementAction(1));
+        middlewareHandle.UnRegister();
+        store.Dispatch(new IncrementAction(1));
+
+        Assert.That(store.State.Count, Is.EqualTo(2));
+        Assert.That(logs, Is.EqualTo(new[] { "dynamic:before", "dynamic:after" }));
+    }
+
+    /// <summary>
+    ///     测试移除同一 action 类型中的某个 reducer 后，其余 reducer 仍保持原有注册顺序。
+    /// </summary>
+    [Test]
+    public void RegisterReducerHandle_UnRegister_Should_Preserve_Remaining_Order()
+    {
+        var executionOrder = new List<string>();
+        var store = new Store<CounterState>(new CounterState(0, "Player"));
+
+        store.RegisterReducerHandle<IncrementAction>((state, action) =>
+        {
+            executionOrder.Add("first");
+            return state with { Count = state.Count + action.Amount };
+        });
+
+        var middleReducer = store.RegisterReducerHandle<IncrementAction>((state, action) =>
+        {
+            executionOrder.Add("middle");
+            return state with { Count = state.Count + action.Amount * 10 };
+        });
+
+        store.RegisterReducerHandle<IncrementAction>((state, action) =>
+        {
+            executionOrder.Add("last");
+            return state with { Count = state.Count + action.Amount * 100 };
+        });
+
+        middleReducer.UnRegister();
+        store.Dispatch(new IncrementAction(1));
+
+        Assert.That(executionOrder, Is.EqualTo(new[] { "first", "last" }));
+        Assert.That(store.State.Count, Is.EqualTo(101));
+    }
+
+    /// <summary>
+    ///     测试注册句柄的注销操作是幂等的，多次调用不会抛异常或影响其他注册项。
+    /// </summary>
+    [Test]
+    public void RegisterHandles_UnRegister_Should_Be_Idempotent()
+    {
+        var logs = new List<string>();
+        var store = new Store<CounterState>(new CounterState(0, "Player"));
+        var reducerHandle = store.RegisterReducerHandle<IncrementAction>((state, action) =>
+            state with { Count = state.Count + action.Amount });
+        var middlewareHandle = store.RegisterMiddleware(new RecordingMiddleware(logs, "dynamic"));
+
+        Assert.That(() =>
+        {
+            reducerHandle.UnRegister();
+            reducerHandle.UnRegister();
+            middlewareHandle.UnRegister();
+            middlewareHandle.UnRegister();
+        }, Throws.Nothing);
+
+        store.Dispatch(new IncrementAction(1));
+
+        Assert.That(store.State.Count, Is.EqualTo(0));
+        Assert.That(logs, Is.Empty);
+    }
+
+    /// <summary>
+    ///     测试 dispatch 进行中注销 reducer 和 middleware 时，
+    ///     当前 dispatch 仍使用开始时的快照，而后续 dispatch 会看到注销结果。
+    /// </summary>
+    [Test]
+    public void UnRegister_During_Dispatch_Should_Affect_Next_Dispatch_But_Not_Current_One()
+    {
+        using var entered = new ManualResetEventSlim(false);
+        using var release = new ManualResetEventSlim(false);
+
+        var logs = new List<string>();
+        var store = new Store<CounterState>(new CounterState(0, "Player"));
+        var reducerHandle = store.RegisterReducerHandle<IncrementAction>((state, action) =>
+            state with { Count = state.Count + action.Amount });
+        var blockingHandle = store.RegisterMiddleware(new BlockingMiddleware(entered, release));
+        var recordingHandle = store.RegisterMiddleware(new RecordingMiddleware(logs, "dynamic"));
+
+        var dispatchTask = Task.Run(() => store.Dispatch(new IncrementAction(1)));
+
+        Assert.That(entered.Wait(TimeSpan.FromSeconds(2)), Is.True, "middleware 未按预期进入阻塞阶段");
+
+        reducerHandle.UnRegister();
+        blockingHandle.UnRegister();
+        recordingHandle.UnRegister();
+        release.Set();
+
+        Assert.That(dispatchTask.Wait(TimeSpan.FromSeconds(2)), Is.True, "dispatch 未在释放 middleware 后完成");
+        Assert.That(store.State.Count, Is.EqualTo(1), "当前 dispatch 应继续使用启动时抓取的 reducer 快照");
+        Assert.That(logs, Is.EqualTo(new[] { "dynamic:before", "dynamic:after" }));
+
+        store.Dispatch(new IncrementAction(1));
+
+        Assert.That(store.State.Count, Is.EqualTo(1), "后续 dispatch 应看到 reducer 已被注销");
+        Assert.That(logs, Is.EqualTo(new[] { "dynamic:before", "dynamic:after" }));
     }
 
     /// <summary>
