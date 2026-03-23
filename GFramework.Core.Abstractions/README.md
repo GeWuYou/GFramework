@@ -12,6 +12,7 @@ GFramework 框架的抽象层定义模块，包含所有核心组件的接口定
 - 事件系统接口 (IEvent, IEventBus)
 - 依赖注入容器接口 (IIocContainer)
 - 可绑定属性接口 (IBindableProperty)
+- 状态管理接口 (IStore, IReducer, IStateSelector)
 - 日志系统接口 (ILogger)
 
 ## 设计原则

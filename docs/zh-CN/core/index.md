@@ -404,24 +404,25 @@ public class PlayerController : IController
 
 ## 包说明
 
-| 包名               | 职责              | 文档                   |
-|------------------|-----------------|----------------------|
-| **architecture** | 架构核心，管理所有组件生命周期 | [查看](./architecture) |
-| **constants**    | 框架常量定义          | 本文档                  |
-| **model**        | 数据模型层，存储状态      | [查看](./model)        |
-| **system**       | 业务逻辑层，处理业务规则    | [查看](./system)       |
-| **controller**   | 控制器层，连接视图和逻辑    | (在 Abstractions 中)   |
-| **utility**      | 工具类层，提供无状态工具    | [查看](./utility)      |
-| **command**      | 命令模式，封装写操作      | [查看](./command)      |
-| **query**        | 查询模式，封装读操作      | [查看](./query)        |
-| **events**       | 事件系统，组件间通信      | [查看](./events)       |
-| **property**     | 可绑定属性，响应式编程     | [查看](./property)     |
-| **ioc**          | IoC 容器，依赖注入     | [查看](./ioc)          |
-| **rule**         | 规则接口，定义组件约束     | [查看](./rule)         |
-| **extensions**   | 扩展方法，简化 API 调用  | [查看](./extensions)   |
-| **logging**      | 日志系统，记录运行日志     | [查看](./logging)      |
-| **environment**  | 环境接口，提供运行环境信息   | [查看](./environment)  |
-| **localization** | 本地化系统，多语言支持     | [查看](./localization) |
+| 包名                   | 职责              | 文档                       |
+|----------------------|-----------------|--------------------------|
+| **architecture**     | 架构核心，管理所有组件生命周期 | [查看](./architecture)     |
+| **constants**        | 框架常量定义          | 本文档                      |
+| **model**            | 数据模型层，存储状态      | [查看](./model)            |
+| **system**           | 业务逻辑层，处理业务规则    | [查看](./system)           |
+| **controller**       | 控制器层，连接视图和逻辑    | (在 Abstractions 中)       |
+| **utility**          | 工具类层，提供无状态工具    | [查看](./utility)          |
+| **command**          | 命令模式，封装写操作      | [查看](./command)          |
+| **query**            | 查询模式，封装读操作      | [查看](./query)            |
+| **events**           | 事件系统，组件间通信      | [查看](./events)           |
+| **property**         | 可绑定属性，响应式编程     | [查看](./property)         |
+| **state-management** | 集中式状态容器与选择器     | [查看](./state-management) |
+| **ioc**              | IoC 容器，依赖注入     | [查看](./ioc)              |
+| **rule**             | 规则接口，定义组件约束     | [查看](./rule)             |
+| **extensions**       | 扩展方法，简化 API 调用  | [查看](./extensions)       |
+| **logging**          | 日志系统，记录运行日志     | [查看](./logging)          |
+| **environment**      | 环境接口，提供运行环境信息   | [查看](./environment)      |
+| **localization**     | 本地化系统，多语言支持     | [查看](./localization)     |
 
 ## 组件联动
 
