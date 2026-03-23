@@ -617,45 +617,52 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
 
     /// <summary>
     ///     为当前中间件链创建快照。
-    ///     Dispatch 在离开状态锁前复制列表，以便后续在锁外执行稳定、不可变的中间件序列。
+    ///     该方法自行获取状态锁，避免调用方必须记住“只能在已加锁条件下调用”这一隐含约束，
+    ///     从而降低未来重构时把它误用到锁外路径中的风险。
     /// </summary>
     /// <returns>当前中间件链的快照；若未注册则返回空数组。</returns>
     private IStoreMiddleware<TState>[] CreateMiddlewareSnapshot()
     {
-        if (_middlewares.Count == 0)
+        lock (_lock)
         {
-            return Array.Empty<IStoreMiddleware<TState>>();
-        }
+            if (_middlewares.Count == 0)
+            {
+                return Array.Empty<IStoreMiddleware<TState>>();
+            }
 
-        var snapshot = new IStoreMiddleware<TState>[_middlewares.Count];
-        for (var i = 0; i < _middlewares.Count; i++)
-        {
-            snapshot[i] = _middlewares[i].Middleware;
-        }
+            var snapshot = new IStoreMiddleware<TState>[_middlewares.Count];
+            for (var i = 0; i < _middlewares.Count; i++)
+            {
+                snapshot[i] = _middlewares[i].Middleware;
+            }
 
-        return snapshot;
+            return snapshot;
+        }
     }
 
     /// <summary>
     ///     为当前 action 类型创建 reducer 快照。
-    ///     Dispatch 在离开状态锁前复制列表，以便后续在锁外执行稳定、不可变的 reducer 序列。
+    ///     该方法自行获取状态锁，避免让快照安全性依赖调用方的锁顺序知识。
     /// </summary>
     /// <param name="actionType">当前分发的 action 类型。</param>
     /// <returns>对应 action 类型的 reducer 快照；若未注册则返回空数组。</returns>
     private IStoreReducerAdapter[] CreateReducerSnapshot(Type actionType)
     {
-        if (!_reducers.TryGetValue(actionType, out var reducers) || reducers.Count == 0)
+        lock (_lock)
         {
-            return Array.Empty<IStoreReducerAdapter>();
-        }
+            if (!_reducers.TryGetValue(actionType, out var reducers) || reducers.Count == 0)
+            {
+                return Array.Empty<IStoreReducerAdapter>();
+            }
 
-        var snapshot = new IStoreReducerAdapter[reducers.Count];
-        for (var i = 0; i < reducers.Count; i++)
-        {
-            snapshot[i] = reducers[i].Adapter;
-        }
+            var snapshot = new IStoreReducerAdapter[reducers.Count];
+            for (var i = 0; i < reducers.Count; i++)
+            {
+                snapshot[i] = reducers[i].Adapter;
+            }
 
-        return snapshot;
+            return snapshot;
+        }
     }
 
     /// <summary>
