@@ -33,16 +33,18 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
 
     /// <summary>
     ///     已注册的中间件链，按添加顺序执行。
+    ///     每个条目都持有稳定身份，便于通过注销句柄精确移除而不影响其他同类中间件。
     ///     Dispatch 开始时会抓取快照，因此运行中的分发不会受到后续注册变化影响。
     /// </summary>
-    private readonly List<IStoreMiddleware<TState>> _middlewares = [];
+    private readonly List<MiddlewareRegistration> _middlewares = [];
 
     /// <summary>
     ///     按 action 具体运行时类型组织的 reducer 注册表。
     ///     Store 采用精确类型匹配策略，保证 reducer 执行顺序和行为保持确定性。
+    ///     每个 reducer 通过注册条目获得稳定身份，以支持运行时精确注销。
     ///     Dispatch 开始时会抓取对应 action 类型的 reducer 快照。
     /// </summary>
-    private readonly Dictionary<Type, List<IStoreReducerAdapter>> _reducers = [];
+    private readonly Dictionary<Type, List<ReducerRegistration>> _reducers = [];
 
     /// <summary>
     ///     已缓存的局部状态选择视图。
@@ -93,34 +95,6 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
     }
 
     /// <summary>
-    ///     获取最近一次分发的 action 类型。
-    /// </summary>
-    public Type? LastActionType
-    {
-        get
-        {
-            lock (_lock)
-            {
-                return _lastActionType;
-            }
-        }
-    }
-
-    /// <summary>
-    ///     获取最近一次真正改变状态的时间戳。
-    /// </summary>
-    public DateTimeOffset? LastStateChangedAt
-    {
-        get
-        {
-            lock (_lock)
-            {
-                return _lastStateChangedAt;
-            }
-        }
-    }
-
-    /// <summary>
     ///     获取当前状态快照。
     /// </summary>
     public TState State
@@ -163,9 +137,7 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
                     enteredDispatchScope = true;
                     context = new StoreDispatchContext<TState>(action!, _state);
                     stateComparerSnapshot = _stateComparer;
-                    middlewaresSnapshot = _middlewares.Count > 0
-                        ? _middlewares.ToArray()
-                        : Array.Empty<IStoreMiddleware<TState>>();
+                    middlewaresSnapshot = CreateMiddlewareSnapshot();
                     reducersSnapshot = CreateReducerSnapshot(context.ActionType);
                 }
 
@@ -209,34 +181,6 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
         foreach (var listener in listenersSnapshot)
         {
             listener(context!.NextState);
-        }
-    }
-
-    /// <summary>
-    ///     获取当前订阅者数量。
-    /// </summary>
-    public int SubscriberCount
-    {
-        get
-        {
-            lock (_lock)
-            {
-                return _listeners.Count;
-            }
-        }
-    }
-
-    /// <summary>
-    ///     获取最近一次分发记录。
-    /// </summary>
-    public StoreDispatchRecord<TState>? LastDispatchRecord
-    {
-        get
-        {
-            lock (_lock)
-            {
-                return _lastDispatchRecord;
-            }
         }
     }
 
@@ -342,6 +286,62 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
     }
 
     /// <summary>
+    ///     获取最近一次分发的 action 类型。
+    /// </summary>
+    public Type? LastActionType
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _lastActionType;
+            }
+        }
+    }
+
+    /// <summary>
+    ///     获取最近一次真正改变状态的时间戳。
+    /// </summary>
+    public DateTimeOffset? LastStateChangedAt
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _lastStateChangedAt;
+            }
+        }
+    }
+
+    /// <summary>
+    ///     获取当前订阅者数量。
+    /// </summary>
+    public int SubscriberCount
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _listeners.Count;
+            }
+        }
+    }
+
+    /// <summary>
+    ///     获取最近一次分发记录。
+    /// </summary>
+    public StoreDispatchRecord<TState>? LastDispatchRecord
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _lastDispatchRecord;
+            }
+        }
+    }
+
+    /// <summary>
     ///     创建一个用于当前状态类型的 Store 构建器。
     /// </summary>
     /// <returns>新的 Store 构建器实例。</returns>
@@ -353,6 +353,7 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
     /// <summary>
     ///     注册一个强类型 reducer。
     ///     同一 action 类型可注册多个 reducer，它们会按照注册顺序依次归约状态。
+    ///     该重载保留现有链式配置体验；若需要在运行时注销，请改用 <see cref="RegisterReducerHandle{TAction}(IReducer{TState, TAction})"/>。
     /// </summary>
     /// <typeparam name="TAction">reducer 处理的 action 类型。</typeparam>
     /// <param name="reducer">要注册的 reducer 实例。</param>
@@ -360,25 +361,13 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
     /// <exception cref="ArgumentNullException">当 <paramref name="reducer"/> 为 <see langword="null"/> 时抛出。</exception>
     public Store<TState> RegisterReducer<TAction>(IReducer<TState, TAction> reducer)
     {
-        ArgumentNullException.ThrowIfNull(reducer);
-
-        lock (_lock)
-        {
-            var actionType = typeof(TAction);
-            if (!_reducers.TryGetValue(actionType, out var reducers))
-            {
-                reducers = [];
-                _reducers[actionType] = reducers;
-            }
-
-            reducers.Add(new ReducerAdapter<TAction>(reducer));
-        }
-
+        RegisterReducerHandle(reducer);
         return this;
     }
 
     /// <summary>
     ///     使用委托快速注册一个 reducer。
+    ///     该重载保留现有链式配置体验；若需要在运行时注销，请改用 <see cref="RegisterReducerHandle{TAction}(Func{TState, TAction, TState})"/>。
     /// </summary>
     /// <typeparam name="TAction">reducer 处理的 action 类型。</typeparam>
     /// <param name="reducer">执行归约的委托。</param>
@@ -391,22 +380,85 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
     }
 
     /// <summary>
+    ///     注册一个强类型 reducer，并返回可用于注销该 reducer 的句柄。
+    ///     该句柄只会移除当前这次注册，不会影响同一 action 类型下的其他 reducer。
+    ///     若在 dispatch 进行中调用注销，当前这次 dispatch 仍会使用开始时抓取的 reducer 快照，
+    ///     注销仅影响之后的新 dispatch。
+    /// </summary>
+    /// <typeparam name="TAction">reducer 处理的 action 类型。</typeparam>
+    /// <param name="reducer">要注册的 reducer 实例。</param>
+    /// <returns>用于注销当前 reducer 注册的句柄。</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="reducer"/> 为 <see langword="null"/> 时抛出。</exception>
+    public IUnRegister RegisterReducerHandle<TAction>(IReducer<TState, TAction> reducer)
+    {
+        ArgumentNullException.ThrowIfNull(reducer);
+
+        var actionType = typeof(TAction);
+        var registration = new ReducerRegistration(new ReducerAdapter<TAction>(reducer));
+
+        lock (_lock)
+        {
+            if (!_reducers.TryGetValue(actionType, out var reducers))
+            {
+                reducers = [];
+                _reducers[actionType] = reducers;
+            }
+
+            reducers.Add(registration);
+        }
+
+        return new DefaultUnRegister(() => UnRegisterReducer(actionType, registration));
+    }
+
+    /// <summary>
+    ///     使用委托快速注册一个 reducer，并返回可用于注销该 reducer 的句柄。
+    ///     适合测试代码或按场景临时挂载的状态逻辑。
+    /// </summary>
+    /// <typeparam name="TAction">reducer 处理的 action 类型。</typeparam>
+    /// <param name="reducer">执行归约的委托。</param>
+    /// <returns>用于注销当前 reducer 注册的句柄。</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="reducer"/> 为 <see langword="null"/> 时抛出。</exception>
+    public IUnRegister RegisterReducerHandle<TAction>(Func<TState, TAction, TState> reducer)
+    {
+        ArgumentNullException.ThrowIfNull(reducer);
+        return RegisterReducerHandle(new DelegateReducer<TAction>(reducer));
+    }
+
+    /// <summary>
     ///     添加一个 Store 中间件。
     ///     中间件按添加顺序包裹 reducer 执行，可用于日志、审计或调试。
+    ///     该重载保留现有链式配置体验；若需要在运行时注销，请改用 <see cref="RegisterMiddleware"/>.
     /// </summary>
     /// <param name="middleware">要添加的中间件实例。</param>
     /// <returns>当前 Store 实例，便于链式配置。</returns>
     /// <exception cref="ArgumentNullException">当 <paramref name="middleware"/> 为 <see langword="null"/> 时抛出。</exception>
     public Store<TState> UseMiddleware(IStoreMiddleware<TState> middleware)
     {
+        RegisterMiddleware(middleware);
+        return this;
+    }
+
+    /// <summary>
+    ///     注册一个 Store 中间件，并返回可用于注销该中间件的句柄。
+    ///     中间件按注册顺序包裹 reducer 执行；注销只会移除当前这次注册。
+    ///     若在 dispatch 进行中调用注销，当前这次 dispatch 仍会使用开始时抓取的中间件快照，
+    ///     注销仅影响之后的新 dispatch。
+    /// </summary>
+    /// <param name="middleware">要注册的中间件实例。</param>
+    /// <returns>用于注销当前中间件注册的句柄。</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="middleware"/> 为 <see langword="null"/> 时抛出。</exception>
+    public IUnRegister RegisterMiddleware(IStoreMiddleware<TState> middleware)
+    {
         ArgumentNullException.ThrowIfNull(middleware);
+
+        var registration = new MiddlewareRegistration(middleware);
 
         lock (_lock)
         {
-            _middlewares.Add(middleware);
+            _middlewares.Add(registration);
         }
 
-        return this;
+        return new DefaultUnRegister(() => UnRegisterMiddleware(registration));
     }
 
     /// <summary>
@@ -564,6 +616,27 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
     }
 
     /// <summary>
+    ///     为当前中间件链创建快照。
+    ///     Dispatch 在离开状态锁前复制列表，以便后续在锁外执行稳定、不可变的中间件序列。
+    /// </summary>
+    /// <returns>当前中间件链的快照；若未注册则返回空数组。</returns>
+    private IStoreMiddleware<TState>[] CreateMiddlewareSnapshot()
+    {
+        if (_middlewares.Count == 0)
+        {
+            return Array.Empty<IStoreMiddleware<TState>>();
+        }
+
+        var snapshot = new IStoreMiddleware<TState>[_middlewares.Count];
+        for (var i = 0; i < _middlewares.Count; i++)
+        {
+            snapshot[i] = _middlewares[i].Middleware;
+        }
+
+        return snapshot;
+    }
+
+    /// <summary>
     ///     为当前 action 类型创建 reducer 快照。
     ///     Dispatch 在离开状态锁前复制列表，以便后续在锁外执行稳定、不可变的 reducer 序列。
     /// </summary>
@@ -576,7 +649,13 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
             return Array.Empty<IStoreReducerAdapter>();
         }
 
-        return reducers.ToArray();
+        var snapshot = new IStoreReducerAdapter[reducers.Count];
+        for (var i = 0; i < reducers.Count; i++)
+        {
+            snapshot[i] = reducers[i].Adapter;
+        }
+
+        return snapshot;
     }
 
     /// <summary>
@@ -589,6 +668,42 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
         {
             subscription.IsSubscribed = false;
             _listeners.Remove(subscription);
+        }
+    }
+
+    /// <summary>
+    ///     注销一个中间件注册条目。
+    ///     仅精确移除与当前句柄关联的条目，避免误删同一实例的其他重复注册。
+    /// </summary>
+    /// <param name="registration">要移除的中间件注册条目。</param>
+    private void UnRegisterMiddleware(MiddlewareRegistration registration)
+    {
+        lock (_lock)
+        {
+            _middlewares.Remove(registration);
+        }
+    }
+
+    /// <summary>
+    ///     注销一个 reducer 注册条目。
+    ///     若该 action 类型下已无其他 reducer，则同时清理空注册桶，保持注册表紧凑。
+    /// </summary>
+    /// <param name="actionType">reducer 对应的 action 类型。</param>
+    /// <param name="registration">要移除的 reducer 注册条目。</param>
+    private void UnRegisterReducer(Type actionType, ReducerRegistration registration)
+    {
+        lock (_lock)
+        {
+            if (!_reducers.TryGetValue(actionType, out var reducers))
+            {
+                return;
+            }
+
+            reducers.Remove(registration);
+            if (reducers.Count == 0)
+            {
+                _reducers.Remove(actionType);
+            }
         }
     }
 
@@ -633,6 +748,18 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
     }
 
     /// <summary>
+    ///     表示一条 reducer 注册记录。
+    ///     该包装对象为运行时注销提供稳定身份，同时不改变 reducer 的执行顺序语义。
+    /// </summary>
+    private sealed class ReducerRegistration(IStoreReducerAdapter adapter)
+    {
+        /// <summary>
+        ///     获取真正执行归约的内部适配器。
+        /// </summary>
+        public IStoreReducerAdapter Adapter { get; } = adapter;
+    }
+
+    /// <summary>
     ///     基于委托的 reducer 适配器实现，便于快速在测试和应用代码中声明 reducer。
     /// </summary>
     /// <typeparam name="TAction">当前适配器负责处理的 action 类型。</typeparam>
@@ -654,6 +781,18 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
         {
             return _reducer(currentState, action);
         }
+    }
+
+    /// <summary>
+    ///     表示一条中间件注册记录。
+    ///     通过显式注册对象而不是直接存储中间件实例，可在重复注册同一实例时保持精确注销。
+    /// </summary>
+    private sealed class MiddlewareRegistration(IStoreMiddleware<TState> middleware)
+    {
+        /// <summary>
+        ///     获取注册的中间件实例。
+        /// </summary>
+        public IStoreMiddleware<TState> Middleware { get; } = middleware;
     }
 
     /// <summary>
