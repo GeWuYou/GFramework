@@ -6,6 +6,7 @@
         <ImplicitUsings>disable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <EnableGFrameworkPackageTransitiveGlobalUsings>true</EnableGFrameworkPackageTransitiveGlobalUsings>
     </PropertyGroup>
     <ItemGroup>
         <ProjectReference Include="..\$(AssemblyName).Abstractions\$(AssemblyName).Abstractions.csproj"/>

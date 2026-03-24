@@ -4,10 +4,10 @@
         <PackageId>GeWuYou.$(AssemblyName)</PackageId>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <Nullable>enable</Nullable>
+        <EnableGFrameworkPackageTransitiveGlobalUsings>true</EnableGFrameworkPackageTransitiveGlobalUsings>
     </PropertyGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\GFramework.Core.Abstractions\GFramework.Core.Abstractions.csproj" PrivateAssets="all"/>
     </ItemGroup>
-
 </Project>
