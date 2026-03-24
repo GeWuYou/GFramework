@@ -72,6 +72,32 @@ dotnet add package GeWuYou.GFramework.Godot
 dotnet add package GeWuYou.GFramework.SourceGenerators
 ```
 
+## 可选模块导入
+
+发布后的运行时包支持可选的模块级自动导入，但默认关闭，避免在普通项目里无意污染命名空间。
+
+在 NuGet 消费项目中显式开启：
+
+```xml
+<PropertyGroup>
+  <EnableGFrameworkGlobalUsings>true</EnableGFrameworkGlobalUsings>
+</PropertyGroup>
+```
+
+启用后，项目已引用的 GFramework 运行时模块会通过 `buildTransitive` 自动注入其推荐命名空间。
+
+如果某几个命名空间不想导入，可以局部排除：
+
+```xml
+<ItemGroup>
+  <GFrameworkExcludedUsing Include="GFramework.Core.Environment" />
+  <GFrameworkExcludedUsing Include="GFramework.Godot.Extensions" />
+</ItemGroup>
+```
+
+> 该能力面向 NuGet 包消费场景。若你在本地解决方案中直接使用 `ProjectReference`，仍建议保留自己的 `GlobalUsings.cs` 或手写
+`using`。
+
 ## 仓库结构
 
 ```text

@@ -1,0 +1,161 @@
+{
+  "modules": [
+    {
+      "project": "GFramework.Core.Abstractions/GFramework.Core.Abstractions.csproj",
+      "namespaces": [
+        "GFramework.Core.Abstractions.Architectures",
+        "GFramework.Core.Abstractions.Bases",
+        "GFramework.Core.Abstractions.Command",
+        "GFramework.Core.Abstractions.Concurrency",
+        "GFramework.Core.Abstractions.Configuration",
+        "GFramework.Core.Abstractions.Controller",
+        "GFramework.Core.Abstractions.Coroutine",
+        "GFramework.Core.Abstractions.Cqrs",
+        "GFramework.Core.Abstractions.Cqrs.Command",
+        "GFramework.Core.Abstractions.Cqrs.Notification",
+        "GFramework.Core.Abstractions.Cqrs.Query",
+        "GFramework.Core.Abstractions.Cqrs.Request",
+        "GFramework.Core.Abstractions.Data",
+        "GFramework.Core.Abstractions.Enums",
+        "GFramework.Core.Abstractions.Environment",
+        "GFramework.Core.Abstractions.Events",
+        "GFramework.Core.Abstractions.Ioc",
+        "GFramework.Core.Abstractions.Lifecycle",
+        "GFramework.Core.Abstractions.Localization",
+        "GFramework.Core.Abstractions.Logging",
+        "GFramework.Core.Abstractions.Model",
+        "GFramework.Core.Abstractions.Pause",
+        "GFramework.Core.Abstractions.Pool",
+        "GFramework.Core.Abstractions.Properties",
+        "GFramework.Core.Abstractions.Property",
+        "GFramework.Core.Abstractions.Query",
+        "GFramework.Core.Abstractions.Registries",
+        "GFramework.Core.Abstractions.Resource",
+        "GFramework.Core.Abstractions.Rule",
+        "GFramework.Core.Abstractions.Serializer",
+        "GFramework.Core.Abstractions.State",
+        "GFramework.Core.Abstractions.StateManagement",
+        "GFramework.Core.Abstractions.Storage",
+        "GFramework.Core.Abstractions.Systems",
+        "GFramework.Core.Abstractions.Time",
+        "GFramework.Core.Abstractions.Utility",
+        "GFramework.Core.Abstractions.Utility.Numeric",
+        "GFramework.Core.Abstractions.Versioning"
+      ]
+    },
+    {
+      "project": "GFramework.Core/GFramework.Core.csproj",
+      "namespaces": [
+        "GFramework.Core.Architectures",
+        "GFramework.Core.Command",
+        "GFramework.Core.Concurrency",
+        "GFramework.Core.Configuration",
+        "GFramework.Core.Constants",
+        "GFramework.Core.Coroutine",
+        "GFramework.Core.Coroutine.Extensions",
+        "GFramework.Core.Coroutine.Instructions",
+        "GFramework.Core.Cqrs.Behaviors",
+        "GFramework.Core.Cqrs.Command",
+        "GFramework.Core.Cqrs.Notification",
+        "GFramework.Core.Cqrs.Query",
+        "GFramework.Core.Cqrs.Request",
+        "GFramework.Core.Environment",
+        "GFramework.Core.Events",
+        "GFramework.Core.Events.Filters",
+        "GFramework.Core.Extensions",
+        "GFramework.Core.Functional",
+        "GFramework.Core.Functional.Async",
+        "GFramework.Core.Functional.Control",
+        "GFramework.Core.Functional.Functions",
+        "GFramework.Core.Functional.Pipe",
+        "GFramework.Core.Ioc",
+        "GFramework.Core.Localization",
+        "GFramework.Core.Localization.Formatters",
+        "GFramework.Core.Logging",
+        "GFramework.Core.Logging.Appenders",
+        "GFramework.Core.Logging.Filters",
+        "GFramework.Core.Logging.Formatters",
+        "GFramework.Core.Model",
+        "GFramework.Core.Pause",
+        "GFramework.Core.Pool",
+        "GFramework.Core.Property",
+        "GFramework.Core.Query",
+        "GFramework.Core.Resource",
+        "GFramework.Core.Rule",
+        "GFramework.Core.Services",
+        "GFramework.Core.Services.Modules",
+        "GFramework.Core.State",
+        "GFramework.Core.StateManagement",
+        "GFramework.Core.Systems",
+        "GFramework.Core.Time",
+        "GFramework.Core.Utility",
+        "GFramework.Core.Utility.Numeric"
+      ]
+    },
+    {
+      "project": "GFramework.Game.Abstractions/GFramework.Game.Abstractions.csproj",
+      "namespaces": [
+        "GFramework.Game.Abstractions.Asset",
+        "GFramework.Game.Abstractions.Data",
+        "GFramework.Game.Abstractions.Data.Events",
+        "GFramework.Game.Abstractions.Enums",
+        "GFramework.Game.Abstractions.Routing",
+        "GFramework.Game.Abstractions.Scene",
+        "GFramework.Game.Abstractions.Setting",
+        "GFramework.Game.Abstractions.Setting.Data",
+        "GFramework.Game.Abstractions.Storage",
+        "GFramework.Game.Abstractions.UI"
+      ]
+    },
+    {
+      "project": "GFramework.Game/GFramework.Game.csproj",
+      "namespaces": [
+        "GFramework.Game.Data",
+        "GFramework.Game.Extensions",
+        "GFramework.Game.Routing",
+        "GFramework.Game.Scene",
+        "GFramework.Game.Scene.Handler",
+        "GFramework.Game.Serializer",
+        "GFramework.Game.Setting",
+        "GFramework.Game.Setting.Events",
+        "GFramework.Game.State",
+        "GFramework.Game.Storage",
+        "GFramework.Game.UI",
+        "GFramework.Game.UI.Handler"
+      ]
+    },
+    {
+      "project": "GFramework.Ecs.Arch.Abstractions/GFramework.Ecs.Arch.Abstractions.csproj",
+      "namespaces": [
+        "GFramework.Ecs.Arch.Abstractions"
+      ]
+    },
+    {
+      "project": "GFramework.Ecs.Arch/GFramework.Ecs.Arch.csproj",
+      "namespaces": [
+        "GFramework.Ecs.Arch",
+        "GFramework.Ecs.Arch.Components",
+        "GFramework.Ecs.Arch.Extensions",
+        "GFramework.Ecs.Arch.Systems"
+      ]
+    },
+    {
+      "project": "GFramework.Godot/GFramework.Godot.csproj",
+      "namespaces": [
+        "GFramework.Godot.Architectures",
+        "GFramework.Godot.Coroutine",
+        "GFramework.Godot.Data",
+        "GFramework.Godot.Extensions",
+        "GFramework.Godot.Extensions.Signal",
+        "GFramework.Godot.Logging",
+        "GFramework.Godot.Pause",
+        "GFramework.Godot.Pool",
+        "GFramework.Godot.Scene",
+        "GFramework.Godot.Setting",
+        "GFramework.Godot.Setting.Data",
+        "GFramework.Godot.Storage",
+        "GFramework.Godot.UI"
+      ]
+    }
+  ]
+}

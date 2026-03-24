@@ -88,18 +88,27 @@ dotnet add package GeWuYou.GFramework.SourceGenerators
 
 ### 1. 基础配置
 
-创建 `GlobalUsings.cs` 文件：
+如果你通过 NuGet 包使用 GFramework，并且希望自动导入已安装模块的推荐命名空间，可以在项目文件中显式开启：
 
-```csharp
-global using GFramework.Core;
-global using GFramework.Core.Architecture;
-global using GFramework.Core.Command;
-global using GFramework.Core.Events;
-global using GFramework.Core.Model;
-global using GFramework.Core.Property;
-global using GFramework.Core.System;
-global using GFramework.Core.Utility;
+```xml
+<PropertyGroup>
+  <EnableGFrameworkGlobalUsings>true</EnableGFrameworkGlobalUsings>
+</PropertyGroup>
 ```
+
+启用后，当前项目已引用的 GFramework 运行时模块会通过 `buildTransitive` 自动注入对应命名空间。
+
+如果你想排除局部导入，可以继续在项目文件中添加排除项：
+
+```xml
+
+<ItemGroup>
+    <GFrameworkExcludedUsing Include="GFramework.Core.Environment"/>
+    <GFrameworkExcludedUsing Include="GFramework.Godot.Extensions"/>
+</ItemGroup>
+```
+
+如果你使用的是本地 `ProjectReference`，或者希望完全手动控制导入范围，仍然可以继续维护自己的 `GlobalUsings.cs` 文件。
 
 ### 2. Godot 项目配置
 
