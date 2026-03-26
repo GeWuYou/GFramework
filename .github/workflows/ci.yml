@@ -177,7 +177,7 @@ jobs:
       
       # 生成并发布测试报告，无论测试成功或失败都会执行
       - name: Test Report
-        uses: dorny/test-reporter@v2
+        uses: dorny/test-reporter@v3
         if: always()
         with:
           name: .NET Test Results
