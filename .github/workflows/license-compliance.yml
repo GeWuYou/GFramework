@@ -22,7 +22,7 @@ jobs:
       # - fail-on-incompatible: 发现不兼容许可证时失败  
       # - update-badge: 自动更新许可证徽章
       - name: Feluda License Scanner
-        uses: anistark/feluda@v1.11.1
+        uses: anistark/feluda@v1.12.0
         with:
           project-license: 'Apache-2.0'
           fail-on-restrictive: false
