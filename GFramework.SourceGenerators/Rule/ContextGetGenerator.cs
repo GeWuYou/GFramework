@@ -1,13 +1,7 @@
-using System.Collections.Immutable;
-using System.Text;
 using GFramework.SourceGenerators.Common.Constants;
 using GFramework.SourceGenerators.Common.Diagnostics;
-using GFramework.SourceGenerators.Common.Extensions;
 using GFramework.SourceGenerators.Common.Info;
 using GFramework.SourceGenerators.Diagnostics;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace GFramework.SourceGenerators.Rule;
 
@@ -711,11 +705,12 @@ public sealed class ContextGetGenerator : IIncrementalGenerator
         if (readOnlyList is null || fieldType is not INamedTypeSymbol targetType)
             return false;
 
-        var allTypeCandidates = EnumerateCollectionTypeCandidates(targetType)
-            .SelectMany(candidateType => candidateType.TypeArguments);
-
-        foreach (var candidateElementType in allTypeCandidates)
+        foreach (var candidateType in EnumerateCollectionTypeCandidates(targetType))
         {
+            if (candidateType.TypeArguments.Length != 1)
+                continue;
+
+            var candidateElementType = candidateType.TypeArguments[0];
             var expectedSourceType = readOnlyList.Construct(candidateElementType);
             if (!expectedSourceType.IsAssignableTo(targetType))
                 continue;
@@ -723,7 +718,6 @@ public sealed class ContextGetGenerator : IIncrementalGenerator
             elementType = candidateElementType;
             return true;
         }
-
 
         return false;
     }
