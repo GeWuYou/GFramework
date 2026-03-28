@@ -43,4 +43,7 @@ public partial class InventoryPanel
 }
 ```
 
-`[GetAll]` 作用于类本身，会自动扫描字段并推断对应的 `GetX` 调用；已显式标记字段的优先级更高。
+`[GetAll]` 作用于类本身，会自动扫描字段并推断 `Model`、`System`、`Utility` 相关的 `GetX` 调用；已显式标记字段的优先级更高。
+
+`Service` 和 `Services` 绑定不会在 `[GetAll]` 下自动推断。对于普通引用类型字段，请显式使用 `[GetService]` 或
+`[GetServices]`，避免将非上下文服务字段误判为服务依赖。

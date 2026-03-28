@@ -5,9 +5,6 @@ using GFramework.SourceGenerators.Common.Diagnostics;
 using GFramework.SourceGenerators.Common.Extensions;
 using GFramework.SourceGenerators.Common.Info;
 using GFramework.SourceGenerators.Diagnostics;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace GFramework.SourceGenerators.Rule;
 
@@ -582,12 +579,7 @@ public sealed class ContextGetGenerator : IIncrementalGenerator
                 return true;
             }
 
-            if (elementType.IsReferenceType)
-            {
-                binding = new BindingInfo(fieldSymbol, BindingKind.Services, elementType);
-                return true;
-            }
-
+            // Service collections stay opt-in for the same reason as single services.
             return false;
         }
 
@@ -609,12 +601,7 @@ public sealed class ContextGetGenerator : IIncrementalGenerator
             return true;
         }
 
-        if (fieldSymbol.Type.IsReferenceType)
-        {
-            binding = new BindingInfo(fieldSymbol, BindingKind.Service, fieldSymbol.Type);
-            return true;
-        }
-
+        // Service bindings stay opt-in because arbitrary reference types are too ambiguous to infer safely.
         return false;
     }
 

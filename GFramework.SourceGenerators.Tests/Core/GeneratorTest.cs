@@ -1,7 +1,4 @@
-﻿using Microsoft.CodeAnalysis.CSharp.Testing;
-using Microsoft.CodeAnalysis.Testing;
-
-namespace GFramework.SourceGenerators.Tests.Core;
+﻿namespace GFramework.SourceGenerators.Tests.Core;
 
 /// <summary>
 ///     提供源代码生成器测试的通用功能
@@ -32,8 +29,21 @@ public static class GeneratorTest<TGenerator>
         // 添加期望的生成源文件到测试状态中
         foreach (var (filename, content) in generatedSources)
             test.TestState.GeneratedSources.Add(
-                (typeof(TGenerator), filename, content));
+                (typeof(TGenerator), filename, NormalizeLineEndings(content)));
 
         await test.RunAsync();
+    }
+
+    /// <summary>
+    ///     将测试快照统一为当前平台换行符，避免不同系统上的源生成输出比较出现伪差异。
+    /// </summary>
+    /// <param name="content">原始快照内容。</param>
+    /// <returns>使用当前平台换行符的快照内容。</returns>
+    private static string NormalizeLineEndings(string content)
+    {
+        return content
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace("\r", "\n", StringComparison.Ordinal)
+            .Replace("\n", Environment.NewLine, StringComparison.Ordinal);
     }
 }
