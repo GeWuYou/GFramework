@@ -711,11 +711,11 @@ public sealed class ContextGetGenerator : IIncrementalGenerator
         if (readOnlyList is null || fieldType is not INamedTypeSymbol targetType)
             return false;
 
-        foreach (var candidateType in EnumerateCollectionTypeCandidates(targetType))
-        {
-            if (candidateType is not { TypeArguments: [var candidateElementType] })
-                continue;
+        var allTypeCandidates = EnumerateCollectionTypeCandidates(targetType)
+            .SelectMany(candidateType => candidateType.TypeArguments);
 
+        foreach (var candidateElementType in allTypeCandidates)
+        {
             var expectedSourceType = readOnlyList.Construct(candidateElementType);
             if (!expectedSourceType.IsAssignableTo(targetType))
                 continue;
@@ -724,9 +724,9 @@ public sealed class ContextGetGenerator : IIncrementalGenerator
             return true;
         }
 
+
         return false;
     }
-
 
     private static IEnumerable<INamedTypeSymbol> EnumerateCollectionTypeCandidates(INamedTypeSymbol typeSymbol)
     {
