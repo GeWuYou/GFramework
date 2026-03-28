@@ -1,5 +1,7 @@
 ﻿using GFramework.SourceGenerators.Common.Info;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace GFramework.SourceGenerators.Common.Extensions;
 
@@ -69,38 +71,50 @@ public static class INamedTypeSymbolExtensions
             : $"where {tp.Name} : {string.Join(", ", parts)}";
     }
 
+    /// <summary>
+    ///     判断类型的所有声明是否均带有 partial 关键字。
+    /// </summary>
     /// <param name="symbol">要获取完整类名的命名类型符号</param>
-    extension(INamedTypeSymbol symbol)
+    /// <returns>如果所有声明均为 partial，则返回 <c>true</c>。</returns>
+    public static bool AreAllDeclarationsPartial(this INamedTypeSymbol symbol)
     {
-        /// <summary>
-        ///     获取命名类型符号的完整类名（包括嵌套类型名称）
-        /// </summary>
-        /// <returns>完整的类名，格式为"外层类名.内层类名.当前类名"</returns>
-        public string GetFullClassName()
+        return symbol.DeclaringSyntaxReferences
+            .Select(static reference => reference.GetSyntax())
+            .OfType<ClassDeclarationSyntax>()
+            .All(static declaration =>
+                declaration.Modifiers.Any(static modifier => modifier.IsKind(SyntaxKind.PartialKeyword)));
+    }
+
+    /// <summary>
+    ///     获取命名类型符号的完整类名（包括嵌套类型名称）
+    /// </summary>
+    /// <param name="symbol">要获取完整类名的命名类型符号</param>
+    /// <returns>完整的类名，格式为"外层类名.内层类名.当前类名"</returns>
+    public static string GetFullClassName(this INamedTypeSymbol symbol)
+    {
+        var names = new Stack<string>();
+        var current = symbol;
+
+        // 遍历包含类型链，将所有类型名称压入栈中
+        while (current != null)
         {
-            var names = new Stack<string>();
-            var current = symbol;
-
-            // 遍历包含类型链，将所有类型名称压入栈中
-            while (current != null)
-            {
-                names.Push(current.Name);
-                current = current.ContainingType;
-            }
-
-            // 将栈中的名称用点号连接，形成完整的类名
-            return string.Join(".", names);
+            names.Push(current.Name);
+            current = current.ContainingType;
         }
 
-        /// <summary>
-        ///     获取命名类型符号的命名空间名称
-        /// </summary>
-        /// <returns>命名空间名称，如果是全局命名空间则返回null</returns>
-        public string? GetNamespace()
-        {
-            return symbol.ContainingNamespace.IsGlobalNamespace
-                ? null
-                : symbol.ContainingNamespace.ToDisplayString();
-        }
+        // 将栈中的名称用点号连接，形成完整的类名
+        return string.Join(".", names);
+    }
+
+    /// <summary>
+    ///     获取命名类型符号的命名空间名称
+    /// </summary>
+    /// <param name="symbol">要获取完整类名的命名类型符号</param>
+    /// <returns>命名空间名称，如果是全局命名空间则返回null</returns>
+    public static string? GetNamespace(this INamedTypeSymbol symbol)
+    {
+        return symbol.ContainingNamespace.IsGlobalNamespace
+            ? null
+            : symbol.ContainingNamespace.ToDisplayString();
     }
 }

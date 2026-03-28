@@ -7,6 +7,12 @@
 -----------------------|----------------------------------|----------|------------------------
  GF_Logging_001        | GFramework.Godot.logging         | Warning  | LoggerDiagnostics      
  GF_Rule_001           | GFramework.SourceGenerators.rule | Error    | ContextAwareDiagnostic 
+ GF_ContextGet_001     | GFramework.SourceGenerators.rule | Error    | ContextGetDiagnostics  
+ GF_ContextGet_002     | GFramework.SourceGenerators.rule | Error    | ContextGetDiagnostics  
+ GF_ContextGet_003     | GFramework.SourceGenerators.rule | Error    | ContextGetDiagnostics  
+ GF_ContextGet_004     | GFramework.SourceGenerators.rule | Error    | ContextGetDiagnostics  
+ GF_ContextGet_005     | GFramework.SourceGenerators.rule | Error    | ContextGetDiagnostics  
+ GF_ContextGet_006     | GFramework.SourceGenerators.rule | Error    | ContextGetDiagnostics  
  GF_Priority_001       | GFramework.Priority              | Error    | PriorityDiagnostic     
  GF_Priority_002       | GFramework.Priority              | Warning  | PriorityDiagnostic     
  GF_Priority_003       | GFramework.Priority              | Error    | PriorityDiagnostic     

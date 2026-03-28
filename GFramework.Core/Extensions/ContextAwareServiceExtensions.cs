@@ -20,7 +20,7 @@ public static class ContextAwareServiceExtensions
     /// <param name="contextAware">实现 IContextAware 接口的上下文感知对象</param>
     /// <returns>指定类型的服务实例,如果未找到则返回 null</returns>
     /// <exception cref="ArgumentNullException">当 contextAware 参数为 null 时抛出</exception>
-    public static TService? GetService<TService>(this IContextAware contextAware) where TService : class
+    public static TService GetService<TService>(this IContextAware contextAware) where TService : class
     {
         ArgumentNullException.ThrowIfNull(contextAware);
         var context = contextAware.GetContext();
@@ -34,7 +34,7 @@ public static class ContextAwareServiceExtensions
     /// <param name="contextAware">实现 IContextAware 接口的对象</param>
     /// <returns>指定类型的系统实例</returns>
     /// <exception cref="ArgumentNullException">当 contextAware 为 null 时抛出</exception>
-    public static TSystem? GetSystem<TSystem>(this IContextAware contextAware) where TSystem : class, ISystem
+    public static TSystem GetSystem<TSystem>(this IContextAware contextAware) where TSystem : class, ISystem
     {
         ArgumentNullException.ThrowIfNull(contextAware);
         var context = contextAware.GetContext();
@@ -48,7 +48,7 @@ public static class ContextAwareServiceExtensions
     /// <param name="contextAware">实现 IContextAware 接口的对象</param>
     /// <returns>指定类型的模型实例</returns>
     /// <exception cref="ArgumentNullException">当 contextAware 为 null 时抛出</exception>
-    public static TModel? GetModel<TModel>(this IContextAware contextAware) where TModel : class, IModel
+    public static TModel GetModel<TModel>(this IContextAware contextAware) where TModel : class, IModel
     {
         ArgumentNullException.ThrowIfNull(contextAware);
         var context = contextAware.GetContext();
@@ -62,7 +62,7 @@ public static class ContextAwareServiceExtensions
     /// <param name="contextAware">实现 IContextAware 接口的对象</param>
     /// <returns>指定类型的工具实例</returns>
     /// <exception cref="ArgumentNullException">当 contextAware 为 null 时抛出</exception>
-    public static TUtility? GetUtility<TUtility>(this IContextAware contextAware) where TUtility : class, IUtility
+    public static TUtility GetUtility<TUtility>(this IContextAware contextAware) where TUtility : class, IUtility
     {
         ArgumentNullException.ThrowIfNull(contextAware);
         var context = contextAware.GetContext();
