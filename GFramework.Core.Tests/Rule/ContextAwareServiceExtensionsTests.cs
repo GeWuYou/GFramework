@@ -5,9 +5,9 @@ using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Abstractions.Utility;
 using GFramework.Core.Architectures;
-using GFramework.Core.Extensions;
 using GFramework.Core.Ioc;
 using GFramework.Core.Rule;
+using GFramework.Core.Tests.Architectures;
 
 namespace GFramework.Core.Tests.Rule;
 
@@ -18,6 +18,11 @@ namespace GFramework.Core.Tests.Rule;
 [TestFixture]
 public class ContextAwareServiceExtensionsTests
 {
+    private MicrosoftDiContainer _container = null!;
+    private ArchitectureContext _context = null!;
+
+    private TestContextAware _contextAware = null!;
+
     [SetUp]
     public void SetUp()
     {
@@ -34,10 +39,6 @@ public class ContextAwareServiceExtensionsTests
         _container.Clear();
     }
 
-    private TestContextAware _contextAware = null!;
-    private ArchitectureContext _context = null!;
-    private MicrosoftDiContainer _container = null!;
-
     [Test]
     public void GetService_Should_Return_Registered_Service()
     {
@@ -51,6 +52,18 @@ public class ContextAwareServiceExtensionsTests
 
         // Assert
         Assert.That(result, Is.SameAs(service));
+    }
+
+    [Test]
+    public void GetService_Should_Throw_When_Context_Returns_Null_Service()
+    {
+        // Arrange
+        var contextAware = new TestContextAware();
+        ((IContextAware)contextAware).SetContext(new TestArchitectureContextV3());
+
+        // Act / Assert
+        Assert.That(() => contextAware.GetService<TestService>(),
+            Throws.InvalidOperationException.With.Message.Contains("Service"));
     }
 
     [Test]
@@ -69,6 +82,18 @@ public class ContextAwareServiceExtensionsTests
     }
 
     [Test]
+    public void GetSystem_Should_Throw_When_Context_Returns_Null_System()
+    {
+        // Arrange
+        var contextAware = new TestContextAware();
+        ((IContextAware)contextAware).SetContext(new TestArchitectureContextV3());
+
+        // Act / Assert
+        Assert.That(() => contextAware.GetSystem<TestSystem>(),
+            Throws.InvalidOperationException.With.Message.Contains("System"));
+    }
+
+    [Test]
     public void GetModel_Should_Return_Registered_Model()
     {
         // Arrange
@@ -84,6 +109,18 @@ public class ContextAwareServiceExtensionsTests
     }
 
     [Test]
+    public void GetModel_Should_Throw_When_Context_Returns_Null_Model()
+    {
+        // Arrange
+        var contextAware = new TestContextAware();
+        ((IContextAware)contextAware).SetContext(new TestArchitectureContextV3());
+
+        // Act / Assert
+        Assert.That(() => contextAware.GetModel<TestModel>(),
+            Throws.InvalidOperationException.With.Message.Contains("Model"));
+    }
+
+    [Test]
     public void GetUtility_Should_Return_Registered_Utility()
     {
         // Arrange
@@ -96,6 +133,18 @@ public class ContextAwareServiceExtensionsTests
 
         // Assert
         Assert.That(result, Is.SameAs(utility));
+    }
+
+    [Test]
+    public void GetUtility_Should_Throw_When_Context_Returns_Null_Utility()
+    {
+        // Arrange
+        var contextAware = new TestContextAware();
+        ((IContextAware)contextAware).SetContext(new TestArchitectureContextV3());
+
+        // Act / Assert
+        Assert.That(() => contextAware.GetUtility<TestUtility>(),
+            Throws.InvalidOperationException.With.Message.Contains("Utility"));
     }
 
     [Test]

@@ -1,3 +1,4 @@
+using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Model;
 using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Abstractions.Systems;
@@ -25,7 +26,8 @@ public static class ContextAwareServiceExtensions
     {
         ArgumentNullException.ThrowIfNull(contextAware);
         var context = contextAware.GetContext();
-        return context.GetService<TService>();
+        return GetRequiredComponent(context, static architectureContext => architectureContext.GetService<TService>(),
+            "Service");
     }
 
     /// <summary>
@@ -39,7 +41,8 @@ public static class ContextAwareServiceExtensions
     {
         ArgumentNullException.ThrowIfNull(contextAware);
         var context = contextAware.GetContext();
-        return context.GetSystem<TSystem>();
+        return GetRequiredComponent(context, static architectureContext => architectureContext.GetSystem<TSystem>(),
+            "System");
     }
 
     /// <summary>
@@ -53,7 +56,8 @@ public static class ContextAwareServiceExtensions
     {
         ArgumentNullException.ThrowIfNull(contextAware);
         var context = contextAware.GetContext();
-        return context.GetModel<TModel>();
+        return GetRequiredComponent(context, static architectureContext => architectureContext.GetModel<TModel>(),
+            "Model");
     }
 
     /// <summary>
@@ -67,7 +71,8 @@ public static class ContextAwareServiceExtensions
     {
         ArgumentNullException.ThrowIfNull(contextAware);
         var context = contextAware.GetContext();
-        return context.GetUtility<TUtility>();
+        return GetRequiredComponent(context, static architectureContext => architectureContext.GetUtility<TUtility>(),
+            "Utility");
     }
 
     #endregion
@@ -192,6 +197,16 @@ public static class ContextAwareServiceExtensions
         ArgumentNullException.ThrowIfNull(contextAware);
         var context = contextAware.GetContext();
         return context.GetUtilitiesByPriority<TUtility>();
+    }
+
+    private static TComponent GetRequiredComponent<TComponent>(IArchitectureContext context,
+        Func<IArchitectureContext, TComponent> resolver, string componentKind)
+        where TComponent : class
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        var component = resolver(context);
+        return component ?? throw new InvalidOperationException($"{componentKind} {typeof(TComponent)} not registered");
     }
 
     #endregion
