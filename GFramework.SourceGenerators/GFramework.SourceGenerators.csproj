@@ -32,6 +32,11 @@
         <ProjectReference Include="..\$(AssemblyName).Common\$(AssemblyName).Common.csproj" PrivateAssets="all"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <Compile Include="..\GFramework.SourceGenerators.Common\Internals\IsExternalInit.cs"
+                 Link="Internals\IsExternalInit.cs"/>
+    </ItemGroup>
+
     <!-- ★关键：只把 Generator DLL 放进 analyzers -->
     <ItemGroup>
         <!-- Generator 本体 -->

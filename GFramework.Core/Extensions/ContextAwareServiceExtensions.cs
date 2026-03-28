@@ -1,3 +1,4 @@
+using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Model;
 using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Abstractions.Systems;
@@ -18,13 +19,15 @@ public static class ContextAwareServiceExtensions
     /// </summary>
     /// <typeparam name="TService">要获取的服务类型</typeparam>
     /// <param name="contextAware">实现 IContextAware 接口的上下文感知对象</param>
-    /// <returns>指定类型的服务实例,如果未找到则返回 null</returns>
+    /// <returns>指定类型的服务实例，如果未找到则抛出异常</returns>
     /// <exception cref="ArgumentNullException">当 contextAware 参数为 null 时抛出</exception>
-    public static TService? GetService<TService>(this IContextAware contextAware) where TService : class
+    /// <exception cref="InvalidOperationException">当指定服务未注册时抛出</exception>
+    public static TService GetService<TService>(this IContextAware contextAware) where TService : class
     {
         ArgumentNullException.ThrowIfNull(contextAware);
         var context = contextAware.GetContext();
-        return context.GetService<TService>();
+        return GetRequiredComponent(context, static architectureContext => architectureContext.GetService<TService>(),
+            "Service");
     }
 
     /// <summary>
@@ -34,11 +37,13 @@ public static class ContextAwareServiceExtensions
     /// <param name="contextAware">实现 IContextAware 接口的对象</param>
     /// <returns>指定类型的系统实例</returns>
     /// <exception cref="ArgumentNullException">当 contextAware 为 null 时抛出</exception>
-    public static TSystem? GetSystem<TSystem>(this IContextAware contextAware) where TSystem : class, ISystem
+    /// <exception cref="InvalidOperationException">当指定系统未注册时抛出</exception>
+    public static TSystem GetSystem<TSystem>(this IContextAware contextAware) where TSystem : class, ISystem
     {
         ArgumentNullException.ThrowIfNull(contextAware);
         var context = contextAware.GetContext();
-        return context.GetSystem<TSystem>();
+        return GetRequiredComponent(context, static architectureContext => architectureContext.GetSystem<TSystem>(),
+            "System");
     }
 
     /// <summary>
@@ -48,11 +53,13 @@ public static class ContextAwareServiceExtensions
     /// <param name="contextAware">实现 IContextAware 接口的对象</param>
     /// <returns>指定类型的模型实例</returns>
     /// <exception cref="ArgumentNullException">当 contextAware 为 null 时抛出</exception>
-    public static TModel? GetModel<TModel>(this IContextAware contextAware) where TModel : class, IModel
+    /// <exception cref="InvalidOperationException">当指定模型未注册时抛出</exception>
+    public static TModel GetModel<TModel>(this IContextAware contextAware) where TModel : class, IModel
     {
         ArgumentNullException.ThrowIfNull(contextAware);
         var context = contextAware.GetContext();
-        return context.GetModel<TModel>();
+        return GetRequiredComponent(context, static architectureContext => architectureContext.GetModel<TModel>(),
+            "Model");
     }
 
     /// <summary>
@@ -62,11 +69,13 @@ public static class ContextAwareServiceExtensions
     /// <param name="contextAware">实现 IContextAware 接口的对象</param>
     /// <returns>指定类型的工具实例</returns>
     /// <exception cref="ArgumentNullException">当 contextAware 为 null 时抛出</exception>
-    public static TUtility? GetUtility<TUtility>(this IContextAware contextAware) where TUtility : class, IUtility
+    /// <exception cref="InvalidOperationException">当指定工具未注册时抛出</exception>
+    public static TUtility GetUtility<TUtility>(this IContextAware contextAware) where TUtility : class, IUtility
     {
         ArgumentNullException.ThrowIfNull(contextAware);
         var context = contextAware.GetContext();
-        return context.GetUtility<TUtility>();
+        return GetRequiredComponent(context, static architectureContext => architectureContext.GetUtility<TUtility>(),
+            "Utility");
     }
 
     #endregion
@@ -191,6 +200,16 @@ public static class ContextAwareServiceExtensions
         ArgumentNullException.ThrowIfNull(contextAware);
         var context = contextAware.GetContext();
         return context.GetUtilitiesByPriority<TUtility>();
+    }
+
+    private static TComponent GetRequiredComponent<TComponent>(IArchitectureContext context,
+        Func<IArchitectureContext, TComponent> resolver, string componentKind)
+        where TComponent : class
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        var component = resolver(context);
+        return component ?? throw new InvalidOperationException($"{componentKind} {typeof(TComponent)} not registered");
     }
 
     #endregion
