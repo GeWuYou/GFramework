@@ -86,6 +86,42 @@ public enum GameState
 }
 ```
 
+### 配置选项说明
+
+#### 实际支持的选项
+
+当前版本只支持以下配置选项：
+
+| 参数                 | 类型   | 默认值  | 说明                |
+|--------------------|------|------|-------------------|
+| GenerateIsMethods  | bool | true | 是否为每个枚举值生成 IsX 方法 |
+| GenerateIsInMethod | bool | true | 是否生成 IsIn 方法      |
+
+#### 未实现的选项
+
+以下选项在属性定义中存在，但生成器当前版本**未实现**：
+
+- `GenerateHasMethod`：未实现 HasX 方法生成
+- `IncludeToString`：未实现 ToString 扩展方法
+
+```csharp
+// ❌ 以下选项不会生效
+[GenerateEnumExtensions(
+    GenerateIsMethods = true,
+    GenerateIsInMethod = true,
+    GenerateHasMethod = true,      // 未实现，参数会被忽略
+    IncludeToString = true          // 未实现,参数会被忽略
+)]
+public enum GameState
+{
+    Normal,
+    Paused,
+    GameOver
+}
+```
+
+**注意**：这些选项计划在后续版本中实现，届时会更新文档说明。
+
 ### 只生成 IsX 方法
 
 ```csharp
