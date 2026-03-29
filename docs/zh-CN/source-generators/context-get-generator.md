@@ -67,7 +67,9 @@ public partial class PlayerController
 
     public void Initialize()
     {
-        // 字段已自动注入，可直接使用
+        // 在首次使用注入字段前，先完成绑定
+        __InjectContextBindings_Generated();
+
         _combatSystem.Attack(_playerModel);
     }
 }
@@ -91,6 +93,8 @@ public partial class StrategyManager
 
     public void ProcessAll()
     {
+        __InjectContextBindings_Generated();
+
         foreach (var system in _gameSystems)
         {
             system.Initialize();
@@ -154,9 +158,20 @@ partial class PlayerController
 }
 ```
 
-### 调用时机
+### 推荐调用时机与模式
 
-注入方法需要在适当的时机手动调用：
+生成器只负责生成 `__InjectContextBindings_Generated()` 方法，不会自动织入构造函数或生命周期回调。推荐统一遵循下面两条规则：
+
+- 在上下文已经可用之后调用，例如 `Initialize()`、`OnEnter()`、Godot 的 `_Ready()` 或测试初始化阶段。
+- 在首次读取任一注入字段之前调用。不要在构造函数体中假设这些字段已经可用。
+
+推荐把调用集中放在单一的生命周期入口，而不是分散到构造函数、`_Ready()`、`Initialize()`
+等多个位置。这样更容易保证字段只在“上下文已准备好且尚未被读取”时完成注入。
+由于该方法是生成的私有成员，类外代码（包括测试）应复用类内部公开的生命周期入口，而不是直接调用生成方法。
+
+#### 普通类型推荐模式
+
+对普通控制器、服务协调器或策略管理器，优先在显式初始化方法开头调用：
 
 ```csharp
 [ContextAware]
@@ -166,16 +181,53 @@ public partial class GameController
     private IPlayerModel _player = null!;
     private ICombatSystem _combat = null!;
 
-    public GameController()
-    {
-        // 在构造函数后调用注入方法
-        __InjectContextBindings_Generated();
-    }
-
     public void Initialize()
     {
-        // 此时字段已注入，可以安全使用
+        __InjectContextBindings_Generated();
         _combat.Initialize(_player);
+    }
+}
+```
+
+#### Godot 节点推荐模式
+
+对 `Node` 类型，优先在 `_Ready()` 开头调用，再使用注入字段：
+
+```csharp
+[ContextAware]
+[GetAll]
+public partial class PlayerNode : Node
+{
+    private IPlayerModel _model = null!;
+    private IMovementSystem _movement = null!;
+
+    public override void _Ready()
+    {
+        __InjectContextBindings_Generated();
+        _movement.Initialize(_model);
+    }
+}
+```
+
+#### 测试与手动装配模式
+
+先配置上下文提供者，再调用与生产代码一致的公开入口，让入口内部完成注入：
+
+```csharp
+[Test]
+public void TestController()
+{
+    var testArchitecture = new TestArchitecture();
+    GameController.SetContextProvider(new TestContextProvider(testArchitecture));
+
+    try
+    {
+        var controller = new GameController();
+        controller.Initialize();
+    }
+    finally
+    {
+        GameController.ResetContextProvider();
     }
 }
 ```
@@ -241,6 +293,7 @@ public partial class GameController : IController
 
     public void Initialize()
     {
+        __InjectContextBindings_Generated();
         _combat.Initialize(_player, _enemy);
     }
 
@@ -263,6 +316,8 @@ public partial class StrategyManager
 
     public IStrategy SelectBestStrategy()
     {
+        __InjectContextBindings_Generated();
+
         return _strategies.FirstOrDefault(s => s.CanExecute())
             ?? throw new InvalidOperationException("No strategy available");
     }
@@ -545,9 +600,9 @@ public partial class ServiceManager
 }
 ```
 
-### 5. 在构造函数或初始化方法中调用注入
+### 5. 在上下文就绪后的生命周期入口中调用注入
 
-确保在使用字段前调用注入方法：
+不要把调用点分散到多个位置。优先选择一个明确的入口，例如 `Initialize()`、`Activate()` 或 `_Ready()`，并在方法开头完成注入：
 
 ```csharp
 [ContextAware]
@@ -556,19 +611,15 @@ public partial class GameController
 {
     private IPlayerModel _player = null!;
 
-    public GameController()
-    {
-        // ✅ 在构造函数中调用
-        __InjectContextBindings_Generated();
-    }
-
     public void Initialize()
     {
-        // ✅ 此时字段已注入
+        __InjectContextBindings_Generated();
         _player.Reset();
     }
 }
 ```
+
+如果构造函数执行时上下文尚未建立，过早注入会失败；即使在构造函数中调用了注入方法，也不要在调用之前访问这些字段。
 
 ## 高级场景
 
@@ -629,7 +680,8 @@ public partial class GameController
 
 ### Q: 可以在构造函数中使用注入的字段吗？
 
-**A**: 不可以。注入方法需要在构造函数中调用，字段在调用后才被注入。推荐在单独的初始化方法中使用。
+**A**: 一般不推荐。构造函数阶段通常不是最清晰的生命周期入口，而且在调用注入方法之前字段一定还不可用。推荐做法是在
+`Initialize()`、`_Ready()` 等上下文已就绪的方法开头调用 `__InjectContextBindings_Generated()`，随后再使用这些字段。
 
 ```csharp
 [ContextAware]
@@ -638,15 +690,9 @@ public partial class Controller
 {
     private IPlayerModel _player = null!;
 
-    public Controller()
-    {
-        __InjectContextBindings_Generated();
-        // ❌ 不推荐：在这里使用 _player
-    }
-
     public void Initialize()
     {
-        // ✅ 推荐：在初始化方法中使用
+        __InjectContextBindings_Generated();
         _player.Reset();
     }
 }
@@ -681,7 +727,7 @@ public partial class Controller
 
 ### Q: 如何在测试中模拟注入？
 
-**A**: 配合 `[ContextAware]` 的 `SetContextProvider` 方法，使用测试架构：
+**A**: 配合 `[ContextAware]` 的 `SetContextProvider` 方法，先建立测试上下文，再调用类内部已经封装好注入逻辑的公开入口：
 
 ```csharp
 [Test]
@@ -695,7 +741,6 @@ public void TestController()
     try
     {
         var controller = new GameController();
-        controller.__InjectContextBindings_Generated();
         controller.Initialize();
         // 测试逻辑...
     }

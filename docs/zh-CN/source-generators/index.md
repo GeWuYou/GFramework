@@ -459,312 +459,37 @@ public enum ConflictEnum
 }
 ```
 
-### Priority 生成器诊断
-
-#### GF_Priority_001 - Priority 只能应用于类
-
-**错误信息**: `Priority attribute can only be applied to classes`
-
-**场景**：将 `[Priority]` 特性应用于非类类型
-
-```csharp
-[Priority(10)]
-public interface IMyInterface  // ❌ 错误
-{
-}
-
-[Priority(10)]
-public struct MyStruct  // ❌ 错误
-{
-}
-```
-
-**解决方案**：只在类上使用 `[Priority]` 特性
-
-```csharp
-[Priority(10)]
-public partial class MyClass  // ✅ 正确
-{
-}
-```
-
-#### GF_Priority_002 - 已实现 IPrioritized 接口
-
-**错误信息**: `Type already implements IPrioritized interface`
-
-**场景**：类已手动实现 `IPrioritized` 接口，同时使用了 `[Priority]` 特性
-
-```csharp
-[Priority(10)]
-public partial class MyClass : IPrioritized  // ❌ 冲突
-{
-    public int Priority => 10;
-}
-```
-
-**解决方案**：移除 `[Priority]` 特性或移除手动实现
-
-```csharp
-// 方案1：移除特性
-public partial class MyClass : IPrioritized
-{
-    public int Priority => 10;
-}
-
-// 方案2：移除手动实现
-[Priority(10)]
-public partial class MyClass
-{
-    // 自动生成 IPrioritized 实现
-}
-```
-
-#### GF_Priority_003 - 必须声明为 partial
-
-**错误信息**: `Class must be declared as partial when using Priority attribute`
-
-**场景**：使用 `[Priority]` 特性的类未声明为 `partial`
-
-```csharp
-[Priority(10)]
-public class MyClass  // ❌ 缺少 partial
-{
-}
-```
-
-**解决方案**：添加 `partial` 关键字
-
-```csharp
-[Priority(10)]
-public partial class MyClass  // ✅ 正确
-{
-}
-```
-
-#### GF_Priority_004 - 优先级值无效
-
-**错误信息**: `Priority value is invalid`
-
-**场景**：`[Priority]` 特性未提供有效的优先级值
-
-```csharp
-[Priority]  // ❌ 缺少参数
-public partial class MyClass
-{
-}
-```
-
-**解决方案**：提供有效的优先级值
-
-```csharp
-[Priority(10)]  // ✅ 正确
-public partial class MyClass
-{
-}
-```
-
-#### GF_Priority_005 - 不支持嵌套类
-
-**错误信息**: `Nested class is not supported`
-
-**场景**：在嵌套类中使用 `[Priority]` 特性
-
-```csharp
-public partial class OuterClass
-{
-    [Priority(10)]
-    public partial class InnerClass  // ❌ 错误
-    {
-    }
-}
-```
-
-**解决方案**：将嵌套类提取为独立的类
-
-```csharp
-[Priority(10)]
-public partial class InnerClass  // ✅ 正确
-{
-}
-```
-
-### Context Get 生成器诊断
-
-#### GF_ContextGet_001 - 不支持嵌套类
-
-**错误信息**: `Class '{ClassName}' cannot use context Get injection inside a nested type`
-
-**场景**：在嵌套类中使用注入特性
-
-```csharp
-[ContextAware]
-public partial class OuterClass
-{
-    public partial class InnerClass
-    {
-        [GetModel]  // ❌ 错误
-        private IModel _model = null!;
-    }
-}
-```
-
-**解决方案**：避免在嵌套类中使用注入特性
-
-#### GF_ContextGet_002 - 不支持静态字段
-
-**错误信息**: `Field '{FieldName}' cannot be static when using generated context Get injection`
-
-**场景**：标记静态字段进行注入
-
-```csharp
-[ContextAware]
-public partial class MyClass
-{
-    [GetModel]
-    private static IModel _model = null!;  // ❌ 错误
-}
-```
-
-**解决方案**：改为实例字段
-
-```csharp
-[ContextAware]
-public partial class MyClass
-{
-    [GetModel]
-    private IModel _model = null!;  // ✅ 正确
-}
-```
-
-#### GF_ContextGet_003 - 不支持只读字段
-
-**错误信息**: `Field '{FieldName}' cannot be readonly when using generated context Get injection`
-
-**场景**：标记只读字段进行注入
-
-```csharp
-[ContextAware]
-public partial class MyClass
-{
-    [GetModel]
-    private readonly IModel _model = null!;  // ❌ 错误
-}
-```
-
-**解决方案**：移除 `readonly` 关键字
-
-```csharp
-[ContextAware]
-public partial class MyClass
-{
-    [GetModel]
-    private IModel _model = null!;  // ✅ 正确
-}
-```
-
-#### GF_ContextGet_004 - 字段类型不匹配
-
-**错误信息**: `Field '{FieldName}' type '{FieldType}' is not valid for [{AttributeName}]`
-
-**场景**：字段类型与注入特性要求的类型不匹配
-
-```csharp
-[ContextAware]
-public partial class MyClass
-{
-    [GetModel]
-    private ISystem _system = null!;  // ❌ 错误：ISystem 不实现 IModel
-}
-```
-
-**解决方案**：确保字段类型符合特性要求
-
-```csharp
-[ContextAware]
-public partial class MyClass
-{
-    [GetModel]
-    private IModel _model = null!;  // ✅ 正确
-
-    [GetSystem]
-    private ISystem _system = null!;  // ✅ 正确
-}
-```
-
-#### GF_ContextGet_005 - 必须是上下文感知类型
-
-**错误信息**: `Class '{ClassName}' must be context-aware to use generated context Get injection`
-
-**场景**：类未标记 `[ContextAware]` 或未实现 `IContextAware`
-
-```csharp
-public partial class MyClass  // ❌ 缺少 [ContextAware]
-{
-    [GetModel]
-    private IModel _model = null!;
-}
-```
-
-**解决方案**：添加 `[ContextAware]` 特性
-
-```csharp
-[ContextAware]  // ✅ 正确
-public partial class MyClass
-{
-    [GetModel]
-    private IModel _model = null!;
-}
-```
-
-#### GF_ContextGet_006 - 不支持多个注入特性
-
-**错误信息**: `Field '{FieldName}' cannot declare multiple generated context Get attributes`
-
-**场景**：同一字段标记了多个注入特性
-
-```csharp
-[ContextAware]
-public partial class MyClass
-{
-    [GetModel]
-    [GetSystem]  // ❌ 错误：多个特性冲突
-    private IModel _model = null!;
-}
-```
-
-**解决方案**：每个字段只标记一个注入特性
-
-```csharp
-[ContextAware]
-public partial class MyClass
-{
-    [GetModel]
-    private IModel _model = null!;  // ✅ 正确
-
-    [GetSystem]
-    private ISystem _system = null!;  // ✅ 正确
-}
-```
-
-### Priority 使用分析器诊断
-
-#### GF_Priority_Usage_001 - 建议使用 GetAllByPriority
-
-**错误信息**: `Consider using GetAllByPriority<T>() instead of GetAll<T>() for types implementing IPrioritized`
-
-**场景**：获取实现了 `IPrioritized` 的类型时使用 `GetAll<T>()` 而非 `GetAllByPriority<T>()`
-
-```csharp
-// ❌ 不推荐：可能未按优先级排序
-var systems = context.GetAll<ISystem>();
-```
-
-**解决方案**：使用 `GetAllByPriority<T>()` 确保按优先级排序
-
-```csharp
-// ✅ 推荐：确保按优先级排序
-var systems = context.GetAllByPriority<ISystem>();
-```
+### Priority 相关诊断
+
+`Priority` 相关规则以专用文档为权威来源：
+
+- 完整生成器诊断见 [Priority 生成器](./priority-generator.md#诊断信息)
+- 排序分析器规则见 [与 PriorityUsageAnalyzer 集成](./priority-generator.md#与-priorityusageanalyzer-集成)
+
+| 诊断 ID                   | 含义                            | 常见修复方向                       |
+|-------------------------|-------------------------------|------------------------------|
+| `GF_Priority_001`       | `[Priority]` 只能应用于类           | 仅在 `partial class` 上使用特性     |
+| `GF_Priority_002`       | 类型已手动实现 `IPrioritized`        | 删除特性或删除手写接口实现                |
+| `GF_Priority_003`       | 标记类型未声明为 `partial`            | 为类型添加 `partial`              |
+| `GF_Priority_004`       | 优先级参数无效                       | 提供有效的整数优先级值                  |
+| `GF_Priority_005`       | 嵌套类不支持生成                      | 将目标类型提取为顶层类                  |
+| `GF_Priority_Usage_001` | 应优先使用 `GetAllByPriority<T>()` | 对实现 `IPrioritized` 的类型改用排序获取 |
+
+### Context Get 相关诊断
+
+`Context Get` 相关规则以专用文档为权威来源：
+
+- 完整诊断见 [Context Get 注入生成器](./context-get-generator.md#诊断信息)
+- 调用时机建议见 [推荐调用时机与模式](./context-get-generator.md#推荐调用时机与模式)
+
+| 诊断 ID               | 含义                 | 常见修复方向                                                        |
+|---------------------|--------------------|---------------------------------------------------------------|
+| `GF_ContextGet_001` | 嵌套类不支持生成注入         | 将目标类型提取为顶层类                                                   |
+| `GF_ContextGet_002` | 注入字段不能为 `static`   | 改为实例字段                                                        |
+| `GF_ContextGet_003` | 注入字段不能为 `readonly` | 移除 `readonly`                                                 |
+| `GF_ContextGet_004` | 字段类型与注入特性不匹配       | 使用符合特性约束的字段类型                                                 |
+| `GF_ContextGet_005` | 目标类型必须具备上下文访问能力    | 添加 `[ContextAware]`、实现 `IContextAware` 或继承 `ContextAwareBase` |
+| `GF_ContextGet_006` | 同一字段不能声明多个注入特性     | 每个字段只保留一个注入特性                                                 |
 
 ## 性能优势
 
