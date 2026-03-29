@@ -1,7 +1,53 @@
 import { defineConfig } from 'vitepress'
 
+function safeGenericEscapePlugin() {
+  return {
+    name: 'safe-generic-escape',
+    enforce: 'pre',
+
+    transform(code: string, id: string) {
+      if (!id.endsWith('.md')) return
+
+      const codeBlocks: string[] = []
+      const htmlBlocks: string[] = []
+
+      // 1️⃣ 保护代码块 ``` ```
+      let processed = code.replace(/```[\s\S]*?```/g, (match) => {
+        const i = codeBlocks.length
+        codeBlocks.push(match)
+        return `__CODE_BLOCK_${i}__`
+      })
+
+      // 2️⃣ 保护 HTML 标签（避免破坏 Vue SFC）
+      processed = processed.replace(/<\/?[a-zA-Z][^>]*>/g, (match) => {
+        const i = htmlBlocks.length
+        htmlBlocks.push(match)
+        return `__HTML_BLOCK_${i}__`
+      })
+
+      // 3️⃣ 只转义"泛型形式"的 <T> 或 <K, V>
+      processed = processed.replace(
+          /<([A-Z][A-Za-z0-9_,\s]*)>/g,
+          (_, inner) => `&lt;${inner}&gt;`
+      )
+
+      // 4️⃣ 恢复 HTML
+      htmlBlocks.forEach((block, i) => {
+        processed = processed.replace(`__HTML_BLOCK_${i}__`, block)
+      })
+
+      // 5️⃣ 恢复代码块
+      codeBlocks.forEach((block, i) => {
+        processed = processed.replace(`__CODE_BLOCK_${i}__`, block)
+      })
+
+      return processed
+    }
+  }
+}
+
 export default defineConfig({
-  
+
   title: 'GFramework',
   description: '面向游戏开发场景的模块化 C# 框架',
   head: [
@@ -10,7 +56,11 @@ export default defineConfig({
   /** GitHub Pages / 子路径部署 */
   base: '/GFramework/',
   vite: {
-    plugins: [safeGenericEscapePlugin()]
+    plugins: [safeGenericEscapePlugin()],
+    build: {
+      // 提高代码块大小警告阈值（文档包含大量代码示例）
+      chunkSizeWarningLimit: 1000
+    }
   },
   /** 多语言 */
   locales: {
@@ -162,7 +212,9 @@ export default defineConfig({
                 { text: '概览', link: '/zh-CN/source-generators/' },
                 { text: '日志生成器', link: '/zh-CN/source-generators/logging-generator' },
                 { text: '枚举扩展', link: '/zh-CN/source-generators/enum-generator' },
-                { text: 'ContextAware 生成器', link: '/zh-CN/source-generators/context-aware-generator' }
+                { text: 'ContextAware 生成器', link: '/zh-CN/source-generators/context-aware-generator' },
+                { text: 'Priority 生成器', link: '/zh-CN/source-generators/priority-generator' },
+                { text: 'Context Get 注入', link: '/zh-CN/source-generators/context-get-generator' }
               ]
             }
           ],
@@ -251,50 +303,3 @@ export default defineConfig({
     }
   }
 })
-import { defineConfig } from 'vitepress'
-
-function safeGenericEscapePlugin() {
-  return {
-    name: 'safe-generic-escape',
-    enforce: 'pre',
-
-    transform(code: string, id: string) {
-      if (!id.endsWith('.md')) return
-
-      const codeBlocks: string[] = []
-      const htmlBlocks: string[] = []
-
-      // 1️⃣ 保护代码块 ``` ```
-      let processed = code.replace(/```[\s\S]*?```/g, (match) => {
-        const i = codeBlocks.length
-        codeBlocks.push(match)
-        return `__CODE_BLOCK_${i}__`
-      })
-
-      // 2️⃣ 保护 HTML 标签（避免破坏 Vue SFC）
-      processed = processed.replace(/<\/?[a-zA-Z][^>]*>/g, (match) => {
-        const i = htmlBlocks.length
-        htmlBlocks.push(match)
-        return `__HTML_BLOCK_${i}__`
-      })
-
-      // 3️⃣ 只转义“泛型形式”的 <T> 或 <K, V>
-      processed = processed.replace(
-          /<([A-Z][A-Za-z0-9_,\s]*)>/g,
-          (_, inner) => `&lt;${inner}&gt;`
-      )
-
-      // 4️⃣ 恢复 HTML
-      htmlBlocks.forEach((block, i) => {
-        processed = processed.replace(`__HTML_BLOCK_${i}__`, block)
-      })
-
-      // 5️⃣ 恢复代码块
-      codeBlocks.forEach((block, i) => {
-        processed = processed.replace(`__CODE_BLOCK_${i}__`, block)
-      })
-
-      return processed
-    }
-  }
-}
