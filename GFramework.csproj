@@ -134,6 +134,7 @@
         <AdditionalFiles Remove="AnalyzerReleases.Unshipped.md"/>
     </ItemGroup>
     <ItemGroup>
+        <Folder Include="local-plan\todos\"/>
         <Folder Include="local-plan\评估\"/>
     </ItemGroup>
 </Project>
