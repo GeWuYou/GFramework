@@ -1,0 +1,807 @@
+const fs = require("fs");
+const path = require("path");
+const vscode = require("vscode");
+
+/**
+ * Activate the GFramework config extension.
+ * The initial MVP focuses on workspace file navigation, lightweight validation,
+ * and a small form-preview entry for top-level scalar values.
+ *
+ * @param {vscode.ExtensionContext} context Extension context.
+ */
+function activate(context) {
+    const diagnostics = vscode.languages.createDiagnosticCollection("gframeworkConfig");
+    const provider = new ConfigTreeDataProvider();
+
+    context.subscriptions.push(diagnostics);
+    context.subscriptions.push(
+        vscode.window.registerTreeDataProvider("gframeworkConfigExplorer", provider),
+        vscode.commands.registerCommand("gframeworkConfig.refresh", async () => {
+            provider.refresh();
+            await validateAllConfigs(diagnostics);
+        }),
+        vscode.commands.registerCommand("gframeworkConfig.openRaw", async (item) => {
+            await openRawFile(item);
+        }),
+        vscode.commands.registerCommand("gframeworkConfig.openSchema", async (item) => {
+            await openSchemaFile(item);
+        }),
+        vscode.commands.registerCommand("gframeworkConfig.openFormPreview", async (item) => {
+            await openFormPreview(item, diagnostics);
+        }),
+        vscode.commands.registerCommand("gframeworkConfig.validateAll", async () => {
+            await validateAllConfigs(diagnostics);
+        }),
+        vscode.workspace.onDidSaveTextDocument(async (document) => {
+            const workspaceRoot = getWorkspaceRoot();
+            if (!workspaceRoot) {
+                return;
+            }
+
+            if (!isConfigFile(document.uri, workspaceRoot)) {
+                return;
+            }
+
+            await validateConfigFile(document.uri, diagnostics);
+            provider.refresh();
+        }),
+        vscode.workspace.onDidChangeWorkspaceFolders(async () => {
+            provider.refresh();
+            await validateAllConfigs(diagnostics);
+        })
+    );
+
+    void validateAllConfigs(diagnostics);
+}
+
+/**
+ * Deactivate the extension.
+ */
+function deactivate() {
+}
+
+/**
+ * Tree provider for the GFramework config explorer view.
+ */
+class ConfigTreeDataProvider {
+    constructor() {
+        this._emitter = new vscode.EventEmitter();
+        this.onDidChangeTreeData = this._emitter.event;
+    }
+
+    /**
+     * Refresh the tree view.
+     */
+    refresh() {
+        this._emitter.fire(undefined);
+    }
+
+    /**
+     * Resolve a tree item.
+     *
+     * @param {ConfigTreeItem} element Tree element.
+     * @returns {vscode.TreeItem} Tree item.
+     */
+    getTreeItem(element) {
+        return element;
+    }
+
+    /**
+     * Resolve child elements.
+     *
+     * @param {ConfigTreeItem | undefined} element Parent element.
+     * @returns {Thenable<ConfigTreeItem[]>} Child items.
+     */
+    async getChildren(element) {
+        const workspaceRoot = getWorkspaceRoot();
+        if (!workspaceRoot) {
+            return [];
+        }
+
+        if (!element) {
+            return this.getRootItems(workspaceRoot);
+        }
+
+        if (element.kind !== "domain" || !element.resourceUri) {
+            return [];
+        }
+
+        return this.getFileItems(workspaceRoot, element.resourceUri);
+    }
+
+    /**
+     * Build root domain items from the config directory.
+     *
+     * @param {vscode.WorkspaceFolder} workspaceRoot Workspace root.
+     * @returns {Promise<ConfigTreeItem[]>} Root items.
+     */
+    async getRootItems(workspaceRoot) {
+        const configRoot = getConfigRoot(workspaceRoot);
+        if (!configRoot || !fs.existsSync(configRoot.fsPath)) {
+            return [
+                new ConfigTreeItem(
+                    "No config directory",
+                    "info",
+                    vscode.TreeItemCollapsibleState.None,
+                    undefined,
+                    "Set gframeworkConfig.configPath or create the directory.")
+            ];
+        }
+
+        const entries = fs.readdirSync(configRoot.fsPath, {withFileTypes: true})
+            .filter((entry) => entry.isDirectory())
+            .sort((left, right) => left.name.localeCompare(right.name));
+
+        return entries.map((entry) => {
+            const domainUri = vscode.Uri.joinPath(configRoot, entry.name);
+            return new ConfigTreeItem(
+                entry.name,
+                "domain",
+                vscode.TreeItemCollapsibleState.Collapsed,
+                domainUri,
+                undefined);
+        });
+    }
+
+    /**
+     * Build file items for a config domain directory.
+     *
+     * @param {vscode.WorkspaceFolder} workspaceRoot Workspace root.
+     * @param {vscode.Uri} domainUri Domain directory URI.
+     * @returns {Promise<ConfigTreeItem[]>} File items.
+     */
+    async getFileItems(workspaceRoot, domainUri) {
+        const entries = fs.readdirSync(domainUri.fsPath, {withFileTypes: true})
+            .filter((entry) => entry.isFile() && isYamlPath(entry.name))
+            .sort((left, right) => left.name.localeCompare(right.name));
+
+        return entries.map((entry) => {
+            const fileUri = vscode.Uri.joinPath(domainUri, entry.name);
+            const schemaUri = getSchemaUriForConfigFile(fileUri, workspaceRoot);
+            const description = schemaUri && fs.existsSync(schemaUri.fsPath)
+                ? "schema"
+                : "schema missing";
+            const item = new ConfigTreeItem(
+                entry.name,
+                "file",
+                vscode.TreeItemCollapsibleState.None,
+                fileUri,
+                description);
+
+            item.contextValue = "gframeworkConfigFile";
+            item.command = {
+                command: "gframeworkConfig.openRaw",
+                title: "Open Raw",
+                arguments: [item]
+            };
+
+            return item;
+        });
+    }
+}
+
+/**
+ * Tree item used by the config explorer.
+ */
+class ConfigTreeItem extends vscode.TreeItem {
+    /**
+     * @param {string} label Display label.
+     * @param {"domain" | "file" | "info"} kind Item kind.
+     * @param {vscode.TreeItemCollapsibleState} collapsibleState Collapsible state.
+     * @param {vscode.Uri | undefined} resourceUri Resource URI.
+     * @param {string | undefined} description Description.
+     */
+    constructor(label, kind, collapsibleState, resourceUri, description) {
+        super(label, collapsibleState);
+        this.kind = kind;
+        this.resourceUri = resourceUri;
+        this.description = description;
+        this.contextValue = kind === "file" ? "gframeworkConfigFile" : kind;
+    }
+}
+
+/**
+ * Open the selected raw config file.
+ *
+ * @param {ConfigTreeItem | { resourceUri?: vscode.Uri }} item Tree item.
+ * @returns {Promise<void>} Async task.
+ */
+async function openRawFile(item) {
+    const uri = item && item.resourceUri;
+    if (!uri) {
+        return;
+    }
+
+    const document = await vscode.workspace.openTextDocument(uri);
+    await vscode.window.showTextDocument(document, {preview: false});
+}
+
+/**
+ * Open the matching schema file for a selected config item.
+ *
+ * @param {ConfigTreeItem | { resourceUri?: vscode.Uri }} item Tree item.
+ * @returns {Promise<void>} Async task.
+ */
+async function openSchemaFile(item) {
+    const workspaceRoot = getWorkspaceRoot();
+    const configUri = item && item.resourceUri;
+    if (!workspaceRoot || !configUri) {
+        return;
+    }
+
+    const schemaUri = getSchemaUriForConfigFile(configUri, workspaceRoot);
+    if (!schemaUri || !fs.existsSync(schemaUri.fsPath)) {
+        void vscode.window.showWarningMessage("Matching schema file was not found.");
+        return;
+    }
+
+    const document = await vscode.workspace.openTextDocument(schemaUri);
+    await vscode.window.showTextDocument(document, {preview: false});
+}
+
+/**
+ * Open a lightweight form preview for top-level scalar fields.
+ * The editor intentionally edits only simple scalar keys and keeps raw YAML as
+ * the escape hatch for arrays, nested objects, and advanced changes.
+ *
+ * @param {ConfigTreeItem | { resourceUri?: vscode.Uri }} item Tree item.
+ * @param {vscode.DiagnosticCollection} diagnostics Diagnostic collection.
+ * @returns {Promise<void>} Async task.
+ */
+async function openFormPreview(item, diagnostics) {
+    const workspaceRoot = getWorkspaceRoot();
+    const configUri = item && item.resourceUri;
+    if (!workspaceRoot || !configUri) {
+        return;
+    }
+
+    const yamlText = await fs.promises.readFile(configUri.fsPath, "utf8");
+    const parsedYaml = parseTopLevelYaml(yamlText);
+    const schemaInfo = await loadSchemaInfoForConfig(configUri, workspaceRoot);
+
+    const panel = vscode.window.createWebviewPanel(
+        "gframeworkConfigFormPreview",
+        `Config Form: ${path.basename(configUri.fsPath)}`,
+        vscode.ViewColumn.Beside,
+        {enableScripts: true});
+
+    panel.webview.html = renderFormHtml(
+        path.basename(configUri.fsPath),
+        schemaInfo,
+        parsedYaml);
+
+    panel.webview.onDidReceiveMessage(async (message) => {
+        if (message.type === "save") {
+            const updatedYaml = applyScalarUpdates(yamlText, message.values || {});
+            await fs.promises.writeFile(configUri.fsPath, updatedYaml, "utf8");
+            const document = await vscode.workspace.openTextDocument(configUri);
+            await document.save();
+            await validateConfigFile(configUri, diagnostics);
+            void vscode.window.showInformationMessage("Config file saved from form preview.");
+        }
+
+        if (message.type === "openRaw") {
+            await openRawFile({resourceUri: configUri});
+        }
+    });
+}
+
+/**
+ * Validate all config files in the configured config directory.
+ *
+ * @param {vscode.DiagnosticCollection} diagnostics Diagnostic collection.
+ * @returns {Promise<void>} Async task.
+ */
+async function validateAllConfigs(diagnostics) {
+    diagnostics.clear();
+
+    const workspaceRoot = getWorkspaceRoot();
+    if (!workspaceRoot) {
+        return;
+    }
+
+    const configRoot = getConfigRoot(workspaceRoot);
+    if (!configRoot || !fs.existsSync(configRoot.fsPath)) {
+        return;
+    }
+
+    const files = enumerateYamlFiles(configRoot.fsPath);
+    for (const filePath of files) {
+        await validateConfigFile(vscode.Uri.file(filePath), diagnostics);
+    }
+}
+
+/**
+ * Validate a single config file against its matching schema.
+ *
+ * @param {vscode.Uri} configUri Config file URI.
+ * @param {vscode.DiagnosticCollection} diagnostics Diagnostic collection.
+ * @returns {Promise<void>} Async task.
+ */
+async function validateConfigFile(configUri, diagnostics) {
+    const workspaceRoot = getWorkspaceRoot();
+    if (!workspaceRoot) {
+        return;
+    }
+
+    if (!isConfigFile(configUri, workspaceRoot)) {
+        return;
+    }
+
+    const yamlText = await fs.promises.readFile(configUri.fsPath, "utf8");
+    const parsedYaml = parseTopLevelYaml(yamlText);
+    const schemaInfo = await loadSchemaInfoForConfig(configUri, workspaceRoot);
+    const fileDiagnostics = [];
+
+    if (!schemaInfo.exists) {
+        fileDiagnostics.push(new vscode.Diagnostic(
+            new vscode.Range(0, 0, 0, 1),
+            `Matching schema file not found: ${schemaInfo.schemaPath}`,
+            vscode.DiagnosticSeverity.Warning));
+        diagnostics.set(configUri, fileDiagnostics);
+        return;
+    }
+
+    for (const requiredProperty of schemaInfo.required) {
+        if (!parsedYaml.keys.has(requiredProperty)) {
+            fileDiagnostics.push(new vscode.Diagnostic(
+                new vscode.Range(0, 0, 0, 1),
+                `Required property '${requiredProperty}' is missing.`,
+                vscode.DiagnosticSeverity.Error));
+        }
+    }
+
+    for (const [propertyName, expectedType] of Object.entries(schemaInfo.propertyTypes)) {
+        if (!parsedYaml.scalars.has(propertyName)) {
+            continue;
+        }
+
+        const scalarValue = parsedYaml.scalars.get(propertyName);
+        if (!isScalarCompatible(expectedType, scalarValue)) {
+            fileDiagnostics.push(new vscode.Diagnostic(
+                new vscode.Range(0, 0, 0, 1),
+                `Property '${propertyName}' is expected to be '${expectedType}', but the current scalar value is incompatible.`,
+                vscode.DiagnosticSeverity.Warning));
+        }
+    }
+
+    diagnostics.set(configUri, fileDiagnostics);
+}
+
+/**
+ * Load schema info for a config file.
+ *
+ * @param {vscode.Uri} configUri Config file URI.
+ * @param {vscode.WorkspaceFolder} workspaceRoot Workspace root.
+ * @returns {Promise<{exists: boolean, schemaPath: string, required: string[], propertyTypes: Record<string, string>}>} Schema info.
+ */
+async function loadSchemaInfoForConfig(configUri, workspaceRoot) {
+    const schemaUri = getSchemaUriForConfigFile(configUri, workspaceRoot);
+    const schemaPath = schemaUri ? schemaUri.fsPath : "";
+    if (!schemaUri || !fs.existsSync(schemaUri.fsPath)) {
+        return {
+            exists: false,
+            schemaPath,
+            required: [],
+            propertyTypes: {}
+        };
+    }
+
+    const content = await fs.promises.readFile(schemaUri.fsPath, "utf8");
+    try {
+        const parsed = JSON.parse(content);
+        const required = Array.isArray(parsed.required)
+            ? parsed.required.filter((value) => typeof value === "string")
+            : [];
+        const propertyTypes = {};
+        const properties = parsed.properties || {};
+
+        for (const [key, value] of Object.entries(properties)) {
+            if (!value || typeof value !== "object") {
+                continue;
+            }
+
+            if (typeof value.type === "string") {
+                propertyTypes[key] = value.type;
+            }
+        }
+
+        return {
+            exists: true,
+            schemaPath,
+            required,
+            propertyTypes
+        };
+    } catch (error) {
+        return {
+            exists: false,
+            schemaPath,
+            required: [],
+            propertyTypes: {}
+        };
+    }
+}
+
+/**
+ * Parse top-level YAML keys and scalar values.
+ * This intentionally supports only the MVP subset needed for lightweight form
+ * preview and validation.
+ *
+ * @param {string} text YAML text.
+ * @returns {{keys: Set<string>, scalars: Map<string, string>}} Parsed shape.
+ */
+function parseTopLevelYaml(text) {
+    const keys = new Set();
+    const scalars = new Map();
+    const lines = text.split(/\r?\n/u);
+
+    for (const line of lines) {
+        if (!line || line.trim().length === 0 || line.trim().startsWith("#")) {
+            continue;
+        }
+
+        if (/^\s/u.test(line)) {
+            continue;
+        }
+
+        const match = /^([A-Za-z0-9_]+):(?:\s*(.*))?$/u.exec(line);
+        if (!match) {
+            continue;
+        }
+
+        const key = match[1];
+        const rawValue = match[2] || "";
+        keys.add(key);
+
+        if (rawValue.length === 0) {
+            continue;
+        }
+
+        if (rawValue.startsWith("|") || rawValue.startsWith(">")) {
+            continue;
+        }
+
+        scalars.set(key, rawValue.trim());
+    }
+
+    return {keys, scalars};
+}
+
+/**
+ * Apply scalar field updates back into the original YAML text.
+ *
+ * @param {string} originalYaml Original YAML content.
+ * @param {Record<string, string>} updates Updated scalar values.
+ * @returns {string} Updated YAML content.
+ */
+function applyScalarUpdates(originalYaml, updates) {
+    const lines = originalYaml.split(/\r?\n/u);
+    const touched = new Set();
+
+    const updatedLines = lines.map((line) => {
+        if (/^\s/u.test(line)) {
+            return line;
+        }
+
+        const match = /^([A-Za-z0-9_]+):(?:\s*(.*))?$/u.exec(line);
+        if (!match) {
+            return line;
+        }
+
+        const key = match[1];
+        if (!Object.prototype.hasOwnProperty.call(updates, key)) {
+            return line;
+        }
+
+        touched.add(key);
+        return `${key}: ${formatYamlScalar(updates[key])}`;
+    });
+
+    for (const [key, value] of Object.entries(updates)) {
+        if (touched.has(key)) {
+            continue;
+        }
+
+        updatedLines.push(`${key}: ${formatYamlScalar(value)}`);
+    }
+
+    return updatedLines.join("\n");
+}
+
+/**
+ * Render the form-preview webview HTML.
+ *
+ * @param {string} fileName File name.
+ * @param {{exists: boolean, schemaPath: string, required: string[], propertyTypes: Record<string, string>}} schemaInfo Schema info.
+ * @param {{keys: Set<string>, scalars: Map<string, string>}} parsedYaml Parsed YAML data.
+ * @returns {string} HTML string.
+ */
+function renderFormHtml(fileName, schemaInfo, parsedYaml) {
+    const fields = Array.from(parsedYaml.scalars.entries())
+        .map(([key, value]) => {
+            const escapedKey = escapeHtml(key);
+            const escapedValue = escapeHtml(unquoteScalar(value));
+            const required = schemaInfo.required.includes(key) ? "<span class=\"badge\">required</span>" : "";
+            return `
+                <label class="field">
+                    <span class="label">${escapedKey} ${required}</span>
+                    <input data-key="${escapedKey}" value="${escapedValue}" />
+                </label>
+            `;
+        })
+        .join("\n");
+
+    const schemaStatus = schemaInfo.exists
+        ? `Schema: ${escapeHtml(schemaInfo.schemaPath)}`
+        : `Schema missing: ${escapeHtml(schemaInfo.schemaPath)}`;
+
+    const emptyState = fields.length > 0
+        ? fields
+        : "<p>No editable top-level scalar fields were detected. Use raw YAML for nested objects or arrays.</p>";
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+        body {
+            font-family: var(--vscode-font-family);
+            color: var(--vscode-foreground);
+            background: var(--vscode-editor-background);
+            padding: 16px;
+        }
+        .toolbar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        button {
+            border: 1px solid var(--vscode-button-border, transparent);
+            background: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        .meta {
+            margin-bottom: 16px;
+            color: var(--vscode-descriptionForeground);
+        }
+        .field {
+            display: block;
+            margin-bottom: 12px;
+        }
+        .label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            border: 1px solid var(--vscode-input-border, transparent);
+            background: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
+        }
+        .badge {
+            display: inline-block;
+            margin-left: 6px;
+            padding: 1px 6px;
+            border-radius: 999px;
+            background: var(--vscode-badge-background);
+            color: var(--vscode-badge-foreground);
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <button id="save">Save Scalars</button>
+        <button id="openRaw">Open Raw YAML</button>
+    </div>
+    <div class="meta">
+        <div>File: ${escapeHtml(fileName)}</div>
+        <div>${schemaStatus}</div>
+    </div>
+    <div id="fields">${emptyState}</div>
+    <script>
+        const vscode = acquireVsCodeApi();
+        document.getElementById("save").addEventListener("click", () => {
+            const values = {};
+            for (const input of document.querySelectorAll("input[data-key]")) {
+                values[input.dataset.key] = input.value;
+            }
+            vscode.postMessage({ type: "save", values });
+        });
+        document.getElementById("openRaw").addEventListener("click", () => {
+            vscode.postMessage({ type: "openRaw" });
+        });
+    </script>
+</body>
+</html>`;
+}
+
+/**
+ * Determine whether a scalar value matches a minimal schema type.
+ *
+ * @param {string} expectedType Schema type.
+ * @param {string} scalarValue YAML scalar value.
+ * @returns {boolean} True when compatible.
+ */
+function isScalarCompatible(expectedType, scalarValue) {
+    const value = unquoteScalar(scalarValue);
+    switch (expectedType) {
+        case "integer":
+            return /^-?\d+$/u.test(value);
+        case "number":
+            return /^-?\d+(?:\.\d+)?$/u.test(value);
+        case "boolean":
+            return /^(true|false)$/iu.test(value);
+        case "string":
+            return true;
+        default:
+            return true;
+    }
+}
+
+/**
+ * Format a scalar value for YAML output.
+ *
+ * @param {string} value Scalar value.
+ * @returns {string} YAML-ready scalar.
+ */
+function formatYamlScalar(value) {
+    if (/^-?\d+(?:\.\d+)?$/u.test(value) || /^(true|false)$/iu.test(value)) {
+        return value;
+    }
+
+    if (value.length === 0 || /[:#\[\]\{\},]|^\s|\s$/u.test(value)) {
+        return JSON.stringify(value);
+    }
+
+    return value;
+}
+
+/**
+ * Remove a simple YAML string quote wrapper.
+ *
+ * @param {string} value Scalar value.
+ * @returns {string} Unquoted value.
+ */
+function unquoteScalar(value) {
+    if ((value.startsWith("\"") && value.endsWith("\"")) ||
+        (value.startsWith("'") && value.endsWith("'"))) {
+        return value.slice(1, -1);
+    }
+
+    return value;
+}
+
+/**
+ * Enumerate all YAML files recursively.
+ *
+ * @param {string} rootPath Root path.
+ * @returns {string[]} YAML file paths.
+ */
+function enumerateYamlFiles(rootPath) {
+    const results = [];
+
+    for (const entry of fs.readdirSync(rootPath, {withFileTypes: true})) {
+        const fullPath = path.join(rootPath, entry.name);
+        if (entry.isDirectory()) {
+            results.push(...enumerateYamlFiles(fullPath));
+            continue;
+        }
+
+        if (entry.isFile() && isYamlPath(entry.name)) {
+            results.push(fullPath);
+        }
+    }
+
+    return results;
+}
+
+/**
+ * Check whether a path is a YAML file.
+ *
+ * @param {string} filePath File path.
+ * @returns {boolean} True for YAML files.
+ */
+function isYamlPath(filePath) {
+    return filePath.endsWith(".yaml") || filePath.endsWith(".yml");
+}
+
+/**
+ * Resolve the first workspace root.
+ *
+ * @returns {vscode.WorkspaceFolder | undefined} Workspace root.
+ */
+function getWorkspaceRoot() {
+    const folders = vscode.workspace.workspaceFolders;
+    return folders && folders.length > 0 ? folders[0] : undefined;
+}
+
+/**
+ * Resolve the configured config root.
+ *
+ * @param {vscode.WorkspaceFolder} workspaceRoot Workspace root.
+ * @returns {vscode.Uri | undefined} Config root URI.
+ */
+function getConfigRoot(workspaceRoot) {
+    const relativePath = vscode.workspace.getConfiguration("gframeworkConfig")
+        .get("configPath", "config");
+    return vscode.Uri.joinPath(workspaceRoot.uri, relativePath);
+}
+
+/**
+ * Resolve the configured schemas root.
+ *
+ * @param {vscode.WorkspaceFolder} workspaceRoot Workspace root.
+ * @returns {vscode.Uri | undefined} Schema root URI.
+ */
+function getSchemasRoot(workspaceRoot) {
+    const relativePath = vscode.workspace.getConfiguration("gframeworkConfig")
+        .get("schemasPath", "schemas");
+    return vscode.Uri.joinPath(workspaceRoot.uri, relativePath);
+}
+
+/**
+ * Resolve the matching schema URI for a config file.
+ *
+ * @param {vscode.Uri} configUri Config file URI.
+ * @param {vscode.WorkspaceFolder} workspaceRoot Workspace root.
+ * @returns {vscode.Uri | undefined} Schema URI.
+ */
+function getSchemaUriForConfigFile(configUri, workspaceRoot) {
+    const configRoot = getConfigRoot(workspaceRoot);
+    const schemaRoot = getSchemasRoot(workspaceRoot);
+    if (!configRoot || !schemaRoot) {
+        return undefined;
+    }
+
+    const relativePath = path.relative(configRoot.fsPath, configUri.fsPath);
+    const segments = relativePath.split(path.sep);
+    if (segments.length === 0 || !segments[0]) {
+        return undefined;
+    }
+
+    return vscode.Uri.joinPath(schemaRoot, `${segments[0]}.schema.json`);
+}
+
+/**
+ * Check whether a URI is inside the configured config root.
+ *
+ * @param {vscode.Uri} uri File URI.
+ * @param {vscode.WorkspaceFolder} workspaceRoot Workspace root.
+ * @returns {boolean} True when the file belongs to the config tree.
+ */
+function isConfigFile(uri, workspaceRoot) {
+    const configRoot = getConfigRoot(workspaceRoot);
+    if (!configRoot) {
+        return false;
+    }
+
+    const relativePath = path.relative(configRoot.fsPath, uri.fsPath);
+    return !relativePath.startsWith("..") && !path.isAbsolute(relativePath) && isYamlPath(uri.fsPath);
+}
+
+/**
+ * Escape HTML text.
+ *
+ * @param {string} value Raw string.
+ * @returns {string} Escaped string.
+ */
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/gu, "&amp;")
+        .replace(/</gu, "&lt;")
+        .replace(/>/gu, "&gt;")
+        .replace(/"/gu, "&quot;")
+        .replace(/'/gu, "&#39;");
+}
+
+module.exports = {
+    activate,
+    deactivate
+};

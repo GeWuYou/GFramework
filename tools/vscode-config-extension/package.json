@@ -1,0 +1,101 @@
+{
+  "name": "gframework-config-extension",
+  "displayName": "GFramework Config Tools",
+  "description": "Workspace tools for browsing, validating, and editing AI-First config files in GFramework projects.",
+  "version": "0.0.1",
+  "publisher": "gewuyou",
+  "license": "Apache-2.0",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onView:gframeworkConfigExplorer",
+    "onCommand:gframeworkConfig.refresh",
+    "onCommand:gframeworkConfig.openRaw",
+    "onCommand:gframeworkConfig.openSchema",
+    "onCommand:gframeworkConfig.openFormPreview",
+    "onCommand:gframeworkConfig.validateAll"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "views": {
+      "explorer": [
+        {
+          "id": "gframeworkConfigExplorer",
+          "name": "GFramework Config"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "gframeworkConfig.refresh",
+        "title": "GFramework Config: Refresh"
+      },
+      {
+        "command": "gframeworkConfig.openRaw",
+        "title": "GFramework Config: Open Raw File"
+      },
+      {
+        "command": "gframeworkConfig.openSchema",
+        "title": "GFramework Config: Open Schema"
+      },
+      {
+        "command": "gframeworkConfig.openFormPreview",
+        "title": "GFramework Config: Open Form Preview"
+      },
+      {
+        "command": "gframeworkConfig.validateAll",
+        "title": "GFramework Config: Validate All"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "gframeworkConfig.refresh",
+          "when": "view == gframeworkConfigExplorer",
+          "group": "navigation"
+        },
+        {
+          "command": "gframeworkConfig.validateAll",
+          "when": "view == gframeworkConfigExplorer",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "gframeworkConfig.openRaw",
+          "when": "view == gframeworkConfigExplorer && viewItem == gframeworkConfigFile",
+          "group": "inline"
+        },
+        {
+          "command": "gframeworkConfig.openSchema",
+          "when": "view == gframeworkConfigExplorer && viewItem == gframeworkConfigFile",
+          "group": "navigation"
+        },
+        {
+          "command": "gframeworkConfig.openFormPreview",
+          "when": "view == gframeworkConfigExplorer && viewItem == gframeworkConfigFile",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "GFramework Config",
+      "properties": {
+        "gframeworkConfig.configPath": {
+          "type": "string",
+          "default": "config",
+          "description": "Relative path from the workspace root to the config directory."
+        },
+        "gframeworkConfig.schemasPath": {
+          "type": "string",
+          "default": "schemas",
+          "description": "Relative path from the workspace root to the schema directory."
+        }
+      }
+    }
+  }
+}
