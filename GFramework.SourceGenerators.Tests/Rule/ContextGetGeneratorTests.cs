@@ -463,63 +463,63 @@ public class ContextGetGeneratorTests
     [Test]
     public async Task Warns_And_Skips_Readonly_Inferred_Field_For_GetAll_Class()
     {
-        var source = """
-                     using System;
-                     using GFramework.SourceGenerators.Abstractions.Rule;
+        var source = MarkupTestSource.Parse("""
+                                            using System;
+                                            using GFramework.SourceGenerators.Abstractions.Rule;
 
-                     namespace GFramework.SourceGenerators.Abstractions.Rule
-                     {
-                         [AttributeUsage(AttributeTargets.Class, Inherited = false)]
-                         public sealed class GetAllAttribute : Attribute { }
-                     }
+                                            namespace GFramework.SourceGenerators.Abstractions.Rule
+                                            {
+                                                [AttributeUsage(AttributeTargets.Class, Inherited = false)]
+                                                public sealed class GetAllAttribute : Attribute { }
+                                            }
 
-                     namespace GFramework.Core.Abstractions.Rule
-                     {
-                         public interface IContextAware { }
-                     }
+                                            namespace GFramework.Core.Abstractions.Rule
+                                            {
+                                                public interface IContextAware { }
+                                            }
 
-                     namespace GFramework.Core.Rule
-                     {
-                         public abstract class ContextAwareBase : GFramework.Core.Abstractions.Rule.IContextAware { }
-                     }
+                                            namespace GFramework.Core.Rule
+                                            {
+                                                public abstract class ContextAwareBase : GFramework.Core.Abstractions.Rule.IContextAware { }
+                                            }
 
-                     namespace GFramework.Core.Abstractions.Model
-                     {
-                         public interface IModel { }
-                     }
+                                            namespace GFramework.Core.Abstractions.Model
+                                            {
+                                                public interface IModel { }
+                                            }
 
-                     namespace GFramework.Core.Abstractions.Systems
-                     {
-                         public interface ISystem { }
-                     }
+                                            namespace GFramework.Core.Abstractions.Systems
+                                            {
+                                                public interface ISystem { }
+                                            }
 
-                     namespace GFramework.Core.Abstractions.Utility
-                     {
-                         public interface IUtility { }
-                     }
+                                            namespace GFramework.Core.Abstractions.Utility
+                                            {
+                                                public interface IUtility { }
+                                            }
 
-                     namespace GFramework.Core.Extensions
-                     {
-                         public static class ContextAwareServiceExtensions
-                         {
-                             public static T GetModel<T>(this object contextAware) => default!;
-                             public static T GetSystem<T>(this object contextAware) => default!;
-                         }
-                     }
+                                            namespace GFramework.Core.Extensions
+                                            {
+                                                public static class ContextAwareServiceExtensions
+                                                {
+                                                    public static T GetModel<T>(this object contextAware) => default!;
+                                                    public static T GetSystem<T>(this object contextAware) => default!;
+                                                }
+                                            }
 
-                     namespace TestApp
-                     {
-                         public interface IInventoryModel : GFramework.Core.Abstractions.Model.IModel { }
-                         public interface ICombatSystem : GFramework.Core.Abstractions.Systems.ISystem { }
+                                            namespace TestApp
+                                            {
+                                                public interface IInventoryModel : GFramework.Core.Abstractions.Model.IModel { }
+                                                public interface ICombatSystem : GFramework.Core.Abstractions.Systems.ISystem { }
 
-                         [GetAll]
-                         public partial class BattlePanel : GFramework.Core.Rule.ContextAwareBase
-                         {
-                             private readonly IInventoryModel _model = null!;
-                             private ICombatSystem _system = null!;
-                         }
-                     }
-                     """;
+                                                [GetAll]
+                                                public partial class BattlePanel : GFramework.Core.Rule.ContextAwareBase
+                                                {
+                                                    private readonly IInventoryModel {|#0:_model|} = null!;
+                                                    private ICombatSystem _system = null!;
+                                                }
+                                            }
+                                            """);
 
         const string expected = """
                                 // <auto-generated />
@@ -543,7 +543,7 @@ public class ContextGetGeneratorTests
         {
             TestState =
             {
-                Sources = { source },
+                Sources = { source.Source },
                 GeneratedSources =
                 {
                     (typeof(ContextGetGenerator), "TestApp_BattlePanel.ContextGet.g.cs", expected)
@@ -552,8 +552,9 @@ public class ContextGetGeneratorTests
             DisabledDiagnostics = { "GF_Common_Trace_001" }
         };
 
-        test.ExpectedDiagnostics.Add(new DiagnosticResult("GF_ContextGet_008", DiagnosticSeverity.Warning)
-            .WithSpan(52, 42, 52, 48)
+        test.ExpectedDiagnostics.Add(source.WithSpan(
+                new DiagnosticResult("GF_ContextGet_008", DiagnosticSeverity.Warning),
+                "0")
             .WithArguments("_model"));
 
         await test.RunAsync();
@@ -563,63 +564,63 @@ public class ContextGetGeneratorTests
     [Test]
     public async Task Warns_And_Skips_Static_Inferred_Field_For_GetAll_Class()
     {
-        var source = """
-                     using System;
-                     using GFramework.SourceGenerators.Abstractions.Rule;
+        var source = MarkupTestSource.Parse("""
+                                            using System;
+                                            using GFramework.SourceGenerators.Abstractions.Rule;
 
-                     namespace GFramework.SourceGenerators.Abstractions.Rule
-                     {
-                         [AttributeUsage(AttributeTargets.Class, Inherited = false)]
-                         public sealed class GetAllAttribute : Attribute { }
-                     }
+                                            namespace GFramework.SourceGenerators.Abstractions.Rule
+                                            {
+                                                [AttributeUsage(AttributeTargets.Class, Inherited = false)]
+                                                public sealed class GetAllAttribute : Attribute { }
+                                            }
 
-                     namespace GFramework.Core.Abstractions.Rule
-                     {
-                         public interface IContextAware { }
-                     }
+                                            namespace GFramework.Core.Abstractions.Rule
+                                            {
+                                                public interface IContextAware { }
+                                            }
 
-                     namespace GFramework.Core.Rule
-                     {
-                         public abstract class ContextAwareBase : GFramework.Core.Abstractions.Rule.IContextAware { }
-                     }
+                                            namespace GFramework.Core.Rule
+                                            {
+                                                public abstract class ContextAwareBase : GFramework.Core.Abstractions.Rule.IContextAware { }
+                                            }
 
-                     namespace GFramework.Core.Abstractions.Model
-                     {
-                         public interface IModel { }
-                     }
+                                            namespace GFramework.Core.Abstractions.Model
+                                            {
+                                                public interface IModel { }
+                                            }
 
-                     namespace GFramework.Core.Abstractions.Systems
-                     {
-                         public interface ISystem { }
-                     }
+                                            namespace GFramework.Core.Abstractions.Systems
+                                            {
+                                                public interface ISystem { }
+                                            }
 
-                     namespace GFramework.Core.Abstractions.Utility
-                     {
-                         public interface IUtility { }
-                     }
+                                            namespace GFramework.Core.Abstractions.Utility
+                                            {
+                                                public interface IUtility { }
+                                            }
 
-                     namespace GFramework.Core.Extensions
-                     {
-                         public static class ContextAwareServiceExtensions
-                         {
-                             public static T GetModel<T>(this object contextAware) => default!;
-                             public static T GetSystem<T>(this object contextAware) => default!;
-                         }
-                     }
+                                            namespace GFramework.Core.Extensions
+                                            {
+                                                public static class ContextAwareServiceExtensions
+                                                {
+                                                    public static T GetModel<T>(this object contextAware) => default!;
+                                                    public static T GetSystem<T>(this object contextAware) => default!;
+                                                }
+                                            }
 
-                     namespace TestApp
-                     {
-                         public interface IInventoryModel : GFramework.Core.Abstractions.Model.IModel { }
-                         public interface ICombatSystem : GFramework.Core.Abstractions.Systems.ISystem { }
+                                            namespace TestApp
+                                            {
+                                                public interface IInventoryModel : GFramework.Core.Abstractions.Model.IModel { }
+                                                public interface ICombatSystem : GFramework.Core.Abstractions.Systems.ISystem { }
 
-                         [GetAll]
-                         public partial class BattlePanel : GFramework.Core.Rule.ContextAwareBase
-                         {
-                             private static IInventoryModel _model = null!;
-                             private ICombatSystem _system = null!;
-                         }
-                     }
-                     """;
+                                                [GetAll]
+                                                public partial class BattlePanel : GFramework.Core.Rule.ContextAwareBase
+                                                {
+                                                    private static IInventoryModel {|#0:_model|} = null!;
+                                                    private ICombatSystem _system = null!;
+                                                }
+                                            }
+                                            """);
 
         const string expected = """
                                 // <auto-generated />
@@ -643,7 +644,7 @@ public class ContextGetGeneratorTests
         {
             TestState =
             {
-                Sources = { source },
+                Sources = { source.Source },
                 GeneratedSources =
                 {
                     (typeof(ContextGetGenerator), "TestApp_BattlePanel.ContextGet.g.cs", expected)
@@ -652,8 +653,9 @@ public class ContextGetGeneratorTests
             DisabledDiagnostics = { "GF_Common_Trace_001" }
         };
 
-        test.ExpectedDiagnostics.Add(new DiagnosticResult("GF_ContextGet_007", DiagnosticSeverity.Warning)
-            .WithSpan(52, 40, 52, 46)
+        test.ExpectedDiagnostics.Add(source.WithSpan(
+                new DiagnosticResult("GF_ContextGet_007", DiagnosticSeverity.Warning),
+                "0")
             .WithArguments("_model"));
 
         await test.RunAsync();
@@ -832,62 +834,63 @@ public class ContextGetGeneratorTests
     [Test]
     public async Task Reports_Diagnostic_When_Class_Is_Not_ContextAware()
     {
-        var source = """
-                     using System;
-                     using GFramework.SourceGenerators.Abstractions.Rule;
+        var source = MarkupTestSource.Parse("""
+                                            using System;
+                                            using GFramework.SourceGenerators.Abstractions.Rule;
 
-                     namespace GFramework.SourceGenerators.Abstractions.Rule
-                     {
-                         [AttributeUsage(AttributeTargets.Field, Inherited = false)]
-                         public sealed class GetModelAttribute : Attribute { }
-                     }
+                                            namespace GFramework.SourceGenerators.Abstractions.Rule
+                                            {
+                                                [AttributeUsage(AttributeTargets.Field, Inherited = false)]
+                                                public sealed class GetModelAttribute : Attribute { }
+                                            }
 
-                     namespace GFramework.Core.Abstractions.Model
-                     {
-                         public interface IModel { }
-                     }
+                                            namespace GFramework.Core.Abstractions.Model
+                                            {
+                                                public interface IModel { }
+                                            }
 
-                     namespace GFramework.Core.Abstractions.Systems
-                     {
-                         public interface ISystem { }
-                     }
+                                            namespace GFramework.Core.Abstractions.Systems
+                                            {
+                                                public interface ISystem { }
+                                            }
 
-                     namespace GFramework.Core.Abstractions.Utility
-                     {
-                         public interface IUtility { }
-                     }
+                                            namespace GFramework.Core.Abstractions.Utility
+                                            {
+                                                public interface IUtility { }
+                                            }
 
-                     namespace GFramework.Core.Extensions
-                     {
-                         public static class ContextAwareServiceExtensions
-                         {
-                             public static T GetModel<T>(this object contextAware) => default!;
-                         }
-                     }
+                                            namespace GFramework.Core.Extensions
+                                            {
+                                                public static class ContextAwareServiceExtensions
+                                                {
+                                                    public static T GetModel<T>(this object contextAware) => default!;
+                                                }
+                                            }
 
-                     namespace TestApp
-                     {
-                         public interface IInventoryModel : GFramework.Core.Abstractions.Model.IModel { }
+                                            namespace TestApp
+                                            {
+                                                public interface IInventoryModel : GFramework.Core.Abstractions.Model.IModel { }
 
-                         public partial class InventoryPanel
-                         {
-                             [GetModel]
-                             private IInventoryModel _model = null!;
-                         }
-                     }
-                     """;
+                                                public partial class InventoryPanel
+                                                {
+                                                    [GetModel]
+                                                    private IInventoryModel {|#0:_model|} = null!;
+                                                }
+                                            }
+                                            """);
 
         var test = new CSharpSourceGeneratorTest<ContextGetGenerator, DefaultVerifier>
         {
             TestState =
             {
-                Sources = { source }
+                Sources = { source.Source }
             },
             DisabledDiagnostics = { "GF_Common_Trace_001" }
         };
 
-        test.ExpectedDiagnostics.Add(new DiagnosticResult("GF_ContextGet_005", DiagnosticSeverity.Error)
-            .WithSpan(40, 33, 40, 39)
+        test.ExpectedDiagnostics.Add(source.WithSpan(
+                new DiagnosticResult("GF_ContextGet_005", DiagnosticSeverity.Error),
+                "0")
             .WithArguments("InventoryPanel"));
 
         await test.RunAsync();
@@ -897,68 +900,69 @@ public class ContextGetGeneratorTests
     [Test]
     public async Task Reports_Diagnostic_When_GetModels_Field_Is_Not_IReadOnlyList()
     {
-        var source = """
-                     using System;
-                     using System.Collections.Generic;
-                     using GFramework.SourceGenerators.Abstractions.Rule;
+        var source = MarkupTestSource.Parse("""
+                                            using System;
+                                            using System.Collections.Generic;
+                                            using GFramework.SourceGenerators.Abstractions.Rule;
 
-                     namespace GFramework.SourceGenerators.Abstractions.Rule
-                     {
-                         [AttributeUsage(AttributeTargets.Field, Inherited = false)]
-                         public sealed class GetModelsAttribute : Attribute { }
-                     }
+                                            namespace GFramework.SourceGenerators.Abstractions.Rule
+                                            {
+                                                [AttributeUsage(AttributeTargets.Field, Inherited = false)]
+                                                public sealed class GetModelsAttribute : Attribute { }
+                                            }
 
-                     namespace GFramework.Core.Abstractions.Rule
-                     {
-                         public interface IContextAware { }
-                     }
+                                            namespace GFramework.Core.Abstractions.Rule
+                                            {
+                                                public interface IContextAware { }
+                                            }
 
-                     namespace GFramework.Core.Abstractions.Model
-                     {
-                         public interface IModel { }
-                     }
+                                            namespace GFramework.Core.Abstractions.Model
+                                            {
+                                                public interface IModel { }
+                                            }
 
-                     namespace GFramework.Core.Abstractions.Systems
-                     {
-                         public interface ISystem { }
-                     }
+                                            namespace GFramework.Core.Abstractions.Systems
+                                            {
+                                                public interface ISystem { }
+                                            }
 
-                     namespace GFramework.Core.Abstractions.Utility
-                     {
-                         public interface IUtility { }
-                     }
+                                            namespace GFramework.Core.Abstractions.Utility
+                                            {
+                                                public interface IUtility { }
+                                            }
 
-                     namespace GFramework.Core.Extensions
-                     {
-                         public static class ContextAwareServiceExtensions
-                         {
-                             public static IReadOnlyList<T> GetModels<T>(this object contextAware) => default!;
-                         }
-                     }
+                                            namespace GFramework.Core.Extensions
+                                            {
+                                                public static class ContextAwareServiceExtensions
+                                                {
+                                                    public static IReadOnlyList<T> GetModels<T>(this object contextAware) => default!;
+                                                }
+                                            }
 
-                     namespace TestApp
-                     {
-                         public interface IInventoryModel : GFramework.Core.Abstractions.Model.IModel { }
+                                            namespace TestApp
+                                            {
+                                                public interface IInventoryModel : GFramework.Core.Abstractions.Model.IModel { }
 
-                         public partial class InventoryPanel : GFramework.Core.Abstractions.Rule.IContextAware
-                         {
-                             [GetModels]
-                             private List<IInventoryModel> _models = new();
-                         }
-                     }
-                     """;
+                                                public partial class InventoryPanel : GFramework.Core.Abstractions.Rule.IContextAware
+                                                {
+                                                    [GetModels]
+                                                    private List<IInventoryModel> {|#0:_models|} = new();
+                                                }
+                                            }
+                                            """);
 
         var test = new CSharpSourceGeneratorTest<ContextGetGenerator, DefaultVerifier>
         {
             TestState =
             {
-                Sources = { source }
+                Sources = { source.Source }
             },
             DisabledDiagnostics = { "GF_Common_Trace_001" }
         };
 
-        test.ExpectedDiagnostics.Add(new DiagnosticResult("GF_ContextGet_004", DiagnosticSeverity.Error)
-            .WithSpan(46, 39, 46, 46)
+        test.ExpectedDiagnostics.Add(source.WithSpan(
+                new DiagnosticResult("GF_ContextGet_004", DiagnosticSeverity.Error),
+                "0")
             .WithArguments("_models", "System.Collections.Generic.List<TestApp.IInventoryModel>", "GetModels"));
 
         await test.RunAsync();
@@ -968,67 +972,68 @@ public class ContextGetGeneratorTests
     [Test]
     public async Task Reports_Diagnostic_For_Readonly_Explicit_GetModel_Field()
     {
-        var source = """
-                     using System;
-                     using GFramework.SourceGenerators.Abstractions.Rule;
+        var source = MarkupTestSource.Parse("""
+                                            using System;
+                                            using GFramework.SourceGenerators.Abstractions.Rule;
 
-                     namespace GFramework.SourceGenerators.Abstractions.Rule
-                     {
-                         [AttributeUsage(AttributeTargets.Field, Inherited = false)]
-                         public sealed class GetModelAttribute : Attribute { }
-                     }
+                                            namespace GFramework.SourceGenerators.Abstractions.Rule
+                                            {
+                                                [AttributeUsage(AttributeTargets.Field, Inherited = false)]
+                                                public sealed class GetModelAttribute : Attribute { }
+                                            }
 
-                     namespace GFramework.Core.Abstractions.Rule
-                     {
-                         public interface IContextAware { }
-                     }
+                                            namespace GFramework.Core.Abstractions.Rule
+                                            {
+                                                public interface IContextAware { }
+                                            }
 
-                     namespace GFramework.Core.Abstractions.Model
-                     {
-                         public interface IModel { }
-                     }
+                                            namespace GFramework.Core.Abstractions.Model
+                                            {
+                                                public interface IModel { }
+                                            }
 
-                     namespace GFramework.Core.Abstractions.Systems
-                     {
-                         public interface ISystem { }
-                     }
+                                            namespace GFramework.Core.Abstractions.Systems
+                                            {
+                                                public interface ISystem { }
+                                            }
 
-                     namespace GFramework.Core.Abstractions.Utility
-                     {
-                         public interface IUtility { }
-                     }
+                                            namespace GFramework.Core.Abstractions.Utility
+                                            {
+                                                public interface IUtility { }
+                                            }
 
-                     namespace GFramework.Core.Extensions
-                     {
-                         public static class ContextAwareServiceExtensions
-                         {
-                             public static T GetModel<T>(this object contextAware) => default!;
-                         }
-                     }
+                                            namespace GFramework.Core.Extensions
+                                            {
+                                                public static class ContextAwareServiceExtensions
+                                                {
+                                                    public static T GetModel<T>(this object contextAware) => default!;
+                                                }
+                                            }
 
-                     namespace TestApp
-                     {
-                         public interface IInventoryModel : GFramework.Core.Abstractions.Model.IModel { }
+                                            namespace TestApp
+                                            {
+                                                public interface IInventoryModel : GFramework.Core.Abstractions.Model.IModel { }
 
-                         public partial class InventoryPanel : GFramework.Core.Abstractions.Rule.IContextAware
-                         {
-                             [GetModel]
-                             private readonly IInventoryModel _model = null!;
-                         }
-                     }
-                     """;
+                                                public partial class InventoryPanel : GFramework.Core.Abstractions.Rule.IContextAware
+                                                {
+                                                    [GetModel]
+                                                    private readonly IInventoryModel {|#0:_model|} = null!;
+                                                }
+                                            }
+                                            """);
 
         var test = new CSharpSourceGeneratorTest<ContextGetGenerator, DefaultVerifier>
         {
             TestState =
             {
-                Sources = { source }
+                Sources = { source.Source }
             },
             DisabledDiagnostics = { "GF_Common_Trace_001" }
         };
 
-        test.ExpectedDiagnostics.Add(new DiagnosticResult("GF_ContextGet_003", DiagnosticSeverity.Error)
-            .WithSpan(45, 42, 45, 48)
+        test.ExpectedDiagnostics.Add(source.WithSpan(
+                new DiagnosticResult("GF_ContextGet_003", DiagnosticSeverity.Error),
+                "0")
             .WithArguments("_model"));
 
         await test.RunAsync();
@@ -1038,67 +1043,68 @@ public class ContextGetGeneratorTests
     [Test]
     public async Task Reports_Diagnostic_For_Static_Explicit_GetModel_Field()
     {
-        var source = """
-                     using System;
-                     using GFramework.SourceGenerators.Abstractions.Rule;
+        var source = MarkupTestSource.Parse("""
+                                            using System;
+                                            using GFramework.SourceGenerators.Abstractions.Rule;
 
-                     namespace GFramework.SourceGenerators.Abstractions.Rule
-                     {
-                         [AttributeUsage(AttributeTargets.Field, Inherited = false)]
-                         public sealed class GetModelAttribute : Attribute { }
-                     }
+                                            namespace GFramework.SourceGenerators.Abstractions.Rule
+                                            {
+                                                [AttributeUsage(AttributeTargets.Field, Inherited = false)]
+                                                public sealed class GetModelAttribute : Attribute { }
+                                            }
 
-                     namespace GFramework.Core.Abstractions.Rule
-                     {
-                         public interface IContextAware { }
-                     }
+                                            namespace GFramework.Core.Abstractions.Rule
+                                            {
+                                                public interface IContextAware { }
+                                            }
 
-                     namespace GFramework.Core.Abstractions.Model
-                     {
-                         public interface IModel { }
-                     }
+                                            namespace GFramework.Core.Abstractions.Model
+                                            {
+                                                public interface IModel { }
+                                            }
 
-                     namespace GFramework.Core.Abstractions.Systems
-                     {
-                         public interface ISystem { }
-                     }
+                                            namespace GFramework.Core.Abstractions.Systems
+                                            {
+                                                public interface ISystem { }
+                                            }
 
-                     namespace GFramework.Core.Abstractions.Utility
-                     {
-                         public interface IUtility { }
-                     }
+                                            namespace GFramework.Core.Abstractions.Utility
+                                            {
+                                                public interface IUtility { }
+                                            }
 
-                     namespace GFramework.Core.Extensions
-                     {
-                         public static class ContextAwareServiceExtensions
-                         {
-                             public static T GetModel<T>(this object contextAware) => default!;
-                         }
-                     }
+                                            namespace GFramework.Core.Extensions
+                                            {
+                                                public static class ContextAwareServiceExtensions
+                                                {
+                                                    public static T GetModel<T>(this object contextAware) => default!;
+                                                }
+                                            }
 
-                     namespace TestApp
-                     {
-                         public interface IInventoryModel : GFramework.Core.Abstractions.Model.IModel { }
+                                            namespace TestApp
+                                            {
+                                                public interface IInventoryModel : GFramework.Core.Abstractions.Model.IModel { }
 
-                         public partial class InventoryPanel : GFramework.Core.Abstractions.Rule.IContextAware
-                         {
-                             [GetModel]
-                             private static IInventoryModel _model = null!;
-                         }
-                     }
-                     """;
+                                                public partial class InventoryPanel : GFramework.Core.Abstractions.Rule.IContextAware
+                                                {
+                                                    [GetModel]
+                                                    private static IInventoryModel {|#0:_model|} = null!;
+                                                }
+                                            }
+                                            """);
 
         var test = new CSharpSourceGeneratorTest<ContextGetGenerator, DefaultVerifier>
         {
             TestState =
             {
-                Sources = { source }
+                Sources = { source.Source }
             },
             DisabledDiagnostics = { "GF_Common_Trace_001" }
         };
 
-        test.ExpectedDiagnostics.Add(new DiagnosticResult("GF_ContextGet_002", DiagnosticSeverity.Error)
-            .WithSpan(45, 40, 45, 46)
+        test.ExpectedDiagnostics.Add(source.WithSpan(
+                new DiagnosticResult("GF_ContextGet_002", DiagnosticSeverity.Error),
+                "0")
             .WithArguments("_model"));
 
         await test.RunAsync();

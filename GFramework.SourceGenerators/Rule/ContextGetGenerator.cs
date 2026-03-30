@@ -1,7 +1,5 @@
-using System.Text;
 using GFramework.SourceGenerators.Common.Constants;
 using GFramework.SourceGenerators.Common.Diagnostics;
-using GFramework.SourceGenerators.Common.Extensions;
 using GFramework.SourceGenerators.Common.Info;
 using GFramework.SourceGenerators.Diagnostics;
 
@@ -296,6 +294,11 @@ public sealed class ContextGetGenerator : IIncrementalGenerator
         foreach (var field in GetAllFields(workItem.TypeSymbol))
         {
             if (explicitFields.Contains(field))
+                continue;
+
+            // Const fields are compile-time constants, so [GetAll] should skip them explicitly instead of relying on
+            // type inference to fall through implicitly.
+            if (field.IsConst)
                 continue;
 
             // Infer the target first so [GetAll] only warns for fields it would otherwise bind.

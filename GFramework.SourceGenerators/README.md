@@ -49,4 +49,4 @@ public partial class InventoryPanel
 `[GetServices]`，避免将非上下文服务字段误判为服务依赖。
 
 `[GetAll]` 会跳过 `const`、`static` 和 `readonly` 字段。若某个字段本来会被 `[GetAll]` 推断为
-`Model`、`System` 或 `Utility` 绑定，但因为字段不可赋值而被跳过，生成器会发出警告提示该字段不会参与生成。
+`Model`、`System` 或 `Utility` 绑定，但因为是不可赋值的 `static` 或 `readonly` 字段而被跳过，生成器会发出警告提示该字段不会参与生成。
