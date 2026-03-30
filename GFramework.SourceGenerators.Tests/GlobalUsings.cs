@@ -17,6 +17,7 @@ global using System.Linq;
 global using System.Threading;
 global using System.Threading.Tasks;
 global using Microsoft.CodeAnalysis;
+global using Microsoft.CodeAnalysis.Text;
 global using Microsoft.CodeAnalysis.CSharp.Testing;
 global using Microsoft.CodeAnalysis.Testing;
 global using NUnit.Framework;

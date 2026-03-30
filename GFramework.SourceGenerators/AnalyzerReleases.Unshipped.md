@@ -13,6 +13,8 @@
  GF_ContextGet_004     | GFramework.SourceGenerators.rule | Error    | ContextGetDiagnostics  
  GF_ContextGet_005     | GFramework.SourceGenerators.rule | Error    | ContextGetDiagnostics  
  GF_ContextGet_006     | GFramework.SourceGenerators.rule | Error    | ContextGetDiagnostics  
+ GF_ContextGet_007     | GFramework.SourceGenerators.rule | Warning  | ContextGetDiagnostics  
+ GF_ContextGet_008     | GFramework.SourceGenerators.rule | Warning  | ContextGetDiagnostics  
  GF_Priority_001       | GFramework.Priority              | Error    | PriorityDiagnostic     
  GF_Priority_002       | GFramework.Priority              | Warning  | PriorityDiagnostic     
  GF_Priority_003       | GFramework.Priority              | Error    | PriorityDiagnostic     

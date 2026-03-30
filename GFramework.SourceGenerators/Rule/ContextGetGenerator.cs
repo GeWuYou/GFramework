@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using System.Text;
 using GFramework.SourceGenerators.Common.Constants;
 using GFramework.SourceGenerators.Common.Diagnostics;
@@ -299,23 +298,29 @@ public sealed class ContextGetGenerator : IIncrementalGenerator
             if (explicitFields.Contains(field))
                 continue;
 
-            if (!CanInferBinding(context, field))
+            // Const fields are compile-time constants, so [GetAll] should skip them explicitly instead of relying on
+            // type inference to fall through implicitly.
+            if (field.IsConst)
                 continue;
 
+            // Infer the target first so [GetAll] only warns for fields it would otherwise bind.
             if (!TryCreateInferredBinding(field, symbols, out var binding))
+                continue;
+
+            if (!CanApplyInferredBinding(context, field))
                 continue;
 
             bindings.Add(binding);
         }
     }
 
-    private static bool CanInferBinding(SourceProductionContext context, IFieldSymbol field)
+    private static bool CanApplyInferredBinding(SourceProductionContext context, IFieldSymbol field)
     {
         if (field.IsStatic)
         {
             ReportFieldDiagnostic(
                 context,
-                ContextGetDiagnostics.StaticFieldNotSupported,
+                ContextGetDiagnostics.GetAllStaticFieldSkipped,
                 field);
             return false;
         }
@@ -325,7 +330,7 @@ public sealed class ContextGetGenerator : IIncrementalGenerator
 
         ReportFieldDiagnostic(
             context,
-            ContextGetDiagnostics.ReadOnlyFieldNotSupported,
+            ContextGetDiagnostics.GetAllReadOnlyFieldSkipped,
             field);
         return false;
     }

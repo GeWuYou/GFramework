@@ -1,4 +1,4 @@
-using Microsoft.CodeAnalysis;
+using GFramework.SourceGenerators.Common.Constants;
 
 namespace GFramework.SourceGenerators.Diagnostics;
 
@@ -7,6 +7,8 @@ namespace GFramework.SourceGenerators.Diagnostics;
 /// </summary>
 public static class ContextGetDiagnostics
 {
+    private const string SourceGeneratorsRuleCategory = $"{PathContests.SourceGeneratorsPath}.Rule";
+
     /// <summary>
     ///     不支持在嵌套类中生成注入代码。
     /// </summary>
@@ -14,7 +16,7 @@ public static class ContextGetDiagnostics
         "GF_ContextGet_001",
         "Context Get injection does not support nested classes",
         "Class '{0}' cannot use context Get injection inside a nested type",
-        "GFramework.SourceGenerators.Rule",
+        SourceGeneratorsRuleCategory,
         DiagnosticSeverity.Error,
         true);
 
@@ -25,7 +27,7 @@ public static class ContextGetDiagnostics
         "GF_ContextGet_002",
         "Static field is not supported for context Get injection",
         "Field '{0}' cannot be static when using generated context Get injection",
-        "GFramework.SourceGenerators.Rule",
+        SourceGeneratorsRuleCategory,
         DiagnosticSeverity.Error,
         true);
 
@@ -36,8 +38,30 @@ public static class ContextGetDiagnostics
         "GF_ContextGet_003",
         "Readonly field is not supported for context Get injection",
         "Field '{0}' cannot be readonly when using generated context Get injection",
-        "GFramework.SourceGenerators.Rule",
+        SourceGeneratorsRuleCategory,
         DiagnosticSeverity.Error,
+        true);
+
+    /// <summary>
+    ///     使用 <c>[GetAll]</c> 时，静态字段会被跳过且不会生成注入赋值。
+    /// </summary>
+    public static readonly DiagnosticDescriptor GetAllStaticFieldSkipped = new(
+        "GF_ContextGet_007",
+        "Static field will be skipped by [GetAll] context Get injection",
+        "Field '{0}' is static and will be skipped by [GetAll] context Get injection generation",
+        SourceGeneratorsRuleCategory,
+        DiagnosticSeverity.Warning,
+        true);
+
+    /// <summary>
+    ///     使用 <c>[GetAll]</c> 时，只读字段会被跳过且不会生成注入赋值。
+    /// </summary>
+    public static readonly DiagnosticDescriptor GetAllReadOnlyFieldSkipped = new(
+        "GF_ContextGet_008",
+        "Readonly field will be skipped by [GetAll] context Get injection",
+        "Field '{0}' is readonly and will be skipped by [GetAll] context Get injection generation",
+        SourceGeneratorsRuleCategory,
+        DiagnosticSeverity.Warning,
         true);
 
     /// <summary>
@@ -47,7 +71,7 @@ public static class ContextGetDiagnostics
         "GF_ContextGet_004",
         "Field type is not valid for the selected context Get attribute",
         "Field '{0}' type '{1}' is not valid for [{2}]",
-        "GFramework.SourceGenerators.Rule",
+        SourceGeneratorsRuleCategory,
         DiagnosticSeverity.Error,
         true);
 
@@ -58,7 +82,7 @@ public static class ContextGetDiagnostics
         "GF_ContextGet_005",
         "Context-aware type is required",
         "Class '{0}' must be context-aware to use generated context Get injection",
-        "GFramework.SourceGenerators.Rule",
+        SourceGeneratorsRuleCategory,
         DiagnosticSeverity.Error,
         true);
 
@@ -69,7 +93,7 @@ public static class ContextGetDiagnostics
         "GF_ContextGet_006",
         "Multiple context Get attributes are not supported on the same field",
         "Field '{0}' cannot declare multiple generated context Get attributes",
-        "GFramework.SourceGenerators.Rule",
+        SourceGeneratorsRuleCategory,
         DiagnosticSeverity.Error,
         true);
 }
