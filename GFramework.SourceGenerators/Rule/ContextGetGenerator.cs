@@ -220,6 +220,12 @@ public sealed class ContextGetGenerator : IIncrementalGenerator
             if (!CanGenerateForType(context, workItem, symbols))
                 continue;
 
+            if (workItem.TypeSymbol.ReportGeneratedMethodConflicts(
+                    context,
+                    GetTypeLocation(workItem),
+                    InjectionMethodName))
+                continue;
+
             var bindings = CollectBindings(context, workItem, descriptors, symbols);
             if (bindings.Count == 0 && workItem.GetAllDeclaration is null)
                 continue;

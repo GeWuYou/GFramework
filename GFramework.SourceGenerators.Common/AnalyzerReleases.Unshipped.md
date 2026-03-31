@@ -1,9 +1,10 @@
 ﻿; Unshipped analyzer release
-; https://github.com/dotnet/roslyn-analyzers/blob/main/src/Microsoft.CodeAnalysis.Analyzers/ReleaseTrackingAnalyzers.Help.md
+; https://github.com/dotnet/roslyn/blob/main/src/RoslynAnalyzers/Microsoft.CodeAnalysis.Analyzers/ReleaseTrackingAnalyzers.Help.md
 
 ### New Rules
 
  Rule ID             | Category          | Severity | Notes             
 ---------------------|-------------------|----------|-------------------
  GF_Common_Class_001 | GFramework.Common | Error    | CommonDiagnostics 
+ GF_Common_Class_002 | GFramework.Common | Error    | CommonDiagnostics 
  GF_Common_Trace_001 | GFramework.Trace  | Info     | CommonDiagnostics 

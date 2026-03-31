@@ -1,6 +1,4 @@
-﻿using Microsoft.CodeAnalysis;
-
-namespace GFramework.SourceGenerators.Common.Diagnostics;
+﻿namespace GFramework.SourceGenerators.Common.Diagnostics;
 
 /// <summary>
 ///     提供通用诊断描述符的静态类
@@ -22,6 +20,23 @@ public static class CommonDiagnostics
             "GF_Common_Class_001",
             "Class must be partial",
             "Class '{0}' must be declared partial for code generation",
+            "GFramework.Common",
+            DiagnosticSeverity.Error,
+            true
+        );
+
+    /// <summary>
+    ///     定义生成方法名与用户代码冲突的诊断描述符。
+    /// </summary>
+    /// <remarks>
+    ///     该诊断用于保护生成器保留的方法名，避免用户代码手动声明了相同零参数方法时出现重复成员错误，
+    ///     并使多个生成器可以复用同一条一致的冲突报告规则。
+    /// </remarks>
+    public static readonly DiagnosticDescriptor GeneratedMethodNameConflict =
+        new(
+            "GF_Common_Class_002",
+            "Generated method name conflicts with an existing member",
+            "Class '{0}' already defines method '{1}()', which conflicts with generated code",
             "GFramework.Common",
             DiagnosticSeverity.Error,
             true

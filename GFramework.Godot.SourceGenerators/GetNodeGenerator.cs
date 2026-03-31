@@ -4,9 +4,6 @@ using GFramework.Godot.SourceGenerators.Diagnostics;
 using GFramework.SourceGenerators.Common.Constants;
 using GFramework.SourceGenerators.Common.Diagnostics;
 using GFramework.SourceGenerators.Common.Extensions;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace GFramework.Godot.SourceGenerators;
 
@@ -93,6 +90,12 @@ public sealed class GetNodeGenerator : IIncrementalGenerator
             var typeSymbol = group.TypeSymbol;
 
             if (!CanGenerateForType(context, group, typeSymbol))
+                continue;
+
+            if (typeSymbol.ReportGeneratedMethodConflicts(
+                    context,
+                    group.Fields[0].Variable.Identifier.GetLocation(),
+                    InjectionMethodName))
                 continue;
 
             var bindings = new List<NodeBindingInfo>();
