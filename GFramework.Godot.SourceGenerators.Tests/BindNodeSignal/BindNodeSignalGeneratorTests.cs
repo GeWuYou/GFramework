@@ -526,11 +526,11 @@ public class BindNodeSignalGeneratorTests
             TestBehaviors = TestBehaviors.SkipGeneratedSourcesCheck
         };
 
-        test.ExpectedDiagnostics.Add(new DiagnosticResult("GF_Godot_BindNodeSignal_011", DiagnosticSeverity.Error)
+        test.ExpectedDiagnostics.Add(new DiagnosticResult("GF_Common_Class_002", DiagnosticSeverity.Error)
             .WithLocation(0)
             .WithArguments("Hud", "__BindNodeSignals_Generated"));
 
-        test.ExpectedDiagnostics.Add(new DiagnosticResult("GF_Godot_BindNodeSignal_011", DiagnosticSeverity.Error)
+        test.ExpectedDiagnostics.Add(new DiagnosticResult("GF_Common_Class_002", DiagnosticSeverity.Error)
             .WithLocation(1)
             .WithArguments("Hud", "__UnbindNodeSignals_Generated"));
 

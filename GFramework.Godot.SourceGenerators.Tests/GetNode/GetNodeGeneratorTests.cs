@@ -1,8 +1,4 @@
 using GFramework.Godot.SourceGenerators.Tests.Core;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Testing;
-using Microsoft.CodeAnalysis.Testing;
-using NUnit.Framework;
 
 namespace GFramework.Godot.SourceGenerators.Tests.GetNode;
 
@@ -237,6 +233,73 @@ public class GetNodeGeneratorTests
         test.ExpectedDiagnostics.Add(new DiagnosticResult("GF_Godot_GetNode_004", DiagnosticSeverity.Error)
             .WithSpan(39, 24, 39, 38)
             .WithArguments("_leftContainer"));
+
+        await test.RunAsync();
+    }
+
+    [Test]
+    public async Task Reports_Diagnostic_When_Generated_Injection_Method_Name_Already_Exists()
+    {
+        const string source = """
+                              using System;
+                              using GFramework.Godot.SourceGenerators.Abstractions;
+                              using Godot;
+
+                              namespace GFramework.Godot.SourceGenerators.Abstractions
+                              {
+                                  [AttributeUsage(AttributeTargets.Field, Inherited = false, AllowMultiple = false)]
+                                  public sealed class GetNodeAttribute : Attribute
+                                  {
+                                      public GetNodeAttribute() {}
+                                  }
+
+                                  public enum NodeLookupMode
+                                  {
+                                      Auto = 0
+                                  }
+                              }
+
+                              namespace Godot
+                              {
+                                  public class Node
+                                  {
+                                      public virtual void _Ready() {}
+                                      public T GetNode<T>(string path) where T : Node => throw new InvalidOperationException(path);
+                                      public T? GetNodeOrNull<T>(string path) where T : Node => default;
+                                  }
+
+                                  public class HBoxContainer : Node
+                                  {
+                                  }
+                              }
+
+                              namespace TestApp
+                              {
+                                  public partial class TopBar : HBoxContainer
+                                  {
+                                      [GetNode]
+                                      private HBoxContainer _leftContainer = null!;
+
+                                      private void {|#0:__InjectGetNodes_Generated|}()
+                                      {
+                                      }
+                                  }
+                              }
+                              """;
+
+        var test = new CSharpSourceGeneratorTest<GetNodeGenerator, DefaultVerifier>
+        {
+            TestState =
+            {
+                Sources = { source }
+            },
+            DisabledDiagnostics = { "GF_Common_Trace_001" },
+            TestBehaviors = TestBehaviors.SkipGeneratedSourcesCheck
+        };
+
+        test.ExpectedDiagnostics.Add(new DiagnosticResult("GF_Common_Class_002", DiagnosticSeverity.Error)
+            .WithLocation(0)
+            .WithArguments("TopBar", "__InjectGetNodes_Generated"));
 
         await test.RunAsync();
     }

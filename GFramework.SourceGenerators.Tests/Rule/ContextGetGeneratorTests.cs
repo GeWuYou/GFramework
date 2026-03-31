@@ -378,6 +378,84 @@ public class ContextGetGeneratorTests
     }
 
     [Test]
+    public async Task Reports_Diagnostic_When_Generated_Injection_Method_Name_Already_Exists()
+    {
+        var source = """
+                     using System;
+                     using GFramework.SourceGenerators.Abstractions.Rule;
+
+                     namespace GFramework.SourceGenerators.Abstractions.Rule
+                     {
+                         [AttributeUsage(AttributeTargets.Class, Inherited = false)]
+                         public sealed class ContextAwareAttribute : Attribute { }
+
+                         [AttributeUsage(AttributeTargets.Field, Inherited = false)]
+                         public sealed class GetModelAttribute : Attribute { }
+                     }
+
+                     namespace GFramework.Core.Abstractions.Rule
+                     {
+                         public interface IContextAware { }
+                     }
+
+                     namespace GFramework.Core.Abstractions.Model
+                     {
+                         public interface IModel { }
+                     }
+
+                     namespace GFramework.Core.Abstractions.Systems
+                     {
+                         public interface ISystem { }
+                     }
+
+                     namespace GFramework.Core.Abstractions.Utility
+                     {
+                         public interface IUtility { }
+                     }
+
+                     namespace GFramework.Core.Extensions
+                     {
+                         public static class ContextAwareServiceExtensions
+                         {
+                             public static T GetModel<T>(this object contextAware) => default!;
+                         }
+                     }
+
+                     namespace TestApp
+                     {
+                         public interface IInventoryModel : GFramework.Core.Abstractions.Model.IModel { }
+
+                         [ContextAware]
+                         public partial class InventoryPanel
+                         {
+                             [GetModel]
+                             private IInventoryModel _model = null!;
+
+                             private void {|#0:__InjectContextBindings_Generated|}()
+                             {
+                             }
+                         }
+                     }
+                     """;
+
+        var test = new CSharpSourceGeneratorTest<ContextGetGenerator, DefaultVerifier>
+        {
+            TestState =
+            {
+                Sources = { source }
+            },
+            DisabledDiagnostics = { "GF_Common_Trace_001" },
+            TestBehaviors = TestBehaviors.SkipGeneratedSourcesCheck
+        };
+
+        test.ExpectedDiagnostics.Add(new DiagnosticResult("GF_Common_Class_002", DiagnosticSeverity.Error)
+            .WithLocation(0)
+            .WithArguments("InventoryPanel", "__InjectContextBindings_Generated"));
+
+        await test.RunAsync();
+    }
+
+    [Test]
     public async Task Ignores_NonInferable_Const_Field_For_GetAll_Class_Without_Diagnostic()
     {
         var source = """

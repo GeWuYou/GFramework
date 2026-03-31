@@ -1,7 +1,5 @@
-using System.Text;
 using GFramework.SourceGenerators.Common.Constants;
 using GFramework.SourceGenerators.Common.Diagnostics;
-using GFramework.SourceGenerators.Common.Extensions;
 using GFramework.SourceGenerators.Common.Info;
 using GFramework.SourceGenerators.Diagnostics;
 
@@ -218,6 +216,12 @@ public sealed class ContextGetGenerator : IIncrementalGenerator
         foreach (var workItem in workItems.Values)
         {
             if (!CanGenerateForType(context, workItem, symbols))
+                continue;
+
+            if (workItem.TypeSymbol.ReportGeneratedMethodConflicts(
+                    context,
+                    GetTypeLocation(workItem),
+                    InjectionMethodName))
                 continue;
 
             var bindings = CollectBindings(context, workItem, descriptors, symbols);

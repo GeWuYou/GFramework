@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using GFramework.Godot.SourceGenerators.Diagnostics;
 using GFramework.SourceGenerators.Common.Constants;
 using GFramework.SourceGenerators.Common.Diagnostics;
@@ -88,7 +89,11 @@ public sealed class BindNodeSignalGenerator : IIncrementalGenerator
             if (!CanGenerateForType(context, group, typeSymbol))
                 continue;
 
-            if (HasGeneratedMethodNameConflict(context, group, typeSymbol))
+            if (typeSymbol.ReportGeneratedMethodConflicts(
+                    context,
+                    group.Methods[0].Method.Identifier.GetLocation(),
+                    BindMethodName,
+                    UnbindMethodName))
                 continue;
 
             var bindings = new List<SignalBindingInfo>();
@@ -390,36 +395,6 @@ public sealed class BindNodeSignalGenerator : IIncrementalGenerator
             typeSymbol.Name));
     }
 
-    private static bool HasGeneratedMethodNameConflict(
-        SourceProductionContext context,
-        TypeGroup group,
-        INamedTypeSymbol typeSymbol)
-    {
-        var hasConflict = false;
-
-        foreach (var generatedMethodName in new[] { BindMethodName, UnbindMethodName })
-        {
-            var conflictingMethod = typeSymbol.GetMembers()
-                .OfType<IMethodSymbol>()
-                .FirstOrDefault(method =>
-                    method.Name == generatedMethodName &&
-                    method.Parameters.Length == 0 &&
-                    method.TypeParameters.Length == 0);
-
-            if (conflictingMethod is null)
-                continue;
-
-            context.ReportDiagnostic(Diagnostic.Create(
-                BindNodeSignalDiagnostics.GeneratedMethodNameConflict,
-                conflictingMethod.Locations.FirstOrDefault() ?? group.Methods[0].Method.Identifier.GetLocation(),
-                typeSymbol.Name,
-                generatedMethodName));
-            hasConflict = true;
-        }
-
-        return hasConflict;
-    }
-
     private static IMethodSymbol? FindLifecycleMethod(
         INamedTypeSymbol typeSymbol,
         string methodName)
@@ -627,7 +602,7 @@ public sealed class BindNodeSignalGenerator : IIncrementalGenerator
 
         public int GetHashCode(MethodCandidate obj)
         {
-            return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(obj);
+            return RuntimeHelpers.GetHashCode(obj);
         }
     }
 }
