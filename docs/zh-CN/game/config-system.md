@@ -144,7 +144,7 @@ var hotReload = loader.EnableHotReload(
 - 打开 raw YAML 文件
 - 打开匹配的 schema 文件
 - 对必填字段、未知顶层字段、基础标量类型和标量数组元素做轻量校验
-- 对顶层标量字段提供轻量表单入口
+- 对顶层标量字段和顶层标量数组提供轻量表单入口
 
 当前仍建议把复杂数组、嵌套对象和批量修改放在 raw YAML 中完成。
 
@@ -154,6 +154,6 @@ var hotReload = loader.EnableHotReload(
 
 - 跨表引用校验
 - 更完整的 JSON Schema 支持
-- 更强的 VS Code 表单编辑器
+- 更强的 VS Code 嵌套对象与复杂数组编辑器
 
 因此，现阶段更适合作为你游戏项目的“受控试点配表系统”，而不是完全无约束的大规模内容生产平台。

@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const vscode = require("vscode");
 const {
-    applyScalarUpdates,
+    applyFormUpdates,
     parseSchemaContent,
     parseTopLevelYaml,
     unquoteScalar,
@@ -247,9 +247,9 @@ async function openSchemaFile(item) {
 }
 
 /**
- * Open a lightweight form preview for top-level scalar fields.
- * The editor intentionally edits only simple scalar keys and keeps raw YAML as
- * the escape hatch for arrays, nested objects, and advanced changes.
+ * Open a lightweight form preview for top-level scalar fields and scalar
+ * arrays. Nested objects and more complex array shapes still use raw YAML as
+ * the escape hatch.
  *
  * @param {ConfigTreeItem | { resourceUri?: vscode.Uri }} item Tree item.
  * @param {vscode.DiagnosticCollection} diagnostics Diagnostic collection.
@@ -279,7 +279,10 @@ async function openFormPreview(item, diagnostics) {
 
     panel.webview.onDidReceiveMessage(async (message) => {
         if (message.type === "save") {
-            const updatedYaml = applyScalarUpdates(yamlText, message.values || {});
+            const updatedYaml = applyFormUpdates(yamlText, {
+                scalars: message.scalars || {},
+                arrays: parseArrayFieldPayload(message.arrays || {})
+            });
             await fs.promises.writeFile(configUri.fsPath, updatedYaml, "utf8");
             const document = await vscode.workspace.openTextDocument(configUri);
             await document.save();
@@ -409,7 +412,7 @@ async function loadSchemaInfoForConfig(configUri, workspaceRoot) {
  * @returns {string} HTML string.
  */
 function renderFormHtml(fileName, schemaInfo, parsedYaml) {
-    const fields = Array.from(parsedYaml.entries.entries())
+    const scalarFields = Array.from(parsedYaml.entries.entries())
         .filter(([, entry]) => entry.kind === "scalar")
         .map(([key, entry]) => {
             const escapedKey = escapeHtml(key);
@@ -424,13 +427,48 @@ function renderFormHtml(fileName, schemaInfo, parsedYaml) {
         })
         .join("\n");
 
+    const arrayFields = Array.from(parsedYaml.entries.entries())
+        .filter(([, entry]) => entry.kind === "array")
+        .map(([key, entry]) => {
+            const escapedKey = escapeHtml(key);
+            const escapedValue = escapeHtml((entry.items || [])
+                .map((item) => unquoteScalar(item.raw))
+                .join("\n"));
+            const required = schemaInfo.required.includes(key) ? "<span class=\"badge\">required</span>" : "";
+            const itemType = schemaInfo.properties[key] && schemaInfo.properties[key].itemType
+                ? `array<${escapeHtml(schemaInfo.properties[key].itemType)}>`
+                : "array";
+
+            return `
+                <label class="field">
+                    <span class="label">${escapedKey} ${required}</span>
+                    <span class="hint">One item per line. Expected type: ${itemType}</span>
+                    <textarea data-array-key="${escapedKey}" rows="5">${escapedValue}</textarea>
+                </label>
+            `;
+        })
+        .join("\n");
+
+    const unsupportedFields = Array.from(parsedYaml.entries.entries())
+        .filter(([, entry]) => entry.kind !== "scalar" && entry.kind !== "array")
+        .map(([key, entry]) => `
+            <div class="unsupported">
+                <strong>${escapeHtml(key)}</strong>: ${escapeHtml(entry.kind)} fields are currently raw-YAML-only.
+            </div>
+        `)
+        .join("\n");
+
     const schemaStatus = schemaInfo.exists
         ? `Schema: ${escapeHtml(schemaInfo.schemaPath)}`
         : `Schema missing: ${escapeHtml(schemaInfo.schemaPath)}`;
 
-    const emptyState = fields.length > 0
-        ? fields
-        : "<p>No editable top-level scalar fields were detected. Use raw YAML for nested objects or arrays.</p>";
+    const editableContent = [scalarFields, arrayFields].filter((content) => content.length > 0).join("\n");
+    const unsupportedSection = unsupportedFields.length > 0
+        ? `<div class="unsupported-list">${unsupportedFields}</div>`
+        : "";
+    const emptyState = editableContent.length > 0
+        ? `${editableContent}${unsupportedSection}`
+        : "<p>No editable top-level scalar or scalar-array fields were detected. Use raw YAML for nested objects or complex arrays.</p>";
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -477,6 +515,22 @@ function renderFormHtml(fileName, schemaInfo, parsedYaml) {
             background: var(--vscode-input-background);
             color: var(--vscode-input-foreground);
         }
+        textarea {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            border: 1px solid var(--vscode-input-border, transparent);
+            background: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
+            font-family: var(--vscode-editor-font-family, var(--vscode-font-family));
+            resize: vertical;
+        }
+        .hint {
+            display: block;
+            margin-bottom: 6px;
+            color: var(--vscode-descriptionForeground);
+            font-size: 12px;
+        }
         .badge {
             display: inline-block;
             margin-left: 6px;
@@ -486,11 +540,20 @@ function renderFormHtml(fileName, schemaInfo, parsedYaml) {
             color: var(--vscode-badge-foreground);
             font-size: 11px;
         }
+        .unsupported-list {
+            margin-top: 20px;
+            border-top: 1px solid var(--vscode-panel-border, transparent);
+            padding-top: 16px;
+        }
+        .unsupported {
+            margin-bottom: 10px;
+            color: var(--vscode-descriptionForeground);
+        }
     </style>
 </head>
 <body>
     <div class="toolbar">
-        <button id="save">Save Scalars</button>
+        <button id="save">Save Form</button>
         <button id="openRaw">Open Raw YAML</button>
     </div>
     <div class="meta">
@@ -501,11 +564,15 @@ function renderFormHtml(fileName, schemaInfo, parsedYaml) {
     <script>
         const vscode = acquireVsCodeApi();
         document.getElementById("save").addEventListener("click", () => {
-            const values = {};
+            const scalars = {};
+            const arrays = {};
             for (const input of document.querySelectorAll("input[data-key]")) {
-                values[input.dataset.key] = input.value;
+                scalars[input.dataset.key] = input.value;
             }
-            vscode.postMessage({ type: "save", values });
+            for (const textarea of document.querySelectorAll("textarea[data-array-key]")) {
+                arrays[textarea.dataset.arrayKey] = textarea.value;
+            }
+            vscode.postMessage({ type: "save", scalars, arrays });
         });
         document.getElementById("openRaw").addEventListener("click", () => {
             vscode.postMessage({ type: "openRaw" });
@@ -636,6 +703,25 @@ function escapeHtml(value) {
         .replace(/>/gu, "&gt;")
         .replace(/"/gu, "&quot;")
         .replace(/'/gu, "&#39;");
+}
+
+/**
+ * Convert raw textarea payloads into scalar-array items.
+ *
+ * @param {Record<string, string>} arrays Raw array editor payload.
+ * @returns {Record<string, string[]>} Parsed array updates.
+ */
+function parseArrayFieldPayload(arrays) {
+    const parsed = {};
+
+    for (const [key, value] of Object.entries(arrays)) {
+        parsed[key] = String(value)
+            .split(/\r?\n/u)
+            .map((item) => item.trim())
+            .filter((item) => item.length > 0);
+    }
+
+    return parsed;
 }
 
 module.exports = {

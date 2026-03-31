@@ -1,6 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
+    applyFormUpdates,
     applyScalarUpdates,
     parseSchemaContent,
     parseTopLevelYaml,
@@ -108,4 +109,32 @@ test("applyScalarUpdates should update top-level scalars and append new keys", (
     assert.match(updated, /^name: Goblin$/mu);
     assert.match(updated, /^hp: 25$/mu);
     assert.match(updated, /^  - 1$/mu);
+});
+
+test("applyFormUpdates should replace top-level scalar arrays and preserve unrelated content", () => {
+    const updated = applyFormUpdates(
+        [
+            "id: 1",
+            "name: Slime",
+            "dropItems:",
+            "  - potion",
+            "  - slime_gel",
+            "reward:",
+            "  gold: 10"
+        ].join("\n"),
+        {
+            scalars: {
+                name: "Goblin"
+            },
+            arrays: {
+                dropItems: ["bomb", "hi potion"]
+            }
+        });
+
+    assert.match(updated, /^name: Goblin$/mu);
+    assert.match(updated, /^dropItems:$/mu);
+    assert.match(updated, /^  - bomb$/mu);
+    assert.match(updated, /^  - hi potion$/mu);
+    assert.match(updated, /^reward:$/mu);
+    assert.match(updated, /^  gold: 10$/mu);
 });

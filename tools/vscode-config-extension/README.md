@@ -8,7 +8,7 @@ Minimal VS Code extension scaffold for the GFramework AI-First config workflow.
 - Open raw YAML files
 - Open matching schema files from `schemas/`
 - Run lightweight schema validation for required fields, unknown top-level fields, scalar types, and scalar array items
-- Open a lightweight form preview for top-level scalar fields
+- Open a lightweight form preview for top-level scalar fields and top-level scalar arrays
 
 ## Validation Coverage
 
@@ -32,8 +32,8 @@ node --test ./test/*.test.js
 
 - Multi-root workspaces use the first workspace folder
 - Validation only covers a minimal subset of JSON Schema
-- Form editing currently supports top-level scalar fields only
-- Arrays and nested objects should still be edited in raw YAML
+- Form editing currently supports top-level scalar fields and top-level scalar arrays
+- Nested objects and complex arrays should still be edited in raw YAML
 
 ## Workspace Settings
 

@@ -227,44 +227,85 @@ function isScalarCompatible(expectedType, scalarValue) {
 }
 
 /**
- * Apply scalar field updates back into the original YAML text.
+ * Apply form field updates back into the original YAML text.
+ * The current form editor supports top-level scalar fields and top-level scalar
+ * arrays, while nested objects and complex arrays remain raw-YAML-only.
+ *
+ * @param {string} originalYaml Original YAML content.
+ * @param {{scalars?: Record<string, string>, arrays?: Record<string, string[]>}} updates Updated form values.
+ * @returns {string} Updated YAML content.
+ */
+function applyFormUpdates(originalYaml, updates) {
+    const lines = originalYaml.split(/\r?\n/u);
+    const scalarUpdates = updates.scalars || {};
+    const arrayUpdates = updates.arrays || {};
+    const touchedScalarKeys = new Set();
+    const touchedArrayKeys = new Set();
+    const blocks = findTopLevelBlocks(lines);
+    const updatedLines = [];
+    let cursor = 0;
+
+    for (const block of blocks) {
+        while (cursor < block.start) {
+            updatedLines.push(lines[cursor]);
+            cursor += 1;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(scalarUpdates, block.key)) {
+            touchedScalarKeys.add(block.key);
+            updatedLines.push(renderScalarLine(block.key, scalarUpdates[block.key]));
+            cursor = block.end + 1;
+            continue;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(arrayUpdates, block.key)) {
+            touchedArrayKeys.add(block.key);
+            updatedLines.push(...renderArrayBlock(block.key, arrayUpdates[block.key]));
+            cursor = block.end + 1;
+            continue;
+        }
+
+        while (cursor <= block.end) {
+            updatedLines.push(lines[cursor]);
+            cursor += 1;
+        }
+    }
+
+    while (cursor < lines.length) {
+        updatedLines.push(lines[cursor]);
+        cursor += 1;
+    }
+
+    for (const [key, value] of Object.entries(scalarUpdates)) {
+        if (touchedScalarKeys.has(key)) {
+            continue;
+        }
+
+        updatedLines.push(renderScalarLine(key, value));
+    }
+
+    for (const [key, value] of Object.entries(arrayUpdates)) {
+        if (touchedArrayKeys.has(key)) {
+            continue;
+        }
+
+        updatedLines.push(...renderArrayBlock(key, value));
+    }
+
+    return updatedLines.join("\n");
+}
+
+/**
+ * Apply only scalar updates back into the original YAML text.
+ * This helper is preserved for compatibility with existing tests and callers
+ * that only edit top-level scalar fields.
  *
  * @param {string} originalYaml Original YAML content.
  * @param {Record<string, string>} updates Updated scalar values.
  * @returns {string} Updated YAML content.
  */
 function applyScalarUpdates(originalYaml, updates) {
-    const lines = originalYaml.split(/\r?\n/u);
-    const touched = new Set();
-
-    const updatedLines = lines.map((line) => {
-        if (/^\s/u.test(line)) {
-            return line;
-        }
-
-        const match = /^([A-Za-z0-9_]+):(?:\s*(.*))?$/u.exec(line);
-        if (!match) {
-            return line;
-        }
-
-        const key = match[1];
-        if (!Object.prototype.hasOwnProperty.call(updates, key)) {
-            return line;
-        }
-
-        touched.add(key);
-        return `${key}: ${formatYamlScalar(updates[key])}`;
-    });
-
-    for (const [key, value] of Object.entries(updates)) {
-        if (touched.has(key)) {
-            continue;
-        }
-
-        updatedLines.push(`${key}: ${formatYamlScalar(value)}`);
-    }
-
-    return updatedLines.join("\n");
+    return applyFormUpdates(originalYaml, {scalars: updates});
 }
 
 /**
@@ -329,8 +370,90 @@ function parseTopLevelArray(childLines) {
     return items;
 }
 
+/**
+ * Find top-level YAML blocks so form updates can replace whole entries without
+ * touching unrelated domains in the file.
+ *
+ * @param {string[]} lines YAML lines.
+ * @returns {Array<{key: string, start: number, end: number}>} Top-level blocks.
+ */
+function findTopLevelBlocks(lines) {
+    const blocks = [];
+
+    for (let index = 0; index < lines.length; index += 1) {
+        const line = lines[index];
+        if (!line || line.trim().length === 0 || line.trim().startsWith("#") || /^\s/u.test(line)) {
+            continue;
+        }
+
+        const match = /^([A-Za-z0-9_]+):(?:\s*(.*))?$/u.exec(line);
+        if (!match) {
+            continue;
+        }
+
+        let cursor = index + 1;
+        while (cursor < lines.length) {
+            const nextLine = lines[cursor];
+            if (nextLine.trim().length === 0 || nextLine.trim().startsWith("#")) {
+                cursor += 1;
+                continue;
+            }
+
+            if (!/^\s/u.test(nextLine)) {
+                break;
+            }
+
+            cursor += 1;
+        }
+
+        blocks.push({
+            key: match[1],
+            start: index,
+            end: cursor - 1
+        });
+        index = cursor - 1;
+    }
+
+    return blocks;
+}
+
+/**
+ * Render a top-level scalar line.
+ *
+ * @param {string} key Property name.
+ * @param {string} value Scalar value.
+ * @returns {string} Rendered YAML line.
+ */
+function renderScalarLine(key, value) {
+    return `${key}: ${formatYamlScalar(value)}`;
+}
+
+/**
+ * Render a top-level scalar array block.
+ *
+ * @param {string} key Property name.
+ * @param {string[]} items Array items.
+ * @returns {string[]} Rendered YAML lines.
+ */
+function renderArrayBlock(key, items) {
+    const normalizedItems = Array.isArray(items)
+        ? items
+            .map((item) => String(item).trim())
+            .filter((item) => item.length > 0)
+        : [];
+
+    const lines = [`${key}:`];
+    for (const item of normalizedItems) {
+        lines.push(`  - ${formatYamlScalar(item)}`);
+    }
+
+    return lines;
+}
+
 module.exports = {
+    applyFormUpdates,
     applyScalarUpdates,
+    findTopLevelBlocks,
     formatYamlScalar,
     isScalarCompatible,
     parseSchemaContent,
