@@ -114,4 +114,28 @@ public static class BindNodeSignalDiagnostics
             PathContests.GodotNamespace,
             DiagnosticSeverity.Warning,
             true);
+
+    /// <summary>
+    ///     BindNodeSignalAttribute 构造参数无效。
+    /// </summary>
+    public static readonly DiagnosticDescriptor InvalidConstructorArgument =
+        new(
+            "GF_Godot_BindNodeSignal_010",
+            "BindNodeSignal attribute arguments are invalid",
+            "Method '{0}' uses [BindNodeSignal] with an invalid '{1}' constructor argument; it must be a non-empty string literal",
+            PathContests.GodotNamespace,
+            DiagnosticSeverity.Error,
+            true);
+
+    /// <summary>
+    ///     用户代码中已存在与生成方法同名的成员。
+    /// </summary>
+    public static readonly DiagnosticDescriptor GeneratedMethodNameConflict =
+        new(
+            "GF_Godot_BindNodeSignal_011",
+            "Generated method name conflicts with an existing member",
+            "Class '{0}' already defines method '{1}()', which conflicts with [BindNodeSignal] generated code",
+            PathContests.GodotNamespace,
+            DiagnosticSeverity.Error,
+            true);
 }

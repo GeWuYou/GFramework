@@ -40,7 +40,7 @@ public sealed class BindNodeSignalGenerator : IIncrementalGenerator
 
         return methodDeclaration.AttributeLists
             .SelectMany(static list => list.Attributes)
-            .Any(static attribute => attribute.Name.ToString().Contains("BindNodeSignal", StringComparison.Ordinal));
+            .Any(static attribute => IsBindNodeSignalAttributeName(attribute.Name));
     }
 
     private static MethodCandidate? Transform(GeneratorSyntaxContext context)
@@ -68,10 +68,18 @@ public sealed class BindNodeSignalGenerator : IIncrementalGenerator
         if (bindNodeSignalAttribute is null || godotNodeSymbol is null)
             return;
 
-        var methodCandidates = candidates
+        // 缓存每个方法上已解析的特性，避免在筛选和生成阶段重复做语义查询。
+        var methodAttributes = candidates
             .Where(static candidate => candidate is not null)
             .Select(static candidate => candidate!)
-            .Where(candidate => ResolveAttributes(candidate.MethodSymbol, bindNodeSignalAttribute).Count > 0)
+            .ToDictionary(
+                static candidate => candidate,
+                candidate => ResolveAttributes(candidate.MethodSymbol, bindNodeSignalAttribute),
+                ReferenceEqualityComparer.Instance);
+
+        var methodCandidates = methodAttributes
+            .Where(static pair => pair.Value.Count > 0)
+            .Select(static pair => pair.Key)
             .ToList();
 
         foreach (var group in GroupByContainingType(methodCandidates))
@@ -80,11 +88,14 @@ public sealed class BindNodeSignalGenerator : IIncrementalGenerator
             if (!CanGenerateForType(context, group, typeSymbol))
                 continue;
 
+            if (HasGeneratedMethodNameConflict(context, group, typeSymbol))
+                continue;
+
             var bindings = new List<SignalBindingInfo>();
 
             foreach (var candidate in group.Methods)
             {
-                foreach (var attribute in ResolveAttributes(candidate.MethodSymbol, bindNodeSignalAttribute))
+                foreach (var attribute in methodAttributes[candidate])
                 {
                     if (!TryCreateBinding(context, candidate, attribute, godotNodeSymbol, out var binding))
                         continue;
@@ -161,8 +172,29 @@ public sealed class BindNodeSignalGenerator : IIncrementalGenerator
             return false;
         }
 
-        var nodeFieldName = ResolveCtorString(attribute, 0);
-        var signalName = ResolveCtorString(attribute, 1);
+        if (!TryResolveCtorString(attribute, 0, out var nodeFieldName))
+        {
+            ReportMethodDiagnostic(
+                context,
+                BindNodeSignalDiagnostics.InvalidConstructorArgument,
+                candidate,
+                attribute,
+                candidate.MethodSymbol.Name,
+                "nodeFieldName");
+            return false;
+        }
+
+        if (!TryResolveCtorString(attribute, 1, out var signalName))
+        {
+            ReportMethodDiagnostic(
+                context,
+                BindNodeSignalDiagnostics.InvalidConstructorArgument,
+                candidate,
+                attribute,
+                candidate.MethodSymbol.Name,
+                "signalName");
+            return false;
+        }
 
         var fieldSymbol = FindField(candidate.MethodSymbol.ContainingType, nodeFieldName);
         if (fieldSymbol is null)
@@ -244,14 +276,25 @@ public sealed class BindNodeSignalGenerator : IIncrementalGenerator
         context.ReportDiagnostic(Diagnostic.Create(descriptor, location, messageArgs));
     }
 
-    private static string ResolveCtorString(
+    private static bool TryResolveCtorString(
         AttributeData attribute,
-        int index)
+        int index,
+        out string value)
     {
-        if (attribute.ConstructorArguments.Length <= index)
-            return string.Empty;
+        value = string.Empty;
 
-        return attribute.ConstructorArguments[index].Value as string ?? string.Empty;
+        if (attribute.ConstructorArguments.Length <= index)
+            return false;
+
+        var ctorArgument = attribute.ConstructorArguments[index];
+        if (ctorArgument.Kind != TypedConstantKind.Primitive || ctorArgument.Value is not string ctorString)
+            return false;
+
+        if (string.IsNullOrWhiteSpace(ctorString))
+            return false;
+
+        value = ctorString;
+        return true;
     }
 
     private static IReadOnlyList<AttributeData> ResolveAttributes(
@@ -347,6 +390,36 @@ public sealed class BindNodeSignalGenerator : IIncrementalGenerator
             typeSymbol.Name));
     }
 
+    private static bool HasGeneratedMethodNameConflict(
+        SourceProductionContext context,
+        TypeGroup group,
+        INamedTypeSymbol typeSymbol)
+    {
+        var hasConflict = false;
+
+        foreach (var generatedMethodName in new[] { BindMethodName, UnbindMethodName })
+        {
+            var conflictingMethod = typeSymbol.GetMembers()
+                .OfType<IMethodSymbol>()
+                .FirstOrDefault(method =>
+                    method.Name == generatedMethodName &&
+                    method.Parameters.Length == 0 &&
+                    method.TypeParameters.Length == 0);
+
+            if (conflictingMethod is null)
+                continue;
+
+            context.ReportDiagnostic(Diagnostic.Create(
+                BindNodeSignalDiagnostics.GeneratedMethodNameConflict,
+                conflictingMethod.Locations.FirstOrDefault() ?? group.Methods[0].Method.Identifier.GetLocation(),
+                typeSymbol.Name,
+                generatedMethodName));
+            hasConflict = true;
+        }
+
+        return hasConflict;
+    }
+
     private static IMethodSymbol? FindLifecycleMethod(
         INamedTypeSymbol typeSymbol,
         string methodName)
@@ -393,6 +466,23 @@ public sealed class BindNodeSignalGenerator : IIncrementalGenerator
                 generatedMethodName,
                 StringComparison.Ordinal),
             _ => false
+        };
+    }
+
+    private static bool IsBindNodeSignalAttributeName(NameSyntax attributeName)
+    {
+        var simpleName = GetAttributeSimpleName(attributeName);
+        return simpleName is "BindNodeSignal" or "BindNodeSignalAttribute";
+    }
+
+    private static string? GetAttributeSimpleName(NameSyntax attributeName)
+    {
+        return attributeName switch
+        {
+            IdentifierNameSyntax identifierName => identifierName.Identifier.ValueText,
+            QualifiedNameSyntax qualifiedName => GetAttributeSimpleName(qualifiedName.Right),
+            AliasQualifiedNameSyntax aliasQualifiedName => aliasQualifiedName.Name.Identifier.ValueText,
+            _ => null
         };
     }
 
@@ -519,5 +609,25 @@ public sealed class BindNodeSignalGenerator : IIncrementalGenerator
         public INamedTypeSymbol TypeSymbol { get; }
 
         public List<MethodCandidate> Methods { get; }
+    }
+
+    /// <summary>
+    ///     使用引用相等比较 MethodCandidate，确保缓存字典复用同一语法候选对象。
+    /// </summary>
+    private sealed class ReferenceEqualityComparer : IEqualityComparer<MethodCandidate>
+    {
+        public static ReferenceEqualityComparer Instance { get; } = new();
+
+        public bool Equals(
+            MethodCandidate? x,
+            MethodCandidate? y)
+        {
+            return ReferenceEquals(x, y);
+        }
+
+        public int GetHashCode(MethodCandidate obj)
+        {
+            return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(obj);
+        }
     }
 }

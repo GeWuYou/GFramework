@@ -20,3 +20,5 @@
  GF_Godot_BindNodeSignal_007 | GFramework.Godot | Error    | BindNodeSignalDiagnostics 
  GF_Godot_BindNodeSignal_008 | GFramework.Godot | Warning  | BindNodeSignalDiagnostics 
  GF_Godot_BindNodeSignal_009 | GFramework.Godot | Warning  | BindNodeSignalDiagnostics 
+ GF_Godot_BindNodeSignal_010 | GFramework.Godot | Error    | BindNodeSignalDiagnostics 
+ GF_Godot_BindNodeSignal_011 | GFramework.Godot | Error    | BindNodeSignalDiagnostics 

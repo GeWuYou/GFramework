@@ -376,6 +376,168 @@ public class BindNodeSignalGeneratorTests
     }
 
     /// <summary>
+    ///     验证特性构造参数为空时会报告明确的参数无效诊断。
+    /// </summary>
+    [Test]
+    public async Task Reports_Diagnostic_When_Constructor_Argument_Is_Empty()
+    {
+        const string source = """
+                              using System;
+                              using GFramework.Godot.SourceGenerators.Abstractions;
+                              using Godot;
+
+                              namespace GFramework.Godot.SourceGenerators.Abstractions
+                              {
+                                  [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = true)]
+                                  public sealed class BindNodeSignalAttribute : Attribute
+                                  {
+                                      public BindNodeSignalAttribute(string nodeFieldName, string signalName)
+                                      {
+                                          NodeFieldName = nodeFieldName;
+                                          SignalName = signalName;
+                                      }
+
+                                      public string NodeFieldName { get; }
+
+                                      public string SignalName { get; }
+                                  }
+                              }
+
+                              namespace Godot
+                              {
+                                  public class Node
+                                  {
+                                  }
+
+                                  public class Button : Node
+                                  {
+                                      public event Action? Pressed
+                                      {
+                                          add {}
+                                          remove {}
+                                      }
+                                  }
+                              }
+
+                              namespace TestApp
+                              {
+                                  public partial class Hud : Node
+                                  {
+                                      private Button _startButton = null!;
+
+                                      [{|#0:BindNodeSignal(nameof(_startButton), "")|}]
+                                      private void OnStartButtonPressed()
+                                      {
+                                      }
+                                  }
+                              }
+                              """;
+
+        var test = new CSharpSourceGeneratorTest<BindNodeSignalGenerator, DefaultVerifier>
+        {
+            TestState =
+            {
+                Sources = { source }
+            },
+            DisabledDiagnostics = { "GF_Common_Trace_001" },
+            TestBehaviors = TestBehaviors.SkipGeneratedSourcesCheck
+        };
+
+        test.ExpectedDiagnostics.Add(new DiagnosticResult("GF_Godot_BindNodeSignal_010", DiagnosticSeverity.Error)
+            .WithLocation(0)
+            .WithArguments("OnStartButtonPressed", "signalName"));
+
+        await test.RunAsync();
+    }
+
+    /// <summary>
+    ///     验证当用户自定义了与生成方法同名的成员时，会报告冲突而不是生成重复成员。
+    /// </summary>
+    [Test]
+    public async Task Reports_Diagnostic_When_Generated_Method_Names_Already_Exist()
+    {
+        const string source = """
+                              using System;
+                              using GFramework.Godot.SourceGenerators.Abstractions;
+                              using Godot;
+
+                              namespace GFramework.Godot.SourceGenerators.Abstractions
+                              {
+                                  [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = true)]
+                                  public sealed class BindNodeSignalAttribute : Attribute
+                                  {
+                                      public BindNodeSignalAttribute(string nodeFieldName, string signalName)
+                                      {
+                                          NodeFieldName = nodeFieldName;
+                                          SignalName = signalName;
+                                      }
+
+                                      public string NodeFieldName { get; }
+
+                                      public string SignalName { get; }
+                                  }
+                              }
+
+                              namespace Godot
+                              {
+                                  public class Node
+                                  {
+                                  }
+
+                                  public class Button : Node
+                                  {
+                                      public event Action? Pressed
+                                      {
+                                          add {}
+                                          remove {}
+                                      }
+                                  }
+                              }
+
+                              namespace TestApp
+                              {
+                                  public partial class Hud : Node
+                                  {
+                                      private Button _startButton = null!;
+
+                                      [BindNodeSignal(nameof(_startButton), nameof(Button.Pressed))]
+                                      private void OnStartButtonPressed()
+                                      {
+                                      }
+
+                                      private void {|#0:__BindNodeSignals_Generated|}()
+                                      {
+                                      }
+
+                                      private void {|#1:__UnbindNodeSignals_Generated|}()
+                                      {
+                                      }
+                                  }
+                              }
+                              """;
+
+        var test = new CSharpSourceGeneratorTest<BindNodeSignalGenerator, DefaultVerifier>
+        {
+            TestState =
+            {
+                Sources = { source }
+            },
+            DisabledDiagnostics = { "GF_Common_Trace_001" },
+            TestBehaviors = TestBehaviors.SkipGeneratedSourcesCheck
+        };
+
+        test.ExpectedDiagnostics.Add(new DiagnosticResult("GF_Godot_BindNodeSignal_011", DiagnosticSeverity.Error)
+            .WithLocation(0)
+            .WithArguments("Hud", "__BindNodeSignals_Generated"));
+
+        test.ExpectedDiagnostics.Add(new DiagnosticResult("GF_Godot_BindNodeSignal_011", DiagnosticSeverity.Error)
+            .WithLocation(1)
+            .WithArguments("Hud", "__UnbindNodeSignals_Generated"));
+
+        await test.RunAsync();
+    }
+
+    /// <summary>
     ///     验证已有生命周期方法但未调用生成方法时会报告对称的警告。
     /// </summary>
     [Test]
