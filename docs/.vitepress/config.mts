@@ -109,7 +109,8 @@ export default defineConfig({
               { text: 'API 参考', link: '/zh-CN/api-reference' },
               { text: '常见问题', link: '/zh-CN/faq' },
               { text: '故障排查', link: '/zh-CN/troubleshooting' },
-              { text: '贡献指南', link: '/zh-CN/contributing' }
+              { text: '贡献指南', link: '/zh-CN/contributing' },
+              { text: '开发环境', link: '/zh-CN/contributor/development-environment' }
             ]
           }
         ],
@@ -140,6 +141,7 @@ export default defineConfig({
                 { text: 'CQRS 模式', link: '/zh-CN/core/cqrs' },
                 { text: '事件系统', link: '/zh-CN/core/events' },
                 { text: '属性系统', link: '/zh-CN/core/property' },
+                { text: '状态管理', link: '/zh-CN/core/state-management' },
                 { text: 'IoC容器', link: '/zh-CN/core/ioc' },
                 { text: '协程系统', link: '/zh-CN/core/coroutine' },
                 { text: '状态机', link: '/zh-CN/core/state-machine' },
@@ -154,7 +156,28 @@ export default defineConfig({
                 { text: '模型层', link: '/zh-CN/core/model' },
                 { text: '系统层', link: '/zh-CN/core/system' },
                 { text: '规则系统', link: '/zh-CN/core/rule' },
-                { text: '环境接口', link: '/zh-CN/core/environment' }
+                { text: '环境接口', link: '/zh-CN/core/environment' },
+                { text: '本地化', link: '/zh-CN/core/localization' }
+              ]
+            }
+          ],
+
+          '/zh-CN/contributing': [
+            {
+              text: '贡献',
+              items: [
+                { text: '贡献指南', link: '/zh-CN/contributing' },
+                { text: '开发环境', link: '/zh-CN/contributor/development-environment' }
+              ]
+            }
+          ],
+
+          '/zh-CN/contributor/': [
+            {
+              text: '贡献',
+              items: [
+                { text: '贡献指南', link: '/zh-CN/contributing' },
+                { text: '开发环境', link: '/zh-CN/contributor/development-environment' }
               ]
             }
           ],
