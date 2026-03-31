@@ -1,5 +1,7 @@
+using System.Text;
 using GFramework.SourceGenerators.Common.Constants;
 using GFramework.SourceGenerators.Common.Diagnostics;
+using GFramework.SourceGenerators.Common.Extensions;
 using GFramework.SourceGenerators.Common.Info;
 using GFramework.SourceGenerators.Diagnostics;
 
