@@ -1,7 +1,5 @@
 using System.IO;
 using GFramework.Game.Abstractions.Config;
-using YamlDotNet.Serialization;
-using YamlDotNet.Serialization.NamingConventions;
 
 namespace GFramework.Game.Config;
 
@@ -15,6 +13,9 @@ public sealed class YamlConfigLoader : IConfigLoader
     private const string RootPathCannotBeNullOrWhiteSpaceMessage = "Root path cannot be null or whitespace.";
     private const string TableNameCannotBeNullOrWhiteSpaceMessage = "Table name cannot be null or whitespace.";
     private const string RelativePathCannotBeNullOrWhiteSpaceMessage = "Relative path cannot be null or whitespace.";
+
+    private const string SchemaRelativePathCannotBeNullOrWhiteSpaceMessage =
+        "Schema relative path cannot be null or whitespace.";
 
     private readonly IDeserializer _deserializer;
     private readonly List<IYamlTableRegistration> _registrations = new();
@@ -87,6 +88,41 @@ public sealed class YamlConfigLoader : IConfigLoader
         IEqualityComparer<TKey>? comparer = null)
         where TKey : notnull
     {
+        return RegisterTableCore(tableName, relativePath, null, keySelector, comparer);
+    }
+
+    /// <summary>
+    ///     注册一个带 schema 校验的 YAML 配置表定义。
+    ///     该重载会在 YAML 反序列化之前使用指定 schema 拒绝未知字段、缺失必填字段和基础类型错误，
+    ///     以避免错误配置以默认值形式悄悄进入运行时。
+    /// </summary>
+    /// <typeparam name="TKey">配置主键类型。</typeparam>
+    /// <typeparam name="TValue">配置值类型。</typeparam>
+    /// <param name="tableName">配置表名称。</param>
+    /// <param name="relativePath">相对配置根目录的子目录。</param>
+    /// <param name="schemaRelativePath">相对配置根目录的 schema 文件路径。</param>
+    /// <param name="keySelector">配置项主键提取器。</param>
+    /// <param name="comparer">可选主键比较器。</param>
+    /// <returns>当前加载器实例，以便链式注册。</returns>
+    public YamlConfigLoader RegisterTable<TKey, TValue>(
+        string tableName,
+        string relativePath,
+        string schemaRelativePath,
+        Func<TValue, TKey> keySelector,
+        IEqualityComparer<TKey>? comparer = null)
+        where TKey : notnull
+    {
+        return RegisterTableCore(tableName, relativePath, schemaRelativePath, keySelector, comparer);
+    }
+
+    private YamlConfigLoader RegisterTableCore<TKey, TValue>(
+        string tableName,
+        string relativePath,
+        string? schemaRelativePath,
+        Func<TValue, TKey> keySelector,
+        IEqualityComparer<TKey>? comparer)
+        where TKey : notnull
+    {
         if (string.IsNullOrWhiteSpace(tableName))
         {
             throw new ArgumentException(TableNameCannotBeNullOrWhiteSpaceMessage, nameof(tableName));
@@ -99,7 +135,20 @@ public sealed class YamlConfigLoader : IConfigLoader
 
         ArgumentNullException.ThrowIfNull(keySelector);
 
-        _registrations.Add(new YamlTableRegistration<TKey, TValue>(tableName, relativePath, keySelector, comparer));
+        if (schemaRelativePath != null && string.IsNullOrWhiteSpace(schemaRelativePath))
+        {
+            throw new ArgumentException(
+                SchemaRelativePathCannotBeNullOrWhiteSpaceMessage,
+                nameof(schemaRelativePath));
+        }
+
+        _registrations.Add(
+            new YamlTableRegistration<TKey, TValue>(
+                tableName,
+                relativePath,
+                schemaRelativePath,
+                keySelector,
+                comparer));
         return this;
     }
 
@@ -172,16 +221,19 @@ public sealed class YamlConfigLoader : IConfigLoader
         /// </summary>
         /// <param name="name">配置表名称。</param>
         /// <param name="relativePath">相对配置根目录的子目录。</param>
+        /// <param name="schemaRelativePath">相对配置根目录的 schema 文件路径；未启用 schema 校验时为空。</param>
         /// <param name="keySelector">配置项主键提取器。</param>
         /// <param name="comparer">可选主键比较器。</param>
         public YamlTableRegistration(
             string name,
             string relativePath,
+            string? schemaRelativePath,
             Func<TValue, TKey> keySelector,
             IEqualityComparer<TKey>? comparer)
         {
             Name = name;
             RelativePath = relativePath;
+            SchemaRelativePath = schemaRelativePath;
             _keySelector = keySelector;
             _comparer = comparer;
         }
@@ -196,6 +248,11 @@ public sealed class YamlConfigLoader : IConfigLoader
         /// </summary>
         public string RelativePath { get; }
 
+        /// <summary>
+        ///     获取相对配置根目录的 schema 文件路径；未启用 schema 校验时返回空。
+        /// </summary>
+        public string? SchemaRelativePath { get; }
+
         /// <inheritdoc />
         public async Task<(string name, IConfigTable table)> LoadAsync(
             string rootPath,
@@ -207,6 +264,13 @@ public sealed class YamlConfigLoader : IConfigLoader
             {
                 throw new DirectoryNotFoundException(
                     $"Config directory '{directoryPath}' was not found for table '{Name}'.");
+            }
+
+            YamlConfigSchema? schema = null;
+            if (!string.IsNullOrEmpty(SchemaRelativePath))
+            {
+                var schemaPath = Path.Combine(rootPath, SchemaRelativePath);
+                schema = await YamlConfigSchemaValidator.LoadAsync(schemaPath, cancellationToken);
             }
 
             var values = new List<TValue>();
@@ -232,6 +296,12 @@ public sealed class YamlConfigLoader : IConfigLoader
                     throw new InvalidOperationException(
                         $"Failed to read config file '{file}' for table '{Name}'.",
                         exception);
+                }
+
+                if (schema != null)
+                {
+                    // 先按 schema 拒绝结构问题，避免被 IgnoreUnmatchedProperties 或默认值掩盖配置错误。
+                    YamlConfigSchemaValidator.Validate(schema, file, yaml);
                 }
 
                 try

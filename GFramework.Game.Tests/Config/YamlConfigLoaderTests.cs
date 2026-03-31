@@ -9,6 +9,8 @@ namespace GFramework.Game.Tests.Config;
 [TestFixture]
 public class YamlConfigLoaderTests
 {
+    private string _rootPath = null!;
+
     /// <summary>
     ///     为每个测试创建独立临时目录，避免文件系统状态互相污染。
     /// </summary>
@@ -30,8 +32,6 @@ public class YamlConfigLoaderTests
             Directory.Delete(_rootPath, true);
         }
     }
-
-    private string _rootPath = null!;
 
     /// <summary>
     ///     验证加载器能够扫描 YAML 文件并将结果写入注册表。
@@ -156,6 +156,182 @@ public class YamlConfigLoaderTests
     }
 
     /// <summary>
+    ///     验证启用 schema 校验后，缺失必填字段会在反序列化前被拒绝。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Throw_When_Required_Property_Is_Missing_According_To_Schema()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            hp: 10
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "name"],
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "hp": { "type": "integer" }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterConfigStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Message, Does.Contain("name"));
+            Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
+    ///     验证启用 schema 校验后，类型不匹配的标量字段会被拒绝。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Throw_When_Property_Type_Does_Not_Match_Schema()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            name: Slime
+            hp: high
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "name"],
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "hp": { "type": "integer" }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterConfigStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Message, Does.Contain("hp"));
+            Assert.That(exception!.Message, Does.Contain("integer"));
+            Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
+    ///     验证启用 schema 校验后，未知字段不会再被静默忽略。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Throw_When_Unknown_Property_Is_Present_In_Schema_Bound_Mode()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            name: Slime
+            attackPower: 2
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "name"],
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "hp": { "type": "integer" }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterConfigStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Message, Does.Contain("attackPower"));
+            Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
+    ///     验证数组字段的元素类型会按 schema 校验。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Throw_When_Array_Item_Type_Does_Not_Match_Schema()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            name: Slime
+            dropRates:
+              - 1
+              - potion
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "name"],
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "dropRates": {
+                  "type": "array",
+                  "items": { "type": "integer" }
+                }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterConfigIntegerArrayStub>(
+                "monster",
+                "monster",
+                "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Message, Does.Contain("dropRates"));
+            Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
     ///     创建测试用配置文件。
     /// </summary>
     /// <param name="relativePath">相对根目录的文件路径。</param>
@@ -170,6 +346,16 @@ public class YamlConfigLoaderTests
         }
 
         File.WriteAllText(fullPath, content);
+    }
+
+    /// <summary>
+    ///     创建测试用 schema 文件。
+    /// </summary>
+    /// <param name="relativePath">相对根目录的文件路径。</param>
+    /// <param name="content">文件内容。</param>
+    private void CreateSchemaFile(string relativePath, string content)
+    {
+        CreateConfigFile(relativePath, content);
     }
 
     /// <summary>
@@ -191,6 +377,27 @@ public class YamlConfigLoaderTests
         ///     获取或设置生命值。
         /// </summary>
         public int Hp { get; set; }
+    }
+
+    /// <summary>
+    ///     用于数组 schema 校验测试的最小怪物配置类型。
+    /// </summary>
+    private sealed class MonsterConfigIntegerArrayStub
+    {
+        /// <summary>
+        ///     获取或设置主键。
+        /// </summary>
+        public int Id { get; set; }
+
+        /// <summary>
+        ///     获取或设置名称。
+        /// </summary>
+        public string Name { get; set; } = string.Empty;
+
+        /// <summary>
+        ///     获取或设置掉落率列表。
+        /// </summary>
+        public IReadOnlyList<int> DropRates { get; set; } = Array.Empty<int>();
     }
 
     /// <summary>

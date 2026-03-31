@@ -200,6 +200,17 @@ bash scripts/validate-csharp-naming.sh
 - The main documentation site lives under `docs/`, with Chinese content under `docs/zh-CN/`.
 - Keep code samples, package names, and command examples aligned with the current repository state.
 - Prefer documenting behavior and design intent, not only API surface.
+- When a feature is added, removed, renamed, or substantially refactored, contributors MUST update or create the
+  corresponding user-facing integration documentation in `docs/zh-CN/` in the same change.
+- For integration-oriented features such as the AI-First config system, documentation MUST cover:
+    - project directory layout and file conventions
+    - required project or package wiring
+    - minimal working usage example
+    - migration or compatibility notes when behavior changes
+- If an existing documentation page no longer reflects the current implementation, fixing the code without fixing the
+  documentation is considered incomplete work.
+- Do not rely on “the code is self-explanatory” for framework features that consumers need to adopt; write the
+  adoption path down so future users do not need to rediscover it from source.
 
 ### Documentation Preview
 
@@ -218,3 +229,4 @@ Before considering work complete, confirm:
 - Relevant tests were added or updated
 - Sensitive or unsafe behavior was not introduced
 - User-facing documentation is updated when needed
+- Feature adoption docs under `docs/zh-CN/` were added or updated when functionality was added, removed, or refactored

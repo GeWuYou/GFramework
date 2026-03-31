@@ -174,6 +174,7 @@ export default defineConfig({
               text: 'Game 游戏模块',
               items: [
                 { text: '概览', link: '/zh-CN/game/' },
+                { text: '内容配置系统', link: '/zh-CN/game/config-system' },
                 { text: '数据管理', link: '/zh-CN/game/data' },
                 { text: '场景系统', link: '/zh-CN/game/scene' },
                 { text: 'UI 系统', link: '/zh-CN/game/ui' },
