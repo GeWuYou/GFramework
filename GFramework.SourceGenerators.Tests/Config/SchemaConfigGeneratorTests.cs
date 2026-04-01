@@ -45,4 +45,50 @@ public class SchemaConfigGeneratorTests
             Assert.That(diagnostic.GetMessage(), Does.Contain("monster.schema.json"));
         });
     }
+
+    /// <summary>
+    ///     验证深层不支持的数组嵌套会带着完整字段路径产生命名明确的诊断。
+    /// </summary>
+    [Test]
+    public void Run_Should_Report_Diagnostic_When_Nested_Array_Type_Is_Not_Supported()
+    {
+        const string source = """
+                              namespace TestApp
+                              {
+                                  public sealed class Dummy
+                                  {
+                                  }
+                              }
+                              """;
+
+        const string schema = """
+                              {
+                                "type": "object",
+                                "required": ["id"],
+                                "properties": {
+                                  "id": { "type": "integer" },
+                                  "waves": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "array",
+                                      "items": { "type": "integer" }
+                                    }
+                                  }
+                                }
+                              }
+                              """;
+
+        var result = SchemaGeneratorTestDriver.Run(
+            source,
+            ("monster.schema.json", schema));
+
+        var diagnostic = result.Results.Single().Diagnostics.Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Id, Is.EqualTo("GF_ConfigSchema_004"));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("waves"));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("array<array>"));
+        });
+    }
 }

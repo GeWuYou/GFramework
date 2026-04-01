@@ -7,8 +7,9 @@ Minimal VS Code extension scaffold for the GFramework AI-First config workflow.
 - Browse config files from the workspace `config/` directory
 - Open raw YAML files
 - Open matching schema files from `schemas/`
-- Run lightweight schema validation for required fields, unknown top-level fields, scalar types, and scalar array items
-- Open a lightweight form preview for top-level scalar fields and top-level scalar arrays
+- Run lightweight schema validation for nested required fields, unknown nested fields, scalar types, scalar arrays, and
+  arrays of objects
+- Open a lightweight form preview for nested object fields, top-level scalar fields, and scalar arrays
 - Batch edit one config domain across multiple files for top-level scalar and scalar-array fields
 - Surface schema metadata such as `title`, `description`, `default`, `enum`, and `x-gframework-ref-table` in the
   lightweight editors
@@ -17,13 +18,14 @@ Minimal VS Code extension scaffold for the GFramework AI-First config workflow.
 
 The extension currently validates the repository's minimal config-schema subset:
 
-- required top-level properties
-- unknown top-level properties
+- required properties in nested objects
+- unknown properties in nested objects
 - scalar compatibility for `integer`, `number`, `boolean`, and `string`
-- top-level scalar arrays with scalar item type checks
+- scalar arrays with scalar item type checks
+- arrays of objects whose items use the same supported subset recursively
 - scalar `enum` constraints and scalar-array item `enum` constraints
 
-Nested objects and complex arrays should still be reviewed in raw YAML.
+Object-array editing should still be reviewed in raw YAML.
 
 ## Local Testing
 
@@ -36,8 +38,8 @@ node --test ./test/*.test.js
 
 - Multi-root workspaces use the first workspace folder
 - Validation only covers a minimal subset of JSON Schema
-- Form and batch editing currently support top-level scalar fields and top-level scalar arrays
-- Nested objects and complex arrays should still be edited in raw YAML
+- Form preview supports nested objects and scalar arrays, but object arrays remain raw-YAML-only for edits
+- Batch editing remains limited to top-level scalar fields and top-level scalar arrays
 
 ## Workspace Settings
 

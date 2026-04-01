@@ -1,103 +1,39 @@
 /**
- * Parse a minimal JSON schema document used by the config extension.
- * The parser intentionally supports the same schema subset that the current
- * runtime validator and source generator depend on.
+ * Parse the repository's minimal config-schema subset into a recursive tree.
+ * The parser intentionally mirrors the same high-level contract used by the
+ * runtime validator and source generator so tooling diagnostics stay aligned.
  *
  * @param {string} content Raw schema JSON text.
- * @returns {{required: string[], properties: Record<string, {
- *     type: string,
- *     itemType?: string,
- *     title?: string,
- *     description?: string,
- *     defaultValue?: string,
- *     enumValues?: string[],
- *     itemEnumValues?: string[],
- *     refTable?: string
- * }>}} Parsed schema info.
+ * @returns {{
+ *   type: "object",
+ *   required: string[],
+ *   properties: Record<string, SchemaNode>
+ * }} Parsed schema info.
  */
 function parseSchemaContent(content) {
     const parsed = JSON.parse(content);
-    const required = Array.isArray(parsed.required)
-        ? parsed.required.filter((value) => typeof value === "string")
-        : [];
-    const properties = {};
-    const propertyBag = parsed.properties || {};
-
-    for (const [key, value] of Object.entries(propertyBag)) {
-        if (!value || typeof value !== "object" || typeof value.type !== "string") {
-            continue;
-        }
-
-        const metadata = {
-            title: typeof value.title === "string" ? value.title : undefined,
-            description: typeof value.description === "string" ? value.description : undefined,
-            defaultValue: formatSchemaDefaultValue(value.default),
-            enumValues: normalizeSchemaEnumValues(value.enum),
-            refTable: typeof value["x-gframework-ref-table"] === "string"
-                ? value["x-gframework-ref-table"]
-                : undefined
-        };
-
-        if (value.type === "array" &&
-            value.items &&
-            typeof value.items === "object" &&
-            typeof value.items.type === "string") {
-            properties[key] = {
-                type: "array",
-                itemType: value.items.type,
-                title: metadata.title,
-                description: metadata.description,
-                defaultValue: metadata.defaultValue,
-                refTable: metadata.refTable,
-                itemEnumValues: normalizeSchemaEnumValues(value.items.enum)
-            };
-            continue;
-        }
-
-        properties[key] = {
-            type: value.type,
-            title: metadata.title,
-            description: metadata.description,
-            defaultValue: metadata.defaultValue,
-            enumValues: metadata.enumValues,
-            refTable: metadata.refTable
-        };
-    }
-
-    return {
-        required,
-        properties
-    };
+    return parseSchemaNode(parsed, "<root>");
 }
 
 /**
- * Collect top-level schema fields that the current tooling can edit in bulk.
- * The bulk editor intentionally stays aligned with the lightweight form editor:
- * top-level scalars and scalar arrays are supported, while nested objects and
- * complex array items remain raw-YAML-only.
+ * Collect top-level schema fields that the current batch editor can update
+ * safely. Batch editing intentionally remains conservative even though the form
+ * preview can now navigate nested object structures.
  *
- * @param {{required: string[], properties: Record<string, {
- *     type: string,
- *     itemType?: string,
- *     title?: string,
- *     description?: string,
- *     defaultValue?: string,
- *     enumValues?: string[],
- *     itemEnumValues?: string[],
- *     refTable?: string
- * }>}} schemaInfo Parsed schema info.
+ * @param {{type: "object", required: string[], properties: Record<string, SchemaNode>}} schemaInfo Parsed schema.
  * @returns {Array<{
- *     key: string,
- *     type: string,
- *     itemType?: string,
- *     title?: string,
- *     description?: string,
- *     defaultValue?: string,
- *     enumValues?: string[],
- *     itemEnumValues?: string[],
- *     refTable?: string,
- *     inputKind: "scalar" | "array",
- *     required: boolean
+ *   key: string,
+ *   path: string,
+ *   type: string,
+ *   itemType?: string,
+ *   title?: string,
+ *   description?: string,
+ *   defaultValue?: string,
+ *   enumValues?: string[],
+ *   itemEnumValues?: string[],
+ *   refTable?: string,
+ *   inputKind: "scalar" | "array",
+ *   required: boolean
  * }>} Editable field descriptors.
  */
 function getEditableSchemaFields(schemaInfo) {
@@ -108,6 +44,7 @@ function getEditableSchemaFields(schemaInfo) {
         if (isEditableScalarType(property.type)) {
             editableFields.push({
                 key,
+                path: key,
                 type: property.type,
                 title: property.title,
                 description: property.description,
@@ -120,15 +57,16 @@ function getEditableSchemaFields(schemaInfo) {
             continue;
         }
 
-        if (property.type === "array" && isEditableScalarType(property.itemType || "")) {
+        if (property.type === "array" && property.items && isEditableScalarType(property.items.type)) {
             editableFields.push({
                 key,
+                path: key,
                 type: property.type,
-                itemType: property.itemType,
+                itemType: property.items.type,
                 title: property.title,
                 description: property.description,
                 defaultValue: property.defaultValue,
-                itemEnumValues: property.itemEnumValues,
+                itemEnumValues: property.items.enumValues,
                 refTable: property.refTable,
                 inputKind: "array",
                 required: requiredSet.has(key)
@@ -140,202 +78,42 @@ function getEditableSchemaFields(schemaInfo) {
 }
 
 /**
- * Parse a minimal top-level YAML structure for config validation and form
- * preview. This parser intentionally focuses on the repository's current
- * config conventions: one root mapping object per file, top-level scalar
- * fields, and top-level scalar arrays.
+ * Parse YAML into a recursive object/array/scalar tree.
+ * The parser covers the config system's intended subset: root mappings,
+ * indentation-based nested objects, scalar arrays, and arrays of objects.
  *
  * @param {string} text YAML text.
- * @returns {{entries: Map<string, {kind: string, value?: string, items?: Array<{raw: string, isComplex: boolean}>}>, keys: Set<string>}} Parsed YAML.
+ * @returns {YamlNode} Parsed YAML tree.
  */
 function parseTopLevelYaml(text) {
-    const entries = new Map();
-    const keys = new Set();
-    const lines = text.split(/\r?\n/u);
-
-    for (let index = 0; index < lines.length; index += 1) {
-        const line = lines[index];
-        if (!line || line.trim().length === 0 || line.trim().startsWith("#")) {
-            continue;
-        }
-
-        if (/^\s/u.test(line)) {
-            continue;
-        }
-
-        const match = /^([A-Za-z0-9_]+):(?:\s*(.*))?$/u.exec(line);
-        if (!match) {
-            continue;
-        }
-
-        const key = match[1];
-        const rawValue = match[2] || "";
-        keys.add(key);
-
-        if (rawValue.length > 0 && !rawValue.startsWith("|") && !rawValue.startsWith(">")) {
-            entries.set(key, {
-                kind: "scalar",
-                value: rawValue.trim()
-            });
-            continue;
-        }
-
-        const childLines = [];
-        let cursor = index + 1;
-        while (cursor < lines.length) {
-            const childLine = lines[cursor];
-            if (childLine.trim().length === 0 || childLine.trim().startsWith("#")) {
-                cursor += 1;
-                continue;
-            }
-
-            if (!/^\s/u.test(childLine)) {
-                break;
-            }
-
-            childLines.push(childLine);
-            cursor += 1;
-        }
-
-        if (childLines.length === 0) {
-            entries.set(key, {
-                kind: "empty"
-            });
-            continue;
-        }
-
-        const arrayItems = parseTopLevelArray(childLines);
-        if (arrayItems) {
-            entries.set(key, {
-                kind: "array",
-                items: arrayItems
-            });
-            index = cursor - 1;
-            continue;
-        }
-
-        entries.set(key, {
-            kind: "object"
-        });
-        index = cursor - 1;
+    const tokens = tokenizeYaml(text);
+    if (tokens.length === 0) {
+        return createObjectNode();
     }
 
-    return {
-        entries,
-        keys
-    };
+    const state = {index: 0};
+    return parseBlock(tokens, state, tokens[0].indent);
 }
 
 /**
  * Produce extension-facing validation diagnostics from schema and parsed YAML.
  *
- * @param {{required: string[], properties: Record<string, {
- *     type: string,
- *     itemType?: string,
- *     title?: string,
- *     description?: string,
- *     defaultValue?: string,
- *     enumValues?: string[],
- *     itemEnumValues?: string[],
- *     refTable?: string
- * }>}} schemaInfo Parsed schema info.
- * @param {{entries: Map<string, {kind: string, value?: string, items?: Array<{raw: string, isComplex: boolean}>}>, keys: Set<string>}} parsedYaml Parsed YAML.
+ * @param {{type: "object", required: string[], properties: Record<string, SchemaNode>}} schemaInfo Parsed schema.
+ * @param {YamlNode} parsedYaml Parsed YAML tree.
  * @returns {Array<{severity: "error" | "warning", message: string}>} Validation diagnostics.
  */
 function validateParsedConfig(schemaInfo, parsedYaml) {
     const diagnostics = [];
-
-    for (const requiredProperty of schemaInfo.required) {
-        if (!parsedYaml.keys.has(requiredProperty)) {
-            diagnostics.push({
-                severity: "error",
-                message: `Required property '${requiredProperty}' is missing.`
-            });
-        }
-    }
-
-    for (const key of parsedYaml.keys) {
-        if (!Object.prototype.hasOwnProperty.call(schemaInfo.properties, key)) {
-            diagnostics.push({
-                severity: "error",
-                message: `Property '${key}' is not declared in the matching schema.`
-            });
-        }
-    }
-
-    for (const [propertyName, propertySchema] of Object.entries(schemaInfo.properties)) {
-        if (!parsedYaml.entries.has(propertyName)) {
-            continue;
-        }
-
-        const entry = parsedYaml.entries.get(propertyName);
-        if (propertySchema.type === "array") {
-            if (entry.kind !== "array") {
-                diagnostics.push({
-                    severity: "error",
-                    message: `Property '${propertyName}' is expected to be an array.`
-                });
-                continue;
-            }
-
-            for (const item of entry.items || []) {
-                if (item.isComplex || !isScalarCompatible(propertySchema.itemType || "", item.raw)) {
-                    diagnostics.push({
-                        severity: "error",
-                        message: `Array item in property '${propertyName}' is expected to be '${propertySchema.itemType}', but the current value is incompatible.`
-                    });
-                    break;
-                }
-
-                if (Array.isArray(propertySchema.itemEnumValues) &&
-                    propertySchema.itemEnumValues.length > 0 &&
-                    !propertySchema.itemEnumValues.includes(unquoteScalar(item.raw))) {
-                    diagnostics.push({
-                        severity: "error",
-                        message: `Array item in property '${propertyName}' must be one of: ${propertySchema.itemEnumValues.join(", ")}.`
-                    });
-                    break;
-                }
-            }
-
-            continue;
-        }
-
-        if (entry.kind !== "scalar") {
-            diagnostics.push({
-                severity: "error",
-                message: `Property '${propertyName}' is expected to be '${propertySchema.type}', but the current YAML shape is '${entry.kind}'.`
-            });
-            continue;
-        }
-
-        if (!isScalarCompatible(propertySchema.type, entry.value || "")) {
-            diagnostics.push({
-                severity: "error",
-                message: `Property '${propertyName}' is expected to be '${propertySchema.type}', but the current scalar value is incompatible.`
-            });
-            continue;
-        }
-
-        if (Array.isArray(propertySchema.enumValues) &&
-            propertySchema.enumValues.length > 0 &&
-            !propertySchema.enumValues.includes(unquoteScalar(entry.value || ""))) {
-            diagnostics.push({
-                severity: "error",
-                message: `Property '${propertyName}' must be one of: ${propertySchema.enumValues.join(", ")}.`
-            });
-        }
-    }
-
+    validateNode(schemaInfo, parsedYaml, "", diagnostics);
     return diagnostics;
 }
 
 /**
- * Determine whether the current schema type can be edited through the
- * lightweight form or batch-edit tooling.
+ * Determine whether the current schema type can be edited through the batch
+ * editor. The richer form preview handles nested objects separately.
  *
  * @param {string} schemaType Schema type.
- * @returns {boolean} True when the type is supported by the lightweight editors.
+ * @returns {boolean} True when the type is batch-editable.
  */
 function isEditableScalarType(schemaType) {
     return schemaType === "string" ||
@@ -352,7 +130,7 @@ function isEditableScalarType(schemaType) {
  * @returns {boolean} True when compatible.
  */
 function isScalarCompatible(expectedType, scalarValue) {
-    const value = unquoteScalar(scalarValue);
+    const value = unquoteScalar(String(scalarValue));
     switch (expectedType) {
         case "integer":
             return /^-?\d+$/u.test(value);
@@ -368,78 +146,32 @@ function isScalarCompatible(expectedType, scalarValue) {
 }
 
 /**
- * Apply form field updates back into the original YAML text.
- * The current form editor supports top-level scalar fields and top-level scalar
- * arrays, while nested objects and complex arrays remain raw-YAML-only.
+ * Apply form updates back into YAML. The implementation rewrites the YAML tree
+ * from the parsed structure so nested object edits can be saved safely.
  *
  * @param {string} originalYaml Original YAML content.
  * @param {{scalars?: Record<string, string>, arrays?: Record<string, string[]>}} updates Updated form values.
  * @returns {string} Updated YAML content.
  */
 function applyFormUpdates(originalYaml, updates) {
-    const lines = originalYaml.split(/\r?\n/u);
+    const root = normalizeRootNode(parseTopLevelYaml(originalYaml));
     const scalarUpdates = updates.scalars || {};
     const arrayUpdates = updates.arrays || {};
-    const touchedScalarKeys = new Set();
-    const touchedArrayKeys = new Set();
-    const blocks = findTopLevelBlocks(lines);
-    const updatedLines = [];
-    let cursor = 0;
 
-    for (const block of blocks) {
-        while (cursor < block.start) {
-            updatedLines.push(lines[cursor]);
-            cursor += 1;
-        }
-
-        if (Object.prototype.hasOwnProperty.call(scalarUpdates, block.key)) {
-            touchedScalarKeys.add(block.key);
-            updatedLines.push(renderScalarLine(block.key, scalarUpdates[block.key]));
-            cursor = block.end + 1;
-            continue;
-        }
-
-        if (Object.prototype.hasOwnProperty.call(arrayUpdates, block.key)) {
-            touchedArrayKeys.add(block.key);
-            updatedLines.push(...renderArrayBlock(block.key, arrayUpdates[block.key]));
-            cursor = block.end + 1;
-            continue;
-        }
-
-        while (cursor <= block.end) {
-            updatedLines.push(lines[cursor]);
-            cursor += 1;
-        }
+    for (const [path, value] of Object.entries(scalarUpdates)) {
+        setNodeAtPath(root, path.split("."), createScalarNode(String(value)));
     }
 
-    while (cursor < lines.length) {
-        updatedLines.push(lines[cursor]);
-        cursor += 1;
+    for (const [path, values] of Object.entries(arrayUpdates)) {
+        setNodeAtPath(root, path.split("."), createArrayNode(
+            (values || []).map((item) => createScalarNode(String(item)))));
     }
 
-    for (const [key, value] of Object.entries(scalarUpdates)) {
-        if (touchedScalarKeys.has(key)) {
-            continue;
-        }
-
-        updatedLines.push(renderScalarLine(key, value));
-    }
-
-    for (const [key, value] of Object.entries(arrayUpdates)) {
-        if (touchedArrayKeys.has(key)) {
-            continue;
-        }
-
-        updatedLines.push(...renderArrayBlock(key, value));
-    }
-
-    return updatedLines.join("\n");
+    return renderYaml(root).join("\n");
 }
 
 /**
- * Apply only scalar updates back into the original YAML text.
- * This helper is preserved for compatibility with existing tests and callers
- * that only edit top-level scalar fields.
+ * Apply only scalar updates back into YAML.
  *
  * @param {string} originalYaml Original YAML content.
  * @param {Record<string, string>} updates Updated scalar values.
@@ -505,6 +237,10 @@ function formatSchemaDefaultValue(value) {
         return normalized.length > 0 ? normalized.join(", ") : undefined;
     }
 
+    if (typeof value === "object") {
+        return JSON.stringify(value);
+    }
+
     return undefined;
 }
 
@@ -542,126 +278,528 @@ function unquoteScalar(value) {
 }
 
 /**
- * Parse a sequence of child lines as a top-level scalar array.
+ * Parse one schema node recursively.
  *
- * @param {string[]} childLines Indented child lines.
- * @returns {Array<{raw: string, isComplex: boolean}> | null} Parsed array items or null when the block is not an array.
+ * @param {unknown} rawNode Raw schema node.
+ * @param {string} displayPath Logical property path.
+ * @returns {SchemaNode} Parsed schema node.
  */
-function parseTopLevelArray(childLines) {
+function parseSchemaNode(rawNode, displayPath) {
+    const value = rawNode && typeof rawNode === "object" ? rawNode : {};
+    const type = typeof value.type === "string" ? value.type : "object";
+    const metadata = {
+        title: typeof value.title === "string" ? value.title : undefined,
+        description: typeof value.description === "string" ? value.description : undefined,
+        defaultValue: formatSchemaDefaultValue(value.default),
+        refTable: typeof value["x-gframework-ref-table"] === "string"
+            ? value["x-gframework-ref-table"]
+            : undefined
+    };
+
+    if (type === "object") {
+        const required = Array.isArray(value.required)
+            ? value.required.filter((item) => typeof item === "string")
+            : [];
+        const properties = {};
+        for (const [key, propertyNode] of Object.entries(value.properties || {})) {
+            properties[key] = parseSchemaNode(propertyNode, combinePath(displayPath, key));
+        }
+
+        return {
+            type: "object",
+            displayPath,
+            required,
+            properties,
+            title: metadata.title,
+            description: metadata.description,
+            defaultValue: metadata.defaultValue
+        };
+    }
+
+    if (type === "array") {
+        const itemNode = parseSchemaNode(value.items || {}, `${displayPath}[]`);
+        return {
+            type: "array",
+            displayPath,
+            title: metadata.title,
+            description: metadata.description,
+            defaultValue: metadata.defaultValue,
+            refTable: metadata.refTable,
+            items: itemNode
+        };
+    }
+
+    return {
+        type,
+        displayPath,
+        title: metadata.title,
+        description: metadata.description,
+        defaultValue: metadata.defaultValue,
+        enumValues: normalizeSchemaEnumValues(value.enum),
+        refTable: metadata.refTable
+    };
+}
+
+/**
+ * Validate one schema node against one YAML node.
+ *
+ * @param {SchemaNode} schemaNode Schema node.
+ * @param {YamlNode} yamlNode YAML node.
+ * @param {string} displayPath Current logical path.
+ * @param {Array<{severity: "error" | "warning", message: string}>} diagnostics Diagnostic sink.
+ */
+function validateNode(schemaNode, yamlNode, displayPath, diagnostics) {
+    if (schemaNode.type === "object") {
+        validateObjectNode(schemaNode, yamlNode, displayPath, diagnostics);
+        return;
+    }
+
+    if (schemaNode.type === "array") {
+        if (!yamlNode || yamlNode.kind !== "array") {
+            diagnostics.push({
+                severity: "error",
+                message: `Property '${displayPath}' is expected to be an array.`
+            });
+            return;
+        }
+
+        for (let index = 0; index < yamlNode.items.length; index += 1) {
+            validateNode(schemaNode.items, yamlNode.items[index], `${displayPath}[${index}]`, diagnostics);
+        }
+        return;
+    }
+
+    if (!yamlNode || yamlNode.kind !== "scalar") {
+        diagnostics.push({
+            severity: "error",
+            message: `Property '${displayPath}' is expected to be '${schemaNode.type}', but the current YAML shape is '${yamlNode ? yamlNode.kind : "missing"}'.`
+        });
+        return;
+    }
+
+    if (!isScalarCompatible(schemaNode.type, yamlNode.value)) {
+        diagnostics.push({
+            severity: "error",
+            message: `Property '${displayPath}' is expected to be '${schemaNode.type}', but the current scalar value is incompatible.`
+        });
+        return;
+    }
+
+    if (Array.isArray(schemaNode.enumValues) &&
+        schemaNode.enumValues.length > 0 &&
+        !schemaNode.enumValues.includes(unquoteScalar(yamlNode.value))) {
+        diagnostics.push({
+            severity: "error",
+            message: `Property '${displayPath}' must be one of: ${schemaNode.enumValues.join(", ")}.`
+        });
+    }
+}
+
+/**
+ * Validate an object node recursively.
+ *
+ * @param {Extract<SchemaNode, {type: "object"}>} schemaNode Object schema node.
+ * @param {YamlNode} yamlNode YAML node.
+ * @param {string} displayPath Current logical path.
+ * @param {Array<{severity: "error" | "warning", message: string}>} diagnostics Diagnostic sink.
+ */
+function validateObjectNode(schemaNode, yamlNode, displayPath, diagnostics) {
+    if (!yamlNode || yamlNode.kind !== "object") {
+        const subject = displayPath.length === 0 ? "Root object" : `Property '${displayPath}'`;
+        diagnostics.push({
+            severity: "error",
+            message: `${subject} is expected to be an object.`
+        });
+        return;
+    }
+
+    for (const requiredProperty of schemaNode.required) {
+        if (!yamlNode.map.has(requiredProperty)) {
+            diagnostics.push({
+                severity: "error",
+                message: `Required property '${combinePath(displayPath, requiredProperty)}' is missing.`
+            });
+        }
+    }
+
+    for (const entry of yamlNode.entries) {
+        if (!Object.prototype.hasOwnProperty.call(schemaNode.properties, entry.key)) {
+            diagnostics.push({
+                severity: "error",
+                message: `Property '${combinePath(displayPath, entry.key)}' is not declared in the matching schema.`
+            });
+            continue;
+        }
+
+        validateNode(
+            schemaNode.properties[entry.key],
+            entry.node,
+            combinePath(displayPath, entry.key),
+            diagnostics);
+    }
+}
+
+/**
+ * Tokenize YAML lines into indentation-aware units.
+ *
+ * @param {string} text YAML text.
+ * @returns {Array<{indent: number, text: string}>} Tokens.
+ */
+function tokenizeYaml(text) {
+    const tokens = [];
+    const lines = String(text).split(/\r?\n/u);
+
+    for (const line of lines) {
+        if (!line || line.trim().length === 0 || line.trimStart().startsWith("#")) {
+            continue;
+        }
+
+        const indentMatch = /^(\s*)/u.exec(line);
+        const indent = indentMatch ? indentMatch[1].length : 0;
+        const trimmed = line.slice(indent);
+        tokens.push({indent, text: trimmed});
+    }
+
+    return tokens;
+}
+
+/**
+ * Parse the next YAML block from the token stream.
+ *
+ * @param {Array<{indent: number, text: string}>} tokens Token array.
+ * @param {{index: number}} state Mutable parser state.
+ * @param {number} indent Expected indentation.
+ * @returns {YamlNode} Parsed node.
+ */
+function parseBlock(tokens, state, indent) {
+    if (state.index >= tokens.length) {
+        return createObjectNode();
+    }
+
+    const token = tokens[state.index];
+    if (token.text.startsWith("-")) {
+        return parseSequence(tokens, state, indent);
+    }
+
+    return parseMapping(tokens, state, indent);
+}
+
+/**
+ * Parse a mapping block.
+ *
+ * @param {Array<{indent: number, text: string}>} tokens Token array.
+ * @param {{index: number}} state Mutable parser state.
+ * @param {number} indent Expected indentation.
+ * @returns {YamlNode} Parsed object node.
+ */
+function parseMapping(tokens, state, indent) {
+    const entries = [];
+    const map = new Map();
+
+    while (state.index < tokens.length) {
+        const token = tokens[state.index];
+        if (token.indent < indent || token.text.startsWith("-")) {
+            break;
+        }
+
+        if (token.indent > indent) {
+            state.index += 1;
+            continue;
+        }
+
+        const match = /^([A-Za-z0-9_]+):(.*)$/u.exec(token.text);
+        if (!match) {
+            state.index += 1;
+            continue;
+        }
+
+        const key = match[1];
+        const rawValue = match[2].trim();
+        state.index += 1;
+
+        let node;
+        if (rawValue.length > 0 && !rawValue.startsWith("|") && !rawValue.startsWith(">")) {
+            node = createScalarNode(rawValue);
+        } else if (state.index < tokens.length && tokens[state.index].indent > indent) {
+            node = parseBlock(tokens, state, tokens[state.index].indent);
+        } else {
+            node = createScalarNode("");
+        }
+
+        entries.push({key, node});
+        map.set(key, node);
+    }
+
+    return {kind: "object", entries, map};
+}
+
+/**
+ * Parse a sequence block.
+ *
+ * @param {Array<{indent: number, text: string}>} tokens Token array.
+ * @param {{index: number}} state Mutable parser state.
+ * @param {number} indent Expected indentation.
+ * @returns {YamlNode} Parsed array node.
+ */
+function parseSequence(tokens, state, indent) {
     const items = [];
 
-    for (const line of childLines) {
-        if (line.trim().length === 0 || line.trim().startsWith("#")) {
+    while (state.index < tokens.length) {
+        const token = tokens[state.index];
+        if (token.indent !== indent || !token.text.startsWith("-")) {
+            break;
+        }
+
+        const rest = token.text.slice(1).trim();
+        state.index += 1;
+
+        if (rest.length === 0) {
+            if (state.index < tokens.length && tokens[state.index].indent > indent) {
+                items.push(parseBlock(tokens, state, tokens[state.index].indent));
+            } else {
+                items.push(createScalarNode(""));
+            }
             continue;
         }
 
-        const trimmed = line.trimStart();
-        if (!trimmed.startsWith("-")) {
-            return null;
+        if (/^[A-Za-z0-9_]+:/u.test(rest)) {
+            items.push(parseInlineObjectItem(tokens, state, indent, rest));
+            continue;
         }
 
-        const raw = trimmed.slice(1).trim();
-        items.push({
-            raw,
-            isComplex: raw.length === 0 || raw.startsWith("{") || raw.startsWith("[") || /^[A-Za-z0-9_]+:\s*/u.test(raw)
-        });
+        items.push(createScalarNode(rest));
     }
 
-    return items;
+    return createArrayNode(items);
 }
 
 /**
- * Find top-level YAML blocks so form updates can replace whole entries without
- * touching unrelated domains in the file.
+ * Parse an array item written as an inline mapping head followed by nested
+ * child lines, for example `- wave: 1`.
  *
- * @param {string[]} lines YAML lines.
- * @returns {Array<{key: string, start: number, end: number}>} Top-level blocks.
+ * @param {Array<{indent: number, text: string}>} tokens Token array.
+ * @param {{index: number}} state Mutable parser state.
+ * @param {number} parentIndent Array indentation.
+ * @param {string} firstEntry Inline first entry text.
+ * @returns {YamlNode} Parsed object node.
  */
-function findTopLevelBlocks(lines) {
-    const blocks = [];
-
-    for (let index = 0; index < lines.length; index += 1) {
-        const line = lines[index];
-        if (!line || line.trim().length === 0 || line.trim().startsWith("#") || /^\s/u.test(line)) {
-            continue;
-        }
-
-        const match = /^([A-Za-z0-9_]+):(?:\s*(.*))?$/u.exec(line);
-        if (!match) {
-            continue;
-        }
-
-        let cursor = index + 1;
-        while (cursor < lines.length) {
-            const nextLine = lines[cursor];
-            if (nextLine.trim().length === 0 || nextLine.trim().startsWith("#")) {
-                cursor += 1;
-                continue;
-            }
-
-            if (!/^\s/u.test(nextLine)) {
-                break;
-            }
-
-            cursor += 1;
-        }
-
-        blocks.push({
-            key: match[1],
-            start: index,
-            end: cursor - 1
-        });
-        index = cursor - 1;
+function parseInlineObjectItem(tokens, state, parentIndent, firstEntry) {
+    const syntheticTokens = [{indent: parentIndent + 2, text: firstEntry}];
+    while (state.index < tokens.length && tokens[state.index].indent > parentIndent) {
+        syntheticTokens.push(tokens[state.index]);
+        state.index += 1;
     }
 
-    return blocks;
+    return parseBlock(syntheticTokens, {index: 0}, parentIndent + 2);
 }
 
 /**
- * Render a top-level scalar line.
+ * Ensure the root node is an object, creating one if the YAML was empty or not
+ * object-shaped enough for structured edits.
  *
- * @param {string} key Property name.
- * @param {string} value Scalar value.
- * @returns {string} Rendered YAML line.
+ * @param {YamlNode} node Parsed node.
+ * @returns {YamlObjectNode} Root object node.
  */
-function renderScalarLine(key, value) {
-    return `${key}: ${formatYamlScalar(value)}`;
+function normalizeRootNode(node) {
+    return node && node.kind === "object" ? node : createObjectNode();
 }
 
 /**
- * Render a top-level scalar array block.
+ * Replace or create a node at a dot-separated object path.
  *
- * @param {string} key Property name.
- * @param {string[]} items Array items.
- * @returns {string[]} Rendered YAML lines.
+ * @param {YamlObjectNode} root Root object node.
+ * @param {string[]} segments Path segments.
+ * @param {YamlNode} valueNode Value node.
  */
-function renderArrayBlock(key, items) {
-    const normalizedItems = Array.isArray(items)
-        ? items
-            .map((item) => String(item).trim())
-            .filter((item) => item.length > 0)
-        : [];
+function setNodeAtPath(root, segments, valueNode) {
+    let current = root;
 
-    const lines = [`${key}:`];
-    for (const item of normalizedItems) {
-        lines.push(`  - ${formatYamlScalar(item)}`);
+    for (let index = 0; index < segments.length; index += 1) {
+        const segment = segments[index];
+        if (!segment) {
+            continue;
+        }
+
+        if (index === segments.length - 1) {
+            setObjectEntry(current, segment, valueNode);
+            return;
+        }
+
+        let nextNode = current.map.get(segment);
+        if (!nextNode || nextNode.kind !== "object") {
+            nextNode = createObjectNode();
+            setObjectEntry(current, segment, nextNode);
+        }
+
+        current = nextNode;
+    }
+}
+
+/**
+ * Insert or replace one mapping entry while preserving insertion order.
+ *
+ * @param {YamlObjectNode} objectNode Target object node.
+ * @param {string} key Mapping key.
+ * @param {YamlNode} valueNode Value node.
+ */
+function setObjectEntry(objectNode, key, valueNode) {
+    const existingIndex = objectNode.entries.findIndex((entry) => entry.key === key);
+    if (existingIndex >= 0) {
+        objectNode.entries[existingIndex] = {key, node: valueNode};
+    } else {
+        objectNode.entries.push({key, node: valueNode});
+    }
+
+    objectNode.map.set(key, valueNode);
+}
+
+/**
+ * Render a YAML node back to text lines.
+ *
+ * @param {YamlNode} node YAML node.
+ * @param {number} indent Current indentation.
+ * @returns {string[]} YAML lines.
+ */
+function renderYaml(node, indent = 0) {
+    if (node.kind === "object") {
+        return renderObjectNode(node, indent);
+    }
+
+    if (node.kind === "array") {
+        return renderArrayNode(node, indent);
+    }
+
+    return [`${" ".repeat(indent)}${formatYamlScalar(node.value)}`];
+}
+
+/**
+ * Render an object node.
+ *
+ * @param {YamlObjectNode} node Object node.
+ * @param {number} indent Current indentation.
+ * @returns {string[]} YAML lines.
+ */
+function renderObjectNode(node, indent) {
+    const lines = [];
+    for (const entry of node.entries) {
+        if (entry.node.kind === "scalar") {
+            lines.push(`${" ".repeat(indent)}${entry.key}: ${formatYamlScalar(entry.node.value)}`);
+            continue;
+        }
+
+        lines.push(`${" ".repeat(indent)}${entry.key}:`);
+        lines.push(...renderYaml(entry.node, indent + 2));
     }
 
     return lines;
 }
 
+/**
+ * Render an array node.
+ *
+ * @param {YamlArrayNode} node Array node.
+ * @param {number} indent Current indentation.
+ * @returns {string[]} YAML lines.
+ */
+function renderArrayNode(node, indent) {
+    const lines = [];
+    for (const item of node.items) {
+        if (item.kind === "scalar") {
+            lines.push(`${" ".repeat(indent)}- ${formatYamlScalar(item.value)}`);
+            continue;
+        }
+
+        lines.push(`${" ".repeat(indent)}-`);
+        lines.push(...renderYaml(item, indent + 2));
+    }
+
+    return lines;
+}
+
+/**
+ * Create a scalar node.
+ *
+ * @param {string} value Scalar value.
+ * @returns {YamlScalarNode} Scalar node.
+ */
+function createScalarNode(value) {
+    return {kind: "scalar", value};
+}
+
+/**
+ * Create an array node.
+ *
+ * @param {YamlNode[]} items Array items.
+ * @returns {YamlArrayNode} Array node.
+ */
+function createArrayNode(items) {
+    return {kind: "array", items};
+}
+
+/**
+ * Create an object node.
+ *
+ * @returns {YamlObjectNode} Object node.
+ */
+function createObjectNode() {
+    return {kind: "object", entries: [], map: new Map()};
+}
+
+/**
+ * Combine a parent path with one child segment.
+ *
+ * @param {string} parentPath Parent path.
+ * @param {string} key Child key.
+ * @returns {string} Combined path.
+ */
+function combinePath(parentPath, key) {
+    return parentPath && parentPath !== "<root>" ? `${parentPath}.${key}` : key;
+}
+
 module.exports = {
     applyFormUpdates,
     applyScalarUpdates,
-    findTopLevelBlocks,
-    formatYamlScalar,
     getEditableSchemaFields,
+    isEditableScalarType,
     isScalarCompatible,
-    normalizeSchemaEnumValues,
     parseBatchArrayValue,
     parseSchemaContent,
     parseTopLevelYaml,
     unquoteScalar,
-    validateParsedConfig,
-    formatSchemaDefaultValue
+    validateParsedConfig
 };
+
+/**
+ * @typedef {{
+ *   type: "object",
+ *   displayPath: string,
+ *   required: string[],
+ *   properties: Record<string, SchemaNode>,
+ *   title?: string,
+ *   description?: string,
+ *   defaultValue?: string
+ * } | {
+ *   type: "array",
+ *   displayPath: string,
+ *   title?: string,
+ *   description?: string,
+ *   defaultValue?: string,
+ *   refTable?: string,
+ *   items: SchemaNode
+ * } | {
+ *   type: "string" | "integer" | "number" | "boolean",
+ *   displayPath: string,
+ *   title?: string,
+ *   description?: string,
+ *   defaultValue?: string,
+ *   enumValues?: string[],
+ *   refTable?: string
+ * }} SchemaNode
+ */
+
+/**
+ * @typedef {{kind: "scalar", value: string}} YamlScalarNode
+ * @typedef {{kind: "array", items: YamlNode[]}} YamlArrayNode
+ * @typedef {{kind: "object", entries: Array<{key: string, node: YamlNode}>, map: Map<string, YamlNode>}} YamlObjectNode
+ * @typedef {YamlScalarNode | YamlArrayNode | YamlObjectNode} YamlNode
+ */

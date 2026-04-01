@@ -13,7 +13,7 @@ public sealed partial class MonsterConfig
     ///     Unique monster identifier.
     /// </summary>
     /// <remarks>
-    ///     Schema property: 'id'.
+    ///     Schema property path: 'id'.
     /// </remarks>
     public int Id { get; set; }
 
@@ -21,7 +21,7 @@ public sealed partial class MonsterConfig
     ///     Localized monster display name.
     /// </summary>
     /// <remarks>
-    ///     Schema property: 'name'.
+    ///     Schema property path: 'name'.
     ///     Display title: 'Monster Name'.
     ///     Allowed values: Slime, Goblin.
     ///     Generated default initializer: = "Slime";
@@ -29,10 +29,10 @@ public sealed partial class MonsterConfig
     public string Name { get; set; } = "Slime";
 
     /// <summary>
-    ///     Gets or sets the value mapped from schema property 'hp'.
+    ///     Gets or sets the value mapped from schema property path 'hp'.
     /// </summary>
     /// <remarks>
-    ///     Schema property: 'hp'.
+    ///     Schema property path: 'hp'.
     ///     Generated default initializer: = 10;
     /// </remarks>
     public int? Hp { get; set; } = 10;
@@ -41,11 +41,80 @@ public sealed partial class MonsterConfig
     ///     Referenced drop ids.
     /// </summary>
     /// <remarks>
-    ///     Schema property: 'dropItems'.
+    ///     Schema property path: 'dropItems'.
     ///     Allowed values: potion, slime_gel.
     ///     References config table: 'item'.
     ///     Generated default initializer: = new string[] { "potion" };
     /// </remarks>
     public global::System.Collections.Generic.IReadOnlyList<string> DropItems { get; set; } = new string[] { "potion" };
 
+    /// <summary>
+    ///     Reward payload.
+    /// </summary>
+    /// <remarks>
+    ///     Schema property path: 'reward'.
+    ///     Generated default initializer: = new();
+    /// </remarks>
+    public RewardConfig Reward { get; set; } = new();
+
+    /// <summary>
+    ///     Encounter phases.
+    /// </summary>
+    /// <remarks>
+    ///     Schema property path: 'phases'.
+    ///     Generated default initializer: = global::System.Array.Empty&lt;PhasesItemConfig&gt;();
+    /// </remarks>
+    public global::System.Collections.Generic.IReadOnlyList<PhasesItemConfig> Phases { get; set; } = global::System.Array.Empty<PhasesItemConfig>();
+
+    /// <summary>
+    ///     Auto-generated nested config type for schema property path 'reward'.
+    ///     Reward payload.
+    /// </summary>
+    public sealed partial class RewardConfig
+    {
+        /// <summary>
+        ///     Gets or sets the value mapped from schema property path 'reward.gold'.
+        /// </summary>
+        /// <remarks>
+        ///     Schema property path: 'reward.gold'.
+        ///     Generated default initializer: = 10;
+        /// </remarks>
+        public int Gold { get; set; } = 10;
+
+        /// <summary>
+        ///     Gets or sets the value mapped from schema property path 'reward.currency'.
+        /// </summary>
+        /// <remarks>
+        ///     Schema property path: 'reward.currency'.
+        ///     Allowed values: coin, gem.
+        ///     Generated default initializer: = string.Empty;
+        /// </remarks>
+        public string Currency { get; set; } = string.Empty;
+
+    }
+
+    /// <summary>
+    ///     Auto-generated nested config type for schema property path 'phases[]'.
+    ///     This nested type is generated so object-valued schema fields remain strongly typed in consumer code.
+    /// </summary>
+    public sealed partial class PhasesItemConfig
+    {
+        /// <summary>
+        ///     Gets or sets the value mapped from schema property path 'phases[].wave'.
+        /// </summary>
+        /// <remarks>
+        ///     Schema property path: 'phases[].wave'.
+        /// </remarks>
+        public int Wave { get; set; }
+
+        /// <summary>
+        ///     Monster reference id.
+        /// </summary>
+        /// <remarks>
+        ///     Schema property path: 'phases[].monsterId'.
+        ///     Generated default initializer: = string.Empty;
+        /// </remarks>
+        public string MonsterId { get; set; } = string.Empty;
+
+    }
 }

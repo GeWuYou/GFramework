@@ -429,6 +429,194 @@ public class YamlConfigLoaderTests
     }
 
     /// <summary>
+    ///     验证嵌套对象中的必填字段同样会按 schema 在运行时生效。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Throw_When_Nested_Object_Is_Missing_Required_Property()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            name: Slime
+            reward:
+              gold: 10
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "name", "reward"],
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "reward": {
+                  "type": "object",
+                  "required": ["gold", "currency"],
+                  "properties": {
+                    "gold": { "type": "integer" },
+                    "currency": { "type": "string" }
+                  }
+                }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterNestedConfigStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Message, Does.Contain("reward.currency"));
+            Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
+    ///     验证对象数组中的嵌套字段也会按 schema 递归校验。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Throw_When_Object_Array_Item_Contains_Unknown_Property()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            name: Slime
+            phases:
+              -
+                wave: 1
+                monsterId: slime
+                hpScale: 1.5
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "name", "phases"],
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "phases": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["wave", "monsterId"],
+                    "properties": {
+                      "wave": { "type": "integer" },
+                      "monsterId": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterPhaseArrayConfigStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Message, Does.Contain("phases[0].hpScale"));
+            Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
+    ///     验证深层对象数组中的跨表引用也会参与整批加载校验。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Throw_When_Nested_Object_Array_Reference_Target_Is_Missing()
+    {
+        CreateConfigFile(
+            "item/potion.yaml",
+            """
+            id: potion
+            name: Potion
+            """);
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            name: Slime
+            phases:
+              -
+                wave: 1
+                dropItemId: potion
+              -
+                wave: 2
+                dropItemId: bomb
+            """);
+        CreateSchemaFile(
+            "schemas/item.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "name"],
+              "properties": {
+                "id": { "type": "string" },
+                "name": { "type": "string" }
+              }
+            }
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "name", "phases"],
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "phases": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["wave", "dropItemId"],
+                    "properties": {
+                      "wave": { "type": "integer" },
+                      "dropItemId": {
+                        "type": "string",
+                        "x-gframework-ref-table": "item"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<string, ItemConfigStub>("item", "item", "schemas/item.schema.json",
+                static config => config.Id)
+            .RegisterTable<int, MonsterPhaseDropConfigStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Message, Does.Contain("phases[1].dropItemId"));
+            Assert.That(exception!.Message, Does.Contain("bomb"));
+            Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
     ///     验证绑定跨表引用 schema 时，存在的目标行可以通过加载校验。
     /// </summary>
     [Test]
@@ -947,6 +1135,117 @@ public class YamlConfigLoaderTests
         ///     获取或设置掉落率列表。
         /// </summary>
         public IReadOnlyList<int> DropRates { get; set; } = Array.Empty<int>();
+    }
+
+    /// <summary>
+    ///     用于嵌套对象 schema 校验测试的最小怪物配置类型。
+    /// </summary>
+    private sealed class MonsterNestedConfigStub
+    {
+        /// <summary>
+        ///     获取或设置主键。
+        /// </summary>
+        public int Id { get; set; }
+
+        /// <summary>
+        ///     获取或设置名称。
+        /// </summary>
+        public string Name { get; set; } = string.Empty;
+
+        /// <summary>
+        ///     获取或设置奖励对象。
+        /// </summary>
+        public RewardConfigStub Reward { get; set; } = new();
+    }
+
+    /// <summary>
+    ///     表示嵌套奖励对象的测试桩类型。
+    /// </summary>
+    private sealed class RewardConfigStub
+    {
+        /// <summary>
+        ///     获取或设置金币数量。
+        /// </summary>
+        public int Gold { get; set; }
+
+        /// <summary>
+        ///     获取或设置货币类型。
+        /// </summary>
+        public string Currency { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    ///     用于对象数组 schema 校验测试的怪物配置类型。
+    /// </summary>
+    private sealed class MonsterPhaseArrayConfigStub
+    {
+        /// <summary>
+        ///     获取或设置主键。
+        /// </summary>
+        public int Id { get; set; }
+
+        /// <summary>
+        ///     获取或设置名称。
+        /// </summary>
+        public string Name { get; set; } = string.Empty;
+
+        /// <summary>
+        ///     获取或设置阶段数组。
+        /// </summary>
+        public IReadOnlyList<PhaseConfigStub> Phases { get; set; } = Array.Empty<PhaseConfigStub>();
+    }
+
+    /// <summary>
+    ///     表示对象数组中的阶段元素。
+    /// </summary>
+    private sealed class PhaseConfigStub
+    {
+        /// <summary>
+        ///     获取或设置波次编号。
+        /// </summary>
+        public int Wave { get; set; }
+
+        /// <summary>
+        ///     获取或设置怪物主键。
+        /// </summary>
+        public string MonsterId { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    ///     用于深层跨表引用测试的怪物配置类型。
+    /// </summary>
+    private sealed class MonsterPhaseDropConfigStub
+    {
+        /// <summary>
+        ///     获取或设置主键。
+        /// </summary>
+        public int Id { get; set; }
+
+        /// <summary>
+        ///     获取或设置名称。
+        /// </summary>
+        public string Name { get; set; } = string.Empty;
+
+        /// <summary>
+        ///     获取或设置阶段数组。
+        /// </summary>
+        public List<PhaseDropConfigStub> Phases { get; set; } = new();
+    }
+
+    /// <summary>
+    ///     表示带有掉落引用的阶段元素。
+    /// </summary>
+    private sealed class PhaseDropConfigStub
+    {
+        /// <summary>
+        ///     获取或设置波次编号。
+        /// </summary>
+        public int Wave { get; set; }
+
+        /// <summary>
+        ///     获取或设置掉落物品主键。
+        /// </summary>
+        public string DropItemId { get; set; } = string.Empty;
     }
 
     /// <summary>

@@ -43,7 +43,7 @@ public class SchemaConfigGeneratorSnapshotTests
                                 "title": "Monster Config",
                                 "description": "Represents one monster entry generated from schema metadata.",
                                 "type": "object",
-                                "required": ["id", "name"],
+                                "required": ["id", "name", "reward", "phases"],
                                 "properties": {
                                   "id": {
                                     "type": "integer",
@@ -69,6 +69,38 @@ public class SchemaConfigGeneratorSnapshotTests
                                     },
                                     "default": ["potion"],
                                     "x-gframework-ref-table": "item"
+                                  },
+                                  "reward": {
+                                    "type": "object",
+                                    "description": "Reward payload.",
+                                    "required": ["gold", "currency"],
+                                    "properties": {
+                                      "gold": {
+                                        "type": "integer",
+                                        "default": 10
+                                      },
+                                      "currency": {
+                                        "type": "string",
+                                        "enum": ["coin", "gem"]
+                                      }
+                                    }
+                                  },
+                                  "phases": {
+                                    "type": "array",
+                                    "description": "Encounter phases.",
+                                    "items": {
+                                      "type": "object",
+                                      "required": ["wave", "monsterId"],
+                                      "properties": {
+                                        "wave": {
+                                          "type": "integer"
+                                        },
+                                        "monsterId": {
+                                          "type": "string",
+                                          "description": "Monster reference id."
+                                        }
+                                      }
+                                    }
                                   }
                                 }
                               }

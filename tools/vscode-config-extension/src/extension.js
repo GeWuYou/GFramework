@@ -252,9 +252,9 @@ async function openSchemaFile(item) {
 }
 
 /**
- * Open a lightweight form preview for top-level scalar fields and scalar
- * arrays. Nested objects and more complex array shapes still use raw YAML as
- * the escape hatch.
+ * Open a lightweight form preview for schema-bound config fields.
+ * The preview now walks nested object structures recursively, while complex
+ * object-array editing still falls back to raw YAML for safety.
  *
  * @param {ConfigTreeItem | { resourceUri?: vscode.Uri }} item Tree item.
  * @param {vscode.DiagnosticCollection} diagnostics Diagnostic collection.
@@ -284,7 +284,8 @@ async function openFormPreview(item, diagnostics) {
 
     panel.webview.onDidReceiveMessage(async (message) => {
         if (message.type === "save") {
-            const updatedYaml = applyFormUpdates(yamlText, {
+            const latestYamlText = await fs.promises.readFile(configUri.fsPath, "utf8");
+            const updatedYaml = applyFormUpdates(latestYamlText, {
                 scalars: message.scalars || {},
                 arrays: parseArrayFieldPayload(message.arrays || {})
             });
@@ -544,6 +545,7 @@ async function loadSchemaInfoForConfig(configUri, workspaceRoot) {
         return {
             exists: true,
             schemaPath,
+            type: parsed.type,
             required: parsed.required,
             properties: parsed.properties
         };
@@ -561,86 +563,67 @@ async function loadSchemaInfoForConfig(configUri, workspaceRoot) {
  * Render the form-preview webview HTML.
  *
  * @param {string} fileName File name.
- * @param {{exists: boolean, schemaPath: string, required: string[], properties: Record<string, {
- *     type: string,
- *     itemType?: string,
- *     title?: string,
- *     description?: string,
- *     defaultValue?: string,
- *     enumValues?: string[],
- *     itemEnumValues?: string[],
- *     refTable?: string
- * }>}} schemaInfo Schema info.
- * @param {{entries: Map<string, {kind: string, value?: string, items?: Array<{raw: string, isComplex: boolean}>}>, keys: Set<string>}} parsedYaml Parsed YAML data.
+ * @param {{exists: boolean, schemaPath: string, required: string[], properties: Record<string, unknown>, type?: string}} schemaInfo Schema info.
+ * @param {unknown} parsedYaml Parsed YAML data.
  * @returns {string} HTML string.
  */
 function renderFormHtml(fileName, schemaInfo, parsedYaml) {
-    const scalarFields = Array.from(parsedYaml.entries.entries())
-        .filter(([, entry]) => entry.kind === "scalar")
-        .map(([key, entry]) => {
-            const propertySchema = schemaInfo.properties[key] || {};
-            const displayName = propertySchema.title || key;
-            const escapedKey = escapeHtml(key);
-            const escapedDisplayName = escapeHtml(displayName);
-            const escapedValue = escapeHtml(unquoteScalar(entry.value || ""));
-            const required = schemaInfo.required.includes(key) ? "<span class=\"badge\">required</span>" : "";
-            const metadataHint = renderFieldHint(propertySchema, false);
-            const enumValues = Array.isArray(propertySchema.enumValues) ? propertySchema.enumValues : [];
+    const formModel = buildFormModel(schemaInfo, parsedYaml);
+    const renderedFields = formModel.fields
+        .map((field) => {
+            if (field.kind === "section") {
+                return `
+                    <div class="section depth-${field.depth}">
+                        <div class="section-title">${escapeHtml(field.label)} ${field.required ? "<span class=\"badge\">required</span>" : ""}</div>
+                        <div class="meta-key">${escapeHtml(field.path)}</div>
+                        ${field.description ? `<span class="hint">${escapeHtml(field.description)}</span>` : ""}
+                    </div>
+                `;
+            }
+
+            if (field.kind === "array") {
+                const itemType = field.itemType
+                    ? `array<${escapeHtml(field.itemType)}>`
+                    : "array";
+                return `
+                    <label class="field depth-${field.depth}">
+                        <span class="label">${escapeHtml(field.label)} ${field.required ? "<span class=\"badge\">required</span>" : ""}</span>
+                        <span class="meta-key">${escapeHtml(field.path)}</span>
+                        <span class="hint">One item per line. Expected type: ${itemType}</span>
+                        ${renderFieldHint(field.schema, true)}
+                        <textarea data-array-path="${escapeHtml(field.path)}" rows="5">${escapeHtml(field.value.join("\n"))}</textarea>
+                    </label>
+                `;
+            }
+
+            const enumValues = Array.isArray(field.schema.enumValues) ? field.schema.enumValues : [];
             const inputControl = enumValues.length > 0
                 ? `
-                    <select data-key="${escapedKey}">
+                    <select data-path="${escapeHtml(field.path)}">
                         ${enumValues.map((value) => {
                     const escapedOption = escapeHtml(value);
-                    const selected = value === unquoteScalar(entry.value || "") ? " selected" : "";
+                    const selected = value === field.value ? " selected" : "";
                     return `<option value="${escapedOption}"${selected}>${escapedOption}</option>`;
                 }).join("\n")}
                     </select>
                 `
-                : `<input data-key="${escapedKey}" value="${escapedValue}" />`;
+                : `<input data-path="${escapeHtml(field.path)}" value="${escapeHtml(field.value)}" />`;
+
             return `
-                <label class="field">
-                    <span class="label">${escapedDisplayName} ${required}</span>
-                    <span class="meta-key">${escapedKey}</span>
-                    ${metadataHint}
+                <label class="field depth-${field.depth}">
+                    <span class="label">${escapeHtml(field.label)} ${field.required ? "<span class=\"badge\">required</span>" : ""}</span>
+                    <span class="meta-key">${escapeHtml(field.path)}</span>
+                    ${renderFieldHint(field.schema, false)}
                     ${inputControl}
                 </label>
             `;
         })
         .join("\n");
 
-    const arrayFields = Array.from(parsedYaml.entries.entries())
-        .filter(([, entry]) => entry.kind === "array")
-        .map(([key, entry]) => {
-            const propertySchema = schemaInfo.properties[key] || {};
-            const displayName = propertySchema.title || key;
-            const escapedKey = escapeHtml(key);
-            const escapedDisplayName = escapeHtml(displayName);
-            const escapedValue = escapeHtml((entry.items || [])
-                .map((item) => unquoteScalar(item.raw))
-                .join("\n"));
-            const required = schemaInfo.required.includes(key) ? "<span class=\"badge\">required</span>" : "";
-            const itemType = propertySchema.itemType
-                ? `array<${escapeHtml(propertySchema.itemType)}>`
-                : "array";
-            const metadataHint = renderFieldHint(propertySchema, true);
-
-            return `
-                <label class="field">
-                    <span class="label">${escapedDisplayName} ${required}</span>
-                    <span class="meta-key">${escapedKey}</span>
-                    <span class="hint">One item per line. Expected type: ${itemType}</span>
-                    ${metadataHint}
-                    <textarea data-array-key="${escapedKey}" rows="5">${escapedValue}</textarea>
-                </label>
-            `;
-        })
-        .join("\n");
-
-    const unsupportedFields = Array.from(parsedYaml.entries.entries())
-        .filter(([, entry]) => entry.kind !== "scalar" && entry.kind !== "array")
-        .map(([key, entry]) => `
+    const unsupportedFields = formModel.unsupported
+        .map((field) => `
             <div class="unsupported">
-                <strong>${escapeHtml(key)}</strong>: ${escapeHtml(entry.kind)} fields are currently raw-YAML-only.
+                <strong>${escapeHtml(field.path)}</strong>: ${escapeHtml(field.message)}
             </div>
         `)
         .join("\n");
@@ -649,13 +632,13 @@ function renderFormHtml(fileName, schemaInfo, parsedYaml) {
         ? `Schema: ${escapeHtml(schemaInfo.schemaPath)}`
         : `Schema missing: ${escapeHtml(schemaInfo.schemaPath)}`;
 
-    const editableContent = [scalarFields, arrayFields].filter((content) => content.length > 0).join("\n");
+    const editableContent = renderedFields;
     const unsupportedSection = unsupportedFields.length > 0
         ? `<div class="unsupported-list">${unsupportedFields}</div>`
         : "";
     const emptyState = editableContent.length > 0
         ? `${editableContent}${unsupportedSection}`
-        : "<p>No editable top-level scalar or scalar-array fields were detected. Use raw YAML for nested objects or complex arrays.</p>";
+        : "<p>No editable schema-bound fields were detected. Use raw YAML for unsupported shapes.</p>";
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -688,6 +671,15 @@ function renderFormHtml(fileName, schemaInfo, parsedYaml) {
         .field {
             display: block;
             margin-bottom: 12px;
+        }
+        .section {
+            margin: 18px 0 8px;
+            padding-top: 12px;
+            border-top: 1px solid var(--vscode-panel-border, transparent);
+        }
+        .section-title {
+            font-weight: 700;
+            margin-bottom: 4px;
         }
         .meta-key {
             display: inline-block;
@@ -742,6 +734,15 @@ function renderFormHtml(fileName, schemaInfo, parsedYaml) {
             margin-bottom: 10px;
             color: var(--vscode-descriptionForeground);
         }
+        .depth-1 {
+            margin-left: 12px;
+        }
+        .depth-2 {
+            margin-left: 24px;
+        }
+        .depth-3 {
+            margin-left: 36px;
+        }
     </style>
 </head>
 <body>
@@ -759,11 +760,11 @@ function renderFormHtml(fileName, schemaInfo, parsedYaml) {
         document.getElementById("save").addEventListener("click", () => {
             const scalars = {};
             const arrays = {};
-            for (const control of document.querySelectorAll("[data-key]")) {
-                scalars[control.dataset.key] = control.value;
+            for (const control of document.querySelectorAll("[data-path]")) {
+                scalars[control.dataset.path] = control.value;
             }
-            for (const textarea of document.querySelectorAll("textarea[data-array-key]")) {
-                arrays[textarea.dataset.arrayKey] = textarea.value;
+            for (const textarea of document.querySelectorAll("textarea[data-array-path]")) {
+                arrays[textarea.dataset.arrayPath] = textarea.value;
             }
             vscode.postMessage({ type: "save", scalars, arrays });
         });
@@ -776,9 +777,144 @@ function renderFormHtml(fileName, schemaInfo, parsedYaml) {
 }
 
 /**
+ * Build a recursive form model from schema and parsed YAML.
+ *
+ * @param {{exists: boolean, schemaPath: string, required: string[], properties: Record<string, unknown>, type?: string}} schemaInfo Schema info.
+ * @param {unknown} parsedYaml Parsed YAML data.
+ * @returns {{fields: Array<Record<string, unknown>>, unsupported: Array<{path: string, message: string}>}} Form model.
+ */
+function buildFormModel(schemaInfo, parsedYaml) {
+    if (!schemaInfo || schemaInfo.type !== "object") {
+        return {fields: [], unsupported: []};
+    }
+
+    const fields = [];
+    const unsupported = [];
+    collectFormFields(schemaInfo, parsedYaml, "", 0, fields, unsupported);
+    return {fields, unsupported};
+}
+
+/**
+ * Recursively collect form-editable fields.
+ *
+ * @param {{type: string, required?: string[], properties?: Record<string, unknown>, title?: string, description?: string}} schemaNode Schema node.
+ * @param {unknown} yamlNode YAML node.
+ * @param {string} currentPath Current logical path.
+ * @param {number} depth Current depth.
+ * @param {Array<Record<string, unknown>>} fields Field sink.
+ * @param {Array<{path: string, message: string}>} unsupported Unsupported sink.
+ */
+function collectFormFields(schemaNode, yamlNode, currentPath, depth, fields, unsupported) {
+    if (!schemaNode || schemaNode.type !== "object") {
+        return;
+    }
+
+    const yamlMap = getYamlObjectMap(yamlNode);
+    const requiredSet = new Set(Array.isArray(schemaNode.required) ? schemaNode.required : []);
+
+    for (const [key, propertySchema] of Object.entries(schemaNode.properties || {})) {
+        const propertyPath = currentPath ? `${currentPath}.${key}` : key;
+        const label = propertySchema.title || key;
+        const propertyValue = yamlMap.get(key);
+
+        if (propertySchema.type === "object") {
+            fields.push({
+                kind: "section",
+                path: propertyPath,
+                label,
+                description: propertySchema.description,
+                required: requiredSet.has(key),
+                depth
+            });
+            collectFormFields(propertySchema, propertyValue, propertyPath, depth + 1, fields, unsupported);
+            continue;
+        }
+
+        if (propertySchema.type === "array" &&
+            propertySchema.items &&
+            ["string", "integer", "number", "boolean"].includes(propertySchema.items.type)) {
+            fields.push({
+                kind: "array",
+                path: propertyPath,
+                label,
+                required: requiredSet.has(key),
+                depth,
+                itemType: propertySchema.items.type,
+                value: getScalarArrayValue(propertyValue),
+                schema: propertySchema
+            });
+            continue;
+        }
+
+        if (["string", "integer", "number", "boolean"].includes(propertySchema.type)) {
+            fields.push({
+                kind: "scalar",
+                path: propertyPath,
+                label,
+                required: requiredSet.has(key),
+                depth,
+                value: getScalarFieldValue(propertyValue, propertySchema.defaultValue),
+                schema: propertySchema
+            });
+            continue;
+        }
+
+        unsupported.push({
+            path: propertyPath,
+            message: propertySchema.type === "array"
+                ? "Object-array fields are currently view-only in the form preview. Use raw YAML for edits."
+                : `${propertySchema.type} fields are currently raw-YAML-only.`
+        });
+    }
+}
+
+/**
+ * Get the mapping lookup for one parsed YAML object node.
+ *
+ * @param {unknown} yamlNode YAML node.
+ * @returns {Map<string, unknown>} Mapping lookup.
+ */
+function getYamlObjectMap(yamlNode) {
+    return yamlNode && yamlNode.kind === "object" && yamlNode.map instanceof Map
+        ? yamlNode.map
+        : new Map();
+}
+
+/**
+ * Extract a scalar field value from a parsed YAML node.
+ *
+ * @param {unknown} yamlNode YAML node.
+ * @param {string | undefined} defaultValue Default value from schema metadata.
+ * @returns {string} Scalar display value.
+ */
+function getScalarFieldValue(yamlNode, defaultValue) {
+    if (yamlNode && yamlNode.kind === "scalar") {
+        return unquoteScalar(yamlNode.value || "");
+    }
+
+    return defaultValue || "";
+}
+
+/**
+ * Extract a scalar-array value list from a parsed YAML node.
+ *
+ * @param {unknown} yamlNode YAML node.
+ * @returns {string[]} Scalar array value list.
+ */
+function getScalarArrayValue(yamlNode) {
+    if (!yamlNode || yamlNode.kind !== "array") {
+        return [];
+    }
+
+    return yamlNode.items
+        .filter((item) => item && item.kind === "scalar")
+        .map((item) => unquoteScalar(item.value || ""));
+}
+
+/**
  * Render human-facing metadata hints for one schema field.
  *
- * @param {{description?: string, defaultValue?: string, enumValues?: string[], itemEnumValues?: string[], refTable?: string}} propertySchema Property schema metadata.
+ * @param {{description?: string, defaultValue?: string, enumValues?: string[], items?: {enumValues?: string[]}, refTable?: string}} propertySchema Property schema metadata.
  * @param {boolean} isArrayField Whether the field is an array.
  * @returns {string} HTML fragment.
  */
@@ -793,7 +929,11 @@ function renderFieldHint(propertySchema, isArrayField) {
         hints.push(`Default: ${escapeHtml(propertySchema.defaultValue)}`);
     }
 
-    const enumValues = isArrayField ? propertySchema.itemEnumValues : propertySchema.enumValues;
+    const enumValues = isArrayField
+        ? propertySchema.items && Array.isArray(propertySchema.items.enumValues)
+            ? propertySchema.items.enumValues
+            : []
+        : propertySchema.enumValues;
     if (Array.isArray(enumValues) && enumValues.length > 0) {
         hints.push(`Allowed: ${escapeHtml(enumValues.join(", "))}`);
     }
