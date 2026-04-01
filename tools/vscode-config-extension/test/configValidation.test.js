@@ -203,6 +203,72 @@ test("applyFormUpdates should update nested scalar and scalar-array paths", () =
     assert.match(updated, /^phases:$/mu);
 });
 
+test("applyFormUpdates should rewrite object-array items from structured form payloads", () => {
+    const updated = applyFormUpdates(
+        [
+            "id: 1",
+            "name: Slime",
+            "phases:",
+            "  -",
+            "    wave: 1",
+            "    monsterId: slime"
+        ].join("\n"),
+        {
+            objectArrays: {
+                phases: [
+                    {
+                        wave: "1",
+                        monsterId: "slime",
+                        tags: ["starter", "melee"],
+                        reward: {
+                            gold: "10",
+                            currency: "coin"
+                        }
+                    },
+                    {
+                        wave: "2",
+                        monsterId: "goblin"
+                    }
+                ]
+            }
+        });
+
+    assert.match(updated, /^id: 1$/mu);
+    assert.match(updated, /^name: Slime$/mu);
+    assert.match(updated, /^phases:$/mu);
+    assert.match(updated, /^  -$/mu);
+    assert.match(updated, /^    wave: 1$/mu);
+    assert.match(updated, /^    monsterId: slime$/mu);
+    assert.match(updated, /^    tags:$/mu);
+    assert.match(updated, /^      - starter$/mu);
+    assert.match(updated, /^      - melee$/mu);
+    assert.match(updated, /^    reward:$/mu);
+    assert.match(updated, /^      gold: 10$/mu);
+    assert.match(updated, /^      currency: coin$/mu);
+    assert.match(updated, /^    monsterId: goblin$/mu);
+});
+
+test("applyFormUpdates should clear object arrays when the form removes all items", () => {
+    const updated = applyFormUpdates(
+        [
+            "id: 1",
+            "phases:",
+            "  -",
+            "    wave: 1",
+            "    monsterId: slime"
+        ].join("\n"),
+        {
+            objectArrays: {
+                phases: []
+            }
+        });
+
+    assert.equal(updated, [
+        "id: 1",
+        "phases: []"
+    ].join("\n"));
+});
+
 test("applyScalarUpdates should preserve the scalar-only compatibility wrapper", () => {
     const updated = applyScalarUpdates(
         [

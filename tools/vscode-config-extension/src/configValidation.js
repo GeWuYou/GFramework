@@ -150,13 +150,14 @@ function isScalarCompatible(expectedType, scalarValue) {
  * from the parsed structure so nested object edits can be saved safely.
  *
  * @param {string} originalYaml Original YAML content.
- * @param {{scalars?: Record<string, string>, arrays?: Record<string, string[]>}} updates Updated form values.
+ * @param {{scalars?: Record<string, string>, arrays?: Record<string, string[]>, objectArrays?: Record<string, Array<Record<string, unknown>>>}} updates Updated form values.
  * @returns {string} Updated YAML content.
  */
 function applyFormUpdates(originalYaml, updates) {
     const root = normalizeRootNode(parseTopLevelYaml(originalYaml));
     const scalarUpdates = updates.scalars || {};
     const arrayUpdates = updates.arrays || {};
+    const objectArrayUpdates = updates.objectArrays || {};
 
     for (const [path, value] of Object.entries(scalarUpdates)) {
         setNodeAtPath(root, path.split("."), createScalarNode(String(value)));
@@ -165,6 +166,11 @@ function applyFormUpdates(originalYaml, updates) {
     for (const [path, values] of Object.entries(arrayUpdates)) {
         setNodeAtPath(root, path.split("."), createArrayNode(
             (values || []).map((item) => createScalarNode(String(item)))));
+    }
+
+    for (const [path, items] of Object.entries(objectArrayUpdates)) {
+        setNodeAtPath(root, path.split("."), createArrayNode(
+            (items || []).map((item) => createNodeFromFormValue(item))));
     }
 
     return renderYaml(root).join("\n");
@@ -687,6 +693,11 @@ function renderObjectNode(node, indent) {
             continue;
         }
 
+        if (entry.node.kind === "array" && entry.node.items.length === 0) {
+            lines.push(`${" ".repeat(indent)}${entry.key}: []`);
+            continue;
+        }
+
         lines.push(`${" ".repeat(indent)}${entry.key}:`);
         lines.push(...renderYaml(entry.node, indent + 2));
     }
@@ -734,6 +745,32 @@ function createScalarNode(value) {
  */
 function createArrayNode(items) {
     return {kind: "array", items};
+}
+
+/**
+ * Convert one structured form value back into a YAML node tree.
+ * Object-array editors submit plain JavaScript objects so the writer can
+ * rebuild the full array deterministically instead of patching item paths
+ * one by one.
+ *
+ * @param {unknown} value Structured form value.
+ * @returns {YamlNode} YAML node.
+ */
+function createNodeFromFormValue(value) {
+    if (Array.isArray(value)) {
+        return createArrayNode(value.map((item) => createNodeFromFormValue(item)));
+    }
+
+    if (value && typeof value === "object") {
+        const objectNode = createObjectNode();
+        for (const [key, childValue] of Object.entries(value)) {
+            setObjectEntry(objectNode, key, createNodeFromFormValue(childValue));
+        }
+
+        return objectNode;
+    }
+
+    return createScalarNode(String(value ?? ""));
 }
 
 /**
