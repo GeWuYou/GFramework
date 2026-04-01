@@ -16,11 +16,23 @@ test("parseSchemaContent should capture scalar and array property metadata", () 
           "type": "object",
           "required": ["id", "name"],
           "properties": {
-            "id": { "type": "integer" },
-            "name": { "type": "string" },
+            "id": {
+              "type": "integer",
+              "title": "Monster Id",
+              "description": "Primary monster key.",
+              "default": 1
+            },
+            "name": {
+              "type": "string",
+              "enum": ["Slime", "Goblin"]
+            },
             "dropRates": {
               "type": "array",
-              "items": { "type": "integer" }
+              "description": "Drop rate list.",
+              "items": {
+                "type": "integer",
+                "enum": [1, 2, 3]
+              }
             }
           }
         }
@@ -28,9 +40,31 @@ test("parseSchemaContent should capture scalar and array property metadata", () 
 
     assert.deepEqual(schema.required, ["id", "name"]);
     assert.deepEqual(schema.properties, {
-        id: {type: "integer"},
-        name: {type: "string"},
-        dropRates: {type: "array", itemType: "integer"}
+        id: {
+            type: "integer",
+            title: "Monster Id",
+            description: "Primary monster key.",
+            defaultValue: "1",
+            enumValues: undefined,
+            refTable: undefined
+        },
+        name: {
+            type: "string",
+            title: undefined,
+            description: undefined,
+            defaultValue: undefined,
+            enumValues: ["Slime", "Goblin"],
+            refTable: undefined
+        },
+        dropRates: {
+            type: "array",
+            itemType: "integer",
+            title: undefined,
+            description: "Drop rate list.",
+            defaultValue: undefined,
+            refTable: undefined,
+            itemEnumValues: ["1", "2", "3"]
+        }
     });
 });
 
@@ -82,6 +116,55 @@ dropRates:
     assert.equal(diagnostics.length, 1);
     assert.equal(diagnostics[0].severity, "error");
     assert.match(diagnostics[0].message, /dropRates/u);
+});
+
+test("validateParsedConfig should report scalar enum mismatches", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "rarity": {
+              "type": "string",
+              "enum": ["common", "rare"]
+            }
+          }
+        }
+    `);
+    const yaml = parseTopLevelYaml(`
+rarity: epic
+`);
+
+    const diagnostics = validateParsedConfig(schema, yaml);
+
+    assert.equal(diagnostics.length, 1);
+    assert.match(diagnostics[0].message, /common, rare/u);
+});
+
+test("validateParsedConfig should report array item enum mismatches", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["fire", "ice"]
+              }
+            }
+          }
+        }
+    `);
+    const yaml = parseTopLevelYaml(`
+tags:
+  - fire
+  - poison
+`);
+
+    const diagnostics = validateParsedConfig(schema, yaml);
+
+    assert.equal(diagnostics.length, 1);
+    assert.match(diagnostics[0].message, /fire, ice/u);
 });
 
 test("parseTopLevelYaml should classify nested mappings as object entries", () => {
@@ -148,11 +231,19 @@ test("getEditableSchemaFields should expose only scalar and scalar-array propert
           "required": ["id", "dropItems"],
           "properties": {
             "id": { "type": "integer" },
-            "name": { "type": "string" },
+            "name": {
+              "type": "string",
+              "title": "Monster Name",
+              "description": "Display name."
+            },
             "reward": { "type": "object" },
             "dropItems": {
               "type": "array",
-              "items": { "type": "string" }
+              "description": "Drop ids.",
+              "items": {
+                "type": "string",
+                "enum": ["potion", "bomb"]
+              }
             },
             "waypoints": {
               "type": "array",
@@ -163,9 +254,40 @@ test("getEditableSchemaFields should expose only scalar and scalar-array propert
     `);
 
     assert.deepEqual(getEditableSchemaFields(schema), [
-        {key: "dropItems", type: "array", itemType: "string", inputKind: "array", required: true},
-        {key: "id", type: "integer", inputKind: "scalar", required: true},
-        {key: "name", type: "string", inputKind: "scalar", required: false}
+        {
+            key: "dropItems",
+            type: "array",
+            itemType: "string",
+            title: undefined,
+            description: "Drop ids.",
+            defaultValue: undefined,
+            itemEnumValues: ["potion", "bomb"],
+            refTable: undefined,
+            inputKind: "array",
+            required: true
+        },
+        {
+            key: "id",
+            type: "integer",
+            title: undefined,
+            description: undefined,
+            defaultValue: undefined,
+            enumValues: undefined,
+            refTable: undefined,
+            inputKind: "scalar",
+            required: true
+        },
+        {
+            key: "name",
+            type: "string",
+            title: "Monster Name",
+            description: "Display name.",
+            defaultValue: undefined,
+            enumValues: undefined,
+            refTable: undefined,
+            inputKind: "scalar",
+            required: false
+        }
     ]);
 });
 

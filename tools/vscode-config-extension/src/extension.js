@@ -429,11 +429,15 @@ async function openBatchEdit(item, diagnostics, provider) {
 
     const selectedFields = await vscode.window.showQuickPick(
         editableFields.map((field) => ({
-            label: field.key,
+            label: field.title || field.key,
             description: field.inputKind === "array"
                 ? `array<${field.itemType}>`
                 : field.type,
-            detail: field.required ? "required" : undefined,
+            detail: [
+                field.required ? "required" : "",
+                field.description || "",
+                field.refTable ? `ref: ${field.refTable}` : ""
+            ].filter((part) => part.length > 0).join(" · ") || undefined,
             field
         })),
         {
@@ -510,7 +514,16 @@ async function openBatchEdit(item, diagnostics, provider) {
  *
  * @param {vscode.Uri} configUri Config file URI.
  * @param {vscode.WorkspaceFolder} workspaceRoot Workspace root.
- * @returns {Promise<{exists: boolean, schemaPath: string, required: string[], properties: Record<string, {type: string, itemType?: string}>}>} Schema info.
+ * @returns {Promise<{exists: boolean, schemaPath: string, required: string[], properties: Record<string, {
+ *     type: string,
+ *     itemType?: string,
+ *     title?: string,
+ *     description?: string,
+ *     defaultValue?: string,
+ *     enumValues?: string[],
+ *     itemEnumValues?: string[],
+ *     refTable?: string
+ * }>}>} Schema info.
  */
 async function loadSchemaInfoForConfig(configUri, workspaceRoot) {
     const schemaUri = getSchemaUriForConfigFile(configUri, workspaceRoot);
@@ -548,7 +561,16 @@ async function loadSchemaInfoForConfig(configUri, workspaceRoot) {
  * Render the form-preview webview HTML.
  *
  * @param {string} fileName File name.
- * @param {{exists: boolean, schemaPath: string, required: string[], properties: Record<string, {type: string, itemType?: string}>}} schemaInfo Schema info.
+ * @param {{exists: boolean, schemaPath: string, required: string[], properties: Record<string, {
+ *     type: string,
+ *     itemType?: string,
+ *     title?: string,
+ *     description?: string,
+ *     defaultValue?: string,
+ *     enumValues?: string[],
+ *     itemEnumValues?: string[],
+ *     refTable?: string
+ * }>}} schemaInfo Schema info.
  * @param {{entries: Map<string, {kind: string, value?: string, items?: Array<{raw: string, isComplex: boolean}>}>, keys: Set<string>}} parsedYaml Parsed YAML data.
  * @returns {string} HTML string.
  */
@@ -556,13 +578,31 @@ function renderFormHtml(fileName, schemaInfo, parsedYaml) {
     const scalarFields = Array.from(parsedYaml.entries.entries())
         .filter(([, entry]) => entry.kind === "scalar")
         .map(([key, entry]) => {
+            const propertySchema = schemaInfo.properties[key] || {};
+            const displayName = propertySchema.title || key;
             const escapedKey = escapeHtml(key);
+            const escapedDisplayName = escapeHtml(displayName);
             const escapedValue = escapeHtml(unquoteScalar(entry.value || ""));
             const required = schemaInfo.required.includes(key) ? "<span class=\"badge\">required</span>" : "";
+            const metadataHint = renderFieldHint(propertySchema, false);
+            const enumValues = Array.isArray(propertySchema.enumValues) ? propertySchema.enumValues : [];
+            const inputControl = enumValues.length > 0
+                ? `
+                    <select data-key="${escapedKey}">
+                        ${enumValues.map((value) => {
+                    const escapedOption = escapeHtml(value);
+                    const selected = value === unquoteScalar(entry.value || "") ? " selected" : "";
+                    return `<option value="${escapedOption}"${selected}>${escapedOption}</option>`;
+                }).join("\n")}
+                    </select>
+                `
+                : `<input data-key="${escapedKey}" value="${escapedValue}" />`;
             return `
                 <label class="field">
-                    <span class="label">${escapedKey} ${required}</span>
-                    <input data-key="${escapedKey}" value="${escapedValue}" />
+                    <span class="label">${escapedDisplayName} ${required}</span>
+                    <span class="meta-key">${escapedKey}</span>
+                    ${metadataHint}
+                    ${inputControl}
                 </label>
             `;
         })
@@ -571,19 +611,25 @@ function renderFormHtml(fileName, schemaInfo, parsedYaml) {
     const arrayFields = Array.from(parsedYaml.entries.entries())
         .filter(([, entry]) => entry.kind === "array")
         .map(([key, entry]) => {
+            const propertySchema = schemaInfo.properties[key] || {};
+            const displayName = propertySchema.title || key;
             const escapedKey = escapeHtml(key);
+            const escapedDisplayName = escapeHtml(displayName);
             const escapedValue = escapeHtml((entry.items || [])
                 .map((item) => unquoteScalar(item.raw))
                 .join("\n"));
             const required = schemaInfo.required.includes(key) ? "<span class=\"badge\">required</span>" : "";
-            const itemType = schemaInfo.properties[key] && schemaInfo.properties[key].itemType
-                ? `array<${escapeHtml(schemaInfo.properties[key].itemType)}>`
+            const itemType = propertySchema.itemType
+                ? `array<${escapeHtml(propertySchema.itemType)}>`
                 : "array";
+            const metadataHint = renderFieldHint(propertySchema, true);
 
             return `
                 <label class="field">
-                    <span class="label">${escapedKey} ${required}</span>
+                    <span class="label">${escapedDisplayName} ${required}</span>
+                    <span class="meta-key">${escapedKey}</span>
                     <span class="hint">One item per line. Expected type: ${itemType}</span>
+                    ${metadataHint}
                     <textarea data-array-key="${escapedKey}" rows="5">${escapedValue}</textarea>
                 </label>
             `;
@@ -643,12 +689,18 @@ function renderFormHtml(fileName, schemaInfo, parsedYaml) {
             display: block;
             margin-bottom: 12px;
         }
+        .meta-key {
+            display: inline-block;
+            margin-bottom: 6px;
+            color: var(--vscode-descriptionForeground);
+            font-size: 12px;
+        }
         .label {
             display: block;
             margin-bottom: 4px;
             font-weight: 600;
         }
-        input {
+        input, select {
             width: 100%;
             padding: 8px;
             box-sizing: border-box;
@@ -707,8 +759,8 @@ function renderFormHtml(fileName, schemaInfo, parsedYaml) {
         document.getElementById("save").addEventListener("click", () => {
             const scalars = {};
             const arrays = {};
-            for (const input of document.querySelectorAll("input[data-key]")) {
-                scalars[input.dataset.key] = input.value;
+            for (const control of document.querySelectorAll("[data-key]")) {
+                scalars[control.dataset.key] = control.value;
             }
             for (const textarea of document.querySelectorAll("textarea[data-array-key]")) {
                 arrays[textarea.dataset.arrayKey] = textarea.value;
@@ -724,23 +776,85 @@ function renderFormHtml(fileName, schemaInfo, parsedYaml) {
 }
 
 /**
+ * Render human-facing metadata hints for one schema field.
+ *
+ * @param {{description?: string, defaultValue?: string, enumValues?: string[], itemEnumValues?: string[], refTable?: string}} propertySchema Property schema metadata.
+ * @param {boolean} isArrayField Whether the field is an array.
+ * @returns {string} HTML fragment.
+ */
+function renderFieldHint(propertySchema, isArrayField) {
+    const hints = [];
+
+    if (propertySchema.description) {
+        hints.push(escapeHtml(propertySchema.description));
+    }
+
+    if (propertySchema.defaultValue) {
+        hints.push(`Default: ${escapeHtml(propertySchema.defaultValue)}`);
+    }
+
+    const enumValues = isArrayField ? propertySchema.itemEnumValues : propertySchema.enumValues;
+    if (Array.isArray(enumValues) && enumValues.length > 0) {
+        hints.push(`Allowed: ${escapeHtml(enumValues.join(", "))}`);
+    }
+
+    if (propertySchema.refTable) {
+        hints.push(`Ref table: ${escapeHtml(propertySchema.refTable)}`);
+    }
+
+    if (hints.length === 0) {
+        return "";
+    }
+
+    return `<span class="hint">${hints.join(" · ")}</span>`;
+}
+
+/**
  * Prompt for one batch-edit field value.
  *
- * @param {{key: string, type: string, itemType?: string, inputKind: "scalar" | "array", required: boolean}} field Editable field descriptor.
+ * @param {{key: string, type: string, itemType?: string, title?: string, description?: string, defaultValue?: string, enumValues?: string[], itemEnumValues?: string[], refTable?: string, inputKind: "scalar" | "array", required: boolean}} field Editable field descriptor.
  * @returns {Promise<string | undefined>} User input, or undefined when cancelled.
  */
 async function promptBatchFieldValue(field) {
     if (field.inputKind === "array") {
+        const hintParts = [];
+        if (field.itemEnumValues && field.itemEnumValues.length > 0) {
+            hintParts.push(`Allowed items: ${field.itemEnumValues.join(", ")}`);
+        }
+
+        if (field.defaultValue) {
+            hintParts.push(`Default: ${field.defaultValue}`);
+        }
+
         return vscode.window.showInputBox({
-            title: `Batch Edit Array: ${field.key}`,
+            title: `Batch Edit Array: ${field.title || field.key}`,
             prompt: `Enter comma-separated items for '${field.key}' (expected array<${field.itemType}>). Leave empty to clear the array.`,
+            placeHolder: hintParts.join(" | "),
             ignoreFocusOut: true
         });
     }
 
+    if (field.enumValues && field.enumValues.length > 0) {
+        const picked = await vscode.window.showQuickPick(
+            field.enumValues.map((value) => ({
+                label: value,
+                description: value === field.defaultValue ? "default" : undefined
+            })),
+            {
+                title: `Batch Edit Field: ${field.title || field.key}`,
+                placeHolder: `Select a value for '${field.key}'.`
+            });
+        return picked ? picked.label : undefined;
+    }
+
     return vscode.window.showInputBox({
-        title: `Batch Edit Field: ${field.key}`,
+        title: `Batch Edit Field: ${field.title || field.key}`,
         prompt: `Enter the new value for '${field.key}' (expected ${field.type}).`,
+        placeHolder: [
+            field.description || "",
+            field.defaultValue ? `Default: ${field.defaultValue}` : "",
+            field.refTable ? `Ref table: ${field.refTable}` : ""
+        ].filter((part) => part.length > 0).join(" | ") || undefined,
         ignoreFocusOut: true
     });
 }

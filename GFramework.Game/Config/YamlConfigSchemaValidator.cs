@@ -236,7 +236,13 @@ internal static class YamlConfigSchemaValidator
         if (propertyType != YamlConfigSchemaPropertyType.Array)
         {
             EnsureReferenceKeywordIsSupported(schemaPath, property.Name, propertyType, null, referenceTableName);
-            return new YamlConfigSchemaProperty(property.Name, propertyType, null, referenceTableName);
+            return new YamlConfigSchemaProperty(
+                property.Name,
+                propertyType,
+                null,
+                referenceTableName,
+                ParseEnumValues(schemaPath, property.Name, property.Value, propertyType, "enum"),
+                null);
         }
 
         if (!property.Value.TryGetProperty("items", out var itemsElement) ||
@@ -260,7 +266,13 @@ internal static class YamlConfigSchemaValidator
         };
 
         EnsureReferenceKeywordIsSupported(schemaPath, property.Name, propertyType, itemType, referenceTableName);
-        return new YamlConfigSchemaProperty(property.Name, propertyType, itemType, referenceTableName);
+        return new YamlConfigSchemaProperty(
+            property.Name,
+            propertyType,
+            itemType,
+            referenceTableName,
+            null,
+            ParseEnumValues(schemaPath, property.Name, itemsElement, itemType, "items.enum"));
     }
 
     private static void EnsureReferenceKeywordIsSupported(
@@ -314,6 +326,7 @@ internal static class YamlConfigSchemaValidator
                     sequenceNode.Children[itemIndex],
                     property.ItemType!.Value,
                     property.ReferenceTableName,
+                    property.ItemAllowedValues,
                     references,
                     isArrayItem: true,
                     itemIndex);
@@ -328,6 +341,7 @@ internal static class YamlConfigSchemaValidator
             node,
             property.PropertyType,
             property.ReferenceTableName,
+            property.AllowedValues,
             references,
             isArrayItem: false,
             itemIndex: null);
@@ -339,6 +353,7 @@ internal static class YamlConfigSchemaValidator
         YamlNode node,
         YamlConfigSchemaPropertyType expectedType,
         string? referenceTableName,
+        IReadOnlyCollection<string>? allowedValues,
         ICollection<YamlConfigReferenceUsage> references,
         bool isArrayItem,
         int? itemIndex)
@@ -382,6 +397,18 @@ internal static class YamlConfigSchemaValidator
 
         if (isValid)
         {
+            var normalizedValue = NormalizeScalarValue(expectedType, value);
+            if (allowedValues != null &&
+                allowedValues.Count > 0 &&
+                !allowedValues.Contains(normalizedValue, StringComparer.Ordinal))
+            {
+                var enumSubject = isArrayItem
+                    ? $"Array item in property '{propertyName}'"
+                    : $"Property '{propertyName}'";
+                throw new InvalidOperationException(
+                    $"{enumSubject} in config file '{yamlPath}' must be one of [{string.Join(", ", allowedValues)}], but the current YAML scalar value is '{value}'.");
+            }
+
             if (referenceTableName != null)
             {
                 references.Add(
@@ -389,7 +416,7 @@ internal static class YamlConfigSchemaValidator
                         yamlPath,
                         propertyName,
                         itemIndex,
-                        value,
+                        normalizedValue,
                         referenceTableName,
                         expectedType));
             }
@@ -402,6 +429,82 @@ internal static class YamlConfigSchemaValidator
             : $"Property '{propertyName}'";
         throw new InvalidOperationException(
             $"{subjectName} in config file '{yamlPath}' must be of type '{GetTypeName(expectedType)}', but the current YAML scalar value is '{value}'.");
+    }
+
+    private static IReadOnlyCollection<string>? ParseEnumValues(
+        string schemaPath,
+        string propertyName,
+        JsonElement element,
+        YamlConfigSchemaPropertyType expectedType,
+        string keywordName)
+    {
+        if (!element.TryGetProperty("enum", out var enumElement))
+        {
+            return null;
+        }
+
+        if (enumElement.ValueKind != JsonValueKind.Array)
+        {
+            throw new InvalidOperationException(
+                $"Property '{propertyName}' in schema file '{schemaPath}' must declare '{keywordName}' as an array.");
+        }
+
+        var allowedValues = new List<string>();
+        foreach (var item in enumElement.EnumerateArray())
+        {
+            allowedValues.Add(NormalizeEnumValue(schemaPath, propertyName, keywordName, expectedType, item));
+        }
+
+        return allowedValues;
+    }
+
+    private static string NormalizeEnumValue(
+        string schemaPath,
+        string propertyName,
+        string keywordName,
+        YamlConfigSchemaPropertyType expectedType,
+        JsonElement item)
+    {
+        try
+        {
+            return expectedType switch
+            {
+                YamlConfigSchemaPropertyType.String when item.ValueKind == JsonValueKind.String =>
+                    item.GetString() ?? string.Empty,
+                YamlConfigSchemaPropertyType.Integer when item.ValueKind == JsonValueKind.Number =>
+                    item.GetInt64().ToString(CultureInfo.InvariantCulture),
+                YamlConfigSchemaPropertyType.Number when item.ValueKind == JsonValueKind.Number =>
+                    item.GetDouble().ToString(CultureInfo.InvariantCulture),
+                YamlConfigSchemaPropertyType.Boolean when item.ValueKind == JsonValueKind.True =>
+                    bool.TrueString.ToLowerInvariant(),
+                YamlConfigSchemaPropertyType.Boolean when item.ValueKind == JsonValueKind.False =>
+                    bool.FalseString.ToLowerInvariant(),
+                _ => throw new InvalidOperationException()
+            };
+        }
+        catch
+        {
+            throw new InvalidOperationException(
+                $"Property '{propertyName}' in schema file '{schemaPath}' contains a '{keywordName}' value that is incompatible with schema type '{GetTypeName(expectedType)}'.");
+        }
+    }
+
+    private static string NormalizeScalarValue(YamlConfigSchemaPropertyType expectedType, string value)
+    {
+        return expectedType switch
+        {
+            YamlConfigSchemaPropertyType.String => value,
+            YamlConfigSchemaPropertyType.Integer => long.Parse(
+                value,
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture).ToString(CultureInfo.InvariantCulture),
+            YamlConfigSchemaPropertyType.Number => double.Parse(
+                value,
+                NumberStyles.Float | NumberStyles.AllowThousands,
+                CultureInfo.InvariantCulture).ToString(CultureInfo.InvariantCulture),
+            YamlConfigSchemaPropertyType.Boolean => bool.Parse(value).ToString().ToLowerInvariant(),
+            _ => value
+        };
     }
 
     private static string GetTypeName(YamlConfigSchemaPropertyType type)
@@ -495,11 +598,15 @@ internal sealed class YamlConfigSchemaProperty
     /// <param name="propertyType">属性类型。</param>
     /// <param name="itemType">数组元素类型；仅当属性类型为数组时有效。</param>
     /// <param name="referenceTableName">目标引用表名称；未声明跨表引用时为空。</param>
+    /// <param name="allowedValues">标量允许值集合；未声明 enum 时为空。</param>
+    /// <param name="itemAllowedValues">数组元素允许值集合；未声明 items.enum 时为空。</param>
     public YamlConfigSchemaProperty(
         string name,
         YamlConfigSchemaPropertyType propertyType,
         YamlConfigSchemaPropertyType? itemType,
-        string? referenceTableName)
+        string? referenceTableName,
+        IReadOnlyCollection<string>? allowedValues,
+        IReadOnlyCollection<string>? itemAllowedValues)
     {
         ArgumentNullException.ThrowIfNull(name);
 
@@ -507,6 +614,8 @@ internal sealed class YamlConfigSchemaProperty
         PropertyType = propertyType;
         ItemType = itemType;
         ReferenceTableName = referenceTableName;
+        AllowedValues = allowedValues;
+        ItemAllowedValues = itemAllowedValues;
     }
 
     /// <summary>
@@ -528,6 +637,16 @@ internal sealed class YamlConfigSchemaProperty
     ///     获取目标引用表名称；未声明跨表引用时返回空。
     /// </summary>
     public string? ReferenceTableName { get; }
+
+    /// <summary>
+    ///     获取标量允许值集合；未声明 enum 时返回空。
+    /// </summary>
+    public IReadOnlyCollection<string>? AllowedValues { get; }
+
+    /// <summary>
+    ///     获取数组元素允许值集合；未声明 items.enum 时返回空。
+    /// </summary>
+    public IReadOnlyCollection<string>? ItemAllowedValues { get; }
 }
 
 /// <summary>

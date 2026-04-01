@@ -40,15 +40,35 @@ public class SchemaConfigGeneratorSnapshotTests
 
         const string schema = """
                               {
+                                "title": "Monster Config",
+                                "description": "Represents one monster entry generated from schema metadata.",
                                 "type": "object",
                                 "required": ["id", "name"],
                                 "properties": {
-                                  "id": { "type": "integer" },
-                                  "name": { "type": "string" },
-                                  "hp": { "type": "integer" },
+                                  "id": {
+                                    "type": "integer",
+                                    "description": "Unique monster identifier."
+                                  },
+                                  "name": {
+                                    "type": "string",
+                                    "title": "Monster Name",
+                                    "description": "Localized monster display name.",
+                                    "default": "Slime",
+                                    "enum": ["Slime", "Goblin"]
+                                  },
+                                  "hp": {
+                                    "type": "integer",
+                                    "default": 10
+                                  },
                                   "dropItems": {
+                                    "description": "Referenced drop ids.",
                                     "type": "array",
-                                    "items": { "type": "string" }
+                                    "items": {
+                                      "type": "string",
+                                      "enum": ["potion", "slime_gel"]
+                                    },
+                                    "default": ["potion"],
+                                    "x-gframework-ref-table": "item"
                                   }
                                 }
                               }

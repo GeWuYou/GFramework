@@ -34,15 +34,37 @@ GameProject/
 
 ```json
 {
+  "title": "Monster Config",
+  "description": "定义怪物静态配置。",
   "type": "object",
   "required": ["id", "name"],
   "properties": {
-    "id": { "type": "integer" },
-    "name": { "type": "string" },
-    "hp": { "type": "integer" },
+    "id": {
+      "type": "integer",
+      "description": "怪物主键。"
+    },
+    "name": {
+      "type": "string",
+      "title": "Monster Name",
+      "description": "怪物显示名。",
+      "default": "Slime"
+    },
+    "hp": {
+      "type": "integer",
+      "default": 10
+    },
+    "rarity": {
+      "type": "string",
+      "enum": ["common", "rare", "boss"]
+    },
     "dropItems": {
       "type": "array",
-      "items": { "type": "string" }
+      "description": "掉落物品表主键。",
+      "items": {
+        "type": "string",
+        "enum": ["potion", "slime_gel", "bomb"]
+      },
+      "x-gframework-ref-table": "item"
     }
   }
 }
@@ -91,6 +113,8 @@ var slime = monsterTable.Get(1);
 - 未在 schema 中声明的未知字段
 - 标量类型不匹配
 - 数组元素类型不匹配
+- 标量 `enum` 不匹配
+- 标量数组元素 `enum` 不匹配
 - 通过 `x-gframework-ref-table` 声明的跨表引用缺失目标行
 
 跨表引用当前使用最小扩展关键字：
@@ -114,6 +138,13 @@ var slime = monsterTable.Get(1);
 - 仅支持 `string`、`integer` 及其标量数组声明跨表引用
 - 引用目标表需要由同一个 `YamlConfigLoader` 注册，或已存在于当前 `IConfigRegistry`
 - 热重载中若目标表变更导致依赖表引用失效，会整体回滚受影响表，避免注册表进入不一致状态
+
+当前还支持以下“轻量元数据”：
+
+- `title`：供 VS Code 插件表单和批量编辑入口显示更友好的字段标题
+- `description`：供表单提示、生成代码 XML 文档和接入说明复用
+- `default`：供生成类型属性初始值和工具提示复用
+- `enum`：供运行时校验、VS Code 校验和表单枚举选择复用
 
 这样可以避免错误配置被默认值或 `IgnoreUnmatchedProperties` 静默吞掉。
 
@@ -170,6 +201,7 @@ var hotReload = loader.EnableHotReload(
 - 对必填字段、未知顶层字段、基础标量类型和标量数组元素做轻量校验
 - 对顶层标量字段和顶层标量数组提供轻量表单入口
 - 对同一配置域内的多份 YAML 文件执行批量字段更新
+- 在表单和批量编辑入口中显示 `title / description / default / enum / ref-table` 元数据
 
 当前批量编辑入口适合对同域文件统一改动顶层标量字段和顶层标量数组；复杂数组、嵌套对象仍建议放在 raw YAML 中完成。
 
@@ -181,3 +213,21 @@ var hotReload = loader.EnableHotReload(
 - 更强的 VS Code 嵌套对象与复杂数组编辑器
 
 因此，现阶段更适合作为你游戏项目的“受控试点配表系统”，而不是完全无约束的大规模内容生产平台。
+
+## 独立 Config Studio 评估
+
+当前阶段的结论是：`不建议立即启动独立 Config Studio`，继续以 `VS Code Extension` 作为主工具形态更合适。
+
+当前不单独启动桌面版的原因：
+
+- 当前已落地的能力主要仍围绕 schema 校验、轻量表单、批量编辑和 raw YAML 回退，这些都能在 VS Code 宿主里低成本迭代
+- runtime、generator、tooling 之间仍在持续收敛 schema 子集和元数据语义，过早拆出桌面工具会放大版本协同成本
+- 当前待补强点仍是更完整 schema 支持和复杂编辑体验，先在插件里验证真实工作流更稳妥
+- 仓库当前的主要使用者仍偏开发者和技术策划，独立桌面版带来的“免开发环境”收益还不足以抵消额外维护面
+
+只有在以下条件明显成立时，再建议启动独立 `Config Studio`：
+
+- 主要使用者变成非开发人员，且 VS Code 安装与使用成本成为持续阻力
+- 需要更重的表格视图、跨表可视化关系编辑、复杂审批流或离线发布流程
+- 插件形态已经频繁受限于 VS Code Webview/Extension API，而不是 schema 与工作流本身
+- 已经沉淀出稳定的 schema 元数据约定，能够支撑单独桌面产品的长期维护

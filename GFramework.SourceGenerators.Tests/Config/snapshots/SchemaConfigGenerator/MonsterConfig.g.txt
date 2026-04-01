@@ -5,28 +5,47 @@ namespace GFramework.Game.Config.Generated;
 
 /// <summary>
 ///     Auto-generated config type for schema file 'monster.schema.json'.
-///     This type is generated from JSON schema so runtime loading and editor tooling can share the same contract.
+///     Represents one monster entry generated from schema metadata.
 /// </summary>
 public sealed partial class MonsterConfig
 {
     /// <summary>
-    ///     Gets or sets the value mapped from schema property 'id'.
+    ///     Unique monster identifier.
     /// </summary>
+    /// <remarks>
+    ///     Schema property: 'id'.
+    /// </remarks>
     public int Id { get; set; }
 
     /// <summary>
-    ///     Gets or sets the value mapped from schema property 'name'.
+    ///     Localized monster display name.
     /// </summary>
-    public string Name { get; set; } = string.Empty;
+    /// <remarks>
+    ///     Schema property: 'name'.
+    ///     Display title: 'Monster Name'.
+    ///     Allowed values: Slime, Goblin.
+    ///     Generated default initializer: = "Slime";
+    /// </remarks>
+    public string Name { get; set; } = "Slime";
 
     /// <summary>
     ///     Gets or sets the value mapped from schema property 'hp'.
     /// </summary>
-    public int? Hp { get; set; }
+    /// <remarks>
+    ///     Schema property: 'hp'.
+    ///     Generated default initializer: = 10;
+    /// </remarks>
+    public int? Hp { get; set; } = 10;
 
     /// <summary>
-    ///     Gets or sets the value mapped from schema property 'dropItems'.
+    ///     Referenced drop ids.
     /// </summary>
-    public global::System.Collections.Generic.IReadOnlyList<string> DropItems { get; set; } = global::System.Array.Empty<string>();
+    /// <remarks>
+    ///     Schema property: 'dropItems'.
+    ///     Allowed values: potion, slime_gel.
+    ///     References config table: 'item'.
+    ///     Generated default initializer: = new string[] { "potion" };
+    /// </remarks>
+    public global::System.Collections.Generic.IReadOnlyList<string> DropItems { get; set; } = new string[] { "potion" };
 
 }

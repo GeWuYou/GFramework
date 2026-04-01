@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Text.Json;
@@ -160,6 +161,8 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                 $"{entityName}Table",
                 GeneratedNamespace,
                 idProperty.ClrType,
+                TryGetMetadataString(root, "title"),
+                TryGetMetadataString(root, "description"),
                 properties);
 
             return SchemaParseResult.FromSchema(schema);
@@ -200,6 +203,10 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         }
 
         var schemaType = typeElement.GetString() ?? string.Empty;
+        var title = TryGetMetadataString(property.Value, "title");
+        var description = TryGetMetadataString(property.Value, "description");
+        var refTableName = TryGetMetadataString(property.Value, "x-gframework-ref-table");
+
         switch (schemaType)
         {
             case "integer":
@@ -209,7 +216,11 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                     "integer",
                     isRequired ? "int" : "int?",
                     isRequired,
-                    null));
+                    TryBuildScalarInitializer(property.Value, "integer"),
+                    title,
+                    description,
+                    TryBuildEnumDocumentation(property.Value, "integer"),
+                    refTableName));
 
             case "number":
                 return ParsedPropertyResult.FromProperty(new SchemaPropertySpec(
@@ -218,7 +229,11 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                     "number",
                     isRequired ? "double" : "double?",
                     isRequired,
-                    null));
+                    TryBuildScalarInitializer(property.Value, "number"),
+                    title,
+                    description,
+                    TryBuildEnumDocumentation(property.Value, "number"),
+                    refTableName));
 
             case "boolean":
                 return ParsedPropertyResult.FromProperty(new SchemaPropertySpec(
@@ -227,7 +242,11 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                     "boolean",
                     isRequired ? "bool" : "bool?",
                     isRequired,
-                    null));
+                    TryBuildScalarInitializer(property.Value, "boolean"),
+                    title,
+                    description,
+                    TryBuildEnumDocumentation(property.Value, "boolean"),
+                    refTableName));
 
             case "string":
                 return ParsedPropertyResult.FromProperty(new SchemaPropertySpec(
@@ -236,7 +255,12 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                     "string",
                     isRequired ? "string" : "string?",
                     isRequired,
-                    isRequired ? " = string.Empty;" : null));
+                    TryBuildScalarInitializer(property.Value, "string") ??
+                    (isRequired ? " = string.Empty;" : null),
+                    title,
+                    description,
+                    TryBuildEnumDocumentation(property.Value, "string"),
+                    refTableName));
 
             case "array":
                 if (!property.Value.TryGetProperty("items", out var itemsElement) ||
@@ -279,7 +303,12 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                     "array",
                     $"global::System.Collections.Generic.IReadOnlyList<{itemClrType}>",
                     isRequired,
-                    " = global::System.Array.Empty<" + itemClrType + ">();"));
+                    TryBuildArrayInitializer(property.Value, itemType, itemClrType) ??
+                    " = global::System.Array.Empty<" + itemClrType + ">();",
+                    title,
+                    description,
+                    TryBuildEnumDocumentation(itemsElement, itemType),
+                    refTableName));
 
             default:
                 return ParsedPropertyResult.FromDiagnostic(
@@ -309,17 +338,14 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine(
             $"///     Auto-generated config type for schema file '{schema.FileName}'.");
         builder.AppendLine(
-            "///     This type is generated from JSON schema so runtime loading and editor tooling can share the same contract.");
+            $"///     {EscapeXmlDocumentation(schema.Description ?? schema.Title ?? "This type is generated from JSON schema so runtime loading and editor tooling can share the same contract.")}");
         builder.AppendLine("/// </summary>");
         builder.AppendLine($"public sealed partial class {schema.ClassName}");
         builder.AppendLine("{");
 
         foreach (var property in schema.Properties)
         {
-            builder.AppendLine("    /// <summary>");
-            builder.AppendLine(
-                $"    ///     Gets or sets the value mapped from schema property '{property.SchemaName}'.");
-            builder.AppendLine("    /// </summary>");
+            AppendPropertyDocumentation(builder, property);
             builder.Append($"    public {property.ClrType} {property.PropertyName} {{ get; set; }}");
             if (!string.IsNullOrEmpty(property.Initializer))
             {
@@ -451,6 +477,152 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             new LinePositionSpan(new LinePosition(0, 0), new LinePosition(0, 0)));
     }
 
+    private static string? TryGetMetadataString(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out var metadataElement) ||
+            metadataElement.ValueKind != JsonValueKind.String)
+        {
+            return null;
+        }
+
+        var value = metadataElement.GetString();
+        return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
+
+    private static string? TryBuildScalarInitializer(JsonElement element, string schemaType)
+    {
+        if (!element.TryGetProperty("default", out var defaultElement))
+        {
+            return null;
+        }
+
+        return schemaType switch
+        {
+            "integer" when defaultElement.ValueKind == JsonValueKind.Number &&
+                           defaultElement.TryGetInt64(out var intValue) =>
+                $" = {intValue.ToString(CultureInfo.InvariantCulture)};",
+            "number" when defaultElement.ValueKind == JsonValueKind.Number =>
+                $" = {defaultElement.GetDouble().ToString(CultureInfo.InvariantCulture)};",
+            "boolean" when defaultElement.ValueKind == JsonValueKind.True => " = true;",
+            "boolean" when defaultElement.ValueKind == JsonValueKind.False => " = false;",
+            "string" when defaultElement.ValueKind == JsonValueKind.String =>
+                $" = {SymbolDisplay.FormatLiteral(defaultElement.GetString() ?? string.Empty, true)};",
+            _ => null
+        };
+    }
+
+    private static string? TryBuildArrayInitializer(JsonElement element, string itemType, string itemClrType)
+    {
+        if (!element.TryGetProperty("default", out var defaultElement) ||
+            defaultElement.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        var items = new List<string>();
+        foreach (var item in defaultElement.EnumerateArray())
+        {
+            var literal = itemType switch
+            {
+                "integer" when item.ValueKind == JsonValueKind.Number && item.TryGetInt64(out var intValue) =>
+                    intValue.ToString(CultureInfo.InvariantCulture),
+                "number" when item.ValueKind == JsonValueKind.Number =>
+                    item.GetDouble().ToString(CultureInfo.InvariantCulture),
+                "boolean" when item.ValueKind == JsonValueKind.True => "true",
+                "boolean" when item.ValueKind == JsonValueKind.False => "false",
+                "string" when item.ValueKind == JsonValueKind.String =>
+                    SymbolDisplay.FormatLiteral(item.GetString() ?? string.Empty, true),
+                _ => string.Empty
+            };
+
+            if (string.IsNullOrEmpty(literal))
+            {
+                return null;
+            }
+
+            items.Add(literal);
+        }
+
+        return $" = new {itemClrType}[] {{ {string.Join(", ", items)} }};";
+    }
+
+    private static string? TryBuildEnumDocumentation(JsonElement element, string schemaType)
+    {
+        if (!element.TryGetProperty("enum", out var enumElement) ||
+            enumElement.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        var values = new List<string>();
+        foreach (var item in enumElement.EnumerateArray())
+        {
+            var displayValue = schemaType switch
+            {
+                "integer" when item.ValueKind == JsonValueKind.Number && item.TryGetInt64(out var intValue) =>
+                    intValue.ToString(CultureInfo.InvariantCulture),
+                "number" when item.ValueKind == JsonValueKind.Number =>
+                    item.GetDouble().ToString(CultureInfo.InvariantCulture),
+                "boolean" when item.ValueKind == JsonValueKind.True => "true",
+                "boolean" when item.ValueKind == JsonValueKind.False => "false",
+                "string" when item.ValueKind == JsonValueKind.String => item.GetString(),
+                _ => null
+            };
+
+            if (!string.IsNullOrWhiteSpace(displayValue))
+            {
+                values.Add(displayValue!);
+            }
+        }
+
+        return values.Count > 0 ? string.Join(", ", values) : null;
+    }
+
+    private static void AppendPropertyDocumentation(StringBuilder builder, SchemaPropertySpec property)
+    {
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine(
+            $"    ///     {EscapeXmlDocumentation(property.Description ?? property.Title ?? $"Gets or sets the value mapped from schema property '{property.SchemaName}'.")}");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    /// <remarks>");
+        builder.AppendLine(
+            $"    ///     Schema property: '{EscapeXmlDocumentation(property.SchemaName)}'.");
+
+        if (!string.IsNullOrWhiteSpace(property.Title))
+        {
+            builder.AppendLine(
+                $"    ///     Display title: '{EscapeXmlDocumentation(property.Title!)}'.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(property.EnumDocumentation))
+        {
+            builder.AppendLine(
+                $"    ///     Allowed values: {EscapeXmlDocumentation(property.EnumDocumentation!)}.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(property.ReferenceTableName))
+        {
+            builder.AppendLine(
+                $"    ///     References config table: '{EscapeXmlDocumentation(property.ReferenceTableName!)}'.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(property.Initializer))
+        {
+            builder.AppendLine(
+                $"    ///     Generated default initializer: {EscapeXmlDocumentation(property.Initializer!.Trim())}");
+        }
+
+        builder.AppendLine("    /// </remarks>");
+    }
+
+    private static string EscapeXmlDocumentation(string value)
+    {
+        return value
+            .Replace("&", "&amp;")
+            .Replace("<", "&lt;")
+            .Replace(">", "&gt;");
+    }
+
     /// <summary>
     ///     表示单个 schema 文件的解析结果。
     /// </summary>
@@ -487,6 +659,8 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         string TableName,
         string Namespace,
         string KeyClrType,
+        string? Title,
+        string? Description,
         IReadOnlyList<SchemaPropertySpec> Properties);
 
     /// <summary>
@@ -498,7 +672,11 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         string SchemaType,
         string ClrType,
         bool IsRequired,
-        string? Initializer);
+        string? Initializer,
+        string? Title,
+        string? Description,
+        string? EnumDocumentation,
+        string? ReferenceTableName);
 
     /// <summary>
     ///     表示单个属性的解析结果。

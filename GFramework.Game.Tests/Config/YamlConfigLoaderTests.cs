@@ -240,6 +240,52 @@ public class YamlConfigLoaderTests
     }
 
     /// <summary>
+    ///     验证启用 schema 校验后，标量 enum 限制会在运行时被拒绝。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Throw_When_Scalar_Value_Is_Not_Declared_In_Schema_Enum()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            name: Slime
+            rarity: epic
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "name", "rarity"],
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "rarity": {
+                  "type": "string",
+                  "enum": ["common", "rare"]
+                }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterConfigStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Message, Does.Contain("common"));
+            Assert.That(exception!.Message, Does.Contain("rare"));
+            Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
     ///     验证启用 schema 校验后，未知字段不会再被静默忽略。
     /// </summary>
     [Test]
@@ -327,6 +373,57 @@ public class YamlConfigLoaderTests
         {
             Assert.That(exception, Is.Not.Null);
             Assert.That(exception!.Message, Does.Contain("dropRates"));
+            Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
+    ///     验证数组元素上的 enum 限制会按 schema 在运行时生效。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Throw_When_Array_Item_Is_Not_Declared_In_Schema_Enum()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            name: Slime
+            tags:
+              - fire
+              - poison
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "name"],
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": ["fire", "ice"]
+                  }
+                }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterDropArrayConfigStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Message, Does.Contain("fire"));
+            Assert.That(exception!.Message, Does.Contain("ice"));
             Assert.That(registry.Count, Is.EqualTo(0));
         });
     }

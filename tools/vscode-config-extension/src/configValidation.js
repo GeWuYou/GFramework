@@ -4,7 +4,16 @@
  * runtime validator and source generator depend on.
  *
  * @param {string} content Raw schema JSON text.
- * @returns {{required: string[], properties: Record<string, {type: string, itemType?: string}>}} Parsed schema info.
+ * @returns {{required: string[], properties: Record<string, {
+ *     type: string,
+ *     itemType?: string,
+ *     title?: string,
+ *     description?: string,
+ *     defaultValue?: string,
+ *     enumValues?: string[],
+ *     itemEnumValues?: string[],
+ *     refTable?: string
+ * }>}} Parsed schema info.
  */
 function parseSchemaContent(content) {
     const parsed = JSON.parse(content);
@@ -19,19 +28,39 @@ function parseSchemaContent(content) {
             continue;
         }
 
+        const metadata = {
+            title: typeof value.title === "string" ? value.title : undefined,
+            description: typeof value.description === "string" ? value.description : undefined,
+            defaultValue: formatSchemaDefaultValue(value.default),
+            enumValues: normalizeSchemaEnumValues(value.enum),
+            refTable: typeof value["x-gframework-ref-table"] === "string"
+                ? value["x-gframework-ref-table"]
+                : undefined
+        };
+
         if (value.type === "array" &&
             value.items &&
             typeof value.items === "object" &&
             typeof value.items.type === "string") {
             properties[key] = {
                 type: "array",
-                itemType: value.items.type
+                itemType: value.items.type,
+                title: metadata.title,
+                description: metadata.description,
+                defaultValue: metadata.defaultValue,
+                refTable: metadata.refTable,
+                itemEnumValues: normalizeSchemaEnumValues(value.items.enum)
             };
             continue;
         }
 
         properties[key] = {
-            type: value.type
+            type: value.type,
+            title: metadata.title,
+            description: metadata.description,
+            defaultValue: metadata.defaultValue,
+            enumValues: metadata.enumValues,
+            refTable: metadata.refTable
         };
     }
 
@@ -47,8 +76,29 @@ function parseSchemaContent(content) {
  * top-level scalars and scalar arrays are supported, while nested objects and
  * complex array items remain raw-YAML-only.
  *
- * @param {{required: string[], properties: Record<string, {type: string, itemType?: string}>}} schemaInfo Parsed schema info.
- * @returns {Array<{key: string, type: string, itemType?: string, inputKind: "scalar" | "array", required: boolean}>} Editable field descriptors.
+ * @param {{required: string[], properties: Record<string, {
+ *     type: string,
+ *     itemType?: string,
+ *     title?: string,
+ *     description?: string,
+ *     defaultValue?: string,
+ *     enumValues?: string[],
+ *     itemEnumValues?: string[],
+ *     refTable?: string
+ * }>}} schemaInfo Parsed schema info.
+ * @returns {Array<{
+ *     key: string,
+ *     type: string,
+ *     itemType?: string,
+ *     title?: string,
+ *     description?: string,
+ *     defaultValue?: string,
+ *     enumValues?: string[],
+ *     itemEnumValues?: string[],
+ *     refTable?: string,
+ *     inputKind: "scalar" | "array",
+ *     required: boolean
+ * }>} Editable field descriptors.
  */
 function getEditableSchemaFields(schemaInfo) {
     const editableFields = [];
@@ -59,6 +109,11 @@ function getEditableSchemaFields(schemaInfo) {
             editableFields.push({
                 key,
                 type: property.type,
+                title: property.title,
+                description: property.description,
+                defaultValue: property.defaultValue,
+                enumValues: property.enumValues,
+                refTable: property.refTable,
                 inputKind: "scalar",
                 required: requiredSet.has(key)
             });
@@ -70,6 +125,11 @@ function getEditableSchemaFields(schemaInfo) {
                 key,
                 type: property.type,
                 itemType: property.itemType,
+                title: property.title,
+                description: property.description,
+                defaultValue: property.defaultValue,
+                itemEnumValues: property.itemEnumValues,
+                refTable: property.refTable,
                 inputKind: "array",
                 required: requiredSet.has(key)
             });
@@ -169,7 +229,16 @@ function parseTopLevelYaml(text) {
 /**
  * Produce extension-facing validation diagnostics from schema and parsed YAML.
  *
- * @param {{required: string[], properties: Record<string, {type: string, itemType?: string}>}} schemaInfo Parsed schema info.
+ * @param {{required: string[], properties: Record<string, {
+ *     type: string,
+ *     itemType?: string,
+ *     title?: string,
+ *     description?: string,
+ *     defaultValue?: string,
+ *     enumValues?: string[],
+ *     itemEnumValues?: string[],
+ *     refTable?: string
+ * }>}} schemaInfo Parsed schema info.
  * @param {{entries: Map<string, {kind: string, value?: string, items?: Array<{raw: string, isComplex: boolean}>}>, keys: Set<string>}} parsedYaml Parsed YAML.
  * @returns {Array<{severity: "error" | "warning", message: string}>} Validation diagnostics.
  */
@@ -217,6 +286,16 @@ function validateParsedConfig(schemaInfo, parsedYaml) {
                     });
                     break;
                 }
+
+                if (Array.isArray(propertySchema.itemEnumValues) &&
+                    propertySchema.itemEnumValues.length > 0 &&
+                    !propertySchema.itemEnumValues.includes(unquoteScalar(item.raw))) {
+                    diagnostics.push({
+                        severity: "error",
+                        message: `Array item in property '${propertyName}' must be one of: ${propertySchema.itemEnumValues.join(", ")}.`
+                    });
+                    break;
+                }
             }
 
             continue;
@@ -234,6 +313,16 @@ function validateParsedConfig(schemaInfo, parsedYaml) {
             diagnostics.push({
                 severity: "error",
                 message: `Property '${propertyName}' is expected to be '${propertySchema.type}', but the current scalar value is incompatible.`
+            });
+            continue;
+        }
+
+        if (Array.isArray(propertySchema.enumValues) &&
+            propertySchema.enumValues.length > 0 &&
+            !propertySchema.enumValues.includes(unquoteScalar(entry.value || ""))) {
+            diagnostics.push({
+                severity: "error",
+                message: `Property '${propertyName}' must be one of: ${propertySchema.enumValues.join(", ")}.`
             });
         }
     }
@@ -371,6 +460,52 @@ function parseBatchArrayValue(value) {
         .split(",")
         .map((item) => item.trim())
         .filter((item) => item.length > 0);
+}
+
+/**
+ * Normalize a schema enum array into string values that can be shown in UI
+ * hints and compared against parsed YAML scalar content.
+ *
+ * @param {unknown} value Raw schema enum value.
+ * @returns {string[] | undefined} Normalized enum values.
+ */
+function normalizeSchemaEnumValues(value) {
+    if (!Array.isArray(value)) {
+        return undefined;
+    }
+
+    const normalized = value
+        .filter((item) => ["string", "number", "boolean"].includes(typeof item))
+        .map((item) => String(item));
+
+    return normalized.length > 0 ? normalized : undefined;
+}
+
+/**
+ * Convert a schema default value into a compact string that can be shown in UI
+ * metadata hints.
+ *
+ * @param {unknown} value Raw schema default value.
+ * @returns {string | undefined} Display string for the default value.
+ */
+function formatSchemaDefaultValue(value) {
+    if (value === null || value === undefined) {
+        return undefined;
+    }
+
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+        return String(value);
+    }
+
+    if (Array.isArray(value)) {
+        const normalized = value
+            .filter((item) => ["string", "number", "boolean"].includes(typeof item))
+            .map((item) => String(item));
+
+        return normalized.length > 0 ? normalized.join(", ") : undefined;
+    }
+
+    return undefined;
 }
 
 /**
@@ -522,9 +657,11 @@ module.exports = {
     formatYamlScalar,
     getEditableSchemaFields,
     isScalarCompatible,
+    normalizeSchemaEnumValues,
     parseBatchArrayValue,
     parseSchemaContent,
     parseTopLevelYaml,
     unquoteScalar,
-    validateParsedConfig
+    validateParsedConfig,
+    formatSchemaDefaultValue
 };
