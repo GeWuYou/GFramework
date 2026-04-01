@@ -1,7 +1,0 @@
-.github/**
-.vscode/**
-.vscode-test/**
-test/**
-*.log
-.gitignore
-.vscodeignore
