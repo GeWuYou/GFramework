@@ -3,14 +3,14 @@
   "displayName": "GFramework Config Tool",
   "description": "VS Code tooling for browsing, validating, and editing AI-First config files in GFramework projects.",
   "version": "0.0.1",
-  "publisher": "gewuyou",
+  "publisher": "GeWuYou",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/GeWuYou/GFramework.git",
     "directory": "tools/vscode-config-extension"
   },
-  "homepage": "https://github.com/GeWuYou/GFramework/tree/main/tools/vscode-config-extension",
+  "homepage": "https://github.com/GeWuYou/GFramework/tree/main/tools/gframework-config-tool",
   "bugs": {
     "url": "https://github.com/GeWuYou/GFramework/issues"
   },
