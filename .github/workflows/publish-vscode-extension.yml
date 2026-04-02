@@ -1,0 +1,94 @@
+#name: Publish VS Code Extension
+#
+#on:
+#  workflow_dispatch:
+#    inputs:
+#      version:
+#        description: Extension version to publish, for example 0.1.0. Leave empty to use package.json or the pushed tag.
+#        required: false
+#        type: string
+#      publish_to_marketplace:
+#        description: Publish to the Visual Studio Marketplace after packaging.
+#        required: true
+#        type: boolean
+#        default: true
+#  push:
+#    tags:
+#      - 'gframework-config-tool-v*'
+#
+#permissions:
+#  contents: read
+#
+#jobs:
+#  publish:
+#    name: Package And Publish Marketplace Extension
+#    runs-on: ubuntu-latest
+#
+#    defaults:
+#      run:
+#        working-directory: tools/gframework-config-tool
+#
+#    steps:
+#      - name: Checkout repository
+#        uses: actions/checkout@v6
+#        with:
+#          fetch-depth: 0
+#
+#      - name: Setup Node.js 20
+#        uses: actions/setup-node@v5
+#        with:
+#          node-version: 20
+#
+#      - name: Setup Bun
+#        uses: oven-sh/setup-bun@v2
+#        with:
+#          bun-version: 1.2.15
+#
+#      - name: Determine extension version
+#        id: version
+#        shell: bash
+#        run: |
+#          set -euo pipefail
+#
+#          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+#          VERSION="${PACKAGE_VERSION}"
+#
+#          if [[ "${GITHUB_REF:-}" == refs/tags/gframework-config-tool-v* ]]; then
+#            VERSION="${GITHUB_REF#refs/tags/gframework-config-tool-v}"
+#          elif [[ -n "${{ inputs.version || '' }}" ]]; then
+#            VERSION="${{ inputs.version }}"
+#          fi
+#
+#          echo "Resolved extension version: ${VERSION}"
+#          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+#
+#      - name: Install extension dependencies
+#        run: bun install
+#
+#      - name: Synchronize package.json version
+#        shell: bash
+#        run: |
+#          set -euo pipefail
+#          node -e "const fs=require('fs'); const path='package.json'; const data=JSON.parse(fs.readFileSync(path,'utf8')); data.version='${{ steps.version.outputs.version }}'; fs.writeFileSync(path, JSON.stringify(data, null, 2) + '\n');"
+#
+#      - name: Run extension tests
+#        run: bun run test
+#
+#      - name: Package VSIX
+#        run: |
+#          set -euo pipefail
+#          mkdir -p ../../artifacts
+#          bun run package:vsix -- --out "../../artifacts/gframework-config-tool-${{ steps.version.outputs.version }}.vsix"
+#
+#      - name: Upload VSIX artifact
+#        uses: actions/upload-artifact@v7
+#        with:
+#          name: gframework-config-tool-vsix
+#          path: artifacts/gframework-config-tool-${{ steps.version.outputs.version }}.vsix
+#          if-no-files-found: error
+#
+#      - name: Publish to Visual Studio Marketplace
+#        if: github.event_name == 'push' || inputs.publish_to_marketplace
+#        env:
+#          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+#        run: bun run publish:marketplace

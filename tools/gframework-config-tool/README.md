@@ -1,6 +1,6 @@
-# GFramework Config Tools
+# GFramework Config Tool
 
-Minimal VS Code extension scaffold for the GFramework AI-First config workflow.
+VS Code extension for the GFramework AI-First config workflow.
 
 ## Current MVP
 
@@ -9,7 +9,7 @@ Minimal VS Code extension scaffold for the GFramework AI-First config workflow.
 - Open matching schema files from `schemas/`
 - Run lightweight schema validation for nested required fields, unknown nested fields, scalar types, scalar arrays, and
   arrays of objects
-- Open a lightweight form preview for nested object fields, top-level scalar fields, and scalar arrays
+- Open a lightweight form preview for nested object fields, object arrays, top-level scalar fields, and scalar arrays
 - Batch edit one config domain across multiple files for top-level scalar and scalar-array fields
 - Surface schema metadata such as `title`, `description`, `default`, `enum`, and `x-gframework-ref-table` in the
   lightweight editors
@@ -25,20 +25,28 @@ The extension currently validates the repository's minimal config-schema subset:
 - arrays of objects whose items use the same supported subset recursively
 - scalar `enum` constraints and scalar-array item `enum` constraints
 
-Object-array editing should still be reviewed in raw YAML.
-
 ## Local Testing
 
 ```bash
-cd tools/vscode-config-extension
-node --test ./test/*.test.js
+cd tools/gframework-config-tool
+bun install
+bun run test
+```
+
+## Packaging And Publishing
+
+```bash
+cd tools/gframework-config-tool
+bun install
+bun run package:vsix
+VSCE_PAT=your_marketplace_pat bun run publish:marketplace
 ```
 
 ## Current Constraints
 
 - Multi-root workspaces use the first workspace folder
 - Validation only covers a minimal subset of JSON Schema
-- Form preview supports nested objects and scalar arrays, but object arrays remain raw-YAML-only for edits
+- Form preview supports object-array editing, but nested object arrays inside array items still fall back to raw YAML
 - Batch editing remains limited to top-level scalar fields and top-level scalar arrays
 
 ## Workspace Settings

@@ -13,8 +13,8 @@ const {
 
 /**
  * Activate the GFramework config extension.
- * The initial MVP focuses on workspace file navigation, lightweight validation,
- * and a small form-preview entry for top-level scalar values.
+ * The current tool focuses on workspace file navigation, lightweight
+ * validation, and a schema-aware form preview for common editing workflows.
  *
  * @param {vscode.ExtensionContext} context Extension context.
  */
@@ -253,8 +253,8 @@ async function openSchemaFile(item) {
 
 /**
  * Open a lightweight form preview for schema-bound config fields.
- * The preview now walks nested object structures recursively, while complex
- * object-array editing still falls back to raw YAML for safety.
+ * The preview walks nested object structures recursively and now supports
+ * object-array editing for the repository's supported schema subset.
  *
  * @param {ConfigTreeItem | { resourceUri?: vscode.Uri }} item Tree item.
  * @param {vscode.DiagnosticCollection} diagnostics Diagnostic collection.
@@ -287,7 +287,8 @@ async function openFormPreview(item, diagnostics) {
             const latestYamlText = await fs.promises.readFile(configUri.fsPath, "utf8");
             const updatedYaml = applyFormUpdates(latestYamlText, {
                 scalars: message.scalars || {},
-                arrays: parseArrayFieldPayload(message.arrays || {})
+                arrays: parseArrayFieldPayload(message.arrays || {}),
+                objectArrays: message.objectArrays || {}
             });
             await fs.promises.writeFile(configUri.fsPath, updatedYaml, "utf8");
             const document = await vscode.workspace.openTextDocument(configUri);
@@ -570,54 +571,7 @@ async function loadSchemaInfoForConfig(configUri, workspaceRoot) {
 function renderFormHtml(fileName, schemaInfo, parsedYaml) {
     const formModel = buildFormModel(schemaInfo, parsedYaml);
     const renderedFields = formModel.fields
-        .map((field) => {
-            if (field.kind === "section") {
-                return `
-                    <div class="section depth-${field.depth}">
-                        <div class="section-title">${escapeHtml(field.label)} ${field.required ? "<span class=\"badge\">required</span>" : ""}</div>
-                        <div class="meta-key">${escapeHtml(field.path)}</div>
-                        ${field.description ? `<span class="hint">${escapeHtml(field.description)}</span>` : ""}
-                    </div>
-                `;
-            }
-
-            if (field.kind === "array") {
-                const itemType = field.itemType
-                    ? `array<${escapeHtml(field.itemType)}>`
-                    : "array";
-                return `
-                    <label class="field depth-${field.depth}">
-                        <span class="label">${escapeHtml(field.label)} ${field.required ? "<span class=\"badge\">required</span>" : ""}</span>
-                        <span class="meta-key">${escapeHtml(field.path)}</span>
-                        <span class="hint">One item per line. Expected type: ${itemType}</span>
-                        ${renderFieldHint(field.schema, true)}
-                        <textarea data-array-path="${escapeHtml(field.path)}" rows="5">${escapeHtml(field.value.join("\n"))}</textarea>
-                    </label>
-                `;
-            }
-
-            const enumValues = Array.isArray(field.schema.enumValues) ? field.schema.enumValues : [];
-            const inputControl = enumValues.length > 0
-                ? `
-                    <select data-path="${escapeHtml(field.path)}">
-                        ${enumValues.map((value) => {
-                    const escapedOption = escapeHtml(value);
-                    const selected = value === field.value ? " selected" : "";
-                    return `<option value="${escapedOption}"${selected}>${escapedOption}</option>`;
-                }).join("\n")}
-                    </select>
-                `
-                : `<input data-path="${escapeHtml(field.path)}" value="${escapeHtml(field.value)}" />`;
-
-            return `
-                <label class="field depth-${field.depth}">
-                    <span class="label">${escapeHtml(field.label)} ${field.required ? "<span class=\"badge\">required</span>" : ""}</span>
-                    <span class="meta-key">${escapeHtml(field.path)}</span>
-                    ${renderFieldHint(field.schema, false)}
-                    ${inputControl}
-                </label>
-            `;
-        })
+        .map((field) => renderFormField(field))
         .join("\n");
 
     const unsupportedFields = formModel.unsupported
@@ -663,6 +617,10 @@ function renderFormHtml(fileName, schemaInfo, parsedYaml) {
             color: var(--vscode-button-foreground);
             padding: 8px 12px;
             cursor: pointer;
+        }
+        .secondary-button {
+            background: transparent;
+            color: var(--vscode-button-foreground);
         }
         .meta {
             margin-bottom: 16px;
@@ -734,6 +692,34 @@ function renderFormHtml(fileName, schemaInfo, parsedYaml) {
             margin-bottom: 10px;
             color: var(--vscode-descriptionForeground);
         }
+        .object-array {
+            margin-bottom: 18px;
+            padding: 12px;
+            border: 1px solid var(--vscode-panel-border, transparent);
+            border-radius: 6px;
+        }
+        .object-array-items {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .object-array-item {
+            padding: 12px;
+            border: 1px solid var(--vscode-input-border, transparent);
+            border-radius: 6px;
+            background: color-mix(in srgb, var(--vscode-editor-background) 88%, var(--vscode-panel-border, transparent));
+        }
+        .object-array-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        .object-array-item-title {
+            font-weight: 700;
+        }
         .depth-1 {
             margin-left: 12px;
         }
@@ -742,6 +728,12 @@ function renderFormHtml(fileName, schemaInfo, parsedYaml) {
         }
         .depth-3 {
             margin-left: 36px;
+        }
+        .depth-4 {
+            margin-left: 48px;
+        }
+        .depth-5 {
+            margin-left: 60px;
         }
     </style>
 </head>
@@ -757,16 +749,96 @@ function renderFormHtml(fileName, schemaInfo, parsedYaml) {
     <div id="fields">${emptyState}</div>
     <script>
         const vscode = acquireVsCodeApi();
+        function parseArrayEditorValue(value) {
+            return String(value)
+                .split(/\\r?\\n/u)
+                .map((item) => item.trim())
+                .filter((item) => item.length > 0);
+        }
+        function setNestedObjectValue(target, path, value) {
+            const segments = path.split(".").filter((segment) => segment.length > 0);
+            if (segments.length === 0) {
+                return;
+            }
+
+            let current = target;
+            for (let index = 0; index < segments.length; index += 1) {
+                const segment = segments[index];
+                if (index === segments.length - 1) {
+                    current[segment] = value;
+                    return;
+                }
+
+                if (!current[segment] || typeof current[segment] !== "object" || Array.isArray(current[segment])) {
+                    current[segment] = {};
+                }
+
+                current = current[segment];
+            }
+        }
+        function renumberObjectArrayItems(editor) {
+            const items = editor.querySelectorAll("[data-object-array-item]");
+            items.forEach((item, index) => {
+                const title = item.querySelector(".object-array-item-title");
+                if (title) {
+                    title.textContent = "Item " + (index + 1);
+                }
+            });
+        }
+        document.addEventListener("click", (event) => {
+            const addButton = event.target.closest("[data-add-object-array-item]");
+            if (addButton) {
+                const editor = addButton.closest("[data-object-array-editor]");
+                const itemsHost = editor.querySelector("[data-object-array-items]");
+                const template = editor.querySelector("template[data-object-array-template]");
+                if (itemsHost && template) {
+                    itemsHost.appendChild(template.content.cloneNode(true));
+                    renumberObjectArrayItems(editor);
+                }
+                return;
+            }
+
+            const removeButton = event.target.closest("[data-remove-object-array-item]");
+            if (removeButton) {
+                const item = removeButton.closest("[data-object-array-item]");
+                const editor = removeButton.closest("[data-object-array-editor]");
+                if (item) {
+                    item.remove();
+                }
+                if (editor) {
+                    renumberObjectArrayItems(editor);
+                }
+            }
+        });
         document.getElementById("save").addEventListener("click", () => {
             const scalars = {};
             const arrays = {};
+            const objectArrays = {};
             for (const control of document.querySelectorAll("[data-path]")) {
                 scalars[control.dataset.path] = control.value;
             }
             for (const textarea of document.querySelectorAll("textarea[data-array-path]")) {
                 arrays[textarea.dataset.arrayPath] = textarea.value;
             }
-            vscode.postMessage({ type: "save", scalars, arrays });
+            for (const editor of document.querySelectorAll("[data-object-array-editor]")) {
+                const path = editor.dataset.objectArrayPath;
+                const items = [];
+                for (const item of editor.querySelectorAll("[data-object-array-items] > [data-object-array-item]")) {
+                    const itemValue = {};
+                    for (const control of item.querySelectorAll("[data-item-local-path]")) {
+                        setNestedObjectValue(itemValue, control.dataset.itemLocalPath, control.value);
+                    }
+                    for (const textarea of item.querySelectorAll("textarea[data-item-array-path]")) {
+                        setNestedObjectValue(
+                            itemValue,
+                            textarea.dataset.itemArrayPath,
+                            parseArrayEditorValue(textarea.value));
+                    }
+                    items.push(itemValue);
+                }
+                objectArrays[path] = items;
+            }
+            vscode.postMessage({ type: "save", scalars, arrays, objectArrays });
         });
         document.getElementById("openRaw").addEventListener("click", () => {
             vscode.postMessage({ type: "openRaw" });
@@ -774,6 +846,106 @@ function renderFormHtml(fileName, schemaInfo, parsedYaml) {
     </script>
 </body>
 </html>`;
+}
+
+/**
+ * Render one form field.
+ *
+ * @param {Record<string, unknown>} field Form field descriptor.
+ * @returns {string} HTML fragment.
+ */
+function renderFormField(field) {
+    if (field.kind === "section") {
+        return `
+            <div class="section depth-${field.depth}">
+                <div class="section-title">${escapeHtml(field.label)} ${field.required ? "<span class=\"badge\">required</span>" : ""}</div>
+                <div class="meta-key">${escapeHtml(field.displayPath || field.path)}</div>
+                ${field.description ? `<span class="hint">${escapeHtml(field.description)}</span>` : ""}
+            </div>
+        `;
+    }
+
+    if (field.kind === "objectArray") {
+        const renderedItems = field.items
+            .map((item) => renderObjectArrayItem(item))
+            .join("\n");
+        const renderedTemplate = renderObjectArrayItem({
+            title: "Item",
+            fields: field.templateFields
+        });
+        return `
+            <div class="object-array depth-${field.depth}" data-object-array-editor data-object-array-path="${escapeHtml(field.path)}">
+                <div class="label">${escapeHtml(field.label)} ${field.required ? "<span class=\"badge\">required</span>" : ""}</div>
+                <div class="meta-key">${escapeHtml(field.displayPath || field.path)}</div>
+                <span class="hint">Each item uses the object schema below.</span>
+                ${renderFieldHint(field.schema, true)}
+                <div class="object-array-items" data-object-array-items>${renderedItems}</div>
+                <template data-object-array-template>${renderedTemplate}</template>
+                <button type="button" class="secondary-button" data-add-object-array-item>Add Item</button>
+            </div>
+        `;
+    }
+
+    if (field.kind === "array") {
+        const itemType = field.itemType
+            ? `array<${escapeHtml(field.itemType)}>`
+            : "array";
+        const dataAttribute = field.itemMode
+            ? `data-item-array-path="${escapeHtml(field.path)}"`
+            : `data-array-path="${escapeHtml(field.path)}"`;
+        return `
+            <label class="field depth-${field.depth}">
+                <span class="label">${escapeHtml(field.label)} ${field.required ? "<span class=\"badge\">required</span>" : ""}</span>
+                <span class="meta-key">${escapeHtml(field.displayPath || field.path)}</span>
+                <span class="hint">One item per line. Expected type: ${itemType}</span>
+                ${renderFieldHint(field.schema, true)}
+                <textarea ${dataAttribute} rows="5">${escapeHtml(field.value.join("\n"))}</textarea>
+            </label>
+        `;
+    }
+
+    const enumValues = Array.isArray(field.schema.enumValues) ? field.schema.enumValues : [];
+    const dataAttribute = field.itemMode
+        ? `data-item-local-path="${escapeHtml(field.path)}"`
+        : `data-path="${escapeHtml(field.path)}"`;
+    const inputControl = enumValues.length > 0
+        ? `
+            <select ${dataAttribute}>
+                ${enumValues.map((value) => {
+            const escapedOption = escapeHtml(value);
+            const selected = value === field.value ? " selected" : "";
+            return `<option value="${escapedOption}"${selected}>${escapedOption}</option>`;
+        }).join("\n")}
+            </select>
+        `
+        : `<input ${dataAttribute} value="${escapeHtml(field.value)}" />`;
+
+    return `
+        <label class="field depth-${field.depth}">
+            <span class="label">${escapeHtml(field.label)} ${field.required ? "<span class=\"badge\">required</span>" : ""}</span>
+            <span class="meta-key">${escapeHtml(field.displayPath || field.path)}</span>
+            ${renderFieldHint(field.schema, false)}
+            ${inputControl}
+        </label>
+    `;
+}
+
+/**
+ * Render one object-array item editor block.
+ *
+ * @param {{title: string, fields: Array<Record<string, unknown>>}} item Item model.
+ * @returns {string} HTML fragment.
+ */
+function renderObjectArrayItem(item) {
+    return `
+        <div class="object-array-item" data-object-array-item>
+            <div class="object-array-item-header">
+                <span class="object-array-item-title">${escapeHtml(item.title)}</span>
+                <button type="button" class="secondary-button" data-remove-object-array-item>Remove</button>
+            </div>
+            ${item.fields.map((field) => renderFormField(field)).join("\n")}
+        </div>
+    `;
 }
 
 /**
@@ -795,7 +967,7 @@ function buildFormModel(schemaInfo, parsedYaml) {
 }
 
 /**
- * Recursively collect form-editable fields.
+ * Recursively collect top-level form-editable fields.
  *
  * @param {{type: string, required?: string[], properties?: Record<string, unknown>, title?: string, description?: string}} schemaNode Schema node.
  * @param {unknown} yamlNode YAML node.
@@ -836,6 +1008,7 @@ function collectFormFields(schemaNode, yamlNode, currentPath, depth, fields, uns
             fields.push({
                 kind: "array",
                 path: propertyPath,
+                displayPath: propertyPath,
                 label,
                 required: requiredSet.has(key),
                 depth,
@@ -846,10 +1019,37 @@ function collectFormFields(schemaNode, yamlNode, currentPath, depth, fields, uns
             continue;
         }
 
+        if (propertySchema.type === "array" &&
+            propertySchema.items &&
+            propertySchema.items.type === "object") {
+            const itemFieldsTemplate = [];
+            collectObjectArrayItemFields(
+                propertySchema.items,
+                undefined,
+                "",
+                `${propertyPath}[]`,
+                depth + 1,
+                itemFieldsTemplate,
+                unsupported);
+            fields.push({
+                kind: "objectArray",
+                path: propertyPath,
+                displayPath: propertyPath,
+                label,
+                required: requiredSet.has(key),
+                depth,
+                schema: propertySchema,
+                items: buildObjectArrayItemModels(propertySchema.items, propertyValue, propertyPath, depth + 1, unsupported),
+                templateFields: itemFieldsTemplate
+            });
+            continue;
+        }
+
         if (["string", "integer", "number", "boolean"].includes(propertySchema.type)) {
             fields.push({
                 kind: "scalar",
                 path: propertyPath,
+                displayPath: propertyPath,
                 label,
                 required: requiredSet.has(key),
                 depth,
@@ -862,7 +1062,142 @@ function collectFormFields(schemaNode, yamlNode, currentPath, depth, fields, uns
         unsupported.push({
             path: propertyPath,
             message: propertySchema.type === "array"
-                ? "Object-array fields are currently view-only in the form preview. Use raw YAML for edits."
+                ? "Unsupported array shapes are currently raw-YAML-only in the form preview."
+                : `${propertySchema.type} fields are currently raw-YAML-only.`
+        });
+    }
+}
+
+/**
+ * Build object-array item models from the current YAML array value.
+ *
+ * @param {{type: string, required?: string[], properties?: Record<string, unknown>}} itemSchema Array item schema.
+ * @param {unknown} yamlNode YAML node.
+ * @param {string} propertyPath Top-level object-array path.
+ * @param {number} depth Current depth.
+ * @param {Array<{path: string, message: string}>} unsupported Unsupported sink.
+ * @returns {Array<{title: string, fields: Array<Record<string, unknown>>}>} Item models.
+ */
+function buildObjectArrayItemModels(itemSchema, yamlNode, propertyPath, depth, unsupported) {
+    if (!yamlNode || yamlNode.kind !== "array") {
+        return [];
+    }
+
+    const items = [];
+    for (let index = 0; index < yamlNode.items.length; index += 1) {
+        const itemNode = yamlNode.items[index];
+        const itemPath = `${propertyPath}[${index}]`;
+        if (!itemNode || itemNode.kind !== "object") {
+            unsupported.push({
+                path: itemPath,
+                message: "Object-array items must be mappings. Use raw YAML if the current file mixes scalar and object items."
+            });
+            continue;
+        }
+
+        const fields = [];
+        collectObjectArrayItemFields(
+            itemSchema,
+            itemNode,
+            "",
+            itemPath,
+            depth,
+            fields,
+            unsupported);
+        items.push({
+            title: `Item ${index + 1}`,
+            fields
+        });
+    }
+
+    return items;
+}
+
+/**
+ * Recursively collect editable fields inside one object-array item.
+ * Nested objects remain editable, while nested object arrays still fall back
+ * to raw YAML until a deeper editor model is added.
+ *
+ * @param {{type: string, required?: string[], properties?: Record<string, unknown>, title?: string, description?: string}} schemaNode Schema node.
+ * @param {unknown} yamlNode YAML node.
+ * @param {string} localPath Path inside the current array item.
+ * @param {string} displayPath Full logical path for UI display.
+ * @param {number} depth Current depth.
+ * @param {Array<Record<string, unknown>>} fields Field sink.
+ * @param {Array<{path: string, message: string}>} unsupported Unsupported sink.
+ */
+function collectObjectArrayItemFields(schemaNode, yamlNode, localPath, displayPath, depth, fields, unsupported) {
+    if (!schemaNode || schemaNode.type !== "object") {
+        return;
+    }
+
+    const yamlMap = getYamlObjectMap(yamlNode);
+    const requiredSet = new Set(Array.isArray(schemaNode.required) ? schemaNode.required : []);
+
+    for (const [key, propertySchema] of Object.entries(schemaNode.properties || {})) {
+        const itemLocalPath = localPath ? `${localPath}.${key}` : key;
+        const itemDisplayPath = `${displayPath}.${key}`;
+        const label = propertySchema.title || key;
+        const propertyValue = yamlMap.get(key);
+
+        if (propertySchema.type === "object") {
+            fields.push({
+                kind: "section",
+                path: itemLocalPath,
+                displayPath: itemDisplayPath,
+                label,
+                description: propertySchema.description,
+                required: requiredSet.has(key),
+                depth
+            });
+            collectObjectArrayItemFields(
+                propertySchema,
+                propertyValue,
+                itemLocalPath,
+                itemDisplayPath,
+                depth + 1,
+                fields,
+                unsupported);
+            continue;
+        }
+
+        if (propertySchema.type === "array" &&
+            propertySchema.items &&
+            ["string", "integer", "number", "boolean"].includes(propertySchema.items.type)) {
+            fields.push({
+                kind: "array",
+                path: itemLocalPath,
+                displayPath: itemDisplayPath,
+                label,
+                required: requiredSet.has(key),
+                depth,
+                itemType: propertySchema.items.type,
+                value: getScalarArrayValue(propertyValue),
+                schema: propertySchema,
+                itemMode: true
+            });
+            continue;
+        }
+
+        if (["string", "integer", "number", "boolean"].includes(propertySchema.type)) {
+            fields.push({
+                kind: "scalar",
+                path: itemLocalPath,
+                displayPath: itemDisplayPath,
+                label,
+                required: requiredSet.has(key),
+                depth,
+                value: getScalarFieldValue(propertyValue, propertySchema.defaultValue),
+                schema: propertySchema,
+                itemMode: true
+            });
+            continue;
+        }
+
+        unsupported.push({
+            path: itemDisplayPath,
+            message: propertySchema.type === "array"
+                ? "Nested object-array fields are currently raw-YAML-only inside the object-array editor."
                 : `${propertySchema.type} fields are currently raw-YAML-only.`
         });
     }
