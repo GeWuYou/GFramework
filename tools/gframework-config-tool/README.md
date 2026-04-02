@@ -28,7 +28,7 @@ The extension currently validates the repository's minimal config-schema subset:
 ## Local Testing
 
 ```bash
-cd tools/vscode-config-extension
+cd tools/gframework-config-tool
 bun install
 bun run test
 ```
@@ -36,7 +36,7 @@ bun run test
 ## Packaging And Publishing
 
 ```bash
-cd tools/vscode-config-extension
+cd tools/gframework-config-tool
 bun install
 bun run package:vsix
 VSCE_PAT=your_marketplace_pat bun run publish:marketplace

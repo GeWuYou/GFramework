@@ -26,7 +26,7 @@
 #
 #    defaults:
 #      run:
-#        working-directory: tools/vscode-config-extension
+#        working-directory: tools/gframework-config-tool
 #
 #    steps:
 #      - name: Checkout repository

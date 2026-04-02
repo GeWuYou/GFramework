@@ -195,7 +195,7 @@ var hotReload = loader.EnableHotReload(
 
 ## VS Code 工具
 
-仓库中的 `tools/vscode-config-extension` 当前提供以下能力：
+仓库中的 `tools/gframework-config-tool` 当前提供以下能力：
 
 - 浏览 `config/` 目录
 - 打开 raw YAML 文件
