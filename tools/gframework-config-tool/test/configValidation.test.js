@@ -85,6 +85,20 @@ phases:
     assert.equal(yaml.map.get("phases").items[0].map.get("wave").value, "1");
 });
 
+test("parseTopLevelYaml should keep complex mapping keys", () => {
+    const yaml = parseTopLevelYaml(`
+my-key: slime
+"complex key": value
+root:
+  item.id: potion
+`);
+
+    assert.equal(yaml.kind, "object");
+    assert.equal(yaml.map.get("my-key").value, "slime");
+    assert.equal(yaml.map.get("complex key").value, "value");
+    assert.equal(yaml.map.get("root").map.get("item.id").value, "potion");
+});
+
 test("validateParsedConfig should report missing and unknown nested properties", () => {
     const schema = parseSchemaContent(`
         {
@@ -310,6 +324,22 @@ skills:
     assert.equal(comments["stats.hp"], "Current hp value");
     assert.equal(comments["skills[0]"], "First skill entry");
     assert.equal(comments["skills[0].id"], "Skill id note");
+});
+
+test("extractYamlComments should keep comments for complex YAML keys", () => {
+    const comments = extractYamlComments(`
+# Dashed key comment
+my-key: Slime
+# Quoted key comment
+"complex key": value
+root:
+  # Dotted key comment
+  item.id: potion
+`);
+
+    assert.equal(comments["my-key"], "Dashed key comment");
+    assert.equal(comments["complex key"], "Quoted key comment");
+    assert.equal(comments["root.item.id"], "Dotted key comment");
 });
 
 test("applyFormUpdates should preserve and update YAML comments", () => {

@@ -1,3 +1,11 @@
+const {
+    joinArrayIndexPath,
+    joinArrayTemplatePath,
+    joinPropertyPath,
+    splitObjectPath
+} = require("./configPath");
+const {ValidationMessageKeys} = require("./localizationKeys");
+
 /**
  * Parse the repository's minimal config-schema subset into a recursive tree.
  * The parser intentionally mirrors the same high-level contract used by the
@@ -137,7 +145,7 @@ function extractYamlComments(text) {
 
             const itemIndex = currentContext.nextIndex || 0;
             currentContext.nextIndex = itemIndex + 1;
-            const itemPath = `${currentContext.path}[${itemIndex}]`;
+            const itemPath = joinArrayIndexPath(currentContext.path, itemIndex);
             assignPendingComments(comments, itemPath, pendingComments);
             pendingComments = [];
 
@@ -150,37 +158,37 @@ function extractYamlComments(text) {
                 continue;
             }
 
-            const inlineObjectMatch = /^([A-Za-z0-9_]+):(.*)$/u.exec(rest);
-            if (!inlineObjectMatch) {
+            const inlineObjectMapping = parseYamlMappingText(rest);
+            if (!inlineObjectMapping) {
                 continue;
             }
 
             const itemObjectContext = {indent: indent + 2, type: "object", path: itemPath, nextIndex: 0};
             stack.push(itemObjectContext);
 
-            const key = inlineObjectMatch[1];
-            const parsedValue = splitYamlValueAndInlineComment(inlineObjectMatch[2].trim());
+            const key = inlineObjectMapping.key;
+            const parsedValue = splitYamlValueAndInlineComment(inlineObjectMapping.rawValue.trim());
             if (parsedValue.comment) {
-                comments[`${itemPath}.${key}`] = parsedValue.comment;
+                comments[joinPropertyPath(itemPath, key)] = parsedValue.comment;
             }
 
             const nextLine = findNextMeaningfulLine(lines, index + 1);
             if (parsedValue.value.length === 0 && nextLine && nextLine.indent > indent) {
-                stack.push(createContextForChild(`${itemPath}.${key}`, nextLine));
+                stack.push(createContextForChild(joinPropertyPath(itemPath, key), nextLine));
             }
 
             continue;
         }
 
-        const match = /^([A-Za-z0-9_]+):(.*)$/u.exec(trimmed);
-        if (!match) {
+        const mapping = parseYamlMappingText(trimmed);
+        if (!mapping) {
             pendingComments = [];
             continue;
         }
 
-        const key = match[1];
-        const valueInfo = splitYamlValueAndInlineComment(match[2].trim());
-        const currentPath = currentContext.path ? `${currentContext.path}.${key}` : key;
+        const key = mapping.key;
+        const valueInfo = splitYamlValueAndInlineComment(mapping.rawValue.trim());
+        const currentPath = joinPropertyPath(currentContext.path, key);
         assignPendingComments(comments, currentPath, pendingComments);
         pendingComments = [];
 
@@ -282,16 +290,16 @@ function applyFormUpdates(originalYaml, updates) {
     const commentUpdates = updates.comments || {};
 
     for (const [path, value] of Object.entries(scalarUpdates)) {
-        setNodeAtPath(root, path.split("."), createScalarNode(String(value)));
+        setNodeAtPath(root, splitObjectPath(path), createScalarNode(String(value)));
     }
 
     for (const [path, values] of Object.entries(arrayUpdates)) {
-        setNodeAtPath(root, path.split("."), createArrayNode(
+        setNodeAtPath(root, splitObjectPath(path), createArrayNode(
             (values || []).map((item) => createScalarNode(String(item)))));
     }
 
     for (const [path, items] of Object.entries(objectArrayUpdates)) {
-        setNodeAtPath(root, path.split("."), createArrayNode(
+        setNodeAtPath(root, splitObjectPath(path), createArrayNode(
             (items || []).map((item) => createNodeFromFormValue(item))));
     }
 
@@ -440,7 +448,7 @@ function parseSchemaNode(rawNode, displayPath) {
             : [];
         const properties = {};
         for (const [key, propertyNode] of Object.entries(value.properties || {})) {
-            properties[key] = parseSchemaNode(propertyNode, combinePath(displayPath, key));
+            properties[key] = parseSchemaNode(propertyNode, joinPropertyPath(displayPath, key));
         }
 
         return {
@@ -455,7 +463,7 @@ function parseSchemaNode(rawNode, displayPath) {
     }
 
     if (type === "array") {
-        const itemNode = parseSchemaNode(value.items || {}, `${displayPath}[]`);
+        const itemNode = parseSchemaNode(value.items || {}, joinArrayTemplatePath(displayPath));
         return {
             type: "array",
             displayPath,
@@ -497,7 +505,7 @@ function validateNode(schemaNode, yamlNode, displayPath, diagnostics, localizer)
         if (!yamlNode || yamlNode.kind !== "array") {
             diagnostics.push({
                 severity: "error",
-                message: localizeValidationMessage("expectedArray", localizer, {
+                message: localizeValidationMessage(ValidationMessageKeys.expectedArray, localizer, {
                     displayPath
                 })
             });
@@ -505,7 +513,12 @@ function validateNode(schemaNode, yamlNode, displayPath, diagnostics, localizer)
         }
 
         for (let index = 0; index < yamlNode.items.length; index += 1) {
-            validateNode(schemaNode.items, yamlNode.items[index], `${displayPath}[${index}]`, diagnostics, localizer);
+            validateNode(
+                schemaNode.items,
+                yamlNode.items[index],
+                joinArrayIndexPath(displayPath, index),
+                diagnostics,
+                localizer);
         }
         return;
     }
@@ -513,7 +526,7 @@ function validateNode(schemaNode, yamlNode, displayPath, diagnostics, localizer)
     if (!yamlNode || yamlNode.kind !== "scalar") {
         diagnostics.push({
             severity: "error",
-            message: localizeValidationMessage("expectedScalarShape", localizer, {
+            message: localizeValidationMessage(ValidationMessageKeys.expectedScalarShape, localizer, {
                 displayPath,
                 schemaType: schemaNode.type,
                 yamlKind: yamlNode ? yamlNode.kind : "missing"
@@ -525,7 +538,7 @@ function validateNode(schemaNode, yamlNode, displayPath, diagnostics, localizer)
     if (!isScalarCompatible(schemaNode.type, yamlNode.value)) {
         diagnostics.push({
             severity: "error",
-            message: localizeValidationMessage("expectedScalarValue", localizer, {
+            message: localizeValidationMessage(ValidationMessageKeys.expectedScalarValue, localizer, {
                 displayPath,
                 schemaType: schemaNode.type
             })
@@ -538,7 +551,7 @@ function validateNode(schemaNode, yamlNode, displayPath, diagnostics, localizer)
         !schemaNode.enumValues.includes(unquoteScalar(yamlNode.value))) {
         diagnostics.push({
             severity: "error",
-            message: localizeValidationMessage("enumMismatch", localizer, {
+            message: localizeValidationMessage(ValidationMessageKeys.enumMismatch, localizer, {
                 displayPath,
                 values: schemaNode.enumValues.join(", ")
             })
@@ -557,10 +570,16 @@ function validateNode(schemaNode, yamlNode, displayPath, diagnostics, localizer)
  */
 function validateObjectNode(schemaNode, yamlNode, displayPath, diagnostics, localizer) {
     if (!yamlNode || yamlNode.kind !== "object") {
-        const subject = displayPath.length === 0 ? "Root object" : `Property '${displayPath}'`;
+        const subject = displayPath.length === 0
+            ? localizer && localizer.isChinese
+                ? "根对象应为对象。"
+                : "Root object is expected to be an object."
+            : localizer && localizer.isChinese
+                ? `属性“${displayPath}”应为对象。`
+                : `Property '${displayPath}' is expected to be an object.`;
         diagnostics.push({
             severity: "error",
-            message: localizeValidationMessage("expectedObject", localizer, {
+            message: localizeValidationMessage(ValidationMessageKeys.expectedObject, localizer, {
                 subject,
                 displayPath
             })
@@ -572,8 +591,8 @@ function validateObjectNode(schemaNode, yamlNode, displayPath, diagnostics, loca
         if (!yamlNode.map.has(requiredProperty)) {
             diagnostics.push({
                 severity: "error",
-                message: localizeValidationMessage("missingRequired", localizer, {
-                    displayPath: combinePath(displayPath, requiredProperty)
+                message: localizeValidationMessage(ValidationMessageKeys.missingRequired, localizer, {
+                    displayPath: joinPropertyPath(displayPath, requiredProperty)
                 })
             });
         }
@@ -583,8 +602,8 @@ function validateObjectNode(schemaNode, yamlNode, displayPath, diagnostics, loca
         if (!Object.prototype.hasOwnProperty.call(schemaNode.properties, entry.key)) {
             diagnostics.push({
                 severity: "error",
-                message: localizeValidationMessage("unknownProperty", localizer, {
-                    displayPath: combinePath(displayPath, entry.key)
+                message: localizeValidationMessage(ValidationMessageKeys.unknownProperty, localizer, {
+                    displayPath: joinPropertyPath(displayPath, entry.key)
                 })
             });
             continue;
@@ -593,7 +612,7 @@ function validateObjectNode(schemaNode, yamlNode, displayPath, diagnostics, loca
         validateNode(
             schemaNode.properties[entry.key],
             entry.node,
-            combinePath(displayPath, entry.key),
+            joinPropertyPath(displayPath, entry.key),
             diagnostics,
             localizer);
     }
@@ -602,29 +621,31 @@ function validateObjectNode(schemaNode, yamlNode, displayPath, diagnostics, loca
 /**
  * Format one validation message in either English or Simplified Chinese.
  *
- * @param {"expectedArray" | "expectedScalarShape" | "expectedScalarValue" | "enumMismatch" | "expectedObject" | "missingRequired" | "unknownProperty"} key Message key.
+ * @param {string} key Message key.
  * @param {{isChinese?: boolean} | undefined} localizer Optional runtime localizer.
  * @param {Record<string, string>} params Message parameters.
  * @returns {string} Localized validation message.
  */
 function localizeValidationMessage(key, localizer, params) {
+    if (localizer && typeof localizer.t === "function") {
+        return localizer.t(key, params);
+    }
+
     if (localizer && localizer.isChinese) {
         switch (key) {
-            case "expectedArray":
+            case ValidationMessageKeys.expectedArray:
                 return `属性“${params.displayPath}”应为数组。`;
-            case "expectedScalarShape":
+            case ValidationMessageKeys.expectedScalarShape:
                 return `属性“${params.displayPath}”应为“${params.schemaType}”，但当前 YAML 结构是“${params.yamlKind}”。`;
-            case "expectedScalarValue":
+            case ValidationMessageKeys.expectedScalarValue:
                 return `属性“${params.displayPath}”应为“${params.schemaType}”，但当前标量值不兼容。`;
-            case "enumMismatch":
+            case ValidationMessageKeys.enumMismatch:
                 return `属性“${params.displayPath}”必须是以下值之一：${params.values}。`;
-            case "expectedObject":
-                return params.displayPath && params.displayPath.length > 0
-                    ? `属性“${params.displayPath}”应为对象。`
-                    : "根对象应为对象。";
-            case "missingRequired":
+            case ValidationMessageKeys.expectedObject:
+                return params.subject;
+            case ValidationMessageKeys.missingRequired:
                 return `缺少必填属性“${params.displayPath}”。`;
-            case "unknownProperty":
+            case ValidationMessageKeys.unknownProperty:
                 return `属性“${params.displayPath}”未在匹配的 schema 中声明。`;
             default:
                 return key;
@@ -632,19 +653,19 @@ function localizeValidationMessage(key, localizer, params) {
     }
 
     switch (key) {
-        case "expectedArray":
+        case ValidationMessageKeys.expectedArray:
             return `Property '${params.displayPath}' is expected to be an array.`;
-        case "expectedScalarShape":
+        case ValidationMessageKeys.expectedScalarShape:
             return `Property '${params.displayPath}' is expected to be '${params.schemaType}', but the current YAML shape is '${params.yamlKind}'.`;
-        case "expectedScalarValue":
+        case ValidationMessageKeys.expectedScalarValue:
             return `Property '${params.displayPath}' is expected to be '${params.schemaType}', but the current scalar value is incompatible.`;
-        case "enumMismatch":
+        case ValidationMessageKeys.enumMismatch:
             return `Property '${params.displayPath}' must be one of: ${params.values}.`;
-        case "expectedObject":
-            return `${params.subject} is expected to be an object.`;
-        case "missingRequired":
+        case ValidationMessageKeys.expectedObject:
+            return params.subject;
+        case ValidationMessageKeys.missingRequired:
             return `Required property '${params.displayPath}' is missing.`;
-        case "unknownProperty":
+        case ValidationMessageKeys.unknownProperty:
             return `Property '${params.displayPath}' is not declared in the matching schema.`;
         default:
             return key;
@@ -719,14 +740,14 @@ function parseMapping(tokens, state, indent) {
             continue;
         }
 
-        const match = /^([A-Za-z0-9_]+):(.*)$/u.exec(token.text);
-        if (!match) {
+        const mapping = parseYamlMappingText(token.text);
+        if (!mapping) {
             state.index += 1;
             continue;
         }
 
-        const key = match[1];
-        const rawValue = match[2].trim();
+        const key = mapping.key;
+        const rawValue = mapping.rawValue.trim();
         state.index += 1;
 
         let node;
@@ -774,7 +795,7 @@ function parseSequence(tokens, state, indent) {
             continue;
         }
 
-        if (/^[A-Za-z0-9_]+:/u.test(rest)) {
+        if (parseYamlMappingText(rest)) {
             items.push(parseInlineObjectItem(tokens, state, indent, rest));
             continue;
         }
@@ -894,7 +915,7 @@ function renderYaml(node, indent = 0, currentPath = "", commentMap = {}) {
 function renderObjectNode(node, indent, currentPath, commentMap) {
     const lines = [];
     for (const entry of node.entries) {
-        const entryPath = currentPath ? `${currentPath}.${entry.key}` : entry.key;
+        const entryPath = joinPropertyPath(currentPath, entry.key);
         if (commentMap[entryPath]) {
             lines.push(...renderYamlComments(commentMap[entryPath], indent));
         }
@@ -927,7 +948,7 @@ function renderArrayNode(node, indent, currentPath, commentMap) {
     const lines = [];
     for (let index = 0; index < node.items.length; index += 1) {
         const item = node.items[index];
-        const itemPath = `${currentPath}[${index}]`;
+        const itemPath = joinArrayIndexPath(currentPath, index);
         if (commentMap[itemPath]) {
             lines.push(...renderYamlComments(commentMap[itemPath], indent));
         }
@@ -1041,7 +1062,7 @@ function collectSchemaComments(schemaNode, currentPath, commentMap) {
     }
 
     for (const [key, propertySchema] of Object.entries(schemaNode.properties || {})) {
-        const propertyPath = currentPath ? `${currentPath}.${key}` : key;
+        const propertyPath = joinPropertyPath(currentPath, key);
         if (propertySchema.description) {
             commentMap[propertyPath] = propertySchema.description;
         }
@@ -1052,7 +1073,7 @@ function collectSchemaComments(schemaNode, currentPath, commentMap) {
         }
 
         if (propertySchema.type === "array" && propertySchema.items.type === "object") {
-            collectSchemaComments(propertySchema.items, `${propertyPath}[0]`, commentMap);
+            collectSchemaComments(propertySchema.items, joinArrayIndexPath(propertyPath, 0), commentMap);
         }
     }
 }
@@ -1201,14 +1222,66 @@ function splitYamlValueAndInlineComment(rawValue) {
 }
 
 /**
- * Combine a parent path with one child segment.
+ * Parse one YAML mapping entry such as `key: value` or `"complex key": value`.
  *
- * @param {string} parentPath Parent path.
- * @param {string} key Child key.
- * @returns {string} Combined path.
+ * @param {string} text Raw YAML line text without leading indentation.
+ * @returns {{key: string, rawValue: string} | undefined} Parsed mapping entry.
  */
-function combinePath(parentPath, key) {
-    return parentPath && parentPath !== "<root>" ? `${parentPath}.${key}` : key;
+function parseYamlMappingText(text) {
+    const separatorIndex = findYamlKeyValueSeparator(text);
+    if (separatorIndex < 0) {
+        return undefined;
+    }
+
+    const rawKey = text.slice(0, separatorIndex).trim();
+    if (rawKey.length === 0) {
+        return undefined;
+    }
+
+    return {
+        key: normalizeYamlKey(rawKey),
+        rawValue: text.slice(separatorIndex + 1)
+    };
+}
+
+/**
+ * Find the first `:` that acts as a YAML key/value separator.
+ *
+ * @param {string} text Raw YAML line text without leading indentation.
+ * @returns {number} Separator index, or -1 when not found.
+ */
+function findYamlKeyValueSeparator(text) {
+    let inSingleQuote = false;
+    let inDoubleQuote = false;
+
+    for (let index = 0; index < text.length; index += 1) {
+        const character = text[index];
+        if (character === "'" && !inDoubleQuote) {
+            inSingleQuote = !inSingleQuote;
+            continue;
+        }
+
+        if (character === "\"" && !inSingleQuote) {
+            inDoubleQuote = !inDoubleQuote;
+            continue;
+        }
+
+        if (character === ":" && !inSingleQuote && !inDoubleQuote) {
+            return index;
+        }
+    }
+
+    return -1;
+}
+
+/**
+ * Normalize a YAML key token into the logical key name used in the form model.
+ *
+ * @param {string} rawKey Raw YAML key token.
+ * @returns {string} Normalized key name.
+ */
+function normalizeYamlKey(rawKey) {
+    return unquoteScalar(rawKey.trim());
 }
 
 module.exports = {

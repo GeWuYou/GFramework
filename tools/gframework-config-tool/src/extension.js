@@ -12,6 +12,12 @@ const {
     unquoteScalar,
     validateParsedConfig
 } = require("./configValidation");
+const {
+    isTemplatePath,
+    joinArrayIndexPath,
+    joinArrayTemplatePath,
+    joinPropertyPath
+} = require("./configPath");
 const {createLocalizer} = require("./localization");
 
 const localizer = createLocalizer(vscode.env.language);
@@ -353,11 +359,11 @@ async function openFormPreview(item, diagnostics) {
         return;
     }
 
-    const yamlText = await fs.promises.readFile(configUri.fsPath, "utf8");
-    const parsedYaml = parseTopLevelYaml(yamlText);
-    const commentLookup = extractYamlComments(yamlText);
+    let latestYamlText = await fs.promises.readFile(configUri.fsPath, "utf8");
+    const parsedYaml = parseTopLevelYaml(latestYamlText);
+    const commentLookup = extractYamlComments(latestYamlText);
     const schemaInfo = await loadSchemaInfoForConfig(configUri, workspaceRoot);
-    const canInitializeFromSchema = schemaInfo.exists && yamlText.trim().length === 0;
+    const canInitializeFromSchema = schemaInfo.exists && latestYamlText.trim().length === 0;
 
     const panel = vscode.window.createWebviewPanel(
         "gframeworkConfigFormPreview",
@@ -376,7 +382,7 @@ async function openFormPreview(item, diagnostics) {
 
     panel.webview.onDidReceiveMessage(async (message) => {
         if (message.type === "save") {
-            const latestYamlText = await fs.promises.readFile(configUri.fsPath, "utf8");
+            latestYamlText = await fs.promises.readFile(configUri.fsPath, "utf8");
             const updatedYaml = applyFormUpdates(latestYamlText, {
                 scalars: message.scalars || {},
                 arrays: parseArrayFieldPayload(message.arrays || {}),
@@ -402,17 +408,30 @@ async function openFormPreview(item, diagnostics) {
                 return;
             }
 
+            const confirmLabel = localizer.t("button.initializeFromSchemaConfirm");
+            const cancelLabel = localizer.t("button.cancel");
+            const userChoice = await vscode.window.showWarningMessage(
+                localizer.t("message.initializeFromSchemaConfirm"),
+                {modal: true},
+                confirmLabel,
+                cancelLabel);
+
+            if (userChoice !== confirmLabel) {
+                return;
+            }
+
             const sampleYaml = createSampleConfigYaml(schemaInfo);
             await fs.promises.writeFile(configUri.fsPath, sampleYaml, "utf8");
             const document = await vscode.workspace.openTextDocument(configUri);
             await document.save();
+            latestYamlText = sampleYaml;
             await validateConfigFile(configUri, diagnostics);
             panel.webview.html = renderFormHtml(
                 path.basename(configUri.fsPath),
                 schemaInfo,
-                parseTopLevelYaml(sampleYaml),
+                parseTopLevelYaml(latestYamlText),
                 {
-                    commentLookup: extractYamlComments(sampleYaml),
+                    commentLookup: extractYamlComments(latestYamlText),
                     canInitializeFromSchema: false
                 });
             void vscode.window.showInformationMessage(localizer.t("message.formInitialized"));
@@ -1178,7 +1197,7 @@ function renderYamlCommentBlock(field) {
  */
 function renderCommentEditor(field) {
     const commentPath = field.displayPath || field.path;
-    if (commentPath.includes("[]")) {
+    if (isTemplatePath(commentPath)) {
         return "";
     }
 
@@ -1273,7 +1292,7 @@ function collectFormFields(schemaNode, yamlNode, currentPath, depth, fields, uns
     const requiredSet = new Set(Array.isArray(schemaNode.required) ? schemaNode.required : []);
 
     for (const [key, propertySchema] of Object.entries(schemaNode.properties || {})) {
-        const propertyPath = currentPath ? `${currentPath}.${key}` : key;
+        const propertyPath = joinPropertyPath(currentPath, key);
         const label = propertySchema.title || key;
         const propertyValue = yamlMap.get(key);
 
@@ -1317,7 +1336,7 @@ function collectFormFields(schemaNode, yamlNode, currentPath, depth, fields, uns
                 propertySchema.items,
                 undefined,
                 "",
-                `${propertyPath}[]`,
+                joinArrayTemplatePath(propertyPath),
                 depth + 1,
                 itemFieldsTemplate,
                 unsupported,
@@ -1386,7 +1405,7 @@ function buildObjectArrayItemModels(itemSchema, yamlNode, propertyPath, depth, u
     const items = [];
     for (let index = 0; index < yamlNode.items.length; index += 1) {
         const itemNode = yamlNode.items[index];
-        const itemPath = `${propertyPath}[${index}]`;
+        const itemPath = joinArrayIndexPath(propertyPath, index);
         if (!itemNode || itemNode.kind !== "object") {
             unsupported.push({
                 path: itemPath,
@@ -1437,8 +1456,8 @@ function collectObjectArrayItemFields(schemaNode, yamlNode, localPath, displayPa
     const requiredSet = new Set(Array.isArray(schemaNode.required) ? schemaNode.required : []);
 
     for (const [key, propertySchema] of Object.entries(schemaNode.properties || {})) {
-        const itemLocalPath = localPath ? `${localPath}.${key}` : key;
-        const itemDisplayPath = `${displayPath}.${key}`;
+        const itemLocalPath = joinPropertyPath(localPath, key);
+        const itemDisplayPath = joinPropertyPath(displayPath, key);
         const label = propertySchema.title || key;
         const propertyValue = yamlMap.get(key);
 
