@@ -24,7 +24,7 @@
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="System.Text.Json" Version="8.0.5" PrivateAssets="all"/>
+        <PackageReference Include="System.Text.Json" Version="8.0.6" PrivateAssets="all"/>
     </ItemGroup>
 
     <!-- Generator 编译期引用 SourceGenerators.Abstractions / Common / Core.Abstractions，但不打包 -->
