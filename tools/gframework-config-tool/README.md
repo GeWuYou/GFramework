@@ -11,6 +11,10 @@ VS Code extension for the GFramework AI-First config workflow.
 - Run lightweight schema validation for nested required fields, unknown nested fields, scalar types, scalar arrays, and
   arrays of objects
 - Open a lightweight form preview for nested object fields, object arrays, top-level scalar fields, and scalar arrays
+- Render existing YAML comments in the form preview and edit per-field YAML comments directly from the form
+- Jump from reference fields to the referenced schema, config domain, or direct config file when a reference value is
+  present
+- Initialize empty config files from schema-derived example YAML
 - Batch edit one config domain across multiple files for top-level scalar and scalar-array fields
 - Surface schema metadata such as `title`, `description`, `default`, `enum`, and `x-gframework-ref-table` in the
   lightweight editors

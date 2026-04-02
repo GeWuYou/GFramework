@@ -2,7 +2,7 @@
   "name": "gframework-config-tool",
   "displayName": "%extension.displayName%",
   "description": "%extension.description%",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "GeWuYou",
   "license": "Apache-2.0",
   "repository": {

@@ -96,6 +96,125 @@ function parseTopLevelYaml(text) {
 }
 
 /**
+ * Extract comment text from a YAML document and map it to logical field paths.
+ * The extractor focuses on comment lines that appear immediately above one key
+ * or array item so the form preview can surface author intent near the field.
+ *
+ * @param {string} text YAML text.
+ * @returns {Record<string, string>} Comment lookup keyed by logical path.
+ */
+function extractYamlComments(text) {
+    const lines = String(text).split(/\r?\n/u);
+    const comments = {};
+    const stack = [{indent: -1, type: "object", path: "", nextIndex: 0}];
+    let pendingComments = [];
+
+    for (let index = 0; index < lines.length; index += 1) {
+        const line = lines[index];
+        const trimmed = line.trim();
+
+        if (trimmed.length === 0) {
+            pendingComments = [];
+            continue;
+        }
+
+        const indent = countLeadingSpaces(line);
+        if (trimmed.startsWith("#")) {
+            pendingComments.push(trimmed.replace(/^#\s?/u, ""));
+            continue;
+        }
+
+        while (stack.length > 1 && indent < stack[stack.length - 1].indent) {
+            stack.pop();
+        }
+
+        const currentContext = stack[stack.length - 1];
+        if (trimmed.startsWith("-")) {
+            if (currentContext.type !== "array") {
+                pendingComments = [];
+                continue;
+            }
+
+            const itemIndex = currentContext.nextIndex || 0;
+            currentContext.nextIndex = itemIndex + 1;
+            const itemPath = `${currentContext.path}[${itemIndex}]`;
+            assignPendingComments(comments, itemPath, pendingComments);
+            pendingComments = [];
+
+            const rest = trimmed.slice(1).trim();
+            if (rest.length === 0) {
+                const nextLine = findNextMeaningfulLine(lines, index + 1);
+                if (nextLine && nextLine.indent > indent) {
+                    stack.push(createContextForChild(itemPath, nextLine));
+                }
+                continue;
+            }
+
+            const inlineObjectMatch = /^([A-Za-z0-9_]+):(.*)$/u.exec(rest);
+            if (!inlineObjectMatch) {
+                continue;
+            }
+
+            const itemObjectContext = {indent: indent + 2, type: "object", path: itemPath, nextIndex: 0};
+            stack.push(itemObjectContext);
+
+            const key = inlineObjectMatch[1];
+            const parsedValue = splitYamlValueAndInlineComment(inlineObjectMatch[2].trim());
+            if (parsedValue.comment) {
+                comments[`${itemPath}.${key}`] = parsedValue.comment;
+            }
+
+            const nextLine = findNextMeaningfulLine(lines, index + 1);
+            if (parsedValue.value.length === 0 && nextLine && nextLine.indent > indent) {
+                stack.push(createContextForChild(`${itemPath}.${key}`, nextLine));
+            }
+
+            continue;
+        }
+
+        const match = /^([A-Za-z0-9_]+):(.*)$/u.exec(trimmed);
+        if (!match) {
+            pendingComments = [];
+            continue;
+        }
+
+        const key = match[1];
+        const valueInfo = splitYamlValueAndInlineComment(match[2].trim());
+        const currentPath = currentContext.path ? `${currentContext.path}.${key}` : key;
+        assignPendingComments(comments, currentPath, pendingComments);
+        pendingComments = [];
+
+        if (valueInfo.comment) {
+            comments[currentPath] = comments[currentPath]
+                ? `${comments[currentPath]}\n${valueInfo.comment}`
+                : valueInfo.comment;
+        }
+
+        const nextLine = findNextMeaningfulLine(lines, index + 1);
+        if (valueInfo.value.length === 0 && nextLine && nextLine.indent > indent) {
+            stack.push(createContextForChild(currentPath, nextLine));
+        }
+    }
+
+    return comments;
+}
+
+/**
+ * Create one example YAML config from a parsed schema tree.
+ * The sample includes schema descriptions as YAML comments so empty files can
+ * be bootstrapped into a readable starting point from the form preview.
+ *
+ * @param {{type: "object", required: string[], properties: Record<string, SchemaNode>}} schemaInfo Parsed schema.
+ * @returns {string} Example YAML text.
+ */
+function createSampleConfigYaml(schemaInfo) {
+    const sampleRoot = createSampleNodeFromSchema(schemaInfo);
+    const schemaComments = {};
+    collectSchemaComments(schemaInfo, "", schemaComments);
+    return renderYaml(sampleRoot, 0, "", schemaComments).join("\n");
+}
+
+/**
  * Produce extension-facing validation diagnostics from schema and parsed YAML.
  *
  * @param {{type: "object", required: string[], properties: Record<string, SchemaNode>}} schemaInfo Parsed schema.
@@ -151,14 +270,16 @@ function isScalarCompatible(expectedType, scalarValue) {
  * from the parsed structure so nested object edits can be saved safely.
  *
  * @param {string} originalYaml Original YAML content.
- * @param {{scalars?: Record<string, string>, arrays?: Record<string, string[]>, objectArrays?: Record<string, Array<Record<string, unknown>>>}} updates Updated form values.
+ * @param {{scalars?: Record<string, string>, arrays?: Record<string, string[]>, objectArrays?: Record<string, Array<Record<string, unknown>>>, comments?: Record<string, string>}} updates Updated form values.
  * @returns {string} Updated YAML content.
  */
 function applyFormUpdates(originalYaml, updates) {
     const root = normalizeRootNode(parseTopLevelYaml(originalYaml));
+    const preservedComments = extractYamlComments(originalYaml);
     const scalarUpdates = updates.scalars || {};
     const arrayUpdates = updates.arrays || {};
     const objectArrayUpdates = updates.objectArrays || {};
+    const commentUpdates = updates.comments || {};
 
     for (const [path, value] of Object.entries(scalarUpdates)) {
         setNodeAtPath(root, path.split("."), createScalarNode(String(value)));
@@ -174,7 +295,17 @@ function applyFormUpdates(originalYaml, updates) {
             (items || []).map((item) => createNodeFromFormValue(item))));
     }
 
-    return renderYaml(root).join("\n");
+    for (const [path, comment] of Object.entries(commentUpdates)) {
+        const normalizedComment = String(comment || "").trim();
+        if (normalizedComment.length === 0) {
+            delete preservedComments[path];
+            continue;
+        }
+
+        preservedComments[path] = normalizedComment;
+    }
+
+    return renderYaml(root, 0, "", preservedComments).join("\n");
 }
 
 /**
@@ -741,13 +872,13 @@ function setObjectEntry(objectNode, key, valueNode) {
  * @param {number} indent Current indentation.
  * @returns {string[]} YAML lines.
  */
-function renderYaml(node, indent = 0) {
+function renderYaml(node, indent = 0, currentPath = "", commentMap = {}) {
     if (node.kind === "object") {
-        return renderObjectNode(node, indent);
+        return renderObjectNode(node, indent, currentPath, commentMap);
     }
 
     if (node.kind === "array") {
-        return renderArrayNode(node, indent);
+        return renderArrayNode(node, indent, currentPath, commentMap);
     }
 
     return [`${" ".repeat(indent)}${formatYamlScalar(node.value)}`];
@@ -760,9 +891,14 @@ function renderYaml(node, indent = 0) {
  * @param {number} indent Current indentation.
  * @returns {string[]} YAML lines.
  */
-function renderObjectNode(node, indent) {
+function renderObjectNode(node, indent, currentPath, commentMap) {
     const lines = [];
     for (const entry of node.entries) {
+        const entryPath = currentPath ? `${currentPath}.${entry.key}` : entry.key;
+        if (commentMap[entryPath]) {
+            lines.push(...renderYamlComments(commentMap[entryPath], indent));
+        }
+
         if (entry.node.kind === "scalar") {
             lines.push(`${" ".repeat(indent)}${entry.key}: ${formatYamlScalar(entry.node.value)}`);
             continue;
@@ -774,7 +910,7 @@ function renderObjectNode(node, indent) {
         }
 
         lines.push(`${" ".repeat(indent)}${entry.key}:`);
-        lines.push(...renderYaml(entry.node, indent + 2));
+        lines.push(...renderYaml(entry.node, indent + 2, entryPath, commentMap));
     }
 
     return lines;
@@ -787,16 +923,22 @@ function renderObjectNode(node, indent) {
  * @param {number} indent Current indentation.
  * @returns {string[]} YAML lines.
  */
-function renderArrayNode(node, indent) {
+function renderArrayNode(node, indent, currentPath, commentMap) {
     const lines = [];
-    for (const item of node.items) {
+    for (let index = 0; index < node.items.length; index += 1) {
+        const item = node.items[index];
+        const itemPath = `${currentPath}[${index}]`;
+        if (commentMap[itemPath]) {
+            lines.push(...renderYamlComments(commentMap[itemPath], indent));
+        }
+
         if (item.kind === "scalar") {
             lines.push(`${" ".repeat(indent)}- ${formatYamlScalar(item.value)}`);
             continue;
         }
 
         lines.push(`${" ".repeat(indent)}-`);
-        lines.push(...renderYaml(item, indent + 2));
+        lines.push(...renderYaml(item, indent + 2, itemPath, commentMap));
     }
 
     return lines;
@@ -858,6 +1000,207 @@ function createObjectNode() {
 }
 
 /**
+ * Build one example node recursively from schema metadata.
+ *
+ * @param {SchemaNode} schemaNode Schema node.
+ * @returns {YamlNode} Example YAML node.
+ */
+function createSampleNodeFromSchema(schemaNode) {
+    if (!schemaNode || schemaNode.type === "object") {
+        const objectNode = createObjectNode();
+        for (const [key, propertySchema] of Object.entries(schemaNode && schemaNode.properties ? schemaNode.properties : {})) {
+            const childNode = createSampleNodeFromSchema(propertySchema);
+            setObjectEntry(objectNode, key, childNode);
+        }
+
+        return objectNode;
+    }
+
+    if (schemaNode.type === "array") {
+        if (schemaNode.items.type === "object") {
+            return createArrayNode([createSampleNodeFromSchema(schemaNode.items)]);
+        }
+
+        return createArrayNode([createScalarNode(getSampleScalarValue(schemaNode.items))]);
+    }
+
+    return createScalarNode(getSampleScalarValue(schemaNode));
+}
+
+/**
+ * Collect schema descriptions into a YAML comment lookup so sample configs can
+ * start with human-readable guidance right above generated fields.
+ *
+ * @param {SchemaNode} schemaNode Schema node.
+ * @param {string} currentPath Current logical path.
+ * @param {Record<string, string>} commentMap Comment lookup.
+ */
+function collectSchemaComments(schemaNode, currentPath, commentMap) {
+    if (!schemaNode || schemaNode.type !== "object") {
+        return;
+    }
+
+    for (const [key, propertySchema] of Object.entries(schemaNode.properties || {})) {
+        const propertyPath = currentPath ? `${currentPath}.${key}` : key;
+        if (propertySchema.description) {
+            commentMap[propertyPath] = propertySchema.description;
+        }
+
+        if (propertySchema.type === "object") {
+            collectSchemaComments(propertySchema, propertyPath, commentMap);
+            continue;
+        }
+
+        if (propertySchema.type === "array" && propertySchema.items.type === "object") {
+            collectSchemaComments(propertySchema.items, `${propertyPath}[0]`, commentMap);
+        }
+    }
+}
+
+/**
+ * Resolve one sample scalar value from schema metadata.
+ *
+ * @param {Extract<SchemaNode, {type: "string" | "integer" | "number" | "boolean"}>} schemaNode Scalar schema node.
+ * @returns {string} Sample scalar value.
+ */
+function getSampleScalarValue(schemaNode) {
+    if (schemaNode.defaultValue !== undefined) {
+        return schemaNode.defaultValue;
+    }
+
+    if (Array.isArray(schemaNode.enumValues) && schemaNode.enumValues.length > 0) {
+        return schemaNode.enumValues[0];
+    }
+
+    switch (schemaNode.type) {
+        case "integer":
+            return "0";
+        case "number":
+            return "0";
+        case "boolean":
+            return "false";
+        case "string":
+        default:
+            return schemaNode.refTable
+                ? "example_id"
+                : "example";
+    }
+}
+
+/**
+ * Render one comment block to YAML lines.
+ *
+ * @param {string} commentText Comment text.
+ * @param {number} indent Current indentation.
+ * @returns {string[]} YAML comment lines.
+ */
+function renderYamlComments(commentText, indent) {
+    return String(commentText)
+        .split(/\r?\n/u)
+        .filter((line) => line.length > 0)
+        .map((line) => `${" ".repeat(indent)}# ${line}`);
+}
+
+/**
+ * Assign pending comment lines to one logical path.
+ *
+ * @param {Record<string, string>} commentMap Comment lookup.
+ * @param {string} path Logical path.
+ * @param {string[]} pendingComments Pending comment lines.
+ */
+function assignPendingComments(commentMap, path, pendingComments) {
+    if (!path || !Array.isArray(pendingComments) || pendingComments.length === 0) {
+        return;
+    }
+
+    commentMap[path] = pendingComments.join("\n");
+}
+
+/**
+ * Count leading spaces in one source line.
+ *
+ * @param {string} line Source line.
+ * @returns {number} Leading-space count.
+ */
+function countLeadingSpaces(line) {
+    const indentMatch = /^(\s*)/u.exec(line);
+    return indentMatch ? indentMatch[1].length : 0;
+}
+
+/**
+ * Find the next non-empty, non-comment source line.
+ *
+ * @param {string[]} lines Source lines.
+ * @param {number} startIndex Starting index.
+ * @returns {{indent: number, trimmed: string} | undefined} Next significant line.
+ */
+function findNextMeaningfulLine(lines, startIndex) {
+    for (let index = startIndex; index < lines.length; index += 1) {
+        const line = lines[index];
+        const trimmed = line.trim();
+        if (trimmed.length === 0 || trimmed.startsWith("#")) {
+            continue;
+        }
+
+        return {
+            indent: countLeadingSpaces(line),
+            trimmed
+        };
+    }
+
+    return undefined;
+}
+
+/**
+ * Create one container context from the next meaningful line.
+ *
+ * @param {string} path Logical parent path.
+ * @param {{indent: number, trimmed: string}} nextLine Next meaningful line.
+ * @returns {{indent: number, type: "object" | "array", path: string, nextIndex: number}} Context model.
+ */
+function createContextForChild(path, nextLine) {
+    return {
+        indent: nextLine.indent,
+        type: nextLine.trimmed.startsWith("-") ? "array" : "object",
+        path,
+        nextIndex: 0
+    };
+}
+
+/**
+ * Split a YAML value from one inline trailing comment.
+ *
+ * @param {string} rawValue Raw value segment after `key:`.
+ * @returns {{value: string, comment?: string}} Parsed value and optional comment.
+ */
+function splitYamlValueAndInlineComment(rawValue) {
+    let inSingleQuote = false;
+    let inDoubleQuote = false;
+
+    for (let index = 0; index < rawValue.length; index += 1) {
+        const character = rawValue[index];
+        if (character === "'" && !inDoubleQuote) {
+            inSingleQuote = !inSingleQuote;
+            continue;
+        }
+
+        if (character === "\"" && !inSingleQuote) {
+            inDoubleQuote = !inDoubleQuote;
+            continue;
+        }
+
+        if (character === "#" && !inSingleQuote && !inDoubleQuote && (index === 0 || /\s/u.test(rawValue[index - 1]))) {
+            return {
+                value: rawValue.slice(0, index).trimEnd(),
+                comment: rawValue.slice(index + 1).trim()
+            };
+        }
+    }
+
+    return {value: rawValue};
+}
+
+/**
  * Combine a parent path with one child segment.
  *
  * @param {string} parentPath Parent path.
@@ -871,6 +1214,8 @@ function combinePath(parentPath, key) {
 module.exports = {
     applyFormUpdates,
     applyScalarUpdates,
+    createSampleConfigYaml,
+    extractYamlComments,
     getEditableSchemaFields,
     isEditableScalarType,
     isScalarCompatible,

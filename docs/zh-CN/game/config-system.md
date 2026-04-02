@@ -203,6 +203,9 @@ var hotReload = loader.EnableHotReload(
 - 根据 VS Code 当前界面语言在英文和简体中文之间切换主要工具界面文本
 - 对嵌套对象中的必填字段、未知字段、基础标量类型、标量数组和对象数组元素做轻量校验
 - 对嵌套对象字段、对象数组、顶层标量字段和顶层标量数组提供轻量表单入口
+- 在表单中渲染已有 YAML 注释，并允许直接编辑字段级 YAML 注释
+- 对带 `x-gframework-ref-table` 的字段提供引用 schema / 配置域 / 引用文件跳转入口
+- 对空配置文件提供基于 schema 的示例 YAML 初始化入口
 - 对同一配置域内的多份 YAML 文件执行批量字段更新
 - 在表单和批量编辑入口中显示 `title / description / default / enum / ref-table` 元数据
 

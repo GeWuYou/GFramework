@@ -3,6 +3,8 @@ const assert = require("node:assert/strict");
 const {
     applyFormUpdates,
     applyScalarUpdates,
+    createSampleConfigYaml,
+    extractYamlComments,
     getEditableSchemaFields,
     parseBatchArrayValue,
     parseSchemaContent,
@@ -288,6 +290,95 @@ test("applyFormUpdates should clear object arrays when the form removes all item
         "id: 1",
         "phases: []"
     ].join("\n"));
+});
+
+test("extractYamlComments should map nested comments to logical paths", () => {
+    const comments = extractYamlComments(`
+# Monster display name
+name: Slime
+stats:
+  # Current hp value
+  hp: 10
+skills:
+  # First skill entry
+  -
+    # Skill id note
+    id: jump
+`);
+
+    assert.equal(comments.name, "Monster display name");
+    assert.equal(comments["stats.hp"], "Current hp value");
+    assert.equal(comments["skills[0]"], "First skill entry");
+    assert.equal(comments["skills[0].id"], "Skill id note");
+});
+
+test("applyFormUpdates should preserve and update YAML comments", () => {
+    const updated = applyFormUpdates(
+        [
+            "# Monster display name",
+            "name: Slime",
+            "stats:",
+            "  # Current hp value",
+            "  hp: 10"
+        ].join("\n"),
+        {
+            scalars: {
+                name: "Slime King"
+            },
+            comments: {
+                name: "Localized display name",
+                "stats.hp": "Health points after rebalance"
+            }
+        });
+
+    assert.match(updated, /^# Localized display name$/mu);
+    assert.match(updated, /^name: Slime King$/mu);
+    assert.match(updated, /^  # Health points after rebalance$/mu);
+    assert.match(updated, /^  hp: 10$/mu);
+});
+
+test("createSampleConfigYaml should bootstrap comments and placeholder values from schema", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Monster display name."
+            },
+            "rarity": {
+              "type": "string",
+              "description": "Monster rarity.",
+              "enum": ["common", "rare"]
+            },
+            "skills": {
+              "type": "array",
+              "description": "Skill entries.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Skill id."
+                  }
+                }
+              }
+            }
+          }
+        }
+    `);
+
+    const sample = createSampleConfigYaml(schema);
+
+    assert.match(sample, /^# Monster display name\.$/mu);
+    assert.match(sample, /^name: example$/mu);
+    assert.match(sample, /^# Monster rarity\.$/mu);
+    assert.match(sample, /^rarity: common$/mu);
+    assert.match(sample, /^# Skill entries\.$/mu);
+    assert.match(sample, /^skills:$/mu);
+    assert.match(sample, /^  -$/mu);
+    assert.match(sample, /^    # Skill id\.$/mu);
+    assert.match(sample, /^    id: example$/mu);
 });
 
 test("applyScalarUpdates should preserve the scalar-only compatibility wrapper", () => {
