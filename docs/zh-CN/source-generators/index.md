@@ -614,6 +614,9 @@ public enum ConflictEnum
 | `GF_ContextGet_004` | 字段类型与注入特性不匹配       | 使用符合特性约束的字段类型                                                 |
 | `GF_ContextGet_005` | 目标类型必须具备上下文访问能力    | 添加 `[ContextAware]`、实现 `IContextAware` 或继承 `ContextAwareBase` |
 | `GF_ContextGet_006` | 同一字段不能声明多个注入特性     | 每个字段只保留一个注入特性                                                 |
+| `GF_ContextRegistration_001` | `Model` 使用点没有静态可见注册 | 在所属架构的初始化链路中显式注册对应 `Model` |
+| `GF_ContextRegistration_002` | `System` 使用点没有静态可见注册 | 在所属架构的初始化链路中显式注册对应 `System` |
+| `GF_ContextRegistration_003` | `Utility` 使用点没有静态可见注册 | 在所属架构的初始化链路中显式注册对应 `Utility` |
 
 ## 性能优势
 

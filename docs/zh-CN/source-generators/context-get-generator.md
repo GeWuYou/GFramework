@@ -621,6 +621,33 @@ public partial class GameController
 
 如果构造函数执行时上下文尚未建立，过早注入会失败；即使在构造函数中调用了注入方法，也不要在调用之前访问这些字段。
 
+## 注册可见性分析
+
+除了生成注入方法，`GFramework.SourceGenerators` 现在还会分析 `Model`、`System`、`Utility` 的使用点是否存在静态可见注册。
+
+当前支持的使用点：
+
+- 字段特性注入：`[GetModel]`、`[GetModels]`、`[GetSystem]`、`[GetSystems]`、`[GetUtility]`、`[GetUtilities]`
+- 手写调用：`this.GetModel<T>()`、`this.GetSystem<T>()`、`this.GetUtility<T>()`
+
+当前支持的注册来源：
+
+- `Architecture.OnInitialize()` 中的直接 `RegisterModel/RegisterSystem/RegisterUtility`
+- `InstallModules()` 中的直接注册
+- `InstallModule(new SomeModule())` 和 `InstallGodotModule(new SomeModule())` 可静态展开到 `module.Install(...)` 的直接注册
+
+分析器会在能够唯一定位所属架构时，对缺失注册报告 `Warning`：
+
+- `GF_ContextRegistration_001`：`Model` 使用点未找到静态可见注册
+- `GF_ContextRegistration_002`：`System` 使用点未找到静态可见注册
+- `GF_ContextRegistration_003`：`Utility` 使用点未找到静态可见注册
+
+这个分析器的目标是提供稳定提示，而不是完整模拟运行时 DI 图。以下场景默认不做强推断：
+
+- 运行时条件分支控制的注册
+- 反射、配置驱动或外部程序集动态注册
+- 无法唯一判定组件归属架构的多架构场景
+
 ## 高级场景
 
 ### 泛型类型支持

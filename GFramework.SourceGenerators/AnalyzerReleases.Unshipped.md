@@ -15,6 +15,9 @@
  GF_ContextGet_006     | GFramework.SourceGenerators.rule   | Error    | ContextGetDiagnostics   
  GF_ContextGet_007     | GFramework.SourceGenerators.rule   | Warning  | ContextGetDiagnostics   
  GF_ContextGet_008     | GFramework.SourceGenerators.rule   | Warning  | ContextGetDiagnostics   
+ GF_ContextRegistration_001 | GFramework.SourceGenerators.rule | Warning  | ContextRegistrationDiagnostics
+ GF_ContextRegistration_002 | GFramework.SourceGenerators.rule | Warning  | ContextRegistrationDiagnostics
+ GF_ContextRegistration_003 | GFramework.SourceGenerators.rule | Warning  | ContextRegistrationDiagnostics
  GF_ConfigSchema_001   | GFramework.SourceGenerators.Config | Error    | ConfigSchemaDiagnostics 
  GF_ConfigSchema_002   | GFramework.SourceGenerators.Config | Error    | ConfigSchemaDiagnostics 
  GF_ConfigSchema_003   | GFramework.SourceGenerators.Config | Error    | ConfigSchemaDiagnostics 
