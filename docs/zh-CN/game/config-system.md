@@ -154,11 +154,41 @@ var slime = monsterTable.Get(1);
 
 这样可以避免错误配置被默认值或 `IgnoreUnmatchedProperties` 静默吞掉。
 
+加载失败时，`YamlConfigLoader` 会抛出 `ConfigLoadException`。你可以通过 `exception.Diagnostic` 读取稳定字段，而不必解析消息文本：
+
+```csharp
+using GFramework.Game.Abstractions.Config;
+
+try
+{
+    await loader.LoadAsync(registry);
+}
+catch (ConfigLoadException exception)
+{
+    Console.WriteLine(exception.Diagnostic.FailureKind);
+    Console.WriteLine(exception.Diagnostic.TableName);
+    Console.WriteLine(exception.Diagnostic.YamlPath);
+    Console.WriteLine(exception.Diagnostic.SchemaPath);
+    Console.WriteLine(exception.Diagnostic.DisplayPath);
+}
+```
+
+当前诊断对象会优先暴露这些字段：
+
+- `FailureKind`
+- `TableName`
+- `YamlPath`
+- `SchemaPath`
+- `DisplayPath`
+- `ReferencedTableName`
+- `RawValue`
+
 ## 开发期热重载
 
 如果你希望在开发期修改配置文件后自动刷新运行时表，可以在初次加载完成后启用热重载：
 
 ```csharp
+using GFramework.Game.Abstractions.Config;
 using GFramework.Game.Config;
 
 var registry = new ConfigRegistry();
@@ -175,7 +205,11 @@ var hotReload = loader.EnableHotReload(
     registry,
     onTableReloaded: tableName => Console.WriteLine($"Reloaded: {tableName}"),
     onTableReloadFailed: (tableName, exception) =>
-        Console.WriteLine($"Reload failed: {tableName}, {exception.Message}"));
+    {
+        var diagnostic = (exception as ConfigLoadException)?.Diagnostic;
+        Console.WriteLine($"Reload failed: {tableName}, {exception.Message}");
+        Console.WriteLine($"Failure kind: {diagnostic?.FailureKind}");
+    });
 ```
 
 当前热重载行为如下：

@@ -15,5 +15,9 @@ public interface IConfigLoader : IUtility
     /// <param name="registry">用于接收配置表的注册表。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>表示异步加载流程的任务。</returns>
+    /// <exception cref="ConfigLoadException">
+    ///     当配置文件、schema、反序列化或跨表引用校验失败时抛出。
+    ///     调用方可以通过 <see cref="ConfigLoadException.Diagnostic" /> 读取稳定的结构化字段。
+    /// </exception>
     Task LoadAsync(IConfigRegistry registry, CancellationToken cancellationToken = default);
 }

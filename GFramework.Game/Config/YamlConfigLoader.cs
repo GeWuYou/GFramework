@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using GFramework.Core.Abstractions.Events;
 using GFramework.Game.Abstractions.Config;
 using YamlDotNet.Serialization;
@@ -87,7 +88,10 @@ public sealed class YamlConfigLoader : IConfigLoader
     /// </summary>
     /// <param name="registry">要被热重载更新的配置注册表。</param>
     /// <param name="onTableReloaded">单个配置表重载成功后的可选回调。</param>
-    /// <param name="onTableReloadFailed">单个配置表重载失败后的可选回调。</param>
+    /// <param name="onTableReloadFailed">
+    ///     单个配置表重载失败后的可选回调。
+    ///     当失败来自加载器本身时，传入异常通常为 <see cref="ConfigLoadException" />，可从其诊断对象读取稳定字段。
+    /// </param>
     /// <param name="debounceDelay">防抖延迟；为空时默认使用 200 毫秒。</param>
     /// <returns>用于停止热重载监听的注销句柄。</returns>
     /// <exception cref="ArgumentNullException">当 <paramref name="registry" /> 为空时抛出。</exception>
@@ -296,6 +300,20 @@ public sealed class YamlConfigLoader : IConfigLoader
             Func<TValue, TKey> keySelector,
             IEqualityComparer<TKey>? comparer)
         {
+            Debug.Assert(!string.IsNullOrWhiteSpace(name), "Table registrations should always have a non-empty name.");
+            Debug.Assert(!string.IsNullOrWhiteSpace(relativePath),
+                "Table registrations should always have a non-empty relative path.");
+
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                throw new ArgumentException(TableNameCannotBeNullOrWhiteSpaceMessage, nameof(name));
+            }
+
+            if (string.IsNullOrWhiteSpace(relativePath))
+            {
+                throw new ArgumentException(RelativePathCannotBeNullOrWhiteSpaceMessage, nameof(relativePath));
+            }
+
             Name = name;
             RelativePath = relativePath;
             SchemaRelativePath = schemaRelativePath;
@@ -327,8 +345,11 @@ public sealed class YamlConfigLoader : IConfigLoader
             var directoryPath = Path.Combine(rootPath, RelativePath);
             if (!Directory.Exists(directoryPath))
             {
-                throw new DirectoryNotFoundException(
-                    $"Config directory '{directoryPath}' was not found for table '{Name}'.");
+                throw ConfigLoadExceptionFactory.Create(
+                    ConfigLoadFailureKind.ConfigDirectoryNotFound,
+                    Name,
+                    $"Config directory '{directoryPath}' was not found for table '{Name}'.",
+                    configDirectoryPath: directoryPath);
             }
 
             YamlConfigSchema? schema = null;
@@ -336,7 +357,7 @@ public sealed class YamlConfigLoader : IConfigLoader
             if (!string.IsNullOrEmpty(SchemaRelativePath))
             {
                 var schemaPath = Path.Combine(rootPath, SchemaRelativePath);
-                schema = await YamlConfigSchemaValidator.LoadAsync(schemaPath, cancellationToken);
+                schema = await YamlConfigSchemaValidator.LoadAsync(Name, schemaPath, cancellationToken);
                 referencedTableNames = schema.ReferencedTableNames;
             }
 
@@ -361,16 +382,21 @@ public sealed class YamlConfigLoader : IConfigLoader
                 }
                 catch (Exception exception)
                 {
-                    throw new InvalidOperationException(
+                    throw ConfigLoadExceptionFactory.Create(
+                        ConfigLoadFailureKind.ConfigFileReadFailed,
+                        Name,
                         $"Failed to read config file '{file}' for table '{Name}'.",
-                        exception);
+                        configDirectoryPath: directoryPath,
+                        yamlPath: file,
+                        schemaPath: schema?.SchemaPath,
+                        innerException: exception);
                 }
 
                 if (schema != null)
                 {
                     // 先按 schema 拒绝结构问题并提取跨表引用，避免被 IgnoreUnmatchedProperties 或默认值掩盖配置错误。
                     referenceUsages.AddRange(
-                        YamlConfigSchemaValidator.ValidateAndCollectReferences(schema, file, yaml));
+                        YamlConfigSchemaValidator.ValidateAndCollectReferences(Name, schema, file, yaml));
                 }
 
                 try
@@ -386,9 +412,15 @@ public sealed class YamlConfigLoader : IConfigLoader
                 }
                 catch (Exception exception)
                 {
-                    throw new InvalidOperationException(
+                    throw ConfigLoadExceptionFactory.Create(
+                        ConfigLoadFailureKind.DeserializationFailed,
+                        Name,
                         $"Failed to deserialize config file '{file}' for table '{Name}' as '{typeof(TValue).Name}'.",
-                        exception);
+                        configDirectoryPath: directoryPath,
+                        yamlPath: file,
+                        schemaPath: schema?.SchemaPath,
+                        detail: $"Target CLR type: {typeof(TValue).FullName}.",
+                        innerException: exception);
                 }
             }
 
@@ -399,9 +431,13 @@ public sealed class YamlConfigLoader : IConfigLoader
             }
             catch (Exception exception)
             {
-                throw new InvalidOperationException(
+                throw ConfigLoadExceptionFactory.Create(
+                    ConfigLoadFailureKind.TableBuildFailed,
+                    Name,
                     $"Failed to build config table '{Name}' from directory '{directoryPath}'.",
-                    exception);
+                    configDirectoryPath: directoryPath,
+                    schemaPath: schema?.SchemaPath,
+                    innerException: exception);
             }
         }
     }
@@ -482,21 +518,43 @@ public sealed class YamlConfigLoader : IConfigLoader
                     if (!TryResolveTargetTable(registry, loadedTableLookup, referenceUsage.ReferencedTableName,
                             out var targetTable))
                     {
-                        throw new InvalidOperationException(
-                            $"Config file '{referenceUsage.YamlPath}' property '{referenceUsage.DisplayPath}' references table '{referenceUsage.ReferencedTableName}', but that table is not available in the current loader batch or registry.");
+                        throw ConfigLoadExceptionFactory.Create(
+                            ConfigLoadFailureKind.ReferencedTableNotFound,
+                            loadedTable.Name,
+                            $"Config file '{referenceUsage.YamlPath}' property '{referenceUsage.DisplayPath}' references table '{referenceUsage.ReferencedTableName}', but that table is not available in the current loader batch or registry.",
+                            yamlPath: referenceUsage.YamlPath,
+                            schemaPath: referenceUsage.SchemaPath,
+                            displayPath: referenceUsage.DisplayPath,
+                            referencedTableName: referenceUsage.ReferencedTableName,
+                            rawValue: referenceUsage.RawValue);
                     }
 
                     if (!TryConvertReferenceKey(referenceUsage, targetTable.KeyType, out var convertedKey,
                             out var conversionError))
                     {
-                        throw new InvalidOperationException(
-                            $"Config file '{referenceUsage.YamlPath}' property '{referenceUsage.DisplayPath}' cannot target table '{referenceUsage.ReferencedTableName}' with key type '{targetTable.KeyType.Name}'. {conversionError}");
+                        throw ConfigLoadExceptionFactory.Create(
+                            ConfigLoadFailureKind.ReferenceKeyTypeMismatch,
+                            loadedTable.Name,
+                            $"Config file '{referenceUsage.YamlPath}' property '{referenceUsage.DisplayPath}' cannot target table '{referenceUsage.ReferencedTableName}' with key type '{targetTable.KeyType.Name}'. {conversionError}",
+                            yamlPath: referenceUsage.YamlPath,
+                            schemaPath: referenceUsage.SchemaPath,
+                            displayPath: referenceUsage.DisplayPath,
+                            referencedTableName: referenceUsage.ReferencedTableName,
+                            rawValue: referenceUsage.RawValue,
+                            detail: conversionError);
                     }
 
                     if (!ContainsKey(targetTable, convertedKey!))
                     {
-                        throw new InvalidOperationException(
-                            $"Config file '{referenceUsage.YamlPath}' property '{referenceUsage.DisplayPath}' references missing key '{referenceUsage.RawValue}' in table '{referenceUsage.ReferencedTableName}'.");
+                        throw ConfigLoadExceptionFactory.Create(
+                            ConfigLoadFailureKind.ReferencedKeyNotFound,
+                            loadedTable.Name,
+                            $"Config file '{referenceUsage.YamlPath}' property '{referenceUsage.DisplayPath}' references missing key '{referenceUsage.RawValue}' in table '{referenceUsage.ReferencedTableName}'.",
+                            yamlPath: referenceUsage.YamlPath,
+                            schemaPath: referenceUsage.SchemaPath,
+                            displayPath: referenceUsage.DisplayPath,
+                            referencedTableName: referenceUsage.ReferencedTableName,
+                            rawValue: referenceUsage.RawValue);
                     }
                 }
             }
