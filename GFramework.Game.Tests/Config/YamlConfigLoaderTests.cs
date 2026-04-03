@@ -9,6 +9,8 @@ namespace GFramework.Game.Tests.Config;
 [TestFixture]
 public class YamlConfigLoaderTests
 {
+    private string _rootPath = null!;
+
     /// <summary>
     ///     为每个测试创建独立临时目录，避免文件系统状态互相污染。
     /// </summary>
@@ -30,8 +32,6 @@ public class YamlConfigLoaderTests
             Directory.Delete(_rootPath, true);
         }
     }
-
-    private string _rootPath = null!;
 
     /// <summary>
     ///     验证加载器能够扫描 YAML 文件并将结果写入注册表。
@@ -80,12 +80,16 @@ public class YamlConfigLoaderTests
             .RegisterTable<int, MonsterConfigStub>("monster", "monster", static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<DirectoryNotFoundException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
             Assert.That(exception, Is.Not.Null);
             Assert.That(exception!.Message, Does.Contain("monster"));
+            Assert.That(exception.Diagnostic.FailureKind, Is.EqualTo(ConfigLoadFailureKind.ConfigDirectoryNotFound));
+            Assert.That(exception.Diagnostic.TableName, Is.EqualTo("monster"));
+            Assert.That(exception.Diagnostic.ConfigDirectoryPath,
+                Is.EqualTo(Path.Combine(_rootPath, "monster")));
             Assert.That(registry.Count, Is.EqualTo(0));
         });
     }
@@ -118,10 +122,14 @@ public class YamlConfigLoaderTests
             .RegisterTable<int, MonsterConfigStub>("monster", "monster", static config => config.Id)
             .RegisterTable<int, MonsterConfigStub>("broken", "broken", static config => config.Id);
 
-        Assert.ThrowsAsync<DirectoryNotFoundException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Diagnostic.FailureKind,
+                Is.EqualTo(ConfigLoadFailureKind.ConfigDirectoryNotFound));
+            Assert.That(exception.Diagnostic.TableName, Is.EqualTo("broken"));
             Assert.That(registry.Count, Is.EqualTo(1));
             Assert.That(registry.HasTable("monster"), Is.False);
             Assert.That(registry.GetTable<int, ExistingConfigStub>("existing").Get(100).Name, Is.EqualTo("Original"));
@@ -145,7 +153,7 @@ public class YamlConfigLoaderTests
             .RegisterTable<int, MonsterConfigStub>("monster", "monster", static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -186,12 +194,19 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
             Assert.That(exception, Is.Not.Null);
             Assert.That(exception!.Message, Does.Contain("name"));
+            Assert.That(exception.Diagnostic.FailureKind, Is.EqualTo(ConfigLoadFailureKind.MissingRequiredProperty));
+            Assert.That(exception.Diagnostic.TableName, Is.EqualTo("monster"));
+            Assert.That(exception.Diagnostic.YamlPath,
+                Does.EndWith("monster/slime.yaml").Or.EndWith("monster\\slime.yaml"));
+            Assert.That(exception.Diagnostic.SchemaPath,
+                Does.EndWith("schemas/monster.schema.json").Or.EndWith("schemas\\monster.schema.json"));
+            Assert.That(exception.Diagnostic.DisplayPath, Is.EqualTo("name"));
             Assert.That(registry.Count, Is.EqualTo(0));
         });
     }
@@ -228,7 +243,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -274,7 +289,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -317,7 +332,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -367,7 +382,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -417,7 +432,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -468,7 +483,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -524,7 +539,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -605,7 +620,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -736,7 +751,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -811,7 +826,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -945,11 +960,17 @@ public class YamlConfigLoaderTests
                 """);
 
             var failure = await WaitForTaskWithinAsync(reloadFailureTaskSource.Task, TimeSpan.FromSeconds(5));
+            var diagnosticException = failure.Exception as ConfigLoadException;
 
             Assert.Multiple(() =>
             {
                 Assert.That(failure.TableName, Is.EqualTo("monster"));
                 Assert.That(failure.Exception.Message, Does.Contain("rarity"));
+                Assert.That(diagnosticException, Is.Not.Null);
+                Assert.That(diagnosticException!.Diagnostic.FailureKind,
+                    Is.EqualTo(ConfigLoadFailureKind.MissingRequiredProperty));
+                Assert.That(diagnosticException.Diagnostic.TableName, Is.EqualTo("monster"));
+                Assert.That(diagnosticException.Diagnostic.DisplayPath, Is.EqualTo("rarity"));
                 Assert.That(registry.GetTable<int, MonsterConfigStub>("monster").Get(1).Hp, Is.EqualTo(10));
             });
         }
@@ -1034,11 +1055,19 @@ public class YamlConfigLoaderTests
                 """);
 
             var failure = await WaitForTaskWithinAsync(reloadFailureTaskSource.Task, TimeSpan.FromSeconds(5));
+            var diagnosticException = failure.Exception as ConfigLoadException;
 
             Assert.Multiple(() =>
             {
                 Assert.That(failure.TableName, Is.EqualTo("item"));
                 Assert.That(failure.Exception.Message, Does.Contain("dropItemId"));
+                Assert.That(diagnosticException, Is.Not.Null);
+                Assert.That(diagnosticException!.Diagnostic.FailureKind,
+                    Is.EqualTo(ConfigLoadFailureKind.ReferencedKeyNotFound));
+                Assert.That(diagnosticException.Diagnostic.TableName, Is.EqualTo("monster"));
+                Assert.That(diagnosticException.Diagnostic.ReferencedTableName, Is.EqualTo("item"));
+                Assert.That(diagnosticException.Diagnostic.DisplayPath, Is.EqualTo("dropItemId"));
+                Assert.That(diagnosticException.Diagnostic.RawValue, Is.EqualTo("potion"));
                 Assert.That(registry.GetTable<string, ItemConfigStub>("item").ContainsKey("potion"), Is.True);
                 Assert.That(registry.GetTable<int, MonsterDropConfigStub>("monster").Get(1).DropItemId,
                     Is.EqualTo("potion"));

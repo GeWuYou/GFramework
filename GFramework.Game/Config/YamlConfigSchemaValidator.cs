@@ -1,3 +1,5 @@
+using GFramework.Game.Abstractions.Config;
+
 namespace GFramework.Game.Config;
 
 /// <summary>
@@ -10,16 +12,23 @@ internal static class YamlConfigSchemaValidator
     /// <summary>
     ///     从磁盘加载并解析一个 JSON Schema 文件。
     /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
     /// <param name="schemaPath">Schema 文件路径。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>解析后的 schema 模型。</returns>
+    /// <exception cref="ArgumentException">当 <paramref name="tableName" /> 为空时抛出。</exception>
     /// <exception cref="ArgumentException">当 <paramref name="schemaPath" /> 为空时抛出。</exception>
-    /// <exception cref="FileNotFoundException">当 schema 文件不存在时抛出。</exception>
-    /// <exception cref="InvalidOperationException">当 schema 内容不符合当前运行时支持的子集时抛出。</exception>
+    /// <exception cref="ConfigLoadException">当 schema 文件不存在或内容非法时抛出。</exception>
     internal static async Task<YamlConfigSchema> LoadAsync(
+        string tableName,
         string schemaPath,
         CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(tableName))
+        {
+            throw new ArgumentException("Table name cannot be null or whitespace.", nameof(tableName));
+        }
+
         if (string.IsNullOrWhiteSpace(schemaPath))
         {
             throw new ArgumentException("Schema path cannot be null or whitespace.", nameof(schemaPath));
@@ -27,7 +36,11 @@ internal static class YamlConfigSchemaValidator
 
         if (!File.Exists(schemaPath))
         {
-            throw new FileNotFoundException($"Schema file '{schemaPath}' was not found.", schemaPath);
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaFileNotFound,
+                tableName,
+                $"Schema file '{schemaPath}' was not found.",
+                schemaPath: schemaPath);
         }
 
         string schemaText;
@@ -37,18 +50,26 @@ internal static class YamlConfigSchemaValidator
         }
         catch (Exception exception)
         {
-            throw new InvalidOperationException($"Failed to read schema file '{schemaPath}'.", exception);
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaReadFailed,
+                tableName,
+                $"Failed to read schema file '{schemaPath}'.",
+                schemaPath: schemaPath,
+                innerException: exception);
         }
 
         try
         {
             using var document = JsonDocument.Parse(schemaText);
             var root = document.RootElement;
-            var rootNode = ParseNode(schemaPath, "<root>", root, isRoot: true);
+            var rootNode = ParseNode(tableName, schemaPath, "<root>", root, isRoot: true);
             if (rootNode.NodeType != YamlConfigSchemaPropertyType.Object)
             {
-                throw new InvalidOperationException(
-                    $"Schema file '{schemaPath}' must declare a root object schema.");
+                throw ConfigLoadExceptionFactory.Create(
+                    ConfigLoadFailureKind.SchemaUnsupported,
+                    tableName,
+                    $"Schema file '{schemaPath}' must declare a root object schema.",
+                    schemaPath: schemaPath);
             }
 
             var referencedTableNames = new HashSet<string>(StringComparer.Ordinal);
@@ -56,43 +77,61 @@ internal static class YamlConfigSchemaValidator
 
             return new YamlConfigSchema(schemaPath, rootNode, referencedTableNames.ToArray());
         }
+        catch (ConfigLoadException)
+        {
+            throw;
+        }
         catch (JsonException exception)
         {
-            throw new InvalidOperationException($"Schema file '{schemaPath}' contains invalid JSON.", exception);
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaInvalidJson,
+                tableName,
+                $"Schema file '{schemaPath}' contains invalid JSON.",
+                schemaPath: schemaPath,
+                innerException: exception);
         }
     }
 
     /// <summary>
     ///     使用已解析的 schema 校验 YAML 文本。
     /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
     /// <param name="schema">已解析的 schema 模型。</param>
     /// <param name="yamlPath">YAML 文件路径，仅用于诊断信息。</param>
     /// <param name="yamlText">YAML 文本内容。</param>
     /// <exception cref="ArgumentNullException">当参数为空时抛出。</exception>
-    /// <exception cref="InvalidOperationException">当 YAML 内容与 schema 不匹配时抛出。</exception>
+    /// <exception cref="ConfigLoadException">当 YAML 内容与 schema 不匹配时抛出。</exception>
     internal static void Validate(
+        string tableName,
         YamlConfigSchema schema,
         string yamlPath,
         string yamlText)
     {
-        ValidateAndCollectReferences(schema, yamlPath, yamlText);
+        ValidateAndCollectReferences(tableName, schema, yamlPath, yamlText);
     }
 
     /// <summary>
     ///     使用已解析的 schema 校验 YAML 文本，并提取声明过的跨表引用。
     ///     该方法让结构校验与引用采集共享同一份 YAML 解析结果，避免加载器重复解析同一文件。
     /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
     /// <param name="schema">已解析的 schema 模型。</param>
     /// <param name="yamlPath">YAML 文件路径，仅用于诊断信息。</param>
     /// <param name="yamlText">YAML 文本内容。</param>
     /// <returns>当前 YAML 文件中声明的跨表引用集合。</returns>
     /// <exception cref="ArgumentNullException">当参数为空时抛出。</exception>
-    /// <exception cref="InvalidOperationException">当 YAML 内容与 schema 不匹配时抛出。</exception>
+    /// <exception cref="ConfigLoadException">当 YAML 内容与 schema 不匹配时抛出。</exception>
     internal static IReadOnlyList<YamlConfigReferenceUsage> ValidateAndCollectReferences(
+        string tableName,
         YamlConfigSchema schema,
         string yamlPath,
         string yamlText)
     {
+        if (string.IsNullOrWhiteSpace(tableName))
+        {
+            throw new ArgumentException("Table name cannot be null or whitespace.", nameof(tableName));
+        }
+
         ArgumentNullException.ThrowIfNull(schema);
         ArgumentNullException.ThrowIfNull(yamlPath);
         ArgumentNullException.ThrowIfNull(yamlText);
@@ -105,31 +144,41 @@ internal static class YamlConfigSchemaValidator
         }
         catch (Exception exception)
         {
-            throw new InvalidOperationException(
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.YamlParseFailed,
+                tableName,
                 $"Config file '{yamlPath}' could not be parsed as YAML before schema validation.",
-                exception);
+                yamlPath: yamlPath,
+                schemaPath: schema.SchemaPath,
+                innerException: exception);
         }
 
         if (yamlStream.Documents.Count != 1)
         {
-            throw new InvalidOperationException(
-                $"Config file '{yamlPath}' must contain exactly one YAML document.");
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.InvalidYamlDocument,
+                tableName,
+                $"Config file '{yamlPath}' must contain exactly one YAML document.",
+                yamlPath: yamlPath,
+                schemaPath: schema.SchemaPath);
         }
 
         var references = new List<YamlConfigReferenceUsage>();
-        ValidateNode(yamlPath, string.Empty, yamlStream.Documents[0].RootNode, schema.RootNode, references);
+        ValidateNode(tableName, yamlPath, string.Empty, yamlStream.Documents[0].RootNode, schema.RootNode, references);
         return references;
     }
 
     /// <summary>
     ///     递归解析 schema 节点，使运行时只保留校验真正需要的最小结构信息。
     /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
     /// <param name="schemaPath">Schema 文件路径。</param>
     /// <param name="propertyPath">当前节点的逻辑属性路径。</param>
     /// <param name="element">Schema JSON 节点。</param>
     /// <param name="isRoot">是否为根节点。</param>
     /// <returns>可用于运行时校验的节点模型。</returns>
     private static YamlConfigSchemaNode ParseNode(
+        string tableName,
         string schemaPath,
         string propertyPath,
         JsonElement element,
@@ -138,54 +187,66 @@ internal static class YamlConfigSchemaValidator
         if (!element.TryGetProperty("type", out var typeElement) ||
             typeElement.ValueKind != JsonValueKind.String)
         {
-            throw new InvalidOperationException(
-                $"Property '{propertyPath}' in schema file '{schemaPath}' must declare a string 'type'.");
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"Property '{propertyPath}' in schema file '{schemaPath}' must declare a string 'type'.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(propertyPath));
         }
 
         var typeName = typeElement.GetString() ?? string.Empty;
-        var referenceTableName = TryGetReferenceTableName(schemaPath, propertyPath, element);
+        var referenceTableName = TryGetReferenceTableName(tableName, schemaPath, propertyPath, element);
 
         switch (typeName)
         {
             case "object":
-                EnsureReferenceKeywordIsSupported(schemaPath, propertyPath, YamlConfigSchemaPropertyType.Object,
+                EnsureReferenceKeywordIsSupported(tableName, schemaPath, propertyPath,
+                    YamlConfigSchemaPropertyType.Object,
                     referenceTableName);
-                return ParseObjectNode(schemaPath, propertyPath, element, isRoot);
+                return ParseObjectNode(tableName, schemaPath, propertyPath, element, isRoot);
 
             case "array":
-                return ParseArrayNode(schemaPath, propertyPath, element, referenceTableName);
+                return ParseArrayNode(tableName, schemaPath, propertyPath, element, referenceTableName);
 
             case "integer":
-                return CreateScalarNode(schemaPath, propertyPath, YamlConfigSchemaPropertyType.Integer, element,
-                    referenceTableName);
+                return CreateScalarNode(tableName, schemaPath, propertyPath, YamlConfigSchemaPropertyType.Integer,
+                    element, referenceTableName);
 
             case "number":
-                return CreateScalarNode(schemaPath, propertyPath, YamlConfigSchemaPropertyType.Number, element,
-                    referenceTableName);
+                return CreateScalarNode(tableName, schemaPath, propertyPath, YamlConfigSchemaPropertyType.Number,
+                    element, referenceTableName);
 
             case "boolean":
-                return CreateScalarNode(schemaPath, propertyPath, YamlConfigSchemaPropertyType.Boolean, element,
-                    referenceTableName);
+                return CreateScalarNode(tableName, schemaPath, propertyPath, YamlConfigSchemaPropertyType.Boolean,
+                    element, referenceTableName);
 
             case "string":
-                return CreateScalarNode(schemaPath, propertyPath, YamlConfigSchemaPropertyType.String, element,
-                    referenceTableName);
+                return CreateScalarNode(tableName, schemaPath, propertyPath, YamlConfigSchemaPropertyType.String,
+                    element, referenceTableName);
 
             default:
-                throw new InvalidOperationException(
-                    $"Property '{propertyPath}' in schema file '{schemaPath}' uses unsupported type '{typeName}'.");
+                throw ConfigLoadExceptionFactory.Create(
+                    ConfigLoadFailureKind.SchemaUnsupported,
+                    tableName,
+                    $"Property '{propertyPath}' in schema file '{schemaPath}' uses unsupported type '{typeName}'.",
+                    schemaPath: schemaPath,
+                    displayPath: GetDiagnosticPath(propertyPath),
+                    rawValue: typeName);
         }
     }
 
     /// <summary>
     ///     解析对象节点，保留属性字典与必填集合，以便后续递归校验时逐层定位错误。
     /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
     /// <param name="schemaPath">Schema 文件路径。</param>
     /// <param name="propertyPath">对象属性路径。</param>
     /// <param name="element">对象 schema 节点。</param>
     /// <param name="isRoot">是否为根节点。</param>
     /// <returns>对象节点模型。</returns>
     private static YamlConfigSchemaNode ParseObjectNode(
+        string tableName,
         string schemaPath,
         string propertyPath,
         JsonElement element,
@@ -195,8 +256,12 @@ internal static class YamlConfigSchemaValidator
             propertiesElement.ValueKind != JsonValueKind.Object)
         {
             var subject = isRoot ? "root schema" : $"object property '{propertyPath}'";
-            throw new InvalidOperationException(
-                $"The {subject} in schema file '{schemaPath}' must declare an object-valued 'properties' section.");
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"The {subject} in schema file '{schemaPath}' must declare an object-valued 'properties' section.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(propertyPath));
         }
 
         var requiredProperties = new HashSet<string>(StringComparer.Ordinal);
@@ -222,6 +287,7 @@ internal static class YamlConfigSchemaValidator
         foreach (var property in propertiesElement.EnumerateObject())
         {
             properties[property.Name] = ParseNode(
+                tableName,
                 schemaPath,
                 CombineSchemaPath(propertyPath, property.Name),
                 property.Value);
@@ -242,12 +308,14 @@ internal static class YamlConfigSchemaValidator
     ///     当前子集支持标量数组和对象数组，不支持数组嵌套数组。
     ///     当数组声明跨表引用时，会把引用语义挂到元素节点上，便于后续逐项校验。
     /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
     /// <param name="schemaPath">Schema 文件路径。</param>
     /// <param name="propertyPath">数组属性路径。</param>
     /// <param name="element">数组 schema 节点。</param>
     /// <param name="referenceTableName">声明在数组节点上的目标引用表。</param>
     /// <returns>数组节点模型。</returns>
     private static YamlConfigSchemaNode ParseArrayNode(
+        string tableName,
         string schemaPath,
         string propertyPath,
         JsonElement element,
@@ -256,18 +324,27 @@ internal static class YamlConfigSchemaValidator
         if (!element.TryGetProperty("items", out var itemsElement) ||
             itemsElement.ValueKind != JsonValueKind.Object)
         {
-            throw new InvalidOperationException(
-                $"Array property '{propertyPath}' in schema file '{schemaPath}' must declare an object-valued 'items' schema.");
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"Array property '{propertyPath}' in schema file '{schemaPath}' must declare an object-valued 'items' schema.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(propertyPath));
         }
 
-        var itemNode = ParseNode(schemaPath, $"{propertyPath}[]", itemsElement);
+        var itemNode = ParseNode(tableName, schemaPath, $"{propertyPath}[]", itemsElement);
         if (!string.IsNullOrWhiteSpace(referenceTableName))
         {
             if (itemNode.NodeType != YamlConfigSchemaPropertyType.String &&
                 itemNode.NodeType != YamlConfigSchemaPropertyType.Integer)
             {
-                throw new InvalidOperationException(
-                    $"Property '{propertyPath}' in schema file '{schemaPath}' uses 'x-gframework-ref-table', but only string, integer, or arrays of those scalar types can declare cross-table references.");
+                throw ConfigLoadExceptionFactory.Create(
+                    ConfigLoadFailureKind.SchemaUnsupported,
+                    tableName,
+                    $"Property '{propertyPath}' in schema file '{schemaPath}' uses 'x-gframework-ref-table', but only string, integer, or arrays of those scalar types can declare cross-table references.",
+                    schemaPath: schemaPath,
+                    displayPath: GetDiagnosticPath(propertyPath),
+                    referencedTableName: referenceTableName);
             }
 
             itemNode = itemNode.WithReferenceTable(referenceTableName);
@@ -275,8 +352,12 @@ internal static class YamlConfigSchemaValidator
 
         if (itemNode.NodeType == YamlConfigSchemaPropertyType.Array)
         {
-            throw new InvalidOperationException(
-                $"Array property '{propertyPath}' in schema file '{schemaPath}' uses unsupported nested array items.");
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"Array property '{propertyPath}' in schema file '{schemaPath}' uses unsupported nested array items.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(propertyPath));
         }
 
         return new YamlConfigSchemaNode(
@@ -292,6 +373,7 @@ internal static class YamlConfigSchemaValidator
     /// <summary>
     ///     创建标量节点，并在解析阶段就完成 enum 与引用约束的兼容性检查。
     /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
     /// <param name="schemaPath">Schema 文件路径。</param>
     /// <param name="propertyPath">标量属性路径。</param>
     /// <param name="nodeType">标量类型。</param>
@@ -299,20 +381,21 @@ internal static class YamlConfigSchemaValidator
     /// <param name="referenceTableName">目标引用表名称。</param>
     /// <returns>标量节点模型。</returns>
     private static YamlConfigSchemaNode CreateScalarNode(
+        string tableName,
         string schemaPath,
         string propertyPath,
         YamlConfigSchemaPropertyType nodeType,
         JsonElement element,
         string? referenceTableName)
     {
-        EnsureReferenceKeywordIsSupported(schemaPath, propertyPath, nodeType, referenceTableName);
+        EnsureReferenceKeywordIsSupported(tableName, schemaPath, propertyPath, nodeType, referenceTableName);
         return new YamlConfigSchemaNode(
             nodeType,
             properties: null,
             requiredProperties: null,
             itemNode: null,
             referenceTableName,
-            ParseEnumValues(schemaPath, propertyPath, element, nodeType, "enum"),
+            ParseEnumValues(tableName, schemaPath, propertyPath, element, nodeType, "enum"),
             schemaPath);
     }
 
@@ -320,12 +403,14 @@ internal static class YamlConfigSchemaValidator
     ///     递归校验 YAML 节点。
     ///     每层都带上逻辑字段路径，这样深层对象与数组元素的错误也能直接定位。
     /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
     /// <param name="yamlPath">YAML 文件路径。</param>
     /// <param name="displayPath">当前字段路径；根节点时为空。</param>
     /// <param name="node">实际 YAML 节点。</param>
     /// <param name="schemaNode">对应的 schema 节点。</param>
     /// <param name="references">已收集的跨表引用。</param>
     private static void ValidateNode(
+        string tableName,
         string yamlPath,
         string displayPath,
         YamlNode node,
@@ -335,35 +420,43 @@ internal static class YamlConfigSchemaValidator
         switch (schemaNode.NodeType)
         {
             case YamlConfigSchemaPropertyType.Object:
-                ValidateObjectNode(yamlPath, displayPath, node, schemaNode, references);
+                ValidateObjectNode(tableName, yamlPath, displayPath, node, schemaNode, references);
                 return;
 
             case YamlConfigSchemaPropertyType.Array:
-                ValidateArrayNode(yamlPath, displayPath, node, schemaNode, references);
+                ValidateArrayNode(tableName, yamlPath, displayPath, node, schemaNode, references);
                 return;
 
             case YamlConfigSchemaPropertyType.Integer:
             case YamlConfigSchemaPropertyType.Number:
             case YamlConfigSchemaPropertyType.Boolean:
             case YamlConfigSchemaPropertyType.String:
-                ValidateScalarNode(yamlPath, displayPath, node, schemaNode, references);
+                ValidateScalarNode(tableName, yamlPath, displayPath, node, schemaNode, references);
                 return;
 
             default:
-                throw new InvalidOperationException(
-                    $"Schema node '{displayPath}' uses unsupported runtime node type '{schemaNode.NodeType}'.");
+                throw ConfigLoadExceptionFactory.Create(
+                    ConfigLoadFailureKind.UnexpectedFailure,
+                    tableName,
+                    $"Schema node '{displayPath}' uses unsupported runtime node type '{schemaNode.NodeType}'.",
+                    yamlPath: yamlPath,
+                    schemaPath: schemaNode.SchemaPathHint,
+                    displayPath: GetDiagnosticPath(displayPath),
+                    rawValue: schemaNode.NodeType.ToString());
         }
     }
 
     /// <summary>
     ///     校验对象节点，同时处理重复字段、未知字段和深层必填字段。
     /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
     /// <param name="yamlPath">YAML 文件路径。</param>
     /// <param name="displayPath">当前对象的逻辑字段路径。</param>
     /// <param name="node">实际 YAML 节点。</param>
     /// <param name="schemaNode">对象 schema 节点。</param>
     /// <param name="references">已收集的跨表引用。</param>
     private static void ValidateObjectNode(
+        string tableName,
         string yamlPath,
         string displayPath,
         YamlNode node,
@@ -373,8 +466,13 @@ internal static class YamlConfigSchemaValidator
         if (node is not YamlMappingNode mappingNode)
         {
             var subject = displayPath.Length == 0 ? "Root object" : $"Property '{displayPath}'";
-            throw new InvalidOperationException(
-                $"{subject} in config file '{yamlPath}' must be an object.");
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.PropertyTypeMismatch,
+                tableName,
+                $"{subject} in config file '{yamlPath}' must be an object.",
+                yamlPath: yamlPath,
+                schemaPath: schemaNode.SchemaPathHint,
+                displayPath: GetDiagnosticPath(displayPath));
         }
 
         var seenProperties = new HashSet<string>(StringComparer.Ordinal);
@@ -384,26 +482,41 @@ internal static class YamlConfigSchemaValidator
                 string.IsNullOrWhiteSpace(keyNode.Value))
             {
                 var subject = displayPath.Length == 0 ? "root object" : $"object property '{displayPath}'";
-                throw new InvalidOperationException(
-                    $"Config file '{yamlPath}' contains a non-scalar or empty property name inside {subject}.");
+                throw ConfigLoadExceptionFactory.Create(
+                    ConfigLoadFailureKind.InvalidYamlDocument,
+                    tableName,
+                    $"Config file '{yamlPath}' contains a non-scalar or empty property name inside {subject}.",
+                    yamlPath: yamlPath,
+                    schemaPath: schemaNode.SchemaPathHint,
+                    displayPath: GetDiagnosticPath(displayPath));
             }
 
             var propertyName = keyNode.Value;
             var propertyPath = CombineDisplayPath(displayPath, propertyName);
             if (!seenProperties.Add(propertyName))
             {
-                throw new InvalidOperationException(
-                    $"Config file '{yamlPath}' contains duplicate property '{propertyPath}'.");
+                throw ConfigLoadExceptionFactory.Create(
+                    ConfigLoadFailureKind.DuplicateProperty,
+                    tableName,
+                    $"Config file '{yamlPath}' contains duplicate property '{propertyPath}'.",
+                    yamlPath: yamlPath,
+                    schemaPath: schemaNode.SchemaPathHint,
+                    displayPath: propertyPath);
             }
 
             if (schemaNode.Properties is null ||
                 !schemaNode.Properties.TryGetValue(propertyName, out var propertySchema))
             {
-                throw new InvalidOperationException(
-                    $"Config file '{yamlPath}' contains unknown property '{propertyPath}' that is not declared in schema '{schemaNode.SchemaPathHint}'.");
+                throw ConfigLoadExceptionFactory.Create(
+                    ConfigLoadFailureKind.UnknownProperty,
+                    tableName,
+                    $"Config file '{yamlPath}' contains unknown property '{propertyPath}' that is not declared in schema '{schemaNode.SchemaPathHint}'.",
+                    yamlPath: yamlPath,
+                    schemaPath: schemaNode.SchemaPathHint,
+                    displayPath: propertyPath);
             }
 
-            ValidateNode(yamlPath, propertyPath, entry.Value, propertySchema, references);
+            ValidateNode(tableName, yamlPath, propertyPath, entry.Value, propertySchema, references);
         }
 
         if (schemaNode.RequiredProperties is null)
@@ -418,20 +531,28 @@ internal static class YamlConfigSchemaValidator
                 continue;
             }
 
-            throw new InvalidOperationException(
-                $"Config file '{yamlPath}' is missing required property '{CombineDisplayPath(displayPath, requiredProperty)}' defined by schema '{schemaNode.SchemaPathHint}'.");
+            var requiredPath = CombineDisplayPath(displayPath, requiredProperty);
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.MissingRequiredProperty,
+                tableName,
+                $"Config file '{yamlPath}' is missing required property '{requiredPath}' defined by schema '{schemaNode.SchemaPathHint}'.",
+                yamlPath: yamlPath,
+                schemaPath: schemaNode.SchemaPathHint,
+                displayPath: requiredPath);
         }
     }
 
     /// <summary>
     ///     校验数组节点，并递归验证每个元素。
     /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
     /// <param name="yamlPath">YAML 文件路径。</param>
     /// <param name="displayPath">数组字段路径。</param>
     /// <param name="node">实际 YAML 节点。</param>
     /// <param name="schemaNode">数组 schema 节点。</param>
     /// <param name="references">已收集的跨表引用。</param>
     private static void ValidateArrayNode(
+        string tableName,
         string yamlPath,
         string displayPath,
         YamlNode node,
@@ -440,19 +561,30 @@ internal static class YamlConfigSchemaValidator
     {
         if (node is not YamlSequenceNode sequenceNode)
         {
-            throw new InvalidOperationException(
-                $"Property '{displayPath}' in config file '{yamlPath}' must be an array.");
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.PropertyTypeMismatch,
+                tableName,
+                $"Property '{displayPath}' in config file '{yamlPath}' must be an array.",
+                yamlPath: yamlPath,
+                schemaPath: schemaNode.SchemaPathHint,
+                displayPath: GetDiagnosticPath(displayPath));
         }
 
         if (schemaNode.ItemNode is null)
         {
-            throw new InvalidOperationException(
-                $"Schema node '{displayPath}' is missing array item information.");
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.UnexpectedFailure,
+                tableName,
+                $"Schema node '{displayPath}' is missing array item information.",
+                yamlPath: yamlPath,
+                schemaPath: schemaNode.SchemaPathHint,
+                displayPath: GetDiagnosticPath(displayPath));
         }
 
         for (var itemIndex = 0; itemIndex < sequenceNode.Children.Count; itemIndex++)
         {
             ValidateNode(
+                tableName,
                 yamlPath,
                 $"{displayPath}[{itemIndex}]",
                 sequenceNode.Children[itemIndex],
@@ -464,12 +596,14 @@ internal static class YamlConfigSchemaValidator
     /// <summary>
     ///     校验标量节点，并在值有效时收集跨表引用。
     /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
     /// <param name="yamlPath">YAML 文件路径。</param>
     /// <param name="displayPath">标量字段路径。</param>
     /// <param name="node">实际 YAML 节点。</param>
     /// <param name="schemaNode">标量 schema 节点。</param>
     /// <param name="references">已收集的跨表引用。</param>
     private static void ValidateScalarNode(
+        string tableName,
         string yamlPath,
         string displayPath,
         YamlNode node,
@@ -478,15 +612,25 @@ internal static class YamlConfigSchemaValidator
     {
         if (node is not YamlScalarNode scalarNode)
         {
-            throw new InvalidOperationException(
-                $"Property '{displayPath}' in config file '{yamlPath}' must be a scalar value of type '{GetTypeName(schemaNode.NodeType)}'.");
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.PropertyTypeMismatch,
+                tableName,
+                $"Property '{displayPath}' in config file '{yamlPath}' must be a scalar value of type '{GetTypeName(schemaNode.NodeType)}'.",
+                yamlPath: yamlPath,
+                schemaPath: schemaNode.SchemaPathHint,
+                displayPath: GetDiagnosticPath(displayPath));
         }
 
         var value = scalarNode.Value;
         if (value is null)
         {
-            throw new InvalidOperationException(
-                $"Property '{displayPath}' in config file '{yamlPath}' cannot be null when schema type is '{GetTypeName(schemaNode.NodeType)}'.");
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.NullScalarValue,
+                tableName,
+                $"Property '{displayPath}' in config file '{yamlPath}' cannot be null when schema type is '{GetTypeName(schemaNode.NodeType)}'.",
+                yamlPath: yamlPath,
+                schemaPath: schemaNode.SchemaPathHint,
+                displayPath: GetDiagnosticPath(displayPath));
         }
 
         var tag = scalarNode.Tag.ToString();
@@ -509,16 +653,29 @@ internal static class YamlConfigSchemaValidator
 
         if (!isValid)
         {
-            throw new InvalidOperationException(
-                $"Property '{displayPath}' in config file '{yamlPath}' must be of type '{GetTypeName(schemaNode.NodeType)}', but the current YAML scalar value is '{value}'.");
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.PropertyTypeMismatch,
+                tableName,
+                $"Property '{displayPath}' in config file '{yamlPath}' must be of type '{GetTypeName(schemaNode.NodeType)}', but the current YAML scalar value is '{value}'.",
+                yamlPath: yamlPath,
+                schemaPath: schemaNode.SchemaPathHint,
+                displayPath: GetDiagnosticPath(displayPath),
+                rawValue: value);
         }
 
         var normalizedValue = NormalizeScalarValue(schemaNode.NodeType, value);
         if (schemaNode.AllowedValues is { Count: > 0 } &&
             !schemaNode.AllowedValues.Contains(normalizedValue, StringComparer.Ordinal))
         {
-            throw new InvalidOperationException(
-                $"Property '{displayPath}' in config file '{yamlPath}' must be one of [{string.Join(", ", schemaNode.AllowedValues)}], but the current YAML scalar value is '{value}'.");
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.EnumValueNotAllowed,
+                tableName,
+                $"Property '{displayPath}' in config file '{yamlPath}' must be one of [{string.Join(", ", schemaNode.AllowedValues)}], but the current YAML scalar value is '{value}'.",
+                yamlPath: yamlPath,
+                schemaPath: schemaNode.SchemaPathHint,
+                displayPath: GetDiagnosticPath(displayPath),
+                rawValue: value,
+                detail: $"Allowed values: {string.Join(", ", schemaNode.AllowedValues)}.");
         }
 
         if (schemaNode.ReferenceTableName != null)
@@ -526,6 +683,7 @@ internal static class YamlConfigSchemaValidator
             references.Add(
                 new YamlConfigReferenceUsage(
                     yamlPath,
+                    schemaNode.SchemaPathHint,
                     displayPath,
                     normalizedValue,
                     schemaNode.ReferenceTableName,
@@ -536,6 +694,7 @@ internal static class YamlConfigSchemaValidator
     /// <summary>
     ///     解析 enum，并在读取阶段验证枚举值与字段类型的兼容性。
     /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
     /// <param name="schemaPath">Schema 文件路径。</param>
     /// <param name="propertyPath">字段路径。</param>
     /// <param name="element">Schema 节点。</param>
@@ -543,6 +702,7 @@ internal static class YamlConfigSchemaValidator
     /// <param name="keywordName">当前读取的关键字名称。</param>
     /// <returns>归一化后的枚举值集合；未声明时返回空。</returns>
     private static IReadOnlyCollection<string>? ParseEnumValues(
+        string tableName,
         string schemaPath,
         string propertyPath,
         JsonElement element,
@@ -556,14 +716,19 @@ internal static class YamlConfigSchemaValidator
 
         if (enumElement.ValueKind != JsonValueKind.Array)
         {
-            throw new InvalidOperationException(
-                $"Property '{propertyPath}' in schema file '{schemaPath}' must declare '{keywordName}' as an array.");
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"Property '{propertyPath}' in schema file '{schemaPath}' must declare '{keywordName}' as an array.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(propertyPath));
         }
 
         var allowedValues = new List<string>();
         foreach (var item in enumElement.EnumerateArray())
         {
-            allowedValues.Add(NormalizeEnumValue(schemaPath, propertyPath, keywordName, expectedType, item));
+            allowedValues.Add(
+                NormalizeEnumValue(tableName, schemaPath, propertyPath, keywordName, expectedType, item));
         }
 
         return allowedValues;
@@ -572,11 +737,13 @@ internal static class YamlConfigSchemaValidator
     /// <summary>
     ///     解析跨表引用目标表名称。
     /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
     /// <param name="schemaPath">Schema 文件路径。</param>
     /// <param name="propertyPath">字段路径。</param>
     /// <param name="element">Schema 节点。</param>
     /// <returns>目标表名称；未声明时返回空。</returns>
     private static string? TryGetReferenceTableName(
+        string tableName,
         string schemaPath,
         string propertyPath,
         JsonElement element)
@@ -588,15 +755,23 @@ internal static class YamlConfigSchemaValidator
 
         if (referenceTableElement.ValueKind != JsonValueKind.String)
         {
-            throw new InvalidOperationException(
-                $"Property '{propertyPath}' in schema file '{schemaPath}' must declare a string 'x-gframework-ref-table' value.");
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"Property '{propertyPath}' in schema file '{schemaPath}' must declare a string 'x-gframework-ref-table' value.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(propertyPath));
         }
 
         var referenceTableName = referenceTableElement.GetString();
         if (string.IsNullOrWhiteSpace(referenceTableName))
         {
-            throw new InvalidOperationException(
-                $"Property '{propertyPath}' in schema file '{schemaPath}' must declare a non-empty 'x-gframework-ref-table' value.");
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"Property '{propertyPath}' in schema file '{schemaPath}' must declare a non-empty 'x-gframework-ref-table' value.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(propertyPath));
         }
 
         return referenceTableName;
@@ -605,11 +780,13 @@ internal static class YamlConfigSchemaValidator
     /// <summary>
     ///     验证哪些 schema 类型允许声明跨表引用。
     /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
     /// <param name="schemaPath">Schema 文件路径。</param>
     /// <param name="propertyPath">字段路径。</param>
     /// <param name="propertyType">字段类型。</param>
     /// <param name="referenceTableName">目标表名称。</param>
     private static void EnsureReferenceKeywordIsSupported(
+        string tableName,
         string schemaPath,
         string propertyPath,
         YamlConfigSchemaPropertyType propertyType,
@@ -626,8 +803,13 @@ internal static class YamlConfigSchemaValidator
             return;
         }
 
-        throw new InvalidOperationException(
-            $"Property '{propertyPath}' in schema file '{schemaPath}' uses 'x-gframework-ref-table', but only string, integer, or arrays of those scalar types can declare cross-table references.");
+        throw ConfigLoadExceptionFactory.Create(
+            ConfigLoadFailureKind.SchemaUnsupported,
+            tableName,
+            $"Property '{propertyPath}' in schema file '{schemaPath}' uses 'x-gframework-ref-table', but only string, integer, or arrays of those scalar types can declare cross-table references.",
+            schemaPath: schemaPath,
+            displayPath: GetDiagnosticPath(propertyPath),
+            referencedTableName: referenceTableName);
     }
 
     /// <summary>
@@ -661,6 +843,7 @@ internal static class YamlConfigSchemaValidator
     /// <summary>
     ///     将 schema 中的 enum 单值归一化到运行时比较字符串。
     /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
     /// <param name="schemaPath">Schema 文件路径。</param>
     /// <param name="propertyPath">字段路径。</param>
     /// <param name="keywordName">关键字名称。</param>
@@ -668,6 +851,7 @@ internal static class YamlConfigSchemaValidator
     /// <param name="item">当前枚举值节点。</param>
     /// <returns>归一化后的字符串值。</returns>
     private static string NormalizeEnumValue(
+        string tableName,
         string schemaPath,
         string propertyPath,
         string keywordName,
@@ -693,9 +877,25 @@ internal static class YamlConfigSchemaValidator
         }
         catch
         {
-            throw new InvalidOperationException(
-                $"Property '{propertyPath}' in schema file '{schemaPath}' contains a '{keywordName}' value that is incompatible with schema type '{GetTypeName(expectedType)}'.");
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"Property '{propertyPath}' in schema file '{schemaPath}' contains a '{keywordName}' value that is incompatible with schema type '{GetTypeName(expectedType)}'.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(propertyPath));
         }
+    }
+
+    /// <summary>
+    ///     将内部路径转换为适合放入诊断对象的可选字段路径。
+    /// </summary>
+    /// <param name="path">内部使用的属性路径。</param>
+    /// <returns>可用于诊断的路径；根节点时返回空。</returns>
+    private static string? GetDiagnosticPath(string path)
+    {
+        return string.IsNullOrWhiteSpace(path) || string.Equals(path, "<root>", StringComparison.Ordinal)
+            ? null
+            : path;
     }
 
     /// <summary>
@@ -925,23 +1125,27 @@ internal sealed class YamlConfigReferenceUsage
     ///     初始化一个跨表引用使用记录。
     /// </summary>
     /// <param name="yamlPath">源 YAML 文件路径。</param>
+    /// <param name="schemaPath">定义该引用的 schema 文件路径。</param>
     /// <param name="propertyPath">声明引用的字段路径。</param>
     /// <param name="rawValue">YAML 中的原始标量值。</param>
     /// <param name="referencedTableName">目标配置表名称。</param>
     /// <param name="valueType">引用值的 schema 标量类型。</param>
     public YamlConfigReferenceUsage(
         string yamlPath,
+        string schemaPath,
         string propertyPath,
         string rawValue,
         string referencedTableName,
         YamlConfigSchemaPropertyType valueType)
     {
         ArgumentNullException.ThrowIfNull(yamlPath);
+        ArgumentNullException.ThrowIfNull(schemaPath);
         ArgumentNullException.ThrowIfNull(propertyPath);
         ArgumentNullException.ThrowIfNull(rawValue);
         ArgumentNullException.ThrowIfNull(referencedTableName);
 
         YamlPath = yamlPath;
+        SchemaPath = schemaPath;
         PropertyPath = propertyPath;
         RawValue = rawValue;
         ReferencedTableName = referencedTableName;
@@ -952,6 +1156,11 @@ internal sealed class YamlConfigReferenceUsage
     ///     获取源 YAML 文件路径。
     /// </summary>
     public string YamlPath { get; }
+
+    /// <summary>
+    ///     获取定义该引用的 schema 文件路径。
+    /// </summary>
+    public string SchemaPath { get; }
 
     /// <summary>
     ///     获取声明引用的字段路径。
