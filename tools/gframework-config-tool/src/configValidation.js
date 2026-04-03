@@ -505,10 +505,18 @@ function parseSchemaNode(rawNode, displayPath) {
         title: metadata.title,
         description: metadata.description,
         defaultValue: metadata.defaultValue,
-        minimum: metadata.minimum,
-        maximum: metadata.maximum,
-        minLength: metadata.minLength,
-        maxLength: metadata.maxLength,
+        minimum: type === "integer" || type === "number"
+            ? metadata.minimum
+            : undefined,
+        maximum: type === "integer" || type === "number"
+            ? metadata.maximum
+            : undefined,
+        minLength: type === "string"
+            ? metadata.minLength
+            : undefined,
+        maxLength: type === "string"
+            ? metadata.maxLength
+            : undefined,
         enumValues: normalizeSchemaEnumValues(value.enum),
         refTable: metadata.refTable
     };
@@ -587,7 +595,12 @@ function validateNode(schemaNode, yamlNode, displayPath, diagnostics, localizer)
     }
 
     const scalarValue = unquoteScalar(yamlNode.value);
-    if (typeof schemaNode.minimum === "number" && Number(scalarValue) < schemaNode.minimum) {
+    const supportsNumericConstraints = schemaNode.type === "integer" || schemaNode.type === "number";
+    const supportsLengthConstraints = schemaNode.type === "string";
+
+    if (supportsNumericConstraints &&
+        typeof schemaNode.minimum === "number" &&
+        Number(scalarValue) < schemaNode.minimum) {
         diagnostics.push({
             severity: "error",
             message: localizeValidationMessage(ValidationMessageKeys.minimumViolation, localizer, {
@@ -597,7 +610,9 @@ function validateNode(schemaNode, yamlNode, displayPath, diagnostics, localizer)
         });
     }
 
-    if (typeof schemaNode.maximum === "number" && Number(scalarValue) > schemaNode.maximum) {
+    if (supportsNumericConstraints &&
+        typeof schemaNode.maximum === "number" &&
+        Number(scalarValue) > schemaNode.maximum) {
         diagnostics.push({
             severity: "error",
             message: localizeValidationMessage(ValidationMessageKeys.maximumViolation, localizer, {
@@ -607,7 +622,9 @@ function validateNode(schemaNode, yamlNode, displayPath, diagnostics, localizer)
         });
     }
 
-    if (typeof schemaNode.minLength === "number" && scalarValue.length < schemaNode.minLength) {
+    if (supportsLengthConstraints &&
+        typeof schemaNode.minLength === "number" &&
+        scalarValue.length < schemaNode.minLength) {
         diagnostics.push({
             severity: "error",
             message: localizeValidationMessage(ValidationMessageKeys.minLengthViolation, localizer, {
@@ -617,7 +634,9 @@ function validateNode(schemaNode, yamlNode, displayPath, diagnostics, localizer)
         });
     }
 
-    if (typeof schemaNode.maxLength === "number" && scalarValue.length > schemaNode.maxLength) {
+    if (supportsLengthConstraints &&
+        typeof schemaNode.maxLength === "number" &&
+        scalarValue.length > schemaNode.maxLength) {
         diagnostics.push({
             severity: "error",
             message: localizeValidationMessage(ValidationMessageKeys.maxLengthViolation, localizer, {

@@ -913,7 +913,21 @@ internal static class YamlConfigSchemaValidator
         {
             case YamlConfigSchemaPropertyType.Integer:
             case YamlConfigSchemaPropertyType.Number:
-                var numericValue = double.Parse(normalizedValue, CultureInfo.InvariantCulture);
+                if (!double.TryParse(
+                        normalizedValue,
+                        NumberStyles.Float | NumberStyles.AllowThousands,
+                        CultureInfo.InvariantCulture,
+                        out var numericValue))
+                {
+                    throw ConfigLoadExceptionFactory.Create(
+                        ConfigLoadFailureKind.UnexpectedFailure,
+                        tableName,
+                        $"Property '{displayPath}' in config file '{yamlPath}' could not be normalized into a comparable numeric value.",
+                        yamlPath: yamlPath,
+                        schemaPath: schemaNode.SchemaPathHint,
+                        displayPath: GetDiagnosticPath(displayPath),
+                        rawValue: rawValue);
+                }
 
                 if (constraints.Minimum.HasValue && numericValue < constraints.Minimum.Value)
                 {
@@ -975,6 +989,16 @@ internal static class YamlConfigSchemaValidator
                 }
 
                 return;
+
+            default:
+                throw ConfigLoadExceptionFactory.Create(
+                    ConfigLoadFailureKind.UnexpectedFailure,
+                    tableName,
+                    $"Property '{displayPath}' in config file '{yamlPath}' resolved unsupported constraint host type '{schemaNode.NodeType}'.",
+                    yamlPath: yamlPath,
+                    schemaPath: schemaNode.SchemaPathHint,
+                    displayPath: GetDiagnosticPath(displayPath),
+                    rawValue: schemaNode.NodeType.ToString());
         }
     }
 
@@ -1153,16 +1177,29 @@ internal static class YamlConfigSchemaValidator
         return expectedType switch
         {
             YamlConfigSchemaPropertyType.String => value,
-            YamlConfigSchemaPropertyType.Integer => long.Parse(
-                value,
-                NumberStyles.Integer,
-                CultureInfo.InvariantCulture).ToString(CultureInfo.InvariantCulture),
-            YamlConfigSchemaPropertyType.Number => double.Parse(
-                value,
-                NumberStyles.Float | NumberStyles.AllowThousands,
-                CultureInfo.InvariantCulture).ToString(CultureInfo.InvariantCulture),
-            YamlConfigSchemaPropertyType.Boolean => bool.Parse(value).ToString().ToLowerInvariant(),
-            _ => value
+            YamlConfigSchemaPropertyType.Integer when long.TryParse(
+                    value,
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out var integerValue) =>
+                integerValue.ToString(CultureInfo.InvariantCulture),
+            YamlConfigSchemaPropertyType.Number when double.TryParse(
+                    value,
+                    NumberStyles.Float | NumberStyles.AllowThousands,
+                    CultureInfo.InvariantCulture,
+                    out var numberValue) =>
+                numberValue.ToString(CultureInfo.InvariantCulture),
+            YamlConfigSchemaPropertyType.Boolean when bool.TryParse(value, out var booleanValue) =>
+                booleanValue.ToString().ToLowerInvariant(),
+            YamlConfigSchemaPropertyType.Integer =>
+                throw new InvalidOperationException($"Value '{value}' cannot be normalized as integer."),
+            YamlConfigSchemaPropertyType.Number =>
+                throw new InvalidOperationException($"Value '{value}' cannot be normalized as number."),
+            YamlConfigSchemaPropertyType.Boolean =>
+                throw new InvalidOperationException($"Value '{value}' cannot be normalized as boolean."),
+            _ =>
+                throw new InvalidOperationException(
+                    $"Schema node type '{expectedType}' cannot be normalized as a scalar value.")
         };
     }
 

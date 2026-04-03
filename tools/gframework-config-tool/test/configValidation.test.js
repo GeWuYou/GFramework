@@ -266,6 +266,28 @@ test("parseSchemaContent should capture scalar range and length metadata", () =>
     assert.equal(schema.properties.tags.items.maxLength, 6);
 });
 
+test("parseSchemaContent should ignore mismatched constraint metadata on unsupported scalar types", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "minimum": 1,
+              "minLength": 3
+            }
+          }
+        }
+    `);
+    const yaml = parseTopLevelYaml(`
+enabled: true
+`);
+
+    assert.equal(schema.properties.enabled.minimum, undefined);
+    assert.equal(schema.properties.enabled.minLength, undefined);
+    assert.deepEqual(validateParsedConfig(schema, yaml), []);
+});
+
 test("validateParsedConfig should localize diagnostics when Chinese UI is requested", () => {
     const schema = parseSchemaContent(`
         {
