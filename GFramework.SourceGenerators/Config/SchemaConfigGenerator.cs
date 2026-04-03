@@ -650,22 +650,58 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine($"public static class {bindingsClassName}");
         builder.AppendLine("{");
         builder.AppendLine("    /// <summary>");
+        builder.AppendLine(
+            "    ///     Groups the schema-derived metadata constants so consumer code can reuse one stable entry point.");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    public static class Metadata");
+        builder.AppendLine("    {");
+        builder.AppendLine("        /// <summary>");
+        builder.AppendLine(
+            "        ///     Gets the logical config domain derived from the schema base name. The current runtime convention keeps this value aligned with the generated table name.");
+        builder.AppendLine("        /// </summary>");
+        builder.AppendLine(
+            $"        public const string ConfigDomain = {SymbolDisplay.FormatLiteral(schema.TableRegistrationName, true)};");
+        builder.AppendLine();
+        builder.AppendLine("        /// <summary>");
+        builder.AppendLine("        ///     Gets the runtime registration name of the generated config table.");
+        builder.AppendLine("        /// </summary>");
+        builder.AppendLine(
+            $"        public const string TableName = {SymbolDisplay.FormatLiteral(schema.TableRegistrationName, true)};");
+        builder.AppendLine();
+        builder.AppendLine("        /// <summary>");
+        builder.AppendLine(
+            "        ///     Gets the config directory path expected by the generated registration helper.");
+        builder.AppendLine("        /// </summary>");
+        builder.AppendLine(
+            $"        public const string ConfigRelativePath = {SymbolDisplay.FormatLiteral(schema.ConfigRelativePath, true)};");
+        builder.AppendLine();
+        builder.AppendLine("        /// <summary>");
+        builder.AppendLine("        ///     Gets the schema file path expected by the generated registration helper.");
+        builder.AppendLine("        /// </summary>");
+        builder.AppendLine(
+            $"        public const string SchemaRelativePath = {SymbolDisplay.FormatLiteral(schema.SchemaRelativePath, true)};");
+        builder.AppendLine("    }");
+        builder.AppendLine();
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine(
+            "    ///     Gets the logical config domain derived from the schema base name. The current runtime convention keeps this value aligned with the generated table name.");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    public const string ConfigDomain = Metadata.ConfigDomain;");
+        builder.AppendLine();
+        builder.AppendLine("    /// <summary>");
         builder.AppendLine("    ///     Gets the runtime registration name of the generated config table.");
         builder.AppendLine("    /// </summary>");
-        builder.AppendLine(
-            $"    public const string TableName = {SymbolDisplay.FormatLiteral(schema.TableRegistrationName, true)};");
+        builder.AppendLine("    public const string TableName = Metadata.TableName;");
         builder.AppendLine();
         builder.AppendLine("    /// <summary>");
         builder.AppendLine("    ///     Gets the config directory path expected by the generated registration helper.");
         builder.AppendLine("    /// </summary>");
-        builder.AppendLine(
-            $"    public const string ConfigRelativePath = {SymbolDisplay.FormatLiteral(schema.ConfigRelativePath, true)};");
+        builder.AppendLine("    public const string ConfigRelativePath = Metadata.ConfigRelativePath;");
         builder.AppendLine();
         builder.AppendLine("    /// <summary>");
         builder.AppendLine("    ///     Gets the schema file path expected by the generated registration helper.");
         builder.AppendLine("    /// </summary>");
-        builder.AppendLine(
-            $"    public const string SchemaRelativePath = {SymbolDisplay.FormatLiteral(schema.SchemaRelativePath, true)};");
+        builder.AppendLine("    public const string SchemaRelativePath = Metadata.SchemaRelativePath;");
         builder.AppendLine();
         builder.AppendLine("    /// <summary>");
         builder.AppendLine(
@@ -688,9 +724,9 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine();
         builder.AppendLine(
             $"        return loader.RegisterTable<{schema.KeyClrType}, {schema.ClassName}>(");
-        builder.AppendLine("            TableName,");
-        builder.AppendLine("            ConfigRelativePath,");
-        builder.AppendLine("            SchemaRelativePath,");
+        builder.AppendLine("            Metadata.TableName,");
+        builder.AppendLine("            Metadata.ConfigRelativePath,");
+        builder.AppendLine("            Metadata.SchemaRelativePath,");
         builder.AppendLine($"            static config => config.{schema.KeyPropertyName},");
         builder.AppendLine("            comparer);");
         builder.AppendLine("    }");
@@ -711,7 +747,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("        }");
         builder.AppendLine();
         builder.AppendLine(
-            $"        return new {schema.TableName}(registry.GetTable<{schema.KeyClrType}, {schema.ClassName}>(TableName));");
+            $"        return new {schema.TableName}(registry.GetTable<{schema.KeyClrType}, {schema.ClassName}>(Metadata.TableName));");
         builder.AppendLine("    }");
         builder.AppendLine();
         builder.AppendLine("    /// <summary>");
@@ -733,7 +769,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("        }");
         builder.AppendLine();
         builder.AppendLine(
-            $"        if (registry.TryGetTable<{schema.KeyClrType}, {schema.ClassName}>(TableName, out var innerTable) && innerTable is not null)");
+            $"        if (registry.TryGetTable<{schema.KeyClrType}, {schema.ClassName}>(Metadata.TableName, out var innerTable) && innerTable is not null)");
         builder.AppendLine("        {");
         builder.AppendLine($"            table = new {schema.TableName}(innerTable);");
         builder.AppendLine("            return true;");
