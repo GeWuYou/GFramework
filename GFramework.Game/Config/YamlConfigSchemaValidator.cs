@@ -296,6 +296,7 @@ internal static class YamlConfigSchemaValidator
             itemNode: null,
             referenceTableName: null,
             allowedValues: null,
+            constraints: null,
             schemaPath);
     }
 
@@ -363,6 +364,7 @@ internal static class YamlConfigSchemaValidator
             itemNode,
             referenceTableName: null,
             allowedValues: null,
+            constraints: null,
             schemaPath);
     }
 
@@ -392,6 +394,7 @@ internal static class YamlConfigSchemaValidator
             itemNode: null,
             referenceTableName,
             ParseEnumValues(tableName, schemaPath, propertyPath, element, nodeType, "enum"),
+            ParseScalarConstraints(tableName, schemaPath, propertyPath, element, nodeType),
             schemaPath);
     }
 
@@ -674,6 +677,11 @@ internal static class YamlConfigSchemaValidator
                 detail: $"Allowed values: {string.Join(", ", schemaNode.AllowedValues)}.");
         }
 
+        if (schemaNode.Constraints is not null)
+        {
+            ValidateScalarConstraints(tableName, yamlPath, displayPath, value, normalizedValue, schemaNode);
+        }
+
         if (schemaNode.ReferenceTableName != null)
         {
             references.Add(
@@ -728,6 +736,270 @@ internal static class YamlConfigSchemaValidator
         }
 
         return allowedValues;
+    }
+
+    /// <summary>
+    ///     解析标量字段支持的范围与长度约束。
+    ///     当前共享子集只支持 `integer/number` 上的 `minimum/maximum` 和 `string` 上的 `minLength/maxLength`。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="schemaPath">Schema 文件路径。</param>
+    /// <param name="propertyPath">字段路径。</param>
+    /// <param name="element">Schema 节点。</param>
+    /// <param name="nodeType">标量类型。</param>
+    /// <returns>解析后的约束模型；未声明时返回空。</returns>
+    private static YamlConfigScalarConstraints? ParseScalarConstraints(
+        string tableName,
+        string schemaPath,
+        string propertyPath,
+        JsonElement element,
+        YamlConfigSchemaPropertyType nodeType)
+    {
+        var minimum = TryParseNumericConstraint(tableName, schemaPath, propertyPath, element, nodeType, "minimum");
+        var maximum = TryParseNumericConstraint(tableName, schemaPath, propertyPath, element, nodeType, "maximum");
+        var minLength = TryParseLengthConstraint(tableName, schemaPath, propertyPath, element, nodeType, "minLength");
+        var maxLength = TryParseLengthConstraint(tableName, schemaPath, propertyPath, element, nodeType, "maxLength");
+
+        if (minimum.HasValue && maximum.HasValue && minimum.Value > maximum.Value)
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"Property '{propertyPath}' in schema file '{schemaPath}' declares 'minimum' greater than 'maximum'.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(propertyPath));
+        }
+
+        if (minLength.HasValue && maxLength.HasValue && minLength.Value > maxLength.Value)
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"Property '{propertyPath}' in schema file '{schemaPath}' declares 'minLength' greater than 'maxLength'.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(propertyPath));
+        }
+
+        if (!minimum.HasValue && !maximum.HasValue && !minLength.HasValue && !maxLength.HasValue)
+        {
+            return null;
+        }
+
+        return new YamlConfigScalarConstraints(minimum, maximum, minLength, maxLength);
+    }
+
+    /// <summary>
+    ///     读取数值区间约束。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="schemaPath">Schema 文件路径。</param>
+    /// <param name="propertyPath">字段路径。</param>
+    /// <param name="element">Schema 节点。</param>
+    /// <param name="nodeType">字段类型。</param>
+    /// <param name="keywordName">关键字名称。</param>
+    /// <returns>数值约束；未声明时返回空。</returns>
+    private static double? TryParseNumericConstraint(
+        string tableName,
+        string schemaPath,
+        string propertyPath,
+        JsonElement element,
+        YamlConfigSchemaPropertyType nodeType,
+        string keywordName)
+    {
+        if (!element.TryGetProperty(keywordName, out var constraintElement))
+        {
+            return null;
+        }
+
+        if (nodeType != YamlConfigSchemaPropertyType.Integer &&
+            nodeType != YamlConfigSchemaPropertyType.Number)
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"Property '{propertyPath}' in schema file '{schemaPath}' uses '{keywordName}', but only 'integer' and 'number' scalar types support numeric range constraints.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(propertyPath));
+        }
+
+        if (constraintElement.ValueKind != JsonValueKind.Number ||
+            !constraintElement.TryGetDouble(out var constraintValue) ||
+            double.IsNaN(constraintValue) ||
+            double.IsInfinity(constraintValue))
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"Property '{propertyPath}' in schema file '{schemaPath}' must declare '{keywordName}' as a finite number.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(propertyPath));
+        }
+
+        return constraintValue;
+    }
+
+    /// <summary>
+    ///     读取字符串长度约束。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="schemaPath">Schema 文件路径。</param>
+    /// <param name="propertyPath">字段路径。</param>
+    /// <param name="element">Schema 节点。</param>
+    /// <param name="nodeType">字段类型。</param>
+    /// <param name="keywordName">关键字名称。</param>
+    /// <returns>长度约束；未声明时返回空。</returns>
+    private static int? TryParseLengthConstraint(
+        string tableName,
+        string schemaPath,
+        string propertyPath,
+        JsonElement element,
+        YamlConfigSchemaPropertyType nodeType,
+        string keywordName)
+    {
+        if (!element.TryGetProperty(keywordName, out var constraintElement))
+        {
+            return null;
+        }
+
+        if (nodeType != YamlConfigSchemaPropertyType.String)
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"Property '{propertyPath}' in schema file '{schemaPath}' uses '{keywordName}', but only 'string' scalar types support length constraints.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(propertyPath));
+        }
+
+        if (constraintElement.ValueKind != JsonValueKind.Number ||
+            !constraintElement.TryGetInt32(out var constraintValue) ||
+            constraintValue < 0)
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"Property '{propertyPath}' in schema file '{schemaPath}' must declare '{keywordName}' as a non-negative integer.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(propertyPath));
+        }
+
+        return constraintValue;
+    }
+
+    /// <summary>
+    ///     校验标量值是否满足范围与长度约束。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="yamlPath">YAML 文件路径。</param>
+    /// <param name="displayPath">字段路径。</param>
+    /// <param name="rawValue">原始 YAML 标量值。</param>
+    /// <param name="normalizedValue">归一化后的比较值。</param>
+    /// <param name="schemaNode">标量 schema 节点。</param>
+    private static void ValidateScalarConstraints(
+        string tableName,
+        string yamlPath,
+        string displayPath,
+        string rawValue,
+        string normalizedValue,
+        YamlConfigSchemaNode schemaNode)
+    {
+        var constraints = schemaNode.Constraints;
+        if (constraints is null)
+        {
+            return;
+        }
+
+        switch (schemaNode.NodeType)
+        {
+            case YamlConfigSchemaPropertyType.Integer:
+            case YamlConfigSchemaPropertyType.Number:
+                if (!double.TryParse(
+                        normalizedValue,
+                        NumberStyles.Float | NumberStyles.AllowThousands,
+                        CultureInfo.InvariantCulture,
+                        out var numericValue))
+                {
+                    throw ConfigLoadExceptionFactory.Create(
+                        ConfigLoadFailureKind.UnexpectedFailure,
+                        tableName,
+                        $"Property '{displayPath}' in config file '{yamlPath}' could not be normalized into a comparable numeric value.",
+                        yamlPath: yamlPath,
+                        schemaPath: schemaNode.SchemaPathHint,
+                        displayPath: GetDiagnosticPath(displayPath),
+                        rawValue: rawValue);
+                }
+
+                if (constraints.Minimum.HasValue && numericValue < constraints.Minimum.Value)
+                {
+                    throw ConfigLoadExceptionFactory.Create(
+                        ConfigLoadFailureKind.ConstraintViolation,
+                        tableName,
+                        $"Property '{displayPath}' in config file '{yamlPath}' must be greater than or equal to {constraints.Minimum.Value.ToString(CultureInfo.InvariantCulture)}, but the current YAML scalar value is '{rawValue}'.",
+                        yamlPath: yamlPath,
+                        schemaPath: schemaNode.SchemaPathHint,
+                        displayPath: GetDiagnosticPath(displayPath),
+                        rawValue: rawValue,
+                        detail:
+                        $"Minimum allowed value: {constraints.Minimum.Value.ToString(CultureInfo.InvariantCulture)}.");
+                }
+
+                if (constraints.Maximum.HasValue && numericValue > constraints.Maximum.Value)
+                {
+                    throw ConfigLoadExceptionFactory.Create(
+                        ConfigLoadFailureKind.ConstraintViolation,
+                        tableName,
+                        $"Property '{displayPath}' in config file '{yamlPath}' must be less than or equal to {constraints.Maximum.Value.ToString(CultureInfo.InvariantCulture)}, but the current YAML scalar value is '{rawValue}'.",
+                        yamlPath: yamlPath,
+                        schemaPath: schemaNode.SchemaPathHint,
+                        displayPath: GetDiagnosticPath(displayPath),
+                        rawValue: rawValue,
+                        detail:
+                        $"Maximum allowed value: {constraints.Maximum.Value.ToString(CultureInfo.InvariantCulture)}.");
+                }
+
+                return;
+
+            case YamlConfigSchemaPropertyType.String:
+                var stringLength = rawValue.Length;
+
+                if (constraints.MinLength.HasValue && stringLength < constraints.MinLength.Value)
+                {
+                    throw ConfigLoadExceptionFactory.Create(
+                        ConfigLoadFailureKind.ConstraintViolation,
+                        tableName,
+                        $"Property '{displayPath}' in config file '{yamlPath}' must be at least {constraints.MinLength.Value} characters long, but the current YAML scalar value is '{rawValue}'.",
+                        yamlPath: yamlPath,
+                        schemaPath: schemaNode.SchemaPathHint,
+                        displayPath: GetDiagnosticPath(displayPath),
+                        rawValue: rawValue,
+                        detail: $"Minimum length: {constraints.MinLength.Value}.");
+                }
+
+                if (constraints.MaxLength.HasValue && stringLength > constraints.MaxLength.Value)
+                {
+                    throw ConfigLoadExceptionFactory.Create(
+                        ConfigLoadFailureKind.ConstraintViolation,
+                        tableName,
+                        $"Property '{displayPath}' in config file '{yamlPath}' must be at most {constraints.MaxLength.Value} characters long, but the current YAML scalar value is '{rawValue}'.",
+                        yamlPath: yamlPath,
+                        schemaPath: schemaNode.SchemaPathHint,
+                        displayPath: GetDiagnosticPath(displayPath),
+                        rawValue: rawValue,
+                        detail: $"Maximum length: {constraints.MaxLength.Value}.");
+                }
+
+                return;
+
+            default:
+                throw ConfigLoadExceptionFactory.Create(
+                    ConfigLoadFailureKind.UnexpectedFailure,
+                    tableName,
+                    $"Property '{displayPath}' in config file '{yamlPath}' resolved unsupported constraint host type '{schemaNode.NodeType}'.",
+                    yamlPath: yamlPath,
+                    schemaPath: schemaNode.SchemaPathHint,
+                    displayPath: GetDiagnosticPath(displayPath),
+                    rawValue: schemaNode.NodeType.ToString());
+        }
     }
 
     /// <summary>
@@ -905,16 +1177,29 @@ internal static class YamlConfigSchemaValidator
         return expectedType switch
         {
             YamlConfigSchemaPropertyType.String => value,
-            YamlConfigSchemaPropertyType.Integer => long.Parse(
-                value,
-                NumberStyles.Integer,
-                CultureInfo.InvariantCulture).ToString(CultureInfo.InvariantCulture),
-            YamlConfigSchemaPropertyType.Number => double.Parse(
-                value,
-                NumberStyles.Float | NumberStyles.AllowThousands,
-                CultureInfo.InvariantCulture).ToString(CultureInfo.InvariantCulture),
-            YamlConfigSchemaPropertyType.Boolean => bool.Parse(value).ToString().ToLowerInvariant(),
-            _ => value
+            YamlConfigSchemaPropertyType.Integer when long.TryParse(
+                    value,
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out var integerValue) =>
+                integerValue.ToString(CultureInfo.InvariantCulture),
+            YamlConfigSchemaPropertyType.Number when double.TryParse(
+                    value,
+                    NumberStyles.Float | NumberStyles.AllowThousands,
+                    CultureInfo.InvariantCulture,
+                    out var numberValue) =>
+                numberValue.ToString(CultureInfo.InvariantCulture),
+            YamlConfigSchemaPropertyType.Boolean when bool.TryParse(value, out var booleanValue) =>
+                booleanValue.ToString().ToLowerInvariant(),
+            YamlConfigSchemaPropertyType.Integer =>
+                throw new InvalidOperationException($"Value '{value}' cannot be normalized as integer."),
+            YamlConfigSchemaPropertyType.Number =>
+                throw new InvalidOperationException($"Value '{value}' cannot be normalized as number."),
+            YamlConfigSchemaPropertyType.Boolean =>
+                throw new InvalidOperationException($"Value '{value}' cannot be normalized as boolean."),
+            _ =>
+                throw new InvalidOperationException(
+                    $"Schema node type '{expectedType}' cannot be normalized as a scalar value.")
         };
     }
 
@@ -1037,6 +1322,7 @@ internal sealed class YamlConfigSchemaNode
     /// <param name="itemNode">数组元素节点。</param>
     /// <param name="referenceTableName">目标引用表名称。</param>
     /// <param name="allowedValues">标量允许值集合。</param>
+    /// <param name="constraints">标量范围与长度约束。</param>
     /// <param name="schemaPathHint">用于错误信息的 schema 文件路径提示。</param>
     public YamlConfigSchemaNode(
         YamlConfigSchemaPropertyType nodeType,
@@ -1045,6 +1331,7 @@ internal sealed class YamlConfigSchemaNode
         YamlConfigSchemaNode? itemNode,
         string? referenceTableName,
         IReadOnlyCollection<string>? allowedValues,
+        YamlConfigScalarConstraints? constraints,
         string schemaPathHint)
     {
         NodeType = nodeType;
@@ -1053,6 +1340,7 @@ internal sealed class YamlConfigSchemaNode
         ItemNode = itemNode;
         ReferenceTableName = referenceTableName;
         AllowedValues = allowedValues;
+        Constraints = constraints;
         SchemaPathHint = schemaPathHint;
     }
 
@@ -1087,6 +1375,11 @@ internal sealed class YamlConfigSchemaNode
     public IReadOnlyCollection<string>? AllowedValues { get; }
 
     /// <summary>
+    ///     获取标量范围与长度约束；未声明时返回空。
+    /// </summary>
+    public YamlConfigScalarConstraints? Constraints { get; }
+
+    /// <summary>
     ///     获取用于诊断显示的 schema 路径提示。
     ///     当前节点本身不记录独立路径，因此对象校验会回退到所属根 schema 路径。
     /// </summary>
@@ -1107,8 +1400,55 @@ internal sealed class YamlConfigSchemaNode
             ItemNode,
             referenceTableName,
             AllowedValues,
+            Constraints,
             SchemaPathHint);
     }
+}
+
+/// <summary>
+///     表示一个标量节点上声明的数值范围或字符串长度约束。
+///     该模型让运行时、热重载和跨文件诊断都能复用同一份最小约束信息。
+/// </summary>
+internal sealed class YamlConfigScalarConstraints
+{
+    /// <summary>
+    ///     初始化标量约束模型。
+    /// </summary>
+    /// <param name="minimum">最小值约束。</param>
+    /// <param name="maximum">最大值约束。</param>
+    /// <param name="minLength">最小长度约束。</param>
+    /// <param name="maxLength">最大长度约束。</param>
+    public YamlConfigScalarConstraints(
+        double? minimum,
+        double? maximum,
+        int? minLength,
+        int? maxLength)
+    {
+        Minimum = minimum;
+        Maximum = maximum;
+        MinLength = minLength;
+        MaxLength = maxLength;
+    }
+
+    /// <summary>
+    ///     获取最小值约束。
+    /// </summary>
+    public double? Minimum { get; }
+
+    /// <summary>
+    ///     获取最大值约束。
+    /// </summary>
+    public double? Maximum { get; }
+
+    /// <summary>
+    ///     获取最小长度约束。
+    /// </summary>
+    public int? MinLength { get; }
+
+    /// <summary>
+    ///     获取最大长度约束。
+    /// </summary>
+    public int? MaxLength { get; }
 }
 
 /// <summary>

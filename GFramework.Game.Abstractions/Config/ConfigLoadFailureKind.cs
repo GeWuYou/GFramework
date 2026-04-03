@@ -78,6 +78,11 @@ public enum ConfigLoadFailureKind
     EnumValueNotAllowed,
 
     /// <summary>
+    ///     YAML 标量值违反了 schema 声明的最小值、最大值或长度约束。
+    /// </summary>
+    ConstraintViolation,
+
+    /// <summary>
     ///     YAML 可被读取，但无法成功反序列化到目标 CLR 类型。
     /// </summary>
     DeserializationFailed,

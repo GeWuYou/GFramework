@@ -190,6 +190,104 @@ reward:
     assert.match(diagnostics[0].message, /coin, gem/u);
 });
 
+test("validateParsedConfig should report numeric range and string length mismatches", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 8
+            },
+            "hp": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 4
+              }
+            }
+          }
+        }
+    `);
+    const yaml = parseTopLevelYaml(`
+name: Sl
+hp: 12
+tags:
+  - safe
+  - shield
+`);
+
+    const diagnostics = validateParsedConfig(schema, yaml);
+
+    assert.equal(diagnostics.length, 3);
+    assert.match(diagnostics[0].message, /at least 3 characters|至少为 3 个字符/u);
+    assert.match(diagnostics[1].message, /less than or equal to 10|小于或等于 10/u);
+    assert.match(diagnostics[2].message, /tags\[1\]|shield/u);
+});
+
+test("parseSchemaContent should capture scalar range and length metadata", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 12
+            },
+            "hp": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 99
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 6
+              }
+            }
+          }
+        }
+    `);
+
+    assert.equal(schema.properties.name.minLength, 3);
+    assert.equal(schema.properties.name.maxLength, 12);
+    assert.equal(schema.properties.hp.minimum, 1);
+    assert.equal(schema.properties.hp.maximum, 99);
+    assert.equal(schema.properties.tags.items.minLength, 2);
+    assert.equal(schema.properties.tags.items.maxLength, 6);
+});
+
+test("parseSchemaContent should ignore mismatched constraint metadata on unsupported scalar types", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "minimum": 1,
+              "minLength": 3
+            }
+          }
+        }
+    `);
+    const yaml = parseTopLevelYaml(`
+enabled: true
+`);
+
+    assert.equal(schema.properties.enabled.minimum, undefined);
+    assert.equal(schema.properties.enabled.minLength, undefined);
+    assert.deepEqual(validateParsedConfig(schema, yaml), []);
+});
+
 test("validateParsedConfig should localize diagnostics when Chinese UI is requested", () => {
     const schema = parseSchemaContent(`
         {

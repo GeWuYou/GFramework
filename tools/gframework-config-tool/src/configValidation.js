@@ -360,6 +360,26 @@ function normalizeSchemaEnumValues(value) {
 }
 
 /**
+ * Normalize one finite schema number for tooling metadata and comparisons.
+ *
+ * @param {unknown} value Raw schema value.
+ * @returns {number | undefined} Normalized finite number.
+ */
+function normalizeSchemaNumber(value) {
+    return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+/**
+ * Normalize one non-negative integer schema value for length constraints.
+ *
+ * @param {unknown} value Raw schema value.
+ * @returns {number | undefined} Normalized non-negative integer.
+ */
+function normalizeSchemaNonNegativeInteger(value) {
+    return Number.isInteger(value) && value >= 0 ? value : undefined;
+}
+
+/**
  * Convert a schema default value into a compact string that can be shown in UI
  * metadata hints.
  *
@@ -437,6 +457,10 @@ function parseSchemaNode(rawNode, displayPath) {
         title: typeof value.title === "string" ? value.title : undefined,
         description: typeof value.description === "string" ? value.description : undefined,
         defaultValue: formatSchemaDefaultValue(value.default),
+        minimum: normalizeSchemaNumber(value.minimum),
+        maximum: normalizeSchemaNumber(value.maximum),
+        minLength: normalizeSchemaNonNegativeInteger(value.minLength),
+        maxLength: normalizeSchemaNonNegativeInteger(value.maxLength),
         refTable: typeof value["x-gframework-ref-table"] === "string"
             ? value["x-gframework-ref-table"]
             : undefined
@@ -481,6 +505,18 @@ function parseSchemaNode(rawNode, displayPath) {
         title: metadata.title,
         description: metadata.description,
         defaultValue: metadata.defaultValue,
+        minimum: type === "integer" || type === "number"
+            ? metadata.minimum
+            : undefined,
+        maximum: type === "integer" || type === "number"
+            ? metadata.maximum
+            : undefined,
+        minLength: type === "string"
+            ? metadata.minLength
+            : undefined,
+        maxLength: type === "string"
+            ? metadata.maxLength
+            : undefined,
         enumValues: normalizeSchemaEnumValues(value.enum),
         refTable: metadata.refTable
     };
@@ -554,6 +590,58 @@ function validateNode(schemaNode, yamlNode, displayPath, diagnostics, localizer)
             message: localizeValidationMessage(ValidationMessageKeys.enumMismatch, localizer, {
                 displayPath,
                 values: schemaNode.enumValues.join(", ")
+            })
+        });
+    }
+
+    const scalarValue = unquoteScalar(yamlNode.value);
+    const supportsNumericConstraints = schemaNode.type === "integer" || schemaNode.type === "number";
+    const supportsLengthConstraints = schemaNode.type === "string";
+
+    if (supportsNumericConstraints &&
+        typeof schemaNode.minimum === "number" &&
+        Number(scalarValue) < schemaNode.minimum) {
+        diagnostics.push({
+            severity: "error",
+            message: localizeValidationMessage(ValidationMessageKeys.minimumViolation, localizer, {
+                displayPath,
+                value: String(schemaNode.minimum)
+            })
+        });
+    }
+
+    if (supportsNumericConstraints &&
+        typeof schemaNode.maximum === "number" &&
+        Number(scalarValue) > schemaNode.maximum) {
+        diagnostics.push({
+            severity: "error",
+            message: localizeValidationMessage(ValidationMessageKeys.maximumViolation, localizer, {
+                displayPath,
+                value: String(schemaNode.maximum)
+            })
+        });
+    }
+
+    if (supportsLengthConstraints &&
+        typeof schemaNode.minLength === "number" &&
+        scalarValue.length < schemaNode.minLength) {
+        diagnostics.push({
+            severity: "error",
+            message: localizeValidationMessage(ValidationMessageKeys.minLengthViolation, localizer, {
+                displayPath,
+                value: String(schemaNode.minLength)
+            })
+        });
+    }
+
+    if (supportsLengthConstraints &&
+        typeof schemaNode.maxLength === "number" &&
+        scalarValue.length > schemaNode.maxLength) {
+        diagnostics.push({
+            severity: "error",
+            message: localizeValidationMessage(ValidationMessageKeys.maxLengthViolation, localizer, {
+                displayPath,
+                value: String(schemaNode.maxLength)
             })
         });
     }
@@ -641,6 +729,14 @@ function localizeValidationMessage(key, localizer, params) {
                 return `属性“${params.displayPath}”应为“${params.schemaType}”，但当前标量值不兼容。`;
             case ValidationMessageKeys.enumMismatch:
                 return `属性“${params.displayPath}”必须是以下值之一：${params.values}。`;
+            case ValidationMessageKeys.maximumViolation:
+                return `属性“${params.displayPath}”必须小于或等于 ${params.value}。`;
+            case ValidationMessageKeys.maxLengthViolation:
+                return `属性“${params.displayPath}”长度必须不超过 ${params.value} 个字符。`;
+            case ValidationMessageKeys.minimumViolation:
+                return `属性“${params.displayPath}”必须大于或等于 ${params.value}。`;
+            case ValidationMessageKeys.minLengthViolation:
+                return `属性“${params.displayPath}”长度必须至少为 ${params.value} 个字符。`;
             case ValidationMessageKeys.expectedObject:
                 return params.subject;
             case ValidationMessageKeys.missingRequired:
@@ -661,6 +757,14 @@ function localizeValidationMessage(key, localizer, params) {
             return `Property '${params.displayPath}' is expected to be '${params.schemaType}', but the current scalar value is incompatible.`;
         case ValidationMessageKeys.enumMismatch:
             return `Property '${params.displayPath}' must be one of: ${params.values}.`;
+        case ValidationMessageKeys.maximumViolation:
+            return `Property '${params.displayPath}' must be less than or equal to ${params.value}.`;
+        case ValidationMessageKeys.maxLengthViolation:
+            return `Property '${params.displayPath}' must be at most ${params.value} characters long.`;
+        case ValidationMessageKeys.minimumViolation:
+            return `Property '${params.displayPath}' must be greater than or equal to ${params.value}.`;
+        case ValidationMessageKeys.minLengthViolation:
+            return `Property '${params.displayPath}' must be at least ${params.value} characters long.`;
         case ValidationMessageKeys.expectedObject:
             return params.subject;
         case ValidationMessageKeys.missingRequired:

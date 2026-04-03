@@ -271,6 +271,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                         isRequired ? "int" : "int?",
                         TryBuildScalarInitializer(property.Value, "integer"),
                         TryBuildEnumDocumentation(property.Value, "integer"),
+                        TryBuildConstraintDocumentation(property.Value, "integer"),
                         refTableName,
                         null,
                         null)));
@@ -289,6 +290,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                         isRequired ? "double" : "double?",
                         TryBuildScalarInitializer(property.Value, "number"),
                         TryBuildEnumDocumentation(property.Value, "number"),
+                        TryBuildConstraintDocumentation(property.Value, "number"),
                         refTableName,
                         null,
                         null)));
@@ -307,6 +309,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                         isRequired ? "bool" : "bool?",
                         TryBuildScalarInitializer(property.Value, "boolean"),
                         TryBuildEnumDocumentation(property.Value, "boolean"),
+                        TryBuildConstraintDocumentation(property.Value, "boolean"),
                         refTableName,
                         null,
                         null)));
@@ -326,6 +329,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                         TryBuildScalarInitializer(property.Value, "string") ??
                         (isRequired ? " = string.Empty;" : null),
                         TryBuildEnumDocumentation(property.Value, "string"),
+                        TryBuildConstraintDocumentation(property.Value, "string"),
                         refTableName,
                         null,
                         null)));
@@ -365,6 +369,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                         "object",
                         isRequired ? objectSpec.ClassName : $"{objectSpec.ClassName}?",
                         isRequired ? " = new();" : null,
+                        null,
                         null,
                         null,
                         objectSpec,
@@ -450,6 +455,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                         TryBuildArrayInitializer(property.Value, itemType, itemClrType) ??
                         $" = global::System.Array.Empty<{itemClrType}>();",
                         TryBuildEnumDocumentation(itemsElement, itemType),
+                        null,
                         refTableName,
                         null,
                         new SchemaTypeSpec(
@@ -458,6 +464,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                             itemClrType,
                             null,
                             TryBuildEnumDocumentation(itemsElement, itemType),
+                            TryBuildConstraintDocumentation(itemsElement, itemType),
                             refTableName,
                             null,
                             null))));
@@ -500,10 +507,12 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                         null,
                         null,
                         null,
+                        null,
                         new SchemaTypeSpec(
                             SchemaNodeKind.Object,
                             "object",
                             objectSpec.ClassName,
+                            null,
                             null,
                             null,
                             null,
@@ -872,10 +881,24 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                 $"{indent}///     Allowed values: {EscapeXmlDocumentation(property.TypeSpec.EnumDocumentation!)}.");
         }
 
+        if (!string.IsNullOrWhiteSpace(property.TypeSpec.ConstraintDocumentation))
+        {
+            builder.AppendLine(
+                $"{indent}///     Constraints: {EscapeXmlDocumentation(property.TypeSpec.ConstraintDocumentation!)}.");
+        }
+
         if (!string.IsNullOrWhiteSpace(property.TypeSpec.RefTableName))
         {
             builder.AppendLine(
                 $"{indent}///     References config table: '{EscapeXmlDocumentation(property.TypeSpec.RefTableName!)}'.");
+        }
+
+        var itemConstraintDocumentation = property.TypeSpec.ItemTypeSpec?.ConstraintDocumentation;
+        if (property.TypeSpec.Kind == SchemaNodeKind.Array &&
+            !string.IsNullOrWhiteSpace(itemConstraintDocumentation))
+        {
+            builder.AppendLine(
+                $"{indent}///     Item constraints: {EscapeXmlDocumentation(itemConstraintDocumentation!)}.");
         }
 
         if (!string.IsNullOrWhiteSpace(property.TypeSpec.Initializer))
@@ -1085,6 +1108,82 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     }
 
     /// <summary>
+    ///     将 shared schema 子集中的范围与长度约束整理成 XML 文档可读字符串。
+    /// </summary>
+    /// <param name="element">Schema 节点。</param>
+    /// <param name="schemaType">标量类型。</param>
+    /// <returns>格式化后的约束说明。</returns>
+    private static string? TryBuildConstraintDocumentation(JsonElement element, string schemaType)
+    {
+        var parts = new List<string>();
+
+        if ((schemaType == "integer" || schemaType == "number") &&
+            TryGetFiniteNumber(element, "minimum", out var minimum))
+        {
+            parts.Add($"minimum = {minimum.ToString(CultureInfo.InvariantCulture)}");
+        }
+
+        if ((schemaType == "integer" || schemaType == "number") &&
+            TryGetFiniteNumber(element, "maximum", out var maximum))
+        {
+            parts.Add($"maximum = {maximum.ToString(CultureInfo.InvariantCulture)}");
+        }
+
+        if (schemaType == "string" &&
+            TryGetNonNegativeInt32(element, "minLength", out var minLength))
+        {
+            parts.Add($"minLength = {minLength.ToString(CultureInfo.InvariantCulture)}");
+        }
+
+        if (schemaType == "string" &&
+            TryGetNonNegativeInt32(element, "maxLength", out var maxLength))
+        {
+            parts.Add($"maxLength = {maxLength.ToString(CultureInfo.InvariantCulture)}");
+        }
+
+        return parts.Count > 0 ? string.Join(", ", parts) : null;
+    }
+
+    /// <summary>
+    ///     读取有限数值元数据。
+    /// </summary>
+    /// <param name="element">Schema 节点。</param>
+    /// <param name="propertyName">元数据名称。</param>
+    /// <param name="value">读取到的数值。</param>
+    /// <returns>是否读取成功。</returns>
+    private static bool TryGetFiniteNumber(
+        JsonElement element,
+        string propertyName,
+        out double value)
+    {
+        value = default;
+        return element.TryGetProperty(propertyName, out var metadataElement) &&
+               metadataElement.ValueKind == JsonValueKind.Number &&
+               metadataElement.TryGetDouble(out value) &&
+               !double.IsNaN(value) &&
+               !double.IsInfinity(value);
+    }
+
+    /// <summary>
+    ///     读取非负整数元数据。
+    /// </summary>
+    /// <param name="element">Schema 节点。</param>
+    /// <param name="propertyName">元数据名称。</param>
+    /// <param name="value">读取到的整数值。</param>
+    /// <returns>是否读取成功。</returns>
+    private static bool TryGetNonNegativeInt32(
+        JsonElement element,
+        string propertyName,
+        out int value)
+    {
+        value = default;
+        return element.TryGetProperty(propertyName, out var metadataElement) &&
+               metadataElement.ValueKind == JsonValueKind.Number &&
+               metadataElement.TryGetInt32(out value) &&
+               value >= 0;
+    }
+
+    /// <summary>
     ///     组合逻辑字段路径。
     /// </summary>
     /// <param name="parentPath">父路径。</param>
@@ -1221,6 +1320,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     /// <param name="ClrType">CLR 类型名。</param>
     /// <param name="Initializer">属性初始化器。</param>
     /// <param name="EnumDocumentation">枚举文档说明。</param>
+    /// <param name="ConstraintDocumentation">范围或长度约束说明。</param>
     /// <param name="RefTableName">目标引用表名称。</param>
     /// <param name="NestedObject">对象节点对应的嵌套类型。</param>
     /// <param name="ItemTypeSpec">数组元素类型模型。</param>
@@ -1230,6 +1330,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         string ClrType,
         string? Initializer,
         string? EnumDocumentation,
+        string? ConstraintDocumentation,
         string? RefTableName,
         SchemaObjectSpec? NestedObject,
         SchemaTypeSpec? ItemTypeSpec);

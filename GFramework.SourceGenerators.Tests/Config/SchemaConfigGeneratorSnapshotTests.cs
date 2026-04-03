@@ -79,11 +79,15 @@ public class SchemaConfigGeneratorSnapshotTests
                                     "type": "string",
                                     "title": "Monster Name",
                                     "description": "Localized monster display name.",
+                                    "minLength": 3,
+                                    "maxLength": 16,
                                     "default": "Slime",
                                     "enum": ["Slime", "Goblin"]
                                   },
                                   "hp": {
                                     "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 999,
                                     "default": 10
                                   },
                                   "dropItems": {
@@ -91,6 +95,8 @@ public class SchemaConfigGeneratorSnapshotTests
                                     "type": "array",
                                     "items": {
                                       "type": "string",
+                                      "minLength": 3,
+                                      "maxLength": 12,
                                       "enum": ["potion", "slime_gel"]
                                     },
                                     "default": ["potion"],
@@ -103,6 +109,7 @@ public class SchemaConfigGeneratorSnapshotTests
                                     "properties": {
                                       "gold": {
                                         "type": "integer",
+                                        "minimum": 0,
                                         "default": 10
                                       },
                                       "currency": {
@@ -123,7 +130,9 @@ public class SchemaConfigGeneratorSnapshotTests
                                         },
                                         "monsterId": {
                                           "type": "string",
-                                          "description": "Monster reference id."
+                                          "description": "Monster reference id.",
+                                          "minLength": 2,
+                                          "maxLength": 32
                                         }
                                       }
                                     }

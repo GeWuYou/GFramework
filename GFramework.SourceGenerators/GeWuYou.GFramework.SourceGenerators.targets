@@ -12,9 +12,17 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Analyzer Include="$(MSBuildThisFileDirectory)../analyzers/dotnet/cs/GFramework.SourceGenerators.dll"/>
-        <Analyzer Include="$(MSBuildThisFileDirectory)../analyzers/dotnet/cs/GFramework.SourceGenerators.Abstractions.dll"/>
-        <Analyzer Include="$(MSBuildThisFileDirectory)../analyzers/dotnet/cs/GFramework.SourceGenerators.Common.dll"/>
+        <!--
+        仅在 NuGet 打包布局存在时自动注入 analyzer。
+        仓库内项目引用场景会通过 ProjectReference(OutputItemType=Analyzer) 提供生成器，
+        因此这里需要避免对不存在的打包路径做无效引用。
+        -->
+        <Analyzer Include="$(MSBuildThisFileDirectory)../analyzers/dotnet/cs/GFramework.SourceGenerators.dll"
+                  Condition="Exists('$(MSBuildThisFileDirectory)../analyzers/dotnet/cs/GFramework.SourceGenerators.dll')"/>
+        <Analyzer Include="$(MSBuildThisFileDirectory)../analyzers/dotnet/cs/GFramework.SourceGenerators.Abstractions.dll"
+                  Condition="Exists('$(MSBuildThisFileDirectory)../analyzers/dotnet/cs/GFramework.SourceGenerators.Abstractions.dll')"/>
+        <Analyzer Include="$(MSBuildThisFileDirectory)../analyzers/dotnet/cs/GFramework.SourceGenerators.Common.dll"
+                  Condition="Exists('$(MSBuildThisFileDirectory)../analyzers/dotnet/cs/GFramework.SourceGenerators.Common.dll')"/>
     </ItemGroup>
 
     <ItemGroup Condition="Exists('$(MSBuildProjectDirectory)/$(GFrameworkConfigSchemaDirectory)')">

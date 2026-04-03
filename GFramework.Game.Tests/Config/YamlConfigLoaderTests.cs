@@ -302,6 +302,104 @@ public class YamlConfigLoaderTests
     }
 
     /// <summary>
+    ///     验证数值最小值与最大值约束会在运行时被统一拒绝。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Throw_When_Number_Violates_Minimum_Or_Maximum()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            name: Slime
+            hp: 101
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "name", "hp"],
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "hp": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100
+                }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterConfigStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Diagnostic.FailureKind, Is.EqualTo(ConfigLoadFailureKind.ConstraintViolation));
+            Assert.That(exception.Diagnostic.DisplayPath, Is.EqualTo("hp"));
+            Assert.That(exception.Diagnostic.RawValue, Is.EqualTo("101"));
+            Assert.That(exception.Message, Does.Contain("100"));
+            Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
+    ///     验证字符串最小长度与最大长度约束会在运行时被统一拒绝。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Throw_When_String_Violates_MinLength_Or_MaxLength()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            name: Sl
+            hp: 10
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "name", "hp"],
+              "properties": {
+                "id": { "type": "integer" },
+                "name": {
+                  "type": "string",
+                  "minLength": 3,
+                  "maxLength": 12
+                },
+                "hp": { "type": "integer" }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterConfigStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Diagnostic.FailureKind, Is.EqualTo(ConfigLoadFailureKind.ConstraintViolation));
+            Assert.That(exception.Diagnostic.DisplayPath, Is.EqualTo("name"));
+            Assert.That(exception.Diagnostic.RawValue, Is.EqualTo("Sl"));
+            Assert.That(exception.Message, Does.Contain("at least 3 characters"));
+            Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
     ///     验证启用 schema 校验后，未知字段不会再被静默忽略。
     /// </summary>
     [Test]

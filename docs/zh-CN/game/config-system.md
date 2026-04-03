@@ -12,6 +12,7 @@
 - JSON Schema 作为结构描述
 - 一对象一文件的目录组织
 - 运行时只读查询
+- Runtime / Generator / Tooling 共享支持 `minimum`、`maximum`、`minLength`、`maxLength`
 - Source Generator 生成配置类型、表包装和注册/访问辅助
 - VS Code 插件提供配置浏览、raw 编辑、schema 打开、递归轻量校验和嵌套对象表单入口
 
@@ -119,6 +120,8 @@ var slime = monsterTable.Get(1);
 - 数组元素类型不匹配
 - 嵌套对象字段类型不匹配
 - 对象数组元素结构不匹配
+- 数值字段违反 `minimum` / `maximum`
+- 字符串字段违反 `minLength` / `maxLength`
 - 标量 `enum` 不匹配
 - 标量数组元素 `enum` 不匹配
 - 通过 `x-gframework-ref-table` 声明的跨表引用缺失目标行
@@ -151,6 +154,8 @@ var slime = monsterTable.Get(1);
 - `description`：供表单提示、生成代码 XML 文档和接入说明复用
 - `default`：供生成类型属性初始值和工具提示复用
 - `enum`：供运行时校验、VS Code 校验和表单枚举选择复用
+- `minimum` / `maximum`：供运行时校验、VS Code 校验和生成代码 XML 文档复用
+- `minLength` / `maxLength`：供运行时校验、VS Code 校验和生成代码 XML 文档复用
 
 这样可以避免错误配置被默认值或 `IgnoreUnmatchedProperties` 静默吞掉。
 

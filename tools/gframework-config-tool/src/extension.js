@@ -1574,7 +1574,7 @@ function getScalarArrayValue(yamlNode) {
 /**
  * Render human-facing metadata hints for one schema field.
  *
- * @param {{description?: string, defaultValue?: string, enumValues?: string[], items?: {enumValues?: string[]}, refTable?: string}} propertySchema Property schema metadata.
+ * @param {{description?: string, defaultValue?: string, minimum?: number, maximum?: number, minLength?: number, maxLength?: number, enumValues?: string[], items?: {enumValues?: string[], minimum?: number, maximum?: number, minLength?: number, maxLength?: number}, refTable?: string}} propertySchema Property schema metadata.
  * @param {boolean} isArrayField Whether the field is an array.
  * @returns {string} HTML fragment.
  */
@@ -1596,6 +1596,38 @@ function renderFieldHint(propertySchema, isArrayField) {
         : propertySchema.enumValues;
     if (Array.isArray(enumValues) && enumValues.length > 0) {
         hints.push(escapeHtml(localizer.t("webview.hint.allowed", {values: enumValues.join(", ")})));
+    }
+
+    if (!isArrayField && typeof propertySchema.minimum === "number") {
+        hints.push(escapeHtml(localizer.t("webview.hint.minimum", {value: propertySchema.minimum})));
+    }
+
+    if (!isArrayField && typeof propertySchema.maximum === "number") {
+        hints.push(escapeHtml(localizer.t("webview.hint.maximum", {value: propertySchema.maximum})));
+    }
+
+    if (!isArrayField && typeof propertySchema.minLength === "number") {
+        hints.push(escapeHtml(localizer.t("webview.hint.minLength", {value: propertySchema.minLength})));
+    }
+
+    if (!isArrayField && typeof propertySchema.maxLength === "number") {
+        hints.push(escapeHtml(localizer.t("webview.hint.maxLength", {value: propertySchema.maxLength})));
+    }
+
+    if (isArrayField && propertySchema.items && typeof propertySchema.items.minimum === "number") {
+        hints.push(escapeHtml(localizer.t("webview.hint.itemMinimum", {value: propertySchema.items.minimum})));
+    }
+
+    if (isArrayField && propertySchema.items && typeof propertySchema.items.maximum === "number") {
+        hints.push(escapeHtml(localizer.t("webview.hint.itemMaximum", {value: propertySchema.items.maximum})));
+    }
+
+    if (isArrayField && propertySchema.items && typeof propertySchema.items.minLength === "number") {
+        hints.push(escapeHtml(localizer.t("webview.hint.itemMinLength", {value: propertySchema.items.minLength})));
+    }
+
+    if (isArrayField && propertySchema.items && typeof propertySchema.items.maxLength === "number") {
+        hints.push(escapeHtml(localizer.t("webview.hint.itemMaxLength", {value: propertySchema.items.maxLength})));
     }
 
     if (propertySchema.refTable) {

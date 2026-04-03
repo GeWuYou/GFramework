@@ -24,6 +24,7 @@ public sealed partial class MonsterConfig
     ///     Schema property path: 'name'.
     ///     Display title: 'Monster Name'.
     ///     Allowed values: Slime, Goblin.
+    ///     Constraints: minLength = 3, maxLength = 16.
     ///     Generated default initializer: = "Slime";
     /// </remarks>
     public string Name { get; set; } = "Slime";
@@ -33,6 +34,7 @@ public sealed partial class MonsterConfig
     /// </summary>
     /// <remarks>
     ///     Schema property path: 'hp'.
+    ///     Constraints: minimum = 1, maximum = 999.
     ///     Generated default initializer: = 10;
     /// </remarks>
     public int? Hp { get; set; } = 10;
@@ -44,6 +46,7 @@ public sealed partial class MonsterConfig
     ///     Schema property path: 'dropItems'.
     ///     Allowed values: potion, slime_gel.
     ///     References config table: 'item'.
+    ///     Item constraints: minLength = 3, maxLength = 12.
     ///     Generated default initializer: = new string[] { "potion" };
     /// </remarks>
     public global::System.Collections.Generic.IReadOnlyList<string> DropItems { get; set; } = new string[] { "potion" };
@@ -77,6 +80,7 @@ public sealed partial class MonsterConfig
         /// </summary>
         /// <remarks>
         ///     Schema property path: 'reward.gold'.
+        ///     Constraints: minimum = 0.
         ///     Generated default initializer: = 10;
         /// </remarks>
         public int Gold { get; set; } = 10;
@@ -112,6 +116,7 @@ public sealed partial class MonsterConfig
         /// </summary>
         /// <remarks>
         ///     Schema property path: 'phases[].monsterId'.
+        ///     Constraints: minLength = 2, maxLength = 32.
         ///     Generated default initializer: = string.Empty;
         /// </remarks>
         public string MonsterId { get; set; } = string.Empty;

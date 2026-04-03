@@ -19,6 +19,21 @@
     <ItemGroup>
         <ProjectReference Include="..\GFramework.Game\GFramework.Game.csproj"/>
         <ProjectReference Include="..\GFramework.Core\GFramework.Core.csproj"/>
+        <ProjectReference Include="..\GFramework.SourceGenerators.Abstractions\GFramework.SourceGenerators.Abstractions.csproj"
+                          OutputItemType="Analyzer"
+                          ReferenceOutputAssembly="false"/>
+        <ProjectReference Include="..\GFramework.SourceGenerators.Common\GFramework.SourceGenerators.Common.csproj"
+                          OutputItemType="Analyzer"
+                          ReferenceOutputAssembly="false"/>
+        <ProjectReference Include="..\GFramework.SourceGenerators\GFramework.SourceGenerators.csproj"
+                          OutputItemType="Analyzer"
+                          ReferenceOutputAssembly="false"/>
     </ItemGroup>
+
+    <!--
+    通过仓库内的 targets 复用消费者默认约定，确保测试项目与真实消费项目一样
+    自动拾取 schemas/**/*.schema.json 作为 Source Generator 的 AdditionalFiles。
+    -->
+    <Import Project="..\GFramework.SourceGenerators\GeWuYou.GFramework.SourceGenerators.targets"/>
 
 </Project>

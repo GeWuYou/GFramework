@@ -1,0 +1,24 @@
+{
+  "title": "Monster Config",
+  "description": "Defines one monster entry for the generated consumer integration test.",
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "hp"
+  ],
+  "properties": {
+    "id": {
+      "type": "integer",
+      "description": "Monster identifier."
+    },
+    "name": {
+      "type": "string",
+      "description": "Monster display name."
+    },
+    "hp": {
+      "type": "integer",
+      "description": "Monster base health."
+    }
+  }
+}
