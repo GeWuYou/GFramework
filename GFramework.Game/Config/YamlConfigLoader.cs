@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using GFramework.Core.Abstractions.Events;
 using GFramework.Game.Abstractions.Config;
 using YamlDotNet.Serialization;
@@ -299,6 +300,20 @@ public sealed class YamlConfigLoader : IConfigLoader
             Func<TValue, TKey> keySelector,
             IEqualityComparer<TKey>? comparer)
         {
+            Debug.Assert(!string.IsNullOrWhiteSpace(name), "Table registrations should always have a non-empty name.");
+            Debug.Assert(!string.IsNullOrWhiteSpace(relativePath),
+                "Table registrations should always have a non-empty relative path.");
+
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                throw new ArgumentException(TableNameCannotBeNullOrWhiteSpaceMessage, nameof(name));
+            }
+
+            if (string.IsNullOrWhiteSpace(relativePath))
+            {
+                throw new ArgumentException(RelativePathCannotBeNullOrWhiteSpaceMessage, nameof(relativePath));
+            }
+
             Name = name;
             RelativePath = relativePath;
             SchemaRelativePath = schemaRelativePath;
@@ -365,10 +380,6 @@ public sealed class YamlConfigLoader : IConfigLoader
                 {
                     yaml = await File.ReadAllTextAsync(file, cancellationToken);
                 }
-                catch (ConfigLoadException)
-                {
-                    throw;
-                }
                 catch (Exception exception)
                 {
                     throw ConfigLoadExceptionFactory.Create(
@@ -399,10 +410,6 @@ public sealed class YamlConfigLoader : IConfigLoader
 
                     values.Add(value);
                 }
-                catch (ConfigLoadException)
-                {
-                    throw;
-                }
                 catch (Exception exception)
                 {
                     throw ConfigLoadExceptionFactory.Create(
@@ -421,10 +428,6 @@ public sealed class YamlConfigLoader : IConfigLoader
             {
                 var table = new InMemoryConfigTable<TKey, TValue>(values, _keySelector, _comparer);
                 return new YamlTableLoadResult(Name, table, referencedTableNames, referenceUsages);
-            }
-            catch (ConfigLoadException)
-            {
-                throw;
             }
             catch (Exception exception)
             {

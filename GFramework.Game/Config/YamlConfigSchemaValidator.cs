@@ -77,10 +77,6 @@ internal static class YamlConfigSchemaValidator
 
             return new YamlConfigSchema(schemaPath, rootNode, referencedTableNames.ToArray());
         }
-        catch (ConfigLoadException)
-        {
-            throw;
-        }
         catch (JsonException exception)
         {
             throw ConfigLoadExceptionFactory.Create(
