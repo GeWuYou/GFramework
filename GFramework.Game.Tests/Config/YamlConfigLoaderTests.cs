@@ -1,4 +1,5 @@
 using System.IO;
+using GFramework.Game.Abstractions.Config;
 using GFramework.Game.Config;
 
 namespace GFramework.Game.Tests.Config;
@@ -9,8 +10,6 @@ namespace GFramework.Game.Tests.Config;
 [TestFixture]
 public class YamlConfigLoaderTests
 {
-    private string _rootPath = null!;
-
     /// <summary>
     ///     为每个测试创建独立临时目录，避免文件系统状态互相污染。
     /// </summary>
@@ -32,6 +31,8 @@ public class YamlConfigLoaderTests
             Directory.Delete(_rootPath, true);
         }
     }
+
+    private string _rootPath = null!;
 
     /// <summary>
     ///     验证加载器能够扫描 YAML 文件并将结果写入注册表。
