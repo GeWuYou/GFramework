@@ -818,13 +818,13 @@ public sealed class ContextRegistrationAnalyzer : DiagnosticAnalyzer
                 var semanticModel = compilation.GetSemanticModel(syntax.SyntaxTree);
                 var operation = syntax switch
                 {
-                    MethodDeclarationSyntax methodDeclaration when methodDeclaration.Body != null =>
+                    MethodDeclarationSyntax { Body: not null } methodDeclaration =>
                         semanticModel.GetOperation(methodDeclaration.Body),
-                    MethodDeclarationSyntax methodDeclaration when methodDeclaration.ExpressionBody != null =>
+                    MethodDeclarationSyntax { ExpressionBody: not null } methodDeclaration =>
                         semanticModel.GetOperation(methodDeclaration.ExpressionBody.Expression),
-                    ConstructorDeclarationSyntax constructorDeclaration when constructorDeclaration.Body != null =>
+                    ConstructorDeclarationSyntax { Body: not null } constructorDeclaration =>
                         semanticModel.GetOperation(constructorDeclaration.Body),
-                    ConstructorDeclarationSyntax constructorDeclaration when constructorDeclaration.ExpressionBody != null =>
+                    ConstructorDeclarationSyntax { ExpressionBody: not null } constructorDeclaration =>
                         semanticModel.GetOperation(constructorDeclaration.ExpressionBody.Expression),
                     _ => null
                 };
