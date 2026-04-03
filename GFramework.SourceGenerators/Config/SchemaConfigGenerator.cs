@@ -1,7 +1,3 @@
-using System.Globalization;
-using System.IO;
-using System.Text;
-using System.Text.Json;
 using GFramework.SourceGenerators.Diagnostics;
 
 namespace GFramework.SourceGenerators.Config;
@@ -640,7 +636,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine(
             $"///     Auto-generated registration and lookup helpers for schema file '{schema.FileName}'.");
         builder.AppendLine(
-            "///     The helper centralizes table naming, config directory, schema path, and strong-typed registry access so consumer projects do not need to duplicate the same conventions.");
+            "///     The helper centralizes table naming, config directory, schema path, and strongly-typed registry access so consumer projects do not need to duplicate the same conventions.");
         builder.AppendLine("/// </summary>");
         builder.AppendLine($"public static class {bindingsClassName}");
         builder.AppendLine("{");
@@ -694,7 +690,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("    ///     Gets the generated config table wrapper from the registry.");
         builder.AppendLine("    /// </summary>");
         builder.AppendLine("    /// <param name=\"registry\">The source config registry.</param>");
-        builder.AppendLine("    /// <returns>The generated strong-typed table wrapper.</returns>");
+        builder.AppendLine("    /// <returns>The generated strongly-typed table wrapper.</returns>");
         builder.AppendLine(
             "    /// <exception cref=\"global::System.ArgumentNullException\">When <paramref name=\"registry\"/> is null.</exception>");
         builder.AppendLine(
@@ -714,7 +710,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("    /// </summary>");
         builder.AppendLine("    /// <param name=\"registry\">The source config registry.</param>");
         builder.AppendLine(
-            "    /// <param name=\"table\">The generated strong-typed table wrapper when lookup succeeds; otherwise null.</param>");
+            "    /// <param name=\"table\">The generated strongly-typed table wrapper when lookup succeeds; otherwise null.</param>");
         builder.AppendLine(
             "    /// <returns>True when the generated table is registered and type-compatible; otherwise false.</returns>");
         builder.AppendLine(
