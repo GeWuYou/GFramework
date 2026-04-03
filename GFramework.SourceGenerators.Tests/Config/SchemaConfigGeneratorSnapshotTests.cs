@@ -9,7 +9,7 @@ namespace GFramework.SourceGenerators.Tests.Config;
 public class SchemaConfigGeneratorSnapshotTests
 {
     /// <summary>
-    ///     验证一个最小 monster schema 能生成配置类型和表包装。
+    ///     验证一个最小 monster schema 能生成配置类型、表包装和注册辅助。
     /// </summary>
     [Test]
     public async Task Snapshot_SchemaConfigGenerator()
@@ -34,6 +34,32 @@ public class SchemaConfigGeneratorSnapshotTests
                                       bool TryGet(TKey key, out TValue? value);
                                       bool ContainsKey(TKey key);
                                       IReadOnlyCollection<TValue> All();
+                                  }
+
+                                  public interface IConfigRegistry
+                                  {
+                                      IConfigTable<TKey, TValue> GetTable<TKey, TValue>(string name)
+                                          where TKey : notnull;
+
+                                      bool TryGetTable<TKey, TValue>(string name, out IConfigTable<TKey, TValue>? table)
+                                          where TKey : notnull;
+                                  }
+                              }
+
+                              namespace GFramework.Game.Config
+                              {
+                                  public sealed class YamlConfigLoader
+                                  {
+                                      public YamlConfigLoader RegisterTable<TKey, TValue>(
+                                          string tableName,
+                                          string relativePath,
+                                          string schemaRelativePath,
+                                          Func<TValue, TKey> keySelector,
+                                          IEqualityComparer<TKey>? comparer = null)
+                                          where TKey : notnull
+                                      {
+                                          return this;
+                                      }
                                   }
                               }
                               """;
@@ -130,6 +156,8 @@ public class SchemaConfigGeneratorSnapshotTests
 
         await AssertSnapshotAsync(generatedSources, snapshotFolder, "MonsterConfig.g.cs", "MonsterConfig.g.txt");
         await AssertSnapshotAsync(generatedSources, snapshotFolder, "MonsterTable.g.cs", "MonsterTable.g.txt");
+        await AssertSnapshotAsync(generatedSources, snapshotFolder, "MonsterConfigBindings.g.cs",
+            "MonsterConfigBindings.g.txt");
     }
 
     /// <summary>

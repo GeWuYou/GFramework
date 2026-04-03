@@ -12,7 +12,7 @@
 - JSON Schema 作为结构描述
 - 一对象一文件的目录组织
 - 运行时只读查询
-- Source Generator 生成配置类型和表包装
+- Source Generator 生成配置类型、表包装和注册/访问辅助
 - VS Code 插件提供配置浏览、raw 编辑、schema 打开、递归轻量校验和嵌套对象表单入口
 
 ## 推荐目录结构
@@ -83,27 +83,31 @@ dropItems:
 
 ## 运行时接入
 
-当你希望加载后的配置在运行时以只读表形式暴露时，可以使用 `YamlConfigLoader` 和 `ConfigRegistry`：
+当你希望加载后的配置在运行时以只读表形式暴露时，优先使用生成器产出的注册与访问辅助：
 
 ```csharp
 using GFramework.Game.Config;
+using GFramework.Game.Config.Generated;
 
 var registry = new ConfigRegistry();
 
 var loader = new YamlConfigLoader("config-root")
-    .RegisterTable<int, MonsterConfig>(
-        "monster",
-        "monster",
-        "schemas/monster.schema.json",
-        static config => config.Id);
+    .RegisterMonsterTable();
 
 await loader.LoadAsync(registry);
 
-var monsterTable = registry.GetTable<int, MonsterConfig>("monster");
+var monsterTable = registry.GetMonsterTable();
 var slime = monsterTable.Get(1);
 ```
 
-这个重载会先按 schema 校验，再进行反序列化和注册。
+这组辅助会把以下约定固化到生成代码里：
+
+- 表注册名，例如 `monster`
+- 配置目录相对路径，例如 `monster`
+- schema 相对路径，例如 `schemas/monster.schema.json`
+- 主键提取逻辑，例如 `config => config.Id`
+
+如果你需要自定义目录、表名或 key selector，仍然可以直接调用 `YamlConfigLoader.RegisterTable(...)` 原始重载。
 
 ## 运行时校验行为
 
@@ -187,7 +191,12 @@ var hotReload = loader.EnableHotReload(
 
 ## 生成器接入约定
 
-配置生成器会从 `*.schema.json` 生成配置类型和表包装类。
+配置生成器会从 `*.schema.json` 生成以下代码：
+
+- 配置类型
+- 表包装类型
+- `YamlConfigLoader` 注册辅助
+- `IConfigRegistry` 强类型访问辅助
 
 通过已打包的 Source Generator 使用时，默认会自动收集 `schemas/**/*.schema.json` 作为 `AdditionalFiles`。
 
