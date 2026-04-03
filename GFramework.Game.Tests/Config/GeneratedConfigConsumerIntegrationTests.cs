@@ -91,9 +91,16 @@ public class GeneratedConfigConsumerIntegrationTests
 
         Assert.Multiple(() =>
         {
+            Assert.That(MonsterConfigBindings.ConfigDomain, Is.EqualTo("monster"));
             Assert.That(MonsterConfigBindings.TableName, Is.EqualTo("monster"));
             Assert.That(MonsterConfigBindings.ConfigRelativePath, Is.EqualTo("monster"));
             Assert.That(MonsterConfigBindings.SchemaRelativePath, Is.EqualTo("schemas/monster.schema.json"));
+            Assert.That(MonsterConfigBindings.Metadata.ConfigDomain, Is.EqualTo(MonsterConfigBindings.ConfigDomain));
+            Assert.That(MonsterConfigBindings.Metadata.TableName, Is.EqualTo(MonsterConfigBindings.TableName));
+            Assert.That(MonsterConfigBindings.Metadata.ConfigRelativePath,
+                Is.EqualTo(MonsterConfigBindings.ConfigRelativePath));
+            Assert.That(MonsterConfigBindings.Metadata.SchemaRelativePath,
+                Is.EqualTo(MonsterConfigBindings.SchemaRelativePath));
             Assert.That(table.Count, Is.EqualTo(2));
             Assert.That(table.Get(1).Name, Is.EqualTo("Slime"));
             Assert.That(table.Get(2).Hp, Is.EqualTo(30));

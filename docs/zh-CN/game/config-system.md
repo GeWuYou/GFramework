@@ -103,10 +103,20 @@ var slime = monsterTable.Get(1);
 
 这组辅助会把以下约定固化到生成代码里：
 
+- 配置域常量，例如 `MonsterConfigBindings.ConfigDomain`
 - 表注册名，例如 `monster`
 - 配置目录相对路径，例如 `monster`
 - schema 相对路径，例如 `schemas/monster.schema.json`
 - 主键提取逻辑，例如 `config => config.Id`
+
+如果你希望把这些约定作为一个统一入口传递或复用，也可以优先读取 `MonsterConfigBindings.Metadata` 下的常量：
+
+```csharp
+var domain = MonsterConfigBindings.Metadata.ConfigDomain;
+var tableName = MonsterConfigBindings.Metadata.TableName;
+var configPath = MonsterConfigBindings.Metadata.ConfigRelativePath;
+var schemaPath = MonsterConfigBindings.Metadata.SchemaRelativePath;
+```
 
 如果你需要自定义目录、表名或 key selector，仍然可以直接调用 `YamlConfigLoader.RegisterTable(...)` 原始重载。
 
