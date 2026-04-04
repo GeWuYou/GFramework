@@ -642,7 +642,7 @@ public partial class GameController
 - `GF_ContextRegistration_002`：`System` 使用点未找到静态可见注册
 - `GF_ContextRegistration_003`：`Utility` 使用点未找到静态可见注册
 
-这个分析器的目标是提供稳定提示，而不是完整模拟运行时 DI 图。以下场景默认不做强推断：
+这个分析器的目标是提供稳定提示，而不是完整模拟运行时 DI 图。以下场景默认不做强行推断：
 
 - 运行时条件分支控制的注册
 - 反射、配置驱动或外部程序集动态注册
