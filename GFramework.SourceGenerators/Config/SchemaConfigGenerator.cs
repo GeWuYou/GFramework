@@ -939,11 +939,13 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         foreach (var referenceSeed in EnumerateReferenceSeeds(rootObject.Properties))
         {
             var baseMemberName = BuildReferenceMemberName(referenceSeed.DisplayPath);
-            if (memberNameCounts.ContainsKey(baseMemberName))
+            if (memberNameCounts.TryGetValue(baseMemberName, out var duplicateCount))
             {
-                memberNameCounts[baseMemberName]++;
+                // Reuse the tracked duplicate count so repeated reference paths keep their generated member names stable.
+                duplicateCount++;
+                memberNameCounts[baseMemberName] = duplicateCount;
                 baseMemberName =
-                    $"{baseMemberName}{memberNameCounts[baseMemberName].ToString(CultureInfo.InvariantCulture)}";
+                    $"{baseMemberName}{duplicateCount.ToString(CultureInfo.InvariantCulture)}";
             }
             else
             {
