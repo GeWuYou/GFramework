@@ -16,6 +16,7 @@ namespace GFramework.Core.Architectures;
 ///     专注于生命周期管理、初始化流程控制和架构阶段转换。
 ///
 ///     重构说明：此类已重构为协调器模式，将职责委托给专门的管理器：
+///     - ArchitectureBootstrapper: 初始化基础设施编排
 ///     - ArchitectureLifecycle: 生命周期管理
 ///     - ArchitectureComponentRegistry: 组件注册管理
 ///     - ArchitectureModules: 模块管理
@@ -146,7 +147,8 @@ public abstract class Architecture : IArchitecture
 
     /// <summary>
     ///     注册中介行为管道
-    ///     用于配置Mediator框架的行为拦截和处理逻辑
+    ///     用于配置Mediator框架的行为拦截和处理逻辑。
+    ///     可以传入开放泛型行为类型，也可以传入绑定到特定请求的封闭行为类型。
     /// </summary>
     /// <typeparam name="TBehavior">行为类型，必须是引用类型</typeparam>
     public void RegisterMediatorBehavior<TBehavior>() where TBehavior : class

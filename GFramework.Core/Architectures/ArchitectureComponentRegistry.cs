@@ -155,6 +155,7 @@ internal sealed class ArchitectureComponentRegistry(
     /// <returns>注册成功的工具实例</returns>
     public TUtility RegisterUtility<TUtility>(TUtility utility) where TUtility : IUtility
     {
+        ValidateRegistration("utility");
         logger.Debug($"Registering utility: {typeof(TUtility).Name}");
 
         // 处理上下文工具类型的设置和生命周期管理
@@ -177,6 +178,7 @@ internal sealed class ArchitectureComponentRegistry(
     /// <param name="onCreated">可选的实例创建后回调</param>
     public void RegisterUtility<T>(Action<T>? onCreated = null) where T : class, IUtility
     {
+        ValidateRegistration("utility");
         logger.Debug($"Registering utility type: {typeof(T).Name}");
 
         services.Container.RegisterFactory<T>(sp =>

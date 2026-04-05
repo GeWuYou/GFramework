@@ -311,7 +311,9 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
 
     /// <summary>
     ///     注册中介行为管道
-    ///     用于配置Mediator框架的行为拦截和处理逻辑
+    ///     用于配置Mediator框架的行为拦截和处理逻辑。
+    ///     同时支持开放泛型行为类型和已闭合的具体行为类型，
+    ///     以兼容通用行为和针对单一请求的专用行为两种注册方式。
     /// </summary>
     /// <typeparam name="TBehavior">行为类型，必须是引用类型</typeparam>
     public void RegisterMediatorBehavior<TBehavior>() where TBehavior : class
@@ -321,12 +323,35 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
         {
             ThrowIfFrozen();
 
-            GetServicesUnsafe.AddSingleton(
-                typeof(IPipelineBehavior<,>),
-                typeof(TBehavior)
-            );
+            var behaviorType = typeof(TBehavior);
 
-            _logger.Debug($"Mediator behavior registered: {typeof(TBehavior).Name}");
+            if (behaviorType.IsGenericTypeDefinition)
+            {
+                GetServicesUnsafe.AddSingleton(typeof(IPipelineBehavior<,>), behaviorType);
+            }
+            else
+            {
+                var pipelineInterfaces = behaviorType
+                    .GetInterfaces()
+                    .Where(type => type.IsGenericType &&
+                                   type.GetGenericTypeDefinition() == typeof(IPipelineBehavior<,>))
+                    .ToList();
+
+                if (pipelineInterfaces.Count == 0)
+                {
+                    var errorMessage = $"{behaviorType.Name} does not implement IPipelineBehavior<,>";
+                    _logger.Error(errorMessage);
+                    throw new InvalidOperationException(errorMessage);
+                }
+
+                // 为每个已闭合的管道接口建立显式映射，支持针对特定请求/响应的专用行为。
+                foreach (var pipelineInterface in pipelineInterfaces)
+                {
+                    GetServicesUnsafe.AddSingleton(pipelineInterface, behaviorType);
+                }
+            }
+
+            _logger.Debug($"Mediator behavior registered: {behaviorType.Name}");
         }
         finally
         {

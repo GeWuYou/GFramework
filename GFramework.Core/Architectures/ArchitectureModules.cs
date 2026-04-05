@@ -14,7 +14,8 @@ internal sealed class ArchitectureModules(
 {
     /// <summary>
     ///     注册中介行为管道
-    ///     用于配置Mediator框架的行为拦截和处理逻辑
+    ///     用于配置Mediator框架的行为拦截和处理逻辑。
+    ///     支持开放泛型行为类型和针对单一请求的封闭行为类型。
     /// </summary>
     /// <typeparam name="TBehavior">行为类型，必须是引用类型</typeparam>
     public void RegisterMediatorBehavior<TBehavior>() where TBehavior : class

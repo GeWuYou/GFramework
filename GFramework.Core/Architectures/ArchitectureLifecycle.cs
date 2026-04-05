@@ -27,11 +27,7 @@ internal sealed class ArchitectureLifecycle(
     /// <returns>注册的钩子实例</returns>
     public IArchitectureLifecycleHook RegisterLifecycleHook(IArchitectureLifecycleHook hook)
     {
-        if (CurrentPhase >= ArchitecturePhase.Ready && !configuration.ArchitectureProperties.AllowLateRegistration)
-            throw new InvalidOperationException(
-                "Cannot register lifecycle hook after architecture is Ready");
-        _lifecycleHooks.Add(hook);
-        return hook;
+        return _phaseCoordinator.RegisterLifecycleHook(hook);
     }
 
     #endregion
@@ -44,31 +40,32 @@ internal sealed class ArchitectureLifecycle(
     /// <param name="component">要注册的组件</param>
     public void RegisterLifecycleComponent(object component)
     {
-        // 处理初始化
         if (component is IInitializable initializable)
         {
-            if (!_initialized)
+            if (_initialized)
+                throw new InvalidOperationException("Cannot initialize component after Architecture is Ready");
+
+            if (_pendingInitializableSet.Add(initializable))
             {
-                // 原子去重：HashSet.Add 返回 true 表示添加成功（之前不存在）
-                if (_pendingInitializableSet.Add(initializable))
-                {
-                    _pendingInitializableList.Add(initializable);
-                    logger.Trace($"Added {component.GetType().Name} to pending initialization queue");
-                }
-            }
-            else
-            {
-                throw new InvalidOperationException(
-                    "Cannot initialize component after Architecture is Ready");
+                _pendingInitializableList.Add(initializable);
+                logger.Trace($"Added {component.GetType().Name} to pending initialization queue");
             }
         }
 
-        // 处理销毁（支持 IDestroyable 或 IAsyncDestroyable）
-        if (component is not (IDestroyable or IAsyncDestroyable)) return;
-        // 原子去重：HashSet.Add 返回 true 表示添加成功（之前不存在）
-        if (!_disposableSet.Add(component)) return;
-        _disposables.Add(component);
-        logger.Trace($"Registered {component.GetType().Name} for destruction");
+        _disposer.Register(component);
+    }
+
+    #endregion
+
+    #region Phase Management
+
+    /// <summary>
+    ///     进入指定的架构阶段，并执行相应的生命周期管理操作
+    /// </summary>
+    /// <param name="next">要进入的下一个架构阶段</param>
+    public void EnterPhase(ArchitecturePhase next)
+    {
+        _phaseCoordinator.EnterPhase(next);
     }
 
     #endregion
@@ -88,19 +85,15 @@ internal sealed class ArchitectureLifecycle(
     private readonly List<IInitializable> _pendingInitializableList = [];
 
     /// <summary>
-    ///     可销毁组件的去重集合（支持 IDestroyable 和 IAsyncDestroyable）
+    ///     架构阶段协调器
     /// </summary>
-    private readonly HashSet<object> _disposableSet = [];
+    private readonly ArchitecturePhaseCoordinator _phaseCoordinator =
+        new(architecture, configuration, services, logger);
 
     /// <summary>
-    ///     存储所有需要销毁的组件（统一管理，保持注册逆序销毁）
+    ///     架构销毁协调器
     /// </summary>
-    private readonly List<object> _disposables = [];
-
-    /// <summary>
-    ///     生命周期感知对象列表
-    /// </summary>
-    private readonly List<IArchitectureLifecycleHook> _lifecycleHooks = [];
+    private readonly ArchitectureDisposer _disposer = new(services, logger);
 
     /// <summary>
     ///     标记架构是否已初始化完成
@@ -114,7 +107,7 @@ internal sealed class ArchitectureLifecycle(
     /// <summary>
     ///     当前架构的阶段
     /// </summary>
-    public ArchitecturePhase CurrentPhase { get; private set; }
+    public ArchitecturePhase CurrentPhase => _phaseCoordinator.CurrentPhase;
 
     /// <summary>
     ///     获取一个布尔值，指示当前架构是否处于就绪状态
@@ -129,87 +122,10 @@ internal sealed class ArchitectureLifecycle(
     /// <summary>
     ///     阶段变更事件（用于测试和扩展）
     /// </summary>
-    public event Action<ArchitecturePhase>? PhaseChanged;
-
-    #endregion
-
-    #region Phase Management
-
-    /// <summary>
-    ///     进入指定的架构阶段，并执行相应的生命周期管理操作
-    /// </summary>
-    /// <param name="next">要进入的下一个架构阶段</param>
-    /// <exception cref="InvalidOperationException">当阶段转换不被允许时抛出异常</exception>
-    public void EnterPhase(ArchitecturePhase next)
+    public event Action<ArchitecturePhase>? PhaseChanged
     {
-        // 验证阶段转换
-        ValidatePhaseTransition(next);
-
-        // 执行阶段转换
-        var previousPhase = CurrentPhase;
-        CurrentPhase = next;
-
-        if (previousPhase != next)
-            logger.Info($"Architecture phase changed: {previousPhase} -> {next}");
-
-        // 通知阶段变更
-        NotifyPhase(next);
-        NotifyPhaseAwareObjects(next);
-
-        // 触发阶段变更事件（用于测试和扩展）
-        PhaseChanged?.Invoke(next);
-    }
-
-    /// <summary>
-    ///     验证阶段转换是否合法
-    /// </summary>
-    /// <param name="next">目标阶段</param>
-    /// <exception cref="InvalidOperationException">当阶段转换不合法时抛出</exception>
-    private void ValidatePhaseTransition(ArchitecturePhase next)
-    {
-        // 不需要严格验证，直接返回
-        if (!configuration.ArchitectureProperties.StrictPhaseValidation)
-            return;
-
-        // FailedInitialization 可以从任何阶段转换，直接返回
-        if (next == ArchitecturePhase.FailedInitialization)
-            return;
-
-        // 检查转换是否在允许列表中
-        if (ArchitectureConstants.PhaseTransitions.TryGetValue(CurrentPhase, out var allowed) &&
-            allowed.Contains(next))
-            return;
-
-        // 转换不合法，抛出异常
-        var errorMsg = $"Invalid phase transition: {CurrentPhase} -> {next}";
-        logger.Fatal(errorMsg);
-        throw new InvalidOperationException(errorMsg);
-    }
-
-    /// <summary>
-    ///     通知所有架构阶段感知对象阶段变更
-    /// </summary>
-    /// <param name="phase">新阶段</param>
-    private void NotifyPhaseAwareObjects(ArchitecturePhase phase)
-    {
-        foreach (var obj in services.Container.GetAll<IArchitecturePhaseListener>())
-        {
-            logger.Trace($"Notifying phase-aware object {obj.GetType().Name} of phase change to {phase}");
-            obj.OnArchitecturePhase(phase);
-        }
-    }
-
-    /// <summary>
-    ///     通知所有生命周期钩子当前阶段变更
-    /// </summary>
-    /// <param name="phase">当前架构阶段</param>
-    private void NotifyPhase(ArchitecturePhase phase)
-    {
-        foreach (var hook in _lifecycleHooks)
-        {
-            hook.OnPhase(phase, architecture);
-            logger.Trace($"Notifying lifecycle hook {hook.GetType().Name} of phase {phase}");
-        }
+        add => _phaseCoordinator.PhaseChanged += value;
+        remove => _phaseCoordinator.PhaseChanged -= value;
     }
 
     #endregion
@@ -311,72 +227,7 @@ internal sealed class ArchitectureLifecycle(
     /// </summary>
     public async ValueTask DestroyAsync()
     {
-        // 检查当前阶段，如果已经处于销毁或已销毁状态则直接返回
-        if (CurrentPhase >= ArchitecturePhase.Destroying)
-        {
-            logger.Warn("Architecture destroy called but already in destroying/destroyed state");
-            return;
-        }
-
-        // 如果从未初始化（None 阶段），只清理已注册的组件，不进行阶段转换
-        if (CurrentPhase == ArchitecturePhase.None)
-        {
-            logger.Debug("Architecture destroy called but never initialized, cleaning up registered components");
-            await CleanupComponentsAsync();
-            return;
-        }
-
-        // 进入销毁阶段
-        logger.Info("Starting architecture destruction");
-        EnterPhase(ArchitecturePhase.Destroying);
-
-        // 清理所有组件
-        await CleanupComponentsAsync();
-
-        // 销毁服务模块
-        await services.ModuleManager.DestroyAllAsync();
-
-        services.Container.Clear();
-
-        // 进入已销毁阶段
-        EnterPhase(ArchitecturePhase.Destroyed);
-        logger.Info("Architecture destruction completed");
-    }
-
-    /// <summary>
-    ///     清理所有已注册的可销毁组件
-    /// </summary>
-    private async ValueTask CleanupComponentsAsync()
-    {
-        // 销毁所有实现了 IAsyncDestroyable 或 IDestroyable 的组件（按注册逆序销毁）
-        logger.Info($"Destroying {_disposables.Count} disposable components");
-
-        for (var i = _disposables.Count - 1; i >= 0; i--)
-        {
-            var component = _disposables[i];
-            try
-            {
-                logger.Debug($"Destroying component: {component.GetType().Name}");
-
-                // 优先使用异步销毁
-                if (component is IAsyncDestroyable asyncDestroyable)
-                {
-                    await asyncDestroyable.DestroyAsync();
-                }
-                else if (component is IDestroyable destroyable)
-                {
-                    destroyable.Destroy();
-                }
-            }
-            catch (Exception ex)
-            {
-                logger.Error($"Error destroying {component.GetType().Name}", ex);
-                // 继续销毁其他组件，不会因为一个组件失败而中断
-            }
-        }
-
-        _disposables.Clear();
-        _disposableSet.Clear();
+        await _disposer.DestroyAsync(CurrentPhase, EnterPhase);
     }
 
     /// <summary>
