@@ -1,0 +1,55 @@
+# Codeball AI Review 工作流
+#
+# 职责：
+# - 仅在 Pull Request 场景下运行 Codeball AI Code Review
+# - 与现有 CI 构建/测试流程解耦，避免将 PR 写权限扩散到其他 workflow
+# - 默认仅输出 Codeball 审查结果与标签，不自动批准 Pull Request
+# - 通过显式开关预留自动 approve 能力，后续启用时不需要重构 workflow 结构
+name: Codeball AI Review
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+env:
+  # 默认关闭自动 approve。
+  # 只有在仓库或组织已启用 “Allow GitHub Actions to Create and Approve Pull Requests”
+  # 且团队确认要让 Codeball 自动批准“低风险”PR 时，才应将其改为 "true"。
+  ENABLE_CODEBALL_AUTO_APPROVE: "false"
+
+jobs:
+  codeball-review:
+    name: Codeball Review
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
+
+    steps:
+      # 使用官方 Codeball Action 分析当前 PR。
+      # 默认采用接近 dry-run 的模式：不自动 approve，但会为“可快速合并”和“需要谨慎审查”
+      # 的 PR 分别打标签，帮助维护者快速筛选。
+      # 说明：如果此仓库面向 public fork PR，GitHub 默认不会给父仓库写权限；
+      # 如需在 fork PR 上稳定打标签或 approve，需要按 Codeball 官方文档安装
+      # “Codeball AI Writer” GitHub App，或改为使用具备写权限的 bot token。
+      - name: Run Codeball AI review
+        uses: sturdy-dev/codeball-action@v2
+        with:
+          approvePullRequests: ${{ env.ENABLE_CODEBALL_AUTO_APPROVE }}
+          labelPullRequestsWhenApproved: "true"
+          labelPullRequestsWhenReviewNeeded: "true"
+          failJobsWhenReviewNeeded: "false"
