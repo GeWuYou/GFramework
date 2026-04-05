@@ -19,6 +19,7 @@
     <ItemGroup>
         <ProjectReference Include="..\GFramework.Game\GFramework.Game.csproj"/>
         <ProjectReference Include="..\GFramework.Core\GFramework.Core.csproj"/>
+        <ProjectReference Include="..\GFramework.Godot\GFramework.Godot.csproj"/>
         <ProjectReference Include="..\GFramework.SourceGenerators.Abstractions\GFramework.SourceGenerators.Abstractions.csproj"
                           OutputItemType="Analyzer"
                           ReferenceOutputAssembly="false"/>
