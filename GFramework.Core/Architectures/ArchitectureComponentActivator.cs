@@ -1,5 +1,6 @@
 using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GFramework.Core.Architectures;
 

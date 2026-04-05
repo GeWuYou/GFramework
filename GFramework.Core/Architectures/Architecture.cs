@@ -7,6 +7,7 @@ using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Abstractions.Utility;
 using GFramework.Core.Environment;
 using GFramework.Core.Logging;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GFramework.Core.Architectures;
 
