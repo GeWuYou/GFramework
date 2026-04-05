@@ -95,8 +95,13 @@ public class SchemaConfigGeneratorTests
     /// <summary>
     ///     验证 schema 字段名无法映射为合法 C# 标识符时会直接给出诊断，而不是生成不可编译代码。
     /// </summary>
-    [Test]
-    public void Run_Should_Report_Diagnostic_When_Schema_Key_Maps_To_Invalid_CSharp_Identifier()
+    /// <param name="schemaKey">会映射为非法 C# 标识符的 schema key。</param>
+    /// <param name="generatedIdentifier">当前命名规范化逻辑生成出的非法标识符。</param>
+    [TestCase("drop$item", "Drop$item")]
+    [TestCase("1-phase", "1Phase")]
+    public void Run_Should_Report_Diagnostic_When_Schema_Key_Maps_To_Invalid_CSharp_Identifier(
+        string schemaKey,
+        string generatedIdentifier)
     {
         const string source = """
                               namespace TestApp
@@ -107,16 +112,16 @@ public class SchemaConfigGeneratorTests
                               }
                               """;
 
-        const string schema = """
-                              {
-                                "type": "object",
-                                "required": ["id", "drop$item"],
-                                "properties": {
-                                  "id": { "type": "integer" },
-                                  "drop$item": { "type": "string" }
-                                }
-                              }
-                              """;
+        var schema = $$"""
+                       {
+                         "type": "object",
+                         "required": ["id", "{{schemaKey}}"],
+                         "properties": {
+                           "id": { "type": "integer" },
+                           "{{schemaKey}}": { "type": "string" }
+                         }
+                       }
+                       """;
 
         var result = SchemaGeneratorTestDriver.Run(
             source,
@@ -128,8 +133,8 @@ public class SchemaConfigGeneratorTests
         {
             Assert.That(diagnostic.Id, Is.EqualTo("GF_ConfigSchema_006"));
             Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Error));
-            Assert.That(diagnostic.GetMessage(), Does.Contain("drop$item"));
-            Assert.That(diagnostic.GetMessage(), Does.Contain("Drop$item"));
+            Assert.That(diagnostic.GetMessage(), Does.Contain(schemaKey));
+            Assert.That(diagnostic.GetMessage(), Does.Contain(generatedIdentifier));
         });
     }
 

@@ -97,6 +97,9 @@ public sealed class YamlConfigLoader : IConfigLoader
     /// <param name="debounceDelay">防抖延迟；为空时默认使用 200 毫秒。</param>
     /// <returns>用于停止热重载监听的注销句柄。</returns>
     /// <exception cref="ArgumentNullException">当 <paramref name="registry" /> 为空时抛出。</exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    ///     当显式提供的 <paramref name="debounceDelay" /> 小于 <see cref="TimeSpan.Zero" /> 时抛出。
+    /// </exception>
     public IUnRegister EnableHotReload(
         IConfigRegistry registry,
         Action<string>? onTableReloaded = null,
@@ -122,12 +125,22 @@ public sealed class YamlConfigLoader : IConfigLoader
     /// <param name="options">热重载配置选项；为空时使用默认选项。</param>
     /// <returns>用于停止热重载监听的注销句柄。</returns>
     /// <exception cref="ArgumentNullException">当 <paramref name="registry" /> 为空时抛出。</exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    ///     当 <paramref name="options" /> 的 <see cref="YamlConfigHotReloadOptions.DebounceDelay" /> 小于
+    ///     <see cref="TimeSpan.Zero" /> 时抛出。
+    /// </exception>
     public IUnRegister EnableHotReload(
         IConfigRegistry registry,
         YamlConfigHotReloadOptions? options)
     {
         ArgumentNullException.ThrowIfNull(registry);
         options ??= new YamlConfigHotReloadOptions();
+        if (options.DebounceDelay < TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(options),
+                "DebounceDelay must be greater than or equal to zero.");
+        }
 
         return new HotReloadSession(
             _rootPath,

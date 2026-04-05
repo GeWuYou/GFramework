@@ -1134,6 +1134,26 @@ public class YamlConfigLoaderTests
     }
 
     /// <summary>
+    ///     验证热重载会在启动前拒绝负的防抖延迟，避免后台延迟任务才暴露参数错误。
+    /// </summary>
+    [Test]
+    public void EnableHotReload_Should_Throw_When_Debounce_Delay_Is_Negative()
+    {
+        var loader = new YamlConfigLoader(_rootPath);
+        var registry = new ConfigRegistry();
+
+        var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
+            loader.EnableHotReload(
+                registry,
+                new YamlConfigHotReloadOptions
+                {
+                    DebounceDelay = TimeSpan.FromMilliseconds(-1)
+                }));
+
+        Assert.That(exception!.ParamName, Is.EqualTo("options"));
+    }
+
+    /// <summary>
     ///     验证热重载失败时会保留旧表状态，并通过失败回调暴露诊断信息。
     /// </summary>
     [Test]
