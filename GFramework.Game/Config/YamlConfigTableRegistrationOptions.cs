@@ -10,18 +10,34 @@ namespace GFramework.Game.Config;
 public sealed class YamlConfigTableRegistrationOptions<TKey, TValue>
     where TKey : notnull
 {
+    private const string TableNameCannotBeNullOrWhiteSpaceMessage = "Table name cannot be null or whitespace.";
+    private const string RelativePathCannotBeNullOrWhiteSpaceMessage = "Relative path cannot be null or whitespace.";
+
     /// <summary>
     ///     使用最小必需参数创建配置表注册选项。
     /// </summary>
     /// <param name="tableName">运行时配置表名称。</param>
     /// <param name="relativePath">相对配置根目录的子目录。</param>
     /// <param name="keySelector">配置项主键提取器。</param>
+    /// <exception cref="ArgumentException">
+    ///     当 <paramref name="tableName" /> 或 <paramref name="relativePath" /> 为 null、空字符串或空白字符串时抛出。
+    /// </exception>
     /// <exception cref="ArgumentNullException">当 <paramref name="keySelector" /> 为 null 时抛出。</exception>
     public YamlConfigTableRegistrationOptions(
         string tableName,
         string relativePath,
         Func<TValue, TKey> keySelector)
     {
+        if (string.IsNullOrWhiteSpace(tableName))
+        {
+            throw new ArgumentException(TableNameCannotBeNullOrWhiteSpaceMessage, nameof(tableName));
+        }
+
+        if (string.IsNullOrWhiteSpace(relativePath))
+        {
+            throw new ArgumentException(RelativePathCannotBeNullOrWhiteSpaceMessage, nameof(relativePath));
+        }
+
         ArgumentNullException.ThrowIfNull(keySelector);
 
         TableName = tableName;

@@ -63,4 +63,15 @@ public static class ConfigSchemaDiagnostics
         SourceGeneratorsConfigCategory,
         DiagnosticSeverity.Error,
         true);
+
+    /// <summary>
+    ///     schema 字段名无法安全映射为 C# 标识符。
+    /// </summary>
+    public static readonly DiagnosticDescriptor InvalidGeneratedIdentifier = new(
+        "GF_ConfigSchema_006",
+        "Config schema property name cannot be converted to a valid C# identifier",
+        "Property '{1}' in schema file '{0}' uses schema key '{2}', which generates invalid C# identifier '{3}'",
+        SourceGeneratorsConfigCategory,
+        DiagnosticSeverity.Error,
+        true);
 }

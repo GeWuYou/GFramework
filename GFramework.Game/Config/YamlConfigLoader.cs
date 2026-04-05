@@ -161,6 +161,10 @@ public sealed class YamlConfigLoader : IConfigLoader
     /// <param name="keySelector">配置项主键提取器。</param>
     /// <param name="comparer">可选主键比较器。</param>
     /// <returns>当前加载器实例，以便链式注册。</returns>
+    /// <exception cref="ArgumentException">
+    ///     当 <paramref name="tableName" /> 或 <paramref name="relativePath" /> 为 null、空字符串或空白字符串时抛出。
+    /// </exception>
+    /// <exception cref="ArgumentNullException">当 <paramref name="keySelector" /> 为 null 时抛出。</exception>
     public YamlConfigLoader RegisterTable<TKey, TValue>(
         string tableName,
         string relativePath,
@@ -188,6 +192,11 @@ public sealed class YamlConfigLoader : IConfigLoader
     /// <param name="keySelector">配置项主键提取器。</param>
     /// <param name="comparer">可选主键比较器。</param>
     /// <returns>当前加载器实例，以便链式注册。</returns>
+    /// <exception cref="ArgumentException">
+    ///     当 <paramref name="tableName" />、<paramref name="relativePath" /> 或 <paramref name="schemaRelativePath" />
+    ///     为 null、空字符串或空白字符串时抛出。
+    /// </exception>
+    /// <exception cref="ArgumentNullException">当 <paramref name="keySelector" /> 为 null 时抛出。</exception>
     public YamlConfigLoader RegisterTable<TKey, TValue>(
         string tableName,
         string relativePath,
@@ -214,6 +223,11 @@ public sealed class YamlConfigLoader : IConfigLoader
     /// <param name="options">配置表注册选项。</param>
     /// <returns>当前加载器实例，以便链式注册。</returns>
     /// <exception cref="ArgumentNullException">当 <paramref name="options" /> 为空时抛出。</exception>
+    /// <exception cref="ArgumentException">
+    ///     当 <paramref name="options" /> 内的 <see cref="YamlConfigTableRegistrationOptions{TKey, TValue}.TableName" />、
+    ///     <see cref="YamlConfigTableRegistrationOptions{TKey, TValue}.RelativePath" /> 或
+    ///     <see cref="YamlConfigTableRegistrationOptions{TKey, TValue}.SchemaRelativePath" /> 为 null、空字符串或空白字符串时抛出。
+    /// </exception>
     public YamlConfigLoader RegisterTable<TKey, TValue>(YamlConfigTableRegistrationOptions<TKey, TValue> options)
         where TKey : notnull
     {

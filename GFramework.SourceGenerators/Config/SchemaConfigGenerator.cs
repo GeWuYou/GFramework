@@ -253,7 +253,10 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         var title = TryGetMetadataString(property.Value, "title");
         var description = TryGetMetadataString(property.Value, "description");
         var refTableName = TryGetMetadataString(property.Value, "x-gframework-ref-table");
-        var propertyName = ToPascalCase(property.Name);
+        if (!TryBuildPropertyIdentifier(filePath, displayPath, property.Name, out var propertyName, out var diagnostic))
+        {
+            return ParsedPropertyResult.FromDiagnostic(diagnostic!);
+        }
 
         switch (schemaType)
         {
@@ -934,26 +937,37 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     /// <returns>生成期引用元数据集合。</returns>
     private static IEnumerable<GeneratedReferenceSpec> CollectReferenceSpecs(SchemaObjectSpec rootObject)
     {
-        var memberNameCounts = new Dictionary<string, int>(StringComparer.Ordinal);
+        var nextSuffixByBaseMemberName = new Dictionary<string, int>(StringComparer.Ordinal);
+        var allocatedMemberNames = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var referenceSeed in EnumerateReferenceSeeds(rootObject.Properties))
         {
             var baseMemberName = BuildReferenceMemberName(referenceSeed.DisplayPath);
-            if (memberNameCounts.TryGetValue(baseMemberName, out var duplicateCount))
+            var memberName = baseMemberName;
+            if (!allocatedMemberNames.Add(memberName))
             {
-                // Reuse the tracked duplicate count so repeated reference paths keep their generated member names stable.
-                duplicateCount++;
-                memberNameCounts[baseMemberName] = duplicateCount;
-                baseMemberName =
-                    $"{baseMemberName}{duplicateCount.ToString(CultureInfo.InvariantCulture)}";
+                // Track globally allocated member names because a suffixed duplicate from one path can collide
+                // with the unsuffixed base name produced by a later, different path.
+                var duplicateCount = nextSuffixByBaseMemberName.TryGetValue(baseMemberName, out var nextSuffix)
+                    ? nextSuffix + 1
+                    : 1;
+
+                memberName = $"{baseMemberName}{duplicateCount.ToString(CultureInfo.InvariantCulture)}";
+                while (!allocatedMemberNames.Add(memberName))
+                {
+                    duplicateCount++;
+                    memberName = $"{baseMemberName}{duplicateCount.ToString(CultureInfo.InvariantCulture)}";
+                }
+
+                nextSuffixByBaseMemberName[baseMemberName] = duplicateCount;
             }
             else
             {
-                memberNameCounts[baseMemberName] = 0;
+                nextSuffixByBaseMemberName[baseMemberName] = 0;
             }
 
             yield return new GeneratedReferenceSpec(
-                baseMemberName,
+                memberName,
                 referenceSeed.DisplayPath,
                 referenceSeed.ReferencedTableName,
                 referenceSeed.ValueSchemaType,
@@ -1163,6 +1177,40 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         }
 
         builder.AppendLine($"{indent}/// </remarks>");
+    }
+
+    /// <summary>
+    ///     将 schema 字段名转换并验证为生成代码可直接使用的属性标识符。
+    ///     生成器会在这里拒绝无法映射为合法 C# 标识符的外部输入，避免生成源码后才在编译阶段失败。
+    /// </summary>
+    /// <param name="filePath">Schema 文件路径。</param>
+    /// <param name="displayPath">逻辑字段路径。</param>
+    /// <param name="schemaName">Schema 原始字段名。</param>
+    /// <param name="propertyName">生成后的属性名。</param>
+    /// <param name="diagnostic">字段名非法时生成的诊断。</param>
+    /// <returns>是否成功生成合法属性标识符。</returns>
+    private static bool TryBuildPropertyIdentifier(
+        string filePath,
+        string displayPath,
+        string schemaName,
+        out string propertyName,
+        out Diagnostic? diagnostic)
+    {
+        propertyName = ToPascalCase(schemaName);
+        if (SyntaxFacts.IsValidIdentifier(propertyName))
+        {
+            diagnostic = null;
+            return true;
+        }
+
+        diagnostic = Diagnostic.Create(
+            ConfigSchemaDiagnostics.InvalidGeneratedIdentifier,
+            CreateFileLocation(filePath),
+            Path.GetFileName(filePath),
+            displayPath,
+            schemaName,
+            propertyName);
+        return false;
     }
 
     /// <summary>
