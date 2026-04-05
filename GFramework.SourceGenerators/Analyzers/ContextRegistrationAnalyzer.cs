@@ -495,7 +495,7 @@ public sealed class ContextRegistrationAnalyzer : DiagnosticAnalyzer
                         continue;
                     }
 
-                    if (TryResolveArchitectureHelperMethod(invocation.TargetMethod, architectureType, out var helperMethod))
+                    if (TryResolveArchitectureHelperMethod(invocation, architectureType, out var helperMethod))
                         pendingMethods.Enqueue(helperMethod);
                 }
             }
@@ -537,7 +537,7 @@ public sealed class ContextRegistrationAnalyzer : DiagnosticAnalyzer
                         continue;
                     }
 
-                    if (TryResolveModuleHelperMethod(invocation.TargetMethod, moduleType, out var helperMethod))
+                    if (TryResolveModuleHelperMethod(invocation, moduleType, out var helperMethod))
                         pendingMethods.Enqueue(helperMethod);
                 }
             }
@@ -651,41 +651,46 @@ public sealed class ContextRegistrationAnalyzer : DiagnosticAnalyzer
         }
 
         private static bool TryResolveArchitectureHelperMethod(
-            IMethodSymbol targetMethod,
+            IInvocationOperation invocation,
             INamedTypeSymbol architectureType,
             out IMethodSymbol helperMethod)
         {
-            helperMethod = default!;
-
-            if (targetMethod.MethodKind is not (MethodKind.Ordinary or MethodKind.Constructor))
-                return false;
-
-            if (!SymbolHelpers.IsWithinTypeHierarchy(targetMethod.ContainingType, architectureType))
-                return false;
-
-            // 对已经具备源码的方法保留原始目标，避免把显式的 base 调用重新折回到当前 override。
-            helperMethod = targetMethod.DeclaringSyntaxReferences.Length > 0 && !targetMethod.IsAbstract
-                ? targetMethod
-                : SymbolHelpers.ResolveHierarchyMethodImplementation(targetMethod, architectureType) ?? targetMethod;
-            return helperMethod.DeclaringSyntaxReferences.Length > 0;
+            return TryResolveHelperMethod(invocation, architectureType, out helperMethod);
         }
 
         private static bool TryResolveModuleHelperMethod(
-            IMethodSymbol targetMethod,
+            IInvocationOperation invocation,
             INamedTypeSymbol moduleType,
             out IMethodSymbol helperMethod)
         {
+            return TryResolveHelperMethod(invocation, moduleType, out helperMethod);
+        }
+
+        /// <summary>
+        ///     解析架构/模块分析中的辅助方法调用。
+        ///     普通虚调用应跟随到具体类型上的 override，而显式 <c>base.Xxx()</c> 必须保留基类语义。
+        /// </summary>
+        private static bool TryResolveHelperMethod(
+            IInvocationOperation invocation,
+            INamedTypeSymbol concreteType,
+            out IMethodSymbol helperMethod)
+        {
             helperMethod = default!;
+            var targetMethod = invocation.TargetMethod;
 
             if (targetMethod.MethodKind is not (MethodKind.Ordinary or MethodKind.Constructor))
                 return false;
 
-            if (!SymbolHelpers.IsWithinTypeHierarchy(targetMethod.ContainingType, moduleType))
+            if (!SymbolHelpers.IsWithinTypeHierarchy(targetMethod.ContainingType, concreteType))
                 return false;
 
-            helperMethod = targetMethod.DeclaringSyntaxReferences.Length > 0 && !targetMethod.IsAbstract
-                ? targetMethod
-                : SymbolHelpers.ResolveHierarchyMethodImplementation(targetMethod, moduleType) ?? targetMethod;
+            if (SymbolHelpers.IsExplicitBaseInvocation(invocation))
+            {
+                helperMethod = targetMethod;
+                return helperMethod.DeclaringSyntaxReferences.Length > 0;
+            }
+
+            helperMethod = SymbolHelpers.ResolveHierarchyMethodImplementation(targetMethod, concreteType) ?? targetMethod;
             return helperMethod.DeclaringSyntaxReferences.Length > 0;
         }
     }
@@ -781,6 +786,17 @@ public sealed class ContextRegistrationAnalyzer : DiagnosticAnalyzer
 
             return EnumerateTypeHierarchy(ownerType).Any(type =>
                 SymbolEqualityComparer.Default.Equals(type, candidateType));
+        }
+
+        public static bool IsExplicitBaseInvocation(IInvocationOperation invocation)
+        {
+            return invocation.Syntax is InvocationExpressionSyntax
+            {
+                Expression: MemberAccessExpressionSyntax
+                {
+                    Expression: BaseExpressionSyntax
+                }
+            };
         }
 
         public static IMethodSymbol? ResolveHierarchyMethodImplementation(
