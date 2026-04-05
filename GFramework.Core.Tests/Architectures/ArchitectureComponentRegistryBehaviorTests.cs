@@ -123,6 +123,62 @@ public class ArchitectureComponentRegistryBehaviorTests
     }
 
     /// <summary>
+    ///     验证系统类型注册会在初始化期间物化实例、注入构造函数依赖并执行创建回调。
+    /// </summary>
+    [Test]
+    public async Task RegisterSystem_Type_Should_Create_Instance_During_Initialization()
+    {
+        var dependency = new ConstructorDependency("system-dependency");
+        FactoryCreatedSystem? callbackInstance = null;
+        var architecture = new RegistryTestArchitecture(
+            target => target.RegisterSystem<FactoryCreatedSystem>(created => callbackInstance = created),
+            services => services.AddSingleton(dependency));
+
+        await architecture.InitializeAsync();
+
+        var resolved = architecture.Context.GetSystem<FactoryCreatedSystem>();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(callbackInstance, Is.Not.Null);
+            Assert.That(resolved, Is.SameAs(callbackInstance));
+            Assert.That(resolved.Dependency, Is.SameAs(dependency));
+            Assert.That(resolved.GetContext(), Is.SameAs(architecture.Context));
+            Assert.That(resolved.InitializeCallCount, Is.EqualTo(1));
+        });
+
+        await architecture.DestroyAsync();
+    }
+
+    /// <summary>
+    ///     验证模型类型注册会在初始化期间物化实例、注入构造函数依赖并执行创建回调。
+    /// </summary>
+    [Test]
+    public async Task RegisterModel_Type_Should_Create_Instance_During_Initialization()
+    {
+        var dependency = new ConstructorDependency("model-dependency");
+        FactoryCreatedModel? callbackInstance = null;
+        var architecture = new RegistryTestArchitecture(
+            target => target.RegisterModel<FactoryCreatedModel>(created => callbackInstance = created),
+            services => services.AddSingleton(dependency));
+
+        await architecture.InitializeAsync();
+
+        var resolved = architecture.Context.GetModel<FactoryCreatedModel>();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(callbackInstance, Is.Not.Null);
+            Assert.That(resolved, Is.SameAs(callbackInstance));
+            Assert.That(resolved.Dependency, Is.SameAs(dependency));
+            Assert.That(resolved.GetContext(), Is.SameAs(architecture.Context));
+            Assert.That(resolved.InitializeCallCount, Is.EqualTo(1));
+        });
+
+        await architecture.DestroyAsync();
+    }
+
+    /// <summary>
     ///     验证 Ready 阶段后不允许继续注册 Utility，保持与系统和模型一致的约束。
     /// </summary>
     [Test]
@@ -142,14 +198,35 @@ public class ArchitectureComponentRegistryBehaviorTests
     /// <summary>
     ///     用于测试组件注册行为的最小架构实现。
     /// </summary>
-    private sealed class RegistryTestArchitecture(Action<RegistryTestArchitecture> registrationAction) : Architecture
+    private sealed class RegistryTestArchitecture : Architecture
     {
+        private readonly Action<IServiceCollection>? _configurator;
+        private readonly Action<RegistryTestArchitecture> _registrationAction;
+
+        /// <summary>
+        ///     创建一个可选地附带服务配置逻辑的测试架构。
+        /// </summary>
+        /// <param name="registrationAction">初始化阶段执行的组件注册逻辑。</param>
+        /// <param name="configurator">初始化前执行的服务配置逻辑。</param>
+        public RegistryTestArchitecture(
+            Action<RegistryTestArchitecture> registrationAction,
+            Action<IServiceCollection>? configurator = null)
+        {
+            _registrationAction = registrationAction;
+            _configurator = configurator;
+        }
+
+        /// <summary>
+        ///     返回测试注入的服务配置逻辑。
+        /// </summary>
+        public override Action<IServiceCollection>? Configurator => _configurator;
+
         /// <summary>
         ///     在初始化阶段执行测试注入的注册逻辑。
         /// </summary>
         protected override void OnInitialize()
         {
-            registrationAction(this);
+            _registrationAction(this);
         }
     }
 
@@ -302,5 +379,94 @@ public class ArchitectureComponentRegistryBehaviorTests
     /// </summary>
     private sealed class FactoryCreatedUtility : IUtility
     {
+    }
+
+    /// <summary>
+    ///     用于验证构造函数依赖注入的简单依赖对象。
+    /// </summary>
+    private sealed class ConstructorDependency(string name)
+    {
+        /// <summary>
+        ///     获取依赖对象名称。
+        /// </summary>
+        public string Name { get; } = name;
+    }
+
+    /// <summary>
+    ///     用于验证系统类型注册路径的工厂创建系统。
+    /// </summary>
+    private sealed class FactoryCreatedSystem(ConstructorDependency dependency) : ISystem
+    {
+        private IArchitectureContext _context = null!;
+
+        /// <summary>
+        ///     获取构造函数注入的依赖对象。
+        /// </summary>
+        public ConstructorDependency Dependency { get; } = dependency;
+
+        /// <summary>
+        ///     获取初始化调用次数。
+        /// </summary>
+        public int InitializeCallCount { get; private set; }
+
+        public void Initialize()
+        {
+            InitializeCallCount++;
+        }
+
+        public void Destroy()
+        {
+        }
+
+        public void OnArchitecturePhase(ArchitecturePhase phase)
+        {
+        }
+
+        public void SetContext(IArchitectureContext context)
+        {
+            _context = context;
+        }
+
+        public IArchitectureContext GetContext()
+        {
+            return _context;
+        }
+    }
+
+    /// <summary>
+    ///     用于验证模型类型注册路径的工厂创建模型。
+    /// </summary>
+    private sealed class FactoryCreatedModel(ConstructorDependency dependency) : IModel
+    {
+        private IArchitectureContext _context = null!;
+
+        /// <summary>
+        ///     获取构造函数注入的依赖对象。
+        /// </summary>
+        public ConstructorDependency Dependency { get; } = dependency;
+
+        /// <summary>
+        ///     获取初始化调用次数。
+        /// </summary>
+        public int InitializeCallCount { get; private set; }
+
+        public void Initialize()
+        {
+            InitializeCallCount++;
+        }
+
+        public void OnArchitecturePhase(ArchitecturePhase phase)
+        {
+        }
+
+        public void SetContext(IArchitectureContext context)
+        {
+            _context = context;
+        }
+
+        public IArchitectureContext GetContext()
+        {
+            return _context;
+        }
     }
 }

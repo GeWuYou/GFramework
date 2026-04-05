@@ -7,7 +7,6 @@ using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Abstractions.Utility;
 using GFramework.Core.Environment;
 using GFramework.Core.Logging;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace GFramework.Core.Architectures;
 
@@ -182,7 +181,7 @@ public abstract class Architecture : IArchitecture
     }
 
     /// <summary>
-    ///     注册系统类型，由 DI 容器自动创建实例
+    ///     注册系统类型，由当前服务集合自动创建实例并接入本轮初始化
     /// </summary>
     /// <typeparam name="T">系统类型</typeparam>
     /// <param name="onCreated">可选的实例创建后回调</param>
@@ -203,7 +202,7 @@ public abstract class Architecture : IArchitecture
     }
 
     /// <summary>
-    ///     注册模型类型，由 DI 容器自动创建实例
+    ///     注册模型类型，由当前服务集合自动创建实例并接入本轮初始化
     /// </summary>
     /// <typeparam name="T">模型类型</typeparam>
     /// <param name="onCreated">可选的实例创建后回调</param>

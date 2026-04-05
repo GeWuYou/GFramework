@@ -5,7 +5,6 @@ using GFramework.Core.Abstractions.Model;
 using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Abstractions.Utility;
 using GFramework.Core.Extensions;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace GFramework.Core.Architectures;
 
@@ -20,6 +19,8 @@ internal sealed class ArchitectureComponentRegistry(
     ArchitectureLifecycle lifecycle,
     ILogger logger)
 {
+    private readonly ArchitectureComponentActivator _activator = new(services.Container, logger);
+
     #region Validation
 
     /// <summary>
@@ -63,7 +64,8 @@ internal sealed class ArchitectureComponentRegistry(
     }
 
     /// <summary>
-    ///     注册系统类型，由 DI 容器自动创建实例
+    ///     注册系统类型，并在注册阶段由当前服务集合立即创建实例。
+    ///     这样可以确保该系统参与当前架构初始化批次，而不是等到 Ready 之后首次解析时才延迟创建。
     /// </summary>
     /// <typeparam name="T">系统类型</typeparam>
     /// <param name="onCreated">可选的实例创建后回调</param>
@@ -72,21 +74,12 @@ internal sealed class ArchitectureComponentRegistry(
         ValidateRegistration("system");
         logger.Debug($"Registering system type: {typeof(T).Name}");
 
-        services.Container.RegisterFactory<T>(sp =>
-        {
-            // 1. DI 创建实例
-            var system = ActivatorUtilities.CreateInstance<T>(sp);
-
-            // 2. 框架默认处理
-            system.SetContext(architecture.Context);
-            lifecycle.RegisterLifecycleComponent(system);
-
-            // 3. 用户自定义处理（钩子）
-            onCreated?.Invoke(system);
-
-            logger.Debug($"System created: {typeof(T).Name}");
-            return system;
-        });
+        // 类型注册路径在注册阶段就物化实例，确保组件能参与当前初始化批次。
+        var system = _activator.CreateInstance<T>();
+        system.SetContext(architecture.Context);
+        lifecycle.RegisterLifecycleComponent(system);
+        onCreated?.Invoke(system);
+        services.Container.RegisterPlurality(system);
 
         logger.Info($"System type registered: {typeof(T).Name}");
     }
@@ -118,7 +111,8 @@ internal sealed class ArchitectureComponentRegistry(
     }
 
     /// <summary>
-    ///     注册模型类型，由 DI 容器自动创建实例
+    ///     注册模型类型，并在注册阶段由当前服务集合立即创建实例。
+    ///     这样可以确保该模型参与当前架构初始化批次，而不是等到 Ready 之后首次解析时才延迟创建。
     /// </summary>
     /// <typeparam name="T">模型类型</typeparam>
     /// <param name="onCreated">可选的实例创建后回调</param>
@@ -127,18 +121,11 @@ internal sealed class ArchitectureComponentRegistry(
         ValidateRegistration("model");
         logger.Debug($"Registering model type: {typeof(T).Name}");
 
-        services.Container.RegisterFactory<T>(sp =>
-        {
-            var model = ActivatorUtilities.CreateInstance<T>(sp);
-            model.SetContext(architecture.Context);
-            lifecycle.RegisterLifecycleComponent(model);
-
-            // 用户自定义钩子
-            onCreated?.Invoke(model);
-
-            logger.Debug($"Model created: {typeof(T).Name}");
-            return model;
-        });
+        var model = _activator.CreateInstance<T>();
+        model.SetContext(architecture.Context);
+        lifecycle.RegisterLifecycleComponent(model);
+        onCreated?.Invoke(model);
+        services.Container.RegisterPlurality(model);
 
         logger.Info($"Model type registered: {typeof(T).Name}");
     }
