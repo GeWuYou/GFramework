@@ -1,6 +1,5 @@
 ﻿using GFramework.Core.Abstractions.Serializer;
 using Newtonsoft.Json;
-using NewtonsoftJsonException = Newtonsoft.Json.JsonException;
 
 namespace GFramework.Game.Serializer;
 
@@ -51,7 +50,6 @@ public sealed class JsonSerializer
     /// <returns>序列化后的JSON字符串</returns>
     public string Serialize(object obj, Type type)
     {
-        ArgumentNullException.ThrowIfNull(obj);
         ArgumentNullException.ThrowIfNull(type);
 
         return JsonConvert.SerializeObject(obj, type, _settings);
@@ -107,7 +105,7 @@ public sealed class JsonSerializer
 
             return result;
         }
-        catch (Exception ex) when (ex is NewtonsoftJsonException or InvalidCastException or ArgumentException)
+        catch (Exception ex) when (ex is InvalidCastException)
         {
             throw new InvalidOperationException(
                 $"Failed to deserialize JSON to target type '{targetType.FullName}'.",

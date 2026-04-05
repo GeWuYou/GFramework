@@ -93,6 +93,26 @@ public sealed class JsonSerializerTests
         Assert.That(((PlayerStateStub)restored).Level, Is.EqualTo(11));
     }
 
+    [Test]
+    public void Serialize_With_Runtime_Type_Should_Allow_Null_Object()
+    {
+        var serializer = new GameJsonSerializer();
+
+        var json = serializer.Serialize(null!, typeof(PlayerStateStub));
+
+        Assert.That(json, Is.EqualTo("null"));
+    }
+
+    [Test]
+    public void Deserialize_Should_Preserve_ArgumentException_For_Invalid_Input_Arguments()
+    {
+        var serializer = new GameJsonSerializer();
+
+        var exception = Assert.Throws<ArgumentException>(() => serializer.Deserialize<PlayerStateStub>(string.Empty));
+
+        Assert.That(exception, Is.Not.Null);
+    }
+
     private sealed class PlayerStateStub
     {
         public string Name { get; set; } = string.Empty;
@@ -121,7 +141,7 @@ public sealed class JsonSerializerTests
             writer.WriteValue($"{value?.X}:{value?.Y}");
         }
 
-        public override CoordinateStub? ReadJson(
+        public override CoordinateStub ReadJson(
             JsonReader reader,
             Type objectType,
             CoordinateStub? existingValue,

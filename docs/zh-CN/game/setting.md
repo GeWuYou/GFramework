@@ -175,7 +175,7 @@ public interface ISettingsMigration
     Type SettingsType { get; }
     int FromVersion { get; }
     int ToVersion { get; }
-    ISettingsSection Migrate(ISettingsSection oldData);
+    ISettingsData Migrate(ISettingsData oldData);
 }
 ```
 
