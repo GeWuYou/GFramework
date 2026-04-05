@@ -18,12 +18,54 @@ namespace GFramework.Godot.Setting.Data;
 /// </summary>
 public class LocalizationMap
 {
+    private const string DefaultFrameworkLanguage = "eng";
+    private const string DefaultGodotLocale = "en";
+
     /// <summary>
-    ///     用户语言 -> Godot locale 映射表
+    ///     用户语言 -> Godot locale 映射表。
     /// </summary>
     public Dictionary<string, string> LanguageMap { get; set; } = new()
     {
         { "简体中文", "zh_CN" },
         { "English", "en" }
     };
+
+    /// <summary>
+    ///     用户语言 -> GFramework 本地化语言码映射表。
+    /// </summary>
+    public Dictionary<string, string> FrameworkLanguageMap { get; set; } = new()
+    {
+        { "简体中文", "zhs" },
+        { "English", "eng" }
+    };
+
+    /// <summary>
+    ///     解析用户保存的语言值对应的 Godot locale。
+    /// </summary>
+    /// <param name="storedLanguage">设置系统中保存的语言值。</param>
+    /// <returns>对应的 Godot locale；未知值时回退为英文。</returns>
+    public string ResolveGodotLocale(string? storedLanguage)
+    {
+        if (string.IsNullOrWhiteSpace(storedLanguage))
+        {
+            return DefaultGodotLocale;
+        }
+
+        return LanguageMap.GetValueOrDefault(storedLanguage, DefaultGodotLocale);
+    }
+
+    /// <summary>
+    ///     解析用户保存的语言值对应的框架语言码。
+    /// </summary>
+    /// <param name="storedLanguage">设置系统中保存的语言值。</param>
+    /// <returns>对应的框架语言码；未知值时回退为英文。</returns>
+    public string ResolveFrameworkLanguage(string? storedLanguage)
+    {
+        if (string.IsNullOrWhiteSpace(storedLanguage))
+        {
+            return DefaultFrameworkLanguage;
+        }
+
+        return FrameworkLanguageMap.GetValueOrDefault(storedLanguage, DefaultFrameworkLanguage);
+    }
 }

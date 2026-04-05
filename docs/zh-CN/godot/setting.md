@@ -3,7 +3,7 @@
 ## 概述
 
 Godot 设置模块是 GFramework.Godot 的核心组件之一，专门为 Godot 引擎提供游戏设置系统的实现。该模块将通用的设置框架与 Godot
-引擎的特定功能相结合，提供了音频设置和图形设置的完整解决方案。
+引擎的特定功能相结合，提供了音频设置、图形设置和本地化设置的完整解决方案。
 
 ## 核心类
 
@@ -61,23 +61,55 @@ Godot 图形设置实现类，继承自 GraphicsSettings 并实现 IApplyAbleSet
 - 窗口位置自动居中
 - 多显示器支持
 
+### 本地化设置系统
+
+#### LocalizationMap
+
+本地化映射配置类，用于把设置系统中保存的用户可见语言值解析为：
+
+- Godot `TranslationServer` 使用的 locale
+- GFramework `ILocalizationManager` 使用的语言码
+
+默认映射如下：
+
+- `"简体中文"` -> Godot `zh_CN`，框架语言码 `zhs`
+- `"English"` -> Godot `en`，框架语言码 `eng`
+
+未知语言值会稳定回退到英文，避免重启后出现设置值与运行时语言状态不一致。
+
+#### GodotLocalizationSettings
+
+Godot 本地化设置实现类，负责把 `LocalizationSettings` 同时应用到 Godot 引擎与 GFramework 本地化管理器。
+
+**功能：**
+
+- 将语言设置应用到 `TranslationServer.SetLocale(...)`
+- 同步 `ILocalizationManager.SetLanguage(...)`
+- 通过统一映射避免 Godot locale 与框架语言码分裂
+
 ## 架构设计
 
 ```mermaid
 graph TD
     A[AudioSettings] --> B[GodotAudioSettings]
     C[GraphicsSettings] --> D[GodotGraphicsSettings]
-    E[IApplyAbleSettings] --> B
-    E --> D
+    E[LocalizationSettings] --> F[GodotLocalizationSettings]
+    G[IApplyAbleSettings] --> B
+    G --> D
+    G --> F
     
-    G[AudioBusMap] --> B
+    H[AudioBusMap] --> B
+    I[LocalizationMap] --> F
     
-    B --> I[AudioServer API]
-    D --> J[DisplayServer API]
+    B --> J[AudioServer API]
+    D --> K[DisplayServer API]
+    F --> L[TranslationServer API]
+    F --> M[ILocalizationManager]
     
-    K[SettingsSystem] --> L[Apply Method]
-    L --> B
-    L --> D
+    N[SettingsSystem] --> O[Apply Method]
+    O --> B
+    O --> D
+    O --> F
 ```
 
 ## 使用示例
