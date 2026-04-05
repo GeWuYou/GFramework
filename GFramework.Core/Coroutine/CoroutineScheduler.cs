@@ -140,20 +140,16 @@ public sealed class CoroutineScheduler(
     /// <returns>包含所有活跃协程的快照列表。</returns>
     public IReadOnlyList<CoroutineSnapshot> GetActiveSnapshots()
     {
-        var snapshots = new List<CoroutineSnapshot>(_metadata.Count);
-
-        foreach (var pair in _metadata)
-        {
-            var slot = _slots[pair.Value.SlotIndex];
-            if (slot == null)
+        return _metadata
+            .Select(pair => pair.Value)
+            .Select(meta => new
             {
-                continue;
-            }
-
-            snapshots.Add(CreateSnapshot(pair.Value, slot));
-        }
-
-        return snapshots;
+                Metadata = meta,
+                Slot = _slots[meta.SlotIndex]
+            })
+            .Where(item => item.Slot is not null)
+            .Select(item => CreateSnapshot(item.Metadata, item.Slot!))
+            .ToArray();
     }
 
     /// <summary>
@@ -689,6 +685,12 @@ public sealed class CoroutineScheduler(
                 case CoroutineCompletionStatus.Cancelled:
                     meta.State = CoroutineState.Cancelled;
                     break;
+
+                default:
+                    throw new ArgumentOutOfRangeException(
+                        nameof(completionStatus),
+                        completionStatus,
+                        "Unsupported coroutine completion status.");
             }
         }
 
@@ -855,7 +857,7 @@ public sealed class CoroutineScheduler(
     /// <param name="metadata">协程元数据。</param>
     /// <param name="slot">协程槽位。</param>
     /// <returns>与当前槽位一致的只读快照。</returns>
-    private CoroutineSnapshot CreateSnapshot(CoroutineMetadata metadata, CoroutineSlot slot)
+    private static CoroutineSnapshot CreateSnapshot(CoroutineMetadata metadata, CoroutineSlot slot)
     {
         return new CoroutineSnapshot(
             slot.Handle,
