@@ -226,10 +226,6 @@ jobs:
             Release created by CI for tag ${{ github.ref_name }}
             Package version: ${{ needs.build-pack.outputs.package_version }}
 
-            ## Publish Status
-            - NuGet.org publish: ${{ needs.publish-nuget.result }}
-            - GitHub Packages publish: ${{ needs.publish-github-packages.result }}
-
             ## Compliance
             - NOTICE
             - THIRD_PARTY_LICENSES
