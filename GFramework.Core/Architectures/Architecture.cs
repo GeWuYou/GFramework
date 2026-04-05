@@ -37,19 +37,25 @@ public abstract class Architecture : IArchitecture
         IArchitectureServices? services = null,
         IArchitectureContext? context = null)
     {
-        Configuration = configuration ?? new ArchitectureConfiguration();
-        Environment = environment ?? new DefaultEnvironment();
-        Services = services ?? new ArchitectureServices();
+        var resolvedConfiguration = configuration ?? new ArchitectureConfiguration();
+        var resolvedEnvironment = environment ?? new DefaultEnvironment();
+        var resolvedServices = services ?? new ArchitectureServices();
         _context = context;
 
         // 初始化 Logger
-        LoggerFactoryResolver.Provider = Configuration.LoggerProperties.LoggerFactoryProvider;
+        LoggerFactoryResolver.Provider = resolvedConfiguration.LoggerProperties.LoggerFactoryProvider;
         _logger = LoggerFactoryResolver.Provider.CreateLogger(GetType().Name);
 
         // 初始化管理器
-        _lifecycle = new ArchitectureLifecycle(this, Configuration, Services, _logger);
-        _componentRegistry = new ArchitectureComponentRegistry(this, Configuration, Services, _lifecycle, _logger);
-        _modules = new ArchitectureModules(this, Services, _logger);
+        _bootstrapper = new ArchitectureBootstrapper(GetType(), resolvedEnvironment, resolvedServices, _logger);
+        _lifecycle = new ArchitectureLifecycle(this, resolvedConfiguration, resolvedServices, _logger);
+        _componentRegistry = new ArchitectureComponentRegistry(
+            this,
+            resolvedConfiguration,
+            resolvedServices,
+            _lifecycle,
+            _logger);
+        _modules = new ArchitectureModules(this, resolvedServices, _logger);
     }
 
     #endregion
@@ -69,21 +75,6 @@ public abstract class Architecture : IArchitecture
     #endregion
 
     #region Properties
-
-    /// <summary>
-    ///     获取架构配置对象
-    /// </summary>
-    private IArchitectureConfiguration Configuration { get; }
-
-    /// <summary>
-    ///     获取环境配置对象
-    /// </summary>
-    private IEnvironment Environment { get; }
-
-    /// <summary>
-    ///     获取服务管理器
-    /// </summary>
-    private IArchitectureServices Services { get; }
 
     /// <summary>
     ///     当前架构的阶段
@@ -128,6 +119,11 @@ public abstract class Architecture : IArchitecture
     ///     架构上下文实例
     /// </summary>
     private IArchitectureContext? _context;
+
+    /// <summary>
+    ///     初始化基础设施编排器
+    /// </summary>
+    private readonly ArchitectureBootstrapper _bootstrapper;
 
     /// <summary>
     ///     生命周期管理器
@@ -284,32 +280,7 @@ public abstract class Architecture : IArchitecture
     /// <param name="asyncMode">是否启用异步模式</param>
     private async Task InitializeInternalAsync(bool asyncMode)
     {
-        // === 基础环境初始化 ===
-        Environment.Initialize();
-
-        // 注册内置服务模块
-        Services.ModuleManager.RegisterBuiltInModules(Services.Container);
-
-        // 将 Environment 注册到容器
-        if (!Services.Container.Contains<IEnvironment>())
-            Services.Container.RegisterPlurality(Environment);
-
-        // 初始化架构上下文
-        _context ??= new ArchitectureContext(Services.Container);
-        GameContext.Bind(GetType(), _context);
-
-        // 为服务设置上下文
-        Services.SetContext(_context);
-        if (Configurator is null)
-        {
-            _logger.Debug("Mediator-based cqrs will not take effect without the service setter configured!");
-        }
-
-        // 执行服务钩子
-        Services.Container.ExecuteServicesHook(Configurator);
-
-        // 初始化服务模块
-        await Services.ModuleManager.InitializeAllAsync(asyncMode);
+        _context = await _bootstrapper.PrepareForInitializationAsync(_context, Configurator, asyncMode);
 
         // === 用户 OnInitialize ===
         _logger.Debug("Calling user OnInitialize()");
@@ -320,9 +291,7 @@ public abstract class Architecture : IArchitecture
         await _lifecycle.InitializeAllComponentsAsync(asyncMode);
 
         // === 初始化完成阶段 ===
-        Services.Container.Freeze();
-        _logger.Info("IOC container frozen");
-
+        _bootstrapper.CompleteInitialization();
         _lifecycle.MarkAsReady();
         _logger.Info($"Architecture {GetType().Name} is ready - all components initialized");
     }
