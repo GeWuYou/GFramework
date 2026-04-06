@@ -1086,6 +1086,31 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine();
         builder.AppendLine("/// <summary>");
         builder.AppendLine(
+            "///     Captures optional per-table registration overrides for the generated aggregate registration entry point.");
+        builder.AppendLine("/// </summary>");
+        builder.AppendLine("public sealed class GeneratedConfigRegistrationOptions");
+        builder.AppendLine("{");
+
+        for (var index = 0; index < schemas.Count; index++)
+        {
+            var schema = schemas[index];
+            builder.AppendLine("    /// <summary>");
+            builder.AppendLine(
+                $"    ///     Gets or sets the optional key comparer forwarded to {schema.EntityName}ConfigBindings.Register{schema.EntityName}Table(global::GFramework.Game.Config.YamlConfigLoader, global::System.Collections.Generic.IEqualityComparer<{schema.KeyClrType}>?) when aggregate registration runs.");
+            builder.AppendLine("    /// </summary>");
+            builder.AppendLine(
+                $"    public global::System.Collections.Generic.IEqualityComparer<{schema.KeyClrType}>? {schema.EntityName}Comparer {{ get; init; }}");
+
+            if (index < schemas.Count - 1)
+            {
+                builder.AppendLine();
+            }
+        }
+
+        builder.AppendLine("}");
+        builder.AppendLine();
+        builder.AppendLine("/// <summary>");
+        builder.AppendLine(
             "///     Provides a single extension method that registers every generated config table discovered in the current consumer project.");
         builder.AppendLine("/// </summary>");
         builder.AppendLine("public static class GeneratedConfigRegistrationExtensions");
@@ -1107,10 +1132,35 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("            throw new global::System.ArgumentNullException(nameof(loader));");
         builder.AppendLine("        }");
         builder.AppendLine();
+        builder.AppendLine("        return RegisterAllGeneratedConfigTables(loader, options: null);");
+        builder.AppendLine("    }");
+        builder.AppendLine();
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine(
+            "    ///     Registers all generated config tables while preserving optional per-table overrides such as custom key comparers.");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    /// <param name=\"loader\">Target YAML config loader.</param>");
+        builder.AppendLine(
+            "    /// <param name=\"options\">Optional per-table overrides for aggregate registration; when null, all tables use their default comparer behavior.</param>");
+        builder.AppendLine("    /// <returns>The same loader instance after all generated table registrations have been applied.</returns>");
+        builder.AppendLine(
+            "    /// <exception cref=\"global::System.ArgumentNullException\">When <paramref name=\"loader\"/> is null.</exception>");
+        builder.AppendLine(
+            "    public static global::GFramework.Game.Config.YamlConfigLoader RegisterAllGeneratedConfigTables(");
+        builder.AppendLine("        this global::GFramework.Game.Config.YamlConfigLoader loader,");
+        builder.AppendLine("        GeneratedConfigRegistrationOptions? options)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        if (loader is null)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            throw new global::System.ArgumentNullException(nameof(loader));");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        options ??= new GeneratedConfigRegistrationOptions();");
+        builder.AppendLine();
 
         foreach (var schema in schemas)
         {
-            builder.AppendLine($"        loader.Register{schema.EntityName}Table();");
+            builder.AppendLine($"        loader.Register{schema.EntityName}Table(options.{schema.EntityName}Comparer);");
         }
 
         builder.AppendLine("        return loader;");

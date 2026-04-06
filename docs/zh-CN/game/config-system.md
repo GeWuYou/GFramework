@@ -454,6 +454,23 @@ if (GeneratedConfigCatalog.TryGetByTableName("monster", out var metadata))
 }
 ```
 
+如果你需要为某些表保留自定义 key comparer，也可以继续走聚合注册入口，而不是被迫退回逐表手写：
+
+```csharp
+var loader = new YamlConfigLoader("config-root")
+    .RegisterAllGeneratedConfigTables(
+        new GeneratedConfigRegistrationOptions
+        {
+            ItemComparer = StringComparer.OrdinalIgnoreCase
+        });
+```
+
+这里的规则是：
+
+- 未显式配置 comparer 的表，仍然使用各自 `Register{Entity}Table()` 的默认行为
+- 需要自定义 comparer 的表，可以通过 `GeneratedConfigRegistrationOptions` 按表覆盖
+- 如果项目希望继续完全手写某张表的注册流程，逐表 `Register*Table(...)` 入口仍然保留，作为兼容逃生通道
+
 如果你需要自定义目录、表名或 key selector，仍然可以直接调用 `YamlConfigLoader.RegisterTable(...)` 原始重载。
 
 如果你希望把 schema 路径、比较器以及未来扩展开关集中到一个对象里，推荐改用选项对象入口：

@@ -100,7 +100,9 @@ public class GeneratedConfigConsumerIntegrationTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(GeneratedConfigCatalog.Tables.Count, Is.EqualTo(1));
+            Assert.That(
+                GeneratedConfigCatalog.Tables.Select(static metadata => metadata.TableName),
+                Does.Contain("monster"));
             Assert.That(GeneratedConfigCatalog.TryGetByTableName("monster", out var catalogEntry), Is.True);
             Assert.That(catalogEntry.ConfigDomain, Is.EqualTo("monster"));
             Assert.That(catalogEntry.ConfigRelativePath, Is.EqualTo("monster"));

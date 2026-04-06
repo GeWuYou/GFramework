@@ -91,6 +91,17 @@ public static class GeneratedConfigCatalog
 }
 
 /// <summary>
+///     Captures optional per-table registration overrides for the generated aggregate registration entry point.
+/// </summary>
+public sealed class GeneratedConfigRegistrationOptions
+{
+    /// <summary>
+    ///     Gets or sets the optional key comparer forwarded to MonsterConfigBindings.RegisterMonsterTable(global::GFramework.Game.Config.YamlConfigLoader, global::System.Collections.Generic.IEqualityComparer<int>?) when aggregate registration runs.
+    /// </summary>
+    public global::System.Collections.Generic.IEqualityComparer<int>? MonsterComparer { get; init; }
+}
+
+/// <summary>
 ///     Provides a single extension method that registers every generated config table discovered in the current consumer project.
 /// </summary>
 public static class GeneratedConfigRegistrationExtensions
@@ -109,7 +120,28 @@ public static class GeneratedConfigRegistrationExtensions
             throw new global::System.ArgumentNullException(nameof(loader));
         }
 
-        loader.RegisterMonsterTable();
+        return RegisterAllGeneratedConfigTables(loader, options: null);
+    }
+
+    /// <summary>
+    ///     Registers all generated config tables while preserving optional per-table overrides such as custom key comparers.
+    /// </summary>
+    /// <param name="loader">Target YAML config loader.</param>
+    /// <param name="options">Optional per-table overrides for aggregate registration; when null, all tables use their default comparer behavior.</param>
+    /// <returns>The same loader instance after all generated table registrations have been applied.</returns>
+    /// <exception cref="global::System.ArgumentNullException">When <paramref name="loader"/> is null.</exception>
+    public static global::GFramework.Game.Config.YamlConfigLoader RegisterAllGeneratedConfigTables(
+        this global::GFramework.Game.Config.YamlConfigLoader loader,
+        GeneratedConfigRegistrationOptions? options)
+    {
+        if (loader is null)
+        {
+            throw new global::System.ArgumentNullException(nameof(loader));
+        }
+
+        options ??= new GeneratedConfigRegistrationOptions();
+
+        loader.RegisterMonsterTable(options.MonsterComparer);
         return loader;
     }
 }

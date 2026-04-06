@@ -450,9 +450,14 @@ public class SchemaConfigGeneratorTests
         Assert.Multiple(() =>
         {
             Assert.That(catalogSource, Does.Contain("public static class GeneratedConfigCatalog"));
+            Assert.That(catalogSource, Does.Contain("public sealed class GeneratedConfigRegistrationOptions"));
             Assert.That(catalogSource, Does.Contain("public static class GeneratedConfigRegistrationExtensions"));
-            Assert.That(catalogSource, Does.Contain("loader.RegisterItemTable();"));
-            Assert.That(catalogSource, Does.Contain("loader.RegisterMonsterTable();"));
+            Assert.That(catalogSource, Does.Contain("public global::System.Collections.Generic.IEqualityComparer<string>? ItemComparer { get; init; }"));
+            Assert.That(catalogSource, Does.Contain("public global::System.Collections.Generic.IEqualityComparer<int>? MonsterComparer { get; init; }"));
+            Assert.That(catalogSource, Does.Contain("return RegisterAllGeneratedConfigTables(loader, options: null);"));
+            Assert.That(catalogSource, Does.Contain("GeneratedConfigRegistrationOptions? options"));
+            Assert.That(catalogSource, Does.Contain("loader.RegisterItemTable(options.ItemComparer);"));
+            Assert.That(catalogSource, Does.Contain("loader.RegisterMonsterTable(options.MonsterComparer);"));
             Assert.That(catalogSource, Does.Contain("ItemConfigBindings.Metadata.TableName"));
             Assert.That(catalogSource, Does.Contain("MonsterConfigBindings.Metadata.TableName"));
             Assert.That(catalogSource, Does.Contain("public static bool TryGetByTableName(string tableName, out TableMetadata metadata)"));
