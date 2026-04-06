@@ -11,7 +11,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
+using System.Threading.Tasks;
 using GFramework.Core.Abstractions.Storage;
 using GFramework.Core.Utility;
 using GFramework.Game.Abstractions.Data;
@@ -27,6 +31,7 @@ public class SaveRepository<TSaveData> : AbstractContextUtility, ISaveRepository
     where TSaveData : class, IData, new()
 {
     private readonly SaveConfiguration _config;
+    private readonly Dictionary<int, ISaveMigration<TSaveData>> _migrations = new();
     private readonly IStorage _rootStorage;
 
     /// <summary>
@@ -41,6 +46,32 @@ public class SaveRepository<TSaveData> : AbstractContextUtility, ISaveRepository
 
         _config = config;
         _rootStorage = new ScopedStorage(storage, config.SaveRoot);
+    }
+
+    /// <summary>
+    ///     注册存档迁移器，使仓库在加载旧版本存档时自动执行升级。
+    /// </summary>
+    /// <param name="migration">要注册的存档迁移器。</param>
+    /// <returns>当前存档仓库实例，支持链式调用。</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="migration" /> 为 <see langword="null" />。</exception>
+    /// <exception cref="InvalidOperationException">
+    ///     <typeparamref name="TSaveData" /> 未实现 <see cref="IVersionedData" />，无法使用版本化迁移。
+    /// </exception>
+    /// <exception cref="ArgumentException">迁移器的目标版本不大于源版本。</exception>
+    public ISaveRepository<TSaveData> RegisterMigration(ISaveMigration<TSaveData> migration)
+    {
+        ArgumentNullException.ThrowIfNull(migration);
+        EnsureVersionedSaveType();
+
+        if (migration.ToVersion <= migration.FromVersion)
+        {
+            throw new ArgumentException(
+                $"Migration for {typeof(TSaveData).Name} must advance the version number.",
+                nameof(migration));
+        }
+
+        _migrations[migration.FromVersion] = migration;
+        return this;
     }
 
     /// <summary>
@@ -64,7 +95,10 @@ public class SaveRepository<TSaveData> : AbstractContextUtility, ISaveRepository
         var storage = GetSlotStorage(slot);
 
         if (await storage.ExistsAsync(_config.SaveFileName))
-            return await storage.ReadAsync<TSaveData>(_config.SaveFileName);
+        {
+            var loaded = await storage.ReadAsync<TSaveData>(_config.SaveFileName);
+            return await MigrateIfNeededAsync(slot, storage, loaded);
+        }
 
         return new TSaveData();
     }
@@ -135,6 +169,110 @@ public class SaveRepository<TSaveData> : AbstractContextUtility, ISaveRepository
     private IStorage GetSlotStorage(int slot)
     {
         return new ScopedStorage(_rootStorage, $"{_config.SaveSlotPrefix}{slot}");
+    }
+
+    /// <summary>
+    ///     在加载旧版本存档时按注册顺序执行迁移，并在成功后自动回写升级结果。
+    /// </summary>
+    /// <param name="slot">当前加载的存档槽位。</param>
+    /// <param name="storage">对应槽位的存储对象。</param>
+    /// <param name="data">原始加载出来的存档数据。</param>
+    /// <returns>迁移后的最新存档；如果无需迁移则返回原始对象。</returns>
+    /// <exception cref="InvalidOperationException">
+    ///     当前运行时缺少必要的迁移链、读取到更高版本的存档，或迁移器返回了非法版本。
+    /// </exception>
+    private async Task<TSaveData> MigrateIfNeededAsync(int slot, IStorage storage, TSaveData data)
+    {
+        if (data is not IVersionedData versionedData)
+        {
+            return data;
+        }
+
+        var latestTemplate = new TSaveData();
+        if (latestTemplate is not IVersionedData latestVersionedData)
+        {
+            return data;
+        }
+
+        var currentVersion = versionedData.Version;
+        var targetVersion = latestVersionedData.Version;
+
+        if (currentVersion > targetVersion)
+        {
+            throw new InvalidOperationException(
+                $"Save slot {slot} for {typeof(TSaveData).Name} is version {currentVersion}, " +
+                $"which is newer than the current runtime version {targetVersion}.");
+        }
+
+        if (currentVersion == targetVersion)
+        {
+            return data;
+        }
+
+        EnsureVersionedSaveType();
+
+        var migrated = data;
+
+        // 迁移链按“当前版本 -> 下一个已注册迁移器”推进；任何缺口都表示运行时无法安全解释旧存档。
+        while (currentVersion < targetVersion)
+        {
+            if (!_migrations.TryGetValue(currentVersion, out var migration))
+            {
+                throw new InvalidOperationException(
+                    $"No save migration is registered for {typeof(TSaveData).Name} from version {currentVersion}.");
+            }
+
+            migrated = migration.Migrate(migrated) ??
+                       throw new InvalidOperationException(
+                           $"Save migration for {typeof(TSaveData).Name} from version {currentVersion} returned null.");
+
+            if (migrated is not IVersionedData migratedVersionedData)
+            {
+                throw new InvalidOperationException(
+                    $"Save migration for {typeof(TSaveData).Name} must return data implementing {nameof(IVersionedData)}.");
+            }
+
+            // 显式校验迁移器声明与实际结果，避免版本号不前进导致死循环或把旧数据错误回写为“已升级”。
+            if (migration.ToVersion != migratedVersionedData.Version)
+            {
+                throw new InvalidOperationException(
+                    $"Save migration for {typeof(TSaveData).Name} declared target version {migration.ToVersion} " +
+                    $"but returned version {migratedVersionedData.Version}.");
+            }
+
+            if (migratedVersionedData.Version <= currentVersion)
+            {
+                throw new InvalidOperationException(
+                    $"Save migration for {typeof(TSaveData).Name} must advance beyond version {currentVersion}.");
+            }
+
+            if (migratedVersionedData.Version > targetVersion)
+            {
+                throw new InvalidOperationException(
+                    $"Save migration for {typeof(TSaveData).Name} produced version {migratedVersionedData.Version}, " +
+                    $"which exceeds the current runtime version {targetVersion}.");
+            }
+
+            currentVersion = migratedVersionedData.Version;
+        }
+
+        await storage.WriteAsync(_config.SaveFileName, migrated);
+        return migrated;
+    }
+
+    /// <summary>
+    ///     验证当前存档类型支持基于版本号的迁移流程。
+    /// </summary>
+    /// <exception cref="InvalidOperationException">
+    ///     <typeparamref name="TSaveData" /> 未实现 <see cref="IVersionedData" />。
+    /// </exception>
+    private static void EnsureVersionedSaveType()
+    {
+        if (!typeof(IVersionedData).IsAssignableFrom(typeof(TSaveData)))
+        {
+            throw new InvalidOperationException(
+                $"{typeof(TSaveData).Name} must implement {nameof(IVersionedData)} to use save migrations.");
+        }
     }
 
     /// <summary>

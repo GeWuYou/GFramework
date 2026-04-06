@@ -56,11 +56,24 @@ public interface IDataRepository : IUtility
 public interface ISaveRepository<TSaveData> : IUtility
     where TSaveData : class, IData, new()
 {
+    ISaveRepository<TSaveData> RegisterMigration(ISaveMigration<TSaveData> migration);
     Task<bool> ExistsAsync(int slot);
     Task<TSaveData> LoadAsync(int slot);
     Task SaveAsync(int slot, TSaveData data);
     Task DeleteAsync(int slot);
     Task<IReadOnlyList<int>> ListSlotsAsync();
+}
+```
+
+`ISaveMigration<TSaveData>` 定义单步迁移：
+
+```csharp
+public interface ISaveMigration<TSaveData>
+    where TSaveData : class, IData
+{
+    int FromVersion { get; }
+    int ToVersion { get; }
+    TSaveData Migrate(TSaveData oldData);
 }
 ```
 
@@ -265,66 +278,76 @@ public partial class AutoSaveController : IController
 
 ### 数据版本迁移
 
-`SaveRepository<TSaveData>` 当前负责槽位存档的读取、写入、删除和列举，并没有内建“注册迁移器后自动升级存档”的统一迁移管线。
+`SaveRepository<TSaveData>` 现在支持注册正式的迁移器，并在 `LoadAsync(slot)` 时自动升级旧版本存档。
 
-下面示例展示的是应用层迁移策略：加载后检查版本，调用你自己的迁移逻辑，再决定是否回写新版本数据。
+迁移规则如下：
+
+- `TSaveData` 需要实现 `IVersionedData`
+- 仓库以 `new TSaveData().Version` 作为当前运行时目标版本
+- 每个迁移器负责一个 `FromVersion -> ToVersion` 跳转
+- 加载时仓库会按链路连续执行迁移，并在成功后自动回写升级后的存档
+- 如果缺少中间迁移器，或者读到了比当前运行时更高的版本，`LoadAsync` 会抛出异常，避免静默加载错误数据
 
 ```csharp
-// 版本 1 的数据
-public class SaveDataV1 : IVersionedData
+public sealed class SaveData : IVersionedData
 {
-    public int Version { get; set; } = 1;
-    public string PlayerName { get; set; }
-    public int Level { get; set; }
-}
-
-// 版本 2 的数据（添加了新字段）
-public class SaveDataV2 : IVersionedData
-{
+    // 当前运行时代码支持的最新版本
     public int Version { get; set; } = 2;
     public string PlayerName { get; set; }
     public int Level { get; set; }
-    public int Experience { get; set; }  // 新增字段
-    public DateTime LastPlayTime { get; set; }  // 新增字段
+    public int Experience { get; set; }
+    public DateTime LastModified { get; set; }
 }
 
-// 数据迁移器
-public class SaveDataMigrator
+public sealed class SaveDataMigrationV1ToV2 : ISaveMigration<SaveData>
 {
-    public SaveDataV2 Migrate(SaveDataV1 oldData)
+    public int FromVersion => 1;
+
+    public int ToVersion => 2;
+
+    public SaveData Migrate(SaveData oldData)
     {
-        return new SaveDataV2
+        return new SaveData
         {
             Version = 2,
             PlayerName = oldData.PlayerName,
             Level = oldData.Level,
-            Experience = oldData.Level * 100,  // 根据等级计算经验
-            LastPlayTime = DateTime.Now
+            Experience = oldData.Level * 100,
+            LastModified = DateTime.UtcNow
         };
     }
 }
 
-// 加载后由应用层决定是否迁移
-public async Task<SaveDataV2> LoadWithMigration(int slot)
+public sealed class SaveModule : AbstractModule
 {
-    var saveRepo = this.GetUtility<ISaveRepository<SaveDataV2>>();
-    var data = await saveRepo.LoadAsync(slot);
-
-    if (data.Version < 2)
+    public override void Install(IArchitecture architecture)
     {
-        // 需要迁移：此处调用应用层迁移器
-        var oldData = data as SaveDataV1;
-        var migrator = new SaveDataMigrator();
-        var newData = migrator.Migrate(oldData);
+        var storage = architecture.GetUtility<IStorage>();
+        var saveConfig = new SaveConfiguration
+        {
+            SaveRoot = "saves",
+            SaveSlotPrefix = "slot_",
+            SaveFileName = "save"
+        };
 
-        // 保存迁移后的数据
-        await saveRepo.SaveAsync(slot, newData);
-        return newData;
+        var saveRepo = new SaveRepository<SaveData>(storage, saveConfig)
+            .RegisterMigration(new SaveDataMigrationV1ToV2());
+
+        architecture.RegisterUtility<ISaveRepository<SaveData>>(saveRepo);
     }
+}
 
-    return data;
+public async Task<SaveData> LoadGame(int slot)
+{
+    var saveRepo = this.GetUtility<ISaveRepository<SaveData>>();
+
+    // 如果槽位里是 v1，仓库会自动迁移到 v2，并把新版本重新写回存储。
+    return await saveRepo.LoadAsync(slot);
 }
 ```
+
+`ISaveMigration<TSaveData>` 接收和返回的是同一个存档类型。也就是说，框架提供的是“当前类型内的版本升级管线”，
+而不是跨 CLR 类型的双模型反序列化系统。如果旧版本缺失了新字段，反序列化会先使用当前类型的默认值，再由迁移器补齐。
 
 ### 使用数据仓库
 
@@ -514,15 +537,14 @@ await saveRepo.SaveAsync(3, saveData);  // 槽位 3
 ### 问题：如何处理数据版本升级？
 
 **解答**：
-实现 `IVersionedData` 并在加载后检查版本。当前框架不会自动为 `ISaveRepository<T>` 执行迁移，需要由业务层决定迁移规则与回写时机：
+实现 `IVersionedData`，并在仓库初始化阶段注册 `ISaveMigration<TSaveData>`。之后 `LoadAsync(slot)` 会自动执行迁移并回写：
 
 ```csharp
+var saveRepo = new SaveRepository<SaveData>(storage, saveConfig)
+    .RegisterMigration(new SaveDataMigrationV1ToV2())
+    .RegisterMigration(new SaveDataMigrationV2ToV3());
+
 var data = await saveRepo.LoadAsync(slot);
-if (data.Version < CurrentVersion)
-{
-    data = MigrateData(data);
-    await saveRepo.SaveAsync(slot, data);
-}
 ```
 
 ### 问题：存档数据保存在哪里？
