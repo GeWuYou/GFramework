@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using GFramework.Core.Architectures;
+using GFramework.Game.Abstractions.Config;
 using GFramework.Game.Config;
 using GFramework.Game.Config.Generated;
 using NUnit.Framework;
@@ -10,14 +11,14 @@ using NUnit.Framework;
 namespace GFramework.Game.Tests.Config;
 
 /// <summary>
-///     验证在 <see cref="Architecture" /> 初始化流程中可以通过聚合注册入口加载生成配置表，并通过表访问器读取数据。
+///     验证在 <see cref="Architecture" /> 初始化流程中可以通过官方配置启动帮助器加载生成配置表，并通过表访问器读取数据。
 /// </summary>
 [TestFixture]
 public class ArchitectureConfigIntegrationTests
 {
     /// <summary>
-    ///     架构初始化期间，通过 <see cref="YamlConfigLoader" /> 的聚合注册入口注册生成表，
-    ///     并将 <see cref="ConfigRegistry" /> 作为 utility 暴露给架构上下文读取。
+    ///     架构初始化期间，通过 <see cref="GameConfigBootstrap" /> 收敛生成表注册、加载与注册表暴露，
+    ///     并将 <see cref="IConfigRegistry" /> 作为 utility 暴露给架构上下文读取。
     /// </summary>
     [Test]
     public async Task ConfigLoaderCanRunDuringArchitectureInitialization()
@@ -43,7 +44,7 @@ public class ArchitectureConfigIntegrationTests
                 Assert.That(retrieved, Is.Not.Null);
                 Assert.That(retrieved!.Get(1).Name, Is.EqualTo("Slime"));
                 Assert.That(architecture.Registry.TryGetItemTable(out _), Is.False);
-                Assert.That(architecture.Context.GetUtility<ConfigRegistry>(), Is.SameAs(architecture.Registry));
+                Assert.That(architecture.Context.GetUtility<IConfigRegistry>(), Is.SameAs(architecture.Registry));
             });
         }
         finally
@@ -131,30 +132,43 @@ public class ArchitectureConfigIntegrationTests
 
     private sealed class ConsumerArchitecture : Architecture
     {
-        private readonly string _configRoot;
+        private readonly GameConfigBootstrap _bootstrap;
 
-        public ConfigRegistry Registry { get; }
+        public IConfigRegistry Registry => _bootstrap.Registry;
 
         public MonsterTable MonsterTable { get; private set; } = null!;
 
         public ConsumerArchitecture(string configRoot)
         {
-            _configRoot = configRoot ?? throw new ArgumentNullException(nameof(configRoot));
-            Registry = new ConfigRegistry();
+            if (configRoot == null)
+            {
+                throw new ArgumentNullException(nameof(configRoot));
+            }
+
+            _bootstrap = new GameConfigBootstrap(
+                new GameConfigBootstrapOptions
+                {
+                    RootPath = configRoot,
+                    ConfigureLoader = static loader =>
+                        loader.RegisterAllGeneratedConfigTables(
+                            new GeneratedConfigRegistrationOptions
+                            {
+                                IncludedConfigDomains = new[] { MonsterConfigBindings.ConfigDomain }
+                            })
+                });
         }
 
         protected override void OnInitialize()
         {
             RegisterUtility(Registry);
-
-            var loader = new YamlConfigLoader(_configRoot)
-                .RegisterAllGeneratedConfigTables(
-                    new GeneratedConfigRegistrationOptions
-                    {
-                        IncludedConfigDomains = new[] { MonsterConfigBindings.ConfigDomain }
-                    });
-            loader.LoadAsync(Registry).GetAwaiter().GetResult();
+            _bootstrap.InitializeAsync().GetAwaiter().GetResult();
             MonsterTable = Registry.GetMonsterTable();
+        }
+
+        public override async ValueTask DestroyAsync()
+        {
+            _bootstrap.Dispose();
+            await base.DestroyAsync();
         }
     }
 }
