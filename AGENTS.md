@@ -123,6 +123,8 @@ All generated or modified code MUST include clear and meaningful comments where 
 - Every non-trivial feature, bug fix, or behavior change MUST include tests or an explicit justification for why a test
   is not practical.
 - Public API changes must be covered by unit or integration tests.
+- When a public API defines multiple contract branches, tests MUST cover the meaningful variants, including null,
+  empty, default, and filtered inputs when those branches change behavior.
 - Regression fixes should include a test that fails before the fix and passes after it.
 
 ### Test Organization

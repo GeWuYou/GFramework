@@ -138,6 +138,16 @@ public class GeneratedConfigConsumerIntegrationTests
                 });
         await tableNameLoader.LoadAsync(tableNameRegistry);
 
+        var emptyAllowListRegistry = new ConfigRegistry();
+        var emptyAllowListLoader = new YamlConfigLoader(_rootPath)
+            .RegisterAllGeneratedConfigTables(
+                new GeneratedConfigRegistrationOptions
+                {
+                    IncludedConfigDomains = Array.Empty<string>(),
+                    IncludedTableNames = Array.Empty<string>()
+                });
+        await emptyAllowListLoader.LoadAsync(emptyAllowListRegistry);
+
         var monsterDomain = MonsterConfigBindings.ConfigDomain;
         var predicateRegistry = new ConfigRegistry();
         var predicateLoader = new YamlConfigLoader(_rootPath)
@@ -151,6 +161,11 @@ public class GeneratedConfigConsumerIntegrationTests
 
         Assert.Multiple(() =>
         {
+            Assert.That(emptyAllowListRegistry.TryGetMonsterTable(out var emptyAllowListMonsterTable), Is.True);
+            Assert.That(emptyAllowListMonsterTable, Is.Not.Null);
+            Assert.That(emptyAllowListRegistry.TryGetItemTable(out var emptyAllowListItemTable), Is.True);
+            Assert.That(emptyAllowListItemTable, Is.Not.Null);
+
             Assert.That(domainRegistry.TryGetMonsterTable(out var domainMonsterTable), Is.True);
             Assert.That(domainMonsterTable, Is.Not.Null);
             Assert.That(domainRegistry.TryGetItemTable(out _), Is.False);
