@@ -32,6 +32,7 @@ public class SaveRepository<TSaveData> : AbstractContextUtility, ISaveRepository
 {
     private readonly SaveConfiguration _config;
     private readonly Dictionary<int, ISaveMigration<TSaveData>> _migrations = new();
+    private readonly object _migrationsLock = new();
     private readonly IStorage _rootStorage;
 
     /// <summary>
@@ -56,8 +57,13 @@ public class SaveRepository<TSaveData> : AbstractContextUtility, ISaveRepository
     /// <exception cref="ArgumentNullException"><paramref name="migration" /> 为 <see langword="null" />。</exception>
     /// <exception cref="InvalidOperationException">
     ///     <typeparamref name="TSaveData" /> 未实现 <see cref="IVersionedData" />，无法使用版本化迁移。
+    ///     或者同一个源版本已经注册过迁移器，导致迁移链配置存在歧义。
     /// </exception>
     /// <exception cref="ArgumentException">迁移器的目标版本不大于源版本。</exception>
+    /// <remarks>
+    ///     迁移注册表是可变共享状态。注册与加载可以并发发生，因此所有访问都通过 <see cref="_migrationsLock" />
+    ///     串行化，避免读写竞争和“部分可见”的迁移链。
+    /// </remarks>
     public ISaveRepository<TSaveData> RegisterMigration(ISaveMigration<TSaveData> migration)
     {
         ArgumentNullException.ThrowIfNull(migration);
@@ -70,7 +76,17 @@ public class SaveRepository<TSaveData> : AbstractContextUtility, ISaveRepository
                 nameof(migration));
         }
 
-        _migrations[migration.FromVersion] = migration;
+        lock (_migrationsLock)
+        {
+            if (_migrations.ContainsKey(migration.FromVersion))
+            {
+                throw new InvalidOperationException(
+                    $"Duplicate save migration registration for {typeof(TSaveData).Name} from version {migration.FromVersion}.");
+            }
+
+            _migrations.Add(migration.FromVersion, migration);
+        }
+
         return this;
     }
 
@@ -214,9 +230,16 @@ public class SaveRepository<TSaveData> : AbstractContextUtility, ISaveRepository
         var migrated = data;
 
         // 迁移链按“当前版本 -> 下一个已注册迁移器”推进；任何缺口都表示运行时无法安全解释旧存档。
+        // 读取迁移表时使用同一把锁，保证并发注册不会让加载线程看到不一致的链路状态。
         while (currentVersion < targetVersion)
         {
-            if (!_migrations.TryGetValue(currentVersion, out var migration))
+            ISaveMigration<TSaveData>? migration;
+            lock (_migrationsLock)
+            {
+                _migrations.TryGetValue(currentVersion, out migration);
+            }
+
+            if (migration is null)
             {
                 throw new InvalidOperationException(
                     $"No save migration is registered for {typeof(TSaveData).Name} from version {currentVersion}.");

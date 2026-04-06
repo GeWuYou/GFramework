@@ -6,6 +6,9 @@ using GFramework.Game.Storage;
 
 namespace GFramework.Game.Tests.Data;
 
+/// <summary>
+///     覆盖文件存储、槽位存档仓库和统一设置仓库的持久化行为测试。
+/// </summary>
 [TestFixture]
 public class PersistenceTests
 {
@@ -16,6 +19,10 @@ public class PersistenceTests
         return path;
     }
 
+    /// <summary>
+    ///     验证文件存储能够持久化数据，并拒绝包含路径逃逸的非法键。
+    /// </summary>
+    /// <returns>表示异步测试完成的任务。</returns>
     [Test]
     public async Task FileStorage_PersistsDataAndRejectsIllegalKeys()
     {
@@ -31,6 +38,10 @@ public class PersistenceTests
         Assert.ThrowsAsync<ArgumentException>(async () => await storage.WriteAsync("../escape", new TestSimpleData()));
     }
 
+    /// <summary>
+    ///     验证槽位存档仓库的保存、加载、列举和删除行为。
+    /// </summary>
+    /// <returns>表示异步测试完成的任务。</returns>
     [Test]
     public async Task SaveRepository_ManagesSlots()
     {
@@ -59,6 +70,10 @@ public class PersistenceTests
         Assert.That(await repository.ExistsAsync(1), Is.False);
     }
 
+    /// <summary>
+    ///     验证存档仓库在加载旧版本数据时会执行迁移链并回写升级后的最新版本。
+    /// </summary>
+    /// <returns>表示异步测试完成的任务。</returns>
     [Test]
     public async Task SaveRepository_LoadAsync_Should_Apply_Migrations_And_Persist_Upgraded_Save()
     {
@@ -98,6 +113,10 @@ public class PersistenceTests
         });
     }
 
+    /// <summary>
+    ///     验证非版本化存档类型不能注册迁移器，避免构建无效迁移管线。
+    /// </summary>
+    /// <exception cref="InvalidOperationException">当存档类型未实现 <see cref="IVersionedData" /> 时抛出。</exception>
     [Test]
     public void SaveRepository_RegisterMigration_For_NonVersioned_Save_Should_Throw()
     {
@@ -109,6 +128,31 @@ public class PersistenceTests
         Assert.Throws<InvalidOperationException>(() => repository.RegisterMigration(new TestNonVersionedMigration()));
     }
 
+    /// <summary>
+    ///     验证同一源版本不能重复注册迁移器，避免迁移链配置被静默覆盖。
+    /// </summary>
+    /// <exception cref="InvalidOperationException">当同一源版本重复注册迁移器时抛出。</exception>
+    [Test]
+    public void SaveRepository_RegisterMigration_Should_Reject_Duplicate_FromVersion()
+    {
+        var root = CreateTempRoot();
+        using var storage = new FileStorage(root, new JsonSerializer());
+        var config = new SaveConfiguration();
+        var repository = new SaveRepository<TestVersionedSaveData>(storage, config);
+
+        repository.RegisterMigration(new TestSaveMigrationV1ToV2());
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => repository.RegisterMigration(new TestDuplicateSaveMigrationV1ToV2()));
+
+        Assert.That(exception!.Message, Does.Contain("Duplicate save migration registration"));
+    }
+
+    /// <summary>
+    ///     验证当迁移链缺少中间版本时，加载旧存档会明确失败而不是静默返回不完整数据。
+    /// </summary>
+    /// <returns>表示异步测试完成的任务。</returns>
+    /// <exception cref="InvalidOperationException">当从旧版本到当前版本的迁移链不完整时抛出。</exception>
     [Test]
     public async Task SaveRepository_LoadAsync_Should_Throw_When_Migration_Chain_Is_Incomplete()
     {
@@ -137,6 +181,10 @@ public class PersistenceTests
         Assert.That(exception!.Message, Does.Contain("from version 2"));
     }
 
+    /// <summary>
+    ///     验证统一设置仓库能够保存、重新加载并批量读取已注册的设置数据。
+    /// </summary>
+    /// <returns>表示异步测试完成的任务。</returns>
     [Test]
     public async Task UnifiedSettingsDataRepository_RoundTripsDataAndLoadAll()
     {
@@ -204,6 +252,25 @@ public class PersistenceTests
                 Level = oldData.Level,
                 Experience = oldData.Experience,
                 Version = 3,
+                LastModified = oldData.LastModified
+            };
+        }
+    }
+
+    private sealed class TestDuplicateSaveMigrationV1ToV2 : ISaveMigration<TestVersionedSaveData>
+    {
+        public int FromVersion => 1;
+
+        public int ToVersion => 2;
+
+        public TestVersionedSaveData Migrate(TestVersionedSaveData oldData)
+        {
+            return new TestVersionedSaveData
+            {
+                Name = $"{oldData.Name}-duplicate",
+                Level = oldData.Level,
+                Experience = oldData.Experience,
+                Version = 2,
                 LastModified = oldData.LastModified
             };
         }
