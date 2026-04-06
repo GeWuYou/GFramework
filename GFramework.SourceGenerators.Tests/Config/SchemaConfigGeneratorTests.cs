@@ -236,4 +236,115 @@ public class SchemaConfigGeneratorTests
         Assert.That(bindingsSource, Does.Contain("public static readonly ReferenceMetadata DropItems1 ="));
         Assert.That(bindingsSource, Does.Contain("public static readonly ReferenceMetadata DropItems11 ="));
     }
+
+    /// <summary>
+    ///     验证生成器只为顶层非主键标量字段生成轻量查询辅助，
+    ///     避免把数组、对象和引用字段误生成为查询 API。
+    /// </summary>
+    [Test]
+    public void Run_Should_Generate_Query_Helpers_Only_For_Top_Level_Scalar_Properties()
+    {
+        const string source = """
+                              using System;
+                              using System.Collections.Generic;
+
+                              namespace GFramework.Game.Abstractions.Config
+                              {
+                                  public interface IConfigTable
+                                  {
+                                      Type KeyType { get; }
+                                      Type ValueType { get; }
+                                      int Count { get; }
+                                  }
+
+                                  public interface IConfigTable<TKey, TValue> : IConfigTable
+                                      where TKey : notnull
+                                  {
+                                      TValue Get(TKey key);
+                                      bool TryGet(TKey key, out TValue? value);
+                                      bool ContainsKey(TKey key);
+                                      IReadOnlyCollection<TValue> All();
+                                  }
+
+                                  public interface IConfigRegistry
+                                  {
+                                      IConfigTable<TKey, TValue> GetTable<TKey, TValue>(string name)
+                                          where TKey : notnull;
+
+                                      bool TryGetTable<TKey, TValue>(string name, out IConfigTable<TKey, TValue>? table)
+                                          where TKey : notnull;
+                                  }
+                              }
+
+                              namespace GFramework.Game.Config
+                              {
+                                  public sealed class YamlConfigLoader
+                                  {
+                                      public YamlConfigLoader RegisterTable<TKey, TValue>(
+                                          string tableName,
+                                          string relativePath,
+                                          string schemaRelativePath,
+                                          Func<TValue, TKey> keySelector,
+                                          IEqualityComparer<TKey>? comparer = null)
+                                          where TKey : notnull
+                                      {
+                                          return this;
+                                      }
+                                  }
+                              }
+                              """;
+
+        const string schema = """
+                              {
+                                "type": "object",
+                                "required": ["id", "name"],
+                                "properties": {
+                                  "id": { "type": "integer" },
+                                  "name": { "type": "string" },
+                                  "hp": { "type": "integer" },
+                                  "dropItems": {
+                                    "type": "array",
+                                    "items": { "type": "string" }
+                                  },
+                                  "targetId": {
+                                    "type": "string",
+                                    "x-gframework-ref-table": "monster"
+                                  },
+                                  "reward": {
+                                    "type": "object",
+                                    "properties": {
+                                      "gold": { "type": "integer" }
+                                    }
+                                  }
+                                }
+                              }
+                              """;
+
+        var result = SchemaGeneratorTestDriver.Run(
+            source,
+            ("monster.schema.json", schema));
+
+        var generatedSources = result.Results
+            .Single()
+            .GeneratedSources
+            .ToDictionary(
+                static sourceResult => sourceResult.HintName,
+                static sourceResult => sourceResult.SourceText.ToString(),
+                StringComparer.Ordinal);
+
+        Assert.That(result.Results.Single().Diagnostics, Is.Empty);
+        Assert.That(generatedSources.TryGetValue("MonsterTable.g.cs", out var tableSource), Is.True);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(tableSource, Does.Contain("FindByName(string value)"));
+            Assert.That(tableSource, Does.Contain("TryFindFirstByName(string value, out MonsterConfig? result)"));
+            Assert.That(tableSource, Does.Contain("FindByHp(int? value)"));
+            Assert.That(tableSource, Does.Contain("TryFindFirstByHp(int? value, out MonsterConfig? result)"));
+            Assert.That(tableSource, Does.Not.Contain("FindById("));
+            Assert.That(tableSource, Does.Not.Contain("FindByDropItems("));
+            Assert.That(tableSource, Does.Not.Contain("FindByTargetId("));
+            Assert.That(tableSource, Does.Not.Contain("FindByReward("));
+        });
+    }
 }

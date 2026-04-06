@@ -5,7 +5,8 @@
   "required": [
     "id",
     "name",
-    "hp"
+    "hp",
+    "faction"
   ],
   "properties": {
     "id": {
@@ -19,6 +20,10 @@
     "hp": {
       "type": "integer",
       "description": "Monster base health."
+    },
+    "faction": {
+      "type": "string",
+      "description": "Used by integration tests to validate generated non-unique queries."
     }
   }
 }

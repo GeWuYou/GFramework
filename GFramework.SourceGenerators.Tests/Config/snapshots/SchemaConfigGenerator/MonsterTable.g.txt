@@ -52,4 +52,102 @@ public sealed partial class MonsterTable : global::GFramework.Game.Abstractions.
     {
         return _inner.All();
     }
+
+    /// <summary>
+    ///     Finds all config entries whose property 'name' equals the supplied value.
+    /// </summary>
+    /// <param name="value">The property value to match.</param>
+    /// <returns>A read-only snapshot containing every matching config entry.</returns>
+    /// <remarks>
+    ///     The generated helper performs a deterministic linear scan over <see cref="All"/> so it stays compatible with runtime hot reload and does not require secondary index infrastructure.
+    /// </remarks>
+    public global::System.Collections.Generic.IReadOnlyList<MonsterConfig> FindByName(string value)
+    {
+        var matches = new global::System.Collections.Generic.List<MonsterConfig>();
+
+        // Scan the current table snapshot on demand so generated helpers stay aligned with reloadable runtime data.
+        foreach (var candidate in All())
+        {
+            if (global::System.Collections.Generic.EqualityComparer<string>.Default.Equals(candidate.Name, value))
+            {
+                matches.Add(candidate);
+            }
+        }
+
+        return matches.Count == 0 ? global::System.Array.Empty<MonsterConfig>() : matches.AsReadOnly();
+    }
+
+    /// <summary>
+    ///     Tries to find the first config entry whose property 'name' equals the supplied value.
+    /// </summary>
+    /// <param name="value">The property value to match.</param>
+    /// <param name="result">The first matching config entry when lookup succeeds; otherwise <see langword="null" />.</param>
+    /// <returns><see langword="true" /> when a matching config entry is found; otherwise <see langword="false" />.</returns>
+    /// <remarks>
+    ///     The generated helper walks the same snapshot exposed by <see cref="All"/> and returns the first match in iteration order.
+    /// </remarks>
+    public bool TryFindFirstByName(string value, out MonsterConfig? result)
+    {
+        // Keep the search path allocation-free for the first-match case by exiting as soon as one entry matches.
+        foreach (var candidate in All())
+        {
+            if (global::System.Collections.Generic.EqualityComparer<string>.Default.Equals(candidate.Name, value))
+            {
+                result = candidate;
+                return true;
+            }
+        }
+
+        result = null;
+        return false;
+    }
+
+    /// <summary>
+    ///     Finds all config entries whose property 'hp' equals the supplied value.
+    /// </summary>
+    /// <param name="value">The property value to match.</param>
+    /// <returns>A read-only snapshot containing every matching config entry.</returns>
+    /// <remarks>
+    ///     The generated helper performs a deterministic linear scan over <see cref="All"/> so it stays compatible with runtime hot reload and does not require secondary index infrastructure.
+    /// </remarks>
+    public global::System.Collections.Generic.IReadOnlyList<MonsterConfig> FindByHp(int? value)
+    {
+        var matches = new global::System.Collections.Generic.List<MonsterConfig>();
+
+        // Scan the current table snapshot on demand so generated helpers stay aligned with reloadable runtime data.
+        foreach (var candidate in All())
+        {
+            if (global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(candidate.Hp, value))
+            {
+                matches.Add(candidate);
+            }
+        }
+
+        return matches.Count == 0 ? global::System.Array.Empty<MonsterConfig>() : matches.AsReadOnly();
+    }
+
+    /// <summary>
+    ///     Tries to find the first config entry whose property 'hp' equals the supplied value.
+    /// </summary>
+    /// <param name="value">The property value to match.</param>
+    /// <param name="result">The first matching config entry when lookup succeeds; otherwise <see langword="null" />.</param>
+    /// <returns><see langword="true" /> when a matching config entry is found; otherwise <see langword="false" />.</returns>
+    /// <remarks>
+    ///     The generated helper walks the same snapshot exposed by <see cref="All"/> and returns the first match in iteration order.
+    /// </remarks>
+    public bool TryFindFirstByHp(int? value, out MonsterConfig? result)
+    {
+        // Keep the search path allocation-free for the first-match case by exiting as soon as one entry matches.
+        foreach (var candidate in All())
+        {
+            if (global::System.Collections.Generic.EqualityComparer<int?>.Default.Equals(candidate.Hp, value))
+            {
+                result = candidate;
+                return true;
+            }
+        }
+
+        result = null;
+        return false;
+    }
 }
