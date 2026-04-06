@@ -280,6 +280,82 @@ public sealed class GameConfigRuntime
   `MonsterConfigBindings.References`
 - 如果未来把配置初始化接入 `Architecture` 或 `Module`，迁移成本也更低
 
+### 生成查询辅助
+
+从当前阶段开始，生成的 `*Table` 包装会为“顶层、非主键、非引用的标量字段”额外产出轻量查询辅助。
+
+如果 `monster.schema.json` 包含顶层标量字段 `name`、`faction`，则可以直接这样使用：
+
+```csharp
+var monsterTable = registry.GetMonsterTable();
+
+var slime = monsterTable.FindByName("Slime");
+
+if (monsterTable.TryFindFirstByFaction("dungeon", out var firstDungeonMonster))
+{
+    Console.WriteLine(firstDungeonMonster.Name);
+}
+```
+
+当前生成规则刻意保持保守：
+
+- 只为顶层标量字段生成 `FindBy*` 与 `TryFindFirstBy*`
+- 主键字段继续只走 `Get / TryGet`
+- 嵌套对象、对象数组、标量数组和 `x-gframework-ref-table` 字段暂不生成查询辅助
+- 查询实现基于 `All()` 做线性扫描，不引入运行时索引或缓存
+
+这意味着它的定位是“减少业务层手写过滤样板”，而不是“替代专门索引结构”。
+
+如果你依赖 `TryFindFirstBy*`，应当把它理解为“返回当前表快照遍历顺序下的第一个匹配项”，而不是固定排序语义。
+
+### Architecture 推荐接入模板
+
+如果你的项目已经基于 `GFramework.Core.Architectures.Architecture` 组织初始化流程，推荐把配置系统接到 `OnInitialize()` 阶段，并把 `ConfigRegistry` 注册为 utility：
+
+```csharp
+using GFramework.Core.Architectures;
+using GFramework.Game.Config;
+using GFramework.Game.Config.Generated;
+
+public sealed class GameArchitecture : Architecture
+{
+    private readonly string _configRootPath;
+
+    public GameArchitecture(string configRootPath)
+    {
+        _configRootPath = configRootPath ?? throw new ArgumentNullException(nameof(configRootPath));
+    }
+
+    protected override void OnInitialize()
+    {
+        var registry = RegisterUtility(new ConfigRegistry());
+
+        var loader = new YamlConfigLoader(_configRootPath)
+            .RegisterMonsterTable()
+            .RegisterItemTable();
+
+        loader.LoadAsync(registry).GetAwaiter().GetResult();
+    }
+}
+```
+
+初始化完成后，业务组件可以继续通过架构上下文读取 utility，再走生成的强类型入口：
+
+```csharp
+var registry = Context.GetUtility<ConfigRegistry>();
+var monsterTable = registry.GetMonsterTable();
+var slime = monsterTable.Get(1);
+```
+
+推荐遵循以下顺序：
+
+- 先注册 `ConfigRegistry`
+- 再构造并配置 `YamlConfigLoader`
+- 在 `OnInitialize()` 内完成首次 `LoadAsync`
+- 初始化完成后只通过注册表和生成表包装访问配置
+
+当前阶段不建议为了配置系统额外引入新的 `IArchitectureModule` 或 service module 抽象；现有 `Architecture + ConfigRegistry + YamlConfigLoader + Register*Table()` 组合已经足够作为官方推荐接入路径。
+
 ### 热重载模板
 
 如果你希望把开发期热重载显式收敛为一个可选能力，建议把失败诊断一起写进模板，而不是只打印异常文本：
