@@ -196,4 +196,4 @@ public interface ISettingsMigration
 - 设置迁移是内建能力
 - 设置持久化是内建能力
 - 设置如何应用到具体引擎由 applicator 决定
-- 存档系统的迁移能力不等同于设置系统；`ISaveRepository<T>` 当前仍需要业务层自己实现迁移策略
+- 存档系统也支持内建版本迁移，但入口位于 `ISaveRepository<T>.RegisterMigration(...)`，语义是槽位存档升级而不是设置节初始化

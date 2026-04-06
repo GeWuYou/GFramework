@@ -193,6 +193,14 @@ bash scripts/validate-csharp-naming.sh
 - If a framework abstraction changes meaning or intended usage, update the explanatory comments in code as part of the
   same change.
 
+### Task Tracking
+
+- When working from a tracked implementation plan, contributors MUST update the corresponding tracking document under
+  `local-plan/todos/` in the same change.
+- Tracking updates MUST reflect completed work, newly discovered issues, validation results, and the next recommended
+  recovery point.
+- Completing code changes without updating the active tracking document is considered incomplete work.
+
 ### Repository Documentation
 
 - Update the relevant `README.md` or `docs/` page when behavior, setup steps, architecture guidance, or user-facing

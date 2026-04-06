@@ -11,6 +11,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using GFramework.Core.Abstractions.Utility;
 
 namespace GFramework.Game.Abstractions.Data;
@@ -22,6 +25,20 @@ namespace GFramework.Game.Abstractions.Data;
 public interface ISaveRepository<TSaveData> : IUtility
     where TSaveData : class, IData, new()
 {
+    /// <summary>
+    ///     注册存档迁移器。
+    /// </summary>
+    /// <param name="migration">
+    ///     负责将某个旧版本存档升级到新版本的迁移器。
+    ///     仅当 <typeparamref name="TSaveData" /> 实现 <see cref="IVersionedData" /> 时该功能才有效。
+    /// </param>
+    /// <returns>当前存档仓库实例，便于链式注册多个迁移器。</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="migration" /> 为 <see langword="null" />。</exception>
+    /// <exception cref="InvalidOperationException">
+    ///     <typeparamref name="TSaveData" /> 未实现 <see cref="IVersionedData" />，因此无法建立版本迁移管线。
+    /// </exception>
+    ISaveRepository<TSaveData> RegisterMigration(ISaveMigration<TSaveData> migration);
+
     /// <summary>
     ///     检查指定槽位是否存在存档
     /// </summary>
