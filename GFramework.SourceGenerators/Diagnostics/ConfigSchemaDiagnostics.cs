@@ -74,4 +74,15 @@ public static class ConfigSchemaDiagnostics
         SourceGeneratorsConfigCategory,
         DiagnosticSeverity.Error,
         true);
+
+    /// <summary>
+    ///     schema 顶层自定义配置目录元数据无效。
+    /// </summary>
+    public static readonly DiagnosticDescriptor InvalidConfigRelativePathMetadata = new(
+        "GF_ConfigSchema_007",
+        "Config schema uses invalid custom config path metadata",
+        "Schema file '{0}' uses invalid '{1}' metadata: {2}",
+        SourceGeneratorsConfigCategory,
+        DiagnosticSeverity.Error,
+        true);
 }

@@ -10,6 +10,7 @@ namespace GFramework.SourceGenerators.Config;
 [Generator]
 public sealed class SchemaConfigGenerator : IIncrementalGenerator
 {
+    private const string ConfigPathMetadataKey = "x-gframework-config-path";
     private const string GeneratedNamespace = "GFramework.Game.Config.Generated";
 
     /// <inheritdoc />
@@ -147,6 +148,12 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             }
 
             var schemaBaseName = GetSchemaBaseName(file.Path);
+            var configRelativePath = ResolveConfigRelativePath(file.Path, root, schemaBaseName);
+            if (configRelativePath.Diagnostic is not null)
+            {
+                return SchemaParseResult.FromDiagnostic(configRelativePath.Diagnostic);
+            }
+
             var schema = new SchemaFileSpec(
                 Path.GetFileName(file.Path),
                 entityName,
@@ -156,7 +163,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                 idProperty.TypeSpec.ClrType.TrimEnd('?'),
                 idProperty.PropertyName,
                 schemaBaseName,
-                schemaBaseName,
+                configRelativePath.Path!,
                 GetSchemaRelativePath(file.Path),
                 TryGetMetadataString(root, "title"),
                 TryGetMetadataString(root, "description"),
@@ -991,7 +998,8 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("        /// <summary>");
         builder.AppendLine("        ///     Initializes one generated table metadata entry.");
         builder.AppendLine("        /// </summary>");
-        builder.AppendLine("        /// <param name=\"configDomain\">Logical config domain derived from the schema base name.</param>");
+        builder.AppendLine(
+            "        /// <param name=\"configDomain\">Logical config domain derived from the schema base name.</param>");
         builder.AppendLine("        /// <param name=\"tableName\">Runtime registration name.</param>");
         builder.AppendLine("        /// <param name=\"configRelativePath\">Relative YAML directory path.</param>");
         builder.AppendLine("        /// <param name=\"schemaRelativePath\">Relative schema file path.</param>");
@@ -1017,12 +1025,14 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("        public string ConfigDomain { get; }");
         builder.AppendLine();
         builder.AppendLine("        /// <summary>");
-        builder.AppendLine("        ///     Gets the runtime registration name used by <see cref=\"global::GFramework.Game.Config.YamlConfigLoader\" />.");
+        builder.AppendLine(
+            "        ///     Gets the runtime registration name used by <see cref=\"global::GFramework.Game.Config.YamlConfigLoader\" />.");
         builder.AppendLine("        /// </summary>");
         builder.AppendLine("        public string TableName { get; }");
         builder.AppendLine();
         builder.AppendLine("        /// <summary>");
-        builder.AppendLine("        ///     Gets the relative directory that stores YAML files for the generated config table.");
+        builder.AppendLine(
+            "        ///     Gets the relative directory that stores YAML files for the generated config table.");
         builder.AppendLine("        /// </summary>");
         builder.AppendLine("        public string ConfigRelativePath { get; }");
         builder.AppendLine();
@@ -1033,7 +1043,8 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("    }");
         builder.AppendLine();
         builder.AppendLine("    /// <summary>");
-        builder.AppendLine("    ///     Gets metadata for every generated config table in the current consumer project.");
+        builder.AppendLine(
+            "    ///     Gets metadata for every generated config table in the current consumer project.");
         builder.AppendLine("    /// </summary>");
         builder.AppendLine(
             "    public static global::System.Collections.Generic.IReadOnlyList<TableMetadata> Tables { get; } = global::System.Array.AsReadOnly(new TableMetadata[]");
@@ -1145,7 +1156,8 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             "    ///     Registers all generated config tables using schema-derived conventions so bootstrap code can stay one-line even as schemas grow.");
         builder.AppendLine("    /// </summary>");
         builder.AppendLine("    /// <param name=\"loader\">Target YAML config loader.</param>");
-        builder.AppendLine("    /// <returns>The same loader instance after all generated table registrations have been applied.</returns>");
+        builder.AppendLine(
+            "    /// <returns>The same loader instance after all generated table registrations have been applied.</returns>");
         builder.AppendLine(
             "    /// <exception cref=\"global::System.ArgumentNullException\">When <paramref name=\"loader\"/> is null.</exception>");
         builder.AppendLine(
@@ -1167,7 +1179,8 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("    /// <param name=\"loader\">Target YAML config loader.</param>");
         builder.AppendLine(
             "    /// <param name=\"options\">Optional per-table overrides for aggregate registration; when null, all tables use their default comparer behavior.</param>");
-        builder.AppendLine("    /// <returns>The same loader instance after all generated table registrations have been applied.</returns>");
+        builder.AppendLine(
+            "    /// <returns>The same loader instance after all generated table registrations have been applied.</returns>");
         builder.AppendLine(
             "    /// <exception cref=\"global::System.ArgumentNullException\">When <paramref name=\"loader\"/> is null.</exception>");
         builder.AppendLine(
@@ -1189,7 +1202,8 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             builder.AppendLine(
                 $"        if (ShouldRegisterTable(GeneratedConfigCatalog.Tables[{index.ToString(CultureInfo.InvariantCulture)}], options))");
             builder.AppendLine("        {");
-            builder.AppendLine($"            loader.Register{schema.EntityName}Table(options.{schema.EntityName}Comparer);");
+            builder.AppendLine(
+                $"            loader.Register{schema.EntityName}Table(options.{schema.EntityName}Comparer);");
             builder.AppendLine("        }");
             builder.AppendLine();
         }
@@ -1202,7 +1216,8 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             "    ///     Applies the generated registration filters in a deterministic order so bootstrap code can narrow aggregate registration without hand-writing per-table calls.");
         builder.AppendLine("    /// </summary>");
         builder.AppendLine("    /// <param name=\"metadata\">Generated table metadata under consideration.</param>");
-        builder.AppendLine("    /// <param name=\"options\">Aggregate registration options supplied by the caller.</param>");
+        builder.AppendLine(
+            "    /// <param name=\"options\">Aggregate registration options supplied by the caller.</param>");
         builder.AppendLine(
             "    /// <returns><see langword=\"true\" /> when the generated table should be registered; otherwise <see langword=\"false\" />.</returns>");
         builder.AppendLine(
@@ -1212,7 +1227,8 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("    {");
         builder.AppendLine(
             "        // Apply cheap generated allow-lists before invoking the optional caller predicate so startup filtering stays predictable.");
-        builder.AppendLine("        if (!MatchesOptionalAllowList(options.IncludedConfigDomains, metadata.ConfigDomain))");
+        builder.AppendLine(
+            "        if (!MatchesOptionalAllowList(options.IncludedConfigDomains, metadata.ConfigDomain))");
         builder.AppendLine("        {");
         builder.AppendLine("            return false;");
         builder.AppendLine("        }");
@@ -1393,7 +1409,8 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("    /// <param name=\"value\">The property value to match.</param>");
         builder.AppendLine(
             "    /// <param name=\"result\">The first matching config entry when lookup succeeds; otherwise <see langword=\"null\" />.</param>");
-        builder.AppendLine("    /// <returns><see langword=\"true\" /> when a matching config entry is found; otherwise <see langword=\"false\" />.</returns>");
+        builder.AppendLine(
+            "    /// <returns><see langword=\"true\" /> when a matching config entry is found; otherwise <see langword=\"false\" />.</returns>");
         builder.AppendLine("    /// <remarks>");
         builder.AppendLine(
             "    ///     The generated helper walks the same snapshot exposed by <see cref=\"All\"/> and returns the first match in iteration order.");
@@ -1765,6 +1782,98 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
 
         var value = metadataElement.GetString();
         return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
+
+    /// <summary>
+    ///     解析 schema 顶层配置目录元数据。
+    /// </summary>
+    /// <param name="filePath">Schema 文件路径。</param>
+    /// <param name="element">Schema 顶层节点。</param>
+    /// <param name="defaultRelativePath">默认配置目录。</param>
+    /// <returns>最终使用的配置目录或诊断。</returns>
+    private static (string? Path, Diagnostic? Diagnostic) ResolveConfigRelativePath(
+        string filePath,
+        JsonElement element,
+        string defaultRelativePath)
+    {
+        if (!element.TryGetProperty(ConfigPathMetadataKey, out var configPathElement))
+        {
+            return (defaultRelativePath, null);
+        }
+
+        if (configPathElement.ValueKind != JsonValueKind.String)
+        {
+            return (
+                null,
+                Diagnostic.Create(
+                    ConfigSchemaDiagnostics.InvalidConfigRelativePathMetadata,
+                    CreateFileLocation(filePath),
+                    Path.GetFileName(filePath),
+                    ConfigPathMetadataKey,
+                    $"Expected a JSON string but found '{configPathElement.ValueKind}'."));
+        }
+
+        var configuredPath = configPathElement.GetString();
+        if (string.IsNullOrWhiteSpace(configuredPath))
+        {
+            return (
+                null,
+                Diagnostic.Create(
+                    ConfigSchemaDiagnostics.InvalidConfigRelativePathMetadata,
+                    CreateFileLocation(filePath),
+                    Path.GetFileName(filePath),
+                    ConfigPathMetadataKey,
+                    "Path cannot be null, empty, or whitespace."));
+        }
+
+        var normalizedPath = NormalizeConfigRelativePath(configuredPath!);
+        if (normalizedPath is null)
+        {
+            return (
+                null,
+                Diagnostic.Create(
+                    ConfigSchemaDiagnostics.InvalidConfigRelativePathMetadata,
+                    CreateFileLocation(filePath),
+                    Path.GetFileName(filePath),
+                    ConfigPathMetadataKey,
+                    "Path must be relative and cannot contain '..' segments."));
+        }
+
+        return (normalizedPath, null);
+    }
+
+    /// <summary>
+    ///     标准化配置目录元数据，统一斜杠并拒绝逃逸配置根目录的写法。
+    /// </summary>
+    /// <param name="configuredPath">Schema 中声明的相对目录。</param>
+    /// <returns>标准化后的相对目录；无效时返回空。</returns>
+    private static string? NormalizeConfigRelativePath(string configuredPath)
+    {
+        var normalizedPath = configuredPath.Replace('\\', '/').Trim();
+        if (string.IsNullOrWhiteSpace(normalizedPath) ||
+            normalizedPath.StartsWith("/", StringComparison.Ordinal) ||
+            Path.IsPathRooted(normalizedPath))
+        {
+            return null;
+        }
+
+        var normalizedSegments = new List<string>();
+        foreach (var segment in normalizedPath.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (string.Equals(segment, ".", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (string.Equals(segment, "..", StringComparison.Ordinal))
+            {
+                return null;
+            }
+
+            normalizedSegments.Add(segment);
+        }
+
+        return normalizedSegments.Count == 0 ? null : string.Join("/", normalizedSegments);
     }
 
     /// <summary>

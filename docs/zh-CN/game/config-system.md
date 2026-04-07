@@ -37,6 +37,7 @@ GameProject/
 {
   "title": "Monster Config",
   "description": "定义怪物静态配置。",
+  "x-gframework-config-path": "config/monster",
   "type": "object",
   "required": ["id", "name"],
   "properties": {
@@ -70,6 +71,31 @@ GameProject/
   }
 }
 ```
+
+顶层可选元数据：
+
+- `x-gframework-config-path`：覆盖生成器默认的配置目录。未声明时，默认使用 schema 基名，例如
+  `monster.schema.json -> monster`
+
+例如项目希望继续把 YAML 放在 `config/monster/*.yaml` 下，而不是根目录 `monster/*.yaml`，可以这样声明：
+
+```json
+{
+  "type": "object",
+  "x-gframework-config-path": "config/monster",
+  "required": ["id"],
+  "properties": {
+    "id": { "type": "integer" }
+  }
+}
+```
+
+约束如下：
+
+- 必须是 JSON 字符串
+- 必须是相对路径
+- 不允许包含 `..` 段
+- 生成器会把反斜杠标准化为 `/`
 
 ## YAML 示例
 

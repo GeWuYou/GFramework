@@ -139,6 +139,135 @@ public class SchemaConfigGeneratorTests
     }
 
     /// <summary>
+    ///     验证 schema 顶层允许通过元数据覆盖默认配置目录，并会统一路径分隔符。
+    /// </summary>
+    [Test]
+    public void Run_Should_Use_Custom_Config_Path_Metadata_For_Generated_Registration()
+    {
+        const string source = """
+                              using System;
+                              using System.Collections.Generic;
+
+                              namespace GFramework.Game.Abstractions.Config
+                              {
+                                  public interface IConfigTable
+                                  {
+                                      Type KeyType { get; }
+                                      Type ValueType { get; }
+                                      int Count { get; }
+                                  }
+
+                                  public interface IConfigTable<TKey, TValue> : IConfigTable
+                                      where TKey : notnull
+                                  {
+                                      TValue Get(TKey key);
+                                      bool TryGet(TKey key, out TValue? value);
+                                      bool ContainsKey(TKey key);
+                                      IReadOnlyCollection<TValue> All();
+                                  }
+
+                                  public interface IConfigRegistry
+                                  {
+                                      IConfigTable<TKey, TValue> GetTable<TKey, TValue>(string name)
+                                          where TKey : notnull;
+
+                                      bool TryGetTable<TKey, TValue>(string name, out IConfigTable<TKey, TValue>? table)
+                                          where TKey : notnull;
+                                  }
+                              }
+
+                              namespace GFramework.Game.Config
+                              {
+                                  public sealed class YamlConfigLoader
+                                  {
+                                      public YamlConfigLoader RegisterTable<TKey, TValue>(
+                                          string tableName,
+                                          string relativePath,
+                                          string schemaRelativePath,
+                                          Func<TValue, TKey> keySelector,
+                                          IEqualityComparer<TKey>? comparer = null)
+                                          where TKey : notnull
+                                      {
+                                          return this;
+                                      }
+                                  }
+                              }
+                              """;
+
+        const string schema = """
+                              {
+                                "type": "object",
+                                "x-gframework-config-path": "config\\monster",
+                                "required": ["id", "name"],
+                                "properties": {
+                                  "id": { "type": "integer" },
+                                  "name": { "type": "string" }
+                                }
+                              }
+                              """;
+
+        var result = SchemaGeneratorTestDriver.Run(
+            source,
+            ("monster.schema.json", schema));
+
+        var generatedSources = result.Results
+            .Single()
+            .GeneratedSources
+            .ToDictionary(
+                static sourceResult => sourceResult.HintName,
+                static sourceResult => sourceResult.SourceText.ToString(),
+                StringComparer.Ordinal);
+
+        Assert.That(result.Results.Single().Diagnostics, Is.Empty);
+        Assert.That(generatedSources["MonsterConfigBindings.g.cs"],
+            Does.Contain("public const string ConfigRelativePath = \"config/monster\";"));
+        Assert.That(generatedSources["MonsterConfigBindings.g.cs"], Does.Contain("Metadata.ConfigRelativePath,"));
+        Assert.That(generatedSources["GeneratedConfigCatalog.g.cs"],
+            Does.Contain("MonsterConfigBindings.Metadata.ConfigRelativePath"));
+    }
+
+    /// <summary>
+    ///     验证 schema 顶层自定义配置目录元数据不能逃逸配置根目录。
+    /// </summary>
+    [Test]
+    public void Run_Should_Report_Diagnostic_When_Custom_Config_Path_Metadata_Is_Invalid()
+    {
+        const string source = """
+                              namespace TestApp
+                              {
+                                  public sealed class Dummy
+                                  {
+                                  }
+                              }
+                              """;
+
+        const string schema = """
+                              {
+                                "type": "object",
+                                "x-gframework-config-path": "../monster",
+                                "required": ["id"],
+                                "properties": {
+                                  "id": { "type": "integer" }
+                                }
+                              }
+                              """;
+
+        var result = SchemaGeneratorTestDriver.Run(
+            source,
+            ("monster.schema.json", schema));
+
+        var diagnostic = result.Results.Single().Diagnostics.Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Id, Is.EqualTo("GF_ConfigSchema_007"));
+            Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Error));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("x-gframework-config-path"));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("relative"));
+        });
+    }
+
+    /// <summary>
     ///     验证引用元数据成员名在不同路径规范化后发生碰撞时，生成器仍会分配全局唯一的成员名。
     /// </summary>
     [Test]
@@ -452,20 +581,33 @@ public class SchemaConfigGeneratorTests
             Assert.That(catalogSource, Does.Contain("public static class GeneratedConfigCatalog"));
             Assert.That(catalogSource, Does.Contain("public sealed class GeneratedConfigRegistrationOptions"));
             Assert.That(catalogSource, Does.Contain("public static class GeneratedConfigRegistrationExtensions"));
-            Assert.That(catalogSource, Does.Contain("public global::System.Collections.Generic.IReadOnlyCollection<string>? IncludedConfigDomains { get; init; }"));
-            Assert.That(catalogSource, Does.Contain("public global::System.Collections.Generic.IReadOnlyCollection<string>? IncludedTableNames { get; init; }"));
-            Assert.That(catalogSource, Does.Contain("public global::System.Predicate<GeneratedConfigCatalog.TableMetadata>? TableFilter { get; init; }"));
-            Assert.That(catalogSource, Does.Contain("public global::System.Collections.Generic.IEqualityComparer<string>? ItemComparer { get; init; }"));
-            Assert.That(catalogSource, Does.Contain("public global::System.Collections.Generic.IEqualityComparer<int>? MonsterComparer { get; init; }"));
+            Assert.That(catalogSource,
+                Does.Contain(
+                    "public global::System.Collections.Generic.IReadOnlyCollection<string>? IncludedConfigDomains { get; init; }"));
+            Assert.That(catalogSource,
+                Does.Contain(
+                    "public global::System.Collections.Generic.IReadOnlyCollection<string>? IncludedTableNames { get; init; }"));
+            Assert.That(catalogSource,
+                Does.Contain(
+                    "public global::System.Predicate<GeneratedConfigCatalog.TableMetadata>? TableFilter { get; init; }"));
+            Assert.That(catalogSource,
+                Does.Contain(
+                    "public global::System.Collections.Generic.IEqualityComparer<string>? ItemComparer { get; init; }"));
+            Assert.That(catalogSource,
+                Does.Contain(
+                    "public global::System.Collections.Generic.IEqualityComparer<int>? MonsterComparer { get; init; }"));
             Assert.That(catalogSource, Does.Contain("return RegisterAllGeneratedConfigTables(loader, options: null);"));
             Assert.That(catalogSource, Does.Contain("GeneratedConfigRegistrationOptions? options"));
-            Assert.That(catalogSource, Does.Contain("if (ShouldRegisterTable(GeneratedConfigCatalog.Tables[0], options))"));
+            Assert.That(catalogSource,
+                Does.Contain("if (ShouldRegisterTable(GeneratedConfigCatalog.Tables[0], options))"));
             Assert.That(catalogSource, Does.Contain("loader.RegisterItemTable(options.ItemComparer);"));
-            Assert.That(catalogSource, Does.Contain("if (ShouldRegisterTable(GeneratedConfigCatalog.Tables[1], options))"));
+            Assert.That(catalogSource,
+                Does.Contain("if (ShouldRegisterTable(GeneratedConfigCatalog.Tables[1], options))"));
             Assert.That(catalogSource, Does.Contain("loader.RegisterMonsterTable(options.MonsterComparer);"));
             Assert.That(catalogSource, Does.Contain("ItemConfigBindings.Metadata.TableName"));
             Assert.That(catalogSource, Does.Contain("MonsterConfigBindings.Metadata.TableName"));
-            Assert.That(catalogSource, Does.Contain("public static bool TryGetByTableName(string tableName, out TableMetadata metadata)"));
+            Assert.That(catalogSource,
+                Does.Contain("public static bool TryGetByTableName(string tableName, out TableMetadata metadata)"));
             Assert.That(catalogSource, Does.Contain("private static bool ShouldRegisterTable("));
             Assert.That(catalogSource, Does.Contain("private static bool MatchesOptionalAllowList("));
         });
