@@ -3,16 +3,12 @@ language: "zh-CN"
 early_access: false
 
 reviews:
-  profile: "balanced" # 比 chill 稍微严格一点，更适合代码质量
+  profile: "chill"
   request_changes_workflow: true # 有问题时可以直接 request changes
   high_level_summary: true # PR 总体总结
   review_status: true # review 结果状态
   review_details: true # 展示具体问题
   poem: false # 关闭诗歌（基本没人用）
-  tools:
-    github-checks:
-      enabled: true
-      timeout_ms: 90000
   auto_review:
     enabled: true
     drafts: false # draft PR 不 review
