@@ -1,5 +1,26 @@
 import { defineConfig } from 'vitepress'
 
+const localSearch = {
+  provider: 'local' as const,
+  options: {
+    translations: {
+      button: {
+        buttonText: '搜索',
+        buttonAriaLabel: '搜索文档'
+      },
+      modal: {
+        noResultsText: '无法找到相关结果',
+        resetButtonTitle: '清除查询条件',
+        footer: {
+          selectText: '选择',
+          navigateText: '切换',
+          closeText: '关闭'
+        }
+      }
+    }
+  }
+}
+
 function safeGenericEscapePlugin() {
   return {
     name: 'safe-generic-escape',
@@ -62,6 +83,10 @@ export default defineConfig({
       chunkSizeWarningLimit: 1000
     }
   },
+  themeConfig: {
+    // 在顶层保留搜索配置，避免构建期只读取站点级配置时把搜索入口裁掉。
+    search: localSearch
+  },
   /** 多语言 */
   locales: {
     root: {
@@ -71,41 +96,21 @@ export default defineConfig({
 
       themeConfig: {
         logo: '/logo-icon.png',
-
-        search: {
-          provider: 'local',
-          options: {
-            translations: {
-              button: {
-                buttonText: '搜索文档',
-                buttonAriaLabel: '搜索文档'
-              },
-              modal: {
-                noResultsText: '无法找到相关结果',
-                resetButtonTitle: '清除查询条件',
-                footer: {
-                  selectText: '选择',
-                  navigateText: '切换',
-                  closeText: '关闭'
-                }
-              }
-            }
-          }
-        },
+        search: localSearch,
 
         nav: [
           { text: '首页', link: '/zh-CN/' },
           { text: '入门指南', link: '/zh-CN/getting-started' },
           { text: 'Core', link: '/zh-CN/core/' },
-          { text: 'ECS', link: '/zh-CN/ecs/' },
           { text: 'Game', link: '/zh-CN/game/' },
           { text: 'Godot', link: '/zh-CN/godot/' },
-          { text: '源码生成器', link: '/zh-CN/source-generators' },
           { text: '教程', link: '/zh-CN/tutorials/' },
-          { text: '最佳实践', link: '/zh-CN/best-practices/' },
           {
             text: '更多',
             items: [
+              { text: 'ECS', link: '/zh-CN/ecs/' },
+              { text: '源码生成器', link: '/zh-CN/source-generators' },
+              { text: '最佳实践', link: '/zh-CN/best-practices/' },
               { text: 'API 参考', link: '/zh-CN/api-reference' },
               { text: '常见问题', link: '/zh-CN/faq' },
               { text: '故障排查', link: '/zh-CN/troubleshooting' },

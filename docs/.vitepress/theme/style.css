@@ -132,3 +132,46 @@
   --vp-custom-block-tip-code-bg: var(--vp-c-brand-soft);
 }
 
+/**
+ * Component: Navigation
+ * -------------------------------------------------------------------------- */
+
+@media (min-width: 768px) and (max-width: 1279px) {
+  /* Keep the search entry visible on medium desktop widths where nav links are the tightest. */
+  .VPNavBarSearch {
+    flex: 0 0 auto;
+    padding-left: 16px;
+  }
+
+  .VPNavBarSearch .VPNavBarSearchButton {
+    min-width: 0;
+    padding: 8px 10px;
+  }
+
+  .VPNavBarSearch .keys {
+    display: none;
+  }
+
+  .VPNavBarMenu {
+    min-width: 0;
+  }
+
+  .VPNavBarMenu .VPNavBarMenuLink,
+  .VPNavBarMenu .VPFlyout .button {
+    padding-left: 10px;
+    padding-right: 10px;
+    font-size: 13px;
+  }
+}
+
+@media (min-width: 1280px) {
+  /* Reserve stable room for the search button before appearance and social actions appear. */
+  .VPNavBarSearch {
+    min-width: 176px;
+  }
+
+  .VPNavBarSearch .VPNavBarSearchButton {
+    justify-content: space-between;
+    min-width: 176px;
+  }
+}
