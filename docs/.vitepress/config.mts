@@ -1,5 +1,26 @@
 import { defineConfig } from 'vitepress'
 
+const localSearch = {
+  provider: 'local' as const,
+  options: {
+    translations: {
+      button: {
+        buttonText: '搜索文档',
+        buttonAriaLabel: '搜索文档'
+      },
+      modal: {
+        noResultsText: '无法找到相关结果',
+        resetButtonTitle: '清除查询条件',
+        footer: {
+          selectText: '选择',
+          navigateText: '切换',
+          closeText: '关闭'
+        }
+      }
+    }
+  }
+}
+
 function safeGenericEscapePlugin() {
   return {
     name: 'safe-generic-escape',
@@ -62,6 +83,9 @@ export default defineConfig({
       chunkSizeWarningLimit: 1000
     }
   },
+  themeConfig: {
+    search: localSearch
+  },
   /** 多语言 */
   locales: {
     root: {
@@ -71,27 +95,7 @@ export default defineConfig({
 
       themeConfig: {
         logo: '/logo-icon.png',
-
-        search: {
-          provider: 'local',
-          options: {
-            translations: {
-              button: {
-                buttonText: '搜索文档',
-                buttonAriaLabel: '搜索文档'
-              },
-              modal: {
-                noResultsText: '无法找到相关结果',
-                resetButtonTitle: '清除查询条件',
-                footer: {
-                  selectText: '选择',
-                  navigateText: '切换',
-                  closeText: '关闭'
-                }
-              }
-            }
-          }
-        },
+        search: localSearch,
 
         nav: [
           { text: '首页', link: '/zh-CN/' },
@@ -239,6 +243,8 @@ export default defineConfig({
                 { text: 'ContextAware 生成器', link: '/zh-CN/source-generators/context-aware-generator' },
                 { text: 'Priority 生成器', link: '/zh-CN/source-generators/priority-generator' },
                 { text: 'Context Get 注入', link: '/zh-CN/source-generators/context-get-generator' },
+                { text: 'Schema Config 生成器', link: '/zh-CN/source-generators/schema-config-generator' },
+                { text: '分析器', link: '/zh-CN/source-generators/analyzers' },
                 { text: 'GetNode 生成器 (Godot)', link: '/zh-CN/source-generators/get-node-generator' },
                 { text: 'BindNodeSignal 生成器 (Godot)', link: '/zh-CN/source-generators/bind-node-signal-generator' }
               ]
