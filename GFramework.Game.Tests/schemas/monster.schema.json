@@ -15,7 +15,8 @@
     },
     "name": {
       "type": "string",
-      "description": "Monster display name."
+      "description": "Monster display name.",
+      "x-gframework-index": true
     },
     "hp": {
       "type": "integer",
@@ -23,7 +24,8 @@
     },
     "faction": {
       "type": "string",
-      "description": "Used by integration tests to validate generated non-unique queries."
+      "description": "Used by integration tests to validate generated non-unique queries.",
+      "x-gframework-index": true
     }
   }
 }

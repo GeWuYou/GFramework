@@ -85,4 +85,15 @@ public static class ConfigSchemaDiagnostics
         SourceGeneratorsConfigCategory,
         DiagnosticSeverity.Error,
         true);
+
+    /// <summary>
+    ///     schema 字段的查询索引元数据无效。
+    /// </summary>
+    public static readonly DiagnosticDescriptor InvalidLookupIndexMetadata = new(
+        "GF_ConfigSchema_008",
+        "Config schema uses invalid lookup index metadata",
+        "Property '{1}' in schema file '{0}' uses invalid '{2}' metadata: {3}",
+        SourceGeneratorsConfigCategory,
+        DiagnosticSeverity.Error,
+        true);
 }

@@ -220,7 +220,8 @@ public class GeneratedConfigConsumerIntegrationTests
                 },
                 "name": {
                   "type": "string",
-                  "description": "Monster display name."
+                  "description": "Monster display name.",
+                  "x-gframework-index": true
                 },
                 "hp": {
                   "type": "integer",
@@ -228,7 +229,8 @@ public class GeneratedConfigConsumerIntegrationTests
                 },
                 "faction": {
                   "type": "string",
-                  "description": "Used by the integration test to validate generated non-unique queries."
+                  "description": "Used by the integration test to validate generated non-unique queries.",
+                  "x-gframework-index": true
                 }
               }
             }

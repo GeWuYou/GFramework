@@ -79,6 +79,7 @@ public class SchemaConfigGeneratorSnapshotTests
                                     "type": "string",
                                     "title": "Monster Name",
                                     "description": "Localized monster display name.",
+                                    "x-gframework-index": true,
                                     "minLength": 3,
                                     "maxLength": 16,
                                     "pattern": "^[A-Z][a-z]+$",

@@ -10,6 +10,7 @@ namespace GFramework.Game.Config.Generated;
 public sealed partial class MonsterTable : global::GFramework.Game.Abstractions.Config.IConfigTable<int, MonsterConfig>
 {
     private readonly global::GFramework.Game.Abstractions.Config.IConfigTable<int, MonsterConfig> _inner;
+    private readonly global::System.Lazy<global::System.Collections.Generic.IReadOnlyDictionary<string, global::System.Collections.Generic.IReadOnlyList<MonsterConfig>>> _nameIndex;
 
     /// <summary>
     ///     Creates a generated table wrapper around the runtime config table instance.
@@ -18,6 +19,9 @@ public sealed partial class MonsterTable : global::GFramework.Game.Abstractions.
     public MonsterTable(global::GFramework.Game.Abstractions.Config.IConfigTable<int, MonsterConfig> inner)
     {
         _inner = inner ?? throw new global::System.ArgumentNullException(nameof(inner));
+        _nameIndex = new global::System.Lazy<global::System.Collections.Generic.IReadOnlyDictionary<string, global::System.Collections.Generic.IReadOnlyList<MonsterConfig>>>(
+            BuildNameIndex,
+            global::System.Threading.LazyThreadSafetyMode.ExecutionAndPublication);
     }
 
     /// <inheritdoc />
@@ -54,27 +58,64 @@ public sealed partial class MonsterTable : global::GFramework.Game.Abstractions.
     }
 
     /// <summary>
+    ///     Builds the exact-match lookup index declared for property 'name'.
+    /// </summary>
+    /// <returns>A read-only lookup index keyed by <c>Name</c>.</returns>
+    private global::System.Collections.Generic.IReadOnlyDictionary<string, global::System.Collections.Generic.IReadOnlyList<MonsterConfig>> BuildNameIndex()
+    {
+        return BuildLookupIndex(static config => config.Name);
+    }
+
+    /// <summary>
+    ///     Materializes a read-only exact-match lookup index from the current table snapshot.
+    /// </summary>
+    /// <typeparam name="TProperty">Indexed property type.</typeparam>
+    /// <param name="keySelector">Selects the indexed property from one config entry.</param>
+    /// <returns>A read-only dictionary whose values preserve snapshot iteration order.</returns>
+    private global::System.Collections.Generic.IReadOnlyDictionary<TProperty, global::System.Collections.Generic.IReadOnlyList<MonsterConfig>> BuildLookupIndex<TProperty>(
+        global::System.Func<MonsterConfig, TProperty> keySelector)
+        where TProperty : notnull
+    {
+        var buckets = new global::System.Collections.Generic.Dictionary<TProperty, global::System.Collections.Generic.List<MonsterConfig>>();
+
+        // Capture the current table snapshot once so indexed lookups stay deterministic for this wrapper instance.
+        foreach (var candidate in All())
+        {
+            var key = keySelector(candidate);
+            if (!buckets.TryGetValue(key, out var matches))
+            {
+                matches = new global::System.Collections.Generic.List<MonsterConfig>();
+                buckets.Add(key, matches);
+            }
+
+            matches.Add(candidate);
+        }
+
+        var materialized = new global::System.Collections.Generic.Dictionary<TProperty, global::System.Collections.Generic.IReadOnlyList<MonsterConfig>>(buckets.Count, buckets.Comparer);
+        foreach (var pair in buckets)
+        {
+            materialized.Add(pair.Key, global::System.Array.AsReadOnly(pair.Value.ToArray()));
+        }
+
+        return new global::System.Collections.ObjectModel.ReadOnlyDictionary<TProperty, global::System.Collections.Generic.IReadOnlyList<MonsterConfig>>(materialized);
+    }
+
+    /// <summary>
     ///     Finds all config entries whose property 'name' equals the supplied value.
     /// </summary>
     /// <param name="value">The property value to match.</param>
     /// <returns>A read-only snapshot containing every matching config entry.</returns>
     /// <remarks>
-    ///     The generated helper performs a deterministic linear scan over <see cref="All"/> so it stays compatible with runtime hot reload and does not require secondary index infrastructure.
+    ///     This property declares <c>x-gframework-index</c>, so the generated helper resolves matches through a lazily materialized read-only lookup index built from the current table snapshot.
     /// </remarks>
     public global::System.Collections.Generic.IReadOnlyList<MonsterConfig> FindByName(string value)
     {
-        var matches = new global::System.Collections.Generic.List<MonsterConfig>();
-
-        // Scan the current table snapshot on demand so generated helpers stay aligned with reloadable runtime data.
-        foreach (var candidate in All())
+        if (_nameIndex.Value.TryGetValue(value, out var matches))
         {
-            if (global::System.Collections.Generic.EqualityComparer<string>.Default.Equals(candidate.Name, value))
-            {
-                matches.Add(candidate);
-            }
+            return matches;
         }
 
-        return matches.Count == 0 ? global::System.Array.Empty<MonsterConfig>() : matches.AsReadOnly();
+        return global::System.Array.Empty<MonsterConfig>();
     }
 
     /// <summary>
@@ -84,18 +125,14 @@ public sealed partial class MonsterTable : global::GFramework.Game.Abstractions.
     /// <param name="result">The first matching config entry when lookup succeeds; otherwise <see langword="null" />.</param>
     /// <returns><see langword="true" /> when a matching config entry is found; otherwise <see langword="false" />.</returns>
     /// <remarks>
-    ///     The generated helper walks the same snapshot exposed by <see cref="All"/> and returns the first match in iteration order.
+    ///     This property declares <c>x-gframework-index</c>, so the generated helper returns the first element from the lazily materialized exact-match bucket.
     /// </remarks>
     public bool TryFindFirstByName(string value, out MonsterConfig? result)
     {
-        // Keep the search path allocation-free for the first-match case by exiting as soon as one entry matches.
-        foreach (var candidate in All())
+        if (_nameIndex.Value.TryGetValue(value, out var matches) && matches.Count > 0)
         {
-            if (global::System.Collections.Generic.EqualityComparer<string>.Default.Equals(candidate.Name, value))
-            {
-                result = candidate;
-                return true;
-            }
+            result = matches[0];
+            return true;
         }
 
         result = null;

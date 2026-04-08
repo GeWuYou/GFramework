@@ -365,6 +365,18 @@ var slime = runtime.GetMonster(1);
 
 从当前阶段开始，生成的 `*Table` 包装会为“顶层、非主键、非引用的标量字段”额外产出轻量查询辅助。
 
+如果某个字段属于高频精确匹配条件，可以在 schema 中显式声明：
+
+```json
+{
+  "type": "string",
+  "x-gframework-index": true
+}
+```
+
+当前这个元数据只支持“顶层、必填、非主键、非引用标量字段”。命中该条件时，生成的 `FindBy*` /
+`TryFindFirstBy*` API 不会变，但内部会改成按需构建只读精确匹配索引；没有声明的字段仍保持线性扫描。
+
 如果 `monster.schema.json` 包含顶层标量字段 `name`、`faction`，则可以直接这样使用：
 
 ```csharp
@@ -383,7 +395,8 @@ if (monsterTable.TryFindFirstByFaction("dungeon", out var firstDungeonMonster))
 - 只为顶层标量字段生成 `FindBy*` 与 `TryFindFirstBy*`
 - 主键字段继续只走 `Get / TryGet`
 - 嵌套对象、对象数组、标量数组和 `x-gframework-ref-table` 字段暂不生成查询辅助
-- 查询实现基于 `All()` 做线性扫描，不引入运行时索引或缓存
+- 只有显式声明 `x-gframework-index: true` 的字段才会生成惰性只读索引
+- 未声明索引的字段继续基于 `All()` 做线性扫描，不引入额外运行时索引成本
 
 这意味着它的定位是“减少业务层手写过滤样板”，而不是“替代专门索引结构”。
 

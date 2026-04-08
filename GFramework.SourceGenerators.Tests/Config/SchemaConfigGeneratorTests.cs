@@ -268,6 +268,100 @@ public class SchemaConfigGeneratorTests
     }
 
     /// <summary>
+    ///     验证查询索引元数据必须是布尔值，避免 schema 作者误以为字符串或数字也会被解释为开关。
+    /// </summary>
+    [Test]
+    public void Run_Should_Report_Diagnostic_When_Lookup_Index_Metadata_Is_Not_Boolean()
+    {
+        const string source = """
+                              namespace TestApp
+                              {
+                                  public sealed class Dummy
+                                  {
+                                  }
+                              }
+                              """;
+
+        const string schema = """
+                              {
+                                "type": "object",
+                                "required": ["id", "name"],
+                                "properties": {
+                                  "id": { "type": "integer" },
+                                  "name": {
+                                    "type": "string",
+                                    "x-gframework-index": "yes"
+                                  }
+                                }
+                              }
+                              """;
+
+        var result = SchemaGeneratorTestDriver.Run(
+            source,
+            ("monster.schema.json", schema));
+
+        var diagnostic = result.Results.Single().Diagnostics.Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Id, Is.EqualTo("GF_ConfigSchema_008"));
+            Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Error));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("x-gframework-index"));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("boolean"));
+        });
+    }
+
+    /// <summary>
+    ///     验证查询索引元数据不能绑定到不满足约束的字段上，避免为嵌套字段生成误导性 API。
+    /// </summary>
+    [Test]
+    public void Run_Should_Report_Diagnostic_When_Lookup_Index_Metadata_Target_Is_Not_Eligible()
+    {
+        const string source = """
+                              namespace TestApp
+                              {
+                                  public sealed class Dummy
+                                  {
+                                  }
+                              }
+                              """;
+
+        const string schema = """
+                              {
+                                "type": "object",
+                                "required": ["id", "reward"],
+                                "properties": {
+                                  "id": { "type": "integer" },
+                                  "reward": {
+                                    "type": "object",
+                                    "required": ["rarity"],
+                                    "properties": {
+                                      "rarity": {
+                                        "type": "string",
+                                        "x-gframework-index": true
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                              """;
+
+        var result = SchemaGeneratorTestDriver.Run(
+            source,
+            ("monster.schema.json", schema));
+
+        var diagnostic = result.Results.Single().Diagnostics.Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Id, Is.EqualTo("GF_ConfigSchema_008"));
+            Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Error));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("reward.rarity"));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("top-level required non-key scalar"));
+        });
+    }
+
+    /// <summary>
     ///     验证引用元数据成员名在不同路径规范化后发生碰撞时，生成器仍会分配全局唯一的成员名。
     /// </summary>
     [Test]
@@ -429,7 +523,10 @@ public class SchemaConfigGeneratorTests
                                 "required": ["id", "name"],
                                 "properties": {
                                   "id": { "type": "integer" },
-                                  "name": { "type": "string" },
+                                  "name": {
+                                    "type": "string",
+                                    "x-gframework-index": true
+                                  },
                                   "hp": { "type": "integer" },
                                   "dropItems": {
                                     "type": "array",
@@ -468,8 +565,12 @@ public class SchemaConfigGeneratorTests
         {
             Assert.That(tableSource, Does.Contain("FindByName(string value)"));
             Assert.That(tableSource, Does.Contain("TryFindFirstByName(string value, out MonsterConfig? result)"));
+            Assert.That(tableSource, Does.Contain("_nameIndex"));
+            Assert.That(tableSource, Does.Contain("BuildNameIndex"));
+            Assert.That(tableSource, Does.Contain("_nameIndex.Value.TryGetValue(value, out var matches)"));
             Assert.That(tableSource, Does.Contain("FindByHp(int? value)"));
             Assert.That(tableSource, Does.Contain("TryFindFirstByHp(int? value, out MonsterConfig? result)"));
+            Assert.That(tableSource, Does.Not.Contain("_hpIndex"));
             Assert.That(tableSource, Does.Not.Contain("FindById("));
             Assert.That(tableSource, Does.Not.Contain("FindByDropItems("));
             Assert.That(tableSource, Does.Not.Contain("FindByTargetId("));

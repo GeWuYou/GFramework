@@ -25,6 +25,7 @@
  GF_ConfigSchema_005        | GFramework.SourceGenerators.Config | Error    | ConfigSchemaDiagnostics        
  GF_ConfigSchema_006        | GFramework.SourceGenerators.Config | Error    | ConfigSchemaDiagnostics        
  GF_ConfigSchema_007        | GFramework.SourceGenerators.Config | Error    | ConfigSchemaDiagnostics        
+ GF_ConfigSchema_008        | GFramework.SourceGenerators.Config | Error    | ConfigSchemaDiagnostics        
  GF_Priority_001            | GFramework.Priority                | Error    | PriorityDiagnostic             
  GF_Priority_002            | GFramework.Priority                | Warning  | PriorityDiagnostic             
  GF_Priority_003            | GFramework.Priority                | Error    | PriorityDiagnostic             

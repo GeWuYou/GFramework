@@ -11,6 +11,7 @@ namespace GFramework.SourceGenerators.Config;
 public sealed class SchemaConfigGenerator : IIncrementalGenerator
 {
     private const string ConfigPathMetadataKey = "x-gframework-config-path";
+    private const string LookupIndexMetadataKey = "x-gframework-index";
     private const string GeneratedNamespace = "GFramework.Game.Config.Generated";
 
     /// <inheritdoc />
@@ -279,7 +280,28 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         var title = TryGetMetadataString(property.Value, "title");
         var description = TryGetMetadataString(property.Value, "description");
         var refTableName = TryGetMetadataString(property.Value, "x-gframework-ref-table");
+        var indexedLookupMetadata = TryGetMetadataBoolean(property.Value, LookupIndexMetadataKey);
+        if (indexedLookupMetadata.Diagnostic is not null)
+        {
+            return ParsedPropertyResult.FromDiagnostic(
+                Diagnostic.Create(
+                    ConfigSchemaDiagnostics.InvalidLookupIndexMetadata,
+                    CreateFileLocation(filePath),
+                    Path.GetFileName(filePath),
+                    displayPath,
+                    LookupIndexMetadataKey,
+                    indexedLookupMetadata.Diagnostic!));
+        }
+
+        var isIndexedLookup = indexedLookupMetadata.Value ?? false;
         if (!TryBuildPropertyIdentifier(filePath, displayPath, property.Name, out var propertyName, out var diagnostic))
+        {
+            return ParsedPropertyResult.FromDiagnostic(diagnostic!);
+        }
+
+        if (isIndexedLookup &&
+            !TryValidateIndexedLookupEligibility(filePath, property.Name, displayPath, isRequired, refTableName,
+                out diagnostic))
         {
             return ParsedPropertyResult.FromDiagnostic(diagnostic!);
         }
@@ -294,6 +316,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                     isRequired,
                     title,
                     description,
+                    isIndexedLookup,
                     new SchemaTypeSpec(
                         SchemaNodeKind.Scalar,
                         "integer",
@@ -313,6 +336,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                     isRequired,
                     title,
                     description,
+                    isIndexedLookup,
                     new SchemaTypeSpec(
                         SchemaNodeKind.Scalar,
                         "number",
@@ -332,6 +356,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                     isRequired,
                     title,
                     description,
+                    isIndexedLookup,
                     new SchemaTypeSpec(
                         SchemaNodeKind.Scalar,
                         "boolean",
@@ -351,6 +376,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                     isRequired,
                     title,
                     description,
+                    isIndexedLookup,
                     new SchemaTypeSpec(
                         SchemaNodeKind.Scalar,
                         "string",
@@ -364,6 +390,18 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                         null)));
 
             case "object":
+                if (isIndexedLookup)
+                {
+                    return ParsedPropertyResult.FromDiagnostic(
+                        Diagnostic.Create(
+                            ConfigSchemaDiagnostics.InvalidLookupIndexMetadata,
+                            CreateFileLocation(filePath),
+                            Path.GetFileName(filePath),
+                            displayPath,
+                            LookupIndexMetadataKey,
+                            "Only top-level required non-key scalar properties can declare a generated lookup index."));
+                }
+
                 if (!string.IsNullOrWhiteSpace(refTableName))
                 {
                     return ParsedPropertyResult.FromDiagnostic(
@@ -393,6 +431,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                     isRequired,
                     title,
                     description,
+                    false,
                     new SchemaTypeSpec(
                         SchemaNodeKind.Object,
                         "object",
@@ -406,7 +445,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
 
             case "array":
                 return ParseArrayProperty(filePath, property, isRequired, displayPath, propertyName, title,
-                    description, refTableName);
+                    description, refTableName, isIndexedLookup);
 
             default:
                 return ParsedPropertyResult.FromDiagnostic(
@@ -417,6 +456,76 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                         displayPath,
                         schemaType));
         }
+    }
+
+    /// <summary>
+    ///     验证字段是否满足生成只读精确匹配索引的前提。
+    /// </summary>
+    /// <param name="filePath">Schema 文件路径。</param>
+    /// <param name="schemaName">Schema 原始字段名。</param>
+    /// <param name="displayPath">逻辑字段路径。</param>
+    /// <param name="isRequired">字段是否必填。</param>
+    /// <param name="refTableName">可选的引用表名。</param>
+    /// <param name="diagnostic">不满足条件时输出的诊断。</param>
+    /// <returns>当前字段是否允许声明只读索引。</returns>
+    private static bool TryValidateIndexedLookupEligibility(
+        string filePath,
+        string schemaName,
+        string displayPath,
+        bool isRequired,
+        string? refTableName,
+        out Diagnostic? diagnostic)
+    {
+        diagnostic = null;
+        if (!IsTopLevelPropertyDisplayPath(displayPath))
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidLookupIndexMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                displayPath,
+                LookupIndexMetadataKey,
+                "Only top-level required non-key scalar properties can declare a generated lookup index.");
+            return false;
+        }
+
+        if (!isRequired)
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidLookupIndexMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                displayPath,
+                LookupIndexMetadataKey,
+                "Generated lookup indexes currently require a required scalar property so dictionary keys remain non-null.");
+            return false;
+        }
+
+        if (string.Equals(schemaName, "id", StringComparison.OrdinalIgnoreCase))
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidLookupIndexMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                displayPath,
+                LookupIndexMetadataKey,
+                "The primary key already has Get/TryGet lookup semantics and should not declare a generated lookup index.");
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(refTableName))
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidLookupIndexMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                displayPath,
+                LookupIndexMetadataKey,
+                "Reference properties are excluded from generated lookup indexes because they already carry cross-table semantics.");
+            return false;
+        }
+
+        return true;
     }
 
     /// <summary>
@@ -439,8 +548,21 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         string propertyName,
         string? title,
         string? description,
-        string? refTableName)
+        string? refTableName,
+        bool isIndexedLookup)
     {
+        if (isIndexedLookup)
+        {
+            return ParsedPropertyResult.FromDiagnostic(
+                Diagnostic.Create(
+                    ConfigSchemaDiagnostics.InvalidLookupIndexMetadata,
+                    CreateFileLocation(filePath),
+                    Path.GetFileName(filePath),
+                    displayPath,
+                    LookupIndexMetadataKey,
+                    "Only top-level required non-key scalar properties can declare a generated lookup index."));
+        }
+
         if (!property.Value.TryGetProperty("items", out var itemsElement) ||
             itemsElement.ValueKind != JsonValueKind.Object ||
             !itemsElement.TryGetProperty("type", out var itemTypeElement) ||
@@ -477,6 +599,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                     isRequired,
                     title,
                     description,
+                    false,
                     new SchemaTypeSpec(
                         SchemaNodeKind.Array,
                         "array",
@@ -528,6 +651,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                     isRequired,
                     title,
                     description,
+                    false,
                     new SchemaTypeSpec(
                         SchemaNodeKind.Array,
                         "array",
@@ -587,6 +711,9 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     {
         var builder = new StringBuilder();
         var queryableProperties = CollectQueryableProperties(schema).ToArray();
+        var indexedQueryableProperties = queryableProperties
+            .Where(static property => property.IsIndexedLookup)
+            .ToArray();
         builder.AppendLine("// <auto-generated />");
         builder.AppendLine("#nullable enable");
         builder.AppendLine();
@@ -603,6 +730,12 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("{");
         builder.AppendLine(
             $"    private readonly global::GFramework.Game.Abstractions.Config.IConfigTable<{schema.KeyClrType}, {schema.ClassName}> _inner;");
+        foreach (var property in indexedQueryableProperties)
+        {
+            builder.AppendLine(
+                $"    private readonly global::System.Lazy<global::System.Collections.Generic.IReadOnlyDictionary<{property.TypeSpec.ClrType}, global::System.Collections.Generic.IReadOnlyList<{schema.ClassName}>>> _{ToCamelCase(property.PropertyName)}Index;");
+        }
+
         builder.AppendLine();
         builder.AppendLine("    /// <summary>");
         builder.AppendLine("    ///     Creates a generated table wrapper around the runtime config table instance.");
@@ -612,6 +745,14 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             $"    public {schema.TableName}(global::GFramework.Game.Abstractions.Config.IConfigTable<{schema.KeyClrType}, {schema.ClassName}> inner)");
         builder.AppendLine("    {");
         builder.AppendLine("        _inner = inner ?? throw new global::System.ArgumentNullException(nameof(inner));");
+        foreach (var property in indexedQueryableProperties)
+        {
+            builder.AppendLine(
+                $"        _{ToCamelCase(property.PropertyName)}Index = new global::System.Lazy<global::System.Collections.Generic.IReadOnlyDictionary<{property.TypeSpec.ClrType}, global::System.Collections.Generic.IReadOnlyList<{schema.ClassName}>>>(");
+            builder.AppendLine($"            Build{property.PropertyName}Index,");
+            builder.AppendLine("            global::System.Threading.LazyThreadSafetyMode.ExecutionAndPublication);");
+        }
+
         builder.AppendLine("    }");
         builder.AppendLine();
         builder.AppendLine("    /// <inheritdoc />");
@@ -647,6 +788,18 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("    {");
         builder.AppendLine("        return _inner.All();");
         builder.AppendLine("    }");
+
+        if (indexedQueryableProperties.Length > 0)
+        {
+            foreach (var property in indexedQueryableProperties)
+            {
+                builder.AppendLine();
+                AppendIndexedLookupBuilderMethod(builder, schema, property);
+            }
+
+            builder.AppendLine();
+            AppendSharedLookupIndexBuilderMethod(builder, schema);
+        }
 
         foreach (var property in queryableProperties)
         {
@@ -1349,6 +1502,82 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     }
 
     /// <summary>
+    ///     为单个索引字段生成延迟构建器。
+    /// </summary>
+    /// <param name="builder">输出缓冲区。</param>
+    /// <param name="schema">生成器级 schema 模型。</param>
+    /// <param name="property">声明了索引元数据的字段。</param>
+    private static void AppendIndexedLookupBuilderMethod(
+        StringBuilder builder,
+        SchemaFileSpec schema,
+        SchemaPropertySpec property)
+    {
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine(
+            $"    ///     Builds the exact-match lookup index declared for property '{EscapeXmlDocumentation(property.DisplayPath)}'.");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine(
+            $"    /// <returns>A read-only lookup index keyed by <c>{EscapeXmlDocumentation(property.PropertyName)}</c>.</returns>");
+        builder.AppendLine(
+            $"    private global::System.Collections.Generic.IReadOnlyDictionary<{property.TypeSpec.ClrType}, global::System.Collections.Generic.IReadOnlyList<{schema.ClassName}>> Build{property.PropertyName}Index()");
+        builder.AppendLine("    {");
+        builder.AppendLine(
+            $"        return BuildLookupIndex(static config => config.{property.PropertyName});");
+        builder.AppendLine("    }");
+    }
+
+    /// <summary>
+    ///     为当前生成表输出共享索引构建逻辑。
+    /// </summary>
+    /// <param name="builder">输出缓冲区。</param>
+    /// <param name="schema">生成器级 schema 模型。</param>
+    private static void AppendSharedLookupIndexBuilderMethod(
+        StringBuilder builder,
+        SchemaFileSpec schema)
+    {
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine(
+            "    ///     Materializes a read-only exact-match lookup index from the current table snapshot.");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    /// <typeparam name=\"TProperty\">Indexed property type.</typeparam>");
+        builder.AppendLine("    /// <param name=\"keySelector\">Selects the indexed property from one config entry.</param>");
+        builder.AppendLine("    /// <returns>A read-only dictionary whose values preserve snapshot iteration order.</returns>");
+        builder.AppendLine(
+            $"    private global::System.Collections.Generic.IReadOnlyDictionary<TProperty, global::System.Collections.Generic.IReadOnlyList<{schema.ClassName}>> BuildLookupIndex<TProperty>(");
+        builder.AppendLine($"        global::System.Func<{schema.ClassName}, TProperty> keySelector)");
+        builder.AppendLine("        where TProperty : notnull");
+        builder.AppendLine("    {");
+        builder.AppendLine("        var buckets = new global::System.Collections.Generic.Dictionary<TProperty, global::System.Collections.Generic.List<" +
+                           $"{schema.ClassName}>>();");
+        builder.AppendLine();
+        builder.AppendLine(
+            "        // Capture the current table snapshot once so indexed lookups stay deterministic for this wrapper instance.");
+        builder.AppendLine("        foreach (var candidate in All())");
+        builder.AppendLine("        {");
+        builder.AppendLine("            var key = keySelector(candidate);");
+        builder.AppendLine("            if (!buckets.TryGetValue(key, out var matches))");
+        builder.AppendLine("            {");
+        builder.AppendLine($"                matches = new global::System.Collections.Generic.List<{schema.ClassName}>();");
+        builder.AppendLine("                buckets.Add(key, matches);");
+        builder.AppendLine("            }");
+        builder.AppendLine();
+        builder.AppendLine("            matches.Add(candidate);");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine(
+            $"        var materialized = new global::System.Collections.Generic.Dictionary<TProperty, global::System.Collections.Generic.IReadOnlyList<{schema.ClassName}>>(buckets.Count, buckets.Comparer);");
+        builder.AppendLine("        foreach (var pair in buckets)");
+        builder.AppendLine("        {");
+        builder.AppendLine(
+            $"            materialized.Add(pair.Key, global::System.Array.AsReadOnly(pair.Value.ToArray()));");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine(
+            $"        return new global::System.Collections.ObjectModel.ReadOnlyDictionary<TProperty, global::System.Collections.Generic.IReadOnlyList<{schema.ClassName}>>(materialized);");
+        builder.AppendLine("    }");
+    }
+
+    /// <summary>
     ///     生成按字段匹配全部结果的轻量查询辅助。
     /// </summary>
     /// <param name="builder">输出缓冲区。</param>
@@ -1366,28 +1595,51 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("    /// <param name=\"value\">The property value to match.</param>");
         builder.AppendLine("    /// <returns>A read-only snapshot containing every matching config entry.</returns>");
         builder.AppendLine("    /// <remarks>");
-        builder.AppendLine(
-            "    ///     The generated helper performs a deterministic linear scan over <see cref=\"All\"/> so it stays compatible with runtime hot reload and does not require secondary index infrastructure.");
+        if (property.IsIndexedLookup)
+        {
+            builder.AppendLine(
+                "    ///     This property declares <c>x-gframework-index</c>, so the generated helper resolves matches through a lazily materialized read-only lookup index built from the current table snapshot.");
+        }
+        else
+        {
+            builder.AppendLine(
+                "    ///     The generated helper performs a deterministic linear scan over <see cref=\"All\"/> so it stays compatible with runtime hot reload and does not require secondary index infrastructure.");
+        }
+
         builder.AppendLine("    /// </remarks>");
         builder.AppendLine(
             $"    public global::System.Collections.Generic.IReadOnlyList<{schema.ClassName}> FindBy{property.PropertyName}({property.TypeSpec.ClrType} value)");
         builder.AppendLine("    {");
-        builder.AppendLine(
-            $"        var matches = new global::System.Collections.Generic.List<{schema.ClassName}>();");
-        builder.AppendLine();
-        builder.AppendLine(
-            "        // Scan the current table snapshot on demand so generated helpers stay aligned with reloadable runtime data.");
-        builder.AppendLine("        foreach (var candidate in All())");
-        builder.AppendLine("        {");
-        builder.AppendLine(
-            $"            if (global::System.Collections.Generic.EqualityComparer<{property.TypeSpec.ClrType}>.Default.Equals(candidate.{property.PropertyName}, value))");
-        builder.AppendLine("            {");
-        builder.AppendLine("                matches.Add(candidate);");
-        builder.AppendLine("            }");
-        builder.AppendLine("        }");
-        builder.AppendLine();
-        builder.AppendLine(
-            $"        return matches.Count == 0 ? global::System.Array.Empty<{schema.ClassName}>() : matches.AsReadOnly();");
+        if (property.IsIndexedLookup)
+        {
+            builder.AppendLine(
+                $"        if (_{ToCamelCase(property.PropertyName)}Index.Value.TryGetValue(value, out var matches))");
+            builder.AppendLine("        {");
+            builder.AppendLine("            return matches;");
+            builder.AppendLine("        }");
+            builder.AppendLine();
+            builder.AppendLine($"        return global::System.Array.Empty<{schema.ClassName}>();");
+        }
+        else
+        {
+            builder.AppendLine(
+                $"        var matches = new global::System.Collections.Generic.List<{schema.ClassName}>();");
+            builder.AppendLine();
+            builder.AppendLine(
+                "        // Scan the current table snapshot on demand so generated helpers stay aligned with reloadable runtime data.");
+            builder.AppendLine("        foreach (var candidate in All())");
+            builder.AppendLine("        {");
+            builder.AppendLine(
+                $"            if (global::System.Collections.Generic.EqualityComparer<{property.TypeSpec.ClrType}>.Default.Equals(candidate.{property.PropertyName}, value))");
+            builder.AppendLine("            {");
+            builder.AppendLine("                matches.Add(candidate);");
+            builder.AppendLine("            }");
+            builder.AppendLine("        }");
+            builder.AppendLine();
+            builder.AppendLine(
+                $"        return matches.Count == 0 ? global::System.Array.Empty<{schema.ClassName}>() : matches.AsReadOnly();");
+        }
+
         builder.AppendLine("    }");
     }
 
@@ -1412,26 +1664,51 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine(
             "    /// <returns><see langword=\"true\" /> when a matching config entry is found; otherwise <see langword=\"false\" />.</returns>");
         builder.AppendLine("    /// <remarks>");
-        builder.AppendLine(
-            "    ///     The generated helper walks the same snapshot exposed by <see cref=\"All\"/> and returns the first match in iteration order.");
+        if (property.IsIndexedLookup)
+        {
+            builder.AppendLine(
+                "    ///     This property declares <c>x-gframework-index</c>, so the generated helper returns the first element from the lazily materialized exact-match bucket.");
+        }
+        else
+        {
+            builder.AppendLine(
+                "    ///     The generated helper walks the same snapshot exposed by <see cref=\"All\"/> and returns the first match in iteration order.");
+        }
+
         builder.AppendLine("    /// </remarks>");
         builder.AppendLine(
             $"    public bool TryFindFirstBy{property.PropertyName}({property.TypeSpec.ClrType} value, out {schema.ClassName}? result)");
         builder.AppendLine("    {");
-        builder.AppendLine(
-            "        // Keep the search path allocation-free for the first-match case by exiting as soon as one entry matches.");
-        builder.AppendLine("        foreach (var candidate in All())");
-        builder.AppendLine("        {");
-        builder.AppendLine(
-            $"            if (global::System.Collections.Generic.EqualityComparer<{property.TypeSpec.ClrType}>.Default.Equals(candidate.{property.PropertyName}, value))");
-        builder.AppendLine("            {");
-        builder.AppendLine("                result = candidate;");
-        builder.AppendLine("                return true;");
-        builder.AppendLine("            }");
-        builder.AppendLine("        }");
-        builder.AppendLine();
-        builder.AppendLine("        result = null;");
-        builder.AppendLine("        return false;");
+        if (property.IsIndexedLookup)
+        {
+            builder.AppendLine(
+                $"        if (_{ToCamelCase(property.PropertyName)}Index.Value.TryGetValue(value, out var matches) && matches.Count > 0)");
+            builder.AppendLine("        {");
+            builder.AppendLine("            result = matches[0];");
+            builder.AppendLine("            return true;");
+            builder.AppendLine("        }");
+            builder.AppendLine();
+            builder.AppendLine("        result = null;");
+            builder.AppendLine("        return false;");
+        }
+        else
+        {
+            builder.AppendLine(
+                "        // Keep the search path allocation-free for the first-match case by exiting as soon as one entry matches.");
+            builder.AppendLine("        foreach (var candidate in All())");
+            builder.AppendLine("        {");
+            builder.AppendLine(
+                $"            if (global::System.Collections.Generic.EqualityComparer<{property.TypeSpec.ClrType}>.Default.Equals(candidate.{property.PropertyName}, value))");
+            builder.AppendLine("            {");
+            builder.AppendLine("                result = candidate;");
+            builder.AppendLine("                return true;");
+            builder.AppendLine("            }");
+            builder.AppendLine("        }");
+            builder.AppendLine();
+            builder.AppendLine("        result = null;");
+            builder.AppendLine("        return false;");
+        }
+
         builder.AppendLine("    }");
     }
 
@@ -1716,6 +1993,17 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     }
 
     /// <summary>
+    ///     判断字段路径是否表示根对象的直接子字段。
+    /// </summary>
+    /// <param name="displayPath">逻辑字段路径。</param>
+    /// <returns>根对象直接子字段时返回 <c>true</c>；否则返回 <c>false</c>。</returns>
+    private static bool IsTopLevelPropertyDisplayPath(string displayPath)
+    {
+        return displayPath.IndexOf('.') < 0 &&
+               displayPath.IndexOf('[') < 0;
+    }
+
+    /// <summary>
     ///     将 schema 名称转换为 PascalCase 标识符。
     /// </summary>
     /// <param name="value">原始名称。</param>
@@ -1729,6 +2017,26 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             .ToArray();
 
         return tokens.Length == 0 ? "Config" : string.Concat(tokens);
+    }
+
+    /// <summary>
+    ///     将 PascalCase 标识符转换为 camelCase 字段名。
+    /// </summary>
+    /// <param name="value">PascalCase 标识符。</param>
+    /// <returns>适合作为私有字段名的 camelCase 标识符。</returns>
+    private static string ToCamelCase(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return value;
+        }
+
+        if (value.Length == 1)
+        {
+            return char.ToLowerInvariant(value[0]).ToString();
+        }
+
+        return char.ToLowerInvariant(value[0]) + value.Substring(1);
     }
 
     /// <summary>
@@ -1782,6 +2090,28 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
 
         var value = metadataElement.GetString();
         return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
+
+    /// <summary>
+    ///     读取布尔元数据。
+    /// </summary>
+    /// <param name="element">Schema 节点。</param>
+    /// <param name="propertyName">元数据字段名。</param>
+    /// <returns>布尔元数据值；不存在时返回空。</returns>
+    private static (bool? Value, string? Diagnostic) TryGetMetadataBoolean(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out var metadataElement))
+        {
+            return (null, null);
+        }
+
+        if (metadataElement.ValueKind != JsonValueKind.True &&
+            metadataElement.ValueKind != JsonValueKind.False)
+        {
+            return (null, $"Expected a JSON boolean but found '{metadataElement.ValueKind}'.");
+        }
+
+        return (metadataElement.GetBoolean(), null);
     }
 
     /// <summary>
@@ -2210,6 +2540,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     /// <param name="IsRequired">是否必填。</param>
     /// <param name="Title">字段标题元数据。</param>
     /// <param name="Description">字段描述元数据。</param>
+    /// <param name="IsIndexedLookup">是否声明生成只读精确匹配索引。</param>
     /// <param name="TypeSpec">字段类型模型。</param>
     private sealed record SchemaPropertySpec(
         string SchemaName,
@@ -2218,6 +2549,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         bool IsRequired,
         string? Title,
         string? Description,
+        bool IsIndexedLookup,
         SchemaTypeSpec TypeSpec);
 
     /// <summary>
