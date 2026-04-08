@@ -72,6 +72,9 @@ public sealed partial class MonsterTable : global::GFramework.Game.Abstractions.
     /// <typeparam name="TProperty">Indexed property type.</typeparam>
     /// <param name="keySelector">Selects the indexed property from one config entry.</param>
     /// <returns>A read-only dictionary whose values preserve snapshot iteration order.</returns>
+    /// <remarks>
+    ///     The generated index skips runtime null keys even though <typeparamref name="TProperty"/> is constrained to <c>notnull</c>. Malformed YAML payloads can still deserialize missing indexed values to <see langword="null" />, and throwing from this lazy path would permanently poison the cached index for the current table wrapper instance.
+    /// </remarks>
     private global::System.Collections.Generic.IReadOnlyDictionary<TProperty, global::System.Collections.Generic.IReadOnlyList<MonsterConfig>> BuildLookupIndex<TProperty>(
         global::System.Func<MonsterConfig, TProperty> keySelector)
         where TProperty : notnull
@@ -82,6 +85,13 @@ public sealed partial class MonsterTable : global::GFramework.Game.Abstractions.
         foreach (var candidate in All())
         {
             var key = keySelector(candidate);
+            if (key is null)
+            {
+                // Skip malformed runtime data so the lazy lookup cache remains usable for valid keys.
+                // Throwing here would permanently poison the cached index for this wrapper instance.
+                continue;
+            }
+
             if (!buckets.TryGetValue(key, out var matches))
             {
                 matches = new global::System.Collections.Generic.List<MonsterConfig>();

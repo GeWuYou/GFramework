@@ -1536,6 +1536,10 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("    /// <typeparam name=\"TProperty\">Indexed property type.</typeparam>");
         builder.AppendLine("    /// <param name=\"keySelector\">Selects the indexed property from one config entry.</param>");
         builder.AppendLine("    /// <returns>A read-only dictionary whose values preserve snapshot iteration order.</returns>");
+        builder.AppendLine("    /// <remarks>");
+        builder.AppendLine(
+            "    ///     The generated index skips runtime null keys even though <typeparamref name=\"TProperty\"/> is constrained to <c>notnull</c>. Malformed YAML payloads can still deserialize missing indexed values to <see langword=\"null\" />, and throwing from this lazy path would permanently poison the cached index for the current table wrapper instance.");
+        builder.AppendLine("    /// </remarks>");
         builder.AppendLine(
             $"    private global::System.Collections.Generic.IReadOnlyDictionary<TProperty, global::System.Collections.Generic.IReadOnlyList<{schema.ClassName}>> BuildLookupIndex<TProperty>(");
         builder.AppendLine($"        global::System.Func<{schema.ClassName}, TProperty> keySelector)");
@@ -1549,6 +1553,15 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("        foreach (var candidate in All())");
         builder.AppendLine("        {");
         builder.AppendLine("            var key = keySelector(candidate);");
+        builder.AppendLine("            if (key is null)");
+        builder.AppendLine("            {");
+        builder.AppendLine(
+            "                // Skip malformed runtime data so the lazy lookup cache remains usable for valid keys.");
+        builder.AppendLine(
+            "                // Throwing here would permanently poison the cached index for this wrapper instance.");
+        builder.AppendLine("                continue;");
+        builder.AppendLine("            }");
+        builder.AppendLine();
         builder.AppendLine("            if (!buckets.TryGetValue(key, out var matches))");
         builder.AppendLine("            {");
         builder.AppendLine($"                matches = new global::System.Collections.Generic.List<{schema.ClassName}>();");
@@ -1606,7 +1619,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("    {");
         if (property.IsIndexedLookup)
         {
-            if (IsReferenceType(property.TypeSpec.ClrType))
+            if (RequiresIndexedLookupNullGuard(property.TypeSpec))
             {
                 builder.AppendLine("        if (value is null)");
                 builder.AppendLine("        {");
@@ -1684,7 +1697,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("    {");
         if (property.IsIndexedLookup)
         {
-            if (IsReferenceType(property.TypeSpec.ClrType))
+            if (RequiresIndexedLookupNullGuard(property.TypeSpec))
             {
                 builder.AppendLine("        if (value is null)");
                 builder.AppendLine("        {");
@@ -2138,13 +2151,23 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     }
 
     /// <summary>
-    ///     判断生成字段类型是否为引用类型。
+    ///     判断某个已支持的索引标量映射是否需要在查询辅助中生成空值守卫。
+    ///     这里必须显式枚举所有已支持的 schema 标量类型，避免未来新增引用类型标量时静默漏掉空检查。
     /// </summary>
-    /// <param name="clrType">生成的 CLR 类型名。</param>
-    /// <returns>引用类型时返回 <c>true</c>；否则返回 <c>false</c>。</returns>
-    private static bool IsReferenceType(string clrType)
+    /// <param name="typeSpec">生成字段的标量类型模型。</param>
+    /// <returns>需要在生成的索引查询辅助中保护 <see langword="null" /> 参数时返回 <c>true</c>；否则返回 <c>false</c>。</returns>
+    /// <exception cref="InvalidOperationException">当前受支持的标量映射未被完整分类时抛出。</exception>
+    private static bool RequiresIndexedLookupNullGuard(SchemaTypeSpec typeSpec)
     {
-        return string.Equals(clrType, "string", StringComparison.Ordinal);
+        return typeSpec.SchemaType switch
+        {
+            "integer" => false,
+            "number" => false,
+            "boolean" => false,
+            "string" => true,
+            _ => throw new InvalidOperationException(
+                $"Indexed lookup null-guard classification does not cover schema scalar type '{typeSpec.SchemaType}' mapped to '{typeSpec.ClrType}'.")
+        };
     }
 
     /// <summary>
