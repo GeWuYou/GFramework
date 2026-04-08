@@ -474,6 +474,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     /// <param name="filePath">Schema 文件路径。</param>
     /// <param name="schemaName">Schema 原始字段名。</param>
     /// <param name="displayPath">逻辑字段路径。</param>
+    /// <param name="isDirectChildOfRoot">字段是否直接从属于 schema 根对象。</param>
     /// <param name="isRequired">字段是否必填。</param>
     /// <param name="refTableName">可选的引用表名。</param>
     /// <param name="diagnostic">不满足条件时输出的诊断。</param>
