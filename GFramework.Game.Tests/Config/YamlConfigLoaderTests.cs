@@ -511,6 +511,183 @@ public class YamlConfigLoaderTests
     }
 
     /// <summary>
+    ///     验证数值不满足 <c>multipleOf</c> 时会在运行时被拒绝。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Throw_When_Number_Violates_MultipleOf()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            name: Slime
+            hp: 12
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "name", "hp"],
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "hp": {
+                  "type": "integer",
+                  "multipleOf": 5
+                }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterConfigStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Diagnostic.FailureKind, Is.EqualTo(ConfigLoadFailureKind.ConstraintViolation));
+            Assert.That(exception.Diagnostic.DisplayPath, Is.EqualTo("hp"));
+            Assert.That(exception.Diagnostic.RawValue, Is.EqualTo("12"));
+            Assert.That(exception.Message, Does.Contain("multiple of 5"));
+            Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
+    ///     验证大数值配合十进制步进时，会按十进制精确整倍数规则被运行时接受。
+    /// </summary>
+    [Test]
+    public async Task LoadAsync_Should_Accept_Large_Decimal_Number_When_MultipleOf_Matches_Exact_Decimal_Step()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            dropRate: 10000000.2
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "dropRate"],
+              "properties": {
+                "id": { "type": "integer" },
+                "dropRate": {
+                  "type": "number",
+                  "multipleOf": 0.1
+                }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterNumberConfigStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        await loader.LoadAsync(registry);
+
+        var table = registry.GetTable<int, MonsterNumberConfigStub>("monster");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(table.Count, Is.EqualTo(1));
+            Assert.That(table.Get(1).DropRate, Is.EqualTo(10000000.2d));
+        });
+    }
+
+    /// <summary>
+    ///     验证大数量级但实际不满足 <c>multipleOf</c> 的数值会被运行时拒绝。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Throw_When_Large_Number_Is_Not_Actually_MultipleOf()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            dropRate: 1000000000000.4
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "dropRate"],
+              "properties": {
+                "id": { "type": "integer" },
+                "dropRate": {
+                  "type": "number",
+                  "multipleOf": 1
+                }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterNumberConfigStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Diagnostic.FailureKind, Is.EqualTo(ConfigLoadFailureKind.ConstraintViolation));
+            Assert.That(exception.Diagnostic.DisplayPath, Is.EqualTo("dropRate"));
+            Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
+    ///     验证科学计数法数值会按 <c>number</c> 类型被运行时接受。
+    /// </summary>
+    [Test]
+    public async Task LoadAsync_Should_Accept_Scientific_Notation_Number()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            dropRate: 1.5e10
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "dropRate"],
+              "properties": {
+                "id": { "type": "integer" },
+                "dropRate": { "type": "number" }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterNumberConfigStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        await loader.LoadAsync(registry);
+
+        var table = registry.GetTable<int, MonsterNumberConfigStub>("monster");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(table.Count, Is.EqualTo(1));
+            Assert.That(table.Get(1).DropRate, Is.EqualTo(1.5e10));
+        });
+    }
+
+    /// <summary>
     ///     验证字符串最小长度与最大长度约束会在运行时被统一拒绝。
     /// </summary>
     [Test]
@@ -759,6 +936,122 @@ public class YamlConfigLoaderTests
             Assert.That(exception.Diagnostic.RawValue, Is.EqualTo("0"));
             Assert.That(exception.Message, Does.Contain("at least 1 items"));
             Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
+    ///     验证数组声明 <c>uniqueItems</c> 后，重复元素会在运行时被拒绝。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Throw_When_Array_Violates_UniqueItems()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            name: Slime
+            dropRates:
+              - 5
+              - 10
+              - 5
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "name", "dropRates"],
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "dropRates": {
+                  "type": "array",
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterConfigIntegerArrayStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Diagnostic.FailureKind, Is.EqualTo(ConfigLoadFailureKind.ConstraintViolation));
+            Assert.That(exception.Diagnostic.DisplayPath, Is.EqualTo("dropRates[2]"));
+            Assert.That(exception.Diagnostic.RawValue, Is.EqualTo("5"));
+            Assert.That(exception.Message, Does.Contain("unique array items"));
+            Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
+    ///     验证 <c>uniqueItems</c> 的归一化键不会把带分隔符的不同对象值误判为重复项。
+    /// </summary>
+    [Test]
+    public async Task LoadAsync_Should_Accept_Distinct_Object_Items_When_Comparable_Values_Contain_Separators()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            entries:
+              -
+                a: "x|1:b=string:yz"
+              -
+                a: x
+                b: yz
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "entries"],
+              "properties": {
+                "id": { "type": "integer" },
+                "entries": {
+                  "type": "array",
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "a": { "type": "string" },
+                      "b": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterComparableEntryArrayConfigStub>(
+                "monster",
+                "monster",
+                "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        await loader.LoadAsync(registry);
+
+        var table = registry.GetTable<int, MonsterComparableEntryArrayConfigStub>("monster");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(table.Count, Is.EqualTo(1));
+            Assert.That(table.Get(1).Entries.Count, Is.EqualTo(2));
+            Assert.That(table.Get(1).Entries[0].A, Is.EqualTo("x|1:b=string:yz"));
+            Assert.That(table.Get(1).Entries[1].A, Is.EqualTo("x"));
+            Assert.That(table.Get(1).Entries[1].B, Is.EqualTo("yz"));
         });
     }
 
@@ -1453,7 +1746,7 @@ public class YamlConfigLoaderTests
 
         Assert.That(exception!.ParamName, Is.EqualTo("options"));
     }
-
+    
     /// <summary>
     ///     验证热重载失败时会保留旧表状态，并通过失败回调暴露诊断信息。
     /// </summary>
@@ -1700,6 +1993,22 @@ public class YamlConfigLoaderTests
     }
 
     /// <summary>
+    ///     用于浮点数 schema 校验测试的最小怪物配置类型。
+    /// </summary>
+    private sealed class MonsterNumberConfigStub
+    {
+        /// <summary>
+        ///     获取或设置主键。
+        /// </summary>
+        public int Id { get; set; }
+
+        /// <summary>
+        ///     获取或设置浮点掉落率。
+        /// </summary>
+        public double DropRate { get; set; }
+    }
+
+    /// <summary>
     ///     用于数组 schema 校验测试的最小怪物配置类型。
     /// </summary>
     private sealed class MonsterConfigIntegerArrayStub
@@ -1779,6 +2088,22 @@ public class YamlConfigLoaderTests
     }
 
     /// <summary>
+    ///     用于 <c>uniqueItems</c> 比较键碰撞回归测试的最小配置类型。
+    /// </summary>
+    private sealed class MonsterComparableEntryArrayConfigStub
+    {
+        /// <summary>
+        ///     获取或设置主键。
+        /// </summary>
+        public int Id { get; set; }
+
+        /// <summary>
+        ///     获取或设置待比较对象数组。
+        /// </summary>
+        public List<ComparableEntryConfigStub> Entries { get; set; } = new();
+    }
+
+    /// <summary>
     ///     表示对象数组中的阶段元素。
     /// </summary>
     private sealed class PhaseConfigStub
@@ -1792,6 +2117,22 @@ public class YamlConfigLoaderTests
         ///     获取或设置怪物主键。
         /// </summary>
         public string MonsterId { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    ///     表示用于比较键碰撞回归测试的对象数组元素。
+    /// </summary>
+    private sealed class ComparableEntryConfigStub
+    {
+        /// <summary>
+        ///     获取或设置字段 A。
+        /// </summary>
+        public string A { get; set; } = string.Empty;
+
+        /// <summary>
+        ///     获取或设置字段 B。
+        /// </summary>
+        public string B { get; set; } = string.Empty;
     }
 
     /// <summary>

@@ -10,6 +10,10 @@ All AI agents and contributors must follow these rules when writing, reviewing, 
 - Use `@.ai/environment/tools.raw.yaml` only when you need the full collected facts behind the AI-facing hints.
 - Prefer the project-relevant tools listed there instead of assuming every installed system tool is fair game.
 - If the real environment differs from the inventory, use the project-relevant installed tool and report the mismatch.
+- When working in WSL against this repository's Windows-backed worktree, prefer Windows Git from WSL (for example
+  `git.exe`) instead of the Linux `git` binary.
+- If a Git command in WSL fails with a worktree-style “not a git repository” path translation error, rerun it with the
+  Windows Git executable and treat that as the repository-default Git path for the rest of the task.
 
 ## Commenting Rules (MUST)
 
@@ -100,6 +104,10 @@ All generated or modified code MUST include clear and meaningful comments where 
 - Keep `using` directives at the top of the file and sort them consistently.
 - Separate logical blocks with blank lines when it improves readability.
 - Prefer one primary type per file unless the surrounding project already uses a different local pattern.
+- Unless there is a clear and documented reason to keep a file large, keep a single source file under roughly 800-1000
+  lines.
+- If a file grows beyond that range, contributors MUST stop and check whether responsibilities should be split before
+  continuing; treating oversized files as the default is considered a design smell.
 - Keep line length readable. Around 120 characters is the preferred upper bound.
 
 ### C# Conventions
@@ -114,6 +122,15 @@ All generated or modified code MUST include clear and meaningful comments where 
 ### Analyzer and Validation Expectations
 
 - The repository uses `Meziantou.Analyzer`; treat analyzer feedback as part of the coding standard.
+- Treat SonarQube maintainability rules as part of the coding standard as well, especially cognitive complexity and
+  oversized parameter list findings.
+- When a method approaches analyzer complexity limits, prefer extracting named helper methods by semantic phase
+  (parsing, normalization, validation, diagnostics) instead of silencing the warning or doing cosmetic reshuffles.
+- When a constructor or method exceeds parameter count limits, choose the refactor that matches the shape of the API:
+  use domain-specific value objects or parameter objects for naturally grouped data, and prefer named factory methods
+  when the call site is really selecting between different creation modes.
+- Do not add suppressions for complexity or parameter-count findings unless the constraint is externally imposed and the
+  reason is documented in code comments.
 - Naming must remain compatible with `scripts/validate-csharp-naming.sh`.
 
 ## Testing Requirements

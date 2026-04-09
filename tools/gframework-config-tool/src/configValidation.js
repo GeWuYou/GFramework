@@ -6,6 +6,10 @@ const {
 } = require("./configPath");
 const {ValidationMessageKeys} = require("./localizationKeys");
 
+const IntegerScalarPattern = /^[+-]?\d+$/u;
+const NumberScalarPattern = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/u;
+const BooleanScalarPattern = /^(true|false)$/iu;
+
 /**
  * Parse the repository's minimal config-schema subset into a recursive tree.
  * The parser intentionally mirrors the same high-level contract used by the
@@ -262,11 +266,11 @@ function isScalarCompatible(expectedType, scalarValue) {
     const value = unquoteScalar(String(scalarValue));
     switch (expectedType) {
         case "integer":
-            return /^-?\d+$/u.test(value);
+            return IntegerScalarPattern.test(value);
         case "number":
-            return /^-?\d+(?:\.\d+)?$/u.test(value);
+            return NumberScalarPattern.test(value);
         case "boolean":
-            return /^(true|false)$/iu.test(value);
+            return BooleanScalarPattern.test(value);
         case "string":
             return true;
         default:
@@ -371,6 +375,16 @@ function normalizeSchemaNumber(value) {
 }
 
 /**
+ * Normalize one strictly positive finite schema number.
+ *
+ * @param {unknown} value Raw schema value.
+ * @returns {number | undefined} Normalized positive number.
+ */
+function normalizeSchemaPositiveNumber(value) {
+    return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
+/**
  * Normalize one non-negative integer schema value for length constraints.
  *
  * @param {unknown} value Raw schema value.
@@ -381,13 +395,23 @@ function normalizeSchemaNonNegativeInteger(value) {
 }
 
 /**
+ * Normalize one boolean schema flag.
+ *
+ * @param {unknown} value Raw schema value.
+ * @returns {boolean | undefined} Normalized boolean.
+ */
+function normalizeSchemaBoolean(value) {
+    return typeof value === "boolean" ? value : undefined;
+}
+
+/**
  * Normalize one schema pattern string when the regular expression can be
  * compiled by the local tooling runtime.
  *
  * @param {unknown} value Raw schema value.
  * @param {string} displayPath Logical property path used in diagnostics.
  * @throws {Error} Thrown when the pattern string cannot be compiled.
- * @returns {string | undefined} Normalized pattern string.
+ * @returns {{source: string, regex: RegExp} | undefined} Normalized pattern metadata.
  */
 function normalizeSchemaPattern(value, displayPath) {
     if (typeof value !== "string") {
@@ -395,8 +419,10 @@ function normalizeSchemaPattern(value, displayPath) {
     }
 
     try {
-        void new RegExp(value);
-        return value;
+        return {
+            source: value,
+            regex: new RegExp(value, "u")
+        };
     } catch (error) {
         throw new Error(`Schema property '${displayPath}' declares an invalid 'pattern' regular expression: ${error.message}`);
     }
@@ -434,24 +460,124 @@ function formatSchemaDefaultValue(value) {
 }
 
 /**
- * Test one scalar value against one schema pattern string.
+ * Test one scalar value against one compiled schema pattern.
  *
  * @param {string} scalarValue Scalar value from YAML.
- * @param {string | undefined} pattern Schema pattern string.
- * @param {string} displayPath Logical property path used in diagnostics.
- * @throws {Error} Thrown when the pattern string cannot be compiled.
+ * @param {RegExp | undefined} patternRegex Compiled schema pattern.
  * @returns {boolean} True when the value matches or no pattern is declared.
  */
-function matchesSchemaPattern(scalarValue, pattern, displayPath) {
-    if (typeof pattern !== "string") {
+function matchesSchemaPattern(scalarValue, patternRegex) {
+    if (!(patternRegex instanceof RegExp)) {
         return true;
     }
 
-    try {
-        return new RegExp(pattern).test(scalarValue);
-    } catch (error) {
-        throw new Error(`Schema property '${displayPath}' declares an invalid 'pattern' regular expression: ${error.message}`);
+    return patternRegex.test(scalarValue);
+}
+
+/**
+ * Test whether one numeric scalar satisfies a multipleOf constraint.
+ *
+ * @param {string} scalarValue YAML scalar value.
+ * @param {number | undefined} multipleOf Schema multipleOf value.
+ * @returns {boolean} True when compatible or the constraint is absent.
+ */
+function matchesSchemaMultipleOf(scalarValue, multipleOf) {
+    if (typeof multipleOf !== "number") {
+        return true;
     }
+
+    const exactDecimalResult = tryMatchesExactDecimalMultiple(scalarValue, String(multipleOf));
+    if (exactDecimalResult !== null) {
+        return exactDecimalResult;
+    }
+
+    const numericValue = Number(scalarValue);
+    const quotient = numericValue / multipleOf;
+    const nearestInteger = Math.round(quotient);
+    const tolerance = 1e-9 * Math.max(1, Math.abs(quotient));
+    return Math.abs(quotient - nearestInteger) <= tolerance;
+}
+
+/**
+ * Try to evaluate one multipleOf constraint using exact decimal arithmetic.
+ * This keeps common YAML / JSON decimal literals aligned with the runtime and
+ * avoids large-number false positives that a pure floating-point quotient check can miss.
+ *
+ * @param {string} valueText YAML scalar text.
+ * @param {string} divisorText Schema multipleOf text.
+ * @returns {boolean | null} Exact result, or null when the inputs cannot be normalized exactly.
+ */
+function tryMatchesExactDecimalMultiple(valueText, divisorText) {
+    const valueParts = tryParseExactDecimal(valueText);
+    const divisorParts = tryParseExactDecimal(divisorText);
+    if (!valueParts || !divisorParts || divisorParts.significand === 0n) {
+        return null;
+    }
+
+    const commonScale = Math.max(valueParts.scale, divisorParts.scale);
+    const scaledValue = scaleDecimalSignificand(valueParts.significand, valueParts.scale, commonScale);
+    const scaledDivisor = scaleDecimalSignificand(divisorParts.significand, divisorParts.scale, commonScale);
+    return scaledValue % scaledDivisor === 0n;
+}
+
+/**
+ * Normalize a finite decimal literal into an integer significand plus decimal scale.
+ * The normalized form lets multipleOf checks run as integer modulo instead of floating-point math.
+ *
+ * @param {string} text Numeric text to normalize.
+ * @returns {{significand: bigint, scale: number} | null} Normalized parts, or null for unsupported input.
+ */
+function tryParseExactDecimal(text) {
+    const match = /^([+-]?)(?:(\d+)(?:\.(\d*))?|\.(\d+))(?:[eE]([+-]?\d+))?$/u.exec(String(text).trim());
+    if (!match) {
+        return null;
+    }
+
+    const exponent = match[5] ? Number.parseInt(match[5], 10) : 0;
+    if (!Number.isSafeInteger(exponent)) {
+        return null;
+    }
+
+    const integerDigits = match[2] ?? "";
+    const fractionDigits = match[3] !== undefined ? match[3] : (match[4] ?? "");
+    let digits = `${integerDigits}${fractionDigits}`.replace(/^0+/u, "");
+    if (digits.length === 0) {
+        return {significand: 0n, scale: 0};
+    }
+
+    let scale = fractionDigits.length - exponent;
+    if (scale < 0) {
+        digits += "0".repeat(-scale);
+        scale = 0;
+    }
+
+    while (scale > 0 && digits.endsWith("0")) {
+        digits = digits.slice(0, -1);
+        scale -= 1;
+    }
+
+    let significand = BigInt(digits);
+    if (match[1] === "-") {
+        significand = -significand;
+    }
+
+    return {significand, scale};
+}
+
+/**
+ * Scale one normalized decimal significand to a larger decimal precision.
+ *
+ * @param {bigint} significand Integer significand.
+ * @param {number} currentScale Current decimal scale.
+ * @param {number} targetScale Target decimal scale.
+ * @returns {bigint} Scaled significand.
+ */
+function scaleDecimalSignificand(significand, currentScale, targetScale) {
+    if (currentScale === targetScale) {
+        return significand;
+    }
+
+    return significand * (10n ** BigInt(targetScale - currentScale));
 }
 
 /**
@@ -461,7 +587,7 @@ function matchesSchemaPattern(scalarValue, pattern, displayPath) {
  * @returns {string} YAML-ready scalar.
  */
 function formatYamlScalar(value) {
-    if (/^-?\d+(?:\.\d+)?$/u.test(value) || /^(true|false)$/iu.test(value)) {
+    if (NumberScalarPattern.test(value) || BooleanScalarPattern.test(value)) {
         return value;
     }
 
@@ -497,6 +623,7 @@ function unquoteScalar(value) {
 function parseSchemaNode(rawNode, displayPath) {
     const value = rawNode && typeof rawNode === "object" ? rawNode : {};
     const type = typeof value.type === "string" ? value.type : "object";
+    const patternMetadata = normalizeSchemaPattern(value.pattern, displayPath);
     const metadata = {
         title: typeof value.title === "string" ? value.title : undefined,
         description: typeof value.description === "string" ? value.description : undefined,
@@ -505,11 +632,14 @@ function parseSchemaNode(rawNode, displayPath) {
         exclusiveMinimum: normalizeSchemaNumber(value.exclusiveMinimum),
         maximum: normalizeSchemaNumber(value.maximum),
         exclusiveMaximum: normalizeSchemaNumber(value.exclusiveMaximum),
+        multipleOf: normalizeSchemaPositiveNumber(value.multipleOf),
         minLength: normalizeSchemaNonNegativeInteger(value.minLength),
         maxLength: normalizeSchemaNonNegativeInteger(value.maxLength),
-        pattern: normalizeSchemaPattern(value.pattern, displayPath),
+        pattern: patternMetadata ? patternMetadata.source : undefined,
+        patternRegex: patternMetadata ? patternMetadata.regex : undefined,
         minItems: normalizeSchemaNonNegativeInteger(value.minItems),
         maxItems: normalizeSchemaNonNegativeInteger(value.maxItems),
+        uniqueItems: normalizeSchemaBoolean(value.uniqueItems),
         refTable: typeof value["x-gframework-ref-table"] === "string"
             ? value["x-gframework-ref-table"]
             : undefined
@@ -545,6 +675,7 @@ function parseSchemaNode(rawNode, displayPath) {
             defaultValue: metadata.defaultValue,
             minItems: metadata.minItems,
             maxItems: metadata.maxItems,
+            uniqueItems: metadata.uniqueItems === true,
             refTable: metadata.refTable,
             items: itemNode
         };
@@ -568,6 +699,9 @@ function parseSchemaNode(rawNode, displayPath) {
         exclusiveMaximum: type === "integer" || type === "number"
             ? metadata.exclusiveMaximum
             : undefined,
+        multipleOf: type === "integer" || type === "number"
+            ? metadata.multipleOf
+            : undefined,
         minLength: type === "string"
             ? metadata.minLength
             : undefined,
@@ -576,6 +710,9 @@ function parseSchemaNode(rawNode, displayPath) {
             : undefined,
         pattern: type === "string"
             ? metadata.pattern
+            : undefined,
+        patternRegex: type === "string"
+            ? metadata.patternRegex
             : undefined,
         enumValues: normalizeSchemaEnumValues(value.enum),
         refTable: metadata.refTable
@@ -630,14 +767,42 @@ function validateNode(schemaNode, yamlNode, displayPath, diagnostics, localizer)
             });
         }
 
+        const comparableItems = [];
         for (let index = 0; index < yamlNode.items.length; index += 1) {
+            const diagnosticsBeforeValidation = diagnostics.length;
             validateNode(
                 schemaNode.items,
                 yamlNode.items[index],
                 joinArrayIndexPath(displayPath, index),
                 diagnostics,
                 localizer);
+
+            // Keep uniqueItems focused on values that are otherwise valid so a
+            // shape/type error does not also surface as a misleading duplicate.
+            if (diagnostics.length === diagnosticsBeforeValidation) {
+                comparableItems.push({index, node: yamlNode.items[index]});
+            }
         }
+
+        if (schemaNode.uniqueItems === true) {
+            const seenItems = new Map();
+            for (const {index, node} of comparableItems) {
+                const comparableValue = buildComparableNodeValue(schemaNode.items, node);
+                if (seenItems.has(comparableValue)) {
+                    diagnostics.push({
+                        severity: "error",
+                        message: localizeValidationMessage(ValidationMessageKeys.uniqueItemsViolation, localizer, {
+                            displayPath: joinArrayIndexPath(displayPath, index),
+                            duplicatePath: joinArrayIndexPath(displayPath, seenItems.get(comparableValue))
+                        })
+                    });
+                    continue;
+                }
+
+                seenItems.set(comparableValue, index);
+            }
+        }
+
         return;
     }
 
@@ -729,6 +894,17 @@ function validateNode(schemaNode, yamlNode, displayPath, diagnostics, localizer)
         });
     }
 
+    if (supportsNumericConstraints &&
+        !matchesSchemaMultipleOf(scalarValue, schemaNode.multipleOf)) {
+        diagnostics.push({
+            severity: "error",
+            message: localizeValidationMessage(ValidationMessageKeys.multipleOfViolation, localizer, {
+                displayPath,
+                value: String(schemaNode.multipleOf)
+            })
+        });
+    }
+
     if (supportsLengthConstraints &&
         typeof schemaNode.minLength === "number" &&
         scalarValue.length < schemaNode.minLength) {
@@ -754,7 +930,7 @@ function validateNode(schemaNode, yamlNode, displayPath, diagnostics, localizer)
     }
 
     if (supportsPatternConstraints &&
-        !matchesSchemaPattern(scalarValue, schemaNode.pattern, schemaNode.displayPath)) {
+        !matchesSchemaPattern(scalarValue, schemaNode.patternRegex)) {
         diagnostics.push({
             severity: "error",
             message: localizeValidationMessage(ValidationMessageKeys.patternViolation, localizer, {
@@ -825,6 +1001,57 @@ function validateObjectNode(schemaNode, yamlNode, displayPath, diagnostics, loca
 }
 
 /**
+ * Build one schema-aware comparable key for uniqueItems checks.
+ *
+ * @param {SchemaNode} schemaNode Schema node.
+ * @param {YamlNode | undefined} yamlNode YAML node.
+ * @returns {string} Comparable key.
+ */
+function buildComparableNodeValue(schemaNode, yamlNode) {
+    if (!yamlNode) {
+        return "missing";
+    }
+
+    if (schemaNode.type === "object") {
+        if (yamlNode.kind !== "object") {
+            return yamlNode.kind;
+        }
+
+        return Object.keys(schemaNode.properties)
+            .filter((key) => yamlNode.map.has(key))
+            .sort((left, right) => left.localeCompare(right))
+            .map((key) => {
+                const valueKey = buildComparableNodeValue(schemaNode.properties[key], yamlNode.map.get(key));
+                return `${key.length}:${key}=${valueKey.length}:${valueKey}`;
+            })
+            .join("|");
+    }
+
+    if (schemaNode.type === "array") {
+        if (yamlNode.kind !== "array") {
+            return yamlNode.kind;
+        }
+
+        return `[${yamlNode.items.map((item) => {
+            const valueKey = buildComparableNodeValue(schemaNode.items, item);
+            return `${valueKey.length}:${valueKey}`;
+        }).join(",")}]`;
+    }
+
+    if (yamlNode.kind !== "scalar") {
+        return yamlNode.kind;
+    }
+
+    const scalarValue = unquoteScalar(yamlNode.value);
+    const normalizedScalar = schemaNode.type === "integer" || schemaNode.type === "number"
+        ? String(Number(scalarValue))
+        : schemaNode.type === "boolean"
+            ? String(/^true$/iu.test(scalarValue))
+            : scalarValue;
+    return `${schemaNode.type}:${normalizedScalar.length}:${normalizedScalar}`;
+}
+
+/**
  * Format one validation message in either English or Simplified Chinese.
  *
  * @param {string} key Message key.
@@ -859,12 +1086,16 @@ function localizeValidationMessage(key, localizer, params) {
                 return `属性“${params.displayPath}”长度必须不超过 ${params.value} 个字符。`;
             case ValidationMessageKeys.minimumViolation:
                 return `属性“${params.displayPath}”必须大于或等于 ${params.value}。`;
+            case ValidationMessageKeys.multipleOfViolation:
+                return `属性“${params.displayPath}”必须是 ${params.value} 的整数倍。`;
             case ValidationMessageKeys.minItemsViolation:
                 return `属性“${params.displayPath}”至少需要包含 ${params.value} 个元素。`;
             case ValidationMessageKeys.minLengthViolation:
                 return `属性“${params.displayPath}”长度必须至少为 ${params.value} 个字符。`;
             case ValidationMessageKeys.patternViolation:
                 return `属性“${params.displayPath}”必须匹配正则模式“${params.value}”。`;
+            case ValidationMessageKeys.uniqueItemsViolation:
+                return `属性“${params.displayPath}”与更早的数组元素 ${params.duplicatePath} 重复；该数组要求元素唯一。`;
             case ValidationMessageKeys.expectedObject:
                 return params.subject;
             case ValidationMessageKeys.missingRequired:
@@ -897,12 +1128,16 @@ function localizeValidationMessage(key, localizer, params) {
             return `Property '${params.displayPath}' must be at most ${params.value} characters long.`;
         case ValidationMessageKeys.minimumViolation:
             return `Property '${params.displayPath}' must be greater than or equal to ${params.value}.`;
+        case ValidationMessageKeys.multipleOfViolation:
+            return `Property '${params.displayPath}' must be a multiple of ${params.value}.`;
         case ValidationMessageKeys.minItemsViolation:
             return `Property '${params.displayPath}' must contain at least ${params.value} items.`;
         case ValidationMessageKeys.minLengthViolation:
             return `Property '${params.displayPath}' must be at least ${params.value} characters long.`;
         case ValidationMessageKeys.patternViolation:
             return `Property '${params.displayPath}' must match pattern '${params.value}'.`;
+        case ValidationMessageKeys.uniqueItemsViolation:
+            return `Property '${params.displayPath}' duplicates earlier array item '${params.duplicatePath}', but uniqueItems is required.`;
         case ValidationMessageKeys.expectedObject:
             return params.subject;
         case ValidationMessageKeys.missingRequired:
@@ -1558,6 +1793,7 @@ module.exports = {
  *   defaultValue?: string,
  *   minItems?: number,
  *   maxItems?: number,
+ *   uniqueItems?: boolean,
  *   refTable?: string,
  *   items: SchemaNode
  * } | {
@@ -1570,9 +1806,11 @@ module.exports = {
  *   exclusiveMinimum?: number,
  *   maximum?: number,
  *   exclusiveMaximum?: number,
+ *   multipleOf?: number,
  *   minLength?: number,
  *   maxLength?: number,
  *   pattern?: string,
+ *   patternRegex?: RegExp,
  *   enumValues?: string[],
  *   refTable?: string
  * }} SchemaNode

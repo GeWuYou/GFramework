@@ -10,10 +10,12 @@ const ValidationMessageKeys = Object.freeze({
     maxItemsViolation: "validation.maxItemsViolation",
     maxLengthViolation: "validation.maxLengthViolation",
     minimumViolation: "validation.minimumViolation",
+    multipleOfViolation: "validation.multipleOfViolation",
     minItemsViolation: "validation.minItemsViolation",
     minLengthViolation: "validation.minLengthViolation",
     missingRequired: "validation.missingRequired",
     patternViolation: "validation.patternViolation",
+    uniqueItemsViolation: "validation.uniqueItemsViolation",
     unknownProperty: "validation.unknownProperty"
 });
 

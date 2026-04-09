@@ -1574,7 +1574,7 @@ function getScalarArrayValue(yamlNode) {
 /**
  * Render human-facing metadata hints for one schema field.
  *
- * @param {{description?: string, defaultValue?: string, minimum?: number, exclusiveMinimum?: number, maximum?: number, exclusiveMaximum?: number, minLength?: number, maxLength?: number, pattern?: string, minItems?: number, maxItems?: number, enumValues?: string[], items?: {enumValues?: string[], minimum?: number, exclusiveMinimum?: number, maximum?: number, exclusiveMaximum?: number, minLength?: number, maxLength?: number, pattern?: string}, refTable?: string}} propertySchema Property schema metadata.
+ * @param {{description?: string, defaultValue?: string, minimum?: number, exclusiveMinimum?: number, maximum?: number, exclusiveMaximum?: number, multipleOf?: number, minLength?: number, maxLength?: number, pattern?: string, minItems?: number, maxItems?: number, uniqueItems?: boolean, enumValues?: string[], items?: {enumValues?: string[], minimum?: number, exclusiveMinimum?: number, maximum?: number, exclusiveMaximum?: number, multipleOf?: number, minLength?: number, maxLength?: number, pattern?: string}, refTable?: string}} propertySchema Property schema metadata.
  * @param {boolean} isArrayField Whether the field is an array.
  * @returns {string} HTML fragment.
  */
@@ -1614,6 +1614,10 @@ function renderFieldHint(propertySchema, isArrayField) {
         hints.push(escapeHtml(localizer.t("webview.hint.exclusiveMaximum", {value: propertySchema.exclusiveMaximum})));
     }
 
+    if (!isArrayField && typeof propertySchema.multipleOf === "number") {
+        hints.push(escapeHtml(localizer.t("webview.hint.multipleOf", {value: propertySchema.multipleOf})));
+    }
+
     if (!isArrayField && typeof propertySchema.minLength === "number") {
         hints.push(escapeHtml(localizer.t("webview.hint.minLength", {value: propertySchema.minLength})));
     }
@@ -1634,6 +1638,10 @@ function renderFieldHint(propertySchema, isArrayField) {
         hints.push(escapeHtml(localizer.t("webview.hint.maxItems", {value: propertySchema.maxItems})));
     }
 
+    if (isArrayField && propertySchema.uniqueItems === true) {
+        hints.push(escapeHtml(localizer.t("webview.hint.uniqueItems")));
+    }
+
     if (isArrayField && propertySchema.items && typeof propertySchema.items.minimum === "number") {
         hints.push(escapeHtml(localizer.t("webview.hint.itemMinimum", {value: propertySchema.items.minimum})));
     }
@@ -1648,6 +1656,10 @@ function renderFieldHint(propertySchema, isArrayField) {
 
     if (isArrayField && propertySchema.items && typeof propertySchema.items.exclusiveMaximum === "number") {
         hints.push(escapeHtml(localizer.t("webview.hint.itemExclusiveMaximum", {value: propertySchema.items.exclusiveMaximum})));
+    }
+
+    if (isArrayField && propertySchema.items && typeof propertySchema.items.multipleOf === "number") {
+        hints.push(escapeHtml(localizer.t("webview.hint.itemMultipleOf", {value: propertySchema.items.multipleOf})));
     }
 
     if (isArrayField && propertySchema.items && typeof propertySchema.items.minLength === "number") {

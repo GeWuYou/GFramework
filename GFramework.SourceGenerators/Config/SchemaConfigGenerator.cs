@@ -6,6 +6,8 @@ namespace GFramework.SourceGenerators.Config;
 ///     根据 AdditionalFiles 中的 JSON schema 生成配置类型和配置表包装。
 ///     当前实现聚焦 AI-First 配置系统共享的最小 schema 子集，
 ///     支持嵌套对象、对象数组、标量数组，以及可映射的 default / enum / ref-table 元数据。
+///     当前共享子集也会把 <c>multipleOf</c> 与 <c>uniqueItems</c> 写入生成代码文档，
+///     让消费者能直接在强类型 API 上看到运行时生效的约束。
 /// </summary>
 [Generator]
 public sealed class SchemaConfigGenerator : IIncrementalGenerator
@@ -2430,7 +2432,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     }
 
     /// <summary>
-    ///     将 shared schema 子集中的范围、长度、模式与数组数量约束整理成 XML 文档可读字符串。
+    ///     将 shared schema 子集中的范围、步进、长度、模式与数组数量 / 去重约束整理成 XML 文档可读字符串。
     /// </summary>
     /// <param name="element">Schema 节点。</param>
     /// <param name="schemaType">标量类型。</param>
@@ -2463,6 +2465,13 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             parts.Add($"exclusiveMaximum = {exclusiveMaximum.ToString(CultureInfo.InvariantCulture)}");
         }
 
+        if ((schemaType == "integer" || schemaType == "number") &&
+            TryGetFiniteNumber(element, "multipleOf", out var multipleOf) &&
+            multipleOf > 0d)
+        {
+            parts.Add($"multipleOf = {multipleOf.ToString(CultureInfo.InvariantCulture)}");
+        }
+
         if (schemaType == "string" &&
             TryGetNonNegativeInt32(element, "minLength", out var minLength))
         {
@@ -2492,6 +2501,13 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             TryGetNonNegativeInt32(element, "maxItems", out var maxItems))
         {
             parts.Add($"maxItems = {maxItems.ToString(CultureInfo.InvariantCulture)}");
+        }
+
+        if (schemaType == "array" &&
+            element.TryGetProperty("uniqueItems", out var uniqueItemsElement) &&
+            uniqueItemsElement.ValueKind == JsonValueKind.True)
+        {
+            parts.Add("uniqueItems = true");
         }
 
         return parts.Count > 0 ? string.Join(", ", parts) : null;

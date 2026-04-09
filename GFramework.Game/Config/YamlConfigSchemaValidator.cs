@@ -1,3 +1,4 @@
+using System.Numerics;
 using System.Text.RegularExpressions;
 using GFramework.Game.Abstractions.Config;
 
@@ -7,12 +8,17 @@ namespace GFramework.Game.Config;
 ///     提供 YAML 配置文件与 JSON Schema 之间的最小运行时校验能力。
 ///     该校验器与当前配置生成器、VS Code 工具支持的 schema 子集保持一致，
 ///     并通过递归遍历方式覆盖嵌套对象、对象数组、标量数组与深层 enum / 引用约束。
+///     当前共享子集额外支持 <c>multipleOf</c> 与 <c>uniqueItems</c>，
+///     让数值步进和数组去重规则在运行时与生成器 / 工具侧保持一致。
 /// </summary>
 internal static class YamlConfigSchemaValidator
 {
     // The runtime intentionally uses the same culture-invariant regex semantics as the
     // JS tooling so grouping and backreferences behave consistently across environments.
     private const RegexOptions SupportedPatternRegexOptions = RegexOptions.CultureInvariant;
+    private static readonly Regex ExactDecimalPattern = new(
+        @"^(?<sign>[+-]?)(?:(?<integer>\d+)(?:\.(?<fraction>\d*))?|\.(?<fractionOnly>\d+))(?:[eE](?<exponent>[+-]?\d+))?$",
+        RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
     /// <summary>
     ///     从磁盘加载并解析一个 JSON Schema 文件。
@@ -108,7 +114,7 @@ internal static class YamlConfigSchemaValidator
         string yamlPath,
         string yamlText)
     {
-        ValidateAndCollectReferences(tableName, schema, yamlPath, yamlText);
+        ValidateCore(tableName, schema, yamlPath, yamlText, references: null);
     }
 
     /// <summary>
@@ -127,6 +133,29 @@ internal static class YamlConfigSchemaValidator
         YamlConfigSchema schema,
         string yamlPath,
         string yamlText)
+    {
+        var references = new List<YamlConfigReferenceUsage>();
+        ValidateCore(tableName, schema, yamlPath, yamlText, references);
+        return references;
+    }
+
+    /// <summary>
+    ///     执行共享的 YAML 结构校验流程，并按需收集跨表引用。
+    ///     这样 <see cref="Validate" /> 可以复用同一条校验链路，同时避免为“不关心引用结果”的调用方分配临时列表。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="schema">已解析的 schema 模型。</param>
+    /// <param name="yamlPath">YAML 文件路径，仅用于诊断信息。</param>
+    /// <param name="yamlText">YAML 文本内容。</param>
+    /// <param name="references">可选的跨表引用收集器；为 <see langword="null" /> 时只做结构校验。</param>
+    /// <exception cref="ArgumentNullException">当参数为空时抛出。</exception>
+    /// <exception cref="ConfigLoadException">当 YAML 内容与 schema 不匹配时抛出。</exception>
+    private static void ValidateCore(
+        string tableName,
+        YamlConfigSchema schema,
+        string yamlPath,
+        string yamlText,
+        ICollection<YamlConfigReferenceUsage>? references)
     {
         if (string.IsNullOrWhiteSpace(tableName))
         {
@@ -164,9 +193,7 @@ internal static class YamlConfigSchemaValidator
                 schemaPath: schema.SchemaPath);
         }
 
-        var references = new List<YamlConfigReferenceUsage>();
         ValidateNode(tableName, yamlPath, string.Empty, yamlStream.Documents[0].RootNode, schema.RootNode, references);
-        return references;
     }
 
     /// <summary>
@@ -294,16 +321,7 @@ internal static class YamlConfigSchemaValidator
                 property.Value);
         }
 
-        return new YamlConfigSchemaNode(
-            YamlConfigSchemaPropertyType.Object,
-            properties,
-            requiredProperties,
-            itemNode: null,
-            referenceTableName: null,
-            allowedValues: null,
-            constraints: null,
-            arrayConstraints: null,
-            schemaPath);
+        return YamlConfigSchemaNode.CreateObject(properties, requiredProperties, schemaPath);
     }
 
     /// <summary>
@@ -363,15 +381,9 @@ internal static class YamlConfigSchemaValidator
                 displayPath: GetDiagnosticPath(propertyPath));
         }
 
-        return new YamlConfigSchemaNode(
-            YamlConfigSchemaPropertyType.Array,
-            properties: null,
-            requiredProperties: null,
+        return YamlConfigSchemaNode.CreateArray(
             itemNode,
-            referenceTableName: null,
-            allowedValues: null,
-            constraints: null,
-            arrayConstraints: ParseArrayConstraints(tableName, schemaPath, propertyPath, element),
+            ParseArrayConstraints(tableName, schemaPath, propertyPath, element),
             schemaPath);
     }
 
@@ -394,15 +406,11 @@ internal static class YamlConfigSchemaValidator
         string? referenceTableName)
     {
         EnsureReferenceKeywordIsSupported(tableName, schemaPath, propertyPath, nodeType, referenceTableName);
-        return new YamlConfigSchemaNode(
+        return YamlConfigSchemaNode.CreateScalar(
             nodeType,
-            properties: null,
-            requiredProperties: null,
-            itemNode: null,
             referenceTableName,
             ParseEnumValues(tableName, schemaPath, propertyPath, element, nodeType, "enum"),
             ParseScalarConstraints(tableName, schemaPath, propertyPath, element, nodeType),
-            arrayConstraints: null,
             schemaPath);
     }
 
@@ -422,7 +430,7 @@ internal static class YamlConfigSchemaValidator
         string displayPath,
         YamlNode node,
         YamlConfigSchemaNode schemaNode,
-        ICollection<YamlConfigReferenceUsage> references)
+        ICollection<YamlConfigReferenceUsage>? references)
     {
         switch (schemaNode.NodeType)
         {
@@ -468,7 +476,7 @@ internal static class YamlConfigSchemaValidator
         string displayPath,
         YamlNode node,
         YamlConfigSchemaNode schemaNode,
-        ICollection<YamlConfigReferenceUsage> references)
+        ICollection<YamlConfigReferenceUsage>? references)
     {
         if (node is not YamlMappingNode mappingNode)
         {
@@ -564,7 +572,7 @@ internal static class YamlConfigSchemaValidator
         string displayPath,
         YamlNode node,
         YamlConfigSchemaNode schemaNode,
-        ICollection<YamlConfigReferenceUsage> references)
+        ICollection<YamlConfigReferenceUsage>? references)
     {
         if (node is not YamlSequenceNode sequenceNode)
         {
@@ -603,6 +611,8 @@ internal static class YamlConfigSchemaValidator
                 schemaNode.ItemNode,
                 references);
         }
+
+        ValidateArrayUniqueItemsConstraint(tableName, yamlPath, displayPath, sequenceNode, schemaNode);
     }
 
     /// <summary>
@@ -620,7 +630,7 @@ internal static class YamlConfigSchemaValidator
         string displayPath,
         YamlNode node,
         YamlConfigSchemaNode schemaNode,
-        ICollection<YamlConfigReferenceUsage> references)
+        ICollection<YamlConfigReferenceUsage>? references)
     {
         if (node is not YamlScalarNode scalarNode)
         {
@@ -695,7 +705,8 @@ internal static class YamlConfigSchemaValidator
             ValidateScalarConstraints(tableName, yamlPath, displayPath, value, normalizedValue, schemaNode);
         }
 
-        if (schemaNode.ReferenceTableName != null)
+        if (schemaNode.ReferenceTableName != null &&
+            references is not null)
         {
             references.Add(
                 new YamlConfigReferenceUsage(
@@ -776,6 +787,7 @@ internal static class YamlConfigSchemaValidator
             TryParseNumericConstraint(tableName, schemaPath, propertyPath, element, nodeType, "exclusiveMinimum");
         var exclusiveMaximum =
             TryParseNumericConstraint(tableName, schemaPath, propertyPath, element, nodeType, "exclusiveMaximum");
+        var multipleOf = TryParseMultipleOfConstraint(tableName, schemaPath, propertyPath, element, nodeType);
         var minLength = TryParseLengthConstraint(tableName, schemaPath, propertyPath, element, nodeType, "minLength");
         var maxLength = TryParseLengthConstraint(tableName, schemaPath, propertyPath, element, nodeType, "maxLength");
         var pattern = TryParsePatternConstraint(tableName, schemaPath, propertyPath, element, nodeType);
@@ -809,30 +821,20 @@ internal static class YamlConfigSchemaValidator
                 displayPath: GetDiagnosticPath(propertyPath));
         }
 
-        if (!minimum.HasValue &&
-            !maximum.HasValue &&
-            !exclusiveMinimum.HasValue &&
-            !exclusiveMaximum.HasValue &&
-            !minLength.HasValue &&
-            !maxLength.HasValue &&
-            pattern is null)
-        {
-            return null;
-        }
-
-        return new YamlConfigScalarConstraints(
+        var numericConstraints = CreateNumericScalarConstraints(
             minimum,
             maximum,
             exclusiveMinimum,
             exclusiveMaximum,
+            multipleOf);
+        var stringConstraints = CreateStringScalarConstraints(
             minLength,
             maxLength,
-            pattern,
-            pattern is null
-                ? null
-                : new Regex(
-                    pattern,
-                    SupportedPatternRegexOptions));
+            pattern);
+
+        return numericConstraints is null && stringConstraints is null
+            ? null
+            : new YamlConfigScalarConstraints(numericConstraints, stringConstraints);
     }
 
     /// <summary>
@@ -851,6 +853,7 @@ internal static class YamlConfigSchemaValidator
     {
         var minItems = TryParseArrayLengthConstraint(tableName, schemaPath, propertyPath, element, "minItems");
         var maxItems = TryParseArrayLengthConstraint(tableName, schemaPath, propertyPath, element, "maxItems");
+        var uniqueItems = TryParseUniqueItemsConstraint(tableName, schemaPath, propertyPath, element);
 
         if (minItems.HasValue && maxItems.HasValue && minItems.Value > maxItems.Value)
         {
@@ -862,9 +865,9 @@ internal static class YamlConfigSchemaValidator
                 displayPath: GetDiagnosticPath(propertyPath));
         }
 
-        return !minItems.HasValue && !maxItems.HasValue
+        return !minItems.HasValue && !maxItems.HasValue && !uniqueItems
             ? null
-            : new YamlConfigArrayConstraints(minItems, maxItems);
+            : new YamlConfigArrayConstraints(minItems, maxItems, uniqueItems);
     }
 
     /// <summary>
@@ -915,6 +918,41 @@ internal static class YamlConfigSchemaValidator
         }
 
         return constraintValue;
+    }
+
+    /// <summary>
+    ///     读取 <c>multipleOf</c> 约束。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="schemaPath">Schema 文件路径。</param>
+    /// <param name="propertyPath">字段路径。</param>
+    /// <param name="element">Schema 节点。</param>
+    /// <param name="nodeType">字段类型。</param>
+    /// <returns>步进约束；未声明时返回空。</returns>
+    private static double? TryParseMultipleOfConstraint(
+        string tableName,
+        string schemaPath,
+        string propertyPath,
+        JsonElement element,
+        YamlConfigSchemaPropertyType nodeType)
+    {
+        var multipleOf = TryParseNumericConstraint(tableName, schemaPath, propertyPath, element, nodeType, "multipleOf");
+        if (!multipleOf.HasValue)
+        {
+            return null;
+        }
+
+        if (multipleOf.Value <= 0d)
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"Property '{propertyPath}' in schema file '{schemaPath}' must declare 'multipleOf' as a positive finite number.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(propertyPath));
+        }
+
+        return multipleOf;
     }
 
     /// <summary>
@@ -1063,6 +1101,39 @@ internal static class YamlConfigSchemaValidator
     }
 
     /// <summary>
+    ///     读取数组去重约束。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="schemaPath">Schema 文件路径。</param>
+    /// <param name="propertyPath">字段路径。</param>
+    /// <param name="element">Schema 节点。</param>
+    /// <returns>是否启用 <c>uniqueItems</c>。</returns>
+    private static bool TryParseUniqueItemsConstraint(
+        string tableName,
+        string schemaPath,
+        string propertyPath,
+        JsonElement element)
+    {
+        if (!element.TryGetProperty("uniqueItems", out var constraintElement))
+        {
+            return false;
+        }
+
+        if (constraintElement.ValueKind != JsonValueKind.True &&
+            constraintElement.ValueKind != JsonValueKind.False)
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"Property '{propertyPath}' in schema file '{schemaPath}' must declare 'uniqueItems' as a boolean.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(propertyPath));
+        }
+
+        return constraintElement.GetBoolean();
+    }
+
+    /// <summary>
     ///     校验数值上下界组合不会形成空区间。
     ///     这里把闭区间与开区间统一折算为最强边界，避免 schema 进入“无任何合法值”的状态。
     /// </summary>
@@ -1166,123 +1237,24 @@ internal static class YamlConfigSchemaValidator
         {
             case YamlConfigSchemaPropertyType.Integer:
             case YamlConfigSchemaPropertyType.Number:
-                if (!double.TryParse(
-                        normalizedValue,
-                        NumberStyles.Float | NumberStyles.AllowThousands,
-                        CultureInfo.InvariantCulture,
-                        out var numericValue))
-                {
-                    throw ConfigLoadExceptionFactory.Create(
-                        ConfigLoadFailureKind.UnexpectedFailure,
-                        tableName,
-                        $"Property '{displayPath}' in config file '{yamlPath}' could not be normalized into a comparable numeric value.",
-                        yamlPath: yamlPath,
-                        schemaPath: schemaNode.SchemaPathHint,
-                        displayPath: GetDiagnosticPath(displayPath),
-                        rawValue: rawValue);
-                }
-
-                if (constraints.Minimum.HasValue && numericValue < constraints.Minimum.Value)
-                {
-                    throw ConfigLoadExceptionFactory.Create(
-                        ConfigLoadFailureKind.ConstraintViolation,
-                        tableName,
-                        $"Property '{displayPath}' in config file '{yamlPath}' must be greater than or equal to {constraints.Minimum.Value.ToString(CultureInfo.InvariantCulture)}, but the current YAML scalar value is '{rawValue}'.",
-                        yamlPath: yamlPath,
-                        schemaPath: schemaNode.SchemaPathHint,
-                        displayPath: GetDiagnosticPath(displayPath),
-                        rawValue: rawValue,
-                        detail:
-                        $"Minimum allowed value: {constraints.Minimum.Value.ToString(CultureInfo.InvariantCulture)}.");
-                }
-
-                if (constraints.ExclusiveMinimum.HasValue && numericValue <= constraints.ExclusiveMinimum.Value)
-                {
-                    throw ConfigLoadExceptionFactory.Create(
-                        ConfigLoadFailureKind.ConstraintViolation,
-                        tableName,
-                        $"Property '{displayPath}' in config file '{yamlPath}' must be greater than {constraints.ExclusiveMinimum.Value.ToString(CultureInfo.InvariantCulture)}, but the current YAML scalar value is '{rawValue}'.",
-                        yamlPath: yamlPath,
-                        schemaPath: schemaNode.SchemaPathHint,
-                        displayPath: GetDiagnosticPath(displayPath),
-                        rawValue: rawValue,
-                        detail:
-                        $"Exclusive minimum allowed value: {constraints.ExclusiveMinimum.Value.ToString(CultureInfo.InvariantCulture)}.");
-                }
-
-                if (constraints.Maximum.HasValue && numericValue > constraints.Maximum.Value)
-                {
-                    throw ConfigLoadExceptionFactory.Create(
-                        ConfigLoadFailureKind.ConstraintViolation,
-                        tableName,
-                        $"Property '{displayPath}' in config file '{yamlPath}' must be less than or equal to {constraints.Maximum.Value.ToString(CultureInfo.InvariantCulture)}, but the current YAML scalar value is '{rawValue}'.",
-                        yamlPath: yamlPath,
-                        schemaPath: schemaNode.SchemaPathHint,
-                        displayPath: GetDiagnosticPath(displayPath),
-                        rawValue: rawValue,
-                        detail:
-                        $"Maximum allowed value: {constraints.Maximum.Value.ToString(CultureInfo.InvariantCulture)}.");
-                }
-
-                if (constraints.ExclusiveMaximum.HasValue && numericValue >= constraints.ExclusiveMaximum.Value)
-                {
-                    throw ConfigLoadExceptionFactory.Create(
-                        ConfigLoadFailureKind.ConstraintViolation,
-                        tableName,
-                        $"Property '{displayPath}' in config file '{yamlPath}' must be less than {constraints.ExclusiveMaximum.Value.ToString(CultureInfo.InvariantCulture)}, but the current YAML scalar value is '{rawValue}'.",
-                        yamlPath: yamlPath,
-                        schemaPath: schemaNode.SchemaPathHint,
-                        displayPath: GetDiagnosticPath(displayPath),
-                        rawValue: rawValue,
-                        detail:
-                        $"Exclusive maximum allowed value: {constraints.ExclusiveMaximum.Value.ToString(CultureInfo.InvariantCulture)}.");
-                }
-
+                ValidateNumericScalarConstraints(
+                    tableName,
+                    yamlPath,
+                    displayPath,
+                    rawValue,
+                    normalizedValue,
+                    schemaNode,
+                    constraints.NumericConstraints);
                 return;
 
             case YamlConfigSchemaPropertyType.String:
-                var stringLength = rawValue.Length;
-
-                if (constraints.MinLength.HasValue && stringLength < constraints.MinLength.Value)
-                {
-                    throw ConfigLoadExceptionFactory.Create(
-                        ConfigLoadFailureKind.ConstraintViolation,
-                        tableName,
-                        $"Property '{displayPath}' in config file '{yamlPath}' must be at least {constraints.MinLength.Value} characters long, but the current YAML scalar value is '{rawValue}'.",
-                        yamlPath: yamlPath,
-                        schemaPath: schemaNode.SchemaPathHint,
-                        displayPath: GetDiagnosticPath(displayPath),
-                        rawValue: rawValue,
-                        detail: $"Minimum length: {constraints.MinLength.Value}.");
-                }
-
-                if (constraints.MaxLength.HasValue && stringLength > constraints.MaxLength.Value)
-                {
-                    throw ConfigLoadExceptionFactory.Create(
-                        ConfigLoadFailureKind.ConstraintViolation,
-                        tableName,
-                        $"Property '{displayPath}' in config file '{yamlPath}' must be at most {constraints.MaxLength.Value} characters long, but the current YAML scalar value is '{rawValue}'.",
-                        yamlPath: yamlPath,
-                        schemaPath: schemaNode.SchemaPathHint,
-                        displayPath: GetDiagnosticPath(displayPath),
-                        rawValue: rawValue,
-                        detail: $"Maximum length: {constraints.MaxLength.Value}.");
-                }
-
-                if (constraints.PatternRegex is not null &&
-                    !constraints.PatternRegex.IsMatch(rawValue))
-                {
-                    throw ConfigLoadExceptionFactory.Create(
-                        ConfigLoadFailureKind.ConstraintViolation,
-                        tableName,
-                        $"Property '{displayPath}' in config file '{yamlPath}' must match regular expression '{constraints.Pattern}', but the current YAML scalar value is '{rawValue}'.",
-                        yamlPath: yamlPath,
-                        schemaPath: schemaNode.SchemaPathHint,
-                        displayPath: GetDiagnosticPath(displayPath),
-                        rawValue: rawValue,
-                        detail: $"Expected pattern: {constraints.Pattern}.");
-                }
-
+                ValidateStringScalarConstraints(
+                    tableName,
+                    yamlPath,
+                    displayPath,
+                    rawValue,
+                    schemaNode,
+                    constraints.StringConstraints);
                 return;
 
             default:
@@ -1294,6 +1266,265 @@ internal static class YamlConfigSchemaValidator
                     schemaPath: schemaNode.SchemaPathHint,
                     displayPath: GetDiagnosticPath(displayPath),
                     rawValue: schemaNode.NodeType.ToString());
+        }
+    }
+
+    /// <summary>
+    ///     根据已读取的数值关键字创建数值约束对象。
+    ///     该分组让调用方不必再维护一个超过 Sonar 默认阈值的长参数构造函数。
+    /// </summary>
+    /// <param name="minimum">最小值约束。</param>
+    /// <param name="maximum">最大值约束。</param>
+    /// <param name="exclusiveMinimum">开区间最小值约束。</param>
+    /// <param name="exclusiveMaximum">开区间最大值约束。</param>
+    /// <param name="multipleOf">数值步进约束。</param>
+    /// <returns>数值约束对象；未声明任何数值约束时返回空。</returns>
+    private static YamlConfigNumericConstraints? CreateNumericScalarConstraints(
+        double? minimum,
+        double? maximum,
+        double? exclusiveMinimum,
+        double? exclusiveMaximum,
+        double? multipleOf)
+    {
+        return !minimum.HasValue &&
+               !maximum.HasValue &&
+               !exclusiveMinimum.HasValue &&
+               !exclusiveMaximum.HasValue &&
+               !multipleOf.HasValue
+            ? null
+            : new YamlConfigNumericConstraints(
+                minimum,
+                maximum,
+                exclusiveMinimum,
+                exclusiveMaximum,
+                multipleOf);
+    }
+
+    /// <summary>
+    ///     根据已读取的字符串关键字创建字符串约束对象。
+    ///     正则会在 schema 解析阶段预编译，避免每次校验都重复实例化。
+    /// </summary>
+    /// <param name="minLength">最小长度约束。</param>
+    /// <param name="maxLength">最大长度约束。</param>
+    /// <param name="pattern">正则模式约束。</param>
+    /// <returns>字符串约束对象；未声明任何字符串约束时返回空。</returns>
+    private static YamlConfigStringConstraints? CreateStringScalarConstraints(
+        int? minLength,
+        int? maxLength,
+        string? pattern)
+    {
+        return !minLength.HasValue &&
+               !maxLength.HasValue &&
+               pattern is null
+            ? null
+            : new YamlConfigStringConstraints(
+                minLength,
+                maxLength,
+                pattern,
+                pattern is null
+                    ? null
+                    : new Regex(
+                        pattern,
+                        SupportedPatternRegexOptions));
+    }
+
+    /// <summary>
+    ///     校验数值标量的区间与步进约束。
+    ///     该方法把解析失败、闭区间、开区间和步进诊断集中到数值路径，避免主调度方法继续增长。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="yamlPath">YAML 文件路径。</param>
+    /// <param name="displayPath">字段路径。</param>
+    /// <param name="rawValue">原始 YAML 标量值。</param>
+    /// <param name="normalizedValue">归一化后的比较值。</param>
+    /// <param name="schemaNode">标量 schema 节点。</param>
+    /// <param name="constraints">数值约束对象。</param>
+    private static void ValidateNumericScalarConstraints(
+        string tableName,
+        string yamlPath,
+        string displayPath,
+        string rawValue,
+        string normalizedValue,
+        YamlConfigSchemaNode schemaNode,
+        YamlConfigNumericConstraints? constraints)
+    {
+        if (constraints is null)
+        {
+            return;
+        }
+
+        var numericValue = ParseComparableNumericValue(
+            tableName,
+            yamlPath,
+            displayPath,
+            rawValue,
+            normalizedValue,
+            schemaNode);
+        if (constraints.Minimum.HasValue && numericValue < constraints.Minimum.Value)
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.ConstraintViolation,
+                tableName,
+                $"Property '{displayPath}' in config file '{yamlPath}' must be greater than or equal to {constraints.Minimum.Value.ToString(CultureInfo.InvariantCulture)}, but the current YAML scalar value is '{rawValue}'.",
+                yamlPath: yamlPath,
+                schemaPath: schemaNode.SchemaPathHint,
+                displayPath: GetDiagnosticPath(displayPath),
+                rawValue: rawValue,
+                detail: $"Minimum allowed value: {constraints.Minimum.Value.ToString(CultureInfo.InvariantCulture)}.");
+        }
+
+        if (constraints.ExclusiveMinimum.HasValue && numericValue <= constraints.ExclusiveMinimum.Value)
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.ConstraintViolation,
+                tableName,
+                $"Property '{displayPath}' in config file '{yamlPath}' must be greater than {constraints.ExclusiveMinimum.Value.ToString(CultureInfo.InvariantCulture)}, but the current YAML scalar value is '{rawValue}'.",
+                yamlPath: yamlPath,
+                schemaPath: schemaNode.SchemaPathHint,
+                displayPath: GetDiagnosticPath(displayPath),
+                rawValue: rawValue,
+                detail: $"Exclusive minimum allowed value: {constraints.ExclusiveMinimum.Value.ToString(CultureInfo.InvariantCulture)}.");
+        }
+
+        if (constraints.Maximum.HasValue && numericValue > constraints.Maximum.Value)
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.ConstraintViolation,
+                tableName,
+                $"Property '{displayPath}' in config file '{yamlPath}' must be less than or equal to {constraints.Maximum.Value.ToString(CultureInfo.InvariantCulture)}, but the current YAML scalar value is '{rawValue}'.",
+                yamlPath: yamlPath,
+                schemaPath: schemaNode.SchemaPathHint,
+                displayPath: GetDiagnosticPath(displayPath),
+                rawValue: rawValue,
+                detail: $"Maximum allowed value: {constraints.Maximum.Value.ToString(CultureInfo.InvariantCulture)}.");
+        }
+
+        if (constraints.ExclusiveMaximum.HasValue && numericValue >= constraints.ExclusiveMaximum.Value)
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.ConstraintViolation,
+                tableName,
+                $"Property '{displayPath}' in config file '{yamlPath}' must be less than {constraints.ExclusiveMaximum.Value.ToString(CultureInfo.InvariantCulture)}, but the current YAML scalar value is '{rawValue}'.",
+                yamlPath: yamlPath,
+                schemaPath: schemaNode.SchemaPathHint,
+                displayPath: GetDiagnosticPath(displayPath),
+                rawValue: rawValue,
+                detail: $"Exclusive maximum allowed value: {constraints.ExclusiveMaximum.Value.ToString(CultureInfo.InvariantCulture)}.");
+        }
+
+        if (constraints.MultipleOf.HasValue &&
+            !IsMultipleOf(normalizedValue, numericValue, constraints.MultipleOf.Value))
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.ConstraintViolation,
+                tableName,
+                $"Property '{displayPath}' in config file '{yamlPath}' must be a multiple of {constraints.MultipleOf.Value.ToString(CultureInfo.InvariantCulture)}, but the current YAML scalar value is '{rawValue}'.",
+                yamlPath: yamlPath,
+                schemaPath: schemaNode.SchemaPathHint,
+                displayPath: GetDiagnosticPath(displayPath),
+                rawValue: rawValue,
+                detail: $"Required numeric step: {constraints.MultipleOf.Value.ToString(CultureInfo.InvariantCulture)}.");
+        }
+    }
+
+    /// <summary>
+    ///     将归一化后的数值文本还原为双精度值，用于统一后续区间比较。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="yamlPath">YAML 文件路径。</param>
+    /// <param name="displayPath">字段路径。</param>
+    /// <param name="rawValue">原始 YAML 标量值。</param>
+    /// <param name="normalizedValue">归一化后的比较值。</param>
+    /// <param name="schemaNode">标量 schema 节点。</param>
+    /// <returns>可比较的双精度值。</returns>
+    private static double ParseComparableNumericValue(
+        string tableName,
+        string yamlPath,
+        string displayPath,
+        string rawValue,
+        string normalizedValue,
+        YamlConfigSchemaNode schemaNode)
+    {
+        if (double.TryParse(
+                normalizedValue,
+                NumberStyles.Float | NumberStyles.AllowThousands,
+                CultureInfo.InvariantCulture,
+                out var numericValue))
+        {
+            return numericValue;
+        }
+
+        throw ConfigLoadExceptionFactory.Create(
+            ConfigLoadFailureKind.UnexpectedFailure,
+            tableName,
+            $"Property '{displayPath}' in config file '{yamlPath}' could not be normalized into a comparable numeric value.",
+            yamlPath: yamlPath,
+            schemaPath: schemaNode.SchemaPathHint,
+            displayPath: GetDiagnosticPath(displayPath),
+            rawValue: rawValue);
+    }
+
+    /// <summary>
+    ///     校验字符串标量的长度与模式约束。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="yamlPath">YAML 文件路径。</param>
+    /// <param name="displayPath">字段路径。</param>
+    /// <param name="rawValue">原始 YAML 标量值。</param>
+    /// <param name="schemaNode">标量 schema 节点。</param>
+    /// <param name="constraints">字符串约束对象。</param>
+    private static void ValidateStringScalarConstraints(
+        string tableName,
+        string yamlPath,
+        string displayPath,
+        string rawValue,
+        YamlConfigSchemaNode schemaNode,
+        YamlConfigStringConstraints? constraints)
+    {
+        if (constraints is null)
+        {
+            return;
+        }
+
+        var stringLength = rawValue.Length;
+        if (constraints.MinLength.HasValue && stringLength < constraints.MinLength.Value)
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.ConstraintViolation,
+                tableName,
+                $"Property '{displayPath}' in config file '{yamlPath}' must be at least {constraints.MinLength.Value} characters long, but the current YAML scalar value is '{rawValue}'.",
+                yamlPath: yamlPath,
+                schemaPath: schemaNode.SchemaPathHint,
+                displayPath: GetDiagnosticPath(displayPath),
+                rawValue: rawValue,
+                detail: $"Minimum length: {constraints.MinLength.Value}.");
+        }
+
+        if (constraints.MaxLength.HasValue && stringLength > constraints.MaxLength.Value)
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.ConstraintViolation,
+                tableName,
+                $"Property '{displayPath}' in config file '{yamlPath}' must be at most {constraints.MaxLength.Value} characters long, but the current YAML scalar value is '{rawValue}'.",
+                yamlPath: yamlPath,
+                schemaPath: schemaNode.SchemaPathHint,
+                displayPath: GetDiagnosticPath(displayPath),
+                rawValue: rawValue,
+                detail: $"Maximum length: {constraints.MaxLength.Value}.");
+        }
+
+        if (constraints.PatternRegex is not null &&
+            !constraints.PatternRegex.IsMatch(rawValue))
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.ConstraintViolation,
+                tableName,
+                $"Property '{displayPath}' in config file '{yamlPath}' must match regular expression '{constraints.Pattern}', but the current YAML scalar value is '{rawValue}'.",
+                yamlPath: yamlPath,
+                schemaPath: schemaNode.SchemaPathHint,
+                displayPath: GetDiagnosticPath(displayPath),
+                rawValue: rawValue,
+                detail: $"Expected pattern: {constraints.Pattern}.");
         }
     }
 
@@ -1343,6 +1574,312 @@ internal static class YamlConfigSchemaValidator
                 rawValue: itemCount.ToString(CultureInfo.InvariantCulture),
                 detail: $"Maximum item count: {constraints.MaxItems.Value}.");
         }
+    }
+
+    /// <summary>
+    ///     校验数组是否满足去重约束。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="yamlPath">YAML 文件路径。</param>
+    /// <param name="displayPath">字段路径。</param>
+    /// <param name="sequenceNode">实际数组节点。</param>
+    /// <param name="schemaNode">数组 schema 节点。</param>
+    private static void ValidateArrayUniqueItemsConstraint(
+        string tableName,
+        string yamlPath,
+        string displayPath,
+        YamlSequenceNode sequenceNode,
+        YamlConfigSchemaNode schemaNode)
+    {
+        var constraints = schemaNode.ArrayConstraints;
+        if (constraints is null ||
+            !constraints.UniqueItems ||
+            schemaNode.ItemNode is null)
+        {
+            return;
+        }
+
+        // The canonical item key uses schema-aware normalization so object key order,
+        // scalar quoting, and numeric formatting do not accidentally bypass uniqueItems.
+        Dictionary<string, int> seenItems = new(StringComparer.Ordinal);
+        for (var itemIndex = 0; itemIndex < sequenceNode.Children.Count; itemIndex++)
+        {
+            var itemNode = sequenceNode.Children[itemIndex];
+            var comparableValue = BuildComparableNodeValue(itemNode, schemaNode.ItemNode);
+            if (seenItems.TryGetValue(comparableValue, out var existingIndex))
+            {
+                var itemPath = $"{displayPath}[{itemIndex}]";
+                throw ConfigLoadExceptionFactory.Create(
+                    ConfigLoadFailureKind.ConstraintViolation,
+                    tableName,
+                    $"Property '{displayPath}' in config file '{yamlPath}' requires unique array items, but item '{itemPath}' duplicates '{displayPath}[{existingIndex}]'.",
+                    yamlPath: yamlPath,
+                    schemaPath: schemaNode.SchemaPathHint,
+                    displayPath: itemPath,
+                    rawValue: DescribeYamlNodeForDiagnostics(itemNode, schemaNode.ItemNode),
+                    detail: "The schema declares uniqueItems = true.");
+            }
+
+            seenItems.Add(comparableValue, itemIndex);
+        }
+    }
+
+    /// <summary>
+    ///     将一个已通过结构校验的 YAML 节点归一化为可比较字符串。
+    ///     该键仅用于 <c>uniqueItems</c>，因此要忽略对象字段顺序和字符串引号形式。
+    /// </summary>
+    /// <param name="node">YAML 节点。</param>
+    /// <param name="schemaNode">对应 schema 节点。</param>
+    /// <returns>可稳定比较的归一化键。</returns>
+    private static string BuildComparableNodeValue(YamlNode node, YamlConfigSchemaNode schemaNode)
+    {
+        return schemaNode.NodeType switch
+        {
+            YamlConfigSchemaPropertyType.Object => BuildComparableObjectValue(node, schemaNode),
+            YamlConfigSchemaPropertyType.Array => BuildComparableArrayValue(node, schemaNode),
+            YamlConfigSchemaPropertyType.Integer => BuildComparableScalarValue(node, schemaNode),
+            YamlConfigSchemaPropertyType.Number => BuildComparableScalarValue(node, schemaNode),
+            YamlConfigSchemaPropertyType.Boolean => BuildComparableScalarValue(node, schemaNode),
+            YamlConfigSchemaPropertyType.String => BuildComparableScalarValue(node, schemaNode),
+            _ => throw new InvalidOperationException($"Unsupported schema node type '{schemaNode.NodeType}'.")
+        };
+    }
+
+    /// <summary>
+    ///     构建对象节点的可比较键。
+    ///     对象字段会先按属性名排序，避免 YAML 原始字段顺序影响 <c>uniqueItems</c> 的等价关系。
+    /// </summary>
+    /// <param name="node">YAML 节点。</param>
+    /// <param name="schemaNode">对象 schema 节点。</param>
+    /// <returns>对象节点的稳定比较键。</returns>
+    private static string BuildComparableObjectValue(YamlNode node, YamlConfigSchemaNode schemaNode)
+    {
+        if (node is not YamlMappingNode mappingNode)
+        {
+            throw new InvalidOperationException("Validated object nodes must be YAML mappings.");
+        }
+
+        var properties = schemaNode.Properties
+            ?? throw new InvalidOperationException("Validated object nodes must expose declared properties.");
+        var objectEntries = new List<KeyValuePair<string, string>>(mappingNode.Children.Count);
+        foreach (var entry in mappingNode.Children)
+        {
+            if (entry.Key is not YamlScalarNode keyNode ||
+                keyNode.Value is null ||
+                !properties.TryGetValue(keyNode.Value, out var propertySchema))
+            {
+                throw new InvalidOperationException("Validated object nodes must use declared scalar property names.");
+            }
+
+            objectEntries.Add(
+                new KeyValuePair<string, string>(
+                    keyNode.Value,
+                    BuildComparableNodeValue(entry.Value, propertySchema)));
+        }
+
+        objectEntries.Sort(static (left, right) => string.CompareOrdinal(left.Key, right.Key));
+        return string.Join(
+            "|",
+            objectEntries.Select(static entry =>
+                $"{entry.Key.Length.ToString(CultureInfo.InvariantCulture)}:{entry.Key}={entry.Value.Length.ToString(CultureInfo.InvariantCulture)}:{entry.Value}"));
+    }
+
+    /// <summary>
+    ///     构建数组节点的可比较键。
+    ///     数组仍保留元素顺序，因为 <c>uniqueItems</c> 只忽略对象字段顺序，不忽略数组顺序。
+    /// </summary>
+    /// <param name="node">YAML 节点。</param>
+    /// <param name="schemaNode">数组 schema 节点。</param>
+    /// <returns>数组节点的稳定比较键。</returns>
+    private static string BuildComparableArrayValue(YamlNode node, YamlConfigSchemaNode schemaNode)
+    {
+        if (node is not YamlSequenceNode sequenceNode ||
+            schemaNode.ItemNode is null)
+        {
+            throw new InvalidOperationException("Validated array nodes must be YAML sequences with item schema.");
+        }
+
+        return "[" +
+               string.Join(
+                   ",",
+                   sequenceNode.Children.Select(
+                       item =>
+                       {
+                           var comparableValue = BuildComparableNodeValue(item, schemaNode.ItemNode);
+                           return $"{comparableValue.Length.ToString(CultureInfo.InvariantCulture)}:{comparableValue}";
+                       })) +
+               "]";
+    }
+
+    /// <summary>
+    ///     构建标量节点的可比较键。
+    ///     标量会沿用与 enum / 引用校验一致的归一化规则，避免数字格式和引号形式导致伪差异。
+    /// </summary>
+    /// <param name="node">YAML 节点。</param>
+    /// <param name="schemaNode">标量 schema 节点。</param>
+    /// <returns>标量节点的稳定比较键。</returns>
+    private static string BuildComparableScalarValue(YamlNode node, YamlConfigSchemaNode schemaNode)
+    {
+        if (node is not YamlScalarNode scalarNode ||
+            scalarNode.Value is null)
+        {
+            throw new InvalidOperationException("Validated scalar nodes must be YAML scalars.");
+        }
+
+        var normalizedScalar = NormalizeScalarValue(schemaNode.NodeType, scalarNode.Value);
+        return $"{schemaNode.NodeType}:{normalizedScalar.Length.ToString(CultureInfo.InvariantCulture)}:{normalizedScalar}";
+    }
+
+    /// <summary>
+    ///     为唯一性诊断提取一个可读的节点摘要。
+    /// </summary>
+    /// <param name="node">YAML 节点。</param>
+    /// <param name="schemaNode">对应 schema 节点。</param>
+    /// <returns>诊断摘要。</returns>
+    private static string DescribeYamlNodeForDiagnostics(YamlNode node, YamlConfigSchemaNode schemaNode)
+    {
+        return schemaNode.NodeType switch
+        {
+            YamlConfigSchemaPropertyType.Object => "{...}",
+            YamlConfigSchemaPropertyType.Array => "[...]",
+            _ when node is YamlScalarNode scalarNode => scalarNode.Value ?? string.Empty,
+            _ => node.GetType().Name
+        };
+    }
+
+    /// <summary>
+    ///     判断数值是否满足 <c>multipleOf</c>。
+    ///     优先按十进制字面量做精确整倍数判断，
+    ///     以同时避免 0.1 / 0.01 这类十进制步进的伪失败和大数量级非整倍数的伪通过；
+    ///     只有当值超出精确十进制路径时才退回双精度容差比较。
+    /// </summary>
+    /// <param name="normalizedValue">用于数值比较的规范化 YAML 标量文本。</param>
+    /// <param name="value">当前值。</param>
+    /// <param name="divisor">步进约束。</param>
+    /// <returns>是否满足整倍数关系。</returns>
+    private static bool IsMultipleOf(string normalizedValue, double value, double divisor)
+    {
+        if (TryIsExactDecimalMultiple(normalizedValue, divisor, out var exactResult))
+        {
+            return exactResult;
+        }
+
+        var quotient = value / divisor;
+        var nearestInteger = Math.Round(quotient);
+        var tolerance = 1e-9 * Math.Max(1d, Math.Abs(quotient));
+        return Math.Abs(quotient - nearestInteger) <= tolerance;
+    }
+
+    /// <summary>
+    ///     尝试按十进制字面量精确判断 <c>multipleOf</c>。
+    ///     该路径直接对齐 YAML / JSON 中常见的有限十进制写法，
+    ///     避免双精度舍入把明显的非整倍数误判为合法。
+    /// </summary>
+    /// <param name="valueText">规范化后的 YAML 数值文本。</param>
+    /// <param name="divisor">Schema 声明的步进约束。</param>
+    /// <param name="isMultiple">精确路径下的判断结果。</param>
+    /// <returns>是否成功进入精确十进制判断路径。</returns>
+    private static bool TryIsExactDecimalMultiple(string valueText, double divisor, out bool isMultiple)
+    {
+        var divisorText = divisor.ToString("R", CultureInfo.InvariantCulture);
+        if (!TryParseExactDecimal(valueText, out var valueSignificand, out var valueScale) ||
+            !TryParseExactDecimal(divisorText, out var divisorSignificand, out var divisorScale) ||
+            divisorSignificand.IsZero)
+        {
+            isMultiple = false;
+            return false;
+        }
+
+        var commonScale = Math.Max(valueScale, divisorScale);
+        var scaledValue = ScaleDecimalSignificand(valueSignificand, valueScale, commonScale);
+        var scaledDivisor = ScaleDecimalSignificand(divisorSignificand, divisorScale, commonScale);
+        isMultiple = scaledValue % scaledDivisor == BigInteger.Zero;
+        return true;
+    }
+
+    /// <summary>
+    ///     将有限十进制或科学计数法文本拆成“整数有效数字 + 十进制位数”形式。
+    ///     这样可以把整倍数判断转成同一尺度下的整数取模，避免浮点误差参与计算。
+    /// </summary>
+    /// <param name="text">待解析的数值文本。</param>
+    /// <param name="significand">去掉小数点后的有效数字。</param>
+    /// <param name="scale">十进制缩放位数；原值等于 <paramref name="significand" /> / 10^<paramref name="scale" />。</param>
+    /// <returns>是否成功解析为有限十进制数。</returns>
+    private static bool TryParseExactDecimal(string text, out BigInteger significand, out int scale)
+    {
+        var match = ExactDecimalPattern.Match(text);
+        if (!match.Success)
+        {
+            significand = BigInteger.Zero;
+            scale = 0;
+            return false;
+        }
+
+        var exponentGroup = match.Groups["exponent"].Value;
+        var exponent = 0;
+        if (!string.IsNullOrEmpty(exponentGroup) &&
+            !int.TryParse(exponentGroup, NumberStyles.Integer, CultureInfo.InvariantCulture, out exponent))
+        {
+            significand = BigInteger.Zero;
+            scale = 0;
+            return false;
+        }
+
+        var integerDigits = match.Groups["integer"].Value;
+        var fractionDigits = match.Groups["fraction"].Success
+            ? match.Groups["fraction"].Value
+            : match.Groups["fractionOnly"].Value;
+        var digits = string.Concat(integerDigits, fractionDigits);
+        if (digits.Length == 0)
+        {
+            digits = "0";
+        }
+
+        digits = digits.TrimStart('0');
+        if (digits.Length == 0)
+        {
+            significand = BigInteger.Zero;
+            scale = 0;
+            return true;
+        }
+
+        scale = checked(fractionDigits.Length - exponent);
+        if (scale < 0)
+        {
+            digits = string.Concat(digits, new string('0', -scale));
+            scale = 0;
+        }
+
+        while (scale > 0 && digits[^1] == '0')
+        {
+            digits = digits[..^1];
+            scale--;
+        }
+
+        significand = BigInteger.Parse(digits, CultureInfo.InvariantCulture);
+        if (match.Groups["sign"].Value == "-")
+        {
+            significand = BigInteger.Negate(significand);
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    ///     将十进制有效数字放大到目标尺度，便于在同一量纲下执行整数取模。
+    /// </summary>
+    /// <param name="significand">原始有效数字。</param>
+    /// <param name="currentScale">当前十进制位数。</param>
+    /// <param name="targetScale">目标十进制位数。</param>
+    /// <returns>放大到目标尺度后的有效数字。</returns>
+    private static BigInteger ScaleDecimalSignificand(BigInteger significand, int currentScale, int targetScale)
+    {
+        if (currentScale == targetScale)
+        {
+            return significand;
+        }
+
+        return significand * BigInteger.Pow(10, targetScale - currentScale);
     }
 
     /// <summary>
@@ -1656,37 +2193,98 @@ internal sealed class YamlConfigSchema
 /// </summary>
 internal sealed class YamlConfigSchemaNode
 {
+    private readonly NodeChildren _children;
+    private readonly NodeValidation _validation;
+
     /// <summary>
-    ///     初始化一个 schema 节点描述。
+    ///     创建对象节点描述。
     /// </summary>
-    /// <param name="nodeType">节点类型。</param>
     /// <param name="properties">对象属性集合。</param>
     /// <param name="requiredProperties">对象必填属性集合。</param>
-    /// <param name="itemNode">数组元素节点。</param>
-    /// <param name="referenceTableName">目标引用表名称。</param>
-    /// <param name="allowedValues">标量允许值集合。</param>
-    /// <param name="constraints">标量范围与长度约束。</param>
-    /// <param name="arrayConstraints">数组元素数量约束。</param>
     /// <param name="schemaPathHint">用于错误信息的 schema 文件路径提示。</param>
-    public YamlConfigSchemaNode(
-        YamlConfigSchemaPropertyType nodeType,
+    /// <returns>对象节点模型。</returns>
+    public static YamlConfigSchemaNode CreateObject(
         IReadOnlyDictionary<string, YamlConfigSchemaNode>? properties,
         IReadOnlyCollection<string>? requiredProperties,
-        YamlConfigSchemaNode? itemNode,
-        string? referenceTableName,
-        IReadOnlyCollection<string>? allowedValues,
-        YamlConfigScalarConstraints? constraints,
+        string schemaPathHint)
+    {
+        return new YamlConfigSchemaNode(
+            YamlConfigSchemaPropertyType.Object,
+            new NodeChildren(properties, requiredProperties, itemNode: null),
+            NodeValidation.None,
+            schemaPathHint);
+    }
+
+    /// <summary>
+    ///     创建数组节点描述。
+    /// </summary>
+    /// <param name="itemNode">数组元素节点。</param>
+    /// <param name="arrayConstraints">数组元素数量约束。</param>
+    /// <param name="schemaPathHint">用于错误信息的 schema 文件路径提示。</param>
+    /// <returns>数组节点模型。</returns>
+    public static YamlConfigSchemaNode CreateArray(
+        YamlConfigSchemaNode itemNode,
         YamlConfigArrayConstraints? arrayConstraints,
         string schemaPathHint)
     {
+        return new YamlConfigSchemaNode(
+            YamlConfigSchemaPropertyType.Array,
+            new NodeChildren(properties: null, requiredProperties: null, itemNode),
+            new NodeValidation(
+                referenceTableName: null,
+                allowedValues: null,
+                constraints: null,
+                arrayConstraints),
+            schemaPathHint);
+    }
+
+    /// <summary>
+    ///     创建标量节点描述。
+    /// </summary>
+    /// <param name="nodeType">标量节点类型。</param>
+    /// <param name="referenceTableName">目标引用表名称。</param>
+    /// <param name="allowedValues">标量允许值集合。</param>
+    /// <param name="constraints">标量范围与长度约束。</param>
+    /// <param name="schemaPathHint">用于错误信息的 schema 文件路径提示。</param>
+    /// <returns>标量节点模型。</returns>
+    public static YamlConfigSchemaNode CreateScalar(
+        YamlConfigSchemaPropertyType nodeType,
+        string? referenceTableName,
+        IReadOnlyCollection<string>? allowedValues,
+        YamlConfigScalarConstraints? constraints,
+        string schemaPathHint)
+    {
+        return new YamlConfigSchemaNode(
+            nodeType,
+            NodeChildren.None,
+            new NodeValidation(
+                referenceTableName,
+                allowedValues,
+                constraints,
+                arrayConstraints: null),
+            schemaPathHint);
+    }
+
+    private YamlConfigSchemaNode(
+        YamlConfigSchemaPropertyType nodeType,
+        NodeChildren children,
+        NodeValidation validation,
+        string schemaPathHint)
+    {
+        ArgumentNullException.ThrowIfNull(children);
+        ArgumentNullException.ThrowIfNull(validation);
+        ArgumentNullException.ThrowIfNull(schemaPathHint);
+
+        _children = children;
+        _validation = validation;
         NodeType = nodeType;
-        Properties = properties;
-        RequiredProperties = requiredProperties;
-        ItemNode = itemNode;
-        ReferenceTableName = referenceTableName;
-        AllowedValues = allowedValues;
-        Constraints = constraints;
-        ArrayConstraints = arrayConstraints;
+        Properties = children.Properties;
+        RequiredProperties = children.RequiredProperties;
+        ItemNode = children.ItemNode;
+        ReferenceTableName = validation.ReferenceTableName;
+        AllowedValues = validation.AllowedValues;
+        Constraints = validation.Constraints;
+        ArrayConstraints = validation.ArrayConstraints;
         SchemaPathHint = schemaPathHint;
     }
 
@@ -1746,52 +2344,123 @@ internal sealed class YamlConfigSchemaNode
     {
         return new YamlConfigSchemaNode(
             NodeType,
-            Properties,
-            RequiredProperties,
-            ItemNode,
-            referenceTableName,
-            AllowedValues,
-            Constraints,
-            ArrayConstraints,
+            _children,
+            _validation.WithReferenceTable(referenceTableName),
             SchemaPathHint);
+    }
+
+    private sealed class NodeChildren
+    {
+        public static NodeChildren None { get; } = new(properties: null, requiredProperties: null, itemNode: null);
+
+        public NodeChildren(
+            IReadOnlyDictionary<string, YamlConfigSchemaNode>? properties,
+            IReadOnlyCollection<string>? requiredProperties,
+            YamlConfigSchemaNode? itemNode)
+        {
+            Properties = properties;
+            RequiredProperties = requiredProperties;
+            ItemNode = itemNode;
+        }
+
+        public IReadOnlyDictionary<string, YamlConfigSchemaNode>? Properties { get; }
+
+        public IReadOnlyCollection<string>? RequiredProperties { get; }
+
+        public YamlConfigSchemaNode? ItemNode { get; }
+    }
+
+    private sealed class NodeValidation
+    {
+        public static NodeValidation None { get; } = new(
+            referenceTableName: null,
+            allowedValues: null,
+            constraints: null,
+            arrayConstraints: null);
+
+        public NodeValidation(
+            string? referenceTableName,
+            IReadOnlyCollection<string>? allowedValues,
+            YamlConfigScalarConstraints? constraints,
+            YamlConfigArrayConstraints? arrayConstraints)
+        {
+            ReferenceTableName = referenceTableName;
+            AllowedValues = allowedValues;
+            Constraints = constraints;
+            ArrayConstraints = arrayConstraints;
+        }
+
+        public string? ReferenceTableName { get; }
+
+        public IReadOnlyCollection<string>? AllowedValues { get; }
+
+        public YamlConfigScalarConstraints? Constraints { get; }
+
+        public YamlConfigArrayConstraints? ArrayConstraints { get; }
+
+        public NodeValidation WithReferenceTable(string referenceTableName)
+        {
+            return new NodeValidation(referenceTableName, AllowedValues, Constraints, ArrayConstraints);
+        }
     }
 }
 
 /// <summary>
-///     表示一个标量节点上声明的数值范围或字符串长度约束。
-///     该模型让运行时、热重载和跨文件诊断都能复用同一份最小约束信息。
+///     聚合一个标量节点上声明的数值约束与字符串约束。
+///     该包装层保留“标量字段有约束”的统一入口，同时把不同语义的约束分成更小的专用模型。
 /// </summary>
 internal sealed class YamlConfigScalarConstraints
 {
     /// <summary>
     ///     初始化标量约束模型。
     /// </summary>
+    /// <param name="numericConstraints">数值约束分组。</param>
+    /// <param name="stringConstraints">字符串约束分组。</param>
+    public YamlConfigScalarConstraints(
+        YamlConfigNumericConstraints? numericConstraints,
+        YamlConfigStringConstraints? stringConstraints)
+    {
+        NumericConstraints = numericConstraints;
+        StringConstraints = stringConstraints;
+    }
+
+    /// <summary>
+    ///     获取数值约束分组。
+    /// </summary>
+    public YamlConfigNumericConstraints? NumericConstraints { get; }
+
+    /// <summary>
+    ///     获取字符串约束分组。
+    /// </summary>
+    public YamlConfigStringConstraints? StringConstraints { get; }
+}
+
+/// <summary>
+///     表示标量节点上声明的数值范围与步进约束。
+///     该类型只覆盖整数 / 浮点共享的关键字，避免字符串字段继续暴露不相关的成员。
+/// </summary>
+internal sealed class YamlConfigNumericConstraints
+{
+    /// <summary>
+    ///     初始化数值约束模型。
+    /// </summary>
     /// <param name="minimum">最小值约束。</param>
     /// <param name="maximum">最大值约束。</param>
     /// <param name="exclusiveMinimum">开区间最小值约束。</param>
     /// <param name="exclusiveMaximum">开区间最大值约束。</param>
-    /// <param name="minLength">最小长度约束。</param>
-    /// <param name="maxLength">最大长度约束。</param>
-    /// <param name="pattern">正则模式约束。</param>
-    /// <param name="patternRegex">已编译的正则表达式。</param>
-    public YamlConfigScalarConstraints(
+    /// <param name="multipleOf">数值步进约束。</param>
+    public YamlConfigNumericConstraints(
         double? minimum,
         double? maximum,
         double? exclusiveMinimum,
         double? exclusiveMaximum,
-        int? minLength,
-        int? maxLength,
-        string? pattern,
-        Regex? patternRegex)
+        double? multipleOf)
     {
         Minimum = minimum;
         Maximum = maximum;
         ExclusiveMinimum = exclusiveMinimum;
         ExclusiveMaximum = exclusiveMaximum;
-        MinLength = minLength;
-        MaxLength = maxLength;
-        Pattern = pattern;
-        PatternRegex = patternRegex;
+        MultipleOf = multipleOf;
     }
 
     /// <summary>
@@ -1815,6 +2484,37 @@ internal sealed class YamlConfigScalarConstraints
     public double? ExclusiveMaximum { get; }
 
     /// <summary>
+    ///     获取数值步进约束。
+    /// </summary>
+    public double? MultipleOf { get; }
+}
+
+/// <summary>
+///     表示标量节点上声明的字符串长度与模式约束。
+///     该模型将正则原文与预编译正则绑定保存，保证诊断内容与运行时匹配逻辑保持一致。
+/// </summary>
+internal sealed class YamlConfigStringConstraints
+{
+    /// <summary>
+    ///     初始化字符串约束模型。
+    /// </summary>
+    /// <param name="minLength">最小长度约束。</param>
+    /// <param name="maxLength">最大长度约束。</param>
+    /// <param name="pattern">正则模式约束原文。</param>
+    /// <param name="patternRegex">已编译的正则表达式。</param>
+    public YamlConfigStringConstraints(
+        int? minLength,
+        int? maxLength,
+        string? pattern,
+        Regex? patternRegex)
+    {
+        MinLength = minLength;
+        MaxLength = maxLength;
+        Pattern = pattern;
+        PatternRegex = patternRegex;
+    }
+
+    /// <summary>
     ///     获取最小长度约束。
     /// </summary>
     public int? MinLength { get; }
@@ -1836,7 +2536,7 @@ internal sealed class YamlConfigScalarConstraints
 }
 
 /// <summary>
-///     表示一个数组节点上声明的元素数量约束。
+///     表示一个数组节点上声明的元素数量或去重约束。
 ///     该模型与标量约束拆分保存，避免数组节点继续共享不适用的标量字段。
 /// </summary>
 internal sealed class YamlConfigArrayConstraints
@@ -1846,10 +2546,12 @@ internal sealed class YamlConfigArrayConstraints
     /// </summary>
     /// <param name="minItems">最小元素数量约束。</param>
     /// <param name="maxItems">最大元素数量约束。</param>
-    public YamlConfigArrayConstraints(int? minItems, int? maxItems)
+    /// <param name="uniqueItems">是否要求数组元素唯一。</param>
+    public YamlConfigArrayConstraints(int? minItems, int? maxItems, bool uniqueItems)
     {
         MinItems = minItems;
         MaxItems = maxItems;
+        UniqueItems = uniqueItems;
     }
 
     /// <summary>
@@ -1861,6 +2563,11 @@ internal sealed class YamlConfigArrayConstraints
     ///     获取最大元素数量约束。
     /// </summary>
     public int? MaxItems { get; }
+
+    /// <summary>
+    ///     获取是否要求数组元素唯一。
+    /// </summary>
+    public bool UniqueItems { get; }
 }
 
 /// <summary>
