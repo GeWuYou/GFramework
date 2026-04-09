@@ -22,7 +22,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Scriban" Version="7.0.6" />
+      <PackageReference Include="Scriban" Version="7.1.0" />
         <ProjectReference Include="..\GFramework.Core.Abstractions\GFramework.Core.Abstractions.csproj"/>
         <ProjectReference Include="..\GFramework.Core\GFramework.Core.csproj"/>
         <ProjectReference Include="..\GFramework.SourceGenerators.Abstractions\GFramework.SourceGenerators.Abstractions.csproj"/>
