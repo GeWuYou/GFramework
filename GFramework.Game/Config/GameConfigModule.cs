@@ -22,7 +22,7 @@ public sealed class GameConfigModule : IArchitectureModule
 {
     private const int InstallStateNotInstalled = 0;
     private const int InstallStateInstalling = 1;
-    private const int InstallStateInstalled = 2;
+    private const int InstallStateConsumed = 2;
 
     private readonly GameConfigBootstrap _bootstrap;
     private readonly ModuleBootstrapLifetimeUtility _lifetimeUtility;
@@ -76,6 +76,11 @@ public sealed class GameConfigModule : IArchitectureModule
     /// <param name="architecture">目标架构实例。</param>
     /// <exception cref="ArgumentNullException">当 <paramref name="architecture" /> 为空时抛出。</exception>
     /// <exception cref="InvalidOperationException">当同一个模块实例被重复安装时抛出。</exception>
+    /// <remarks>
+    ///     生命周期阶段校验会在任何注册动作前执行，因此错过安装窗口的调用不会消耗当前模块实例。
+    ///     一旦开始向架构注册 utility 或生命周期钩子，就不存在回滚 API；因此后续任何失败都会把该模块实例视为已消耗，
+    ///     调用方必须创建新的 <see cref="GameConfigModule" /> 再重试。
+    /// </remarks>
     public void Install(IArchitecture architecture)
     {
         ArgumentNullException.ThrowIfNull(architecture);
@@ -93,16 +98,18 @@ public sealed class GameConfigModule : IArchitectureModule
 
         try
         {
-            // 先注册生命周期钩子，确保任何“已错过 BeforeUtilityInit”的安装都会在暴露注册表之前失败，
-            // 避免架构看到永远不会完成首次加载的半安装配置入口。
-            architecture.RegisterLifecycleHook(new BootstrapInitializationHook(_bootstrap));
+            // 阶段窗口已经在前面做过无副作用校验，因此这里优先注册 utility，
+            // 让常见的容器/上下文接线失败在不可回滚的 hook 注册之前暴露出来。
             architecture.RegisterUtility(Registry);
             architecture.RegisterUtility(_lifetimeUtility);
-            Volatile.Write(ref _installState, InstallStateInstalled);
+            architecture.RegisterLifecycleHook(new BootstrapInitializationHook(_bootstrap));
+            Volatile.Write(ref _installState, InstallStateConsumed);
         }
         catch
         {
-            Volatile.Write(ref _installState, InstallStateNotInstalled);
+            // 架构对 utility / hook 注册都不提供回滚入口，因此一旦进入注册阶段，
+            // 即使安装失败也必须禁止复用同一个模块实例，避免重复暴露共享注册表或挂上第二个 hook。
+            Volatile.Write(ref _installState, InstallStateConsumed);
             throw;
         }
     }

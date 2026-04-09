@@ -1,15 +1,11 @@
-using System;
 using System.IO;
-using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 using GFramework.Core.Architectures;
 using GFramework.Core.Extensions;
 using GFramework.Core.Utility;
 using GFramework.Game.Abstractions.Config;
 using GFramework.Game.Config;
 using GFramework.Game.Config.Generated;
-using NUnit.Framework;
 
 namespace GFramework.Game.Tests.Config;
 
@@ -153,33 +149,39 @@ public class ArchitectureConfigIntegrationTests
     }
 
     /// <summary>
-    ///     验证配置启动帮助器在同步阻塞且存在 <see cref="SynchronizationContext" /> 的线程上仍可完成初始化，
-    ///     避免架构生命周期钩子的同步桥接因为 await 捕获上下文而死锁。
+    ///     验证配置模块在同步阻塞且存在 <see cref="SynchronizationContext" /> 的线程上仍可完成架构初始化，
+    ///     直接覆盖 <see cref="GameConfigModule" /> 通过生命周期钩子执行同步桥接的真实路径。
     /// </summary>
     [Test]
-    public void GameConfigBootstrapShouldSupportSynchronousBridgeOnBlockingSynchronizationContext()
+    public void GameConfigModuleShouldSupportSynchronousBridgeOnBlockingSynchronizationContext()
     {
         var rootPath = CreateTempConfigRoot();
-        GameConfigBootstrap? bootstrap = null;
+        ConsumerArchitecture? architecture = null;
+        var initialized = false;
         try
         {
-            bootstrap = CreateBootstrap(rootPath);
+            architecture = new ConsumerArchitecture(rootPath);
 
             RunBlockingOnSynchronizationContext(
-                () => bootstrap.InitializeAsync(),
+                () => architecture.InitializeAsync(),
                 TimeSpan.FromSeconds(5));
+            initialized = true;
 
-            var monsterTable = bootstrap.Registry.GetMonsterTable();
+            var monsterTable = architecture.Registry.GetMonsterTable();
             Assert.Multiple(() =>
             {
-                Assert.That(bootstrap.IsInitialized, Is.True);
+                Assert.That(architecture.ConfigModule.IsInitialized, Is.True);
                 Assert.That(monsterTable.Get(1).Name, Is.EqualTo("Slime"));
                 Assert.That(monsterTable.FindByFaction("dungeon").Count(), Is.EqualTo(2));
             });
         }
         finally
         {
-            bootstrap?.Dispose();
+            if (architecture is not null && initialized)
+            {
+                architecture.DestroyAsync().GetAwaiter().GetResult();
+            }
+
             DeleteDirectoryIfExists(rootPath);
         }
     }
@@ -322,14 +324,9 @@ public class ArchitectureConfigIntegrationTests
         }
     }
 
-    private static GameConfigBootstrap CreateBootstrap(string configRoot)
-    {
-        return new GameConfigBootstrap(CreateBootstrapOptions(configRoot));
-    }
-
     /// <summary>
-    ///     创建一个使用配置模块的模块实例。
-    /// </summary>
+     ///     创建一个使用配置模块的模块实例。
+     /// </summary>
     /// <param name="configRoot">测试配置根目录。</param>
     /// <returns>已配置的模块实例。</returns>
     private static GameConfigModule CreateModule(string configRoot)
