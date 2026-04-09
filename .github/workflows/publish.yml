@@ -100,7 +100,7 @@ jobs:
           dotnet-version: 10.0.x
 
       - name: Download package artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: packages
           path: ./packages
@@ -152,7 +152,7 @@ jobs:
           dotnet-version: 10.0.x
 
       - name: Download package artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: packages
           path: ./packages
@@ -201,7 +201,7 @@ jobs:
 
     steps:
       - name: Download package artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: packages
           path: ./packages
