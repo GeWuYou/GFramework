@@ -168,7 +168,7 @@ GameProject/
 
 这段配置的作用：
 
-- `GFramework.Game` 提供运行时 `YamlConfigLoader`、`ConfigRegistry`、`GameConfigBootstrap` 和只读表实现
+- `GFramework.Game` 提供运行时 `YamlConfigLoader`、`ConfigRegistry`、`GameConfigBootstrap`、`GameConfigModule` 和只读表实现
 - 三个 `ProjectReference(... OutputItemType="Analyzer")` 把生成器接进当前消费者项目
 - `GeWuYou.GFramework.SourceGenerators.targets` 自动把 `schemas/**/*.schema.json` 加入 `AdditionalFiles`
 
@@ -404,7 +404,7 @@ if (monsterTable.TryFindFirstByFaction("dungeon", out var firstDungeonMonster))
 
 ### Architecture 推荐接入模板
 
-如果你的项目已经基于 `GFramework.Core.Architectures.Architecture` 组织初始化流程，并且当前宿主没有提供更上层的异步启动入口，可以把配置系统接到 `OnInitialize()` 阶段，并把 `GameConfigBootstrap.Registry` 注册为 utility：
+如果你的项目已经基于 `GFramework.Core.Architectures.Architecture` 组织初始化流程，推荐优先使用 `GameConfigModule`，而不是在 `OnInitialize()` 里手动拼装 `GameConfigBootstrap` 的注册、加载和销毁顺序：
 
 ```csharp
 using GFramework.Core.Architectures;
@@ -414,11 +414,11 @@ using GFramework.Game.Config.Generated;
 
 public sealed class GameArchitecture : Architecture
 {
-    private readonly GameConfigBootstrap _configBootstrap;
+    private readonly GameConfigModule _configModule;
 
     public GameArchitecture(string configRootPath)
     {
-        _configBootstrap = new GameConfigBootstrap(
+        _configModule = new GameConfigModule(
             new GameConfigBootstrapOptions
             {
                 RootPath = configRootPath,
@@ -428,14 +428,7 @@ public sealed class GameArchitecture : Architecture
 
     protected override void OnInitialize()
     {
-        RegisterUtility(_configBootstrap.Registry);
-        _configBootstrap.InitializeAsync().GetAwaiter().GetResult();
-    }
-
-    public override async ValueTask DestroyAsync()
-    {
-        _configBootstrap.Dispose();
-        await base.DestroyAsync();
+        InstallModule(_configModule);
     }
 }
 ```
@@ -456,22 +449,28 @@ var slime = monsterTable.Get(1);
 
 推荐遵循以下顺序：
 
-- 先构造 `GameConfigBootstrap`
-- 在 `OnInitialize()` 里注册 `bootstrap.Registry`
-- 再调用 `bootstrap.InitializeAsync()` 完成首次加载
-- 架构销毁时释放 `GameConfigBootstrap`
+- 先构造 `GameConfigModule`
+- 在 `OnInitialize()` 的较早位置调用 `InstallModule(_configModule)`
+- 让模块在 `BeforeUtilityInit` 阶段完成首次加载
+- 架构销毁时让模块跟随 utility 生命周期自动释放 `GameConfigBootstrap`
 - 初始化完成后只通过注册表和生成表包装访问配置
 
-当前阶段不建议为了配置系统额外引入新的 `IArchitectureModule` 或 service module 抽象；现有 `Architecture + GameConfigBootstrap + RegisterAllGeneratedConfigTables()` 组合已经足够作为官方推荐接入路径。
+这样做的收益是：
+
+- `IConfigRegistry` 会在模块安装时立即注册为 utility，后续组件统一从上下文读取
+- 首次加载发生在 `BeforeUtilityInit`，因此依赖配置的 utility、model 和 system 在自己的初始化阶段就能直接读取表
+- 架构销毁时不再需要手写 `Dispose()` 样板来停止热重载句柄
+
+如果你仍然需要在架构外直接控制 `InitializeAsync()`、`StartHotReload(...)` 或 `StopHotReload()` 的调用时机，继续直接使用 `GameConfigBootstrap` 仍然是合适的；`GameConfigModule` 是面向 `Architecture` 宿主的官方薄封装，而不是替代底层 bootstrap。
 
 ### 热重载模板
 
-如果你希望把开发期热重载显式收敛为一个可选能力，推荐直接通过 `GameConfigBootstrap.StartHotReload(...)` 管理，而不是让监听句柄散落在启动层之外：
+如果你希望把开发期热重载显式收敛为一个可选能力，在 `Architecture` 场景下可以直接保留上面示例中的 `_configModule` 字段并调用 `GameConfigModule.StartHotReload(...)`；非 `Architecture` 场景则继续直接通过 `GameConfigBootstrap.StartHotReload(...)` 管理，而不是让监听句柄散落在启动层之外：
 
 ```csharp
-await bootstrap.InitializeAsync();
+await architecture.InitializeAsync();
 
-bootstrap.StartHotReload(
+_configModule.StartHotReload(
     new YamlConfigHotReloadOptions
     {
         OnTableReloaded = tableName => Console.WriteLine($"Reloaded: {tableName}"),
