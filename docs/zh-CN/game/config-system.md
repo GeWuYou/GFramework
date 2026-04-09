@@ -706,7 +706,7 @@ if (MonsterConfigBindings.References.TryGetByDisplayPath("dropItems", out var re
 - `enum`：供运行时校验、VS Code 校验和表单枚举选择复用
 - `minimum` / `maximum`：供运行时校验、VS Code 校验和生成代码 XML 文档复用
 - `exclusiveMinimum` / `exclusiveMaximum`：供运行时校验、VS Code 校验和生成代码 XML 文档复用
-- `multipleOf`：供运行时校验、VS Code 校验、表单 hint 和生成代码 XML 文档复用；当前按运行时与 JS 共用的浮点容差策略判断十进制步进
+- `multipleOf`：供运行时校验、VS Code 校验、表单 hint 和生成代码 XML 文档复用；当前优先按运行时与 JS 共用的十进制精确整倍数判定处理常见十进制步进，并在必要时退回浮点容差兜底
 - `minLength` / `maxLength`：供运行时校验、VS Code 校验和生成代码 XML 文档复用
 - `pattern`：供运行时校验、VS Code 校验、表单提示和生成代码 XML 文档复用；当前按 C# `CultureInvariant` 与 JS Unicode `u` 模式解释，非法模式会在 schema 解析阶段直接报错
 - `minItems` / `maxItems`：供运行时校验、VS Code 校验、表单提示和生成代码 XML 文档复用

@@ -559,10 +559,10 @@ public class YamlConfigLoaderTests
     }
 
     /// <summary>
-    ///     验证大数值配合十进制步进时，会沿用 JS 工具侧的 <c>multipleOf</c> 容差策略。
+    ///     验证大数值配合十进制步进时，会按十进制精确整倍数规则被运行时接受。
     /// </summary>
     [Test]
-    public async Task LoadAsync_Should_Accept_Large_Decimal_Number_When_MultipleOf_Matches_Js_Tolerance()
+    public async Task LoadAsync_Should_Accept_Large_Decimal_Number_When_MultipleOf_Matches_Exact_Decimal_Step()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -599,6 +599,50 @@ public class YamlConfigLoaderTests
         {
             Assert.That(table.Count, Is.EqualTo(1));
             Assert.That(table.Get(1).DropRate, Is.EqualTo(10000000.2d));
+        });
+    }
+
+    /// <summary>
+    ///     验证大数量级但实际不满足 <c>multipleOf</c> 的数值会被运行时拒绝。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Throw_When_Large_Number_Is_Not_Actually_MultipleOf()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            dropRate: 1000000000000.4
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "dropRate"],
+              "properties": {
+                "id": { "type": "integer" },
+                "dropRate": {
+                  "type": "number",
+                  "multipleOf": 1
+                }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterNumberConfigStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Diagnostic.FailureKind, Is.EqualTo(ConfigLoadFailureKind.ConstraintViolation));
+            Assert.That(exception.Diagnostic.DisplayPath, Is.EqualTo("dropRate"));
+            Assert.That(registry.Count, Is.EqualTo(0));
         });
     }
 
@@ -1702,7 +1746,7 @@ public class YamlConfigLoaderTests
 
         Assert.That(exception!.ParamName, Is.EqualTo("options"));
     }
-
+    
     /// <summary>
     ///     验证热重载失败时会保留旧表状态，并通过失败回调暴露诊断信息。
     /// </summary>

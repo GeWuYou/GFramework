@@ -486,11 +486,98 @@ function matchesSchemaMultipleOf(scalarValue, multipleOf) {
         return true;
     }
 
+    const exactDecimalResult = tryMatchesExactDecimalMultiple(scalarValue, String(multipleOf));
+    if (exactDecimalResult !== null) {
+        return exactDecimalResult;
+    }
+
     const numericValue = Number(scalarValue);
     const quotient = numericValue / multipleOf;
     const nearestInteger = Math.round(quotient);
     const tolerance = 1e-9 * Math.max(1, Math.abs(quotient));
     return Math.abs(quotient - nearestInteger) <= tolerance;
+}
+
+/**
+ * Try to evaluate one multipleOf constraint using exact decimal arithmetic.
+ * This keeps common YAML / JSON decimal literals aligned with the runtime and
+ * avoids large-number false positives that a pure floating-point quotient check can miss.
+ *
+ * @param {string} valueText YAML scalar text.
+ * @param {string} divisorText Schema multipleOf text.
+ * @returns {boolean | null} Exact result, or null when the inputs cannot be normalized exactly.
+ */
+function tryMatchesExactDecimalMultiple(valueText, divisorText) {
+    const valueParts = tryParseExactDecimal(valueText);
+    const divisorParts = tryParseExactDecimal(divisorText);
+    if (!valueParts || !divisorParts || divisorParts.significand === 0n) {
+        return null;
+    }
+
+    const commonScale = Math.max(valueParts.scale, divisorParts.scale);
+    const scaledValue = scaleDecimalSignificand(valueParts.significand, valueParts.scale, commonScale);
+    const scaledDivisor = scaleDecimalSignificand(divisorParts.significand, divisorParts.scale, commonScale);
+    return scaledValue % scaledDivisor === 0n;
+}
+
+/**
+ * Normalize a finite decimal literal into an integer significand plus decimal scale.
+ * The normalized form lets multipleOf checks run as integer modulo instead of floating-point math.
+ *
+ * @param {string} text Numeric text to normalize.
+ * @returns {{significand: bigint, scale: number} | null} Normalized parts, or null for unsupported input.
+ */
+function tryParseExactDecimal(text) {
+    const match = /^([+-]?)(?:(\d+)(?:\.(\d*))?|\.(\d+))(?:[eE]([+-]?\d+))?$/u.exec(String(text).trim());
+    if (!match) {
+        return null;
+    }
+
+    const exponent = match[5] ? Number.parseInt(match[5], 10) : 0;
+    if (!Number.isSafeInteger(exponent)) {
+        return null;
+    }
+
+    const integerDigits = match[2] ?? "";
+    const fractionDigits = match[3] !== undefined ? match[3] : (match[4] ?? "");
+    let digits = `${integerDigits}${fractionDigits}`.replace(/^0+/u, "");
+    if (digits.length === 0) {
+        return {significand: 0n, scale: 0};
+    }
+
+    let scale = fractionDigits.length - exponent;
+    if (scale < 0) {
+        digits += "0".repeat(-scale);
+        scale = 0;
+    }
+
+    while (scale > 0 && digits.endsWith("0")) {
+        digits = digits.slice(0, -1);
+        scale -= 1;
+    }
+
+    let significand = BigInt(digits);
+    if (match[1] === "-") {
+        significand = -significand;
+    }
+
+    return {significand, scale};
+}
+
+/**
+ * Scale one normalized decimal significand to a larger decimal precision.
+ *
+ * @param {bigint} significand Integer significand.
+ * @param {number} currentScale Current decimal scale.
+ * @param {number} targetScale Target decimal scale.
+ * @returns {bigint} Scaled significand.
+ */
+function scaleDecimalSignificand(significand, currentScale, targetScale) {
+    if (currentScale === targetScale) {
+        return significand;
+    }
+
+    return significand * (10n ** BigInt(targetScale - currentScale));
 }
 
 /**

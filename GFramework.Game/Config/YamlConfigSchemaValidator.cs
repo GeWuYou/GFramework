@@ -1,3 +1,4 @@
+using System.Numerics;
 using System.Text.RegularExpressions;
 using GFramework.Game.Abstractions.Config;
 
@@ -15,6 +16,9 @@ internal static class YamlConfigSchemaValidator
     // The runtime intentionally uses the same culture-invariant regex semantics as the
     // JS tooling so grouping and backreferences behave consistently across environments.
     private const RegexOptions SupportedPatternRegexOptions = RegexOptions.CultureInvariant;
+    private static readonly Regex ExactDecimalPattern = new(
+        @"^(?<sign>[+-]?)(?:(?<integer>\d+)(?:\.(?<fraction>\d*))?|\.(?<fractionOnly>\d+))(?:[eE](?<exponent>[+-]?\d+))?$",
+        RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
     /// <summary>
     ///     从磁盘加载并解析一个 JSON Schema 文件。
@@ -1409,7 +1413,7 @@ internal static class YamlConfigSchemaValidator
         }
 
         if (constraints.MultipleOf.HasValue &&
-            !IsMultipleOf(numericValue, constraints.MultipleOf.Value))
+            !IsMultipleOf(normalizedValue, numericValue, constraints.MultipleOf.Value))
         {
             throw ConfigLoadExceptionFactory.Create(
                 ConfigLoadFailureKind.ConstraintViolation,
@@ -1745,19 +1749,137 @@ internal static class YamlConfigSchemaValidator
 
     /// <summary>
     ///     判断数值是否满足 <c>multipleOf</c>。
-    ///     双精度浮点比较会在商空间保留一个与商量级相关的微小容差，
-    ///     以对齐 JS 工具侧对 0.1 / 0.01 这类十进制步进的判定方式，
-    ///     避免出现“编辑器通过、运行时拒绝”的跨环境漂移。
+    ///     优先按十进制字面量做精确整倍数判断，
+    ///     以同时避免 0.1 / 0.01 这类十进制步进的伪失败和大数量级非整倍数的伪通过；
+    ///     只有当值超出精确十进制路径时才退回双精度容差比较。
     /// </summary>
+    /// <param name="normalizedValue">用于数值比较的规范化 YAML 标量文本。</param>
     /// <param name="value">当前值。</param>
     /// <param name="divisor">步进约束。</param>
     /// <returns>是否满足整倍数关系。</returns>
-    private static bool IsMultipleOf(double value, double divisor)
+    private static bool IsMultipleOf(string normalizedValue, double value, double divisor)
     {
+        if (TryIsExactDecimalMultiple(normalizedValue, divisor, out var exactResult))
+        {
+            return exactResult;
+        }
+
         var quotient = value / divisor;
         var nearestInteger = Math.Round(quotient);
         var tolerance = 1e-9 * Math.Max(1d, Math.Abs(quotient));
         return Math.Abs(quotient - nearestInteger) <= tolerance;
+    }
+
+    /// <summary>
+    ///     尝试按十进制字面量精确判断 <c>multipleOf</c>。
+    ///     该路径直接对齐 YAML / JSON 中常见的有限十进制写法，
+    ///     避免双精度舍入把明显的非整倍数误判为合法。
+    /// </summary>
+    /// <param name="valueText">规范化后的 YAML 数值文本。</param>
+    /// <param name="divisor">Schema 声明的步进约束。</param>
+    /// <param name="isMultiple">精确路径下的判断结果。</param>
+    /// <returns>是否成功进入精确十进制判断路径。</returns>
+    private static bool TryIsExactDecimalMultiple(string valueText, double divisor, out bool isMultiple)
+    {
+        var divisorText = divisor.ToString("R", CultureInfo.InvariantCulture);
+        if (!TryParseExactDecimal(valueText, out var valueSignificand, out var valueScale) ||
+            !TryParseExactDecimal(divisorText, out var divisorSignificand, out var divisorScale) ||
+            divisorSignificand.IsZero)
+        {
+            isMultiple = false;
+            return false;
+        }
+
+        var commonScale = Math.Max(valueScale, divisorScale);
+        var scaledValue = ScaleDecimalSignificand(valueSignificand, valueScale, commonScale);
+        var scaledDivisor = ScaleDecimalSignificand(divisorSignificand, divisorScale, commonScale);
+        isMultiple = scaledValue % scaledDivisor == BigInteger.Zero;
+        return true;
+    }
+
+    /// <summary>
+    ///     将有限十进制或科学计数法文本拆成“整数有效数字 + 十进制位数”形式。
+    ///     这样可以把整倍数判断转成同一尺度下的整数取模，避免浮点误差参与计算。
+    /// </summary>
+    /// <param name="text">待解析的数值文本。</param>
+    /// <param name="significand">去掉小数点后的有效数字。</param>
+    /// <param name="scale">十进制缩放位数；原值等于 <paramref name="significand" /> / 10^<paramref name="scale" />。</param>
+    /// <returns>是否成功解析为有限十进制数。</returns>
+    private static bool TryParseExactDecimal(string text, out BigInteger significand, out int scale)
+    {
+        var match = ExactDecimalPattern.Match(text);
+        if (!match.Success)
+        {
+            significand = BigInteger.Zero;
+            scale = 0;
+            return false;
+        }
+
+        var exponentGroup = match.Groups["exponent"].Value;
+        var exponent = 0;
+        if (!string.IsNullOrEmpty(exponentGroup) &&
+            !int.TryParse(exponentGroup, NumberStyles.Integer, CultureInfo.InvariantCulture, out exponent))
+        {
+            significand = BigInteger.Zero;
+            scale = 0;
+            return false;
+        }
+
+        var integerDigits = match.Groups["integer"].Value;
+        var fractionDigits = match.Groups["fraction"].Success
+            ? match.Groups["fraction"].Value
+            : match.Groups["fractionOnly"].Value;
+        var digits = string.Concat(integerDigits, fractionDigits);
+        if (digits.Length == 0)
+        {
+            digits = "0";
+        }
+
+        digits = digits.TrimStart('0');
+        if (digits.Length == 0)
+        {
+            significand = BigInteger.Zero;
+            scale = 0;
+            return true;
+        }
+
+        scale = checked(fractionDigits.Length - exponent);
+        if (scale < 0)
+        {
+            digits = string.Concat(digits, new string('0', -scale));
+            scale = 0;
+        }
+
+        while (scale > 0 && digits[^1] == '0')
+        {
+            digits = digits[..^1];
+            scale--;
+        }
+
+        significand = BigInteger.Parse(digits, CultureInfo.InvariantCulture);
+        if (match.Groups["sign"].Value == "-")
+        {
+            significand = BigInteger.Negate(significand);
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    ///     将十进制有效数字放大到目标尺度，便于在同一量纲下执行整数取模。
+    /// </summary>
+    /// <param name="significand">原始有效数字。</param>
+    /// <param name="currentScale">当前十进制位数。</param>
+    /// <param name="targetScale">目标十进制位数。</param>
+    /// <returns>放大到目标尺度后的有效数字。</returns>
+    private static BigInteger ScaleDecimalSignificand(BigInteger significand, int currentScale, int targetScale)
+    {
+        if (currentScale == targetScale)
+        {
+            return significand;
+        }
+
+        return significand * BigInteger.Pow(10, targetScale - currentScale);
     }
 
     /// <summary>

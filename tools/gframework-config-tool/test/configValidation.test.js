@@ -349,6 +349,47 @@ phases:
     assert.match(diagnostics[1].message, /phases\[1\]|uniqueItems|元素唯一/u);
 });
 
+test("validateParsedConfig should accept large decimal multiples without floating-point drift", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "dropRate": {
+              "type": "number",
+              "multipleOf": 0.1
+            }
+          }
+        }
+    `);
+    const yaml = parseTopLevelYaml(`
+dropRate: 10000000.2
+`);
+
+    assert.deepEqual(validateParsedConfig(schema, yaml), []);
+});
+
+test("validateParsedConfig should reject large numbers that are not actually multiples", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "dropRate": {
+              "type": "number",
+              "multipleOf": 1
+            }
+          }
+        }
+    `);
+    const yaml = parseTopLevelYaml(`
+dropRate: 1000000000000.4
+`);
+
+    const diagnostics = validateParsedConfig(schema, yaml);
+
+    assert.equal(diagnostics.length, 1);
+    assert.match(diagnostics[0].message, /multiple of 1|1 的整数倍/u);
+});
+
 test("validateParsedConfig should accept scientific-notation numbers", () => {
     const schema = parseSchemaContent(`
         {
