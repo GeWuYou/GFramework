@@ -1745,8 +1745,9 @@ internal static class YamlConfigSchemaValidator
 
     /// <summary>
     ///     判断数值是否满足 <c>multipleOf</c>。
-    ///     双精度浮点比较会保留一个与商值量级相关的微小容差，
-    ///     以避免运行时与 JS 工具侧在 0.1 / 0.01 这类十进制步进上出现伪失败。
+    ///     双精度浮点比较会保留一个与步进量级相关的微小容差，
+    ///     以避免运行时与 JS 工具侧在 0.1 / 0.01 这类十进制步进上出现伪失败，
+    ///     同时避免值越大就无限放宽合法余数范围。
     /// </summary>
     /// <param name="value">当前值。</param>
     /// <param name="divisor">步进约束。</param>
@@ -1755,8 +1756,8 @@ internal static class YamlConfigSchemaValidator
     {
         var quotient = value / divisor;
         var nearestInteger = Math.Round(quotient);
-        var tolerance = 1e-9 * Math.Max(1d, Math.Abs(quotient));
-        return Math.Abs(quotient - nearestInteger) <= tolerance;
+        var tolerance = 1e-9 * Math.Max(1d, Math.Abs(divisor));
+        return Math.Abs(value - (nearestInteger * divisor)) <= tolerance;
     }
 
     /// <summary>

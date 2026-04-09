@@ -104,6 +104,10 @@ All generated or modified code MUST include clear and meaningful comments where 
 - Keep `using` directives at the top of the file and sort them consistently.
 - Separate logical blocks with blank lines when it improves readability.
 - Prefer one primary type per file unless the surrounding project already uses a different local pattern.
+- Unless there is a clear and documented reason to keep a file large, keep a single source file under roughly 800-1000
+  lines.
+- If a file grows beyond that range, contributors MUST stop and check whether responsibilities should be split before
+  continuing; treating oversized files as the default is considered a design smell.
 - Keep line length readable. Around 120 characters is the preferred upper bound.
 
 ### C# Conventions
