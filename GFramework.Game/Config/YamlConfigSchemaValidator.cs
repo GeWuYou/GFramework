@@ -51,7 +51,7 @@ internal static class YamlConfigSchemaValidator
         string schemaText;
         try
         {
-            schemaText = await File.ReadAllTextAsync(schemaPath, cancellationToken);
+            schemaText = await File.ReadAllTextAsync(schemaPath, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception exception)
         {

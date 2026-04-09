@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using GFramework.Core.Architectures;
 using GFramework.Core.Extensions;
@@ -78,7 +79,7 @@ public class ArchitectureConfigIntegrationTests
     ///     这样依赖配置的 utility 无需再自行阻塞等待配置系统完成启动。
     /// </summary>
     [Test]
-    public async Task ConfigModuleShould_Load_Config_Before_Dependent_Utility_Initialization()
+    public async Task ConfigModuleShouldLoadConfigBeforeDependentUtilityInitialization()
     {
         var rootPath = CreateTempConfigRoot();
         ConsumerArchitecture? architecture = null;
@@ -112,7 +113,7 @@ public class ArchitectureConfigIntegrationTests
     ///     避免共享内部 bootstrap 状态导致跨架构生命周期混淆。
     /// </summary>
     [Test]
-    public async Task GameConfigModuleShould_Reject_Reusing_The_Same_Module_Instance()
+    public async Task GameConfigModuleShouldRejectReusingTheSameModuleInstance()
     {
         var rootPath = CreateTempConfigRoot();
         ModuleOnlyArchitecture? firstArchitecture = null;
@@ -145,6 +146,99 @@ public class ArchitectureConfigIntegrationTests
             if (firstArchitecture is not null && !firstDestroyed)
             {
                 await firstArchitecture.DestroyAsync();
+            }
+
+            DeleteDirectoryIfExists(rootPath);
+        }
+    }
+
+    /// <summary>
+    ///     验证配置启动帮助器在同步阻塞且存在 <see cref="SynchronizationContext" /> 的线程上仍可完成初始化，
+    ///     避免架构生命周期钩子的同步桥接因为 await 捕获上下文而死锁。
+    /// </summary>
+    [Test]
+    public void GameConfigBootstrapShouldSupportSynchronousBridgeOnBlockingSynchronizationContext()
+    {
+        var rootPath = CreateTempConfigRoot();
+        GameConfigBootstrap? bootstrap = null;
+        try
+        {
+            bootstrap = CreateBootstrap(rootPath);
+
+            RunBlockingOnSynchronizationContext(
+                () => bootstrap.InitializeAsync(),
+                TimeSpan.FromSeconds(5));
+
+            var monsterTable = bootstrap.Registry.GetMonsterTable();
+            Assert.Multiple(() =>
+            {
+                Assert.That(bootstrap.IsInitialized, Is.True);
+                Assert.That(monsterTable.Get(1).Name, Is.EqualTo("Slime"));
+                Assert.That(monsterTable.FindByFaction("dungeon").Count(), Is.EqualTo(2));
+            });
+        }
+        finally
+        {
+            bootstrap?.Dispose();
+            DeleteDirectoryIfExists(rootPath);
+        }
+    }
+
+    /// <summary>
+    ///     验证模块在架构已经越过安装窗口时会拒绝安装，
+    ///     并且失败不会消耗模块实例，便于后续在新的架构上重试安装。
+    /// </summary>
+    [Test]
+    public async Task GameConfigModuleShouldRejectLateInstallationWithoutConsumingTheModuleInstance()
+    {
+        var rootPath = CreateTempConfigRoot();
+        ReadyOnlyArchitecture? readyArchitecture = null;
+        ModuleOnlyArchitecture? retryArchitecture = null;
+        var readyArchitectureInitialized = false;
+        var retryArchitectureInitialized = false;
+        try
+        {
+            var module = CreateModule(rootPath);
+
+            readyArchitecture = new ReadyOnlyArchitecture();
+            await readyArchitecture.InitializeAsync();
+            readyArchitectureInitialized = true;
+
+            var exception = Assert.Throws<InvalidOperationException>(() => readyArchitecture.InstallModule(module));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(exception, Is.Not.Null);
+                Assert.That(exception!.Message, Does.Contain("BeforeUtilityInit"));
+                Assert.That(readyArchitecture.Context.GetUtilities<IConfigRegistry>(), Is.Empty);
+                Assert.That(module.IsInitialized, Is.False);
+            });
+
+            await readyArchitecture.DestroyAsync();
+            readyArchitectureInitialized = false;
+            readyArchitecture = null;
+            GameContext.Clear();
+
+            retryArchitecture = new ModuleOnlyArchitecture(module);
+            await retryArchitecture.InitializeAsync();
+            retryArchitectureInitialized = true;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(module.IsInitialized, Is.True);
+                Assert.That(retryArchitecture.Registry.GetMonsterTable().Get(1).Name, Is.EqualTo("Slime"));
+            });
+        }
+        finally
+        {
+            if (retryArchitecture is not null && retryArchitectureInitialized)
+            {
+                await retryArchitecture.DestroyAsync();
+            }
+
+            if (readyArchitecture is not null && readyArchitectureInitialized)
+            {
+                await readyArchitecture.DestroyAsync();
             }
 
             DeleteDirectoryIfExists(rootPath);
@@ -188,23 +282,78 @@ public class ArchitectureConfigIntegrationTests
     }
 
     /// <summary>
-    ///     创建一个使用配置模块的架构实例。
+    ///     在不处理消息队列的同步上下文线程上执行阻塞等待，
+    ///     用于回归验证初始化异步链不会依赖原上下文恢复 continuation。
+    /// </summary>
+    /// <param name="action">要同步阻塞执行的异步操作。</param>
+    /// <param name="timeout">等待线程结束的超时时间。</param>
+    private static void RunBlockingOnSynchronizationContext(Func<Task> action, TimeSpan timeout)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        Exception? capturedException = null;
+        var workerThread = new Thread(() =>
+        {
+            SynchronizationContext.SetSynchronizationContext(new NonPumpingSynchronizationContext());
+
+            try
+            {
+                action().GetAwaiter().GetResult();
+            }
+            catch (Exception exception)
+            {
+                capturedException = exception;
+            }
+        })
+        {
+            IsBackground = true
+        };
+
+        workerThread.Start();
+        if (!workerThread.Join(timeout))
+        {
+            Assert.Fail("The blocking synchronization-context bridge did not complete within the expected timeout.");
+        }
+
+        if (capturedException != null)
+        {
+            throw new AssertionException(
+                $"The blocking synchronization-context bridge failed: {capturedException}");
+        }
+    }
+
+    private static GameConfigBootstrap CreateBootstrap(string configRoot)
+    {
+        return new GameConfigBootstrap(CreateBootstrapOptions(configRoot));
+    }
+
+    /// <summary>
+    ///     创建一个使用配置模块的模块实例。
     /// </summary>
     /// <param name="configRoot">测试配置根目录。</param>
     /// <returns>已配置的模块实例。</returns>
     private static GameConfigModule CreateModule(string configRoot)
     {
-        return new GameConfigModule(
-            new GameConfigBootstrapOptions
-            {
-                RootPath = configRoot,
-                ConfigureLoader = static loader =>
-                    loader.RegisterAllGeneratedConfigTables(
-                        new GeneratedConfigRegistrationOptions
-                        {
-                            IncludedConfigDomains = new[] { MonsterConfigBindings.ConfigDomain }
-                        })
-            });
+        return new GameConfigModule(CreateBootstrapOptions(configRoot));
+    }
+
+    /// <summary>
+    ///     创建供测试复用的配置启动选项。
+    /// </summary>
+    /// <param name="configRoot">测试配置根目录。</param>
+    /// <returns>可用于模块或直接 bootstrap 的启动选项。</returns>
+    private static GameConfigBootstrapOptions CreateBootstrapOptions(string configRoot)
+    {
+        return new GameConfigBootstrapOptions
+        {
+            RootPath = configRoot,
+            ConfigureLoader = static loader =>
+                loader.RegisterAllGeneratedConfigTables(
+                    new GeneratedConfigRegistrationOptions
+                    {
+                        IncludedConfigDomains = new[] { MonsterConfigBindings.ConfigDomain }
+                    })
+        };
     }
 
     private const string MonsterSchemaJson = @"{
@@ -284,12 +433,27 @@ public class ArchitectureConfigIntegrationTests
     {
         public GameConfigModule ConfigModule => configModule;
 
+        public IConfigRegistry Registry => configModule.Registry;
+
         /// <summary>
         ///     安装外部传入的配置模块。
         /// </summary>
         protected override void OnInitialize()
         {
             InstallModule(configModule);
+        }
+    }
+
+    /// <summary>
+    ///     仅用于把架构推进到 Ready 阶段的空壳架构。
+    /// </summary>
+    private sealed class ReadyOnlyArchitecture : Architecture
+    {
+        /// <summary>
+        ///     该测试架构不注册任何组件，仅验证模块的安装窗口约束。
+        /// </summary>
+        protected override void OnInitialize()
+        {
         }
     }
 
@@ -325,6 +489,22 @@ public class ArchitectureConfigIntegrationTests
             ObservedMonsterName = monsterTable.Get(1).Name;
             ObservedDungeonMonsterCount = monsterTable.FindByFaction("dungeon").Count();
             InitializedWithLoadedConfig = true;
+        }
+    }
+
+    /// <summary>
+    ///     模拟一个不会主动处理 <see cref="SynchronizationContext.Post" /> 回调的阻塞线程上下文。
+    ///     如果初始化链错误地捕获该上下文，continuation 会永久悬挂，从而暴露同步桥接死锁。
+    /// </summary>
+    private sealed class NonPumpingSynchronizationContext : SynchronizationContext
+    {
+        /// <summary>
+        ///     丢弃异步投递的 continuation，模拟被同步阻塞且未泵消息的宿主线程。
+        /// </summary>
+        /// <param name="d">要执行的回调。</param>
+        /// <param name="state">回调状态。</param>
+        public override void Post(SendOrPostCallback d, object? state)
+        {
         }
     }
 }

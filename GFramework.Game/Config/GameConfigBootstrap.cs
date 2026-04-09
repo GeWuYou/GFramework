@@ -1,3 +1,4 @@
+using System.Threading;
 using GFramework.Core.Abstractions.Events;
 using GFramework.Game.Abstractions.Config;
 
@@ -127,6 +128,11 @@ public sealed class GameConfigBootstrap : IDisposable
     ///     该方法只能成功调用一次，避免同一个生命周期对象在运行中被重新拼装为另一套加载约定。
     /// </summary>
     /// <param name="cancellationToken">取消令牌。</param>
+    /// <remarks>
+    ///     该入口会被 <see cref="GameConfigModule" /> 的同步生命周期钩子桥接调用，
+    ///     因此内部所有异步等待都必须使用 <c>ConfigureAwait(false)</c>，避免在 Unity 主线程、
+    ///     UI Dispatcher 或带 <see cref="SynchronizationContext" /> 的测试线程上发生同步阻塞死锁。
+    /// </remarks>
     /// <returns>表示异步初始化流程的任务。</returns>
     /// <exception cref="ObjectDisposedException">当当前实例已释放时抛出。</exception>
     /// <exception cref="InvalidOperationException">当当前实例已经初始化成功时抛出。</exception>
@@ -152,7 +158,7 @@ public sealed class GameConfigBootstrap : IDisposable
         {
             var loader = new YamlConfigLoader(RootPath);
             _options.ConfigureLoader!(loader);
-            await loader.LoadAsync(Registry, cancellationToken);
+            await loader.LoadAsync(Registry, cancellationToken).ConfigureAwait(false);
 
             if (_options.EnableHotReload)
             {

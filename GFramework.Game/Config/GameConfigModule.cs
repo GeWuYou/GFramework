@@ -20,6 +20,10 @@ namespace GFramework.Game.Config;
 /// </remarks>
 public sealed class GameConfigModule : IArchitectureModule
 {
+    private const int InstallStateNotInstalled = 0;
+    private const int InstallStateInstalling = 1;
+    private const int InstallStateInstalled = 2;
+
     private readonly GameConfigBootstrap _bootstrap;
     private readonly ModuleBootstrapLifetimeUtility _lifetimeUtility;
     private int _installState;
@@ -76,15 +80,31 @@ public sealed class GameConfigModule : IArchitectureModule
     {
         ArgumentNullException.ThrowIfNull(architecture);
 
-        if (Interlocked.Exchange(ref _installState, 1) != 0)
+        ValidateInstallationPhase(architecture);
+
+        if (Interlocked.CompareExchange(
+                ref _installState,
+                InstallStateInstalling,
+                InstallStateNotInstalled) != InstallStateNotInstalled)
         {
             throw new InvalidOperationException(
                 "The same GameConfigModule instance cannot be installed more than once.");
         }
 
-        architecture.RegisterUtility(Registry);
-        architecture.RegisterUtility(_lifetimeUtility);
-        architecture.RegisterLifecycleHook(new BootstrapInitializationHook(_bootstrap));
+        try
+        {
+            // 先注册生命周期钩子，确保任何“已错过 BeforeUtilityInit”的安装都会在暴露注册表之前失败，
+            // 避免架构看到永远不会完成首次加载的半安装配置入口。
+            architecture.RegisterLifecycleHook(new BootstrapInitializationHook(_bootstrap));
+            architecture.RegisterUtility(Registry);
+            architecture.RegisterUtility(_lifetimeUtility);
+            Volatile.Write(ref _installState, InstallStateInstalled);
+        }
+        catch
+        {
+            Volatile.Write(ref _installState, InstallStateNotInstalled);
+            throw;
+        }
     }
 
     /// <summary>
@@ -127,7 +147,30 @@ public sealed class GameConfigModule : IArchitectureModule
 
             // 架构生命周期钩子当前是同步接口，因此这里显式桥接到统一的 bootstrap 异步实现，
             // 让 Architecture 模式和独立运行时模式保持同一套加载、诊断和热重载启动语义。
-            bootstrap.InitializeAsync().GetAwaiter().GetResult();
+            bootstrap.InitializeAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+        }
+    }
+
+    /// <summary>
+    ///     验证模块仍处于允许接入的生命周期窗口。
+    ///     该模块依赖 <see cref="ArchitecturePhase.BeforeUtilityInit" /> 钩子完成首次加载，
+    ///     因此一旦架构已经离开 <see cref="ArchitecturePhase.None" />，继续安装只会错过首载时机。
+    /// </summary>
+    /// <param name="architecture">目标架构实例。</param>
+    /// <exception cref="InvalidOperationException">
+    ///     当目标架构已经开始组件初始化阶段时抛出。
+    /// </exception>
+    private static void ValidateInstallationPhase(IArchitecture architecture)
+    {
+        if (architecture is not Architecture concreteArchitecture)
+        {
+            return;
+        }
+
+        if (concreteArchitecture.CurrentPhase != ArchitecturePhase.None)
+        {
+            throw new InvalidOperationException(
+                "GameConfigModule must be installed before the architecture enters BeforeUtilityInit.");
         }
     }
 

@@ -69,7 +69,8 @@ public sealed class YamlConfigLoader : IConfigLoader
         foreach (var registration in _registrations)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            loadedTables.Add(await registration.LoadAsync(_rootPath, _deserializer, cancellationToken));
+            loadedTables.Add(
+                await registration.LoadAsync(_rootPath, _deserializer, cancellationToken).ConfigureAwait(false));
         }
 
         CrossTableReferenceValidator.Validate(registry, loadedTables);
@@ -442,7 +443,8 @@ public sealed class YamlConfigLoader : IConfigLoader
             if (!string.IsNullOrEmpty(SchemaRelativePath))
             {
                 var schemaPath = Path.Combine(rootPath, SchemaRelativePath);
-                schema = await YamlConfigSchemaValidator.LoadAsync(Name, schemaPath, cancellationToken);
+                schema = await YamlConfigSchemaValidator.LoadAsync(Name, schemaPath, cancellationToken)
+                    .ConfigureAwait(false);
                 referencedTableNames = schema.ReferencedTableNames;
             }
 
@@ -463,7 +465,7 @@ public sealed class YamlConfigLoader : IConfigLoader
                 string yaml;
                 try
                 {
-                    yaml = await File.ReadAllTextAsync(file, cancellationToken);
+                    yaml = await File.ReadAllTextAsync(file, cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception exception)
                 {
@@ -987,8 +989,8 @@ public sealed class YamlConfigLoader : IConfigLoader
             {
                 try
                 {
-                    await Task.Delay(_debounceDelay, reloadTokenSource.Token);
-                    await ReloadTableAsync(tableName, reloadTokenSource.Token);
+                    await Task.Delay(_debounceDelay, reloadTokenSource.Token).ConfigureAwait(false);
+                    await ReloadTableAsync(tableName, reloadTokenSource.Token).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException) when (reloadTokenSource.IsCancellationRequested)
                 {
@@ -1018,7 +1020,7 @@ public sealed class YamlConfigLoader : IConfigLoader
             }
 
             var reloadLock = _reloadLocks[tableName];
-            await reloadLock.WaitAsync(cancellationToken);
+            await reloadLock.WaitAsync(cancellationToken).ConfigureAwait(false);
 
             try
             {
@@ -1031,8 +1033,9 @@ public sealed class YamlConfigLoader : IConfigLoader
                 foreach (var affectedTableName in affectedTableNames)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    loadedTables.Add(await _registrations[affectedTableName].LoadAsync(_rootPath, _deserializer,
-                        cancellationToken));
+                    loadedTables.Add(
+                        await _registrations[affectedTableName].LoadAsync(_rootPath, _deserializer, cancellationToken)
+                            .ConfigureAwait(false));
                 }
 
                 CrossTableReferenceValidator.Validate(_registry, loadedTables);
