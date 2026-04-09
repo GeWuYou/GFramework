@@ -92,6 +92,7 @@ public class SchemaConfigGeneratorSnapshotTests
                                     "maximum": 999,
                                     "exclusiveMinimum": 0,
                                     "exclusiveMaximum": 1000,
+                                    "multipleOf": 5,
                                     "default": 10
                                   },
                                   "dropItems": {
@@ -99,6 +100,7 @@ public class SchemaConfigGeneratorSnapshotTests
                                     "type": "array",
                                     "minItems": 1,
                                     "maxItems": 3,
+                                    "uniqueItems": true,
                                     "items": {
                                       "type": "string",
                                       "minLength": 3,

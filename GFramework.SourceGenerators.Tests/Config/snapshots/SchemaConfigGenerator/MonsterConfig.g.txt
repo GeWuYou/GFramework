@@ -34,7 +34,7 @@ public sealed partial class MonsterConfig
     /// </summary>
     /// <remarks>
     ///     Schema property path: 'hp'.
-    ///     Constraints: minimum = 1, exclusiveMinimum = 0, maximum = 999, exclusiveMaximum = 1000.
+    ///     Constraints: minimum = 1, exclusiveMinimum = 0, maximum = 999, exclusiveMaximum = 1000, multipleOf = 5.
     ///     Generated default initializer: = 10;
     /// </remarks>
     public int? Hp { get; set; } = 10;
@@ -45,7 +45,7 @@ public sealed partial class MonsterConfig
     /// <remarks>
     ///     Schema property path: 'dropItems'.
     ///     Allowed values: potion, slime_gel.
-    ///     Constraints: minItems = 1, maxItems = 3.
+    ///     Constraints: minItems = 1, maxItems = 3, uniqueItems = true.
     ///     References config table: 'item'.
     ///     Item constraints: minLength = 3, maxLength = 12.
     ///     Generated default initializer: = new string[] { "potion" };

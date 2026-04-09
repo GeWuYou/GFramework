@@ -7,6 +7,8 @@ namespace GFramework.Game.Config;
 ///     提供 YAML 配置文件与 JSON Schema 之间的最小运行时校验能力。
 ///     该校验器与当前配置生成器、VS Code 工具支持的 schema 子集保持一致，
 ///     并通过递归遍历方式覆盖嵌套对象、对象数组、标量数组与深层 enum / 引用约束。
+///     当前共享子集额外支持 <c>multipleOf</c> 与 <c>uniqueItems</c>，
+///     让数值步进和数组去重规则在运行时与生成器 / 工具侧保持一致。
 /// </summary>
 internal static class YamlConfigSchemaValidator
 {
@@ -603,6 +605,8 @@ internal static class YamlConfigSchemaValidator
                 schemaNode.ItemNode,
                 references);
         }
+
+        ValidateArrayUniqueItemsConstraint(tableName, yamlPath, displayPath, sequenceNode, schemaNode);
     }
 
     /// <summary>
@@ -776,6 +780,7 @@ internal static class YamlConfigSchemaValidator
             TryParseNumericConstraint(tableName, schemaPath, propertyPath, element, nodeType, "exclusiveMinimum");
         var exclusiveMaximum =
             TryParseNumericConstraint(tableName, schemaPath, propertyPath, element, nodeType, "exclusiveMaximum");
+        var multipleOf = TryParseMultipleOfConstraint(tableName, schemaPath, propertyPath, element, nodeType);
         var minLength = TryParseLengthConstraint(tableName, schemaPath, propertyPath, element, nodeType, "minLength");
         var maxLength = TryParseLengthConstraint(tableName, schemaPath, propertyPath, element, nodeType, "maxLength");
         var pattern = TryParsePatternConstraint(tableName, schemaPath, propertyPath, element, nodeType);
@@ -813,6 +818,7 @@ internal static class YamlConfigSchemaValidator
             !maximum.HasValue &&
             !exclusiveMinimum.HasValue &&
             !exclusiveMaximum.HasValue &&
+            !multipleOf.HasValue &&
             !minLength.HasValue &&
             !maxLength.HasValue &&
             pattern is null)
@@ -825,6 +831,7 @@ internal static class YamlConfigSchemaValidator
             maximum,
             exclusiveMinimum,
             exclusiveMaximum,
+            multipleOf,
             minLength,
             maxLength,
             pattern,
@@ -851,6 +858,7 @@ internal static class YamlConfigSchemaValidator
     {
         var minItems = TryParseArrayLengthConstraint(tableName, schemaPath, propertyPath, element, "minItems");
         var maxItems = TryParseArrayLengthConstraint(tableName, schemaPath, propertyPath, element, "maxItems");
+        var uniqueItems = TryParseUniqueItemsConstraint(tableName, schemaPath, propertyPath, element);
 
         if (minItems.HasValue && maxItems.HasValue && minItems.Value > maxItems.Value)
         {
@@ -862,9 +870,9 @@ internal static class YamlConfigSchemaValidator
                 displayPath: GetDiagnosticPath(propertyPath));
         }
 
-        return !minItems.HasValue && !maxItems.HasValue
+        return !minItems.HasValue && !maxItems.HasValue && !uniqueItems
             ? null
-            : new YamlConfigArrayConstraints(minItems, maxItems);
+            : new YamlConfigArrayConstraints(minItems, maxItems, uniqueItems);
     }
 
     /// <summary>
@@ -915,6 +923,41 @@ internal static class YamlConfigSchemaValidator
         }
 
         return constraintValue;
+    }
+
+    /// <summary>
+    ///     读取 <c>multipleOf</c> 约束。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="schemaPath">Schema 文件路径。</param>
+    /// <param name="propertyPath">字段路径。</param>
+    /// <param name="element">Schema 节点。</param>
+    /// <param name="nodeType">字段类型。</param>
+    /// <returns>步进约束；未声明时返回空。</returns>
+    private static double? TryParseMultipleOfConstraint(
+        string tableName,
+        string schemaPath,
+        string propertyPath,
+        JsonElement element,
+        YamlConfigSchemaPropertyType nodeType)
+    {
+        var multipleOf = TryParseNumericConstraint(tableName, schemaPath, propertyPath, element, nodeType, "multipleOf");
+        if (!multipleOf.HasValue)
+        {
+            return null;
+        }
+
+        if (multipleOf.Value <= 0d)
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"Property '{propertyPath}' in schema file '{schemaPath}' must declare 'multipleOf' as a positive finite number.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(propertyPath));
+        }
+
+        return multipleOf;
     }
 
     /// <summary>
@@ -1060,6 +1103,39 @@ internal static class YamlConfigSchemaValidator
         }
 
         return constraintValue;
+    }
+
+    /// <summary>
+    ///     读取数组去重约束。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="schemaPath">Schema 文件路径。</param>
+    /// <param name="propertyPath">字段路径。</param>
+    /// <param name="element">Schema 节点。</param>
+    /// <returns>是否启用 <c>uniqueItems</c>。</returns>
+    private static bool TryParseUniqueItemsConstraint(
+        string tableName,
+        string schemaPath,
+        string propertyPath,
+        JsonElement element)
+    {
+        if (!element.TryGetProperty("uniqueItems", out var constraintElement))
+        {
+            return false;
+        }
+
+        if (constraintElement.ValueKind != JsonValueKind.True &&
+            constraintElement.ValueKind != JsonValueKind.False)
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"Property '{propertyPath}' in schema file '{schemaPath}' must declare 'uniqueItems' as a boolean.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(propertyPath));
+        }
+
+        return constraintElement.GetBoolean();
     }
 
     /// <summary>
@@ -1238,6 +1314,20 @@ internal static class YamlConfigSchemaValidator
                         $"Exclusive maximum allowed value: {constraints.ExclusiveMaximum.Value.ToString(CultureInfo.InvariantCulture)}.");
                 }
 
+                if (constraints.MultipleOf.HasValue &&
+                    !IsMultipleOf(numericValue, constraints.MultipleOf.Value))
+                {
+                    throw ConfigLoadExceptionFactory.Create(
+                        ConfigLoadFailureKind.ConstraintViolation,
+                        tableName,
+                        $"Property '{displayPath}' in config file '{yamlPath}' must be a multiple of {constraints.MultipleOf.Value.ToString(CultureInfo.InvariantCulture)}, but the current YAML scalar value is '{rawValue}'.",
+                        yamlPath: yamlPath,
+                        schemaPath: schemaNode.SchemaPathHint,
+                        displayPath: GetDiagnosticPath(displayPath),
+                        rawValue: rawValue,
+                        detail: $"Required numeric step: {constraints.MultipleOf.Value.ToString(CultureInfo.InvariantCulture)}.");
+                }
+
                 return;
 
             case YamlConfigSchemaPropertyType.String:
@@ -1343,6 +1433,159 @@ internal static class YamlConfigSchemaValidator
                 rawValue: itemCount.ToString(CultureInfo.InvariantCulture),
                 detail: $"Maximum item count: {constraints.MaxItems.Value}.");
         }
+    }
+
+    /// <summary>
+    ///     校验数组是否满足去重约束。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="yamlPath">YAML 文件路径。</param>
+    /// <param name="displayPath">字段路径。</param>
+    /// <param name="sequenceNode">实际数组节点。</param>
+    /// <param name="schemaNode">数组 schema 节点。</param>
+    private static void ValidateArrayUniqueItemsConstraint(
+        string tableName,
+        string yamlPath,
+        string displayPath,
+        YamlSequenceNode sequenceNode,
+        YamlConfigSchemaNode schemaNode)
+    {
+        var constraints = schemaNode.ArrayConstraints;
+        if (constraints is null ||
+            !constraints.UniqueItems ||
+            schemaNode.ItemNode is null)
+        {
+            return;
+        }
+
+        // The canonical item key uses schema-aware normalization so object key order,
+        // scalar quoting, and numeric formatting do not accidentally bypass uniqueItems.
+        Dictionary<string, int> seenItems = new(StringComparer.Ordinal);
+        for (var itemIndex = 0; itemIndex < sequenceNode.Children.Count; itemIndex++)
+        {
+            var itemNode = sequenceNode.Children[itemIndex];
+            var comparableValue = BuildComparableNodeValue(itemNode, schemaNode.ItemNode);
+            if (seenItems.TryGetValue(comparableValue, out var existingIndex))
+            {
+                var itemPath = $"{displayPath}[{itemIndex}]";
+                throw ConfigLoadExceptionFactory.Create(
+                    ConfigLoadFailureKind.ConstraintViolation,
+                    tableName,
+                    $"Property '{displayPath}' in config file '{yamlPath}' requires unique array items, but item '{itemPath}' duplicates '{displayPath}[{existingIndex}]'.",
+                    yamlPath: yamlPath,
+                    schemaPath: schemaNode.SchemaPathHint,
+                    displayPath: itemPath,
+                    rawValue: DescribeYamlNodeForDiagnostics(itemNode, schemaNode.ItemNode),
+                    detail: "The schema declares uniqueItems = true.");
+            }
+
+            seenItems.Add(comparableValue, itemIndex);
+        }
+    }
+
+    /// <summary>
+    ///     将一个已通过结构校验的 YAML 节点归一化为可比较字符串。
+    ///     该键仅用于 <c>uniqueItems</c>，因此要忽略对象字段顺序和字符串引号形式。
+    /// </summary>
+    /// <param name="node">YAML 节点。</param>
+    /// <param name="schemaNode">对应 schema 节点。</param>
+    /// <returns>可稳定比较的归一化键。</returns>
+    private static string BuildComparableNodeValue(YamlNode node, YamlConfigSchemaNode schemaNode)
+    {
+        switch (schemaNode.NodeType)
+        {
+            case YamlConfigSchemaPropertyType.Object:
+                if (node is not YamlMappingNode mappingNode)
+                {
+                    throw new InvalidOperationException("Validated object nodes must be YAML mappings.");
+                }
+
+                var objectEntries = new List<KeyValuePair<string, string>>(mappingNode.Children.Count);
+                foreach (var entry in mappingNode.Children)
+                {
+                    if (entry.Key is not YamlScalarNode keyNode ||
+                        keyNode.Value is null ||
+                        schemaNode.Properties is null ||
+                        !schemaNode.Properties.TryGetValue(keyNode.Value, out var propertySchema))
+                    {
+                        throw new InvalidOperationException("Validated object nodes must use declared scalar property names.");
+                    }
+
+                    objectEntries.Add(
+                        new KeyValuePair<string, string>(
+                            keyNode.Value,
+                            BuildComparableNodeValue(entry.Value, propertySchema)));
+                }
+
+                objectEntries.Sort(static (left, right) => string.CompareOrdinal(left.Key, right.Key));
+                return string.Join(
+                    "|",
+                    objectEntries.Select(static entry =>
+                        $"{entry.Key.Length.ToString(CultureInfo.InvariantCulture)}:{entry.Key}={entry.Value.Length.ToString(CultureInfo.InvariantCulture)}:{entry.Value}"));
+
+            case YamlConfigSchemaPropertyType.Array:
+                if (node is not YamlSequenceNode sequenceNode ||
+                    schemaNode.ItemNode is null)
+                {
+                    throw new InvalidOperationException("Validated array nodes must be YAML sequences with item schema.");
+                }
+
+                return "[" +
+                       string.Join(
+                           ",",
+                           sequenceNode.Children.Select(
+                               item => BuildComparableNodeValue(item, schemaNode.ItemNode))) +
+                       "]";
+
+            case YamlConfigSchemaPropertyType.Integer:
+            case YamlConfigSchemaPropertyType.Number:
+            case YamlConfigSchemaPropertyType.Boolean:
+            case YamlConfigSchemaPropertyType.String:
+                if (node is not YamlScalarNode scalarNode ||
+                    scalarNode.Value is null)
+                {
+                    throw new InvalidOperationException("Validated scalar nodes must be YAML scalars.");
+                }
+
+                var normalizedScalar = NormalizeScalarValue(schemaNode.NodeType, scalarNode.Value);
+                return $"{schemaNode.NodeType}:{normalizedScalar.Length.ToString(CultureInfo.InvariantCulture)}:{normalizedScalar}";
+
+            default:
+                throw new InvalidOperationException($"Unsupported schema node type '{schemaNode.NodeType}'.");
+        }
+    }
+
+    /// <summary>
+    ///     为唯一性诊断提取一个可读的节点摘要。
+    /// </summary>
+    /// <param name="node">YAML 节点。</param>
+    /// <param name="schemaNode">对应 schema 节点。</param>
+    /// <returns>诊断摘要。</returns>
+    private static string DescribeYamlNodeForDiagnostics(YamlNode node, YamlConfigSchemaNode schemaNode)
+    {
+        return schemaNode.NodeType switch
+        {
+            YamlConfigSchemaPropertyType.Object => "{...}",
+            YamlConfigSchemaPropertyType.Array => "[...]",
+            _ when node is YamlScalarNode scalarNode => scalarNode.Value ?? string.Empty,
+            _ => node.GetType().Name
+        };
+    }
+
+    /// <summary>
+    ///     判断数值是否满足 <c>multipleOf</c>。
+    ///     双精度浮点比较会保留一个与商值量级相关的微小容差，
+    ///     以避免运行时与 JS 工具侧在 0.1 / 0.01 这类十进制步进上出现伪失败。
+    /// </summary>
+    /// <param name="value">当前值。</param>
+    /// <param name="divisor">步进约束。</param>
+    /// <returns>是否满足整倍数关系。</returns>
+    private static bool IsMultipleOf(double value, double divisor)
+    {
+        var quotient = value / divisor;
+        var nearestInteger = Math.Round(quotient);
+        var tolerance = 1e-9 * Math.Max(1d, Math.Abs(quotient));
+        return Math.Abs(quotient - nearestInteger) <= tolerance;
     }
 
     /// <summary>
@@ -1758,7 +2001,7 @@ internal sealed class YamlConfigSchemaNode
 }
 
 /// <summary>
-///     表示一个标量节点上声明的数值范围或字符串长度约束。
+///     表示一个标量节点上声明的数值范围、步进或字符串长度约束。
 ///     该模型让运行时、热重载和跨文件诊断都能复用同一份最小约束信息。
 /// </summary>
 internal sealed class YamlConfigScalarConstraints
@@ -1770,6 +2013,7 @@ internal sealed class YamlConfigScalarConstraints
     /// <param name="maximum">最大值约束。</param>
     /// <param name="exclusiveMinimum">开区间最小值约束。</param>
     /// <param name="exclusiveMaximum">开区间最大值约束。</param>
+    /// <param name="multipleOf">数值步进约束。</param>
     /// <param name="minLength">最小长度约束。</param>
     /// <param name="maxLength">最大长度约束。</param>
     /// <param name="pattern">正则模式约束。</param>
@@ -1779,6 +2023,7 @@ internal sealed class YamlConfigScalarConstraints
         double? maximum,
         double? exclusiveMinimum,
         double? exclusiveMaximum,
+        double? multipleOf,
         int? minLength,
         int? maxLength,
         string? pattern,
@@ -1788,6 +2033,7 @@ internal sealed class YamlConfigScalarConstraints
         Maximum = maximum;
         ExclusiveMinimum = exclusiveMinimum;
         ExclusiveMaximum = exclusiveMaximum;
+        MultipleOf = multipleOf;
         MinLength = minLength;
         MaxLength = maxLength;
         Pattern = pattern;
@@ -1815,6 +2061,11 @@ internal sealed class YamlConfigScalarConstraints
     public double? ExclusiveMaximum { get; }
 
     /// <summary>
+    ///     获取数值步进约束。
+    /// </summary>
+    public double? MultipleOf { get; }
+
+    /// <summary>
     ///     获取最小长度约束。
     /// </summary>
     public int? MinLength { get; }
@@ -1836,7 +2087,7 @@ internal sealed class YamlConfigScalarConstraints
 }
 
 /// <summary>
-///     表示一个数组节点上声明的元素数量约束。
+///     表示一个数组节点上声明的元素数量或去重约束。
 ///     该模型与标量约束拆分保存，避免数组节点继续共享不适用的标量字段。
 /// </summary>
 internal sealed class YamlConfigArrayConstraints
@@ -1846,10 +2097,12 @@ internal sealed class YamlConfigArrayConstraints
     /// </summary>
     /// <param name="minItems">最小元素数量约束。</param>
     /// <param name="maxItems">最大元素数量约束。</param>
-    public YamlConfigArrayConstraints(int? minItems, int? maxItems)
+    /// <param name="uniqueItems">是否要求数组元素唯一。</param>
+    public YamlConfigArrayConstraints(int? minItems, int? maxItems, bool uniqueItems)
     {
         MinItems = minItems;
         MaxItems = maxItems;
+        UniqueItems = uniqueItems;
     }
 
     /// <summary>
@@ -1861,6 +2114,11 @@ internal sealed class YamlConfigArrayConstraints
     ///     获取最大元素数量约束。
     /// </summary>
     public int? MaxItems { get; }
+
+    /// <summary>
+    ///     获取是否要求数组元素唯一。
+    /// </summary>
+    public bool UniqueItems { get; }
 }
 
 /// <summary>

@@ -511,6 +511,54 @@ public class YamlConfigLoaderTests
     }
 
     /// <summary>
+    ///     验证数值不满足 <c>multipleOf</c> 时会在运行时被拒绝。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Throw_When_Number_Violates_MultipleOf()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            name: Slime
+            hp: 12
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "name", "hp"],
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "hp": {
+                  "type": "integer",
+                  "multipleOf": 5
+                }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterConfigStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Diagnostic.FailureKind, Is.EqualTo(ConfigLoadFailureKind.ConstraintViolation));
+            Assert.That(exception.Diagnostic.DisplayPath, Is.EqualTo("hp"));
+            Assert.That(exception.Diagnostic.RawValue, Is.EqualTo("12"));
+            Assert.That(exception.Message, Does.Contain("multiple of 5"));
+            Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
     ///     验证字符串最小长度与最大长度约束会在运行时被统一拒绝。
     /// </summary>
     [Test]
@@ -758,6 +806,60 @@ public class YamlConfigLoaderTests
             Assert.That(exception.Diagnostic.DisplayPath, Is.EqualTo("dropRates"));
             Assert.That(exception.Diagnostic.RawValue, Is.EqualTo("0"));
             Assert.That(exception.Message, Does.Contain("at least 1 items"));
+            Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
+    ///     验证数组声明 <c>uniqueItems</c> 后，重复元素会在运行时被拒绝。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Throw_When_Array_Violates_UniqueItems()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            name: Slime
+            dropRates:
+              - 5
+              - 10
+              - 5
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "name", "dropRates"],
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "dropRates": {
+                  "type": "array",
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterConfigIntegerArrayStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Diagnostic.FailureKind, Is.EqualTo(ConfigLoadFailureKind.ConstraintViolation));
+            Assert.That(exception.Diagnostic.DisplayPath, Is.EqualTo("dropRates[2]"));
+            Assert.That(exception.Diagnostic.RawValue, Is.EqualTo("5"));
+            Assert.That(exception.Message, Does.Contain("unique array items"));
             Assert.That(registry.Count, Is.EqualTo(0));
         });
     }
