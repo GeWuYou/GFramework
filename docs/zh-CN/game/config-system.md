@@ -12,7 +12,7 @@
 - JSON Schema 作为结构描述
 - 一对象一文件的目录组织
 - 运行时只读查询
-- Runtime / Generator / Tooling 共享支持 `minimum`、`maximum`、`exclusiveMinimum`、`exclusiveMaximum`、`multipleOf`、`minLength`、`maxLength`、`pattern`、`minItems`、`maxItems`、`uniqueItems`、`minProperties`、`maxProperties`
+- Runtime / Generator / Tooling 共享支持 `const`、`minimum`、`maximum`、`exclusiveMinimum`、`exclusiveMaximum`、`multipleOf`、`minLength`、`maxLength`、`pattern`、`minItems`、`maxItems`、`uniqueItems`、`minProperties`、`maxProperties`
 - Source Generator 生成配置类型、表包装、单表注册/访问辅助，以及项目级聚合注册目录
 - VS Code 插件提供配置浏览、raw 编辑、schema 打开、递归轻量校验和嵌套对象表单入口
 
@@ -658,6 +658,7 @@ var loader = new YamlConfigLoader("config-root")
 - 数组字段违反 `minItems` / `maxItems`
 - 数组字段违反 `uniqueItems`
 - 对象字段违反 `minProperties` / `maxProperties`
+- 标量 / 对象 / 数组字段违反 `const`
 - 标量 `enum` 不匹配
 - 标量数组元素 `enum` 不匹配
 - 通过 `x-gframework-ref-table` 声明的跨表引用缺失目标行
@@ -704,6 +705,7 @@ if (MonsterConfigBindings.References.TryGetByDisplayPath("dropItems", out var re
 - `title`：供 VS Code 插件表单和批量编辑入口显示更友好的字段标题
 - `description`：供表单提示、生成代码 XML 文档和接入说明复用
 - `default`：供生成类型属性初始值和工具提示复用
+- `const`：供运行时校验、VS Code 校验、表单 hint 和生成代码 XML 文档复用；对象会忽略字段顺序比较，数组保留元素顺序，标量按运行时同一套类型归一化规则比较
 - `enum`：供运行时校验、VS Code 校验和表单枚举选择复用
 - `minimum` / `maximum`：供运行时校验、VS Code 校验和生成代码 XML 文档复用
 - `exclusiveMinimum` / `exclusiveMaximum`：供运行时校验、VS Code 校验和生成代码 XML 文档复用
@@ -809,7 +811,7 @@ var hotReload = loader.EnableHotReload(
 - 对带 `x-gframework-ref-table` 的字段提供引用 schema / 配置域 / 引用文件跳转入口
 - 对空配置文件提供基于 schema 的示例 YAML 初始化入口
 - 对同一配置域内的多份 YAML 文件执行批量字段更新
-- 在表单入口中显示 `title / description / default / enum / ref-table / multipleOf / uniqueItems / minProperties / maxProperties` 元数据；批量编辑入口当前只暴露顶层可批量改写字段所需的基础信息
+- 在表单入口中显示 `title / description / default / const / enum / ref-table / multipleOf / uniqueItems / minProperties / maxProperties` 元数据；批量编辑入口当前只暴露顶层可批量改写字段所需的基础信息
 
 当前表单入口适合编辑嵌套对象中的标量字段、标量数组，以及对象数组中的对象项。
 

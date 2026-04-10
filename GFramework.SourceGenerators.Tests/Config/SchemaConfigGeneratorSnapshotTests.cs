@@ -90,6 +90,7 @@ public class SchemaConfigGeneratorSnapshotTests
                                   },
                                   "hp": {
                                     "type": "integer",
+                                    "const": 10,
                                     "minimum": 1,
                                     "maximum": 999,
                                     "exclusiveMinimum": 0,

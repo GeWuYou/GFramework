@@ -1,4 +1,5 @@
 const ValidationMessageKeys = Object.freeze({
+    constMismatch: "validation.constMismatch",
     enumMismatch: "validation.enumMismatch",
     exclusiveMaximumViolation: "validation.exclusiveMaximumViolation",
     exclusiveMinimumViolation: "validation.exclusiveMinimumViolation",

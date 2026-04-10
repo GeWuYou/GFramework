@@ -65,6 +65,142 @@ test("parseSchemaContent should capture nested objects and object-array metadata
     assert.equal(schema.properties.phases.items.properties.wave.type, "integer");
 });
 
+test("parseSchemaContent should capture const metadata for scalar, object, array, integer, and boolean nodes", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "rarity": {
+              "type": "string",
+              "const": "common"
+            },
+            "reward": {
+              "type": "object",
+              "properties": {
+                "gold": { "type": "integer" },
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "const": {
+                "gold": 100,
+                "items": [
+                  "potion",
+                  "sword"
+                ]
+              }
+            },
+            "tags": {
+              "type": "array",
+              "const": ["daily", "quest"],
+              "items": {
+                "type": "string"
+              }
+            },
+            "maxAttempts": {
+              "type": "integer",
+              "const": 3
+            },
+            "allowRetry": {
+              "type": "boolean",
+              "const": true
+            }
+          }
+        }
+    `);
+    const reorderedSchema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "reward": {
+              "type": "object",
+              "properties": {
+                "gold": { "type": "integer" },
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "const": {
+                "items": [
+                  "potion",
+                  "sword"
+                ],
+                "gold": 100
+              }
+            }
+          }
+        }
+    `);
+
+    assert.equal(schema.properties.rarity.constValue, "common");
+    assert.equal(schema.properties.rarity.constDisplayValue, "\"common\"");
+    assert.ok(schema.properties.rarity.constComparableValue);
+
+    assert.equal(schema.properties.reward.constValue, "{\"gold\":100,\"items\":[\"potion\",\"sword\"]}");
+    assert.equal(schema.properties.reward.constDisplayValue, "{\"gold\":100,\"items\":[\"potion\",\"sword\"]}");
+    assert.equal(
+        schema.properties.reward.constComparableValue,
+        reorderedSchema.properties.reward.constComparableValue);
+
+    assert.equal(schema.properties.tags.constValue, "[\"daily\",\"quest\"]");
+    assert.equal(schema.properties.tags.constDisplayValue, "[\"daily\",\"quest\"]");
+    assert.ok(schema.properties.tags.constComparableValue);
+
+    assert.equal(schema.properties.maxAttempts.constValue, "3");
+    assert.equal(schema.properties.maxAttempts.constDisplayValue, "3");
+    assert.equal(schema.properties.maxAttempts.constComparableValue, "integer:1:3");
+
+    assert.equal(schema.properties.allowRetry.constValue, "true");
+    assert.equal(schema.properties.allowRetry.constDisplayValue, "true");
+    assert.equal(schema.properties.allowRetry.constComparableValue, "boolean:4:true");
+});
+
+test("parseSchemaContent should preserve empty-string const raw and display metadata", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "const": ""
+            }
+          }
+        }
+    `);
+
+    assert.equal(schema.properties.name.constValue, "");
+    assert.equal(schema.properties.name.constDisplayValue, "\"\"");
+});
+
+test("parseSchemaContent should build object const comparable keys with ordinal property ordering", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "payload": {
+              "type": "object",
+              "properties": {
+                "z": { "type": "integer" },
+                "ä": { "type": "integer" }
+              },
+              "const": {
+                "z": 1,
+                "ä": 2
+              }
+            }
+          }
+        }
+    `);
+
+    assert.match(schema.properties.payload.constComparableValue, /^1:z=/u);
+});
+
 test("parseTopLevelYaml should parse nested mappings and object arrays", () => {
     const yaml = parseTopLevelYaml(`
 id: 1
@@ -188,6 +324,257 @@ reward:
 
     assert.equal(diagnostics.length, 1);
     assert.match(diagnostics[0].message, /coin, gem/u);
+});
+
+test("validateParsedConfig should report scalar const mismatches", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "rarity": {
+              "type": "string",
+              "const": "common"
+            }
+          }
+        }
+    `);
+    const yaml = parseTopLevelYaml(`
+rarity: rare
+`);
+
+    const diagnostics = validateParsedConfig(schema, yaml);
+
+    assert.equal(diagnostics.length, 1);
+    assert.match(diagnostics[0].message, /constant value "common"|固定值 "common"/u);
+});
+
+test("validateParsedConfig should accept scalar, object, array, integer, and boolean const matches", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "rarity": {
+              "type": "string",
+              "const": "common"
+            },
+            "reward": {
+              "type": "object",
+              "properties": {
+                "gold": { "type": "integer" },
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "const": {
+                "gold": 100,
+                "items": [
+                  "potion",
+                  "sword"
+                ]
+              }
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "const": [
+                "daily",
+                "quest"
+              ]
+            },
+            "maxAttempts": {
+              "type": "integer",
+              "const": 3
+            },
+            "allowRetry": {
+              "type": "boolean",
+              "const": true
+            }
+          }
+        }
+    `);
+    const yaml = parseTopLevelYaml(`
+rarity: common
+reward:
+  gold: 100
+  items:
+    - potion
+    - sword
+tags:
+  - daily
+  - quest
+maxAttempts: 3
+allowRetry: true
+`);
+
+    assert.deepEqual(validateParsedConfig(schema, yaml), []);
+});
+
+test("validateParsedConfig should normalize object const comparisons but keep array const order", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "reward": {
+              "type": "object",
+              "properties": {
+                "gold": { "type": "integer" },
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "const": {
+                "gold": 100,
+                "items": [
+                  "potion",
+                  "sword"
+                ]
+              }
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "const": [
+                "daily",
+                "quest"
+              ]
+            }
+          }
+        }
+    `);
+    const normalizedYaml = parseTopLevelYaml(`
+reward:
+  items:
+    - potion
+    - sword
+  gold: 100
+tags:
+  - daily
+  - quest
+`);
+    const arrayOrderMismatchYaml = parseTopLevelYaml(`
+reward:
+  items:
+    - potion
+    - sword
+  gold: 100
+tags:
+  - quest
+  - daily
+`);
+
+    assert.deepEqual(validateParsedConfig(schema, normalizedYaml), []);
+
+    const diagnostics = validateParsedConfig(schema, arrayOrderMismatchYaml);
+
+    assert.equal(diagnostics.length, 1);
+    assert.match(diagnostics[0].message, /tags/u);
+    assert.match(diagnostics[0].message, /constant value \["daily","quest"\]|固定值 \["daily","quest"\]/u);
+});
+
+test("validateParsedConfig should report object and array const mismatches", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "reward": {
+              "type": "object",
+              "properties": {
+                "gold": { "type": "integer" },
+                "currency": { "type": "string" }
+              },
+              "const": {
+                "gold": 10,
+                "currency": "coin"
+              }
+            },
+            "dropItemIds": {
+              "type": "array",
+              "const": ["potion", "gem"],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+    `);
+    const yaml = parseTopLevelYaml(`
+reward:
+  gold: 10
+  currency: gem
+dropItemIds:
+  - gem
+  - potion
+`);
+
+    const diagnostics = validateParsedConfig(schema, yaml);
+
+    assert.equal(diagnostics.length, 2);
+    assert.match(diagnostics[0].message, /reward/u);
+    assert.match(diagnostics[1].message, /dropItemIds/u);
+});
+
+test("validateParsedConfig should cover integer and boolean const scalar normalization and mismatches", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "maxAttempts": {
+              "type": "integer",
+              "const": 3
+            },
+            "allowRetry": {
+              "type": "boolean",
+              "const": true
+            }
+          }
+        }
+    `);
+    const normalizedYaml = parseTopLevelYaml(`
+maxAttempts: "3"
+allowRetry: "true"
+`);
+    const integerMismatchYaml = parseTopLevelYaml(`
+maxAttempts: 3.5
+allowRetry: true
+`);
+    const booleanConstMismatchYaml = parseTopLevelYaml(`
+maxAttempts: 3
+allowRetry: false
+`);
+    const booleanTypeMismatchYaml = parseTopLevelYaml(`
+maxAttempts: 3
+allowRetry: 0
+`);
+
+    assert.deepEqual(validateParsedConfig(schema, normalizedYaml), []);
+
+    const integerDiagnostics = validateParsedConfig(schema, integerMismatchYaml);
+
+    assert.equal(integerDiagnostics.length, 1);
+    assert.match(integerDiagnostics[0].message, /maxAttempts/u);
+    assert.match(integerDiagnostics[0].message, /integer|整数/u);
+
+    const booleanConstDiagnostics = validateParsedConfig(schema, booleanConstMismatchYaml);
+
+    assert.equal(booleanConstDiagnostics.length, 1);
+    assert.match(booleanConstDiagnostics[0].message, /allowRetry/u);
+    assert.match(booleanConstDiagnostics[0].message, /constant value true|固定值 true/u);
+
+    const booleanTypeDiagnostics = validateParsedConfig(schema, booleanTypeMismatchYaml);
+
+    assert.equal(booleanTypeDiagnostics.length, 1);
+    assert.match(booleanTypeDiagnostics[0].message, /allowRetry/u);
+    assert.match(booleanTypeDiagnostics[0].message, /boolean|布尔/u);
 });
 
 test("validateParsedConfig should report numeric range and string length mismatches", () => {
@@ -1080,6 +1467,62 @@ test("getEditableSchemaFields should keep batch editing limited to top-level sca
             required: false
         }
     ]);
+});
+
+test("getEditableSchemaFields should sort keys with ordinal semantics", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "a": { "type": "string" },
+            "A": { "type": "string" },
+            "ä": { "type": "string" },
+            "z": { "type": "string" }
+          }
+        }
+    `);
+
+    assert.deepEqual(
+        getEditableSchemaFields(schema).map((field) => field.key),
+        ["A", "a", "z", "ä"]);
+});
+
+test("createSampleConfigYaml should preserve empty-string scalar const values", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "const": ""
+            }
+          }
+        }
+    `);
+
+    const sample = createSampleConfigYaml(schema);
+
+    assert.match(sample, /^name: ""$/mu);
+});
+
+test("createSampleConfigYaml should prefer scalar const values over defaults", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "rarity": {
+              "type": "string",
+              "const": "common",
+              "default": "rare"
+            }
+          }
+        }
+    `);
+
+    const sample = createSampleConfigYaml(schema);
+
+    assert.match(sample, /^rarity: common$/mu);
+    assert.ok(!/^rarity: rare$/mu.test(sample));
 });
 
 test("parseBatchArrayValue should keep comma-separated batch editing behavior", () => {

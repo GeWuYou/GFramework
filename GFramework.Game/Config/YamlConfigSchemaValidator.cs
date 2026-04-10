@@ -322,11 +322,13 @@ internal static class YamlConfigSchemaValidator
                 property.Value);
         }
 
-        return YamlConfigSchemaNode.CreateObject(
+        var objectNode = YamlConfigSchemaNode.CreateObject(
             properties,
             requiredProperties,
             ParseObjectConstraints(tableName, schemaPath, propertyPath, element),
             schemaPath);
+        return objectNode.WithConstantValue(
+            ParseConstantValue(tableName, schemaPath, propertyPath, element, objectNode));
     }
 
     /// <summary>
@@ -386,10 +388,12 @@ internal static class YamlConfigSchemaValidator
                 displayPath: GetDiagnosticPath(propertyPath));
         }
 
-        return YamlConfigSchemaNode.CreateArray(
+        var arrayNode = YamlConfigSchemaNode.CreateArray(
             itemNode,
             ParseArrayConstraints(tableName, schemaPath, propertyPath, element),
             schemaPath);
+        return arrayNode.WithConstantValue(
+            ParseConstantValue(tableName, schemaPath, propertyPath, element, arrayNode));
     }
 
     /// <summary>
@@ -411,12 +415,14 @@ internal static class YamlConfigSchemaValidator
         string? referenceTableName)
     {
         EnsureReferenceKeywordIsSupported(tableName, schemaPath, propertyPath, nodeType, referenceTableName);
-        return YamlConfigSchemaNode.CreateScalar(
+        var scalarNode = YamlConfigSchemaNode.CreateScalar(
             nodeType,
             referenceTableName,
             ParseEnumValues(tableName, schemaPath, propertyPath, element, nodeType, "enum"),
             ParseScalarConstraints(tableName, schemaPath, propertyPath, element, nodeType),
             schemaPath);
+        return scalarNode.WithConstantValue(
+            ParseConstantValue(tableName, schemaPath, propertyPath, element, scalarNode));
     }
 
     /// <summary>
@@ -565,6 +571,8 @@ internal static class YamlConfigSchemaValidator
         {
             ValidateObjectConstraints(tableName, yamlPath, displayPath, seenProperties.Count, schemaNode);
         }
+
+        ValidateConstantValue(tableName, yamlPath, displayPath, mappingNode, schemaNode);
     }
 
     /// <summary>
@@ -678,6 +686,7 @@ internal static class YamlConfigSchemaValidator
         }
 
         ValidateArrayUniqueItemsConstraint(tableName, yamlPath, displayPath, sequenceNode, schemaNode);
+        ValidateConstantValue(tableName, yamlPath, displayPath, sequenceNode, schemaNode);
     }
 
     /// <summary>
@@ -770,6 +779,8 @@ internal static class YamlConfigSchemaValidator
             ValidateScalarConstraints(tableName, yamlPath, displayPath, value, normalizedValue, schemaNode);
         }
 
+        ValidateConstantValue(tableName, yamlPath, displayPath, scalarNode, schemaNode);
+
         if (schemaNode.ReferenceTableName != null &&
             references is not null)
         {
@@ -821,10 +832,248 @@ internal static class YamlConfigSchemaValidator
         foreach (var item in enumElement.EnumerateArray())
         {
             allowedValues.Add(
-                NormalizeEnumValue(tableName, schemaPath, propertyPath, keywordName, expectedType, item));
+                NormalizeKeywordScalarValue(tableName, schemaPath, propertyPath, keywordName, expectedType, item));
         }
 
         return allowedValues;
+    }
+
+    /// <summary>
+    ///     解析 <c>const</c>，并把 schema 常量预归一化成与运行时 YAML 相同的稳定比较键。
+    ///     这样运行时只需要复用现有递归比较逻辑，而不必在每次加载时重新解释 JSON 常量。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="schemaPath">Schema 文件路径。</param>
+    /// <param name="propertyPath">字段路径。</param>
+    /// <param name="element">Schema 节点。</param>
+    /// <param name="schemaNode">已解析的 schema 节点。</param>
+    /// <returns>常量约束模型；未声明时返回空。</returns>
+    private static YamlConfigConstantValue? ParseConstantValue(
+        string tableName,
+        string schemaPath,
+        string propertyPath,
+        JsonElement element,
+        YamlConfigSchemaNode schemaNode)
+    {
+        if (!element.TryGetProperty("const", out var constantElement))
+        {
+            return null;
+        }
+
+        return new YamlConfigConstantValue(
+            BuildComparableConstantValue(tableName, schemaPath, propertyPath, "const", constantElement, schemaNode),
+            constantElement.GetRawText());
+    }
+
+    /// <summary>
+    ///     把 schema 中的 <c>const</c> JSON 值转换成与 YAML 运行时一致的比较键。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="schemaPath">Schema 文件路径。</param>
+    /// <param name="propertyPath">字段路径。</param>
+    /// <param name="keywordName">关键字名称。</param>
+    /// <param name="element">常量 JSON 值。</param>
+    /// <param name="schemaNode">目标 schema 节点。</param>
+    /// <returns>可稳定比较的归一化键。</returns>
+    private static string BuildComparableConstantValue(
+        string tableName,
+        string schemaPath,
+        string propertyPath,
+        string keywordName,
+        JsonElement element,
+        YamlConfigSchemaNode schemaNode)
+    {
+        return schemaNode.NodeType switch
+        {
+            YamlConfigSchemaPropertyType.Object => BuildComparableConstantObjectValue(
+                tableName,
+                schemaPath,
+                propertyPath,
+                keywordName,
+                element,
+                schemaNode),
+            YamlConfigSchemaPropertyType.Array => BuildComparableConstantArrayValue(
+                tableName,
+                schemaPath,
+                propertyPath,
+                keywordName,
+                element,
+                schemaNode),
+            YamlConfigSchemaPropertyType.Integer => BuildComparableConstantScalarValue(
+                tableName,
+                schemaPath,
+                propertyPath,
+                keywordName,
+                element,
+                schemaNode),
+            YamlConfigSchemaPropertyType.Number => BuildComparableConstantScalarValue(
+                tableName,
+                schemaPath,
+                propertyPath,
+                keywordName,
+                element,
+                schemaNode),
+            YamlConfigSchemaPropertyType.Boolean => BuildComparableConstantScalarValue(
+                tableName,
+                schemaPath,
+                propertyPath,
+                keywordName,
+                element,
+                schemaNode),
+            YamlConfigSchemaPropertyType.String => BuildComparableConstantScalarValue(
+                tableName,
+                schemaPath,
+                propertyPath,
+                keywordName,
+                element,
+                schemaNode),
+            _ => throw new InvalidOperationException($"Unsupported schema node type '{schemaNode.NodeType}'.")
+        };
+    }
+
+    /// <summary>
+    ///     构建对象常量的稳定比较键。
+    ///     这里同样忽略 JSON 对象字段顺序，避免 schema 文本格式影响常量比较结果。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="schemaPath">Schema 文件路径。</param>
+    /// <param name="propertyPath">字段路径。</param>
+    /// <param name="keywordName">关键字名称。</param>
+    /// <param name="element">常量 JSON 值。</param>
+    /// <param name="schemaNode">对象 schema 节点。</param>
+    /// <returns>对象常量的可比较键。</returns>
+    private static string BuildComparableConstantObjectValue(
+        string tableName,
+        string schemaPath,
+        string propertyPath,
+        string keywordName,
+        JsonElement element,
+        YamlConfigSchemaNode schemaNode)
+    {
+        if (element.ValueKind != JsonValueKind.Object)
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"Property '{propertyPath}' in schema file '{schemaPath}' uses '{keywordName}', but only object values are compatible with schema type '{GetTypeName(schemaNode.NodeType)}'.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(propertyPath));
+        }
+
+        var properties = schemaNode.Properties
+            ?? throw new InvalidOperationException("Object schema nodes must expose declared properties.");
+        var objectEntries = new List<KeyValuePair<string, string>>();
+        foreach (var property in element.EnumerateObject())
+        {
+            if (!properties.TryGetValue(property.Name, out var propertySchema))
+            {
+                var childPath = CombineSchemaPath(propertyPath, property.Name);
+                throw ConfigLoadExceptionFactory.Create(
+                    ConfigLoadFailureKind.SchemaUnsupported,
+                    tableName,
+                    $"Property '{propertyPath}' in schema file '{schemaPath}' uses '{keywordName}', but nested property '{childPath}' is not declared in the object schema.",
+                    schemaPath: schemaPath,
+                    displayPath: GetDiagnosticPath(childPath));
+            }
+
+            objectEntries.Add(
+                new KeyValuePair<string, string>(
+                    property.Name,
+                    BuildComparableConstantValue(
+                        tableName,
+                        schemaPath,
+                        CombineSchemaPath(propertyPath, property.Name),
+                        keywordName,
+                        property.Value,
+                        propertySchema)));
+        }
+
+        objectEntries.Sort(static (left, right) => string.CompareOrdinal(left.Key, right.Key));
+        return string.Join(
+            "|",
+            objectEntries.Select(static entry =>
+                $"{entry.Key.Length.ToString(CultureInfo.InvariantCulture)}:{entry.Key}={entry.Value.Length.ToString(CultureInfo.InvariantCulture)}:{entry.Value}"));
+    }
+
+    /// <summary>
+    ///     构建数组常量的稳定比较键。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="schemaPath">Schema 文件路径。</param>
+    /// <param name="propertyPath">字段路径。</param>
+    /// <param name="keywordName">关键字名称。</param>
+    /// <param name="element">常量 JSON 值。</param>
+    /// <param name="schemaNode">数组 schema 节点。</param>
+    /// <returns>数组常量的可比较键。</returns>
+    private static string BuildComparableConstantArrayValue(
+        string tableName,
+        string schemaPath,
+        string propertyPath,
+        string keywordName,
+        JsonElement element,
+        YamlConfigSchemaNode schemaNode)
+    {
+        if (element.ValueKind != JsonValueKind.Array)
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"Property '{propertyPath}' in schema file '{schemaPath}' uses '{keywordName}', but only array values are compatible with schema type '{GetTypeName(schemaNode.NodeType)}'.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(propertyPath));
+        }
+
+        if (schemaNode.ItemNode is null)
+        {
+            throw new InvalidOperationException("Array schema nodes must expose their item schema.");
+        }
+
+        return "[" +
+               string.Join(
+                   ",",
+                   element.EnumerateArray().Select(
+                       (item, index) =>
+                       {
+                           var comparableValue = BuildComparableConstantValue(
+                               tableName,
+                               schemaPath,
+                               $"{propertyPath}[{index}]",
+                               keywordName,
+                               item,
+                               schemaNode.ItemNode);
+                           return
+                               $"{comparableValue.Length.ToString(CultureInfo.InvariantCulture)}:{comparableValue}";
+                       })) +
+               "]";
+    }
+
+    /// <summary>
+    ///     构建标量常量的稳定比较键。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="schemaPath">Schema 文件路径。</param>
+    /// <param name="propertyPath">字段路径。</param>
+    /// <param name="keywordName">关键字名称。</param>
+    /// <param name="element">常量 JSON 值。</param>
+    /// <param name="schemaNode">标量 schema 节点。</param>
+    /// <returns>标量常量的可比较键。</returns>
+    private static string BuildComparableConstantScalarValue(
+        string tableName,
+        string schemaPath,
+        string propertyPath,
+        string keywordName,
+        JsonElement element,
+        YamlConfigSchemaNode schemaNode)
+    {
+        var normalizedValue = NormalizeKeywordScalarValue(
+            tableName,
+            schemaPath,
+            propertyPath,
+            keywordName,
+            schemaNode.NodeType,
+            element);
+        return
+            $"{schemaNode.NodeType}:{normalizedValue.Length.ToString(CultureInfo.InvariantCulture)}:{normalizedValue}";
     }
 
     /// <summary>
@@ -1428,6 +1677,48 @@ internal static class YamlConfigSchemaValidator
     }
 
     /// <summary>
+    ///     校验节点值是否满足 <c>const</c> 约束。
+    ///     该检查复用与 <c>uniqueItems</c> 相同的稳定比较键，保证对象字段顺序、数字字面量和布尔大小写不会造成伪差异。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="yamlPath">YAML 文件路径。</param>
+    /// <param name="displayPath">字段路径；根节点时为空。</param>
+    /// <param name="node">当前 YAML 节点。</param>
+    /// <param name="schemaNode">对应的 schema 节点。</param>
+    private static void ValidateConstantValue(
+        string tableName,
+        string yamlPath,
+        string displayPath,
+        YamlNode node,
+        YamlConfigSchemaNode schemaNode)
+    {
+        var constantValue = schemaNode.ConstantValue;
+        if (constantValue is null)
+        {
+            return;
+        }
+
+        var comparableValue = BuildComparableNodeValue(node, schemaNode);
+        if (string.Equals(comparableValue, constantValue.ComparableValue, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var subject = string.IsNullOrWhiteSpace(displayPath)
+            ? "Root object"
+            : $"Property '{displayPath}'";
+        throw ConfigLoadExceptionFactory.Create(
+            ConfigLoadFailureKind.ConstraintViolation,
+            tableName,
+            $"{subject} in config file '{yamlPath}' must match constant value {constantValue.DisplayValue}.",
+            yamlPath: yamlPath,
+            schemaPath: schemaNode.SchemaPathHint,
+            displayPath: GetDiagnosticPath(displayPath),
+            rawValue: DescribeYamlNodeForDiagnostics(node, schemaNode),
+            detail: $"Required constant value: {constantValue.DisplayValue}.");
+    }
+
+    /// <summary>
     ///     根据已读取的数值关键字创建数值约束对象。
     ///     该分组让调用方不必再维护一个超过 Sonar 默认阈值的长参数构造函数。
     /// </summary>
@@ -1784,7 +2075,8 @@ internal static class YamlConfigSchemaValidator
 
     /// <summary>
     ///     将一个已通过结构校验的 YAML 节点归一化为可比较字符串。
-    ///     该键仅用于 <c>uniqueItems</c>，因此要忽略对象字段顺序和字符串引号形式。
+    ///     该键同时服务于 <c>uniqueItems</c> 与 <c>const</c>，
+    ///     因此要忽略对象字段顺序和字符串引号形式。
     /// </summary>
     /// <param name="node">YAML 节点。</param>
     /// <param name="schemaNode">对应 schema 节点。</param>
@@ -2147,16 +2439,16 @@ internal static class YamlConfigSchemaValidator
     }
 
     /// <summary>
-    ///     将 schema 中的 enum 单值归一化到运行时比较字符串。
+    ///     将 schema 关键字中的标量值归一化到运行时比较字符串。
     /// </summary>
     /// <param name="tableName">所属配置表名称。</param>
     /// <param name="schemaPath">Schema 文件路径。</param>
     /// <param name="propertyPath">字段路径。</param>
     /// <param name="keywordName">关键字名称。</param>
     /// <param name="expectedType">期望的标量类型。</param>
-    /// <param name="item">当前枚举值节点。</param>
+    /// <param name="item">当前关键字值节点。</param>
     /// <returns>归一化后的字符串值。</returns>
-    private static string NormalizeEnumValue(
+    private static string NormalizeKeywordScalarValue(
         string tableName,
         string schemaPath,
         string propertyPath,
@@ -2376,7 +2668,8 @@ internal sealed class YamlConfigSchemaNode
                 allowedValues: null,
                 constraints: null,
                 arrayConstraints: null,
-                objectConstraints),
+                objectConstraints,
+                constantValue: null),
             schemaPathHint);
     }
 
@@ -2400,7 +2693,8 @@ internal sealed class YamlConfigSchemaNode
                 allowedValues: null,
                 constraints: null,
                 arrayConstraints,
-                objectConstraints: null),
+                objectConstraints: null,
+                constantValue: null),
             schemaPathHint);
     }
 
@@ -2428,7 +2722,8 @@ internal sealed class YamlConfigSchemaNode
                 allowedValues,
                 constraints,
                 arrayConstraints: null,
-                objectConstraints: null),
+                objectConstraints: null,
+                constantValue: null),
             schemaPathHint);
     }
 
@@ -2453,6 +2748,7 @@ internal sealed class YamlConfigSchemaNode
         Constraints = validation.Constraints;
         ArrayConstraints = validation.ArrayConstraints;
         ObjectConstraints = validation.ObjectConstraints;
+        ConstantValue = validation.ConstantValue;
         SchemaPathHint = schemaPathHint;
     }
 
@@ -2502,6 +2798,11 @@ internal sealed class YamlConfigSchemaNode
     public YamlConfigArrayConstraints? ArrayConstraints { get; }
 
     /// <summary>
+    ///     获取节点常量约束；未声明 <c>const</c> 时返回空。
+    /// </summary>
+    public YamlConfigConstantValue? ConstantValue { get; }
+
+    /// <summary>
     ///     获取用于诊断显示的 schema 路径提示。
     ///     当前节点本身不记录独立路径，因此对象校验会回退到所属根 schema 路径。
     /// </summary>
@@ -2519,6 +2820,20 @@ internal sealed class YamlConfigSchemaNode
             NodeType,
             _children,
             _validation.WithReferenceTable(referenceTableName),
+            SchemaPathHint);
+    }
+
+    /// <summary>
+    ///     基于当前节点复制一个只替换常量约束的新节点。
+    /// </summary>
+    /// <param name="constantValue">新的常量约束。</param>
+    /// <returns>复制后的节点。</returns>
+    public YamlConfigSchemaNode WithConstantValue(YamlConfigConstantValue? constantValue)
+    {
+        return new YamlConfigSchemaNode(
+            NodeType,
+            _children,
+            _validation.WithConstantValue(constantValue),
             SchemaPathHint);
     }
 
@@ -2550,20 +2865,23 @@ internal sealed class YamlConfigSchemaNode
             allowedValues: null,
             constraints: null,
             arrayConstraints: null,
-            objectConstraints: null);
+            objectConstraints: null,
+            constantValue: null);
 
         public NodeValidation(
             string? referenceTableName,
             IReadOnlyCollection<string>? allowedValues,
             YamlConfigScalarConstraints? constraints,
             YamlConfigArrayConstraints? arrayConstraints,
-            YamlConfigObjectConstraints? objectConstraints)
+            YamlConfigObjectConstraints? objectConstraints,
+            YamlConfigConstantValue? constantValue)
         {
             ReferenceTableName = referenceTableName;
             AllowedValues = allowedValues;
             Constraints = constraints;
             ArrayConstraints = arrayConstraints;
             ObjectConstraints = objectConstraints;
+            ConstantValue = constantValue;
         }
 
         public string? ReferenceTableName { get; }
@@ -2576,12 +2894,51 @@ internal sealed class YamlConfigSchemaNode
 
         public YamlConfigObjectConstraints? ObjectConstraints { get; }
 
+        public YamlConfigConstantValue? ConstantValue { get; }
+
         public NodeValidation WithReferenceTable(string referenceTableName)
         {
             return new NodeValidation(referenceTableName, AllowedValues, Constraints, ArrayConstraints,
-                ObjectConstraints);
+                ObjectConstraints, ConstantValue);
+        }
+
+        public NodeValidation WithConstantValue(YamlConfigConstantValue? constantValue)
+        {
+            return new NodeValidation(ReferenceTableName, AllowedValues, Constraints, ArrayConstraints,
+                ObjectConstraints, constantValue);
         }
     }
+}
+
+/// <summary>
+///     表示一个节点上声明的 <c>const</c> 约束。
+///     该模型同时保留稳定比较键与原始 JSON 文本，分别供运行时匹配和诊断输出复用。
+/// </summary>
+internal sealed class YamlConfigConstantValue
+{
+    /// <summary>
+    ///     初始化常量约束模型。
+    /// </summary>
+    /// <param name="comparableValue">用于与 YAML 节点比较的稳定键。</param>
+    /// <param name="displayValue">用于诊断输出的原始常量文本。</param>
+    public YamlConfigConstantValue(string comparableValue, string displayValue)
+    {
+        ArgumentNullException.ThrowIfNull(comparableValue);
+        ArgumentException.ThrowIfNullOrWhiteSpace(displayValue);
+
+        ComparableValue = comparableValue;
+        DisplayValue = displayValue;
+    }
+
+    /// <summary>
+    ///     获取用于运行时比较的稳定键。
+    /// </summary>
+    public string ComparableValue { get; }
+
+    /// <summary>
+    ///     获取用于诊断输出的原始 JSON 常量文本。
+    /// </summary>
+    public string DisplayValue { get; }
 }
 
 /// <summary>

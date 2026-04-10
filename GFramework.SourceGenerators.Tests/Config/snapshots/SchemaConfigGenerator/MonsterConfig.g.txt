@@ -37,7 +37,7 @@ public sealed partial class MonsterConfig
     /// </summary>
     /// <remarks>
     ///     Schema property path: 'hp'.
-    ///     Constraints: minimum = 1, exclusiveMinimum = 0, maximum = 999, exclusiveMaximum = 1000, multipleOf = 5.
+    ///     Constraints: const = 10, minimum = 1, exclusiveMinimum = 0, maximum = 999, exclusiveMaximum = 1000, multipleOf = 5.
     ///     Generated default initializer: = 10;
     /// </remarks>
     public int? Hp { get; set; } = 10;

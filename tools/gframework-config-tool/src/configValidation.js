@@ -11,6 +11,22 @@ const NumberScalarPattern = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/u;
 const BooleanScalarPattern = /^(true|false)$/iu;
 
 /**
+ * Compare two strings using the same UTF-16 code-unit ordering as C#'s
+ * string.CompareOrdinal so tooling stays aligned with the runtime.
+ *
+ * @param {string} left Left operand.
+ * @param {string} right Right operand.
+ * @returns {number} Negative when left < right, positive when left > right, zero when equal.
+ */
+function compareStringsOrdinal(left, right) {
+    if (left === right) {
+        return 0;
+    }
+
+    return left < right ? -1 : 1;
+}
+
+/**
  * Parse the repository's minimal config-schema subset into a recursive tree.
  * The parser intentionally mirrors the same high-level contract used by the
  * runtime validator and source generator so tooling diagnostics stay aligned.
@@ -89,7 +105,7 @@ function getEditableSchemaFields(schemaInfo) {
         }
     }
 
-    return editableFields.sort((left, right) => left.key.localeCompare(right.key));
+    return editableFields.sort((left, right) => compareStringsOrdinal(left.key, right.key));
 }
 
 /**
@@ -462,6 +478,84 @@ function formatSchemaDefaultValue(value) {
 }
 
 /**
+ * Convert a schema const value into the raw scalar text used by sample YAML
+ * generation and scalar editors.
+ *
+ * @param {SchemaNode} schemaNode Parsed schema node.
+ * @param {unknown} value Raw schema const value.
+ * @returns {string | undefined} Raw scalar text, or a JSON literal fallback.
+ */
+function formatSchemaConstEditableValue(schemaNode, value) {
+    if (value === undefined) {
+        return undefined;
+    }
+
+    if (schemaNode.type === "string" && typeof value === "string") {
+        return value;
+    }
+
+    if ((schemaNode.type === "integer" || schemaNode.type === "number") &&
+        typeof value === "number" &&
+        Number.isFinite(value)) {
+        return String(value);
+    }
+
+    if (schemaNode.type === "boolean" && typeof value === "boolean") {
+        return String(value);
+    }
+
+    return formatSchemaConstDisplayValue(value);
+}
+
+/**
+ * Convert a schema const value into an exact JSON-style literal for diagnostics
+ * and metadata hints.
+ *
+ * @param {unknown} value Raw schema const value.
+ * @returns {string | undefined} Display string for the const value.
+ */
+function formatSchemaConstDisplayValue(value) {
+    if (value === undefined) {
+        return undefined;
+    }
+
+    if (typeof value === "string") {
+        return JSON.stringify(value);
+    }
+
+    if (typeof value === "number" || typeof value === "boolean") {
+        return String(value);
+    }
+
+    if (value === null || Array.isArray(value) || typeof value === "object") {
+        return JSON.stringify(value);
+    }
+
+    return undefined;
+}
+
+/**
+ * Attach parsed const metadata to one schema node.
+ *
+ * @param {SchemaNode} schemaNode Parsed schema node.
+ * @param {unknown} rawConst Raw schema const value.
+ * @param {string} displayPath Logical property path.
+ * @returns {SchemaNode} Schema node with optional const metadata.
+ */
+function applyConstMetadata(schemaNode, rawConst, displayPath) {
+    if (rawConst === undefined) {
+        return schemaNode;
+    }
+
+    return {
+        ...schemaNode,
+        constValue: formatSchemaConstEditableValue(schemaNode, rawConst),
+        constDisplayValue: formatSchemaConstDisplayValue(rawConst),
+        constComparableValue: buildSchemaConstComparableValue(schemaNode, rawConst, displayPath)
+    };
+}
+
+/**
  * Test one scalar value against one compiled schema pattern.
  *
  * @param {string} scalarValue Scalar value from YAML.
@@ -474,6 +568,131 @@ function matchesSchemaPattern(scalarValue, patternRegex) {
     }
 
     return patternRegex.test(scalarValue);
+}
+
+/**
+ * Build one schema-normalized comparable key for a const value declared in
+ * JSON Schema so tooling comparisons align with runtime comparisons.
+ *
+ * @param {SchemaNode} schemaNode Parsed schema node.
+ * @param {unknown} rawConst Raw schema const value.
+ * @param {string} displayPath Logical property path.
+ * @returns {string} Comparable key.
+ */
+function buildSchemaConstComparableValue(schemaNode, rawConst, displayPath) {
+    if (schemaNode.type === "object") {
+        return buildSchemaConstObjectComparableValue(schemaNode, rawConst, displayPath);
+    }
+
+    if (schemaNode.type === "array") {
+        return buildSchemaConstArrayComparableValue(schemaNode, rawConst, displayPath);
+    }
+
+    return buildSchemaConstScalarComparableValue(schemaNode, rawConst, displayPath);
+}
+
+/**
+ * Build one comparable key for an object-shaped const value.
+ *
+ * @param {Extract<SchemaNode, {type: "object"}>} schemaNode Parsed object schema node.
+ * @param {unknown} rawConst Raw schema const value.
+ * @param {string} displayPath Logical property path.
+ * @returns {string} Comparable key.
+ */
+function buildSchemaConstObjectComparableValue(schemaNode, rawConst, displayPath) {
+    if (!rawConst || typeof rawConst !== "object" || Array.isArray(rawConst)) {
+        throw new Error(`Schema property '${displayPath}' declares 'const', but the value is not compatible with schema type 'object'.`);
+    }
+
+    const objectEntries = [];
+    for (const [key, value] of Object.entries(rawConst)) {
+        if (!Object.prototype.hasOwnProperty.call(schemaNode.properties, key)) {
+            const childPath = joinPropertyPath(displayPath, key);
+            throw new Error(`Schema property '${displayPath}' declares 'const', but nested property '${childPath}' is not declared in the object schema.`);
+        }
+
+        const childComparableValue = buildSchemaConstComparableValue(
+            schemaNode.properties[key],
+            value,
+            joinPropertyPath(displayPath, key));
+        objectEntries.push([key, childComparableValue]);
+    }
+
+    objectEntries.sort((left, right) => compareStringsOrdinal(left[0], right[0]));
+    return objectEntries.map(([key, value]) => `${key.length}:${key}=${value.length}:${value}`).join("|");
+}
+
+/**
+ * Build one comparable key for an array-shaped const value.
+ *
+ * @param {Extract<SchemaNode, {type: "array"}>} schemaNode Parsed array schema node.
+ * @param {unknown} rawConst Raw schema const value.
+ * @param {string} displayPath Logical property path.
+ * @returns {string} Comparable key.
+ */
+function buildSchemaConstArrayComparableValue(schemaNode, rawConst, displayPath) {
+    if (!Array.isArray(rawConst)) {
+        throw new Error(`Schema property '${displayPath}' declares 'const', but the value is not compatible with schema type 'array'.`);
+    }
+
+    return `[${rawConst.map((item, index) => {
+        const comparableValue = buildSchemaConstComparableValue(
+            schemaNode.items,
+            item,
+            joinArrayIndexPath(displayPath, index));
+        return `${comparableValue.length}:${comparableValue}`;
+    }).join(",")}]`;
+}
+
+/**
+ * Build one comparable key for a scalar const value.
+ *
+ * @param {Extract<SchemaNode, {type: "string" | "integer" | "number" | "boolean"}>} schemaNode Parsed scalar schema node.
+ * @param {unknown} rawConst Raw schema const value.
+ * @param {string} displayPath Logical property path.
+ * @returns {string} Comparable key.
+ */
+function buildSchemaConstScalarComparableValue(schemaNode, rawConst, displayPath) {
+    const normalizedValue = normalizeSchemaConstScalarValue(schemaNode.type, rawConst, displayPath);
+    return `${schemaNode.type}:${normalizedValue.length}:${normalizedValue}`;
+}
+
+/**
+ * Normalize one scalar const value into the same comparison format used by
+ * parsed YAML scalar nodes.
+ *
+ * @param {"string" | "integer" | "number" | "boolean"} schemaType Scalar schema type.
+ * @param {unknown} rawConst Raw schema const value.
+ * @param {string} displayPath Logical property path.
+ * @returns {string} Normalized scalar value.
+ */
+function normalizeSchemaConstScalarValue(schemaType, rawConst, displayPath) {
+    switch (schemaType) {
+        case "integer":
+            if (typeof rawConst === "number" && Number.isInteger(rawConst)) {
+                return String(rawConst);
+            }
+            break;
+        case "number":
+            if (typeof rawConst === "number" && Number.isFinite(rawConst)) {
+                return String(rawConst);
+            }
+            break;
+        case "boolean":
+            if (typeof rawConst === "boolean") {
+                return String(rawConst);
+            }
+            break;
+        case "string":
+            if (typeof rawConst === "string") {
+                return rawConst;
+            }
+            break;
+        default:
+            break;
+    }
+
+    throw new Error(`Schema property '${displayPath}' declares 'const', but the value is not compatible with schema type '${schemaType}'.`);
 }
 
 /**
@@ -658,7 +877,7 @@ function parseSchemaNode(rawNode, displayPath) {
             properties[key] = parseSchemaNode(propertyNode, joinPropertyPath(displayPath, key));
         }
 
-        return {
+        return applyConstMetadata({
             type: "object",
             displayPath,
             required,
@@ -668,12 +887,12 @@ function parseSchemaNode(rawNode, displayPath) {
             title: metadata.title,
             description: metadata.description,
             defaultValue: metadata.defaultValue
-        };
+        }, value.const, displayPath);
     }
 
     if (type === "array") {
         const itemNode = parseSchemaNode(value.items || {}, joinArrayTemplatePath(displayPath));
-        return {
+        return applyConstMetadata({
             type: "array",
             displayPath,
             title: metadata.title,
@@ -684,10 +903,10 @@ function parseSchemaNode(rawNode, displayPath) {
             uniqueItems: metadata.uniqueItems === true,
             refTable: metadata.refTable,
             items: itemNode
-        };
+        }, value.const, displayPath);
     }
 
-    return {
+    return applyConstMetadata({
         type,
         displayPath,
         title: metadata.title,
@@ -722,7 +941,7 @@ function parseSchemaNode(rawNode, displayPath) {
             : undefined,
         enumValues: normalizeSchemaEnumValues(value.enum),
         refTable: metadata.refTable
-    };
+    }, value.const, displayPath);
 }
 
 /**
@@ -808,6 +1027,8 @@ function validateNode(schemaNode, yamlNode, displayPath, diagnostics, localizer)
                 seenItems.set(comparableValue, index);
             }
         }
+
+        validateConstComparableValue(schemaNode, yamlNode, displayPath, diagnostics, localizer);
 
         return;
     }
@@ -945,6 +1166,8 @@ function validateNode(schemaNode, yamlNode, displayPath, diagnostics, localizer)
             })
         });
     }
+
+    validateConstComparableValue(schemaNode, yamlNode, displayPath, diagnostics, localizer);
 }
 
 /**
@@ -1024,6 +1247,37 @@ function validateObjectNode(schemaNode, yamlNode, displayPath, diagnostics, loca
             })
         });
     }
+
+    validateConstComparableValue(schemaNode, yamlNode, displayPath, diagnostics, localizer);
+}
+
+/**
+ * Validate one parsed YAML node against one normalized const comparable value.
+ * The helper reuses the same comparable-key logic as uniqueItems so array order
+ * and scalar normalization stay aligned with runtime behavior.
+ *
+ * @param {SchemaNode} schemaNode Schema node.
+ * @param {YamlNode} yamlNode YAML node.
+ * @param {string} displayPath Current logical path.
+ * @param {Array<{severity: "error" | "warning", message: string}>} diagnostics Diagnostic sink.
+ * @param {{isChinese?: boolean} | undefined} localizer Optional runtime localizer.
+ */
+function validateConstComparableValue(schemaNode, yamlNode, displayPath, diagnostics, localizer) {
+    if (typeof schemaNode.constComparableValue !== "string") {
+        return;
+    }
+
+    if (buildComparableNodeValue(schemaNode, yamlNode) === schemaNode.constComparableValue) {
+        return;
+    }
+
+    diagnostics.push({
+        severity: "error",
+        message: localizeValidationMessage(ValidationMessageKeys.constMismatch, localizer, {
+            displayPath,
+            value: schemaNode.constDisplayValue ?? schemaNode.constValue
+        })
+    });
 }
 
 /**
@@ -1045,7 +1299,7 @@ function buildComparableNodeValue(schemaNode, yamlNode) {
 
         return Object.keys(schemaNode.properties)
             .filter((key) => yamlNode.map.has(key))
-            .sort((left, right) => left.localeCompare(right))
+            .sort(compareStringsOrdinal)
             .map((key) => {
                 const valueKey = buildComparableNodeValue(schemaNode.properties[key], yamlNode.map.get(key));
                 return `${key.length}:${key}=${valueKey.length}:${valueKey}`;
@@ -1120,6 +1374,8 @@ function localizeValidationMessage(key, localizer, params) {
 
     if (localizer && localizer.isChinese) {
         switch (key) {
+            case ValidationMessageKeys.constMismatch:
+                return `属性“${params.displayPath}”必须匹配固定值 ${params.value}。`;
             case ValidationMessageKeys.expectedArray:
                 return `属性“${params.displayPath}”应为数组。`;
             case ValidationMessageKeys.expectedScalarShape:
@@ -1160,6 +1416,8 @@ function localizeValidationMessage(key, localizer, params) {
     }
 
     switch (key) {
+        case ValidationMessageKeys.constMismatch:
+            return `Property '${params.displayPath}' must match constant value ${params.value}.`;
         case ValidationMessageKeys.expectedArray:
             return `Property '${params.displayPath}' is expected to be an array.`;
         case ValidationMessageKeys.expectedScalarShape:
@@ -1666,6 +1924,10 @@ function collectSchemaComments(schemaNode, currentPath, commentMap) {
  * @returns {string} Sample scalar value.
  */
 function getSampleScalarValue(schemaNode) {
+    if (schemaNode.constValue !== undefined) {
+        return schemaNode.constValue;
+    }
+
     if (schemaNode.defaultValue !== undefined) {
         return schemaNode.defaultValue;
     }
@@ -1890,13 +2152,19 @@ module.exports = {
  *   maxProperties?: number,
  *   title?: string,
  *   description?: string,
- *   defaultValue?: string
+ *   defaultValue?: string,
+ *   constValue?: string,
+ *   constDisplayValue?: string,
+ *   constComparableValue?: string
  * } | {
  *   type: "array",
  *   displayPath: string,
  *   title?: string,
  *   description?: string,
  *   defaultValue?: string,
+ *   constValue?: string,
+ *   constDisplayValue?: string,
+ *   constComparableValue?: string,
  *   minItems?: number,
  *   maxItems?: number,
  *   uniqueItems?: boolean,
@@ -1908,6 +2176,9 @@ module.exports = {
  *   title?: string,
  *   description?: string,
  *   defaultValue?: string,
+ *   constValue?: string,
+ *   constDisplayValue?: string,
+ *   constComparableValue?: string,
  *   minimum?: number,
  *   exclusiveMinimum?: number,
  *   maximum?: number,

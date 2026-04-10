@@ -364,6 +364,52 @@ public class YamlConfigLoaderTests
     }
 
     /// <summary>
+    ///     验证标量 <c>const</c> 限制会在运行时被拒绝。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Throw_When_Scalar_Value_Does_Not_Match_Schema_Const()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            name: Slime
+            rarity: rare
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "name", "rarity"],
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "rarity": {
+                  "type": "string",
+                  "const": "common"
+                }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterConfigStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Message, Does.Contain("constant value"));
+            Assert.That(exception.Message, Does.Contain("\"common\""));
+            Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
     ///     验证数值最小值与最大值约束会在运行时被统一拒绝。
     /// </summary>
     [Test]
@@ -1199,6 +1245,58 @@ public class YamlConfigLoaderTests
     }
 
     /// <summary>
+    ///     验证数组 <c>const</c> 限制会保留元素顺序并按完整序列比较。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Throw_When_Array_Value_Does_Not_Match_Schema_Const()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            name: Slime
+            dropItemIds:
+              - gem
+              - potion
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "name"],
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "dropItemIds": {
+                  "type": "array",
+                  "const": ["potion", "gem"],
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterDropArrayConfigStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Message, Does.Contain("dropItemIds"));
+            Assert.That(exception.Message, Does.Contain("potion"));
+            Assert.That(exception.Message, Does.Contain("gem"));
+            Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
     ///     验证嵌套对象中的必填字段同样会按 schema 在运行时生效。
     /// </summary>
     [Test]
@@ -1245,6 +1343,110 @@ public class YamlConfigLoaderTests
             Assert.That(exception, Is.Not.Null);
             Assert.That(exception!.Message, Does.Contain("reward.currency"));
             Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
+    ///     验证嵌套对象 <c>const</c> 限制会按完整对象内容比较。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Throw_When_Nested_Object_Does_Not_Match_Schema_Const()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            name: Slime
+            reward:
+              gold: 10
+              currency: gem
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "name", "reward"],
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "reward": {
+                  "type": "object",
+                  "properties": {
+                    "gold": { "type": "integer" },
+                    "currency": { "type": "string" }
+                  },
+                  "const": {
+                    "gold": 10,
+                    "currency": "coin"
+                  }
+                }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterNestedConfigStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Message, Does.Contain("reward"));
+            Assert.That(exception.Message, Does.Contain("\"gold\""));
+            Assert.That(exception.Message, Does.Contain("\"currency\""));
+            Assert.That(exception.Message, Does.Contain("\"coin\""));
+            Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
+    ///     验证空对象 <c>const</c> 约束会被视为合法 schema，并与空 YAML 映射正确匹配。
+    /// </summary>
+    [Test]
+    public async Task LoadAsync_Should_Accept_Empty_Object_Schema_Const()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            name: Slime
+            reward: {}
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "name", "reward"],
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "reward": {
+                  "type": "object",
+                  "properties": {},
+                  "const": {}
+                }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterNestedConfigStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        await loader.LoadAsync(registry);
+
+        var table = registry.GetTable<int, MonsterNestedConfigStub>("monster");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(table.Count, Is.EqualTo(1));
+            Assert.That(table.Get(1).Name, Is.EqualTo("Slime"));
         });
     }
 

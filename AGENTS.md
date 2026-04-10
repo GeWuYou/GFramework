@@ -14,6 +14,10 @@ All AI agents and contributors must follow these rules when writing, reviewing, 
   `git.exe`) instead of the Linux `git` binary.
 - If a Git command in WSL fails with a worktree-style “not a git repository” path translation error, rerun it with the
   Windows Git executable and treat that as the repository-default Git path for the rest of the task.
+- If the shell does not currently resolve `git.exe` to the host Windows Git installation, prepend that installation's
+  command directory to `PATH` and reset shell command hashing for the current session before continuing.
+- After resolving the host Windows Git path, prefer an explicit session-local binding for subsequent commands so the
+  shell does not fall back to Linux `/usr/bin/git` later in the same WSL session.
 
 ## Commenting Rules (MUST)
 

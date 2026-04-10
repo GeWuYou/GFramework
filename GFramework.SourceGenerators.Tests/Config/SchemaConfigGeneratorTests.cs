@@ -47,6 +47,51 @@ public class SchemaConfigGeneratorTests
     }
 
     /// <summary>
+    ///     验证空字符串 <c>const</c> 不会在生成 XML 文档时被当成“缺失约束”跳过。
+    /// </summary>
+    [Test]
+    public void Run_Should_Preserve_Empty_String_Const_In_Generated_Documentation()
+    {
+        const string source = """
+                              namespace TestApp
+                              {
+                                  public sealed class Dummy
+                                  {
+                                  }
+                              }
+                              """;
+
+        const string schema = """
+                              {
+                                "type": "object",
+                                "required": ["id", "name"],
+                                "properties": {
+                                  "id": { "type": "integer" },
+                                  "name": {
+                                    "type": "string",
+                                    "const": ""
+                                  }
+                                }
+                              }
+                              """;
+
+        var result = SchemaGeneratorTestDriver.Run(
+            source,
+            ("monster.schema.json", schema));
+
+        var generatedSources = result.Results
+            .Single()
+            .GeneratedSources
+            .ToDictionary(
+                static sourceResult => sourceResult.HintName,
+                static sourceResult => sourceResult.SourceText.ToString(),
+                StringComparer.Ordinal);
+
+        Assert.That(result.Results.Single().Diagnostics, Is.Empty);
+        Assert.That(generatedSources["MonsterConfig.g.cs"], Does.Contain("Constraints: const = \"\"."));
+    }
+
+    /// <summary>
     ///     验证深层不支持的数组嵌套会带着完整字段路径产生命名明确的诊断。
     /// </summary>
     [Test]

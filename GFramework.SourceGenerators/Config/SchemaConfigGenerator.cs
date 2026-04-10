@@ -5,7 +5,7 @@ namespace GFramework.SourceGenerators.Config;
 /// <summary>
 ///     根据 AdditionalFiles 中的 JSON schema 生成配置类型和配置表包装。
 ///     当前实现聚焦 AI-First 配置系统共享的最小 schema 子集，
-///     支持嵌套对象、对象数组、标量数组，以及可映射的 default / enum / ref-table 元数据。
+///     支持嵌套对象、对象数组、标量数组，以及可映射的 default / enum / const / ref-table 元数据。
 ///     当前共享子集也会把 <c>multipleOf</c>、<c>uniqueItems</c>、
 ///     <c>minProperties</c> 与 <c>maxProperties</c> 写入生成代码文档，
 ///     让消费者能直接在强类型 API 上看到运行时生效的约束。
@@ -2451,6 +2451,12 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     {
         var parts = new List<string>();
 
+        var constDocumentation = TryBuildConstDocumentation(element, schemaType);
+        if (constDocumentation is not null)
+        {
+            parts.Add($"const = {constDocumentation}");
+        }
+
         if ((schemaType == "integer" || schemaType == "number") &&
             TryGetFiniteNumber(element, "minimum", out var minimum))
         {
@@ -2533,6 +2539,36 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         }
 
         return parts.Count > 0 ? string.Join(", ", parts) : null;
+    }
+
+    /// <summary>
+    ///     将 const 值整理成 XML 文档可读字符串。
+    /// </summary>
+    /// <param name="element">Schema 节点。</param>
+    /// <param name="schemaType">当前 schema 类型。</param>
+    /// <returns>格式化后的常量说明。</returns>
+    private static string? TryBuildConstDocumentation(JsonElement element, string schemaType)
+    {
+        if (!element.TryGetProperty("const", out var constElement))
+        {
+            return null;
+        }
+
+        return schemaType switch
+        {
+            "integer" when constElement.ValueKind == JsonValueKind.Number && constElement.TryGetInt64(out var intValue) =>
+                intValue.ToString(CultureInfo.InvariantCulture),
+            "number" when constElement.ValueKind == JsonValueKind.Number =>
+                constElement.GetDouble().ToString(CultureInfo.InvariantCulture),
+            "boolean" when constElement.ValueKind == JsonValueKind.True => "true",
+            "boolean" when constElement.ValueKind == JsonValueKind.False => "false",
+            // Preserve the exact JSON literal so empty strings and other string-shaped constants
+            // remain unambiguous in generated XML documentation.
+            "string" when constElement.ValueKind == JsonValueKind.String => constElement.GetRawText(),
+            "array" when constElement.ValueKind == JsonValueKind.Array => constElement.GetRawText(),
+            "object" when constElement.ValueKind == JsonValueKind.Object => constElement.GetRawText(),
+            _ => null
+        };
     }
 
     /// <summary>
