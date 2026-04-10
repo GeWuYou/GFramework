@@ -48,7 +48,7 @@ public sealed partial class MonsterConfig
     /// <remarks>
     ///     Schema property path: 'dropItems'.
     ///     Allowed values: potion, slime_gel.
-    ///     Constraints: minItems = 1, maxItems = 3, uniqueItems = true.
+    ///     Constraints: minItems = 1, maxItems = 3, uniqueItems = true, contains = string (const = "potion"), minContains = 1, maxContains = 2.
     ///     References config table: 'item'.
     ///     Item constraints: minLength = 3, maxLength = 12.
     ///     Generated default initializer: = new string[] { "potion" };

@@ -7,6 +7,7 @@ namespace GFramework.SourceGenerators.Config;
 ///     当前实现聚焦 AI-First 配置系统共享的最小 schema 子集，
 ///     支持嵌套对象、对象数组、标量数组，以及可映射的 default / enum / const / ref-table 元数据。
 ///     当前共享子集也会把 <c>multipleOf</c>、<c>uniqueItems</c>、
+///     <c>contains</c> / <c>minContains</c> / <c>maxContains</c>、
 ///     <c>minProperties</c> 与 <c>maxProperties</c> 写入生成代码文档，
 ///     让消费者能直接在强类型 API 上看到运行时生效的约束。
 /// </summary>
@@ -2442,7 +2443,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     }
 
     /// <summary>
-    ///     将 shared schema 子集中的范围、步进、长度、数组数量 / 去重与对象属性数量约束整理成 XML 文档可读字符串。
+    ///     将 shared schema 子集中的范围、步进、长度、数组数量 / 去重 / contains 与对象属性数量约束整理成 XML 文档可读字符串。
     /// </summary>
     /// <param name="element">Schema 节点。</param>
     /// <param name="schemaType">标量类型。</param>
@@ -2526,6 +2527,27 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             parts.Add("uniqueItems = true");
         }
 
+        if (schemaType == "array")
+        {
+            var containsDocumentation = TryBuildContainsDocumentation(element);
+            if (containsDocumentation is not null)
+            {
+                parts.Add($"contains = {containsDocumentation}");
+            }
+        }
+
+        if (schemaType == "array" &&
+            TryGetNonNegativeInt32(element, "minContains", out var minContains))
+        {
+            parts.Add($"minContains = {minContains.ToString(CultureInfo.InvariantCulture)}");
+        }
+
+        if (schemaType == "array" &&
+            TryGetNonNegativeInt32(element, "maxContains", out var maxContains))
+        {
+            parts.Add($"maxContains = {maxContains.ToString(CultureInfo.InvariantCulture)}");
+        }
+
         if (schemaType == "object" &&
             TryGetNonNegativeInt32(element, "minProperties", out var minProperties))
         {
@@ -2539,6 +2561,67 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         }
 
         return parts.Count > 0 ? string.Join(", ", parts) : null;
+    }
+
+    /// <summary>
+    ///     将数组 <c>contains</c> 子 schema 整理成 XML 文档可读字符串。
+    ///     输出优先保持紧凑，只展示消费者在强类型 API 上最需要看到的匹配摘要。
+    /// </summary>
+    /// <param name="element">数组 schema 节点。</param>
+    /// <returns>格式化后的 contains 说明。</returns>
+    private static string? TryBuildContainsDocumentation(JsonElement element)
+    {
+        if (!element.TryGetProperty("contains", out var containsElement) ||
+            containsElement.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        return TryBuildContainsSchemaSummary(containsElement);
+    }
+
+    /// <summary>
+    ///     为 <c>contains</c> 子 schema 生成紧凑摘要。
+    ///     该摘要复用现有 enum / const / 约束文档构造器，避免 contains 与主属性文档逐渐漂移。
+    /// </summary>
+    /// <param name="containsElement">contains 子 schema。</param>
+    /// <returns>格式化后的摘要字符串。</returns>
+    private static string? TryBuildContainsSchemaSummary(JsonElement containsElement)
+    {
+        if (!containsElement.TryGetProperty("type", out var typeElement) ||
+            typeElement.ValueKind != JsonValueKind.String)
+        {
+            return null;
+        }
+
+        var schemaType = typeElement.GetString();
+        if (string.IsNullOrWhiteSpace(schemaType))
+        {
+            return null;
+        }
+
+        var details = new List<string>();
+        var enumDocumentation = TryBuildEnumDocumentation(containsElement, schemaType!);
+        if (enumDocumentation is not null)
+        {
+            details.Add($"enum = {enumDocumentation}");
+        }
+
+        var constraintDocumentation = TryBuildConstraintDocumentation(containsElement, schemaType!);
+        if (constraintDocumentation is not null)
+        {
+            details.Add(constraintDocumentation);
+        }
+
+        var refTable = TryGetMetadataString(containsElement, "x-gframework-ref-table");
+        if (!string.IsNullOrWhiteSpace(refTable))
+        {
+            details.Add($"ref-table = {refTable}");
+        }
+
+        return details.Count == 0
+            ? schemaType
+            : $"{schemaType} ({string.Join(", ", details)})";
     }
 
     /// <summary>

@@ -799,6 +799,269 @@ phases:
     assert.match(diagnostics[1].message, /phases\[1\]|uniqueItems|元素唯一/u);
 });
 
+test("validateParsedConfig should report contains match-count violations", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "dropRates": {
+              "type": "array",
+              "minContains": 2,
+              "contains": {
+                "type": "integer",
+                "const": 5
+              },
+              "items": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+    `);
+    const yaml = parseTopLevelYaml(`
+dropRates:
+  - 5
+  - 7
+  - 9
+`);
+
+    const diagnostics = validateParsedConfig(schema, yaml);
+
+    assert.equal(diagnostics.length, 1);
+    assert.match(diagnostics[0].message, /at least 2 items matching the 'contains' schema|至少需要包含 2 个匹配 contains 条件的元素/u);
+});
+
+test("validateParsedConfig should skip contains match-count when items are structurally invalid", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "required": ["dropRates"],
+          "properties": {
+            "dropRates": {
+              "type": "array",
+              "minContains": 2,
+              "contains": {
+                "type": "object",
+                "required": ["type"],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "RARE"
+                  }
+                }
+              },
+              "items": {
+                "type": "object",
+                "required": ["type", "value"],
+                "properties": {
+                  "type": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        }
+    `);
+    const yaml = parseTopLevelYaml(`
+dropRates:
+  -
+    type: RARE
+    value: "not-a-number"
+  -
+    type: RARE
+    value: 10
+`);
+
+    const diagnostics = validateParsedConfig(schema, yaml);
+
+    assert.ok(diagnostics.length > 0);
+    assert.match(
+        diagnostics[0].message,
+        /dropRates\[0\]\.value/u);
+    assert.match(
+        diagnostics[0].message,
+        /integer|整数/u);
+    assert.equal(
+        diagnostics.some((diagnostic) => /at least 2 items matching the 'contains' schema|至少需要包含 2 个匹配 contains 条件的元素/u.test(diagnostic.message)),
+        false);
+    assert.equal(
+        diagnostics.some((diagnostic) => /at most \d+ items matching the 'contains' schema|最多只能包含 \d+ 个匹配 contains 条件的元素/u.test(diagnostic.message)),
+        false);
+});
+
+test("validateParsedConfig should continue contains match-count when items only have value-level violations", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "dropRates": {
+              "type": "array",
+              "minContains": 1,
+              "contains": {
+                "type": "integer",
+                "const": 7
+              },
+              "items": {
+                "type": "integer",
+                "minimum": 10
+              }
+            }
+          }
+        }
+    `);
+    const yaml = parseTopLevelYaml(`
+dropRates:
+  - 5
+`);
+
+    const diagnostics = validateParsedConfig(schema, yaml);
+
+    assert.equal(diagnostics.length, 2);
+    assert.match(diagnostics[0].message, /greater than or equal to 10|大于或等于 10/u);
+    assert.match(diagnostics[1].message, /at least 1 items matching the 'contains' schema|至少需要包含 1 个匹配 contains 条件的元素/u);
+});
+
+test("validateParsedConfig should report maxContains violations", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "dropRates": {
+              "type": "array",
+              "maxContains": 1,
+              "contains": {
+                "type": "integer",
+                "const": 5
+              },
+              "items": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+    `);
+    const yaml = parseTopLevelYaml(`
+dropRates:
+  - 5
+  - 5
+  - 7
+`);
+
+    const diagnostics = validateParsedConfig(schema, yaml);
+
+    assert.equal(diagnostics.length, 1);
+    assert.match(diagnostics[0].message, /at most 1 items matching the 'contains' schema|最多只能包含 1 个匹配 contains 条件的元素/u);
+});
+
+test("validateParsedConfig should accept satisfied contains constraints", () => {
+    const schemaWithRange = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "dropRates": {
+              "type": "array",
+              "minContains": 2,
+              "maxContains": 3,
+              "contains": {
+                "type": "integer",
+                "const": 5
+              },
+              "items": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+    `);
+    const yamlWithinRange = parseTopLevelYaml(`
+dropRates:
+  - 0
+  - 5
+  - 5
+  - 10
+`);
+
+    assert.deepEqual(validateParsedConfig(schemaWithRange, yamlWithinRange), []);
+
+    const schemaWithDefaultMinContains = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "dropRates": {
+              "type": "array",
+              "contains": {
+                "type": "integer",
+                "const": 5
+              },
+              "items": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+    `);
+    const yamlSatisfyingDefaultMinContains = parseTopLevelYaml(`
+dropRates:
+  - 1
+  - 2
+  - 5
+  - 3
+`);
+
+    assert.deepEqual(validateParsedConfig(schemaWithDefaultMinContains, yamlSatisfyingDefaultMinContains), []);
+});
+
+test("validateParsedConfig should allow object contains matches with additional declared item fields", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "entries": {
+              "type": "array",
+              "minContains": 1,
+              "contains": {
+                "type": "object",
+                "required": ["id"],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "const": "boss"
+                  }
+                }
+              },
+              "items": {
+                "type": "object",
+                "required": ["id", "weight"],
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "weight": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        }
+    `);
+    const yaml = parseTopLevelYaml(`
+entries:
+  -
+    id: boss
+    weight: 10
+  -
+    id: slime
+    weight: 3
+`);
+
+    assert.deepEqual(validateParsedConfig(schema, yaml), []);
+});
+
 test("validateParsedConfig should accept large decimal multiples without floating-point drift", () => {
     const schema = parseSchemaContent(`
         {
@@ -1063,6 +1326,140 @@ test("parseSchemaContent should capture multipleOf and uniqueItems metadata", ()
     assert.equal(schema.properties.hp.multipleOf, 5);
     assert.equal(schema.properties.dropRates.uniqueItems, true);
     assert.equal(schema.properties.dropRates.items.multipleOf, 0.5);
+});
+
+test("parseSchemaContent should capture contains metadata", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "dropRates": {
+              "type": "array",
+              "minContains": 1,
+              "maxContains": 2,
+              "contains": {
+                "type": "integer",
+                "const": 5
+              },
+              "items": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+    `);
+
+    assert.equal(schema.properties.dropRates.minContains, 1);
+    assert.equal(schema.properties.dropRates.maxContains, 2);
+    assert.equal(schema.properties.dropRates.contains.type, "integer");
+    assert.equal(schema.properties.dropRates.contains.constDisplayValue, "5");
+});
+
+test("parseSchemaContent should reject nested-array contains schemas", () => {
+    assert.throws(
+        () => parseSchemaContent(`
+            {
+              "type": "object",
+              "properties": {
+                "dropRates": {
+                  "type": "array",
+                  "contains": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  },
+                  "items": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+        `),
+        /unsupported nested array 'contains' schemas/u);
+});
+
+test("parseSchemaContent should reject minContains and maxContains without contains", () => {
+    assert.throws(
+        () => parseSchemaContent(`
+            {
+              "type": "object",
+              "properties": {
+                "dropRates": {
+                  "type": "array",
+                  "minContains": 1,
+                  "items": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+        `),
+        /'minContains' or 'maxContains' without 'contains'/u);
+
+    assert.throws(
+        () => parseSchemaContent(`
+            {
+              "type": "object",
+              "properties": {
+                "dropRates": {
+                  "type": "array",
+                  "maxContains": 1,
+                  "items": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+        `),
+        /'minContains' or 'maxContains' without 'contains'/u);
+});
+
+test("parseSchemaContent should reject contains schemas where default minContains exceeds maxContains", () => {
+    assert.throws(
+        () => parseSchemaContent(`
+            {
+              "type": "object",
+              "properties": {
+                "dropRates": {
+                  "type": "array",
+                  "maxContains": 0,
+                  "contains": {
+                    "type": "integer",
+                    "const": 5
+                  },
+                  "items": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+        `),
+        /'minContains' greater than 'maxContains'/u);
+});
+
+test("parseSchemaContent should reject contains schemas where minContains is greater than maxContains", () => {
+    assert.throws(
+        () => parseSchemaContent(`
+            {
+              "type": "object",
+              "properties": {
+                "dropRates": {
+                  "type": "array",
+                  "minContains": 3,
+                  "maxContains": 1,
+                  "contains": {
+                    "type": "integer",
+                    "const": 5
+                  },
+                  "items": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+        `),
+        /'minContains' greater than 'maxContains'/u);
 });
 
 test("parseSchemaContent should capture object property-count metadata", () => {

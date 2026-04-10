@@ -103,7 +103,13 @@ public class SchemaConfigGeneratorSnapshotTests
                                     "type": "array",
                                     "minItems": 1,
                                     "maxItems": 3,
+                                    "minContains": 1,
+                                    "maxContains": 2,
                                     "uniqueItems": true,
+                                    "contains": {
+                                      "type": "string",
+                                      "const": "potion"
+                                    },
                                     "items": {
                                       "type": "string",
                                       "minLength": 3,

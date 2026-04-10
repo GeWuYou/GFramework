@@ -860,6 +860,8 @@ function parseSchemaNode(rawNode, displayPath) {
         patternRegex: patternMetadata ? patternMetadata.regex : undefined,
         minItems: normalizeSchemaNonNegativeInteger(value.minItems),
         maxItems: normalizeSchemaNonNegativeInteger(value.maxItems),
+        minContains: normalizeSchemaNonNegativeInteger(value.minContains),
+        maxContains: normalizeSchemaNonNegativeInteger(value.maxContains),
         minProperties: normalizeSchemaNonNegativeInteger(value.minProperties),
         maxProperties: normalizeSchemaNonNegativeInteger(value.maxProperties),
         uniqueItems: normalizeSchemaBoolean(value.uniqueItems),
@@ -892,6 +894,27 @@ function parseSchemaNode(rawNode, displayPath) {
 
     if (type === "array") {
         const itemNode = parseSchemaNode(value.items || {}, joinArrayTemplatePath(displayPath));
+        const containsNode = value.contains && typeof value.contains === "object"
+            ? parseSchemaNode(value.contains, joinArrayTemplatePath(displayPath))
+            : undefined;
+        if (!containsNode &&
+            (typeof metadata.minContains === "number" || typeof metadata.maxContains === "number")) {
+            throw new Error(`Schema property '${displayPath}' declares 'minContains' or 'maxContains' without 'contains'.`);
+        }
+
+        if (containsNode && containsNode.type === "array") {
+            throw new Error(`Schema property '${displayPath}' uses unsupported nested array 'contains' schemas.`);
+        }
+
+        const effectiveMinContains = containsNode
+            ? (typeof metadata.minContains === "number" ? metadata.minContains : 1)
+            : undefined;
+        if (containsNode &&
+            typeof metadata.maxContains === "number" &&
+            effectiveMinContains > metadata.maxContains) {
+            throw new Error(`Schema property '${displayPath}' declares 'minContains' greater than 'maxContains'.`);
+        }
+
         return applyConstMetadata({
             type: "array",
             displayPath,
@@ -900,8 +923,15 @@ function parseSchemaNode(rawNode, displayPath) {
             defaultValue: metadata.defaultValue,
             minItems: metadata.minItems,
             maxItems: metadata.maxItems,
+            minContains: containsNode
+                ? metadata.minContains
+                : undefined,
+            maxContains: containsNode
+                ? metadata.maxContains
+                : undefined,
             uniqueItems: metadata.uniqueItems === true,
             refTable: metadata.refTable,
+            contains: containsNode,
             items: itemNode
         }, value.const, displayPath);
     }
@@ -993,6 +1023,8 @@ function validateNode(schemaNode, yamlNode, displayPath, diagnostics, localizer)
         }
 
         const comparableItems = [];
+        const containsCandidateItems = [];
+        let hasStructurallyInvalidArrayItems = false;
         for (let index = 0; index < yamlNode.items.length; index += 1) {
             const diagnosticsBeforeValidation = diagnostics.length;
             validateNode(
@@ -1002,8 +1034,14 @@ function validateNode(schemaNode, yamlNode, displayPath, diagnostics, localizer)
                 diagnostics,
                 localizer);
 
+            if (isStructurallyCompatibleWithSchemaNode(schemaNode.items, yamlNode.items[index])) {
+                containsCandidateItems.push({index, node: yamlNode.items[index]});
+            } else {
+                hasStructurallyInvalidArrayItems = true;
+            }
+
             // Keep uniqueItems focused on values that are otherwise valid so a
-            // shape/type error does not also surface as a misleading duplicate.
+            // shape/type or constraint error does not also surface as a misleading duplicate.
             if (diagnostics.length === diagnosticsBeforeValidation) {
                 comparableItems.push({index, node: yamlNode.items[index]});
             }
@@ -1025,6 +1063,39 @@ function validateNode(schemaNode, yamlNode, displayPath, diagnostics, localizer)
                 }
 
                 seenItems.set(comparableValue, index);
+            }
+        }
+
+        if (!hasStructurallyInvalidArrayItems && schemaNode.contains) {
+            let matchingContainsCount = 0;
+            for (const {node} of containsCandidateItems) {
+                if (matchesSchemaNode(schemaNode.contains, node)) {
+                    matchingContainsCount += 1;
+                }
+            }
+
+            const requiredMinContains = typeof schemaNode.minContains === "number"
+                ? schemaNode.minContains
+                : 1;
+            if (matchingContainsCount < requiredMinContains) {
+                diagnostics.push({
+                    severity: "error",
+                    message: localizeValidationMessage(ValidationMessageKeys.minContainsViolation, localizer, {
+                        displayPath,
+                        value: String(requiredMinContains)
+                    })
+                });
+            }
+
+            if (typeof schemaNode.maxContains === "number" &&
+                matchingContainsCount > schemaNode.maxContains) {
+                diagnostics.push({
+                    severity: "error",
+                    message: localizeValidationMessage(ValidationMessageKeys.maxContainsViolation, localizer, {
+                        displayPath,
+                        value: String(schemaNode.maxContains)
+                    })
+                });
             }
         }
 
@@ -1252,6 +1323,249 @@ function validateObjectNode(schemaNode, yamlNode, displayPath, diagnostics, loca
 }
 
 /**
+ * Test whether one YAML node satisfies one schema node without emitting user-facing diagnostics.
+ * This is used by array `contains`, where object sub-schemas must behave like
+ * partial matchers: declared properties, required members, and constraints must
+ * match, but additional object members outside the sub-schema must not block a hit.
+ *
+ * @param {SchemaNode} schemaNode Schema node.
+ * @param {YamlNode} yamlNode YAML node.
+ * @returns {boolean} True when the YAML node matches the schema node.
+ */
+function matchesSchemaNode(schemaNode, yamlNode) {
+    return matchesSchemaNodeInternal(schemaNode, yamlNode);
+}
+
+/**
+ * Match one YAML node against one schema node using JSON-Schema-style subset semantics.
+ * The helper mirrors validation rules closely, but it intentionally skips unknown-property
+ * rejection for objects so `contains` can test whether one item satisfies a sub-schema.
+ *
+ * @param {SchemaNode} schemaNode Schema node.
+ * @param {YamlNode} yamlNode YAML node.
+ * @returns {boolean} True when the YAML node satisfies the schema node.
+ */
+function matchesSchemaNodeInternal(schemaNode, yamlNode) {
+    if (schemaNode.type === "object") {
+        if (!yamlNode || yamlNode.kind !== "object") {
+            return false;
+        }
+
+        const propertyCount = yamlNode.map instanceof Map
+            ? yamlNode.map.size
+            : Array.isArray(yamlNode.entries)
+                ? new Set(yamlNode.entries.map((entry) => entry.key)).size
+                : 0;
+
+        for (const requiredProperty of schemaNode.required) {
+            if (!yamlNode.map.has(requiredProperty)) {
+                return false;
+            }
+        }
+
+        for (const [key, childSchema] of Object.entries(schemaNode.properties)) {
+            if (yamlNode.map.has(key) &&
+                !matchesSchemaNodeInternal(childSchema, yamlNode.map.get(key))) {
+                return false;
+            }
+        }
+
+        if (typeof schemaNode.minProperties === "number" &&
+            propertyCount < schemaNode.minProperties) {
+            return false;
+        }
+
+        if (typeof schemaNode.maxProperties === "number" &&
+            propertyCount > schemaNode.maxProperties) {
+            return false;
+        }
+
+        return typeof schemaNode.constComparableValue !== "string" ||
+            buildComparableNodeValue(schemaNode, yamlNode) === schemaNode.constComparableValue;
+    }
+
+    if (schemaNode.type === "array") {
+        if (!yamlNode || yamlNode.kind !== "array") {
+            return false;
+        }
+
+        if (typeof schemaNode.minItems === "number" &&
+            yamlNode.items.length < schemaNode.minItems) {
+            return false;
+        }
+
+        if (typeof schemaNode.maxItems === "number" &&
+            yamlNode.items.length > schemaNode.maxItems) {
+            return false;
+        }
+
+        for (const item of yamlNode.items) {
+            if (!matchesSchemaNodeInternal(schemaNode.items, item)) {
+                return false;
+            }
+        }
+
+        if (schemaNode.uniqueItems === true) {
+            const seenItems = new Set();
+            for (const item of yamlNode.items) {
+                const comparableValue = buildComparableNodeValue(schemaNode.items, item);
+                if (seenItems.has(comparableValue)) {
+                    return false;
+                }
+
+                seenItems.add(comparableValue);
+            }
+        }
+
+        if (schemaNode.contains) {
+            let matchingContainsCount = 0;
+            for (const item of yamlNode.items) {
+                if (matchesSchemaNodeInternal(schemaNode.contains, item)) {
+                    matchingContainsCount += 1;
+                }
+            }
+
+            const requiredMinContains = typeof schemaNode.minContains === "number"
+                ? schemaNode.minContains
+                : 1;
+            if (matchingContainsCount < requiredMinContains) {
+                return false;
+            }
+
+            if (typeof schemaNode.maxContains === "number" &&
+                matchingContainsCount > schemaNode.maxContains) {
+                return false;
+            }
+        }
+
+        return typeof schemaNode.constComparableValue !== "string" ||
+            buildComparableNodeValue(schemaNode, yamlNode) === schemaNode.constComparableValue;
+    }
+
+    if (!yamlNode || yamlNode.kind !== "scalar") {
+        return false;
+    }
+
+    if (!isScalarCompatible(schemaNode.type, yamlNode.value)) {
+        return false;
+    }
+
+    if (Array.isArray(schemaNode.enumValues) &&
+        schemaNode.enumValues.length > 0 &&
+        !schemaNode.enumValues.includes(unquoteScalar(yamlNode.value))) {
+        return false;
+    }
+
+    const scalarValue = unquoteScalar(yamlNode.value);
+    const supportsNumericConstraints = schemaNode.type === "integer" || schemaNode.type === "number";
+    const supportsLengthConstraints = schemaNode.type === "string";
+    const supportsPatternConstraints = schemaNode.type === "string";
+
+    if (supportsNumericConstraints &&
+        typeof schemaNode.minimum === "number" &&
+        Number(scalarValue) < schemaNode.minimum) {
+        return false;
+    }
+
+    if (supportsNumericConstraints &&
+        typeof schemaNode.exclusiveMinimum === "number" &&
+        Number(scalarValue) <= schemaNode.exclusiveMinimum) {
+        return false;
+    }
+
+    if (supportsNumericConstraints &&
+        typeof schemaNode.maximum === "number" &&
+        Number(scalarValue) > schemaNode.maximum) {
+        return false;
+    }
+
+    if (supportsNumericConstraints &&
+        typeof schemaNode.exclusiveMaximum === "number" &&
+        Number(scalarValue) >= schemaNode.exclusiveMaximum) {
+        return false;
+    }
+
+    if (supportsNumericConstraints &&
+        !matchesSchemaMultipleOf(scalarValue, schemaNode.multipleOf)) {
+        return false;
+    }
+
+    if (supportsLengthConstraints &&
+        typeof schemaNode.minLength === "number" &&
+        scalarValue.length < schemaNode.minLength) {
+        return false;
+    }
+
+    if (supportsLengthConstraints &&
+        typeof schemaNode.maxLength === "number" &&
+        scalarValue.length > schemaNode.maxLength) {
+        return false;
+    }
+
+    if (supportsPatternConstraints &&
+        !matchesSchemaPattern(scalarValue, schemaNode.patternRegex)) {
+        return false;
+    }
+
+    return typeof schemaNode.constComparableValue !== "string" ||
+        buildComparableNodeValue(schemaNode, yamlNode) === schemaNode.constComparableValue;
+}
+
+/**
+ * Test whether one YAML node is structurally compatible with one schema node.
+ * This keeps array-level `contains` validation from producing noisy follow-on
+ * diagnostics when an item already has a shape or scalar-type mismatch, while
+ * still allowing value-level constraint failures to participate in contains counting.
+ *
+ * @param {SchemaNode} schemaNode Schema node.
+ * @param {YamlNode} yamlNode YAML node.
+ * @returns {boolean} True when the YAML node has the expected recursive shape.
+ */
+function isStructurallyCompatibleWithSchemaNode(schemaNode, yamlNode) {
+    if (schemaNode.type === "object") {
+        if (!yamlNode || yamlNode.kind !== "object") {
+            return false;
+        }
+
+        for (const requiredProperty of schemaNode.required) {
+            if (!yamlNode.map.has(requiredProperty)) {
+                return false;
+            }
+        }
+
+        for (const entry of yamlNode.entries) {
+            if (!Object.prototype.hasOwnProperty.call(schemaNode.properties, entry.key)) {
+                return false;
+            }
+
+            if (!isStructurallyCompatibleWithSchemaNode(schemaNode.properties[entry.key], entry.node)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    if (schemaNode.type === "array") {
+        if (!yamlNode || yamlNode.kind !== "array") {
+            return false;
+        }
+
+        for (const item of yamlNode.items) {
+            if (!isStructurallyCompatibleWithSchemaNode(schemaNode.items, item)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    return Boolean(yamlNode) &&
+        yamlNode.kind === "scalar" &&
+        isScalarCompatible(schemaNode.type, yamlNode.value);
+}
+
+/**
  * Validate one parsed YAML node against one normalized const comparable value.
  * The helper reuses the same comparable-key logic as uniqueItems so array order
  * and scalar normalization stay aligned with runtime behavior.
@@ -1390,6 +1704,8 @@ function localizeValidationMessage(key, localizer, params) {
                 return `属性“${params.displayPath}”必须大于 ${params.value}。`;
             case ValidationMessageKeys.maximumViolation:
                 return `属性“${params.displayPath}”必须小于或等于 ${params.value}。`;
+            case ValidationMessageKeys.maxContainsViolation:
+                return `属性“${params.displayPath}”最多只能包含 ${params.value} 个匹配 contains 条件的元素。`;
             case ValidationMessageKeys.maxItemsViolation:
                 return `属性“${params.displayPath}”最多只能包含 ${params.value} 个元素。`;
             case ValidationMessageKeys.maxLengthViolation:
@@ -1398,6 +1714,8 @@ function localizeValidationMessage(key, localizer, params) {
                 return `属性“${params.displayPath}”必须大于或等于 ${params.value}。`;
             case ValidationMessageKeys.multipleOfViolation:
                 return `属性“${params.displayPath}”必须是 ${params.value} 的整数倍。`;
+            case ValidationMessageKeys.minContainsViolation:
+                return `属性“${params.displayPath}”至少需要包含 ${params.value} 个匹配 contains 条件的元素。`;
             case ValidationMessageKeys.minItemsViolation:
                 return `属性“${params.displayPath}”至少需要包含 ${params.value} 个元素。`;
             case ValidationMessageKeys.minLengthViolation:
@@ -1432,6 +1750,8 @@ function localizeValidationMessage(key, localizer, params) {
             return `Property '${params.displayPath}' must be greater than ${params.value}.`;
         case ValidationMessageKeys.maximumViolation:
             return `Property '${params.displayPath}' must be less than or equal to ${params.value}.`;
+        case ValidationMessageKeys.maxContainsViolation:
+            return `Property '${params.displayPath}' must contain at most ${params.value} items matching the 'contains' schema.`;
         case ValidationMessageKeys.maxItemsViolation:
             return `Property '${params.displayPath}' must contain at most ${params.value} items.`;
         case ValidationMessageKeys.maxLengthViolation:
@@ -1440,6 +1760,8 @@ function localizeValidationMessage(key, localizer, params) {
             return `Property '${params.displayPath}' must be greater than or equal to ${params.value}.`;
         case ValidationMessageKeys.multipleOfViolation:
             return `Property '${params.displayPath}' must be a multiple of ${params.value}.`;
+        case ValidationMessageKeys.minContainsViolation:
+            return `Property '${params.displayPath}' must contain at least ${params.value} items matching the 'contains' schema.`;
         case ValidationMessageKeys.minItemsViolation:
             return `Property '${params.displayPath}' must contain at least ${params.value} items.`;
         case ValidationMessageKeys.minLengthViolation:
@@ -2167,8 +2489,11 @@ module.exports = {
  *   constComparableValue?: string,
  *   minItems?: number,
  *   maxItems?: number,
+ *   minContains?: number,
+ *   maxContains?: number,
  *   uniqueItems?: boolean,
  *   refTable?: string,
+ *   contains?: SchemaNode,
  *   items: SchemaNode
  * } | {
  *   type: "string" | "integer" | "number" | "boolean",

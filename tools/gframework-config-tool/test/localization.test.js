@@ -57,3 +57,15 @@ test("createLocalizer should expose object property-count validation keys in Sim
         localizer.t(ValidationMessageKeys.maxPropertiesViolation, {displayPath: "reward", value: 3}),
         "对象属性“reward”最多只能包含 3 个子属性。");
 });
+
+test("createLocalizer should expose contains-count validation keys", () => {
+    const englishLocalizer = createLocalizer("en");
+    const chineseLocalizer = createLocalizer("zh-cn");
+
+    assert.equal(
+        englishLocalizer.t(ValidationMessageKeys.minContainsViolation, {displayPath: "dropRates", value: 2}),
+        "Property 'dropRates' must contain at least 2 items matching the 'contains' schema.");
+    assert.equal(
+        chineseLocalizer.t(ValidationMessageKeys.maxContainsViolation, {displayPath: "dropRates", value: 1}),
+        "属性“dropRates”最多只能包含 1 个匹配 contains 条件的元素。");
+});

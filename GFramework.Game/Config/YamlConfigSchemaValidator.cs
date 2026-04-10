@@ -9,8 +9,9 @@ namespace GFramework.Game.Config;
 ///     该校验器与当前配置生成器、VS Code 工具支持的 schema 子集保持一致，
 ///     并通过递归遍历方式覆盖嵌套对象、对象数组、标量数组与深层 enum / 引用约束。
 ///     当前共享子集额外支持 <c>multipleOf</c>、<c>uniqueItems</c>、
+///     <c>contains</c> / <c>minContains</c> / <c>maxContains</c>、
 ///     <c>minProperties</c> 与 <c>maxProperties</c>，
-///     让数值步进、数组去重和对象属性数量规则在运行时与生成器 / 工具侧保持一致。
+///     让数值步进、数组去重、数组匹配计数和对象属性数量规则在运行时与生成器 / 工具侧保持一致。
 /// </summary>
 internal static class YamlConfigSchemaValidator
 {
@@ -435,22 +436,42 @@ internal static class YamlConfigSchemaValidator
     /// <param name="node">实际 YAML 节点。</param>
     /// <param name="schemaNode">对应的 schema 节点。</param>
     /// <param name="references">已收集的跨表引用。</param>
+    /// <param name="allowUnknownObjectProperties">
+    ///     是否允许对象节点出现当前 schema 子树未声明的额外字段。
+    ///     该开关仅用于 <c>contains</c> 试匹配，让对象子 schema 可以按“声明属性子集匹配”工作；
+    ///     正常加载主链路仍保持未知字段即失败的严格语义。
+    /// </param>
     private static void ValidateNode(
         string tableName,
         string yamlPath,
         string displayPath,
         YamlNode node,
         YamlConfigSchemaNode schemaNode,
-        ICollection<YamlConfigReferenceUsage>? references)
+        ICollection<YamlConfigReferenceUsage>? references,
+        bool allowUnknownObjectProperties = false)
     {
         switch (schemaNode.NodeType)
         {
             case YamlConfigSchemaPropertyType.Object:
-                ValidateObjectNode(tableName, yamlPath, displayPath, node, schemaNode, references);
+                ValidateObjectNode(
+                    tableName,
+                    yamlPath,
+                    displayPath,
+                    node,
+                    schemaNode,
+                    references,
+                    allowUnknownObjectProperties);
                 return;
 
             case YamlConfigSchemaPropertyType.Array:
-                ValidateArrayNode(tableName, yamlPath, displayPath, node, schemaNode, references);
+                ValidateArrayNode(
+                    tableName,
+                    yamlPath,
+                    displayPath,
+                    node,
+                    schemaNode,
+                    references,
+                    allowUnknownObjectProperties);
                 return;
 
             case YamlConfigSchemaPropertyType.Integer:
@@ -481,13 +502,17 @@ internal static class YamlConfigSchemaValidator
     /// <param name="node">实际 YAML 节点。</param>
     /// <param name="schemaNode">对象 schema 节点。</param>
     /// <param name="references">已收集的跨表引用。</param>
+    /// <param name="allowUnknownObjectProperties">
+    ///     是否允许当前对象包含 schema 子树未声明的额外字段。
+    /// </param>
     private static void ValidateObjectNode(
         string tableName,
         string yamlPath,
         string displayPath,
         YamlNode node,
         YamlConfigSchemaNode schemaNode,
-        ICollection<YamlConfigReferenceUsage>? references)
+        ICollection<YamlConfigReferenceUsage>? references,
+        bool allowUnknownObjectProperties)
     {
         if (node is not YamlMappingNode mappingNode)
         {
@@ -533,6 +558,11 @@ internal static class YamlConfigSchemaValidator
             if (schemaNode.Properties is null ||
                 !schemaNode.Properties.TryGetValue(propertyName, out var propertySchema))
             {
+                if (allowUnknownObjectProperties)
+                {
+                    continue;
+                }
+
                 throw ConfigLoadExceptionFactory.Create(
                     ConfigLoadFailureKind.UnknownProperty,
                     tableName,
@@ -542,7 +572,14 @@ internal static class YamlConfigSchemaValidator
                     displayPath: propertyPath);
             }
 
-            ValidateNode(tableName, yamlPath, propertyPath, entry.Value, propertySchema, references);
+            ValidateNode(
+                tableName,
+                yamlPath,
+                propertyPath,
+                entry.Value,
+                propertySchema,
+                references,
+                allowUnknownObjectProperties);
         }
 
         if (schemaNode.RequiredProperties is null)
@@ -639,13 +676,17 @@ internal static class YamlConfigSchemaValidator
     /// <param name="node">实际 YAML 节点。</param>
     /// <param name="schemaNode">数组 schema 节点。</param>
     /// <param name="references">已收集的跨表引用。</param>
+    /// <param name="allowUnknownObjectProperties">
+    ///     是否允许数组元素内的对象节点包含 schema 子树未声明的额外字段。
+    /// </param>
     private static void ValidateArrayNode(
         string tableName,
         string yamlPath,
         string displayPath,
         YamlNode node,
         YamlConfigSchemaNode schemaNode,
-        ICollection<YamlConfigReferenceUsage>? references)
+        ICollection<YamlConfigReferenceUsage>? references,
+        bool allowUnknownObjectProperties)
     {
         if (node is not YamlSequenceNode sequenceNode)
         {
@@ -682,10 +723,12 @@ internal static class YamlConfigSchemaValidator
                 $"{displayPath}[{itemIndex}]",
                 sequenceNode.Children[itemIndex],
                 schemaNode.ItemNode,
-                references);
+                references,
+                allowUnknownObjectProperties);
         }
 
         ValidateArrayUniqueItemsConstraint(tableName, yamlPath, displayPath, sequenceNode, schemaNode);
+        ValidateArrayContainsConstraints(tableName, yamlPath, displayPath, sequenceNode, schemaNode, references);
         ValidateConstantValue(tableName, yamlPath, displayPath, sequenceNode, schemaNode);
     }
 
@@ -1152,7 +1195,7 @@ internal static class YamlConfigSchemaValidator
     }
 
     /// <summary>
-    ///     解析数组节点支持的元素数量约束。
+    ///     解析数组节点支持的元素数量、去重与 <c>contains</c> 匹配数量约束。
     /// </summary>
     /// <param name="tableName">所属配置表名称。</param>
     /// <param name="schemaPath">Schema 文件路径。</param>
@@ -1168,6 +1211,7 @@ internal static class YamlConfigSchemaValidator
         var minItems = TryParseArrayLengthConstraint(tableName, schemaPath, propertyPath, element, "minItems");
         var maxItems = TryParseArrayLengthConstraint(tableName, schemaPath, propertyPath, element, "maxItems");
         var uniqueItems = TryParseUniqueItemsConstraint(tableName, schemaPath, propertyPath, element);
+        var containsConstraints = ParseArrayContainsConstraints(tableName, schemaPath, propertyPath, element);
 
         if (minItems.HasValue && maxItems.HasValue && minItems.Value > maxItems.Value)
         {
@@ -1179,9 +1223,77 @@ internal static class YamlConfigSchemaValidator
                 displayPath: GetDiagnosticPath(propertyPath));
         }
 
-        return !minItems.HasValue && !maxItems.HasValue && !uniqueItems
+        return !minItems.HasValue && !maxItems.HasValue && !uniqueItems && containsConstraints is null
             ? null
-            : new YamlConfigArrayConstraints(minItems, maxItems, uniqueItems);
+            : new YamlConfigArrayConstraints(minItems, maxItems, uniqueItems, containsConstraints);
+    }
+
+    /// <summary>
+    ///     解析数组节点声明的 <c>contains</c> 约束及其匹配数量边界。
+    ///     运行时会把 <c>contains</c> 解析成独立的 schema 子树，后续逐项复用同一套递归校验逻辑判断“是否匹配”。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="schemaPath">Schema 文件路径。</param>
+    /// <param name="propertyPath">数组字段路径。</param>
+    /// <param name="element">Schema 节点。</param>
+    /// <returns>数组 contains 约束模型；未声明时返回空。</returns>
+    private static YamlConfigArrayContainsConstraints? ParseArrayContainsConstraints(
+        string tableName,
+        string schemaPath,
+        string propertyPath,
+        JsonElement element)
+    {
+        var minContains = TryParseArrayLengthConstraint(tableName, schemaPath, propertyPath, element, "minContains");
+        var maxContains = TryParseArrayLengthConstraint(tableName, schemaPath, propertyPath, element, "maxContains");
+        if (!element.TryGetProperty("contains", out var containsElement))
+        {
+            if (minContains.HasValue || maxContains.HasValue)
+            {
+                var keywordName = minContains.HasValue ? "minContains" : "maxContains";
+                throw ConfigLoadExceptionFactory.Create(
+                    ConfigLoadFailureKind.SchemaUnsupported,
+                    tableName,
+                    $"Property '{propertyPath}' in schema file '{schemaPath}' declares '{keywordName}' without a companion 'contains' schema.",
+                    schemaPath: schemaPath,
+                    displayPath: GetDiagnosticPath(propertyPath));
+            }
+
+            return null;
+        }
+
+        if (containsElement.ValueKind != JsonValueKind.Object)
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"Property '{propertyPath}' in schema file '{schemaPath}' must declare 'contains' as an object-valued schema.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(propertyPath));
+        }
+
+        var containsNode = ParseNode(tableName, schemaPath, $"{propertyPath}[contains]", containsElement);
+        if (containsNode.NodeType == YamlConfigSchemaPropertyType.Array)
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"Property '{propertyPath}' in schema file '{schemaPath}' uses unsupported nested array 'contains' schemas.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(propertyPath));
+        }
+
+        var effectiveMinContains = minContains ?? 1;
+        if (maxContains.HasValue && effectiveMinContains > maxContains.Value)
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"Property '{propertyPath}' in schema file '{schemaPath}' declares 'minContains' greater than 'maxContains'.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(propertyPath));
+        }
+
+        return new YamlConfigArrayContainsConstraints(containsNode, minContains, maxContains);
     }
 
     /// <summary>
@@ -2074,6 +2186,155 @@ internal static class YamlConfigSchemaValidator
     }
 
     /// <summary>
+    ///     校验数组是否满足 <c>contains</c> 声明的匹配数量边界。
+    ///     该实现会对每个数组项复用同一套递归校验逻辑做“非抛出式匹配”，避免 contains 与主校验链各自维护不同的 schema 解释规则。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="yamlPath">YAML 文件路径。</param>
+    /// <param name="displayPath">字段路径。</param>
+    /// <param name="sequenceNode">实际数组节点。</param>
+    /// <param name="schemaNode">数组 schema 节点。</param>
+    /// <param name="references">匹配成功的 <c>contains</c> 子树所声明的跨表引用收集器。</param>
+    private static void ValidateArrayContainsConstraints(
+        string tableName,
+        string yamlPath,
+        string displayPath,
+        YamlSequenceNode sequenceNode,
+        YamlConfigSchemaNode schemaNode,
+        ICollection<YamlConfigReferenceUsage>? references)
+    {
+        var containsConstraints = schemaNode.ArrayConstraints?.ContainsConstraints;
+        if (containsConstraints is null)
+        {
+            return;
+        }
+
+        var matchingCount = CountMatchingContainsItems(
+            tableName,
+            yamlPath,
+            displayPath,
+            sequenceNode,
+            containsConstraints.ContainsNode,
+            references);
+        var rawValue = matchingCount.ToString(CultureInfo.InvariantCulture);
+        var requiredMinContains = containsConstraints.MinContains ?? 1;
+        if (matchingCount < requiredMinContains)
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.ConstraintViolation,
+                tableName,
+                $"Property '{displayPath}' in config file '{yamlPath}' must contain at least {requiredMinContains} items matching the 'contains' schema, but the current YAML sequence contains {matchingCount}.",
+                yamlPath: yamlPath,
+                schemaPath: schemaNode.SchemaPathHint,
+                displayPath: GetDiagnosticPath(displayPath),
+                rawValue: rawValue,
+                detail: $"Minimum matching contains count: {requiredMinContains}.");
+        }
+
+        if (containsConstraints.MaxContains.HasValue &&
+            matchingCount > containsConstraints.MaxContains.Value)
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.ConstraintViolation,
+                tableName,
+                $"Property '{displayPath}' in config file '{yamlPath}' must contain at most {containsConstraints.MaxContains.Value} items matching the 'contains' schema, but the current YAML sequence contains {matchingCount}.",
+                yamlPath: yamlPath,
+                schemaPath: schemaNode.SchemaPathHint,
+                displayPath: GetDiagnosticPath(displayPath),
+                rawValue: rawValue,
+                detail: $"Maximum matching contains count: {containsConstraints.MaxContains.Value}.");
+        }
+    }
+
+    /// <summary>
+    ///     统计当前数组中有多少元素满足 <c>contains</c> 子 schema。
+    ///     非预期内部错误会继续抛出，只有正常的 schema 不匹配才会被当成“当前元素不计数”。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="yamlPath">YAML 文件路径。</param>
+    /// <param name="displayPath">数组字段路径。</param>
+    /// <param name="sequenceNode">实际数组节点。</param>
+    /// <param name="containsNode">contains 子 schema。</param>
+    /// <param name="references">匹配成功元素的可选跨表引用收集器。</param>
+    /// <returns>匹配 <c>contains</c> 子 schema 的元素数量。</returns>
+    private static int CountMatchingContainsItems(
+        string tableName,
+        string yamlPath,
+        string displayPath,
+        YamlSequenceNode sequenceNode,
+        YamlConfigSchemaNode containsNode,
+        ICollection<YamlConfigReferenceUsage>? references)
+    {
+        var matchingCount = 0;
+        for (var itemIndex = 0; itemIndex < sequenceNode.Children.Count; itemIndex++)
+        {
+            if (IsArrayItemMatchingContains(
+                    tableName,
+                    yamlPath,
+                    $"{displayPath}[{itemIndex}]",
+                    sequenceNode.Children[itemIndex],
+                    containsNode,
+                    references))
+            {
+                matchingCount++;
+            }
+        }
+
+        return matchingCount;
+    }
+
+    /// <summary>
+    ///     判断单个数组元素是否满足 <c>contains</c> 子 schema。
+    ///     contains 的语义是“尝试匹配”，因此普通约束失败会返回 <see langword="false" />，但内部意外状态仍会继续抛出。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="yamlPath">YAML 文件路径。</param>
+    /// <param name="displayPath">当前数组元素路径。</param>
+    /// <param name="itemNode">实际 YAML 元素。</param>
+    /// <param name="containsNode">contains 子 schema。</param>
+    /// <param name="references">当前元素匹配成功后要写回的可选跨表引用收集器。</param>
+    /// <returns>当前元素是否匹配 contains 子 schema。</returns>
+    private static bool IsArrayItemMatchingContains(
+        string tableName,
+        string yamlPath,
+        string displayPath,
+        YamlNode itemNode,
+        YamlConfigSchemaNode containsNode,
+        ICollection<YamlConfigReferenceUsage>? references)
+    {
+        // contains 的“试匹配”不能把失败元素的引用泄漏给外层，但匹配成功的元素仍需要参与
+        // 跨表引用收集，否则仅声明在 contains 子 schema 里的 ref-table 会被运行时遗漏。
+        List<YamlConfigReferenceUsage>? matchedReferences = references is null ? null : new();
+
+        try
+        {
+            ValidateNode(
+                tableName,
+                yamlPath,
+                displayPath,
+                itemNode,
+                containsNode,
+                matchedReferences,
+                allowUnknownObjectProperties: true);
+
+            if (references is not null &&
+                matchedReferences is not null)
+            {
+                foreach (var referenceUsage in matchedReferences)
+                {
+                    references.Add(referenceUsage);
+                }
+            }
+
+            return true;
+        }
+        catch (ConfigLoadException exception) when (exception.Diagnostic.FailureKind != ConfigLoadFailureKind.UnexpectedFailure)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
     ///     将一个已通过结构校验的 YAML 节点归一化为可比较字符串。
     ///     该键同时服务于 <c>uniqueItems</c> 与 <c>const</c>，
     ///     因此要忽略对象字段顺序和字符串引号形式。
@@ -2435,6 +2696,12 @@ internal static class YamlConfigSchemaValidator
         if (node.ItemNode is not null)
         {
             CollectReferencedTableNames(node.ItemNode, referencedTableNames);
+        }
+
+        var containsNode = node.ArrayConstraints?.ContainsConstraints?.ContainsNode;
+        if (containsNode is not null)
+        {
+            CollectReferencedTableNames(containsNode, referencedTableNames);
         }
     }
 
@@ -3100,7 +3367,7 @@ internal sealed class YamlConfigStringConstraints
 }
 
 /// <summary>
-///     表示一个数组节点上声明的元素数量或去重约束。
+///     表示一个数组节点上声明的元素数量、去重与 contains 匹配计数约束。
 ///     该模型与标量约束拆分保存，避免数组节点继续共享不适用的标量字段。
 /// </summary>
 internal sealed class YamlConfigArrayConstraints
@@ -3111,11 +3378,17 @@ internal sealed class YamlConfigArrayConstraints
     /// <param name="minItems">最小元素数量约束。</param>
     /// <param name="maxItems">最大元素数量约束。</param>
     /// <param name="uniqueItems">是否要求数组元素唯一。</param>
-    public YamlConfigArrayConstraints(int? minItems, int? maxItems, bool uniqueItems)
+    /// <param name="containsConstraints">数组 contains 约束；未声明时为空。</param>
+    public YamlConfigArrayConstraints(
+        int? minItems,
+        int? maxItems,
+        bool uniqueItems,
+        YamlConfigArrayContainsConstraints? containsConstraints)
     {
         MinItems = minItems;
         MaxItems = maxItems;
         UniqueItems = uniqueItems;
+        ContainsConstraints = containsConstraints;
     }
 
     /// <summary>
@@ -3132,6 +3405,51 @@ internal sealed class YamlConfigArrayConstraints
     ///     获取是否要求数组元素唯一。
     /// </summary>
     public bool UniqueItems { get; }
+
+    /// <summary>
+    ///     获取数组 contains 约束；未声明时返回空。
+    /// </summary>
+    public YamlConfigArrayContainsConstraints? ContainsConstraints { get; }
+}
+
+/// <summary>
+///     表示数组节点声明的 <c>contains</c> 匹配约束。
+///     该模型把 contains 子 schema 与匹配数量边界聚合在一起，避免数组节点再额外散落多组相关成员。
+/// </summary>
+internal sealed class YamlConfigArrayContainsConstraints
+{
+    /// <summary>
+    ///     初始化数组 contains 约束模型。
+    /// </summary>
+    /// <param name="containsNode">contains 子 schema。</param>
+    /// <param name="minContains">最小匹配数量；为 <see langword="null" /> 时按 JSON Schema 语义默认 1。</param>
+    /// <param name="maxContains">最大匹配数量。</param>
+    public YamlConfigArrayContainsConstraints(
+        YamlConfigSchemaNode containsNode,
+        int? minContains,
+        int? maxContains)
+    {
+        ArgumentNullException.ThrowIfNull(containsNode);
+
+        ContainsNode = containsNode;
+        MinContains = minContains;
+        MaxContains = maxContains;
+    }
+
+    /// <summary>
+    ///     获取 contains 子 schema。
+    /// </summary>
+    public YamlConfigSchemaNode ContainsNode { get; }
+
+    /// <summary>
+    ///     获取最小匹配数量；未显式声明时返回空，由调用方按默认值 1 解释。
+    /// </summary>
+    public int? MinContains { get; }
+
+    /// <summary>
+    ///     获取最大匹配数量。
+    /// </summary>
+    public int? MaxContains { get; }
 }
 
 /// <summary>
