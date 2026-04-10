@@ -1410,6 +1410,60 @@ public class YamlConfigLoaderTests
     }
 
     /// <summary>
+    ///     验证对象字段将 <c>maxProperties</c> 声明为非整数数值时，会在 schema 解析阶段被拒绝。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Throw_When_Object_MaxProperties_Constraint_Is_Not_Integer()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            name: Slime
+            reward:
+              gold: 10
+              currency: coin
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "name", "reward"],
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "reward": {
+                  "type": "object",
+                  "maxProperties": 1.5,
+                  "properties": {
+                    "gold": { "type": "integer" },
+                    "currency": { "type": "string" }
+                  }
+                }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterNestedConfigStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Diagnostic.FailureKind, Is.EqualTo(ConfigLoadFailureKind.SchemaUnsupported));
+            Assert.That(exception.Diagnostic.DisplayPath, Is.EqualTo("reward"));
+            Assert.That(exception.Message, Does.Contain("maxProperties"));
+            Assert.That(exception.Message, Does.Contain("non-negative integer"));
+            Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
     ///     验证对象字段将 <c>minProperties</c> 声明为大于 <c>maxProperties</c> 时，会在 schema 解析阶段被拒绝。
     /// </summary>
     [Test]
