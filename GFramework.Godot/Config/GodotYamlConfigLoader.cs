@@ -3,6 +3,7 @@ using GFramework.Core.Abstractions.Events;
 using GFramework.Game.Abstractions.Config;
 using GFramework.Game.Config;
 using GFramework.Godot.Extensions;
+using FileAccess = Godot.FileAccess;
 
 namespace GFramework.Godot.Config;
 
