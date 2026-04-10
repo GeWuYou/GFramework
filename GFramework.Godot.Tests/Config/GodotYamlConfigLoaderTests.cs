@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using GFramework.Game.Config;
 using GFramework.Godot.Config;
@@ -116,30 +119,139 @@ public sealed class GodotYamlConfigLoaderTests
     }
 
     /// <summary>
+    ///     验证导出态会按父目录优先同步缓存，避免父目录重置删掉先前复制到子目录的内容。
+    /// </summary>
+    [Test]
+    public async Task LoadAsync_Should_Synchronize_Parent_Directories_Before_Children()
+    {
+        WriteFile(
+            _resourceRoot,
+            "monster/slime.yaml",
+            """
+            id: 1
+            name: Slime
+            hp: 10
+            """);
+        WriteFile(
+            _resourceRoot,
+            "monster/boss/dragon.yaml",
+            """
+            id: 99
+            name: Dragon
+            hp: 500
+            """);
+
+        var loader = CreateLoader(
+            isEditor: false,
+            tableSources:
+            [
+                new GodotYamlConfigTableSource("boss", "monster/boss"),
+                new GodotYamlConfigTableSource("monster", "monster")
+            ],
+            configureLoader: loader =>
+            {
+                loader.RegisterTable<int, MonsterConfigStub>(
+                    "boss",
+                    "monster/boss",
+                    keySelector: static config => config.Id);
+                loader.RegisterTable<int, MonsterConfigStub>(
+                    "monster",
+                    "monster",
+                    keySelector: static config => config.Id);
+            });
+        var registry = new ConfigRegistry();
+
+        await loader.LoadAsync(registry);
+
+        var cacheRoot = Path.Combine(_userRoot, "config_cache");
+        var bossTable = registry.GetTable<int, MonsterConfigStub>("boss");
+        var monsterTable = registry.GetTable<int, MonsterConfigStub>("monster");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(monsterTable.Count, Is.EqualTo(1));
+            Assert.That(bossTable.Count, Is.EqualTo(1));
+            Assert.That(bossTable.Get(99).Name, Is.EqualTo("Dragon"));
+            Assert.That(File.Exists(Path.Combine(cacheRoot, "monster", "boss", "dragon.yaml")), Is.True);
+        });
+    }
+
+    /// <summary>
+    ///     验证加载器自身会拒绝可能逃逸缓存根目录的非法配置目录路径，即使调用方绕过了公开构造约束。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Reject_Invalid_Config_Relative_Path_When_Metadata_Is_Corrupted()
+    {
+        var corruptedSource = CreateUnsafeTableSource("monster", "../outside");
+        var loader = CreateLoader(
+            isEditor: false,
+            tableSources: [corruptedSource],
+            configureLoader: static _ => { });
+
+        var exception = Assert.ThrowsAsync<ArgumentException>(async () =>
+            await loader.LoadAsync(new ConfigRegistry()));
+
+        Assert.That(exception!.ParamName, Is.EqualTo("relativePath"));
+    }
+
+    /// <summary>
+    ///     验证加载器自身会拒绝可能逃逸缓存根目录的非法 schema 路径，即使调用方绕过了公开构造约束。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Reject_Invalid_Schema_Relative_Path_When_Metadata_Is_Corrupted()
+    {
+        WriteFile(
+            _resourceRoot,
+            "monster/slime.yaml",
+            """
+            id: 1
+            name: Slime
+            hp: 10
+            """);
+
+        var corruptedSource = CreateUnsafeTableSource("monster", "monster", "../schemas/monster.schema.json");
+        var loader = CreateLoader(
+            isEditor: false,
+            tableSources: [corruptedSource],
+            configureLoader: static _ => { });
+
+        var exception = Assert.ThrowsAsync<ArgumentException>(async () =>
+            await loader.LoadAsync(new ConfigRegistry()));
+
+        Assert.That(exception!.ParamName, Is.EqualTo("relativePath"));
+    }
+
+    /// <summary>
     ///     创建一个基于临时目录映射的 Godot YAML 配置加载器。
     /// </summary>
     /// <param name="isEditor">是否模拟编辑器环境。</param>
+    /// <param name="tableSources">要同步的配置表来源集合；为空时使用默认 monster 表。</param>
+    /// <param name="configureLoader">底层 YAML 加载器注册逻辑；为空时使用默认 monster 表注册。</param>
     /// <returns>已配置好的加载器实例。</returns>
-    private GodotYamlConfigLoader CreateLoader(bool isEditor)
+    private GodotYamlConfigLoader CreateLoader(
+        bool isEditor,
+        IReadOnlyCollection<GodotYamlConfigTableSource>? tableSources = null,
+        Action<YamlConfigLoader>? configureLoader = null)
     {
         return new GodotYamlConfigLoader(
             new GodotYamlConfigLoaderOptions
             {
                 SourceRootPath = "res://",
                 RuntimeCacheRootPath = "user://config_cache",
-                TableSources =
+                TableSources = tableSources ??
                 [
                     new GodotYamlConfigTableSource(
                         "monster",
                         "monster",
                         "schemas/monster.schema.json")
                 ],
-                ConfigureLoader = static loader =>
-                    loader.RegisterTable<int, MonsterConfigStub>(
-                        "monster",
-                        "monster",
-                        "schemas/monster.schema.json",
-                        static config => config.Id)
+                ConfigureLoader = configureLoader ??
+                                  (static loader =>
+                                      loader.RegisterTable<int, MonsterConfigStub>(
+                                          "monster",
+                                          "monster",
+                                          "schemas/monster.schema.json",
+                                          static config => config.Id))
             },
             CreateEnvironment(isEditor));
     }
@@ -239,6 +351,50 @@ public sealed class GodotYamlConfigLoaderTests
         }
 
         File.WriteAllText(fullPath, content);
+    }
+
+    /// <summary>
+    ///     构造一个绕过公开构造校验的配置来源对象，用于验证加载器的防御式路径校验。
+    /// </summary>
+    /// <param name="tableName">伪造的表名称。</param>
+    /// <param name="configRelativePath">伪造的配置目录路径。</param>
+    /// <param name="schemaRelativePath">伪造的 schema 路径。</param>
+    /// <returns>已写入指定字段值的未初始化对象。</returns>
+    private static GodotYamlConfigTableSource CreateUnsafeTableSource(
+        string tableName,
+        string configRelativePath,
+        string? schemaRelativePath = null)
+    {
+        var source =
+            (GodotYamlConfigTableSource)RuntimeHelpers.GetUninitializedObject(typeof(GodotYamlConfigTableSource));
+        SetAutoPropertyBackingField(source, nameof(GodotYamlConfigTableSource.TableName), tableName);
+        SetAutoPropertyBackingField(source, nameof(GodotYamlConfigTableSource.ConfigRelativePath), configRelativePath);
+        SetAutoPropertyBackingField(source, nameof(GodotYamlConfigTableSource.SchemaRelativePath), schemaRelativePath);
+        return source;
+    }
+
+    /// <summary>
+    ///     直接写入自动属性的编译器生成字段，用于构造损坏的测试对象。
+    /// </summary>
+    /// <typeparam name="TValue">字段值类型。</typeparam>
+    /// <param name="instance">要写入字段的目标对象。</param>
+    /// <param name="propertyName">对应的属性名称。</param>
+    /// <param name="value">要写入的字段值。</param>
+    private static void SetAutoPropertyBackingField<TValue>(
+        object instance,
+        string propertyName,
+        TValue value)
+    {
+        var field = instance.GetType().GetField(
+            $"<{propertyName}>k__BackingField",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        if (field == null)
+        {
+            throw new InvalidOperationException(
+                $"Backing field for property '{propertyName}' was not found on type '{instance.GetType().FullName}'.");
+        }
+
+        field.SetValue(instance, value);
     }
 
     /// <summary>

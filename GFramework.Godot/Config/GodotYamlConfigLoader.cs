@@ -159,7 +159,11 @@ public sealed class GodotYamlConfigLoader : IConfigLoader
     {
         foreach (var group in _options.TableSources
                      .GroupBy(static source => NormalizeRelativePath(source.ConfigRelativePath),
-                         StringComparer.Ordinal))
+                         StringComparer.Ordinal)
+                     // Parent directories must be reset before children, otherwise resetting "a" later
+                     // would erase files that were already synchronized into "a/b" during the same pass.
+                     .OrderBy(static group => CountPathDepth(group.Key))
+                     .ThenBy(static group => group.Key, StringComparer.Ordinal))
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -365,7 +369,39 @@ public sealed class GodotYamlConfigLoader : IConfigLoader
 
     private static string NormalizeRelativePath(string relativePath)
     {
-        return relativePath.Replace('\\', '/').TrimStart('/');
+        ArgumentException.ThrowIfNullOrWhiteSpace(relativePath);
+
+        var normalizedPath = relativePath.Replace('\\', '/').Trim();
+        if (normalizedPath.StartsWith("/", StringComparison.Ordinal) ||
+            normalizedPath.StartsWith("res://", StringComparison.Ordinal) ||
+            normalizedPath.StartsWith("user://", StringComparison.Ordinal) ||
+            Path.IsPathRooted(normalizedPath) ||
+            HasWindowsDrivePrefix(normalizedPath))
+        {
+            throw new ArgumentException("Relative path must be an unrooted path.", nameof(relativePath));
+        }
+
+        var segments = normalizedPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Any(static segment => segment is "." or ".."))
+        {
+            throw new ArgumentException(
+                "Relative path must not contain '.' or '..' segments.",
+                nameof(relativePath));
+        }
+
+        return string.Join('/', segments);
+    }
+
+    private static int CountPathDepth(string normalizedRelativePath)
+    {
+        return normalizedRelativePath.Count(static ch => ch == '/');
+    }
+
+    private static bool HasWindowsDrivePrefix(string path)
+    {
+        return path.Length >= 2 &&
+               char.IsLetter(path[0]) &&
+               path[1] == ':';
     }
 
     private static bool IsYamlFile(string fileName)
