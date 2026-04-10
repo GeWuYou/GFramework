@@ -96,7 +96,7 @@ GameProject/
 
 - 必须是 JSON 字符串
 - 必须是相对路径
-- 不允许包含 `..` 段
+- 不允许包含 `.` 或 `..` 段，也不能写成绝对路径
 - 生成器会把反斜杠标准化为 `/`
 
 ## YAML 示例
@@ -314,7 +314,7 @@ public sealed class GameConfigHost : IDisposable
 `GodotYamlConfigLoader` 会按环境自动处理这两条路径：
 
 - 编辑器态：直接把 `ProjectSettings.GlobalizePath("res://...")` 交给底层 `YamlConfigLoader`
-- 导出态：把当前注册会访问到的配置目录与 schema 文件同步到 `user://` 缓存，再交给底层 `YamlConfigLoader`
+- 导出态：会将当前注册会访问到的 YAML 配置目录与 schema 文件同步到 `user://` 缓存，再交给底层 `YamlConfigLoader`
 
 推荐搭配生成器元数据一起使用，这样项目不需要再自己维护一份重复的配置目录清单：
 
