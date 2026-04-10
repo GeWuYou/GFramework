@@ -1319,17 +1319,191 @@ function validateObjectNode(schemaNode, yamlNode, displayPath, diagnostics, loca
 
 /**
  * Test whether one YAML node satisfies one schema node without emitting user-facing diagnostics.
- * This is used by array `contains` so the tooling can reuse the same recursive validator
- * while treating regular validation failures as a simple "does not match" result.
+ * This is used by array `contains`, where object sub-schemas must behave like
+ * partial matchers: declared properties, required members, and constraints must
+ * match, but additional object members outside the sub-schema must not block a hit.
  *
  * @param {SchemaNode} schemaNode Schema node.
  * @param {YamlNode} yamlNode YAML node.
  * @returns {boolean} True when the YAML node matches the schema node.
  */
 function matchesSchemaNode(schemaNode, yamlNode) {
-    const diagnostics = [];
-    validateNode(schemaNode, yamlNode, schemaNode.displayPath, diagnostics, undefined);
-    return diagnostics.length === 0;
+    return matchesSchemaNodeInternal(schemaNode, yamlNode);
+}
+
+/**
+ * Match one YAML node against one schema node using JSON-Schema-style subset semantics.
+ * The helper mirrors validation rules closely, but it intentionally skips unknown-property
+ * rejection for objects so `contains` can test whether one item satisfies a sub-schema.
+ *
+ * @param {SchemaNode} schemaNode Schema node.
+ * @param {YamlNode} yamlNode YAML node.
+ * @returns {boolean} True when the YAML node satisfies the schema node.
+ */
+function matchesSchemaNodeInternal(schemaNode, yamlNode) {
+    if (schemaNode.type === "object") {
+        if (!yamlNode || yamlNode.kind !== "object") {
+            return false;
+        }
+
+        const propertyCount = yamlNode.map instanceof Map
+            ? yamlNode.map.size
+            : Array.isArray(yamlNode.entries)
+                ? new Set(yamlNode.entries.map((entry) => entry.key)).size
+                : 0;
+
+        for (const requiredProperty of schemaNode.required) {
+            if (!yamlNode.map.has(requiredProperty)) {
+                return false;
+            }
+        }
+
+        for (const [key, childSchema] of Object.entries(schemaNode.properties)) {
+            if (yamlNode.map.has(key) &&
+                !matchesSchemaNodeInternal(childSchema, yamlNode.map.get(key))) {
+                return false;
+            }
+        }
+
+        if (typeof schemaNode.minProperties === "number" &&
+            propertyCount < schemaNode.minProperties) {
+            return false;
+        }
+
+        if (typeof schemaNode.maxProperties === "number" &&
+            propertyCount > schemaNode.maxProperties) {
+            return false;
+        }
+
+        return typeof schemaNode.constComparableValue !== "string" ||
+            buildComparableNodeValue(schemaNode, yamlNode) === schemaNode.constComparableValue;
+    }
+
+    if (schemaNode.type === "array") {
+        if (!yamlNode || yamlNode.kind !== "array") {
+            return false;
+        }
+
+        if (typeof schemaNode.minItems === "number" &&
+            yamlNode.items.length < schemaNode.minItems) {
+            return false;
+        }
+
+        if (typeof schemaNode.maxItems === "number" &&
+            yamlNode.items.length > schemaNode.maxItems) {
+            return false;
+        }
+
+        for (const item of yamlNode.items) {
+            if (!matchesSchemaNodeInternal(schemaNode.items, item)) {
+                return false;
+            }
+        }
+
+        if (schemaNode.uniqueItems === true) {
+            const seenItems = new Set();
+            for (const item of yamlNode.items) {
+                const comparableValue = buildComparableNodeValue(schemaNode.items, item);
+                if (seenItems.has(comparableValue)) {
+                    return false;
+                }
+
+                seenItems.add(comparableValue);
+            }
+        }
+
+        if (schemaNode.contains) {
+            let matchingContainsCount = 0;
+            for (const item of yamlNode.items) {
+                if (matchesSchemaNodeInternal(schemaNode.contains, item)) {
+                    matchingContainsCount += 1;
+                }
+            }
+
+            const requiredMinContains = typeof schemaNode.minContains === "number"
+                ? schemaNode.minContains
+                : 1;
+            if (matchingContainsCount < requiredMinContains) {
+                return false;
+            }
+
+            if (typeof schemaNode.maxContains === "number" &&
+                matchingContainsCount > schemaNode.maxContains) {
+                return false;
+            }
+        }
+
+        return typeof schemaNode.constComparableValue !== "string" ||
+            buildComparableNodeValue(schemaNode, yamlNode) === schemaNode.constComparableValue;
+    }
+
+    if (!yamlNode || yamlNode.kind !== "scalar") {
+        return false;
+    }
+
+    if (!isScalarCompatible(schemaNode.type, yamlNode.value)) {
+        return false;
+    }
+
+    if (Array.isArray(schemaNode.enumValues) &&
+        schemaNode.enumValues.length > 0 &&
+        !schemaNode.enumValues.includes(unquoteScalar(yamlNode.value))) {
+        return false;
+    }
+
+    const scalarValue = unquoteScalar(yamlNode.value);
+    const supportsNumericConstraints = schemaNode.type === "integer" || schemaNode.type === "number";
+    const supportsLengthConstraints = schemaNode.type === "string";
+    const supportsPatternConstraints = schemaNode.type === "string";
+
+    if (supportsNumericConstraints &&
+        typeof schemaNode.minimum === "number" &&
+        Number(scalarValue) < schemaNode.minimum) {
+        return false;
+    }
+
+    if (supportsNumericConstraints &&
+        typeof schemaNode.exclusiveMinimum === "number" &&
+        Number(scalarValue) <= schemaNode.exclusiveMinimum) {
+        return false;
+    }
+
+    if (supportsNumericConstraints &&
+        typeof schemaNode.maximum === "number" &&
+        Number(scalarValue) > schemaNode.maximum) {
+        return false;
+    }
+
+    if (supportsNumericConstraints &&
+        typeof schemaNode.exclusiveMaximum === "number" &&
+        Number(scalarValue) >= schemaNode.exclusiveMaximum) {
+        return false;
+    }
+
+    if (supportsNumericConstraints &&
+        !matchesSchemaMultipleOf(scalarValue, schemaNode.multipleOf)) {
+        return false;
+    }
+
+    if (supportsLengthConstraints &&
+        typeof schemaNode.minLength === "number" &&
+        scalarValue.length < schemaNode.minLength) {
+        return false;
+    }
+
+    if (supportsLengthConstraints &&
+        typeof schemaNode.maxLength === "number" &&
+        scalarValue.length > schemaNode.maxLength) {
+        return false;
+    }
+
+    if (supportsPatternConstraints &&
+        !matchesSchemaPattern(scalarValue, schemaNode.patternRegex)) {
+        return false;
+    }
+
+    return typeof schemaNode.constComparableValue !== "string" ||
+        buildComparableNodeValue(schemaNode, yamlNode) === schemaNode.constComparableValue;
 }
 
 /**

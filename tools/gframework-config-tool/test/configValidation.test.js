@@ -921,6 +921,53 @@ dropRates:
     assert.deepEqual(validateParsedConfig(schemaWithDefaultMinContains, yamlSatisfyingDefaultMinContains), []);
 });
 
+test("validateParsedConfig should allow object contains matches with additional declared item fields", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "entries": {
+              "type": "array",
+              "minContains": 1,
+              "contains": {
+                "type": "object",
+                "required": ["id"],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "const": "boss"
+                  }
+                }
+              },
+              "items": {
+                "type": "object",
+                "required": ["id", "weight"],
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "weight": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        }
+    `);
+    const yaml = parseTopLevelYaml(`
+entries:
+  -
+    id: boss
+    weight: 10
+  -
+    id: slime
+    weight: 3
+`);
+
+    assert.deepEqual(validateParsedConfig(schema, yaml), []);
+});
+
 test("validateParsedConfig should accept large decimal multiples without floating-point drift", () => {
     const schema = parseSchemaContent(`
         {
