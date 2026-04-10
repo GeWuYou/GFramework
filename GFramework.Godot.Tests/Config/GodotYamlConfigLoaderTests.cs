@@ -2,7 +2,9 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using GFramework.Game.Config;
 using GFramework.Godot.Config;
+using NUnit.Framework;
 
 namespace GFramework.Godot.Tests.Config;
 
@@ -12,10 +14,6 @@ namespace GFramework.Godot.Tests.Config;
 [TestFixture]
 public sealed class GodotYamlConfigLoaderTests
 {
-    private string _resourceRoot = null!;
-    private string _testRoot = null!;
-    private string _userRoot = null!;
-
     /// <summary>
     ///     为每个测试准备独立的资源根目录与用户目录。
     /// </summary>
@@ -43,6 +41,10 @@ public sealed class GodotYamlConfigLoaderTests
             Directory.Delete(_testRoot, true);
         }
     }
+
+    private string _resourceRoot = null!;
+    private string _testRoot = null!;
+    private string _userRoot = null!;
 
     /// <summary>
     ///     验证导出态会把注册过的 YAML 与 schema 文本同步到运行时缓存，再交给底层加载器。
