@@ -18,6 +18,8 @@
 
     <ItemGroup>
         <ProjectReference Include="..\GFramework.Godot\GFramework.Godot.csproj"/>
+        <ProjectReference Include="..\GFramework.Game.Abstractions\GFramework.Game.Abstractions.csproj"/>
+        <ProjectReference Include="..\GFramework.Core.Abstractions\GFramework.Core.Abstractions.csproj"/>
     </ItemGroup>
 
 </Project>

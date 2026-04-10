@@ -299,6 +299,63 @@ public sealed class GameConfigHost : IDisposable
 - `InitializeAsync()` 只在首次加载完整成功后才公开运行时状态，避免半初始化对象泄漏到业务层
 - 热重载既可以在初始化时自动启用，也可以在初次加载后显式调用 `StartHotReload(...)`
 
+### Godot 文本配置桥接
+
+如果你的项目运行在 Godot，并且 YAML / schema 文本来自 `res://` 下的原始资源文件，推荐优先使用
+`GFramework.Godot.Config.GodotYamlConfigLoader`，而不是在项目侧手写一层
+“`res://` 遍历 + `user://` 缓存 + `YamlConfigLoader`”桥接代码。
+
+原因很简单：
+
+- `YamlConfigLoader` 需要普通文件系统根目录
+- Godot 编辑器内的 `res://` 可以全局化到项目目录
+- Godot 导出后若仍读取原始文本资产，通常需要先把显式声明的 YAML / schema 文件同步到运行时缓存目录
+
+`GodotYamlConfigLoader` 会按环境自动处理这两条路径：
+
+- 编辑器态：直接把 `ProjectSettings.GlobalizePath("res://...")` 交给底层 `YamlConfigLoader`
+- 导出态：把当前注册会访问到的配置目录与 schema 文件同步到 `user://` 缓存，再交给底层 `YamlConfigLoader`
+
+推荐搭配生成器元数据一起使用，这样项目不需要再自己维护一份重复的配置目录清单：
+
+```csharp
+using GFramework.Game.Abstractions.Config;
+using GFramework.Game.Config;
+using GFramework.Game.Config.Generated;
+using GFramework.Godot.Config;
+
+var registrationOptions = new GeneratedConfigRegistrationOptions
+{
+    IncludedConfigDomains = new[] { "gameplay", "ui" }
+};
+
+var tableSources = GeneratedConfigCatalog
+    .GetTablesForRegistration(registrationOptions)
+    .Select(static metadata => new GodotYamlConfigTableSource(
+        metadata.TableName,
+        metadata.ConfigRelativePath,
+        metadata.SchemaRelativePath))
+    .ToArray();
+
+var loader = new GodotYamlConfigLoader(
+    new GodotYamlConfigLoaderOptions
+    {
+        SourceRootPath = "res://",
+        RuntimeCacheRootPath = "user://config_cache",
+        TableSources = tableSources,
+        ConfigureLoader = yamlLoader => yamlLoader.RegisterAllGeneratedConfigTables(registrationOptions)
+    });
+
+var registry = new ConfigRegistry();
+await loader.LoadAsync(registry);
+```
+
+使用这条路径时，还需要注意两点：
+
+- 导出预设必须显式包含 `.yaml`、`.yml`、`.json`、`.schema.json` 等原始文本资产；否则导出包里根本没有这些文件，任何加载器都无法读取
+- 只有当源根目录可直接映射到普通文件系统目录时，`EnableHotReload(...)` 才可用；如果当前实例依赖 `user://`
+  缓存，热重载会被拒绝，而不是制造“监听了缓存目录却不反映真实源目录”的假象
+
 ### 运行时读取模板
 
 推荐不要在业务代码里直接散落字符串表名查询，而是统一依赖生成的强类型入口：
