@@ -36,6 +36,32 @@ function describeContainsSchema(containsSchema, localizer) {
     return parts.join(", ") || localizer.t("webview.objectArray.item");
 }
 
+/**
+ * Build localized contains-related hint lines for array fields.
+ *
+ * @param {{contains?: {type?: string, enumValues?: string[], constValue?: string, constDisplayValue?: string, pattern?: string, refTable?: string}, minContains?: number}} propertySchema Array property schema metadata.
+ * @param {{t: (key: string, params?: Record<string, string | number>) => string}} localizer Runtime localizer.
+ * @returns {string[]} Localized contains hint lines.
+ */
+function buildContainsHintLines(propertySchema, localizer) {
+    if (!propertySchema.contains) {
+        return [];
+    }
+
+    const effectiveMinContains = typeof propertySchema.minContains === "number"
+        ? propertySchema.minContains
+        : 1;
+    return [
+        localizer.t("webview.hint.contains", {
+            summary: describeContainsSchema(propertySchema.contains, localizer)
+        }),
+        localizer.t("webview.hint.minContains", {
+            value: effectiveMinContains
+        })
+    ];
+}
+
 module.exports = {
-    describeContainsSchema
+    describeContainsSchema,
+    buildContainsHintLines
 };

@@ -1376,6 +1376,78 @@ public class YamlConfigLoaderTests
     }
 
     /// <summary>
+    ///     验证对象数组的 <c>contains</c> 试匹配会按声明属性子集工作，而不会因额外字段误判为不匹配。
+    /// </summary>
+    [Test]
+    public async Task LoadAsync_Should_Accept_Object_Array_When_Contains_Matches_Declared_Subset_Properties()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            name: Slime
+            entries:
+              -
+                id: 1
+                weight: 2
+              -
+                id: 2
+                weight: 3
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "name", "entries"],
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "entries": {
+                  "type": "array",
+                  "minContains": 1,
+                  "contains": {
+                    "type": "object",
+                    "required": ["id"],
+                    "properties": {
+                      "id": {
+                        "type": "integer",
+                        "const": 1
+                      }
+                    }
+                  },
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "weight"],
+                    "properties": {
+                      "id": { "type": "integer" },
+                      "weight": { "type": "integer" }
+                    }
+                  }
+                }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterWeightedEntryArrayConfigStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        await loader.LoadAsync(registry);
+
+        var table = registry.GetTable<int, MonsterWeightedEntryArrayConfigStub>("monster");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(table.Count, Is.EqualTo(1));
+            Assert.That(table.Get(1).Entries.Count, Is.EqualTo(2));
+            Assert.That(table.Get(1).Entries[0].Id, Is.EqualTo(1));
+            Assert.That(table.Get(1).Entries[0].Weight, Is.EqualTo(2));
+        });
+    }
+
+    /// <summary>
     ///     验证数组在未声明 <c>contains</c> 时不能单独使用 <c>minContains</c>。
     /// </summary>
     [Test]
@@ -3202,6 +3274,43 @@ public class YamlConfigLoaderTests
         ///     获取或设置待比较对象数组。
         /// </summary>
         public List<ComparableEntryConfigStub> Entries { get; set; } = new();
+    }
+
+    /// <summary>
+    ///     用于对象数组 <c>contains</c> 子集匹配回归测试的最小配置类型。
+    /// </summary>
+    private sealed class MonsterWeightedEntryArrayConfigStub
+    {
+        /// <summary>
+        ///     获取或设置主键。
+        /// </summary>
+        public int Id { get; set; }
+
+        /// <summary>
+        ///     获取或设置名称。
+        /// </summary>
+        public string Name { get; set; } = string.Empty;
+
+        /// <summary>
+        ///     获取或设置对象数组条目。
+        /// </summary>
+        public List<WeightedEntryConfigStub> Entries { get; set; } = new();
+    }
+
+    /// <summary>
+    ///     表示对象数组 <c>contains</c> 子集匹配回归测试中的条目元素。
+    /// </summary>
+    private sealed class WeightedEntryConfigStub
+    {
+        /// <summary>
+        ///     获取或设置条目标识。
+        /// </summary>
+        public int Id { get; set; }
+
+        /// <summary>
+        ///     获取或设置权重。
+        /// </summary>
+        public int Weight { get; set; }
     }
 
     /// <summary>

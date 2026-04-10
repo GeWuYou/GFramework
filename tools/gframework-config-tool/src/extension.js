@@ -18,7 +18,7 @@ const {
     joinArrayTemplatePath,
     joinPropertyPath
 } = require("./configPath");
-const {describeContainsSchema} = require("./containsSummary");
+const {buildContainsHintLines} = require("./containsSummary");
 const {createLocalizer} = require("./localization");
 
 const localizer = createLocalizer(vscode.env.language);
@@ -1658,13 +1658,10 @@ function renderFieldHint(propertySchema, isArrayField, includeDescription = true
     }
 
     if (isArrayField && propertySchema.contains) {
-        hints.push(escapeHtml(localizer.t("webview.hint.contains", {
-            summary: describeContainsSchema(propertySchema.contains, localizer)
-        })));
-    }
-
-    if (isArrayField && typeof propertySchema.minContains === "number") {
-        hints.push(escapeHtml(localizer.t("webview.hint.minContains", {value: propertySchema.minContains})));
+        const containsHints = buildContainsHintLines(propertySchema, localizer);
+        for (const containsHint of containsHints) {
+            hints.push(escapeHtml(containsHint));
+        }
     }
 
     if (isArrayField && typeof propertySchema.maxContains === "number") {

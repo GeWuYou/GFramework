@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const {describeContainsSchema} = require("../src/containsSummary");
+const {buildContainsHintLines, describeContainsSchema} = require("../src/containsSummary");
 const {createLocalizer} = require("../src/localization");
 
 test("describeContainsSchema should reuse localized Chinese hint strings", () => {
@@ -24,4 +24,23 @@ test("describeContainsSchema should fall back to localized item label", () => {
     const summary = describeContainsSchema({}, localizer);
 
     assert.equal(summary, "Item");
+});
+
+test("buildContainsHintLines should include default minContains when schema omits it", () => {
+    const localizer = createLocalizer("en");
+
+    const lines = buildContainsHintLines(
+        {
+            contains: {
+                type: "integer",
+                constValue: "5",
+                constDisplayValue: "5"
+            }
+        },
+        localizer);
+
+    assert.deepEqual(lines, [
+        "Contains: integer, Const: 5",
+        "Min contains: 1"
+    ]);
 });

@@ -1156,6 +1156,77 @@ test("parseSchemaContent should capture contains metadata", () => {
     assert.equal(schema.properties.dropRates.contains.constDisplayValue, "5");
 });
 
+test("parseSchemaContent should reject nested-array contains schemas", () => {
+    assert.throws(
+        () => parseSchemaContent(`
+            {
+              "type": "object",
+              "properties": {
+                "dropRates": {
+                  "type": "array",
+                  "contains": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  },
+                  "items": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+        `),
+        /unsupported nested array 'contains' schemas/u);
+});
+
+test("parseSchemaContent should reject contains schemas where default minContains exceeds maxContains", () => {
+    assert.throws(
+        () => parseSchemaContent(`
+            {
+              "type": "object",
+              "properties": {
+                "dropRates": {
+                  "type": "array",
+                  "maxContains": 0,
+                  "contains": {
+                    "type": "integer",
+                    "const": 5
+                  },
+                  "items": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+        `),
+        /'minContains' greater than 'maxContains'/u);
+});
+
+test("parseSchemaContent should reject contains schemas where minContains is greater than maxContains", () => {
+    assert.throws(
+        () => parseSchemaContent(`
+            {
+              "type": "object",
+              "properties": {
+                "dropRates": {
+                  "type": "array",
+                  "minContains": 3,
+                  "maxContains": 1,
+                  "contains": {
+                    "type": "integer",
+                    "const": 5
+                  },
+                  "items": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+        `),
+        /'minContains' greater than 'maxContains'/u);
+});
+
 test("parseSchemaContent should capture object property-count metadata", () => {
     const schema = parseSchemaContent(`
         {

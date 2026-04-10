@@ -897,6 +897,19 @@ function parseSchemaNode(rawNode, displayPath) {
         const containsNode = value.contains && typeof value.contains === "object"
             ? parseSchemaNode(value.contains, joinArrayTemplatePath(displayPath))
             : undefined;
+        if (containsNode && containsNode.type === "array") {
+            throw new Error(`Schema property '${displayPath}' uses unsupported nested array 'contains' schemas.`);
+        }
+
+        const effectiveMinContains = containsNode
+            ? (typeof metadata.minContains === "number" ? metadata.minContains : 1)
+            : undefined;
+        if (containsNode &&
+            typeof metadata.maxContains === "number" &&
+            effectiveMinContains > metadata.maxContains) {
+            throw new Error(`Schema property '${displayPath}' declares 'minContains' greater than 'maxContains'.`);
+        }
+
         return applyConstMetadata({
             type: "array",
             displayPath,

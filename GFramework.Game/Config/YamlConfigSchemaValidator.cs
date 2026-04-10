@@ -436,22 +436,42 @@ internal static class YamlConfigSchemaValidator
     /// <param name="node">实际 YAML 节点。</param>
     /// <param name="schemaNode">对应的 schema 节点。</param>
     /// <param name="references">已收集的跨表引用。</param>
+    /// <param name="allowUnknownObjectProperties">
+    ///     是否允许对象节点出现当前 schema 子树未声明的额外字段。
+    ///     该开关仅用于 <c>contains</c> 试匹配，让对象子 schema 可以按“声明属性子集匹配”工作；
+    ///     正常加载主链路仍保持未知字段即失败的严格语义。
+    /// </param>
     private static void ValidateNode(
         string tableName,
         string yamlPath,
         string displayPath,
         YamlNode node,
         YamlConfigSchemaNode schemaNode,
-        ICollection<YamlConfigReferenceUsage>? references)
+        ICollection<YamlConfigReferenceUsage>? references,
+        bool allowUnknownObjectProperties = false)
     {
         switch (schemaNode.NodeType)
         {
             case YamlConfigSchemaPropertyType.Object:
-                ValidateObjectNode(tableName, yamlPath, displayPath, node, schemaNode, references);
+                ValidateObjectNode(
+                    tableName,
+                    yamlPath,
+                    displayPath,
+                    node,
+                    schemaNode,
+                    references,
+                    allowUnknownObjectProperties);
                 return;
 
             case YamlConfigSchemaPropertyType.Array:
-                ValidateArrayNode(tableName, yamlPath, displayPath, node, schemaNode, references);
+                ValidateArrayNode(
+                    tableName,
+                    yamlPath,
+                    displayPath,
+                    node,
+                    schemaNode,
+                    references,
+                    allowUnknownObjectProperties);
                 return;
 
             case YamlConfigSchemaPropertyType.Integer:
@@ -482,13 +502,17 @@ internal static class YamlConfigSchemaValidator
     /// <param name="node">实际 YAML 节点。</param>
     /// <param name="schemaNode">对象 schema 节点。</param>
     /// <param name="references">已收集的跨表引用。</param>
+    /// <param name="allowUnknownObjectProperties">
+    ///     是否允许当前对象包含 schema 子树未声明的额外字段。
+    /// </param>
     private static void ValidateObjectNode(
         string tableName,
         string yamlPath,
         string displayPath,
         YamlNode node,
         YamlConfigSchemaNode schemaNode,
-        ICollection<YamlConfigReferenceUsage>? references)
+        ICollection<YamlConfigReferenceUsage>? references,
+        bool allowUnknownObjectProperties)
     {
         if (node is not YamlMappingNode mappingNode)
         {
@@ -534,6 +558,11 @@ internal static class YamlConfigSchemaValidator
             if (schemaNode.Properties is null ||
                 !schemaNode.Properties.TryGetValue(propertyName, out var propertySchema))
             {
+                if (allowUnknownObjectProperties)
+                {
+                    continue;
+                }
+
                 throw ConfigLoadExceptionFactory.Create(
                     ConfigLoadFailureKind.UnknownProperty,
                     tableName,
@@ -543,7 +572,14 @@ internal static class YamlConfigSchemaValidator
                     displayPath: propertyPath);
             }
 
-            ValidateNode(tableName, yamlPath, propertyPath, entry.Value, propertySchema, references);
+            ValidateNode(
+                tableName,
+                yamlPath,
+                propertyPath,
+                entry.Value,
+                propertySchema,
+                references,
+                allowUnknownObjectProperties);
         }
 
         if (schemaNode.RequiredProperties is null)
@@ -640,13 +676,17 @@ internal static class YamlConfigSchemaValidator
     /// <param name="node">实际 YAML 节点。</param>
     /// <param name="schemaNode">数组 schema 节点。</param>
     /// <param name="references">已收集的跨表引用。</param>
+    /// <param name="allowUnknownObjectProperties">
+    ///     是否允许数组元素内的对象节点包含 schema 子树未声明的额外字段。
+    /// </param>
     private static void ValidateArrayNode(
         string tableName,
         string yamlPath,
         string displayPath,
         YamlNode node,
         YamlConfigSchemaNode schemaNode,
-        ICollection<YamlConfigReferenceUsage>? references)
+        ICollection<YamlConfigReferenceUsage>? references,
+        bool allowUnknownObjectProperties)
     {
         if (node is not YamlSequenceNode sequenceNode)
         {
@@ -683,7 +723,8 @@ internal static class YamlConfigSchemaValidator
                 $"{displayPath}[{itemIndex}]",
                 sequenceNode.Children[itemIndex],
                 schemaNode.ItemNode,
-                references);
+                references,
+                allowUnknownObjectProperties);
         }
 
         ValidateArrayUniqueItemsConstraint(tableName, yamlPath, displayPath, sequenceNode, schemaNode);
@@ -2267,7 +2308,14 @@ internal static class YamlConfigSchemaValidator
 
         try
         {
-            ValidateNode(tableName, yamlPath, displayPath, itemNode, containsNode, matchedReferences);
+            ValidateNode(
+                tableName,
+                yamlPath,
+                displayPath,
+                itemNode,
+                containsNode,
+                matchedReferences,
+                allowUnknownObjectProperties: true);
 
             if (references is not null &&
                 matchedReferences is not null)
