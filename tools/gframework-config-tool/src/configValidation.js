@@ -1023,7 +1023,8 @@ function validateNode(schemaNode, yamlNode, displayPath, diagnostics, localizer)
         }
 
         const comparableItems = [];
-        let hasInvalidArrayItems = false;
+        const containsCandidateItems = [];
+        let hasStructurallyInvalidArrayItems = false;
         for (let index = 0; index < yamlNode.items.length; index += 1) {
             const diagnosticsBeforeValidation = diagnostics.length;
             validateNode(
@@ -1033,12 +1034,16 @@ function validateNode(schemaNode, yamlNode, displayPath, diagnostics, localizer)
                 diagnostics,
                 localizer);
 
+            if (isStructurallyCompatibleWithSchemaNode(schemaNode.items, yamlNode.items[index])) {
+                containsCandidateItems.push({index, node: yamlNode.items[index]});
+            } else {
+                hasStructurallyInvalidArrayItems = true;
+            }
+
             // Keep uniqueItems focused on values that are otherwise valid so a
-            // shape/type error does not also surface as a misleading duplicate.
+            // shape/type or constraint error does not also surface as a misleading duplicate.
             if (diagnostics.length === diagnosticsBeforeValidation) {
                 comparableItems.push({index, node: yamlNode.items[index]});
-            } else {
-                hasInvalidArrayItems = true;
             }
         }
 
@@ -1061,9 +1066,9 @@ function validateNode(schemaNode, yamlNode, displayPath, diagnostics, localizer)
             }
         }
 
-        if (!hasInvalidArrayItems && schemaNode.contains) {
+        if (!hasStructurallyInvalidArrayItems && schemaNode.contains) {
             let matchingContainsCount = 0;
-            for (const {node} of comparableItems) {
+            for (const {node} of containsCandidateItems) {
                 if (matchesSchemaNode(schemaNode.contains, node)) {
                     matchingContainsCount += 1;
                 }
@@ -1504,6 +1509,60 @@ function matchesSchemaNodeInternal(schemaNode, yamlNode) {
 
     return typeof schemaNode.constComparableValue !== "string" ||
         buildComparableNodeValue(schemaNode, yamlNode) === schemaNode.constComparableValue;
+}
+
+/**
+ * Test whether one YAML node is structurally compatible with one schema node.
+ * This keeps array-level `contains` validation from producing noisy follow-on
+ * diagnostics when an item already has a shape or scalar-type mismatch, while
+ * still allowing value-level constraint failures to participate in contains counting.
+ *
+ * @param {SchemaNode} schemaNode Schema node.
+ * @param {YamlNode} yamlNode YAML node.
+ * @returns {boolean} True when the YAML node has the expected recursive shape.
+ */
+function isStructurallyCompatibleWithSchemaNode(schemaNode, yamlNode) {
+    if (schemaNode.type === "object") {
+        if (!yamlNode || yamlNode.kind !== "object") {
+            return false;
+        }
+
+        for (const requiredProperty of schemaNode.required) {
+            if (!yamlNode.map.has(requiredProperty)) {
+                return false;
+            }
+        }
+
+        for (const entry of yamlNode.entries) {
+            if (!Object.prototype.hasOwnProperty.call(schemaNode.properties, entry.key)) {
+                return false;
+            }
+
+            if (!isStructurallyCompatibleWithSchemaNode(schemaNode.properties[entry.key], entry.node)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    if (schemaNode.type === "array") {
+        if (!yamlNode || yamlNode.kind !== "array") {
+            return false;
+        }
+
+        for (const item of yamlNode.items) {
+            if (!isStructurallyCompatibleWithSchemaNode(schemaNode.items, item)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    return Boolean(yamlNode) &&
+        yamlNode.kind === "scalar" &&
+        isScalarCompatible(schemaNode.type, yamlNode.value);
 }
 
 /**

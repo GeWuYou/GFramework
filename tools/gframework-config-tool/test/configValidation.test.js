@@ -831,6 +831,100 @@ dropRates:
     assert.match(diagnostics[0].message, /at least 2 items matching the 'contains' schema|至少需要包含 2 个匹配 contains 条件的元素/u);
 });
 
+test("validateParsedConfig should skip contains match-count when items are structurally invalid", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "required": ["dropRates"],
+          "properties": {
+            "dropRates": {
+              "type": "array",
+              "minContains": 2,
+              "contains": {
+                "type": "object",
+                "required": ["type"],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "RARE"
+                  }
+                }
+              },
+              "items": {
+                "type": "object",
+                "required": ["type", "value"],
+                "properties": {
+                  "type": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        }
+    `);
+    const yaml = parseTopLevelYaml(`
+dropRates:
+  -
+    type: RARE
+    value: "not-a-number"
+  -
+    type: RARE
+    value: 10
+`);
+
+    const diagnostics = validateParsedConfig(schema, yaml);
+
+    assert.ok(diagnostics.length > 0);
+    assert.match(
+        diagnostics[0].message,
+        /dropRates\[0\]\.value/u);
+    assert.match(
+        diagnostics[0].message,
+        /integer|整数/u);
+    assert.equal(
+        diagnostics.some((diagnostic) => /at least 2 items matching the 'contains' schema|至少需要包含 2 个匹配 contains 条件的元素/u.test(diagnostic.message)),
+        false);
+    assert.equal(
+        diagnostics.some((diagnostic) => /at most \d+ items matching the 'contains' schema|最多只能包含 \d+ 个匹配 contains 条件的元素/u.test(diagnostic.message)),
+        false);
+});
+
+test("validateParsedConfig should continue contains match-count when items only have value-level violations", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "dropRates": {
+              "type": "array",
+              "minContains": 1,
+              "contains": {
+                "type": "integer",
+                "const": 7
+              },
+              "items": {
+                "type": "integer",
+                "minimum": 10
+              }
+            }
+          }
+        }
+    `);
+    const yaml = parseTopLevelYaml(`
+dropRates:
+  - 5
+`);
+
+    const diagnostics = validateParsedConfig(schema, yaml);
+
+    assert.equal(diagnostics.length, 2);
+    assert.match(diagnostics[0].message, /greater than or equal to 10|大于或等于 10/u);
+    assert.match(diagnostics[1].message, /at least 1 items matching the 'contains' schema|至少需要包含 1 个匹配 contains 条件的元素/u);
+});
+
 test("validateParsedConfig should report maxContains violations", () => {
     const schema = parseSchemaContent(`
         {

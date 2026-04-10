@@ -44,3 +44,52 @@ test("buildContainsHintLines should include default minContains when schema omit
         "Min contains: 1"
     ]);
 });
+
+test("buildContainsHintLines should use explicit minContains when provided", () => {
+    const localizer = createLocalizer("en");
+
+    const lines = buildContainsHintLines(
+        {
+            minContains: 2,
+            contains: {
+                type: "string",
+                constValue: "\"potion\"",
+                constDisplayValue: "\"potion\"",
+                refTable: "item"
+            }
+        },
+        localizer);
+
+    assert.deepEqual(lines, [
+        "Contains: string, Const: \"potion\", Ref table: item",
+        "Min contains: 2"
+    ]);
+});
+
+test("describeContainsSchema should format enum-based contains schema in English", () => {
+    const localizer = createLocalizer("en");
+
+    const summary = describeContainsSchema(
+        {
+            type: "string",
+            enumValues: ["potion", "elixir"],
+            refTable: "item"
+        },
+        localizer);
+
+    assert.equal(summary, "string, Allowed: potion, elixir, Ref table: item");
+});
+
+test("describeContainsSchema should format pattern-based contains schema in Chinese", () => {
+    const localizer = createLocalizer("zh-cn");
+
+    const summary = describeContainsSchema(
+        {
+            type: "string",
+            pattern: "^potion-",
+            refTable: "item"
+        },
+        localizer);
+
+    assert.equal(summary, "string, 正则模式：^potion-, 引用表：item");
+});
