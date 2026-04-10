@@ -3,7 +3,6 @@ using GFramework.Core.Abstractions.Events;
 using GFramework.Game.Abstractions.Config;
 using GFramework.Game.Config;
 using GFramework.Godot.Extensions;
-using FileAccess = Godot.FileAccess;
 
 namespace GFramework.Godot.Config;
 
@@ -110,13 +109,33 @@ public sealed class GodotYamlConfigLoader : IConfigLoader
     /// </summary>
     public bool CanEnableHotReload => UsesSourceDirectoryDirectly(SourceRootPath);
 
-    /// <inheritdoc />
+    /// <summary>
+    ///     执行 Godot 场景下的配置加载。
+    ///     当源目录无法直接作为普通文件系统目录访问时，加载器会先把显式声明的 YAML 与 schema 文本同步到运行时缓存，
+    ///     再委托底层 <see cref="YamlConfigLoader" /> 完成解析与注册。
+    /// </summary>
+    /// <param name="registry">用于接收配置表的注册表。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>表示加载流程的异步任务。</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="registry" /> 为 <see langword="null" /> 时抛出。</exception>
+    /// <exception cref="ConfigLoadException">
+    ///     当缓存同步、配置文件读取、schema 读取或底层 YAML 加载失败时抛出。
+    /// </exception>
+    /// <remarks>
+    ///     运行时缓存同步阶段刻意保持同步执行。
+    ///     原因在于默认宿主环境可能需要通过 Godot 的目录和文件访问 API 读取 <c>res://</c> 资源，
+    ///     而这些访问边界目前仅以同步委托形式暴露；同时底层 <see cref="YamlConfigLoader" /> 也要求缓存文件在开始读取前已经完整落盘。
+    ///     这意味着当实例无法直接访问源目录时，调用线程会在进入真正的异步 YAML 解析前承担一次文件系统同步成本。
+    /// </remarks>
     public async Task LoadAsync(IConfigRegistry registry, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(registry);
 
         if (!CanEnableHotReload)
         {
+            // Runtime cache preparation must finish before the underlying loader starts enumerating files.
+            // This step intentionally stays synchronous because the default Godot environment exposes
+            // directory enumeration and file reads through synchronous engine/file-system APIs only.
             SynchronizeRuntimeCache(cancellationToken);
         }
 
