@@ -1091,6 +1091,10 @@ function localizeValidationMessage(key, localizer, params) {
     }
 
     if (key === ValidationMessageKeys.minPropertiesViolation) {
+        if (localizer && typeof localizer.t === "function" && params.displayPath) {
+            return localizer.t(key, params);
+        }
+
         return formatObjectPropertyCountMessage(
             params.displayPath,
             params.value,
@@ -1099,6 +1103,10 @@ function localizeValidationMessage(key, localizer, params) {
     }
 
     if (key === ValidationMessageKeys.maxPropertiesViolation) {
+        if (localizer && typeof localizer.t === "function" && params.displayPath) {
+            return localizer.t(key, params);
+        }
+
         return formatObjectPropertyCountMessage(
             params.displayPath,
             params.value,

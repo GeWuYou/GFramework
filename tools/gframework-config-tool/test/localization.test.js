@@ -1,6 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {createLocalizer} = require("../src/localization");
+const {ValidationMessageKeys} = require("../src/localizationKeys");
 
 test("createLocalizer should default to English strings", () => {
     const localizer = createLocalizer("en");
@@ -33,4 +34,26 @@ test("createLocalizer should fall back to English for Traditional Chinese locale
     assert.equal(
         localizer.t("message.batchEditUpdated", {count: 2, domain: "monster"}),
         "Batch updated 2 config file(s) in 'monster'.");
+});
+
+test("createLocalizer should expose object property-count validation keys in English", () => {
+    const localizer = createLocalizer("en");
+
+    assert.equal(
+        localizer.t(ValidationMessageKeys.minPropertiesViolation, {displayPath: "reward", value: 2}),
+        "Property 'reward' must contain at least 2 properties.");
+    assert.equal(
+        localizer.t(ValidationMessageKeys.maxPropertiesViolation, {displayPath: "reward", value: 3}),
+        "Property 'reward' must contain at most 3 properties.");
+});
+
+test("createLocalizer should expose object property-count validation keys in Simplified Chinese", () => {
+    const localizer = createLocalizer("zh-cn");
+
+    assert.equal(
+        localizer.t(ValidationMessageKeys.minPropertiesViolation, {displayPath: "reward", value: 2}),
+        "对象属性“reward”至少需要包含 2 个子属性。");
+    assert.equal(
+        localizer.t(ValidationMessageKeys.maxPropertiesViolation, {displayPath: "reward", value: 3}),
+        "对象属性“reward”最多只能包含 3 个子属性。");
 });
