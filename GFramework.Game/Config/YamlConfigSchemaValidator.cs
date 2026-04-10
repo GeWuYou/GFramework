@@ -687,7 +687,7 @@ internal static class YamlConfigSchemaValidator
         }
 
         ValidateArrayUniqueItemsConstraint(tableName, yamlPath, displayPath, sequenceNode, schemaNode);
-        ValidateArrayContainsConstraints(tableName, yamlPath, displayPath, sequenceNode, schemaNode);
+        ValidateArrayContainsConstraints(tableName, yamlPath, displayPath, sequenceNode, schemaNode, references);
         ValidateConstantValue(tableName, yamlPath, displayPath, sequenceNode, schemaNode);
     }
 
@@ -2153,12 +2153,14 @@ internal static class YamlConfigSchemaValidator
     /// <param name="displayPath">字段路径。</param>
     /// <param name="sequenceNode">实际数组节点。</param>
     /// <param name="schemaNode">数组 schema 节点。</param>
+    /// <param name="references">匹配成功的 <c>contains</c> 子树所声明的跨表引用收集器。</param>
     private static void ValidateArrayContainsConstraints(
         string tableName,
         string yamlPath,
         string displayPath,
         YamlSequenceNode sequenceNode,
-        YamlConfigSchemaNode schemaNode)
+        YamlConfigSchemaNode schemaNode,
+        ICollection<YamlConfigReferenceUsage>? references)
     {
         var containsConstraints = schemaNode.ArrayConstraints?.ContainsConstraints;
         if (containsConstraints is null)
@@ -2171,7 +2173,8 @@ internal static class YamlConfigSchemaValidator
             yamlPath,
             displayPath,
             sequenceNode,
-            containsConstraints.ContainsNode);
+            containsConstraints.ContainsNode,
+            references);
         var rawValue = matchingCount.ToString(CultureInfo.InvariantCulture);
         var requiredMinContains = containsConstraints.MinContains ?? 1;
         if (matchingCount < requiredMinContains)
@@ -2211,13 +2214,15 @@ internal static class YamlConfigSchemaValidator
     /// <param name="displayPath">数组字段路径。</param>
     /// <param name="sequenceNode">实际数组节点。</param>
     /// <param name="containsNode">contains 子 schema。</param>
+    /// <param name="references">匹配成功元素的可选跨表引用收集器。</param>
     /// <returns>匹配 <c>contains</c> 子 schema 的元素数量。</returns>
     private static int CountMatchingContainsItems(
         string tableName,
         string yamlPath,
         string displayPath,
         YamlSequenceNode sequenceNode,
-        YamlConfigSchemaNode containsNode)
+        YamlConfigSchemaNode containsNode,
+        ICollection<YamlConfigReferenceUsage>? references)
     {
         var matchingCount = 0;
         for (var itemIndex = 0; itemIndex < sequenceNode.Children.Count; itemIndex++)
@@ -2227,7 +2232,8 @@ internal static class YamlConfigSchemaValidator
                     yamlPath,
                     $"{displayPath}[{itemIndex}]",
                     sequenceNode.Children[itemIndex],
-                    containsNode))
+                    containsNode,
+                    references))
             {
                 matchingCount++;
             }
@@ -2245,17 +2251,33 @@ internal static class YamlConfigSchemaValidator
     /// <param name="displayPath">当前数组元素路径。</param>
     /// <param name="itemNode">实际 YAML 元素。</param>
     /// <param name="containsNode">contains 子 schema。</param>
+    /// <param name="references">当前元素匹配成功后要写回的可选跨表引用收集器。</param>
     /// <returns>当前元素是否匹配 contains 子 schema。</returns>
     private static bool IsArrayItemMatchingContains(
         string tableName,
         string yamlPath,
         string displayPath,
         YamlNode itemNode,
-        YamlConfigSchemaNode containsNode)
+        YamlConfigSchemaNode containsNode,
+        ICollection<YamlConfigReferenceUsage>? references)
     {
+        // contains 的“试匹配”不能把失败元素的引用泄漏给外层，但匹配成功的元素仍需要参与
+        // 跨表引用收集，否则仅声明在 contains 子 schema 里的 ref-table 会被运行时遗漏。
+        List<YamlConfigReferenceUsage>? matchedReferences = references is null ? null : new();
+
         try
         {
-            ValidateNode(tableName, yamlPath, displayPath, itemNode, containsNode, references: null);
+            ValidateNode(tableName, yamlPath, displayPath, itemNode, containsNode, matchedReferences);
+
+            if (references is not null &&
+                matchedReferences is not null)
+            {
+                foreach (var referenceUsage in matchedReferences)
+                {
+                    references.Add(referenceUsage);
+                }
+            }
+
             return true;
         }
         catch (ConfigLoadException exception) when (exception.Diagnostic.FailureKind != ConfigLoadFailureKind.UnexpectedFailure)
@@ -2626,6 +2648,12 @@ internal static class YamlConfigSchemaValidator
         if (node.ItemNode is not null)
         {
             CollectReferencedTableNames(node.ItemNode, referencedTableNames);
+        }
+
+        var containsNode = node.ArrayConstraints?.ContainsConstraints?.ContainsNode;
+        if (containsNode is not null)
+        {
+            CollectReferencedTableNames(containsNode, referencedTableNames);
         }
     }
 

@@ -1212,6 +1212,170 @@ public class YamlConfigLoaderTests
     }
 
     /// <summary>
+    ///     验证匹配数量刚好等于 <c>minContains</c> / <c>maxContains</c> 时会被视为合法边界。
+    /// </summary>
+    [Test]
+    public async Task LoadAsync_Should_Accept_Array_When_Contains_Match_Count_Equals_Min_And_Max_Bounds()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            name: Slime
+            dropRates:
+              - 5
+              - 7
+              - 5
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "name", "dropRates"],
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "dropRates": {
+                  "type": "array",
+                  "minContains": 2,
+                  "maxContains": 2,
+                  "contains": {
+                    "type": "integer",
+                    "const": 5
+                  },
+                  "items": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterConfigIntegerArrayStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        await loader.LoadAsync(registry);
+
+        var table = registry.GetTable<int, MonsterConfigIntegerArrayStub>("monster");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(table.Count, Is.EqualTo(1));
+            Assert.That(table.Get(1).DropRates, Is.EqualTo(new[] { 5, 7, 5 }));
+        });
+    }
+
+    /// <summary>
+    ///     验证数组字段将 <c>contains</c> 声明为非对象 schema 时，会在 schema 解析阶段被拒绝。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Throw_When_Contains_Is_Not_Object_Schema()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            name: Slime
+            dropRates:
+              - 5
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "name", "dropRates"],
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "dropRates": {
+                  "type": "array",
+                  "contains": 5,
+                  "items": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterConfigIntegerArrayStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Diagnostic.FailureKind, Is.EqualTo(ConfigLoadFailureKind.SchemaUnsupported));
+            Assert.That(exception.Diagnostic.DisplayPath, Is.EqualTo("dropRates"));
+            Assert.That(exception.Message, Does.Contain("'contains' as an object-valued schema"));
+            Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
+    ///     验证数组字段将 <c>contains</c> 声明为嵌套数组 schema 时，会在 schema 解析阶段被拒绝。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Throw_When_Contains_Uses_Nested_Array_Schema()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            name: Slime
+            dropRates:
+              - 5
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "name", "dropRates"],
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "dropRates": {
+                  "type": "array",
+                  "contains": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  },
+                  "items": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterConfigIntegerArrayStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Diagnostic.FailureKind, Is.EqualTo(ConfigLoadFailureKind.SchemaUnsupported));
+            Assert.That(exception.Diagnostic.DisplayPath, Is.EqualTo("dropRates"));
+            Assert.That(exception.Message, Does.Contain("unsupported nested array 'contains' schemas"));
+            Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
     ///     验证数组在未声明 <c>contains</c> 时不能单独使用 <c>minContains</c>。
     /// </summary>
     [Test]
@@ -2346,6 +2510,190 @@ public class YamlConfigLoaderTests
     }
 
     /// <summary>
+    ///     验证仅声明在 <c>contains</c> 子 schema 里的跨表引用也会参与整批加载校验。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Throw_When_Contains_Matched_Reference_Target_Is_Missing()
+    {
+        CreateConfigFile(
+            "item/potion.yaml",
+            """
+            id: potion
+            name: Potion
+            """);
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            name: Slime
+            dropItemIds:
+              - potion
+              - missing_item
+            """);
+        CreateSchemaFile(
+            "schemas/item.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "name"],
+              "properties": {
+                "id": { "type": "string" },
+                "name": { "type": "string" }
+              }
+            }
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "name", "dropItemIds"],
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "dropItemIds": {
+                  "type": "array",
+                  "minContains": 1,
+                  "contains": {
+                    "type": "string",
+                    "x-gframework-ref-table": "item"
+                  },
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<string, ItemConfigStub>("item", "item", "schemas/item.schema.json",
+                static config => config.Id)
+            .RegisterTable<int, MonsterDropArrayConfigStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Diagnostic.FailureKind, Is.EqualTo(ConfigLoadFailureKind.ReferencedKeyNotFound));
+            Assert.That(exception.Diagnostic.TableName, Is.EqualTo("monster"));
+            Assert.That(exception.Diagnostic.ReferencedTableName, Is.EqualTo("item"));
+            Assert.That(exception.Diagnostic.DisplayPath, Is.EqualTo("dropItemIds[1]"));
+            Assert.That(exception.Diagnostic.RawValue, Is.EqualTo("missing_item"));
+            Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
+    ///     验证依赖关系仅来自 <c>contains</c> 子 schema 时，热重载仍会追踪该依赖并在目标表破坏引用后回滚。
+    /// </summary>
+    [Test]
+    public async Task EnableHotReload_Should_Keep_Previous_State_When_Contains_Reference_Dependency_Breaks()
+    {
+        CreateConfigFile(
+            "item/potion.yaml",
+            """
+            id: potion
+            name: Potion
+            """);
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            name: Slime
+            dropItemIds:
+              - potion
+            """);
+        CreateSchemaFile(
+            "schemas/item.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "name"],
+              "properties": {
+                "id": { "type": "string" },
+                "name": { "type": "string" }
+              }
+            }
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "name", "dropItemIds"],
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "dropItemIds": {
+                  "type": "array",
+                  "minContains": 1,
+                  "contains": {
+                    "type": "string",
+                    "x-gframework-ref-table": "item"
+                  },
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<string, ItemConfigStub>("item", "item", "schemas/item.schema.json",
+                static config => config.Id)
+            .RegisterTable<int, MonsterDropArrayConfigStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+        await loader.LoadAsync(registry);
+
+        var reloadFailureTaskSource =
+            new TaskCompletionSource<(string TableName, Exception Exception)>(TaskCreationOptions
+                .RunContinuationsAsynchronously);
+        var hotReload = loader.EnableHotReload(
+            registry,
+            onTableReloadFailed: (tableName, exception) =>
+                reloadFailureTaskSource.TrySetResult((tableName, exception)),
+            debounceDelay: TimeSpan.FromMilliseconds(150));
+
+        try
+        {
+            CreateConfigFile(
+                "item/potion.yaml",
+                """
+                id: elixir
+                name: Elixir
+                """);
+
+            var failure = await WaitForTaskWithinAsync(reloadFailureTaskSource.Task, TimeSpan.FromSeconds(5));
+            var diagnosticException = failure.Exception as ConfigLoadException;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(failure.TableName, Is.EqualTo("item"));
+                Assert.That(diagnosticException, Is.Not.Null);
+                Assert.That(diagnosticException!.Diagnostic.FailureKind,
+                    Is.EqualTo(ConfigLoadFailureKind.ReferencedKeyNotFound));
+                Assert.That(diagnosticException.Diagnostic.TableName, Is.EqualTo("monster"));
+                Assert.That(diagnosticException.Diagnostic.ReferencedTableName, Is.EqualTo("item"));
+                Assert.That(diagnosticException.Diagnostic.DisplayPath, Is.EqualTo("dropItemIds[0]"));
+                Assert.That(diagnosticException.Diagnostic.RawValue, Is.EqualTo("potion"));
+                Assert.That(registry.GetTable<string, ItemConfigStub>("item").ContainsKey("potion"), Is.True);
+                Assert.That(registry.GetTable<int, MonsterDropArrayConfigStub>("monster").Get(1).DropItemIds,
+                    Is.EqualTo(new[] { "potion" }));
+            });
+        }
+        finally
+        {
+            hotReload.UnRegister();
+        }
+    }
+
+    /// <summary>
     ///     验证启用热重载后，配置文件内容变更会刷新已注册配置表。
     /// </summary>
     [Test]
@@ -2779,7 +3127,7 @@ public class YamlConfigLoaderTests
         /// <summary>
         ///     获取或设置掉落率列表。
         /// </summary>
-        public IReadOnlyList<int> DropRates { get; set; } = Array.Empty<int>();
+        public List<int> DropRates { get; set; } = new();
     }
 
     /// <summary>

@@ -18,6 +18,7 @@ const {
     joinArrayTemplatePath,
     joinPropertyPath
 } = require("./configPath");
+const {describeContainsSchema} = require("./containsSummary");
 const {createLocalizer} = require("./localization");
 
 const localizer = createLocalizer(vscode.env.language);
@@ -1658,7 +1659,7 @@ function renderFieldHint(propertySchema, isArrayField, includeDescription = true
 
     if (isArrayField && propertySchema.contains) {
         hints.push(escapeHtml(localizer.t("webview.hint.contains", {
-            summary: describeContainsSchema(propertySchema.contains)
+            summary: describeContainsSchema(propertySchema.contains, localizer)
         })));
     }
 
@@ -1721,35 +1722,6 @@ function renderFieldHint(propertySchema, isArrayField, includeDescription = true
     }
 
     return `<span class="hint">${hints.join(" · ")}</span>`;
-}
-
-/**
- * Build a compact contains-schema summary for array field hints.
- * The hint intentionally stays short so the form preview can expose the rule
- * without inlining a second full schema tree beside the field controls.
- *
- * @param {{type?: string, enumValues?: string[], constValue?: string, constDisplayValue?: string, pattern?: string, refTable?: string}} containsSchema Parsed contains schema metadata.
- * @returns {string} Human-facing summary.
- */
-function describeContainsSchema(containsSchema) {
-    const parts = [];
-    if (containsSchema.type) {
-        parts.push(containsSchema.type);
-    }
-
-    if (containsSchema.constValue !== undefined) {
-        parts.push(`const = ${containsSchema.constDisplayValue ?? containsSchema.constValue}`);
-    } else if (Array.isArray(containsSchema.enumValues) && containsSchema.enumValues.length > 0) {
-        parts.push(`enum = ${containsSchema.enumValues.join(", ")}`);
-    } else if (containsSchema.pattern) {
-        parts.push(`pattern = ${containsSchema.pattern}`);
-    }
-
-    if (containsSchema.refTable) {
-        parts.push(`ref = ${containsSchema.refTable}`);
-    }
-
-    return parts.join(", ") || "item";
 }
 
 /**
