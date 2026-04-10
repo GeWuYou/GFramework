@@ -65,7 +65,7 @@ test("parseSchemaContent should capture nested objects and object-array metadata
     assert.equal(schema.properties.phases.items.properties.wave.type, "integer");
 });
 
-test("parseSchemaContent should capture const metadata for scalar, object, and array nodes", () => {
+test("parseSchemaContent should capture const metadata for scalar, object, array, integer, and boolean nodes", () => {
     const schema = parseSchemaContent(`
         {
           "type": "object",
@@ -78,18 +78,60 @@ test("parseSchemaContent should capture const metadata for scalar, object, and a
               "type": "object",
               "properties": {
                 "gold": { "type": "integer" },
-                "currency": { "type": "string" }
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
               },
               "const": {
-                "gold": 10,
-                "currency": "coin"
+                "gold": 100,
+                "items": [
+                  "potion",
+                  "sword"
+                ]
               }
             },
-            "dropItemIds": {
+            "tags": {
               "type": "array",
-              "const": ["potion", "gem"],
+              "const": ["daily", "quest"],
               "items": {
                 "type": "string"
+              }
+            },
+            "maxAttempts": {
+              "type": "integer",
+              "const": 3
+            },
+            "allowRetry": {
+              "type": "boolean",
+              "const": true
+            }
+          }
+        }
+    `);
+    const reorderedSchema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "reward": {
+              "type": "object",
+              "properties": {
+                "gold": { "type": "integer" },
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "const": {
+                "items": [
+                  "potion",
+                  "sword"
+                ],
+                "gold": 100
               }
             }
           }
@@ -98,10 +140,25 @@ test("parseSchemaContent should capture const metadata for scalar, object, and a
 
     assert.equal(schema.properties.rarity.constValue, "common");
     assert.equal(schema.properties.rarity.constDisplayValue, "\"common\"");
-    assert.match(schema.properties.reward.constValue, /"currency":"coin"/u);
-    assert.match(schema.properties.reward.constDisplayValue, /"currency":"coin"/u);
-    assert.equal(schema.properties.dropItemIds.constValue, "[\"potion\",\"gem\"]");
-    assert.equal(schema.properties.dropItemIds.constDisplayValue, "[\"potion\",\"gem\"]");
+    assert.ok(schema.properties.rarity.constComparableValue);
+
+    assert.equal(schema.properties.reward.constValue, "{\"gold\":100,\"items\":[\"potion\",\"sword\"]}");
+    assert.equal(schema.properties.reward.constDisplayValue, "{\"gold\":100,\"items\":[\"potion\",\"sword\"]}");
+    assert.equal(
+        schema.properties.reward.constComparableValue,
+        reorderedSchema.properties.reward.constComparableValue);
+
+    assert.equal(schema.properties.tags.constValue, "[\"daily\",\"quest\"]");
+    assert.equal(schema.properties.tags.constDisplayValue, "[\"daily\",\"quest\"]");
+    assert.ok(schema.properties.tags.constComparableValue);
+
+    assert.equal(schema.properties.maxAttempts.constValue, "3");
+    assert.equal(schema.properties.maxAttempts.constDisplayValue, "3");
+    assert.equal(schema.properties.maxAttempts.constComparableValue, "integer:1:3");
+
+    assert.equal(schema.properties.allowRetry.constValue, "true");
+    assert.equal(schema.properties.allowRetry.constDisplayValue, "true");
+    assert.equal(schema.properties.allowRetry.constComparableValue, "boolean:4:true");
 });
 
 test("parseSchemaContent should preserve empty-string const raw and display metadata", () => {
@@ -291,6 +348,139 @@ rarity: rare
     assert.match(diagnostics[0].message, /constant value "common"|固定值 "common"/u);
 });
 
+test("validateParsedConfig should accept scalar, object, array, integer, and boolean const matches", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "rarity": {
+              "type": "string",
+              "const": "common"
+            },
+            "reward": {
+              "type": "object",
+              "properties": {
+                "gold": { "type": "integer" },
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "const": {
+                "gold": 100,
+                "items": [
+                  "potion",
+                  "sword"
+                ]
+              }
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "const": [
+                "daily",
+                "quest"
+              ]
+            },
+            "maxAttempts": {
+              "type": "integer",
+              "const": 3
+            },
+            "allowRetry": {
+              "type": "boolean",
+              "const": true
+            }
+          }
+        }
+    `);
+    const yaml = parseTopLevelYaml(`
+rarity: common
+reward:
+  gold: 100
+  items:
+    - potion
+    - sword
+tags:
+  - daily
+  - quest
+maxAttempts: 3
+allowRetry: true
+`);
+
+    assert.deepEqual(validateParsedConfig(schema, yaml), []);
+});
+
+test("validateParsedConfig should normalize object const comparisons but keep array const order", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "reward": {
+              "type": "object",
+              "properties": {
+                "gold": { "type": "integer" },
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "const": {
+                "gold": 100,
+                "items": [
+                  "potion",
+                  "sword"
+                ]
+              }
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "const": [
+                "daily",
+                "quest"
+              ]
+            }
+          }
+        }
+    `);
+    const normalizedYaml = parseTopLevelYaml(`
+reward:
+  items:
+    - potion
+    - sword
+  gold: 100
+tags:
+  - daily
+  - quest
+`);
+    const arrayOrderMismatchYaml = parseTopLevelYaml(`
+reward:
+  items:
+    - potion
+    - sword
+  gold: 100
+tags:
+  - quest
+  - daily
+`);
+
+    assert.deepEqual(validateParsedConfig(schema, normalizedYaml), []);
+
+    const diagnostics = validateParsedConfig(schema, arrayOrderMismatchYaml);
+
+    assert.equal(diagnostics.length, 1);
+    assert.match(diagnostics[0].message, /tags/u);
+    assert.match(diagnostics[0].message, /constant value \["daily","quest"\]|固定值 \["daily","quest"\]/u);
+});
+
 test("validateParsedConfig should report object and array const mismatches", () => {
     const schema = parseSchemaContent(`
         {
@@ -331,6 +521,60 @@ dropItemIds:
     assert.equal(diagnostics.length, 2);
     assert.match(diagnostics[0].message, /reward/u);
     assert.match(diagnostics[1].message, /dropItemIds/u);
+});
+
+test("validateParsedConfig should cover integer and boolean const scalar normalization and mismatches", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "maxAttempts": {
+              "type": "integer",
+              "const": 3
+            },
+            "allowRetry": {
+              "type": "boolean",
+              "const": true
+            }
+          }
+        }
+    `);
+    const normalizedYaml = parseTopLevelYaml(`
+maxAttempts: "3"
+allowRetry: "true"
+`);
+    const integerMismatchYaml = parseTopLevelYaml(`
+maxAttempts: 3.5
+allowRetry: true
+`);
+    const booleanConstMismatchYaml = parseTopLevelYaml(`
+maxAttempts: 3
+allowRetry: false
+`);
+    const booleanTypeMismatchYaml = parseTopLevelYaml(`
+maxAttempts: 3
+allowRetry: 0
+`);
+
+    assert.deepEqual(validateParsedConfig(schema, normalizedYaml), []);
+
+    const integerDiagnostics = validateParsedConfig(schema, integerMismatchYaml);
+
+    assert.equal(integerDiagnostics.length, 1);
+    assert.match(integerDiagnostics[0].message, /maxAttempts/u);
+    assert.match(integerDiagnostics[0].message, /integer|整数/u);
+
+    const booleanConstDiagnostics = validateParsedConfig(schema, booleanConstMismatchYaml);
+
+    assert.equal(booleanConstDiagnostics.length, 1);
+    assert.match(booleanConstDiagnostics[0].message, /allowRetry/u);
+    assert.match(booleanConstDiagnostics[0].message, /constant value true|固定值 true/u);
+
+    const booleanTypeDiagnostics = validateParsedConfig(schema, booleanTypeMismatchYaml);
+
+    assert.equal(booleanTypeDiagnostics.length, 1);
+    assert.match(booleanTypeDiagnostics[0].message, /allowRetry/u);
+    assert.match(booleanTypeDiagnostics[0].message, /boolean|布尔/u);
 });
 
 test("validateParsedConfig should report numeric range and string length mismatches", () => {
@@ -1259,6 +1503,26 @@ test("createSampleConfigYaml should preserve empty-string scalar const values", 
     const sample = createSampleConfigYaml(schema);
 
     assert.match(sample, /^name: ""$/mu);
+});
+
+test("createSampleConfigYaml should prefer scalar const values over defaults", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "rarity": {
+              "type": "string",
+              "const": "common",
+              "default": "rare"
+            }
+          }
+        }
+    `);
+
+    const sample = createSampleConfigYaml(schema);
+
+    assert.match(sample, /^rarity: common$/mu);
+    assert.ok(!/^rarity: rare$/mu.test(sample));
 });
 
 test("parseBatchArrayValue should keep comma-separated batch editing behavior", () => {
