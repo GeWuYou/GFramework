@@ -623,7 +623,12 @@ internal sealed class GodotYamlConfigEnvironment
         }
 
         var entries = new List<GodotYamlConfigDirectoryEntry>();
-        directory.ListDirBegin();
+        var listDirectoryError = directory.ListDirBegin();
+        if (listDirectoryError != Error.Ok)
+        {
+            return null;
+        }
+
         while (true)
         {
             var name = directory.GetNext();
