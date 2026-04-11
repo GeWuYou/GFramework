@@ -7,6 +7,7 @@ const ValidationMessageKeys = Object.freeze({
     expectedObject: "validation.expectedObject",
     expectedScalarShape: "validation.expectedScalarShape",
     expectedScalarValue: "validation.expectedScalarValue",
+    formatViolation: "validation.formatViolation",
     maximumViolation: "validation.maximumViolation",
     maxContainsViolation: "validation.maxContainsViolation",
     maxItemsViolation: "validation.maxItemsViolation",

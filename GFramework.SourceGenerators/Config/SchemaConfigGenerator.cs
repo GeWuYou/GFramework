@@ -8,7 +8,7 @@ namespace GFramework.SourceGenerators.Config;
 ///     支持嵌套对象、对象数组、标量数组，以及可映射的 default / enum / const / ref-table 元数据。
 ///     当前共享子集也会把 <c>multipleOf</c>、<c>uniqueItems</c>、
 ///     <c>contains</c> / <c>minContains</c> / <c>maxContains</c>、
-///     <c>minProperties</c> 与 <c>maxProperties</c> 写入生成代码文档，
+///     <c>minProperties</c>、<c>maxProperties</c> 与稳定字符串 <c>format</c> 子集写入生成代码文档，
 ///     让消费者能直接在强类型 API 上看到运行时生效的约束。
 /// </summary>
 [Generator]
@@ -25,6 +25,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         "The primary key already has Get/TryGet lookup semantics and should not declare a generated lookup index.";
     private const string LookupIndexReferencePropertyMessage =
         "Reference properties are excluded from generated lookup indexes because they already carry cross-table semantics.";
+    private const string SupportedStringFormatNames = "'date', 'date-time', 'email', 'uri', and 'uuid'";
 
     /// <inheritdoc />
     public void Initialize(IncrementalGeneratorInitializationContext context)
@@ -295,6 +296,16 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         var title = TryGetMetadataString(property.Value, "title");
         var description = TryGetMetadataString(property.Value, "description");
         var refTableName = TryGetMetadataString(property.Value, "x-gframework-ref-table");
+        if (!TryValidateStringFormatMetadata(
+                filePath,
+                displayPath,
+                property.Value,
+                schemaType,
+                out var formatDiagnostic))
+        {
+            return ParsedPropertyResult.FromDiagnostic(formatDiagnostic!);
+        }
+
         var indexedLookupMetadata = TryGetMetadataBoolean(property.Value, LookupIndexMetadataKey);
         if (indexedLookupMetadata.Diagnostic is not null)
         {
@@ -534,6 +545,84 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     }
 
     /// <summary>
+    ///     验证字符串 <c>format</c> 元数据是否属于当前共享支持子集。
+    ///     生成器不尝试解释开放格式名，而是直接在编译阶段拒绝三端无法稳定对齐的 schema。
+    /// </summary>
+    /// <param name="filePath">Schema 文件路径。</param>
+    /// <param name="displayPath">逻辑字段路径。</param>
+    /// <param name="element">属性 schema 节点。</param>
+    /// <param name="schemaType">当前 schema type。</param>
+    /// <param name="diagnostic">失败时返回的诊断。</param>
+    /// <returns>当前节点的 format 元数据是否有效。</returns>
+    private static bool TryValidateStringFormatMetadata(
+        string filePath,
+        string displayPath,
+        JsonElement element,
+        string schemaType,
+        out Diagnostic? diagnostic)
+    {
+        diagnostic = null;
+        if (!element.TryGetProperty("format", out var formatElement))
+        {
+            return true;
+        }
+
+        if (!string.Equals(schemaType, "string", StringComparison.Ordinal))
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidStringFormatMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                displayPath,
+                "Only 'string' properties can declare 'format'.");
+            return false;
+        }
+
+        if (formatElement.ValueKind != JsonValueKind.String)
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidStringFormatMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                displayPath,
+                "The 'format' value must be a string.");
+            return false;
+        }
+
+        var formatName = formatElement.GetString() ?? string.Empty;
+        if (IsSupportedStringFormat(formatName))
+        {
+            return true;
+        }
+
+        diagnostic = Diagnostic.Create(
+            ConfigSchemaDiagnostics.InvalidStringFormatMetadata,
+            CreateFileLocation(filePath),
+            Path.GetFileName(filePath),
+            displayPath,
+            $"Unsupported string format '{formatName}'. Supported formats are {SupportedStringFormatNames}.");
+        return false;
+    }
+
+    /// <summary>
+    ///     判断给定 format 名称是否属于当前共享支持子集。
+    /// </summary>
+    /// <param name="formatName">schema 中声明的 format 名称。</param>
+    /// <returns>是否支持该格式。</returns>
+    private static bool IsSupportedStringFormat(string formatName)
+    {
+        return formatName switch
+        {
+            "date" => true,
+            "date-time" => true,
+            "email" => true,
+            "uri" => true,
+            "uuid" => true,
+            _ => false
+        };
+    }
+
+    /// <summary>
     ///     解析数组属性，支持标量数组与对象数组。
     /// </summary>
     /// <param name="filePath">Schema 文件路径。</param>
@@ -577,6 +666,11 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         }
 
         var itemType = itemTypeElement.GetString() ?? string.Empty;
+        if (!TryValidateStringFormatMetadata(filePath, $"{displayPath}[]", itemsElement, itemType, out var formatDiagnostic))
+        {
+            return ParsedPropertyResult.FromDiagnostic(formatDiagnostic!);
+        }
+
         switch (itemType)
         {
             case "integer":
@@ -2506,6 +2600,17 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             patternElement.ValueKind == JsonValueKind.String)
         {
             parts.Add($"pattern = '{patternElement.GetString() ?? string.Empty}'");
+        }
+
+        if (schemaType == "string" &&
+            element.TryGetProperty("format", out var formatElement) &&
+            formatElement.ValueKind == JsonValueKind.String)
+        {
+            var formatName = formatElement.GetString() ?? string.Empty;
+            if (IsSupportedStringFormat(formatName))
+            {
+                parts.Add($"format = '{formatName}'");
+            }
         }
 
         if (schemaType == "array" &&

@@ -658,6 +658,91 @@ tags:
     assert.match(diagnostics[2].message, /at least 2 items|至少需要包含 2 个元素/u);
 });
 
+test("validateParsedConfig should enforce supported string formats", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "releaseDate": {
+              "type": "string",
+              "format": "date"
+            },
+            "publishedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "contactEmail": {
+              "type": "string",
+              "format": "email"
+            },
+            "catalogUri": {
+              "type": "string",
+              "format": "uri"
+            },
+            "configId": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+    `);
+    const yaml = parseTopLevelYaml(`
+releaseDate: 2026-02-30
+publishedAt: 2026-04-11T08:30:00
+contactEmail: boss.example.com
+catalogUri: /loot-table
+configId: 123e4567e89b12d3a456426614174000
+`);
+
+    const diagnostics = validateParsedConfig(schema, yaml);
+
+    assert.equal(diagnostics.length, 5);
+    assert.match(diagnostics[0].message, /format 'date'|字符串格式“date”/u);
+    assert.match(diagnostics[1].message, /format 'date-time'|字符串格式“date-time”/u);
+    assert.match(diagnostics[2].message, /format 'email'|字符串格式“email”/u);
+    assert.match(diagnostics[3].message, /format 'uri'|字符串格式“uri”/u);
+    assert.match(diagnostics[4].message, /format 'uuid'|字符串格式“uuid”/u);
+});
+
+test("validateParsedConfig should accept supported string formats", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "releaseDate": {
+              "type": "string",
+              "format": "date"
+            },
+            "publishedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "contactEmail": {
+              "type": "string",
+              "format": "email"
+            },
+            "catalogUri": {
+              "type": "string",
+              "format": "uri"
+            },
+            "configId": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+    `);
+    const yaml = parseTopLevelYaml(`
+releaseDate: 2026-04-11
+publishedAt: 2026-04-11T08:30:00Z
+contactEmail: boss@example.com
+catalogUri: https://example.com/loot-table
+configId: 123e4567-e89b-12d3-a456-426614174000
+`);
+
+    assert.deepEqual(validateParsedConfig(schema, yaml), []);
+});
+
 test("validateParsedConfig should report exclusive maximum and maxItems violations", () => {
     const schema = parseSchemaContent(`
         {
@@ -1302,6 +1387,30 @@ test("parseSchemaContent should capture exclusive bounds, pattern, and array ite
     assert.equal(schema.properties.tags.items.pattern, "^[a-z]+$");
 });
 
+test("parseSchemaContent should capture supported string format metadata", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "contactEmail": {
+              "type": "string",
+              "format": "email"
+            },
+            "aliases": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          }
+        }
+    `);
+
+    assert.equal(schema.properties.contactEmail.format, "email");
+    assert.equal(schema.properties.aliases.items.format, "uuid");
+});
+
 test("parseSchemaContent should capture multipleOf and uniqueItems metadata", () => {
     const schema = parseSchemaContent(`
         {
@@ -1501,6 +1610,23 @@ test("parseSchemaContent should reject invalid pattern declarations instead of d
             }
         `),
         /invalid 'pattern' regular expression/u
+    );
+});
+
+test("parseSchemaContent should reject unsupported string format declarations", () => {
+    assert.throws(
+        () => parseSchemaContent(`
+            {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "format": "ipv4"
+                }
+              }
+            }
+        `),
+        /unsupported string format 'ipv4'/u
     );
 });
 

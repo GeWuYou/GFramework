@@ -9,6 +9,12 @@ const {ValidationMessageKeys} = require("./localizationKeys");
 const IntegerScalarPattern = /^[+-]?\d+$/u;
 const NumberScalarPattern = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/u;
 const BooleanScalarPattern = /^(true|false)$/iu;
+const EmailFormatPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
+const UuidFormatPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
+const DateFormatPattern = /^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})$/u;
+const DateTimeFormatPattern =
+    /^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})T(?<hour>\d{2}):(?<minute>\d{2}):(?<second>\d{2})(?<fraction>\.\d+)?(?<offset>Z|[+-]\d{2}:\d{2})$/u;
+const SupportedStringFormats = new Set(["date", "date-time", "email", "uri", "uuid"]);
 
 /**
  * Compare two strings using the same UTF-16 code-unit ordering as C#'s
@@ -32,7 +38,7 @@ function compareStringsOrdinal(left, right) {
  * runtime validator and source generator so tooling diagnostics stay aligned.
  *
  * @param {string} content Raw schema JSON text.
- * @throws {Error} Thrown when the schema declares one unsupported or invalid pattern string.
+ * @throws {Error} Thrown when the schema declares one unsupported pattern or format string.
  * @returns {{
  *   type: "object",
  *   required: string[],
@@ -447,6 +453,39 @@ function normalizeSchemaPattern(value, displayPath) {
 }
 
 /**
+ * Normalize one schema string-format declaration into the shared supported subset.
+ * The tooling intentionally rejects unknown format names so editor diagnostics do
+ * not drift away from the runtime and source generator.
+ *
+ * @param {unknown} value Raw schema value.
+ * @param {string} schemaType Current schema type.
+ * @param {string} displayPath Logical property path used in diagnostics.
+ * @throws {Error} Thrown when the format value is invalid or unsupported for strings.
+ * @returns {string | undefined} Normalized format name.
+ */
+function normalizeSchemaStringFormat(value, schemaType, displayPath) {
+    if (schemaType !== "string") {
+        return undefined;
+    }
+
+    if (value === undefined) {
+        return undefined;
+    }
+
+    if (typeof value !== "string") {
+        throw new Error(`Schema property '${displayPath}' must declare 'format' as a string.`);
+    }
+
+    if (SupportedStringFormats.has(value)) {
+        return value;
+    }
+
+    throw new Error(
+        `Schema property '${displayPath}' declares unsupported string format '${value}'. ` +
+        "Supported formats are 'date', 'date-time', 'email', 'uri', and 'uuid'.");
+}
+
+/**
  * Convert a schema default value into a compact string that can be shown in UI
  * metadata hints.
  *
@@ -568,6 +607,124 @@ function matchesSchemaPattern(scalarValue, patternRegex) {
     }
 
     return patternRegex.test(scalarValue);
+}
+
+/**
+ * Test one scalar value against one shared string-format constraint.
+ *
+ * @param {string} scalarValue Scalar value from YAML.
+ * @param {string | undefined} formatName Normalized schema format name.
+ * @returns {boolean} True when compatible or no format is declared.
+ */
+function matchesSchemaStringFormat(scalarValue, formatName) {
+    if (typeof formatName !== "string") {
+        return true;
+    }
+
+    switch (formatName) {
+        case "date":
+            return matchesSchemaDateFormat(scalarValue);
+        case "date-time":
+            return matchesSchemaDateTimeFormat(scalarValue);
+        case "email":
+            return EmailFormatPattern.test(scalarValue);
+        case "uri":
+            return matchesSchemaUriFormat(scalarValue);
+        case "uuid":
+            return UuidFormatPattern.test(scalarValue);
+        default:
+            return false;
+    }
+}
+
+/**
+ * Validate one RFC 3339 full-date string.
+ *
+ * @param {string} scalarValue Scalar value from YAML.
+ * @returns {boolean} True when the value is a valid calendar date.
+ */
+function matchesSchemaDateFormat(scalarValue) {
+    const match = DateFormatPattern.exec(scalarValue);
+    if (!match || !match.groups) {
+        return false;
+    }
+
+    const year = Number.parseInt(match.groups.year, 10);
+    const month = Number.parseInt(match.groups.month, 10);
+    const day = Number.parseInt(match.groups.day, 10);
+    return isValidCalendarDate(year, month, day);
+}
+
+/**
+ * Validate one RFC 3339 date-time string with explicit timezone offset.
+ *
+ * @param {string} scalarValue Scalar value from YAML.
+ * @returns {boolean} True when the value is structurally and calendrically valid.
+ */
+function matchesSchemaDateTimeFormat(scalarValue) {
+    const match = DateTimeFormatPattern.exec(scalarValue);
+    if (!match || !match.groups) {
+        return false;
+    }
+
+    const year = Number.parseInt(match.groups.year, 10);
+    const month = Number.parseInt(match.groups.month, 10);
+    const day = Number.parseInt(match.groups.day, 10);
+    if (!isValidCalendarDate(year, month, day)) {
+        return false;
+    }
+
+    const hour = Number.parseInt(match.groups.hour, 10);
+    const minute = Number.parseInt(match.groups.minute, 10);
+    const second = Number.parseInt(match.groups.second, 10);
+    if (hour > 23 || minute > 59 || second > 59) {
+        return false;
+    }
+
+    const offset = match.groups.offset;
+    if (offset === "Z") {
+        return true;
+    }
+
+    const offsetHour = Number.parseInt(offset.slice(1, 3), 10);
+    const offsetMinute = Number.parseInt(offset.slice(4, 6), 10);
+    return offsetHour <= 23 && offsetMinute <= 59;
+}
+
+/**
+ * Validate one absolute URI string using the platform URL parser.
+ *
+ * @param {string} scalarValue Scalar value from YAML.
+ * @returns {boolean} True when the value parses as an absolute URI.
+ */
+function matchesSchemaUriFormat(scalarValue) {
+    try {
+        const parsed = new URL(scalarValue);
+        return typeof parsed.protocol === "string" && parsed.protocol.length > 1;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Check whether one year-month-day triple forms a valid calendar date.
+ *
+ * @param {number} year Year component.
+ * @param {number} month Month component.
+ * @param {number} day Day component.
+ * @returns {boolean} True when the date exists in the Gregorian calendar.
+ */
+function isValidCalendarDate(year, month, day) {
+    if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+        return false;
+    }
+
+    if (month < 1 || month > 12 || day < 1) {
+        return false;
+    }
+
+    const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+    return day <= lastDay;
 }
 
 /**
@@ -845,6 +1002,7 @@ function parseSchemaNode(rawNode, displayPath) {
     const value = rawNode && typeof rawNode === "object" ? rawNode : {};
     const type = typeof value.type === "string" ? value.type : "object";
     const patternMetadata = normalizeSchemaPattern(value.pattern, displayPath);
+    const stringFormat = normalizeSchemaStringFormat(value.format, type, displayPath);
     const metadata = {
         title: typeof value.title === "string" ? value.title : undefined,
         description: typeof value.description === "string" ? value.description : undefined,
@@ -858,6 +1016,7 @@ function parseSchemaNode(rawNode, displayPath) {
         maxLength: normalizeSchemaNonNegativeInteger(value.maxLength),
         pattern: patternMetadata ? patternMetadata.source : undefined,
         patternRegex: patternMetadata ? patternMetadata.regex : undefined,
+        format: stringFormat,
         minItems: normalizeSchemaNonNegativeInteger(value.minItems),
         maxItems: normalizeSchemaNonNegativeInteger(value.maxItems),
         minContains: normalizeSchemaNonNegativeInteger(value.minContains),
@@ -968,6 +1127,9 @@ function parseSchemaNode(rawNode, displayPath) {
             : undefined,
         patternRegex: type === "string"
             ? metadata.patternRegex
+            : undefined,
+        format: type === "string"
+            ? metadata.format
             : undefined,
         enumValues: normalizeSchemaEnumValues(value.enum),
         refTable: metadata.refTable
@@ -1234,6 +1396,17 @@ function validateNode(schemaNode, yamlNode, displayPath, diagnostics, localizer)
             message: localizeValidationMessage(ValidationMessageKeys.patternViolation, localizer, {
                 displayPath,
                 value: schemaNode.pattern
+            })
+        });
+    }
+
+    if (supportsPatternConstraints &&
+        !matchesSchemaStringFormat(scalarValue, schemaNode.format)) {
+        diagnostics.push({
+            severity: "error",
+            message: localizeValidationMessage(ValidationMessageKeys.formatViolation, localizer, {
+                displayPath,
+                value: schemaNode.format
             })
         });
     }
@@ -1507,6 +1680,11 @@ function matchesSchemaNodeInternal(schemaNode, yamlNode) {
         return false;
     }
 
+    if (supportsPatternConstraints &&
+        !matchesSchemaStringFormat(scalarValue, schemaNode.format)) {
+        return false;
+    }
+
     return typeof schemaNode.constComparableValue !== "string" ||
         buildComparableNodeValue(schemaNode, yamlNode) === schemaNode.constComparableValue;
 }
@@ -1696,6 +1874,8 @@ function localizeValidationMessage(key, localizer, params) {
                 return `属性“${params.displayPath}”应为“${params.schemaType}”，但当前 YAML 结构是“${params.yamlKind}”。`;
             case ValidationMessageKeys.expectedScalarValue:
                 return `属性“${params.displayPath}”应为“${params.schemaType}”，但当前标量值不兼容。`;
+            case ValidationMessageKeys.formatViolation:
+                return `属性“${params.displayPath}”必须满足字符串格式“${params.value}”。`;
             case ValidationMessageKeys.enumMismatch:
                 return `属性“${params.displayPath}”必须是以下值之一：${params.values}。`;
             case ValidationMessageKeys.exclusiveMaximumViolation:
@@ -1742,6 +1922,8 @@ function localizeValidationMessage(key, localizer, params) {
             return `Property '${params.displayPath}' is expected to be '${params.schemaType}', but the current YAML shape is '${params.yamlKind}'.`;
         case ValidationMessageKeys.expectedScalarValue:
             return `Property '${params.displayPath}' is expected to be '${params.schemaType}', but the current scalar value is incompatible.`;
+        case ValidationMessageKeys.formatViolation:
+            return `Property '${params.displayPath}' must satisfy string format '${params.value}'.`;
         case ValidationMessageKeys.enumMismatch:
             return `Property '${params.displayPath}' must be one of: ${params.values}.`;
         case ValidationMessageKeys.exclusiveMaximumViolation:
@@ -2513,6 +2695,7 @@ module.exports = {
  *   maxLength?: number,
  *   pattern?: string,
  *   patternRegex?: RegExp,
+ *   format?: string,
  *   enumValues?: string[],
  *   refTable?: string
  * }} SchemaNode

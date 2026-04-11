@@ -12,7 +12,7 @@
 - JSON Schema 作为结构描述
 - 一对象一文件的目录组织
 - 运行时只读查询
-- Runtime / Generator / Tooling 共享支持 `const`、`minimum`、`maximum`、`exclusiveMinimum`、`exclusiveMaximum`、`multipleOf`、`minLength`、`maxLength`、`pattern`、`minItems`、`maxItems`、`uniqueItems`、`contains`、`minContains`、`maxContains`、`minProperties`、`maxProperties`
+- Runtime / Generator / Tooling 共享支持 `const`、`minimum`、`maximum`、`exclusiveMinimum`、`exclusiveMaximum`、`multipleOf`、`minLength`、`maxLength`、`pattern`、`format`（当前稳定子集：`date`、`date-time`、`email`、`uri`、`uuid`）、`minItems`、`maxItems`、`uniqueItems`、`contains`、`minContains`、`maxContains`、`minProperties`、`maxProperties`
 - Source Generator 生成配置类型、表包装、单表注册/访问辅助，以及项目级聚合注册目录
 - VS Code 插件提供配置浏览、raw 编辑、schema 打开、递归轻量校验和嵌套对象表单入口
 
@@ -714,6 +714,7 @@ var loader = new YamlConfigLoader("config-root")
 - 数值字段违反 `multipleOf`
 - 字符串字段违反 `minLength` / `maxLength`
 - 字符串字段违反 `pattern`
+- 字符串字段违反 `format`
 - 数组字段违反 `minItems` / `maxItems`
 - 数组字段违反 `uniqueItems`
 - 数组字段违反 `contains` / `minContains` / `maxContains`
@@ -772,6 +773,7 @@ if (MonsterConfigBindings.References.TryGetByDisplayPath("dropItems", out var re
 - `multipleOf`：供运行时校验、VS Code 校验、表单 hint 和生成代码 XML 文档复用；当前优先按运行时与 JS 共用的十进制精确整倍数判定处理常见十进制步进，并在必要时退回浮点容差兜底
 - `minLength` / `maxLength`：供运行时校验、VS Code 校验和生成代码 XML 文档复用
 - `pattern`：供运行时校验、VS Code 校验、表单提示和生成代码 XML 文档复用；当前按 C# `CultureInvariant` 与 JS Unicode `u` 模式解释，非法模式会在 schema 解析阶段直接报错
+- `format`：当前只支持 Runtime / Generator / Tooling 三端都能稳定对齐的字符串子集 `date`、`date-time`、`email`、`uri`、`uuid`；运行时会拒绝不满足格式的值，VS Code 校验与表单 hint 会同步展示该约束，生成代码 XML 文档也会保留 `format = ...` 说明
 - `minItems` / `maxItems`：供运行时校验、VS Code 校验、表单提示和生成代码 XML 文档复用
 - `uniqueItems`：供运行时校验、VS Code 校验、表单 hint 和生成代码 XML 文档复用；对象数组会按 schema 归一化后的结构比较重复项，而不是依赖 YAML 字段顺序
 - `contains` / `minContains` / `maxContains`：供运行时校验、VS Code 校验、表单 hint 和生成代码 XML 文档复用；当前会按同一套递归 schema 规则统计“有多少数组元素匹配 contains 子 schema”，其中仅声明 `contains` 时默认至少需要 1 个匹配元素
@@ -872,7 +874,7 @@ var hotReload = loader.EnableHotReload(
 - 对带 `x-gframework-ref-table` 的字段提供引用 schema / 配置域 / 引用文件跳转入口
 - 对空配置文件提供基于 schema 的示例 YAML 初始化入口
 - 对同一配置域内的多份 YAML 文件执行批量字段更新
-- 在表单入口中显示 `title / description / default / const / enum / ref-table / multipleOf / uniqueItems / contains / minContains / maxContains / minProperties / maxProperties` 元数据；批量编辑入口当前只暴露顶层可批量改写字段所需的基础信息
+- 在表单入口中显示 `title / description / default / const / enum / ref-table / multipleOf / pattern / format / uniqueItems / contains / minContains / maxContains / minProperties / maxProperties` 元数据；批量编辑入口当前只暴露顶层可批量改写字段所需的基础信息
 
 当前表单入口适合编辑嵌套对象中的标量字段、标量数组，以及对象数组中的对象项。
 

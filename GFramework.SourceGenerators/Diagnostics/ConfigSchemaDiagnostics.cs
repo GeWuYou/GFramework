@@ -96,4 +96,15 @@ public static class ConfigSchemaDiagnostics
         SourceGeneratorsConfigCategory,
         DiagnosticSeverity.Error,
         true);
+
+    /// <summary>
+    ///     schema 字段的字符串 format 元数据无效。
+    /// </summary>
+    public static readonly DiagnosticDescriptor InvalidStringFormatMetadata = new(
+        "GF_ConfigSchema_009",
+        "Config schema uses invalid string format metadata",
+        "Property '{1}' in schema file '{0}' uses invalid 'format' metadata: {2}",
+        SourceGeneratorsConfigCategory,
+        DiagnosticSeverity.Error,
+        true);
 }
