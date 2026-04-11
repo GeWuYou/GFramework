@@ -126,6 +126,15 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                         Path.GetFileName(file.Path)));
             }
 
+            if (!TryValidateStringFormatMetadataRecursively(
+                    file.Path,
+                    "<root>",
+                    root,
+                    out var rootFormatDiagnostic))
+            {
+                return SchemaParseResult.FromDiagnostic(rootFormatDiagnostic!);
+            }
+
             var entityName = ToPascalCase(GetSchemaBaseName(file.Path));
             var rootObject = ParseObjectSpec(
                 file.Path,
@@ -602,6 +611,83 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             displayPath,
             $"Unsupported string format '{formatName}'. Supported formats are {SupportedStringFormatNames}.");
         return false;
+    }
+
+    /// <summary>
+    ///     递归验证 schema 树中的字符串 <c>format</c> 元数据。
+    ///     该遍历专门补足根节点、<c>contains</c> 子 schema 等不会完全进入常规属性解析路径的片段，
+    ///     避免生成器对同一份 schema 比运行时和工具链更宽松。
+    /// </summary>
+    /// <param name="filePath">Schema 文件路径。</param>
+    /// <param name="displayPath">逻辑字段路径。</param>
+    /// <param name="element">当前 schema 节点。</param>
+    /// <param name="diagnostic">失败时返回的诊断。</param>
+    /// <returns>当前节点树的 format 元数据是否有效。</returns>
+    private static bool TryValidateStringFormatMetadataRecursively(
+        string filePath,
+        string displayPath,
+        JsonElement element,
+        out Diagnostic? diagnostic)
+    {
+        diagnostic = null;
+        if (element.ValueKind != JsonValueKind.Object)
+        {
+            return true;
+        }
+
+        var schemaType = string.Empty;
+        if (element.TryGetProperty("type", out var typeElement) &&
+            typeElement.ValueKind == JsonValueKind.String)
+        {
+            schemaType = typeElement.GetString() ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(schemaType) &&
+                !TryValidateStringFormatMetadata(filePath, displayPath, element, schemaType, out diagnostic))
+            {
+                return false;
+            }
+        }
+
+        if (string.Equals(schemaType, "object", StringComparison.Ordinal) &&
+            element.TryGetProperty("properties", out var propertiesElement) &&
+            propertiesElement.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var property in propertiesElement.EnumerateObject())
+            {
+                if (!TryValidateStringFormatMetadataRecursively(
+                        filePath,
+                        CombinePath(displayPath, property.Name),
+                        property.Value,
+                        out diagnostic))
+                {
+                    return false;
+                }
+            }
+        }
+
+        if (!string.Equals(schemaType, "array", StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        if (element.TryGetProperty("items", out var itemsElement) &&
+            itemsElement.ValueKind == JsonValueKind.Object &&
+            !TryValidateStringFormatMetadataRecursively(filePath, $"{displayPath}[]", itemsElement, out diagnostic))
+        {
+            return false;
+        }
+
+        if (element.TryGetProperty("contains", out var containsElement) &&
+            containsElement.ValueKind == JsonValueKind.Object &&
+            !TryValidateStringFormatMetadataRecursively(
+                filePath,
+                $"{displayPath}[contains]",
+                containsElement,
+                out diagnostic))
+        {
+            return false;
+        }
+
+        return true;
     }
 
     /// <summary>

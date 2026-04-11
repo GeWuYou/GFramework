@@ -874,7 +874,7 @@ var hotReload = loader.EnableHotReload(
 - 对带 `x-gframework-ref-table` 的字段提供引用 schema / 配置域 / 引用文件跳转入口
 - 对空配置文件提供基于 schema 的示例 YAML 初始化入口
 - 对同一配置域内的多份 YAML 文件执行批量字段更新
-- 在表单入口中显示 `title / description / default / const / enum / ref-table / multipleOf / pattern / format / uniqueItems / contains / minContains / maxContains / minProperties / maxProperties` 元数据；批量编辑入口当前只暴露顶层可批量改写字段所需的基础信息
+- 在表单入口中显示 `title / description / default / const / enum / x-gframework-ref-table（UI 中显示为 ref-table） / multipleOf / pattern / format / uniqueItems / contains / minContains / maxContains / minProperties / maxProperties` 元数据；批量编辑入口当前只暴露顶层可批量改写字段所需的基础信息
 
 当前表单入口适合编辑嵌套对象中的标量字段、标量数组，以及对象数组中的对象项。
 

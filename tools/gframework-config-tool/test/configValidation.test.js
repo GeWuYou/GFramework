@@ -1630,6 +1630,40 @@ test("parseSchemaContent should reject unsupported string format declarations", 
     );
 });
 
+test("parseSchemaContent should reject format declarations on non-string schema nodes", () => {
+    assert.throws(
+        () => parseSchemaContent(`
+            {
+              "type": "object",
+              "properties": {
+                "hp": {
+                  "type": "integer",
+                  "format": "uuid"
+                }
+              }
+            }
+        `),
+        /can only declare 'format' on type 'string'/u
+    );
+});
+
+test("parseSchemaContent should reject non-string format metadata values", () => {
+    assert.throws(
+        () => parseSchemaContent(`
+            {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "format": 123
+                }
+              }
+            }
+        `),
+        /must declare 'format' as a string/u
+    );
+});
+
 test("parseSchemaContent should ignore mismatched constraint metadata on unsupported scalar types", () => {
     const schema = parseSchemaContent(`
         {

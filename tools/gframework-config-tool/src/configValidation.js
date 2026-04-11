@@ -464,12 +464,12 @@ function normalizeSchemaPattern(value, displayPath) {
  * @returns {string | undefined} Normalized format name.
  */
 function normalizeSchemaStringFormat(value, schemaType, displayPath) {
-    if (schemaType !== "string") {
+    if (value === undefined) {
         return undefined;
     }
 
-    if (value === undefined) {
-        return undefined;
+    if (schemaType !== "string") {
+        throw new Error(`Schema property '${displayPath}' can only declare 'format' on type 'string'.`);
     }
 
     if (typeof value !== "string") {
