@@ -17,7 +17,6 @@ global using System.Linq;
 global using System.Threading;
 global using System.Threading.Tasks;
 global using System.Collections.Immutable;
-global using Microsoft.CodeAnalysis;
 global using NUnit.Framework;
 global using System.Globalization;
 global using System.IO;
