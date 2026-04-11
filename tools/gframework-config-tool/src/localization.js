@@ -114,6 +114,7 @@ const enMessages = {
     "webview.hint.minLength": "Min length: {value}",
     "webview.hint.maxLength": "Max length: {value}",
     "webview.hint.pattern": "Pattern: {value}",
+    "webview.hint.format": "Format: {value}",
     "webview.hint.minItems": "Min items: {value}",
     "webview.hint.maxItems": "Max items: {value}",
     "webview.hint.contains": "Contains: {summary}",
@@ -129,6 +130,7 @@ const enMessages = {
     "webview.hint.itemMinLength": "Item min length: {value}",
     "webview.hint.itemMaxLength": "Item max length: {value}",
     "webview.hint.itemPattern": "Item pattern: {value}",
+    "webview.hint.itemFormat": "Item format: {value}",
     "webview.hint.minProperties": "Min properties: {value}",
     "webview.hint.maxProperties": "Max properties: {value}",
     "webview.hint.refTable": "Ref table: {refTable}",
@@ -156,6 +158,7 @@ const enMessages = {
     [ValidationMessageKeys.expectedArray]: "Property '{displayPath}' is expected to be an array.",
     [ValidationMessageKeys.expectedScalarShape]: "Property '{displayPath}' is expected to be '{schemaType}', but the current YAML shape is '{yamlKind}'.",
     [ValidationMessageKeys.expectedScalarValue]: "Property '{displayPath}' is expected to be '{schemaType}', but the current scalar value is incompatible.",
+    [ValidationMessageKeys.formatViolation]: "Property '{displayPath}' must satisfy string format '{value}'.",
     [ValidationMessageKeys.missingRequired]: "Required property '{displayPath}' is missing.",
     [ValidationMessageKeys.unknownProperty]: "Property '{displayPath}' is not declared in the matching schema."
 };
@@ -229,6 +232,7 @@ const zhCnMessages = {
     "webview.hint.minLength": "最小长度：{value}",
     "webview.hint.maxLength": "最大长度：{value}",
     "webview.hint.pattern": "正则模式：{value}",
+    "webview.hint.format": "格式：{value}",
     "webview.hint.minItems": "最少元素数：{value}",
     "webview.hint.maxItems": "最多元素数：{value}",
     "webview.hint.contains": "Contains 约束：{summary}",
@@ -244,6 +248,7 @@ const zhCnMessages = {
     "webview.hint.itemMinLength": "元素最小长度：{value}",
     "webview.hint.itemMaxLength": "元素最大长度：{value}",
     "webview.hint.itemPattern": "元素正则模式：{value}",
+    "webview.hint.itemFormat": "元素格式：{value}",
     "webview.hint.minProperties": "最少属性数：{value}",
     "webview.hint.maxProperties": "最多属性数：{value}",
     "webview.hint.refTable": "引用表：{refTable}",
@@ -271,6 +276,7 @@ const zhCnMessages = {
     [ValidationMessageKeys.expectedArray]: "属性“{displayPath}”应为数组。",
     [ValidationMessageKeys.expectedScalarShape]: "属性“{displayPath}”应为“{schemaType}”，但当前 YAML 结构是“{yamlKind}”。",
     [ValidationMessageKeys.expectedScalarValue]: "属性“{displayPath}”应为“{schemaType}”，但当前标量值不兼容。",
+    [ValidationMessageKeys.formatViolation]: "属性“{displayPath}”必须满足字符串格式“{value}”。",
     [ValidationMessageKeys.missingRequired]: "缺少必填属性“{displayPath}”。",
     [ValidationMessageKeys.unknownProperty]: "属性“{displayPath}”未在匹配的 schema 中声明。"
 };

@@ -1578,7 +1578,7 @@ function getScalarArrayValue(yamlNode) {
 /**
  * Render human-facing metadata hints for one schema field.
  *
- * @param {{type?: string, description?: string, defaultValue?: string, constValue?: string, constDisplayValue?: string, minimum?: number, exclusiveMinimum?: number, maximum?: number, exclusiveMaximum?: number, multipleOf?: number, minLength?: number, maxLength?: number, pattern?: string, minItems?: number, maxItems?: number, minContains?: number, maxContains?: number, minProperties?: number, maxProperties?: number, uniqueItems?: boolean, enumValues?: string[], contains?: {type?: string, enumValues?: string[], constValue?: string, constDisplayValue?: string, pattern?: string, refTable?: string}, items?: {enumValues?: string[], constValue?: string, constDisplayValue?: string, minimum?: number, exclusiveMinimum?: number, maximum?: number, exclusiveMaximum?: number, multipleOf?: number, minLength?: number, maxLength?: number, pattern?: string}, refTable?: string}} propertySchema Property schema metadata.
+ * @param {{type?: string, description?: string, defaultValue?: string, constValue?: string, constDisplayValue?: string, minimum?: number, exclusiveMinimum?: number, maximum?: number, exclusiveMaximum?: number, multipleOf?: number, minLength?: number, maxLength?: number, pattern?: string, format?: string, minItems?: number, maxItems?: number, minContains?: number, maxContains?: number, minProperties?: number, maxProperties?: number, uniqueItems?: boolean, enumValues?: string[], contains?: {type?: string, enumValues?: string[], constValue?: string, constDisplayValue?: string, pattern?: string, format?: string, refTable?: string}, items?: {enumValues?: string[], constValue?: string, constDisplayValue?: string, minimum?: number, exclusiveMinimum?: number, maximum?: number, exclusiveMaximum?: number, multipleOf?: number, minLength?: number, maxLength?: number, pattern?: string, format?: string}, refTable?: string}} propertySchema Property schema metadata.
  * @param {boolean} isArrayField Whether the field is an array.
  * @param {boolean} includeDescription Whether description text should be included in the hint output.
  * @returns {string} HTML fragment.
@@ -1639,6 +1639,10 @@ function renderFieldHint(propertySchema, isArrayField, includeDescription = true
 
     if (!isArrayField && propertySchema.pattern) {
         hints.push(escapeHtml(localizer.t("webview.hint.pattern", {value: propertySchema.pattern})));
+    }
+
+    if (!isArrayField && propertySchema.format) {
+        hints.push(escapeHtml(localizer.t("webview.hint.format", {value: propertySchema.format})));
     }
 
     if (propertySchema.type === "object" && typeof propertySchema.minProperties === "number") {
@@ -1708,6 +1712,10 @@ function renderFieldHint(propertySchema, isArrayField, includeDescription = true
 
     if (isArrayField && propertySchema.items && propertySchema.items.pattern) {
         hints.push(escapeHtml(localizer.t("webview.hint.itemPattern", {value: propertySchema.items.pattern})));
+    }
+
+    if (isArrayField && propertySchema.items && propertySchema.items.format) {
+        hints.push(escapeHtml(localizer.t("webview.hint.itemFormat", {value: propertySchema.items.format})));
     }
 
     if (propertySchema.refTable) {

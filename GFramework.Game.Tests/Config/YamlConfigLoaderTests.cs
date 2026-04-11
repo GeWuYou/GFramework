@@ -832,6 +832,254 @@ public class YamlConfigLoaderTests
     }
 
     /// <summary>
+    ///     验证运行时会接受当前共享支持的字符串 <c>format</c> 子集。
+    /// </summary>
+    /// <param name="formatName">schema 中声明的 format 名称。</param>
+    /// <param name="value">满足该 format 的 YAML 标量值。</param>
+    [TestCase("date", "2026-04-11")]
+    [TestCase("date-time", "2026-04-11T08:30:00Z")]
+    [TestCase("email", "boss@example.com")]
+    [TestCase("uri", "https://example.com/loot-table")]
+    [TestCase("uuid", "123e4567-e89b-12d3-a456-426614174000")]
+    public async Task LoadAsync_Should_Accept_Supported_String_Format(
+        string formatName,
+        string value)
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            $$"""
+              id: 1
+              name: {{value}}
+              hp: 10
+              """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            $$"""
+              {
+                "type": "object",
+                "required": ["id", "name", "hp"],
+                "properties": {
+                  "id": { "type": "integer" },
+                  "name": {
+                    "type": "string",
+                    "format": "{{formatName}}"
+                  },
+                  "hp": { "type": "integer" }
+                }
+              }
+              """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterConfigStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        await loader.LoadAsync(registry);
+
+        var table = registry.GetTable<int, MonsterConfigStub>("monster");
+        Assert.Multiple(() =>
+        {
+            Assert.That(table.Count, Is.EqualTo(1));
+            Assert.That(table.Get(1).Name, Is.EqualTo(value));
+        });
+    }
+
+    /// <summary>
+    ///     验证运行时会拒绝不满足共享字符串 <c>format</c> 子集的值。
+    /// </summary>
+    /// <param name="formatName">schema 中声明的 format 名称。</param>
+    /// <param name="value">不满足该 format 的 YAML 标量值。</param>
+    [TestCase("date", "2026-02-30")]
+    [TestCase("date-time", "2026-04-11T08:30:00")]
+    [TestCase("email", "boss.example.com")]
+    [TestCase("uri", "/loot-table")]
+    [TestCase("uuid", "123e4567e89b12d3a456426614174000")]
+    public void LoadAsync_Should_Throw_When_String_Does_Not_Match_Supported_Format(
+        string formatName,
+        string value)
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            $$"""
+              id: 1
+              name: {{value}}
+              hp: 10
+              """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            $$"""
+              {
+                "type": "object",
+                "required": ["id", "name", "hp"],
+                "properties": {
+                  "id": { "type": "integer" },
+                  "name": {
+                    "type": "string",
+                    "format": "{{formatName}}"
+                  },
+                  "hp": { "type": "integer" }
+                }
+              }
+              """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterConfigStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Diagnostic.FailureKind, Is.EqualTo(ConfigLoadFailureKind.ConstraintViolation));
+            Assert.That(exception.Diagnostic.DisplayPath, Is.EqualTo("name"));
+            Assert.That(exception.Diagnostic.RawValue, Is.EqualTo(value));
+            Assert.That(exception.Message, Does.Contain("string format"));
+            Assert.That(exception.Message, Does.Contain(formatName));
+            Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
+    ///     验证 schema 使用当前未支持的字符串 <c>format</c> 时会在解析阶段被拒绝。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Throw_When_String_Format_Is_Not_Supported()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            name: Slime
+            hp: 10
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "name", "hp"],
+              "properties": {
+                "id": { "type": "integer" },
+                "name": {
+                  "type": "string",
+                  "format": "ipv4"
+                },
+                "hp": { "type": "integer" }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterConfigStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Diagnostic.FailureKind, Is.EqualTo(ConfigLoadFailureKind.SchemaUnsupported));
+            Assert.That(exception.Diagnostic.DisplayPath, Is.EqualTo("name"));
+            Assert.That(exception.Diagnostic.RawValue, Is.EqualTo("ipv4"));
+            Assert.That(exception.Message, Does.Contain("unsupported string format"));
+            Assert.That(exception.Message, Does.Contain("date-time"));
+        });
+    }
+
+    /// <summary>
+    ///     验证 schema 在非字符串节点上声明 <c>format</c> 时，会在 schema 解析阶段被拒绝。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Throw_When_Format_Is_Used_On_Non_String_Property()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            hp: 10
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "hp"],
+              "properties": {
+                "id": { "type": "integer" },
+                "hp": {
+                  "type": "integer",
+                  "format": "uuid"
+                }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterConfigStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Diagnostic.FailureKind, Is.EqualTo(ConfigLoadFailureKind.SchemaUnsupported));
+            Assert.That(exception.Diagnostic.DisplayPath, Is.EqualTo("hp"));
+            Assert.That(exception.Message, Does.Contain("only 'string' scalar types support string formats"));
+        });
+    }
+
+    /// <summary>
+    ///     验证 schema 将 <c>format</c> 声明为非字符串值时，会在 schema 解析阶段被拒绝。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Throw_When_Format_Is_Not_A_String()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            name: Slime
+            hp: 10
+            """);
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "required": ["id", "name", "hp"],
+              "properties": {
+                "id": { "type": "integer" },
+                "name": {
+                  "type": "string",
+                  "format": 123
+                },
+                "hp": { "type": "integer" }
+              }
+            }
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterConfigStub>("monster", "monster", "schemas/monster.schema.json",
+                static config => config.Id);
+        var registry = new ConfigRegistry();
+
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Diagnostic.FailureKind, Is.EqualTo(ConfigLoadFailureKind.SchemaUnsupported));
+            Assert.That(exception.Diagnostic.DisplayPath, Is.EqualTo("name"));
+            Assert.That(exception.Message, Does.Contain("must declare 'format' as a string"));
+        });
+    }
+
+    /// <summary>
     ///     验证运行时 schema 校验与 JS 工具对反向引用模式保持一致。
     /// </summary>
     [Test]

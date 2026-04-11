@@ -10,7 +10,7 @@ namespace GFramework.Game.Config;
 ///     并通过递归遍历方式覆盖嵌套对象、对象数组、标量数组与深层 enum / 引用约束。
 ///     当前共享子集额外支持 <c>multipleOf</c>、<c>uniqueItems</c>、
 ///     <c>contains</c> / <c>minContains</c> / <c>maxContains</c>、
-///     <c>minProperties</c> 与 <c>maxProperties</c>，
+///     <c>minProperties</c>、<c>maxProperties</c> 与稳定字符串 <c>format</c> 子集，
 ///     让数值步进、数组去重、数组匹配计数和对象属性数量规则在运行时与生成器 / 工具侧保持一致。
 /// </summary>
 internal static class YamlConfigSchemaValidator
@@ -18,8 +18,21 @@ internal static class YamlConfigSchemaValidator
     // The runtime intentionally uses the same culture-invariant regex semantics as the
     // JS tooling so grouping and backreferences behave consistently across environments.
     private const RegexOptions SupportedPatternRegexOptions = RegexOptions.CultureInvariant;
+    private const string SupportedStringFormatNames = "'date', 'date-time', 'email', 'uri', 'uuid'";
     private static readonly Regex ExactDecimalPattern = new(
         @"^(?<sign>[+-]?)(?:(?<integer>\d+)(?:\.(?<fraction>\d*))?|\.(?<fractionOnly>\d+))(?:[eE](?<exponent>[+-]?\d+))?$",
+        RegexOptions.CultureInvariant | RegexOptions.Compiled);
+    private static readonly Regex SupportedEmailFormatRegex = new(
+        @"^[^@\s]+@[^@\s]+\.[^@\s]+$",
+        RegexOptions.CultureInvariant | RegexOptions.Compiled);
+    private static readonly Regex SupportedDateFormatRegex = new(
+        @"^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})$",
+        RegexOptions.CultureInvariant | RegexOptions.Compiled);
+    private static readonly Regex SupportedDateTimeFormatRegex = new(
+        @"^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})T(?<hour>\d{2}):(?<minute>\d{2}):(?<second>\d{2})(?<fraction>\.\d+)?(?<offset>Z|[+-]\d{2}:\d{2})$",
+        RegexOptions.CultureInvariant | RegexOptions.Compiled);
+    private static readonly Regex SupportedUriSchemeRegex = new(
+        @"^[A-Za-z][A-Za-z0-9+\.-]*:",
         RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
     /// <summary>
@@ -1120,11 +1133,11 @@ internal static class YamlConfigSchemaValidator
     }
 
     /// <summary>
-    ///     解析标量字段支持的范围、长度与模式约束。
-    ///     当前共享子集支持：
-    ///     `integer/number` 上的 `minimum/maximum/exclusiveMinimum/exclusiveMaximum`，
-    ///     以及 `string` 上的 `minLength/maxLength/pattern`。
-    /// </summary>
+///     解析标量字段支持的范围、长度与模式约束。
+///     当前共享子集支持：
+///     `integer/number` 上的 `minimum/maximum/exclusiveMinimum/exclusiveMaximum`，
+///     以及 `string` 上的 `minLength/maxLength/pattern/format`。
+/// </summary>
     /// <param name="tableName">所属配置表名称。</param>
     /// <param name="schemaPath">Schema 文件路径。</param>
     /// <param name="propertyPath">字段路径。</param>
@@ -1148,6 +1161,7 @@ internal static class YamlConfigSchemaValidator
         var minLength = TryParseLengthConstraint(tableName, schemaPath, propertyPath, element, nodeType, "minLength");
         var maxLength = TryParseLengthConstraint(tableName, schemaPath, propertyPath, element, nodeType, "maxLength");
         var pattern = TryParsePatternConstraint(tableName, schemaPath, propertyPath, element, nodeType);
+        var formatConstraint = TryParseFormatConstraint(tableName, schemaPath, propertyPath, element, nodeType);
 
         if (minimum.HasValue && maximum.HasValue && minimum.Value > maximum.Value)
         {
@@ -1187,7 +1201,8 @@ internal static class YamlConfigSchemaValidator
         var stringConstraints = CreateStringScalarConstraints(
             minLength,
             maxLength,
-            pattern);
+            pattern,
+            formatConstraint);
 
         return numericConstraints is null && stringConstraints is null
             ? null
@@ -1534,6 +1549,102 @@ internal static class YamlConfigSchemaValidator
     }
 
     /// <summary>
+    ///     读取字符串 format 约束。
+    ///     运行时只接受当前三端共享并已验证收益的稳定子集，避免把开放格式名误当成“全部支持”。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="schemaPath">Schema 文件路径。</param>
+    /// <param name="propertyPath">字段路径。</param>
+    /// <param name="element">Schema 节点。</param>
+    /// <param name="nodeType">字段类型。</param>
+    /// <returns>归一化后的 format 约束；未声明时返回空。</returns>
+    private static YamlConfigStringFormatConstraint? TryParseFormatConstraint(
+        string tableName,
+        string schemaPath,
+        string propertyPath,
+        JsonElement element,
+        YamlConfigSchemaPropertyType nodeType)
+    {
+        if (!element.TryGetProperty("format", out var formatElement))
+        {
+            return null;
+        }
+
+        if (nodeType != YamlConfigSchemaPropertyType.String)
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"Property '{propertyPath}' in schema file '{schemaPath}' uses 'format', but only 'string' scalar types support string formats.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(propertyPath));
+        }
+
+        if (formatElement.ValueKind != JsonValueKind.String)
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"Property '{propertyPath}' in schema file '{schemaPath}' must declare 'format' as a string.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(propertyPath));
+        }
+
+        var formatName = formatElement.GetString() ?? string.Empty;
+        if (TryMapSupportedStringFormat(formatName, out var kind))
+        {
+            return new YamlConfigStringFormatConstraint(formatName, kind);
+        }
+
+        throw ConfigLoadExceptionFactory.Create(
+            ConfigLoadFailureKind.SchemaUnsupported,
+            tableName,
+            $"Property '{propertyPath}' in schema file '{schemaPath}' declares unsupported string format '{formatName}'. Supported formats are {SupportedStringFormatNames}.",
+            schemaPath: schemaPath,
+            displayPath: GetDiagnosticPath(propertyPath),
+            rawValue: formatName);
+    }
+
+    /// <summary>
+    ///     将 schema 原文中的 format 名称映射为运行时共享枚举。
+    ///     映射阶段统一使用大小写敏感比较，避免同一 schema 在不同环境下被“宽松容错”解释成不同语义。
+    /// </summary>
+    /// <param name="formatName">schema 原始 format 名称。</param>
+    /// <param name="kind">解析成功时输出归一化枚举。</param>
+    /// <returns>当前格式是否属于共享支持子集。</returns>
+    private static bool TryMapSupportedStringFormat(
+        string formatName,
+        out YamlConfigStringFormatKind kind)
+    {
+        switch (formatName)
+        {
+            case "date":
+                kind = YamlConfigStringFormatKind.Date;
+                return true;
+
+            case "date-time":
+                kind = YamlConfigStringFormatKind.DateTime;
+                return true;
+
+            case "email":
+                kind = YamlConfigStringFormatKind.Email;
+                return true;
+
+            case "uri":
+                kind = YamlConfigStringFormatKind.Uri;
+                return true;
+
+            case "uuid":
+                kind = YamlConfigStringFormatKind.Uuid;
+                return true;
+
+            default:
+                kind = default;
+                return false;
+        }
+    }
+
+    /// <summary>
     ///     读取数组元素数量约束。
     /// </summary>
     /// <param name="tableName">所属配置表名称。</param>
@@ -1863,20 +1974,24 @@ internal static class YamlConfigSchemaValidator
 
     /// <summary>
     ///     根据已读取的字符串关键字创建字符串约束对象。
-    ///     正则会在 schema 解析阶段预编译，避免每次校验都重复实例化。
+    ///     正则会在 schema 解析阶段预编译，字符串 format 也会先归一化成共享枚举，
+    ///     避免每次校验都重新解释 schema 原文。
     /// </summary>
     /// <param name="minLength">最小长度约束。</param>
     /// <param name="maxLength">最大长度约束。</param>
     /// <param name="pattern">正则模式约束。</param>
+    /// <param name="formatConstraint">字符串 format 约束。</param>
     /// <returns>字符串约束对象；未声明任何字符串约束时返回空。</returns>
     private static YamlConfigStringConstraints? CreateStringScalarConstraints(
         int? minLength,
         int? maxLength,
-        string? pattern)
+        string? pattern,
+        YamlConfigStringFormatConstraint? formatConstraint)
     {
         return !minLength.HasValue &&
                !maxLength.HasValue &&
-               pattern is null
+               pattern is null &&
+               formatConstraint is null
             ? null
             : new YamlConfigStringConstraints(
                 minLength,
@@ -1886,7 +2001,8 @@ internal static class YamlConfigSchemaValidator
                     ? null
                     : new Regex(
                         pattern,
-                        SupportedPatternRegexOptions));
+                        SupportedPatternRegexOptions),
+                formatConstraint);
     }
 
     /// <summary>
@@ -2026,7 +2142,7 @@ internal static class YamlConfigSchemaValidator
     }
 
     /// <summary>
-    ///     校验字符串标量的长度与模式约束。
+    ///     校验字符串标量的长度、模式与 format 约束。
     /// </summary>
     /// <param name="tableName">所属配置表名称。</param>
     /// <param name="yamlPath">YAML 文件路径。</param>
@@ -2087,6 +2203,96 @@ internal static class YamlConfigSchemaValidator
                 rawValue: rawValue,
                 detail: $"Expected pattern: {constraints.Pattern}.");
         }
+
+        if (constraints.FormatConstraint is not null &&
+            !MatchesSupportedStringFormat(rawValue, constraints.FormatConstraint.Kind))
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.ConstraintViolation,
+                tableName,
+                $"Property '{displayPath}' in config file '{yamlPath}' must satisfy string format '{constraints.FormatConstraint.SchemaName}', but the current YAML scalar value is '{rawValue}'.",
+                yamlPath: yamlPath,
+                schemaPath: schemaNode.SchemaPathHint,
+                displayPath: GetDiagnosticPath(displayPath),
+                rawValue: rawValue,
+                detail: $"Expected string format: {constraints.FormatConstraint.SchemaName}.");
+        }
+    }
+
+    /// <summary>
+    ///     判断一个字符串是否满足当前共享支持的 format 子集。
+    ///     这里只接受 Runtime / Generator / Tooling 三端都能稳定解释的格式，
+    ///     避免把 JSON Schema 的开放格式名直接当成“全部支持”。
+    /// </summary>
+    /// <param name="value">待校验的字符串值。</param>
+    /// <param name="formatKind">共享 format 枚举。</param>
+    /// <returns>当前字符串是否满足指定 format。</returns>
+    private static bool MatchesSupportedStringFormat(
+        string value,
+        YamlConfigStringFormatKind formatKind)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+
+        return formatKind switch
+        {
+            YamlConfigStringFormatKind.Date => MatchesSupportedDateFormat(value),
+            YamlConfigStringFormatKind.DateTime => MatchesSupportedDateTimeFormat(value),
+            YamlConfigStringFormatKind.Email => SupportedEmailFormatRegex.IsMatch(value),
+            YamlConfigStringFormatKind.Uri => MatchesSupportedUriFormat(value),
+            YamlConfigStringFormatKind.Uuid => Guid.TryParseExact(value, "D", out _),
+            _ => false
+        };
+    }
+
+    /// <summary>
+    ///     判断字符串是否满足共享支持的 <c>date</c> 格式。
+    ///     这里固定采用 <c>yyyy-MM-dd</c>，避免文化区域或宽松解析导致工具与运行时漂移。
+    /// </summary>
+    /// <param name="value">待校验的字符串值。</param>
+    /// <returns>当前值是否是合法日期。</returns>
+    private static bool MatchesSupportedDateFormat(string value)
+    {
+        return SupportedDateFormatRegex.IsMatch(value) &&
+               DateOnly.TryParseExact(
+                   value,
+                   "yyyy-MM-dd",
+                   CultureInfo.InvariantCulture,
+                   DateTimeStyles.None,
+                   out _);
+    }
+
+    /// <summary>
+    ///     判断字符串是否满足共享支持的 <c>date-time</c> 格式。
+    ///     该格式固定要求显式时区偏移，避免消费者误把本地时区文本当成跨进程稳定配置。
+    /// </summary>
+    /// <param name="value">待校验的字符串值。</param>
+    /// <returns>当前值是否是合法时间戳。</returns>
+    private static bool MatchesSupportedDateTimeFormat(string value)
+    {
+        if (!SupportedDateTimeFormatRegex.IsMatch(value))
+        {
+            return false;
+        }
+
+        return DateTimeOffset.TryParseExact(
+            value,
+            ["yyyy'-'MM'-'dd'T'HH':'mm':'ssK", "yyyy'-'MM'-'dd'T'HH':'mm':'ss.FFFFFFFK"],
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.None,
+            out _);
+    }
+
+    /// <summary>
+    ///     判断字符串是否满足共享支持的 <c>uri</c> 格式。
+    ///     这里要求输入显式包含 scheme，避免把普通路径意外解释成平台相关的绝对 URI。
+    /// </summary>
+    /// <param name="value">待校验的字符串值。</param>
+    /// <returns>当前值是否是合法绝对 URI。</returns>
+    private static bool MatchesSupportedUriFormat(string value)
+    {
+        return SupportedUriSchemeRegex.IsMatch(value) &&
+               Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
+               uri.IsAbsoluteUri;
     }
 
     /// <summary>
@@ -3321,28 +3527,32 @@ internal sealed class YamlConfigNumericConstraints
 }
 
 /// <summary>
-///     表示标量节点上声明的字符串长度与模式约束。
-///     该模型将正则原文与预编译正则绑定保存，保证诊断内容与运行时匹配逻辑保持一致。
+///     表示标量节点上声明的字符串长度、模式与 format 约束。
+///     该模型将正则原文、预编译正则和共享 format 枚举绑定保存，
+///     保证诊断内容与运行时匹配逻辑保持一致。
 /// </summary>
 internal sealed class YamlConfigStringConstraints
 {
     /// <summary>
-    ///     初始化字符串约束模型。
-    /// </summary>
+///     初始化字符串约束模型。
+/// </summary>
     /// <param name="minLength">最小长度约束。</param>
     /// <param name="maxLength">最大长度约束。</param>
     /// <param name="pattern">正则模式约束原文。</param>
     /// <param name="patternRegex">已编译的正则表达式。</param>
+    /// <param name="formatConstraint">字符串 format 约束。</param>
     public YamlConfigStringConstraints(
         int? minLength,
         int? maxLength,
         string? pattern,
-        Regex? patternRegex)
+        Regex? patternRegex,
+        YamlConfigStringFormatConstraint? formatConstraint)
     {
         MinLength = minLength;
         MaxLength = maxLength;
         Pattern = pattern;
         PatternRegex = patternRegex;
+        FormatConstraint = formatConstraint;
     }
 
     /// <summary>
@@ -3364,6 +3574,74 @@ internal sealed class YamlConfigStringConstraints
     ///     获取已编译的正则表达式。
     /// </summary>
     public Regex? PatternRegex { get; }
+
+    /// <summary>
+    ///     获取字符串 format 约束。
+    /// </summary>
+    public YamlConfigStringFormatConstraint? FormatConstraint { get; }
+}
+
+/// <summary>
+///     表示一个已归一化的字符串 format 约束。
+///     该模型同时保留 schema 原文与共享枚举，方便诊断信息稳定展示，又避免运行时校验反复解析字符串。
+/// </summary>
+internal sealed class YamlConfigStringFormatConstraint
+{
+    /// <summary>
+    ///     初始化字符串 format 约束模型。
+    /// </summary>
+    /// <param name="schemaName">schema 中声明的 format 名称。</param>
+    /// <param name="kind">归一化后的共享 format 枚举。</param>
+    public YamlConfigStringFormatConstraint(
+        string schemaName,
+        YamlConfigStringFormatKind kind)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(schemaName);
+
+        SchemaName = schemaName;
+        Kind = kind;
+    }
+
+    /// <summary>
+    ///     获取 schema 中声明的 format 名称。
+    /// </summary>
+    public string SchemaName { get; }
+
+    /// <summary>
+    ///     获取归一化后的共享 format 枚举。
+    /// </summary>
+    public YamlConfigStringFormatKind Kind { get; }
+}
+
+/// <summary>
+///     表示当前 Runtime / Generator / Tooling 共享支持的字符串 format 子集。
+/// </summary>
+internal enum YamlConfigStringFormatKind
+{
+    /// <summary>
+    ///     表示 <c>yyyy-MM-dd</c> 形式的日期。
+    /// </summary>
+    Date,
+
+    /// <summary>
+    ///     表示带显式时区偏移的 RFC 3339 日期时间。
+    /// </summary>
+    DateTime,
+
+    /// <summary>
+    ///     表示基础电子邮件地址格式。
+    /// </summary>
+    Email,
+
+    /// <summary>
+    ///     表示绝对 URI。
+    /// </summary>
+    Uri,
+
+    /// <summary>
+    ///     表示连字符分隔的 UUID 文本。
+    /// </summary>
+    Uuid
 }
 
 /// <summary>
