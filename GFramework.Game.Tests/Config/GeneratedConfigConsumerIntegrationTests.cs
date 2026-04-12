@@ -1,4 +1,5 @@
 using System.IO;
+using GFramework.Game.Abstractions.Config;
 using GFramework.Game.Config;
 using GFramework.Game.Config.Generated;
 
@@ -11,8 +12,6 @@ namespace GFramework.Game.Tests.Config;
 [TestFixture]
 public class GeneratedConfigConsumerIntegrationTests
 {
-    private string _rootPath = null!;
-
     /// <summary>
     ///     为每个端到端测试准备独立的配置根目录，避免编译期 schema 资产与运行时写入互相污染。
     /// </summary>
@@ -34,6 +33,8 @@ public class GeneratedConfigConsumerIntegrationTests
             Directory.Delete(_rootPath, true);
         }
     }
+
+    private string _rootPath = null!;
 
     /// <summary>
     ///     验证生成器自动拾取消费者项目的 schema 后，
