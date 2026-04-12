@@ -1691,6 +1691,8 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("    /// <param name=\"config\">The generated config instance to serialize.</param>");
         builder.AppendLine(
             "    /// <returns>YAML text that preserves the shared camelCase field naming convention.</returns>");
+        builder.AppendLine(
+            "    /// <exception cref=\"global::System.ArgumentNullException\">Thrown when <paramref name=\"config\"/> is <see langword=\"null\"/>.</exception>");
         builder.AppendLine($"    public static string SerializeToYaml({schema.ClassName} config)");
         builder.AppendLine("    {");
         builder.AppendLine("        return global::GFramework.Game.Config.YamlConfigTextSerializer.Serialize(config);");
@@ -1703,6 +1705,8 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine(
             "    /// <param name=\"configRootPath\">Absolute or workspace-local config root directory.</param>");
         builder.AppendLine("    /// <returns>The absolute config directory path for the generated table.</returns>");
+        builder.AppendLine(
+            "    /// <exception cref=\"global::System.ArgumentException\">Thrown when <paramref name=\"configRootPath\"/> is null, empty, or whitespace.</exception>");
         builder.AppendLine("    public static string GetConfigDirectoryPath(string configRootPath)");
         builder.AppendLine("    {");
         builder.AppendLine("        return ResolveAbsolutePath(configRootPath, Metadata.ConfigRelativePath);");
@@ -1715,6 +1719,8 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine(
             "    /// <param name=\"configRootPath\">Absolute or workspace-local config root directory.</param>");
         builder.AppendLine("    /// <returns>The absolute schema file path for the generated table.</returns>");
+        builder.AppendLine(
+            "    /// <exception cref=\"global::System.ArgumentException\">Thrown when <paramref name=\"configRootPath\"/> is null, empty, or whitespace.</exception>");
         builder.AppendLine("    public static string GetSchemaPath(string configRootPath)");
         builder.AppendLine("    {");
         builder.AppendLine("        return ResolveAbsolutePath(configRootPath, Metadata.SchemaRelativePath);");
@@ -1729,6 +1735,12 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine(
             "    /// <param name=\"yamlPath\">Logical or absolute YAML path used for diagnostics.</param>");
         builder.AppendLine("    /// <param name=\"yamlText\">YAML text to validate.</param>");
+        builder.AppendLine(
+            "    /// <exception cref=\"global::System.ArgumentException\">Thrown when <paramref name=\"configRootPath\"/> is null, empty, or whitespace.</exception>");
+        builder.AppendLine(
+            "    /// <exception cref=\"global::System.ArgumentNullException\">Thrown when <paramref name=\"yamlPath\"/> or <paramref name=\"yamlText\"/> is <see langword=\"null\"/>.</exception>");
+        builder.AppendLine(
+            "    /// <exception cref=\"global::GFramework.Game.Abstractions.Config.ConfigLoadException\">Thrown when the generated schema file cannot be loaded or the YAML text fails schema validation.</exception>");
         builder.AppendLine(
             "    public static void ValidateYaml(string configRootPath, string yamlPath, string yamlText)");
         builder.AppendLine("    {");
@@ -1749,6 +1761,13 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             "    /// <param name=\"yamlPath\">Logical or absolute YAML path used for diagnostics.</param>");
         builder.AppendLine("    /// <param name=\"yamlText\">YAML text to validate.</param>");
         builder.AppendLine("    /// <param name=\"cancellationToken\">Cancellation token.</param>");
+        builder.AppendLine("    /// <returns>A task that represents the asynchronous validation operation.</returns>");
+        builder.AppendLine(
+            "    /// <exception cref=\"global::System.ArgumentException\">Thrown when <paramref name=\"configRootPath\"/> is null, empty, or whitespace.</exception>");
+        builder.AppendLine(
+            "    /// <exception cref=\"global::System.ArgumentNullException\">Thrown when <paramref name=\"yamlPath\"/> or <paramref name=\"yamlText\"/> is <see langword=\"null\"/>.</exception>");
+        builder.AppendLine(
+            "    /// <exception cref=\"global::GFramework.Game.Abstractions.Config.ConfigLoadException\">Thrown when the generated schema file cannot be loaded or the YAML text fails schema validation.</exception>");
         builder.AppendLine(
             "    public static global::System.Threading.Tasks.Task ValidateYamlAsync(");
         builder.AppendLine("        string configRootPath,");

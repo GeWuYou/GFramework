@@ -1,6 +1,3 @@
-using YamlDotNet.Serialization;
-using YamlDotNet.Serialization.NamingConventions;
-
 namespace GFramework.Game.Config;
 
 /// <summary>
@@ -20,6 +17,7 @@ public static class YamlConfigTextSerializer
     /// <typeparam name="TValue">配置对象类型。</typeparam>
     /// <param name="value">要序列化的配置对象。</param>
     /// <returns>带尾随换行的 YAML 文本。</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="value" /> 为 <see langword="null" /> 时抛出。</exception>
     public static string Serialize<TValue>(TValue value)
     {
         ArgumentNullException.ThrowIfNull(value);

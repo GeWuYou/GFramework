@@ -12,6 +12,9 @@ public static class YamlConfigTextValidator
     /// <param name="schemaPath">Schema 文件绝对路径。</param>
     /// <param name="yamlPath">YAML 文件路径，仅用于诊断信息。</param>
     /// <param name="yamlText">待校验的 YAML 文本。</param>
+    /// <exception cref="ArgumentException">当 <paramref name="tableName" /> 或 <paramref name="schemaPath" /> 为空白时抛出。</exception>
+    /// <exception cref="ArgumentNullException">当 <paramref name="yamlPath" /> 或 <paramref name="yamlText" /> 为 <see langword="null" /> 时抛出。</exception>
+    /// <exception cref="GFramework.Game.Abstractions.Config.ConfigLoadException">当 schema 文件不可用，或 YAML 内容与 schema 不匹配时抛出。</exception>
     public static void Validate(
         string tableName,
         string schemaPath,
@@ -30,6 +33,10 @@ public static class YamlConfigTextValidator
     /// <param name="yamlPath">YAML 文件路径，仅用于诊断信息。</param>
     /// <param name="yamlText">待校验的 YAML 文本。</param>
     /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>表示异步校验操作的任务。</returns>
+    /// <exception cref="ArgumentException">当 <paramref name="tableName" /> 或 <paramref name="schemaPath" /> 为空白时抛出。</exception>
+    /// <exception cref="ArgumentNullException">当 <paramref name="yamlPath" /> 或 <paramref name="yamlText" /> 为 <see langword="null" /> 时抛出。</exception>
+    /// <exception cref="GFramework.Game.Abstractions.Config.ConfigLoadException">当 schema 文件不可用，或 YAML 内容与 schema 不匹配时抛出。</exception>
     public static async Task ValidateAsync(
         string tableName,
         string schemaPath,

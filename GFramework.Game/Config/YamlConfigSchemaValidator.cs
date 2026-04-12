@@ -267,8 +267,13 @@ internal static class YamlConfigSchemaValidator
 
             var referencedTableNames = new HashSet<string>(StringComparer.Ordinal);
             CollectReferencedTableNames(rootNode, referencedTableNames);
+            // Preserve a deterministic dependency order so hot-reload bookkeeping and tests
+            // do not depend on HashSet enumeration details.
+            var orderedReferencedTableNames = referencedTableNames
+                .OrderBy(static name => name, StringComparer.Ordinal)
+                .ToArray();
 
-            return new YamlConfigSchema(schemaPath, rootNode, referencedTableNames.ToArray());
+            return new YamlConfigSchema(schemaPath, rootNode, orderedReferencedTableNames);
         }
         catch (JsonException exception)
         {
