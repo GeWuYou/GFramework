@@ -179,7 +179,12 @@ public sealed class AutoRegisterModuleGenerator : IIncrementalGenerator
     {
         var registrations = new List<RegistrationSpec>();
 
-        foreach (var attribute in typeSymbol.GetAttributes().OrderBy(GetAttributeOrder))
+        foreach (var attribute in typeSymbol.GetAttributes()
+                     // Roslyn 会把 partial 类型上的属性合并到同一个集合中。
+                     // 先按语法树标识排序，才能让每个文件内的 Span.Start 成为可比较的稳定顺序键。
+                     .OrderBy(GetAttributeSyntaxTreeOrderKey, StringComparer.Ordinal)
+                     .ThenBy(GetAttributeOrder)
+                     .ThenBy(GetAttributeTypeOrderKey, StringComparer.Ordinal))
         {
             if (SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, registerModelAttribute))
             {
@@ -350,6 +355,27 @@ public sealed class AutoRegisterModuleGenerator : IIncrementalGenerator
     private static int GetAttributeOrder(AttributeData attribute)
     {
         return attribute.ApplicationSyntaxReference?.Span.Start ?? int.MaxValue;
+    }
+
+    private static string GetAttributeSyntaxTreeOrderKey(AttributeData attribute)
+    {
+        var syntaxTree = attribute.ApplicationSyntaxReference?.SyntaxTree;
+        if (syntaxTree is null)
+            return string.Empty;
+
+        if (!string.IsNullOrEmpty(syntaxTree.FilePath))
+            return syntaxTree.FilePath;
+
+        // In-memory compilations may not assign file paths. Fall back to the syntax tree text so
+        // attributes from different partial declarations still get a deterministic cross-file order.
+        return syntaxTree.ToString();
+    }
+
+    private static string GetAttributeTypeOrderKey(AttributeData attribute)
+    {
+        return attribute.ConstructorArguments.FirstOrDefault().Value is INamedTypeSymbol componentType
+            ? componentType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+            : string.Empty;
     }
 
     private static Location GetAttributeLocation(AttributeData attribute)
