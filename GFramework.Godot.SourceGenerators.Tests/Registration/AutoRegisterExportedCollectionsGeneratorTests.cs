@@ -378,6 +378,61 @@ public class AutoRegisterExportedCollectionsGeneratorTests
     }
 
     [Test]
+    public async Task Reports_Diagnostic_When_RegisterExportedCollection_Attribute_Arguments_Are_Invalid()
+    {
+        const string source = """
+                              using System;
+                              using System.Collections.Generic;
+                              using GFramework.Godot.SourceGenerators.Abstractions;
+
+                              namespace GFramework.Godot.SourceGenerators.Abstractions
+                              {
+                                  [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+                                  public sealed class AutoRegisterExportedCollectionsAttribute : Attribute { }
+
+                                  [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
+                                  public sealed class RegisterExportedCollectionAttribute : Attribute
+                                  {
+                                      public RegisterExportedCollectionAttribute(string registryMemberName) { }
+                                  }
+                              }
+
+                              namespace TestApp
+                              {
+                                  public sealed class IntRegistry
+                                  {
+                                      public void Register(int value) { }
+                                  }
+
+                                  [AutoRegisterExportedCollections]
+                                  public partial class Bootstrapper
+                                  {
+                                      private readonly IntRegistry _registry = new();
+
+                                      [{|#0:RegisterExportedCollection(nameof(_registry))|}]
+                                      public List<int> Values { get; } = new();
+                                  }
+                              }
+                              """;
+
+        var test = new CSharpSourceGeneratorTest<AutoRegisterExportedCollectionsGenerator, DefaultVerifier>
+        {
+            TestState =
+            {
+                Sources = { source }
+            },
+            DisabledDiagnostics = { "GF_Common_Trace_001" },
+            TestBehaviors = TestBehaviors.SkipGeneratedSourcesCheck
+        };
+
+        test.ExpectedDiagnostics.Add(new DiagnosticResult("GF_AutoExport_008", DiagnosticSeverity.Error)
+            .WithLocation(0)
+            .WithArguments("Values"));
+
+        await test.RunAsync();
+    }
+
+    [Test]
     public async Task Generates_Only_One_Source_When_Multiple_Partial_Declarations_Are_Annotated()
     {
         const string source = """

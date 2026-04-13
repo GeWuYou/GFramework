@@ -89,4 +89,15 @@ internal static class AutoRegisterExportedCollectionsDiagnostics
         Category,
         DiagnosticSeverity.Error,
         true);
+
+    /// <summary>
+    ///     报告 <c>RegisterExportedCollectionAttribute</c> 构造参数不满足约定，导致无法解析注册目标成员与方法名。
+    /// </summary>
+    public static readonly DiagnosticDescriptor InvalidAttributeArguments = new(
+        "GF_AutoExport_008",
+        "RegisterExportedCollection attribute arguments are invalid",
+        "Attribute 'RegisterExportedCollectionAttribute' on member '{0}' must provide a string registry member name and a string register method name",
+        Category,
+        DiagnosticSeverity.Error,
+        true);
 }

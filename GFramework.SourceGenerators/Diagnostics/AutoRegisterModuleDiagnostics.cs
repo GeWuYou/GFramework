@@ -22,14 +22,6 @@ internal static class AutoRegisterModuleDiagnostics
         DiagnosticSeverity.Error,
         true);
 
-    public static readonly DiagnosticDescriptor InstallMethodConflict = new(
-        "GF_AutoModule_005",
-        "Install method conflicts with generated code",
-        "Class '{0}' already defines 'Install(IArchitecture)', which conflicts with AutoRegisterModule generated code",
-        Category,
-        DiagnosticSeverity.Error,
-        true);
-
     public static readonly DiagnosticDescriptor RegistrationTypeMustImplementExpectedInterface = new(
         "GF_AutoModule_003",
         "Registration type does not implement the expected interface",
@@ -42,6 +34,14 @@ internal static class AutoRegisterModuleDiagnostics
         "GF_AutoModule_004",
         "Registration type must have an accessible parameterless constructor",
         "Type '{0}' used by '{1}' must have an accessible parameterless constructor",
+        Category,
+        DiagnosticSeverity.Error,
+        true);
+
+    public static readonly DiagnosticDescriptor InstallMethodConflict = new(
+        "GF_AutoModule_005",
+        "Install method conflicts with generated code",
+        "Class '{0}' already defines 'Install(IArchitecture)', which conflicts with AutoRegisterModule generated code",
         Category,
         DiagnosticSeverity.Error,
         true);

@@ -382,9 +382,20 @@ public sealed class AutoRegisterModuleGenerator : IIncrementalGenerator
             var constraints = new List<string>();
 
             if (typeParameter.HasReferenceTypeConstraint)
-                constraints.Add("class");
+            {
+                constraints.Add(
+                    typeParameter.ReferenceTypeConstraintNullableAnnotation == NullableAnnotation.Annotated
+                        ? "class?"
+                        : "class");
+            }
 
-            if (typeParameter.HasValueTypeConstraint)
+            if (typeParameter.HasNotNullConstraint)
+                constraints.Add("notnull");
+
+            // unmanaged implies the value-type constraint and must replace struct in generated constraints.
+            if (typeParameter.HasUnmanagedTypeConstraint)
+                constraints.Add("unmanaged");
+            else if (typeParameter.HasValueTypeConstraint)
                 constraints.Add("struct");
 
             constraints.AddRange(typeParameter.ConstraintTypes.Select(static constraint =>

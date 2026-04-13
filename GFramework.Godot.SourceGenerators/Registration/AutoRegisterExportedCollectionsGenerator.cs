@@ -12,7 +12,7 @@ namespace GFramework.Godot.SourceGenerators.Registration;
 ///     该生成器会扫描标记了 <c>AutoRegisterExportedCollectionsAttribute</c> 的 <c>partial</c> 类型，
 ///     为其中使用 <c>RegisterExportedCollectionAttribute</c> 声明的集合成员生成集中注册方法。
 ///     仅当集合可枚举、元素类型可推导、注册表成员存在且可找到兼容的实例注册方法时才会输出代码；
-///     否则通过 <c>GF_AutoExport_001</c> 到 <c>GF_AutoExport_007</c> 以及公共 <c>ClassMustBePartial</c> 诊断显式阻止生成。
+///     否则通过 <c>GF_AutoExport_001</c> 到 <c>GF_AutoExport_008</c> 以及公共 <c>ClassMustBePartial</c> 诊断显式阻止生成。
 /// </remarks>
 [Generator]
 public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGenerator
@@ -218,7 +218,8 @@ public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGener
             return false;
         }
 
-        if (!TryGetRegistrationAttributeArguments(attribute, out var registryMemberName, out var registerMethodName))
+        if (!TryGetRegistrationAttributeArguments(context, collectionMember, attribute, out var registryMemberName,
+                out var registerMethodName))
             return false;
 
         var registryMember = ownerType.GetMembers(registryMemberName)
@@ -319,6 +320,8 @@ public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGener
     }
 
     private static bool TryGetRegistrationAttributeArguments(
+        SourceProductionContext context,
+        ISymbol collectionMember,
         AttributeData attribute,
         out string registryMemberName,
         out string registerMethodName)
@@ -330,6 +333,12 @@ public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGener
             attribute.ConstructorArguments[0].Value is not string registryName ||
             attribute.ConstructorArguments[1].Value is not string methodName)
         {
+            context.ReportDiagnostic(Diagnostic.Create(
+                AutoRegisterExportedCollectionsDiagnostics.InvalidAttributeArguments,
+                attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation()
+                ?? collectionMember.Locations.FirstOrDefault()
+                ?? Location.None,
+                collectionMember.Name));
             return false;
         }
 
