@@ -357,15 +357,23 @@ public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGener
         INamedTypeSymbol registryType,
         string registerMethodName)
     {
+        // Start from the declared registry type so directly declared overloads win the cheap checks
+        // before we expand into inherited declarations.
         foreach (var method in registryType.GetMembers(registerMethodName).OfType<IMethodSymbol>())
             yield return method;
 
+        // Concrete registry types can inherit callable implementations from base classes. When the
+        // registry itself is an interface, BaseType is null and this phase intentionally yields nothing.
         for (var baseType = registryType.BaseType; baseType is not null; baseType = baseType.BaseType)
         {
             foreach (var method in baseType.GetMembers(registerMethodName).OfType<IMethodSymbol>())
                 yield return method;
         }
 
+        // Only interface-typed registry members should search interface inheritance. For classes or
+        // structs this avoids accepting explicit interface implementations that generated code cannot
+        // call through `this.<registry>.<method>(...)`. AllInterfaces is already transitive, so the
+        // same semantic contract may appear multiple times; that is safe because the caller only uses Any().
         if (registryType.TypeKind != TypeKind.Interface)
             yield break;
 

@@ -327,8 +327,7 @@ public class AutoRegisterExportedCollectionsGeneratorTests
             {
                 Sources = { source }
             },
-            DisabledDiagnostics = { "GF_Common_Trace_001" },
-            TestBehaviors = TestBehaviors.SkipGeneratedSourcesCheck
+            DisabledDiagnostics = { "GF_Common_Trace_001" }
         };
 
         test.ExpectedDiagnostics.Add(new DiagnosticResult("GF_AutoExport_003", DiagnosticSeverity.Error)
