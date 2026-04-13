@@ -5,6 +5,8 @@ riderModule.iml
 /_ReSharper.Caches/
 GFramework.sln.DotSettings.user
 .idea/
+dotnet-home/
+scripts/__pycache__/
 # ai
 opencode.json
 .claude/settings.local.json
