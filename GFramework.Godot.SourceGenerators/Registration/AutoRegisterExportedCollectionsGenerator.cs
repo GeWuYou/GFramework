@@ -268,8 +268,7 @@ public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGener
             return false;
         }
 
-        var hasCompatibleMethod = registryType.GetMembers(registerMethodName)
-            .OfType<IMethodSymbol>()
+        var hasCompatibleMethod = EnumerateCandidateMethods(registryType, registerMethodName)
             .Any(method =>
                 !method.IsStatic &&
                 method.Parameters.Length == 1 &&
@@ -317,6 +316,26 @@ public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGener
         // Fall back to Roslyn's conversion rules so arrays and other non-named types are
         // validated the same way the generated invocation will be bound by the compiler.
         return compilation.ClassifyConversion(elementType, parameterType).IsImplicit;
+    }
+
+    private static IEnumerable<IMethodSymbol> EnumerateCandidateMethods(
+        INamedTypeSymbol registryType,
+        string registerMethodName)
+    {
+        foreach (var method in registryType.GetMembers(registerMethodName).OfType<IMethodSymbol>())
+            yield return method;
+
+        for (var baseType = registryType.BaseType; baseType is not null; baseType = baseType.BaseType)
+        {
+            foreach (var method in baseType.GetMembers(registerMethodName).OfType<IMethodSymbol>())
+                yield return method;
+        }
+
+        foreach (var interfaceType in registryType.AllInterfaces)
+        {
+            foreach (var method in interfaceType.GetMembers(registerMethodName).OfType<IMethodSymbol>())
+                yield return method;
+        }
     }
 
     private static bool TryGetRegistrationAttributeArguments(
