@@ -152,7 +152,7 @@ partial class GameEntryPoint
 | `GF_AutoExport_001`   | `AutoRegisterExportedCollections` 不支持嵌套类                    |
 | `GF_AutoExport_002`   | 指定的注册器成员不存在                                                 |
 | `GF_AutoExport_003`   | 注册器成员上找不到兼容的注册方法                                            |
-| `GF_AutoExport_004`   | 被标记成员不是可枚举集合                                                |
+| `GF_AutoExport_004`   | 被标记的成员不是可枚举集合                                               |
 | `GF_AutoExport_005`   | 无法推导集合元素类型                                                  |
 | `GF_AutoExport_006`   | 集合成员不是实例可读成员                                                |
 | `GF_AutoExport_007`   | 注册器成员不是实例可读成员                                               |
