@@ -12,7 +12,7 @@ namespace GFramework.Godot.SourceGenerators.Registration;
 ///     该生成器会扫描标记了 <c>AutoRegisterExportedCollectionsAttribute</c> 的 <c>partial</c> 类型，
 ///     为其中使用 <c>RegisterExportedCollectionAttribute</c> 声明的集合成员生成集中注册方法。
 ///     仅当集合可枚举、元素类型可推导、注册表成员存在且可找到兼容的实例注册方法时才会输出代码；
-///     否则通过 <c>GF_AutoExport_001</c> 到 <c>GF_AutoExport_005</c> 以及公共 <c>ClassMustBePartial</c> 诊断显式阻止生成。
+///     否则通过 <c>GF_AutoExport_001</c> 到 <c>GF_AutoExport_007</c> 以及公共 <c>ClassMustBePartial</c> 诊断显式阻止生成。
 /// </remarks>
 [Generator]
 public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGenerator
@@ -82,8 +82,11 @@ public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGener
         if (autoRegisterAttribute is null || registerCollectionAttribute is null || enumerableType is null)
             return;
 
-        foreach (var candidate in candidates.Where(static candidate => candidate is not null)
-                     .Select(static candidate => candidate!))
+        foreach (var candidate in candidates
+                     .Where(static candidate => candidate is not null)
+                     .Select(static candidate => candidate!)
+                     .GroupBy(static candidate => candidate.TypeSymbol, SymbolEqualityComparer.Default)
+                     .Select(static group => group.First()))
         {
             if (!candidate.TypeSymbol.GetAttributes().Any(attribute =>
                     SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, autoRegisterAttribute)))
@@ -187,6 +190,15 @@ public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGener
     {
         registration = null!;
 
+        if (!IsInstanceReadableMember(collectionMember))
+        {
+            context.ReportDiagnostic(Diagnostic.Create(
+                AutoRegisterExportedCollectionsDiagnostics.CollectionMemberMustBeInstanceReadable,
+                collectionMember.Locations.FirstOrDefault() ?? Location.None,
+                collectionMember.Name));
+            return false;
+        }
+
         var collectionType = collectionMember switch
         {
             IFieldSymbol field => field.Type,
@@ -223,6 +235,16 @@ public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGener
             return false;
         }
 
+        if (!IsInstanceReadableMember(registryMember))
+        {
+            context.ReportDiagnostic(Diagnostic.Create(
+                AutoRegisterExportedCollectionsDiagnostics.RegistryMemberMustBeInstanceReadable,
+                registryMember.Locations.FirstOrDefault() ?? Location.None,
+                registryMemberName,
+                collectionMember.Name));
+            return false;
+        }
+
         var registryType = registryMember switch
         {
             IFieldSymbol field => field.Type as INamedTypeSymbol,
@@ -250,6 +272,7 @@ public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGener
             .Any(method =>
                 !method.IsStatic &&
                 method.Parameters.Length == 1 &&
+                compilation.IsSymbolAccessibleWithin(method, ownerType) &&
                 CanAcceptElementType(compilation, elementType, method.Parameters[0].Type));
 
         if (!hasCompatibleMethod)
@@ -265,6 +288,21 @@ public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGener
 
         registration = new RegistrationSpec(collectionMember.Name, registryMemberName, registerMethodName);
         return true;
+    }
+
+    private static bool IsInstanceReadableMember(ISymbol member)
+    {
+        // Generated code always reads through `this.<member>`, so only instance fields and
+        // readable non-indexer instance properties are valid targets.
+        return member switch
+        {
+            IFieldSymbol field => !field.IsStatic,
+            IPropertySymbol property =>
+                !property.IsStatic &&
+                property.Parameters.Length == 0 &&
+                property.GetMethod is not null,
+            _ => false
+        };
     }
 
     private static bool CanAcceptElementType(

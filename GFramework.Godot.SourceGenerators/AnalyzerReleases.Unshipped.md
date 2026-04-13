@@ -30,3 +30,5 @@
  GF_AutoExport_003           | GFramework.Godot.SourceGenerators.Registration | Error    | AutoRegisterExportedCollectionsDiagnostics 
  GF_AutoExport_004           | GFramework.Godot.SourceGenerators.Registration | Error    | AutoRegisterExportedCollectionsDiagnostics 
  GF_AutoExport_005           | GFramework.Godot.SourceGenerators.Registration | Error    | AutoRegisterExportedCollectionsDiagnostics 
+ GF_AutoExport_006           | GFramework.Godot.SourceGenerators.Registration | Error    | AutoRegisterExportedCollectionsDiagnostics 
+ GF_AutoExport_007           | GFramework.Godot.SourceGenerators.Registration | Error    | AutoRegisterExportedCollectionsDiagnostics 

@@ -19,6 +19,11 @@ public sealed class AutoSceneGenerator : IIncrementalGenerator
 {
     private const string AutoSceneAttributeMetadataName =
         $"{PathContests.GodotSourceGeneratorsAbstractionsPath}.AutoSceneAttribute";
+    private static readonly string[] GeneratedMemberNames =
+    [
+        "SceneKeyStr",
+        "__autoSceneBehavior_Generated"
+    ];
 
     /// <summary>
     ///     配置 <c>AutoScene</c> 的增量生成管线。
@@ -90,6 +95,15 @@ public sealed class AutoSceneGenerator : IIncrementalGenerator
                     context,
                     candidate.ClassDeclaration.Identifier.GetLocation(),
                     "GetScene"))
+            {
+                continue;
+            }
+
+            if (ReportGeneratedMemberConflicts(
+                    context,
+                    candidate.TypeSymbol,
+                    candidate.ClassDeclaration.Identifier.GetLocation(),
+                    GeneratedMemberNames))
             {
                 continue;
             }
@@ -271,6 +285,43 @@ public sealed class AutoSceneGenerator : IIncrementalGenerator
             builder.Append(" : ");
             builder.AppendLine(string.Join(", ", constraints));
         }
+    }
+
+    /// <summary>
+    ///     报告与生成器保留成员名冲突的字段或属性，避免生成代码出现重复成员编译错误。
+    /// </summary>
+    /// <param name="context">用于上报诊断的源代码生成上下文。</param>
+    /// <param name="typeSymbol">当前待生成的类型符号。</param>
+    /// <param name="fallbackLocation">冲突成员无定位信息时的后备位置。</param>
+    /// <param name="memberNames">需要校验的生成器保留成员名集合。</param>
+    /// <returns>存在任意冲突时返回 <c>true</c>。</returns>
+    private static bool ReportGeneratedMemberConflicts(
+        SourceProductionContext context,
+        INamedTypeSymbol typeSymbol,
+        Location fallbackLocation,
+        string[] memberNames)
+    {
+        var hasConflict = false;
+
+        foreach (var memberName in memberNames)
+        {
+            var conflict = typeSymbol.GetMembers(memberName)
+                .FirstOrDefault(member =>
+                    !member.IsImplicitlyDeclared &&
+                    member is IPropertySymbol or IFieldSymbol);
+
+            if (conflict is null)
+                continue;
+
+            context.ReportDiagnostic(Diagnostic.Create(
+                CommonDiagnostics.GeneratedMethodNameConflict,
+                conflict.Locations.FirstOrDefault() ?? fallbackLocation,
+                typeSymbol.Name,
+                memberName));
+            hasConflict = true;
+        }
+
+        return hasConflict;
     }
 
     private sealed class TypeCandidate

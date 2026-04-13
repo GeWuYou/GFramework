@@ -199,4 +199,251 @@ public class AutoRegisterExportedCollectionsGeneratorTests
             source,
             ("TestApp_Bootstrapper.AutoRegisterExportedCollections.g.cs", expected));
     }
+
+    [Test]
+    public async Task Reports_Diagnostic_When_Collection_Member_Is_Not_Instance_Readable()
+    {
+        const string source = """
+                              using System;
+                              using System.Collections.Generic;
+                              using GFramework.Godot.SourceGenerators.Abstractions;
+
+                              namespace GFramework.Godot.SourceGenerators.Abstractions
+                              {
+                                  [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+                                  public sealed class AutoRegisterExportedCollectionsAttribute : Attribute { }
+
+                                  [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
+                                  public sealed class RegisterExportedCollectionAttribute : Attribute
+                                  {
+                                      public RegisterExportedCollectionAttribute(string registryMemberName, string registerMethodName) { }
+                                  }
+                              }
+
+                              namespace TestApp
+                              {
+                                  public sealed class IntRegistry
+                                  {
+                                      public void Register(int value) { }
+                                  }
+
+                                  [AutoRegisterExportedCollections]
+                                  public partial class Bootstrapper
+                                  {
+                                      private readonly IntRegistry _registry = new();
+
+                                      [RegisterExportedCollection(nameof(_registry), nameof(IntRegistry.Register))]
+                                      public static List<int> {|#0:StaticValues|} = new();
+
+                                      [RegisterExportedCollection(nameof(_registry), nameof(IntRegistry.Register))]
+                                      public static List<int> {|#1:StaticPropertyValues|} { get; } = new();
+
+                                      [RegisterExportedCollection(nameof(_registry), nameof(IntRegistry.Register))]
+                                      public List<int> {|#2:WriteOnlyValues|} { set { } }
+                                  }
+                              }
+                              """;
+
+        var test = new CSharpSourceGeneratorTest<AutoRegisterExportedCollectionsGenerator, DefaultVerifier>
+        {
+            TestState =
+            {
+                Sources = { source }
+            },
+            DisabledDiagnostics = { "GF_Common_Trace_001" },
+            TestBehaviors = TestBehaviors.SkipGeneratedSourcesCheck
+        };
+
+        test.ExpectedDiagnostics.Add(new DiagnosticResult("GF_AutoExport_006", DiagnosticSeverity.Error)
+            .WithLocation(0)
+            .WithArguments("StaticValues"));
+        test.ExpectedDiagnostics.Add(new DiagnosticResult("GF_AutoExport_006", DiagnosticSeverity.Error)
+            .WithLocation(1)
+            .WithArguments("StaticPropertyValues"));
+        test.ExpectedDiagnostics.Add(new DiagnosticResult("GF_AutoExport_006", DiagnosticSeverity.Error)
+            .WithLocation(2)
+            .WithArguments("WriteOnlyValues"));
+
+        await test.RunAsync();
+    }
+
+    [Test]
+    public async Task Reports_Diagnostic_When_Registry_Member_Is_Not_Instance_Readable()
+    {
+        const string source = """
+                              using System;
+                              using System.Collections.Generic;
+                              using GFramework.Godot.SourceGenerators.Abstractions;
+
+                              namespace GFramework.Godot.SourceGenerators.Abstractions
+                              {
+                                  [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+                                  public sealed class AutoRegisterExportedCollectionsAttribute : Attribute { }
+
+                                  [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
+                                  public sealed class RegisterExportedCollectionAttribute : Attribute
+                                  {
+                                      public RegisterExportedCollectionAttribute(string registryMemberName, string registerMethodName) { }
+                                  }
+                              }
+
+                              namespace TestApp
+                              {
+                                  public sealed class IntRegistry
+                                  {
+                                      public void Register(int value) { }
+                                  }
+
+                                  [AutoRegisterExportedCollections]
+                                  public partial class Bootstrapper
+                                  {
+                                      private static readonly IntRegistry {|#0:_registry|} = new();
+
+                                      [RegisterExportedCollection(nameof(_registry), nameof(IntRegistry.Register))]
+                                      public List<int> Values { get; } = new();
+                                  }
+                              }
+                              """;
+
+        var test = new CSharpSourceGeneratorTest<AutoRegisterExportedCollectionsGenerator, DefaultVerifier>
+        {
+            TestState =
+            {
+                Sources = { source }
+            },
+            DisabledDiagnostics = { "GF_Common_Trace_001" },
+            TestBehaviors = TestBehaviors.SkipGeneratedSourcesCheck
+        };
+
+        test.ExpectedDiagnostics.Add(new DiagnosticResult("GF_AutoExport_007", DiagnosticSeverity.Error)
+            .WithLocation(0)
+            .WithArguments("_registry", "Values"));
+
+        await test.RunAsync();
+    }
+
+    [Test]
+    public async Task Reports_Diagnostic_When_Register_Method_Is_Not_Accessible_From_Owner_Type()
+    {
+        const string source = """
+                              using System;
+                              using System.Collections.Generic;
+                              using GFramework.Godot.SourceGenerators.Abstractions;
+
+                              namespace GFramework.Godot.SourceGenerators.Abstractions
+                              {
+                                  [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+                                  public sealed class AutoRegisterExportedCollectionsAttribute : Attribute { }
+
+                                  [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
+                                  public sealed class RegisterExportedCollectionAttribute : Attribute
+                                  {
+                                      public RegisterExportedCollectionAttribute(string registryMemberName, string registerMethodName) { }
+                                  }
+                              }
+
+                              namespace TestApp
+                              {
+                                  public sealed class IntRegistry
+                                  {
+                                      private void Register(int value) { }
+                                  }
+
+                                  [AutoRegisterExportedCollections]
+                                  public partial class Bootstrapper
+                                  {
+                                      private readonly IntRegistry _registry = new();
+
+                                      [RegisterExportedCollection(nameof(_registry), "Register")]
+                                      public List<int> {|#0:Values|} { get; } = new();
+                                  }
+                              }
+                              """;
+
+        var test = new CSharpSourceGeneratorTest<AutoRegisterExportedCollectionsGenerator, DefaultVerifier>
+        {
+            TestState =
+            {
+                Sources = { source }
+            },
+            DisabledDiagnostics = { "GF_Common_Trace_001" },
+            TestBehaviors = TestBehaviors.SkipGeneratedSourcesCheck
+        };
+
+        test.ExpectedDiagnostics.Add(new DiagnosticResult("GF_AutoExport_003", DiagnosticSeverity.Error)
+            .WithLocation(0)
+            .WithArguments("Register", "_registry", "Values"));
+
+        await test.RunAsync();
+    }
+
+    [Test]
+    public async Task Generates_Only_One_Source_When_Multiple_Partial_Declarations_Are_Annotated()
+    {
+        const string source = """
+                              #nullable enable
+                              using System;
+                              using System.Collections.Generic;
+                              using GFramework.Godot.SourceGenerators.Abstractions;
+
+                              namespace GFramework.Godot.SourceGenerators.Abstractions
+                              {
+                                  [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
+                                  public sealed class AutoRegisterExportedCollectionsAttribute : Attribute { }
+
+                                  [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
+                                  public sealed class RegisterExportedCollectionAttribute : Attribute
+                                  {
+                                      public RegisterExportedCollectionAttribute(string registryMemberName, string registerMethodName) { }
+                                  }
+                              }
+
+                              namespace TestApp
+                              {
+                                  public sealed class IntRegistry
+                                  {
+                                      public void Register(int value) { }
+                                  }
+
+                                  [AutoRegisterExportedCollections]
+                                  public partial class Bootstrapper
+                                  {
+                                      private readonly IntRegistry? _registry = new();
+                                  }
+
+                                  [AutoRegisterExportedCollections]
+                                  public partial class Bootstrapper
+                                  {
+                                      [RegisterExportedCollection(nameof(_registry), nameof(IntRegistry.Register))]
+                                      public List<int>? Values { get; } = new();
+                                  }
+                              }
+                              """;
+
+        const string expected = """
+                                // <auto-generated />
+                                #nullable enable
+
+                                namespace TestApp;
+
+                                partial class Bootstrapper
+                                {
+                                    private void __RegisterExportedCollections_Generated()
+                                    {
+                                        if (this.Values is not null && this._registry is not null)
+                                        {
+                                            foreach (var __generatedItem in this.Values)
+                                            {
+                                                this._registry.Register(__generatedItem);
+                                            }
+                                        }
+                                    }
+                                }
+
+                                """;
+
+        await GeneratorTest<AutoRegisterExportedCollectionsGenerator>.RunAsync(
+            source,
+            ("TestApp_Bootstrapper.AutoRegisterExportedCollections.g.cs", expected));
+    }
 }

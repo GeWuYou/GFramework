@@ -216,4 +216,116 @@ public class AutoSceneGeneratorTests
             source,
             ("TestApp_GameplayRoot.AutoScene.g.cs", expected));
     }
+
+    /// <summary>
+    ///     验证宿主类型声明同名 <c>SceneKeyStr</c> 属性时，生成器会报告保留成员冲突并停止生成。
+    /// </summary>
+    [Test]
+    public async Task Reports_Diagnostic_When_SceneKeyStr_Property_Name_Conflicts()
+    {
+        const string source = """
+                              using System;
+                              using GFramework.Godot.SourceGenerators.Abstractions;
+                              using Godot;
+
+                              namespace GFramework.Godot.SourceGenerators.Abstractions
+                              {
+                                  [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+                                  public sealed class AutoSceneAttribute : Attribute
+                                  {
+                                      public AutoSceneAttribute(string key) { }
+                                  }
+                              }
+
+                              namespace Godot
+                              {
+                                  public class Node { }
+                                  public class Node2D : Node { }
+                              }
+
+                              namespace TestApp
+                              {
+                                  [AutoScene("Gameplay")]
+                                  public partial class GameplayRoot : Node2D
+                                  {
+                                      public static string {|#0:SceneKeyStr|} => "Conflict";
+                                  }
+                              }
+                              """;
+
+        var test = new CSharpSourceGeneratorTest<AutoSceneGenerator, DefaultVerifier>
+        {
+            TestState =
+            {
+                Sources = { source }
+            },
+            DisabledDiagnostics = { "GF_Common_Trace_001" },
+            TestBehaviors = TestBehaviors.SkipGeneratedSourcesCheck
+        };
+
+        test.ExpectedDiagnostics.Add(new DiagnosticResult("GF_Common_Class_002", DiagnosticSeverity.Error)
+            .WithLocation(0)
+            .WithArguments("GameplayRoot", "SceneKeyStr"));
+
+        await test.RunAsync();
+    }
+
+    /// <summary>
+    ///     验证宿主类型声明同名缓存字段时，生成器会报告保留成员冲突并停止生成。
+    /// </summary>
+    [Test]
+    public async Task Reports_Diagnostic_When_Generated_Behavior_Field_Name_Conflicts()
+    {
+        const string source = """
+                              using System;
+                              using GFramework.Game.Abstractions.Scene;
+                              using GFramework.Godot.SourceGenerators.Abstractions;
+                              using Godot;
+
+                              namespace GFramework.Godot.SourceGenerators.Abstractions
+                              {
+                                  [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+                                  public sealed class AutoSceneAttribute : Attribute
+                                  {
+                                      public AutoSceneAttribute(string key) { }
+                                  }
+                              }
+
+                              namespace Godot
+                              {
+                                  public class Node { }
+                                  public class Node2D : Node { }
+                              }
+
+                              namespace GFramework.Game.Abstractions.Scene
+                              {
+                                  public interface ISceneBehavior { }
+                              }
+
+                              namespace TestApp
+                              {
+                                  [AutoScene("Gameplay")]
+                                  public partial class GameplayRoot : Node2D
+                                  {
+                                      private ISceneBehavior? {|#0:__autoSceneBehavior_Generated|};
+                                  }
+                              }
+                              """;
+
+        var test = new CSharpSourceGeneratorTest<AutoSceneGenerator, DefaultVerifier>
+        {
+            TestState =
+            {
+                Sources = { source }
+            },
+            DisabledDiagnostics = { "GF_Common_Trace_001" },
+            TestBehaviors = TestBehaviors.SkipGeneratedSourcesCheck
+        };
+
+        test.ExpectedDiagnostics.Add(new DiagnosticResult("GF_Common_Class_002", DiagnosticSeverity.Error)
+            .WithLocation(0)
+            .WithArguments("GameplayRoot", "__autoSceneBehavior_Generated"));
+
+        await test.RunAsync();
+    }
 }

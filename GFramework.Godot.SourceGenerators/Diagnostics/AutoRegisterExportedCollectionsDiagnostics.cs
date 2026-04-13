@@ -67,4 +67,26 @@ internal static class AutoRegisterExportedCollectionsDiagnostics
         Category,
         DiagnosticSeverity.Error,
         true);
+
+    /// <summary>
+    ///     报告被标记为导出集合的成员不是实例可读成员，因此无法生成 <c>this.&lt;member&gt;</c> 访问代码。
+    /// </summary>
+    public static readonly DiagnosticDescriptor CollectionMemberMustBeInstanceReadable = new(
+        "GF_AutoExport_006",
+        "Exported collection member must be an instance readable member",
+        "Member '{0}' must be an instance field or readable non-indexer instance property to use RegisterExportedCollection",
+        Category,
+        DiagnosticSeverity.Error,
+        true);
+
+    /// <summary>
+    ///     报告注册表成员不是实例可读成员，因此生成器无法安全读取并调用注册方法。
+    /// </summary>
+    public static readonly DiagnosticDescriptor RegistryMemberMustBeInstanceReadable = new(
+        "GF_AutoExport_007",
+        "Registry member must be an instance readable member",
+        "Registry member '{0}' referenced by exported collection '{1}' must be an instance field or readable non-indexer instance property",
+        Category,
+        DiagnosticSeverity.Error,
+        true);
 }
