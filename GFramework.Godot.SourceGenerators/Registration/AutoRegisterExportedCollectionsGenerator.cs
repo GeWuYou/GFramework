@@ -1,6 +1,7 @@
 using GFramework.Godot.SourceGenerators.Diagnostics;
 using GFramework.SourceGenerators.Common.Constants;
 using GFramework.SourceGenerators.Common.Diagnostics;
+using GFramework.SourceGenerators.Common.Extensions;
 
 namespace GFramework.Godot.SourceGenerators.Registration;
 
