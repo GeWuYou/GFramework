@@ -491,11 +491,15 @@ public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGener
 
     private static string GetTypeDeclarationKeyword(INamedTypeSymbol typeSymbol)
     {
-        return typeSymbol.IsRecord
-            ? typeSymbol.TypeKind == TypeKind.Struct ? "partial record struct" : "partial record"
-            : typeSymbol.TypeKind == TypeKind.Struct
-                ? "partial struct"
-                : "partial class";
+        return typeSymbol switch
+        {
+            { IsRecord: true, TypeKind: TypeKind.Struct } => "partial record struct",
+            { IsRecord: true } => "partial record",
+            { TypeKind: TypeKind.Struct } => "partial struct",
+            { TypeKind: TypeKind.Class } => "partial class",
+            { TypeKind: TypeKind.Interface } => "partial interface",
+            _ => throw new NotSupportedException($"Unsupported type: {typeSymbol.TypeKind}")
+        };
     }
 
     private static string GetTypeDeclarationName(INamedTypeSymbol typeSymbol)
