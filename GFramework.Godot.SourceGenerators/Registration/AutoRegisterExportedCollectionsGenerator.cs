@@ -318,6 +318,20 @@ public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGener
         return compilation.ClassifyConversion(elementType, parameterType).IsImplicit;
     }
 
+    /// <summary>
+    ///     枚举给定注册表类型上可能承载批量注册入口的候选实例方法。
+    /// </summary>
+    /// <param name="registryType">声明注册表成员的静态类型。</param>
+    /// <param name="registerMethodName">特性参数中声明的注册方法名称。</param>
+    /// <returns>
+    ///     按“当前类型 -> 基类链 -> 已实现接口”顺序返回所有同名方法，供后续签名和可访问性筛选使用。
+    /// </returns>
+    /// <remarks>
+    ///     生成器需要沿这三条继承路径查找方法，因为用户代码可能通过派生类字段引用基类实现，
+    ///     或通过接口类型引用由上层接口声明的契约方法。这里故意不做去重：同一个语义方法可能同时经由
+    ///     覆盖链、接口继承或显式声明被枚举多次，但当前调用方只使用 <c>Any</c> 判断“是否存在至少一个可用候选”，
+    ///     因此重复项只会带来额外的符号检查成本，不会改变生成结果或诊断边界。
+    /// </remarks>
     private static IEnumerable<IMethodSymbol> EnumerateCandidateMethods(
         INamedTypeSymbol registryType,
         string registerMethodName)
