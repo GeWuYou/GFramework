@@ -8,6 +8,12 @@ namespace GFramework.Godot.SourceGenerators.Registration;
 /// <summary>
 ///     为导出集合生成批量注册样板方法。
 /// </summary>
+/// <remarks>
+///     该生成器会扫描标记了 <c>AutoRegisterExportedCollectionsAttribute</c> 的 <c>partial</c> 类型，
+///     为其中使用 <c>RegisterExportedCollectionAttribute</c> 声明的集合成员生成集中注册方法。
+///     仅当集合可枚举、元素类型可推导、注册表成员存在且可找到兼容的实例注册方法时才会输出代码；
+///     否则通过 <c>GF_AutoExport_001</c> 到 <c>GF_AutoExport_005</c> 以及公共 <c>ClassMustBePartial</c> 诊断显式阻止生成。
+/// </remarks>
 [Generator]
 public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGenerator
 {
@@ -19,6 +25,14 @@ public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGener
 
     private const string GeneratedMethodName = "__RegisterExportedCollections_Generated";
 
+    /// <summary>
+    ///     配置导出集合自动注册的增量生成管线。
+    /// </summary>
+    /// <param name="context">用于注册候选筛选、语义转换和最终源输出的增量生成上下文。</param>
+    /// <remarks>
+    ///     管线先通过语法名称筛选减少分析范围，再在输出阶段验证特性、集合形状、注册目标与方法签名。
+    ///     当依赖类型无法解析时，生成器不会报告噪声诊断而是直接跳过；当用户代码违反生成约束时，会报告明确诊断并停止该类型的生成。
+    /// </remarks>
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var candidates = context.SyntaxProvider.CreateSyntaxProvider(
@@ -305,15 +319,22 @@ public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGener
 
         foreach (var registration in registrations)
         {
-            builder.Append("        foreach (var item in ");
+            builder.Append("        if (this.");
+            builder.Append(registration.CollectionMemberName);
+            builder.Append(" is not null && this.");
+            builder.Append(registration.RegistryMemberName);
+            builder.AppendLine(" is not null)");
+            builder.AppendLine("        {");
+            builder.Append("            foreach (var __generatedItem in this.");
             builder.Append(registration.CollectionMemberName);
             builder.AppendLine(")");
-            builder.AppendLine("        {");
-            builder.Append("            ");
+            builder.AppendLine("            {");
+            builder.Append("                this.");
             builder.Append(registration.RegistryMemberName);
             builder.Append('.');
             builder.Append(registration.RegisterMethodName);
-            builder.AppendLine("(item);");
+            builder.AppendLine("(__generatedItem);");
+            builder.AppendLine("            }");
             builder.AppendLine("        }");
         }
 
@@ -364,9 +385,20 @@ public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGener
             var constraints = new List<string>();
 
             if (typeParameter.HasReferenceTypeConstraint)
-                constraints.Add("class");
+            {
+                constraints.Add(
+                    typeParameter.ReferenceTypeConstraintNullableAnnotation == NullableAnnotation.Annotated
+                        ? "class?"
+                        : "class");
+            }
 
-            if (typeParameter.HasValueTypeConstraint)
+            if (typeParameter.HasNotNullConstraint)
+                constraints.Add("notnull");
+
+            // unmanaged implies the value-type constraint and must replace struct in generated constraints.
+            if (typeParameter.HasUnmanagedTypeConstraint)
+                constraints.Add("unmanaged");
+            else if (typeParameter.HasValueTypeConstraint)
                 constraints.Add("struct");
 
             constraints.AddRange(typeParameter.ConstraintTypes.Select(static constraint =>

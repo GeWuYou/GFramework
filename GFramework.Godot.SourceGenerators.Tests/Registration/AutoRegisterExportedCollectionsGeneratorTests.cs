@@ -10,6 +10,7 @@ public class AutoRegisterExportedCollectionsGeneratorTests
     public async Task Generates_Batch_Registration_Method_For_Annotated_Collections()
     {
         const string source = """
+                              #nullable enable
                               using System;
                               using System.Collections.Generic;
                               using GFramework.Godot.SourceGenerators.Abstractions;
@@ -34,12 +35,16 @@ public class AutoRegisterExportedCollectionsGeneratorTests
                                   }
 
                                   [AutoRegisterExportedCollections]
-                                  public partial class Bootstrapper
+                                  public partial class Bootstrapper<TReference, TNotNull, TValue, TUnmanaged>
+                                      where TReference : class?
+                                      where TNotNull : notnull
+                                      where TValue : struct
+                                      where TUnmanaged : unmanaged
                                   {
-                                      private readonly IntRegistry _registry = new();
+                                      private readonly IntRegistry? _registry = new();
 
                                       [RegisterExportedCollection(nameof(_registry), nameof(IntRegistry.Register))]
-                                      public List<int> Values { get; } = new();
+                                      public List<int>? Values { get; } = new();
                                   }
                               }
                               """;
@@ -50,13 +55,20 @@ public class AutoRegisterExportedCollectionsGeneratorTests
 
                                 namespace TestApp;
 
-                                partial class Bootstrapper
+                                partial class Bootstrapper<TReference, TNotNull, TValue, TUnmanaged>
+                                    where TReference : class?
+                                    where TNotNull : notnull
+                                    where TValue : struct
+                                    where TUnmanaged : unmanaged
                                 {
                                     private void __RegisterExportedCollections_Generated()
                                     {
-                                        foreach (var item in Values)
+                                        if (this.Values is not null && this._registry is not null)
                                         {
-                                            _registry.Register(item);
+                                            foreach (var __generatedItem in this.Values)
+                                            {
+                                                this._registry.Register(__generatedItem);
+                                            }
                                         }
                                     }
                                 }

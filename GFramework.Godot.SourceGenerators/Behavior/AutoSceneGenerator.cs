@@ -8,12 +8,27 @@ namespace GFramework.Godot.SourceGenerators.Behavior;
 /// <summary>
 ///     为标记了 <c>[AutoScene]</c> 的 Godot 节点生成场景行为样板。
 /// </summary>
+/// <remarks>
+///     该生成器会为兼容的非嵌套 <c>partial</c> Godot 节点类型生成 <c>SceneKeyStr</c> 与 <c>GetScene</c>，
+///     以便通过 <c>SceneBehaviorFactory</c> 延迟创建并缓存场景行为实例。
+///     生成管线仅处理显式标记了 <c>AutoSceneAttribute</c> 的类，并在类型不满足基类、<c>partial</c>、
+///     成员冲突或属性参数约束时通过诊断停止生成，而不是静默回退到不完整输出。
+/// </remarks>
 [Generator]
 public sealed class AutoSceneGenerator : IIncrementalGenerator
 {
     private const string AutoSceneAttributeMetadataName =
         $"{PathContests.GodotSourceGeneratorsAbstractionsPath}.AutoSceneAttribute";
 
+    /// <summary>
+    ///     配置 <c>AutoScene</c> 的增量生成管线。
+    /// </summary>
+    /// <param name="context">用于注册语法筛选、语义转换和源输出阶段的增量生成上下文。</param>
+    /// <remarks>
+    ///     管线首先通过语法节点名称快速筛选潜在候选，再结合语义模型确认类型符号。
+    ///     最终输出阶段仅在 <c>AutoSceneAttribute</c>、<c>Godot.Node</c> 等依赖可解析且目标类型满足生成约束时产出源码；
+    ///     否则会报告对应诊断，或在宿主依赖缺失时直接跳过生成。
+    /// </remarks>
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var candidates = context.SyntaxProvider.CreateSyntaxProvider(
@@ -226,9 +241,20 @@ public sealed class AutoSceneGenerator : IIncrementalGenerator
             var constraints = new List<string>();
 
             if (typeParameter.HasReferenceTypeConstraint)
-                constraints.Add("class");
+            {
+                constraints.Add(
+                    typeParameter.ReferenceTypeConstraintNullableAnnotation == NullableAnnotation.Annotated
+                        ? "class?"
+                        : "class");
+            }
 
-            if (typeParameter.HasValueTypeConstraint)
+            if (typeParameter.HasNotNullConstraint)
+                constraints.Add("notnull");
+
+            // unmanaged implies the value-type constraint and must replace struct in generated constraints.
+            if (typeParameter.HasUnmanagedTypeConstraint)
+                constraints.Add("unmanaged");
+            else if (typeParameter.HasValueTypeConstraint)
                 constraints.Add("struct");
 
             constraints.AddRange(typeParameter.ConstraintTypes.Select(static constraint =>
