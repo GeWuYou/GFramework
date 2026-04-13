@@ -494,7 +494,7 @@ public partial class GameplayModule
 }
 ```
 
-**完整文档**：[AutoRegisterModule 生成器](./auto-register-module-generator.md)
+**完整文档**：[AutoRegisterModule 生成器](./auto-register-module-generator)
 
 ## BindNodeSignal 生成器
 
@@ -560,7 +560,7 @@ public partial class MainMenu : Control
 }
 ```
 
-**完整文档**：[AutoUiPage 生成器](./auto-ui-page-generator.md)
+**完整文档**：[AutoUiPage 生成器](./auto-ui-page-generator)
 
 ## AutoScene 生成器
 
@@ -576,6 +576,7 @@ AutoScene 生成器为场景根节点自动生成 `SceneKeyStr`、缓存的 `ISc
 
 ```csharp
 using GFramework.Godot.SourceGenerators.Abstractions;
+using GFramework.Game.Abstractions.Enums;
 using Godot;
 
 [AutoScene(nameof(SceneKey.Gameplay))]
@@ -584,7 +585,7 @@ public partial class GameplayRoot : Node2D
 }
 ```
 
-**完整文档**：[AutoScene 生成器](./auto-scene-generator.md)
+**完整文档**：[AutoScene 生成器](./auto-scene-generator)
 
 ## AutoRegisterExportedCollections 生成器
 
@@ -610,7 +611,7 @@ public partial class GameEntryPoint : Node
 }
 ```
 
-**完整文档**：[AutoRegisterExportedCollections 生成器](./auto-register-exported-collections-generator.md)
+**完整文档**：[AutoRegisterExportedCollections 生成器](./auto-register-exported-collections-generator)
 
 ## 诊断信息
 

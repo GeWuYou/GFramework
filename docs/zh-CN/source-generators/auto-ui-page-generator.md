@@ -31,7 +31,8 @@ public partial class MainMenu : Control
 }
 ```
 
-上面的 `nameof(UiKey.MainMenu)` 和 `nameof(UiLayer.Page)` 最终都会在编译期转成字符串常量。
+上面的 `nameof(UiKey.MainMenu)` 会生成字符串常量 `UiKeyStr`，`nameof(UiLayer.Page)` 则会在生成代码中解析为对应的枚举成员
+`UiLayer.Page`，并传入页面行为工厂。
 
 ## 生成的代码
 
@@ -123,6 +124,7 @@ partial class MainMenu
 
 ```csharp
 using GFramework.Godot.SourceGenerators.Abstractions;
+using GFramework.Game.Abstractions.Enums;
 using GFramework.SourceGenerators.Abstractions.Rule;
 using Godot;
 
@@ -146,6 +148,6 @@ public partial class PauseMenu : Control
 
 ## 相关文档
 
-- [源码生成器总览](./index.md)
-- [GetNode 生成器](./get-node-generator.md)
-- [BindNodeSignal 生成器](./bind-node-signal-generator.md)
+- [源码生成器总览](./index)
+- [GetNode 生成器](./get-node-generator)
+- [BindNodeSignal 生成器](./bind-node-signal-generator)

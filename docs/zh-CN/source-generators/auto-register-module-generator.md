@@ -149,5 +149,5 @@ partial class GameplayModule
 
 ## 相关文档
 
-- [源码生成器总览](./index.md)
-- [Context Get 注入生成器](./context-get-generator.md)
+- [源码生成器总览](./index)
+- [Context Get 注入生成器](./context-get-generator)

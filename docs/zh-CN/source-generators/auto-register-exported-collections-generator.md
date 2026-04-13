@@ -38,6 +38,13 @@ public sealed class TextureConfig : Resource, IKeyValue<string, Texture2D>
 {
 }
 
+public sealed class TextureRegistry : IAssetRegistry<Texture2D>
+{
+    public void Registry(IKeyValue<string, Texture2D> mapping)
+    {
+    }
+}
+
 [AutoRegisterExportedCollections]
 public partial class GameEntryPoint : Node
 {
@@ -49,10 +56,15 @@ public partial class GameEntryPoint : Node
 
     public override void _Ready()
     {
+        _textureRegistry ??= new TextureRegistry();
         __RegisterExportedCollections_Generated();
     }
 }
 ```
+
+为了让示例具备完整的调用路径，这里在 `_Ready()` 里先初始化了 `_textureRegistry`。
+实际项目里，这个字段通常来自架构容器、服务定位或外部注入；关键点是调用 `__RegisterExportedCollections_Generated()`
+之前，注册器成员必须已经可用，否则生成代码会按设计静默跳过注册。
 
 ## 生成的代码
 
@@ -158,5 +170,5 @@ partial class GameEntryPoint
 
 ## 相关文档
 
-- [源码生成器总览](./index.md)
+- [源码生成器总览](./index)
 - [游戏内容配置系统](/zh-CN/game/config-system)

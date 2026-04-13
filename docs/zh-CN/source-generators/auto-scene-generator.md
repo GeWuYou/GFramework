@@ -17,6 +17,7 @@
 
 ```csharp
 using GFramework.Godot.SourceGenerators.Abstractions;
+using GFramework.Game.Abstractions.Enums;
 using Godot;
 
 [AutoScene(nameof(SceneKey.Gameplay))]
@@ -114,5 +115,5 @@ partial class GameplayRoot
 
 ## 相关文档
 
-- [源码生成器总览](./index.md)
-- [AutoUiPage 生成器](./auto-ui-page-generator.md)
+- [源码生成器总览](./index)
+- [AutoUiPage 生成器](./auto-ui-page-generator)
