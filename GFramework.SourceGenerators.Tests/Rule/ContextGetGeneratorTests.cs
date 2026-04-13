@@ -624,7 +624,7 @@ public class ContextGetGeneratorTests
                 Sources = { source.Source },
                 GeneratedSources =
                 {
-                    (typeof(ContextGetGenerator), "TestApp_BattlePanel.ContextGet.g.cs", expected)
+                    (typeof(ContextGetGenerator), "TestApp_BattlePanel.ContextGet.g.cs", NormalizeLineEndings(expected))
                 }
             },
             DisabledDiagnostics = { "GF_Common_Trace_001" }
@@ -725,7 +725,7 @@ public class ContextGetGeneratorTests
                 Sources = { source.Source },
                 GeneratedSources =
                 {
-                    (typeof(ContextGetGenerator), "TestApp_BattlePanel.ContextGet.g.cs", expected)
+                    (typeof(ContextGetGenerator), "TestApp_BattlePanel.ContextGet.g.cs", NormalizeLineEndings(expected))
                 }
             },
             DisabledDiagnostics = { "GF_Common_Trace_001" }
@@ -738,6 +738,14 @@ public class ContextGetGeneratorTests
 
         await test.RunAsync();
         Assert.Pass();
+    }
+
+    private static string NormalizeLineEndings(string content)
+    {
+        return content
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace("\r", "\n", StringComparison.Ordinal)
+            .Replace("\n", Environment.NewLine, StringComparison.Ordinal);
     }
 
     [Test]
