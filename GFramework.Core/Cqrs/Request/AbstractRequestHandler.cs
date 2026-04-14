@@ -12,7 +12,7 @@
 // limitations under the License.
 
 using GFramework.Core.Rule;
-using Mediator;
+using GFramework.Core.Abstractions.Cqrs;
 
 namespace GFramework.Core.Cqrs.Request;
 
@@ -21,7 +21,7 @@ namespace GFramework.Core.Cqrs.Request;
 /// 继承自ContextAwareBase并实现IRequestHandler接口
 /// </summary>
 /// <typeparam name="TRequest">请求类型，必须实现IRequest[Unit]接口</typeparam>
-public abstract class AbstractRequestHandler<TRequest> : ContextAwareBase, IRequestHandler<TRequest>
+public abstract class AbstractRequestHandler<TRequest> : ContextAwareBase, IRequestHandler<TRequest, Unit>
     where TRequest : IRequest<Unit>
 {
     /// <summary>

@@ -1,10 +1,10 @@
 using GFramework.Core.Abstractions.Bases;
+using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Logging;
 using GFramework.Core.Rule;
-using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GFramework.Core.Ioc;

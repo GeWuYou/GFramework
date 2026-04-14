@@ -11,28 +11,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using GFramework.Core.Abstractions.Cqrs;
+using GFramework.Core.Abstractions.Cqrs.Command;
 using GFramework.Core.Rule;
-using Mediator;
 
 namespace GFramework.Core.Cqrs.Command;
 
 /// <summary>
-/// 抽象流式命令处理器基类
-/// 继承自ContextAwareBase并实现IStreamCommandHandler接口，为具体的流式命令处理器提供基础功能
-/// 支持流式处理命令并产生异步可枚举的响应序列
+/// 抽象流式命令处理器基类。
+/// 继承自 <see cref="ContextAwareBase" /> 并实现 <see cref="IStreamRequestHandler{TRequest,TResponse}" />，
+/// 为具体的流式命令处理器提供基础功能。
 /// </summary>
-/// <typeparam name="TCommand">流式命令类型，必须实现IStreamCommand接口</typeparam>
-/// <typeparam name="TResponse">流式命令响应元素类型</typeparam>
+/// <typeparam name="TCommand">流式命令类型，必须实现 <see cref="IStreamCommand{TResponse}" />。</typeparam>
+/// <typeparam name="TResponse">流式命令响应元素类型。</typeparam>
+/// <remarks>
+/// 框架会在每次调用 <c>CreateStream</c> 进入实际处理逻辑前，为当前处理器实例注入架构上下文，
+/// 因此派生类只能在 <see cref="Handle" /> 执行期间及其返回的异步枚举序列内假定 <c>Context</c> 可用。
+/// 默认注册器会将流式命令处理器注册为瞬态服务，以避免同一个上下文感知实例在多个流或并发请求之间复用。
+/// 派生类不应缓存处理器实例，也不应把依赖当前上下文的可变状态泄漏到流外部。
+/// 传入 <see cref="Handle" /> 的取消令牌同时约束流的创建与后续枚举，
+/// 派生类应在启动阶段和每次生成响应前尊重取消请求，避免在调用方停止枚举后继续执行后台工作。
+/// </remarks>
 public abstract class AbstractStreamCommandHandler<TCommand, TResponse> : ContextAwareBase,
-    IStreamCommandHandler<TCommand, TResponse>
+    IStreamRequestHandler<TCommand, TResponse>
     where TCommand : IStreamCommand<TResponse>
 {
     /// <summary>
-    /// 处理流式命令并返回异步可枚举的响应序列
-    /// 由具体的流式命令处理器子类实现流式处理逻辑
+    /// 处理流式命令并返回异步可枚举的响应序列。
+    /// 由具体的流式命令处理器子类实现流式处理逻辑。
     /// </summary>
-    /// <param name="command">要处理的流式命令对象</param>
-    /// <param name="cancellationToken">取消令牌，用于取消流式处理操作</param>
-    /// <returns>异步可枚举的响应序列，每个元素类型为TResponse</returns>
+    /// <param name="command">要处理的流式命令对象。</param>
+    /// <param name="cancellationToken">取消令牌，用于取消流式处理操作。</param>
+    /// <returns>异步可枚举的响应序列，每个元素类型为 <typeparamref name="TResponse" />。</returns>
     public abstract IAsyncEnumerable<TResponse> Handle(TCommand command, CancellationToken cancellationToken);
 }

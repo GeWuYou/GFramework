@@ -1,6 +1,7 @@
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Environment;
 using GFramework.Core.Abstractions.Logging;
+using GFramework.Core.Cqrs.Internal;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GFramework.Core.Architectures;
@@ -92,16 +93,20 @@ internal sealed class ArchitectureBootstrapper(
 
     /// <summary>
     ///     为服务容器设置上下文并执行扩展配置钩子。
-    ///     这一步统一承接 Mediator 等容器扩展的接入点，避免 <see cref="Architecture" /> 直接操作容器细节。
+    ///     这一步统一承接 CQRS 运行时与容器扩展的接入点，避免 <see cref="Architecture" /> 直接操作容器细节。
     /// </summary>
     /// <param name="context">当前架构上下文。</param>
     /// <param name="configurator">可选的服务集合配置委托。</param>
     private void ConfigureServices(IArchitectureContext context, Action<IServiceCollection>? configurator)
     {
         services.SetContext(context);
+        CqrsHandlerRegistrar.RegisterHandlers(
+            services.Container,
+            [architectureType.Assembly, typeof(ArchitectureContext).Assembly],
+            logger);
 
         if (configurator is null)
-            logger.Debug("Mediator-based cqrs will not take effect without the service setter configured!");
+            logger.Debug("No external service configurator provided. Using built-in CQRS runtime registration only.");
 
         services.Container.ExecuteServicesHook(configurator);
     }

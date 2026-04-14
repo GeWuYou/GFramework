@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using GFramework.Core.Abstractions.Architectures;
+using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Abstractions.Events;
 using GFramework.Core.Architectures;
 using GFramework.Core.Command;
@@ -10,22 +11,26 @@ using GFramework.Core.Events;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
 using GFramework.Core.Query;
-using Mediator;
-using Microsoft.Extensions.DependencyInjection;
 using ICommand = GFramework.Core.Abstractions.Command.ICommand;
-
-// ✅ Mediator 库的命名空间
-
-// ✅ 使用 global using 或别名来区分
+using Unit = GFramework.Core.Abstractions.Cqrs.Unit;
 
 namespace GFramework.Core.Tests.Mediator;
 
 [TestFixture]
 public class MediatorComprehensiveTests
 {
+    private AsyncQueryExecutor? _asyncQueryBus;
+    private CommandExecutor? _commandBus;
+    private MicrosoftDiContainer? _container;
+
+    private ArchitectureContext? _context;
+    private DefaultEnvironment? _environment;
+    private EventBus? _eventBus;
+    private QueryExecutor? _queryBus;
+
     /// <summary>
     ///     测试初始化方法，在每个测试方法执行前运行。
-    ///     负责初始化日志工厂、依赖注入容器、Mediator以及各种总线服务。
+    ///     负责初始化日志工厂、依赖注入容器、自有 CQRS 处理器以及各种总线服务。
     /// </summary>
     [SetUp]
     public void SetUp()
@@ -51,13 +56,11 @@ public class MediatorComprehensiveTests
         _container.RegisterPlurality(_asyncQueryBus);
         _container.RegisterPlurality(_environment);
 
-        // ✅ 注册 Mediator
-        _container.ExecuteServicesHook(configurator =>
-        {
-            configurator.AddMediator(options => { options.ServiceLifetime = ServiceLifetime.Singleton; });
-        });
+        CqrsTestRuntime.RegisterHandlers(
+            _container,
+            typeof(MediatorComprehensiveTests).Assembly,
+            typeof(ArchitectureContext).Assembly);
 
-        // ✅ Freeze 容器
         _container.Freeze();
 
         _context = new ArchitectureContext(_container);
@@ -78,14 +81,6 @@ public class MediatorComprehensiveTests
         _asyncQueryBus = null;
         _environment = null;
     }
-
-    private ArchitectureContext? _context;
-    private MicrosoftDiContainer? _container;
-    private EventBus? _eventBus;
-    private CommandExecutor? _commandBus;
-    private QueryExecutor? _queryBus;
-    private AsyncQueryExecutor? _asyncQueryBus;
-    private DefaultEnvironment? _environment;
 
     /// <summary>
     ///     测试SendRequestAsync方法在请求有效时返回结果
@@ -194,19 +189,19 @@ public class MediatorComprehensiveTests
 
 
     /// <summary>
-    ///     测试未注册的Mediator抛出InvalidOperationException
+    ///     测试未注册的 CQRS handler 时抛出 InvalidOperationException
     /// </summary>
     [Test]
-    public void Unregistered_Mediator_Should_Throw_InvalidOperationException()
+    public void Unregistered_Cqrs_Handler_Should_Throw_InvalidOperationException()
     {
-        var containerWithoutMediator = new MicrosoftDiContainer();
-        containerWithoutMediator.Freeze();
+        var containerWithoutHandlers = new MicrosoftDiContainer();
+        containerWithoutHandlers.Freeze();
 
-        var contextWithoutMediator = new ArchitectureContext(containerWithoutMediator);
+        var contextWithoutHandlers = new ArchitectureContext(containerWithoutHandlers);
         var testRequest = new TestRequest { Value = 42 };
 
         Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await contextWithoutMediator.SendRequestAsync(testRequest));
+            await contextWithoutHandlers.SendRequestAsync(testRequest));
     }
 
     /// <summary>
@@ -270,10 +265,10 @@ public class MediatorComprehensiveTests
     }
 
     /// <summary>
-    ///     测试并发Mediator请求不会相互干扰
+    ///     测试并发 CQRS 请求不会相互干扰
     /// </summary>
     [Test]
-    public async Task Concurrent_Mediator_Requests_Should_Not_Interfere()
+    public async Task Concurrent_Cqrs_Requests_Should_Not_Interfere()
     {
         const int requestCount = 10;
         var tasks = new List<Task<int>>();
@@ -389,10 +384,10 @@ public class MediatorComprehensiveTests
     }
 
     /// <summary>
-    ///     测试Mediator性能基准
+    ///     测试 CQRS 性能基准
     /// </summary>
     [Test]
-    public async Task Performance_Benchmark_For_Mediator()
+    public async Task Performance_Benchmark_For_Cqrs()
     {
         const int iterations = 1000;
         var stopwatch = Stopwatch.StartNew();
@@ -413,17 +408,17 @@ public class MediatorComprehensiveTests
     }
 
     /// <summary>
-    ///     测试Mediator和传统CQRS可以共存
+    ///     测试自有 CQRS 和传统 CQRS 可以共存
     /// </summary>
     [Test]
-    public async Task Mediator_And_Legacy_CQRS_Can_Coexist()
+    public async Task Cqrs_And_Legacy_CQRS_Can_Coexist()
     {
         // 使用传统方式
         var legacyCommand = new TestLegacyCommand();
         _context!.SendCommand(legacyCommand);
         Assert.That(legacyCommand.Executed, Is.True);
 
-        // 使用Mediator方式
+        // 使用自有 CQRS 方式
         var mediatorCommand = new TestCommandWithResult { ResultValue = 999 };
         var result = await _context.SendAsync(mediatorCommand);
         Assert.That(result, Is.EqualTo(999));
@@ -434,7 +429,7 @@ public class MediatorComprehensiveTests
     }
 }
 
-#region Advanced Test Classes for Mediator Features
+#region Advanced Test Classes for CQRS Features
 
 public sealed record TestLongRunningRequest : IRequest<string>
 {
@@ -628,9 +623,9 @@ public class TestLegacyCommand : ICommand
 
 #endregion
 
-#region Test Classes - Mediator (新实现)
+#region Test Classes - CQRS Runtime
 
-// ✅ 这些类使用 Mediator.IRequest
+// ✅ 这些类使用自有 CQRS IRequest
 public sealed record TestRequest : IRequest<int>
 {
     public int Value { get; init; }
@@ -662,7 +657,7 @@ public sealed record TestStreamRequest : IStreamRequest<int>
     public int[] Values { get; init; } = [];
 }
 
-// ✅ 这些 Handler 使用 Mediator.IRequestHandler
+// ✅ 这些 Handler 使用自有 CQRS IRequestHandler
 public sealed class TestRequestHandler : IRequestHandler<TestRequest, int>
 {
     public ValueTask<int> Handle(TestRequest request, CancellationToken cancellationToken)

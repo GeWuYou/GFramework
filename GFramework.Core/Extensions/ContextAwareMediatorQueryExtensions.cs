@@ -1,16 +1,15 @@
 using GFramework.Core.Abstractions.Rule;
-using Mediator;
+using GFramework.Core.Abstractions.Cqrs.Query;
 
 namespace GFramework.Core.Extensions;
 
 /// <summary>
-///     提供对 IContextAware 接口的 Mediator 查询扩展方法
-///     使用 Mediator 库的查询模式
+///     提供对 IContextAware 接口的 CQRS 查询扩展方法。
 /// </summary>
 public static class ContextAwareMediatorQueryExtensions
 {
     /// <summary>
-    ///     [Mediator] 发送查询的同步版本（不推荐,仅用于兼容性）
+    ///     发送查询的同步版本（不推荐,仅用于兼容性）
     /// </summary>
     /// <typeparam name="TResponse">查询响应类型</typeparam>
     /// <param name="contextAware">实现 IContextAware 接口的对象</param>
@@ -27,7 +26,7 @@ public static class ContextAwareMediatorQueryExtensions
     }
 
     /// <summary>
-    ///     [Mediator] 异步发送查询并返回结果
+    ///     异步发送查询并返回结果
     /// </summary>
     /// <typeparam name="TResponse">查询响应类型</typeparam>
     /// <param name="contextAware">实现 IContextAware 接口的对象</param>

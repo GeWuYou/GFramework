@@ -2,14 +2,13 @@ using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Utility;
 using GFramework.Core.Architectures;
 using GFramework.Core.Logging;
-using Mediator;
-using Microsoft.Extensions.DependencyInjection;
+using GfCqrs = GFramework.Core.Abstractions.Cqrs;
 
 namespace GFramework.Core.Tests.Architectures;
 
 /// <summary>
-///     验证 Architecture 通过 <c>ArchitectureModules</c> 暴露出的模块安装与 Mediator 行为注册能力。
-///     这些测试覆盖模块安装回调和中介管道行为接入，确保模块管理器仍然保持可观察行为不变。
+///     验证 Architecture 通过 <c>ArchitectureModules</c> 暴露出的模块安装与 CQRS 行为注册能力。
+///     这些测试覆盖模块安装回调和请求管道行为接入，确保模块管理器仍然保持可观察行为不变。
 /// </summary>
 [TestFixture]
 public class ArchitectureModulesBehaviorTests
@@ -57,7 +56,7 @@ public class ArchitectureModulesBehaviorTests
     }
 
     /// <summary>
-    ///     验证注册的 Mediator 行为会参与请求管道执行。
+    ///     验证注册的 CQRS 行为会参与请求管道执行。
     /// </summary>
     [Test]
     public async Task RegisterMediatorBehavior_Should_Apply_Pipeline_Behavior_To_Request()
@@ -83,12 +82,6 @@ public class ArchitectureModulesBehaviorTests
     /// </summary>
     private sealed class ModuleTestArchitecture(Action<ModuleTestArchitecture> registrationAction) : Architecture
     {
-        /// <summary>
-        ///     打开 Mediator 服务注册，以便测试中介行为接入。
-        /// </summary>
-        public override Action<IServiceCollection>? Configurator =>
-            services => services.AddMediator(options => { options.ServiceLifetime = ServiceLifetime.Singleton; });
-
         /// <summary>
         ///     在初始化阶段执行测试注入的模块注册逻辑。
         /// </summary>
@@ -136,14 +129,14 @@ public class ArchitectureModulesBehaviorTests
 /// <summary>
 ///     用于验证管道行为注册是否生效的测试请求。
 /// </summary>
-public sealed class ModuleBehaviorRequest : IRequest<string>
+public sealed class ModuleBehaviorRequest : GfCqrs.IRequest<string>
 {
 }
 
 /// <summary>
 ///     处理测试请求的处理器。
 /// </summary>
-public sealed class ModuleBehaviorRequestHandler : IRequestHandler<ModuleBehaviorRequest, string>
+public sealed class ModuleBehaviorRequestHandler : GfCqrs.IRequestHandler<ModuleBehaviorRequest, string>
 {
     /// <summary>
     ///     返回固定结果，便于聚焦验证管道行为是否执行。
@@ -162,8 +155,8 @@ public sealed class ModuleBehaviorRequestHandler : IRequestHandler<ModuleBehavio
 /// </summary>
 /// <typeparam name="TRequest">请求类型。</typeparam>
 /// <typeparam name="TResponse">响应类型。</typeparam>
-public sealed class TrackingPipelineBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
-    where TRequest : IRequest<TResponse>
+public sealed class TrackingPipelineBehavior<TRequest, TResponse> : GfCqrs.IPipelineBehavior<TRequest, TResponse>
+    where TRequest : GfCqrs.IRequest<TResponse>
 {
     /// <summary>
     ///     获取当前测试进程中该请求类型对应的行为触发次数。
@@ -178,8 +171,7 @@ public sealed class TrackingPipelineBehavior<TRequest, TResponse> : IPipelineBeh
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>下游处理器的响应结果。</returns>
     public async ValueTask<TResponse> Handle(
-        TRequest message,
-        MessageHandlerDelegate<TRequest, TResponse> next,
+        TRequest message, GfCqrs.MessageHandlerDelegate<TRequest, TResponse> next,
         CancellationToken cancellationToken)
     {
         InvocationCount++;

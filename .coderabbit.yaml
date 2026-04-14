@@ -16,6 +16,8 @@ reviews:
   auto_review:
     enabled: true
     drafts: false # draft PR 不 review
+    base_branches:
+      - refactor/cqrs-architecture-decoupling
 
 chat:
   auto_reply: true

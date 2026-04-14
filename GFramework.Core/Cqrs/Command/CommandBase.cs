@@ -12,7 +12,6 @@
 // limitations under the License.
 
 using GFramework.Core.Abstractions.Cqrs.Command;
-using Mediator;
 
 namespace GFramework.Core.Cqrs.Command;
 
