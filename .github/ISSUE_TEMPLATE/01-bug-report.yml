@@ -84,7 +84,19 @@ body:
     attributes:
       label: "Minimal Repro / 最小复现"
       description: "Share a repository, gist, code snippet, or explain why a minimal repro is not yet available. / 提供仓库、gist、代码片段，或说明暂时无法提供的原因。"
+      placeholder: |
+        Please provide one of the following:
+        - A GitHub repository or sample project
+        - A gist or focused code snippet
+        - Or explain why a minimal repro is not yet available
+
+        请提供以下任一内容：
+        - GitHub 仓库或示例项目
+        - Gist 或聚焦代码片段
+        - 或说明暂时无法提供最小复现的原因
       render: shell
+    validations:
+      required: true
   - type: textarea
     id: logs
     attributes:

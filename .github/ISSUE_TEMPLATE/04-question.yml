@@ -61,4 +61,6 @@ body:
     id: environment
     attributes:
       label: "Relevant Environment / 相关环境"
-      description: "Include versions or project context if that changes the answer. / 如果版本或项目上下文会影响答案，请补充。"
+      description: "Include the framework version, runtime, engine version, or project context. If not applicable, write N/A. / 请补充框架版本、运行时、引擎版本或项目上下文；如不适用请填写 N/A。"
+    validations:
+      required: true
