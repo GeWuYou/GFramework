@@ -452,16 +452,17 @@ Godot 引擎集成模块。
 
 #### 常用 Attribute
 
-| Attribute                                  | 说明                                | 文档                                                                                                          |
-|--------------------------------------------|-----------------------------------|-------------------------------------------------------------------------------------------------------------|
-| `AutoRegisterModuleAttribute`              | 为模块类生成 `Install(IArchitecture)`   | [AutoRegisterModule 生成器](../source-generators/auto-register-module-generator.md)                            |
-| `RegisterModelAttribute`                   | 声明模块内自动注册的 `IModel` 类型            | [AutoRegisterModule 生成器](../source-generators/auto-register-module-generator.md)                            |
-| `RegisterSystemAttribute`                  | 声明模块内自动注册的 `ISystem` 类型           | [AutoRegisterModule 生成器](../source-generators/auto-register-module-generator.md)                            |
-| `RegisterUtilityAttribute`                 | 声明模块内自动注册的 `IUtility` 类型          | [AutoRegisterModule 生成器](../source-generators/auto-register-module-generator.md)                            |
-| `AutoUiPageAttribute`                      | 为 `CanvasItem` 页面节点生成 `GetPage()` | [AutoUiPage 生成器](../source-generators/auto-ui-page-generator.md)                                            |
-| `AutoSceneAttribute`                       | 为场景根节点生成 `GetScene()`             | [AutoScene 生成器](../source-generators/auto-scene-generator.md)                                               |
-| `AutoRegisterExportedCollectionsAttribute` | 为宿主类开启导出集合批量注册生成                  | [AutoRegisterExportedCollections 生成器](../source-generators/auto-register-exported-collections-generator.md) |
-| `RegisterExportedCollectionAttribute`      | 指定集合与注册器成员的映射关系                   | [AutoRegisterExportedCollections 生成器](../source-generators/auto-register-exported-collections-generator.md) |
+| Attribute                                  | 说明                                        | 文档                                                                                                          |
+|--------------------------------------------|-------------------------------------------|-------------------------------------------------------------------------------------------------------------|
+| `AutoRegisterModuleAttribute`              | 为模块类生成 `Install(IArchitecture)`           | [AutoRegisterModule 生成器](../source-generators/auto-register-module-generator.md)                            |
+| `RegisterModelAttribute`                   | 声明模块内自动注册的 `IModel` 类型                    | [AutoRegisterModule 生成器](../source-generators/auto-register-module-generator.md)                            |
+| `RegisterSystemAttribute`                  | 声明模块内自动注册的 `ISystem` 类型                   | [AutoRegisterModule 生成器](../source-generators/auto-register-module-generator.md)                            |
+| `RegisterUtilityAttribute`                 | 声明模块内自动注册的 `IUtility` 类型                  | [AutoRegisterModule 生成器](../source-generators/auto-register-module-generator.md)                            |
+| `AutoUiPageAttribute`                      | 为 `CanvasItem` 页面节点生成 `GetPage()`         | [AutoUiPage 生成器](../source-generators/auto-ui-page-generator.md)                                            |
+| `AutoSceneAttribute`                       | 为场景根节点生成 `GetScene()`                     | [AutoScene 生成器](../source-generators/auto-scene-generator.md)                                               |
+| `AutoLoadAttribute`                        | 显式声明 `project.godot` AutoLoad 与 C# 节点类型映射 | [Godot 项目元数据生成器](../source-generators/godot-project-generator.md)                                           |
+| `AutoRegisterExportedCollectionsAttribute` | 为宿主类开启导出集合批量注册生成                          | [AutoRegisterExportedCollections 生成器](../source-generators/auto-register-exported-collections-generator.md) |
+| `RegisterExportedCollectionAttribute`      | 指定集合与注册器成员的映射关系                           | [AutoRegisterExportedCollections 生成器](../source-generators/auto-register-exported-collections-generator.md) |
 
 ## 常见用法示例
 
