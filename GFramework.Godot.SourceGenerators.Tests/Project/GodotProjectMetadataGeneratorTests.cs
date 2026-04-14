@@ -316,4 +316,245 @@ public class GodotProjectMetadataGeneratorTests
             generatedSources["GFramework_Godot_Generated_InputActions.g.cs"],
             Does.Contain("public const string MoveUp_2 = \"move-up\";"));
     }
+
+    /// <summary>
+    ///     验证多个显式映射指向同一个 AutoLoad 时会报告重复映射，并退化为 <c>Godot.Node</c>。
+    /// </summary>
+    [Test]
+    public void Run_Should_Report_Diagnostic_When_Explicit_AutoLoad_Mappings_Are_Duplicated()
+    {
+        var result = RunGenerator(
+            CreateSource(
+                """
+                namespace TestApp
+                {
+                    using GFramework.Godot.SourceGenerators.Abstractions;
+                    using Godot;
+
+                    [AutoLoad("AudioBus")]
+                    public partial class PrimaryAudioBus : Node
+                    {
+                    }
+
+                    [AutoLoad("AudioBus")]
+                    public partial class SecondaryAudioBus : Node
+                    {
+                    }
+                }
+                """,
+                includeAutoLoadAttribute: true),
+            """
+            [autoload]
+            AudioBus="*res://autoload/audio_bus.tscn"
+            """);
+
+        var diagnostics = result.Results.Single().Diagnostics;
+        var generatedSources = AdditionalTextGeneratorTestDriver.ToGeneratedSourceMap(result);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostics.Select(static item => item.Id), Is.EqualTo(new[] { "GF_Godot_Project_002" }));
+            Assert.That(diagnostics.Single().GetMessage(), Does.Contain("PrimaryAudioBus"));
+            Assert.That(diagnostics.Single().GetMessage(), Does.Contain("SecondaryAudioBus"));
+            Assert.That(
+                generatedSources["GFramework_Godot_Generated_AutoLoads.g.cs"],
+                Does.Contain("public static global::Godot.Node AudioBus => GetRequiredNode<global::Godot.Node>(\"AudioBus\");"));
+        });
+    }
+
+    /// <summary>
+    ///     验证不同命名空间下的同名节点类型会触发隐式映射冲突诊断，并退化为 <c>Godot.Node</c>。
+    /// </summary>
+    [Test]
+    public void Run_Should_Report_Diagnostic_When_Implicit_AutoLoad_Mappings_Are_Ambiguous()
+    {
+        var result = RunGenerator(
+            CreateSource(
+                """
+                namespace TestApp.Audio
+                {
+                    using Godot;
+
+                    public partial class AudioBus : Node
+                    {
+                    }
+                }
+
+                namespace TestApp.Debug
+                {
+                    using Godot;
+
+                    public partial class AudioBus : Node
+                    {
+                    }
+                }
+                """),
+            """
+            [autoload]
+            AudioBus="*res://autoload/audio_bus.tscn"
+            """);
+
+        var diagnostics = result.Results.Single().Diagnostics;
+        var generatedSources = AdditionalTextGeneratorTestDriver.ToGeneratedSourceMap(result);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostics.Select(static item => item.Id), Is.EqualTo(new[] { "GF_Godot_Project_002" }));
+            Assert.That(diagnostics.Single().GetMessage(), Does.Contain("Audio.AudioBus"));
+            Assert.That(diagnostics.Single().GetMessage(), Does.Contain("Debug.AudioBus"));
+            Assert.That(
+                generatedSources["GFramework_Godot_Generated_AutoLoads.g.cs"],
+                Does.Contain("public static global::Godot.Node AudioBus => GetRequiredNode<global::Godot.Node>(\"AudioBus\");"));
+        });
+    }
+
+    /// <summary>
+    ///     验证 AutoLoad 标识符冲突时会追加稳定后缀并报告诊断。
+    /// </summary>
+    [Test]
+    public void Run_Should_Report_Diagnostic_And_Append_Suffix_When_AutoLoad_Identifiers_Collide()
+    {
+        var result = RunGenerator(
+            CreateSource("namespace TestApp { }"),
+            """
+            [autoload]
+            audio_bus="*res://autoload/audio_bus.tscn"
+            audio-bus="*res://autoload/audio_bus_debug.tscn"
+            """);
+
+        var diagnostics = result.Results.Single().Diagnostics;
+        var generatedSources = AdditionalTextGeneratorTestDriver.ToGeneratedSourceMap(result);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostics.Select(static item => item.Id), Is.EqualTo(new[] { "GF_Godot_Project_003" }));
+            Assert.That(
+                generatedSources["GFramework_Godot_Generated_AutoLoads.g.cs"],
+                Does.Contain("public static global::Godot.Node AudioBus => GetRequiredNode<global::Godot.Node>(\"audio_bus\");"));
+            Assert.That(
+                generatedSources["GFramework_Godot_Generated_AutoLoads.g.cs"],
+                Does.Contain("public static global::Godot.Node AudioBus_2 => GetRequiredNode<global::Godot.Node>(\"audio-bus\");"));
+        });
+    }
+
+    /// <summary>
+    ///     验证重复 AutoLoad 条目会报告诊断，并只保留第一条声明参与生成。
+    /// </summary>
+    [Test]
+    public void Run_Should_Report_Diagnostic_When_Project_File_Contains_Duplicate_AutoLoads()
+    {
+        var result = RunGenerator(
+            CreateSource("namespace TestApp { }"),
+            """
+            [autoload]
+            GameServices="*res://autoload/game_services.tscn"
+            GameServices="*res://autoload/game_services_debug.tscn"
+            """);
+
+        var diagnostics = result.Results.Single().Diagnostics;
+        var generatedSources = AdditionalTextGeneratorTestDriver.ToGeneratedSourceMap(result);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostics.Select(static item => item.Id), Is.EqualTo(new[] { "GF_Godot_Project_005" }));
+            Assert.That(diagnostics.Single().GetMessage(), Does.Contain("GameServices"));
+            Assert.That(
+                generatedSources["GFramework_Godot_Generated_AutoLoads.g.cs"],
+                Does.Contain("public static global::Godot.Node GameServices => GetRequiredNode<global::Godot.Node>(\"GameServices\");"));
+            Assert.That(
+                generatedSources["GFramework_Godot_Generated_AutoLoads.g.cs"],
+                Does.Not.Contain("GameServices_2"));
+        });
+    }
+
+    /// <summary>
+    ///     验证重复 Input Action 条目会报告诊断，并只保留第一条声明参与生成。
+    /// </summary>
+    [Test]
+    public void Run_Should_Report_Diagnostic_When_Project_File_Contains_Duplicate_Input_Actions()
+    {
+        var result = RunGenerator(
+            CreateSource("namespace TestApp { }"),
+            """
+            [input]
+            move_up={
+            }
+            move_up={
+            }
+            """);
+
+        var diagnostics = result.Results.Single().Diagnostics;
+        var generatedSources = AdditionalTextGeneratorTestDriver.ToGeneratedSourceMap(result);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostics.Select(static item => item.Id), Is.EqualTo(new[] { "GF_Godot_Project_006" }));
+            Assert.That(diagnostics.Single().GetMessage(), Does.Contain("move_up"));
+            Assert.That(
+                generatedSources["GFramework_Godot_Generated_InputActions.g.cs"],
+                Does.Contain("public const string MoveUp = \"move_up\";"));
+            Assert.That(
+                generatedSources["GFramework_Godot_Generated_InputActions.g.cs"],
+                Does.Not.Contain("MoveUp_2"));
+        });
+    }
+
+    private static GeneratorDriverRunResult RunGenerator(
+        string source,
+        string projectFile)
+    {
+        return AdditionalTextGeneratorTestDriver.Run<GodotProjectMetadataGenerator>(
+            source,
+            ("project.godot", projectFile));
+    }
+
+    private static string CreateSource(
+        string applicationSource,
+        bool includeAutoLoadAttribute = false)
+    {
+        var autoLoadAttributeSource = includeAutoLoadAttribute
+            ? """
+              using System;
+
+              namespace GFramework.Godot.SourceGenerators.Abstractions
+              {
+                  [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+                  public sealed class AutoLoadAttribute : Attribute
+                  {
+                      public AutoLoadAttribute(string name)
+                      {
+                          Name = name;
+                      }
+
+                      public string Name { get; }
+                  }
+              }
+              """
+            : string.Empty;
+
+        return autoLoadAttributeSource + """
+                                         namespace Godot
+                                         {
+                                             public class MainLoop
+                                             {
+                                             }
+
+                                             public class Node
+                                             {
+                                                 public T? GetNodeOrNull<T>(string path) where T : Node => default;
+                                             }
+
+                                             public sealed class SceneTree : MainLoop
+                                             {
+                                                 public Node? Root { get; set; }
+                                             }
+
+                                             public static class Engine
+                                             {
+                                                 public static MainLoop? GetMainLoop() => default;
+                                             }
+                                         }
+
+                                         """ + applicationSource;
+    }
 }

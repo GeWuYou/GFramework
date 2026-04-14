@@ -18,9 +18,22 @@ public sealed class AutoLoadAttribute : Attribute
     /// <exception cref="ArgumentNullException">
     ///     <paramref name="name" /> 为 <see langword="null" />。
     /// </exception>
+    /// <exception cref="ArgumentException">
+    ///     <paramref name="name" /> 为空字符串或仅包含空白字符。
+    /// </exception>
     public AutoLoadAttribute(string name)
     {
-        Name = name ?? throw new ArgumentNullException(nameof(name));
+        if (name is null)
+        {
+            throw new ArgumentNullException(nameof(name));
+        }
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException("AutoLoad name cannot be empty or whitespace.", nameof(name));
+        }
+
+        Name = name;
     }
 
     /// <summary>

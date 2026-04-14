@@ -9,6 +9,12 @@
         让 Godot 项目元数据生成能力在常规 Godot C# 工程里开箱即用。
         -->
         <GFrameworkGodotProjectFile Condition="'$(GFrameworkGodotProjectFile)' == ''">project.godot</GFrameworkGodotProjectFile>
+        <!--
+        当前生成器按文件名识别 project.godot，因此允许调整相对路径，
+        但不支持把目标文件重命名为其他文件名。
+        -->
+        <_GFrameworkGodotProjectFileName>$([System.IO.Path]::GetFileName('$(GFrameworkGodotProjectFile)'))</_GFrameworkGodotProjectFileName>
+        <_GFrameworkGodotProjectFileNameLower>$([System.String]::Copy('$(_GFrameworkGodotProjectFileName)').ToLowerInvariant())</_GFrameworkGodotProjectFileNameLower>
     </PropertyGroup>
 
     <ItemGroup>
@@ -20,6 +26,12 @@
     <ItemGroup Condition="Exists('$(MSBuildProjectDirectory)/$(GFrameworkGodotProjectFile)')">
         <AdditionalFiles Include="$(MSBuildProjectDirectory)/$(GFrameworkGodotProjectFile)"/>
     </ItemGroup>
+
+    <Target Name="ValidateGFrameworkGodotProjectFileName"
+            BeforeTargets="CoreCompile"
+            Condition="Exists('$(MSBuildProjectDirectory)/$(GFrameworkGodotProjectFile)') and '$(_GFrameworkGodotProjectFileNameLower)' != 'project.godot'">
+        <Warning Text="GFrameworkGodotProjectFile can change the relative path, but the file name must remain 'project.godot'; otherwise GodotProjectMetadataGenerator will ignore the file."/>
+    </Target>
 
     <!-- Ensure the analyzers are loaded -->
     <Target Name="EnsureGFrameworkGodotAnalyzers" BeforeTargets="CoreCompile">

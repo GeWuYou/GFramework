@@ -23,9 +23,12 @@ API。
 
 如需覆盖默认路径，可以设置：
 
+- 可以改成项目根目录下的其他相对路径
+- 文件名必须仍然是 `project.godot`，否则生成器会给出警告并忽略该文件
+
 ```xml
 <PropertyGroup>
-  <GFrameworkGodotProjectFile>project.godot</GFrameworkGodotProjectFile>
+  <GFrameworkGodotProjectFile>Config/project.godot</GFrameworkGodotProjectFile>
 </PropertyGroup>
 ```
 

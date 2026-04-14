@@ -1,5 +1,7 @@
 using System.Collections.Immutable;
 using System.IO;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Text;
 
 namespace GFramework.Godot.SourceGenerators.Tests.Core;
 
@@ -60,13 +62,12 @@ public static class AdditionalTextGeneratorTestDriver
     ///     规范化换行，避免测试在不同平台上产生伪差异。
     /// </summary>
     /// <param name="content">待规范化文本。</param>
-    /// <returns>使用当前平台换行符的内容。</returns>
+    /// <returns>统一使用 LF (<c>\n</c>) 的内容。</returns>
     public static string NormalizeLineEndings(string content)
     {
         return content
             .Replace("\r\n", "\n", StringComparison.Ordinal)
-            .Replace("\r", "\n", StringComparison.Ordinal)
-            .Replace("\n", Environment.NewLine, StringComparison.Ordinal);
+            .Replace("\r", "\n", StringComparison.Ordinal);
     }
 
     private static IEnumerable<MetadataReference> GetMetadataReferences()

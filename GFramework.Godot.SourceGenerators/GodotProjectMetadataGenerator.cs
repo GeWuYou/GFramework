@@ -1,5 +1,8 @@
+using System.IO;
 using GFramework.Godot.SourceGenerators.Diagnostics;
 using GFramework.SourceGenerators.Common.Constants;
+using GFramework.SourceGenerators.Common.Extensions;
+using Microsoft.CodeAnalysis.Text;
 
 namespace GFramework.Godot.SourceGenerators;
 
@@ -178,6 +181,7 @@ public sealed class GodotProjectMetadataGenerator : IIncrementalGenerator
 
         foreach (var projectAutoLoadName in projectAutoLoadNames.OrderBy(static name => name, StringComparer.Ordinal))
         {
+            // 显式 [AutoLoad] 映射优先于按类型名推断，因为它代表了用户给出的稳定契约。
             if (explicitMappings.TryGetValue(projectAutoLoadName, out var explicitList))
             {
                 var distinctExplicitTypes = DistinctTypeSymbols(explicitList);
@@ -188,14 +192,7 @@ public sealed class GodotProjectMetadataGenerator : IIncrementalGenerator
                 }
                 else if (distinctExplicitTypes.Length > 1)
                 {
-                    context.ReportDiagnostic(Diagnostic.Create(
-                        GodotProjectDiagnostics.DuplicateAutoLoadMapping,
-                        Location.None,
-                        projectAutoLoadName,
-                        string.Join(
-                            ", ",
-                            distinctExplicitTypes.Select(static type =>
-                                type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)))));
+                    ReportDuplicateAutoLoadMapping(context, projectAutoLoadName, distinctExplicitTypes);
                 }
 
                 continue;
@@ -207,7 +204,14 @@ public sealed class GodotProjectMetadataGenerator : IIncrementalGenerator
             var distinctImplicitTypes = DistinctTypeSymbols(implicitList);
 
             if (distinctImplicitTypes.Length == 1)
+            {
                 resolvedMappings.Add(projectAutoLoadName, distinctImplicitTypes[0]);
+            }
+            else if (distinctImplicitTypes.Length > 1)
+            {
+                // 隐式推断只在唯一命中时才安全；出现同名候选时改为诊断并退化成 Godot.Node。
+                ReportDuplicateAutoLoadMapping(context, projectAutoLoadName, distinctImplicitTypes);
+            }
         }
 
         return resolvedMappings;
@@ -226,6 +230,21 @@ public sealed class GodotProjectMetadataGenerator : IIncrementalGenerator
 
         autoLoadName = rawName;
         return true;
+    }
+
+    private static void ReportDuplicateAutoLoadMapping(
+        SourceProductionContext context,
+        string autoLoadName,
+        IEnumerable<INamedTypeSymbol> duplicateTypes)
+    {
+        context.ReportDiagnostic(Diagnostic.Create(
+            GodotProjectDiagnostics.DuplicateAutoLoadMapping,
+            Location.None,
+            autoLoadName,
+            string.Join(
+                ", ",
+                duplicateTypes.Select(static type =>
+                    type.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat)))));
     }
 
     private static IReadOnlyList<GeneratedAutoLoadMember> CreateAutoLoadMembers(

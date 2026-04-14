@@ -25,11 +25,14 @@
 - `GFramework.Godot.Generated.AutoLoads`
 - `GFramework.Godot.Generated.InputActions`
 
-如果你需要覆盖默认项目文件名，可以在 MSBuild 中设置：
+如果你需要覆盖默认项目文件路径，可以在 MSBuild 中设置：
+
+- 路径可以调整到项目根目录下的其他位置
+- 文件名必须仍然是 `project.godot`，否则生成器会发出警告并忽略该文件
 
 ```xml
 <PropertyGroup>
-  <GFrameworkGodotProjectFile>project.godot</GFrameworkGodotProjectFile>
+  <GFrameworkGodotProjectFile>Config/project.godot</GFrameworkGodotProjectFile>
 </PropertyGroup>
 ```
 
