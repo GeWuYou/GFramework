@@ -15,17 +15,17 @@ using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Coroutine;
 using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Abstractions.Rule;
-using GFramework.Core.Coroutine.Extensions;
+using GFramework.Core.Cqrs.Extensions;
 
 namespace GFramework.Core.Tests.Coroutine;
 
 /// <summary>
-///     <see cref="MediatorCoroutineExtensions" /> 的单元测试类。
-///     验证历史命名的协程扩展已切到框架内建 CQRS runtime，
+///     <see cref="CqrsCoroutineExtensions" /> 的单元测试类。
+///     验证新的 CQRS 协程扩展直接走框架内建 CQRS runtime，
 ///     并确保协程对命令调度异常的传播行为保持稳定。
 /// </summary>
 [TestFixture]
-public class MediatorCoroutineExtensionsTests
+public class CqrsCoroutineExtensionsTests
 {
     /// <summary>
     ///     验证SendCommandCoroutine应该返回IEnumerator<IYieldInstruction>
@@ -40,7 +40,7 @@ public class MediatorCoroutineExtensionsTests
             .Setup(ctx => ctx.SendAsync(command, It.IsAny<CancellationToken>()))
             .Returns(ValueTask.CompletedTask);
 
-        var coroutine = MediatorCoroutineExtensions.SendCommandCoroutine(contextAware, command);
+        var coroutine = CqrsCoroutineExtensions.SendCommandCoroutine(contextAware, command);
 
         Assert.That(coroutine, Is.InstanceOf<IEnumerator<IYieldInstruction>>());
     }
@@ -59,7 +59,7 @@ public class MediatorCoroutineExtensionsTests
             .Setup(ctx => ctx.SendAsync(command, It.IsAny<CancellationToken>()))
             .Returns(new ValueTask(Task.FromException(expectedException)));
 
-        var coroutine = MediatorCoroutineExtensions.SendCommandCoroutine(contextAware, command);
+        var coroutine = CqrsCoroutineExtensions.SendCommandCoroutine(contextAware, command);
 
         Assert.That(coroutine.MoveNext(), Is.True);
         var exception = Assert.Throws<InvalidOperationException>(() => coroutine.MoveNext());

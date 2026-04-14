@@ -1,11 +1,14 @@
-using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Abstractions.Cqrs.Query;
+using GFramework.Core.Abstractions.Rule;
+using GFramework.Core.Cqrs.Extensions;
 
 namespace GFramework.Core.Extensions;
 
 /// <summary>
-///     提供对 IContextAware 接口的 CQRS 查询扩展方法。
+///     提供对 <see cref="IContextAware" /> 接口的 CQRS 查询扩展方法。
+///     该类型保留旧名称以兼容历史调用点；新代码应改用 <see cref="GFramework.Core.Cqrs.Extensions.ContextAwareCqrsQueryExtensions" />。
 /// </summary>
+[Obsolete("Use GFramework.Core.Cqrs.Extensions.ContextAwareCqrsQueryExtensions instead.")]
 public static class ContextAwareMediatorQueryExtensions
 {
     /// <summary>
@@ -18,11 +21,7 @@ public static class ContextAwareMediatorQueryExtensions
     /// <exception cref="ArgumentNullException">当 contextAware 或 query 为 null 时抛出</exception>
     public static TResponse SendQuery<TResponse>(this IContextAware contextAware, IQuery<TResponse> query)
     {
-        ArgumentNullException.ThrowIfNull(contextAware);
-        ArgumentNullException.ThrowIfNull(query);
-
-        var context = contextAware.GetContext();
-        return context.SendQuery(query);
+        return ContextAwareCqrsQueryExtensions.SendQuery(contextAware, query);
     }
 
     /// <summary>
@@ -37,10 +36,9 @@ public static class ContextAwareMediatorQueryExtensions
     public static ValueTask<TResponse> SendQueryAsync<TResponse>(this IContextAware contextAware,
         IQuery<TResponse> query, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(contextAware);
-        ArgumentNullException.ThrowIfNull(query);
-
-        var context = contextAware.GetContext();
-        return context.SendQueryAsync(query, cancellationToken);
+        return ContextAwareCqrsQueryExtensions.SendQueryAsync(
+            contextAware,
+            query,
+            cancellationToken);
     }
 }

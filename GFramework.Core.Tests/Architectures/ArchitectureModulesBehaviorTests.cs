@@ -59,10 +59,10 @@ public class ArchitectureModulesBehaviorTests
     ///     验证注册的 CQRS 行为会参与请求管道执行。
     /// </summary>
     [Test]
-    public async Task RegisterMediatorBehavior_Should_Apply_Pipeline_Behavior_To_Request()
+    public async Task RegisterCqrsPipelineBehavior_Should_Apply_Pipeline_Behavior_To_Request()
     {
         var architecture = new ModuleTestArchitecture(target =>
-            target.RegisterMediatorBehavior<TrackingPipelineBehavior<ModuleBehaviorRequest, string>>());
+            target.RegisterCqrsPipelineBehavior<TrackingPipelineBehavior<ModuleBehaviorRequest, string>>());
 
         await architecture.InitializeAsync();
 

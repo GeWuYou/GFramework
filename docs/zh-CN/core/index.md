@@ -396,12 +396,12 @@ public class PlayerController : IController
 **核心功能**:
 
 - 模块安装 (IArchitectureModule)
-- CQRS 管道行为注册（历史 API 名称仍为 `RegisterMediatorBehavior`）
+- CQRS 管道行为注册（推荐 API 为 `RegisterCqrsPipelineBehavior`）
 
 **关键方法**:
 
 - `InstallModule()` - 安装模块
-- `RegisterMediatorBehavior<T>()` - 注册 CQRS 管道行为
+- `RegisterCqrsPipelineBehavior<T>()` - 注册 CQRS 管道行为
 
 #### 设计优势
 

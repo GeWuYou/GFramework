@@ -14,14 +14,15 @@
 using GFramework.Core.Abstractions.Coroutine;
 using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Abstractions.Rule;
+using GFramework.Core.Cqrs.Extensions;
 
 namespace GFramework.Core.Coroutine.Extensions;
 
 /// <summary>
 /// 提供 CQRS 命令与协程集成的扩展方法。
-/// 历史命名保留了 Mediator 前缀，但当前实现直接走 <see cref="IContextAware.GetContext" /> 返回的
-/// <see cref="GFramework.Core.Abstractions.Architectures.IArchitectureContext" /> CQRS 入口，不再依赖外部 Mediator 服务。
+/// 该类型保留旧名称以兼容历史调用点；新代码应改用 <see cref="GFramework.Core.Cqrs.Extensions.CqrsCoroutineExtensions" />。
 /// </summary>
+[Obsolete("Use GFramework.Core.Cqrs.Extensions.CqrsCoroutineExtensions instead.")]
 public static class MediatorCoroutineExtensions
 {
     /// <summary>
@@ -38,17 +39,6 @@ public static class MediatorCoroutineExtensions
         Action<Exception>? onError = null)
         where TCommand : IRequest<Unit>
     {
-        ArgumentNullException.ThrowIfNull(contextAware);
-        ArgumentNullException.ThrowIfNull(command);
-
-        var task = contextAware.GetContext().SendAsync(command).AsTask();
-
-        yield return task.AsCoroutineInstruction();
-
-        if (!task.IsFaulted) yield break;
-        if (onError != null)
-            onError.Invoke(task.Exception!);
-        else
-            throw task.Exception!.InnerException ?? task.Exception;
+        return CqrsCoroutineExtensions.SendCommandCoroutine(contextAware, command, onError);
     }
 }

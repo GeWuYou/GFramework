@@ -212,15 +212,16 @@ public class GameArchitecture : Architecture
     protected override void Init()
     {
         // 注册通用开放泛型行为
-        RegisterMediatorBehavior<LoggingBehavior<,>>();
-        RegisterMediatorBehavior<PerformanceBehavior<,>>();
+        RegisterCqrsPipelineBehavior<LoggingBehavior<,>>();
+        RegisterCqrsPipelineBehavior<PerformanceBehavior<,>>();
 
         // 处理器会自动通过依赖注入注册
     }
 }
 ```
 
-`RegisterMediatorBehavior<TBehavior>()` 是保留的兼容名称，当前用于注册框架内建 CQRS pipeline，支持两种形式：
+`RegisterCqrsPipelineBehavior<TBehavior>()` 是推荐入口；旧的 `RegisterMediatorBehavior<TBehavior>()`
+仅作为兼容名称保留。当前接口支持两种形式：
 
 - 开放泛型行为，例如 `LoggingBehavior<,>`，用于匹配所有请求
 - 封闭行为类型，例如某个只服务于单一请求的 `SpecialBehavior`
@@ -377,8 +378,8 @@ public class PerformanceBehavior<TMessage, TResponse> : IPipelineBehavior<TMessa
 }
 
 // 注册行为
-RegisterMediatorBehavior<LoggingBehavior<,>>();
-RegisterMediatorBehavior<PerformanceBehavior<,>>();
+RegisterCqrsPipelineBehavior<LoggingBehavior<,>>();
+RegisterCqrsPipelineBehavior<PerformanceBehavior<,>>();
 ```
 
 ### 验证行为
@@ -471,8 +472,8 @@ await foreach (var player in stream)
 
 4. **使用 Behaviors 处理横切关注点**：日志、性能、验证等
    ```csharp
-   RegisterMediatorBehavior<LoggingBehavior<,>>();
-   RegisterMediatorBehavior<ValidationBehavior<,>>();
+   RegisterCqrsPipelineBehavior<LoggingBehavior<,>>();
+   RegisterCqrsPipelineBehavior<ValidationBehavior<,>>();
    ```
 
 5. **保持处理器简单**：一个处理器只做一件事

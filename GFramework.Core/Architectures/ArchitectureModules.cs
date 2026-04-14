@@ -14,14 +14,24 @@ internal sealed class ArchitectureModules(
 {
     /// <summary>
     ///     注册 CQRS 请求管道行为。
-    ///     历史方法名保留了 Mediator 前缀，但当前用于配置框架内建 CQRS runtime 的行为拦截和处理逻辑。
     ///     支持开放泛型行为类型和针对单一请求的封闭行为类型。
     /// </summary>
     /// <typeparam name="TBehavior">行为类型，必须是引用类型</typeparam>
-    public void RegisterMediatorBehavior<TBehavior>() where TBehavior : class
+    public void RegisterCqrsPipelineBehavior<TBehavior>() where TBehavior : class
     {
         logger.Debug($"Registering CQRS pipeline behavior: {typeof(TBehavior).Name}");
-        services.Container.RegisterMediatorBehavior<TBehavior>();
+        services.Container.RegisterCqrsPipelineBehavior<TBehavior>();
+    }
+
+    /// <summary>
+    ///     注册 CQRS 请求管道行为。
+    ///     该成员保留旧名称以兼容历史调用点，内部行为与 <see cref="RegisterCqrsPipelineBehavior{TBehavior}" /> 一致。
+    /// </summary>
+    /// <typeparam name="TBehavior">行为类型，必须是引用类型</typeparam>
+    [Obsolete("Use RegisterCqrsPipelineBehavior<TBehavior>() instead.")]
+    public void RegisterMediatorBehavior<TBehavior>() where TBehavior : class
+    {
+        RegisterCqrsPipelineBehavior<TBehavior>();
     }
 
     /// <summary>

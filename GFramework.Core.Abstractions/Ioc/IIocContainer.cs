@@ -90,9 +90,17 @@ public interface IIocContainer : IContextAware
 
     /// <summary>
     ///     注册 CQRS 请求管道行为。
-    ///     历史方法名保留了 Mediator 前缀，但当前用于配置框架内建 CQRS runtime 的行为拦截和处理逻辑。
     /// </summary>
     /// <typeparam name="TBehavior">行为类型，必须是引用类型</typeparam>
+    void RegisterCqrsPipelineBehavior<TBehavior>()
+        where TBehavior : class;
+
+    /// <summary>
+    ///     注册 CQRS 请求管道行为。
+    ///     该成员保留旧名称以兼容历史调用点，内部行为与 <see cref="RegisterCqrsPipelineBehavior{TBehavior}" /> 一致。
+    /// </summary>
+    /// <typeparam name="TBehavior">行为类型，必须是引用类型</typeparam>
+    [Obsolete("Use RegisterCqrsPipelineBehavior<TBehavior>() instead.")]
     void RegisterMediatorBehavior<TBehavior>()
         where TBehavior : class;
 
