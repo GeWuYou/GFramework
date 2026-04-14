@@ -14,56 +14,20 @@ public class GodotProjectMetadataGeneratorTests
     [Test]
     public void Run_Should_Generate_AutoLoads_And_InputActions()
     {
-        const string source = """
-                              using System;
+        var source = CreateSource(
+            """
+            namespace TestApp
+            {
+                using GFramework.Godot.SourceGenerators.Abstractions;
+                using Godot;
 
-                              namespace GFramework.Godot.SourceGenerators.Abstractions
-                              {
-                                  [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
-                                  public sealed class AutoLoadAttribute : Attribute
-                                  {
-                                      public AutoLoadAttribute(string name)
-                                      {
-                                          Name = name;
-                                      }
-
-                                      public string Name { get; }
-                                  }
-                              }
-
-                              namespace Godot
-                              {
-                                  public class MainLoop
-                                  {
-                                  }
-
-                                  public class Node
-                                  {
-                                      public T? GetNodeOrNull<T>(string path) where T : Node => default;
-                                  }
-
-                                  public sealed class SceneTree : MainLoop
-                                  {
-                                      public Node? Root { get; set; }
-                                  }
-
-                                  public static class Engine
-                                  {
-                                      public static MainLoop? GetMainLoop() => default;
-                                  }
-                              }
-
-                              namespace TestApp
-                              {
-                                  using GFramework.Godot.SourceGenerators.Abstractions;
-                                  using Godot;
-
-                                  [AutoLoad("GameServices")]
-                                  public partial class GameServices : Node
-                                  {
-                                  }
-                              }
-                              """;
+                [AutoLoad("GameServices")]
+                public partial class GameServices : Node
+                {
+                }
+            }
+            """,
+            includeAutoLoadAttribute: true);
 
         const string projectFile = """
                                    [autoload]
