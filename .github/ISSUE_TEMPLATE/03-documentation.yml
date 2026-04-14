@@ -1,0 +1,61 @@
+name: "Documentation / 文档改进"
+description: "Report missing, outdated, or unclear documentation. / 报告缺失、过期或不清晰的文档。"
+title: "[Docs]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Documentation issues are product issues in this repository.
+
+        文档问题同样是产品问题。请尽量指出具体页面、段落和建议修正方向，方便快速处理。
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: "Pre-Submission Checks / 提交前检查"
+      description: "Please confirm the following items before submitting. / 提交前请确认以下事项。"
+      options:
+        - label: "I searched existing issues and did not find the same documentation problem. / 我已搜索现有 Issue，未发现相同文档问题。"
+          required: true
+        - label: "I checked the latest docs site or repository docs pages first. / 我已先检查最新文档站点或仓库文档页面。"
+          required: true
+  - type: input
+    id: page
+    attributes:
+      label: "Document Path or URL / 文档路径或链接"
+      description: "Provide the file path or docs URL if you know it. / 如果知道，请提供文档文件路径或页面链接。"
+      placeholder: "e.g. docs/zh-CN/core/architecture.md"
+    validations:
+      required: true
+  - type: dropdown
+    id: doc-issue-type
+    attributes:
+      label: "Issue Type / 问题类型"
+      description: "Choose the primary documentation problem. / 请选择主要问题类型。"
+      options:
+        - "Missing content / 缺少内容"
+        - "Outdated content / 内容过期"
+        - "Incorrect content / 内容错误"
+        - "Unclear explanation / 说明不清晰"
+        - "Missing example / 缺少示例"
+        - "Translation issue / 翻译问题"
+    validations:
+      required: true
+  - type: textarea
+    id: current-problem
+    attributes:
+      label: "Current Problem / 当前问题"
+      description: "Describe what is confusing, wrong, or missing. / 说明当前哪里令人困惑、错误或缺失。"
+    validations:
+      required: true
+  - type: textarea
+    id: expected-docs
+    attributes:
+      label: "Expected Improvement / 期望改进"
+      description: "Describe the improvement you expect. / 说明你期望如何改进。"
+    validations:
+      required: true
+  - type: textarea
+    id: references
+    attributes:
+      label: "Related Code or References / 相关代码或参考资料"
+      description: "Link related source files, PRs, issues, or external references if helpful. / 如有帮助，请附上相关源码、PR、Issue 或外部参考资料。"

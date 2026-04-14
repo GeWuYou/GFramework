@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "Search Existing Issues / 搜索现有 Issues"
+    url: "https://github.com/GeWuYou/GFramework/issues?q=is%3Aissue"
+    about: "Check whether your topic has already been reported or discussed. / 先确认是否已有相同问题或讨论。"
+  - name: "Read Contribution Guide / 阅读贡献指南"
+    url: "https://github.com/GeWuYou/GFramework/blob/main/docs/zh-CN/contributing.md"
+    about: "Review issue and pull request expectations before submitting. / 提交前先阅读 Issue 与 PR 的协作约定。"
+  - name: "Browse Documentation / 查看文档"
+    url: "https://github.com/GeWuYou/GFramework/tree/main/docs/zh-CN"
+    about: "Read docs, tutorials, and troubleshooting pages first. / 先查看文档、教程与排障页面。"

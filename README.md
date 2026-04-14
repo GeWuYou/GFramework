@@ -122,9 +122,11 @@ GFramework.sln
 
 欢迎提交 Issue 与 Pull Request：
 
-1. Fork 本仓库并创建特性分支
-2. 补充必要的测试或文档更新
-3. 提交 PR，描述变更背景、方案与验证结果
+1. 提交 Issue 时请优先选择对应模板：`Bug Report / 缺陷报告`、`Feature Request / 功能建议`、`Documentation / 文档改进`、`Question / 使用咨询`
+2. 提交前先搜索现有 Issues，并阅读相关 README、文档或排障页面
+3. Fork 本仓库并创建特性分支
+4. 补充必要的测试或文档更新
+5. 提交 PR，描述变更背景、方案与验证结果
 
 ## 许可证
 

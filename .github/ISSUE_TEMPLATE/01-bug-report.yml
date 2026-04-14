@@ -1,0 +1,110 @@
+name: "Bug Report / 缺陷报告"
+description: "Report a reproducible defect in GFramework. / 报告可稳定复现的 GFramework 缺陷。"
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug.
+
+        感谢你提交缺陷报告。提交前请先搜索已有 Issue，并尽量提供最小复现信息。
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: "Pre-Submission Checks / 提交前检查"
+      description: "Please confirm the following items before submitting. / 提交前请确认以下事项。"
+      options:
+        - label: "I searched existing issues and did not find a duplicate. / 我已搜索现有 Issue，未发现重复问题。"
+          required: true
+        - label: "I checked the relevant README or docs pages first. / 我已先阅读相关 README 或文档。"
+          required: true
+        - label: "I can describe a reproducible scenario or provide a minimal repro. / 我可以描述稳定复现场景或提供最小复现。"
+          required: true
+  - type: dropdown
+    id: module
+    attributes:
+      label: "Affected Module / 影响模块"
+      description: "Choose the module that best matches the problem. / 请选择最符合问题范围的模块。"
+      options:
+        - "GFramework.Core"
+        - "GFramework.Core.Abstractions"
+        - "GFramework.Game"
+        - "GFramework.Game.Abstractions"
+        - "GFramework.Godot"
+        - "GFramework.SourceGenerators"
+        - "GFramework.Godot.SourceGenerators"
+        - "Docs / 文档"
+        - "Build / CI / Packaging"
+        - "Unknown / Not sure / 不确定"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: "Package or Commit Version / 包版本或提交版本"
+      description: "Example: NuGet version, commit SHA, or branch. / 例如 NuGet 版本、提交 SHA 或分支。"
+      placeholder: "e.g. GeWuYou.GFramework.Core 1.2.3 / main@abc1234"
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: "Bug Summary / 问题概述"
+      description: "Describe the defect in one or two paragraphs. / 用 1-2 段简要描述问题。"
+      placeholder: "What is broken, and when does it happen? / 具体哪里出错，什么情况下出现？"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: "Steps To Reproduce / 复现步骤"
+      description: "Provide a deterministic repro whenever possible. / 尽量提供可稳定复现的步骤。"
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: "Expected Behavior / 预期行为"
+      description: "What should happen instead? / 正常情况下应该发生什么？"
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: "Actual Behavior / 实际行为"
+      description: "What actually happens? Include exception text if available. / 实际发生了什么？如有异常请附上。"
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: "Minimal Repro / 最小复现"
+      description: "Share a repository, gist, code snippet, or explain why a minimal repro is not yet available. / 提供仓库、gist、代码片段，或说明暂时无法提供的原因。"
+      render: shell
+  - type: textarea
+    id: logs
+    attributes:
+      label: "Logs and Screenshots / 日志与截图"
+      description: "Paste relevant logs, stack traces, or attach screenshots. / 粘贴相关日志、堆栈，或补充截图。"
+      render: shell
+  - type: textarea
+    id: environment
+    attributes:
+      label: "Environment / 环境信息"
+      description: "List the environment details that matter for reproduction. / 请列出与复现相关的环境信息。"
+      placeholder: |
+        - OS:
+        - .NET SDK / Runtime:
+        - Godot version (if applicable):
+        - IDE / Build tool:
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: "Impact and Scope / 影响范围"
+      description: "Explain whether this blocks adoption, breaks compatibility, or affects only a narrow scenario. / 说明该问题是否阻塞使用、破坏兼容性，还是仅影响较窄场景。"

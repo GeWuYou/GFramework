@@ -1,0 +1,80 @@
+name: "Feature Request / 功能建议"
+description: "Suggest a new capability or an API improvement. / 提出新能力或 API 改进建议。"
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for feature proposals, API improvements, and workflow enhancements.
+
+        该模板适用于新功能、API 改进和工作流优化建议。请优先描述问题和动机，而不只是直接给出实现方案。
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: "Pre-Submission Checks / 提交前检查"
+      description: "Please confirm the following items before submitting. / 提交前请确认以下事项。"
+      options:
+        - label: "I searched existing issues and did not find the same request. / 我已搜索现有 Issue，未发现相同建议。"
+          required: true
+        - label: "I checked the relevant docs, examples, or current APIs first. / 我已先检查相关文档、示例或现有 API。"
+          required: true
+        - label: "I can explain the user problem or workflow gap this request solves. / 我可以说明该建议要解决的用户问题或工作流缺口。"
+          required: true
+  - type: dropdown
+    id: module
+    attributes:
+      label: "Target Module / 目标模块"
+      description: "Choose the module that should own this capability. / 请选择最适合承载该能力的模块。"
+      options:
+        - "GFramework.Core"
+        - "GFramework.Core.Abstractions"
+        - "GFramework.Game"
+        - "GFramework.Game.Abstractions"
+        - "GFramework.Godot"
+        - "GFramework.SourceGenerators"
+        - "GFramework.Godot.SourceGenerators"
+        - "Docs / 文档"
+        - "Build / CI / Packaging"
+        - "Cross-cutting / 跨模块"
+        - "Unknown / Not sure / 不确定"
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: "Problem Statement / 问题背景"
+      description: "What problem are you facing today? / 你当前遇到的核心问题是什么？"
+      placeholder: "Describe the workflow pain, limitation, or missing capability. / 描述当前流程痛点、限制或缺失能力。"
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: "Proposed Solution / 建议方案"
+      description: "Describe the behavior, API shape, or user experience you want. / 描述你期望的行为、API 形态或使用体验。"
+      placeholder: "What should GFramework provide? / 希望 GFramework 提供什么？"
+    validations:
+      required: true
+  - type: textarea
+    id: use-cases
+    attributes:
+      label: "Use Cases / 使用场景"
+      description: "Show the practical scenarios this would unlock or simplify. / 说明该能力能解决或简化哪些实际场景。"
+    validations:
+      required: true
+  - type: textarea
+    id: api-sketch
+    attributes:
+      label: "API or Design Sketch / API 或设计草图"
+      description: "Optional but helpful: provide pseudocode, API examples, or a rough design. / 可选但强烈建议：补充伪代码、API 示例或设计草图。"
+      render: csharp
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: "Alternatives Considered / 已考虑的替代方案"
+      description: "Describe current workarounds or alternatives and why they are insufficient. / 描述现有替代方案或绕过方式，以及为什么不足。"
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: "Compatibility and Migration Impact / 兼容性与迁移影响"
+      description: "State whether this needs breaking changes, opt-in behavior, or migration notes. / 说明该建议是否涉及破坏性变更、显式开关或迁移说明。"

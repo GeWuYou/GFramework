@@ -1,0 +1,64 @@
+name: "Question / 使用咨询"
+description: "Ask for guidance about usage, behavior, or adoption. / 询问用法、行为或接入方式。"
+title: "[Question]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form when your question is specific to GFramework behavior, APIs, or adoption guidance.
+
+        如果你的问题与 GFramework 的行为、API 或接入方式直接相关，请使用此模板。一般咨询请先查看 README、贡献指南与 docs。
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: "Pre-Submission Checks / 提交前检查"
+      description: "Please confirm the following items before submitting. / 提交前请确认以下事项。"
+      options:
+        - label: "I searched existing issues and read the relevant docs first. / 我已先搜索现有 Issue 并阅读相关文档。"
+          required: true
+        - label: "This is not a private support request or unrelated general programming question. / 这不是私有支持请求，也不是与本项目无关的泛编程问题。"
+          required: true
+  - type: dropdown
+    id: topic
+    attributes:
+      label: "Topic Area / 主题领域"
+      description: "Choose the area closest to your question. / 请选择最接近问题的主题。"
+      options:
+        - "Architecture / 架构"
+        - "Core APIs / Core API"
+        - "Game Module / Game 模块"
+        - "Godot Integration / Godot 集成"
+        - "Source Generators / 源生成器"
+        - "Build / Packaging / 构建与打包"
+        - "Docs / 文档"
+        - "Other / 其他"
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: "What Are You Trying To Do? / 你想实现什么？"
+      description: "Explain your goal before describing the problem. / 请先说明你的目标，再描述遇到的问题。"
+      placeholder: "I want to... / 我想要……"
+    validations:
+      required: true
+  - type: textarea
+    id: current-attempt
+    attributes:
+      label: "Current Attempt / 当前尝试"
+      description: "Show what you already tried, including code, docs, or configuration. / 说明你已经尝试过什么，包括代码、文档或配置。"
+      render: csharp
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: "Specific Question / 具体问题"
+      description: "Ask the narrowest question that would unblock you. / 提出能真正帮你解阻的最小问题。"
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: "Relevant Environment / 相关环境"
+      description: "Include versions or project context if that changes the answer. / 如果版本或项目上下文会影响答案，请补充。"
