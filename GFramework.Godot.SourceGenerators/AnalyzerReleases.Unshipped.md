@@ -33,3 +33,9 @@
  GF_AutoExport_006           | GFramework.Godot.SourceGenerators.Registration | Error    | AutoRegisterExportedCollectionsDiagnostics 
  GF_AutoExport_007           | GFramework.Godot.SourceGenerators.Registration | Error    | AutoRegisterExportedCollectionsDiagnostics 
  GF_AutoExport_008           | GFramework.Godot.SourceGenerators.Registration | Error    | AutoRegisterExportedCollectionsDiagnostics 
+ GF_Godot_Project_001        | GFramework.Godot                               | Error    | GodotProjectDiagnostics                    
+ GF_Godot_Project_002        | GFramework.Godot                               | Warning  | GodotProjectDiagnostics                    
+ GF_Godot_Project_003        | GFramework.Godot                               | Warning  | GodotProjectDiagnostics                    
+ GF_Godot_Project_004        | GFramework.Godot                               | Warning  | GodotProjectDiagnostics                    
+ GF_Godot_Project_005        | GFramework.Godot                               | Warning  | GodotProjectDiagnostics                    
+ GF_Godot_Project_006        | GFramework.Godot                               | Warning  | GodotProjectDiagnostics                    

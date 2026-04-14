@@ -21,6 +21,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\GFramework.Godot.SourceGenerators.Abstractions\GFramework.Godot.SourceGenerators.Abstractions.csproj"/>
         <ProjectReference Include="..\GFramework.Godot.SourceGenerators\GFramework.Godot.SourceGenerators.csproj"/>
     </ItemGroup>
 

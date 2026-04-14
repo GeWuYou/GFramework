@@ -19,6 +19,27 @@ All AI agents and contributors must follow these rules when writing, reviewing, 
 - After resolving the host Windows Git path, prefer an explicit session-local binding for subsequent commands so the
   shell does not fall back to Linux `/usr/bin/git` later in the same WSL session.
 
+## Subagent Usage Rules
+
+- Use subagents only when the task is complex, the context is likely to grow too large, or the work can be split into
+  independent parallel subtasks.
+- The main agent MUST identify the critical path first. Do not delegate the immediate blocking task if the next local
+  step depends on that result.
+- Use `explorer` subagents for read-only discovery, comparison, tracing, and narrow codebase questions.
+- Use `worker` subagents only for bounded implementation tasks with an explicit file or module ownership boundary.
+- Every delegation MUST specify:
+    - the concrete objective
+    - the expected output format
+    - the files or subsystem the subagent owns
+    - any constraints about tests, diagnostics, or compatibility
+- Subagents are not allowed to revert or overwrite unrelated changes from the user or other agents. They must adapt to
+  concurrent work instead of assuming exclusive ownership of the repository.
+- Prefer lightweight models such as `gpt-5.1-codex-mini` for narrow exploration, indexing, and comparison tasks.
+- Prefer stronger models such as `gpt-5.4` for cross-module design work, non-trivial refactors, and tasks that require
+  higher confidence reasoning.
+- The main agent remains responsible for reviewing and integrating subagent output. Unreviewed subagent conclusions do
+  not count as final results.
+
 ## Commenting Rules (MUST)
 
 All generated or modified code MUST include clear and meaningful comments where required by the rules below.

@@ -251,6 +251,7 @@ export default defineConfig({
                 { text: 'ContextAware 生成器', link: '/zh-CN/source-generators/context-aware-generator' },
                 { text: 'Priority 生成器', link: '/zh-CN/source-generators/priority-generator' },
                 { text: 'Context Get 注入', link: '/zh-CN/source-generators/context-get-generator' },
+                { text: 'Godot 项目元数据', link: '/zh-CN/source-generators/godot-project-generator' },
                 { text: 'GetNode 生成器 (Godot)', link: '/zh-CN/source-generators/get-node-generator' },
                 { text: 'BindNodeSignal 生成器 (Godot)', link: '/zh-CN/source-generators/bind-node-signal-generator' }
               ]

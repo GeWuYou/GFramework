@@ -14,6 +14,25 @@
 
 ## Godot 特定功能
 
+### 0. project.godot 编译期接入
+
+如果项目引用了 `GFramework.Godot.SourceGenerators`，现在可以直接把 `project.godot` 中的 AutoLoad 与 Input Action 暴露为强类型
+API：
+
+```csharp
+using GFramework.Godot.Generated;
+
+var services = AutoLoads.GameServices;
+
+if (Input.IsActionPressed(InputActions.MoveUp))
+{
+}
+```
+
+这项能力适合和 `[GetNode]`、`[BindNodeSignal]` 一起使用：前者解决项目级配置入口，后两者解决场景级节点和事件样板。
+
+详细说明见：[Godot 项目元数据生成器](../source-generators/godot-project-generator)
+
 ### 1. 节点生命周期绑定
 
 GFramework.Godot 提供了与 Godot 节点生命周期的无缝集成，确保框架初始化与 Godot 场景树同步。
@@ -1335,4 +1354,4 @@ public class GodotPerformanceTests
 ---
 
 **教程版本**: 1.0.0  
-**更新日期**: 2026-01-12
+**更新日期**: 2026-04-14
