@@ -2,7 +2,6 @@ using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Utility;
 using GFramework.Core.Architectures;
 using GFramework.Core.Logging;
-using GFramework.Core.Tests;
 using GfCqrs = GFramework.Core.Abstractions.Cqrs;
 
 namespace GFramework.Core.Tests.Architectures;
@@ -67,9 +66,7 @@ public class ArchitectureModulesBehaviorTests
 
         await architecture.InitializeAsync();
 
-        var response = await CqrsTestRuntime.ExecutePipelineAsync<ModuleBehaviorRequest, string>(
-            architecture.Context,
-            new ModuleBehaviorRequest());
+        var response = await architecture.Context.SendRequestAsync(new ModuleBehaviorRequest());
 
         Assert.Multiple(() =>
         {
@@ -174,8 +171,7 @@ public sealed class TrackingPipelineBehavior<TRequest, TResponse> : GfCqrs.IPipe
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>下游处理器的响应结果。</returns>
     public async ValueTask<TResponse> Handle(
-        TRequest message,
-        GfCqrs.MessageHandlerDelegate<TRequest, TResponse> next,
+        TRequest message, GfCqrs.MessageHandlerDelegate<TRequest, TResponse> next,
         CancellationToken cancellationToken)
     {
         InvocationCount++;

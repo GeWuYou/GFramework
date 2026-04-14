@@ -11,16 +11,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using GFramework.Core.Rule;
 using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Abstractions.Cqrs.Command;
+using GFramework.Core.Rule;
 
 namespace GFramework.Core.Cqrs.Command;
 
 /// <summary>
 /// 抽象流式命令处理器基类
-/// 继承自ContextAwareBase并实现IStreamCommandHandler接口，为具体的流式命令处理器提供基础功能
-/// 支持流式处理命令并产生异步可枚举的响应序列
+/// 继承自 ContextAwareBase 并实现 IStreamRequestHandler 接口，为具体的流式命令处理器提供基础功能。
+/// 支持流式处理命令并产生异步可枚举的响应序列，框架会在每次创建流前注入当前架构上下文。
 /// </summary>
 /// <typeparam name="TCommand">流式命令类型，必须实现IStreamCommand接口</typeparam>
 /// <typeparam name="TResponse">流式命令响应元素类型</typeparam>

@@ -17,7 +17,7 @@ namespace GFramework.Core.Cqrs.Query;
 
 /// <summary>
 /// 表示一个基础查询类，用于处理带有输入和响应的查询模式实现。
-/// 该类继承自 Mediator.IQuery&lt;TResponse&gt; 接口，提供了通用的查询结构。
+/// 该类实现 IQuery&lt;TResponse&gt; 接口，提供了通用的查询结构。
 /// </summary>
 /// <typeparam name="TInput">查询输入数据的类型，必须实现 IQueryInput 接口</typeparam>
 /// <typeparam name="TResponse">查询执行后返回结果的类型</typeparam>

@@ -11,7 +11,6 @@ using GFramework.Core.Events;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
 using GFramework.Core.Query;
-using GFramework.Core.Tests;
 using ICommand = GFramework.Core.Abstractions.Command.ICommand;
 using Unit = GFramework.Core.Abstractions.Cqrs.Unit;
 
@@ -20,6 +19,15 @@ namespace GFramework.Core.Tests.Mediator;
 [TestFixture]
 public class MediatorComprehensiveTests
 {
+    private AsyncQueryExecutor? _asyncQueryBus;
+    private CommandExecutor? _commandBus;
+    private MicrosoftDiContainer? _container;
+
+    private ArchitectureContext? _context;
+    private DefaultEnvironment? _environment;
+    private EventBus? _eventBus;
+    private QueryExecutor? _queryBus;
+
     /// <summary>
     ///     测试初始化方法，在每个测试方法执行前运行。
     ///     负责初始化日志工厂、依赖注入容器、自有 CQRS 处理器以及各种总线服务。
@@ -73,14 +81,6 @@ public class MediatorComprehensiveTests
         _asyncQueryBus = null;
         _environment = null;
     }
-
-    private ArchitectureContext? _context;
-    private MicrosoftDiContainer? _container;
-    private EventBus? _eventBus;
-    private CommandExecutor? _commandBus;
-    private QueryExecutor? _queryBus;
-    private AsyncQueryExecutor? _asyncQueryBus;
-    private DefaultEnvironment? _environment;
 
     /// <summary>
     ///     测试SendRequestAsync方法在请求有效时返回结果
@@ -418,7 +418,7 @@ public class MediatorComprehensiveTests
         _context!.SendCommand(legacyCommand);
         Assert.That(legacyCommand.Executed, Is.True);
 
-        // 使用Mediator方式
+        // 使用自有 CQRS 方式
         var mediatorCommand = new TestCommandWithResult { ResultValue = 999 };
         var result = await _context.SendAsync(mediatorCommand);
         Assert.That(result, Is.EqualTo(999));
@@ -429,7 +429,7 @@ public class MediatorComprehensiveTests
     }
 }
 
-#region Advanced Test Classes for Mediator Features
+#region Advanced Test Classes for CQRS Features
 
 public sealed record TestLongRunningRequest : IRequest<string>
 {
@@ -623,9 +623,9 @@ public class TestLegacyCommand : ICommand
 
 #endregion
 
-#region Test Classes - Mediator (新实现)
+#region Test Classes - CQRS Runtime
 
-// ✅ 这些类使用 Mediator.IRequest
+// ✅ 这些类使用自有 CQRS IRequest
 public sealed record TestRequest : IRequest<int>
 {
     public int Value { get; init; }
@@ -657,7 +657,7 @@ public sealed record TestStreamRequest : IStreamRequest<int>
     public int[] Values { get; init; } = [];
 }
 
-// ✅ 这些 Handler 使用 Mediator.IRequestHandler
+// ✅ 这些 Handler 使用自有 CQRS IRequestHandler
 public sealed class TestRequestHandler : IRequestHandler<TestRequest, int>
 {
     public ValueTask<int> Handle(TestRequest request, CancellationToken cancellationToken)

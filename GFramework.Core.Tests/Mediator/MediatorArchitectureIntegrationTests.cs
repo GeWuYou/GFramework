@@ -6,7 +6,7 @@ using GFramework.Core.Architectures;
 using GFramework.Core.Command;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
-using GFramework.Core.Tests;
+using GFramework.Core.Rule;
 using ICommand = GFramework.Core.Abstractions.Command.ICommand;
 
 namespace GFramework.Core.Tests.Mediator;
@@ -18,11 +18,17 @@ namespace GFramework.Core.Tests.Mediator;
 [TestFixture]
 public class MediatorArchitectureIntegrationTests
 {
+    private CommandExecutor? _commandBus;
+    private MicrosoftDiContainer? _container;
+
+    private ArchitectureContext? _context;
+
     [SetUp]
     public void SetUp()
     {
         LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider();
         _container = new MicrosoftDiContainer();
+        TestPerDispatchContextAwareHandler.Reset();
 
         var loggerField = typeof(MicrosoftDiContainer).GetField("_logger",
             BindingFlags.NonPublic | BindingFlags.Instance);
@@ -49,10 +55,6 @@ public class MediatorArchitectureIntegrationTests
         _container = null;
         _commandBus = null;
     }
-
-    private ArchitectureContext? _context;
-    private MicrosoftDiContainer? _container;
-    private CommandExecutor? _commandBus;
 
     [Test]
     public async Task Handler_Can_Access_Architecture_Context()
@@ -291,6 +293,20 @@ public class MediatorArchitectureIntegrationTests
         Assert.That(traditionalCommand.Executed, Is.True);
         Assert.That(result, Is.EqualTo(42));
     }
+
+    [Test]
+    public async Task ContextAware_Handler_Should_Use_A_Fresh_Instance_Per_Request()
+    {
+        var firstResult = await _context!.SendRequestAsync(new TestPerDispatchContextAwareRequest());
+        var secondResult = await _context.SendRequestAsync(new TestPerDispatchContextAwareRequest());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(firstResult, Is.Not.EqualTo(secondResult));
+            Assert.That(TestPerDispatchContextAwareHandler.SeenInstanceIds, Is.EqualTo([firstResult, secondResult]));
+            Assert.That(TestPerDispatchContextAwareHandler.Contexts, Has.All.SameAs(_context));
+        });
+    }
 }
 
 #region Integration Test Classes
@@ -444,6 +460,42 @@ public sealed class TestMediatorRequestHandler : IRequestHandler<TestMediatorReq
     }
 }
 
+/// <summary>
+///     用于验证自动扫描到的上下文感知处理器会按请求创建新实例。
+/// </summary>
+public sealed class TestPerDispatchContextAwareHandler : ContextAwareBase,
+    IRequestHandler<TestPerDispatchContextAwareRequest, int>
+{
+    private static int _nextInstanceId;
+    private readonly int _instanceId = Interlocked.Increment(ref _nextInstanceId);
+
+    public static List<IArchitectureContext?> Contexts { get; } = [];
+    public static List<int> SeenInstanceIds { get; } = [];
+
+    /// <summary>
+    ///     记录当前实例编号与收到的架构上下文。
+    /// </summary>
+    /// <param name="request">请求实例。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>当前处理器实例编号。</returns>
+    public ValueTask<int> Handle(TestPerDispatchContextAwareRequest request, CancellationToken cancellationToken)
+    {
+        Contexts.Add(Context);
+        SeenInstanceIds.Add(_instanceId);
+        return ValueTask.FromResult(_instanceId);
+    }
+
+    /// <summary>
+    ///     重置跨测试共享的实例跟踪状态。
+    /// </summary>
+    public static void Reset()
+    {
+        Contexts.Clear();
+        SeenInstanceIds.Clear();
+        _nextInstanceId = 0;
+    }
+}
+
 public sealed record TestContextAwareRequest : IRequest<string>;
 
 public static class TestContextAwareHandler
@@ -543,6 +595,11 @@ public sealed record TestMediatorRequest : IRequest<int>
 {
     public int Value { get; init; }
 }
+
+/// <summary>
+///     用于验证每次请求分发都会获得新的上下文感知处理器实例。
+/// </summary>
+public sealed record TestPerDispatchContextAwareRequest : IRequest<int>;
 
 // 传统命令用于混合测试
 public class TestTraditionalCommand : ICommand

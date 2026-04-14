@@ -4,7 +4,6 @@ using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Architectures;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
-using GFramework.Core.Tests;
 
 namespace GFramework.Core.Tests.Mediator;
 
@@ -15,11 +14,16 @@ namespace GFramework.Core.Tests.Mediator;
 [TestFixture]
 public class MediatorAdvancedFeaturesTests
 {
+    private MicrosoftDiContainer? _container;
+
+    private ArchitectureContext? _context;
+
     [SetUp]
     public void SetUp()
     {
         LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider();
         _container = new MicrosoftDiContainer();
+        TestCircuitBreakerHandler.Reset();
 
         var loggerField = typeof(MicrosoftDiContainer).GetField("_logger",
             BindingFlags.NonPublic | BindingFlags.Instance);
@@ -41,9 +45,6 @@ public class MediatorAdvancedFeaturesTests
         _context = null;
         _container = null;
     }
-
-    private ArchitectureContext? _context;
-    private MicrosoftDiContainer? _container;
 
 
     [Test]
@@ -135,9 +136,6 @@ public class MediatorAdvancedFeaturesTests
     [Test]
     public async Task Circuit_Breaker_Should_Prevent_Cascading_Failures()
     {
-        TestCircuitBreakerHandler.FailureCount = 0;
-        TestCircuitBreakerHandler.SuccessCount = 0;
-
         // 先触发几次失败
         for (int i = 0; i < 5; i++)
         {
@@ -275,12 +273,10 @@ public sealed class TestTransientErrorRequestHandler : IRequestHandler<TestTrans
 
 public sealed class TestCircuitBreakerRequestHandler : IRequestHandler<TestCircuitBreakerRequest, string>
 {
-    private static bool _circuitOpen = false;
-
     public ValueTask<string> Handle(TestCircuitBreakerRequest request, CancellationToken cancellationToken)
     {
         // 检查断路器状态
-        if (_circuitOpen)
+        if (TestCircuitBreakerHandler.CircuitOpen)
         {
             throw new InvalidOperationException("Circuit breaker is open");
         }
@@ -292,7 +288,7 @@ public sealed class TestCircuitBreakerRequestHandler : IRequestHandler<TestCircu
             // 达到阈值后打开断路器
             if (TestCircuitBreakerHandler.FailureCount >= 5)
             {
-                _circuitOpen = true;
+                TestCircuitBreakerHandler.CircuitOpen = true;
             }
 
             throw new InvalidOperationException("Service unavailable");
@@ -451,6 +447,17 @@ public static class TestCircuitBreakerHandler
 {
     public static int FailureCount { get; set; }
     public static int SuccessCount { get; set; }
+    public static bool CircuitOpen { get; set; }
+
+    /// <summary>
+    /// 重置断路器测试状态，避免静态字段在测试之间互相污染。
+    /// </summary>
+    public static void Reset()
+    {
+        FailureCount = 0;
+        SuccessCount = 0;
+        CircuitOpen = false;
+    }
 }
 
 public sealed record TestCircuitBreakerRequest : IRequest<string>

@@ -2,7 +2,6 @@ using System.Reflection;
 using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Abstractions.Logging;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace GFramework.Core.Cqrs.Internal;
 
@@ -27,7 +26,10 @@ internal static class CqrsHandlerRegistrar
         ArgumentNullException.ThrowIfNull(assemblies);
         ArgumentNullException.ThrowIfNull(logger);
 
-        foreach (var assembly in assemblies.Distinct())
+        foreach (var assembly in assemblies
+                     .Where(static assembly => assembly is not null)
+                     .Distinct()
+                     .OrderBy(GetAssemblySortKey, StringComparer.Ordinal))
         {
             RegisterAssemblyHandlers(container.GetServicesUnsafe, assembly, logger);
         }
@@ -38,11 +40,12 @@ internal static class CqrsHandlerRegistrar
     /// </summary>
     private static void RegisterAssemblyHandlers(IServiceCollection services, Assembly assembly, ILogger logger)
     {
-        foreach (var implementationType in assembly.GetTypes().Where(IsConcreteHandlerType))
+        foreach (var implementationType in GetLoadableTypes(assembly, logger).Where(IsConcreteHandlerType))
         {
             var handlerInterfaces = implementationType
                 .GetInterfaces()
                 .Where(IsSupportedHandlerInterface)
+                .OrderBy(GetTypeSortKey, StringComparer.Ordinal)
                 .ToList();
 
             if (handlerInterfaces.Count == 0)
@@ -50,11 +53,56 @@ internal static class CqrsHandlerRegistrar
 
             foreach (var handlerInterface in handlerInterfaces)
             {
-                services.AddSingleton(handlerInterface, implementationType);
+                // Request/notification handlers receive context injection before every dispatch.
+                // Transient registration avoids sharing mutable Context across concurrent requests.
+                services.AddTransient(handlerInterface, implementationType);
                 logger.Debug(
                     $"Registered CQRS handler {implementationType.FullName} as {handlerInterface.FullName}.");
             }
         }
+    }
+
+    /// <summary>
+    ///     安全获取程序集中的可加载类型，并在部分类型加载失败时保留其余处理器注册能力。
+    /// </summary>
+    private static IReadOnlyList<Type> GetLoadableTypes(Assembly assembly, ILogger logger)
+    {
+        try
+        {
+            return assembly.GetTypes()
+                .Where(static type => type is not null)
+                .OrderBy(GetTypeSortKey, StringComparer.Ordinal)
+                .ToList();
+        }
+        catch (ReflectionTypeLoadException exception)
+        {
+            return RecoverLoadableTypes(assembly, exception, logger);
+        }
+    }
+
+    /// <summary>
+    ///     记录部分类型加载失败，并返回仍然可用的类型集合。
+    /// </summary>
+    private static IReadOnlyList<Type> RecoverLoadableTypes(
+        Assembly assembly,
+        ReflectionTypeLoadException exception,
+        ILogger logger)
+    {
+        var assemblyName = GetAssemblySortKey(assembly);
+        logger.Warn(
+            $"CQRS handler scan partially failed for assembly {assemblyName}. Continuing with loadable types.");
+
+        foreach (var loaderException in exception.LoaderExceptions.Where(static ex => ex is not null))
+        {
+            logger.Warn(
+                $"Failed to load one or more types while scanning {assemblyName}: {loaderException!.Message}");
+        }
+
+        return exception.Types
+            .Where(static type => type is not null)
+            .Cast<Type>()
+            .OrderBy(GetTypeSortKey, StringComparer.Ordinal)
+            .ToList();
     }
 
     /// <summary>
@@ -77,5 +125,21 @@ internal static class CqrsHandlerRegistrar
         return definition == typeof(IRequestHandler<,>) ||
                definition == typeof(INotificationHandler<>) ||
                definition == typeof(IStreamRequestHandler<,>);
+    }
+
+    /// <summary>
+    ///     生成程序集排序键，保证跨运行环境的处理器注册顺序稳定。
+    /// </summary>
+    private static string GetAssemblySortKey(Assembly assembly)
+    {
+        return assembly.FullName ?? assembly.GetName().Name ?? assembly.ToString();
+    }
+
+    /// <summary>
+    ///     生成类型排序键，保证同一程序集内的处理器与接口映射顺序稳定。
+    /// </summary>
+    private static string GetTypeSortKey(Type type)
+    {
+        return type.FullName ?? type.Name;
     }
 }
