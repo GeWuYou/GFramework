@@ -1,11 +1,13 @@
 using GFramework.Core.Abstractions.Command;
+using GFramework.Core.Abstractions.Cqrs;
+using GFramework.Core.Abstractions.Cqrs.Command;
+using GFramework.Core.Abstractions.Cqrs.Query;
 using GFramework.Core.Abstractions.Environment;
 using GFramework.Core.Abstractions.Events;
 using GFramework.Core.Abstractions.Model;
 using GFramework.Core.Abstractions.Query;
 using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Abstractions.Utility;
-using Mediator;
 using ICommand = GFramework.Core.Abstractions.Command.ICommand;
 
 namespace GFramework.Core.Abstractions.Architectures;
@@ -118,12 +120,12 @@ public interface IArchitectureContext
     TResult SendCommand<TResult>(Command.ICommand<TResult> command);
 
     /// <summary>
-    /// [Mediator] 发送命令的同步版本（不推荐，仅用于兼容性）
+    ///     发送一个 CQRS 命令并返回结果。
     /// </summary>
-    /// <typeparam name="TResponse">命令响应类型</typeparam>
-    /// <param name="command">要发送的命令对象</param>
-    /// <returns>命令执行结果</returns>
-    TResponse SendCommand<TResponse>(Mediator.ICommand<TResponse> command);
+    /// <typeparam name="TResponse">命令响应类型。</typeparam>
+    /// <param name="command">要发送的 CQRS 命令。</param>
+    /// <returns>命令执行结果。</returns>
+    TResponse SendCommand<TResponse>(GFramework.Core.Abstractions.Cqrs.Command.ICommand<TResponse> command);
 
 
     /// <summary>
@@ -133,14 +135,13 @@ public interface IArchitectureContext
     Task SendCommandAsync(IAsyncCommand command);
 
     /// <summary>
-    /// [Mediator] 异步发送命令并返回结果
-    /// 通过Mediator模式发送命令请求，支持取消操作
+    ///     异步发送一个 CQRS 命令并返回结果。
     /// </summary>
-    /// <typeparam name="TResponse">命令响应类型</typeparam>
-    /// <param name="command">要发送的命令对象</param>
-    /// <param name="cancellationToken">取消令牌，用于取消操作</param>
-    /// <returns>包含命令执行结果的ValueTask</returns>
-    ValueTask<TResponse> SendCommandAsync<TResponse>(Mediator.ICommand<TResponse> command,
+    /// <typeparam name="TResponse">命令响应类型。</typeparam>
+    /// <param name="command">要发送的 CQRS 命令。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>包含命令执行结果的值任务。</returns>
+    ValueTask<TResponse> SendCommandAsync<TResponse>(GFramework.Core.Abstractions.Cqrs.Command.ICommand<TResponse> command,
         CancellationToken cancellationToken = default);
 
 
@@ -161,12 +162,12 @@ public interface IArchitectureContext
     TResult SendQuery<TResult>(Query.IQuery<TResult> query);
 
     /// <summary>
-    /// [Mediator] 发送查询的同步版本（不推荐，仅用于兼容性）
+    ///     发送一个 CQRS 查询并返回结果。
     /// </summary>
-    /// <typeparam name="TResponse">查询响应类型</typeparam>
-    /// <param name="query">要发送的查询对象</param>
-    /// <returns>查询结果</returns>
-    TResponse SendQuery<TResponse>(Mediator.IQuery<TResponse> query);
+    /// <typeparam name="TResponse">查询响应类型。</typeparam>
+    /// <param name="query">要发送的 CQRS 查询。</param>
+    /// <returns>查询结果。</returns>
+    TResponse SendQuery<TResponse>(GFramework.Core.Abstractions.Cqrs.Query.IQuery<TResponse> query);
 
     /// <summary>
     ///     异步发送一个查询请求
@@ -177,14 +178,13 @@ public interface IArchitectureContext
     Task<TResult> SendQueryAsync<TResult>(IAsyncQuery<TResult> query);
 
     /// <summary>
-    /// [Mediator] 异步发送查询并返回结果
-    /// 通过Mediator模式发送查询请求，支持取消操作
+    ///     异步发送一个 CQRS 查询并返回结果。
     /// </summary>
-    /// <typeparam name="TResponse">查询响应类型</typeparam>
-    /// <param name="query">要发送的查询对象</param>
-    /// <param name="cancellationToken">取消令牌，用于取消操作</param>
-    /// <returns>包含查询结果的ValueTask</returns>
-    ValueTask<TResponse> SendQueryAsync<TResponse>(Mediator.IQuery<TResponse> query,
+    /// <typeparam name="TResponse">查询响应类型。</typeparam>
+    /// <param name="query">要发送的 CQRS 查询。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>包含查询结果的值任务。</returns>
+    ValueTask<TResponse> SendQueryAsync<TResponse>(GFramework.Core.Abstractions.Cqrs.Query.IQuery<TResponse> query,
         CancellationToken cancellationToken = default);
 
     /// <summary>

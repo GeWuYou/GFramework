@@ -1,12 +1,12 @@
 using System.Diagnostics;
 using System.Reflection;
 using GFramework.Core.Abstractions.Architectures;
+using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Architectures;
 using GFramework.Core.Command;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
-using Mediator;
-using Microsoft.Extensions.DependencyInjection;
+using GFramework.Core.Tests;
 using ICommand = GFramework.Core.Abstractions.Command.ICommand;
 
 namespace GFramework.Core.Tests.Mediator;
@@ -33,11 +33,10 @@ public class MediatorArchitectureIntegrationTests
         _commandBus = new CommandExecutor();
         _container.RegisterPlurality(_commandBus);
 
-        // 注册Mediator
-        _container.ExecuteServicesHook(configurator =>
-        {
-            configurator.AddMediator(options => { options.ServiceLifetime = ServiceLifetime.Singleton; });
-        });
+        CqrsTestRuntime.RegisterHandlers(
+            _container,
+            typeof(MediatorArchitectureIntegrationTests).Assembly,
+            typeof(ArchitectureContext).Assembly);
 
         _container.Freeze();
         _context = new ArchitectureContext(_container);

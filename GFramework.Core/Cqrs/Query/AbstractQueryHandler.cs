@@ -12,7 +12,8 @@
 // limitations under the License.
 
 using GFramework.Core.Rule;
-using Mediator;
+using GFramework.Core.Abstractions.Cqrs;
+using GFramework.Core.Abstractions.Cqrs.Query;
 
 namespace GFramework.Core.Cqrs.Query;
 
@@ -23,7 +24,7 @@ namespace GFramework.Core.Cqrs.Query;
 /// </summary>
 /// <typeparam name="TQuery">查询类型，必须实现IQuery接口</typeparam>
 /// <typeparam name="TResult">查询结果类型</typeparam>
-public abstract class AbstractQueryHandler<TQuery, TResult> : ContextAwareBase, IQueryHandler<TQuery, TResult>
+public abstract class AbstractQueryHandler<TQuery, TResult> : ContextAwareBase, IRequestHandler<TQuery, TResult>
     where TQuery : IQuery<TResult>
 {
     /// <summary>

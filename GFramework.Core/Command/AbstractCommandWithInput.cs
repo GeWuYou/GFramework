@@ -9,13 +9,13 @@ namespace GFramework.Core.Command;
 /// </summary>
 /// <typeparam name="TInput">命令输入参数类型，必须实现 ICommandInput 接口</typeparam>
 /// <param name="input">命令执行所需的输入参数</param>
-public abstract class AbstractCommand<TInput>(TInput input) : ContextAwareBase, ICommand
+public abstract class AbstractCommand<TInput>(TInput input) : ContextAwareBase, GFramework.Core.Abstractions.Command.ICommand
     where TInput : ICommandInput
 {
     /// <summary>
     ///     执行命令的入口方法，实现 ICommand 接口的 Execute 方法
     /// </summary>
-    void ICommand.Execute()
+    void GFramework.Core.Abstractions.Command.ICommand.Execute()
     {
         OnExecute(input);
     }

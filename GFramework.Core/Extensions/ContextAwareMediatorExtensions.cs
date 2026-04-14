@@ -1,10 +1,10 @@
 using GFramework.Core.Abstractions.Rule;
-using Mediator;
+using GFramework.Core.Abstractions.Cqrs;
 
 namespace GFramework.Core.Extensions;
 
 /// <summary>
-///     提供对 IContextAware 接口的 Mediator 统一接口扩展方法
+///     提供对 IContextAware 接口的 CQRS 统一接口扩展方法。
 /// </summary>
 public static class ContextAwareMediatorExtensions
 {

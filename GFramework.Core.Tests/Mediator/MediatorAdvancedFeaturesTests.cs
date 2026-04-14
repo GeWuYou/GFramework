@@ -1,10 +1,10 @@
 using System.Diagnostics;
 using System.Reflection;
+using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Architectures;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
-using Mediator;
-using Microsoft.Extensions.DependencyInjection;
+using GFramework.Core.Tests;
 
 namespace GFramework.Core.Tests.Mediator;
 
@@ -26,11 +26,10 @@ public class MediatorAdvancedFeaturesTests
         loggerField?.SetValue(_container,
             LoggerFactoryResolver.Provider.CreateLogger(nameof(MediatorAdvancedFeaturesTests)));
 
-        // 注册Mediator及相关处理器
-        _container.ExecuteServicesHook(configurator =>
-        {
-            configurator.AddMediator(options => { options.ServiceLifetime = ServiceLifetime.Singleton; });
-        });
+        CqrsTestRuntime.RegisterHandlers(
+            _container,
+            typeof(MediatorAdvancedFeaturesTests).Assembly,
+            typeof(ArchitectureContext).Assembly);
 
         _container.Freeze();
         _context = new ArchitectureContext(_container);

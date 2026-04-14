@@ -12,7 +12,8 @@
 // limitations under the License.
 
 using GFramework.Core.Rule;
-using Mediator;
+using GFramework.Core.Abstractions.Cqrs;
+using GFramework.Core.Abstractions.Cqrs.Command;
 
 namespace GFramework.Core.Cqrs.Command;
 
@@ -21,7 +22,7 @@ namespace GFramework.Core.Cqrs.Command;
 /// 继承自ContextAwareBase并实现ICommandHandler接口，为具体的命令处理器提供基础功能
 /// </summary>
 /// <typeparam name="TCommand">命令类型</typeparam>
-public abstract class AbstractCommandHandler<TCommand> : ContextAwareBase, ICommandHandler<TCommand>
+public abstract class AbstractCommandHandler<TCommand> : ContextAwareBase, IRequestHandler<TCommand, Unit>
     where TCommand : ICommand<Unit>
 {
     /// <summary>
@@ -41,7 +42,7 @@ public abstract class AbstractCommandHandler<TCommand> : ContextAwareBase, IComm
 /// </summary>
 /// <typeparam name="TCommand">命令类型，必须实现ICommand接口</typeparam>
 /// <typeparam name="TResult">命令执行结果类型</typeparam>
-public abstract class AbstractCommandHandler<TCommand, TResult> : ContextAwareBase, ICommandHandler<TCommand, TResult>
+public abstract class AbstractCommandHandler<TCommand, TResult> : ContextAwareBase, IRequestHandler<TCommand, TResult>
     where TCommand : ICommand<TResult>
 {
     /// <summary>

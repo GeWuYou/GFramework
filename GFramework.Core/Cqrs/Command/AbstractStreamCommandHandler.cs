@@ -12,7 +12,8 @@
 // limitations under the License.
 
 using GFramework.Core.Rule;
-using Mediator;
+using GFramework.Core.Abstractions.Cqrs;
+using GFramework.Core.Abstractions.Cqrs.Command;
 
 namespace GFramework.Core.Cqrs.Command;
 
@@ -24,7 +25,7 @@ namespace GFramework.Core.Cqrs.Command;
 /// <typeparam name="TCommand">流式命令类型，必须实现IStreamCommand接口</typeparam>
 /// <typeparam name="TResponse">流式命令响应元素类型</typeparam>
 public abstract class AbstractStreamCommandHandler<TCommand, TResponse> : ContextAwareBase,
-    IStreamCommandHandler<TCommand, TResponse>
+    IStreamRequestHandler<TCommand, TResponse>
     where TCommand : IStreamCommand<TResponse>
 {
     /// <summary>

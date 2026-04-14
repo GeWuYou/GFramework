@@ -12,7 +12,7 @@
 // limitations under the License.
 
 using GFramework.Core.Rule;
-using Mediator;
+using GFramework.Core.Abstractions.Cqrs;
 
 namespace GFramework.Core.Cqrs.Request;
 

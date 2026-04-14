@@ -12,7 +12,8 @@
 // limitations under the License.
 
 using GFramework.Core.Rule;
-using Mediator;
+using GFramework.Core.Abstractions.Cqrs;
+using GFramework.Core.Abstractions.Cqrs.Query;
 
 namespace GFramework.Core.Cqrs.Query;
 
@@ -24,7 +25,7 @@ namespace GFramework.Core.Cqrs.Query;
 /// <typeparam name="TQuery">流式查询类型，必须实现IStreamQuery接口</typeparam>
 /// <typeparam name="TResponse">流式查询响应元素类型</typeparam>
 public abstract class AbstractStreamQueryHandler<TQuery, TResponse> : ContextAwareBase,
-    IStreamQueryHandler<TQuery, TResponse>
+    IStreamRequestHandler<TQuery, TResponse>
     where TQuery : IStreamQuery<TResponse>
 {
     /// <summary>

@@ -244,6 +244,16 @@ bash scripts/validate-csharp-naming.sh
 - Tracking updates MUST reflect completed work, newly discovered issues, validation results, and the next recommended
   recovery point.
 - Completing code changes without updating the active tracking document is considered incomplete work.
+- For any multi-step refactor, migration, or cross-module task, contributors MUST create or adopt a dedicated recovery
+  document under `local-plan/todos/` before making substantive code changes.
+- Recovery documents MUST record the current phase, the active recovery point identifier, known risks, and the next
+  recommended resume step so another contributor or subagent can continue the work safely.
+- Contributors MUST maintain a matching execution trace under `local-plan/traces/` for complex work. The trace should
+  record the current date, key decisions, validation milestones, and the immediate next step.
+- When a task spans multiple commits or is likely to exceed a single agent context window, update both the recovery
+  document and the trace at each meaningful milestone before pausing or handing work off.
+- If subagents are used on a complex task, the main agent MUST capture the delegated scope and any accepted findings in
+  the active recovery document or trace before continuing implementation.
 
 ### Repository Documentation
 
