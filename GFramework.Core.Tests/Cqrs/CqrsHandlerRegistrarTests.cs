@@ -115,6 +115,80 @@ internal sealed class CqrsHandlerRegistrarTests
             LoggerFactoryResolver.Provider = originalProvider;
         }
     }
+
+    /// <summary>
+    ///     验证当程序集提供源码生成的注册器时，运行时会优先使用该注册器而不是反射扫描类型列表。
+    /// </summary>
+    [Test]
+    public void RegisterHandlers_Should_Use_Generated_Registry_When_Available()
+    {
+        var generatedAssembly = new Mock<Assembly>();
+        generatedAssembly
+            .SetupGet(static assembly => assembly.FullName)
+            .Returns("GFramework.Core.Tests.Cqrs.GeneratedRegistryAssembly, Version=1.0.0.0");
+        generatedAssembly
+            .Setup(static assembly => assembly.GetCustomAttributes(typeof(CqrsHandlerRegistryAttribute), false))
+            .Returns([new CqrsHandlerRegistryAttribute(typeof(GeneratedNotificationHandlerRegistry))]);
+
+        var container = new MicrosoftDiContainer();
+        CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
+        container.Freeze();
+
+        var handlers = container.GetAll<INotificationHandler<GeneratedRegistryNotification>>();
+
+        Assert.That(
+            handlers.Select(static handler => handler.GetType()),
+            Is.EqualTo([typeof(GeneratedRegistryNotificationHandler)]));
+    }
+
+    /// <summary>
+    ///     验证当生成注册器元数据损坏时，运行时会记录告警并回退到反射扫描路径。
+    /// </summary>
+    [Test]
+    public void RegisterHandlers_Should_Fall_Back_To_Reflection_When_Generated_Registry_Is_Invalid()
+    {
+        var originalProvider = LoggerFactoryResolver.Provider;
+        var capturingProvider = new CapturingLoggerFactoryProvider(LogLevel.Warning);
+        var generatedAssembly = new Mock<Assembly>();
+        generatedAssembly
+            .SetupGet(static assembly => assembly.FullName)
+            .Returns("GFramework.Core.Tests.Cqrs.InvalidGeneratedRegistryAssembly, Version=1.0.0.0");
+        generatedAssembly
+            .Setup(static assembly => assembly.GetCustomAttributes(typeof(CqrsHandlerRegistryAttribute), false))
+            .Returns([new CqrsHandlerRegistryAttribute(typeof(string))]);
+        generatedAssembly
+            .Setup(static assembly => assembly.GetTypes())
+            .Returns([typeof(AlphaDeterministicNotificationHandler)]);
+
+        LoggerFactoryResolver.Provider = capturingProvider;
+        try
+        {
+            var container = new MicrosoftDiContainer();
+            CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
+            container.Freeze();
+
+            var handlers = container.GetAll<INotificationHandler<DeterministicOrderNotification>>();
+            var warningLogs = capturingProvider.Loggers
+                .SelectMany(static logger => logger.Logs)
+                .Where(static log => log.Level == LogLevel.Warning)
+                .ToList();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(
+                    handlers.Select(static handler => handler.GetType()),
+                    Is.EqualTo([typeof(AlphaDeterministicNotificationHandler)]));
+                Assert.That(
+                    warningLogs.Any(log =>
+                        log.Message.Contains("does not implement", StringComparison.Ordinal)),
+                    Is.True);
+            });
+        }
+        finally
+        {
+            LoggerFactoryResolver.Provider = originalProvider;
+        }
+    }
 }
 
 /// <summary>
@@ -217,5 +291,50 @@ internal sealed class CapturingLoggerFactoryProvider : ILoggerFactoryProvider
         var logger = new TestLogger(name, MinLevel);
         _loggers.Add(logger);
         return logger;
+    }
+}
+
+/// <summary>
+///     用于验证生成注册器路径的通知消息。
+/// </summary>
+internal sealed record GeneratedRegistryNotification : INotification;
+
+/// <summary>
+///     由模拟的源码生成注册器显式注册的通知处理器。
+/// </summary>
+internal sealed class GeneratedRegistryNotificationHandler : INotificationHandler<GeneratedRegistryNotification>
+{
+    /// <summary>
+    ///     处理生成注册器测试中的通知。
+    /// </summary>
+    /// <param name="notification">通知实例。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>已完成任务。</returns>
+    public ValueTask Handle(GeneratedRegistryNotification notification, CancellationToken cancellationToken)
+    {
+        return ValueTask.CompletedTask;
+    }
+}
+
+/// <summary>
+///     模拟源码生成器为某个程序集生成的 CQRS 处理器注册器。
+/// </summary>
+internal sealed class GeneratedNotificationHandlerRegistry : ICqrsHandlerRegistry
+{
+    /// <summary>
+    ///     将测试通知处理器注册到目标服务集合。
+    /// </summary>
+    /// <param name="services">承载处理器映射的服务集合。</param>
+    /// <param name="logger">用于记录注册诊断的日志器。</param>
+    public void Register(IServiceCollection services, ILogger logger)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(logger);
+
+        services.AddTransient(
+            typeof(INotificationHandler<GeneratedRegistryNotification>),
+            typeof(GeneratedRegistryNotificationHandler));
+        logger.Debug(
+            $"Registered CQRS handler {typeof(GeneratedRegistryNotificationHandler).FullName} as {typeof(INotificationHandler<GeneratedRegistryNotification>).FullName}.");
     }
 }

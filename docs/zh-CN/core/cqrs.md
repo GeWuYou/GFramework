@@ -204,7 +204,7 @@ public async Task<List<ScoreData>> GetHighScores()
 
 ### 注册处理器
 
-在架构中注册 CQRS 行为；默认会自动扫描当前架构所在程序集和 `GFramework.Core` 程序集中的处理器：
+在架构中注册 CQRS 行为；默认会自动接入当前架构所在程序集和 `GFramework.Core` 程序集中的处理器：
 
 ```csharp
 public class GameArchitecture : Architecture
@@ -220,7 +220,11 @@ public class GameArchitecture : Architecture
 }
 ```
 
-如果处理器位于其他模块或扩展程序集中，需要额外接入对应程序集的处理器注册，而不是依赖默认扫描。
+当前版本会优先使用源码生成的程序集级 handler registry 来注册“当前业务程序集”里的处理器；
+如果该程序集没有生成注册器，或者包含生成代码无法合法引用的处理器类型，则会自动回退到运行时反射扫描。
+`GFramework.Core` 等未挂接该生成器的程序集仍会继续走反射扫描。
+
+如果处理器位于其他模块或扩展程序集中，需要额外接入对应程序集的处理器注册，而不是只依赖默认接入范围。
 
 `RegisterCqrsPipelineBehavior<TBehavior>()` 是推荐入口；旧的 `RegisterMediatorBehavior<TBehavior>()`
 仅作为兼容名称保留，当前已标记为 `Obsolete` 并从 IntelliSense 主路径隐藏，计划在未来 major 版本中移除。

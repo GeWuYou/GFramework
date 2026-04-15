@@ -7,7 +7,8 @@ namespace GFramework.Core.Cqrs.Internal;
 
 /// <summary>
 ///     在架构初始化期间扫描并注册 CQRS 处理器。
-///     首批实现采用运行时反射扫描，优先满足“无需额外注册步骤即可工作”的迁移目标。
+///     运行时会优先尝试使用源码生成的程序集级注册器，以减少冷启动阶段的反射开销；
+///     当目标程序集没有生成注册器，或注册器不可用时，再回退到运行时反射扫描。
 /// </summary>
 internal static class CqrsHandlerRegistrar
 {
@@ -31,7 +32,81 @@ internal static class CqrsHandlerRegistrar
                      .Distinct()
                      .OrderBy(GetAssemblySortKey, StringComparer.Ordinal))
         {
+            if (TryRegisterGeneratedHandlers(container.GetServicesUnsafe, assembly, logger))
+                continue;
+
             RegisterAssemblyHandlers(container.GetServicesUnsafe, assembly, logger);
+        }
+    }
+
+    /// <summary>
+    ///     优先使用程序集级源码生成注册器完成 CQRS 映射注册。
+    /// </summary>
+    /// <param name="services">目标服务集合。</param>
+    /// <param name="assembly">当前要处理的程序集。</param>
+    /// <param name="logger">日志记录器。</param>
+    /// <returns>当成功使用生成注册器时返回 <see langword="true" />；否则返回 <see langword="false" />。</returns>
+    private static bool TryRegisterGeneratedHandlers(IServiceCollection services, Assembly assembly, ILogger logger)
+    {
+        var assemblyName = GetAssemblySortKey(assembly);
+
+        try
+        {
+            var registryTypes = assembly
+                .GetCustomAttributes(typeof(CqrsHandlerRegistryAttribute), inherit: false)
+                .OfType<CqrsHandlerRegistryAttribute>()
+                .Select(static attribute => attribute.RegistryType)
+                .Where(static type => type is not null)
+                .Distinct()
+                .OrderBy(GetTypeSortKey, StringComparer.Ordinal)
+                .ToList();
+
+            if (registryTypes.Count == 0)
+                return false;
+
+            var registries = new List<ICqrsHandlerRegistry>(registryTypes.Count);
+            foreach (var registryType in registryTypes)
+            {
+                if (!typeof(ICqrsHandlerRegistry).IsAssignableFrom(registryType))
+                {
+                    logger.Warn(
+                        $"Ignoring generated CQRS handler registry {registryType.FullName} in assembly {assemblyName} because it does not implement {typeof(ICqrsHandlerRegistry).FullName}.");
+                    return false;
+                }
+
+                if (registryType.IsAbstract)
+                {
+                    logger.Warn(
+                        $"Ignoring generated CQRS handler registry {registryType.FullName} in assembly {assemblyName} because it is abstract.");
+                    return false;
+                }
+
+                if (Activator.CreateInstance(registryType, nonPublic: true) is not ICqrsHandlerRegistry registry)
+                {
+                    logger.Warn(
+                        $"Ignoring generated CQRS handler registry {registryType.FullName} in assembly {assemblyName} because it could not be instantiated.");
+                    return false;
+                }
+
+                registries.Add(registry);
+            }
+
+            foreach (var registry in registries)
+            {
+                logger.Debug(
+                    $"Registering CQRS handlers for assembly {assemblyName} via generated registry {registry.GetType().FullName}.");
+                registry.Register(services, logger);
+            }
+
+            return true;
+        }
+        catch (Exception exception)
+        {
+            logger.Warn(
+                $"Generated CQRS handler registry discovery failed for assembly {assemblyName}. Falling back to reflection scan.");
+            logger.Warn(
+                $"Failed to use generated CQRS handler registry for assembly {assemblyName}: {exception.Message}");
+            return false;
         }
     }
 
