@@ -168,6 +168,9 @@ internal sealed class AdditionalAssemblyNotificationHandlerRegistry : ICqrsHandl
     /// </summary>
     /// <param name="services">目标服务集合。</param>
     /// <param name="logger">日志记录器。</param>
+    /// <exception cref="ArgumentNullException">
+    ///     当 <paramref name="services" /> 或 <paramref name="logger" /> 为 <see langword="null" /> 时抛出。
+    /// </exception>
     public void Register(IServiceCollection services, ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(services);

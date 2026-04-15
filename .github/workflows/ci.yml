@@ -1,12 +1,12 @@
 # CI/CD工作流配置：构建和测试.NET项目
-# 该工作流在push到main/master分支或创建pull request时触发
+# 该工作流在推送到任意分支或创建面向任意分支的 pull request 时触发
 name: CI - Build & Test
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ '**' ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ '**' ]
 
 permissions:
   contents: read

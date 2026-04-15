@@ -4,14 +4,14 @@ name: "CodeQL"
 
 # 触发事件配置
 # 在以下情况下触发工作流：
-# 1. 推送到main分支时
-# 2. 针对main分支的拉取请求时  
+# 1. 推送到任意分支时
+# 2. 针对任意分支的拉取请求时
 # 3. 每天凌晨2点执行一次
 on:
   push:
-    branches: [ "main" ]
+    branches: [ '**' ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ '**' ]
   schedule:
     - cron: '0 2 * * *'
 
