@@ -7,7 +7,6 @@
         <Nullable>enable</Nullable>
         <IsPackable>false</IsPackable>
         <IsTestProject>true</IsTestProject>
-        <WarningLevel>0</WarningLevel>
     </PropertyGroup>
 
     <ItemGroup>
