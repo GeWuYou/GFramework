@@ -1,7 +1,6 @@
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Environment;
 using GFramework.Core.Abstractions.Logging;
-using GFramework.Core.Cqrs.Internal;
 
 namespace GFramework.Core.Architectures;
 
@@ -99,10 +98,11 @@ internal sealed class ArchitectureBootstrapper(
     private void ConfigureServices(IArchitectureContext context, Action<IServiceCollection>? configurator)
     {
         services.SetContext(context);
-        CqrsHandlerRegistrar.RegisterHandlers(
-            services.Container,
-            [architectureType.Assembly, typeof(ArchitectureContext).Assembly],
-            logger);
+        services.Container.RegisterCqrsHandlersFromAssemblies(
+        [
+            architectureType.Assembly,
+            typeof(ArchitectureContext).Assembly
+        ]);
 
         if (configurator is null)
             logger.Debug("No external service configurator provided. Using built-in CQRS runtime registration only.");

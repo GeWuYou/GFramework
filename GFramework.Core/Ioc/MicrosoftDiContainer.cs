@@ -1,9 +1,11 @@
 using System.ComponentModel;
+using System.Reflection;
 using GFramework.Core.Abstractions.Bases;
 using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Systems;
+using GFramework.Core.Cqrs.Internal;
 using GFramework.Core.Logging;
 using GFramework.Core.Rule;
 
@@ -55,6 +57,12 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// 已注册实例的集合，用于快速检查实例是否存在
     /// </summary>
     private readonly HashSet<object> _registeredInstances = [];
+
+    /// <summary>
+    /// 已接入 CQRS handler 注册流程的程序集键集合。
+    /// 使用稳定字符串键而不是 Assembly 引用本身，以避免默认路径和显式扩展路径使用不同 Assembly 对象时重复注册。
+    /// </summary>
+    private readonly HashSet<string> _registeredCqrsHandlerAssemblyKeys = new(StringComparer.Ordinal);
 
     /// <summary>
     /// 日志记录器，用于记录容器操作日志
@@ -370,6 +378,60 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     public void RegisterMediatorBehavior<TBehavior>() where TBehavior : class
     {
         RegisterCqrsPipelineBehavior<TBehavior>();
+    }
+
+    /// <summary>
+    ///     从指定程序集显式注册 CQRS 处理器。
+    /// </summary>
+    /// <param name="assembly">包含 CQRS 处理器或生成注册器的程序集。</param>
+    /// <exception cref="ArgumentNullException"><paramref name="assembly" /> 为 <see langword="null" />。</exception>
+    /// <exception cref="InvalidOperationException">容器已冻结，无法继续注册 CQRS 处理器。</exception>
+    public void RegisterCqrsHandlersFromAssembly(Assembly assembly)
+    {
+        ArgumentNullException.ThrowIfNull(assembly);
+        RegisterCqrsHandlersFromAssemblies([assembly]);
+    }
+
+    /// <summary>
+    ///     从多个程序集显式注册 CQRS 处理器。
+    ///     同一程序集只会被接入一次，避免默认启动路径与扩展模块重复注册相同 handlers。
+    /// </summary>
+    /// <param name="assemblies">要接入的程序集集合。</param>
+    /// <exception cref="ArgumentNullException"><paramref name="assemblies" /> 为 <see langword="null" />。</exception>
+    /// <exception cref="InvalidOperationException">容器已冻结，无法继续注册 CQRS 处理器。</exception>
+    public void RegisterCqrsHandlersFromAssemblies(IEnumerable<Assembly> assemblies)
+    {
+        ArgumentNullException.ThrowIfNull(assemblies);
+
+        _lock.EnterWriteLock();
+        try
+        {
+            ThrowIfFrozen();
+
+            var processedAssemblyKeys = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var assembly in assemblies
+                         .Where(static assembly => assembly is not null)
+                         .OrderBy(GetCqrsAssemblyRegistrationKey, StringComparer.Ordinal))
+            {
+                var assemblyKey = GetCqrsAssemblyRegistrationKey(assembly);
+                if (!processedAssemblyKeys.Add(assemblyKey))
+                    continue;
+
+                if (_registeredCqrsHandlerAssemblyKeys.Contains(assemblyKey))
+                {
+                    _logger.Debug(
+                        $"Skipping CQRS handler registration for assembly {assemblyKey} because it was already registered.");
+                    continue;
+                }
+
+                CqrsHandlerRegistrar.RegisterHandlers(this, [assembly], _logger);
+                _registeredCqrsHandlerAssemblyKeys.Add(assemblyKey);
+            }
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
     }
 
     /// <summary>
@@ -745,6 +807,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
 
             GetServicesUnsafe.Clear();
             _registeredInstances.Clear();
+            _registeredCqrsHandlerAssemblyKeys.Clear();
             _provider = null;
             _logger.Info("Container cleared");
         }
@@ -814,6 +877,17 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
         {
             _lock.ExitReadLock();
         }
+    }
+
+    /// <summary>
+    ///     生成 CQRS handler 注册用的稳定程序集键。
+    ///     该键需要同时兼顾真实程序集与测试中使用的 mocked Assembly，避免仅靠引用比较导致重复接入。
+    /// </summary>
+    /// <param name="assembly">目标程序集。</param>
+    /// <returns>稳定的程序集标识字符串。</returns>
+    private static string GetCqrsAssemblyRegistrationKey(Assembly assembly)
+    {
+        return assembly.FullName ?? assembly.GetName().Name ?? assembly.ToString();
     }
 
     #endregion

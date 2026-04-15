@@ -105,7 +105,8 @@ major 版本中移除。
 - `PriorityGenerator` (`[Priority]`): 生成优先级比较相关实现。
 - `EnumExtensionsGenerator` (`[GenerateEnumExtensions]`): 生成枚举扩展能力。
 - `ContextAwareGenerator` (`[ContextAware]`): 自动实现 `IContextAware` 相关样板逻辑。
-- `CqrsHandlerRegistryGenerator`: 为消费端程序集生成 CQRS handler 注册器，运行时优先使用生成产物，无法覆盖时回退到反射扫描。
+- `CqrsHandlerRegistryGenerator`: 为消费端程序集生成 CQRS handler 注册器，运行时优先使用生成产物，无法覆盖时回退到反射扫描；非默认程序集可通过
+  `RegisterCqrsHandlersFromAssembly(...)` / `RegisterCqrsHandlersFromAssemblies(...)` 显式接入同一路径。
 
 这些生成器的目标是减少重复代码，同时保持框架层 API 的一致性与可维护性。
 

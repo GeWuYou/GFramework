@@ -224,7 +224,27 @@ public class GameArchitecture : Architecture
 如果该程序集没有生成注册器，或者包含生成代码无法合法引用的处理器类型，则会自动回退到运行时反射扫描。
 `GFramework.Core` 等未挂接该生成器的程序集仍会继续走反射扫描。
 
-如果处理器位于其他模块或扩展程序集中，需要额外接入对应程序集的处理器注册，而不是只依赖默认接入范围。
+如果处理器位于其他模块或扩展程序集中，需要额外接入对应程序集的处理器注册，而不是只依赖默认接入范围：
+
+```csharp
+public class GameArchitecture : Architecture
+{
+    protected override void OnInitialize()
+    {
+        RegisterCqrsPipelineBehavior<LoggingBehavior<,>>();
+
+        RegisterCqrsHandlersFromAssemblies(
+        [
+            typeof(InventoryCqrsMarker).Assembly,
+            typeof(BattleCqrsMarker).Assembly
+        ]);
+    }
+}
+```
+
+`RegisterCqrsHandlersFromAssembly(...)` / `RegisterCqrsHandlersFromAssemblies(...)` 会复用与默认启动路径相同的注册逻辑：
+优先使用程序集级生成注册器，失败时自动回退到反射扫描；如果同一程序集已经由默认路径或其他模块接入，框架会自动去重，避免重复注册
+handler。
 
 `RegisterCqrsPipelineBehavior<TBehavior>()` 是推荐入口；旧的 `RegisterMediatorBehavior<TBehavior>()`
 仅作为兼容名称保留，当前已标记为 `Obsolete` 并从 IntelliSense 主路径隐藏，计划在未来 major 版本中移除。

@@ -1,7 +1,9 @@
 using System.Reflection;
 using GFramework.Core.Abstractions.Bases;
+using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
+using GFramework.Core.Tests.Cqrs;
 using GFramework.Core.Tests.Systems;
 
 namespace GFramework.Core.Tests.Ioc;
@@ -304,6 +306,34 @@ public class MicrosoftDiContainerTests
         _container.Clear();
 
         Assert.That(_container.Contains<TestService>(), Is.False);
+    }
+
+    /// <summary>
+    ///     测试清空容器后可以重新接入同一程序集中的 CQRS 处理器。
+    /// </summary>
+    [Test]
+    public void Clear_Should_Reset_Cqrs_Assembly_Deduplication_State()
+    {
+        var assembly = typeof(CqrsHandlerRegistrarTests).Assembly;
+
+        _container.RegisterCqrsHandlersFromAssembly(assembly);
+        Assert.That(
+            _container.GetServicesUnsafe.Any(static descriptor =>
+                descriptor.ServiceType == typeof(INotificationHandler<DeterministicOrderNotification>)),
+            Is.True);
+
+        _container.Clear();
+        Assert.That(
+            _container.GetServicesUnsafe.Any(static descriptor =>
+                descriptor.ServiceType == typeof(INotificationHandler<DeterministicOrderNotification>)),
+            Is.False);
+
+        _container.RegisterCqrsHandlersFromAssembly(assembly);
+
+        Assert.That(
+            _container.GetServicesUnsafe.Any(static descriptor =>
+                descriptor.ServiceType == typeof(INotificationHandler<DeterministicOrderNotification>)),
+            Is.True);
     }
 
     /// <summary>
