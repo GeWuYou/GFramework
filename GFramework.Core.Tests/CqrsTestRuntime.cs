@@ -5,6 +5,7 @@ using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Architectures;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
+using GFramework.Cqrs.Abstractions.Cqrs;
 
 namespace GFramework.Core.Tests;
 

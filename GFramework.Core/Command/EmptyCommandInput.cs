@@ -1,4 +1,4 @@
-using GFramework.Core.Abstractions.Cqrs.Command;
+using GFramework.Cqrs.Abstractions.Cqrs.Command;
 
 namespace GFramework.Core.Command;
 

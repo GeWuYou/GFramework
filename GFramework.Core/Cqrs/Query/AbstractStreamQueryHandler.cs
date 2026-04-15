@@ -12,8 +12,8 @@
 // limitations under the License.
 
 using GFramework.Core.Rule;
-using GFramework.Core.Abstractions.Cqrs;
-using GFramework.Core.Abstractions.Cqrs.Query;
+using GFramework.Cqrs.Abstractions.Cqrs;
+using GFramework.Cqrs.Abstractions.Cqrs.Query;
 
 namespace GFramework.Core.Cqrs.Query;
 

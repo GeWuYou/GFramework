@@ -1,4 +1,5 @@
 using GFramework.Core.Abstractions.Architectures;
+using GFramework.Cqrs.Abstractions.Cqrs;
 
 namespace GFramework.Core.Abstractions.Cqrs;
 

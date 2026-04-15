@@ -1,4 +1,4 @@
-namespace GFramework.Core.Abstractions.Cqrs;
+namespace GFramework.Cqrs.Abstractions.Cqrs;
 
 /// <summary>
 ///     表示一个有响应的 CQRS 请求。

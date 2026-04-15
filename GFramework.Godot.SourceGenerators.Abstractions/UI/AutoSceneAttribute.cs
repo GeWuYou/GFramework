@@ -1,4 +1,4 @@
-namespace GFramework.Godot.SourceGenerators.Abstractions;
+namespace GFramework.Godot.SourceGenerators.Abstractions.UI;
 
 /// <summary>
 ///     标记场景根节点类型，Source Generator 会生成场景行为样板代码。

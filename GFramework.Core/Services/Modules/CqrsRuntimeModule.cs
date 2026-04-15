@@ -3,6 +3,7 @@ using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Cqrs.Internal;
 using GFramework.Core.Logging;
+using GFramework.Cqrs.Abstractions.Cqrs;
 
 namespace GFramework.Core.Services.Modules;
 

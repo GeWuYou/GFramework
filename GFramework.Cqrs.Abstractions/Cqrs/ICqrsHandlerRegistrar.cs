@@ -1,6 +1,6 @@
 using System.Reflection;
 
-namespace GFramework.Core.Abstractions.Cqrs;
+namespace GFramework.Cqrs.Abstractions.Cqrs;
 
 /// <summary>
 ///     定义 CQRS 处理器程序集接入的 runtime seam。

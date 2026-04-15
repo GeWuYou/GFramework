@@ -1,4 +1,4 @@
-namespace GFramework.Core.Abstractions.Cqrs;
+namespace GFramework.Cqrs.Abstractions.Cqrs;
 
 /// <summary>
 ///     表示 CQRS 请求在管道中继续向下执行的处理委托。

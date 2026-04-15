@@ -1,4 +1,4 @@
-namespace GFramework.Core.Abstractions.Cqrs.Command;
+namespace GFramework.Cqrs.Abstractions.Cqrs.Command;
 
 /// <summary>
 ///     表示一个 CQRS 命令。

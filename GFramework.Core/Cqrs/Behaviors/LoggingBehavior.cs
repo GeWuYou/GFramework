@@ -12,9 +12,9 @@
 // limitations under the License.
 
 using System.Diagnostics;
-using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Logging;
+using GFramework.Cqrs.Abstractions.Cqrs;
 
 namespace GFramework.Core.Cqrs.Behaviors;
 

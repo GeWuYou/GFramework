@@ -12,7 +12,7 @@
 // limitations under the License.
 
 using GFramework.Core.Rule;
-using GFramework.Core.Abstractions.Cqrs;
+using GFramework.Cqrs.Abstractions.Cqrs;
 
 namespace GFramework.Core.Cqrs.Notification;
 

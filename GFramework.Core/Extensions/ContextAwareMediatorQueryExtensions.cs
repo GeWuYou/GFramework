@@ -1,13 +1,12 @@
 using System.ComponentModel;
-using GFramework.Core.Abstractions.Cqrs.Query;
 using GFramework.Core.Abstractions.Rule;
-using GFramework.Core.Cqrs.Extensions;
+using GFramework.Cqrs.Abstractions.Cqrs.Query;
 
 namespace GFramework.Core.Extensions;
 
 /// <summary>
 ///     提供对 <see cref="IContextAware" /> 接口的 CQRS 查询扩展方法。
-///     该类型保留旧名称以兼容历史调用点；新代码应改用 <see cref="GFramework.Core.Cqrs.Extensions.ContextAwareCqrsQueryExtensions" />。
+///     该类型保留旧名称以兼容历史调用点；新代码应改用 <see cref="ContextAwareCqrsQueryExtensions" />。
 ///     兼容层计划在未来的 major 版本中移除，因此不会继续承载新能力。
 /// </summary>
 [EditorBrowsable(EditorBrowsableState.Never)]

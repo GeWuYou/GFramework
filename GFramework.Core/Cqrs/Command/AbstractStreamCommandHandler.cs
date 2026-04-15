@@ -11,9 +11,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using GFramework.Core.Abstractions.Cqrs;
-using GFramework.Core.Abstractions.Cqrs.Command;
 using GFramework.Core.Rule;
+using GFramework.Cqrs.Abstractions.Cqrs;
+using GFramework.Cqrs.Abstractions.Cqrs.Command;
 
 namespace GFramework.Core.Cqrs.Command;
 

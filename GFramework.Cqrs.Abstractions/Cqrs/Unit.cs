@@ -1,4 +1,4 @@
-namespace GFramework.Core.Abstractions.Cqrs;
+namespace GFramework.Cqrs.Abstractions.Cqrs;
 
 /// <summary>
 ///     表示没有实际返回值的 CQRS 响应类型。

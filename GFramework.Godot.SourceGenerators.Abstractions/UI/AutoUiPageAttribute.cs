@@ -1,4 +1,4 @@
-namespace GFramework.Godot.SourceGenerators.Abstractions;
+namespace GFramework.Godot.SourceGenerators.Abstractions.UI;
 
 /// <summary>
 ///     标记 UI 页面类型，Source Generator 会生成页面行为样板代码。

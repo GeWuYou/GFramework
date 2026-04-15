@@ -1,4 +1,4 @@
-namespace GFramework.Godot.SourceGenerators.Abstractions;
+namespace GFramework.Godot.SourceGenerators.Abstractions.UI;
 
 /// <summary>
 ///     声明导出集合应当转发到哪个注册器成员及其方法。

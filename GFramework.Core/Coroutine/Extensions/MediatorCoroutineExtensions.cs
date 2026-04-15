@@ -13,15 +13,14 @@
 
 using System.ComponentModel;
 using GFramework.Core.Abstractions.Coroutine;
-using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Abstractions.Rule;
-using GFramework.Core.Cqrs.Extensions;
+using GFramework.Cqrs.Abstractions.Cqrs;
 
 namespace GFramework.Core.Coroutine.Extensions;
 
 /// <summary>
 /// 提供 CQRS 命令与协程集成的扩展方法。
-/// 该类型保留旧名称以兼容历史调用点；新代码应改用 <see cref="GFramework.Core.Cqrs.Extensions.CqrsCoroutineExtensions" />。
+/// 该类型保留旧名称以兼容历史调用点；新代码应改用 <see cref="CqrsCoroutineExtensions" />。
 /// 兼容层计划在未来的 major 版本中移除，因此不会继续承载新能力。
 /// </summary>
 [EditorBrowsable(EditorBrowsableState.Never)]

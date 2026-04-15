@@ -1,10 +1,10 @@
-﻿using GFramework.Core.Abstractions.Cqrs;
-using GFramework.Core.Abstractions.Cqrs.Command;
-using GFramework.Core.Abstractions.Cqrs.Query;
-using GFramework.Core.Abstractions.Rule;
+﻿using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Coroutine;
 using GFramework.Core.Coroutine.Extensions;
-using GFramework.Core.Cqrs.Extensions;
+using GFramework.Core.Extensions;
+using GFramework.Cqrs.Abstractions.Cqrs;
+using GFramework.Cqrs.Abstractions.Cqrs.Command;
+using GFramework.Cqrs.Abstractions.Cqrs.Query;
 
 namespace GFramework.Godot.Coroutine;
 

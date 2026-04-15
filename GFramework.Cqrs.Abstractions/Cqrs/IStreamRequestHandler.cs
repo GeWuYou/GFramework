@@ -1,4 +1,4 @@
-namespace GFramework.Core.Abstractions.Cqrs;
+namespace GFramework.Cqrs.Abstractions.Cqrs;
 
 /// <summary>
 ///     表示处理流式 CQRS 请求的处理器契约。

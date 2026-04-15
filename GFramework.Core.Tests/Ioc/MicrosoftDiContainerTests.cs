@@ -1,10 +1,10 @@
 using System.Reflection;
 using GFramework.Core.Abstractions.Bases;
-using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
 using GFramework.Core.Tests.Cqrs;
 using GFramework.Core.Tests.Systems;
+using GFramework.Cqrs.Abstractions.Cqrs;
 
 namespace GFramework.Core.Tests.Ioc;
 

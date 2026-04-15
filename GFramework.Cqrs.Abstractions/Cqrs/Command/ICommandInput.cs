@@ -1,4 +1,4 @@
-﻿namespace GFramework.Core.Abstractions.Cqrs.Command;
+﻿namespace GFramework.Cqrs.Abstractions.Cqrs.Command;
 
 /// <summary>
 ///     命令输入接口，定义命令模式中输入数据的契约

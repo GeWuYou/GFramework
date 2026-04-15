@@ -1,4 +1,4 @@
-namespace GFramework.Core.Abstractions.Cqrs;
+namespace GFramework.Cqrs.Abstractions.Cqrs;
 
 /// <summary>
 ///     表示处理通知消息的处理器契约。

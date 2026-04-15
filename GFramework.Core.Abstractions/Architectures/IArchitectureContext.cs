@@ -1,11 +1,11 @@
 using GFramework.Core.Abstractions.Command;
-using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Abstractions.Environment;
 using GFramework.Core.Abstractions.Events;
 using GFramework.Core.Abstractions.Model;
 using GFramework.Core.Abstractions.Query;
 using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Abstractions.Utility;
+using GFramework.Cqrs.Abstractions.Cqrs;
 using ICommand = GFramework.Core.Abstractions.Command.ICommand;
 
 namespace GFramework.Core.Abstractions.Architectures;
@@ -131,7 +131,7 @@ public interface IArchitectureContext
     /// <remarks>
     ///     这是迁移后的推荐命令入口。无返回值命令应实现 <c>IRequest&lt;Unit&gt;</c>，并优先通过 <see cref="SendAsync{TCommand}(TCommand,CancellationToken)" /> 调用。
     /// </remarks>
-    TResponse SendCommand<TResponse>(Cqrs.Command.ICommand<TResponse> command);
+    TResponse SendCommand<TResponse>(GFramework.Cqrs.Abstractions.Cqrs.Command.ICommand<TResponse> command);
 
 
     /// <summary>
@@ -147,7 +147,8 @@ public interface IArchitectureContext
     /// <param name="command">要发送的 CQRS 命令。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>包含命令执行结果的值任务。</returns>
-    ValueTask<TResponse> SendCommandAsync<TResponse>(Cqrs.Command.ICommand<TResponse> command,
+    ValueTask<TResponse> SendCommandAsync<TResponse>(
+        GFramework.Cqrs.Abstractions.Cqrs.Command.ICommand<TResponse> command,
         CancellationToken cancellationToken = default);
 
 
@@ -176,7 +177,7 @@ public interface IArchitectureContext
     /// <remarks>
     ///     这是迁移后的推荐查询入口。新查询应优先实现 <c>GFramework.Core.Abstractions.Cqrs.Query.IQuery&lt;TResponse&gt;</c>。
     /// </remarks>
-    TResponse SendQuery<TResponse>(Cqrs.Query.IQuery<TResponse> query);
+    TResponse SendQuery<TResponse>(GFramework.Cqrs.Abstractions.Cqrs.Query.IQuery<TResponse> query);
 
     /// <summary>
     ///     异步发送一个旧版查询请求。
@@ -193,7 +194,7 @@ public interface IArchitectureContext
     /// <param name="query">要发送的 CQRS 查询。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>包含查询结果的值任务。</returns>
-    ValueTask<TResponse> SendQueryAsync<TResponse>(Cqrs.Query.IQuery<TResponse> query,
+    ValueTask<TResponse> SendQueryAsync<TResponse>(GFramework.Cqrs.Abstractions.Cqrs.Query.IQuery<TResponse> query,
         CancellationToken cancellationToken = default);
 
     /// <summary>

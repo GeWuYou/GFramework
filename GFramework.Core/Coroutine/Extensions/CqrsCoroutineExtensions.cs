@@ -1,10 +1,9 @@
 using System.Runtime.ExceptionServices;
 using GFramework.Core.Abstractions.Coroutine;
-using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Abstractions.Rule;
-using GFramework.Core.Coroutine.Extensions;
+using GFramework.Cqrs.Abstractions.Cqrs;
 
-namespace GFramework.Core.Cqrs.Extensions;
+namespace GFramework.Core.Coroutine.Extensions;
 
 /// <summary>
 ///     提供 CQRS 命令与协程集成的扩展方法。

@@ -1,9 +1,9 @@
-using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Architectures;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
+using GFramework.Cqrs.Abstractions.Cqrs;
 
-namespace GFramework.Core.Tests.Mediator;
+namespace GFramework.Cqrs.Tests.Mediator;
 
 /// <summary>
 /// Mediator高级特性专项测试
@@ -12,10 +12,6 @@ namespace GFramework.Core.Tests.Mediator;
 [TestFixture]
 public class MediatorAdvancedFeaturesTests
 {
-    private MicrosoftDiContainer? _container;
-
-    private ArchitectureContext? _context;
-
     [SetUp]
     public void SetUp()
     {
@@ -43,6 +39,10 @@ public class MediatorAdvancedFeaturesTests
         _context = null;
         _container = null;
     }
+
+    private MicrosoftDiContainer? _container;
+
+    private ArchitectureContext? _context;
 
 
     [Test]

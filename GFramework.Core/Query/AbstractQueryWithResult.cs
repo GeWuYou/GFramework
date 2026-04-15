@@ -1,6 +1,5 @@
-﻿using GFramework.Core.Abstractions.Cqrs.Query;
-using GFramework.Core.Abstractions.Query;
-using GFramework.Core.Rule;
+﻿using GFramework.Core.Rule;
+using GFramework.Cqrs.Abstractions.Cqrs.Query;
 
 namespace GFramework.Core.Query;
 
@@ -9,7 +8,8 @@ namespace GFramework.Core.Query;
 /// </summary>
 /// <typeparam name="TInput">查询输入参数的类型，必须实现IQueryInput接口</typeparam>
 /// <typeparam name="TResult">查询结果的类型</typeparam>
-public abstract class AbstractQuery<TInput, TResult>(TInput input) : ContextAwareBase, GFramework.Core.Abstractions.Query.IQuery<TResult>
+public abstract class AbstractQuery<TInput, TResult>(TInput input)
+    : ContextAwareBase, Abstractions.Query.IQuery<TResult>
     where TInput : IQueryInput
 {
     /// <summary>

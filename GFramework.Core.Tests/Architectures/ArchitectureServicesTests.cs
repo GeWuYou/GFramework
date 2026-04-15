@@ -1,6 +1,5 @@
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Command;
-using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Abstractions.Environment;
 using GFramework.Core.Abstractions.Events;
 using GFramework.Core.Abstractions.Ioc;
@@ -14,6 +13,7 @@ using GFramework.Core.Environment;
 using GFramework.Core.Events;
 using GFramework.Core.Ioc;
 using GFramework.Core.Query;
+using GFramework.Cqrs.Abstractions.Cqrs;
 using ICommand = GFramework.Core.Abstractions.Command.ICommand;
 
 namespace GFramework.Core.Tests.Architectures;
@@ -34,16 +34,16 @@ namespace GFramework.Core.Tests.Architectures;
 [TestFixture]
 public class ArchitectureServicesTests
 {
-    private TestArchitectureContextV3? _context;
-
-    private ArchitectureServices? _services;
-
     [SetUp]
     public void SetUp()
     {
         _services = new ArchitectureServices();
         _context = new TestArchitectureContextV3();
     }
+
+    private TestArchitectureContextV3? _context;
+
+    private ArchitectureServices? _services;
 
     private void RegisterBuiltInServices()
     {
@@ -359,24 +359,26 @@ public class TestArchitectureContextV3 : IArchitectureContext
         throw new NotImplementedException();
     }
 
-    public ValueTask<TResponse> SendCommandAsync<TResponse>(Abstractions.Cqrs.Command.ICommand<TResponse> command,
+    public ValueTask<TResponse> SendCommandAsync<TResponse>(
+        GFramework.Cqrs.Abstractions.Cqrs.Command.ICommand<TResponse> command,
         CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }
 
-    public TResponse SendCommand<TResponse>(Abstractions.Cqrs.Command.ICommand<TResponse> command)
+    public TResponse SendCommand<TResponse>(GFramework.Cqrs.Abstractions.Cqrs.Command.ICommand<TResponse> command)
     {
         throw new NotImplementedException();
     }
 
-    public ValueTask<TResponse> SendQueryAsync<TResponse>(Abstractions.Cqrs.Query.IQuery<TResponse> query,
+    public ValueTask<TResponse> SendQueryAsync<TResponse>(
+        GFramework.Cqrs.Abstractions.Cqrs.Query.IQuery<TResponse> query,
         CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }
 
-    public TResponse SendQuery<TResponse>(Abstractions.Cqrs.Query.IQuery<TResponse> query)
+    public TResponse SendQuery<TResponse>(GFramework.Cqrs.Abstractions.Cqrs.Query.IQuery<TResponse> query)
     {
         throw new NotImplementedException();
     }

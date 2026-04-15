@@ -1,5 +1,4 @@
 using GFramework.Core.Abstractions.Architectures;
-using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Abstractions.Events;
 using GFramework.Core.Architectures;
 using GFramework.Core.Command;
@@ -8,23 +7,14 @@ using GFramework.Core.Events;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
 using GFramework.Core.Query;
+using GFramework.Cqrs.Abstractions.Cqrs;
 using ICommand = GFramework.Core.Abstractions.Command.ICommand;
-using Unit = GFramework.Core.Abstractions.Cqrs.Unit;
 
-namespace GFramework.Core.Tests.Mediator;
+namespace GFramework.Cqrs.Tests.Mediator;
 
 [TestFixture]
 public class MediatorComprehensiveTests
 {
-    private AsyncQueryExecutor? _asyncQueryBus;
-    private CommandExecutor? _commandBus;
-    private MicrosoftDiContainer? _container;
-
-    private ArchitectureContext? _context;
-    private DefaultEnvironment? _environment;
-    private EventBus? _eventBus;
-    private QueryExecutor? _queryBus;
-
     /// <summary>
     ///     测试初始化方法，在每个测试方法执行前运行。
     ///     负责初始化日志工厂、依赖注入容器、自有 CQRS 处理器以及各种总线服务。
@@ -78,6 +68,15 @@ public class MediatorComprehensiveTests
         _asyncQueryBus = null;
         _environment = null;
     }
+
+    private AsyncQueryExecutor? _asyncQueryBus;
+    private CommandExecutor? _commandBus;
+    private MicrosoftDiContainer? _container;
+
+    private ArchitectureContext? _context;
+    private DefaultEnvironment? _environment;
+    private EventBus? _eventBus;
+    private QueryExecutor? _queryBus;
 
     /// <summary>
     ///     测试SendRequestAsync方法在请求有效时返回结果

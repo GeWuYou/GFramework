@@ -3,9 +3,10 @@ using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Architectures;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
+using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Tests.Logging;
 
-namespace GFramework.Core.Tests.Cqrs;
+namespace GFramework.Cqrs.Tests.Cqrs;
 
 /// <summary>
 ///     验证 CQRS 处理器自动注册在顺序与容错层面的可观察行为。

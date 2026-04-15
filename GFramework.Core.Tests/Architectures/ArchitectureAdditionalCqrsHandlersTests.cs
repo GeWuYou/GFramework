@@ -3,6 +3,7 @@ using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Architectures;
 using GFramework.Core.Logging;
+using GFramework.Cqrs.Abstractions.Cqrs;
 
 namespace GFramework.Core.Tests.Architectures;
 
@@ -12,8 +13,6 @@ namespace GFramework.Core.Tests.Architectures;
 [TestFixture]
 public sealed class ArchitectureAdditionalCqrsHandlersTests
 {
-    private ILoggerFactoryProvider? _previousLoggerFactoryProvider;
-
     /// <summary>
     ///     初始化日志工厂和共享测试状态。
     /// </summary>
@@ -38,6 +37,8 @@ public sealed class ArchitectureAdditionalCqrsHandlersTests
                                          ?? throw new InvalidOperationException(
                                              "LoggerFactoryResolver.Provider should be captured during setup.");
     }
+
+    private ILoggerFactoryProvider? _previousLoggerFactoryProvider;
 
     /// <summary>
     ///     验证显式声明的额外程序集会在初始化阶段接入当前架构容器。

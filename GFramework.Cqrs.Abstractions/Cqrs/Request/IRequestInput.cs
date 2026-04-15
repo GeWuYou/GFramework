@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace GFramework.Core.Abstractions.Cqrs.Request;
+namespace GFramework.Cqrs.Abstractions.Cqrs.Request;
 
 /// <summary>
 /// 表示请求输入数据的标记接口。

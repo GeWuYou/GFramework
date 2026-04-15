@@ -1,6 +1,5 @@
-﻿using GFramework.Core.Abstractions.Command;
-using GFramework.Core.Abstractions.Cqrs.Command;
-using GFramework.Core.Rule;
+﻿using GFramework.Core.Rule;
+using GFramework.Cqrs.Abstractions.Cqrs.Command;
 
 namespace GFramework.Core.Command;
 
@@ -10,14 +9,15 @@ namespace GFramework.Core.Command;
 /// <typeparam name="TInput">命令输入参数类型，必须实现 ICommandInput 接口</typeparam>
 /// <typeparam name="TResult">命令执行后返回的结果类型</typeparam>
 /// <param name="input">命令执行所需的输入参数</param>
-public abstract class AbstractCommand<TInput, TResult>(TInput input) : ContextAwareBase, GFramework.Core.Abstractions.Command.ICommand<TResult>
+public abstract class AbstractCommand<TInput, TResult>(TInput input)
+    : ContextAwareBase, Abstractions.Command.ICommand<TResult>
     where TInput : ICommandInput
 {
     /// <summary>
     ///     执行命令的入口方法，实现 ICommand{TResult} 接口的 Execute 方法
     /// </summary>
     /// <returns>命令执行后的结果</returns>
-    TResult GFramework.Core.Abstractions.Command.ICommand<TResult>.Execute()
+    TResult Abstractions.Command.ICommand<TResult>.Execute()
     {
         return OnExecute(input);
     }

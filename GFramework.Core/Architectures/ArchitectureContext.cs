@@ -9,6 +9,7 @@ using GFramework.Core.Abstractions.Model;
 using GFramework.Core.Abstractions.Query;
 using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Abstractions.Utility;
+using GFramework.Cqrs.Abstractions.Cqrs;
 using ICommand = GFramework.Core.Abstractions.Command.ICommand;
 
 namespace GFramework.Core.Architectures;
@@ -160,7 +161,7 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     /// <typeparam name="TResponse">查询响应类型</typeparam>
     /// <param name="query">要发送的查询对象</param>
     /// <returns>查询结果</returns>
-    public TResponse SendQuery<TResponse>(Abstractions.Cqrs.Query.IQuery<TResponse> query)
+    public TResponse SendQuery<TResponse>(GFramework.Cqrs.Abstractions.Cqrs.Query.IQuery<TResponse> query)
     {
         return SendQueryAsync(query).AsTask().GetAwaiter().GetResult();
     }
@@ -186,7 +187,8 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     /// <param name="query">要发送的查询对象</param>
     /// <param name="cancellationToken">取消令牌，用于取消操作</param>
     /// <returns>包含查询结果的ValueTask</returns>
-    public async ValueTask<TResponse> SendQueryAsync<TResponse>(Abstractions.Cqrs.Query.IQuery<TResponse> query,
+    public async ValueTask<TResponse> SendQueryAsync<TResponse>(
+        GFramework.Cqrs.Abstractions.Cqrs.Query.IQuery<TResponse> query,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
@@ -322,7 +324,8 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     /// <param name="command">要发送的命令对象</param>
     /// <param name="cancellationToken">取消令牌，用于取消操作</param>
     /// <returns>包含命令执行结果的ValueTask</returns>
-    public async ValueTask<TResponse> SendCommandAsync<TResponse>(Abstractions.Cqrs.Command.ICommand<TResponse> command,
+    public async ValueTask<TResponse> SendCommandAsync<TResponse>(
+        GFramework.Cqrs.Abstractions.Cqrs.Command.ICommand<TResponse> command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
@@ -361,7 +364,7 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     /// <typeparam name="TResponse">命令响应类型</typeparam>
     /// <param name="command">要发送的命令对象</param>
     /// <returns>命令执行结果</returns>
-    public TResponse SendCommand<TResponse>(Abstractions.Cqrs.Command.ICommand<TResponse> command)
+    public TResponse SendCommand<TResponse>(GFramework.Cqrs.Abstractions.Cqrs.Command.ICommand<TResponse> command)
     {
         return SendCommandAsync(command).AsTask().GetAwaiter().GetResult();
     }

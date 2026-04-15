@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace GFramework.Core.Abstractions.Cqrs.Notification;
+namespace GFramework.Cqrs.Abstractions.Cqrs.Notification;
 
 /// <summary>
 /// 表示通知输入数据的标记接口。

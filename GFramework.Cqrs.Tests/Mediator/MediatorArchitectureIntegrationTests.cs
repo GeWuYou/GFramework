@@ -1,13 +1,13 @@
 using GFramework.Core.Abstractions.Architectures;
-using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Architectures;
 using GFramework.Core.Command;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
 using GFramework.Core.Rule;
+using GFramework.Cqrs.Abstractions.Cqrs;
 using ICommand = GFramework.Core.Abstractions.Command.ICommand;
 
-namespace GFramework.Core.Tests.Mediator;
+namespace GFramework.Cqrs.Tests.Mediator;
 
 /// <summary>
 /// Mediator与架构上下文集成测试
@@ -16,11 +16,6 @@ namespace GFramework.Core.Tests.Mediator;
 [TestFixture]
 public class MediatorArchitectureIntegrationTests
 {
-    private CommandExecutor? _commandBus;
-    private MicrosoftDiContainer? _container;
-
-    private ArchitectureContext? _context;
-
     [SetUp]
     public void SetUp()
     {
@@ -53,6 +48,11 @@ public class MediatorArchitectureIntegrationTests
         _container = null;
         _commandBus = null;
     }
+
+    private CommandExecutor? _commandBus;
+    private MicrosoftDiContainer? _container;
+
+    private ArchitectureContext? _context;
 
     [Test]
     public async Task Handler_Can_Access_Architecture_Context()

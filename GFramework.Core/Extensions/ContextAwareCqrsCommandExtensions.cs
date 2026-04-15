@@ -1,7 +1,7 @@
-using GFramework.Core.Abstractions.Cqrs.Command;
 using GFramework.Core.Abstractions.Rule;
+using GFramework.Cqrs.Abstractions.Cqrs.Command;
 
-namespace GFramework.Core.Cqrs.Extensions;
+namespace GFramework.Core.Extensions;
 
 /// <summary>
 ///     提供对 <see cref="IContextAware" /> 接口的 CQRS 命令扩展方法。

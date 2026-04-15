@@ -4,8 +4,9 @@ using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Architectures;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
+using GFramework.Cqrs.Abstractions.Cqrs;
 
-namespace GFramework.Core.Tests;
+namespace GFramework.Cqrs.Tests;
 
 /// <summary>
 ///     为测试项目提供对 CQRS 处理器真实注册入口的受控访问。
