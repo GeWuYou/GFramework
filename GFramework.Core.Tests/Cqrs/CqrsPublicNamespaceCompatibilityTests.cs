@@ -17,7 +17,7 @@ namespace GFramework.Core.Tests.Cqrs;
 public sealed class CqrsPublicNamespaceCompatibilityTests
 {
     /// <summary>
-    ///     验证基础消息类型继续暴露在历史 Core.Cqrs 命名空间，同时由独立 runtime 程序集承载实现。
+    ///     验证基础消息类型继续暴露在历史公开 CQRS 命名空间（GFramework.Cqrs.*），同时由独立 runtime 程序集承载实现。
     /// </summary>
     [Test]
     public void Base_Message_Types_Should_Live_In_Cqrs_Namespaces_And_Runtime_Assembly()
@@ -57,7 +57,7 @@ public sealed class CqrsPublicNamespaceCompatibilityTests
 
     private static void AssertForwardedType(string assemblyQualifiedTypeName)
     {
-        var resolvedType = Type.GetType(assemblyQualifiedTypeName, throwOnError: true);
+        var resolvedType = Type.GetType(assemblyQualifiedTypeName, throwOnError: false);
 
         Assert.Multiple(() =>
         {
