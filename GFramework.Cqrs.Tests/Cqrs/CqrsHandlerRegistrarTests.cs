@@ -3,7 +3,7 @@ using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Architectures;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
-using GFramework.Core.Tests.Logging;
+using GFramework.Cqrs.Tests.Logging;
 
 namespace GFramework.Core.Tests.Cqrs;
 
@@ -13,9 +13,6 @@ namespace GFramework.Core.Tests.Cqrs;
 [TestFixture]
 internal sealed class CqrsHandlerRegistrarTests
 {
-    private MicrosoftDiContainer? _container;
-    private ArchitectureContext? _context;
-
     /// <summary>
     ///     初始化测试容器并重置共享状态。
     /// </summary>
@@ -44,6 +41,9 @@ internal sealed class CqrsHandlerRegistrarTests
         _container = null;
         DeterministicNotificationHandlerState.Reset();
     }
+
+    private MicrosoftDiContainer? _container;
+    private ArchitectureContext? _context;
 
     /// <summary>
     ///     验证自动扫描到的通知处理器会按稳定名称顺序执行，而不是依赖反射枚举顺序。

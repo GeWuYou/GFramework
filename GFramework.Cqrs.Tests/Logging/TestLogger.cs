@@ -14,7 +14,7 @@
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Logging;
 
-namespace GFramework.Core.Tests.Logging;
+namespace GFramework.Cqrs.Tests.Logging;
 
 /// <summary>
 ///     供 CQRS 测试项目复用的最小日志记录器实现。
