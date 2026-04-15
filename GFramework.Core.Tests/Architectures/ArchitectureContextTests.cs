@@ -16,6 +16,7 @@ using GFramework.Core.Events;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
 using GFramework.Core.Query;
+using GFramework.Cqrs.Abstractions.Cqrs;
 
 namespace GFramework.Core.Tests.Architectures;
 
@@ -44,15 +45,6 @@ namespace GFramework.Core.Tests.Architectures;
 [TestFixture]
 public class ArchitectureContextTests
 {
-    private AsyncQueryExecutor? _asyncQueryBus;
-    private CommandExecutor? _commandBus;
-    private MicrosoftDiContainer? _container;
-
-    private ArchitectureContext? _context;
-    private DefaultEnvironment? _environment;
-    private EventBus? _eventBus;
-    private QueryExecutor? _queryBus;
-
     [SetUp]
     public void SetUp()
     {
@@ -83,6 +75,15 @@ public class ArchitectureContextTests
 
         _context = new ArchitectureContext(_container);
     }
+
+    private AsyncQueryExecutor? _asyncQueryBus;
+    private CommandExecutor? _commandBus;
+    private MicrosoftDiContainer? _container;
+
+    private ArchitectureContext? _context;
+    private DefaultEnvironment? _environment;
+    private EventBus? _eventBus;
+    private QueryExecutor? _queryBus;
 
     /// <summary>
     ///     测试构造函数在所有参数都有效时不应抛出异常
