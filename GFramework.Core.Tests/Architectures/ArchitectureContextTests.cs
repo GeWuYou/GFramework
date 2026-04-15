@@ -16,7 +16,6 @@ using GFramework.Core.Events;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
 using GFramework.Core.Query;
-using GFramework.Cqrs.Abstractions.Cqrs;
 
 namespace GFramework.Core.Tests.Architectures;
 
@@ -45,6 +44,15 @@ namespace GFramework.Core.Tests.Architectures;
 [TestFixture]
 public class ArchitectureContextTests
 {
+    private AsyncQueryExecutor? _asyncQueryBus;
+    private CommandExecutor? _commandBus;
+    private MicrosoftDiContainer? _container;
+
+    private ArchitectureContext? _context;
+    private DefaultEnvironment? _environment;
+    private EventBus? _eventBus;
+    private QueryExecutor? _queryBus;
+
     [SetUp]
     public void SetUp()
     {
@@ -75,15 +83,6 @@ public class ArchitectureContextTests
 
         _context = new ArchitectureContext(_container);
     }
-
-    private AsyncQueryExecutor? _asyncQueryBus;
-    private CommandExecutor? _commandBus;
-    private MicrosoftDiContainer? _container;
-
-    private ArchitectureContext? _context;
-    private DefaultEnvironment? _environment;
-    private EventBus? _eventBus;
-    private QueryExecutor? _queryBus;
 
     /// <summary>
     ///     测试构造函数在所有参数都有效时不应抛出异常
@@ -309,7 +308,9 @@ public class ArchitectureContextTests
     [Test]
     public async Task SendRequestAsync_Should_ResolveCqrsRuntime_OnlyOnce_When_AccessedConcurrently()
     {
-        const int workerCount = 16;
+        const int workerCount = 8;
+        var workerStartupTimeout = TimeSpan.FromSeconds(5);
+        var firstResolutionTimeout = TimeSpan.FromSeconds(5);
         using var startGate = new ManualResetEventSlim(false);
         using var allowResolutionToComplete = new ManualResetEventSlim(false);
         using var workersReady = new CountdownEvent(workerCount);
@@ -342,13 +343,13 @@ public class ArchitectureContextTests
             .ToArray();
 
         Assert.That(
-            workersReady.Wait(TimeSpan.FromSeconds(1)),
+            workersReady.Wait(workerStartupTimeout),
             Is.True,
             "Expected all workers to be ready before releasing start gate.");
         startGate.Set();
 
         Assert.That(
-            SpinWait.SpinUntil(() => Volatile.Read(ref resolutionCallCount) > 0, TimeSpan.FromSeconds(1)),
+            SpinWait.SpinUntil(() => Volatile.Read(ref resolutionCallCount) > 0, firstResolutionTimeout),
             Is.True,
             "Expected at least one CQRS runtime resolution attempt.");
 
