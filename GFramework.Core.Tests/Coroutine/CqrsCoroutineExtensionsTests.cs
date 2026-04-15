@@ -93,6 +93,53 @@ public class CqrsCoroutineExtensionsTests
     }
 
     /// <summary>
+    ///     验证 SendCommandCoroutine 在底层命令被取消且未提供错误回调时会抛出取消异常。
+    /// </summary>
+    [Test]
+    public void SendCommandCoroutine_Should_Throw_TaskCanceledException_When_Command_Is_Canceled()
+    {
+        var command = new TestCommand("Test");
+        var contextAware = new TestContextAware();
+        using var cancellationTokenSource = new CancellationTokenSource();
+
+        cancellationTokenSource.Cancel();
+        contextAware.MockContext
+            .Setup(ctx => ctx.SendAsync(command, It.IsAny<CancellationToken>()))
+            .Returns(new ValueTask(Task.FromCanceled(cancellationTokenSource.Token)));
+
+        var coroutine = CqrsCoroutineExtensions.SendCommandCoroutine(contextAware, command);
+
+        Assert.That(coroutine.MoveNext(), Is.True);
+        Assert.Throws<TaskCanceledException>(() => coroutine.MoveNext());
+    }
+
+    /// <summary>
+    ///     验证 SendCommandCoroutine 在底层命令被取消且提供错误回调时会把取消异常转发给回调。
+    /// </summary>
+    [Test]
+    public void SendCommandCoroutine_Should_Forward_TaskCanceledException_To_Error_Handler_When_Command_Is_Canceled()
+    {
+        var command = new TestCommand("Test");
+        var contextAware = new TestContextAware();
+        using var cancellationTokenSource = new CancellationTokenSource();
+        Exception? capturedException = null;
+
+        cancellationTokenSource.Cancel();
+        contextAware.MockContext
+            .Setup(ctx => ctx.SendAsync(command, It.IsAny<CancellationToken>()))
+            .Returns(new ValueTask(Task.FromCanceled(cancellationTokenSource.Token)));
+
+        var coroutine = CqrsCoroutineExtensions.SendCommandCoroutine(
+            contextAware,
+            command,
+            exception => capturedException = exception);
+
+        Assert.That(coroutine.MoveNext(), Is.True);
+        Assert.That(coroutine.MoveNext(), Is.False);
+        Assert.That(capturedException, Is.TypeOf<TaskCanceledException>());
+    }
+
+    /// <summary>
     ///     测试用的简单命令类
     /// </summary>
     private sealed record TestCommand(string Data) : IRequest<Unit>;
@@ -102,13 +149,24 @@ public class CqrsCoroutineExtensionsTests
     /// </summary>
     private sealed class TestContextAware : IContextAware
     {
+        /// <summary>
+        ///     提供可配置的架构上下文 Mock。
+        /// </summary>
         public Mock<IArchitectureContext> MockContext { get; } = new();
 
+        /// <summary>
+        ///     获取当前架构上下文。
+        /// </summary>
+        /// <returns>用于 CQRS 调用的架构上下文实例。</returns>
         public IArchitectureContext GetContext()
         {
             return MockContext.Object;
         }
 
+        /// <summary>
+        ///     设置架构上下文。
+        /// </summary>
+        /// <param name="context">要设置的架构上下文。</param>
         public void SetContext(IArchitectureContext context)
         {
         }

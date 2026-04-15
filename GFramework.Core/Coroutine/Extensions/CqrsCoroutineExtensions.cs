@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using GFramework.Core.Abstractions.Coroutine;
 using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Abstractions.Rule;
@@ -22,9 +23,12 @@ public static class CqrsCoroutineExtensions
     /// <exception cref="ArgumentNullException">
     ///     当 <paramref name="contextAware" /> 或 <paramref name="command" /> 为 <see langword="null" /> 时抛出。
     /// </exception>
+    /// <exception cref="TaskCanceledException">
+    ///     当底层命令调度被取消且未提供 <paramref name="onError" /> 时抛出。
+    /// </exception>
     /// <remarks>
     ///     当底层命令调度失败时，该扩展会把底层异常解包后传给 <paramref name="onError" />，
-    ///     或在未提供回调时重新抛出同一个异常实例，避免两条失败路径暴露不同的异常类型。
+    ///     在取消时则统一暴露 <see cref="TaskCanceledException" />，避免成功、失败与取消三种完成状态被混淆。
     /// </remarks>
     public static IEnumerator<IYieldInstruction> SendCommandCoroutine<TCommand>(
         this IContextAware contextAware,
@@ -39,6 +43,18 @@ public static class CqrsCoroutineExtensions
 
         yield return task.AsCoroutineInstruction();
 
+        if (task.IsCanceled)
+        {
+            var canceledException = new TaskCanceledException(task);
+            if (onError != null)
+            {
+                onError.Invoke(canceledException);
+                yield break;
+            }
+
+            ExceptionDispatchInfo.Capture(canceledException).Throw();
+        }
+
         if (!task.IsFaulted)
             yield break;
 
@@ -46,6 +62,6 @@ public static class CqrsCoroutineExtensions
         if (onError != null)
             onError.Invoke(exception);
         else
-            throw exception;
+            ExceptionDispatchInfo.Capture(exception).Throw();
     }
 }

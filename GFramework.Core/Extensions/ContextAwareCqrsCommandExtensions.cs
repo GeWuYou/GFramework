@@ -6,6 +6,9 @@ namespace GFramework.Core.Cqrs.Extensions;
 /// <summary>
 ///     提供对 <see cref="IContextAware" /> 接口的 CQRS 命令扩展方法。
 /// </summary>
+/// <remarks>
+///     该扩展类将命令分发统一路由到架构上下文中的 CQRS 运行时。
+/// </remarks>
 public static class ContextAwareCqrsCommandExtensions
 {
     /// <summary>
@@ -18,6 +21,9 @@ public static class ContextAwareCqrsCommandExtensions
     /// <exception cref="ArgumentNullException">
     ///     当 <paramref name="contextAware" /> 或 <paramref name="command" /> 为 <see langword="null" /> 时抛出。
     /// </exception>
+    /// <remarks>
+    ///     同步方法仅用于兼容同步调用链；新代码建议优先使用异步版本。
+    /// </remarks>
     public static TResponse SendCommand<TResponse>(this IContextAware contextAware, ICommand<TResponse> command)
     {
         ArgumentNullException.ThrowIfNull(contextAware);
@@ -37,6 +43,9 @@ public static class ContextAwareCqrsCommandExtensions
     /// <exception cref="ArgumentNullException">
     ///     当 <paramref name="contextAware" /> 或 <paramref name="command" /> 为 <see langword="null" /> 时抛出。
     /// </exception>
+    /// <remarks>
+    ///     该方法直接返回底层 <see cref="ValueTask{TResult}" />，避免额外的 async 状态机分配。
+    /// </remarks>
     public static ValueTask<TResponse> SendCommandAsync<TResponse>(
         this IContextAware contextAware,
         ICommand<TResponse> command,
