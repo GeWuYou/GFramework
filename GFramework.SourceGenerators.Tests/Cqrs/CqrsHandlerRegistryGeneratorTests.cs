@@ -1,3 +1,4 @@
+using System.Reflection;
 using GFramework.SourceGenerators.Cqrs;
 using GFramework.SourceGenerators.Tests.Core;
 
@@ -191,5 +192,24 @@ public class CqrsHandlerRegistryGeneratorTests
         };
 
         await test.RunAsync();
+    }
+
+    /// <summary>
+    ///     验证日志字符串转义会覆盖换行、反斜杠和双引号，避免生成代码中的字符串字面量被意外截断。
+    /// </summary>
+    [Test]
+    public void Escape_String_Literal_Handles_Control_Characters()
+    {
+        var method = typeof(CqrsHandlerRegistryGenerator).GetMethod(
+            "EscapeStringLiteral",
+            BindingFlags.NonPublic | BindingFlags.Static);
+
+        Assert.That(method, Is.Not.Null);
+
+        const string input = "line1\r\nline2\\\"";
+        const string expected = "line1\\r\\nline2\\\\\\\"";
+        var escaped = method!.Invoke(null, [input]) as string;
+
+        Assert.That(escaped, Is.EqualTo(expected));
     }
 }
