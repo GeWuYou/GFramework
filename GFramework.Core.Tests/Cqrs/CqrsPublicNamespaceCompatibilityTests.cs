@@ -24,10 +24,10 @@ public sealed class CqrsPublicNamespaceCompatibilityTests
     {
         Assert.Multiple(() =>
         {
-            AssertLegacyType(typeof(CommandBase<TestCommandInput, Unit>), "GFramework.Core.Cqrs.Command");
-            AssertLegacyType(typeof(QueryBase<TestQueryInput, string>), "GFramework.Core.Cqrs.Query");
-            AssertLegacyType(typeof(RequestBase<TestRequestInput, string>), "GFramework.Core.Cqrs.Request");
-            AssertLegacyType(typeof(NotificationBase<TestNotificationInput>), "GFramework.Core.Cqrs.Notification");
+            AssertLegacyType(typeof(CommandBase<TestCommandInput, Unit>), "GFramework.Cqrs.Command");
+            AssertLegacyType(typeof(QueryBase<TestQueryInput, string>), "GFramework.Cqrs.Query");
+            AssertLegacyType(typeof(RequestBase<TestRequestInput, string>), "GFramework.Cqrs.Request");
+            AssertLegacyType(typeof(NotificationBase<TestNotificationInput>), "GFramework.Cqrs.Notification");
         });
     }
 
