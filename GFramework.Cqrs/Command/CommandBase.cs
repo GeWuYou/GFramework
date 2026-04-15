@@ -13,7 +13,7 @@
 
 using GFramework.Cqrs.Abstractions.Cqrs.Command;
 
-namespace GFramework.Core.Cqrs.Command;
+namespace GFramework.Cqrs.Command;
 
 /// <summary>
 ///     为携带输入模型的 CQRS 命令提供统一基类。

@@ -14,12 +14,12 @@
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Abstractions.Cqrs.Notification;
 
-namespace GFramework.Core.Cqrs.Notification;
+namespace GFramework.Cqrs.Notification;
 
 /// <summary>
 ///     为携带输入模型的 CQRS 通知提供统一基类。
 /// </summary>
-/// <typeparam name="TInput">通知输入类型，必须实现 <see cref="INotificationInput" />。</typeparam>
+/// <typeparam name="TInput">通知输入类型，必须实现 <see cref="input" />。</typeparam>
 /// <param name="input">通知广播时携带的输入对象。</param>
 /// <remarks>
 ///     该类型继续保留在历史公开命名空间中，以避免调用方因 runtime 程序集拆分而批量修改继承层次。

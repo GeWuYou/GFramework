@@ -13,12 +13,12 @@
 
 using GFramework.Cqrs.Abstractions.Cqrs.Query;
 
-namespace GFramework.Core.Cqrs.Query;
+namespace GFramework.Cqrs.Query;
 
 /// <summary>
 ///     为携带输入模型的 CQRS 查询提供统一基类。
 /// </summary>
-/// <typeparam name="TInput">查询输入类型，必须实现 <see cref="IQueryInput" />。</typeparam>
+/// <typeparam name="TInput">查询输入类型，必须实现 <see cref="TResponse" />。</typeparam>
 /// <typeparam name="TResponse">查询响应类型。</typeparam>
 /// <param name="input">查询执行所需的输入对象。</param>
 /// <remarks>

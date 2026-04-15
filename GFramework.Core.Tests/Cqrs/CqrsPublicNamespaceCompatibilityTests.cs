@@ -1,7 +1,3 @@
-using GFramework.Core.Cqrs.Command;
-using GFramework.Core.Cqrs.Notification;
-using GFramework.Core.Cqrs.Query;
-using GFramework.Core.Cqrs.Request;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Abstractions.Cqrs.Command;
 using GFramework.Cqrs.Abstractions.Cqrs.Notification;

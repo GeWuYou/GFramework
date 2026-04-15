@@ -14,12 +14,12 @@
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Abstractions.Cqrs.Request;
 
-namespace GFramework.Core.Cqrs.Request;
+namespace GFramework.Cqrs.Request;
 
 /// <summary>
 ///     为携带输入模型的通用 CQRS 请求提供统一基类。
 /// </summary>
-/// <typeparam name="TInput">请求输入类型，必须实现 <see cref="IRequestInput" />。</typeparam>
+/// <typeparam name="TInput">请求输入类型，必须实现 <see cref="TResponse" />。</typeparam>
 /// <typeparam name="TResponse">请求响应类型。</typeparam>
 /// <param name="input">请求执行所需的输入对象。</param>
 /// <remarks>
