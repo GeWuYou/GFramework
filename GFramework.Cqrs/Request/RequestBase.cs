@@ -14,19 +14,23 @@
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Abstractions.Cqrs.Request;
 
-namespace GFramework.Cqrs.Request;
+namespace GFramework.Core.Cqrs.Request;
 
 /// <summary>
-/// 表示一个基础请求类，用于处理带有输入和响应的请求模式实现。
-/// 该类实现了 IRequest&lt;TResponse&gt; 接口，提供了通用的请求结构。
+///     为携带输入模型的通用 CQRS 请求提供统一基类。
 /// </summary>
-/// <typeparam name="TInput">请求输入数据的类型，必须实现 IRequestInput 接口</typeparam>
-/// <typeparam name="TResponse">请求执行后返回结果的类型</typeparam>
-/// <param name="input">请求执行所需的输入数据</param>
-public abstract class RequestBase<TInput, TResponse>(TInput input) : IRequest<TResponse> where TInput : IRequestInput
+/// <typeparam name="TInput">请求输入类型，必须实现 <see cref="IRequestInput" />。</typeparam>
+/// <typeparam name="TResponse">请求响应类型。</typeparam>
+/// <param name="input">请求执行所需的输入对象。</param>
+/// <remarks>
+///     该类型继续保留在历史公开命名空间中，以避免调用方因 runtime 程序集拆分而批量修改继承层次。
+///     具体实现现由 <c>GFramework.Cqrs</c> 程序集承载，并通过 type forward 维持旧程序集兼容性。
+/// </remarks>
+public abstract class RequestBase<TInput, TResponse>(TInput input) : IRequest<TResponse>
+    where TInput : IRequestInput
 {
     /// <summary>
-    /// 获取请求的输入数据。
+    ///     获取请求执行时携带的输入对象。
     /// </summary>
     public TInput Input => input;
 }

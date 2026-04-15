@@ -4,11 +4,10 @@ using System.Reflection;
 using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Abstractions.Logging;
+using GFramework.Core.Cqrs.Command;
 using GFramework.Core.Ioc;
-using GFramework.Core.Logging;
 using GFramework.Cqrs;
 using GFramework.Cqrs.Abstractions.Cqrs;
-using GFramework.Cqrs.Command;
 
 namespace GFramework.Tests.Common;
 
@@ -48,7 +47,6 @@ public static class CqrsTestRuntime
     /// </summary>
     /// <param name="container">目标测试容器。</param>
     /// <exception cref="ArgumentNullException"><paramref name="container" /> 为 <see langword="null" />。</exception>
-    /// <exception cref="TargetInvocationException">反射调用底层 CQRS runtime 或注册器构造函数失败时抛出。</exception>
     /// <remarks>
     ///     这使仅使用 <see cref="MicrosoftDiContainer" /> 的测试环境也能观察与生产路径一致的 runtime 行为，
     ///     而无需完整启动服务模块管理器。

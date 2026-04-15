@@ -17,22 +17,24 @@ using GFramework.Cqrs.Abstractions.Cqrs.Query;
 namespace GFramework.Cqrs.Cqrs.Query;
 
 /// <summary>
-/// 抽象流式查询处理器基类
-/// 继承自轻量 CQRS 上下文基类并实现IStreamQueryHandler接口，为具体的流式查询处理器提供基础功能
-/// 支持流式处理查询并产生异步可枚举的响应序列，适用于大数据量或实时数据查询场景
+///     为流式查询处理器提供共享的 CQRS 上下文访问基类。
 /// </summary>
-/// <typeparam name="TQuery">流式查询类型，必须实现IStreamQuery接口</typeparam>
-/// <typeparam name="TResponse">流式查询响应元素类型</typeparam>
+/// <typeparam name="TQuery">流式查询类型，必须实现 <see cref="IStreamQuery{TResponse}" />。</typeparam>
+/// <typeparam name="TResponse">流式查询响应元素类型。</typeparam>
+/// <remarks>
+///     该基类复用 <see cref="CqrsContextAwareHandlerBase" /> 的上下文注入能力，并实现
+///     <see cref="IStreamRequestHandler{TQuery,TResponse}" /> 契约，让派生类只需聚焦于结果流的生成逻辑。
+///     适用于需要逐步产出大量结果或长生命周期响应流的查询场景。
+/// </remarks>
 public abstract class AbstractStreamQueryHandler<TQuery, TResponse> : CqrsContextAwareHandlerBase,
     IStreamRequestHandler<TQuery, TResponse>
     where TQuery : IStreamQuery<TResponse>
 {
     /// <summary>
-    /// 处理流式查询并返回异步可枚举的响应序列
-    /// 由具体的流式查询处理器子类实现流式查询处理逻辑
+    ///     处理流式查询并返回异步可枚举的响应序列。
     /// </summary>
-    /// <param name="query">要处理的流式查询对象</param>
-    /// <param name="cancellationToken">取消令牌，用于取消流式查询操作</param>
-    /// <returns>异步可枚举的响应序列，每个元素类型为TResponse</returns>
+    /// <param name="query">要处理的流式查询对象。</param>
+    /// <param name="cancellationToken">用于停止结果流生成的取消令牌。</param>
+    /// <returns>按需生成的异步响应序列。</returns>
     public abstract IAsyncEnumerable<TResponse> Handle(TQuery query, CancellationToken cancellationToken);
 }

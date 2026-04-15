@@ -13,19 +13,23 @@
 
 using GFramework.Cqrs.Abstractions.Cqrs.Command;
 
-namespace GFramework.Cqrs.Command;
+namespace GFramework.Core.Cqrs.Command;
 
 /// <summary>
-/// 表示一个基础命令类，用于处理带有输入和响应的命令模式实现。
-/// 该类实现了 ICommand&lt;TResponse&gt; 接口，提供了通用的命令结构。
+///     为携带输入模型的 CQRS 命令提供统一基类。
 /// </summary>
-/// <typeparam name="TInput">命令输入数据的类型</typeparam>
-/// <typeparam name="TResponse">命令执行后返回结果的类型</typeparam>
-/// <param name="input">命令执行所需的输入数据</param>
-public abstract class CommandBase<TInput, TResponse>(TInput input) : ICommand<TResponse> where TInput : ICommandInput
+/// <typeparam name="TInput">命令输入类型。</typeparam>
+/// <typeparam name="TResponse">命令响应类型。</typeparam>
+/// <param name="input">命令执行所需的输入对象。</param>
+/// <remarks>
+///     该类型继续保留在历史公开命名空间中，以避免调用方因 runtime 程序集拆分而批量修改继承层次。
+///     具体实现现由 <c>GFramework.Cqrs</c> 程序集承载，并通过 type forward 维持旧程序集兼容性。
+/// </remarks>
+public abstract class CommandBase<TInput, TResponse>(TInput input) : ICommand<TResponse>
+    where TInput : ICommandInput
 {
     /// <summary>
-    /// 获取命令的输入数据。
+    ///     获取命令执行时携带的输入对象。
     /// </summary>
     public TInput Input => input;
 }

@@ -22,8 +22,8 @@ namespace GFramework.Cqrs.Cqrs.Behaviors;
 /// <typeparam name="TRequest">请求类型。</typeparam>
 /// <typeparam name="TResponse">响应类型。</typeparam>
 /// <remarks>
-///     该行为保留在 <c>GFramework.Core.Cqrs.Behaviors</c> 命名空间以兼容现有调用点，
-///     但实现已迁入 <c>GFramework.Cqrs</c> 程序集，避免继续由 <c>GFramework.Core</c> 承载 CQRS runtime 细节。
+///     该行为已迁移到 <c>GFramework.Cqrs.Cqrs.Behaviors</c> 命名空间，
+///     实现位于 <c>GFramework.Cqrs</c> 程序集，用于承载 CQRS runtime 细节并与旧层解耦。
 /// </remarks>
 public sealed class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
     where TRequest : IRequest<TResponse>

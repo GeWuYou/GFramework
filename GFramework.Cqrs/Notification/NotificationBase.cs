@@ -14,18 +14,22 @@
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Abstractions.Cqrs.Notification;
 
-namespace GFramework.Cqrs.Notification;
+namespace GFramework.Core.Cqrs.Notification;
 
 /// <summary>
-/// 表示一个基础通知类，用于处理带有输入的通知模式实现。
-/// 该类实现了 INotification 接口，提供了通用的通知结构。
+///     为携带输入模型的 CQRS 通知提供统一基类。
 /// </summary>
-/// <typeparam name="TInput">通知输入数据的类型，必须实现 INotificationInput 接口</typeparam>
-/// <param name="input">通知执行所需的输入数据</param>
-public abstract class NotificationBase<TInput>(TInput input) : INotification where TInput : INotificationInput
+/// <typeparam name="TInput">通知输入类型，必须实现 <see cref="INotificationInput" />。</typeparam>
+/// <param name="input">通知广播时携带的输入对象。</param>
+/// <remarks>
+///     该类型继续保留在历史公开命名空间中，以避免调用方因 runtime 程序集拆分而批量修改继承层次。
+///     具体实现现由 <c>GFramework.Cqrs</c> 程序集承载，并通过 type forward 维持旧程序集兼容性。
+/// </remarks>
+public abstract class NotificationBase<TInput>(TInput input) : INotification
+    where TInput : INotificationInput
 {
     /// <summary>
-    /// 获取通知的输入数据。
+    ///     获取通知广播时携带的输入对象。
     /// </summary>
     public TInput Input => input;
 }

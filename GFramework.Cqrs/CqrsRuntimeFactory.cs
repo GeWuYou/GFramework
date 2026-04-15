@@ -21,6 +21,9 @@ public static class CqrsRuntimeFactory
     /// <param name="container">目标依赖注入容器。</param>
     /// <param name="logger">用于 runtime 诊断的日志器。</param>
     /// <returns>默认 CQRS runtime。</returns>
+    /// <exception cref="ArgumentNullException">
+    ///     <paramref name="container" /> 或 <paramref name="logger" /> 为 <see langword="null" />。
+    /// </exception>
     public static ICqrsRuntime CreateRuntime(IIocContainer container, ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(container);
@@ -35,6 +38,9 @@ public static class CqrsRuntimeFactory
     /// <param name="container">目标依赖注入容器。</param>
     /// <param name="logger">用于注册阶段诊断的日志器。</param>
     /// <returns>默认 CQRS handler registrar。</returns>
+    /// <exception cref="ArgumentNullException">
+    ///     <paramref name="container" /> 或 <paramref name="logger" /> 为 <see langword="null" />。
+    /// </exception>
     public static ICqrsHandlerRegistrar CreateHandlerRegistrar(IIocContainer container, ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(container);

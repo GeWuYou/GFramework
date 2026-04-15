@@ -10,19 +10,42 @@ namespace GFramework.Core.Abstractions.Logging;
 /// </remarks>
 public static class LoggerFactoryResolver
 {
-    private const string DefaultProviderTypeName =
+    private static readonly object ProviderLock = new();
+
+    private static string DefaultProviderTypeName =
         "GFramework.Core.Logging.ConsoleLoggerFactoryProvider, GFramework.Core";
+
+    private static ILoggerFactoryProvider? _provider;
 
     /// <summary>
     ///     获取或设置当前日志工厂提供程序。
     /// </summary>
+    /// <remarks>
+    ///     读取与赋值都会通过同一把锁串行化，确保并发调用方观察到确定的 provider 引用。
+    ///     当调用方未显式赋值时，会在首次访问时尝试解析默认实现；若解析失败，则退回静默 provider。
+    /// </remarks>
     /// <exception cref="ArgumentNullException">
     ///     当赋值为 <see langword="null" /> 时抛出。
     /// </exception>
     public static ILoggerFactoryProvider Provider
     {
-        get => field ??= CreateDefaultProvider();
-        set => field = value ?? throw new ArgumentNullException(nameof(value));
+        get
+        {
+            lock (ProviderLock)
+            {
+                _provider ??= CreateDefaultProvider();
+                return _provider;
+            }
+        }
+        set
+        {
+            var provider = value ?? throw new ArgumentNullException(nameof(value));
+
+            lock (ProviderLock)
+            {
+                _provider = provider;
+            }
+        }
     }
 
     /// <summary>
@@ -39,11 +62,19 @@ public static class LoggerFactoryResolver
 
     private static ILoggerFactoryProvider CreateDefaultProvider()
     {
-        if (Type.GetType(DefaultProviderTypeName, throwOnError: false) is { } providerType &&
-            Activator.CreateInstance(providerType) is ILoggerFactoryProvider provider)
+        try
         {
-            provider.MinLevel = LogLevel.Info;
-            return provider;
+            if (Type.GetType(DefaultProviderTypeName, throwOnError: false) is { } providerType &&
+                Activator.CreateInstance(providerType) is ILoggerFactoryProvider provider)
+            {
+                provider.MinLevel = LogLevel.Info;
+                return provider;
+            }
+        }
+        catch (Exception)
+        {
+            // The default provider is optional. Any load or activation failure must degrade to the silent provider so
+            // abstractions-only hosts can continue bootstrapping without the concrete logging assembly.
         }
 
         return new SilentLoggerFactoryProvider();
