@@ -8,13 +8,17 @@ namespace GFramework.SourceGenerators.Cqrs;
 [Generator]
 public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
 {
-    private const string CqrsNamespace = $"{PathContests.CoreAbstractionsNamespace}.Cqrs";
+    private const string CqrsContractsNamespace = $"{PathContests.CqrsAbstractionsNamespace}.Cqrs";
+    private const string CqrsRuntimeNamespace = PathContests.CqrsNamespace;
     private const string LoggingNamespace = $"{PathContests.CoreAbstractionsNamespace}.Logging";
-    private const string IRequestHandlerMetadataName = $"{CqrsNamespace}.IRequestHandler`2";
-    private const string INotificationHandlerMetadataName = $"{CqrsNamespace}.INotificationHandler`1";
-    private const string IStreamRequestHandlerMetadataName = $"{CqrsNamespace}.IStreamRequestHandler`2";
-    private const string ICqrsHandlerRegistryMetadataName = $"{CqrsNamespace}.ICqrsHandlerRegistry";
-    private const string CqrsHandlerRegistryAttributeMetadataName = $"{CqrsNamespace}.CqrsHandlerRegistryAttribute";
+    private const string IRequestHandlerMetadataName = $"{CqrsContractsNamespace}.IRequestHandler`2";
+    private const string INotificationHandlerMetadataName = $"{CqrsContractsNamespace}.INotificationHandler`1";
+    private const string IStreamRequestHandlerMetadataName = $"{CqrsContractsNamespace}.IStreamRequestHandler`2";
+    private const string ICqrsHandlerRegistryMetadataName = $"{CqrsRuntimeNamespace}.ICqrsHandlerRegistry";
+
+    private const string CqrsHandlerRegistryAttributeMetadataName =
+        $"{CqrsRuntimeNamespace}.CqrsHandlerRegistryAttribute";
+
     private const string ILoggerMetadataName = $"{LoggingNamespace}.ILogger";
     private const string IServiceCollectionMetadataName = "Microsoft.Extensions.DependencyInjection.IServiceCollection";
     private const string GeneratedNamespace = "GFramework.Generated.Cqrs";
@@ -273,7 +277,7 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         builder.AppendLine("#nullable enable");
         builder.AppendLine();
         builder.Append("[assembly: global::");
-        builder.Append(CqrsNamespace);
+        builder.Append(CqrsRuntimeNamespace);
         builder.Append(".CqrsHandlerRegistryAttribute(typeof(global::");
         builder.Append(GeneratedNamespace);
         builder.Append('.');
@@ -287,7 +291,7 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         builder.Append("internal sealed class ");
         builder.Append(GeneratedTypeName);
         builder.Append(" : global::");
-        builder.Append(CqrsNamespace);
+        builder.Append(CqrsRuntimeNamespace);
         builder.AppendLine(".ICqrsHandlerRegistry");
         builder.AppendLine("{");
         builder.Append(

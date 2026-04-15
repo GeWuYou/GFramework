@@ -1,4 +1,5 @@
 using GFramework.Core.Abstractions.Architectures;
+using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Utility;
 using GFramework.Core.Architectures;
 using GFramework.Core.Logging;

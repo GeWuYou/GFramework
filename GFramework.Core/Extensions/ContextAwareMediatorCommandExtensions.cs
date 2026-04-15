@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using GFramework.Core.Abstractions.Rule;
 using GFramework.Cqrs.Abstractions.Cqrs.Command;
+using GFramework.Cqrs.Extensions;
 
 namespace GFramework.Core.Extensions;
 
@@ -11,7 +12,7 @@ namespace GFramework.Core.Extensions;
 /// </summary>
 [EditorBrowsable(EditorBrowsableState.Never)]
 [Obsolete(
-    "Use GFramework.Core.Extensions.ContextAwareCqrsCommandExtensions instead. This compatibility alias will be removed in a future major version.")]
+    "Use GFramework.Cqrs.Extensions.ContextAwareCqrsCommandExtensions instead. This compatibility alias will be removed in a future major version.")]
 public static class ContextAwareMediatorCommandExtensions
 {
     /// <summary>

@@ -1,5 +1,6 @@
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Events;
+using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Architectures;
 using GFramework.Core.Command;
 using GFramework.Core.Environment;

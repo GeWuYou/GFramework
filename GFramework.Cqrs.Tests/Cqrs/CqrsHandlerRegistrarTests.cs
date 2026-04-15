@@ -1,4 +1,3 @@
-using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Architectures;
 using GFramework.Core.Ioc;

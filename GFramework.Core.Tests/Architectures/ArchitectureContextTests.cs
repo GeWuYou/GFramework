@@ -5,6 +5,7 @@ using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Abstractions.Enums;
 using GFramework.Core.Abstractions.Environment;
 using GFramework.Core.Abstractions.Ioc;
+using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Model;
 using GFramework.Core.Abstractions.Query;
 using GFramework.Core.Abstractions.Systems;

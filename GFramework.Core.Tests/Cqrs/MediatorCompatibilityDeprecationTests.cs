@@ -38,10 +38,10 @@ public class MediatorCompatibilityDeprecationTests
             "Use GFramework.Core.Extensions.ContextAwareCqrsExtensions instead.");
         AssertLegacyType(
             typeof(ContextAwareMediatorCommandExtensions),
-            "Use GFramework.Core.Extensions.ContextAwareCqrsCommandExtensions instead.");
+            "Use GFramework.Cqrs.Extensions.ContextAwareCqrsCommandExtensions instead.");
         AssertLegacyType(
             typeof(ContextAwareMediatorQueryExtensions),
-            "Use GFramework.Core.Extensions.ContextAwareCqrsQueryExtensions instead.");
+            "Use GFramework.Cqrs.Extensions.ContextAwareCqrsQueryExtensions instead.");
         AssertLegacyType(
             typeof(MediatorCoroutineExtensions),
             "Use GFramework.Core.Coroutine.Extensions.CqrsCoroutineExtensions instead.");
