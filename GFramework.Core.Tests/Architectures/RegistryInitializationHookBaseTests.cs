@@ -5,7 +5,6 @@ using GFramework.Core.Abstractions.Model;
 using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Abstractions.Utility;
 using GFramework.Core.Architectures;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace GFramework.Core.Tests.Architectures;
 
@@ -181,9 +180,15 @@ public class TestArchitectureWithRegistry : IArchitecture
         throw new NotImplementedException();
     }
 
-    public void RegisterMediatorBehavior<TBehavior>() where TBehavior : class
+    public void RegisterCqrsPipelineBehavior<TBehavior>() where TBehavior : class
     {
         throw new NotImplementedException();
+    }
+
+    [Obsolete("Use RegisterCqrsPipelineBehavior<TBehavior>() instead.")]
+    public void RegisterMediatorBehavior<TBehavior>() where TBehavior : class
+    {
+        RegisterCqrsPipelineBehavior<TBehavior>();
     }
 
     public IArchitectureModule InstallModule(IArchitectureModule module)
@@ -306,9 +311,15 @@ public class TestArchitectureWithoutRegistry : IArchitecture
         throw new NotImplementedException();
     }
 
-    public void RegisterMediatorBehavior<TBehavior>() where TBehavior : class
+    public void RegisterCqrsPipelineBehavior<TBehavior>() where TBehavior : class
     {
         throw new NotImplementedException();
+    }
+
+    [Obsolete("Use RegisterCqrsPipelineBehavior<TBehavior>() instead.")]
+    public void RegisterMediatorBehavior<TBehavior>() where TBehavior : class
+    {
+        RegisterCqrsPipelineBehavior<TBehavior>();
     }
 
     public IArchitectureModule InstallModule(IArchitectureModule module)

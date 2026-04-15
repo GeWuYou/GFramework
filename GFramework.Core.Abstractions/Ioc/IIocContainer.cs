@@ -90,10 +90,18 @@ public interface IIocContainer : IContextAware
     void RegisterFactory<TService>(Func<IServiceProvider, TService> factory) where TService : class;
 
     /// <summary>
-    ///     注册中介行为管道
-    ///     用于配置Mediator框架的行为拦截和处理逻辑
+    ///     注册 CQRS 请求管道行为。
     /// </summary>
     /// <typeparam name="TBehavior">行为类型，必须是引用类型</typeparam>
+    void RegisterCqrsPipelineBehavior<TBehavior>()
+        where TBehavior : class;
+
+    /// <summary>
+    ///     注册 CQRS 请求管道行为。
+    ///     该成员保留旧名称以兼容历史调用点，内部行为与 <see cref="RegisterCqrsPipelineBehavior{TBehavior}" /> 一致。
+    /// </summary>
+    /// <typeparam name="TBehavior">行为类型，必须是引用类型</typeparam>
+    [Obsolete("Use RegisterCqrsPipelineBehavior<TBehavior>() instead.")]
     void RegisterMediatorBehavior<TBehavior>()
         where TBehavior : class;
 

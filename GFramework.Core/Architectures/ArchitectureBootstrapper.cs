@@ -2,7 +2,6 @@ using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Environment;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Cqrs.Internal;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace GFramework.Core.Architectures;
 
@@ -23,7 +22,7 @@ internal sealed class ArchitectureBootstrapper(
     ///     因为用户初始化逻辑通常会立即访问事件总线、查询执行器或环境对象。
     /// </summary>
     /// <param name="existingContext">调用方已经提供的上下文；如果为空则创建默认上下文。</param>
-    /// <param name="configurator">可选的容器配置委托，用于接入 Mediator 等扩展服务。</param>
+    /// <param name="configurator">可选的容器配置委托，用于接入额外服务或覆盖默认依赖绑定。</param>
     /// <param name="asyncMode">是否以异步模式初始化服务模块。</param>
     /// <returns>已绑定到当前架构类型的架构上下文。</returns>
     public async Task<IArchitectureContext> PrepareForInitializationAsync(

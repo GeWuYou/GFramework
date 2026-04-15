@@ -1,11 +1,14 @@
-using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Abstractions.Cqrs.Command;
+using GFramework.Core.Abstractions.Rule;
+using GFramework.Core.Cqrs.Extensions;
 
 namespace GFramework.Core.Extensions;
 
 /// <summary>
-///     提供对 IContextAware 接口的 CQRS 命令扩展方法。
+///     提供对 <see cref="IContextAware" /> 接口的 CQRS 命令扩展方法。
+///     该类型保留旧名称以兼容历史调用点；新代码应改用 <see cref="GFramework.Core.Cqrs.Extensions.ContextAwareCqrsCommandExtensions" />。
 /// </summary>
+[Obsolete("Use GFramework.Core.Cqrs.Extensions.ContextAwareCqrsCommandExtensions instead.")]
 public static class ContextAwareMediatorCommandExtensions
 {
     /// <summary>
@@ -19,11 +22,7 @@ public static class ContextAwareMediatorCommandExtensions
     public static TResponse SendCommand<TResponse>(this IContextAware contextAware,
         ICommand<TResponse> command)
     {
-        ArgumentNullException.ThrowIfNull(contextAware);
-        ArgumentNullException.ThrowIfNull(command);
-
-        var context = contextAware.GetContext();
-        return context.SendCommand(command);
+        return ContextAwareCqrsCommandExtensions.SendCommand(contextAware, command);
     }
 
     /// <summary>
@@ -38,10 +37,9 @@ public static class ContextAwareMediatorCommandExtensions
     public static ValueTask<TResponse> SendCommandAsync<TResponse>(this IContextAware contextAware,
         ICommand<TResponse> command, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(contextAware);
-        ArgumentNullException.ThrowIfNull(command);
-
-        var context = contextAware.GetContext();
-        return context.SendCommandAsync(command, cancellationToken);
+        return ContextAwareCqrsCommandExtensions.SendCommandAsync(
+            contextAware,
+            command,
+            cancellationToken);
     }
 }

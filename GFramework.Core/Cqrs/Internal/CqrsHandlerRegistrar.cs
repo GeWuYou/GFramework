@@ -7,7 +7,7 @@ namespace GFramework.Core.Cqrs.Internal;
 
 /// <summary>
 ///     在架构初始化期间扫描并注册 CQRS 处理器。
-///     首批实现采用运行时反射扫描，优先满足“无需 AddMediator 即可工作”的迁移目标。
+///     首批实现采用运行时反射扫描，优先满足“无需额外注册步骤即可工作”的迁移目标。
 /// </summary>
 internal static class CqrsHandlerRegistrar
 {

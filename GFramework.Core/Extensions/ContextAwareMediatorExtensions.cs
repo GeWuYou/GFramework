@@ -1,11 +1,14 @@
-using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Abstractions.Cqrs;
+using GFramework.Core.Abstractions.Rule;
+using GFramework.Core.Cqrs.Extensions;
 
 namespace GFramework.Core.Extensions;
 
 /// <summary>
-///     提供对 IContextAware 接口的 CQRS 统一接口扩展方法。
+///     提供对 <see cref="IContextAware" /> 接口的 CQRS 统一接口扩展方法。
+///     该类型保留旧名称以兼容历史调用点；新代码应改用 <see cref="GFramework.Core.Cqrs.Extensions.ContextAwareCqrsExtensions" />。
 /// </summary>
+[Obsolete("Use GFramework.Core.Cqrs.Extensions.ContextAwareCqrsExtensions instead.")]
 public static class ContextAwareMediatorExtensions
 {
     /// <summary>
@@ -20,11 +23,10 @@ public static class ContextAwareMediatorExtensions
     public static ValueTask<TResponse> SendRequestAsync<TResponse>(this IContextAware contextAware,
         IRequest<TResponse> request, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(contextAware);
-        ArgumentNullException.ThrowIfNull(request);
-
-        var context = contextAware.GetContext();
-        return context.SendRequestAsync(request, cancellationToken);
+        return ContextAwareCqrsExtensions.SendRequestAsync(
+            contextAware,
+            request,
+            cancellationToken);
     }
 
     /// <summary>
@@ -38,11 +40,7 @@ public static class ContextAwareMediatorExtensions
     public static TResponse SendRequest<TResponse>(this IContextAware contextAware,
         IRequest<TResponse> request)
     {
-        ArgumentNullException.ThrowIfNull(contextAware);
-        ArgumentNullException.ThrowIfNull(request);
-
-        var context = contextAware.GetContext();
-        return context.SendRequest(request);
+        return ContextAwareCqrsExtensions.SendRequest(contextAware, request);
     }
 
     /// <summary>
@@ -58,11 +56,10 @@ public static class ContextAwareMediatorExtensions
         TNotification notification, CancellationToken cancellationToken = default)
         where TNotification : INotification
     {
-        ArgumentNullException.ThrowIfNull(contextAware);
-        ArgumentNullException.ThrowIfNull(notification);
-
-        var context = contextAware.GetContext();
-        return context.PublishAsync(notification, cancellationToken);
+        return ContextAwareCqrsExtensions.PublishAsync(
+            contextAware,
+            notification,
+            cancellationToken);
     }
 
     /// <summary>
@@ -77,11 +74,10 @@ public static class ContextAwareMediatorExtensions
     public static IAsyncEnumerable<TResponse> CreateStream<TResponse>(this IContextAware contextAware,
         IStreamRequest<TResponse> request, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(contextAware);
-        ArgumentNullException.ThrowIfNull(request);
-
-        var context = contextAware.GetContext();
-        return context.CreateStream(request, cancellationToken);
+        return ContextAwareCqrsExtensions.CreateStream(
+            contextAware,
+            request,
+            cancellationToken);
     }
 
     /// <summary>
@@ -97,11 +93,10 @@ public static class ContextAwareMediatorExtensions
         CancellationToken cancellationToken = default)
         where TCommand : IRequest<Unit>
     {
-        ArgumentNullException.ThrowIfNull(contextAware);
-        ArgumentNullException.ThrowIfNull(command);
-
-        var context = contextAware.GetContext();
-        return context.SendAsync(command, cancellationToken);
+        return ContextAwareCqrsExtensions.SendAsync(
+            contextAware,
+            command,
+            cancellationToken);
     }
 
     /// <summary>
@@ -116,10 +111,9 @@ public static class ContextAwareMediatorExtensions
     public static ValueTask<TResponse> SendAsync<TResponse>(this IContextAware contextAware,
         IRequest<TResponse> command, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(contextAware);
-        ArgumentNullException.ThrowIfNull(command);
-
-        var context = contextAware.GetContext();
-        return context.SendAsync(command, cancellationToken);
+        return ContextAwareCqrsExtensions.SendAsync(
+            contextAware,
+            command,
+            cancellationToken);
     }
 }

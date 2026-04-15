@@ -5,7 +5,7 @@ namespace GFramework.Core.Architectures;
 
 /// <summary>
 ///     架构模块管理器
-///     负责管理架构模块的安装和中介行为注册
+///     负责管理架构模块的安装和 CQRS 行为注册
 /// </summary>
 internal sealed class ArchitectureModules(
     IArchitecture architecture,
@@ -13,15 +13,25 @@ internal sealed class ArchitectureModules(
     ILogger logger)
 {
     /// <summary>
-    ///     注册中介行为管道
-    ///     用于配置Mediator框架的行为拦截和处理逻辑。
+    ///     注册 CQRS 请求管道行为。
     ///     支持开放泛型行为类型和针对单一请求的封闭行为类型。
     /// </summary>
     /// <typeparam name="TBehavior">行为类型，必须是引用类型</typeparam>
+    public void RegisterCqrsPipelineBehavior<TBehavior>() where TBehavior : class
+    {
+        logger.Debug($"Registering CQRS pipeline behavior: {typeof(TBehavior).Name}");
+        services.Container.RegisterCqrsPipelineBehavior<TBehavior>();
+    }
+
+    /// <summary>
+    ///     注册 CQRS 请求管道行为。
+    ///     该成员保留旧名称以兼容历史调用点，内部行为与 <see cref="RegisterCqrsPipelineBehavior{TBehavior}" /> 一致。
+    /// </summary>
+    /// <typeparam name="TBehavior">行为类型，必须是引用类型</typeparam>
+    [Obsolete("Use RegisterCqrsPipelineBehavior<TBehavior>() instead.")]
     public void RegisterMediatorBehavior<TBehavior>() where TBehavior : class
     {
-        logger.Debug($"Registering mediator behavior: {typeof(TBehavior).Name}");
-        services.Container.RegisterMediatorBehavior<TBehavior>();
+        RegisterCqrsPipelineBehavior<TBehavior>();
     }
 
     /// <summary>
