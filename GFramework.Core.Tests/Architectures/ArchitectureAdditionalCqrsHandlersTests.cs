@@ -12,6 +12,8 @@ namespace GFramework.Core.Tests.Architectures;
 [TestFixture]
 public sealed class ArchitectureAdditionalCqrsHandlersTests
 {
+    private ILoggerFactoryProvider? _previousLoggerFactoryProvider;
+
     /// <summary>
     ///     初始化日志工厂和共享测试状态。
     /// </summary>
@@ -37,8 +39,6 @@ public sealed class ArchitectureAdditionalCqrsHandlersTests
                                              "LoggerFactoryResolver.Provider should be captured during setup.");
     }
 
-    private ILoggerFactoryProvider? _previousLoggerFactoryProvider;
-
     /// <summary>
     ///     验证显式声明的额外程序集会在初始化阶段接入当前架构容器。
     /// </summary>
@@ -46,7 +46,7 @@ public sealed class ArchitectureAdditionalCqrsHandlersTests
     public async Task RegisterCqrsHandlersFromAssembly_Should_Register_Handlers_From_Explicit_Assembly()
     {
         var generatedAssembly = CreateGeneratedHandlerAssembly();
-        var architecture = new AdditionalHandlersTestArchitecture(target =>
+        var architecture = CreateArchitecture(target =>
             target.RegisterCqrsHandlersFromAssembly(generatedAssembly.Object));
 
         await architecture.InitializeAsync();
@@ -63,16 +63,17 @@ public sealed class ArchitectureAdditionalCqrsHandlersTests
     }
 
     /// <summary>
-    ///     验证同一额外程序集被重复声明时，不会向容器重复写入相同 handler 映射。
+    ///     验证不同 <see cref="Assembly" /> 实例只要解析到相同程序集键，就不会向容器重复写入相同 handler 映射。
     /// </summary>
     [Test]
     public async Task RegisterCqrsHandlersFromAssembly_Should_Deduplicate_Repeated_Assembly_Registration()
     {
-        var generatedAssembly = CreateGeneratedHandlerAssembly();
-        var architecture = new AdditionalHandlersTestArchitecture(target =>
+        var generatedAssemblyA = CreateGeneratedHandlerAssembly();
+        var generatedAssemblyB = CreateGeneratedHandlerAssembly();
+        var architecture = CreateArchitecture(target =>
         {
-            target.RegisterCqrsHandlersFromAssembly(generatedAssembly.Object);
-            target.RegisterCqrsHandlersFromAssemblies([generatedAssembly.Object]);
+            target.RegisterCqrsHandlersFromAssembly(generatedAssemblyA.Object);
+            target.RegisterCqrsHandlersFromAssemblies([generatedAssemblyB.Object]);
         });
 
         await architecture.InitializeAsync();
@@ -106,18 +107,15 @@ public sealed class ArchitectureAdditionalCqrsHandlersTests
     }
 
     /// <summary>
-    ///     用于测试额外程序集注册入口的最小架构实现。
+    ///     创建复用现有测试架构基建的测试架构，并在注册阶段后执行额外程序集接入逻辑。
     /// </summary>
-    private sealed class AdditionalHandlersTestArchitecture(Action<AdditionalHandlersTestArchitecture> configure) :
-        Architecture
+    /// <param name="configure">初始化阶段执行的额外 CQRS 程序集接入逻辑。</param>
+    /// <returns>带有注册后钩子的测试架构实例。</returns>
+    private static SyncTestArchitecture CreateArchitecture(Action<TestArchitectureBase> configure)
     {
-        /// <summary>
-        ///     在初始化阶段执行测试注入的额外 CQRS 程序集接入逻辑。
-        /// </summary>
-        protected override void OnInitialize()
-        {
-            configure(this);
-        }
+        var architecture = new SyncTestArchitecture();
+        architecture.AddPostRegistrationHook(configure);
+        return architecture;
     }
 }
 
