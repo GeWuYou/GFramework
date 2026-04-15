@@ -45,6 +45,7 @@ public static class CqrsCoroutineExtensions
 
         if (task.IsCanceled)
         {
+            // 取消态与成功态区分：协程层统一映射为 TaskCanceledException。
             var canceledException = new TaskCanceledException(task);
             if (onError != null)
             {
@@ -52,16 +53,18 @@ public static class CqrsCoroutineExtensions
                 yield break;
             }
 
+            // 保留原始抛出栈，避免调试时丢失异常来源。
             ExceptionDispatchInfo.Capture(canceledException).Throw();
         }
 
         if (!task.IsFaulted)
             yield break;
-
+        // 优先解包业务异常，避免直接暴露 AggregateException。
         var exception = task.Exception!.InnerException ?? task.Exception;
         if (onError != null)
             onError.Invoke(exception);
         else
+            // 继续保留原始栈信息。
             ExceptionDispatchInfo.Capture(exception).Throw();
     }
 }
