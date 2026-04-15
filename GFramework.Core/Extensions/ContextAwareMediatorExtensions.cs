@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Cqrs.Extensions;
@@ -7,8 +8,11 @@ namespace GFramework.Core.Extensions;
 /// <summary>
 ///     提供对 <see cref="IContextAware" /> 接口的 CQRS 统一接口扩展方法。
 ///     该类型保留旧名称以兼容历史调用点；新代码应改用 <see cref="GFramework.Core.Cqrs.Extensions.ContextAwareCqrsExtensions" />。
+///     兼容层计划在未来的 major 版本中移除，因此不会继续承载新能力。
 /// </summary>
-[Obsolete("Use GFramework.Core.Cqrs.Extensions.ContextAwareCqrsExtensions instead.")]
+[EditorBrowsable(EditorBrowsableState.Never)]
+[Obsolete(
+    "Use GFramework.Core.Cqrs.Extensions.ContextAwareCqrsExtensions instead. This compatibility alias will be removed in a future major version.")]
 public static class ContextAwareMediatorExtensions
 {
     /// <summary>

@@ -223,7 +223,8 @@ public class GameArchitecture : Architecture
 如果处理器位于其他模块或扩展程序集中，需要额外接入对应程序集的处理器注册，而不是依赖默认扫描。
 
 `RegisterCqrsPipelineBehavior<TBehavior>()` 是推荐入口；旧的 `RegisterMediatorBehavior<TBehavior>()`
-仅作为兼容名称保留。当前接口支持两种形式：
+仅作为兼容名称保留，当前已标记为 `Obsolete` 并从 IntelliSense 主路径隐藏，计划在未来 major 版本中移除。
+`ContextAwareMediator*Extensions` 与 `MediatorCoroutineExtensions` 也遵循同样的弃用节奏。当前接口支持两种形式：
 
 - 开放泛型行为，例如 `LoggingBehavior<,>`，用于匹配所有请求
 - 封闭行为类型，例如某个只服务于单一请求的 `SpecialBehavior`

@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Enums;
 using GFramework.Core.Abstractions.Environment;
@@ -157,9 +158,12 @@ public abstract class Architecture : IArchitecture
     /// <summary>
     ///     注册 CQRS 请求管道行为。
     ///     该成员保留旧名称以兼容历史调用点，内部行为与 <see cref="RegisterCqrsPipelineBehavior{TBehavior}" /> 一致。
+    ///     新代码不应继续依赖该别名；兼容层计划在未来的 major 版本中移除。
     /// </summary>
     /// <typeparam name="TBehavior">行为类型，必须是引用类型</typeparam>
-    [Obsolete("Use RegisterCqrsPipelineBehavior<TBehavior>() instead.")]
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    [Obsolete(
+        "Use RegisterCqrsPipelineBehavior<TBehavior>() instead. This compatibility alias will be removed in a future major version.")]
     public void RegisterMediatorBehavior<TBehavior>() where TBehavior : class
     {
         RegisterCqrsPipelineBehavior<TBehavior>();
