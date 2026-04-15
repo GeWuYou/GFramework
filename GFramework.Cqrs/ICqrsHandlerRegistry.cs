@@ -1,6 +1,6 @@
 using GFramework.Core.Abstractions.Logging;
 
-namespace GFramework.Core.Abstractions.Cqrs;
+namespace GFramework.Cqrs;
 
 /// <summary>
 ///     定义由源码生成器产出的 CQRS 处理器注册器契约。

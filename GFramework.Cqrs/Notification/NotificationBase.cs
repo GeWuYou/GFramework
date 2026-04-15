@@ -14,7 +14,7 @@
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Abstractions.Cqrs.Notification;
 
-namespace GFramework.Core.Cqrs.Notification;
+namespace GFramework.Cqrs.Notification;
 
 /// <summary>
 /// 表示一个基础通知类，用于处理带有输入的通知模式实现。

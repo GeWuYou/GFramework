@@ -1,8 +1,8 @@
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Abstractions.Ioc;
-using GFramework.Core.Cqrs.Internal;
 using GFramework.Core.Logging;
+using GFramework.Cqrs;
 using GFramework.Cqrs.Abstractions.Cqrs;
 
 namespace GFramework.Core.Services.Modules;
@@ -37,11 +37,12 @@ public sealed class CqrsRuntimeModule : IServiceModule
     {
         ArgumentNullException.ThrowIfNull(container);
 
-        var dispatcherLogger = LoggerFactoryResolver.Provider.CreateLogger(nameof(CqrsDispatcher));
-        var registrarLogger = LoggerFactoryResolver.Provider.CreateLogger(nameof(DefaultCqrsHandlerRegistrar));
+        var dispatcherLogger = LoggerFactoryResolver.Provider.CreateLogger("CqrsDispatcher");
+        var registrarLogger = LoggerFactoryResolver.Provider.CreateLogger("DefaultCqrsHandlerRegistrar");
 
-        container.Register<ICqrsRuntime>(new CqrsDispatcher(container, dispatcherLogger));
-        container.Register<ICqrsHandlerRegistrar>(new DefaultCqrsHandlerRegistrar(container, registrarLogger));
+        container.Register<ICqrsRuntime>(CqrsRuntimeFactory.CreateRuntime(container, dispatcherLogger));
+        container.Register<ICqrsHandlerRegistrar>(
+            CqrsRuntimeFactory.CreateHandlerRegistrar(container, registrarLogger));
     }
 
     /// <summary>

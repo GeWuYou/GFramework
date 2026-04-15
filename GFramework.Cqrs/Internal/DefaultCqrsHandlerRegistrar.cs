@@ -3,7 +3,7 @@ using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
 
-namespace GFramework.Core.Cqrs.Internal;
+namespace GFramework.Cqrs.Internal;
 
 /// <summary>
 ///     默认的 CQRS 处理器注册器实现。

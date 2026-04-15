@@ -4,10 +4,11 @@ using System.Reflection;
 using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Abstractions.Logging;
-using GFramework.Core.Architectures;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
+using GFramework.Cqrs;
 using GFramework.Cqrs.Abstractions.Cqrs;
+using GFramework.Cqrs.Command;
 
 namespace GFramework.Tests.Common;
 
@@ -20,7 +21,9 @@ namespace GFramework.Tests.Common;
 /// </remarks>
 public static class CqrsTestRuntime
 {
-    private static readonly Type CqrsHandlerRegistrarType = typeof(ArchitectureContext).Assembly
+    private static readonly Assembly CqrsRuntimeAssembly = typeof(CommandBase<,>).Assembly;
+
+    private static readonly Type CqrsHandlerRegistrarType = CqrsRuntimeAssembly
         .GetType(
             "GFramework.Core.Cqrs.Internal.CqrsHandlerRegistrar",
             throwOnError: true)!;
@@ -40,41 +43,6 @@ public static class CqrsTestRuntime
                                                                 ?? throw new InvalidOperationException(
                                                                     "Failed to locate CqrsHandlerRegistrar.RegisterHandlers.");
 
-    private static readonly Type CqrsDispatcherType = typeof(ArchitectureContext).Assembly
-        .GetType(
-            "GFramework.Core.Cqrs.Internal.CqrsDispatcher",
-            throwOnError: true)!;
-
-    private static readonly ConstructorInfo CqrsDispatcherConstructor = CqrsDispatcherType.GetConstructor(
-                                                                            BindingFlags.Instance |
-                                                                            BindingFlags.Public |
-                                                                            BindingFlags.NonPublic,
-                                                                            binder: null,
-                                                                            [
-                                                                                typeof(IIocContainer),
-                                                                                typeof(ILogger)
-                                                                            ],
-                                                                            modifiers: null)
-                                                                        ?? throw new InvalidOperationException(
-                                                                            "Failed to locate CqrsDispatcher constructor.");
-
-    private static readonly Type DefaultCqrsHandlerRegistrarType = typeof(ArchitectureContext).Assembly
-        .GetType(
-            "GFramework.Core.Cqrs.Internal.DefaultCqrsHandlerRegistrar",
-            throwOnError: true)!;
-
-    private static readonly ConstructorInfo DefaultCqrsHandlerRegistrarConstructor =
-        DefaultCqrsHandlerRegistrarType.GetConstructor(
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-            binder: null,
-            [
-                typeof(IIocContainer),
-                typeof(ILogger)
-            ],
-            modifiers: null)
-        ?? throw new InvalidOperationException(
-            "Failed to locate DefaultCqrsHandlerRegistrar constructor.");
-
     /// <summary>
     ///     为裸测试容器补齐默认 CQRS runtime seam。
     /// </summary>
@@ -92,16 +60,15 @@ public static class CqrsTestRuntime
 
         if (container.Get<ICqrsRuntime>() is null)
         {
-            var runtimeLogger = LoggerFactoryResolver.Provider.CreateLogger(CqrsDispatcherType.Name);
-            var runtime = (ICqrsRuntime)CqrsDispatcherConstructor.Invoke([container, runtimeLogger]);
+            var runtimeLogger = LoggerFactoryResolver.Provider.CreateLogger("CqrsDispatcher");
+            var runtime = CqrsRuntimeFactory.CreateRuntime(container, runtimeLogger);
             container.Register<ICqrsRuntime>(runtime);
         }
 
         if (container.Get<ICqrsHandlerRegistrar>() is null)
         {
-            var registrarLogger = LoggerFactoryResolver.Provider.CreateLogger(DefaultCqrsHandlerRegistrarType.Name);
-            var registrar =
-                (ICqrsHandlerRegistrar)DefaultCqrsHandlerRegistrarConstructor.Invoke([container, registrarLogger]);
+            var registrarLogger = LoggerFactoryResolver.Provider.CreateLogger("DefaultCqrsHandlerRegistrar");
+            var registrar = CqrsRuntimeFactory.CreateHandlerRegistrar(container, registrarLogger);
             container.Register<ICqrsHandlerRegistrar>(registrar);
         }
     }

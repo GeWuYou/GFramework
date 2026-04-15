@@ -7,7 +7,7 @@ using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Rule;
 using GFramework.Cqrs.Abstractions.Cqrs;
 
-namespace GFramework.Core.Cqrs.Internal;
+namespace GFramework.Cqrs.Internal;
 
 /// <summary>
 ///     GFramework 自有 CQRS 运行时分发器。

@@ -11,21 +11,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using GFramework.Cqrs.Abstractions.Cqrs.Command;
+using GFramework.Cqrs.Abstractions.Cqrs.Query;
 
-namespace GFramework.Core.Cqrs.Command;
+namespace GFramework.Cqrs.Query;
 
 /// <summary>
-/// 表示一个基础命令类，用于处理带有输入和响应的命令模式实现。
-/// 该类实现了 ICommand&lt;TResponse&gt; 接口，提供了通用的命令结构。
+/// 表示一个基础查询类，用于处理带有输入和响应的查询模式实现。
+/// 该类实现 IQuery&lt;TResponse&gt; 接口，提供了通用的查询结构。
 /// </summary>
-/// <typeparam name="TInput">命令输入数据的类型</typeparam>
-/// <typeparam name="TResponse">命令执行后返回结果的类型</typeparam>
-/// <param name="input">命令执行所需的输入数据</param>
-public abstract class CommandBase<TInput, TResponse>(TInput input) : ICommand<TResponse> where TInput : ICommandInput
+/// <typeparam name="TInput">查询输入数据的类型，必须实现 IQueryInput 接口</typeparam>
+/// <typeparam name="TResponse">查询执行后返回结果的类型</typeparam>
+/// <param name="input">查询执行所需的输入数据</param>
+public abstract class QueryBase<TInput, TResponse>(TInput input) : IQuery<TResponse> where TInput : IQueryInput
 {
     /// <summary>
-    /// 获取命令的输入数据。
+    /// 获取查询的输入数据。
     /// </summary>
     public TInput Input => input;
 }

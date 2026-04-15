@@ -14,7 +14,7 @@
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Abstractions.Cqrs.Request;
 
-namespace GFramework.Core.Cqrs.Request;
+namespace GFramework.Cqrs.Request;
 
 /// <summary>
 /// 表示一个基础请求类，用于处理带有输入和响应的请求模式实现。

@@ -1,4 +1,4 @@
-namespace GFramework.Core.Abstractions.Cqrs;
+namespace GFramework.Cqrs;
 
 /// <summary>
 ///     声明程序集内可供运行时直接调用的 CQRS 处理器注册器类型。

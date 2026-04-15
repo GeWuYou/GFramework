@@ -15,7 +15,7 @@ namespace GFramework.Core.Abstractions.Architectures;
 /// </summary>
 /// <remarks>
 ///     <para>旧的 <c>GFramework.Core.Abstractions.Command</c> 与 <c>GFramework.Core.Abstractions.Query</c> 契约会继续通过原有 Command/Query Executor 路径执行，以保证存量代码兼容。</para>
-///     <para>新的 <c>GFramework.Core.Abstractions.Cqrs</c> 契约由内置 CQRS dispatcher 统一处理，支持 request pipeline、notification publish 与 stream request。</para>
+///     <para>新的 <c>GFramework.Cqrs.Abstractions.Cqrs</c> 契约由内置 CQRS dispatcher 统一处理，支持 request pipeline、notification publish 与 stream request。</para>
 ///     <para>新功能优先使用 <see cref="SendRequestAsync{TResponse}(IRequest{TResponse},CancellationToken)" />、<see cref="SendAsync{TCommand}(TCommand,CancellationToken)" /> 与对应的 CQRS Command/Query 重载；迁移旧代码时可先保留旧入口，再逐步替换为 CQRS 请求模型。</para>
 /// </remarks>
 public interface IArchitectureContext
@@ -175,7 +175,7 @@ public interface IArchitectureContext
     /// <param name="query">要发送的 CQRS 查询。</param>
     /// <returns>查询结果。</returns>
     /// <remarks>
-    ///     这是迁移后的推荐查询入口。新查询应优先实现 <c>GFramework.Core.Abstractions.Cqrs.Query.IQuery&lt;TResponse&gt;</c>。
+    ///     这是迁移后的推荐查询入口。新查询应优先实现 <c>GFramework.Cqrs.Abstractions.Cqrs.Query.IQuery&lt;TResponse&gt;</c>。
     /// </remarks>
     TResponse SendQuery<TResponse>(GFramework.Cqrs.Abstractions.Cqrs.Query.IQuery<TResponse> query);
 

@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using GFramework.Core.Abstractions.Rule;
 using GFramework.Cqrs.Abstractions.Cqrs;
+using GFramework.Cqrs.Extensions;
 
 namespace GFramework.Core.Extensions;
 

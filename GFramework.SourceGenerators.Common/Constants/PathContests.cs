@@ -16,6 +16,11 @@ public static class PathContests
     public const string CoreNamespace = $"{BaseNamespace}.Core";
 
     /// <summary>
+    ///     GFramework CQRS runtime 命名空间
+    /// </summary>
+    public const string CqrsNamespace = $"{BaseNamespace}.Cqrs";
+
+    /// <summary>
     ///     GFramework Godot模块命名空间
     /// </summary>
     public const string GodotNamespace = $"{BaseNamespace}.Godot";
@@ -45,4 +50,9 @@ public static class PathContests
     ///     GFramework核心抽象层命名空间
     /// </summary>
     public const string CoreAbstractionsNamespace = $"{CoreNamespace}.Abstractions";
+
+    /// <summary>
+    ///     GFramework CQRS 抽象层命名空间
+    /// </summary>
+    public const string CqrsAbstractionsNamespace = $"{CqrsNamespace}.Abstractions";
 }

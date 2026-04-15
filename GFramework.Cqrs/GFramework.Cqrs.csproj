@@ -11,6 +11,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\GFramework.Cqrs.Abstractions\GFramework.Cqrs.Abstractions.csproj"/>
+        <ProjectReference Include="..\GFramework.Core.Abstractions\GFramework.Core.Abstractions.csproj"/>
     </ItemGroup>
 
 </Project>
