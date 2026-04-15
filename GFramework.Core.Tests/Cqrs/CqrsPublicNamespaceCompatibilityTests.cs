@@ -35,14 +35,14 @@ public sealed class CqrsPublicNamespaceCompatibilityTests
     ///     验证旧的 GFramework.Core 程序集限定名仍可解析到迁移后的 runtime 实现类型。
     /// </summary>
     [Test]
-    public void GFramework_Core_Assembly_Should_Forward_Legacy_Base_Types_To_Runtime_Assembly()
+    public void Type_Forwarding_Should_Resolve_Cqrs_Types_From_Core_Assembly()
     {
         Assert.Multiple(() =>
         {
-            AssertForwardedType("GFramework.Core.Cqrs.Command.CommandBase`2, GFramework.Core");
-            AssertForwardedType("GFramework.Core.Cqrs.Query.QueryBase`2, GFramework.Core");
-            AssertForwardedType("GFramework.Core.Cqrs.Request.RequestBase`2, GFramework.Core");
-            AssertForwardedType("GFramework.Core.Cqrs.Notification.NotificationBase`1, GFramework.Core");
+            AssertForwardedType("GFramework.Cqrs.Command.CommandBase`2, GFramework.Core");
+            AssertForwardedType("GFramework.Cqrs.Query.QueryBase`2, GFramework.Core");
+            AssertForwardedType("GFramework.Cqrs.Request.RequestBase`2, GFramework.Core");
+            AssertForwardedType("GFramework.Cqrs.Notification.NotificationBase`1, GFramework.Core");
         });
     }
 
