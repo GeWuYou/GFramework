@@ -18,7 +18,7 @@
 
     <ItemGroup>
       <PackageReference Include="Scriban" Version="7.1.0" />
-        <Compile Include="..\tests\Shared\CqrsTestRuntime.cs" Link="Shared\CqrsTestRuntime.cs"/>
+        <ProjectReference Include="..\GFramework.Tests.Common\GFramework.Tests.Common.csproj"/>
         <ProjectReference Include="..\GFramework.Core.Abstractions\GFramework.Core.Abstractions.csproj"/>
         <ProjectReference Include="..\GFramework.Core\GFramework.Core.csproj"/>
         <ProjectReference Include="..\GFramework.SourceGenerators.Abstractions\GFramework.SourceGenerators.Abstractions.csproj"/>

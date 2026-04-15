@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Abstractions.Logging;
@@ -6,16 +10,16 @@ using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
 
-namespace GFramework.Tests.Shared;
+namespace GFramework.Tests.Common;
 
 /// <summary>
 ///     为测试项目提供对 CQRS 处理器真实注册入口的受控访问。
 /// </summary>
 /// <remarks>
-///     该文件以共享源码的方式同时编译进多个测试项目，确保反射绑定签名、默认 runtime 接线和注册入口行为始终保持一致，
-///     避免测试副本在独立演化后产生隐藏分歧。
+///     该测试基础设施位于独立模块中，避免多个测试项目复制同一份反射绑定与默认 runtime 接线逻辑。
+///     测试应通过该入口驱动注册流程，而不是各自维护一份实现细节副本。
 /// </remarks>
-internal static class CqrsTestRuntime
+public static class CqrsTestRuntime
 {
     private static readonly Type CqrsHandlerRegistrarType = typeof(ArchitectureContext).Assembly
         .GetType(
@@ -74,11 +78,13 @@ internal static class CqrsTestRuntime
 
     /// <summary>
     ///     为裸测试容器补齐默认 CQRS runtime seam。
-    ///     这使仅使用 <see cref="MicrosoftDiContainer" /> 的测试环境也能观察与生产路径一致的 runtime 行为，
-    ///     而无需完整启动服务模块管理器。
     /// </summary>
     /// <param name="container">目标测试容器。</param>
-    internal static void RegisterInfrastructure(MicrosoftDiContainer container)
+    /// <remarks>
+    ///     这使仅使用 <see cref="MicrosoftDiContainer" /> 的测试环境也能观察与生产路径一致的 runtime 行为，
+    ///     而无需完整启动服务模块管理器。
+    /// </remarks>
+    public static void RegisterInfrastructure(MicrosoftDiContainer container)
     {
         ArgumentNullException.ThrowIfNull(container);
 
@@ -97,7 +103,7 @@ internal static class CqrsTestRuntime
     /// </summary>
     /// <param name="container">承载处理器映射的测试容器。</param>
     /// <param name="assemblies">要扫描的程序集集合。</param>
-    internal static void RegisterHandlers(MicrosoftDiContainer container, params Assembly[] assemblies)
+    public static void RegisterHandlers(MicrosoftDiContainer container, params Assembly[] assemblies)
     {
         ArgumentNullException.ThrowIfNull(container);
         ArgumentNullException.ThrowIfNull(assemblies);

@@ -17,7 +17,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Compile Include="..\tests\Shared\CqrsTestRuntime.cs" Link="Shared\CqrsTestRuntime.cs"/>
+        <ProjectReference Include="..\GFramework.Tests.Common\GFramework.Tests.Common.csproj"/>
         <ProjectReference Include="..\GFramework.Cqrs.Abstractions\GFramework.Cqrs.Abstractions.csproj"/>
         <ProjectReference Include="..\GFramework.Core.Abstractions\GFramework.Core.Abstractions.csproj"/>
         <ProjectReference Include="..\GFramework.Core\GFramework.Core.csproj"/>

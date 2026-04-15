@@ -66,6 +66,7 @@
         <None Remove="GFramework.Cqrs\**"/>
         <None Remove="GFramework.Cqrs.Abstractions\**"/>
         <None Remove="GFramework.Cqrs.Tests\**"/>
+        <None Remove="GFramework.Tests.Common\**"/>
     </ItemGroup>
     <!-- 聚合核心模块 -->
     <ItemGroup>
@@ -110,6 +111,7 @@
         <Compile Remove="GFramework.Cqrs\**"/>
         <Compile Remove="GFramework.Cqrs.Abstractions\**"/>
         <Compile Remove="GFramework.Cqrs.Tests\**"/>
+        <Compile Remove="GFramework.Tests.Common\**"/>
     </ItemGroup>
     <ItemGroup>
         <EmbeddedResource Remove="GFramework.Core\**"/>
@@ -140,6 +142,7 @@
         <EmbeddedResource Remove="GFramework.Cqrs\**"/>
         <EmbeddedResource Remove="GFramework.Cqrs.Abstractions\**"/>
         <EmbeddedResource Remove="GFramework.Cqrs.Tests\**"/>
+        <EmbeddedResource Remove="GFramework.Tests.Common\**"/>
     </ItemGroup>
     <ItemGroup>
         <AdditionalFiles Remove="AnalyzerReleases.Shipped.md"/>

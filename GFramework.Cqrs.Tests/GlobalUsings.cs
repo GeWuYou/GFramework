@@ -20,7 +20,7 @@ global using System.Reflection;
 global using System.Runtime.CompilerServices;
 global using System.Threading;
 global using System.Threading.Tasks;
-global using GFramework.Tests.Shared;
+global using GFramework.Tests.Common;
 global using Microsoft.Extensions.DependencyInjection;
 global using Moq;
 global using NUnit.Compatibility;
