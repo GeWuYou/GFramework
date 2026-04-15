@@ -1,4 +1,3 @@
-using System.Reflection;
 using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Abstractions.Logging;
@@ -7,23 +6,21 @@ using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
 
-namespace GFramework.Core.Tests;
+namespace GFramework.Tests.Shared;
 
 /// <summary>
 ///     为测试项目提供对 CQRS 处理器真实注册入口的受控访问。
 /// </summary>
 /// <remarks>
-///     测试应通过该入口驱动注册流程，而不是直接反射调用注册器的私有辅助方法，
-///     这样可以覆盖生产启动路径中的程序集去重、日志记录与容错恢复行为。
+///     该文件以共享源码的方式同时编译进多个测试项目，确保反射绑定签名、默认 runtime 接线和注册入口行为始终保持一致，
+///     避免测试副本在独立演化后产生隐藏分歧。
 /// </remarks>
 internal static class CqrsTestRuntime
 {
     private static readonly Type CqrsHandlerRegistrarType = typeof(ArchitectureContext).Assembly
-                                                                .GetType(
-                                                                    "GFramework.Core.Cqrs.Internal.CqrsHandlerRegistrar",
-                                                                    throwOnError: true)!
-                                                            ?? throw new InvalidOperationException(
-                                                                "Failed to locate CqrsHandlerRegistrar type.");
+        .GetType(
+            "GFramework.Core.Cqrs.Internal.CqrsHandlerRegistrar",
+            throwOnError: true)!;
 
     private static readonly MethodInfo RegisterHandlersMethod = CqrsHandlerRegistrarType
                                                                     .GetMethod(
@@ -41,11 +38,9 @@ internal static class CqrsTestRuntime
                                                                     "Failed to locate CqrsHandlerRegistrar.RegisterHandlers.");
 
     private static readonly Type CqrsDispatcherType = typeof(ArchitectureContext).Assembly
-                                                          .GetType(
-                                                              "GFramework.Core.Cqrs.Internal.CqrsDispatcher",
-                                                              throwOnError: true)!
-                                                      ?? throw new InvalidOperationException(
-                                                          "Failed to locate CqrsDispatcher type.");
+        .GetType(
+            "GFramework.Core.Cqrs.Internal.CqrsDispatcher",
+            throwOnError: true)!;
 
     private static readonly ConstructorInfo CqrsDispatcherConstructor = CqrsDispatcherType.GetConstructor(
                                                                             BindingFlags.Instance |
@@ -61,11 +56,9 @@ internal static class CqrsTestRuntime
                                                                             "Failed to locate CqrsDispatcher constructor.");
 
     private static readonly Type DefaultCqrsHandlerRegistrarType = typeof(ArchitectureContext).Assembly
-                                                                       .GetType(
-                                                                           "GFramework.Core.Cqrs.Internal.DefaultCqrsHandlerRegistrar",
-                                                                           throwOnError: true)!
-                                                                   ?? throw new InvalidOperationException(
-                                                                       "Failed to locate DefaultCqrsHandlerRegistrar type.");
+        .GetType(
+            "GFramework.Core.Cqrs.Internal.DefaultCqrsHandlerRegistrar",
+            throwOnError: true)!;
 
     private static readonly ConstructorInfo DefaultCqrsHandlerRegistrarConstructor =
         DefaultCqrsHandlerRegistrarType.GetConstructor(

@@ -16,6 +16,7 @@ global using System.Collections.Generic;
 global using System.Linq;
 global using System.Threading;
 global using System.Threading.Tasks;
+global using GFramework.Tests.Shared;
 global using NUnit.Framework;
 global using NUnit.Compatibility;
 global using GFramework.Core.Systems;

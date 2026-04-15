@@ -17,19 +17,48 @@ namespace GFramework.Core.Architectures;
 /// <summary>
 ///     架构上下文类，提供对系统、模型、工具等组件的访问以及命令、查询、事件的执行管理
 /// </summary>
-public class ArchitectureContext(IIocContainer container) : IArchitectureContext
+public class ArchitectureContext : IArchitectureContext
 {
-    private readonly IIocContainer _container = container ?? throw new ArgumentNullException(nameof(container));
+    private readonly IIocContainer _container;
+    private readonly Lazy<ICqrsRuntime> _cqrsRuntime;
     private readonly ConcurrentDictionary<Type, object> _serviceCache = new();
-    private ICqrsRuntime? _cqrsRuntime;
+
+    /// <summary>
+    ///     初始化新的架构上下文，并绑定其依赖容器。
+    /// </summary>
+    /// <param name="container">
+    ///     当前架构使用的 IOC 容器。
+    ///     CQRS runtime 与其他框架服务会通过该容器延迟解析，以避免在上下文构造阶段强制拉起整条运行时链路。
+    /// </param>
+    /// <exception cref="ArgumentNullException"><paramref name="container" /> 为 <see langword="null" />。</exception>
+    public ArchitectureContext(IIocContainer container)
+    {
+        _container = container ?? throw new ArgumentNullException(nameof(container));
+        _cqrsRuntime = new Lazy<ICqrsRuntime>(
+            ResolveCqrsRuntime,
+            LazyThreadSafetyMode.ExecutionAndPublication);
+    }
 
     #region CQRS Integration
 
     /// <summary>
-    /// 获取 CQRS runtime seam（延迟初始化）。
+    ///     获取 CQRS runtime seam。
     /// </summary>
-    private ICqrsRuntime CqrsRuntime => _cqrsRuntime ??=
-        _container.Get<ICqrsRuntime>() ?? throw new InvalidOperationException("ICqrsRuntime not registered");
+    /// <remarks>
+    ///     该实例会在首次访问时从容器解析，并通过 <see cref="Lazy{T}" /> 保证并发场景下只执行一次初始化，
+    ///     避免多个请求线程重复触发同一个 runtime 的容器解析。
+    /// </remarks>
+    private ICqrsRuntime CqrsRuntime => _cqrsRuntime.Value;
+
+    /// <summary>
+    ///     从容器解析当前架构上下文依赖的 CQRS runtime。
+    /// </summary>
+    /// <returns>已注册的 CQRS runtime 实例。</returns>
+    /// <exception cref="InvalidOperationException">容器中未注册 <see cref="ICqrsRuntime" />。</exception>
+    private ICqrsRuntime ResolveCqrsRuntime()
+    {
+        return _container.Get<ICqrsRuntime>() ?? throw new InvalidOperationException("ICqrsRuntime not registered");
+    }
 
     /// <summary>
     /// 获取指定类型的服务实例，如果缓存中存在则直接返回，否则从容器中获取并缓存

@@ -1,8 +1,10 @@
 using System.Reflection;
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Command;
+using GFramework.Core.Abstractions.Cqrs;
 using GFramework.Core.Abstractions.Enums;
 using GFramework.Core.Abstractions.Environment;
+using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Abstractions.Model;
 using GFramework.Core.Abstractions.Query;
 using GFramework.Core.Abstractions.Systems;
@@ -14,6 +16,7 @@ using GFramework.Core.Events;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
 using GFramework.Core.Query;
+using GFramework.Cqrs.Abstractions.Cqrs;
 
 namespace GFramework.Core.Tests.Architectures;
 
@@ -297,6 +300,69 @@ public class ArchitectureContextTests
 
         Assert.That(environment, Is.Not.Null);
         Assert.That(environment, Is.InstanceOf<IEnvironment>());
+    }
+
+    /// <summary>
+    ///     测试 CQRS runtime 在并发首次访问时只会从容器解析一次。
+    /// </summary>
+    [Test]
+    public async Task SendRequestAsync_Should_ResolveCqrsRuntime_OnlyOnce_When_AccessedConcurrently()
+    {
+        using var startGate = new ManualResetEventSlim(false);
+        using var allowResolutionToComplete = new ManualResetEventSlim(false);
+        var resolutionCallCount = 0;
+        var runtime = new Mock<ICqrsRuntime>(MockBehavior.Strict);
+        var container = new Mock<IIocContainer>(MockBehavior.Strict);
+
+        runtime.Setup(mockRuntime => mockRuntime.SendAsync(
+                It.IsAny<IArchitectureContext>(),
+                It.IsAny<IRequest<int>>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(new ValueTask<int>(42));
+
+        container.Setup(mockContainer => mockContainer.Get<ICqrsRuntime>())
+            .Returns(() =>
+            {
+                Interlocked.Increment(ref resolutionCallCount);
+                allowResolutionToComplete.Wait();
+                return runtime.Object;
+            });
+
+        var context = new ArchitectureContext(container.Object);
+        var requests = Enumerable.Range(0, 16)
+            .Select(_ => Task.Run(async () =>
+            {
+                startGate.Wait();
+                return await context.SendRequestAsync(new TestCqrsRequest());
+            }))
+            .ToArray();
+
+        startGate.Set();
+
+        Assert.That(
+            SpinWait.SpinUntil(() => Volatile.Read(ref resolutionCallCount) > 0, TimeSpan.FromSeconds(1)),
+            Is.True,
+            "Expected at least one CQRS runtime resolution attempt.");
+
+        // 留出一个短暂窗口，让并发首次访问都在 runtime 尚未发布前抵达同一初始化点。
+        await Task.Delay(50);
+        allowResolutionToComplete.Set();
+
+        var responses = await Task.WhenAll(requests);
+
+        Assert.That(responses, Has.All.EqualTo(42));
+        Assert.That(resolutionCallCount, Is.EqualTo(1));
+        container.Verify(mockContainer => mockContainer.Get<ICqrsRuntime>(), Times.Once);
+        runtime.Verify(
+            mockRuntime => mockRuntime.SendAsync(
+                It.IsAny<IArchitectureContext>(),
+                It.IsAny<IRequest<int>>(),
+                It.IsAny<CancellationToken>()),
+            Times.Exactly(requests.Length));
+    }
+
+    private sealed class TestCqrsRequest : IRequest<int>
+    {
     }
 }
 
