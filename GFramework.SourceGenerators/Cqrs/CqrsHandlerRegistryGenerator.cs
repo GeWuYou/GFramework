@@ -409,6 +409,8 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
             case ITypeParameterSymbol:
                 return false;
             default:
+                // Treat other Roslyn type kinds, such as dynamic or unresolved error types, as referenceable for now.
+                // If a real-world case proves unsafe, tighten this branch instead of broadening the named-type path above.
                 return true;
         }
     }
