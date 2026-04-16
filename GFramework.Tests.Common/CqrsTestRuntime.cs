@@ -74,6 +74,14 @@ public static class CqrsTestRuntime
             var registrar = CqrsRuntimeFactory.CreateHandlerRegistrar(container, registrarLogger);
             container.Register<ICqrsHandlerRegistrar>(registrar);
         }
+
+        if (container.Get<ICqrsRegistrationService>() is null)
+        {
+            var registrationLogger = LoggerFactoryResolver.Provider.CreateLogger("DefaultCqrsRegistrationService");
+            var registrar = container.GetRequired<ICqrsHandlerRegistrar>();
+            var registrationService = CqrsRuntimeFactory.CreateRegistrationService(registrar, registrationLogger);
+            container.Register<ICqrsRegistrationService>(registrationService);
+        }
     }
 
     /// <summary>

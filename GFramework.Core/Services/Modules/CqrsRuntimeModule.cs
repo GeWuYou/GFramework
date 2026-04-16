@@ -39,12 +39,15 @@ public sealed class CqrsRuntimeModule : IServiceModule
 
         var dispatcherLogger = LoggerFactoryResolver.Provider.CreateLogger("CqrsDispatcher");
         var registrarLogger = LoggerFactoryResolver.Provider.CreateLogger("DefaultCqrsHandlerRegistrar");
+        var registrationLogger = LoggerFactoryResolver.Provider.CreateLogger("DefaultCqrsRegistrationService");
         var runtime = CqrsRuntimeFactory.CreateRuntime(container, dispatcherLogger);
+        var registrar = CqrsRuntimeFactory.CreateHandlerRegistrar(container, registrarLogger);
 
         container.Register(runtime);
         container.Register<LegacyICqrsRuntime>((LegacyICqrsRuntime)runtime);
-        container.Register<ICqrsHandlerRegistrar>(
-            CqrsRuntimeFactory.CreateHandlerRegistrar(container, registrarLogger));
+        container.Register<ICqrsHandlerRegistrar>(registrar);
+        container.Register<ICqrsRegistrationService>(
+            CqrsRuntimeFactory.CreateRegistrationService(registrar, registrationLogger));
     }
 
     /// <summary>

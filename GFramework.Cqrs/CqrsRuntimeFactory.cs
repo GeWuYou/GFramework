@@ -47,4 +47,21 @@ public static class CqrsRuntimeFactory
 
         return new DefaultCqrsHandlerRegistrar(container, logger);
     }
+
+    /// <summary>
+    ///     创建默认的 CQRS 程序集注册协调器。
+    /// </summary>
+    /// <param name="registrar">底层 handler 注册器。</param>
+    /// <param name="logger">用于注册阶段诊断的日志器。</param>
+    /// <returns>默认 CQRS 程序集注册协调器。</returns>
+    /// <exception cref="ArgumentNullException">
+    ///     <paramref name="registrar" /> 或 <paramref name="logger" /> 为 <see langword="null" />。
+    /// </exception>
+    public static ICqrsRegistrationService CreateRegistrationService(ICqrsHandlerRegistrar registrar, ILogger logger)
+    {
+        ArgumentNullException.ThrowIfNull(registrar);
+        ArgumentNullException.ThrowIfNull(logger);
+
+        return new DefaultCqrsRegistrationService(registrar, logger);
+    }
 }

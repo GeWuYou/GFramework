@@ -5,6 +5,7 @@ using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Rule;
+using GFramework.Cqrs;
 using GFramework.Cqrs.Abstractions.Cqrs;
 
 namespace GFramework.Core.Ioc;
@@ -55,12 +56,6 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// 已注册实例的集合，用于快速检查实例是否存在
     /// </summary>
     private readonly HashSet<object> _registeredInstances = [];
-
-    /// <summary>
-    /// 已接入 CQRS handler 注册流程的程序集键集合。
-    /// 使用稳定字符串键而不是 Assembly 引用本身，以避免默认路径和显式扩展路径使用不同 Assembly 对象时重复注册。
-    /// </summary>
-    private readonly HashSet<string> _registeredCqrsHandlerAssemblyKeys = new(StringComparer.Ordinal);
 
     /// <summary>
     /// 日志记录器，用于记录容器操作日志
@@ -405,26 +400,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
         try
         {
             ThrowIfFrozen();
-
-            var processedAssemblyKeys = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var assembly in assemblies
-                         .Where(static assembly => assembly is not null)
-                         .OrderBy(GetCqrsAssemblyRegistrationKey, StringComparer.Ordinal))
-            {
-                var assemblyKey = GetCqrsAssemblyRegistrationKey(assembly);
-                if (!processedAssemblyKeys.Add(assemblyKey))
-                    continue;
-
-                if (_registeredCqrsHandlerAssemblyKeys.Contains(assemblyKey))
-                {
-                    _logger.Debug(
-                        $"Skipping CQRS handler registration for assembly {assemblyKey} because it was already registered.");
-                    continue;
-                }
-
-                ResolveCqrsHandlerRegistrar().RegisterHandlers([assembly]);
-                _registeredCqrsHandlerAssemblyKeys.Add(assemblyKey);
-            }
+            ResolveCqrsRegistrationService().RegisterHandlers(assemblies);
         }
         finally
         {
@@ -455,22 +431,22 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     #region Get
 
     /// <summary>
-    ///     获取当前容器中已注册的 CQRS 处理器注册器。
+    ///     获取当前容器中已注册的 CQRS 程序集注册协调器。
     ///     该方法仅供容器内部在注册阶段使用，因此直接读取服务描述符中的实例绑定，
     ///     避免在容器未冻结前依赖完整的服务提供者构建流程。
     /// </summary>
-    /// <returns>已注册的 CQRS 处理器注册器实例。</returns>
-    /// <exception cref="InvalidOperationException">未找到可用的 CQRS 处理器注册器实例时抛出。</exception>
-    private ICqrsHandlerRegistrar ResolveCqrsHandlerRegistrar()
+    /// <returns>已注册的 CQRS 程序集注册协调器实例。</returns>
+    /// <exception cref="InvalidOperationException">未找到可用的 CQRS 程序集注册协调器实例时抛出。</exception>
+    private ICqrsRegistrationService ResolveCqrsRegistrationService()
     {
         var descriptor = GetServicesUnsafe.LastOrDefault(static service =>
-            service.ServiceType == typeof(ICqrsHandlerRegistrar));
+            service.ServiceType == typeof(ICqrsRegistrationService));
 
-        if (descriptor?.ImplementationInstance is ICqrsHandlerRegistrar registrar)
-            return registrar;
+        if (descriptor?.ImplementationInstance is ICqrsRegistrationService registrationService)
+            return registrationService;
 
         const string errorMessage =
-            "ICqrsHandlerRegistrar not registered. Ensure the CQRS runtime module has been installed before registering handlers.";
+            "ICqrsRegistrationService not registered. Ensure the CQRS runtime module has been installed before registering handlers.";
         _logger.Error(errorMessage);
         throw new InvalidOperationException(errorMessage);
     }
@@ -832,7 +808,6 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
 
             GetServicesUnsafe.Clear();
             _registeredInstances.Clear();
-            _registeredCqrsHandlerAssemblyKeys.Clear();
             _provider = null;
             _logger.Info("Container cleared");
         }
@@ -902,17 +877,6 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
         {
             _lock.ExitReadLock();
         }
-    }
-
-    /// <summary>
-    ///     生成 CQRS handler 注册用的稳定程序集键。
-    ///     该键需要同时兼顾真实程序集与测试中使用的 mocked Assembly，避免仅靠引用比较导致重复接入。
-    /// </summary>
-    /// <param name="assembly">目标程序集。</param>
-    /// <returns>稳定的程序集标识字符串。</returns>
-    private static string GetCqrsAssemblyRegistrationKey(Assembly assembly)
-    {
-        return assembly.FullName ?? assembly.GetName().Name ?? assembly.ToString();
     }
 
     #endregion
