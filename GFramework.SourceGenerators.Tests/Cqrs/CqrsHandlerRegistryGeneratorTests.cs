@@ -29,118 +29,140 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                                                var registryAssembly = typeof(global::GFramework.Generated.Cqrs.__GFrameworkGeneratedCqrsHandlerRegistry).Assembly;
 
-                                                                               RegisterReflectedHandler(services, logger, registryAssembly, "TestApp.Container+HiddenHandler");
+                                                                               var implementationType0 = registryAssembly.GetType("TestApp.Container+HiddenHandler", throwOnError: false, ignoreCase: false);
+                                                                               if (implementationType0 is not null)
+                                                                               {
+                                                                                   var serviceType0_0Argument0 = registryAssembly.GetType("TestApp.Container+HiddenRequest", throwOnError: false, ignoreCase: false);
+                                                                                   if (serviceType0_0Argument0 is not null)
+                                                                                   {
+                                                                                       var serviceType0_0 = typeof(global::GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<,>).MakeGenericType(serviceType0_0Argument0, typeof(string));
+                                                                                       global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(
+                                                                                           services,
+                                                                                           serviceType0_0,
+                                                                                           implementationType0);
+                                                                                       logger.Debug("Registered CQRS handler TestApp.Container.HiddenHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<TestApp.Container.HiddenRequest, string>.");
+                                                                                   }
+                                                                               }
                                                                                global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(
                                                                                    services,
                                                                                    typeof(global::GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<global::TestApp.VisibleRequest, string>),
                                                                                    typeof(global::TestApp.VisibleHandler));
                                                                                logger.Debug("Registered CQRS handler TestApp.VisibleHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<TestApp.VisibleRequest, string>.");
                                                                            }
-
-                                                                           private static void RegisterReflectedHandler(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services, global::GFramework.Core.Abstractions.Logging.ILogger logger, global::System.Reflection.Assembly registryAssembly, string implementationTypeMetadataName)
-                                                                           {
-                                                                               var implementationType = registryAssembly.GetType(implementationTypeMetadataName, throwOnError: false, ignoreCase: false);
-                                                                               if (implementationType is null)
-                                                                                   return;
-
-                                                                               var handlerInterfaces = implementationType.GetInterfaces();
-                                                                               global::System.Array.Sort(handlerInterfaces, CompareTypes);
-
-                                                                               foreach (var handlerInterface in handlerInterfaces)
-                                                                               {
-                                                                                   if (!IsSupportedHandlerInterface(handlerInterface))
-                                                                                       continue;
-
-                                                                                   global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(
-                                                                                       services,
-                                                                                       handlerInterface,
-                                                                                       implementationType);
-                                                                                   logger.Debug($"Registered CQRS handler {GetRuntimeTypeDisplayName(implementationType)} as {GetRuntimeTypeDisplayName(handlerInterface)}.");
-                                                                               }
-                                                                           }
-
-                                                                           private static int CompareTypes(global::System.Type left, global::System.Type right)
-                                                                           {
-                                                                               return global::System.StringComparer.Ordinal.Compare(GetRuntimeTypeDisplayName(left), GetRuntimeTypeDisplayName(right));
-                                                                           }
-
-                                                                           private static bool IsSupportedHandlerInterface(global::System.Type interfaceType)
-                                                                           {
-                                                                               if (!interfaceType.IsGenericType)
-                                                                                   return false;
-
-                                                                               var definitionFullName = interfaceType.GetGenericTypeDefinition().FullName;
-                                                                               return global::System.StringComparer.Ordinal.Equals(definitionFullName, "GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler`2")
-                                                                                   || global::System.StringComparer.Ordinal.Equals(definitionFullName, "GFramework.Cqrs.Abstractions.Cqrs.INotificationHandler`1")
-                                                                                   || global::System.StringComparer.Ordinal.Equals(definitionFullName, "GFramework.Cqrs.Abstractions.Cqrs.IStreamRequestHandler`2");
-                                                                           }
-
-                                                                           private static string GetRuntimeTypeDisplayName(global::System.Type type)
-                                                                           {
-                                                                               if (type == typeof(string))
-                                                                                   return "string";
-                                                                               if (type == typeof(int))
-                                                                                   return "int";
-                                                                               if (type == typeof(long))
-                                                                                   return "long";
-                                                                               if (type == typeof(short))
-                                                                                   return "short";
-                                                                               if (type == typeof(byte))
-                                                                                   return "byte";
-                                                                               if (type == typeof(bool))
-                                                                                   return "bool";
-                                                                               if (type == typeof(object))
-                                                                                   return "object";
-                                                                               if (type == typeof(void))
-                                                                                   return "void";
-                                                                               if (type == typeof(uint))
-                                                                                   return "uint";
-                                                                               if (type == typeof(ulong))
-                                                                                   return "ulong";
-                                                                               if (type == typeof(ushort))
-                                                                                   return "ushort";
-                                                                               if (type == typeof(sbyte))
-                                                                                   return "sbyte";
-                                                                               if (type == typeof(float))
-                                                                                   return "float";
-                                                                               if (type == typeof(double))
-                                                                                   return "double";
-                                                                               if (type == typeof(decimal))
-                                                                                   return "decimal";
-                                                                               if (type == typeof(char))
-                                                                                   return "char";
-
-                                                                               if (type.IsArray)
-                                                                                   return GetRuntimeTypeDisplayName(type.GetElementType()!) + "[]";
-
-                                                                               if (!type.IsGenericType)
-                                                                                   return (type.FullName ?? type.Name).Replace('+', '.');
-
-                                                                               var genericTypeName = type.GetGenericTypeDefinition().FullName ?? type.Name;
-                                                                               var arityIndex = genericTypeName.IndexOf('`');
-                                                                               if (arityIndex >= 0)
-                                                                                   genericTypeName = genericTypeName[..arityIndex];
-
-                                                                               genericTypeName = genericTypeName.Replace('+', '.');
-                                                                               var arguments = type.GetGenericArguments();
-                                                                               var builder = new global::System.Text.StringBuilder();
-                                                                               builder.Append(genericTypeName);
-                                                                               builder.Append('<');
-
-                                                                               for (var index = 0; index < arguments.Length; index++)
-                                                                               {
-                                                                                   if (index > 0)
-                                                                                       builder.Append(", ");
-
-                                                                                   builder.Append(GetRuntimeTypeDisplayName(arguments[index]));
-                                                                               }
-
-                                                                               builder.Append('>');
-                                                                               return builder.ToString();
-                                                                           }
                                                                        }
 
                                                                        """;
+
+    private const string HiddenImplementationDirectInterfaceRegistrationExpected = """
+        // <auto-generated />
+        #nullable enable
+
+        [assembly: global::GFramework.Cqrs.CqrsHandlerRegistryAttribute(typeof(global::GFramework.Generated.Cqrs.__GFrameworkGeneratedCqrsHandlerRegistry))]
+
+        namespace GFramework.Generated.Cqrs;
+
+        internal sealed class __GFrameworkGeneratedCqrsHandlerRegistry : global::GFramework.Cqrs.ICqrsHandlerRegistry
+        {
+            public void Register(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services, global::GFramework.Core.Abstractions.Logging.ILogger logger)
+            {
+                if (services is null)
+                    throw new global::System.ArgumentNullException(nameof(services));
+                if (logger is null)
+                    throw new global::System.ArgumentNullException(nameof(logger));
+
+                var registryAssembly = typeof(global::GFramework.Generated.Cqrs.__GFrameworkGeneratedCqrsHandlerRegistry).Assembly;
+
+                var implementationType0 = registryAssembly.GetType("TestApp.Container+HiddenHandler", throwOnError: false, ignoreCase: false);
+                if (implementationType0 is not null)
+                {
+                    global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(
+                        services,
+                        typeof(global::GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<global::TestApp.VisibleRequest, string>),
+                        implementationType0);
+                    logger.Debug("Registered CQRS handler TestApp.Container.HiddenHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<TestApp.VisibleRequest, string>.");
+                }
+            }
+        }
+
+        """;
+
+    private const string HiddenArrayResponseFallbackExpected = """
+                                                               // <auto-generated />
+                                                               #nullable enable
+
+                                                               [assembly: global::GFramework.Cqrs.CqrsHandlerRegistryAttribute(typeof(global::GFramework.Generated.Cqrs.__GFrameworkGeneratedCqrsHandlerRegistry))]
+
+                                                               namespace GFramework.Generated.Cqrs;
+
+                                                               internal sealed class __GFrameworkGeneratedCqrsHandlerRegistry : global::GFramework.Cqrs.ICqrsHandlerRegistry
+                                                               {
+                                                                   public void Register(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services, global::GFramework.Core.Abstractions.Logging.ILogger logger)
+                                                                   {
+                                                                       if (services is null)
+                                                                           throw new global::System.ArgumentNullException(nameof(services));
+                                                                       if (logger is null)
+                                                                           throw new global::System.ArgumentNullException(nameof(logger));
+
+                                                                       var registryAssembly = typeof(global::GFramework.Generated.Cqrs.__GFrameworkGeneratedCqrsHandlerRegistry).Assembly;
+
+                                                                       var implementationType0 = registryAssembly.GetType("TestApp.Container+HiddenHandler", throwOnError: false, ignoreCase: false);
+                                                                       if (implementationType0 is not null)
+                                                                       {
+                                                                           var serviceType0_0Argument0 = registryAssembly.GetType("TestApp.Container+HiddenRequest", throwOnError: false, ignoreCase: false);
+                                                                           var serviceType0_0Argument1Element = registryAssembly.GetType("TestApp.Container+HiddenResponse", throwOnError: false, ignoreCase: false);
+                                                                           if (serviceType0_0Argument0 is not null && serviceType0_0Argument1Element is not null)
+                                                                           {
+                                                                               var serviceType0_0 = typeof(global::GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<,>).MakeGenericType(serviceType0_0Argument0, serviceType0_0Argument1Element.MakeArrayType());
+                                                                               global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(
+                                                                                   services,
+                                                                                   serviceType0_0,
+                                                                                   implementationType0);
+                                                                               logger.Debug("Registered CQRS handler TestApp.Container.HiddenHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<TestApp.Container.HiddenRequest, TestApp.Container.HiddenResponse[]>.");
+                                                                           }
+                                                                       }
+                                                                   }
+                                                               }
+
+                                                               """;
+
+    private const string HiddenGenericEnvelopeResponseExpected = """
+                                                                 // <auto-generated />
+                                                                 #nullable enable
+
+                                                                 [assembly: global::GFramework.Cqrs.CqrsHandlerRegistryAttribute(typeof(global::GFramework.Generated.Cqrs.__GFrameworkGeneratedCqrsHandlerRegistry))]
+
+                                                                 namespace GFramework.Generated.Cqrs;
+
+                                                                 internal sealed class __GFrameworkGeneratedCqrsHandlerRegistry : global::GFramework.Cqrs.ICqrsHandlerRegistry
+                                                                 {
+                                                                     public void Register(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services, global::GFramework.Core.Abstractions.Logging.ILogger logger)
+                                                                     {
+                                                                         if (services is null)
+                                                                             throw new global::System.ArgumentNullException(nameof(services));
+                                                                         if (logger is null)
+                                                                             throw new global::System.ArgumentNullException(nameof(logger));
+
+                                                                         var registryAssembly = typeof(global::GFramework.Generated.Cqrs.__GFrameworkGeneratedCqrsHandlerRegistry).Assembly;
+
+                                                                         var implementationType0 = registryAssembly.GetType("TestApp.Container+HiddenHandler", throwOnError: false, ignoreCase: false);
+                                                                         if (implementationType0 is not null)
+                                                                         {
+                                                                             var serviceType0_0Argument0 = registryAssembly.GetType("TestApp.Container+HiddenRequest", throwOnError: false, ignoreCase: false);
+                                                                             var serviceType0_0Argument1GenericDefinition = registryAssembly.GetType("TestApp.Container+HiddenEnvelope`1", throwOnError: false, ignoreCase: false);
+                                                                             if (serviceType0_0Argument0 is not null && serviceType0_0Argument1GenericDefinition is not null)
+                                                                             {
+                                                                                 var serviceType0_0 = typeof(global::GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<,>).MakeGenericType(serviceType0_0Argument0, serviceType0_0Argument1GenericDefinition.MakeGenericType(typeof(string)));
+                                                                                 global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(
+                                                                                     services,
+                                                                                     serviceType0_0,
+                                                                                     implementationType0);
+                                                                                 logger.Debug("Registered CQRS handler TestApp.Container.HiddenHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<TestApp.Container.HiddenRequest, TestApp.Container.HiddenEnvelope<string>>.");
+                                                                             }
+                                                                         }
+                                                                     }
+                                                                 }
+
+                                                                 """;
 
     /// <summary>
     ///     验证生成器会为当前程序集中的 request、notification 和 stream 处理器生成稳定顺序的注册器。
@@ -337,6 +359,224 @@ public class CqrsHandlerRegistryGeneratorTests
         await GeneratorTest<CqrsHandlerRegistryGenerator>.RunAsync(
             source,
             ("CqrsHandlerRegistry.g.cs", HiddenNestedHandlerSelfRegistrationExpected));
+    }
+
+    /// <summary>
+    ///     验证当隐藏实现类型的 handler 接口仍可被生成代码直接引用时，
+    ///     生成器只会定向反射实现类型，而不会再生成基于 <c>GetInterfaces()</c> 的接口发现辅助逻辑。
+    /// </summary>
+    [Test]
+    public async Task
+        Generates_Direct_Interface_Registrations_For_Hidden_Implementation_When_Handler_Interface_Is_Public()
+    {
+        const string source = """
+                              using System;
+
+                              namespace Microsoft.Extensions.DependencyInjection
+                              {
+                                  public interface IServiceCollection { }
+
+                                  public static class ServiceCollectionServiceExtensions
+                                  {
+                                      public static void AddTransient(IServiceCollection services, Type serviceType, Type implementationType) { }
+                                  }
+                              }
+
+                              namespace GFramework.Core.Abstractions.Logging
+                              {
+                                  public interface ILogger
+                                  {
+                                      void Debug(string msg);
+                                  }
+                              }
+
+                              namespace GFramework.Cqrs.Abstractions.Cqrs
+                              {
+                                  public interface IRequest<TResponse> { }
+                                  public interface INotification { }
+                                  public interface IStreamRequest<TResponse> { }
+
+                                  public interface IRequestHandler<in TRequest, TResponse> where TRequest : IRequest<TResponse> { }
+                                  public interface INotificationHandler<in TNotification> where TNotification : INotification { }
+                                  public interface IStreamRequestHandler<in TRequest, out TResponse> where TRequest : IStreamRequest<TResponse> { }
+                              }
+
+                              namespace GFramework.Cqrs
+                              {
+                                  public interface ICqrsHandlerRegistry
+                                  {
+                                      void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                  }
+
+                                  [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
+                                  public sealed class CqrsHandlerRegistryAttribute : Attribute
+                                  {
+                                      public CqrsHandlerRegistryAttribute(Type registryType) { }
+                                  }
+                              }
+
+                              namespace TestApp
+                              {
+                                  using GFramework.Cqrs.Abstractions.Cqrs;
+
+                                  public sealed record VisibleRequest() : IRequest<string>;
+
+                                  public sealed class Container
+                                  {
+                                      private sealed class HiddenHandler : IRequestHandler<VisibleRequest, string> { }
+                                  }
+                              }
+                              """;
+
+        await GeneratorTest<CqrsHandlerRegistryGenerator>.RunAsync(
+            source,
+            ("CqrsHandlerRegistry.g.cs", HiddenImplementationDirectInterfaceRegistrationExpected));
+    }
+
+    /// <summary>
+    ///     验证精确重建路径会递归覆盖隐藏元素类型数组，
+    ///     使这类 handler interface 也能直接生成 closed service type，而不再退回 <c>GetInterfaces()</c>。
+    /// </summary>
+    [Test]
+    public async Task Generates_Precise_Service_Type_For_Hidden_Array_Type_Arguments()
+    {
+        const string source = """
+                              using System;
+
+                              namespace Microsoft.Extensions.DependencyInjection
+                              {
+                                  public interface IServiceCollection { }
+
+                                  public static class ServiceCollectionServiceExtensions
+                                  {
+                                      public static void AddTransient(IServiceCollection services, Type serviceType, Type implementationType) { }
+                                  }
+                              }
+
+                              namespace GFramework.Core.Abstractions.Logging
+                              {
+                                  public interface ILogger
+                                  {
+                                      void Debug(string msg);
+                                  }
+                              }
+
+                              namespace GFramework.Cqrs.Abstractions.Cqrs
+                              {
+                                  public interface IRequest<TResponse> { }
+                                  public interface INotification { }
+                                  public interface IStreamRequest<TResponse> { }
+
+                                  public interface IRequestHandler<in TRequest, TResponse> where TRequest : IRequest<TResponse> { }
+                                  public interface INotificationHandler<in TNotification> where TNotification : INotification { }
+                                  public interface IStreamRequestHandler<in TRequest, out TResponse> where TRequest : IStreamRequest<TResponse> { }
+                              }
+
+                              namespace GFramework.Cqrs
+                              {
+                                  public interface ICqrsHandlerRegistry
+                                  {
+                                      void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                  }
+
+                                  [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
+                                  public sealed class CqrsHandlerRegistryAttribute : Attribute
+                                  {
+                                      public CqrsHandlerRegistryAttribute(Type registryType) { }
+                                  }
+                              }
+
+                              namespace TestApp
+                              {
+                                  using GFramework.Cqrs.Abstractions.Cqrs;
+
+                                  public sealed class Container
+                                  {
+                                      private sealed record HiddenResponse();
+
+                                      private sealed record HiddenRequest() : IRequest<HiddenResponse[]>;
+
+                                      private sealed class HiddenHandler : IRequestHandler<HiddenRequest, HiddenResponse[]> { }
+                                  }
+                              }
+                              """;
+
+        await GeneratorTest<CqrsHandlerRegistryGenerator>.RunAsync(
+            source,
+            ("CqrsHandlerRegistry.g.cs", HiddenArrayResponseFallbackExpected));
+    }
+
+    /// <summary>
+    ///     验证精确重建路径会递归覆盖隐藏泛型定义，
+    ///     使“隐藏泛型定义 + 可见/常量型实参”的闭包类型也能直接生成 closed service type。
+    /// </summary>
+    [Test]
+    public async Task Generates_Precise_Service_Type_For_Hidden_Generic_Type_Definitions()
+    {
+        const string source = """
+                              using System;
+
+                              namespace Microsoft.Extensions.DependencyInjection
+                              {
+                                  public interface IServiceCollection { }
+
+                                  public static class ServiceCollectionServiceExtensions
+                                  {
+                                      public static void AddTransient(IServiceCollection services, Type serviceType, Type implementationType) { }
+                                  }
+                              }
+
+                              namespace GFramework.Core.Abstractions.Logging
+                              {
+                                  public interface ILogger
+                                  {
+                                      void Debug(string msg);
+                                  }
+                              }
+
+                              namespace GFramework.Cqrs.Abstractions.Cqrs
+                              {
+                                  public interface IRequest<TResponse> { }
+                                  public interface INotification { }
+                                  public interface IStreamRequest<TResponse> { }
+
+                                  public interface IRequestHandler<in TRequest, TResponse> where TRequest : IRequest<TResponse> { }
+                                  public interface INotificationHandler<in TNotification> where TNotification : INotification { }
+                                  public interface IStreamRequestHandler<in TRequest, out TResponse> where TRequest : IStreamRequest<TResponse> { }
+                              }
+
+                              namespace GFramework.Cqrs
+                              {
+                                  public interface ICqrsHandlerRegistry
+                                  {
+                                      void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                  }
+
+                                  [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
+                                  public sealed class CqrsHandlerRegistryAttribute : Attribute
+                                  {
+                                      public CqrsHandlerRegistryAttribute(Type registryType) { }
+                                  }
+                              }
+
+                              namespace TestApp
+                              {
+                                  using GFramework.Cqrs.Abstractions.Cqrs;
+
+                                  public sealed class Container
+                                  {
+                                      private sealed class HiddenEnvelope<T> { }
+
+                                      private sealed record HiddenRequest() : IRequest<HiddenEnvelope<string>>;
+
+                                      private sealed class HiddenHandler : IRequestHandler<HiddenRequest, HiddenEnvelope<string>> { }
+                                  }
+                              }
+                              """;
+
+        await GeneratorTest<CqrsHandlerRegistryGenerator>.RunAsync(
+            source,
+            ("CqrsHandlerRegistry.g.cs", HiddenGenericEnvelopeResponseExpected));
     }
 
     /// <summary>
