@@ -209,7 +209,7 @@ jobs:
       # 无论某一侧包源发布是否失败，都继续创建 Release。
       # 合规工件由独立 workflow 生成，当前发布流不再假设这些文件在同一次运行中可用。
       - name: Create GitHub Release and Upload Assets
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           generate_release_notes: true
           name: "Release ${{ github.ref_name }}"

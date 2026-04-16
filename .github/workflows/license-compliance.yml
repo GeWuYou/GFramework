@@ -106,7 +106,7 @@ jobs:
       #   env: 设置环境变量
       #     GITHUB_TOKEN: GitHub 访问令牌，用于授权发布操作
       - name: Upload compliance assets to GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           files: |
