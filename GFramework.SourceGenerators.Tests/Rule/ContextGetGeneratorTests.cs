@@ -12,9 +12,9 @@ public class ContextGetGeneratorTests
         var source = """
                      using System;
                      using System.Collections.Generic;
-                     using GFramework.SourceGenerators.Abstractions.Rule;
+                     using GFramework.Core.SourceGenerators.Abstractions.Rule;
 
-                     namespace GFramework.SourceGenerators.Abstractions.Rule
+                     namespace GFramework.Core.SourceGenerators.Abstractions.Rule
                      {
                          [AttributeUsage(AttributeTargets.Class, Inherited = false)]
                          public sealed class ContextAwareAttribute : Attribute { }
@@ -102,9 +102,9 @@ public class ContextGetGeneratorTests
     {
         var source = """
                      using System;
-                     using GFramework.SourceGenerators.Abstractions.Rule;
+                     using GFramework.Core.SourceGenerators.Abstractions.Rule;
 
-                     namespace GFramework.SourceGenerators.Abstractions.Rule
+                     namespace GFramework.Core.SourceGenerators.Abstractions.Rule
                      {
                          [AttributeUsage(AttributeTargets.Class, Inherited = false)]
                          public sealed class ContextAwareAttribute : Attribute { }
@@ -148,7 +148,7 @@ public class ContextGetGeneratorTests
                          [ContextAware]
                          public partial class InventoryPanel
                          {
-                             [global::GFramework.SourceGenerators.Abstractions.Rule.GetModel]
+                             [global::GFramework.Core.SourceGenerators.Abstractions.Rule.GetModel]
                              private IInventoryModel _model = null!;
                          }
                      }
@@ -184,9 +184,9 @@ public class ContextGetGeneratorTests
         var source = """
                      using System;
                      using System.Collections.Generic;
-                     using GFramework.SourceGenerators.Abstractions.Rule;
+                     using GFramework.Core.SourceGenerators.Abstractions.Rule;
 
-                     namespace GFramework.SourceGenerators.Abstractions.Rule
+                     namespace GFramework.Core.SourceGenerators.Abstractions.Rule
                      {
                          [AttributeUsage(AttributeTargets.Class, Inherited = false)]
                          public sealed class GetAllAttribute : Attribute { }
@@ -291,9 +291,9 @@ public class ContextGetGeneratorTests
     {
         var source = """
                      using System;
-                     using GFramework.SourceGenerators.Abstractions.Rule;
+                     using GFramework.Core.SourceGenerators.Abstractions.Rule;
 
-                     namespace GFramework.SourceGenerators.Abstractions.Rule
+                     namespace GFramework.Core.SourceGenerators.Abstractions.Rule
                      {
                          [AttributeUsage(AttributeTargets.Class, Inherited = false)]
                          public sealed class GetAllAttribute : Attribute { }
@@ -382,9 +382,9 @@ public class ContextGetGeneratorTests
     {
         var source = """
                      using System;
-                     using GFramework.SourceGenerators.Abstractions.Rule;
+                     using GFramework.Core.SourceGenerators.Abstractions.Rule;
 
-                     namespace GFramework.SourceGenerators.Abstractions.Rule
+                     namespace GFramework.Core.SourceGenerators.Abstractions.Rule
                      {
                          [AttributeUsage(AttributeTargets.Class, Inherited = false)]
                          public sealed class ContextAwareAttribute : Attribute { }
@@ -460,9 +460,9 @@ public class ContextGetGeneratorTests
     {
         var source = """
                      using System;
-                     using GFramework.SourceGenerators.Abstractions.Rule;
+                     using GFramework.Core.SourceGenerators.Abstractions.Rule;
 
-                     namespace GFramework.SourceGenerators.Abstractions.Rule
+                     namespace GFramework.Core.SourceGenerators.Abstractions.Rule
                      {
                          [AttributeUsage(AttributeTargets.Class, Inherited = false)]
                          public sealed class GetAllAttribute : Attribute { }
@@ -543,9 +543,9 @@ public class ContextGetGeneratorTests
     {
         var source = MarkupTestSource.Parse("""
                                             using System;
-                                            using GFramework.SourceGenerators.Abstractions.Rule;
+                                            using GFramework.Core.SourceGenerators.Abstractions.Rule;
 
-                                            namespace GFramework.SourceGenerators.Abstractions.Rule
+                                            namespace GFramework.Core.SourceGenerators.Abstractions.Rule
                                             {
                                                 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
                                                 public sealed class GetAllAttribute : Attribute { }
@@ -644,9 +644,9 @@ public class ContextGetGeneratorTests
     {
         var source = MarkupTestSource.Parse("""
                                             using System;
-                                            using GFramework.SourceGenerators.Abstractions.Rule;
+                                            using GFramework.Core.SourceGenerators.Abstractions.Rule;
 
-                                            namespace GFramework.SourceGenerators.Abstractions.Rule
+                                            namespace GFramework.Core.SourceGenerators.Abstractions.Rule
                                             {
                                                 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
                                                 public sealed class GetAllAttribute : Attribute { }
@@ -753,9 +753,9 @@ public class ContextGetGeneratorTests
     {
         var source = """
                      using System;
-                     using GFramework.SourceGenerators.Abstractions.Rule;
+                     using GFramework.Core.SourceGenerators.Abstractions.Rule;
 
-                     namespace GFramework.SourceGenerators.Abstractions.Rule
+                     namespace GFramework.Core.SourceGenerators.Abstractions.Rule
                      {
                          [AttributeUsage(AttributeTargets.Class, Inherited = false)]
                          public sealed class ContextAwareAttribute : Attribute { }
@@ -845,9 +845,9 @@ public class ContextGetGeneratorTests
     {
         var source = """
                      using System;
-                     using GFramework.SourceGenerators.Abstractions.Rule;
+                     using GFramework.Core.SourceGenerators.Abstractions.Rule;
 
-                     namespace GFramework.SourceGenerators.Abstractions.Rule
+                     namespace GFramework.Core.SourceGenerators.Abstractions.Rule
                      {
                          [AttributeUsage(AttributeTargets.Field, Inherited = false)]
                          public sealed class GetServiceAttribute : Attribute { }
@@ -922,9 +922,9 @@ public class ContextGetGeneratorTests
     {
         var source = MarkupTestSource.Parse("""
                                             using System;
-                                            using GFramework.SourceGenerators.Abstractions.Rule;
+                                            using GFramework.Core.SourceGenerators.Abstractions.Rule;
 
-                                            namespace GFramework.SourceGenerators.Abstractions.Rule
+                                            namespace GFramework.Core.SourceGenerators.Abstractions.Rule
                                             {
                                                 [AttributeUsage(AttributeTargets.Field, Inherited = false)]
                                                 public sealed class GetModelAttribute : Attribute { }
@@ -989,9 +989,9 @@ public class ContextGetGeneratorTests
         var source = MarkupTestSource.Parse("""
                                             using System;
                                             using System.Collections.Generic;
-                                            using GFramework.SourceGenerators.Abstractions.Rule;
+                                            using GFramework.Core.SourceGenerators.Abstractions.Rule;
 
-                                            namespace GFramework.SourceGenerators.Abstractions.Rule
+                                            namespace GFramework.Core.SourceGenerators.Abstractions.Rule
                                             {
                                                 [AttributeUsage(AttributeTargets.Field, Inherited = false)]
                                                 public sealed class GetModelsAttribute : Attribute { }
@@ -1060,9 +1060,9 @@ public class ContextGetGeneratorTests
     {
         var source = MarkupTestSource.Parse("""
                                             using System;
-                                            using GFramework.SourceGenerators.Abstractions.Rule;
+                                            using GFramework.Core.SourceGenerators.Abstractions.Rule;
 
-                                            namespace GFramework.SourceGenerators.Abstractions.Rule
+                                            namespace GFramework.Core.SourceGenerators.Abstractions.Rule
                                             {
                                                 [AttributeUsage(AttributeTargets.Field, Inherited = false)]
                                                 public sealed class GetModelAttribute : Attribute { }
@@ -1131,9 +1131,9 @@ public class ContextGetGeneratorTests
     {
         var source = MarkupTestSource.Parse("""
                                             using System;
-                                            using GFramework.SourceGenerators.Abstractions.Rule;
+                                            using GFramework.Core.SourceGenerators.Abstractions.Rule;
 
-                                            namespace GFramework.SourceGenerators.Abstractions.Rule
+                                            namespace GFramework.Core.SourceGenerators.Abstractions.Rule
                                             {
                                                 [AttributeUsage(AttributeTargets.Field, Inherited = false)]
                                                 public sealed class GetModelAttribute : Attribute { }
@@ -1203,9 +1203,9 @@ public class ContextGetGeneratorTests
         var source = """
                      using System;
                      using System.Collections.Generic;
-                     using GFramework.SourceGenerators.Abstractions.Rule;
+                     using GFramework.Core.SourceGenerators.Abstractions.Rule;
 
-                     namespace GFramework.SourceGenerators.Abstractions.Rule
+                     namespace GFramework.Core.SourceGenerators.Abstractions.Rule
                      {
                          [AttributeUsage(AttributeTargets.Field, Inherited = false)]
                          public sealed class GetModelsAttribute : Attribute { }

@@ -13,7 +13,7 @@ public class EnumExtensionsGeneratorSnapshotTests
         const string source = """
                               using System;
 
-                              namespace GFramework.SourceGenerators.Abstractions.Enums
+                              namespace GFramework.Core.SourceGenerators.Abstractions.Enums
                               {
                                   [AttributeUsage(AttributeTargets.Enum)]
                                   public sealed class GenerateEnumExtensionsAttribute : Attribute
@@ -25,7 +25,7 @@ public class EnumExtensionsGeneratorSnapshotTests
 
                               namespace TestApp
                               {
-                                  using GFramework.SourceGenerators.Abstractions.Enums;
+                                  using GFramework.Core.SourceGenerators.Abstractions.Enums;
 
                                   [GenerateEnumExtensions]
                                   public enum Status
@@ -53,7 +53,7 @@ public class EnumExtensionsGeneratorSnapshotTests
         const string source = """
                               using System;
 
-                              namespace GFramework.SourceGenerators.Abstractions.Enums
+                              namespace GFramework.Core.SourceGenerators.Abstractions.Enums
                               {
                                   [AttributeUsage(AttributeTargets.Enum)]
                                   public sealed class GenerateEnumExtensionsAttribute : Attribute
@@ -65,7 +65,7 @@ public class EnumExtensionsGeneratorSnapshotTests
 
                               namespace TestApp
                               {
-                                  using GFramework.SourceGenerators.Abstractions.Enums;
+                                  using GFramework.Core.SourceGenerators.Abstractions.Enums;
 
                                   [GenerateEnumExtensions]
                                   public enum Status
@@ -92,7 +92,7 @@ public class EnumExtensionsGeneratorSnapshotTests
         const string source = """
                               using System;
 
-                              namespace GFramework.SourceGenerators.Abstractions.Enums
+                              namespace GFramework.Core.SourceGenerators.Abstractions.Enums
                               {
                                   [AttributeUsage(AttributeTargets.Enum)]
                                   public sealed class GenerateEnumExtensionsAttribute : Attribute
@@ -104,7 +104,7 @@ public class EnumExtensionsGeneratorSnapshotTests
 
                               namespace TestApp
                               {
-                                  using GFramework.SourceGenerators.Abstractions.Enums;
+                                  using GFramework.Core.SourceGenerators.Abstractions.Enums;
 
                                   [GenerateEnumExtensions]
                                   [Flags]
@@ -134,7 +134,7 @@ public class EnumExtensionsGeneratorSnapshotTests
         const string source = """
                               using System;
 
-                              namespace GFramework.SourceGenerators.Abstractions.Enums
+                              namespace GFramework.Core.SourceGenerators.Abstractions.Enums
                               {
                                   [AttributeUsage(AttributeTargets.Enum)]
                                   public sealed class GenerateEnumExtensionsAttribute : Attribute
@@ -146,7 +146,7 @@ public class EnumExtensionsGeneratorSnapshotTests
 
                               namespace TestApp
                               {
-                                  using GFramework.SourceGenerators.Abstractions.Enums;
+                                  using GFramework.Core.SourceGenerators.Abstractions.Enums;
 
                                   [GenerateEnumExtensions(GenerateIsMethods = false)]
                                   public enum Status
@@ -173,7 +173,7 @@ public class EnumExtensionsGeneratorSnapshotTests
         const string source = """
                               using System;
 
-                              namespace GFramework.SourceGenerators.Abstractions.Enums
+                              namespace GFramework.Core.SourceGenerators.Abstractions.Enums
                               {
                                   [AttributeUsage(AttributeTargets.Enum)]
                                   public sealed class GenerateEnumExtensionsAttribute : Attribute
@@ -185,7 +185,7 @@ public class EnumExtensionsGeneratorSnapshotTests
 
                               namespace TestApp
                               {
-                                  using GFramework.SourceGenerators.Abstractions.Enums;
+                                  using GFramework.Core.SourceGenerators.Abstractions.Enums;
 
                                   [GenerateEnumExtensions(GenerateIsInMethod = false)]
                                   public enum Status

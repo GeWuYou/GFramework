@@ -23,7 +23,7 @@ public class ContextAwareGeneratorSnapshotTests
         const string source = """
                               using System;
 
-                              namespace GFramework.SourceGenerators.Abstractions.Rule
+                              namespace GFramework.Core.SourceGenerators.Abstractions.Rule
                               {
                                   [AttributeUsage(AttributeTargets.Class)]
                                   public sealed class ContextAwareAttribute : Attribute { }
@@ -73,7 +73,7 @@ public class ContextAwareGeneratorSnapshotTests
 
                               namespace TestApp
                               {
-                                  using GFramework.SourceGenerators.Abstractions.Rule;
+                                  using GFramework.Core.SourceGenerators.Abstractions.Rule;
                                   using GFramework.Core.Abstractions.Rule;
 
                                   [ContextAware]

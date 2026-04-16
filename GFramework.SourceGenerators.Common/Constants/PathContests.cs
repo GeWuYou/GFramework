@@ -39,7 +39,7 @@ public static class PathContests
     /// <summary>
     ///     GFramework源代码生成器抽象层命名空间
     /// </summary>
-    public const string SourceGeneratorsAbstractionsPath = $"{BaseNamespace}.SourceGenerators.Abstractions";
+    public const string SourceGeneratorsAbstractionsPath = $"{CoreNamespace}.SourceGenerators.Abstractions";
 
     /// <summary>
     ///     GFramework Godot源代码生成器抽象层命名空间

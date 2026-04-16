@@ -89,10 +89,10 @@ GFramework 的 source generators 利用 Roslyn 源代码生成器技术，在编
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="GeWuYou.GFramework.Core.SourceGenerators" Version="1.0.0"
+        <PackageReference Include="GeWuYou.GFramework.Core.SourceGenerators"
                           PrivateAssets="all"
                           ExcludeAssets="runtime" />
-        <PackageReference Include="GeWuYou.GFramework.Game.SourceGenerators" Version="1.0.0"
+        <PackageReference Include="GeWuYou.GFramework.Game.SourceGenerators"
                           PrivateAssets="all"
                           ExcludeAssets="runtime" />
     </ItemGroup>
@@ -102,6 +102,7 @@ GFramework 的 source generators 利用 Roslyn 源代码生成器技术，在编
 如果你只使用 Godot 生成器或 CQRS 处理器注册生成器，请把上面的包替换为对应的
 `GeWuYou.GFramework.Godot.SourceGenerators` 或 `GeWuYou.GFramework.Cqrs.SourceGenerators`。
 这些拆分包会同时带上各自需要的 abstractions 程序集，不需要再额外安装单独的 `*.Attributes` 包。
+实际接入时请替换为当前发布版本，或与项目中其余 `GeWuYou.GFramework.*` 包保持同一版本。
 
 ### Config Schema 文件约定
 
@@ -1235,11 +1236,14 @@ public partial class ServiceComponent : IService
 
 ```mermaid
 graph TD
-    A[GFramework.SourceGenerators] --> B[GFramework.Core.SourceGenerators.Abstractions]
+    A[GeWuYou.GFramework.Core.SourceGenerators] --> B[GFramework.Core.SourceGenerators.Abstractions]
     A --> C[GFramework.SourceGenerators.Common]
     A --> D[GFramework.Core.Abstractions]
     A --> E[Microsoft.CodeAnalysis.CSharp]
     A --> F[Microsoft.CodeAnalysis.Analyzers]
+    G[GeWuYou.GFramework.Game.SourceGenerators] --> C
+    H[GeWuYou.GFramework.Godot.SourceGenerators] --> C
+    I[GeWuYou.GFramework.Cqrs.SourceGenerators] --> C
 ```
 
 ## 版本兼容性

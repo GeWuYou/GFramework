@@ -14,9 +14,9 @@ public class AutoRegisterModuleGeneratorTests
     {
         const string source = """
                               using System;
-                              using GFramework.SourceGenerators.Abstractions.Architectures;
+                              using GFramework.Core.SourceGenerators.Abstractions.Architectures;
 
-                              namespace GFramework.SourceGenerators.Abstractions.Architectures
+                              namespace GFramework.Core.SourceGenerators.Abstractions.Architectures
                               {
                                   [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
                                   public sealed class AutoRegisterModuleAttribute : Attribute { }
@@ -70,7 +70,7 @@ public class AutoRegisterModuleGeneratorTests
                                   using GFramework.Core.Abstractions.Model;
                                   using GFramework.Core.Abstractions.Systems;
                                   using GFramework.Core.Abstractions.Utility;
-                                  using GFramework.SourceGenerators.Abstractions.Architectures;
+                                  using GFramework.Core.SourceGenerators.Abstractions.Architectures;
 
                                   public sealed class PlayerModel : IModel { }
                                   public sealed class CombatSystem : ISystem { }
@@ -118,7 +118,7 @@ public class AutoRegisterModuleGeneratorTests
         const string commonSource = """
                                     using System;
 
-                                    namespace GFramework.SourceGenerators.Abstractions.Architectures
+                                    namespace GFramework.Core.SourceGenerators.Abstractions.Architectures
                                     {
                                         [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
                                         public sealed class AutoRegisterModuleAttribute : Attribute { }
@@ -182,7 +182,7 @@ public class AutoRegisterModuleGeneratorTests
         const string partASource = """
                                    namespace TestApp
                                    {
-                                       using GFramework.SourceGenerators.Abstractions.Architectures;
+                                       using GFramework.Core.SourceGenerators.Abstractions.Architectures;
 
                                        // Padding ensures this attribute lives later in the file than the attributes in PartB.
                                        // The generator should still place it first because PartA sorts before PartB.
@@ -207,7 +207,7 @@ public class AutoRegisterModuleGeneratorTests
         const string partBSource = """
                                    namespace TestApp
                                    {
-                                       using GFramework.SourceGenerators.Abstractions.Architectures;
+                                       using GFramework.Core.SourceGenerators.Abstractions.Architectures;
 
                                        [RegisterSystem(typeof(CombatSystem))]
                                        [RegisterModel(typeof(PlayerModel))]
@@ -266,9 +266,9 @@ public class AutoRegisterModuleGeneratorTests
         const string source = """
                               #nullable enable
                               using System;
-                              using GFramework.SourceGenerators.Abstractions.Architectures;
+                              using GFramework.Core.SourceGenerators.Abstractions.Architectures;
 
-                              namespace GFramework.SourceGenerators.Abstractions.Architectures
+                              namespace GFramework.Core.SourceGenerators.Abstractions.Architectures
                               {
                                   [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
                                   public sealed class AutoRegisterModuleAttribute : Attribute { }
@@ -320,7 +320,7 @@ public class AutoRegisterModuleGeneratorTests
                               namespace TestApp
                               {
                                   using GFramework.Core.Abstractions.Model;
-                                  using GFramework.SourceGenerators.Abstractions.Architectures;
+                                  using GFramework.Core.SourceGenerators.Abstractions.Architectures;
 
                                   public sealed class PlayerModel : IModel { }
 

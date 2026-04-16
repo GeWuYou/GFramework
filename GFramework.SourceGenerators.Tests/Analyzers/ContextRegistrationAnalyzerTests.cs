@@ -121,7 +121,7 @@ public sealed class ContextRegistrationAnalyzerTests
                                             }
                                         }
 
-                                        namespace GFramework.SourceGenerators.Abstractions.Rule
+                                        namespace GFramework.Core.SourceGenerators.Abstractions.Rule
                                         {
                                             public sealed class GetModelAttribute : Attribute { }
                                             public sealed class GetModelsAttribute : Attribute { }
@@ -142,7 +142,7 @@ public sealed class ContextRegistrationAnalyzerTests
                      using GFramework.Core.Abstractions.Model;
                      using GFramework.Core.Abstractions.Systems;
                      using GFramework.Core.Architectures;
-                     using GFramework.SourceGenerators.Abstractions.Rule;
+                     using GFramework.Core.SourceGenerators.Abstractions.Rule;
                      
                      public interface IInventoryModel : IModel { }
                      
@@ -180,7 +180,7 @@ public sealed class ContextRegistrationAnalyzerTests
                      using GFramework.Core.Abstractions.Model;
                      using GFramework.Core.Abstractions.Systems;
                      using GFramework.Core.Architectures;
-                     using GFramework.SourceGenerators.Abstractions.Rule;
+                     using GFramework.Core.SourceGenerators.Abstractions.Rule;
                      
                      public interface IInventoryModel : IModel { }
                      
@@ -255,7 +255,7 @@ public sealed class ContextRegistrationAnalyzerTests
                      using GFramework.Core.Abstractions.Model;
                      using GFramework.Core.Abstractions.Systems;
                      using GFramework.Core.Architectures;
-                     using GFramework.SourceGenerators.Abstractions.Rule;
+                     using GFramework.Core.SourceGenerators.Abstractions.Rule;
                      
                      public interface IInventoryModel : IModel { }
                      
@@ -297,7 +297,7 @@ public sealed class ContextRegistrationAnalyzerTests
                      using GFramework.Core.Abstractions.Model;
                      using GFramework.Core.Abstractions.Systems;
                      using GFramework.Core.Architectures;
-                     using GFramework.SourceGenerators.Abstractions.Rule;
+                     using GFramework.Core.SourceGenerators.Abstractions.Rule;
                      
                      public interface IInventoryModel : IModel { }
                      
@@ -337,7 +337,7 @@ public sealed class ContextRegistrationAnalyzerTests
                      using GFramework.Core.Abstractions.Systems;
                      using GFramework.Core.Abstractions.Utility;
                      using GFramework.Core.Architectures;
-                     using GFramework.SourceGenerators.Abstractions.Rule;
+                     using GFramework.Core.SourceGenerators.Abstractions.Rule;
                      
                      public interface IInventoryUtility : IUtility { }
                      
@@ -376,7 +376,7 @@ public sealed class ContextRegistrationAnalyzerTests
                      using GFramework.Core.Abstractions.Model;
                      using GFramework.Core.Abstractions.Systems;
                      using GFramework.Core.Architectures;
-                     using GFramework.SourceGenerators.Abstractions.Rule;
+                     using GFramework.Core.SourceGenerators.Abstractions.Rule;
                      
                      public interface IInventoryModel : IModel { }
                      
@@ -423,7 +423,7 @@ public sealed class ContextRegistrationAnalyzerTests
                      using GFramework.Core.Abstractions.Model;
                      using GFramework.Core.Abstractions.Systems;
                      using GFramework.Core.Architectures;
-                     using GFramework.SourceGenerators.Abstractions.Rule;
+                     using GFramework.Core.SourceGenerators.Abstractions.Rule;
                      
                      public interface IInventoryModel : IModel { }
                      
@@ -477,7 +477,7 @@ public sealed class ContextRegistrationAnalyzerTests
                      using GFramework.Core.Abstractions.Model;
                      using GFramework.Core.Abstractions.Systems;
                      using GFramework.Core.Architectures;
-                     using GFramework.SourceGenerators.Abstractions.Rule;
+                     using GFramework.Core.SourceGenerators.Abstractions.Rule;
                      
                      public interface IInventoryModel : IModel { }
                      
@@ -532,7 +532,7 @@ public sealed class ContextRegistrationAnalyzerTests
                      using GFramework.Core.Abstractions.Model;
                      using GFramework.Core.Abstractions.Systems;
                      using GFramework.Core.Architectures;
-                     using GFramework.SourceGenerators.Abstractions.Rule;
+                     using GFramework.Core.SourceGenerators.Abstractions.Rule;
                      
                      public interface IInventoryModel : IModel { }
                      
