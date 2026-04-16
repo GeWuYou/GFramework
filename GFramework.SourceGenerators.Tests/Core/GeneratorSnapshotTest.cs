@@ -1,7 +1,4 @@
 ﻿using System.IO;
-using Microsoft.CodeAnalysis.CSharp.Testing;
-using Microsoft.CodeAnalysis.Testing;
-using NUnit.Framework;
 
 namespace GFramework.SourceGenerators.Tests.Core;
 
@@ -17,10 +14,12 @@ public static class GeneratorSnapshotTest<TGenerator>
     /// </summary>
     /// <param name="source">输入的源代码字符串</param>
     /// <param name="snapshotFolder">快照文件存储的文件夹路径</param>
+    /// <param name="snapshotFileNameSelector">将生成文件名映射为快照文件名的规则；为空时使用原始生成文件名。</param>
     /// <returns>异步任务</returns>
     public static async Task RunAsync(
         string source,
-        string snapshotFolder)
+        string snapshotFolder,
+        Func<string, string>? snapshotFileNameSelector = null)
     {
         var test = new CSharpSourceGeneratorTest<TGenerator, DefaultVerifier>
         {
@@ -38,9 +37,11 @@ public static class GeneratorSnapshotTest<TGenerator>
 
         foreach (var (filename, content) in generated)
         {
+            // 不同测试套件可能需要将生成文件映射到非 .cs 快照，以避免测试资产被当作可编译源码参与构建。
+            var snapshotFileName = snapshotFileNameSelector?.Invoke(filename) ?? filename;
             var path = Path.Combine(
                 snapshotFolder,
-                filename);
+                snapshotFileName);
 
             if (!File.Exists(path))
             {
@@ -57,7 +58,7 @@ public static class GeneratorSnapshotTest<TGenerator>
             Assert.That(
                 Normalize(expected),
                 Is.EqualTo(Normalize(content.ToString())),
-                $"Snapshot mismatch: {filename}");
+                $"Snapshot mismatch: {snapshotFileName}");
         }
     }
 

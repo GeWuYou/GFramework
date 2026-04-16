@@ -30,7 +30,9 @@
 
     <ItemGroup>
         <Compile Remove="**\snapshots\**\*.cs"/>
+        <Compile Remove="**\Snapshots\**\*.cs"/>
         <None Include="**\snapshots\**\*.cs"/>
+        <None Include="**\Snapshots\**\*.cs"/>
         <Folder Include="rule\snapshots\ContextAwareGenerator\"/>
     </ItemGroup>
 

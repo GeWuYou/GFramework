@@ -30,7 +30,8 @@ public class EnumExtensionsGeneratorSnapshotTests
 
         await GeneratorSnapshotTest<EnumExtensionsGenerator>.RunAsync(
             source,
-            GetSnapshotFolder("BasicEnum_IsMethods"));
+            GetSnapshotFolder("BasicEnum_IsMethods"),
+            GetSnapshotFileName);
     }
 
     /// <summary>
@@ -50,7 +51,8 @@ public class EnumExtensionsGeneratorSnapshotTests
 
         await GeneratorSnapshotTest<EnumExtensionsGenerator>.RunAsync(
             source,
-            GetSnapshotFolder("BasicEnum_IsInMethod"));
+            GetSnapshotFolder("BasicEnum_IsInMethod"),
+            GetSnapshotFileName);
     }
 
     /// <summary>
@@ -73,7 +75,8 @@ public class EnumExtensionsGeneratorSnapshotTests
 
         await GeneratorSnapshotTest<EnumExtensionsGenerator>.RunAsync(
             source,
-            GetSnapshotFolder("EnumWithFlagValues"));
+            GetSnapshotFolder("EnumWithFlagValues"),
+            GetSnapshotFileName);
     }
 
     /// <summary>
@@ -94,7 +97,8 @@ public class EnumExtensionsGeneratorSnapshotTests
 
         await GeneratorSnapshotTest<EnumExtensionsGenerator>.RunAsync(
             source,
-            GetSnapshotFolder("DisableIsMethods"));
+            GetSnapshotFolder("DisableIsMethods"),
+            GetSnapshotFileName);
     }
 
     /// <summary>
@@ -115,7 +119,8 @@ public class EnumExtensionsGeneratorSnapshotTests
 
         await GeneratorSnapshotTest<EnumExtensionsGenerator>.RunAsync(
             source,
-            GetSnapshotFolder("DisableIsInMethod"));
+            GetSnapshotFolder("DisableIsInMethod"),
+            GetSnapshotFileName);
     }
 
     /// <summary>
@@ -136,7 +141,8 @@ public class EnumExtensionsGeneratorSnapshotTests
 
         await GeneratorSnapshotTest<EnumExtensionsGenerator>.RunAsync(
             source,
-            GetSnapshotFolder("DisableAllGeneratedMethods"));
+            GetSnapshotFolder("DisableAllGeneratedMethods"),
+            GetSnapshotFileName);
     }
 
     /// <summary>
@@ -156,6 +162,16 @@ public class EnumExtensionsGeneratorSnapshotTests
                 "snapshots",
                 "EnumExtensionsGenerator",
                 scenarioName));
+    }
+
+    /// <summary>
+    ///     将生成器输出文件名映射为非 C# 快照文件名，避免快照资产被命名校验和项目编译误判为源码。
+    /// </summary>
+    /// <param name="generatedFileName">生成器输出的提示文件名。</param>
+    /// <returns>对应的快照文件名。</returns>
+    private static string GetSnapshotFileName(string generatedFileName)
+    {
+        return Path.ChangeExtension(generatedFileName, ".txt");
     }
 
     /// <summary>
