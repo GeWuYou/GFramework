@@ -1856,6 +1856,39 @@ reward:
     assert.deepEqual(diagnostics, []);
 });
 
+test("validateParsedConfig should reject objects that fully match a forbidden not schema", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "reward": {
+              "type": "object",
+              "not": {
+                "type": "object",
+                "required": ["gold"],
+                "properties": {
+                  "gold": { "type": "integer" }
+                }
+              },
+              "properties": {
+                "gold": { "type": "integer" },
+                "bonus": { "type": "integer" }
+              }
+            }
+          }
+        }
+    `);
+    const yaml = parseTopLevelYaml(`
+reward:
+  gold: 10
+`);
+
+    const diagnostics = validateParsedConfig(schema, yaml);
+
+    assert.equal(diagnostics.length, 1);
+    assert.match(diagnostics[0].message, /not/u);
+});
+
 test("applyFormUpdates should update nested scalar and scalar-array paths", () => {
     const updated = applyFormUpdates(
         [

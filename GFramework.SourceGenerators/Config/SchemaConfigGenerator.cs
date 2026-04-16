@@ -670,6 +670,17 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             }
         }
 
+        if (element.TryGetProperty("not", out var notElement) &&
+            notElement.ValueKind == JsonValueKind.Object &&
+            !TryValidateStringFormatMetadataRecursively(
+                filePath,
+                $"{displayPath}[not]",
+                notElement,
+                out diagnostic))
+        {
+            return false;
+        }
+
         if (!string.Equals(schemaType, "array", StringComparison.Ordinal))
         {
             return true;
@@ -688,17 +699,6 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                 filePath,
                 $"{displayPath}[contains]",
                 containsElement,
-                out diagnostic))
-        {
-            return false;
-        }
-
-        if (element.TryGetProperty("not", out var notElement) &&
-            notElement.ValueKind == JsonValueKind.Object &&
-            !TryValidateStringFormatMetadataRecursively(
-                filePath,
-                $"{displayPath}[not]",
-                notElement,
                 out diagnostic))
         {
             return false;
