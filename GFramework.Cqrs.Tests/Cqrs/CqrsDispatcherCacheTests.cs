@@ -12,9 +12,6 @@ namespace GFramework.Cqrs.Tests.Cqrs;
 [TestFixture]
 internal sealed class CqrsDispatcherCacheTests
 {
-    private MicrosoftDiContainer? _container;
-    private ArchitectureContext? _context;
-
     /// <summary>
     ///     初始化测试上下文。
     /// </summary>
@@ -23,6 +20,7 @@ internal sealed class CqrsDispatcherCacheTests
     {
         LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider();
         _container = new MicrosoftDiContainer();
+        _container.RegisterCqrsPipelineBehavior<DispatcherPipelineCacheBehavior>();
 
         CqrsTestRuntime.RegisterHandlers(
             _container,
@@ -43,6 +41,9 @@ internal sealed class CqrsDispatcherCacheTests
         _container = null;
     }
 
+    private MicrosoftDiContainer? _container;
+    private ArchitectureContext? _context;
+
     /// <summary>
     ///     验证相同消息类型重复分发时，不会重复扩张服务类型缓存。
     /// </summary>
@@ -52,32 +53,54 @@ internal sealed class CqrsDispatcherCacheTests
         var notificationServiceTypes = GetCacheField("NotificationHandlerServiceTypes");
         var requestServiceTypes = GetCacheField("RequestServiceTypes");
         var streamServiceTypes = GetCacheField("StreamHandlerServiceTypes");
+        var requestInvokers = GetCacheField("RequestInvokers");
+        var requestPipelineInvokers = GetCacheField("RequestPipelineInvokers");
+        var notificationInvokers = GetCacheField("NotificationInvokers");
+        var streamInvokers = GetCacheField("StreamInvokers");
 
         var notificationBefore = notificationServiceTypes.Count;
         var requestBefore = requestServiceTypes.Count;
         var streamBefore = streamServiceTypes.Count;
+        var requestInvokersBefore = requestInvokers.Count;
+        var requestPipelineInvokersBefore = requestPipelineInvokers.Count;
+        var notificationInvokersBefore = notificationInvokers.Count;
+        var streamInvokersBefore = streamInvokers.Count;
 
         await _context!.SendRequestAsync(new DispatcherCacheRequest());
+        await _context.SendRequestAsync(new DispatcherPipelineCacheRequest());
         await _context.PublishAsync(new DispatcherCacheNotification());
         await DrainAsync(_context.CreateStream(new DispatcherCacheStreamRequest()));
 
         var notificationAfterFirstDispatch = notificationServiceTypes.Count;
         var requestAfterFirstDispatch = requestServiceTypes.Count;
         var streamAfterFirstDispatch = streamServiceTypes.Count;
+        var requestInvokersAfterFirstDispatch = requestInvokers.Count;
+        var requestPipelineInvokersAfterFirstDispatch = requestPipelineInvokers.Count;
+        var notificationInvokersAfterFirstDispatch = notificationInvokers.Count;
+        var streamInvokersAfterFirstDispatch = streamInvokers.Count;
 
         await _context.SendRequestAsync(new DispatcherCacheRequest());
+        await _context.SendRequestAsync(new DispatcherPipelineCacheRequest());
         await _context.PublishAsync(new DispatcherCacheNotification());
         await DrainAsync(_context.CreateStream(new DispatcherCacheStreamRequest()));
 
         Assert.Multiple(() =>
         {
             Assert.That(notificationAfterFirstDispatch, Is.EqualTo(notificationBefore + 1));
-            Assert.That(requestAfterFirstDispatch, Is.EqualTo(requestBefore + 1));
+            Assert.That(requestAfterFirstDispatch, Is.EqualTo(requestBefore + 2));
             Assert.That(streamAfterFirstDispatch, Is.EqualTo(streamBefore + 1));
+            Assert.That(requestInvokersAfterFirstDispatch, Is.EqualTo(requestInvokersBefore + 1));
+            Assert.That(requestPipelineInvokersAfterFirstDispatch, Is.EqualTo(requestPipelineInvokersBefore + 1));
+            Assert.That(notificationInvokersAfterFirstDispatch, Is.EqualTo(notificationInvokersBefore + 1));
+            Assert.That(streamInvokersAfterFirstDispatch, Is.EqualTo(streamInvokersBefore + 1));
 
             Assert.That(notificationServiceTypes.Count, Is.EqualTo(notificationAfterFirstDispatch));
             Assert.That(requestServiceTypes.Count, Is.EqualTo(requestAfterFirstDispatch));
             Assert.That(streamServiceTypes.Count, Is.EqualTo(streamAfterFirstDispatch));
+            Assert.That(requestInvokers.Count, Is.EqualTo(requestInvokersAfterFirstDispatch));
+            Assert.That(requestPipelineInvokers.Count, Is.EqualTo(requestPipelineInvokersAfterFirstDispatch));
+            Assert.That(notificationInvokers.Count, Is.EqualTo(notificationInvokersAfterFirstDispatch));
+            Assert.That(streamInvokers.Count, Is.EqualTo(streamInvokersAfterFirstDispatch));
         });
     }
 
@@ -127,6 +150,11 @@ internal sealed record DispatcherCacheNotification : INotification;
 internal sealed record DispatcherCacheStreamRequest : IStreamRequest<int>;
 
 /// <summary>
+///     用于验证 pipeline invoker 缓存的测试请求。
+/// </summary>
+internal sealed record DispatcherPipelineCacheRequest : IRequest<int>;
+
+/// <summary>
 ///     处理 <see cref="DispatcherCacheRequest" />。
 /// </summary>
 internal sealed class DispatcherCacheRequestHandler : IRequestHandler<DispatcherCacheRequest, int>
@@ -168,5 +196,37 @@ internal sealed class DispatcherCacheStreamHandler : IStreamRequestHandler<Dispa
     {
         yield return 1;
         await Task.CompletedTask;
+    }
+}
+
+/// <summary>
+///     处理 <see cref="DispatcherPipelineCacheRequest" />。
+/// </summary>
+internal sealed class DispatcherPipelineCacheRequestHandler : IRequestHandler<DispatcherPipelineCacheRequest, int>
+{
+    /// <summary>
+    ///     返回固定结果，供 pipeline 缓存测试使用。
+    /// </summary>
+    public ValueTask<int> Handle(DispatcherPipelineCacheRequest request, CancellationToken cancellationToken)
+    {
+        return ValueTask.FromResult(2);
+    }
+}
+
+/// <summary>
+///     为 <see cref="DispatcherPipelineCacheRequest" /> 提供最小 pipeline 行为，
+///     用于命中 dispatcher 的 pipeline invoker 缓存分支。
+/// </summary>
+internal sealed class DispatcherPipelineCacheBehavior : IPipelineBehavior<DispatcherPipelineCacheRequest, int>
+{
+    /// <summary>
+    ///     直接转发到下一个处理器。
+    /// </summary>
+    public ValueTask<int> Handle(
+        DispatcherPipelineCacheRequest request,
+        MessageHandlerDelegate<DispatcherPipelineCacheRequest, int> next,
+        CancellationToken cancellationToken)
+    {
+        return next(request, cancellationToken);
     }
 }

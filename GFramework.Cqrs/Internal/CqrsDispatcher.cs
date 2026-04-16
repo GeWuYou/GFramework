@@ -44,6 +44,19 @@ internal sealed class CqrsDispatcher(
         StreamHandlerServiceTypes =
             new();
 
+    // 静态方法定义缓存：这些反射查找与消息类型无关，只需解析一次即可复用。
+    private static readonly MethodInfo RequestHandlerInvokerMethodDefinition = typeof(CqrsDispatcher)
+        .GetMethod(nameof(InvokeRequestHandlerAsync), BindingFlags.NonPublic | BindingFlags.Static)!;
+
+    private static readonly MethodInfo RequestPipelineInvokerMethodDefinition = typeof(CqrsDispatcher)
+        .GetMethod(nameof(InvokeRequestPipelineAsync), BindingFlags.NonPublic | BindingFlags.Static)!;
+
+    private static readonly MethodInfo NotificationHandlerInvokerMethodDefinition = typeof(CqrsDispatcher)
+        .GetMethod(nameof(InvokeNotificationHandlerAsync), BindingFlags.NonPublic | BindingFlags.Static)!;
+
+    private static readonly MethodInfo StreamHandlerInvokerMethodDefinition = typeof(CqrsDispatcher)
+        .GetMethod(nameof(InvokeStreamHandler), BindingFlags.NonPublic | BindingFlags.Static)!;
+
     /// <summary>
     ///     发布通知到所有已注册处理器。
     /// </summary>
@@ -189,8 +202,7 @@ internal sealed class CqrsDispatcher(
     /// </summary>
     private static RequestInvoker CreateRequestInvoker(Type requestType, Type responseType)
     {
-        var method = typeof(CqrsDispatcher)
-            .GetMethod(nameof(InvokeRequestHandlerAsync), BindingFlags.NonPublic | BindingFlags.Static)!
+        var method = RequestHandlerInvokerMethodDefinition
             .MakeGenericMethod(requestType, responseType);
         return (RequestInvoker)Delegate.CreateDelegate(typeof(RequestInvoker), method);
     }
@@ -200,8 +212,7 @@ internal sealed class CqrsDispatcher(
     /// </summary>
     private static RequestPipelineInvoker CreateRequestPipelineInvoker(Type requestType, Type responseType)
     {
-        var method = typeof(CqrsDispatcher)
-            .GetMethod(nameof(InvokeRequestPipelineAsync), BindingFlags.NonPublic | BindingFlags.Static)!
+        var method = RequestPipelineInvokerMethodDefinition
             .MakeGenericMethod(requestType, responseType);
         return (RequestPipelineInvoker)Delegate.CreateDelegate(typeof(RequestPipelineInvoker), method);
     }
@@ -211,8 +222,7 @@ internal sealed class CqrsDispatcher(
     /// </summary>
     private static NotificationInvoker CreateNotificationInvoker(Type notificationType)
     {
-        var method = typeof(CqrsDispatcher)
-            .GetMethod(nameof(InvokeNotificationHandlerAsync), BindingFlags.NonPublic | BindingFlags.Static)!
+        var method = NotificationHandlerInvokerMethodDefinition
             .MakeGenericMethod(notificationType);
         return (NotificationInvoker)Delegate.CreateDelegate(typeof(NotificationInvoker), method);
     }
@@ -222,8 +232,7 @@ internal sealed class CqrsDispatcher(
     /// </summary>
     private static StreamInvoker CreateStreamInvoker(Type requestType, Type responseType)
     {
-        var method = typeof(CqrsDispatcher)
-            .GetMethod(nameof(InvokeStreamHandler), BindingFlags.NonPublic | BindingFlags.Static)!
+        var method = StreamHandlerInvokerMethodDefinition
             .MakeGenericMethod(requestType, responseType);
         return (StreamInvoker)Delegate.CreateDelegate(typeof(StreamInvoker), method);
     }
