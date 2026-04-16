@@ -402,6 +402,17 @@ public class MicrosoftDiContainerTests
     }
 
     /// <summary>
+    ///     测试当程序集集合中包含空元素时，CQRS handler 注册入口会在委托给注册服务前直接失败。
+    /// </summary>
+    [Test]
+    public void RegisterCqrsHandlersFromAssemblies_WithNullAssemblyItem_Should_ThrowArgumentNullException()
+    {
+        var assemblies = new Assembly[] { typeof(DeterministicOrderNotification).Assembly, null! };
+
+        Assert.Throws<ArgumentNullException>(() => _container.RegisterCqrsHandlersFromAssemblies(assemblies));
+    }
+
+    /// <summary>
     ///     测试冻结容器以防止进一步注册的功能
     /// </summary>
     [Test]
