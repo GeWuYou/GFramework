@@ -7,7 +7,7 @@ using GFramework.Cqrs.Abstractions.Cqrs;
 namespace GFramework.Cqrs.Tests.Cqrs;
 
 /// <summary>
-///     验证 CQRS dispatcher 会缓存热路径中的服务类型构造结果。
+///     验证 CQRS dispatcher 会缓存热路径中的服务类型与调用委托。
 /// </summary>
 [TestFixture]
 internal sealed class CqrsDispatcherCacheTests
@@ -29,6 +29,7 @@ internal sealed class CqrsDispatcherCacheTests
 
         _container.Freeze();
         _context = new ArchitectureContext(_container);
+        ClearDispatcherCaches();
     }
 
     /// <summary>
@@ -45,7 +46,7 @@ internal sealed class CqrsDispatcherCacheTests
     private ArchitectureContext? _context;
 
     /// <summary>
-    ///     验证相同消息类型重复分发时，不会重复扩张服务类型缓存。
+    ///     验证相同消息类型重复分发时，不会重复扩张服务类型与调用委托缓存。
     /// </summary>
     [Test]
     public async Task Dispatcher_Should_Cache_Service_Types_After_First_Dispatch()
@@ -53,8 +54,8 @@ internal sealed class CqrsDispatcherCacheTests
         var notificationServiceTypes = GetCacheField("NotificationHandlerServiceTypes");
         var requestServiceTypes = GetCacheField("RequestServiceTypes");
         var streamServiceTypes = GetCacheField("StreamHandlerServiceTypes");
-        var requestInvokers = GetCacheField("RequestInvokers");
-        var requestPipelineInvokers = GetCacheField("RequestPipelineInvokers");
+        var requestInvokers = GetGenericCacheField("RequestInvokerCache`1", typeof(int), "Invokers");
+        var requestPipelineInvokers = GetGenericCacheField("RequestPipelineInvokerCache`1", typeof(int), "Invokers");
         var notificationInvokers = GetCacheField("NotificationInvokers");
         var streamInvokers = GetCacheField("StreamInvokers");
 
@@ -105,13 +106,41 @@ internal sealed class CqrsDispatcherCacheTests
     }
 
     /// <summary>
+    ///     验证 request 调用委托会按响应类型分别缓存，避免不同响应类型共用 object 结果桥接。
+    /// </summary>
+    [Test]
+    public async Task Dispatcher_Should_Cache_Request_Invokers_Per_Response_Type()
+    {
+        var intRequestInvokers = GetGenericCacheField("RequestInvokerCache`1", typeof(int), "Invokers");
+        var stringRequestInvokers = GetGenericCacheField("RequestInvokerCache`1", typeof(string), "Invokers");
+
+        var intBefore = intRequestInvokers.Count;
+        var stringBefore = stringRequestInvokers.Count;
+
+        await _context!.SendRequestAsync(new DispatcherCacheRequest());
+        await _context.SendRequestAsync(new DispatcherStringCacheRequest());
+
+        var intAfterFirstDispatch = intRequestInvokers.Count;
+        var stringAfterFirstDispatch = stringRequestInvokers.Count;
+
+        await _context.SendRequestAsync(new DispatcherCacheRequest());
+        await _context.SendRequestAsync(new DispatcherStringCacheRequest());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(intAfterFirstDispatch, Is.EqualTo(intBefore + 1));
+            Assert.That(stringAfterFirstDispatch, Is.EqualTo(stringBefore + 1));
+            Assert.That(intRequestInvokers.Count, Is.EqualTo(intAfterFirstDispatch));
+            Assert.That(stringRequestInvokers.Count, Is.EqualTo(stringAfterFirstDispatch));
+        });
+    }
+
+    /// <summary>
     ///     通过反射读取 dispatcher 的静态缓存字典。
     /// </summary>
     private static IDictionary GetCacheField(string fieldName)
     {
-        var dispatcherType = typeof(CqrsReflectionFallbackAttribute).Assembly
-            .GetType("GFramework.Cqrs.Internal.CqrsDispatcher", throwOnError: true)!;
-
+        var dispatcherType = GetDispatcherType();
         var field = dispatcherType.GetField(
             fieldName,
             BindingFlags.NonPublic | BindingFlags.Static);
@@ -121,6 +150,56 @@ internal sealed class CqrsDispatcherCacheTests
         return field!.GetValue(null) as IDictionary
                ?? throw new InvalidOperationException(
                    $"Dispatcher cache field {fieldName} does not implement IDictionary.");
+    }
+
+    /// <summary>
+    ///     清空本测试依赖的 dispatcher 静态缓存，避免跨用例共享进程级状态导致断言漂移。
+    /// </summary>
+    private static void ClearDispatcherCaches()
+    {
+        GetCacheField("NotificationHandlerServiceTypes").Clear();
+        GetCacheField("RequestServiceTypes").Clear();
+        GetCacheField("StreamHandlerServiceTypes").Clear();
+        GetCacheField("NotificationInvokers").Clear();
+        GetCacheField("StreamInvokers").Clear();
+        GetGenericCacheField("RequestInvokerCache`1", typeof(int), "Invokers").Clear();
+        GetGenericCacheField("RequestInvokerCache`1", typeof(string), "Invokers").Clear();
+        GetGenericCacheField("RequestPipelineInvokerCache`1", typeof(int), "Invokers").Clear();
+    }
+
+    /// <summary>
+    ///     通过反射读取 dispatcher 嵌套泛型缓存类型上的静态缓存字典。
+    /// </summary>
+    private static IDictionary GetGenericCacheField(string nestedTypeName, Type genericTypeArgument, string fieldName)
+    {
+        var nestedGenericType = GetDispatcherType().GetNestedType(
+            nestedTypeName,
+            BindingFlags.NonPublic);
+
+        Assert.That(nestedGenericType, Is.Not.Null, $"Missing dispatcher nested cache type {nestedTypeName}.");
+
+        var closedNestedType = nestedGenericType!.MakeGenericType(genericTypeArgument);
+        var field = closedNestedType.GetField(
+            fieldName,
+            BindingFlags.NonPublic | BindingFlags.Static);
+
+        Assert.That(
+            field,
+            Is.Not.Null,
+            $"Missing dispatcher nested cache field {nestedTypeName}.{fieldName} for {genericTypeArgument.FullName}.");
+
+        return field!.GetValue(null) as IDictionary
+               ?? throw new InvalidOperationException(
+                   $"Dispatcher nested cache field {nestedTypeName}.{fieldName} does not implement IDictionary.");
+    }
+
+    /// <summary>
+    ///     获取 CQRS dispatcher 运行时类型。
+    /// </summary>
+    private static Type GetDispatcherType()
+    {
+        return typeof(CqrsReflectionFallbackAttribute).Assembly
+            .GetType("GFramework.Cqrs.Internal.CqrsDispatcher", throwOnError: true)!;
     }
 
     /// <summary>
@@ -153,6 +232,11 @@ internal sealed record DispatcherCacheStreamRequest : IStreamRequest<int>;
 ///     用于验证 pipeline invoker 缓存的测试请求。
 /// </summary>
 internal sealed record DispatcherPipelineCacheRequest : IRequest<int>;
+
+/// <summary>
+///     用于验证按响应类型分层 request invoker 缓存的测试请求。
+/// </summary>
+internal sealed record DispatcherStringCacheRequest : IRequest<string>;
 
 /// <summary>
 ///     处理 <see cref="DispatcherCacheRequest" />。
@@ -210,6 +294,20 @@ internal sealed class DispatcherPipelineCacheRequestHandler : IRequestHandler<Di
     public ValueTask<int> Handle(DispatcherPipelineCacheRequest request, CancellationToken cancellationToken)
     {
         return ValueTask.FromResult(2);
+    }
+}
+
+/// <summary>
+///     处理 <see cref="DispatcherStringCacheRequest" />。
+/// </summary>
+internal sealed class DispatcherStringCacheRequestHandler : IRequestHandler<DispatcherStringCacheRequest, string>
+{
+    /// <summary>
+    ///     返回固定字符串，供按响应类型缓存测试验证 string 路径。
+    /// </summary>
+    public ValueTask<string> Handle(DispatcherStringCacheRequest request, CancellationToken cancellationToken)
+    {
+        return ValueTask.FromResult("dispatcher-cache");
     }
 }
 

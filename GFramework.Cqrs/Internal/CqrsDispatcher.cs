@@ -15,16 +15,6 @@ internal sealed class CqrsDispatcher(
     IIocContainer container,
     ILogger logger) : ICqrsRuntime
 {
-    // 进程级缓存：按请求/响应类型缓存直接处理器调用委托，避免热路径重复反射。
-    // 线程安全依赖 ConcurrentDictionary；缓存与进程同寿命，默认假设请求类型集合有限且稳定。
-    private static readonly ConcurrentDictionary<(Type RequestType, Type ResponseType), RequestInvoker>
-        RequestInvokers = new();
-
-    // 进程级缓存：缓存带 pipeline 的请求调用委托，减少每次分发时的反射与表达式重建开销。
-    // 若后续引入动态生成请求类型，需要重新评估该缓存的增长边界。
-    private static readonly ConcurrentDictionary<(Type RequestType, Type ResponseType), RequestPipelineInvoker>
-        RequestPipelineInvokers = new();
-
     // 进程级缓存：缓存通知调用委托，复用并发安全字典以支撑多线程发布路径。
     private static readonly ConcurrentDictionary<Type, NotificationInvoker> NotificationInvokers = new();
 
@@ -131,20 +121,18 @@ internal sealed class CqrsDispatcher(
 
         if (behaviors.Count == 0)
         {
-            var invoker = RequestInvokers.GetOrAdd(
-                (requestType, typeof(TResponse)),
-                static key => CreateRequestInvoker(key.RequestType, key.ResponseType));
+            var invoker = RequestInvokerCache<TResponse>.Invokers.GetOrAdd(
+                requestType,
+                CreateRequestInvoker<TResponse>);
 
-            var result = await invoker(handler, request, cancellationToken);
-            return result is null ? default! : (TResponse)result;
+            return await invoker(handler, request, cancellationToken);
         }
 
-        var pipelineInvoker = RequestPipelineInvokers.GetOrAdd(
-            (requestType, typeof(TResponse)),
-            static key => CreateRequestPipelineInvoker(key.RequestType, key.ResponseType));
+        var pipelineInvoker = RequestPipelineInvokerCache<TResponse>.Invokers.GetOrAdd(
+            requestType,
+            CreateRequestPipelineInvoker<TResponse>);
 
-        var pipelineResult = await pipelineInvoker(handler, behaviors, request, cancellationToken);
-        return pipelineResult is null ? default! : (TResponse)pipelineResult;
+        return await pipelineInvoker(handler, behaviors, request, cancellationToken);
     }
 
     /// <summary>
@@ -200,21 +188,23 @@ internal sealed class CqrsDispatcher(
     /// <summary>
     ///     生成请求处理器调用委托，避免每次发送都重复反射。
     /// </summary>
-    private static RequestInvoker CreateRequestInvoker(Type requestType, Type responseType)
+    private static RequestInvoker<TResponse> CreateRequestInvoker<TResponse>(Type requestType)
     {
         var method = RequestHandlerInvokerMethodDefinition
-            .MakeGenericMethod(requestType, responseType);
-        return (RequestInvoker)Delegate.CreateDelegate(typeof(RequestInvoker), method);
+            .MakeGenericMethod(requestType, typeof(TResponse));
+        return (RequestInvoker<TResponse>)Delegate.CreateDelegate(typeof(RequestInvoker<TResponse>), method);
     }
 
     /// <summary>
     ///     生成带管道行为的请求处理委托，避免每次发送都重复反射。
     /// </summary>
-    private static RequestPipelineInvoker CreateRequestPipelineInvoker(Type requestType, Type responseType)
+    private static RequestPipelineInvoker<TResponse> CreateRequestPipelineInvoker<TResponse>(Type requestType)
     {
         var method = RequestPipelineInvokerMethodDefinition
-            .MakeGenericMethod(requestType, responseType);
-        return (RequestPipelineInvoker)Delegate.CreateDelegate(typeof(RequestPipelineInvoker), method);
+            .MakeGenericMethod(requestType, typeof(TResponse));
+        return (RequestPipelineInvoker<TResponse>)Delegate.CreateDelegate(
+            typeof(RequestPipelineInvoker<TResponse>),
+            method);
     }
 
     /// <summary>
@@ -240,7 +230,7 @@ internal sealed class CqrsDispatcher(
     /// <summary>
     ///     执行已强类型化的请求处理器调用。
     /// </summary>
-    private static async ValueTask<object?> InvokeRequestHandlerAsync<TRequest, TResponse>(
+    private static ValueTask<TResponse> InvokeRequestHandlerAsync<TRequest, TResponse>(
         object handler,
         object request,
         CancellationToken cancellationToken)
@@ -248,14 +238,13 @@ internal sealed class CqrsDispatcher(
     {
         var typedHandler = (IRequestHandler<TRequest, TResponse>)handler;
         var typedRequest = (TRequest)request;
-        var result = await typedHandler.Handle(typedRequest, cancellationToken);
-        return result;
+        return typedHandler.Handle(typedRequest, cancellationToken);
     }
 
     /// <summary>
     ///     执行包含管道行为链的请求处理。
     /// </summary>
-    private static async ValueTask<object?> InvokeRequestPipelineAsync<TRequest, TResponse>(
+    private static ValueTask<TResponse> InvokeRequestPipelineAsync<TRequest, TResponse>(
         object handler,
         IReadOnlyList<object> behaviors,
         object request,
@@ -275,8 +264,7 @@ internal sealed class CqrsDispatcher(
             next = (message, token) => behavior.Handle(message, currentNext, token);
         }
 
-        var result = await next(typedRequest, cancellationToken);
-        return result;
+        return next(typedRequest, cancellationToken);
     }
 
     /// <summary>
@@ -307,10 +295,12 @@ internal sealed class CqrsDispatcher(
         return typedHandler.Handle(typedRequest, cancellationToken);
     }
 
-    private delegate ValueTask<object?> RequestInvoker(object handler, object request,
+    private delegate ValueTask<TResponse> RequestInvoker<TResponse>(
+        object handler,
+        object request,
         CancellationToken cancellationToken);
 
-    private delegate ValueTask<object?> RequestPipelineInvoker(
+    private delegate ValueTask<TResponse> RequestPipelineInvoker<TResponse>(
         object handler,
         IReadOnlyList<object> behaviors,
         object request,
@@ -320,6 +310,24 @@ internal sealed class CqrsDispatcher(
         CancellationToken cancellationToken);
 
     private delegate object StreamInvoker(object handler, object request, CancellationToken cancellationToken);
+
+    /// <summary>
+    ///     按响应类型分层缓存 request 处理器调用委托，避免 value-type 响应在 object 桥接中产生装箱。
+    /// </summary>
+    /// <typeparam name="TResponse">请求响应类型。</typeparam>
+    private static class RequestInvokerCache<TResponse>
+    {
+        internal static readonly ConcurrentDictionary<Type, RequestInvoker<TResponse>> Invokers = new();
+    }
+
+    /// <summary>
+    ///     按响应类型分层缓存带 pipeline 的 request 调用委托，避免 pipeline 热路径上的额外装箱。
+    /// </summary>
+    /// <typeparam name="TResponse">请求响应类型。</typeparam>
+    private static class RequestPipelineInvokerCache<TResponse>
+    {
+        internal static readonly ConcurrentDictionary<Type, RequestPipelineInvoker<TResponse>> Invokers = new();
+    }
 
     private readonly record struct RequestServiceTypeSet(Type HandlerType, Type BehaviorType);
 }
