@@ -99,3 +99,65 @@ dropItemIds:
     assert.match(diagnostics[0].message, /dropItemIds/u);
     assert.match(diagnostics[0].message, /\["fire","ice"\]/u);
 });
+
+test("validateParsedConfig should not add parent object enumMismatch after child diagnostics", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "required": ["reward"],
+          "properties": {
+            "reward": {
+              "type": "object",
+              "required": ["gold", "itemId"],
+              "properties": {
+                "gold": { "type": "integer" },
+                "itemId": { "type": "string" }
+              },
+              "enum": [
+                { "gold": 10, "itemId": "potion" }
+              ]
+            }
+          }
+        }
+    `);
+    const yaml = parseTopLevelYaml(`
+reward:
+  gold: wrong
+  itemId: potion
+`);
+
+    const diagnostics = validateParsedConfig(schema, yaml);
+
+    assert.equal(diagnostics.length, 1);
+    assert.match(diagnostics[0].message, /reward\.gold/u);
+    assert.doesNotMatch(diagnostics[0].message, /must be one of|必须是以下值之一/u);
+});
+
+test("validateParsedConfig should not add parent array enumMismatch after item diagnostics", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "required": ["dropLevels"],
+          "properties": {
+            "dropLevels": {
+              "type": "array",
+              "items": { "type": "integer" },
+              "enum": [
+                [1, 2]
+              ]
+            }
+          }
+        }
+    `);
+    const yaml = parseTopLevelYaml(`
+dropLevels:
+  - 1
+  - two
+`);
+
+    const diagnostics = validateParsedConfig(schema, yaml);
+
+    assert.equal(diagnostics.length, 1);
+    assert.match(diagnostics[0].message, /dropLevels\[1\]/u);
+    assert.doesNotMatch(diagnostics[0].message, /must be one of|必须是以下值之一/u);
+});

@@ -1260,11 +1260,13 @@ function parseNegatedSchemaNode(rawNot, displayPath) {
  */
 function validateNode(schemaNode, yamlNode, displayPath, diagnostics, localizer) {
     if (schemaNode.type === "object") {
-        validateObjectNode(schemaNode, yamlNode, displayPath, diagnostics, localizer);
+        const diagnosticsBeforeNode = diagnostics.length;
+        validateObjectNode(schemaNode, yamlNode, displayPath, diagnostics, localizer, diagnosticsBeforeNode);
         return;
     }
 
     if (schemaNode.type === "array") {
+        const diagnosticsBeforeNode = diagnostics.length;
         if (!yamlNode || yamlNode.kind !== "array") {
             diagnostics.push({
                 severity: "error",
@@ -1374,7 +1376,7 @@ function validateNode(schemaNode, yamlNode, displayPath, diagnostics, localizer)
             }
         }
 
-        validateEnumComparableValue(schemaNode, yamlNode, displayPath, diagnostics, localizer);
+        validateEnumComparableValue(schemaNode, yamlNode, displayPath, diagnostics, localizer, diagnosticsBeforeNode);
         validateConstComparableValue(schemaNode, yamlNode, displayPath, diagnostics, localizer);
         validateNotSchemaMatch(schemaNode, yamlNode, displayPath, diagnostics, localizer);
 
@@ -1528,8 +1530,9 @@ function validateNode(schemaNode, yamlNode, displayPath, diagnostics, localizer)
  * @param {string} displayPath Current logical path.
  * @param {Array<{severity: "error" | "warning", message: string}>} diagnostics Diagnostic sink.
  * @param {{isChinese?: boolean} | undefined} localizer Optional runtime localizer.
+ * @param {number} diagnosticsBeforeNode Diagnostic count recorded before validating this object node.
  */
-function validateObjectNode(schemaNode, yamlNode, displayPath, diagnostics, localizer) {
+function validateObjectNode(schemaNode, yamlNode, displayPath, diagnostics, localizer, diagnosticsBeforeNode) {
     if (!yamlNode || yamlNode.kind !== "object") {
         diagnostics.push({
             severity: "error",
@@ -1598,7 +1601,7 @@ function validateObjectNode(schemaNode, yamlNode, displayPath, diagnostics, loca
         });
     }
 
-    validateEnumComparableValue(schemaNode, yamlNode, displayPath, diagnostics, localizer);
+    validateEnumComparableValue(schemaNode, yamlNode, displayPath, diagnostics, localizer, diagnosticsBeforeNode);
     validateConstComparableValue(schemaNode, yamlNode, displayPath, diagnostics, localizer);
     validateNotSchemaMatch(schemaNode, yamlNode, displayPath, diagnostics, localizer);
 }
@@ -1919,9 +1922,14 @@ function isStructurallyCompatibleWithSchemaNode(schemaNode, yamlNode) {
  * @param {string} displayPath Current logical path.
  * @param {Array<{severity: "error" | "warning", message: string}>} diagnostics Diagnostic sink.
  * @param {{isChinese?: boolean} | undefined} localizer Optional runtime localizer.
+ * @param {number} [diagnosticsBeforeNode] Diagnostic count recorded before validating this node.
  */
-function validateEnumComparableValue(schemaNode, yamlNode, displayPath, diagnostics, localizer) {
+function validateEnumComparableValue(schemaNode, yamlNode, displayPath, diagnostics, localizer, diagnosticsBeforeNode) {
     if (!Array.isArray(schemaNode.enumComparableValues) || schemaNode.enumComparableValues.length === 0) {
+        return;
+    }
+
+    if (typeof diagnosticsBeforeNode === "number" && diagnostics.length !== diagnosticsBeforeNode) {
         return;
     }
 

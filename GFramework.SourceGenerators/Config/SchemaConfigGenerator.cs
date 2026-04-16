@@ -805,7 +805,8 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                         $"global::System.Collections.Generic.IReadOnlyList<{itemClrType}>",
                         TryBuildArrayInitializer(property.Value, itemType, itemClrType) ??
                         $" = global::System.Array.Empty<{itemClrType}>();",
-                        TryBuildEnumDocumentation(property.Value, "array"),
+                        TryBuildEnumDocumentation(property.Value, "array") ??
+                        TryBuildEnumDocumentation(itemsElement, itemType),
                         TryBuildConstraintDocumentation(property.Value, "array"),
                         refTableName,
                         null,
