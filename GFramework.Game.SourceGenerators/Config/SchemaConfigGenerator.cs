@@ -297,6 +297,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     /// <param name="property">属性 JSON 节点。</param>
     /// <param name="isRequired">属性是否必填。</param>
     /// <param name="displayPath">逻辑字段路径。</param>
+    /// <param name="isDirectChildOfRoot">属性是否为根对象下的直接子属性。</param>
     /// <returns>解析后的属性信息或诊断。</returns>
     private static ParsedPropertyResult ParseProperty(
         string filePath,
@@ -954,6 +955,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     /// <param name="title">标题元数据。</param>
     /// <param name="description">说明元数据。</param>
     /// <param name="refTableName">目标引用表名称。</param>
+    /// <param name="isIndexedLookup">是否为索引查找。</param>
     /// <returns>解析后的属性信息或诊断。</returns>
     private static ParsedPropertyResult ParseArrayProperty(
         string filePath,
