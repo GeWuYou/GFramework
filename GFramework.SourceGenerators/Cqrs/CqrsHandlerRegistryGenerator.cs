@@ -549,40 +549,22 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         for (var registrationIndex = 0; registrationIndex < registrations.Count; registrationIndex++)
         {
             var registration = registrations[registrationIndex];
-            if (!registration.ReflectedImplementationRegistrations.IsDefaultOrEmpty)
+            if (!registration.ReflectedImplementationRegistrations.IsDefaultOrEmpty ||
+                !registration.PreciseReflectedRegistrations.IsDefaultOrEmpty)
             {
-                AppendReflectedImplementationRegistrations(builder, registration, registrationIndex);
-                continue;
+                AppendOrderedImplementationRegistrations(builder, registration, registrationIndex);
+            }
+            else if (!registration.DirectRegistrations.IsDefaultOrEmpty)
+            {
+                AppendDirectRegistrations(builder, registration);
             }
 
-            if (!registration.PreciseReflectedRegistrations.IsDefaultOrEmpty)
-            {
-                AppendPreciseReflectedRegistrations(builder, registration, registrationIndex);
-                continue;
-            }
-
-            if (!string.IsNullOrWhiteSpace(registration.ReflectionTypeMetadataName))
+            if (!string.IsNullOrWhiteSpace(registration.ReflectionTypeMetadataName) &&
+                registration.ReflectedImplementationRegistrations.IsDefaultOrEmpty &&
+                registration.PreciseReflectedRegistrations.IsDefaultOrEmpty &&
+                registration.DirectRegistrations.IsDefaultOrEmpty)
             {
                 AppendReflectionRegistration(builder, registration.ReflectionTypeMetadataName!);
-                continue;
-            }
-
-            foreach (var directRegistration in registration.DirectRegistrations)
-            {
-                builder.AppendLine(
-                    "        global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(");
-                builder.AppendLine("            services,");
-                builder.Append("            typeof(");
-                builder.Append(directRegistration.HandlerInterfaceDisplayName);
-                builder.AppendLine("),");
-                builder.Append("            typeof(");
-                builder.Append(directRegistration.ImplementationTypeDisplayName);
-                builder.AppendLine("));");
-                builder.Append("        logger.Debug(\"Registered CQRS handler ");
-                builder.Append(EscapeStringLiteral(directRegistration.ImplementationLogName));
-                builder.Append(" as ");
-                builder.Append(EscapeStringLiteral(directRegistration.HandlerInterfaceLogName));
-                builder.AppendLine(".\");");
             }
         }
 
@@ -605,48 +587,71 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         builder.AppendLine("\");");
     }
 
-    private static void AppendReflectedImplementationRegistrations(
+    private static void AppendDirectRegistrations(
         StringBuilder builder,
-        ImplementationRegistrationSpec registration,
-        int registrationIndex)
+        ImplementationRegistrationSpec registration)
     {
-        var implementationVariableName = $"implementationType{registrationIndex}";
-        builder.Append("        var ");
-        builder.Append(implementationVariableName);
-        builder.Append(" = registryAssembly.GetType(\"");
-        builder.Append(EscapeStringLiteral(registration.ReflectionTypeMetadataName!));
-        builder.AppendLine("\", throwOnError: false, ignoreCase: false);");
-        builder.Append("        if (");
-        builder.Append(implementationVariableName);
-        builder.AppendLine(" is not null)");
-        builder.AppendLine("        {");
-
-        foreach (var reflectedRegistration in registration.ReflectedImplementationRegistrations)
+        foreach (var directRegistration in registration.DirectRegistrations)
         {
             builder.AppendLine(
-                "            global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(");
-            builder.AppendLine("                services,");
-            builder.Append("                typeof(");
-            builder.Append(reflectedRegistration.HandlerInterfaceDisplayName);
+                "        global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(");
+            builder.AppendLine("            services,");
+            builder.Append("            typeof(");
+            builder.Append(directRegistration.HandlerInterfaceDisplayName);
             builder.AppendLine("),");
-            builder.Append("                ");
-            builder.Append(implementationVariableName);
-            builder.AppendLine(");");
-            builder.Append("            logger.Debug(\"Registered CQRS handler ");
-            builder.Append(EscapeStringLiteral(registration.ImplementationLogName));
+            builder.Append("            typeof(");
+            builder.Append(directRegistration.ImplementationTypeDisplayName);
+            builder.AppendLine("));");
+            builder.Append("        logger.Debug(\"Registered CQRS handler ");
+            builder.Append(EscapeStringLiteral(directRegistration.ImplementationLogName));
             builder.Append(" as ");
-            builder.Append(EscapeStringLiteral(reflectedRegistration.HandlerInterfaceLogName));
+            builder.Append(EscapeStringLiteral(directRegistration.HandlerInterfaceLogName));
             builder.AppendLine(".\");");
         }
-
-        builder.AppendLine("        }");
     }
 
-    private static void AppendPreciseReflectedRegistrations(
+    private static void AppendOrderedImplementationRegistrations(
         StringBuilder builder,
         ImplementationRegistrationSpec registration,
         int registrationIndex)
     {
+        var orderedRegistrations =
+            new List<(string HandlerInterfaceLogName, OrderedRegistrationKind Kind, int Index)>(
+                registration.DirectRegistrations.Length +
+                registration.ReflectedImplementationRegistrations.Length +
+                registration.PreciseReflectedRegistrations.Length);
+
+        for (var directIndex = 0; directIndex < registration.DirectRegistrations.Length; directIndex++)
+        {
+            orderedRegistrations.Add((
+                registration.DirectRegistrations[directIndex].HandlerInterfaceLogName,
+                OrderedRegistrationKind.Direct,
+                directIndex));
+        }
+
+        for (var reflectedIndex = 0;
+             reflectedIndex < registration.ReflectedImplementationRegistrations.Length;
+             reflectedIndex++)
+        {
+            orderedRegistrations.Add((
+                registration.ReflectedImplementationRegistrations[reflectedIndex].HandlerInterfaceLogName,
+                OrderedRegistrationKind.ReflectedImplementation,
+                reflectedIndex));
+        }
+
+        for (var preciseIndex = 0;
+             preciseIndex < registration.PreciseReflectedRegistrations.Length;
+             preciseIndex++)
+        {
+            orderedRegistrations.Add((
+                registration.PreciseReflectedRegistrations[preciseIndex].HandlerInterfaceLogName,
+                OrderedRegistrationKind.PreciseReflected,
+                preciseIndex));
+        }
+
+        orderedRegistrations.Sort(static (left, right) =>
+            StringComparer.Ordinal.Compare(left.HandlerInterfaceLogName, right.HandlerInterfaceLogName));
+
         var implementationVariableName = $"implementationType{registrationIndex}";
         if (string.IsNullOrWhiteSpace(registration.ReflectionTypeMetadataName))
         {
@@ -658,11 +663,10 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         }
         else
         {
-            var implementationReflectionTypeMetadataName = registration.ReflectionTypeMetadataName!;
             builder.Append("        var ");
             builder.Append(implementationVariableName);
             builder.Append(" = registryAssembly.GetType(\"");
-            builder.Append(EscapeStringLiteral(implementationReflectionTypeMetadataName));
+            builder.Append(EscapeStringLiteral(registration.ReflectionTypeMetadataName!));
             builder.AppendLine("\", throwOnError: false, ignoreCase: false);");
         }
 
@@ -671,21 +675,62 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         builder.AppendLine(" is not null)");
         builder.AppendLine("        {");
 
-        for (var registrationOffset = 0;
-             registrationOffset < registration.PreciseReflectedRegistrations.Length;
-             registrationOffset++)
+        foreach (var orderedRegistration in orderedRegistrations)
         {
-            var reflectedRegistration = registration.PreciseReflectedRegistrations[registrationOffset];
-            var registrationVariablePrefix = $"serviceType{registrationIndex}_{registrationOffset}";
-            AppendPreciseReflectedTypeResolution(
-                builder,
-                reflectedRegistration.ServiceTypeArguments,
-                registrationVariablePrefix,
-                implementationVariableName,
-                reflectedRegistration.OpenHandlerTypeDisplayName,
-                registration.ImplementationLogName,
-                reflectedRegistration.HandlerInterfaceLogName,
-                3);
+            switch (orderedRegistration.Kind)
+            {
+                case OrderedRegistrationKind.Direct:
+                    var directRegistration = registration.DirectRegistrations[orderedRegistration.Index];
+                    builder.AppendLine(
+                        "            global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(");
+                    builder.AppendLine("                services,");
+                    builder.Append("                typeof(");
+                    builder.Append(directRegistration.HandlerInterfaceDisplayName);
+                    builder.AppendLine("),");
+                    builder.Append("                ");
+                    builder.Append(implementationVariableName);
+                    builder.AppendLine(");");
+                    builder.Append("            logger.Debug(\"Registered CQRS handler ");
+                    builder.Append(EscapeStringLiteral(registration.ImplementationLogName));
+                    builder.Append(" as ");
+                    builder.Append(EscapeStringLiteral(directRegistration.HandlerInterfaceLogName));
+                    builder.AppendLine(".\");");
+                    break;
+                case OrderedRegistrationKind.ReflectedImplementation:
+                    var reflectedRegistration =
+                        registration.ReflectedImplementationRegistrations[orderedRegistration.Index];
+                    builder.AppendLine(
+                        "            global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(");
+                    builder.AppendLine("                services,");
+                    builder.Append("                typeof(");
+                    builder.Append(reflectedRegistration.HandlerInterfaceDisplayName);
+                    builder.AppendLine("),");
+                    builder.Append("                ");
+                    builder.Append(implementationVariableName);
+                    builder.AppendLine(");");
+                    builder.Append("            logger.Debug(\"Registered CQRS handler ");
+                    builder.Append(EscapeStringLiteral(registration.ImplementationLogName));
+                    builder.Append(" as ");
+                    builder.Append(EscapeStringLiteral(reflectedRegistration.HandlerInterfaceLogName));
+                    builder.AppendLine(".\");");
+                    break;
+                case OrderedRegistrationKind.PreciseReflected:
+                    var preciseRegistration = registration.PreciseReflectedRegistrations[orderedRegistration.Index];
+                    var registrationVariablePrefix = $"serviceType{registrationIndex}_{orderedRegistration.Index}";
+                    AppendPreciseReflectedTypeResolution(
+                        builder,
+                        preciseRegistration.ServiceTypeArguments,
+                        registrationVariablePrefix,
+                        implementationVariableName,
+                        preciseRegistration.OpenHandlerTypeDisplayName,
+                        registration.ImplementationLogName,
+                        preciseRegistration.HandlerInterfaceLogName,
+                        3);
+                    break;
+                default:
+                    throw new InvalidOperationException(
+                        $"Unsupported ordered CQRS registration kind {orderedRegistration.Kind}.");
+            }
         }
 
         builder.AppendLine("        }");
@@ -968,6 +1013,13 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
     private readonly record struct ReflectedImplementationRegistrationSpec(
         string HandlerInterfaceDisplayName,
         string HandlerInterfaceLogName);
+
+    private enum OrderedRegistrationKind
+    {
+        Direct,
+        ReflectedImplementation,
+        PreciseReflected
+    }
 
     private sealed record RuntimeTypeReferenceSpec(
         string? TypeDisplayName,
