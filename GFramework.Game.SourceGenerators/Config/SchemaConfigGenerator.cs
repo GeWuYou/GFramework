@@ -1,6 +1,6 @@
-using GFramework.SourceGenerators.Diagnostics;
+using GFramework.Game.SourceGenerators.Diagnostics;
 
-namespace GFramework.SourceGenerators.Config;
+namespace GFramework.Game.SourceGenerators.Config;
 
 /// <summary>
 ///     根据 AdditionalFiles 中的 JSON schema 生成配置类型和配置表包装。

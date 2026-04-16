@@ -1,8 +1,8 @@
+using GFramework.Core.SourceGenerators.Diagnostics;
 using GFramework.SourceGenerators.Common.Constants;
 using GFramework.SourceGenerators.Common.Generator;
-using GFramework.SourceGenerators.Diagnostics;
 
-namespace GFramework.SourceGenerators.Bases;
+namespace GFramework.Core.SourceGenerators.Bases;
 
 /// <summary>
 /// Priority 特性生成器，为标记了 [Priority] 的类自动生成 IPrioritized 接口实现

@@ -1,4 +1,4 @@
-namespace GFramework.SourceGenerators.Abstractions.Rule;
+namespace GFramework.Core.SourceGenerators.Abstractions.Rule;
 
 /// <summary>
 ///     标记字段需要自动注入单个服务实例。

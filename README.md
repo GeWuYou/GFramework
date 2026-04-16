@@ -68,8 +68,11 @@ dotnet add package GeWuYou.GFramework.Game.Abstractions
 # Godot 集成（仅 Godot 项目需要）
 dotnet add package GeWuYou.GFramework.Godot
 
-# 源码生成器（可选，但推荐）
-dotnet add package GeWuYou.GFramework.SourceGenerators
+# 按场景选择源码生成器（可选，但推荐）
+dotnet add package GeWuYou.GFramework.Core.SourceGenerators
+dotnet add package GeWuYou.GFramework.Game.SourceGenerators
+dotnet add package GeWuYou.GFramework.Godot.SourceGenerators
+dotnet add package GeWuYou.GFramework.Cqrs.SourceGenerators
 ```
 
 ## 可选模块导入

@@ -1,4 +1,4 @@
-﻿namespace GFramework.SourceGenerators.Diagnostics;
+﻿namespace GFramework.Core.SourceGenerators.Diagnostics;
 
 /// <summary>
 ///     提供诊断描述符的静态类，用于GFramework日志生成器的编译时检查

@@ -1,4 +1,4 @@
-﻿namespace GFramework.SourceGenerators.Abstractions.Enums;
+﻿namespace GFramework.Core.SourceGenerators.Abstractions.Enums;
 
 /// <summary>
 ///     标注在 enum 上，Source Generator 会为该 enum 生成扩展方法。

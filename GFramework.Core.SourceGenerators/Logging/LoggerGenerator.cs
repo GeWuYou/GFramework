@@ -1,9 +1,9 @@
-﻿using GFramework.SourceGenerators.Abstractions.Logging;
+﻿using GFramework.Core.SourceGenerators.Abstractions.Logging;
 using GFramework.SourceGenerators.Common.Constants;
 using GFramework.SourceGenerators.Common.Extensions;
 using GFramework.SourceGenerators.Common.Generator;
 
-namespace GFramework.SourceGenerators.Logging;
+namespace GFramework.Core.SourceGenerators.Logging;
 
 /// <summary>
 ///     日志生成器，用于为标记了LogAttribute的类自动生成日志字段

@@ -1,7 +1,6 @@
 using System.IO;
-using GFramework.SourceGenerators.Bases;
+using GFramework.Core.SourceGenerators.Bases;
 using GFramework.SourceGenerators.Tests.Core;
-using NUnit.Framework;
 
 namespace GFramework.SourceGenerators.Tests.Bases;
 

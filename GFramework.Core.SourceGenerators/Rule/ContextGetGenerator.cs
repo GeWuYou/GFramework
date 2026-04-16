@@ -1,10 +1,10 @@
+using GFramework.Core.SourceGenerators.Diagnostics;
 using GFramework.SourceGenerators.Common.Constants;
 using GFramework.SourceGenerators.Common.Diagnostics;
 using GFramework.SourceGenerators.Common.Extensions;
 using GFramework.SourceGenerators.Common.Info;
-using GFramework.SourceGenerators.Diagnostics;
 
-namespace GFramework.SourceGenerators.Rule;
+namespace GFramework.Core.SourceGenerators.Rule;
 
 /// <summary>
 ///     为上下文感知类生成 Core 上下文 Get 注入方法。

@@ -1,6 +1,6 @@
 using GFramework.SourceGenerators.Common.Constants;
 
-namespace GFramework.SourceGenerators.Diagnostics;
+namespace GFramework.Core.SourceGenerators.Diagnostics;
 
 /// <summary>
 ///     提供 Context Get 注入生成器相关诊断。

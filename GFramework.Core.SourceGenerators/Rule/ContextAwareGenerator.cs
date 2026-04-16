@@ -1,9 +1,9 @@
-﻿using GFramework.SourceGenerators.Common.Constants;
+﻿using GFramework.Core.SourceGenerators.Diagnostics;
+using GFramework.SourceGenerators.Common.Constants;
 using GFramework.SourceGenerators.Common.Diagnostics;
 using GFramework.SourceGenerators.Common.Generator;
-using GFramework.SourceGenerators.Diagnostics;
 
-namespace GFramework.SourceGenerators.Rule;
+namespace GFramework.Core.SourceGenerators.Rule;
 
 /// <summary>
 ///     上下文感知生成器，用于为标记了ContextAware特性的类自动生成IContextAware接口实现

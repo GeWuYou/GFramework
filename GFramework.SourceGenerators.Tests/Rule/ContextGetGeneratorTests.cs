@@ -1,4 +1,4 @@
-using GFramework.SourceGenerators.Rule;
+using GFramework.Core.SourceGenerators.Rule;
 using GFramework.SourceGenerators.Tests.Core;
 
 namespace GFramework.SourceGenerators.Tests.Rule;

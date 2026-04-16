@@ -1,4 +1,4 @@
-namespace GFramework.SourceGenerators.Abstractions.Architectures;
+namespace GFramework.Core.SourceGenerators.Abstractions.Architectures;
 
 /// <summary>
 ///     声明架构模块需要自动注册的模型类型。

@@ -1,4 +1,4 @@
-namespace GFramework.SourceGenerators.Abstractions.Bases;
+namespace GFramework.Core.SourceGenerators.Abstractions.Bases;
 
 /// <summary>
 /// 标记类的优先级，自动生成 <c>GFramework.Core.Abstractions.Bases.IPrioritized</c> 接口实现。

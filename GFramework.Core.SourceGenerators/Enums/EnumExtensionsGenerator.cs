@@ -2,7 +2,7 @@
 using GFramework.SourceGenerators.Common.Diagnostics;
 using GFramework.SourceGenerators.Common.Generator;
 
-namespace GFramework.SourceGenerators.Enums;
+namespace GFramework.Core.SourceGenerators.Enums;
 
 /// <summary>
 ///     枚举扩展方法生成器，用于自动生成枚举相关的扩展方法

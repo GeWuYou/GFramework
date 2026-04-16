@@ -1,8 +1,8 @@
-using GFramework.SourceGenerators.Diagnostics;
+using GFramework.Core.SourceGenerators.Diagnostics;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
 
-namespace GFramework.SourceGenerators.Analyzers;
+namespace GFramework.Core.SourceGenerators.Analyzers;
 
 /// <summary>
 /// 优先级使用分析器，检测应该使用 GetAllByPriority 而非 GetAll 的场景

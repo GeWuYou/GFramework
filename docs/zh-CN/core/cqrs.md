@@ -247,6 +247,8 @@ public class GameArchitecture : Architecture
 handler。
 
 `RegisterCqrsPipelineBehavior<TBehavior>()` 是唯一保留的公开入口；旧的 `Mediator` 兼容别名与扩展已移除，不再继续维护。
+如果你正在从旧版本迁移，显式替换关系就是
+`RegisterMediatorBehavior<TBehavior>() -> RegisterCqrsPipelineBehavior<TBehavior>()`。
 当前接口支持两种形式：
 
 - 开放泛型行为，例如 `LoggingBehavior<,>`，用于匹配所有请求

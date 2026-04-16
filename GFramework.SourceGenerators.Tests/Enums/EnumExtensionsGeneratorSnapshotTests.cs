@@ -1,7 +1,6 @@
 using System.IO;
-using GFramework.SourceGenerators.Enums;
+using GFramework.Core.SourceGenerators.Enums;
 using GFramework.SourceGenerators.Tests.Core;
-using NUnit.Framework;
 
 namespace GFramework.SourceGenerators.Tests.Enums;
 

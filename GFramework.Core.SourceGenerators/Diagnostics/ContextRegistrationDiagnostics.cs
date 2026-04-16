@@ -1,6 +1,6 @@
 using GFramework.SourceGenerators.Common.Constants;
 
-namespace GFramework.SourceGenerators.Diagnostics;
+namespace GFramework.Core.SourceGenerators.Diagnostics;
 
 /// <summary>
 ///     提供 Context Get 注册可见性分析相关诊断。

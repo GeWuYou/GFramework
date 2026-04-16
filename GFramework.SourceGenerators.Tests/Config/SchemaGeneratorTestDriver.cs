@@ -1,7 +1,6 @@
 using System.Collections.Immutable;
 using System.IO;
-using GFramework.SourceGenerators.Config;
-using Microsoft.CodeAnalysis.CSharp;
+using GFramework.Game.SourceGenerators.Config;
 
 namespace GFramework.SourceGenerators.Tests.Config;
 

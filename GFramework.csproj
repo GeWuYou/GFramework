@@ -30,19 +30,18 @@
         <None Remove="GFramework.Game\**"/>
         <None Remove="GFramework.Godot\**"/>
         <None Update="GFramework.Core.SourceGenerators\logging\README.md">
-            <Link>GFramework.SorceGenerators\logging\README.md</Link>
+            <Link>GFramework.Core.SourceGenerators\logging\README.md</Link>
         </None>
         <None Update="GFramework.Core.SourceGenerators\README.md">
-            <Link>GFramework.SorceGenerators\README.md</Link>
+            <Link>GFramework.Core.SourceGenerators\README.md</Link>
         </None>
         <None Update="GFramework.Core.SourceGenerators\AnalyzerReleases.Shipped.md">
-            <Link>GFramework.SorceGenerators\AnalyzerReleases.Shipped.md</Link>
+            <Link>GFramework.Core.SourceGenerators\AnalyzerReleases.Shipped.md</Link>
         </None>
         <None Update="GFramework.Core.SourceGenerators\AnalyzerReleases.Unshipped.md">
-            <Link>GFramework.SorceGenerators\AnalyzerReleases.Unshipped.md</Link>
+            <Link>GFramework.Core.SourceGenerators\AnalyzerReleases.Unshipped.md</Link>
         </None>
         <None Remove="GFramework.Godot.SourceGenerators\**"/>
-        <None Remove="GFramework.SorceGenerators\**"/>
         <None Remove="GFramework.SourceGenerators\**"/>
         <None Remove="GFramework.Core.SourceGenerators\**"/>
         <None Remove="GFramework.Core.SourceGenerators.Abstractions\**"/>
@@ -82,16 +81,15 @@
         <Compile Remove="GFramework.Game\**"/>
         <Compile Remove="GFramework.Godot\**"/>
         <Compile Update="GFramework.Core.SourceGenerators\enums\EnumExtensionsGenerator.cs">
-            <Link>GFramework.SorceGenerators\enums\EnumExtensionsGenerator.cs</Link>
+            <Link>GFramework.Core.SourceGenerators\enums\EnumExtensionsGenerator.cs</Link>
         </Compile>
         <Compile Update="GFramework.Core.SourceGenerators\logging\Diagnostic.cs">
-            <Link>GFramework.SorceGenerators\logging\Diagnostic.cs</Link>
+            <Link>GFramework.Core.SourceGenerators\logging\Diagnostic.cs</Link>
         </Compile>
         <Compile Update="GFramework.Core.SourceGenerators\logging\LoggerGenerator.cs">
-            <Link>GFramework.SorceGenerators\logging\LoggerGenerator.cs</Link>
+            <Link>GFramework.Core.SourceGenerators\logging\LoggerGenerator.cs</Link>
         </Compile>
         <Compile Remove="GFramework.Godot.SourceGenerators\**"/>
-        <Compile Remove="GFramework.SorceGenerators\**"/>
         <Compile Remove="GFramework.SourceGenerators\**"/>
         <Compile Remove="GFramework.Core.SourceGenerators\**"/>
         <Compile Remove="GFramework.Core.SourceGenerators.Abstractions\**"/>
@@ -126,7 +124,6 @@
         <EmbeddedResource Remove="GFramework.Game\**"/>
         <EmbeddedResource Remove="GFramework.Godot\**"/>
         <EmbeddedResource Remove="GFramework.Godot.SourceGenerators\**"/>
-        <EmbeddedResource Remove="GFramework.SorceGenerators\**"/>
         <EmbeddedResource Remove="GFramework.SourceGenerators\**"/>
         <EmbeddedResource Remove="GFramework.Core.SourceGenerators\**"/>
         <EmbeddedResource Remove="GFramework.Core.SourceGenerators.Abstractions\**"/>

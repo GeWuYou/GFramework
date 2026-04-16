@@ -1,6 +1,6 @@
 using GFramework.SourceGenerators.Common.Constants;
 
-namespace GFramework.SourceGenerators.Cqrs;
+namespace GFramework.Cqrs.SourceGenerators.Cqrs;
 
 /// <summary>
 ///     为当前编译程序集生成 CQRS 处理器注册器，以减少运行时的程序集反射扫描成本。
@@ -347,7 +347,7 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
             }
 
             runtimeTypeReference = RuntimeTypeReferenceSpec.FromExternalReflectionLookup(
-                namedType.ContainingAssembly.Identity.Name,
+                namedType.ContainingAssembly.Identity.ToString(),
                 GetReflectionTypeMetadataName(namedType));
             return true;
         }
@@ -396,7 +396,7 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         }
 
         genericTypeDefinitionReference = RuntimeTypeReferenceSpec.FromExternalReflectionLookup(
-            genericTypeDefinition.ContainingAssembly.Identity.Name,
+            genericTypeDefinition.ContainingAssembly.Identity.ToString(),
             GetReflectionTypeMetadataName(genericTypeDefinition));
         return true;
     }
@@ -951,28 +951,39 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         if (includeExternalAssemblyTypeLookupHelpers)
         {
             builder.AppendLine(
-                "    private static global::System.Type? ResolveReferencedAssemblyType(string assemblyName, string typeMetadataName)");
+                "    private static global::System.Type? ResolveReferencedAssemblyType(string assemblyIdentity, string typeMetadataName)");
             builder.AppendLine("    {");
-            builder.AppendLine("        var assembly = ResolveReferencedAssembly(assemblyName);");
+            builder.AppendLine("        var assembly = ResolveReferencedAssembly(assemblyIdentity);");
             builder.AppendLine(
                 "        return assembly?.GetType(typeMetadataName, throwOnError: false, ignoreCase: false);");
             builder.AppendLine("    }");
             builder.AppendLine();
             builder.AppendLine(
-                "    private static global::System.Reflection.Assembly? ResolveReferencedAssembly(string assemblyName)");
+                "    private static global::System.Reflection.Assembly? ResolveReferencedAssembly(string assemblyIdentity)");
             builder.AppendLine("    {");
+            builder.AppendLine("        global::System.Reflection.AssemblyName targetAssemblyName;");
+            builder.AppendLine("        try");
+            builder.AppendLine("        {");
+            builder.AppendLine(
+                "            targetAssemblyName = new global::System.Reflection.AssemblyName(assemblyIdentity);");
+            builder.AppendLine("        }");
+            builder.AppendLine("        catch");
+            builder.AppendLine("        {");
+            builder.AppendLine("            return null;");
+            builder.AppendLine("        }");
+            builder.AppendLine();
             builder.AppendLine(
                 "        foreach (var assembly in global::System.AppDomain.CurrentDomain.GetAssemblies())");
             builder.AppendLine("        {");
             builder.AppendLine(
-                "            if (global::System.StringComparer.Ordinal.Equals(assembly.GetName().Name, assemblyName))");
+                "            if (global::System.Reflection.AssemblyName.ReferenceMatchesDefinition(targetAssemblyName, assembly.GetName()))");
             builder.AppendLine("                return assembly;");
             builder.AppendLine("        }");
             builder.AppendLine();
             builder.AppendLine("        try");
             builder.AppendLine("        {");
             builder.AppendLine(
-                "            return global::System.Reflection.Assembly.Load(new global::System.Reflection.AssemblyName(assemblyName));");
+                "            return global::System.Reflection.Assembly.Load(targetAssemblyName);");
             builder.AppendLine("        }");
             builder.AppendLine("        catch");
             builder.AppendLine("        {");

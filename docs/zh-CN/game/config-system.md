@@ -180,7 +180,9 @@ GameProject/
 如果你使用打包后的 NuGet，而不是仓库内项目引用，原则保持不变：
 
 - 运行时项目需要引用 `GeWuYou.GFramework.Game`
-- 生成器项目需要引用 `GeWuYou.GFramework.SourceGenerators`
+- 配置 schema 生成器需要引用 `GeWuYou.GFramework.Game.SourceGenerators`
+- 如果同一项目还会使用 `[Log]`、`[ContextAware]`、`[GetSystem]` 等 Core 侧生成器特性，再额外引用
+  `GeWuYou.GFramework.Core.SourceGenerators`
 - schema 目录默认仍然是 `schemas/`
 
 如果你的 schema 不放在默认目录，可以在项目文件里覆盖：

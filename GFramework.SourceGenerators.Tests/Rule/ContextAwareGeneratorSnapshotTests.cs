@@ -1,7 +1,6 @@
 ﻿using System.IO;
-using GFramework.SourceGenerators.Rule;
+using GFramework.Core.SourceGenerators.Rule;
 using GFramework.SourceGenerators.Tests.Core;
-using NUnit.Framework;
 
 namespace GFramework.SourceGenerators.Tests.Rule;
 

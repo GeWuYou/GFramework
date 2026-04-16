@@ -1,7 +1,6 @@
 using System.IO;
-using GFramework.SourceGenerators.Logging;
+using GFramework.Core.SourceGenerators.Logging;
 using GFramework.SourceGenerators.Tests.Core;
-using NUnit.Framework;
 
 namespace GFramework.SourceGenerators.Tests.Logging;
 

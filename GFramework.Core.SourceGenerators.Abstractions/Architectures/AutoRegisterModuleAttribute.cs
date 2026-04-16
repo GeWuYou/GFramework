@@ -1,4 +1,4 @@
-namespace GFramework.SourceGenerators.Abstractions.Architectures;
+namespace GFramework.Core.SourceGenerators.Abstractions.Architectures;
 
 /// <summary>
 ///     标记架构模块类型，Source Generator 会根据注册特性生成 <c>Install</c> 方法。

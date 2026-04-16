@@ -1,6 +1,6 @@
 using GFramework.SourceGenerators.Common.Constants;
 
-namespace GFramework.SourceGenerators.Diagnostics;
+namespace GFramework.Game.SourceGenerators.Diagnostics;
 
 /// <summary>
 ///     提供配置 schema 代码生成相关诊断。

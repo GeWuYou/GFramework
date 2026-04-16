@@ -1,4 +1,4 @@
-using GFramework.SourceGenerators.Analyzers;
+using GFramework.Core.SourceGenerators.Analyzers;
 using GFramework.SourceGenerators.Tests.Core;
 
 namespace GFramework.SourceGenerators.Tests.Analyzers;
@@ -9,128 +9,128 @@ namespace GFramework.SourceGenerators.Tests.Analyzers;
 public sealed class ContextRegistrationAnalyzerTests
 {
     private const string TestPreamble = """
-                                       using System;
-                                       using System.Collections.Generic;
-                                       
-                                       namespace GFramework.Core.Abstractions.Rule
-                                       {
-                                           public interface IContextAware { }
-                                       }
-                                       
-                                       namespace GFramework.Core.Abstractions.Model
-                                       {
-                                           public interface IModel : GFramework.Core.Abstractions.Rule.IContextAware { }
-                                       }
-                                       
-                                       namespace GFramework.Core.Abstractions.Systems
-                                       {
-                                           public interface ISystem : GFramework.Core.Abstractions.Rule.IContextAware { }
-                                       }
-                                       
-                                       namespace GFramework.Core.Abstractions.Utility
-                                       {
-                                           public interface IUtility : GFramework.Core.Abstractions.Rule.IContextAware { }
-                                       }
-                                       
-                                       namespace GFramework.Core.Abstractions.Architectures
-                                       {
-                                           public interface IArchitecture
-                                           {
-                                               T RegisterModel<T>(T model) where T : GFramework.Core.Abstractions.Model.IModel;
-                                               void RegisterModel<T>(Action<T> onCreated = null) where T : class, GFramework.Core.Abstractions.Model.IModel;
-                                               T RegisterSystem<T>(T system) where T : GFramework.Core.Abstractions.Systems.ISystem;
-                                               void RegisterSystem<T>(Action<T> onCreated = null) where T : class, GFramework.Core.Abstractions.Systems.ISystem;
-                                               T RegisterUtility<T>(T utility) where T : GFramework.Core.Abstractions.Utility.IUtility;
-                                               void RegisterUtility<T>(Action<T> onCreated = null) where T : class, GFramework.Core.Abstractions.Utility.IUtility;
-                                               IArchitectureModule InstallModule(IArchitectureModule module);
-                                           }
-                                           
-                                           public interface IArchitectureModule
-                                           {
-                                               void Install(IArchitecture architecture);
-                                           }
-                                           
-                                           public interface IArchitectureContext
-                                           {
-                                               TModel GetModel<TModel>() where TModel : class, GFramework.Core.Abstractions.Model.IModel;
-                                               IReadOnlyList<TModel> GetModels<TModel>() where TModel : class, GFramework.Core.Abstractions.Model.IModel;
-                                               TSystem GetSystem<TSystem>() where TSystem : class, GFramework.Core.Abstractions.Systems.ISystem;
-                                               IReadOnlyList<TSystem> GetSystems<TSystem>() where TSystem : class, GFramework.Core.Abstractions.Systems.ISystem;
-                                               TUtility GetUtility<TUtility>() where TUtility : class, GFramework.Core.Abstractions.Utility.IUtility;
-                                               IReadOnlyList<TUtility> GetUtilities<TUtility>() where TUtility : class, GFramework.Core.Abstractions.Utility.IUtility;
-                                           }
-                                       }
-                                       
-                                       namespace GFramework.Core.Architectures
-                                       {
-                                           public abstract class Architecture : GFramework.Core.Abstractions.Architectures.IArchitecture
-                                           {
-                                               protected abstract void OnInitialize();
-                                               
-                                               public virtual T RegisterModel<T>(T model) where T : GFramework.Core.Abstractions.Model.IModel => model;
-                                               
-                                               public virtual void RegisterModel<T>(Action<T> onCreated = null)
-                                                   where T : class, GFramework.Core.Abstractions.Model.IModel
-                                               {
-                                               }
-                                               
-                                               public virtual T RegisterSystem<T>(T system) where T : GFramework.Core.Abstractions.Systems.ISystem => system;
-                                               
-                                               public virtual void RegisterSystem<T>(Action<T> onCreated = null)
-                                                   where T : class, GFramework.Core.Abstractions.Systems.ISystem
-                                               {
-                                               }
-                                               
-                                               public virtual T RegisterUtility<T>(T utility) where T : GFramework.Core.Abstractions.Utility.IUtility => utility;
-                                               
-                                               public virtual void RegisterUtility<T>(Action<T> onCreated = null)
-                                                   where T : class, GFramework.Core.Abstractions.Utility.IUtility
-                                               {
-                                               }
-                                               
-                                               public virtual GFramework.Core.Abstractions.Architectures.IArchitectureModule InstallModule(
-                                                   GFramework.Core.Abstractions.Architectures.IArchitectureModule module)
-                                               {
-                                                   module.Install(this);
-                                                   return module;
-                                               }
-                                           }
-                                       }
-                                       
-                                       namespace GFramework.Core.Extensions
-                                       {
-                                           public static class ContextAwareServiceExtensions
-                                           {
-                                               public static TModel GetModel<TModel>(this GFramework.Core.Abstractions.Rule.IContextAware contextAware)
-                                                   where TModel : class, GFramework.Core.Abstractions.Model.IModel => throw new NotImplementedException();
-                                               
-                                               public static IReadOnlyList<TModel> GetModels<TModel>(this GFramework.Core.Abstractions.Rule.IContextAware contextAware)
-                                                   where TModel : class, GFramework.Core.Abstractions.Model.IModel => throw new NotImplementedException();
-                                               
-                                               public static TSystem GetSystem<TSystem>(this GFramework.Core.Abstractions.Rule.IContextAware contextAware)
-                                                   where TSystem : class, GFramework.Core.Abstractions.Systems.ISystem => throw new NotImplementedException();
-                                               
-                                               public static IReadOnlyList<TSystem> GetSystems<TSystem>(this GFramework.Core.Abstractions.Rule.IContextAware contextAware)
-                                                   where TSystem : class, GFramework.Core.Abstractions.Systems.ISystem => throw new NotImplementedException();
-                                               
-                                               public static TUtility GetUtility<TUtility>(this GFramework.Core.Abstractions.Rule.IContextAware contextAware)
-                                                   where TUtility : class, GFramework.Core.Abstractions.Utility.IUtility => throw new NotImplementedException();
-                                               
-                                               public static IReadOnlyList<TUtility> GetUtilities<TUtility>(this GFramework.Core.Abstractions.Rule.IContextAware contextAware)
-                                                   where TUtility : class, GFramework.Core.Abstractions.Utility.IUtility => throw new NotImplementedException();
-                                           }
-                                       }
-                                       
-                                       namespace GFramework.SourceGenerators.Abstractions.Rule
-                                       {
-                                           public sealed class GetModelAttribute : Attribute { }
-                                           public sealed class GetModelsAttribute : Attribute { }
-                                           public sealed class GetSystemAttribute : Attribute { }
-                                           public sealed class GetSystemsAttribute : Attribute { }
-                                           public sealed class GetUtilityAttribute : Attribute { }
-                                           public sealed class GetUtilitiesAttribute : Attribute { }
-                                       }
-                                       """;
+                                        using System;
+                                        using System.Collections.Generic;
+
+                                        namespace GFramework.Core.Abstractions.Rule
+                                        {
+                                            public interface IContextAware { }
+                                        }
+
+                                        namespace GFramework.Core.Abstractions.Model
+                                        {
+                                            public interface IModel : GFramework.Core.Abstractions.Rule.IContextAware { }
+                                        }
+
+                                        namespace GFramework.Core.Abstractions.Systems
+                                        {
+                                            public interface ISystem : GFramework.Core.Abstractions.Rule.IContextAware { }
+                                        }
+
+                                        namespace GFramework.Core.Abstractions.Utility
+                                        {
+                                            public interface IUtility : GFramework.Core.Abstractions.Rule.IContextAware { }
+                                        }
+
+                                        namespace GFramework.Core.Abstractions.Architectures
+                                        {
+                                            public interface IArchitecture
+                                            {
+                                                T RegisterModel<T>(T model) where T : GFramework.Core.Abstractions.Model.IModel;
+                                                void RegisterModel<T>(Action<T> onCreated = null) where T : class, GFramework.Core.Abstractions.Model.IModel;
+                                                T RegisterSystem<T>(T system) where T : GFramework.Core.Abstractions.Systems.ISystem;
+                                                void RegisterSystem<T>(Action<T> onCreated = null) where T : class, GFramework.Core.Abstractions.Systems.ISystem;
+                                                T RegisterUtility<T>(T utility) where T : GFramework.Core.Abstractions.Utility.IUtility;
+                                                void RegisterUtility<T>(Action<T> onCreated = null) where T : class, GFramework.Core.Abstractions.Utility.IUtility;
+                                                IArchitectureModule InstallModule(IArchitectureModule module);
+                                            }
+                                            
+                                            public interface IArchitectureModule
+                                            {
+                                                void Install(IArchitecture architecture);
+                                            }
+                                            
+                                            public interface IArchitectureContext
+                                            {
+                                                TModel GetModel<TModel>() where TModel : class, GFramework.Core.Abstractions.Model.IModel;
+                                                IReadOnlyList<TModel> GetModels<TModel>() where TModel : class, GFramework.Core.Abstractions.Model.IModel;
+                                                TSystem GetSystem<TSystem>() where TSystem : class, GFramework.Core.Abstractions.Systems.ISystem;
+                                                IReadOnlyList<TSystem> GetSystems<TSystem>() where TSystem : class, GFramework.Core.Abstractions.Systems.ISystem;
+                                                TUtility GetUtility<TUtility>() where TUtility : class, GFramework.Core.Abstractions.Utility.IUtility;
+                                                IReadOnlyList<TUtility> GetUtilities<TUtility>() where TUtility : class, GFramework.Core.Abstractions.Utility.IUtility;
+                                            }
+                                        }
+
+                                        namespace GFramework.Core.Architectures
+                                        {
+                                            public abstract class Architecture : GFramework.Core.Abstractions.Architectures.IArchitecture
+                                            {
+                                                protected abstract void OnInitialize();
+                                                
+                                                public virtual T RegisterModel<T>(T model) where T : GFramework.Core.Abstractions.Model.IModel => model;
+                                                
+                                                public virtual void RegisterModel<T>(Action<T> onCreated = null)
+                                                    where T : class, GFramework.Core.Abstractions.Model.IModel
+                                                {
+                                                }
+                                                
+                                                public virtual T RegisterSystem<T>(T system) where T : GFramework.Core.Abstractions.Systems.ISystem => system;
+                                                
+                                                public virtual void RegisterSystem<T>(Action<T> onCreated = null)
+                                                    where T : class, GFramework.Core.Abstractions.Systems.ISystem
+                                                {
+                                                }
+                                                
+                                                public virtual T RegisterUtility<T>(T utility) where T : GFramework.Core.Abstractions.Utility.IUtility => utility;
+                                                
+                                                public virtual void RegisterUtility<T>(Action<T> onCreated = null)
+                                                    where T : class, GFramework.Core.Abstractions.Utility.IUtility
+                                                {
+                                                }
+                                                
+                                                public virtual GFramework.Core.Abstractions.Architectures.IArchitectureModule InstallModule(
+                                                    GFramework.Core.Abstractions.Architectures.IArchitectureModule module)
+                                                {
+                                                    module.Install(this);
+                                                    return module;
+                                                }
+                                            }
+                                        }
+
+                                        namespace GFramework.Core.Extensions
+                                        {
+                                            public static class ContextAwareServiceExtensions
+                                            {
+                                                public static TModel GetModel<TModel>(this GFramework.Core.Abstractions.Rule.IContextAware contextAware)
+                                                    where TModel : class, GFramework.Core.Abstractions.Model.IModel => throw new NotImplementedException();
+                                                
+                                                public static IReadOnlyList<TModel> GetModels<TModel>(this GFramework.Core.Abstractions.Rule.IContextAware contextAware)
+                                                    where TModel : class, GFramework.Core.Abstractions.Model.IModel => throw new NotImplementedException();
+                                                
+                                                public static TSystem GetSystem<TSystem>(this GFramework.Core.Abstractions.Rule.IContextAware contextAware)
+                                                    where TSystem : class, GFramework.Core.Abstractions.Systems.ISystem => throw new NotImplementedException();
+                                                
+                                                public static IReadOnlyList<TSystem> GetSystems<TSystem>(this GFramework.Core.Abstractions.Rule.IContextAware contextAware)
+                                                    where TSystem : class, GFramework.Core.Abstractions.Systems.ISystem => throw new NotImplementedException();
+                                                
+                                                public static TUtility GetUtility<TUtility>(this GFramework.Core.Abstractions.Rule.IContextAware contextAware)
+                                                    where TUtility : class, GFramework.Core.Abstractions.Utility.IUtility => throw new NotImplementedException();
+                                                
+                                                public static IReadOnlyList<TUtility> GetUtilities<TUtility>(this GFramework.Core.Abstractions.Rule.IContextAware contextAware)
+                                                    where TUtility : class, GFramework.Core.Abstractions.Utility.IUtility => throw new NotImplementedException();
+                                            }
+                                        }
+
+                                        namespace GFramework.SourceGenerators.Abstractions.Rule
+                                        {
+                                            public sealed class GetModelAttribute : Attribute { }
+                                            public sealed class GetModelsAttribute : Attribute { }
+                                            public sealed class GetSystemAttribute : Attribute { }
+                                            public sealed class GetSystemsAttribute : Attribute { }
+                                            public sealed class GetUtilityAttribute : Attribute { }
+                                            public sealed class GetUtilitiesAttribute : Attribute { }
+                                        }
+                                        """;
 
     [Test]
     public async Task Reports_Warning_When_FieldInjectedModel_Is_Not_Registered()
@@ -366,7 +366,8 @@ public sealed class ContextRegistrationAnalyzerTests
     }
 
     [Test]
-    public async Task Does_Not_Report_When_Inherited_OnInitialize_Calls_Virtual_Helper_Overridden_In_Derived_Architecture()
+    public async Task
+        Does_Not_Report_When_Inherited_OnInitialize_Calls_Virtual_Helper_Overridden_In_Derived_Architecture()
     {
         await AnalyzerTestDriver<ContextRegistrationAnalyzer>.RunAsync(
             Wrap("""

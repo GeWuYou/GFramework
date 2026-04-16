@@ -1,9 +1,9 @@
+using GFramework.Core.SourceGenerators.Diagnostics;
 using GFramework.SourceGenerators.Common.Constants;
-using GFramework.SourceGenerators.Diagnostics;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
 
-namespace GFramework.SourceGenerators.Analyzers;
+namespace GFramework.Core.SourceGenerators.Analyzers;
 
 /// <summary>
 ///     分析 Context Get 使用点是否能在所属架构中找到静态可见的 Model、System、Utility 注册。

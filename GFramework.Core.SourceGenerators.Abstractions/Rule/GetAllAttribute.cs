@@ -1,4 +1,4 @@
-namespace GFramework.SourceGenerators.Abstractions.Rule;
+namespace GFramework.Core.SourceGenerators.Abstractions.Rule;
 
 /// <summary>
 ///     标记类需要自动推断并注入上下文相关字段。

@@ -6,13 +6,18 @@ GFramework 提供多种安装方式，您可以根据项目需求选择合适的
 
 GFramework 采用模块化设计，不同包提供不同的功能：
 
-| 包名                                    | 说明      | 适用场景      |
-|---------------------------------------|---------|-----------|
-| `GeWuYou.GFramework`                  | 聚合元包    | 快速试用、原型开发 |
-| `GeWuYou.GFramework.Core`             | 核心框架    | 生产项目推荐    |
-| `GeWuYou.GFramework.Game`             | 游戏模块    | 需要游戏特定功能  |
-| `GeWuYou.GFramework.Godot`            | Godot集成 | Godot项目必需 |
-| `GeWuYou.GFramework.SourceGenerators` | 源码生成器   | 推荐安装      |
+| 包名                                          | 说明          | 适用场景                           |
+|---------------------------------------------|-------------|--------------------------------|
+| `GeWuYou.GFramework`                        | 聚合元包        | 快速试用、原型开发                      |
+| `GeWuYou.GFramework.Core`                   | 核心框架        | 生产项目推荐                         |
+| `GeWuYou.GFramework.Game`                   | 游戏模块        | 需要游戏特定功能                       |
+| `GeWuYou.GFramework.Godot`                  | Godot集成     | Godot项目必需                      |
+| `GeWuYou.GFramework.Core.SourceGenerators`  | Core 源码生成器  | `[Log]`、`[ContextAware]`、架构注入等 |
+| `GeWuYou.GFramework.Game.SourceGenerators`  | Game 源码生成器  | 配置 schema / 配表生成               |
+| `GeWuYou.GFramework.Godot.SourceGenerators` | Godot 源码生成器 | Godot 节点、UI、项目元数据生成            |
+| `GeWuYou.GFramework.Cqrs.SourceGenerators`  | CQRS 源码生成器  | 处理器注册表生成                       |
+
+当前 NuGet 发布按模块拆分 source generator 包，不存在 `GeWuYou.GFramework.SourceGenerators` 聚合包。
 
 ## 安装方式
 
@@ -30,8 +35,17 @@ dotnet add package GeWuYou.GFramework.Game.Abstractions
 # Godot 集成（仅 Godot 项目需要）
 dotnet add package GeWuYou.GFramework.Godot
 
-# 源码生成器（可选，但推荐）
-dotnet add package GeWuYou.GFramework.SourceGenerators
+# Core 侧源码生成器（[Log] / [ContextAware] / [GetSystem] 等）
+dotnet add package GeWuYou.GFramework.Core.SourceGenerators
+
+# Game 配置 schema 生成器
+dotnet add package GeWuYou.GFramework.Game.SourceGenerators
+
+# Godot 生成器（仅 Godot 项目需要）
+dotnet add package GeWuYou.GFramework.Godot.SourceGenerators
+
+# CQRS 处理器注册生成器（仅使用 CQRS source generator 时需要）
+dotnet add package GeWuYou.GFramework.Cqrs.SourceGenerators
 ```
 
 ### 2. 使用 PackageReference
@@ -56,8 +70,14 @@ dotnet add package GeWuYou.GFramework.SourceGenerators
     <!-- Godot 集成 -->
     <PackageReference Include="GeWuYou.GFramework.Godot" Version="1.0.0" />
     
-    <!-- 源码生成器 -->
-    <PackageReference Include="GeWuYou.GFramework.SourceGenerators" Version="1.0.0" 
+    <!-- 按场景选择的源码生成器 -->
+    <PackageReference Include="GeWuYou.GFramework.Core.SourceGenerators" Version="1.0.0"
+                      PrivateAssets="all" ExcludeAssets="runtime" />
+    <PackageReference Include="GeWuYou.GFramework.Game.SourceGenerators" Version="1.0.0"
+                      PrivateAssets="all" ExcludeAssets="runtime" />
+    <PackageReference Include="GeWuYou.GFramework.Godot.SourceGenerators" Version="1.0.0"
+                      PrivateAssets="all" ExcludeAssets="runtime" />
+    <PackageReference Include="GeWuYou.GFramework.Cqrs.SourceGenerators" Version="1.0.0"
                       PrivateAssets="all" ExcludeAssets="runtime" />
   </ItemGroup>
 </Project>
@@ -183,6 +203,8 @@ dotnet build
 
 检查：
 
-- 确保安装了 `GeWuYou.GFramework.SourceGenerators`
+- 确保安装了与你正在使用的特性对应的拆分生成器包，例如：
+  `GeWuYou.GFramework.Core.SourceGenerators`、`GeWuYou.GFramework.Game.SourceGenerators`、
+  `GeWuYou.GFramework.Godot.SourceGenerators` 或 `GeWuYou.GFramework.Cqrs.SourceGenerators`
 - 重启 IDE
 - 清理并重新构建项目

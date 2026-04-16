@@ -1,5 +1,5 @@
 #nullable enable
-namespace GFramework.SourceGenerators.Abstractions.Logging;
+namespace GFramework.Core.SourceGenerators.Abstractions.Logging;
 
 /// <summary>
 ///     标注在类上，Source Generator 会为该类自动生成一个日志记录器字段。

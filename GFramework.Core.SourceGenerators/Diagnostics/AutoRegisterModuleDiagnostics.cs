@@ -1,6 +1,6 @@
 using GFramework.SourceGenerators.Common.Constants;
 
-namespace GFramework.SourceGenerators.Diagnostics;
+namespace GFramework.Core.SourceGenerators.Diagnostics;
 
 internal static class AutoRegisterModuleDiagnostics
 {

@@ -1,4 +1,4 @@
-namespace GFramework.SourceGenerators.Diagnostics;
+namespace GFramework.Core.SourceGenerators.Diagnostics;
 
 /// <summary>
 /// Priority 特性相关的诊断信息

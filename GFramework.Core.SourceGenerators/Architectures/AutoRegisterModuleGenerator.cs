@@ -1,10 +1,10 @@
-using GFramework.SourceGenerators.Abstractions.Architectures;
+using GFramework.Core.SourceGenerators.Abstractions.Architectures;
+using GFramework.Core.SourceGenerators.Diagnostics;
 using GFramework.SourceGenerators.Common.Constants;
 using GFramework.SourceGenerators.Common.Diagnostics;
 using GFramework.SourceGenerators.Common.Extensions;
-using GFramework.SourceGenerators.Diagnostics;
 
-namespace GFramework.SourceGenerators.Architectures;
+namespace GFramework.Core.SourceGenerators.Architectures;
 
 /// <summary>
 ///     为标记了 <see cref="AutoRegisterModuleAttribute" /> 的模块生成固定顺序的组件注册代码。

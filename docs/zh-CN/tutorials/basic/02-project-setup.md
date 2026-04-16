@@ -74,8 +74,11 @@ dotnet add package GeWuYou.GFramework
 # Godot 集成
 dotnet add package GeWuYou.GFramework.Godot
 
-# 源码生成器（可选，但推荐）
-dotnet add package GeWuYou.GFramework.SourceGenerators
+# Core 侧源码生成器（[Log] / [ContextAware] 等）
+dotnet add package GeWuYou.GFramework.Core.SourceGenerators
+
+# Godot 侧源码生成器（[GetNode] / [AutoUiPage] 等）
+dotnet add package GeWuYou.GFramework.Godot.SourceGenerators
 ```
 
 ::: details 分包安装（了解即可）
@@ -93,8 +96,11 @@ dotnet add package GeWuYou.GFramework.Game.Abstractions
 # Godot 集成
 dotnet add package GeWuYou.GFramework.Godot
 
-# 源码生成器
-dotnet add package GeWuYou.GFramework.SourceGenerators
+# Core 侧源码生成器
+dotnet add package GeWuYou.GFramework.Core.SourceGenerators
+
+# Godot 侧源码生成器
+dotnet add package GeWuYou.GFramework.Godot.SourceGenerators
 ```
 
 :::
@@ -108,7 +114,8 @@ dotnet add package GeWuYou.GFramework.SourceGenerators
 3. 安装以下包：
     - `GeWuYou.GFramework`
     - `GeWuYou.GFramework.Godot`
-    - `GeWuYou.GFramework.SourceGenerators`
+   - `GeWuYou.GFramework.Core.SourceGenerators`
+   - `GeWuYou.GFramework.Godot.SourceGenerators`
 
 ![NuGet 包管理](../assets/basic/image-20260211211756993.png)
 
