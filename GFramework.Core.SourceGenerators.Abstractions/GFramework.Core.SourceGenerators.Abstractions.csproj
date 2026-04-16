@@ -12,7 +12,7 @@
 
     <!-- 引入必要的命名空间 -->
     <ItemGroup>
-        <Using Include="GFramework.SourceGenerators.Abstractions"/>
+        <Using Include="GFramework.Core.SourceGenerators.Abstractions"/>
     </ItemGroup>
     <ItemGroup>
         <PackageReference Update="Meziantou.Analyzer" Version="3.0.46">
