@@ -1578,7 +1578,7 @@ function getScalarArrayValue(yamlNode) {
 /**
  * Render human-facing metadata hints for one schema field.
  *
- * @param {{type?: string, description?: string, defaultValue?: string, constValue?: string, constDisplayValue?: string, minimum?: number, exclusiveMinimum?: number, maximum?: number, exclusiveMaximum?: number, multipleOf?: number, minLength?: number, maxLength?: number, pattern?: string, format?: string, minItems?: number, maxItems?: number, minContains?: number, maxContains?: number, minProperties?: number, maxProperties?: number, uniqueItems?: boolean, enumValues?: string[], contains?: {type?: string, enumValues?: string[], constValue?: string, constDisplayValue?: string, pattern?: string, format?: string, refTable?: string}, items?: {enumValues?: string[], constValue?: string, constDisplayValue?: string, minimum?: number, exclusiveMinimum?: number, maximum?: number, exclusiveMaximum?: number, multipleOf?: number, minLength?: number, maxLength?: number, pattern?: string, format?: string}, refTable?: string}} propertySchema Property schema metadata.
+ * @param {{type?: string, description?: string, defaultValue?: string, constValue?: string, constDisplayValue?: string, minimum?: number, exclusiveMinimum?: number, maximum?: number, exclusiveMaximum?: number, multipleOf?: number, minLength?: number, maxLength?: number, pattern?: string, format?: string, minItems?: number, maxItems?: number, minContains?: number, maxContains?: number, minProperties?: number, maxProperties?: number, dependentRequired?: Record<string, string[]>, uniqueItems?: boolean, enumValues?: string[], contains?: {type?: string, enumValues?: string[], constValue?: string, constDisplayValue?: string, pattern?: string, format?: string, refTable?: string}, items?: {enumValues?: string[], constValue?: string, constDisplayValue?: string, minimum?: number, exclusiveMinimum?: number, maximum?: number, exclusiveMaximum?: number, multipleOf?: number, minLength?: number, maxLength?: number, pattern?: string, format?: string}, refTable?: string}} propertySchema Property schema metadata.
  * @param {boolean} isArrayField Whether the field is an array.
  * @param {boolean} includeDescription Whether description text should be included in the hint output.
  * @returns {string} HTML fragment.
@@ -1651,6 +1651,21 @@ function renderFieldHint(propertySchema, isArrayField, includeDescription = true
 
     if (propertySchema.type === "object" && typeof propertySchema.maxProperties === "number") {
         hints.push(escapeHtml(localizer.t("webview.hint.maxProperties", {value: propertySchema.maxProperties})));
+    }
+
+    if (propertySchema.type === "object" &&
+        propertySchema.dependentRequired &&
+        typeof propertySchema.dependentRequired === "object") {
+        for (const [trigger, dependencies] of Object.entries(propertySchema.dependentRequired)) {
+            if (!Array.isArray(dependencies) || dependencies.length === 0) {
+                continue;
+            }
+
+            hints.push(escapeHtml(localizer.t("webview.hint.dependentRequired", {
+                trigger,
+                dependencies: dependencies.join(", ")
+            })));
+        }
     }
 
     if (isArrayField && typeof propertySchema.minItems === "number") {
