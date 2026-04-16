@@ -12,6 +12,9 @@ namespace GFramework.Cqrs.Tests.Cqrs;
 [TestFixture]
 internal sealed class CqrsDispatcherCacheTests
 {
+    private MicrosoftDiContainer? _container;
+    private ArchitectureContext? _context;
+
     /// <summary>
     ///     初始化测试上下文。
     /// </summary>
@@ -41,9 +44,6 @@ internal sealed class CqrsDispatcherCacheTests
         _context = null;
         _container = null;
     }
-
-    private MicrosoftDiContainer? _container;
-    private ArchitectureContext? _context;
 
     /// <summary>
     ///     验证相同消息类型重复分发时，不会重复扩张服务类型与调用委托缓存。
@@ -165,6 +165,7 @@ internal sealed class CqrsDispatcherCacheTests
         GetGenericCacheField("RequestInvokerCache`1", typeof(int), "Invokers").Clear();
         GetGenericCacheField("RequestInvokerCache`1", typeof(string), "Invokers").Clear();
         GetGenericCacheField("RequestPipelineInvokerCache`1", typeof(int), "Invokers").Clear();
+        GetGenericCacheField("RequestPipelineInvokerCache`1", typeof(string), "Invokers").Clear();
     }
 
     /// <summary>
