@@ -827,10 +827,10 @@ public class CqrsHandlerRegistryGeneratorTests
 
     /// <summary>
     ///     验证当外部基类暴露的 handler interface 含有生成注册器顶层上下文不可直接引用的 protected 类型时，
-    ///     生成器会保留已知直注册，并只对剩余未知接口做本地 interface discovery。
+    ///     生成器会输出定向程序集查找，而不是继续退回 implementation 级接口发现。
     /// </summary>
     [Test]
-    public void Generates_Partial_Runtime_Interface_Discovery_For_Inaccessible_External_Protected_Types()
+    public void Generates_Precise_Assembly_Type_Lookups_For_Inaccessible_External_Protected_Types()
     {
         const string contractsSource = """
                                        namespace GFramework.Cqrs.Abstractions.Cqrs
@@ -931,30 +931,28 @@ public class CqrsHandlerRegistryGeneratorTests
             Assert.That(
                 generatedSource,
                 Does.Contain(
-                    "var knownServiceTypes0 = new global::System.Collections.Generic.HashSet<global::System.Type>();"));
+                    "ResolveReferencedAssemblyType(\"Dependency\", \"Dep.VisibilityScope+ProtectedRequest\")"));
             Assert.That(
                 generatedSource,
                 Does.Contain(
-                    "// Remaining runtime interface discovery target: GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<Dep.VisibilityScope.ProtectedRequest, Dep.VisibilityScope.ProtectedResponse[]>"));
+                    "ResolveReferencedAssemblyType(\"Dependency\", \"Dep.VisibilityScope+ProtectedResponse\")"));
             Assert.That(
                 generatedSource,
                 Does.Contain(
-                    "knownServiceTypes0.Add(typeof(global::GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<global::Dep.VisibleRequest, string>));"));
+                    "typeof(global::GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<global::Dep.VisibleRequest, string>)"));
             Assert.That(
                 generatedSource,
-                Does.Contain(
-                    "RegisterRemainingReflectedHandlerInterfaces(services, logger, implementationType0, knownServiceTypes0);"));
+                Does.Contain("ResolveReferencedAssembly(string assemblyName)"));
             Assert.That(
                 generatedSource,
-                Does.Contain("if (knownServiceTypes.Contains(handlerInterface))"));
+                Does.Not.Contain("knownServiceTypes0"));
             Assert.That(
                 generatedSource,
-                Does.Contain(
-                    "Registered CQRS handler TestApp.DerivedHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<Dep.VisibleRequest, string>."));
+                Does.Not.Contain("RegisterRemainingReflectedHandlerInterfaces"));
             Assert.That(
                 generatedSource,
                 Does.Not.Contain(
-                    "typeof(global::GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<global::Dep.VisibilityScope.ProtectedRequest"));
+                    "// Remaining runtime interface discovery target:"));
         });
     }
 

@@ -73,9 +73,8 @@ Architecture 负责统一生命周期编排，核心阶段包括：
 
 ### CQRS
 
-命令与查询分离，支持同步与异步执行。当前版本内建自有 CQRS runtime、行为管道和 handler 自动注册；公开 API 里仍保留少量历史
-`Mediator` 命名以兼容旧调用点，但这些别名已进入正式弃用周期：新代码应使用 `Cqrs` 命名入口，旧别名会继续兼容一段时间并计划在未来
-major 版本中移除。
+命令与查询分离，支持同步与异步执行。当前版本内建自有 CQRS runtime、行为管道和 handler 自动注册；历史 `Mediator`
+兼容别名已从公开 API 移除，统一使用 `Cqrs` 命名入口。
 
 ### EventBus
 

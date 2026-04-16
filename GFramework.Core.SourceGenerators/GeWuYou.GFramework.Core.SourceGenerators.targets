@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <ItemGroup>
+        <Analyzer Include="$(MSBuildThisFileDirectory)../analyzers/dotnet/cs/GFramework.Core.SourceGenerators.dll"
+                  Condition="Exists('$(MSBuildThisFileDirectory)../analyzers/dotnet/cs/GFramework.Core.SourceGenerators.dll')"/>
+        <Analyzer Include="$(MSBuildThisFileDirectory)../analyzers/dotnet/cs/GFramework.Core.SourceGenerators.Abstractions.dll"
+                  Condition="Exists('$(MSBuildThisFileDirectory)../analyzers/dotnet/cs/GFramework.Core.SourceGenerators.Abstractions.dll')"/>
+        <Analyzer Include="$(MSBuildThisFileDirectory)../analyzers/dotnet/cs/GFramework.SourceGenerators.Common.dll"
+                  Condition="Exists('$(MSBuildThisFileDirectory)../analyzers/dotnet/cs/GFramework.SourceGenerators.Common.dll')"/>
+    </ItemGroup>
+
+    <Target Name="EnsureGFrameworkCoreAnalyzers" BeforeTargets="CoreCompile">
+        <Message Text="Loading GFramework.Core source generators" Importance="high"/>
+    </Target>
+</Project>

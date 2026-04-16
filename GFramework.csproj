@@ -29,21 +29,25 @@
         <None Remove="GFramework.Core\**"/>
         <None Remove="GFramework.Game\**"/>
         <None Remove="GFramework.Godot\**"/>
-        <None Update="GFramework.SourceGenerators\logging\README.md">
+        <None Update="GFramework.Core.SourceGenerators\logging\README.md">
             <Link>GFramework.SorceGenerators\logging\README.md</Link>
         </None>
-        <None Update="GFramework.SourceGenerators\README.md">
+        <None Update="GFramework.Core.SourceGenerators\README.md">
             <Link>GFramework.SorceGenerators\README.md</Link>
         </None>
-        <None Update="GFramework.SourceGenerators\AnalyzerReleases.Shipped.md">
+        <None Update="GFramework.Core.SourceGenerators\AnalyzerReleases.Shipped.md">
             <Link>GFramework.SorceGenerators\AnalyzerReleases.Shipped.md</Link>
         </None>
-        <None Update="GFramework.SourceGenerators\AnalyzerReleases.Unshipped.md">
+        <None Update="GFramework.Core.SourceGenerators\AnalyzerReleases.Unshipped.md">
             <Link>GFramework.SorceGenerators\AnalyzerReleases.Unshipped.md</Link>
         </None>
         <None Remove="GFramework.Godot.SourceGenerators\**"/>
         <None Remove="GFramework.SorceGenerators\**"/>
         <None Remove="GFramework.SourceGenerators\**"/>
+        <None Remove="GFramework.Core.SourceGenerators\**"/>
+        <None Remove="GFramework.Core.SourceGenerators.Abstractions\**"/>
+        <None Remove="GFramework.Cqrs.SourceGenerators\**"/>
+        <None Remove="GFramework.Game.SourceGenerators\**"/>
         <None Remove="GFramework.SourceGenerators.Common\**"/>
         <None Remove="GFramework.SourceGenerators.Tests\**"/>
         <None Remove="GFramework.Godot.SourceGenerators.Tests\**"/>
@@ -77,18 +81,22 @@
         <Compile Remove="GFramework.Core\**"/>
         <Compile Remove="GFramework.Game\**"/>
         <Compile Remove="GFramework.Godot\**"/>
-        <Compile Update="GFramework.SourceGenerators\enums\EnumExtensionsGenerator.cs">
+        <Compile Update="GFramework.Core.SourceGenerators\enums\EnumExtensionsGenerator.cs">
             <Link>GFramework.SorceGenerators\enums\EnumExtensionsGenerator.cs</Link>
         </Compile>
-        <Compile Update="GFramework.SourceGenerators\logging\Diagnostic.cs">
+        <Compile Update="GFramework.Core.SourceGenerators\logging\Diagnostic.cs">
             <Link>GFramework.SorceGenerators\logging\Diagnostic.cs</Link>
         </Compile>
-        <Compile Update="GFramework.SourceGenerators\logging\LoggerGenerator.cs">
+        <Compile Update="GFramework.Core.SourceGenerators\logging\LoggerGenerator.cs">
             <Link>GFramework.SorceGenerators\logging\LoggerGenerator.cs</Link>
         </Compile>
         <Compile Remove="GFramework.Godot.SourceGenerators\**"/>
         <Compile Remove="GFramework.SorceGenerators\**"/>
         <Compile Remove="GFramework.SourceGenerators\**"/>
+        <Compile Remove="GFramework.Core.SourceGenerators\**"/>
+        <Compile Remove="GFramework.Core.SourceGenerators.Abstractions\**"/>
+        <Compile Remove="GFramework.Cqrs.SourceGenerators\**"/>
+        <Compile Remove="GFramework.Game.SourceGenerators\**"/>
         <Compile Remove="GFramework.SourceGenerators.Common\**"/>
         <Compile Remove="GFramework.SourceGenerators.Tests\**"/>
         <Compile Remove="GFramework.Godot.SourceGenerators.Tests\**"/>
@@ -120,6 +128,10 @@
         <EmbeddedResource Remove="GFramework.Godot.SourceGenerators\**"/>
         <EmbeddedResource Remove="GFramework.SorceGenerators\**"/>
         <EmbeddedResource Remove="GFramework.SourceGenerators\**"/>
+        <EmbeddedResource Remove="GFramework.Core.SourceGenerators\**"/>
+        <EmbeddedResource Remove="GFramework.Core.SourceGenerators.Abstractions\**"/>
+        <EmbeddedResource Remove="GFramework.Cqrs.SourceGenerators\**"/>
+        <EmbeddedResource Remove="GFramework.Game.SourceGenerators\**"/>
         <EmbeddedResource Remove="GFramework.SourceGenerators.Common\**"/>
         <EmbeddedResource Remove="GFramework.SourceGenerators.Tests\**"/>
         <EmbeddedResource Remove="GFramework.Godot.SourceGenerators.Tests\**"/>

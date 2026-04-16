@@ -206,12 +206,6 @@ public class TestArchitectureWithRegistry : IArchitecture
         throw new NotImplementedException();
     }
 
-    [Obsolete("Use RegisterCqrsPipelineBehavior<TBehavior>() instead.")]
-    public void RegisterMediatorBehavior<TBehavior>() where TBehavior : class
-    {
-        RegisterCqrsPipelineBehavior<TBehavior>();
-    }
-
     public IArchitectureModule InstallModule(IArchitectureModule module)
     {
         throw new NotImplementedException();
@@ -355,12 +349,6 @@ public class TestArchitectureWithoutRegistry : IArchitecture
     public void RegisterCqrsHandlersFromAssemblies(IEnumerable<Assembly> assemblies)
     {
         throw new NotImplementedException();
-    }
-
-    [Obsolete("Use RegisterCqrsPipelineBehavior<TBehavior>() instead.")]
-    public void RegisterMediatorBehavior<TBehavior>() where TBehavior : class
-    {
-        RegisterCqrsPipelineBehavior<TBehavior>();
     }
 
     public IArchitectureModule InstallModule(IArchitectureModule module)

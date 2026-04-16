@@ -1,9 +1,0 @@
-namespace GFramework.SourceGenerators.Abstractions.Rule;
-
-/// <summary>
-///     标记字段需要自动注入单个服务实例。
-/// </summary>
-[AttributeUsage(AttributeTargets.Field, Inherited = false, AllowMultiple = false)]
-public sealed class GetServiceAttribute : Attribute
-{
-}

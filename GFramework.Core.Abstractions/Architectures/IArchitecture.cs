@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Reflection;
 using GFramework.Core.Abstractions.Lifecycle;
 using GFramework.Core.Abstractions.Model;
@@ -80,20 +79,6 @@ public interface IArchitecture : IAsyncInitializable, IAsyncDestroyable, IInitia
     /// </summary>
     /// <typeparam name="TBehavior">行为类型，必须是引用类型</typeparam>
     void RegisterCqrsPipelineBehavior<TBehavior>()
-        where TBehavior : class;
-
-    /// <summary>
-    ///     注册 CQRS 请求管道行为。
-    ///     该成员保留旧名称以兼容历史调用点，内部行为与 <see cref="RegisterCqrsPipelineBehavior{TBehavior}" /> 一致。
-    ///     新代码不应继续依赖该别名；兼容层计划在未来的 major 版本中移除。
-    ///     既支持实现 <c>IPipelineBehavior&lt;,&gt;</c> 的开放泛型行为类型，
-    ///     也支持绑定到单一请求/响应对的封闭行为类型。
-    /// </summary>
-    /// <typeparam name="TBehavior">行为类型，必须是引用类型</typeparam>
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    [Obsolete(
-        "Use RegisterCqrsPipelineBehavior<TBehavior>() instead. This compatibility alias will be removed in a future major version.")]
-    void RegisterMediatorBehavior<TBehavior>()
         where TBehavior : class;
 
     /// <summary>

@@ -246,9 +246,8 @@ public class GameArchitecture : Architecture
 优先使用程序集级生成注册器，失败时自动回退到反射扫描；如果同一程序集已经由默认路径或其他模块接入，框架会自动去重，避免重复注册
 handler。
 
-`RegisterCqrsPipelineBehavior<TBehavior>()` 是推荐入口；旧的 `RegisterMediatorBehavior<TBehavior>()`
-仅作为兼容名称保留，当前已标记为 `Obsolete` 并从 IntelliSense 主路径隐藏，计划在未来 major 版本中移除。
-`ContextAwareMediator*Extensions` 与 `MediatorCoroutineExtensions` 也遵循同样的弃用节奏。当前接口支持两种形式：
+`RegisterCqrsPipelineBehavior<TBehavior>()` 是唯一保留的公开入口；旧的 `Mediator` 兼容别名与扩展已移除，不再继续维护。
+当前接口支持两种形式：
 
 - 开放泛型行为，例如 `LoggingBehavior<,>`，用于匹配所有请求
 - 封闭行为类型，例如某个只服务于单一请求的 `SpecialBehavior`

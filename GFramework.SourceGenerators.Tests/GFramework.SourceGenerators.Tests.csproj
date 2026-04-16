@@ -23,7 +23,9 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\GFramework.SourceGenerators\GFramework.SourceGenerators.csproj"/>
+        <ProjectReference Include="..\GFramework.Core.SourceGenerators\GFramework.Core.SourceGenerators.csproj"/>
+        <ProjectReference Include="..\GFramework.Cqrs.SourceGenerators\GFramework.Cqrs.SourceGenerators.csproj"/>
+        <ProjectReference Include="..\GFramework.Game.SourceGenerators\GFramework.Game.SourceGenerators.csproj"/>
     </ItemGroup>
 
     <ItemGroup>

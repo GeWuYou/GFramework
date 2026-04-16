@@ -1,0 +1,68 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <PackageId>GeWuYou.$(AssemblyName)</PackageId>
+        <TargetFramework>netstandard2.0</TargetFramework>
+
+        <!-- 这是 Analyzer，不是运行时库 -->
+        <IsRoslynAnalyzer>true</IsRoslynAnalyzer>
+        <IncludeBuildOutput>false</IncludeBuildOutput>
+
+        <LangVersion>latest</LangVersion>
+        <Nullable>enable</Nullable>
+
+        <!-- 可选：调试生成代码 -->
+        <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+        <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
+        <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    </PropertyGroup>
+
+    <!-- Roslyn 依赖，只用于 Generator 自身 -->
+    <ItemGroup>
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" PrivateAssets="all"/>
+        <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="4.14.0">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="System.Text.Json" Version="8.0.6" PrivateAssets="all"/>
+    </ItemGroup>
+
+    <!-- Generator 编译期引用 SourceGenerators.Abstractions / Common / Core.Abstractions，但不打包 -->
+    <ItemGroup>
+        <ProjectReference Include="..\$(AssemblyName).Abstractions\$(AssemblyName).Abstractions.csproj" PrivateAssets="all"/>
+        <ProjectReference Include="..\GFramework.SourceGenerators.Common\GFramework.SourceGenerators.Common.csproj" PrivateAssets="all"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Include="..\GFramework.SourceGenerators.Common\Internals\IsExternalInit.cs"
+                 Link="Internals\IsExternalInit.cs"/>
+    </ItemGroup>
+
+    <!-- ★关键：只把 Generator DLL 放进 analyzers -->
+    <ItemGroup>
+        <!-- Generator 本体 -->
+        <None Include="$(OutputPath)\$(AssemblyName).dll"
+              Pack="true"
+              PackagePath="analyzers/dotnet/cs"
+              Visible="false"/>
+
+        <!-- ★ Generator 运行期依赖 -->
+        <None Include="$(OutputPath)\$(AssemblyName).Abstractions.dll"
+              Pack="true"
+              PackagePath="analyzers/dotnet/cs"
+              Visible="false"/>
+        <!-- ★ Generator 运行期依赖 -->
+        <None Include="$(OutputPath)\$(AssemblyName).Common.dll"
+              Pack="true"
+              PackagePath="analyzers/dotnet/cs"
+              Visible="false"/>
+
+    </ItemGroup>
+    <ItemGroup>
+        <None Include="$(OutputPath)\$(AssemblyName).Abstractions.dll" Pack="true" PackagePath="lib\netstandard2.0" Visible="true"/>
+        <None Include="$(OutputPath)\$(AssemblyName).Abstractions.xml" Pack="true" PackagePath="lib\netstandard2.0" Visible="true"/>
+        <None Include="$(OutputPath)\$(AssemblyName).Common.dll" Pack="true" PackagePath="lib\netstandard2.0" Visible="true"/>
+        <None Include="$(OutputPath)\$(AssemblyName).Common.xml" Pack="true" PackagePath="lib\netstandard2.0" Visible="true"/>
+        <None Include="GeWuYou.GFramework.Core.SourceGenerators.targets" Pack="true" PackagePath="build" Visible="false"/>
+    </ItemGroup>
+</Project>

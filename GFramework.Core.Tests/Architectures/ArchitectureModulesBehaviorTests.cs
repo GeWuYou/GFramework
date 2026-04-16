@@ -79,28 +79,6 @@ public class ArchitectureModulesBehaviorTests
     }
 
     /// <summary>
-    ///     验证兼容别名 <c>RegisterMediatorBehavior</c> 仍会把 CQRS 行为接入请求管道。
-    /// </summary>
-    [Test]
-    public async Task RegisterMediatorBehavior_Should_Apply_Pipeline_Behavior_To_Request()
-    {
-        var architecture = new ModuleTestArchitecture(target =>
-            target.RegisterMediatorBehavior<TrackingPipelineBehavior<ModuleBehaviorRequest, string>>());
-
-        await architecture.InitializeAsync();
-
-        var response = await architecture.Context.SendRequestAsync(new ModuleBehaviorRequest());
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(response, Is.EqualTo("handled"));
-            Assert.That(TrackingPipelineBehavior<ModuleBehaviorRequest, string>.InvocationCount, Is.EqualTo(1));
-        });
-
-        await architecture.DestroyAsync();
-    }
-
-    /// <summary>
     ///     用于测试模块行为的最小架构实现。
     /// </summary>
     private sealed class ModuleTestArchitecture(Action<ModuleTestArchitecture> registrationAction) : Architecture

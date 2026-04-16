@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <!--
+        消费项目默认从 schemas/ 目录收集配置 schema。
+        这样可以让配置生成器开箱即用，同时保留通过属性重定向目录的余地。
+        -->
+        <GFrameworkConfigSchemaDirectory Condition="'$(GFrameworkConfigSchemaDirectory)' == ''">schemas</GFrameworkConfigSchemaDirectory>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Analyzer Include="$(MSBuildThisFileDirectory)../analyzers/dotnet/cs/GFramework.Game.SourceGenerators.dll"
+                  Condition="Exists('$(MSBuildThisFileDirectory)../analyzers/dotnet/cs/GFramework.Game.SourceGenerators.dll')"/>
+        <Analyzer Include="$(MSBuildThisFileDirectory)../analyzers/dotnet/cs/GFramework.SourceGenerators.Common.dll"
+                  Condition="Exists('$(MSBuildThisFileDirectory)../analyzers/dotnet/cs/GFramework.SourceGenerators.Common.dll')"/>
+    </ItemGroup>
+
+    <ItemGroup Condition="Exists('$(MSBuildProjectDirectory)/$(GFrameworkConfigSchemaDirectory)')">
+        <!--
+        将消费者项目中的 schema 文件自动暴露为 AdditionalFiles，
+        避免每个游戏项目都手工维护同样的 MSBuild 配置。
+        -->
+        <AdditionalFiles Include="$(MSBuildProjectDirectory)/$(GFrameworkConfigSchemaDirectory)/**/*.schema.json"/>
+    </ItemGroup>
+
+    <Target Name="EnsureGFrameworkGameAnalyzers" BeforeTargets="CoreCompile">
+        <Message Text="Loading GFramework.Game source generators" Importance="high"/>
+    </Target>
+</Project>
