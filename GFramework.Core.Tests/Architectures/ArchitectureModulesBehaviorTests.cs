@@ -1,15 +1,15 @@
 using GFramework.Core.Abstractions.Architectures;
+using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Utility;
 using GFramework.Core.Architectures;
 using GFramework.Core.Logging;
-using Mediator;
-using Microsoft.Extensions.DependencyInjection;
+using GFramework.Cqrs.Abstractions.Cqrs;
 
 namespace GFramework.Core.Tests.Architectures;
 
 /// <summary>
-///     验证 Architecture 通过 <c>ArchitectureModules</c> 暴露出的模块安装与 Mediator 行为注册能力。
-///     这些测试覆盖模块安装回调和中介管道行为接入，确保模块管理器仍然保持可观察行为不变。
+///     验证 Architecture 通过 <c>ArchitectureModules</c> 暴露出的模块安装与 CQRS 行为注册能力。
+///     这些测试覆盖模块安装回调和请求管道行为接入，确保模块管理器仍然保持可观察行为不变。
 /// </summary>
 [TestFixture]
 public class ArchitectureModulesBehaviorTests
@@ -57,7 +57,29 @@ public class ArchitectureModulesBehaviorTests
     }
 
     /// <summary>
-    ///     验证注册的 Mediator 行为会参与请求管道执行。
+    ///     验证注册的 CQRS 行为会参与请求管道执行。
+    /// </summary>
+    [Test]
+    public async Task RegisterCqrsPipelineBehavior_Should_Apply_Pipeline_Behavior_To_Request()
+    {
+        var architecture = new ModuleTestArchitecture(target =>
+            target.RegisterCqrsPipelineBehavior<TrackingPipelineBehavior<ModuleBehaviorRequest, string>>());
+
+        await architecture.InitializeAsync();
+
+        var response = await architecture.Context.SendRequestAsync(new ModuleBehaviorRequest());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(response, Is.EqualTo("handled"));
+            Assert.That(TrackingPipelineBehavior<ModuleBehaviorRequest, string>.InvocationCount, Is.EqualTo(1));
+        });
+
+        await architecture.DestroyAsync();
+    }
+
+    /// <summary>
+    ///     验证兼容别名 <c>RegisterMediatorBehavior</c> 仍会把 CQRS 行为接入请求管道。
     /// </summary>
     [Test]
     public async Task RegisterMediatorBehavior_Should_Apply_Pipeline_Behavior_To_Request()
@@ -83,12 +105,6 @@ public class ArchitectureModulesBehaviorTests
     /// </summary>
     private sealed class ModuleTestArchitecture(Action<ModuleTestArchitecture> registrationAction) : Architecture
     {
-        /// <summary>
-        ///     打开 Mediator 服务注册，以便测试中介行为接入。
-        /// </summary>
-        public override Action<IServiceCollection>? Configurator =>
-            services => services.AddMediator(options => { options.ServiceLifetime = ServiceLifetime.Singleton; });
-
         /// <summary>
         ///     在初始化阶段执行测试注入的模块注册逻辑。
         /// </summary>
@@ -178,8 +194,7 @@ public sealed class TrackingPipelineBehavior<TRequest, TResponse> : IPipelineBeh
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>下游处理器的响应结果。</returns>
     public async ValueTask<TResponse> Handle(
-        TRequest message,
-        MessageHandlerDelegate<TRequest, TResponse> next,
+        TRequest message, MessageHandlerDelegate<TRequest, TResponse> next,
         CancellationToken cancellationToken)
     {
         InvocationCount++;

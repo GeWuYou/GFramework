@@ -1,3 +1,4 @@
+using System.Reflection;
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Enums;
 using GFramework.Core.Abstractions.Lifecycle;
@@ -5,7 +6,6 @@ using GFramework.Core.Abstractions.Model;
 using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Abstractions.Utility;
 using GFramework.Core.Architectures;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace GFramework.Core.Tests.Architectures;
 
@@ -181,9 +181,35 @@ public class TestArchitectureWithRegistry : IArchitecture
         throw new NotImplementedException();
     }
 
-    public void RegisterMediatorBehavior<TBehavior>() where TBehavior : class
+    public void RegisterCqrsPipelineBehavior<TBehavior>() where TBehavior : class
     {
         throw new NotImplementedException();
+    }
+
+    /// <summary>
+    ///     测试替身未实现显式程序集 CQRS 处理器接入入口。
+    /// </summary>
+    /// <param name="assembly">包含 CQRS 处理器或生成注册器的程序集。</param>
+    /// <exception cref="NotImplementedException">该测试替身不参与 CQRS 程序集接入路径验证。</exception>
+    public void RegisterCqrsHandlersFromAssembly(Assembly assembly)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <summary>
+    ///     测试替身未实现显式程序集 CQRS 处理器接入入口。
+    /// </summary>
+    /// <param name="assemblies">要接入的程序集集合。</param>
+    /// <exception cref="NotImplementedException">该测试替身不参与 CQRS 程序集接入路径验证。</exception>
+    public void RegisterCqrsHandlersFromAssemblies(IEnumerable<Assembly> assemblies)
+    {
+        throw new NotImplementedException();
+    }
+
+    [Obsolete("Use RegisterCqrsPipelineBehavior<TBehavior>() instead.")]
+    public void RegisterMediatorBehavior<TBehavior>() where TBehavior : class
+    {
+        RegisterCqrsPipelineBehavior<TBehavior>();
     }
 
     public IArchitectureModule InstallModule(IArchitectureModule module)
@@ -306,9 +332,35 @@ public class TestArchitectureWithoutRegistry : IArchitecture
         throw new NotImplementedException();
     }
 
-    public void RegisterMediatorBehavior<TBehavior>() where TBehavior : class
+    public void RegisterCqrsPipelineBehavior<TBehavior>() where TBehavior : class
     {
         throw new NotImplementedException();
+    }
+
+    /// <summary>
+    ///     测试替身未实现显式程序集 CQRS 处理器接入入口。
+    /// </summary>
+    /// <param name="assembly">包含 CQRS 处理器或生成注册器的程序集。</param>
+    /// <exception cref="NotImplementedException">该测试替身不参与 CQRS 程序集接入路径验证。</exception>
+    public void RegisterCqrsHandlersFromAssembly(Assembly assembly)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <summary>
+    ///     测试替身未实现显式程序集 CQRS 处理器接入入口。
+    /// </summary>
+    /// <param name="assemblies">要接入的程序集集合。</param>
+    /// <exception cref="NotImplementedException">该测试替身不参与 CQRS 程序集接入路径验证。</exception>
+    public void RegisterCqrsHandlersFromAssemblies(IEnumerable<Assembly> assemblies)
+    {
+        throw new NotImplementedException();
+    }
+
+    [Obsolete("Use RegisterCqrsPipelineBehavior<TBehavior>() instead.")]
+    public void RegisterMediatorBehavior<TBehavior>() where TBehavior : class
+    {
+        RegisterCqrsPipelineBehavior<TBehavior>();
     }
 
     public IArchitectureModule InstallModule(IArchitectureModule module)

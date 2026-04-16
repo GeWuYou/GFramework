@@ -1,21 +1,21 @@
 ---
-title: CQRS 与 Mediator
-description: CQRS 模式通过 Mediator 实现命令查询职责分离，提供清晰的业务逻辑组织方式。
+title: CQRS
+description: GFramework 内建 CQRS runtime，用统一请求分发、通知发布和流式处理组织业务逻辑。
 ---
 
-# CQRS 与 Mediator
+# CQRS
 
 ## 概述
 
 CQRS（Command Query Responsibility Segregation，命令查询职责分离）是一种架构模式，将数据的读取（Query）和修改（Command）操作分离。GFramework
-通过集成 Mediator 库实现了 CQRS 模式，提供了类型安全、解耦的业务逻辑处理方式。
+当前内建自有 CQRS runtime，通过统一的请求分发器、通知发布和流式请求管道提供类型安全、解耦的业务逻辑处理方式。
 
 通过 CQRS，你可以将复杂的业务逻辑拆分为独立的命令和查询处理器，每个处理器只负责单一职责，使代码更易于测试和维护。
 
 **主要特性**：
 
 - 命令查询职责分离
-- 基于 Mediator 模式的解耦设计
+- 内建请求分发与解耦设计
 - 支持管道行为（Behaviors）
 - 异步处理支持
 - 与架构系统深度集成
@@ -72,7 +72,6 @@ public class GetPlayerQuery : QueryBase<GetPlayerInput, PlayerData>
 
 ```csharp
 using GFramework.Core.CQRS.Command;
-using Mediator;
 
 // 命令处理器
 public class CreatePlayerCommandHandler : AbstractCommandHandler<CreatePlayerCommand, int>
@@ -92,19 +91,19 @@ public class CreatePlayerCommandHandler : AbstractCommandHandler<CreatePlayerCom
 }
 ```
 
-### Mediator（中介者）
+### Dispatcher（请求分发器）
 
-Mediator 负责将命令/查询路由到对应的处理器：
+架构上下文会负责将命令、查询和通知路由到对应的处理器：
 
 ```csharp
-// 通过 Mediator 发送命令
+// 通过架构上下文发送命令
 var command = new CreatePlayerCommand(new CreatePlayerInput
 {
     Name = "Player1",
     Level = 1
 });
 
-var playerId = await mediator.Send(command);
+var playerId = await this.SendAsync(command);
 ```
 
 ## 基本用法
@@ -148,15 +147,13 @@ public class SaveGameCommandHandler : AbstractCommandHandler<SaveGameCommand>
 // 4. 发送命令
 public async Task SaveGame()
 {
-    var mediator = this.GetService<IMediator>();
-
     var command = new SaveGameCommand(new SaveGameInput
     {
         SlotId = 1,
         Data = currentGameData
     });
 
-    await mediator.Send(command);
+    await this.SendAsync(command);
 }
 ```
 
@@ -195,37 +192,63 @@ public class GetHighScoresQueryHandler : AbstractQueryHandler<GetHighScoresQuery
 // 4. 发送查询
 public async Task<List<ScoreData>> GetHighScores()
 {
-    var mediator = this.GetService<IMediator>();
-
     var query = new GetHighScoresQuery(new GetHighScoresInput
     {
         Count = 10
     });
 
-    var scores = await mediator.Send(query);
+    var scores = await this.SendQueryAsync(query);
     return scores;
 }
 ```
 
 ### 注册处理器
 
-在架构中注册 Mediator 和处理器：
+在架构中注册 CQRS 行为；默认会自动接入当前架构所在程序集和 `GFramework.Core` 程序集中的处理器：
 
 ```csharp
 public class GameArchitecture : Architecture
 {
-    protected override void Init()
+    protected override void OnInitialize()
     {
         // 注册通用开放泛型行为
-        RegisterMediatorBehavior<LoggingBehavior<,>>();
-        RegisterMediatorBehavior<PerformanceBehavior<,>>();
+        RegisterCqrsPipelineBehavior<LoggingBehavior<,>>();
+        RegisterCqrsPipelineBehavior<PerformanceBehavior<,>>();
 
-        // 处理器会自动通过依赖注入注册
+        // 默认只自动扫描当前架构程序集和 GFramework.Core 程序集中的处理器
     }
 }
 ```
 
-`RegisterMediatorBehavior<TBehavior>()` 同时支持两种形式：
+当前版本会优先使用源码生成的程序集级 handler registry 来注册“当前业务程序集”里的处理器；
+如果该程序集没有生成注册器，或者包含生成代码无法合法引用的处理器类型，则会自动回退到运行时反射扫描。
+`GFramework.Core` 等未挂接该生成器的程序集仍会继续走反射扫描。
+
+如果处理器位于其他模块或扩展程序集中，需要额外接入对应程序集的处理器注册，而不是只依赖默认接入范围：
+
+```csharp
+public class GameArchitecture : Architecture
+{
+    protected override void OnInitialize()
+    {
+        RegisterCqrsPipelineBehavior<LoggingBehavior<,>>();
+
+        RegisterCqrsHandlersFromAssemblies(
+        [
+            typeof(InventoryCqrsMarker).Assembly,
+            typeof(BattleCqrsMarker).Assembly
+        ]);
+    }
+}
+```
+
+`RegisterCqrsHandlersFromAssembly(...)` / `RegisterCqrsHandlersFromAssemblies(...)` 会复用与默认启动路径相同的注册逻辑：
+优先使用程序集级生成注册器，失败时自动回退到反射扫描；如果同一程序集已经由默认路径或其他模块接入，框架会自动去重，避免重复注册
+handler。
+
+`RegisterCqrsPipelineBehavior<TBehavior>()` 是推荐入口；旧的 `RegisterMediatorBehavior<TBehavior>()`
+仅作为兼容名称保留，当前已标记为 `Obsolete` 并从 IntelliSense 主路径隐藏，计划在未来 major 版本中移除。
+`ContextAwareMediator*Extensions` 与 `MediatorCoroutineExtensions` 也遵循同样的弃用节奏。当前接口支持两种形式：
 
 - 开放泛型行为，例如 `LoggingBehavior<,>`，用于匹配所有请求
 - 封闭行为类型，例如某个只服务于单一请求的 `SpecialBehavior`
@@ -326,7 +349,7 @@ var notification = new PlayerLevelUpNotification(new PlayerLevelUpInput
     NewLevel = 10
 });
 
-await mediator.Publish(notification);
+await this.PublishAsync(notification);
 ```
 
 ### Pipeline Behaviors（管道行为）
@@ -334,16 +357,16 @@ await mediator.Publish(notification);
 Behaviors 可以在处理器执行前后添加横切关注点：
 
 ```csharp
-using Mediator;
+using GFramework.Core.Abstractions.Cqrs;
 
 // 日志行为
 public class LoggingBehavior<TMessage, TResponse> : IPipelineBehavior<TMessage, TResponse>
-    where TMessage : IMessage
+    where TMessage : IRequest<TResponse>
 {
     public async ValueTask<TResponse> Handle(
         TMessage message,
-        CancellationToken cancellationToken,
-        MessageHandlerDelegate<TMessage, TResponse> next)
+        MessageHandlerDelegate<TMessage, TResponse> next,
+        CancellationToken cancellationToken)
     {
         var messageName = message.GetType().Name;
         Console.WriteLine($"[开始] {messageName}");
@@ -358,12 +381,12 @@ public class LoggingBehavior<TMessage, TResponse> : IPipelineBehavior<TMessage, 
 
 // 性能监控行为
 public class PerformanceBehavior<TMessage, TResponse> : IPipelineBehavior<TMessage, TResponse>
-    where TMessage : IMessage
+    where TMessage : IRequest<TResponse>
 {
     public async ValueTask<TResponse> Handle(
         TMessage message,
-        CancellationToken cancellationToken,
-        MessageHandlerDelegate<TMessage, TResponse> next)
+        MessageHandlerDelegate<TMessage, TResponse> next,
+        CancellationToken cancellationToken)
     {
         var stopwatch = Stopwatch.StartNew();
 
@@ -382,20 +405,20 @@ public class PerformanceBehavior<TMessage, TResponse> : IPipelineBehavior<TMessa
 }
 
 // 注册行为
-RegisterMediatorBehavior<LoggingBehavior<,>>();
-RegisterMediatorBehavior<PerformanceBehavior<,>>();
+RegisterCqrsPipelineBehavior<LoggingBehavior<,>>();
+RegisterCqrsPipelineBehavior<PerformanceBehavior<,>>();
 ```
 
 ### 验证行为
 
 ```csharp
 public class ValidationBehavior<TMessage, TResponse> : IPipelineBehavior<TMessage, TResponse>
-    where TMessage : IMessage
+    where TMessage : IRequest<TResponse>
 {
     public async ValueTask<TResponse> Handle(
         TMessage message,
-        CancellationToken cancellationToken,
-        MessageHandlerDelegate<TMessage, TResponse> next)
+        MessageHandlerDelegate<TMessage, TResponse> next,
+        CancellationToken cancellationToken)
     {
         // 验证输入
         if (message is IValidatable validatable)
@@ -441,7 +464,7 @@ public class GetAllPlayersStreamQueryHandler : AbstractStreamQueryHandler<GetAll
 
 // 使用流式查询
 var query = new GetAllPlayersStreamQuery();
-var stream = await mediator.CreateStream(query);
+var stream = this.CreateStream(query);
 
 await foreach (var player in stream)
 {
@@ -476,8 +499,8 @@ await foreach (var player in stream)
 
 4. **使用 Behaviors 处理横切关注点**：日志、性能、验证等
    ```csharp
-   RegisterMediatorBehavior<LoggingBehavior<,>>();
-   RegisterMediatorBehavior<ValidationBehavior<,>>();
+   RegisterCqrsPipelineBehavior<LoggingBehavior<,>>();
+   RegisterCqrsPipelineBehavior<ValidationBehavior<,>>();
    ```
 
 5. **保持处理器简单**：一个处理器只做一件事
@@ -530,12 +553,12 @@ CalculateDamageRequest
 
 **解答**：
 
-- **Notification**：通过 Mediator 发送，处理器在同一请求上下文中执行
+- **Notification**：通过内建 CQRS runtime 发送，处理器在同一请求上下文中执行
 - **Event**：通过 EventBus 发送，监听器异步执行
 
 ```csharp
 // Notification: 同步处理
-await mediator.Publish(notification); // 等待所有处理器完成
+await this.PublishAsync(notification); // 等待所有处理器完成
 
 // Event: 异步处理
 this.SendEvent(event); // 立即返回，监听器异步执行
@@ -569,15 +592,13 @@ public override async ValueTask<Result> Handle(...)
 ### 问题：处理器可以调用其他处理器吗？
 
 **解答**：
-可以，通过 Mediator 发送新的命令或查询：
+可以，通过架构上下文继续发送新的命令或查询：
 
 ```csharp
 public override async ValueTask<Unit> Handle(...)
 {
-    var mediator = this.GetService<IMediator>();
-
     // 调用其他命令
-    await mediator.Send(new AnotherCommand(...));
+    await this.SendAsync(new AnotherCommand(...));
 
     return Unit.Value;
 }

@@ -1,6 +1,6 @@
 ﻿using GFramework.Core.Abstractions.Command;
-using GFramework.Core.Abstractions.Cqrs.Command;
 using GFramework.Core.Rule;
+using GFramework.Cqrs.Abstractions.Cqrs.Command;
 
 namespace GFramework.Core.Command;
 

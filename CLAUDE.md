@@ -73,7 +73,9 @@ Architecture 负责统一生命周期编排，核心阶段包括：
 
 ### CQRS
 
-命令与查询分离，支持同步与异步执行。Mediator 模式通过源码生成器集成，以减少模板代码并保持调用路径清晰。
+命令与查询分离，支持同步与异步执行。当前版本内建自有 CQRS runtime、行为管道和 handler 自动注册；公开 API 里仍保留少量历史
+`Mediator` 命名以兼容旧调用点，但这些别名已进入正式弃用周期：新代码应使用 `Cqrs` 命名入口，旧别名会继续兼容一段时间并计划在未来
+major 版本中移除。
 
 ### EventBus
 
@@ -103,6 +105,8 @@ Architecture 负责统一生命周期编排，核心阶段包括：
 - `PriorityGenerator` (`[Priority]`): 生成优先级比较相关实现。
 - `EnumExtensionsGenerator` (`[GenerateEnumExtensions]`): 生成枚举扩展能力。
 - `ContextAwareGenerator` (`[ContextAware]`): 自动实现 `IContextAware` 相关样板逻辑。
+- `CqrsHandlerRegistryGenerator`: 为消费端程序集生成 CQRS handler 注册器，运行时优先使用生成产物，无法覆盖时回退到反射扫描；非默认程序集可通过
+  `RegisterCqrsHandlersFromAssembly(...)` / `RegisterCqrsHandlersFromAssemblies(...)` 显式接入同一路径。
 
 这些生成器的目标是减少重复代码，同时保持框架层 API 的一致性与可维护性。
 

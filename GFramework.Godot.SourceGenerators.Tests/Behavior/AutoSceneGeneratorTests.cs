@@ -11,10 +11,10 @@ public class AutoSceneGeneratorTests
     {
         const string source = """
                               using System;
-                              using GFramework.Godot.SourceGenerators.Abstractions;
+                              using GFramework.Godot.SourceGenerators.Abstractions.UI;
                               using Godot;
 
-                              namespace GFramework.Godot.SourceGenerators.Abstractions
+                              namespace GFramework.Godot.SourceGenerators.Abstractions.UI
                               {
                                   [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
                                   public sealed class AutoSceneAttribute : Attribute
@@ -88,10 +88,10 @@ public class AutoSceneGeneratorTests
     {
         const string source = """
                               using System;
-                              using GFramework.Godot.SourceGenerators.Abstractions;
+                              using GFramework.Godot.SourceGenerators.Abstractions.UI;
                               using Godot;
 
-                              namespace GFramework.Godot.SourceGenerators.Abstractions
+                              namespace GFramework.Godot.SourceGenerators.Abstractions.UI
                               {
                                   [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
                                   public sealed class AutoSceneAttribute : Attribute
@@ -137,10 +137,10 @@ public class AutoSceneGeneratorTests
         const string source = """
                               #nullable enable
                               using System;
-                              using GFramework.Godot.SourceGenerators.Abstractions;
+                              using GFramework.Godot.SourceGenerators.Abstractions.UI;
                               using Godot;
 
-                              namespace GFramework.Godot.SourceGenerators.Abstractions
+                              namespace GFramework.Godot.SourceGenerators.Abstractions.UI
                               {
                                   [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
                                   public sealed class AutoSceneAttribute : Attribute
@@ -225,10 +225,10 @@ public class AutoSceneGeneratorTests
     {
         const string source = """
                               using System;
-                              using GFramework.Godot.SourceGenerators.Abstractions;
+                              using GFramework.Godot.SourceGenerators.Abstractions.UI;
                               using Godot;
 
-                              namespace GFramework.Godot.SourceGenerators.Abstractions
+                              namespace GFramework.Godot.SourceGenerators.Abstractions.UI
                               {
                                   [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
                                   public sealed class AutoSceneAttribute : Attribute
@@ -279,10 +279,10 @@ public class AutoSceneGeneratorTests
         const string source = """
                               using System;
                               using GFramework.Game.Abstractions.Scene;
-                              using GFramework.Godot.SourceGenerators.Abstractions;
+                              using GFramework.Godot.SourceGenerators.Abstractions.UI;
                               using Godot;
 
-                              namespace GFramework.Godot.SourceGenerators.Abstractions
+                              namespace GFramework.Godot.SourceGenerators.Abstractions.UI
                               {
                                   [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
                                   public sealed class AutoSceneAttribute : Attribute

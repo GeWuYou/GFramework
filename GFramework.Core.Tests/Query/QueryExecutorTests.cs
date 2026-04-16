@@ -1,5 +1,5 @@
-using GFramework.Core.Abstractions.Cqrs.Query;
 using GFramework.Core.Query;
+using GFramework.Cqrs.Abstractions.Cqrs.Query;
 
 namespace GFramework.Core.Tests.Query;
 

@@ -1,6 +1,6 @@
-﻿using GFramework.Core.Abstractions.Cqrs.Query;
-using GFramework.Core.Abstractions.Query;
+﻿using GFramework.Core.Abstractions.Query;
 using GFramework.Core.Rule;
+using GFramework.Cqrs.Abstractions.Cqrs.Query;
 
 namespace GFramework.Core.Query;
 

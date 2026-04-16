@@ -2,12 +2,12 @@ using System.Reflection;
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Enums;
 using GFramework.Core.Abstractions.Lifecycle;
+using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Model;
 using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Abstractions.Utility;
 using GFramework.Core.Architectures;
 using GFramework.Core.Logging;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace GFramework.Core.Tests.Architectures;
 

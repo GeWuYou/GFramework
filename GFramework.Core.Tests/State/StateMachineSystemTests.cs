@@ -1,5 +1,6 @@
 using System.Reflection;
 using GFramework.Core.Abstractions.Enums;
+using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.State;
 using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Architectures;

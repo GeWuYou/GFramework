@@ -3,6 +3,8 @@ using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Command;
 using GFramework.Core.Abstractions.Enums;
 using GFramework.Core.Abstractions.Environment;
+using GFramework.Core.Abstractions.Ioc;
+using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Model;
 using GFramework.Core.Abstractions.Query;
 using GFramework.Core.Abstractions.Systems;
@@ -14,6 +16,7 @@ using GFramework.Core.Events;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
 using GFramework.Core.Query;
+using GFramework.Cqrs.Abstractions.Cqrs;
 
 namespace GFramework.Core.Tests.Architectures;
 
@@ -73,13 +76,14 @@ public class ArchitectureContextTests
         _context = new ArchitectureContext(_container);
     }
 
-    private ArchitectureContext? _context;
-    private MicrosoftDiContainer? _container;
-    private EventBus? _eventBus;
-    private CommandExecutor? _commandBus;
-    private QueryExecutor? _queryBus;
     private AsyncQueryExecutor? _asyncQueryBus;
+    private CommandExecutor? _commandBus;
+    private MicrosoftDiContainer? _container;
+
+    private ArchitectureContext? _context;
     private DefaultEnvironment? _environment;
+    private EventBus? _eventBus;
+    private QueryExecutor? _queryBus;
 
     /// <summary>
     ///     测试构造函数在所有参数都有效时不应抛出异常
@@ -297,6 +301,76 @@ public class ArchitectureContextTests
 
         Assert.That(environment, Is.Not.Null);
         Assert.That(environment, Is.InstanceOf<IEnvironment>());
+    }
+
+    /// <summary>
+    ///     测试 CQRS runtime 在并发首次访问时只会从容器解析一次。
+    /// </summary>
+    [Test]
+    public async Task SendRequestAsync_Should_ResolveCqrsRuntime_OnlyOnce_When_AccessedConcurrently()
+    {
+        const int workerCount = 8;
+        var workerStartupTimeout = TimeSpan.FromSeconds(5);
+        var firstResolutionTimeout = TimeSpan.FromSeconds(5);
+        using var startGate = new ManualResetEventSlim(false);
+        using var allowResolutionToComplete = new ManualResetEventSlim(false);
+        using var workersReady = new CountdownEvent(workerCount);
+        var resolutionCallCount = 0;
+        var runtime = new Mock<ICqrsRuntime>(MockBehavior.Strict);
+        var container = new Mock<IIocContainer>(MockBehavior.Strict);
+
+        runtime.Setup(mockRuntime => mockRuntime.SendAsync(
+                It.IsAny<IArchitectureContext>(),
+                It.IsAny<IRequest<int>>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(new ValueTask<int>(42));
+
+        container.Setup(mockContainer => mockContainer.Get<ICqrsRuntime>())
+            .Returns(() =>
+            {
+                Interlocked.Increment(ref resolutionCallCount);
+                allowResolutionToComplete.Wait();
+                return runtime.Object;
+            });
+
+        var context = new ArchitectureContext(container.Object);
+        var requests = Enumerable.Range(0, workerCount)
+            .Select(_ => Task.Run(async () =>
+            {
+                workersReady.Signal();
+                startGate.Wait();
+                return await context.SendRequestAsync(new TestCqrsRequest());
+            }))
+            .ToArray();
+
+        Assert.That(
+            workersReady.Wait(workerStartupTimeout),
+            Is.True,
+            "Expected all workers to be ready before releasing start gate.");
+        startGate.Set();
+
+        Assert.That(
+            SpinWait.SpinUntil(() => Volatile.Read(ref resolutionCallCount) > 0, firstResolutionTimeout),
+            Is.True,
+            "Expected at least one CQRS runtime resolution attempt.");
+
+        allowResolutionToComplete.Set();
+
+        var responses = await Task.WhenAll(requests);
+
+        Assert.That(responses, Has.All.EqualTo(42));
+        Assert.That(resolutionCallCount, Is.EqualTo(1));
+        container.Verify(mockContainer => mockContainer.Get<ICqrsRuntime>(), Times.Once);
+        runtime.Verify(
+            mockRuntime => mockRuntime.SendAsync(
+                It.IsAny<IArchitectureContext>(),
+                It.IsAny<IRequest<int>>(),
+                It.IsAny<CancellationToken>()),
+            Times.Exactly(requests.Length));
+    }
+
+    private sealed class TestCqrsRequest : IRequest<int>
+    {
     }
 }
 

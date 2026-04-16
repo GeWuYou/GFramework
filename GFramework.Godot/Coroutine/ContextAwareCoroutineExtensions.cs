@@ -1,8 +1,10 @@
 ﻿using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Coroutine;
 using GFramework.Core.Coroutine.Extensions;
-using GFramework.Core.Extensions;
-using Mediator;
+using GFramework.Cqrs.Abstractions.Cqrs;
+using GFramework.Cqrs.Abstractions.Cqrs.Command;
+using GFramework.Cqrs.Abstractions.Cqrs.Query;
+using GFramework.Cqrs.Extensions;
 
 namespace GFramework.Godot.Coroutine;
 
@@ -27,8 +29,8 @@ public static class ContextAwareCoroutineExtensions
         string? tag = null,
         CancellationToken cancellationToken = default)
     {
-        return contextAware
-            .SendCommandAsync(command, cancellationToken)
+        return ContextAwareCqrsCommandExtensions
+            .SendCommandAsync(contextAware, command, cancellationToken)
             .AsTask()
             .ToCoroutineEnumerator()
             .RunCoroutine(segment, tag);
@@ -51,8 +53,8 @@ public static class ContextAwareCoroutineExtensions
         string? tag = null,
         CancellationToken cancellationToken = default)
     {
-        return contextAware
-            .SendCommandAsync(command, cancellationToken)
+        return ContextAwareCqrsCommandExtensions
+            .SendCommandAsync(contextAware, command, cancellationToken)
             .AsTask()
             .ToCoroutineEnumerator()
             .RunCoroutine(segment, tag);
@@ -75,8 +77,8 @@ public static class ContextAwareCoroutineExtensions
         string? tag = null,
         CancellationToken cancellationToken = default)
     {
-        return contextAware
-            .SendQueryAsync(query, cancellationToken)
+        return ContextAwareCqrsQueryExtensions
+            .SendQueryAsync(contextAware, query, cancellationToken)
             .AsTask()
             .ToCoroutineEnumerator()
             .RunCoroutine(segment, tag);
@@ -98,8 +100,8 @@ public static class ContextAwareCoroutineExtensions
         string? tag = null,
         CancellationToken cancellationToken = default)
     {
-        return contextAware
-            .PublishAsync(notification, cancellationToken)
+        return ContextAwareCqrsExtensions
+            .PublishAsync(contextAware, notification, cancellationToken)
             .AsTask()
             .ToCoroutineEnumerator()
             .RunCoroutine(segment, tag);

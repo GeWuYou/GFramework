@@ -12,7 +12,7 @@ namespace GFramework.Godot.SourceGenerators.Behavior;
 public sealed class AutoUiPageGenerator : IIncrementalGenerator
 {
     private const string AutoUiPageAttributeMetadataName =
-        $"{PathContests.GodotSourceGeneratorsAbstractionsPath}.AutoUiPageAttribute";
+        $"{PathContests.GodotSourceGeneratorsAbstractionsPath}.UI.AutoUiPageAttribute";
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {

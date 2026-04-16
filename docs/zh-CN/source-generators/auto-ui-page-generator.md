@@ -13,11 +13,12 @@
 - `GetPage()` 工厂包装
 
 `AutoUiPage` 会把这部分样板迁移到编译期生成。
+该特性当前位于 `GFramework.Godot.SourceGenerators.Abstractions.UI` 命名空间。
 
 ## 基础使用
 
 ```csharp
-using GFramework.Godot.SourceGenerators.Abstractions;
+using GFramework.Godot.SourceGenerators.Abstractions.UI;
 using GFramework.Game.Abstractions.Enums;
 using Godot;
 
@@ -123,7 +124,7 @@ partial class MainMenu
 ## 组合示例
 
 ```csharp
-using GFramework.Godot.SourceGenerators.Abstractions;
+using GFramework.Godot.SourceGenerators.Abstractions.UI;
 using GFramework.Game.Abstractions.Enums;
 using GFramework.SourceGenerators.Abstractions.Rule;
 using Godot;

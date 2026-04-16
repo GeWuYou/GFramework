@@ -1,9 +1,9 @@
 using GFramework.Core.Abstractions.Enums;
 using GFramework.Core.Abstractions.Events;
+using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Architectures;
 using GFramework.Core.Environment;
 using GFramework.Core.Logging;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace GFramework.Core.Tests.Architectures;
 

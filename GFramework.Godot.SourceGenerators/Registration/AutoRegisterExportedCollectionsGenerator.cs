@@ -18,10 +18,10 @@ namespace GFramework.Godot.SourceGenerators.Registration;
 public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGenerator
 {
     private const string AutoRegisterExportedCollectionsAttributeMetadataName =
-        $"{PathContests.GodotSourceGeneratorsAbstractionsPath}.AutoRegisterExportedCollectionsAttribute";
+        $"{PathContests.GodotSourceGeneratorsAbstractionsPath}.UI.AutoRegisterExportedCollectionsAttribute";
 
     private const string RegisterExportedCollectionAttributeMetadataName =
-        $"{PathContests.GodotSourceGeneratorsAbstractionsPath}.RegisterExportedCollectionAttribute";
+        $"{PathContests.GodotSourceGeneratorsAbstractionsPath}.UI.RegisterExportedCollectionAttribute";
 
     private const string GeneratedMethodName = "__RegisterExportedCollections_Generated";
 

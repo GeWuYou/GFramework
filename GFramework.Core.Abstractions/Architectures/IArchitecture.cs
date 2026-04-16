@@ -1,8 +1,9 @@
+using System.ComponentModel;
+using System.Reflection;
 using GFramework.Core.Abstractions.Lifecycle;
 using GFramework.Core.Abstractions.Model;
 using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Abstractions.Utility;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace GFramework.Core.Abstractions.Architectures;
 
@@ -73,14 +74,45 @@ public interface IArchitecture : IAsyncInitializable, IAsyncDestroyable, IInitia
     void RegisterUtility<T>(Action<T>? onCreated = null) where T : class, IUtility;
 
     /// <summary>
-    ///     注册中介行为管道
-    ///     用于配置Mediator框架的行为拦截和处理逻辑。
+    ///     注册 CQRS 请求管道行为。
     ///     既支持实现 <c>IPipelineBehavior&lt;,&gt;</c> 的开放泛型行为类型，
     ///     也支持绑定到单一请求/响应对的封闭行为类型。
     /// </summary>
     /// <typeparam name="TBehavior">行为类型，必须是引用类型</typeparam>
+    void RegisterCqrsPipelineBehavior<TBehavior>()
+        where TBehavior : class;
+
+    /// <summary>
+    ///     注册 CQRS 请求管道行为。
+    ///     该成员保留旧名称以兼容历史调用点，内部行为与 <see cref="RegisterCqrsPipelineBehavior{TBehavior}" /> 一致。
+    ///     新代码不应继续依赖该别名；兼容层计划在未来的 major 版本中移除。
+    ///     既支持实现 <c>IPipelineBehavior&lt;,&gt;</c> 的开放泛型行为类型，
+    ///     也支持绑定到单一请求/响应对的封闭行为类型。
+    /// </summary>
+    /// <typeparam name="TBehavior">行为类型，必须是引用类型</typeparam>
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    [Obsolete(
+        "Use RegisterCqrsPipelineBehavior<TBehavior>() instead. This compatibility alias will be removed in a future major version.")]
     void RegisterMediatorBehavior<TBehavior>()
         where TBehavior : class;
+
+    /// <summary>
+    ///     从指定程序集显式注册 CQRS 处理器。
+    ///     当处理器位于默认架构程序集之外的模块或扩展程序集中时，可在初始化阶段调用该入口接入对应程序集。
+    /// </summary>
+    /// <param name="assembly">包含 CQRS 处理器或生成注册器的程序集。</param>
+    /// <exception cref="ArgumentNullException"><paramref name="assembly" /> 为 <see langword="null" />。</exception>
+    /// <exception cref="InvalidOperationException">当前架构的底层容器已冻结，无法继续注册处理器。</exception>
+    void RegisterCqrsHandlersFromAssembly(Assembly assembly);
+
+    /// <summary>
+    ///     从多个程序集显式注册 CQRS 处理器。
+    ///     该入口会对程序集集合去重，适用于统一接入多个扩展包或模块程序集。
+    /// </summary>
+    /// <param name="assemblies">要接入的程序集集合。</param>
+    /// <exception cref="ArgumentNullException"><paramref name="assemblies" /> 为 <see langword="null" />。</exception>
+    /// <exception cref="InvalidOperationException">当前架构的底层容器已冻结，无法继续注册处理器。</exception>
+    void RegisterCqrsHandlersFromAssemblies(IEnumerable<Assembly> assemblies);
 
     /// <summary>
     ///     安装架构模块

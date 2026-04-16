@@ -13,9 +13,9 @@ public class AutoRegisterExportedCollectionsGeneratorTests
                               #nullable enable
                               using System;
                               using System.Collections.Generic;
-                              using GFramework.Godot.SourceGenerators.Abstractions;
+                              using GFramework.Godot.SourceGenerators.Abstractions.UI;
 
-                              namespace GFramework.Godot.SourceGenerators.Abstractions
+                              namespace GFramework.Godot.SourceGenerators.Abstractions.UI
                               {
                                   [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
                                   public sealed class AutoRegisterExportedCollectionsAttribute : Attribute { }
@@ -86,9 +86,9 @@ public class AutoRegisterExportedCollectionsGeneratorTests
         const string source = """
                               using System;
                               using System.Collections;
-                              using GFramework.Godot.SourceGenerators.Abstractions;
+                              using GFramework.Godot.SourceGenerators.Abstractions.UI;
 
-                              namespace GFramework.Godot.SourceGenerators.Abstractions
+                              namespace GFramework.Godot.SourceGenerators.Abstractions.UI
                               {
                                   [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
                                   public sealed class AutoRegisterExportedCollectionsAttribute : Attribute { }
@@ -141,9 +141,9 @@ public class AutoRegisterExportedCollectionsGeneratorTests
                               #nullable enable
                               using System;
                               using System.Collections.Generic;
-                              using GFramework.Godot.SourceGenerators.Abstractions;
+                              using GFramework.Godot.SourceGenerators.Abstractions.UI;
 
-                              namespace GFramework.Godot.SourceGenerators.Abstractions
+                              namespace GFramework.Godot.SourceGenerators.Abstractions.UI
                               {
                                   [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
                                   public sealed class AutoRegisterExportedCollectionsAttribute : Attribute { }
@@ -207,9 +207,9 @@ public class AutoRegisterExportedCollectionsGeneratorTests
                               #nullable enable
                               using System;
                               using System.Collections.Generic;
-                              using GFramework.Godot.SourceGenerators.Abstractions;
+                              using GFramework.Godot.SourceGenerators.Abstractions.UI;
 
-                              namespace GFramework.Godot.SourceGenerators.Abstractions
+                              namespace GFramework.Godot.SourceGenerators.Abstractions.UI
                               {
                                   [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
                                   public sealed class AutoRegisterExportedCollectionsAttribute : Attribute { }
@@ -284,9 +284,9 @@ public class AutoRegisterExportedCollectionsGeneratorTests
         const string source = """
                               using System;
                               using System.Collections.Generic;
-                              using GFramework.Godot.SourceGenerators.Abstractions;
+                              using GFramework.Godot.SourceGenerators.Abstractions.UI;
 
-                              namespace GFramework.Godot.SourceGenerators.Abstractions
+                              namespace GFramework.Godot.SourceGenerators.Abstractions.UI
                               {
                                   [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
                                   public sealed class AutoRegisterExportedCollectionsAttribute : Attribute { }
@@ -344,9 +344,9 @@ public class AutoRegisterExportedCollectionsGeneratorTests
                               #nullable enable
                               using System;
                               using System.Collections.Generic;
-                              using GFramework.Godot.SourceGenerators.Abstractions;
+                              using GFramework.Godot.SourceGenerators.Abstractions.UI;
 
-                              namespace GFramework.Godot.SourceGenerators.Abstractions
+                              namespace GFramework.Godot.SourceGenerators.Abstractions.UI
                               {
                                   [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
                                   public sealed class AutoRegisterExportedCollectionsAttribute : Attribute { }
@@ -414,9 +414,9 @@ public class AutoRegisterExportedCollectionsGeneratorTests
                               #nullable enable
                               using System;
                               using System.Collections.Generic;
-                              using GFramework.Godot.SourceGenerators.Abstractions;
+                              using GFramework.Godot.SourceGenerators.Abstractions.UI;
 
-                              namespace GFramework.Godot.SourceGenerators.Abstractions
+                              namespace GFramework.Godot.SourceGenerators.Abstractions.UI
                               {
                                   [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
                                   public sealed class AutoRegisterExportedCollectionsAttribute : Attribute { }
@@ -482,9 +482,9 @@ public class AutoRegisterExportedCollectionsGeneratorTests
         const string source = """
                               using System;
                               using System.Collections.Generic;
-                              using GFramework.Godot.SourceGenerators.Abstractions;
+                              using GFramework.Godot.SourceGenerators.Abstractions.UI;
 
-                              namespace GFramework.Godot.SourceGenerators.Abstractions
+                              namespace GFramework.Godot.SourceGenerators.Abstractions.UI
                               {
                                   [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
                                   public sealed class AutoRegisterExportedCollectionsAttribute : Attribute { }
@@ -549,9 +549,9 @@ public class AutoRegisterExportedCollectionsGeneratorTests
         const string source = """
                               using System;
                               using System.Collections.Generic;
-                              using GFramework.Godot.SourceGenerators.Abstractions;
+                              using GFramework.Godot.SourceGenerators.Abstractions.UI;
 
-                              namespace GFramework.Godot.SourceGenerators.Abstractions
+                              namespace GFramework.Godot.SourceGenerators.Abstractions.UI
                               {
                                   [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
                                   public sealed class AutoRegisterExportedCollectionsAttribute : Attribute { }
@@ -604,9 +604,9 @@ public class AutoRegisterExportedCollectionsGeneratorTests
         const string source = """
                               using System;
                               using System.Collections.Generic;
-                              using GFramework.Godot.SourceGenerators.Abstractions;
+                              using GFramework.Godot.SourceGenerators.Abstractions.UI;
 
-                              namespace GFramework.Godot.SourceGenerators.Abstractions
+                              namespace GFramework.Godot.SourceGenerators.Abstractions.UI
                               {
                                   [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
                                   public sealed class AutoRegisterExportedCollectionsAttribute : Attribute { }
@@ -659,9 +659,9 @@ public class AutoRegisterExportedCollectionsGeneratorTests
         const string source = """
                               using System;
                               using System.Collections.Generic;
-                              using GFramework.Godot.SourceGenerators.Abstractions;
+                              using GFramework.Godot.SourceGenerators.Abstractions.UI;
 
-                              namespace GFramework.Godot.SourceGenerators.Abstractions
+                              namespace GFramework.Godot.SourceGenerators.Abstractions.UI
                               {
                                   [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
                                   public sealed class AutoRegisterExportedCollectionsAttribute : Attribute { }
@@ -715,9 +715,9 @@ public class AutoRegisterExportedCollectionsGeneratorTests
                               #nullable enable
                               using System;
                               using System.Collections.Generic;
-                              using GFramework.Godot.SourceGenerators.Abstractions;
+                              using GFramework.Godot.SourceGenerators.Abstractions.UI;
 
-                              namespace GFramework.Godot.SourceGenerators.Abstractions
+                              namespace GFramework.Godot.SourceGenerators.Abstractions.UI
                               {
                                   [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
                                   public sealed class AutoRegisterExportedCollectionsAttribute : Attribute { }

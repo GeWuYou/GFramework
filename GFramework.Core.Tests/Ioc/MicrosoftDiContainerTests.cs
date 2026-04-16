@@ -1,8 +1,12 @@
 using System.Reflection;
 using GFramework.Core.Abstractions.Bases;
+using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
+using GFramework.Core.Tests.Cqrs;
 using GFramework.Core.Tests.Systems;
+using GFramework.Cqrs.Abstractions.Cqrs;
+using LegacyICqrsRuntime = GFramework.Core.Abstractions.Cqrs.ICqrsRuntime;
 
 namespace GFramework.Core.Tests.Ioc;
 
@@ -27,6 +31,8 @@ public class MicrosoftDiContainerTests
             BindingFlags.NonPublic | BindingFlags.Instance);
         loggerField?.SetValue(_container,
             LoggerFactoryResolver.Provider.CreateLogger(nameof(MicrosoftDiContainer)));
+
+        CqrsTestRuntime.RegisterInfrastructure(_container);
     }
 
     private MicrosoftDiContainer _container = null!;
@@ -148,6 +154,25 @@ public class MicrosoftDiContainerTests
     }
 
     /// <summary>
+    ///     测试当 CQRS 基础设施已手动接线后，再调用处理器注册入口不会重复注册 runtime seam。
+    /// </summary>
+    [Test]
+    public void RegisterHandlers_Should_Not_Duplicate_Cqrs_Infrastructure_When_It_Is_Already_Registered()
+    {
+        Assert.That(_container.GetAll<ICqrsRuntime>(), Has.Count.EqualTo(1));
+        Assert.That(_container.GetAll<LegacyICqrsRuntime>(), Has.Count.EqualTo(1));
+        Assert.That(_container.GetAll<ICqrsHandlerRegistrar>(), Has.Count.EqualTo(1));
+        Assert.That(_container.Get<ICqrsRuntime>(), Is.SameAs(_container.Get<LegacyICqrsRuntime>()));
+
+        CqrsTestRuntime.RegisterHandlers(_container);
+
+        Assert.That(_container.GetAll<ICqrsRuntime>(), Has.Count.EqualTo(1));
+        Assert.That(_container.GetAll<LegacyICqrsRuntime>(), Has.Count.EqualTo(1));
+        Assert.That(_container.GetAll<ICqrsHandlerRegistrar>(), Has.Count.EqualTo(1));
+        Assert.That(_container.Get<ICqrsRuntime>(), Is.SameAs(_container.Get<LegacyICqrsRuntime>()));
+    }
+
+    /// <summary>
     ///     测试当没有实例时获取应返回 null 的功能
     /// </summary>
     [Test]
@@ -222,6 +247,46 @@ public class MicrosoftDiContainerTests
         var results = _container.GetAll<TestService>();
 
         Assert.That(results.Count, Is.EqualTo(0));
+    }
+
+    /// <summary>
+    ///     测试容器未冻结时，会折叠“不同服务类型指向同一实例”的兼容别名重复，
+    ///     但会保留同一服务类型的重复显式注册。
+    /// </summary>
+    [Test]
+    public void GetAll_Should_Preserve_Duplicate_Registrations_For_The_Same_ServiceType_While_Deduplicating_Aliases()
+    {
+        var instance = new AliasAwareService();
+
+        _container.Register<IPrimaryAliasService>(instance);
+        _container.Register<IPrimaryAliasService>(instance);
+        _container.Register<ISecondaryAliasService>(instance);
+
+        var results = _container.GetAll<ISharedAliasService>();
+
+        Assert.That(results, Has.Count.EqualTo(2));
+        Assert.That(results[0], Is.SameAs(instance));
+        Assert.That(results[1], Is.SameAs(instance));
+    }
+
+    /// <summary>
+    ///     测试非泛型 GetAll 在容器未冻结时与泛型重载保持相同的别名去重语义。
+    /// </summary>
+    [Test]
+    public void
+        GetAll_Type_Should_Preserve_Duplicate_Registrations_For_The_Same_ServiceType_While_Deduplicating_Aliases()
+    {
+        var instance = new AliasAwareService();
+
+        _container.Register<IPrimaryAliasService>(instance);
+        _container.Register<IPrimaryAliasService>(instance);
+        _container.Register<ISecondaryAliasService>(instance);
+
+        var results = _container.GetAll(typeof(ISharedAliasService));
+
+        Assert.That(results, Has.Count.EqualTo(2));
+        Assert.That(results[0], Is.SameAs(instance));
+        Assert.That(results[1], Is.SameAs(instance));
     }
 
     /// <summary>
@@ -304,6 +369,47 @@ public class MicrosoftDiContainerTests
         _container.Clear();
 
         Assert.That(_container.Contains<TestService>(), Is.False);
+    }
+
+    /// <summary>
+    ///     测试清空容器后可以重新接入同一程序集中的 CQRS 处理器。
+    /// </summary>
+    [Test]
+    public void Clear_Should_Reset_Cqrs_Assembly_Deduplication_State()
+    {
+        var assembly = typeof(DeterministicOrderNotification).Assembly;
+
+        _container.RegisterCqrsHandlersFromAssembly(assembly);
+        Assert.That(
+            _container.GetServicesUnsafe.Any(static descriptor =>
+                descriptor.ServiceType == typeof(INotificationHandler<DeterministicOrderNotification>)),
+            Is.True);
+
+        _container.Clear();
+        Assert.That(
+            _container.GetServicesUnsafe.Any(static descriptor =>
+                descriptor.ServiceType == typeof(INotificationHandler<DeterministicOrderNotification>)),
+            Is.False);
+
+        // Clear 会移除测试手工补齐的 CQRS seam，需要先恢复基础设施再验证程序集去重状态是否已重置。
+        CqrsTestRuntime.RegisterInfrastructure(_container);
+        _container.RegisterCqrsHandlersFromAssembly(assembly);
+
+        Assert.That(
+            _container.GetServicesUnsafe.Any(static descriptor =>
+                descriptor.ServiceType == typeof(INotificationHandler<DeterministicOrderNotification>)),
+            Is.True);
+    }
+
+    /// <summary>
+    ///     测试当程序集集合中包含空元素时，CQRS handler 注册入口会在委托给注册服务前直接失败。
+    /// </summary>
+    [Test]
+    public void RegisterCqrsHandlersFromAssemblies_WithNullAssemblyItem_Should_ThrowArgumentNullException()
+    {
+        var assemblies = new Assembly[] { typeof(DeterministicOrderNotification).Assembly, null! };
+
+        Assert.Throws<ArgumentNullException>(() => _container.RegisterCqrsHandlersFromAssemblies(assemblies));
     }
 
     /// <summary>
@@ -659,6 +765,28 @@ public interface IPrioritizedService : IPrioritized
 public interface IMixedService
 {
     string? Name { get; set; }
+}
+
+/// <summary>
+///     用于验证未冻结查询路径中的服务别名去重行为。
+/// </summary>
+public interface ISharedAliasService;
+
+/// <summary>
+///     主服务别名接口。
+/// </summary>
+public interface IPrimaryAliasService : ISharedAliasService;
+
+/// <summary>
+///     次级兼容别名接口。
+/// </summary>
+public interface ISecondaryAliasService : ISharedAliasService;
+
+/// <summary>
+///     同时实现多个别名接口的测试服务。
+/// </summary>
+public sealed class AliasAwareService : IPrimaryAliasService, ISecondaryAliasService
+{
 }
 
 /// <summary>

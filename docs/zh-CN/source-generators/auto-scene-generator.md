@@ -12,11 +12,12 @@
 - `GetScene()` 包装方法
 
 `AutoScene` 会在编译期生成这些固定样板。
+该特性当前位于 `GFramework.Godot.SourceGenerators.Abstractions.UI` 命名空间。
 
 ## 基础使用
 
 ```csharp
-using GFramework.Godot.SourceGenerators.Abstractions;
+using GFramework.Godot.SourceGenerators.Abstractions.UI;
 using GFramework.Game.Abstractions.Enums;
 using Godot;
 

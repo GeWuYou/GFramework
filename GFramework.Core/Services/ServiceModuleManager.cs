@@ -42,7 +42,7 @@ public sealed class ServiceModuleManager : IServiceModuleManager
 
     /// <summary>
     ///     注册内置服务模块，并根据优先级排序后完成服务注册。
-    ///     内置模块包括事件总线、命令执行器、查询执行器等核心模块。
+    ///     内置模块包括事件总线、命令执行器、CQRS runtime、查询执行器等核心模块。
     ///     同时注册通过 ArchitectureModuleRegistry 自动注册的外部模块。
     /// </summary>
     /// <param name="container">IoC容器实例，用于模块服务注册。</param>
@@ -57,6 +57,7 @@ public sealed class ServiceModuleManager : IServiceModuleManager
         // 注册内置模块
         RegisterModule(new EventBusModule());
         RegisterModule(new CommandExecutorModule());
+        RegisterModule(new CqrsRuntimeModule());
         RegisterModule(new QueryExecutorModule());
         RegisterModule(new AsyncQueryExecutorModule());
 

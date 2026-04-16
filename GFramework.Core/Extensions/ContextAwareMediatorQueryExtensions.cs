@@ -1,16 +1,22 @@
+using System.ComponentModel;
 using GFramework.Core.Abstractions.Rule;
-using Mediator;
+using GFramework.Cqrs.Abstractions.Cqrs.Query;
+using GFramework.Cqrs.Extensions;
 
 namespace GFramework.Core.Extensions;
 
 /// <summary>
-///     提供对 IContextAware 接口的 Mediator 查询扩展方法
-///     使用 Mediator 库的查询模式
+///     提供对 <see cref="IContextAware" /> 接口的 CQRS 查询扩展方法。
+///     该类型保留旧名称以兼容历史调用点；新代码应改用 <see cref="ContextAwareCqrsQueryExtensions" />。
+///     兼容层计划在未来的 major 版本中移除，因此不会继续承载新能力。
 /// </summary>
+[EditorBrowsable(EditorBrowsableState.Never)]
+[Obsolete(
+    "Use GFramework.Cqrs.Extensions.ContextAwareCqrsQueryExtensions instead. This compatibility alias will be removed in a future major version.")]
 public static class ContextAwareMediatorQueryExtensions
 {
     /// <summary>
-    ///     [Mediator] 发送查询的同步版本（不推荐,仅用于兼容性）
+    ///     发送查询的同步版本（不推荐,仅用于兼容性）
     /// </summary>
     /// <typeparam name="TResponse">查询响应类型</typeparam>
     /// <param name="contextAware">实现 IContextAware 接口的对象</param>
@@ -19,15 +25,11 @@ public static class ContextAwareMediatorQueryExtensions
     /// <exception cref="ArgumentNullException">当 contextAware 或 query 为 null 时抛出</exception>
     public static TResponse SendQuery<TResponse>(this IContextAware contextAware, IQuery<TResponse> query)
     {
-        ArgumentNullException.ThrowIfNull(contextAware);
-        ArgumentNullException.ThrowIfNull(query);
-
-        var context = contextAware.GetContext();
-        return context.SendQuery(query);
+        return ContextAwareCqrsQueryExtensions.SendQuery(contextAware, query);
     }
 
     /// <summary>
-    ///     [Mediator] 异步发送查询并返回结果
+    ///     异步发送查询并返回结果
     /// </summary>
     /// <typeparam name="TResponse">查询响应类型</typeparam>
     /// <param name="contextAware">实现 IContextAware 接口的对象</param>
@@ -38,10 +40,9 @@ public static class ContextAwareMediatorQueryExtensions
     public static ValueTask<TResponse> SendQueryAsync<TResponse>(this IContextAware contextAware,
         IQuery<TResponse> query, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(contextAware);
-        ArgumentNullException.ThrowIfNull(query);
-
-        var context = contextAware.GetContext();
-        return context.SendQueryAsync(query, cancellationToken);
+        return ContextAwareCqrsQueryExtensions.SendQueryAsync(
+            contextAware,
+            query,
+            cancellationToken);
     }
 }

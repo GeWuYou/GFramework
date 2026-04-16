@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <PackageId>GeWuYou.$(AssemblyName)</PackageId>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <MeziantouPolyfill_IncludedPolyfills>T:System.Diagnostics.CodeAnalysis.NotNullWhenAttribute</MeziantouPolyfill_IncludedPolyfills>
+        <Nullable>enable</Nullable>
+        <EnableGFrameworkPackageTransitiveGlobalUsings>true</EnableGFrameworkPackageTransitiveGlobalUsings>
+    </PropertyGroup>
+
+</Project>

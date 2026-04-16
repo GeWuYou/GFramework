@@ -5,15 +5,20 @@ using GFramework.Core.Abstractions.Model;
 using GFramework.Core.Abstractions.Query;
 using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Abstractions.Utility;
-using Mediator;
+using GFramework.Cqrs.Abstractions.Cqrs;
 using ICommand = GFramework.Core.Abstractions.Command.ICommand;
 
 namespace GFramework.Core.Abstractions.Architectures;
 
 /// <summary>
-///     架构上下文接口，提供对系统、模型、工具类的访问以及命令、查询、事件的发送和注册功能
+///     架构上下文接口，统一暴露框架组件访问、兼容旧命令/查询总线，以及当前推荐的 CQRS 运行时入口。
 /// </summary>
-public interface IArchitectureContext
+/// <remarks>
+///     <para>旧的 <c>GFramework.Core.Abstractions.Command</c> 与 <c>GFramework.Core.Abstractions.Query</c> 契约会继续通过原有 Command/Query Executor 路径执行，以保证存量代码兼容。</para>
+///     <para>新的 <c>GFramework.Cqrs.Abstractions.Cqrs</c> 契约由内置 CQRS dispatcher 统一处理，支持 request pipeline、notification publish 与 stream request。</para>
+///     <para>新功能优先使用 <see cref="SendRequestAsync{TResponse}(IRequest{TResponse},CancellationToken)" />、<see cref="SendAsync{TCommand}(TCommand,CancellationToken)" /> 与对应的 CQRS Command/Query 重载；迁移旧代码时可先保留旧入口，再逐步替换为 CQRS 请求模型。</para>
+/// </remarks>
+public interface IArchitectureContext : ICqrsContext
 {
     /// <summary>
     ///     获取指定类型的服务实例
@@ -104,87 +109,92 @@ public interface IArchitectureContext
     IReadOnlyList<TUtility> GetUtilitiesByPriority<TUtility>() where TUtility : class, IUtility;
 
     /// <summary>
-    ///     发送一个命令
+    ///     发送一个旧版命令。
     /// </summary>
-    /// <param name="command">要发送的命令</param>
+    /// <param name="command">要发送的旧版命令。</param>
     void SendCommand(ICommand command);
 
     /// <summary>
-    ///     发送一个带返回值的命令
+    ///     发送一个旧版带返回值命令。
     /// </summary>
-    /// <typeparam name="TResult">命令执行结果类型</typeparam>
-    /// <param name="command">要发送的命令</param>
-    /// <returns>命令执行结果</returns>
-    TResult SendCommand<TResult>(Command.ICommand<TResult> command);
+    /// <typeparam name="TResult">命令执行结果类型。</typeparam>
+    /// <param name="command">要发送的旧版命令。</param>
+    /// <returns>命令执行结果。</returns>
+    TResult SendCommand<TResult>(ICommand<TResult> command);
 
     /// <summary>
-    /// [Mediator] 发送命令的同步版本（不推荐，仅用于兼容性）
+    ///     发送一个新版 CQRS 命令并返回结果。
     /// </summary>
-    /// <typeparam name="TResponse">命令响应类型</typeparam>
-    /// <param name="command">要发送的命令对象</param>
-    /// <returns>命令执行结果</returns>
-    TResponse SendCommand<TResponse>(Mediator.ICommand<TResponse> command);
+    /// <typeparam name="TResponse">命令响应类型。</typeparam>
+    /// <param name="command">要发送的 CQRS 命令。</param>
+    /// <returns>命令执行结果。</returns>
+    /// <remarks>
+    ///     这是迁移后的推荐命令入口。无返回值命令应实现 <c>IRequest&lt;Unit&gt;</c>，并优先通过 <see cref="SendAsync{TCommand}(TCommand,CancellationToken)" /> 调用。
+    /// </remarks>
+    TResponse SendCommand<TResponse>(GFramework.Cqrs.Abstractions.Cqrs.Command.ICommand<TResponse> command);
 
 
     /// <summary>
-    ///     发送并异步执行一个命令
+    ///     异步发送一个旧版命令。
     /// </summary>
-    /// <param name="command">要发送的命令</param>
+    /// <param name="command">要发送的旧版命令。</param>
     Task SendCommandAsync(IAsyncCommand command);
 
     /// <summary>
-    /// [Mediator] 异步发送命令并返回结果
-    /// 通过Mediator模式发送命令请求，支持取消操作
+    ///     异步发送一个新版 CQRS 命令并返回结果。
     /// </summary>
-    /// <typeparam name="TResponse">命令响应类型</typeparam>
-    /// <param name="command">要发送的命令对象</param>
-    /// <param name="cancellationToken">取消令牌，用于取消操作</param>
-    /// <returns>包含命令执行结果的ValueTask</returns>
-    ValueTask<TResponse> SendCommandAsync<TResponse>(Mediator.ICommand<TResponse> command,
+    /// <typeparam name="TResponse">命令响应类型。</typeparam>
+    /// <param name="command">要发送的 CQRS 命令。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>包含命令执行结果的值任务。</returns>
+    ValueTask<TResponse> SendCommandAsync<TResponse>(
+        GFramework.Cqrs.Abstractions.Cqrs.Command.ICommand<TResponse> command,
         CancellationToken cancellationToken = default);
 
 
     /// <summary>
-    ///     发送并异步执行一个带返回值的命令
+    ///     异步发送一个旧版带返回值命令。
     /// </summary>
-    /// <typeparam name="TResult">命令执行结果类型</typeparam>
-    /// <param name="command">要发送的命令</param>
-    /// <returns>命令执行结果</returns>
+    /// <typeparam name="TResult">命令执行结果类型。</typeparam>
+    /// <param name="command">要发送的旧版命令。</param>
+    /// <returns>命令执行结果。</returns>
     Task<TResult> SendCommandAsync<TResult>(IAsyncCommand<TResult> command);
 
     /// <summary>
-    ///     发送一个查询请求
+    ///     发送一个旧版查询请求。
     /// </summary>
-    /// <typeparam name="TResult">查询结果类型</typeparam>
-    /// <param name="query">要发送的查询</param>
-    /// <returns>查询结果</returns>
-    TResult SendQuery<TResult>(Query.IQuery<TResult> query);
+    /// <typeparam name="TResult">查询结果类型。</typeparam>
+    /// <param name="query">要发送的旧版查询。</param>
+    /// <returns>查询结果。</returns>
+    TResult SendQuery<TResult>(IQuery<TResult> query);
 
     /// <summary>
-    /// [Mediator] 发送查询的同步版本（不推荐，仅用于兼容性）
+    ///     发送一个新版 CQRS 查询并返回结果。
     /// </summary>
-    /// <typeparam name="TResponse">查询响应类型</typeparam>
-    /// <param name="query">要发送的查询对象</param>
-    /// <returns>查询结果</returns>
-    TResponse SendQuery<TResponse>(Mediator.IQuery<TResponse> query);
+    /// <typeparam name="TResponse">查询响应类型。</typeparam>
+    /// <param name="query">要发送的 CQRS 查询。</param>
+    /// <returns>查询结果。</returns>
+    /// <remarks>
+    ///     这是迁移后的推荐查询入口。新查询应优先实现 <c>GFramework.Cqrs.Abstractions.Cqrs.Query.IQuery&lt;TResponse&gt;</c>。
+    /// </remarks>
+    TResponse SendQuery<TResponse>(GFramework.Cqrs.Abstractions.Cqrs.Query.IQuery<TResponse> query);
 
     /// <summary>
-    ///     异步发送一个查询请求
+    ///     异步发送一个旧版查询请求。
     /// </summary>
-    /// <typeparam name="TResult">查询结果类型</typeparam>
-    /// <param name="query">要发送的异步查询</param>
-    /// <returns>查询结果</returns>
+    /// <typeparam name="TResult">查询结果类型。</typeparam>
+    /// <param name="query">要发送的旧版异步查询。</param>
+    /// <returns>查询结果。</returns>
     Task<TResult> SendQueryAsync<TResult>(IAsyncQuery<TResult> query);
 
     /// <summary>
-    /// [Mediator] 异步发送查询并返回结果
-    /// 通过Mediator模式发送查询请求，支持取消操作
+    ///     异步发送一个新版 CQRS 查询并返回结果。
     /// </summary>
-    /// <typeparam name="TResponse">查询响应类型</typeparam>
-    /// <param name="query">要发送的查询对象</param>
-    /// <param name="cancellationToken">取消令牌，用于取消操作</param>
-    /// <returns>包含查询结果的ValueTask</returns>
-    ValueTask<TResponse> SendQueryAsync<TResponse>(Mediator.IQuery<TResponse> query,
+    /// <typeparam name="TResponse">查询响应类型。</typeparam>
+    /// <param name="query">要发送的 CQRS 查询。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>包含查询结果的值任务。</returns>
+    ValueTask<TResponse> SendQueryAsync<TResponse>(GFramework.Cqrs.Abstractions.Cqrs.Query.IQuery<TResponse> query,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -216,28 +226,40 @@ public interface IArchitectureContext
     void UnRegisterEvent<TEvent>(Action<TEvent> onEvent);
 
     /// <summary>
-    /// 发送请求（统一处理 Command/Query）
+    /// 发送新版 CQRS 请求，并统一处理命令与查询。
     /// </summary>
+    /// <remarks>
+    /// 这是自有 CQRS 运行时的主入口。新代码应优先通过该方法或 <see cref="SendAsync{TCommand}(TCommand,CancellationToken)" /> 进入 dispatcher。
+    /// </remarks>
     ValueTask<TResponse> SendRequestAsync<TResponse>(
         IRequest<TResponse> request,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 发送请求（同步版本，不推荐）
+    /// 发送新版 CQRS 请求的同步包装版本。
     /// </summary>
+    /// <remarks>
+    /// 仅为兼容同步调用链保留；新代码应优先使用异步入口，避免阻塞当前线程。
+    /// </remarks>
     TResponse SendRequest<TResponse>(IRequest<TResponse> request);
 
     /// <summary>
-    /// 发布通知（一对多事件）
+    /// 发布新版 CQRS 通知。
     /// </summary>
+    /// <remarks>
+    /// 该入口用于一对多通知分发，与框架级 <c>EventBus</c> 事件系统并存，适合围绕请求处理过程传播领域通知。
+    /// </remarks>
     ValueTask PublishAsync<TNotification>(
         TNotification notification,
         CancellationToken cancellationToken = default)
         where TNotification : INotification;
 
     /// <summary>
-    /// 创建流式请求（用于大数据集）
+    /// 创建新版 CQRS 流式请求。
     /// </summary>
+    /// <remarks>
+    /// 适用于需要按序惰性产出大量结果的场景。调用方应消费返回的异步序列，而不是回退到旧版查询总线。
+    /// </remarks>
     IAsyncEnumerable<TResponse> CreateStream<TResponse>(
         IStreamRequest<TResponse> request,
         CancellationToken cancellationToken = default);
@@ -245,7 +267,7 @@ public interface IArchitectureContext
     // === 便捷扩展方法 ===
 
     /// <summary>
-    /// 发送命令（无返回值）
+    /// 发送一个无返回值的新版 CQRS 命令。
     /// </summary>
     ValueTask SendAsync<TCommand>(
         TCommand command,
@@ -253,7 +275,7 @@ public interface IArchitectureContext
         where TCommand : IRequest<Unit>;
 
     /// <summary>
-    /// 发送命令（有返回值）
+    /// 发送一个有返回值的新版 CQRS 请求。
     /// </summary>
     ValueTask<TResponse> SendAsync<TResponse>(
         IRequest<TResponse> command,

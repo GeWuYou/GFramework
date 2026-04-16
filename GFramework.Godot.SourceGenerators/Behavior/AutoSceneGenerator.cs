@@ -18,7 +18,8 @@ namespace GFramework.Godot.SourceGenerators.Behavior;
 public sealed class AutoSceneGenerator : IIncrementalGenerator
 {
     private const string AutoSceneAttributeMetadataName =
-        $"{PathContests.GodotSourceGeneratorsAbstractionsPath}.AutoSceneAttribute";
+        $"{PathContests.GodotSourceGeneratorsAbstractionsPath}.UI.AutoSceneAttribute";
+
     private static readonly string[] GeneratedMemberNames =
     [
         "SceneKeyStr",

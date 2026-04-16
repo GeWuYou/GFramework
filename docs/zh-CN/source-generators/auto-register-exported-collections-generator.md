@@ -13,12 +13,13 @@
 `AutoRegisterExportedCollections` 会把这类样板收敛成声明式配置。
 
 它特别适合 `GameEntryPoint`、资源根节点、配置引导节点这类“导出即注册”的场景。
+相关特性当前位于 `GFramework.Godot.SourceGenerators.Abstractions.UI` 命名空间。
 
 ## 基础使用
 
 ```csharp
 using System.Collections.Generic;
-using GFramework.Godot.SourceGenerators.Abstractions;
+using GFramework.Godot.SourceGenerators.Abstractions.UI;
 using Godot;
 
 public interface IKeyValue<TKey, TValue>

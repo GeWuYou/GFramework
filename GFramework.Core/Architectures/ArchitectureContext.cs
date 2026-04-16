@@ -8,7 +8,7 @@ using GFramework.Core.Abstractions.Model;
 using GFramework.Core.Abstractions.Query;
 using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Abstractions.Utility;
-using Mediator;
+using GFramework.Cqrs.Abstractions.Cqrs;
 using ICommand = GFramework.Core.Abstractions.Command.ICommand;
 
 namespace GFramework.Core.Architectures;
@@ -16,27 +16,48 @@ namespace GFramework.Core.Architectures;
 /// <summary>
 ///     架构上下文类，提供对系统、模型、工具等组件的访问以及命令、查询、事件的执行管理
 /// </summary>
-public class ArchitectureContext(IIocContainer container) : IArchitectureContext
+public class ArchitectureContext : IArchitectureContext
 {
-    private readonly IIocContainer _container = container ?? throw new ArgumentNullException(nameof(container));
+    private readonly IIocContainer _container;
+    private readonly Lazy<ICqrsRuntime> _cqrsRuntime;
     private readonly ConcurrentDictionary<Type, object> _serviceCache = new();
 
-    #region Mediator Integration
+    /// <summary>
+    ///     初始化新的架构上下文，并绑定其依赖容器。
+    /// </summary>
+    /// <param name="container">
+    ///     当前架构使用的 IOC 容器。
+    ///     CQRS runtime 与其他框架服务会通过该容器延迟解析，以避免在上下文构造阶段强制拉起整条运行时链路。
+    /// </param>
+    /// <exception cref="ArgumentNullException"><paramref name="container" /> 为 <see langword="null" />。</exception>
+    public ArchitectureContext(IIocContainer container)
+    {
+        _container = container ?? throw new ArgumentNullException(nameof(container));
+        _cqrsRuntime = new Lazy<ICqrsRuntime>(
+            ResolveCqrsRuntime,
+            LazyThreadSafetyMode.ExecutionAndPublication);
+    }
+
+    #region CQRS Integration
 
     /// <summary>
-    /// 获取 Mediator 实例（延迟加载）
+    ///     获取 CQRS runtime seam。
     /// </summary>
-    private IMediator Mediator => GetOrCache<IMediator>();
+    /// <remarks>
+    ///     该实例会在首次访问时从容器解析，并通过 <see cref="Lazy{T}" /> 保证并发场景下只执行一次初始化，
+    ///     避免多个请求线程重复触发同一个 runtime 的容器解析。
+    /// </remarks>
+    private ICqrsRuntime CqrsRuntime => _cqrsRuntime.Value;
 
     /// <summary>
-    /// 获取 ISender 实例（更轻量的发送器）
+    ///     从容器解析当前架构上下文依赖的 CQRS runtime。
     /// </summary>
-    private ISender Sender => GetOrCache<ISender>();
-
-    /// <summary>
-    /// 获取 IPublisher 实例（用于发布通知）
-    /// </summary>
-    private IPublisher Publisher => GetOrCache<IPublisher>();
+    /// <returns>已注册的 CQRS runtime 实例。</returns>
+    /// <exception cref="InvalidOperationException">容器中未注册 <see cref="ICqrsRuntime" />。</exception>
+    private ICqrsRuntime ResolveCqrsRuntime()
+    {
+        return _container.Get<ICqrsRuntime>() ?? throw new InvalidOperationException("ICqrsRuntime not registered");
+    }
 
     /// <summary>
     /// 获取指定类型的服务实例，如果缓存中存在则直接返回，否则从容器中获取并缓存
@@ -64,30 +85,23 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     }
 
     /// <summary>
-    /// [Mediator] 发送请求（Command/Query）
-    /// 这是推荐的新方式，统一处理命令和查询
+    /// 发送请求（Command/Query）
+    /// 使用 GFramework 自有 CQRS runtime 统一处理命令和查询。
     /// </summary>
     /// <typeparam name="TResponse">响应类型</typeparam>
     /// <param name="request">请求对象（Command 或 Query）</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>响应结果</returns>
-    /// <exception cref="InvalidOperationException">当 Mediator 未注册时抛出</exception>
     public async ValueTask<TResponse> SendRequestAsync<TResponse>(
         IRequest<TResponse> request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-
-        var mediator = Mediator;
-        if (mediator == null)
-            throw new InvalidOperationException(
-                "Mediator not registered. Call EnableMediator() in your Architecture.OnInitialize() method.");
-
-        return await mediator.Send(request, cancellationToken);
+        return await CqrsRuntime.SendAsync(this, request, cancellationToken);
     }
 
     /// <summary>
-    /// [Mediator] 发送请求的同步版本（不推荐，仅用于兼容性）
+    /// 发送请求的同步版本（不推荐，仅用于兼容性）
     /// </summary>
     /// <typeparam name="TResponse">响应类型</typeparam>
     /// <param name="request">请求对象</param>
@@ -98,8 +112,8 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     }
 
     /// <summary>
-    /// [Mediator] 发布通知（一对多）
-    /// 用于事件驱动场景，多个处理器可以同时处理同一个通知
+    /// 发布通知（一对多）
+    /// 使用 GFramework 自有 CQRS runtime 分发到所有已注册通知处理器。
     /// </summary>
     /// <typeparam name="TNotification">通知类型</typeparam>
     /// <param name="notification">通知对象</param>
@@ -110,16 +124,11 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
         where TNotification : INotification
     {
         ArgumentNullException.ThrowIfNull(notification);
-
-        var publisher = Publisher;
-        if (publisher == null)
-            throw new InvalidOperationException("Publisher not registered.");
-
-        await publisher.Publish(notification, cancellationToken);
+        await CqrsRuntime.PublishAsync(this, notification, cancellationToken);
     }
 
     /// <summary>
-    /// [Mediator] 发送请求并返回流（用于大数据集）
+    /// 发送请求并返回流（用于大数据集）
     /// </summary>
     /// <typeparam name="TResponse">响应项类型</typeparam>
     /// <param name="request">流式请求</param>
@@ -130,12 +139,7 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-
-        var mediator = Mediator;
-        if (mediator == null)
-            throw new InvalidOperationException("Mediator not registered.");
-
-        return mediator.CreateStream(request, cancellationToken);
+        return CqrsRuntime.CreateStream(this, request, cancellationToken);
     }
 
     /// <summary>
@@ -171,7 +175,7 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     /// <typeparam name="TResult">查询结果类型</typeparam>
     /// <param name="query">要发送的查询</param>
     /// <returns>查询结果</returns>
-    public TResult SendQuery<TResult>(Abstractions.Query.IQuery<TResult> query)
+    public TResult SendQuery<TResult>(IQuery<TResult> query)
     {
         if (query == null) throw new ArgumentNullException(nameof(query));
         var queryBus = GetOrCache<IQueryExecutor>();
@@ -180,12 +184,12 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     }
 
     /// <summary>
-    /// [Mediator] 发送查询的同步版本（不推荐，仅用于兼容性）
+    /// 发送 CQRS 查询的同步版本（不推荐，仅用于兼容性）
     /// </summary>
     /// <typeparam name="TResponse">查询响应类型</typeparam>
     /// <param name="query">要发送的查询对象</param>
     /// <returns>查询结果</returns>
-    public TResponse SendQuery<TResponse>(Mediator.IQuery<TResponse> query)
+    public TResponse SendQuery<TResponse>(Cqrs.Abstractions.Cqrs.Query.IQuery<TResponse> query)
     {
         return SendQueryAsync(query).AsTask().GetAwaiter().GetResult();
     }
@@ -205,23 +209,17 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     }
 
     /// <summary>
-    /// [Mediator] 异步发送查询并返回结果
-    /// 通过Mediator模式发送查询请求，支持取消操作
+    /// 异步发送 CQRS 查询并返回结果。
     /// </summary>
     /// <typeparam name="TResponse">查询响应类型</typeparam>
     /// <param name="query">要发送的查询对象</param>
     /// <param name="cancellationToken">取消令牌，用于取消操作</param>
     /// <returns>包含查询结果的ValueTask</returns>
-    public async ValueTask<TResponse> SendQueryAsync<TResponse>(Mediator.IQuery<TResponse> query,
+    public async ValueTask<TResponse> SendQueryAsync<TResponse>(Cqrs.Abstractions.Cqrs.Query.IQuery<TResponse> query,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
-
-        var sender = Sender;
-        if (sender == null)
-            throw new InvalidOperationException("Sender not registered.");
-
-        return await sender.Send(query, cancellationToken);
+        return await SendRequestAsync(query, cancellationToken);
     }
 
     #endregion
@@ -347,23 +345,18 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     #region Command Execution
 
     /// <summary>
-    /// [Mediator] 异步发送命令并返回结果
-    /// 通过Mediator模式发送命令请求，支持取消操作
+    /// 异步发送 CQRS 命令并返回结果。
     /// </summary>
     /// <typeparam name="TResponse">命令响应类型</typeparam>
     /// <param name="command">要发送的命令对象</param>
     /// <param name="cancellationToken">取消令牌，用于取消操作</param>
     /// <returns>包含命令执行结果的ValueTask</returns>
-    public async ValueTask<TResponse> SendCommandAsync<TResponse>(Mediator.ICommand<TResponse> command,
+    public async ValueTask<TResponse> SendCommandAsync<TResponse>(
+        Cqrs.Abstractions.Cqrs.Command.ICommand<TResponse> command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
-
-        var sender = Sender;
-        if (sender == null)
-            throw new InvalidOperationException("Sender not registered.");
-
-        return await sender.Send(command, cancellationToken);
+        return await SendRequestAsync(command, cancellationToken);
     }
 
     /// <summary>
@@ -393,12 +386,12 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     }
 
     /// <summary>
-    /// [Mediator] 发送命令的同步版本（不推荐，仅用于兼容性）
+    /// 发送 CQRS 命令的同步版本（不推荐，仅用于兼容性）
     /// </summary>
     /// <typeparam name="TResponse">命令响应类型</typeparam>
     /// <param name="command">要发送的命令对象</param>
     /// <returns>命令执行结果</returns>
-    public TResponse SendCommand<TResponse>(Mediator.ICommand<TResponse> command)
+    public TResponse SendCommand<TResponse>(Cqrs.Abstractions.Cqrs.Command.ICommand<TResponse> command)
     {
         return SendCommandAsync(command).AsTask().GetAwaiter().GetResult();
     }
@@ -420,7 +413,7 @@ public class ArchitectureContext(IIocContainer container) : IArchitectureContext
     /// <typeparam name="TResult">命令执行结果类型</typeparam>
     /// <param name="command">要发送的命令</param>
     /// <returns>命令执行结果</returns>
-    public TResult SendCommand<TResult>(Abstractions.Command.ICommand<TResult> command)
+    public TResult SendCommand<TResult>(ICommand<TResult> command)
     {
         ArgumentNullException.ThrowIfNull(command);
         var commandBus = GetOrCache<ICommandExecutor>();

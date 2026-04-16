@@ -1,12 +1,10 @@
 # CI/CD工作流配置：构建和测试.NET项目
-# 该工作流在push到main/master分支或创建pull request时触发
+# 该工作流仅在创建或更新面向任意分支的 pull request 时触发
 name: CI - Build & Test
 
 on:
-  push:
-    branches: [ main, master ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ '**' ]
 
 permissions:
   contents: read
@@ -69,9 +67,9 @@ jobs:
           # 扫描路径，. 表示扫描整个仓库
           path: .
           # 基础提交哈希，用于与当前提交进行比较
-          base: ${{ github.event.before }}
+          base: ${{ github.event.pull_request.base.sha }}
           # 当前提交哈希，作为扫描的目标版本
-          head: ${{ github.sha }}
+          head: ${{ github.event.pull_request.head.sha }}
 
   # 构建和测试 job（并行执行）
   build-and-test:
@@ -166,6 +164,12 @@ jobs:
             -c Release \
             --no-build \
             --logger "trx;LogFileName=sg-$RANDOM.trx" \
+            --results-directory TestResults &
+
+          dotnet test GFramework.Cqrs.Tests \
+            -c Release \
+            --no-build \
+            --logger "trx;LogFileName=cqrs-$RANDOM.trx" \
             --results-directory TestResults &
 
           dotnet test GFramework.Ecs.Arch.Tests \
