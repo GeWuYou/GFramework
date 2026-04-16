@@ -86,15 +86,17 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
 
         var implementationTypeDisplayName = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         var implementationLogName = GetLogDisplayName(type);
-        var canReferenceImplementation = CanReferenceFromGeneratedRegistry(type);
+        var canReferenceImplementation = CanReferenceFromGeneratedRegistry(context.SemanticModel.Compilation, type);
         var registrations = ImmutableArray.CreateBuilder<HandlerRegistrationSpec>(handlerInterfaces.Length);
         var reflectedImplementationRegistrations =
             ImmutableArray.CreateBuilder<ReflectedImplementationRegistrationSpec>(handlerInterfaces.Length);
         var preciseReflectedRegistrations =
             ImmutableArray.CreateBuilder<PreciseReflectedRegistrationSpec>(handlerInterfaces.Length);
+        var requiresRuntimeInterfaceDiscovery = false;
         foreach (var handlerInterface in handlerInterfaces)
         {
-            var canReferenceHandlerInterface = CanReferenceFromGeneratedRegistry(handlerInterface);
+            var canReferenceHandlerInterface =
+                CanReferenceFromGeneratedRegistry(context.SemanticModel.Compilation, handlerInterface);
             if (canReferenceImplementation && canReferenceHandlerInterface)
             {
                 registrations.Add(new HandlerRegistrationSpec(
@@ -122,16 +124,10 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
                 continue;
             }
 
-            // Some closed handler interfaces still contain runtime-only type shapes such as arrays closed over
-            // non-public element types. For those rare cases keep the narrow implementation lookup, but let the
-            // generated registry discover the exact supported interfaces from the implementation type at runtime.
-            return new HandlerCandidateAnalysis(
-                implementationTypeDisplayName,
-                implementationLogName,
-                ImmutableArray<HandlerRegistrationSpec>.Empty,
-                ImmutableArray<ReflectedImplementationRegistrationSpec>.Empty,
-                ImmutableArray<PreciseReflectedRegistrationSpec>.Empty,
-                GetReflectionTypeMetadataName(type));
+            // 某些关闭 handler interface 仍包含只能在实现类型运行时语义里解析的类型形态。
+            // 对这些边角场景保留“已知接口静态注册 + 剩余接口运行时补洞”的组合路径，
+            // 避免单个未知接口把同实现上的其它已知注册全部拖回整实现反射发现。
+            requiresRuntimeInterfaceDiscovery = true;
         }
 
         return new HandlerCandidateAnalysis(
@@ -140,7 +136,8 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
             registrations.ToImmutable(),
             reflectedImplementationRegistrations.ToImmutable(),
             preciseReflectedRegistrations.ToImmutable(),
-            canReferenceImplementation ? null : GetReflectionTypeMetadataName(type));
+            canReferenceImplementation ? null : GetReflectionTypeMetadataName(type),
+            requiresRuntimeInterfaceDiscovery);
     }
 
     private static void Execute(SourceProductionContext context, GenerationEnvironment generationEnvironment,
@@ -184,7 +181,8 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
                 candidate.Registrations,
                 candidate.ReflectedImplementationRegistrations,
                 candidate.PreciseReflectedRegistrations,
-                candidate.ReflectionTypeMetadataName));
+                candidate.ReflectionTypeMetadataName,
+                candidate.RequiresRuntimeInterfaceDiscovery));
         }
 
         registrations.Sort(static (left, right) =>
@@ -295,7 +293,7 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         ITypeSymbol type,
         out RuntimeTypeReferenceSpec? runtimeTypeReference)
     {
-        if (CanReferenceFromGeneratedRegistry(type))
+        if (CanReferenceFromGeneratedRegistry(compilation, type))
         {
             runtimeTypeReference = RuntimeTypeReferenceSpec.FromDirectReference(
                 type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
@@ -369,7 +367,7 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         out RuntimeTypeReferenceSpec? genericTypeDefinitionReference)
     {
         var genericTypeDefinition = genericNamedType.OriginalDefinition;
-        if (CanReferenceFromGeneratedRegistry(genericTypeDefinition))
+        if (CanReferenceFromGeneratedRegistry(compilation, genericTypeDefinition))
         {
             genericTypeDefinitionReference = RuntimeTypeReferenceSpec.FromDirectReference(
                 genericTypeDefinition
@@ -389,41 +387,32 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         return false;
     }
 
-    private static bool CanReferenceFromGeneratedRegistry(ITypeSymbol type)
+    private static bool CanReferenceFromGeneratedRegistry(Compilation compilation, ITypeSymbol type)
     {
         switch (type)
         {
             case IArrayTypeSymbol arrayType:
-                return CanReferenceFromGeneratedRegistry(arrayType.ElementType);
+                return CanReferenceFromGeneratedRegistry(compilation, arrayType.ElementType);
             case INamedTypeSymbol namedType:
-                if (!IsTypeChainAccessible(namedType))
+                if (!compilation.IsSymbolAccessibleWithin(namedType, compilation.Assembly, throughType: null))
                     return false;
 
-                return namedType.TypeArguments.All(CanReferenceFromGeneratedRegistry);
+                foreach (var typeArgument in namedType.TypeArguments)
+                {
+                    if (!CanReferenceFromGeneratedRegistry(compilation, typeArgument))
+                        return false;
+                }
+
+                return true;
             case IPointerTypeSymbol pointerType:
-                return CanReferenceFromGeneratedRegistry(pointerType.PointedAtType);
+                return CanReferenceFromGeneratedRegistry(compilation, pointerType.PointedAtType);
             case ITypeParameterSymbol:
                 return false;
             default:
+                // Treat other Roslyn type kinds, such as dynamic or unresolved error types, as referenceable for now.
+                // If a real-world case proves unsafe, tighten this branch instead of broadening the named-type path above.
                 return true;
         }
-    }
-
-    private static bool IsTypeChainAccessible(INamedTypeSymbol type)
-    {
-        for (var current = type; current is not null; current = current.ContainingType)
-        {
-            if (!IsSymbolAccessible(current))
-                return false;
-        }
-
-        return true;
-    }
-
-    private static bool IsSymbolAccessible(ISymbol symbol)
-    {
-        return symbol.DeclaredAccessibility is Accessibility.Public or Accessibility.Internal
-            or Accessibility.ProtectedOrInternal;
     }
 
     private static string GetFullyQualifiedMetadataName(INamedTypeSymbol type)
@@ -496,10 +485,8 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
             !registration.ReflectedImplementationRegistrations.IsDefaultOrEmpty);
         var hasPreciseReflectedRegistrations = registrations.Any(static registration =>
             !registration.PreciseReflectedRegistrations.IsDefaultOrEmpty);
-        var hasFullReflectionRegistrations = registrations.Any(static registration =>
-            !string.IsNullOrWhiteSpace(registration.ReflectionTypeMetadataName) &&
-            registration.ReflectedImplementationRegistrations.IsDefaultOrEmpty &&
-            registration.PreciseReflectedRegistrations.IsDefaultOrEmpty);
+        var hasRuntimeInterfaceDiscovery = registrations.Any(static registration =>
+            registration.RequiresRuntimeInterfaceDiscovery);
         var builder = new StringBuilder();
         builder.AppendLine("// <auto-generated />");
         builder.AppendLine("#nullable enable");
@@ -533,7 +520,8 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         builder.AppendLine("        if (logger is null)");
         builder.AppendLine("            throw new global::System.ArgumentNullException(nameof(logger));");
         if (hasReflectedImplementationRegistrations || hasPreciseReflectedRegistrations ||
-            hasFullReflectionRegistrations)
+            registrations.Any(static registration =>
+                !string.IsNullOrWhiteSpace(registration.ReflectionTypeMetadataName)))
         {
             builder.AppendLine();
             builder.Append("        var registryAssembly = typeof(global::");
@@ -549,46 +537,21 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         for (var registrationIndex = 0; registrationIndex < registrations.Count; registrationIndex++)
         {
             var registration = registrations[registrationIndex];
-            if (!registration.ReflectedImplementationRegistrations.IsDefaultOrEmpty)
+            if (!registration.ReflectedImplementationRegistrations.IsDefaultOrEmpty ||
+                !registration.PreciseReflectedRegistrations.IsDefaultOrEmpty ||
+                registration.RequiresRuntimeInterfaceDiscovery)
             {
-                AppendReflectedImplementationRegistrations(builder, registration, registrationIndex);
-                continue;
+                AppendOrderedImplementationRegistrations(builder, registration, registrationIndex);
             }
-
-            if (!registration.PreciseReflectedRegistrations.IsDefaultOrEmpty)
+            else if (!registration.DirectRegistrations.IsDefaultOrEmpty)
             {
-                AppendPreciseReflectedRegistrations(builder, registration, registrationIndex);
-                continue;
-            }
-
-            if (!string.IsNullOrWhiteSpace(registration.ReflectionTypeMetadataName))
-            {
-                AppendReflectionRegistration(builder, registration.ReflectionTypeMetadataName!);
-                continue;
-            }
-
-            foreach (var directRegistration in registration.DirectRegistrations)
-            {
-                builder.AppendLine(
-                    "        global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(");
-                builder.AppendLine("            services,");
-                builder.Append("            typeof(");
-                builder.Append(directRegistration.HandlerInterfaceDisplayName);
-                builder.AppendLine("),");
-                builder.Append("            typeof(");
-                builder.Append(directRegistration.ImplementationTypeDisplayName);
-                builder.AppendLine("));");
-                builder.Append("        logger.Debug(\"Registered CQRS handler ");
-                builder.Append(EscapeStringLiteral(directRegistration.ImplementationLogName));
-                builder.Append(" as ");
-                builder.Append(EscapeStringLiteral(directRegistration.HandlerInterfaceLogName));
-                builder.AppendLine(".\");");
+                AppendDirectRegistrations(builder, registration);
             }
         }
 
         builder.AppendLine("    }");
 
-        if (hasFullReflectionRegistrations)
+        if (hasRuntimeInterfaceDiscovery)
         {
             builder.AppendLine();
             AppendReflectionHelpers(builder);
@@ -598,56 +561,73 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         return builder.ToString();
     }
 
-    private static void AppendReflectionRegistration(StringBuilder builder, string reflectionTypeMetadataName)
-    {
-        builder.Append("        RegisterReflectedHandler(services, logger, registryAssembly, \"");
-        builder.Append(EscapeStringLiteral(reflectionTypeMetadataName));
-        builder.AppendLine("\");");
-    }
-
-    private static void AppendReflectedImplementationRegistrations(
+    private static void AppendDirectRegistrations(
         StringBuilder builder,
-        ImplementationRegistrationSpec registration,
-        int registrationIndex)
+        ImplementationRegistrationSpec registration)
     {
-        var implementationVariableName = $"implementationType{registrationIndex}";
-        builder.Append("        var ");
-        builder.Append(implementationVariableName);
-        builder.Append(" = registryAssembly.GetType(\"");
-        builder.Append(EscapeStringLiteral(registration.ReflectionTypeMetadataName!));
-        builder.AppendLine("\", throwOnError: false, ignoreCase: false);");
-        builder.Append("        if (");
-        builder.Append(implementationVariableName);
-        builder.AppendLine(" is not null)");
-        builder.AppendLine("        {");
-
-        foreach (var reflectedRegistration in registration.ReflectedImplementationRegistrations)
+        foreach (var directRegistration in registration.DirectRegistrations)
         {
             builder.AppendLine(
-                "            global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(");
-            builder.AppendLine("                services,");
-            builder.Append("                typeof(");
-            builder.Append(reflectedRegistration.HandlerInterfaceDisplayName);
+                "        global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(");
+            builder.AppendLine("            services,");
+            builder.Append("            typeof(");
+            builder.Append(directRegistration.HandlerInterfaceDisplayName);
             builder.AppendLine("),");
-            builder.Append("                ");
-            builder.Append(implementationVariableName);
-            builder.AppendLine(");");
-            builder.Append("            logger.Debug(\"Registered CQRS handler ");
-            builder.Append(EscapeStringLiteral(registration.ImplementationLogName));
+            builder.Append("            typeof(");
+            builder.Append(directRegistration.ImplementationTypeDisplayName);
+            builder.AppendLine("));");
+            builder.Append("        logger.Debug(\"Registered CQRS handler ");
+            builder.Append(EscapeStringLiteral(directRegistration.ImplementationLogName));
             builder.Append(" as ");
-            builder.Append(EscapeStringLiteral(reflectedRegistration.HandlerInterfaceLogName));
+            builder.Append(EscapeStringLiteral(directRegistration.HandlerInterfaceLogName));
             builder.AppendLine(".\");");
         }
-
-        builder.AppendLine("        }");
     }
 
-    private static void AppendPreciseReflectedRegistrations(
+    private static void AppendOrderedImplementationRegistrations(
         StringBuilder builder,
         ImplementationRegistrationSpec registration,
         int registrationIndex)
     {
+        var orderedRegistrations =
+            new List<(string HandlerInterfaceLogName, OrderedRegistrationKind Kind, int Index)>(
+                registration.DirectRegistrations.Length +
+                registration.ReflectedImplementationRegistrations.Length +
+                registration.PreciseReflectedRegistrations.Length);
+
+        for (var directIndex = 0; directIndex < registration.DirectRegistrations.Length; directIndex++)
+        {
+            orderedRegistrations.Add((
+                registration.DirectRegistrations[directIndex].HandlerInterfaceLogName,
+                OrderedRegistrationKind.Direct,
+                directIndex));
+        }
+
+        for (var reflectedIndex = 0;
+             reflectedIndex < registration.ReflectedImplementationRegistrations.Length;
+             reflectedIndex++)
+        {
+            orderedRegistrations.Add((
+                registration.ReflectedImplementationRegistrations[reflectedIndex].HandlerInterfaceLogName,
+                OrderedRegistrationKind.ReflectedImplementation,
+                reflectedIndex));
+        }
+
+        for (var preciseIndex = 0;
+             preciseIndex < registration.PreciseReflectedRegistrations.Length;
+             preciseIndex++)
+        {
+            orderedRegistrations.Add((
+                registration.PreciseReflectedRegistrations[preciseIndex].HandlerInterfaceLogName,
+                OrderedRegistrationKind.PreciseReflected,
+                preciseIndex));
+        }
+
+        orderedRegistrations.Sort(static (left, right) =>
+            StringComparer.Ordinal.Compare(left.HandlerInterfaceLogName, right.HandlerInterfaceLogName));
+
         var implementationVariableName = $"implementationType{registrationIndex}";
+        var knownServiceTypesVariableName = $"knownServiceTypes{registrationIndex}";
         if (string.IsNullOrWhiteSpace(registration.ReflectionTypeMetadataName))
         {
             builder.Append("        var ");
@@ -658,11 +638,10 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         }
         else
         {
-            var implementationReflectionTypeMetadataName = registration.ReflectionTypeMetadataName!;
             builder.Append("        var ");
             builder.Append(implementationVariableName);
             builder.Append(" = registryAssembly.GetType(\"");
-            builder.Append(EscapeStringLiteral(implementationReflectionTypeMetadataName));
+            builder.Append(EscapeStringLiteral(registration.ReflectionTypeMetadataName!));
             builder.AppendLine("\", throwOnError: false, ignoreCase: false);");
         }
 
@@ -671,21 +650,98 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         builder.AppendLine(" is not null)");
         builder.AppendLine("        {");
 
-        for (var registrationOffset = 0;
-             registrationOffset < registration.PreciseReflectedRegistrations.Length;
-             registrationOffset++)
+        if (registration.RequiresRuntimeInterfaceDiscovery)
         {
-            var reflectedRegistration = registration.PreciseReflectedRegistrations[registrationOffset];
-            var registrationVariablePrefix = $"serviceType{registrationIndex}_{registrationOffset}";
-            AppendPreciseReflectedTypeResolution(
-                builder,
-                reflectedRegistration.ServiceTypeArguments,
-                registrationVariablePrefix,
-                implementationVariableName,
-                reflectedRegistration.OpenHandlerTypeDisplayName,
-                registration.ImplementationLogName,
-                reflectedRegistration.HandlerInterfaceLogName,
-                3);
+            builder.Append("            var ");
+            builder.Append(knownServiceTypesVariableName);
+            builder.AppendLine(" = new global::System.Collections.Generic.HashSet<global::System.Type>();");
+        }
+
+        foreach (var orderedRegistration in orderedRegistrations)
+        {
+            switch (orderedRegistration.Kind)
+            {
+                case OrderedRegistrationKind.Direct:
+                    var directRegistration = registration.DirectRegistrations[orderedRegistration.Index];
+                    if (registration.RequiresRuntimeInterfaceDiscovery)
+                    {
+                        builder.Append("            ");
+                        builder.Append(knownServiceTypesVariableName);
+                        builder.Append(".Add(typeof(");
+                        builder.Append(directRegistration.HandlerInterfaceDisplayName);
+                        builder.AppendLine("));");
+                    }
+
+                    builder.AppendLine(
+                        "            global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(");
+                    builder.AppendLine("                services,");
+                    builder.Append("                typeof(");
+                    builder.Append(directRegistration.HandlerInterfaceDisplayName);
+                    builder.AppendLine("),");
+                    builder.Append("                ");
+                    builder.Append(implementationVariableName);
+                    builder.AppendLine(");");
+                    builder.Append("            logger.Debug(\"Registered CQRS handler ");
+                    builder.Append(EscapeStringLiteral(registration.ImplementationLogName));
+                    builder.Append(" as ");
+                    builder.Append(EscapeStringLiteral(directRegistration.HandlerInterfaceLogName));
+                    builder.AppendLine(".\");");
+                    break;
+                case OrderedRegistrationKind.ReflectedImplementation:
+                    var reflectedRegistration =
+                        registration.ReflectedImplementationRegistrations[orderedRegistration.Index];
+                    if (registration.RequiresRuntimeInterfaceDiscovery)
+                    {
+                        builder.Append("            ");
+                        builder.Append(knownServiceTypesVariableName);
+                        builder.Append(".Add(typeof(");
+                        builder.Append(reflectedRegistration.HandlerInterfaceDisplayName);
+                        builder.AppendLine("));");
+                    }
+
+                    builder.AppendLine(
+                        "            global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(");
+                    builder.AppendLine("                services,");
+                    builder.Append("                typeof(");
+                    builder.Append(reflectedRegistration.HandlerInterfaceDisplayName);
+                    builder.AppendLine("),");
+                    builder.Append("                ");
+                    builder.Append(implementationVariableName);
+                    builder.AppendLine(");");
+                    builder.Append("            logger.Debug(\"Registered CQRS handler ");
+                    builder.Append(EscapeStringLiteral(registration.ImplementationLogName));
+                    builder.Append(" as ");
+                    builder.Append(EscapeStringLiteral(reflectedRegistration.HandlerInterfaceLogName));
+                    builder.AppendLine(".\");");
+                    break;
+                case OrderedRegistrationKind.PreciseReflected:
+                    var preciseRegistration = registration.PreciseReflectedRegistrations[orderedRegistration.Index];
+                    var registrationVariablePrefix = $"serviceType{registrationIndex}_{orderedRegistration.Index}";
+                    AppendPreciseReflectedTypeResolution(
+                        builder,
+                        preciseRegistration.ServiceTypeArguments,
+                        registrationVariablePrefix,
+                        implementationVariableName,
+                        preciseRegistration.OpenHandlerTypeDisplayName,
+                        registration.ImplementationLogName,
+                        preciseRegistration.HandlerInterfaceLogName,
+                        knownServiceTypesVariableName,
+                        registration.RequiresRuntimeInterfaceDiscovery,
+                        3);
+                    break;
+                default:
+                    throw new InvalidOperationException(
+                        $"Unsupported ordered CQRS registration kind {orderedRegistration.Kind}.");
+            }
+        }
+
+        if (registration.RequiresRuntimeInterfaceDiscovery)
+        {
+            builder.Append("            RegisterRemainingReflectedHandlerInterfaces(services, logger, ");
+            builder.Append(implementationVariableName);
+            builder.Append(", ");
+            builder.Append(knownServiceTypesVariableName);
+            builder.AppendLine(");");
         }
 
         builder.AppendLine("        }");
@@ -699,6 +755,8 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         string openHandlerTypeDisplayName,
         string implementationLogName,
         string handlerInterfaceLogName,
+        string knownServiceTypesVariableName,
+        bool trackKnownServiceTypes,
         int indentLevel)
     {
         var indent = new string(' ', indentLevel * 4);
@@ -763,6 +821,15 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         builder.Append("    ");
         builder.Append(implementationVariableName);
         builder.AppendLine(");");
+        if (trackKnownServiceTypes)
+        {
+            builder.Append(indent);
+            builder.Append(knownServiceTypesVariableName);
+            builder.Append(".Add(");
+            builder.Append(registrationVariablePrefix);
+            builder.AppendLine(");");
+        }
+
         builder.Append(indent);
         builder.Append("logger.Debug(\"Registered CQRS handler ");
         builder.Append(EscapeStringLiteral(implementationLogName));
@@ -839,21 +906,20 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
 
     private static void AppendReflectionHelpers(StringBuilder builder)
     {
-        // Emit the runtime helper methods only when at least one handler requires metadata-name lookup.
+        // Emit the runtime helper methods only when at least one handler still needs implementation-scoped
+        // interface discovery after all direct / precise registrations have been emitted.
         builder.AppendLine(
-            "    private static void RegisterReflectedHandler(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services, global::GFramework.Core.Abstractions.Logging.ILogger logger, global::System.Reflection.Assembly registryAssembly, string implementationTypeMetadataName)");
+            "    private static void RegisterRemainingReflectedHandlerInterfaces(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services, global::GFramework.Core.Abstractions.Logging.ILogger logger, global::System.Type implementationType, global::System.Collections.Generic.ISet<global::System.Type> knownServiceTypes)");
         builder.AppendLine("    {");
-        builder.AppendLine(
-            "        var implementationType = registryAssembly.GetType(implementationTypeMetadataName, throwOnError: false, ignoreCase: false);");
-        builder.AppendLine("        if (implementationType is null)");
-        builder.AppendLine("            return;");
-        builder.AppendLine();
         builder.AppendLine("        var handlerInterfaces = implementationType.GetInterfaces();");
         builder.AppendLine("        global::System.Array.Sort(handlerInterfaces, CompareTypes);");
         builder.AppendLine();
         builder.AppendLine("        foreach (var handlerInterface in handlerInterfaces)");
         builder.AppendLine("        {");
         builder.AppendLine("            if (!IsSupportedHandlerInterface(handlerInterface))");
+        builder.AppendLine("                continue;");
+        builder.AppendLine();
+        builder.AppendLine("            if (knownServiceTypes.Contains(handlerInterface))");
         builder.AppendLine("                continue;");
         builder.AppendLine();
         builder.AppendLine(
@@ -863,6 +929,7 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         builder.AppendLine("                implementationType);");
         builder.AppendLine(
             "            logger.Debug($\"Registered CQRS handler {GetRuntimeTypeDisplayName(implementationType)} as {GetRuntimeTypeDisplayName(handlerInterface)}.\");");
+        builder.AppendLine("            knownServiceTypes.Add(handlerInterface);");
         builder.AppendLine("        }");
         builder.AppendLine("    }");
         builder.AppendLine();
@@ -969,6 +1036,13 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         string HandlerInterfaceDisplayName,
         string HandlerInterfaceLogName);
 
+    private enum OrderedRegistrationKind
+    {
+        Direct,
+        ReflectedImplementation,
+        PreciseReflected
+    }
+
     private sealed record RuntimeTypeReferenceSpec(
         string? TypeDisplayName,
         string? ReflectionTypeMetadataName,
@@ -1015,7 +1089,8 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         ImmutableArray<HandlerRegistrationSpec> DirectRegistrations,
         ImmutableArray<ReflectedImplementationRegistrationSpec> ReflectedImplementationRegistrations,
         ImmutableArray<PreciseReflectedRegistrationSpec> PreciseReflectedRegistrations,
-        string? ReflectionTypeMetadataName);
+        string? ReflectionTypeMetadataName,
+        bool RequiresRuntimeInterfaceDiscovery);
 
     private readonly struct HandlerCandidateAnalysis : IEquatable<HandlerCandidateAnalysis>
     {
@@ -1025,7 +1100,8 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
             ImmutableArray<HandlerRegistrationSpec> registrations,
             ImmutableArray<ReflectedImplementationRegistrationSpec> reflectedImplementationRegistrations,
             ImmutableArray<PreciseReflectedRegistrationSpec> preciseReflectedRegistrations,
-            string? reflectionTypeMetadataName)
+            string? reflectionTypeMetadataName,
+            bool requiresRuntimeInterfaceDiscovery)
         {
             ImplementationTypeDisplayName = implementationTypeDisplayName;
             ImplementationLogName = implementationLogName;
@@ -1033,6 +1109,7 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
             ReflectedImplementationRegistrations = reflectedImplementationRegistrations;
             PreciseReflectedRegistrations = preciseReflectedRegistrations;
             ReflectionTypeMetadataName = reflectionTypeMetadataName;
+            RequiresRuntimeInterfaceDiscovery = requiresRuntimeInterfaceDiscovery;
         }
 
         public string ImplementationTypeDisplayName { get; }
@@ -1047,6 +1124,8 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
 
         public string? ReflectionTypeMetadataName { get; }
 
+        public bool RequiresRuntimeInterfaceDiscovery { get; }
+
         public bool Equals(HandlerCandidateAnalysis other)
         {
             if (!string.Equals(ImplementationTypeDisplayName, other.ImplementationTypeDisplayName,
@@ -1054,6 +1133,7 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
                 !string.Equals(ImplementationLogName, other.ImplementationLogName, StringComparison.Ordinal) ||
                 !string.Equals(ReflectionTypeMetadataName, other.ReflectionTypeMetadataName,
                     StringComparison.Ordinal) ||
+                RequiresRuntimeInterfaceDiscovery != other.RequiresRuntimeInterfaceDiscovery ||
                 Registrations.Length != other.Registrations.Length ||
                 ReflectedImplementationRegistrations.Length != other.ReflectedImplementationRegistrations.Length ||
                 PreciseReflectedRegistrations.Length != other.PreciseReflectedRegistrations.Length)
@@ -1098,6 +1178,7 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
                            (ReflectionTypeMetadataName is null
                                ? 0
                                : StringComparer.Ordinal.GetHashCode(ReflectionTypeMetadataName));
+                hashCode = (hashCode * 397) ^ RequiresRuntimeInterfaceDiscovery.GetHashCode();
                 foreach (var registration in Registrations)
                 {
                     hashCode = (hashCode * 397) ^ registration.GetHashCode();
