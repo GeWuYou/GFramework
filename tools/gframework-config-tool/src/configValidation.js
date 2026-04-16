@@ -374,25 +374,6 @@ function parseBatchArrayValue(value) {
 }
 
 /**
- * Normalize a schema enum array into string values that can be shown in UI
- * hints and compared against parsed YAML scalar content.
- *
- * @param {unknown} value Raw schema enum value.
- * @returns {string[] | undefined} Normalized enum values.
- */
-function normalizeSchemaEnumValues(value) {
-    if (!Array.isArray(value)) {
-        return undefined;
-    }
-
-    const normalized = value
-        .filter((item) => ["string", "number", "boolean"].includes(typeof item))
-        .map((item) => String(item));
-
-    return normalized.length > 0 ? normalized : undefined;
-}
-
-/**
  * Normalize one finite schema number for tooling metadata and comparisons.
  *
  * @param {unknown} value Raw schema value.
@@ -595,6 +576,47 @@ function applyConstMetadata(schemaNode, rawConst, displayPath) {
         constValue: formatSchemaConstEditableValue(schemaNode, rawConst),
         constDisplayValue: formatSchemaConstDisplayValue(rawConst),
         constComparableValue: buildSchemaConstComparableValue(schemaNode, rawConst, displayPath)
+    };
+}
+
+/**
+ * Attach parsed enum metadata to one schema node.
+ *
+ * @param {SchemaNode} schemaNode Parsed schema node.
+ * @param {unknown} rawEnum Raw schema enum value.
+ * @param {string} displayPath Logical property path.
+ * @returns {SchemaNode} Schema node with optional enum metadata.
+ */
+function applyEnumMetadata(schemaNode, rawEnum, displayPath) {
+    if (!Array.isArray(rawEnum)) {
+        return schemaNode;
+    }
+
+    const enumComparableValues = [];
+    const enumDisplayValues = [];
+    const enumValues = [];
+
+    for (const item of rawEnum) {
+        enumComparableValues.push(buildSchemaConstComparableValue(schemaNode, item, displayPath));
+
+        const displayValue = formatSchemaConstDisplayValue(item);
+        if (displayValue !== undefined) {
+            enumDisplayValues.push(displayValue);
+        }
+
+        if (schemaNode.type !== "object" && schemaNode.type !== "array") {
+            const editableValue = formatSchemaConstEditableValue(schemaNode, item);
+            if (editableValue !== undefined) {
+                enumValues.push(editableValue);
+            }
+        }
+    }
+
+    return {
+        ...schemaNode,
+        enumValues: enumValues.length > 0 ? enumValues : undefined,
+        enumDisplayValues: enumDisplayValues.length > 0 ? enumDisplayValues : undefined,
+        enumComparableValues: enumComparableValues.length > 0 ? enumComparableValues : undefined
     };
 }
 
@@ -1107,7 +1129,7 @@ function parseSchemaNode(rawNode, displayPath) {
             properties[key] = parseSchemaNode(propertyNode, joinPropertyPath(displayPath, key));
         }
 
-        return applyConstMetadata({
+        return applyEnumMetadata(applyConstMetadata({
             type: "object",
             displayPath,
             required,
@@ -1118,7 +1140,7 @@ function parseSchemaNode(rawNode, displayPath) {
             description: metadata.description,
             defaultValue: metadata.defaultValue,
             not: negatedSchemaNode
-        }, value.const, displayPath);
+        }, value.const, displayPath), value.enum, displayPath);
     }
 
     if (type === "array") {
@@ -1144,7 +1166,7 @@ function parseSchemaNode(rawNode, displayPath) {
             throw new Error(`Schema property '${displayPath}' declares 'minContains' greater than 'maxContains'.`);
         }
 
-        return applyConstMetadata({
+        return applyEnumMetadata(applyConstMetadata({
             type: "array",
             displayPath,
             title: metadata.title,
@@ -1163,10 +1185,10 @@ function parseSchemaNode(rawNode, displayPath) {
             contains: containsNode,
             items: itemNode,
             not: negatedSchemaNode
-        }, value.const, displayPath);
+        }, value.const, displayPath), value.enum, displayPath);
     }
 
-    return applyConstMetadata({
+    return applyEnumMetadata(applyConstMetadata({
         type,
         displayPath,
         title: metadata.title,
@@ -1202,10 +1224,9 @@ function parseSchemaNode(rawNode, displayPath) {
         format: type === "string"
             ? metadata.format
             : undefined,
-        enumValues: normalizeSchemaEnumValues(value.enum),
         refTable: metadata.refTable,
         not: negatedSchemaNode
-    }, value.const, displayPath);
+    }, value.const, displayPath), value.enum, displayPath);
 }
 
 /**
@@ -1353,6 +1374,7 @@ function validateNode(schemaNode, yamlNode, displayPath, diagnostics, localizer)
             }
         }
 
+        validateEnumComparableValue(schemaNode, yamlNode, displayPath, diagnostics, localizer);
         validateConstComparableValue(schemaNode, yamlNode, displayPath, diagnostics, localizer);
         validateNotSchemaMatch(schemaNode, yamlNode, displayPath, diagnostics, localizer);
 
@@ -1382,17 +1404,7 @@ function validateNode(schemaNode, yamlNode, displayPath, diagnostics, localizer)
         return;
     }
 
-    if (Array.isArray(schemaNode.enumValues) &&
-        schemaNode.enumValues.length > 0 &&
-        !schemaNode.enumValues.includes(unquoteScalar(yamlNode.value))) {
-        diagnostics.push({
-            severity: "error",
-            message: localizeValidationMessage(ValidationMessageKeys.enumMismatch, localizer, {
-                displayPath,
-                values: schemaNode.enumValues.join(", ")
-            })
-        });
-    }
+    validateEnumComparableValue(schemaNode, yamlNode, displayPath, diagnostics, localizer);
 
     const scalarValue = unquoteScalar(yamlNode.value);
     const supportsNumericConstraints = schemaNode.type === "integer" || schemaNode.type === "number";
@@ -1586,6 +1598,7 @@ function validateObjectNode(schemaNode, yamlNode, displayPath, diagnostics, loca
         });
     }
 
+    validateEnumComparableValue(schemaNode, yamlNode, displayPath, diagnostics, localizer);
     validateConstComparableValue(schemaNode, yamlNode, displayPath, diagnostics, localizer);
     validateNotSchemaMatch(schemaNode, yamlNode, displayPath, diagnostics, localizer);
 }
@@ -1660,6 +1673,12 @@ function matchesSchemaNodeInternal(schemaNode, yamlNode, allowUnknownObjectPrope
             return false;
         }
 
+        if (Array.isArray(schemaNode.enumComparableValues) &&
+            schemaNode.enumComparableValues.length > 0 &&
+            !schemaNode.enumComparableValues.includes(buildComparableNodeValue(schemaNode, yamlNode))) {
+            return false;
+        }
+
         if (typeof schemaNode.constComparableValue === "string" &&
             buildComparableNodeValue(schemaNode, yamlNode) !== schemaNode.constComparableValue) {
             return false;
@@ -1722,6 +1741,12 @@ function matchesSchemaNodeInternal(schemaNode, yamlNode, allowUnknownObjectPrope
             }
         }
 
+        if (Array.isArray(schemaNode.enumComparableValues) &&
+            schemaNode.enumComparableValues.length > 0 &&
+            !schemaNode.enumComparableValues.includes(buildComparableNodeValue(schemaNode, yamlNode))) {
+            return false;
+        }
+
         if (typeof schemaNode.constComparableValue === "string" &&
             buildComparableNodeValue(schemaNode, yamlNode) !== schemaNode.constComparableValue) {
             return false;
@@ -1738,9 +1763,9 @@ function matchesSchemaNodeInternal(schemaNode, yamlNode, allowUnknownObjectPrope
         return false;
     }
 
-    if (Array.isArray(schemaNode.enumValues) &&
-        schemaNode.enumValues.length > 0 &&
-        !schemaNode.enumValues.includes(unquoteScalar(yamlNode.value))) {
+    if (Array.isArray(schemaNode.enumComparableValues) &&
+        schemaNode.enumComparableValues.length > 0 &&
+        !schemaNode.enumComparableValues.includes(buildComparableNodeValue(schemaNode, yamlNode))) {
         return false;
     }
 
@@ -1884,6 +1909,39 @@ function isStructurallyCompatibleWithSchemaNode(schemaNode, yamlNode) {
     return Boolean(yamlNode) &&
         yamlNode.kind === "scalar" &&
         isScalarCompatible(schemaNode.type, yamlNode.value);
+}
+
+/**
+ * Validate one parsed YAML node against one normalized enum comparable set.
+ *
+ * @param {SchemaNode} schemaNode Schema node.
+ * @param {YamlNode} yamlNode YAML node.
+ * @param {string} displayPath Current logical path.
+ * @param {Array<{severity: "error" | "warning", message: string}>} diagnostics Diagnostic sink.
+ * @param {{isChinese?: boolean} | undefined} localizer Optional runtime localizer.
+ */
+function validateEnumComparableValue(schemaNode, yamlNode, displayPath, diagnostics, localizer) {
+    if (!Array.isArray(schemaNode.enumComparableValues) || schemaNode.enumComparableValues.length === 0) {
+        return;
+    }
+
+    const comparableValue = buildComparableNodeValue(schemaNode, yamlNode);
+    if (schemaNode.enumComparableValues.includes(comparableValue)) {
+        return;
+    }
+
+    const displayValues = Array.isArray(schemaNode.enumDisplayValues) && schemaNode.enumDisplayValues.length > 0
+        ? schemaNode.enumDisplayValues
+        : Array.isArray(schemaNode.enumValues)
+            ? schemaNode.enumValues
+            : [];
+    diagnostics.push({
+        severity: "error",
+        message: localizeValidationMessage(ValidationMessageKeys.enumMismatch, localizer, {
+            displayPath,
+            values: displayValues.join(", ")
+        })
+    });
 }
 
 /**
@@ -2804,6 +2862,8 @@ module.exports = {
  *   title?: string,
  *   description?: string,
  *   defaultValue?: string,
+ *   enumDisplayValues?: string[],
+ *   enumComparableValues?: string[],
  *   constValue?: string,
  *   constDisplayValue?: string,
  *   constComparableValue?: string,
@@ -2814,6 +2874,8 @@ module.exports = {
  *   title?: string,
  *   description?: string,
  *   defaultValue?: string,
+ *   enumDisplayValues?: string[],
+ *   enumComparableValues?: string[],
  *   constValue?: string,
  *   constDisplayValue?: string,
  *   constComparableValue?: string,
@@ -2835,6 +2897,8 @@ module.exports = {
  *   constValue?: string,
  *   constDisplayValue?: string,
  *   constComparableValue?: string,
+ *   enumDisplayValues?: string[],
+ *   enumComparableValues?: string[],
  *   minimum?: number,
  *   exclusiveMinimum?: number,
  *   maximum?: number,

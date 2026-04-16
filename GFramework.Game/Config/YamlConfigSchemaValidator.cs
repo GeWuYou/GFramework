@@ -462,6 +462,8 @@ internal static class YamlConfigSchemaValidator
             requiredProperties,
             ParseObjectConstraints(tableName, schemaPath, propertyPath, element),
             schemaPath);
+        objectNode = objectNode.WithAllowedValues(
+            ParseEnumValues(tableName, schemaPath, propertyPath, element, objectNode, "enum"));
         return objectNode.WithConstantValue(
             ParseConstantValue(tableName, schemaPath, propertyPath, element, objectNode));
     }
@@ -525,8 +527,11 @@ internal static class YamlConfigSchemaValidator
 
         var arrayNode = YamlConfigSchemaNode.CreateArray(
             itemNode,
+            allowedValues: null,
             ParseArrayConstraints(tableName, schemaPath, propertyPath, element),
             schemaPath);
+        arrayNode = arrayNode.WithAllowedValues(
+            ParseEnumValues(tableName, schemaPath, propertyPath, element, arrayNode, "enum"));
         return arrayNode.WithConstantValue(
             ParseConstantValue(tableName, schemaPath, propertyPath, element, arrayNode));
     }
@@ -553,9 +558,11 @@ internal static class YamlConfigSchemaValidator
         var scalarNode = YamlConfigSchemaNode.CreateScalar(
             nodeType,
             referenceTableName,
-            ParseEnumValues(tableName, schemaPath, propertyPath, element, nodeType, "enum"),
+            allowedValues: null,
             ParseScalarConstraints(tableName, schemaPath, propertyPath, element, nodeType),
             schemaPath);
+        scalarNode = scalarNode.WithAllowedValues(
+            ParseEnumValues(tableName, schemaPath, propertyPath, element, scalarNode, "enum"));
         return scalarNode.WithConstantValue(
             ParseConstantValue(tableName, schemaPath, propertyPath, element, scalarNode));
     }
@@ -794,6 +801,7 @@ internal static class YamlConfigSchemaValidator
             ValidateObjectConstraints(tableName, yamlPath, displayPath, seenProperties.Count, schemaNode);
         }
 
+        ValidateAllowedValues(tableName, yamlPath, displayPath, mappingNode, schemaNode);
         ValidateConstantValue(tableName, yamlPath, displayPath, mappingNode, schemaNode);
         ValidateNegatedSchemaConstraint(tableName, yamlPath, displayPath, mappingNode, schemaNode);
     }
@@ -917,6 +925,7 @@ internal static class YamlConfigSchemaValidator
 
         ValidateArrayUniqueItemsConstraint(tableName, yamlPath, displayPath, sequenceNode, schemaNode);
         ValidateArrayContainsConstraints(tableName, yamlPath, displayPath, sequenceNode, schemaNode, references);
+        ValidateAllowedValues(tableName, yamlPath, displayPath, sequenceNode, schemaNode);
         ValidateConstantValue(tableName, yamlPath, displayPath, sequenceNode, schemaNode);
         ValidateNegatedSchemaConstraint(tableName, yamlPath, displayPath, sequenceNode, schemaNode);
     }
@@ -992,19 +1001,7 @@ internal static class YamlConfigSchemaValidator
         }
 
         var normalizedValue = NormalizeScalarValue(schemaNode.NodeType, value);
-        if (schemaNode.AllowedValues is { Count: > 0 } &&
-            !schemaNode.AllowedValues.Contains(normalizedValue, StringComparer.Ordinal))
-        {
-            throw ConfigLoadExceptionFactory.Create(
-                ConfigLoadFailureKind.EnumValueNotAllowed,
-                tableName,
-                $"Property '{displayPath}' in config file '{yamlPath}' must be one of [{string.Join(", ", schemaNode.AllowedValues)}], but the current YAML scalar value is '{value}'.",
-                yamlPath: yamlPath,
-                schemaPath: schemaNode.SchemaPathHint,
-                displayPath: GetDiagnosticPath(displayPath),
-                rawValue: value,
-                detail: $"Allowed values: {string.Join(", ", schemaNode.AllowedValues)}.");
-        }
+        ValidateAllowedValues(tableName, yamlPath, displayPath, scalarNode, schemaNode);
 
         if (schemaNode.Constraints is not null)
         {
@@ -1029,21 +1026,22 @@ internal static class YamlConfigSchemaValidator
     }
 
     /// <summary>
-    ///     解析 enum，并在读取阶段验证枚举值与字段类型的兼容性。
+    ///     解析 <c>enum</c>，并在读取阶段将每个候选值预归一化成与运行时 YAML 相同的稳定比较键。
+    ///     这样对象、数组和标量节点都可以复用同一套匹配逻辑，而不必在每次加载时重新解释 schema 字面量。
     /// </summary>
     /// <param name="tableName">所属配置表名称。</param>
     /// <param name="schemaPath">Schema 文件路径。</param>
     /// <param name="propertyPath">字段路径。</param>
     /// <param name="element">Schema 节点。</param>
-    /// <param name="expectedType">期望的标量类型。</param>
+    /// <param name="schemaNode">当前节点的已解析 schema 模型。</param>
     /// <param name="keywordName">当前读取的关键字名称。</param>
-    /// <returns>归一化后的枚举值集合；未声明时返回空。</returns>
-    private static IReadOnlyCollection<string>? ParseEnumValues(
+    /// <returns>归一化后的允许值集合；未声明时返回空。</returns>
+    private static IReadOnlyCollection<YamlConfigAllowedValue>? ParseEnumValues(
         string tableName,
         string schemaPath,
         string propertyPath,
         JsonElement element,
-        YamlConfigSchemaPropertyType expectedType,
+        YamlConfigSchemaNode schemaNode,
         string keywordName)
     {
         if (!element.TryGetProperty("enum", out var enumElement))
@@ -1061,14 +1059,27 @@ internal static class YamlConfigSchemaValidator
                 displayPath: GetDiagnosticPath(propertyPath));
         }
 
-        var allowedValues = new List<string>();
+        var allowedValues = new List<YamlConfigAllowedValue>();
         foreach (var item in enumElement.EnumerateArray())
         {
             allowedValues.Add(
-                NormalizeKeywordScalarValue(tableName, schemaPath, propertyPath, keywordName, expectedType, item));
+                new YamlConfigAllowedValue(
+                    BuildComparableConstantValue(tableName, schemaPath, propertyPath, keywordName, item, schemaNode),
+                    BuildEnumDisplayValue(item)));
         }
 
         return allowedValues;
+    }
+
+    /// <summary>
+    ///     读取一个 <c>enum</c> 候选值的展示文本。
+    ///     这里直接保留原始 JSON 字面量，避免字符串引号、对象字段顺序或数组结构在诊断中被二次格式化后丢失上下文。
+    /// </summary>
+    /// <param name="element">Schema 中的单个枚举值。</param>
+    /// <returns>适合放入诊断消息的展示文本。</returns>
+    private static string BuildEnumDisplayValue(JsonElement element)
+    {
+        return element.GetRawText();
     }
 
     /// <summary>
@@ -2082,6 +2093,50 @@ internal static class YamlConfigSchemaValidator
                     displayPath: GetDiagnosticPath(displayPath),
                     rawValue: schemaNode.NodeType.ToString());
         }
+    }
+
+    /// <summary>
+    ///     校验节点值是否命中声明的 <c>enum</c> 集合。
+    ///     该实现与 <c>const</c> 共享同一套可比较键，保证对象字段顺序、数组顺序和数值归一化语义稳定一致。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="yamlPath">YAML 文件路径。</param>
+    /// <param name="displayPath">字段路径；根节点时为空。</param>
+    /// <param name="node">当前 YAML 节点。</param>
+    /// <param name="schemaNode">对应的 schema 节点。</param>
+    private static void ValidateAllowedValues(
+        string tableName,
+        string yamlPath,
+        string displayPath,
+        YamlNode node,
+        YamlConfigSchemaNode schemaNode)
+    {
+        var allowedValues = schemaNode.AllowedValues;
+        if (allowedValues is null || allowedValues.Count == 0)
+        {
+            return;
+        }
+
+        var comparableValue = BuildComparableNodeValue(node, schemaNode);
+        if (allowedValues.Any(allowedValue =>
+                string.Equals(allowedValue.ComparableValue, comparableValue, StringComparison.Ordinal)))
+        {
+            return;
+        }
+
+        var subject = string.IsNullOrWhiteSpace(displayPath)
+            ? "Root object"
+            : $"Property '{displayPath}'";
+        var displayValues = string.Join(", ", allowedValues.Select(static allowedValue => allowedValue.DisplayValue));
+        throw ConfigLoadExceptionFactory.Create(
+            ConfigLoadFailureKind.EnumValueNotAllowed,
+            tableName,
+            $"{subject} in config file '{yamlPath}' must be one of [{displayValues}].",
+            yamlPath: yamlPath,
+            schemaPath: schemaNode.SchemaPathHint,
+            displayPath: GetDiagnosticPath(displayPath),
+            rawValue: DescribeYamlNodeForDiagnostics(node, schemaNode),
+            detail: $"Allowed values: {displayValues}.");
     }
 
     /// <summary>
@@ -3482,9 +3537,9 @@ internal sealed class YamlConfigSchemaNode
     public string? ReferenceTableName { get; }
 
     /// <summary>
-    ///     获取标量允许值集合；未声明 enum 时返回空。
+    ///     获取节点允许值集合；未声明 <c>enum</c> 时返回空。
     /// </summary>
-    public IReadOnlyCollection<string>? AllowedValues { get; }
+    public IReadOnlyCollection<YamlConfigAllowedValue>? AllowedValues { get; }
 
     /// <summary>
     ///     获取标量范围与长度约束；未声明时返回空。
@@ -3549,11 +3604,13 @@ internal sealed class YamlConfigSchemaNode
     ///     创建数组节点描述。
     /// </summary>
     /// <param name="itemNode">数组元素节点。</param>
+    /// <param name="allowedValues">数组节点允许值集合。</param>
     /// <param name="arrayConstraints">数组元素数量约束。</param>
     /// <param name="schemaPathHint">用于错误信息的 schema 文件路径提示。</param>
     /// <returns>数组节点模型。</returns>
     public static YamlConfigSchemaNode CreateArray(
         YamlConfigSchemaNode itemNode,
+        IReadOnlyCollection<YamlConfigAllowedValue>? allowedValues,
         YamlConfigArrayConstraints? arrayConstraints,
         string schemaPathHint)
     {
@@ -3562,7 +3619,7 @@ internal sealed class YamlConfigSchemaNode
             new NodeChildren(properties: null, requiredProperties: null, itemNode),
             new NodeValidation(
                 referenceTableName: null,
-                allowedValues: null,
+                allowedValues,
                 constraints: null,
                 arrayConstraints,
                 objectConstraints: null,
@@ -3583,7 +3640,7 @@ internal sealed class YamlConfigSchemaNode
     public static YamlConfigSchemaNode CreateScalar(
         YamlConfigSchemaPropertyType nodeType,
         string? referenceTableName,
-        IReadOnlyCollection<string>? allowedValues,
+        IReadOnlyCollection<YamlConfigAllowedValue>? allowedValues,
         YamlConfigScalarConstraints? constraints,
         string schemaPathHint)
     {
@@ -3613,6 +3670,20 @@ internal sealed class YamlConfigSchemaNode
             NodeType,
             _children,
             _validation.WithReferenceTable(referenceTableName),
+            SchemaPathHint);
+    }
+
+    /// <summary>
+    ///     基于当前节点复制一个只替换 <c>enum</c> 允许值集合的新节点。
+    /// </summary>
+    /// <param name="allowedValues">新的允许值集合。</param>
+    /// <returns>复制后的节点。</returns>
+    public YamlConfigSchemaNode WithAllowedValues(IReadOnlyCollection<YamlConfigAllowedValue>? allowedValues)
+    {
+        return new YamlConfigSchemaNode(
+            NodeType,
+            _children,
+            _validation.WithAllowedValues(allowedValues),
             SchemaPathHint);
     }
 
@@ -3669,7 +3740,7 @@ internal sealed class YamlConfigSchemaNode
     {
         public NodeValidation(
             string? referenceTableName,
-            IReadOnlyCollection<string>? allowedValues,
+            IReadOnlyCollection<YamlConfigAllowedValue>? allowedValues,
             YamlConfigScalarConstraints? constraints,
             YamlConfigArrayConstraints? arrayConstraints,
             YamlConfigObjectConstraints? objectConstraints,
@@ -3696,7 +3767,7 @@ internal sealed class YamlConfigSchemaNode
 
         public string? ReferenceTableName { get; }
 
-        public IReadOnlyCollection<string>? AllowedValues { get; }
+        public IReadOnlyCollection<YamlConfigAllowedValue>? AllowedValues { get; }
 
         public YamlConfigScalarConstraints? Constraints { get; }
 
@@ -3711,6 +3782,12 @@ internal sealed class YamlConfigSchemaNode
         public NodeValidation WithReferenceTable(string referenceTableName)
         {
             return new NodeValidation(referenceTableName, AllowedValues, Constraints, ArrayConstraints,
+                ObjectConstraints, ConstantValue, NegatedSchemaNode);
+        }
+
+        public NodeValidation WithAllowedValues(IReadOnlyCollection<YamlConfigAllowedValue>? allowedValues)
+        {
+            return new NodeValidation(ReferenceTableName, allowedValues, Constraints, ArrayConstraints,
                 ObjectConstraints, ConstantValue, NegatedSchemaNode);
         }
 
@@ -3755,6 +3832,37 @@ internal sealed class YamlConfigConstantValue
 
     /// <summary>
     ///     获取用于诊断输出的原始 JSON 常量文本。
+    /// </summary>
+    public string DisplayValue { get; }
+}
+
+/// <summary>
+///     表示一个节点上声明的单个 <c>enum</c> 候选值。
+///     该模型同时保留稳定比较键与原始 JSON 文本，分别供运行时匹配和诊断输出复用。
+/// </summary>
+internal sealed class YamlConfigAllowedValue
+{
+    /// <summary>
+    ///     初始化一个枚举候选值模型。
+    /// </summary>
+    /// <param name="comparableValue">用于与 YAML 节点比较的稳定键。</param>
+    /// <param name="displayValue">用于诊断输出的原始 JSON 文本。</param>
+    public YamlConfigAllowedValue(string comparableValue, string displayValue)
+    {
+        ArgumentNullException.ThrowIfNull(comparableValue);
+        ArgumentException.ThrowIfNullOrWhiteSpace(displayValue);
+
+        ComparableValue = comparableValue;
+        DisplayValue = displayValue;
+    }
+
+    /// <summary>
+    ///     获取用于运行时比较的稳定键。
+    /// </summary>
+    public string ComparableValue { get; }
+
+    /// <summary>
+    ///     获取用于诊断输出的原始 JSON 文本。
     /// </summary>
     public string DisplayValue { get; }
 }

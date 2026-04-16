@@ -12,7 +12,7 @@
 - JSON Schema 作为结构描述
 - 一对象一文件的目录组织
 - 运行时只读查询
-- Runtime / Generator / Tooling 共享支持 `const`、`not`、`minimum`、`maximum`、`exclusiveMinimum`、`exclusiveMaximum`、`multipleOf`、`minLength`、`maxLength`、`pattern`、`format`（当前稳定子集：`date`、`date-time`、`duration`、`email`、`time`、`uri`、`uuid`）、`minItems`、`maxItems`、`uniqueItems`、`contains`、`minContains`、`maxContains`、`minProperties`、`maxProperties`
+- Runtime / Generator / Tooling 共享支持 `enum`、`const`、`not`、`minimum`、`maximum`、`exclusiveMinimum`、`exclusiveMaximum`、`multipleOf`、`minLength`、`maxLength`、`pattern`、`format`（当前稳定子集：`date`、`date-time`、`duration`、`email`、`time`、`uri`、`uuid`）、`minItems`、`maxItems`、`uniqueItems`、`contains`、`minContains`、`maxContains`、`minProperties`、`maxProperties`
 - Source Generator 生成配置类型、表包装、单表注册/访问辅助，以及项目级聚合注册目录
 - VS Code 插件提供配置浏览、raw 编辑、schema 打开、递归轻量校验和嵌套对象表单入口
 
@@ -721,7 +721,7 @@ var loader = new YamlConfigLoader("config-root")
 - 对象字段违反 `minProperties` / `maxProperties`
 - 标量 / 对象 / 数组字段违反 `const`
 - 标量 / 对象 / 数组字段命中 `not`
-- 标量 `enum` 不匹配
+- 标量 / 对象 / 数组字段违反 `enum`
 - 标量数组元素 `enum` 不匹配
 - 通过 `x-gframework-ref-table` 声明的跨表引用缺失目标行
 
@@ -769,7 +769,7 @@ if (MonsterConfigBindings.References.TryGetByDisplayPath("dropItems", out var re
 - `default`：供生成类型属性初始值和工具提示复用
 - `const`：供运行时校验、VS Code 校验、表单 hint 和生成代码 XML 文档复用；对象会忽略字段顺序比较，数组保留元素顺序，标量按运行时同一套类型归一化规则比较
 - `not`：供运行时校验、VS Code 校验和生成代码 XML 文档复用；`not` 子 schema 会复用同一套递归校验规则，但对象匹配保持主校验链的严格语义，不会像 `contains` 那样把“声明属性子集”视为命中
-- `enum`：供运行时校验、VS Code 校验和表单枚举选择复用
+- `enum`：供运行时校验、VS Code 校验和生成代码 XML 文档复用；当前标量、对象和数组节点都支持 `enum`，其中标量 `enum` 继续驱动表单枚举选择，对象 / 数组 `enum` 当前主要提供校验与文档约束
 - `minimum` / `maximum`：供运行时校验、VS Code 校验和生成代码 XML 文档复用
 - `exclusiveMinimum` / `exclusiveMaximum`：供运行时校验、VS Code 校验和生成代码 XML 文档复用
 - `multipleOf`：供运行时校验、VS Code 校验、表单 hint 和生成代码 XML 文档复用；当前优先按运行时与 JS 共用的十进制精确整倍数判定处理常见十进制步进，并在必要时退回浮点容差兜底

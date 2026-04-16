@@ -323,7 +323,7 @@ reward:
     const diagnostics = validateParsedConfig(schema, yaml);
 
     assert.equal(diagnostics.length, 1);
-    assert.match(diagnostics[0].message, /coin, gem/u);
+    assert.match(diagnostics[0].message, /"coin", "gem"/u);
 });
 
 test("validateParsedConfig should report scalar const mismatches", () => {
