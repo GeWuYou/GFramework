@@ -1,4 +1,5 @@
-﻿using GFramework.SourceGenerators.Common.Constants;
+﻿using GFramework.Core.SourceGenerators.Abstractions.Enums;
+using GFramework.SourceGenerators.Common.Constants;
 using GFramework.SourceGenerators.Common.Diagnostics;
 using GFramework.SourceGenerators.Common.Generator;
 
@@ -18,6 +19,12 @@ public sealed class EnumExtensionsGenerator : AttributeEnumGeneratorBase
     /// </summary>
     protected override string AttributeShortNameWithoutSuffix => "GenerateEnumExtensions";
 
+    /// <summary>
+    ///     按元数据名称解析枚举上的 <c>GenerateEnumExtensionsAttribute</c>。
+    /// </summary>
+    /// <param name="compilation">当前编译上下文。</param>
+    /// <param name="symbol">待检查的枚举符号。</param>
+    /// <returns>匹配到的属性数据；若未标注目标属性则返回 <see langword="null" />。</returns>
     protected override AttributeData? ResolveAttribute(Compilation compilation, INamedTypeSymbol symbol)
     {
         var attrSymbol = compilation.GetTypeByMetadataName(AttributeMetadataName);
@@ -30,6 +37,15 @@ public sealed class EnumExtensionsGenerator : AttributeEnumGeneratorBase
                 SymbolEqualityComparer.Default.Equals(a.AttributeClass, attrSymbol));
     }
 
+    /// <summary>
+    ///     验证候选符号仍然是可生成扩展方法的枚举类型。
+    /// </summary>
+    /// <param name="context">源生成诊断上下文。</param>
+    /// <param name="compilation">当前编译上下文。</param>
+    /// <param name="syntax">候选枚举声明语法。</param>
+    /// <param name="symbol">候选命名类型符号。</param>
+    /// <param name="attr">已解析出的生成器属性。</param>
+    /// <returns>当符号满足生成前置条件时返回 <see langword="true" />。</returns>
     protected override bool ValidateSymbol(SourceProductionContext context, Compilation compilation,
         EnumDeclarationSyntax syntax,
         INamedTypeSymbol symbol, AttributeData attr)
@@ -56,6 +72,14 @@ public sealed class EnumExtensionsGenerator : AttributeEnumGeneratorBase
             ? null
             : symbol.ContainingNamespace.ToDisplayString();
 
+        var generateIsMethods = GetNamedBooleanArgument(
+            attr,
+            nameof(GenerateEnumExtensionsAttribute.GenerateIsMethods),
+            true);
+        var generateIsInMethod = GetNamedBooleanArgument(
+            attr,
+            nameof(GenerateEnumExtensionsAttribute.GenerateIsInMethod),
+            true);
         var enumName = symbol.Name;
         var fullEnumName = symbol.ToDisplayString();
         var members = symbol.GetMembers()
@@ -74,23 +98,28 @@ public sealed class EnumExtensionsGenerator : AttributeEnumGeneratorBase
         sb.AppendLine($"    public static partial class {enumName}Extensions");
         sb.AppendLine("    {");
 
-        // 生成 IsX 方法
-        foreach (var memberName in members.Select(m => m.Name))
+        // 两个生成开关是彼此独立的契约，需要分别控制输出，并保持空行布局稳定，便于快照精确回归。
+        var hasGeneratedMembers = false;
+
+        if (generateIsMethods)
         {
-            sb.AppendLine($"        /// <summary>是否为 {memberName}</summary>");
-            sb.AppendLine(
-                $"        public static bool Is{memberName}(this {fullEnumName} value) => value == {fullEnumName}.{memberName};");
-            sb.AppendLine();
+            hasGeneratedMembers = AppendIsMethods(
+                sb,
+                members,
+                fullEnumName);
         }
 
-        // 生成 IsIn 方法
-        sb.AppendLine("        /// <summary>判断是否属于指定集合</summary>");
-        sb.AppendLine($"        public static bool IsIn(this {fullEnumName} value, params {fullEnumName}[] values)");
-        sb.AppendLine("        {");
-        sb.AppendLine("            if (values == null) return false;");
-        sb.AppendLine("            foreach (var v in values) if (value == v) return true;");
-        sb.AppendLine("            return false;");
-        sb.AppendLine("        }");
+        if (generateIsInMethod)
+        {
+            if (hasGeneratedMembers)
+            {
+                sb.AppendLine();
+            }
+
+            AppendIsInMethod(
+                sb,
+                fullEnumName);
+        }
 
         sb.AppendLine("    }");
         sb.AppendLine("}"); // namespace
@@ -106,5 +135,70 @@ public sealed class EnumExtensionsGenerator : AttributeEnumGeneratorBase
     protected override string GetHintName(INamedTypeSymbol symbol)
     {
         return $"{symbol.Name}.EnumExtensions.g.cs";
+    }
+
+    /// <summary>
+    ///     读取属性上的命名布尔参数，并在参数未显式提供时回退到属性契约默认值。
+    /// </summary>
+    /// <param name="attribute">待读取的属性数据。</param>
+    /// <param name="argumentName">命名参数名称。</param>
+    /// <param name="defaultValue">属性未提供该参数时使用的默认值。</param>
+    /// <returns>解析得到的布尔值；若参数缺失或类型不匹配则返回 <paramref name="defaultValue" />。</returns>
+    private static bool GetNamedBooleanArgument(AttributeData attribute, string argumentName, bool defaultValue)
+    {
+        foreach (var namedArgument in attribute.NamedArguments)
+        {
+            if (namedArgument.Key == argumentName &&
+                namedArgument.Value.Value is bool value)
+            {
+                return value;
+            }
+        }
+
+        return defaultValue;
+    }
+
+    /// <summary>
+    ///     为每个枚举成员追加单值判断扩展方法。
+    /// </summary>
+    /// <param name="builder">目标源码构建器。</param>
+    /// <param name="members">需要生成扩展方法的枚举成员。</param>
+    /// <param name="fullEnumName">枚举的完整类型名。</param>
+    /// <returns>当至少生成了一个方法时返回 <see langword="true" />。</returns>
+    private static bool AppendIsMethods(StringBuilder builder, IEnumerable<IFieldSymbol> members, string fullEnumName)
+    {
+        var hasGeneratedMembers = false;
+
+        foreach (var memberName in members.Select(m => m.Name))
+        {
+            if (hasGeneratedMembers)
+            {
+                builder.AppendLine();
+            }
+
+            builder.AppendLine($"        /// <summary>是否为 {memberName}</summary>");
+            builder.AppendLine(
+                $"        public static bool Is{memberName}(this {fullEnumName} value) => value == {fullEnumName}.{memberName};");
+            hasGeneratedMembers = true;
+        }
+
+        return hasGeneratedMembers;
+    }
+
+    /// <summary>
+    ///     追加用于多值匹配的 <c>IsIn</c> 扩展方法。
+    /// </summary>
+    /// <param name="builder">目标源码构建器。</param>
+    /// <param name="fullEnumName">枚举的完整类型名。</param>
+    private static void AppendIsInMethod(StringBuilder builder, string fullEnumName)
+    {
+        builder.AppendLine("        /// <summary>判断是否属于指定集合</summary>");
+        builder.AppendLine(
+            $"        public static bool IsIn(this {fullEnumName} value, params {fullEnumName}[] values)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            if (values == null) return false;");
+        builder.AppendLine("            foreach (var v in values) if (value == v) return true;");
+        builder.AppendLine("            return false;");
+        builder.AppendLine("        }");
     }
 }
