@@ -324,42 +324,80 @@ internal static class YamlConfigSchemaValidator
         var typeName = typeElement.GetString() ?? string.Empty;
         var referenceTableName = TryGetReferenceTableName(tableName, schemaPath, propertyPath, element);
 
-        switch (typeName)
+        var parsedNode = typeName switch
         {
-            case "object":
-                EnsureReferenceKeywordIsSupported(tableName, schemaPath, propertyPath,
-                    YamlConfigSchemaPropertyType.Object,
-                    referenceTableName);
-                return ParseObjectNode(tableName, schemaPath, propertyPath, element, isRoot);
+            "object" => ParseObjectSchemaNode(
+                tableName,
+                schemaPath,
+                propertyPath,
+                element,
+                referenceTableName,
+                isRoot),
+            "array" => ParseArrayNode(tableName, schemaPath, propertyPath, element, referenceTableName),
+            "integer" => CreateScalarNode(
+                tableName,
+                schemaPath,
+                propertyPath,
+                YamlConfigSchemaPropertyType.Integer,
+                element,
+                referenceTableName),
+            "number" => CreateScalarNode(
+                tableName,
+                schemaPath,
+                propertyPath,
+                YamlConfigSchemaPropertyType.Number,
+                element,
+                referenceTableName),
+            "boolean" => CreateScalarNode(
+                tableName,
+                schemaPath,
+                propertyPath,
+                YamlConfigSchemaPropertyType.Boolean,
+                element,
+                referenceTableName),
+            "string" => CreateScalarNode(
+                tableName,
+                schemaPath,
+                propertyPath,
+                YamlConfigSchemaPropertyType.String,
+                element,
+                referenceTableName),
+            _ => throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"Property '{propertyPath}' in schema file '{schemaPath}' uses unsupported type '{typeName}'.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(propertyPath),
+                rawValue: typeName)
+        };
+        return parsedNode.WithNegatedSchemaNode(ParseNegatedSchemaNode(tableName, schemaPath, propertyPath, element));
+    }
 
-            case "array":
-                return ParseArrayNode(tableName, schemaPath, propertyPath, element, referenceTableName);
-
-            case "integer":
-                return CreateScalarNode(tableName, schemaPath, propertyPath, YamlConfigSchemaPropertyType.Integer,
-                    element, referenceTableName);
-
-            case "number":
-                return CreateScalarNode(tableName, schemaPath, propertyPath, YamlConfigSchemaPropertyType.Number,
-                    element, referenceTableName);
-
-            case "boolean":
-                return CreateScalarNode(tableName, schemaPath, propertyPath, YamlConfigSchemaPropertyType.Boolean,
-                    element, referenceTableName);
-
-            case "string":
-                return CreateScalarNode(tableName, schemaPath, propertyPath, YamlConfigSchemaPropertyType.String,
-                    element, referenceTableName);
-
-            default:
-                throw ConfigLoadExceptionFactory.Create(
-                    ConfigLoadFailureKind.SchemaUnsupported,
-                    tableName,
-                    $"Property '{propertyPath}' in schema file '{schemaPath}' uses unsupported type '{typeName}'.",
-                    schemaPath: schemaPath,
-                    displayPath: GetDiagnosticPath(propertyPath),
-                    rawValue: typeName);
-        }
+    /// <summary>
+    ///     解析对象类型 schema，并在进入对象节点解析前先校验 ref-table 是否兼容。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="schemaPath">Schema 文件路径。</param>
+    /// <param name="propertyPath">对象属性路径。</param>
+    /// <param name="element">对象 schema 节点。</param>
+    /// <param name="referenceTableName">声明在当前节点上的目标引用表。</param>
+    /// <param name="isRoot">是否为根节点。</param>
+    /// <returns>对象节点模型。</returns>
+    private static YamlConfigSchemaNode ParseObjectSchemaNode(
+        string tableName,
+        string schemaPath,
+        string propertyPath,
+        JsonElement element,
+        string? referenceTableName,
+        bool isRoot)
+    {
+        EnsureReferenceKeywordIsSupported(
+            tableName,
+            schemaPath,
+            propertyPath,
+            YamlConfigSchemaPropertyType.Object,
+            referenceTableName);
+        return ParseObjectNode(tableName, schemaPath, propertyPath, element, isRoot);
     }
 
     /// <summary>
@@ -520,6 +558,57 @@ internal static class YamlConfigSchemaValidator
             schemaPath);
         return scalarNode.WithConstantValue(
             ParseConstantValue(tableName, schemaPath, propertyPath, element, scalarNode));
+    }
+
+    /// <summary>
+    ///     解析节点上的 <c>not</c> 约束。
+    ///     该子 schema 继续复用同一套节点解析逻辑，保证 Runtime / Generator / Tooling
+    ///     对深层结构与格式白名单的解释保持一致。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="schemaPath">Schema 文件路径。</param>
+    /// <param name="propertyPath">当前节点路径。</param>
+    /// <param name="element">Schema JSON 节点。</param>
+    /// <returns>解析后的 negated schema；未声明时返回空。</returns>
+    private static YamlConfigSchemaNode? ParseNegatedSchemaNode(
+        string tableName,
+        string schemaPath,
+        string propertyPath,
+        JsonElement element)
+    {
+        if (!element.TryGetProperty("not", out var notElement))
+        {
+            return null;
+        }
+
+        if (notElement.ValueKind != JsonValueKind.Object)
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"Property '{propertyPath}' in schema file '{schemaPath}' must declare 'not' as an object-valued schema.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(propertyPath));
+        }
+
+        return ParseNode(
+            tableName,
+            schemaPath,
+            BuildNestedSchemaPath(propertyPath, "not"),
+            notElement);
+    }
+
+    /// <summary>
+    ///     为 <c>contains</c> / <c>not</c> 这类内联子 schema 构建稳定的诊断路径。
+    /// </summary>
+    /// <param name="propertyPath">当前节点路径。</param>
+    /// <param name="suffix">内联子 schema 后缀。</param>
+    /// <returns>带内联后缀的 schema 路径。</returns>
+    private static string BuildNestedSchemaPath(string propertyPath, string suffix)
+    {
+        return string.IsNullOrWhiteSpace(propertyPath)
+            ? $"[{suffix}]"
+            : $"{propertyPath}[{suffix}]";
     }
 
     /// <summary>
@@ -706,6 +795,7 @@ internal static class YamlConfigSchemaValidator
         }
 
         ValidateConstantValue(tableName, yamlPath, displayPath, mappingNode, schemaNode);
+        ValidateNegatedSchemaConstraint(tableName, yamlPath, displayPath, mappingNode, schemaNode);
     }
 
     /// <summary>
@@ -828,6 +918,7 @@ internal static class YamlConfigSchemaValidator
         ValidateArrayUniqueItemsConstraint(tableName, yamlPath, displayPath, sequenceNode, schemaNode);
         ValidateArrayContainsConstraints(tableName, yamlPath, displayPath, sequenceNode, schemaNode, references);
         ValidateConstantValue(tableName, yamlPath, displayPath, sequenceNode, schemaNode);
+        ValidateNegatedSchemaConstraint(tableName, yamlPath, displayPath, sequenceNode, schemaNode);
     }
 
     /// <summary>
@@ -921,6 +1012,7 @@ internal static class YamlConfigSchemaValidator
         }
 
         ValidateConstantValue(tableName, yamlPath, displayPath, scalarNode, schemaNode);
+        ValidateNegatedSchemaConstraint(tableName, yamlPath, displayPath, scalarNode, schemaNode);
 
         if (schemaNode.ReferenceTableName != null &&
             references is not null)
@@ -2644,13 +2736,14 @@ internal static class YamlConfigSchemaValidator
         var matchingCount = 0;
         for (var itemIndex = 0; itemIndex < sequenceNode.Children.Count; itemIndex++)
         {
-            if (IsArrayItemMatchingContains(
+            if (TryMatchSchemaNode(
                     tableName,
                     yamlPath,
                     $"{displayPath}[{itemIndex}]",
                     sequenceNode.Children[itemIndex],
                     containsNode,
-                    references))
+                    references,
+                    allowUnknownObjectProperties: true))
             {
                 matchingCount++;
             }
@@ -2660,26 +2753,29 @@ internal static class YamlConfigSchemaValidator
     }
 
     /// <summary>
-    ///     判断单个数组元素是否满足 <c>contains</c> 子 schema。
-    ///     contains 的语义是“尝试匹配”，因此普通约束失败会返回 <see langword="false" />，但内部意外状态仍会继续抛出。
+    ///     判断当前 YAML 节点是否满足给定 schema 子树。
+    ///     contains / not 都通过该路径复用主校验逻辑，因此普通约束失败会返回 <see langword="false" />，
+    ///     但内部意外状态仍会继续抛出。
     /// </summary>
     /// <param name="tableName">所属配置表名称。</param>
     /// <param name="yamlPath">YAML 文件路径。</param>
-    /// <param name="displayPath">当前数组元素路径。</param>
-    /// <param name="itemNode">实际 YAML 元素。</param>
-    /// <param name="containsNode">contains 子 schema。</param>
-    /// <param name="references">当前元素匹配成功后要写回的可选跨表引用收集器。</param>
-    /// <returns>当前元素是否匹配 contains 子 schema。</returns>
-    private static bool IsArrayItemMatchingContains(
+    /// <param name="displayPath">当前节点路径。</param>
+    /// <param name="node">实际 YAML 节点。</param>
+    /// <param name="schemaNode">要试匹配的 schema 子树。</param>
+    /// <param name="references">当前节点匹配成功后要写回的可选跨表引用收集器。</param>
+    /// <param name="allowUnknownObjectProperties">对象试匹配时是否允许额外字段。</param>
+    /// <returns>当前节点是否匹配指定 schema 子树。</returns>
+    private static bool TryMatchSchemaNode(
         string tableName,
         string yamlPath,
         string displayPath,
-        YamlNode itemNode,
-        YamlConfigSchemaNode containsNode,
-        ICollection<YamlConfigReferenceUsage>? references)
+        YamlNode node,
+        YamlConfigSchemaNode schemaNode,
+        ICollection<YamlConfigReferenceUsage>? references,
+        bool allowUnknownObjectProperties)
     {
-        // contains 的“试匹配”不能把失败元素的引用泄漏给外层，但匹配成功的元素仍需要参与
-        // 跨表引用收集，否则仅声明在 contains 子 schema 里的 ref-table 会被运行时遗漏。
+        // 约束试匹配不能把失败路径的引用泄漏给外层，但匹配成功的分支仍需要把引用写回，
+        // 这样 contains / not 等内联 schema 才能与主校验链复用同一套递归解释规则。
         List<YamlConfigReferenceUsage>? matchedReferences = references is null ? null : new();
 
         try
@@ -2688,10 +2784,10 @@ internal static class YamlConfigSchemaValidator
                 tableName,
                 yamlPath,
                 displayPath,
-                itemNode,
-                containsNode,
+                node,
+                schemaNode,
                 matchedReferences,
-                allowUnknownObjectProperties: true);
+                allowUnknownObjectProperties);
 
             if (references is not null &&
                 matchedReferences is not null)
@@ -2709,6 +2805,49 @@ internal static class YamlConfigSchemaValidator
         {
             return false;
         }
+    }
+
+    /// <summary>
+    ///     校验节点是否命中了 <c>not</c> 声明的禁用 schema。
+    ///     与 contains 不同，not 会沿用主校验链的严格对象语义，避免把“声明属性子集”误当成完整命中。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="yamlPath">YAML 文件路径。</param>
+    /// <param name="displayPath">当前字段路径。</param>
+    /// <param name="node">当前 YAML 节点。</param>
+    /// <param name="schemaNode">当前 schema 节点。</param>
+    private static void ValidateNegatedSchemaConstraint(
+        string tableName,
+        string yamlPath,
+        string displayPath,
+        YamlNode node,
+        YamlConfigSchemaNode schemaNode)
+    {
+        if (schemaNode.NegatedSchemaNode is null ||
+            !TryMatchSchemaNode(
+                tableName,
+                yamlPath,
+                displayPath,
+                node,
+                schemaNode.NegatedSchemaNode,
+                references: null,
+                allowUnknownObjectProperties: false))
+        {
+            return;
+        }
+
+        var subject = string.IsNullOrWhiteSpace(displayPath)
+            ? "Root object"
+            : $"Property '{displayPath}'";
+        throw ConfigLoadExceptionFactory.Create(
+            ConfigLoadFailureKind.ConstraintViolation,
+            tableName,
+            $"{subject} in config file '{yamlPath}' must not match the 'not' schema.",
+            yamlPath: yamlPath,
+            schemaPath: schemaNode.SchemaPathHint,
+            displayPath: GetDiagnosticPath(displayPath),
+            rawValue: DescribeYamlNodeForDiagnostics(node, schemaNode.NegatedSchemaNode),
+            detail: "The current YAML value matches the forbidden 'not' schema.");
     }
 
     /// <summary>
@@ -3313,6 +3452,7 @@ internal sealed class YamlConfigSchemaNode
         ArrayConstraints = validation.ArrayConstraints;
         ObjectConstraints = validation.ObjectConstraints;
         ConstantValue = validation.ConstantValue;
+        NegatedSchemaNode = validation.NegatedSchemaNode;
         SchemaPathHint = schemaPathHint;
     }
 
@@ -3367,6 +3507,11 @@ internal sealed class YamlConfigSchemaNode
     public YamlConfigConstantValue? ConstantValue { get; }
 
     /// <summary>
+    ///     获取节点声明的 <c>not</c> 子 schema；未声明时返回空。
+    /// </summary>
+    public YamlConfigSchemaNode? NegatedSchemaNode { get; }
+
+    /// <summary>
     ///     获取用于诊断显示的 schema 路径提示。
     ///     当前节点本身不记录独立路径，因此对象校验会回退到所属根 schema 路径。
     /// </summary>
@@ -3395,7 +3540,8 @@ internal sealed class YamlConfigSchemaNode
                 constraints: null,
                 arrayConstraints: null,
                 objectConstraints,
-                constantValue: null),
+                constantValue: null,
+                negatedSchemaNode: null),
             schemaPathHint);
     }
 
@@ -3420,7 +3566,8 @@ internal sealed class YamlConfigSchemaNode
                 constraints: null,
                 arrayConstraints,
                 objectConstraints: null,
-                constantValue: null),
+                constantValue: null,
+                negatedSchemaNode: null),
             schemaPathHint);
     }
 
@@ -3449,7 +3596,8 @@ internal sealed class YamlConfigSchemaNode
                 constraints,
                 arrayConstraints: null,
                 objectConstraints: null,
-                constantValue: null),
+                constantValue: null,
+                negatedSchemaNode: null),
             schemaPathHint);
     }
 
@@ -3482,6 +3630,20 @@ internal sealed class YamlConfigSchemaNode
             SchemaPathHint);
     }
 
+    /// <summary>
+    ///     基于当前节点复制一个只替换 <c>not</c> 子 schema 的新节点。
+    /// </summary>
+    /// <param name="negatedSchemaNode">新的 negated schema。</param>
+    /// <returns>复制后的节点。</returns>
+    public YamlConfigSchemaNode WithNegatedSchemaNode(YamlConfigSchemaNode? negatedSchemaNode)
+    {
+        return new YamlConfigSchemaNode(
+            NodeType,
+            _children,
+            _validation.WithNegatedSchemaNode(negatedSchemaNode),
+            SchemaPathHint);
+    }
+
     private sealed class NodeChildren
     {
         public NodeChildren(
@@ -3511,7 +3673,8 @@ internal sealed class YamlConfigSchemaNode
             YamlConfigScalarConstraints? constraints,
             YamlConfigArrayConstraints? arrayConstraints,
             YamlConfigObjectConstraints? objectConstraints,
-            YamlConfigConstantValue? constantValue)
+            YamlConfigConstantValue? constantValue,
+            YamlConfigSchemaNode? negatedSchemaNode)
         {
             ReferenceTableName = referenceTableName;
             AllowedValues = allowedValues;
@@ -3519,6 +3682,7 @@ internal sealed class YamlConfigSchemaNode
             ArrayConstraints = arrayConstraints;
             ObjectConstraints = objectConstraints;
             ConstantValue = constantValue;
+            NegatedSchemaNode = negatedSchemaNode;
         }
 
         public static NodeValidation None { get; } = new(
@@ -3527,7 +3691,8 @@ internal sealed class YamlConfigSchemaNode
             constraints: null,
             arrayConstraints: null,
             objectConstraints: null,
-            constantValue: null);
+            constantValue: null,
+            negatedSchemaNode: null);
 
         public string? ReferenceTableName { get; }
 
@@ -3541,16 +3706,24 @@ internal sealed class YamlConfigSchemaNode
 
         public YamlConfigConstantValue? ConstantValue { get; }
 
+        public YamlConfigSchemaNode? NegatedSchemaNode { get; }
+
         public NodeValidation WithReferenceTable(string referenceTableName)
         {
             return new NodeValidation(referenceTableName, AllowedValues, Constraints, ArrayConstraints,
-                ObjectConstraints, ConstantValue);
+                ObjectConstraints, ConstantValue, NegatedSchemaNode);
         }
 
         public NodeValidation WithConstantValue(YamlConfigConstantValue? constantValue)
         {
             return new NodeValidation(ReferenceTableName, AllowedValues, Constraints, ArrayConstraints,
-                ObjectConstraints, constantValue);
+                ObjectConstraints, constantValue, NegatedSchemaNode);
+        }
+
+        public NodeValidation WithNegatedSchemaNode(YamlConfigSchemaNode? negatedSchemaNode)
+        {
+            return new NodeValidation(ReferenceTableName, AllowedValues, Constraints, ArrayConstraints,
+                ObjectConstraints, ConstantValue, negatedSchemaNode);
         }
     }
 }

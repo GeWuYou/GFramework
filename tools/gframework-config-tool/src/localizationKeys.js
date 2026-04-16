@@ -15,6 +15,7 @@ const ValidationMessageKeys = Object.freeze({
     maxPropertiesViolation: "validation.maxPropertiesViolation",
     minimumViolation: "validation.minimumViolation",
     multipleOfViolation: "validation.multipleOfViolation",
+    notViolation: "validation.notViolation",
     minContainsViolation: "validation.minContainsViolation",
     minItemsViolation: "validation.minItemsViolation",
     minLengthViolation: "validation.minLengthViolation",

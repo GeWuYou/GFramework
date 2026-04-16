@@ -693,6 +693,17 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             return false;
         }
 
+        if (element.TryGetProperty("not", out var notElement) &&
+            notElement.ValueKind == JsonValueKind.Object &&
+            !TryValidateStringFormatMetadataRecursively(
+                filePath,
+                $"{displayPath}[not]",
+                notElement,
+                out diagnostic))
+        {
+            return false;
+        }
+
         return true;
     }
 
@@ -2888,6 +2899,12 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             }
         }
 
+        var notDocumentation = TryBuildNotDocumentation(element);
+        if (notDocumentation is not null)
+        {
+            parts.Add($"not = {notDocumentation}");
+        }
+
         if (schemaType == "array" &&
             TryGetNonNegativeInt32(element, "minContains", out var minContains))
         {
@@ -2929,18 +2946,34 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             return null;
         }
 
-        return TryBuildContainsSchemaSummary(containsElement);
+        return TryBuildInlineSchemaSummary(containsElement);
     }
 
     /// <summary>
-    ///     为 <c>contains</c> 子 schema 生成紧凑摘要。
-    ///     该摘要复用现有 enum / const / 约束文档构造器，避免 contains 与主属性文档逐渐漂移。
+    ///     将 <c>not</c> 子 schema 整理成 XML 文档可读字符串。
     /// </summary>
-    /// <param name="containsElement">contains 子 schema。</param>
-    /// <returns>格式化后的摘要字符串。</returns>
-    private static string? TryBuildContainsSchemaSummary(JsonElement containsElement)
+    /// <param name="element">Schema 节点。</param>
+    /// <returns>格式化后的 not 说明。</returns>
+    private static string? TryBuildNotDocumentation(JsonElement element)
     {
-        if (!containsElement.TryGetProperty("type", out var typeElement) ||
+        if (!element.TryGetProperty("not", out var notElement) ||
+            notElement.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        return TryBuildInlineSchemaSummary(notElement);
+    }
+
+    /// <summary>
+    ///     为内联子 schema 生成紧凑摘要。
+    ///     该摘要复用现有 enum / const / 约束文档构造器，避免 contains / not 与主属性文档逐渐漂移。
+    /// </summary>
+    /// <param name="schemaElement">内联子 schema。</param>
+    /// <returns>格式化后的摘要字符串。</returns>
+    private static string? TryBuildInlineSchemaSummary(JsonElement schemaElement)
+    {
+        if (!schemaElement.TryGetProperty("type", out var typeElement) ||
             typeElement.ValueKind != JsonValueKind.String)
         {
             return null;
@@ -2953,19 +2986,19 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         }
 
         var details = new List<string>();
-        var enumDocumentation = TryBuildEnumDocumentation(containsElement, schemaType!);
+        var enumDocumentation = TryBuildEnumDocumentation(schemaElement, schemaType!);
         if (enumDocumentation is not null)
         {
             details.Add($"enum = {enumDocumentation}");
         }
 
-        var constraintDocumentation = TryBuildConstraintDocumentation(containsElement, schemaType!);
+        var constraintDocumentation = TryBuildConstraintDocumentation(schemaElement, schemaType!);
         if (constraintDocumentation is not null)
         {
             details.Add(constraintDocumentation);
         }
 
-        var refTable = TryGetMetadataString(containsElement, "x-gframework-ref-table");
+        var refTable = TryGetMetadataString(schemaElement, "x-gframework-ref-table");
         if (!string.IsNullOrWhiteSpace(refTable))
         {
             details.Add($"ref-table = {refTable}");

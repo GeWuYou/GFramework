@@ -273,6 +273,102 @@ public class SchemaConfigGeneratorTests
     }
 
     /// <summary>
+    ///     验证 <c>not</c> 子 schema 的约束会写入生成 XML 文档。
+    /// </summary>
+    [Test]
+    public void Run_Should_Write_Not_Constraint_Into_Generated_Documentation()
+    {
+        const string source = """
+                              namespace TestApp
+                              {
+                                  public sealed class Dummy
+                                  {
+                                  }
+                              }
+                              """;
+
+        const string schema = """
+                              {
+                                "type": "object",
+                                "required": ["id", "name"],
+                                "properties": {
+                                  "id": { "type": "integer" },
+                                  "name": {
+                                    "type": "string",
+                                    "not": {
+                                      "type": "string",
+                                      "const": "Deprecated"
+                                    }
+                                  }
+                                }
+                              }
+                              """;
+
+        var result = SchemaGeneratorTestDriver.Run(
+            source,
+            ("monster.schema.json", schema));
+
+        var generatedSources = result.Results
+            .Single()
+            .GeneratedSources
+            .ToDictionary(
+                static sourceResult => sourceResult.HintName,
+                static sourceResult => sourceResult.SourceText.ToString(),
+                StringComparer.Ordinal);
+
+        Assert.That(result.Results.Single().Diagnostics, Is.Empty);
+        Assert.That(generatedSources["MonsterConfig.g.cs"],
+            Does.Contain("Constraints: not = string (const = \"Deprecated\")."));
+    }
+
+    /// <summary>
+    ///     验证 <c>not</c> 子 schema 内的非法 <c>format</c> 也会在生成阶段直接给出诊断。
+    /// </summary>
+    [Test]
+    public void Run_Should_Report_Diagnostic_When_Not_Schema_Uses_Format_On_Non_String_Node()
+    {
+        const string source = """
+                              namespace TestApp
+                              {
+                                  public sealed class Dummy
+                                  {
+                                  }
+                              }
+                              """;
+
+        const string schema = """
+                              {
+                                "type": "object",
+                                "required": ["id", "hp"],
+                                "properties": {
+                                  "id": { "type": "integer" },
+                                  "hp": {
+                                    "type": "integer",
+                                    "not": {
+                                      "type": "integer",
+                                      "format": "uuid"
+                                    }
+                                  }
+                                }
+                              }
+                              """;
+
+        var result = SchemaGeneratorTestDriver.Run(
+            source,
+            ("monster.schema.json", schema));
+
+        var diagnostic = result.Results.Single().Diagnostics.Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Id, Is.EqualTo("GF_ConfigSchema_009"));
+            Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Error));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("hp[not]"));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("Only 'string' properties can declare 'format'."));
+        });
+    }
+
+    /// <summary>
     ///     验证深层不支持的数组嵌套会带着完整字段路径产生命名明确的诊断。
     /// </summary>
     [Test]

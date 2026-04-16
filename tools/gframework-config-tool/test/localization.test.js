@@ -69,3 +69,15 @@ test("createLocalizer should expose contains-count validation keys", () => {
         chineseLocalizer.t(ValidationMessageKeys.maxContainsViolation, {displayPath: "dropRates", value: 1}),
         "属性“dropRates”最多只能包含 1 个匹配 contains 条件的元素。");
 });
+
+test("createLocalizer should expose not validation keys", () => {
+    const englishLocalizer = createLocalizer("en");
+    const chineseLocalizer = createLocalizer("zh-cn");
+
+    assert.equal(
+        englishLocalizer.t(ValidationMessageKeys.notViolation, {displayPath: "name"}),
+        "Property 'name' must not match the forbidden 'not' schema.");
+    assert.equal(
+        chineseLocalizer.t(ValidationMessageKeys.notViolation, {displayPath: "name"}),
+        "属性“name”不能匹配被 `not` 禁止的 schema。");
+});

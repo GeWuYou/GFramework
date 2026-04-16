@@ -1624,6 +1624,43 @@ test("parseSchemaContent should capture object property-count metadata", () => {
     assert.equal(schema.properties.reward.maxProperties, 2);
 });
 
+test("parseSchemaContent should capture not sub-schema metadata", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "not": {
+                "type": "string",
+                "const": "Deprecated"
+              }
+            }
+          }
+        }
+    `);
+
+    assert.equal(schema.properties.name.not.type, "string");
+    assert.equal(schema.properties.name.not.constDisplayValue, "\"Deprecated\"");
+});
+
+test("parseSchemaContent should reject non-object not declarations", () => {
+    assert.throws(
+        () => parseSchemaContent(`
+            {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "not": "deprecated"
+                }
+              }
+            }
+        `),
+        /must declare 'not' as an object-valued schema/u
+    );
+});
+
 test("parseSchemaContent should reject invalid pattern declarations instead of dropping them", () => {
     assert.throws(
         () => parseSchemaContent(`
@@ -1757,6 +1794,66 @@ reward: 1
 
     assert.equal(diagnostics.length, 1);
     assert.equal(diagnostics[0].message, "属性“reward”应为对象。");
+});
+
+test("validateParsedConfig should reject values that match a forbidden not schema", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "not": {
+                "type": "string",
+                "const": "Deprecated"
+              }
+            }
+          }
+        }
+    `);
+    const yaml = parseTopLevelYaml(`
+name: Deprecated
+`);
+
+    const diagnostics = validateParsedConfig(schema, yaml);
+
+    assert.equal(diagnostics.length, 1);
+    assert.equal(
+        diagnostics[0].message,
+        "Property 'name' must not match the forbidden 'not' schema.");
+});
+
+test("validateParsedConfig should keep not object matching strict instead of contains-style subset matching", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "reward": {
+              "type": "object",
+              "not": {
+                "type": "object",
+                "required": ["gold"],
+                "properties": {
+                  "gold": { "type": "integer" }
+                }
+              },
+              "properties": {
+                "gold": { "type": "integer" },
+                "bonus": { "type": "integer" }
+              }
+            }
+          }
+        }
+    `);
+    const yaml = parseTopLevelYaml(`
+reward:
+  gold: 10
+  bonus: 5
+`);
+
+    const diagnostics = validateParsedConfig(schema, yaml);
+
+    assert.deepEqual(diagnostics, []);
 });
 
 test("applyFormUpdates should update nested scalar and scalar-array paths", () => {

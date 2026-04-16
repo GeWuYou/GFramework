@@ -1071,6 +1071,7 @@ function parseSchemaNode(rawNode, displayPath) {
     const type = typeof value.type === "string" ? value.type : "object";
     const patternMetadata = normalizeSchemaPattern(value.pattern, displayPath);
     const stringFormat = normalizeSchemaStringFormat(value.format, type, displayPath);
+    const negatedSchemaNode = parseNegatedSchemaNode(value.not, displayPath);
     const metadata = {
         title: typeof value.title === "string" ? value.title : undefined,
         description: typeof value.description === "string" ? value.description : undefined,
@@ -1115,7 +1116,8 @@ function parseSchemaNode(rawNode, displayPath) {
             maxProperties: metadata.maxProperties,
             title: metadata.title,
             description: metadata.description,
-            defaultValue: metadata.defaultValue
+            defaultValue: metadata.defaultValue,
+            not: negatedSchemaNode
         }, value.const, displayPath);
     }
 
@@ -1159,7 +1161,8 @@ function parseSchemaNode(rawNode, displayPath) {
             uniqueItems: metadata.uniqueItems === true,
             refTable: metadata.refTable,
             contains: containsNode,
-            items: itemNode
+            items: itemNode,
+            not: negatedSchemaNode
         }, value.const, displayPath);
     }
 
@@ -1200,8 +1203,29 @@ function parseSchemaNode(rawNode, displayPath) {
             ? metadata.format
             : undefined,
         enumValues: normalizeSchemaEnumValues(value.enum),
-        refTable: metadata.refTable
+        refTable: metadata.refTable,
+        not: negatedSchemaNode
     }, value.const, displayPath);
+}
+
+/**
+ * Parse one optional `not` sub-schema and keep path formatting aligned with
+ * the runtime/generator diagnostics.
+ *
+ * @param {unknown} rawNot Raw `not` node.
+ * @param {string} displayPath Parent schema path.
+ * @returns {SchemaNode | undefined} Parsed negated schema node.
+ */
+function parseNegatedSchemaNode(rawNot, displayPath) {
+    if (rawNot === undefined) {
+        return undefined;
+    }
+
+    if (!rawNot || typeof rawNot !== "object" || Array.isArray(rawNot)) {
+        throw new Error(`Schema property '${displayPath}' must declare 'not' as an object-valued schema.`);
+    }
+
+    return parseSchemaNode(rawNot, `${displayPath}[not]`);
 }
 
 /**
@@ -1299,7 +1323,7 @@ function validateNode(schemaNode, yamlNode, displayPath, diagnostics, localizer)
         if (!hasStructurallyInvalidArrayItems && schemaNode.contains) {
             let matchingContainsCount = 0;
             for (const {node} of containsCandidateItems) {
-                if (matchesSchemaNode(schemaNode.contains, node)) {
+                if (matchesSchemaNode(schemaNode.contains, node, true)) {
                     matchingContainsCount += 1;
                 }
             }
@@ -1330,6 +1354,7 @@ function validateNode(schemaNode, yamlNode, displayPath, diagnostics, localizer)
         }
 
         validateConstComparableValue(schemaNode, yamlNode, displayPath, diagnostics, localizer);
+        validateNotSchemaMatch(schemaNode, yamlNode, displayPath, diagnostics, localizer);
 
         return;
     }
@@ -1480,6 +1505,7 @@ function validateNode(schemaNode, yamlNode, displayPath, diagnostics, localizer)
     }
 
     validateConstComparableValue(schemaNode, yamlNode, displayPath, diagnostics, localizer);
+    validateNotSchemaMatch(schemaNode, yamlNode, displayPath, diagnostics, localizer);
 }
 
 /**
@@ -1561,6 +1587,7 @@ function validateObjectNode(schemaNode, yamlNode, displayPath, diagnostics, loca
     }
 
     validateConstComparableValue(schemaNode, yamlNode, displayPath, diagnostics, localizer);
+    validateNotSchemaMatch(schemaNode, yamlNode, displayPath, diagnostics, localizer);
 }
 
 /**
@@ -1571,10 +1598,12 @@ function validateObjectNode(schemaNode, yamlNode, displayPath, diagnostics, loca
  *
  * @param {SchemaNode} schemaNode Schema node.
  * @param {YamlNode} yamlNode YAML node.
+ * @param {boolean} allowUnknownObjectProperties Whether object matching should
+ * tolerate extra undeclared properties.
  * @returns {boolean} True when the YAML node matches the schema node.
  */
-function matchesSchemaNode(schemaNode, yamlNode) {
-    return matchesSchemaNodeInternal(schemaNode, yamlNode);
+function matchesSchemaNode(schemaNode, yamlNode, allowUnknownObjectProperties = false) {
+    return matchesSchemaNodeInternal(schemaNode, yamlNode, allowUnknownObjectProperties);
 }
 
 /**
@@ -1584,9 +1613,11 @@ function matchesSchemaNode(schemaNode, yamlNode) {
  *
  * @param {SchemaNode} schemaNode Schema node.
  * @param {YamlNode} yamlNode YAML node.
+ * @param {boolean} allowUnknownObjectProperties Whether object matching should
+ * tolerate extra undeclared properties.
  * @returns {boolean} True when the YAML node satisfies the schema node.
  */
-function matchesSchemaNodeInternal(schemaNode, yamlNode) {
+function matchesSchemaNodeInternal(schemaNode, yamlNode, allowUnknownObjectProperties) {
     if (schemaNode.type === "object") {
         if (!yamlNode || yamlNode.kind !== "object") {
             return false;
@@ -1604,9 +1635,17 @@ function matchesSchemaNodeInternal(schemaNode, yamlNode) {
             }
         }
 
+        if (!allowUnknownObjectProperties) {
+            for (const entry of yamlNode.entries) {
+                if (!Object.prototype.hasOwnProperty.call(schemaNode.properties, entry.key)) {
+                    return false;
+                }
+            }
+        }
+
         for (const [key, childSchema] of Object.entries(schemaNode.properties)) {
             if (yamlNode.map.has(key) &&
-                !matchesSchemaNodeInternal(childSchema, yamlNode.map.get(key))) {
+                !matchesSchemaNodeInternal(childSchema, yamlNode.map.get(key), allowUnknownObjectProperties)) {
                 return false;
             }
         }
@@ -1621,8 +1660,12 @@ function matchesSchemaNodeInternal(schemaNode, yamlNode) {
             return false;
         }
 
-        return typeof schemaNode.constComparableValue !== "string" ||
-            buildComparableNodeValue(schemaNode, yamlNode) === schemaNode.constComparableValue;
+        if (typeof schemaNode.constComparableValue === "string" &&
+            buildComparableNodeValue(schemaNode, yamlNode) !== schemaNode.constComparableValue) {
+            return false;
+        }
+
+        return !schemaNode.not || !matchesSchemaNodeInternal(schemaNode.not, yamlNode, false);
     }
 
     if (schemaNode.type === "array") {
@@ -1641,7 +1684,7 @@ function matchesSchemaNodeInternal(schemaNode, yamlNode) {
         }
 
         for (const item of yamlNode.items) {
-            if (!matchesSchemaNodeInternal(schemaNode.items, item)) {
+            if (!matchesSchemaNodeInternal(schemaNode.items, item, allowUnknownObjectProperties)) {
                 return false;
             }
         }
@@ -1661,7 +1704,7 @@ function matchesSchemaNodeInternal(schemaNode, yamlNode) {
         if (schemaNode.contains) {
             let matchingContainsCount = 0;
             for (const item of yamlNode.items) {
-                if (matchesSchemaNodeInternal(schemaNode.contains, item)) {
+                if (matchesSchemaNodeInternal(schemaNode.contains, item, true)) {
                     matchingContainsCount += 1;
                 }
             }
@@ -1679,8 +1722,12 @@ function matchesSchemaNodeInternal(schemaNode, yamlNode) {
             }
         }
 
-        return typeof schemaNode.constComparableValue !== "string" ||
-            buildComparableNodeValue(schemaNode, yamlNode) === schemaNode.constComparableValue;
+        if (typeof schemaNode.constComparableValue === "string" &&
+            buildComparableNodeValue(schemaNode, yamlNode) !== schemaNode.constComparableValue) {
+            return false;
+        }
+
+        return !schemaNode.not || !matchesSchemaNodeInternal(schemaNode.not, yamlNode, false);
     }
 
     if (!yamlNode || yamlNode.kind !== "scalar") {
@@ -1753,8 +1800,36 @@ function matchesSchemaNodeInternal(schemaNode, yamlNode) {
         return false;
     }
 
-    return typeof schemaNode.constComparableValue !== "string" ||
-        buildComparableNodeValue(schemaNode, yamlNode) === schemaNode.constComparableValue;
+    if (typeof schemaNode.constComparableValue === "string" &&
+        buildComparableNodeValue(schemaNode, yamlNode) !== schemaNode.constComparableValue) {
+        return false;
+    }
+
+    return !schemaNode.not || !matchesSchemaNodeInternal(schemaNode.not, yamlNode, false);
+}
+
+/**
+ * Emit one validation error when the current YAML node matches a forbidden `not`
+ * sub-schema. Unlike `contains`, this path keeps object matching strict so
+ * undeclared members still block the negated branch from matching.
+ *
+ * @param {SchemaNode} schemaNode Schema node.
+ * @param {YamlNode} yamlNode YAML node.
+ * @param {string} displayPath Current logical path.
+ * @param {Array<{severity: "error" | "warning", message: string}>} diagnostics Diagnostic sink.
+ * @param {{isChinese?: boolean} | undefined} localizer Optional runtime localizer.
+ */
+function validateNotSchemaMatch(schemaNode, yamlNode, displayPath, diagnostics, localizer) {
+    if (!schemaNode.not || !matchesSchemaNode(schemaNode.not, yamlNode, false)) {
+        return;
+    }
+
+    diagnostics.push({
+        severity: "error",
+        message: localizeValidationMessage(ValidationMessageKeys.notViolation, localizer, {
+            displayPath
+        })
+    });
 }
 
 /**
@@ -1962,6 +2037,8 @@ function localizeValidationMessage(key, localizer, params) {
                 return `属性“${params.displayPath}”必须大于或等于 ${params.value}。`;
             case ValidationMessageKeys.multipleOfViolation:
                 return `属性“${params.displayPath}”必须是 ${params.value} 的整数倍。`;
+            case ValidationMessageKeys.notViolation:
+                return `属性“${params.displayPath}”不能匹配被 \`not\` 禁止的 schema。`;
             case ValidationMessageKeys.minContainsViolation:
                 return `属性“${params.displayPath}”至少需要包含 ${params.value} 个匹配 contains 条件的元素。`;
             case ValidationMessageKeys.minItemsViolation:
@@ -2010,6 +2087,8 @@ function localizeValidationMessage(key, localizer, params) {
             return `Property '${params.displayPath}' must be greater than or equal to ${params.value}.`;
         case ValidationMessageKeys.multipleOfViolation:
             return `Property '${params.displayPath}' must be a multiple of ${params.value}.`;
+        case ValidationMessageKeys.notViolation:
+            return `Property '${params.displayPath}' must not match the forbidden 'not' schema.`;
         case ValidationMessageKeys.minContainsViolation:
             return `Property '${params.displayPath}' must contain at least ${params.value} items matching the 'contains' schema.`;
         case ValidationMessageKeys.minItemsViolation:
@@ -2727,7 +2806,8 @@ module.exports = {
  *   defaultValue?: string,
  *   constValue?: string,
  *   constDisplayValue?: string,
- *   constComparableValue?: string
+ *   constComparableValue?: string,
+ *   not?: SchemaNode
  * } | {
  *   type: "array",
  *   displayPath: string,
@@ -2744,6 +2824,7 @@ module.exports = {
  *   uniqueItems?: boolean,
  *   refTable?: string,
  *   contains?: SchemaNode,
+ *   not?: SchemaNode,
  *   items: SchemaNode
  * } | {
  *   type: "string" | "integer" | "number" | "boolean",
@@ -2765,7 +2846,8 @@ module.exports = {
  *   patternRegex?: RegExp,
  *   format?: string,
  *   enumValues?: string[],
- *   refTable?: string
+ *   refTable?: string,
+ *   not?: SchemaNode
  * }} SchemaNode
  */
 
