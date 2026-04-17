@@ -541,6 +541,11 @@ public sealed class YamlConfigLoaderAllOfTests
         CreateConfigFile(relativePath, content);
     }
 
+    /// <summary>
+    ///     构建带有指定奖励内容的怪物配置 YAML 文本。
+    /// </summary>
+    /// <param name="rewardYaml">奖励对象的 YAML 片段。</param>
+    /// <returns>完整的怪物配置 YAML 文本。</returns>
     private static string BuildMonsterConfigYaml(string rewardYaml)
     {
         return $$"""
@@ -550,6 +555,12 @@ public sealed class YamlConfigLoaderAllOfTests
                 """;
     }
 
+    /// <summary>
+    ///     构建带有指定奖励属性和 allOf 约束的怪物 schema JSON。
+    /// </summary>
+    /// <param name="rewardPropertiesJson">奖励对象的 properties JSON 片段。</param>
+    /// <param name="allOfJson">allOf 约束的 JSON 数组片段。</param>
+    /// <returns>完整的 schema JSON 文本。</returns>
     private static string BuildMonsterSchema(
         string rewardPropertiesJson,
         string allOfJson)
@@ -570,6 +581,12 @@ public sealed class YamlConfigLoaderAllOfTests
                 """;
     }
 
+    /// <summary>
+    ///     为多行文本的每一行添加指定数量的空格缩进。
+    /// </summary>
+    /// <param name="text">原始文本。</param>
+    /// <param name="indentLevel">缩进空格数。</param>
+    /// <returns>添加缩进后的文本。</returns>
     private static string IndentLines(string text, int indentLevel)
     {
         var indentation = new string(' ', indentLevel);
