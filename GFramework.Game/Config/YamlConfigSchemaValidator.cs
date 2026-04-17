@@ -1975,9 +1975,18 @@ internal static class YamlConfigSchemaValidator
         JsonElement allOfSchemaElement,
         IReadOnlyDictionary<string, YamlConfigSchemaNode> properties)
     {
-        if (allOfSchemaElement.TryGetProperty("properties", out var allOfPropertiesElement) &&
-            allOfPropertiesElement.ValueKind == JsonValueKind.Object)
+        if (allOfSchemaElement.TryGetProperty("properties", out var allOfPropertiesElement))
         {
+            if (allOfPropertiesElement.ValueKind != JsonValueKind.Object)
+            {
+                throw ConfigLoadExceptionFactory.Create(
+                    ConfigLoadFailureKind.SchemaUnsupported,
+                    tableName,
+                    $"Entry #{allOfEntryNumber.ToString(CultureInfo.InvariantCulture)} in 'allOf' for {DescribeObjectSchemaTargetInClause(propertyPath)} of schema file '{schemaPath}' must declare 'properties' as an object-valued map.",
+                    schemaPath: schemaPath,
+                    displayPath: GetDiagnosticPath(allOfSchemaPath));
+            }
+
             foreach (var property in allOfPropertiesElement.EnumerateObject())
             {
                 if (properties.ContainsKey(property.Name))
@@ -1994,10 +2003,19 @@ internal static class YamlConfigSchemaValidator
             }
         }
 
-        if (!allOfSchemaElement.TryGetProperty("required", out var allOfRequiredElement) ||
-            allOfRequiredElement.ValueKind != JsonValueKind.Array)
+        if (!allOfSchemaElement.TryGetProperty("required", out var allOfRequiredElement))
         {
             return;
+        }
+
+        if (allOfRequiredElement.ValueKind != JsonValueKind.Array)
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"Entry #{allOfEntryNumber.ToString(CultureInfo.InvariantCulture)} in 'allOf' for {DescribeObjectSchemaTargetInClause(propertyPath)} of schema file '{schemaPath}' must declare 'required' as an array of property names.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(allOfSchemaPath));
         }
 
         foreach (var requiredProperty in allOfRequiredElement.EnumerateArray())

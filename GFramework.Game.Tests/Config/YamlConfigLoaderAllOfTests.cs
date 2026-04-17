@@ -301,6 +301,86 @@ public sealed class YamlConfigLoaderAllOfTests
     }
 
     /// <summary>
+    ///     验证 allOf 条目的 <c>properties</c> 必须声明为对象映射。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Throw_When_AllOf_Entry_Properties_Is_Not_Object_Valued()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            BuildMonsterConfigYaml(
+                """
+                itemCount: 3
+                """));
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            BuildMonsterSchema(
+                DefaultRewardPropertiesJson,
+                """
+                [
+                  {
+                    "type": "object",
+                    "properties": 1
+                  }
+                ]
+                """));
+
+        var loader = CreateMonsterRewardLoader();
+        var registry = CreateRegistry();
+
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Diagnostic.FailureKind, Is.EqualTo(ConfigLoadFailureKind.SchemaUnsupported));
+            Assert.That(exception.Diagnostic.DisplayPath, Is.EqualTo("reward[allOf[0]]"));
+            Assert.That(exception.Message, Does.Contain("must declare 'properties' as an object-valued map"));
+            Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
+    ///     验证 allOf 条目的 <c>required</c> 必须声明为字段名数组。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Throw_When_AllOf_Entry_Required_Is_Not_An_Array()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            BuildMonsterConfigYaml(
+                """
+                itemCount: 3
+                """));
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            BuildMonsterSchema(
+                DefaultRewardPropertiesJson,
+                """
+                [
+                  {
+                    "type": "object",
+                    "required": {}
+                  }
+                ]
+                """));
+
+        var loader = CreateMonsterRewardLoader();
+        var registry = CreateRegistry();
+
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Diagnostic.FailureKind, Is.EqualTo(ConfigLoadFailureKind.SchemaUnsupported));
+            Assert.That(exception.Diagnostic.DisplayPath, Is.EqualTo("reward[allOf[0]]"));
+            Assert.That(exception.Message, Does.Contain("must declare 'required' as an array of property names"));
+            Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
     ///     验证 allOf 条目不能要求父对象未声明的字段。
     /// </summary>
     [Test]

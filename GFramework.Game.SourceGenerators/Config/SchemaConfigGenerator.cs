@@ -1357,9 +1357,19 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         diagnostic = null;
         var allOfEntryPath = BuildAllOfEntryPath(displayPath, allOfIndex);
 
-        if (allOfSchema.TryGetProperty("properties", out var allOfPropertiesElement) &&
-            allOfPropertiesElement.ValueKind == JsonValueKind.Object)
+        if (allOfSchema.TryGetProperty("properties", out var allOfPropertiesElement))
         {
+            if (allOfPropertiesElement.ValueKind != JsonValueKind.Object)
+            {
+                diagnostic = Diagnostic.Create(
+                    ConfigSchemaDiagnostics.InvalidAllOfMetadata,
+                    CreateFileLocation(filePath),
+                    Path.GetFileName(filePath),
+                    allOfEntryPath,
+                    $"Entry #{allOfIndex + 1} in 'allOf' must declare 'properties' as an object-valued map.");
+                return false;
+            }
+
             foreach (var property in allOfPropertiesElement.EnumerateObject())
             {
                 if (declaredProperties.Contains(property.Name))
@@ -1377,10 +1387,20 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             }
         }
 
-        if (!allOfSchema.TryGetProperty("required", out var requiredElement) ||
-            requiredElement.ValueKind != JsonValueKind.Array)
+        if (!allOfSchema.TryGetProperty("required", out var requiredElement))
         {
             return true;
+        }
+
+        if (requiredElement.ValueKind != JsonValueKind.Array)
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidAllOfMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                allOfEntryPath,
+                $"Entry #{allOfIndex + 1} in 'allOf' must declare 'required' as an array of parent property names.");
+            return false;
         }
 
         foreach (var requiredProperty in requiredElement.EnumerateArray())
