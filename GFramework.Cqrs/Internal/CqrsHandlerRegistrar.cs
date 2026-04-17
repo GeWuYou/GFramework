@@ -11,6 +11,19 @@ namespace GFramework.Cqrs.Internal;
 /// </summary>
 internal static class CqrsHandlerRegistrar
 {
+    // 进程级缓存：同一程序集的 generated-registry 元数据与 reflection-fallback 元数据在加载后保持稳定，
+    // 因此可跨容器复用分析结果，避免每次注册都重复读取程序集级 attribute。
+    private static readonly ConcurrentDictionary<Assembly, AssemblyRegistrationMetadata> AssemblyMetadataCache =
+        new(ReferenceEqualityComparer.Instance);
+
+    // 进程级缓存：registry 类型的可激活性与构造入口是稳定的，可跨多次容器初始化复用。
+    private static readonly ConcurrentDictionary<Type, RegistryActivationMetadata> RegistryActivationMetadataCache =
+        new();
+
+    // 进程级缓存：对未命中 generated-registry 的程序集，缓存可加载类型列表以避免重复 GetTypes() 扫描。
+    private static readonly ConcurrentDictionary<Assembly, IReadOnlyList<Type>> LoadableTypesCache =
+        new(ReferenceEqualityComparer.Instance);
+
     /// <summary>
     ///     扫描指定程序集并注册所有 CQRS 请求/通知/流式处理器。
     /// </summary>
@@ -60,14 +73,10 @@ internal static class CqrsHandlerRegistrar
 
         try
         {
-            var registryTypes = assembly
-                .GetCustomAttributes(typeof(CqrsHandlerRegistryAttribute), inherit: false)
-                .OfType<CqrsHandlerRegistryAttribute>()
-                .Select(static attribute => attribute.RegistryType)
-                .Where(static type => type is not null)
-                .Distinct()
-                .OrderBy(GetTypeSortKey, StringComparer.Ordinal)
-                .ToList();
+            var assemblyMetadata = AssemblyMetadataCache.GetOrAdd(
+                assembly,
+                key => AnalyzeAssemblyRegistrationMetadata(key, logger));
+            var registryTypes = assemblyMetadata.RegistryTypes;
 
             if (registryTypes.Count == 0)
                 return GeneratedRegistrationResult.NoGeneratedRegistry();
@@ -75,27 +84,32 @@ internal static class CqrsHandlerRegistrar
             var registries = new List<ICqrsHandlerRegistry>(registryTypes.Count);
             foreach (var registryType in registryTypes)
             {
-                if (!typeof(ICqrsHandlerRegistry).IsAssignableFrom(registryType))
+                var activationMetadata = RegistryActivationMetadataCache.GetOrAdd(
+                    registryType,
+                    AnalyzeRegistryActivation);
+
+                if (!activationMetadata.ImplementsRegistryContract)
                 {
                     logger.Warn(
                         $"Ignoring generated CQRS handler registry {registryType.FullName} in assembly {assemblyName} because it does not implement {typeof(ICqrsHandlerRegistry).FullName}.");
                     return GeneratedRegistrationResult.NoGeneratedRegistry();
                 }
 
-                if (registryType.IsAbstract)
+                if (activationMetadata.IsAbstract)
                 {
                     logger.Warn(
                         $"Ignoring generated CQRS handler registry {registryType.FullName} in assembly {assemblyName} because it is abstract.");
                     return GeneratedRegistrationResult.NoGeneratedRegistry();
                 }
 
-                if (Activator.CreateInstance(registryType, nonPublic: true) is not ICqrsHandlerRegistry registry)
+                if (activationMetadata.Factory is null)
                 {
                     logger.Warn(
-                        $"Ignoring generated CQRS handler registry {registryType.FullName} in assembly {assemblyName} because it could not be instantiated.");
+                        $"Ignoring generated CQRS handler registry {registryType.FullName} in assembly {assemblyName} because it does not expose an accessible parameterless constructor.");
                     return GeneratedRegistrationResult.NoGeneratedRegistry();
                 }
 
+                var registry = activationMetadata.Factory();
                 registries.Add(registry);
             }
 
@@ -106,7 +120,7 @@ internal static class CqrsHandlerRegistrar
                 registry.Register(services, logger);
             }
 
-            var reflectionFallbackMetadata = GetReflectionFallbackMetadata(assembly, logger);
+            var reflectionFallbackMetadata = assemblyMetadata.ReflectionFallbackMetadata;
             if (reflectionFallbackMetadata is not null)
             {
                 if (reflectionFallbackMetadata.HasExplicitTypes)
@@ -260,12 +274,68 @@ internal static class CqrsHandlerRegistrar
     /// </summary>
     private static IReadOnlyList<Type> GetLoadableTypes(Assembly assembly, ILogger logger)
     {
+        return LoadableTypesCache.GetOrAdd(
+            assembly,
+            key => LoadAndSortTypes(key, logger));
+    }
+
+    /// <summary>
+    ///     分析并缓存指定程序集上的 generated-registry 与 fallback 元数据。
+    /// </summary>
+    private static AssemblyRegistrationMetadata AnalyzeAssemblyRegistrationMetadata(
+        Assembly assembly,
+        ILogger logger)
+    {
+        var registryTypes = assembly
+            .GetCustomAttributes(typeof(CqrsHandlerRegistryAttribute), inherit: false)
+            .OfType<CqrsHandlerRegistryAttribute>()
+            .Select(static attribute => attribute.RegistryType)
+            .Where(static type => type is not null)
+            .Distinct()
+            .OrderBy(GetTypeSortKey, StringComparer.Ordinal)
+            .ToArray();
+
+        var reflectionFallbackMetadata = GetReflectionFallbackMetadata(assembly, logger);
+        return new AssemblyRegistrationMetadata(registryTypes, reflectionFallbackMetadata);
+    }
+
+    /// <summary>
+    ///     分析并缓存 registry 类型的可激活性，避免每次注册都重复检查接口实现与构造函数。
+    /// </summary>
+    private static RegistryActivationMetadata AnalyzeRegistryActivation(Type registryType)
+    {
+        var implementsRegistryContract = typeof(ICqrsHandlerRegistry).IsAssignableFrom(registryType);
+        if (!implementsRegistryContract)
+            return new RegistryActivationMetadata(false, registryType.IsAbstract, null);
+
+        if (registryType.IsAbstract)
+            return new RegistryActivationMetadata(true, true, null);
+
+        var constructor = registryType.GetConstructor(
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+            binder: null,
+            Type.EmptyTypes,
+            modifiers: null);
+
+        return constructor is null
+            ? new RegistryActivationMetadata(true, false, null)
+            : new RegistryActivationMetadata(
+                true,
+                false,
+                () => (ICqrsHandlerRegistry)constructor.Invoke(null));
+    }
+
+    /// <summary>
+    ///     首次命中未生成 registry 的程序集时加载并排序全部可扫描类型，后续复用缓存结果。
+    /// </summary>
+    private static IReadOnlyList<Type> LoadAndSortTypes(Assembly assembly, ILogger logger)
+    {
         try
         {
             return assembly.GetTypes()
                 .Where(static type => type is not null)
                 .OrderBy(GetTypeSortKey, StringComparer.Ordinal)
-                .ToList();
+                .ToArray();
         }
         catch (ReflectionTypeLoadException exception)
         {
@@ -389,5 +459,27 @@ internal static class CqrsHandlerRegistrar
         public IReadOnlyList<Type> Types { get; } = types ?? throw new ArgumentNullException(nameof(types));
 
         public bool HasExplicitTypes => Types.Count > 0;
+    }
+
+    private sealed class AssemblyRegistrationMetadata(
+        IReadOnlyList<Type> registryTypes,
+        ReflectionFallbackMetadata? reflectionFallbackMetadata)
+    {
+        public IReadOnlyList<Type> RegistryTypes { get; } =
+            registryTypes ?? throw new ArgumentNullException(nameof(registryTypes));
+
+        public ReflectionFallbackMetadata? ReflectionFallbackMetadata { get; } = reflectionFallbackMetadata;
+    }
+
+    private sealed class RegistryActivationMetadata(
+        bool implementsRegistryContract,
+        bool isAbstract,
+        Func<ICqrsHandlerRegistry>? factory)
+    {
+        public bool ImplementsRegistryContract { get; } = implementsRegistryContract;
+
+        public bool IsAbstract { get; } = isAbstract;
+
+        public Func<ICqrsHandlerRegistry>? Factory { get; } = factory;
     }
 }
