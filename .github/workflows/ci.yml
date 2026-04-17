@@ -147,6 +147,7 @@ jobs:
       # 运行单元测试，输出TRX格式结果到TestResults目录
       # 在同一个 step 中并发执行所有测试以加快速度
       - name: Test All Projects
+        id: test_all_projects
         run: |
           set -euo pipefail
 
@@ -181,7 +182,7 @@ jobs:
             fi
           done
 
-          exit "$failed"
+          echo "failed=$failed" >> "$GITHUB_OUTPUT"
           
       - name: Generate CTRF report
         run: |
@@ -223,3 +224,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: always()
+
+      - name: Fail if any test project failed
+        if: always() && steps.test_all_projects.outputs.failed == '1'
+        run: exit 1
