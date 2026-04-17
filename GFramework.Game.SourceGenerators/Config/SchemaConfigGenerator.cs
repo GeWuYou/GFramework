@@ -9,8 +9,8 @@ namespace GFramework.Game.SourceGenerators.Config;
 ///     当前共享子集也会把 <c>multipleOf</c>、<c>uniqueItems</c>、
 ///     <c>contains</c> / <c>minContains</c> / <c>maxContains</c>、
 ///     <c>minProperties</c>、<c>maxProperties</c>、<c>dependentRequired</c>、
-///     <c>dependentSchemas</c> 与稳定字符串 <c>format</c> 子集写入生成代码文档，
-///     让消费者能直接在强类型 API 上看到运行时生效的约束。
+///     <c>dependentSchemas</c>、<c>allOf</c> 与稳定字符串 <c>format</c> 子集写入生成代码文档，
+///     让消费者能直接在强类型 API 上看到运行时生效且不改变生成类型形状的约束。
 /// </summary>
 [Generator]
 public sealed class SchemaConfigGenerator : IIncrementalGenerator
@@ -158,6 +158,15 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                     out var dependentSchemasDiagnostic))
             {
                 return SchemaParseResult.FromDiagnostic(dependentSchemasDiagnostic!);
+            }
+
+            if (!TryValidateAllOfMetadataRecursively(
+                    file.Path,
+                    "<root>",
+                    root,
+                    out var allOfDiagnostic))
+            {
+                return SchemaParseResult.FromDiagnostic(allOfDiagnostic!);
             }
 
             var entityName = ToPascalCase(GetSchemaBaseName(file.Path));
@@ -681,8 +690,8 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
 
     /// <summary>
     ///     以统一顺序递归遍历 schema 树，并把每个节点交给调用方提供的校验逻辑。
-    ///     该遍历覆盖对象属性、<c>dependentSchemas</c> / <c>not</c> 子 schema、
-    ///     数组 <c>items</c> 与 <c>contains</c>，
+    ///     该遍历覆盖对象属性、<c>dependentSchemas</c> / <c>allOf</c> / <c>not</c> 子 schema、
+///     数组 <c>items</c> 与 <c>contains</c>，
     ///     避免不同关键字验证器在同一棵 schema 树上各自维护一份容易漂移的递归流程。
     /// </summary>
     /// <param name="filePath">Schema 文件路径。</param>
@@ -756,6 +765,33 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                 {
                     return false;
                 }
+            }
+        }
+
+        if (string.Equals(schemaType, "object", StringComparison.Ordinal) &&
+            element.TryGetProperty("allOf", out var allOfElement) &&
+            allOfElement.ValueKind == JsonValueKind.Array)
+        {
+            var allOfIndex = 0;
+            foreach (var allOfSchema in allOfElement.EnumerateArray())
+            {
+                if (allOfSchema.ValueKind != JsonValueKind.Object)
+                {
+                    allOfIndex++;
+                    continue;
+                }
+
+                if (!TryTraverseSchemaRecursively(
+                        filePath,
+                        $"{displayPath}[allOf:{allOfIndex}]",
+                        allOfSchema,
+                        nodeValidator,
+                        out diagnostic))
+                {
+                    return false;
+                }
+
+                allOfIndex++;
             }
         }
 
@@ -1117,6 +1153,144 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                     $"Property '{dependency.Name}' must declare an object-typed 'dependentSchemas' schema.");
                 return false;
             }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    ///     验证当前 schema 节点是否以运行时支持的方式声明了 <c>allOf</c>。
+    ///     当前共享子集只接受 object 节点上的 object-typed inline schema 数组，
+    ///     以便把它们解释成 focused constraint block，而不引入额外的类型合并语义。
+    /// </summary>
+    /// <param name="filePath">Schema 文件路径。</param>
+    /// <param name="displayPath">逻辑字段路径。</param>
+    /// <param name="element">当前 schema 节点。</param>
+    /// <param name="schemaType">当前节点声明的 schema 类型。</param>
+    /// <param name="diagnostic">失败时返回的诊断。</param>
+    /// <returns>当前节点上的 allOf 声明是否有效。</returns>
+    private static bool TryValidateAllOfDeclaration(
+        string filePath,
+        string displayPath,
+        JsonElement element,
+        string? schemaType,
+        out Diagnostic? diagnostic)
+    {
+        diagnostic = null;
+        if (!element.TryGetProperty("allOf", out _))
+        {
+            return true;
+        }
+
+        if (!string.Equals(schemaType, "object", StringComparison.Ordinal))
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidAllOfMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                displayPath,
+                "Only object schemas can declare 'allOf'.");
+            return false;
+        }
+
+        return TryValidateAllOfMetadata(filePath, displayPath, element, out diagnostic);
+    }
+
+    /// <summary>
+    ///     递归验证 schema 树中的对象级 <c>allOf</c> 元数据。
+    ///     该遍历会覆盖根节点、<c>not</c>、数组元素、<c>contains</c>、<c>dependentSchemas</c>
+    ///     与嵌套 <c>allOf</c>，确保生成器对组合约束的接受范围与运行时保持一致。
+    /// </summary>
+    /// <param name="filePath">Schema 文件路径。</param>
+    /// <param name="displayPath">逻辑字段路径。</param>
+    /// <param name="element">当前 schema 节点。</param>
+    /// <param name="diagnostic">失败时返回的诊断。</param>
+    /// <returns>当前节点树的 allOf 元数据是否有效。</returns>
+    private static bool TryValidateAllOfMetadataRecursively(
+        string filePath,
+        string displayPath,
+        JsonElement element,
+        out Diagnostic? diagnostic)
+    {
+        return TryTraverseSchemaRecursively(
+            filePath,
+            displayPath,
+            element,
+            static (currentFilePath, currentDisplayPath, currentElement, schemaType) =>
+            {
+                return TryValidateAllOfDeclaration(
+                    currentFilePath,
+                    currentDisplayPath,
+                    currentElement,
+                    schemaType,
+                    out var currentDiagnostic)
+                    ? (true, (Diagnostic?)null)
+                    : (false, currentDiagnostic);
+            },
+            out diagnostic);
+    }
+
+    /// <summary>
+    ///     验证单个对象 schema 节点上的 <c>allOf</c> 元数据。
+    ///     生成器当前只接受 object-typed inline schema 数组，
+    ///     避免 XML 文档描述出运行时不会按 focused constraint block 解释的组合形状。
+    /// </summary>
+    /// <param name="filePath">Schema 文件路径。</param>
+    /// <param name="displayPath">逻辑字段路径。</param>
+    /// <param name="element">当前对象 schema 节点。</param>
+    /// <param name="diagnostic">失败时返回的诊断。</param>
+    /// <returns>当前对象上的 allOf 元数据是否有效。</returns>
+    private static bool TryValidateAllOfMetadata(
+        string filePath,
+        string displayPath,
+        JsonElement element,
+        out Diagnostic? diagnostic)
+    {
+        diagnostic = null;
+        if (!element.TryGetProperty("allOf", out var allOfElement))
+        {
+            return true;
+        }
+
+        if (allOfElement.ValueKind != JsonValueKind.Array)
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidAllOfMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                displayPath,
+                "The 'allOf' value must be an array.");
+            return false;
+        }
+
+        var allOfIndex = 0;
+        foreach (var allOfSchema in allOfElement.EnumerateArray())
+        {
+            if (allOfSchema.ValueKind != JsonValueKind.Object)
+            {
+                diagnostic = Diagnostic.Create(
+                    ConfigSchemaDiagnostics.InvalidAllOfMetadata,
+                    CreateFileLocation(filePath),
+                    Path.GetFileName(filePath),
+                    displayPath,
+                    $"Entry #{allOfIndex + 1} in 'allOf' must be an object-valued schema.");
+                return false;
+            }
+
+            if (!allOfSchema.TryGetProperty("type", out var allOfTypeElement) ||
+                allOfTypeElement.ValueKind != JsonValueKind.String ||
+                !string.Equals(allOfTypeElement.GetString(), "object", StringComparison.Ordinal))
+            {
+                diagnostic = Diagnostic.Create(
+                    ConfigSchemaDiagnostics.InvalidAllOfMetadata,
+                    CreateFileLocation(filePath),
+                    Path.GetFileName(filePath),
+                    displayPath,
+                    $"Entry #{allOfIndex + 1} in 'allOf' must declare an object-typed schema.");
+                return false;
+            }
+
+            allOfIndex++;
         }
 
         return true;
@@ -3215,7 +3389,8 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     }
 
     /// <summary>
-    ///     将 shared schema 子集中的范围、步进、长度、数组数量 / 去重 / contains 与对象属性数量约束整理成 XML 文档可读字符串。
+    ///     将 shared schema 子集中的范围、步进、长度、数组数量 / 去重 / contains、
+    ///     对象属性数量 / dependent* / allOf 约束整理成 XML 文档可读字符串。
     /// </summary>
     /// <param name="element">Schema 节点。</param>
     /// <param name="schemaType">标量类型。</param>
@@ -3362,6 +3537,12 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             {
                 parts.Add($"dependentSchemas = {dependentSchemasDocumentation}");
             }
+
+            var allOfDocumentation = TryBuildAllOfDocumentation(element);
+            if (allOfDocumentation is not null)
+            {
+                parts.Add($"allOf = {allOfDocumentation}");
+            }
         }
 
         return parts.Count > 0 ? string.Join(", ", parts) : null;
@@ -3440,6 +3621,39 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
 
         return parts.Count > 0
             ? $"{{ {string.Join("; ", parts)} }}"
+            : null;
+    }
+
+    /// <summary>
+    ///     将对象 <c>allOf</c> 组合约束整理成 XML 文档可读字符串。
+    /// </summary>
+    /// <param name="element">对象 schema 节点。</param>
+    /// <returns>格式化后的 allOf 说明。</returns>
+    private static string? TryBuildAllOfDocumentation(JsonElement element)
+    {
+        if (!element.TryGetProperty("allOf", out var allOfElement) ||
+            allOfElement.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        var parts = new List<string>();
+        foreach (var allOfSchema in allOfElement.EnumerateArray())
+        {
+            if (allOfSchema.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            var summary = TryBuildInlineSchemaSummary(allOfSchema, includeRequiredProperties: true);
+            if (summary is not null)
+            {
+                parts.Add(summary);
+            }
+        }
+
+        return parts.Count > 0
+            ? $"[ {string.Join("; ", parts)} ]"
             : null;
     }
 

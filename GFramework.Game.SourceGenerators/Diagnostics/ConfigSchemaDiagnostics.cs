@@ -129,4 +129,15 @@ public static class ConfigSchemaDiagnostics
         SourceGeneratorsConfigCategory,
         DiagnosticSeverity.Error,
         true);
+
+    /// <summary>
+    ///     schema 对象节点的 allOf 元数据无效。
+    /// </summary>
+    public static readonly DiagnosticDescriptor InvalidAllOfMetadata = new(
+        "GF_ConfigSchema_012",
+        "Config schema uses invalid allOf metadata",
+        "Property '{1}' in schema file '{0}' uses invalid 'allOf' metadata: {2}",
+        SourceGeneratorsConfigCategory,
+        DiagnosticSeverity.Error,
+        true);
 }

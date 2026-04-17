@@ -146,3 +146,31 @@ test("createLocalizer should expose dependentSchemas validation keys", () => {
         }),
         "对象“reward”在属性“reward.itemId”存在时，必须满足对应的 dependent schema。");
 });
+
+test("createLocalizer should expose allOf validation keys", () => {
+    const englishLocalizer = createLocalizer("en");
+    const chineseLocalizer = createLocalizer("zh-cn");
+
+    assert.equal(
+        englishLocalizer.t("webview.hint.allOf", {
+            schema: "object, Required: itemCount"
+        }),
+        "Also satisfy: object, Required: itemCount");
+    assert.equal(
+        chineseLocalizer.t("webview.hint.allOf", {
+            schema: "object, 必填字段：itemCount"
+        }),
+        "还必须满足：object, 必填字段：itemCount");
+    assert.equal(
+        englishLocalizer.t(ValidationMessageKeys.allOfViolation, {
+            displayPath: "reward",
+            index: "1"
+        }),
+        "Object 'reward' must satisfy all 'allOf' schemas; entry #1 did not match.");
+    assert.equal(
+        chineseLocalizer.t(ValidationMessageKeys.allOfViolation, {
+            displayPath: "reward",
+            index: "1"
+        }),
+        "对象“reward”必须满足全部 `allOf` schema，第 1 项未匹配。");
+});

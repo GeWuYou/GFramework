@@ -691,6 +691,218 @@ public class SchemaConfigGeneratorTests
     }
 
     /// <summary>
+    ///     验证对象 <c>allOf</c> 会写入生成 XML 文档。
+    /// </summary>
+    [Test]
+    public void Run_Should_Write_AllOf_Constraint_Into_Generated_Documentation()
+    {
+        const string source = """
+                              namespace TestApp
+                              {
+                                  public sealed class Dummy
+                                  {
+                                  }
+                              }
+                              """;
+
+        const string schema = """
+                              {
+                                "type": "object",
+                                "required": ["id", "reward"],
+                                "properties": {
+                                  "id": { "type": "integer" },
+                                  "reward": {
+                                    "type": "object",
+                                    "properties": {
+                                      "itemId": { "type": "string" },
+                                      "itemCount": { "type": "integer" }
+                                    },
+                                    "allOf": [
+                                      {
+                                        "type": "object",
+                                        "required": ["itemCount"],
+                                        "properties": {
+                                          "itemCount": { "type": "integer" }
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                              """;
+
+        var result = SchemaGeneratorTestDriver.Run(
+            source,
+            ("monster.schema.json", schema));
+
+        var generatedSources = result.Results
+            .Single()
+            .GeneratedSources
+            .ToDictionary(
+                static sourceResult => sourceResult.HintName,
+                static sourceResult => sourceResult.SourceText.ToString(),
+                StringComparer.Ordinal);
+
+        Assert.That(result.Results.Single().Diagnostics, Is.Empty);
+        Assert.That(
+            generatedSources["MonsterConfig.g.cs"],
+            Does.Contain("Constraints: allOf = [ object (required = [itemCount]) ]."));
+    }
+
+    /// <summary>
+    ///     验证只有 object 节点允许声明 <c>allOf</c>。
+    /// </summary>
+    [Test]
+    public void Run_Should_Report_Diagnostic_When_NonObject_Schema_Declares_AllOf()
+    {
+        const string source = """
+                              namespace TestApp
+                              {
+                                  public sealed class Dummy
+                                  {
+                                  }
+                              }
+                              """;
+
+        const string schema = """
+                              {
+                                "type": "object",
+                                "required": ["id", "tag"],
+                                "properties": {
+                                  "id": { "type": "integer" },
+                                  "tag": {
+                                    "type": "string",
+                                    "allOf": [
+                                      {
+                                        "type": "object",
+                                        "properties": {}
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                              """;
+
+        var result = SchemaGeneratorTestDriver.Run(
+            source,
+            ("monster.schema.json", schema));
+
+        var diagnostic = result.Results.Single().Diagnostics.Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Id, Is.EqualTo("GF_ConfigSchema_012"));
+            Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Error));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("tag"));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("Only object schemas can declare 'allOf'."));
+        });
+    }
+
+    /// <summary>
+    ///     验证生成器会拒绝非数组的 <c>allOf</c> 声明。
+    /// </summary>
+    [Test]
+    public void Run_Should_Report_Diagnostic_When_AllOf_Is_Not_An_Array()
+    {
+        const string source = """
+                              namespace TestApp
+                              {
+                                  public sealed class Dummy
+                                  {
+                                  }
+                              }
+                              """;
+
+        const string schema = """
+                              {
+                                "type": "object",
+                                "required": ["id", "reward"],
+                                "properties": {
+                                  "id": { "type": "integer" },
+                                  "reward": {
+                                    "type": "object",
+                                    "properties": {
+                                      "itemCount": { "type": "integer" }
+                                    },
+                                    "allOf": {
+                                      "type": "object",
+                                      "properties": {
+                                        "itemCount": { "type": "integer" }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                              """;
+
+        var result = SchemaGeneratorTestDriver.Run(
+            source,
+            ("monster.schema.json", schema));
+
+        var diagnostic = result.Results.Single().Diagnostics.Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Id, Is.EqualTo("GF_ConfigSchema_012"));
+            Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Error));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("reward"));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("The 'allOf' value must be an array."));
+        });
+    }
+
+    /// <summary>
+    ///     验证生成器会拒绝非 object-typed 的 <c>allOf</c> 条目。
+    /// </summary>
+    [Test]
+    public void Run_Should_Report_Diagnostic_When_AllOf_Entry_Is_Not_Object_Typed()
+    {
+        const string source = """
+                              namespace TestApp
+                              {
+                                  public sealed class Dummy
+                                  {
+                                  }
+                              }
+                              """;
+
+        const string schema = """
+                              {
+                                "type": "object",
+                                "required": ["id", "reward"],
+                                "properties": {
+                                  "id": { "type": "integer" },
+                                  "reward": {
+                                    "type": "object",
+                                    "properties": {
+                                      "itemCount": { "type": "integer" }
+                                    },
+                                    "allOf": [
+                                      {
+                                        "type": "string",
+                                        "const": "potion"
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                              """;
+
+        var result = SchemaGeneratorTestDriver.Run(
+            source,
+            ("monster.schema.json", schema));
+
+        var diagnostic = result.Results.Single().Diagnostics.Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Id, Is.EqualTo("GF_ConfigSchema_012"));
+            Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Error));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("reward"));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("Entry #1 in 'allOf' must declare an object-typed schema."));
+        });
+    }
+
+    /// <summary>
     ///     验证深层不支持的数组嵌套会带着完整字段路径产生命名明确的诊断。
     /// </summary>
     [Test]
