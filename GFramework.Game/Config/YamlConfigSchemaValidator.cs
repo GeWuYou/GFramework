@@ -1666,7 +1666,7 @@ internal static class YamlConfigSchemaValidator
             "maxProperties");
         var dependentRequired = ParseDependentRequiredConstraints(tableName, schemaPath, propertyPath, element, properties);
         var dependentSchemas = ParseDependentSchemasConstraints(tableName, schemaPath, propertyPath, element, properties);
-        var allOfSchemas = ParseAllOfConstraints(tableName, schemaPath, propertyPath, element);
+        var allOfSchemas = ParseAllOfConstraints(tableName, schemaPath, propertyPath, element, properties);
 
         if (minProperties.HasValue && maxProperties.HasValue && minProperties.Value > maxProperties.Value)
         {
@@ -1883,12 +1883,14 @@ internal static class YamlConfigSchemaValidator
     /// <param name="schemaPath">Schema 文件路径。</param>
     /// <param name="propertyPath">对象字段路径。</param>
     /// <param name="element">Schema 节点。</param>
+    /// <param name="properties">父对象已声明的属性集合。</param>
     /// <returns>归一化后的 allOf schema 列表；未声明或为空时返回空。</returns>
     private static IReadOnlyList<YamlConfigSchemaNode>? ParseAllOfConstraints(
         string tableName,
         string schemaPath,
         string propertyPath,
-        JsonElement element)
+        JsonElement element,
+        IReadOnlyDictionary<string, YamlConfigSchemaNode> properties)
     {
         if (!element.TryGetProperty("allOf", out var allOfElement))
         {
@@ -1920,6 +1922,14 @@ internal static class YamlConfigSchemaValidator
             }
 
             var allOfSchemaPath = BuildNestedSchemaPath(propertyPath, $"allOf[{allOfIndex.ToString(CultureInfo.InvariantCulture)}]");
+            ValidateAllOfSchemaTargetsAgainstParentObject(
+                tableName,
+                schemaPath,
+                propertyPath,
+                allOfSchemaPath,
+                allOfIndex + 1,
+                allOfSchemaElement,
+                properties);
             var allOfSchemaNode = ParseNode(
                 tableName,
                 schemaPath,
@@ -1942,6 +1952,75 @@ internal static class YamlConfigSchemaValidator
         return allOfSchemas.Count == 0
             ? null
             : allOfSchemas;
+    }
+
+    /// <summary>
+    ///     验证 <c>allOf</c> 条目只约束父对象已经声明过的同级字段。
+    ///     当前 object-focused 语义不会把条目里的属性并回父对象形状，因此这里要提前拒绝
+    ///     “在 focused block 里引入父对象未声明字段”的不可满足 schema。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="schemaPath">Schema 文件路径。</param>
+    /// <param name="propertyPath">父对象路径。</param>
+    /// <param name="allOfSchemaPath">当前 allOf 条目路径。</param>
+    /// <param name="allOfEntryNumber">从 1 开始的 allOf 条目编号。</param>
+    /// <param name="allOfSchemaElement">当前 allOf 条目。</param>
+    /// <param name="properties">父对象已声明的属性集合。</param>
+    private static void ValidateAllOfSchemaTargetsAgainstParentObject(
+        string tableName,
+        string schemaPath,
+        string propertyPath,
+        string allOfSchemaPath,
+        int allOfEntryNumber,
+        JsonElement allOfSchemaElement,
+        IReadOnlyDictionary<string, YamlConfigSchemaNode> properties)
+    {
+        if (allOfSchemaElement.TryGetProperty("properties", out var allOfPropertiesElement) &&
+            allOfPropertiesElement.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var property in allOfPropertiesElement.EnumerateObject())
+            {
+                if (properties.ContainsKey(property.Name))
+                {
+                    continue;
+                }
+
+                throw ConfigLoadExceptionFactory.Create(
+                    ConfigLoadFailureKind.SchemaUnsupported,
+                    tableName,
+                    $"Entry #{allOfEntryNumber.ToString(CultureInfo.InvariantCulture)} in 'allOf' for {DescribeObjectSchemaTargetInClause(propertyPath)} of schema file '{schemaPath}' declares property '{property.Name}', but that property is not declared in the parent object schema.",
+                    schemaPath: schemaPath,
+                    displayPath: GetDiagnosticPath(allOfSchemaPath));
+            }
+        }
+
+        if (!allOfSchemaElement.TryGetProperty("required", out var allOfRequiredElement) ||
+            allOfRequiredElement.ValueKind != JsonValueKind.Array)
+        {
+            return;
+        }
+
+        foreach (var requiredProperty in allOfRequiredElement.EnumerateArray())
+        {
+            if (requiredProperty.ValueKind != JsonValueKind.String)
+            {
+                continue;
+            }
+
+            var requiredPropertyName = requiredProperty.GetString();
+            if (string.IsNullOrWhiteSpace(requiredPropertyName) ||
+                properties.ContainsKey(requiredPropertyName))
+            {
+                continue;
+            }
+
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"Entry #{allOfEntryNumber.ToString(CultureInfo.InvariantCulture)} in 'allOf' for {DescribeObjectSchemaTargetInClause(propertyPath)} of schema file '{schemaPath}' requires property '{requiredPropertyName}', but that property is not declared in the parent object schema.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(allOfSchemaPath));
+        }
     }
 
     /// <summary>

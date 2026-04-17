@@ -1893,6 +1893,61 @@ test("parseSchemaContent should reject non-object-typed allOf sub-schemas", () =
     );
 });
 
+test("parseSchemaContent should reject allOf entries that introduce undeclared parent properties", () => {
+    assert.throws(
+        () => parseSchemaContent(`
+            {
+              "type": "object",
+              "properties": {
+                "reward": {
+                  "type": "object",
+                  "properties": {
+                    "itemCount": { "type": "integer" }
+                  },
+                  "allOf": [
+                    {
+                      "type": "object",
+                      "required": ["bonus"]
+                    }
+                  ]
+                }
+              }
+            }
+        `),
+        /requires property 'bonus' in 'allOf' entry #1/u
+    );
+});
+
+test("parseSchemaContent should use runtime-aligned allOf paths for nested schema errors", () => {
+    assert.throws(
+        () => parseSchemaContent(`
+            {
+              "type": "object",
+              "properties": {
+                "reward": {
+                  "type": "object",
+                  "properties": {
+                    "itemCount": { "type": "integer" }
+                  },
+                  "allOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "itemCount": {
+                          "type": "integer",
+                          "format": "uuid"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+        `),
+        /reward\[allOf\[0\]\]\.itemCount/u
+    );
+});
+
 test("parseSchemaContent should capture not sub-schema metadata", () => {
     const schema = parseSchemaContent(`
         {

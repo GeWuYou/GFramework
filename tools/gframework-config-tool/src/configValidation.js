@@ -1139,7 +1139,7 @@ function parseSchemaNode(rawNode, displayPath) {
         }
         const dependentRequired = parseDependentRequiredMetadata(value.dependentRequired, displayPath, properties);
         const dependentSchemas = parseDependentSchemasMetadata(value.dependentSchemas, displayPath, properties);
-        const allOf = parseAllOfSchemaNodes(value.allOf, displayPath);
+        const allOf = parseAllOfSchemaNodes(value.allOf, displayPath, properties);
 
         return applyEnumMetadata(applyConstMetadata({
             type: "object",
@@ -1386,9 +1386,10 @@ function parseDependentSchemasMetadata(rawDependentSchemas, displayPath, propert
  *
  * @param {unknown} rawAllOf Raw `allOf` node.
  * @param {string} displayPath Parent schema path.
+ * @param {Record<string, SchemaNode>} properties Declared object properties.
  * @returns {SchemaNode[] | undefined} Normalized allOf schema list.
  */
-function parseAllOfSchemaNodes(rawAllOf, displayPath) {
+function parseAllOfSchemaNodes(rawAllOf, displayPath, properties) {
     if (rawAllOf === undefined) {
         return undefined;
     }
@@ -1410,13 +1411,61 @@ function parseAllOfSchemaNodes(rawAllOf, displayPath) {
                 `Schema property '${displayPath}' must declare object-typed schemas in 'allOf' entry #${index + 1}.`);
         }
 
-        const allOfSchema = parseSchemaNode(rawAllOfSchema, `${displayPath}[allOf:${index}]`);
+        validateAllOfEntryTargets(rawAllOfSchema, displayPath, index, properties);
+        const allOfSchema = parseSchemaNode(rawAllOfSchema, `${displayPath}[allOf[${index}]]`);
         normalized.push(allOfSchema);
     }
 
     return normalized.length > 0
         ? normalized
         : undefined;
+}
+
+/**
+ * Ensure one object-focused `allOf` entry only constrains properties that the
+ * parent object schema already declared.
+ *
+ * @param {unknown} rawAllOfSchema Raw allOf entry.
+ * @param {string} displayPath Parent schema path.
+ * @param {number} index Zero-based allOf entry index.
+ * @param {Record<string, SchemaNode>} properties Declared parent properties.
+ */
+function validateAllOfEntryTargets(rawAllOfSchema, displayPath, index, properties) {
+    if (!rawAllOfSchema || typeof rawAllOfSchema !== "object" || Array.isArray(rawAllOfSchema)) {
+        return;
+    }
+
+    if (rawAllOfSchema.properties &&
+        typeof rawAllOfSchema.properties === "object" &&
+        !Array.isArray(rawAllOfSchema.properties)) {
+        for (const propertyName of Object.keys(rawAllOfSchema.properties)) {
+            if (Object.prototype.hasOwnProperty.call(properties, propertyName)) {
+                continue;
+            }
+
+            throw new Error(
+                `Schema property '${displayPath}' declares property '${propertyName}' in 'allOf' entry #${index + 1}, ` +
+                "but that property is not declared in the parent object schema.");
+        }
+    }
+
+    if (!Array.isArray(rawAllOfSchema.required)) {
+        return;
+    }
+
+    for (const requiredProperty of rawAllOfSchema.required) {
+        if (typeof requiredProperty !== "string" || requiredProperty.trim().length === 0) {
+            continue;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(properties, requiredProperty)) {
+            continue;
+        }
+
+        throw new Error(
+            `Schema property '${displayPath}' requires property '${requiredProperty}' in 'allOf' entry #${index + 1}, ` +
+            "but that property is not declared in the parent object schema.");
+    }
 }
 
 /**

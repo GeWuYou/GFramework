@@ -691,7 +691,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     /// <summary>
     ///     以统一顺序递归遍历 schema 树，并把每个节点交给调用方提供的校验逻辑。
     ///     该遍历覆盖对象属性、<c>dependentSchemas</c> / <c>allOf</c> / <c>not</c> 子 schema、
-///     数组 <c>items</c> 与 <c>contains</c>，
+    ///     数组 <c>items</c> 与 <c>contains</c>，
     ///     避免不同关键字验证器在同一棵 schema 树上各自维护一份容易漂移的递归流程。
     /// </summary>
     /// <param name="filePath">Schema 文件路径。</param>
@@ -783,7 +783,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
 
                 if (!TryTraverseSchemaRecursively(
                         filePath,
-                        $"{displayPath}[allOf:{allOfIndex}]",
+                        BuildAllOfEntryPath(displayPath, allOfIndex),
                         allOfSchema,
                         nodeValidator,
                         out diagnostic))
@@ -837,6 +837,17 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         }
 
         return true;
+    }
+
+    /// <summary>
+    ///     为对象级 <c>allOf</c> 条目生成与运行时一致的逻辑路径。
+    /// </summary>
+    /// <param name="displayPath">父对象路径。</param>
+    /// <param name="allOfIndex">从 0 开始的条目索引。</param>
+    /// <returns>格式化后的 allOf 条目路径。</returns>
+    private static string BuildAllOfEntryPath(string displayPath, int allOfIndex)
+    {
+        return $"{displayPath}[allOf[{allOfIndex}]]";
     }
 
     /// <summary>
@@ -1263,6 +1274,24 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             return false;
         }
 
+        if (!element.TryGetProperty("properties", out var propertiesElement) ||
+            propertiesElement.ValueKind != JsonValueKind.Object)
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidAllOfMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                displayPath,
+                "Object schemas using 'allOf' must also declare an object-valued 'properties' map.");
+            return false;
+        }
+
+        var declaredProperties = new HashSet<string>(
+            propertiesElement
+                .EnumerateObject()
+                .Select(static property => property.Name),
+            StringComparer.Ordinal);
+
         var allOfIndex = 0;
         foreach (var allOfSchema in allOfElement.EnumerateArray())
         {
@@ -1290,7 +1319,96 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                 return false;
             }
 
+            if (!TryValidateAllOfEntryTargets(
+                    filePath,
+                    displayPath,
+                    allOfSchema,
+                    allOfIndex,
+                    declaredProperties,
+                    out diagnostic))
+            {
+                return false;
+            }
+
             allOfIndex++;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    ///     验证单个 <c>allOf</c> 条目只约束父对象已声明的同级字段。
+    /// </summary>
+    /// <param name="filePath">Schema 文件路径。</param>
+    /// <param name="displayPath">父对象逻辑路径。</param>
+    /// <param name="allOfSchema">当前 allOf 条目。</param>
+    /// <param name="allOfIndex">从 0 开始的条目索引。</param>
+    /// <param name="declaredProperties">父对象已声明属性集合。</param>
+    /// <param name="diagnostic">失败时返回的诊断。</param>
+    /// <returns>当前 allOf 条目是否只引用父对象已声明字段。</returns>
+    private static bool TryValidateAllOfEntryTargets(
+        string filePath,
+        string displayPath,
+        JsonElement allOfSchema,
+        int allOfIndex,
+        ISet<string> declaredProperties,
+        out Diagnostic? diagnostic)
+    {
+        diagnostic = null;
+        var allOfEntryPath = BuildAllOfEntryPath(displayPath, allOfIndex);
+
+        if (allOfSchema.TryGetProperty("properties", out var allOfPropertiesElement) &&
+            allOfPropertiesElement.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var property in allOfPropertiesElement.EnumerateObject())
+            {
+                if (declaredProperties.Contains(property.Name))
+                {
+                    continue;
+                }
+
+                diagnostic = Diagnostic.Create(
+                    ConfigSchemaDiagnostics.InvalidAllOfMetadata,
+                    CreateFileLocation(filePath),
+                    Path.GetFileName(filePath),
+                    allOfEntryPath,
+                    $"Entry #{allOfIndex + 1} in 'allOf' declares property '{property.Name}', but that property is not declared in the parent object schema.");
+                return false;
+            }
+        }
+
+        if (!allOfSchema.TryGetProperty("required", out var requiredElement) ||
+            requiredElement.ValueKind != JsonValueKind.Array)
+        {
+            return true;
+        }
+
+        foreach (var requiredProperty in requiredElement.EnumerateArray())
+        {
+            if (requiredProperty.ValueKind != JsonValueKind.String)
+            {
+                continue;
+            }
+
+            var requiredPropertyName = requiredProperty.GetString();
+            if (string.IsNullOrWhiteSpace(requiredPropertyName))
+            {
+                continue;
+            }
+
+            var normalizedRequiredPropertyName = requiredPropertyName!;
+            if (declaredProperties.Contains(normalizedRequiredPropertyName))
+            {
+                continue;
+            }
+
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidAllOfMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                allOfEntryPath,
+                $"Entry #{allOfIndex + 1} in 'allOf' requires property '{normalizedRequiredPropertyName}', but that property is not declared in the parent object schema.");
+            return false;
         }
 
         return true;

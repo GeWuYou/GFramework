@@ -301,6 +301,51 @@ public sealed class YamlConfigLoaderAllOfTests
     }
 
     /// <summary>
+    ///     验证 allOf 条目不能要求父对象未声明的字段。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Throw_When_AllOf_Entry_Requires_Undeclared_Parent_Property()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            BuildMonsterConfigYaml(
+                """
+                itemCount: 3
+                """));
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            BuildMonsterSchema(
+                """
+                {
+                  "itemCount": { "type": "integer" }
+                }
+                """,
+                """
+                [
+                  {
+                    "type": "object",
+                    "required": ["bonus"]
+                  }
+                ]
+                """));
+
+        var loader = CreateMonsterRewardLoader();
+        var registry = CreateRegistry();
+
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Diagnostic.FailureKind, Is.EqualTo(ConfigLoadFailureKind.SchemaUnsupported));
+            Assert.That(exception.Diagnostic.DisplayPath, Is.EqualTo("reward[allOf[0]]"));
+            Assert.That(exception.Message, Does.Contain("requires property 'bonus'"));
+            Assert.That(exception.Message, Does.Contain("parent object schema"));
+            Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
     ///     在测试目录下写入配置文件，并自动创建缺失目录。
     /// </summary>
     /// <param name="relativePath">相对根目录的配置文件路径。</param>
