@@ -18,17 +18,22 @@ Follow them strictly.
 
 ```text
 GFramework (meta package) ─→ Core + Game
+GFramework.Cqrs ─→ Cqrs.Abstractions, Core.Abstractions
 GFramework.Core ─→ Core.Abstractions
 GFramework.Game ─→ Game.Abstractions, Core, Core.Abstractions
 GFramework.Godot ─→ Core, Game, Core.Abstractions, Game.Abstractions
 GFramework.Ecs.Arch ─→ Ecs.Arch.Abstractions, Core, Core.Abstractions
-GFramework.SourceGenerators ─→ SourceGenerators.Common, SourceGenerators.Abstractions
+GFramework.Core.SourceGenerators ─→ Core.SourceGenerators.Abstractions, SourceGenerators.Common
+GFramework.Game.SourceGenerators ─→ SourceGenerators.Common
+GFramework.Godot.SourceGenerators ─→ Godot.SourceGenerators.Abstractions, SourceGenerators.Common
+GFramework.Cqrs.SourceGenerators ─→ SourceGenerators.Common
 ```
 
 - **Abstractions projects** (`netstandard2.1`): 只包含接口和契约定义，不承载运行时实现逻辑。
 - **Core / Game / Ecs.Arch** (`net8.0;net9.0;net10.0`): 平台无关的核心实现层。
 - **Godot**: Godot 引擎集成层，负责与节点、场景和引擎生命周期对接。
-- **SourceGenerators** (`netstandard2.1`): Roslyn 增量源码生成器及其公共基础设施。
+- **SourceGenerators family** (`netstandard2.0`/`netstandard2.1`): 按 Core / Game / Godot / Cqrs 拆分的 Roslyn
+  增量源码生成器，以及共享的 abstractions/common 基础设施。
 
 ## Architecture Pattern
 
@@ -114,10 +119,12 @@ Architecture 负责统一生命周期编排，核心阶段包括：
 仓库以“抽象层 + 实现层 + 集成层 + 生成器层”的方式组织：
 
 - `GFramework.Core.Abstractions` / `GFramework.Game.Abstractions`: 约束接口和公共契约。
+- `GFramework.Cqrs.Abstractions` / `GFramework.Cqrs`: 提供 CQRS 契约、runtime 与 handler 注册基础设施。
 - `GFramework.Core` / `GFramework.Game`: 提供平台无关实现。
 - `GFramework.Godot`: 提供与 Godot 运行时集成的适配实现。
 - `GFramework.Ecs.Arch`: 提供 ECS Architecture 相关扩展。
-- `GFramework.SourceGenerators` 及相关 Abstractions/Common: 提供代码生成能力。
+- `GFramework.Core.SourceGenerators` / `GFramework.Game.SourceGenerators` / `GFramework.Godot.SourceGenerators` /
+  `GFramework.Cqrs.SourceGenerators` 与相关 Abstractions/Common: 提供代码生成能力。
 
 这种结构的核心设计目标是让抽象稳定、实现可替换、引擎集成隔离、生成器能力可独立演进。
 
