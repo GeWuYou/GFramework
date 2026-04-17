@@ -325,8 +325,8 @@ public class ArchitectureConfigIntegrationTests
     }
 
     /// <summary>
-     ///     创建一个使用配置模块的模块实例。
-     /// </summary>
+    ///     创建一个使用配置模块的模块实例。
+    /// </summary>
     /// <param name="configRoot">测试配置根目录。</param>
     /// <returns>已配置的模块实例。</returns>
     private static GameConfigModule CreateModule(string configRoot)
@@ -529,7 +529,9 @@ public class ArchitectureConfigIntegrationTests
         /// </summary>
         protected override void OnInit()
         {
+#pragma warning disable GF_ContextRegistration_003
             var registry = this.GetUtility<IConfigRegistry>();
+#pragma warning restore GF_ContextRegistration_003
             var monsterTable = registry.GetMonsterTable();
 
             ObservedMonsterName = monsterTable.Get(1).Name;
