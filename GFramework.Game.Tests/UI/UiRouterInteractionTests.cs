@@ -161,6 +161,7 @@ public class UiRouterInteractionTests
     {
         var router = new TestUiRouter();
         router.BindRoot(new TestUiRoot());
+        router.InitializeForTests();
         return router;
     }
 
@@ -182,6 +183,22 @@ public class UiRouterInteractionTests
     /// </summary>
     private sealed class TestUiRouter : UiRouterBase
     {
+        /// <summary>
+        ///     以测试专用的最小依赖集合执行路由器初始化。
+        /// </summary>
+        public void InitializeForTests()
+        {
+            Initialize();
+        }
+
+        /// <summary>
+        ///     以测试最小依赖完成初始化，避免把测试绑定到完整的架构 Utility 配置上。
+        /// </summary>
+        protected override void OnInit()
+        {
+            RegisterHandlers();
+        }
+
         /// <summary>
         ///     注册处理器。
         /// </summary>
