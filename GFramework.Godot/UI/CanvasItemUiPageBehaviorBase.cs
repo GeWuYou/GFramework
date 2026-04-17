@@ -13,8 +13,7 @@
 
 using GFramework.Game.Abstractions.Enums;
 using GFramework.Game.Abstractions.UI;
-using GFramework.Godot.Extensions;
-using Godot;
+using GFramework.Game.UI;
 
 namespace GFramework.Godot.UI;
 
@@ -37,6 +36,16 @@ public abstract class CanvasItemUiPageBehaviorBase<T> : IUiPageBehavior
     private readonly IUiPage? _page;
 
     /// <summary>
+    ///     视图可选提供的交互配置提供者。
+    /// </summary>
+    private readonly IUiInteractionProfileProvider? _profileProvider;
+
+    /// <summary>
+    ///     视图可选提供的 UI 语义动作处理器。
+    /// </summary>
+    private readonly IUiActionHandler? _uiActionHandler;
+
+    /// <summary>
     ///     视图节点的所有者实例。
     /// </summary>
     protected readonly T Owner;
@@ -51,6 +60,8 @@ public abstract class CanvasItemUiPageBehaviorBase<T> : IUiPageBehavior
         Owner = owner;
         _key = key;
         _page = owner as IUiPage;
+        _profileProvider = owner as IUiInteractionProfileProvider;
+        _uiActionHandler = owner as IUiActionHandler;
     }
 
     #region 抽象属性 - 子类必须实现
@@ -115,6 +126,13 @@ public abstract class CanvasItemUiPageBehaviorBase<T> : IUiPageBehavior
     /// </summary>
     public bool IsVisible => Owner.Visible;
 
+    /// <summary>
+    ///     获取页面当前的交互配置。
+    ///     若页面未提供自定义配置，则回退到层级默认值。
+    /// </summary>
+    public UiInteractionProfile InteractionProfile => _profileProvider?.GetUiInteractionProfile(Layer)
+                                                      ?? UiInteractionProfiles.CreateDefault(Layer);
+
     #endregion
 
     #region 生命周期管理
@@ -153,6 +171,8 @@ public abstract class CanvasItemUiPageBehaviorBase<T> : IUiPageBehavior
         Owner.SetProcess(false);
         Owner.SetPhysicsProcess(false);
         Owner.SetProcessInput(false);
+        Owner.SetProcessUnhandledInput(false);
+        Owner.SetProcessUnhandledKeyInput(false);
     }
 
     /// <summary>
@@ -166,10 +186,14 @@ public abstract class CanvasItemUiPageBehaviorBase<T> : IUiPageBehavior
 
         _page?.OnResume();
 
+        ApplyPauseAwareProcessingMode();
+
         // 恢复处理
         Owner.SetProcess(true);
         Owner.SetPhysicsProcess(true);
         Owner.SetProcessInput(true);
+        Owner.SetProcessUnhandledInput(true);
+        Owner.SetProcessUnhandledKeyInput(true);
     }
 
     /// <summary>
@@ -191,6 +215,26 @@ public abstract class CanvasItemUiPageBehaviorBase<T> : IUiPageBehavior
         _page?.OnShow();
         Owner.Show();
         OnResume();
+    }
+
+    /// <summary>
+    ///     尝试处理一个路由仲裁后的 UI 语义动作。
+    /// </summary>
+    /// <param name="action">当前动作。</param>
+    /// <returns>如果视图显式处理了该动作则返回 <see langword="true" />。</returns>
+    public virtual bool TryHandleUiAction(UiInputAction action)
+    {
+        return _uiActionHandler?.TryHandleUiAction(action) ?? false;
+    }
+
+    /// <summary>
+    ///     根据交互配置调整节点在暂停态下的处理模式。
+    /// </summary>
+    private void ApplyPauseAwareProcessingMode()
+    {
+        Owner.ProcessMode = InteractionProfile.ContinueProcessingWhenPaused
+            ? Node.ProcessModeEnum.Always
+            : Node.ProcessModeEnum.Pausable;
     }
 
     #endregion

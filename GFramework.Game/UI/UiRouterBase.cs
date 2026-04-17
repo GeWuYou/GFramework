@@ -1,6 +1,5 @@
-using GFramework.Core.Abstractions.Logging;
+using GFramework.Core.Abstractions.Pause;
 using GFramework.Core.Extensions;
-using GFramework.Core.Logging;
 using GFramework.Game.Abstractions.Enums;
 using GFramework.Game.Abstractions.UI;
 using GFramework.Game.Routing;
@@ -22,6 +21,11 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     private readonly Dictionary<UiLayer, Dictionary<string, IUiPageBehavior>> _layers = new();
 
     /// <summary>
+    ///     记录当前由页面可见性驱动持有的暂停令牌。
+    /// </summary>
+    private readonly Dictionary<IUiPageBehavior, PauseToken> _pauseTokens = new();
+
+    /// <summary>
     /// UI切换处理器管道，用于执行UI过渡动画和逻辑
     /// </summary>
     private readonly UiTransitionPipeline _pipeline = new();
@@ -35,6 +39,11 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     /// 实例ID计数器，用于生成唯一的UI实例标识符
     /// </summary>
     private int _instanceCounter;
+
+    /// <summary>
+    ///     可选暂停栈管理器。
+    /// </summary>
+    private IPauseStackManager? _pauseStackManager;
 
     /// <summary>
     /// UI根节点引用，用于添加和移除UI页面
@@ -324,6 +333,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
         if (destroy)
         {
             page.OnExit();
+            SyncPauseRequest(page, isVisible: false);
             _uiRoot.RemoveUiPage(page);
             layerDict.Remove(handle.InstanceId);
             Log.Debug("Hide & Destroy UI: instanceId={0}, layer={1}", handle.InstanceId, layer);
@@ -331,6 +341,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
         else
         {
             page.OnHide();
+            SyncPauseRequest(page, isVisible: false);
             Log.Debug("Hide UI (suspend): instanceId={0}, layer={1}", handle.InstanceId, layer);
         }
     }
@@ -349,7 +360,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
             return;
 
         page.OnShow();
-        page.OnResume();
+        SyncPauseRequest(page, isVisible: true);
         Log.Debug("Resume UI: instanceId={0}, layer={1}", handle.InstanceId, layer);
     }
 
@@ -446,6 +457,67 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
             Hide(handles[0], layer, destroy);
     }
 
+    /// <summary>
+    ///     获取当前拥有指定 UI 语义动作捕获权的页面。
+    /// </summary>
+    /// <param name="action">要查询的动作。</param>
+    /// <returns>动作所有者；若没有页面声明捕获该动作则返回 <see langword="null" />。</returns>
+    public IUiPageBehavior? GetUiActionOwner(UiInputAction action)
+    {
+        return EnumerateVisiblePagesByPriority()
+            .FirstOrDefault(page => UiInteractionProfiles.Captures(page.InteractionProfile, action));
+    }
+
+    /// <summary>
+    ///     尝试将语义动作分发给当前拥有捕获权的页面。
+    /// </summary>
+    /// <param name="action">当前动作。</param>
+    /// <returns>如果已有页面捕获该动作则返回 <see langword="true" />。</returns>
+    public bool TryDispatchUiAction(UiInputAction action)
+    {
+        var owner = GetUiActionOwner(action);
+        if (owner is null)
+            return false;
+
+        var handled = owner.TryHandleUiAction(action);
+        if (!handled)
+            Log.Debug("UI action captured without explicit handler: key={0}, action={1}", owner.Key, action);
+
+        return true;
+    }
+
+    /// <summary>
+    ///     尝试将语义动作分发给当前拥有捕获权的页面。
+    /// </summary>
+    /// <param name="action">当前动作。</param>
+    /// <returns>如果已有页面捕获该动作则返回 <see langword="true" />。</returns>
+    [Obsolete(
+        "Use TryDispatchUiAction(UiInputAction action) to emphasize dispatch semantics instead of handler success.")]
+    public bool TryHandleUiAction(UiInputAction action)
+    {
+        return TryDispatchUiAction(action);
+    }
+
+    /// <summary>
+    ///     判断当前可见 UI 是否阻断 World 指针输入。
+    /// </summary>
+    /// <returns>如果 World 指针输入应被阻断则返回 <see langword="true" />。</returns>
+    public bool BlocksWorldPointerInput()
+    {
+        return EnumerateVisiblePagesByPriority()
+            .Any(page => page.InteractionProfile.BlocksWorldPointerInput);
+    }
+
+    /// <summary>
+    ///     判断当前可见 UI 是否阻断 World 语义动作输入。
+    /// </summary>
+    /// <returns>如果 World 语义动作输入应被阻断则返回 <see langword="true" />。</returns>
+    public bool BlocksWorldActionInput()
+    {
+        return EnumerateVisiblePagesByPriority()
+            .Any(page => page.InteractionProfile.BlocksWorldActionInput);
+    }
+
     #endregion
 
     #region Initialization
@@ -458,6 +530,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     {
         // 获取UI工厂实例，并确保其不为null
         _factory = this.GetUtility<IUiFactory>()!;
+        TryBindPauseStackManager();
 
         // 输出调试日志，记录UI路由器基类已初始化及使用的工厂类型
         Log.Debug("UiRouterBase initialized. Factory={0}", _factory.GetType().Name);
@@ -471,6 +544,24 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     /// 子类必须实现此方法以完成特定的处理逻辑注册。
     /// </summary>
     protected override abstract void RegisterHandlers();
+
+    /// <summary>
+    ///     路由销毁时释放所有由页面持有的暂停请求。
+    /// </summary>
+    protected override void OnDestroy()
+    {
+        base.OnDestroy();
+
+        if (_pauseStackManager is null)
+            return;
+
+        foreach (var token in _pauseTokens.Values.ToArray())
+        {
+            _pauseStackManager.Pop(token);
+        }
+
+        _pauseTokens.Clear();
+    }
 
     #endregion
 
@@ -525,6 +616,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
         // 生命周期
         page.OnEnter(param);
         page.OnShow();
+        SyncPauseRequest(page, isVisible: true);
 
         Log.Debug("Show UI: key={0}, instanceId={1}, layer={2}", page.Key, instanceId, layer);
         return handle;
@@ -610,6 +702,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
             {
                 Log.Debug("Suspend current page (Exclusive): {0}", current.View.GetType().Name);
                 current.OnHide();
+                SyncPauseRequest(current, isVisible: false);
             }
         }
 
@@ -621,6 +714,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
         Log.Debug("Enter & Show page: {0}, stackAfter={1}", page.View.GetType().Name, Stack.Count);
         page.OnEnter(param);
         page.OnShow();
+        SyncPauseRequest(page, isVisible: true);
     }
 
     /// <summary>
@@ -646,11 +740,13 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
             top.OnHide();
         }
 
+        SyncPauseRequest(top, isVisible: false);
+
         if (Stack.Count > 0)
         {
             var next = Stack.Peek();
-            next.OnResume();
             next.OnShow();
+            SyncPauseRequest(next, isVisible: true);
         }
     }
 
@@ -663,6 +759,118 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
         Log.Debug("Clear UI Stack internal, count={0}", Stack.Count);
         while (Stack.Count > 0)
             DoPopInternal(policy);
+    }
+
+    /// <summary>
+    ///     尝试绑定暂停栈管理器。
+    /// </summary>
+    private void TryBindPauseStackManager()
+    {
+        try
+        {
+            _pauseStackManager = this.GetUtility<IPauseStackManager>();
+        }
+        catch (InvalidOperationException)
+        {
+            _pauseStackManager = null;
+            Log.Debug("PauseStackManager not available. Pause integration is disabled for the UI router.");
+        }
+    }
+
+    /// <summary>
+    ///     根据页面可见性同步暂停请求。
+    /// </summary>
+    /// <param name="page">页面行为。</param>
+    /// <param name="isVisible">页面是否应视为可见。</param>
+    private void SyncPauseRequest(IUiPageBehavior page, bool isVisible)
+    {
+        if (_pauseStackManager is null)
+            return;
+
+        var profile = page.InteractionProfile;
+        if (!isVisible || profile.PauseMode == UiPauseMode.None)
+        {
+            ReleasePauseRequest(page);
+            return;
+        }
+
+        if (_pauseTokens.ContainsKey(page))
+            return;
+
+        var reason = string.IsNullOrWhiteSpace(profile.PauseReason)
+            ? $"UI:{page.Key}"
+            : profile.PauseReason;
+        _pauseTokens[page] = _pauseStackManager.Push(reason, profile.PauseGroup);
+    }
+
+    /// <summary>
+    ///     释放页面此前登记的暂停请求。
+    /// </summary>
+    /// <param name="page">目标页面。</param>
+    private void ReleasePauseRequest(IUiPageBehavior page)
+    {
+        if (_pauseStackManager is null)
+            return;
+
+        if (!_pauseTokens.Remove(page, out var token))
+            return;
+
+        _pauseStackManager.Pop(token);
+    }
+
+    /// <summary>
+    ///     按输入优先级枚举当前所有可见页面。
+    /// </summary>
+    /// <returns>可见页面序列。</returns>
+    private IEnumerable<IUiPageBehavior> EnumerateVisiblePagesByPriority()
+    {
+        foreach (var page in EnumerateVisibleLayerPages(UiLayer.Topmost))
+            yield return page;
+
+        foreach (var page in EnumerateVisibleLayerPages(UiLayer.Modal))
+            yield return page;
+
+        foreach (var page in EnumerateVisibleLayerPages(UiLayer.Overlay))
+            yield return page;
+
+        foreach (var page in Stack.Where(static page => page.IsAlive && page.IsVisible))
+            yield return page;
+
+        foreach (var page in EnumerateVisibleLayerPages(UiLayer.Toast))
+            yield return page;
+    }
+
+    /// <summary>
+    ///     枚举指定层级中的可见页面，层内按最近显示优先。
+    /// </summary>
+    /// <param name="layer">目标层级。</param>
+    /// <returns>该层级中的可见页面。</returns>
+    private IEnumerable<IUiPageBehavior> EnumerateVisibleLayerPages(UiLayer layer)
+    {
+        if (!_layers.TryGetValue(layer, out var layerDict))
+            yield break;
+
+        foreach (var page in layerDict
+                     // Use the numeric sequence encoded in the instance id so ordering stays correct after width overflow.
+                     .OrderByDescending(static pair => ExtractInstanceSequence(pair.Key))
+                     .Select(static pair => pair.Value)
+                     .Where(static page => page.IsAlive && page.IsVisible))
+        {
+            yield return page;
+        }
+    }
+
+    /// <summary>
+    ///     从实例标识符中提取自增序号，供层内最近显示优先排序使用。
+    /// </summary>
+    /// <param name="instanceId">实例标识符，预期格式为 <c>ui_000001</c>。</param>
+    /// <returns>提取到的自增序号；若格式异常则返回 <see cref="int.MinValue" />，使异常值排在最后。</returns>
+    private static int ExtractInstanceSequence(string instanceId)
+    {
+        return instanceId.Length > 3 &&
+               int.TryParse(instanceId.AsSpan(3), NumberStyles.None, CultureInfo.InvariantCulture, out var sequence)
+            ? sequence
+            : int.MinValue;
     }
 
     #endregion

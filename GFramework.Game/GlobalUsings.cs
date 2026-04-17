@@ -21,3 +21,4 @@ global using System.Globalization;
 global using System.IO;
 global using System.Text.Json;
 global using YamlDotNet.RepresentationModel;
+global using GFramework.Core.Abstractions.Logging;

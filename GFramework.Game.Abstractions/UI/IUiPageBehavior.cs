@@ -67,6 +67,11 @@ public interface IUiPageBehavior : IRoute
     bool BlocksInput { get; }
 
     /// <summary>
+    ///     获取页面当前的输入、阻断与暂停交互配置。
+    /// </summary>
+    UiInteractionProfile InteractionProfile { get; }
+
+    /// <summary>
     ///     页面进入时调用的方法
     /// </summary>
     /// <param name="param">页面进入时传递的参数，可为空</param>
@@ -96,4 +101,11 @@ public interface IUiPageBehavior : IRoute
     ///     页面重新显示时调用的方法
     /// </summary>
     void OnShow();
+
+    /// <summary>
+    ///     尝试处理一个经过路由器仲裁后的 UI 语义动作。
+    /// </summary>
+    /// <param name="action">当前动作。</param>
+    /// <returns>如果页面已经显式处理该动作则返回 <see langword="true" />。</returns>
+    bool TryHandleUiAction(UiInputAction action);
 }

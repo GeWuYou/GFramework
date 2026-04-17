@@ -17,3 +17,7 @@ global using System;
 global using System.Collections.Generic;
 global using System.Linq;
 global using System.Threading.Tasks;
+global using System.Reflection;
+global using GFramework.Game.Abstractions.Enums;
+global using GFramework.Game.Abstractions.UI;
+global using GFramework.Game.UI;

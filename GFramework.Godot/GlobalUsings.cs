@@ -17,3 +17,4 @@ global using System.Linq;
 global using System.Threading;
 global using System.Threading.Tasks;
 global using Godot;
+global using GFramework.Godot.Extensions;

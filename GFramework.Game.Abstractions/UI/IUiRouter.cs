@@ -186,5 +186,40 @@ public interface IUiRouter : ISystem
     /// <param name="hideAll">是否隐藏所有匹配的UI实例，默认为false。</param>
     void HideByKey(string uiKey, UiLayer layer, bool destroy = false, bool hideAll = false);
 
+    /// <summary>
+    ///     查询当前对指定 UI 语义动作拥有最高优先级捕获权的页面。
+    /// </summary>
+    /// <param name="action">要查询的动作。</param>
+    /// <returns>动作所有者；如果当前没有页面声明捕获该动作则返回 <see langword="null" />。</returns>
+    IUiPageBehavior? GetUiActionOwner(UiInputAction action);
+
+    /// <summary>
+    ///     尝试把语义动作分发给当前拥有该动作捕获权的页面。
+    /// </summary>
+    /// <param name="action">当前动作。</param>
+    /// <returns>如果该动作已被某个页面捕获并完成分发，则返回 <see langword="true" />。</returns>
+    bool TryDispatchUiAction(UiInputAction action);
+
+    /// <summary>
+    ///     尝试把语义动作分发给当前拥有该动作捕获权的页面。
+    /// </summary>
+    /// <param name="action">当前动作。</param>
+    /// <returns>如果该动作已被某个页面捕获并完成分发，则返回 <see langword="true" />。</returns>
+    [Obsolete(
+        "Use TryDispatchUiAction(UiInputAction action) to emphasize dispatch semantics instead of handler success.")]
+    bool TryHandleUiAction(UiInputAction action);
+
+    /// <summary>
+    ///     判断当前可见 UI 是否阻断 World 指针输入。
+    /// </summary>
+    /// <returns>如果 World 指针输入应被阻断则返回 <see langword="true" />。</returns>
+    bool BlocksWorldPointerInput();
+
+    /// <summary>
+    ///     判断当前可见 UI 是否阻断 World 语义动作输入。
+    /// </summary>
+    /// <returns>如果 World 动作输入应被阻断则返回 <see langword="true" />。</returns>
+    bool BlocksWorldActionInput();
+
     #endregion
 }
