@@ -11,18 +11,19 @@ namespace GFramework.Cqrs.Internal;
 /// </summary>
 internal static class CqrsHandlerRegistrar
 {
-    // 进程级缓存：同一程序集的 generated-registry 元数据与 reflection-fallback 元数据在加载后保持稳定，
-    // 因此可跨容器复用分析结果，避免每次注册都重复读取程序集级 attribute。
-    private static readonly ConcurrentDictionary<Assembly, AssemblyRegistrationMetadata> AssemblyMetadataCache =
-        new(ReferenceEqualityComparer.Instance);
-
-    // 进程级缓存：registry 类型的可激活性与构造入口是稳定的，可跨多次容器初始化复用。
-    private static readonly ConcurrentDictionary<Type, RegistryActivationMetadata> RegistryActivationMetadataCache =
+    // 卸载安全的进程级缓存：程序集元数据只按弱键复用。
+    // 若程序集来自 collectible AssemblyLoadContext，被回收后会重新分析，而不会被静态缓存永久钉住。
+    private static readonly WeakKeyCache<Assembly, AssemblyRegistrationMetadata> AssemblyMetadataCache =
         new();
 
-    // 进程级缓存：对未命中 generated-registry 的程序集，缓存可加载类型列表以避免重复 GetTypes() 扫描。
-    private static readonly ConcurrentDictionary<Assembly, IReadOnlyList<Type>> LoadableTypesCache =
-        new(ReferenceEqualityComparer.Instance);
+    // 卸载安全的进程级缓存：registry 类型的构造分析可跨容器复用，但不应阻止类型卸载。
+    private static readonly WeakKeyCache<Type, RegistryActivationMetadata> RegistryActivationMetadataCache =
+        new();
+
+    // 卸载安全的进程级缓存：可加载类型列表只在程序集存活期间保留；
+    // 若程序集卸载，后续重新加载后的首次注册会重新执行 GetTypes()/恢复逻辑。
+    private static readonly WeakKeyCache<Assembly, IReadOnlyList<Type>> LoadableTypesCache =
+        new();
 
     /// <summary>
     ///     扫描指定程序集并注册所有 CQRS 请求/通知/流式处理器。

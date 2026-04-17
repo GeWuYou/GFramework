@@ -326,6 +326,33 @@ internal sealed class CqrsHandlerRegistrarTests
 
         CqrsTestRuntime.RegisterHandlers(firstContainer, generatedAssembly.Object);
         CqrsTestRuntime.RegisterHandlers(secondContainer, generatedAssembly.Object);
+        firstContainer.Freeze();
+        secondContainer.Freeze();
+
+        var firstRegistrations = firstContainer.GetAll<INotificationHandler<GeneratedRegistryNotification>>()
+            .Select(static handler => handler.GetType())
+            .ToArray();
+        var secondRegistrations = secondContainer.GetAll<INotificationHandler<GeneratedRegistryNotification>>()
+            .Select(static handler => handler.GetType())
+            .ToArray();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                firstRegistrations,
+                Is.EqualTo(
+                [
+                    typeof(GeneratedRegistryNotificationHandler),
+                    ReflectionFallbackNotificationContainer.ReflectionOnlyHandlerType
+                ]));
+            Assert.That(
+                secondRegistrations,
+                Is.EqualTo(
+                [
+                    typeof(GeneratedRegistryNotificationHandler),
+                    ReflectionFallbackNotificationContainer.ReflectionOnlyHandlerType
+                ]));
+        });
 
         generatedAssembly.Verify(
             static assembly => assembly.GetCustomAttributes(typeof(CqrsHandlerRegistryAttribute), false),

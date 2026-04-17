@@ -63,6 +63,10 @@ GFramework 采用清晰分层与模块化设计，强调：
 dotnet add package GeWuYou.GFramework.Core
 dotnet add package GeWuYou.GFramework.Core.Abstractions
 
+# CQRS
+dotnet add package GeWuYou.GFramework.Cqrs
+dotnet add package GeWuYou.GFramework.Cqrs.Abstractions
+
 # 游戏扩展
 dotnet add package GeWuYou.GFramework.Game
 dotnet add package GeWuYou.GFramework.Game.Abstractions

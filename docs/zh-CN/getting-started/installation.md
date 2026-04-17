@@ -6,16 +6,18 @@ GFramework 提供多种安装方式，您可以根据项目需求选择合适的
 
 GFramework 采用模块化设计，不同包提供不同的功能：
 
-| 包名                                          | 说明          | 适用场景                           |
-|---------------------------------------------|-------------|--------------------------------|
-| `GeWuYou.GFramework`                        | 聚合元包        | 快速试用、原型开发                      |
-| `GeWuYou.GFramework.Core`                   | 核心框架        | 生产项目推荐                         |
-| `GeWuYou.GFramework.Game`                   | 游戏模块        | 需要游戏特定功能                       |
-| `GeWuYou.GFramework.Godot`                  | Godot集成     | Godot项目必需                      |
-| `GeWuYou.GFramework.Core.SourceGenerators`  | Core 源码生成器  | `[Log]`、`[ContextAware]`、架构注入等 |
-| `GeWuYou.GFramework.Game.SourceGenerators`  | Game 源码生成器  | 配置 schema / 配表生成               |
-| `GeWuYou.GFramework.Godot.SourceGenerators` | Godot 源码生成器 | Godot 节点、UI、项目元数据生成            |
-| `GeWuYou.GFramework.Cqrs.SourceGenerators`  | CQRS 源码生成器  | 处理器注册表生成                       |
+| 包名                                          | 说明           | 适用场景                           |
+|---------------------------------------------|--------------|--------------------------------|
+| `GeWuYou.GFramework`                        | 聚合元包         | 快速试用、原型开发                      |
+| `GeWuYou.GFramework.Core`                   | 核心框架         | 生产项目推荐                         |
+| `GeWuYou.GFramework.Cqrs`                   | CQRS runtime | 命令/查询/通知分发与处理器注册               |
+| `GeWuYou.GFramework.Cqrs.Abstractions`      | CQRS 抽象契约    | CQRS 契约、handler 接口与共享抽象        |
+| `GeWuYou.GFramework.Game`                   | 游戏模块         | 需要游戏特定功能                       |
+| `GeWuYou.GFramework.Godot`                  | Godot集成      | Godot项目必需                      |
+| `GeWuYou.GFramework.Core.SourceGenerators`  | Core 源码生成器   | `[Log]`、`[ContextAware]`、架构注入等 |
+| `GeWuYou.GFramework.Game.SourceGenerators`  | Game 源码生成器   | 配置 schema / 配表生成               |
+| `GeWuYou.GFramework.Godot.SourceGenerators` | Godot 源码生成器  | Godot 节点、UI、项目元数据生成            |
+| `GeWuYou.GFramework.Cqrs.SourceGenerators`  | CQRS 源码生成器   | 处理器注册表生成                       |
 
 当前 NuGet 发布按模块拆分 source generator 包，不存在 `GeWuYou.GFramework.SourceGenerators` 聚合包。
 
@@ -27,6 +29,10 @@ GFramework 采用模块化设计，不同包提供不同的功能：
 # 核心能力（推荐最小起步）
 dotnet add package GeWuYou.GFramework.Core
 dotnet add package GeWuYou.GFramework.Core.Abstractions
+
+# CQRS runtime
+dotnet add package GeWuYou.GFramework.Cqrs
+dotnet add package GeWuYou.GFramework.Cqrs.Abstractions
 
 # 游戏扩展
 dotnet add package GeWuYou.GFramework.Game
@@ -62,6 +68,10 @@ dotnet add package GeWuYou.GFramework.Cqrs.SourceGenerators
     <!-- 核心框架 -->
     <PackageReference Include="GeWuYou.GFramework.Core" Version="1.0.0" />
     <PackageReference Include="GeWuYou.GFramework.Core.Abstractions" Version="1.0.0" />
+
+    <!-- CQRS runtime -->
+    <PackageReference Include="GeWuYou.GFramework.Cqrs" Version="1.0.0" />
+    <PackageReference Include="GeWuYou.GFramework.Cqrs.Abstractions" Version="1.0.0" />
     
     <!-- 游戏模块 -->
     <PackageReference Include="GeWuYou.GFramework.Game" Version="1.0.0" />
@@ -154,12 +164,14 @@ dotnet add package GeWuYou.GFramework.Cqrs.SourceGenerators
 创建一个简单的测试来验证安装是否成功：
 
 ```csharp
-using GFramework.Core.Architecture;
+using GFramework.Core.Architectures;
+using GFramework.Core.Model;
+using GFramework.Core.Property;
 
 // 定义简单的架构
 public class TestArchitecture : Architecture
 {
-    protected override void Init()
+    protected override void OnInitialize()
     {
         // 注册一个简单的模型
         RegisterModel(new TestModel());
@@ -169,6 +181,10 @@ public class TestArchitecture : Architecture
 public class TestModel : AbstractModel
 {
     public BindableProperty<string> Message { get; } = new("Hello GFramework!");
+
+    protected override void OnInit()
+    {
+    }
 }
 
 // 测试代码

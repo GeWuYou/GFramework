@@ -12,6 +12,9 @@ namespace GFramework.Cqrs.Tests.Cqrs;
 [TestFixture]
 internal sealed class CqrsDispatcherCacheTests
 {
+    private MicrosoftDiContainer? _container;
+    private ArchitectureContext? _context;
+
     /// <summary>
     ///     初始化测试上下文。
     /// </summary>
@@ -42,9 +45,6 @@ internal sealed class CqrsDispatcherCacheTests
         _container = null;
     }
 
-    private MicrosoftDiContainer? _container;
-    private ArchitectureContext? _context;
-
     /// <summary>
     ///     验证相同消息类型重复分发时，不会重复扩张 dispatch binding 缓存。
     /// </summary>
@@ -52,21 +52,38 @@ internal sealed class CqrsDispatcherCacheTests
     public async Task Dispatcher_Should_Cache_Dispatch_Bindings_After_First_Dispatch()
     {
         var notificationBindings = GetCacheField("NotificationDispatchBindings");
-        var requestBindings = GetGenericCacheField("RequestDispatchBindingCache`1", typeof(int), "Bindings");
+        var requestBindings = GetCacheField("RequestDispatchBindings");
         var streamBindings = GetCacheField("StreamDispatchBindings");
 
-        var notificationBefore = notificationBindings.Count;
-        var requestBefore = requestBindings.Count;
-        var streamBefore = streamBindings.Count;
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                GetSingleKeyCacheValue(notificationBindings, typeof(DispatcherCacheNotification)),
+                Is.Null);
+            Assert.That(
+                GetPairCacheValue(requestBindings, typeof(DispatcherCacheRequest), typeof(int)),
+                Is.Null);
+            Assert.That(
+                GetPairCacheValue(requestBindings, typeof(DispatcherPipelineCacheRequest), typeof(int)),
+                Is.Null);
+            Assert.That(
+                GetPairCacheValue(streamBindings, typeof(DispatcherCacheStreamRequest), typeof(int)),
+                Is.Null);
+        });
 
         await _context!.SendRequestAsync(new DispatcherCacheRequest());
         await _context.SendRequestAsync(new DispatcherPipelineCacheRequest());
         await _context.PublishAsync(new DispatcherCacheNotification());
         await DrainAsync(_context.CreateStream(new DispatcherCacheStreamRequest()));
 
-        var notificationAfterFirstDispatch = notificationBindings.Count;
-        var requestAfterFirstDispatch = requestBindings.Count;
-        var streamAfterFirstDispatch = streamBindings.Count;
+        var notificationAfterFirstDispatch =
+            GetSingleKeyCacheValue(notificationBindings, typeof(DispatcherCacheNotification));
+        var requestAfterFirstDispatch =
+            GetPairCacheValue(requestBindings, typeof(DispatcherCacheRequest), typeof(int));
+        var pipelineAfterFirstDispatch =
+            GetPairCacheValue(requestBindings, typeof(DispatcherPipelineCacheRequest), typeof(int));
+        var streamAfterFirstDispatch =
+            GetPairCacheValue(streamBindings, typeof(DispatcherCacheStreamRequest), typeof(int));
 
         await _context.SendRequestAsync(new DispatcherCacheRequest());
         await _context.SendRequestAsync(new DispatcherPipelineCacheRequest());
@@ -75,13 +92,23 @@ internal sealed class CqrsDispatcherCacheTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(notificationAfterFirstDispatch, Is.EqualTo(notificationBefore + 1));
-            Assert.That(requestAfterFirstDispatch, Is.EqualTo(requestBefore + 2));
-            Assert.That(streamAfterFirstDispatch, Is.EqualTo(streamBefore + 1));
+            Assert.That(notificationAfterFirstDispatch, Is.Not.Null);
+            Assert.That(requestAfterFirstDispatch, Is.Not.Null);
+            Assert.That(pipelineAfterFirstDispatch, Is.Not.Null);
+            Assert.That(streamAfterFirstDispatch, Is.Not.Null);
 
-            Assert.That(notificationBindings.Count, Is.EqualTo(notificationAfterFirstDispatch));
-            Assert.That(requestBindings.Count, Is.EqualTo(requestAfterFirstDispatch));
-            Assert.That(streamBindings.Count, Is.EqualTo(streamAfterFirstDispatch));
+            Assert.That(
+                GetSingleKeyCacheValue(notificationBindings, typeof(DispatcherCacheNotification)),
+                Is.SameAs(notificationAfterFirstDispatch));
+            Assert.That(
+                GetPairCacheValue(requestBindings, typeof(DispatcherCacheRequest), typeof(int)),
+                Is.SameAs(requestAfterFirstDispatch));
+            Assert.That(
+                GetPairCacheValue(requestBindings, typeof(DispatcherPipelineCacheRequest), typeof(int)),
+                Is.SameAs(pipelineAfterFirstDispatch));
+            Assert.That(
+                GetPairCacheValue(streamBindings, typeof(DispatcherCacheStreamRequest), typeof(int)),
+                Is.SameAs(streamAfterFirstDispatch));
         });
     }
 
@@ -91,34 +118,37 @@ internal sealed class CqrsDispatcherCacheTests
     [Test]
     public async Task Dispatcher_Should_Cache_Request_Dispatch_Bindings_Per_Response_Type()
     {
-        var intRequestBindings = GetGenericCacheField("RequestDispatchBindingCache`1", typeof(int), "Bindings");
-        var stringRequestBindings = GetGenericCacheField("RequestDispatchBindingCache`1", typeof(string), "Bindings");
-
-        var intBefore = intRequestBindings.Count;
-        var stringBefore = stringRequestBindings.Count;
+        var requestBindings = GetCacheField("RequestDispatchBindings");
 
         await _context!.SendRequestAsync(new DispatcherCacheRequest());
         await _context.SendRequestAsync(new DispatcherStringCacheRequest());
 
-        var intAfterFirstDispatch = intRequestBindings.Count;
-        var stringAfterFirstDispatch = stringRequestBindings.Count;
+        var intAfterFirstDispatch =
+            GetPairCacheValue(requestBindings, typeof(DispatcherCacheRequest), typeof(int));
+        var stringAfterFirstDispatch =
+            GetPairCacheValue(requestBindings, typeof(DispatcherStringCacheRequest), typeof(string));
 
         await _context.SendRequestAsync(new DispatcherCacheRequest());
         await _context.SendRequestAsync(new DispatcherStringCacheRequest());
 
         Assert.Multiple(() =>
         {
-            Assert.That(intAfterFirstDispatch, Is.EqualTo(intBefore + 1));
-            Assert.That(stringAfterFirstDispatch, Is.EqualTo(stringBefore + 1));
-            Assert.That(intRequestBindings.Count, Is.EqualTo(intAfterFirstDispatch));
-            Assert.That(stringRequestBindings.Count, Is.EqualTo(stringAfterFirstDispatch));
+            Assert.That(intAfterFirstDispatch, Is.Not.Null);
+            Assert.That(stringAfterFirstDispatch, Is.Not.Null);
+            Assert.That(intAfterFirstDispatch, Is.Not.SameAs(stringAfterFirstDispatch));
+            Assert.That(
+                GetPairCacheValue(requestBindings, typeof(DispatcherCacheRequest), typeof(int)),
+                Is.SameAs(intAfterFirstDispatch));
+            Assert.That(
+                GetPairCacheValue(requestBindings, typeof(DispatcherStringCacheRequest), typeof(string)),
+                Is.SameAs(stringAfterFirstDispatch));
         });
     }
 
     /// <summary>
-    ///     通过反射读取 dispatcher 的静态缓存字典。
+    ///     通过反射读取 dispatcher 的静态缓存对象。
     /// </summary>
-    private static IDictionary GetCacheField(string fieldName)
+    private static object GetCacheField(string fieldName)
     {
         var dispatcherType = GetDispatcherType();
         var field = dispatcherType.GetField(
@@ -127,9 +157,9 @@ internal sealed class CqrsDispatcherCacheTests
 
         Assert.That(field, Is.Not.Null, $"Missing dispatcher cache field {fieldName}.");
 
-        return field!.GetValue(null) as IDictionary
+        return field!.GetValue(null)
                ?? throw new InvalidOperationException(
-                   $"Dispatcher cache field {fieldName} does not implement IDictionary.");
+                   $"Dispatcher cache field {fieldName} returned null.");
     }
 
     /// <summary>
@@ -137,36 +167,47 @@ internal sealed class CqrsDispatcherCacheTests
     /// </summary>
     private static void ClearDispatcherCaches()
     {
-        GetCacheField("NotificationDispatchBindings").Clear();
-        GetCacheField("StreamDispatchBindings").Clear();
-        GetGenericCacheField("RequestDispatchBindingCache`1", typeof(int), "Bindings").Clear();
-        GetGenericCacheField("RequestDispatchBindingCache`1", typeof(string), "Bindings").Clear();
+        ClearCache(GetCacheField("NotificationDispatchBindings"));
+        ClearCache(GetCacheField("RequestDispatchBindings"));
+        ClearCache(GetCacheField("StreamDispatchBindings"));
     }
 
     /// <summary>
-    ///     通过反射读取 dispatcher 嵌套泛型缓存类型上的静态缓存字典。
+    ///     读取单键缓存中当前保存的对象。
     /// </summary>
-    private static IDictionary GetGenericCacheField(string nestedTypeName, Type genericTypeArgument, string fieldName)
+    private static object? GetSingleKeyCacheValue(object cache, Type key)
     {
-        var nestedGenericType = GetDispatcherType().GetNestedType(
-            nestedTypeName,
-            BindingFlags.NonPublic);
+        return InvokeInstanceMethod(cache, "GetValueOrDefaultForTesting", key);
+    }
 
-        Assert.That(nestedGenericType, Is.Not.Null, $"Missing dispatcher nested cache type {nestedTypeName}.");
+    /// <summary>
+    ///     读取双键缓存中当前保存的对象。
+    /// </summary>
+    private static object? GetPairCacheValue(object cache, Type primaryType, Type secondaryType)
+    {
+        return InvokeInstanceMethod(cache, "GetValueOrDefaultForTesting", primaryType, secondaryType);
+    }
 
-        var closedNestedType = nestedGenericType!.MakeGenericType(genericTypeArgument);
-        var field = closedNestedType.GetField(
-            fieldName,
-            BindingFlags.NonPublic | BindingFlags.Static);
+    /// <summary>
+    ///     调用缓存实例上的无参清理方法。
+    /// </summary>
+    private static void ClearCache(object cache)
+    {
+        _ = InvokeInstanceMethod(cache, "Clear");
+    }
 
-        Assert.That(
-            field,
-            Is.Not.Null,
-            $"Missing dispatcher nested cache field {nestedTypeName}.{fieldName} for {genericTypeArgument.FullName}.");
+    /// <summary>
+    ///     调用缓存对象上的实例方法。
+    /// </summary>
+    private static object? InvokeInstanceMethod(object target, string methodName, params object[] arguments)
+    {
+        var method = target.GetType().GetMethod(
+            methodName,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 
-        return field!.GetValue(null) as IDictionary
-               ?? throw new InvalidOperationException(
-                   $"Dispatcher nested cache field {nestedTypeName}.{fieldName} does not implement IDictionary.");
+        Assert.That(method, Is.Not.Null, $"Missing cache method {target.GetType().FullName}.{methodName}.");
+
+        return method!.Invoke(target, arguments);
     }
 
     /// <summary>

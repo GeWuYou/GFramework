@@ -21,6 +21,18 @@ CQRS（Command Query Responsibility Segregation，命令查询职责分离）是
 - 与架构系统深度集成
 - 支持流式处理
 
+## 接入包
+
+按模块安装 CQRS runtime；如果希望在编译期生成 handler 注册表，再额外安装对应的 source generator：
+
+```bash
+dotnet add package GeWuYou.GFramework.Cqrs
+dotnet add package GeWuYou.GFramework.Cqrs.Abstractions
+
+# 可选：编译期生成 handler registry，减少冷启动反射扫描
+dotnet add package GeWuYou.GFramework.Cqrs.SourceGenerators
+```
+
 ## 核心概念
 
 ### Command（命令）
@@ -90,6 +102,9 @@ public class CreatePlayerCommandHandler : AbstractCommandHandler<CreatePlayerCom
     }
 }
 ```
+
+> 说明：消息基类位于 `GFramework.Cqrs.Command` / `Query` / `Notification` 命名空间，而处理器基类位于
+> `GFramework.Cqrs.Cqrs.*` 命名空间。编写最小示例时需要同时引用对应的消息与 handler 命名空间。
 
 ### Dispatcher（请求分发器）
 

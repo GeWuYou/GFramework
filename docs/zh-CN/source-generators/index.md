@@ -11,6 +11,7 @@ GFramework 当前按模块提供一组 Source Generators，通过编译时分析
 - [安装配置](#安装配置)
 - [Log 属性生成器](#log-属性生成器)
 - [Config Schema 生成器](#config-schema-生成器)
+- [CQRS Handler Registry 生成器](#cqrs-handler-registry-生成器)
 - [ContextAware 属性生成器](#contextaware-属性生成器)
 - [GenerateEnumExtensions 属性生成器](#generateenumextensions-属性生成器)
 - [Priority 属性生成器](#priority-属性生成器)
@@ -54,6 +55,7 @@ GFramework 的 Source Generators 利用 Roslyn 源代码生成器技术，在编
 
 - **[Log] 属性**：自动生成 ILogger 字段和日志方法
 - **Config Schema 生成器**：根据 `*.schema.json` 生成配置类型和表包装
+- **CQRS Handler Registry 生成器**：为 CQRS handlers 生成程序集级注册表并缩小运行时反射范围
 - **[ContextAware] 属性**：自动实现 IContextAware 接口
 - **[GenerateEnumExtensions] 属性**：自动生成枚举扩展方法
 - **[Priority] 属性**：自动实现 IPrioritized 接口，为类添加优先级标记
@@ -160,6 +162,70 @@ Config Schema 生成器会扫描 `*.schema.json` 文件，并生成：
     </ItemGroup>
 </Project>
 ```
+
+## CQRS Handler Registry 生成器
+
+`GeWuYou.GFramework.Cqrs.SourceGenerators` 会在编译期分析当前业务程序集中的 CQRS handlers，并生成：
+
+- `ICqrsHandlerRegistry` 实现，用于在启动时直接注册可安全引用的 handlers
+- 程序集级 `CqrsHandlerRegistryAttribute` 元数据，供运行时优先走生成注册路径
+- 必要时的 `CqrsReflectionFallbackAttribute`，让运行时只补扫生成代码无法合法引用的 handlers
+
+### 接入包
+
+如果你的项目已经使用 GFramework 架构层，请在现有 Core 依赖基础上补齐 CQRS runtime 与 generator：
+
+```xml
+<ItemGroup>
+    <PackageReference Include="GeWuYou.GFramework.Cqrs" Version="1.0.0" />
+    <PackageReference Include="GeWuYou.GFramework.Cqrs.Abstractions" Version="1.0.0" />
+    <PackageReference Include="GeWuYou.GFramework.Cqrs.SourceGenerators"
+                      Version="1.0.0"
+                      PrivateAssets="all"
+                      ExcludeAssets="runtime" />
+</ItemGroup>
+```
+
+如果当前项目还没有接入架构运行时，请同时保持 `GeWuYou.GFramework.Core` /
+`GeWuYou.GFramework.Core.Abstractions` 与 CQRS 包版本一致。
+
+### 最小示例
+
+下面的最小示例展示了“安装 runtime + source generator 后，正常注册程序集”的接入方式。运行时会优先使用生成的
+handler registry；如果某个 handler 无法被生成代码直接引用，则自动补走定向反射回退。
+
+```csharp
+using GFramework.Core.Architectures;
+using GFramework.Cqrs.Abstractions.Cqrs.Command;
+using GFramework.Cqrs.Cqrs.Command;
+
+public sealed record CreatePlayerCommand(string Name) : ICommand<int>;
+
+public sealed class CreatePlayerCommandHandler : AbstractCommandHandler<CreatePlayerCommand, int>
+{
+    public override ValueTask<int> Handle(CreatePlayerCommand command, CancellationToken cancellationToken)
+    {
+        return ValueTask.FromResult(command.Name.Length);
+    }
+}
+
+public sealed class GameArchitecture : Architecture
+{
+    protected override void OnInitialize()
+    {
+        RegisterCqrsHandlersFromAssembly(typeof(GameArchitecture).Assembly);
+    }
+}
+```
+
+### 兼容性与迁移说明
+
+- 不安装 `GeWuYou.GFramework.Cqrs.SourceGenerators` 也可以正常运行；此时 CQRS runtime 会继续使用反射扫描注册
+  handlers。
+- 安装生成器后，不需要额外改写 `RegisterCqrsHandlersFromAssembly(...)` /
+  `RegisterCqrsHandlersFromAssemblies(...)` 调用点；运行时会自动优先使用生成注册表。
+- CQRS 消息基类位于 `GFramework.Cqrs.Command` / `Query` / `Notification`，而处理器基类位于
+  `GFramework.Cqrs.Cqrs.*` 命名空间。文档示例需要分别引用两组命名空间。
 
 ## Log 属性生成器
 
