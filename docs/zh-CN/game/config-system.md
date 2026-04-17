@@ -795,6 +795,46 @@ if (MonsterConfigBindings.References.TryGetByDisplayPath("dropItems", out var re
 - `dependentSchemas`：供运行时校验、VS Code 校验、对象 section 表单 hint 和生成代码 XML 文档复用；当前只接受“已声明 sibling 字段触发 object 子 schema”的形状，不改变生成类型形状，并按 focused constraint block 语义允许条件子 schema 未声明的额外同级字段继续存在
 - `allOf`：供运行时校验、VS Code 校验、对象 section 表单 hint 和生成代码 XML 文档复用；当前只接受 object 节点上的 object-typed inline schema 数组，并按 focused constraint block 语义把每个条目叠加到当前对象上，不做属性合并，也不改变生成类型形状
 
+`allOf` 的最小可工作示例如下。关键点是：字段形状先在父对象 `properties` 中声明，再用 `allOf` 叠加 `required` 或更细的字段约束；`allOf` 条目不会把新字段并回父对象。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "reward": {
+      "type": "object",
+      "properties": {
+        "itemId": { "type": "string" },
+        "itemCount": { "type": "integer" }
+      },
+      "allOf": [
+        {
+          "type": "object",
+          "required": ["itemCount"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "itemCount": {
+              "type": "integer",
+              "minimum": 2
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+```yaml
+reward:
+  itemId: potion
+  itemCount: 3
+```
+
+兼容性说明：如果你以前按标准 JSON Schema `allOf` 的直觉，把新字段只写进 `allOf` 条目的 `properties` 或 `required`，当前实现不会做属性合并，这类 schema 现在会在加载 / 生成 / 工具解析阶段直接被拒绝。请先把字段提升到父对象的 `properties`，再在 `allOf` 里补充 required 或约束。
+
 这样可以避免错误配置被默认值或 `IgnoreUnmatchedProperties` 静默吞掉。
 
 加载失败时，`YamlConfigLoader` 会抛出 `ConfigLoadException`。你可以通过 `exception.Diagnostic` 读取稳定字段，而不必解析消息文本：
