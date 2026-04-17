@@ -1,5 +1,3 @@
-using GFramework.Core.Abstractions.Logging;
-using GFramework.Core.Abstractions.Pause;
 using GFramework.Core.Extensions;
 using GFramework.Game.Abstractions.Enums;
 using GFramework.Game.Abstractions.UI;
@@ -361,7 +359,6 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
             return;
 
         page.OnShow();
-        page.OnResume();
         SyncPauseRequest(page, isVisible: true);
         Log.Debug("Resume UI: instanceId={0}, layer={1}", handle.InstanceId, layer);
     }
@@ -467,7 +464,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     public IUiPageBehavior? GetUiActionOwner(UiInputAction action)
     {
         return EnumerateVisiblePagesByPriority()
-            .FirstOrDefault(page => page.InteractionProfile.Captures(action));
+            .FirstOrDefault(page => UiInteractionProfiles.Captures(page.InteractionProfile, action));
     }
 
     /// <summary>
@@ -475,7 +472,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     /// </summary>
     /// <param name="action">当前动作。</param>
     /// <returns>如果已有页面捕获该动作则返回 <see langword="true" />。</returns>
-    public bool TryHandleUiAction(UiInputAction action)
+    public bool TryDispatchUiAction(UiInputAction action)
     {
         var owner = GetUiActionOwner(action);
         if (owner is null)
@@ -486,6 +483,18 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
             Log.Debug("UI action captured without explicit handler: key={0}, action={1}", owner.Key, action);
 
         return true;
+    }
+
+    /// <summary>
+    ///     尝试将语义动作分发给当前拥有捕获权的页面。
+    /// </summary>
+    /// <param name="action">当前动作。</param>
+    /// <returns>如果已有页面捕获该动作则返回 <see langword="true" />。</returns>
+    [Obsolete(
+        "Use TryDispatchUiAction(UiInputAction action) to emphasize dispatch semantics instead of handler success.")]
+    public bool TryHandleUiAction(UiInputAction action)
+    {
+        return TryDispatchUiAction(action);
     }
 
     /// <summary>
@@ -735,7 +744,6 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
         if (Stack.Count > 0)
         {
             var next = Stack.Peek();
-            next.OnResume();
             next.OnShow();
             SyncPauseRequest(next, isVisible: true);
         }
@@ -764,6 +772,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
         catch (InvalidOperationException)
         {
             _pauseStackManager = null;
+            Log.Debug("PauseStackManager not available. Pause integration is disabled for the UI router.");
         }
     }
 
@@ -841,12 +850,26 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
             yield break;
 
         foreach (var page in layerDict
-                     .OrderByDescending(static pair => pair.Key, StringComparer.Ordinal)
+                     // Use the numeric sequence encoded in the instance id so ordering stays correct after width overflow.
+                     .OrderByDescending(static pair => ExtractInstanceSequence(pair.Key))
                      .Select(static pair => pair.Value)
                      .Where(static page => page.IsAlive && page.IsVisible))
         {
             yield return page;
         }
+    }
+
+    /// <summary>
+    ///     从实例标识符中提取自增序号，供层内最近显示优先排序使用。
+    /// </summary>
+    /// <param name="instanceId">实例标识符，预期格式为 <c>ui_000001</c>。</param>
+    /// <returns>提取到的自增序号；若格式异常则返回 <see cref="int.MinValue" />，使异常值排在最后。</returns>
+    private static int ExtractInstanceSequence(string instanceId)
+    {
+        return instanceId.Length > 3 &&
+               int.TryParse(instanceId.AsSpan(3), NumberStyles.None, CultureInfo.InvariantCulture, out var sequence)
+            ? sequence
+            : int.MinValue;
     }
 
     #endregion

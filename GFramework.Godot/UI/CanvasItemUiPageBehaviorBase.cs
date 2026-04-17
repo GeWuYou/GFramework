@@ -13,7 +13,7 @@
 
 using GFramework.Game.Abstractions.Enums;
 using GFramework.Game.Abstractions.UI;
-using GFramework.Godot.Extensions;
+using GFramework.Game.UI;
 
 namespace GFramework.Godot.UI;
 
@@ -131,7 +131,7 @@ public abstract class CanvasItemUiPageBehaviorBase<T> : IUiPageBehavior
     ///     若页面未提供自定义配置，则回退到层级默认值。
     /// </summary>
     public UiInteractionProfile InteractionProfile => _profileProvider?.GetUiInteractionProfile(Layer)
-                                                      ?? UiInteractionProfile.CreateDefault(Layer);
+                                                      ?? UiInteractionProfiles.CreateDefault(Layer);
 
     #endregion
 
@@ -213,7 +213,6 @@ public abstract class CanvasItemUiPageBehaviorBase<T> : IUiPageBehavior
     public virtual void OnShow()
     {
         _page?.OnShow();
-        ApplyPauseAwareProcessingMode();
         Owner.Show();
         OnResume();
     }

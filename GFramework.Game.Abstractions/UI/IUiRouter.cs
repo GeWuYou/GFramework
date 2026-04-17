@@ -194,10 +194,19 @@ public interface IUiRouter : ISystem
     IUiPageBehavior? GetUiActionOwner(UiInputAction action);
 
     /// <summary>
-    ///     尝试把语义动作分发给当前拥有该动作的页面。
+    ///     尝试把语义动作分发给当前拥有该动作捕获权的页面。
     /// </summary>
     /// <param name="action">当前动作。</param>
-    /// <returns>如果该动作已被某个页面捕获并消费，则返回 <see langword="true" />。</returns>
+    /// <returns>如果该动作已被某个页面捕获并完成分发，则返回 <see langword="true" />。</returns>
+    bool TryDispatchUiAction(UiInputAction action);
+
+    /// <summary>
+    ///     尝试把语义动作分发给当前拥有该动作捕获权的页面。
+    /// </summary>
+    /// <param name="action">当前动作。</param>
+    /// <returns>如果该动作已被某个页面捕获并完成分发，则返回 <see langword="true" />。</returns>
+    [Obsolete(
+        "Use TryDispatchUiAction(UiInputAction action) to emphasize dispatch semantics instead of handler success.")]
     bool TryHandleUiAction(UiInputAction action);
 
     /// <summary>
