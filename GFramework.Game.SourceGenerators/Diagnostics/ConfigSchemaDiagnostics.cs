@@ -118,4 +118,15 @@ public static class ConfigSchemaDiagnostics
         SourceGeneratorsConfigCategory,
         DiagnosticSeverity.Error,
         true);
+
+    /// <summary>
+    ///     schema 对象节点的 dependentSchemas 元数据无效。
+    /// </summary>
+    public static readonly DiagnosticDescriptor InvalidDependentSchemasMetadata = new(
+        "GF_ConfigSchema_011",
+        "Config schema uses invalid dependentSchemas metadata",
+        "Property '{1}' in schema file '{0}' uses invalid 'dependentSchemas' metadata: {2}",
+        SourceGeneratorsConfigCategory,
+        DiagnosticSeverity.Error,
+        true);
 }

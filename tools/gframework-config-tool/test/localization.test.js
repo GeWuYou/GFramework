@@ -111,3 +111,38 @@ test("createLocalizer should expose dependentRequired validation keys", () => {
         }),
         "属性“reward.itemId”存在时，必须同时声明属性“reward.itemCount”。");
 });
+
+test("createLocalizer should expose dependentSchemas validation keys", () => {
+    const englishLocalizer = createLocalizer("en");
+    const chineseLocalizer = createLocalizer("zh-cn");
+
+    assert.equal(
+        englishLocalizer.t("webview.hint.required", {
+            properties: "itemCount, bonusCount"
+        }),
+        "Required: itemCount, bonusCount");
+    assert.equal(
+        englishLocalizer.t("webview.hint.dependentSchemas", {
+            trigger: "reward.itemId",
+            schema: "object, Required: itemCount"
+        }),
+        "When reward.itemId is set: satisfy object, Required: itemCount");
+    assert.equal(
+        chineseLocalizer.t("webview.hint.dependentSchemas", {
+            trigger: "reward.itemId",
+            schema: "object, 必填字段：itemCount"
+        }),
+        "当 reward.itemId 出现时：还必须满足 object, 必填字段：itemCount");
+    assert.equal(
+        englishLocalizer.t(ValidationMessageKeys.dependentSchemasViolation, {
+            displayPath: "reward",
+            triggerProperty: "reward.itemId"
+        }),
+        "Object 'reward' must satisfy the dependent schema triggered by sibling property 'reward.itemId'.");
+    assert.equal(
+        chineseLocalizer.t(ValidationMessageKeys.dependentSchemasViolation, {
+            displayPath: "reward",
+            triggerProperty: "reward.itemId"
+        }),
+        "对象“reward”在属性“reward.itemId”存在时，必须满足对应的 dependent schema。");
+});
