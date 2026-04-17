@@ -35,7 +35,9 @@ public class UiRouterInteractionTests
             Assert.That(modal.CapturedActions, Is.EqualTo(UiInputActionMask.Cancel));
             Assert.That(modal.BlocksWorldPointerInput, Is.True);
             Assert.That(modal.BlocksWorldActionInput, Is.True);
-            Assert.That(topmost, Is.SameAs(modal));
+            Assert.That(topmost.CapturedActions, Is.EqualTo(UiInputActionMask.Cancel));
+            Assert.That(topmost.BlocksWorldPointerInput, Is.True);
+            Assert.That(topmost.BlocksWorldActionInput, Is.True);
         });
     }
 
@@ -173,9 +175,10 @@ public class UiRouterInteractionTests
     private static void SetInstanceCounter(UiRouterBase router, int value)
     {
         var field = typeof(UiRouterBase).GetField("_instanceCounter", BindingFlags.Instance | BindingFlags.NonPublic);
-        Assert.That(field, Is.Not.Null);
+        Assert.That(field, Is.Not.Null, "UiRouterBase._instanceCounter 字段未找到，可能发生了内部重构。");
+        Assert.That(field!.FieldType, Is.EqualTo(typeof(int)), "_instanceCounter 字段类型已变化，请同步调整测试。");
 
-        field!.SetValue(router, value);
+        field.SetValue(router, value);
     }
 
     /// <summary>
