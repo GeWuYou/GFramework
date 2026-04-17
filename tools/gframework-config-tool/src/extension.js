@@ -1576,9 +1576,53 @@ function getScalarArrayValue(yamlNode) {
 }
 
 /**
+ * Render one compact inline-schema summary for form hints.
+ *
+ * @param {{type?: string, required?: string[], enumValues?: string[], constValue?: string, constDisplayValue?: string, pattern?: string, refTable?: string}} schema Parsed inline schema metadata.
+ * @param {boolean} includeRequiredProperties Whether object `required` members should be surfaced.
+ * @returns {string} Localized summary.
+ */
+function describeInlineSchemaForHint(schema, includeRequiredProperties = false) {
+    const parts = [];
+    if (schema.type) {
+        parts.push(schema.type);
+    }
+
+    if (includeRequiredProperties &&
+        Array.isArray(schema.required) &&
+        schema.required.length > 0) {
+        parts.push(localizer.t("webview.hint.required", {
+            properties: schema.required.join(", ")
+        }));
+    }
+
+    if (schema.constValue !== undefined) {
+        parts.push(localizer.t("webview.hint.const", {
+            value: schema.constDisplayValue ?? schema.constValue
+        }));
+    } else if (Array.isArray(schema.enumValues) && schema.enumValues.length > 0) {
+        parts.push(localizer.t("webview.hint.allowed", {
+            values: schema.enumValues.join(", ")
+        }));
+    } else if (schema.pattern) {
+        parts.push(localizer.t("webview.hint.pattern", {
+            value: schema.pattern
+        }));
+    }
+
+    if (schema.refTable) {
+        parts.push(localizer.t("webview.hint.refTable", {
+            refTable: schema.refTable
+        }));
+    }
+
+    return parts.join(", ") || localizer.t("webview.objectArray.item");
+}
+
+/**
  * Render human-facing metadata hints for one schema field.
  *
- * @param {{type?: string, description?: string, defaultValue?: string, constValue?: string, constDisplayValue?: string, minimum?: number, exclusiveMinimum?: number, maximum?: number, exclusiveMaximum?: number, multipleOf?: number, minLength?: number, maxLength?: number, pattern?: string, format?: string, minItems?: number, maxItems?: number, minContains?: number, maxContains?: number, minProperties?: number, maxProperties?: number, dependentRequired?: Record<string, string[]>, uniqueItems?: boolean, enumValues?: string[], contains?: {type?: string, enumValues?: string[], constValue?: string, constDisplayValue?: string, pattern?: string, format?: string, refTable?: string}, items?: {enumValues?: string[], constValue?: string, constDisplayValue?: string, minimum?: number, exclusiveMinimum?: number, maximum?: number, exclusiveMaximum?: number, multipleOf?: number, minLength?: number, maxLength?: number, pattern?: string, format?: string}, refTable?: string}} propertySchema Property schema metadata.
+ * @param {{type?: string, description?: string, defaultValue?: string, constValue?: string, constDisplayValue?: string, minimum?: number, exclusiveMinimum?: number, maximum?: number, exclusiveMaximum?: number, multipleOf?: number, minLength?: number, maxLength?: number, pattern?: string, format?: string, minItems?: number, maxItems?: number, minContains?: number, maxContains?: number, minProperties?: number, maxProperties?: number, required?: string[], dependentRequired?: Record<string, string[]>, dependentSchemas?: Record<string, {type?: string, required?: string[], enumValues?: string[], constValue?: string, constDisplayValue?: string, pattern?: string, refTable?: string}>, uniqueItems?: boolean, enumValues?: string[], contains?: {type?: string, enumValues?: string[], constValue?: string, constDisplayValue?: string, pattern?: string, format?: string, refTable?: string}, items?: {enumValues?: string[], constValue?: string, constDisplayValue?: string, minimum?: number, exclusiveMinimum?: number, maximum?: number, exclusiveMaximum?: number, multipleOf?: number, minLength?: number, maxLength?: number, pattern?: string, format?: string}, refTable?: string}} propertySchema Property schema metadata.
  * @param {boolean} isArrayField Whether the field is an array.
  * @param {boolean} includeDescription Whether description text should be included in the hint output.
  * @returns {string} HTML fragment.
@@ -1664,6 +1708,17 @@ function renderFieldHint(propertySchema, isArrayField, includeDescription = true
             hints.push(escapeHtml(localizer.t("webview.hint.dependentRequired", {
                 trigger,
                 dependencies: dependencies.join(", ")
+            })));
+        }
+    }
+
+    if (propertySchema.type === "object" &&
+        propertySchema.dependentSchemas &&
+        typeof propertySchema.dependentSchemas === "object") {
+        for (const [trigger, dependentSchema] of Object.entries(propertySchema.dependentSchemas)) {
+            hints.push(escapeHtml(localizer.t("webview.hint.dependentSchemas", {
+                trigger,
+                schema: describeInlineSchemaForHint(dependentSchema, true)
             })));
         }
     }

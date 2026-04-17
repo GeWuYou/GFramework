@@ -10,9 +10,10 @@ namespace GFramework.Game.Config;
 ///     并通过递归遍历方式覆盖嵌套对象、对象数组、标量数组与深层 enum / 引用约束。
 ///     当前共享子集额外支持 <c>multipleOf</c>、<c>uniqueItems</c>、
 ///     <c>contains</c> / <c>minContains</c> / <c>maxContains</c>、
-///     <c>minProperties</c>、<c>maxProperties</c>、<c>dependentRequired</c>
+///     <c>minProperties</c>、<c>maxProperties</c>、<c>dependentRequired</c>、
+///     <c>dependentSchemas</c>
 ///     与稳定字符串 <c>format</c> 子集，让数值步进、数组去重、数组匹配计数、
-///     对象属性数量与对象内字段依赖规则在运行时与生成器 / 工具侧保持一致。
+///     对象属性数量、对象内字段依赖以及条件对象子 schema 在运行时与生成器 / 工具侧保持一致。
 /// </summary>
 internal static class YamlConfigSchemaValidator
 {
@@ -607,7 +608,7 @@ internal static class YamlConfigSchemaValidator
     }
 
     /// <summary>
-    ///     为 <c>contains</c> / <c>not</c> 这类内联子 schema 构建稳定的诊断路径。
+    ///     为 <c>contains</c> / <c>not</c> / <c>dependentSchemas</c> 这类内联子 schema 构建稳定的诊断路径。
     /// </summary>
     /// <param name="propertyPath">当前节点路径。</param>
     /// <param name="suffix">内联子 schema 后缀。</param>
@@ -797,7 +798,14 @@ internal static class YamlConfigSchemaValidator
                 displayPath: requiredPath);
         }
 
-        ValidateObjectConstraints(tableName, yamlPath, displayPath, seenProperties, schemaNode);
+        ValidateObjectConstraints(
+            tableName,
+            yamlPath,
+            displayPath,
+            mappingNode,
+            seenProperties,
+            schemaNode,
+            references);
 
         ValidateAllowedValues(tableName, yamlPath, displayPath, mappingNode, schemaNode);
         ValidateConstantValue(tableName, yamlPath, displayPath, mappingNode, schemaNode);
@@ -805,19 +813,28 @@ internal static class YamlConfigSchemaValidator
     }
 
     /// <summary>
-    ///     校验对象节点声明的属性数量约束。
+    ///     校验对象节点声明的数量约束与条件对象约束。
+    ///     该阶段除了检查 <c>minProperties</c> / <c>maxProperties</c>，还会复用同一份 sibling 集合处理
+    ///     <c>dependentRequired</c>，并在 <c>dependentSchemas</c> 命中时以 focused constraint block 语义
+    ///     对整个 <paramref name="mappingNode" /> 做额外试匹配。
     /// </summary>
     /// <param name="tableName">所属配置表名称。</param>
     /// <param name="yamlPath">YAML 文件路径。</param>
     /// <param name="displayPath">对象字段路径；根对象时为空。</param>
+    /// <param name="mappingNode">当前 YAML 对象节点；用于让条件子 schema 在完整对象视图上做匹配。</param>
     /// <param name="seenProperties">当前对象已出现的属性集合。</param>
     /// <param name="schemaNode">对象 schema 节点。</param>
+    /// <param name="references">
+    ///     可选的跨表引用收集器；当 <c>dependentSchemas</c> 命中且匹配成功时，只会回写该条件分支新增的引用。
+    /// </param>
     private static void ValidateObjectConstraints(
         string tableName,
         string yamlPath,
         string displayPath,
+        YamlMappingNode mappingNode,
         HashSet<string> seenProperties,
-        YamlConfigSchemaNode schemaNode)
+        YamlConfigSchemaNode schemaNode,
+        ICollection<YamlConfigReferenceUsage>? references)
     {
         var constraints = schemaNode.ObjectConstraints;
         if (constraints is null)
@@ -861,15 +878,47 @@ internal static class YamlConfigSchemaValidator
                 $"Maximum property count: {constraints.MaxProperties.Value.ToString(CultureInfo.InvariantCulture)}.");
         }
 
-        if (constraints.DependentRequired is null ||
-            constraints.DependentRequired.Count == 0)
+        if (constraints.DependentRequired is not null &&
+            constraints.DependentRequired.Count > 0)
+        {
+            // Reuse the collected sibling-name set so the main validation path and
+            // the contains/not matcher both interpret object dependencies identically.
+            foreach (var dependency in constraints.DependentRequired)
+            {
+                if (!seenProperties.Contains(dependency.Key))
+                {
+                    continue;
+                }
+
+                var triggerPath = CombineDisplayPath(displayPath, dependency.Key);
+                foreach (var dependentProperty in dependency.Value)
+                {
+                    if (seenProperties.Contains(dependentProperty))
+                    {
+                        continue;
+                    }
+
+                    var requiredPath = CombineDisplayPath(displayPath, dependentProperty);
+                    throw ConfigLoadExceptionFactory.Create(
+                        ConfigLoadFailureKind.MissingRequiredProperty,
+                        tableName,
+                        $"Property '{requiredPath}' in config file '{yamlPath}' is required when sibling property '{triggerPath}' is present.",
+                        yamlPath: yamlPath,
+                        schemaPath: schemaNode.SchemaPathHint,
+                        displayPath: requiredPath,
+                        detail:
+                        $"Dependent requirement: when '{triggerPath}' exists, '{requiredPath}' must also be declared.");
+                }
+            }
+        }
+
+        if (constraints.DependentSchemas is null ||
+            constraints.DependentSchemas.Count == 0)
         {
             return;
         }
 
-        // Reuse the collected sibling-name set so the main validation path and
-        // the contains/not matcher both interpret object dependencies identically.
-        foreach (var dependency in constraints.DependentRequired)
+        foreach (var dependency in constraints.DependentSchemas)
         {
             if (!seenProperties.Contains(dependency.Key))
             {
@@ -877,24 +926,33 @@ internal static class YamlConfigSchemaValidator
             }
 
             var triggerPath = CombineDisplayPath(displayPath, dependency.Key);
-            foreach (var dependentProperty in dependency.Value)
-            {
-                if (seenProperties.Contains(dependentProperty))
-                {
-                    continue;
-                }
-
-                var requiredPath = CombineDisplayPath(displayPath, dependentProperty);
-                throw ConfigLoadExceptionFactory.Create(
-                    ConfigLoadFailureKind.MissingRequiredProperty,
+            // dependentSchemas acts as an additional conditional constraint block on the
+            // current object. Keep undeclared sibling fields outside the dependent sub-schema
+            // from blocking the match so schema authors can express focused follow-up rules.
+            // The trial matcher merges only new reference usages back into the outer collector,
+            // so re-checking the same scalar via a conditional sub-schema does not duplicate
+            // cross-table validation work later in the loader pipeline.
+            if (TryMatchSchemaNode(
                     tableName,
-                    $"Property '{requiredPath}' in config file '{yamlPath}' is required when sibling property '{triggerPath}' is present.",
-                    yamlPath: yamlPath,
-                    schemaPath: schemaNode.SchemaPathHint,
-                    displayPath: requiredPath,
-                    detail:
-                    $"Dependent requirement: when '{triggerPath}' exists, '{requiredPath}' must also be declared.");
+                    yamlPath,
+                    displayPath,
+                    mappingNode,
+                    dependency.Value,
+                    references,
+                    allowUnknownObjectProperties: true))
+            {
+                continue;
             }
+
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.ConstraintViolation,
+                tableName,
+                $"{subject} in config file '{yamlPath}' must satisfy the 'dependentSchemas' schema triggered by sibling property '{triggerPath}'.",
+                yamlPath: yamlPath,
+                schemaPath: schemaNode.SchemaPathHint,
+                displayPath: GetDiagnosticPath(displayPath),
+                detail:
+                $"Dependent schema: when '{triggerPath}' exists, the current object must satisfy the corresponding inline schema.");
         }
     }
 
@@ -1562,6 +1620,7 @@ internal static class YamlConfigSchemaValidator
             element,
             "maxProperties");
         var dependentRequired = ParseDependentRequiredConstraints(tableName, schemaPath, propertyPath, element, properties);
+        var dependentSchemas = ParseDependentSchemasConstraints(tableName, schemaPath, propertyPath, element, properties);
 
         if (minProperties.HasValue && maxProperties.HasValue && minProperties.Value > maxProperties.Value)
         {
@@ -1574,9 +1633,9 @@ internal static class YamlConfigSchemaValidator
                 displayPath: GetDiagnosticPath(propertyPath));
         }
 
-        return !minProperties.HasValue && !maxProperties.HasValue && dependentRequired is null
+        return !minProperties.HasValue && !maxProperties.HasValue && dependentRequired is null && dependentSchemas is null
             ? null
-            : new YamlConfigObjectConstraints(minProperties, maxProperties, dependentRequired);
+            : new YamlConfigObjectConstraints(minProperties, maxProperties, dependentRequired, dependentSchemas);
     }
 
     /// <summary>
@@ -1686,6 +1745,86 @@ internal static class YamlConfigSchemaValidator
         return dependentRequired.Count == 0
             ? null
             : dependentRequired;
+    }
+
+    /// <summary>
+    ///     解析对象节点声明的 <c>dependentSchemas</c> 条件 schema。
+    ///     当前实现把它作为“当触发字段出现时，当前对象还必须额外满足一段内联 schema”来解释，
+    ///     因此触发字段仍限制在当前对象已声明的属性内，而具体约束则继续复用现有递归节点解析逻辑。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="schemaPath">Schema 文件路径。</param>
+    /// <param name="propertyPath">对象字段路径。</param>
+    /// <param name="element">Schema 节点。</param>
+    /// <param name="properties">当前对象已声明的属性集合。</param>
+    /// <returns>归一化后的触发字段到条件 schema 的映射；未声明时返回空。</returns>
+    private static IReadOnlyDictionary<string, YamlConfigSchemaNode>? ParseDependentSchemasConstraints(
+        string tableName,
+        string schemaPath,
+        string propertyPath,
+        JsonElement element,
+        IReadOnlyDictionary<string, YamlConfigSchemaNode> properties)
+    {
+        if (!element.TryGetProperty("dependentSchemas", out var dependentSchemasElement))
+        {
+            return null;
+        }
+
+        if (dependentSchemasElement.ValueKind != JsonValueKind.Object)
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"{DescribeObjectSchemaTarget(propertyPath)} in schema file '{schemaPath}' must declare 'dependentSchemas' as an object.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(propertyPath));
+        }
+
+        var dependentSchemas = new Dictionary<string, YamlConfigSchemaNode>(StringComparer.Ordinal);
+        foreach (var dependency in dependentSchemasElement.EnumerateObject())
+        {
+            if (!properties.ContainsKey(dependency.Name))
+            {
+                throw ConfigLoadExceptionFactory.Create(
+                    ConfigLoadFailureKind.SchemaUnsupported,
+                    tableName,
+                    $"{DescribeObjectSchemaTarget(propertyPath)} in schema file '{schemaPath}' declares 'dependentSchemas' for undeclared property '{dependency.Name}'.",
+                    schemaPath: schemaPath,
+                    displayPath: GetDiagnosticPath(propertyPath));
+            }
+
+            if (dependency.Value.ValueKind != JsonValueKind.Object)
+            {
+                throw ConfigLoadExceptionFactory.Create(
+                    ConfigLoadFailureKind.SchemaUnsupported,
+                    tableName,
+                    $"Property '{dependency.Name}' in {DescribeObjectSchemaTargetInClause(propertyPath)} of schema file '{schemaPath}' must declare 'dependentSchemas' as an object-valued schema.",
+                    schemaPath: schemaPath,
+                    displayPath: GetDiagnosticPath(propertyPath));
+            }
+
+            var dependencySchemaPath = BuildNestedSchemaPath(propertyPath, $"dependentSchemas:{dependency.Name}");
+            var dependencySchemaNode = ParseNode(
+                tableName,
+                schemaPath,
+                dependencySchemaPath,
+                dependency.Value);
+            if (dependencySchemaNode.NodeType != YamlConfigSchemaPropertyType.Object)
+            {
+                throw ConfigLoadExceptionFactory.Create(
+                    ConfigLoadFailureKind.SchemaUnsupported,
+                    tableName,
+                    $"Property '{dependency.Name}' in {DescribeObjectSchemaTargetInClause(propertyPath)} of schema file '{schemaPath}' must declare an object-typed 'dependentSchemas' schema.",
+                    schemaPath: schemaPath,
+                    displayPath: GetDiagnosticPath(dependencySchemaPath));
+            }
+
+            dependentSchemas[dependency.Name] = dependencySchemaNode;
+        }
+
+        return dependentSchemas.Count == 0
+            ? null
+            : dependentSchemas;
     }
 
     /// <summary>
@@ -3007,10 +3146,7 @@ internal static class YamlConfigSchemaValidator
             if (references is not null &&
                 matchedReferences is not null)
             {
-                foreach (var referenceUsage in matchedReferences)
-                {
-                    references.Add(referenceUsage);
-                }
+                AddUniqueReferenceUsages(references, matchedReferences);
             }
 
             return true;
@@ -3020,6 +3156,50 @@ internal static class YamlConfigSchemaValidator
         {
             return false;
         }
+    }
+
+    /// <summary>
+    ///     将试匹配分支采集到的引用回写到外层集合，并按结构化标识去重。
+    /// </summary>
+    /// <param name="references">外层引用集合。</param>
+    /// <param name="matchedReferences">当前成功匹配分支采集到的引用。</param>
+    private static void AddUniqueReferenceUsages(
+        ICollection<YamlConfigReferenceUsage> references,
+        IEnumerable<YamlConfigReferenceUsage> matchedReferences)
+    {
+        foreach (var referenceUsage in matchedReferences)
+        {
+            if (!ContainsReferenceUsage(references, referenceUsage))
+            {
+                references.Add(referenceUsage);
+            }
+        }
+    }
+
+    /// <summary>
+    ///     判断外层引用集合中是否已经存在同一条引用使用记录。
+    /// </summary>
+    /// <param name="references">要检查的引用集合。</param>
+    /// <param name="candidate">当前待合并的引用记录。</param>
+    /// <returns>当集合中已存在语义相同的记录时返回 <see langword="true" />。</returns>
+    private static bool ContainsReferenceUsage(
+        IEnumerable<YamlConfigReferenceUsage> references,
+        YamlConfigReferenceUsage candidate)
+    {
+        foreach (var referenceUsage in references)
+        {
+            if (string.Equals(referenceUsage.YamlPath, candidate.YamlPath, StringComparison.Ordinal) &&
+                string.Equals(referenceUsage.SchemaPath, candidate.SchemaPath, StringComparison.Ordinal) &&
+                string.Equals(referenceUsage.PropertyPath, candidate.PropertyPath, StringComparison.Ordinal) &&
+                string.Equals(referenceUsage.RawValue, candidate.RawValue, StringComparison.Ordinal) &&
+                string.Equals(referenceUsage.ReferencedTableName, candidate.ReferencedTableName, StringComparison.Ordinal) &&
+                referenceUsage.ValueType == candidate.ValueType)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -3434,6 +3614,15 @@ internal static class YamlConfigSchemaValidator
         if (containsNode is not null)
         {
             CollectReferencedTableNames(containsNode, referencedTableNames);
+        }
+
+        var dependentSchemas = node.ObjectConstraints?.DependentSchemas;
+        if (dependentSchemas is not null)
+        {
+            foreach (var dependentSchemaNode in dependentSchemas.Values)
+            {
+                CollectReferencedTableNames(dependentSchemaNode, referencedTableNames);
+            }
         }
     }
 
@@ -4028,7 +4217,7 @@ internal sealed class YamlConfigAllowedValue
 }
 
 /// <summary>
-///     表示一个对象节点上声明的属性数量约束与字段依赖约束。
+///     表示一个对象节点上声明的属性数量约束、字段依赖约束与条件子 schema。
 ///     该模型将对象级约束与数组 / 标量约束拆开保存，避免运行时节点继续暴露无关成员。
 /// </summary>
 internal sealed class YamlConfigObjectConstraints
@@ -4039,14 +4228,17 @@ internal sealed class YamlConfigObjectConstraints
     /// <param name="minProperties">最小属性数量约束。</param>
     /// <param name="maxProperties">最大属性数量约束。</param>
     /// <param name="dependentRequired">对象内字段依赖约束。</param>
+    /// <param name="dependentSchemas">对象内条件 schema 约束。</param>
     public YamlConfigObjectConstraints(
         int? minProperties,
         int? maxProperties,
-        IReadOnlyDictionary<string, IReadOnlyList<string>>? dependentRequired)
+        IReadOnlyDictionary<string, IReadOnlyList<string>>? dependentRequired,
+        IReadOnlyDictionary<string, YamlConfigSchemaNode>? dependentSchemas)
     {
         MinProperties = minProperties;
         MaxProperties = maxProperties;
         DependentRequired = dependentRequired;
+        DependentSchemas = dependentSchemas;
     }
 
     /// <summary>
@@ -4064,6 +4256,12 @@ internal sealed class YamlConfigObjectConstraints
     ///     键表示“触发字段”，值表示“触发字段出现后还必须存在的同级字段集合”。
     /// </summary>
     public IReadOnlyDictionary<string, IReadOnlyList<string>>? DependentRequired { get; }
+
+    /// <summary>
+    ///     获取对象内条件 schema 约束。
+    ///     键表示“触发字段”，值表示“触发字段出现后当前对象还必须满足的额外 schema 子树”。
+    /// </summary>
+    public IReadOnlyDictionary<string, YamlConfigSchemaNode>? DependentSchemas { get; }
 }
 
 /// <summary>

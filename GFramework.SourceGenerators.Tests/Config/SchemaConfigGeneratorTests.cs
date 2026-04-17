@@ -474,6 +474,223 @@ public class SchemaConfigGeneratorTests
     }
 
     /// <summary>
+    ///     验证对象 <c>dependentSchemas</c> 会写入生成 XML 文档。
+    /// </summary>
+    [Test]
+    public void Run_Should_Write_DependentSchemas_Constraint_Into_Generated_Documentation()
+    {
+        const string source = """
+                              namespace TestApp
+                              {
+                                  public sealed class Dummy
+                                  {
+                                  }
+                              }
+                              """;
+
+        const string schema = """
+                              {
+                                "type": "object",
+                                "required": ["id", "reward"],
+                                "properties": {
+                                  "id": { "type": "integer" },
+                                  "reward": {
+                                    "type": "object",
+                                    "properties": {
+                                      "itemId": { "type": "string" },
+                                      "itemCount": { "type": "integer" }
+                                    },
+                                    "dependentSchemas": {
+                                      "itemId": {
+                                        "type": "object",
+                                        "required": ["itemCount"],
+                                        "properties": {
+                                          "itemCount": { "type": "integer" }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                              """;
+
+        var result = SchemaGeneratorTestDriver.Run(
+            source,
+            ("monster.schema.json", schema));
+
+        var generatedSources = result.Results
+            .Single()
+            .GeneratedSources
+            .ToDictionary(
+                static sourceResult => sourceResult.HintName,
+                static sourceResult => sourceResult.SourceText.ToString(),
+                StringComparer.Ordinal);
+
+        Assert.That(result.Results.Single().Diagnostics, Is.Empty);
+        Assert.That(
+            generatedSources["MonsterConfig.g.cs"],
+            Does.Contain("Constraints: dependentSchemas = { itemId =&gt; object (required = [itemCount]) }."));
+    }
+
+    /// <summary>
+    ///     验证生成器会拒绝非 object-typed 的 <c>dependentSchemas</c> 子 schema。
+    /// </summary>
+    [Test]
+    public void Run_Should_Report_Diagnostic_When_DependentSchemas_Schema_Is_Not_Object_Typed()
+    {
+        const string source = """
+                              namespace TestApp
+                              {
+                                  public sealed class Dummy
+                                  {
+                                  }
+                              }
+                              """;
+
+        const string schema = """
+                              {
+                                "type": "object",
+                                "required": ["id", "reward"],
+                                "properties": {
+                                  "id": { "type": "integer" },
+                                  "reward": {
+                                    "type": "object",
+                                    "properties": {
+                                      "itemId": { "type": "string" }
+                                    },
+                                    "dependentSchemas": {
+                                      "itemId": {
+                                        "type": "string",
+                                        "const": "potion"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                              """;
+
+        var result = SchemaGeneratorTestDriver.Run(
+            source,
+            ("monster.schema.json", schema));
+
+        var diagnostic = result.Results.Single().Diagnostics.Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Id, Is.EqualTo("GF_ConfigSchema_011"));
+            Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Error));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("reward"));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("object-typed 'dependentSchemas' schema"));
+        });
+    }
+
+    /// <summary>
+    ///     验证只有 object 节点允许声明 <c>dependentSchemas</c>。
+    /// </summary>
+    [Test]
+    public void Run_Should_Report_Diagnostic_When_NonObject_Schema_Declares_DependentSchemas()
+    {
+        const string source = """
+                              namespace TestApp
+                              {
+                                  public sealed class Dummy
+                                  {
+                                  }
+                              }
+                              """;
+
+        const string schema = """
+                              {
+                                "type": "object",
+                                "required": ["id", "tag"],
+                                "properties": {
+                                  "id": { "type": "integer" },
+                                  "tag": {
+                                    "type": "string",
+                                    "dependentSchemas": {
+                                      "itemId": {
+                                        "type": "object",
+                                        "properties": {}
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                              """;
+
+        var result = SchemaGeneratorTestDriver.Run(
+            source,
+            ("monster.schema.json", schema));
+
+        var diagnostic = result.Results.Single().Diagnostics.Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Id, Is.EqualTo("GF_ConfigSchema_011"));
+            Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Error));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("tag"));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("Only object schemas can declare 'dependentSchemas'."));
+        });
+    }
+
+    /// <summary>
+    ///     验证 <c>dependentSchemas</c> 子 schema 内的非法 <c>format</c> 也会在生成阶段直接给出诊断。
+    /// </summary>
+    [Test]
+    public void Run_Should_Report_Diagnostic_When_DependentSchemas_Schema_Uses_Format_On_Non_String_Node()
+    {
+        const string source = """
+                              namespace TestApp
+                              {
+                                  public sealed class Dummy
+                                  {
+                                  }
+                              }
+                              """;
+
+        const string schema = """
+                              {
+                                "type": "object",
+                                "required": ["id", "reward"],
+                                "properties": {
+                                  "id": { "type": "integer" },
+                                  "reward": {
+                                    "type": "object",
+                                    "properties": {
+                                      "itemId": { "type": "string" }
+                                    },
+                                    "dependentSchemas": {
+                                      "itemId": {
+                                        "type": "object",
+                                        "properties": {
+                                          "bonus": {
+                                            "type": "integer",
+                                            "format": "uuid"
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                              """;
+
+        var result = SchemaGeneratorTestDriver.Run(
+            source,
+            ("monster.schema.json", schema));
+
+        var diagnostic = result.Results.Single().Diagnostics.Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Id, Is.EqualTo("GF_ConfigSchema_009"));
+            Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Error));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("reward[dependentSchemas:itemId].bonus"));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("Only 'string' properties can declare 'format'."));
+        });
+    }
+
+    /// <summary>
     ///     验证深层不支持的数组嵌套会带着完整字段路径产生命名明确的诊断。
     /// </summary>
     [Test]

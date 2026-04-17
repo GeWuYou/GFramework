@@ -8,8 +8,8 @@ namespace GFramework.Game.SourceGenerators.Config;
 ///     支持嵌套对象、对象数组、标量数组，以及可映射的 default / enum / const / ref-table 元数据。
 ///     当前共享子集也会把 <c>multipleOf</c>、<c>uniqueItems</c>、
 ///     <c>contains</c> / <c>minContains</c> / <c>maxContains</c>、
-///     <c>minProperties</c>、<c>maxProperties</c>、<c>dependentRequired</c>
-///     与稳定字符串 <c>format</c> 子集写入生成代码文档，
+///     <c>minProperties</c>、<c>maxProperties</c>、<c>dependentRequired</c>、
+///     <c>dependentSchemas</c> 与稳定字符串 <c>format</c> 子集写入生成代码文档，
 ///     让消费者能直接在强类型 API 上看到运行时生效的约束。
 /// </summary>
 [Generator]
@@ -149,6 +149,15 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                     out var dependentRequiredDiagnostic))
             {
                 return SchemaParseResult.FromDiagnostic(dependentRequiredDiagnostic!);
+            }
+
+            if (!TryValidateDependentSchemasMetadataRecursively(
+                    file.Path,
+                    "<root>",
+                    root,
+                    out var dependentSchemasDiagnostic))
+            {
+                return SchemaParseResult.FromDiagnostic(dependentSchemasDiagnostic!);
             }
 
             var entityName = ToPascalCase(GetSchemaBaseName(file.Path));
@@ -672,7 +681,8 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
 
     /// <summary>
     ///     以统一顺序递归遍历 schema 树，并把每个节点交给调用方提供的校验逻辑。
-    ///     该遍历覆盖对象属性、<c>not</c> 子 schema、数组 <c>items</c> 与 <c>contains</c>，
+    ///     该遍历覆盖对象属性、<c>dependentSchemas</c> / <c>not</c> 子 schema、
+    ///     数组 <c>items</c> 与 <c>contains</c>，
     ///     避免不同关键字验证器在同一棵 schema 树上各自维护一份容易漂移的递归流程。
     /// </summary>
     /// <param name="filePath">Schema 文件路径。</param>
@@ -718,6 +728,29 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                         filePath,
                         CombinePath(displayPath, property.Name),
                         property.Value,
+                        nodeValidator,
+                        out diagnostic))
+                {
+                    return false;
+                }
+            }
+        }
+
+        if (string.Equals(schemaType, "object", StringComparison.Ordinal) &&
+            element.TryGetProperty("dependentSchemas", out var dependentSchemasElement) &&
+            dependentSchemasElement.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var dependentSchema in dependentSchemasElement.EnumerateObject())
+            {
+                if (dependentSchema.Value.ValueKind != JsonValueKind.Object)
+                {
+                    continue;
+                }
+
+                if (!TryTraverseSchemaRecursively(
+                        filePath,
+                        $"{displayPath}[dependentSchemas:{dependentSchema.Name}]",
+                        dependentSchema.Value,
                         nodeValidator,
                         out diagnostic))
                 {
@@ -772,7 +805,8 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
 
     /// <summary>
     ///     递归验证 schema 树中的对象级 <c>dependentRequired</c> 元数据。
-    ///     该遍历会覆盖根节点、<c>not</c> 子 schema、数组元素与 <c>contains</c> 子 schema，
+    ///     该遍历会覆盖根节点、<c>dependentSchemas</c> / <c>not</c> 子 schema、
+    ///     数组元素与 <c>contains</c> 子 schema，
     ///     避免生成器在对象字段依赖规则上比运行时和工具侧更宽松。
     /// </summary>
     /// <param name="filePath">Schema 文件路径。</param>
@@ -918,6 +952,170 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                         $"Dependent target '{normalizedDependencyTargetName}' is not declared in the same object schema.");
                     return false;
                 }
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    ///     验证当前 schema 节点是否以运行时支持的方式声明了 <c>dependentSchemas</c>。
+    ///     只有 object 节点允许挂载该关键字；一旦关键字出现，就继续复用对象节点的形状校验，
+    ///     保证发布到 XML 文档和运行时的约束解释范围保持一致。
+    /// </summary>
+    /// <param name="filePath">Schema 文件路径。</param>
+    /// <param name="displayPath">逻辑字段路径。</param>
+    /// <param name="element">当前 schema 节点。</param>
+    /// <param name="schemaType">当前节点声明的 schema 类型。</param>
+    /// <param name="diagnostic">失败时返回的诊断。</param>
+    /// <returns>当前节点上的 dependentSchemas 声明是否有效。</returns>
+    private static bool TryValidateDependentSchemasDeclaration(
+        string filePath,
+        string displayPath,
+        JsonElement element,
+        string? schemaType,
+        out Diagnostic? diagnostic)
+    {
+        diagnostic = null;
+        if (!element.TryGetProperty("dependentSchemas", out _))
+        {
+            return true;
+        }
+
+        if (!string.Equals(schemaType, "object", StringComparison.Ordinal))
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidDependentSchemasMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                displayPath,
+                "Only object schemas can declare 'dependentSchemas'.");
+            return false;
+        }
+
+        return TryValidateDependentSchemasMetadata(filePath, displayPath, element, out diagnostic);
+    }
+
+    /// <summary>
+    ///     递归验证 schema 树中的对象级 <c>dependentSchemas</c> 元数据。
+    ///     该遍历会覆盖根节点、<c>not</c>、数组元素、<c>contains</c> 与嵌套 <c>dependentSchemas</c>，
+    ///     确保生成器对条件对象子 schema 的接受范围不会比运行时更宽松。
+    /// </summary>
+    /// <param name="filePath">Schema 文件路径。</param>
+    /// <param name="displayPath">逻辑字段路径。</param>
+    /// <param name="element">当前 schema 节点。</param>
+    /// <param name="diagnostic">失败时返回的诊断。</param>
+    /// <returns>当前节点树的 dependentSchemas 元数据是否有效。</returns>
+    private static bool TryValidateDependentSchemasMetadataRecursively(
+        string filePath,
+        string displayPath,
+        JsonElement element,
+        out Diagnostic? diagnostic)
+    {
+        return TryTraverseSchemaRecursively(
+            filePath,
+            displayPath,
+            element,
+            static (currentFilePath, currentDisplayPath, currentElement, schemaType) =>
+            {
+                return TryValidateDependentSchemasDeclaration(
+                    currentFilePath,
+                    currentDisplayPath,
+                    currentElement,
+                    schemaType,
+                    out var currentDiagnostic)
+                    ? (true, (Diagnostic?)null)
+                    : (false, currentDiagnostic);
+            },
+            out diagnostic);
+    }
+
+    /// <summary>
+    ///     验证单个对象 schema 节点上的 <c>dependentSchemas</c> 元数据。
+    ///     生成器当前只接受“已声明 sibling 字段触发 object 子 schema”的形状，
+    ///     避免 XML 文档描述出运行时无法识别的条件 schema。
+    /// </summary>
+    /// <param name="filePath">Schema 文件路径。</param>
+    /// <param name="displayPath">逻辑字段路径。</param>
+    /// <param name="element">当前对象 schema 节点。</param>
+    /// <param name="diagnostic">失败时返回的诊断。</param>
+    /// <returns>当前对象上的 dependentSchemas 元数据是否有效。</returns>
+    private static bool TryValidateDependentSchemasMetadata(
+        string filePath,
+        string displayPath,
+        JsonElement element,
+        out Diagnostic? diagnostic)
+    {
+        diagnostic = null;
+        if (!element.TryGetProperty("dependentSchemas", out var dependentSchemasElement))
+        {
+            return true;
+        }
+
+        if (dependentSchemasElement.ValueKind != JsonValueKind.Object)
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidDependentSchemasMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                displayPath,
+                "The 'dependentSchemas' value must be an object.");
+            return false;
+        }
+
+        if (!element.TryGetProperty("properties", out var propertiesElement) ||
+            propertiesElement.ValueKind != JsonValueKind.Object)
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidDependentSchemasMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                displayPath,
+                "Object schemas using 'dependentSchemas' must also declare an object-valued 'properties' map.");
+            return false;
+        }
+
+        var declaredProperties = new HashSet<string>(
+            propertiesElement
+                .EnumerateObject()
+                .Select(static property => property.Name),
+            StringComparer.Ordinal);
+
+        foreach (var dependency in dependentSchemasElement.EnumerateObject())
+        {
+            if (!declaredProperties.Contains(dependency.Name))
+            {
+                diagnostic = Diagnostic.Create(
+                    ConfigSchemaDiagnostics.InvalidDependentSchemasMetadata,
+                    CreateFileLocation(filePath),
+                    Path.GetFileName(filePath),
+                    displayPath,
+                    $"Trigger property '{dependency.Name}' is not declared in the same object schema.");
+                return false;
+            }
+
+            if (dependency.Value.ValueKind != JsonValueKind.Object)
+            {
+                diagnostic = Diagnostic.Create(
+                    ConfigSchemaDiagnostics.InvalidDependentSchemasMetadata,
+                    CreateFileLocation(filePath),
+                    Path.GetFileName(filePath),
+                    displayPath,
+                    $"Property '{dependency.Name}' must declare 'dependentSchemas' as an object-valued schema.");
+                return false;
+            }
+
+            if (!dependency.Value.TryGetProperty("type", out var dependentSchemaTypeElement) ||
+                dependentSchemaTypeElement.ValueKind != JsonValueKind.String ||
+                !string.Equals(dependentSchemaTypeElement.GetString(), "object", StringComparison.Ordinal))
+            {
+                diagnostic = Diagnostic.Create(
+                    ConfigSchemaDiagnostics.InvalidDependentSchemasMetadata,
+                    CreateFileLocation(filePath),
+                    Path.GetFileName(filePath),
+                    displayPath,
+                    $"Property '{dependency.Name}' must declare an object-typed 'dependentSchemas' schema.");
+                return false;
             }
         }
 
@@ -3158,6 +3356,12 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             {
                 parts.Add($"dependentRequired = {dependentRequiredDocumentation}");
             }
+
+            var dependentSchemasDocumentation = TryBuildDependentSchemasDocumentation(element);
+            if (dependentSchemasDocumentation is not null)
+            {
+                parts.Add($"dependentSchemas = {dependentSchemasDocumentation}");
+            }
         }
 
         return parts.Count > 0 ? string.Join(", ", parts) : null;
@@ -3205,6 +3409,41 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     }
 
     /// <summary>
+    ///     将对象 <c>dependentSchemas</c> 关系整理成 XML 文档可读字符串。
+    /// </summary>
+    /// <param name="element">对象 schema 节点。</param>
+    /// <returns>格式化后的 dependentSchemas 说明。</returns>
+    private static string? TryBuildDependentSchemasDocumentation(JsonElement element)
+    {
+        if (!element.TryGetProperty("dependentSchemas", out var dependentSchemasElement) ||
+            dependentSchemasElement.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        var parts = new List<string>();
+        foreach (var dependency in dependentSchemasElement.EnumerateObject())
+        {
+            if (dependency.Value.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            var summary = TryBuildInlineSchemaSummary(dependency.Value, includeRequiredProperties: true);
+            if (summary is null)
+            {
+                continue;
+            }
+
+            parts.Add($"{dependency.Name} => {summary}");
+        }
+
+        return parts.Count > 0
+            ? $"{{ {string.Join("; ", parts)} }}"
+            : null;
+    }
+
+    /// <summary>
     ///     将数组 <c>contains</c> 子 schema 整理成 XML 文档可读字符串。
     ///     输出优先保持紧凑，只展示消费者在强类型 API 上最需要看到的匹配摘要。
     /// </summary>
@@ -3242,8 +3481,13 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     ///     该摘要复用现有 enum / const / 约束文档构造器，避免 contains / not 与主属性文档逐渐漂移。
     /// </summary>
     /// <param name="schemaElement">内联子 schema。</param>
+    /// <param name="includeRequiredProperties">
+    ///     为对象摘要额外输出 <c>required</c> 信息时返回 <see langword="true" />。
+    /// </param>
     /// <returns>格式化后的摘要字符串。</returns>
-    private static string? TryBuildInlineSchemaSummary(JsonElement schemaElement)
+    private static string? TryBuildInlineSchemaSummary(
+        JsonElement schemaElement,
+        bool includeRequiredProperties = false)
     {
         if (!schemaElement.TryGetProperty("type", out var typeElement) ||
             typeElement.ValueKind != JsonValueKind.String)
@@ -3258,6 +3502,16 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         }
 
         var details = new List<string>();
+        if (includeRequiredProperties &&
+            schemaType == "object")
+        {
+            var requiredDocumentation = TryBuildRequiredPropertiesDocumentation(schemaElement);
+            if (requiredDocumentation is not null)
+            {
+                details.Add(requiredDocumentation);
+            }
+        }
+
         var enumDocumentation = TryBuildEnumDocumentation(schemaElement, schemaType!);
         if (enumDocumentation is not null)
         {
@@ -3279,6 +3533,30 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         return details.Count == 0
             ? schemaType
             : $"{schemaType} ({string.Join(", ", details)})";
+    }
+
+    /// <summary>
+    ///     将对象 schema 的 <c>required</c> 字段整理成紧凑说明。
+    /// </summary>
+    /// <param name="element">对象 schema 节点。</param>
+    /// <returns>格式化后的 required 说明。</returns>
+    private static string? TryBuildRequiredPropertiesDocumentation(JsonElement element)
+    {
+        if (!element.TryGetProperty("required", out var requiredElement) ||
+            requiredElement.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        var requiredProperties = requiredElement
+            .EnumerateArray()
+            .Where(static item => item.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(item.GetString()))
+            .Select(static item => item.GetString()!)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        return requiredProperties.Length == 0
+            ? null
+            : $"required = [{string.Join(", ", requiredProperties)}]";
     }
 
     /// <summary>

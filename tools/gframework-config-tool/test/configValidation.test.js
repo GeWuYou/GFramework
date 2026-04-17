@@ -1691,6 +1691,107 @@ test("parseSchemaContent should reject dependentRequired targets outside the sam
     );
 });
 
+test("parseSchemaContent should capture dependentSchemas metadata", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "reward": {
+              "type": "object",
+              "properties": {
+                "itemId": { "type": "string" },
+                "itemCount": { "type": "integer" }
+              },
+              "dependentSchemas": {
+                "itemId": {
+                  "type": "object",
+                  "required": ["itemCount"],
+                  "properties": {
+                    "itemId": { "type": "string" },
+                    "itemCount": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+    `);
+
+    assert.equal(schema.properties.reward.dependentSchemas.itemId.type, "object");
+    assert.deepEqual(schema.properties.reward.dependentSchemas.itemId.required, ["itemCount"]);
+});
+
+test("parseSchemaContent should reject non-object dependentSchemas declarations", () => {
+    assert.throws(
+        () => parseSchemaContent(`
+            {
+              "type": "object",
+              "properties": {
+                "reward": {
+                  "type": "object",
+                  "properties": {
+                    "itemId": { "type": "string" },
+                    "itemCount": { "type": "integer" }
+                  },
+                  "dependentSchemas": ["itemId"]
+                }
+              }
+            }
+        `),
+        /must declare 'dependentSchemas' as an object/u
+    );
+});
+
+test("parseSchemaContent should reject dependentSchemas triggers outside the same object schema", () => {
+    assert.throws(
+        () => parseSchemaContent(`
+            {
+              "type": "object",
+              "properties": {
+                "reward": {
+                  "type": "object",
+                  "properties": {
+                    "itemId": { "type": "string" }
+                  },
+                  "dependentSchemas": {
+                    "itemCount": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  }
+                }
+              }
+            }
+        `),
+        /dependentSchemas' for undeclared property 'itemCount'/u
+    );
+});
+
+test("parseSchemaContent should reject non-object-typed dependentSchemas sub-schemas", () => {
+    assert.throws(
+        () => parseSchemaContent(`
+            {
+              "type": "object",
+              "properties": {
+                "reward": {
+                  "type": "object",
+                  "properties": {
+                    "itemId": { "type": "string" }
+                  },
+                  "dependentSchemas": {
+                    "itemId": {
+                      "type": "string",
+                      "const": "potion"
+                    }
+                  }
+                }
+              }
+            }
+        `),
+        /object-typed 'dependentSchemas' schema/u
+    );
+});
+
 test("parseSchemaContent should capture not sub-schema metadata", () => {
     const schema = parseSchemaContent(`
         {
@@ -1763,6 +1864,79 @@ test("validateParsedConfig should accept missing dependentRequired targets when 
     const yaml = parseTopLevelYaml(`
 reward:
   itemCount: 3
+`);
+
+    assert.deepEqual(validateParsedConfig(schema, yaml), []);
+});
+
+test("validateParsedConfig should report dependentSchemas violations", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "reward": {
+              "type": "object",
+              "properties": {
+                "itemId": { "type": "string" },
+                "itemCount": { "type": "integer" }
+              },
+              "dependentSchemas": {
+                "itemId": {
+                  "type": "object",
+                  "required": ["itemCount"],
+                  "properties": {
+                    "itemId": { "type": "string" },
+                    "itemCount": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+    `);
+    const yaml = parseTopLevelYaml(`
+reward:
+  itemId: potion
+`);
+
+    const diagnostics = validateParsedConfig(schema, yaml);
+
+    assert.equal(diagnostics.length, 1);
+    assert.equal(diagnostics[0].severity, "error");
+    assert.match(diagnostics[0].message, /dependent schema/u);
+    assert.match(diagnostics[0].message, /reward\.itemId/u);
+});
+
+test("validateParsedConfig should accept satisfied dependentSchemas", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "reward": {
+              "type": "object",
+              "properties": {
+                "itemId": { "type": "string" },
+                "itemCount": { "type": "integer" },
+                "bonus": { "type": "integer" }
+              },
+              "dependentSchemas": {
+                "itemId": {
+                  "type": "object",
+                  "required": ["itemCount"],
+                  "properties": {
+                    "itemCount": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+    `);
+    const yaml = parseTopLevelYaml(`
+reward:
+  itemId: potion
+  itemCount: 3
+  bonus: 1
 `);
 
     assert.deepEqual(validateParsedConfig(schema, yaml), []);
