@@ -19,6 +19,9 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
     private const string CqrsHandlerRegistryAttributeMetadataName =
         $"{CqrsRuntimeNamespace}.CqrsHandlerRegistryAttribute";
 
+    private const string CqrsReflectionFallbackAttributeMetadataName =
+        $"{CqrsRuntimeNamespace}.CqrsReflectionFallbackAttribute";
+
     private const string ILoggerMetadataName = $"{LoggingNamespace}.ILogger";
     private const string IServiceCollectionMetadataName = "Microsoft.Extensions.DependencyInjection.IServiceCollection";
     private const string GeneratedNamespace = "GFramework.Generated.Cqrs";
@@ -53,8 +56,10 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
                                     CqrsHandlerRegistryAttributeMetadataName) is not null &&
                                 compilation.GetTypeByMetadataName(ILoggerMetadataName) is not null &&
                                 compilation.GetTypeByMetadataName(IServiceCollectionMetadataName) is not null;
+        var supportsReflectionFallbackAttribute =
+            compilation.GetTypeByMetadataName(CqrsReflectionFallbackAttributeMetadataName) is not null;
 
-        return new GenerationEnvironment(generationEnabled);
+        return new GenerationEnvironment(generationEnabled, supportsReflectionFallbackAttribute);
     }
 
     private static bool IsHandlerCandidate(SyntaxNode node)
@@ -92,9 +97,7 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
             ImmutableArray.CreateBuilder<ReflectedImplementationRegistrationSpec>(handlerInterfaces.Length);
         var preciseReflectedRegistrations =
             ImmutableArray.CreateBuilder<PreciseReflectedRegistrationSpec>(handlerInterfaces.Length);
-        var runtimeDiscoveredHandlerInterfaceLogNames =
-            ImmutableArray.CreateBuilder<string>(handlerInterfaces.Length);
-        var requiresRuntimeInterfaceDiscovery = false;
+        string? reflectionFallbackHandlerTypeMetadataName = null;
         foreach (var handlerInterface in handlerInterfaces)
         {
             var canReferenceHandlerInterface =
@@ -126,11 +129,12 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
                 continue;
             }
 
-            // 某些关闭 handler interface 仍包含只能在实现类型运行时语义里解析的类型形态。
-            // 对这些边角场景保留“已知接口静态注册 + 剩余接口运行时补洞”的组合路径，
-            // 避免单个未知接口把同实现上的其它已知注册全部拖回整实现反射发现。
-            requiresRuntimeInterfaceDiscovery = true;
-            runtimeDiscoveredHandlerInterfaceLogNames.Add(GetLogDisplayName(handlerInterface));
+            // Concrete closed handler contracts should now always map to either direct registrations,
+            // reflected implementation registrations, or precise runtime type references.
+            // If a future Roslyn type shape still slips through this net, keep the generator conservative:
+            // preserve the static registrations we do understand, and let the runtime recover the remaining
+            // interfaces via the existing assembly-level targeted reflection fallback contract.
+            reflectionFallbackHandlerTypeMetadataName ??= GetReflectionTypeMetadataName(type);
         }
 
         return new HandlerCandidateAnalysis(
@@ -140,8 +144,7 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
             reflectedImplementationRegistrations.ToImmutable(),
             preciseReflectedRegistrations.ToImmutable(),
             canReferenceImplementation ? null : GetReflectionTypeMetadataName(type),
-            requiresRuntimeInterfaceDiscovery,
-            runtimeDiscoveredHandlerInterfaceLogNames.ToImmutable());
+            reflectionFallbackHandlerTypeMetadataName);
     }
 
     private static void Execute(SourceProductionContext context, GenerationEnvironment generationEnvironment,
@@ -155,9 +158,22 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         if (registrations.Count == 0)
             return;
 
+        var fallbackHandlerTypeMetadataNames = registrations
+            .Select(static registration => registration.ReflectionFallbackHandlerTypeMetadataName)
+            .Where(static typeMetadataName => !string.IsNullOrWhiteSpace(typeMetadataName))
+            .Distinct(StringComparer.Ordinal)
+            .Cast<string>()
+            .ToArray();
+
+        if (fallbackHandlerTypeMetadataNames.Length > 0 &&
+            !generationEnvironment.SupportsReflectionFallbackAttribute)
+        {
+            return;
+        }
+
         context.AddSource(
             HintName,
-            GenerateSource(registrations));
+            GenerateSource(generationEnvironment, registrations, fallbackHandlerTypeMetadataNames));
     }
 
     private static List<ImplementationRegistrationSpec> CollectRegistrations(
@@ -186,8 +202,7 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
                 candidate.ReflectedImplementationRegistrations,
                 candidate.PreciseReflectedRegistrations,
                 candidate.ReflectionTypeMetadataName,
-                candidate.RequiresRuntimeInterfaceDiscovery,
-                candidate.RuntimeDiscoveredHandlerInterfaceLogNames));
+                candidate.ReflectionFallbackHandlerTypeMetadataName));
         }
 
         registrations.Sort(static (left, right) =>
@@ -493,14 +508,14 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
     }
 
     private static string GenerateSource(
-        IReadOnlyList<ImplementationRegistrationSpec> registrations)
+        GenerationEnvironment generationEnvironment,
+        IReadOnlyList<ImplementationRegistrationSpec> registrations,
+        IReadOnlyList<string> fallbackHandlerTypeMetadataNames)
     {
         var hasReflectedImplementationRegistrations = registrations.Any(static registration =>
             !registration.ReflectedImplementationRegistrations.IsDefaultOrEmpty);
         var hasPreciseReflectedRegistrations = registrations.Any(static registration =>
             !registration.PreciseReflectedRegistrations.IsDefaultOrEmpty);
-        var hasRuntimeInterfaceDiscovery = registrations.Any(static registration =>
-            registration.RequiresRuntimeInterfaceDiscovery);
         var hasExternalAssemblyTypeLookups = registrations.Any(static registration =>
             registration.PreciseReflectedRegistrations.Any(static preciseRegistration =>
                 preciseRegistration.ServiceTypeArguments.Any(ContainsExternalAssemblyTypeLookup)));
@@ -508,6 +523,25 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         builder.AppendLine("// <auto-generated />");
         builder.AppendLine("#nullable enable");
         builder.AppendLine();
+        if (generationEnvironment.SupportsReflectionFallbackAttribute && fallbackHandlerTypeMetadataNames.Count > 0)
+        {
+            builder.Append("[assembly: global::");
+            builder.Append(CqrsRuntimeNamespace);
+            builder.Append(".CqrsReflectionFallbackAttribute(");
+            for (var index = 0; index < fallbackHandlerTypeMetadataNames.Count; index++)
+            {
+                if (index > 0)
+                    builder.Append(", ");
+
+                builder.Append('"');
+                builder.Append(EscapeStringLiteral(fallbackHandlerTypeMetadataNames[index]));
+                builder.Append('"');
+            }
+
+            builder.AppendLine(")]");
+            builder.AppendLine();
+        }
+
         builder.Append("[assembly: global::");
         builder.Append(CqrsRuntimeNamespace);
         builder.Append(".CqrsHandlerRegistryAttribute(typeof(global::");
@@ -555,8 +589,7 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         {
             var registration = registrations[registrationIndex];
             if (!registration.ReflectedImplementationRegistrations.IsDefaultOrEmpty ||
-                !registration.PreciseReflectedRegistrations.IsDefaultOrEmpty ||
-                registration.RequiresRuntimeInterfaceDiscovery)
+                !registration.PreciseReflectedRegistrations.IsDefaultOrEmpty)
             {
                 AppendOrderedImplementationRegistrations(builder, registration, registrationIndex);
             }
@@ -568,13 +601,10 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
 
         builder.AppendLine("    }");
 
-        if (hasRuntimeInterfaceDiscovery || hasExternalAssemblyTypeLookups)
+        if (hasExternalAssemblyTypeLookups)
         {
             builder.AppendLine();
-            AppendReflectionHelpers(
-                builder,
-                hasRuntimeInterfaceDiscovery,
-                hasExternalAssemblyTypeLookups);
+            AppendReflectionHelpers(builder, hasExternalAssemblyTypeLookups);
         }
 
         builder.AppendLine("}");
@@ -647,7 +677,6 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
             StringComparer.Ordinal.Compare(left.HandlerInterfaceLogName, right.HandlerInterfaceLogName));
 
         var implementationVariableName = $"implementationType{registrationIndex}";
-        var knownServiceTypesVariableName = $"knownServiceTypes{registrationIndex}";
         if (string.IsNullOrWhiteSpace(registration.ReflectionTypeMetadataName))
         {
             builder.Append("        var ");
@@ -670,35 +699,12 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         builder.AppendLine(" is not null)");
         builder.AppendLine("        {");
 
-        if (registration.RequiresRuntimeInterfaceDiscovery)
-        {
-            builder.Append("            var ");
-            builder.Append(knownServiceTypesVariableName);
-            builder.AppendLine(" = new global::System.Collections.Generic.HashSet<global::System.Type>();");
-            foreach (var runtimeDiscoveredHandlerInterfaceLogName in registration
-                         .RuntimeDiscoveredHandlerInterfaceLogNames)
-            {
-                builder.Append("            // Remaining runtime interface discovery target: ");
-                builder.Append(runtimeDiscoveredHandlerInterfaceLogName);
-                builder.AppendLine();
-            }
-        }
-
         foreach (var orderedRegistration in orderedRegistrations)
         {
             switch (orderedRegistration.Kind)
             {
                 case OrderedRegistrationKind.Direct:
                     var directRegistration = registration.DirectRegistrations[orderedRegistration.Index];
-                    if (registration.RequiresRuntimeInterfaceDiscovery)
-                    {
-                        builder.Append("            ");
-                        builder.Append(knownServiceTypesVariableName);
-                        builder.Append(".Add(typeof(");
-                        builder.Append(directRegistration.HandlerInterfaceDisplayName);
-                        builder.AppendLine("));");
-                    }
-
                     builder.AppendLine(
                         "            global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(");
                     builder.AppendLine("                services,");
@@ -717,15 +723,6 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
                 case OrderedRegistrationKind.ReflectedImplementation:
                     var reflectedRegistration =
                         registration.ReflectedImplementationRegistrations[orderedRegistration.Index];
-                    if (registration.RequiresRuntimeInterfaceDiscovery)
-                    {
-                        builder.Append("            ");
-                        builder.Append(knownServiceTypesVariableName);
-                        builder.Append(".Add(typeof(");
-                        builder.Append(reflectedRegistration.HandlerInterfaceDisplayName);
-                        builder.AppendLine("));");
-                    }
-
                     builder.AppendLine(
                         "            global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(");
                     builder.AppendLine("                services,");
@@ -752,23 +749,12 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
                         preciseRegistration.OpenHandlerTypeDisplayName,
                         registration.ImplementationLogName,
                         preciseRegistration.HandlerInterfaceLogName,
-                        knownServiceTypesVariableName,
-                        registration.RequiresRuntimeInterfaceDiscovery,
                         3);
                     break;
                 default:
                     throw new InvalidOperationException(
                         $"Unsupported ordered CQRS registration kind {orderedRegistration.Kind}.");
             }
-        }
-
-        if (registration.RequiresRuntimeInterfaceDiscovery)
-        {
-            builder.Append("            RegisterRemainingReflectedHandlerInterfaces(services, logger, ");
-            builder.Append(implementationVariableName);
-            builder.Append(", ");
-            builder.Append(knownServiceTypesVariableName);
-            builder.AppendLine(");");
         }
 
         builder.AppendLine("        }");
@@ -782,8 +768,6 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         string openHandlerTypeDisplayName,
         string implementationLogName,
         string handlerInterfaceLogName,
-        string knownServiceTypesVariableName,
-        bool trackKnownServiceTypes,
         int indentLevel)
     {
         var indent = new string(' ', indentLevel * 4);
@@ -848,15 +832,6 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         builder.Append("    ");
         builder.Append(implementationVariableName);
         builder.AppendLine(");");
-        if (trackKnownServiceTypes)
-        {
-            builder.Append(indent);
-            builder.Append(knownServiceTypesVariableName);
-            builder.Append(".Add(");
-            builder.Append(registrationVariablePrefix);
-            builder.AppendLine(");");
-        }
-
         builder.Append(indent);
         builder.Append("logger.Debug(\"Registered CQRS handler ");
         builder.Append(EscapeStringLiteral(implementationLogName));
@@ -945,7 +920,6 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
 
     private static void AppendReflectionHelpers(
         StringBuilder builder,
-        bool includeRuntimeInterfaceDiscoveryHelpers,
         bool includeExternalAssemblyTypeLookupHelpers)
     {
         if (includeExternalAssemblyTypeLookupHelpers)
@@ -991,123 +965,6 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
             builder.AppendLine("        }");
             builder.AppendLine("    }");
         }
-
-        if (!includeRuntimeInterfaceDiscoveryHelpers)
-            return;
-
-        if (includeExternalAssemblyTypeLookupHelpers)
-            builder.AppendLine();
-
-        // Emit the runtime helper methods only when at least one handler still needs implementation-scoped
-        // interface discovery after all direct / precise registrations have been emitted.
-        builder.AppendLine(
-            "    private static void RegisterRemainingReflectedHandlerInterfaces(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services, global::GFramework.Core.Abstractions.Logging.ILogger logger, global::System.Type implementationType, global::System.Collections.Generic.ISet<global::System.Type> knownServiceTypes)");
-        builder.AppendLine("    {");
-        builder.AppendLine("        var handlerInterfaces = implementationType.GetInterfaces();");
-        builder.AppendLine("        global::System.Array.Sort(handlerInterfaces, CompareTypes);");
-        builder.AppendLine();
-        builder.AppendLine("        foreach (var handlerInterface in handlerInterfaces)");
-        builder.AppendLine("        {");
-        builder.AppendLine("            if (!IsSupportedHandlerInterface(handlerInterface))");
-        builder.AppendLine("                continue;");
-        builder.AppendLine();
-        builder.AppendLine("            if (knownServiceTypes.Contains(handlerInterface))");
-        builder.AppendLine("                continue;");
-        builder.AppendLine();
-        builder.AppendLine(
-            "            global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(");
-        builder.AppendLine("                services,");
-        builder.AppendLine("                handlerInterface,");
-        builder.AppendLine("                implementationType);");
-        builder.AppendLine(
-            "            logger.Debug($\"Registered CQRS handler {GetRuntimeTypeDisplayName(implementationType)} as {GetRuntimeTypeDisplayName(handlerInterface)}.\");");
-        builder.AppendLine("            knownServiceTypes.Add(handlerInterface);");
-        builder.AppendLine("        }");
-        builder.AppendLine("    }");
-        builder.AppendLine();
-        builder.AppendLine("    private static int CompareTypes(global::System.Type left, global::System.Type right)");
-        builder.AppendLine("    {");
-        builder.AppendLine(
-            "        return global::System.StringComparer.Ordinal.Compare(GetRuntimeTypeDisplayName(left), GetRuntimeTypeDisplayName(right));");
-        builder.AppendLine("    }");
-        builder.AppendLine();
-        builder.AppendLine("    private static bool IsSupportedHandlerInterface(global::System.Type interfaceType)");
-        builder.AppendLine("    {");
-        builder.AppendLine("        if (!interfaceType.IsGenericType)");
-        builder.AppendLine("            return false;");
-        builder.AppendLine();
-        builder.AppendLine("        var definitionFullName = interfaceType.GetGenericTypeDefinition().FullName;");
-        builder.AppendLine(
-            $"        return global::System.StringComparer.Ordinal.Equals(definitionFullName, \"{IRequestHandlerMetadataName}\")");
-        builder.AppendLine(
-            $"            || global::System.StringComparer.Ordinal.Equals(definitionFullName, \"{INotificationHandlerMetadataName}\")");
-        builder.AppendLine(
-            $"            || global::System.StringComparer.Ordinal.Equals(definitionFullName, \"{IStreamRequestHandlerMetadataName}\");");
-        builder.AppendLine("    }");
-        builder.AppendLine();
-        builder.AppendLine("    private static string GetRuntimeTypeDisplayName(global::System.Type type)");
-        builder.AppendLine("    {");
-        builder.AppendLine("        if (type == typeof(string))");
-        builder.AppendLine("            return \"string\";");
-        builder.AppendLine("        if (type == typeof(int))");
-        builder.AppendLine("            return \"int\";");
-        builder.AppendLine("        if (type == typeof(long))");
-        builder.AppendLine("            return \"long\";");
-        builder.AppendLine("        if (type == typeof(short))");
-        builder.AppendLine("            return \"short\";");
-        builder.AppendLine("        if (type == typeof(byte))");
-        builder.AppendLine("            return \"byte\";");
-        builder.AppendLine("        if (type == typeof(bool))");
-        builder.AppendLine("            return \"bool\";");
-        builder.AppendLine("        if (type == typeof(object))");
-        builder.AppendLine("            return \"object\";");
-        builder.AppendLine("        if (type == typeof(void))");
-        builder.AppendLine("            return \"void\";");
-        builder.AppendLine("        if (type == typeof(uint))");
-        builder.AppendLine("            return \"uint\";");
-        builder.AppendLine("        if (type == typeof(ulong))");
-        builder.AppendLine("            return \"ulong\";");
-        builder.AppendLine("        if (type == typeof(ushort))");
-        builder.AppendLine("            return \"ushort\";");
-        builder.AppendLine("        if (type == typeof(sbyte))");
-        builder.AppendLine("            return \"sbyte\";");
-        builder.AppendLine("        if (type == typeof(float))");
-        builder.AppendLine("            return \"float\";");
-        builder.AppendLine("        if (type == typeof(double))");
-        builder.AppendLine("            return \"double\";");
-        builder.AppendLine("        if (type == typeof(decimal))");
-        builder.AppendLine("            return \"decimal\";");
-        builder.AppendLine("        if (type == typeof(char))");
-        builder.AppendLine("            return \"char\";");
-        builder.AppendLine();
-        builder.AppendLine("        if (type.IsArray)");
-        builder.AppendLine("            return GetRuntimeTypeDisplayName(type.GetElementType()!) + \"[]\";");
-        builder.AppendLine();
-        builder.AppendLine("        if (!type.IsGenericType)");
-        builder.AppendLine("            return (type.FullName ?? type.Name).Replace('+', '.');");
-        builder.AppendLine();
-        builder.AppendLine("        var genericTypeName = type.GetGenericTypeDefinition().FullName ?? type.Name;");
-        builder.AppendLine("        var arityIndex = genericTypeName.IndexOf('`');");
-        builder.AppendLine("        if (arityIndex >= 0)");
-        builder.AppendLine("            genericTypeName = genericTypeName[..arityIndex];");
-        builder.AppendLine();
-        builder.AppendLine("        genericTypeName = genericTypeName.Replace('+', '.');");
-        builder.AppendLine("        var arguments = type.GetGenericArguments();");
-        builder.AppendLine("        var builder = new global::System.Text.StringBuilder();");
-        builder.AppendLine("        builder.Append(genericTypeName);");
-        builder.AppendLine("        builder.Append('<');");
-        builder.AppendLine();
-        builder.AppendLine("        for (var index = 0; index < arguments.Length; index++)");
-        builder.AppendLine("        {");
-        builder.AppendLine("            if (index > 0)");
-        builder.AppendLine("                builder.Append(\", \");");
-        builder.AppendLine();
-        builder.AppendLine("            builder.Append(GetRuntimeTypeDisplayName(arguments[index]));");
-        builder.AppendLine("        }");
-        builder.AppendLine();
-        builder.AppendLine("        builder.Append('>');");
-        builder.AppendLine("        return builder.ToString();");
-        builder.AppendLine("    }");
     }
 
     private static string EscapeStringLiteral(string value)
@@ -1218,8 +1075,7 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         ImmutableArray<ReflectedImplementationRegistrationSpec> ReflectedImplementationRegistrations,
         ImmutableArray<PreciseReflectedRegistrationSpec> PreciseReflectedRegistrations,
         string? ReflectionTypeMetadataName,
-        bool RequiresRuntimeInterfaceDiscovery,
-        ImmutableArray<string> RuntimeDiscoveredHandlerInterfaceLogNames);
+        string? ReflectionFallbackHandlerTypeMetadataName);
 
     private readonly struct HandlerCandidateAnalysis : IEquatable<HandlerCandidateAnalysis>
     {
@@ -1230,8 +1086,7 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
             ImmutableArray<ReflectedImplementationRegistrationSpec> reflectedImplementationRegistrations,
             ImmutableArray<PreciseReflectedRegistrationSpec> preciseReflectedRegistrations,
             string? reflectionTypeMetadataName,
-            bool requiresRuntimeInterfaceDiscovery,
-            ImmutableArray<string> runtimeDiscoveredHandlerInterfaceLogNames)
+            string? reflectionFallbackHandlerTypeMetadataName)
         {
             ImplementationTypeDisplayName = implementationTypeDisplayName;
             ImplementationLogName = implementationLogName;
@@ -1239,8 +1094,7 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
             ReflectedImplementationRegistrations = reflectedImplementationRegistrations;
             PreciseReflectedRegistrations = preciseReflectedRegistrations;
             ReflectionTypeMetadataName = reflectionTypeMetadataName;
-            RequiresRuntimeInterfaceDiscovery = requiresRuntimeInterfaceDiscovery;
-            RuntimeDiscoveredHandlerInterfaceLogNames = runtimeDiscoveredHandlerInterfaceLogNames;
+            ReflectionFallbackHandlerTypeMetadataName = reflectionFallbackHandlerTypeMetadataName;
         }
 
         public string ImplementationTypeDisplayName { get; }
@@ -1255,9 +1109,7 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
 
         public string? ReflectionTypeMetadataName { get; }
 
-        public bool RequiresRuntimeInterfaceDiscovery { get; }
-
-        public ImmutableArray<string> RuntimeDiscoveredHandlerInterfaceLogNames { get; }
+        public string? ReflectionFallbackHandlerTypeMetadataName { get; }
 
         public bool Equals(HandlerCandidateAnalysis other)
         {
@@ -1266,12 +1118,13 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
                 !string.Equals(ImplementationLogName, other.ImplementationLogName, StringComparison.Ordinal) ||
                 !string.Equals(ReflectionTypeMetadataName, other.ReflectionTypeMetadataName,
                     StringComparison.Ordinal) ||
-                RequiresRuntimeInterfaceDiscovery != other.RequiresRuntimeInterfaceDiscovery ||
+                !string.Equals(
+                    ReflectionFallbackHandlerTypeMetadataName,
+                    other.ReflectionFallbackHandlerTypeMetadataName,
+                    StringComparison.Ordinal) ||
                 Registrations.Length != other.Registrations.Length ||
                 ReflectedImplementationRegistrations.Length != other.ReflectedImplementationRegistrations.Length ||
-                PreciseReflectedRegistrations.Length != other.PreciseReflectedRegistrations.Length ||
-                RuntimeDiscoveredHandlerInterfaceLogNames.Length !=
-                other.RuntimeDiscoveredHandlerInterfaceLogNames.Length)
+                PreciseReflectedRegistrations.Length != other.PreciseReflectedRegistrations.Length)
             {
                 return false;
             }
@@ -1295,17 +1148,6 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
                     return false;
             }
 
-            for (var index = 0; index < RuntimeDiscoveredHandlerInterfaceLogNames.Length; index++)
-            {
-                if (!string.Equals(
-                        RuntimeDiscoveredHandlerInterfaceLogNames[index],
-                        other.RuntimeDiscoveredHandlerInterfaceLogNames[index],
-                        StringComparison.Ordinal))
-                {
-                    return false;
-                }
-            }
-
             return true;
         }
 
@@ -1324,7 +1166,10 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
                            (ReflectionTypeMetadataName is null
                                ? 0
                                : StringComparer.Ordinal.GetHashCode(ReflectionTypeMetadataName));
-                hashCode = (hashCode * 397) ^ RequiresRuntimeInterfaceDiscovery.GetHashCode();
+                hashCode = (hashCode * 397) ^
+                           (ReflectionFallbackHandlerTypeMetadataName is null
+                               ? 0
+                               : StringComparer.Ordinal.GetHashCode(ReflectionFallbackHandlerTypeMetadataName));
                 foreach (var registration in Registrations)
                 {
                     hashCode = (hashCode * 397) ^ registration.GetHashCode();
@@ -1340,16 +1185,12 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
                     hashCode = (hashCode * 397) ^ preciseReflectedRegistration.GetHashCode();
                 }
 
-                foreach (var runtimeDiscoveredHandlerInterfaceLogName in RuntimeDiscoveredHandlerInterfaceLogNames)
-                {
-                    hashCode = (hashCode * 397) ^
-                               StringComparer.Ordinal.GetHashCode(runtimeDiscoveredHandlerInterfaceLogName);
-                }
-
                 return hashCode;
             }
         }
     }
 
-    private readonly record struct GenerationEnvironment(bool GenerationEnabled);
+    private readonly record struct GenerationEnvironment(
+        bool GenerationEnabled,
+        bool SupportsReflectionFallbackAttribute);
 }

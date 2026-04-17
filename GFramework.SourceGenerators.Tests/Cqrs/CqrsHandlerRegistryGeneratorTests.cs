@@ -1003,6 +1003,12 @@ public class CqrsHandlerRegistryGeneratorTests
 
         Assert.That(
             generatedSource,
+            Does.Not.Contain("RegisterRemainingReflectedHandlerInterfaces("));
+        Assert.That(
+            generatedSource,
+            Does.Not.Contain("Remaining runtime interface discovery target:"));
+        Assert.That(
+            generatedSource,
             Is.EqualTo(ExternalAssemblyPreciseLookupExpected));
     }
 
