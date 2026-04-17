@@ -50,12 +50,7 @@ public class PriorityGeneratorSnapshotTests
 
         await GeneratorSnapshotTest<PriorityGenerator>.RunAsync(
             source,
-            Path.Combine(
-                TestContext.CurrentContext.TestDirectory,
-                "bases",
-                "snapshots",
-                "PriorityGenerator",
-                "BasicPriority"));
+            GetSnapshotFolder("BasicPriority"));
     }
 
     /// <summary>
@@ -98,12 +93,7 @@ public class PriorityGeneratorSnapshotTests
 
         await GeneratorSnapshotTest<PriorityGenerator>.RunAsync(
             source,
-            Path.Combine(
-                TestContext.CurrentContext.TestDirectory,
-                "bases",
-                "snapshots",
-                "PriorityGenerator",
-                "NegativePriority"));
+            GetSnapshotFolder("NegativePriority"));
     }
 
     /// <summary>
@@ -156,12 +146,7 @@ public class PriorityGeneratorSnapshotTests
 
         await GeneratorSnapshotTest<PriorityGenerator>.RunAsync(
             source,
-            Path.Combine(
-                TestContext.CurrentContext.TestDirectory,
-                "bases",
-                "snapshots",
-                "PriorityGenerator",
-                "PriorityGroup"));
+            GetSnapshotFolder("PriorityGroup"));
     }
 
     /// <summary>
@@ -204,11 +189,25 @@ public class PriorityGeneratorSnapshotTests
 
         await GeneratorSnapshotTest<PriorityGenerator>.RunAsync(
             source,
+            GetSnapshotFolder("GenericClass"));
+    }
+
+    /// <summary>
+    ///     将运行时测试目录映射回仓库内已提交的 Priority 生成器快照目录。
+    /// </summary>
+    /// <param name="scenarioName">快照场景名称。</param>
+    /// <returns>场景对应的绝对快照目录。</returns>
+    private static string GetSnapshotFolder(string scenarioName)
+    {
+        return Path.GetFullPath(
             Path.Combine(
                 TestContext.CurrentContext.TestDirectory,
-                "bases",
+                "..",
+                "..",
+                "..",
+                "Bases",
                 "snapshots",
                 "PriorityGenerator",
-                "GenericClass"));
+                scenarioName));
     }
 }

@@ -2,6 +2,9 @@
 using System;
 namespace TestApp
 {
+    /// <summary>
+    /// 为 <see cref="TestApp.Status" /> 提供自动生成的扩展方法。
+    /// </summary>
     public static partial class StatusExtensions
     {
     }

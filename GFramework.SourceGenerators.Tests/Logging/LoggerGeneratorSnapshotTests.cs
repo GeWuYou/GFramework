@@ -96,12 +96,7 @@ public class LoggerGeneratorSnapshotTests
 
         await GeneratorSnapshotTest<LoggerGenerator>.RunAsync(
             source,
-            Path.Combine(
-                TestContext.CurrentContext.TestDirectory,
-                "logging",
-                "snapshots",
-                "LoggerGenerator",
-                "DefaultConfiguration_Class"));
+            GetSnapshotFolder("DefaultConfiguration_Class"));
     }
 
     [Test]
@@ -193,12 +188,7 @@ public class LoggerGeneratorSnapshotTests
 
         await GeneratorSnapshotTest<LoggerGenerator>.RunAsync(
             source,
-            Path.Combine(
-                TestContext.CurrentContext.TestDirectory,
-                "logging",
-                "snapshots",
-                "LoggerGenerator",
-                "CustomName_Class"));
+            GetSnapshotFolder("CustomName_Class"));
     }
 
     [Test]
@@ -290,12 +280,7 @@ public class LoggerGeneratorSnapshotTests
 
         await GeneratorSnapshotTest<LoggerGenerator>.RunAsync(
             source,
-            Path.Combine(
-                TestContext.CurrentContext.TestDirectory,
-                "logging",
-                "snapshots",
-                "LoggerGenerator",
-                "CustomFieldName_Class"));
+            GetSnapshotFolder("CustomFieldName_Class"));
     }
 
     [Test]
@@ -387,12 +372,7 @@ public class LoggerGeneratorSnapshotTests
 
         await GeneratorSnapshotTest<LoggerGenerator>.RunAsync(
             source,
-            Path.Combine(
-                TestContext.CurrentContext.TestDirectory,
-                "logging",
-                "snapshots",
-                "LoggerGenerator",
-                "InstanceField_Class"));
+            GetSnapshotFolder("InstanceField_Class"));
     }
 
     [Test]
@@ -484,12 +464,7 @@ public class LoggerGeneratorSnapshotTests
 
         await GeneratorSnapshotTest<LoggerGenerator>.RunAsync(
             source,
-            Path.Combine(
-                TestContext.CurrentContext.TestDirectory,
-                "logging",
-                "snapshots",
-                "LoggerGenerator",
-                "PublicField_Class"));
+            GetSnapshotFolder("PublicField_Class"));
     }
 
     [Test]
@@ -581,11 +556,25 @@ public class LoggerGeneratorSnapshotTests
 
         await GeneratorSnapshotTest<LoggerGenerator>.RunAsync(
             source,
+            GetSnapshotFolder("GenericClass"));
+    }
+
+    /// <summary>
+    ///     将运行时测试目录映射回仓库内已提交的日志生成器快照目录。
+    /// </summary>
+    /// <param name="scenarioName">快照场景名称。</param>
+    /// <returns>场景对应的绝对快照目录。</returns>
+    private static string GetSnapshotFolder(string scenarioName)
+    {
+        return Path.GetFullPath(
             Path.Combine(
                 TestContext.CurrentContext.TestDirectory,
-                "logging",
+                "..",
+                "..",
+                "..",
+                "Logging",
                 "snapshots",
                 "LoggerGenerator",
-                "GenericClass"));
+                scenarioName));
     }
 }

@@ -118,6 +118,9 @@ public sealed class PriorityGenerator : MetadataAttributeClassGeneratorBase
             ? $"<{string.Join(", ", symbol.TypeParameters.Select(tp => tp.Name))}>"
             : string.Empty;
 
+        sb.AppendLine("/// <summary>");
+        sb.AppendLine("/// 为当前分部类型补充自动生成的优先级契约实现。");
+        sb.AppendLine("/// </summary>");
         sb.AppendLine(
             $"partial class {symbol.Name}{typeParameters} : global::GFramework.Core.Abstractions.Bases.IPrioritized");
         sb.AppendLine("{");

@@ -2,12 +2,23 @@
 using System;
 namespace TestApp
 {
+    /// <summary>
+    /// 为 <see cref="TestApp.Status" /> 提供自动生成的扩展方法。
+    /// </summary>
     public static partial class StatusExtensions
     {
-        /// <summary>是否为 Active</summary>
+        /// <summary>
+        /// 判断给定值是否为 <see cref="TestApp.Status.Active" />。
+        /// </summary>
+        /// <param name="value">要检查的枚举值。</param>
+        /// <returns>当 <paramref name="value" /> 等于 <see cref="TestApp.Status.Active" /> 时返回 <see langword="true" />；否则返回 <see langword="false" />。</returns>
         public static bool IsActive(this TestApp.Status value) => value == TestApp.Status.Active;
 
-        /// <summary>是否为 Inactive</summary>
+        /// <summary>
+        /// 判断给定值是否为 <see cref="TestApp.Status.Inactive" />。
+        /// </summary>
+        /// <param name="value">要检查的枚举值。</param>
+        /// <returns>当 <paramref name="value" /> 等于 <see cref="TestApp.Status.Inactive" /> 时返回 <see langword="true" />；否则返回 <see langword="false" />。</returns>
         public static bool IsInactive(this TestApp.Status value) => value == TestApp.Status.Inactive;
     }
 }

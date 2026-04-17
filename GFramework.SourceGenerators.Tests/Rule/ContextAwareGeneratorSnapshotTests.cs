@@ -86,9 +86,22 @@ public class ContextAwareGeneratorSnapshotTests
         // 执行生成器快照测试，将生成的代码与预期快照进行比较
         await GeneratorSnapshotTest<ContextAwareGenerator>.RunAsync(
             source,
+            GetSnapshotFolder());
+    }
+
+    /// <summary>
+    ///     将运行时测试目录映射回仓库内已提交的上下文感知生成器快照目录。
+    /// </summary>
+    /// <returns>快照目录的绝对路径。</returns>
+    private static string GetSnapshotFolder()
+    {
+        return Path.GetFullPath(
             Path.Combine(
                 TestContext.CurrentContext.TestDirectory,
-                "rule",
+                "..",
+                "..",
+                "..",
+                "Rule",
                 "snapshots",
                 "ContextAwareGenerator"));
     }

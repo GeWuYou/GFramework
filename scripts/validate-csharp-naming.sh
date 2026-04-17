@@ -28,6 +28,11 @@ is_excluded() {
         Godot/script_templates|Godot/script_templates/*)
             return 0
             ;;
+        GFramework.SourceGenerators.Tests/*/snapshots|GFramework.SourceGenerators.Tests/*/snapshots/*)
+            # Source-generator snapshots are committed test assets rather than hand-authored source layout.
+            # Keep naming enforcement for the real test code, but skip generated snapshot trees.
+            return 0
+            ;;
         *)
             return 1
             ;;
