@@ -52,7 +52,7 @@ jobs:
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
 
       - name: Restore dependencies
-        run: dotnet restore
+        run: dotnet restore GFramework.sln
 
       # 从 GitHub 引用中提取标签版本。
       # 提取逻辑：去除 refs/tags/ 前缀，然后去除 v/V 前缀。
@@ -71,7 +71,49 @@ jobs:
         run: |
           set -e
           echo "Packing with version=${{ steps.tag_version.outputs.version }}"
-          dotnet pack -c Release -o ./packages -p:PackageVersion=${{ steps.tag_version.outputs.version }} -p:IncludeSymbols=false
+          dotnet pack GFramework.sln \
+            -c Release \
+            --no-restore \
+            -o ./packages \
+            -p:PackageVersion=${{ steps.tag_version.outputs.version }} \
+            -p:IncludeSymbols=false
+
+      - name: Validate packed modules
+        run: |
+          set -euo pipefail
+
+          expected_packages=(
+            "GeWuYou.GFramework"
+            "GeWuYou.GFramework.Core"
+            "GeWuYou.GFramework.Core.Abstractions"
+            "GeWuYou.GFramework.Core.SourceGenerators"
+            "GeWuYou.GFramework.Cqrs"
+            "GeWuYou.GFramework.Cqrs.Abstractions"
+            "GeWuYou.GFramework.Cqrs.SourceGenerators"
+            "GeWuYou.GFramework.Ecs.Arch"
+            "GeWuYou.GFramework.Ecs.Arch.Abstractions"
+            "GeWuYou.GFramework.Game"
+            "GeWuYou.GFramework.Game.Abstractions"
+            "GeWuYou.GFramework.Game.SourceGenerators"
+            "GeWuYou.GFramework.Godot"
+            "GeWuYou.GFramework.Godot.SourceGenerators"
+          )
+
+          mapfile -t actual_packages < <(
+            find ./packages -maxdepth 1 -type f -name '*.nupkg' -printf '%f\n' \
+              | sed -E 's/\.[0-9][0-9A-Za-z.-]*\.nupkg$//' \
+              | sort -u
+          )
+
+          printf '%s\n' "${expected_packages[@]}" | sort > expected-packages.txt
+          printf '%s\n' "${actual_packages[@]}" | sort > actual-packages.txt
+
+          echo "Expected packages:"
+          cat expected-packages.txt
+          echo "Actual packages:"
+          cat actual-packages.txt
+
+          diff -u expected-packages.txt actual-packages.txt
 
       - name: Show packages
         run: ls -la ./packages || true

@@ -117,7 +117,7 @@ jobs:
 
       # 执行NuGet包恢复操作
       - name: Restore
-        run: dotnet restore
+        run: dotnet restore GFramework.sln
       # 恢复.NET本地工具
       - name: Restore .NET tools
         run: dotnet tool restore
@@ -142,49 +142,46 @@ jobs:
         
       # 构建项目，使用Release配置且跳过恢复步骤
       - name: Build
-        run: dotnet build -c Release --no-restore
+        run: dotnet build GFramework.sln -c Release --no-restore
 
       # 运行单元测试，输出TRX格式结果到TestResults目录
       # 在同一个 step 中并发执行所有测试以加快速度
       - name: Test All Projects
         run: |
-          dotnet test GFramework.Core.Tests \
-            -c Release \
-            --no-build \
-            --logger "trx;LogFileName=core-$RANDOM.trx" \
-            --results-directory TestResults &
+          set -euo pipefail
 
-          dotnet test GFramework.Game.Tests \
-            -c Release \
-            --no-build \
-            --logger "trx;LogFileName=game-$RANDOM.trx" \
-            --results-directory TestResults &
+          test_projects=(
+            "GFramework.Core.Tests/GFramework.Core.Tests.csproj:core"
+            "GFramework.Game.Tests/GFramework.Game.Tests.csproj:game"
+            "GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj:sg"
+            "GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj:cqrs"
+            "GFramework.Ecs.Arch.Tests/GFramework.Ecs.Arch.Tests.csproj:ecs-arch"
+            "GFramework.Godot.Tests/GFramework.Godot.Tests.csproj:godot"
+            "GFramework.Godot.SourceGenerators.Tests/GFramework.Godot.SourceGenerators.Tests.csproj:godot-sg"
+          )
 
-          dotnet test GFramework.SourceGenerators.Tests \
-            -c Release \
-            --no-build \
-            --logger "trx;LogFileName=sg-$RANDOM.trx" \
-            --results-directory TestResults &
+          pids=()
+          for entry in "${test_projects[@]}"; do
+            project="${entry%%:*}"
+            name="${entry##*:}"
 
-          dotnet test GFramework.Cqrs.Tests \
-            -c Release \
-            --no-build \
-            --logger "trx;LogFileName=cqrs-$RANDOM.trx" \
-            --results-directory TestResults &
+            dotnet test "$project" \
+              -c Release \
+              --no-build \
+              --logger "trx;LogFileName=${name}-$RANDOM.trx" \
+              --results-directory TestResults &
 
-          dotnet test GFramework.Ecs.Arch.Tests \
-            -c Release \
-            --no-build \
-            --logger "trx;LogFileName=ecs-arch-$RANDOM.trx" \
-            --results-directory TestResults &
+            pids+=("$!")
+          done
 
-          dotnet test GFramework.Godot.Tests \
-            -c Release \
-            --no-build \
-            --logger "trx;LogFileName=godot-$RANDOM.trx" \
-            --results-directory TestResults &
-          # 等待所有后台测试完成
-          wait
+          failed=0
+          for pid in "${pids[@]}"; do
+            if ! wait "$pid"; then
+              failed=1
+            fi
+          done
+
+          exit "$failed"
           
       - name: Generate CTRF report
         run: |
