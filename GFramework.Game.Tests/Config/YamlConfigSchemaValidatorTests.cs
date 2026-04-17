@@ -127,6 +127,61 @@ public sealed class YamlConfigSchemaValidatorTests
     }
 
     /// <summary>
+    ///     验证 <c>allOf</c> focused block 复用同一条 ref-table 字段时，不会把同一引用重复写入结果。
+    /// </summary>
+    [Test]
+    public void ValidateAndCollectReferences_Should_Not_Duplicate_Reference_Usages_From_AllOf()
+    {
+        var schemaPath = CreateSchemaFile(
+            "schemas/monster.schema.json",
+            """
+            {
+              "type": "object",
+              "properties": {
+                "reward": {
+                  "type": "object",
+                  "properties": {
+                    "itemId": {
+                      "type": "string",
+                      "x-gframework-ref-table": "item"
+                    }
+                  },
+                  "allOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "itemId": {
+                          "type": "string",
+                          "x-gframework-ref-table": "item"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+            """);
+        var schema = YamlConfigSchemaValidator.Load("monster", schemaPath);
+
+        var references = YamlConfigSchemaValidator.ValidateAndCollectReferences(
+            "monster",
+            schema,
+            "monster/slime.yaml",
+            """
+            reward:
+              itemId: potion
+            """);
+
+        Assert.That(references, Has.Count.EqualTo(1));
+        Assert.Multiple(() =>
+        {
+            Assert.That(references[0].DisplayPath, Is.EqualTo("reward.itemId"));
+            Assert.That(references[0].ReferencedTableName, Is.EqualTo("item"));
+            Assert.That(references[0].RawValue, Is.EqualTo("potion"));
+        });
+    }
+
+    /// <summary>
     ///     在临时目录中创建 schema 文件。
     /// </summary>
     /// <param name="relativePath">相对根目录的路径。</param>

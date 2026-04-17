@@ -1125,6 +1125,10 @@ function parseSchemaNode(rawNode, displayPath) {
             : undefined
     };
 
+    if (value.allOf !== undefined && type !== "object") {
+        throw new Error(`Only object schemas can declare 'allOf' at '${displayPath}'.`);
+    }
+
     if (type === "object") {
         const required = Array.isArray(value.required)
             ? value.required.filter((item) => typeof item === "string")
@@ -1135,6 +1139,7 @@ function parseSchemaNode(rawNode, displayPath) {
         }
         const dependentRequired = parseDependentRequiredMetadata(value.dependentRequired, displayPath, properties);
         const dependentSchemas = parseDependentSchemasMetadata(value.dependentSchemas, displayPath, properties);
+        const allOf = parseAllOfSchemaNodes(value.allOf, displayPath, properties);
 
         return applyEnumMetadata(applyConstMetadata({
             type: "object",
@@ -1145,6 +1150,7 @@ function parseSchemaNode(rawNode, displayPath) {
             maxProperties: metadata.maxProperties,
             dependentRequired,
             dependentSchemas,
+            allOf,
             title: metadata.title,
             description: metadata.description,
             defaultValue: metadata.defaultValue,
@@ -1372,6 +1378,94 @@ function parseDependentSchemasMetadata(rawDependentSchemas, displayPath, propert
     return Object.keys(normalized).length > 0
         ? normalized
         : undefined;
+}
+
+/**
+ * Parse one object-level `allOf` list and keep it aligned with the runtime's
+ * focused-constraint-block contract.
+ *
+ * @param {unknown} rawAllOf Raw `allOf` node.
+ * @param {string} displayPath Parent schema path.
+ * @param {Record<string, SchemaNode>} properties Declared object properties.
+ * @returns {SchemaNode[] | undefined} Normalized allOf schema list.
+ */
+function parseAllOfSchemaNodes(rawAllOf, displayPath, properties) {
+    if (rawAllOf === undefined) {
+        return undefined;
+    }
+
+    if (!Array.isArray(rawAllOf)) {
+        throw new Error(`Schema property '${displayPath}' must declare 'allOf' as an array.`);
+    }
+
+    const normalized = [];
+    for (let index = 0; index < rawAllOf.length; index += 1) {
+        const rawAllOfSchema = rawAllOf[index];
+        if (!rawAllOfSchema || typeof rawAllOfSchema !== "object" || Array.isArray(rawAllOfSchema)) {
+            throw new Error(
+                `Schema property '${displayPath}' must declare 'allOf' entry #${index + 1} as an object-valued schema.`);
+        }
+
+        if (rawAllOfSchema.type !== "object") {
+            throw new Error(
+                `Schema property '${displayPath}' must declare object-typed schemas in 'allOf' entry #${index + 1}.`);
+        }
+
+        validateAllOfEntryTargets(rawAllOfSchema, displayPath, index, properties);
+        const allOfSchema = parseSchemaNode(rawAllOfSchema, `${displayPath}[allOf[${index}]]`);
+        normalized.push(allOfSchema);
+    }
+
+    return normalized.length > 0
+        ? normalized
+        : undefined;
+}
+
+/**
+ * Ensure one object-focused `allOf` entry only constrains properties that the
+ * parent object schema already declared.
+ *
+ * @param {unknown} rawAllOfSchema Raw allOf entry.
+ * @param {string} displayPath Parent schema path.
+ * @param {number} index Zero-based allOf entry index.
+ * @param {Record<string, SchemaNode>} properties Declared parent properties.
+ */
+function validateAllOfEntryTargets(rawAllOfSchema, displayPath, index, properties) {
+    if (!rawAllOfSchema || typeof rawAllOfSchema !== "object" || Array.isArray(rawAllOfSchema)) {
+        return;
+    }
+
+    if (rawAllOfSchema.properties &&
+        typeof rawAllOfSchema.properties === "object" &&
+        !Array.isArray(rawAllOfSchema.properties)) {
+        for (const propertyName of Object.keys(rawAllOfSchema.properties)) {
+            if (Object.prototype.hasOwnProperty.call(properties, propertyName)) {
+                continue;
+            }
+
+            throw new Error(
+                `Schema property '${displayPath}' declares property '${propertyName}' in 'allOf' entry #${index + 1}, ` +
+                "but that property is not declared in the parent object schema.");
+        }
+    }
+
+    if (!Array.isArray(rawAllOfSchema.required)) {
+        return;
+    }
+
+    for (const requiredProperty of rawAllOfSchema.required) {
+        if (typeof requiredProperty !== "string" || requiredProperty.trim().length === 0) {
+            continue;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(properties, requiredProperty)) {
+            continue;
+        }
+
+        throw new Error(
+            `Schema property '${displayPath}' requires property '${requiredProperty}' in 'allOf' entry #${index + 1}, ` +
+            "but that property is not declared in the parent object schema.");
+    }
 }
 
 /**
@@ -1767,6 +1861,32 @@ function validateObjectNode(schemaNode, yamlNode, displayPath, diagnostics, loca
         }
     }
 
+    if (Array.isArray(schemaNode.allOf)) {
+        for (let index = 0; index < schemaNode.allOf.length; index += 1) {
+            if (matchesSchemaNode(schemaNode.allOf[index], yamlNode, true)) {
+                continue;
+            }
+
+            const localizedMessage = localizeValidationMessage(
+                ValidationMessageKeys.allOfViolation,
+                localizer,
+                {
+                    displayPath: displayPath || "<root>",
+                    index: String(index + 1)
+                });
+
+            if (reportedMessages.has(localizedMessage)) {
+                continue;
+            }
+
+            diagnostics.push({
+                severity: "error",
+                message: localizedMessage
+            });
+            reportedMessages.add(localizedMessage);
+        }
+    }
+
     if (typeof schemaNode.minProperties === "number" &&
         propertyCount < schemaNode.minProperties) {
         diagnostics.push({
@@ -1897,6 +2017,14 @@ function matchesSchemaNodeInternal(schemaNode, yamlNode, allowUnknownObjectPrope
         for (const [, dependentSchema] of getTriggeredDependentSchemas(schemaNode, yamlNode)) {
             if (!matchesSchemaNodeInternal(dependentSchema, yamlNode, true)) {
                 return false;
+            }
+        }
+
+        if (Array.isArray(schemaNode.allOf)) {
+            for (const allOfSchema of schemaNode.allOf) {
+                if (!matchesSchemaNodeInternal(allOfSchema, yamlNode, true)) {
+                    return false;
+                }
             }
         }
 
@@ -2309,6 +2437,8 @@ function localizeValidationMessage(key, localizer, params) {
 
     if (localizer && localizer.isChinese) {
         switch (key) {
+            case ValidationMessageKeys.allOfViolation:
+                return `对象“${params.displayPath}”必须满足全部 \`allOf\` schema，第 ${params.index} 项未匹配。`;
             case ValidationMessageKeys.constMismatch:
                 return `属性“${params.displayPath}”必须匹配固定值 ${params.value}。`;
             case ValidationMessageKeys.dependentRequiredViolation:
@@ -2363,6 +2493,8 @@ function localizeValidationMessage(key, localizer, params) {
     }
 
     switch (key) {
+        case ValidationMessageKeys.allOfViolation:
+            return `Object '${params.displayPath}' must satisfy all 'allOf' schemas; entry #${params.index} did not match.`;
         case ValidationMessageKeys.constMismatch:
             return `Property '${params.displayPath}' must match constant value ${params.value}.`;
         case ValidationMessageKeys.dependentRequiredViolation:
@@ -3119,6 +3251,7 @@ module.exports = {
  *   maxProperties?: number,
  *   dependentRequired?: Record<string, string[]>,
  *   dependentSchemas?: Record<string, SchemaNode>,
+ *   allOf?: SchemaNode[],
  *   title?: string,
  *   description?: string,
  *   defaultValue?: string,

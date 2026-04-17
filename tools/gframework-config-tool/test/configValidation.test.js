@@ -1792,6 +1792,162 @@ test("parseSchemaContent should reject non-object-typed dependentSchemas sub-sch
     );
 });
 
+test("parseSchemaContent should capture allOf metadata", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "reward": {
+              "type": "object",
+              "properties": {
+                "itemId": { "type": "string" },
+                "itemCount": { "type": "integer" }
+              },
+              "allOf": [
+                {
+                  "type": "object",
+                  "required": ["itemCount"],
+                  "properties": {
+                    "itemCount": { "type": "integer" }
+                  }
+                }
+              ]
+            }
+          }
+        }
+    `);
+
+    assert.equal(schema.properties.reward.allOf[0].type, "object");
+    assert.deepEqual(schema.properties.reward.allOf[0].required, ["itemCount"]);
+});
+
+test("parseSchemaContent should reject allOf declarations on non-object schemas", () => {
+    assert.throws(
+        () => parseSchemaContent(`
+            {
+              "type": "object",
+              "properties": {
+                "tag": {
+                  "type": "string",
+                  "allOf": [
+                    {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  ]
+                }
+              }
+            }
+        `),
+        /Only object schemas can declare 'allOf'/u
+    );
+});
+
+test("parseSchemaContent should reject non-array allOf declarations", () => {
+    assert.throws(
+        () => parseSchemaContent(`
+            {
+              "type": "object",
+              "properties": {
+                "reward": {
+                  "type": "object",
+                  "properties": {
+                    "itemCount": { "type": "integer" }
+                  },
+                  "allOf": {
+                    "type": "object",
+                    "properties": {
+                      "itemCount": { "type": "integer" }
+                    }
+                  }
+                }
+              }
+            }
+        `),
+        /must declare 'allOf' as an array/u
+    );
+});
+
+test("parseSchemaContent should reject non-object-typed allOf sub-schemas", () => {
+    assert.throws(
+        () => parseSchemaContent(`
+            {
+              "type": "object",
+              "properties": {
+                "reward": {
+                  "type": "object",
+                  "properties": {
+                    "itemCount": { "type": "integer" }
+                  },
+                  "allOf": [
+                    {
+                      "type": "string",
+                      "const": "potion"
+                    }
+                  ]
+                }
+              }
+            }
+        `),
+        /object-typed schemas in 'allOf' entry #1/u
+    );
+});
+
+test("parseSchemaContent should reject allOf entries that introduce undeclared parent properties", () => {
+    assert.throws(
+        () => parseSchemaContent(`
+            {
+              "type": "object",
+              "properties": {
+                "reward": {
+                  "type": "object",
+                  "properties": {
+                    "itemCount": { "type": "integer" }
+                  },
+                  "allOf": [
+                    {
+                      "type": "object",
+                      "required": ["bonus"]
+                    }
+                  ]
+                }
+              }
+            }
+        `),
+        /requires property 'bonus' in 'allOf' entry #1/u
+    );
+});
+
+test("parseSchemaContent should use runtime-aligned allOf paths for nested schema errors", () => {
+    assert.throws(
+        () => parseSchemaContent(`
+            {
+              "type": "object",
+              "properties": {
+                "reward": {
+                  "type": "object",
+                  "properties": {
+                    "itemCount": { "type": "integer" }
+                  },
+                  "allOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "itemCount": {
+                          "type": "integer",
+                          "format": "uuid"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+        `),
+        /reward\[allOf\[0\]\]\.itemCount/u
+    );
+});
+
 test("parseSchemaContent should capture not sub-schema metadata", () => {
     const schema = parseSchemaContent(`
         {
@@ -1928,6 +2084,87 @@ test("validateParsedConfig should accept satisfied dependentSchemas", () => {
                   }
                 }
               }
+            }
+          }
+        }
+    `);
+    const yaml = parseTopLevelYaml(`
+reward:
+  itemId: potion
+  itemCount: 3
+  bonus: 1
+`);
+
+    assert.deepEqual(validateParsedConfig(schema, yaml), []);
+});
+
+test("validateParsedConfig should report allOf violations", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "reward": {
+              "type": "object",
+              "properties": {
+                "itemId": { "type": "string" },
+                "itemCount": { "type": "integer" }
+              },
+              "allOf": [
+                {
+                  "type": "object",
+                  "required": ["itemCount"],
+                  "properties": {
+                    "itemCount": { "type": "integer" }
+                  }
+                }
+              ]
+            }
+          }
+        }
+    `);
+    const yaml = parseTopLevelYaml(`
+reward:
+  itemId: potion
+`);
+
+    const diagnostics = validateParsedConfig(schema, yaml);
+
+    assert.equal(diagnostics.length, 1);
+    assert.equal(diagnostics[0].severity, "error");
+    assert.match(diagnostics[0].message, /allOf/u);
+    assert.match(diagnostics[0].message, /#1|第 1 项/u);
+});
+
+test("validateParsedConfig should accept satisfied allOf constraints", () => {
+    const schema = parseSchemaContent(`
+        {
+          "type": "object",
+          "properties": {
+            "reward": {
+              "type": "object",
+              "properties": {
+                "itemId": { "type": "string" },
+                "itemCount": { "type": "integer" },
+                "bonus": { "type": "integer" }
+              },
+              "allOf": [
+                {
+                  "type": "object",
+                  "required": ["itemCount"],
+                  "properties": {
+                    "itemCount": { "type": "integer" }
+                  }
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "itemCount": {
+                      "type": "integer",
+                      "minimum": 2
+                    }
+                  }
+                }
+              ]
             }
           }
         }

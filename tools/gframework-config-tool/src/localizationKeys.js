@@ -1,4 +1,5 @@
 const ValidationMessageKeys = Object.freeze({
+    allOfViolation: "validation.allOfViolation",
     constMismatch: "validation.constMismatch",
     dependentSchemasViolation: "validation.dependentSchemasViolation",
     enumMismatch: "validation.enumMismatch",

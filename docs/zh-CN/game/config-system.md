@@ -12,7 +12,7 @@
 - JSON Schema 作为结构描述
 - 一对象一文件的目录组织
 - 运行时只读查询
-- Runtime / Generator / Tooling 共享支持 `enum`、`const`、`not`、`minimum`、`maximum`、`exclusiveMinimum`、`exclusiveMaximum`、`multipleOf`、`minLength`、`maxLength`、`pattern`、`format`（当前稳定子集：`date`、`date-time`、`duration`、`email`、`time`、`uri`、`uuid`）、`minItems`、`maxItems`、`uniqueItems`、`contains`、`minContains`、`maxContains`、`minProperties`、`maxProperties`、`dependentRequired`、`dependentSchemas`
+- Runtime / Generator / Tooling 共享支持 `enum`、`const`、`not`、`minimum`、`maximum`、`exclusiveMinimum`、`exclusiveMaximum`、`multipleOf`、`minLength`、`maxLength`、`pattern`、`format`（当前稳定子集：`date`、`date-time`、`duration`、`email`、`time`、`uri`、`uuid`）、`minItems`、`maxItems`、`uniqueItems`、`contains`、`minContains`、`maxContains`、`minProperties`、`maxProperties`、`dependentRequired`、`dependentSchemas`、`allOf`
 - Source Generator 生成配置类型、表包装、单表注册/访问辅助，以及项目级聚合注册目录
 - VS Code 插件提供配置浏览、raw 编辑、schema 打开、递归轻量校验和嵌套对象表单入口
 
@@ -726,6 +726,7 @@ var loader = new YamlConfigLoader("config-root")
 - 对象字段违反 `minProperties` / `maxProperties`
 - 对象字段违反 `dependentRequired`
 - 对象字段违反 `dependentSchemas`
+- 对象字段违反 `allOf`
 - 标量 / 对象 / 数组字段违反 `const`
 - 标量 / 对象 / 数组字段命中 `not`
 - 标量 / 对象 / 数组字段违反 `enum`
@@ -792,6 +793,47 @@ if (MonsterConfigBindings.References.TryGetByDisplayPath("dropItems", out var re
 - `minProperties` / `maxProperties`：供运行时校验、VS Code 校验、对象 section 表单 hint 和生成代码 XML 文档复用；根对象与嵌套对象都会按实际属性数量执行同一套约束
 - `dependentRequired`：供运行时校验、VS Code 校验、对象 section 表单 hint 和生成代码 XML 文档复用；当前只表达“当对象内某个字段出现时，还必须同时声明哪些同级字段”，不会改变生成类型形状
 - `dependentSchemas`：供运行时校验、VS Code 校验、对象 section 表单 hint 和生成代码 XML 文档复用；当前只接受“已声明 sibling 字段触发 object 子 schema”的形状，不改变生成类型形状，并按 focused constraint block 语义允许条件子 schema 未声明的额外同级字段继续存在
+- `allOf`：供运行时校验、VS Code 校验、对象 section 表单 hint 和生成代码 XML 文档复用；当前只接受 object 节点上的 object-typed inline schema 数组，并按 focused constraint block 语义把每个条目叠加到当前对象上，不做属性合并，也不改变生成类型形状
+
+`allOf` 的最小可工作示例如下。关键点是：字段形状先在父对象 `properties` 中声明，再用 `allOf` 叠加 `required` 或更细的字段约束；`allOf` 条目不会把新字段并回父对象。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "reward": {
+      "type": "object",
+      "properties": {
+        "itemId": { "type": "string" },
+        "itemCount": { "type": "integer" }
+      },
+      "allOf": [
+        {
+          "type": "object",
+          "required": ["itemCount"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "itemCount": {
+              "type": "integer",
+              "minimum": 2
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+```yaml
+reward:
+  itemId: potion
+  itemCount: 3
+```
+
+兼容性说明：如果你以前按标准 JSON Schema `allOf` 的直觉，把新字段只写进 `allOf` 条目的 `properties` 或 `required`，当前实现不会做属性合并，这类 schema 现在会在加载 / 生成 / 工具解析阶段直接被拒绝。请先把字段提升到父对象的 `properties`，再在 `allOf` 里补充 required 或约束。
 
 这样可以避免错误配置被默认值或 `IgnoreUnmatchedProperties` 静默吞掉。
 
@@ -888,7 +930,7 @@ var hotReload = loader.EnableHotReload(
 - 对带 `x-gframework-ref-table` 的字段提供引用 schema / 配置域 / 引用文件跳转入口
 - 对空配置文件提供基于 schema 的示例 YAML 初始化入口
 - 对同一配置域内的多份 YAML 文件执行批量字段更新
-- 在表单入口中显示 `title / description / default / const / enum / x-gframework-ref-table（UI 中显示为 ref-table） / multipleOf / pattern / format / uniqueItems / contains / minContains / maxContains / minProperties / maxProperties / dependentRequired / dependentSchemas` 元数据；批量编辑入口当前只暴露顶层可批量改写字段所需的基础信息
+- 在表单入口中显示 `title / description / default / const / enum / x-gframework-ref-table（UI 中显示为 ref-table） / multipleOf / pattern / format / uniqueItems / contains / minContains / maxContains / minProperties / maxProperties / dependentRequired / dependentSchemas / allOf` 元数据；批量编辑入口当前只暴露顶层可批量改写字段所需的基础信息
 
 当前表单入口适合编辑嵌套对象中的标量字段、标量数组，以及对象数组中的对象项。
 

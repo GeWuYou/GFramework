@@ -16,3 +16,4 @@
  GF_ConfigSchema_009 | GFramework.SourceGenerators.Config | Error    | ConfigSchemaDiagnostics 
  GF_ConfigSchema_010 | GFramework.SourceGenerators.Config | Error    | ConfigSchemaDiagnostics 
  GF_ConfigSchema_011 | GFramework.SourceGenerators.Config | Error    | ConfigSchemaDiagnostics 
+ GF_ConfigSchema_012 | GFramework.SourceGenerators.Config | Error    | ConfigSchemaDiagnostics 
