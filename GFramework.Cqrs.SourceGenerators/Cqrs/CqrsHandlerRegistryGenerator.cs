@@ -558,6 +558,26 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         return GetTypeSortKey(type).Replace("global::", string.Empty);
     }
 
+    /// <summary>
+    ///     生成程序集级 CQRS handler 注册器源码。
+    /// </summary>
+    /// <param name="generationEnvironment">
+    ///     当前轮次的生成环境，用于决定 runtime 是否提供 <c>CqrsReflectionFallbackAttribute</c> 契约，以及是否需要在输出中发射对应的程序集级元数据。
+    /// </param>
+    /// <param name="registrations">
+    ///     已整理并排序的 handler 注册描述。方法会据此生成 <c>CqrsHandlerRegistry.g.cs</c>，其中包含直接注册、实现类型反射注册、精确运行时类型查找等分支。
+    /// </param>
+    /// <param name="fallbackHandlerTypeMetadataNames">
+    ///     仍需依赖程序集级 reflection fallback 元数据恢复的 handler 元数据名称集合。
+    ///     调用方必须先确保：若该集合非空，则 <paramref name="generationEnvironment" /> 已声明支持对应的 fallback attribute 契约；
+    ///     否则应在进入本方法前报告诊断并放弃生成，而不是输出会静默漏注册的半成品注册器。
+    /// </param>
+    /// <returns>完整的注册器源代码文本。</returns>
+    /// <remarks>
+    ///     当 <paramref name="fallbackHandlerTypeMetadataNames" /> 为空时，输出只包含程序集级 <c>CqrsHandlerRegistryAttribute</c> 和注册器实现。
+    ///     当其非空且 runtime 合同可用时，输出还会附带程序集级 <c>CqrsReflectionFallbackAttribute</c>，让运行时补齐生成阶段无法精确表达的剩余 handler。
+    ///     该方法本身不报告诊断；“fallback 必需但 runtime 契约缺失”的错误由调用方在进入本方法前处理。
+    /// </remarks>
     private static string GenerateSource(
         GenerationEnvironment generationEnvironment,
         IReadOnlyList<ImplementationRegistrationSpec> registrations,

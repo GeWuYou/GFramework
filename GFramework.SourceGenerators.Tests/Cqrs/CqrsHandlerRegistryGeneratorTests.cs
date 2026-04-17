@@ -1241,7 +1241,9 @@ public class CqrsHandlerRegistryGeneratorTests
                               }
                               """;
 
-        var execution = ExecuteGenerator(source);
+        var execution = ExecuteGenerator(
+            source,
+            allowUnsafe: true);
         var generatorErrors = execution.GeneratorDiagnostics
             .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
             .ToArray();
@@ -1258,6 +1260,121 @@ public class CqrsHandlerRegistryGeneratorTests
             Assert.That(
                 missingContractDiagnostic.GetMessage(),
                 Does.Contain("GFramework.Cqrs.CqrsReflectionFallbackAttribute"));
+        });
+    }
+
+    /// <summary>
+    ///     验证当 fallback metadata 仍然必需且 runtime 提供了承载契约时，
+    ///     生成器会继续产出注册器并发射程序集级 <c>CqrsReflectionFallbackAttribute</c>。
+    /// </summary>
+    [Test]
+    public void
+        Emits_Assembly_Level_Fallback_Metadata_When_Fallback_Is_Required_And_Runtime_Contract_Is_Available()
+    {
+        const string source = """
+                              using System;
+
+                              namespace Microsoft.Extensions.DependencyInjection
+                              {
+                                  public interface IServiceCollection { }
+
+                                  public static class ServiceCollectionServiceExtensions
+                                  {
+                                      public static void AddTransient(IServiceCollection services, Type serviceType, Type implementationType) { }
+                                  }
+                              }
+
+                              namespace GFramework.Core.Abstractions.Logging
+                              {
+                                  public interface ILogger
+                                  {
+                                      void Debug(string msg);
+                                  }
+                              }
+
+                              namespace GFramework.Cqrs.Abstractions.Cqrs
+                              {
+                                  public interface IRequest<TResponse> { }
+                                  public interface INotification { }
+                                  public interface IStreamRequest<TResponse> { }
+
+                                  public interface IRequestHandler<in TRequest, TResponse> where TRequest : IRequest<TResponse> { }
+                                  public interface INotificationHandler<in TNotification> where TNotification : INotification { }
+                                  public interface IStreamRequestHandler<in TRequest, out TResponse> where TRequest : IStreamRequest<TResponse> { }
+                              }
+
+                              namespace GFramework.Cqrs
+                              {
+                                  public interface ICqrsHandlerRegistry
+                                  {
+                                      void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                  }
+
+                                  [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
+                                  public sealed class CqrsHandlerRegistryAttribute : Attribute
+                                  {
+                                      public CqrsHandlerRegistryAttribute(Type registryType) { }
+                                  }
+
+                                  [AttributeUsage(AttributeTargets.Assembly)]
+                                  public sealed class CqrsReflectionFallbackAttribute : Attribute
+                                  {
+                                      public CqrsReflectionFallbackAttribute(params string[] fallbackHandlerTypeNames) { }
+                                  }
+                              }
+
+                              namespace TestApp
+                              {
+                                  using GFramework.Cqrs.Abstractions.Cqrs;
+
+                                  public sealed class Container
+                                  {
+                                      private unsafe struct AlphaResponse
+                                      {
+                                      }
+
+                                      private unsafe struct BetaResponse
+                                      {
+                                      }
+
+                                      private unsafe sealed record AlphaRequest() : IRequest<AlphaResponse*>;
+
+                                      private unsafe sealed record BetaRequest() : IRequest<BetaResponse*>;
+
+                                      public unsafe sealed class BetaHandler : IRequestHandler<BetaRequest, BetaResponse*>
+                                      {
+                                      }
+
+                                      public unsafe sealed class AlphaHandler : IRequestHandler<AlphaRequest, AlphaResponse*>
+                                      {
+                                      }
+                                  }
+                              }
+                              """;
+
+        var execution = ExecuteGenerator(
+            source,
+            allowUnsafe: true);
+        var generatorErrors = execution.GeneratorDiagnostics
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ToArray();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(generatorErrors, Is.Empty);
+            Assert.That(execution.GeneratedSources, Has.Length.EqualTo(1));
+            Assert.That(execution.GeneratedSources[0].filename, Is.EqualTo("CqrsHandlerRegistry.g.cs"));
+            Assert.That(
+                execution.GeneratedSources[0].content,
+                Does.Contain(
+                    "[assembly: global::GFramework.Cqrs.CqrsReflectionFallbackAttribute(\"TestApp.Container+AlphaHandler\", \"TestApp.Container+BetaHandler\")]"));
+            Assert.That(
+                execution.GeneratedSources[0].content,
+                Does.Contain(
+                    "[assembly: global::GFramework.Cqrs.CqrsHandlerRegistryAttribute(typeof(global::GFramework.Generated.Cqrs.__GFrameworkGeneratedCqrsHandlerRegistry))]"));
+            Assert.That(
+                execution.GeneratedSources[0].content,
+                Does.Contain("internal sealed class __GFrameworkGeneratedCqrsHandlerRegistry"));
         });
     }
 
@@ -1289,7 +1406,8 @@ public class CqrsHandlerRegistryGeneratorTests
     {
         var execution = ExecuteGenerator(
             source,
-            additionalReferences);
+            allowUnsafe: false,
+            additionalReferences: additionalReferences);
         var generatorErrors = execution.GeneratorDiagnostics
             .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
             .ToArray();
@@ -1315,10 +1433,16 @@ public class CqrsHandlerRegistryGeneratorTests
     ///     运行 CQRS handler registry generator，并返回生成输出及相关诊断。
     /// </summary>
     /// <param name="source">输入源码。</param>
+    /// <param name="allowUnsafe">
+    ///     是否允许测试编译包含 <c>unsafe</c> 代码。
+    ///     某些回归用例会故意构造带指针类型的非法 handler 合同，以覆盖 fallback 防御分支，此时需要启用该选项避免把缺少
+    ///     <c>unsafe</c> 编译上下文的错误与目标生成器行为混淆。
+    /// </param>
     /// <param name="additionalReferences">附加元数据引用，用于构造跨程序集场景。</param>
     /// <returns>包含生成源、生成器诊断和更新后编译诊断的执行结果。</returns>
     private static GeneratorExecutionResult ExecuteGenerator(
         string source,
+        bool allowUnsafe = false,
         params MetadataReference[] additionalReferences)
     {
         var syntaxTree = CSharpSyntaxTree.ParseText(source);
@@ -1326,7 +1450,9 @@ public class CqrsHandlerRegistryGeneratorTests
             "TestProject",
             [syntaxTree],
             MetadataReferenceTestBuilder.GetRuntimeMetadataReferences().AddRange(additionalReferences),
-            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+            new CSharpCompilationOptions(
+                OutputKind.DynamicallyLinkedLibrary,
+                allowUnsafe: allowUnsafe));
 
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
             generators: [new CqrsHandlerRegistryGenerator().AsSourceGenerator()],

@@ -106,6 +106,10 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
             "/// 同一生成类型的所有实例共享一个静态上下文提供者；切换或重置提供者只会影响尚未缓存上下文的新实例或未初始化实例，");
         sb.AppendLine(
             "/// 已缓存的实例上下文需要通过 <see cref=\"GFramework.Core.Abstractions.Rule.IContextAware.SetContext(GFramework.Core.Abstractions.Architectures.IArchitectureContext)\" /> 显式覆盖。");
+        sb.AppendLine(
+            "/// 与手动继承 <see cref=\"global::GFramework.Core.Rule.ContextAwareBase\" /> 的路径相比，生成实现会使用 <c>_contextSync</c> 协调惰性初始化、provider 切换和显式上下文注入；");
+        sb.AppendLine(
+            "/// <see cref=\"global::GFramework.Core.Rule.ContextAwareBase\" /> 则保持无锁的实例级缓存语义，更适合已经由调用方线程模型保证串行访问的简单场景。");
         sb.AppendLine("/// </remarks>");
         sb.AppendLine($"partial class {symbol.Name} : {interfaceName}");
         sb.AppendLine("{");
@@ -153,6 +157,10 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
             "    /// 一旦某个实例成功缓存上下文，后续 <see cref=\"SetContextProvider(GFramework.Core.Abstractions.Architectures.IArchitectureContextProvider)\" />");
         sb.AppendLine(
             "    /// 或 <see cref=\"ResetContextProvider\" /> 不会自动清除此缓存；如需覆盖，请显式调用 <c>IContextAware.SetContext(...)</c>。");
+        sb.AppendLine(
+            "    /// 当前实现还假设 <see cref=\"GFramework.Core.Abstractions.Architectures.IArchitectureContextProvider.GetContext\" /> 可在持有 <c>_contextSync</c> 时安全执行；");
+        sb.AppendLine(
+            "    /// 自定义 provider 不应在该调用链内重新进入当前类型的 provider 配置 API，且应避免引入与外部全局锁相互等待的锁顺序。");
         sb.AppendLine("    /// </remarks>");
         sb.AppendLine("    protected global::GFramework.Core.Abstractions.Architectures.IArchitectureContext Context");
         sb.AppendLine("    {");
@@ -165,6 +173,8 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
         sb.AppendLine("            }");
         sb.AppendLine();
         sb.AppendLine("            // 在同一个同步域内协调懒加载与 provider 切换，避免读取到被并发重置的空提供者。");
+        sb.AppendLine(
+            "            // provider 的 GetContext() 会在持有 _contextSync 时执行；自定义 provider 必须避免在该调用链内回调 SetContextProvider/ResetContextProvider 或形成反向锁顺序。");
         sb.AppendLine("            lock (_contextSync)");
         sb.AppendLine("            {");
         sb.AppendLine(
