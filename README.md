@@ -25,15 +25,17 @@ GFramework 采用清晰分层与模块化设计，强调：
 
 ## 功能模块
 
-| 模块 | 说明 | 文档 |
-| --- | --- | --- |
-| `GFramework.Core` | 平台无关的核心架构能力（架构、命令、查询、事件、属性、IOC、日志等） | [查看](GFramework.Core/README.md) |
-| `GFramework.Core.Abstractions` | Core 对应的抽象接口定义 | [查看](GFramework.Core.Abstractions/README.md) |
-| `GFramework.Game` | 游戏业务侧扩展（状态、配置、存储、UI 等） | [查看](GFramework.Game/README.md) |
-| `GFramework.Game.Abstractions` | Game 模块抽象接口定义 | [查看](GFramework.Game.Abstractions/README.md) |
-| `GFramework.Godot` | Godot 集成层（节点扩展、场景/设置/存储适配等） | [查看](GFramework.Godot/README.md) |
-| `GFramework.SourceGenerators` | 通用源码生成器（日志、枚举扩展、规则等） | [查看](GFramework.SourceGenerators/README.md) |
-| `GFramework.Godot.SourceGenerators` | Godot 场景下的源码生成器扩展 | [查看](GFramework.Godot.SourceGenerators/README.md) |
+| 模块                                                                      | 说明                                      | 文档                                                |
+|-------------------------------------------------------------------------|-----------------------------------------|---------------------------------------------------|
+| `GFramework.Core`                                                       | 平台无关的核心架构能力（架构、命令、查询、事件、属性、IOC、日志等）     | [查看](GFramework.Core/README.md)                   |
+| `GFramework.Core.Abstractions`                                          | Core 对应的抽象接口定义                          | [查看](GFramework.Core.Abstractions/README.md)      |
+| `GFramework.Game`                                                       | 游戏业务侧扩展（状态、配置、存储、UI 等）                  | [查看](GFramework.Game/README.md)                   |
+| `GFramework.Game.Abstractions`                                          | Game 模块抽象接口定义                           | [查看](GFramework.Game.Abstractions/README.md)      |
+| `GFramework.Godot`                                                      | Godot 集成层（节点扩展、场景/设置/存储适配等）             | [查看](GFramework.Godot/README.md)                  |
+| `GFramework.Cqrs` / `GFramework.Cqrs.Abstractions`                      | CQRS runtime、契约与 handler 注册基础设施         | [查看](docs/zh-CN/core/cqrs.md)                     |
+| `GFramework.Core.SourceGenerators`                                      | Core 侧源码生成器（日志、枚举扩展、规则、模块注册等）           | [查看](GFramework.Core.SourceGenerators/README.md)  |
+| `GFramework.Game.SourceGenerators` / `GFramework.Cqrs.SourceGenerators` | 游戏配置 schema 与 CQRS handler registry 生成器 | [查看](docs/zh-CN/source-generators/index.md)       |
+| `GFramework.Godot.SourceGenerators`                                     | Godot 场景下的源码生成器扩展                       | [查看](GFramework.Godot.SourceGenerators/README.md) |
 
 ## 文档导航
 
@@ -50,7 +52,7 @@ GFramework 采用清晰分层与模块化设计，强调：
 - **`GeWuYou.GFramework`**：聚合元包（Meta Package），用于一键引入常用能力集合，适合快速试用或原型阶段。
 - **`GeWuYou.GFramework.Core`**：核心起步包，适合希望按模块精细控制依赖的项目（推荐生产项目从此起步）。
 
-如果你已明确技术栈，建议优先按模块安装（Core / Game / Godot / SourceGenerators），避免不必要依赖。
+如果你已明确技术栈，建议优先按模块安装（Core / Cqrs / Game / Godot / Source Generators），避免不必要依赖。
 
 ## 快速安装
 
@@ -60,6 +62,10 @@ GFramework 采用清晰分层与模块化设计，强调：
 # 核心能力（推荐最小起步）
 dotnet add package GeWuYou.GFramework.Core
 dotnet add package GeWuYou.GFramework.Core.Abstractions
+
+# CQRS
+dotnet add package GeWuYou.GFramework.Cqrs
+dotnet add package GeWuYou.GFramework.Cqrs.Abstractions
 
 # 游戏扩展
 dotnet add package GeWuYou.GFramework.Game
@@ -105,13 +111,19 @@ dotnet add package GeWuYou.GFramework.Cqrs.SourceGenerators
 
 ```text
 GFramework.sln
+├─ GFramework.Cqrs/
+├─ GFramework.Cqrs.Abstractions/
 ├─ GFramework.Core/
 ├─ GFramework.Core.Abstractions/
+├─ GFramework.Core.SourceGenerators/
+├─ GFramework.Core.SourceGenerators.Abstractions/
 ├─ GFramework.Game/
 ├─ GFramework.Game.Abstractions/
+├─ GFramework.Game.SourceGenerators/
 ├─ GFramework.Godot/
-├─ GFramework.SourceGenerators/
 ├─ GFramework.Godot.SourceGenerators/
+├─ GFramework.Cqrs.SourceGenerators/
+├─ GFramework.SourceGenerators.Common/
 ├─ docs/
 └─ docfx/
 ```

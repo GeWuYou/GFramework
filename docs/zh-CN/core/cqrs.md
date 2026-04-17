@@ -21,6 +21,18 @@ CQRS（Command Query Responsibility Segregation，命令查询职责分离）是
 - 与架构系统深度集成
 - 支持流式处理
 
+## 接入包
+
+按模块安装 CQRS runtime；如果希望在编译期生成 handler 注册表，再额外安装对应的 source generator：
+
+```bash
+dotnet add package GeWuYou.GFramework.Cqrs
+dotnet add package GeWuYou.GFramework.Cqrs.Abstractions
+
+# 可选：编译期生成 handler registry，减少冷启动反射扫描
+dotnet add package GeWuYou.GFramework.Cqrs.SourceGenerators
+```
+
 ## 核心概念
 
 ### Command（命令）
@@ -28,8 +40,8 @@ CQRS（Command Query Responsibility Segregation，命令查询职责分离）是
 命令表示修改系统状态的操作，如创建、更新、删除：
 
 ```csharp
-using GFramework.Core.CQRS.Command;
-using GFramework.Core.Abstractions.CQRS.Command;
+using GFramework.Cqrs.Command;
+using GFramework.Cqrs.Abstractions.Cqrs.Command;
 
 // 定义命令输入
 public class CreatePlayerInput : ICommandInput
@@ -50,8 +62,8 @@ public class CreatePlayerCommand : CommandBase<CreatePlayerInput, int>
 查询表示读取系统状态的操作，不修改数据：
 
 ```csharp
-using GFramework.Core.CQRS.Query;
-using GFramework.Core.Abstractions.CQRS.Query;
+using GFramework.Cqrs.Query;
+using GFramework.Cqrs.Abstractions.Cqrs.Query;
 
 // 定义查询输入
 public class GetPlayerInput : IQueryInput
@@ -71,7 +83,8 @@ public class GetPlayerQuery : QueryBase<GetPlayerInput, PlayerData>
 处理器负责执行命令或查询的具体逻辑：
 
 ```csharp
-using GFramework.Core.CQRS.Command;
+using GFramework.Cqrs.Command;
+using GFramework.Cqrs.Cqrs.Command;
 
 // 命令处理器
 public class CreatePlayerCommandHandler : AbstractCommandHandler<CreatePlayerCommand, int>
@@ -90,6 +103,9 @@ public class CreatePlayerCommandHandler : AbstractCommandHandler<CreatePlayerCom
     }
 }
 ```
+
+> 说明：消息基类位于 `GFramework.Cqrs.Command` / `Query` / `Notification` 命名空间，而处理器基类位于
+> `GFramework.Cqrs.Cqrs.*` 命名空间。编写最小示例时需要同时引用对应的消息与 handler 命名空间。
 
 ### Dispatcher（请求分发器）
 
@@ -247,8 +263,8 @@ public class GameArchitecture : Architecture
 handler。
 
 `RegisterCqrsPipelineBehavior<TBehavior>()` 是唯一保留的公开入口；旧的 `Mediator` 兼容别名与扩展已移除，不再继续维护。
-如果你正在从旧版本迁移，显式替换关系就是
-`RegisterMediatorBehavior<TBehavior>() -> RegisterCqrsPipelineBehavior<TBehavior>()`。
+如果你正在从旧版本迁移，只需要直接改用 `RegisterCqrsPipelineBehavior<TBehavior>()`；
+旧 `RegisterMediatorBehavior<TBehavior>()` 已移除，不再保留兼容入口。
 当前接口支持两种形式：
 
 - 开放泛型行为，例如 `LoggingBehavior<,>`，用于匹配所有请求
@@ -261,8 +277,8 @@ handler。
 Request 是更通用的消息类型，可以用于任何场景：
 
 ```csharp
-using GFramework.Core.CQRS.Request;
-using GFramework.Core.Abstractions.CQRS.Request;
+using GFramework.Cqrs.Request;
+using GFramework.Cqrs.Abstractions.Cqrs.Request;
 
 // 定义请求输入
 public class ValidatePlayerInput : IRequestInput
@@ -299,8 +315,8 @@ public class ValidatePlayerRequestHandler : AbstractRequestHandler<ValidatePlaye
 Notification 用于一对多的消息广播：
 
 ```csharp
-using GFramework.Core.CQRS.Notification;
-using GFramework.Core.Abstractions.CQRS.Notification;
+using GFramework.Cqrs.Notification;
+using GFramework.Cqrs.Abstractions.Cqrs.Notification;
 
 // 定义通知输入
 public class PlayerLevelUpInput : INotificationInput

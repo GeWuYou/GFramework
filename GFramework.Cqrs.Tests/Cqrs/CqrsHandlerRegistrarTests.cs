@@ -292,6 +292,124 @@ internal sealed class CqrsHandlerRegistrarTests
             Times.Never);
         generatedAssembly.Verify(static assembly => assembly.GetTypes(), Times.Never);
     }
+
+    /// <summary>
+    ///     验证同一程序集对象重复接入多个容器时，会复用已解析的 registry / fallback 元数据，
+    ///     而不是重复读取程序集级 attribute 或重复执行 type-name lookup。
+    /// </summary>
+    [Test]
+    public void RegisterHandlers_Should_Cache_Assembly_Metadata_Across_Containers()
+    {
+        var generatedAssembly = new Mock<Assembly>();
+        generatedAssembly
+            .SetupGet(static assembly => assembly.FullName)
+            .Returns("GFramework.Core.Tests.Cqrs.CachedMetadataAssembly, Version=1.0.0.0");
+        generatedAssembly
+            .Setup(static assembly => assembly.GetCustomAttributes(typeof(CqrsHandlerRegistryAttribute), false))
+            .Returns([new CqrsHandlerRegistryAttribute(typeof(PartialGeneratedNotificationHandlerRegistry))]);
+        generatedAssembly
+            .Setup(static assembly => assembly.GetCustomAttributes(typeof(CqrsReflectionFallbackAttribute), false))
+            .Returns(
+            [
+                new CqrsReflectionFallbackAttribute(
+                    ReflectionFallbackNotificationContainer.ReflectionOnlyHandlerType.FullName!)
+            ]);
+        generatedAssembly
+            .Setup(static assembly => assembly.GetType(
+                ReflectionFallbackNotificationContainer.ReflectionOnlyHandlerType.FullName!,
+                false,
+                false))
+            .Returns(ReflectionFallbackNotificationContainer.ReflectionOnlyHandlerType);
+
+        var firstContainer = new MicrosoftDiContainer();
+        var secondContainer = new MicrosoftDiContainer();
+
+        CqrsTestRuntime.RegisterHandlers(firstContainer, generatedAssembly.Object);
+        CqrsTestRuntime.RegisterHandlers(secondContainer, generatedAssembly.Object);
+        firstContainer.Freeze();
+        secondContainer.Freeze();
+
+        var firstRegistrations = firstContainer.GetAll<INotificationHandler<GeneratedRegistryNotification>>()
+            .Select(static handler => handler.GetType())
+            .ToArray();
+        var secondRegistrations = secondContainer.GetAll<INotificationHandler<GeneratedRegistryNotification>>()
+            .Select(static handler => handler.GetType())
+            .ToArray();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                firstRegistrations,
+                Is.EqualTo(
+                [
+                    typeof(GeneratedRegistryNotificationHandler),
+                    ReflectionFallbackNotificationContainer.ReflectionOnlyHandlerType
+                ]));
+            Assert.That(
+                secondRegistrations,
+                Is.EqualTo(
+                [
+                    typeof(GeneratedRegistryNotificationHandler),
+                    ReflectionFallbackNotificationContainer.ReflectionOnlyHandlerType
+                ]));
+        });
+
+        generatedAssembly.Verify(
+            static assembly => assembly.GetCustomAttributes(typeof(CqrsHandlerRegistryAttribute), false),
+            Times.Once);
+        generatedAssembly.Verify(
+            static assembly => assembly.GetCustomAttributes(typeof(CqrsReflectionFallbackAttribute), false),
+            Times.Once);
+        generatedAssembly.Verify(
+            static assembly => assembly.GetType(
+                ReflectionFallbackNotificationContainer.ReflectionOnlyHandlerType.FullName!,
+                false,
+                false),
+            Times.Once);
+    }
+
+    /// <summary>
+    ///     验证同一程序集对象在未命中 generated registry 时，会复用首次扫描得到的可加载类型列表，
+    ///     而不是为每个容器重复执行整程序集 <c>GetTypes()</c>。
+    /// </summary>
+    [Test]
+    public void RegisterHandlers_Should_Cache_Loadable_Types_Across_Containers()
+    {
+        var reflectionTypeLoadException = new ReflectionTypeLoadException(
+            [typeof(AlphaDeterministicNotificationHandler), null],
+            [new TypeLoadException("Cached loadable-type probe.")]);
+        var partiallyLoadableAssembly = new Mock<Assembly>();
+        partiallyLoadableAssembly
+            .SetupGet(static assembly => assembly.FullName)
+            .Returns("GFramework.Core.Tests.Cqrs.CachedLoadableTypesAssembly, Version=1.0.0.0");
+        partiallyLoadableAssembly
+            .Setup(static assembly => assembly.GetTypes())
+            .Throws(reflectionTypeLoadException);
+
+        var firstContainer = new MicrosoftDiContainer();
+        var secondContainer = new MicrosoftDiContainer();
+
+        CqrsTestRuntime.RegisterHandlers(firstContainer, partiallyLoadableAssembly.Object);
+        CqrsTestRuntime.RegisterHandlers(secondContainer, partiallyLoadableAssembly.Object);
+        firstContainer.Freeze();
+        secondContainer.Freeze();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                firstContainer.GetAll<INotificationHandler<DeterministicOrderNotification>>()
+                    .Select(static handler => handler.GetType())
+                    .ToArray(),
+                Is.EqualTo([typeof(AlphaDeterministicNotificationHandler)]));
+            Assert.That(
+                secondContainer.GetAll<INotificationHandler<DeterministicOrderNotification>>()
+                    .Select(static handler => handler.GetType())
+                    .ToArray(),
+                Is.EqualTo([typeof(AlphaDeterministicNotificationHandler)]));
+        });
+
+        partiallyLoadableAssembly.Verify(static assembly => assembly.GetTypes(), Times.Once);
+    }
 }
 
 /// <summary>

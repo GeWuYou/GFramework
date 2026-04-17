@@ -7,7 +7,7 @@ using GFramework.Cqrs.Abstractions.Cqrs;
 namespace GFramework.Cqrs.Tests.Cqrs;
 
 /// <summary>
-///     验证 CQRS dispatcher 会缓存热路径中的服务类型与调用委托。
+///     验证 CQRS dispatcher 会缓存热路径中的 dispatch binding。
 /// </summary>
 [TestFixture]
 internal sealed class CqrsDispatcherCacheTests
@@ -46,39 +46,44 @@ internal sealed class CqrsDispatcherCacheTests
     }
 
     /// <summary>
-    ///     验证相同消息类型重复分发时，不会重复扩张服务类型与调用委托缓存。
+    ///     验证相同消息类型重复分发时，不会重复扩张 dispatch binding 缓存。
     /// </summary>
     [Test]
-    public async Task Dispatcher_Should_Cache_Service_Types_After_First_Dispatch()
+    public async Task Dispatcher_Should_Cache_Dispatch_Bindings_After_First_Dispatch()
     {
-        var notificationServiceTypes = GetCacheField("NotificationHandlerServiceTypes");
-        var requestServiceTypes = GetCacheField("RequestServiceTypes");
-        var streamServiceTypes = GetCacheField("StreamHandlerServiceTypes");
-        var requestInvokers = GetGenericCacheField("RequestInvokerCache`1", typeof(int), "Invokers");
-        var requestPipelineInvokers = GetGenericCacheField("RequestPipelineInvokerCache`1", typeof(int), "Invokers");
-        var notificationInvokers = GetCacheField("NotificationInvokers");
-        var streamInvokers = GetCacheField("StreamInvokers");
+        var notificationBindings = GetCacheField("NotificationDispatchBindings");
+        var requestBindings = GetCacheField("RequestDispatchBindings");
+        var streamBindings = GetCacheField("StreamDispatchBindings");
 
-        var notificationBefore = notificationServiceTypes.Count;
-        var requestBefore = requestServiceTypes.Count;
-        var streamBefore = streamServiceTypes.Count;
-        var requestInvokersBefore = requestInvokers.Count;
-        var requestPipelineInvokersBefore = requestPipelineInvokers.Count;
-        var notificationInvokersBefore = notificationInvokers.Count;
-        var streamInvokersBefore = streamInvokers.Count;
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                GetSingleKeyCacheValue(notificationBindings, typeof(DispatcherCacheNotification)),
+                Is.Null);
+            Assert.That(
+                GetPairCacheValue(requestBindings, typeof(DispatcherCacheRequest), typeof(int)),
+                Is.Null);
+            Assert.That(
+                GetPairCacheValue(requestBindings, typeof(DispatcherPipelineCacheRequest), typeof(int)),
+                Is.Null);
+            Assert.That(
+                GetPairCacheValue(streamBindings, typeof(DispatcherCacheStreamRequest), typeof(int)),
+                Is.Null);
+        });
 
         await _context!.SendRequestAsync(new DispatcherCacheRequest());
         await _context.SendRequestAsync(new DispatcherPipelineCacheRequest());
         await _context.PublishAsync(new DispatcherCacheNotification());
         await DrainAsync(_context.CreateStream(new DispatcherCacheStreamRequest()));
 
-        var notificationAfterFirstDispatch = notificationServiceTypes.Count;
-        var requestAfterFirstDispatch = requestServiceTypes.Count;
-        var streamAfterFirstDispatch = streamServiceTypes.Count;
-        var requestInvokersAfterFirstDispatch = requestInvokers.Count;
-        var requestPipelineInvokersAfterFirstDispatch = requestPipelineInvokers.Count;
-        var notificationInvokersAfterFirstDispatch = notificationInvokers.Count;
-        var streamInvokersAfterFirstDispatch = streamInvokers.Count;
+        var notificationAfterFirstDispatch =
+            GetSingleKeyCacheValue(notificationBindings, typeof(DispatcherCacheNotification));
+        var requestAfterFirstDispatch =
+            GetPairCacheValue(requestBindings, typeof(DispatcherCacheRequest), typeof(int));
+        var pipelineAfterFirstDispatch =
+            GetPairCacheValue(requestBindings, typeof(DispatcherPipelineCacheRequest), typeof(int));
+        var streamAfterFirstDispatch =
+            GetPairCacheValue(streamBindings, typeof(DispatcherCacheStreamRequest), typeof(int));
 
         await _context.SendRequestAsync(new DispatcherCacheRequest());
         await _context.SendRequestAsync(new DispatcherPipelineCacheRequest());
@@ -87,58 +92,63 @@ internal sealed class CqrsDispatcherCacheTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(notificationAfterFirstDispatch, Is.EqualTo(notificationBefore + 1));
-            Assert.That(requestAfterFirstDispatch, Is.EqualTo(requestBefore + 2));
-            Assert.That(streamAfterFirstDispatch, Is.EqualTo(streamBefore + 1));
-            Assert.That(requestInvokersAfterFirstDispatch, Is.EqualTo(requestInvokersBefore + 1));
-            Assert.That(requestPipelineInvokersAfterFirstDispatch, Is.EqualTo(requestPipelineInvokersBefore + 1));
-            Assert.That(notificationInvokersAfterFirstDispatch, Is.EqualTo(notificationInvokersBefore + 1));
-            Assert.That(streamInvokersAfterFirstDispatch, Is.EqualTo(streamInvokersBefore + 1));
+            Assert.That(notificationAfterFirstDispatch, Is.Not.Null);
+            Assert.That(requestAfterFirstDispatch, Is.Not.Null);
+            Assert.That(pipelineAfterFirstDispatch, Is.Not.Null);
+            Assert.That(streamAfterFirstDispatch, Is.Not.Null);
 
-            Assert.That(notificationServiceTypes.Count, Is.EqualTo(notificationAfterFirstDispatch));
-            Assert.That(requestServiceTypes.Count, Is.EqualTo(requestAfterFirstDispatch));
-            Assert.That(streamServiceTypes.Count, Is.EqualTo(streamAfterFirstDispatch));
-            Assert.That(requestInvokers.Count, Is.EqualTo(requestInvokersAfterFirstDispatch));
-            Assert.That(requestPipelineInvokers.Count, Is.EqualTo(requestPipelineInvokersAfterFirstDispatch));
-            Assert.That(notificationInvokers.Count, Is.EqualTo(notificationInvokersAfterFirstDispatch));
-            Assert.That(streamInvokers.Count, Is.EqualTo(streamInvokersAfterFirstDispatch));
+            Assert.That(
+                GetSingleKeyCacheValue(notificationBindings, typeof(DispatcherCacheNotification)),
+                Is.SameAs(notificationAfterFirstDispatch));
+            Assert.That(
+                GetPairCacheValue(requestBindings, typeof(DispatcherCacheRequest), typeof(int)),
+                Is.SameAs(requestAfterFirstDispatch));
+            Assert.That(
+                GetPairCacheValue(requestBindings, typeof(DispatcherPipelineCacheRequest), typeof(int)),
+                Is.SameAs(pipelineAfterFirstDispatch));
+            Assert.That(
+                GetPairCacheValue(streamBindings, typeof(DispatcherCacheStreamRequest), typeof(int)),
+                Is.SameAs(streamAfterFirstDispatch));
         });
     }
 
     /// <summary>
-    ///     验证 request 调用委托会按响应类型分别缓存，避免不同响应类型共用 object 结果桥接。
+    ///     验证 request dispatch binding 会按响应类型分别缓存，避免不同响应类型共用 object 结果桥接。
     /// </summary>
     [Test]
-    public async Task Dispatcher_Should_Cache_Request_Invokers_Per_Response_Type()
+    public async Task Dispatcher_Should_Cache_Request_Dispatch_Bindings_Per_Response_Type()
     {
-        var intRequestInvokers = GetGenericCacheField("RequestInvokerCache`1", typeof(int), "Invokers");
-        var stringRequestInvokers = GetGenericCacheField("RequestInvokerCache`1", typeof(string), "Invokers");
-
-        var intBefore = intRequestInvokers.Count;
-        var stringBefore = stringRequestInvokers.Count;
+        var requestBindings = GetCacheField("RequestDispatchBindings");
 
         await _context!.SendRequestAsync(new DispatcherCacheRequest());
         await _context.SendRequestAsync(new DispatcherStringCacheRequest());
 
-        var intAfterFirstDispatch = intRequestInvokers.Count;
-        var stringAfterFirstDispatch = stringRequestInvokers.Count;
+        var intAfterFirstDispatch =
+            GetPairCacheValue(requestBindings, typeof(DispatcherCacheRequest), typeof(int));
+        var stringAfterFirstDispatch =
+            GetPairCacheValue(requestBindings, typeof(DispatcherStringCacheRequest), typeof(string));
 
         await _context.SendRequestAsync(new DispatcherCacheRequest());
         await _context.SendRequestAsync(new DispatcherStringCacheRequest());
 
         Assert.Multiple(() =>
         {
-            Assert.That(intAfterFirstDispatch, Is.EqualTo(intBefore + 1));
-            Assert.That(stringAfterFirstDispatch, Is.EqualTo(stringBefore + 1));
-            Assert.That(intRequestInvokers.Count, Is.EqualTo(intAfterFirstDispatch));
-            Assert.That(stringRequestInvokers.Count, Is.EqualTo(stringAfterFirstDispatch));
+            Assert.That(intAfterFirstDispatch, Is.Not.Null);
+            Assert.That(stringAfterFirstDispatch, Is.Not.Null);
+            Assert.That(intAfterFirstDispatch, Is.Not.SameAs(stringAfterFirstDispatch));
+            Assert.That(
+                GetPairCacheValue(requestBindings, typeof(DispatcherCacheRequest), typeof(int)),
+                Is.SameAs(intAfterFirstDispatch));
+            Assert.That(
+                GetPairCacheValue(requestBindings, typeof(DispatcherStringCacheRequest), typeof(string)),
+                Is.SameAs(stringAfterFirstDispatch));
         });
     }
 
     /// <summary>
-    ///     通过反射读取 dispatcher 的静态缓存字典。
+    ///     通过反射读取 dispatcher 的静态缓存对象。
     /// </summary>
-    private static IDictionary GetCacheField(string fieldName)
+    private static object GetCacheField(string fieldName)
     {
         var dispatcherType = GetDispatcherType();
         var field = dispatcherType.GetField(
@@ -147,9 +157,9 @@ internal sealed class CqrsDispatcherCacheTests
 
         Assert.That(field, Is.Not.Null, $"Missing dispatcher cache field {fieldName}.");
 
-        return field!.GetValue(null) as IDictionary
+        return field!.GetValue(null)
                ?? throw new InvalidOperationException(
-                   $"Dispatcher cache field {fieldName} does not implement IDictionary.");
+                   $"Dispatcher cache field {fieldName} returned null.");
     }
 
     /// <summary>
@@ -157,41 +167,47 @@ internal sealed class CqrsDispatcherCacheTests
     /// </summary>
     private static void ClearDispatcherCaches()
     {
-        GetCacheField("NotificationHandlerServiceTypes").Clear();
-        GetCacheField("RequestServiceTypes").Clear();
-        GetCacheField("StreamHandlerServiceTypes").Clear();
-        GetCacheField("NotificationInvokers").Clear();
-        GetCacheField("StreamInvokers").Clear();
-        GetGenericCacheField("RequestInvokerCache`1", typeof(int), "Invokers").Clear();
-        GetGenericCacheField("RequestInvokerCache`1", typeof(string), "Invokers").Clear();
-        GetGenericCacheField("RequestPipelineInvokerCache`1", typeof(int), "Invokers").Clear();
-        GetGenericCacheField("RequestPipelineInvokerCache`1", typeof(string), "Invokers").Clear();
+        ClearCache(GetCacheField("NotificationDispatchBindings"));
+        ClearCache(GetCacheField("RequestDispatchBindings"));
+        ClearCache(GetCacheField("StreamDispatchBindings"));
     }
 
     /// <summary>
-    ///     通过反射读取 dispatcher 嵌套泛型缓存类型上的静态缓存字典。
+    ///     读取单键缓存中当前保存的对象。
     /// </summary>
-    private static IDictionary GetGenericCacheField(string nestedTypeName, Type genericTypeArgument, string fieldName)
+    private static object? GetSingleKeyCacheValue(object cache, Type key)
     {
-        var nestedGenericType = GetDispatcherType().GetNestedType(
-            nestedTypeName,
-            BindingFlags.NonPublic);
+        return InvokeInstanceMethod(cache, "GetValueOrDefaultForTesting", key);
+    }
 
-        Assert.That(nestedGenericType, Is.Not.Null, $"Missing dispatcher nested cache type {nestedTypeName}.");
+    /// <summary>
+    ///     读取双键缓存中当前保存的对象。
+    /// </summary>
+    private static object? GetPairCacheValue(object cache, Type primaryType, Type secondaryType)
+    {
+        return InvokeInstanceMethod(cache, "GetValueOrDefaultForTesting", primaryType, secondaryType);
+    }
 
-        var closedNestedType = nestedGenericType!.MakeGenericType(genericTypeArgument);
-        var field = closedNestedType.GetField(
-            fieldName,
-            BindingFlags.NonPublic | BindingFlags.Static);
+    /// <summary>
+    ///     调用缓存实例上的无参清理方法。
+    /// </summary>
+    private static void ClearCache(object cache)
+    {
+        _ = InvokeInstanceMethod(cache, "Clear");
+    }
 
-        Assert.That(
-            field,
-            Is.Not.Null,
-            $"Missing dispatcher nested cache field {nestedTypeName}.{fieldName} for {genericTypeArgument.FullName}.");
+    /// <summary>
+    ///     调用缓存对象上的实例方法。
+    /// </summary>
+    private static object? InvokeInstanceMethod(object target, string methodName, params object[] arguments)
+    {
+        var method = target.GetType().GetMethod(
+            methodName,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 
-        return field!.GetValue(null) as IDictionary
-               ?? throw new InvalidOperationException(
-                   $"Dispatcher nested cache field {nestedTypeName}.{fieldName} does not implement IDictionary.");
+        Assert.That(method, Is.Not.Null, $"Missing cache method {target.GetType().FullName}.{methodName}.");
+
+        return method!.Invoke(target, arguments);
     }
 
     /// <summary>
