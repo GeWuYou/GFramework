@@ -3,10 +3,14 @@
 
 namespace TestApp;
 
+/// <summary>
+/// 为当前规则类型补充自动生成的架构上下文访问实现。
+/// </summary>
 partial class MyRule : global::GFramework.Core.Abstractions.Rule.IContextAware
 {
     private global::GFramework.Core.Abstractions.Architectures.IArchitectureContext? _context;
     private static global::GFramework.Core.Abstractions.Architectures.IArchitectureContextProvider? _contextProvider;
+    private static readonly object _contextSync = new();
 
     /// <summary>
     /// 自动获取的架构上下文（懒加载，默认使用 GameContextProvider）
@@ -15,13 +19,19 @@ partial class MyRule : global::GFramework.Core.Abstractions.Rule.IContextAware
     {
         get
         {
-            if (_context == null)
+            var context = _context;
+            if (context is not null)
             {
-                _contextProvider ??= new global::GFramework.Core.Architectures.GameContextProvider();
-                _context = _contextProvider.GetContext();
+                return context;
             }
 
-            return _context;
+            // 在同一个同步域内协调懒加载与 provider 切换，避免读取到被并发重置的空提供者。
+            lock (_contextSync)
+            {
+                _contextProvider ??= new global::GFramework.Core.Architectures.GameContextProvider();
+                _context ??= _contextProvider.GetContext();
+                return _context;
+            }
         }
     }
 
@@ -31,7 +41,10 @@ partial class MyRule : global::GFramework.Core.Abstractions.Rule.IContextAware
     /// <param name="provider">上下文提供者实例</param>
     public static void SetContextProvider(global::GFramework.Core.Abstractions.Architectures.IArchitectureContextProvider provider)
     {
-        _contextProvider = provider;
+        lock (_contextSync)
+        {
+            _contextProvider = provider;
+        }
     }
 
     /// <summary>
@@ -39,7 +52,10 @@ partial class MyRule : global::GFramework.Core.Abstractions.Rule.IContextAware
     /// </summary>
     public static void ResetContextProvider()
     {
-        _contextProvider = null;
+        lock (_contextSync)
+        {
+            _contextProvider = null;
+        }
     }
 
     void global::GFramework.Core.Abstractions.Rule.IContextAware.SetContext(global::GFramework.Core.Abstractions.Architectures.IArchitectureContext context)

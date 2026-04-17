@@ -71,13 +71,18 @@ public sealed class LoggerGenerator : TypeAttributeClassGeneratorBase
                 .AppendLine($"namespace {ns};");
 
         sb.AppendLine()
+            .AppendLine("/// <summary>")
+            .AppendLine("/// 为当前分部类型提供自动生成的日志字段。")
+            .AppendLine("/// </summary>")
             .AppendLine($"partial {typeKind} {className}{generics.Parameters}");
 
         foreach (var c in generics.Constraints)
             sb.AppendLine($"    {c}");
 
         sb.AppendLine("{")
-            .AppendLine("    /// <summary>Auto-generated logger</summary>")
+            .AppendLine("    /// <summary>")
+            .AppendLine("    /// 自动生成的日志字段。")
+            .AppendLine("    /// </summary>")
             .AppendLine(
                 $"    {access} {staticKeyword}readonly ILogger {fieldName} = " +
                 $"LoggerFactoryResolver.Provider.CreateLogger(\"{logName}\");")

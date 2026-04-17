@@ -95,6 +95,9 @@ public sealed class EnumExtensionsGenerator : AttributeEnumGeneratorBase
 
         sb.AppendLine("{");
 
+        sb.AppendLine("    /// <summary>");
+        sb.AppendLine($"    /// 为 <see cref=\"{fullEnumName}\" /> 提供自动生成的扩展方法。");
+        sb.AppendLine("    /// </summary>");
         sb.AppendLine($"    public static partial class {enumName}Extensions");
         sb.AppendLine("    {");
 
@@ -176,7 +179,13 @@ public sealed class EnumExtensionsGenerator : AttributeEnumGeneratorBase
                 builder.AppendLine();
             }
 
-            builder.AppendLine($"        /// <summary>是否为 {memberName}</summary>");
+            builder.AppendLine("        /// <summary>");
+            builder.AppendLine(
+                $"        /// 判断给定值是否为 <see cref=\"{fullEnumName}.{memberName}\" />。");
+            builder.AppendLine("        /// </summary>");
+            builder.AppendLine("        /// <param name=\"value\">要检查的枚举值。</param>");
+            builder.AppendLine(
+                $"        /// <returns>当 <paramref name=\"value\" /> 等于 <see cref=\"{fullEnumName}.{memberName}\" /> 时返回 <see langword=\"true\" />；否则返回 <see langword=\"false\" />。</returns>");
             builder.AppendLine(
                 $"        public static bool Is{memberName}(this {fullEnumName} value) => value == {fullEnumName}.{memberName};");
             hasGeneratedMembers = true;
@@ -192,7 +201,13 @@ public sealed class EnumExtensionsGenerator : AttributeEnumGeneratorBase
     /// <param name="fullEnumName">枚举的完整类型名。</param>
     private static void AppendIsInMethod(StringBuilder builder, string fullEnumName)
     {
-        builder.AppendLine("        /// <summary>判断是否属于指定集合</summary>");
+        builder.AppendLine("        /// <summary>");
+        builder.AppendLine("        /// 判断给定值是否属于指定候选集合。");
+        builder.AppendLine("        /// </summary>");
+        builder.AppendLine("        /// <param name=\"value\">要检查的枚举值。</param>");
+        builder.AppendLine("        /// <param name=\"values\">用于匹配的候选枚举值集合。</param>");
+        builder.AppendLine(
+            "        /// <returns>当 <paramref name=\"value\" /> 命中任一候选值时返回 <see langword=\"true\" />；否则返回 <see langword=\"false\" />。</returns>");
         builder.AppendLine(
             $"        public static bool IsIn(this {fullEnumName} value, params {fullEnumName}[] values)");
         builder.AppendLine("        {");

@@ -42,7 +42,7 @@ public static class GeneratorSnapshotTest<TGenerator>
             compilationErrors,
             Is.Empty,
             () =>
-                $"编译生成的代码时出现错误:{Environment.NewLine}{string.Join(Environment.NewLine, compilationErrors.Select(static diagnostic => diagnostic.ToString()))}");
+                $"编译生成的代码时出现错误：{Environment.NewLine}{string.Join(Environment.NewLine, compilationErrors.Select(static diagnostic => diagnostic.ToString()))}");
 
         var runResult = driver.GetRunResult();
         var generated = runResult.Results
@@ -53,7 +53,7 @@ public static class GeneratorSnapshotTest<TGenerator>
         Assert.That(
             generated,
             Is.Not.Empty,
-            $"Generator '{typeof(TGenerator).FullName}' did not produce any sources.");
+            $"生成器 '{typeof(TGenerator).FullName}' 未产生任何输出。");
 
         foreach (var (filename, content) in generated)
         {
@@ -70,7 +70,7 @@ public static class GeneratorSnapshotTest<TGenerator>
                 await File.WriteAllTextAsync(path, content.ToString());
 
                 Assert.Fail(
-                    $"Snapshot not found. Generated new snapshot at:\n{path}");
+                    $"未找到快照文件，已在以下路径生成新快照：\n{path}");
             }
 
             var expected = await File.ReadAllTextAsync(path);
@@ -78,7 +78,7 @@ public static class GeneratorSnapshotTest<TGenerator>
             Assert.That(
                 Normalize(expected),
                 Is.EqualTo(Normalize(content.ToString())),
-                $"Snapshot mismatch: {snapshotFileName}");
+                $"快照不匹配：{snapshotFileName}");
         }
     }
 

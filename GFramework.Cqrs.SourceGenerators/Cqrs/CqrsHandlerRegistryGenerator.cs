@@ -165,8 +165,9 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
             .Cast<string>()
             .ToArray();
 
-        if (fallbackHandlerTypeMetadataNames.Length > 0 &&
-            !generationEnvironment.SupportsReflectionFallbackAttribute)
+        if (!CanEmitGeneratedRegistry(
+                generationEnvironment.SupportsReflectionFallbackAttribute,
+                fallbackHandlerTypeMetadataNames.Length))
         {
             return;
         }
@@ -174,6 +175,26 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         context.AddSource(
             HintName,
             GenerateSource(generationEnvironment, registrations, fallbackHandlerTypeMetadataNames));
+    }
+
+    /// <summary>
+    ///     判断当前轮次是否允许输出生成注册器。
+    /// </summary>
+    /// <param name="supportsReflectionFallbackAttribute">
+    ///     runtime 合同中是否存在 <c>CqrsReflectionFallbackAttribute</c>，以承载生成器无法静态精确表达的 handler 回退元数据。
+    /// </param>
+    /// <param name="fallbackHandlerTypeCount">
+    ///     当前轮次需要依赖程序集级 reflection fallback 元数据恢复的 handler 数量。
+    /// </param>
+    /// <returns>
+    ///     当没有 handler 依赖 fallback，或 runtime 已提供承载该元数据的特性契约时返回 <see langword="true" />；
+    ///     否则返回 <see langword="false" />，调用方必须放弃生成以避免输出会静默漏注册的半成品注册器。
+    /// </returns>
+    private static bool CanEmitGeneratedRegistry(
+        bool supportsReflectionFallbackAttribute,
+        int fallbackHandlerTypeCount)
+    {
+        return fallbackHandlerTypeCount == 0 || supportsReflectionFallbackAttribute;
     }
 
     private static List<ImplementationRegistrationSpec> CollectRegistrations(

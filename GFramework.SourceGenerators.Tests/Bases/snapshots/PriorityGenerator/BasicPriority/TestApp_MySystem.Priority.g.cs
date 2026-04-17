@@ -3,6 +3,9 @@
 
 namespace TestApp;
 
+/// <summary>
+/// 为当前分部类型补充自动生成的优先级契约实现。
+/// </summary>
 partial class MySystem : global::GFramework.Core.Abstractions.Bases.IPrioritized
 {
     /// <summary>

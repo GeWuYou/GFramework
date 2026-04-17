@@ -2,9 +2,17 @@
 using System;
 namespace TestApp
 {
+    /// <summary>
+    /// 为 <see cref="TestApp.Status" /> 提供自动生成的扩展方法。
+    /// </summary>
     public static partial class StatusExtensions
     {
-        /// <summary>判断是否属于指定集合</summary>
+        /// <summary>
+        /// 判断给定值是否属于指定候选集合。
+        /// </summary>
+        /// <param name="value">要检查的枚举值。</param>
+        /// <param name="values">用于匹配的候选枚举值集合。</param>
+        /// <returns>当 <paramref name="value" /> 命中任一候选值时返回 <see langword="true" />；否则返回 <see langword="false" />。</returns>
         public static bool IsIn(this TestApp.Status value, params TestApp.Status[] values)
         {
             if (values == null) return false;

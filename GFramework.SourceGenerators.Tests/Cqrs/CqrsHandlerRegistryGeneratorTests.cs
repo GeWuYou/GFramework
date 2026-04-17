@@ -1169,6 +1169,32 @@ public class CqrsHandlerRegistryGeneratorTests
     }
 
     /// <summary>
+    ///     验证当某轮生成仍然需要程序集级 reflection fallback 元数据时，
+    ///     若 runtime 合同未提供对应特性契约，生成器会放弃输出注册器以避免静默漏注册。
+    /// </summary>
+    [Test]
+    public void
+        Rejects_Registry_Emission_When_Fallback_Metadata_Is_Required_But_Runtime_Contract_Lacks_Fallback_Attribute()
+    {
+        var method = typeof(CqrsHandlerRegistryGenerator).GetMethod(
+            "CanEmitGeneratedRegistry",
+            BindingFlags.NonPublic | BindingFlags.Static);
+
+        Assert.That(method, Is.Not.Null);
+
+        var canEmitWithoutFallbackRequirement = (bool?)method!.Invoke(null, [false, 0]);
+        var canEmitWithSupportedFallbackAttribute = (bool?)method.Invoke(null, [true, 1]);
+        var canEmitWithoutSupportedFallbackAttribute = (bool?)method.Invoke(null, [false, 1]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(canEmitWithoutFallbackRequirement, Is.True);
+            Assert.That(canEmitWithSupportedFallbackAttribute, Is.True);
+            Assert.That(canEmitWithoutSupportedFallbackAttribute, Is.False);
+        });
+    }
+
+    /// <summary>
     ///     验证日志字符串转义会覆盖换行、反斜杠和双引号，避免生成代码中的字符串字面量被意外截断。
     /// </summary>
     [Test]

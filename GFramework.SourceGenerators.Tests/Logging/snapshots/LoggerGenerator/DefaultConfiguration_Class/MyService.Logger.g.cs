@@ -4,8 +4,13 @@ using GFramework.Core.Logging;
 
 namespace TestApp;
 
+/// <summary>
+/// 为当前分部类型提供自动生成的日志字段。
+/// </summary>
 partial class MyService
 {
-    /// <summary>Auto-generated logger</summary>
+    /// <summary>
+    /// 自动生成的日志字段。
+    /// </summary>
     private static readonly ILogger _log = LoggerFactoryResolver.Provider.CreateLogger("MyService");
 }

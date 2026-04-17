@@ -96,6 +96,9 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
 
         var interfaceName = iContextAware.ToDisplayString(
             SymbolDisplayFormat.FullyQualifiedFormat);
+        sb.AppendLine("/// <summary>");
+        sb.AppendLine("/// 为当前规则类型补充自动生成的架构上下文访问实现。");
+        sb.AppendLine("/// </summary>");
         sb.AppendLine($"partial class {symbol.Name} : {interfaceName}");
         sb.AppendLine("{");
 
@@ -128,6 +131,7 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
         sb.AppendLine("    private global::GFramework.Core.Abstractions.Architectures.IArchitectureContext? _context;");
         sb.AppendLine(
             "    private static global::GFramework.Core.Abstractions.Architectures.IArchitectureContextProvider? _contextProvider;");
+        sb.AppendLine("    private static readonly object _contextSync = new();");
         sb.AppendLine();
         sb.AppendLine("    /// <summary>");
         sb.AppendLine("    /// 自动获取的架构上下文（懒加载，默认使用 GameContextProvider）");
@@ -136,14 +140,20 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
         sb.AppendLine("    {");
         sb.AppendLine("        get");
         sb.AppendLine("        {");
-        sb.AppendLine("            if (_context == null)");
+        sb.AppendLine("            var context = _context;");
+        sb.AppendLine("            if (context is not null)");
+        sb.AppendLine("            {");
+        sb.AppendLine("                return context;");
+        sb.AppendLine("            }");
+        sb.AppendLine();
+        sb.AppendLine("            // 在同一个同步域内协调懒加载与 provider 切换，避免读取到被并发重置的空提供者。");
+        sb.AppendLine("            lock (_contextSync)");
         sb.AppendLine("            {");
         sb.AppendLine(
             "                _contextProvider ??= new global::GFramework.Core.Architectures.GameContextProvider();");
-        sb.AppendLine("                _context = _contextProvider.GetContext();");
+        sb.AppendLine("                _context ??= _contextProvider.GetContext();");
+        sb.AppendLine("                return _context;");
         sb.AppendLine("            }");
-        sb.AppendLine();
-        sb.AppendLine("            return _context;");
         sb.AppendLine("        }");
         sb.AppendLine("    }");
         sb.AppendLine();
@@ -154,7 +164,10 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
         sb.AppendLine(
             "    public static void SetContextProvider(global::GFramework.Core.Abstractions.Architectures.IArchitectureContextProvider provider)");
         sb.AppendLine("    {");
-        sb.AppendLine("        _contextProvider = provider;");
+        sb.AppendLine("        lock (_contextSync)");
+        sb.AppendLine("        {");
+        sb.AppendLine("            _contextProvider = provider;");
+        sb.AppendLine("        }");
         sb.AppendLine("    }");
         sb.AppendLine();
         sb.AppendLine("    /// <summary>");
@@ -162,7 +175,10 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
         sb.AppendLine("    /// </summary>");
         sb.AppendLine("    public static void ResetContextProvider()");
         sb.AppendLine("    {");
-        sb.AppendLine("        _contextProvider = null;");
+        sb.AppendLine("        lock (_contextSync)");
+        sb.AppendLine("        {");
+        sb.AppendLine("            _contextProvider = null;");
+        sb.AppendLine("        }");
         sb.AppendLine("    }");
         sb.AppendLine();
     }

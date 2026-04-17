@@ -2,21 +2,45 @@
 using System;
 namespace TestApp
 {
+    /// <summary>
+    /// 为 <see cref="TestApp.Permissions" /> 提供自动生成的扩展方法。
+    /// </summary>
     public static partial class PermissionsExtensions
     {
-        /// <summary>是否为 None</summary>
+        /// <summary>
+        /// 判断给定值是否为 <see cref="TestApp.Permissions.None" />。
+        /// </summary>
+        /// <param name="value">要检查的枚举值。</param>
+        /// <returns>当 <paramref name="value" /> 等于 <see cref="TestApp.Permissions.None" /> 时返回 <see langword="true" />；否则返回 <see langword="false" />。</returns>
         public static bool IsNone(this TestApp.Permissions value) => value == TestApp.Permissions.None;
 
-        /// <summary>是否为 Read</summary>
+        /// <summary>
+        /// 判断给定值是否为 <see cref="TestApp.Permissions.Read" />。
+        /// </summary>
+        /// <param name="value">要检查的枚举值。</param>
+        /// <returns>当 <paramref name="value" /> 等于 <see cref="TestApp.Permissions.Read" /> 时返回 <see langword="true" />；否则返回 <see langword="false" />。</returns>
         public static bool IsRead(this TestApp.Permissions value) => value == TestApp.Permissions.Read;
 
-        /// <summary>是否为 Write</summary>
+        /// <summary>
+        /// 判断给定值是否为 <see cref="TestApp.Permissions.Write" />。
+        /// </summary>
+        /// <param name="value">要检查的枚举值。</param>
+        /// <returns>当 <paramref name="value" /> 等于 <see cref="TestApp.Permissions.Write" /> 时返回 <see langword="true" />；否则返回 <see langword="false" />。</returns>
         public static bool IsWrite(this TestApp.Permissions value) => value == TestApp.Permissions.Write;
 
-        /// <summary>是否为 Execute</summary>
+        /// <summary>
+        /// 判断给定值是否为 <see cref="TestApp.Permissions.Execute" />。
+        /// </summary>
+        /// <param name="value">要检查的枚举值。</param>
+        /// <returns>当 <paramref name="value" /> 等于 <see cref="TestApp.Permissions.Execute" /> 时返回 <see langword="true" />；否则返回 <see langword="false" />。</returns>
         public static bool IsExecute(this TestApp.Permissions value) => value == TestApp.Permissions.Execute;
 
-        /// <summary>判断是否属于指定集合</summary>
+        /// <summary>
+        /// 判断给定值是否属于指定候选集合。
+        /// </summary>
+        /// <param name="value">要检查的枚举值。</param>
+        /// <param name="values">用于匹配的候选枚举值集合。</param>
+        /// <returns>当 <paramref name="value" /> 命中任一候选值时返回 <see langword="true" />；否则返回 <see langword="false" />。</returns>
         public static bool IsIn(this TestApp.Permissions value, params TestApp.Permissions[] values)
         {
             if (values == null) return false;

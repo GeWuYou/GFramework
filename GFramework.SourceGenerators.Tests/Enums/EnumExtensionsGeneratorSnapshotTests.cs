@@ -15,6 +15,7 @@ public class EnumExtensionsGeneratorSnapshotTests
     /// <summary>
     ///     验证默认配置会为普通枚举生成逐项判断方法与集合判断方法。
     /// </summary>
+    /// <returns>异步任务。</returns>
     [Test]
     public async Task Snapshot_BasicEnum_IsMethods()
     {
@@ -37,6 +38,7 @@ public class EnumExtensionsGeneratorSnapshotTests
     /// <summary>
     ///     验证未提供快照文件名映射时，会直接按生成文件名进行快照比对。
     /// </summary>
+    /// <returns>异步任务。</returns>
     [Test]
     public async Task Snapshot_BasicEnum_IsMethods_DefaultSnapshotFileNameSelector()
     {
@@ -57,6 +59,7 @@ public class EnumExtensionsGeneratorSnapshotTests
     /// <summary>
     ///     验证默认配置在较小枚举上仍会生成集合判断方法。
     /// </summary>
+    /// <returns>异步任务。</returns>
     [Test]
     public async Task Snapshot_BasicEnum_IsInMethod()
     {
@@ -78,6 +81,7 @@ public class EnumExtensionsGeneratorSnapshotTests
     /// <summary>
     ///     验证带显式位标志值的枚举也会生成对应扩展方法。
     /// </summary>
+    /// <returns>异步任务。</returns>
     [Test]
     public async Task Snapshot_EnumWithFlagValues()
     {
@@ -102,6 +106,7 @@ public class EnumExtensionsGeneratorSnapshotTests
     /// <summary>
     ///     验证关闭逐项判断开关后仅保留集合判断方法。
     /// </summary>
+    /// <returns>异步任务。</returns>
     [Test]
     public async Task Snapshot_DisableIsMethods()
     {
@@ -124,6 +129,7 @@ public class EnumExtensionsGeneratorSnapshotTests
     /// <summary>
     ///     验证关闭集合判断开关后仅保留逐项判断方法。
     /// </summary>
+    /// <returns>异步任务。</returns>
     [Test]
     public async Task Snapshot_DisableIsInMethod()
     {
@@ -146,6 +152,7 @@ public class EnumExtensionsGeneratorSnapshotTests
     /// <summary>
     ///     验证同时关闭两个生成开关时不会输出任何扩展方法。
     /// </summary>
+    /// <returns>异步任务。</returns>
     [Test]
     public async Task Snapshot_DisableAllGeneratedMethods()
     {
