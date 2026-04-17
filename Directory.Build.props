@@ -1,0 +1,13 @@
+<Project>
+    <!-- Keep repository-wide analyzer behavior consistent while allowing only selected projects to opt into polyfills. -->
+    <ItemGroup>
+        <PackageReference Include="Meziantou.Analyzer" Version="3.0.48">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+        </PackageReference>
+        <PackageReference Update="Meziantou.Polyfill" Version="1.0.110">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
+</Project>

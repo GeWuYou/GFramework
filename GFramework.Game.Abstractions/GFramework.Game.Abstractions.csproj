@@ -19,14 +19,4 @@
     <ItemGroup>
         <Using Include="GFramework.Game.Abstractions"/>
     </ItemGroup>
-    <ItemGroup>
-        <PackageReference Update="Meziantou.Analyzer" Version="3.0.46">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-        </PackageReference>
-        <PackageReference Update="Meziantou.Polyfill" Version="1.0.103">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-        </PackageReference>
-    </ItemGroup>
 </Project>
