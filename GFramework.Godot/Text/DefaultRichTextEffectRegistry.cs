@@ -14,6 +14,9 @@ public sealed class DefaultRichTextEffectRegistry : IRichTextEffectRegistry
     /// <param name="profile">效果组合配置。</param>
     /// <param name="animatedEffectsEnabled">当前是否允许字符级动态效果生效。</param>
     /// <returns>内置效果实例集合。</returns>
+    /// <exception cref="ArgumentNullException">
+    ///     当 <paramref name="profile" /> 为 <see langword="null" /> 时抛出。
+    /// </exception>
     public IReadOnlyList<RichTextEffect> CreateEffects(RichTextProfile profile, bool animatedEffectsEnabled)
     {
         ArgumentNullException.ThrowIfNull(profile);

@@ -14,6 +14,7 @@ public abstract partial class RichTextEffectBase : RichTextEffect
 
     /// <summary>
     ///     获取 Godot 识别当前效果所需的 `bbcode` 属性。
+    ///     属性名使用小写是 Godot `RichTextEffect` 的约定，不是框架对公共成员命名的放宽。
     /// </summary>
     public string bbcode => TagName;
 
@@ -23,10 +24,11 @@ public abstract partial class RichTextEffectBase : RichTextEffect
     /// <param name="transform">当前字符变换上下文。</param>
     /// <param name="key">参数键。</param>
     /// <param name="defaultValue">读取失败时使用的默认值。</param>
-    /// <returns>最终布尔值。</returns>
+    /// <returns>最终布尔值；当环境参数不存在或类型不是 <see cref="Variant.Type.Bool" /> 时返回默认值。</returns>
     protected bool GetBool(CharFXTransform transform, string key, bool defaultValue = false)
     {
-        if (transform.Env.TryGetValue(Variant.From(key), out var value))
+        if (transform.Env.TryGetValue(Variant.From(key), out var value) &&
+            value.VariantType == Variant.Type.Bool)
         {
             return value.AsBool();
         }
@@ -40,10 +42,14 @@ public abstract partial class RichTextEffectBase : RichTextEffect
     /// <param name="transform">当前字符变换上下文。</param>
     /// <param name="key">参数键。</param>
     /// <param name="defaultValue">读取失败时使用的默认值。</param>
-    /// <returns>最终浮点值。</returns>
+    /// <returns>
+    ///     最终浮点值；当环境参数不存在，或类型既不是 <see cref="Variant.Type.Float" /> 也不是
+    ///     <see cref="Variant.Type.Int" /> 时返回默认值。
+    /// </returns>
     protected float GetFloat(CharFXTransform transform, string key, float defaultValue)
     {
-        if (transform.Env.TryGetValue(Variant.From(key), out var value))
+        if (transform.Env.TryGetValue(Variant.From(key), out var value) &&
+            (value.VariantType == Variant.Type.Float || value.VariantType == Variant.Type.Int))
         {
             return (float)value.AsDouble();
         }

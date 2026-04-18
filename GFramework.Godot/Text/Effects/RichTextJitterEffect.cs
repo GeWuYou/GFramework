@@ -3,6 +3,11 @@ namespace GFramework.Godot.Text.Effects;
 /// <summary>
 ///     为文本提供抖动效果。
 /// </summary>
+/// <remarks>
+///     默认注册表会在每次宿主刷新时为该效果创建独立实例。
+///     <see cref="_ProcessCustomFX" /> 内部会复用并修改 <see cref="_noise" /> 的 Seed，因此该类型假定 Godot 在主线程顺序
+///     执行字符效果，不支持跨多个 <see cref="RichTextLabel" /> 共享同一实例，也不保证并发调用下的线程安全。
+/// </remarks>
 [GlobalClass]
 [Tool]
 public partial class RichTextJitterEffect : RichTextEffectBase

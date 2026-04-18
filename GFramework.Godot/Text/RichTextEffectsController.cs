@@ -10,27 +10,32 @@ internal sealed class RichTextEffectsController
 {
     private readonly Func<bool> _animatedEffectsEnabledAccessor;
     private readonly Func<bool> _frameworkEffectsEnabledAccessor;
-    private readonly RichTextLabel _host;
+    private readonly IRichTextEffectHost _host;
     private readonly Func<RichTextProfile?> _profileAccessor;
-    private readonly IRichTextEffectRegistry _registry;
+    private readonly Func<IRichTextEffectRegistry> _registryAccessor;
 
     /// <summary>
     ///     初始化控制器实例。
     /// </summary>
     /// <param name="host">目标富文本标签。</param>
-    /// <param name="registry">效果注册表。</param>
+    /// <param name="registryAccessor">当前效果注册表访问器。</param>
     /// <param name="profileAccessor">当前配置访问器。</param>
     /// <param name="frameworkEffectsEnabledAccessor">框架效果总开关访问器。</param>
     /// <param name="animatedEffectsEnabledAccessor">字符动画开关访问器。</param>
+    /// <exception cref="ArgumentNullException">
+    ///     当 <paramref name="host" />、<paramref name="registryAccessor" />、<paramref name="profileAccessor" />、
+    ///     <paramref name="frameworkEffectsEnabledAccessor" /> 或 <paramref name="animatedEffectsEnabledAccessor" />
+    ///     为 <see langword="null" /> 时抛出。
+    /// </exception>
     public RichTextEffectsController(
-        RichTextLabel host,
-        IRichTextEffectRegistry registry,
+        IRichTextEffectHost host,
+        Func<IRichTextEffectRegistry> registryAccessor,
         Func<RichTextProfile?> profileAccessor,
         Func<bool> frameworkEffectsEnabledAccessor,
         Func<bool> animatedEffectsEnabledAccessor)
     {
         _host = host ?? throw new ArgumentNullException(nameof(host));
-        _registry = registry ?? throw new ArgumentNullException(nameof(registry));
+        _registryAccessor = registryAccessor ?? throw new ArgumentNullException(nameof(registryAccessor));
         _profileAccessor = profileAccessor ?? throw new ArgumentNullException(nameof(profileAccessor));
         _frameworkEffectsEnabledAccessor = frameworkEffectsEnabledAccessor
                                            ?? throw new ArgumentNullException(nameof(frameworkEffectsEnabledAccessor));
@@ -51,14 +56,23 @@ internal sealed class RichTextEffectsController
     /// </summary>
     public void RefreshEffects()
     {
-        if (!_frameworkEffectsEnabledAccessor())
+        var frameworkEffectsEnabled = _frameworkEffectsEnabledAccessor();
+        if (frameworkEffectsEnabled && !_host.BbcodeEnabled)
+        {
+            _host.BbcodeEnabled = true;
+        }
+
+        if (!frameworkEffectsEnabled)
         {
             _host.CustomEffects = new Array();
             return;
         }
 
         var profile = _profileAccessor() ?? RichTextProfile.CreateBuiltInDefault();
-        var effects = _registry.CreateEffects(profile, _animatedEffectsEnabledAccessor());
+        var registry = _registryAccessor()
+                       ?? throw new InvalidOperationException("The rich text effect registry accessor returned null.");
+
+        var effects = registry.CreateEffects(profile, _animatedEffectsEnabledAccessor());
         var customEffects = new Array();
         foreach (var effect in effects)
         {

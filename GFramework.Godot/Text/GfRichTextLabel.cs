@@ -6,7 +6,7 @@ namespace GFramework.Godot.Text;
 /// </summary>
 [GlobalClass]
 [Tool]
-public partial class GfRichTextLabel : RichTextLabel
+public partial class GfRichTextLabel : RichTextLabel, IRichTextEffectHost
 {
     private IRichTextEffectRegistry? _effectRegistry;
     private RichTextEffectsController? _effectsController;
@@ -20,6 +20,7 @@ public partial class GfRichTextLabel : RichTextLabel
 
     /// <summary>
     ///     获取或设置是否启用框架管理的富文本效果装配。
+    ///     关闭后只会停止框架效果安装，不会覆盖调用方手动维护的其他 BBCode 解析状态。
     /// </summary>
     [Export]
     public bool EnableFrameworkEffects { get; set; } = true;
@@ -34,6 +35,9 @@ public partial class GfRichTextLabel : RichTextLabel
     /// <summary>
     ///     获取当前使用的效果注册表。
     /// </summary>
+    /// <exception cref="ArgumentNullException">
+    ///     当设置值为 <see langword="null" /> 时抛出。
+    /// </exception>
     internal IRichTextEffectRegistry EffectRegistry
     {
         get => _effectRegistry ??= new DefaultRichTextEffectRegistry();
@@ -45,11 +49,6 @@ public partial class GfRichTextLabel : RichTextLabel
     /// </summary>
     public override void _Ready()
     {
-        if (EnableFrameworkEffects && !BbcodeEnabled)
-        {
-            BbcodeEnabled = true;
-        }
-
         EnsureController().Initialize();
     }
 
@@ -59,11 +58,6 @@ public partial class GfRichTextLabel : RichTextLabel
     /// </summary>
     public void RefreshFrameworkEffects()
     {
-        if (EnableFrameworkEffects && !BbcodeEnabled)
-        {
-            BbcodeEnabled = true;
-        }
-
         EnsureController().RefreshEffects();
     }
 
@@ -75,7 +69,7 @@ public partial class GfRichTextLabel : RichTextLabel
     {
         return _effectsController ??= new RichTextEffectsController(
             this,
-            EffectRegistry,
+            () => EffectRegistry,
             () => Profile,
             () => EnableFrameworkEffects,
             () => AnimatedEffectsEnabled);

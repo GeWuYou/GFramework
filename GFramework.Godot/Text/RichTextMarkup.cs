@@ -15,6 +15,9 @@ public static class RichTextMarkup
     /// <param name="text">原始文本。</param>
     /// <param name="tag">标签名。</param>
     /// <returns>包裹后的 BBCode 文本。</returns>
+    /// <exception cref="ArgumentException">
+    ///     当 <paramref name="tag" /> 为空、仅包含空白字符，或包含 BBCode token 不允许的控制字符时抛出。
+    /// </exception>
     public static string Color(string text, string tag)
     {
         return Wrap(text, tag);
@@ -62,14 +65,19 @@ public static class RichTextMarkup
 
     /// <summary>
     ///     使用指定效果标签包裹文本，并可附带参数环境。
+    ///     环境参数会按键名进行稳定排序，避免不同字典实现导致输出顺序漂移。
     /// </summary>
     /// <param name="text">原始文本。</param>
     /// <param name="tag">标签名。</param>
     /// <param name="env">可选的标签参数集合。</param>
     /// <returns>包裹后的 BBCode 文本。</returns>
+    /// <exception cref="ArgumentException">
+    ///     当 <paramref name="tag" /> 为空、仅包含空白字符，包含 BBCode token 不允许的控制字符，
+    ///     或 <paramref name="env" /> 中存在包含非法控制字符的参数键时抛出。
+    /// </exception>
     public static string Effect(string text, string tag, IReadOnlyDictionary<string, object?>? env = null)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(tag);
+        ValidateToken(tag, nameof(tag));
 
         var builder = new StringBuilder();
         builder.Append('[');
@@ -77,13 +85,8 @@ public static class RichTextMarkup
 
         if (env is not null)
         {
-            foreach (var pair in env)
+            foreach (var pair in CollectEnvironmentPairs(env))
             {
-                if (string.IsNullOrWhiteSpace(pair.Key) || pair.Value is null)
-                {
-                    continue;
-                }
-
                 builder.Append(' ');
                 builder.Append(pair.Key);
                 builder.Append('=');
@@ -107,8 +110,59 @@ public static class RichTextMarkup
     /// <returns>包裹后的 BBCode 文本。</returns>
     private static string Wrap(string text, string tag)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(tag);
+        ValidateToken(tag, nameof(tag));
         return $"[{tag}]{text ?? string.Empty}[/{tag}]";
+    }
+
+    /// <summary>
+    ///     收集并排序可写入 BBCode 的环境参数。
+    /// </summary>
+    /// <param name="env">原始环境参数。</param>
+    /// <returns>按键名稳定排序后的参数集合。</returns>
+    /// <exception cref="ArgumentException">
+    ///     当参数键包含 BBCode token 不允许的控制字符时抛出。
+    /// </exception>
+    private static IReadOnlyList<KeyValuePair<string, object>> CollectEnvironmentPairs(
+        IReadOnlyDictionary<string, object?> env)
+    {
+        var pairs = new List<KeyValuePair<string, object>>(env.Count);
+        foreach (var pair in env)
+        {
+            if (pair.Value is null || string.IsNullOrWhiteSpace(pair.Key))
+            {
+                continue;
+            }
+
+            ValidateToken(pair.Key, nameof(env));
+            pairs.Add(new KeyValuePair<string, object>(pair.Key, pair.Value));
+        }
+
+        pairs.Sort(static (left, right) => StringComparer.Ordinal.Compare(left.Key, right.Key));
+        return pairs;
+    }
+
+    /// <summary>
+    ///     验证 BBCode 标签或参数键是否满足 token 约束。
+    /// </summary>
+    /// <param name="token">待验证的 token。</param>
+    /// <param name="paramName">异常参数名。</param>
+    /// <exception cref="ArgumentException">
+    ///     当 token 为空、仅包含空白字符，或包含 BBCode token 不允许的控制字符时抛出。
+    /// </exception>
+    private static void ValidateToken(string token, string paramName)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            throw new ArgumentException("BBCode token cannot be null, empty, or whitespace.", paramName);
+        }
+
+        foreach (var character in token)
+        {
+            if (char.IsWhiteSpace(character) || character is '[' or ']' or '=')
+            {
+                throw new ArgumentException("BBCode token contains invalid control characters.", paramName);
+            }
+        }
     }
 
     /// <summary>
