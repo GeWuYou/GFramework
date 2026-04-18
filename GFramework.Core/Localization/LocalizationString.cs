@@ -18,7 +18,10 @@ public class LocalizationString : ILocalizationString
     /// 预编译的静态正则表达式，用于格式化字符串中的变量替换
     /// </summary>
     private static readonly Regex FormatVariableRegex =
-        new(FormatVariablePattern, RegexOptions.Compiled | RegexOptions.CultureInvariant);
+        new(
+            FormatVariablePattern,
+            RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture,
+            TimeSpan.FromSeconds(1));
 
     private readonly ILocalizationManager _manager;
     private readonly Dictionary<string, object> _variables;
@@ -35,7 +38,7 @@ public class LocalizationString : ILocalizationString
         _manager = manager ?? throw new ArgumentNullException(nameof(manager));
         Table = table ?? throw new ArgumentNullException(nameof(table));
         Key = key ?? throw new ArgumentNullException(nameof(key));
-        _variables = new Dictionary<string, object>();
+        _variables = new Dictionary<string, object>(StringComparer.Ordinal);
     }
 
     /// <inheritdoc/>

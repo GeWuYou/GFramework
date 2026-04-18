@@ -118,7 +118,7 @@ public static class AsyncExtensions
 
         try
         {
-            return await task;
+            return await task.ConfigureAwait(false);
         }
         catch (Exception ex)
         {

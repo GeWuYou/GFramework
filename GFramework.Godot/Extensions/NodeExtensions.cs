@@ -176,7 +176,7 @@ public static class NodeExtensions
     public static async Task AddChildXAsync(this Node parent, Node child)
     {
         parent.AddChild(child);
-        await child.WaitUntilReadyAsync();
+        await child.WaitUntilReadyAsync().ConfigureAwait(false);
     }
 
     /// <summary>

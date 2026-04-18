@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.IO;
 using System.Text.Json;
 using GFramework.Core.Abstractions.Configuration;
@@ -32,7 +33,7 @@ public class ConfigurationManager : IConfigurationManager
     /// <summary>
     ///     配置存储字典（线程安全）
     /// </summary>
-    private readonly ConcurrentDictionary<string, object> _configs = new();
+    private readonly ConcurrentDictionary<string, object> _configs = new(StringComparer.Ordinal);
 
     private readonly ILogger _logger = LoggerFactoryResolver.Provider.CreateLogger(nameof(ConfigurationManager));
 
@@ -45,7 +46,7 @@ public class ConfigurationManager : IConfigurationManager
     ///     配置监听器字典（线程安全）
     ///     键：配置键，值：监听器列表
     /// </summary>
-    private readonly ConcurrentDictionary<string, List<Delegate>> _watchers = new();
+    private readonly ConcurrentDictionary<string, List<Delegate>> _watchers = new(StringComparer.Ordinal);
 
     /// <summary>
     ///     获取配置数量
@@ -200,7 +201,7 @@ public class ConfigurationManager : IConfigurationManager
     /// </summary>
     public string SaveToJson()
     {
-        var dict = _configs.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        var dict = _configs.ToDictionary(kvp => kvp.Key, kvp => kvp.Value, StringComparer.Ordinal);
         return JsonSerializer.Serialize(dict, new JsonSerializerOptions
         {
             WriteIndented = true
@@ -321,7 +322,7 @@ public class ConfigurationManager : IConfigurationManager
         // 尝试类型转换
         try
         {
-            return (T)Convert.ChangeType(value, typeof(T));
+            return (T)Convert.ChangeType(value, typeof(T), CultureInfo.InvariantCulture);
         }
         catch
         {

@@ -30,7 +30,7 @@ public sealed class ServiceModuleManager : IServiceModuleManager
             return;
         }
 
-        if (_modules.Any(m => m.ModuleName == module.ModuleName))
+        if (_modules.Any(m => string.Equals(m.ModuleName, module.ModuleName, StringComparison.Ordinal)))
         {
             _logger.Warn($"Module {module.ModuleName} already registered");
             return;
@@ -109,7 +109,7 @@ public sealed class ServiceModuleManager : IServiceModuleManager
 
             if (asyncMode && module is IAsyncInitializable asyncInitializable)
             {
-                await asyncInitializable.InitializeAsync();
+                await asyncInitializable.InitializeAsync().ConfigureAwait(false);
             }
             else
             {
@@ -137,7 +137,7 @@ public sealed class ServiceModuleManager : IServiceModuleManager
             try
             {
                 _logger.Debug($"Destroying module: {module.ModuleName}");
-                await module.DestroyAsync();
+                await module.DestroyAsync().ConfigureAwait(false);
             }
             catch (Exception ex)
             {

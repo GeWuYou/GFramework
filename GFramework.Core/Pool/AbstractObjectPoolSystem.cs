@@ -15,7 +15,7 @@ public abstract class AbstractObjectPoolSystem<TKey, TObject>
     /// <summary>
     ///     存储对象池的字典，键为池标识，值为池信息
     /// </summary>
-    protected readonly Dictionary<TKey, PoolInfo> Pools = new();
+    protected readonly IDictionary<TKey, PoolInfo> Pools = new Dictionary<TKey, PoolInfo>();
 
     /// <summary>
     ///     获取对象池中的对象，如果池中没有可用对象则创建新的对象

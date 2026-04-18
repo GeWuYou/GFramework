@@ -635,7 +635,7 @@ public sealed class ContextRegistrationAnalyzer : DiagnosticAnalyzer
             if (targetMethod.TypeArguments[0] is not INamedTypeSymbol namedType)
                 return false;
 
-            if (targetMethod.Name == "RegisterModel" &&
+            if (string.Equals(targetMethod.Name, "RegisterModel", StringComparison.Ordinal) &&
                 SymbolHelpers.IsAssignableTo(targetMethod.ContainingType, symbols.IArchitectureType))
             {
                 componentKind = ComponentKind.Model;
@@ -643,7 +643,7 @@ public sealed class ContextRegistrationAnalyzer : DiagnosticAnalyzer
                 return true;
             }
 
-            if (targetMethod.Name == "RegisterSystem" &&
+            if (string.Equals(targetMethod.Name, "RegisterSystem", StringComparison.Ordinal) &&
                 SymbolHelpers.IsAssignableTo(targetMethod.ContainingType, symbols.IArchitectureType))
             {
                 componentKind = ComponentKind.System;
@@ -651,7 +651,7 @@ public sealed class ContextRegistrationAnalyzer : DiagnosticAnalyzer
                 return true;
             }
 
-            if (targetMethod.Name == "RegisterUtility" &&
+            if (string.Equals(targetMethod.Name, "RegisterUtility", StringComparison.Ordinal) &&
                 SymbolHelpers.IsAssignableTo(targetMethod.ContainingType, symbols.IArchitectureType))
             {
                 componentKind = ComponentKind.Utility;

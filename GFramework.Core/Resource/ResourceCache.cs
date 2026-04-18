@@ -3,19 +3,8 @@ using System.Collections.Concurrent;
 namespace GFramework.Core.Resource;
 
 /// <summary>
-///     资源缓存条目
-/// </summary>
-internal sealed class ResourceCacheEntry(object resource, Type resourceType)
-{
-    public object Resource { get; } = resource ?? throw new ArgumentNullException(nameof(resource));
-    public Type ResourceType { get; } = resourceType ?? throw new ArgumentNullException(nameof(resourceType));
-    public int ReferenceCount { get; set; }
-    public DateTime LastAccessTime { get; set; } = DateTime.UtcNow;
-}
-
-/// <summary>
-///     资源缓存系统，管理已加载资源的缓存和引用计数
-///     线程安全：所有公共方法都是线程安全的
+///     资源缓存系统，管理已加载资源的缓存和引用计数。
+///     线程安全：所有公共方法都是线程安全的。
 /// </summary>
 internal sealed class ResourceCache
 {
@@ -24,7 +13,7 @@ internal sealed class ResourceCache
     /// </summary>
     private const string PathCannotBeNullOrEmptyMessage = "Path cannot be null or whitespace.";
 
-    private readonly ConcurrentDictionary<string, ResourceCacheEntry> _cache = new();
+    private readonly ConcurrentDictionary<string, ResourceCacheEntry> _cache = new(StringComparer.Ordinal);
     private readonly object _lock = new();
 
     /// <summary>

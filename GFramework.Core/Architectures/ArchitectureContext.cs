@@ -97,7 +97,7 @@ public class ArchitectureContext : IArchitectureContext
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return await CqrsRuntime.SendAsync(this, request, cancellationToken);
+        return await CqrsRuntime.SendAsync(this, request, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -124,7 +124,7 @@ public class ArchitectureContext : IArchitectureContext
         where TNotification : INotification
     {
         ArgumentNullException.ThrowIfNull(notification);
-        await CqrsRuntime.PublishAsync(this, notification, cancellationToken);
+        await CqrsRuntime.PublishAsync(this, notification, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -151,7 +151,7 @@ public class ArchitectureContext : IArchitectureContext
         CancellationToken cancellationToken = default)
         where TCommand : IRequest<Unit>
     {
-        await SendRequestAsync(command, cancellationToken);
+        await SendRequestAsync(command, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -162,7 +162,7 @@ public class ArchitectureContext : IArchitectureContext
         IRequest<TResponse> command,
         CancellationToken cancellationToken = default)
     {
-        return await SendRequestAsync(command, cancellationToken);
+        return await SendRequestAsync(command, cancellationToken).ConfigureAwait(false);
     }
 
     #endregion
@@ -205,7 +205,7 @@ public class ArchitectureContext : IArchitectureContext
         if (query == null) throw new ArgumentNullException(nameof(query));
         var asyncQueryBus = GetOrCache<IAsyncQueryExecutor>();
         if (asyncQueryBus == null) throw new InvalidOperationException("IAsyncQueryExecutor not registered");
-        return await asyncQueryBus.SendAsync(query);
+        return await asyncQueryBus.SendAsync(query).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -219,7 +219,7 @@ public class ArchitectureContext : IArchitectureContext
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
-        return await SendRequestAsync(query, cancellationToken);
+        return await SendRequestAsync(query, cancellationToken).ConfigureAwait(false);
     }
 
     #endregion
@@ -356,7 +356,7 @@ public class ArchitectureContext : IArchitectureContext
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
-        return await SendRequestAsync(command, cancellationToken);
+        return await SendRequestAsync(command, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -368,7 +368,7 @@ public class ArchitectureContext : IArchitectureContext
         ArgumentNullException.ThrowIfNull(command);
         var commandBus = GetOrCache<ICommandExecutor>();
         if (commandBus == null) throw new InvalidOperationException("ICommandExecutor not registered");
-        await commandBus.SendAsync(command);
+        await commandBus.SendAsync(command).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -382,7 +382,7 @@ public class ArchitectureContext : IArchitectureContext
         ArgumentNullException.ThrowIfNull(command);
         var commandBus = GetOrCache<ICommandExecutor>();
         if (commandBus == null) throw new InvalidOperationException("ICommandExecutor not registered");
-        return await commandBus.SendAsync(command);
+        return await commandBus.SendAsync(command).ConfigureAwait(false);
     }
 
     /// <summary>

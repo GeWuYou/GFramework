@@ -59,15 +59,15 @@ internal sealed class ArchitectureDisposer(
         if (currentPhase == ArchitecturePhase.None)
         {
             logger.Debug("Architecture destroy called but never initialized, cleaning up registered components");
-            await CleanupComponentsAsync();
+            await CleanupComponentsAsync().ConfigureAwait(false);
             return;
         }
 
         logger.Info("Starting architecture destruction");
         enterPhase(ArchitecturePhase.Destroying);
 
-        await CleanupComponentsAsync();
-        await services.ModuleManager.DestroyAllAsync();
+        await CleanupComponentsAsync().ConfigureAwait(false);
+        await services.ModuleManager.DestroyAllAsync().ConfigureAwait(false);
 
         // Destroyed 广播依赖容器中的阶段监听器，必须在清空容器前完成。
         enterPhase(ArchitecturePhase.Destroyed);
@@ -93,7 +93,7 @@ internal sealed class ArchitectureDisposer(
 
                 if (component is IAsyncDestroyable asyncDestroyable)
                 {
-                    await asyncDestroyable.DestroyAsync();
+                    await asyncDestroyable.DestroyAsync().ConfigureAwait(false);
                 }
                 else if (component is IDestroyable destroyable)
                 {

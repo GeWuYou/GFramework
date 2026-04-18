@@ -24,7 +24,7 @@ public class LocalizationMap
     /// <summary>
     ///     用户语言 -> Godot locale 映射表。
     /// </summary>
-    public Dictionary<string, string> LanguageMap { get; set; } = new()
+    public Dictionary<string, string> LanguageMap { get; set; } = new(StringComparer.Ordinal)
     {
         { "简体中文", "zh_CN" },
         { "English", "en" }
@@ -33,7 +33,7 @@ public class LocalizationMap
     /// <summary>
     ///     用户语言 -> GFramework 本地化语言码映射表。
     /// </summary>
-    public Dictionary<string, string> FrameworkLanguageMap { get; set; } = new()
+    public Dictionary<string, string> FrameworkLanguageMap { get; set; } = new(StringComparer.Ordinal)
     {
         { "简体中文", "zhs" },
         { "English", "eng" }

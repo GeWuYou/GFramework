@@ -288,7 +288,7 @@ public abstract class Architecture : IArchitecture
     {
         try
         {
-            await InitializeInternalAsync(true);
+            await InitializeInternalAsync(true).ConfigureAwait(false);
         }
         catch (Exception e)
         {
@@ -304,7 +304,8 @@ public abstract class Architecture : IArchitecture
     /// <param name="asyncMode">是否启用异步模式</param>
     private async Task InitializeInternalAsync(bool asyncMode)
     {
-        _context = await _bootstrapper.PrepareForInitializationAsync(_context, Configurator, asyncMode);
+        _context = await _bootstrapper.PrepareForInitializationAsync(_context, Configurator, asyncMode)
+            .ConfigureAwait(false);
 
         // === 用户 OnInitialize ===
         _logger.Debug("Calling user OnInitialize()");
@@ -312,7 +313,7 @@ public abstract class Architecture : IArchitecture
         _logger.Debug("User OnInitialize() completed");
 
         // === 组件初始化阶段 ===
-        await _lifecycle.InitializeAllComponentsAsync(asyncMode);
+        await _lifecycle.InitializeAllComponentsAsync(asyncMode).ConfigureAwait(false);
 
         // === 初始化完成阶段 ===
         _bootstrapper.CompleteInitialization();
@@ -337,7 +338,7 @@ public abstract class Architecture : IArchitecture
     /// </summary>
     public virtual async ValueTask DestroyAsync()
     {
-        await _lifecycle.DestroyAsync();
+        await _lifecycle.DestroyAsync().ConfigureAwait(false);
     }
 
     /// <summary>

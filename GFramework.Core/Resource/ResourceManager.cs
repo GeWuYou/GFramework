@@ -104,7 +104,7 @@ public class ResourceManager : IResourceManager
 
         try
         {
-            var resource = await loader.LoadAsync(path);
+            var resource = await loader.LoadAsync(path).ConfigureAwait(false);
             lock (_loadLock)
             {
                 // 双重检查
@@ -231,7 +231,7 @@ public class ResourceManager : IResourceManager
     /// </summary>
     public async Task PreloadAsync<T>(string path) where T : class
     {
-        await LoadAsync<T>(path);
+        await LoadAsync<T>(path).ConfigureAwait(false);
     }
 
     /// <summary>

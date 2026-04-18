@@ -209,7 +209,8 @@ public class GodotResourceRepository<TKey, TResource>
         }
 
         // 只处理.tres和.res扩展名的资源文件
-        if (!entry.EndsWith(".tres") && !entry.EndsWith(".res"))
+        if (!entry.EndsWith(".tres", StringComparison.OrdinalIgnoreCase) &&
+            !entry.EndsWith(".res", StringComparison.OrdinalIgnoreCase))
             return;
 
         // 加载资源文件

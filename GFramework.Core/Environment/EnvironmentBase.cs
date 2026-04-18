@@ -11,7 +11,7 @@ public abstract class EnvironmentBase : ContextAwareBase, IEnvironment
     /// <summary>
     ///     存储环境值的字典，键为字符串，值为对象类型
     /// </summary>
-    protected readonly Dictionary<string, object> Values = new();
+    protected readonly IDictionary<string, object> Values = new Dictionary<string, object>(StringComparer.Ordinal);
 
     /// <summary>
     ///     获取环境名称的抽象属性

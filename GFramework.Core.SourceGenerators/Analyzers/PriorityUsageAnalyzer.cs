@@ -62,7 +62,7 @@ public sealed class PriorityUsageAnalyzer : DiagnosticAnalyzer
         var method = invocation.TargetMethod;
 
         // 检查方法名是否为 GetAll
-        if (method.Name != "GetAll")
+        if (!string.Equals(method.Name, "GetAll", StringComparison.Ordinal))
             return;
 
         // 检查是否为泛型方法

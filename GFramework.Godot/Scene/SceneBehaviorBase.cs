@@ -114,7 +114,7 @@ public abstract class SceneBehaviorBase<T> : ISceneBehavior
 
         // 调用可选接口
         if (_scene != null)
-            await _scene.OnLoadAsync(param);
+            await _scene.OnLoadAsync(param).ConfigureAwait(false);
 
         _isLoaded = true;
         _isTransitioning = false;
@@ -130,7 +130,7 @@ public abstract class SceneBehaviorBase<T> : ISceneBehavior
         _isTransitioning = true;
 
         if (_scene != null)
-            await _scene.OnEnterAsync();
+            await _scene.OnEnterAsync().ConfigureAwait(false);
 
         _isActive = true;
         _isTransitioning = false;
@@ -144,7 +144,7 @@ public abstract class SceneBehaviorBase<T> : ISceneBehavior
     public virtual async ValueTask OnPauseAsync()
     {
         if (_scene != null)
-            await _scene.OnPauseAsync();
+            await _scene.OnPauseAsync().ConfigureAwait(false);
 
         // 暂停处理
         Owner.SetProcess(false);
@@ -165,7 +165,7 @@ public abstract class SceneBehaviorBase<T> : ISceneBehavior
             return;
 
         if (_scene != null)
-            await _scene.OnResumeAsync();
+            await _scene.OnResumeAsync().ConfigureAwait(false);
 
         // 恢复处理
         Owner.SetProcess(true);
@@ -185,7 +185,7 @@ public abstract class SceneBehaviorBase<T> : ISceneBehavior
         _isTransitioning = true;
 
         if (_scene != null)
-            await _scene.OnExitAsync();
+            await _scene.OnExitAsync().ConfigureAwait(false);
 
         _isActive = false;
     }
@@ -198,7 +198,7 @@ public abstract class SceneBehaviorBase<T> : ISceneBehavior
     public virtual async ValueTask OnUnloadAsync()
     {
         if (_scene != null)
-            await _scene.OnUnloadAsync();
+            await _scene.OnUnloadAsync().ConfigureAwait(false);
 
         // 释放节点
         Owner.QueueFreeX();

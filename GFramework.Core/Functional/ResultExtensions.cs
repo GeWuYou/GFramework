@@ -111,6 +111,7 @@ public static class ResultExtensions
         ArgumentNullException.ThrowIfNull(binder);
         return result.IsSuccess
             ? await binder(result.Match(succ: v => v, fail: _ => throw new InvalidOperationException()))
+                .ConfigureAwait(false)
             : Result<TResult>.Fail(result.Exception);
     }
 
@@ -176,7 +177,7 @@ public static class ResultExtensions
         return result.Match(
             succ: value => predicate(value)
                 ? result
-                : Result<T>.Fail(new ArgumentException(errorMessage)),
+                : Result<T>.Fail(new ArgumentException(errorMessage, nameof(errorMessage))),
             fail: _ => result
         );
     }
@@ -233,7 +234,7 @@ public static class ResultExtensions
         ArgumentNullException.ThrowIfNull(func);
         try
         {
-            return Result<T>.Succeed(await func());
+            return Result<T>.Succeed(await func().ConfigureAwait(false));
         }
         catch (Exception ex)
         {
@@ -261,7 +262,7 @@ public static class ResultExtensions
         string errorMessage = "Value is null") where T : class =>
         value is not null
             ? Result<T>.Succeed(value)
-            : Result<T>.Fail(new ArgumentNullException(errorMessage));
+            : Result<T>.Fail(new ArgumentNullException(nameof(value), errorMessage));
 
     /// <summary>
     ///     将可空值类型转换为 Result
@@ -271,7 +272,7 @@ public static class ResultExtensions
         string errorMessage = "Value is null") where T : struct =>
         value.HasValue
             ? Result<T>.Succeed(value.Value)
-            : Result<T>.Fail(new ArgumentNullException(errorMessage));
+            : Result<T>.Fail(new ArgumentNullException(nameof(value), errorMessage));
 
     #endregion
 }

@@ -742,7 +742,7 @@ public sealed class CoroutineScheduler(
         var handler = OnCoroutineException;
         if (handler != null)
         {
-            Task.Run(() =>
+            _ = Task.Run(() =>
             {
                 try
                 {
@@ -755,7 +755,7 @@ public sealed class CoroutineScheduler(
             });
         }
 
-        _logger.Error($"[CoroutineScheduler] Coroutine {handle} failed with exception: {ex}");
+        _logger.Error($"[CoroutineScheduler] Coroutine {handle.ToString()} failed with exception: {ex}");
         FinalizeCoroutine(slotIndex, CoroutineCompletionStatus.Faulted, ex);
     }
 

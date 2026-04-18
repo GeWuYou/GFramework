@@ -73,7 +73,7 @@ internal sealed class CqrsDispatcher(
         foreach (var handler in handlers)
         {
             PrepareHandler(handler, context);
-            await dispatchBinding.Invoker(handler, notification, cancellationToken);
+            await dispatchBinding.Invoker(handler, notification, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -106,9 +106,10 @@ internal sealed class CqrsDispatcher(
             PrepareHandler(behavior, context);
 
         if (behaviors.Count == 0)
-            return await dispatchBinding.RequestInvoker(handler, request, cancellationToken);
+            return await dispatchBinding.RequestInvoker(handler, request, cancellationToken).ConfigureAwait(false);
 
-        return await dispatchBinding.PipelineInvoker(handler, behaviors, request, cancellationToken);
+        return await dispatchBinding.PipelineInvoker(handler, behaviors, request, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     /// <summary>

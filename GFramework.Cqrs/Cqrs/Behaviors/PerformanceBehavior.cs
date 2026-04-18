@@ -48,7 +48,7 @@ public sealed class PerformanceBehavior<TRequest, TResponse> : IPipelineBehavior
 
         try
         {
-            return await next(message, cancellationToken);
+            return await next(message, cancellationToken).ConfigureAwait(false);
         }
         finally
         {

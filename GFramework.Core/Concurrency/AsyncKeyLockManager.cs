@@ -22,7 +22,7 @@ namespace GFramework.Core.Concurrency;
 public sealed class AsyncKeyLockManager : IAsyncKeyLockManager
 {
     private readonly Timer _cleanupTimer;
-    private readonly ConcurrentDictionary<string, LockEntry> _locks = new();
+    private readonly ConcurrentDictionary<string, LockEntry> _locks = new(StringComparer.Ordinal);
     private readonly long _lockTimeoutMs;
     private volatile bool _disposed;
 
@@ -119,7 +119,8 @@ public sealed class AsyncKeyLockManager : IAsyncKeyLockManager
                 LastAccessTicks = kvp.Value.LastAccessTicks,
                 // CurrentCount == 0 表示锁被持有，可能有等待者（近似值）
                 WaitingCount = kvp.Value.Semaphore.CurrentCount == 0 ? 1 : 0
-            });
+            },
+            StringComparer.Ordinal);
     }
 
     /// <summary>

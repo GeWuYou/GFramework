@@ -126,7 +126,7 @@ public readonly struct Result : IEquatable<Result>
             return true;
 
         return _exception!.GetType() == other._exception!.GetType() &&
-               _exception.Message == other._exception.Message;
+               string.Equals(_exception.Message, other._exception.Message, StringComparison.Ordinal);
     }
 
     /// <summary>

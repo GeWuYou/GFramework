@@ -17,7 +17,7 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     /// <summary>
     ///     存储所有已注册状态的字典，键为状态类型，值为状态实例
     /// </summary>
-    protected readonly Dictionary<Type, IState> States = new();
+    protected readonly IDictionary<Type, IState> States = new Dictionary<Type, IState>();
 
     /// <summary>
     ///     获取当前激活的状态
@@ -45,7 +45,7 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     /// <typeparam name="T">要注销的状态类型</typeparam>
     public async Task<IStateMachine> UnregisterAsync<T>() where T : IState
     {
-        await _transitionLock.WaitAsync();
+        await _transitionLock.WaitAsync().ConfigureAwait(false);
         try
         {
             var stateToUnregister = PrepareUnregister<T>(out var isCurrentState);
@@ -53,7 +53,7 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
 
             if (isCurrentState)
             {
-                await ExecuteExitAsync(Current!, null);
+                await ExecuteExitAsync(Current!, null).ConfigureAwait(false);
                 Current = null;
             }
 
@@ -73,7 +73,7 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     /// <returns>如果可以切换则返回true，否则返回false</returns>
     public async Task<bool> CanChangeToAsync<T>() where T : IState
     {
-        await _transitionLock.WaitAsync();
+        await _transitionLock.WaitAsync().ConfigureAwait(false);
         try
         {
             if (!States.TryGetValue(typeof(T), out var target))
@@ -81,7 +81,7 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
 
             if (Current == null) return true;
 
-            return await CanTransitionToAsync(Current, target);
+            return await CanTransitionToAsync(Current, target).ConfigureAwait(false);
         }
         finally
         {
@@ -98,7 +98,7 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     /// <exception cref="InvalidOperationException">当目标状态未注册时抛出</exception>
     public async Task<bool> ChangeToAsync<T>() where T : IState
     {
-        await _transitionLock.WaitAsync();
+        await _transitionLock.WaitAsync().ConfigureAwait(false);
         try
         {
             IState target;
@@ -114,15 +114,15 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
 
             if (currentSnapshot != null)
             {
-                var canTransition = await CanTransitionToAsync(currentSnapshot, target);
+                var canTransition = await CanTransitionToAsync(currentSnapshot, target).ConfigureAwait(false);
                 if (!canTransition)
                 {
-                    await OnTransitionRejectedAsync(currentSnapshot, target);
+                    await OnTransitionRejectedAsync(currentSnapshot, target).ConfigureAwait(false);
                     return false;
                 }
             }
 
-            await ChangeInternalAsync(target);
+            await ChangeInternalAsync(target).ConfigureAwait(false);
             return true;
         }
         finally
@@ -190,13 +190,13 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     /// <returns>如果成功回退则返回true，否则返回false</returns>
     public async Task<bool> GoBackAsync()
     {
-        await _transitionLock.WaitAsync();
+        await _transitionLock.WaitAsync().ConfigureAwait(false);
         try
         {
             var previousState = FindValidPreviousState();
             if (previousState == null) return false;
 
-            await ChangeInternalWithoutHistoryAsync(previousState);
+            await ChangeInternalWithoutHistoryAsync(previousState).ConfigureAwait(false);
             return true;
         }
         finally
@@ -282,13 +282,13 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
         if (Current == next) return;
 
         var old = Current;
-        await OnStateChangingAsync(old, next);
+        await OnStateChangingAsync(old, next).ConfigureAwait(false);
 
-        await ExecuteExitAsync(old, next);
+        await ExecuteExitAsync(old, next).ConfigureAwait(false);
         Current = next;
-        await ExecuteEnterAsync(Current, old);
+        await ExecuteEnterAsync(Current, old).ConfigureAwait(false);
 
-        await OnStateChangedAsync(old, Current);
+        await OnStateChangedAsync(old, Current).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -300,18 +300,18 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
         if (Current == next) return;
 
         var old = Current;
-        await OnStateChangingAsync(old, next);
+        await OnStateChangingAsync(old, next).ConfigureAwait(false);
 
-        await ExecuteExitAsync(old, next);
+        await ExecuteExitAsync(old, next).ConfigureAwait(false);
 
         AddToHistory(old);
 
         Current = next;
 
-        await ExecuteEnterAsync(Current, old);
+        await ExecuteEnterAsync(Current, old).ConfigureAwait(false);
 
 
-        await OnStateChangedAsync(old, Current);
+        await OnStateChangedAsync(old, Current).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -344,7 +344,7 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
         if (state == null) return;
 
         if (state is IAsyncState asyncState)
-            await asyncState.OnEnterAsync(from);
+            await asyncState.OnEnterAsync(from).ConfigureAwait(false);
         else
             state.OnEnter(from);
     }
@@ -357,7 +357,7 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
         if (state == null) return;
 
         if (state is IAsyncState asyncState)
-            await asyncState.OnExitAsync(to);
+            await asyncState.OnExitAsync(to).ConfigureAwait(false);
         else
             state.OnExit(to);
     }
@@ -368,7 +368,7 @@ public class StateMachine(int maxHistorySize = 10) : IStateMachine
     private static async Task<bool> CanTransitionToAsync(IState current, IState target)
     {
         if (current is IAsyncState asyncState)
-            return await asyncState.CanTransitionToAsync(target);
+            return await asyncState.CanTransitionToAsync(target).ConfigureAwait(false);
 
         return current.CanTransitionTo(target);
     }

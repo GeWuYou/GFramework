@@ -14,7 +14,7 @@ public class GodotGraphicsSettings(ISettingsModel model) : IResetApplyAbleSettin
     ///     应用图形设置到Godot引擎
     /// </summary>
     /// <returns>异步任务</returns>
-    public async Task Apply()
+    public Task Apply()
     {
         var settings = model.GetData<GraphicsSettings>();
         // 创建分辨率向量
@@ -40,7 +40,7 @@ public class GodotGraphicsSettings(ISettingsModel model) : IResetApplyAbleSettin
             DisplayServer.WindowSetPosition(pos);
         }
 
-        await Task.CompletedTask;
+        return Task.CompletedTask;
     }
 
     /// <summary>

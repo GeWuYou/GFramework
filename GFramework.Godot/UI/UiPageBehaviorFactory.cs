@@ -40,7 +40,7 @@ public static class UiPageBehaviorFactory
             UiLayer.Modal => new ModalLayerUiPageBehavior<T>(owner, key),
             UiLayer.Toast => new ToastLayerUiPageBehavior<T>(owner, key),
             UiLayer.Topmost => new TopmostLayerUiPageBehavior<T>(owner, key),
-            _ => throw new ArgumentException($"Unsupported UI layer: {layer}")
+            _ => throw new ArgumentException($"Unsupported UI layer: {layer}", nameof(layer))
         };
     }
 }

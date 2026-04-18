@@ -17,7 +17,7 @@ public abstract class AbstractAsyncCommand<TInput>(TInput input) : ContextAwareB
     /// <returns>表示异步操作的任务</returns>
     async Task IAsyncCommand.ExecuteAsync()
     {
-        await OnExecuteAsync(input);
+        await OnExecuteAsync(input).ConfigureAwait(false);
     }
 
     /// <summary>

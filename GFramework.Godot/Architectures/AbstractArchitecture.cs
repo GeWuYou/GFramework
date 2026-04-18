@@ -85,7 +85,7 @@ public abstract class AbstractArchitecture(
             Name = _architectureAnchorName
         };
 
-        _anchor.Bind(() => DestroyAsync().AsTask());
+        _anchor.Bind(() => _ = DestroyAsync().AsTask());
 
         tree.Root.CallDeferred(Node.MethodName.AddChild, _anchor);
     }
@@ -106,7 +106,7 @@ public abstract class AbstractArchitecture(
             throw new InvalidOperationException("Anchor not initialized");
 
         // 等待锚点准备就绪
-        await _anchor.WaitUntilReadyAsync();
+        await _anchor.WaitUntilReadyAsync().ConfigureAwait(false);
 
         // 延迟调用将扩展节点添加为锚点的子节点
         _anchor.CallDeferred(Node.MethodName.AddChild, module.Node);
@@ -136,6 +136,6 @@ public abstract class AbstractArchitecture(
 
         _extensions.Clear();
 
-        await base.DestroyAsync();
+        await base.DestroyAsync().ConfigureAwait(false);
     }
 }

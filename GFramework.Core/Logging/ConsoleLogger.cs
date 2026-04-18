@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.IO;
 using GFramework.Core.Abstractions.Logging;
 
@@ -35,7 +36,7 @@ public sealed class ConsoleLogger(
     /// <param name="exception">异常信息，可为空</param>
     protected override void Write(LogLevel level, string message, Exception? exception)
     {
-        var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff");
+        var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
         var levelStr = LevelStrings[(int)level];
         var log = $"[{timestamp}] {levelStr} [{Name()}] {message}";
 

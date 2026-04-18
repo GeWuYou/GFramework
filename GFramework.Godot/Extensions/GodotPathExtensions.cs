@@ -13,7 +13,7 @@ public static class GodotPathExtensions
     /// <returns>如果路径以 "user://" 开头且不为空，则返回 true；否则返回 false。</returns>
     public static bool IsUserPath(this string path)
     {
-        return !string.IsNullOrEmpty(path) && path.StartsWith("user://");
+        return !string.IsNullOrEmpty(path) && path.StartsWith("user://", StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -23,7 +23,7 @@ public static class GodotPathExtensions
     /// <returns>如果路径以 "res://" 开头且不为空，则返回 true；否则返回 false。</returns>
     public static bool IsResPath(this string path)
     {
-        return !string.IsNullOrEmpty(path) && path.StartsWith("res://");
+        return !string.IsNullOrEmpty(path) && path.StartsWith("res://", StringComparison.Ordinal);
     }
 
     /// <summary>

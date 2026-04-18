@@ -32,8 +32,8 @@ public class LocalizationTable : ILocalizationTable
     {
         Name = name ?? throw new ArgumentNullException(nameof(name));
         Language = language ?? throw new ArgumentNullException(nameof(language));
-        _data = new Dictionary<string, string>(data);
-        _overrides = new Dictionary<string, string>();
+        _data = new Dictionary<string, string>(data, StringComparer.Ordinal);
+        _overrides = new Dictionary<string, string>(StringComparer.Ordinal);
         Fallback = fallback;
     }
 
@@ -105,7 +105,7 @@ public class LocalizationTable : ILocalizationTable
     /// <returns>包含所有键的可枚举集合</returns>
     public IEnumerable<string> GetKeys()
     {
-        var keys = new HashSet<string>(_data.Keys);
+        var keys = new HashSet<string>(_data.Keys, StringComparer.Ordinal);
         keys.UnionWith(_overrides.Keys);
 
         if (Fallback != null)

@@ -8,7 +8,7 @@ namespace GFramework.Core.Logging;
 /// </summary>
 public sealed class CachedLoggerFactory : ILoggerFactory
 {
-    private readonly ConcurrentDictionary<string, ILogger> _cache = new();
+    private readonly ConcurrentDictionary<string, ILogger> _cache = new(StringComparer.Ordinal);
     private readonly ILoggerFactory _innerFactory;
 
     /// <summary>
