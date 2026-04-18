@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Globalization;
 using GFramework.Core.Abstractions.Logging;
 
 namespace GFramework.Core.Logging.Formatters;
@@ -21,9 +22,9 @@ public sealed class JsonLogFormatter : ILogFormatter
     /// <returns>JSON 格式的日志字符串</returns>
     public string Format(LogEntry entry)
     {
-        var logObject = new Dictionary<string, object?>
+        var logObject = new Dictionary<string, object?>(StringComparer.Ordinal)
         {
-            ["timestamp"] = entry.Timestamp.ToString("O"), // ISO 8601 格式
+            ["timestamp"] = entry.Timestamp.ToString("O", CultureInfo.InvariantCulture), // ISO 8601 格式
             ["level"] = entry.Level.ToString().ToUpperInvariant(),
             ["logger"] = entry.LoggerName,
             ["message"] = entry.Message

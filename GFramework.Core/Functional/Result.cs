@@ -125,8 +125,11 @@ public readonly struct Result : IEquatable<Result>
         if (_isSuccess)
             return true;
 
-        return _exception!.GetType() == other._exception!.GetType() &&
-               _exception.Message == other._exception.Message;
+        if (_exception is null || other._exception is null)
+            return _exception is null && other._exception is null;
+
+        return _exception.GetType() == other._exception.GetType() &&
+               string.Equals(_exception.Message, other._exception.Message, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -144,7 +147,12 @@ public readonly struct Result : IEquatable<Result>
     [Pure]
     public override int GetHashCode()
     {
-        return _isSuccess ? 1 : HashCode.Combine(_exception!.GetType(), _exception.Message);
+        if (_isSuccess)
+            return 1;
+
+        return _exception is null
+            ? 0
+            : HashCode.Combine(_exception.GetType(), _exception.Message);
     }
 
     /// <summary>
@@ -171,7 +179,7 @@ public readonly struct Result : IEquatable<Result>
     /// <returns>Result 的字符串表示</returns>
     [Pure]
     public override string ToString() =>
-        _isSuccess ? "Success" : $"Fail({_exception!.Message})";
+        _isSuccess ? "Success" : (_exception != null ? $"Fail({_exception.Message})" : "Fail(null)");
 
     /// <summary>
     ///     尝试执行一个无返回值的操作，并根据执行结果返回成功或失败的 Result

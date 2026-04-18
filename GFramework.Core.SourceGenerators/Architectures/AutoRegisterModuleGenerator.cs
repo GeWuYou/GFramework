@@ -179,12 +179,7 @@ public sealed class AutoRegisterModuleGenerator : IIncrementalGenerator
     {
         var registrations = new List<RegistrationSpec>();
 
-        foreach (var attribute in typeSymbol.GetAttributes()
-                     // Roslyn 会把 partial 类型上的属性合并到同一个集合中。
-                     // 先按语法树标识排序，才能让每个文件内的 Span.Start 成为可比较的稳定顺序键。
-                     .OrderBy(GetAttributeSyntaxTreeOrderKey, StringComparer.Ordinal)
-                     .ThenBy(GetAttributeOrder)
-                     .ThenBy(GetAttributeTypeOrderKey, StringComparer.Ordinal))
+        foreach (var attribute in GetOrderedRegistrationAttributes(typeSymbol))
         {
             if (SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, registerModelAttribute))
             {
@@ -237,6 +232,16 @@ public sealed class AutoRegisterModuleGenerator : IIncrementalGenerator
         }
 
         return registrations;
+    }
+
+    private static IOrderedEnumerable<AttributeData> GetOrderedRegistrationAttributes(INamedTypeSymbol typeSymbol)
+    {
+        // Roslyn 会把 partial 类型上的属性合并到同一个集合中。
+        // 先按语法树标识排序，才能让每个文件内的 Span.Start 成为可比较的稳定顺序键。
+        return typeSymbol.GetAttributes()
+            .OrderBy(GetAttributeSyntaxTreeOrderKey, StringComparer.Ordinal)
+            .ThenBy(GetAttributeOrder)
+            .ThenBy(GetAttributeTypeOrderKey, StringComparer.Ordinal);
     }
 
     private static bool TryCreateRegistration(
@@ -323,7 +328,8 @@ public sealed class AutoRegisterModuleGenerator : IIncrementalGenerator
                 RegistrationKind.Model => "RegisterModel",
                 RegistrationKind.System => "RegisterSystem",
                 RegistrationKind.Utility => "RegisterUtility",
-                _ => throw new ArgumentOutOfRangeException(nameof(registration.Kind))
+                _ => throw new InvalidOperationException(
+                    $"Unsupported registration kind '{registration.Kind}'.")
             });
             builder.Append("(new ");
             builder.Append(registration.ComponentTypeDisplayName);

@@ -5,9 +5,6 @@ namespace GFramework.Core.Coroutine.Instructions;
 /// <summary>
 ///     等待Task完成的等待指令
 /// </summary>
-/// <summary>
-///     等待Task完成的等待指令
-/// </summary>
 public sealed class WaitForTask : IYieldInstruction
 {
     private readonly Task _task;
@@ -26,7 +23,7 @@ public sealed class WaitForTask : IYieldInstruction
             _done = true;
         else
             // 注册完成回调
-            _task.ContinueWith(_ => { _done = true; }, TaskContinuationOptions.ExecuteSynchronously);
+            _ = _task.ContinueWith(_ => { _done = true; }, TaskContinuationOptions.ExecuteSynchronously);
     }
 
     /// <summary>

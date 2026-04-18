@@ -72,7 +72,7 @@ public interface ISettingsModel : IModel
 - `RegisterApplicator<T>()` 注册应用器，并把其 `Data` 纳入模型管理
 - `InitializeAsync()` 从 `ISettingsDataRepository` 读取所有已注册设置，并在需要时执行迁移
 - `SaveAllAsync()` 持久化当前所有设置数据
-- `ApplyAllAsync()` 依次调用所有 applicator 的 `Apply()`
+- `ApplyAllAsync()` 依次调用所有 applicator 的 `ApplyAsync()`
 
 ## SettingsSystem
 
@@ -139,7 +139,7 @@ public sealed class GameplaySettingsApplicator : IResetApplyAbleSettings
         Data.Reset();
     }
 
-    public Task Apply()
+    public Task ApplyAsync()
     {
         var settings = (GameplaySettings)Data;
         TimeScale.Current = settings.GameSpeed;

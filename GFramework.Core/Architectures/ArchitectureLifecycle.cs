@@ -160,7 +160,7 @@ internal sealed class ArchitectureLifecycle(
             foreach (var utility in utilities)
             {
                 logger.Debug($"Initializing utility: {utility.GetType().Name}");
-                await InitializeComponentAsync(utility, asyncMode);
+                await InitializeComponentAsync(utility, asyncMode).ConfigureAwait(false);
             }
 
             logger.Info("All context utilities initialized");
@@ -178,7 +178,7 @@ internal sealed class ArchitectureLifecycle(
             foreach (var model in models)
             {
                 logger.Debug($"Initializing model: {model.GetType().Name}");
-                await InitializeComponentAsync(model, asyncMode);
+                await InitializeComponentAsync(model, asyncMode).ConfigureAwait(false);
             }
 
             logger.Info("All models initialized");
@@ -196,7 +196,7 @@ internal sealed class ArchitectureLifecycle(
             foreach (var system in systems)
             {
                 logger.Debug($"Initializing system: {system.GetType().Name}");
-                await InitializeComponentAsync(system, asyncMode);
+                await InitializeComponentAsync(system, asyncMode).ConfigureAwait(false);
             }
 
             logger.Info("All systems initialized");
@@ -218,7 +218,7 @@ internal sealed class ArchitectureLifecycle(
     private static async Task InitializeComponentAsync(IInitializable component, bool asyncMode)
     {
         if (asyncMode && component is IAsyncInitializable asyncInit)
-            await asyncInit.InitializeAsync();
+            await asyncInit.InitializeAsync().ConfigureAwait(false);
         else
             component.Initialize();
     }
@@ -244,7 +244,7 @@ internal sealed class ArchitectureLifecycle(
     /// </summary>
     public async ValueTask DestroyAsync()
     {
-        await _disposer.DestroyAsync(CurrentPhase, EnterPhase);
+        await _disposer.DestroyAsync(CurrentPhase, EnterPhase).ConfigureAwait(false);
     }
 
     /// <summary>

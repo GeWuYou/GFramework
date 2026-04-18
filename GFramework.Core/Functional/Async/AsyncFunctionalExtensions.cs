@@ -54,14 +54,14 @@ public static class AsyncFunctionalExtensions
         {
             try
             {
-                return await taskFactory();
+                return await taskFactory().ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 // 若还有重试机会且允许重试，则等待后继续；否则统一包装为 AggregateException 抛出
                 if (attempt < maxRetries && shouldRetry(ex))
                 {
-                    await Task.Delay(delay);
+                    await Task.Delay(delay).ConfigureAwait(false);
                 }
                 else
                 {
@@ -99,7 +99,7 @@ public static class AsyncFunctionalExtensions
 
         try
         {
-            var result = await func();
+            var result = await func().ConfigureAwait(false);
             return new Result<T>(result);
         }
         catch (Exception ex)

@@ -74,7 +74,7 @@ public sealed class CompositeLogger : AbstractLogger, IDisposable
         if (!IsEnabled(level)) return;
 
         var propsDict = properties.Length > 0
-            ? properties.ToDictionary(p => p.Key, p => p.Value)
+            ? properties.ToDictionary(p => p.Key, p => p.Value, StringComparer.Ordinal)
             : null;
 
         var entry = new LogEntry(
@@ -104,7 +104,7 @@ public sealed class CompositeLogger : AbstractLogger, IDisposable
         if (!IsEnabled(level)) return;
 
         var propsDict = properties.Length > 0
-            ? properties.ToDictionary(p => p.Key, p => p.Value)
+            ? properties.ToDictionary(p => p.Key, p => p.Value, StringComparer.Ordinal)
             : null;
 
         var entry = new LogEntry(

@@ -14,7 +14,7 @@ public sealed class SamplingFilter : ILogFilter
     private const int DefaultMaxLoggers = 1000;
     private readonly int _maxLoggers;
     private readonly int _sampleRate;
-    private readonly ConcurrentDictionary<string, SamplingState> _samplingStates = new();
+    private readonly ConcurrentDictionary<string, SamplingState> _samplingStates = new(StringComparer.Ordinal);
     private readonly ITimeProvider _timeProvider;
     private readonly TimeSpan _timeWindow;
 
@@ -69,7 +69,10 @@ public sealed class SamplingFilter : ILogFilter
 
         foreach (var kvp in _samplingStates)
         {
-            if (kvp.Key == "*") continue; // 不清理共享状态
+            if (string.Equals(kvp.Key, "*", StringComparison.Ordinal))
+            {
+                continue; // 不清理共享状态
+            }
 
             if (kvp.Value.IsStale(now, staleThreshold))
             {

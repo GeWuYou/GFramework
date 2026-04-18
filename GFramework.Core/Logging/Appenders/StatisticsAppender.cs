@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text;
+using System.Globalization;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Time;
 using GFramework.Core.Time;
@@ -13,7 +14,7 @@ namespace GFramework.Core.Logging.Appenders;
 public sealed class StatisticsAppender : ILogAppender
 {
     private readonly ConcurrentDictionary<LogLevel, long> _levelCounts = new();
-    private readonly ConcurrentDictionary<string, long> _loggerCounts = new();
+    private readonly ConcurrentDictionary<string, long> _loggerCounts = new(StringComparer.Ordinal);
     private readonly ITimeProvider _timeProvider;
     private long _errorCount;
     private long _startTimeTicks;
@@ -127,7 +128,7 @@ public sealed class StatisticsAppender : ILogAppender
     /// </summary>
     public IReadOnlyDictionary<string, long> GetLoggerCounts()
     {
-        return new Dictionary<string, long>(_loggerCounts);
+        return new Dictionary<string, long>(_loggerCounts, StringComparer.Ordinal);
     }
 
     /// <summary>
@@ -151,27 +152,28 @@ public sealed class StatisticsAppender : ILogAppender
         var startTime = StartTime;
         var now = _timeProvider.UtcNow;
 
-        report.AppendLine("=== 日志统计报告 ===");
-        report.AppendLine($"统计时间: {startTime:yyyy-MM-dd HH:mm:ss} - {now:yyyy-MM-dd HH:mm:ss}");
-        report.AppendLine($"运行时长: {Uptime}");
-        report.AppendLine($"总日志数: {TotalCount}");
-        report.AppendLine($"错误日志数: {ErrorCount}");
-        report.AppendLine($"错误率: {ErrorRate:P2}");
+        report.AppendLine(FormattableString.Invariant($"=== 日志统计报告 ==="));
+        report.AppendLine(FormattableString.Invariant(
+            $"统计时间: {startTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)} - {now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)}"));
+        report.AppendLine(FormattableString.Invariant($"运行时长: {Uptime}"));
+        report.AppendLine(FormattableString.Invariant($"总日志数: {TotalCount}"));
+        report.AppendLine(FormattableString.Invariant($"错误日志数: {ErrorCount}"));
+        report.AppendLine(FormattableString.Invariant($"错误率: {ErrorRate:P2}"));
         report.AppendLine();
 
-        report.AppendLine("按级别统计:");
+        report.AppendLine(FormattableString.Invariant($"按级别统计:"));
         foreach (var level in Enum.GetValues<LogLevel>())
         {
             var count = GetCountByLevel(level);
             if (count > 0)
             {
                 var percentage = (double)count / TotalCount;
-                report.AppendLine($"  {level}: {count} ({percentage:P2})");
+                report.AppendLine(FormattableString.Invariant($"  {level}: {count} ({percentage:P2})"));
             }
         }
 
         report.AppendLine();
-        report.AppendLine("按日志记录器统计 (Top 10):");
+        report.AppendLine(FormattableString.Invariant($"按日志记录器统计 (Top 10):"));
         var topLoggers = _loggerCounts
             .OrderByDescending(kvp => kvp.Value)
             .Take(10);
@@ -179,7 +181,7 @@ public sealed class StatisticsAppender : ILogAppender
         foreach (var (logger, count) in topLoggers)
         {
             var percentage = (double)count / TotalCount;
-            report.AppendLine($"  {logger}: {count} ({percentage:P2})");
+            report.AppendLine(FormattableString.Invariant($"  {logger}: {count} ({percentage:P2})"));
         }
 
         return report.ToString();

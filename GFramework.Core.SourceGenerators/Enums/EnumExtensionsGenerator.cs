@@ -72,14 +72,7 @@ public sealed class EnumExtensionsGenerator : AttributeEnumGeneratorBase
             ? null
             : symbol.ContainingNamespace.ToDisplayString();
 
-        var generateIsMethods = GetNamedBooleanArgument(
-            attr,
-            nameof(GenerateEnumExtensionsAttribute.GenerateIsMethods),
-            true);
-        var generateIsInMethod = GetNamedBooleanArgument(
-            attr,
-            nameof(GenerateEnumExtensionsAttribute.GenerateIsInMethod),
-            true);
+        var generationOptions = GetGenerationOptions(attr);
         var enumName = symbol.Name;
         var fullEnumName = symbol.ToDisplayString();
         var members = symbol.GetMembers()
@@ -104,7 +97,7 @@ public sealed class EnumExtensionsGenerator : AttributeEnumGeneratorBase
         // 两个生成开关是彼此独立的契约，需要分别控制输出，并保持空行布局稳定，便于快照精确回归。
         var hasGeneratedMembers = false;
 
-        if (generateIsMethods)
+        if (generationOptions.GenerateIsMethods)
         {
             hasGeneratedMembers = AppendIsMethods(
                 sb,
@@ -112,7 +105,7 @@ public sealed class EnumExtensionsGenerator : AttributeEnumGeneratorBase
                 fullEnumName);
         }
 
-        if (generateIsInMethod)
+        if (generationOptions.GenerateIsInMethod)
         {
             if (hasGeneratedMembers)
             {
@@ -128,6 +121,24 @@ public sealed class EnumExtensionsGenerator : AttributeEnumGeneratorBase
         sb.AppendLine("}"); // namespace
 
         return sb.ToString();
+    }
+
+    /// <summary>
+    ///     读取枚举扩展生成选项，并在属性未显式指定时回退到契约默认值。
+    /// </summary>
+    /// <param name="attribute">待分析的特性数据。</param>
+    /// <returns>包含各个生成开关的选项元组。</returns>
+    private static (bool GenerateIsMethods, bool GenerateIsInMethod) GetGenerationOptions(AttributeData attribute)
+    {
+        return (
+            GetNamedBooleanArgument(
+                attribute,
+                nameof(GenerateEnumExtensionsAttribute.GenerateIsMethods),
+                true),
+            GetNamedBooleanArgument(
+                attribute,
+                nameof(GenerateEnumExtensionsAttribute.GenerateIsInMethod),
+                true));
     }
 
     /// <summary>
@@ -151,7 +162,7 @@ public sealed class EnumExtensionsGenerator : AttributeEnumGeneratorBase
     {
         foreach (var namedArgument in attribute.NamedArguments)
         {
-            if (namedArgument.Key == argumentName &&
+            if (string.Equals(namedArgument.Key, argumentName, StringComparison.Ordinal) &&
                 namedArgument.Value.Value is bool value)
             {
                 return value;

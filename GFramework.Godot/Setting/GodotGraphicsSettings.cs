@@ -11,10 +11,10 @@ namespace GFramework.Godot.Setting;
 public class GodotGraphicsSettings(ISettingsModel model) : IResetApplyAbleSettings
 {
     /// <summary>
-    ///     应用图形设置到Godot引擎
+    ///     将当前图形设置同步应用到 Godot 引擎。
     /// </summary>
-    /// <returns>异步任务</returns>
-    public async Task Apply()
+    /// <returns>已完成的任务；该实现只执行同步引擎调用，不会启动后台异步工作。</returns>
+    public Task ApplyAsync()
     {
         var settings = model.GetData<GraphicsSettings>();
         // 创建分辨率向量
@@ -40,7 +40,7 @@ public class GodotGraphicsSettings(ISettingsModel model) : IResetApplyAbleSettin
             DisplayServer.WindowSetPosition(pos);
         }
 
-        await Task.CompletedTask;
+        return Task.CompletedTask;
     }
 
     /// <summary>

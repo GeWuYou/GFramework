@@ -392,7 +392,10 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
         var assemblyArray = assemblies.ToArray();
         foreach (var assembly in assemblyArray)
         {
-            ArgumentNullException.ThrowIfNull(assembly);
+            if (assembly is null)
+            {
+                throw new ArgumentNullException(nameof(assemblies), "Assemblies collection cannot contain null items.");
+            }
         }
 
         _lock.EnterWriteLock();

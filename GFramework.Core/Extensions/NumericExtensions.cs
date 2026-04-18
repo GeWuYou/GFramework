@@ -25,8 +25,12 @@ public static class NumericExtensions
     /// </example>
     public static bool Between<T>(this T value, T min, T max, bool inclusive = true) where T : IComparable<T>
     {
+        ArgumentNullException.ThrowIfNull(value);
+        ArgumentNullException.ThrowIfNull(min);
+        ArgumentNullException.ThrowIfNull(max);
+
         if (min.CompareTo(max) > 0)
-            throw new ArgumentException($"最小值 ({min}) 不能大于最大值 ({max})");
+            throw new ArgumentException($"最小值 ({min}) 不能大于最大值 ({max})", nameof(min));
 
         if (inclusive)
             return value.CompareTo(min) >= 0 && value.CompareTo(max) <= 0;

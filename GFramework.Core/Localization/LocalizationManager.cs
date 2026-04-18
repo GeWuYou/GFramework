@@ -27,8 +27,8 @@ public class LocalizationManager : AbstractSystem, ILocalizationManager
     public LocalizationManager(LocalizationConfig? config = null)
     {
         _config = config ?? new LocalizationConfig();
-        _tables = new Dictionary<string, Dictionary<string, ILocalizationTable>>();
-        _formatters = new Dictionary<string, ILocalizationFormatter>();
+        _tables = new Dictionary<string, Dictionary<string, ILocalizationTable>>(StringComparer.Ordinal);
+        _formatters = new Dictionary<string, ILocalizationFormatter>(StringComparer.Ordinal);
         _languageChangeCallbacks = new List<Action<string>>();
         _currentLanguage = _config.DefaultLanguage;
         _currentCulture = GetCultureInfo(_currentLanguage);
@@ -53,7 +53,7 @@ public class LocalizationManager : AbstractSystem, ILocalizationManager
             throw new ArgumentNullException(nameof(languageCode));
         }
 
-        if (_currentLanguage == languageCode)
+        if (string.Equals(_currentLanguage, languageCode, StringComparison.Ordinal))
         {
             return;
         }
@@ -227,11 +227,11 @@ public class LocalizationManager : AbstractSystem, ILocalizationManager
             return; // 已加载
         }
 
-        var languageTables = new Dictionary<string, ILocalizationTable>();
+        var languageTables = new Dictionary<string, ILocalizationTable>(StringComparer.Ordinal);
 
         // 加载回退语言（如果不是默认语言）
         Dictionary<string, ILocalizationTable>? fallbackTables = null;
-        if (languageCode != _config.FallbackLanguage)
+        if (!string.Equals(languageCode, _config.FallbackLanguage, StringComparison.Ordinal))
         {
             LoadLanguage(_config.FallbackLanguage);
             _tables.TryGetValue(_config.FallbackLanguage, out fallbackTables);
@@ -264,7 +264,7 @@ public class LocalizationManager : AbstractSystem, ILocalizationManager
     {
         var json = File.ReadAllText(filePath);
         var data = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
-        return data ?? new Dictionary<string, string>();
+        return data ?? new Dictionary<string, string>(StringComparer.Ordinal);
     }
 
     /// <summary>

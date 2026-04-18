@@ -2,8 +2,6 @@
 using GFramework.Core.Abstractions.Environment;
 using GFramework.Core.Architectures;
 using GFramework.Core.Constants;
-using GFramework.Godot.Extensions;
-using Godot;
 
 namespace GFramework.Godot.Architectures;
 
@@ -85,7 +83,7 @@ public abstract class AbstractArchitecture(
             Name = _architectureAnchorName
         };
 
-        _anchor.Bind(() => DestroyAsync().AsTask());
+        _anchor.Bind(ObserveDestroyAsync);
 
         tree.Root.CallDeferred(Node.MethodName.AddChild, _anchor);
     }
@@ -97,25 +95,31 @@ public abstract class AbstractArchitecture(
     /// <typeparam name="TModule">模块类型，必须实现IGodotModule接口</typeparam>
     /// <param name="module">要安装的模块实例</param>
     /// <returns>异步任务</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="module" /> 为 <see langword="null" /> 时抛出。</exception>
+    /// <exception cref="InvalidOperationException">当架构锚点尚未初始化时抛出。</exception>
+    /// <remarks>
+    ///     该方法会等待锚点进入场景树后再继续执行附加回调，避免模块在非主线程或未就绪状态下访问 Godot 节点 API。
+    /// </remarks>
     protected async Task InstallGodotModule<TModule>(TModule module) where TModule : IGodotModule
     {
+        ArgumentNullException.ThrowIfNull(module);
+
+        // 先确认锚点可用，避免模块安装产生副作用后再因架构未绑定场景树而失败。
+        var anchor = _anchor ?? throw new InvalidOperationException("Anchor not initialized");
+
         module.Install(this);
 
-        // 检查锚点是否已初始化，未初始化则抛出异常
-        if (_anchor == null)
-            throw new InvalidOperationException("Anchor not initialized");
+        // 在附加流程完成前先登记模块，保证后续任一步失败时仍能参与架构销毁阶段的清理。
+        _extensions.Add(module);
 
-        // 等待锚点准备就绪
-        await _anchor.WaitUntilReadyAsync();
+        // 等待锚点准备就绪，并保持 Godot 同步上下文，以便后续附加逻辑安全访问节点 API。
+        await anchor.WaitUntilReadyAsync();
 
         // 延迟调用将扩展节点添加为锚点的子节点
-        _anchor.CallDeferred(Node.MethodName.AddChild, module.Node);
+        anchor.CallDeferred(Node.MethodName.AddChild, module.Node);
 
         // 调用扩展的附加回调方法
         module.OnAttach(this);
-
-        // 将扩展添加到扩展集合中
-        _extensions.Add(module);
     }
 
 
@@ -136,6 +140,34 @@ public abstract class AbstractArchitecture(
 
         _extensions.Clear();
 
-        await base.DestroyAsync();
+        await base.DestroyAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>
+    ///     观察架构异步销毁流程，确保退出树时触发的 fire-and-forget 清理失败可见。
+    /// </summary>
+    /// <remarks>
+    ///     Godot 的 <see cref="Node._ExitTree" /> 回调是同步入口，无法直接等待异步销毁完成；
+    ///     因此这里显式附加错误观察器，把异常写入 Godot 错误输出，避免未观测任务异常被静默吞掉。
+    /// </remarks>
+    private void ObserveDestroyAsync()
+    {
+        _ = ObserveDestroyCoreAsync();
+    }
+
+    /// <summary>
+    ///     执行并观察异步销毁流程。
+    /// </summary>
+    /// <returns>表示观察任务本身完成的任务。</returns>
+    private async Task ObserveDestroyCoreAsync()
+    {
+        try
+        {
+            await DestroyAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            GD.PushError($"Architecture destruction failed: {ex}");
+        }
     }
 }

@@ -50,7 +50,7 @@ public sealed class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRe
 
         try
         {
-            var response = await next(message, cancellationToken);
+            var response = await next(message, cancellationToken).ConfigureAwait(false);
 
             var elapsed = Stopwatch.GetElapsedTime(start);
             _logger.Debug($"Handled {requestName} successfully in {elapsed.TotalMilliseconds} ms");

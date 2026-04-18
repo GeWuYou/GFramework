@@ -81,8 +81,9 @@ public sealed class GodotFileStorage : IStorage, IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         var path = ToAbsolutePath(key);
+        var pathLock = await _lockManager.AcquireLockAsync(path).ConfigureAwait(false);
 
-        await using (await _lockManager.AcquireLockAsync(path).ConfigureAwait(false))
+        await using (pathLock.ConfigureAwait(false))
         {
             // 处理Godot文件系统路径的删除操作
             if (path.IsGodotPath())
@@ -179,8 +180,9 @@ public sealed class GodotFileStorage : IStorage, IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         var path = ToAbsolutePath(key);
+        var pathLock = await _lockManager.AcquireLockAsync(path).ConfigureAwait(false);
 
-        await using (await _lockManager.AcquireLockAsync(path).ConfigureAwait(false))
+        await using (pathLock.ConfigureAwait(false))
         {
             if (!path.IsGodotPath()) return File.Exists(path);
             using var file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
@@ -238,8 +240,9 @@ public sealed class GodotFileStorage : IStorage, IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         var path = ToAbsolutePath(key);
+        var pathLock = await _lockManager.AcquireLockAsync(path).ConfigureAwait(false);
 
-        await using (await _lockManager.AcquireLockAsync(path).ConfigureAwait(false))
+        await using (pathLock.ConfigureAwait(false))
         {
             string content;
 
@@ -290,7 +293,7 @@ public sealed class GodotFileStorage : IStorage, IDisposable
 
             dir.ListDirEnd();
             return (IReadOnlyList<string>)result;
-        });
+        }).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -319,7 +322,7 @@ public sealed class GodotFileStorage : IStorage, IDisposable
 
             dir.ListDirEnd();
             return (IReadOnlyList<string>)result;
-        });
+        }).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -345,7 +348,7 @@ public sealed class GodotFileStorage : IStorage, IDisposable
             var fullPath = ToAbsolutePath(path);
             if (!DirAccess.DirExistsAbsolute(fullPath))
                 DirAccess.MakeDirRecursiveAbsolute(fullPath);
-        });
+        }).ConfigureAwait(false);
     }
 
     #endregion
@@ -378,8 +381,9 @@ public sealed class GodotFileStorage : IStorage, IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         var path = ToAbsolutePath(key);
+        var pathLock = await _lockManager.AcquireLockAsync(path).ConfigureAwait(false);
 
-        await using (await _lockManager.AcquireLockAsync(path).ConfigureAwait(false))
+        await using (pathLock.ConfigureAwait(false))
         {
             var content = _serializer.Serialize(value);
             if (path.IsGodotPath())

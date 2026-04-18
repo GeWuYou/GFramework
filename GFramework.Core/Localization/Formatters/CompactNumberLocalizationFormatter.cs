@@ -1,3 +1,4 @@
+using System.Globalization;
 using GFramework.Core.Abstractions.Localization;
 using GFramework.Core.Abstractions.Utility.Numeric;
 using GFramework.Core.Utility.Numeric;
@@ -155,10 +156,11 @@ public sealed class CompactNumberLocalizationFormatter : ILocalizationFormatter
         ref bool trimTrailingZeros,
         ref bool useGroupingBelowThreshold)
     {
+        var formatProvider = CultureInfo.InvariantCulture;
         return key switch
         {
-            "maxDecimals" => int.TryParse(value, out maxDecimalPlaces),
-            "minDecimals" => int.TryParse(value, out minDecimalPlaces),
+            "maxDecimals" => int.TryParse(value, NumberStyles.Integer, formatProvider, out maxDecimalPlaces),
+            "minDecimals" => int.TryParse(value, NumberStyles.Integer, formatProvider, out minDecimalPlaces),
             "trimZeros" => bool.TryParse(value, out trimTrailingZeros),
             "grouping" => bool.TryParse(value, out useGroupingBelowThreshold),
             _ => true

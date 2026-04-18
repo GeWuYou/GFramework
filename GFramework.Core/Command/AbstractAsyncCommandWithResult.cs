@@ -18,7 +18,7 @@ public abstract class AbstractAsyncCommand<TInput, TResult>(TInput input) : Cont
     /// <returns>表示异步操作且包含结果的任务</returns>
     async Task<TResult> IAsyncCommand<TResult>.ExecuteAsync()
     {
-        return await OnExecuteAsync(input);
+        return await OnExecuteAsync(input).ConfigureAwait(false);
     }
 
     /// <summary>

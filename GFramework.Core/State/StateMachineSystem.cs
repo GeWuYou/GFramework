@@ -72,7 +72,7 @@ public class StateMachineSystem : StateMachine, IStateMachineSystem
         {
             if (Current is IAsyncState asyncState)
             {
-                await asyncState.OnExitAsync(null); // ✅ 正确等待异步清理
+                await asyncState.OnExitAsync(null).ConfigureAwait(false); // ✅ 正确等待异步清理
             }
             else
             {
@@ -87,7 +87,7 @@ public class StateMachineSystem : StateMachine, IStateMachineSystem
         {
             if (state is IAsyncDestroyable asyncDestroyable)
             {
-                await asyncDestroyable.DestroyAsync();
+                await asyncDestroyable.DestroyAsync().ConfigureAwait(false);
             }
             else if (state is IDestroyable destroyable)
             {
@@ -106,7 +106,7 @@ public class StateMachineSystem : StateMachine, IStateMachineSystem
     protected override async Task ChangeInternalAsync(IState next)
     {
         var old = Current;
-        await base.ChangeInternalAsync(next);
+        await base.ChangeInternalAsync(next).ConfigureAwait(false);
 
         // 发送状态变更事件，通知监听者状态已发生改变
         this.SendEvent(new StateChangedEvent

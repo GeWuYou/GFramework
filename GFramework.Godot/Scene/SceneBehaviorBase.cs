@@ -114,7 +114,7 @@ public abstract class SceneBehaviorBase<T> : ISceneBehavior
 
         // 调用可选接口
         if (_scene != null)
-            await _scene.OnLoadAsync(param);
+            await _scene.OnLoadAsync(param).ConfigureAwait(false);
 
         _isLoaded = true;
         _isTransitioning = false;
@@ -130,7 +130,7 @@ public abstract class SceneBehaviorBase<T> : ISceneBehavior
         _isTransitioning = true;
 
         if (_scene != null)
-            await _scene.OnEnterAsync();
+            await _scene.OnEnterAsync().ConfigureAwait(false);
 
         _isActive = true;
         _isTransitioning = false;
@@ -185,7 +185,7 @@ public abstract class SceneBehaviorBase<T> : ISceneBehavior
         _isTransitioning = true;
 
         if (_scene != null)
-            await _scene.OnExitAsync();
+            await _scene.OnExitAsync().ConfigureAwait(false);
 
         _isActive = false;
     }

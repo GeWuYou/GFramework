@@ -41,6 +41,6 @@ public static class ContextAwareQueryExtensions
         ArgumentNullException.ThrowIfNull(query);
 
         var context = contextAware.GetContext();
-        return await context.SendQueryAsync(query);
+        return await context.SendQueryAsync(query).ConfigureAwait(false);
     }
 }

@@ -54,7 +54,7 @@ public static class ContextAwareCommandExtensions
         ArgumentNullException.ThrowIfNull(command);
 
         var context = contextAware.GetContext();
-        await context.SendCommandAsync(command);
+        await context.SendCommandAsync(command).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -72,6 +72,6 @@ public static class ContextAwareCommandExtensions
         ArgumentNullException.ThrowIfNull(command);
 
         var context = contextAware.GetContext();
-        return await context.SendCommandAsync(command);
+        return await context.SendCommandAsync(command).ConfigureAwait(false);
     }
 }

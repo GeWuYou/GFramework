@@ -1,5 +1,6 @@
 using System;
 using System.Text;
+using System.Globalization;
 using GFramework.Core.Abstractions.Logging;
 
 namespace GFramework.Core.Logging.Formatters;
@@ -26,7 +27,7 @@ public sealed class DefaultLogFormatter : ILogFormatter
     /// <returns>格式化后的日志字符串</returns>
     public string Format(LogEntry entry)
     {
-        var timestamp = entry.Timestamp.ToString("yyyy-MM-dd HH:mm:ss.fff");
+        var timestamp = entry.Timestamp.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
         var levelStr = LevelStrings[(int)entry.Level];
         var sb = new StringBuilder();
 

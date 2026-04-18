@@ -6,7 +6,11 @@
 public interface IApplyAbleSettings : ISettingsSection
 {
     /// <summary>
-    ///     应用当前设置到系统中
+    ///     异步应用当前设置到目标系统中。
     /// </summary>
-    Task Apply();
+    /// <returns>
+    ///     表示应用流程完成的任务。
+    ///     对于仅执行同步引擎调用的实现，可以返回已完成任务。
+    /// </returns>
+    Task ApplyAsync();
 }

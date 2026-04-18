@@ -19,6 +19,24 @@ All AI agents and contributors must follow these rules when writing, reviewing, 
 - After resolving the host Windows Git path, prefer an explicit session-local binding for subsequent commands so the
   shell does not fall back to Linux `/usr/bin/git` later in the same WSL session.
 
+## Git Workflow Rules
+
+- Every completed task MUST pass at least one build validation before it is considered done.
+- If the task changes multiple projects or shared abstractions, prefer a solution-level or affected-project
+  `dotnet build ... -c Release`; otherwise use the smallest build command that still proves the result compiles.
+- If the required build passes and there are task-related staged or unstaged changes, contributors MUST create a Git
+  commit automatically instead of leaving the task uncommitted, unless the user explicitly says not to commit.
+- Commit messages MUST use Conventional Commits format: `<type>(<scope>): <summary>`.
+- The commit `summary` MUST use simplified Chinese and briefly describe the main change.
+- The commit `body` MUST use unordered list items, and each item MUST start with a verb such as `新增`、`修复`、`优化`、
+  `更新`、`补充`、`重构`.
+- Each commit body bullet MUST describe one independent change point; avoid repeated or redundant descriptions.
+- Keep technical terms in English when they are established project terms, such as `API`、`Model`、`System`.
+- If a new task starts while the current branch is `main`, contributors MUST first try to update local `main` from the
+  remote, then create and switch to a dedicated branch before making substantive changes.
+- The branch naming rule for a new task branch is `<type>/<topic-or-scope>`, where `<type>` should match the intended
+  Conventional Commit category as closely as practical.
+
 ## Subagent Usage Rules
 
 - Use subagents only when the task is complex, the context is likely to grow too large, or the work can be split into

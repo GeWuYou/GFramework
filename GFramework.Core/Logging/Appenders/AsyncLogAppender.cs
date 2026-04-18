@@ -162,7 +162,7 @@ public sealed class AsyncLogAppender : ILogAppender
     {
         try
         {
-            await foreach (var entry in _channel.Reader.ReadAllAsync(cancellationToken))
+            await foreach (var entry in _channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
             {
                 try
                 {

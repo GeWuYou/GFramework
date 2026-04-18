@@ -201,7 +201,7 @@ public readonly struct Result<A> : IEquatable<Result<A>>, IComparable<Result<A>>
 
         try
         {
-            return new Result<B>(await f(_value!));
+            return new Result<B>(await f(_value!).ConfigureAwait(false));
         }
         catch (Exception ex)
         {
@@ -307,7 +307,7 @@ public readonly struct Result<A> : IEquatable<Result<A>>, IComparable<Result<A>>
         if (IsSuccess) return EqualityComparer<A>.Default.Equals(_value, other._value);
         if (IsFaulted)
             return Exception.GetType() == other.Exception.GetType()
-                   && Exception.Message == other.Exception.Message;
+                   && string.Equals(Exception.Message, other.Exception.Message, StringComparison.Ordinal);
         return true; // both Bottom
     }
 

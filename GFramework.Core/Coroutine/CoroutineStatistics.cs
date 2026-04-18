@@ -1,4 +1,5 @@
 using System.Text;
+using System.Globalization;
 using GFramework.Core.Abstractions.Coroutine;
 
 namespace GFramework.Core.Coroutine;
@@ -10,7 +11,7 @@ namespace GFramework.Core.Coroutine;
 internal sealed class CoroutineStatistics : ICoroutineStatistics
 {
     private readonly Dictionary<CoroutinePriority, int> _countByPriority = new();
-    private readonly Dictionary<string, int> _countByTag = new();
+    private readonly Dictionary<string, int> _countByTag = new(StringComparer.Ordinal);
     private readonly object _lock = new();
     private int _activeCount;
     private double _maxExecutionTimeMs;
@@ -109,29 +110,31 @@ internal sealed class CoroutineStatistics : ICoroutineStatistics
     public string GenerateReport()
     {
         var sb = new StringBuilder();
-        sb.AppendLine("=== 协程统计报告 ===");
-        sb.AppendLine($"总启动数: {TotalStarted}");
-        sb.AppendLine($"总完成数: {TotalCompleted}");
-        sb.AppendLine($"总失败数: {TotalFailed}");
-        sb.AppendLine($"当前活跃: {ActiveCount}");
-        sb.AppendLine($"当前暂停: {PausedCount}");
-        sb.AppendLine($"平均执行时间: {AverageExecutionTimeMs:F2} ms");
-        sb.AppendLine($"最大执行时间: {MaxExecutionTimeMs:F2} ms");
+        sb.AppendLine(FormattableString.Invariant($"=== 协程统计报告 ==="));
+        sb.AppendLine(FormattableString.Invariant($"总启动数: {TotalStarted}"));
+        sb.AppendLine(FormattableString.Invariant($"总完成数: {TotalCompleted}"));
+        sb.AppendLine(FormattableString.Invariant($"总失败数: {TotalFailed}"));
+        sb.AppendLine(FormattableString.Invariant($"当前活跃: {ActiveCount}"));
+        sb.AppendLine(FormattableString.Invariant($"当前暂停: {PausedCount}"));
+        sb.AppendLine(FormattableString.Invariant(
+            $"平均执行时间: {AverageExecutionTimeMs.ToString("F2", CultureInfo.InvariantCulture)} ms"));
+        sb.AppendLine(FormattableString.Invariant(
+            $"最大执行时间: {MaxExecutionTimeMs.ToString("F2", CultureInfo.InvariantCulture)} ms"));
 
         lock (_lock)
         {
             if (_countByPriority.Count > 0)
             {
-                sb.AppendLine("\n按优先级统计:");
+                sb.AppendLine(FormattableString.Invariant($"\n按优先级统计:"));
                 foreach (var kvp in _countByPriority.OrderByDescending(x => x.Key))
-                    sb.AppendLine($"  {kvp.Key}: {kvp.Value}");
+                    sb.AppendLine(FormattableString.Invariant($"  {kvp.Key}: {kvp.Value}"));
             }
 
             if (_countByTag.Count > 0)
             {
-                sb.AppendLine("\n按标签统计:");
+                sb.AppendLine(FormattableString.Invariant($"\n按标签统计:"));
                 foreach (var kvp in _countByTag.OrderByDescending(x => x.Value))
-                    sb.AppendLine($"  {kvp.Key}: {kvp.Value}");
+                    sb.AppendLine(FormattableString.Invariant($"  {kvp.Key}: {kvp.Value}"));
             }
         }
 

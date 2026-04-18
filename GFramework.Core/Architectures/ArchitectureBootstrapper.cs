@@ -35,7 +35,7 @@ internal sealed class ArchitectureBootstrapper(
 
         var context = EnsureContext(existingContext);
         ConfigureServices(context, configurator);
-        await InitializeServiceModulesAsync(asyncMode);
+        await InitializeServiceModulesAsync(asyncMode).ConfigureAwait(false);
         return context;
     }
 
@@ -117,6 +117,6 @@ internal sealed class ArchitectureBootstrapper(
     /// <param name="asyncMode">是否允许异步初始化服务模块。</param>
     private async Task InitializeServiceModulesAsync(bool asyncMode)
     {
-        await services.ModuleManager.InitializeAllAsync(asyncMode);
+        await services.ModuleManager.InitializeAllAsync(asyncMode).ConfigureAwait(false);
     }
 }

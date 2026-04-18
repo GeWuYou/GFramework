@@ -250,7 +250,7 @@ public class TestStateMachineSystemV5 : StateMachineSystem
     ///     获取状态机内部的状态字典
     /// </summary>
     /// <returns>类型到状态实例的映射字典</returns>
-    public Dictionary<Type, IState> GetStates()
+    public IDictionary<Type, IState> GetStates()
     {
         return States;
     }

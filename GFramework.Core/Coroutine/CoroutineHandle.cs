@@ -86,6 +86,15 @@ public readonly struct CoroutineHandle : IEquatable<CoroutineHandle>
     }
 
     /// <summary>
+    ///     返回协程句柄的稳定字符串表示，用于日志和诊断输出。
+    /// </summary>
+    /// <returns>包含内部标识符与键值的诊断字符串。</returns>
+    public override string ToString()
+    {
+        return $"CoroutineHandle(Id={_id}, Key={Key})";
+    }
+
+    /// <summary>
     ///     比较两个协程句柄是否相等
     /// </summary>
     /// <param name="a">第一个协程句柄</param>

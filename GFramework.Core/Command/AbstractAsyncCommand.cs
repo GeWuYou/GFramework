@@ -16,7 +16,7 @@ public abstract class AbstractAsyncCommand : ContextAwareBase, IAsyncCommand
     /// <returns>表示异步操作的任务</returns>
     async Task IAsyncCommand.ExecuteAsync()
     {
-        await OnExecuteAsync();
+        await OnExecuteAsync().ConfigureAwait(false);
     }
 
     /// <summary>

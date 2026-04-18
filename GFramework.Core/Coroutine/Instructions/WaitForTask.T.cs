@@ -24,7 +24,7 @@ public sealed class WaitForTask<T> : IYieldInstruction
             _done = true;
         else
             // 注册完成回调
-            _task.ContinueWith(_ => { _done = true; }, TaskContinuationOptions.ExecuteSynchronously);
+            _ = _task.ContinueWith(_ => { _done = true; }, TaskContinuationOptions.ExecuteSynchronously);
     }
 
     /// <summary>
