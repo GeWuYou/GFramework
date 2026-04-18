@@ -37,6 +37,16 @@ All AI agents and contributors must follow these rules when writing, reviewing, 
 - The branch naming rule for a new task branch is `<type>/<topic-or-scope>`, where `<type>` should match the intended
   Conventional Commit category as closely as practical.
 
+## Repository Boot Skill
+
+- The repository-maintained Codex boot skill lives at `.codex/skills/gframework-boot/`.
+- Prefer invoking `$gframework-boot` when the user uses short startup prompts such as `boot`、`continue`、`next step`、
+  `按 boot 开始`、`先看 AGENTS`、`继续当前任务`.
+- The boot skill is a startup convenience layer, not a replacement for this document. If the skill and `AGENTS.md`
+  diverge, follow `AGENTS.md` first and update the skill in the same change.
+- The boot skill MUST read `AGENTS.md`、`.ai/environment/tools.ai.yaml` and the relevant `local-plan/` artifacts before
+  substantive execution.
+
 ## Subagent Usage Rules
 
 - Use subagents only when the task is complex, the context is likely to grow too large, or the work can be split into

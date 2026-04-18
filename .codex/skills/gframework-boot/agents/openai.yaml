@@ -1,0 +1,4 @@
+interface:
+  display_name: "GFramework Boot"
+  short_description: "Bootstrap GFramework repository tasks"
+  default_prompt: "Use $gframework-boot to start or resume work in this GFramework repository."
