@@ -29,7 +29,8 @@ internal sealed class ConfigurableLoggerFactory : ILoggerFactory, IDisposable
         // 外部配置可能把集合项反序列化为 null，这里先给出可诊断异常，避免后续工厂链路出现不清晰的空引用失败。
         _appenders = _config.Appenders
             .Select(static appenderConfig => appenderConfig ??
-                throw new InvalidOperationException("Appender configuration cannot be null."))
+                                             throw new InvalidOperationException(
+                                                 "Appender configuration cannot be null."))
             .Select(LoggingConfigurationLoader.CreateAppender)
             .ToArray();
     }
@@ -64,6 +65,7 @@ internal sealed class ConfigurableLoggerFactory : ILoggerFactory, IDisposable
     /// <param name="name">日志记录器名称。</param>
     /// <param name="minLevel">调用方要求的最小日志级别下限；在未命中命名空间覆盖时生效。</param>
     /// <returns>可写入日志的记录器实例。</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="name"/> 为 <see langword="null" />。</exception>
     /// <remarks>
     ///     当配置文件与调用方同时提供默认级别时，会取两者中更严格的那一个；
     ///     若命中更具体的命名空间级别覆盖，则以该覆盖配置为准，即使其低于调用方传入的默认下限。
