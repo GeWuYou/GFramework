@@ -286,6 +286,13 @@ bash scripts/validate-csharp-naming.sh
 
 - Update the relevant `README.md` or `docs/` page when behavior, setup steps, architecture guidance, or user-facing
   examples change.
+- Treat `ai-libs/` as a read-only third-party source reference area.
+- Code under `ai-libs/**` exists for comparison, tracing, design study, and behavior verification; do not modify it
+  unless the user explicitly asks to sync or update that third-party snapshot.
+- When implementation plans, traces, reviews, or design notes say “reference a third-party project”, prefer the
+  repository-local path under `ai-libs/` instead of an unspecified upstream repository.
+- If a task depends on observations from `ai-libs/**`, record the referenced path and conclusion in the active plan or
+  trace rather than editing the third-party reference copy.
 - The main documentation site lives under `docs/`, with Chinese content under `docs/zh-CN/`.
 - Keep code samples, package names, and command examples aligned with the current repository state.
 - Prefer documenting behavior and design intent, not only API surface.
