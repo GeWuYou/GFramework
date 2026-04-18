@@ -237,23 +237,32 @@ bash scripts/validate-csharp-naming.sh
 - If a framework abstraction changes meaning or intended usage, update the explanatory comments in code as part of the
   same change.
 
-### Task Tracking
+### Documentation Source Of Truth
 
-- When working from a tracked implementation plan, contributors MUST update the corresponding tracking document under
-  `local-plan/todos/` in the same change.
-- Tracking updates MUST reflect completed work, newly discovered issues, validation results, and the next recommended
-  recovery point.
-- Completing code changes without updating the active tracking document is considered incomplete work.
-- For any multi-step refactor, migration, or cross-module task, contributors MUST create or adopt a dedicated recovery
-  document under `local-plan/todos/` before making substantive code changes.
-- Recovery documents MUST record the current phase, the active recovery point identifier, known risks, and the next
-  recommended resume step so another contributor or subagent can continue the work safely.
-- Contributors MUST maintain a matching execution trace under `local-plan/traces/` for complex work. The trace should
-  record the current date, key decisions, validation milestones, and the immediate next step.
-- When a task spans multiple commits or is likely to exceed a single agent context window, update both the recovery
-  document and the trace at each meaningful milestone before pausing or handing work off.
-- If subagents are used on a complex task, the main agent MUST capture the delegated scope and any accepted findings in
-  the active recovery document or trace before continuing implementation.
+- Treat source code, `*.csproj`, tests, generated snapshots, and packaging metadata as the primary evidence for
+  documentation updates.
+- Treat `CoreGrid` as a secondary evidence source for real project adoption patterns, directory layouts, and end-to-end
+  usage examples.
+- Treat existing `README.md` files and `docs/zh-CN/` pages as editable outputs, not authoritative truth.
+- If existing documentation conflicts with code or tests, update the documentation to match the implementation instead
+  of preserving outdated wording.
+- Do not publish example code, setup steps, or package guidance that cannot be traced back to code, tests, or a
+  verified consumer project.
+
+### Module README Requirements
+
+- Every user-facing package or module directory that contains a `*.csproj` intended for direct consumption MUST have a
+  sibling `README.md`.
+- Use the canonical filename `README.md`. Do not introduce new `ReadMe.md` or other filename variants.
+- A module README MUST describe:
+  - the module's purpose
+  - the relationship to adjacent runtime, abstractions, or generator packages
+  - the major subdirectories or subsystems the reader is expected to use
+  - the minimum adoption path
+  - the corresponding `docs/zh-CN/` entry points
+- Adding a new top-level module directory without a `README.md` is considered incomplete work.
+- If a module's responsibilities, setup, public API surface, generator inputs, or adoption path change, update that
+  module's `README.md` in the same change.
 
 ### Repository Documentation
 
@@ -273,6 +282,32 @@ bash scripts/validate-csharp-naming.sh
   documentation is considered incomplete work.
 - Do not rely on “the code is self-explanatory” for framework features that consumers need to adopt; write the
   adoption path down so future users do not need to rediscover it from source.
+- The repository root `README.md` MUST mirror the current top-level documentation taxonomy used by the docs site.
+  Do not maintain a second, differently named navigation system in the root README.
+- Prefer linking the root `README.md` to section landing pages such as `index.md` instead of deep-linking to a single
+  article when the target is intended to be a documentation category.
+- If a docs category appears in VitePress navigation or sidebar, it MUST have a real landing page or be removed from
+  navigation in the same change.
+- When examples are rewritten, preserve only the parts that remain true. Delete or replace speculative examples instead
+  of lightly editing them into another inaccurate form.
+
+### Task Tracking
+
+- When working from a tracked implementation plan, contributors MUST update the corresponding tracking document under
+  `local-plan/todos/` in the same change.
+- Tracking updates MUST reflect completed work, newly discovered issues, validation results, and the next recommended
+  recovery point.
+- Completing code changes without updating the active tracking document is considered incomplete work.
+- For any multi-step refactor, migration, or cross-module task, contributors MUST create or adopt a dedicated recovery
+  document under `local-plan/todos/` before making substantive code changes.
+- Recovery documents MUST record the current phase, the active recovery point identifier, known risks, and the next
+  recommended resume step so another contributor or subagent can continue the work safely.
+- Contributors MUST maintain a matching execution trace under `local-plan/traces/` for complex work. The trace should
+  record the current date, key decisions, validation milestones, and the immediate next step.
+- When a task spans multiple commits or is likely to exceed a single agent context window, update both the recovery
+  document and the trace at each meaningful milestone before pausing or handing work off.
+- If subagents are used on a complex task, the main agent MUST capture the delegated scope and any accepted findings in
+  the active recovery document or trace before continuing implementation.
 
 ### Documentation Preview
 

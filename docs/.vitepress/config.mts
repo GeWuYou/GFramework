@@ -116,6 +116,7 @@ export default defineConfig({
             text: '更多',
             items: [
               { text: 'ECS', link: '/zh-CN/ecs/' },
+              { text: '抽象接口', link: '/zh-CN/abstractions/' },
               { text: '源码生成器', link: '/zh-CN/source-generators' },
               { text: '最佳实践', link: '/zh-CN/best-practices/' },
               { text: 'API 参考', link: '/zh-CN/api-reference' },

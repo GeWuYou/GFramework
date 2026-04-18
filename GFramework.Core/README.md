@@ -1,32 +1,84 @@
 # GFramework.Core
 
-GFramework 框架的核心模块，提供MVC架构的基础设施。
+`GFramework.Core` 是框架的基础运行时，负责架构生命周期、组件注册、上下文访问，以及不依赖具体引擎的通用能力。
 
-## 主要功能
+如果你只想先把框架跑起来，应先从这个模块开始。
 
-- **Architecture** - 应用程序架构管理，支持依赖注入、生命周期管理和模块化扩展
-- **Model** - 数据模型层，管理应用状态和数据
-- **System** - 业务逻辑层，处理核心业务逻辑和事件响应
-- **Controller** - 控制器层，处理用户输入和UI协调
-- **Command** - 命令模式实现，封装用户操作
-- **Query** - 查询模式实现，支持CQRS架构
-- **Events** - 事件系统，实现组件间松耦合通信
-- **IoC** - 轻量级依赖注入容器
-- **Property** - 可绑定属性，支持数据绑定和响应式编程
-- **StateManagement** - 集中式状态容器，支持状态归约、选择器和诊断
-- **Utility** - 无状态工具类
-- **Pool** - 对象池系统，减少GC压力
-- **Extensions** - 框架扩展方法
-- **Logging** - 日志系统
-- **Environment** - 环境配置管理
+## 模块定位
 
-## 设计原则
+这一层提供：
 
-- 与平台解耦，不依赖特定游戏引擎
-- 接口隔离，职责单一
-- 依赖倒置，面向接口编程
-- 组合优于继承
+- `Architecture` 与 `ArchitectureContext`
+- `Model` / `System` / `Utility` 运行时
+- 旧版 `Command` / `Query` 执行器
+- 事件、属性、状态机、状态管理
+- 资源、日志、协程、并发、环境与本地化
 
-## 详细文档
+它不负责：
 
-参见 [docs/zh-CN/core/](../docs/zh-CN/core/) 目录下的详细文档。
+- 游戏内容配置、Scene / UI / Storage 等游戏层能力
+- Godot 节点与场景集成
+- 新版 CQRS 请求模型的消息契约定义
+
+## 包关系
+
+- 直接依赖：
+  - `GFramework.Cqrs`
+  - `GFramework.Cqrs.Abstractions`
+  - `GFramework.Core.Abstractions`
+- 常见上层模块：
+  - `GFramework.Game`
+  - `GFramework.Godot`
+
+如果你只需要契约，不需要实现层，改为依赖 [`../GFramework.Core.Abstractions/README.md`](../GFramework.Core.Abstractions/README.md)。
+
+## 子系统地图
+
+| 目录 | 作用 |
+| --- | --- |
+| `Architectures/` | 架构入口、上下文、生命周期、模块安装与组件注册 |
+| `Command/` | 旧版命令执行器与同步 / 异步命令基类 |
+| `Query/` | 旧版查询执行器与同步 / 异步查询基类 |
+| `Events/` | 事件总线、事件作用域、统计与过滤 |
+| `Property/` | `BindableProperty<T>` 与相关解绑对象 |
+| `State/` | 状态机与状态切换事件 |
+| `StateManagement/` | Store、selector、middleware 与状态诊断 |
+| `Coroutine/` | 协程调度、快照、统计与优先级 |
+| `Resource/` | 资源缓存、句柄和释放策略 |
+| `Logging/` | logger、factory、配置与组合日志器 |
+| `Ioc/` | 基于 `Microsoft.Extensions.DependencyInjection` 的容器适配 |
+| `Concurrency/` | 键控异步锁与统计 |
+| `Pause/` | 暂停栈和暂停范围 |
+| `Localization/` | 本地化表与格式化入口 |
+| `Functional/` | `Option`、`Result` 等轻量函数式工具 |
+| `Extensions/` | 上下文与集合等扩展方法 |
+
+## 最小接入路径
+
+```bash
+dotnet add package GeWuYou.GFramework.Core
+dotnet add package GeWuYou.GFramework.Core.Abstractions
+```
+
+最小入口：
+
+1. 继承 `Architecture`
+2. 在 `OnInitialize()` 中注册模型、系统、工具或模块
+3. 通过 `architecture.Context` 或 `ContextAwareBase` 的扩展方法访问上下文
+
+最小示例见：
+
+- [`../docs/zh-CN/getting-started/quick-start.md`](../docs/zh-CN/getting-started/quick-start.md)
+
+## 什么时候继续接别的包
+
+- 需要推荐的新请求模型：加 `GFramework.Cqrs`
+- 需要游戏层路由、设置、配置和存储：加 `GFramework.Game`
+- 需要 Godot 节点与场景适配：加 `GFramework.Godot`
+- 需要编译期生成日志、上下文注入或模块注册：加 `GFramework.Core.SourceGenerators`
+
+## 对应文档
+
+- Core 栏目：[`../docs/zh-CN/core/index.md`](../docs/zh-CN/core/index.md)
+- CQRS：[`../docs/zh-CN/core/cqrs.md`](../docs/zh-CN/core/cqrs.md)
+- 入门指南：[`../docs/zh-CN/getting-started/index.md`](../docs/zh-CN/getting-started/index.md)
