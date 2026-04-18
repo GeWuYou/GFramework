@@ -19,7 +19,11 @@ internal sealed class ConfigurableLoggerFactory : ILoggerFactory, IDisposable
     public ConfigurableLoggerFactory(LoggingConfiguration config)
     {
         _config = config ?? throw new ArgumentNullException(nameof(config));
-        _appenders = config.Appenders.Select(LoggingConfigurationLoader.CreateAppender).ToArray();
+
+        // 反序列化输入可能显式把集合写成 null，这里统一归一化为可安全枚举的空集合。
+        _config.Appenders ??= [];
+        _config.LoggerLevels ??= new Dictionary<string, LogLevel>(StringComparer.Ordinal);
+        _appenders = _config.Appenders.Select(LoggingConfigurationLoader.CreateAppender).ToArray();
     }
 
     /// <summary>
@@ -34,23 +38,31 @@ internal sealed class ConfigurableLoggerFactory : ILoggerFactory, IDisposable
 
         foreach (var appender in _appenders)
         {
-            if (appender is IDisposable disposable)
+            switch (appender)
             {
-                disposable.Dispose();
+                case AsyncLogAppender asyncLogAppender:
+                    asyncLogAppender.Dispose();
+                    break;
+                case IDisposable disposable:
+                    disposable.Dispose();
+                    break;
             }
         }
-
     }
 
     /// <summary>
     ///     为指定名称创建日志记录器，并应用最匹配的命名空间级别配置。
     /// </summary>
     /// <param name="name">日志记录器名称。</param>
-    /// <param name="minLevel">调用方传入的默认最小级别。</param>
+    /// <param name="minLevel">调用方要求的最小日志级别下限；最终级别不会低于该值。</param>
     /// <returns>可写入日志的记录器实例。</returns>
+    /// <remarks>
+    ///     当配置文件与调用方同时提供默认级别时，会取两者中更严格的那一个；
+    ///     若命中更具体的命名空间级别覆盖，则以该覆盖配置为准。
+    /// </remarks>
     public ILogger GetLogger(string name, LogLevel minLevel = LogLevel.Info)
     {
-        var effectiveLevel = _config.MinLevel;
+        var effectiveLevel = _config.MinLevel > minLevel ? _config.MinLevel : minLevel;
         var bestMatchLength = -1;
 
         foreach (var kvp in _config.LoggerLevels)

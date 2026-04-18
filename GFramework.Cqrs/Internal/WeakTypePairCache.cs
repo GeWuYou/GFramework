@@ -81,6 +81,9 @@ internal sealed class WeakTypePairCache<TValue>
     /// <param name="primaryType">第一段类型键。</param>
     /// <param name="secondaryType">第二段类型键。</param>
     /// <returns>当前缓存对象，或 <see langword="null" />。</returns>
+    /// <exception cref="ArgumentNullException">
+    ///     <paramref name="primaryType" /> 或 <paramref name="secondaryType" /> 为 <see langword="null" />。
+    /// </exception>
     /// <remarks>
     ///     该入口仅用于测试通过反射观察缓存状态，不应用于运行时代码路径。
     /// </remarks>

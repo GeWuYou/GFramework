@@ -106,17 +106,16 @@ public abstract class AbstractArchitecture(
     {
         ArgumentNullException.ThrowIfNull(module);
 
+        // 先确认锚点可用，避免模块安装产生副作用后再因架构未绑定场景树而失败。
+        var anchor = _anchor ?? throw new InvalidOperationException("Anchor not initialized");
+
         module.Install(this);
 
-        // 检查锚点是否已初始化，未初始化则抛出异常
-        if (_anchor == null)
-            throw new InvalidOperationException("Anchor not initialized");
-
         // 等待锚点准备就绪，并保持 Godot 同步上下文，以便后续附加逻辑安全访问节点 API。
-        await _anchor.WaitUntilReadyAsync();
+        await anchor.WaitUntilReadyAsync();
 
         // 延迟调用将扩展节点添加为锚点的子节点
-        _anchor.CallDeferred(Node.MethodName.AddChild, module.Node);
+        anchor.CallDeferred(Node.MethodName.AddChild, module.Node);
 
         // 调用扩展的附加回调方法
         module.OnAttach(this);

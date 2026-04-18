@@ -106,17 +106,37 @@ internal sealed class GodotYamlConfigEnvironment
     {
         if (!path.IsGodotPath())
         {
-            if (!Directory.Exists(path))
+            try
+            {
+                if (!Directory.Exists(path))
+                {
+                    return null;
+                }
+
+                return Directory
+                    .EnumerateFileSystemEntries(path, "*", SearchOption.TopDirectoryOnly)
+                    .Select(static entryPath => new GodotYamlConfigDirectoryEntry(
+                        Path.GetFileName(entryPath),
+                        Directory.Exists(entryPath)))
+                    .ToArray();
+            }
+            catch (IOException)
+            {
+                // 非 Godot 路径分支与公开契约保持一致：宿主无法访问目录时返回 null，而不是泄漏底层异常。
+                return null;
+            }
+            catch (UnauthorizedAccessException)
             {
                 return null;
             }
-
-            return Directory
-                .EnumerateFileSystemEntries(path, "*", SearchOption.TopDirectoryOnly)
-                .Select(static entryPath => new GodotYamlConfigDirectoryEntry(
-                    Path.GetFileName(entryPath),
-                    Directory.Exists(entryPath)))
-                .ToArray();
+            catch (ArgumentException)
+            {
+                return null;
+            }
+            catch (NotSupportedException)
+            {
+                return null;
+            }
         }
 
         using var directory = DirAccess.Open(path);
@@ -132,18 +152,24 @@ internal sealed class GodotYamlConfigEnvironment
             return null;
         }
 
-        while (true)
+        try
         {
-            var name = directory.GetNext();
-            if (string.IsNullOrEmpty(name))
+            while (true)
             {
-                break;
+                var name = directory.GetNext();
+                if (string.IsNullOrEmpty(name))
+                {
+                    break;
+                }
+
+                entries.Add(new GodotYamlConfigDirectoryEntry(name, directory.CurrentIsDir()));
             }
-
-            entries.Add(new GodotYamlConfigDirectoryEntry(name, directory.CurrentIsDir()));
         }
-
-        directory.ListDirEnd();
+        finally
+        {
+            // 目录枚举句柄必须成对结束，避免未来循环体扩展后在异常路径上遗留引擎状态。
+            directory.ListDirEnd();
+        }
         return entries;
     }
 
