@@ -37,6 +37,24 @@ public sealed class ConfigurableLoggerFactoryTests
     }
 
     /// <summary>
+    ///     验证当配置输入把 appenders 集合中的某个元素反序列化为 <see langword="null" /> 时，工厂会抛出可诊断异常。
+    /// </summary>
+    [Test]
+    public void CreateFactory_ShouldThrowInvalidOperationException_WhenAppenderEntryIsNull()
+    {
+        var config = LoggingConfigurationLoader.LoadFromJsonString(
+            """
+            {
+              "appenders": [ null ]
+            }
+            """);
+
+        var exception = Assert.Throws<InvalidOperationException>(() => LoggingConfigurationLoader.CreateFactory(config));
+
+        Assert.That(exception!.Message, Is.EqualTo("Appender configuration cannot be null."));
+    }
+
+    /// <summary>
     ///     验证在未命中命名空间覆盖时，调用方传入的默认最小级别会作为最终 logger 级别的下限参与计算。
     /// </summary>
     [Test]

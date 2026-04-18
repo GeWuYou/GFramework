@@ -2,8 +2,6 @@
 using GFramework.Core.Abstractions.Environment;
 using GFramework.Core.Architectures;
 using GFramework.Core.Constants;
-using GFramework.Godot.Extensions;
-using Godot;
 
 namespace GFramework.Godot.Architectures;
 
@@ -165,7 +163,7 @@ public abstract class AbstractArchitecture(
     {
         try
         {
-            await DestroyAsync();
+            await DestroyAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {

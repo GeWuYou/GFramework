@@ -378,7 +378,7 @@ public class AudioManager : Node
         );
     }
     
-    private void SetMasterVolume(float linearVolume)
+    private async void SetMasterVolume(float linearVolume)
     {
         var settings = new AudioSettings { MasterVolume = linearVolume };
         var audioSettings = new GodotAudioSettings(settings, new AudioBusMap());
@@ -419,7 +419,7 @@ public class CustomAudioManager : Node
         );
     }
     
-    private void SetMasterVolume(float linearVolume)
+    private async void SetMasterVolume(float linearVolume)
     {
         var audioSettingsData = new AudioSettings { MasterVolume = linearVolume };
         var audioSettings = new GodotAudioSettings(audioSettingsData, _customBusMap);

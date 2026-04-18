@@ -16,6 +16,8 @@ internal sealed class ConfigurableLoggerFactory : ILoggerFactory, IDisposable
     ///     初始化一个基于日志配置创建输出管线的工厂实例。
     /// </summary>
     /// <param name="config">日志配置。</param>
+    /// <exception cref="ArgumentNullException"><paramref name="config"/> 为 <see langword="null" />。</exception>
+    /// <exception cref="InvalidOperationException">配置中的某个 Appender 项为 <see langword="null" />。</exception>
     public ConfigurableLoggerFactory(LoggingConfiguration config)
     {
         _config = config ?? throw new ArgumentNullException(nameof(config));
@@ -23,7 +25,13 @@ internal sealed class ConfigurableLoggerFactory : ILoggerFactory, IDisposable
         // 反序列化输入可能显式把集合写成 null，这里统一归一化为可安全枚举的空集合。
         _config.Appenders ??= [];
         _config.LoggerLevels ??= new Dictionary<string, LogLevel>(StringComparer.Ordinal);
-        _appenders = _config.Appenders.Select(LoggingConfigurationLoader.CreateAppender).ToArray();
+
+        // 外部配置可能把集合项反序列化为 null，这里先给出可诊断异常，避免后续工厂链路出现不清晰的空引用失败。
+        _appenders = _config.Appenders
+            .Select(static appenderConfig => appenderConfig ??
+                throw new InvalidOperationException("Appender configuration cannot be null."))
+            .Select(LoggingConfigurationLoader.CreateAppender)
+            .ToArray();
     }
 
     /// <summary>
