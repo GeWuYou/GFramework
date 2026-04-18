@@ -13,7 +13,7 @@ namespace GFramework.Game.Tests.Setting;
 public sealed class GodotLocalizationSettingsTests
 {
     [Test]
-    public async Task Apply_ShouldSyncEnglishToGodotLocaleAndFrameworkLanguage()
+    public async Task ApplyAsync_ShouldSyncEnglishToGodotLocaleAndFrameworkLanguage()
     {
         var manager = new Mock<ILocalizationManager>(MockBehavior.Strict);
         manager.Setup(it => it.SetLanguage("eng"));
@@ -21,14 +21,14 @@ public sealed class GodotLocalizationSettingsTests
 
         var applicator = CreateApplicator("English", manager.Object, locale => appliedLocale = locale);
 
-        await applicator.Apply();
+        await applicator.ApplyAsync();
 
         Assert.That(appliedLocale, Is.EqualTo("en"));
         manager.Verify(it => it.SetLanguage("eng"), Times.Once);
     }
 
     [Test]
-    public async Task Apply_ShouldSyncChineseToGodotLocaleAndFrameworkLanguage()
+    public async Task ApplyAsync_ShouldSyncChineseToGodotLocaleAndFrameworkLanguage()
     {
         var manager = new Mock<ILocalizationManager>(MockBehavior.Strict);
         manager.Setup(it => it.SetLanguage("zhs"));
@@ -36,14 +36,14 @@ public sealed class GodotLocalizationSettingsTests
 
         var applicator = CreateApplicator("简体中文", manager.Object, locale => appliedLocale = locale);
 
-        await applicator.Apply();
+        await applicator.ApplyAsync();
 
         Assert.That(appliedLocale, Is.EqualTo("zh_CN"));
         manager.Verify(it => it.SetLanguage("zhs"), Times.Once);
     }
 
     [Test]
-    public async Task Apply_ShouldFallbackUnknownLanguageToEnglish()
+    public async Task ApplyAsync_ShouldFallbackUnknownLanguageToEnglish()
     {
         var manager = new Mock<ILocalizationManager>(MockBehavior.Strict);
         manager.Setup(it => it.SetLanguage("eng"));
@@ -51,7 +51,7 @@ public sealed class GodotLocalizationSettingsTests
 
         var applicator = CreateApplicator("Esperanto", manager.Object, locale => appliedLocale = locale);
 
-        await applicator.Apply();
+        await applicator.ApplyAsync();
 
         Assert.That(appliedLocale, Is.EqualTo("en"));
         manager.Verify(it => it.SetLanguage("eng"), Times.Once);

@@ -1,5 +1,3 @@
-using GFramework.Core.Abstractions.Logging;
-
 namespace GFramework.Core.Logging;
 
 /// <summary>

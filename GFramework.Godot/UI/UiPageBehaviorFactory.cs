@@ -30,6 +30,7 @@ public static class UiPageBehaviorFactory
     /// <param name="key">UI 标识键</param>
     /// <param name="layer">目标层级</param>
     /// <returns>对应层级的 IUiPageBehavior 实例</returns>
+    /// <exception cref="ArgumentException">当 <paramref name="layer"/> 不是受支持的 UI 层级时抛出。</exception>
     public static IUiPageBehavior Create<T>(T owner, string key, UiLayer layer)
         where T : CanvasItem
     {

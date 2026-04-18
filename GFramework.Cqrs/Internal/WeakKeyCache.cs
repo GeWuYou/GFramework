@@ -25,10 +25,8 @@ internal sealed class WeakKeyCache<TKey, TValue>
     /// <param name="key">缓存键。</param>
     /// <param name="valueFactory">创建缓存值的工厂方法。</param>
     /// <returns>已存在或新创建的缓存值。</returns>
-    /// <exception cref="ArgumentNullException">
-    ///     <paramref name="key" /> 或 <paramref name="valueFactory" /> 为 <see langword="null" />。
-    ///     或 <paramref name="valueFactory" /> 返回 <see langword="null" />。
-    /// </exception>
+    /// <exception cref="ArgumentNullException"><paramref name="key" /> 或 <paramref name="valueFactory" /> 为 <see langword="null" />。</exception>
+    /// <exception cref="InvalidOperationException"><paramref name="valueFactory" /> 返回 <see langword="null" />。</exception>
     public TValue GetOrAdd(TKey key, Func<TKey, TValue> valueFactory)
     {
         ArgumentNullException.ThrowIfNull(key);
@@ -59,10 +57,8 @@ internal sealed class WeakKeyCache<TKey, TValue>
     /// <param name="state">创建缓存值时复用的附加状态。</param>
     /// <param name="valueFactory">基于键与附加状态创建缓存值的工厂方法。</param>
     /// <returns>已存在或新创建的缓存值。</returns>
-    /// <exception cref="ArgumentNullException">
-    ///     <paramref name="key" /> 或 <paramref name="valueFactory" /> 为 <see langword="null" />。
-    ///     或 <paramref name="valueFactory" /> 返回 <see langword="null" />。
-    /// </exception>
+    /// <exception cref="ArgumentNullException"><paramref name="key" /> 或 <paramref name="valueFactory" /> 为 <see langword="null" />。</exception>
+    /// <exception cref="InvalidOperationException"><paramref name="valueFactory" /> 返回 <see langword="null" />。</exception>
     public TValue GetOrAdd<TState>(TKey key, TState state, Func<TKey, TState, TValue> valueFactory)
     {
         ArgumentNullException.ThrowIfNull(key);

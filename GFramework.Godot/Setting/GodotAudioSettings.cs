@@ -16,8 +16,8 @@ public class GodotAudioSettings(ISettingsModel model, AudioBusMap audioBusMap)
     /// <summary>
     ///     应用音频设置到Godot音频系统
     /// </summary>
-    /// <returns>表示异步操作的任务</returns>
-    public Task Apply()
+    /// <returns>已完成的任务；该实现只执行同步音频总线更新。</returns>
+    public Task ApplyAsync()
     {
         var settings = model.GetData<AudioSettings>();
         SetBus(audioBusMap.Master, settings.MasterVolume);

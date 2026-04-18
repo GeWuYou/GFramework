@@ -69,7 +69,10 @@ public sealed class SamplingFilter : ILogFilter
 
         foreach (var kvp in _samplingStates)
         {
-            if (string.Equals(kvp.Key, "*", StringComparison.Ordinal)) continue; // 不清理共享状态
+            if (string.Equals(kvp.Key, "*", StringComparison.Ordinal))
+            {
+                continue; // 不清理共享状态
+            }
 
             if (kvp.Value.IsStale(now, staleThreshold))
             {

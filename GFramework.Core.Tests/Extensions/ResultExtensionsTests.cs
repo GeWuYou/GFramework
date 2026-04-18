@@ -319,7 +319,12 @@ public class ResultExtensionsTests
     {
         var result = Result<int>.Succeed(-1);
         var ensured = result.Ensure(x => x > 0, "Value must be positive");
-        Assert.That(ensured.Exception.Message, Is.EqualTo("Value must be positive"));
+        Assert.Multiple(() =>
+        {
+            Assert.That(ensured.Exception.Message, Does.StartWith("Value must be positive"));
+            Assert.That(ensured.Exception, Is.TypeOf<ArgumentException>());
+            Assert.That(((ArgumentException)ensured.Exception).ParamName, Is.EqualTo("result"));
+        });
     }
 
     /// <summary>

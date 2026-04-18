@@ -198,7 +198,7 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
         foreach (var applicator in _applicators)
             try
             {
-                await applicator.Value.Apply();
+                await applicator.Value.ApplyAsync();
             }
             catch (Exception ex)
             {

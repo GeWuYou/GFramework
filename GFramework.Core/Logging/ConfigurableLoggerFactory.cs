@@ -10,7 +10,7 @@ internal sealed class ConfigurableLoggerFactory : ILoggerFactory, IDisposable
 {
     private readonly ILogAppender[] _appenders;
     private readonly LoggingConfiguration _config;
-    private bool _disposed;
+    private int _disposed;
 
     /// <summary>
     ///     初始化一个基于日志配置创建输出管线的工厂实例。
@@ -27,7 +27,7 @@ internal sealed class ConfigurableLoggerFactory : ILoggerFactory, IDisposable
     /// </summary>
     public void Dispose()
     {
-        if (_disposed)
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
         {
             return;
         }
@@ -40,7 +40,6 @@ internal sealed class ConfigurableLoggerFactory : ILoggerFactory, IDisposable
             }
         }
 
-        _disposed = true;
     }
 
     /// <summary>
@@ -52,14 +51,23 @@ internal sealed class ConfigurableLoggerFactory : ILoggerFactory, IDisposable
     public ILogger GetLogger(string name, LogLevel minLevel = LogLevel.Info)
     {
         var effectiveLevel = _config.MinLevel;
+        var bestMatchLength = -1;
 
         foreach (var kvp in _config.LoggerLevels)
         {
-            if (string.Equals(name, kvp.Key, StringComparison.Ordinal) ||
-                name.StartsWith(kvp.Key + ".", StringComparison.Ordinal))
+            var isExactMatch = string.Equals(name, kvp.Key, StringComparison.Ordinal);
+            if (isExactMatch)
             {
                 effectiveLevel = kvp.Value;
                 break;
+            }
+
+            var isPrefixMatch = name.StartsWith(kvp.Key + ".", StringComparison.Ordinal);
+            if (isPrefixMatch && kvp.Key.Length > bestMatchLength)
+            {
+                // 多个命名空间前缀都能命中时，最长前缀代表最具体的配置。
+                bestMatchLength = kvp.Key.Length;
+                effectiveLevel = kvp.Value;
             }
         }
 

@@ -144,6 +144,35 @@ public class LoggingConfigurationTests
     }
 
     [Test]
+    public void CreateFactory_WithOverlappingLoggerPrefixes_ShouldPreferLongestPrefixMatch()
+    {
+        var json = @"{
+            ""minLevel"": ""Info"",
+            ""appenders"": [
+                {
+                    ""type"": ""Console"",
+                    ""formatter"": ""Default""
+                }
+            ],
+            ""loggerLevels"": {
+                ""GFramework"": ""Warning"",
+                ""GFramework.Core"": ""Trace""
+            }
+        }";
+
+        var config = LoggingConfigurationLoader.LoadFromJsonString(json);
+        var factory = LoggingConfigurationLoader.CreateFactory(config);
+
+        var logger = factory.GetLogger("GFramework.Core.Logging");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(logger.IsTraceEnabled(), Is.True);
+            Assert.That(logger.IsDebugEnabled(), Is.True);
+        });
+    }
+
+    [Test]
     public void CreateFactory_WithInvalidAppenderType_ShouldThrowException()
     {
         var json = @"{

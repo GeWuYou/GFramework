@@ -156,8 +156,28 @@ internal sealed class GodotYamlConfigEnvironment
 
     private static byte[] ReadAllBytesCore(string path)
     {
-        return path.IsGodotPath()
-            ? FileAccess.GetFileAsBytes(path)
-            : File.ReadAllBytes(path);
+        if (!path.IsGodotPath())
+        {
+            return File.ReadAllBytes(path);
+        }
+
+        var bytes = FileAccess.GetFileAsBytes(path);
+        var error = FileAccess.GetOpenError();
+        if (error == Error.Ok)
+        {
+            return bytes;
+        }
+
+        throw CreateReadException(path, error);
+    }
+
+    private static Exception CreateReadException(string path, Error error)
+    {
+        return error switch
+        {
+            Error.FileNotFound => new FileNotFoundException($"Godot file not found: {path}", path),
+            Error.FileCantOpen => new IOException($"Godot could not open file '{path}'. Error: {error}"),
+            _ => new IOException($"Godot failed to read file '{path}'. Error: {error}")
+        };
     }
 }

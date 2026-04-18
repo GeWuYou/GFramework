@@ -8,6 +8,8 @@ namespace GFramework.Cqrs.Internal;
 /// <remarks>
 ///     第一层和第二层键都使用弱键缓存，因此只要任一类型不再被外部引用，
 ///     对应条目都允许被 GC 清理，并在后续首次访问时重新建立。
+///     线程安全：该类型支持并发访问，读写与清理由底层弱键缓存实现保证一致性。
+///     失败模式：键被 GC 回收或调用 <see cref="Clear" /> 后，后续读取可能未命中并触发重建。
 /// </remarks>
 internal sealed class WeakTypePairCache<TValue>
     where TValue : class
@@ -25,6 +27,7 @@ internal sealed class WeakTypePairCache<TValue>
     ///     <paramref name="primaryType" />、<paramref name="secondaryType" /> 或
     ///     <paramref name="valueFactory" /> 为 <see langword="null" />。
     /// </exception>
+    /// <exception cref="InvalidOperationException"><paramref name="valueFactory" /> 返回 <see langword="null" />。</exception>
     public TValue GetOrAdd(Type primaryType, Type secondaryType, Func<Type, Type, TValue> valueFactory)
     {
         ArgumentNullException.ThrowIfNull(primaryType);

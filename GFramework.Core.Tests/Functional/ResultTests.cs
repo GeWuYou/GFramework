@@ -429,4 +429,20 @@ public class ResultTests
         // Assert
         Assert.That(str, Is.EqualTo("Fail(Test error)"));
     }
+
+    /// <summary>
+    ///     测试default(Result)不会在相等性比较、哈希计算和字符串格式化中触发空引用异常
+    /// </summary>
+    [Test]
+    public void Default_Result_Should_Be_Safe_For_Equality_HashCode_And_ToString()
+    {
+        var result = default(Result);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Equals(default(Result)), Is.True);
+            Assert.That(result.GetHashCode(), Is.EqualTo(0));
+            Assert.That(result.ToString(), Is.EqualTo("Fail(null)"));
+        });
+    }
 }

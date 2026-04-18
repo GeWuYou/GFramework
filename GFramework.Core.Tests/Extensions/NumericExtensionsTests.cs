@@ -119,6 +119,24 @@ public class NumericExtensionsTests
     }
 
     /// <summary>
+    ///     测试Between方法在引用类型参数为null时抛出ArgumentNullException
+    /// </summary>
+    [Test]
+    public void Between_Should_Throw_ArgumentNullException_When_Reference_Arguments_Are_Null()
+    {
+        string? value = "m";
+        string? min = "a";
+        string? max = "z";
+
+        Assert.Multiple(() =>
+        {
+            Assert.Throws<ArgumentNullException>(() => NumericExtensions.Between(value!, null!, max!));
+            Assert.Throws<ArgumentNullException>(() => NumericExtensions.Between(value!, min!, null!));
+            Assert.Throws<ArgumentNullException>(() => NumericExtensions.Between(null!, min!, max!));
+        });
+    }
+
+    /// <summary>
     ///     测试Lerp方法在t为0时返回起始值
     /// </summary>
     [Test]

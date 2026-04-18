@@ -314,7 +314,7 @@ public sealed class SettingsSystemTests
         }
 
         /// <inheritdoc />
-        public async Task Apply()
+        public async Task ApplyAsync()
         {
             ApplyCount++;
 

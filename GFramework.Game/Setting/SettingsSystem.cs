@@ -87,7 +87,7 @@ public class SettingsSystem : AbstractSystem, ISettingsSystem
 
         try
         {
-            await applyAbleSettings.Apply();
+            await applyAbleSettings.ApplyAsync();
             // 发送设置应用成功事件
             this.SendEvent(new SettingsAppliedEvent<ISettingsSection>(section, true));
         }

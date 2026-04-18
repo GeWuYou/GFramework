@@ -77,8 +77,8 @@ public class GodotLocalizationSettings : IResetApplyAbleSettings
     /// <summary>
     ///     应用本地化设置到 Godot 引擎与 GFramework 本地化管理器。
     /// </summary>
-    /// <returns>完成的任务</returns>
-    public Task Apply()
+    /// <returns>已完成的任务；该实现通过同步 API 推进语言切换。</returns>
+    public Task ApplyAsync()
     {
         var settings = _model.GetData<LocalizationSettings>();
         var locale = _localizationMap.ResolveGodotLocale(settings.Language);

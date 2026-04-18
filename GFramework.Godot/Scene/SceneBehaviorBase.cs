@@ -144,7 +144,7 @@ public abstract class SceneBehaviorBase<T> : ISceneBehavior
     public virtual async ValueTask OnPauseAsync()
     {
         if (_scene != null)
-            await _scene.OnPauseAsync().ConfigureAwait(false);
+            await _scene.OnPauseAsync();
 
         // 暂停处理
         Owner.SetProcess(false);
@@ -165,7 +165,7 @@ public abstract class SceneBehaviorBase<T> : ISceneBehavior
             return;
 
         if (_scene != null)
-            await _scene.OnResumeAsync().ConfigureAwait(false);
+            await _scene.OnResumeAsync();
 
         // 恢复处理
         Owner.SetProcess(true);
@@ -198,7 +198,7 @@ public abstract class SceneBehaviorBase<T> : ISceneBehavior
     public virtual async ValueTask OnUnloadAsync()
     {
         if (_scene != null)
-            await _scene.OnUnloadAsync().ConfigureAwait(false);
+            await _scene.OnUnloadAsync();
 
         // 释放节点
         Owner.QueueFreeX();
