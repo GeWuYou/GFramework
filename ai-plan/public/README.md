@@ -58,6 +58,9 @@ help the current worktree land on the right recovery documents without scanning 
 - Branch: `docs/sdk-update-documentation`
   - Worktree hint: `GFramework-update-documentation`
   - Priority 1: `documentation-governance-and-refresh`
+- Branch: `feat/coroutine-optimization`
+    - Worktree hint: `GFramework-coroutine-optimization`
+    - Priority 1: `coroutine-optimization`
 
 ## Archived Topics
 
