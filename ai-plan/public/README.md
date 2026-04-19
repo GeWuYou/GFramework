@@ -25,6 +25,11 @@ help the current worktree land on the right recovery documents without scanning 
   - Purpose: continue the AI-First config runtime, generator, and consumer DX work for `GFramework.Game`.
   - Tracking: `ai-plan/public/ai-first-config-system/todos/ai-first-config-system-tracking.md`
   - Trace: `ai-plan/public/ai-first-config-system/traces/ai-first-config-system-trace.md`
+- `coroutine-optimization`
+  - Purpose: continue the coroutine semantics, host integration, observability, regression coverage, and migration-doc
+    follow-up work.
+  - Tracking: `ai-plan/public/coroutine-optimization/todos/coroutine-optimization-tracking.md`
+  - Trace: `ai-plan/public/coroutine-optimization/traces/coroutine-optimization-trace.md`
 - `cqrs-rewrite`
   - Purpose: continue the CQRS migration, registry hardening, and related PR follow-up.
   - Tracking: `ai-plan/public/cqrs-rewrite/todos/cqrs-rewrite-migration-tracking.md`
@@ -46,6 +51,10 @@ help the current worktree land on the right recovery documents without scanning 
   - Worktree hint: `GFramework-cqrs`
   - Priority 1: `ai-plan-governance`
   - Priority 2: `cqrs-rewrite`
+- Branch: `feat/coroutine-optimization`
+  - Worktree hint: `GFramework-coroutine-optimization`
+  - Priority 1: `coroutine-optimization`
+  - Priority 2: `ai-plan-governance`
 - Branch: `docs/sdk-update-documentation`
   - Worktree hint: `GFramework-update-documentation`
   - Priority 1: `documentation-governance-and-refresh`
