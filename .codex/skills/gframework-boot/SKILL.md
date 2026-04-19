@@ -19,29 +19,31 @@ Treat `AGENTS.md` as the source of truth. Use this skill to enforce a startup se
    `todos/` and `traces/` directories in listed priority order.
 5. If no mapping exists, scan `ai-plan/public/<topic>/todos/` and `ai-plan/public/<topic>/traces/` across active
    topics, and ignore `ai-plan/public/archive/` unless the user explicitly asks for historical context.
-6. If `ai-plan/private/<branch-or-worktree>/` exists and is relevant, treat it as private recovery context for the
+6. Treat `ai-plan/public/<topic>/archive/` as secondary context even for active topics; only read it when the active
+   todo/trace files point there or when the user explicitly asks for historical detail.
+7. If `ai-plan/private/<branch-or-worktree>/` exists and is relevant, treat it as private recovery context for the
    current worktree only and do not assume it should be committed.
-7. Classify the task state:
+8. Classify the task state:
    - `new`: no matching recovery document exists, or the user is clearly starting fresh work
    - `resume`: a matching todo or trace exists and the user is continuing that thread
    - `recovery`: prior work looks partial, interrupted, or ambiguous and the next safe recovery point must be reconstructed
-8. Choose the best matching `ai-plan` artifacts:
+9. Choose the best matching `ai-plan` artifacts:
    - Prefer topics explicitly mapped from `ai-plan/public/README.md`
    - Prefer path names or headings that match the user's task wording
    - Break ties by most recently updated trace or todo
    - If ambiguity would materially change implementation, summarize the candidates and ask one concise question
-9. Classify the task complexity before deciding on subagents:
+10. Classify the task complexity before deciding on subagents:
    - `simple`: one concern, one file or module, no parallel discovery required
    - `medium`: a small number of modules, some read-only exploration helpful, critical path still easy to keep local
    - `complex`: cross-module design, migration, large refactor, or work likely to exceed one context window
-10. Apply the delegation policy from `AGENTS.md`:
+11. Apply the delegation policy from `AGENTS.md`:
    - Keep the critical path local
    - Use `explorer` with `gpt-5.1-codex-mini` for narrow read-only questions, tracing, inventory, and comparisons
    - Use `worker` with `gpt-5.4` only for bounded implementation tasks with explicit ownership
    - Do not delegate purely for ceremony; delegate only when it materially shortens the task or controls context growth
-11. Before editing files, tell the user what you read, how you classified the task, whether subagents will be used,
+12. Before editing files, tell the user what you read, how you classified the task, whether subagents will be used,
     and the first implementation step.
-12. Proceed with execution, validation, and documentation updates required by `AGENTS.md`.
+13. Proceed with execution, validation, and documentation updates required by `AGENTS.md`.
 
 ## Task Tracking
 
@@ -52,6 +54,9 @@ For multi-step, cross-module, or interruption-prone work, maintain the repositor
   risks, and the next recovery point.
 - Update the matching public trace under `ai-plan/public/<topic>/traces/` with key decisions, delegated scope, and the
   immediate next step.
+- Keep the active todo/trace files concise enough for `boot` to use as default entrypoints. When completed, validated
+  stages start piling up, move their detailed history into `ai-plan/public/<topic>/archive/` and leave archive
+  pointers in the active files.
 - Move stage-complete artifacts into `ai-plan/public/<topic>/archive/`, and move completed topics into
   `ai-plan/public/archive/<topic>/` so `boot` does not keep reloading stale context.
 - Keep worktree-private scratch recovery files under `ai-plan/private/` and do not treat them as commit targets.

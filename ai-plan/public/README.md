@@ -16,6 +16,10 @@ help the current worktree land on the right recovery documents without scanning 
   - Purpose: govern the `ai-plan/` directory model, startup index, and archive policy.
   - Tracking: `ai-plan/public/ai-plan-governance/todos/ai-plan-governance-tracking.md`
   - Trace: `ai-plan/public/ai-plan-governance/traces/ai-plan-governance-trace.md`
+- `ai-first-config-system`
+  - Purpose: continue the AI-First config runtime, generator, and consumer DX work for `GFramework.Game`.
+  - Tracking: `ai-plan/public/ai-first-config-system/todos/ai-first-config-system-tracking.md`
+  - Trace: `ai-plan/public/ai-first-config-system/traces/ai-first-config-system-trace.md`
 - `cqrs-rewrite`
   - Purpose: continue the CQRS migration, registry hardening, and related PR follow-up.
   - Tracking: `ai-plan/public/cqrs-rewrite/todos/cqrs-rewrite-migration-tracking.md`
@@ -23,6 +27,9 @@ help the current worktree land on the right recovery documents without scanning 
 
 ## Worktree To Active Topic Map
 
+- Branch: `feat/ai-first-config`
+  - Worktree hint: `GFramework-Ai-First-Config`
+  - Priority 1: `ai-first-config-system`
 - Branch: `feat/cqrs-optimization`
   - Worktree hint: `GFramework-cqrs`
   - Priority 1: `ai-plan-governance`
