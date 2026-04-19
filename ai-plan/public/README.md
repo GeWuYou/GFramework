@@ -12,6 +12,11 @@ help the current worktree land on the right recovery documents without scanning 
 
 ## Active Topics
 
+- `analyzer-warning-reduction`
+  - Purpose: track the analyzer warning reduction branch, including the current recovery point, remaining warning
+    hotspots, and the next safe warning-reduction slice.
+  - Tracking: `ai-plan/public/analyzer-warning-reduction/todos/analyzer-warning-reduction-tracking.md`
+  - Trace: `ai-plan/public/analyzer-warning-reduction/traces/analyzer-warning-reduction-trace.md`
 - `ai-plan-governance`
   - Purpose: govern the `ai-plan/` directory model, startup index, and archive policy.
   - Tracking: `ai-plan/public/ai-plan-governance/todos/ai-plan-governance-tracking.md`
@@ -27,6 +32,9 @@ help the current worktree land on the right recovery documents without scanning 
 
 ## Worktree To Active Topic Map
 
+- Branch: `fix/analyzer-warning-reduction-batch`
+  - Worktree hint: `GFramework-analyzer`
+  - Priority 1: `analyzer-warning-reduction`
 - Branch: `feat/ai-first-config`
   - Worktree hint: `GFramework-Ai-First-Config`
   - Priority 1: `ai-first-config-system`

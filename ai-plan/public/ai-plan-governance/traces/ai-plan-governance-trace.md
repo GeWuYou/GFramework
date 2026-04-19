@@ -28,3 +28,22 @@
 
 1. 未来若 active 入口再次因为已完成阶段累积而膨胀，直接按同一模式归档，不再保留为追加式历史日志
 2. 后续新增 topic 时，默认同步创建 `todos/`、`traces/` 与 `archive/` 目录
+
+### 阶段：遗留 local-plan 迁移验证（RP-005）
+
+- 复核当前工作树后确认，仍存在未纳入 `ai-plan/` 的遗留恢复目录 `local-plan/`
+- 将 `local-plan` 中属于 analyzer warning reduction 主题的 tracking / trace 拆分迁入：
+  - `ai-plan/public/analyzer-warning-reduction/todos/`
+  - `ai-plan/public/analyzer-warning-reduction/traces/`
+  - `ai-plan/public/analyzer-warning-reduction/archive/todos/`
+  - `ai-plan/public/analyzer-warning-reduction/archive/traces/`
+- 为新 topic 补齐 active 入口与 archive 历史，并更新 `ai-plan/public/README.md` 的 active topics 与 worktree 映射
+- 删除旧 `local-plan` 文件，验证治理规则不仅适用于现有 topic，也适用于从 worktree 遗留目录迁入的新 topic
+- 额外完成验证：
+  - `find ai-plan/public/analyzer-warning-reduction -maxdepth 3 -type f | sort`
+  - `dotnet build GFramework.Core.Abstractions/GFramework.Core.Abstractions.csproj -c Release -p:RestoreFallbackFolders=`
+
+### 下一步
+
+1. 后续若再发现 `local-plan` 一类目录，直接按 topic 归属迁入 `ai-plan/public/<topic>/`
+2. 保持新 topic 的 active 入口精简，避免把迁移动作变成简单目录平移

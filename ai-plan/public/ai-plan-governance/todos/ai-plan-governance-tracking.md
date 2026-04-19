@@ -20,6 +20,7 @@
   - 将"主题内 `archive/` 已存在"升级为"active todo/trace 过长时必须归档已完成且已验证阶段"的显式规则
   - 让 active `todos/` / `traces/` 只保留当前恢复点、活跃事实、活跃风险、下一步与 archive 指针
   - 将 `ai-plan-governance`、`ai-first-config-system` 与 `cqrs-rewrite` 的历史阶段从默认启动入口移出
+  - 将当前工作树遗留的 `local-plan` 示例迁入 `ai-plan/public/<topic>/`，验证治理规则对新 topic 迁移同样成立
 
 ### 已知风险
 
@@ -43,6 +44,12 @@
   - `ai-plan-governance` 的 RP-002 至 RP-004 历史
   - `ai-first-config-system` 截至 `2026-04-17` 的详细跟踪与执行 trace
   - `cqrs-rewrite` 截至 `RP-043` 的详细跟踪与执行 trace
+- 已将当前工作树遗留的 analyzer warning reduction 恢复文档从 `local-plan/` 迁入：
+  - `ai-plan/public/analyzer-warning-reduction/todos/`
+  - `ai-plan/public/analyzer-warning-reduction/traces/`
+  - `ai-plan/public/analyzer-warning-reduction/archive/todos/`
+  - `ai-plan/public/analyzer-warning-reduction/archive/traces/`
+- 已同步更新 `ai-plan/public/README.md`，将分支 `fix/analyzer-warning-reduction-batch` 映射到新 topic
 - 已同步更新 `AGENTS.md`、`ai-plan/README.md` 与 `gframework-boot`，明确 active 文档不是追加式日志，已完成且已验证阶段必须归档
 
 ## 验证
@@ -53,6 +60,9 @@
 - `wc -l ai-plan/public/ai-plan-governance/todos/ai-plan-governance-tracking.md ai-plan/public/ai-plan-governance/traces/ai-plan-governance-trace.md ai-plan/public/ai-first-config-system/todos/ai-first-config-system-tracking.md ai-plan/public/ai-first-config-system/traces/ai-first-config-system-trace.md ai-plan/public/cqrs-rewrite/todos/cqrs-rewrite-migration-tracking.md ai-plan/public/cqrs-rewrite/traces/cqrs-rewrite-migration-trace.md`
   - 结果：通过
   - 备注：6 个 active 入口文件当前合计 `249` 行，已从治理前的 `3046` 行显著收短
+- `find ai-plan/public/analyzer-warning-reduction -maxdepth 3 -type f | sort`
+  - 结果：通过
+  - 备注：新 topic 已按 `todos/`、`traces/` 与主题内 `archive/` 目录语义落位
 - `dotnet build GFramework.Core.Abstractions/GFramework.Core.Abstractions.csproj -c Release -p:RestoreFallbackFolders=`
   - 结果：通过
   - 备注：`GFramework.Cqrs.Abstractions` 与 `GFramework.Core.Abstractions` 构建通过，`0 warning / 0 error`
@@ -64,6 +74,6 @@
 
 ## 下一步
 
-1. 后续只要某个 active 主题积累了多个已完成且已验证阶段，就在同一变更里将其细节迁入该主题自己的 `archive/`
-2. 若某个主题整体完成，再将整个主题目录移入 `ai-plan/public/archive/<topic>/`
-3. 后续新增 topic 时，默认直接创建 `todos/`、`traces/` 与 `archive/`，不要再把历史阶段长期堆在 active 入口
+1. 继续扫描是否还有遗留的 `local-plan` 或其他非 `ai-plan` 的 durable recovery 文档目录
+2. 后续只要某个 active 主题积累了多个已完成且已验证阶段，就在同一变更里将其细节迁入该主题自己的 `archive/`
+3. 若某个主题整体完成，再将整个主题目录移入 `ai-plan/public/archive/<topic>/`
