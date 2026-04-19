@@ -2,6 +2,32 @@
 
 ## 2026-04-19
 
+### 阶段：遗留 local-plan 收口（RP-004）
+
+- 建立 `AI-PLAN-GOV-RP-004` 恢复点
+- 发现当前 worktree `feat/ai-first-config` 仍保留旧 `local-plan/`，说明主题化 `ai-plan/public/<topic>/` 落地后还有遗留入口未收口
+- 已据此完成本轮治理补齐：
+  - 新增 `ai-plan/public/ai-first-config-system/` 主题目录，并迁入 tracking / next / trace 文档
+  - 在 `ai-plan/public/README.md` 为 `feat/ai-first-config` 绑定 `ai-first-config-system`
+  - 将迁移后的公共文档中的 `local-plan` 旧路径引用更新为新的 `ai-plan/public/...` 路径
+  - 将绝对路径、宿主 NuGet fallback 目录和 `GIT_DIR` / `GIT_WORK_TREE` 命令细节改写为可提交的公共表述
+
+### 验证（RP-004）
+
+- `find ai-plan/public/ai-first-config-system -maxdepth 3 -type f | sort`
+  - 结果：通过
+- `rg -n "local-plan|D:\\\\|/mnt/|GIT_DIR=" ai-plan/public/ai-first-config-system`
+  - 结果：通过
+- `test ! -e local-plan`
+  - 结果：通过
+- `dotnet build GFramework.Core.Abstractions/GFramework.Core.Abstractions.csproj -c Release -p:RestoreFallbackFolders=`
+  - 结果：通过
+
+### 下一步（RP-004）
+
+1. 后续若发现其他 worktree 仍有旧恢复文档，沿用“主题目录迁移 + 索引登记 + 公共内容清洗”同一流程处理
+2. 若某个主题后续再分阶段沉淀恢复文档，优先收入该主题自己的 `archive/`，避免活动入口再次膨胀
+
 ### 阶段：目录语义收口（RP-002）
 
 - 建立 `AI-PLAN-GOV-RP-002` 恢复点
