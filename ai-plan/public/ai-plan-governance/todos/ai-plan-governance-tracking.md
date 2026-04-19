@@ -20,7 +20,8 @@
   - 将"主题内 `archive/` 已存在"升级为"active todo/trace 过长时必须归档已完成且已验证阶段"的显式规则
   - 让 active `todos/` / `traces/` 只保留当前恢复点、活跃事实、活跃风险、下一步与 archive 指针
   - 将 `ai-plan-governance`、`ai-first-config-system` 与 `cqrs-rewrite` 的历史阶段从默认启动入口移出
-  - 将当前工作树遗留的 `local-plan` 示例迁入 `ai-plan/public/<topic>/`，验证治理规则对新 topic 迁移同样成立
+  - 将当前工作树遗留的 `local-plan` 示例迁入 `ai-plan/public/<topic>/`，验证治理规则对多个新 topic
+    迁移同样成立
 
 ### 已知风险
 
@@ -49,7 +50,14 @@
   - `ai-plan/public/analyzer-warning-reduction/traces/`
   - `ai-plan/public/analyzer-warning-reduction/archive/todos/`
   - `ai-plan/public/analyzer-warning-reduction/archive/traces/`
+- 已将当前工作树遗留的 documentation governance and refresh 恢复文档从 `local-plan/` 迁入：
+  - `ai-plan/public/documentation-governance-and-refresh/todos/`
+  - `ai-plan/public/documentation-governance-and-refresh/traces/`
+  - `ai-plan/public/documentation-governance-and-refresh/archive/todos/`
+  - `ai-plan/public/documentation-governance-and-refresh/archive/traces/`
 - 已同步更新 `ai-plan/public/README.md`，将分支 `fix/analyzer-warning-reduction-batch` 映射到新 topic
+- 已同步更新 `ai-plan/public/README.md`，将分支 `docs/sdk-update-documentation` 映射到
+  `documentation-governance-and-refresh`
 - 已同步更新 `AGENTS.md`、`ai-plan/README.md` 与 `gframework-boot`，明确 active 文档不是追加式日志，已完成且已验证阶段必须归档
 
 ## 验证
@@ -57,12 +65,18 @@
 - `find ai-plan/public -maxdepth 5 -type f | sort`
   - 结果：通过
   - 备注：活跃主题、主题内归档文件与主题级归档都已按新目录语义落位
-- `wc -l ai-plan/public/ai-plan-governance/todos/ai-plan-governance-tracking.md ai-plan/public/ai-plan-governance/traces/ai-plan-governance-trace.md ai-plan/public/ai-first-config-system/todos/ai-first-config-system-tracking.md ai-plan/public/ai-first-config-system/traces/ai-first-config-system-trace.md ai-plan/public/cqrs-rewrite/todos/cqrs-rewrite-migration-tracking.md ai-plan/public/cqrs-rewrite/traces/cqrs-rewrite-migration-trace.md`
+- `wc -l ai-plan/public/ai-plan-governance/todos/ai-plan-governance-tracking.md ai-plan/public/ai-plan-governance/traces/ai-plan-governance-trace.md ai-plan/public/ai-first-config-system/todos/ai-first-config-system-tracking.md ai-plan/public/ai-first-config-system/traces/ai-first-config-system-trace.md ai-plan/public/cqrs-rewrite/todos/cqrs-rewrite-migration-tracking.md ai-plan/public/cqrs-rewrite/traces/cqrs-rewrite-migration-trace.md ai-plan/public/analyzer-warning-reduction/todos/analyzer-warning-reduction-tracking.md ai-plan/public/analyzer-warning-reduction/traces/analyzer-warning-reduction-trace.md ai-plan/public/documentation-governance-and-refresh/todos/documentation-governance-and-refresh-tracking.md ai-plan/public/documentation-governance-and-refresh/traces/documentation-governance-and-refresh-trace.md`
   - 结果：通过
-  - 备注：6 个 active 入口文件当前合计 `249` 行，已从治理前的 `3046` 行显著收短
+  - 备注：10 个 active 入口文件当前合计 `508` 行，仍保持为按 topic 精简后的恢复入口，而非追加式历史日志
 - `find ai-plan/public/analyzer-warning-reduction -maxdepth 3 -type f | sort`
   - 结果：通过
   - 备注：新 topic 已按 `todos/`、`traces/` 与主题内 `archive/` 目录语义落位
+- `find ai-plan/public/documentation-governance-and-refresh -maxdepth 3 -type f | sort`
+  - 结果：通过
+  - 备注：文档治理 topic 已按 `todos/`、`traces/` 与主题内 `archive/` 目录语义落位
+- `test ! -e local-plan`
+  - 结果：通过
+  - 备注：当前工作树根目录已不再保留 legacy `local-plan/`
 - `dotnet build GFramework.Core.Abstractions/GFramework.Core.Abstractions.csproj -c Release -p:RestoreFallbackFolders=`
   - 结果：通过
   - 备注：`GFramework.Cqrs.Abstractions` 与 `GFramework.Core.Abstractions` 构建通过，`0 warning / 0 error`

@@ -47,3 +47,24 @@
 
 1. 后续若再发现 `local-plan` 一类目录，直接按 topic 归属迁入 `ai-plan/public/<topic>/`
 2. 保持新 topic 的 active 入口精简，避免把迁移动作变成简单目录平移
+
+### 阶段：文档治理 local-plan 迁移验证（RP-005）
+
+- 再次复核当前工作树后确认：遗留的 `local-plan/` 内容属于 documentation governance and refresh 主题
+- 按同一治理规则建立 `ai-plan/public/documentation-governance-and-refresh/`，并补齐：
+  - `todos/`
+  - `traces/`
+  - `archive/todos/`
+  - `archive/traces/`
+- 将旧 `local-plan` 中详细的文档治理 todo / trace 收入主题内归档，只保留精简版 active 入口
+- 在 `ai-plan/public/README.md` 中建立
+  `docs/sdk-update-documentation` -> `documentation-governance-and-refresh` 的 worktree 映射
+- 删除旧 `local-plan` 文件，验证当前工作树已无 legacy 根目录恢复入口
+- 额外完成验证：
+  - `find ai-plan/public/documentation-governance-and-refresh -maxdepth 3 -type f | sort`
+  - `test ! -e local-plan`
+
+### 下一步
+
+1. 后续若其他 worktree 仍存在 `local-plan` 一类目录，继续按 topic 归属迁入对应 `ai-plan/public/<topic>/`
+2. 继续保持 topic active 入口精简，避免把迁移后的公共目录重新写成追加式日志
