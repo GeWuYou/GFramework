@@ -34,6 +34,10 @@ help the current worktree land on the right recovery documents without scanning 
   - Purpose: continue the CQRS migration, registry hardening, and related PR follow-up.
   - Tracking: `ai-plan/public/cqrs-rewrite/todos/cqrs-rewrite-migration-tracking.md`
   - Trace: `ai-plan/public/cqrs-rewrite/traces/cqrs-rewrite-migration-trace.md`
+- `data-repository-persistence`
+  - Purpose: continue the data repository persistence hardening plus the settings / serialization follow-up backlog.
+  - Tracking: `ai-plan/public/data-repository-persistence/todos/data-repository-persistence-tracking.md`
+  - Trace: `ai-plan/public/data-repository-persistence/traces/data-repository-persistence-trace.md`
 - `documentation-governance-and-refresh`
   - Purpose: continue the documentation governance, README hardening, and `docs/zh-CN` accuracy refresh work.
   - Tracking: `ai-plan/public/documentation-governance-and-refresh/todos/documentation-governance-and-refresh-tracking.md`
@@ -55,6 +59,9 @@ help the current worktree land on the right recovery documents without scanning 
   - Worktree hint: `GFramework-coroutine-optimization`
   - Priority 1: `coroutine-optimization`
   - Priority 2: `ai-plan-governance`
+- Branch: `feat/data-repository-persistence`
+  - Worktree hint: `GFramework-data-repository-persistence`
+  - Priority 1: `data-repository-persistence`
 - Branch: `docs/sdk-update-documentation`
   - Worktree hint: `GFramework-update-documentation`
   - Priority 1: `documentation-governance-and-refresh`

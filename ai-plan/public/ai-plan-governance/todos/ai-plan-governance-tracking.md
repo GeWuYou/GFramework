@@ -17,10 +17,9 @@
 - 恢复点编号：`AI-PLAN-GOV-RP-005`
 - 当前阶段：`Phase 3`
 - 当前焦点：
-  - 将"主题内 `archive/` 已存在"升级为"active todo/trace 过长时必须归档已完成且已验证阶段"的显式规则
-  - 让 active `todos/` / `traces/` 只保留当前恢复点、活跃事实、活跃风险、下一步与 archive 指针
-  - 将 `ai-plan-governance`、`ai-first-config-system` 与 `cqrs-rewrite` 的历史阶段从默认启动入口移出
-  - 验证“只有早期 todo、没有 durable trace”的 legacy `local-plan` 也能迁入 `ai-plan/public/<topic>/`，且不退化为简单目录平移
+  - 继续扫描其他 worktree 是否仍有遗留的 `local-plan` 或其他平铺 durable recovery 目录
+  - 保持 active `todos/` / `traces/` 只保留当前恢复点、活跃事实、活跃风险、下一步与 archive 指针
+  - 确保 `ai-plan/public/README.md` 与各 topic active 文档对 worktree 映射、恢复点和下一步的描述保持同步
 
 ### 已知风险
 
@@ -59,11 +58,18 @@
   - `ai-plan/public/coroutine-optimization/traces/`
   - `ai-plan/public/coroutine-optimization/archive/todos/`
   - `ai-plan/public/coroutine-optimization/archive/traces/`
+- 已将当前工作树遗留的 settings / persistence / serialization 混合恢复文档从 `local-plan/` 迁入：
+  - `ai-plan/public/data-repository-persistence/todos/`
+  - `ai-plan/public/data-repository-persistence/traces/`
+  - `ai-plan/public/data-repository-persistence/archive/todos/`
+  - `ai-plan/public/data-repository-persistence/archive/traces/`
 - 已同步更新 `ai-plan/public/README.md`，将分支 `fix/analyzer-warning-reduction-batch` 映射到新 topic
 - 已同步更新 `ai-plan/public/README.md`，将分支 `docs/sdk-update-documentation` 映射到
   `documentation-governance-and-refresh`
 - 已同步更新 `ai-plan/public/README.md`，将分支 `feat/coroutine-optimization` 映射到
   `coroutine-optimization`
+- 已同步更新 `ai-plan/public/README.md`，将分支 `feat/data-repository-persistence` 映射到
+  `data-repository-persistence`
 - 已同步更新 `AGENTS.md`、`ai-plan/README.md` 与 `gframework-boot`，明确 active 文档不是追加式日志，已完成且已验证阶段必须归档
 
 ## 验证
@@ -80,6 +86,9 @@
 - `find ai-plan/public/coroutine-optimization -maxdepth 3 -type f | sort`
   - 结果：通过
   - 备注：更早期、只有 todo 没有 trace 的 coroutine 计划也已按治理规则补齐 active 入口与 archive
+- `find ai-plan/public/data-repository-persistence -maxdepth 3 -type f | sort`
+  - 结果：通过
+  - 备注：只有单文件且混合承担 todo / trace 的 legacy `local-plan` 也已按治理规则拆分为 active 入口与主题内 archive
 - `test ! -e local-plan`
   - 结果：通过
   - 备注：当前工作树根目录已不再保留 legacy `local-plan/`
@@ -94,6 +103,6 @@
 
 ## 下一步
 
-1. 继续扫描是否还有遗留的 `local-plan` 或其他非 `ai-plan` 的 durable recovery 文档目录，尤其关注只有 todo 没有 trace 的更早期计划
+1. 继续扫描是否还有遗留的 `local-plan` 或其他非 `ai-plan` 的 durable recovery 文档目录，尤其关注单文件混合 tracking/trace 或只有 todo 没有 trace 的更早期计划
 2. 后续只要某个 active 主题积累了多个已完成且已验证阶段，就在同一变更里将其细节迁入该主题自己的 `archive/`
 3. 若某个主题整体完成，再将整个主题目录移入 `ai-plan/public/archive/<topic>/`

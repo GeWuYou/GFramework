@@ -93,3 +93,27 @@
 
 1. 后续若再遇到"只有 todo、没有 trace"的更早期计划，继续按同一模式迁入 topic archive，并明确标注推导边界
 2. 保持新 topic 的 active 入口精简，不把补写 trace 变成伪造逐日执行日志
+
+### 阶段：单文件 local-plan 迁移验证（RP-005）
+
+- 复核当前工作树后确认：遗留的 `local-plan/` 只剩一份
+  `settings-persistence-serialization-tracking.md`，它同时承担 todo 与 trace 角色，不符合当前 `ai-plan` 目录语义
+- 按同一治理规则建立 `ai-plan/public/data-repository-persistence/`，并补齐：
+  - `todos/`
+  - `traces/`
+  - `archive/todos/`
+  - `archive/traces/`
+- 将旧混合文件拆分为主题内历史跟踪归档与基于同一材料整理的历史 trace，显式保留“原始材料并非独立 trace”的边界
+- 新建精简版 active tracking / trace 入口，只保留当前恢复点、活跃事实、风险与下一步
+- 在 `ai-plan/public/README.md` 中建立
+  `feat/data-repository-persistence` -> `data-repository-persistence` 的 worktree 映射
+- 删除旧 `local-plan` 目录，验证当前工作树根目录已不再保留 legacy 私有恢复入口
+- 额外完成验证：
+  - `find ai-plan/public/data-repository-persistence -maxdepth 3 -type f | sort`
+  - `test ! -e local-plan`
+  - `dotnet build GFramework.Core.Abstractions/GFramework.Core.Abstractions.csproj -c Release -p:RestoreFallbackFolders=`
+
+### 下一步 — 单文件计划迁移
+
+1. 后续若再遇到“单文件同时承担 tracking / trace”的更早期计划，继续按同一模式迁入 topic archive，并显式标注来源边界
+2. 保持新 topic 的 active 入口精简，避免把拆分后的公共目录重新写回旧式混合日志
