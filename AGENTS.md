@@ -334,7 +334,8 @@ bash scripts/validate-csharp-naming.sh
     entry points
   - `ai-plan/public/<topic>/todos/`: repository-safe recovery documents for an active topic
   - `ai-plan/public/<topic>/traces/`: repository-safe execution traces for an active topic
-  - `ai-plan/public/<topic>/archive/`: archived stage-level artifacts that still belong to an active topic
+  - `ai-plan/public/<topic>/archive/`: archived stage-level artifacts that still belong to an active topic; prefer
+    `archive/todos/` and `archive/traces/` when archiving content cut out of the active entry files
   - `ai-plan/public/archive/<topic>/`: completed-topic archives that should not be treated as default boot context
   - `ai-plan/private/`: worktree-private recovery artifacts; keep these untracked and scoped to the current worktree
 - Contributors MUST keep committed `ai-plan/public/**` content safe to publish in Git history.
@@ -352,6 +353,8 @@ bash scripts/validate-csharp-naming.sh
   `ai-plan/public/<topic>/todos/` in the same change.
 - Tracking updates MUST reflect completed work, newly discovered issues, validation results, and the next recommended
   recovery point.
+- Active tracking and trace files are recovery entrypoints, not append-only changelogs. They MUST stay concise enough
+  for `boot` to locate the current recovery point quickly.
 - Completing code changes without updating the active tracking document is considered incomplete work.
 - For any multi-step refactor, migration, or cross-module task, contributors MUST create or adopt a dedicated recovery
   document under `ai-plan/public/<topic>/todos/` before making substantive code changes.
@@ -361,6 +364,9 @@ bash scripts/validate-csharp-naming.sh
   trace should record the current date, key decisions, validation milestones, and the immediate next step.
 - When a stage inside an active topic is fully complete, move the finished artifacts into that topic's `archive/`
   directory instead of leaving every completed step in the default boot path.
+- When completed and validated stages begin to accumulate, contributors MUST archive their detailed history out of the
+  active `todos/` and `traces/` entry files in the same change. Keep only the current recovery point, active facts,
+  active risks, immediate next step, and pointers to the relevant archive files in the default boot path.
 - When a topic is fully complete, move the entire topic directory under `ai-plan/public/archive/<topic>/` and remove it
   from `ai-plan/public/README.md` in the same change.
 - When a task spans multiple commits or is likely to exceed a single agent context window, update both the recovery

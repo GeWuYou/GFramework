@@ -14,69 +14,47 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`AI-PLAN-GOV-RP-004`
-- 当前阶段：`Phase 2`
+- 恢复点编号：`AI-PLAN-GOV-RP-005`
+- 当前阶段：`Phase 3`
 - 当前焦点：
-  - 已将共享恢复文档按主题迁移到 `ai-plan/public/<topic>/todos/` 与 `ai-plan/public/<topic>/traces/`
-  - 已为 `boot` 新增 `ai-plan/public/README.md` 公共索引，并绑定当前 worktree 的活跃主题顺序
-  - 已将完成度更高的 `cqrs-cache-docs-hardening` 移入 `ai-plan/public/archive/`
-  - 已同步更新 `.gitignore`、`AGENTS.md`、`ai-plan/README.md`、根 `README.md` 与 `gframework-boot`
-  - 已明确主题内归档与主题级归档的双层规则，避免活动区无限增长
-  - 已将当前 `feat/ai-first-config` worktree 下遗留的 `local-plan/` 收口到新的公共主题目录，并补齐索引映射
+  - 将“主题内 `archive/` 已存在”升级为“active todo/trace 过长时必须归档已完成且已验证阶段”的显式规则
+  - 让 active `todos/` / `traces/` 只保留当前恢复点、活跃事实、活跃风险、下一步与 archive 指针
+  - 将 `ai-plan-governance`、`ai-first-config-system` 与 `cqrs-rewrite` 的历史阶段从默认启动入口移出
 
 ## 已完成
 
-- `.gitignore` 现允许 `ai-plan/public/**/*.md` 以主题目录与归档目录形式进入版本控制
-- `AGENTS.md` 已补充：
-  - `public/README.md`、活动主题目录、主题内归档与主题级归档的职责划分
-  - `boot` 默认忽略 `ai-plan/public/archive/**`
-  - worktree 与活跃主题映射变化时，必须同步更新公共索引
-- `.codex/skills/gframework-boot/SKILL.md` 与其 `references/startup-artifacts.md` 已切换到：
-  - 优先读取 `ai-plan/public/README.md`
-  - 命中映射后优先读取对应主题目录
-  - 未命中映射时再扫描活动主题目录，并排除公共归档区
-- `ai-plan/README.md` 已补充主题命名、归档触发条件与 `boot` 读取顺序
-- 根 `README.md` 已改为要求维护公共索引与对应主题目录
-- 现有共享文档已迁移为：
-  - `ai-plan/public/ai-plan-governance/**`
-  - `ai-plan/public/ai-first-config-system/**`
-  - `ai-plan/public/cqrs-rewrite/**`
-  - `ai-plan/public/archive/cqrs-cache-docs-hardening/**`
-- 已根据 PR #253 的最新未解决 review thread 清理 `ai-plan/public/ai-plan-governance/traces/ai-plan-governance-trace.md`
-  中重复的 `### 验证` / `### 下一步` 标题，并补充恢复点后缀以消除 MD024 锚点冲突
-- 已将当前 `feat/ai-first-config` worktree 的 `local-plan/` 文档迁移到 `ai-plan/public/ai-first-config-system/`
-- 已在 `ai-plan/public/README.md` 为 `feat/ai-first-config` 登记 `ai-first-config-system` 活跃主题映射
-- 已清洗迁移文档中的 `local-plan` 旧路径、绝对文件系统路径与仅适用于本机的 Git worktree 命令细节
+- 已为活跃主题建立并使用主题内归档目录：
+  - `ai-plan/public/ai-plan-governance/archive/todos/`
+  - `ai-plan/public/ai-plan-governance/archive/traces/`
+  - `ai-plan/public/ai-first-config-system/archive/todos/`
+  - `ai-plan/public/ai-first-config-system/archive/traces/`
+  - `ai-plan/public/cqrs-rewrite/archive/todos/`
+  - `ai-plan/public/cqrs-rewrite/archive/traces/`
+- 已将以下历史内容移出默认 boot 路径：
+  - `ai-plan-governance` 的 RP-002 至 RP-004 历史
+  - `ai-first-config-system` 截至 `2026-04-17` 的详细跟踪与执行 trace
+  - `cqrs-rewrite` 截至 `RP-043` 的详细跟踪与执行 trace
+- 已同步更新 `AGENTS.md`、`ai-plan/README.md` 与 `gframework-boot`，明确 active 文档不是追加式日志，已完成且已验证阶段必须归档
 
 ## 验证
 
-- `find ai-plan/public -maxdepth 4 -type f | sort`
+- `find ai-plan/public -maxdepth 5 -type f | sort`
   - 结果：通过
-  - 备注：活动主题、公共索引与归档主题已按新目录语义落位
-- `rg -n "ai-plan/public/README.md|ai-plan/public/<topic>|ai-plan/public/archive|ai-plan/private/" AGENTS.md .codex/skills/gframework-boot/SKILL.md .codex/skills/gframework-boot/references/startup-artifacts.md ai-plan/README.md README.md .gitignore`
+  - 备注：活跃主题、主题内归档文件与主题级归档都已按新目录语义落位
+- `wc -l ai-plan/public/ai-plan-governance/todos/ai-plan-governance-tracking.md ai-plan/public/ai-plan-governance/traces/ai-plan-governance-trace.md ai-plan/public/ai-first-config-system/todos/ai-first-config-system-tracking.md ai-plan/public/ai-first-config-system/traces/ai-first-config-system-trace.md ai-plan/public/cqrs-rewrite/todos/cqrs-rewrite-migration-tracking.md ai-plan/public/cqrs-rewrite/traces/cqrs-rewrite-migration-trace.md`
   - 结果：通过
-  - 备注：新目录语义、索引入口与归档规则已统一到仓库规则与 boot skill
-- `dotnet build GFramework.Core.Abstractions/GFramework.Core.Abstractions.csproj -c Release --no-restore`
-  - 结果：通过
-  - 备注：本轮规则与文档调整未引入构建问题
-- `rg -n "^### (验证|下一步)" ai-plan/public/ai-plan-governance/traces/ai-plan-governance-trace.md`
-  - 结果：通过
-  - 备注：同名标题已按恢复点后缀唯一化，不再产生重复锚点
-- `rg -n "local-plan|D:\\\\|/mnt/|GIT_DIR=" ai-plan/public/ai-first-config-system`
-  - 结果：通过
-  - 备注：迁移后的公共主题文档未保留旧目录入口或机器本地路径
-- `find ai-plan/public/ai-first-config-system -maxdepth 3 -type f | sort`
-  - 结果：通过
-  - 备注：当前 worktree 的 tracking / next / trace 已按主题目录落位
-- `test ! -e local-plan`
-  - 结果：通过
-  - 备注：旧 worktree 根目录入口已删除，不再与新的公共主题目录并存
+  - 备注：6 个 active 入口文件当前合计 `249` 行，已从治理前的 `3046` 行显著收短
 - `dotnet build GFramework.Core.Abstractions/GFramework.Core.Abstractions.csproj -c Release -p:RestoreFallbackFolders=`
   - 结果：通过
-  - 备注：默认 `--no-restore` 构建仍会命中旧的宿主 Windows NuGet fallback 配置，本轮通过显式清空 `RestoreFallbackFolders` 完成最小构建验证
+  - 备注：`GFramework.Cqrs.Abstractions` 与 `GFramework.Core.Abstractions` 构建通过，`0 warning / 0 error`
+
+## Archive Index
+
+- 治理历史跟踪归档：[ai-plan-governance-history-rp002-rp004.md](../archive/todos/ai-plan-governance-history-rp002-rp004.md)
+- 治理历史 trace 归档：[ai-plan-governance-history-rp002-rp004.md](../archive/traces/ai-plan-governance-history-rp002-rp004.md)
 
 ## 下一步
 
-1. 后续再发现 legacy `local-plan/` 或平铺恢复文档时，先迁入对应 `ai-plan/public/<topic>/`，再补 `public/README.md` 映射
-2. 阶段完成后优先收入主题内 `archive/`；主题整体完成后，再整目录移入 `ai-plan/public/archive/`
-3. 若未来再新增 skill 或仓库规则引用 `ai-plan/`，统一按“公共索引 + 活动主题 + 归档主题 + 私有目录”扩展，不再恢复平铺结构
+1. 后续只要某个 active 主题积累了多个已完成且已验证阶段，就在同一变更里将其细节迁入该主题自己的 `archive/`
+2. 若某个主题整体完成，再将整个主题目录移入 `ai-plan/public/archive/<topic>/`
+3. 后续新增 topic 时，默认直接创建 `todos/`、`traces/` 与 `archive/`，不要再把历史阶段长期堆在 active 入口

@@ -18,6 +18,7 @@ bootstrapping purpose.
 - `public/<topic>/archive/`
   - Stage-level archive for completed artifacts that still belong to an active topic.
   - Use this when a topic remains active, but some prior phase no longer belongs in the default boot path.
+  - Prefer `archive/todos/` and `archive/traces/` when archiving content cut from the active recovery entry files.
 - `public/archive/<topic>/`
   - Completed-topic archive.
   - Move the entire topic directory here when that work direction is fully complete.
@@ -34,6 +35,9 @@ bootstrapping purpose.
   the user explicitly asks for historical context.
 - When a worktree changes its active topic set, update `public/README.md` in the same change.
 - When a stage is complete, move the finished artifacts into `public/<topic>/archive/`.
+- Keep the active `todos/` and `traces/` entry files concise. Once a stage is complete and validated, move its detailed
+  history into `public/<topic>/archive/` and leave only the current recovery point, active facts, active risks,
+  immediate next step, and archive pointers in the default boot path.
 - When a topic is complete, move the whole topic directory into `public/archive/<topic>/` and remove it from the
   shared startup index.
 

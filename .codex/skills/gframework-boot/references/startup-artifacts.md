@@ -16,6 +16,8 @@
 - Prefer the newest matching trace when several candidates describe the same feature area.
 - If one file records a clearer recovery point than a newer but vague file, prefer the clearer recovery point.
 - Ignore `ai-plan/public/archive/**` unless the user explicitly requests historical recovery context.
+- Even inside an active topic, prefer the root `todos/` and `traces/` entry files first; only read `archive/` when the
+  active files point there or when the user asks for historical detail.
 - If a matching `ai-plan/private/<branch-or-worktree>/` directory exists, use it only as private context for the current worktree.
 
 ## Complexity Defaults
