@@ -16,7 +16,7 @@
   - 在 `AGENTS.md` 中补齐 public/private 职责边界，以及敏感信息与绝对路径禁写规则
   - 在 `gframework-boot` 中同步新的读取顺序：优先 public，按需读取当前 worktree 私有目录
 
-### 验证
+### 验证（RP-002）
 
 - `find ai-plan -maxdepth 3 -type f | sort`
   - 结果：通过
@@ -25,7 +25,7 @@
 - `dotnet build GFramework.Core.Abstractions/GFramework.Core.Abstractions.csproj -c Release`
   - 结果：通过
 
-### 下一步
+### 下一步（RP-002）
 
 1. 后续若出现新的 worktree 私有恢复需求，直接在 `ai-plan/private/<branch-or-worktree>/` 下创建，不再向共享目录追加本地临时状态
 2. 若将来需要进一步限制格式，可再为 `public/**` 与 `private/` 各自补一个模板文件，但本轮先把目录语义和安全边界固定下来
@@ -43,7 +43,7 @@
     主题内归档 + 主题级归档”的语义
   - 将 `.gitignore` 调整为允许 `ai-plan/public/**/*.md` 以新层级进入版本控制
 
-### 验证
+### 验证（RP-003）
 
 - `find ai-plan/public -maxdepth 4 -type f | sort`
   - 结果：通过
@@ -52,7 +52,7 @@
 - `dotnet build GFramework.Core.Abstractions/GFramework.Core.Abstractions.csproj -c Release --no-restore`
   - 结果：通过
 
-### 下一步
+### 下一步（RP-003）
 
 1. 未来每次新增或关闭主题，都同步更新 `ai-plan/public/README.md`，不要让 `boot` 回到全量扫描模式
 2. 若某个活跃主题内部继续积累阶段性完成物，优先收入该主题目录下的 `archive/`

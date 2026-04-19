@@ -40,6 +40,8 @@
   - `ai-plan/public/ai-plan-governance/**`
   - `ai-plan/public/cqrs-rewrite/**`
   - `ai-plan/public/archive/cqrs-cache-docs-hardening/**`
+- 已根据 PR #253 的最新未解决 review thread 清理 `ai-plan/public/ai-plan-governance/traces/ai-plan-governance-trace.md`
+  中重复的 `### 验证` / `### 下一步` 标题，并补充恢复点后缀以消除 MD024 锚点冲突
 
 ## 验证
 
@@ -52,6 +54,9 @@
 - `dotnet build GFramework.Core.Abstractions/GFramework.Core.Abstractions.csproj -c Release --no-restore`
   - 结果：通过
   - 备注：本轮规则与文档调整未引入构建问题
+- `rg -n "^### (验证|下一步)" ai-plan/public/ai-plan-governance/traces/ai-plan-governance-trace.md`
+  - 结果：通过
+  - 备注：同名标题已按恢复点后缀唯一化，不再产生重复锚点
 
 ## 下一步
 
