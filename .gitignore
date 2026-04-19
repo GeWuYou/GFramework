@@ -18,10 +18,9 @@ ai-plan/*
 !ai-plan/README.md
 !ai-plan/public/
 ai-plan/public/*
-!ai-plan/public/todos/
-!ai-plan/public/traces/
-!ai-plan/public/todos/*.md
-!ai-plan/public/traces/*.md
+!ai-plan/public/README.md
+!ai-plan/public/**/
+!ai-plan/public/**/*.md
 ai-plan/private/
 ai-libs/
 # tool

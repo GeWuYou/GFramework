@@ -133,7 +133,7 @@ GFramework.sln
 
 1. 先阅读对应模块目录下的 `README.md`
 2. 如果改动影响采用路径、安装方式、公共 API 或目录结构，同时更新 `docs/zh-CN/`
-3. 对跨模块或多阶段任务，维护 `ai-plan/public/todos/` 与 `ai-plan/public/traces/`
+3. 对跨模块或多阶段任务，维护 `ai-plan/public/README.md` 与对应主题目录下的 tracking / trace
 
 ## 许可证
 

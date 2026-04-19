@@ -44,8 +44,8 @@ All AI agents and contributors must follow these rules when writing, reviewing, 
   `按 boot 开始`、`先看 AGENTS`、`继续当前任务`.
 - The boot skill is a startup convenience layer, not a replacement for this document. If the skill and `AGENTS.md`
   diverge, follow `AGENTS.md` first and update the skill in the same change.
-- The boot skill MUST read `AGENTS.md`、`.ai/environment/tools.ai.yaml` and the relevant `ai-plan/` artifacts before
-  substantive execution.
+- The boot skill MUST read `AGENTS.md`、`.ai/environment/tools.ai.yaml`、`ai-plan/public/README.md` and the relevant
+  active-topic `ai-plan/` artifacts before substantive execution.
 
 ## Subagent Usage Rules
 
@@ -330,8 +330,12 @@ bash scripts/validate-csharp-naming.sh
 ### Task Tracking
 
 - `ai-plan/` is split by intent:
-  - `ai-plan/public/todos/`: repository-safe recovery documents that may be committed and shared across worktrees
-  - `ai-plan/public/traces/`: repository-safe execution traces that may be committed and shared across worktrees
+  - `ai-plan/public/README.md`: the shared startup index that binds worktrees or branches to active topics and resume
+    entry points
+  - `ai-plan/public/<topic>/todos/`: repository-safe recovery documents for an active topic
+  - `ai-plan/public/<topic>/traces/`: repository-safe execution traces for an active topic
+  - `ai-plan/public/<topic>/archive/`: archived stage-level artifacts that still belong to an active topic
+  - `ai-plan/public/archive/<topic>/`: completed-topic archives that should not be treated as default boot context
   - `ai-plan/private/`: worktree-private recovery artifacts; keep these untracked and scoped to the current worktree
 - Contributors MUST keep committed `ai-plan/public/**` content safe to publish in Git history.
 - Never write secrets, tokens, credentials, private keys, machine usernames, home-directory paths, hostnames, IP
@@ -340,17 +344,25 @@ bash scripts/validate-csharp-naming.sh
   stable document identifiers instead.
 - Use `ai-plan/public/**` only for durable, handoff-safe task state. Put temporary notes, local experiments, or
   worktree-specific scratch recovery data under `ai-plan/private/`.
+- `ai-plan/public/README.md` MUST list only active topics. Do not add `ai-plan/public/archive/**` content to the
+  default boot index.
+- When a worktree-to-topic mapping changes, or when a topic becomes active/inactive, contributors MUST update
+  `ai-plan/public/README.md` in the same change.
 - When working from a tracked implementation plan, contributors MUST update the corresponding tracking document under
-  `ai-plan/public/todos/` in the same change.
+  `ai-plan/public/<topic>/todos/` in the same change.
 - Tracking updates MUST reflect completed work, newly discovered issues, validation results, and the next recommended
   recovery point.
 - Completing code changes without updating the active tracking document is considered incomplete work.
 - For any multi-step refactor, migration, or cross-module task, contributors MUST create or adopt a dedicated recovery
-  document under `ai-plan/public/todos/` before making substantive code changes.
+  document under `ai-plan/public/<topic>/todos/` before making substantive code changes.
 - Recovery documents MUST record the current phase, the active recovery point identifier, known risks, and the next
   recommended resume step so another contributor or subagent can continue the work safely.
-- Contributors MUST maintain a matching execution trace under `ai-plan/public/traces/` for complex work. The trace
-  should record the current date, key decisions, validation milestones, and the immediate next step.
+- Contributors MUST maintain a matching execution trace under `ai-plan/public/<topic>/traces/` for complex work. The
+  trace should record the current date, key decisions, validation milestones, and the immediate next step.
+- When a stage inside an active topic is fully complete, move the finished artifacts into that topic's `archive/`
+  directory instead of leaving every completed step in the default boot path.
+- When a topic is fully complete, move the entire topic directory under `ai-plan/public/archive/<topic>/` and remove it
+  from `ai-plan/public/README.md` in the same change.
 - When a task spans multiple commits or is likely to exceed a single agent context window, update both the recovery
   document and the trace at each meaningful milestone before pausing or handing work off.
 - If subagents are used on a complex task, the main agent MUST capture the delegated scope and any accepted findings in

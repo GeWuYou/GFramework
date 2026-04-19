@@ -16,7 +16,7 @@ collectible assemblies.
 
 ## Planned Work
 
-- [x] Create the matching execution trace under `ai-plan/public/traces/`.
+- [x] Create the matching execution trace under `ai-plan/public/archive/cqrs-cache-docs-hardening/traces/`.
 - [x] Update `README.md` quick-install guidance to include CQRS runtime packages.
 - [x] Update the related Chinese setup/integration docs with CQRS runtime + source-generator wiring and a minimal
       working CQRS generator example.

@@ -58,8 +58,8 @@
 
 ### Phase 0：工作流基础
 
-- [x] 在 `ai-plan/public/todos/` 建立本任务跟踪文档
-- [x] 在 `ai-plan/public/traces/` 建立本任务追踪文档
+- [x] 在 `ai-plan/public/cqrs-rewrite/todos/` 建立本任务跟踪文档
+- [x] 在 `ai-plan/public/cqrs-rewrite/traces/` 建立本任务追踪文档
 - [x] 将恢复点 / trace / subagent 协作规范写入 `AGENTS.md`
 
 ### Phase 1：本地验证链路
@@ -468,7 +468,7 @@
 
 若本轮中断，优先从以下顺序恢复：
 
-1. 查看 `ai-plan/public/traces/cqrs-rewrite-migration-trace.md`
+1. 查看 `ai-plan/public/cqrs-rewrite/traces/cqrs-rewrite-migration-trace.md`
 2. 确认当前恢复点 `CQRS-REWRITE-RP-042` 已对应到最新提交
 3. 优先继续执行 `ai-plan/migration/CQRS_MODULE_SPLIT_PLAN.md` 中的 Phase 7：
    - 先决定是否正式支持旧 `GFramework.Core.Abstractions.Cqrs*` / `GFramework.Core.Cqrs.Extensions` public namespace 兼容，还是明确要求消费端迁到当前 `GFramework.Cqrs*` 路径
@@ -659,7 +659,7 @@
 - `dotnet build GFramework.Cqrs/GFramework.Cqrs.csproj -c Release`
   - 结果：通过
   - 备注：存在既有 `MA0051` 与 `MA0158` analyzer warnings，无新增构建错误
-- `rg -n "ai-libs/Mediator|只读|第三方项目源码副本" AGENTS.md ai-plan/public/todos/cqrs-rewrite-migration-tracking.md ai-plan/public/traces/cqrs-rewrite-migration-trace.md`
+- `rg -n "ai-libs/Mediator|只读|第三方项目源码副本" AGENTS.md ai-plan/public/cqrs-rewrite/todos/cqrs-rewrite-migration-tracking.md ai-plan/public/cqrs-rewrite/traces/cqrs-rewrite-migration-trace.md`
   - 结果：通过
   - 备注：`AGENTS.md`、tracking 与 trace 均已命中新规则和本地参考路径说明
 
@@ -717,7 +717,7 @@
     - `--branch` 到 PR 编号的解析改为走 GitHub PR API
     - CodeRabbit summary / CTRF 测试报告改为走 issue comments API
     - 最新 review 依据改为 latest head commit review threads，而不是只看汇总块
-  - `ai-plan/public/todos/cqrs-rewrite-migration-tracking.md` 已移除公开文档中的机器本地绝对路径，并统一
+  - `ai-plan/public/cqrs-rewrite/todos/cqrs-rewrite-migration-tracking.md` 已移除公开文档中的机器本地绝对路径，并统一
     下次恢复建议里的恢复点编号
 
 ### 阶段：RP-042 验证

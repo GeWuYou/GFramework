@@ -1327,7 +1327,7 @@
 - `dotnet build GFramework.Cqrs/GFramework.Cqrs.csproj -c Release`
   - 结果：通过
   - 备注：存在既有 `MA0051` 与 `MA0158` analyzer warnings，无新增构建错误
-- `rg -n "ai-libs/|ai-libs/Mediator|只读|第三方源码参考区|第三方项目源码副本" AGENTS.md ai-plan/public/todos/cqrs-rewrite-migration-tracking.md ai-plan/public/traces/cqrs-rewrite-migration-trace.md`
+- `rg -n "ai-libs/|ai-libs/Mediator|只读|第三方源码参考区|第三方项目源码副本" AGENTS.md ai-plan/public/cqrs-rewrite/todos/cqrs-rewrite-migration-tracking.md ai-plan/public/cqrs-rewrite/traces/cqrs-rewrite-migration-trace.md`
   - 结果：通过
   - 备注：三处文档都已命中 `ai-libs` 只读规则与 `ai-libs/Mediator` 参考路径
 
@@ -1378,7 +1378,7 @@
   - 不依赖 `gh` CLI，也不要求登录态；脚本会显式绕过当前 shell 中失效的代理变量
 - 用新脚本验证了 PR `#253` 的当前状态：
   - latest head commit review threads 已可直接从 API 提取；在远端最新提交未更新前，当前仍显示 4 条 open
-    threads，其中 2 条落在 `fetch_current_pr_review.py`、2 条落在 `ai-plan/public/todos/cqrs-rewrite-migration-tracking.md`
+    threads，其中 2 条落在 `fetch_current_pr_review.py`、2 条落在 `ai-plan/public/cqrs-rewrite/todos/cqrs-rewrite-migration-tracking.md`
   - PR 页面当前无 `Failed Tests`，CTRF 测试报告显示 `2103 passed / 0 failed`
   - `Failed checks` 当前可稳定提取到 `Docstring Coverage` warning；该项属于 PR 级文档注释覆盖率问题，不是 FPR
     skill 解析链路故障
