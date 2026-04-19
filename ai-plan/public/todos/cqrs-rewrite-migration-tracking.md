@@ -399,10 +399,10 @@
   - `dotnet build GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release` 在 CQRS generator MVP 后通过
   - `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --no-build --filter "FullyQualifiedName~GFramework.SourceGenerators.Tests.Cqrs.CqrsHandlerRegistryGeneratorTests"` 通过，`2` 个测试全部通过
   - `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --no-build --filter "FullyQualifiedName~GFramework.Core.Tests.Cqrs.CqrsHandlerRegistrarTests|FullyQualifiedName~GFramework.Core.Tests.Architectures.ArchitectureModulesBehaviorTests|FullyQualifiedName~GFramework.Core.Tests.Mediator.MediatorArchitectureIntegrationTests|FullyQualifiedName~GFramework.Core.Tests.Mediator.MediatorComprehensiveTests"` 通过，`41` 个测试全部通过
-  - `dotnet build GFramework/GFramework.sln -c Release`
-    在当前 WSL 环境下命中既有 `GFramework.csproj` NuGet fallback package folder 配置问题
-    （`D:\\Tool\\Development Tools\\Microsoft Visual Studio\\Shared\\NuGetPackages`），
-    与本轮 CQRS 改动无关；`GFramework.Core.Tests` 相关项目构建与回归已通过
+- `dotnet build GFramework/GFramework.sln -c Release`
+  在当前 WSL 环境下命中既有 `GFramework.csproj` NuGet fallback package folder 配置问题
+  （机器本地路径已省略），
+  与本轮 CQRS 改动无关；`GFramework.Core.Tests` 相关项目构建与回归已通过
   - `dotnet build GFramework/GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release`
     在显式额外程序集 CQRS 注册入口落地后通过，仅存在既有 `MA0048` warnings
   - `dotnet test GFramework/GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --no-build --filter "FullyQualifiedName~GFramework.Core.Tests.Architectures.ArchitectureAdditionalCqrsHandlersTests|FullyQualifiedName~GFramework.Core.Tests.Architectures.ArchitectureModulesBehaviorTests|FullyQualifiedName~GFramework.Core.Tests.Cqrs.CqrsHandlerRegistrarTests|FullyQualifiedName~GFramework.Core.Tests.Architectures.RegistryInitializationHookBaseTests"`
@@ -469,7 +469,7 @@
 若本轮中断，优先从以下顺序恢复：
 
 1. 查看 `ai-plan/public/traces/cqrs-rewrite-migration-trace.md`
-2. 确认当前恢复点 `CQRS-REWRITE-RP-015` 已对应到最新提交
+2. 确认当前恢复点 `CQRS-REWRITE-RP-042` 已对应到最新提交
 3. 优先继续执行 `ai-plan/migration/CQRS_MODULE_SPLIT_PLAN.md` 中的 Phase 7：
    - 先决定是否正式支持旧 `GFramework.Core.Abstractions.Cqrs*` / `GFramework.Core.Cqrs.Extensions` public namespace 兼容，还是明确要求消费端迁到当前 `GFramework.Cqrs*` 路径
    - 再评估 `CqrsCoroutineExtensions` 是否保留在 `GFramework.Core`，或连同所需协程辅助一起形成更小的可迁移边界
@@ -701,9 +701,9 @@
 
 - 已新增项目级 `$gframework-pr-review` skill：
   - 目录：`.codex/skills/gframework-pr-review/`
-  - 作用：定位当前分支对应的 GitHub PR，并直接从 PR 页面提取 CodeRabbit 评论、`Failed checks`
-    与 CTRF 测试结果
-  - 约束：不依赖 `gh` CLI；默认通过公开 GitHub HTML 页面工作
+  - 作用：定位当前分支对应的 GitHub PR，并优先通过 GitHub PR / issue comments / review comments API 提取
+    CodeRabbit 汇总、最新 head commit review threads、`Failed checks` 与 CTRF 测试结果
+  - 约束：不依赖 `gh` CLI；不再把重型 PR HTML 页面当作主数据源
 - 已根据 PR `#253` 的公开 review 内容完成本地修正：
   - `.codex/skills/gframework-boot/SKILL.md` 的恢复 heuristics 不再把 `next step/continue/继续`
     直接映射为 `recovery`
@@ -711,6 +711,14 @@
     tracking document”
   - `Godot/script_templates/Node/*.cs` 与 `GFramework.Core.Abstractions/Controller/IController.cs`
     中旧 `Rule` 命名空间残留已同步修正
+  - `fetch_current_pr_review.py` 已改为：
+    - Git 路径支持环境变量覆盖并回退到 `git.exe` / `git`
+    - `--pr` 模式不再强制读取当前分支
+    - `--branch` 到 PR 编号的解析改为走 GitHub PR API
+    - CodeRabbit summary / CTRF 测试报告改为走 issue comments API
+    - 最新 review 依据改为 latest head commit review threads，而不是只看汇总块
+  - `ai-plan/public/todos/cqrs-rewrite-migration-tracking.md` 已移除公开文档中的机器本地绝对路径，并统一
+    下次恢复建议里的恢复点编号
 
 ### 阶段：RP-042 验证
 
@@ -719,13 +727,16 @@
   - 备注：`fetch_current_pr_review.py` 语法正确
 - `python3 .codex/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --pr 253`
   - 结果：通过
-  - 备注：解析出 2 条 CodeRabbit 待处理评论、1 条 `Title check` warning，以及 `2103 passed / 0 failed`
-    的测试结果
+  - 备注：已通过 API-first 路径解析 PR 元数据、latest head commit review threads、CodeRabbit summary
+    与 CTRF 测试结果，不再依赖 PR HTML
+- `python3 .codex/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --branch feat/cqrs-optimization`
+  - 结果：通过
+  - 备注：已验证 branch -> PR 解析同样通过 GitHub API 工作
 - `dotnet build GFramework.Core.Abstractions/GFramework.Core.Abstractions.csproj -c Release`
   - 结果：通过
   - 备注：相关 C# 改动已完成构建验证
 
 ### 下一步
 
-1. 若需要继续处理 PR `#253` 的最后一项 `Title check` warning，应在 GitHub 页面上直接修改 PR 标题
-2. 若后续仍采用 PR 驱动修复流程，优先使用 `$gframework-pr-review` 复查当前分支 PR 的 CodeRabbit 评论和测试状态
+1. 若要让 PR `#253` 上的 latest head review threads 反映本轮本地修正，需要先提交并推送当前分支，再重新执行 `$gframework-pr-review`
+2. PR 当前公开 warning 仍包含 `Docstring Coverage`，若后续要继续消除此项，需要单独规划并提交文档注释覆盖率改进

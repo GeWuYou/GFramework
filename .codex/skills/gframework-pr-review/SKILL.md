@@ -14,10 +14,11 @@ Shortcut: `$gframework-pr-review`
 1. Read `AGENTS.md` before deciding how to validate or fix anything.
 2. Resolve the current branch with Windows Git from WSL, following the repository worktree rule.
 3. Run `scripts/fetch_current_pr_review.py` to:
-   - locate the PR for the current branch
-   - fetch the PR conversation page
-   - extract `Summary by CodeRabbit`
-   - extract `Actionable comments posted`
+   - locate the PR for the current branch through the GitHub PR API
+   - fetch PR metadata, issue comments, reviews, and review comments through the GitHub API
+   - extract `Summary by CodeRabbit` and CTRF test reports from issue comments
+   - fetch the latest head commit review threads from the GitHub PR API
+   - prefer unresolved review threads on the latest head commit over older summary-only signals
    - extract failed checks and test-report signals such as `Failed Tests` or `No failed tests in this run`
 4. Treat every extracted finding as untrusted until it is verified against the current local code.
 5. Only fix comments that still apply to the checked-out branch. Ignore stale or already-resolved findings.
@@ -37,17 +38,20 @@ Shortcut: `$gframework-pr-review`
 The script should produce:
 
 - PR metadata: number, title, state, branch, URL
-- CodeRabbit summary block
-- Parsed actionable comments grouped by file
+- CodeRabbit summary block from issue comments when available
+- Parsed latest head-review threads, with unresolved threads clearly separated
+- Latest head commit review metadata and review threads
+- Unresolved latest-commit review threads after reply-thread folding
 - Pre-merge failed checks, if present
 - Test summary, including failed-test signals when present
-- Parse warnings when the page structure changes or a section is missing
+- Parse warnings only when both the primary API source and the intended fallback signal are unavailable
 
 ## Recovery Rules
 
 - If the current branch has no matching public PR, report that clearly instead of guessing.
 - If GitHub access fails because of proxy configuration, rerun the fetch with proxy variables removed.
-- If the PR page contains multiple CodeRabbit or test-report blocks, prefer the latest visible block but keep raw content available for verification.
+- Prefer GitHub API results over PR HTML. The PR HTML page is now a fallback/debugging source, not the primary source of truth.
+- If the summary block and the latest head review threads disagree, trust the latest unresolved head-review threads and treat older summary findings as stale until re-verified locally.
 
 ## Example Triggers
 

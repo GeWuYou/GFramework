@@ -1371,14 +1371,17 @@
 - 建立 `CQRS-REWRITE-RP-042` 恢复点
 - 新增项目级 skill `.codex/skills/gframework-pr-review/`：
   - 暗号为 `$gframework-pr-review`
-  - 使用 Windows Git 解析当前分支，并通过公开 GitHub PR 页面定位当前分支对应的 PR
-  - 直接从 PR HTML 中提取 `Summary by CodeRabbit`、`Actionable comments posted`、`Failed checks` 与 CTRF 测试结果
+  - 使用 Windows Git 解析当前分支，并通过 GitHub PR API 定位当前分支对应的 PR
+  - 通过 GitHub issue comments / reviews / review comments API 提取 `Summary by CodeRabbit`、最新 head
+    commit review threads、`Failed checks` 与 CTRF 测试结果
+  - 不再把重型 PR HTML 页面作为主数据源，只在调试或兼容场景下保留为兜底思路
   - 不依赖 `gh` CLI，也不要求登录态；脚本会显式绕过当前 shell 中失效的代理变量
 - 用新脚本验证了 PR `#253` 的当前状态：
-  - `CodeRabbit actionable comments` 仍有 2 条真实待处理项，分别落在 `.codex/skills/gframework-boot/SKILL.md`
-    与 `AGENTS.md`
+  - latest head commit review threads 已可直接从 API 提取；在远端最新提交未更新前，当前仍显示 4 条 open
+    threads，其中 2 条落在 `fetch_current_pr_review.py`、2 条落在 `ai-plan/public/todos/cqrs-rewrite-migration-tracking.md`
   - PR 页面当前无 `Failed Tests`，CTRF 测试报告显示 `2103 passed / 0 failed`
-  - `Failed checks` 仅剩 `Title check` warning，属于 GitHub PR 标题元数据问题，不是本地代码缺陷
+  - `Failed checks` 当前可稳定提取到 `Docstring Coverage` warning；该项属于 PR 级文档注释覆盖率问题，不是 FPR
+    skill 解析链路故障
 - 已按 PR `#253` 的公开建议完成本地修正：
   - `gframework-boot` 的恢复 heuristics 改为“先检索 `ai-plan/`，再判定 `resume` 或 `recovery`”
   - `AGENTS.md` 将 `ai-libs/**` 观察写入 active plan/trace 的要求收窄到“多步/复杂任务或已有 active tracking document”
@@ -1393,7 +1396,11 @@
   - 备注：`fetch_current_pr_review.py` 语法正确，且避免了只读文件系统下写 `__pycache__` 的问题
 - `python3 .codex/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --pr 253`
   - 结果：通过
-  - 备注：成功解析当前 PR 元数据、2 条 CodeRabbit 待处理评论、1 条 `Title check` warning 和 1 组 CTRF 测试报告
+  - 备注：成功通过 API-first 路径解析当前 PR 元数据、latest head commit review threads、`Docstring Coverage`
+    warning 和 CTRF 测试报告
+- `python3 .codex/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --branch feat/cqrs-optimization`
+  - 结果：通过
+  - 备注：验证 branch -> PR 解析也已摆脱 HTML 搜索
 - `dotnet build GFramework.Core.Abstractions/GFramework.Core.Abstractions.csproj -c Release`
   - 结果：通过
   - 备注：`GFramework.Cqrs.Abstractions` 与 `GFramework.Core.Abstractions` 均成功构建，0 warning / 0 error
@@ -1404,4 +1411,4 @@
 ### 下一步
 
 1. 若继续沿用当前 PR 驱动修复流程，可直接用 `$gframework-pr-review` 复查后续 PR 的 CodeRabbit 评论与测试状态
-2. 若要消除 PR `#253` 的最后一个 `Title check` warning，需要在 GitHub 上手动修改 PR 标题；该项不属于仓库内代码修复范围
+2. 若要验证本轮本地修正已经消除远端 latest head review threads，需要在提交并推送当前分支后重新执行 `$gframework-pr-review`
