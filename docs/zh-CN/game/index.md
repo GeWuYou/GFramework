@@ -683,6 +683,8 @@ public class GameDataSerializer
     
     public GameDataSerializer()
     {
+        // 在构造阶段完成全部 JsonSerializerSettings / Converter 配置，
+        // 后续把 _serializer 视为共享只读实例。
         _serializer = new JsonSerializer(new JsonSerializerSettings
         {
             Formatting = Formatting.Indented,

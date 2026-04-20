@@ -50,6 +50,19 @@ public sealed class JsonSerializerTests
     }
 
     [Test]
+    public void Settings_And_Converters_Should_Expose_Live_Configuration_Instance()
+    {
+        var settings = new JsonSerializerSettings();
+        var serializer = new GameJsonSerializer(settings);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(serializer.Settings, Is.SameAs(settings));
+            Assert.That(serializer.Converters, Is.SameAs(settings.Converters));
+        });
+    }
+
+    [Test]
     public void Converters_Should_Be_Used_For_Serialization_And_Deserialization()
     {
         var serializer = new GameJsonSerializer();

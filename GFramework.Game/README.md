@@ -180,11 +180,13 @@ using GFramework.Core.Abstractions.Storage;
 using GFramework.Game.Serializer;
 using GFramework.Game.Storage;
 
-ISerializer serializer = new JsonSerializer();
+var serializer = new JsonSerializer();
 IStorage storage = new FileStorage("GameData", serializer);
 
 await storage.WriteAsync("player/profile", new { Name = "Alice", Level = 3 });
 ```
+
+这里的 `JsonSerializer` 建议在组合根只创建并配置一次；如果需要自定义 `JsonSerializerSettings` 或 converters，请在把它注册给 `IStorage`、`DataRepository` 或架构 utility 之前完成。
 
 如果你需要逻辑隔离，再包一层 `ScopedStorage`：
 

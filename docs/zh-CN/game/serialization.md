@@ -55,7 +55,8 @@ public interface IRuntimeTypeSerializer : ISerializer
 
 ### JSON 序列化器
 
-`JsonSerializer` 是基于 Newtonsoft.Json 的实现：
+`JsonSerializer` 是基于 Newtonsoft.Json 的实现。它会直接复用构造时提供的
+`JsonSerializerSettings` 与 `Converters` 集合，因此推荐在组合根统一完成配置，再把同一个实例注册到架构或仓库中复用：
 
 ```csharp
 public sealed class JsonSerializer : IRuntimeTypeSerializer
@@ -81,8 +82,10 @@ public class GameArchitecture : Architecture
 {
     protected override void Init()
     {
-        // 注册 JSON 序列化器
+        // 在启动阶段一次性完成配置，后续将该实例视为只读
         var jsonSerializer = new JsonSerializer();
+        jsonSerializer.Converters.Add(new PlayerDataJsonConverter());
+
         RegisterUtility<ISerializer>(jsonSerializer);
         RegisterUtility<IRuntimeTypeSerializer>(jsonSerializer);
     }
@@ -164,6 +167,40 @@ public void SerializeRuntimeType()
     var player = restored as PlayerData;
     Console.WriteLine($"玩家: {player?.Name}");
 }
+```
+
+### 配置生命周期约束
+
+`JsonSerializer` 不会复制 `JsonSerializerSettings`。这意味着：
+
+- 传给构造函数的 settings 会被原样保留
+- `serializer.Settings` 与 `serializer.Converters` 返回的都是活动配置对象
+- 一旦序列化器实例已经注册给其他模块或开始被并发调用，就不应继续修改这些配置
+
+推荐模式：
+
+```csharp
+var settings = new JsonSerializerSettings
+{
+    Formatting = Formatting.Indented,
+    NullValueHandling = NullValueHandling.Ignore
+};
+
+settings.Converters.Add(new Vector2JsonConverter());
+
+var serializer = new JsonSerializer(settings);
+
+architecture.RegisterUtility<ISerializer>(serializer);
+architecture.RegisterUtility<IRuntimeTypeSerializer>(serializer);
+```
+
+不推荐模式：
+
+```csharp
+var serializer = architecture.GetUtility<IRuntimeTypeSerializer>();
+
+// 已经共享给运行时后再修改配置，容易让并发调用得到不稳定行为
+((JsonSerializer)serializer).Converters.Add(new LateBoundConverter());
 ```
 
 ## 高级用法
@@ -463,10 +500,11 @@ public PlayerDataV2 LoadWithMigration(string json)
 
 ## 最佳实践
 
-1. **使用接口而非具体类型**：依赖 `ISerializer` 接口
+1. **优先依赖接口，在组合根统一实例化**：业务代码依赖 `ISerializer`，具体 `JsonSerializer` 在启动阶段配置一次即可
    ```csharp
    ✓ var serializer = this.GetUtility<ISerializer>();
-   ✗ var serializer = new JsonSerializer(); // 避免直接实例化
+   ✓ var serializer = new JsonSerializer(settings); // 仅在组合根/启动阶段配置
+   ✗ var serializer = new JsonSerializer(); // 避免在业务逻辑中临时创建
    ```
 
 2. **为数据类提供默认值**：确保反序列化的健壮性
@@ -731,10 +769,26 @@ public async Task<GameData> LoadEncrypted(string key)
 ### 问题：序列化器是线程安全的吗？
 
 **解答**：
-`JsonSerializer` 本身是线程安全的，但建议通过架构的 Utility 系统访问：
+`JsonSerializer` 的并发读行为只在“配置不再变化”这个前提下才安全。当前实现会暴露活动中的
+`JsonSerializerSettings` 与 `Converters` 集合，因此：
+
+- 可以在启动阶段创建并配置一个共享实例
+- 可以在配置冻结后把该实例注册为 Utility 或注入到仓库
+- 不应在序列化器已经被多个调用方使用时继续修改 settings、contract resolver 或 converters
+
+推荐按下面的方式在启动阶段完成配置，然后只做读操作：
 
 ```csharp
-// 线程安全的访问方式
+// 启动阶段完成全部配置
+var serializer = new JsonSerializer(new JsonSerializerSettings
+{
+    NullValueHandling = NullValueHandling.Ignore
+});
+serializer.Converters.Add(new GameDataJsonConverter());
+
+architecture.RegisterUtility<ISerializer>(serializer);
+
+// 运行阶段只复用，不再修改配置
 public async Task ParallelSave()
 {
     var tasks = Enumerable.Range(0, 10).Select(async i =>

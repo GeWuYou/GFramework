@@ -28,3 +28,20 @@
 
 1. 后续继续该主题时，只从 `ai-plan/public/data-repository-persistence/` 进入，不再恢复 `local-plan/`
 2. 若 active 入口再次积累多轮已完成且已验证阶段，继续按同一模式迁入该主题自己的 `archive/`
+
+## 2026-04-20
+
+### 阶段：JsonSerializer 配置契约补充（RP-001）
+
+- 复核 `GFramework.Game/Serializer/JsonSerializer.cs` 后确认：当前实现直接复用传入的 `JsonSerializerSettings`，并通过 `Settings` / `Converters` 暴露活动配置对象
+- 复核 `docs/zh-CN/game/serialization.md` 后确认：现有 FAQ 把 `JsonSerializer` 写成“本身线程安全”，与当前可变配置契约不一致
+- 决定本轮只补齐契约说明而不改变运行时行为：
+  - 在源码 XML docs 中说明 settings / converters 的生命周期与并发约束
+  - 在定向单测中固定“序列化器暴露活动配置实例”的当前契约
+  - 在 `docs/zh-CN/game/serialization.md`、`docs/zh-CN/game/index.md` 与 `GFramework.Game/README.md` 中同步修正接入建议
+
+### 下一步
+
+1. `dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --filter "FullyQualifiedName~JsonSerializerTests"` 已通过（9/9）
+2. 验证过程中出现的 analyzer warning 为仓库既有 warning，未在本轮扩大
+3. 下一步回到 migration abstraction 与 codec / persistence pipeline 的后续评估

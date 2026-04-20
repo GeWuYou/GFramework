@@ -4,8 +4,12 @@ using Newtonsoft.Json;
 namespace GFramework.Game.Serializer;
 
 /// <summary>
-///     JSON序列化器实现类，用于将对象序列化为JSON字符串或将JSON字符串反序列化为对象
+///     基于 Newtonsoft.Json 的运行时 JSON 序列化器。
 /// </summary>
+/// <remarks>
+///     该类型会直接持有并复用外部提供的 <see cref="JsonSerializerSettings" /> 实例及其转换器集合，而不会在构造时复制配置。
+///     请在组合根或启动阶段完成全部配置，并在注册给其他组件后将这些配置视为只读；否则在并发调用期间同时修改设置或转换器集合可能导致不可预测行为。
+/// </remarks>
 public sealed class JsonSerializer
     : IRuntimeTypeSerializer
 {
@@ -14,7 +18,10 @@ public sealed class JsonSerializer
     /// <summary>
     ///     初始化 JSON 序列化器。
     /// </summary>
-    /// <param name="settings">可选的 Newtonsoft.Json 配置；不提供时使用默认配置。</param>
+    /// <param name="settings">
+    ///     可选的 Newtonsoft.Json 配置实例；不提供时使用默认配置。
+    ///     传入的实例会被当前序列化器直接复用，后续对该实例的修改会影响所有后续序列化与反序列化调用。
+    /// </param>
     public JsonSerializer(JsonSerializerSettings? settings = null)
     {
         _settings = settings ?? new JsonSerializerSettings();
@@ -23,11 +30,19 @@ public sealed class JsonSerializer
     /// <summary>
     ///     获取当前序列化器使用的 Newtonsoft.Json 配置实例。
     /// </summary>
+    /// <remarks>
+    ///     返回的是当前序列化器持有的活动配置实例，适合在启动阶段补充 contract resolver、格式化策略或 converter。
+    ///     一旦该序列化器被共享给其他组件，应避免再修改返回值，以免破坏调用方对并发读行为的假设。
+    /// </remarks>
     public JsonSerializerSettings Settings => _settings;
 
     /// <summary>
     ///     获取当前序列化器使用的自定义转换器集合。
     /// </summary>
+    /// <remarks>
+    ///     该集合与 <see cref="Settings" /> 的 <see cref="JsonSerializerSettings.Converters" /> 引用相同。
+    ///     请在注册序列化器前完成 converter 配置，并避免在序列化器已经发布后继续增删转换器。
+    /// </remarks>
     public IList<JsonConverter> Converters => _settings.Converters;
 
     /// <summary>
