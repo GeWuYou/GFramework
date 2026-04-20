@@ -181,6 +181,14 @@ public interface ISettingsMigration
 
 当 `InitializeAsync()` 读取到旧版本设置时，会按已注册迁移链逐步升级，再通过 `LoadFrom` 回填到当前实例。
 
+迁移规则如下：
+
+- 同一个设置类型的同一个 `FromVersion` 只能注册一个迁移器
+- `ToVersion` 必须严格大于 `FromVersion`
+- `InitializeAsync()` 会以当前运行时代码里该设置实例的 `Version` 作为目标版本
+- 如果迁移链缺口、迁移结果类型不兼容、迁移结果版本与声明不一致，或者读取到比当前运行时更高的版本，当前设置节不会覆盖内存中的最新实例，并会记录错误日志
+- 与 `SaveRepository<TSaveData>` 不同，设置初始化阶段会跳过失败的设置节并继续处理其他设置节，而不是把异常继续向外抛出
+
 ## 依赖项
 
 要让设置系统完整工作，通常需要准备：

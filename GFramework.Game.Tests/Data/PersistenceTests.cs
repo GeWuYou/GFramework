@@ -189,6 +189,39 @@ public class PersistenceTests
     }
 
     /// <summary>
+    ///     验证迁移器声明的目标版本必须与返回数据上的实际版本一致，避免错误迁移结果被静默接受。
+    /// </summary>
+    /// <returns>表示异步测试完成的任务。</returns>
+    /// <exception cref="InvalidOperationException">当迁移器返回的版本与声明目标版本不一致时抛出。</exception>
+    [Test]
+    public async Task SaveRepository_LoadAsync_Should_Throw_When_Migration_Result_Version_Does_Not_Match_Declaration()
+    {
+        var root = CreateTempRoot();
+        using var storage = new FileStorage(root, new JsonSerializer());
+        var config = new SaveConfiguration
+        {
+            SaveRoot = "saves",
+            SaveSlotPrefix = "slot_",
+            SaveFileName = "save"
+        };
+
+        var writer = new SaveRepository<TestVersionedSaveData>(storage, config);
+        await writer.SaveAsync(1, new TestVersionedSaveData
+        {
+            Name = "legacy",
+            Level = 3,
+            Experience = 0,
+            Version = 1
+        });
+
+        var repository = new SaveRepository<TestVersionedSaveData>(storage, config)
+            .RegisterMigration(new TestSaveMigrationV1ToV2ReturningV3());
+
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await repository.LoadAsync(1));
+        Assert.That(exception!.Message, Does.Contain("declared target version 2"));
+    }
+
+    /// <summary>
     ///     验证统一设置仓库能够保存、重新加载并批量读取已注册的设置数据。
     /// </summary>
     /// <returns>表示异步测试完成的任务。</returns>
@@ -702,6 +735,25 @@ public class PersistenceTests
                 Level = oldData.Level,
                 Experience = oldData.Experience,
                 Version = 2,
+                LastModified = oldData.LastModified
+            };
+        }
+    }
+
+    private sealed class TestSaveMigrationV1ToV2ReturningV3 : ISaveMigration<TestVersionedSaveData>
+    {
+        public int FromVersion => 1;
+
+        public int ToVersion => 2;
+
+        public TestVersionedSaveData Migrate(TestVersionedSaveData oldData)
+        {
+            return new TestVersionedSaveData
+            {
+                Name = oldData.Name,
+                Level = oldData.Level,
+                Experience = oldData.Experience,
+                Version = 3,
                 LastModified = oldData.LastModified
             };
         }

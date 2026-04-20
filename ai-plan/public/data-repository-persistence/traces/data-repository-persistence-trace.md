@@ -45,3 +45,33 @@
 1. `dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --filter "FullyQualifiedName~JsonSerializerTests"` 已通过（9/9）
 2. 验证过程中出现的 analyzer warning 为仓库既有 warning，未在本轮扩大
 3. 下一步回到 migration abstraction 与 codec / persistence pipeline 的后续评估
+
+### 阶段：迁移执行器统一收敛（RP-001）
+
+- 对 `SettingsModel`、`DataRepository`、`UnifiedSettingsDataRepository`、`SaveRepository<T>` 的实现进行并排核对后确认：
+  - `DataRepository` 与 `UnifiedSettingsDataRepository` 不直接承担按版本号推进的迁移链
+  - 实际重复点只在 `SettingsModel` 与 `SaveRepository<T>` 的“版本迁移链执行与校验”逻辑
+- 决定不新增 public migration abstraction，而是抽出 internal `VersionedMigrationRunner`
+  - 统一前向注册校验
+  - 统一缺链失败
+  - 统一声明目标版本与实际结果版本一致性校验
+  - 统一非递增 / 超目标版本防护
+- `SettingsModel` 本轮额外补强：
+  - 拒绝同一设置类型同一 `FromVersion` 的重复注册
+  - 以当前内存设置实例的 `Version` 作为目标运行时版本
+  - 迁移失败时保持当前实例不被旧数据覆盖，并继续记录错误日志
+- `SaveRepository<T>` 改为复用同一个 internal runner，但保留“加载成功后自动回写升级结果”的现有仓库语义
+- 同步更新 `docs/zh-CN/game/setting.md` 与 `docs/zh-CN/game/data.md`，补迁移链约束说明
+- 新增 / 更新测试：
+  - `SettingsModelTests`：重复注册拒绝、不完整链路保持当前实例、缓存失效场景
+  - `PersistenceTests`：迁移结果版本与声明版本不一致时显式失败
+
+### 验证
+
+1. `dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --filter "FullyQualifiedName~SettingsModelTests|FullyQualifiedName~PersistenceTests"` 已通过（20/20）
+2. 过程中出现的 analyzer warning 来自仓库既有项，未在本轮扩大
+
+### 下一步
+
+1. 进入 codec / persistence pipeline 边界评估
+2. 重点查看压缩、加密、元数据、备份是否仍然跨越 `Serializer` / `Storage` / `Repository` 多层分散

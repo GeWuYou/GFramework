@@ -4,6 +4,7 @@ using GFramework.Core.Logging;
 using GFramework.Core.Model;
 using GFramework.Game.Abstractions.Data;
 using GFramework.Game.Abstractions.Setting;
+using GFramework.Game.Internal;
 using GFramework.Game.Setting.Events;
 
 namespace GFramework.Game.Setting;
@@ -116,7 +117,21 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
     /// </returns>
     public ISettingsModel RegisterMigration(ISettingsMigration migration)
     {
-        _migrations[(migration.SettingsType, migration.FromVersion)] = migration;
+        ArgumentNullException.ThrowIfNull(migration);
+
+        VersionedMigrationRunner.ValidateForwardOnlyRegistration(
+            migration.SettingsType.Name,
+            "Settings migration",
+            migration.FromVersion,
+            migration.ToVersion,
+            nameof(migration));
+
+        if (!_migrations.TryAdd((migration.SettingsType, migration.FromVersion), migration))
+        {
+            throw new InvalidOperationException(
+                $"Duplicate settings migration registration for {migration.SettingsType.Name} from version {migration.FromVersion}.");
+        }
+
         _migrationCache.TryRemove(migration.SettingsType, out _);
         return this;
     }
@@ -156,7 +171,7 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
                 if (raw is not ISettingsData loaded)
                     continue;
 
-                var migrated = MigrateIfNeeded(loaded);
+                var migrated = MigrateIfNeeded(loaded, data);
 
                 // 回填（不替换实例）
                 data.LoadFrom(migrated);
@@ -277,14 +292,9 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
         _repository.RegisterDataType(location, type);
     }
 
-    private ISettingsData MigrateIfNeeded(ISettingsData data)
+    private ISettingsData MigrateIfNeeded(ISettingsData data, ISettingsData latestData)
     {
-        if (data is not IVersionedData versioned)
-            return data;
-
         var type = data.GetType();
-        var current = data;
-
         if (!_migrationCache.TryGetValue(type, out var versionMap))
         {
             versionMap = _migrations
@@ -294,12 +304,42 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
             _migrationCache[type] = versionMap;
         }
 
-        while (versionMap.TryGetValue(versioned.Version, out var migration))
+        return VersionedMigrationRunner.MigrateToTargetVersion(
+            data,
+            latestData.Version,
+            static settings => settings.Version,
+            fromVersion => versionMap.TryGetValue(fromVersion, out var migration) ? migration : null,
+            static migration => migration.ToVersion,
+            static (migration, current) => ApplySettingsMigration(migration, current),
+            $"{type.Name} settings",
+            "settings migration");
+    }
+
+    /// <summary>
+    ///     执行单步设置迁移，并验证迁移结果仍然属于已注册的设置类型。
+    /// </summary>
+    /// <param name="migration">要执行的迁移器。</param>
+    /// <param name="currentData">当前版本的数据。</param>
+    /// <returns>迁移后的设置数据。</returns>
+    /// <exception cref="InvalidOperationException">
+    ///     迁移结果不实现 <see cref="ISettingsData" />，或返回了与声明设置类型不兼容的数据时抛出。
+    /// </exception>
+    private static ISettingsData ApplySettingsMigration(ISettingsMigration migration, ISettingsData currentData)
+    {
+        var fromVersion = currentData.Version;
+        var migrated = migration.Migrate(currentData);
+        if (migrated is not ISettingsData migratedData)
         {
-            current = (ISettingsData)migration.Migrate(current);
-            versioned = current;
+            throw new InvalidOperationException(
+                $"Settings migration for {migration.SettingsType.Name} from version {fromVersion} must return {nameof(ISettingsData)}.");
         }
 
-        return current;
+        if (!migration.SettingsType.IsInstanceOfType(migratedData))
+        {
+            throw new InvalidOperationException(
+                $"Settings migration for {migration.SettingsType.Name} from version {fromVersion} returned incompatible data type {migratedData.GetType().Name}.");
+        }
+
+        return migratedData;
     }
 }

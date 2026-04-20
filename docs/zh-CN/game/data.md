@@ -299,7 +299,9 @@ public partial class AutoSaveController : IController
 - `TSaveData` 需要实现 `IVersionedData`
 - 仓库以 `new TSaveData().Version` 作为当前运行时目标版本
 - 每个迁移器负责一个 `FromVersion -> ToVersion` 跳转
+- 同一个 `FromVersion` 只能注册一个迁移器，且 `ToVersion` 必须严格大于 `FromVersion`
 - 加载时仓库会按链路连续执行迁移，并在成功后自动回写升级后的存档
+- 迁移器返回数据上的 `Version` 必须与声明的 `ToVersion` 一致
 - 如果缺少中间迁移器，或者读到了比当前运行时更高的版本，`LoadAsync` 会抛出异常，避免静默加载错误数据
 
 ```csharp
