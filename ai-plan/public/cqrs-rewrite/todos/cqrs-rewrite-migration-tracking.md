@@ -32,8 +32,9 @@ CQRS 迁移与收敛。
 - `Phase 8` 仍是当前主线，不再回退到 `Phase 7`
 - `2026-04-20` 已重新执行 `$gframework-pr-review`：
   - 当前分支对应 `PR #261`，状态为 `OPEN`
-  - latest reviewed commit 上有 `2` 条 open CodeRabbit thread，均指向 pointer / function pointer 泛型合同处理
-  - 本地已接受并修复这两条建议：生成器拒绝为 pointer / function pointer 生成 precise registration，测试改为显式断言输入源 `CS0306`
+  - latest reviewed commit 当前剩余 `1` 条 open CodeRabbit thread，指向 `ai-plan/public/cqrs-rewrite/traces/cqrs-rewrite-migration-trace.md` 中 `RP-047` 与 `RP-050` 的历史语义冲突
+  - 本地已同步修正该追踪歧义：`RP-047` 明确标注为已被 `RP-050` 覆盖，后续不得恢复 `MakePointerType()` precise registration
+  - 远端测试信号保持通过：最新 CTRF 汇总为 `2118/2118` passed；MegaLinter 仅剩 `dotnet-format` restore failure 预警，当前未提供本地仍然成立的文件级格式问题
 - `2026-04-20` 已完成一轮冷启动反射收敛：
   - generated registry 类型首次分析后，会缓存一个可复用的激活工厂，而不是在后续容器注册时重复走 `ConstructorInfo.Invoke`
   - 若运行环境不允许动态方法，仍保留原有的反射激活回退，避免阻塞 generated registry 路径

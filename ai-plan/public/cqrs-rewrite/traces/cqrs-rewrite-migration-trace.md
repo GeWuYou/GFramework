@@ -4,11 +4,13 @@
 
 ### 阶段：pointer / function pointer 泛型合同拒绝（CQRS-REWRITE-RP-050）
 
-- 重新执行 `$gframework-pr-review` 后，确认当前分支对应 `PR #261`，latest reviewed commit 上有 `2` 条仍未关闭的 CodeRabbit thread
-- 本地核对后确认这两条评论有效：`CqrsHandlerRegistryGenerator` 之前会为 `IPointerTypeSymbol` 递归构造 `MakePointerType()`，而测试只校验生成源诊断，未显式暴露输入源 `CS0306`
+- 重新执行 `$gframework-pr-review` 后，确认当前分支对应 `PR #261`，状态仍为 `OPEN`
+- latest reviewed commit 当前剩余 `1` 条 open CodeRabbit thread，指向 `RP-047` 历史记录仍把 `MakePointerType()` precise registration 写成现行路径
+- 本地核对后确认该评论有效：当前 pointer / function pointer 语义已由 `RP-050` 收敛为 fallback / diagnostic 路径，历史追踪必须显式标注 `RP-047` 已废弃，避免后续恢复时误回滚到旧方案
 - 已在 `GFramework.Cqrs.SourceGenerators/Cqrs/CqrsHandlerRegistryGenerator.cs` 中收紧 `TryCreateRuntimeTypeReference` 与 `CanReferenceFromGeneratedRegistry`
 - pointer / function pointer 现统一视为不可精确生成的 CQRS 泛型合同，生成器会保守回退到既有 fallback / diagnostic 路径，而不再发射运行时 `MakeGenericType(...)` 风险代码
 - 已在 `GFramework.SourceGenerators.Tests/Cqrs/CqrsHandlerRegistryGeneratorTests.cs` 中补充输入源诊断分离，并将相关测试改为显式断言 `CS0306` 与 fallback / diagnostic 结果
+- 已同步修正 `ai-plan/public/cqrs-rewrite/traces/cqrs-rewrite-migration-trace.md` 中 `RP-047` 段落，明确其已被 `RP-050` 覆盖，且不得恢复 `MakePointerType()` precise registration
 - 定向验证已通过：
   - `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --no-restore -p:RestoreFallbackFolders= -m:1 -nodeReuse:false --filter "FullyQualifiedName~Reports_Compilation_Error_And_Skips_Precise_Registration_For_Hidden_Pointer_Response|FullyQualifiedName~Reports_Diagnostic_And_Skips_Registry_When_Fallback_Metadata_Is_Required_But_Runtime_Contract_Lacks_Fallback_Attribute|FullyQualifiedName~Emits_Assembly_Level_Fallback_Metadata_When_Fallback_Is_Required_And_Runtime_Contract_Is_Available"`
   - `3/3` passed
@@ -36,11 +38,13 @@
   - `10/10` passed
   - 当前沙箱限制 MSBuild named pipe，因此验证在提权环境下执行
 
-### 阶段：pointer precise runtime type 覆盖扩展（CQRS-REWRITE-RP-047）
+### 阶段：pointer precise runtime type 覆盖扩展（CQRS-REWRITE-RP-047，已由 RP-050 覆盖）
 
-- 已在 `CqrsHandlerRegistryGenerator` 中补充 pointer 类型的 runtime type 递归建模与源码发射，precise registration 现可通过 `MakePointerType()` 还原隐藏 pointer 响应类型
+- 曾在 `CqrsHandlerRegistryGenerator` 中尝试补充 pointer 类型的 runtime type 递归建模与源码发射，计划通过 `MakePointerType()` 还原隐藏 pointer 响应类型
+- 该方案后续已被 `RP-050` 明确废弃：pointer / function pointer 不能作为 CQRS 泛型合同的 precise registration 输入，当前实现统一回到 fallback / diagnostic 路径，不能恢复到 `MakePointerType()` 精确注册
 - 已同步收紧 function pointer 签名的可直接生成判定，只有当签名中的返回值与参数类型均可从 generated registry 安全引用时才走静态注册
 - 已保留含隐藏类型 function pointer handler 的 fallback / 诊断回归覆盖，确保 pointer 支持扩展不会误删原有程序集级 fallback 契约边界
+- 后续若需恢复当前 pointer / function pointer 行为，应以 `RP-050` 为权威记录，而不是继续沿用本阶段的旧设计假设
 - 定向验证与 `CqrsHandlerRegistryGeneratorTests` 全组验证均已通过：
   - `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --no-restore -p:RestoreFallbackFolders= -m:1 -nodeReuse:false --filter "FullyQualifiedName~Generates_Precise_Service_Type_For_Hidden_Pointer_Response|FullyQualifiedName~Reports_Diagnostic_And_Skips_Registry_When_Fallback_Metadata_Is_Required_But_Runtime_Contract_Lacks_Fallback_Attribute|FullyQualifiedName~Emits_Assembly_Level_Fallback_Metadata_When_Fallback_Is_Required_And_Runtime_Contract_Is_Available"`
   - `3/3` passed
