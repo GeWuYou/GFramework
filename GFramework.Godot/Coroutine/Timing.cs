@@ -185,15 +185,19 @@ public partial class Timing : Node
             ActiveInstances[_instanceId] = null;
         }
 
-        CleanupInstanceIfNecessary();
+        CleanupInstanceIfNecessary(this);
     }
 
     /// <summary>
-    ///     清理单例引用。
+    ///     仅在当前实例仍持有共享单例引用时清理它，避免多宿主场景误清其他实例。
     /// </summary>
-    private static void CleanupInstanceIfNecessary()
+    /// <param name="instance">正在退出生命周期的实例。</param>
+    private static void CleanupInstanceIfNecessary(Timing instance)
     {
-        _instance = null;
+        if (ReferenceEquals(_instance, instance))
+        {
+            _instance = null;
+        }
     }
 
     /// <summary>

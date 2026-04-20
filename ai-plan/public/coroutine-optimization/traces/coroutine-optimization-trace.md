@@ -50,6 +50,11 @@
 - 完成验证：
   - `dotnet test GFramework.Godot.Tests/GFramework.Godot.Tests.csproj -c Release --filter "FullyQualifiedName~TimingTests" --no-restore`
   - `dotnet test GFramework.Godot.Tests/GFramework.Godot.Tests.csproj -c Release --no-restore`
+- 同日根据 PR #259 的最新 unresolved CodeRabbit review 继续收口：
+  - 在 `GFramework.Godot.Tests/Coroutine/TimingTests.cs` 为 fixture 添加 `[NonParallelizable]`，避免静态实例槽位在 NUnit 并行执行时互相污染
+  - 将 `Timing` 的 `_instance` 清理改为“仅当当前实例仍持有共享单例引用时才执行”，同时覆盖运行时 `_ExitTree()` 与测试入口 `DisposeForTests()`
+- 额外完成验证：
+  - `dotnet test GFramework.Godot.Tests/GFramework.Godot.Tests.csproj -c Release --filter "FullyQualifiedName~TimingTests" --no-restore`
 
 ### 下一步
 

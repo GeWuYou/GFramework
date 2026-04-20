@@ -12,6 +12,7 @@
 - 当前焦点：
   - 已为 `Timing` 补齐纯托管测试宿主入口，允许在 `dotnet test` 下验证 Godot 协程宿主阶段语义，而不依赖原生 `Node` 构造
   - 已补充 `GFramework.Godot.Tests/Coroutine/TimingTests.cs`，锁定暂停、segment 路由和阶段型等待指令的回归覆盖
+  - 已根据 PR #259 的最新 CodeRabbit review 收口测试宿主清理对称性，并将 `TimingTests` 固定为非并行执行
   - 下一轮优先补“仍需真实场景树参与”的归属协程 / 退树语义，或转入文档迁移收口，不再回到“Godot 宿主没有自动化回归”的旧状态
 
 ## 当前状态摘要
@@ -32,6 +33,9 @@
   - 暂停时 `Process` / `ProcessIgnorePause` 的差异
   - `Process` / `PhysicsProcess` / `DeferredProcess` 的推进边界
   - `WaitForFixedUpdate` 与 `WaitForEndOfFrame` 的阶段型等待语义
+- 针对 PR #259 的最新未解决 review 线程，已补充两项收口：
+  - `TimingTests` 已添加 `[NonParallelizable]`，避免共享静态实例槽位在 NUnit 并行执行时互相污染
+  - `Timing` 的测试清理与运行时退树清理现仅在当前实例持有共享 `_instance` 引用时才会清空单例状态
 - `dotnet test GFramework.Godot.Tests/GFramework.Godot.Tests.csproj -c Release --no-restore` 当前通过，合计 `58` 个测试
 
 ## 当前风险
@@ -58,9 +62,12 @@
 - `dotnet test GFramework.Godot.Tests/GFramework.Godot.Tests.csproj -c Release --no-restore`
   - 结果：通过
   - 备注：Godot 测试项目共 `58` 个测试全部通过
+- `dotnet test GFramework.Godot.Tests/GFramework.Godot.Tests.csproj -c Release --filter "FullyQualifiedName~TimingTests" --no-restore`
+  - 结果：通过
+  - 备注：针对 PR #259 review 修复后的 `TimingTests` 共 `5` 个测试全部通过
 
 ## 下一步
 
 1. 若继续补验证，优先只做真实场景树相关的节点归属 / 退树 / `queue_free` 回归，不再重新设计 `Timing` 纯托管宿主
-2. 若转入文档收口，优先清理其余 `StartCoroutine()/StopCoroutine()` 残留，并补 Godot 新入口与阶段等待的迁移对照
-3. 若下一轮涉及更大范围语义调整，再单独开新恢复点，避免把测试、文档和 API 改动重新混成一次任务
+2. 当前 PR 合并前可直接回到 GitHub 处理这两条 review 线程的回复与 resolve，避免后续重复审阅同一问题
+3. 若转入文档收口，优先清理其余 `StartCoroutine()/StopCoroutine()` 残留，并补 Godot 新入口与阶段等待的迁移对照

@@ -119,6 +119,7 @@ public partial class Timing
 
     /// <summary>
     ///     清理测试初始化留下的实例槽位与调度器状态，避免跨测试污染静态单例表。
+    ///     仅当当前测试宿主仍持有共享单例引用时才会清理 `_instance`，以免误伤同进程内的其他宿主。
     /// </summary>
     internal void DisposeForTests()
     {
@@ -130,7 +131,7 @@ public partial class Timing
             ActiveInstances[_instanceId] = null;
         }
 
-        CleanupInstanceIfNecessary();
+        CleanupInstanceIfNecessary(this);
 
         _processScheduler = null;
         _processIgnorePauseScheduler = null;

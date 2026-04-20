@@ -10,6 +10,7 @@ namespace GFramework.Godot.Tests.Coroutine;
 ///     验证 <see cref="Timing" /> 在纯托管测试宿主下仍保持与真实 Godot 生命周期一致的阶段语义。
 /// </summary>
 [TestFixture]
+[NonParallelizable]
 public sealed class TimingTests
 {
     private Timing _timing = null!;
