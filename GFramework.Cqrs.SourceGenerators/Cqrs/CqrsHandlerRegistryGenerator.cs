@@ -398,6 +398,15 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
         ITypeSymbol type,
         out RuntimeTypeReferenceSpec? runtimeTypeReference)
     {
+        // CLR forbids pointer and function-pointer types from being used as generic arguments.
+        // CQRS handler contracts are generic interfaces, so emitting runtime reconstruction code for these
+        // shapes would only defer the failure to MakeGenericType(...) at runtime.
+        if (type is IPointerTypeSymbol or IFunctionPointerTypeSymbol)
+        {
+            runtimeTypeReference = null;
+            return false;
+        }
+
         if (CanReferenceFromGeneratedRegistry(compilation, type))
         {
             runtimeTypeReference = RuntimeTypeReferenceSpec.FromDirectReference(
@@ -409,13 +418,6 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
             TryCreateRuntimeTypeReference(compilation, arrayType.ElementType, out var elementTypeReference))
         {
             runtimeTypeReference = RuntimeTypeReferenceSpec.FromArray(elementTypeReference!, arrayType.Rank);
-            return true;
-        }
-
-        if (type is IPointerTypeSymbol pointerType &&
-            TryCreateRuntimeTypeReference(compilation, pointerType.PointedAtType, out var pointedAtTypeReference))
-        {
-            runtimeTypeReference = RuntimeTypeReferenceSpec.FromPointer(pointedAtTypeReference!);
             return true;
         }
 
@@ -525,19 +527,9 @@ public sealed class CqrsHandlerRegistryGenerator : IIncrementalGenerator
                 }
 
                 return true;
-            case IPointerTypeSymbol pointerType:
-                return CanReferenceFromGeneratedRegistry(compilation, pointerType.PointedAtType);
-            case IFunctionPointerTypeSymbol functionPointerType:
-                if (!CanReferenceFromGeneratedRegistry(compilation, functionPointerType.Signature.ReturnType))
-                    return false;
-
-                foreach (var parameter in functionPointerType.Signature.Parameters)
-                {
-                    if (!CanReferenceFromGeneratedRegistry(compilation, parameter.Type))
-                        return false;
-                }
-
-                return true;
+            case IPointerTypeSymbol:
+            case IFunctionPointerTypeSymbol:
+                return false;
             case ITypeParameterSymbol:
                 return false;
             default:

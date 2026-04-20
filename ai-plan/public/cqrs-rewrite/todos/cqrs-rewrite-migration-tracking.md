@@ -7,14 +7,14 @@ CQRS 迁移与收敛。
 
 ## 当前恢复点
 
-- 恢复点编号：`CQRS-REWRITE-RP-049`
+- 恢复点编号：`CQRS-REWRITE-RP-050`
 - 当前阶段：`Phase 8`
 - 当前焦点：
   - 当前功能历史已归档，active 跟踪仅保留 `Phase 8` 主线的恢复入口
   - 已完成 generated registry 激活路径收敛：`CqrsHandlerRegistrar` 现优先复用缓存工厂委托，避免重复 `ConstructorInfo.Invoke`
   - 已补充私有无参构造 generated registry 的回归测试，确保兼容现有生成器产物
-  - 已补充 pointer 响应类型的 precise runtime type 生成，避免这类 handler 再退回程序集级 reflection fallback
-  - 已收紧 function pointer 签名的可直接生成判定，仅在其返回值与参数类型都可安全引用时才走静态注册路径
+  - 已修正 pointer / function pointer 泛型合同的错误覆盖：生成器不再为这两类类型发射 precise runtime type 重建代码
+  - 已补充非法 CQRS 泛型合同的输入诊断断言，明确 `CS0306` 与 fallback / diagnostic 路径的组合语义
   - 已为 registrar 的 reflection 注册路径补充 handler-interface 元数据缓存，减少跨容器重复注册时的 `GetInterfaces()` 反射
   - 已将 registrar 的重复映射判定从线性扫描 `IServiceCollection` 收敛为本地映射索引，减少 fallback 注册路径的重复查找
   - 中期上继续 `Phase 8` 主线：参考 `ai-libs/Mediator`，继续扩大 generator 覆盖，并选择下一个收益明确的 dispatch / invoker 反射收敛点
@@ -31,17 +31,17 @@ CQRS 迁移与收敛。
 
 - `Phase 8` 仍是当前主线，不再回退到 `Phase 7`
 - `2026-04-20` 已重新执行 `$gframework-pr-review`：
-  - `PR #253` 当前状态为 `CLOSED`
-  - latest reviewed commit 仍显示 `1` 条 open thread，但其内容针对的是已过时的 `Phase 7` 恢复建议
-  - 当前 active tracking / trace 已统一到 `Phase 8`，因此该 thread 不再作为当前主线阻塞项
+  - 当前分支对应 `PR #261`，状态为 `OPEN`
+  - latest reviewed commit 上有 `2` 条 open CodeRabbit thread，均指向 pointer / function pointer 泛型合同处理
+  - 本地已接受并修复这两条建议：生成器拒绝为 pointer / function pointer 生成 precise registration，测试改为显式断言输入源 `CS0306`
 - `2026-04-20` 已完成一轮冷启动反射收敛：
   - generated registry 类型首次分析后，会缓存一个可复用的激活工厂，而不是在后续容器注册时重复走 `ConstructorInfo.Invoke`
   - 若运行环境不允许动态方法，仍保留原有的反射激活回退，避免阻塞 generated registry 路径
   - `GFramework.Cqrs.Tests` 已补充“私有无参构造 registry 仍可激活”的回归覆盖
 - `2026-04-20` 已完成一轮 generator 覆盖面扩展：
-  - `CqrsHandlerRegistryGenerator` 现可为 pointer 类型递归重建 runtime type，并通过 `MakePointerType()` 生成精确 service type
-  - function pointer 签名不再默认视为“可直接引用”；只有当返回值与每个参数类型都可从 generated registry 安全引用时，才允许直接生成
-  - 含隐藏类型的 function pointer handler 仍会保留原有 fallback / 诊断路径，避免此次覆盖扩展误伤已有回退边界
+  - `CqrsHandlerRegistryGenerator` 现会在 runtime type 建模入口直接拒绝 `IPointerTypeSymbol` 与 `IFunctionPointerTypeSymbol`
+  - `CanReferenceFromGeneratedRegistry` 不再递归判断 pointer / function pointer 的内部元素，而是统一返回 `false`
+  - 相关 source-generator 回归已改为区分输入源诊断与生成源诊断，避免把非法泛型合同误判为成功生成
 - `2026-04-20` 已完成一轮 registrar reflection 路径收敛：
   - `CqrsHandlerRegistrar` 现会按 `Type` 弱键缓存已筛选且排序好的 supported handler interface 列表
   - 同一 handler 类型跨容器重复注册时，不再重复执行 `GetInterfaces()` 与支持接口筛选
@@ -76,7 +76,10 @@ CQRS 迁移与收敛。
   - 备注：`63/63` 测试通过；当前沙箱限制了 MSBuild named pipe，验证需在提权环境下运行
 - `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --no-restore -p:RestoreFallbackFolders= -m:1 -nodeReuse:false --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests"`
   - 结果：通过
-  - 备注：`14/14` 测试通过；本轮覆盖 pointer precise registration 与 function pointer fallback 边界
+  - 备注：`14/14` 测试通过；本轮覆盖 pointer / function pointer 合同拒绝、fallback 诊断与现有精确注册路径
+- `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --no-restore -p:RestoreFallbackFolders= -m:1 -nodeReuse:false --filter "FullyQualifiedName~Reports_Compilation_Error_And_Skips_Precise_Registration_For_Hidden_Pointer_Response|FullyQualifiedName~Reports_Diagnostic_And_Skips_Registry_When_Fallback_Metadata_Is_Required_But_Runtime_Contract_Lacks_Fallback_Attribute|FullyQualifiedName~Emits_Assembly_Level_Fallback_Metadata_When_Fallback_Is_Required_And_Runtime_Contract_Is_Available"`
+  - 结果：通过
+  - 备注：`3/3` 测试通过；本轮直接覆盖 PR #261 指向的 3 个 pointer / function pointer 回归场景
 - `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --no-restore -p:RestoreFallbackFolders= -m:1 -nodeReuse:false --filter "FullyQualifiedName~GFramework.Cqrs.Tests.Cqrs.CqrsHandlerRegistrarTests"`
   - 结果：通过
   - 备注：`11/11` 测试通过；本轮覆盖 registrar 的 supported handler interface 缓存与 duplicate mapping 去重路径

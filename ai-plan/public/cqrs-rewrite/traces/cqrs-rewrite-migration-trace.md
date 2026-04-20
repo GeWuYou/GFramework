@@ -2,6 +2,20 @@
 
 ## 2026-04-20
 
+### 阶段：pointer / function pointer 泛型合同拒绝（CQRS-REWRITE-RP-050）
+
+- 重新执行 `$gframework-pr-review` 后，确认当前分支对应 `PR #261`，latest reviewed commit 上有 `2` 条仍未关闭的 CodeRabbit thread
+- 本地核对后确认这两条评论有效：`CqrsHandlerRegistryGenerator` 之前会为 `IPointerTypeSymbol` 递归构造 `MakePointerType()`，而测试只校验生成源诊断，未显式暴露输入源 `CS0306`
+- 已在 `GFramework.Cqrs.SourceGenerators/Cqrs/CqrsHandlerRegistryGenerator.cs` 中收紧 `TryCreateRuntimeTypeReference` 与 `CanReferenceFromGeneratedRegistry`
+- pointer / function pointer 现统一视为不可精确生成的 CQRS 泛型合同，生成器会保守回退到既有 fallback / diagnostic 路径，而不再发射运行时 `MakeGenericType(...)` 风险代码
+- 已在 `GFramework.SourceGenerators.Tests/Cqrs/CqrsHandlerRegistryGeneratorTests.cs` 中补充输入源诊断分离，并将相关测试改为显式断言 `CS0306` 与 fallback / diagnostic 结果
+- 定向验证已通过：
+  - `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --no-restore -p:RestoreFallbackFolders= -m:1 -nodeReuse:false --filter "FullyQualifiedName~Reports_Compilation_Error_And_Skips_Precise_Registration_For_Hidden_Pointer_Response|FullyQualifiedName~Reports_Diagnostic_And_Skips_Registry_When_Fallback_Metadata_Is_Required_But_Runtime_Contract_Lacks_Fallback_Attribute|FullyQualifiedName~Emits_Assembly_Level_Fallback_Metadata_When_Fallback_Is_Required_And_Runtime_Contract_Is_Available"`
+  - `3/3` passed
+- 扩展验证已通过：
+  - `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --no-restore -p:RestoreFallbackFolders= -m:1 -nodeReuse:false --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests"`
+  - `14/14` passed
+
 ### 阶段：registrar duplicate mapping 索引收敛（CQRS-REWRITE-RP-049）
 
 - 已将 `CqrsHandlerRegistrar` 的重复 handler mapping 判定从逐条线性扫描 `IServiceCollection` 收敛为单次构建的本地映射索引
