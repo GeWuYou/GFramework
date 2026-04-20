@@ -2846,6 +2846,125 @@ test("parseSchemaContent should reject then declarations without if", () => {
         /must declare 'if' when using 'then' or 'else'/u);
 });
 
+test("parseSchemaContent should require explicit object type for conditional branches", () => {
+    assert.throws(
+        () => parseSchemaContent(`
+            {
+              "type": "object",
+              "properties": {
+                "reward": {
+                  "type": "object",
+                  "properties": {
+                    "itemId": { "type": "string" }
+                  },
+                  "if": {
+                    "properties": {
+                      "itemId": { "type": "string", "const": "potion" }
+                    }
+                  },
+                  "then": {
+                    "type": "object",
+                    "properties": {
+                      "itemId": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+        `),
+        /must declare an object-typed 'if' schema/u);
+});
+
+test("parseSchemaContent should reject conditional branches with non-object properties metadata", () => {
+    assert.throws(
+        () => parseSchemaContent(`
+            {
+              "type": "object",
+              "properties": {
+                "reward": {
+                  "type": "object",
+                  "properties": {
+                    "itemId": { "type": "string" }
+                  },
+                  "if": {
+                    "type": "object",
+                    "properties": []
+                  },
+                  "then": {
+                    "type": "object",
+                    "properties": {
+                      "itemId": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+        `),
+        /must declare 'properties' in 'if' as an object-valued map/u);
+});
+
+test("parseSchemaContent should reject conditional branches with non-array required metadata", () => {
+    assert.throws(
+        () => parseSchemaContent(`
+            {
+              "type": "object",
+              "properties": {
+                "reward": {
+                  "type": "object",
+                  "properties": {
+                    "itemCount": { "type": "integer" }
+                  },
+                  "if": {
+                    "type": "object",
+                    "properties": {
+                      "itemCount": { "type": "integer" }
+                    }
+                  },
+                  "then": {
+                    "type": "object",
+                    "required": "itemCount",
+                    "properties": {
+                      "itemCount": { "type": "integer" }
+                    }
+                  }
+                }
+              }
+            }
+        `),
+        /must declare 'required' in 'then' as an array of property names/u);
+});
+
+test("parseSchemaContent should reject conditional branches with invalid required entries", () => {
+    assert.throws(
+        () => parseSchemaContent(`
+            {
+              "type": "object",
+              "properties": {
+                "reward": {
+                  "type": "object",
+                  "properties": {
+                    "bonus": { "type": "integer" }
+                  },
+                  "if": {
+                    "type": "object",
+                    "properties": {
+                      "bonus": { "type": "integer" }
+                    }
+                  },
+                  "else": {
+                    "type": "object",
+                    "required": [" "],
+                    "properties": {
+                      "bonus": { "type": "integer" }
+                    }
+                  }
+                }
+              }
+            }
+        `),
+        /cannot declare blank property names in 'required' for 'else'/u);
+});
+
 test("validateParsedConfig should report then violations", () => {
     const schema = parseSchemaContent(`
         {

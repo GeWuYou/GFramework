@@ -83,11 +83,18 @@
 - 2026-04-20：`python3 .codex/skills/gframework-pr-review/scripts/fetch_current_pr_review.py`
   - 结果：通过
   - 备注：输出 `CodeRabbit actionable comments: 2`、`CodeRabbit nitpick comments: 2 declared, 1 parsed`，并暴露剩余 review follow-up
+- 2026-04-20：skill parser follow-up
+  - 结果：已补齐
+  - 备注：`gframework-pr-review` 现可解析 latest review body 中的 `Outside diff range comments`，并且不再遗漏 `.codex/.../*.py` nitpick cards
+- 2026-04-20：`python3 .codex/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --pr 262 --format json`
+  - 结果：通过
+  - 备注：输出 `CodeRabbit outside-diff comments: 1 declared, 1 parsed`、`CodeRabbit nitpick comments: 2 declared, 2 parsed`，parser warning 清零
 - 2026-04-20：运行时条件分支 follow-up
   - 结果：已补齐
   - 备注：`YamlConfigSchemaValidator` 现对非 object 的 `if` / `then` / `else` 使用分支级诊断路径；运行时测试新增 `else` 缺失 `if` 回归
 - 2026-04-20：`bun run test`（`tools/gframework-config-tool`）
-  - 结果：通过（118 tests）
+  - 结果：通过（122 tests）
+  - 备注：新增条件分支坏形状回归后，tooling 现在会拒绝缺失 `type: "object"`、坏形状 `properties`、坏形状 `required` 与空白 required 成员
 - 2026-04-20：`dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~SchemaConfigGeneratorTests"`
   - 结果：通过（46 tests）
 - 2026-04-20：`dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --filter "FullyQualifiedName~YamlConfigLoaderIfThenElseTests"`

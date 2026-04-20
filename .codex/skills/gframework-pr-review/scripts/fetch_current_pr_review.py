@@ -234,10 +234,10 @@ def parse_comment_cards(comment_block: str) -> list[dict[str, str]]:
     comments: list[dict[str, str]] = []
     pattern = re.compile(
         r"<summary>"
-        # CodeRabbit can fold nitpick cards for repo tooling files such as .js/.ts.
-        # Keep the matcher broad enough for common source/config files while still
-        # requiring a path-like summary header instead of arbitrary review text.
-        r"((?:[^<\n]+/)*[^<\n]+\.(?:cs|md|csproj|yaml|yml|json|txt|props|targets|js|jsx|mjs|cjs|ts|tsx)|AGENTS\.md|CLAUDE\.md|README\.md|\.gitignore)"
+        # CodeRabbit can fold cards for source, docs, scripts, and repo config files.
+        # Keep the matcher path-like, but do not hardcode a tiny extension allow-list
+        # or we will silently drop valid findings such as .py skill files.
+        r"((?:[^<\n]+/)*[^<\n/]+(?:\.[A-Za-z0-9._-]+)+|AGENTS\.md|CLAUDE\.md|README\.md|\.gitignore)"
         r" \((\d+)\)</summary><blockquote>\s*(.*?)\s*(?:(?:</blockquote></details>)|(?:</blockquote>))",
         re.S,
     )
@@ -266,6 +266,27 @@ def parse_comment_cards(comment_block: str) -> list[dict[str, str]]:
     return comments
 
 
+def normalize_review_body_for_parsing(review_body: str) -> str:
+    # CodeRabbit sometimes wraps structured HTML sections in markdown blockquotes,
+    # such as the CAUTION block used for outside-diff comments. Remove the quote
+    # prefixes for parsing while leaving the original raw body unchanged for output.
+    return re.sub(r"(?m)^>\s?", "", review_body)
+
+
+def find_section_block_end(review_body: str, block_start: int) -> int:
+    depth = 1
+    for tag_match in re.finditer(r"<details>|</details>", review_body[block_start:]):
+        tag = tag_match.group(0)
+        if tag == "<details>":
+            depth += 1
+        else:
+            depth -= 1
+            if depth == 0:
+                return block_start + tag_match.start()
+
+    return len(review_body)
+
+
 def parse_review_comment_group(review_body: str, section_name: str) -> dict[str, Any]:
     section_match = re.search(
         rf"<summary>[^<]*{re.escape(section_name)} \((?P<count>\d+)\)</summary><blockquote>\s*",
@@ -275,16 +296,9 @@ def parse_review_comment_group(review_body: str, section_name: str) -> dict[str,
     if section_match is None:
         return {"count": 0, "comments": [], "raw": ""}
 
-    remaining_body = review_body[section_match.end() :]
-    end_markers = [
-        "\n</blockquote></details>\n\n<details>\n<summary>🤖 Prompt for all review comments with AI agents</summary>",
-        "\n</blockquote></details>\n\n<details>\n<summary>🪄 Autofix (Beta)</summary>",
-        "\n</blockquote></details>\n\n<details>\n<summary>ℹ️ Review info</summary>",
-        "\n</blockquote></details>\n\n---",
-    ]
-    end_positions = [remaining_body.find(marker) for marker in end_markers if remaining_body.find(marker) >= 0]
-    end_index = min(end_positions) if end_positions else len(remaining_body)
-    comment_block = remaining_body[:end_index].strip()
+    block_end = find_section_block_end(review_body, section_match.end())
+    comment_block = review_body[section_match.end() : block_end].strip()
+    comment_block = re.sub(r"\s*</blockquote>\s*$", "", comment_block, flags=re.S)
     return {
         "count": int(section_match.group("count")),
         "comments": parse_comment_cards(comment_block),
@@ -293,15 +307,19 @@ def parse_review_comment_group(review_body: str, section_name: str) -> dict[str,
 
 
 def parse_latest_review_body(review_body: str) -> dict[str, Any]:
-    actionable_count_match = re.search(r"\*\*Actionable comments posted:\s*(\d+)\*\*", review_body)
+    normalized_review_body = normalize_review_body_for_parsing(review_body)
+    actionable_count_match = re.search(r"\*\*Actionable comments posted:\s*(\d+)\*\*", normalized_review_body)
     prompt_match = re.search(
         r"<summary>🤖 Prompt for all review comments with AI agents</summary>\s*```(.*?)```",
-        review_body,
+        normalized_review_body,
         re.S,
     )
-    nitpick_group = parse_review_comment_group(review_body, "Nitpick comments")
+    outside_diff_group = parse_review_comment_group(normalized_review_body, "Outside diff range comments")
+    nitpick_group = parse_review_comment_group(normalized_review_body, "Nitpick comments")
     return {
         "actionable_count": int(actionable_count_match.group(1)) if actionable_count_match else 0,
+        "outside_diff_count": outside_diff_group["count"],
+        "outside_diff_comments": outside_diff_group["comments"],
         "nitpick_count": nitpick_group["count"],
         "nitpick_comments": nitpick_group["comments"],
         "all_comments_prompt": prompt_match.group(1).strip() if prompt_match else "",
@@ -607,8 +625,17 @@ def build_result(pr_number: int, branch: str) -> dict[str, Any]:
         latest_review_body = str(latest_review.get("body") or "")
         if latest_review.get("user") == CODERABBIT_LOGIN and latest_review_body:
             coderabbit_review = parse_latest_review_body(latest_review_body)
+            outside_diff_count = int(coderabbit_review.get("outside_diff_count") or 0)
+            parsed_outside_diff_count = len(coderabbit_review.get("outside_diff_comments", []))
             nitpick_count = int(coderabbit_review.get("nitpick_count") or 0)
             parsed_nitpick_count = len(coderabbit_review.get("nitpick_comments", []))
+            if "Outside diff range comments" in latest_review_body and not parsed_outside_diff_count:
+                warnings.append("CodeRabbit outside-diff comments block could not be parsed from the latest review body.")
+            elif outside_diff_count and parsed_outside_diff_count != outside_diff_count:
+                warnings.append(
+                    "CodeRabbit outside-diff comments were only partially parsed from the latest review body: "
+                    f"declared={outside_diff_count}, parsed={parsed_outside_diff_count}."
+                )
             if "Nitpick comments" in latest_review_body and not parsed_nitpick_count:
                 warnings.append("CodeRabbit nitpick comments block could not be parsed from the latest review body.")
             elif nitpick_count and parsed_nitpick_count != nitpick_count:
@@ -679,6 +706,17 @@ def format_text(result: dict[str, Any]) -> str:
             lines.append(f"  Description: {comment['description']}")
     if actionable_count and not comments:
         lines.append("  Details: see latest-commit review threads below.")
+
+    outside_diff_comments = review_feedback.get("outside_diff_comments", [])
+    outside_diff_count = review_feedback.get("outside_diff_count") or len(outside_diff_comments)
+    lines.append("")
+    lines.append(f"CodeRabbit outside-diff comments: {outside_diff_count} declared, {len(outside_diff_comments)} parsed")
+    for comment in outside_diff_comments:
+        lines.append(f"- {comment['path']} {comment['range']}".rstrip())
+        if comment["title"]:
+            lines.append(f"  Title: {comment['title']}")
+        if comment["description"]:
+            lines.append(f"  Description: {comment['description']}")
 
     nitpick_comments = review_feedback.get("nitpick_comments", [])
     nitpick_count = review_feedback.get("nitpick_count") or len(nitpick_comments)

@@ -24,7 +24,7 @@
 - PR review 信号漂移风险：CodeRabbit 可能把建议折叠在 latest review body，而不是 issue comments
   - 缓解措施：`gframework-pr-review` 现已同时解析 latest review body，并输出 declared / parsed 数量以便快速识别解析缺口
 - PR follow-up 残留风险：PR `#262` 最新 review thread 仍有少量 open comments，且 nitpick body 解析仍存在 declared / parsed 缺口
-  - 缓解措施：先以 latest unresolved thread 为准逐条本地核验；已确认并补齐运行时诊断路径与 `else without if` 回归测试，剩余解析缺口单独留在 skill 后续处理
+  - 缓解措施：先以 latest unresolved thread 为准逐条本地核验；已确认并补齐运行时诊断路径与 `else without if` 回归测试，skill 现已补齐 `.py` nitpick 与 outside-diff comment 解析，剩余项只需等待本地修复推送后再复抓确认
 - 非阻塞项回退风险：将 VS Code 功能标为非阻塞但导致主线回退的风险
   - 缓解措施：C# 主线补齐新关键字时仍需在 `configValidation.js` 与 `extension.js` 中同步落地，只是不让复杂表单控件阻塞发布
 
@@ -52,11 +52,14 @@
   - text 输出会显示 `CodeRabbit nitpick comments: X declared, Y parsed`，避免再次静默遗漏
   - 已按 5 条 nitpick 更新 VS Code tool hints、shared validation helper，以及对称分支测试覆盖
 - PR `#262` 最新 follow-up：
-  - 最新抓取结果显示仍有 2 条 actionable comments 与 1 条已解析 nitpick 需要本地核验
+  - 最新抓取结果显示 latest review body 里有 2 条 nitpick 与 1 条 outside-diff actionable comment
   - `SchemaConfigGenerator` 的分支级诊断定位已在当前分支，无需重复修改
   - `YamlConfigSchemaValidator` 已补齐 `conditionalSchemaPath` 诊断路径，避免 `reward[then]` / `reward[else]` 坏形状误报到父路径
   - `YamlConfigLoaderIfThenElseTests` 已新增运行时 `else` 缺失 `if` 回归，避免 Runtime / Generator 覆盖漂移
   - active trace 已将重复的 `### 验证` 标题改为专用 PR follow-up 标题，消除 `MD024`
+  - `gframework-pr-review` 现已在 latest review body 中同时解析 `Outside diff range comments` 与 `Nitpick comments`
+  - `parse_comment_cards` 已不再遗漏 `.codex/.../*.py` 这类 skill 文件评论卡片
+  - `tools/gframework-config-tool/src/configValidation.js` 已按 outside-diff 建议收紧条件分支坏形状拒绝规则，并补齐 JS 回归测试
 - 分支同步状态：
   - `feat/ai-first-config` 已 rebase 到 `origin/feat/ai-first-config`
   - 当前已解决“ahead / behind 同时存在”的分支差异，不再 behind 远端
@@ -82,14 +85,14 @@
 - `2026-04-17` 之前的详细实现记录与定向验证命令已归档到历史 tracking / trace
 - active 跟踪文件只保留当前恢复点、当前状态和下一步，不再重复堆积已完成阶段的完整历史
 - `2026-04-20` 当前恢复点验证：
-  - `python3 .codex/skills/gframework-pr-review/scripts/fetch_current_pr_review.py`：通过（`CodeRabbit actionable comments: 2`，`CodeRabbit nitpick comments: 2 declared, 1 parsed`）
-  - `bun run test`（`tools/gframework-config-tool`）：通过
+  - `python3 .codex/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --pr 262 --format json`：通过（`CodeRabbit outside-diff comments: 1 declared, 1 parsed`，`CodeRabbit nitpick comments: 2 declared, 2 parsed`）
+  - `bun run test`（`tools/gframework-config-tool`）：通过（122 tests；包含条件分支坏形状回归）
   - `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~SchemaConfigGeneratorTests"`：通过
   - `dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --filter "FullyQualifiedName~YamlConfigLoaderIfThenElseTests"`：通过（8 tests；新增 `else without if` 运行时回归）
   - `dotnet build GFramework.sln -c Release`：通过（存在仓库既有 analyzer warning，无新增错误）
 
 ## 下一步
 
-1. 提交并推送当前 PR `#262` follow-up 修复后，重新抓取一次 PR review，确认 open thread 是否已清空或只剩 parser gap
+1. 提交并推送当前 PR `#262` follow-up 修复后，重新抓取一次 PR review，确认 outside-diff comment 与 open thread 是否都已收口
 2. 若 PR review 已收口，再回到 `GFramework.Game/Config/YamlConfigSchemaValidator.cs`、`GFramework.Game.SourceGenerators/Config/SchemaConfigGenerator.cs`、`tools/gframework-config-tool/src/configValidation.js` 盘点下一批候选关键字
 3. 优先判断 `oneOf` / `anyOf` 是否存在可接受的 object-focused 子集；若仍会引入生成类型形状漂移，就直接跳过

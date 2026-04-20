@@ -1485,6 +1485,10 @@ function parseConditionalObjectSchema(rawSchema, displayPath, keywordName, prope
         throw new Error(`Schema property '${displayPath}' must declare '${keywordName}' as an object-valued schema.`);
     }
 
+    if (rawSchema.type !== "object") {
+        throw new Error(`Schema property '${displayPath}' must declare an object-typed '${keywordName}' schema.`);
+    }
+
     validateConditionalSchemaTargets(rawSchema, displayPath, keywordName, properties);
     const conditionalSchema = parseSchemaNode(rawSchema, `${displayPath}[${keywordName}]`);
     if (conditionalSchema.type !== "object") {
@@ -1534,9 +1538,14 @@ function validateDeclaredTargetReferences(rawSchema, displayPath, contextLabel, 
         return;
     }
 
-    if (rawSchema.properties &&
-        typeof rawSchema.properties === "object" &&
-        !Array.isArray(rawSchema.properties)) {
+    if (rawSchema.properties !== undefined) {
+        if (!rawSchema.properties ||
+            typeof rawSchema.properties !== "object" ||
+            Array.isArray(rawSchema.properties)) {
+            throw new Error(
+                `Schema property '${displayPath}' must declare 'properties' in ${contextLabel} as an object-valued map.`);
+        }
+
         for (const propertyName of Object.keys(rawSchema.properties)) {
             if (Object.prototype.hasOwnProperty.call(properties, propertyName)) {
                 continue;
@@ -1548,13 +1557,24 @@ function validateDeclaredTargetReferences(rawSchema, displayPath, contextLabel, 
         }
     }
 
-    if (!Array.isArray(rawSchema.required)) {
+    if (rawSchema.required === undefined) {
         return;
     }
 
+    if (!Array.isArray(rawSchema.required)) {
+        throw new Error(
+            `Schema property '${displayPath}' must declare 'required' in ${contextLabel} as an array of property names.`);
+    }
+
     for (const requiredProperty of rawSchema.required) {
-        if (typeof requiredProperty !== "string" || requiredProperty.trim().length === 0) {
-            continue;
+        if (typeof requiredProperty !== "string") {
+            throw new Error(
+                `Schema property '${displayPath}' must declare 'required' entries in ${contextLabel} as property-name strings.`);
+        }
+
+        if (requiredProperty.trim().length === 0) {
+            throw new Error(
+                `Schema property '${displayPath}' cannot declare blank property names in 'required' for ${contextLabel}.`);
         }
 
         if (Object.prototype.hasOwnProperty.call(properties, requiredProperty)) {
