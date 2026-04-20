@@ -1622,7 +1622,7 @@ function describeInlineSchemaForHint(schema, includeRequiredProperties = false) 
 /**
  * Render human-facing metadata hints for one schema field.
  *
- * @param {{type?: string, description?: string, defaultValue?: string, constValue?: string, constDisplayValue?: string, minimum?: number, exclusiveMinimum?: number, maximum?: number, exclusiveMaximum?: number, multipleOf?: number, minLength?: number, maxLength?: number, pattern?: string, format?: string, minItems?: number, maxItems?: number, minContains?: number, maxContains?: number, minProperties?: number, maxProperties?: number, required?: string[], dependentRequired?: Record<string, string[]>, dependentSchemas?: Record<string, {type?: string, required?: string[], enumValues?: string[], constValue?: string, constDisplayValue?: string, pattern?: string, refTable?: string}>, allOf?: Array<{type?: string, required?: string[], enumValues?: string[], constValue?: string, constDisplayValue?: string, pattern?: string, refTable?: string}>, uniqueItems?: boolean, enumValues?: string[], contains?: {type?: string, enumValues?: string[], constValue?: string, constDisplayValue?: string, pattern?: string, format?: string, refTable?: string}, items?: {enumValues?: string[], constValue?: string, constDisplayValue?: string, minimum?: number, exclusiveMinimum?: number, maximum?: number, exclusiveMaximum?: number, multipleOf?: number, minLength?: number, maxLength?: number, pattern?: string, format?: string}, refTable?: string}} propertySchema Property schema metadata.
+ * @param {{type?: string, description?: string, defaultValue?: string, constValue?: string, constDisplayValue?: string, minimum?: number, exclusiveMinimum?: number, maximum?: number, exclusiveMaximum?: number, multipleOf?: number, minLength?: number, maxLength?: number, pattern?: string, format?: string, minItems?: number, maxItems?: number, minContains?: number, maxContains?: number, minProperties?: number, maxProperties?: number, required?: string[], dependentRequired?: Record<string, string[]>, dependentSchemas?: Record<string, {type?: string, required?: string[], enumValues?: string[], constValue?: string, constDisplayValue?: string, pattern?: string, refTable?: string}>, allOf?: Array<{type?: string, required?: string[], enumValues?: string[], constValue?: string, constDisplayValue?: string, pattern?: string, refTable?: string}>, ifSchema?: {type?: string, required?: string[], enumValues?: string[], constValue?: string, constDisplayValue?: string, pattern?: string, refTable?: string}, thenSchema?: {type?: string, required?: string[], enumValues?: string[], constValue?: string, constDisplayValue?: string, pattern?: string, refTable?: string}, elseSchema?: {type?: string, required?: string[], enumValues?: string[], constValue?: string, constDisplayValue?: string, pattern?: string, refTable?: string}, uniqueItems?: boolean, enumValues?: string[], contains?: {type?: string, enumValues?: string[], constValue?: string, constDisplayValue?: string, pattern?: string, format?: string, refTable?: string}, items?: {enumValues?: string[], constValue?: string, constDisplayValue?: string, minimum?: number, exclusiveMinimum?: number, maximum?: number, exclusiveMaximum?: number, multipleOf?: number, minLength?: number, maxLength?: number, pattern?: string, format?: string}, refTable?: string}} propertySchema Property schema metadata.
  * @param {boolean} isArrayField Whether the field is an array.
  * @param {boolean} includeDescription Whether description text should be included in the hint output.
  * @returns {string} HTML fragment.
@@ -1730,6 +1730,23 @@ function renderFieldHint(propertySchema, isArrayField, includeDescription = true
                 schema: describeInlineSchemaForHint(allOfSchema, true)
             })));
         }
+    }
+
+    if (propertySchema.type === "object" &&
+        propertySchema.ifSchema &&
+        propertySchema.thenSchema) {
+        hints.push(escapeHtml(localizer.t("webview.hint.ifThen", {
+            condition: describeInlineSchemaForHint(propertySchema.ifSchema, true),
+            schema: describeInlineSchemaForHint(propertySchema.thenSchema, true)
+        })));
+    }
+
+    if (propertySchema.type === "object" &&
+        propertySchema.ifSchema &&
+        propertySchema.elseSchema) {
+        hints.push(escapeHtml(localizer.t("webview.hint.ifElse", {
+            schema: describeInlineSchemaForHint(propertySchema.elseSchema, true)
+        })));
     }
 
     if (isArrayField && typeof propertySchema.minItems === "number") {

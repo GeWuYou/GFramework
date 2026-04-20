@@ -140,4 +140,15 @@ public static class ConfigSchemaDiagnostics
         SourceGeneratorsConfigCategory,
         DiagnosticSeverity.Error,
         true);
+
+    /// <summary>
+    ///     schema 对象节点的 if/then/else 条件元数据无效。
+    /// </summary>
+    public static readonly DiagnosticDescriptor InvalidConditionalSchemaMetadata = new(
+        "GF_ConfigSchema_013",
+        "Config schema uses invalid if/then/else metadata",
+        "Property '{1}' in schema file '{0}' uses invalid 'if/then/else' metadata: {2}",
+        SourceGeneratorsConfigCategory,
+        DiagnosticSeverity.Error,
+        true);
 }

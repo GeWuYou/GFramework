@@ -9,7 +9,8 @@ namespace GFramework.Game.SourceGenerators.Config;
 ///     当前共享子集也会把 <c>multipleOf</c>、<c>uniqueItems</c>、
 ///     <c>contains</c> / <c>minContains</c> / <c>maxContains</c>、
 ///     <c>minProperties</c>、<c>maxProperties</c>、<c>dependentRequired</c>、
-///     <c>dependentSchemas</c>、<c>allOf</c> 与稳定字符串 <c>format</c> 子集写入生成代码文档，
+///     <c>dependentSchemas</c>、<c>allOf</c>、object-focused <c>if</c> / <c>then</c> / <c>else</c>
+///     与稳定字符串 <c>format</c> 子集写入生成代码文档，
 ///     让消费者能直接在强类型 API 上看到运行时生效且不改变生成类型形状的约束。
 /// </summary>
 [Generator]
@@ -167,6 +168,15 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                     out var allOfDiagnostic))
             {
                 return SchemaParseResult.FromDiagnostic(allOfDiagnostic!);
+            }
+
+            if (!TryValidateConditionalSchemasMetadataRecursively(
+                    file.Path,
+                    "<root>",
+                    root,
+                    out var conditionalDiagnostic))
+            {
+                return SchemaParseResult.FromDiagnostic(conditionalDiagnostic!);
             }
 
             var entityName = ToPascalCase(GetSchemaBaseName(file.Path));
@@ -690,7 +700,8 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
 
     /// <summary>
     ///     以统一顺序递归遍历 schema 树，并把每个节点交给调用方提供的校验逻辑。
-    ///     该遍历覆盖对象属性、<c>dependentSchemas</c> / <c>allOf</c> / <c>not</c> 子 schema、
+    ///     该遍历覆盖对象属性、<c>dependentSchemas</c> / <c>allOf</c> /
+    ///     <c>if</c> / <c>then</c> / <c>else</c> / <c>not</c> 子 schema、
     ///     数组 <c>items</c> 与 <c>contains</c>，
     ///     避免不同关键字验证器在同一棵 schema 树上各自维护一份容易漂移的递归流程。
     /// </summary>
@@ -795,6 +806,45 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             }
         }
 
+        if (string.Equals(schemaType, "object", StringComparison.Ordinal))
+        {
+            if (element.TryGetProperty("if", out var ifElement) &&
+                ifElement.ValueKind == JsonValueKind.Object &&
+                !TryTraverseSchemaRecursively(
+                    filePath,
+                    BuildConditionalSchemaPath(displayPath, "if"),
+                    ifElement,
+                    nodeValidator,
+                    out diagnostic))
+            {
+                return false;
+            }
+
+            if (element.TryGetProperty("then", out var thenElement) &&
+                thenElement.ValueKind == JsonValueKind.Object &&
+                !TryTraverseSchemaRecursively(
+                    filePath,
+                    BuildConditionalSchemaPath(displayPath, "then"),
+                    thenElement,
+                    nodeValidator,
+                    out diagnostic))
+            {
+                return false;
+            }
+
+            if (element.TryGetProperty("else", out var elseElement) &&
+                elseElement.ValueKind == JsonValueKind.Object &&
+                !TryTraverseSchemaRecursively(
+                    filePath,
+                    BuildConditionalSchemaPath(displayPath, "else"),
+                    elseElement,
+                    nodeValidator,
+                    out diagnostic))
+            {
+                return false;
+            }
+        }
+
         if (element.TryGetProperty("not", out var notElement) &&
             notElement.ValueKind == JsonValueKind.Object &&
             !TryTraverseSchemaRecursively(
@@ -848,6 +898,17 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     private static string BuildAllOfEntryPath(string displayPath, int allOfIndex)
     {
         return $"{displayPath}[allOf[{allOfIndex}]]";
+    }
+
+    /// <summary>
+    ///     为 object-focused 条件分支生成与运行时一致的逻辑路径。
+    /// </summary>
+    /// <param name="displayPath">父对象路径。</param>
+    /// <param name="keywordName">条件关键字名称。</param>
+    /// <returns>格式化后的条件分支路径。</returns>
+    private static string BuildConditionalSchemaPath(string displayPath, string keywordName)
+    {
+        return $"{displayPath}[{keywordName}]";
     }
 
     /// <summary>
@@ -1331,6 +1392,333 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             }
 
             allOfIndex++;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    ///     验证当前 schema 节点是否以运行时支持的方式声明了 object-focused <c>if</c> / <c>then</c> / <c>else</c>。
+    /// </summary>
+    /// <param name="filePath">Schema 文件路径。</param>
+    /// <param name="displayPath">逻辑字段路径。</param>
+    /// <param name="element">当前 schema 节点。</param>
+    /// <param name="schemaType">当前节点声明的 schema 类型。</param>
+    /// <param name="diagnostic">失败时返回的诊断。</param>
+    /// <returns>当前节点上的条件元数据是否有效。</returns>
+    private static bool TryValidateConditionalSchemasDeclaration(
+        string filePath,
+        string displayPath,
+        JsonElement element,
+        string? schemaType,
+        out Diagnostic? diagnostic)
+    {
+        diagnostic = null;
+        var hasIf = element.TryGetProperty("if", out _);
+        var hasThen = element.TryGetProperty("then", out _);
+        var hasElse = element.TryGetProperty("else", out _);
+        if (!hasIf && !hasThen && !hasElse)
+        {
+            return true;
+        }
+
+        if (!string.Equals(schemaType, "object", StringComparison.Ordinal))
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidConditionalSchemaMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                displayPath,
+                "Only object schemas can declare 'if', 'then', or 'else'.");
+            return false;
+        }
+
+        return TryValidateConditionalSchemasMetadata(filePath, displayPath, element, out diagnostic);
+    }
+
+    /// <summary>
+    ///     递归验证 schema 树中的 object-focused <c>if</c> / <c>then</c> / <c>else</c> 元数据。
+    /// </summary>
+    /// <param name="filePath">Schema 文件路径。</param>
+    /// <param name="displayPath">逻辑字段路径。</param>
+    /// <param name="element">当前 schema 节点。</param>
+    /// <param name="diagnostic">失败时返回的诊断。</param>
+    /// <returns>当前节点树的条件元数据是否有效。</returns>
+    private static bool TryValidateConditionalSchemasMetadataRecursively(
+        string filePath,
+        string displayPath,
+        JsonElement element,
+        out Diagnostic? diagnostic)
+    {
+        return TryTraverseSchemaRecursively(
+            filePath,
+            displayPath,
+            element,
+            static (currentFilePath, currentDisplayPath, currentElement, schemaType) =>
+            {
+                return TryValidateConditionalSchemasDeclaration(
+                    currentFilePath,
+                    currentDisplayPath,
+                    currentElement,
+                    schemaType,
+                    out var currentDiagnostic)
+                    ? (true, (Diagnostic?)null)
+                    : (false, currentDiagnostic);
+            },
+            out diagnostic);
+    }
+
+    /// <summary>
+    ///     验证单个对象 schema 节点上的 object-focused 条件元数据。
+    /// </summary>
+    /// <param name="filePath">Schema 文件路径。</param>
+    /// <param name="displayPath">逻辑字段路径。</param>
+    /// <param name="element">当前对象 schema 节点。</param>
+    /// <param name="diagnostic">失败时返回的诊断。</param>
+    /// <returns>当前对象上的条件元数据是否有效。</returns>
+    private static bool TryValidateConditionalSchemasMetadata(
+        string filePath,
+        string displayPath,
+        JsonElement element,
+        out Diagnostic? diagnostic)
+    {
+        diagnostic = null;
+        var hasIf = element.TryGetProperty("if", out var ifElement);
+        var hasThen = element.TryGetProperty("then", out var thenElement);
+        var hasElse = element.TryGetProperty("else", out var elseElement);
+        if (!hasIf && !hasThen && !hasElse)
+        {
+            return true;
+        }
+
+        if (!hasIf)
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidConditionalSchemaMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                displayPath,
+                "Object schemas using 'then' or 'else' must also declare 'if'.");
+            return false;
+        }
+
+        if (!hasThen && !hasElse)
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidConditionalSchemaMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                displayPath,
+                "Object schemas using 'if' must also declare at least one of 'then' or 'else'.");
+            return false;
+        }
+
+        if (!element.TryGetProperty("properties", out var propertiesElement) ||
+            propertiesElement.ValueKind != JsonValueKind.Object)
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidConditionalSchemaMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                displayPath,
+                "Object schemas using 'if/then/else' must also declare an object-valued 'properties' map.");
+            return false;
+        }
+
+        var declaredProperties = new HashSet<string>(
+            propertiesElement
+                .EnumerateObject()
+                .Select(static property => property.Name),
+            StringComparer.Ordinal);
+
+        if (!TryValidateConditionalSchemaBranch(
+                filePath,
+                displayPath,
+                ifElement,
+                "if",
+                declaredProperties,
+                out diagnostic))
+        {
+            return false;
+        }
+
+        if (hasThen &&
+            !TryValidateConditionalSchemaBranch(
+                filePath,
+                displayPath,
+                thenElement,
+                "then",
+                declaredProperties,
+                out diagnostic))
+        {
+            return false;
+        }
+
+        return !hasElse ||
+               TryValidateConditionalSchemaBranch(
+                   filePath,
+                   displayPath,
+                   elseElement,
+                   "else",
+                   declaredProperties,
+                   out diagnostic);
+    }
+
+    /// <summary>
+    ///     验证单个 object-focused 条件分支的类型与父对象字段引用范围。
+    /// </summary>
+    /// <param name="filePath">Schema 文件路径。</param>
+    /// <param name="displayPath">父对象逻辑路径。</param>
+    /// <param name="schemaElement">当前条件分支 schema。</param>
+    /// <param name="keywordName">条件关键字名称。</param>
+    /// <param name="declaredProperties">父对象已声明属性集合。</param>
+    /// <param name="diagnostic">失败时返回的诊断。</param>
+    /// <returns>当前条件分支是否有效。</returns>
+    private static bool TryValidateConditionalSchemaBranch(
+        string filePath,
+        string displayPath,
+        JsonElement schemaElement,
+        string keywordName,
+        ISet<string> declaredProperties,
+        out Diagnostic? diagnostic)
+    {
+        diagnostic = null;
+        var branchPath = BuildConditionalSchemaPath(displayPath, keywordName);
+        if (schemaElement.ValueKind != JsonValueKind.Object)
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidConditionalSchemaMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                displayPath,
+                $"The '{keywordName}' value must be an object-valued schema.");
+            return false;
+        }
+
+        if (!schemaElement.TryGetProperty("type", out var typeElement) ||
+            typeElement.ValueKind != JsonValueKind.String ||
+            !string.Equals(typeElement.GetString(), "object", StringComparison.Ordinal))
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidConditionalSchemaMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                branchPath,
+                $"The '{keywordName}' schema must declare an object-typed schema.");
+            return false;
+        }
+
+        return TryValidateObjectFocusedSchemaTargets(
+            filePath,
+            branchPath,
+            keywordName,
+            schemaElement,
+            declaredProperties,
+            out diagnostic);
+    }
+
+    /// <summary>
+    ///     验证 object-focused 内联 schema 只引用父对象已声明的同级字段。
+    /// </summary>
+    /// <param name="filePath">Schema 文件路径。</param>
+    /// <param name="displayPath">当前内联 schema 路径。</param>
+    /// <param name="entryLabel">用于诊断文本的条目标签。</param>
+    /// <param name="schemaElement">当前内联 schema。</param>
+    /// <param name="declaredProperties">父对象已声明属性集合。</param>
+    /// <param name="diagnostic">失败时返回的诊断。</param>
+    /// <returns>当前内联 schema 是否有效。</returns>
+    private static bool TryValidateObjectFocusedSchemaTargets(
+        string filePath,
+        string displayPath,
+        string entryLabel,
+        JsonElement schemaElement,
+        ISet<string> declaredProperties,
+        out Diagnostic? diagnostic)
+    {
+        diagnostic = null;
+        if (schemaElement.TryGetProperty("properties", out var propertiesElement))
+        {
+            if (propertiesElement.ValueKind != JsonValueKind.Object)
+            {
+                diagnostic = Diagnostic.Create(
+                    ConfigSchemaDiagnostics.InvalidConditionalSchemaMetadata,
+                    CreateFileLocation(filePath),
+                    Path.GetFileName(filePath),
+                    displayPath,
+                    $"The '{entryLabel}' schema must declare 'properties' as an object-valued map.");
+                return false;
+            }
+
+            foreach (var property in propertiesElement.EnumerateObject())
+            {
+                if (declaredProperties.Contains(property.Name))
+                {
+                    continue;
+                }
+
+                diagnostic = Diagnostic.Create(
+                    ConfigSchemaDiagnostics.InvalidConditionalSchemaMetadata,
+                    CreateFileLocation(filePath),
+                    Path.GetFileName(filePath),
+                    displayPath,
+                    $"The '{entryLabel}' schema declares property '{property.Name}', but that property is not declared in the parent object schema.");
+                return false;
+            }
+        }
+
+        if (!schemaElement.TryGetProperty("required", out var requiredElement))
+        {
+            return true;
+        }
+
+        if (requiredElement.ValueKind != JsonValueKind.Array)
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidConditionalSchemaMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                displayPath,
+                $"The '{entryLabel}' schema must declare 'required' as an array of parent property names.");
+            return false;
+        }
+
+        foreach (var requiredProperty in requiredElement.EnumerateArray())
+        {
+            if (requiredProperty.ValueKind != JsonValueKind.String)
+            {
+                diagnostic = Diagnostic.Create(
+                    ConfigSchemaDiagnostics.InvalidConditionalSchemaMetadata,
+                    CreateFileLocation(filePath),
+                    Path.GetFileName(filePath),
+                    displayPath,
+                    $"The '{entryLabel}' schema must declare 'required' entries as parent property-name strings.");
+                return false;
+            }
+
+            var requiredPropertyName = requiredProperty.GetString();
+            if (string.IsNullOrWhiteSpace(requiredPropertyName))
+            {
+                diagnostic = Diagnostic.Create(
+                    ConfigSchemaDiagnostics.InvalidConditionalSchemaMetadata,
+                    CreateFileLocation(filePath),
+                    Path.GetFileName(filePath),
+                    displayPath,
+                    $"The '{entryLabel}' schema cannot declare blank property names in 'required'.");
+                return false;
+            }
+
+            if (declaredProperties.Contains(requiredPropertyName!))
+            {
+                continue;
+            }
+
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidConditionalSchemaMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                displayPath,
+                $"The '{entryLabel}' schema requires property '{requiredPropertyName}', but that property is not declared in the parent object schema.");
+            return false;
         }
 
         return true;
@@ -3540,7 +3928,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
 
     /// <summary>
     ///     将 shared schema 子集中的范围、步进、长度、数组数量 / 去重 / contains、
-    ///     对象属性数量 / dependent* / allOf 约束整理成 XML 文档可读字符串。
+    ///     对象属性数量 / dependent* / allOf / if-then-else 约束整理成 XML 文档可读字符串。
     /// </summary>
     /// <param name="element">Schema 节点。</param>
     /// <param name="schemaType">标量类型。</param>
@@ -3693,6 +4081,12 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             {
                 parts.Add($"allOf = {allOfDocumentation}");
             }
+
+            var conditionalDocumentation = TryBuildConditionalDocumentation(element);
+            if (conditionalDocumentation is not null)
+            {
+                parts.Add($"if/then/else = {conditionalDocumentation}");
+            }
         }
 
         return parts.Count > 0 ? string.Join(", ", parts) : null;
@@ -3804,6 +4198,51 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
 
         return parts.Count > 0
             ? $"[ {string.Join("; ", parts)} ]"
+            : null;
+    }
+
+    /// <summary>
+    ///     将对象 <c>if</c> / <c>then</c> / <c>else</c> 条件约束整理成 XML 文档可读字符串。
+    /// </summary>
+    /// <param name="element">对象 schema 节点。</param>
+    /// <returns>格式化后的条件约束说明。</returns>
+    private static string? TryBuildConditionalDocumentation(JsonElement element)
+    {
+        if (!element.TryGetProperty("if", out var ifElement) ||
+            ifElement.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        var ifSummary = TryBuildInlineSchemaSummary(ifElement, includeRequiredProperties: true);
+        if (ifSummary is null)
+        {
+            return null;
+        }
+
+        var parts = new List<string> { $"if {ifSummary}" };
+        if (element.TryGetProperty("then", out var thenElement) &&
+            thenElement.ValueKind == JsonValueKind.Object)
+        {
+            var thenSummary = TryBuildInlineSchemaSummary(thenElement, includeRequiredProperties: true);
+            if (thenSummary is not null)
+            {
+                parts.Add($"then {thenSummary}");
+            }
+        }
+
+        if (element.TryGetProperty("else", out var elseElement) &&
+            elseElement.ValueKind == JsonValueKind.Object)
+        {
+            var elseSummary = TryBuildInlineSchemaSummary(elseElement, includeRequiredProperties: true);
+            if (elseSummary is not null)
+            {
+                parts.Add($"else {elseSummary}");
+            }
+        }
+
+        return parts.Count > 1
+            ? string.Join("; ", parts)
             : null;
     }
 

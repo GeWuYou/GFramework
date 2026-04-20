@@ -37,8 +37,8 @@
 
 - [x] 继续扩展最有价值的 JSON Schema 子集
   - 原则：只做 Runtime / Generator / Tooling 三端都能稳定解释的关键字
-  - 已补齐：`enum`（当前覆盖标量、对象、数组节点，以及标量数组元素）、`const`、`not`、`pattern`、`format`（当前稳定子集：`date`、`date-time`、`duration`、`email`、`time`、`uri`、`uuid`）、`minItems`、`maxItems`、`exclusiveMinimum`、`exclusiveMaximum`、`multipleOf`、`uniqueItems`、`minProperties`、`maxProperties`、`dependentRequired`、`dependentSchemas`、`allOf`
-  - 当前产出：运行时拒绝相关约束违规值，VS Code 校验与表单 hint 对齐，生成代码 XML 文档同步暴露新关键字；对象 / 数组 `enum` 当前主要参与校验与文档输出，不额外扩展复杂表单控件；`allOf` 当前收敛为 object-focused constraint block，不做属性合并
+  - 已补齐：`enum`（当前覆盖标量、对象、数组节点，以及标量数组元素）、`const`、`not`、`pattern`、`format`（当前稳定子集：`date`、`date-time`、`duration`、`email`、`time`、`uri`、`uuid`）、`minItems`、`maxItems`、`exclusiveMinimum`、`exclusiveMaximum`、`multipleOf`、`uniqueItems`、`minProperties`、`maxProperties`、`dependentRequired`、`dependentSchemas`、`allOf`、object-focused `if` / `then` / `else`
+  - 当前产出：运行时拒绝相关约束违规值，VS Code 校验与表单 hint 对齐，生成代码 XML 文档同步暴露新关键字；对象 / 数组 `enum` 当前主要参与校验与文档输出，不额外扩展复杂表单控件；`allOf` 与 `if` / `then` / `else` 当前都收敛为 object-focused constraint block，不做属性合并
 
 - [x] 评估可选只读索引能力
   - 目标：为高频查询字段提供比 `All()` 线性扫描更强的读取体验
@@ -75,7 +75,7 @@
 
 1. 用 `GeneratedConfigCatalog` 继续补齐启动与诊断辅助
 2. 补一条比 `Architecture.OnInitialize()` 更正式的模块化接入建议
-   当前状态：第 1 项和第 2 项已完成，`allOf` 也已补齐；下一步转到仍不改变生成形状的组合关键字评估（优先看 `if` / `then` / `else`），或继续推进 VS Code 复杂编辑体验
+   当前状态：第 1 项和第 2 项已完成，`allOf` 与 object-focused `if` / `then` / `else` 也已补齐；下一步转到下一批仍不改变生成形状的组合关键字评估，或继续推进 VS Code 复杂编辑体验
 
 ## 完成标准
 
@@ -86,27 +86,27 @@
 
 ## 下次恢复点
 
-- 在当前稳定 `format` 子集（`date`、`date-time`、`duration`、`email`、`time`、`uri`、`uuid`）以及 object-focused `allOf` 之后，转到下一批仍不改变生成类型形状的关键字评估；仍然不要先回工具 UI
+- 在当前稳定 `format` 子集（`date`、`date-time`、`duration`、`email`、`time`、`uri`、`uuid`）、object-focused `allOf` 与 object-focused `if` / `then` / `else` 之后，转到下一批仍不改变生成类型形状的关键字评估；仍然不要先回工具 UI
 - 恢复时优先检查：
   - `GFramework.Game/Config/YamlConfigSchemaValidator.cs`
-  - `GFramework.SourceGenerators/Config/SchemaConfigGenerator.cs`
+  - `GFramework.Game.SourceGenerators/Config/SchemaConfigGenerator.cs`
   - `tools/gframework-config-tool/src/configValidation.js`
   - `tools/gframework-config-tool/src/extension.js`
   - `docs/zh-CN/game/config-system.md`
 
 ### 恢复块
 
-- 恢复点编号：`AI-FIRST-CONFIG-RP-002`
+- 恢复点编号：`AI-FIRST-CONFIG-RP-003`
 - 当前阶段：`C# Runtime + Source Generator + Consumer DX`
 - 已知风险：
-  - 语义一致性风险：`if` / `then` / `else` 在 Runtime / Generator / Tooling 三端语义不一致的风险，需要先验证是否能在不引入生成类型形状漂移的前提下落地
+  - 复杂关键字形状风险：下一批候选关键字若像标准 `oneOf` / `anyOf` 那样影响对象分支形状，可能破坏当前生成契约
   - 工具链非阻塞风险：将 VS Code 功能标为非阻塞后，可能导致 C# 主线补齐新关键字时缺少工具侧同步验证
-  - 复杂关键字回退风险：`allOf` 已收敛为 object-focused constraint block，未来新增组合关键字时需明确是否同样限制范围
+  - 组合关键字范围风险：`allOf` 与 `if` / `then` / `else` 已收敛为 object-focused constraint block，未来新增组合关键字时需明确是否同样限制范围
 - 最近验证：
-  - 时间：2026-04-17
-  - 内容：截至该日期的历史跟踪与执行 trace 已归档到主题内归档目录
+  - 时间：2026-04-20
+  - 内容：`bun run test`、`SchemaConfigGeneratorTests`、`YamlConfigLoaderIfThenElseTests`
   - 结果：通过
 - 下一步：
   1. 检查 `YamlConfigSchemaValidator.cs`、`SchemaConfigGenerator.cs`、`configValidation.js` 中当前已支持的关键字列表
-  2. 评估 `if` / `then` / `else` 是否能在三端保持一致语义且不改变生成类型形状
+  2. 评估 `oneOf` / `anyOf` 是否存在可接受的 object-focused 子集
   3. 若结论否定，选择下一批共享解释关键字而不是先回工具 UI

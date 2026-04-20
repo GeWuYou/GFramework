@@ -1268,6 +1268,258 @@ public class SchemaConfigGeneratorTests
     }
 
     /// <summary>
+    ///     验证 object-focused <c>if</c> / <c>then</c> / <c>else</c> 会写入生成 XML 文档。
+    /// </summary>
+    [Test]
+    public void Run_Should_Write_IfThenElse_Constraint_Into_Generated_Documentation()
+    {
+        const string source = """
+                              namespace TestApp
+                              {
+                                  public sealed class Dummy
+                                  {
+                                  }
+                              }
+                              """;
+
+        const string schema = """
+                              {
+                                "type": "object",
+                                "required": ["id", "reward"],
+                                "properties": {
+                                  "id": { "type": "integer" },
+                                  "reward": {
+                                    "type": "object",
+                                    "properties": {
+                                      "itemId": { "type": "string" },
+                                      "itemCount": { "type": "integer" },
+                                      "bonus": { "type": "integer" }
+                                    },
+                                    "if": {
+                                      "type": "object",
+                                      "properties": {
+                                        "itemId": {
+                                          "type": "string",
+                                          "const": "potion"
+                                        }
+                                      }
+                                    },
+                                    "then": {
+                                      "type": "object",
+                                      "required": ["itemCount"],
+                                      "properties": {
+                                        "itemCount": { "type": "integer" }
+                                      }
+                                    },
+                                    "else": {
+                                      "type": "object",
+                                      "required": ["bonus"],
+                                      "properties": {
+                                        "bonus": { "type": "integer" }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                              """;
+
+        var result = SchemaGeneratorTestDriver.Run(
+            source,
+            ("monster.schema.json", schema));
+
+        var generatedSources = result.Results
+            .Single()
+            .GeneratedSources
+            .ToDictionary(
+                static sourceResult => sourceResult.HintName,
+                static sourceResult => sourceResult.SourceText.ToString(),
+                StringComparer.Ordinal);
+
+        Assert.That(result.Results.Single().Diagnostics, Is.Empty);
+        Assert.That(
+            generatedSources["MonsterConfig.g.cs"],
+            Does.Contain("Constraints: if/then/else = if object; then object (required = [itemCount]); else object (required = [bonus])."));
+    }
+
+    /// <summary>
+    ///     验证缺少 <c>if</c> 时生成器会拒绝孤立的 <c>then</c>。
+    /// </summary>
+    [Test]
+    public void Run_Should_Report_Diagnostic_When_Then_Is_Declared_Without_If()
+    {
+        const string source = """
+                              namespace TestApp
+                              {
+                                  public sealed class Dummy
+                                  {
+                                  }
+                              }
+                              """;
+
+        const string schema = """
+                              {
+                                "type": "object",
+                                "required": ["id", "reward"],
+                                "properties": {
+                                  "id": { "type": "integer" },
+                                  "reward": {
+                                    "type": "object",
+                                    "properties": {
+                                      "itemCount": { "type": "integer" }
+                                    },
+                                    "then": {
+                                      "type": "object",
+                                      "required": ["itemCount"],
+                                      "properties": {
+                                        "itemCount": { "type": "integer" }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                              """;
+
+        var result = SchemaGeneratorTestDriver.Run(
+            source,
+            ("monster.schema.json", schema));
+
+        var diagnostic = result.Results.Single().Diagnostics.Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Id, Is.EqualTo("GF_ConfigSchema_013"));
+            Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Error));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("reward"));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("must also declare 'if'"));
+        });
+    }
+
+    /// <summary>
+    ///     验证条件分支不能引用父对象未声明的字段。
+    /// </summary>
+    [Test]
+    public void Run_Should_Report_Diagnostic_When_Conditional_Schema_Requires_Undeclared_Parent_Property()
+    {
+        const string source = """
+                              namespace TestApp
+                              {
+                                  public sealed class Dummy
+                                  {
+                                  }
+                              }
+                              """;
+
+        const string schema = """
+                              {
+                                "type": "object",
+                                "required": ["id", "reward"],
+                                "properties": {
+                                  "id": { "type": "integer" },
+                                  "reward": {
+                                    "type": "object",
+                                    "properties": {
+                                      "itemId": { "type": "string" },
+                                      "itemCount": { "type": "integer" }
+                                    },
+                                    "if": {
+                                      "type": "object",
+                                      "required": ["bonusCount"],
+                                      "properties": {
+                                        "itemId": { "type": "string" }
+                                      }
+                                    },
+                                    "then": {
+                                      "type": "object",
+                                      "properties": {
+                                        "itemCount": { "type": "integer" }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                              """;
+
+        var result = SchemaGeneratorTestDriver.Run(
+            source,
+            ("monster.schema.json", schema));
+
+        var diagnostic = result.Results.Single().Diagnostics.Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Id, Is.EqualTo("GF_ConfigSchema_013"));
+            Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Error));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("reward[if]"));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("bonusCount"));
+        });
+    }
+
+    /// <summary>
+    ///     验证 <c>then</c> 子 schema 内的非法 <c>format</c> 也会在生成阶段直接给出诊断。
+    /// </summary>
+    [Test]
+    public void Run_Should_Report_Diagnostic_With_Runtime_Aligned_Path_When_Then_Inner_Schema_Is_Invalid()
+    {
+        const string source = """
+                              namespace TestApp
+                              {
+                                  public sealed class Dummy
+                                  {
+                                  }
+                              }
+                              """;
+
+        const string schema = """
+                              {
+                                "type": "object",
+                                "required": ["id", "reward"],
+                                "properties": {
+                                  "id": { "type": "integer" },
+                                  "reward": {
+                                    "type": "object",
+                                    "properties": {
+                                      "itemId": { "type": "string" },
+                                      "itemCount": { "type": "integer" }
+                                    },
+                                    "if": {
+                                      "type": "object",
+                                      "properties": {
+                                        "itemId": {
+                                          "type": "string",
+                                          "const": "potion"
+                                        }
+                                      }
+                                    },
+                                    "then": {
+                                      "type": "object",
+                                      "properties": {
+                                        "itemCount": {
+                                          "type": "integer",
+                                          "format": "uuid"
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                              """;
+
+        var result = SchemaGeneratorTestDriver.Run(
+            source,
+            ("monster.schema.json", schema));
+
+        var diagnostic = result.Results.Single().Diagnostics.Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Id, Is.EqualTo("GF_ConfigSchema_009"));
+            Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Error));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("reward[then].itemCount"));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("Only 'string' properties can declare 'format'."));
+        });
+    }
+
+    /// <summary>
     ///     验证深层不支持的数组嵌套会带着完整字段路径产生命名明确的诊断。
     /// </summary>
     [Test]

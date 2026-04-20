@@ -1129,6 +1129,11 @@ function parseSchemaNode(rawNode, displayPath) {
         throw new Error(`Only object schemas can declare 'allOf' at '${displayPath}'.`);
     }
 
+    if ((value.if !== undefined || value.then !== undefined || value.else !== undefined) &&
+        type !== "object") {
+        throw new Error(`Only object schemas can declare 'if', 'then', or 'else' at '${displayPath}'.`);
+    }
+
     if (type === "object") {
         const required = Array.isArray(value.required)
             ? value.required.filter((item) => typeof item === "string")
@@ -1140,6 +1145,7 @@ function parseSchemaNode(rawNode, displayPath) {
         const dependentRequired = parseDependentRequiredMetadata(value.dependentRequired, displayPath, properties);
         const dependentSchemas = parseDependentSchemasMetadata(value.dependentSchemas, displayPath, properties);
         const allOf = parseAllOfSchemaNodes(value.allOf, displayPath, properties);
+        const conditionalSchemas = parseConditionalSchemaMetadata(value.if, value.then, value.else, displayPath, properties);
 
         return applyEnumMetadata(applyConstMetadata({
             type: "object",
@@ -1151,6 +1157,9 @@ function parseSchemaNode(rawNode, displayPath) {
             dependentRequired,
             dependentSchemas,
             allOf,
+            ifSchema: conditionalSchemas ? conditionalSchemas.ifSchema : undefined,
+            thenSchema: conditionalSchemas ? conditionalSchemas.thenSchema : undefined,
+            elseSchema: conditionalSchemas ? conditionalSchemas.elseSchema : undefined,
             title: metadata.title,
             description: metadata.description,
             defaultValue: metadata.defaultValue,
@@ -1419,6 +1428,117 @@ function parseAllOfSchemaNodes(rawAllOf, displayPath, properties) {
     return normalized.length > 0
         ? normalized
         : undefined;
+}
+
+/**
+ * Parse one object-level `if/then/else` group and keep it aligned with the
+ * runtime's object-focused conditional constraint contract.
+ *
+ * @param {unknown} rawIf Raw `if` node.
+ * @param {unknown} rawThen Raw `then` node.
+ * @param {unknown} rawElse Raw `else` node.
+ * @param {string} displayPath Parent schema path.
+ * @param {Record<string, SchemaNode>} properties Declared parent properties.
+ * @returns {{ifSchema: SchemaNode, thenSchema?: SchemaNode, elseSchema?: SchemaNode} | undefined} Normalized conditional schema group.
+ */
+function parseConditionalSchemaMetadata(rawIf, rawThen, rawElse, displayPath, properties) {
+    const hasIf = rawIf !== undefined;
+    const hasThen = rawThen !== undefined;
+    const hasElse = rawElse !== undefined;
+    if (!hasIf && !hasThen && !hasElse) {
+        return undefined;
+    }
+
+    if (!hasIf) {
+        throw new Error(`Schema property '${displayPath}' must declare 'if' when using 'then' or 'else'.`);
+    }
+
+    if (!hasThen && !hasElse) {
+        throw new Error(`Schema property '${displayPath}' must declare at least one of 'then' or 'else' when using 'if'.`);
+    }
+
+    const ifSchema = parseConditionalObjectSchema(rawIf, displayPath, "if", properties);
+    const conditionalSchemas = {ifSchema};
+
+    if (hasThen) {
+        conditionalSchemas.thenSchema = parseConditionalObjectSchema(rawThen, displayPath, "then", properties);
+    }
+
+    if (hasElse) {
+        conditionalSchemas.elseSchema = parseConditionalObjectSchema(rawElse, displayPath, "else", properties);
+    }
+
+    return conditionalSchemas;
+}
+
+/**
+ * Parse one object-focused conditional branch schema.
+ *
+ * @param {unknown} rawSchema Raw branch schema.
+ * @param {string} displayPath Parent schema path.
+ * @param {"if" | "then" | "else"} keywordName Branch keyword.
+ * @param {Record<string, SchemaNode>} properties Declared parent properties.
+ * @returns {SchemaNode} Parsed object-typed branch schema.
+ */
+function parseConditionalObjectSchema(rawSchema, displayPath, keywordName, properties) {
+    if (!rawSchema || typeof rawSchema !== "object" || Array.isArray(rawSchema)) {
+        throw new Error(`Schema property '${displayPath}' must declare '${keywordName}' as an object-valued schema.`);
+    }
+
+    validateConditionalSchemaTargets(rawSchema, displayPath, keywordName, properties);
+    const conditionalSchema = parseSchemaNode(rawSchema, `${displayPath}[${keywordName}]`);
+    if (conditionalSchema.type !== "object") {
+        throw new Error(`Schema property '${displayPath}' must declare an object-typed '${keywordName}' schema.`);
+    }
+
+    return conditionalSchema;
+}
+
+/**
+ * Ensure one object-focused conditional branch only constrains properties that
+ * the parent object schema already declared.
+ *
+ * @param {unknown} rawSchema Raw branch schema.
+ * @param {string} displayPath Parent schema path.
+ * @param {"if" | "then" | "else"} keywordName Branch keyword.
+ * @param {Record<string, SchemaNode>} properties Declared parent properties.
+ */
+function validateConditionalSchemaTargets(rawSchema, displayPath, keywordName, properties) {
+    if (!rawSchema || typeof rawSchema !== "object" || Array.isArray(rawSchema)) {
+        return;
+    }
+
+    if (rawSchema.properties &&
+        typeof rawSchema.properties === "object" &&
+        !Array.isArray(rawSchema.properties)) {
+        for (const propertyName of Object.keys(rawSchema.properties)) {
+            if (Object.prototype.hasOwnProperty.call(properties, propertyName)) {
+                continue;
+            }
+
+            throw new Error(
+                `Schema property '${displayPath}' declares property '${propertyName}' in '${keywordName}', ` +
+                "but that property is not declared in the parent object schema.");
+        }
+    }
+
+    if (!Array.isArray(rawSchema.required)) {
+        return;
+    }
+
+    for (const requiredProperty of rawSchema.required) {
+        if (typeof requiredProperty !== "string" || requiredProperty.trim().length === 0) {
+            continue;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(properties, requiredProperty)) {
+            continue;
+        }
+
+        throw new Error(
+            `Schema property '${displayPath}' requires property '${requiredProperty}' in '${keywordName}', ` +
+            "but that property is not declared in the parent object schema.");
+    }
 }
 
 /**
@@ -1887,6 +2007,48 @@ function validateObjectNode(schemaNode, yamlNode, displayPath, diagnostics, loca
         }
     }
 
+    const ifMatched = schemaNode.ifSchema
+        ? matchesSchemaNode(schemaNode.ifSchema, yamlNode, true)
+        : false;
+    if (ifMatched &&
+        schemaNode.thenSchema &&
+        !matchesSchemaNode(schemaNode.thenSchema, yamlNode, true)) {
+        const localizedMessage = localizeValidationMessage(
+            ValidationMessageKeys.thenViolation,
+            localizer,
+            {
+                displayPath: displayPath || "<root>"
+            });
+
+        if (!reportedMessages.has(localizedMessage)) {
+            diagnostics.push({
+                severity: "error",
+                message: localizedMessage
+            });
+            reportedMessages.add(localizedMessage);
+        }
+    }
+
+    if (!ifMatched &&
+        schemaNode.ifSchema &&
+        schemaNode.elseSchema &&
+        !matchesSchemaNode(schemaNode.elseSchema, yamlNode, true)) {
+        const localizedMessage = localizeValidationMessage(
+            ValidationMessageKeys.elseViolation,
+            localizer,
+            {
+                displayPath: displayPath || "<root>"
+            });
+
+        if (!reportedMessages.has(localizedMessage)) {
+            diagnostics.push({
+                severity: "error",
+                message: localizedMessage
+            });
+            reportedMessages.add(localizedMessage);
+        }
+    }
+
     if (typeof schemaNode.minProperties === "number" &&
         propertyCount < schemaNode.minProperties) {
         diagnostics.push({
@@ -2026,6 +2188,22 @@ function matchesSchemaNodeInternal(schemaNode, yamlNode, allowUnknownObjectPrope
                     return false;
                 }
             }
+        }
+
+        const ifMatched = schemaNode.ifSchema
+            ? matchesSchemaNodeInternal(schemaNode.ifSchema, yamlNode, true)
+            : false;
+        if (ifMatched &&
+            schemaNode.thenSchema &&
+            !matchesSchemaNodeInternal(schemaNode.thenSchema, yamlNode, true)) {
+            return false;
+        }
+
+        if (!ifMatched &&
+            schemaNode.ifSchema &&
+            schemaNode.elseSchema &&
+            !matchesSchemaNodeInternal(schemaNode.elseSchema, yamlNode, true)) {
+            return false;
         }
 
         if (typeof schemaNode.minProperties === "number" &&
@@ -2445,6 +2623,8 @@ function localizeValidationMessage(key, localizer, params) {
                 return `属性“${params.triggerProperty}”存在时，必须同时声明属性“${params.displayPath}”。`;
             case ValidationMessageKeys.dependentSchemasViolation:
                 return `对象“${params.displayPath}”在属性“${params.triggerProperty}”存在时，必须满足对应的 dependent schema。`;
+            case ValidationMessageKeys.elseViolation:
+                return `对象“${params.displayPath}”在内联 \`if\` 条件未命中时，必须满足对应的 \`else\` schema。`;
             case ValidationMessageKeys.expectedArray:
                 return `属性“${params.displayPath}”应为数组。`;
             case ValidationMessageKeys.expectedScalarShape:
@@ -2473,6 +2653,8 @@ function localizeValidationMessage(key, localizer, params) {
                 return `属性“${params.displayPath}”必须是 ${params.value} 的整数倍。`;
             case ValidationMessageKeys.notViolation:
                 return `属性“${params.displayPath}”不能匹配被 \`not\` 禁止的 schema。`;
+            case ValidationMessageKeys.thenViolation:
+                return `对象“${params.displayPath}”在内联 \`if\` 条件命中时，必须满足对应的 \`then\` schema。`;
             case ValidationMessageKeys.minContainsViolation:
                 return `属性“${params.displayPath}”至少需要包含 ${params.value} 个匹配 contains 条件的元素。`;
             case ValidationMessageKeys.minItemsViolation:
@@ -2501,6 +2683,8 @@ function localizeValidationMessage(key, localizer, params) {
             return `Property '${params.displayPath}' is required when sibling property '${params.triggerProperty}' is present.`;
         case ValidationMessageKeys.dependentSchemasViolation:
             return `Object '${params.displayPath}' must satisfy the dependent schema triggered by sibling property '${params.triggerProperty}'.`;
+        case ValidationMessageKeys.elseViolation:
+            return `Object '${params.displayPath}' must satisfy the 'else' schema because the inline 'if' condition did not match.`;
         case ValidationMessageKeys.expectedArray:
             return `Property '${params.displayPath}' is expected to be an array.`;
         case ValidationMessageKeys.expectedScalarShape:
@@ -2529,6 +2713,8 @@ function localizeValidationMessage(key, localizer, params) {
             return `Property '${params.displayPath}' must be a multiple of ${params.value}.`;
         case ValidationMessageKeys.notViolation:
             return `Property '${params.displayPath}' must not match the forbidden 'not' schema.`;
+        case ValidationMessageKeys.thenViolation:
+            return `Object '${params.displayPath}' must satisfy the 'then' schema because the inline 'if' condition matched.`;
         case ValidationMessageKeys.minContainsViolation:
             return `Property '${params.displayPath}' must contain at least ${params.value} items matching the 'contains' schema.`;
         case ValidationMessageKeys.minItemsViolation:
@@ -3252,6 +3438,9 @@ module.exports = {
  *   dependentRequired?: Record<string, string[]>,
  *   dependentSchemas?: Record<string, SchemaNode>,
  *   allOf?: SchemaNode[],
+ *   ifSchema?: SchemaNode,
+ *   thenSchema?: SchemaNode,
+ *   elseSchema?: SchemaNode,
  *   title?: string,
  *   description?: string,
  *   defaultValue?: string,

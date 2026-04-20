@@ -5,7 +5,8 @@ namespace GFramework.Game.Config;
 /// <summary>
 ///     承载对象级 schema 关键字的解析与元数据校验逻辑。
 ///     该 partial 将 <c>minProperties</c>、<c>maxProperties</c>、
-///     <c>dependentRequired</c>、<c>dependentSchemas</c> 与 <c>allOf</c>
+///     <c>dependentRequired</c>、<c>dependentSchemas</c>、<c>allOf</c>
+///     与 object-focused <c>if</c> / <c>then</c> / <c>else</c>
 ///     从主校验文件中拆出，降低超大文件继续堆叠对象关键字时的维护成本。
 /// </summary>
 internal static partial class YamlConfigSchemaValidator
@@ -41,6 +42,7 @@ internal static partial class YamlConfigSchemaValidator
         var dependentRequired = ParseDependentRequiredConstraints(tableName, schemaPath, propertyPath, element, properties);
         var dependentSchemas = ParseDependentSchemasConstraints(tableName, schemaPath, propertyPath, element, properties);
         var allOfSchemas = ParseAllOfConstraints(tableName, schemaPath, propertyPath, element, properties);
+        var conditionalSchemas = ParseConditionalSchemasConstraints(tableName, schemaPath, propertyPath, element, properties);
 
         if (minProperties.HasValue && maxProperties.HasValue && minProperties.Value > maxProperties.Value)
         {
@@ -54,9 +56,15 @@ internal static partial class YamlConfigSchemaValidator
         }
 
         return !minProperties.HasValue && !maxProperties.HasValue && dependentRequired is null && dependentSchemas is null &&
-               allOfSchemas is null
+               allOfSchemas is null && conditionalSchemas is null
             ? null
-            : new YamlConfigObjectConstraints(minProperties, maxProperties, dependentRequired, dependentSchemas, allOfSchemas);
+            : new YamlConfigObjectConstraints(
+                minProperties,
+                maxProperties,
+                dependentRequired,
+                dependentSchemas,
+                allOfSchemas,
+                conditionalSchemas);
     }
 
     /// <summary>
@@ -296,12 +304,12 @@ internal static partial class YamlConfigSchemaValidator
             }
 
             var allOfSchemaPath = BuildNestedSchemaPath(propertyPath, $"allOf[{allOfIndex.ToString(CultureInfo.InvariantCulture)}]");
-            ValidateAllOfSchemaTargetsAgainstParentObject(
+            ValidateInlineObjectSchemaTargetsAgainstParentObject(
                 tableName,
                 schemaPath,
                 propertyPath,
                 allOfSchemaPath,
-                allOfIndex + 1,
+                $"Entry #{(allOfIndex + 1).ToString(CultureInfo.InvariantCulture)} in 'allOf'",
                 allOfSchemaElement,
                 properties);
             var allOfSchemaNode = ParseNode(
@@ -329,39 +337,176 @@ internal static partial class YamlConfigSchemaValidator
     }
 
     /// <summary>
-    ///     验证 <c>allOf</c> 条目只约束父对象已经声明过的同级字段。
-    ///     当前 object-focused 语义不会把条目里的属性并回父对象形状，因此这里要提前拒绝
+    ///     解析对象节点声明的 object-focused <c>if</c> / <c>then</c> / <c>else</c> 条件约束。
+    ///     当前共享子集要求三段内联 schema 都保持 object-typed focused block 语义，
+    ///     既允许根据 sibling 值切换约束分支，又避免把条件 schema 扩展成新的生成类型形状。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="schemaPath">Schema 文件路径。</param>
+    /// <param name="propertyPath">对象字段路径。</param>
+    /// <param name="element">Schema 节点。</param>
+    /// <param name="properties">父对象已声明的属性集合。</param>
+    /// <returns>归一化后的条件约束；未声明时返回空。</returns>
+    private static YamlConfigConditionalSchemas? ParseConditionalSchemasConstraints(
+        string tableName,
+        string schemaPath,
+        string propertyPath,
+        JsonElement element,
+        IReadOnlyDictionary<string, YamlConfigSchemaNode> properties)
+    {
+        var hasIf = element.TryGetProperty("if", out var ifElement);
+        var hasThen = element.TryGetProperty("then", out var thenElement);
+        var hasElse = element.TryGetProperty("else", out var elseElement);
+        if (!hasIf && !hasThen && !hasElse)
+        {
+            return null;
+        }
+
+        if (!hasIf)
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"{DescribeObjectSchemaTarget(propertyPath)} in schema file '{schemaPath}' must declare 'if' when using 'then' or 'else'.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(propertyPath));
+        }
+
+        if (!hasThen && !hasElse)
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"{DescribeObjectSchemaTarget(propertyPath)} in schema file '{schemaPath}' must declare at least one of 'then' or 'else' when using 'if'.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(propertyPath));
+        }
+
+        var ifSchemaPath = BuildNestedSchemaPath(propertyPath, "if");
+        var ifSchemaNode = ParseConditionalObjectSchema(
+            tableName,
+            schemaPath,
+            propertyPath,
+            ifSchemaPath,
+            "if",
+            ifElement,
+            properties);
+
+        var thenSchemaNode = hasThen
+            ? ParseConditionalObjectSchema(
+                tableName,
+                schemaPath,
+                propertyPath,
+                BuildNestedSchemaPath(propertyPath, "then"),
+                "then",
+                thenElement,
+                properties)
+            : null;
+        var elseSchemaNode = hasElse
+            ? ParseConditionalObjectSchema(
+                tableName,
+                schemaPath,
+                propertyPath,
+                BuildNestedSchemaPath(propertyPath, "else"),
+                "else",
+                elseElement,
+                properties)
+            : null;
+
+        return new YamlConfigConditionalSchemas(ifSchemaNode, thenSchemaNode, elseSchemaNode);
+    }
+
+    /// <summary>
+    ///     解析单个条件分支的 object-focused 内联 schema。
+    /// </summary>
+    /// <param name="tableName">所属配置表名称。</param>
+    /// <param name="schemaPath">Schema 文件路径。</param>
+    /// <param name="propertyPath">父对象路径。</param>
+    /// <param name="conditionalSchemaPath">当前条件分支路径。</param>
+    /// <param name="keywordName">条件关键字名称。</param>
+    /// <param name="conditionalSchemaElement">当前条件分支 schema。</param>
+    /// <param name="properties">父对象已声明的属性集合。</param>
+    /// <returns>解析后的 object-typed schema。</returns>
+    private static YamlConfigSchemaNode ParseConditionalObjectSchema(
+        string tableName,
+        string schemaPath,
+        string propertyPath,
+        string conditionalSchemaPath,
+        string keywordName,
+        JsonElement conditionalSchemaElement,
+        IReadOnlyDictionary<string, YamlConfigSchemaNode> properties)
+    {
+        if (conditionalSchemaElement.ValueKind != JsonValueKind.Object)
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.SchemaUnsupported,
+                tableName,
+                $"{DescribeObjectSchemaTarget(propertyPath)} in schema file '{schemaPath}' must declare '{keywordName}' as an object-valued schema.",
+                schemaPath: schemaPath,
+                displayPath: GetDiagnosticPath(propertyPath));
+        }
+
+        ValidateInlineObjectSchemaTargetsAgainstParentObject(
+            tableName,
+            schemaPath,
+            propertyPath,
+            conditionalSchemaPath,
+            $"'{keywordName}'",
+            conditionalSchemaElement,
+            properties);
+
+        var conditionalSchemaNode = ParseNode(
+            tableName,
+            schemaPath,
+            conditionalSchemaPath,
+            conditionalSchemaElement);
+        if (conditionalSchemaNode.NodeType == YamlConfigSchemaPropertyType.Object)
+        {
+            return conditionalSchemaNode;
+        }
+
+        throw ConfigLoadExceptionFactory.Create(
+            ConfigLoadFailureKind.SchemaUnsupported,
+            tableName,
+            $"{DescribeObjectSchemaTarget(propertyPath)} in schema file '{schemaPath}' must declare an object-typed '{keywordName}' schema.",
+            schemaPath: schemaPath,
+            displayPath: GetDiagnosticPath(conditionalSchemaPath));
+    }
+
+    /// <summary>
+    ///     验证 object-focused 内联 schema 只约束父对象已经声明过的同级字段。
+    ///     当前 shared subset 不会把 focused block 内字段并回父对象形状，因此这里会提前拒绝
     ///     “在 focused block 里引入父对象未声明字段”的不可满足 schema。
     /// </summary>
     /// <param name="tableName">所属配置表名称。</param>
     /// <param name="schemaPath">Schema 文件路径。</param>
     /// <param name="propertyPath">父对象路径。</param>
-    /// <param name="allOfSchemaPath">当前 allOf 条目路径。</param>
-    /// <param name="allOfEntryNumber">从 1 开始的 allOf 条目编号。</param>
-    /// <param name="allOfSchemaElement">当前 allOf 条目。</param>
+    /// <param name="inlineSchemaPath">当前内联 schema 路径。</param>
+    /// <param name="entryLabel">用于诊断文本的条目标签。</param>
+    /// <param name="inlineSchemaElement">当前内联 schema。</param>
     /// <param name="properties">父对象已声明的属性集合。</param>
-    private static void ValidateAllOfSchemaTargetsAgainstParentObject(
+    private static void ValidateInlineObjectSchemaTargetsAgainstParentObject(
         string tableName,
         string schemaPath,
         string propertyPath,
-        string allOfSchemaPath,
-        int allOfEntryNumber,
-        JsonElement allOfSchemaElement,
+        string inlineSchemaPath,
+        string entryLabel,
+        JsonElement inlineSchemaElement,
         IReadOnlyDictionary<string, YamlConfigSchemaNode> properties)
     {
-        if (allOfSchemaElement.TryGetProperty("properties", out var allOfPropertiesElement))
+        if (inlineSchemaElement.TryGetProperty("properties", out var inlinePropertiesElement))
         {
-            if (allOfPropertiesElement.ValueKind != JsonValueKind.Object)
+            if (inlinePropertiesElement.ValueKind != JsonValueKind.Object)
             {
                 throw ConfigLoadExceptionFactory.Create(
                     ConfigLoadFailureKind.SchemaUnsupported,
                     tableName,
-                    $"Entry #{allOfEntryNumber.ToString(CultureInfo.InvariantCulture)} in 'allOf' for {DescribeObjectSchemaTargetInClause(propertyPath)} of schema file '{schemaPath}' must declare 'properties' as an object-valued map.",
+                    $"{entryLabel} for {DescribeObjectSchemaTargetInClause(propertyPath)} of schema file '{schemaPath}' must declare 'properties' as an object-valued map.",
                     schemaPath: schemaPath,
-                    displayPath: GetDiagnosticPath(allOfSchemaPath));
+                    displayPath: GetDiagnosticPath(inlineSchemaPath));
             }
 
-            foreach (var property in allOfPropertiesElement.EnumerateObject())
+            foreach (var property in inlinePropertiesElement.EnumerateObject())
             {
                 if (properties.ContainsKey(property.Name))
                 {
@@ -371,37 +516,37 @@ internal static partial class YamlConfigSchemaValidator
                 throw ConfigLoadExceptionFactory.Create(
                     ConfigLoadFailureKind.SchemaUnsupported,
                     tableName,
-                    $"Entry #{allOfEntryNumber.ToString(CultureInfo.InvariantCulture)} in 'allOf' for {DescribeObjectSchemaTargetInClause(propertyPath)} of schema file '{schemaPath}' declares property '{property.Name}', but that property is not declared in the parent object schema.",
+                    $"{entryLabel} for {DescribeObjectSchemaTargetInClause(propertyPath)} of schema file '{schemaPath}' declares property '{property.Name}', but that property is not declared in the parent object schema.",
                     schemaPath: schemaPath,
-                    displayPath: GetDiagnosticPath(allOfSchemaPath));
+                    displayPath: GetDiagnosticPath(inlineSchemaPath));
             }
         }
 
-        if (!allOfSchemaElement.TryGetProperty("required", out var allOfRequiredElement))
+        if (!inlineSchemaElement.TryGetProperty("required", out var inlineRequiredElement))
         {
             return;
         }
 
-        if (allOfRequiredElement.ValueKind != JsonValueKind.Array)
+        if (inlineRequiredElement.ValueKind != JsonValueKind.Array)
         {
             throw ConfigLoadExceptionFactory.Create(
                 ConfigLoadFailureKind.SchemaUnsupported,
                 tableName,
-                $"Entry #{allOfEntryNumber.ToString(CultureInfo.InvariantCulture)} in 'allOf' for {DescribeObjectSchemaTargetInClause(propertyPath)} of schema file '{schemaPath}' must declare 'required' as an array of property names.",
+                $"{entryLabel} for {DescribeObjectSchemaTargetInClause(propertyPath)} of schema file '{schemaPath}' must declare 'required' as an array of property names.",
                 schemaPath: schemaPath,
-                displayPath: GetDiagnosticPath(allOfSchemaPath));
+                displayPath: GetDiagnosticPath(inlineSchemaPath));
         }
 
-        foreach (var requiredProperty in allOfRequiredElement.EnumerateArray())
+        foreach (var requiredProperty in inlineRequiredElement.EnumerateArray())
         {
             if (requiredProperty.ValueKind != JsonValueKind.String)
             {
                 throw ConfigLoadExceptionFactory.Create(
                     ConfigLoadFailureKind.SchemaUnsupported,
                     tableName,
-                    $"Entry #{allOfEntryNumber.ToString(CultureInfo.InvariantCulture)} in 'allOf' for {DescribeObjectSchemaTargetInClause(propertyPath)} of schema file '{schemaPath}' must declare 'required' entries as property-name strings.",
+                    $"{entryLabel} for {DescribeObjectSchemaTargetInClause(propertyPath)} of schema file '{schemaPath}' must declare 'required' entries as property-name strings.",
                     schemaPath: schemaPath,
-                    displayPath: GetDiagnosticPath(allOfSchemaPath));
+                    displayPath: GetDiagnosticPath(inlineSchemaPath));
             }
 
             var requiredPropertyName = requiredProperty.GetString();
@@ -410,9 +555,9 @@ internal static partial class YamlConfigSchemaValidator
                 throw ConfigLoadExceptionFactory.Create(
                     ConfigLoadFailureKind.SchemaUnsupported,
                     tableName,
-                    $"Entry #{allOfEntryNumber.ToString(CultureInfo.InvariantCulture)} in 'allOf' for {DescribeObjectSchemaTargetInClause(propertyPath)} of schema file '{schemaPath}' cannot declare blank property names in 'required'.",
+                    $"{entryLabel} for {DescribeObjectSchemaTargetInClause(propertyPath)} of schema file '{schemaPath}' cannot declare blank property names in 'required'.",
                     schemaPath: schemaPath,
-                    displayPath: GetDiagnosticPath(allOfSchemaPath));
+                    displayPath: GetDiagnosticPath(inlineSchemaPath));
             }
 
             if (properties.ContainsKey(requiredPropertyName))
@@ -423,9 +568,9 @@ internal static partial class YamlConfigSchemaValidator
             throw ConfigLoadExceptionFactory.Create(
                 ConfigLoadFailureKind.SchemaUnsupported,
                 tableName,
-                $"Entry #{allOfEntryNumber.ToString(CultureInfo.InvariantCulture)} in 'allOf' for {DescribeObjectSchemaTargetInClause(propertyPath)} of schema file '{schemaPath}' requires property '{requiredPropertyName}', but that property is not declared in the parent object schema.",
+                $"{entryLabel} for {DescribeObjectSchemaTargetInClause(propertyPath)} of schema file '{schemaPath}' requires property '{requiredPropertyName}', but that property is not declared in the parent object schema.",
                 schemaPath: schemaPath,
-                displayPath: GetDiagnosticPath(allOfSchemaPath));
+                displayPath: GetDiagnosticPath(inlineSchemaPath));
         }
     }
 

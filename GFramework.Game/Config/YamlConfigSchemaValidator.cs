@@ -11,9 +11,10 @@ namespace GFramework.Game.Config;
 ///     当前共享子集额外支持 <c>multipleOf</c>、<c>uniqueItems</c>、
 ///     <c>contains</c> / <c>minContains</c> / <c>maxContains</c>、
 ///     <c>minProperties</c>、<c>maxProperties</c>、<c>dependentRequired</c>、
-///     <c>dependentSchemas</c>、<c>allOf</c>
+///     <c>dependentSchemas</c>、<c>allOf</c>、object-focused <c>if</c> / <c>then</c> / <c>else</c>
 ///     与稳定字符串 <c>format</c> 子集，让数值步进、数组去重、数组匹配计数、
-///     对象属性数量、对象内字段依赖、条件对象子 schema 与对象组合约束在运行时与生成器 / 工具侧保持一致。
+///     对象属性数量、对象内字段依赖、条件对象子 schema、对象组合约束与条件分支约束
+///     在运行时与生成器 / 工具侧保持一致。
 /// </summary>
 internal static partial class YamlConfigSchemaValidator
 {
@@ -326,12 +327,12 @@ internal static partial class YamlConfigSchemaValidator
         var typeName = typeElement.GetString() ?? string.Empty;
         var referenceTableName = TryGetReferenceTableName(tableName, schemaPath, propertyPath, element);
         if (!string.Equals(typeName, "object", StringComparison.Ordinal) &&
-            element.TryGetProperty("allOf", out _))
+            TryGetObjectOnlyKeywordName(element) is { } objectOnlyKeywordName)
         {
             throw ConfigLoadExceptionFactory.Create(
                 ConfigLoadFailureKind.SchemaUnsupported,
                 tableName,
-                $"Property '{propertyPath}' in schema file '{schemaPath}' can only declare 'allOf' on object schemas.",
+                $"Property '{propertyPath}' in schema file '{schemaPath}' can only declare '{objectOnlyKeywordName}' on object schemas.",
                 schemaPath: schemaPath,
                 displayPath: GetDiagnosticPath(propertyPath));
         }
@@ -826,7 +827,8 @@ internal static partial class YamlConfigSchemaValidator
     ///     校验对象节点声明的数量约束与条件对象约束。
     ///     该阶段除了检查 <c>minProperties</c> / <c>maxProperties</c>，还会复用同一份 sibling 集合处理
     ///     <c>dependentRequired</c>，并在 <c>dependentSchemas</c> 命中时以 focused constraint block 语义
-    ///     对整个 <paramref name="mappingNode" /> 做额外试匹配。
+    ///     对整个 <paramref name="mappingNode" /> 做额外试匹配；若声明了 object-focused
+    ///     <c>if</c> / <c>then</c> / <c>else</c>，则先按同样的 focused matcher 判断条件分支，再只对命中的分支追加约束。
     /// </summary>
     /// <param name="tableName">所属配置表名称。</param>
     /// <param name="yamlPath">YAML 文件路径。</param>
@@ -835,7 +837,7 @@ internal static partial class YamlConfigSchemaValidator
     /// <param name="seenProperties">当前对象已出现的属性集合。</param>
     /// <param name="schemaNode">对象 schema 节点。</param>
     /// <param name="references">
-    ///     可选的跨表引用收集器；当 <c>dependentSchemas</c> 或 <c>allOf</c> 命中且匹配成功时，
+    ///     可选的跨表引用收集器；当 <c>dependentSchemas</c>、<c>allOf</c> 或条件分支命中且匹配成功时，
     ///     只会回写对应内联分支新增的引用。
     /// </param>
     private static void ValidateObjectConstraints(
@@ -964,40 +966,99 @@ internal static partial class YamlConfigSchemaValidator
             }
         }
 
-        if (constraints.AllOfSchemas is null ||
-            constraints.AllOfSchemas.Count == 0)
+        if (constraints.AllOfSchemas is not null &&
+            constraints.AllOfSchemas.Count > 0)
+        {
+            for (var index = 0; index < constraints.AllOfSchemas.Count; index++)
+            {
+                var allOfSchema = constraints.AllOfSchemas[index];
+                // allOf follows the same focused constraint block semantics as dependentSchemas:
+                // the inline schema may validate a subset of the current object without forcing
+                // unrelated sibling fields to be restated.
+                if (TryMatchSchemaNode(
+                        tableName,
+                        yamlPath,
+                        displayPath,
+                        mappingNode,
+                        allOfSchema,
+                        references,
+                        allowUnknownObjectProperties: true))
+                {
+                    continue;
+                }
+
+                var allOfEntryNumber = index + 1;
+                throw ConfigLoadExceptionFactory.Create(
+                    ConfigLoadFailureKind.ConstraintViolation,
+                    tableName,
+                    $"{subject} in config file '{yamlPath}' must satisfy all 'allOf' schemas, but entry #{allOfEntryNumber.ToString(CultureInfo.InvariantCulture)} did not match.",
+                    yamlPath: yamlPath,
+                    schemaPath: schemaNode.SchemaPathHint,
+                    displayPath: GetDiagnosticPath(displayPath),
+                    detail:
+                    $"allOf entry #{allOfEntryNumber.ToString(CultureInfo.InvariantCulture)} must match the current object.");
+            }
+        }
+
+        var conditionalSchemas = constraints.ConditionalSchemas;
+        if (conditionalSchemas is null)
         {
             return;
         }
 
-        for (var index = 0; index < constraints.AllOfSchemas.Count; index++)
+        // if/then/else follows the same object-focused matcher contract as dependentSchemas/allOf:
+        // condition evaluation can inspect a subset of the current object without forcing unrelated
+        // sibling fields to be re-declared inside the branch schema.
+        var ifMatched = TryMatchSchemaNode(
+            tableName,
+            yamlPath,
+            displayPath,
+            mappingNode,
+            conditionalSchemas.IfSchema,
+            references,
+            allowUnknownObjectProperties: true);
+        if (ifMatched &&
+            conditionalSchemas.ThenSchema is not null &&
+            !TryMatchSchemaNode(
+                tableName,
+                yamlPath,
+                displayPath,
+                mappingNode,
+                conditionalSchemas.ThenSchema,
+                references,
+                allowUnknownObjectProperties: true))
         {
-            var allOfSchema = constraints.AllOfSchemas[index];
-            // allOf follows the same focused constraint block semantics as dependentSchemas:
-            // the inline schema may validate a subset of the current object without forcing
-            // unrelated sibling fields to be restated.
-            if (TryMatchSchemaNode(
-                    tableName,
-                    yamlPath,
-                    displayPath,
-                    mappingNode,
-                    allOfSchema,
-                    references,
-                    allowUnknownObjectProperties: true))
-            {
-                continue;
-            }
-
-            var allOfEntryNumber = index + 1;
             throw ConfigLoadExceptionFactory.Create(
                 ConfigLoadFailureKind.ConstraintViolation,
                 tableName,
-                $"{subject} in config file '{yamlPath}' must satisfy all 'allOf' schemas, but entry #{allOfEntryNumber.ToString(CultureInfo.InvariantCulture)} did not match.",
+                $"{subject} in config file '{yamlPath}' must satisfy the 'then' schema because the inline 'if' condition matched.",
                 yamlPath: yamlPath,
                 schemaPath: schemaNode.SchemaPathHint,
                 displayPath: GetDiagnosticPath(displayPath),
                 detail:
-                $"allOf entry #{allOfEntryNumber.ToString(CultureInfo.InvariantCulture)} must match the current object.");
+                "Conditional schema: the current object matched the inline 'if' schema, so it must also satisfy the corresponding 'then' schema.");
+        }
+
+        if (!ifMatched &&
+            conditionalSchemas.ElseSchema is not null &&
+            !TryMatchSchemaNode(
+                tableName,
+                yamlPath,
+                displayPath,
+                mappingNode,
+                conditionalSchemas.ElseSchema,
+                references,
+                allowUnknownObjectProperties: true))
+        {
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.ConstraintViolation,
+                tableName,
+                $"{subject} in config file '{yamlPath}' must satisfy the 'else' schema because the inline 'if' condition did not match.",
+                yamlPath: yamlPath,
+                schemaPath: schemaNode.SchemaPathHint,
+                displayPath: GetDiagnosticPath(displayPath),
+                detail:
+                "Conditional schema: the current object did not match the inline 'if' schema, so it must satisfy the corresponding 'else' schema.");
         }
     }
 
@@ -3379,6 +3440,21 @@ internal static partial class YamlConfigSchemaValidator
                 CollectReferencedTableNames(allOfSchemaNode, referencedTableNames);
             }
         }
+
+        var conditionalSchemas = node.ObjectConstraints?.ConditionalSchemas;
+        if (conditionalSchemas is not null)
+        {
+            CollectReferencedTableNames(conditionalSchemas.IfSchema, referencedTableNames);
+            if (conditionalSchemas.ThenSchema is not null)
+            {
+                CollectReferencedTableNames(conditionalSchemas.ThenSchema, referencedTableNames);
+            }
+
+            if (conditionalSchemas.ElseSchema is not null)
+            {
+                CollectReferencedTableNames(conditionalSchemas.ElseSchema, referencedTableNames);
+            }
+        }
     }
 
     /// <summary>
@@ -3515,6 +3591,33 @@ internal static partial class YamlConfigSchemaValidator
     private static string CombineDisplayPath(string parentPath, string propertyName)
     {
         return string.IsNullOrWhiteSpace(parentPath) ? propertyName : $"{parentPath}.{propertyName}";
+    }
+
+    /// <summary>
+    ///     返回当前节点上声明的“仅对象可用”关键字名称。
+    /// </summary>
+    /// <param name="element">Schema 节点。</param>
+    /// <returns>命中的关键字名称；未命中时返回空。</returns>
+    private static string? TryGetObjectOnlyKeywordName(JsonElement element)
+    {
+        if (element.TryGetProperty("allOf", out _))
+        {
+            return "allOf";
+        }
+
+        if (element.TryGetProperty("if", out _))
+        {
+            return "if";
+        }
+
+        if (element.TryGetProperty("then", out _))
+        {
+            return "then";
+        }
+
+        return element.TryGetProperty("else", out _)
+            ? "else"
+            : null;
     }
 
     /// <summary>
@@ -3985,18 +4088,21 @@ internal sealed class YamlConfigObjectConstraints
     /// <param name="dependentRequired">对象内字段依赖约束。</param>
     /// <param name="dependentSchemas">对象内条件 schema 约束。</param>
     /// <param name="allOfSchemas">对象内组合 schema 约束。</param>
+    /// <param name="conditionalSchemas">对象内条件分支约束。</param>
     public YamlConfigObjectConstraints(
         int? minProperties,
         int? maxProperties,
         IReadOnlyDictionary<string, IReadOnlyList<string>>? dependentRequired,
         IReadOnlyDictionary<string, YamlConfigSchemaNode>? dependentSchemas,
-        IReadOnlyList<YamlConfigSchemaNode>? allOfSchemas)
+        IReadOnlyList<YamlConfigSchemaNode>? allOfSchemas,
+        YamlConfigConditionalSchemas? conditionalSchemas)
     {
         MinProperties = minProperties;
         MaxProperties = maxProperties;
         DependentRequired = dependentRequired;
         DependentSchemas = dependentSchemas;
         AllOfSchemas = allOfSchemas;
+        ConditionalSchemas = conditionalSchemas;
     }
 
     /// <summary>
@@ -4026,6 +4132,52 @@ internal sealed class YamlConfigObjectConstraints
     ///     每个条目都表示“当前对象还必须额外满足的 focused constraint block”。
     /// </summary>
     public IReadOnlyList<YamlConfigSchemaNode>? AllOfSchemas { get; }
+
+    /// <summary>
+    ///     获取对象内 object-focused <c>if</c> / <c>then</c> / <c>else</c> 条件约束。
+    ///     该模型会先用 <c>if</c> 试匹配当前对象，再只对命中的分支叠加 focused constraint block。
+    /// </summary>
+    public YamlConfigConditionalSchemas? ConditionalSchemas { get; }
+}
+
+/// <summary>
+///     表示一个对象节点上声明的 object-focused <c>if</c> / <c>then</c> / <c>else</c> 条件约束。
+///     三个分支都共享父对象已声明字段集合，不会把分支 schema 扩展成新的生成类型形状。
+/// </summary>
+internal sealed class YamlConfigConditionalSchemas
+{
+    /// <summary>
+    ///     初始化条件分支约束模型。
+    /// </summary>
+    /// <param name="ifSchema">条件判断 schema。</param>
+    /// <param name="thenSchema">条件命中时需要满足的 schema。</param>
+    /// <param name="elseSchema">条件未命中时需要满足的 schema。</param>
+    public YamlConfigConditionalSchemas(
+        YamlConfigSchemaNode ifSchema,
+        YamlConfigSchemaNode? thenSchema,
+        YamlConfigSchemaNode? elseSchema)
+    {
+        ArgumentNullException.ThrowIfNull(ifSchema);
+
+        IfSchema = ifSchema;
+        ThenSchema = thenSchema;
+        ElseSchema = elseSchema;
+    }
+
+    /// <summary>
+    ///     获取条件判断 schema。
+    /// </summary>
+    public YamlConfigSchemaNode IfSchema { get; }
+
+    /// <summary>
+    ///     获取条件命中时需要满足的 schema。
+    /// </summary>
+    public YamlConfigSchemaNode? ThenSchema { get; }
+
+    /// <summary>
+    ///     获取条件未命中时需要满足的 schema。
+    /// </summary>
+    public YamlConfigSchemaNode? ElseSchema { get; }
 }
 
 /// <summary>
