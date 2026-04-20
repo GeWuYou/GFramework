@@ -1,674 +1,107 @@
-# GFramework.Core 核心框架
+# Core
 
-> 一个基于 CQRS、MVC 和事件驱动的轻量级游戏开发架构框架
+`Core` 栏目对应 `GFramework` 的基础运行时层，主要覆盖 `GFramework.Core` 与 `GFramework.Core.Abstractions`，以及与之直接相邻的旧版
+`Command` / `Query` 执行器和新版 `CQRS` 迁移入口。
 
-## 目录
+如果你第一次接入框架，建议先把这里当作“运行时底座说明”，再按需进入 `Game`、`Godot` 或 Source Generators 栏目。
 
-- [框架概述](#框架概述)
-- [核心概念](#核心概念)
-- [架构图](#架构图)
-- [快速开始](#快速开始)
-- [包说明](#包说明)
-- [组件联动](#组件联动)
-- [最佳实践](#最佳实践)
-- [设计理念](#设计理念)
+## 先理解包关系
 
-## 框架概述
+- `GeWuYou.GFramework.Core`
+  - 基础运行时实现，包含 `Architecture`、上下文、生命周期、事件、属性、状态、资源、日志、协程、IoC 等能力。
+- `GeWuYou.GFramework.Core.Abstractions`
+  - 对应的契约层，适合只依赖接口、做模块拆分或测试替身。
+- `GeWuYou.GFramework.Cqrs`
+  - 推荐给新功能使用的新请求模型运行时。
+- `GeWuYou.GFramework.Game`
+  - 在 `Core` 之上叠加游戏层配置、数据、设置、场景与 UI。
+- `GeWuYou.GFramework.Core.SourceGenerators`
+  - 在编译期补齐日志、上下文注入、模块自动注册等样板代码。
 
-本框架是一个与平台无关的轻量级架构，它结合了多种经典设计模式：
+如果你只想先把架构跑起来，最小安装组合仍是：
 
-- **MVC 架构模式** - 清晰的层次划分
-- **CQRS 模式** - 命令查询职责分离
-- **IoC/DI** - 依赖注入和控制反转
-- **事件驱动** - 松耦合的组件通信
-- **响应式编程** - 可绑定属性和数据流
-- **阶段式生命周期管理** - 精细化的架构状态控制
-
-**重要说明**：GFramework.Core 是与平台无关的核心模块，不包含任何 Godot 特定代码。Godot 集成功能在 GFramework.Godot 包中实现。
-
-### 核心特性
-
-- **清晰的分层架构** - Model、View、Controller、System、Utility 各司其职
-- **类型安全** - 基于泛型的组件获取和事件系统
-- **松耦合** - 通过事件和接口实现组件解耦
-- **易于测试** - 依赖注入和纯函数设计
-- **可扩展** - 基于接口的规则体系
-- **生命周期管理** - 自动的注册和注销机制
-- **模块化** - 支持架构模块安装
-- **平台无关** - Core 模块可以在任何 .NET 环境中使用
-
-## 核心概念
-
-### 五层架构
-
-```
-┌─────────────────────────────────────────┐
-│             View / UI                    │  UI 层：用户界面
-├─────────────────────────────────────────┤
-│            Controller                    │  控制层：连接 UI 和业务逻辑
-├─────────────────────────────────────────┤
-│             System                       │  逻辑层：业务逻辑
-├─────────────────────────────────────────┤
-│              Model                       │  数据层：游戏状态
-├─────────────────────────────────────────┤
-│             Utility                      │  工具层：无状态工具
-└─────────────────────────────────────────┘
+```bash
+dotnet add package GeWuYou.GFramework.Core
+dotnet add package GeWuYou.GFramework.Core.Abstractions
 ```
 
-### 横切关注点
+## 这个栏目应该回答什么
 
-```
-Command ──┐
-Query   ──┼──→  跨层操作（修改/查询数据）
-Event   ──┘
-```
+`Core` 栏目不是旧版“完整框架教程”的镜像，而是当前实现的入口导航。这里的页面按能力域组织：
 
-### 架构阶段
+- 架构与上下文
+  - [architecture](./architecture.md)
+  - [context](./context.md)
+  - [lifecycle](./lifecycle.md)
+- 旧版命令 / 查询执行器与迁移入口
+  - [command](./command.md)
+  - [query](./query.md)
+  - [cqrs](./cqrs.md)
+- 核心横切能力
+  - [events](./events.md)
+  - [property](./property.md)
+  - [logging](./logging.md)
+  - [resource](./resource.md)
+  - [coroutine](./coroutine.md)
+  - [ioc](./ioc.md)
+- 状态与扩展能力
+  - [state-machine](./state-machine.md)
+  - [state-management](./state-management.md)
+  - [pause](./pause.md)
+  - [localization](./localization.md)
+  - [functional](./functional.md)
+  - [extensions](./extensions.md)
 
-框架提供了精细化的生命周期管理,包含 11 个阶段:
+## 最小接入路径
 
-```
-初始化流程:
-None → BeforeUtilityInit → AfterUtilityInit → BeforeModelInit → AfterModelInit → BeforeSystemInit → AfterSystemInit → Ready
+当前版本的最小运行时入口只有三个关键动作：
 
-销毁流程:
-Ready → Destroying → Destroyed
+1. 继承 `Architecture`
+2. 在 `OnInitialize()` 中注册模型、系统、工具或模块
+3. 通过 `architecture.Context` 或 `ContextAwareBase` 的扩展方法访问上下文
 
-异常流程:
-Any → FailedInitialization
-```
-
-每个阶段都会触发 `PhaseChanged` 事件,允许组件监听架构状态变化。
-
-## 架构图
-
-### 整体架构
-
-从 v1.1.0 开始,Architecture 类采用模块化设计,将职责分离到专门的管理器中:
-
-```
-                     ┌──────────────────┐
-                     │   Architecture   │ ← 核心协调器
-                     └────────┬─────────┘
-                              │
-         ┌────────────────────┼────────────────────┐
-         │                    │                    │
-    ┌────▼────────┐   ┌──────▼──────┐   ┌────────▼────────┐
-    │ Lifecycle   │   │ Component   │   │    Modules      │
-    │  Manager    │   │  Registry   │   │    Manager      │
-    └─────────────┘   └─────────────┘   └─────────────────┘
-         │                    │                    │
-         │                    │                    │
-    生命周期管理          组件注册管理            模块管理
-    - 阶段转换            - System 注册          - 模块安装
-    - 钩子管理            - Model 注册           - 行为注册
-    - 初始化/销毁         - Utility 注册
-```
-
-这种设计遵循单一职责原则,使代码更易维护和测试。
-
-```
-                     ┌──────────────────┐
-                     │   Architecture   │ ← 管理所有组件
-                     └────────┬─────────┘
-                              │
-         ┌────────────────────┼────────────────────┐
-         │                    │                    │
-     ┌───▼────┐          ┌───▼────┐          ┌───▼─────┐
-     │ Model  │          │ System │          │ Utility │
-     │  层    │          │  层    │          │  层     │
-     └───┬────┘          └───┬────┘          └────────┘
-         │                   │
-         │    ┌─────────────┤
-         │    │             │
-     ┌───▼────▼───┐    ┌───▼──────┐
-     │ Controller │    │ Command/ │
-     │    层      │    │  Query   │
-     └─────┬──────┘    └──────────┘
-           │
-     ┌─────▼─────┐
-     │   View    │
-     │    UI     │
-     └───────────┘
-```
-
-### 数据流向
-
-```
-用户输入 → Controller → Command → System → Model → Event → Controller → View 更新
-
-查询流程：Controller → Query → Model → 返回数据
-```
-
-## 快速开始
-
-本框架采用"约定优于配置"的设计理念，只需 4 步即可搭建完整的架构。
-
-### 为什么需要这个框架？
-
-在传统开发中，我们经常遇到这些问题：
-
-- 代码耦合严重：UI 直接访问游戏逻辑，逻辑直接操作 UI
-- 难以维护：修改一个功能需要改动多个文件
-- 难以测试：业务逻辑和 UI 混在一起无法独立测试
-- 难以复用：代码紧密耦合，无法在其他项目中复用
-
-本框架通过清晰的分层解决这些问题。
-
-### 1. 定义架构（Architecture）
-
-**作用**：Architecture 是整个应用的"中央调度器"，负责管理所有组件的生命周期。
+最小示例：
 
 ```csharp
-using GFramework.Core.Architecture;
+using GFramework.Core.Architectures;
 
-public class GameArchitecture : Architecture
+public sealed class CounterArchitecture : Architecture
 {
-    protected override void Init()
+    protected override void OnInitialize()
     {
-        // 注册 Model - 游戏数据
-        RegisterModel(new PlayerModel());
-        
-        // 注册 System - 业务逻辑
-        RegisterSystem(new CombatSystem());
-        
-        // 注册 Utility - 工具类
-        RegisterUtility(new StorageUtility());
+        RegisterModel(new CounterModel());
+        RegisterSystem(new CounterSystem());
     }
 }
 ```
 
-**优势**：
+对应的完整起步示例见：
 
-- **依赖注入**：组件通过上下文获取架构引用
-- **集中管理**：所有组件注册在一处，一目了然
-- **生命周期管理**：自动初始化和销毁
-- **平台无关**：可以在任何 .NET 环境中使用
+- [快速开始](../getting-started/quick-start.md)
 
-### 2. 定义 Model（数据层）
+## 新项目如何选择能力
 
-**作用**：Model 是应用的"数据库"，只负责存储和管理状态。
+- 只需要基础架构、事件、日志、资源、协程：
+  - 先停留在 `Core`
+- 要写新的请求/通知处理流：
+  - 优先阅读 [cqrs](./cqrs.md)
+- 要接入游戏内容配置、设置、数据仓库、Scene 或 UI：
+  - 转到 [Game](../game/index.md)
+- 要接入 Godot 节点、场景和项目元数据生成：
+  - 转到 `Godot` 与 Source Generators 栏目
 
-```csharp
-public class PlayerModel : AbstractModel
-{
-    // 使用 BindableProperty 实现响应式数据
-    public BindableProperty<int> Health { get; } = new(100);
-    public BindableProperty<int> Gold { get; } = new(0);
-    
-    protected override void OnInit()
-    {
-        // Model 中可以监听自己的数据变化
-        Health.Register(hp =>
-        {
-            if (hp <= 0) this.SendEvent(new PlayerDiedEvent());
-        });
-    }
-}
+## 推荐阅读顺序
 
-// 也可以不使用 BindableProperty
-public class PlayerModel : AbstractModel
-{
-    public int Health { get; private set; }
-    public int Gold { get; private set; }
-    
-    protected override void OnInit()
-    {
-        Health = 100;
-        Gold = 0;
-    }
-}
-```
+1. [快速开始](../getting-started/quick-start.md)
+2. [architecture](./architecture.md)
+3. [context](./context.md)
+4. [lifecycle](./lifecycle.md)
+5. [cqrs](./cqrs.md)
 
-**优势**：
+之后再按实际需要进入具体专题页，而不是把 `Core` 当成一次性读完的大杂烩。
 
-- **数据响应式**：BindableProperty 让数据变化自动通知监听者
-- **职责单一**：只存储数据，不包含复杂业务逻辑
-- **易于测试**：可以独立测试数据逻辑
+## 对应模块入口
 
-### 3. 定义 System（业务逻辑层）
-
-**作用**：System 是应用的"大脑"，处理所有业务逻辑。
-
-```csharp
-public class CombatSystem : AbstractSystem
-{
-    protected override void OnInit()
-    {
-        // System 通过事件驱动，响应游戏中的各种事件
-        this.RegisterEvent<EnemyAttackEvent>(OnEnemyAttack);
-    }
-    
-    private void OnEnemyAttack(EnemyAttackEvent e)
-    {
-        var playerModel = this.GetModel<PlayerModel>();
-        
-        // 处理业务逻辑：计算伤害、更新数据
-        playerModel.Health.Value -= e.Damage;
-        
-        // 发送事件通知其他组件
-        this.SendEvent(new PlayerTookDamageEvent { Damage = e.Damage });
-    }
-}
-```
-
-**优势**：
-
-- **事件驱动**：通过事件解耦，不同 System 之间松耦合
-- **可组合**：多个 System 协同工作，每个专注自己的领域
-- **易于扩展**：新增功能只需添加新的 System 和事件监听
-
-### 4. 定义 Controller（控制层）
-
-**作用**：Controller 是"桥梁"，连接 UI 和业务逻辑。
-
-```csharp
-public class PlayerController : IController
-{
-    // 通过依赖注入获取架构
-    private readonly IArchitecture _architecture;
-    
-    public PlayerController(IArchitecture architecture)
-    {
-        _architecture = architecture;
-    }
-    
-    // 监听模型变化
-    public void Initialize()
-    {
-        var playerModel = _architecture.GetModel<PlayerModel>();
-        
-        // 数据绑定：Model 数据变化自动更新 UI
-        playerModel.Health.RegisterWithInitValue(OnHealthChanged);
-    }
-    
-    private void OnHealthChanged(int hp)
-    {
-        // 更新 UI 显示
-        UpdateHealthDisplay(hp);
-    }
-    
-    private void UpdateHealthDisplay(int hp) { /* UI 更新逻辑 */ }
-}
-```
-
-**优势**：
-
-- **自动更新 UI**：通过 BindableProperty，数据变化自动反映到界面
-- **分离关注点**：UI 逻辑和业务逻辑完全分离
-- **易于测试**：可以通过依赖注入模拟架构进行测试
-
-### 完成！现在你有了一个完整的架构
-
-这 4 步完成后，你就拥有了：
-
-- **清晰的数据层**（Model）
-- **独立的业务逻辑**（System）
-- **灵活的控制层**（Controller）
-- **统一的生命周期管理**（Architecture）
-
-### 下一步该做什么？
-
-1. **添加 Command**：封装用户操作（如购买物品、使用技能）
-2. **添加 Query**：封装数据查询（如查询背包物品数量）
-3. **添加更多 System**：如任务系统、背包系统、商店系统
-4. **使用 Utility**：添加工具类（如存档工具、数学工具）
-5. **使用模块**：通过 IArchitectureModule 扩展架构功能
-
-## 包说明
-
-### Architecture 内部结构 (v1.1.0+)
-
-从 v1.1.0 开始,Architecture 类采用模块化设计,将原本 708 行的单一类拆分为多个职责清晰的协作者:
-
-#### 1. Architecture (核心协调器)
-
-**职责**: 提供统一的公共 API,协调各个管理器
-
-**主要方法**:
-
-- `RegisterSystem<T>()` - 注册系统
-- `RegisterModel<T>()` - 注册模型
-- `RegisterUtility<T>()` - 注册工具
-- `InstallModule()` - 安装模块
-- `InitializeAsync()` / `Initialize()` - 初始化架构
-- `DestroyAsync()` / `Destroy()` - 销毁架构
-
-**事件**:
-
-- `PhaseChanged` - 阶段变更事件
-
-#### 2. ArchitectureBootstrapper (初始化基础设施编排器)
-
-**职责**: 在用户 `OnInitialize()` 执行前准备环境、服务和上下文，并在组件初始化完成后执行初始化收尾
-
-**核心功能**:
-
-- 初始化环境对象
-- 注册内置服务模块
-- 绑定架构上下文到 `GameContext`
-- 执行服务钩子
-- 在 `InitializeAllComponentsAsync()` 完成后通过 `CompleteInitialization()` 冻结 IoC 容器
-
-#### 3. ArchitectureLifecycle (生命周期管理器)
-
-**职责**: 管理架构的生命周期和阶段转换
-
-**核心功能**:
-
-- 11 个架构阶段的管理和转换
-- 生命周期钩子 (IArchitectureLifecycleHook) 管理
-- 组件初始化 (按 Utility → Model → System 顺序)
-- 组件销毁 (逆序销毁)
-- 就绪状态管理
-
-**关键方法**:
-
-- `EnterPhase()` - 进入指定阶段
-- `RegisterLifecycleHook()` - 注册生命周期钩子
-- `InitializeAllComponentsAsync()` - 初始化所有组件
-- `DestroyAsync()` - 异步销毁
-
-#### 4. ArchitectureComponentRegistry (组件注册管理器)
-
-**职责**: 管理 System、Model、Utility 的注册
-
-**核心功能**:
-
-- 组件注册和验证
-- 自动设置组件上下文 (IContextAware)
-- 自动注册组件生命周期 (IInitializable、IDestroyable)
-- 支持实例注册和类型注册
-
-**关键方法**:
-
-- `RegisterSystem<T>()` - 注册系统
-- `RegisterModel<T>()` - 注册模型
-- `RegisterUtility<T>()` - 注册工具
-
-> 命名提醒: 公开的 `ArchitectureServices` 负责容器和基础服务,并不承担组件注册职责。
-> `ArchitectureComponentRegistry` 才是内部的 System / Model / Utility 注册器。
-
-#### 5. ArchitectureModules (模块管理器)
-
-**职责**: 管理架构模块和 CQRS 管道行为
-
-**核心功能**:
-
-- 模块安装 (IArchitectureModule)
-- CQRS 管道行为注册（推荐 API 为 `RegisterCqrsPipelineBehavior`）
-
-**关键方法**:
-
-- `InstallModule()` - 安装模块
-- `RegisterCqrsPipelineBehavior<T>()` - 注册 CQRS 管道行为
-
-#### 设计优势
-
-这种模块化设计带来以下优势:
-
-1. **单一职责**: 每个类只负责一个明确的功能
-2. **易于测试**: 可以独立测试每个管理器
-3. **易于维护**: 修改某个功能不影响其他功能
-4. **易于扩展**: 添加新功能更容易
-5. **代码安全**: 消除了 `null!` 断言,所有字段在构造后立即可用
-
-详细的设计决策已在架构实现重构中落地。
-
----
-
-## 包说明
-
-| 包名                   | 职责              | 文档                       |
-|----------------------|-----------------|--------------------------|
-| **architecture**     | 架构核心，管理所有组件生命周期 | [查看](./architecture)     |
-| **constants**        | 框架常量定义          | 本文档                      |
-| **model**            | 数据模型层，存储状态      | [查看](./model)            |
-| **system**           | 业务逻辑层，处理业务规则    | [查看](./system)           |
-| **controller**       | 控制器层，连接视图和逻辑    | (在 Abstractions 中)       |
-| **utility**          | 工具类层，提供无状态工具    | [查看](./utility)          |
-| **command**          | 命令模式，封装写操作      | [查看](./command)          |
-| **query**            | 查询模式，封装读操作      | [查看](./query)            |
-| **events**           | 事件系统，组件间通信      | [查看](./events)           |
-| **property**         | 可绑定属性，响应式编程     | [查看](./property)         |
-| **state-management** | 集中式状态容器与选择器     | [查看](./state-management) |
-| **ioc**              | IoC 容器，依赖注入     | [查看](./ioc)              |
-| **rule**             | 规则接口，定义组件约束     | [查看](./rule)             |
-| **extensions**       | 扩展方法，简化 API 调用  | [查看](./extensions)       |
-| **logging**          | 日志系统，记录运行日志     | [查看](./logging)          |
-| **environment**      | 环境接口，提供运行环境信息   | [查看](./environment)      |
-| **localization**     | 本地化系统，多语言支持     | [查看](./localization)     |
-
-## 组件联动
-
-### 1. 初始化流程
-
-```
-创建 Architecture 实例
-    └─> 构造函数
-        ├─> 初始化 Logger
-        ├─> 创建 ArchitectureBootstrapper
-        ├─> 创建 ArchitectureLifecycle
-        ├─> 创建 ArchitectureComponentRegistry
-        └─> 创建 ArchitectureModules
-    └─> InitializeAsync()
-        ├─> Bootstrapper 准备环境/服务/上下文
-        ├─> OnInitialize() (用户注册组件)
-        │   ├─> RegisterModel → Model.SetContext()
-        │   ├─> RegisterSystem → System.SetContext()
-        │   └─> RegisterUtility → 注册到容器
-        ├─> InitializeAllComponentsAsync()
-        │   ├─> BeforeUtilityInit → Utility.Initialize()
-        │   ├─> BeforeModelInit → Model.Initialize()
-        │   └─> BeforeSystemInit → System.Initialize()
-        ├─> CompleteInitialization() → 冻结 IoC 容器
-        └─> 进入 Ready
-```
-
-**重要变更 (v1.1.0)**: 管理器现在在构造函数中初始化,而不是在 InitializeAsync 中。这消除了 `null!` 断言,提高了代码安全性。
-
-### 2. Command 执行流程
-
-```
-Controller.SendCommand(command)
-    └─> command.Execute()
-        └─> command.OnDo()  // 子类实现
-            ├─> GetModel<T>()    // 获取数据
-            ├─> 修改 Model 数据
-            └─> SendEvent()      // 发送事件
-```
-
-### 3. Event 传播流程
-
-```
-组件.SendEvent(event)
-    └─> TypeEventSystem.Send(event)
-        └─> 通知所有订阅者
-            ├─> Controller 响应 → 更新 UI
-            ├─> System 响应 → 执行逻辑
-            └─> Model 响应 → 更新状态
-```
-
-### 4. BindableProperty 数据绑定
-
-```
-Model: BindableProperty<int> Health = new(100);
-Controller: Health.RegisterWithInitValue(hp => UpdateUI(hp))
-修改值: Health.Value = 50 → 触发所有回调 → 更新 UI
-```
-
-## 最佳实践
-
-### 1. 分层职责原则
-
-每一层都有明确的职责边界，遵循这些原则能让代码更清晰、更易维护。
-
-**Model 层**：
-
-```csharp
-// 好：只存储数据
-public class PlayerModel : AbstractModel
-{
-    public BindableProperty<int> Health { get; } = new(100);
-    protected override void OnInit() { }
-}
-
-// 坏：包含业务逻辑
-public class PlayerModel : AbstractModel
-{
-    public void TakeDamage(int damage)  // 业务逻辑应在 System
-    {
-        Health.Value -= damage;
-        if (Health.Value <= 0) Die();
-    }
-}
-```
-
-**System 层**：
-
-```csharp
-// 好：处理业务逻辑
-public class CombatSystem : AbstractSystem
-{
-    protected override void OnInit()
-    {
-        this.RegisterEvent<AttackEvent>(OnAttack);
-    }
-    
-    private void OnAttack(AttackEvent e)
-    {
-        var target = this.GetModel<PlayerModel>();
-        int finalDamage = CalculateDamage(e.BaseDamage, target);
-        target.Health.Value -= finalDamage;
-    }
-}
-```
-
-### 2. 通信方式选择指南
-
-| 通信方式                 | 使用场景      | 优势       |
-|----------------------|-----------|----------|
-| **Command**          | 用户操作、修改状态 | 可撤销、可记录  |
-| **Query**            | 查询数据、检查条件 | 明确只读意图   |
-| **Event**            | 通知其他组件    | 松耦合、可扩展  |
-| **BindableProperty** | 数据变化通知    | 自动化、不会遗漏 |
-
-### 3. 生命周期管理
-
-**为什么需要注销？**
-
-忘记注销监听器会导致：
-
-- **内存泄漏**：对象无法被 GC 回收
-- **逻辑错误**：已销毁的对象仍在响应事件
-
-```csharp
-// 使用 UnRegisterList 统一管理
-private IUnRegisterList _unregisterList = new UnRegisterList();
-
-public void Initialize()
-{
-    this.RegisterEvent<Event1>(OnEvent1)
-        .AddToUnregisterList(_unregisterList);
-    
-    model.Property.Register(OnPropertyChanged)
-        .AddToUnregisterList(_unregisterList);
-}
-
-public void Cleanup()
-{
-    _unregisterList.UnRegisterAll();
-}
-```
-
-### 4. 性能优化技巧
-
-```csharp
-// 低效：每帧都查询
-var model = _architecture.GetModel<PlayerModel>();  // 频繁调用
-
-// 高效：缓存引用
-private PlayerModel _playerModel;
-
-public void Initialize()
-{
-    _playerModel = _architecture.GetModel<PlayerModel>();  // 只查询一次
-}
-```
-
-## 设计理念
-
-框架的设计遵循 SOLID 原则和经典设计模式。
-
-### 1. 单一职责原则（SRP）
-
-- **Model**：只负责存储数据
-- **System**：只负责处理业务逻辑
-- **Controller**：只负责协调和输入处理
-- **Utility**：只负责提供工具方法
-
-### 2. 开闭原则（OCP）
-
-- 通过**事件系统**添加新功能，无需修改现有代码
-- 新的 System 可以监听现有事件，插入自己的逻辑
-
-### 3. 依赖倒置原则（DIP）
-
-- 所有组件通过接口交互
-- 通过 IoC 容器注入依赖
-- 易于替换实现和编写测试
-
-### 4. 接口隔离原则（ISP）
-
-```csharp
-// 小而专注的接口
-public interface ICanGetModel : IBelongToArchitecture { }
-public interface ICanSendCommand : IBelongToArchitecture { }
-public interface ICanRegisterEvent : IBelongToArchitecture { }
-
-// 组合需要的能力
-public interface IController :
-    ICanGetModel,
-    ICanSendCommand,
-    ICanRegisterEvent { }
-```
-
-### 5. 组合优于继承
-
-通过接口组合获得能力，而不是通过继承。
-
-### 框架核心设计模式
-
-| 设计模式      | 应用位置       | 解决的问题    | 带来的好处  |
-|-----------|------------|----------|--------|
-| **工厂模式**  | IoC 容器     | 组件的创建和管理 | 解耦创建逻辑 |
-| **观察者模式** | Event 系统   | 组件间的通信   | 松耦合通信  |
-| **命令模式**  | Command    | 封装操作请求   | 支持撤销重做 |
-| **策略模式**  | System     | 不同的业务逻辑  | 易于切换策略 |
-| **依赖注入**  | 整体架构       | 组件间的依赖   | 自动管理依赖 |
-| **模板方法**  | Abstract 类 | 定义算法骨架   | 统一流程规范 |
-
-### 平台无关性
-
-- **GFramework.Core**：纯 .NET 库，无任何平台特定代码
-- **GFramework.Godot**：Godot 特定实现，包含 Node 扩展、GodotLogger 等
-- 可以轻松将 Core 框架移植到其他平台（Unity、.NET MAUI 等）
-
----
-
-**版本**: 1.1.0
-**更新日期**: 2026-03-17
-**许可证**: Apache 2.0
-
-## 更新日志
-
-### v1.1.0 (2026-03-17)
-
-**重大重构**:
-
-- 拆分 Architecture 类为 4 个职责清晰的类
-- 消除 3 处 `null!` 强制断言,提高代码安全性
-- 在构造函数中初始化管理器,符合"构造即完整"原则
-- 添加 `PhaseChanged` 事件,支持阶段监听
-
-**向后兼容**: 所有公共 API 保持不变,现有代码无需修改。
+- `GFramework.Core/README.md`
+- `GFramework.Core.Abstractions/README.md`
+- 仓库根 `README.md`

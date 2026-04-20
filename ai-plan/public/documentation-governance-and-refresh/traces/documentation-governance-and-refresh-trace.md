@@ -29,3 +29,26 @@
 
 1. 后续继续该主题时，只从 `ai-plan/public/documentation-governance-and-refresh/` 进入，不再恢复 `local-plan/`
 2. 若 active 入口再次积累多轮已完成且已验证阶段，继续按同一模式迁入该主题自己的 `archive/`
+
+## 2026-04-21
+
+### 阶段：栏目 landing page 收口（RP-002）
+
+- 依据 `ai-plan/public/README.md` 的 worktree 映射恢复 `documentation-governance-and-refresh` 主题，并确认该分支下一步应优先处理 `docs/zh-CN/core/*`、`game/*` 与 `source-generators/*`
+- 复核 `docs/zh-CN/core/index.md`、`docs/zh-CN/game/index.md`、`docs/zh-CN/source-generators/index.md` 后确认：这三页仍保留旧版“大而全教程”结构，与当前模块 README、包拆分关系和推荐接入路径明显漂移
+- 对照 `GFramework.Core/README.md`、`GFramework.Game/README.md`、`GFramework.Core.SourceGenerators/README.md`、
+  `GFramework.Game.SourceGenerators/README.md`、`GFramework.Cqrs.SourceGenerators/README.md` 与
+  `GFramework.Godot.SourceGenerators/README.md`，重写三个栏目 landing page，使其回到“模块定位、包关系、最小接入路径、继续阅读”的可信入口形态
+- 首次执行 `cd docs && bun run build` 时发现 VitePress 会把跳到 `docs/` 目录外的相对链接判定为 dead link，因此将 landing page 末尾的模块 README 入口改为纯文本路径提示而非站内链接
+- 第二次执行 `cd docs && bun run build` 通过，说明当前 landing page 重写没有破坏站点构建
+
+### 当前结论
+
+- 当前默认导航入口已显著收敛，但专题页仍需逐页按源码与测试继续核对
+- 后续优先级应从 `core` 专题页开始，再向 `game` 与 `source-generators` 扩展
+
+### 下一步
+
+1. 审核 `docs/zh-CN/core/architecture.md`、`context.md`、`lifecycle.md`、`command.md`、`query.md`、`cqrs.md`
+2. 记录每页的失真点、真实 API 名称与应保留的最小示例
+3. 完成一轮专题页重写后再次执行 `cd docs && bun run build`
