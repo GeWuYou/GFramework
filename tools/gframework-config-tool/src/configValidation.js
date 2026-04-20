@@ -1504,6 +1504,32 @@ function parseConditionalObjectSchema(rawSchema, displayPath, keywordName, prope
  * @param {Record<string, SchemaNode>} properties Declared parent properties.
  */
 function validateConditionalSchemaTargets(rawSchema, displayPath, keywordName, properties) {
+    validateDeclaredTargetReferences(rawSchema, displayPath, `'${keywordName}'`, properties);
+}
+
+/**
+ * Ensure one object-focused `allOf` entry only constrains properties that the
+ * parent object schema already declared.
+ *
+ * @param {unknown} rawAllOfSchema Raw allOf entry.
+ * @param {string} displayPath Parent schema path.
+ * @param {number} index Zero-based allOf entry index.
+ * @param {Record<string, SchemaNode>} properties Declared parent properties.
+ */
+function validateAllOfEntryTargets(rawAllOfSchema, displayPath, index, properties) {
+    validateDeclaredTargetReferences(rawAllOfSchema, displayPath, `'allOf' entry #${index + 1}`, properties);
+}
+
+/**
+ * Ensure one focused object schema only references properties that the parent
+ * object schema already declared.
+ *
+ * @param {unknown} rawSchema Raw object-focused schema.
+ * @param {string} displayPath Parent schema path.
+ * @param {string} contextLabel Human-readable constraint origin label.
+ * @param {Record<string, SchemaNode>} properties Declared parent properties.
+ */
+function validateDeclaredTargetReferences(rawSchema, displayPath, contextLabel, properties) {
     if (!rawSchema || typeof rawSchema !== "object" || Array.isArray(rawSchema)) {
         return;
     }
@@ -1517,7 +1543,7 @@ function validateConditionalSchemaTargets(rawSchema, displayPath, keywordName, p
             }
 
             throw new Error(
-                `Schema property '${displayPath}' declares property '${propertyName}' in '${keywordName}', ` +
+                `Schema property '${displayPath}' declares property '${propertyName}' in ${contextLabel}, ` +
                 "but that property is not declared in the parent object schema.");
         }
     }
@@ -1536,54 +1562,7 @@ function validateConditionalSchemaTargets(rawSchema, displayPath, keywordName, p
         }
 
         throw new Error(
-            `Schema property '${displayPath}' requires property '${requiredProperty}' in '${keywordName}', ` +
-            "but that property is not declared in the parent object schema.");
-    }
-}
-
-/**
- * Ensure one object-focused `allOf` entry only constrains properties that the
- * parent object schema already declared.
- *
- * @param {unknown} rawAllOfSchema Raw allOf entry.
- * @param {string} displayPath Parent schema path.
- * @param {number} index Zero-based allOf entry index.
- * @param {Record<string, SchemaNode>} properties Declared parent properties.
- */
-function validateAllOfEntryTargets(rawAllOfSchema, displayPath, index, properties) {
-    if (!rawAllOfSchema || typeof rawAllOfSchema !== "object" || Array.isArray(rawAllOfSchema)) {
-        return;
-    }
-
-    if (rawAllOfSchema.properties &&
-        typeof rawAllOfSchema.properties === "object" &&
-        !Array.isArray(rawAllOfSchema.properties)) {
-        for (const propertyName of Object.keys(rawAllOfSchema.properties)) {
-            if (Object.prototype.hasOwnProperty.call(properties, propertyName)) {
-                continue;
-            }
-
-            throw new Error(
-                `Schema property '${displayPath}' declares property '${propertyName}' in 'allOf' entry #${index + 1}, ` +
-                "but that property is not declared in the parent object schema.");
-        }
-    }
-
-    if (!Array.isArray(rawAllOfSchema.required)) {
-        return;
-    }
-
-    for (const requiredProperty of rawAllOfSchema.required) {
-        if (typeof requiredProperty !== "string" || requiredProperty.trim().length === 0) {
-            continue;
-        }
-
-        if (Object.prototype.hasOwnProperty.call(properties, requiredProperty)) {
-            continue;
-        }
-
-        throw new Error(
-            `Schema property '${displayPath}' requires property '${requiredProperty}' in 'allOf' entry #${index + 1}, ` +
+            `Schema property '${displayPath}' requires property '${requiredProperty}' in ${contextLabel}, ` +
             "but that property is not declared in the parent object schema.");
     }
 }

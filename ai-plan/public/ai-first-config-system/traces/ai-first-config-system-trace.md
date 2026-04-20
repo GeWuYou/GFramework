@@ -60,6 +60,39 @@
   - 结果：通过
   - 备注：解决方案构建成功；输出包含仓库既有 analyzer warning，但无新增错误
 
+### 阶段：PR #262 review follow-up 与分支同步
+
+- 已使用 `gframework-pr-review` 复核 PR #262，并确认 latest CodeRabbit review body 的第一行下方存在 folded `🧹 Nitpick comments (5)`
+- 已修复 `fetch_current_pr_review.py` 的 follow-up 盲区：
+  - 不再只依赖 issue comments，而会解析 latest review body 中的 folded nitpick cards
+  - `parse_comment_cards` 现已覆盖 `.js/.ts` 等工具文件路径
+  - text 输出会同时显示 declared / parsed 数量，避免 future drift 时静默少报
+- 已按 5 条 nitpick 收口代码：
+  - VS Code tooling 的 `ifElse` hint 现会显示 `condition`
+  - `extension.js` 已抽出可复用的 `InlineObjectSchemaHint` typedef
+  - `configValidation.js` 已抽取共享 target reference 校验 helper
+  - Source Generator tests 已补齐对称分支覆盖
+  - Runtime test cleanup 已从 `catch (Exception)` 收窄到 IO / 权限异常
+- 已处理本地分支与远端分支差异：
+  - 本地 `feat/ai-first-config` 已 rebase 到 `origin/feat/ai-first-config`
+  - rebase 过程中 Git 跳过了远端已具备的 commit `76488dc`
+  - 当前分支已不再 behind 远端，仅保留本地领先提交
+
+### 验证
+
+- 2026-04-20：`python3 .codex/skills/gframework-pr-review/scripts/fetch_current_pr_review.py`
+  - 结果：通过
+  - 备注：输出 `CodeRabbit nitpick comments: 5 declared, 5 parsed`
+- 2026-04-20：`bun run test`（`tools/gframework-config-tool`）
+  - 结果：通过（118 tests）
+- 2026-04-20：`dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~SchemaConfigGeneratorTests"`
+  - 结果：通过（46 tests）
+- 2026-04-20：`dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --filter "FullyQualifiedName~YamlConfigLoaderIfThenElseTests"`
+  - 结果：通过（7 tests）
+- 2026-04-20：`dotnet build GFramework.sln -c Release`
+  - 结果：通过
+  - 备注：存在仓库既有 analyzer warning，但无新增错误
+
 ### 下一步
 
 1. 评估 `oneOf` / `anyOf` 是否值得继续沿用 object-focused 子集；若仍会造成生成形状漂移，就直接跳过

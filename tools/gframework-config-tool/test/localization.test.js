@@ -174,3 +174,21 @@ test("createLocalizer should expose allOf validation keys", () => {
         }),
         "对象“reward”必须满足全部 `allOf` schema，第 1 项未匹配。");
 });
+
+test("createLocalizer should expose ifElse hints with the condition context", () => {
+    const englishLocalizer = createLocalizer("en");
+    const chineseLocalizer = createLocalizer("zh-cn");
+
+    assert.equal(
+        englishLocalizer.t("webview.hint.ifElse", {
+            condition: "object, Required: itemId",
+            schema: "object, Required: bonus"
+        }),
+        "Otherwise (when object, Required: itemId does not match): satisfy object, Required: bonus");
+    assert.equal(
+        chineseLocalizer.t("webview.hint.ifElse", {
+            condition: "object，必填字段：itemId",
+            schema: "object，必填字段：bonus"
+        }),
+        "否则（当 object，必填字段：itemId 不匹配时）：还必须满足 object，必填字段：bonus");
+});

@@ -75,7 +75,11 @@ public sealed class YamlConfigLoaderIfThenElseTests
             {
                 Directory.Delete(_rootPath, true);
             }
-            catch (Exception)
+            catch (IOException)
+            {
+                // Ignore cleanup failures in test teardown
+            }
+            catch (UnauthorizedAccessException)
             {
                 // Ignore cleanup failures in test teardown
             }

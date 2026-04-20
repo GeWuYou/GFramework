@@ -1398,6 +1398,114 @@ public class SchemaConfigGeneratorTests
     }
 
     /// <summary>
+    ///     验证缺少 <c>if</c> 时生成器也会拒绝孤立的 <c>else</c>。
+    /// </summary>
+    [Test]
+    public void Run_Should_Report_Diagnostic_When_Else_Is_Declared_Without_If()
+    {
+        const string source = """
+                              namespace TestApp
+                              {
+                                  public sealed class Dummy
+                                  {
+                                  }
+                              }
+                              """;
+
+        const string schema = """
+                              {
+                                "type": "object",
+                                "required": ["id", "reward"],
+                                "properties": {
+                                  "id": { "type": "integer" },
+                                  "reward": {
+                                    "type": "object",
+                                    "properties": {
+                                      "bonus": { "type": "integer" }
+                                    },
+                                    "else": {
+                                      "type": "object",
+                                      "required": ["bonus"],
+                                      "properties": {
+                                        "bonus": { "type": "integer" }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                              """;
+
+        var result = SchemaGeneratorTestDriver.Run(
+            source,
+            ("monster.schema.json", schema));
+
+        var diagnostic = result.Results.Single().Diagnostics.Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Id, Is.EqualTo("GF_ConfigSchema_013"));
+            Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Error));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("reward"));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("must also declare 'if'"));
+        });
+    }
+
+    /// <summary>
+    ///     验证只声明 <c>if</c> 而没有分支时，生成器会给出对齐运行时的诊断。
+    /// </summary>
+    [Test]
+    public void Run_Should_Report_Diagnostic_When_If_Is_Declared_Without_Then_Or_Else()
+    {
+        const string source = """
+                              namespace TestApp
+                              {
+                                  public sealed class Dummy
+                                  {
+                                  }
+                              }
+                              """;
+
+        const string schema = """
+                              {
+                                "type": "object",
+                                "required": ["id", "reward"],
+                                "properties": {
+                                  "id": { "type": "integer" },
+                                  "reward": {
+                                    "type": "object",
+                                    "properties": {
+                                      "itemId": { "type": "string" }
+                                    },
+                                    "if": {
+                                      "type": "object",
+                                      "properties": {
+                                        "itemId": {
+                                          "type": "string",
+                                          "const": "potion"
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                              """;
+
+        var result = SchemaGeneratorTestDriver.Run(
+            source,
+            ("monster.schema.json", schema));
+
+        var diagnostic = result.Results.Single().Diagnostics.Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Id, Is.EqualTo("GF_ConfigSchema_013"));
+            Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Error));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("reward"));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("must also declare at least one of 'then' or 'else'"));
+        });
+    }
+
+    /// <summary>
     ///     验证条件分支不是 object schema 时，诊断路径会定位到具体分支而不是父对象。
     /// </summary>
     [Test]
@@ -1575,6 +1683,71 @@ public class SchemaConfigGeneratorTests
             Assert.That(diagnostic.Id, Is.EqualTo("GF_ConfigSchema_009"));
             Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Error));
             Assert.That(diagnostic.GetMessage(), Does.Contain("reward[then].itemCount"));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("Only 'string' properties can declare 'format'."));
+        });
+    }
+
+    /// <summary>
+    ///     验证 <c>else</c> 子 schema 内的非法 <c>format</c> 也会在生成阶段直接给出诊断。
+    /// </summary>
+    [Test]
+    public void Run_Should_Report_Diagnostic_With_Runtime_Aligned_Path_When_Else_Inner_Schema_Is_Invalid()
+    {
+        const string source = """
+                              namespace TestApp
+                              {
+                                  public sealed class Dummy
+                                  {
+                                  }
+                              }
+                              """;
+
+        const string schema = """
+                              {
+                                "type": "object",
+                                "required": ["id", "reward"],
+                                "properties": {
+                                  "id": { "type": "integer" },
+                                  "reward": {
+                                    "type": "object",
+                                    "properties": {
+                                      "itemId": { "type": "string" },
+                                      "bonus": { "type": "integer" }
+                                    },
+                                    "if": {
+                                      "type": "object",
+                                      "properties": {
+                                        "itemId": {
+                                          "type": "string",
+                                          "const": "potion"
+                                        }
+                                      }
+                                    },
+                                    "else": {
+                                      "type": "object",
+                                      "properties": {
+                                        "bonus": {
+                                          "type": "integer",
+                                          "format": "uuid"
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                              """;
+
+        var result = SchemaGeneratorTestDriver.Run(
+            source,
+            ("monster.schema.json", schema));
+
+        var diagnostic = result.Results.Single().Diagnostics.Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Id, Is.EqualTo("GF_ConfigSchema_009"));
+            Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Error));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("reward[else].bonus"));
             Assert.That(diagnostic.GetMessage(), Does.Contain("Only 'string' properties can declare 'format'."));
         });
     }

@@ -1576,9 +1576,75 @@ function getScalarArrayValue(yamlNode) {
 }
 
 /**
+ * @typedef {object} InlineObjectSchemaHint
+ * @property {string=} type Inline schema type.
+ * @property {string[]=} required Required properties.
+ * @property {string[]=} enumValues Allowed enum values.
+ * @property {string=} constValue Raw const value.
+ * @property {string=} constDisplayValue Human-readable const value.
+ * @property {string=} pattern String pattern metadata.
+ * @property {string=} refTable Referenced table name.
+ *
+ * @typedef {object} ContainsSchemaHint
+ * @property {string=} type Inline schema type.
+ * @property {string[]=} enumValues Allowed enum values.
+ * @property {string=} constValue Raw const value.
+ * @property {string=} constDisplayValue Human-readable const value.
+ * @property {string=} pattern String pattern metadata.
+ * @property {string=} format String format metadata.
+ * @property {string=} refTable Referenced table name.
+ *
+ * @typedef {object} ScalarArrayItemHint
+ * @property {string[]=} enumValues Allowed enum values.
+ * @property {string=} constValue Raw const value.
+ * @property {string=} constDisplayValue Human-readable const value.
+ * @property {number=} minimum Inclusive minimum.
+ * @property {number=} exclusiveMinimum Exclusive minimum.
+ * @property {number=} maximum Inclusive maximum.
+ * @property {number=} exclusiveMaximum Exclusive maximum.
+ * @property {number=} multipleOf Numeric multiple constraint.
+ * @property {number=} minLength Minimum length.
+ * @property {number=} maxLength Maximum length.
+ * @property {string=} pattern String pattern metadata.
+ * @property {string=} format String format metadata.
+ *
+ * @typedef {object} PropertySchemaHint
+ * @property {string=} type Schema type.
+ * @property {string=} description Human-facing description.
+ * @property {string=} defaultValue Default value text.
+ * @property {string=} constValue Raw const value.
+ * @property {string=} constDisplayValue Human-readable const value.
+ * @property {number=} minimum Inclusive minimum.
+ * @property {number=} exclusiveMinimum Exclusive minimum.
+ * @property {number=} maximum Inclusive maximum.
+ * @property {number=} exclusiveMaximum Exclusive maximum.
+ * @property {number=} multipleOf Numeric multiple constraint.
+ * @property {number=} minLength Minimum length.
+ * @property {number=} maxLength Maximum length.
+ * @property {string=} pattern String pattern metadata.
+ * @property {string=} format String format metadata.
+ * @property {number=} minItems Minimum array item count.
+ * @property {number=} maxItems Maximum array item count.
+ * @property {number=} minContains Minimum contains matches.
+ * @property {number=} maxContains Maximum contains matches.
+ * @property {number=} minProperties Minimum property count.
+ * @property {number=} maxProperties Maximum property count.
+ * @property {string[]=} required Required properties.
+ * @property {Record<string, string[]>=} dependentRequired dependentRequired metadata.
+ * @property {Record<string, InlineObjectSchemaHint>=} dependentSchemas dependentSchemas metadata.
+ * @property {Array<InlineObjectSchemaHint>=} allOf allOf metadata.
+ * @property {InlineObjectSchemaHint=} ifSchema if metadata.
+ * @property {InlineObjectSchemaHint=} thenSchema then metadata.
+ * @property {InlineObjectSchemaHint=} elseSchema else metadata.
+ * @property {boolean=} uniqueItems uniqueItems metadata.
+ * @property {string[]=} enumValues Allowed enum values.
+ * @property {ContainsSchemaHint=} contains contains metadata.
+ * @property {ScalarArrayItemHint=} items Array item metadata.
+ * @property {string=} refTable Referenced table name.
+ *
  * Render one compact inline-schema summary for form hints.
  *
- * @param {{type?: string, required?: string[], enumValues?: string[], constValue?: string, constDisplayValue?: string, pattern?: string, refTable?: string}} schema Parsed inline schema metadata.
+ * @param {InlineObjectSchemaHint} schema Parsed inline schema metadata.
  * @param {boolean} includeRequiredProperties Whether object `required` members should be surfaced.
  * @returns {string} Localized summary.
  */
@@ -1622,7 +1688,7 @@ function describeInlineSchemaForHint(schema, includeRequiredProperties = false) 
 /**
  * Render human-facing metadata hints for one schema field.
  *
- * @param {{type?: string, description?: string, defaultValue?: string, constValue?: string, constDisplayValue?: string, minimum?: number, exclusiveMinimum?: number, maximum?: number, exclusiveMaximum?: number, multipleOf?: number, minLength?: number, maxLength?: number, pattern?: string, format?: string, minItems?: number, maxItems?: number, minContains?: number, maxContains?: number, minProperties?: number, maxProperties?: number, required?: string[], dependentRequired?: Record<string, string[]>, dependentSchemas?: Record<string, {type?: string, required?: string[], enumValues?: string[], constValue?: string, constDisplayValue?: string, pattern?: string, refTable?: string}>, allOf?: Array<{type?: string, required?: string[], enumValues?: string[], constValue?: string, constDisplayValue?: string, pattern?: string, refTable?: string}>, ifSchema?: {type?: string, required?: string[], enumValues?: string[], constValue?: string, constDisplayValue?: string, pattern?: string, refTable?: string}, thenSchema?: {type?: string, required?: string[], enumValues?: string[], constValue?: string, constDisplayValue?: string, pattern?: string, refTable?: string}, elseSchema?: {type?: string, required?: string[], enumValues?: string[], constValue?: string, constDisplayValue?: string, pattern?: string, refTable?: string}, uniqueItems?: boolean, enumValues?: string[], contains?: {type?: string, enumValues?: string[], constValue?: string, constDisplayValue?: string, pattern?: string, format?: string, refTable?: string}, items?: {enumValues?: string[], constValue?: string, constDisplayValue?: string, minimum?: number, exclusiveMinimum?: number, maximum?: number, exclusiveMaximum?: number, multipleOf?: number, minLength?: number, maxLength?: number, pattern?: string, format?: string}, refTable?: string}} propertySchema Property schema metadata.
+ * @param {PropertySchemaHint} propertySchema Property schema metadata.
  * @param {boolean} isArrayField Whether the field is an array.
  * @param {boolean} includeDescription Whether description text should be included in the hint output.
  * @returns {string} HTML fragment.
@@ -1745,6 +1811,7 @@ function renderFieldHint(propertySchema, isArrayField, includeDescription = true
         propertySchema.ifSchema &&
         propertySchema.elseSchema) {
         hints.push(escapeHtml(localizer.t("webview.hint.ifElse", {
+            condition: describeInlineSchemaForHint(propertySchema.ifSchema, true),
             schema: describeInlineSchemaForHint(propertySchema.elseSchema, true)
         })));
     }

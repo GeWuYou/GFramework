@@ -11,6 +11,7 @@
 - 当前阶段：`C# Runtime + Source Generator + Consumer DX`
 - 当前焦点：
   - 已完成 object-focused `if` / `then` / `else`，继续评估下一批仍不改变生成类型形状的共享关键字
+  - 已完成 PR #262 的 CodeRabbit follow-up，补齐 latest review body 中 folded `Nitpick comments` 的 skill 解析并按建议收口 Tooling / Tests
   - 先以 Runtime / Generator / Tooling 三端一致语义为前提筛选下一项，而不是盲目扩全量 JSON Schema
   - 继续把 VS Code 工具能力视为非阻塞项，不让复杂 UI 编辑器需求反过来拖慢 C# 主线
 
@@ -20,6 +21,8 @@
   - 缓解措施：延续 object-focused / focused matcher 约束，只接受三端都能稳定解释且不需要属性合并的子集
 - 工具链验证风险：VS Code 与 CI / 发布管道验证覆盖不足
   - 缓解措施：继续为新增共享关键字补齐三端测试覆盖，优先保证 C# Runtime 与 Generator 回归通过，并记录 JS 测试与构建验证
+- PR review 信号漂移风险：CodeRabbit 可能把建议折叠在 latest review body，而不是 issue comments
+  - 缓解措施：`gframework-pr-review` 现已同时解析 latest review body，并输出 declared / parsed 数量以便快速识别解析缺口
 - 非阻塞项回退风险：将 VS Code 功能标为非阻塞但导致主线回退的风险
   - 缓解措施：C# 主线补齐新关键字时仍需在 `configValidation.js` 与 `extension.js` 中同步落地，只是不让复杂表单控件阻塞发布
 
@@ -42,6 +45,13 @@
   - Generator：`GFramework.Game.SourceGenerators/Config/SchemaConfigGenerator.cs`
   - Tooling：`tools/gframework-config-tool/src/configValidation.js`、`tools/gframework-config-tool/src/extension.js`
   - Tests：`GFramework.Game.Tests/Config/YamlConfigLoaderIfThenElseTests.cs`、`GFramework.SourceGenerators.Tests/Config/SchemaConfigGeneratorTests.cs`、`tools/gframework-config-tool/test/configValidation.test.js`
+- PR review follow-up 收口：
+  - `gframework-pr-review` 现已解析 latest CodeRabbit review body 中 folded `Nitpick comments`
+  - text 输出会显示 `CodeRabbit nitpick comments: X declared, Y parsed`，避免再次静默遗漏
+  - 已按 5 条 nitpick 更新 VS Code tool hints、shared validation helper，以及对称分支测试覆盖
+- 分支同步状态：
+  - `feat/ai-first-config` 已 rebase 到 `origin/feat/ai-first-config`
+  - 当前已解决“ahead / behind 同时存在”的分支差异，不再 behind 远端
 - 当前最细粒度的下一阶段 backlog 保留在独立文件：
   - `ai-plan/public/ai-first-config-system/todos/ai-first-config-system-csharp-experience-next.md`
 
@@ -64,6 +74,7 @@
 - `2026-04-17` 之前的详细实现记录与定向验证命令已归档到历史 tracking / trace
 - active 跟踪文件只保留当前恢复点、当前状态和下一步，不再重复堆积已完成阶段的完整历史
 - `2026-04-20` 当前恢复点验证：
+  - `python3 .codex/skills/gframework-pr-review/scripts/fetch_current_pr_review.py`：通过（`CodeRabbit nitpick comments: 5 declared, 5 parsed`）
   - `bun run test`（`tools/gframework-config-tool`）：通过
   - `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~SchemaConfigGeneratorTests"`：通过
   - `dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --filter "FullyQualifiedName~YamlConfigLoaderIfThenElseTests"`：通过

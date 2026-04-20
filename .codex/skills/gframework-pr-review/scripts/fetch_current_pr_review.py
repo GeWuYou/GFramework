@@ -210,19 +210,39 @@ def parse_actionable_comments(actionable_block: str) -> dict[str, Any]:
     comment_count_match = re.search(r"Actionable comments posted:\s*(\d+)", actionable_block)
     count = int(comment_count_match.group(1)) if comment_count_match else 0
 
-    comments: list[dict[str, str]] = []
     primary_block = actionable_block.split(
         "<details>\n<summary>🤖 Prompt for all review comments with AI agents</summary>",
         1,
     )[0]
+    comments = parse_comment_cards(primary_block)
+
+    prompt_match = re.search(
+        r"<summary>🤖 Prompt for all review comments with AI agents</summary>\s*```(.*?)```",
+        actionable_block,
+        re.S,
+    )
+
+    return {
+        "count": count or len(comments),
+        "comments": comments,
+        "all_comments_prompt": prompt_match.group(1).strip() if prompt_match else "",
+        "raw": actionable_block.strip(),
+    }
+
+
+def parse_comment_cards(comment_block: str) -> list[dict[str, str]]:
+    comments: list[dict[str, str]] = []
     pattern = re.compile(
         r"<summary>"
-        r"((?:[^<\n]+/)*[^<\n]+\.(?:cs|md|csproj|yaml|yml|json|txt|props|targets)|AGENTS\.md|CLAUDE\.md|README\.md|\.gitignore)"
+        # CodeRabbit can fold nitpick cards for repo tooling files such as .js/.ts.
+        # Keep the matcher broad enough for common source/config files while still
+        # requiring a path-like summary header instead of arbitrary review text.
+        r"((?:[^<\n]+/)*[^<\n]+\.(?:cs|md|csproj|yaml|yml|json|txt|props|targets|js|jsx|mjs|cjs|ts|tsx)|AGENTS\.md|CLAUDE\.md|README\.md|\.gitignore)"
         r" \((\d+)\)</summary><blockquote>\s*(.*?)\s*(?:(?:</blockquote></details>)|(?:</blockquote>))",
         re.S,
     )
 
-    for path, _, body in pattern.findall(primary_block):
+    for path, _, body in pattern.findall(comment_block):
         finding_match = re.search(r"`([^`]+)`: \*\*(.*?)\*\*", body, re.S)
         prompt_match = re.search(r"<summary>🤖 Prompt for AI Agents</summary>\s*```(.*?)```", body, re.S)
         suggestion_match = re.search(r"<summary>✏️ 建议文案调整</summary>\s*```diff(.*?)```", body, re.S)
@@ -243,17 +263,49 @@ def parse_actionable_comments(actionable_block: str) -> dict[str, Any]:
             }
         )
 
-    prompt_match = re.search(
-        r"<summary>🤖 Prompt for all review comments with AI agents</summary>\s*```(.*?)```",
-        actionable_block,
+    return comments
+
+
+def parse_review_comment_group(review_body: str, section_name: str) -> dict[str, Any]:
+    section_match = re.search(
+        rf"<summary>[^<]*{re.escape(section_name)} \((?P<count>\d+)\)</summary><blockquote>\s*",
+        review_body,
         re.S,
     )
+    if section_match is None:
+        return {"count": 0, "comments": [], "raw": ""}
 
+    remaining_body = review_body[section_match.end() :]
+    end_markers = [
+        "\n</blockquote></details>\n\n<details>\n<summary>🤖 Prompt for all review comments with AI agents</summary>",
+        "\n</blockquote></details>\n\n<details>\n<summary>🪄 Autofix (Beta)</summary>",
+        "\n</blockquote></details>\n\n<details>\n<summary>ℹ️ Review info</summary>",
+        "\n</blockquote></details>\n\n---",
+    ]
+    end_positions = [remaining_body.find(marker) for marker in end_markers if remaining_body.find(marker) >= 0]
+    end_index = min(end_positions) if end_positions else len(remaining_body)
+    comment_block = remaining_body[:end_index].strip()
     return {
-        "count": count,
-        "comments": comments,
+        "count": int(section_match.group("count")),
+        "comments": parse_comment_cards(comment_block),
+        "raw": comment_block,
+    }
+
+
+def parse_latest_review_body(review_body: str) -> dict[str, Any]:
+    actionable_count_match = re.search(r"\*\*Actionable comments posted:\s*(\d+)\*\*", review_body)
+    prompt_match = re.search(
+        r"<summary>🤖 Prompt for all review comments with AI agents</summary>\s*```(.*?)```",
+        review_body,
+        re.S,
+    )
+    nitpick_group = parse_review_comment_group(review_body, "Nitpick comments")
+    return {
+        "actionable_count": int(actionable_count_match.group(1)) if actionable_count_match else 0,
+        "nitpick_count": nitpick_group["count"],
+        "nitpick_comments": nitpick_group["comments"],
         "all_comments_prompt": prompt_match.group(1).strip() if prompt_match else "",
-        "raw": actionable_block.strip(),
+        "raw": review_body.strip(),
     }
 
 
@@ -548,12 +600,30 @@ def build_result(pr_number: int, branch: str) -> dict[str, Any]:
         warnings.append("MegaLinter report block was not found in issue comments.")
 
     latest_commit_review: dict[str, Any] = {}
+    coderabbit_review: dict[str, Any] = {}
     try:
         latest_commit_review = fetch_latest_commit_review(pr_number)
+        latest_review = latest_commit_review.get("latest_review", {})
+        latest_review_body = str(latest_review.get("body") or "")
+        if latest_review.get("user") == CODERABBIT_LOGIN and latest_review_body:
+            coderabbit_review = parse_latest_review_body(latest_review_body)
+            nitpick_count = int(coderabbit_review.get("nitpick_count") or 0)
+            parsed_nitpick_count = len(coderabbit_review.get("nitpick_comments", []))
+            if "Nitpick comments" in latest_review_body and not parsed_nitpick_count:
+                warnings.append("CodeRabbit nitpick comments block could not be parsed from the latest review body.")
+            elif nitpick_count and parsed_nitpick_count != nitpick_count:
+                warnings.append(
+                    "CodeRabbit nitpick comments were only partially parsed from the latest review body: "
+                    f"declared={nitpick_count}, parsed={parsed_nitpick_count}."
+                )
     except Exception as error:  # noqa: BLE001
         warnings.append(f"Latest commit review comments could not be fetched: {error}")
 
-    if not actionable_block and not latest_commit_review.get("threads"):
+    if (
+        not actionable_block
+        and not latest_commit_review.get("threads")
+        and not coderabbit_review.get("nitpick_comments")
+    ):
         warnings.append("CodeRabbit actionable comments block was not found in issue comments.")
 
     return {
@@ -571,6 +641,7 @@ def build_result(pr_number: int, branch: str) -> dict[str, Any]:
             "raw": summary_block,
         },
         "coderabbit_comments": parse_actionable_comments(actionable_block) if actionable_block else {},
+        "coderabbit_review": coderabbit_review,
         "latest_commit_review": latest_commit_review,
         "megalinter_report": parse_megalinter_comment(megalinter_block) if megalinter_block else {},
         "test_reports": [parse_test_report(block) for block in test_blocks],
@@ -594,10 +665,26 @@ def format_text(result: dict[str, Any]) -> str:
         lines.append(f"  Explanation: {check['explanation']}")
         lines.append(f"  Resolution: {check['resolution']}")
 
-    comments = result.get("coderabbit_comments", {}).get("comments", [])
+    coderabbit_comments = result.get("coderabbit_comments", {})
+    review_feedback = result.get("coderabbit_review", {})
+    comments = coderabbit_comments.get("comments", [])
+    actionable_count = review_feedback.get("actionable_count") or coderabbit_comments.get("count") or len(comments)
     lines.append("")
-    lines.append(f"CodeRabbit actionable comments: {len(comments)}")
+    lines.append(f"CodeRabbit actionable comments: {actionable_count}")
     for comment in comments:
+        lines.append(f"- {comment['path']} {comment['range']}".rstrip())
+        if comment["title"]:
+            lines.append(f"  Title: {comment['title']}")
+        if comment["description"]:
+            lines.append(f"  Description: {comment['description']}")
+    if actionable_count and not comments:
+        lines.append("  Details: see latest-commit review threads below.")
+
+    nitpick_comments = review_feedback.get("nitpick_comments", [])
+    nitpick_count = review_feedback.get("nitpick_count") or len(nitpick_comments)
+    lines.append("")
+    lines.append(f"CodeRabbit nitpick comments: {nitpick_count} declared, {len(nitpick_comments)} parsed")
+    for comment in nitpick_comments:
         lines.append(f"- {comment['path']} {comment['range']}".rstrip())
         if comment["title"]:
             lines.append(f"  Title: {comment['title']}")

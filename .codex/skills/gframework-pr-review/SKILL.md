@@ -17,6 +17,7 @@ Shortcut: `$gframework-pr-review`
    - locate the PR for the current branch through the GitHub PR API
    - fetch PR metadata, issue comments, reviews, and review comments through the GitHub API
    - extract `Summary by CodeRabbit`、GitHub Actions bot comments such as `MegaLinter analysis: Success with warnings`、and CTRF test reports from issue comments
+   - parse the latest CodeRabbit review body itself, including folded sections such as `🧹 Nitpick comments (N)` and the overall AI-agent prompt
    - fetch the latest head commit review threads from the GitHub PR API
    - prefer unresolved review threads on the latest head commit over older summary-only signals
    - extract failed checks, MegaLinter detailed issues, and test-report signals such as `Failed Tests` or `No failed tests in this run`
@@ -39,6 +40,7 @@ The script should produce:
 
 - PR metadata: number, title, state, branch, URL
 - CodeRabbit summary block from issue comments when available
+- Folded latest-review sections such as `Nitpick comments (N)` when CodeRabbit puts them in the review body instead of issue comments
 - Parsed latest head-review threads, with unresolved threads clearly separated
 - Latest head commit review metadata and review threads
 - Unresolved latest-commit review threads after reply-thread folding
@@ -54,6 +56,7 @@ The script should produce:
 - Prefer GitHub API results over PR HTML. The PR HTML page is now a fallback/debugging source, not the primary source of truth.
 - If the summary block and the latest head review threads disagree, trust the latest unresolved head-review threads and treat older summary findings as stale until re-verified locally.
 - Treat GitHub Actions comments with `Success with warnings` as actionable review input when they include concrete linter diagnostics such as `MegaLinter` detailed issues; do not skip them just because the parent check is green.
+- Do not assume all CodeRabbit findings live in issue comments. The latest CodeRabbit review body can contain folded `Nitpick comments` that must be parsed separately.
 
 ## Example Triggers
 
