@@ -1590,7 +1590,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                 ConfigSchemaDiagnostics.InvalidConditionalSchemaMetadata,
                 CreateFileLocation(filePath),
                 Path.GetFileName(filePath),
-                displayPath,
+                branchPath,
                 $"The '{keywordName}' value must be an object-valued schema.");
             return false;
         }
@@ -4214,7 +4214,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             return null;
         }
 
-        var ifSummary = TryBuildInlineSchemaSummary(ifElement, includeRequiredProperties: true);
+        var ifSummary = TryBuildConditionalBranchSummary(ifElement);
         if (ifSummary is null)
         {
             return null;
@@ -4224,7 +4224,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         if (element.TryGetProperty("then", out var thenElement) &&
             thenElement.ValueKind == JsonValueKind.Object)
         {
-            var thenSummary = TryBuildInlineSchemaSummary(thenElement, includeRequiredProperties: true);
+            var thenSummary = TryBuildConditionalBranchSummary(thenElement);
             if (thenSummary is not null)
             {
                 parts.Add($"then {thenSummary}");
@@ -4234,7 +4234,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         if (element.TryGetProperty("else", out var elseElement) &&
             elseElement.ValueKind == JsonValueKind.Object)
         {
-            var elseSummary = TryBuildInlineSchemaSummary(elseElement, includeRequiredProperties: true);
+            var elseSummary = TryBuildConditionalBranchSummary(elseElement);
             if (elseSummary is not null)
             {
                 parts.Add($"else {elseSummary}");
@@ -4244,6 +4244,58 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         return parts.Count > 1
             ? string.Join("; ", parts)
             : null;
+    }
+
+    /// <summary>
+    ///     汇总条件分支的对象级约束与子属性约束，避免生成文档只保留笼统的 object 描述。
+    /// </summary>
+    /// <param name="branchElement">条件分支 schema。</param>
+    /// <returns>格式化后的条件分支摘要。</returns>
+    private static string? TryBuildConditionalBranchSummary(JsonElement branchElement)
+    {
+        var branchSummary = TryBuildInlineSchemaSummary(branchElement, includeRequiredProperties: true);
+        if (branchSummary is null)
+        {
+            return null;
+        }
+
+        var propertiesSummary = TryBuildInlineObjectPropertiesSummary(branchElement);
+        return propertiesSummary is null
+            ? branchSummary
+            : $"{branchSummary}; properties = {propertiesSummary}";
+    }
+
+    /// <summary>
+    ///     汇总对象 <c>properties</c> 内每个字段的紧凑约束，补足条件分支文档里的触发条件细节。
+    /// </summary>
+    /// <param name="schemaElement">对象 schema 节点。</param>
+    /// <returns>格式化后的子属性约束摘要。</returns>
+    private static string? TryBuildInlineObjectPropertiesSummary(JsonElement schemaElement)
+    {
+        if (!schemaElement.TryGetProperty("properties", out var propertiesElement) ||
+            propertiesElement.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        var parts = new List<string>();
+        foreach (var property in propertiesElement.EnumerateObject())
+        {
+            if (property.Value.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            var propertySummary = TryBuildInlineSchemaSummary(property.Value);
+            if (propertySummary is not null)
+            {
+                parts.Add($"{property.Name}: {propertySummary}");
+            }
+        }
+
+        return parts.Count == 0
+            ? null
+            : $"{{ {string.Join("; ", parts)} }}";
     }
 
     /// <summary>

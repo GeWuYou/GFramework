@@ -1338,7 +1338,10 @@ public class SchemaConfigGeneratorTests
         Assert.That(result.Results.Single().Diagnostics, Is.Empty);
         Assert.That(
             generatedSources["MonsterConfig.g.cs"],
-            Does.Contain("Constraints: if/then/else = if object; then object (required = [itemCount]); else object (required = [bonus])."));
+            Does.Contain(
+                "Constraints: if/then/else = if object; properties = { itemId: string (const = \"potion\") }; " +
+                "then object (required = [itemCount]); properties = { itemCount: integer }; " +
+                "else object (required = [bonus]); properties = { bonus: integer }."));
     }
 
     /// <summary>
@@ -1391,6 +1394,63 @@ public class SchemaConfigGeneratorTests
             Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Error));
             Assert.That(diagnostic.GetMessage(), Does.Contain("reward"));
             Assert.That(diagnostic.GetMessage(), Does.Contain("must also declare 'if'"));
+        });
+    }
+
+    /// <summary>
+    ///     验证条件分支不是 object schema 时，诊断路径会定位到具体分支而不是父对象。
+    /// </summary>
+    [Test]
+    public void Run_Should_Report_Diagnostic_With_Branch_Path_When_Then_Schema_Is_Not_Object()
+    {
+        const string source = """
+                              namespace TestApp
+                              {
+                                  public sealed class Dummy
+                                  {
+                                  }
+                              }
+                              """;
+
+        const string schema = """
+                              {
+                                "type": "object",
+                                "required": ["id", "reward"],
+                                "properties": {
+                                  "id": { "type": "integer" },
+                                  "reward": {
+                                    "type": "object",
+                                    "properties": {
+                                      "itemId": { "type": "string" },
+                                      "itemCount": { "type": "integer" }
+                                    },
+                                    "if": {
+                                      "type": "object",
+                                      "properties": {
+                                        "itemId": {
+                                          "type": "string",
+                                          "const": "potion"
+                                        }
+                                      }
+                                    },
+                                    "then": []
+                                  }
+                                }
+                              }
+                              """;
+
+        var result = SchemaGeneratorTestDriver.Run(
+            source,
+            ("monster.schema.json", schema));
+
+        var diagnostic = result.Results.Single().Diagnostics.Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Id, Is.EqualTo("GF_ConfigSchema_013"));
+            Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Error));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("reward[then]"));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("must be an object-valued schema"));
         });
     }
 
