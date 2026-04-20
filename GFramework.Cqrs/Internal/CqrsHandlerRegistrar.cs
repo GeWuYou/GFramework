@@ -88,63 +88,14 @@ internal static class CqrsHandlerRegistrar
             if (registryTypes.Count == 0)
                 return GeneratedRegistrationResult.NoGeneratedRegistry();
 
-            var registries = new List<ICqrsHandlerRegistry>(registryTypes.Count);
-            foreach (var registryType in registryTypes)
-            {
-                var activationMetadata = RegistryActivationMetadataCache.GetOrAdd(
-                    registryType,
-                    AnalyzeRegistryActivation);
+            if (!TryCreateGeneratedRegistries(registryTypes, assemblyName, logger, out var registries))
+                return GeneratedRegistrationResult.NoGeneratedRegistry();
 
-                if (!activationMetadata.ImplementsRegistryContract)
-                {
-                    logger.Warn(
-                        $"Ignoring generated CQRS handler registry {registryType.FullName} in assembly {assemblyName} because it does not implement {typeof(ICqrsHandlerRegistry).FullName}.");
-                    return GeneratedRegistrationResult.NoGeneratedRegistry();
-                }
-
-                if (activationMetadata.IsAbstract)
-                {
-                    logger.Warn(
-                        $"Ignoring generated CQRS handler registry {registryType.FullName} in assembly {assemblyName} because it is abstract.");
-                    return GeneratedRegistrationResult.NoGeneratedRegistry();
-                }
-
-                if (activationMetadata.Factory is null)
-                {
-                    logger.Warn(
-                        $"Ignoring generated CQRS handler registry {registryType.FullName} in assembly {assemblyName} because it does not expose an accessible parameterless constructor.");
-                    return GeneratedRegistrationResult.NoGeneratedRegistry();
-                }
-
-                var registry = activationMetadata.Factory();
-                registries.Add(registry);
-            }
-
-            foreach (var registry in registries)
-            {
-                logger.Debug(
-                    $"Registering CQRS handlers for assembly {assemblyName} via generated registry {registry.GetType().FullName}.");
-                registry.Register(services, logger);
-            }
-
-            var reflectionFallbackMetadata = assemblyMetadata.ReflectionFallbackMetadata;
-            if (reflectionFallbackMetadata is not null)
-            {
-                if (reflectionFallbackMetadata.HasExplicitTypes)
-                {
-                    logger.Debug(
-                        $"Generated CQRS registry for assembly {assemblyName} requested targeted reflection fallback for {reflectionFallbackMetadata.Types.Count} unsupported handler type(s).");
-                }
-                else
-                {
-                    logger.Debug(
-                        $"Generated CQRS registry for assembly {assemblyName} requested full reflection fallback for unsupported handlers.");
-                }
-
-                return GeneratedRegistrationResult.WithReflectionFallback(reflectionFallbackMetadata);
-            }
-
-            return GeneratedRegistrationResult.FullyHandled();
+            RegisterGeneratedRegistries(services, registries, assemblyName, logger);
+            return BuildGeneratedRegistrationResult(
+                assemblyMetadata.ReflectionFallbackMetadata,
+                assemblyName,
+                logger);
         }
         catch (Exception exception)
         {
@@ -186,10 +137,136 @@ internal static class CqrsHandlerRegistrar
                 // Request/notification handlers receive context injection before every dispatch.
                 // Transient registration avoids sharing mutable Context across concurrent requests.
                 services.AddTransient(handlerInterface, implementationType);
-            logger.Debug(
+                logger.Debug(
                     $"Registered CQRS handler {implementationType.FullName} as {handlerInterface.FullName}.");
             }
         }
+    }
+
+    /// <summary>
+    ///     激活当前程序集声明的所有 generated registry；若任一 registry 不满足运行时契约，则整批回退到反射扫描。
+    /// </summary>
+    /// <param name="registryTypes">程序集声明的 generated registry 类型列表。</param>
+    /// <param name="assemblyName">用于诊断的程序集稳定名称。</param>
+    /// <param name="logger">日志记录器。</param>
+    /// <param name="registries">成功激活后的 registry 实例。</param>
+    /// <returns>当全部 registry 都可安全激活时返回 <see langword="true" />；否则返回 <see langword="false" />。</returns>
+    private static bool TryCreateGeneratedRegistries(
+        IReadOnlyList<Type> registryTypes,
+        string assemblyName,
+        ILogger logger,
+        out IReadOnlyList<ICqrsHandlerRegistry> registries)
+    {
+        var activatedRegistries = new List<ICqrsHandlerRegistry>(registryTypes.Count);
+        foreach (var registryType in registryTypes)
+        {
+            if (!TryCreateGeneratedRegistry(registryType, assemblyName, logger, out var registry))
+            {
+                registries = Array.Empty<ICqrsHandlerRegistry>();
+                return false;
+            }
+
+            activatedRegistries.Add(registry);
+        }
+
+        registries = activatedRegistries;
+        return true;
+    }
+
+    /// <summary>
+    ///     激活单个 generated registry，并在契约不满足时输出与原先完全一致的回退诊断。
+    /// </summary>
+    /// <param name="registryType">要分析的 generated registry 类型。</param>
+    /// <param name="assemblyName">当前程序集的稳定名称。</param>
+    /// <param name="logger">日志记录器。</param>
+    /// <param name="registry">激活成功后的 registry 实例。</param>
+    /// <returns>当 registry 可安全使用时返回 <see langword="true" />；否则返回 <see langword="false" />。</returns>
+    private static bool TryCreateGeneratedRegistry(
+        Type registryType,
+        string assemblyName,
+        ILogger logger,
+        out ICqrsHandlerRegistry registry)
+    {
+        var activationMetadata = RegistryActivationMetadataCache.GetOrAdd(
+            registryType,
+            AnalyzeRegistryActivation);
+
+        if (!activationMetadata.ImplementsRegistryContract)
+        {
+            logger.Warn(
+                $"Ignoring generated CQRS handler registry {registryType.FullName} in assembly {assemblyName} because it does not implement {typeof(ICqrsHandlerRegistry).FullName}.");
+            registry = null!;
+            return false;
+        }
+
+        if (activationMetadata.IsAbstract)
+        {
+            logger.Warn(
+                $"Ignoring generated CQRS handler registry {registryType.FullName} in assembly {assemblyName} because it is abstract.");
+            registry = null!;
+            return false;
+        }
+
+        if (activationMetadata.Factory is null)
+        {
+            logger.Warn(
+                $"Ignoring generated CQRS handler registry {registryType.FullName} in assembly {assemblyName} because it does not expose an accessible parameterless constructor.");
+            registry = null!;
+            return false;
+        }
+
+        registry = activationMetadata.Factory();
+        return true;
+    }
+
+    /// <summary>
+    ///     调用所有已激活的 generated registry 完成 CQRS handler 注册，并保留稳定的调试日志顺序。
+    /// </summary>
+    /// <param name="services">目标服务集合。</param>
+    /// <param name="registries">已通过契约校验的 registry 实例。</param>
+    /// <param name="assemblyName">当前程序集的稳定名称。</param>
+    /// <param name="logger">日志记录器。</param>
+    private static void RegisterGeneratedRegistries(
+        IServiceCollection services,
+        IReadOnlyList<ICqrsHandlerRegistry> registries,
+        string assemblyName,
+        ILogger logger)
+    {
+        foreach (var registry in registries)
+        {
+            logger.Debug(
+                $"Registering CQRS handlers for assembly {assemblyName} via generated registry {registry.GetType().FullName}.");
+            registry.Register(services, logger);
+        }
+    }
+
+    /// <summary>
+    ///     将 generated registry 的 fallback 元数据转换为统一的注册结果，并记录下一阶段是定向补扫还是整程序集扫描。
+    /// </summary>
+    /// <param name="reflectionFallbackMetadata">生成注册器声明的反射补扫元数据。</param>
+    /// <param name="assemblyName">当前程序集的稳定名称。</param>
+    /// <param name="logger">日志记录器。</param>
+    /// <returns>描述 generated registry 是否已完全处理当前程序集的结果对象。</returns>
+    private static GeneratedRegistrationResult BuildGeneratedRegistrationResult(
+        ReflectionFallbackMetadata? reflectionFallbackMetadata,
+        string assemblyName,
+        ILogger logger)
+    {
+        if (reflectionFallbackMetadata is null)
+            return GeneratedRegistrationResult.FullyHandled();
+
+        if (reflectionFallbackMetadata.HasExplicitTypes)
+        {
+            logger.Debug(
+                $"Generated CQRS registry for assembly {assemblyName} requested targeted reflection fallback for {reflectionFallbackMetadata.Types.Count} unsupported handler type(s).");
+        }
+        else
+        {
+            logger.Debug(
+                $"Generated CQRS registry for assembly {assemblyName} requested full reflection fallback for unsupported handlers.");
+        }
+
+        return GeneratedRegistrationResult.WithReflectionFallback(reflectionFallbackMetadata);
     }
 
     /// <summary>
@@ -255,6 +332,29 @@ internal static class CqrsHandlerRegistrar
             return null;
 
         var resolvedTypes = new List<Type>();
+        AppendDirectFallbackTypes(fallbackAttributes, resolvedTypes, assemblyName, logger);
+        AppendNamedFallbackTypes(assembly, fallbackAttributes, resolvedTypes, assemblyName, logger);
+
+        return new ReflectionFallbackMetadata(
+            resolvedTypes
+                .Distinct()
+                .OrderBy(GetTypeSortKey, StringComparer.Ordinal)
+                .ToArray());
+    }
+
+    /// <summary>
+    ///     追加 attribute 里直接携带的 fallback 类型，并过滤掉跨程序集误声明的条目。
+    /// </summary>
+    /// <param name="fallbackAttributes">当前程序集上的 fallback attribute 集合。</param>
+    /// <param name="resolvedTypes">待补充的已解析类型集合。</param>
+    /// <param name="assemblyName">当前程序集的稳定名称。</param>
+    /// <param name="logger">日志记录器。</param>
+    private static void AppendDirectFallbackTypes(
+        IReadOnlyList<CqrsReflectionFallbackAttribute> fallbackAttributes,
+        ICollection<Type> resolvedTypes,
+        string assemblyName,
+        ILogger logger)
+    {
         foreach (var fallbackType in fallbackAttributes
                      .SelectMany(static attribute => attribute.FallbackHandlerTypes)
                      .Where(static type => type is not null)
@@ -273,37 +373,65 @@ internal static class CqrsHandlerRegistrar
 
             resolvedTypes.Add(fallbackType);
         }
+    }
 
+    /// <summary>
+    ///     追加 attribute 里以类型名声明的 fallback 条目，并保留逐项失败的诊断能力。
+    /// </summary>
+    /// <param name="assembly">当前待解析的程序集。</param>
+    /// <param name="fallbackAttributes">当前程序集上的 fallback attribute 集合。</param>
+    /// <param name="resolvedTypes">待补充的已解析类型集合。</param>
+    /// <param name="assemblyName">当前程序集的稳定名称。</param>
+    /// <param name="logger">日志记录器。</param>
+    private static void AppendNamedFallbackTypes(
+        Assembly assembly,
+        IReadOnlyList<CqrsReflectionFallbackAttribute> fallbackAttributes,
+        ICollection<Type> resolvedTypes,
+        string assemblyName,
+        ILogger logger)
+    {
         foreach (var typeName in fallbackAttributes
                      .SelectMany(static attribute => attribute.FallbackHandlerTypeNames)
                      .Where(static name => !string.IsNullOrWhiteSpace(name))
                      .Distinct(StringComparer.Ordinal)
                      .OrderBy(static name => name, StringComparer.Ordinal))
         {
-            try
-            {
-                var type = assembly.GetType(typeName, throwOnError: false, ignoreCase: false);
-                if (type is null)
-                {
-                    logger.Warn(
-                        $"Generated CQRS reflection fallback type {typeName} could not be resolved in assembly {assemblyName}. Skipping targeted fallback entry.");
-                    continue;
-                }
+            TryAppendNamedFallbackType(assembly, resolvedTypes, assemblyName, typeName, logger);
+        }
+    }
 
-                resolvedTypes.Add(type);
-            }
-            catch (Exception exception)
+    /// <summary>
+    ///     解析并追加单个按名称声明的 fallback 类型，同时保留“找不到”与“加载异常”两类不同日志语义。
+    /// </summary>
+    /// <param name="assembly">当前待解析的程序集。</param>
+    /// <param name="resolvedTypes">待补充的已解析类型集合。</param>
+    /// <param name="assemblyName">当前程序集的稳定名称。</param>
+    /// <param name="typeName">要解析的完整类型名。</param>
+    /// <param name="logger">日志记录器。</param>
+    private static void TryAppendNamedFallbackType(
+        Assembly assembly,
+        ICollection<Type> resolvedTypes,
+        string assemblyName,
+        string typeName,
+        ILogger logger)
+    {
+        try
+        {
+            var type = assembly.GetType(typeName, throwOnError: false, ignoreCase: false);
+            if (type is null)
             {
                 logger.Warn(
-                    $"Generated CQRS reflection fallback type {typeName} failed to load in assembly {assemblyName}: {exception.Message}");
+                    $"Generated CQRS reflection fallback type {typeName} could not be resolved in assembly {assemblyName}. Skipping targeted fallback entry.");
+                return;
             }
-        }
 
-        return new ReflectionFallbackMetadata(
-            resolvedTypes
-                .Distinct()
-                .OrderBy(GetTypeSortKey, StringComparer.Ordinal)
-                .ToArray());
+            resolvedTypes.Add(type);
+        }
+        catch (Exception exception)
+        {
+            logger.Warn(
+                $"Generated CQRS reflection fallback type {typeName} failed to load in assembly {assemblyName}: {exception.Message}");
+        }
     }
 
     /// <summary>
