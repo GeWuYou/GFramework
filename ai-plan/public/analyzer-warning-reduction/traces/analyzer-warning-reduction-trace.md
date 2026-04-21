@@ -1,5 +1,34 @@
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-21 — RP-012
+
+### 阶段：PR review workflow 输出收窄增强（RP-012）
+
+- 背景：上一轮虽然脚本已经能解析 `outside_diff_comments`，但直接把超长 JSON 打到终端时仍可能因为输出截断而漏看高价值 review 信号
+- 本轮对 `gframework-pr-review` 做了工作流级增强，而不是继续依赖 shell 重定向技巧：
+  - 为 `fetch_current_pr_review.py` 增加 `--json-output <path>`，允许把完整 JSON 稳定写入文件
+  - 增加 `--section`，可只输出 `outside-diff`、`open-threads`、`megalinter` 等高信号文本摘要
+  - 增加 `--path`，允许把文本输出收窄到特定文件或路径片段
+  - 增加 `--max-description-length`，避免超长 comment/body 在 text 模式下刷屏
+  - 当 text 模式搭配 `--json-output` 时，stdout 保持精简，并显式提示完整 JSON 文件路径
+- 同步更新 `SKILL.md`：
+  - 将“先落盘，再用 `jq` 或 `--section` / `--path` 缩小范围”写成推荐机器工作流
+  - 补充按 section 和按路径聚焦的示例命令
+- 预期收益：
+  - 不再要求操作者肉眼阅读整份长 JSON
+  - outside-diff、nitpick 和 open thread 都能成为一等可过滤输出
+  - 即使终端输出有 token/长度上限，完整结果仍可通过文件稳定回查
+- 定向验证命令：
+  - `python3 -m py_compile .codex/skills/gframework-pr-review/scripts/fetch_current_pr_review.py`
+    - 结果：通过；使用 `PYTHONPYCACHEPREFIX=/tmp/codex-pycache` 规避 `__pycache__` 写入限制
+  - `python3 .codex/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --help`
+    - 结果：通过；新增 CLI 选项均已出现在帮助输出中
+  - `dotnet build GFramework.Core/GFramework.Core.csproj -c Release --no-restore -p:TargetFramework=net8.0 -p:RestoreFallbackFolders="" -nologo`
+    - 结果：`0 Warning(s)`，`0 Error(s)`
+- 下一步建议：
+  - 之后执行 `$gframework-pr-review` 时，默认优先使用 `--json-output`
+  - 在 review 跟进阶段，先看 `outside-diff`、`open-threads`、`megalinter` 三个 section，再决定是否需要打开完整 JSON
+
 ## 2026-04-21 — RP-011
 
 ### 阶段：PR #265 outside-diff follow-up 补收口（RP-011）

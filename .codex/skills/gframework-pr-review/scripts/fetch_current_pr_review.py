@@ -10,6 +10,7 @@ import argparse
 import html
 import json
 import os
+from pathlib import Path
 import re
 import shutil
 import subprocess
@@ -29,6 +30,17 @@ REVIEW_COMMENT_ADDRESSED_MARKER = "<!-- <review_comment_addressed> -->"
 VISIBLE_ADDRESSED_IN_COMMIT_PATTERN = re.compile(r"✅\s*Addressed in commit\s+[0-9a-f]{7,40}", re.I)
 DEFAULT_REQUEST_TIMEOUT_SECONDS = 60
 REQUEST_TIMEOUT_ENVIRONMENT_KEY = "GFRAMEWORK_PR_REVIEW_TIMEOUT_SECONDS"
+DISPLAY_SECTION_CHOICES = (
+    "pr",
+    "failed-checks",
+    "actionable",
+    "outside-diff",
+    "nitpick",
+    "open-threads",
+    "megalinter",
+    "tests",
+    "warnings",
+)
 
 
 def resolve_git_command() -> str:
@@ -151,6 +163,14 @@ def resolve_pr_number(branch: str) -> int:
 
 def collapse_whitespace(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
+
+
+def truncate_text(text: str, max_length: int) -> str:
+    collapsed = collapse_whitespace(text)
+    if max_length <= 0 or len(collapsed) <= max_length:
+        return collapsed
+
+    return collapsed[: max_length - 3].rstrip() + "..."
 
 
 def strip_tags(text: str) -> str:
@@ -710,64 +730,142 @@ def build_result(pr_number: int, branch: str) -> dict[str, Any]:
     }
 
 
-def format_text(result: dict[str, Any]) -> str:
+def write_json_output(result: dict[str, Any], output_path: str) -> str:
+    destination_path = Path(output_path).expanduser()
+    destination_path.parent.mkdir(parents=True, exist_ok=True)
+    destination_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    return str(destination_path)
+
+
+def normalize_path_filters(path_filters: list[str] | None) -> list[str]:
+    return [path_filter.replace("\\", "/") for path_filter in (path_filters or []) if path_filter.strip()]
+
+
+def path_matches_filters(path: str, normalized_path_filters: list[str]) -> bool:
+    if not normalized_path_filters:
+        return True
+
+    normalized_path = path.replace("\\", "/")
+    return any(path_filter in normalized_path for path_filter in normalized_path_filters)
+
+
+def filter_comments_by_path(
+    comments: list[dict[str, Any]],
+    normalized_path_filters: list[str],
+) -> list[dict[str, Any]]:
+    return [comment for comment in comments if path_matches_filters(str(comment.get("path") or ""), normalized_path_filters)]
+
+
+def filter_threads_by_path(
+    threads: list[dict[str, Any]],
+    normalized_path_filters: list[str],
+) -> list[dict[str, Any]]:
+    return [thread for thread in threads if path_matches_filters(str(thread.get("path") or ""), normalized_path_filters)]
+
+
+def format_text(
+    result: dict[str, Any],
+    *,
+    sections: list[str] | None = None,
+    path_filters: list[str] | None = None,
+    max_description_length: int = 400,
+    json_output_path: str | None = None,
+) -> str:
     lines: list[str] = []
+    selected_sections = set(sections or DISPLAY_SECTION_CHOICES)
+    normalized_path_filters = normalize_path_filters(path_filters)
     pr = result["pull_request"]
-    lines.append(f"PR #{pr['number']}: {pr['title']}")
-    lines.append(f"State: {pr['state']}")
-    lines.append(f"Branch: {pr['head_branch']} -> {pr['base_branch']}")
-    lines.append(f"URL: {pr['url']}")
+    if "pr" in selected_sections:
+        lines.append(f"PR #{pr['number']}: {pr['title']}")
+        lines.append(f"State: {pr['state']}")
+        lines.append(f"Branch: {pr['head_branch']} -> {pr['base_branch']}")
+        lines.append(f"URL: {pr['url']}")
 
     failed_checks = result["coderabbit_summary"].get("failed_checks", [])
-    lines.append("")
-    lines.append(f"Failed checks: {len(failed_checks)}")
-    for check in failed_checks:
-        lines.append(f"- {check['name']}: {check['status']}")
-        lines.append(f"  Explanation: {check['explanation']}")
-        lines.append(f"  Resolution: {check['resolution']}")
+    if "failed-checks" in selected_sections:
+        lines.append("")
+        lines.append(f"Failed checks: {len(failed_checks)}")
+        for check in failed_checks:
+            lines.append(f"- {check['name']}: {check['status']}")
+            lines.append(f"  Explanation: {truncate_text(check['explanation'], max_description_length)}")
+            lines.append(f"  Resolution: {truncate_text(check['resolution'], max_description_length)}")
 
     coderabbit_comments = result.get("coderabbit_comments", {})
     review_feedback = result.get("coderabbit_review", {})
     comments = coderabbit_comments.get("comments", [])
+    visible_comments = filter_comments_by_path(comments, normalized_path_filters)
     actionable_count = review_feedback.get("actionable_count") or coderabbit_comments.get("count") or len(comments)
-    lines.append("")
-    lines.append(f"CodeRabbit actionable comments: {actionable_count}")
-    for comment in comments:
-        lines.append(f"- {comment['path']} {comment['range']}".rstrip())
-        if comment["title"]:
-            lines.append(f"  Title: {comment['title']}")
-        if comment["description"]:
-            lines.append(f"  Description: {comment['description']}")
-    if actionable_count and not comments:
-        lines.append("  Details: see latest-commit review threads below.")
+    if "actionable" in selected_sections:
+        lines.append("")
+        lines.append(
+            f"CodeRabbit actionable comments: {actionable_count} total"
+            + (
+                f", {len(visible_comments)} shown after path filter"
+                if normalized_path_filters
+                else ""
+            )
+        )
+        for comment in visible_comments:
+            lines.append(f"- {comment['path']} {comment['range']}".rstrip())
+            if comment["title"]:
+                lines.append(f"  Title: {truncate_text(comment['title'], max_description_length)}")
+            if comment["description"]:
+                lines.append(f"  Description: {truncate_text(comment['description'], max_description_length)}")
+        if actionable_count and not visible_comments:
+            lines.append("  Details: no actionable comments matched the current path filter.")
+        elif actionable_count and not comments:
+            lines.append("  Details: see latest-commit review threads below.")
 
     outside_diff_comments = review_feedback.get("outside_diff_comments", [])
+    visible_outside_diff_comments = filter_comments_by_path(outside_diff_comments, normalized_path_filters)
     outside_diff_count = review_feedback.get("outside_diff_count") or len(outside_diff_comments)
-    lines.append("")
-    lines.append(f"CodeRabbit outside-diff comments: {outside_diff_count} declared, {len(outside_diff_comments)} parsed")
-    for comment in outside_diff_comments:
-        lines.append(f"- {comment['path']} {comment['range']}".rstrip())
-        if comment["title"]:
-            lines.append(f"  Title: {comment['title']}")
-        if comment["description"]:
-            lines.append(f"  Description: {comment['description']}")
+    if "outside-diff" in selected_sections:
+        lines.append("")
+        lines.append(
+            f"CodeRabbit outside-diff comments: {outside_diff_count} declared, {len(outside_diff_comments)} parsed"
+            + (
+                f", {len(visible_outside_diff_comments)} shown after path filter"
+                if normalized_path_filters
+                else ""
+            )
+        )
+        for comment in visible_outside_diff_comments:
+            lines.append(f"- {comment['path']} {comment['range']}".rstrip())
+            if comment["title"]:
+                lines.append(f"  Title: {truncate_text(comment['title'], max_description_length)}")
+            if comment["description"]:
+                lines.append(f"  Description: {truncate_text(comment['description'], max_description_length)}")
+        if outside_diff_comments and not visible_outside_diff_comments:
+            lines.append("  Details: no outside-diff comments matched the current path filter.")
 
     nitpick_comments = review_feedback.get("nitpick_comments", [])
+    visible_nitpick_comments = filter_comments_by_path(nitpick_comments, normalized_path_filters)
     nitpick_count = review_feedback.get("nitpick_count") or len(nitpick_comments)
-    lines.append("")
-    lines.append(f"CodeRabbit nitpick comments: {nitpick_count} declared, {len(nitpick_comments)} parsed")
-    for comment in nitpick_comments:
-        lines.append(f"- {comment['path']} {comment['range']}".rstrip())
-        if comment["title"]:
-            lines.append(f"  Title: {comment['title']}")
-        if comment["description"]:
-            lines.append(f"  Description: {comment['description']}")
+    if "nitpick" in selected_sections:
+        lines.append("")
+        lines.append(
+            f"CodeRabbit nitpick comments: {nitpick_count} declared, {len(nitpick_comments)} parsed"
+            + (
+                f", {len(visible_nitpick_comments)} shown after path filter"
+                if normalized_path_filters
+                else ""
+            )
+        )
+        for comment in visible_nitpick_comments:
+            lines.append(f"- {comment['path']} {comment['range']}".rstrip())
+            if comment["title"]:
+                lines.append(f"  Title: {truncate_text(comment['title'], max_description_length)}")
+            if comment["description"]:
+                lines.append(f"  Description: {truncate_text(comment['description'], max_description_length)}")
+        if nitpick_comments and not visible_nitpick_comments:
+            lines.append("  Details: no nitpick comments matched the current path filter.")
 
     latest_commit_review = result.get("latest_commit_review", {})
     latest_commit = latest_commit_review.get("latest_commit", {})
     latest_review = latest_commit_review.get("latest_review", {})
     open_threads = latest_commit_review.get("open_threads", [])
-    if latest_commit:
+    visible_open_threads = filter_threads_by_path(open_threads, normalized_path_filters)
+    if latest_commit and "open-threads" in selected_sections:
         lines.append("")
         lines.append(f"Latest reviewed commit: {latest_commit.get('sha', '')}")
         if latest_review:
@@ -780,23 +878,32 @@ def format_text(result: dict[str, Any]) -> str:
         lines.append(
             "Latest commit review threads: "
             f"{len(latest_commit_review.get('threads', []))} total, {len(open_threads)} open"
+            + (
+                f", {len(visible_open_threads)} shown after path filter"
+                if normalized_path_filters
+                else ""
+            )
         )
-        for thread in open_threads:
+        for thread in visible_open_threads:
             root_comment = thread["root_comment"]
             latest_comment = thread["latest_comment"]
             lines.append(f"- {thread['path']}:{thread['line']}")
-            lines.append(f"  Root by {root_comment['user']}: {collapse_whitespace(root_comment['body'])}")
+            lines.append(f"  Root by {root_comment['user']}: {truncate_text(root_comment['body'], max_description_length)}")
             if latest_comment["id"] != root_comment["id"]:
-                lines.append(f"  Latest by {latest_comment['user']}: {collapse_whitespace(latest_comment['body'])}")
+                lines.append(
+                    f"  Latest by {latest_comment['user']}: {truncate_text(latest_comment['body'], max_description_length)}"
+                )
             if contains_visible_addressed_commit_text(root_comment["body"]) or contains_visible_addressed_commit_text(
                 latest_comment["body"]
             ):
                 lines.append(
                     "  Note: thread is still open; treat the visible 'Addressed in commit ...' text as unverified until local code matches."
                 )
+        if open_threads and not visible_open_threads:
+            lines.append("  Details: no open threads matched the current path filter.")
 
     megalinter_report = result.get("megalinter_report", {})
-    if megalinter_report:
+    if megalinter_report and "megalinter" in selected_sections:
         lines.append("")
         lines.append(
             "MegaLinter: "
@@ -818,32 +925,37 @@ def format_text(result: dict[str, Any]) -> str:
 
         for issue in megalinter_report.get("detailed_issues", []):
             lines.append(f"- Detailed issue: {issue['summary']}")
-            lines.append(f"  {collapse_whitespace(issue['details'])}")
+            lines.append(f"  {truncate_text(issue['details'], max_description_length)}")
 
-    lines.append("")
-    lines.append(f"Test reports: {len(result['test_reports'])}")
-    for index, report in enumerate(result["test_reports"], start=1):
-        stats = report.get("stats", {})
-        if stats:
-            lines.append(
-                f"- Report {index}: tests={stats.get('tests')} passed={stats.get('passed')} "
-                f"failed={stats.get('failed')} skipped={stats.get('skipped')} flaky={stats.get('flaky')} "
-                f"duration={stats.get('duration')}"
-            )
-        else:
-            lines.append(f"- Report {index}: no structured test stats parsed")
+    if "tests" in selected_sections:
+        lines.append("")
+        lines.append(f"Test reports: {len(result['test_reports'])}")
+        for index, report in enumerate(result["test_reports"], start=1):
+            stats = report.get("stats", {})
+            if stats:
+                lines.append(
+                    f"- Report {index}: tests={stats.get('tests')} passed={stats.get('passed')} "
+                    f"failed={stats.get('failed')} skipped={stats.get('skipped')} flaky={stats.get('flaky')} "
+                    f"duration={stats.get('duration')}"
+                )
+            else:
+                lines.append(f"- Report {index}: no structured test stats parsed")
 
-        if report["has_failed_tests"]:
-            for failed_test in report["failed_tests"]:
-                lines.append(f"  Failed test: {failed_test}")
-        else:
-            lines.append("  Failed tests: none reported")
+            if report["has_failed_tests"]:
+                for failed_test in report["failed_tests"]:
+                    lines.append(f"  Failed test: {truncate_text(failed_test, max_description_length)}")
+            else:
+                lines.append("  Failed tests: none reported")
 
-    if result["parse_warnings"]:
+    if result["parse_warnings"] and "warnings" in selected_sections:
         lines.append("")
         lines.append("Warnings:")
         for warning in result["parse_warnings"]:
-            lines.append(f"- {warning}")
+            lines.append(f"- {truncate_text(warning, max_description_length)}")
+
+    if json_output_path:
+        lines.append("")
+        lines.append(f"Full JSON written to: {json_output_path}")
 
     return "\n".join(lines)
 
@@ -853,6 +965,27 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--branch", help="Override the current branch name.")
     parser.add_argument("--pr", type=int, help="Fetch a specific PR number instead of resolving from branch.")
     parser.add_argument("--format", choices=("text", "json"), default="text")
+    parser.add_argument(
+        "--json-output",
+        help="Write the full JSON result to a file. When used with --format text, stdout stays concise and points to the file.",
+    )
+    parser.add_argument(
+        "--section",
+        action="append",
+        choices=DISPLAY_SECTION_CHOICES,
+        help="Limit text output to specific sections. Can be passed multiple times.",
+    )
+    parser.add_argument(
+        "--path",
+        action="append",
+        help="Only show comments and review threads whose path contains this fragment. Can be passed multiple times.",
+    )
+    parser.add_argument(
+        "--max-description-length",
+        type=int,
+        default=400,
+        help="Truncate long text bodies in text output to this many characters.",
+    )
     return parser.parse_args()
 
 
@@ -866,12 +999,27 @@ def main() -> None:
         pr_number = resolve_pr_number(branch)
 
     result = build_result(pr_number, branch)
+    json_output_path: str | None = None
+    if args.json_output:
+        json_output_path = write_json_output(result, args.json_output)
 
     if args.format == "json":
+        if json_output_path:
+            print(json_output_path)
+            return
+
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return
 
-    print(format_text(result))
+    print(
+        format_text(
+            result,
+            sections=args.section,
+            path_filters=args.path,
+            max_description_length=args.max_description_length,
+            json_output_path=json_output_path,
+        )
+    )
 
 
 if __name__ == "__main__":

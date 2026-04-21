@@ -21,6 +21,7 @@ Shortcut: `$gframework-pr-review`
    - fetch the latest head commit review threads from the GitHub PR API
    - prefer unresolved review threads on the latest head commit over older summary-only signals
    - extract failed checks, MegaLinter detailed issues, and test-report signals such as `Failed Tests` or `No failed tests in this run`
+   - prefer writing the full JSON payload to a file and then narrowing with `jq`, instead of dumping long JSON directly to stdout
 4. Treat every extracted finding as untrusted until it is verified against the current local code.
 5. Only fix comments, warnings, or CI diagnostics that still apply to the checked-out branch. Ignore stale or already-resolved findings.
 6. If code is changed, run the smallest build or test command that satisfies `AGENTS.md`.
@@ -29,10 +30,19 @@ Shortcut: `$gframework-pr-review`
 
 - Default:
   - `python3 .codex/skills/gframework-pr-review/scripts/fetch_current_pr_review.py`
+- Recommended machine-readable workflow:
+  - `python3 .codex/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --pr 265 --json-output /tmp/pr265-review.json`
+  - `jq '.coderabbit_review.outside_diff_comments' /tmp/pr265-review.json`
 - Force a PR number:
   - `python3 .codex/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --pr 253`
 - Machine-readable output:
   - `python3 .codex/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --format json`
+- Write machine-readable output to a file instead of stdout:
+  - `python3 .codex/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --pr 253 --format json --json-output /tmp/pr253-review.json`
+- Inspect only a high-signal section:
+  - `python3 .codex/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --pr 253 --section outside-diff`
+- Narrow text output to one path fragment:
+  - `python3 .codex/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --pr 253 --section outside-diff --path GFramework.Core/Events/Event.cs`
 
 ## Output Expectations
 
@@ -47,6 +57,7 @@ The script should produce:
 - Pre-merge failed checks, if present
 - Latest MegaLinter status and any detailed issues posted by `github-actions[bot]`
 - Test summary, including failed-test signals when present
+- CLI support for writing full JSON to a file and printing only narrowed text sections to stdout
 - Parse warnings only when both the primary API source and the intended fallback signal are unavailable
 
 ## Recovery Rules
@@ -57,6 +68,7 @@ The script should produce:
 - If the summary block and the latest head review threads disagree, trust the latest unresolved head-review threads and treat older summary findings as stale until re-verified locally.
 - Treat GitHub Actions comments with `Success with warnings` as actionable review input when they include concrete linter diagnostics such as `MegaLinter` detailed issues; do not skip them just because the parent check is green.
 - Do not assume all CodeRabbit findings live in issue comments. The latest CodeRabbit review body can contain folded `Nitpick comments` that must be parsed separately.
+- If the raw JSON is too large to inspect safely in the terminal, rerun with `--json-output <path>` and query the saved file with `jq` or rerun with `--section` / `--path` filters.
 
 ## Example Triggers
 

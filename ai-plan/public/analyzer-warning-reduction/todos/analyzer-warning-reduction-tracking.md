@@ -7,10 +7,10 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-011`
-- 当前阶段：`Phase 11`
+- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-012`
+- 当前阶段：`Phase 12`
 - 当前焦点：
-  - 当前 PR #265 的 follow-up 已继续收口到 `Event.cs` 监听器计数修正；下一轮恢复到 `MA0046` 主批次
+  - 当前 PR review workflow 已补强到支持 JSON 落盘与按 section/path 收窄输出；下一轮恢复到 `MA0046` 主批次
   - 后续继续按 warning 类型和数量批处理，而不是回退到按单文件切片推进
   - 当某一轮主类型数量不足时，允许顺手合并其他低冲突 warning 类型，`MA0015` 与 `MA0077`
     只是当前最明显的低数量示例，不构成限定
@@ -23,6 +23,7 @@
 - 已完成多轮 CodeRabbit follow-up 修复，并用定向测试与项目/解决方案构建验证了关键回归风险
 - 已完成当前 PR #265 review follow-up：修复 `CoroutineScheduler` 的零容量扩容边界，并补上 `Store` dispatch 作用域的异常安全回滚
 - 已继续完成当前 PR #265 review follow-up：修复 `Event<T>` 与 `Event<T, TK>` 监听器计数的 off-by-one，并补充回归测试
+- 已增强 `gframework-pr-review` 脚本与 skill 文档，降低超长 JSON 直出导致的 review 信号漏看风险
 - 当前 `PauseStackManager`、`Store`、`CoroutineScheduler` 与 `GFramework.Core` 的 `MA0048`
   文件/类型命名冲突已从 active 入口移除；主题内剩余 warning 主要集中在 `MA0046` delegate 形状、
   `MA0016` 集合抽象接口、`MA0002` comparer 重载，以及 `MA0015` / `MA0077` 两个低数量尾项
@@ -48,6 +49,8 @@
   `_isDispatching = true` 的锁死问题
 - `RP-011` 根据补充复核继续收口 PR #265 的 outside-diff comment，修复 `Event<T>` / `Event<T, TK>` 默认 no-op
   委托导致的 `GetListenerCount()` off-by-one，并以定向事件测试验证注册、注销和计数语义
+- `RP-012` 为 `gframework-pr-review` 增加 `--json-output`、`--section`、`--path` 与文本截断能力，并更新 skill 推荐用法，
+  让“先落盘、再定向抽取”成为默认可操作路径
 - 当前工作树分支 `fix/analyzer-warning-reduction-batch` 已在 `ai-plan/public/README.md` 建立 topic 映射
 
 ## 当前风险
@@ -111,6 +114,13 @@
     - 结果：`15 Warning(s)`，`0 Error(s)`；`Event.cs` 的 listener count 修复未引入新的 `GFramework.Core` `net8.0` 构建错误
   - `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --filter "FullyQualifiedName~EventTests.EventT_GetListenerCount_Should_Exclude_Placeholder_Handler|FullyQualifiedName~EventTests.EventTTK_GetListenerCount_Should_Exclude_Placeholder_Handler" -m:1 -p:RestoreFallbackFolders="" -nologo`
     - 结果：`2 Passed`，`0 Failed`
+- `RP-012` 的定向验证结果：
+  - `python3 -m py_compile .codex/skills/gframework-pr-review/scripts/fetch_current_pr_review.py`
+    - 结果：通过；使用 `PYTHONPYCACHEPREFIX=/tmp/codex-pycache` 规避技能目录只读导致的 `__pycache__` 写入限制
+  - `python3 .codex/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --help`
+    - 结果：通过；`--json-output`、`--section`、`--path`、`--max-description-length` 已出现在 CLI 帮助中
+  - `dotnet build GFramework.Core/GFramework.Core.csproj -c Release --no-restore -p:TargetFramework=net8.0 -p:RestoreFallbackFolders="" -nologo`
+    - 结果：`0 Warning(s)`，`0 Error(s)`
 - active 跟踪文件只保留当前恢复点、活跃事实、风险与下一步，不再重复保存已完成阶段的长篇历史
 
 ## 下一步
