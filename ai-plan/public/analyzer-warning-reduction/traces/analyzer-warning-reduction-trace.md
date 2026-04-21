@@ -1,5 +1,31 @@
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-21 — RP-011
+
+### 阶段：PR #265 outside-diff follow-up 补收口（RP-011）
+
+- 用户补充指出 CodeRabbit 在 `Some comments are outside the diff` 中还有 `GFramework.Core/Events/Event.cs` 的 minor finding：
+  默认 no-op 委托会被 `GetInvocationList()` 计入，导致 `GetListenerCount()` 在无监听器和单监听器场景分别返回 `1` 和 `2`
+- 本地复核确认该问题仍成立：
+  - `Event<T>` 当前字段初始化为 `_ => { }`
+  - `Event<T, TK>` 当前字段初始化为 `(_, _) => { }`
+  - 两个 `Trigger(...)` 实现本身已是 null-safe，因此无需依赖占位委托规避空引用
+- 实施最小修复：
+  - 移除两个事件字段的 no-op 初始委托，改为以 `null` 表示“无监听器”
+  - 保持 `Register` / `UnRegister` / `Trigger` 的公开 API 和调用方式不变
+  - 在 `EventTests` 中新增单参数与双参数 `GetListenerCount()` 回归测试，覆盖初始值、注册后和注销后的计数语义
+- 过程说明：
+  - 这条不是 skill 设计遗漏；`gframework-pr-review` 的目标本来就包含 latest review body 和 outside-diff 信号
+  - 上一轮是我在处理时漏看了这条 outside-diff item，且终端里展示的超长 JSON 输出被截断，未单独把 `Event.cs` 项再抽出来复核
+- 定向验证命令：
+  - `dotnet build GFramework.Core/GFramework.Core.csproj -c Release --no-restore -p:TargetFramework=net8.0 -p:RestoreFallbackFolders="" -nologo`
+    - 结果：`15 Warning(s)`，`0 Error(s)`
+  - `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --filter "FullyQualifiedName~EventTests.EventT_GetListenerCount_Should_Exclude_Placeholder_Handler|FullyQualifiedName~EventTests.EventTTK_GetListenerCount_Should_Exclude_Placeholder_Handler" -m:1 -p:RestoreFallbackFolders="" -nologo`
+    - 结果：`2 Passed`，`0 Failed`
+- 下一步建议：
+  - 若继续 PR #265 follow-up，只接受当前本地仍成立的剩余 outside-diff 或 unresolved review 项
+  - 若没有新的有效 review 点，再恢复到 `MA0046` 主批次
+
 ## 2026-04-21 — RP-010
 
 ### 阶段：PR #265 follow-up 收口（RP-010）

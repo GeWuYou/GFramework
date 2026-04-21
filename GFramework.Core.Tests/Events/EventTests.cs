@@ -125,6 +125,24 @@ public class EventTests
     }
 
     /// <summary>
+    ///     测试单参数事件的监听器计数只统计真实注册的处理器。
+    /// </summary>
+    [Test]
+    public void EventT_GetListenerCount_Should_Exclude_Placeholder_Handler()
+    {
+        Assert.That(_eventInt.GetListenerCount(), Is.EqualTo(0));
+
+        Action<int> handler = _ => { };
+        _eventInt.Register(handler);
+
+        Assert.That(_eventInt.GetListenerCount(), Is.EqualTo(1));
+
+        _eventInt.UnRegister(handler);
+
+        Assert.That(_eventInt.GetListenerCount(), Is.EqualTo(0));
+    }
+
+    /// <summary>
     ///     测试带两个泛型参数的事件注册功能是否正确添加处理器
     /// </summary>
     [Test]
@@ -160,5 +178,23 @@ public class EventTests
         _eventIntString.UnRegister(handler);
         _eventIntString.Trigger(2, "b");
         Assert.That(count, Is.EqualTo(1));
+    }
+
+    /// <summary>
+    ///     测试双参数事件的监听器计数只统计真实注册的处理器。
+    /// </summary>
+    [Test]
+    public void EventTTK_GetListenerCount_Should_Exclude_Placeholder_Handler()
+    {
+        Assert.That(_eventIntString.GetListenerCount(), Is.EqualTo(0));
+
+        Action<int, string> handler = (_, _) => { };
+        _eventIntString.Register(handler);
+
+        Assert.That(_eventIntString.GetListenerCount(), Is.EqualTo(1));
+
+        _eventIntString.UnRegister(handler);
+
+        Assert.That(_eventIntString.GetListenerCount(), Is.EqualTo(0));
     }
 }

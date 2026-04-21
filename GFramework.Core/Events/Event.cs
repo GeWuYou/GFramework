@@ -11,9 +11,9 @@ public class Event<T> : IEvent
 {
     /// <summary>
     ///     存储已注册的事件处理委托。
-    ///     默认为空操作（no-op）委托，避免 null 检查。
+    ///     未注册监听器时保持 <see langword="null" />，从而让监听器计数与真实订阅数量保持一致。
     /// </summary>
-    private Action<T>? _mOnEvent = _ => { };
+    private Action<T>? _mOnEvent;
 
     /// <summary>
     ///     显式实现 <see cref="IEvent" /> 接口中的 <c>Register</c> 方法。
@@ -80,9 +80,9 @@ public class Event<T, TK> : IEvent
 {
     /// <summary>
     ///     存储已注册的双参数事件处理委托。
-    ///     默认为空操作（no-op）委托。
+    ///     未注册监听器时保持 <see langword="null" />，从而让监听器计数与真实订阅数量保持一致。
     /// </summary>
-    private Action<T, TK>? _mOnEvent = (_, _) => { };
+    private Action<T, TK>? _mOnEvent;
 
     /// <summary>
     ///     显式实现 <see cref="IEvent" /> 接口中的 <c>Register</c> 方法。
