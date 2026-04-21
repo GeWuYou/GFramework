@@ -7,7 +7,7 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`DOCUMENTATION-GOVERNANCE-REFRESH-RP-003`
+- 恢复点编号：`DOCUMENTATION-GOVERNANCE-REFRESH-RP-004`
 - 当前阶段：`Phase 3`
 - 当前焦点：
   - 已完成 `docs/zh-CN/core/architecture.md`、`context.md`、`lifecycle.md`、`command.md`、`query.md` 与
@@ -32,6 +32,10 @@
 - `docs` 站点构建已验证通过，修正了 VitePress 对 `docs/` 目录外相对链接的 dead-link 检查问题
 - `core` 关键专题页已移除 `Init()`、属性式 `CommandBus` / `QueryBus`、旧 `Input` 赋值式示例和已移除的
   `RegisterMediatorBehavior` 等过时说明
+- `core/index.md` 已把 `Godot` 与 `Source Generators` 栏目入口改成可点击链接，补齐 landing page 导航一致性
+- `documentation-governance-and-refresh` active trace 已把重复的 `### 下一步` 标题改成带恢复点标识的唯一标题，消除
+  `MD024/no-duplicate-heading` 告警
+- `gframework-pr-review` 脚本已修复“空 `APPROVED` review 覆盖非空 CodeRabbit review body”的解析路径，当前分支可重新提取 Nitpick comments
 
 ## 当前风险
 
@@ -42,6 +46,9 @@
   - 缓解措施：保持“源码与包关系优先”的证据顺序，改动采用说明时同步核对包依赖与生成器 wiring
 - Active 入口回膨胀风险：后续若把栏目级重写过程直接追加到 active 文档，会再次拖慢恢复
   - 缓解措施：阶段完成并验证后，继续把细节迁入本 topic 的 `archive/`
+- review 跟进遗漏风险：如果 PR review 抓取继续优先选中空 review body，会漏掉 CodeRabbit 的 Nitpick 和
+  linter 跟进项
+  - 缓解措施：保持当前“最新提交 + 最新非空 CodeRabbit review body”解析策略，并在有疑点时以 API 实抓结果复核
 
 ## 活跃文档
 
@@ -53,10 +60,11 @@
 - 旧 `local-plan/` 的详细实施历史与文档站构建结果已迁入主题内归档
 - active 跟踪文件已按 `ai-plan` 治理规则精简为当前恢复入口
 - `cd docs && bun run build`
+- `python3 .codex/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --format json`
 
 ## 下一步
 
 1. 继续核对 `docs/zh-CN/core/*` 余下专题页，优先处理 `events`、`property`、`state-management`、`coroutine`
    与 `logging`
 2. 再推进 `docs/zh-CN/game/*` 与 `docs/zh-CN/source-generators/*` 的专题页重写，优先处理仍引用旧安装方式或旧 API 的页面
-3. 若专题页批量重写完成且验证通过，将本轮 `core` 专题页收口和后续修订过程迁入本 topic 的 `archive/`
+3. 若 active trace 再积累新的已完成阶段，按恢复点粒度迁入 `archive/traces/`，避免默认启动入口再次膨胀

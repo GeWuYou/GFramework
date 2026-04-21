@@ -25,7 +25,7 @@
 - 历史 trace 归档：
   - `ai-plan/public/documentation-governance-and-refresh/archive/traces/documentation-governance-and-refresh-history-through-2026-04-18.md`
 
-### 下一步
+### 下一步（RP-001）
 
 1. 后续继续该主题时，只从 `ai-plan/public/documentation-governance-and-refresh/` 进入，不再恢复 `local-plan/`
 2. 若 active 入口再次积累多轮已完成且已验证阶段，继续按同一模式迁入该主题自己的 `archive/`
@@ -47,7 +47,7 @@
 - 当前默认导航入口已显著收敛，但专题页仍需逐页按源码与测试继续核对
 - 后续优先级应从 `core` 专题页开始，再向 `game` 与 `source-generators` 扩展
 
-### 下一步
+### 下一步（RP-002）
 
 1. 审核 `docs/zh-CN/core/architecture.md`、`context.md`、`lifecycle.md`、`command.md`、`query.md`、`cqrs.md`
 2. 记录每页的失真点、真实 API 名称与应保留的最小示例
@@ -77,7 +77,30 @@
   是公开入口
 - 执行 `cd docs && bun run build` 通过，说明本轮 `core` 专题页重写没有破坏文档站构建
 
-### 下一步
+### 下一步（RP-003）
+
+### 补充：2026-04-21 PR review 跟进收口（RP-004）
+
+- 通过 `gframework-pr-review` 复查当前分支 PR 时发现：脚本把同一 head commit 上空 body 的 `APPROVED`
+  review 误当成“最新 review body”，导致 `Nitpick comments` 未被结构化提取
+- 对照 GitHub API 的 review 列表后，确认真正包含 `Nitpick comments (2)` 的是更早 3 秒提交的
+  `COMMENTED` review；因此调整脚本为“保持最新 review 元数据输出不变，但解析时优先选择同一提交上的最新非空
+  CodeRabbit review body”
+- 根据重新提取的 Nitpick 内容，补齐 `docs/zh-CN/core/index.md` 里 `Godot` 与 `Source Generators`
+  栏目的可点击链接
+- 顺手修正 active trace 中重复的 `### 下一步` 标题，消除 `MD024/no-duplicate-heading` 告警，避免后续 PR
+  review 再次把文档治理入口本身标成噪音
+
+### 验证（RP-004）
+
+- `python3 .codex/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --format json`
+- `cd docs && bun run build`
+
+### 下一步（RP-004）
+
+1. 继续处理 `docs/zh-CN/core/events.md`、`property.md`、`state-management.md`、`coroutine.md`、`logging.md`
+2. 若 active trace 继续累计多个已完成恢复点，按 `archive/traces/` 粒度归档旧阶段细节
+3. 保持 PR review 跟进时优先验证最新未解决线程、非空 CodeRabbit review body 与 MegaLinter 明确告警
 
 1. 继续处理 `docs/zh-CN/core/events.md`、`property.md`、`state-management.md`、`coroutine.md`、`logging.md`
 2. 保持同样的证据顺序：源码、`*.csproj`、模块 README、`ai-libs/` 参考实现

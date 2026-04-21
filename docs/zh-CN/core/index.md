@@ -88,7 +88,7 @@ public sealed class CounterArchitecture : Architecture
 - 要接入游戏内容配置、设置、数据仓库、Scene 或 UI：
   - 转到 [Game](../game/index.md)
 - 要接入 Godot 节点、场景和项目元数据生成：
-  - 转到 `Godot` 与 Source Generators 栏目
+  - 转到 [Godot](../godot/index.md) 与 [Source Generators](../source-generators/index.md) 栏目
 
 ## 推荐阅读顺序
 
