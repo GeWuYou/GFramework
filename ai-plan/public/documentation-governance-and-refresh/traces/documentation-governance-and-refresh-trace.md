@@ -62,3 +62,23 @@
 - `documentation-governance-and-refresh` active tracking 已同步把风险缓解中的参考来源更新为
   `ai-libs/` 下已验证参考实现
 - 下一次专题页重写时，继续沿用同一表述，不再把特定参考项目名写入新的活跃文档入口
+
+### 补充：2026-04-21 Core 专题页收口（RP-003）
+
+- 复核 `docs/zh-CN/core/architecture.md`、`context.md`、`lifecycle.md`、`command.md`、`query.md` 与 `cqrs.md`
+  后确认：这些页面仍大量保留旧 API 叙述，例如 `Init()`、属性式 `CommandBus` / `QueryBus`、旧 `Input`
+  赋值式命令/查询示例，以及已移除的 `RegisterMediatorBehavior`
+- 对照 `Architecture`、`ArchitectureContext`、`IArchitectureContext`、`ContextAwareBase`、旧
+  `AbstractCommand` / `AbstractQuery` 基类和 `GFramework.Cqrs/README.md` 后，重写上述六个页面
+- 新版专题页将结构统一为“当前角色、真实公开入口、最小示例、兼容边界、迁移方向”，避免继续复刻旧版大而全教程
+- `core/context.md` 已明确把 `GameContext` 收束为兼容回退路径，而不是新代码的推荐接法
+- `core/command.md` 与 `core/query.md` 已明确旧体系仍可用，但新功能应优先走 `GFramework.Cqrs`
+- `core/cqrs.md` 已与当前 runtime / generator / handler 注册语义对齐，并明确 `RegisterCqrsPipelineBehavior<TBehavior>()`
+  是公开入口
+- 执行 `cd docs && bun run build` 通过，说明本轮 `core` 专题页重写没有破坏文档站构建
+
+### 下一步
+
+1. 继续处理 `docs/zh-CN/core/events.md`、`property.md`、`state-management.md`、`coroutine.md`、`logging.md`
+2. 保持同样的证据顺序：源码、`*.csproj`、模块 README、`ai-libs/` 参考实现
+3. 完成下一批专题页重写后再次执行 `cd docs && bun run build`

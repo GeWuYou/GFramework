@@ -7,20 +7,21 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`DOCUMENTATION-GOVERNANCE-REFRESH-RP-002`
-- 当前阶段：`Phase 2`
+- 恢复点编号：`DOCUMENTATION-GOVERNANCE-REFRESH-RP-003`
+- 当前阶段：`Phase 3`
 - 当前焦点：
-  - 已完成 `docs/zh-CN/core/index.md`、`docs/zh-CN/game/index.md` 与
-    `docs/zh-CN/source-generators/index.md` 的 landing page 重写
-  - 栏目入口已改为以模块定位、包关系、最小接入路径和继续阅读为主，不再沿用旧版失真教程结构
-  - 下一轮需要继续核对并重写 `docs/zh-CN/core/*`、`docs/zh-CN/game/*` 与
-    `docs/zh-CN/source-generators/*` 的专题页内容
+  - 已完成 `docs/zh-CN/core/architecture.md`、`context.md`、`lifecycle.md`、`command.md`、`query.md` 与
+    `cqrs.md` 的专题页重写
+  - `core` 关键专题页已改回当前 `Architecture`、`ArchitectureContext`、旧 Command/Query 兼容层与新 CQRS
+    runtime 的真实入口语义
+  - 下一轮需要继续推进 `docs/zh-CN/core/*` 余下专题页，以及 `docs/zh-CN/game/*`、
+    `docs/zh-CN/source-generators/*` 的专题页核对
 
 ## 当前状态摘要
 
 - 文档治理规则已收口到仓库规范，README、站点入口与采用链路不再依赖旧文档自证
-- 高优先级模块入口已补齐，栏目 landing page 已回到可作为默认导航入口的状态
-- 当前主题仍是 active topic，因为核心栏目下的专题页仍可能包含与实现漂移的旧内容
+- 高优先级模块入口与 `core` 关键专题页已回到可作为默认导航入口的状态
+- 当前主题仍是 active topic，因为 `core` 其余专题页及 `game`、`source-generators` 栏目下仍可能包含与实现漂移的旧内容
 
 ## 当前活跃事实
 
@@ -29,6 +30,8 @@
 - active 跟踪文件只保留当前恢复点、活跃事实、风险与下一步，不再重复保存已完成阶段的长篇历史
 - `core`、`game` 与 `source-generators` 三个栏目入口页现在都以模块 README 与当前包拆分为准
 - `docs` 站点构建已验证通过，修正了 VitePress 对 `docs/` 目录外相对链接的 dead-link 检查问题
+- `core` 关键专题页已移除 `Init()`、属性式 `CommandBus` / `QueryBus`、旧 `Input` 赋值式示例和已移除的
+  `RegisterMediatorBehavior` 等过时说明
 
 ## 当前风险
 
@@ -53,6 +56,7 @@
 
 ## 下一步
 
-1. 先从 `docs/zh-CN/core/*` 开始，逐页核对架构、上下文、生命周期、命令、查询与 CQRS 的示例和术语
+1. 继续核对 `docs/zh-CN/core/*` 余下专题页，优先处理 `events`、`property`、`state-management`、`coroutine`
+   与 `logging`
 2. 再推进 `docs/zh-CN/game/*` 与 `docs/zh-CN/source-generators/*` 的专题页重写，优先处理仍引用旧安装方式或旧 API 的页面
-3. 若专题页批量重写完成且验证通过，将本轮 landing page 收口和下一轮专题页修订过程迁入本 topic 的 `archive/`
+3. 若专题页批量重写完成且验证通过，将本轮 `core` 专题页收口和后续修订过程迁入本 topic 的 `archive/`
