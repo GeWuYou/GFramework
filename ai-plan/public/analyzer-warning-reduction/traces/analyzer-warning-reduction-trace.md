@@ -1,5 +1,28 @@
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-21 — RP-005
+
+### 阶段：PauseStackManager `MA0051` 收口（RP-005）
+
+- 按 active tracking 中“继续只选一个 `GFramework.Core` 结构性切入点”的约束，本轮选择
+  `GFramework.Core/Pause/PauseStackManager.cs`，因为该文件体量明显小于 `CoroutineScheduler` 和 `Store`，
+  且已有稳定的 `PauseStackManagerTests` 覆盖暂停栈、跨组独立性、事件通知与并发 `Push/Pop` 行为
+- 先用 `warnings-only` 定向构建确认 `DestroyAsync` 与 `Pop` 仍分别命中 `MA0051`，再把逻辑拆分为：
+  - `TryBeginDestroy`
+  - `NotifyDestroyedGroups`
+  - `TryPopEntry`
+  - `RemoveEntryFromStack`
+- 额外抽出 `CreateHandlerSnapshot` 与 `NotifyHandlersSnapshot`，统一普通通知与销毁补发路径的处理器排序和异常日志，
+  保持原有“锁内采集快照、锁外调用处理器与事件”的并发策略不变
+- 为销毁路径新增 `DestroyAsync_Should_NotifyResumedGroups`，验证当多个暂停组在销毁前仍为暂停态时，
+  处理器和事件订阅者都会收到 `IsPaused=false` 的恢复信号
+- 验证通过：
+  - `dotnet build GFramework.Core/GFramework.Core.csproj -c Release -t:Rebuild --no-restore -p:UseSharedCompilation=false -p:TargetFramework=net8.0 -p:RestoreFallbackFolders= -nologo -clp:"Summary;WarningsOnly"`
+    - 结果：`27 Warning(s)`，`0 Error(s)`；`PauseStackManager.cs` 已不再出现在 `MA0051` 列表
+  - `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --filter FullyQualifiedName~PauseStackManagerTests -p:RestoreFallbackFolders=`
+    - 结果：`25 Passed`，`0 Failed`
+- 下一步保持原节奏：只在 `CoroutineScheduler` 或 `Store` 中二选一继续，不与其他 warning 家族混做
+
 ## 2026-04-21 — RP-003
 
 ### 阶段：Architecture 生命周期 `MA0051` 收口（RP-003）

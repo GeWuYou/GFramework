@@ -26,69 +26,17 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
     public ValueTask DestroyAsync()
     {
         if (_disposed)
+        {
             return ValueTask.CompletedTask;
-
-        List<PauseGroup> pausedGroups;
-        IPauseHandler[] handlersSnapshot;
-
-        _lock.EnterWriteLock();
-        try
-        {
-            if (_disposed)
-                return ValueTask.CompletedTask;
-
-            _disposed = true;
-
-            // 收集所有当前暂停的组
-            pausedGroups = _pauseStacks
-                .Where(kvp => kvp.Value.Count > 0)
-                .Select(kvp => kvp.Key)
-                .ToList();
-
-            // 获取处理器快照
-            handlersSnapshot = _handlers.ToArray();
-
-            // 清理所有数据结构
-            _pauseStacks.Clear();
-            _tokenMap.Clear();
-            _handlers.Clear();
-
-            _logger.Debug("PauseStackManager destroyed");
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
         }
 
-        // 在锁外通知所有之前暂停的组恢复，保持生命周期信号一致
-        foreach (var group in pausedGroups)
+        var destroySnapshot = TryBeginDestroy();
+        if (destroySnapshot == null)
         {
-            _logger.Debug($"Notifying handlers of destruction: Group={group}, IsPaused=false");
-
-            foreach (var handler in handlersSnapshot.OrderBy(h => h.Priority))
-            {
-                try
-                {
-                    handler.OnPauseStateChanged(group, false);
-                }
-                catch (Exception ex)
-                {
-                    _logger.Error($"Handler {handler.GetType().Name} failed during destruction", ex);
-                }
-            }
-
-            // 触发事件
-            try
-            {
-                RaisePauseStateChanged(group, false);
-            }
-            catch (Exception ex)
-            {
-                _logger.Error($"Event subscriber failed during destruction for group {group}", ex);
-            }
+            return ValueTask.CompletedTask;
         }
 
-        // 释放锁资源
+        NotifyDestroyedGroups(destroySnapshot.Value);
         _lock.Dispose();
 
         return ValueTask.CompletedTask;
@@ -163,74 +111,17 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
     public bool Pop(PauseToken token)
     {
         if (!token.IsValid)
+        {
             return false;
-
-        bool found;
-        bool shouldNotify = false;
-        PauseGroup notifyGroup = PauseGroup.Global;
-
-        _lock.EnterWriteLock();
-        try
-        {
-            ThrowIfDisposed();
-
-            if (!_tokenMap.TryGetValue(token.Id, out var entry))
-            {
-                _logger.Warn($"Attempted to pop invalid/expired token: {token.Id}");
-                return false;
-            }
-
-            var group = entry.Group;
-            var stack = _pauseStacks[group];
-            var wasPaused = stack.Count > 0;
-
-            // 从栈中移除
-            var tempStack = new Stack<PauseEntry>();
-            found = false;
-
-            while (stack.Count > 0)
-            {
-                var current = stack.Pop();
-                if (current.TokenId == token.Id)
-                {
-                    found = true;
-                    break;
-                }
-
-                tempStack.Push(current);
-            }
-
-            // 恢复栈结构
-            while (tempStack.Count > 0)
-            {
-                stack.Push(tempStack.Pop());
-            }
-
-            if (found)
-            {
-                _tokenMap.Remove(token.Id);
-                _logger.Debug($"Pause popped: {entry.Reason} (Group: {group}, Remaining: {stack.Count})");
-
-                // 状态变化检测：从暂停 → 未暂停
-                if (wasPaused && stack.Count == 0)
-                {
-                    shouldNotify = true;
-                    notifyGroup = group;
-                }
-            }
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
         }
 
-        // 在锁外通知处理器，避免死锁
-        if (shouldNotify)
+        var result = TryPopEntry(token);
+        if (result.ShouldNotify)
         {
-            NotifyHandlers(notifyGroup, false);
+            NotifyHandlers(result.NotifyGroup, false);
         }
 
-        return found;
+        return result.Found;
     }
 
     /// <summary>
@@ -444,6 +335,200 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
     }
 
     /// <summary>
+    /// 采集销毁所需的快照并清空内部状态。
+    /// </summary>
+    /// <returns>
+    /// 成功进入销毁阶段时返回销毁快照；如果其他线程已先完成销毁，则返回 <see langword="null" />。
+    /// </returns>
+    /// <remarks>
+    /// 该方法只负责锁内状态迁移，把外部回调与事件派发留到锁外执行，
+    /// 以避免在生命周期结束阶段持锁调用用户代码。
+    /// </remarks>
+    private DestroySnapshot? TryBeginDestroy()
+    {
+        _lock.EnterWriteLock();
+        try
+        {
+            if (_disposed)
+            {
+                return null;
+            }
+
+            _disposed = true;
+
+            var pausedGroups = CollectPausedGroups();
+            var handlersSnapshot = CreateHandlerSnapshot();
+
+            _pauseStacks.Clear();
+            _tokenMap.Clear();
+            _handlers.Clear();
+
+            _logger.Debug("PauseStackManager destroyed");
+
+            return new DestroySnapshot(pausedGroups, handlersSnapshot);
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
+    }
+
+    /// <summary>
+    /// 在销毁后向所有先前处于暂停状态的分组补发恢复通知。
+    /// </summary>
+    /// <param name="destroySnapshot">销毁阶段采集的分组与处理器快照。</param>
+    private void NotifyDestroyedGroups(DestroySnapshot destroySnapshot)
+    {
+        foreach (var group in destroySnapshot.PausedGroups)
+        {
+            _logger.Debug($"Notifying handlers of destruction: Group={group}, IsPaused=false");
+
+            NotifyHandlersSnapshot(group, false, destroySnapshot.HandlersSnapshot, isDestroying: true);
+            RaiseDestroyStateChanged(group);
+        }
+    }
+
+    /// <summary>
+    /// 在锁内执行令牌移除，并返回锁外通知所需的信息。
+    /// </summary>
+    /// <param name="token">要移除的暂停令牌。</param>
+    /// <returns>包含本次弹出结果和后续通知决策的快照。</returns>
+    /// <remarks>
+    /// Pop 支持移除非栈顶令牌，因此这里会先临时转移栈元素，再恢复原有顺序，
+    /// 只在最后一个暂停请求被移除时触发恢复通知。
+    /// </remarks>
+    private PopResult TryPopEntry(PauseToken token)
+    {
+        _lock.EnterWriteLock();
+        try
+        {
+            ThrowIfDisposed();
+
+            if (!_tokenMap.TryGetValue(token.Id, out var entry))
+            {
+                _logger.Warn($"Attempted to pop invalid/expired token: {token.Id}");
+                return PopResult.NotFound;
+            }
+
+            var stack = _pauseStacks[entry.Group];
+            var wasPaused = stack.Count > 0;
+            var found = RemoveEntryFromStack(stack, token.Id);
+            if (!found)
+            {
+                return PopResult.NotFound;
+            }
+
+            _tokenMap.Remove(token.Id);
+            _logger.Debug($"Pause popped: {entry.Reason} (Group: {entry.Group}, Remaining: {stack.Count})");
+
+            return new PopResult(true, wasPaused && stack.Count == 0, entry.Group);
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
+    }
+
+    /// <summary>
+    /// 从指定暂停栈中移除目标令牌，并保持其他暂停请求的原始顺序。
+    /// </summary>
+    /// <param name="stack">要修改的暂停栈。</param>
+    /// <param name="tokenId">目标令牌标识。</param>
+    /// <returns>如果找到了目标令牌则返回 <see langword="true" />。</returns>
+    private static bool RemoveEntryFromStack(Stack<PauseEntry> stack, Guid tokenId)
+    {
+        var tempStack = new Stack<PauseEntry>();
+        var found = false;
+
+        while (stack.Count > 0)
+        {
+            var current = stack.Pop();
+            if (current.TokenId == tokenId)
+            {
+                found = true;
+                break;
+            }
+
+            tempStack.Push(current);
+        }
+
+        while (tempStack.Count > 0)
+        {
+            stack.Push(tempStack.Pop());
+        }
+
+        return found;
+    }
+
+    /// <summary>
+    /// 收集当前仍处于暂停状态的分组列表。
+    /// </summary>
+    /// <returns>包含所有暂停中的分组的数组。</returns>
+    private PauseGroup[] CollectPausedGroups()
+    {
+        return _pauseStacks
+            .Where(kvp => kvp.Value.Count > 0)
+            .Select(kvp => kvp.Key)
+            .ToArray();
+    }
+
+    /// <summary>
+    /// 按优先级创建处理器快照，确保锁外通知仍保持确定性顺序。
+    /// </summary>
+    /// <returns>已按优先级排序的处理器快照。</returns>
+    private IPauseHandler[] CreateHandlerSnapshot()
+    {
+        return _handlers
+            .OrderBy(handler => handler.Priority)
+            .ToArray();
+    }
+
+    /// <summary>
+    /// 统一使用给定的处理器快照派发暂停状态变化通知。
+    /// </summary>
+    /// <param name="group">发生状态变化的暂停组。</param>
+    /// <param name="isPaused">新的暂停状态。</param>
+    /// <param name="handlersSnapshot">要通知的处理器快照。</param>
+    /// <param name="isDestroying">是否处于销毁补发路径。</param>
+    private void NotifyHandlersSnapshot(
+        PauseGroup group,
+        bool isPaused,
+        IReadOnlyList<IPauseHandler> handlersSnapshot,
+        bool isDestroying)
+    {
+        foreach (var handler in handlersSnapshot)
+        {
+            try
+            {
+                handler.OnPauseStateChanged(group, isPaused);
+            }
+            catch (Exception ex)
+            {
+                var message = isDestroying
+                    ? $"Handler {handler.GetType().Name} failed during destruction"
+                    : $"Handler {handler.GetType().Name} failed";
+                _logger.Error(message, ex);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 在销毁路径中独立保护事件通知，避免订阅方异常中断其他分组的恢复信号。
+    /// </summary>
+    /// <param name="group">需要补发恢复事件的暂停组。</param>
+    private void RaiseDestroyStateChanged(PauseGroup group)
+    {
+        try
+        {
+            RaisePauseStateChanged(group, false);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error($"Event subscriber failed during destruction for group {group}", ex);
+        }
+    }
+
+    /// <summary>
     /// 内部查询暂停状态的方法，不加锁。
     /// </summary>
     /// <param name="group">要查询的暂停组。</param>
@@ -467,7 +552,7 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
         _lock.EnterReadLock();
         try
         {
-            handlersSnapshot = _handlers.OrderBy(h => h.Priority).ToArray();
+            handlersSnapshot = CreateHandlerSnapshot();
         }
         finally
         {
@@ -475,17 +560,7 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
         }
 
         // 在锁外遍历快照并通知处理器
-        foreach (var handler in handlersSnapshot)
-        {
-            try
-            {
-                handler.OnPauseStateChanged(group, isPaused);
-            }
-            catch (Exception ex)
-            {
-                _logger.Error($"Handler {handler.GetType().Name} failed", ex);
-            }
-        }
+        NotifyHandlersSnapshot(group, isPaused, handlersSnapshot, isDestroying: false);
 
         // 触发事件
         RaisePauseStateChanged(group, isPaused);
@@ -507,5 +582,26 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
     /// </summary>
     protected override void OnInit()
     {
+    }
+
+    /// <summary>
+    /// 锁内采集的销毁快照，供锁外补发恢复通知使用。
+    /// </summary>
+    /// <param name="PausedGroups">销毁前仍处于暂停状态的分组。</param>
+    /// <param name="HandlersSnapshot">按优先级排序后的处理器快照。</param>
+    private readonly record struct DestroySnapshot(PauseGroup[] PausedGroups, IPauseHandler[] HandlersSnapshot);
+
+    /// <summary>
+    /// Pop 操作的锁内结果快照。
+    /// </summary>
+    /// <param name="Found">是否成功移除了目标令牌。</param>
+    /// <param name="ShouldNotify">是否需要在锁外发出恢复通知。</param>
+    /// <param name="NotifyGroup">需要通知的暂停组。</param>
+    private readonly record struct PopResult(bool Found, bool ShouldNotify, PauseGroup NotifyGroup)
+    {
+        /// <summary>
+        /// 表示未找到目标令牌时的默认结果。
+        /// </summary>
+        public static PopResult NotFound { get; } = new(false, false, PauseGroup.Global);
     }
 }

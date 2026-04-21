@@ -395,6 +395,35 @@ public class PauseStackManagerTests
     }
 
     /// <summary>
+    /// 验证销毁时会向所有仍暂停的组补发恢复通知。
+    /// </summary>
+    [Test]
+    public async Task DestroyAsync_Should_NotifyResumedGroups()
+    {
+        var resumedGroups = new List<PauseGroup>();
+        var mockHandler = new MockPauseHandler();
+
+        _manager.RegisterHandler(mockHandler);
+        _manager.OnPauseStateChanged += (_, e) =>
+        {
+            if (!e.IsPaused)
+            {
+                resumedGroups.Add(e.Group);
+            }
+        };
+
+        _manager.Push("Global", PauseGroup.Global);
+        _manager.Push("Gameplay", PauseGroup.Gameplay);
+        mockHandler.Reset();
+
+        await _manager.DestroyAsync();
+
+        Assert.That(mockHandler.CallCount, Is.EqualTo(2));
+        Assert.That(mockHandler.LastIsPaused, Is.False);
+        Assert.That(resumedGroups, Is.EquivalentTo(new[] { PauseGroup.Global, PauseGroup.Gameplay }));
+    }
+
+    /// <summary>
     /// 验证并发Push是线程安全的
     /// </summary>
     [Test]
