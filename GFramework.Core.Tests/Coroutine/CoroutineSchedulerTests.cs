@@ -346,6 +346,20 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
+    ///     验证调度器在零初始容量下会在首次启动协程时自动扩容，而不是写入越界。
+    /// </summary>
+    [Test]
+    public void Run_Should_Grow_From_Zero_Initial_Capacity()
+    {
+        var scheduler = new CoroutineScheduler(new TestTimeSource(), initialCapacity: 0);
+
+        var handle = scheduler.Run(CreateYieldingCoroutine(new WaitOneFrame()));
+
+        Assert.That(handle.IsValid, Is.True);
+        Assert.That(scheduler.ActiveCoroutineCount, Is.EqualTo(1));
+    }
+
+    /// <summary>
     ///     验证协程调度器应该使用提供的时间源
     /// </summary>
     [Test]

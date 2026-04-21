@@ -212,10 +212,6 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
         ArgumentNullException.ThrowIfNull(action);
 
         Action<TState>[] listenersSnapshot = Array.Empty<Action<TState>>();
-        IStoreMiddleware<TState>[] middlewaresSnapshot = Array.Empty<IStoreMiddleware<TState>>();
-        IStoreReducerAdapter[] reducersSnapshot = Array.Empty<IStoreReducerAdapter>();
-        IEqualityComparer<TState> stateComparerSnapshot = _stateComparer;
-        StoreDispatchContext<TState>? context = null;
         TState notificationState = default!;
         var hasNotification = false;
         var enteredDispatchScope = false;
@@ -224,49 +220,25 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
         {
             try
             {
-                lock (_lock)
-                {
-                    EnsureNotDispatching();
-                    _isDispatching = true;
-                    enteredDispatchScope = true;
-                    context = new StoreDispatchContext<TState>(action!, _state);
-                    stateComparerSnapshot = _stateComparer;
-                    middlewaresSnapshot = CreateMiddlewareSnapshotCore();
-                    reducersSnapshot = CreateReducerSnapshotCore(context.ActionType);
-                }
+                var context = EnterDispatchScope(
+                    action,
+                    out var middlewaresSnapshot,
+                    out var reducersSnapshot,
+                    out var stateComparerSnapshot);
+
+                enteredDispatchScope = true;
 
                 // middleware 和 reducer 可能包含较重的同步逻辑，因此仅持有 dispatch 串行门，
                 // 不占用状态锁，让读取、订阅和注册操作只在需要访问共享状态时短暂阻塞。
                 ExecuteDispatchPipeline(context, middlewaresSnapshot, reducersSnapshot, stateComparerSnapshot);
 
-                lock (_lock)
-                {
-                    _lastActionType = context.ActionType;
-                    _lastDispatchRecord = new StoreDispatchRecord<TState>(
-                        context.Action,
-                        context.PreviousState,
-                        context.NextState,
-                        context.HasStateChanged,
-                        context.DispatchedAt);
-
-                    if (!context.HasStateChanged)
-                    {
-                        return;
-                    }
-
-                    ApplyCommittedStateChange(context.NextState, context.DispatchedAt, context.Action);
-                    listenersSnapshot = CaptureListenersOrDeferNotification(context.NextState, out notificationState);
-                    hasNotification = listenersSnapshot.Length > 0;
-                }
+                hasNotification = TryCommitDispatchResult(context, out listenersSnapshot, out notificationState);
             }
             finally
             {
                 if (enteredDispatchScope)
                 {
-                    lock (_lock)
-                    {
-                        _isDispatching = false;
-                    }
+                    ExitDispatchScope();
                 }
             }
         }
@@ -832,6 +804,99 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
     }
 
     /// <summary>
+    ///     进入一次新的 dispatch 作用域，并在状态锁内抓取本次执行所需的上下文快照。
+    ///     该方法只做最短路径的共享状态访问，把 middleware/reducer 的实际执行留到锁外完成。
+    /// </summary>
+    /// <typeparam name="TAction">action 的具体类型。</typeparam>
+    /// <param name="action">本次分发的 action。</param>
+    /// <param name="middlewaresSnapshot">返回本次 dispatch 使用的中间件快照。</param>
+    /// <param name="reducersSnapshot">返回本次 dispatch 使用的 reducer 快照。</param>
+    /// <param name="stateComparerSnapshot">返回本次 dispatch 使用的状态比较器快照。</param>
+    /// <returns>已初始化的 dispatch 上下文。</returns>
+    private StoreDispatchContext<TState> EnterDispatchScope<TAction>(
+        TAction action,
+        out IStoreMiddleware<TState>[] middlewaresSnapshot,
+        out IStoreReducerAdapter[] reducersSnapshot,
+        out IEqualityComparer<TState> stateComparerSnapshot)
+    {
+        Debug.Assert(
+            Monitor.IsEntered(_dispatchGate),
+            "Caller must hold _dispatchGate before entering a dispatch scope.");
+
+        lock (_lock)
+        {
+            EnsureNotDispatching();
+            _isDispatching = true;
+
+            try
+            {
+                var context = new StoreDispatchContext<TState>(action!, _state);
+                stateComparerSnapshot = _stateComparer;
+                middlewaresSnapshot = CreateMiddlewareSnapshotCore();
+                reducersSnapshot = CreateReducerSnapshotCore(context.ActionType);
+                return context;
+            }
+            catch
+            {
+                // 进入 dispatch 标记早于快照构建；如果这里抛异常，必须同步回滚标记，避免后续调用被永久判定为嵌套分发。
+                _isDispatching = false;
+                throw;
+            }
+        }
+    }
+
+    /// <summary>
+    ///     在 dispatch 管线执行完成后提交诊断信息和状态变更。
+    ///     状态与订阅集合的更新统一在该阶段完成，从而保证 dispatch 与 time-travel 共享同一提交流程。
+    /// </summary>
+    /// <param name="context">刚完成 middleware/reducer 管线的 dispatch 上下文。</param>
+    /// <param name="listenersSnapshot">若需要立即通知，则返回锁外回放的监听器快照。</param>
+    /// <param name="notificationState">若需要立即通知，则返回要通知的状态。</param>
+    /// <returns>本次 dispatch 是否需要在锁外执行监听器通知。</returns>
+    private bool TryCommitDispatchResult(
+        StoreDispatchContext<TState> context,
+        out Action<TState>[] listenersSnapshot,
+        out TState notificationState)
+    {
+        Debug.Assert(
+            Monitor.IsEntered(_dispatchGate),
+            "Caller must hold _dispatchGate before committing a dispatch result.");
+
+        lock (_lock)
+        {
+            _lastActionType = context.ActionType;
+            _lastDispatchRecord = new StoreDispatchRecord<TState>(
+                context.Action,
+                context.PreviousState,
+                context.NextState,
+                context.HasStateChanged,
+                context.DispatchedAt);
+
+            if (!context.HasStateChanged)
+            {
+                listenersSnapshot = Array.Empty<Action<TState>>();
+                notificationState = default!;
+                return false;
+            }
+
+            ApplyCommittedStateChange(context.NextState, context.DispatchedAt, context.Action);
+            listenersSnapshot = CaptureListenersOrDeferNotification(context.NextState, out notificationState);
+            return listenersSnapshot.Length > 0;
+        }
+    }
+
+    /// <summary>
+    ///     退出当前 dispatch 作用域，允许后续 dispatch 或历史控制继续进入。
+    /// </summary>
+    private void ExitDispatchScope()
+    {
+        lock (_lock)
+        {
+            _isDispatching = false;
+        }
+    }
+
+    /// <summary>
     ///     确保当前 Store 没有发生重入分发或在 dispatch 中执行历史控制。
     /// </summary>
     /// <exception cref="InvalidOperationException">当检测到重入分发时抛出。</exception>
@@ -949,20 +1014,65 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
 
         if (_actionMatchingMode == StoreActionMatchingMode.ExactTypeOnly)
         {
-            if (!_reducers.TryGetValue(actionType, out var exactReducers) || exactReducers.Count == 0)
-            {
-                return Array.Empty<IStoreReducerAdapter>();
-            }
-
-            var exactSnapshot = new IStoreReducerAdapter[exactReducers.Count];
-            for (var i = 0; i < exactReducers.Count; i++)
-            {
-                exactSnapshot[i] = exactReducers[i].Adapter;
-            }
-
-            return exactSnapshot;
+            return CreateExactReducerSnapshot(actionType);
         }
 
+        return CreateAssignableReducerSnapshot(actionType);
+    }
+
+    /// <summary>
+    ///     为精确类型匹配模式创建 reducer 快照。
+    /// </summary>
+    /// <param name="actionType">当前 action 的运行时类型。</param>
+    /// <returns>精确匹配到的 reducer 快照；若未注册则返回空数组。</returns>
+    private IStoreReducerAdapter[] CreateExactReducerSnapshot(Type actionType)
+    {
+        if (!_reducers.TryGetValue(actionType, out var exactReducers) || exactReducers.Count == 0)
+        {
+            return Array.Empty<IStoreReducerAdapter>();
+        }
+
+        var exactSnapshot = new IStoreReducerAdapter[exactReducers.Count];
+        for (var i = 0; i < exactReducers.Count; i++)
+        {
+            exactSnapshot[i] = exactReducers[i].Adapter;
+        }
+
+        return exactSnapshot;
+    }
+
+    /// <summary>
+    ///     为多态匹配模式创建 reducer 快照。
+    ///     该路径会收集所有可赋值的注册桶，并按“精确类型 -> 基类距离 -> 接口 -> 注册顺序”的稳定规则排序。
+    /// </summary>
+    /// <param name="actionType">当前 action 的运行时类型。</param>
+    /// <returns>多态模式下的 reducer 快照；若未注册则返回空数组。</returns>
+    private IStoreReducerAdapter[] CreateAssignableReducerSnapshot(Type actionType)
+    {
+        var matches = CollectReducerMatches(actionType);
+        if (matches is null || matches.Count == 0)
+        {
+            return Array.Empty<IStoreReducerAdapter>();
+        }
+
+        matches.Sort(CompareReducerMatch);
+
+        var snapshot = new IStoreReducerAdapter[matches.Count];
+        for (var i = 0; i < matches.Count; i++)
+        {
+            snapshot[i] = matches[i].Adapter;
+        }
+
+        return snapshot;
+    }
+
+    /// <summary>
+    ///     收集当前 action 类型可命中的 reducer 注册，并附带稳定排序所需的匹配元数据。
+    /// </summary>
+    /// <param name="actionType">当前 action 的运行时类型。</param>
+    /// <returns>匹配结果列表；若没有任何匹配则返回 <see langword="null"/>。</returns>
+    private List<ReducerMatch>? CollectReducerMatches(Type actionType)
+    {
         List<ReducerMatch>? matches = null;
 
         foreach (var reducerBucket in _reducers)
@@ -984,35 +1094,30 @@ public sealed class Store<TState> : IStore<TState>, IStoreDiagnostics<TState>
             }
         }
 
-        if (matches is null || matches.Count == 0)
+        return matches;
+    }
+
+    /// <summary>
+    ///     比较两个 reducer 匹配结果的优先级，保证多态匹配下的执行顺序稳定可预测。
+    /// </summary>
+    /// <param name="left">左侧匹配结果。</param>
+    /// <param name="right">右侧匹配结果。</param>
+    /// <returns>排序比较结果。</returns>
+    private static int CompareReducerMatch(ReducerMatch left, ReducerMatch right)
+    {
+        var categoryComparison = left.MatchCategory.CompareTo(right.MatchCategory);
+        if (categoryComparison != 0)
         {
-            return Array.Empty<IStoreReducerAdapter>();
+            return categoryComparison;
         }
 
-        matches.Sort(static (left, right) =>
+        var distanceComparison = left.InheritanceDistance.CompareTo(right.InheritanceDistance);
+        if (distanceComparison != 0)
         {
-            var categoryComparison = left.MatchCategory.CompareTo(right.MatchCategory);
-            if (categoryComparison != 0)
-            {
-                return categoryComparison;
-            }
-
-            var distanceComparison = left.InheritanceDistance.CompareTo(right.InheritanceDistance);
-            if (distanceComparison != 0)
-            {
-                return distanceComparison;
-            }
-
-            return left.Sequence.CompareTo(right.Sequence);
-        });
-
-        var snapshot = new IStoreReducerAdapter[matches.Count];
-        for (var i = 0; i < matches.Count; i++)
-        {
-            snapshot[i] = matches[i].Adapter;
+            return distanceComparison;
         }
 
-        return snapshot;
+        return left.Sequence.CompareTo(right.Sequence);
     }
 
     /// <summary>

@@ -16,7 +16,7 @@ namespace GFramework.Core.Coroutine;
 /// </remarks>
 /// <param name="timeSource">缩放时间源，提供调度器默认推进所使用的时间数据。</param>
 /// <param name="instanceId">协程实例编号，用于生成带宿主前缀的句柄。</param>
-/// <param name="initialCapacity">调度器初始槽位容量。</param>
+/// <param name="initialCapacity">调度器初始槽位容量；允许为 0，此时首次启动协程会按需自动扩容。</param>
 /// <param name="enableStatistics">是否启用协程统计功能。</param>
 /// <param name="realtimeTimeSource">
 ///     非缩放时间源。
@@ -211,58 +211,10 @@ public sealed class CoroutineScheduler(
             return default;
         }
 
-        if (_nextSlot >= _slots.Length)
-        {
-            Expand();
-        }
-
         var handle = new CoroutineHandle(instanceId);
-        var slotIndex = _nextSlot++;
-
-        var slot = new CoroutineSlot
-        {
-            CancellationToken = cancellationToken,
-            Enumerator = coroutine,
-            State = CoroutineState.Running,
-            Handle = handle,
-            Priority = priority
-        };
-
-        if (cancellationToken.CanBeCanceled)
-        {
-            // 取消回调可能在任意线程触发，因此这里只做排队，真正清理由 Update 主线程完成。
-            slot.CancellationRegistration = cancellationToken.Register(() => _pendingKills.Enqueue(handle));
-        }
-
-        _slots[slotIndex] = slot;
-        _metadata[handle] = new CoroutineMetadata
-        {
-            ExecutionStage = executionStage,
-            Group = group,
-            Priority = priority,
-            SlotIndex = slotIndex,
-            StartTime = _timeSource.CurrentTime * 1000,
-            State = CoroutineState.Running,
-            Tag = tag
-        };
-
-        _completionSources[handle] =
-            new TaskCompletionSource<CoroutineCompletionStatus>(TaskCreationOptions.RunContinuationsAsynchronously);
-        _completionStatuses.Remove(handle);
-
-        if (!string.IsNullOrEmpty(tag))
-        {
-            AddTag(tag, handle);
-        }
-
-        if (!string.IsNullOrEmpty(group))
-        {
-            AddGroup(group, handle);
-        }
-
-        _statistics?.RecordStart(priority, tag);
-        ActiveCoroutineCount++;
-
+        var slotIndex = AllocateSlotIndex();
+        var slot = CreateRunningSlot(handle, coroutine, priority, cancellationToken);
+        RegisterStartedCoroutine(handle, slotIndex, slot, priority, tag, group);
         Prewarm(slotIndex);
         UpdateStatisticsSnapshot();
 
@@ -662,70 +614,14 @@ public sealed class CoroutineScheduler(
         CoroutineCompletionStatus completionStatus,
         Exception? exception = null)
     {
-        var slot = _slots[slotIndex];
-        if (slot == null)
+        if (!TryGetFinalizableCoroutine(slotIndex, out var slot, out var handle))
         {
             return;
         }
 
-        var handle = slot.Handle;
-        if (!handle.IsValid)
-        {
-            return;
-        }
-
-        if (_metadata.TryGetValue(handle, out var meta))
-        {
-            if (meta.State == CoroutineState.Paused && _pausedCount > 0)
-            {
-                _pausedCount--;
-            }
-
-            var executionTime = _timeSource.CurrentTime * 1000 - meta.StartTime;
-            switch (completionStatus)
-            {
-                case CoroutineCompletionStatus.Completed:
-                    meta.State = CoroutineState.Completed;
-                    _statistics?.RecordComplete(executionTime, meta.Priority, meta.Tag);
-                    break;
-
-                case CoroutineCompletionStatus.Faulted:
-                    meta.State = CoroutineState.Completed;
-                    _statistics?.RecordFailure(meta.Priority, meta.Tag);
-                    break;
-
-                case CoroutineCompletionStatus.Cancelled:
-                    meta.State = CoroutineState.Cancelled;
-                    break;
-
-                default:
-                    throw new ArgumentOutOfRangeException(
-                        nameof(completionStatus),
-                        completionStatus,
-                        "Unsupported coroutine completion status.");
-            }
-        }
-
-        DisposeSlotResources(slot);
-
-        _slots[slotIndex] = null;
-        if (ActiveCoroutineCount > 0)
-        {
-            ActiveCoroutineCount--;
-        }
-
-        RemoveTag(handle);
-        RemoveGroup(handle);
-        _metadata.Remove(handle);
-
-        WakeWaiters(handle);
-
-        if (_completionSources.Remove(handle, out var source))
-        {
-            source.TrySetResult(completionStatus);
-        }
-
-        RecordCompletionStatus(handle, completionStatus);
+        UpdateCompletionMetadata(handle, completionStatus);
+        ReleaseCompletedCoroutine(slotIndex, slot, handle);
+        CompleteCoroutineLifecycle(handle, completionStatus);
         OnCoroutineFinished?.Invoke(handle, completionStatus, exception);
     }
 
@@ -800,6 +696,139 @@ public sealed class CoroutineScheduler(
     }
 
     /// <summary>
+    ///     为新协程分配槽位索引，并在需要时扩容槽位数组。
+    /// </summary>
+    /// <returns>可写入的新槽位索引。</returns>
+    private int AllocateSlotIndex()
+    {
+        if (_nextSlot >= _slots.Length)
+        {
+            Expand();
+        }
+
+        return _nextSlot++;
+    }
+
+    /// <summary>
+    ///     创建处于运行态的协程槽位，并在需要时挂接跨线程取消回调。
+    /// </summary>
+    /// <param name="handle">新协程句柄。</param>
+    /// <param name="coroutine">协程枚举器。</param>
+    /// <param name="priority">协程优先级。</param>
+    /// <param name="cancellationToken">外部取消令牌。</param>
+    /// <returns>已初始化的协程槽位。</returns>
+    private CoroutineSlot CreateRunningSlot(
+        CoroutineHandle handle,
+        IEnumerator<IYieldInstruction> coroutine,
+        CoroutinePriority priority,
+        CancellationToken cancellationToken)
+    {
+        var slot = new CoroutineSlot
+        {
+            CancellationToken = cancellationToken,
+            Enumerator = coroutine,
+            State = CoroutineState.Running,
+            Handle = handle,
+            Priority = priority
+        };
+
+        RegisterCancellationCallback(slot, handle, cancellationToken);
+        return slot;
+    }
+
+    /// <summary>
+    ///     为支持取消的协程注册待终止排队回调。
+    /// </summary>
+    /// <param name="slot">目标协程槽位。</param>
+    /// <param name="handle">协程句柄。</param>
+    /// <param name="cancellationToken">外部取消令牌。</param>
+    private void RegisterCancellationCallback(
+        CoroutineSlot slot,
+        CoroutineHandle handle,
+        CancellationToken cancellationToken)
+    {
+        if (!cancellationToken.CanBeCanceled)
+        {
+            return;
+        }
+
+        // 取消回调可能在任意线程触发，因此这里只做排队，真正清理由 Update 主线程完成。
+        slot.CancellationRegistration = cancellationToken.Register(() => _pendingKills.Enqueue(handle));
+    }
+
+    /// <summary>
+    ///     将新协程写入调度器的槽位、元数据、标签分组和完成状态跟踪结构。
+    /// </summary>
+    /// <param name="handle">协程句柄。</param>
+    /// <param name="slotIndex">槽位索引。</param>
+    /// <param name="slot">已初始化的协程槽位。</param>
+    /// <param name="priority">协程优先级。</param>
+    /// <param name="tag">可选标签。</param>
+    /// <param name="group">可选分组。</param>
+    private void RegisterStartedCoroutine(
+        CoroutineHandle handle,
+        int slotIndex,
+        CoroutineSlot slot,
+        CoroutinePriority priority,
+        string? tag,
+        string? group)
+    {
+        _slots[slotIndex] = slot;
+        _metadata[handle] = CreateCoroutineMetadata(slotIndex, priority, tag, group);
+        ResetCompletionTracking(handle);
+
+        if (!string.IsNullOrEmpty(tag))
+        {
+            AddTag(tag, handle);
+        }
+
+        if (!string.IsNullOrEmpty(group))
+        {
+            AddGroup(group, handle);
+        }
+
+        _statistics?.RecordStart(priority, tag);
+        ActiveCoroutineCount++;
+    }
+
+    /// <summary>
+    ///     创建新协程的初始元数据。
+    /// </summary>
+    /// <param name="slotIndex">槽位索引。</param>
+    /// <param name="priority">协程优先级。</param>
+    /// <param name="tag">可选标签。</param>
+    /// <param name="group">可选分组。</param>
+    /// <returns>与新槽位对应的元数据对象。</returns>
+    private CoroutineMetadata CreateCoroutineMetadata(
+        int slotIndex,
+        CoroutinePriority priority,
+        string? tag,
+        string? group)
+    {
+        return new CoroutineMetadata
+        {
+            ExecutionStage = executionStage,
+            Group = group,
+            Priority = priority,
+            SlotIndex = slotIndex,
+            StartTime = _timeSource.CurrentTime * 1000,
+            State = CoroutineState.Running,
+            Tag = tag
+        };
+    }
+
+    /// <summary>
+    ///     重置协程完成跟踪，使复用句柄不会携带上一轮完成结果。
+    /// </summary>
+    /// <param name="handle">协程句柄。</param>
+    private void ResetCompletionTracking(CoroutineHandle handle)
+    {
+        _completionSources[handle] =
+            new TaskCompletionSource<CoroutineCompletionStatus>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _completionStatuses.Remove(handle);
+    }
+
+    /// <summary>
     ///     释放单个槽位持有的资源。
     /// </summary>
     /// <param name="slot">待释放的槽位。</param>
@@ -822,6 +851,125 @@ public sealed class CoroutineScheduler(
         }
 
         slot.Waiting = null;
+    }
+
+    /// <summary>
+    ///     读取可被完成处理的协程槽位与句柄。
+    ///     当槽位已空或句柄已失效时，说明该协程已经被其他路径清理，无需重复执行结束逻辑。
+    /// </summary>
+    /// <param name="slotIndex">槽位索引。</param>
+    /// <param name="slot">若成功则返回槽位。</param>
+    /// <param name="handle">若成功则返回句柄。</param>
+    /// <returns>当存在可完成的协程时返回 <see langword="true" />。</returns>
+    private bool TryGetFinalizableCoroutine(int slotIndex, out CoroutineSlot slot, out CoroutineHandle handle)
+    {
+        var candidate = _slots[slotIndex];
+        if (candidate == null)
+        {
+            slot = null!;
+            handle = default;
+            return false;
+        }
+
+        handle = candidate.Handle;
+        if (!handle.IsValid)
+        {
+            slot = null!;
+            return false;
+        }
+
+        slot = candidate;
+        return true;
+    }
+
+    /// <summary>
+    ///     根据最终状态更新协程元数据与统计信息。
+    /// </summary>
+    /// <param name="handle">协程句柄。</param>
+    /// <param name="completionStatus">最终结果。</param>
+    private void UpdateCompletionMetadata(CoroutineHandle handle, CoroutineCompletionStatus completionStatus)
+    {
+        if (!_metadata.TryGetValue(handle, out var meta))
+        {
+            return;
+        }
+
+        if (meta.State == CoroutineState.Paused && _pausedCount > 0)
+        {
+            _pausedCount--;
+        }
+
+        ApplyCompletionMetadata(meta, completionStatus);
+    }
+
+    /// <summary>
+    ///     将最终结果映射到元数据状态和统计记录。
+    /// </summary>
+    /// <param name="meta">协程元数据。</param>
+    /// <param name="completionStatus">最终结果。</param>
+    private void ApplyCompletionMetadata(CoroutineMetadata meta, CoroutineCompletionStatus completionStatus)
+    {
+        var executionTime = _timeSource.CurrentTime * 1000 - meta.StartTime;
+        switch (completionStatus)
+        {
+            case CoroutineCompletionStatus.Completed:
+                meta.State = CoroutineState.Completed;
+                _statistics?.RecordComplete(executionTime, meta.Priority, meta.Tag);
+                break;
+
+            case CoroutineCompletionStatus.Faulted:
+                meta.State = CoroutineState.Completed;
+                _statistics?.RecordFailure(meta.Priority, meta.Tag);
+                break;
+
+            case CoroutineCompletionStatus.Cancelled:
+                meta.State = CoroutineState.Cancelled;
+                break;
+
+            default:
+                throw new ArgumentOutOfRangeException(
+                    nameof(completionStatus),
+                    completionStatus,
+                    "Unsupported coroutine completion status.");
+        }
+    }
+
+    /// <summary>
+    ///     释放已结束协程占用的槽位和索引结构。
+    /// </summary>
+    /// <param name="slotIndex">槽位索引。</param>
+    /// <param name="slot">已结束的协程槽位。</param>
+    /// <param name="handle">协程句柄。</param>
+    private void ReleaseCompletedCoroutine(int slotIndex, CoroutineSlot slot, CoroutineHandle handle)
+    {
+        DisposeSlotResources(slot);
+
+        _slots[slotIndex] = null;
+        if (ActiveCoroutineCount > 0)
+        {
+            ActiveCoroutineCount--;
+        }
+
+        RemoveTag(handle);
+        RemoveGroup(handle);
+        _metadata.Remove(handle);
+    }
+
+    /// <summary>
+    ///     完成协程的等待者唤醒、任务结果和完成历史记录。
+    /// </summary>
+    /// <param name="handle">协程句柄。</param>
+    /// <param name="completionStatus">最终结果。</param>
+    private void CompleteCoroutineLifecycle(CoroutineHandle handle, CoroutineCompletionStatus completionStatus)
+    {
+        WakeWaiters(handle);
+
+        if (_completionSources.Remove(handle, out var source))
+        {
+            source.TrySetResult(completionStatus);
+        }
+
+        RecordCompletionStatus(handle, completionStatus);
     }
 
     /// <summary>
@@ -888,7 +1036,9 @@ public sealed class CoroutineScheduler(
     /// </summary>
     private void Expand()
     {
-        Array.Resize(ref _slots, _slots.Length * 2);
+        // 允许构造器以 0 容量启动，用于极简场景或测试；首次分配时至少扩到 1，避免后续写槽位越界。
+        var expandedLength = Math.Max(1, _slots.Length * 2);
+        Array.Resize(ref _slots, expandedLength);
     }
 
     /// <summary>

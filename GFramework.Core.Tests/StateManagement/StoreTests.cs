@@ -1,3 +1,6 @@
+using System.Collections;
+using System.Reflection;
+
 namespace GFramework.Core.Tests.StateManagement;
 
 /// <summary>
@@ -385,6 +388,32 @@ public class StoreTests
     }
 
     /// <summary>
+    ///     测试当 dispatch 作用域在快照阶段抛出异常时，Store 不会残留“正在分发”标记而锁死后续调用。
+    /// </summary>
+    [Test]
+    public void Dispatch_Should_Reset_Dispatching_Flag_When_Snapshot_Creation_Throws()
+    {
+        var store = new Store<CounterState>(
+            new CounterState(0, "Player"),
+            actionMatchingMode: StoreActionMatchingMode.IncludeAssignableTypes);
+
+        store.RegisterReducer<IncrementAction>((state, action) => state with { Count = state.Count + action.Amount });
+
+        var reducers = GetReducersDictionary(store);
+        var throwingActionType = new ThrowingAssignableType(typeof(IncrementAction), "simulated reducer snapshot failure");
+        reducers.Add(throwingActionType, CreateEmptyReducerRegistrationList(reducers));
+
+        Assert.That(
+            () => store.Dispatch(new IncrementAction(1)),
+            Throws.InvalidOperationException.With.Message.EqualTo("simulated reducer snapshot failure"));
+
+        reducers.Remove(throwingActionType);
+
+        Assert.That(() => store.Dispatch(new IncrementAction(1)), Throws.Nothing);
+        Assert.That(store.State.Count, Is.EqualTo(1));
+    }
+
+    /// <summary>
     ///     测试未命中的 action 仍会记录诊断信息，但不会改变状态。
     /// </summary>
     [Test]
@@ -682,6 +711,32 @@ public class StoreTests
     }
 
     /// <summary>
+    ///     读取 Store 内部 reducer 字典，以便在异常安全回归测试中注入受控的异常源。
+    /// </summary>
+    /// <param name="store">要读取的 Store 实例。</param>
+    /// <returns>Store 当前持有的 reducer 字典引用。</returns>
+    private static IDictionary GetReducersDictionary(Store<CounterState> store)
+    {
+        var reducersField = typeof(Store<CounterState>).GetField("_reducers", BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("Unable to locate Store reducer dictionary field.");
+
+        return (IDictionary)(reducersField.GetValue(store)
+            ?? throw new InvalidOperationException("Store reducer dictionary should not be null."));
+    }
+
+    /// <summary>
+    ///     创建与 Store 私有 reducer 注册列表兼容的空列表实例。
+    /// </summary>
+    /// <param name="reducers">现有 reducer 字典，用于推断私有列表元素类型。</param>
+    /// <returns>可写入私有 reducer 字典的空列表。</returns>
+    private static object CreateEmptyReducerRegistrationList(IDictionary reducers)
+    {
+        var valueType = reducers.GetType().GenericTypeArguments[1];
+        return Activator.CreateInstance(valueType)
+            ?? throw new InvalidOperationException("Unable to create an empty reducer registration list.");
+    }
+
+    /// <summary>
     ///     用于测试的计数器状态。
     ///     使用 record 保持逻辑不可变语义，便于 Store 基于状态快照进行比较和断言。
     /// </summary>
@@ -874,6 +929,22 @@ public class StoreTests
             }
 
             next();
+        }
+    }
+
+    /// <summary>
+    ///     用于在回归测试中稳定模拟 <see cref="Type.IsAssignableFrom(Type)"/> 失败的代理类型。
+    /// </summary>
+    private sealed class ThrowingAssignableType(Type delegatingType, string message) : TypeDelegator(delegatingType)
+    {
+        /// <summary>
+        ///     在 Store 创建 reducer 快照时抛出受控异常，验证 dispatch 作用域能够正确回滚。
+        /// </summary>
+        /// <param name="typeInfo">待比较的 action 运行时类型。</param>
+        /// <returns>此实现不会正常返回。</returns>
+        public override bool IsAssignableFrom(Type? typeInfo)
+        {
+            throw new InvalidOperationException(message);
         }
     }
 }
