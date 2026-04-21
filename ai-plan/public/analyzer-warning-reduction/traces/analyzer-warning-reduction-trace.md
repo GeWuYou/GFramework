@@ -1,5 +1,35 @@
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-21 — RP-007
+
+### 阶段：CoroutineScheduler `MA0051` 收口（RP-007）
+
+- 依据 active tracking 中“继续只选一个 `GFramework.Core` 结构性切入点”的约束，本轮选择
+  `GFramework.Core/Coroutine/CoroutineScheduler.cs`，因为剩余两个 `MA0051` 都集中在协程启动与完成清理路径，且已有
+  `CoroutineSchedulerTests`、`CoroutineSchedulerAdvancedTests` 覆盖句柄创建、取消、完成状态、标签分组和等待语义
+- 将 `Run` 拆分为：
+  - `AllocateSlotIndex`
+  - `CreateRunningSlot`
+  - `RegisterCancellationCallback`
+  - `RegisterStartedCoroutine`
+  - `CreateCoroutineMetadata`
+  - `ResetCompletionTracking`
+- 将 `FinalizeCoroutine` 拆分为：
+  - `TryGetFinalizableCoroutine`
+  - `UpdateCompletionMetadata`
+  - `ApplyCompletionMetadata`
+  - `ReleaseCompletedCoroutine`
+  - `CompleteCoroutineLifecycle`
+- 保持取消回调只做跨线程入队、`Prewarm` 时机、统计记录文本、`RemoveTag` / `RemoveGroup` / `WakeWaiters` 顺序以及
+  `OnCoroutineFinished` 的同步触发时机不变，只收缩主方法长度并补齐辅助方法意图注释
+- 验证通过：
+  - `dotnet build GFramework.Core/GFramework.Core.csproj -c Release -t:Rebuild --no-restore -p:UseSharedCompilation=false -p:TargetFramework=net8.0 -p:RestoreFallbackFolders="" -p:RestorePackagesPath=<linux-nuget-cache> -nologo -clp:"Summary;WarningsOnly"`
+    - 结果：`23 Warning(s)`，`0 Error(s)`；`CoroutineScheduler.cs` 已不再出现在 `MA0051` 列表
+  - `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --filter FullyQualifiedName~CoroutineScheduler -p:RestoreFallbackFolders="" -p:RestorePackagesPath=<linux-nuget-cache> -nologo`
+    - 结果：`34 Passed`，`0 Failed`
+- 当前 `MA0051` 主线已经在本主题下完成；下一步若继续，应先重新评估剩余 `MA0048`、`MA0046`、`MA0002`、`MA0016` 的
+  收敛价值与改动风险，再决定是否开启下一轮 warning family
+
 ## 2026-04-21 — RP-006
 
 ### 阶段：Store `MA0051` 收口（RP-006）
