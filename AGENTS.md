@@ -32,6 +32,9 @@ All AI agents and contributors must follow these rules when writing, reviewing, 
   `更新`、`补充`、`重构`.
 - Each commit body bullet MUST describe one independent change point; avoid repeated or redundant descriptions.
 - Keep technical terms in English when they are established project terms, such as `API`、`Model`、`System`.
+- When composing a multi-line commit body from shell commands, contributors MUST NOT rely on Bash `$"..."` quoting for
+  newline escapes, because it passes literal `\n` sequences to Git. Use multiple `-m` flags or ANSI-C `$'...'`
+  quoting so the commit body contains real line breaks.
 - If a new task starts while the current branch is `main`, contributors MUST first try to update local `main` from the
   remote, then create and switch to a dedicated branch before making substantive changes.
 - The branch naming rule for a new task branch is `<type>/<topic-or-scope>`, where `<type>` should match the intended
