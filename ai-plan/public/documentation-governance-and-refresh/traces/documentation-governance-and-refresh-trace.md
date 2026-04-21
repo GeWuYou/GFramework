@@ -52,3 +52,13 @@
 1. 审核 `docs/zh-CN/core/architecture.md`、`context.md`、`lifecycle.md`、`command.md`、`query.md`、`cqrs.md`
 2. 记录每页的失真点、真实 API 名称与应保留的最小示例
 3. 完成一轮专题页重写后再次执行 `cd docs && bun run build`
+
+### 补充：2026-04-21 内容引用迁移
+
+- 按当前文档治理主题，继续清理活跃规范与面向读者的内容入口中的旧参考仓库命名
+- `AGENTS.md` 已把“secondary evidence source”从特定项目名收口为 `ai-libs/` 下的已验证只读参考实现
+- `GFramework.Game/README.md`、`GFramework.Game.Abstractions/README.md` 与
+  `docs/zh-CN/game/index.md` 已同步改为 `ai-libs/` 参考表述，并去掉特定参考项目名称与项目内类型名线索
+- `documentation-governance-and-refresh` active tracking 已同步把风险缓解中的参考来源更新为
+  `ai-libs/` 下已验证参考实现
+- 下一次专题页重写时，继续沿用同一表述，不再把特定参考项目名写入新的活跃文档入口

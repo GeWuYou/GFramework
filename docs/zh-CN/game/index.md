@@ -100,9 +100,9 @@ IStorage storage = new FileStorage("GameData", serializer);
 
 ## 与真实接法的关系
 
-这个栏目以源码、`*.csproj`、模块 `README.md` 与 `CoreGrid` 中已验证的接法为准。
+这个栏目以源码、`*.csproj`、模块 `README.md` 与 `ai-libs/` 下已验证的参考接法为准。
 
-例如当前仓库与 `CoreGrid` 的共同事实包括：
+例如当前文档应优先和以下已验证事实保持一致：
 
 - 配置系统采用 `YAML + JSON Schema + Source Generator`
 - 设置持久化通常通过 `UnifiedSettingsDataRepository`

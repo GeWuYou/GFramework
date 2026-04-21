@@ -269,8 +269,8 @@ bash scripts/validate-csharp-naming.sh
 
 - Treat source code, `*.csproj`, tests, generated snapshots, and packaging metadata as the primary evidence for
   documentation updates.
-- Treat `CoreGrid` as a secondary evidence source for real project adoption patterns, directory layouts, and end-to-end
-  usage examples.
+- Treat verified reference implementations under `ai-libs/` as a secondary evidence source for real project adoption
+  patterns, directory layouts, and end-to-end usage examples.
 - Treat existing `README.md` files and `docs/zh-CN/` pages as editable outputs, not authoritative truth.
 - If existing documentation conflicts with code or tests, update the documentation to match the implementation instead
   of preserving outdated wording.

@@ -31,7 +31,8 @@
 - 引擎适配包或项目内适配层
   - 本包提供的是“引擎无关”的核心逻辑和基类。
   - 真正和 Godot、Unity、MonoGame 等引擎对象打交道的工厂、根节点、资源注册表，通常在相邻引擎包或游戏项目内实现。
-  - CoreGrid 的真实接法就是这样：配置文件 IO 由 `GFramework.Godot.Config` 适配，UI/Scene factory 与 root 由项目自己提供。
+  - 仓库内 `ai-libs/` 下的只读参考实现通常也是这样接入：配置文件 IO 由 `GFramework.Godot.Config` 适配，
+    UI / Scene factory 与 root 由项目自己提供。
 
 ## 子系统地图
 
@@ -72,7 +73,7 @@
 - `SaveConfiguration`
   - 槽位目录、文件名、前缀等约定
 
-CoreGrid 的真实用法：
+`ai-libs/` 下已验证参考实现的常见接法：
 
 - 设置持久化使用 `UnifiedSettingsDataRepository`
 - 存档使用 `SaveRepository<GameSaveData>`
@@ -95,7 +96,7 @@ CoreGrid 的真实用法：
 - `Setting/Events/*`
   - 设置初始化、应用、保存、重置相关事件
 
-CoreGrid 的真实用法：
+`ai-libs/` 下已验证参考实现的常见接法：
 
 - 在模型模块中创建 `SettingsModel<ISettingsDataRepository>`
 - 注册多个 applicator
@@ -148,7 +149,7 @@ CoreGrid 的真实用法：
 - `Scene/Handler/*`、`UI/Handler/*`
   - 默认转换处理器基类与日志处理器
 
-CoreGrid 的真实用法：
+`ai-libs/` 下已验证参考实现的常见接法：
 
 - 项目自定义 `SceneRouter : SceneRouterBase`
 - 项目自定义 `UiRouter : UiRouterBase`
@@ -253,7 +254,7 @@ await settingsSystem.ApplyAll();
 await settingsSystem.SaveAll();
 ```
 
-CoreGrid 目前就是按这个思路接入，只是底层存储换成了 Godot 适配实现。
+`ai-libs/` 下的只读参考实现目前也是按这个思路接入，只是底层存储换成了 Godot 适配实现。
 
 ### 3. 接入静态 YAML 配置
 
@@ -311,18 +312,18 @@ public sealed class MyUiRouter : UiRouterBase
 
 这类 router 适合作为你的项目层或引擎适配层代码，而不是直接修改本包。
 
-## CoreGrid 里的真实用法线索
+## `ai-libs/` 里的参考接入线索
 
-当前仓库内，CoreGrid 对本包的使用大致分成三层：
+当前仓库内的只读参考实现，对本包的使用大致分成三层：
 
 - 配置
-  - `CoreGridConfigHost` 使用生成表元数据与 YAML loader 完成配置注册
+  - 项目级配置宿主类型使用生成表元数据与 YAML loader 完成配置注册
 - 设置与存档
-  - `UtilityModule` 注册序列化器、底层存储、`UnifiedSettingsDataRepository`、`SaveRepository<GameSaveData>`
-  - `ModelModule` 创建 `SettingsModel<ISettingsDataRepository>` 并注册 applicator
+  - 项目层 utility 模块注册序列化器、底层存储、`UnifiedSettingsDataRepository`、
+    `SaveRepository<GameSaveData>`
+  - 项目层 model 模块创建 `SettingsModel<ISettingsDataRepository>` 并注册 applicator
 - 路由
-  - `SceneRouter` 继承 `SceneRouterBase`
-  - `UiRouter` 继承 `UiRouterBase`
+  - 项目自定义 `SceneRouterBase` / `UiRouterBase` 的派生类型
 
 这说明本包更适合做“游戏基础设施层”，而不是把所有引擎对象耦死在包内部。
 
