@@ -11,6 +11,7 @@ public sealed class CoroutineExceptionEventArgs : EventArgs
     /// </summary>
     /// <param name="handle">发生异常的协程句柄。</param>
     /// <param name="exception">协程执行过程中抛出的异常。</param>
+    /// <exception cref="ArgumentNullException"><paramref name="exception" /> 为 <see langword="null" />。</exception>
     public CoroutineExceptionEventArgs(CoroutineHandle handle, Exception exception)
     {
         Handle = handle;

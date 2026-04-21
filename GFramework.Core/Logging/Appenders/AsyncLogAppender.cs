@@ -117,8 +117,7 @@ public sealed class AsyncLogAppender : ILogAppender
     /// </summary>
     void ILogAppender.Flush()
     {
-        var success = Flush();
-        OnFlushCompleted?.Invoke(this, new AsyncLogFlushCompletedEventArgs(success));
+        Flush();
     }
 
     /// <summary>

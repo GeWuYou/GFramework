@@ -99,8 +99,16 @@ public abstract class Architecture : IArchitecture
     public virtual Action<IServiceCollection>? Configurator => null;
 
     /// <summary>
-    ///     阶段变更事件（用于测试和扩展）
+    ///     在架构生命周期阶段发生变化时触发。
     /// </summary>
+    /// <remarks>
+    ///     <para>
+    ///         订阅者应通过 <see cref="ArchitecturePhaseChangedEventArgs.Phase" /> 读取当前阶段，而不是依赖内部生命周期对象。
+    ///     </para>
+    ///     <para>
+    ///         事件委托中的 <c>sender</c> 始终为当前 <see cref="Architecture" /> 实例，便于测试与外部扩展保持稳定的发布者契约。
+    ///     </para>
+    /// </remarks>
     public event EventHandler<ArchitecturePhaseChangedEventArgs>? PhaseChanged;
 
     #endregion

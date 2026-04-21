@@ -1,5 +1,37 @@
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-21 — RP-014
+
+### 阶段：PR #267 review follow-up 收口（RP-014）
+
+- 使用 `gframework-pr-review` 抓取当前分支 PR #267 的 latest head review threads、outside-diff comment、nitpick comment、
+  MegaLinter 摘要与测试报告，并确认本轮除了 6 条 open thread 之外，还存在 1 条 outside-diff 与 1 条 nitpick 需要一并复核
+- 本地复核后确认仍成立的项：
+  - `AsyncLogAppender` 的显式接口实现 `ILogAppender.Flush()` 会在调用 `Flush()` 后再次手动触发 `OnFlushCompleted`，
+    导致接口路径重复通知
+  - `Architecture.PhaseChanged`、`CoroutineExceptionEventArgs` 与 `ArchitecturePhaseCoordinator.EnterPhase` 的 XML/注释契约仍未完全同步
+  - `CoroutineSchedulerTests` 的异常事件测试缺少测试级超时
+  - `docs/zh-CN/core/architecture.md` 与 `docs/zh-CN/core/lifecycle.md` 仍缺少明确的 `PhaseChanged` 迁移说明
+  - `ai-plan` active tracking 中 `RP-013` 的 `9 Warning(s)` 需要明确是相对 `RP-009` / `RP-011` 的 warnings-only 基线收敛
+- 实施最小修复：
+  - 删除 `ILogAppender.Flush()` 中重复的完成事件触发，只保留 `Flush(TimeSpan?)` 内的单一通知源
+  - 为接口调用路径补充单次完成通知回归测试，并为协程异常事件测试增加 `WaitAsync(TimeSpan.FromSeconds(3))`
+  - 补齐 `Architecture.PhaseChanged`、`CoroutineExceptionEventArgs` 与 `ArchitecturePhaseCoordinator.EnterPhase` 的契约文档
+  - 在 `docs/zh-CN/core/architecture.md` 与 `docs/zh-CN/core/lifecycle.md` 中加入 `phase => ...` 迁移到 `(_, args) => ...` 的说明
+  - 更新 `ai-plan/public/analyzer-warning-reduction/todos/analyzer-warning-reduction-tracking.md` 的恢复点、基线描述与验证结果
+- 验证结果：
+  - `dotnet restore GFramework.Core.Tests/GFramework.Core.Tests.csproj -p:RestoreFallbackFolders="" -nologo`
+    - 结果：通过；host Windows `dotnet` 首次验证前补齐了缺失的 `Meziantou.Analyzer 3.0.48`
+  - `dotnet build GFramework.Core/GFramework.Core.csproj -c Release --no-restore -p:TargetFramework=net8.0 -p:RestoreFallbackFolders="" -nologo`
+    - 结果：`9 Warning(s)`，`0 Error(s)`
+  - `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --no-restore --filter "FullyQualifiedName~CoroutineSchedulerTests.Scheduler_Should_Raise_OnCoroutineException_With_EventArgs|FullyQualifiedName~AsyncLogAppenderTests.Flush_Should_Raise_OnFlushCompleted_With_Sender_And_Result|FullyQualifiedName~AsyncLogAppenderTests.ILogAppender_Flush_Should_Raise_OnFlushCompleted_Only_Once|FullyQualifiedName~ArchitectureLifecycleBehaviorTests.InitializeAsync_Should_Raise_PhaseChanged_With_Sender_And_EventArgs" -m:1 -p:RestoreFallbackFolders="" -nologo`
+    - 结果：`4 Passed`，`0 Failed`
+- 当前结论：
+  - PR #267 里当前仍成立的 CodeRabbit 高信号项已在本地收口
+  - 修复内容没有改变 `EventHandler<TEventArgs>` 迁移方向，只是补齐行为、文档与恢复信息
+- 下一步建议：
+  - 恢复到 `MA0016` / `MA0002` 主批次，默认先看 `LoggingConfiguration`、`FilterConfiguration` 与 `CollectionExtensions`
+
 ## 2026-04-21 — RP-013
 
 ### 阶段：`MA0046` 事件签名批次收口（RP-013）

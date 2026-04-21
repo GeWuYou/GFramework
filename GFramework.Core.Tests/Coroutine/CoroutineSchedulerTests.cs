@@ -377,7 +377,7 @@ public class CoroutineSchedulerTests
         var handle = _scheduler.Run(CreateExceptionCoroutine());
 
         _scheduler.Update();
-        var observation = await exceptionSource.Task;
+        var observation = await exceptionSource.Task.WaitAsync(TimeSpan.FromSeconds(3));
 
         Assert.Multiple(() =>
         {

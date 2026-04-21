@@ -138,6 +138,9 @@ architecture.RegisterLifecycleHook(new MetricsHook());
 
 如果你只需要观察阶段变化，也可以直接订阅：
 
+如果你从旧版本的 `PhaseChanged` 迁移过来，需要把旧写法 `phase => ...` 改成 `(_, args) => ...`，
+并通过 `ArchitecturePhaseChangedEventArgs.Phase` 读取阶段值。
+
 ```csharp
 architecture.PhaseChanged += (_, args) =>
 {
