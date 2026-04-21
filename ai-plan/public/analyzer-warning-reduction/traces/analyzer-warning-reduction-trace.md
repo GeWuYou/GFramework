@@ -1,5 +1,32 @@
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-21 — RP-008
+
+### 阶段：批处理策略切换（RP-008）
+
+- 根据当前 `GFramework.Core` warnings-only build 的剩余分布，后续不再默认沿用“单文件、单 warning family”的切片节奏，
+  改为按 warning 类型和数量优先级批量推进
+- 当前数量基线：
+  - `MA0048 = 8`
+  - `MA0046 = 6`
+  - `MA0016 = 5`
+  - `MA0002 = 2`
+  - `MA0015 = 1`
+  - `MA0077 = 1`
+- 新的批处理规则：
+  - 先按类型选择主批次，而不是按单文件选切入点
+  - 若主批次数量不够，则允许顺手并入其他低冲突类型；`MA0015` 与 `MA0077` 只是当前明显的低数量尾项示例，不是限定范围
+  - 单次 `boot` 的工作树改动规模控制在约 `100` 个文件以内，避免 recovery context 和 review 面同时膨胀
+  - 当 warning 类型或目录边界清晰且写集不冲突时，允许使用不同模型的 subagent 并行处理，但必须先定义独占 ownership
+- 当前建议的下一批次顺序：
+  - 第一优先级：`MA0048`
+  - 第二优先级：`MA0046`
+  - 顺手吸收：其他低冲突类型，当前可见示例包括 `MA0015`、`MA0077`
+  - 单独评估：`MA0016`、`MA0002`
+- 本轮仅更新 recovery strategy，不改生产代码；验证继续沿用当前基线构建：
+  - `dotnet build GFramework.Core/GFramework.Core.csproj -c Release -t:Rebuild --no-restore -p:UseSharedCompilation=false -p:TargetFramework=net8.0 -p:RestoreFallbackFolders="" -p:RestorePackagesPath=<linux-nuget-cache> -nologo -clp:"Summary;WarningsOnly"`
+    - 结果：`23 Warning(s)`，`0 Error(s)`
+
 ## 2026-04-21 — RP-007
 
 ### 阶段：CoroutineScheduler `MA0051` 收口（RP-007）
