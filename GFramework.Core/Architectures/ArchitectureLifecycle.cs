@@ -71,6 +71,7 @@ internal sealed class ArchitectureLifecycle(
     public void EnterPhase(ArchitecturePhase next)
     {
         _phaseCoordinator.EnterPhase(next);
+        PhaseChanged?.Invoke(this, new ArchitecturePhaseChangedEventArgs(next));
     }
 
     #endregion
@@ -127,11 +128,7 @@ internal sealed class ArchitectureLifecycle(
     /// <summary>
     ///     阶段变更事件（用于测试和扩展）
     /// </summary>
-    public event Action<ArchitecturePhase>? PhaseChanged
-    {
-        add => _phaseCoordinator.PhaseChanged += value;
-        remove => _phaseCoordinator.PhaseChanged -= value;
-    }
+    public event EventHandler<ArchitecturePhaseChangedEventArgs>? PhaseChanged;
 
     #endregion
 

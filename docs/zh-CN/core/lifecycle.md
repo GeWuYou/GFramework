@@ -139,9 +139,9 @@ architecture.RegisterLifecycleHook(new MetricsHook());
 如果你只需要观察阶段变化，也可以直接订阅：
 
 ```csharp
-architecture.PhaseChanged += phase =>
+architecture.PhaseChanged += (_, args) =>
 {
-    Console.WriteLine($"Phase changed: {phase}");
+    Console.WriteLine($"Phase changed: {args.Phase}");
 };
 ```
 

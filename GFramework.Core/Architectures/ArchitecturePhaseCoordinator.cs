@@ -23,12 +23,6 @@ internal sealed class ArchitecturePhaseCoordinator(
     public ArchitecturePhase CurrentPhase { get; private set; }
 
     /// <summary>
-    ///     在架构阶段变更时触发。
-    ///     该事件用于测试和扩展场景，保持现有公共行为不变。
-    /// </summary>
-    public event Action<ArchitecturePhase>? PhaseChanged;
-
-    /// <summary>
     ///     注册一个生命周期钩子。
     ///     就绪后是否允许追加注册由架构配置控制，以保证阶段回调的一致性。
     /// </summary>
@@ -61,7 +55,6 @@ internal sealed class ArchitecturePhaseCoordinator(
 
         NotifyLifecycleHooks(next);
         NotifyPhaseListeners(next);
-        PhaseChanged?.Invoke(next);
     }
 
     /// <summary>

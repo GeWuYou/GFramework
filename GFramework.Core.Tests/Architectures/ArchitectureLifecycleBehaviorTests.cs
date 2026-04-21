@@ -63,6 +63,35 @@ public class ArchitectureLifecycleBehaviorTests
     }
 
     /// <summary>
+    ///     验证阶段变更事件会以架构实例作为 sender，并通过事件参数暴露阶段值。
+    /// </summary>
+    [Test]
+    public async Task InitializeAsync_Should_Raise_PhaseChanged_With_Sender_And_EventArgs()
+    {
+        var architecture = new PhaseTrackingArchitecture();
+        var observations = new List<(object? Sender, ArchitecturePhase Phase)>();
+
+        architecture.PhaseChanged += (sender, eventArgs) => observations.Add((sender, eventArgs.Phase));
+
+        await architecture.InitializeAsync();
+
+        Assert.That(observations, Is.Not.Empty);
+        Assert.That(observations.All(item => ReferenceEquals(item.Sender, architecture)), Is.True);
+        Assert.That(observations.Select(static item => item.Phase), Is.EqualTo(new[]
+        {
+            ArchitecturePhase.BeforeUtilityInit,
+            ArchitecturePhase.AfterUtilityInit,
+            ArchitecturePhase.BeforeModelInit,
+            ArchitecturePhase.AfterModelInit,
+            ArchitecturePhase.BeforeSystemInit,
+            ArchitecturePhase.AfterSystemInit,
+            ArchitecturePhase.Ready
+        }));
+
+        await architecture.DestroyAsync();
+    }
+
+    /// <summary>
     ///     验证用户初始化失败时，等待 Ready 的任务会失败并进入 FailedInitialization 阶段。
     /// </summary>
     [Test]
@@ -183,7 +212,7 @@ public class ArchitectureLifecycleBehaviorTests
         public PhaseTrackingArchitecture(Action? onInitializeAction = null)
         {
             _onInitializeAction = onInitializeAction;
-            PhaseChanged += phase => PhaseHistory.Add(phase);
+            PhaseChanged += (_, eventArgs) => PhaseHistory.Add(eventArgs.Phase);
         }
 
         /// <summary>
@@ -214,7 +243,7 @@ public class ArchitectureLifecycleBehaviorTests
         public DestroyOrderArchitecture(List<string> destroyOrder)
         {
             _destroyOrder = destroyOrder;
-            PhaseChanged += phase => PhaseHistory.Add(phase);
+            PhaseChanged += (_, eventArgs) => PhaseHistory.Add(eventArgs.Phase);
         }
 
         /// <summary>
@@ -247,7 +276,7 @@ public class ArchitectureLifecycleBehaviorTests
         public FailingInitializationArchitecture(List<string> destroyOrder)
         {
             _destroyOrder = destroyOrder;
-            PhaseChanged += phase => PhaseHistory.Add(phase);
+            PhaseChanged += (_, eventArgs) => PhaseHistory.Add(eventArgs.Phase);
         }
 
         /// <summary>

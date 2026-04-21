@@ -91,7 +91,7 @@ public sealed class CoroutineScheduler(
     ///     为了避免阻塞调度器主循环，该事件会被派发到线程池回调中执行。
     ///     如果调用方需要与宿主线程保持一致，请同时订阅 <see cref="OnCoroutineFinished" />。
     /// </remarks>
-    public event Action<CoroutineHandle, Exception>? OnCoroutineException;
+    public event EventHandler<CoroutineExceptionEventArgs>? OnCoroutineException;
 
     /// <summary>
     ///     当协程以完成、取消或失败任一结果结束时触发。
@@ -99,7 +99,7 @@ public sealed class CoroutineScheduler(
     /// <remarks>
     ///     该事件在调度器所在的驱动线程中同步触发，适合与宿主生命周期管理逻辑集成。
     /// </remarks>
-    public event Action<CoroutineHandle, CoroutineCompletionStatus, Exception?>? OnCoroutineFinished;
+    public event EventHandler<CoroutineFinishedEventArgs>? OnCoroutineFinished;
 
     /// <summary>
     ///     检查指定协程句柄是否仍然处于活跃状态。
@@ -622,7 +622,7 @@ public sealed class CoroutineScheduler(
         UpdateCompletionMetadata(handle, completionStatus);
         ReleaseCompletedCoroutine(slotIndex, slot, handle);
         CompleteCoroutineLifecycle(handle, completionStatus);
-        OnCoroutineFinished?.Invoke(handle, completionStatus, exception);
+        OnCoroutineFinished?.Invoke(this, new CoroutineFinishedEventArgs(handle, completionStatus, exception));
     }
 
     /// <summary>
@@ -642,7 +642,7 @@ public sealed class CoroutineScheduler(
             {
                 try
                 {
-                    handler(handle, ex);
+                    handler(this, new CoroutineExceptionEventArgs(handle, ex));
                 }
                 catch (Exception callbackEx)
                 {

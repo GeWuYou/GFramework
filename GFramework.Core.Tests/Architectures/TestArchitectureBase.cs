@@ -43,6 +43,6 @@ public abstract class TestArchitectureBase : Architecture
         _postRegistrationHook?.Invoke(this);
 
         // 订阅阶段变更事件以记录历史
-        PhaseChanged += phase => PhaseHistory.Add(phase);
+        PhaseChanged += (_, eventArgs) => PhaseHistory.Add(eventArgs.Phase);
     }
 }

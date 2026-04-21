@@ -332,6 +332,63 @@ public class CoroutineSchedulerTests
     }
 
     /// <summary>
+    ///     验证完成事件会把调度器实例、句柄和完成结果暴露给订阅者。
+    /// </summary>
+    [Test]
+    public void Run_Should_Raise_OnCoroutineFinished_With_EventArgs()
+    {
+        object? observedSender = null;
+        CoroutineFinishedEventArgs? observedArgs = null;
+
+        _scheduler.OnCoroutineFinished += (sender, eventArgs) =>
+        {
+            observedSender = sender;
+            observedArgs = eventArgs;
+        };
+
+        var handle = _scheduler.Run(CreateSimpleCoroutine());
+
+        _scheduler.Update();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(observedSender, Is.SameAs(_scheduler));
+            Assert.That(observedArgs, Is.Not.Null);
+            Assert.That(observedArgs!.Handle, Is.EqualTo(handle));
+            Assert.That(observedArgs.CompletionStatus, Is.EqualTo(CoroutineCompletionStatus.Completed));
+            Assert.That(observedArgs.Exception, Is.Null);
+        });
+    }
+
+    /// <summary>
+    ///     验证异常事件会把调度器实例、失败句柄和异常对象暴露给订阅者。
+    /// </summary>
+    [Test]
+    public async Task Scheduler_Should_Raise_OnCoroutineException_With_EventArgs()
+    {
+        var exceptionSource =
+            new TaskCompletionSource<(object? Sender, CoroutineExceptionEventArgs EventArgs)>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+        _scheduler.OnCoroutineException += (sender, eventArgs) =>
+        {
+            exceptionSource.TrySetResult((sender, eventArgs));
+        };
+
+        var handle = _scheduler.Run(CreateExceptionCoroutine());
+
+        _scheduler.Update();
+        var observation = await exceptionSource.Task;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(observation.Sender, Is.SameAs(_scheduler));
+            Assert.That(observation.EventArgs.Handle, Is.EqualTo(handle));
+            Assert.That(observation.EventArgs.Exception, Is.TypeOf<InvalidOperationException>());
+            Assert.That(observation.EventArgs.Exception.Message, Is.EqualTo("Test exception"));
+        });
+    }
+
+    /// <summary>
     ///     验证协程调度器应该扩展容量当槽位已满
     /// </summary>
     [Test]

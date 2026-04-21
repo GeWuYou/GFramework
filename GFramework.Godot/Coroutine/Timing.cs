@@ -781,15 +781,13 @@ public partial class Timing : Node
     /// <summary>
     ///     在协程结束时解除节点归属回调并清理索引。
     /// </summary>
-    /// <param name="handle">已结束的协程句柄。</param>
-    /// <param name="status">协程最终状态。</param>
-    /// <param name="exception">若失败则为异常对象。</param>
+    /// <param name="sender">触发事件的协程调度器。</param>
+    /// <param name="eventArgs">协程结束事件数据。</param>
     private void HandleCoroutineFinished(
-        CoroutineHandle handle,
-        CoroutineCompletionStatus status,
-        Exception? exception)
+        object? sender,
+        CoroutineFinishedEventArgs eventArgs)
     {
-        CleanupOwnedCoroutineRegistration(handle);
+        CleanupOwnedCoroutineRegistration(eventArgs.Handle);
     }
 
     /// <summary>

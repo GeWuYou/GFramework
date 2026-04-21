@@ -78,6 +78,32 @@ public class AsyncLogAppenderTests
     }
 
     [Test]
+    public void Flush_Should_Raise_OnFlushCompleted_With_Sender_And_Result()
+    {
+        var innerAppender = new TestAppender();
+        using var asyncAppender = new AsyncLogAppender(innerAppender, bufferSize: 10);
+        object? observedSender = null;
+        AsyncLogFlushCompletedEventArgs? observedArgs = null;
+
+        asyncAppender.Append(new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Flush check", null, null));
+
+        asyncAppender.OnFlushCompleted += (sender, eventArgs) =>
+        {
+            observedSender = sender;
+            observedArgs = eventArgs;
+        };
+
+        var result = asyncAppender.Flush(TimeSpan.FromSeconds(1));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(observedSender, Is.SameAs(asyncAppender));
+            Assert.That(observedArgs, Is.Not.Null);
+            Assert.That(observedArgs!.Success, Is.EqualTo(result));
+        });
+    }
+
+    [Test]
     public void Dispose_ShouldProcessRemainingEntries()
     {
         var innerAppender = new TestAppender();

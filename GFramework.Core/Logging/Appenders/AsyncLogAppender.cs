@@ -118,13 +118,14 @@ public sealed class AsyncLogAppender : ILogAppender
     void ILogAppender.Flush()
     {
         var success = Flush();
-        OnFlushCompleted?.Invoke(success);
+        OnFlushCompleted?.Invoke(this, new AsyncLogFlushCompletedEventArgs(success));
     }
 
     /// <summary>
-    ///     Flush 操作完成事件，参数指示是否成功（true）或超时（false）
+    ///     Flush 操作完成事件。
+    ///     事件数据通过 <see cref="AsyncLogFlushCompletedEventArgs" /> 提供。
     /// </summary>
-    public event Action<bool>? OnFlushCompleted;
+    public event EventHandler<AsyncLogFlushCompletedEventArgs>? OnFlushCompleted;
 
     /// <summary>
     ///     刷新缓冲区，等待所有日志写入完成
@@ -145,7 +146,7 @@ public sealed class AsyncLogAppender : ILogAppender
         {
             // 等待处理任务发出完成信号
             var success = _flushSemaphore.Wait(actualTimeout);
-            OnFlushCompleted?.Invoke(success);
+            OnFlushCompleted?.Invoke(this, new AsyncLogFlushCompletedEventArgs(success));
             return success;
         }
         finally

@@ -123,6 +123,9 @@ protected override void OnInitialize()
 - `PhaseChanged`
 - `RegisterLifecycleHook(...)`
 
+其中 `PhaseChanged` 现在遵循标准 `EventHandler<ArchitecturePhaseChangedEventArgs>` 约定，
+阶段值通过 `args.Phase` 读取。
+
 如果你需要在 `Ready`、`Destroying` 等阶段执行横切逻辑，比起把这类逻辑塞进某个具体 `System`，更适合单独实现
 `IArchitectureLifecycleHook`。
 

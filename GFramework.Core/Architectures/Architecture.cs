@@ -49,6 +49,7 @@ public abstract class Architecture : IArchitecture
         // 初始化管理器
         _bootstrapper = new ArchitectureBootstrapper(GetType(), resolvedEnvironment, resolvedServices, _logger);
         _lifecycle = new ArchitectureLifecycle(this, resolvedConfiguration, resolvedServices, _logger);
+        _lifecycle.PhaseChanged += HandleLifecyclePhaseChanged;
         _componentRegistry = new ArchitectureComponentRegistry(
             this,
             resolvedConfiguration,
@@ -100,11 +101,7 @@ public abstract class Architecture : IArchitecture
     /// <summary>
     ///     阶段变更事件（用于测试和扩展）
     /// </summary>
-    public event Action<ArchitecturePhase>? PhaseChanged
-    {
-        add => _lifecycle.PhaseChanged += value;
-        remove => _lifecycle.PhaseChanged -= value;
-    }
+    public event EventHandler<ArchitecturePhaseChangedEventArgs>? PhaseChanged;
 
     #endregion
 
@@ -139,6 +136,21 @@ public abstract class Architecture : IArchitecture
     ///     模块管理器
     /// </summary>
     private readonly ArchitectureModules _modules;
+
+    #endregion
+
+    #region Event Relays
+
+    /// <summary>
+    ///     把生命周期协作者的阶段广播重新映射到当前架构实例，
+    ///     以便公开事件的 sender 始终反映真实的架构发布者。
+    /// </summary>
+    /// <param name="sender">生命周期协作者实例。</param>
+    /// <param name="eventArgs">阶段变化事件数据。</param>
+    private void HandleLifecyclePhaseChanged(object? sender, ArchitecturePhaseChangedEventArgs eventArgs)
+    {
+        PhaseChanged?.Invoke(this, eventArgs);
+    }
 
     #endregion
 

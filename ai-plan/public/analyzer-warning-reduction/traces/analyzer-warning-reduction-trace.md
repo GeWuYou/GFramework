@@ -1,5 +1,37 @@
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-21 — RP-013
+
+### 阶段：`MA0046` 事件签名批次收口（RP-013）
+
+- 依据 `RP-012` 的下一步建议，本轮恢复到 `GFramework.Core` 的 `MA0046` 主批次，而不是继续停留在 PR review workflow 优化
+- 本地 warnings-only 基线确认当前 `GFramework.Core` `net8.0` 仍有 `6` 个 `MA0046`：
+  - `Architecture.cs`
+  - `ArchitectureLifecycle.cs`
+  - `ArchitecturePhaseCoordinator.cs`
+  - `AsyncLogAppender.cs`
+  - `CoroutineScheduler.cs` 两处事件
+- 方案选择：
+  - 不再保留 `Action<...>` 事件签名，统一改为标准 `EventHandler<TEventArgs>`
+  - 为 `Architecture`、`AsyncLogAppender` 新增放在 `GFramework.Core.Abstractions` 的事件参数类型
+  - 为 `CoroutineScheduler` 新增放在 `GFramework.Core` 的事件参数类型，因为 `CoroutineHandle` 定义在 runtime 层，不适合反向放入 Abstractions
+  - `Architecture` 相关事件采用 `Coordinator -> Lifecycle -> Architecture` relay，而不是直接透传底层事件，确保公开事件的 sender 始终是实际发布者，并避免引入新的 `MA0091`
+- 同步适配：
+  - 更新 `GFramework.Godot/Coroutine/Timing.cs` 的 `OnCoroutineFinished` 订阅签名
+  - 更新 `ArchitectureLifecycleBehaviorTests`、`CoroutineSchedulerTests`、`AsyncLogAppenderTests` 以覆盖 sender / event args 契约
+  - 更新 `docs/zh-CN/core/architecture.md` 与 `docs/zh-CN/core/lifecycle.md` 的 `PhaseChanged` 示例
+- 验证结果：
+  - `dotnet build GFramework.Core/GFramework.Core.csproj -c Release --no-restore -p:TargetFramework=net8.0 -p:RestoreFallbackFolders="" -nologo -clp:"Summary;WarningsOnly"`
+    - 结果：`9 Warning(s)`，`0 Error(s)`；当前 `GFramework.Core` `net8.0` 输出中已无 `MA0046`
+  - `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --filter "FullyQualifiedName~ArchitectureLifecycleBehaviorTests|FullyQualifiedName~CoroutineSchedulerTests|FullyQualifiedName~AsyncLogAppenderTests" -m:1 -p:RestoreFallbackFolders="" -nologo`
+    - 结果：`50 Passed`，`0 Failed`
+  - `dotnet build GFramework.Godot/GFramework.Godot.csproj -c Release --no-restore -p:RestoreFallbackFolders="" -nologo`
+    - 结果：失败；当前 worktree 的 `project.assets.json` 仍引用 Windows fallback package folder，尚未完成 Godot 独立编译验证
+- 当前结论：
+  - `MA0046` 已从 active 批次中移除
+  - 剩余 `GFramework.Core` `net8.0` warning 分布更新为：`MA0016=5`、`MA0002=2`、`MA0015=1`、`MA0077=1`
+  - 若继续本主题，下一步默认转入 `MA0016` 批次；若继续触达 Godot，再先修复该项目 restore 资产
+
 ## 2026-04-21 — RP-012
 
 ### 阶段：PR review workflow 输出收窄增强（RP-012）
