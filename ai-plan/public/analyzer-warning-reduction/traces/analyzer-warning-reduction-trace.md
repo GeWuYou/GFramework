@@ -1,5 +1,30 @@
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-21 — RP-009
+
+### 阶段：`MA0048` 批次收口（RP-009）
+
+- 依据 `RP-008` 的批处理策略，本轮继续从 `GFramework.Core` 的 `MA0048` 启动，但不采用重命名公共类型的高风险做法；
+  改为把同名不同泛型 arity 的家族收拢到与类型名一致的单文件中
+- 具体调整：
+  - 将 `AbstractCommand<TInput>` 与 `AbstractCommand<TInput, TResult>` 合并进 `AbstractCommand.cs`
+  - 将 `AbstractAsyncCommand<TInput>` 与 `AbstractAsyncCommand<TInput, TResult>` 合并进 `AbstractAsyncCommand.cs`
+  - 将 `AbstractQuery<TInput, TResult>` 合并进 `AbstractQuery.cs`
+  - 将 `AbstractAsyncQuery<TInput, TResult>` 合并进 `AbstractAsyncQuery.cs`
+  - 将泛型 `Event<T>` / `Event<T, TK>` 从 `EasyEventGeneric.cs` 迁移到 `Event.cs`
+- 首次构建暴露出合并后的 `ICommand<TResult>` / `IQuery<TResult>` 命名空间歧义；随后改用
+  `GFramework.Core.Abstractions.*` 的限定名完成最小修正，没有引入行为改动
+- 定向验证通过：
+  - `dotnet build GFramework.Core/GFramework.Core.csproj -c Release -t:Rebuild --no-restore -p:UseSharedCompilation=false -p:TargetFramework=net8.0 -p:RestoreFallbackFolders="" -nologo -clp:"Summary;WarningsOnly"`
+    - 结果：`15 Warning(s)`，`0 Error(s)`；`MA0048` 已从当前 `GFramework.Core` `net8.0` warnings-only 基线中清空
+  - `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --filter "FullyQualifiedName~CommandExecutorTests|FullyQualifiedName~AbstractAsyncCommandTests|FullyQualifiedName~QueryExecutorTests|FullyQualifiedName~AbstractAsyncQueryTests|FullyQualifiedName~EventTests" -m:1 -p:RestoreFallbackFolders="" -nologo`
+    - 结果：`83 Passed`，`0 Failed`
+- 当前建议的下一批次顺序更新为：
+  - 第一优先级：`MA0046`
+  - 第二优先级：`MA0016`
+  - 顺手吸收：`MA0015`、`MA0077`
+  - 单独评估：`MA0002`
+
 ## 2026-04-21 — RP-008
 
 ### 阶段：批处理策略切换（RP-008）
