@@ -27,10 +27,21 @@
 | `GFramework.Game.Abstractions` | `Game` 对应的契约层 | [README](GFramework.Game.Abstractions/README.md) |
 | `GFramework.Godot` | Godot 集成层，负责把框架能力接入节点、场景、UI、设置与存储 | [README](GFramework.Godot/README.md) |
 | `GFramework.Ecs.Arch` | Arch ECS 集成 | [README](GFramework.Ecs.Arch/README.md) |
+| `GFramework.Ecs.Arch.Abstractions` | Arch ECS 集成对应的契约层，适合共享宿主循环与 ECS 模块边界 | [README](GFramework.Ecs.Arch.Abstractions/README.md) |
 | `GFramework.Core.SourceGenerators` | Core 侧通用源码生成器与分析器 | [README](GFramework.Core.SourceGenerators/README.md) |
 | `GFramework.Game.SourceGenerators` | 游戏内容配置 schema 生成器 | [README](GFramework.Game.SourceGenerators/README.md) |
 | `GFramework.Cqrs.SourceGenerators` | CQRS handler registry 生成器 | [README](GFramework.Cqrs.SourceGenerators/README.md) |
 | `GFramework.Godot.SourceGenerators` | Godot 场景专用源码生成器 | [README](GFramework.Godot.SourceGenerators/README.md) |
+
+## 内部支撑模块
+
+以下目录目前不是独立采用入口，而是跟随所属模块维护的内部支撑组件：
+
+| 目录 | 定位 | 跟随入口 |
+| --- | --- | --- |
+| `GFramework.Core.SourceGenerators.Abstractions` | `Core.SourceGenerators` 的内部契约层 | [GFramework.Core.SourceGenerators/README.md](GFramework.Core.SourceGenerators/README.md) |
+| `GFramework.Godot.SourceGenerators.Abstractions` | `Godot.SourceGenerators` 的内部契约层 | [GFramework.Godot.SourceGenerators/README.md](GFramework.Godot.SourceGenerators/README.md) |
+| `GFramework.SourceGenerators.Common` | 生成器家族共享的公共支撑代码 | [docs/zh-CN/source-generators/index.md](docs/zh-CN/source-generators/index.md) |
 
 ## 文档导航
 
@@ -119,10 +130,13 @@ GFramework.sln
 ├─ GFramework.Game.Abstractions/
 ├─ GFramework.Godot/
 ├─ GFramework.Ecs.Arch/
+├─ GFramework.Ecs.Arch.Abstractions/
 ├─ GFramework.Core.SourceGenerators/
+├─ GFramework.Core.SourceGenerators.Abstractions/
 ├─ GFramework.Game.SourceGenerators/
 ├─ GFramework.Cqrs.SourceGenerators/
 ├─ GFramework.Godot.SourceGenerators/
+├─ GFramework.Godot.SourceGenerators.Abstractions/
 ├─ GFramework.SourceGenerators.Common/
 └─ docs/
 ```

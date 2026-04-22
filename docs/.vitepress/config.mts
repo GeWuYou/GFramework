@@ -264,7 +264,8 @@ export default defineConfig({
               text: '抽象接口',
               items: [
                 { text: 'Core Abstractions', link: '/zh-CN/abstractions/core-abstractions' },
-                { text: 'Game Abstractions', link: '/zh-CN/abstractions/game-abstractions' }
+                { text: 'Game Abstractions', link: '/zh-CN/abstractions/game-abstractions' },
+                { text: 'Ecs.Arch Abstractions', link: '/zh-CN/abstractions/ecs-arch-abstractions' }
               ]
             }
           ],

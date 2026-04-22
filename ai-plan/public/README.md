@@ -25,6 +25,11 @@ help the current worktree land on the right recovery documents without scanning 
   - Purpose: continue the AI-First config runtime, generator, and consumer DX work for `GFramework.Game`.
   - Tracking: `ai-plan/public/ai-first-config-system/todos/ai-first-config-system-tracking.md`
   - Trace: `ai-plan/public/ai-first-config-system/traces/ai-first-config-system-trace.md`
+- `documentation-full-coverage-governance`
+  - Purpose: govern full-coverage documentation inventory, module-wave remediation, and the README / docs / XML /
+    API-reference alignment baseline.
+  - Tracking: `ai-plan/public/documentation-full-coverage-governance/todos/documentation-full-coverage-governance-tracking.md`
+  - Trace: `ai-plan/public/documentation-full-coverage-governance/traces/documentation-full-coverage-governance-trace.md`
 - `coroutine-optimization`
   - Purpose: continue the coroutine semantics, host integration, observability, regression coverage, and migration-doc
     follow-up work.
@@ -58,6 +63,9 @@ help the current worktree land on the right recovery documents without scanning 
 - Branch: `feat/data-repository-persistence`
   - Worktree hint: `GFramework-data-repository-persistence`
   - Priority 1: `data-repository-persistence`
+- Branch: `docs/sdk-update-documentation`
+  - Worktree hint: `GFramework-update-documentation`
+  - Priority 1: `documentation-full-coverage-governance`
 ## Archived Topics
 
 - `cqrs-cache-docs-hardening`
