@@ -34,6 +34,23 @@
 | `Data/` `Serializer/` `Storage/` `Versioning/` | 数据装载、序列化、存储与版本化契约 |
 | `Enums/` `Properties/` | 架构阶段枚举，以及架构 / logger 相关属性键 |
 
+## XML 覆盖基线
+
+截至 `2026-04-22`，已按顶层目录对 `GFramework.Core.Abstractions` 的公开 / 内部类型声明做过一轮轻量盘点；当前契约目录族的类型声明都已带
+XML 注释。这里记录的是类型族级基线，成员级契约细节仍需要在后续波次继续审计。
+
+| 类型族 | 基线状态 | 代表类型 |
+| --- | --- | --- |
+| `Architectures/` `Lifecycle/` `Registries/` | `20/20` 个类型声明已带 XML 注释 | `IArchitecture`、`IArchitectureContext`、`IServiceModule`、`KeyValueRegistryBase<TKey, TValue>` |
+| `Command/` `Query/` `Cqrs/` | `10/10` 个类型声明已带 XML 注释 | `ICommandExecutor`、`IAsyncQueryExecutor`、`ICqrsRuntime` |
+| `Events/` `Property/` `State/` `StateManagement/` | `25/25` 个类型声明已带 XML 注释 | `IEventBus`、`IBindableProperty<T>`、`IStateMachine`、`IStore<TState>` |
+| `Coroutine/` `Time/` `Pause/` `Concurrency/` | `17/17` 个类型声明已带 XML 注释 | `IYieldInstruction`、`ITimeProvider`、`IPauseStackManager`、`IAsyncKeyLockManager` |
+| `Resource/` `Pool/` `Logging/` `Localization/` | `27/27` 个类型声明已带 XML 注释 | `IResourceManager`、`IObjectPoolSystem`、`ILogger`、`ILocalizationManager` |
+| `Configuration/` `Environment/` `Data/` `Serializer/` `Storage/` `Versioning/` | `7/7` 个类型声明已带 XML 注释 | `IConfigurationManager`、`IEnvironment`、`ILoadableFrom<T>`、`ISerializer`、`IStorage` |
+| `Bases/` `Controller/` `Model/` `Systems/` `Utility/` `Rule/` `Enums/` `Properties/` | `19/19` 个类型声明已带 XML 注释 | `IPrioritized`、`IController`、`IModel`、`ISystem`、`IContextUtility`、`ArchitecturePhase` |
+
+完整 inventory 与阅读顺序见 `docs/zh-CN/abstractions/core-abstractions.md`。
+
 ## 采用建议
 
 - 框架消费者通常同时安装 `GFramework.Core` 与 `GFramework.Core.Abstractions`

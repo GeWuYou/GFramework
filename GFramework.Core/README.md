@@ -60,6 +60,23 @@
 | `Functional/` | `Option`、`Result` 等轻量函数式工具 |
 | `Extensions/` | 上下文与集合等扩展方法 |
 
+## XML 覆盖基线
+
+截至 `2026-04-22`，已按顶层目录对 `GFramework.Core` 的公开 / 内部类型声明做过一轮轻量盘点；当前主目录族的类型声明都已带
+XML 注释。这里先保留阅读基线，成员级 ``<param>`` / ``<returns>`` / 生命周期语义审计仍属于后续治理项。
+
+| 类型族 | 基线状态 | 代表类型 |
+| --- | --- | --- |
+| `Architectures/` `Services/` | `22/22` 个类型声明已带 XML 注释 | `Architecture`、`ArchitectureContext`、`ArchitectureLifecycle`、`ServiceModuleManager` |
+| `Command/` `Query/` | `15/15` 个类型声明已带 XML 注释 | `CommandExecutor`、`AsyncQueryExecutor`、`AbstractCommand<TInput>`、`AbstractQuery<TResult>` |
+| `Events/` `Property/` `State/` `StateManagement/` | `29/29` 个类型声明已带 XML 注释 | `EventBus`、`BindableProperty<T>`、`StateMachine`、`Store<TState>` |
+| `Coroutine/` `Time/` `Pause/` `Concurrency/` | `43/43` 个类型声明已带 XML 注释 | `CoroutineScheduler`、`CoroutineHandle`、`PauseStackManager`、`AsyncKeyLockManager` |
+| `Resource/` `Pool/` | `8/8` 个类型声明已带 XML 注释 | `ResourceManager`、`AutoReleaseStrategy`、`AbstractObjectPoolSystem<TKey, TObject>` |
+| `Logging/` `Localization/` `Configuration/` `Environment/` `Ioc/` | `31/31` 个类型声明已带 XML 注释 | `ConsoleLogger`、`LocalizationManager`、`ConfigurationManager`、`DefaultEnvironment`、`MicrosoftDiContainer` |
+| `Model/` `Systems/` `Utility/` `Rule/` `Extensions/` `Functional/` | `34/34` 个类型声明已带 XML 注释 | `AbstractModel`、`AbstractSystem`、`NumericDisplayFormatter`、`ContextAwareBase`、`Result<T>` |
+
+完整的模块化阅读顺序和 inventory 说明见 `docs/zh-CN/core/index.md`。
+
 ## 最小接入路径
 
 ```bash
