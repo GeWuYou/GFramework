@@ -28,24 +28,22 @@
 
 ### [Godot 集成教程](./godot-integration.md)
 
-> 深入学习 GFramework 与 Godot 引擎的深度集成，掌握高级开发技巧。
+> 按当前源码和真实项目接线，完成 Godot 项目级配置、场景节点生成器接入与运行时生命周期协作。
 
 **适合人群**：
 
 - 已完成基础教程的开发者
-- 需要优化 Godot 项目性能的开发者
-- 希望实现复杂游戏系统的架构师
+- 正在把现有 Godot C# 项目接入 GFramework 的开发者
+- 需要厘清 `project.godot`、`[GetNode]`、`[BindNodeSignal]` 边界的维护者
 
 **学习内容**：
 
-- 节点生命周期管理
-- 信号系统集成与桥接
-- 资源管理优化策略
-- 对象池化系统实现
-- 性能优化最佳实践
-- 调试与测试方法
+- `GeWuYou.GFramework.Godot` 与生成器包的职责划分
+- `project.godot` 到 `AutoLoads` / `InputActions` 的生成链路
+- `[GetNode]`、`[BindNodeSignal]` 与 `_Ready()` / `_ExitTree()` 的协作顺序
+- 常见旧写法迁移边界与后续阅读入口
 
-**预计时间**：3-4 小时
+**预计时间**：1-2 小时
 
 ---
 
