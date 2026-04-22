@@ -181,3 +181,57 @@
    `bind-node-signal-generator.md`
 2. 重点确认 `project.godot`、`AutoLoad` / `InputActions`、`GetNode` / `BindNodeSignal` 示例仍与当前包关系和生成器入口一致
 3. 若 Godot 页面也出现连续收口结果，再按恢复点粒度整理 active trace，避免默认入口继续膨胀
+
+## 2026-04-22
+
+### 阶段：统一文档编排 skill 收口（RP-008）
+
+- 依据当前主题“文档治理 + 持续刷新”的目标，复核 `.agents/skills/` 后确认：现有 `vitepress-api-doc`、
+  `vitepress-batch-api`、`vitepress-doc-generator`、`vitepress-guide`、`vitepress-tutorial` 与
+  `vitepress-validate` 仍保留旧的并列入口模型，其中多数 `SKILL.md` 没有标准 YAML frontmatter，已经不适合作为当前
+  Codex skill 继续公开暴露
+- 结合当前 `*.csproj`、`docs/zh-CN` 栏目、模块 README 与 `ai-libs/CoreGrid` 参考入口，建立
+  `.agents/skills/_shared/module-map.json`，把文档刷新主输入固定为真实源码模块，而不是 `guide/tutorial/api`
+  之类的文档类型
+- 重写 `.agents/skills/_shared/DOCUMENTATION_STANDARDS.md`，去掉已经失真的固定页面清单，明确固定证据顺序：
+  1. 源码 / XML docs / `*.csproj`
+  2. 测试与 snapshot
+  3. README
+  4. 当前 `docs/zh-CN`
+  5. `ai-libs/`
+  6. 归档文档
+- 新增 `.agents/skills/gframework-doc-refresh/`，补齐：
+  - 标准 frontmatter 的 `SKILL.md`
+  - `agents/openai.yaml`
+  - `references/` 下的模块选择、证据顺序与输出策略说明
+  - `templates/` 下的 landing/topic/API/tutorial 骨架
+  - `scripts/scan_module_evidence.py`
+  - 迁移后的文档校验脚本 `validate-*.sh`
+- `scan_module_evidence.py` 已支持：
+  - 模块名与别名归一化
+  - docs 栏目别名歧义检测
+  - 输出源码、测试、README、docs、`ai-libs/` 的存在性扫描结果
+  - 对 landing/topic/fallback 状态做基础判断，作为后续页面收口入口
+- `.agents/skills/README.md` 已改成“统一公开入口 + 共享资源”说明，不再把旧 `vitepress-*` skill 当成推荐工作流
+- 旧 `vitepress-*` skill 文件已删除；目录本身在当前 Windows-backed worktree 上因只读元数据仍可能残留为空目录，但由于
+  `SKILL.md` 已删除，它们不再构成可发现的 skill 入口
+
+### 验证（RP-008）
+
+- `python3 -B .agents/skills/gframework-doc-refresh/scripts/scan_module_evidence.py Core`
+- `python3 -B .agents/skills/gframework-doc-refresh/scripts/scan_module_evidence.py Godot.SourceGenerators`
+- `python3 -B .agents/skills/gframework-doc-refresh/scripts/scan_module_evidence.py Cqrs`
+- `python3 -B .agents/skills/gframework-doc-refresh/scripts/scan_module_evidence.py source-generators --json`
+
+### 当前结论（RP-008）
+
+- 当前文档刷新入口已经从“按文档类型拆 skill”转为“按源码模块驱动文档评估与更新”
+- `ai-libs/` 已正式纳入标准证据链，但仅用于 adoption path 和真实 wiring 参考，不覆盖源码契约
+- 旧 skill 中仍有价值的模板与校验逻辑已经迁入统一入口或 `_shared/`，后续不需要再维护多套并列说明
+
+### 下一步（RP-008）
+
+1. 使用 `gframework-doc-refresh` 对 `Godot.SourceGenerators` 做一次真实模块扫描，并据此继续刷新
+   `godot-project-generator.md`、`get-node-generator.md` 与 `bind-node-signal-generator.md`
+2. 若发现 `module-map.json` 在 Godot 场景下仍缺少别名或 docs 映射，再回补共享映射，而不是在单页文档里硬编码
+3. 若后续 skill 收口过程继续积累细节，再把迁移细节归档到本 topic 的 `archive/`，保持 active trace 可快速恢复

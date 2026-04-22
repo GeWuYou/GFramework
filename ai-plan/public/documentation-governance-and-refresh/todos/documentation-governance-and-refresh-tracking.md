@@ -7,21 +7,19 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`DOCUMENTATION-GOVERNANCE-REFRESH-RP-007`
+- 恢复点编号：`DOCUMENTATION-GOVERNANCE-REFRESH-RP-008`
 - 当前阶段：`Phase 3`
 - 当前焦点：
-  - 已完成 `docs/zh-CN/core/events.md`、`property.md` 与 `logging.md` 的专题页重写
-  - 已按源码与测试复核 `docs/zh-CN/core/state-management.md`、`coroutine.md`，当前内容与实现基本一致，无需再做
-    机械改写
-  - 已完成 `docs/zh-CN/game/scene.md` 与 `ui.md` 的专题页重写，当前内容已回到“项目自接 factory/root + router 基类”的真实边界
-  - 已完成 `docs/zh-CN/source-generators/context-aware-generator.md` 与 `priority-generator.md` 的专题页重写，当前内容已回到“真实生成成员、推荐 API 与兼容边界”的结构
-  - 下一轮需要把重心转到 Godot 相关生成器页面核对
+  - 已建立统一公开 skill：`.agents/skills/gframework-doc-refresh/`
+  - 文档重构入口已从“按 guide/tutorial/api 类型拆 skill”收口为“按源码模块驱动文档刷新”
+  - 旧 `vitepress-*` skill 的模板、规范与校验逻辑已迁入新 skill 或 `_shared/`
+  - 下一轮需要用统一 skill 推进 Godot 相关生成器页面核对
 
 ## 当前状态摘要
 
 - 文档治理规则已收口到仓库规范，README、站点入口与采用链路不再依赖旧文档自证
 - 高优先级模块入口与 `core` 关键专题页已回到可作为默认导航入口的状态，本轮计划中的 `core` 剩余高风险页面已完成收口
-- 当前主题仍是 active topic，因为 `source-generators` 栏目下的 Godot 相关页面仍可能包含与实现漂移的旧内容
+- 当前主题仍是 active topic，因为 `source-generators` 栏目下的 Godot 相关页面仍可能包含与实现漂移的旧内容，且统一 skill 还需要在该场景上继续落地使用
 
 ## 当前活跃事实
 
@@ -51,6 +49,11 @@
 - `docs/zh-CN/source-generators/priority-generator.md` 已改成“生成 `IPrioritized`、priority-aware 检索 API、动态优先级边界与诊断”的结构，
   不再把 `GetAllByPriority<T>()` / `system.Init()` 当作所有场景的默认示例
 - 本轮重写后再次执行 `cd docs && bun run build` 通过，当前 `source-generators` 栏目改动没有破坏站点构建
+- `.agents/skills/gframework-doc-refresh/SKILL.md` 已改成标准 YAML frontmatter skill，并明确支持模块输入、证据顺序、输出优先级与验证步骤
+- `.agents/skills/_shared/module-map.json` 已收口为源码模块映射表，覆盖源码目录、测试项目、README、`docs/zh-CN` 栏目与 `ai-libs/` 参考入口
+- 旧 `vitepress-api-doc`、`vitepress-batch-api`、`vitepress-doc-generator`、`vitepress-guide`、`vitepress-tutorial`、`vitepress-validate`
+  已不再保留为可用公开 skill 定义文件
+- `ai-libs/` 已纳入统一 skill 的标准证据链，只作为消费者接入参考，不再替代源码与测试契约
 
 ## 当前风险
 
@@ -59,6 +62,14 @@
     继续按源码、测试、`*.csproj` 与 `ai-libs/` 下已验证参考实现核对剩余 Godot 相关页面，不把旧文档当事实来源
 - 采用路径误导风险：根聚合包与模块边界若再次被写错，会继续误导消费者的包选择
   - 缓解措施：保持“源码与包关系优先”的证据顺序，改动采用说明时同步核对包依赖与生成器 wiring
+- 模块映射不全风险：统一 skill 若遗漏模块别名、测试项目或 docs 栏目映射，会让后续扫描阶段直接失焦
+  - 缓解措施：以当前 `*.csproj` 族为 canonical module list，统一维护 `.agents/skills/_shared/module-map.json`
+- `ai-libs/` 漂移风险：参考项目若滞后于当前实现，可能把过时 wiring 重新带回文档
+  - 缓解措施：在 skill 中固定“源码/测试优先，`ai-libs/` 只补 adoption path”的证据顺序
+- 旧模板迁移失真风险：旧 `vitepress-*` skill 的模板和规范若原样沿用，可能继续输出过时结构
+  - 缓解措施：只迁移可复用骨架，把输出优先级和证据规则重写进统一 skill
+- 统一入口过宽风险：若 `gframework-doc-refresh` 的触发描述过宽，可能在模块不明确时误进入文档生成
+  - 缓解措施：要求先做模块归一化；遇到栏目别名歧义时只返回建议，不直接生成文档
 - Active 入口回膨胀风险：后续若把栏目级重写过程直接追加到 active 文档，会再次拖慢恢复
   - 缓解措施：阶段完成并验证后，继续把细节迁入本 topic 的 `archive/`
 - review 跟进遗漏风险：如果 PR review 抓取继续优先选中空 review body，会漏掉 CodeRabbit 的 Nitpick 和
@@ -76,10 +87,13 @@
 - active 跟踪文件已按 `ai-plan` 治理规则精简为当前恢复入口
 - `cd docs && bun run build`
 - `python3 .codex/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --format json`
+- `python3 .agents/skills/gframework-doc-refresh/scripts/scan_module_evidence.py Core`
+- `python3 .agents/skills/gframework-doc-refresh/scripts/scan_module_evidence.py Godot.SourceGenerators`
+- `python3 .agents/skills/gframework-doc-refresh/scripts/scan_module_evidence.py Cqrs`
 
 ## 下一步
 
 1. 继续核对 Godot 相关生成器页面，优先处理 `godot-project-generator.md`、`get-node-generator.md` 与
-   `bind-node-signal-generator.md`
+   `bind-node-signal-generator.md`，优先用 `gframework-doc-refresh` 的模块扫描结果驱动判断
 2. 重点确认 `project.godot`、`AutoLoad` / `InputActions`、`GetNode` / `BindNodeSignal` 示例仍与当前包关系和生成器入口一致
 3. 若 active trace 再积累新的已完成阶段，按恢复点粒度迁入 `archive/traces/`，避免默认启动入口再次膨胀

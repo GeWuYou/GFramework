@@ -1,0 +1,4 @@
+interface:
+  display_name: "GFramework Doc Refresh"
+  short_description: "Refresh module docs from code-first evidence"
+  default_prompt: "Use $gframework-doc-refresh to refresh a GFramework module's docs from source, tests, README, current docs, and ai-libs evidence."
