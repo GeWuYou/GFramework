@@ -38,10 +38,6 @@ help the current worktree land on the right recovery documents without scanning 
   - Purpose: continue the data repository persistence hardening plus the settings / serialization follow-up backlog.
   - Tracking: `ai-plan/public/data-repository-persistence/todos/data-repository-persistence-tracking.md`
   - Trace: `ai-plan/public/data-repository-persistence/traces/data-repository-persistence-trace.md`
-- `documentation-governance-and-refresh`
-  - Purpose: continue the documentation governance, README hardening, and `docs/zh-CN` accuracy refresh work.
-  - Tracking: `ai-plan/public/documentation-governance-and-refresh/todos/documentation-governance-and-refresh-tracking.md`
-  - Trace: `ai-plan/public/documentation-governance-and-refresh/traces/documentation-governance-and-refresh-trace.md`
 
 ## Worktree To Active Topic Map
 
@@ -62,12 +58,11 @@ help the current worktree land on the right recovery documents without scanning 
 - Branch: `feat/data-repository-persistence`
   - Worktree hint: `GFramework-data-repository-persistence`
   - Priority 1: `data-repository-persistence`
-- Branch: `docs/sdk-update-documentation`
-  - Worktree hint: `GFramework-update-documentation`
-  - Priority 1: `documentation-governance-and-refresh`
-
 ## Archived Topics
 
 - `cqrs-cache-docs-hardening`
   - Archive root: `ai-plan/public/archive/cqrs-cache-docs-hardening/`
   - Note: archived topics stay outside the default `boot` context until a user explicitly requests historical review.
+- `documentation-governance-and-refresh`
+  - Archive root: `ai-plan/public/archive/documentation-governance-and-refresh/`
+  - Note: PR #268 已合并；文档治理与 Godot 栏目刷新阶段已完成，后续仅作为历史恢复材料保留。
