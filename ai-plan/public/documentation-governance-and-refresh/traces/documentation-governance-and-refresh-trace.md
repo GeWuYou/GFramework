@@ -2,7 +2,7 @@
 
 ## 2026-04-22
 
-### 当前恢复点：RP-016
+### 当前恢复点：RP-017
 
 - 本轮从 PR #268 的最新 review 数据恢复，未发现失败检查；CTRF 报告显示 2139 个测试全部通过
 - 本轮复核确认当前 PR 的 latest-head open thread 同时来自 `coderabbitai[bot]` 与 `greptile-apps[bot]`
@@ -42,6 +42,11 @@
   生命周期边界、当前边界”，不再继续宣称存在覆盖所有 Godot 场景的万能扩展层
 - 本轮复核 `ai-libs/CoreGrid` 的动态绑定用法后，明确把 fluent API 定位为“动态对象 / 动态 signal 的运行时连接”，而把静态控件绑定继续归到
   `[BindNodeSignal]` 生成器链路
+- 本轮已重写 `docs/zh-CN/godot/logging.md`，把内容收口为“当前 provider / factory / logger 结构、最小接入路径、
+  Godot 控制台输出语义、`[Log]` 协作边界、当前限制”，不再把直接改全局 provider 或 `AbstractGodotModule` 写成默认采用路径
+- 本轮额外复核 `GFramework.Godot/Logging/*.cs`、`GFramework.Core.Abstractions/Logging/LoggerFactoryResolver.cs`、
+  `GFramework.Core/Logging/CachedLoggerFactory.cs` 与 `ai-libs/CoreGrid/global/GameEntryPoint.cs`，确认当前推荐接法应以
+  `ArchitectureConfiguration.LoggerProperties.LoggerFactoryProvider` 为主，而不是先写 `LoggerFactoryResolver.Provider = ...`
 
 ### 当前决策
 
@@ -62,7 +67,7 @@
 - `signal.md` 已明确为 `Signal(...)` / `SignalBuilder` 的轻量 fluent 包装说明页，不再继续混入生成器职责
 - `extensions.md` 已明确限制在 `GodotPathExtensions`、`NodeExtensions`、`SignalFluentExtensions` 与 `UnRegisterExtension`
   这四组当前存在的扩展
-- Godot 栏目的下一轮优先级转为 `logging.md`；后续如果它仍复用旧扩展页话术，会重新污染已收口的入口页
+- `logging.md` 已完成收口；下一轮优先级转为评估当前 Godot 栏目恢复点是否可以迁入 `archive/`，并保留 PR review follow-up 入口
 
 ### 验证
 
@@ -87,11 +92,12 @@
 - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/ui.md`
 - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/signal.md`
 - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/extensions.md`
+- `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/logging.md`
 - `rg -n "GodotSceneRouter|GodotUiRouter|CreateSignalBuilder|GetNodeX|InstallGodotModule\(" docs/zh-CN/godot -S`
 - `cd docs && bun run build`
 
 ### 下一步
 
-1. 优先复核 `docs/zh-CN/godot/logging.md`，确认它的 API 说明与交叉链接不会把 signal / extensions / runtime 边界重新写偏
-2. 视 `logging.md` 复核结果，决定是否可以把当前 Godot 栏目恢复点收口并迁入 archive
+1. 评估当前 Godot 栏目页面集是否已足够稳定，决定是否把当前恢复点收口并迁入 `archive/`
+2. 如暂不归档，先把 active tracking / trace 进一步压缩到归档决策、当前风险与 PR 跟进入口
 3. 下一次推送后重新执行 `$gframework-pr-review`，确认 PR #268 的 CodeRabbit / Greptile open thread 是否关闭或减少
