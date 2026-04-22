@@ -12,12 +12,12 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`DOCUMENTATION-FULL-COVERAGE-GOV-RP-005`
-- 当前阶段：`Phase 4 - Game Docs Refresh`
+- 恢复点编号：`DOCUMENTATION-FULL-COVERAGE-GOV-RP-006`
+- 当前阶段：`Phase 5 - Governance Maintenance`
 - 当前焦点：
-  - 收口 `Game` / `Game.Abstractions` / `Game.SourceGenerators` 的 README / landing / abstractions / XML inventory
-  - 延续 `README / landing / API reference / XML inventory` 的同一治理模板
-  - 把 `Game.Abstractions` 从失真的接口摘录页收敛为真实契约边界页面，并为下一轮巡检保留统一口径
+  - 将当前 WSL 会话验证通过的 Git 回退策略写回 `AGENTS.md`
+  - 明确显式 `--git-dir` / `--work-tree` 绑定在本仓库中的优先级高于 `git.exe`
+  - 避免后续 `boot` / 恢复任务重复踩到 `git.exe` 无法执行与 plain `git` worktree 路径翻译错误
 
 ## 当前状态摘要
 
@@ -51,6 +51,8 @@
   - 为 `docs/zh-CN/game/index.md` 补齐 frontmatter，并增加 `Game` / `Game.Abstractions` / `Game.SourceGenerators` 的 XML 覆盖基线入口
   - 将 `docs/zh-CN/abstractions/game-abstractions.md` 从失真的旧接口摘录页重写为契约边界 / 包关系 / 最小接入路径页面
   - 基于顶层目录轻量盘点确认：`GFramework.Game` 为 `56/56`、`GFramework.Game.Abstractions` 为 `80/80`、`GFramework.Game.SourceGenerators` 为 `2/2`，当前公开 / 内部类型声明都已带 XML 注释
+  - 更新 `AGENTS.md` 的 WSL Git 策略，将显式 `--git-dir` / `--work-tree` 绑定提升为高于 `git.exe` 的默认优先级
+  - 记录当前环境偏差：本会话 `git.exe` 可解析但执行会触发 `Exec format error`，而 plain Linux `git` 会命中 worktree 路径翻译错误，需要显式仓库绑定
 
 ## Inventory（第一版）
 
@@ -88,6 +90,8 @@
   - 缓解措施：站内页面用模块路径文本或站内 API 入口表达，仓库级 README 仍保留仓库文件链接
 - `GFramework.Cqrs` 在当前 WSL / dotnet 环境下，本地 build 仍会读取失效的 fallback package folder 配置，导致无法完成该项目的标准编译验证
   - 缓解措施：本轮先以 `GFramework.Cqrs.SourceGenerators` 编译通过和 docs site build 通过作为有效验证，并在后续环境治理或构建脚本清理时单独处理 `RestoreFallbackFolders` / 资产文件问题
+- 当前 WSL 会话中 `git.exe` 虽然可解析，但不能执行
+  - 缓解措施：把显式 `--git-dir` / `--work-tree` 绑定上升为仓库默认回退策略，并仅把 `git.exe` 保留为可执行时的次级 fallback
 
 ## 验证说明
 
@@ -154,6 +158,9 @@
 - `cd docs && bun run build`
 - 结果：通过
 - 备注：`2026-04-23` 在 `Game` 波次文档刷新后重新构建通过；仅保留 VitePress 大 chunk warning，无构建失败
+- `cd docs && bun run build`
+- 结果：通过
+- 备注：`2026-04-23` 在更新 `AGENTS.md` 的 WSL Git 优先级后重新构建通过；仅保留 VitePress 大 chunk warning，无构建失败
 
 ## 下一步
 

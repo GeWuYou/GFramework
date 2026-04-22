@@ -178,3 +178,30 @@
 
 1. 进入 `Game` family 巡检，优先检查 `config-system.md`、`scene.md`、`ui.md` 与 `source-generators/index.md` 的交叉引用是否回漂
 2. 评估是否需要把 `Godot` family 的关键 XML inventory 摘要迁回 active topic，减少对 archive 的依赖
+
+### 当前恢复点：RP-006
+
+- 更新 `AGENTS.md` 的 WSL Git 规则：
+  - 将显式 `git --git-dir=<...> --work-tree=<...>` 绑定提升为高于 `git.exe` 的默认优先级
+  - 明确 plain Linux `git` 命中 worktree 路径翻译错误时，应先切到显式绑定而不是直接改用 `git.exe`
+  - 明确 `git.exe` 只有在当前会话可执行时才作为次级 fallback
+- 记录本次恢复任务的环境偏差：
+  - `git.exe` 在当前 WSL 会话中可解析，但执行会触发 `Exec format error`
+  - plain `git` 会把 worktree 元数据路径翻译错并报“not a git repository”
+  - 显式 `--git-dir` / `--work-tree` 绑定是本次已验证可用的 Git 操作方式
+
+### 当前决策（RP-006）
+
+- 把 Git 回退顺序写进 `AGENTS.md`，而不是只留在一次性的聊天上下文里
+- 不额外扩张 `gframework-boot` skill，因为它本身不内嵌 Git 选择逻辑，继续由 `AGENTS.md` 作为唯一准则
+- 继续把 `git.exe` 保留为 fallback，而不是完全删除，避免在可执行的 WSL 会话里丢掉可用路径
+
+### 当前验证（RP-006）
+
+- 构建校验：
+  - `cd docs && bun run build`：通过；仅保留 VitePress 大 chunk warning，无构建失败
+
+### 下一步
+
+1. 继续 `Game` family 巡检，优先检查 `config-system.md`、`scene.md`、`ui.md` 与 `source-generators/index.md` 的交叉引用是否回漂
+2. 评估是否需要把 `Godot` family 的关键 XML inventory 摘要迁回 active topic，减少对 archive 的依赖

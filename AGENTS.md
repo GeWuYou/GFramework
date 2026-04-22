@@ -10,14 +10,21 @@ All AI agents and contributors must follow these rules when writing, reviewing, 
 - Use `@.ai/environment/tools.raw.yaml` only when you need the full collected facts behind the AI-facing hints.
 - Prefer the project-relevant tools listed there instead of assuming every installed system tool is fair game.
 - If the real environment differs from the inventory, use the project-relevant installed tool and report the mismatch.
-- When working in WSL against this repository's Windows-backed worktree, prefer Windows Git from WSL (for example
-  `git.exe`) instead of the Linux `git` binary.
-- If a Git command in WSL fails with a worktree-style “not a git repository” path translation error, rerun it with the
-  Windows Git executable and treat that as the repository-default Git path for the rest of the task.
-- If the shell does not currently resolve `git.exe` to the host Windows Git installation, prepend that installation's
-  command directory to `PATH` and reset shell command hashing for the current session before continuing.
-- After resolving the host Windows Git path, prefer an explicit session-local binding for subsequent commands so the
-  shell does not fall back to Linux `/usr/bin/git` later in the same WSL session.
+- When working in WSL against this repository's Windows-backed worktree, first prefer Linux `git` with an explicit
+  `--git-dir=<repo>/.git/worktrees/<worktree-name>` and `--work-tree=<worktree-root>` binding for every repository
+  command. Treat that explicit binding as higher priority than `git.exe`, because it avoids WSL worktree path
+  translation mistakes and still works in sessions where Windows `.exe` execution is unavailable.
+- If a plain Linux `git` command in WSL fails with a worktree-style “not a git repository” path translation error,
+  rerun it with the explicit `--git-dir` / `--work-tree` binding before trying `git.exe`.
+- Only prefer Windows Git from WSL (for example `git.exe`) when that executable is both resolvable and executable in the
+  current session, and when the explicit Linux `git` binding is unavailable or has already failed.
+- If the shell resolves `git.exe` but the current WSL session cannot execute it cleanly (for example `Exec format
+  error`), keep using the explicit Linux `git` binding for the rest of the task instead of retrying Windows Git.
+- If the shell does not currently resolve `git.exe` to the host Windows Git installation and you still need Windows Git
+  as a fallback, prepend that installation's command directory to `PATH` and reset shell command hashing for the
+  current session before continuing.
+- After resolving either strategy, prefer a session-local binding or command wrapper for subsequent Git commands so the
+  shell does not silently fall back to the wrong repository context later in the same WSL session.
 
 ## Git Workflow Rules
 
