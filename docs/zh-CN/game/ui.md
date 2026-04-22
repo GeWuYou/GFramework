@@ -1,509 +1,333 @@
 ---
 title: UI 系统
-description: UI 系统提供了完整的 UI 页面管理、路由导航和多层级显示功能。
+description: 说明 GFramework.Game UI 路由当前的页面栈、层级 UI、输入语义与项目侧接入方式。
 ---
 
 # UI 系统
 
-## 概述
+`GFramework.Game` 的 UI 系统不是单纯的“页面栈”。按当前实现，它同时覆盖：
 
-UI 系统是 GFramework.Game 中用于管理游戏 UI 界面的核心组件。它提供了 UI 页面的生命周期管理、基于栈的导航机制，以及多层级的
-UI 显示系统（Page、Overlay、Modal、Toast、Topmost）。
+- `UiLayer.Page` 的页面导航
+- `Overlay` / `Modal` / `Toast` / `Topmost` 的层级 UI
+- UI 语义动作捕获与分发
+- World 输入阻断
+- 由 UI 可见性驱动的暂停语义
 
-通过 UI 系统，你可以轻松实现 UI 页面之间的切换，管理 UI 栈（如主菜单 -> 设置 -> 关于），以及在不同层级显示各种类型的
-UI（对话框、提示、加载界面等）。
+因此，新的接入文档不应再把它写成“只有 Push/Pop 的传统页面管理器”。
 
-**主要特性**：
+## 当前公开入口
 
-- 完整的 UI 生命周期管理
-- 基于栈的 UI 导航
-- 多层级 UI 显示（5 个层级）
-- UI 转换管道和钩子
-- 路由守卫（Route Guard）
-- UI 工厂和行为模式
+### `IUiPage`
 
-## 核心概念
+最轻量的页面生命周期契约，暴露：
 
-### UI 页面接口
+- `OnEnter`
+- `OnExit`
+- `OnPause`
+- `OnResume`
+- `OnShow`
+- `OnHide`
 
-`IUiPage` 定义了 UI 页面的生命周期：
+如果你的页面逻辑只想表达这些生命周期阶段，停留在 `IUiPage` 就够了。
+
+### `IUiPageBehavior`
+
+路由器真正操作的运行时页面行为。相比 `IUiPage`，它还携带：
+
+- `Key`
+- `Layer`
+- `Handle`
+- `View`
+- `IsAlive`
+- `IsVisible`
+- `IsModal`
+- `BlocksInput`
+- `InteractionProfile`
+- `TryHandleUiAction(UiInputAction action)`
+
+也就是说，页面栈和层级 UI 都是围绕 `IUiPageBehavior` 工作的，而不是只围绕 `IUiPage`。
+
+### `IUiRouter`
+
+当前最常用的入口分成两组。
+
+页面栈：
+
+- `PushAsync(...)`
+- `ReplaceAsync(...)`
+- `PopAsync(...)`
+- `ClearAsync()`
+- `Peek()`
+- `PeekKey()`
+
+层级 UI：
+
+- `Show(...)`
+- `Hide(...)`
+- `Resume(...)`
+- `ClearLayer(...)`
+- `HideByKey(...)`
+- `GetAllFromLayer(...)`
+
+输入与阻断：
+
+- `GetUiActionOwner(UiInputAction action)`
+- `TryDispatchUiAction(UiInputAction action)`
+- `BlocksWorldPointerInput()`
+- `BlocksWorldActionInput()`
+
+### `UiLayer`
+
+当前层级语义如下：
+
+- `Page`
+  - 页面栈层。请用 `PushAsync` / `ReplaceAsync`，不要用 `Show(...)`。
+- `Overlay`
+  - 可叠加的浮层。
+- `Modal`
+  - 默认阻断下层输入的模态层。
+- `Toast`
+  - 轻量提示层。
+- `Topmost`
+  - 最顶层的系统级 UI。
+
+### `UiTransitionPolicy` 与 `UiPopPolicy`
+
+页面栈的两个关键策略：
+
+- `UiTransitionPolicy.Exclusive`
+  - 新页面独占显示，下层页面会 `Pause + Hide`
+- `UiTransitionPolicy.Overlay`
+  - 新页面覆盖显示，下层页面只 `Pause`
+- `UiPopPolicy.Destroy`
+  - 弹出时直接销毁页面实例
+- `UiPopPolicy.Suspend`
+  - 弹出时保留页面实例，供后续恢复
+
+## UI 路由的真实语义
+
+### 页面栈和层级 UI 是两套入口
+
+当前源码里：
+
+- `Page` 层属于栈语义，用 `PushAsync` / `ReplaceAsync` / `PopAsync`
+- `Overlay`、`Modal`、`Toast`、`Topmost` 属于层级语义，用 `Show` / `Hide` / `Resume`
+
+`Show(..., UiLayer.Page)` 在当前实现里会直接抛异常，因此旧文档里那种“所有 UI 都统一通过 Show 进入”的写法不再准确。
+
+### 输入不是页面自己抢，而是 router 先仲裁
+
+`UiInteractionProfile` 用来描述页面的交互契约，例如：
+
+- 捕获哪些 `UiInputAction`
+- 是否阻断 World 指针输入
+- 是否阻断 World 语义动作输入
+- 页面可见时是否推动暂停栈
+
+输入层先把设备输入映射成 `UiInputAction`，再交给 `IUiRouter.TryDispatchUiAction(...)`。最终谁拥有动作捕获权，由当前可见页面和层级顺序决定。
+
+### 页面可见性会影响暂停与阻断
+
+这也是 UI 系统和普通页面栈最不同的地方之一。当前实现里：
+
+- `Modal` / `Topmost` 默认具有更强的输入阻断语义
+- 页面的 `InteractionProfile` 可以驱动暂停栈
+- `BlocksWorldPointerInput()` 与 `BlocksWorldActionInput()` 是给项目输入层做统一判断的
+
+如果你的项目有“打开设置页后暂停世界”“Modal 打开时地图点击失效”这类需求，优先接这个契约，而不是每个页面自己散落地写输入屏蔽逻辑。
+
+## 最小接入路径
+
+推荐按下面的顺序接入。
+
+### 推荐目录与文件约定（项目侧）
+
+UI 系统的接入文件建议按“路由、工厂、根节点、页面行为、入参”拆开。这样可以让 `UiRouterBase` 只承担编排职责，
+把引擎节点创建和页面业务逻辑留在项目侧。
+
+```text
+Game/UI/
+  GameUiRouter.cs
+  GameUiFactory.cs
+  UiRoot.cs
+  Pages/
+    MainMenuPageBehavior.cs
+    SettingsPageBehavior.cs
+  Params/
+    SettingsEnterParam.cs
+  Views/
+    MainMenuView.cs
+```
+
+推荐约定如下：
+
+- `GameUiRouter.cs`：项目侧 router，继承 `UiRouterBase`，只注册 UI transition handler 与 guard
+- `GameUiFactory.cs`：实现 `IUiFactory`，负责 `uiKey -> IUiPageBehavior` 的映射与实例创建
+- `UiRoot.cs`：实现 `IUiRoot`，负责按 `UiLayer` 把页面行为挂到真实 UI 容器
+- `Pages/*PageBehavior.cs`：放实现 `IUiPageBehavior` 的页面行为；使用 Godot 生成器时可由 `AutoUiPage` 相关样板补齐
+- `Params/*EnterParam.cs`：放实现 `IUiPageEnterParam` 的页面入参
+- `Views/*`：放项目引擎层视图包装或节点引用，不建议把导航决策写在视图里
+
+最小 wiring 通常是：
 
 ```csharp
-public interface IUiPage
+architecture.RegisterUtility<IUiFactory>(new GameUiFactory());
+architecture.RegisterSystem(new GameUiRouter());
+```
+
+随后在 `UiRoot` 的引擎生命周期就绪点调用 `_uiRouter.BindRoot(this)`。如果项目已经按功能域组织 UI 文件，也可以保留
+原目录；关键是让 `*Router` 只做编排、`*Factory` 只做映射与创建、`*Root` 只做容器挂载，页面行为只表达页面自身语义。
+
+### 1. 提供项目自己的 router
+
+```csharp
+using GFramework.Game.UI;
+using LoggingTransitionHandler = GFramework.Game.UI.Handler.LoggingTransitionHandler;
+
+public sealed class GameUiRouter : UiRouterBase
 {
-    void OnEnter(IUiPageEnterParam? param);  // 进入页面
-    void OnExit();                           // 退出页面
-    void OnPause();                          // 暂停页面
-    void OnResume();                         // 恢复页面
-    void OnShow();                           // 显示页面
-    void OnHide();                           // 隐藏页面
+    protected override void RegisterHandlers()
+    {
+        RegisterHandler(new LoggingTransitionHandler());
+    }
 }
 ```
 
-### UI 路由
+### 2. 提供 `IUiFactory`
 
-`IUiRouter` 管理 UI 的导航和切换：
+`UiRouterBase` 会通过 `IUiFactory.Create(string uiKey)` 获取页面行为实例，因此项目需要自己决定：
+
+- `uiKey` 如何映射到页面行为
+- 页面行为如何包裹具体引擎视图
+- 预挂载节点、调试节点或动态实例化页面如何接入
+
+如果你在 Godot 项目里使用 `AutoUiPage` 相关生成器，它可以帮你减少部分行为样板，但 factory / root / 实际页面注册仍然是项目职责。
+
+### 3. 提供 `IUiRoot`
+
+`IUiRoot` 负责把页面行为挂进真实 UI 容器：
+
+- `AddUiPage(IUiPageBehavior child)`
+- `AddUiPage(IUiPageBehavior child, UiLayer layer, int orderInLayer = 0)`
+- `RemoveUiPage(IUiPageBehavior child)`
+
+当前 `ai-libs/` 的参考实现就是在项目自己的 `CanvasLayer` 上为每个 `UiLayer` 建独立容器，再在 `_Ready()` 时执行
+`_uiRouter.BindRoot(this)`。
+
+### 4. 装配 router 与 factory
 
 ```csharp
-public interface IUiRouter : ISystem
-{
-    int Count { get; }                    // UI 栈深度
-    IUiPageBehavior? Peek();              // 栈顶 UI
-
-    ValueTask PushAsync(string uiKey, IUiPageEnterParam? param = null);
-    ValueTask PopAsync(UiPopPolicy policy = UiPopPolicy.Destroy);
-    ValueTask ReplaceAsync(string uiKey, IUiPageEnterParam? param = null);
-    ValueTask ClearAsync();
-}
+architecture.RegisterUtility<IUiFactory>(new GameUiFactory());
+architecture.RegisterSystem(new GameUiRouter());
 ```
 
-### UI 层级
-
-UI 系统支持 5 个显示层级：
+### 5. 在 root 就绪后绑定
 
 ```csharp
-public enum UiLayer
+public sealed class UiRoot : CanvasLayer, IUiRoot
 {
-    Page,      // 页面层（栈管理，不可重入）
-    Overlay,   // 浮层（可重入，对话框等）
-    Modal,     // 模态层（可重入，带遮罩）
-    Toast,     // 提示层（可重入，轻量提示）
-    Topmost    // 顶层（不可重入，系统级）
-}
-```
+    [GetSystem] private IUiRouter _uiRouter = null!;
 
-## 基本用法
-
-### 定义 UI 页面
-
-实现 `IUiPage` 接口创建 UI 页面：
-
-```csharp
-using GFramework.Game.Abstractions.UI;
-
-public class MainMenuPage : IUiPage
-{
-    public void OnEnter(IUiPageEnterParam? param)
+    public override void _Ready()
     {
-        Console.WriteLine("进入主菜单");
-        // 初始化 UI、绑定事件
+        __InjectContextBindings_Generated();
+        _uiRouter.BindRoot(this);
     }
 
-    public void OnExit()
+    public void AddUiPage(IUiPageBehavior child)
     {
-        Console.WriteLine("退出主菜单");
-        // 清理资源、解绑事件
+        AddUiPage(child, UiLayer.Page);
     }
 
-    public void OnPause()
+    public void AddUiPage(IUiPageBehavior child, UiLayer layer, int orderInLayer = 0)
     {
-        Console.WriteLine("暂停主菜单");
-        // 暂停动画、停止交互
+        // 项目侧决定如何把 child.View 挂到具体容器
     }
 
-    public void OnResume()
+    public void RemoveUiPage(IUiPageBehavior child)
     {
-        Console.WriteLine("恢复主菜单");
-        // 恢复动画、启用交互
-    }
-
-    public void OnShow()
-    {
-        Console.WriteLine("显示主菜单");
-        // 显示 UI 元素
-    }
-
-    public void OnHide()
-    {
-        Console.WriteLine("隐藏主菜单");
-        // 隐藏 UI 元素
+        // 项目侧决定如何移除并释放视图
     }
 }
 ```
 
-### 切换 UI 页面
+### 6. 从业务代码区分两类入口
 
-使用 UI 路由进行导航：
-
-```csharp
-using GFramework.Core.Abstractions.Controller;
-using GFramework.Core.SourceGenerators.Abstractions.Rule;
-
-[ContextAware]
-public partial class UiController : IController
-{
-    public async Task ShowSettings()
-    {
-        var uiRouter = this.GetSystem<IUiRouter>();
-
-        // 压入设置页面（保留当前页面）
-        await uiRouter.PushAsync("Settings");
-    }
-
-    public async Task CloseSettings()
-    {
-        var uiRouter = this.GetSystem<IUiRouter>();
-
-        // 弹出当前页面（返回上一页）
-        await uiRouter.PopAsync();
-    }
-
-    public async Task ShowMainMenu()
-    {
-        var uiRouter = this.GetSystem<IUiRouter>();
-
-        // 替换所有页面（清空 UI 栈）
-        await uiRouter.ReplaceAsync("MainMenu");
-    }
-}
-```
-
-### 显示不同层级的 UI
+页面栈：
 
 ```csharp
-[ContextAware]
-public partial class UiController : IController
-{
-    public void ShowDialog()
-    {
-        var uiRouter = this.GetSystem<IUiRouter>();
-
-        // 在 Modal 层显示对话框
-        var handle = uiRouter.Show("ConfirmDialog", UiLayer.Modal);
-    }
-
-    public void ShowToast(string message)
-    {
-        var uiRouter = this.GetSystem<IUiRouter>();
-
-        // 在 Toast 层显示提示
-        var handle = uiRouter.Show("ToastMessage", UiLayer.Toast,
-            new ToastParam { Message = message });
-    }
-
-    public void ShowLoading()
-    {
-        var uiRouter = this.GetSystem<IUiRouter>();
-
-        // 在 Topmost 层显示加载界面
-        var handle = uiRouter.Show("LoadingScreen", UiLayer.Topmost);
-    }
-}
+await uiRouter.ReplaceAsync("MainMenu");
+await uiRouter.PushAsync("Settings", new SettingsEnterParam());
+await uiRouter.PopAsync(UiPopPolicy.Destroy);
 ```
 
-## 高级用法
-
-### UI 参数传递
+层级 UI：
 
 ```csharp
-// 定义 UI 参数
-public class SettingsEnterParam : IUiPageEnterParam
-{
-    public string Category { get; set; }
-}
+var modalHandle = uiRouter.Show(
+    "ConfirmExit",
+    UiLayer.Modal,
+    new ConfirmExitParam());
 
-// 在 UI 中接收参数
-public class SettingsPage : IUiPage
-{
-    private string _category;
-
-    public void OnEnter(IUiPageEnterParam? param)
-    {
-        if (param is SettingsEnterParam settingsParam)
-        {
-            _category = settingsParam.Category;
-            Console.WriteLine($"打开设置分类: {_category}");
-        }
-    }
-
-    // ... 其他生命周期方法
-}
-
-// 传递参数
-await uiRouter.PushAsync("Settings", new SettingsEnterParam
-{
-    Category = "Audio"
-});
+uiRouter.Hide(modalHandle, UiLayer.Modal);
 ```
+
+## 扩展点
 
 ### 路由守卫
 
-```csharp
-using GFramework.Game.Abstractions.UI;
+如果你要在进入或离开页面前做业务检查，实现 `IUiRouteGuard`：
 
-public class UnsavedChangesGuard : IUiRouteGuard
-{
-    public async ValueTask<bool> CanLeaveAsync(
-        IUiPageBehavior from,
-        string toKey,
-        IUiPageEnterParam? param)
-    {
-        // 检查是否有未保存的更改
-        if (from.Key == "Settings" && HasUnsavedChanges())
-        {
-            var confirmed = await ShowConfirmDialog();
-            return confirmed;
-        }
+- `CanEnterAsync(string uiKey, IUiPageEnterParam? param)`
+- `CanLeaveAsync(string uiKey)`
 
-        return true;
-    }
+适合放：
 
-    public async ValueTask<bool> CanEnterAsync(
-        string toKey,
-        IUiPageEnterParam? param)
-    {
-        // 进入前的验证
-        return true;
-    }
+- 未保存设置拦截
+- 新手引导期间禁用某些页面跳转
+- 多层弹窗切换前的业务确认
 
-    private bool HasUnsavedChanges() => true;
-    private async Task<bool> ShowConfirmDialog() => await Task.FromResult(true);
-}
+### 过渡处理器
 
-// 注册守卫
-uiRouter.AddGuard(new UnsavedChangesGuard());
-```
+`IUiRouter` 当前公开的是：
 
-### UI 转换处理器
+- `RegisterHandler(IUiTransitionHandler handler, UiTransitionHandlerOptions? options = null)`
+- `UnregisterHandler(IUiTransitionHandler handler)`
 
-```csharp
-using GFramework.Game.Abstractions.UI;
+适合放：
 
-public class FadeTransitionHandler : IUiTransitionHandler
-{
-    public async ValueTask OnBeforeEnterAsync(UiTransitionEvent @event)
-    {
-        Console.WriteLine($"准备进入 UI: {@event.ToKey}");
-        await PlayFadeIn();
-    }
+- UI 转场动画
+- 统一日志
+- 栈变化埋点
 
-    public async ValueTask OnAfterEnterAsync(UiTransitionEvent @event)
-    {
-        Console.WriteLine($"已进入 UI: {@event.ToKey}");
-    }
+### 输入适配层
 
-    public async ValueTask OnBeforeExitAsync(UiTransitionEvent @event)
-    {
-        Console.WriteLine($"准备退出 UI: {@event.FromKey}");
-        await PlayFadeOut();
-    }
+如果项目已经有自己的输入系统，推荐把它适配成：
 
-    public async ValueTask OnAfterExitAsync(UiTransitionEvent @event)
-    {
-        Console.WriteLine($"已退出 UI: {@event.FromKey}");
-    }
+1. 设备输入 -> `UiInputAction`
+2. `IUiRouter.TryDispatchUiAction(...)`
+3. 若未被 UI 捕获，再决定是否把输入继续交给 World
 
-    private async Task PlayFadeIn() => await Task.Delay(200);
-    private async Task PlayFadeOut() => await Task.Delay(200);
-}
+这样可以直接复用当前路由器的动作捕获与阻断语义。
 
-// 注册转换处理器
-uiRouter.RegisterHandler(new FadeTransitionHandler());
-```
+## 与旧写法的边界
 
-### UI 句柄管理
+以下说法不再适合作为默认指导：
 
-```csharp
-using GFramework.Core.Abstractions.Controller;
-using GFramework.Core.SourceGenerators.Abstractions.Rule;
+- “所有 UI 都统一通过一个 Show API 管理”
+- “UI 系统只有页面栈，不涉及输入阻断和暂停语义”
+- “Modal / Topmost 只是视觉层级，不影响交互”
 
-[ContextAware]
-public partial class DialogController : IController
-{
-    private UiHandle? _dialogHandle;
+当前更准确的理解是：
 
-    public void ShowDialog()
-    {
-        var uiRouter = this.GetSystem<IUiRouter>();
+- 页面栈和层级 UI 是两套入口
+- 页面行为不仅有生命周期，还有输入、阻断、暂停契约
+- router 是 UI 语义仲裁中心，项目输入层应主动接入它
 
-        // 显示对话框并保存句柄
-        _dialogHandle = uiRouter.Show("ConfirmDialog", UiLayer.Modal);
-    }
+## 推荐阅读
 
-    public void CloseDialog()
-    {
-        if (_dialogHandle.HasValue)
-        {
-            var uiRouter = this.GetSystem<IUiRouter>();
-
-            // 使用句柄关闭对话框
-            uiRouter.Hide(_dialogHandle.Value, UiLayer.Modal, destroy: true);
-            _dialogHandle = null;
-        }
-    }
-}
-```
-
-### UI 栈管理
-
-```csharp
-using GFramework.Core.Abstractions.Controller;
-using GFramework.Core.SourceGenerators.Abstractions.Rule;
-
-[ContextAware]
-public partial class NavigationController : IController
-{
-    public void ShowUiStack()
-    {
-        var uiRouter = this.GetSystem<IUiRouter>();
-
-        Console.WriteLine($"UI 栈深度: {uiRouter.Count}");
-
-        var current = uiRouter.Peek();
-        if (current != null)
-        {
-            Console.WriteLine($"当前 UI: {current.Key}");
-        }
-    }
-
-    public bool IsSettingsOpen()
-    {
-        var uiRouter = this.GetSystem<IUiRouter>();
-        return uiRouter.Contains("Settings");
-    }
-
-    public bool IsTopPage(string uiKey)
-    {
-        var uiRouter = this.GetSystem<IUiRouter>();
-        return uiRouter.IsTop(uiKey);
-    }
-}
-```
-
-### 多层级 UI 管理
-
-```csharp
-using GFramework.Core.Abstractions.Controller;
-using GFramework.Core.SourceGenerators.Abstractions.Rule;
-
-[ContextAware]
-public partial class LayerController : IController
-{
-    public void ShowMultipleToasts()
-    {
-        var uiRouter = this.GetSystem<IUiRouter>();
-
-        // Toast 层支持重入，可以同时显示多个
-        uiRouter.Show("Toast1", UiLayer.Toast);
-        uiRouter.Show("Toast2", UiLayer.Toast);
-        uiRouter.Show("Toast3", UiLayer.Toast);
-    }
-
-    public void ClearAllToasts()
-    {
-        var uiRouter = this.GetSystem<IUiRouter>();
-
-        // 清空 Toast 层的所有 UI
-        uiRouter.ClearLayer(UiLayer.Toast, destroy: true);
-    }
-
-    public void HideAllDialogs()
-    {
-        var uiRouter = this.GetSystem<IUiRouter>();
-
-        // 隐藏 Modal 层的所有对话框
-        uiRouter.HideByKey("ConfirmDialog", UiLayer.Modal, hideAll: true);
-    }
-}
-```
-
-## 最佳实践
-
-1. **使用合适的层级**：根据 UI 类型选择正确的层级
-   ```csharp
-   ✓ Page: 主要页面（主菜单、设置、游戏界面）
-   ✓ Overlay: 浮层（信息面板、小窗口）
-   ✓ Modal: 模态对话框（确认框、输入框）
-   ✓ Toast: 轻量提示（消息、通知）
-   ✓ Topmost: 系统级（加载界面、全屏遮罩）
-   ```
-
-2. **使用 Push/Pop 管理临时 UI**：如设置、帮助页面
-   ```csharp
-   // 打开设置（保留当前页面）
-   await uiRouter.PushAsync("Settings");
-
-   // 关闭设置（返回上一页）
-   await uiRouter.PopAsync();
-   ```
-
-3. **使用 Replace 切换主要页面**：如从菜单到游戏
-   ```csharp
-   // 开始游戏（清空 UI 栈）
-   await uiRouter.ReplaceAsync("Gameplay");
-   ```
-
-4. **在 OnEnter/OnExit 中管理资源**：保持资源管理清晰
-   ```csharp
-   public void OnEnter(IUiPageEnterParam? param)
-   {
-       // 加载资源、绑定事件
-       BindEvents();
-   }
-
-   public void OnExit()
-   {
-       // 清理资源、解绑事件
-       UnbindEvents();
-   }
-   ```
-
-5. **使用句柄管理非栈 UI**：对于 Overlay、Modal、Toast 层
-   ```csharp
-   // 保存句柄
-   var handle = uiRouter.Show("Dialog", UiLayer.Modal);
-
-   // 使用句柄关闭
-   uiRouter.Hide(handle, UiLayer.Modal, destroy: true);
-   ```
-
-6. **避免在 UI 切换时阻塞**：使用异步操作
-   ```csharp
-   ✓ await uiRouter.PushAsync("Settings");
-   ✗ uiRouter.PushAsync("Settings").Wait(); // 可能死锁
-   ```
-
-## 常见问题
-
-### 问题：Push、Pop、Replace 有什么区别？
-
-**解答**：
-
-- **Push**：压入新 UI，暂停当前 UI（用于临时页面）
-- **Pop**：弹出当前 UI，恢复上一个 UI（用于关闭临时页面）
-- **Replace**：清空 UI 栈，加载新 UI（用于主要页面切换）
-
-### 问题：什么时候使用不同的 UI 层级？
-
-**解答**：
-
-- **Page**：主要页面，使用栈管理
-- **Overlay**：浮层，可叠加显示
-- **Modal**：模态对话框，阻挡下层交互
-- **Toast**：轻量提示，不阻挡交互
-- **Topmost**：系统级，最高优先级
-
-### 问题：如何在 UI 之间传递数据？
-
-**解答**：
-
-1. 通过 UI 参数
-2. 通过 Model
-3. 通过事件
-
-### 问题：UI 切换时如何显示过渡动画？
-
-**解答**：
-使用 UI 转换处理器在 `OnBeforeEnter`/`OnAfterExit` 中播放动画。
-
-### 问题：如何防止用户在 UI 切换时操作？
-
-**解答**：
-在转换处理器中显示遮罩或禁用输入。
-
-## 相关文档
-
-- [场景系统](/zh-CN/game/scene) - 场景管理
-- [Godot UI 系统](/zh-CN/godot/ui) - Godot 引擎集成
-- [事件系统](/zh-CN/core/events) - UI 事件通信
-- [状态机系统](/zh-CN/core/state-machine) - UI 状态管理
+1. [game/index.md](./index.md)
+2. [scene.md](./scene.md)
+3. [../source-generators/auto-ui-page-generator.md](../source-generators/auto-ui-page-generator.md)
+4. `GFramework.Game/README.md`
+5. `GFramework.Game.Abstractions/README.md`

@@ -1,0 +1,434 @@
+{
+  "version": 1,
+  "description": "Canonical documentation refresh module map for GFramework skills.",
+  "modules": {
+    "Core": {
+      "aliases": ["core", "core-runtime", "runtime-core", "core module"],
+      "source_paths": ["GFramework.Core"],
+      "project_file": "GFramework.Core/GFramework.Core.csproj",
+      "test_projects": ["GFramework.Core.Tests/GFramework.Core.Tests.csproj"],
+      "readme_paths": ["GFramework.Core/README.md"],
+      "docs": {
+        "landing": ["docs/zh-CN/core/index.md"],
+        "topics": [
+          "docs/zh-CN/core/architecture.md",
+          "docs/zh-CN/core/context.md",
+          "docs/zh-CN/core/lifecycle.md",
+          "docs/zh-CN/core/events.md",
+          "docs/zh-CN/core/property.md",
+          "docs/zh-CN/core/logging.md",
+          "docs/zh-CN/core/state-management.md",
+          "docs/zh-CN/core/coroutine.md"
+        ],
+        "fallback": [
+          "docs/zh-CN/getting-started/quick-start.md",
+          "docs/zh-CN/api-reference/index.md"
+        ]
+      },
+      "ai_libs": {
+        "paths": [
+          "ai-libs/CoreGrid/CoreGrid.csproj",
+          "ai-libs/CoreGrid/global",
+          "ai-libs/CoreGrid/docs"
+        ],
+        "search_hints": [
+          "rg -n \"Architecture|RegisterModel|RegisterSystem|BindableProperty|EventBus\" ai-libs/CoreGrid"
+        ]
+      }
+    },
+    "Core.Abstractions": {
+      "aliases": ["core.abstractions", "core-abstractions", "core abstractions"],
+      "source_paths": ["GFramework.Core.Abstractions"],
+      "project_file": "GFramework.Core.Abstractions/GFramework.Core.Abstractions.csproj",
+      "test_projects": ["GFramework.Core.Tests/GFramework.Core.Tests.csproj"],
+      "readme_paths": ["GFramework.Core.Abstractions/README.md"],
+      "docs": {
+        "landing": ["docs/zh-CN/abstractions/core-abstractions.md"],
+        "topics": [
+          "docs/zh-CN/core/index.md",
+          "docs/zh-CN/core/architecture.md",
+          "docs/zh-CN/core/context.md"
+        ],
+        "fallback": ["docs/zh-CN/api-reference/index.md"]
+      },
+      "ai_libs": {
+        "paths": ["ai-libs/CoreGrid/CoreGrid.csproj"],
+        "search_hints": [
+          "rg -n \"GFramework\\.Core\\.Abstractions|IArchitecture|IModel|ISystem\" ai-libs/CoreGrid"
+        ]
+      }
+    },
+    "Core.SourceGenerators": {
+      "aliases": [
+        "core.sourcegenerators",
+        "core-sourcegenerators",
+        "core-source-generators",
+        "core source generators"
+      ],
+      "source_paths": ["GFramework.Core.SourceGenerators"],
+      "project_file": "GFramework.Core.SourceGenerators/GFramework.Core.SourceGenerators.csproj",
+      "test_projects": ["GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj"],
+      "readme_paths": ["GFramework.Core.SourceGenerators/README.md"],
+      "docs": {
+        "landing": ["docs/zh-CN/source-generators/index.md"],
+        "topics": [
+          "docs/zh-CN/source-generators/context-aware-generator.md",
+          "docs/zh-CN/source-generators/context-get-generator.md",
+          "docs/zh-CN/source-generators/priority-generator.md",
+          "docs/zh-CN/source-generators/logging-generator.md"
+        ],
+        "fallback": ["docs/zh-CN/api-reference/index.md"]
+      },
+      "ai_libs": {
+        "paths": ["ai-libs/CoreGrid/global", "ai-libs/CoreGrid/scripts"],
+        "search_hints": [
+          "rg -n \"ContextAware|ContextGet|Priority|GeneratedLogger|Log\" ai-libs/CoreGrid"
+        ]
+      }
+    },
+    "Core.SourceGenerators.Abstractions": {
+      "aliases": [
+        "core.sourcegenerators.abstractions",
+        "core-source-generators-abstractions",
+        "core source generators abstractions"
+      ],
+      "source_paths": ["GFramework.Core.SourceGenerators.Abstractions"],
+      "project_file": "GFramework.Core.SourceGenerators.Abstractions/GFramework.Core.SourceGenerators.Abstractions.csproj",
+      "test_projects": ["GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj"],
+      "readme_paths": [],
+      "docs": {
+        "landing": ["docs/zh-CN/source-generators/index.md"],
+        "topics": [
+          "docs/zh-CN/source-generators/context-aware-generator.md",
+          "docs/zh-CN/source-generators/context-get-generator.md",
+          "docs/zh-CN/source-generators/priority-generator.md"
+        ],
+        "fallback": ["docs/zh-CN/api-reference/index.md"]
+      },
+      "ai_libs": {
+        "paths": ["ai-libs/CoreGrid/global"],
+        "search_hints": [
+          "rg -n \"GFramework\\.Core\\.SourceGenerators\\.Abstractions|\\[ContextAware\\]|\\[Priority\\]\" ai-libs/CoreGrid"
+        ]
+      }
+    },
+    "Game": {
+      "aliases": ["game", "game-runtime", "runtime-game", "game module"],
+      "source_paths": ["GFramework.Game"],
+      "project_file": "GFramework.Game/GFramework.Game.csproj",
+      "test_projects": ["GFramework.Game.Tests/GFramework.Game.Tests.csproj"],
+      "readme_paths": ["GFramework.Game/README.md"],
+      "docs": {
+        "landing": ["docs/zh-CN/game/index.md"],
+        "topics": [
+          "docs/zh-CN/game/scene.md",
+          "docs/zh-CN/game/ui.md",
+          "docs/zh-CN/game/data.md",
+          "docs/zh-CN/game/storage.md",
+          "docs/zh-CN/game/serialization.md",
+          "docs/zh-CN/game/setting.md",
+          "docs/zh-CN/game/config-system.md"
+        ],
+        "fallback": [
+          "docs/zh-CN/getting-started/quick-start.md",
+          "docs/zh-CN/api-reference/index.md"
+        ]
+      },
+      "ai_libs": {
+        "paths": [
+          "ai-libs/CoreGrid/global",
+          "ai-libs/CoreGrid/scenes",
+          "ai-libs/CoreGrid/addons"
+        ],
+        "search_hints": [
+          "rg -n \"SceneRouter|UiRouter|Setting|Storage|Serialization|Config\" ai-libs/CoreGrid"
+        ]
+      }
+    },
+    "Game.Abstractions": {
+      "aliases": ["game.abstractions", "game-abstractions", "game abstractions"],
+      "source_paths": ["GFramework.Game.Abstractions"],
+      "project_file": "GFramework.Game.Abstractions/GFramework.Game.Abstractions.csproj",
+      "test_projects": ["GFramework.Game.Tests/GFramework.Game.Tests.csproj"],
+      "readme_paths": ["GFramework.Game.Abstractions/README.md"],
+      "docs": {
+        "landing": ["docs/zh-CN/abstractions/game-abstractions.md"],
+        "topics": [
+          "docs/zh-CN/game/index.md",
+          "docs/zh-CN/game/scene.md",
+          "docs/zh-CN/game/ui.md"
+        ],
+        "fallback": ["docs/zh-CN/api-reference/index.md"]
+      },
+      "ai_libs": {
+        "paths": ["ai-libs/CoreGrid/global", "ai-libs/CoreGrid/scenes"],
+        "search_hints": [
+          "rg -n \"ISceneFactory|ISceneRoot|UiInteractionProfile|IUiRoot\" ai-libs/CoreGrid"
+        ]
+      }
+    },
+    "Game.SourceGenerators": {
+      "aliases": [
+        "game.sourcegenerators",
+        "game-source-generators",
+        "game source generators"
+      ],
+      "source_paths": ["GFramework.Game.SourceGenerators"],
+      "project_file": "GFramework.Game.SourceGenerators/GFramework.Game.SourceGenerators.csproj",
+      "test_projects": ["GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj"],
+      "readme_paths": ["GFramework.Game.SourceGenerators/README.md"],
+      "docs": {
+        "landing": ["docs/zh-CN/source-generators/index.md"],
+        "topics": [
+          "docs/zh-CN/source-generators/auto-scene-generator.md",
+          "docs/zh-CN/source-generators/auto-ui-page-generator.md"
+        ],
+        "fallback": ["docs/zh-CN/game/index.md"]
+      },
+      "ai_libs": {
+        "paths": ["ai-libs/CoreGrid/scenes", "ai-libs/CoreGrid/addons"],
+        "search_hints": [
+          "rg -n \"AutoScene|AutoUiPage|SceneRouter|UiRouter\" ai-libs/CoreGrid"
+        ]
+      }
+    },
+    "Godot": {
+      "aliases": ["godot", "godot-runtime", "runtime-godot", "godot module"],
+      "source_paths": ["GFramework.Godot"],
+      "project_file": "GFramework.Godot/GFramework.Godot.csproj",
+      "test_projects": ["GFramework.Godot.Tests/GFramework.Godot.Tests.csproj"],
+      "readme_paths": ["GFramework.Godot/README.md"],
+      "docs": {
+        "landing": ["docs/zh-CN/godot/index.md"],
+        "topics": [
+          "docs/zh-CN/godot/architecture.md",
+          "docs/zh-CN/godot/scene.md",
+          "docs/zh-CN/godot/ui.md",
+          "docs/zh-CN/godot/storage.md",
+          "docs/zh-CN/godot/setting.md",
+          "docs/zh-CN/godot/signal.md"
+        ],
+        "fallback": [
+          "docs/zh-CN/source-generators/index.md",
+          "docs/zh-CN/api-reference/index.md"
+        ]
+      },
+      "ai_libs": {
+        "paths": [
+          "ai-libs/CoreGrid/project.godot",
+          "ai-libs/CoreGrid/global",
+          "ai-libs/CoreGrid/scenes"
+        ],
+        "search_hints": [
+          "rg -n \"AutoLoad|InputActions|Node|Signal|PackedScene|Godot\" ai-libs/CoreGrid"
+        ]
+      }
+    },
+    "Godot.SourceGenerators": {
+      "aliases": [
+        "godot.sourcegenerators",
+        "godot-source-generators",
+        "godot source generators",
+        "godot generators"
+      ],
+      "source_paths": ["GFramework.Godot.SourceGenerators"],
+      "project_file": "GFramework.Godot.SourceGenerators/GFramework.Godot.SourceGenerators.csproj",
+      "test_projects": ["GFramework.Godot.SourceGenerators.Tests/GFramework.Godot.SourceGenerators.Tests.csproj"],
+      "readme_paths": ["GFramework.Godot.SourceGenerators/README.md"],
+      "docs": {
+        "landing": ["docs/zh-CN/source-generators/index.md"],
+        "topics": [
+          "docs/zh-CN/source-generators/godot-project-generator.md",
+          "docs/zh-CN/source-generators/get-node-generator.md",
+          "docs/zh-CN/source-generators/bind-node-signal-generator.md",
+          "docs/zh-CN/source-generators/auto-register-exported-collections-generator.md"
+        ],
+        "fallback": ["docs/zh-CN/godot/index.md"]
+      },
+      "ai_libs": {
+        "paths": [
+          "ai-libs/CoreGrid/project.godot",
+          "ai-libs/CoreGrid/global",
+          "ai-libs/CoreGrid/scenes"
+        ],
+        "search_hints": [
+          "rg -n \"GetNode|BindNodeSignal|AutoRegisterExported|project\\.godot|AutoLoad\" ai-libs/CoreGrid"
+        ]
+      }
+    },
+    "Godot.SourceGenerators.Abstractions": {
+      "aliases": [
+        "godot.sourcegenerators.abstractions",
+        "godot-source-generators-abstractions",
+        "godot source generators abstractions"
+      ],
+      "source_paths": ["GFramework.Godot.SourceGenerators.Abstractions"],
+      "project_file": "GFramework.Godot.SourceGenerators.Abstractions/GFramework.Godot.SourceGenerators.Abstractions.csproj",
+      "test_projects": ["GFramework.Godot.SourceGenerators.Tests/GFramework.Godot.SourceGenerators.Tests.csproj"],
+      "readme_paths": [],
+      "docs": {
+        "landing": ["docs/zh-CN/source-generators/index.md"],
+        "topics": [
+          "docs/zh-CN/source-generators/godot-project-generator.md",
+          "docs/zh-CN/source-generators/get-node-generator.md",
+          "docs/zh-CN/source-generators/bind-node-signal-generator.md"
+        ],
+        "fallback": ["docs/zh-CN/godot/index.md"]
+      },
+      "ai_libs": {
+        "paths": ["ai-libs/CoreGrid/project.godot", "ai-libs/CoreGrid/global"],
+        "search_hints": [
+          "rg -n \"GFramework\\.Godot\\.SourceGenerators\\.Abstractions|GetNode|BindNodeSignal\" ai-libs/CoreGrid"
+        ]
+      }
+    },
+    "Cqrs": {
+      "aliases": ["cqrs", "mediator", "cqrs module"],
+      "source_paths": ["GFramework.Cqrs"],
+      "project_file": "GFramework.Cqrs/GFramework.Cqrs.csproj",
+      "test_projects": ["GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj"],
+      "readme_paths": ["GFramework.Cqrs/README.md"],
+      "docs": {
+        "landing": ["docs/zh-CN/core/cqrs.md"],
+        "topics": [
+          "docs/zh-CN/core/command.md",
+          "docs/zh-CN/core/query.md",
+          "docs/zh-CN/core/cqrs.md"
+        ],
+        "fallback": [
+          "docs/zh-CN/core/index.md",
+          "docs/zh-CN/api-reference/index.md"
+        ]
+      },
+      "ai_libs": {
+        "paths": ["ai-libs/CoreGrid/global", "ai-libs/CoreGrid/scripts"],
+        "search_hints": [
+          "rg -n \"CommandHandler|QueryHandler|RegisterCqrs|PipelineBehavior\" ai-libs/CoreGrid"
+        ]
+      }
+    },
+    "Cqrs.Abstractions": {
+      "aliases": ["cqrs.abstractions", "cqrs-abstractions", "cqrs abstractions"],
+      "source_paths": ["GFramework.Cqrs.Abstractions"],
+      "project_file": "GFramework.Cqrs.Abstractions/GFramework.Cqrs.Abstractions.csproj",
+      "test_projects": ["GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj"],
+      "readme_paths": ["GFramework.Cqrs.Abstractions/README.md"],
+      "docs": {
+        "landing": ["docs/zh-CN/core/cqrs.md"],
+        "topics": [
+          "docs/zh-CN/core/command.md",
+          "docs/zh-CN/core/query.md"
+        ],
+        "fallback": ["docs/zh-CN/api-reference/index.md"]
+      },
+      "ai_libs": {
+        "paths": ["ai-libs/CoreGrid/global"],
+        "search_hints": [
+          "rg -n \"GFramework\\.Cqrs\\.Abstractions|ICommand|IQuery|IRequest\" ai-libs/CoreGrid"
+        ]
+      }
+    },
+    "Cqrs.SourceGenerators": {
+      "aliases": [
+        "cqrs.sourcegenerators",
+        "cqrs-source-generators",
+        "cqrs source generators"
+      ],
+      "source_paths": ["GFramework.Cqrs.SourceGenerators"],
+      "project_file": "GFramework.Cqrs.SourceGenerators/GFramework.Cqrs.SourceGenerators.csproj",
+      "test_projects": ["GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj"],
+      "readme_paths": ["GFramework.Cqrs.SourceGenerators/README.md"],
+      "docs": {
+        "landing": ["docs/zh-CN/source-generators/index.md"],
+        "topics": [],
+        "fallback": [
+          "docs/zh-CN/core/cqrs.md",
+          "docs/zh-CN/api-reference/index.md"
+        ]
+      },
+      "ai_libs": {
+        "paths": ["ai-libs/CoreGrid/global"],
+        "search_hints": [
+          "rg -n \"GFramework\\.Cqrs\\.SourceGenerators|RequestHandler|PipelineBehavior\" ai-libs/CoreGrid"
+        ]
+      }
+    },
+    "Ecs.Arch": {
+      "aliases": ["ecs.arch", "ecs-arch", "ecs arch", "ecs"],
+      "source_paths": ["GFramework.Ecs.Arch"],
+      "project_file": "GFramework.Ecs.Arch/GFramework.Ecs.Arch.csproj",
+      "test_projects": ["GFramework.Ecs.Arch.Tests/GFramework.Ecs.Arch.Tests.csproj"],
+      "readme_paths": ["GFramework.Ecs.Arch/README.md"],
+      "docs": {
+        "landing": ["docs/zh-CN/ecs/index.md"],
+        "topics": ["docs/zh-CN/ecs/arch.md"],
+        "fallback": [
+          "docs/zh-CN/core/index.md",
+          "docs/zh-CN/api-reference/index.md"
+        ]
+      },
+      "ai_libs": {
+        "paths": ["ai-libs/CoreGrid/scripts", "ai-libs/CoreGrid/global"],
+        "search_hints": [
+          "rg -n \"Arch\\.Core|World|SystemGroup|QueryDescription\" ai-libs/CoreGrid"
+        ]
+      }
+    },
+    "Ecs.Arch.Abstractions": {
+      "aliases": [
+        "ecs.arch.abstractions",
+        "ecs-arch-abstractions",
+        "ecs arch abstractions"
+      ],
+      "source_paths": ["GFramework.Ecs.Arch.Abstractions"],
+      "project_file": "GFramework.Ecs.Arch.Abstractions/GFramework.Ecs.Arch.Abstractions.csproj",
+      "test_projects": ["GFramework.Ecs.Arch.Tests/GFramework.Ecs.Arch.Tests.csproj"],
+      "readme_paths": [],
+      "docs": {
+        "landing": ["docs/zh-CN/ecs/index.md"],
+        "topics": ["docs/zh-CN/ecs/arch.md"],
+        "fallback": ["docs/zh-CN/api-reference/index.md"]
+      },
+      "ai_libs": {
+        "paths": ["ai-libs/CoreGrid/scripts"],
+        "search_hints": [
+          "rg -n \"GFramework\\.Ecs\\.Arch\\.Abstractions|IArchSystem|IArchModel\" ai-libs/CoreGrid"
+        ]
+      }
+    },
+    "SourceGenerators.Common": {
+      "aliases": [
+        "sourcegenerators.common",
+        "source-generators-common",
+        "source generators common"
+      ],
+      "source_paths": ["GFramework.SourceGenerators.Common"],
+      "project_file": "GFramework.SourceGenerators.Common/GFramework.SourceGenerators.Common.csproj",
+      "test_projects": ["GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj"],
+      "readme_paths": [],
+      "docs": {
+        "landing": ["docs/zh-CN/source-generators/index.md"],
+        "topics": [],
+        "fallback": ["docs/zh-CN/api-reference/index.md"]
+      },
+      "ai_libs": {
+        "paths": [],
+        "search_hints": []
+      }
+    }
+  },
+  "docs_section_aliases": {
+    "core": ["Core"],
+    "abstractions": ["Core.Abstractions", "Game.Abstractions", "Ecs.Arch.Abstractions"],
+    "game": ["Game"],
+    "godot": ["Godot"],
+    "cqrs": ["Cqrs"],
+    "ecs": ["Ecs.Arch"],
+    "source-generators": [
+      "Core.SourceGenerators",
+      "Game.SourceGenerators",
+      "Cqrs.SourceGenerators",
+      "Godot.SourceGenerators"
+    ]
+  }
+}

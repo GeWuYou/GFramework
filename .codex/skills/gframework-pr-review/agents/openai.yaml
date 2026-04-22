@@ -1,4 +1,0 @@
-interface:
-  display_name: "GFramework PR Review"
-  short_description: "Inspect the current PR and CodeRabbit findings"
-  default_prompt: "Use $gframework-pr-review to inspect the current branch PR through the GitHub API, prioritize unresolved review threads on the latest head commit, and summarize failed checks or failed tests."
