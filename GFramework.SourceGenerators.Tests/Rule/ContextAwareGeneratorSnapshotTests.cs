@@ -90,6 +90,80 @@ public class ContextAwareGeneratorSnapshotTests
     }
 
     /// <summary>
+    ///     验证生成器在用户 partial 类型已经声明常见上下文字段名时仍能生成可编译代码。
+    /// </summary>
+    /// <returns>异步任务，无返回值。</returns>
+    [Test]
+    public async Task Snapshot_ContextAwareGenerator_With_User_Field_Name_Collisions()
+    {
+        const string source = """
+                              using System;
+
+                              namespace GFramework.Core.SourceGenerators.Abstractions.Rule
+                              {
+                                  [AttributeUsage(AttributeTargets.Class)]
+                                  public sealed class ContextAwareAttribute : Attribute { }
+                              }
+
+                              namespace GFramework.Core.Abstractions.Rule
+                              {
+                                  public interface IContextAware
+                                  {
+                                      void SetContext(
+                                          GFramework.Core.Abstractions.Architectures.IArchitectureContext context);
+
+                                      GFramework.Core.Abstractions.Architectures.IArchitectureContext GetContext();
+                                  }
+                              }
+
+                              namespace GFramework.Core.Abstractions.Architectures
+                              {
+                                  public interface IArchitectureContext { }
+
+                                  public interface IArchitectureContextProvider
+                                  {
+                                      IArchitectureContext GetContext();
+                                      bool TryGetContext<T>(out T? context) where T : class, IArchitectureContext;
+                                  }
+                              }
+
+                              namespace GFramework.Core.Architectures
+                              {
+                                  using GFramework.Core.Abstractions.Architectures;
+
+                                  public sealed class GameContextProvider : IArchitectureContextProvider
+                                  {
+                                      public IArchitectureContext GetContext() => null;
+                                      public bool TryGetContext<T>(out T? context) where T : class, IArchitectureContext
+                                      {
+                                          context = null;
+                                          return false;
+                                      }
+                                  }
+                              }
+
+                              namespace TestApp
+                              {
+                                  using GFramework.Core.SourceGenerators.Abstractions.Rule;
+                                  using GFramework.Core.Abstractions.Rule;
+                                  using GFramework.Core.Abstractions.Architectures;
+
+                                  [ContextAware]
+                                  public partial class CollisionProneRule : IContextAware
+                                  {
+                                      private readonly string _context = "user-field";
+                                      private static readonly string _contextProvider = "user-provider";
+                                      private static readonly object _contextSync = new();
+                                  }
+                              }
+                              """;
+
+        await GeneratorSnapshotTest<ContextAwareGenerator>.RunAsync(
+            source,
+            GetSnapshotFolder());
+    }
+
+    /// <summary>
     ///     将运行时测试目录映射回仓库内已提交的上下文感知生成器快照目录。
     /// </summary>
     /// <returns>快照目录的绝对路径。</returns>

@@ -7,8 +7,8 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-020`
-- 当前阶段：`Phase 20`
+- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-021`
+- 当前阶段：`Phase 21`
 - 当前焦点：
   - 已完成 `GFramework.Core` 当前 `MA0016` / `MA0002` / `MA0015` / `MA0077` 低风险收口批次
   - 已复核 `net10.0` 下的 `MA0158` 基线：`GFramework.Core` / `GFramework.Cqrs` 当前共有 `16` 个 object lock
@@ -19,6 +19,8 @@
     `StringComparison.Ordinal`
   - 已完成 `SchemaConfigGenerator.cs` 的第一批 `MA0051` 结构拆分：schema 入口解析、属性解析、schema 遍历、数组属性解析、
     约束文档生成与若干生成代码发射 helper 已拆出语义阶段
+  - 已完成当前 PR #269 review follow-up：`CqrsHandlerRegistryGenerator` 按职责拆分为 partial 生成器文件，
+    `ContextAwareGenerator` 改用稳定前缀字段并补上 provider null 防御，`Option<T>` 补齐 `<remarks>` 契约说明
   - `LoggingConfiguration`、`FilterConfiguration` 与 `CollectionExtensions` 已改用集合抽象接口，并保留内部具体集合默认值
   - `CoroutineScheduler` 的 tag/group 字典已显式使用 `StringComparer.Ordinal`，保持既有区分大小写语义
   - `EasyEvents.AddEvent<T>()` 的重复注册路径已改为状态冲突异常，避免把泛型类型参数伪装成方法参数名
@@ -51,6 +53,8 @@
 - 已完成当前 `GFramework.Core` `net8.0` 剩余低风险 analyzer warning 批次；warnings-only 基线已降到 `0` 条
 - 已完成 `GFramework.Core.SourceGenerators` 中 `ContextAwareGenerator` 的剩余 `MA0051` 收口；warnings-only 基线已降到 `0` 条
 - 已完成 `GFramework.Cqrs.SourceGenerators` 中 `CqrsHandlerRegistryGenerator` 的剩余 `MA0051` 收口；warnings-only 基线已降到 `0` 条
+- 已完成当前 PR #269 的 review follow-up：收口 `ContextAwareGenerator` 的字段命名冲突 / provider null 契约、
+  `Option<T>` 的 XML 文档缺口，以及 `CqrsHandlerRegistryGenerator` 的超大文件拆分
 - 已完成 `GFramework.Game.SourceGenerators` 中 `SchemaConfigGenerator` 的第一批 `MA0051` 收口；warnings-only 基线剩余 `9` 条
   `MA0051`
 
@@ -93,6 +97,9 @@
   通过 schema 类型比较 helper 与显式 `StringComparison.Ordinal` 清空当前项目的 `MA0006`
 - `RP-020` 继续拆分 `SchemaConfigGenerator.cs` 的 `MA0051` 热点，将当前项目 warnings-only 基线从 `19` 条降到 `9` 条，
   并用 focused schema generator tests 验证 50 个用例通过
+- `RP-021` 使用 `$gframework-pr-review` 复核当前分支 PR #269 后，修复仍在本地成立的 4 个项：将
+  `CqrsHandlerRegistryGenerator` 拆分为职责清晰的 partial 文件、为 `ContextAwareGenerator` 生成字段增加稳定前缀并补上
+  `SetContextProvider` 的运行时 null 校验、为 `Option<T>` 补齐 `<remarks>`，并新增字段重名场景的生成器快照测试
 - 当前工作树分支 `fix/analyzer-warning-reduction-batch` 已在 `ai-plan/public/README.md` 建立 topic 映射
 
 ## 当前风险
@@ -226,6 +233,15 @@
   - `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --no-restore --filter FullyQualifiedName~SchemaConfigGenerator -m:1 -p:RestoreFallbackFolders= -nologo`
     - 结果：`50 Passed`，`0 Failed`
     - 说明：测试项目构建仍显示既有 source generator test analyzer warning；不属于本轮写集
+- `RP-021` 的验证结果：
+  - `dotnet build GFramework.Cqrs.SourceGenerators/GFramework.Cqrs.SourceGenerators.csproj -c Release -t:Rebuild --no-restore -p:UseSharedCompilation=false -p:RestoreFallbackFolders= -nologo -clp:"Summary;WarningsOnly"`
+    - 结果：`0 Warning(s)`，`0 Error(s)`；拆分后最大单文件已降到 `851` 行，满足仓库 800-1000 行上限
+  - `dotnet build GFramework.Core.SourceGenerators/GFramework.Core.SourceGenerators.csproj -c Release -t:Rebuild --no-restore -p:UseSharedCompilation=false -p:RestoreFallbackFolders= -nologo -clp:"Summary;WarningsOnly"`
+    - 结果：`0 Warning(s)`，`0 Error(s)`；`ContextAwareGenerator` 的字段命名与 provider 契约修复未引入新的 generator warning
+  - `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --no-restore --filter "FullyQualifiedName~ContextAwareGeneratorSnapshotTests|FullyQualifiedName~CqrsHandlerRegistryGeneratorTests" -m:1 -p:RestoreFallbackFolders= -nologo`
+    - 结果：先并行运行两条 `dotnet test` 时触发共享输出文件锁冲突；改为串行重跑后 `ContextAwareGeneratorSnapshotTests=2 Passed`、
+      `CqrsHandlerRegistryGeneratorTests=14 Passed`
+    - 说明：失败来自测试宿主并行写入同一 build 输出，不是代码回归；串行重跑后快照新增的字段重名场景和 CQRS 快照均通过
 - active 跟踪文件只保留当前恢复点、活跃事实、风险与下一步，不再重复保存已完成阶段的长篇历史
 
 ## 下一步

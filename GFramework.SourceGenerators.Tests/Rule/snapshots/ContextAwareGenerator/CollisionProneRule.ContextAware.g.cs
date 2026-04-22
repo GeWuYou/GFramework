@@ -13,7 +13,7 @@ namespace TestApp;
 /// 与手动继承 <see cref="global::GFramework.Core.Rule.ContextAwareBase" /> 的路径相比，生成实现会使用 <c>_gFrameworkContextAwareSync</c> 协调惰性初始化、provider 切换和显式上下文注入；
 /// <see cref="global::GFramework.Core.Rule.ContextAwareBase" /> 则保持无锁的实例级缓存语义，更适合已经由调用方线程模型保证串行访问的简单场景。
 /// </remarks>
-partial class MyRule : global::GFramework.Core.Abstractions.Rule.IContextAware
+partial class CollisionProneRule : global::GFramework.Core.Abstractions.Rule.IContextAware
 {
     private global::GFramework.Core.Abstractions.Architectures.IArchitectureContext? _gFrameworkContextAwareContext;
     private static global::GFramework.Core.Abstractions.Architectures.IArchitectureContextProvider? _gFrameworkContextAwareProvider;

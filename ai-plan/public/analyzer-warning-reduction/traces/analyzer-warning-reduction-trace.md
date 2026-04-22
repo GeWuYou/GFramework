@@ -1,5 +1,40 @@
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-22 — RP-021
+
+### 阶段：PR #269 review follow-up 收口（RP-021）
+
+- 启动复核：
+  - 使用 `$gframework-pr-review` 读取当前分支 PR #269 的 CodeRabbit outside-diff 与 nitpick 汇总
+  - 本地复核后确认仍成立的 4 个项分别是：`CqrsHandlerRegistryGenerator.cs` 超过仓库文件大小上限、
+    `ContextAwareGenerator` 生成字段名可能与用户 partial 类型冲突、`SetContextProvider` 缺少运行时 null 防御、
+    `Option<T>` 缺少 `<remarks>` 契约说明
+- 决策：
+  - `CqrsHandlerRegistryGenerator` 继续采用既有 partial helper 风格，按“主流程 / 运行时类型引用 / 源码发射 / 模型”四个文件拆分，
+    保持生成顺序、日志文本、fallback 契约和快照输出不变
+  - `ContextAwareGenerator` 只收口仍成立的 review 项，不引入未被本地证实的 `Volatile.Read/Write` 变更
+  - 为字段命名冲突新增生成器快照场景，避免后续回退到 `_context` / `_contextProvider` / `_contextSync`
+- 实施调整：
+  - 将 `GFramework.Cqrs.SourceGenerators/Cqrs/CqrsHandlerRegistryGenerator.cs` 拆为 4 个 partial 文件，分别承载主生成管线、
+    runtime type reference 构造、source emission helper 与嵌套 specs/models
+  - 将 `ContextAwareGenerator` 生成字段统一改为 `_gFrameworkContextAware*` 前缀，同步更新 XML 文档、注释和显式接口实现
+  - 为 `SetContextProvider(...)` 增加 `ArgumentNullException.ThrowIfNull(provider)` 与 XML `<exception>` 说明
+  - 为 `Option<T>` 补充 `<remarks>`，明确 `Some/None`、`null` 约束、不可变语义与推荐使用方式
+  - 新增 `CollisionProneRule.ContextAware.g.cs` 快照，覆盖用户字段名与生成字段名冲突场景
+- 验证结果：
+  - `dotnet build GFramework.Cqrs.SourceGenerators/GFramework.Cqrs.SourceGenerators.csproj -c Release -t:Rebuild --no-restore -p:UseSharedCompilation=false -p:RestoreFallbackFolders= -nologo -clp:"Summary;WarningsOnly"`
+    - 结果：`0 Warning(s)`，`0 Error(s)`；拆分后 `CqrsHandlerRegistryGenerator` 最大单文件为 `851` 行
+  - `dotnet build GFramework.Core.SourceGenerators/GFramework.Core.SourceGenerators.csproj -c Release -t:Rebuild --no-restore -p:UseSharedCompilation=false -p:RestoreFallbackFolders= -nologo -clp:"Summary;WarningsOnly"`
+    - 结果：`0 Warning(s)`，`0 Error(s)`
+  - `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --no-restore --filter FullyQualifiedName~CqrsHandlerRegistryGeneratorTests -m:1 -p:RestoreFallbackFolders= -nologo`
+    - 结果：`14 Passed`，`0 Failed`
+  - `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --no-restore --filter FullyQualifiedName~ContextAwareGeneratorSnapshotTests -m:1 -p:RestoreFallbackFolders= -nologo`
+    - 结果：`2 Passed`，`0 Failed`
+    - 说明：最初并行跑两个 `dotnet test` 命令时触发共享输出文件锁冲突；串行重跑后确认是测试宿主环境噪音而非代码回归
+- 下一步建议：
+  - 若本轮验证通过，可继续回到 `SchemaConfigGenerator` 剩余 `MA0051`
+  - 若 review 再次聚焦 `ContextAwareGenerator` 并发可见性问题，需要先补最小复现测试，再决定是否引入 `Volatile` 语义
+
 ## 2026-04-22 — RP-020
 
 ### 阶段：`SchemaConfigGenerator` 第一批 `MA0051` 结构拆分（RP-020）
