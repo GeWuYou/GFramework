@@ -2,7 +2,7 @@
 
 ## 2026-04-22
 
-### 当前恢复点：RP-013
+### 当前恢复点：RP-014
 
 - 本轮从 PR #268 的最新 review 数据恢复，未发现失败检查；CTRF 报告显示 2139 个测试全部通过
 - 本轮复核确认当前 PR 的 latest-head open thread 同时来自 `coderabbitai[bot]` 与 `greptile-apps[bot]`
@@ -26,8 +26,12 @@
 - 本轮已重写 `docs/zh-CN/tutorials/godot-integration.md`，把内容收口为“包关系、`project.godot` 接线、`[GetNode]` /
   `[BindNodeSignal]` 协作顺序、运行时扩展边界、迁移提醒”，不再把旧 Godot API 列表当事实来源
 - `docs/zh-CN/tutorials/index.md` 的 Godot 教程入口摘要已同步改成当前采用路径，避免入口页继续把教程描述成对象池 / 性能优化总览
-- 本轮检索确认 Godot 栏目仍有下一批高风险页面：`docs/zh-CN/godot/index.md` 与 `docs/zh-CN/godot/architecture.md` 还保留
-  `GetNodeX`、`CreateSignalBuilder`、`InstallGodotModule(...).Wait()` 等旧叙述，应作为 tutorial 之后的下一轮收口对象
+- 本轮已重写 `docs/zh-CN/godot/index.md`，改成“模块定位、包关系、最小接入路径、关键入口、当前边界”的 landing page 结构，
+  明确把 `[GetNode]`、`[BindNodeSignal]`、`AutoLoads`、`InputActions` 收口到 `GFramework.Godot.SourceGenerators`
+- 本轮已重写 `docs/zh-CN/godot/architecture.md`，改成“锚点生命周期、`InstallGodotModule(...)` 执行顺序、`IGodotModule`
+  契约边界”的结构，不再沿用旧版 `.Wait()` 和自动阶段广播叙述
+- 本轮检索确认 Godot 栏目新的高优先级页面转为 `docs/zh-CN/godot/scene.md` 与 `docs/zh-CN/godot/ui.md`：两页仍保留
+  `GodotSceneRouter` / `GodotUiRouter` 一类旧接线叙述，应作为 landing / architecture 之后的下一轮收口对象
 
 ### 当前决策
 
@@ -39,7 +43,10 @@
 - `BindNodeSignal` 页面明确记录“当前不自动生成 `_Ready()` / `_ExitTree()`”，避免继续把它写成自动生命周期织入器
 - `auto-register-exported-collections` 页面明确区分“运行时 null 时跳过注册”和“配置错误时编译期报错”，避免旧文档把两类边界混为一谈
 - `godot-integration.md` 已重新成为可用的采用路径入口；后续 Godot 文档收口应优先处理 `godot/index.md` 和 `godot/architecture.md`
-- `docs/zh-CN/godot/index.md` 若继续保留旧写法，会重新把 tutorial 已清掉的旧接入路径带回导航入口，因此优先级高于继续扩展新教程
+- `godot/index.md` 与 `godot/architecture.md` 现在都必须维持“运行时包与生成器包分边界”的写法，不能再把场景注入和项目元数据生成写回
+  `GFramework.Godot` 运行时契约
+- `scene.md` 与 `ui.md` 的下一轮重写应以 `GFramework.Godot.Scene`、`GFramework.Godot.UI`、`ai-libs/CoreGrid` 的当前 wiring 为准，
+  不再继续复刻并不存在的 `GodotSceneRouter` / `GodotUiRouter`
 
 ### 验证
 
@@ -58,9 +65,13 @@
 - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/tutorials/godot-integration.md`
 - `cd docs && bun run build`
 - `rg -n "GetNodeX|CreateSignalBuilder|GodotGameArchitecture|AbstractGodotModule|InstallGodotModule\(|GFramework\\.Godot\\.Pool" docs/zh-CN/godot docs/zh-CN/tutorials -S`
+- `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/index.md`
+- `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/architecture.md`
+- `rg -n "GodotSceneRouter|GodotUiRouter|CreateSignalBuilder|GetNodeX|InstallGodotModule\(" docs/zh-CN/godot -S`
+- `cd docs && bun run build`
 
 ### 下一步
 
-1. 优先重写 `docs/zh-CN/godot/index.md`，清掉 `GetNodeX`、`CreateSignalBuilder`、`InstallGodotModule(...)` 默认化叙述
-2. 视 `godot/index.md` 收口结果，决定是否同步压缩 `docs/zh-CN/godot/architecture.md`
+1. 优先重写 `docs/zh-CN/godot/scene.md` 与 `docs/zh-CN/godot/ui.md`，清掉 `GodotSceneRouter` / `GodotUiRouter` 一类旧接线叙述
+2. 视 `scene.md` / `ui.md` 收口结果，决定是否同步压缩 `docs/zh-CN/godot/signal.md` 与 `extensions.md`
 3. 下一次推送后重新执行 `$gframework-pr-review`，确认 PR #268 的 CodeRabbit / Greptile open thread 是否关闭或减少

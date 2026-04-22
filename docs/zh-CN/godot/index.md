@@ -1,899 +1,165 @@
-# GFramework.Godot
-
-> Godot 引擎深度集成 - 为 GFramework 框架提供原生的 Godot 支持
-
-GFramework.Godot 是 GFramework 框架的 Godot 特定实现，将框架的架构优势与 Godot 引擎的强大功能完美结合。
-
-## 📋 目录
-
-- [概述](#概述)
-- [核心特性](#核心特性)
-- [架构集成](#架构集成)
-- [Node 扩展方法](#node-扩展方法)
-- [信号系统](#信号系统)
-- [节点池化](#节点池化)
-- [资源管理](#资源管理)
-- [日志系统](#日志系统)
-- [完整示例](#完整示例)
-- [最佳实践](#最佳实践)
-- [性能特性](#性能特性)
-
-## 概述
-
-GFramework.Godot 提供了与 Godot 引擎的深度集成，让开发者能够在保持 GFramework 架构优势的同时，充分利用 Godot
-的节点系统、信号机制和场景管理功能。
-
-### 核心设计理念
-
-- **无缝集成**：框架生命周期与 Godot 节点生命周期自动同步
-- **类型安全**：保持 GFramework 的强类型特性
-- **性能优化**：零额外开销的 Godot 集成
-- **开发效率**：丰富的扩展方法简化常见操作
-
-## 核心特性
-
-### 🎯 架构生命周期绑定
-
-- 自动将框架初始化与 Godot 场景树绑定
-- 支持节点销毁时的自动清理
-- 阶段式架构初始化与 Godot `_Ready` 周期同步
-
-### 🔧 丰富的 Node 扩展方法
-
-- **50+** 个实用扩展方法
-- 安全的节点操作和验证
-- 流畅的场景树遍历和查找
-- 简化的输入处理
-
-### 📡 流畅的信号 API
-
-- 类型安全的信号连接
-- 链式调用支持
-- 自动生命周期管理
-- Godot 信号与框架事件系统的桥接
-
-### 🏊‍♂️ 高效的节点池化
-
-- 专用的 Node 对象池
-- 自动回收和重用机制
-- 内存友好的高频节点创建/销毁
-
-### 📦 智能资源管理
-
-- 简化的 Godot 资源加载
-- 类型安全的资源工厂
-- 缓存和预加载支持
-
-### 📝 Godot 原生日志
-
-- 与 Godot 日志系统完全集成
-- 框架日志自动输出到 Godot 控制台
-- 可配置的日志级别
-
-## 架构集成
-
-### Architecture 基类
-
-```csharp
-using GFramework.Godot.Architecture;
-
-public class GameArchitecture : AbstractArchitecture
-{
-    protected override void Init()
-    {
-        // 注册核心模型
-        RegisterModel(new PlayerModel());
-        RegisterModel(new GameModel());
-        
-        // 注册系统
-        RegisterSystem(new CombatSystem());
-        RegisterSystem(new AudioSystem());
-        
-        // 注册工具类
-        RegisterUtility(new StorageUtility());
-        RegisterUtility(new ResourceLoadUtility());
-    }
-    
-    protected override void InstallModules()
-    {
-        // 安装 Godot 特定模块
-        InstallGodotModule(new InputModule());
-        InstallGodotModule(new AudioModule());
-    }
-}
-```
-
-### Godot 模块系统
-
-```csharp
-using GFramework.Godot.Architecture;
-
-[ContextAware]
-[Log]
-public partial class AudioModule : AbstractGodotModule
-{
-    // 模块节点本身可以作为 Godot 节点
-    public override Node Node => this;
-    
-    public override void Install(IArchitecture architecture)
-    {
-        // 注册音频相关系统
-        architecture.RegisterSystem(new AudioSystem());
-        architecture.RegisterUtility(new AudioUtility());
-    }
-    
-    public override void OnAttach(Architecture architecture)
-    {
-        // 模块附加时的初始化
-        Logger.Info("Audio module attached to architecture");
-    }
-    
-    public override void OnDetach(Architecture architecture)
-    {
-        // 模块分离时的清理
-        Logger.Info("Audio module detached from architecture");
-    }
-    
-    // 响应架构生命周期阶段
-    public override void OnPhase(ArchitecturePhase phase, IArchitecture architecture)
-    {
-        switch (phase)
-        {
-            case ArchitecturePhase.Ready:
-                // 架构准备就绪，可以开始播放背景音乐
-                PlayBackgroundMusic();
-                break;
-        }
-    }
-}
-```
-
-### Controller 集成
-
-```csharp
-using GFramework.Godot.Extensions;
-
-[ContextAware]
-[Log]
-public partial class PlayerController : Node, IController
-{
-    private PlayerModel _playerModel;
-    
-    public override void _Ready()
-    {
-        // 获取模型引用
-        _playerModel = this.GetModel<PlayerModel>();
-        
-        // 注册事件监听，自动与节点生命周期绑定
-        this.RegisterEvent<PlayerInputEvent>(OnPlayerInput)
-            .UnRegisterWhenNodeExitTree(this);
-            
-        // 监听属性变化
-        _playerModel.Health.Register(OnHealthChanged)
-            .UnRegisterWhenNodeExitTree(this);
-    }
-    
-    private void OnPlayerInput(PlayerInputEvent e)
-    {
-        // 处理玩家输入
-        switch (e.Action)
-        {
-            case "move_left":
-                MovePlayer(-1, 0);
-                break;
-            case "move_right":
-                MovePlayer(1, 0);
-                break;
-            case "attack":
-                this.SendCommand(new AttackCommand());
-                break;
-        }
-    }
-    
-    private void OnHealthChanged(int newHealth)
-    {
-        // 更新 UI
-        var healthBar = GetNode<ProgressBar>("UI/HealthBar");
-        healthBar.Value = newHealth;
-        
-        // 播放音效
-        if (newHealth < _playerModel.PreviousHealth)
-            PlayHurtSound();
-    }
-}
-```
-
-## Node 扩展方法
-
-GFramework.Godot 提供了 50+ 个 Node 扩展方法，大大简化了 Godot 开发中的常见操作。
-
-### 🔍 节点查找与验证
-
-```csharp
-// 安全的节点获取
-var player = GetNodeX<Player>("Player"); // 自动 null 检查和类型转换
-var child = FindChildX<Player>("Player"); // 递归查找子节点
-
-// 节点验证
-if (IsValidNode(player))
-{
-    // 节点有效且在场景树中
-}
-
-// 安全的节点遍历
-this.ForEachChild<Node>(child => {
-    GD.Print($"Found child: {child.Name}");
-});
-```
-
-### 🌊 流畅的场景树操作
-
-```csharp
-// 安全的添加子节点
-var bullet = bulletScene.Instantiate<Bullet>();
-AddChildX(bullet);
-
-// 等待节点准备就绪
-await bullet.WaitUntilReadyAsync();
-
-// 获取父节点
-var parent = GetParentX<GameLevel>();
-
-// 安全的节点移除
-bullet.QueueFreeX(); // 等效于 QueueFree() 但带有验证
-bullet.FreeX(); // 立即释放（谨慎使用）
-```
-
-### 🎮 输入处理简化
-
-```csharp
-// 输入处理
-SetInputAsHandled(); // 标记输入已处理
-DisableInput(); // 禁用输入
-EnableInput(); // 启用输入
-
-// 输入状态检查
-if (Input.IsActionJustPressed("jump"))
-{
-    Jump();
-}
-```
-
-### 🔄 异步操作支持
-
-```csharp
-// 等待信号
-await ToSignal(this, SignalName.Ready);
-
-// 等待条件满足
-await WaitUntil(() => IsReady);
-
-// 等待帧结束
-await WaitUntilProcessFrame();
-
-// 延迟执行
-await WaitUntilTimeout(2.0f);
-```
-
-## 信号系统
-
-### SignalBuilder 流畅 API
-
-```csharp
-using GFramework.Godot.Extensions;
-
-// 基础信号连接
-this.ConnectSignal(Button.SignalName.Pressed, OnButtonPressed);
-
-// 流畅的信号构建
-this.CreateSignalBuilder(Timer.SignalName.Timeout)
-    .WithFlags(ConnectFlags.OneShot) // 单次触发
-    .CallImmediately() // 立即调用一次
-    .Connect(OnTimerTimeout)
-    .UnRegisterWhenNodeExitTree(this);
-
-// 多信号连接
-this.CreateSignalBuilder()
-    .AddSignal(Button.SignalName.Pressed, OnButtonPressed)
-    .AddSignal(Button.SignalName.MouseEntered, OnButtonHover)
-    .AddSignal(Button.SignalName.MouseExited, OnButtonExit)
-    .UnRegisterWhenNodeExitTree(this);
-```
-
-### 信号与框架事件桥接
-
-```csharp
-[ContextAware]
-[Log]
-public partial class UIController : Node, IController
-{
-    public override void _Ready()
-    {
-        // Godot 信号 -> 框架事件
-        this.CreateSignalBuilder(Button.SignalName.Pressed)
-            .Connect(() => {
-                this.SendEvent(new UIButtonClickEvent { ButtonId = "start_game" });
-            })
-            .UnRegisterWhenNodeExitTree(this);
-            
-        // 框架事件 -> Godot 信号
-        this.RegisterEvent<HealthChangeEvent>(OnHealthChanged)
-            .UnRegisterWhenNodeExitTree(this);
-    }
-    
-    private void OnHealthChanged(HealthChangeEvent e)
-    {
-        // 更新 Godot UI
-        var healthBar = GetNode<ProgressBar>("HealthBar");
-        healthBar.Value = e.NewHealth;
-        
-        // 发送 Godot 信号
-        EmitSignal(SignalName.HealthUpdated, e.NewHealth);
-    }
-    
-    [Signal]
-    public delegate void HealthUpdatedEventHandler(int newHealth);
-}
-```
-
-## 节点池化
-
-### AbstractNodePoolSystem 使用
-
-```csharp
-using GFramework.Godot.Pool;
-
-public class BulletPoolSystem : AbstractNodePoolSystem<string, Bullet>
-{
-    private PackedScene _bulletScene;
-    
-    public BulletPoolSystem()
-    {
-        _bulletScene = GD.Load<PackedScene>("res://scenes/Bullet.tscn");
-    }
-    
-    protected override Bullet CreateItem(string key)
-    {
-        return _bulletScene.Instantiate<Bullet>();
-    }
-    
-    protected override void OnSpawn(Bullet item, string key)
-    {
-        // 重置子弹状态
-        item.Reset();
-        item.Position = Vector3.Zero;
-        item.Visible = true;
-    }
-    
-    protected override void OnDespawn(Bullet item)
-    {
-        // 隐藏子弹
-        item.Visible = false;
-        // 移除父节点
-        item.GetParent()?.RemoveChild(item);
-    }
-    
-    protected override bool CanDespawn(Bullet item)
-    {
-        // 只有不在使用中的子弹才能回收
-        return !item.IsActive;
-    }
-}
-```
-
-### 池化系统使用
-
-```csharp
-[ContextAware]
-[Log]
-public partial class WeaponController : Node, IController
-{
-    private BulletPoolSystem _bulletPool;
-    
-    protected override void OnInit()
-    {
-        _bulletPool = this.GetSystem<BulletPoolSystem>();
-    }
-    
-    public void Shoot(Vector3 direction)
-    {
-        // 从池中获取子弹
-        var bullet = _bulletPool.Spawn("standard");
-        
-        if (bullet != null)
-        {
-            // 设置子弹参数
-            bullet.Direction = direction;
-            bullet.Speed = 10.0f;
-            
-            // 添加到场景
-            GetTree().Root.AddChild(bullet);
-            
-            // 注册碰撞检测
-            this.RegisterEvent<BulletCollisionEvent>(e => {
-                if (e.Bullet == bullet)
-                {
-                    // 回收子弹
-                    _bulletPool.Despawn(bullet);
-                }
-            }).UnRegisterWhenNodeExitTree(this);
-        }
-    }
-}
-```
-
-## 资源管理
-
-### ResourceLoadUtility 使用
-
-```csharp
-using GFramework.Godot.assets;
-
-[ContextAware]
-[Log]
-public partial class ResourceManager : Node, IController
-{
-    private ResourceLoadUtility _resourceLoader;
-    
-    protected override void OnInit()
-    {
-        _resourceLoader = new ResourceLoadUtility();
-    }
-    
-    public T LoadResource<T>(string path) where T : Resource
-    {
-        return _resourceLoader.LoadResource<T>(path);
-    }
-    
-    public async Task<T> LoadResourceAsync<T>(string path) where T : Resource
-    {
-        return await _resourceLoader.LoadResourceAsync<T>(path);
-    }
-    
-    public void PreloadResources()
-    {
-        // 预加载常用资源
-        _resourceLoader.PreloadResource<Texture2D>("res://textures/player.png");
-        _resourceLoader.PreloadResource<AudioStream>("res://audio/shoot.wav");
-        _resourceLoader.PreloadResource<PackedScene>("res://scenes/enemy.tscn");
-    }
-}
-```
-
-### 自定义资源工厂
-
-```csharp
-public class GameResourceFactory : AbstractResourceFactoryUtility
-{
-    protected override void RegisterFactories()
-    {
-        RegisterFactory<PlayerData>(CreatePlayerData);
-        RegisterFactory<WeaponConfig>(CreateWeaponConfig);
-        RegisterFactory<LevelData>(CreateLevelData);
-    }
-    
-    private PlayerData CreatePlayerData(string path)
-    {
-        var config = LoadJson<PlayerConfig>(path);
-        return new PlayerData
-        {
-            MaxHealth = config.MaxHealth,
-            Speed = config.Speed,
-            JumpForce = config.JumpForce
-        };
-    }
-    
-    private WeaponConfig CreateWeaponConfig(string path)
-    {
-        var data = LoadJson<WeaponJsonData>(path);
-        return new WeaponConfig
-        {
-            Damage = data.Damage,
-            FireRate = data.FireRate,
-            BulletPrefab = LoadResource<PackedScene>(data.BulletPath)
-        };
-    }
-}
-```
-
-## 日志系统
-
-### GodotLogger 使用
-
-```csharp
-using GFramework.Godot.Logging;
-
-[ContextAware]
-[Log] // 自动生成 Logger 字段
-public partial class GameController : Node, IController
-{
-    public override void _Ready()
-    {
-        // 使用自动生成的 Logger
-        Logger.Info("Game controller ready");
-        
-        try
-        {
-            InitializeGame();
-            Logger.Info("Game initialized successfully");
-        }
-        catch (Exception ex)
-        {
-            Logger.Error($"Failed to initialize game: {ex.Message}");
-        }
-    }
-    
-    public void StartGame()
-    {
-        Logger.Debug("Starting game");
-        
-        // 发送游戏开始事件
-        this.SendEvent(new GameStartEvent());
-        
-        Logger.Info("Game started");
-    }
-    
-    public void PauseGame()
-    {
-        Logger.Info("Game paused");
-        this.SendEvent(new GamePauseEvent());
-    }
-}
-```
-
-### 日志配置
-
-```csharp
-public class GodotLoggerFactoryProvider : ILoggerFactoryProvider
-{
-    public ILoggerFactory CreateFactory()
-    {
-        return new GodotLoggerFactory(new LoggerProperties
-        {
-            MinLevel = LogLevel.Debug,
-            IncludeTimestamp = true,
-            IncludeCallerInfo = true
-        });
-    }
-}
-
-// 在架构初始化时配置日志
-public class GameArchitecture : AbstractArchitecture
-{
-    protected override void Init()
-    {
-        // 配置 Godot 日志工厂
-        LoggerProperties = new LoggerProperties
-        {
-            LoggerFactoryProvider = new GodotLoggerFactoryProvider(),
-            MinLevel = LogLevel.Info
-        };
-        
-        // 注册组件...
-    }
-}
-```
-
-## 完整示例
-
-### 简单射击游戏示例
-
-```csharp
-// 1. 定义架构
-public class ShooterGameArchitecture : AbstractArchitecture
-{
-    protected override void Init()
-    {
-        // 注册模型
-        RegisterModel(new PlayerModel());
-        RegisterModel(new GameModel());
-        RegisterModel(new ScoreModel());
-        
-        // 注册系统
-        RegisterSystem(new PlayerControllerSystem());
-        RegisterSystem(new BulletPoolSystem());
-        RegisterSystem(new EnemySpawnSystem());
-        RegisterSystem(new CollisionSystem());
-        
-        // 注册工具
-        RegisterUtility(new StorageUtility());
-        RegisterUtility(new ResourceLoadUtility());
-    }
-}
-
-// 2. 玩家控制器
-[ContextAware]
-[Log]
-public partial class PlayerController : CharacterBody2D, IController
-{
-    private PlayerModel _playerModel;
-    
-    public override void _Ready()
-    {
-        _playerModel = this.GetModel<PlayerModel>();
-        
-        // 输入处理
-        SetProcessInput(true);
-        
-        // 注册事件
-        this.RegisterEvent<PlayerDamageEvent>(OnDamage)
-            .UnRegisterWhenNodeExitTree(this);
-    }
-    
-    public override void _Process(double delta)
-    {
-        var inputDir = Input.GetVector("ui_left", "ui_right", "ui_up", "ui_down");
-        Velocity = inputDir * _playerModel.Speed.Value;
-        MoveAndSlide();
-    }
-    
-    public override void _Input(InputEvent @event)
-    {
-        if (@event.IsActionPressed("shoot"))
-        {
-            Shoot();
-        }
-    }
-    
-    private void Shoot()
-    {
-        if (CanShoot())
-        {
-            var bulletPool = this.GetSystem<BulletPoolSystem>();
-            var bullet = bulletPool.Spawn("player");
-            
-            if (bullet != null)
-            {
-                var direction = GetGlobalMousePosition() - GlobalPosition;
-                bullet.Initialize(GlobalPosition, direction.Normalized());
-                GetTree().Root.AddChild(bullet);
-                
-                this.SendEvent(new BulletFiredEvent());
-            }
-        }
-    }
-    
-    private void OnDamage(PlayerDamageEvent e)
-    {
-        _playerModel.Health.Value -= e.Damage;
-        
-        if (_playerModel.Health.Value <= 0)
-        {
-            Die();
-        }
-    }
-    
-    private void Die()
-    {
-        Logger.Info("Player died");
-        this.SendEvent(new PlayerDeathEvent());
-        QueueFreeX();
-    }
-}
-
-// 3. 主场景
-[ContextAware]
-[Log]
-public partial class MainScene : Node2D
-{
-    private ShooterGameArchitecture _architecture;
-    
-    public override void _Ready()
-    {
-        // 初始化架构
-        _architecture = new ShooterGameArchitecture();
-        _architecture.Initialize();
-        
-        // 创建玩家
-        var playerScene = GD.Load<PackedScene>("res://scenes/Player.tscn");
-        var player = playerScene.Instantiate<PlayerController>();
-        AddChild(player);
-        
-        // 注册全局事件
-        this.RegisterEvent<PlayerDeathEvent>(OnPlayerDeath)
-            .UnRegisterWhenNodeExitTree(this);
-            
-        this.RegisterEvent<GameWinEvent>(OnGameWin)
-            .UnRegisterWhenNodeExitTree(this);
-            
-        Logger.Info("Game started");
-    }
-    
-    private void OnPlayerDeath(PlayerDeathEvent e)
-    {
-        Logger.Info("Game over");
-        ShowGameOverScreen();
-    }
-    
-    private void OnGameWin(GameWinEvent e)
-    {
-        Logger.Info("Victory!");
-        ShowVictoryScreen();
-    }
-    
-    private void ShowGameOverScreen()
-    {
-        var gameOverScene = GD.Load<PackedScene>("res://ui/GameOver.tscn");
-        var gameOverUI = gameOverScene.Instantiate<Control>();
-        AddChild(gameOverUI);
-    }
-    
-    private void ShowVictoryScreen()
-    {
-        var victoryScene = GD.Load<PackedScene>("res://ui/Victory.tscn");
-        var victoryUI = victoryScene.Instantiate<Control>();
-        AddChild(victoryUI);
-    }
-}
-```
-
-## 最佳实践
-
-### 🏗️ 架构设计最佳实践
-
-#### 1. 模块化设计
-
-```csharp
-// 好的做法：按功能分组模块
-public class AudioModule : AbstractGodotModule { }
-public class InputModule : AbstractGodotModule { }
-public class UIModule : AbstractGodotModule { }
-
-// 避免的功能过于庞大的单一模块
-public class GameModule : AbstractGodotModule // ❌ 太大
-{
-    // 音频、输入、UI、逻辑全部混在一起
-}
-```
-
-#### 2. 生命周期管理
-
-```csharp
-// 好的做法：使用自动清理
-this.RegisterEvent<GameEvent>(OnGameEvent)
-    .UnRegisterWhenNodeExitTree(this);
-
-model.Property.Register(OnPropertyChange)
-    .UnRegisterWhenNodeExitTree(this);
-
-// 避免手动管理清理
-private IUnRegister _eventRegister;
-public override void _Ready()
-{
-    _eventRegister = this.RegisterEvent<GameEvent>(OnGameEvent);
-}
-
-public override void _ExitTree()
-{
-    _eventRegister?.UnRegister(); // 容易忘记
-}
-```
-
-### 🎮 Godot 集成最佳实践
-
-#### 1. 节点安全操作
-
-```csharp
-// 好的做法：使用安全扩展
-var player = GetNodeX<Player>("Player");
-var child = FindChildX<HealthBar>("HealthBar");
-
-// 避免的直接节点访问
-var player = GetNode<Player>("Player"); // 可能抛出异常
-```
-
-#### 2. 信号连接模式
-
-```csharp
-// 好的做法：使用 SignalBuilder
-this.CreateSignalBuilder(Button.SignalName.Pressed)
-    .UnRegisterWhenNodeExitTree(this)
-    .Connect(OnButtonPressed);
-
-// 避免的原始方式
-Button.Pressed += OnButtonPressed; // 容易忘记清理
-```
-
-### 🏊‍♂️ 性能优化最佳实践
-
-#### 1. 节点池化策略
-
-```csharp
-// 好的做法：高频创建对象使用池化
-public class BulletPool : AbstractNodePoolSystem<string, Bullet>
-{
-    // 为不同类型的子弹创建不同的池
-}
-
-// 避免的频繁创建销毁
-public void Shoot()
-{
-    var bullet = bulletScene.Instantiate(); // ❌ 性能问题
-    // ...
-    bullet.QueueFree();
-}
-```
-
-#### 2. 资源预加载
-
-```csharp
-// 好的做法：预加载常用资源
-public override void _Ready()
-{
-    var resourceLoader = new ResourceLoadUtility();
-    resourceLoader.PreloadResource<Texture2D>("res://textures/bullet.png");
-    resourceLoader.PreloadResource<AudioStream>("res://audio/shoot.wav");
-}
-```
-
-### 🔧 调试和错误处理
-
-#### 1. 日志使用策略
-
-```csharp
-// 好的做法：分级别记录
-Logger.Debug($"Player position: {Position}"); // 调试信息
-Logger.Info("Game started");                 // 重要状态
-Logger.Warning($"Low health: {_playerModel.Health}"); // 警告
-Logger.Error($"Failed to load resource: {path}");     // 错误
-
-// 避免的过度日志
-Logger.Debug($"Frame: {Engine.GetProcessFrames()}"); // 太频繁
-```
-
-#### 2. 异常处理
-
-```csharp
-// 好的做法：优雅的错误处理
-public T LoadResource<T>(string path) where T : Resource
-{
-    try
-    {
-        return GD.Load<T>(path);
-    }
-    catch (Exception ex)
-    {
-        Logger.Error($"Failed to load resource {path}: {ex.Message}");
-        return GetDefaultResource<T>();
-    }
-}
-```
-
-## 性能特性
-
-### 📊 内存管理
-
-- **节点池化**：减少 GC 压力，提高频繁创建/销毁对象的性能
-- **资源缓存**：自动缓存已加载的 Godot 资源
-- **生命周期管理**：自动清理事件监听器和资源引用
-
-### ⚡ 运行时性能
-
-- **零分配**：扩展方法避免不必要的对象分配
-- **编译时优化**：Source Generators 减少运行时开销
-- **类型安全**：编译时类型检查，避免运行时错误
-
-### 🔄 异步支持
-
-- **信号等待**：使用 `await ToSignal()` 简化异步代码
-- **条件等待**：`WaitUntil()` 和 `WaitUntilTimeout()` 简化异步逻辑
-- **场景树等待**：`WaitUntilReady()` 确保节点准备就绪
-
+---
+title: Godot 运行时集成
+description: 以当前 GFramework.Godot 源码、测试与 CoreGrid 接线为准，说明 Godot 运行时包的定位、最小接入路径和文档入口。
 ---
 
-## 依赖关系
+# Godot 运行时集成
 
-```mermaid
-graph TD
-    A[GFramework.Godot] --> B[GFramework.Game]
-    A --> C[GFramework.Game.Abstractions]
-    A --> D[GFramework.Core.Abstractions]
-    A --> E[Godot.SourceGenerators]
-    A --> F[GodotSharpEditor]
+## 模块定位
+
+`GFramework.Godot` 是 `GFramework` 在 Godot 侧的运行时适配层。它负责把框架已有的 Core / Game 能力接到 Godot 的
+`Node`、`SceneTree`、`PackedScene`、`FileAccess` 和 `AudioServer` 上，而不是重新定义一套独立架构。
+
+当前仓库里仍然成立的 Godot 运行时职责，主要集中在这些方向：
+
+- 架构生命周期与场景树绑定：`AbstractArchitecture`、`ArchitectureAnchor`
+- 节点运行时辅助：`WaitUntilReadyAsync()`、`AddChildXAsync()`、`QueueFreeX()`、`UnRegisterWhenNodeExitTree(...)`
+- Godot 风格的 Scene / UI 工厂与 registry：`GodotSceneFactory`、`GodotUiFactory`
+- Godot 特化的存储、设置与配置加载：`GodotFileStorage`、`GodotAudioSettings`、`GodotYamlConfigLoader`
+- 少量面向运行时交互的扩展：`Signal(...)` fluent API、暂停处理、富文本效果、协程时间源
+
+它不是 `[GetNode]`、`[BindNodeSignal]`、`AutoLoads`、`InputActions` 的来源。这些能力属于
+`GFramework.Godot.SourceGenerators`。
+
+## 包关系
+
+- `GeWuYou.GFramework`：聚合运行时包，提供 Core / Game 常用能力
+- `GeWuYou.GFramework.Godot`：当前页面对应的 Godot 运行时适配层
+- `GeWuYou.GFramework.Core.SourceGenerators`：`[ContextAware]`、`[GetModel]`、`[GetSystem]` 等 Core 侧生成器
+- `GeWuYou.GFramework.Godot.SourceGenerators`：`project.godot` 元数据、`[GetNode]`、`[BindNodeSignal]`
+
+从当前 `GFramework.Godot.csproj` 看，Godot 运行时包直接依赖：
+
+- `GFramework.Game`
+- `GFramework.Game.Abstractions`
+- `GFramework.Core.Abstractions`
+- `GodotSharp`
+
+这意味着它更像是“把现有框架能力接到 Godot 宿主”的桥接层，而不是单独的 gameplay 框架。
+
+## 最小接入路径
+
+### 1. 先区分运行时包和生成器包
+
+如果你只需要 Godot 运行时辅助，可以先安装：
+
+```bash
+dotnet add package GeWuYou.GFramework
+dotnet add package GeWuYou.GFramework.Godot
 ```
 
-## 版本兼容性
+如果你还需要 `project.godot` 的强类型入口、节点字段注入和 CLR event 绑定，再额外安装：
 
-- **Godot**: 4.6
-- **.NET**: 6.0+
-- **GFramework.Core**: 与 Core 模块版本保持同步
+```bash
+dotnet add package GeWuYou.GFramework.Core.SourceGenerators
+dotnet add package GeWuYou.GFramework.Godot.SourceGenerators
+```
+
+只装运行时包时，不会生成 `AutoLoads`、`InputActions`、`__InjectGetNodes_Generated()` 或
+`__BindNodeSignals_Generated()`。
+
+### 2. 让架构继续负责注册，让 Godot 节点负责场景接线
+
+`ai-libs/CoreGrid` 当前的真实做法，是让架构继承 `AbstractArchitecture`，但模块注册依然使用普通的
+`InstallModule(...)`：
+
+```csharp
+using GFramework.Core.Abstractions.Architectures;
+using GFramework.Core.Abstractions.Environment;
+using GFramework.Godot.Architectures;
+
+namespace MyGame.Scripts.Core;
+
+public sealed class GameArchitecture(
+    IArchitectureConfiguration configuration,
+    IEnvironment environment)
+    : AbstractArchitecture(configuration, environment)
+{
+    protected override void InstallModules()
+    {
+        InstallModule(new UtilityModule());
+        InstallModule(new ModelModule());
+        InstallModule(new GameplayModule());
+        InstallModule(new SystemModule());
+    }
+}
+```
+
+也就是说，`GFramework.Godot` 的默认接入点不是“把所有注册都改成 Godot 模块”，而是“保持现有架构注册方式，只把需要
+Godot 生命周期协作的部分接到场景树上”。
+
+### 3. 只在真的需要 Godot 节点挂接时使用 `InstallGodotModule(...)`
+
+`InstallGodotModule(...)` 适合这类模块：
+
+- 模块自身暴露一个 `Node`
+- 模块希望在架构锚点就绪后被挂到场景树
+- 模块需要在 `OnAttach(...)` / `OnDetach()` 里处理 Godot 生命周期副作用
+
+如果模块只是注册 Model、System、Utility，继续使用普通 `InstallModule(...)` 更符合当前消费者接法。
+
+### 4. 节点脚本用运行时辅助，静态样板交给生成器
+
+当前最常见的运行时入口是：
+
+- `UnRegisterWhenNodeExitTree(this Node node)`：把框架事件解绑挂到节点退出树
+- `WaitUntilReadyAsync()`：等待节点真正进入场景树
+- `AddChildXAsync()`：添加子节点后等待 ready
+- `Signal(...)`：对 `GodotObject.Connect(...)` 的 fluent 包装
+
+```csharp
+using GFramework.Godot.Extensions;
+using GFramework.Godot.Extensions.Signal;
+using Godot;
+
+public partial class SettingsPanel : Control
+{
+    public override async void _Ready()
+    {
+        var button = GetNode<Button>("%ApplyButton");
+        await button.WaitUntilReadyAsync();
+
+        button.Signal(Button.SignalName.Pressed)
+              .To(Callable.From(OnApplyPressed));
+    }
+
+    private void OnApplyPressed()
+    {
+    }
+}
+```
+
+字段注入、`project.godot` 解析和 signal 自动绑订仍应交给生成器，不要把它们写成 `GFramework.Godot` 运行时包的默认职责。
+
+## 关键入口
+
+- 架构锚点与模块挂接：[Godot 架构集成](./architecture.md)
+- Scene / `PackedScene` 工厂与行为封装：[Godot 场景系统](./scene.md)
+- UI page 行为、layer 语义与工厂：[Godot UI 系统](./ui.md)
+- Godot 文件路径与持久化适配：[Godot 存储系统](./storage.md)
+- 音频、图形与本地化设置接线：[Godot 设置系统](./setting.md)
+- `Signal(...)` fluent API 与动态连接边界：[Godot 信号系统](./signal.md)
+
+如果你要核对项目级接线，而不是运行时 API，本页之后优先看：
+
+- [Godot 集成教程](../tutorials/godot-integration.md)
+- [Godot 项目元数据生成器](../source-generators/godot-project-generator.md)
+
+## 当前边界
+
+- `AbstractArchitecture` 会在 `SceneTree.Root` 下创建 `ArchitectureAnchor`，并在锚点退出场景树时触发架构销毁观察流程
+- `InstallGodotModule(...)` 会先检查锚点是否存在；测试覆盖了“锚点缺失时直接抛 `InvalidOperationException`，且不会执行
+  `module.Install(...)`”这一路径
+- `Signal(...)` 是当前 fluent API 入口，不是旧文档里的 `CreateSignalBuilder(...)`
+- `NodeExtensions` 目前保留的是 `FindChildX<T>()`、`GetParentX<T>()`、`GetOrCreateNode<T>()`、`QueueFreeX()`、
+  `FreeX()`、`WaitUntilReadyAsync()` 这一类运行时辅助；不要再把它描述成一个“默认覆盖所有 Godot 节点操作”的大而全层
+- Scene / UI 工厂依赖显式 registry 与 `PackedScene` 资源，不存在“运行时自动扫描所有场景并完成统一注册”的当前契约
+- `[GetNode]`、`[BindNodeSignal]`、`AutoLoads`、`InputActions` 来自 `GFramework.Godot.SourceGenerators`，不属于本包
+
+## 继续阅读
+
+1. [Godot 集成教程](../tutorials/godot-integration.md)
+2. [Godot 架构集成](./architecture.md)
+3. [Godot 场景系统](./scene.md)
+4. [Godot UI 系统](./ui.md)
+5. [Godot 项目元数据生成器](../source-generators/godot-project-generator.md)

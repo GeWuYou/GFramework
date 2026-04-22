@@ -1,612 +1,176 @@
 ---
 title: Godot 架构集成
-description: Godot 架构集成提供了 GFramework 与 Godot 引擎的无缝连接，实现生命周期同步和模块化开发。
+description: 说明 AbstractArchitecture、ArchitectureAnchor 和 Godot 模块挂接的当前生命周期语义，避免继续沿用旧版 `.Wait()` 接法。
 ---
 
 # Godot 架构集成
 
 ## 概述
 
-Godot 架构集成是 GFramework.Godot 中连接框架与 Godot 引擎的核心组件。它提供了架构与 Godot 场景树的生命周期绑定、模块化扩展系统，以及与
-Godot 节点系统的深度集成。
+`GFramework.Godot` 当前的架构集成目标很直接：让 `Architecture` 能安全地感知 Godot `SceneTree` 生命周期，并在需要时把
+带 `Node` 的扩展模块挂到场景树上。
 
-通过 Godot 架构集成，你可以在 Godot 项目中使用 GFramework 的所有功能，同时保持与 Godot 引擎的完美兼容。
+当前真正参与这条链路的核心类型只有三类：
 
-**主要特性**：
+- `AbstractArchitecture`：在原有 `Architecture` 之上增加 Godot 生命周期绑定
+- `ArchitectureAnchor`：挂在 `SceneTree.Root` 下的锚点节点，负责把 `_ExitTree()` 事件转回架构销毁
+- `IGodotModule` / `AbstractGodotModule`：当模块本身需要携带 Godot `Node` 时使用
 
-- 架构与 Godot 生命周期自动同步
-- 模块化的 Godot 扩展系统
-- 架构锚点节点管理
-- 自动资源清理
-- 热重载支持
-- 与 Godot 场景树深度集成
+它不是另一套独立的模块系统，也不意味着所有模块都必须改成 `InstallGodotModule(...)`。
 
-## 核心概念
+## 什么时候该用 `AbstractArchitecture`
 
-### 抽象架构
+当你的架构需要满足下面任一条件时，可以让它继承 `AbstractArchitecture`：
 
-`AbstractArchitecture` 是 Godot 项目中架构的基类：
+- 需要把架构生命周期绑定到 Godot `SceneTree`
+- 需要在架构里安装带 `Node` 的扩展模块
+- 需要通过受保护的 `ArchitectureRoot` 访问锚点节点，继续挂接 Godot 子节点
 
-```csharp
-public abstract class AbstractArchitecture : Architecture
-{
-    protected Node ArchitectureRoot { get; }
-    protected abstract void InstallModules();
-    protected Task InstallGodotModule<TModule>(TModule module);
-}
-```
+如果你只是做普通的 Model / System / Utility 注册，`AbstractArchitecture` 的主要价值仍然是“让架构知道自己何时跟随
+Godot 场景树销毁”，而不是改变注册方式。
 
-### 架构锚点
+## 最小接入路径
 
-`ArchitectureAnchor` 是连接架构与 Godot 场景树的桥梁：
+### 常规模块仍然用 `InstallModule(...)`
+
+当前消费者 `ai-libs/CoreGrid` 的默认做法，是保持普通模块注册方式：
 
 ```csharp
-public partial class ArchitectureAnchor : Node
+using GFramework.Core.Abstractions.Architectures;
+using GFramework.Core.Abstractions.Environment;
+using GFramework.Godot.Architectures;
+
+namespace MyGame.Scripts.Core;
+
+public sealed class GameArchitecture(
+    IArchitectureConfiguration configuration,
+    IEnvironment environment)
+    : AbstractArchitecture(configuration, environment)
 {
-    public void Bind(Action onExit);
-    public override void _ExitTree();
-}
-```
-
-### Godot 模块
-
-`IGodotModule` 定义了 Godot 特定的模块接口：
-
-```csharp
-public interface IGodotModule : IArchitectureModule
-{
-    Node Node { get; }
-    void OnPhase(ArchitecturePhase phase, IArchitecture architecture);
-    void OnAttach(Architecture architecture);
-    void OnDetach();
-}
-```
-
-## 基本用法
-
-### 创建 Godot 架构
-
-```csharp
-using GFramework.Godot.Architecture;
-using GFramework.Core.Abstractions.Architecture;
-
-public class GameArchitecture : AbstractArchitecture
-{
-    // 单例实例
-    public static GameArchitecture Interface { get; private set; }
-
-    public GameArchitecture()
-    {
-        Interface = this;
-    }
-
     protected override void InstallModules()
     {
-        // 注册 Model
-        RegisterModel(new PlayerModel());
-        RegisterModel(new GameModel());
-
-        // 注册 System
-        RegisterSystem(new GameplaySystem());
-        RegisterSystem(new AudioSystem());
-
-        // 注册 Utility
-        RegisterUtility(new StorageUtility());
+        InstallModule(new UtilityModule());
+        InstallModule(new ModelModule());
+        InstallModule(new GameplayModule());
+        InstallModule(new SystemModule());
     }
 }
 ```
 
-### 在 Godot 场景中初始化架构
+这里继承 `AbstractArchitecture` 的意义，是把架构绑定到 Godot 生命周期，而不是把普通模块注册改写成 Godot 风格 API。
+
+### 只有携带 `Node` 的模块才需要 `InstallGodotModule(...)`
+
+如果模块本身暴露一个 Godot `Node`，并且希望由架构锚点统一托管，可以这样写：
 
 ```csharp
-using Godot;
-using GFramework.Godot.Architecture;
-
-public partial class GameRoot : Node
-{
-    private GameArchitecture _architecture;
-
-    public override void _Ready()
-    {
-        // 创建并初始化架构
-        _architecture = new GameArchitecture();
-        _architecture.InitializeAsync().AsTask().Wait();
-
-        GD.Print("架构已初始化");
-    }
-}
-```
-
-### 使用架构锚点
-
-架构锚点会自动创建并绑定到场景树：
-
-```csharp
-// 架构会自动创建锚点节点
-// 节点名称格式: __GFramework__GameArchitecture__[HashCode]__ArchitectureAnchor__
-
-// 当场景树销毁时，锚点会自动触发架构清理
-```
-
-## 高级用法
-
-### 创建 Godot 模块
-
-```csharp
-using GFramework.Godot.Architecture;
+using GFramework.Core.Abstractions.Architectures;
+using GFramework.Godot.Architectures;
 using Godot;
 
-public class CoroutineModule : AbstractGodotModule
+namespace MyGame.Scripts.Core;
+
+public sealed class HudModule : AbstractGodotModule
 {
-    private Node _coroutineNode;
-
-    public override Node Node => _coroutineNode;
-
-    public CoroutineModule()
+    private readonly Control _root = new()
     {
-        _coroutineNode = new Node { Name = "CoroutineScheduler" };
-    }
+        Name = "HudModule"
+    };
+
+    public override Node Node => _root;
 
     public override void Install(IArchitecture architecture)
     {
-        // 注册协程调度器
-        var scheduler = new CoroutineScheduler(new GodotTimeSource());
-        architecture.RegisterSystem<ICoroutineScheduler>(scheduler);
-
-        GD.Print("协程模块已安装");
     }
 
-    public override void OnPhase(ArchitecturePhase phase, IArchitecture architecture)
+    public override void OnAttach(GFramework.Core.Architectures.Architecture architecture)
     {
-        if (phase == ArchitecturePhase.Ready)
-        {
-            GD.Print("协程模块已就绪");
-        }
     }
 
     public override void OnDetach()
     {
-        GD.Print("协程模块已分离");
-        _coroutineNode?.QueueFree();
+        _root.QueueFree();
     }
 }
 ```
 
-### 安装 Godot 模块
-
-```csharp
-public class GameArchitecture : AbstractArchitecture
-{
-    protected override void InstallModules()
-    {
-        // 安装核心模块
-        RegisterModel(new PlayerModel());
-        RegisterSystem(new GameplaySystem());
-
-        // 安装 Godot 模块
-        InstallGodotModule(new CoroutineModule()).Wait();
-        InstallGodotModule(new SceneModule()).Wait();
-        InstallGodotModule(new UiModule()).Wait();
-    }
-}
-```
-
-### 访问架构根节点
-
-```csharp
-public class SceneModule : AbstractGodotModule
-{
-    private Node _sceneRoot;
-
-    public override Node Node => _sceneRoot;
-
-    public SceneModule()
-    {
-        _sceneRoot = new Node { Name = "SceneRoot" };
-    }
-
-    public override void Install(IArchitecture architecture)
-    {
-        // 访问架构根节点
-        if (architecture is AbstractArchitecture godotArch)
-        {
-            var root = godotArch.ArchitectureRoot;
-            root.AddChild(_sceneRoot);
-        }
-    }
-}
-```
-
-### 监听架构阶段
-
-```csharp
-public class AnalyticsModule : AbstractGodotModule
-{
-    private Node _analyticsNode;
-
-    public override Node Node => _analyticsNode;
-
-    public AnalyticsModule()
-    {
-        _analyticsNode = new Node { Name = "Analytics" };
-  }
-
-    public override void Install(IArchitecture architecture)
-    {
-        // 安装分析系统
-    }
-
-    public override void OnPhase(ArchitecturePhase phase, IArchitecture architecture)
-    {
-        switch (phase)
-        {
-            case ArchitecturePhase.Initializing:
-                GD.Print("架构正在初始化");
-                break;
-
-            case ArchitecturePhase.Ready:
-                GD.Print("架构已就绪，开始追踪");
-                StartTracking();
-                break;
-
-            case ArchitecturePhase.Destroying:
-                GD.Prin构正在销毁，停止追踪");
-                StopTracking();
-                break;
-        }
-    }
-
-    private void StartTracking() { }
-    private void StopTracking() { }
-}
-```
-
-### 自定义架构配置
-
-```csharp
-using GFramework.Core.Abstractions.Architecture;
-using GFramework.Core.Abstractions.Environment;
-
-public class GameArchitecture : AbstractArchitecture
-{
-    public GameArchitecture() : base(
-        configuration: CreateConfiguration(),
-        environment: CreateEnvironment()
-    )
-    {
-    }
-
-    private static IArchitectureConfiguration CreateConfiguration()
-    {
-        return new ArchitectureConfiguration
-        {
-            EnableLogging
-            LogLevel = LogLevel.Debug
-        };
-    }
-
-    private static IEnvironment CreateEnvironment()
-    {
-        return new DefaultEnvironment
-        {
-            IsDevelopment = OS.IsDebugBuild()
-        };
-    }
-
-    protected override void InstallModules()
-    {
-        // 根据环境配置安装模块
-        if (Environment.IsDevelopment)
-        {
-            InstallGodotModule(new DebugModule()).Wait();
-        }
-
-        // 安装核心模块
-        RegisterModel(new PlayerModel());
-        RegisterSystem(new GameplaySystem());
-    }
-}
-```
-
-### 热重载支持
-
-```csharp
-public class GameArchitecture : AbstractArchitecture
-{
-    private static bool _initialized;
-
-    protected override void OnInitialize()
-    {
-        // 防止热重载时重复初始化
-        if (_initialized)
-        {
-            GD.Print("架构已初始化，跳过重复初始化");
-            return;
-        }
-
-        base.OnInitialize();
-        _initialized = true;
-    }
-
-    protected override async ValueTask OnDestroyAsync()
-    {
-        await base.OnDestroyAsync();
-        _initialized = false;
-    }
-}
-```
-
-### 在节点中使用架构
-
-```csharp
-using Godot;
-using GFramework.Core.Abstractions.Controller;
-using GFramework.Core.SourceGenerators.Abstractions.Rule;
-
-[ContextAware]
-public partial class Player : CharacterBody2D, IController
-{
-    public override void _Ready()
-    {
-        // 使用扩展方法访问架构（[ContextAware] 实现 IContextAware 接口）
-        var playerModel = this.GetModel<PlayerModel>();
-        var gameplaySystem = this.GetSystem<GameplaySystem>();
-
-        // 发送事件
-        this.SendEvent(new PlayerSpawnedEvent());
-
-        // 执行命令
-        this.SendCommand(new InitPlayerCommand());
-    }
-
-    public override void _Process(double delta)
-    {
-        // 在 Process 中使用架构组件
-        var inputSystem = this.GetSystem<InputSystem>();
-        var movement = inputSystem.GetMovementInput();
-
-        Velocity = movement * 200;
-        MoveAndSlide();
-    }
-}
-```
-
-### 多架构支持
-
-```csharp
-// 游戏架构
-public class GameArchitecture : AbstractArchitecture
-{
-    public static GameArchitecture Interface { get; private set; }
-
-    public GameArchitecture()
-    {
-        Interface = this;
-    }
-
-    protected override void InstallModules()
-    {
-        RegisterModel(new PlayerModel());
-        RegisterSystem(new GameplaySystem());
-    }
-}
-
-// UI 架构
-public class UiArchitecture : AbstractArchitecture
-{
-    public static UiArchitecture Interface { get; private set; }
-
-    public UiArchitecture()
-    {
-        Interface = this;
-    }
-
-    protected override void InstallModules()
-    {
-        RegisterModel(new UiModel());
-        RegisterSystem(new UiSystem());
-    }
-}
-
-// 在不同节点中使用不同架构
-[ContextAware]
-public partial class GameNode : Node, IController
-{
-    // 配置使用 GameArchitecture 的上下文提供者
-    static GameNode()
-    {
-        SetContextProvider(new GameContextProvider());
-    }
-}
-
-[ContextAware]
-public partial class UiNode : Control, IController
-{
-    // 配置使用 UiArchitecture 的上下文提供者
-    static UiNode()
-    {
-        SetContextProvider(new UiContextProvider());
-    }
-}
-```
-
-## 最佳实践
-
-1. **使用单例模式**：为架构提供全局访问点
-   ```csharp
-   public class GameArchitecture : AbstractArchitecture
-   {
-       public static GameArchitecture Interface { get; private set; }
-
-       public GameArchitecture()
-       {
-           Interface = this;
-       }
-   }
-   ```
-
-2. **在根节点初始化架构**：确保架构在所有节点之前就绪
-   ```csharp
-   public partial class GameRoot : Node
-   {
-       public override void _Ready()
-       {
-           new GameArchitecture().InitializeAsync().AsTask().Wait();
-       }
-   }
-   ```
-
-3. **使用 Godot 模块组织功能**：将相关功能封装为模块
-   ```csharp
-   InstallGodotModule(new CoroutineModule()).Wait();
-   InstallGodotModule(new SceneModule()).Wait();
-   InstallGodotModule(new UiModule()).Wait();
-   ```
-
-4. **利用架构阶段钩子**：在适当的时机执行逻辑
-   ```csharp
-   public override void OnPhase(ArchitecturePhase phase, IArchitecture architecture)
-   {
-       if (phase == ArchitecturePhase.Ready)
-       {
-           // 架构就绪后的初始化
-       }
-   }
-   ```
-
-5. **正确清理资源**：在 OnDetach 中释放 Godot 节点
-   ```csharp
-   public override void OnDetach()
-   {
-       _node?.QueueFree();
-       _node = null;
-   }
-   ```
-
-6. **避免在构造函数中访问架构**：使用 _Ready 或 OnPhase
-   ```csharp
-   ✗ public Player()
-   {
-       var model = this.GetModel<PlayerModel>(); // 架构可能未就绪
-   }
-
-   ✓ public override void _Ready()
-   {
-       var model = this.GetModel<PlayerModel>(); // 安全
-   }
-   ```
-
-## 常见问题
-
-### 问题：架构什么时候初始化？
-
-**解答**：
-在根节点的 `_Ready` 方法中初始化：
-
-```csharp
-public partial class GameRoot : Node
-{
-    public override void _Ready()
-    {
-        new GameArchitecture().InitializeAsync().AsTask().Wait();
-    }
-}
-```
-
-### 问题：如何在节点中访问架构？
-
-**解答**：
-使用 `[ContextAware]` 特性或直接使用单例：
-
-```csharp
-using GFramework.Core.SourceGenerators.Abstractions.Rule;
-
-// 方式 1: 使用 [ContextAware] 特性（推荐）
-[ContextAware]
-public partial class Player : Node, IController
-{
-    public override void _Ready()
-    {
-        // 使用扩展方法访问架构（[ContextAware] 实现 IContextAware 接口）
-        var model = this.GetModel<PlayerModel>();
-        var system = this.GetSystem<GameplaySystem>();
-    }
-}
-
-// 方式 2: 直接使用单例
-public partial class Enemy : Node
-{
-    public override void _Ready()
-    {
-        var model = GameArchitecture.Interface.GetModel<EnemyModel>();
-    }
-}
-```
-
-**注意**：
-
-- `IController` 是标记接口，不包含任何方法
-- 架构访问能力由 `[ContextAware]` 特性提供
-- `[ContextAware]` 会自动生成 `Context` 属性和实现 `IContextAware` 接口
-- 扩展方法（如 `this.GetModel()`）基于 `IContextAware` 接口，而非 `IController`
-
-### 问题：架构锚点节点是什么？
-
-**解答**：
-架构锚点是一个隐藏的节点，用于将架构绑定到 Godot 场景树。当场景树销毁时，锚点会自动触发架构清理。
-
-### 问题：如何支持热重载？
-
-**解答**：
-使用静态标志防止重复初始化：
-
-```csharp
-private static bool _initialized;
-
-protected override void OnInitialize()
-{
-    if (_initialized) return;
-    base.OnInitialize();
-    _initialized = true;
-}
-```
-
-### 问题：可以有多个架构吗？
-
-**解答**：
-可以，但通常一个游戏只需要一个主架构。如果需要多个架构，为每个架构提供独立的单例：
-
-```csharp
-public class GameArchitecture : AbstractArchitecture
-{
-    public static GameArchitecture Interface { get; private set; }
-}
-
-public class UiArchitecture : AbstractArchitecture
-{
-    public static UiArchitecture Interface { get; private set; }
-}
-```
-
-### 问题：Godot 模块和普通模块有什么区别？
-
-**解答**：
-
-- **普通模块**：纯 C# 逻辑，不依赖 Godot
-- **Godot 模块**：包含 Godot 节点，与场景树集成
-
-```csharp
-// 普通模块
-InstallModule(new CoreModule());
-
-// Godot 模块
-InstallGodotModule(new SceneModule()).Wait();
-```
-
-## 相关文档
-
-- [架构组件](/zh-CN/core/architecture) - 核心架构系统
-- [生命周期管理](/zh-CN/core/lifecycle) - 组件生命周期
-- [Godot 场景系统](/zh-CN/godot/scene) - Godot 场景集成
-- [Godot UI 系统](/zh-CN/godot/ui) - Godot UI 集成
-- [Godot 扩展](/zh-CN/godot/extensions) - Godot 扩展方法
+这类模块的关键点不是“注册更多框架能力”，而是“让模块节点跟着架构锚点进出场景树”。
+真正调用 `InstallGodotModule(...)` 时，也应该把它放在能够接受异步挂接流程的初始化路径里，而不是继续沿用旧文档里的
+`.Wait()` 叙述。
+
+## 当前生命周期
+
+### 初始化阶段
+
+`AbstractArchitecture.OnInitialize()` 目前会按这个顺序工作：
+
+1. 生成唯一的锚点节点名称
+2. 调用 `AttachToGodotLifecycle()`
+3. 在可用的 `SceneTree` 上创建并绑定 `ArchitectureAnchor`
+4. 执行你重写的 `InstallModules()`
+
+也就是说，Godot 生命周期绑定先发生，业务模块注册后发生。
+
+### `InstallGodotModule(...)` 的执行顺序
+
+当前实现里，`InstallGodotModule(...)` 会：
+
+1. 检查模块参数是否为 `null`
+2. 检查 `_anchor` 是否已初始化
+3. 先执行 `module.Install(this)`
+4. 把模块登记进内部 `_extensions`
+5. `await anchor.WaitUntilReadyAsync()`
+6. 通过 `CallDeferred(AddChild, module.Node)` 把模块节点挂到锚点下
+7. 调用 `module.OnAttach(this)`
+
+这条顺序有两个实际意义：
+
+- 模块会在挂接节点前先完成框架侧注册
+- 只有等锚点真正 ready 后，才进入需要访问 Godot 节点 API 的附加阶段
+
+### 销毁阶段
+
+`ArchitectureAnchor._ExitTree()` 会触发绑定好的退出回调，随后 `AbstractArchitecture` 会开始观察异步销毁流程：
+
+- 防止重复销毁
+- 依次调用已登记 Godot 模块的 `OnDetach()`
+- 清空内部扩展列表
+- 再进入基类 `DestroyAsync()`
+
+如果异步销毁抛异常，当前实现会把错误写到 Godot 错误输出，而不是静默吞掉。
+
+## 当前边界
+
+### 没有锚点时不会偷偷安装模块
+
+`GFramework.Godot.Tests/Architectures/AbstractArchitectureModuleInstallationTests.cs` 已覆盖一个关键边界：
+
+- 当锚点尚未初始化时，`InstallGodotModule(...)` 会直接抛 `InvalidOperationException("Anchor not initialized")`
+- 失败发生在 `module.Install(...)` 之前，因此不会留下半安装副作用
+
+这也是为什么文档不应该再把 `InstallGodotModule(...).Wait()` 写成一种随处可用的默认初始化方式。
+
+### `AbstractGodotModule` 只是便捷基类，不代表自动阶段广播
+
+当前接口 `IGodotModule` 真正保证的成员只有：
+
+- `Node`
+- `Install(IArchitecture architecture)`
+- `OnAttach(Architecture architecture)`
+- `OnDetach()`
+
+`AbstractGodotModule` 里虽然保留了 `OnPhase(...)` / `OnArchitecturePhase(...)` 虚方法，但它们不在当前接口契约内，也没有在
+这条挂接流程里形成稳定的自动广播语义。不要把它写成当前公开保证。
+
+### `ArchitectureRoot` 只在锚点就绪后可用
+
+`ArchitectureRoot` 是受保护属性，底层直接返回 `_anchor`。如果锚点尚未准备好或架构已经失效，它会抛
+`InvalidOperationException("Architecture root not ready")`。因此它适合放在明确依赖锚点存在的挂接逻辑里，而不是拿来做
+任意时机的全局节点查找。
+
+## 继续阅读
+
+1. [Godot 运行时集成](./index.md)
+2. [Godot 集成教程](../tutorials/godot-integration.md)
+3. [Godot 场景系统](./scene.md)
+4. [Godot UI 系统](./ui.md)
