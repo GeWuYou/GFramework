@@ -2,7 +2,7 @@
 
 ## 2026-04-22
 
-### 当前恢复点：RP-011
+### 当前恢复点：RP-012
 
 - 本轮从 PR #268 的最新 review 数据恢复，未发现失败检查；CTRF 报告显示 2139 个测试全部通过
 - 本轮复核确认当前 PR 的 latest-head open thread 同时来自 `coderabbitai[bot]` 与 `greptile-apps[bot]`
@@ -22,6 +22,9 @@
   - `bind-node-signal-generator.md`
 - 新页面统一收口到“包关系、最小接入路径、真实生成语义、生命周期边界、诊断约束”，不再沿用旧教程式长篇 API 罗列
 - 本轮额外复核了 `ai-libs/CoreGrid` 的真实采用方式，确认 `[GetNode]` / `[BindNodeSignal]` 组合使用时应先注入节点再绑定事件
+- 本轮继续收口 `auto-register-exported-collections-generator.md`，补齐 frontmatter，并把“导出集合”纠正为“实例可读集合成员 + registry 成员 + 单参数实例方法”的真实契约
+- 本轮复核 `docs/zh-CN/tutorials/godot-integration.md`，确认其中仍残留 `GetNodeX`、`AbstractGodotModule`、`InstallGodotModule`、
+  `GFramework.Godot.Pool` 等旧 API / 旧模块叙述，tutorial 已成为下一轮高优先级清理对象
 
 ### 当前决策
 
@@ -31,6 +34,8 @@
   声明与实际抓取能力再次漂移
 - `Godot.SourceGenerators` 专题页继续采用“源码 / 测试 / README 优先，`ai-libs/` 只补消费者 wiring”的证据顺序
 - `BindNodeSignal` 页面明确记录“当前不自动生成 `_Ready()` / `_ExitTree()`”，避免继续把它写成自动生命周期织入器
+- `auto-register-exported-collections` 页面明确区分“运行时 null 时跳过注册”和“配置错误时编译期报错”，避免旧文档把两类边界混为一谈
+- `godot-integration.md` 不再适合作为当前 Godot 采用路径的事实来源；后续只能把它当待修输出，而不是事实输入
 
 ### 验证
 
@@ -44,10 +49,12 @@
 - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/godot-project-generator.md`
 - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/get-node-generator.md`
 - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/bind-node-signal-generator.md`
+- `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/auto-register-exported-collections-generator.md`
 - `cd docs && bun run build`
+- `rg -n "GetNodeX|AbstractGodotModule|InstallGodotModule|GodotGameArchitecture|GFramework\\.Godot\\.Pool" docs/zh-CN/tutorials/godot-integration.md`
 
 ### 下一步
 
 1. 下一次推送后重新执行 `$gframework-pr-review`，确认 PR #268 的 CodeRabbit / Greptile open thread 是否关闭或减少
 2. 继续使用 `gframework-doc-refresh` 对 `Godot.SourceGenerators` 做真实模块扫描
-3. 优先刷新 `auto-register-exported-collections-generator.md`，并复核 `tutorials/godot-integration.md` 是否仍残留旧叙述
+3. 优先重写或拆分 `tutorials/godot-integration.md`，先清掉已确认失真的 Godot 旧 API 与旧模块示例

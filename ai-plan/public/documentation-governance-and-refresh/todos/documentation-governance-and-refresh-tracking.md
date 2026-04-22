@@ -7,13 +7,13 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`DOCUMENTATION-GOVERNANCE-REFRESH-RP-011`
+- 恢复点编号：`DOCUMENTATION-GOVERNANCE-REFRESH-RP-012`
 - 当前阶段：`Phase 3`
 - 当前焦点：
   - 已建立统一公开 skill：`.agents/skills/gframework-doc-refresh/`
   - 文档重构入口已从“按 guide/tutorial/api 类型拆 skill”收口为“按源码模块驱动文档刷新”
   - PR #268 的当前未解决 review 线程已进入收口：Scene/UI 标题层级修正、共享脚本 review 修复、`gframework-pr-review` 多 AI reviewer 支持补齐
-  - `Godot.SourceGenerators` 的 3 个高风险专题页已按当前实现重写，下一轮转入剩余生成器页与 PR thread 收口
+  - `Godot.SourceGenerators` 的 4 个高风险专题页已按当前实现重写，下一轮转入 tutorial 收口与 PR thread 收口
 
 ## 当前状态摘要
 
@@ -63,6 +63,8 @@
   明确只有缺少 `_Ready()` 时才会生成 `OnGetNodeReadyGenerated()`
 - `docs/zh-CN/source-generators/bind-node-signal-generator.md` 已改成“CLR event 绑定职责、生命周期接线要求、与 `[GetNode]` 的调用顺序、签名约束与命名冲突”的结构，
   明确当前不会自动生成 `_Ready()` / `_ExitTree()`
+- `docs/zh-CN/source-generators/auto-register-exported-collections-generator.md` 已补齐 frontmatter，并改成“成员形状、registry 匹配规则、null-skip 行为、编译期诊断与 CoreGrid 真实采用路径”的结构，
+  明确生成器依赖的是实例可读集合成员与可读 registry 成员，不要求成员必须带 `[Export]`
 - `.agents/skills/gframework-doc-refresh/SKILL.md` 已改成标准 YAML frontmatter skill，并明确支持模块输入、证据顺序、输出优先级与验证步骤
 - `.agents/skills/gframework-doc-refresh/SKILL.md` 的 `description` 已加引号，修复 `Recommended command:` 中冒号导致的
   invalid YAML skill 加载警告
@@ -80,8 +82,12 @@
 
 - 旧专题页示例失真风险：`docs/zh-CN/game/*` 与 `source-generators/*` 中仍可能保留看似合理但与真实实现不一致的示例
   - 缓解措施：`game/scene.md`、`ui.md`、`source-generators/context-aware-generator.md` 与 `priority-generator.md` 已完成收口；
-    `godot-project-generator.md`、`get-node-generator.md` 与 `bind-node-signal-generator.md` 已完成收口；
+    `godot-project-generator.md`、`get-node-generator.md`、`bind-node-signal-generator.md` 与 `auto-register-exported-collections-generator.md`
+    已完成收口；
     继续按源码、测试、`*.csproj` 与 `ai-libs/` 下已验证参考实现核对剩余 Godot 相关页面，不把旧文档当事实来源
+- 教程失真回流风险：`docs/zh-CN/tutorials/godot-integration.md` 仍保留旧 API 与旧模块叙述，可能把已清理掉的旧说法重新带回专题页
+  - 缓解措施：本轮已确认 `GetNodeX`、`AbstractGodotModule`、`InstallGodotModule` 与 `GFramework.Godot.Pool` 等旧引用仍存在；
+    下一轮优先按当前 `GFramework.Godot` / `Godot.SourceGenerators` 实现重写或拆分该教程
 - 采用路径误导风险：根聚合包与模块边界若再次被写错，会继续误导消费者的包选择
   - 缓解措施：保持“源码与包关系优先”的证据顺序，改动采用说明时同步核对包依赖与生成器 wiring
 - 模块映射不全风险：统一 skill 若遗漏模块别名、测试项目或 docs 栏目映射，会让后续扫描阶段直接失焦
@@ -125,10 +131,11 @@
 - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/godot-project-generator.md`
 - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/get-node-generator.md`
 - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/bind-node-signal-generator.md`
+- `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/auto-register-exported-collections-generator.md`
 - `cd docs && bun run build`
 
 ## 下一步
 
-1. 继续核对 `auto-register-exported-collections-generator.md`，确认其示例、诊断与 `Godot.SourceGenerators` 当前实现一致
+1. 优先重写或拆分 `docs/zh-CN/tutorials/godot-integration.md`，先移除 `GetNodeX`、`AbstractGodotModule`、`InstallGodotModule` 等旧 API 叙述
 2. 下一次推送后先重新执行 `$gframework-pr-review`，确认 PR #268 的 CodeRabbit / Greptile open thread 是否按预期收敛
-3. 继续复核 `docs/zh-CN/tutorials/godot-integration.md`，避免旧教程重新把过时 Godot 说明带回专题页
+3. 若 tutorial 收口后 active 内容再次变长，把本阶段已完成的 Godot 生成器专题历史迁入 topic `archive/`
