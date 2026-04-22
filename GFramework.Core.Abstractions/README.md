@@ -2,6 +2,8 @@
 
 `GFramework.Core.Abstractions` 承载 `Core` 运行时对应的接口、枚举和值对象，用来定义跨模块协作边界。
 
+它只描述契约，不提供默认的架构、事件、状态、资源或 IoC 实现；这些实现都在 `GFramework.Core` 中。
+
 ## 什么时候单独依赖它
 
 - 你在做插件、适配层或扩展包，只想依赖契约，不想把完整运行时拉进来
@@ -20,23 +22,17 @@
 
 ## 契约地图
 
-| 目录 | 作用 |
+| 目录族 | 作用 |
 | --- | --- |
-| `Architectures/` | `IArchitecture`、模块、阶段监听与服务管理契约 |
-| `Command/` / `Query/` | 旧版命令与查询执行器接口 |
-| `Controller/` | `IController` |
-| `Events/` | 事件契约、解绑接口与传播上下文 |
-| `Model/` / `Systems/` / `Utility/` | 核心组件接口 |
-| `State/` / `StateManagement/` | 状态机、Store、reducer、selector 契约 |
-| `Property/` | `IBindableProperty` 与只读属性接口 |
-| `Resource/` | 资源管理与释放策略契约 |
-| `Localization/` | 本地化表、格式化与异常类型 |
-| `Logging/` | logger、log entry、factory 相关契约 |
-| `Ioc/` | `IIocContainer` |
-| `Lifecycle/` | 初始化 / 销毁生命周期契约 |
-| `Coroutine/` | 时间源、yield 指令与协程状态枚举 |
-| `Pause/` | 暂停栈、token 与状态事件 |
-| `Storage/` / `Serializer/` / `Versioning/` | 通用存储、序列化与版本化契约 |
+| `Architectures/` `Lifecycle/` `Registries/` | `IArchitecture`、上下文、模块、服务模块、阶段监听、注册表基类与生命周期契约 |
+| `Bases/` `Controller/` `Model/` `Systems/` `Utility/` `Rule/` | 组件角色接口、优先级 / key 值对象、上下文感知约束与扩展边界 |
+| `Command/` `Query/` `Cqrs/` | 旧版命令 / 查询执行器接口，以及 `ICqrsRuntime` 这类新请求模型接线契约 |
+| `Events/` `Property/` `State/` `StateManagement/` | 事件总线、解绑对象、可绑定属性、状态机、Store / reducer / middleware 契约 |
+| `Coroutine/` `Time/` `Pause/` `Concurrency/` | 协程状态、时间源、暂停栈、键控异步锁和统计对象 |
+| `Resource/` `Pool/` `Logging/` `Localization/` | 资源句柄、对象池、日志、日志工厂、本地化表与格式化契约 |
+| `Configuration/` `Environment/` | 配置管理器、环境对象与运行时环境访问契约 |
+| `Data/` `Serializer/` `Storage/` `Versioning/` | 数据装载、序列化、存储与版本化契约 |
+| `Enums/` `Properties/` | 架构阶段枚举，以及架构 / logger 相关属性键 |
 
 ## 采用建议
 
@@ -44,8 +40,18 @@
 - 若你只需要对接口编程，可以仅引用本包，再在应用层自行提供实现
 - 若你在写上层模块，优先把公共契约放在 `*.Abstractions`，实现放在对应 runtime 包
 
+## 重点 XML 关注点
+
+如果你在做契约审计、模块拆分或测试替身，优先看这些类型族的 XML 文档：
+
+- 架构与模块入口：`IArchitecture`、`IArchitectureContext`、`IServiceModule`
+- 运行时基础设施：`IIocContainer`、`ILogger`、`IResourceManager`、`IConfigurationManager`
+- 状态与并发能力：`IStateMachine`、`IStore`、`IAsyncKeyLockManager`、`ITimeProvider`
+- 迁移与组合边界：`ICommandExecutor`、`IQueryExecutor`、`ICqrsRuntime`
+
 ## 对应文档
 
 - 抽象接口栏目：[`../docs/zh-CN/abstractions/index.md`](../docs/zh-CN/abstractions/index.md)
 - Core 抽象页：[`../docs/zh-CN/abstractions/core-abstractions.md`](../docs/zh-CN/abstractions/core-abstractions.md)
 - Core 运行时入口：[`../GFramework.Core/README.md`](../GFramework.Core/README.md)
+- API 参考入口：[`../docs/zh-CN/api-reference/index.md`](../docs/zh-CN/api-reference/index.md)

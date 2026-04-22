@@ -1,3 +1,8 @@
+---
+title: Core
+description: GFramework.Core 与 GFramework.Core.Abstractions 的运行时入口、采用顺序和 XML 阅读导航。
+---
+
 # Core
 
 `Core` 栏目对应 `GFramework` 的基础运行时层，主要覆盖 `GFramework.Core` 与 `GFramework.Core.Abstractions`，以及与之直接相邻的旧版
@@ -29,28 +34,53 @@ dotnet add package GeWuYou.GFramework.Core.Abstractions
 
 `Core` 栏目不是旧版“完整框架教程”的镜像，而是当前实现的入口导航。这里的页面按能力域组织：
 
-- 架构与上下文
+- 架构与生命周期
   - [architecture](./architecture.md)
   - [context](./context.md)
   - [lifecycle](./lifecycle.md)
+  - [async-initialization](./async-initialization.md)
+- 组件角色与运行时接入
+  - [model](./model.md)
+  - [system](./system.md)
+  - [utility](./utility.md)
+  - [environment](./environment.md)
+  - [extensions](./extensions.md)
 - 旧版命令 / 查询执行器与迁移入口
   - [command](./command.md)
   - [query](./query.md)
   - [cqrs](./cqrs.md)
-- 核心横切能力
+- 状态、事件与规则
   - [events](./events.md)
   - [property](./property.md)
+  - [rule](./rule.md)
   - [logging](./logging.md)
-  - [resource](./resource.md)
-  - [coroutine](./coroutine.md)
-  - [ioc](./ioc.md)
-- 状态与扩展能力
   - [state-machine](./state-machine.md)
   - [state-management](./state-management.md)
+- 运行时支撑能力
+  - [resource](./resource.md)
+  - [pool](./pool.md)
+  - [coroutine](./coroutine.md)
   - [pause](./pause.md)
   - [localization](./localization.md)
+  - [configuration](./configuration.md)
+  - [ioc](./ioc.md)
+- 通用辅助能力
   - [functional](./functional.md)
-  - [extensions](./extensions.md)
+
+## XML 与 API 阅读入口
+
+如果你已经知道模块归属，但想确认公开类型的契约边界，建议按下面顺序阅读：
+
+1. 先看模块 README `GFramework.Core/README.md`，确认包关系和目录边界
+2. 再看本栏目对应专题页，确认采用顺序、生命周期与推荐接线方式
+3. 最后回到源码中的 XML 文档，重点核对这些类型族：
+   - `Architecture` / `IArchitectureContext`
+   - `CommandExecutor` / `QueryExecutor`
+   - `ILogger` / `ILoggerFactory`
+   - `IResourceManager` / `IConfigurationManager`
+   - `IAsyncKeyLockManager` / `ITimeProvider`
+
+统一入口见 [`../api-reference/index.md`](../api-reference/index.md)。
 
 ## 最小接入路径
 
@@ -104,4 +134,5 @@ public sealed class CounterArchitecture : Architecture
 
 - `GFramework.Core/README.md`
 - `GFramework.Core.Abstractions/README.md`
+- `docs/zh-CN/api-reference/index.md`
 - 仓库根 `README.md`
