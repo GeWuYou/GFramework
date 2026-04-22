@@ -221,6 +221,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     private static bool TryValidateSchemaRoot(string filePath, JsonElement root, out Diagnostic? diagnostic)
     {
         if (!root.TryGetProperty("type", out var rootTypeElement) ||
+            rootTypeElement.ValueKind != JsonValueKind.String ||
             !IsSchemaType(rootTypeElement.GetString() ?? string.Empty, "object"))
         {
             diagnostic = Diagnostic.Create(

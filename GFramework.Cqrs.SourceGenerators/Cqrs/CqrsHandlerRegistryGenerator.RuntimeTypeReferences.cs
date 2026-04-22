@@ -253,6 +253,11 @@ public sealed partial class CqrsHandlerRegistryGenerator
 
     private static bool CanReferenceFromGeneratedRegistry(Compilation compilation, ITypeSymbol type)
     {
+        // Roslyn error symbols stringify to unresolved type names; emitting them via typeof(...) would turn
+        // an existing user-code error into a second generator-produced compile error instead of falling back.
+        if (type.TypeKind == TypeKind.Error)
+            return false;
+
         switch (type)
         {
             case IArrayTypeSymbol arrayType:
@@ -274,7 +279,7 @@ public sealed partial class CqrsHandlerRegistryGenerator
             case ITypeParameterSymbol:
                 return false;
             default:
-                // Treat other Roslyn type kinds, such as dynamic or unresolved error types, as referenceable for now.
+                // Treat other Roslyn type kinds, such as dynamic, as referenceable for now.
                 // If a real-world case proves unsafe, tighten this branch instead of broadening the named-type path above.
                 return true;
         }

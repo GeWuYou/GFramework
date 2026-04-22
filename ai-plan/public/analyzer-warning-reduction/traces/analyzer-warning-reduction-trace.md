@@ -1,5 +1,37 @@
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-22 — RP-024
+
+### 阶段：PR #269 第四轮 review follow-up 收口（RP-024）
+
+- 启动复核：
+  - 延续 `$gframework-pr-review` 对 PR #269 latest-head unresolved threads 的复核，重点核对最新 5 个未解决线程是否仍与当前
+    worktree 一致
+  - 本地确认 `EasyEvents` 异常契约、`SchemaConfigGenerator` 取消传播与 `ContextAwareGenerator` 字段冲突线程已是陈旧信号，
+    真正仍成立的仅剩 `CqrsHandlerRegistryGenerator` 的 Roslyn error type 直接引用，以及根 schema `type` 非字符串时的
+    `GetString()` 防御
+- 决策：
+  - `CqrsHandlerRegistryGenerator` 保持现有“优先精确重建、必要时退回运行时查找”的设计，不引入新的程序集级 fallback 契约分支；
+    只在 `CanReferenceFromGeneratedRegistry(...)` 中显式拒绝 `TypeKind.Error`，让未解析类型走已有运行时查找路径
+  - `SchemaConfigGenerator` 继续沿用现有 `GF_ConfigSchema_002` 诊断，不新增诊断 ID；仅在根对象校验入口补上
+    `JsonValueKind.String` 前置判断
+- 实施调整：
+  - 为 `CqrsHandlerRegistryGenerator.RuntimeTypeReferences` 增加 `TypeKind.Error` 防御，避免把未解析类型写成生成代码里的
+    `typeof(...)`
+  - 为 `SchemaConfigGeneratorTests` 补上根 `type` 为数字时返回 `GF_ConfigSchema_002` 的回归测试
+  - 为 `CqrsHandlerRegistryGeneratorTests` 补上未解析 error type 会改走运行时 `GetType(...)` 精确查找的回归测试
+- 验证结果：
+  - `dotnet build GFramework.Cqrs.SourceGenerators/GFramework.Cqrs.SourceGenerators.csproj -c Release --no-restore -p:RestoreFallbackFolders="" -v minimal`
+    - 结果：`0 Warning(s)`，`0 Error(s)`
+  - `dotnet build GFramework.Game.SourceGenerators/GFramework.Game.SourceGenerators.csproj -c Release --no-restore -p:RestoreFallbackFolders="" -v minimal`
+    - 结果：通过；仍保留既有 `9` 条 `SchemaConfigGenerator.cs` `MA0051`
+  - `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --no-restore --filter "FullyQualifiedName~SchemaConfigGeneratorTests.Run_Should_Report_Diagnostic_When_Root_Type_Metadata_Is_Not_A_String|FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Emits_Runtime_Type_Lookup_When_Handler_Contract_Contains_Unresolved_Error_Types" -m:1 -p:RestoreFallbackFolders="" -v minimal`
+    - 结果：`2 Passed`，`0 Failed`
+    - 说明：测试命令需在无沙箱环境下运行，因为当前 test host 在沙箱内创建本地 socket 会收到 `Permission denied`
+- 下一步建议：
+  - 若继续压缩 PR #269 的 review backlog，可再次抓取最新 unresolved threads，确认 GitHub 上仅剩陈旧线程后再决定是否继续代码改动
+  - 若回到 analyzer 主线，继续推进 `SchemaConfigGenerator.cs` 剩余 `MA0051`
+
 ## 2026-04-22 — RP-023
 
 ### 阶段：PR #269 第三轮 review follow-up 收口（RP-023）

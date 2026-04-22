@@ -7,8 +7,8 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-023`
-- 当前阶段：`Phase 23`
+- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-024`
+- 当前阶段：`Phase 24`
 - 当前焦点：
   - 已完成 `GFramework.Core` 当前 `MA0016` / `MA0002` / `MA0015` / `MA0077` 低风险收口批次
   - 已复核 `net10.0` 下的 `MA0158` 基线：`GFramework.Core` / `GFramework.Cqrs` 当前共有 `16` 个 object lock
@@ -25,6 +25,8 @@
     `FilterConfiguration` 的公共 API 兼容形状，并将 analyzer 兼容性处理收敛到局部 pragma
   - 已完成当前 PR #269 第三轮 follow-up：继续收口 `SchemaConfigGenerator` 的根类型标识符校验与 XML 文档转义，
     并补齐 `LoggingConfigurationTests`、`CollectionExtensionsTests`、`Cqrs` helper 抽取与 `ai-plan` 命令文本修正
+  - 已完成当前 PR #269 第四轮 follow-up：将 `CqrsHandlerRegistryGenerator` 的 Roslyn error type 直接引用改为
+    运行时精确查找路径，并为 `SchemaConfigGenerator` 补上根 `type` 非字符串时的防御与回归测试
   - `CoroutineScheduler` 的 tag/group 字典已显式使用 `StringComparer.Ordinal`，保持既有区分大小写语义
   - `EasyEvents.AddEvent<T>()` 的重复注册路径已恢复为 `ArgumentException`，以保持既有异常契约
   - `Option<T>` 已声明 `IEquatable<Option<T>>`，与已有强类型 `Equals(Option<T>)` 契约对齐
@@ -59,6 +61,8 @@
 - 已完成当前 PR #269 的 review follow-up：收口 `ContextAwareGenerator` 的字段命名冲突 / 锁内读取契约、
   `CqrsHandlerRegistryGenerator` 的运行时类型 null 防御与超大文件拆分、`SchemaConfigGenerator` 的取消语义，
   并恢复 `EasyEvents` / `CollectionExtensions` / logging 配置模型的公共 API 兼容形状
+- 已完成当前 PR #269 的第四轮 review follow-up：确认 5 个 latest-head 未解决线程中仅剩 2 个本地仍成立，
+  已分别在 `CqrsHandlerRegistryGenerator` 与 `SchemaConfigGenerator` 中收口，并补齐定向 generator regression tests
 - 已完成 `GFramework.Game.SourceGenerators` 中 `SchemaConfigGenerator` 的第一批 `MA0051` 收口；warnings-only 基线剩余 `9` 条
   `MA0051`
 
@@ -110,6 +114,9 @@
 - `RP-023` 继续复核 PR #269 剩余 nitpick/outside-diff 项，确认仍成立的项集中在 `SchemaConfigGenerator` 根类型名校验、
   aggregate registration comparer XML 文档转义、logging / collection 反射测试补强，以及跟踪文档中的
   `RestoreFallbackFolders=""` 可复制性问题
+- `RP-024` 使用 `$gframework-pr-review` 继续复核 PR #269 latest-head unresolved threads，确认 `EasyEvents` 异常契约、
+  `SchemaConfigGenerator` 取消传播与 `ContextAwareGenerator` 快照冲突线程均已在本地收口，仅剩 `Cqrs` error type
+  直接引用与根 schema `type` 非字符串防御仍成立；现已补齐实现与回归测试
 - 当前工作树分支 `fix/analyzer-warning-reduction-batch` 已在 `ai-plan/public/README.md` 建立 topic 映射
 
 ## 当前风险

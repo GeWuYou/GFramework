@@ -73,6 +73,45 @@ public class SchemaConfigGeneratorTests
     }
 
     /// <summary>
+    ///     验证根节点 <c>type</c> 元数据不是字符串时，会返回根对象约束诊断，而不是抛出 JSON 访问异常。
+    /// </summary>
+    [Test]
+    public void Run_Should_Report_Diagnostic_When_Root_Type_Metadata_Is_Not_A_String()
+    {
+        const string source = """
+                              namespace TestApp
+                              {
+                                  public sealed class Dummy
+                                  {
+                                  }
+                              }
+                              """;
+
+        const string schema = """
+                              {
+                                "type": 123,
+                                "required": ["id"],
+                                "properties": {
+                                  "id": { "type": "integer" }
+                                }
+                              }
+                              """;
+
+        var result = SchemaGeneratorTestDriver.Run(
+            source,
+            ("monster.schema.json", schema));
+
+        var diagnostic = result.Results.Single().Diagnostics.Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Id, Is.EqualTo("GF_ConfigSchema_002"));
+            Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Error));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("monster.schema.json"));
+        });
+    }
+
+    /// <summary>
     ///     验证 schema 文件名若生成无效根类型标识符时，会在生成前产生命名明确的诊断。
     /// </summary>
     [Test]
