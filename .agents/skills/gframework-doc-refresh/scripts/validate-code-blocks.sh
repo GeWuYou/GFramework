@@ -25,19 +25,25 @@ if [ $((CODE_FENCE_COUNT % 2)) -ne 0 ]; then
 fi
 
 LINE_NUMBER=0
-while IFS= read -r LINE; do
+IN_CODE_BLOCK=0
+while IFS= read -r LINE || [ -n "$LINE" ]; do
     LINE_NUMBER=$((LINE_NUMBER + 1))
 
-    if echo "$LINE" | grep -qE '^```(cs|c#|C#)$'; then
+    if [[ "$LINE" =~ ^\`\`\`(cs|c#|C#)$ ]]; then
         echo "⚠ 警告: 第 $LINE_NUMBER 行使用了非标准 C# 标记，建议改为 csharp"
         WARNING_COUNT=$((WARNING_COUNT + 1))
     fi
 
-    if echo "$LINE" | grep -qE '^```$'; then
-        NEXT_LINE=$(sed -n "$((LINE_NUMBER + 1))p" "$FILE")
-        if [ -n "$NEXT_LINE" ] && ! echo "$NEXT_LINE" | grep -qE '^```'; then
-            echo "⚠ 警告: 第 $LINE_NUMBER 行的代码块缺少语言标记"
-            WARNING_COUNT=$((WARNING_COUNT + 1))
+    if [[ "$LINE" =~ ^\`\`\` ]]; then
+        if [ "$IN_CODE_BLOCK" -eq 0 ]; then
+            if [[ "$LINE" == '```' ]]; then
+                echo "⚠ 警告: 第 $LINE_NUMBER 行的代码块缺少语言标记"
+                WARNING_COUNT=$((WARNING_COUNT + 1))
+            fi
+
+            IN_CODE_BLOCK=1
+        else
+            IN_CODE_BLOCK=0
         fi
     fi
 done < "$FILE"

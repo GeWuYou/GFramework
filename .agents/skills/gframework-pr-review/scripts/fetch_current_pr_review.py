@@ -25,11 +25,26 @@ DEFAULT_WINDOWS_GIT = "/mnt/d/Tool/Development Tools/Git/cmd/git.exe"
 GIT_ENVIRONMENT_KEY = "GFRAMEWORK_WINDOWS_GIT"
 USER_AGENT = "codex-gframework-pr-review"
 CODERABBIT_LOGIN = "coderabbitai[bot]"
+GREPTILE_LOGIN = "greptile-apps[bot]"
 GITHUB_ACTIONS_LOGIN = "github-actions[bot]"
 REVIEW_COMMENT_ADDRESSED_MARKER = "<!-- <review_comment_addressed> -->"
 VISIBLE_ADDRESSED_IN_COMMIT_PATTERN = re.compile(r"✅\s*Addressed in commit\s+[0-9a-f]{7,40}", re.I)
 DEFAULT_REQUEST_TIMEOUT_SECONDS = 60
 REQUEST_TIMEOUT_ENVIRONMENT_KEY = "GFRAMEWORK_PR_REVIEW_TIMEOUT_SECONDS"
+SUPPORTED_AI_REVIEWERS = (
+    {
+        "slug": "coderabbit",
+        "login": CODERABBIT_LOGIN,
+        "display_name": "CodeRabbit",
+        "supports_review_body_parsing": True,
+    },
+    {
+        "slug": "greptile",
+        "login": GREPTILE_LOGIN,
+        "display_name": "Greptile",
+        "supports_review_body_parsing": False,
+    },
+)
 DISPLAY_SECTION_CHOICES = (
     "pr",
     "failed-checks",
@@ -44,6 +59,7 @@ DISPLAY_SECTION_CHOICES = (
 
 
 def resolve_git_command() -> str:
+    """Resolve the git executable to use for this repository."""
     candidates = [
         os.environ.get(GIT_ENVIRONMENT_KEY),
         DEFAULT_WINDOWS_GIT,
@@ -68,6 +84,7 @@ def resolve_git_command() -> str:
 
 
 def resolve_request_timeout_seconds() -> int:
+    """Return the GitHub request timeout in seconds."""
     configured_timeout = os.environ.get(REQUEST_TIMEOUT_ENVIRONMENT_KEY)
     if not configured_timeout:
         return DEFAULT_REQUEST_TIMEOUT_SECONDS
@@ -86,6 +103,7 @@ def resolve_request_timeout_seconds() -> int:
 
 
 def run_command(args: list[str]) -> str:
+    """Run a command and return stdout, raising on failure."""
     process = subprocess.run(args, capture_output=True, text=True, check=False)
     if process.returncode != 0:
         stderr = process.stderr.strip()
@@ -94,10 +112,12 @@ def run_command(args: list[str]) -> str:
 
 
 def get_current_branch() -> str:
+    """Return the current git branch name."""
     return run_command([resolve_git_command(), "rev-parse", "--abbrev-ref", "HEAD"])
 
 
 def open_url(url: str, accept: str) -> tuple[str, Any]:
+    """Open a URL with proxy variables disabled and return decoded text plus headers."""
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
     request = urllib.request.Request(url, headers={"Accept": accept, "User-Agent": USER_AGENT})
     with opener.open(request, timeout=resolve_request_timeout_seconds()) as response:
@@ -105,11 +125,13 @@ def open_url(url: str, accept: str) -> tuple[str, Any]:
 
 
 def fetch_json(url: str) -> tuple[Any, Any]:
+    """Fetch a JSON payload and its response headers from GitHub."""
     text, headers = open_url(url, accept="application/vnd.github+json")
     return json.loads(text), headers
 
 
 def extract_next_link(headers: Any) -> str | None:
+    """Extract the next-page link from GitHub pagination headers."""
     link_header = headers.get("Link")
     if not link_header:
         return None
@@ -119,6 +141,7 @@ def extract_next_link(headers: Any) -> str | None:
 
 
 def fetch_paged_json(url: str) -> list[dict[str, Any]]:
+    """Fetch every page from a paginated GitHub API endpoint."""
     items: list[dict[str, Any]] = []
     next_url: str | None = url
     while next_url:
@@ -133,6 +156,7 @@ def fetch_paged_json(url: str) -> list[dict[str, Any]]:
 
 
 def fetch_pull_request_metadata(pr_number: int) -> dict[str, Any]:
+    """Fetch normalized metadata for a pull request."""
     payload, _ = fetch_json(f"https://api.github.com/repos/{OWNER}/{REPO}/pulls/{pr_number}")
     if not isinstance(payload, dict):
         raise RuntimeError("Failed to fetch GitHub PR metadata.")
@@ -148,6 +172,7 @@ def fetch_pull_request_metadata(pr_number: int) -> dict[str, Any]:
 
 
 def resolve_pr_number(branch: str) -> int:
+    """Resolve the most recently updated PR number for a branch."""
     head_query = urllib.parse.quote(f"{OWNER}:{branch}")
     payload, _ = fetch_json(f"https://api.github.com/repos/{OWNER}/{REPO}/pulls?state=all&head={head_query}")
     if not isinstance(payload, list):
@@ -162,10 +187,12 @@ def resolve_pr_number(branch: str) -> int:
 
 
 def collapse_whitespace(text: str) -> str:
+    """Collapse repeated whitespace into single spaces."""
     return re.sub(r"\s+", " ", text).strip()
 
 
 def truncate_text(text: str, max_length: int) -> str:
+    """Collapse whitespace and truncate long text for CLI display."""
     collapsed = collapse_whitespace(text)
     if max_length <= 0 or len(collapsed) <= max_length:
         return collapsed
@@ -174,14 +201,17 @@ def truncate_text(text: str, max_length: int) -> str:
 
 
 def strip_tags(text: str) -> str:
+    """Remove HTML tags and normalize whitespace."""
     return collapse_whitespace(re.sub(r"<[^>]+>", " ", text))
 
 
 def strip_markdown_links(text: str) -> str:
+    """Drop Markdown link targets while keeping visible link text."""
     return re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
 
 
 def extract_section(text: str, start_marker: str, end_markers: list[str]) -> str | None:
+    """Extract text between a start marker and the earliest matching end marker."""
     start = text.find(start_marker)
     if start < 0:
         return None
@@ -196,6 +226,7 @@ def extract_section(text: str, start_marker: str, end_markers: list[str]) -> str
 
 
 def parse_failed_checks(summary_block: str) -> list[dict[str, str]]:
+    """Parse CodeRabbit summary rows for failed checks."""
     failed_section = extract_section(
         summary_block,
         "### ❌ Failed checks",
@@ -227,6 +258,7 @@ def parse_failed_checks(summary_block: str) -> list[dict[str, str]]:
 
 
 def parse_actionable_comments(actionable_block: str) -> dict[str, Any]:
+    """Parse CodeRabbit actionable comments from its issue-comment rollup."""
     comment_count_match = re.search(r"Actionable comments posted:\s*(\d+)", actionable_block)
     count = int(comment_count_match.group(1)) if comment_count_match else 0
 
@@ -251,6 +283,7 @@ def parse_actionable_comments(actionable_block: str) -> dict[str, Any]:
 
 
 def parse_comment_cards(comment_block: str) -> list[dict[str, str]]:
+    """Parse CodeRabbit comment cards from a grouped Markdown block."""
     comments: list[dict[str, str]] = []
     pattern = re.compile(
         r"<summary>"
@@ -287,6 +320,7 @@ def parse_comment_cards(comment_block: str) -> list[dict[str, str]]:
 
 
 def normalize_review_body_for_parsing(review_body: str) -> str:
+    """Normalize a review body before structured section parsing."""
     # CodeRabbit sometimes wraps structured HTML sections in markdown blockquotes,
     # such as the CAUTION block used for outside-diff comments. Remove the quote
     # prefixes for parsing while leaving the original raw body unchanged for output.
@@ -294,6 +328,7 @@ def normalize_review_body_for_parsing(review_body: str) -> str:
 
 
 def find_section_block_end(review_body: str, block_start: int) -> int:
+    """Find the end boundary for a nested <details> section."""
     depth = 1
     for tag_match in re.finditer(r"<details>|</details>", review_body[block_start:]):
         tag = tag_match.group(0)
@@ -308,6 +343,7 @@ def find_section_block_end(review_body: str, block_start: int) -> int:
 
 
 def parse_review_comment_group(review_body: str, section_name: str) -> dict[str, Any]:
+    """Parse a folded review-body section into structured comments."""
     section_match = re.search(
         rf"<summary>[^<]*{re.escape(section_name)} \((?P<count>\d+)\)</summary><blockquote>\s*",
         review_body,
@@ -327,6 +363,7 @@ def parse_review_comment_group(review_body: str, section_name: str) -> dict[str,
 
 
 def parse_latest_review_body(review_body: str) -> dict[str, Any]:
+    """Parse the latest CodeRabbit review body for grouped comment sections."""
     normalized_review_body = normalize_review_body_for_parsing(review_body)
     actionable_count_match = re.search(r"\*\*Actionable comments posted:\s*(\d+)\*\*", normalized_review_body)
     prompt_match = re.search(
@@ -348,6 +385,7 @@ def parse_latest_review_body(review_body: str) -> dict[str, Any]:
 
 
 def parse_megalinter_comment(comment_body: str) -> dict[str, Any]:
+    """Parse a MegaLinter issue comment into structured report fields."""
     normalized_body = html.unescape(comment_body).strip()
     summary_match = re.search(
         r"##\s*(?P<badges>.*?)\[MegaLinter\]\([^)]+\)\s+analysis:\s+\[(?P<status>[^\]]+)\]\((?P<run_url>[^)]+)\)",
@@ -402,6 +440,7 @@ def parse_megalinter_comment(comment_body: str) -> dict[str, Any]:
 
 
 def parse_test_report(block: str) -> dict[str, Any]:
+    """Parse a CTRF or GitHub test-reporter comment block."""
     report: dict[str, Any] = {
         "raw": block.strip(),
         "stats": {},
@@ -442,6 +481,7 @@ def parse_test_report(block: str) -> dict[str, Any]:
 
 
 def fetch_issue_comments(pr_number: int) -> list[dict[str, Any]]:
+    """Fetch issue comments for a pull request."""
     return fetch_paged_json(f"https://api.github.com/repos/{OWNER}/{REPO}/issues/{pr_number}/comments?per_page=100")
 
 
@@ -450,6 +490,7 @@ def select_latest_comment_body(
     predicate: Any,
     required_user: str | None = None,
 ) -> str:
+    """Return the latest matching issue-comment body."""
     matching_comments = []
     for comment in comments:
         body = html.unescape(str(comment.get("body", "")))
@@ -472,6 +513,7 @@ def select_comment_bodies(
     predicate: Any,
     required_user: str | None = None,
 ) -> list[str]:
+    """Return all matching issue-comment bodies in chronological order."""
     matching_comments = []
     for comment in comments:
         body = html.unescape(str(comment.get("body", "")))
@@ -487,6 +529,7 @@ def select_comment_bodies(
 
 
 def summarize_review_comment(comment: dict[str, Any]) -> dict[str, Any]:
+    """Normalize a GitHub review comment into the output shape used by the skill."""
     return {
         "id": comment.get("id"),
         "path": comment.get("path") or "",
@@ -502,6 +545,7 @@ def summarize_review_comment(comment: dict[str, Any]) -> dict[str, Any]:
 
 
 def classify_review_thread_status(latest_comment: dict[str, Any]) -> str:
+    """Classify whether a review thread is still open or already addressed."""
     body = latest_comment.get("body") or ""
     author = latest_comment.get("user") or ""
     if author == CODERABBIT_LOGIN and REVIEW_COMMENT_ADDRESSED_MARKER in body:
@@ -510,10 +554,12 @@ def classify_review_thread_status(latest_comment: dict[str, Any]) -> str:
 
 
 def contains_visible_addressed_commit_text(body: str) -> bool:
+    """Detect visible addressed-in-commit text that does not close the thread by itself."""
     return bool(VISIBLE_ADDRESSED_IN_COMMIT_PATTERN.search(body))
 
 
 def build_latest_commit_review_threads(comments: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Group review comments into normalized latest-commit review threads."""
     comment_threads: dict[int, dict[str, Any]] = {}
 
     # GitHub review replies point to the root comment id. Grouping them first lets
@@ -564,6 +610,7 @@ def select_latest_submitted_review(
     required_user: str | None = None,
     prefer_non_empty_body: bool = False,
 ) -> dict[str, Any] | None:
+    """Select the newest submitted review, optionally filtered by user."""
     filtered_reviews = [review for review in reviews if review.get("submitted_at")]
     if required_user is not None:
         filtered_reviews = [review for review in filtered_reviews if review.get("user", {}).get("login") == required_user]
@@ -579,7 +626,43 @@ def select_latest_submitted_review(
     return max(filtered_reviews, key=lambda review: review.get("submitted_at", ""))
 
 
+def summarize_submitted_review(review: dict[str, Any] | None) -> dict[str, Any]:
+    """Normalize a submitted review into a stable JSON shape."""
+    if review is None:
+        return {
+            "id": None,
+            "state": "",
+            "submitted_at": "",
+            "commit_id": "",
+            "user": "",
+            "body": "",
+        }
+
+    return {
+        "id": review.get("id"),
+        "state": review.get("state") or "",
+        "submitted_at": review.get("submitted_at") or "",
+        "commit_id": review.get("commit_id") or "",
+        "user": review.get("user", {}).get("login") or "",
+        "body": review.get("body") or "",
+    }
+
+
+def build_open_thread_counts_by_user(open_threads: list[dict[str, Any]]) -> dict[str, int]:
+    """Count open latest-commit threads by their root-comment author."""
+    counts: dict[str, int] = {}
+    for thread in open_threads:
+        root_user = str(thread.get("root_comment", {}).get("user") or "")
+        if not root_user:
+            continue
+
+        counts[root_user] = counts.get(root_user, 0) + 1
+
+    return counts
+
+
 def fetch_latest_commit_review(pr_number: int) -> dict[str, Any]:
+    """Fetch the latest commit review, grouped threads, and AI-reviewer summaries."""
     api_base = f"https://api.github.com/repos/{OWNER}/{REPO}/pulls/{pr_number}"
     commits = fetch_paged_json(f"{api_base}/commits?per_page=100")
     reviews = fetch_paged_json(f"{api_base}/reviews?per_page=100")
@@ -600,47 +683,37 @@ def fetch_latest_commit_review(pr_number: int) -> dict[str, Any]:
     ]
     candidate_reviews = latest_commit_reviews or [review for review in reviews if review.get("submitted_at")]
     latest_review = select_latest_submitted_review(candidate_reviews)
-    latest_coderabbit_review_with_body = select_latest_submitted_review(
-        candidate_reviews,
-        required_user=CODERABBIT_LOGIN,
-        prefer_non_empty_body=True,
-    )
+    latest_reviews_by_user: dict[str, dict[str, Any]] = {}
+    for agent in SUPPORTED_AI_REVIEWERS:
+        latest_reviews_by_user[agent["login"]] = summarize_submitted_review(
+            select_latest_submitted_review(
+                candidate_reviews,
+                required_user=agent["login"],
+                prefer_non_empty_body=True,
+            )
+        )
 
     latest_commit_comments = [comment for comment in comments if comment.get("commit_id") == latest_commit_sha]
     threads = build_latest_commit_review_threads(latest_commit_comments)
     open_threads = [thread for thread in threads if thread["status"] == "open"]
+    open_thread_counts_by_user = build_open_thread_counts_by_user(open_threads)
 
     return {
         "latest_commit": {
             "sha": latest_commit_sha,
             "message": latest_commit.get("commit", {}).get("message", ""),
         },
-        "latest_review": {
-            "id": latest_review.get("id") if latest_review else None,
-            "state": latest_review.get("state") if latest_review else "",
-            "submitted_at": latest_review.get("submitted_at") if latest_review else "",
-            "commit_id": latest_review.get("commit_id") if latest_review else "",
-            "user": latest_review.get("user", {}).get("login") if latest_review else "",
-            "body": latest_review.get("body") if latest_review else "",
-        },
-        "latest_coderabbit_review_with_body": {
-            "id": latest_coderabbit_review_with_body.get("id") if latest_coderabbit_review_with_body else None,
-            "state": latest_coderabbit_review_with_body.get("state") if latest_coderabbit_review_with_body else "",
-            "submitted_at": (
-                latest_coderabbit_review_with_body.get("submitted_at") if latest_coderabbit_review_with_body else ""
-            ),
-            "commit_id": latest_coderabbit_review_with_body.get("commit_id") if latest_coderabbit_review_with_body else "",
-            "user": latest_coderabbit_review_with_body.get("user", {}).get("login")
-            if latest_coderabbit_review_with_body
-            else "",
-            "body": latest_coderabbit_review_with_body.get("body") if latest_coderabbit_review_with_body else "",
-        },
+        "latest_review": summarize_submitted_review(latest_review),
+        "latest_coderabbit_review_with_body": latest_reviews_by_user.get(CODERABBIT_LOGIN, {}),
+        "latest_reviews_by_user": latest_reviews_by_user,
+        "open_thread_counts_by_user": open_thread_counts_by_user,
         "threads": threads,
         "open_threads": open_threads,
     }
 
 
 def build_result(pr_number: int, branch: str) -> dict[str, Any]:
+    """Build the full review result payload for the selected PR."""
     warnings: list[str] = []
     pull_request_metadata = fetch_pull_request_metadata(pr_number)
     issue_comments = fetch_issue_comments(pr_number)
@@ -673,8 +746,26 @@ def build_result(pr_number: int, branch: str) -> dict[str, Any]:
 
     latest_commit_review: dict[str, Any] = {}
     coderabbit_review: dict[str, Any] = {}
+    review_agents: list[dict[str, Any]] = []
     try:
         latest_commit_review = fetch_latest_commit_review(pr_number)
+        latest_reviews_by_user = latest_commit_review.get("latest_reviews_by_user", {})
+        open_thread_counts_by_user = latest_commit_review.get("open_thread_counts_by_user", {})
+        review_agents = [
+            {
+                "slug": agent["slug"],
+                "login": agent["login"],
+                "display_name": agent["display_name"],
+                "supports_review_body_parsing": agent["supports_review_body_parsing"],
+                "latest_review": latest_reviews_by_user.get(agent["login"], {}),
+                "open_thread_count": int(open_thread_counts_by_user.get(agent["login"], 0)),
+                "detected": bool(
+                    latest_reviews_by_user.get(agent["login"], {}).get("id")
+                    or open_thread_counts_by_user.get(agent["login"], 0)
+                ),
+            }
+            for agent in SUPPORTED_AI_REVIEWERS
+        ]
         latest_review = latest_commit_review.get("latest_coderabbit_review_with_body", {})
         latest_review_body = str(latest_review.get("body") or "")
         if latest_review.get("user") == CODERABBIT_LOGIN and latest_review_body:
@@ -723,6 +814,7 @@ def build_result(pr_number: int, branch: str) -> dict[str, Any]:
         },
         "coderabbit_comments": parse_actionable_comments(actionable_block) if actionable_block else {},
         "coderabbit_review": coderabbit_review,
+        "review_agents": review_agents,
         "latest_commit_review": latest_commit_review,
         "megalinter_report": parse_megalinter_comment(megalinter_block) if megalinter_block else {},
         "test_reports": [parse_test_report(block) for block in test_blocks],
@@ -731,6 +823,7 @@ def build_result(pr_number: int, branch: str) -> dict[str, Any]:
 
 
 def write_json_output(result: dict[str, Any], output_path: str) -> str:
+    """Write the full JSON result to disk and return the destination path."""
     destination_path = Path(output_path).expanduser()
     destination_path.parent.mkdir(parents=True, exist_ok=True)
     destination_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -738,10 +831,12 @@ def write_json_output(result: dict[str, Any], output_path: str) -> str:
 
 
 def normalize_path_filters(path_filters: list[str] | None) -> list[str]:
+    """Normalize CLI path filters to slash-separated fragments."""
     return [path_filter.replace("\\", "/") for path_filter in (path_filters or []) if path_filter.strip()]
 
 
 def path_matches_filters(path: str, normalized_path_filters: list[str]) -> bool:
+    """Return whether a path matches any requested filter fragment."""
     if not normalized_path_filters:
         return True
 
@@ -753,6 +848,7 @@ def filter_comments_by_path(
     comments: list[dict[str, Any]],
     normalized_path_filters: list[str],
 ) -> list[dict[str, Any]]:
+    """Filter parsed comments by CLI path fragment."""
     return [comment for comment in comments if path_matches_filters(str(comment.get("path") or ""), normalized_path_filters)]
 
 
@@ -760,6 +856,7 @@ def filter_threads_by_path(
     threads: list[dict[str, Any]],
     normalized_path_filters: list[str],
 ) -> list[dict[str, Any]]:
+    """Filter parsed review threads by CLI path fragment."""
     return [thread for thread in threads if path_matches_filters(str(thread.get("path") or ""), normalized_path_filters)]
 
 
@@ -771,6 +868,7 @@ def format_text(
     max_description_length: int = 400,
     json_output_path: str | None = None,
 ) -> str:
+    """Format the result payload into concise text output."""
     lines: list[str] = []
     selected_sections = set(sections or DISPLAY_SECTION_CHOICES)
     normalized_path_filters = normalize_path_filters(path_filters)
@@ -865,6 +963,7 @@ def format_text(
     latest_review = latest_commit_review.get("latest_review", {})
     open_threads = latest_commit_review.get("open_threads", [])
     visible_open_threads = filter_threads_by_path(open_threads, normalized_path_filters)
+    review_agents = [agent for agent in result.get("review_agents", []) if agent.get("detected")]
     if latest_commit and "open-threads" in selected_sections:
         lines.append("")
         lines.append(f"Latest reviewed commit: {latest_commit.get('sha', '')}")
@@ -874,6 +973,21 @@ def format_text(
                 f"{latest_review.get('state', '')} by {latest_review.get('user', '')} "
                 f"at {latest_review.get('submitted_at', '')}"
             )
+        if review_agents:
+            lines.append("Detected AI reviewers on latest commit:")
+            for agent in review_agents:
+                latest_agent_review = agent.get("latest_review", {})
+                lines.append(
+                    "- "
+                    f"{agent.get('display_name', '')} ({agent.get('login', '')}): "
+                    f"open_threads={agent.get('open_thread_count', 0)}"
+                    + (
+                        f", latest_review={latest_agent_review.get('state', '')} "
+                        f"at {latest_agent_review.get('submitted_at', '')}"
+                        if latest_agent_review.get("submitted_at")
+                        else ""
+                    )
+                )
 
         lines.append(
             "Latest commit review threads: "
@@ -961,6 +1075,7 @@ def format_text(
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse CLI arguments."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--branch", help="Override the current branch name.")
     parser.add_argument("--pr", type=int, help="Fetch a specific PR number instead of resolving from branch.")
@@ -990,6 +1105,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """Run the CLI entry point."""
     args = parse_args()
     if args.pr is not None:
         pr_number = args.pr

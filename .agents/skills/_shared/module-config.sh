@@ -185,6 +185,9 @@ get_readme_paths() {
         Core.SourceGenerators)
             echo "GFramework.Core.SourceGenerators/README.md"
             ;;
+        Core.SourceGenerators.Abstractions)
+            echo "GFramework.Core.SourceGenerators.Abstractions/README.md"
+            ;;
         Game)
             echo "GFramework.Game/README.md"
             ;;
@@ -200,6 +203,9 @@ get_readme_paths() {
         Godot.SourceGenerators)
             echo "GFramework.Godot.SourceGenerators/README.md"
             ;;
+        Godot.SourceGenerators.Abstractions)
+            echo "GFramework.Godot.SourceGenerators.Abstractions/README.md"
+            ;;
         Cqrs)
             echo "GFramework.Cqrs/README.md"
             ;;
@@ -211,6 +217,15 @@ get_readme_paths() {
             ;;
         Ecs.Arch)
             echo "GFramework.Ecs.Arch/README.md"
+            ;;
+        Ecs.Arch.Abstractions)
+            echo "GFramework.Ecs.Arch.Abstractions/README.md"
+            ;;
+        SourceGenerators.Common)
+            echo "GFramework.SourceGenerators.Common/README.md"
+            ;;
+        *)
+            return 1
             ;;
     esac
 }
