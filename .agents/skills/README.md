@@ -46,9 +46,22 @@
 /gframework-batch-boot <task-or-stop-condition>
 ```
 
+批处理阈值速记：
+
+```bash
+/gframework-batch-boot 75
+/gframework-batch-boot 75 2000
+```
+
+- 单个数字默认表示“当前分支全部提交相对远程 `origin/main` 接近多少个文件变更时停止”
+- 两个数字默认表示“当前分支全部提交相对远程 `origin/main` 的 `文件数 OR 变更行数`”，顺序固定为 `<files> <lines>`
+- 不推荐写 `/gframework-batch-boot 75 | 2000`，因为 `|` 很像 shell pipe；若用户这样写，也应按 OR 语义理解并在后续说明中归一化成无 `|` 版本
+
 示例：
 
 ```bash
+/gframework-batch-boot 75
+/gframework-batch-boot 75 2000
 /gframework-batch-boot continue analyzer warning reduction until branch diff vs origin/main approaches 75 files
 /gframework-batch-boot keep refactoring repetitive source-generator tests in bounded batches
 ```

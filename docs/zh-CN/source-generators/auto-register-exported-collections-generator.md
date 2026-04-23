@@ -220,4 +220,4 @@ public List<IntConfig>? Values { get; } = new();
 1. [/zh-CN/source-generators/index](./index.md)
 2. [/zh-CN/game/config-system](../game/config-system.md)
 3. [/zh-CN/source-generators/godot-project-generator](./godot-project-generator.md)
-4. `GFramework.Godot.SourceGenerators/README.md`
+4. [`GFramework.Godot.SourceGenerators/README.md`](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Godot.SourceGenerators/README.md)

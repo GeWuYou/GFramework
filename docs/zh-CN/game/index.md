@@ -127,6 +127,6 @@ IStorage storage = new FileStorage("GameData", serializer);
 
 ## 对应模块入口
 
-- `GFramework.Game/README.md`
-- `GFramework.Game.Abstractions/README.md`
-- 仓库根 `README.md`
+- [`GFramework.Game/README.md`](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Game/README.md)
+- [`GFramework.Game.Abstractions/README.md`](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Game.Abstractions/README.md)
+- 仓库根 [`README.md`](https://github.com/GeWuYou/GFramework/blob/main/README.md)

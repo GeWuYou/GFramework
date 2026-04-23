@@ -329,5 +329,5 @@ uiRouter.Hide(modalHandle, UiLayer.Modal);
 1. [game/index.md](./index.md)
 2. [scene.md](./scene.md)
 3. [../source-generators/auto-ui-page-generator.md](../source-generators/auto-ui-page-generator.md)
-4. `GFramework.Game/README.md`
-5. `GFramework.Game.Abstractions/README.md`
+4. [`GFramework.Game/README.md`](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Game/README.md)
+5. [`GFramework.Game.Abstractions/README.md`](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Game.Abstractions/README.md)

@@ -195,4 +195,4 @@ public override void _Ready()
 1. [/zh-CN/source-generators/bind-node-signal-generator](./bind-node-signal-generator.md)
 2. [/zh-CN/source-generators/godot-project-generator](./godot-project-generator.md)
 3. [/zh-CN/godot/ui](../godot/ui.md)
-4. `GFramework.Godot.SourceGenerators/README.md`
+4. [`GFramework.Godot.SourceGenerators/README.md`](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Godot.SourceGenerators/README.md)
