@@ -12,7 +12,7 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`DOCUMENTATION-FULL-COVERAGE-GOV-RP-014`
+- 恢复点编号：`DOCUMENTATION-FULL-COVERAGE-GOV-RP-015`
 - 当前阶段：`Phase 5 - Governance Maintenance`
 - 当前焦点：
   - 继续巡检 `Godot` / `Game` 相关 README、landing page、tutorial 与 API reference 的 cross-link 是否回漂
@@ -88,6 +88,7 @@
   - 扩充 `docs/zh-CN/source-generators/index.md` 的 Godot 选包说明，把 Scene / UI 包装与导出集合注册辅助纳入入口摘要
   - 重写 `docs/zh-CN/godot/storage.md`，补齐 frontmatter、`GodotFileStorage` 的路径语义、repository 分工与 `GodotYamlConfigLoader` 分流边界
   - 重写 `docs/zh-CN/godot/setting.md`，改回当前 `ISettingsModel` / `RegisterApplicator(...)` 口径，并补上 `LocalizationMap` fallback 与 `CoreGrid` 注册示例
+  - `2026-04-23` 再次通过 `$gframework-boot` 恢复当前 worktree 后，按 `Godot` docs surface 执行 validation-only 巡检，确认 `GFramework.Godot/README.md`、`docs/zh-CN/godot/index.md`、`storage.md`、`setting.md`、`docs/zh-CN/source-generators/index.md`、`docs/zh-CN/api-reference/index.md` 与 `docs/zh-CN/tutorials/godot-integration.md` 仍保持一致的 owner / adoption path 叙述，没有出现自 `RP-014` 之后的新漂移
 
 ## Inventory（第一版）
 
@@ -140,6 +141,9 @@
 - 最新稳定性巡检结论：
   - `2026-04-23` 重新执行 `Godot` docs surface 巡检
   - 结果：通过；根入口链路保持稳定，并额外发现 `docs/zh-CN/godot/storage.md`、`setting.md` 两页存在旧版叙述残留，当前已按源码口径完成最小修复
+- 最新 validation-only 巡检结论：
+  - `2026-04-23` 通过 `$gframework-boot` 恢复后重新执行 `Godot` docs surface 巡检
+  - 结果：通过；`README / landing / topic / tutorial / API reference` 当前仍保持同一套 `Godot` owner / adoption path 叙述，本轮无需新增文档补丁
 - 最新恢复治理结论：
   - `2026-04-23` 重新读取 `ai-plan/public/archive/documentation-governance-and-refresh/**`
   - 结果：通过；确认 `Godot` family 适合把最小恢复摘要迁回 active topic，但不需要把整段归档历史重新放回默认 `boot` 路径
@@ -161,6 +165,10 @@
   - `2026-04-23` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/tutorials/godot-integration.md`：通过
   - `2026-04-23` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/storage.md`：通过
   - `2026-04-23` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/setting.md`：通过
+  - `2026-04-23` `python3 .agents/skills/gframework-doc-refresh/scripts/scan_module_evidence.py Godot`：通过（boot 后复核）
+  - `2026-04-23` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/storage.md`：通过（boot 后复核）
+  - `2026-04-23` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/setting.md`：通过（boot 后复核）
+  - `2026-04-23` `cd docs && bun run build`：通过（boot 后复核；仅保留既有 VitePress 大 chunk warning）
 
 ## 下一步
 

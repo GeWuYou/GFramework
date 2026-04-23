@@ -481,6 +481,56 @@
    `README.md` / landing page 是否仍保持同一套职责边界
 2. 当后续分支再修改 `Godot` / `Game` family 的 README、docs 或公共 API 时，回到对应模块追加 targeted 巡检与验证
 
+### 当前恢复点：RP-015
+
+- 通过 `$gframework-boot` 恢复当前 worktree 后，继续按 `documentation-full-coverage-governance` 的默认下一步执行一次
+  validation-only 巡检，并补读：
+  - `GFramework.Godot/README.md`
+  - `docs/zh-CN/godot/index.md`
+  - `docs/zh-CN/godot/storage.md`
+  - `docs/zh-CN/godot/setting.md`
+  - `docs/zh-CN/source-generators/index.md`
+  - `docs/zh-CN/api-reference/index.md`
+  - `docs/zh-CN/tutorials/godot-integration.md`
+  - `GFramework.Godot/Setting/GodotAudioSettings.cs`
+  - `GFramework.Godot/Setting/GodotGraphicsSettings.cs`
+  - `GFramework.Godot/Setting/GodotLocalizationSettings.cs`
+  - `GFramework.Game.Tests/Setting/GodotLocalizationSettingsTests.cs`
+- 同时重新执行 `python3 .agents/skills/gframework-doc-refresh/scripts/scan_module_evidence.py Godot`，确认 `Godot`
+  docs surface 仍然覆盖 landing、`storage.md`、`setting.md`、source-generators fallback、API reference 与
+  CoreGrid 参考接线，没有新的默认恢复页缺口
+- 巡检结论：
+  - `GFramework.Godot/README.md`、`docs/zh-CN/godot/index.md`、`storage.md`、`setting.md`、`docs/zh-CN/source-generators/index.md`、
+    `docs/zh-CN/api-reference/index.md` 与 `docs/zh-CN/tutorials/godot-integration.md` 当前仍保持同一套
+    `Godot` owner / adoption path 叙述，没有发现自 `RP-014` 之后的新入口漂移
+  - `setting.md` 里关于 `ISettingsModel`、`RegisterApplicator(...)`、`LocalizationMap` fallback 的描述，仍与
+    `GodotAudioSettings`、`GodotGraphicsSettings`、`GodotLocalizationSettings` 以及
+    `GodotLocalizationSettingsTests` 保持一致
+- 因此本轮执行的唯一修改是：
+  - 更新 active tracking 与 trace 的恢复点、巡检结论和验证结果
+
+### 当前决策（RP-015）
+
+- 当前 topic 继续维持“巡检优先、无漂移则只更新 recovery artifact”的治理节奏，不为凑改动重写稳定页面
+- `boot` 恢复本身也应留下可复用的恢复证据，避免下一次启动时重复判断“最近一次巡检是否已经覆盖 `storage.md` /
+  `setting.md`”
+
+### 当前验证（RP-015）
+
+- 模块扫描：
+  - `python3 .agents/skills/gframework-doc-refresh/scripts/scan_module_evidence.py Godot`：通过
+- 文档校验：
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/storage.md`：通过
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/setting.md`：通过
+- 构建校验：
+  - `cd docs && bun run build`：通过；仅保留既有 VitePress 大 chunk warning，无构建失败
+
+### 下一步
+
+1. 若后续分支继续调整 `GFramework.Godot` 运行时入口，优先复核 `docs/zh-CN/godot/storage.md`、`setting.md` 与根
+   `README.md` / landing page 是否仍保持同一套职责边界
+2. 当后续分支再修改 `Godot` / `Game` family 的 README、docs 或公共 API 时，回到对应模块追加 targeted 巡检与验证
+
 ### 当前恢复点：RP-014
 
 - 继续沿用 `RP-013` 的 `Godot` docs surface 巡检范围，补读：
