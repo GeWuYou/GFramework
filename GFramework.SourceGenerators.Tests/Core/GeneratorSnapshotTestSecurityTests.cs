@@ -20,8 +20,8 @@ public class GeneratorSnapshotTestSecurityTests
         var snapshotRoot = CreateSnapshotRoot();
         var source = BuildSource();
 
-        Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await GeneratorSnapshotTest<EnumExtensionsGenerator>.RunAsync(
+        Assert.ThrowsAsync<InvalidOperationException>(() =>
+            GeneratorSnapshotTest<EnumExtensionsGenerator>.RunAsync(
                 source,
                 snapshotRoot,
                 _ => Path.Combine(snapshotRoot, "Status.EnumExtensions.g.cs")));
@@ -36,8 +36,8 @@ public class GeneratorSnapshotTestSecurityTests
         var snapshotRoot = CreateSnapshotRoot();
         var source = BuildSource();
 
-        Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await GeneratorSnapshotTest<EnumExtensionsGenerator>.RunAsync(
+        Assert.ThrowsAsync<InvalidOperationException>(() =>
+            GeneratorSnapshotTest<EnumExtensionsGenerator>.RunAsync(
                 source,
                 snapshotRoot,
                 _ => Path.Combine("..", "escaped", "Status.EnumExtensions.g.cs")));

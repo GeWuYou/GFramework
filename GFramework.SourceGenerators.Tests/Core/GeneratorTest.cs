@@ -13,11 +13,11 @@ public static class GeneratorTest<TGenerator>
     /// <param name="source">输入的源代码</param>
     /// <param name="generatedSources">期望生成的源文件集合，包含文件名和内容的元组</param>
     /// <returns>异步操作任务</returns>
-    public static async Task RunAsync(
+    public static Task RunAsync(
         string source,
         params (string filename, string content)[] generatedSources)
     {
-        await RunAsync(
+        return RunAsync(
             source,
             additionalReferences: [],
             generatedSources);
@@ -30,7 +30,7 @@ public static class GeneratorTest<TGenerator>
     /// <param name="additionalReferences">附加元数据引用，用于构造多程序集场景。</param>
     /// <param name="generatedSources">期望生成的源文件集合，包含文件名和内容的元组。</param>
     /// <returns>异步操作任务。</returns>
-    public static async Task RunAsync(
+    public static Task RunAsync(
         string source,
         IEnumerable<MetadataReference> additionalReferences,
         params (string filename, string content)[] generatedSources)
@@ -52,7 +52,7 @@ public static class GeneratorTest<TGenerator>
         foreach (var additionalReference in additionalReferences)
             test.TestState.AdditionalReferences.Add(additionalReference);
 
-        await test.RunAsync();
+        return test.RunAsync();
     }
 
     /// <summary>

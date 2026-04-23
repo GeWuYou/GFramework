@@ -78,7 +78,7 @@ public sealed partial class MonsterConfig
     ///     Reward payload.
     /// </summary>
     /// <remarks>
-    ///     Constraints: minProperties = 2, maxProperties = 2.
+    ///     Constraints: minProperties = 2, maxProperties = 2, dependentRequired = { currency =&gt; [gold] }, dependentSchemas = { currency =&gt; object (required = [gold]) }, allOf = [ object (required = [gold]) ], if/then/else = if object; properties = { currency: string (const = "gem") }; then object (required = [gold]); properties = { gold: integer }; else object (required = [currency]); properties = { currency: string }.
     /// </remarks>
     public sealed partial class RewardConfig
     {

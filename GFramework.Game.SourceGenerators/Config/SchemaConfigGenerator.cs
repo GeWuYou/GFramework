@@ -1242,88 +1242,147 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             return false;
         }
 
-        if (!element.TryGetProperty("properties", out var propertiesElement) ||
-            propertiesElement.ValueKind != JsonValueKind.Object)
+        if (!TryGetDeclaredProperties(
+                filePath,
+                displayPath,
+                element,
+                ConfigSchemaDiagnostics.InvalidDependentRequiredMetadata,
+                "dependentRequired",
+                out var declaredProperties,
+                out diagnostic))
+        {
+            return false;
+        }
+
+        foreach (var dependency in dependentRequiredElement.EnumerateObject())
+        {
+            if (!TryValidateDependentRequiredEntry(
+                    filePath,
+                    displayPath,
+                    dependency,
+                    declaredProperties,
+                    out diagnostic))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    ///     验证单个 <c>dependentRequired</c> 触发项的声明形状。
+    ///     该 helper 先锁定 trigger 字段本身是否属于当前对象，再把每个 target 交给更细粒度的 sibling 校验，
+    ///     让诊断能够明确区分“触发字段不存在”和“依赖目标非法”两类失败语义。
+    /// </summary>
+    /// <param name="filePath">Schema 文件路径。</param>
+    /// <param name="displayPath">父对象逻辑路径。</param>
+    /// <param name="dependency">当前 dependentRequired 触发项。</param>
+    /// <param name="declaredProperties">父对象已声明属性集合。</param>
+    /// <param name="diagnostic">失败时返回的诊断。</param>
+    /// <returns>当前 dependentRequired 触发项是否有效。</returns>
+    private static bool TryValidateDependentRequiredEntry(
+        string filePath,
+        string displayPath,
+        JsonProperty dependency,
+        ISet<string> declaredProperties,
+        out Diagnostic? diagnostic)
+    {
+        diagnostic = null;
+        if (!declaredProperties.Contains(dependency.Name))
         {
             diagnostic = Diagnostic.Create(
                 ConfigSchemaDiagnostics.InvalidDependentRequiredMetadata,
                 CreateFileLocation(filePath),
                 Path.GetFileName(filePath),
                 displayPath,
-                "Object schemas using 'dependentRequired' must also declare an object-valued 'properties' map.");
+                $"Trigger property '{dependency.Name}' is not declared in the same object schema.");
             return false;
         }
 
-        var declaredProperties = new HashSet<string>(
-            propertiesElement
-                .EnumerateObject()
-                .Select(static property => property.Name),
-            StringComparer.Ordinal);
-
-        foreach (var dependency in dependentRequiredElement.EnumerateObject())
+        if (dependency.Value.ValueKind != JsonValueKind.Array)
         {
-            if (!declaredProperties.Contains(dependency.Name))
-            {
-                diagnostic = Diagnostic.Create(
-                    ConfigSchemaDiagnostics.InvalidDependentRequiredMetadata,
-                    CreateFileLocation(filePath),
-                    Path.GetFileName(filePath),
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidDependentRequiredMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                displayPath,
+                $"Property '{dependency.Name}' must declare 'dependentRequired' as an array of sibling property names.");
+            return false;
+        }
+
+        foreach (var dependencyTarget in dependency.Value.EnumerateArray())
+        {
+            if (!TryValidateDependentRequiredTarget(
+                    filePath,
                     displayPath,
-                    $"Trigger property '{dependency.Name}' is not declared in the same object schema.");
-                return false;
-            }
-
-            if (dependency.Value.ValueKind != JsonValueKind.Array)
+                    dependency.Name,
+                    dependencyTarget,
+                    declaredProperties,
+                    out diagnostic))
             {
-                diagnostic = Diagnostic.Create(
-                    ConfigSchemaDiagnostics.InvalidDependentRequiredMetadata,
-                    CreateFileLocation(filePath),
-                    Path.GetFileName(filePath),
-                    displayPath,
-                    $"Property '{dependency.Name}' must declare 'dependentRequired' as an array of sibling property names.");
                 return false;
-            }
-
-            foreach (var dependencyTarget in dependency.Value.EnumerateArray())
-            {
-                if (dependencyTarget.ValueKind != JsonValueKind.String)
-                {
-                    diagnostic = Diagnostic.Create(
-                        ConfigSchemaDiagnostics.InvalidDependentRequiredMetadata,
-                        CreateFileLocation(filePath),
-                        Path.GetFileName(filePath),
-                        displayPath,
-                        $"Property '{dependency.Name}' must declare 'dependentRequired' entries as strings.");
-                    return false;
-                }
-
-                var dependencyTargetName = dependencyTarget.GetString();
-                if (string.IsNullOrWhiteSpace(dependencyTargetName))
-                {
-                    diagnostic = Diagnostic.Create(
-                        ConfigSchemaDiagnostics.InvalidDependentRequiredMetadata,
-                        CreateFileLocation(filePath),
-                        Path.GetFileName(filePath),
-                        displayPath,
-                        $"Property '{dependency.Name}' cannot declare blank 'dependentRequired' entries.");
-                    return false;
-                }
-
-                var normalizedDependencyTargetName = dependencyTargetName!;
-                if (!declaredProperties.Contains(normalizedDependencyTargetName))
-                {
-                    diagnostic = Diagnostic.Create(
-                        ConfigSchemaDiagnostics.InvalidDependentRequiredMetadata,
-                        CreateFileLocation(filePath),
-                        Path.GetFileName(filePath),
-                        displayPath,
-                        $"Dependent target '{normalizedDependencyTargetName}' is not declared in the same object schema.");
-                    return false;
-                }
             }
         }
 
         return true;
+    }
+
+    /// <summary>
+    ///     验证单个 <c>dependentRequired</c> target 是否为已声明的 sibling 字段名。
+    /// </summary>
+    /// <param name="filePath">Schema 文件路径。</param>
+    /// <param name="displayPath">父对象逻辑路径。</param>
+    /// <param name="dependencyName">触发依赖的字段名。</param>
+    /// <param name="dependencyTarget">当前 target 元素。</param>
+    /// <param name="declaredProperties">父对象已声明属性集合。</param>
+    /// <param name="diagnostic">失败时返回的诊断。</param>
+    /// <returns>当前 dependentRequired target 是否有效。</returns>
+    private static bool TryValidateDependentRequiredTarget(
+        string filePath,
+        string displayPath,
+        string dependencyName,
+        JsonElement dependencyTarget,
+        ISet<string> declaredProperties,
+        out Diagnostic? diagnostic)
+    {
+        diagnostic = null;
+        if (dependencyTarget.ValueKind != JsonValueKind.String)
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidDependentRequiredMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                displayPath,
+                $"Property '{dependencyName}' must declare 'dependentRequired' entries as strings.");
+            return false;
+        }
+
+        var dependencyTargetName = dependencyTarget.GetString();
+        if (string.IsNullOrWhiteSpace(dependencyTargetName))
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidDependentRequiredMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                displayPath,
+                $"Property '{dependencyName}' cannot declare blank 'dependentRequired' entries.");
+            return false;
+        }
+
+        var normalizedDependencyTargetName = dependencyTargetName!;
+        if (declaredProperties.Contains(normalizedDependencyTargetName))
+        {
+            return true;
+        }
+
+        diagnostic = Diagnostic.Create(
+            ConfigSchemaDiagnostics.InvalidDependentRequiredMetadata,
+            CreateFileLocation(filePath),
+            Path.GetFileName(filePath),
+            displayPath,
+            $"Dependent target '{normalizedDependencyTargetName}' is not declared in the same object schema.");
+        return false;
     }
 
     /// <summary>
@@ -1431,60 +1490,84 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             return false;
         }
 
-        if (!element.TryGetProperty("properties", out var propertiesElement) ||
-            propertiesElement.ValueKind != JsonValueKind.Object)
+        if (!TryGetDeclaredProperties(
+                filePath,
+                displayPath,
+                element,
+                ConfigSchemaDiagnostics.InvalidDependentSchemasMetadata,
+                "dependentSchemas",
+                out var declaredProperties,
+                out diagnostic))
+        {
+            return false;
+        }
+
+        foreach (var dependency in dependentSchemasElement.EnumerateObject())
+        {
+            if (!TryValidateDependentSchemaEntry(
+                    filePath,
+                    displayPath,
+                    dependency,
+                    declaredProperties,
+                    out diagnostic))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    ///     验证单个 <c>dependentSchemas</c> 触发项是否保持为当前运行时支持的 object 子 schema 形状。
+    /// </summary>
+    /// <param name="filePath">Schema 文件路径。</param>
+    /// <param name="displayPath">父对象逻辑路径。</param>
+    /// <param name="dependency">当前 dependentSchemas 触发项。</param>
+    /// <param name="declaredProperties">父对象已声明属性集合。</param>
+    /// <param name="diagnostic">失败时返回的诊断。</param>
+    /// <returns>当前 dependentSchemas 触发项是否有效。</returns>
+    private static bool TryValidateDependentSchemaEntry(
+        string filePath,
+        string displayPath,
+        JsonProperty dependency,
+        ISet<string> declaredProperties,
+        out Diagnostic? diagnostic)
+    {
+        diagnostic = null;
+        if (!declaredProperties.Contains(dependency.Name))
         {
             diagnostic = Diagnostic.Create(
                 ConfigSchemaDiagnostics.InvalidDependentSchemasMetadata,
                 CreateFileLocation(filePath),
                 Path.GetFileName(filePath),
                 displayPath,
-                "Object schemas using 'dependentSchemas' must also declare an object-valued 'properties' map.");
+                $"Trigger property '{dependency.Name}' is not declared in the same object schema.");
             return false;
         }
 
-        var declaredProperties = new HashSet<string>(
-            propertiesElement
-                .EnumerateObject()
-                .Select(static property => property.Name),
-            StringComparer.Ordinal);
-
-        foreach (var dependency in dependentSchemasElement.EnumerateObject())
+        if (dependency.Value.ValueKind != JsonValueKind.Object)
         {
-            if (!declaredProperties.Contains(dependency.Name))
-            {
-                diagnostic = Diagnostic.Create(
-                    ConfigSchemaDiagnostics.InvalidDependentSchemasMetadata,
-                    CreateFileLocation(filePath),
-                    Path.GetFileName(filePath),
-                    displayPath,
-                    $"Trigger property '{dependency.Name}' is not declared in the same object schema.");
-                return false;
-            }
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidDependentSchemasMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                displayPath,
+                $"Property '{dependency.Name}' must declare 'dependentSchemas' as an object-valued schema.");
+            return false;
+        }
 
-            if (dependency.Value.ValueKind != JsonValueKind.Object)
-            {
-                diagnostic = Diagnostic.Create(
-                    ConfigSchemaDiagnostics.InvalidDependentSchemasMetadata,
-                    CreateFileLocation(filePath),
-                    Path.GetFileName(filePath),
-                    displayPath,
-                    $"Property '{dependency.Name}' must declare 'dependentSchemas' as an object-valued schema.");
-                return false;
-            }
-
-            if (!dependency.Value.TryGetProperty("type", out var dependentSchemaTypeElement) ||
-                dependentSchemaTypeElement.ValueKind != JsonValueKind.String ||
-                !string.Equals(dependentSchemaTypeElement.GetString(), "object", StringComparison.Ordinal))
-            {
-                diagnostic = Diagnostic.Create(
-                    ConfigSchemaDiagnostics.InvalidDependentSchemasMetadata,
-                    CreateFileLocation(filePath),
-                    Path.GetFileName(filePath),
-                    displayPath,
-                    $"Property '{dependency.Name}' must declare an object-typed 'dependentSchemas' schema.");
-                return false;
-            }
+        if (!dependency.Value.TryGetProperty("type", out var dependentSchemaTypeElement) ||
+            dependentSchemaTypeElement.ValueKind != JsonValueKind.String ||
+            !string.Equals(dependentSchemaTypeElement.GetString(), "object", StringComparison.Ordinal))
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidDependentSchemasMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                displayPath,
+                $"Property '{dependency.Name}' must declare an object-typed 'dependentSchemas' schema.");
+            return false;
         }
 
         return true;
@@ -1595,48 +1678,28 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             return false;
         }
 
-        if (!element.TryGetProperty("properties", out var propertiesElement) ||
-            propertiesElement.ValueKind != JsonValueKind.Object)
-        {
-            diagnostic = Diagnostic.Create(
-                ConfigSchemaDiagnostics.InvalidAllOfMetadata,
-                CreateFileLocation(filePath),
-                Path.GetFileName(filePath),
+        if (!TryGetDeclaredProperties(
+                filePath,
                 displayPath,
-                "Object schemas using 'allOf' must also declare an object-valued 'properties' map.");
+                element,
+                ConfigSchemaDiagnostics.InvalidAllOfMetadata,
+                "allOf",
+                out var declaredProperties,
+                out diagnostic))
+        {
             return false;
         }
-
-        var declaredProperties = new HashSet<string>(
-            propertiesElement
-                .EnumerateObject()
-                .Select(static property => property.Name),
-            StringComparer.Ordinal);
 
         var allOfIndex = 0;
         foreach (var allOfSchema in allOfElement.EnumerateArray())
         {
-            if (allOfSchema.ValueKind != JsonValueKind.Object)
-            {
-                diagnostic = Diagnostic.Create(
-                    ConfigSchemaDiagnostics.InvalidAllOfMetadata,
-                    CreateFileLocation(filePath),
-                    Path.GetFileName(filePath),
+            if (!TryValidateAllOfEntryShape(
+                    filePath,
                     displayPath,
-                    $"Entry #{allOfIndex + 1} in 'allOf' must be an object-valued schema.");
-                return false;
-            }
-
-            if (!allOfSchema.TryGetProperty("type", out var allOfTypeElement) ||
-                allOfTypeElement.ValueKind != JsonValueKind.String ||
-                !string.Equals(allOfTypeElement.GetString(), "object", StringComparison.Ordinal))
+                    allOfSchema,
+                    allOfIndex,
+                    out diagnostic))
             {
-                diagnostic = Diagnostic.Create(
-                    ConfigSchemaDiagnostics.InvalidAllOfMetadata,
-                    CreateFileLocation(filePath),
-                    Path.GetFileName(filePath),
-                    displayPath,
-                    $"Entry #{allOfIndex + 1} in 'allOf' must declare an object-typed schema.");
                 return false;
             }
 
@@ -1652,6 +1715,50 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             }
 
             allOfIndex++;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    ///     验证单个 <c>allOf</c> 条目是否维持 object-valued、object-typed 的 focused constraint 形状。
+    /// </summary>
+    /// <param name="filePath">Schema 文件路径。</param>
+    /// <param name="displayPath">父对象逻辑路径。</param>
+    /// <param name="allOfSchema">当前 allOf 条目。</param>
+    /// <param name="allOfIndex">从 0 开始的条目索引。</param>
+    /// <param name="diagnostic">失败时返回的诊断。</param>
+    /// <returns>当前 allOf 条目形状是否有效。</returns>
+    private static bool TryValidateAllOfEntryShape(
+        string filePath,
+        string displayPath,
+        JsonElement allOfSchema,
+        int allOfIndex,
+        out Diagnostic? diagnostic)
+    {
+        diagnostic = null;
+        if (allOfSchema.ValueKind != JsonValueKind.Object)
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidAllOfMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                displayPath,
+                $"Entry #{allOfIndex + 1} in 'allOf' must be an object-valued schema.");
+            return false;
+        }
+
+        if (!allOfSchema.TryGetProperty("type", out var allOfTypeElement) ||
+            allOfTypeElement.ValueKind != JsonValueKind.String ||
+            !string.Equals(allOfTypeElement.GetString(), "object", StringComparison.Ordinal))
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidAllOfMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                displayPath,
+                $"Entry #{allOfIndex + 1} in 'allOf' must declare an object-typed schema.");
+            return false;
         }
 
         return true;
@@ -1746,51 +1853,72 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         var hasIf = element.TryGetProperty("if", out var ifElement);
         var hasThen = element.TryGetProperty("then", out var thenElement);
         var hasElse = element.TryGetProperty("else", out var elseElement);
-        if (!hasIf && !hasThen && !hasElse)
+        if (!TryValidateConditionalSchemaPresence(
+                filePath,
+                displayPath,
+                hasIf,
+                hasThen,
+                hasElse,
+                out diagnostic))
         {
-            return true;
+            return false;
         }
 
         if (!hasIf)
         {
-            diagnostic = Diagnostic.Create(
-                ConfigSchemaDiagnostics.InvalidConditionalSchemaMetadata,
-                CreateFileLocation(filePath),
-                Path.GetFileName(filePath),
-                displayPath,
-                "Object schemas using 'then' or 'else' must also declare 'if'.");
-            return false;
+            return true;
         }
 
-        if (!hasThen && !hasElse)
+        if (!TryGetDeclaredProperties(
+                filePath,
+                displayPath,
+                element,
+                ConfigSchemaDiagnostics.InvalidConditionalSchemaMetadata,
+                "if/then/else",
+                out var declaredProperties,
+                out diagnostic))
         {
-            diagnostic = Diagnostic.Create(
-                ConfigSchemaDiagnostics.InvalidConditionalSchemaMetadata,
-                CreateFileLocation(filePath),
-                Path.GetFileName(filePath),
-                displayPath,
-                "Object schemas using 'if' must also declare at least one of 'then' or 'else'.");
             return false;
         }
 
-        if (!element.TryGetProperty("properties", out var propertiesElement) ||
-            propertiesElement.ValueKind != JsonValueKind.Object)
-        {
-            diagnostic = Diagnostic.Create(
-                ConfigSchemaDiagnostics.InvalidConditionalSchemaMetadata,
-                CreateFileLocation(filePath),
-                Path.GetFileName(filePath),
-                displayPath,
-                "Object schemas using 'if/then/else' must also declare an object-valued 'properties' map.");
-            return false;
-        }
+        return TryValidateConditionalSchemaBranches(
+            filePath,
+            displayPath,
+            ifElement,
+            hasThen,
+            thenElement,
+            hasElse,
+            elseElement,
+            declaredProperties,
+            out diagnostic);
+    }
 
-        var declaredProperties = new HashSet<string>(
-            propertiesElement
-                .EnumerateObject()
-                .Select(static property => property.Name),
-            StringComparer.Ordinal);
-
+    /// <summary>
+    ///     验证 object-focused 条件分支集合。
+    ///     <c>if</c> 分支始终必检，<c>then</c> / <c>else</c> 仅在声明时校验，
+    ///     以保持生成器对分支缺失与分支内容错误的诊断顺序稳定。
+    /// </summary>
+    /// <param name="filePath">Schema 文件路径。</param>
+    /// <param name="displayPath">父对象逻辑路径。</param>
+    /// <param name="ifElement">if 分支 schema。</param>
+    /// <param name="hasThen">是否声明 then。</param>
+    /// <param name="thenElement">then 分支 schema。</param>
+    /// <param name="hasElse">是否声明 else。</param>
+    /// <param name="elseElement">else 分支 schema。</param>
+    /// <param name="declaredProperties">父对象已声明属性集合。</param>
+    /// <param name="diagnostic">失败时返回的诊断。</param>
+    /// <returns>当前条件分支集合是否有效。</returns>
+    private static bool TryValidateConditionalSchemaBranches(
+        string filePath,
+        string displayPath,
+        JsonElement ifElement,
+        bool hasThen,
+        JsonElement thenElement,
+        bool hasElse,
+        JsonElement elseElement,
+        ISet<string> declaredProperties,
+        out Diagnostic? diagnostic)
+    {
         if (!TryValidateConditionalSchemaBranch(
                 filePath,
                 displayPath,
@@ -1822,6 +1950,86 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                    "else",
                    declaredProperties,
                    out diagnostic);
+    }
+
+    /// <summary>
+    ///     验证 object-focused <c>if</c> / <c>then</c> / <c>else</c> 的存在性组合是否合法。
+    /// </summary>
+    /// <param name="filePath">Schema 文件路径。</param>
+    /// <param name="displayPath">父对象逻辑路径。</param>
+    /// <param name="hasIf">是否声明 if。</param>
+    /// <param name="hasThen">是否声明 then。</param>
+    /// <param name="hasElse">是否声明 else。</param>
+    /// <param name="diagnostic">失败时返回的诊断。</param>
+    /// <returns>当前条件关键字组合是否有效。</returns>
+    private static bool TryValidateConditionalSchemaPresence(
+        string filePath,
+        string displayPath,
+        bool hasIf,
+        bool hasThen,
+        bool hasElse,
+        out Diagnostic? diagnostic)
+    {
+        diagnostic = null;
+        if (!hasIf && !hasThen && !hasElse)
+        {
+            return true;
+        }
+
+        if (!hasIf)
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidConditionalSchemaMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                displayPath,
+                "Object schemas using 'then' or 'else' must also declare 'if'.");
+            return false;
+        }
+
+        if (hasThen || hasElse)
+        {
+            return true;
+        }
+
+        diagnostic = Diagnostic.Create(
+            ConfigSchemaDiagnostics.InvalidConditionalSchemaMetadata,
+            CreateFileLocation(filePath),
+            Path.GetFileName(filePath),
+            displayPath,
+            "Object schemas using 'if' must also declare at least one of 'then' or 'else'.");
+        return false;
+    }
+
+    private static bool TryGetDeclaredProperties(
+        string filePath,
+        string displayPath,
+        JsonElement element,
+        DiagnosticDescriptor descriptor,
+        string keywordName,
+        out HashSet<string> declaredProperties,
+        out Diagnostic? diagnostic)
+    {
+        diagnostic = null;
+        declaredProperties = new HashSet<string>(StringComparer.Ordinal);
+        if (!element.TryGetProperty("properties", out var propertiesElement) ||
+            propertiesElement.ValueKind != JsonValueKind.Object)
+        {
+            diagnostic = Diagnostic.Create(
+                descriptor,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                displayPath,
+                $"Object schemas using '{keywordName}' must also declare an object-valued 'properties' map.");
+            return false;
+        }
+
+        declaredProperties = new HashSet<string>(
+            propertiesElement
+                .EnumerateObject()
+                .Select(static property => property.Name),
+            StringComparer.Ordinal);
+        return true;
     }
 
     /// <summary>
@@ -1896,36 +2104,99 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         out Diagnostic? diagnostic)
     {
         diagnostic = null;
-        if (schemaElement.TryGetProperty("properties", out var propertiesElement))
+        if (!TryValidateObjectFocusedSchemaProperties(
+                filePath,
+                displayPath,
+                entryLabel,
+                schemaElement,
+                declaredProperties,
+                out diagnostic))
         {
-            if (propertiesElement.ValueKind != JsonValueKind.Object)
-            {
-                diagnostic = Diagnostic.Create(
-                    ConfigSchemaDiagnostics.InvalidConditionalSchemaMetadata,
-                    CreateFileLocation(filePath),
-                    Path.GetFileName(filePath),
-                    displayPath,
-                    $"The '{entryLabel}' schema must declare 'properties' as an object-valued map.");
-                return false;
-            }
-
-            foreach (var property in propertiesElement.EnumerateObject())
-            {
-                if (declaredProperties.Contains(property.Name))
-                {
-                    continue;
-                }
-
-                diagnostic = Diagnostic.Create(
-                    ConfigSchemaDiagnostics.InvalidConditionalSchemaMetadata,
-                    CreateFileLocation(filePath),
-                    Path.GetFileName(filePath),
-                    displayPath,
-                    $"The '{entryLabel}' schema declares property '{property.Name}', but that property is not declared in the parent object schema.");
-                return false;
-            }
+            return false;
         }
 
+        return TryValidateObjectFocusedSchemaRequiredProperties(
+            filePath,
+            displayPath,
+            entryLabel,
+            schemaElement,
+            declaredProperties,
+            out diagnostic);
+    }
+
+    /// <summary>
+    ///     验证 object-focused 条件 schema 的 <c>properties</c> 只引用父对象已声明字段。
+    /// </summary>
+    /// <param name="filePath">Schema 文件路径。</param>
+    /// <param name="displayPath">当前分支逻辑路径。</param>
+    /// <param name="entryLabel">分支标签。</param>
+    /// <param name="schemaElement">当前分支 schema。</param>
+    /// <param name="declaredProperties">父对象已声明属性集合。</param>
+    /// <param name="diagnostic">失败时返回的诊断。</param>
+    /// <returns>当前分支 properties 是否有效。</returns>
+    private static bool TryValidateObjectFocusedSchemaProperties(
+        string filePath,
+        string displayPath,
+        string entryLabel,
+        JsonElement schemaElement,
+        ISet<string> declaredProperties,
+        out Diagnostic? diagnostic)
+    {
+        diagnostic = null;
+        if (!schemaElement.TryGetProperty("properties", out var propertiesElement))
+        {
+            return true;
+        }
+
+        if (propertiesElement.ValueKind != JsonValueKind.Object)
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidConditionalSchemaMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                displayPath,
+                $"The '{entryLabel}' schema must declare 'properties' as an object-valued map.");
+            return false;
+        }
+
+        foreach (var property in propertiesElement.EnumerateObject())
+        {
+            if (declaredProperties.Contains(property.Name))
+            {
+                continue;
+            }
+
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidConditionalSchemaMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                displayPath,
+                $"The '{entryLabel}' schema declares property '{property.Name}', but that property is not declared in the parent object schema.");
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    ///     验证 object-focused 条件 schema 的 <c>required</c> 约束只引用父对象已声明字段。
+    /// </summary>
+    /// <param name="filePath">Schema 文件路径。</param>
+    /// <param name="displayPath">当前分支逻辑路径。</param>
+    /// <param name="entryLabel">分支标签。</param>
+    /// <param name="schemaElement">当前分支 schema。</param>
+    /// <param name="declaredProperties">父对象已声明属性集合。</param>
+    /// <param name="diagnostic">失败时返回的诊断。</param>
+    /// <returns>当前分支 required 是否有效。</returns>
+    private static bool TryValidateObjectFocusedSchemaRequiredProperties(
+        string filePath,
+        string displayPath,
+        string entryLabel,
+        JsonElement schemaElement,
+        ISet<string> declaredProperties,
+        out Diagnostic? diagnostic)
+    {
+        diagnostic = null;
         if (!schemaElement.TryGetProperty("required", out var requiredElement))
         {
             return true;
@@ -2004,37 +2275,99 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     {
         diagnostic = null;
         var allOfEntryPath = BuildAllOfEntryPath(displayPath, allOfIndex);
-
-        if (allOfSchema.TryGetProperty("properties", out var allOfPropertiesElement))
+        if (!TryValidateAllOfEntryProperties(
+                filePath,
+                allOfEntryPath,
+                allOfSchema,
+                allOfIndex,
+                declaredProperties,
+                out diagnostic))
         {
-            if (allOfPropertiesElement.ValueKind != JsonValueKind.Object)
-            {
-                diagnostic = Diagnostic.Create(
-                    ConfigSchemaDiagnostics.InvalidAllOfMetadata,
-                    CreateFileLocation(filePath),
-                    Path.GetFileName(filePath),
-                    allOfEntryPath,
-                    $"Entry #{allOfIndex + 1} in 'allOf' must declare 'properties' as an object-valued map.");
-                return false;
-            }
-
-            foreach (var property in allOfPropertiesElement.EnumerateObject())
-            {
-                if (declaredProperties.Contains(property.Name))
-                {
-                    continue;
-                }
-
-                diagnostic = Diagnostic.Create(
-                    ConfigSchemaDiagnostics.InvalidAllOfMetadata,
-                    CreateFileLocation(filePath),
-                    Path.GetFileName(filePath),
-                    allOfEntryPath,
-                    $"Entry #{allOfIndex + 1} in 'allOf' declares property '{property.Name}', but that property is not declared in the parent object schema.");
-                return false;
-            }
+            return false;
         }
 
+        return TryValidateAllOfEntryRequiredProperties(
+            filePath,
+            allOfEntryPath,
+            allOfSchema,
+            allOfIndex,
+            declaredProperties,
+            out diagnostic);
+    }
+
+    /// <summary>
+    ///     验证单个 <c>allOf</c> 条目的 <c>properties</c> 映射不会引入父对象未声明字段。
+    /// </summary>
+    /// <param name="filePath">Schema 文件路径。</param>
+    /// <param name="allOfEntryPath">当前 allOf 条目逻辑路径。</param>
+    /// <param name="allOfSchema">当前 allOf 条目。</param>
+    /// <param name="allOfIndex">从 0 开始的条目索引。</param>
+    /// <param name="declaredProperties">父对象已声明属性集合。</param>
+    /// <param name="diagnostic">失败时返回的诊断。</param>
+    /// <returns>当前 allOf 条目的 properties 映射是否有效。</returns>
+    private static bool TryValidateAllOfEntryProperties(
+        string filePath,
+        string allOfEntryPath,
+        JsonElement allOfSchema,
+        int allOfIndex,
+        ISet<string> declaredProperties,
+        out Diagnostic? diagnostic)
+    {
+        diagnostic = null;
+        if (!allOfSchema.TryGetProperty("properties", out var allOfPropertiesElement))
+        {
+            return true;
+        }
+
+        if (allOfPropertiesElement.ValueKind != JsonValueKind.Object)
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidAllOfMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                allOfEntryPath,
+                $"Entry #{allOfIndex + 1} in 'allOf' must declare 'properties' as an object-valued map.");
+            return false;
+        }
+
+        foreach (var property in allOfPropertiesElement.EnumerateObject())
+        {
+            if (declaredProperties.Contains(property.Name))
+            {
+                continue;
+            }
+
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidAllOfMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                allOfEntryPath,
+                $"Entry #{allOfIndex + 1} in 'allOf' declares property '{property.Name}', but that property is not declared in the parent object schema.");
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    ///     验证单个 <c>allOf</c> 条目的 <c>required</c> 约束不会引用父对象未声明字段。
+    /// </summary>
+    /// <param name="filePath">Schema 文件路径。</param>
+    /// <param name="allOfEntryPath">当前 allOf 条目逻辑路径。</param>
+    /// <param name="allOfSchema">当前 allOf 条目。</param>
+    /// <param name="allOfIndex">从 0 开始的条目索引。</param>
+    /// <param name="declaredProperties">父对象已声明属性集合。</param>
+    /// <param name="diagnostic">失败时返回的诊断。</param>
+    /// <returns>当前 allOf 条目的 required 约束是否有效。</returns>
+    private static bool TryValidateAllOfEntryRequiredProperties(
+        string filePath,
+        string allOfEntryPath,
+        JsonElement allOfSchema,
+        int allOfIndex,
+        ISet<string> declaredProperties,
+        out Diagnostic? diagnostic)
+    {
+        diagnostic = null;
         if (!allOfSchema.TryGetProperty("required", out var requiredElement))
         {
             return true;
@@ -2379,11 +2712,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     private static string GenerateConfigClass(SchemaFileSpec schema)
     {
         var builder = new StringBuilder();
-        builder.AppendLine("// <auto-generated />");
-        builder.AppendLine("#nullable enable");
-        builder.AppendLine();
-        builder.AppendLine($"namespace {schema.Namespace};");
-        builder.AppendLine();
+        AppendGeneratedSourceHeader(builder, schema.Namespace);
 
         AppendObjectType(builder, schema.RootObject, schema.FileName, schema.Title, schema.Description, isRoot: true,
             indentationLevel: 0);
@@ -2402,11 +2731,98 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         var indexedQueryableProperties = queryableProperties
             .Where(static property => property.IsIndexedLookup)
             .ToArray();
+        AppendGeneratedSourceHeader(builder, schema.Namespace);
+        AppendGeneratedTableTypeHeader(builder, schema, indexedQueryableProperties);
+        AppendGeneratedTableConstructor(builder, schema, indexedQueryableProperties);
+        AppendGeneratedTableCoreMembers(builder, schema);
+        AppendGeneratedTableLookupMembers(builder, schema, queryableProperties, indexedQueryableProperties);
+        builder.AppendLine("}");
+        return builder.ToString().TrimEnd();
+    }
+
+    /// <summary>
+    ///     生成运行时注册与访问辅助源码。
+    ///     该辅助类型把 schema 命名约定、配置目录和 schema 相对路径固化为生成代码，
+    ///     让消费端无需重复手写字符串常量和主键提取逻辑。
+    /// </summary>
+    /// <param name="schema">已解析的 schema 模型。</param>
+    /// <returns>辅助类型源码。</returns>
+    private static string GenerateBindingsClass(SchemaFileSpec schema)
+    {
+        var registerMethodName = $"Register{schema.EntityName}Table";
+        var getMethodName = $"Get{schema.EntityName}Table";
+        var tryGetMethodName = $"TryGet{schema.EntityName}Table";
+        var bindingsClassName = $"{schema.EntityName}ConfigBindings";
+        var referenceSpecs = CollectReferenceSpecs(schema.RootObject).ToArray();
+
+        var builder = new StringBuilder();
+        AppendGeneratedSourceHeader(builder, schema.Namespace);
+        AppendBindingsTypeHeader(builder, bindingsClassName, schema.FileName);
+        AppendBindingsReferenceMetadataType(builder);
+        AppendBindingsMetadataType(builder, schema);
+        AppendBindingsMetadataAliases(builder);
+        AppendYamlSerializationHelpers(builder, schema);
+        AppendBindingsReferencesType(builder, referenceSpecs);
+        AppendBindingsRegisterMethod(builder, schema, registerMethodName);
+        AppendBindingsGetMethod(builder, schema, getMethodName);
+        AppendBindingsTryGetMethod(builder, schema, tryGetMethodName);
+        builder.AppendLine("}");
+        return builder.ToString().TrimEnd();
+    }
+
+    /// <summary>
+    ///     生成项目级聚合辅助源码。
+    ///     该辅助把当前消费者项目内所有有效 schema 汇总为一个统一入口，
+    ///     以便运行时快速完成批量注册并在需要时枚举已生成的配置域元数据。
+    /// </summary>
+    /// <param name="schemas">当前编译中成功解析的 schema 集合。</param>
+    /// <returns>聚合辅助源码。</returns>
+    private static string GenerateCatalogClass(IReadOnlyList<SchemaFileSpec> schemas)
+    {
+        var builder = new StringBuilder();
+        AppendGeneratedSourceHeader(builder, GeneratedNamespace);
+        AppendGeneratedConfigCatalogType(builder, schemas);
+        builder.AppendLine();
+        AppendGeneratedConfigRegistrationOptionsType(builder, schemas);
+        builder.AppendLine();
+        AppendGeneratedConfigRegistrationExtensionsType(builder, schemas);
+
+        return builder.ToString().TrimEnd();
+    }
+
+    /// <summary>
+    ///     Emits the generated catalog type that exposes schema metadata and filtering helpers.
+    /// </summary>
+    /// <param name="builder">Output buffer.</param>
+    /// <param name="schemas">Successfully parsed schemas for the current compilation.</param>
+    private static void AppendGeneratedConfigCatalogType(StringBuilder builder, IReadOnlyList<SchemaFileSpec> schemas)
+    {
+        AppendGeneratedConfigCatalogHeader(builder);
+        AppendGeneratedConfigTableMetadataType(builder);
+        AppendGeneratedConfigTablesProperty(builder, schemas);
+        AppendGeneratedConfigResolveAbsolutePathMethod(builder);
+        AppendGeneratedConfigTryGetByTableNameMethod(builder, schemas);
+        AppendGeneratedConfigGetTablesInConfigDomainMethod(builder);
+        AppendGeneratedConfigGetTablesForRegistrationMethod(builder);
+        AppendGeneratedConfigMatchesRegistrationOptionsMethod(builder);
+        AppendGeneratedConfigAllowListMethod(builder);
+        builder.AppendLine("}");
+    }
+
+    private static void AppendGeneratedSourceHeader(StringBuilder builder, string namespaceName)
+    {
         builder.AppendLine("// <auto-generated />");
         builder.AppendLine("#nullable enable");
         builder.AppendLine();
-        builder.AppendLine($"namespace {schema.Namespace};");
+        builder.AppendLine($"namespace {namespaceName};");
         builder.AppendLine();
+    }
+
+    private static void AppendGeneratedTableTypeHeader(
+        StringBuilder builder,
+        SchemaFileSpec schema,
+        IReadOnlyList<SchemaPropertySpec> indexedQueryableProperties)
+    {
         builder.AppendLine("/// <summary>");
         builder.AppendLine(
             $"///     Auto-generated table wrapper for schema file '{schema.FileName}'.");
@@ -2423,7 +2839,13 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             builder.AppendLine(
                 $"    private readonly global::System.Lazy<global::System.Collections.Generic.IReadOnlyDictionary<{property.TypeSpec.ClrType}, global::System.Collections.Generic.IReadOnlyList<{schema.ClassName}>>> _{ToCamelCase(property.PropertyName)}Index;");
         }
+    }
 
+    private static void AppendGeneratedTableConstructor(
+        StringBuilder builder,
+        SchemaFileSpec schema,
+        IReadOnlyList<SchemaPropertySpec> indexedQueryableProperties)
+    {
         builder.AppendLine();
         builder.AppendLine("    /// <summary>");
         builder.AppendLine("    ///     Creates a generated table wrapper around the runtime config table instance.");
@@ -2442,6 +2864,10 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         }
 
         builder.AppendLine("    }");
+    }
+
+    private static void AppendGeneratedTableCoreMembers(StringBuilder builder, SchemaFileSpec schema)
+    {
         builder.AppendLine();
         builder.AppendLine("    /// <inheritdoc />");
         builder.AppendLine("    public global::System.Type KeyType => _inner.KeyType;");
@@ -2476,8 +2902,15 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("    {");
         builder.AppendLine("        return _inner.All();");
         builder.AppendLine("    }");
+    }
 
-        if (indexedQueryableProperties.Length > 0)
+    private static void AppendGeneratedTableLookupMembers(
+        StringBuilder builder,
+        SchemaFileSpec schema,
+        IReadOnlyList<SchemaPropertySpec> queryableProperties,
+        IReadOnlyList<SchemaPropertySpec> indexedQueryableProperties)
+    {
+        if (indexedQueryableProperties.Count > 0)
         {
             foreach (var property in indexedQueryableProperties)
             {
@@ -2496,40 +2929,22 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             builder.AppendLine();
             AppendTryFindFirstByPropertyMethod(builder, schema, property);
         }
-
-        builder.AppendLine("}");
-        return builder.ToString().TrimEnd();
     }
 
-    /// <summary>
-    ///     生成运行时注册与访问辅助源码。
-    ///     该辅助类型把 schema 命名约定、配置目录和 schema 相对路径固化为生成代码，
-    ///     让消费端无需重复手写字符串常量和主键提取逻辑。
-    /// </summary>
-    /// <param name="schema">已解析的 schema 模型。</param>
-    /// <returns>辅助类型源码。</returns>
-    private static string GenerateBindingsClass(SchemaFileSpec schema)
+    private static void AppendBindingsTypeHeader(StringBuilder builder, string bindingsClassName, string fileName)
     {
-        var registerMethodName = $"Register{schema.EntityName}Table";
-        var getMethodName = $"Get{schema.EntityName}Table";
-        var tryGetMethodName = $"TryGet{schema.EntityName}Table";
-        var bindingsClassName = $"{schema.EntityName}ConfigBindings";
-        var referenceSpecs = CollectReferenceSpecs(schema.RootObject).ToArray();
-
-        var builder = new StringBuilder();
-        builder.AppendLine("// <auto-generated />");
-        builder.AppendLine("#nullable enable");
-        builder.AppendLine();
-        builder.AppendLine($"namespace {schema.Namespace};");
-        builder.AppendLine();
         builder.AppendLine("/// <summary>");
         builder.AppendLine(
-            $"///     Auto-generated registration and lookup helpers for schema file '{schema.FileName}'.");
+            $"///     Auto-generated registration and lookup helpers for schema file '{fileName}'.");
         builder.AppendLine(
             "///     The helper centralizes table naming, config directory, schema path, and strongly-typed registry access so consumer projects do not need to duplicate the same conventions.");
         builder.AppendLine("/// </summary>");
         builder.AppendLine($"public static class {bindingsClassName}");
         builder.AppendLine("{");
+    }
+
+    private static void AppendBindingsReferenceMetadataType(StringBuilder builder)
+    {
         builder.AppendLine("    /// <summary>");
         builder.AppendLine(
             "    ///     Describes one schema property that declares <c>x-gframework-ref-table</c> metadata.");
@@ -2550,6 +2965,13 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("            string referencedTableName,");
         builder.AppendLine("            string valueSchemaType,");
         builder.AppendLine("            bool isCollection)");
+        AppendBindingsReferenceMetadataConstructorBody(builder);
+        AppendBindingsReferenceMetadataProperties(builder);
+        builder.AppendLine("    }");
+    }
+
+    private static void AppendBindingsReferenceMetadataConstructorBody(StringBuilder builder)
+    {
         builder.AppendLine("        {");
         builder.AppendLine(
             "            DisplayPath = displayPath ?? throw new global::System.ArgumentNullException(nameof(displayPath));");
@@ -2559,6 +2981,10 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             "            ValueSchemaType = valueSchemaType ?? throw new global::System.ArgumentNullException(nameof(valueSchemaType));");
         builder.AppendLine("            IsCollection = isCollection;");
         builder.AppendLine("        }");
+    }
+
+    private static void AppendBindingsReferenceMetadataProperties(StringBuilder builder)
+    {
         builder.AppendLine();
         builder.AppendLine("        /// <summary>");
         builder.AppendLine(
@@ -2581,7 +3007,10 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             "        ///     Gets a value indicating whether the property stores multiple reference keys.");
         builder.AppendLine("        /// </summary>");
         builder.AppendLine("        public bool IsCollection { get; }");
-        builder.AppendLine("    }");
+    }
+
+    private static void AppendBindingsMetadataType(StringBuilder builder, SchemaFileSpec schema)
+    {
         builder.AppendLine();
         builder.AppendLine("    /// <summary>");
         builder.AppendLine(
@@ -2615,6 +3044,10 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine(
             $"        public const string SchemaRelativePath = {SymbolDisplay.FormatLiteral(schema.SchemaRelativePath, true)};");
         builder.AppendLine("    }");
+    }
+
+    private static void AppendBindingsMetadataAliases(StringBuilder builder)
+    {
         builder.AppendLine();
         builder.AppendLine("    /// <summary>");
         builder.AppendLine(
@@ -2637,7 +3070,12 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("    /// </summary>");
         builder.AppendLine("    public const string SchemaRelativePath = Metadata.SchemaRelativePath;");
         builder.AppendLine();
-        AppendYamlSerializationHelpers(builder, schema);
+    }
+
+    private static void AppendBindingsReferencesType(
+        StringBuilder builder,
+        IReadOnlyList<GeneratedReferenceSpec> referenceSpecs)
+    {
         builder.AppendLine();
         builder.AppendLine("    /// <summary>");
         builder.AppendLine(
@@ -2645,7 +3083,16 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("    /// </summary>");
         builder.AppendLine("    public static class References");
         builder.AppendLine("    {");
+        AppendBindingsReferenceMembers(builder, referenceSpecs);
+        AppendBindingsReferenceCollectionProperty(builder, referenceSpecs);
+        AppendBindingsTryGetByDisplayPathMethod(builder, referenceSpecs);
+        builder.AppendLine("    }");
+    }
 
+    private static void AppendBindingsReferenceMembers(
+        StringBuilder builder,
+        IReadOnlyList<GeneratedReferenceSpec> referenceSpecs)
+    {
         foreach (var referenceSpec in referenceSpecs)
         {
             builder.AppendLine("        /// <summary>");
@@ -2664,29 +3111,38 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                 $"            {(referenceSpec.IsCollection ? "true" : "false")});");
             builder.AppendLine();
         }
+    }
 
+    private static void AppendBindingsReferenceCollectionProperty(
+        StringBuilder builder,
+        IReadOnlyList<GeneratedReferenceSpec> referenceSpecs)
+    {
         builder.AppendLine("        /// <summary>");
         builder.AppendLine(
             "        ///     Gets all generated cross-table reference descriptors for the current schema.");
         builder.AppendLine("        /// </summary>");
-        if (referenceSpecs.Length == 0)
+        if (referenceSpecs.Count == 0)
         {
             builder.AppendLine(
                 "        public static global::System.Collections.Generic.IReadOnlyList<ReferenceMetadata> All { get; } = global::System.Array.Empty<ReferenceMetadata>();");
+            return;
         }
-        else
+
+        builder.AppendLine(
+            "        public static global::System.Collections.Generic.IReadOnlyList<ReferenceMetadata> All { get; } = global::System.Array.AsReadOnly(new ReferenceMetadata[]");
+        builder.AppendLine("        {");
+        foreach (var referenceSpec in referenceSpecs)
         {
-            builder.AppendLine(
-                "        public static global::System.Collections.Generic.IReadOnlyList<ReferenceMetadata> All { get; } = global::System.Array.AsReadOnly(new ReferenceMetadata[]");
-            builder.AppendLine("        {");
-            foreach (var referenceSpec in referenceSpecs)
-            {
-                builder.AppendLine($"            {referenceSpec.MemberName},");
-            }
-
-            builder.AppendLine("        });");
+            builder.AppendLine($"            {referenceSpec.MemberName},");
         }
 
+        builder.AppendLine("        });");
+    }
+
+    private static void AppendBindingsTryGetByDisplayPathMethod(
+        StringBuilder builder,
+        IReadOnlyList<GeneratedReferenceSpec> referenceSpecs)
+    {
         builder.AppendLine();
         builder.AppendLine("        /// <summary>");
         builder.AppendLine("        ///     Tries to resolve generated reference metadata by schema property path.");
@@ -2705,7 +3161,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("            }");
         builder.AppendLine();
 
-        if (referenceSpecs.Length == 0)
+        if (referenceSpecs.Count == 0)
         {
             builder.AppendLine("            metadata = default;");
             builder.AppendLine("            return false;");
@@ -2728,7 +3184,13 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         }
 
         builder.AppendLine("        }");
-        builder.AppendLine("    }");
+    }
+
+    private static void AppendBindingsRegisterMethod(
+        StringBuilder builder,
+        SchemaFileSpec schema,
+        string registerMethodName)
+    {
         builder.AppendLine();
         builder.AppendLine("    /// <summary>");
         builder.AppendLine(
@@ -2757,6 +3219,13 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine($"            static config => config.{schema.KeyPropertyName},");
         builder.AppendLine("            comparer);");
         builder.AppendLine("    }");
+    }
+
+    private static void AppendBindingsGetMethod(
+        StringBuilder builder,
+        SchemaFileSpec schema,
+        string getMethodName)
+    {
         builder.AppendLine();
         builder.AppendLine("    /// <summary>");
         builder.AppendLine("    ///     Gets the generated config table wrapper from the registry.");
@@ -2776,6 +3245,13 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine(
             $"        return new {schema.TableName}(registry.GetTable<{schema.KeyClrType}, {schema.ClassName}>(Metadata.TableName));");
         builder.AppendLine("    }");
+    }
+
+    private static void AppendBindingsTryGetMethod(
+        StringBuilder builder,
+        SchemaFileSpec schema,
+        string tryGetMethodName)
+    {
         builder.AppendLine();
         builder.AppendLine("    /// <summary>");
         builder.AppendLine("    ///     Tries to get the generated config table wrapper from the registry.");
@@ -2805,40 +3281,9 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("        table = null;");
         builder.AppendLine("        return false;");
         builder.AppendLine("    }");
-        builder.AppendLine("}");
-        return builder.ToString().TrimEnd();
     }
 
-    /// <summary>
-    ///     生成项目级聚合辅助源码。
-    ///     该辅助把当前消费者项目内所有有效 schema 汇总为一个统一入口，
-    ///     以便运行时快速完成批量注册并在需要时枚举已生成的配置域元数据。
-    /// </summary>
-    /// <param name="schemas">当前编译中成功解析的 schema 集合。</param>
-    /// <returns>聚合辅助源码。</returns>
-    private static string GenerateCatalogClass(IReadOnlyList<SchemaFileSpec> schemas)
-    {
-        var builder = new StringBuilder();
-        builder.AppendLine("// <auto-generated />");
-        builder.AppendLine("#nullable enable");
-        builder.AppendLine();
-        builder.AppendLine($"namespace {GeneratedNamespace};");
-        builder.AppendLine();
-        AppendGeneratedConfigCatalogType(builder, schemas);
-        builder.AppendLine();
-        AppendGeneratedConfigRegistrationOptionsType(builder, schemas);
-        builder.AppendLine();
-        AppendGeneratedConfigRegistrationExtensionsType(builder, schemas);
-
-        return builder.ToString().TrimEnd();
-    }
-
-    /// <summary>
-    ///     Emits the generated catalog type that exposes schema metadata and filtering helpers.
-    /// </summary>
-    /// <param name="builder">Output buffer.</param>
-    /// <param name="schemas">Successfully parsed schemas for the current compilation.</param>
-    private static void AppendGeneratedConfigCatalogType(StringBuilder builder, IReadOnlyList<SchemaFileSpec> schemas)
+    private static void AppendGeneratedConfigCatalogHeader(StringBuilder builder)
     {
         builder.AppendLine("/// <summary>");
         builder.AppendLine(
@@ -2848,6 +3293,10 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("/// </summary>");
         builder.AppendLine("public static class GeneratedConfigCatalog");
         builder.AppendLine("{");
+    }
+
+    private static void AppendGeneratedConfigTableMetadataType(StringBuilder builder)
+    {
         builder.AppendLine("    /// <summary>");
         builder.AppendLine(
             "    ///     Describes one generated config table so bootstrap code can enumerate generated domains without re-parsing schema files at runtime.");
@@ -2867,6 +3316,13 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("            string tableName,");
         builder.AppendLine("            string configRelativePath,");
         builder.AppendLine("            string schemaRelativePath)");
+        AppendGeneratedConfigTableMetadataConstructorBody(builder);
+        AppendGeneratedConfigTableMetadataProperties(builder);
+        builder.AppendLine("    }");
+    }
+
+    private static void AppendGeneratedConfigTableMetadataConstructorBody(StringBuilder builder)
+    {
         builder.AppendLine("        {");
         builder.AppendLine(
             "            ConfigDomain = configDomain ?? throw new global::System.ArgumentNullException(nameof(configDomain));");
@@ -2877,6 +3333,10 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine(
             "            SchemaRelativePath = schemaRelativePath ?? throw new global::System.ArgumentNullException(nameof(schemaRelativePath));");
         builder.AppendLine("        }");
+    }
+
+    private static void AppendGeneratedConfigTableMetadataProperties(StringBuilder builder)
+    {
         builder.AppendLine();
         builder.AppendLine("        /// <summary>");
         builder.AppendLine("        ///     Gets the logical config domain derived from the schema base name.");
@@ -2899,7 +3359,12 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("        ///     Gets the relative schema file path collected by the source generator.");
         builder.AppendLine("        /// </summary>");
         builder.AppendLine("        public string SchemaRelativePath { get; }");
-        builder.AppendLine("    }");
+    }
+
+    private static void AppendGeneratedConfigTablesProperty(
+        StringBuilder builder,
+        IReadOnlyList<SchemaFileSpec> schemas)
+    {
         builder.AppendLine();
         builder.AppendLine("    /// <summary>");
         builder.AppendLine(
@@ -2919,6 +3384,10 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         }
 
         builder.AppendLine("    });");
+    }
+
+    private static void AppendGeneratedConfigResolveAbsolutePathMethod(StringBuilder builder)
+    {
         builder.AppendLine();
         builder.AppendLine("    /// <summary>");
         builder.AppendLine(
@@ -2953,6 +3422,12 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine(
             "        return global::System.IO.Path.Combine(configRootPath, normalizedRelativePath);");
         builder.AppendLine("    }");
+    }
+
+    private static void AppendGeneratedConfigTryGetByTableNameMethod(
+        StringBuilder builder,
+        IReadOnlyList<SchemaFileSpec> schemas)
+    {
         builder.AppendLine();
         builder.AppendLine("    /// <summary>");
         builder.AppendLine("    ///     Tries to resolve generated table metadata by runtime registration name.");
@@ -2986,6 +3461,10 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("        metadata = default;");
         builder.AppendLine("        return false;");
         builder.AppendLine("    }");
+    }
+
+    private static void AppendGeneratedConfigGetTablesInConfigDomainMethod(StringBuilder builder)
+    {
         builder.AppendLine();
         builder.AppendLine("    /// <summary>");
         builder.AppendLine(
@@ -3018,6 +3497,10 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine(
             "        return matchedTables.Count == 0 ? global::System.Array.Empty<TableMetadata>() : matchedTables.ToArray();");
         builder.AppendLine("    }");
+    }
+
+    private static void AppendGeneratedConfigGetTablesForRegistrationMethod(StringBuilder builder)
+    {
         builder.AppendLine();
         builder.AppendLine("    /// <summary>");
         builder.AppendLine(
@@ -3042,6 +3525,10 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine(
             "        return matchedTables.Count == 0 ? global::System.Array.Empty<TableMetadata>() : matchedTables.ToArray();");
         builder.AppendLine("    }");
+    }
+
+    private static void AppendGeneratedConfigMatchesRegistrationOptionsMethod(StringBuilder builder)
+    {
         builder.AppendLine();
         builder.AppendLine("    /// <summary>");
         builder.AppendLine(
@@ -3076,6 +3563,10 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine();
         builder.AppendLine("        return options.TableFilter?.Invoke(metadata) ?? true;");
         builder.AppendLine("    }");
+    }
+
+    private static void AppendGeneratedConfigAllowListMethod(StringBuilder builder)
+    {
         builder.AppendLine();
         builder.AppendLine("    /// <summary>");
         builder.AppendLine(
@@ -3106,7 +3597,6 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine();
         builder.AppendLine("        return false;");
         builder.AppendLine("    }");
-        builder.AppendLine("}");
     }
 
     /// <summary>

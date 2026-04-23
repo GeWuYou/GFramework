@@ -13,7 +13,7 @@ public class SchemaConfigGeneratorEnumTests
     ///     验证对象 <c>enum</c> 文档输出与快照保持一致。
     /// </summary>
     [Test]
-    public async Task Snapshot_Should_Preserve_Object_Enum_Documentation()
+    public Task Snapshot_Should_Preserve_Object_Enum_Documentation()
     {
         const string source = """
                               namespace TestApp
@@ -51,14 +51,14 @@ public class SchemaConfigGeneratorEnumTests
             ("monster.schema.json", schema));
 
         Assert.That(result.Results.Single().Diagnostics, Is.Empty);
-        await AssertSnapshotAsync(result, "MonsterConfig.ObjectEnum.g.txt");
+        return AssertSnapshotAsync(result, "MonsterConfig.ObjectEnum.g.txt");
     }
 
     /// <summary>
     ///     验证数组项 <c>enum</c> 文档回退输出与快照保持一致。
     /// </summary>
     [Test]
-    public async Task Snapshot_Should_Preserve_Array_Item_Enum_Documentation_Fallback()
+    public Task Snapshot_Should_Preserve_Array_Item_Enum_Documentation_Fallback()
     {
         const string source = """
                               namespace TestApp
@@ -88,14 +88,14 @@ public class SchemaConfigGeneratorEnumTests
             ("monster.schema.json", schema));
 
         Assert.That(result.Results.Single().Diagnostics, Is.Empty);
-        await AssertSnapshotAsync(result, "MonsterConfig.ArrayItemEnum.g.txt");
+        return AssertSnapshotAsync(result, "MonsterConfig.ArrayItemEnum.g.txt");
     }
 
     /// <summary>
     ///     验证对象数组项 <c>enum</c> 文档回退输出与快照保持一致。
     /// </summary>
     [Test]
-    public async Task Snapshot_Should_Preserve_Array_Object_Item_Enum_Documentation_Fallback()
+    public Task Snapshot_Should_Preserve_Array_Object_Item_Enum_Documentation_Fallback()
     {
         const string source = """
                               namespace TestApp
@@ -136,7 +136,7 @@ public class SchemaConfigGeneratorEnumTests
             ("monster.schema.json", schema));
 
         Assert.That(result.Results.Single().Diagnostics, Is.Empty);
-        await AssertSnapshotAsync(result, "MonsterConfig.ArrayObjectItemEnum.g.txt");
+        return AssertSnapshotAsync(result, "MonsterConfig.ArrayObjectItemEnum.g.txt");
     }
 
     /// <summary>
@@ -176,11 +176,11 @@ public class SchemaConfigGeneratorEnumTests
         if (!File.Exists(path))
         {
             Directory.CreateDirectory(snapshotFolder);
-            await File.WriteAllTextAsync(path, actual);
+            await File.WriteAllTextAsync(path, actual).ConfigureAwait(false);
             Assert.Fail($"Snapshot not found. Generated new snapshot at:\n{path}");
         }
 
-        var expected = await File.ReadAllTextAsync(path);
+        var expected = await File.ReadAllTextAsync(path).ConfigureAwait(false);
         Assert.That(
             Normalize(expected),
             Is.EqualTo(Normalize(actual)),

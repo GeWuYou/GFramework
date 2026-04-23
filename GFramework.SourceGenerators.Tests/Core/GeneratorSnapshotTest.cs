@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System.Collections.Immutable;
+using System.IO;
 
 namespace GFramework.SourceGenerators.Tests.Core;
 
@@ -28,74 +29,12 @@ public static class GeneratorSnapshotTest<TGenerator>
         string snapshotFolder,
         Func<string, string>? snapshotFileNameSelector = null)
     {
-        var syntaxTree = CSharpSyntaxTree.ParseText(source);
-        var compilation = CSharpCompilation.Create(
-            $"{typeof(TGenerator).Name}SnapshotTests",
-            [syntaxTree],
-            MetadataReferenceTestBuilder.GetRuntimeMetadataReferences(),
-            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
-        GeneratorDriver driver = CSharpGeneratorDriver.Create(
-            generators: [CreateGenerator()],
-            parseOptions: (CSharpParseOptions)syntaxTree.Options);
-        driver = driver.RunGeneratorsAndUpdateCompilation(
-            compilation,
-            out var updatedCompilation,
-            out var generatorDiagnostics);
+        var (driver, updatedCompilation, generatorDiagnostics) = RunGenerator(source);
+        AssertNoGeneratorErrors(generatorDiagnostics);
+        AssertNoCompilationErrors(updatedCompilation);
 
-        var generatorErrors = generatorDiagnostics
-            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
-            .ToArray();
-        Assert.That(
-            generatorErrors,
-            Is.Empty,
-            () =>
-                $"执行生成器时出现错误：{Environment.NewLine}{string.Join(Environment.NewLine, generatorErrors.Select(static diagnostic => diagnostic.ToString()))}");
-
-        var compilationErrors = updatedCompilation.GetDiagnostics()
-            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
-            .ToArray();
-        Assert.That(
-            compilationErrors,
-            Is.Empty,
-            () =>
-                $"编译生成的代码时出现错误：{Environment.NewLine}{string.Join(Environment.NewLine, compilationErrors.Select(static diagnostic => diagnostic.ToString()))}");
-
-        var runResult = driver.GetRunResult();
-        var generated = runResult.Results
-            .SelectMany(static result => result.GeneratedSources)
-            .OrderBy(static source => source.HintName, StringComparer.Ordinal)
-            .Select(static source => (filename: source.HintName, content: source.SourceText.ToString()))
-            .ToArray();
-        Assert.That(
-            generated,
-            Is.Not.Empty,
-            $"生成器 '{typeof(TGenerator).FullName}' 未产生任何输出。");
-
-        foreach (var (filename, content) in generated)
-        {
-            // 不同测试套件可能需要将生成文件映射到非 .cs 快照，以避免测试资产被当作可编译源码参与构建。
-            var snapshotFileName = snapshotFileNameSelector?.Invoke(filename) ?? filename;
-            var path = ResolveSnapshotPath(
-                snapshotFolder,
-                snapshotFileName);
-
-            if (!File.Exists(path))
-            {
-                // 第一次运行：生成 snapshot
-                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-                await File.WriteAllTextAsync(path, content.ToString());
-
-                Assert.Fail(
-                    $"未找到快照文件，已在以下路径生成新快照：\n{path}");
-            }
-
-            var expected = await File.ReadAllTextAsync(path);
-
-            Assert.That(
-                Normalize(expected),
-                Is.EqualTo(Normalize(content.ToString())),
-                $"快照不匹配：{snapshotFileName}");
-        }
+        var generatedSources = GetGeneratedSources(driver);
+        await AssertGeneratedSnapshotsAsync(generatedSources, snapshotFolder, snapshotFileNameSelector).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -105,7 +44,163 @@ public static class GeneratorSnapshotTest<TGenerator>
     /// <returns>标准化后的文本</returns>
     private static string Normalize(string text)
     {
-        return text.Replace("\r\n", "\n").Trim();
+        return text.Replace("\r\n", "\n", StringComparison.Ordinal).Trim();
+    }
+
+    /// <summary>
+    ///     构建测试编译并执行目标生成器，返回更新后的编译结果和生成器诊断。
+    /// </summary>
+    /// <param name="source">要交给生成器处理的输入源码。</param>
+    /// <returns>包含驱动、更新后编译和生成器诊断的元组。</returns>
+    private static (GeneratorDriver Driver, Compilation UpdatedCompilation, ImmutableArray<Diagnostic> GeneratorDiagnostics)
+        RunGenerator(string source)
+    {
+        var syntaxTree = CSharpSyntaxTree.ParseText(source);
+        var compilation = CreateCompilation(syntaxTree);
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(
+            generators: [CreateGenerator()],
+            parseOptions: (CSharpParseOptions)syntaxTree.Options);
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out var updatedCompilation,
+            out var generatorDiagnostics);
+
+        return (driver, updatedCompilation, generatorDiagnostics);
+    }
+
+    /// <summary>
+    ///     为快照测试创建最小可运行的 Roslyn 编译上下文。
+    /// </summary>
+    /// <param name="syntaxTree">由测试输入生成的语法树。</param>
+    /// <returns>包含运行时元数据引用的动态链接库编译对象。</returns>
+    private static CSharpCompilation CreateCompilation(SyntaxTree syntaxTree)
+    {
+        return CSharpCompilation.Create(
+            $"{typeof(TGenerator).Name}SnapshotTests",
+            [syntaxTree],
+            MetadataReferenceTestBuilder.GetRuntimeMetadataReferences(),
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+    }
+
+    /// <summary>
+    ///     断言生成器自身没有报告错误级诊断。
+    /// </summary>
+    /// <param name="generatorDiagnostics">生成器执行期间产生的诊断集合。</param>
+    private static void AssertNoGeneratorErrors(ImmutableArray<Diagnostic> generatorDiagnostics)
+    {
+        var generatorErrors = generatorDiagnostics
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ToArray();
+        Assert.That(
+            generatorErrors,
+            Is.Empty,
+            () =>
+                $"执行生成器时出现错误：{Environment.NewLine}{string.Join(Environment.NewLine, generatorErrors.Select(static diagnostic => diagnostic.ToString()))}");
+    }
+
+    /// <summary>
+    ///     断言合并生成结果后的最终编译仍然可通过。
+    /// </summary>
+    /// <param name="updatedCompilation">已注入生成输出的编译对象。</param>
+    private static void AssertNoCompilationErrors(Compilation updatedCompilation)
+    {
+        var compilationErrors = updatedCompilation.GetDiagnostics()
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ToArray();
+        Assert.That(
+            compilationErrors,
+            Is.Empty,
+            () =>
+                $"编译生成的代码时出现错误：{Environment.NewLine}{string.Join(Environment.NewLine, compilationErrors.Select(static diagnostic => diagnostic.ToString()))}");
+    }
+
+    /// <summary>
+    ///     收集并排序生成器输出，保持快照断言顺序稳定。
+    /// </summary>
+    /// <param name="driver">已经执行完成的生成器驱动。</param>
+    /// <returns>按 HintName 排序后的生成文件名与内容。</returns>
+    private static (string Filename, string Content)[] GetGeneratedSources(GeneratorDriver driver)
+    {
+        var generatedSources = driver.GetRunResult()
+            .Results
+            .SelectMany(static result => result.GeneratedSources)
+            .OrderBy(static source => source.HintName, StringComparer.Ordinal)
+            .Select(static source => (source.HintName, source.SourceText.ToString()))
+            .ToArray();
+
+        Assert.That(
+            generatedSources,
+            Is.Not.Empty,
+            $"生成器 '{typeof(TGenerator).FullName}' 未产生任何输出。");
+
+        return generatedSources;
+    }
+
+    /// <summary>
+    ///     逐个比对生成输出与已提交快照，必要时写出缺失快照并中断测试。
+    /// </summary>
+    /// <param name="generatedSources">已排序的生成文件名与内容。</param>
+    /// <param name="snapshotFolder">快照根目录。</param>
+    /// <param name="snapshotFileNameSelector">可选的快照文件名映射规则。</param>
+    /// <returns>当全部快照比对完成后结束的异步任务。</returns>
+    private static async Task AssertGeneratedSnapshotsAsync(
+        (string Filename, string Content)[] generatedSources,
+        string snapshotFolder,
+        Func<string, string>? snapshotFileNameSelector)
+    {
+        foreach (var (filename, content) in generatedSources)
+        {
+            var snapshotFileName = snapshotFileNameSelector?.Invoke(filename) ?? filename;
+            var expected = await ReadExpectedSnapshotAsync(
+                    snapshotFolder,
+                    snapshotFileName,
+                    content)
+                .ConfigureAwait(false);
+
+            Assert.That(
+                Normalize(expected),
+                Is.EqualTo(Normalize(content)),
+                $"快照不匹配：{snapshotFileName}");
+        }
+    }
+
+    /// <summary>
+    ///     读取指定快照；若快照不存在，则先写出当前生成结果并通过断言提示调用方提交资产。
+    /// </summary>
+    /// <param name="snapshotFolder">快照根目录。</param>
+    /// <param name="snapshotFileName">映射后的快照文件名。</param>
+    /// <param name="generatedContent">当前生成器输出内容。</param>
+    /// <returns>现有快照的文本内容。</returns>
+    private static async Task<string> ReadExpectedSnapshotAsync(
+        string snapshotFolder,
+        string snapshotFileName,
+        string generatedContent)
+    {
+        // 不同测试套件可能需要将生成文件映射到非 .cs 快照，以避免测试资产被当作可编译源码参与构建。
+        var path = ResolveSnapshotPath(snapshotFolder, snapshotFileName);
+        if (!File.Exists(path))
+        {
+            await WriteMissingSnapshotAndFailAsync(path, generatedContent).ConfigureAwait(false);
+        }
+
+        return await File.ReadAllTextAsync(path).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    ///     为首次运行缺失的快照写入当前结果，并立即终止测试以提醒提交新资产。
+    /// </summary>
+    /// <param name="path">目标快照绝对路径。</param>
+    /// <param name="generatedContent">要写入的生成输出。</param>
+    private static async Task WriteMissingSnapshotAndFailAsync(string path, string generatedContent)
+    {
+        // ResolveSnapshotPath 保证快照不会越界，但根目录路径仍会让 GetDirectoryName 返回 null。
+        var snapshotDirectory = Path.GetDirectoryName(path)
+                                ?? throw new InvalidOperationException(
+                                    $"Snapshot path '{path}' must include a parent directory.");
+        Directory.CreateDirectory(snapshotDirectory);
+        await File.WriteAllTextAsync(path, generatedContent).ConfigureAwait(false);
+        Assert.Fail($"未找到快照文件，已在以下路径生成新快照：\n{path}");
     }
 
     /// <summary>

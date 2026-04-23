@@ -15,7 +15,7 @@ public static class AnalyzerTestDriver<TAnalyzer>
     /// <param name="source">测试输入源码。</param>
     /// <param name="diagnostics">期望诊断集合。</param>
     /// <returns>异步测试任务。</returns>
-    public static async Task RunAsync(
+    public static Task RunAsync(
         string source,
         params DiagnosticResult[] diagnostics)
     {
@@ -29,6 +29,6 @@ public static class AnalyzerTestDriver<TAnalyzer>
         };
 
         test.ExpectedDiagnostics.AddRange(diagnostics);
-        await test.RunAsync();
+        return test.RunAsync();
     }
 }
