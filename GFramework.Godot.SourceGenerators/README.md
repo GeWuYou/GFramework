@@ -129,6 +129,35 @@
 
 也就是说，本包负责生成辅助方法，但调用时机仍由项目侧决定。
 
+最小接法可以直接写成：
+
+```csharp
+using GFramework.Godot.Attribute;
+using Godot;
+
+public partial class MainMenu : Control
+{
+    [GetNode]
+    private Button _startButton = null!;
+
+    public override void _Ready()
+    {
+        __InjectGetNodes_Generated();
+        __BindNodeSignals_Generated();
+    }
+
+    public override void _ExitTree()
+    {
+        __UnbindNodeSignals_Generated();
+    }
+
+    [BindNodeSignal(nameof(_startButton), nameof(Button.Pressed))]
+    private void OnStartPressed()
+    {
+    }
+}
+```
+
 ### 4. 按场景选特性
 
 - 项目级元数据：
