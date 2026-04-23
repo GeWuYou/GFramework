@@ -50,6 +50,19 @@ For changed-file limits, measure branch-wide scope against the chosen baseline, 
 - use `git diff --name-only <baseline>...HEAD`
 - do not confuse branch diff size with `git status --short`
 
+For changed-line limits, also measure branch-wide scope against the chosen baseline:
+
+- prefer `git diff --numstat <baseline>...HEAD`
+- treat "changed lines" as `added + deleted` summed across the branch diff
+- do not use working-tree-only line counts as a substitute for branch-wide scope
+
+For shorthand numeric thresholds, use a fixed default baseline:
+
+- compare the current branch's cumulative diff against remote `origin/main`
+- include all commits reachable from `HEAD` that are not already in `origin/main`
+- do not reinterpret shorthand thresholds as "this batch only" or "current unstaged changes only"
+- only use another baseline when the user explicitly names it in the prompt
+
 ## Stop Conditions
 
 Choose one primary stop condition before the first batch and restate it to the user.
@@ -62,6 +75,32 @@ Common stop conditions:
 - a timebox or validation budget is reached
 
 If multiple stop conditions exist, rank them and treat one as primary.
+
+## Shorthand Stop-Condition Syntax
+
+`gframework-batch-boot` may be invoked with shorthand numeric thresholds when the user clearly wants a branch-size stop
+condition instead of a long natural-language prompt.
+
+Interpret shorthand as follows:
+
+- `$gframework-batch-boot 75`
+  - means: stop when the current branch's cumulative diff vs remote `origin/main` approaches `75` changed files
+- `$gframework-batch-boot 75 2000`
+  - means: stop when the current branch's cumulative diff vs remote `origin/main` approaches `75` changed files OR
+    `2000` changed lines
+  - default positional meaning is `<files> <lines>`
+- `$gframework-batch-boot 75 | 2000`
+  - may be interpreted as the same OR shorthand in plain-language chat
+  - when restating, planning, or documenting the command, normalize it to `$gframework-batch-boot 75 2000`
+  - prefer the no-pipe form because `|` is easy to confuse with a shell pipeline
+
+When shorthand is used:
+
+- report the resolved thresholds explicitly before the first batch
+- report that the baseline is remote `origin/main`, unless the user explicitly overrides it
+- if two numeric thresholds are present, treat file count as the default primary metric for status reporting unless the
+  user says otherwise
+- stop when either threshold is reached or exceeded, even if the other threshold still has headroom
 
 ## Batch Loop
 
@@ -134,6 +173,8 @@ When stopping, report:
 
 ## Example Triggers
 
+- `Use $gframework-batch-boot 75 to keep reducing analyzer warnings until the branch diff vs baseline approaches 75 files.`
+- `Use $gframework-batch-boot 75 2000 to keep reducing warnings until the branch diff approaches 75 files or 2000 changed lines.`
 - `Use $gframework-batch-boot and keep reducing analyzer warnings until the branch diff vs origin/main approaches 75 files.`
 - `Use $gframework-batch-boot to continue this repetitive test refactor in bounded batches until the warning count drops below 10.`
 - `Use $gframework-batch-boot and refresh module docs in waves without asking me to trigger every round.`

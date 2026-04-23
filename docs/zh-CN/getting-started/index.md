@@ -46,7 +46,7 @@
 对应文档：
 
 - [`../core/cqrs.md`](../core/cqrs.md)
-- 仓库内模块入口：`GFramework.Cqrs/README.md`
+- 仓库内模块入口：[`GFramework.Cqrs/README.md`](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Cqrs/README.md)
 
 ### 想做游戏运行时
 
@@ -65,7 +65,7 @@
 对应文档：
 
 - [`../game/index.md`](../game/index.md)
-- 仓库内模块入口：`GFramework.Game/README.md`
+- 仓库内模块入口：[`GFramework.Game/README.md`](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Game/README.md)
 
 ### 想接入 Godot
 
@@ -76,7 +76,7 @@
 对应文档：
 
 - [`../godot/index.md`](../godot/index.md)
-- 仓库内模块入口：`GFramework.Godot/README.md`
+- 仓库内模块入口：[`GFramework.Godot/README.md`](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Godot/README.md)
 
 ## Source Generators 什么时候装
 

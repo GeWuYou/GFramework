@@ -118,5 +118,5 @@ public sealed class ContinueGameCommandHandler
    - [`../game/scene.md`](../game/scene.md)
    - [`../game/ui.md`](../game/ui.md)
 4. 需要仓库侧入口时，回到：
-   - `GFramework.Game.Abstractions/README.md`
-   - `GFramework.Game/README.md`
+   - [`GFramework.Game.Abstractions/README.md`](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Game.Abstractions/README.md)
+   - [`GFramework.Game/README.md`](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Game/README.md)

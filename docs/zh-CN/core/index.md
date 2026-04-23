@@ -71,7 +71,7 @@ dotnet add package GeWuYou.GFramework.Core.Abstractions
 
 如果你已经知道模块归属，但想确认公开类型的契约边界，建议按下面顺序阅读：
 
-1. 先看模块 README `GFramework.Core/README.md`，确认包关系和目录边界
+1. 先看模块 README [`GFramework.Core/README.md`](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Core/README.md)，确认包关系和目录边界
 2. 再看本栏目对应专题页，确认采用顺序、生命周期与推荐接线方式
 3. 最后回到源码中的 XML 文档，重点核对这些类型族：
    - `Architecture` / `IArchitectureContext`
@@ -149,7 +149,7 @@ public sealed class CounterArchitecture : Architecture
 
 ## 对应模块入口
 
-- `GFramework.Core/README.md`
-- `GFramework.Core.Abstractions/README.md`
-- `docs/zh-CN/api-reference/index.md`
-- 仓库根 `README.md`
+- [`GFramework.Core/README.md`](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Core/README.md)
+- [`GFramework.Core.Abstractions/README.md`](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Core.Abstractions/README.md)
+- [`docs/zh-CN/api-reference/index.md`](../api-reference/index.md)
+- 仓库根 [`README.md`](https://github.com/GeWuYou/GFramework/blob/main/README.md)

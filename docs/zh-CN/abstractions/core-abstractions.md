@@ -99,6 +99,6 @@ public sealed class DiagnosticsFeature
 1. 先读本页，确认你是否真的只需要契约层
 2. 再看 [`../core/index.md`](../core/index.md) 了解默认运行时怎么组织这些契约
 3. 回到模块 README：
-   - `GFramework.Core.Abstractions/README.md`
-   - `GFramework.Core/README.md`
+   - [`GFramework.Core.Abstractions/README.md`](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Core.Abstractions/README.md)
+   - [`GFramework.Core/README.md`](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Core/README.md)
 4. 需要统一导航时，再看 [`../api-reference/index.md`](../api-reference/index.md)

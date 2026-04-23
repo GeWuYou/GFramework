@@ -186,4 +186,4 @@ RegisterCqrsPipelineBehavior<LoggingBehavior<,>>();
 - 架构入口：[architecture](./architecture.md)
 - 上下文入口：[context](./context.md)
 - 生成器专题：[../source-generators/cqrs-handler-registry-generator.md](../source-generators/cqrs-handler-registry-generator.md)
-- 模块 README：`GFramework.Cqrs/README.md`
+- 模块 README：[`GFramework.Cqrs/README.md`](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Cqrs/README.md)

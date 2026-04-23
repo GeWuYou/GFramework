@@ -101,7 +101,7 @@ GFramework 当前发布的生成器包是：
 
 ## 对应模块入口
 
-- `GFramework.Core.SourceGenerators/README.md`
-- `GFramework.Game.SourceGenerators/README.md`
-- `GFramework.Cqrs.SourceGenerators/README.md`
-- `GFramework.Godot.SourceGenerators/README.md`
+- [`GFramework.Core.SourceGenerators/README.md`](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Core.SourceGenerators/README.md)
+- [`GFramework.Game.SourceGenerators/README.md`](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Game.SourceGenerators/README.md)
+- [`GFramework.Cqrs.SourceGenerators/README.md`](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Cqrs.SourceGenerators/README.md)
+- [`GFramework.Godot.SourceGenerators/README.md`](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Godot.SourceGenerators/README.md)

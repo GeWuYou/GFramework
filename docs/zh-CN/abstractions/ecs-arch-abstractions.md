@@ -90,5 +90,5 @@ var options = new ArchOptions
 1. 先读本页，确认你是否真的只需要契约层
 2. 如果需要默认实现，再看 [`../ecs/arch.md`](../ecs/arch.md)
 3. 回到对应模块 README：
-   - `GFramework.Ecs.Arch.Abstractions/README.md`
-   - `GFramework.Ecs.Arch/README.md`
+   - [`GFramework.Ecs.Arch.Abstractions/README.md`](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Ecs.Arch.Abstractions/README.md)
+   - [`GFramework.Ecs.Arch/README.md`](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Ecs.Arch/README.md)

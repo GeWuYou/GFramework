@@ -213,4 +213,4 @@ public sealed class DynamicPrioritySystem : IPrioritized
 1. [context-aware-generator.md](./context-aware-generator.md)
 2. [context-get-generator.md](./context-get-generator.md)
 3. [../core/index.md](../core/index.md)
-4. `GFramework.Core.SourceGenerators/README.md`
+4. [`GFramework.Core.SourceGenerators/README.md`](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Core.SourceGenerators/README.md)

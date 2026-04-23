@@ -121,7 +121,7 @@ namespace MyGame.Services
 
 **代码说明**：
 
-- `Option&lt;T&gt;` 明确表示值可能不存在，避免 NullReferenceException
+- `Option<T>` 明确表示值可能不存在，避免 NullReferenceException
 - `Match` 强制处理两种情况，不会遗漏 null 检查
 - `Map` 和 `Bind` 实现链式转换，代码更简洁
 - `Filter` 可以安全地过滤值
@@ -250,7 +250,7 @@ namespace MyGame.Services
 
 **代码说明**：
 
-- `Result&lt;T&gt;` 将错误作为值返回，而不是抛出异常
+- `Result<T>` 将错误作为值返回，而不是抛出异常
 - `Result.Try` 自动捕获异常并转换为 Result
 - `Bind` 可以链接多个可能失败的操作
 - `Match` 强制处理成功和失败两种情况

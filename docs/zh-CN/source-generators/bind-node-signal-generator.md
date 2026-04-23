@@ -189,4 +189,4 @@ private void OnAnyButtonPressed()
 1. [/zh-CN/source-generators/get-node-generator](./get-node-generator.md)
 2. [/zh-CN/source-generators/godot-project-generator](./godot-project-generator.md)
 3. [/zh-CN/godot/ui](../godot/ui.md)
-4. `GFramework.Godot.SourceGenerators/README.md`
+4. [`GFramework.Godot.SourceGenerators/README.md`](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Godot.SourceGenerators/README.md)

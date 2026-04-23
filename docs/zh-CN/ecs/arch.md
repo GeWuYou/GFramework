@@ -140,5 +140,5 @@ ecsModule.Update(deltaTime);
 
 - ECS 模块总览：[`index.md`](./index.md)
 - 抽象契约页：[`../abstractions/ecs-arch-abstractions.md`](../abstractions/ecs-arch-abstractions.md)
-- 仓库模块 README：`GFramework.Ecs.Arch/README.md`
+- 仓库模块 README：[`GFramework.Ecs.Arch/README.md`](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Ecs.Arch/README.md)
 - 统一 API / XML 导航：[`../api-reference/index.md`](../api-reference/index.md)
