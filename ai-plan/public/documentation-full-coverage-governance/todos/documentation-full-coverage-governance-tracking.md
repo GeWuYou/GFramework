@@ -12,17 +12,27 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`DOCUMENTATION-FULL-COVERAGE-GOV-RP-015`
+- 恢复点编号：`DOCUMENTATION-FULL-COVERAGE-GOV-RP-016`
 - 当前阶段：`Phase 5 - Governance Maintenance`
 - 当前焦点：
-  - 继续巡检 `Godot` / `Game` 相关 README、landing page、tutorial 与 API reference 的 cross-link 是否回漂
-  - 保持 `Godot` family 的模块 README、生成器 README 与站内专题页使用同一套 owner / adoption path 叙述
-  - 重点观察 `storage.md` / `setting.md` 这类子页是否继续沿用当前 applicator / adoption path 口径
-  - 仅在发现新的入口漂移时补最小修复，不重复改写已经稳定的 landing page
+  - 保持 `Game` family 的 persistence docs surface 与当前 `README`、源码、`PersistenceTests` 使用同一套 owner / adoption path 叙述
+  - 将 `data.md`、`storage.md`、`serialization.md`、`setting.md` 视为 `Game` family 当前需要一起巡检的核心页面集，而不是分散的旧 API 手册页
+  - 重点观察 `DataRepository` / `UnifiedSettingsDataRepository` / `SaveRepository<TSaveData>`、`FileStorage` / `ScopedStorage` 与 `SettingsModel<TRepository>` 的职责边界是否再次回漂
+  - 在 `Game` runtime public API 或 README 再次变动前，优先做 targeted 巡检，不重复改写已稳定的 landing page
 
 ## 当前状态摘要
 
 - 已归档的 `documentation-governance-and-refresh` 仅保留为历史证据，不再作为默认 `boot` 入口
+- `2026-04-23` 的 `Game` persistence docs wave 新增结论：
+  - `docs/zh-CN/game/storage.md` 之前仍停留在旧版“通用存储 API 手册”写法，没有反映 `FileStorage` / `ScopedStorage` 与上层 repository 的分工，也没有强调当前同步 API 只是异步阻塞包装
+  - `docs/zh-CN/game/data.md` 之前缺少 `DataRepository`、`UnifiedSettingsDataRepository` 与 `SaveRepository<TSaveData>` 三层分工，以及 `PersistenceTests` 已覆盖的备份 / 批量事件 / 存档迁移语义
+  - `docs/zh-CN/game/serialization.md` 之前仍沿用“业务层手工 Serialize 再写回 storage”的旧示例，没有反映当前 `FileStorage` 已直接复用注入的 `ISerializer`
+  - `docs/zh-CN/game/setting.md` 虽然已回到 `ISettingsModel` / `RegisterApplicator(...)` 口径，但缺少 frontmatter，且还没有和新的 `Game` persistence docs surface 使用同一套结构
+- `2026-04-23` 的 `Game` persistence docs wave 治理动作：
+  - 重写 `docs/zh-CN/game/storage.md`，将其改为 `FileStorage` / `ScopedStorage` 的职责、路径语义、作用域复用与 repository 边界页
+  - 重写 `docs/zh-CN/game/data.md`，补齐 `DataRepository`、`UnifiedSettingsDataRepository`、`SaveRepository<TSaveData>` 与 `DataRepositoryOptions` / `SaveConfiguration` 的当前契约
+  - 重写 `docs/zh-CN/game/serialization.md`，收敛到 `JsonSerializer` 的配置生命周期、运行时类型序列化与和 storage / repository 的分工
+  - 重写 `docs/zh-CN/game/setting.md`，使其与 `SettingsModel<TRepository>`、`SettingsSystem`、迁移缓存和统一设置仓库的当前实现保持一致
 - 本轮已消化的 PR #271 review follow-up：
   - 为 `.agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py` 补齐 WSL worktree 下的显式 Linux Git 绑定，避免 `git.exe` 在当前会话触发 `Exec format error`
   - 同步更新 `.agents/skills/gframework-pr-review/SKILL.md`，改为与 `AGENTS.md` 一致的 Git 策略，并把命令示例统一到 `.agents/...` 路径
@@ -96,7 +106,7 @@
 | --- | --- | --- | --- |
 | `Core` / `Core.Abstractions` | `README / landing / 类型族级 XML inventory 已收口，成员级审计待补齐` | 根 README、模块 README、`docs/zh-CN/core/**`、`docs/zh-CN/abstractions/core-abstractions.md` 已对齐当前目录与类型族基线 | 进入巡检；如有新 API 变更，再追加成员级 XML 审计 |
 | `Cqrs` / `Cqrs.Abstractions` / `Cqrs.SourceGenerators` | `README / landing / generator topic / 类型族级 XML inventory 已收口，成员级审计待补齐` | `GFramework.Cqrs/README.md`、`GFramework.Cqrs.Abstractions/README.md`、`GFramework.Cqrs.SourceGenerators/README.md`、`docs/zh-CN/core/cqrs.md`、`docs/zh-CN/source-generators/cqrs-handler-registry-generator.md`、`docs/zh-CN/api-reference/index.md` 已对齐当前源码与测试 | 转入巡检；下一波切到 `Game` family 的 XML / 教程链路审计 |
-| `Game` / `Game.Abstractions` / `Game.SourceGenerators` | `README / landing / abstractions / 类型族级 XML inventory 已收口，成员级审计待补齐` | `GFramework.Game/README.md`、`GFramework.Game.Abstractions/README.md`、`GFramework.Game.SourceGenerators/README.md`、`docs/zh-CN/game/index.md`、`docs/zh-CN/abstractions/game-abstractions.md` 已对齐当前源码与目录基线 | 转入巡检；优先抽查 `config-system`、`scene`、`ui` 与 `source-generators` 交叉链路是否回漂 |
+| `Game` / `Game.Abstractions` / `Game.SourceGenerators` | `README / landing / abstractions / persistence topic pages / 类型族级 XML inventory 已收口，成员级审计待补齐` | `GFramework.Game/README.md`、`GFramework.Game.Abstractions/README.md`、`GFramework.Game.SourceGenerators/README.md`、`docs/zh-CN/game/index.md`、`docs/zh-CN/abstractions/game-abstractions.md`、`docs/zh-CN/game/data.md`、`storage.md`、`serialization.md`、`setting.md` 已对齐当前源码、README 与 `PersistenceTests` | 转入巡检；优先观察后续分支是否再次把 `Game` persistence docs 写回旧 API 手册口径 |
 | `Godot` / `Godot.SourceGenerators` | `README / 生成器 README / landing / topic / tutorial / API reference 入口已重新对齐，成员级 XML 审计不在本轮范围` | `GFramework.Godot/README.md`、`GFramework.Godot.SourceGenerators/README.md`、`docs/zh-CN/godot/index.md`、`architecture.md`、`scene.md`、`ui.md`、`storage.md`、`setting.md`、`signal.md`、`extensions.md`、`logging.md`、`docs/zh-CN/tutorials/godot-integration.md` | 进入巡检周期，优先观察后续分支是否再次把 README / API 入口写回过时边界 |
 | `Ecs.Arch` / `Ecs.Arch.Abstractions` | `README / landing / abstractions / 类型族级 XML inventory 已收口，成员级审计待补齐` | `GFramework.Ecs.Arch/README.md`、`GFramework.Ecs.Arch.Abstractions/README.md`、`docs/zh-CN/ecs/**`、`docs/zh-CN/abstractions/ecs-arch-abstractions.md` 已对齐当前源码与测试 | 转入巡检；后续仅在运行时公共 API 变动时补成员级 XML 细审 |
 | `SourceGenerators.Common` 与 `*.SourceGenerators.Abstractions` | `已判定为内部支撑` | `*.csproj` 明确 `IsPackable=false` | 由所属模块 README 与生成器栏目说明 owner，不建独立采用页 |
@@ -137,7 +147,10 @@
   - 结果：通过；PR `#271` 已关闭，latest reviewed commit 为 `df91d3706ba9db71737e803ef2f40f4841ecbbf1`，当前 `2` 条 open thread 都是已被本地文件满足的陈旧信号，不再构成本轮阻塞
 - 最新构建结论：
   - `2026-04-23` `cd docs && bun run build`
-  - 结果：通过；在修正 `docs/zh-CN/godot/storage.md` 与 `setting.md` 后再次验证通过，仅保留既有 VitePress 大 chunk warning，无构建失败
+  - 结果：通过；在重写 `docs/zh-CN/game/data.md`、`storage.md`、`serialization.md`、`setting.md` 后再次验证通过，仅保留既有 VitePress 大 chunk warning，无构建失败
+- 最新 `Game` persistence docs wave 结论：
+  - `2026-04-23` 基于 `GFramework.Game` 源码、`GFramework.Game/README.md`、`JsonSerializerTests`、`SettingsModelTests` 与 `PersistenceTests`
+  - 结果：通过；`docs/zh-CN/game/data.md`、`storage.md`、`serialization.md`、`setting.md` 当前已回到同一套 `Game` runtime 持久化采用路径，不再沿用旧版 API 手册叙述
 - 最新稳定性巡检结论：
   - `2026-04-23` 重新执行 `Godot` docs surface 巡检
   - 结果：通过；根入口链路保持稳定，并额外发现 `docs/zh-CN/godot/storage.md`、`setting.md` 两页存在旧版叙述残留，当前已按源码口径完成最小修复
@@ -168,10 +181,15 @@
   - `2026-04-23` `python3 .agents/skills/gframework-doc-refresh/scripts/scan_module_evidence.py Godot`：通过（boot 后复核）
   - `2026-04-23` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/storage.md`：通过（boot 后复核）
   - `2026-04-23` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/setting.md`：通过（boot 后复核）
-  - `2026-04-23` `cd docs && bun run build`：通过（boot 后复核；仅保留既有 VitePress 大 chunk warning）
+  - `2026-04-23` `python3 .agents/skills/gframework-doc-refresh/scripts/scan_module_evidence.py Game`：通过
+  - `2026-04-23` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/game/data.md`：通过
+  - `2026-04-23` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/game/storage.md`：通过
+  - `2026-04-23` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/game/serialization.md`：通过
+  - `2026-04-23` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/game/setting.md`：通过
+  - `2026-04-23` `cd docs && bun run build`：通过（本轮 `Game` persistence docs wave 复核；仅保留既有 VitePress 大 chunk warning）
 
 ## 下一步
 
-1. 若后续分支继续调整 `GFramework.Godot` 运行时入口，优先复核 `docs/zh-CN/godot/storage.md`、`setting.md` 与根 `README.md` / landing page 是否仍保持同一套职责边界
-2. 当后续分支再修改 `Godot` / `Game` family 的 README、docs 或公共 API 时，回到对应模块追加 targeted 巡检与验证
+1. 若后续分支继续调整 `GFramework.Game` 的 persistence runtime、README 或公共 API，优先复核 `docs/zh-CN/game/data.md`、`storage.md`、`serialization.md`、`setting.md` 与 landing page 是否仍保持同一套职责边界
+2. 当 `Godot` / `Game` family 再次出现交叉入口漂移时，沿用当前 README -> landing -> topic page -> API reference 的最小修复顺序
 3. 仅在需要阶段级细节时再读取 `documentation-governance-and-refresh` archive，而不是把 archive 重新当作默认 `boot` 入口

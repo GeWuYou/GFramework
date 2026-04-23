@@ -481,6 +481,70 @@
    `README.md` / landing page 是否仍保持同一套职责边界
 2. 当后续分支再修改 `Godot` / `Game` family 的 README、docs 或公共 API 时，回到对应模块追加 targeted 巡检与验证
 
+### 当前恢复点：RP-016
+
+- 用户明确要求“继续下一步的文档治理，并形成足够体量的 PR”后，当前 topic 不再停留在 validation-only 巡检，
+  而是切到一个可独立成波次的 `Game` persistence docs surface：
+  - `docs/zh-CN/game/data.md`
+  - `docs/zh-CN/game/storage.md`
+  - `docs/zh-CN/game/serialization.md`
+  - `docs/zh-CN/game/setting.md`
+- 先执行 `python3 .agents/skills/gframework-doc-refresh/scripts/scan_module_evidence.py Game`，确认 `Game` 的默认 docs surface
+  包含 `data`、`storage`、`serialization`、`setting`、`scene`、`ui`、`config-system` 与 landing / API fallback
+- 结合 `GFramework.Game/README.md`、`FileStorage.cs`、`ScopedStorage.cs`、`DataRepository.cs`、
+  `UnifiedSettingsDataRepository.cs`、`SaveRepository.cs`、`JsonSerializer.cs`、`SettingsModel.cs`、
+  `SettingsSystem.cs`、`JsonSerializerTests.cs`、`SettingsModelTests.cs` 与 `PersistenceTests.cs`，确认四个旧页面存在持续性漂移：
+  - `storage.md` 仍按旧版通用 API 手册组织，没有强调 `FileStorage` / `ScopedStorage` 与 repository 的职责边界
+  - `data.md` 缺少 `DataRepository`、`UnifiedSettingsDataRepository` 与 `SaveRepository<TSaveData>` 三层分工，以及当前备份 /
+    批量事件 / 存档迁移语义
+  - `serialization.md` 仍沿用“业务层手工 Serialize 再写回 storage”的旧接法，没有反映当前 `FileStorage`
+    已直接复用注入的 `ISerializer`
+  - `setting.md` 虽已回到 `ISettingsModel` / `RegisterApplicator(...)` 口径，但结构仍未与当前 `Game` family 的 runtime topic
+    页面统一，也缺少 frontmatter
+- 因此本轮执行的最小但成组修复集是：
+  - 重写 `docs/zh-CN/game/storage.md`
+  - 重写 `docs/zh-CN/game/data.md`
+  - 重写 `docs/zh-CN/game/serialization.md`
+  - 重写 `docs/zh-CN/game/setting.md`
+  - 更新 active tracking 的恢复点、治理结论与下一步
+
+### 当前决策（RP-016）
+
+- 这轮不去扩张到 `Game` tutorial 或 root README，而是把同一子领域里仍残留的旧页一次性收口，形成清晰的 PR 边界
+- `Game` persistence docs surface 统一采用“当前公开入口 -> 最小接入路径 -> 当前边界 -> 继续阅读”的结构，
+  不再维护分散的伪 API 手册页
+- 文档示例只保留可直接映射到当前框架类型、测试行为或已验证 consumer wiring 的内容，避免继续写虚构接线名
+
+### 当前验证（RP-016）
+
+- 模块扫描：
+  - `python3 .agents/skills/gframework-doc-refresh/scripts/scan_module_evidence.py Game`：通过
+- 文档校验：
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/game/data.md`：通过
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/game/storage.md`：通过
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/game/serialization.md`：通过
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/game/setting.md`：通过
+- 构建校验：
+  - `cd docs && bun run build`：通过；仅保留既有 VitePress 大 chunk warning，无构建失败
+- 代码 / 测试证据：
+  - `GFramework.Game/README.md`
+  - `GFramework.Game/Storage/FileStorage.cs`
+  - `GFramework.Game/Storage/ScopedStorage.cs`
+  - `GFramework.Game/Data/DataRepository.cs`
+  - `GFramework.Game/Data/UnifiedSettingsDataRepository.cs`
+  - `GFramework.Game/Data/SaveRepository.cs`
+  - `GFramework.Game/Serializer/JsonSerializer.cs`
+  - `GFramework.Game/Setting/SettingsModel.cs`
+  - `GFramework.Game/Setting/SettingsSystem.cs`
+  - `GFramework.Game.Tests/Data/PersistenceTests.cs`
+  - `GFramework.Game.Tests/Serializer/JsonSerializerTests.cs`
+  - `GFramework.Game.Tests/Setting/SettingsModelTests.cs`
+
+### 下一步
+
+1. 回填 tracking 的最新验证结果，并按仓库规则提交本轮 `Game` persistence docs wave
+2. 若后续分支继续调整 `GFramework.Game` 的 persistence runtime 或 README，优先复核这四个 topic page 与 landing page 的一致性
+
 ### 当前恢复点：RP-015
 
 - 通过 `$gframework-boot` 恢复当前 worktree 后，继续按 `documentation-full-coverage-governance` 的默认下一步执行一次
