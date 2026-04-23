@@ -1,5 +1,33 @@
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-23 — RP-037
+
+### 阶段：subagent 循环首个有效写集（RP-037）
+
+- 启动复核：
+  - 在用户明确要求“循环调用 subagent 执行 `$gframework-boot`”后，先后尝试了多个 worker 边界；
+    前几轮 subagent 只完成 boot 与热点确认，没有形成可验证 patch
+  - 将 subagent 边界进一步压缩到单方法级别后，首个有效切片落在
+    `CqrsHandlerRegistryGeneratorTests.cs` 的 `Generates_Assembly_Level_Cqrs_Handler_Registry()`
+- 决策：
+  - 接受当前 subagent 的最小可验证产出，而不是继续等待单轮覆盖多个 warning 点
+  - 继续用“boot -> 单方法/小批量方法 -> 验证 -> 主线程记录恢复点”的节奏推进，以换取稳定吞吐
+- 实施调整：
+  - 为 `Generates_Assembly_Level_Cqrs_Handler_Registry()` 提取
+    `AssemblyLevelCqrsHandlerRegistrySource` 与 `AssemblyLevelCqrsHandlerRegistryExpected`
+    类级常量
+  - 测试方法改为直接复用上述 fixture 调用 `GeneratorTest<CqrsHandlerRegistryGenerator>.RunAsync(...)`
+  - 不改断言语义、生成文本、方法名或快照/文件名
+- 验证结果：
+  - `dotnet build GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release -t:Rebuild --no-restore --disable-build-servers -m:1 -p:UseSharedCompilation=false -p:RestoreFallbackFolders="" -nologo -clp:"Summary;WarningsOnly"`
+    - 结果：`14 Warning(s)`，`0 Error(s)`；原先位于行号 `337` 的 `MA0051` 已消失
+- 当前结论：
+  - subagent 循环在该仓库里可以产生产出，但目前吞吐偏低；若目标是把分支唯一变更文件数推近 `75`，
+    还需要很多轮独立切片
+- 下一步建议：
+  - 下一轮继续 `CqrsHandlerRegistryGeneratorTests.cs` 前半段方法，优先处理当前剩余的
+    `454`、`536`、`607`、`680`
+
 ## 2026-04-23 — RP-036
 
 ### 阶段：`SchemaConfigGeneratorTests.cs` `MA0051` 收口（RP-036）

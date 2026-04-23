@@ -330,119 +330,119 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                                  """;
 
+    private const string AssemblyLevelCqrsHandlerRegistrySource = """
+                                                                  using System;
+                                                                  using System.Collections.Generic;
+
+                                                                  namespace Microsoft.Extensions.DependencyInjection
+                                                                  {
+                                                                      public interface IServiceCollection { }
+
+                                                                      public static class ServiceCollectionServiceExtensions
+                                                                      {
+                                                                          public static void AddTransient(IServiceCollection services, Type serviceType, Type implementationType) { }
+                                                                      }
+                                                                  }
+
+                                                                  namespace GFramework.Core.Abstractions.Logging
+                                                                  {
+                                                                      public interface ILogger
+                                                                      {
+                                                                          void Debug(string msg);
+                                                                      }
+                                                                  }
+
+                                                                  namespace GFramework.Cqrs.Abstractions.Cqrs
+                                                                  {
+                                                                      public interface IRequest<TResponse> { }
+                                                                      public interface INotification { }
+                                                                      public interface IStreamRequest<TResponse> { }
+
+                                                                      public interface IRequestHandler<in TRequest, TResponse> where TRequest : IRequest<TResponse> { }
+                                                                      public interface INotificationHandler<in TNotification> where TNotification : INotification { }
+                                                                      public interface IStreamRequestHandler<in TRequest, out TResponse> where TRequest : IStreamRequest<TResponse> { }
+                                                                  }
+
+                                                                  namespace GFramework.Cqrs
+                                                                  {
+                                                                      public interface ICqrsHandlerRegistry
+                                                                      {
+                                                                          void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                      }
+
+                                                                      [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
+                                                                      public sealed class CqrsHandlerRegistryAttribute : Attribute
+                                                                      {
+                                                                          public CqrsHandlerRegistryAttribute(Type registryType) { }
+                                                                      }
+
+                                                                      [AttributeUsage(AttributeTargets.Assembly)]
+                                                                      public sealed class CqrsReflectionFallbackAttribute : Attribute
+                                                                      {
+                                                                          public CqrsReflectionFallbackAttribute(params string[] fallbackHandlerTypeNames) { }
+                                                                      }
+                                                                  }
+
+                                                                  namespace TestApp
+                                                                  {
+                                                                      using GFramework.Cqrs.Abstractions.Cqrs;
+
+                                                                      public sealed record PingQuery() : IRequest<string>;
+                                                                      public sealed record DomainEvent() : INotification;
+                                                                      public sealed record NumberStream() : IStreamRequest<int>;
+
+                                                                      public sealed class ZetaNotificationHandler : INotificationHandler<DomainEvent> { }
+                                                                      public sealed class AlphaQueryHandler : IRequestHandler<PingQuery, string> { }
+                                                                      public sealed class StreamHandler : IStreamRequestHandler<NumberStream, int> { }
+                                                                  }
+                                                                  """;
+
+    private const string AssemblyLevelCqrsHandlerRegistryExpected = """
+                                                                    // <auto-generated />
+                                                                    #nullable enable
+
+                                                                    [assembly: global::GFramework.Cqrs.CqrsHandlerRegistryAttribute(typeof(global::GFramework.Generated.Cqrs.__GFrameworkGeneratedCqrsHandlerRegistry))]
+
+                                                                    namespace GFramework.Generated.Cqrs;
+
+                                                                    internal sealed class __GFrameworkGeneratedCqrsHandlerRegistry : global::GFramework.Cqrs.ICqrsHandlerRegistry
+                                                                    {
+                                                                        public void Register(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services, global::GFramework.Core.Abstractions.Logging.ILogger logger)
+                                                                        {
+                                                                            if (services is null)
+                                                                                throw new global::System.ArgumentNullException(nameof(services));
+                                                                            if (logger is null)
+                                                                                throw new global::System.ArgumentNullException(nameof(logger));
+
+                                                                            global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(
+                                                                                services,
+                                                                                typeof(global::GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<global::TestApp.PingQuery, string>),
+                                                                                typeof(global::TestApp.AlphaQueryHandler));
+                                                                            logger.Debug("Registered CQRS handler TestApp.AlphaQueryHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<TestApp.PingQuery, string>.");
+                                                                            global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(
+                                                                                services,
+                                                                                typeof(global::GFramework.Cqrs.Abstractions.Cqrs.IStreamRequestHandler<global::TestApp.NumberStream, int>),
+                                                                                typeof(global::TestApp.StreamHandler));
+                                                                            logger.Debug("Registered CQRS handler TestApp.StreamHandler as GFramework.Cqrs.Abstractions.Cqrs.IStreamRequestHandler<TestApp.NumberStream, int>.");
+                                                                            global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(
+                                                                                services,
+                                                                                typeof(global::GFramework.Cqrs.Abstractions.Cqrs.INotificationHandler<global::TestApp.DomainEvent>),
+                                                                                typeof(global::TestApp.ZetaNotificationHandler));
+                                                                            logger.Debug("Registered CQRS handler TestApp.ZetaNotificationHandler as GFramework.Cqrs.Abstractions.Cqrs.INotificationHandler<TestApp.DomainEvent>.");
+                                                                        }
+                                                                    }
+
+                                                                    """;
+
     /// <summary>
     ///     验证生成器会为当前程序集中的 request、notification 和 stream 处理器生成稳定顺序的注册器。
     /// </summary>
     [Test]
     public async Task Generates_Assembly_Level_Cqrs_Handler_Registry()
     {
-        const string source = """
-                              using System;
-                              using System.Collections.Generic;
-
-                              namespace Microsoft.Extensions.DependencyInjection
-                              {
-                                  public interface IServiceCollection { }
-
-                                  public static class ServiceCollectionServiceExtensions
-                                  {
-                                      public static void AddTransient(IServiceCollection services, Type serviceType, Type implementationType) { }
-                                  }
-                              }
-
-                              namespace GFramework.Core.Abstractions.Logging
-                              {
-                                  public interface ILogger
-                                  {
-                                      void Debug(string msg);
-                                  }
-                              }
-
-                              namespace GFramework.Cqrs.Abstractions.Cqrs
-                              {
-                                  public interface IRequest<TResponse> { }
-                                  public interface INotification { }
-                                  public interface IStreamRequest<TResponse> { }
-
-                                  public interface IRequestHandler<in TRequest, TResponse> where TRequest : IRequest<TResponse> { }
-                                  public interface INotificationHandler<in TNotification> where TNotification : INotification { }
-                                  public interface IStreamRequestHandler<in TRequest, out TResponse> where TRequest : IStreamRequest<TResponse> { }
-                              }
-
-                              namespace GFramework.Cqrs
-                              {
-                                  public interface ICqrsHandlerRegistry
-                                  {
-                                      void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
-                                  }
-
-                                  [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
-                                  public sealed class CqrsHandlerRegistryAttribute : Attribute
-                                  {
-                                      public CqrsHandlerRegistryAttribute(Type registryType) { }
-                                  }
-
-                                  [AttributeUsage(AttributeTargets.Assembly)]
-                                  public sealed class CqrsReflectionFallbackAttribute : Attribute
-                                  {
-                                      public CqrsReflectionFallbackAttribute(params string[] fallbackHandlerTypeNames) { }
-                                  }
-                              }
-
-                              namespace TestApp
-                              {
-                                  using GFramework.Cqrs.Abstractions.Cqrs;
-
-                                  public sealed record PingQuery() : IRequest<string>;
-                                  public sealed record DomainEvent() : INotification;
-                                  public sealed record NumberStream() : IStreamRequest<int>;
-
-                                  public sealed class ZetaNotificationHandler : INotificationHandler<DomainEvent> { }
-                                  public sealed class AlphaQueryHandler : IRequestHandler<PingQuery, string> { }
-                                  public sealed class StreamHandler : IStreamRequestHandler<NumberStream, int> { }
-                              }
-                              """;
-
-        const string expected = """
-                                // <auto-generated />
-                                #nullable enable
-
-                                [assembly: global::GFramework.Cqrs.CqrsHandlerRegistryAttribute(typeof(global::GFramework.Generated.Cqrs.__GFrameworkGeneratedCqrsHandlerRegistry))]
-
-                                namespace GFramework.Generated.Cqrs;
-
-                                internal sealed class __GFrameworkGeneratedCqrsHandlerRegistry : global::GFramework.Cqrs.ICqrsHandlerRegistry
-                                {
-                                    public void Register(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services, global::GFramework.Core.Abstractions.Logging.ILogger logger)
-                                    {
-                                        if (services is null)
-                                            throw new global::System.ArgumentNullException(nameof(services));
-                                        if (logger is null)
-                                            throw new global::System.ArgumentNullException(nameof(logger));
-
-                                        global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(
-                                            services,
-                                            typeof(global::GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<global::TestApp.PingQuery, string>),
-                                            typeof(global::TestApp.AlphaQueryHandler));
-                                        logger.Debug("Registered CQRS handler TestApp.AlphaQueryHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<TestApp.PingQuery, string>.");
-                                        global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(
-                                            services,
-                                            typeof(global::GFramework.Cqrs.Abstractions.Cqrs.IStreamRequestHandler<global::TestApp.NumberStream, int>),
-                                            typeof(global::TestApp.StreamHandler));
-                                        logger.Debug("Registered CQRS handler TestApp.StreamHandler as GFramework.Cqrs.Abstractions.Cqrs.IStreamRequestHandler<TestApp.NumberStream, int>.");
-                                        global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(
-                                            services,
-                                            typeof(global::GFramework.Cqrs.Abstractions.Cqrs.INotificationHandler<global::TestApp.DomainEvent>),
-                                            typeof(global::TestApp.ZetaNotificationHandler));
-                                        logger.Debug("Registered CQRS handler TestApp.ZetaNotificationHandler as GFramework.Cqrs.Abstractions.Cqrs.INotificationHandler<TestApp.DomainEvent>.");
-                                    }
-                                }
-
-                                """;
-
         await GeneratorTest<CqrsHandlerRegistryGenerator>.RunAsync(
-            source,
-            ("CqrsHandlerRegistry.g.cs", expected));
+            AssemblyLevelCqrsHandlerRegistrySource,
+            ("CqrsHandlerRegistry.g.cs", AssemblyLevelCqrsHandlerRegistryExpected));
     }
 
     /// <summary>
