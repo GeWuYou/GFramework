@@ -53,12 +53,14 @@ public class EasyEvents
     ///     添加指定类型的事件到事件字典中
     /// </summary>
     /// <typeparam name="T">事件类型，必须实现IEasyEvent接口且具有无参构造函数</typeparam>
-    /// <exception cref="ArgumentException">当事件类型已存在时抛出</exception>
+    /// <exception cref="ArgumentException">当事件类型已存在时抛出。</exception>
     public void AddEvent<T>() where T : IEvent, new()
     {
         if (!_mTypeEvents.TryAdd(typeof(T), new T()))
         {
+#pragma warning disable MA0015 // Preserve the public ArgumentException contract without inventing a fake parameter name.
             throw new ArgumentException($"Event type {typeof(T).Name} already registered.");
+#pragma warning restore MA0015
         }
     }
 

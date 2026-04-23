@@ -40,6 +40,40 @@ public class LoggingConfigurationTests
     }
 
     [Test]
+    public void Configuration_Collections_Should_Preserve_Public_Concrete_Types()
+    {
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                typeof(LoggingConfiguration).GetProperty(nameof(LoggingConfiguration.Appenders))!.PropertyType,
+                Is.EqualTo(typeof(List<AppenderConfiguration>)));
+            Assert.That(
+                typeof(LoggingConfiguration).GetProperty(nameof(LoggingConfiguration.LoggerLevels))!.PropertyType,
+                Is.EqualTo(typeof(Dictionary<string, LogLevel>)));
+            Assert.That(
+                typeof(FilterConfiguration).GetProperty(nameof(FilterConfiguration.Namespaces))!.PropertyType,
+                Is.EqualTo(typeof(List<string>)));
+            Assert.That(
+                typeof(FilterConfiguration).GetProperty(nameof(FilterConfiguration.Filters))!.PropertyType,
+                Is.EqualTo(typeof(List<FilterConfiguration>)));
+        });
+    }
+
+    [Test]
+    public void LoggerLevels_Should_Remain_Case_Sensitive_By_Default()
+    {
+        var config = new LoggingConfiguration();
+        config.LoggerLevels["GFramework.Core"] = LogLevel.Info;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(config.LoggerLevels.ContainsKey("GFramework.Core"), Is.True);
+            Assert.That(config.LoggerLevels["GFramework.Core"], Is.EqualTo(LogLevel.Info));
+            Assert.That(config.LoggerLevels.ContainsKey("gframework.core"), Is.False);
+        });
+    }
+
+    [Test]
     public void LoadFromJsonString_WithInvalidJson_ShouldThrow()
     {
         var invalidJson = "{ invalid json }";

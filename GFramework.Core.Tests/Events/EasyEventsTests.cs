@@ -99,7 +99,7 @@ public class EasyEventsTests
     }
 
     /// <summary>
-    ///     测试并发场景下AddEvent的行为
+    ///     测试 AddEvent 对重复事件类型保持兼容的参数异常类型。
     /// </summary>
     [Test]
     public void AddEvent_Should_Throw_When_Already_Registered()

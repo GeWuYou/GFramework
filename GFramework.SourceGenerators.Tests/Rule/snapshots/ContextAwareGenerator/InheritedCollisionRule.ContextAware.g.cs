@@ -10,14 +10,14 @@ namespace TestApp;
 /// 生成代码会在实例级缓存首次解析到的上下文，并在未显式配置提供者时回退到 <see cref="GFramework.Core.Architectures.GameContextProvider" />。
 /// 同一生成类型的所有实例共享一个静态上下文提供者；切换或重置提供者只会影响尚未缓存上下文的新实例或未初始化实例，
 /// 已缓存的实例上下文需要通过 <see cref="GFramework.Core.Abstractions.Rule.IContextAware.SetContext(GFramework.Core.Abstractions.Architectures.IArchitectureContext)" /> 显式覆盖。
-/// 与手动继承 <see cref="global::GFramework.Core.Rule.ContextAwareBase" /> 的路径相比，生成实现会使用 <c>_gFrameworkContextAwareSync</c> 协调惰性初始化、provider 切换和显式上下文注入；
+/// 与手动继承 <see cref="global::GFramework.Core.Rule.ContextAwareBase" /> 的路径相比，生成实现会使用 <c>_gFrameworkContextAwareSync1</c> 协调惰性初始化、provider 切换和显式上下文注入；
 /// <see cref="global::GFramework.Core.Rule.ContextAwareBase" /> 则保持无锁的实例级缓存语义，更适合已经由调用方线程模型保证串行访问的简单场景。
 /// </remarks>
-partial class MyRule : global::GFramework.Core.Abstractions.Rule.IContextAware
+partial class InheritedCollisionRule : global::GFramework.Core.Abstractions.Rule.IContextAware
 {
-    private global::GFramework.Core.Abstractions.Architectures.IArchitectureContext? _gFrameworkContextAwareContext;
-    private static global::GFramework.Core.Abstractions.Architectures.IArchitectureContextProvider? _gFrameworkContextAwareProvider;
-    private static readonly object _gFrameworkContextAwareSync = new();
+    private global::GFramework.Core.Abstractions.Architectures.IArchitectureContext? _gFrameworkContextAwareContext1;
+    private static global::GFramework.Core.Abstractions.Architectures.IArchitectureContextProvider? _gFrameworkContextAwareProvider1;
+    private static readonly object _gFrameworkContextAwareSync1 = new();
 
     /// <summary>
     /// 获取当前实例绑定的架构上下文。
@@ -27,7 +27,7 @@ partial class MyRule : global::GFramework.Core.Abstractions.Rule.IContextAware
     /// 当静态提供者尚未配置时，生成代码会回退到 <see cref="GFramework.Core.Architectures.GameContextProvider" />。
     /// 一旦某个实例成功缓存上下文，后续 <see cref="SetContextProvider(GFramework.Core.Abstractions.Architectures.IArchitectureContextProvider)" />
     /// 或 <see cref="ResetContextProvider" /> 不会自动清除此缓存；如需覆盖，请显式调用 <c>IContextAware.SetContext(...)</c>。
-    /// 当前实现还假设 <see cref="GFramework.Core.Abstractions.Architectures.IArchitectureContextProvider.GetContext" /> 可在持有 <c>_gFrameworkContextAwareSync</c> 时安全执行；
+    /// 当前实现还假设 <see cref="GFramework.Core.Abstractions.Architectures.IArchitectureContextProvider.GetContext" /> 可在持有 <c>_gFrameworkContextAwareSync1</c> 时安全执行；
     /// 自定义 provider 不应在该调用链内重新进入当前类型的 provider 配置 API，且应避免引入与外部全局锁相互等待的锁顺序。
     /// </remarks>
     protected global::GFramework.Core.Abstractions.Architectures.IArchitectureContext Context
@@ -35,12 +35,12 @@ partial class MyRule : global::GFramework.Core.Abstractions.Rule.IContextAware
         get
         {
             // 在同一个同步域内协调懒加载与 provider 切换，避免读取到被并发重置的空提供者。
-            // provider 的 GetContext() 会在持有 _gFrameworkContextAwareSync 时执行；自定义 provider 必须避免在该调用链内回调 SetContextProvider/ResetContextProvider 或形成反向锁顺序。
-            lock (_gFrameworkContextAwareSync)
+            // provider 的 GetContext() 会在持有 _gFrameworkContextAwareSync1 时执行；自定义 provider 必须避免在该调用链内回调 SetContextProvider/ResetContextProvider 或形成反向锁顺序。
+            lock (_gFrameworkContextAwareSync1)
             {
-                _gFrameworkContextAwareProvider ??= new global::GFramework.Core.Architectures.GameContextProvider();
-                _gFrameworkContextAwareContext ??= _gFrameworkContextAwareProvider.GetContext();
-                return _gFrameworkContextAwareContext;
+                _gFrameworkContextAwareProvider1 ??= new global::GFramework.Core.Architectures.GameContextProvider();
+                _gFrameworkContextAwareContext1 ??= _gFrameworkContextAwareProvider1.GetContext();
+                return _gFrameworkContextAwareContext1;
             }
         }
     }
@@ -58,9 +58,9 @@ partial class MyRule : global::GFramework.Core.Abstractions.Rule.IContextAware
     public static void SetContextProvider(global::GFramework.Core.Abstractions.Architectures.IArchitectureContextProvider provider)
     {
         global::System.ArgumentNullException.ThrowIfNull(provider);
-        lock (_gFrameworkContextAwareSync)
+        lock (_gFrameworkContextAwareSync1)
         {
-            _gFrameworkContextAwareProvider = provider;
+            _gFrameworkContextAwareProvider1 = provider;
         }
     }
 
@@ -74,18 +74,18 @@ partial class MyRule : global::GFramework.Core.Abstractions.Rule.IContextAware
     /// </remarks>
     public static void ResetContextProvider()
     {
-        lock (_gFrameworkContextAwareSync)
+        lock (_gFrameworkContextAwareSync1)
         {
-            _gFrameworkContextAwareProvider = null;
+            _gFrameworkContextAwareProvider1 = null;
         }
     }
 
     void global::GFramework.Core.Abstractions.Rule.IContextAware.SetContext(global::GFramework.Core.Abstractions.Architectures.IArchitectureContext context)
     {
         // 与 Context getter 共享同一同步协议，避免显式注入被并发懒加载覆盖。
-        lock (_gFrameworkContextAwareSync)
+        lock (_gFrameworkContextAwareSync1)
         {
-            _gFrameworkContextAwareContext = context;
+            _gFrameworkContextAwareContext1 = context;
         }
     }
 

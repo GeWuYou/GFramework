@@ -151,4 +151,15 @@ public static class ConfigSchemaDiagnostics
         SourceGeneratorsConfigCategory,
         DiagnosticSeverity.Error,
         true);
+
+    /// <summary>
+    ///     schema 字段名在标识符归一化后发生冲突。
+    /// </summary>
+    public static readonly DiagnosticDescriptor DuplicateGeneratedIdentifier = new(
+        "GF_ConfigSchema_014",
+        "Config schema property names collide after C# identifier normalization",
+        "Property '{1}' in schema file '{0}' uses schema key '{2}', which generates duplicate C# identifier '{3}' already produced by schema key '{4}'",
+        SourceGeneratorsConfigCategory,
+        DiagnosticSeverity.Error,
+        true);
 }

@@ -1376,6 +1376,197 @@ public class CqrsHandlerRegistryGeneratorTests
     }
 
     /// <summary>
+    ///     验证 handler 合同里出现未解析错误类型时，生成器会改为运行时精确查找该类型，
+    ///     而不会把无效类型名直接写进生成代码中的 <c>typeof(...)</c>。
+    /// </summary>
+    [Test]
+    public void Emits_Runtime_Type_Lookup_When_Handler_Contract_Contains_Unresolved_Error_Types()
+    {
+        const string source = """
+                              using System;
+
+                              namespace Microsoft.Extensions.DependencyInjection
+                              {
+                                  public interface IServiceCollection { }
+
+                                  public static class ServiceCollectionServiceExtensions
+                                  {
+                                      public static void AddTransient(IServiceCollection services, Type serviceType, Type implementationType) { }
+                                  }
+                              }
+
+                              namespace GFramework.Core.Abstractions.Logging
+                              {
+                                  public interface ILogger
+                                  {
+                                      void Debug(string msg);
+                                  }
+                              }
+
+                              namespace GFramework.Cqrs.Abstractions.Cqrs
+                              {
+                                  public interface IRequest<TResponse> { }
+                                  public interface INotification { }
+                                  public interface IStreamRequest<TResponse> { }
+
+                                  public interface IRequestHandler<in TRequest, TResponse> where TRequest : IRequest<TResponse> { }
+                                  public interface INotificationHandler<in TNotification> where TNotification : INotification { }
+                                  public interface IStreamRequestHandler<in TRequest, out TResponse> where TRequest : IStreamRequest<TResponse> { }
+                              }
+
+                              namespace GFramework.Cqrs
+                              {
+                                  public interface ICqrsHandlerRegistry
+                                  {
+                                      void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                  }
+
+                                  [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
+                                  public sealed class CqrsHandlerRegistryAttribute : Attribute
+                                  {
+                                      public CqrsHandlerRegistryAttribute(Type registryType) { }
+                                  }
+
+                                  [AttributeUsage(AttributeTargets.Assembly)]
+                                  public sealed class CqrsReflectionFallbackAttribute : Attribute
+                                  {
+                                      public CqrsReflectionFallbackAttribute(params string[] fallbackHandlerTypeNames) { }
+                                  }
+                              }
+
+                              namespace TestApp
+                              {
+                                  using GFramework.Cqrs.Abstractions.Cqrs;
+
+                                  public sealed record BrokenRequest() : IRequest<MissingResponse>;
+
+                                  public sealed class BrokenHandler : IRequestHandler<BrokenRequest, MissingResponse>
+                                  {
+                                  }
+                              }
+                              """;
+
+        var execution = ExecuteGenerator(source);
+        var inputCompilationErrors = execution.InputCompilationDiagnostics
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ToArray();
+        var generatedCompilationErrors = execution.GeneratedCompilationDiagnostics
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ToArray();
+        var generatorErrors = execution.GeneratorDiagnostics
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ToArray();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(inputCompilationErrors.Select(static diagnostic => diagnostic.Id), Does.Contain("CS0246"));
+            Assert.That(generatedCompilationErrors, Is.Empty);
+            Assert.That(generatorErrors, Is.Empty);
+            Assert.That(execution.GeneratedSources, Has.Length.EqualTo(1));
+            Assert.That(execution.GeneratedSources[0].filename, Is.EqualTo("CqrsHandlerRegistry.g.cs"));
+            var generatedSource = execution.GeneratedSources[0].content;
+            Assert.That(
+                generatedSource,
+                Does.Contain("registryAssembly.GetType(\"MissingResponse\", throwOnError: false, ignoreCase: false);"));
+            Assert.That(
+                generatedSource,
+                Does.Contain("internal sealed class __GFrameworkGeneratedCqrsHandlerRegistry"));
+            Assert.That(generatedSource, Does.Not.Contain("typeof(MissingResponse)"));
+            Assert.That(generatedSource, Does.Not.Contain("CqrsReflectionFallbackAttribute("));
+        });
+    }
+
+    /// <summary>
+    ///     验证 <see langword="dynamic" /> 响应类型会在生成阶段归一化为 <see cref="System.Object" />，
+    ///     避免注册器发射非法的 <c>typeof(dynamic)</c>。
+    /// </summary>
+    [Test]
+    public void Emits_Object_Type_Reference_When_Handler_Response_Uses_Dynamic()
+    {
+        const string source = """
+                              using System;
+
+                              namespace Microsoft.Extensions.DependencyInjection
+                              {
+                                  public interface IServiceCollection { }
+
+                                  public static class ServiceCollectionServiceExtensions
+                                  {
+                                      public static void AddTransient(IServiceCollection services, Type serviceType, Type implementationType) { }
+                                  }
+                              }
+
+                              namespace GFramework.Core.Abstractions.Logging
+                              {
+                                  public interface ILogger
+                                  {
+                                      void Debug(string msg);
+                                  }
+                              }
+
+                              namespace GFramework.Cqrs.Abstractions.Cqrs
+                              {
+                                  public interface IRequest<TResponse> { }
+                                  public interface INotification { }
+                                  public interface IStreamRequest<TResponse> { }
+
+                                  public interface IRequestHandler<in TRequest, TResponse> where TRequest : IRequest<TResponse> { }
+                                  public interface INotificationHandler<in TNotification> where TNotification : INotification { }
+                                  public interface IStreamRequestHandler<in TRequest, out TResponse> where TRequest : IStreamRequest<TResponse> { }
+                              }
+
+                              namespace GFramework.Cqrs
+                              {
+                                  public interface ICqrsHandlerRegistry
+                                  {
+                                      void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                  }
+
+                                  [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
+                                  public sealed class CqrsHandlerRegistryAttribute : Attribute
+                                  {
+                                      public CqrsHandlerRegistryAttribute(Type registryType) { }
+                                  }
+                              }
+
+                              namespace TestApp
+                              {
+                                  using GFramework.Cqrs.Abstractions.Cqrs;
+
+                                  public sealed record DynamicRequest() : IRequest<dynamic>;
+
+                                  public sealed class DynamicHandler : IRequestHandler<DynamicRequest, dynamic>
+                                  {
+                                  }
+                              }
+                              """;
+
+        var execution = ExecuteGenerator(source);
+        var inputCompilationErrors = execution.InputCompilationDiagnostics
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ToArray();
+        var generatedCompilationErrors = execution.GeneratedCompilationDiagnostics
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ToArray();
+        var generatorErrors = execution.GeneratorDiagnostics
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ToArray();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(inputCompilationErrors.Select(static diagnostic => diagnostic.Id), Does.Contain("CS1966"));
+            Assert.That(generatedCompilationErrors, Is.Empty);
+            Assert.That(generatorErrors, Is.Empty);
+            Assert.That(execution.GeneratedSources, Has.Length.EqualTo(1));
+            Assert.That(execution.GeneratedSources[0].filename, Is.EqualTo("CqrsHandlerRegistry.g.cs"));
+            var generatedSource = execution.GeneratedSources[0].content;
+            Assert.That(generatedSource, Does.Contain("typeof(global::System.Object)"));
+            Assert.That(generatedSource, Does.Not.Contain("typeof(dynamic)"));
+            Assert.That(generatedSource, Does.Contain("internal sealed class __GFrameworkGeneratedCqrsHandlerRegistry"));
+        });
+    }
+
+    /// <summary>
     ///     验证当 fallback metadata 仍然必需且 runtime 提供了承载契约时，
     ///     生成器会继续产出注册器并发射程序集级 <c>CqrsReflectionFallbackAttribute</c>。
     /// </summary>

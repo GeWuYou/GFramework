@@ -41,7 +41,7 @@ public sealed class CoroutineScheduler(
 
     private readonly Dictionary<CoroutineHandle, CoroutineCompletionStatus> _completionStatuses = new();
     private readonly Queue<CoroutineHandle> _completionStatusOrder = new();
-    private readonly Dictionary<string, HashSet<CoroutineHandle>> _grouped = new();
+    private readonly Dictionary<string, HashSet<CoroutineHandle>> _grouped = new(StringComparer.Ordinal);
     private readonly ILogger _logger = LoggerFactoryResolver.Provider.CreateLogger(nameof(CoroutineScheduler));
     private readonly Dictionary<CoroutineHandle, CoroutineMetadata> _metadata = new();
     private readonly ConcurrentQueue<CoroutineHandle> _pendingKills = new();
@@ -50,7 +50,7 @@ public sealed class CoroutineScheduler(
         throw new ArgumentNullException(nameof(timeSource));
 
     private readonly CoroutineStatistics? _statistics = enableStatistics ? new CoroutineStatistics() : null;
-    private readonly Dictionary<string, HashSet<CoroutineHandle>> _tagged = new();
+    private readonly Dictionary<string, HashSet<CoroutineHandle>> _tagged = new(StringComparer.Ordinal);
     private readonly ITimeSource _timeSource = timeSource ?? throw new ArgumentNullException(nameof(timeSource));
     private readonly Dictionary<CoroutineHandle, HashSet<CoroutineHandle>> _waiting = new();
     private int _nextSlot;

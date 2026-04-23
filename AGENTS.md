@@ -31,6 +31,12 @@ All AI agents and contributors must follow these rules when writing, reviewing, 
 - Every completed task MUST pass at least one build validation before it is considered done.
 - If the task changes multiple projects or shared abstractions, prefer a solution-level or affected-project
   `dotnet build ... -c Release`; otherwise use the smallest build command that still proves the result compiles.
+- When a task adds a feature or modifies code, contributors MUST run a Release build for every directly affected
+  module/project instead of relying on an unrelated project or solution slice that does not actually compile the touched
+  code.
+- Warnings reported by those affected-module builds are part of the task scope. Contributors MUST resolve the touched
+  module's build warnings in the same change, or stop and explicitly report the exact warning IDs and blocker instead of
+  deferring them to a separate long-lived cleanup branch by default.
 - If the required build passes and there are task-related staged or unstaged changes, contributors MUST create a Git
   commit automatically instead of leaving the task uncommitted, unless the user explicitly says not to commit.
 - Commit messages MUST use Conventional Commits format: `<type>(<scope>): <summary>`.

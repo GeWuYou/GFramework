@@ -236,7 +236,7 @@ public sealed class GeneratedConfigRegistrationOptions
     public global::System.Predicate<GeneratedConfigCatalog.TableMetadata>? TableFilter { get; init; }
 
     /// <summary>
-    ///     Gets or sets the optional key comparer forwarded to MonsterConfigBindings.RegisterMonsterTable(global::GFramework.Game.Config.YamlConfigLoader, global::System.Collections.Generic.IEqualityComparer<int>?) when aggregate registration runs.
+    ///     Gets or sets the optional key comparer forwarded to MonsterConfigBindings.RegisterMonsterTable using <c>global::System.Collections.Generic.IEqualityComparer&lt;int&gt;?</c> when aggregate registration runs.
     /// </summary>
     public global::System.Collections.Generic.IEqualityComparer<int>? MonsterComparer { get; init; }
 }

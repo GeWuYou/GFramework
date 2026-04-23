@@ -95,148 +95,15 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         AdditionalText file,
         CancellationToken cancellationToken)
     {
-        SourceText? text;
-        try
+        if (!TryReadSchemaText(file, cancellationToken, out var text, out var diagnostic))
         {
-            text = file.GetText(cancellationToken);
-        }
-        catch (Exception exception)
-        {
-            return SchemaParseResult.FromDiagnostic(
-                Diagnostic.Create(
-                    ConfigSchemaDiagnostics.InvalidSchemaJson,
-                    CreateFileLocation(file.Path),
-                    Path.GetFileName(file.Path),
-                    exception.Message));
-        }
-
-        if (text is null)
-        {
-            return SchemaParseResult.FromDiagnostic(
-                Diagnostic.Create(
-                    ConfigSchemaDiagnostics.InvalidSchemaJson,
-                    CreateFileLocation(file.Path),
-                    Path.GetFileName(file.Path),
-                    "File content could not be read."));
+            return SchemaParseResult.FromDiagnostic(diagnostic!);
         }
 
         try
         {
-            using var document = JsonDocument.Parse(text.ToString());
-            var root = document.RootElement;
-            if (!root.TryGetProperty("type", out var rootTypeElement) ||
-                !string.Equals(rootTypeElement.GetString(), "object", StringComparison.Ordinal))
-            {
-                return SchemaParseResult.FromDiagnostic(
-                    Diagnostic.Create(
-                        ConfigSchemaDiagnostics.RootObjectSchemaRequired,
-                        CreateFileLocation(file.Path),
-                        Path.GetFileName(file.Path)));
-            }
-
-            if (!TryValidateStringFormatMetadataRecursively(
-                    file.Path,
-                    "<root>",
-                    root,
-                    out var rootFormatDiagnostic))
-            {
-                return SchemaParseResult.FromDiagnostic(rootFormatDiagnostic!);
-            }
-
-            if (!TryValidateDependentRequiredMetadataRecursively(
-                    file.Path,
-                    "<root>",
-                    root,
-                    out var dependentRequiredDiagnostic))
-            {
-                return SchemaParseResult.FromDiagnostic(dependentRequiredDiagnostic!);
-            }
-
-            if (!TryValidateDependentSchemasMetadataRecursively(
-                    file.Path,
-                    "<root>",
-                    root,
-                    out var dependentSchemasDiagnostic))
-            {
-                return SchemaParseResult.FromDiagnostic(dependentSchemasDiagnostic!);
-            }
-
-            if (!TryValidateAllOfMetadataRecursively(
-                    file.Path,
-                    "<root>",
-                    root,
-                    out var allOfDiagnostic))
-            {
-                return SchemaParseResult.FromDiagnostic(allOfDiagnostic!);
-            }
-
-            if (!TryValidateConditionalSchemasMetadataRecursively(
-                    file.Path,
-                    "<root>",
-                    root,
-                    out var conditionalDiagnostic))
-            {
-                return SchemaParseResult.FromDiagnostic(conditionalDiagnostic!);
-            }
-
-            var entityName = ToPascalCase(GetSchemaBaseName(file.Path));
-            var rootObject = ParseObjectSpec(
-                file.Path,
-                root,
-                "<root>",
-                $"{entityName}Config",
-                isRoot: true);
-            if (rootObject.Diagnostic is not null)
-            {
-                return SchemaParseResult.FromDiagnostic(rootObject.Diagnostic);
-            }
-
-            var schemaObject = rootObject.Object!;
-            var idProperty = schemaObject.Properties.FirstOrDefault(static property =>
-                string.Equals(property.SchemaName, "id", StringComparison.OrdinalIgnoreCase));
-            if (idProperty is null || !idProperty.IsRequired)
-            {
-                return SchemaParseResult.FromDiagnostic(
-                    Diagnostic.Create(
-                        ConfigSchemaDiagnostics.IdPropertyRequired,
-                        CreateFileLocation(file.Path),
-                        Path.GetFileName(file.Path)));
-            }
-
-            if (idProperty.TypeSpec.SchemaType != "integer" &&
-                idProperty.TypeSpec.SchemaType != "string")
-            {
-                return SchemaParseResult.FromDiagnostic(
-                    Diagnostic.Create(
-                        ConfigSchemaDiagnostics.UnsupportedKeyType,
-                        CreateFileLocation(file.Path),
-                        Path.GetFileName(file.Path),
-                        idProperty.TypeSpec.SchemaType));
-            }
-
-            var schemaBaseName = GetSchemaBaseName(file.Path);
-            var configRelativePath = ResolveConfigRelativePath(file.Path, root, schemaBaseName);
-            if (configRelativePath.Diagnostic is not null)
-            {
-                return SchemaParseResult.FromDiagnostic(configRelativePath.Diagnostic);
-            }
-
-            var schema = new SchemaFileSpec(
-                Path.GetFileName(file.Path),
-                entityName,
-                schemaObject.ClassName,
-                $"{entityName}Table",
-                GeneratedNamespace,
-                idProperty.TypeSpec.ClrType.TrimEnd('?'),
-                idProperty.PropertyName,
-                schemaBaseName,
-                configRelativePath.Path!,
-                GetSchemaRelativePath(file.Path),
-                TryGetMetadataString(root, "title"),
-                TryGetMetadataString(root, "description"),
-                schemaObject);
-
-            return SchemaParseResult.FromSchema(schema);
+            using var document = JsonDocument.Parse(text!.ToString());
+            return ParseSchemaRoot(file.Path, document.RootElement);
         }
         catch (JsonException exception)
         {
@@ -247,6 +114,202 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                     Path.GetFileName(file.Path),
                     exception.Message));
         }
+    }
+
+    /// <summary>
+    ///     Reads an AdditionalFiles schema text while converting all IO failures into generator diagnostics.
+    /// </summary>
+    /// <param name="file">AdditionalFiles entry supplied by Roslyn.</param>
+    /// <param name="cancellationToken">Cancellation token forwarded by the incremental generator pipeline.</param>
+    /// <param name="text">Read source text when the file can be loaded.</param>
+    /// <param name="diagnostic">Diagnostic describing the read failure.</param>
+    /// <returns><see langword="true" /> when schema text was read successfully; otherwise <see langword="false" />.</returns>
+    private static bool TryReadSchemaText(
+        AdditionalText file,
+        CancellationToken cancellationToken,
+        out SourceText? text,
+        out Diagnostic? diagnostic)
+    {
+        try
+        {
+            text = file.GetText(cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            text = null;
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidSchemaJson,
+                CreateFileLocation(file.Path),
+                Path.GetFileName(file.Path),
+                exception.Message);
+            return false;
+        }
+
+        if (text is null)
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidSchemaJson,
+                CreateFileLocation(file.Path),
+                Path.GetFileName(file.Path),
+                "File content could not be read.");
+            return false;
+        }
+
+        diagnostic = null;
+        return true;
+    }
+
+    /// <summary>
+    ///     Parses a JSON schema root after JSON syntax has already been validated.
+    /// </summary>
+    /// <param name="filePath">Schema file path used for diagnostics and generated metadata.</param>
+    /// <param name="root">Parsed root JSON element.</param>
+    /// <returns>Parsed schema model or the first schema diagnostic encountered.</returns>
+    private static SchemaParseResult ParseSchemaRoot(string filePath, JsonElement root)
+    {
+        if (!TryValidateSchemaRoot(filePath, root, out var diagnostic))
+        {
+            return SchemaParseResult.FromDiagnostic(diagnostic!);
+        }
+
+        var schemaBaseName = GetSchemaBaseName(filePath);
+        if (!TryBuildRootTypeIdentifiers(filePath, schemaBaseName, out var entityName, out var rootClassName, out diagnostic))
+        {
+            return SchemaParseResult.FromDiagnostic(diagnostic!);
+        }
+
+        var rootObject = ParseObjectSpec(filePath, root, "<root>", rootClassName, isRoot: true);
+        if (rootObject.Diagnostic is not null)
+        {
+            return SchemaParseResult.FromDiagnostic(rootObject.Diagnostic);
+        }
+
+        var schemaObject = rootObject.Object!;
+        var idProperty = FindValidIdProperty(filePath, schemaObject, out diagnostic);
+        if (diagnostic is not null)
+        {
+            return SchemaParseResult.FromDiagnostic(diagnostic);
+        }
+
+        var configRelativePath = ResolveConfigRelativePath(filePath, root, schemaBaseName);
+        if (configRelativePath.Diagnostic is not null)
+        {
+            return SchemaParseResult.FromDiagnostic(configRelativePath.Diagnostic);
+        }
+
+        return SchemaParseResult.FromSchema(CreateSchemaFileSpec(
+            filePath,
+            root,
+            entityName,
+            schemaObject,
+            idProperty!,
+            schemaBaseName,
+            configRelativePath.Path!));
+    }
+
+    /// <summary>
+    ///     Validates schema-level contracts that must hold before object and property models are built.
+    /// </summary>
+    /// <param name="filePath">Schema file path used for diagnostics.</param>
+    /// <param name="root">Root JSON schema element.</param>
+    /// <param name="diagnostic">First validation diagnostic, if any.</param>
+    /// <returns><see langword="true" /> when the root can be parsed as a config schema.</returns>
+    private static bool TryValidateSchemaRoot(string filePath, JsonElement root, out Diagnostic? diagnostic)
+    {
+        if (!root.TryGetProperty("type", out var rootTypeElement) ||
+            rootTypeElement.ValueKind != JsonValueKind.String ||
+            !IsSchemaType(rootTypeElement.GetString() ?? string.Empty, "object"))
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.RootObjectSchemaRequired,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath));
+            return false;
+        }
+
+        return TryValidateStringFormatMetadataRecursively(filePath, "<root>", root, out diagnostic) &&
+            TryValidateDependentRequiredMetadataRecursively(filePath, "<root>", root, out diagnostic) &&
+            TryValidateDependentSchemasMetadataRecursively(filePath, "<root>", root, out diagnostic) &&
+            TryValidateAllOfMetadataRecursively(filePath, "<root>", root, out diagnostic) &&
+            TryValidateConditionalSchemasMetadataRecursively(filePath, "<root>", root, out diagnostic);
+    }
+
+    /// <summary>
+    ///     Finds and validates the required root <c>id</c> property that becomes the generated table key.
+    /// </summary>
+    /// <param name="filePath">Schema file path used for diagnostics.</param>
+    /// <param name="schemaObject">Parsed root object model.</param>
+    /// <param name="diagnostic">Diagnostic explaining why the key is invalid.</param>
+    /// <returns>The key property when it satisfies the generator contract; otherwise null.</returns>
+    private static SchemaPropertySpec? FindValidIdProperty(
+        string filePath,
+        SchemaObjectSpec schemaObject,
+        out Diagnostic? diagnostic)
+    {
+        var idProperty = schemaObject.Properties.FirstOrDefault(static property =>
+            string.Equals(property.SchemaName, "id", StringComparison.OrdinalIgnoreCase));
+        if (idProperty is null || !idProperty.IsRequired)
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.IdPropertyRequired,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath));
+            return null;
+        }
+
+        if (!IsSchemaType(idProperty.TypeSpec.SchemaType, "integer") &&
+            !IsSchemaType(idProperty.TypeSpec.SchemaType, "string"))
+        {
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.UnsupportedKeyType,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                idProperty.TypeSpec.SchemaType);
+            return null;
+        }
+
+        diagnostic = null;
+        return idProperty;
+    }
+
+    /// <summary>
+    ///     Creates the generator-level schema model from validated root metadata and the parsed object tree.
+    /// </summary>
+    /// <param name="filePath">Schema file path.</param>
+    /// <param name="root">Root JSON element used for optional title and description metadata.</param>
+    /// <param name="entityName">Generated entity name derived from the schema file name.</param>
+    /// <param name="schemaObject">Parsed root object model.</param>
+    /// <param name="idProperty">Validated required key property.</param>
+    /// <param name="schemaBaseName">Normalized schema base name.</param>
+    /// <param name="configRelativePath">Resolved config-relative directory path.</param>
+    /// <returns>Completed schema file model used by source emission.</returns>
+    private static SchemaFileSpec CreateSchemaFileSpec(
+        string filePath,
+        JsonElement root,
+        string entityName,
+        SchemaObjectSpec schemaObject,
+        SchemaPropertySpec idProperty,
+        string schemaBaseName,
+        string configRelativePath)
+    {
+        return new SchemaFileSpec(
+            Path.GetFileName(filePath),
+            entityName,
+            schemaObject.ClassName,
+            $"{entityName}Table",
+            GeneratedNamespace,
+            idProperty.TypeSpec.ClrType.TrimEnd('?'),
+            idProperty.PropertyName,
+            schemaBaseName,
+            configRelativePath,
+            GetSchemaRelativePath(filePath),
+            TryGetMetadataString(root, "title"),
+            TryGetMetadataString(root, "description"),
+            schemaObject);
     }
 
     /// <summary>
@@ -293,20 +356,16 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         }
 
         var properties = new List<SchemaPropertySpec>();
-        foreach (var property in propertiesElement.EnumerateObject())
-        {
-            var parsedProperty = ParseProperty(
+        if (!TryParseObjectProperties(
                 filePath,
-                property,
-                requiredProperties.Contains(property.Name),
-                CombinePath(displayPath, property.Name),
-                isDirectChildOfRoot: isRoot);
-            if (parsedProperty.Diagnostic is not null)
-            {
-                return ParsedObjectResult.FromDiagnostic(parsedProperty.Diagnostic);
-            }
-
-            properties.Add(parsedProperty.Property!);
+                displayPath,
+                isRoot,
+                propertiesElement,
+                requiredProperties,
+                properties,
+                out var propertyDiagnostic))
+        {
+            return ParsedObjectResult.FromDiagnostic(propertyDiagnostic!);
         }
 
         return ParsedObjectResult.FromObject(new SchemaObjectSpec(
@@ -316,6 +375,60 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             TryGetMetadataString(element, "description"),
             TryBuildConstraintDocumentation(element, "object"),
             properties));
+    }
+
+    /// <summary>
+    ///     解析对象 schema 的直接子属性，并在进入代码发射前阻止归一化后的属性名冲突落入生成输出。
+    /// </summary>
+    /// <param name="filePath">Schema 文件路径。</param>
+    /// <param name="displayPath">当前对象的逻辑路径。</param>
+    /// <param name="isRoot">当前对象是否为根对象。</param>
+    /// <param name="propertiesElement">对象的 <c>properties</c> JSON 节点。</param>
+    /// <param name="requiredProperties">当前对象声明的必填字段集合。</param>
+    /// <param name="properties">成功时返回的已解析属性列表。</param>
+    /// <param name="diagnostic">解析失败时返回的首个诊断。</param>
+    /// <returns>当所有属性都可安全生成时返回 <see langword="true" />。</returns>
+    private static bool TryParseObjectProperties(
+        string filePath,
+        string displayPath,
+        bool isRoot,
+        JsonElement propertiesElement,
+        ISet<string> requiredProperties,
+        ICollection<SchemaPropertySpec> properties,
+        out Diagnostic? diagnostic)
+    {
+        var schemaKeyByGeneratedPropertyName = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var property in propertiesElement.EnumerateObject())
+        {
+            var propertyDisplayPath = CombinePath(displayPath, property.Name);
+            var parsedProperty = ParseProperty(
+                filePath,
+                property,
+                requiredProperties.Contains(property.Name),
+                propertyDisplayPath,
+                isDirectChildOfRoot: isRoot);
+            if (parsedProperty.Diagnostic is not null)
+            {
+                diagnostic = parsedProperty.Diagnostic;
+                return false;
+            }
+
+            if (!TryRegisterGeneratedPropertyName(
+                    filePath,
+                    propertyDisplayPath,
+                    property.Name,
+                    parsedProperty.Property!.PropertyName,
+                    schemaKeyByGeneratedPropertyName,
+                    out diagnostic))
+            {
+                return false;
+            }
+
+            properties.Add(parsedProperty.Property!);
+        }
+
+        diagnostic = null;
+        return true;
     }
 
     /// <summary>
@@ -347,6 +460,45 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         }
 
         var schemaType = typeElement.GetString() ?? string.Empty;
+        if (!TryCreatePropertyParseContext(
+                filePath,
+                property,
+                isRequired,
+                displayPath,
+                isDirectChildOfRoot,
+                schemaType,
+                out var context,
+                out var diagnostic))
+        {
+            return ParsedPropertyResult.FromDiagnostic(diagnostic!);
+        }
+
+        return CreatePropertyBySchemaType(filePath, property, schemaType, context!);
+    }
+
+    /// <summary>
+    ///     Collects shared property metadata and validates cross-cutting metadata before type-specific parsing begins.
+    /// </summary>
+    /// <param name="filePath">Schema file path used for diagnostics.</param>
+    /// <param name="property">Schema property JSON node.</param>
+    /// <param name="isRequired">Whether the property is required.</param>
+    /// <param name="displayPath">Logical schema path.</param>
+    /// <param name="isDirectChildOfRoot">Whether the property is a direct child of the schema root.</param>
+    /// <param name="schemaType">Validated schema type keyword.</param>
+    /// <param name="context">Shared parsing metadata when validation succeeds.</param>
+    /// <param name="diagnostic">First metadata validation diagnostic.</param>
+    /// <returns><see langword="true" /> when the property can continue to type-specific parsing.</returns>
+    private static bool TryCreatePropertyParseContext(
+        string filePath,
+        JsonProperty property,
+        bool isRequired,
+        string displayPath,
+        bool isDirectChildOfRoot,
+        string schemaType,
+        out PropertyParseContext? context,
+        out Diagnostic? diagnostic)
+    {
+        context = null;
         var title = TryGetMetadataString(property.Value, "title");
         var description = TryGetMetadataString(property.Value, "description");
         var refTableName = TryGetMetadataString(property.Value, "x-gframework-ref-table");
@@ -357,26 +509,27 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                 schemaType,
                 out var formatDiagnostic))
         {
-            return ParsedPropertyResult.FromDiagnostic(formatDiagnostic!);
+            diagnostic = formatDiagnostic;
+            return false;
         }
 
         var indexedLookupMetadata = TryGetMetadataBoolean(property.Value, LookupIndexMetadataKey);
         if (indexedLookupMetadata.Diagnostic is not null)
         {
-            return ParsedPropertyResult.FromDiagnostic(
-                Diagnostic.Create(
-                    ConfigSchemaDiagnostics.InvalidLookupIndexMetadata,
-                    CreateFileLocation(filePath),
-                    Path.GetFileName(filePath),
-                    displayPath,
-                    LookupIndexMetadataKey,
-                    indexedLookupMetadata.Diagnostic!));
+            diagnostic = Diagnostic.Create(
+                ConfigSchemaDiagnostics.InvalidLookupIndexMetadata,
+                CreateFileLocation(filePath),
+                Path.GetFileName(filePath),
+                displayPath,
+                LookupIndexMetadataKey,
+                indexedLookupMetadata.Diagnostic!);
+            return false;
         }
 
         var isIndexedLookup = indexedLookupMetadata.Value ?? false;
-        if (!TryBuildPropertyIdentifier(filePath, displayPath, property.Name, out var propertyName, out var diagnostic))
+        if (!TryBuildPropertyIdentifier(filePath, displayPath, property.Name, out var propertyName, out diagnostic))
         {
-            return ParsedPropertyResult.FromDiagnostic(diagnostic!);
+            return false;
         }
 
         if (isIndexedLookup &&
@@ -389,154 +542,147 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                 refTableName,
                 out diagnostic))
         {
-            return ParsedPropertyResult.FromDiagnostic(diagnostic!);
+            return false;
         }
 
-        switch (schemaType)
+        context = new PropertyParseContext(
+            displayPath,
+            propertyName,
+            isRequired,
+            title,
+            description,
+            refTableName,
+            isIndexedLookup);
+        diagnostic = null;
+        return true;
+    }
+
+    /// <summary>
+    ///     Dispatches schema property parsing by JSON schema type after shared validation and metadata extraction.
+    /// </summary>
+    /// <param name="filePath">Schema file path used for diagnostics.</param>
+    /// <param name="property">Schema property JSON node.</param>
+    /// <param name="schemaType">Validated schema type keyword.</param>
+    /// <param name="context">Shared parsing metadata collected from the property node.</param>
+    /// <returns>Parsed property model or an unsupported-type diagnostic.</returns>
+    private static ParsedPropertyResult CreatePropertyBySchemaType(
+        string filePath,
+        JsonProperty property,
+        string schemaType,
+        PropertyParseContext context)
+    {
+        return schemaType switch
         {
-            case "integer":
-                return ParsedPropertyResult.FromProperty(new SchemaPropertySpec(
-                    property.Name,
-                    displayPath,
-                    propertyName,
-                    isRequired,
-                    title,
-                    description,
-                    isIndexedLookup,
-                    new SchemaTypeSpec(
-                        SchemaNodeKind.Scalar,
-                        "integer",
-                        isRequired ? "int" : "int?",
-                        TryBuildScalarInitializer(property.Value, "integer"),
-                        TryBuildEnumDocumentation(property.Value, "integer"),
-                        TryBuildConstraintDocumentation(property.Value, "integer"),
-                        refTableName,
-                        null,
-                        null)));
+            "integer" => CreateScalarPropertyResult(property, context, schemaType, context.IsRequired ? "int" : "int?"),
+            "number" => CreateScalarPropertyResult(property, context, schemaType, context.IsRequired ? "double" : "double?"),
+            "boolean" => CreateScalarPropertyResult(property, context, schemaType, context.IsRequired ? "bool" : "bool?"),
+            "string" => CreateScalarPropertyResult(property, context, schemaType, context.IsRequired ? "string" : "string?"),
+            "object" => CreateObjectPropertyResult(filePath, property, context),
+            "array" => ParseArrayProperty(filePath, property, context),
+            _ => ParsedPropertyResult.FromDiagnostic(
+                Diagnostic.Create(
+                    ConfigSchemaDiagnostics.UnsupportedPropertyType,
+                    CreateFileLocation(filePath),
+                    Path.GetFileName(filePath),
+                    context.DisplayPath,
+                    schemaType)),
+        };
+    }
 
-            case "number":
-                return ParsedPropertyResult.FromProperty(new SchemaPropertySpec(
-                    property.Name,
-                    displayPath,
-                    propertyName,
-                    isRequired,
-                    title,
-                    description,
-                    isIndexedLookup,
-                    new SchemaTypeSpec(
-                        SchemaNodeKind.Scalar,
-                        "number",
-                        isRequired ? "double" : "double?",
-                        TryBuildScalarInitializer(property.Value, "number"),
-                        TryBuildEnumDocumentation(property.Value, "number"),
-                        TryBuildConstraintDocumentation(property.Value, "number"),
-                        refTableName,
-                        null,
-                        null)));
-
-            case "boolean":
-                return ParsedPropertyResult.FromProperty(new SchemaPropertySpec(
-                    property.Name,
-                    displayPath,
-                    propertyName,
-                    isRequired,
-                    title,
-                    description,
-                    isIndexedLookup,
-                    new SchemaTypeSpec(
-                        SchemaNodeKind.Scalar,
-                        "boolean",
-                        isRequired ? "bool" : "bool?",
-                        TryBuildScalarInitializer(property.Value, "boolean"),
-                        TryBuildEnumDocumentation(property.Value, "boolean"),
-                        TryBuildConstraintDocumentation(property.Value, "boolean"),
-                        refTableName,
-                        null,
-                        null)));
-
-            case "string":
-                return ParsedPropertyResult.FromProperty(new SchemaPropertySpec(
-                    property.Name,
-                    displayPath,
-                    propertyName,
-                    isRequired,
-                    title,
-                    description,
-                    isIndexedLookup,
-                    new SchemaTypeSpec(
-                        SchemaNodeKind.Scalar,
-                        "string",
-                        isRequired ? "string" : "string?",
-                        TryBuildScalarInitializer(property.Value, "string") ??
-                        (isRequired ? " = string.Empty;" : null),
-                        TryBuildEnumDocumentation(property.Value, "string"),
-                        TryBuildConstraintDocumentation(property.Value, "string"),
-                        refTableName,
-                        null,
-                        null)));
-
-            case "object":
-                if (isIndexedLookup)
-                {
-                    return ParsedPropertyResult.FromDiagnostic(
-                        CreateInvalidLookupIndexDiagnostic(filePath, displayPath,
-                            LookupIndexTopLevelScalarOnlyMessage));
-                }
-
-                if (!string.IsNullOrWhiteSpace(refTableName))
-                {
-                    return ParsedPropertyResult.FromDiagnostic(
-                        Diagnostic.Create(
-                            ConfigSchemaDiagnostics.UnsupportedPropertyType,
-                            CreateFileLocation(filePath),
-                            Path.GetFileName(filePath),
-                            displayPath,
-                            "object-ref"));
-                }
-
-                var objectResult = ParseObjectSpec(
-                    filePath,
-                    property.Value,
-                    displayPath,
-                    $"{propertyName}Config");
-                if (objectResult.Diagnostic is not null)
-                {
-                    return ParsedPropertyResult.FromDiagnostic(objectResult.Diagnostic);
-                }
-
-                var objectSpec = objectResult.Object!;
-                return ParsedPropertyResult.FromProperty(new SchemaPropertySpec(
-                    property.Name,
-                    displayPath,
-                    propertyName,
-                    isRequired,
-                    title,
-                    description,
-                    false,
-                    new SchemaTypeSpec(
-                        SchemaNodeKind.Object,
-                        "object",
-                        isRequired ? objectSpec.ClassName : $"{objectSpec.ClassName}?",
-                        isRequired ? " = new();" : null,
-                        TryBuildEnumDocumentation(property.Value, "object"),
-                        null,
-                        null,
-                        objectSpec,
-                        null)));
-
-            case "array":
-                return ParseArrayProperty(filePath, property, isRequired, displayPath, propertyName, title,
-                    description, refTableName, isIndexedLookup);
-
-            default:
-                return ParsedPropertyResult.FromDiagnostic(
-                    Diagnostic.Create(
-                        ConfigSchemaDiagnostics.UnsupportedPropertyType,
-                        CreateFileLocation(filePath),
-                        Path.GetFileName(filePath),
-                        displayPath,
-                        schemaType));
+    /// <summary>
+    ///     Builds a parsed scalar property model while preserving schema metadata used by generated XML docs.
+    /// </summary>
+    /// <param name="property">Schema property JSON node.</param>
+    /// <param name="context">Shared parsing metadata collected from the property node.</param>
+    /// <param name="schemaType">Scalar schema type.</param>
+    /// <param name="clrType">Generated CLR property type.</param>
+    /// <returns>Parsed property result for a scalar schema node.</returns>
+    private static ParsedPropertyResult CreateScalarPropertyResult(
+        JsonProperty property,
+        PropertyParseContext context,
+        string schemaType,
+        string clrType)
+    {
+        var initializer = TryBuildScalarInitializer(property.Value, schemaType);
+        if (IsSchemaType(schemaType, "string") && initializer is null && context.IsRequired)
+        {
+            initializer = " = string.Empty;";
         }
+
+        return ParsedPropertyResult.FromProperty(new SchemaPropertySpec(
+            property.Name,
+            context.DisplayPath,
+            context.PropertyName,
+            context.IsRequired,
+            context.Title,
+            context.Description,
+            context.IsIndexedLookup,
+            new SchemaTypeSpec(
+                SchemaNodeKind.Scalar,
+                schemaType,
+                clrType,
+                initializer,
+                TryBuildEnumDocumentation(property.Value, schemaType),
+                TryBuildConstraintDocumentation(property.Value, schemaType),
+                context.RefTableName,
+                null,
+                null)));
+    }
+
+    /// <summary>
+    ///     Builds a parsed object property model and reports unsupported object reference/index combinations.
+    /// </summary>
+    /// <param name="filePath">Schema file path used for diagnostics.</param>
+    /// <param name="property">Schema property JSON node.</param>
+    /// <param name="context">Shared parsing metadata collected from the property node.</param>
+    /// <returns>Parsed property result for an object schema node.</returns>
+    private static ParsedPropertyResult CreateObjectPropertyResult(
+        string filePath,
+        JsonProperty property,
+        PropertyParseContext context)
+    {
+        if (context.IsIndexedLookup)
+        {
+            return ParsedPropertyResult.FromDiagnostic(
+                CreateInvalidLookupIndexDiagnostic(filePath, context.DisplayPath, LookupIndexTopLevelScalarOnlyMessage));
+        }
+
+        if (!string.IsNullOrWhiteSpace(context.RefTableName))
+        {
+            return ParsedPropertyResult.FromDiagnostic(
+                Diagnostic.Create(
+                    ConfigSchemaDiagnostics.UnsupportedPropertyType,
+                    CreateFileLocation(filePath),
+                    Path.GetFileName(filePath),
+                    context.DisplayPath,
+                    "object-ref"));
+        }
+
+        var objectResult = ParseObjectSpec(filePath, property.Value, context.DisplayPath, $"{context.PropertyName}Config");
+        if (objectResult.Diagnostic is not null)
+        {
+            return ParsedPropertyResult.FromDiagnostic(objectResult.Diagnostic);
+        }
+
+        var objectSpec = objectResult.Object!;
+        return ParsedPropertyResult.FromProperty(new SchemaPropertySpec(
+            property.Name,
+            context.DisplayPath,
+            context.PropertyName,
+            context.IsRequired,
+            context.Title,
+            context.Description,
+            false,
+            new SchemaTypeSpec(
+                SchemaNodeKind.Object,
+                "object",
+                context.IsRequired ? objectSpec.ClassName : $"{objectSpec.ClassName}?",
+                context.IsRequired ? " = new();" : null,
+                TryBuildEnumDocumentation(property.Value, "object"),
+                null,
+                null,
+                objectSpec,
+                null)));
     }
 
     /// <summary>
@@ -738,155 +884,269 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             return false;
         }
 
-        if (string.Equals(schemaType, "object", StringComparison.Ordinal) &&
-            element.TryGetProperty("properties", out var propertiesElement) &&
-            propertiesElement.ValueKind == JsonValueKind.Object)
-        {
-            foreach (var property in propertiesElement.EnumerateObject())
-            {
-                if (!TryTraverseSchemaRecursively(
-                        filePath,
-                        CombinePath(displayPath, property.Name),
-                        property.Value,
-                        nodeValidator,
-                        out diagnostic))
-                {
-                    return false;
-                }
-            }
-        }
-
-        if (string.Equals(schemaType, "object", StringComparison.Ordinal) &&
-            element.TryGetProperty("dependentSchemas", out var dependentSchemasElement) &&
-            dependentSchemasElement.ValueKind == JsonValueKind.Object)
-        {
-            foreach (var dependentSchema in dependentSchemasElement.EnumerateObject())
-            {
-                if (dependentSchema.Value.ValueKind != JsonValueKind.Object)
-                {
-                    continue;
-                }
-
-                if (!TryTraverseSchemaRecursively(
-                        filePath,
-                        $"{displayPath}[dependentSchemas:{dependentSchema.Name}]",
-                        dependentSchema.Value,
-                        nodeValidator,
-                        out diagnostic))
-                {
-                    return false;
-                }
-            }
-        }
-
-        if (string.Equals(schemaType, "object", StringComparison.Ordinal) &&
-            element.TryGetProperty("allOf", out var allOfElement) &&
-            allOfElement.ValueKind == JsonValueKind.Array)
-        {
-            var allOfIndex = 0;
-            foreach (var allOfSchema in allOfElement.EnumerateArray())
-            {
-                if (allOfSchema.ValueKind != JsonValueKind.Object)
-                {
-                    allOfIndex++;
-                    continue;
-                }
-
-                if (!TryTraverseSchemaRecursively(
-                        filePath,
-                        BuildAllOfEntryPath(displayPath, allOfIndex),
-                        allOfSchema,
-                        nodeValidator,
-                        out diagnostic))
-                {
-                    return false;
-                }
-
-                allOfIndex++;
-            }
-        }
-
-        if (string.Equals(schemaType, "object", StringComparison.Ordinal))
-        {
-            if (element.TryGetProperty("if", out var ifElement) &&
-                ifElement.ValueKind == JsonValueKind.Object &&
-                !TryTraverseSchemaRecursively(
-                    filePath,
-                    BuildConditionalSchemaPath(displayPath, "if"),
-                    ifElement,
-                    nodeValidator,
-                    out diagnostic))
-            {
-                return false;
-            }
-
-            if (element.TryGetProperty("then", out var thenElement) &&
-                thenElement.ValueKind == JsonValueKind.Object &&
-                !TryTraverseSchemaRecursively(
-                    filePath,
-                    BuildConditionalSchemaPath(displayPath, "then"),
-                    thenElement,
-                    nodeValidator,
-                    out diagnostic))
-            {
-                return false;
-            }
-
-            if (element.TryGetProperty("else", out var elseElement) &&
-                elseElement.ValueKind == JsonValueKind.Object &&
-                !TryTraverseSchemaRecursively(
-                    filePath,
-                    BuildConditionalSchemaPath(displayPath, "else"),
-                    elseElement,
-                    nodeValidator,
-                    out diagnostic))
-            {
-                return false;
-            }
-        }
-
-        if (element.TryGetProperty("not", out var notElement) &&
-            notElement.ValueKind == JsonValueKind.Object &&
-            !TryTraverseSchemaRecursively(
-                filePath,
-                $"{displayPath}[not]",
-                notElement,
-                nodeValidator,
-                out diagnostic))
+        if (IsSchemaType(schemaType, "object") &&
+            !TryTraverseObjectChildren(filePath, displayPath, element, nodeValidator, out diagnostic))
         {
             return false;
         }
 
-        if (!string.Equals(schemaType, "array", StringComparison.Ordinal))
+        if (!TryTraverseSingleSchemaProperty(filePath, $"{displayPath}[not]", element, "not", nodeValidator, out diagnostic))
+        {
+            return false;
+        }
+
+        return !IsSchemaType(schemaType, "array") ||
+            TryTraverseArrayChildren(filePath, displayPath, element, nodeValidator, out diagnostic);
+    }
+
+    /// <summary>
+    ///     Traverses every object-only child schema keyword in the same order as the parser observes properties.
+    /// </summary>
+    /// <param name="filePath">Schema file path.</param>
+    /// <param name="displayPath">Logical object path.</param>
+    /// <param name="element">Object schema node.</param>
+    /// <param name="nodeValidator">Current validation callback.</param>
+    /// <param name="diagnostic">First child validation diagnostic.</param>
+    /// <returns><see langword="true" /> when all object child schemas pass validation.</returns>
+    private static bool TryTraverseObjectChildren(
+        string filePath,
+        string displayPath,
+        JsonElement element,
+        Func<string, string, JsonElement, string, (bool IsValid, Diagnostic? Diagnostic)> nodeValidator,
+        out Diagnostic? diagnostic)
+    {
+        if (!TryTraverseObjectProperties(filePath, displayPath, element, nodeValidator, out diagnostic))
+        {
+            return false;
+        }
+
+        if (!TryTraverseDependentSchemas(filePath, displayPath, element, nodeValidator, out diagnostic))
+        {
+            return false;
+        }
+
+        return TryTraverseAllOfEntries(filePath, displayPath, element, nodeValidator, out diagnostic) &&
+            TryTraverseObjectSchemaBranches(filePath, displayPath, element, nodeValidator, out diagnostic);
+    }
+
+    /// <summary>
+    ///     Traverses nested object properties in declaration order.
+    /// </summary>
+    /// <param name="filePath">Schema file path.</param>
+    /// <param name="displayPath">Logical object path.</param>
+    /// <param name="element">Object schema node.</param>
+    /// <param name="nodeValidator">Current validation callback.</param>
+    /// <param name="diagnostic">First property validation diagnostic.</param>
+    /// <returns><see langword="true" /> when every property subtree passes validation.</returns>
+    private static bool TryTraverseObjectProperties(
+        string filePath,
+        string displayPath,
+        JsonElement element,
+        Func<string, string, JsonElement, string, (bool IsValid, Diagnostic? Diagnostic)> nodeValidator,
+        out Diagnostic? diagnostic)
+    {
+        diagnostic = null;
+        if (!element.TryGetProperty("properties", out var propertiesElement) ||
+            propertiesElement.ValueKind != JsonValueKind.Object)
         {
             return true;
         }
 
-        if (element.TryGetProperty("items", out var itemsElement) &&
-            itemsElement.ValueKind == JsonValueKind.Object &&
-            !TryTraverseSchemaRecursively(
-                filePath,
-                $"{displayPath}[]",
-                itemsElement,
-                nodeValidator,
-                out diagnostic))
+        foreach (var property in propertiesElement.EnumerateObject())
         {
-            return false;
-        }
-
-        if (element.TryGetProperty("contains", out var containsElement) &&
-            containsElement.ValueKind == JsonValueKind.Object &&
-            !TryTraverseSchemaRecursively(
-                filePath,
-                $"{displayPath}[contains]",
-                containsElement,
-                nodeValidator,
-                out diagnostic))
-        {
-            return false;
+            if (!TryTraverseSchemaRecursively(
+                    filePath,
+                    CombinePath(displayPath, property.Name),
+                    property.Value,
+                    nodeValidator,
+                    out diagnostic))
+            {
+                return false;
+            }
         }
 
         return true;
+    }
+
+    /// <summary>
+    ///     Traverses object <c>dependentSchemas</c> entries that are themselves schema objects.
+    /// </summary>
+    /// <param name="filePath">Schema file path.</param>
+    /// <param name="displayPath">Logical object path.</param>
+    /// <param name="element">Object schema node.</param>
+    /// <param name="nodeValidator">Current validation callback.</param>
+    /// <param name="diagnostic">First dependent schema validation diagnostic.</param>
+    /// <returns><see langword="true" /> when every dependent schema subtree passes validation.</returns>
+    private static bool TryTraverseDependentSchemas(
+        string filePath,
+        string displayPath,
+        JsonElement element,
+        Func<string, string, JsonElement, string, (bool IsValid, Diagnostic? Diagnostic)> nodeValidator,
+        out Diagnostic? diagnostic)
+    {
+        diagnostic = null;
+        if (!element.TryGetProperty("dependentSchemas", out var dependentSchemasElement) ||
+            dependentSchemasElement.ValueKind != JsonValueKind.Object)
+        {
+            return true;
+        }
+
+        foreach (var dependentSchema in dependentSchemasElement.EnumerateObject())
+        {
+            if (dependentSchema.Value.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            if (!TryTraverseSchemaRecursively(
+                    filePath,
+                    $"{displayPath}[dependentSchemas:{dependentSchema.Name}]",
+                    dependentSchema.Value,
+                    nodeValidator,
+                    out diagnostic))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    ///     Traverses object <c>allOf</c> entries while preserving their numeric path segments.
+    /// </summary>
+    /// <param name="filePath">Schema file path.</param>
+    /// <param name="displayPath">Logical object path.</param>
+    /// <param name="element">Object schema node.</param>
+    /// <param name="nodeValidator">Current validation callback.</param>
+    /// <param name="diagnostic">First allOf validation diagnostic.</param>
+    /// <returns><see langword="true" /> when every object allOf entry passes validation.</returns>
+    private static bool TryTraverseAllOfEntries(
+        string filePath,
+        string displayPath,
+        JsonElement element,
+        Func<string, string, JsonElement, string, (bool IsValid, Diagnostic? Diagnostic)> nodeValidator,
+        out Diagnostic? diagnostic)
+    {
+        diagnostic = null;
+        if (!element.TryGetProperty("allOf", out var allOfElement) ||
+            allOfElement.ValueKind != JsonValueKind.Array)
+        {
+            return true;
+        }
+
+        var allOfIndex = 0;
+        foreach (var allOfSchema in allOfElement.EnumerateArray())
+        {
+            if (allOfSchema.ValueKind != JsonValueKind.Object)
+            {
+                allOfIndex++;
+                continue;
+            }
+
+            if (!TryTraverseSchemaRecursively(
+                    filePath,
+                    BuildAllOfEntryPath(displayPath, allOfIndex),
+                    allOfSchema,
+                    nodeValidator,
+                    out diagnostic))
+            {
+                return false;
+            }
+
+            allOfIndex++;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    ///     Traverses the object-focused conditional schema branches.
+    /// </summary>
+    /// <param name="filePath">Schema file path.</param>
+    /// <param name="displayPath">Logical object path.</param>
+    /// <param name="element">Object schema node.</param>
+    /// <param name="nodeValidator">Current validation callback.</param>
+    /// <param name="diagnostic">First branch validation diagnostic.</param>
+    /// <returns><see langword="true" /> when all present conditional branches pass validation.</returns>
+    private static bool TryTraverseObjectSchemaBranches(
+        string filePath,
+        string displayPath,
+        JsonElement element,
+        Func<string, string, JsonElement, string, (bool IsValid, Diagnostic? Diagnostic)> nodeValidator,
+        out Diagnostic? diagnostic)
+    {
+        return TryTraverseSingleSchemaProperty(
+                filePath,
+                BuildConditionalSchemaPath(displayPath, "if"),
+                element,
+                "if",
+                nodeValidator,
+                out diagnostic) &&
+            TryTraverseSingleSchemaProperty(
+                filePath,
+                BuildConditionalSchemaPath(displayPath, "then"),
+                element,
+                "then",
+                nodeValidator,
+                out diagnostic) &&
+            TryTraverseSingleSchemaProperty(
+                filePath,
+                BuildConditionalSchemaPath(displayPath, "else"),
+                element,
+                "else",
+                nodeValidator,
+                out diagnostic);
+    }
+
+    /// <summary>
+    ///     Traverses a single child schema property when it is present and object-shaped.
+    /// </summary>
+    /// <param name="filePath">Schema file path.</param>
+    /// <param name="childDisplayPath">Logical path assigned to the child schema.</param>
+    /// <param name="element">Parent schema node.</param>
+    /// <param name="propertyName">Child schema keyword.</param>
+    /// <param name="nodeValidator">Current validation callback.</param>
+    /// <param name="diagnostic">Child validation diagnostic.</param>
+    /// <returns><see langword="true" /> when the child is absent or passes validation.</returns>
+    private static bool TryTraverseSingleSchemaProperty(
+        string filePath,
+        string childDisplayPath,
+        JsonElement element,
+        string propertyName,
+        Func<string, string, JsonElement, string, (bool IsValid, Diagnostic? Diagnostic)> nodeValidator,
+        out Diagnostic? diagnostic)
+    {
+        diagnostic = null;
+        return !element.TryGetProperty(propertyName, out var childElement) ||
+            childElement.ValueKind != JsonValueKind.Object ||
+            TryTraverseSchemaRecursively(filePath, childDisplayPath, childElement, nodeValidator, out diagnostic);
+    }
+
+    /// <summary>
+    ///     Traverses array <c>items</c> and <c>contains</c> child schemas.
+    /// </summary>
+    /// <param name="filePath">Schema file path.</param>
+    /// <param name="displayPath">Logical array path.</param>
+    /// <param name="element">Array schema node.</param>
+    /// <param name="nodeValidator">Current validation callback.</param>
+    /// <param name="diagnostic">First array child validation diagnostic.</param>
+    /// <returns><see langword="true" /> when all array child schemas pass validation.</returns>
+    private static bool TryTraverseArrayChildren(
+        string filePath,
+        string displayPath,
+        JsonElement element,
+        Func<string, string, JsonElement, string, (bool IsValid, Diagnostic? Diagnostic)> nodeValidator,
+        out Diagnostic? diagnostic)
+    {
+        return TryTraverseSingleSchemaProperty(filePath, $"{displayPath}[]", element, "items", nodeValidator, out diagnostic) &&
+            TryTraverseSingleSchemaProperty(
+                filePath,
+                $"{displayPath}[contains]",
+                element,
+                "contains",
+                nodeValidator,
+                out diagnostic);
     }
 
     /// <summary>
@@ -1855,161 +2115,260 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     }
 
     /// <summary>
+    ///     使用 schema 关键字的大小写敏感语义比较类型名称。
+    /// </summary>
+    /// <param name="schemaType">从 JSON schema 读取或推导出的类型名称。</param>
+    /// <param name="expectedType">期望匹配的 schema 类型关键字。</param>
+    /// <returns>当两个类型名称按 schema 关键字语义完全一致时返回 <see langword="true" />。</returns>
+    private static bool IsSchemaType(string schemaType, string expectedType)
+    {
+        return string.Equals(schemaType, expectedType, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    ///     判断类型是否支持 JSON schema 数值范围和倍数约束。
+    /// </summary>
+    /// <param name="schemaType">从 JSON schema 读取或推导出的类型名称。</param>
+    /// <returns>当类型为 <c>integer</c> 或 <c>number</c> 时返回 <see langword="true" />。</returns>
+    private static bool IsNumericSchemaType(string schemaType)
+    {
+        return IsSchemaType(schemaType, "integer") || IsSchemaType(schemaType, "number");
+    }
+
+    /// <summary>
     ///     解析数组属性，支持标量数组与对象数组。
     /// </summary>
     /// <param name="filePath">Schema 文件路径。</param>
     /// <param name="property">属性 JSON 节点。</param>
-    /// <param name="isRequired">属性是否必填。</param>
-    /// <param name="displayPath">逻辑字段路径。</param>
-    /// <param name="propertyName">CLR 属性名。</param>
-    /// <param name="title">标题元数据。</param>
-    /// <param name="description">说明元数据。</param>
-    /// <param name="refTableName">目标引用表名称。</param>
-    /// <param name="isIndexedLookup">是否为索引查找。</param>
+    /// <param name="context">属性解析共享上下文。</param>
     /// <returns>解析后的属性信息或诊断。</returns>
     private static ParsedPropertyResult ParseArrayProperty(
         string filePath,
         JsonProperty property,
-        bool isRequired,
-        string displayPath,
-        string propertyName,
-        string? title,
-        string? description,
-        string? refTableName,
-        bool isIndexedLookup)
+        PropertyParseContext context)
     {
-        if (isIndexedLookup)
+        if (context.IsIndexedLookup)
         {
             return ParsedPropertyResult.FromDiagnostic(
-                CreateInvalidLookupIndexDiagnostic(filePath, displayPath, LookupIndexTopLevelScalarOnlyMessage));
+                CreateInvalidLookupIndexDiagnostic(filePath, context.DisplayPath, LookupIndexTopLevelScalarOnlyMessage));
         }
 
-        if (!property.Value.TryGetProperty("items", out var itemsElement) ||
-            itemsElement.ValueKind != JsonValueKind.Object ||
-            !itemsElement.TryGetProperty("type", out var itemTypeElement) ||
-            itemTypeElement.ValueKind != JsonValueKind.String)
+        if (!TryGetArrayItemSchema(filePath, property, context.DisplayPath, out var itemsElement, out var itemType, out var diagnostic))
         {
-            return ParsedPropertyResult.FromDiagnostic(
-                Diagnostic.Create(
-                    ConfigSchemaDiagnostics.UnsupportedPropertyType,
-                    CreateFileLocation(filePath),
-                    Path.GetFileName(filePath),
-                    displayPath,
-                    "array"));
+            return ParsedPropertyResult.FromDiagnostic(diagnostic!);
         }
 
-        var itemType = itemTypeElement.GetString() ?? string.Empty;
-        if (!TryValidateStringFormatMetadata(filePath, $"{displayPath}[]", itemsElement, itemType,
+        if (!TryValidateStringFormatMetadata(filePath, $"{context.DisplayPath}[]", itemsElement, itemType,
                 out var formatDiagnostic))
         {
             return ParsedPropertyResult.FromDiagnostic(formatDiagnostic!);
         }
 
-        switch (itemType)
+        return itemType switch
         {
-            case "integer":
-            case "number":
-            case "boolean":
-            case "string":
-                var itemClrType = itemType switch
-                {
-                    "integer" => "int",
-                    "number" => "double",
-                    "boolean" => "bool",
-                    _ => "string"
-                };
+            "integer" or "number" or "boolean" or "string" =>
+                CreateScalarArrayPropertyResult(property, context, itemsElement, itemType),
+            "object" => CreateObjectArrayPropertyResult(filePath, property, context, itemsElement),
+            _ => ParsedPropertyResult.FromDiagnostic(CreateUnsupportedArrayItemDiagnostic(
+                filePath,
+                context.DisplayPath,
+                $"array<{itemType}>")),
+        };
+    }
 
-                return ParsedPropertyResult.FromProperty(new SchemaPropertySpec(
-                    property.Name,
-                    displayPath,
-                    propertyName,
-                    isRequired,
-                    title,
-                    description,
-                    false,
-                    new SchemaTypeSpec(
-                        SchemaNodeKind.Array,
-                        "array",
-                        $"global::System.Collections.Generic.IReadOnlyList<{itemClrType}>",
-                        TryBuildArrayInitializer(property.Value, itemType, itemClrType) ??
-                        $" = global::System.Array.Empty<{itemClrType}>();",
-                        TryBuildEnumDocumentation(property.Value, "array") ??
-                        TryBuildEnumDocumentation(itemsElement, itemType),
-                        TryBuildConstraintDocumentation(property.Value, "array"),
-                        refTableName,
-                        null,
-                        new SchemaTypeSpec(
-                            SchemaNodeKind.Scalar,
-                            itemType,
-                            itemClrType,
-                            null,
-                            TryBuildEnumDocumentation(itemsElement, itemType),
-                            TryBuildConstraintDocumentation(itemsElement, itemType),
-                            refTableName,
-                            null,
-                            null))));
-
-            case "object":
-                if (!string.IsNullOrWhiteSpace(refTableName))
-                {
-                    return ParsedPropertyResult.FromDiagnostic(
-                        Diagnostic.Create(
-                            ConfigSchemaDiagnostics.UnsupportedPropertyType,
-                            CreateFileLocation(filePath),
-                            Path.GetFileName(filePath),
-                            displayPath,
-                            "array<object>-ref"));
-                }
-
-                var objectResult = ParseObjectSpec(
-                    filePath,
-                    itemsElement,
-                    $"{displayPath}[]",
-                    $"{propertyName}ItemConfig");
-                if (objectResult.Diagnostic is not null)
-                {
-                    return ParsedPropertyResult.FromDiagnostic(objectResult.Diagnostic);
-                }
-
-                var objectSpec = objectResult.Object!;
-                return ParsedPropertyResult.FromProperty(new SchemaPropertySpec(
-                    property.Name,
-                    displayPath,
-                    propertyName,
-                    isRequired,
-                    title,
-                    description,
-                    false,
-                    new SchemaTypeSpec(
-                        SchemaNodeKind.Array,
-                        "array",
-                        $"global::System.Collections.Generic.IReadOnlyList<{objectSpec.ClassName}>",
-                        $" = global::System.Array.Empty<{objectSpec.ClassName}>();",
-                        TryBuildEnumDocumentation(property.Value, "array") ??
-                        TryBuildEnumDocumentation(itemsElement, "object"),
-                        TryBuildConstraintDocumentation(property.Value, "array"),
-                        null,
-                        null,
-                        new SchemaTypeSpec(
-                            SchemaNodeKind.Object,
-                            "object",
-                            objectSpec.ClassName,
-                            null,
-                            TryBuildEnumDocumentation(itemsElement, "object"),
-                            null,
-                            null,
-                            objectSpec,
-                            null))));
-
-            default:
-                return ParsedPropertyResult.FromDiagnostic(
-                    Diagnostic.Create(
-                        ConfigSchemaDiagnostics.UnsupportedPropertyType,
-                        CreateFileLocation(filePath),
-                        Path.GetFileName(filePath),
-                        displayPath,
-                        $"array<{itemType}>"));
+    /// <summary>
+    ///     Reads the <c>items.type</c> declaration required by the supported array schema subset.
+    /// </summary>
+    /// <param name="filePath">Schema file path used for diagnostics.</param>
+    /// <param name="property">Array property JSON node.</param>
+    /// <param name="displayPath">Logical schema path.</param>
+    /// <param name="itemsElement">Array item schema node when present.</param>
+    /// <param name="itemType">Array item schema type when present.</param>
+    /// <param name="diagnostic">Diagnostic explaining an invalid declaration.</param>
+    /// <returns><see langword="true" /> when the array item schema is supported by the parser.</returns>
+    private static bool TryGetArrayItemSchema(
+        string filePath,
+        JsonProperty property,
+        string displayPath,
+        out JsonElement itemsElement,
+        out string itemType,
+        out Diagnostic? diagnostic)
+    {
+        if (property.Value.TryGetProperty("items", out itemsElement) &&
+            itemsElement.ValueKind == JsonValueKind.Object &&
+            itemsElement.TryGetProperty("type", out var itemTypeElement) &&
+            itemTypeElement.ValueKind == JsonValueKind.String)
+        {
+            itemType = itemTypeElement.GetString() ?? string.Empty;
+            diagnostic = null;
+            return true;
         }
+
+        itemType = string.Empty;
+        var itemDescription = "array";
+        if (itemsElement.ValueKind == JsonValueKind.Object &&
+            itemsElement.TryGetProperty("type", out var unsupportedTypeElement) &&
+            unsupportedTypeElement.ValueKind == JsonValueKind.String)
+        {
+            itemDescription = $"array<{unsupportedTypeElement.GetString() ?? string.Empty}>";
+        }
+
+        diagnostic = CreateUnsupportedArrayItemDiagnostic(filePath, displayPath, itemDescription);
+        return false;
+    }
+
+    /// <summary>
+    ///     Builds an array property whose items are scalar values.
+    /// </summary>
+    /// <param name="property">Array property JSON node.</param>
+    /// <param name="context">Property parsing context.</param>
+    /// <param name="itemsElement">Array item schema node.</param>
+    /// <param name="itemType">Array item scalar schema type.</param>
+    /// <returns>Parsed array property model.</returns>
+    private static ParsedPropertyResult CreateScalarArrayPropertyResult(
+        JsonProperty property,
+        PropertyParseContext context,
+        JsonElement itemsElement,
+        string itemType)
+    {
+        var itemClrType = itemType switch
+        {
+            "integer" => "int",
+            "number" => "double",
+            "boolean" => "bool",
+            _ => "string"
+        };
+
+        return ParsedPropertyResult.FromProperty(new SchemaPropertySpec(
+            property.Name,
+            context.DisplayPath,
+            context.PropertyName,
+            context.IsRequired,
+            context.Title,
+            context.Description,
+            false,
+            new SchemaTypeSpec(
+                SchemaNodeKind.Array,
+                "array",
+                $"global::System.Collections.Generic.IReadOnlyList<{itemClrType}>",
+                TryBuildArrayInitializer(property.Value, itemType, itemClrType) ??
+                $" = global::System.Array.Empty<{itemClrType}>();",
+                TryBuildEnumDocumentation(property.Value, "array") ??
+                TryBuildEnumDocumentation(itemsElement, itemType),
+                TryBuildConstraintDocumentation(property.Value, "array"),
+                context.RefTableName,
+                null,
+                new SchemaTypeSpec(
+                    SchemaNodeKind.Scalar,
+                    itemType,
+                    itemClrType,
+                    null,
+                    TryBuildEnumDocumentation(itemsElement, itemType),
+                    TryBuildConstraintDocumentation(itemsElement, itemType),
+                    context.RefTableName,
+                    null,
+                    null))));
+    }
+
+    /// <summary>
+    ///     Builds an array property whose items are nested object values.
+    /// </summary>
+    /// <param name="filePath">Schema file path used for diagnostics.</param>
+    /// <param name="property">Array property JSON node.</param>
+    /// <param name="context">Property parsing context.</param>
+    /// <param name="itemsElement">Array item schema node.</param>
+    /// <returns>Parsed array property model or an object-array diagnostic.</returns>
+    private static ParsedPropertyResult CreateObjectArrayPropertyResult(
+        string filePath,
+        JsonProperty property,
+        PropertyParseContext context,
+        JsonElement itemsElement)
+    {
+        if (!string.IsNullOrWhiteSpace(context.RefTableName))
+        {
+            return ParsedPropertyResult.FromDiagnostic(
+                CreateUnsupportedArrayItemDiagnostic(filePath, context.DisplayPath, "array<object>-ref"));
+        }
+
+        var objectResult = ParseObjectSpec(
+            filePath,
+            itemsElement,
+            $"{context.DisplayPath}[]",
+            $"{context.PropertyName}ItemConfig");
+        if (objectResult.Diagnostic is not null)
+        {
+            return ParsedPropertyResult.FromDiagnostic(objectResult.Diagnostic);
+        }
+
+        return ParsedPropertyResult.FromProperty(CreateObjectArrayPropertySpec(
+            property,
+            context,
+            itemsElement,
+            objectResult.Object!));
+    }
+
+    /// <summary>
+    ///     Creates the nested object array property model after the item object has been parsed.
+    /// </summary>
+    /// <param name="property">Array property JSON node.</param>
+    /// <param name="context">Property parsing context.</param>
+    /// <param name="itemsElement">Array item schema node.</param>
+    /// <param name="objectSpec">Parsed item object model.</param>
+    /// <returns>Completed object array property model.</returns>
+    private static SchemaPropertySpec CreateObjectArrayPropertySpec(
+        JsonProperty property,
+        PropertyParseContext context,
+        JsonElement itemsElement,
+        SchemaObjectSpec objectSpec)
+    {
+        return new SchemaPropertySpec(
+            property.Name,
+            context.DisplayPath,
+            context.PropertyName,
+            context.IsRequired,
+            context.Title,
+            context.Description,
+            false,
+            new SchemaTypeSpec(
+                SchemaNodeKind.Array,
+                "array",
+                $"global::System.Collections.Generic.IReadOnlyList<{objectSpec.ClassName}>",
+                $" = global::System.Array.Empty<{objectSpec.ClassName}>();",
+                TryBuildEnumDocumentation(property.Value, "array") ??
+                TryBuildEnumDocumentation(itemsElement, "object"),
+                TryBuildConstraintDocumentation(property.Value, "array"),
+                null,
+                null,
+                new SchemaTypeSpec(
+                    SchemaNodeKind.Object,
+                    "object",
+                    objectSpec.ClassName,
+                    null,
+                    TryBuildEnumDocumentation(itemsElement, "object"),
+                    null,
+                    null,
+                    objectSpec,
+                    null)));
+    }
+
+    /// <summary>
+    ///     Creates a diagnostic for unsupported or malformed array item declarations.
+    /// </summary>
+    /// <param name="filePath">Schema file path used for diagnostics.</param>
+    /// <param name="displayPath">Logical schema path.</param>
+    /// <param name="itemDescription">Unsupported item declaration text.</param>
+    /// <returns>Unsupported property type diagnostic.</returns>
+    private static Diagnostic CreateUnsupportedArrayItemDiagnostic(
+        string filePath,
+        string displayPath,
+        string itemDescription)
+    {
+        return Diagnostic.Create(
+            ConfigSchemaDiagnostics.UnsupportedPropertyType,
+            CreateFileLocation(filePath),
+            Path.GetFileName(filePath),
+            displayPath,
+            itemDescription);
     }
 
     /// <summary>
@@ -2465,6 +2824,22 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine();
         builder.AppendLine($"namespace {GeneratedNamespace};");
         builder.AppendLine();
+        AppendGeneratedConfigCatalogType(builder, schemas);
+        builder.AppendLine();
+        AppendGeneratedConfigRegistrationOptionsType(builder, schemas);
+        builder.AppendLine();
+        AppendGeneratedConfigRegistrationExtensionsType(builder, schemas);
+
+        return builder.ToString().TrimEnd();
+    }
+
+    /// <summary>
+    ///     Emits the generated catalog type that exposes schema metadata and filtering helpers.
+    /// </summary>
+    /// <param name="builder">Output buffer.</param>
+    /// <param name="schemas">Successfully parsed schemas for the current compilation.</param>
+    private static void AppendGeneratedConfigCatalogType(StringBuilder builder, IReadOnlyList<SchemaFileSpec> schemas)
+    {
         builder.AppendLine("/// <summary>");
         builder.AppendLine(
             "///     Provides a project-level catalog for every config table generated from the current consumer project's schemas.");
@@ -2732,7 +3107,17 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("        return false;");
         builder.AppendLine("    }");
         builder.AppendLine("}");
-        builder.AppendLine();
+    }
+
+    /// <summary>
+    ///     Emits the options type consumed by aggregate generated table registration.
+    /// </summary>
+    /// <param name="builder">Output buffer.</param>
+    /// <param name="schemas">Successfully parsed schemas for the current compilation.</param>
+    private static void AppendGeneratedConfigRegistrationOptionsType(
+        StringBuilder builder,
+        IReadOnlyList<SchemaFileSpec> schemas)
+    {
         builder.AppendLine("/// <summary>");
         builder.AppendLine(
             "///     Captures optional per-table registration overrides for the generated aggregate registration entry point.");
@@ -2759,7 +3144,19 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("    /// </summary>");
         builder.AppendLine(
             "    public global::System.Predicate<GeneratedConfigCatalog.TableMetadata>? TableFilter { get; init; }");
+        AppendGeneratedConfigComparerOptions(builder, schemas);
+        builder.AppendLine("}");
+    }
 
+    /// <summary>
+    ///     Emits one optional comparer property per generated table for aggregate registration.
+    /// </summary>
+    /// <param name="builder">Output buffer.</param>
+    /// <param name="schemas">Successfully parsed schemas for the current compilation.</param>
+    private static void AppendGeneratedConfigComparerOptions(
+        StringBuilder builder,
+        IReadOnlyList<SchemaFileSpec> schemas)
+    {
         if (schemas.Count > 0)
         {
             builder.AppendLine();
@@ -2768,9 +3165,11 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         for (var index = 0; index < schemas.Count; index++)
         {
             var schema = schemas[index];
+            var comparerTypeDocumentation = EscapeXmlDocumentation(
+                $"global::System.Collections.Generic.IEqualityComparer<{schema.KeyClrType}>?");
             builder.AppendLine("    /// <summary>");
             builder.AppendLine(
-                $"    ///     Gets or sets the optional key comparer forwarded to {schema.EntityName}ConfigBindings.Register{schema.EntityName}Table(global::GFramework.Game.Config.YamlConfigLoader, global::System.Collections.Generic.IEqualityComparer<{schema.KeyClrType}>?) when aggregate registration runs.");
+                $"    ///     Gets or sets the optional key comparer forwarded to {schema.EntityName}ConfigBindings.Register{schema.EntityName}Table using <c>{comparerTypeDocumentation}</c> when aggregate registration runs.");
             builder.AppendLine("    /// </summary>");
             builder.AppendLine(
                 $"    public global::System.Collections.Generic.IEqualityComparer<{schema.KeyClrType}>? {schema.EntityName}Comparer {{ get; init; }}");
@@ -2780,15 +3179,35 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                 builder.AppendLine();
             }
         }
+    }
 
-        builder.AppendLine("}");
-        builder.AppendLine();
+    /// <summary>
+    ///     Emits extension methods that register every generated config table for the current compilation.
+    /// </summary>
+    /// <param name="builder">Output buffer.</param>
+    /// <param name="schemas">Successfully parsed schemas for the current compilation.</param>
+    private static void AppendGeneratedConfigRegistrationExtensionsType(
+        StringBuilder builder,
+        IReadOnlyList<SchemaFileSpec> schemas)
+    {
         builder.AppendLine("/// <summary>");
         builder.AppendLine(
             "///     Provides a single extension method that registers every generated config table discovered in the current consumer project.");
         builder.AppendLine("/// </summary>");
         builder.AppendLine("public static class GeneratedConfigRegistrationExtensions");
         builder.AppendLine("{");
+        AppendRegisterAllGeneratedConfigTablesMethod(builder);
+        builder.AppendLine();
+        AppendRegisterAllGeneratedConfigTablesWithOptionsMethod(builder, schemas);
+        builder.AppendLine("}");
+    }
+
+    /// <summary>
+    ///     Emits the aggregate registration overload that uses default options.
+    /// </summary>
+    /// <param name="builder">Output buffer.</param>
+    private static void AppendRegisterAllGeneratedConfigTablesMethod(StringBuilder builder)
+    {
         builder.AppendLine("    /// <summary>");
         builder.AppendLine(
             "    ///     Registers all generated config tables using schema-derived conventions so bootstrap code can stay one-line even as schemas grow.");
@@ -2809,7 +3228,17 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine();
         builder.AppendLine("        return RegisterAllGeneratedConfigTables(loader, options: null);");
         builder.AppendLine("    }");
-        builder.AppendLine();
+    }
+
+    /// <summary>
+    ///     Emits the aggregate registration overload that honors generated filters and comparer overrides.
+    /// </summary>
+    /// <param name="builder">Output buffer.</param>
+    /// <param name="schemas">Successfully parsed schemas for the current compilation.</param>
+    private static void AppendRegisterAllGeneratedConfigTablesWithOptionsMethod(
+        StringBuilder builder,
+        IReadOnlyList<SchemaFileSpec> schemas)
+    {
         builder.AppendLine("    /// <summary>");
         builder.AppendLine(
             "    ///     Registers all generated config tables while preserving optional per-table overrides such as custom key comparers.");
@@ -2848,8 +3277,6 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
 
         builder.AppendLine("        return loader;");
         builder.AppendLine("    }");
-        builder.AppendLine("}");
-        return builder.ToString().TrimEnd();
     }
 
     /// <summary>
@@ -2860,6 +3287,20 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     private static void AppendYamlSerializationHelpers(
         StringBuilder builder,
         SchemaFileSpec schema)
+    {
+        AppendYamlSerializeMethod(builder, schema);
+        builder.AppendLine();
+        AppendYamlPathMethods(builder);
+        builder.AppendLine();
+        AppendYamlValidationMethods(builder);
+    }
+
+    /// <summary>
+    ///     Emits the generated YAML serialization method.
+    /// </summary>
+    /// <param name="builder">Output buffer.</param>
+    /// <param name="schema">Generator-level schema model.</param>
+    private static void AppendYamlSerializeMethod(StringBuilder builder, SchemaFileSpec schema)
     {
         builder.AppendLine("    /// <summary>");
         builder.AppendLine(
@@ -2874,7 +3315,14 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("    {");
         builder.AppendLine("        return global::GFramework.Game.Config.YamlConfigTextSerializer.Serialize(config);");
         builder.AppendLine("    }");
-        builder.AppendLine();
+    }
+
+    /// <summary>
+    ///     Emits generated helpers that resolve config and schema paths at runtime.
+    /// </summary>
+    /// <param name="builder">Output buffer.</param>
+    private static void AppendYamlPathMethods(StringBuilder builder)
+    {
         builder.AppendLine("    /// <summary>");
         builder.AppendLine(
             "    ///     Resolves the absolute config directory path by combining the caller-supplied config root with the generated relative directory.");
@@ -2904,7 +3352,25 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine(
             "        return GeneratedConfigCatalog.ResolveAbsolutePath(configRootPath, Metadata.SchemaRelativePath);");
         builder.AppendLine("    }");
+    }
+
+    /// <summary>
+    ///     Emits generated synchronous and asynchronous YAML validation methods.
+    /// </summary>
+    /// <param name="builder">Output buffer.</param>
+    private static void AppendYamlValidationMethods(StringBuilder builder)
+    {
+        AppendValidateYamlMethod(builder);
         builder.AppendLine();
+        AppendValidateYamlAsyncMethod(builder);
+    }
+
+    /// <summary>
+    ///     Emits the generated synchronous YAML validation method.
+    /// </summary>
+    /// <param name="builder">Output buffer.</param>
+    private static void AppendValidateYamlMethod(StringBuilder builder)
+    {
         builder.AppendLine("    /// <summary>");
         builder.AppendLine(
             "    ///     Validates YAML text against the generated schema file located under the supplied config root directory.");
@@ -2929,7 +3395,14 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine("            yamlPath,");
         builder.AppendLine("            yamlText);");
         builder.AppendLine("    }");
-        builder.AppendLine();
+    }
+
+    /// <summary>
+    ///     Emits the generated asynchronous YAML validation method.
+    /// </summary>
+    /// <param name="builder">Output buffer.</param>
+    private static void AppendValidateYamlAsyncMethod(StringBuilder builder)
+    {
         builder.AppendLine("    /// <summary>");
         builder.AppendLine(
             "    ///     Asynchronously validates YAML text against the generated schema file located under the supplied config root directory.");
@@ -3071,6 +3544,19 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         StringBuilder builder,
         SchemaFileSpec schema)
     {
+        AppendSharedLookupIndexBuilderDocumentation(builder, schema);
+        AppendSharedLookupIndexBuilderBody(builder, schema);
+    }
+
+    /// <summary>
+    ///     Emits XML documentation and signature for the shared generated lookup index builder.
+    /// </summary>
+    /// <param name="builder">Output buffer.</param>
+    /// <param name="schema">Generator-level schema model.</param>
+    private static void AppendSharedLookupIndexBuilderDocumentation(
+        StringBuilder builder,
+        SchemaFileSpec schema)
+    {
         builder.AppendLine("    /// <summary>");
         builder.AppendLine(
             "    ///     Materializes a read-only exact-match lookup index from the current table snapshot.");
@@ -3092,6 +3578,17 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine(
             "        var buckets = new global::System.Collections.Generic.Dictionary<TProperty, global::System.Collections.Generic.List<" +
             $"{schema.ClassName}>>();");
+    }
+
+    /// <summary>
+    ///     Emits the implementation body for the shared generated lookup index builder.
+    /// </summary>
+    /// <param name="builder">Output buffer.</param>
+    /// <param name="schema">Generator-level schema model.</param>
+    private static void AppendSharedLookupIndexBuilderBody(
+        StringBuilder builder,
+        SchemaFileSpec schema)
+    {
         builder.AppendLine();
         builder.AppendLine(
             "        // Capture the current table snapshot once so indexed lookups stay deterministic for this wrapper instance.");
@@ -3163,6 +3660,21 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine(
             $"    public global::System.Collections.Generic.IReadOnlyList<{schema.ClassName}> FindBy{property.PropertyName}({property.TypeSpec.ClrType} value)");
         builder.AppendLine("    {");
+        AppendFindByPropertyBody(builder, schema, property);
+        builder.AppendLine("    }");
+    }
+
+    /// <summary>
+    ///     Emits the body of a generated <c>FindBy*</c> lookup helper.
+    /// </summary>
+    /// <param name="builder">Output buffer.</param>
+    /// <param name="schema">Generator-level schema model.</param>
+    /// <param name="property">Property model used by the lookup helper.</param>
+    private static void AppendFindByPropertyBody(
+        StringBuilder builder,
+        SchemaFileSpec schema,
+        SchemaPropertySpec property)
+    {
         if (property.IsIndexedLookup)
         {
             if (RequiresIndexedLookupNullGuard(property.TypeSpec))
@@ -3201,8 +3713,6 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             builder.AppendLine(
                 $"        return matches.Count == 0 ? global::System.Array.Empty<{schema.ClassName}>() : matches.AsReadOnly();");
         }
-
-        builder.AppendLine("    }");
     }
 
     /// <summary>
@@ -3241,6 +3751,21 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         builder.AppendLine(
             $"    public bool TryFindFirstBy{property.PropertyName}({property.TypeSpec.ClrType} value, out {schema.ClassName}? result)");
         builder.AppendLine("    {");
+        AppendTryFindFirstByPropertyBody(builder, schema, property);
+        builder.AppendLine("    }");
+    }
+
+    /// <summary>
+    ///     Emits the body of a generated <c>TryFindFirstBy*</c> lookup helper.
+    /// </summary>
+    /// <param name="builder">Output buffer.</param>
+    /// <param name="schema">Generator-level schema model.</param>
+    /// <param name="property">Property model used by the lookup helper.</param>
+    private static void AppendTryFindFirstByPropertyBody(
+        StringBuilder builder,
+        SchemaFileSpec schema,
+        SchemaPropertySpec property)
+    {
         if (property.IsIndexedLookup)
         {
             if (RequiresIndexedLookupNullGuard(property.TypeSpec))
@@ -3280,8 +3805,6 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             builder.AppendLine("        result = null;");
             builder.AppendLine("        return false;");
         }
-
-        builder.AppendLine("    }");
     }
 
     /// <summary>
@@ -3344,6 +3867,31 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         int indentationLevel)
     {
         var indent = new string(' ', indentationLevel * 4);
+        AppendObjectTypeHeader(builder, objectSpec, fileName, title, description, isRoot, indent);
+        AppendObjectTypeProperties(builder, objectSpec, indentationLevel);
+        AppendNestedObjectTypes(builder, objectSpec, fileName, indentationLevel);
+        builder.AppendLine($"{indent}}}");
+    }
+
+    /// <summary>
+    ///     生成单个配置对象类型的 XML 文档和类型声明。
+    /// </summary>
+    /// <param name="builder">输出缓冲区。</param>
+    /// <param name="objectSpec">要生成的对象类型。</param>
+    /// <param name="fileName">Schema 文件名。</param>
+    /// <param name="title">对象标题元数据。</param>
+    /// <param name="description">对象说明元数据。</param>
+    /// <param name="isRoot">是否为根配置类型。</param>
+    /// <param name="indent">当前缩进。</param>
+    private static void AppendObjectTypeHeader(
+        StringBuilder builder,
+        SchemaObjectSpec objectSpec,
+        string fileName,
+        string? title,
+        string? description,
+        bool isRoot,
+        string indent)
+    {
         builder.AppendLine($"{indent}/// <summary>");
         if (isRoot)
         {
@@ -3371,7 +3919,19 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
 
         builder.AppendLine($"{indent}public sealed partial class {objectSpec.ClassName}");
         builder.AppendLine($"{indent}{{");
+    }
 
+    /// <summary>
+    ///     生成配置对象直接拥有的 CLR 属性。
+    /// </summary>
+    /// <param name="builder">输出缓冲区。</param>
+    /// <param name="objectSpec">要生成的对象类型。</param>
+    /// <param name="indentationLevel">当前缩进层级。</param>
+    private static void AppendObjectTypeProperties(
+        StringBuilder builder,
+        SchemaObjectSpec objectSpec,
+        int indentationLevel)
+    {
         for (var index = 0; index < objectSpec.Properties.Count; index++)
         {
             var property = objectSpec.Properties[index];
@@ -3388,7 +3948,21 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             builder.AppendLine();
             builder.AppendLine();
         }
+    }
 
+    /// <summary>
+    ///     在直接属性之后递归生成嵌套对象类型，保持输出顺序稳定。
+    /// </summary>
+    /// <param name="builder">输出缓冲区。</param>
+    /// <param name="objectSpec">父对象类型。</param>
+    /// <param name="fileName">Schema 文件名。</param>
+    /// <param name="indentationLevel">父对象缩进层级。</param>
+    private static void AppendNestedObjectTypes(
+        StringBuilder builder,
+        SchemaObjectSpec objectSpec,
+        string fileName,
+        int indentationLevel)
+    {
         var nestedTypes = CollectNestedTypes(objectSpec.Properties).ToArray();
         for (var index = 0; index < nestedTypes.Length; index++)
         {
@@ -3407,8 +3981,6 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                 builder.AppendLine();
             }
         }
-
-        builder.AppendLine($"{indent}}}");
     }
 
     /// <summary>
@@ -3527,6 +4099,78 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             displayPath,
             schemaName,
             propertyName);
+        return false;
+    }
+
+    /// <summary>
+    ///     记录同一对象节点内已分配的生成属性名，并在 schema key 归一化后发生冲突时返回明确诊断。
+    ///     该校验会在生成器进入源码发射前阻止重复属性、查询方法与索引成员名落入后续编译阶段。
+    /// </summary>
+    /// <param name="filePath">Schema 文件路径。</param>
+    /// <param name="displayPath">当前字段的逻辑路径。</param>
+    /// <param name="schemaName">当前字段的原始 schema key。</param>
+    /// <param name="propertyName">当前字段归一化后的 CLR 属性名。</param>
+    /// <param name="schemaKeyByGeneratedPropertyName">同一对象内已分配的属性名与原始 schema key 对照表。</param>
+    /// <param name="diagnostic">检测到冲突时返回的诊断。</param>
+    /// <returns>当生成属性名在当前对象作用域内唯一时返回 <see langword="true" />。</returns>
+    private static bool TryRegisterGeneratedPropertyName(
+        string filePath,
+        string displayPath,
+        string schemaName,
+        string propertyName,
+        IDictionary<string, string> schemaKeyByGeneratedPropertyName,
+        out Diagnostic? diagnostic)
+    {
+        if (!schemaKeyByGeneratedPropertyName.TryGetValue(propertyName, out var existingSchemaName))
+        {
+            schemaKeyByGeneratedPropertyName.Add(propertyName, schemaName);
+            diagnostic = null;
+            return true;
+        }
+
+        diagnostic = Diagnostic.Create(
+            ConfigSchemaDiagnostics.DuplicateGeneratedIdentifier,
+            CreateFileLocation(filePath),
+            Path.GetFileName(filePath),
+            displayPath,
+            schemaName,
+            propertyName,
+            existingSchemaName);
+        return false;
+    }
+
+    /// <summary>
+    ///     将 schema 文件名派生的根实体名验证为生成代码可直接使用的根类型标识符。
+    ///     这里与属性名验证保持一致，避免文件名中的前导数字或其他非法字符把根配置类型/表类型生成为无效 C# 标识符。
+    /// </summary>
+    /// <param name="filePath">Schema 文件路径。</param>
+    /// <param name="schemaBaseName">去除扩展名后的 schema 基础名。</param>
+    /// <param name="entityName">验证后的实体名。</param>
+    /// <param name="rootClassName">验证后的根配置类型名。</param>
+    /// <param name="diagnostic">根类型名非法时生成的诊断。</param>
+    /// <returns>是否成功生成合法的根类型标识符。</returns>
+    private static bool TryBuildRootTypeIdentifiers(
+        string filePath,
+        string schemaBaseName,
+        out string entityName,
+        out string rootClassName,
+        out Diagnostic? diagnostic)
+    {
+        entityName = ToPascalCase(schemaBaseName);
+        rootClassName = $"{entityName}Config";
+        if (SyntaxFacts.IsValidIdentifier(rootClassName))
+        {
+            diagnostic = null;
+            return true;
+        }
+
+        diagnostic = Diagnostic.Create(
+            ConfigSchemaDiagnostics.InvalidGeneratedIdentifier,
+            CreateFileLocation(filePath),
+            Path.GetFileName(filePath),
+            "<root>",
+            schemaBaseName,
+            rootClassName);
         return false;
     }
 
@@ -3936,64 +4580,98 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     private static string? TryBuildConstraintDocumentation(JsonElement element, string schemaType)
     {
         var parts = new List<string>();
+        AddConstDocumentationPart(element, schemaType, parts);
+        AddNumericConstraintDocumentationParts(element, schemaType, parts);
+        AddStringConstraintDocumentationParts(element, schemaType, parts);
+        AddArrayConstraintDocumentationParts(element, schemaType, parts);
+        AddObjectConstraintDocumentationParts(element, schemaType, parts);
 
+        return parts.Count > 0 ? string.Join(", ", parts) : null;
+    }
+
+    /// <summary>
+    ///     Adds <c>const</c> documentation when the schema value matches the current type.
+    /// </summary>
+    /// <param name="element">Schema node.</param>
+    /// <param name="schemaType">Current schema type.</param>
+    /// <param name="parts">Mutable documentation parts.</param>
+    private static void AddConstDocumentationPart(JsonElement element, string schemaType, List<string> parts)
+    {
         var constDocumentation = TryBuildConstDocumentation(element, schemaType);
         if (constDocumentation is not null)
         {
             parts.Add($"const = {constDocumentation}");
         }
+    }
 
-        if ((schemaType == "integer" || schemaType == "number") &&
+    /// <summary>
+    ///     Adds numeric range and step constraints to generated XML documentation.
+    /// </summary>
+    /// <param name="element">Schema node.</param>
+    /// <param name="schemaType">Current schema type.</param>
+    /// <param name="parts">Mutable documentation parts.</param>
+    private static void AddNumericConstraintDocumentationParts(JsonElement element, string schemaType, List<string> parts)
+    {
+        if (IsNumericSchemaType(schemaType) &&
             TryGetFiniteNumber(element, "minimum", out var minimum))
         {
             parts.Add($"minimum = {minimum.ToString(CultureInfo.InvariantCulture)}");
         }
 
-        if ((schemaType == "integer" || schemaType == "number") &&
+        if (IsNumericSchemaType(schemaType) &&
             TryGetFiniteNumber(element, "exclusiveMinimum", out var exclusiveMinimum))
         {
             parts.Add($"exclusiveMinimum = {exclusiveMinimum.ToString(CultureInfo.InvariantCulture)}");
         }
 
-        if ((schemaType == "integer" || schemaType == "number") &&
+        if (IsNumericSchemaType(schemaType) &&
             TryGetFiniteNumber(element, "maximum", out var maximum))
         {
             parts.Add($"maximum = {maximum.ToString(CultureInfo.InvariantCulture)}");
         }
 
-        if ((schemaType == "integer" || schemaType == "number") &&
+        if (IsNumericSchemaType(schemaType) &&
             TryGetFiniteNumber(element, "exclusiveMaximum", out var exclusiveMaximum))
         {
             parts.Add($"exclusiveMaximum = {exclusiveMaximum.ToString(CultureInfo.InvariantCulture)}");
         }
 
-        if ((schemaType == "integer" || schemaType == "number") &&
+        if (IsNumericSchemaType(schemaType) &&
             TryGetFiniteNumber(element, "multipleOf", out var multipleOf) &&
             multipleOf > 0d)
         {
             parts.Add($"multipleOf = {multipleOf.ToString(CultureInfo.InvariantCulture)}");
         }
+    }
 
-        if (schemaType == "string" &&
+    /// <summary>
+    ///     Adds string length, pattern, and stable format constraints to generated XML documentation.
+    /// </summary>
+    /// <param name="element">Schema node.</param>
+    /// <param name="schemaType">Current schema type.</param>
+    /// <param name="parts">Mutable documentation parts.</param>
+    private static void AddStringConstraintDocumentationParts(JsonElement element, string schemaType, List<string> parts)
+    {
+        if (IsSchemaType(schemaType, "string") &&
             TryGetNonNegativeInt32(element, "minLength", out var minLength))
         {
             parts.Add($"minLength = {minLength.ToString(CultureInfo.InvariantCulture)}");
         }
 
-        if (schemaType == "string" &&
+        if (IsSchemaType(schemaType, "string") &&
             TryGetNonNegativeInt32(element, "maxLength", out var maxLength))
         {
             parts.Add($"maxLength = {maxLength.ToString(CultureInfo.InvariantCulture)}");
         }
 
-        if (schemaType == "string" &&
+        if (IsSchemaType(schemaType, "string") &&
             element.TryGetProperty("pattern", out var patternElement) &&
             patternElement.ValueKind == JsonValueKind.String)
         {
             parts.Add($"pattern = '{patternElement.GetString() ?? string.Empty}'");
         }
 
-        if (schemaType == "string" &&
+        if (IsSchemaType(schemaType, "string") &&
             element.TryGetProperty("format", out var formatElement) &&
             formatElement.ValueKind == JsonValueKind.String)
         {
@@ -4003,27 +4681,36 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                 parts.Add($"format = '{formatName}'");
             }
         }
+    }
 
-        if (schemaType == "array" &&
+    /// <summary>
+    ///     Adds array count, uniqueness, contains, and negation constraints to generated XML documentation.
+    /// </summary>
+    /// <param name="element">Schema node.</param>
+    /// <param name="schemaType">Current schema type.</param>
+    /// <param name="parts">Mutable documentation parts.</param>
+    private static void AddArrayConstraintDocumentationParts(JsonElement element, string schemaType, List<string> parts)
+    {
+        if (IsSchemaType(schemaType, "array") &&
             TryGetNonNegativeInt32(element, "minItems", out var minItems))
         {
             parts.Add($"minItems = {minItems.ToString(CultureInfo.InvariantCulture)}");
         }
 
-        if (schemaType == "array" &&
+        if (IsSchemaType(schemaType, "array") &&
             TryGetNonNegativeInt32(element, "maxItems", out var maxItems))
         {
             parts.Add($"maxItems = {maxItems.ToString(CultureInfo.InvariantCulture)}");
         }
 
-        if (schemaType == "array" &&
+        if (IsSchemaType(schemaType, "array") &&
             element.TryGetProperty("uniqueItems", out var uniqueItemsElement) &&
             uniqueItemsElement.ValueKind == JsonValueKind.True)
         {
             parts.Add("uniqueItems = true");
         }
 
-        if (schemaType == "array")
+        if (IsSchemaType(schemaType, "array"))
         {
             var containsDocumentation = TryBuildContainsDocumentation(element);
             if (containsDocumentation is not null)
@@ -4038,31 +4725,40 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             parts.Add($"not = {notDocumentation}");
         }
 
-        if (schemaType == "array" &&
+        if (IsSchemaType(schemaType, "array") &&
             TryGetNonNegativeInt32(element, "minContains", out var minContains))
         {
             parts.Add($"minContains = {minContains.ToString(CultureInfo.InvariantCulture)}");
         }
 
-        if (schemaType == "array" &&
+        if (IsSchemaType(schemaType, "array") &&
             TryGetNonNegativeInt32(element, "maxContains", out var maxContains))
         {
             parts.Add($"maxContains = {maxContains.ToString(CultureInfo.InvariantCulture)}");
         }
+    }
 
-        if (schemaType == "object" &&
+    /// <summary>
+    ///     Adds object cardinality and composition constraints to generated XML documentation.
+    /// </summary>
+    /// <param name="element">Schema node.</param>
+    /// <param name="schemaType">Current schema type.</param>
+    /// <param name="parts">Mutable documentation parts.</param>
+    private static void AddObjectConstraintDocumentationParts(JsonElement element, string schemaType, List<string> parts)
+    {
+        if (IsSchemaType(schemaType, "object") &&
             TryGetNonNegativeInt32(element, "minProperties", out var minProperties))
         {
             parts.Add($"minProperties = {minProperties.ToString(CultureInfo.InvariantCulture)}");
         }
 
-        if (schemaType == "object" &&
+        if (IsSchemaType(schemaType, "object") &&
             TryGetNonNegativeInt32(element, "maxProperties", out var maxProperties))
         {
             parts.Add($"maxProperties = {maxProperties.ToString(CultureInfo.InvariantCulture)}");
         }
 
-        if (schemaType == "object")
+        if (IsSchemaType(schemaType, "object"))
         {
             var dependentRequiredDocumentation = TryBuildDependentRequiredDocumentation(element);
             if (dependentRequiredDocumentation is not null)
@@ -4088,8 +4784,6 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
                 parts.Add($"if/then/else = {conditionalDocumentation}");
             }
         }
-
-        return parts.Count > 0 ? string.Join(", ", parts) : null;
     }
 
     /// <summary>
@@ -4351,14 +5045,14 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         }
 
         var schemaType = typeElement.GetString();
-        if (string.IsNullOrWhiteSpace(schemaType))
+        if (schemaType is null || string.IsNullOrWhiteSpace(schemaType))
         {
             return null;
         }
 
         var details = new List<string>();
         if (includeRequiredProperties &&
-            schemaType == "object")
+            IsSchemaType(schemaType, "object"))
         {
             var requiredDocumentation = TryBuildRequiredPropertiesDocumentation(schemaElement);
             if (requiredDocumentation is not null)
@@ -4367,13 +5061,13 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             }
         }
 
-        var enumDocumentation = TryBuildEnumDocumentation(schemaElement, schemaType!);
+        var enumDocumentation = TryBuildEnumDocumentation(schemaElement, schemaType);
         if (enumDocumentation is not null)
         {
             details.Add($"enum = {enumDocumentation}");
         }
 
-        var constraintDocumentation = TryBuildConstraintDocumentation(schemaElement, schemaType!);
+        var constraintDocumentation = TryBuildConstraintDocumentation(schemaElement, schemaType);
         if (constraintDocumentation is not null)
         {
             details.Add(constraintDocumentation);
@@ -4492,7 +5186,9 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     /// <returns>组合后的路径。</returns>
     private static string CombinePath(string parentPath, string propertyName)
     {
-        return parentPath == "<root>" ? propertyName : $"{parentPath}.{propertyName}";
+        return string.Equals(parentPath, "<root>", StringComparison.Ordinal)
+            ? propertyName
+            : $"{parentPath}.{propertyName}";
     }
 
     /// <summary>
@@ -4639,6 +5335,25 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         string? RefTableName,
         SchemaObjectSpec? NestedObject,
         SchemaTypeSpec? ItemTypeSpec);
+
+    /// <summary>
+    ///     Shared state extracted before dispatching one property to a schema-type-specific parser.
+    /// </summary>
+    /// <param name="DisplayPath">Logical schema path.</param>
+    /// <param name="PropertyName">Generated CLR property name.</param>
+    /// <param name="IsRequired">Whether the property is required.</param>
+    /// <param name="Title">Optional schema title.</param>
+    /// <param name="Description">Optional schema description.</param>
+    /// <param name="RefTableName">Optional referenced table metadata.</param>
+    /// <param name="IsIndexedLookup">Whether the property declares a generated exact-match index.</param>
+    private sealed record PropertyParseContext(
+        string DisplayPath,
+        string PropertyName,
+        bool IsRequired,
+        string? Title,
+        string? Description,
+        string? RefTableName,
+        bool IsIndexedLookup);
 
     /// <summary>
     ///     生成代码前的跨表引用字段种子信息。

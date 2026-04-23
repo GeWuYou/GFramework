@@ -21,6 +21,23 @@ public static class SchemaGeneratorTestDriver
         string source,
         params (string path, string content)[] additionalFiles)
     {
+        return Run(
+            source,
+            additionalFiles
+                .Select(static item => (AdditionalText)new InMemoryAdditionalText(item.path, item.content))
+                .ToArray());
+    }
+
+    /// <summary>
+    ///     运行 schema 配置生成器，并允许测试自定义 AdditionalText 行为。
+    /// </summary>
+    /// <param name="source">测试用源码。</param>
+    /// <param name="additionalTexts">自定义 AdditionalText 集合。</param>
+    /// <returns>生成器运行结果。</returns>
+    public static GeneratorDriverRunResult Run(
+        string source,
+        params AdditionalText[] additionalTexts)
+    {
         var syntaxTree = CSharpSyntaxTree.ParseText(source);
         var compilation = CSharpCompilation.Create(
             "SchemaConfigGeneratorTests",
@@ -28,13 +45,9 @@ public static class SchemaGeneratorTestDriver
             GetMetadataReferences(),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-        var additionalTexts = additionalFiles
-            .Select(static item => (AdditionalText)new InMemoryAdditionalText(item.path, item.content))
-            .ToImmutableArray();
-
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
             generators: new[] { new SchemaConfigGenerator().AsSourceGenerator() },
-            additionalTexts: additionalTexts,
+            additionalTexts: additionalTexts.ToImmutableArray(),
             parseOptions: (CSharpParseOptions)syntaxTree.Options);
 
         driver = driver.RunGenerators(compilation);

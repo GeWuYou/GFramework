@@ -20,10 +20,14 @@ public sealed class FilterConfiguration
     /// <summary>
     ///     命名空间前缀列表（用于 Namespace 过滤器）。
     /// </summary>
+#pragma warning disable MA0016 // Preserve the established concrete configuration API surface.
     public List<string>? Namespaces { get; set; }
+#pragma warning restore MA0016
 
     /// <summary>
     ///     子过滤器列表（用于 Composite 过滤器）。
     /// </summary>
+#pragma warning disable MA0016 // Preserve the established concrete configuration API surface.
     public List<FilterConfiguration>? Filters { get; set; }
+#pragma warning restore MA0016
 }

@@ -16,8 +16,23 @@ namespace GFramework.Core.Functional;
 /// <summary>
 ///     表示可能存在或不存在的值，用于替代 null 引用的函数式编程类型
 /// </summary>
+/// <remarks>
+///     <para>
+///         <see cref="Option{T}" /> 只表示两种显式状态：通过 <see cref="Some(T)" /> 创建的有值状态，以及
+///         <see cref="None" /> 表示的无值状态；调用方不应把 <see cref="None" /> 当作 <see langword="null" /> 的别名。
+///     </para>
+///     <para>
+///         <see cref="Some(T)" /> 会拒绝 <see langword="null" />，因此引用类型和可空引用类型参数都必须包装真实值；访问方应优先通过
+///         <see cref="IsSome" />、<see cref="IsNone" />、模式匹配或 <c>Match</c>/<c>Map</c> 等函数式 API 消费结果，而不是假设默认值
+///         与无值状态等价。
+///     </para>
+///     <para>
+///         该结构体是不可变值类型；一旦创建，其状态与内部值不会再改变。但在 <see cref="IsNone" /> 为 <see langword="true" /> 时，
+///         调用需要真实值的方法仍应遵守各成员自身的契约与异常说明。
+///     </para>
+/// </remarks>
 /// <typeparam name="T">值的类型</typeparam>
-public readonly struct Option<T>
+public readonly struct Option<T> : IEquatable<Option<T>>
 {
     private readonly T _value;
     private readonly bool _isSome;

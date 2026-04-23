@@ -7,6 +7,32 @@ namespace GFramework.SourceGenerators.Tests.Config;
 public class SchemaConfigGeneratorTests
 {
     /// <summary>
+    ///     验证 AdditionalFiles 读取被取消时会向上传播取消，而不是伪造成 schema 诊断。
+    /// </summary>
+    [Test]
+    public void Run_Should_Propagate_Cancellation_When_AdditionalText_Read_Is_Cancelled()
+    {
+        var method = typeof(global::GFramework.Game.SourceGenerators.Config.SchemaConfigGenerator)
+            .GetMethod(
+                "TryReadSchemaText",
+                global::System.Reflection.BindingFlags.NonPublic | global::System.Reflection.BindingFlags.Static);
+        var cancellationTokenSource = new CancellationTokenSource();
+        cancellationTokenSource.Cancel();
+        var invocationArguments = new object?[]
+        {
+            new ThrowingAdditionalText("monster.schema.json"),
+            cancellationTokenSource.Token,
+            null,
+            null
+        };
+
+        var exception = Assert.Throws<global::System.Reflection.TargetInvocationException>(() =>
+            method!.Invoke(null, invocationArguments));
+
+        Assert.That(exception!.InnerException, Is.TypeOf<OperationCanceledException>());
+    }
+
+    /// <summary>
     ///     验证缺失必填 id 字段时会产生命名明确的诊断。
     /// </summary>
     [Test]
@@ -44,6 +70,111 @@ public class SchemaConfigGeneratorTests
             Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Error));
             Assert.That(diagnostic.GetMessage(), Does.Contain("monster.schema.json"));
         });
+    }
+
+    /// <summary>
+    ///     验证根节点 <c>type</c> 元数据不是字符串时，会返回根对象约束诊断，而不是抛出 JSON 访问异常。
+    /// </summary>
+    [Test]
+    public void Run_Should_Report_Diagnostic_When_Root_Type_Metadata_Is_Not_A_String()
+    {
+        const string source = """
+                              namespace TestApp
+                              {
+                                  public sealed class Dummy
+                                  {
+                                  }
+                              }
+                              """;
+
+        const string schema = """
+                              {
+                                "type": 123,
+                                "required": ["id"],
+                                "properties": {
+                                  "id": { "type": "integer" }
+                                }
+                              }
+                              """;
+
+        var result = SchemaGeneratorTestDriver.Run(
+            source,
+            ("monster.schema.json", schema));
+
+        var diagnostic = result.Results.Single().Diagnostics.Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Id, Is.EqualTo("GF_ConfigSchema_002"));
+            Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Error));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("monster.schema.json"));
+        });
+    }
+
+    /// <summary>
+    ///     验证 schema 文件名若生成无效根类型标识符时，会在生成前产生命名明确的诊断。
+    /// </summary>
+    [Test]
+    public void Run_Should_Report_Diagnostic_When_Schema_File_Name_Generates_Invalid_Root_Type_Identifier()
+    {
+        const string source = """
+                              namespace TestApp
+                              {
+                                  public sealed class Dummy
+                                  {
+                                  }
+                              }
+                              """;
+
+        const string schema = """
+                              {
+                                "type": "object",
+                                "required": ["id", "name"],
+                                "properties": {
+                                  "id": { "type": "integer" },
+                                  "name": { "type": "string" }
+                                }
+                              }
+                              """;
+
+        var result = SchemaGeneratorTestDriver.Run(
+            source,
+            ("123-monster.schema.json", schema));
+
+        var diagnostic = result.Results.Single().Diagnostics.Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Id, Is.EqualTo("GF_ConfigSchema_006"));
+            Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Error));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("<root>"));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("123-monster"));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("123MonsterConfig"));
+        });
+    }
+
+    /// <summary>
+    ///     用于模拟 AdditionalFiles 读取阶段直接收到取消请求的测试桩。
+    /// </summary>
+    private sealed class ThrowingAdditionalText : AdditionalText
+    {
+        /// <summary>
+        ///     创建一个在读取时抛出取消异常的 AdditionalText。
+        /// </summary>
+        /// <param name="path">虚拟 schema 路径。</param>
+        public ThrowingAdditionalText(string path)
+        {
+            Path = path;
+        }
+
+        /// <inheritdoc />
+        public override string Path { get; }
+
+        /// <inheritdoc />
+        public override SourceText GetText(CancellationToken cancellationToken = default)
+        {
+            throw new OperationCanceledException(cancellationToken);
+        }
     }
 
     /// <summary>
@@ -1845,6 +1976,49 @@ public class SchemaConfigGeneratorTests
     }
 
     /// <summary>
+    ///     验证同一对象内不同 schema key 若归一化后映射到同一属性名，会在生成前直接给出冲突诊断。
+    /// </summary>
+    [Test]
+    public void Run_Should_Report_Diagnostic_When_Schema_Keys_Collide_After_Identifier_Normalization()
+    {
+        const string source = """
+                              namespace TestApp
+                              {
+                                  public sealed class Dummy
+                                  {
+                                  }
+                              }
+                              """;
+
+        const string schema = """
+                              {
+                                "type": "object",
+                                "required": ["id"],
+                                "properties": {
+                                  "id": { "type": "integer" },
+                                  "foo-bar": { "type": "string" },
+                                  "foo_bar": { "type": "string" }
+                                }
+                              }
+                              """;
+
+        var result = SchemaGeneratorTestDriver.Run(
+            source,
+            ("monster.schema.json", schema));
+
+        var diagnostic = result.Results.Single().Diagnostics.Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Id, Is.EqualTo("GF_ConfigSchema_014"));
+            Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Error));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("foo_bar"));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("FooBar"));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("foo-bar"));
+        });
+    }
+
+    /// <summary>
     ///     验证 schema 顶层允许通过元数据覆盖默认配置目录，并会统一路径分隔符。
     /// </summary>
     [Test]
@@ -2299,7 +2473,7 @@ public class SchemaConfigGeneratorTests
     }
 
     /// <summary>
-    ///     验证引用元数据成员名在不同路径规范化后发生碰撞时，生成器仍会分配全局唯一的成员名。
+    ///     验证引用元数据成员名在不同合法字段路径规范化后发生碰撞时，生成器仍会分配全局唯一的成员名。
     /// </summary>
     [Test]
     public void Run_Should_Assign_Globally_Unique_Reference_Metadata_Member_Names()
@@ -2360,12 +2534,21 @@ public class SchemaConfigGeneratorTests
                                 "required": ["id"],
                                 "properties": {
                                   "id": { "type": "integer" },
-                                  "drop-items": {
-                                    "type": "array",
-                                    "items": { "type": "string" },
-                                    "x-gframework-ref-table": "item"
+                                  "drop": {
+                                    "type": "object",
+                                    "properties": {
+                                      "items": {
+                                        "type": "array",
+                                        "items": { "type": "string" },
+                                        "x-gframework-ref-table": "item"
+                                      },
+                                      "items1": {
+                                        "type": "string",
+                                        "x-gframework-ref-table": "item"
+                                      }
+                                    }
                                   },
-                                  "drop_items": {
+                                  "dropItems": {
                                     "type": "array",
                                     "items": { "type": "string" },
                                     "x-gframework-ref-table": "item"
@@ -2394,6 +2577,7 @@ public class SchemaConfigGeneratorTests
         Assert.That(generatedSources.TryGetValue("MonsterConfigBindings.g.cs", out var bindingsSource), Is.True);
         Assert.That(bindingsSource, Does.Contain("public static readonly ReferenceMetadata DropItems ="));
         Assert.That(bindingsSource, Does.Contain("public static readonly ReferenceMetadata DropItems1 ="));
+        Assert.That(bindingsSource, Does.Contain("public static readonly ReferenceMetadata DropItems2 ="));
         Assert.That(bindingsSource, Does.Contain("public static readonly ReferenceMetadata DropItems11 ="));
     }
 
@@ -2637,6 +2821,12 @@ public class SchemaConfigGeneratorTests
             Assert.That(catalogSource,
                 Does.Contain(
                     "public global::System.Collections.Generic.IEqualityComparer<int>? MonsterComparer { get; init; }"));
+            Assert.That(catalogSource,
+                Does.Contain(
+                    "using <c>global::System.Collections.Generic.IEqualityComparer&lt;string&gt;?</c> when aggregate registration runs."));
+            Assert.That(catalogSource,
+                Does.Contain(
+                    "using <c>global::System.Collections.Generic.IEqualityComparer&lt;int&gt;?</c> when aggregate registration runs."));
             Assert.That(catalogSource, Does.Contain("return RegisterAllGeneratedConfigTables(loader, options: null);"));
             Assert.That(catalogSource, Does.Contain("GeneratedConfigRegistrationOptions? options"));
             Assert.That(catalogSource, Does.Contain("loader.RegisterItemTable(effectiveOptions.ItemComparer);"));

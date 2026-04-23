@@ -81,10 +81,12 @@ public static class CollectionExtensions
     /// // dict["a"] == 3 (最后一个值)
     /// </code>
     /// </example>
+#pragma warning disable MA0016 // Preserve the established concrete return type for public API compatibility.
     public static Dictionary<TKey, TValue> ToDictionarySafe<T, TKey, TValue>(
         this IEnumerable<T> source,
         Func<T, TKey> keySelector,
         Func<T, TValue> valueSelector) where TKey : notnull
+#pragma warning restore MA0016
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(keySelector);
