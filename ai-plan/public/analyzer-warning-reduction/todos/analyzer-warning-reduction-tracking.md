@@ -7,9 +7,27 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-034`
-- 当前阶段：`Phase 34`
+- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-036`
+- 当前阶段：`Phase 36`
 - 当前焦点：
+  - 已完成 `GFramework.SourceGenerators.Tests/Config/SchemaConfigGeneratorTests.cs` 的 `MA0051` 收口：
+    将共享 consumer runtime fixture 提取到类级常量，并把生成结果收集与 catalog 契约断言拆成小 helper，
+    保持 schema 文本、断言语义与生成输出契约不变
+  - 当前 `GFramework.SourceGenerators.Tests` Release warnings-only 基线已从 `22` 条降到 `15` 条；
+    `SchemaConfigGeneratorTests.cs` 已不再出现在 `MA0051` 列表中，剩余热点全部集中在
+    `CqrsHandlerRegistryGeneratorTests.cs`
+  - 已完成 `SchemaConfigGeneratorTests` 定向验证：串行重跑 `50` 个用例全部通过；并确认先前并行 build/test
+    触发的 `MSB3030` / `CS0006` 属于共享输出竞争噪音，不是代码回归
+  - 已按 `gframework-boot` 重新恢复当前 worktree：确认分支 `fix/analyzer-warning-reduction-batch` 仍映射到
+    `analyzer-warning-reduction`，且当前不存在 `ai-plan/private/` 私有恢复上下文
+  - 已重新抓取当前分支关联的 PR #273 review 状态：PR 已处于 `CLOSED`，latest-head review 仍显示 `2` 条
+    CodeRabbit open thread，但本地复核后 `GeneratorSnapshotTest` 的 snapshot 路径空值防御已显式改为
+    `InvalidOperationException` 防御，`SchemaConfigGenerator` 的 `dependentSchemas` / `allOf` / conditional helper
+    也已补齐 XML 文档，当前更像历史线程未随已关闭 PR 一起收敛
+  - 已重新以 `GFramework.SourceGenerators.Tests` Release warnings-only build 复核当前 `MA0051` 热点：
+    基线现为 `22` 条，且已不再落在 `GeneratorSnapshotTest`、`ContextRegistrationAnalyzerTests` 或
+    `ContextGetGeneratorTests`，而是集中在 `CqrsHandlerRegistryGeneratorTests.cs`（`15` 条）与
+    `SchemaConfigGeneratorTests.cs`（`7` 条）
   - 已完成 `GFramework.Core` 当前 `MA0016` / `MA0002` / `MA0015` / `MA0077` 低风险收口批次
   - 已复核 `net10.0` 下的 `MA0158` 基线：`GFramework.Core` / `GFramework.Cqrs` 当前共有 `16` 个 object lock
     建议点，属于跨 target 兼容性风险，不在本轮直接批量替换
@@ -124,6 +142,11 @@
   `40` 条，并通过 focused generator tests 保持输出契约不变
 - 已完成 `SchemaConfigGeneratorSnapshotTests` 的单文件 `MA0051` 收口；当前 `GFramework.SourceGenerators.Tests`
   Release build 基线已降到 `39` 条，并通过 focused snapshot test 保持生成输出契约不变
+- 已完成 `RP-035` 启动复核：确认 PR #273 已关闭、历史 open thread 暂无新的本地修复点，且
+  `GFramework.SourceGenerators.Tests` 当前剩余 `MA0051` 已重排为 `CqrsHandlerRegistryGeneratorTests` /
+  `SchemaConfigGeneratorTests` 两个测试写集
+- 已完成 `RP-036`：清空 `SchemaConfigGeneratorTests.cs` 当前 `MA0051`，并将
+  `GFramework.SourceGenerators.Tests` Release warnings-only 基线进一步降到 `15` 条
 
 ## 当前活跃事实
 
@@ -168,6 +191,12 @@
   生成文件名、断言路径与源生成输出不变；`GFramework.SourceGenerators.Tests` warnings-only 基线由 `43` 降至 `40`
 - `RP-033` 已完成 `SchemaConfigGeneratorSnapshotTests` 的 `MA0051` 收口：monster schema 运行时契约与 schema 输入已提取为
   类级常量，生成结果映射与快照目录解析已拆为小 helper；`GFramework.SourceGenerators.Tests` warnings-only 基线由 `40` 降至 `39`
+- `RP-035` 已完成启动级恢复核对：当前分支对应的 GitHub PR #273 已关闭，因此 remaining open thread 仅作为历史信号参考；
+  下一轮应以本地 `warnings-only` build 的实时热点为主，而不是继续按已过时的 `GeneratorSnapshotTest` /
+  `ContextRegistrationAnalyzerTests` 建议恢复
+- `RP-036` 已完成 `SchemaConfigGeneratorTests` 的单文件 `MA0051` 收口：共享 runtime fixture、
+  generated-source 收集与 catalog 契约断言均已拆出 helper；当前测试项目剩余 `MA0051` 已全部收敛到
+  `CqrsHandlerRegistryGeneratorTests`
 - `RP-021` 使用 `$gframework-pr-review` 复核当前分支 PR #269 后，修复仍在本地成立的 4 个项：将
   `CqrsHandlerRegistryGenerator` 拆分为职责清晰的 partial 文件、为 `ContextAwareGenerator` 生成字段增加稳定前缀并补上
   `SetContextProvider` 的运行时 null 校验、为 `Option<T>` 补齐 `<remarks>`，并新增字段重名场景的生成器快照测试
@@ -389,13 +418,27 @@
     - 结果：`39 Warning(s)`，`0 Error(s)`；`SchemaConfigGeneratorSnapshotTests.cs` 已不再出现在 `MA0051` 列表中
   - `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --no-build --disable-build-servers --filter FullyQualifiedName~SchemaConfigGeneratorSnapshotTests -m:1 -p:RestoreFallbackFolders="" -nologo`
     - 结果：`1 Passed`，`0 Failed`
+- `RP-035` 的验证结果：
+  - `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output /tmp/current-pr-review.json`
+    - 结果：成功定位当前分支关联的 `PR #273`；状态为 `CLOSED`，latest-head review threads 仍显示 `2` 条 open thread，
+      test report 均为通过，MegaLinter 仅保留 docstring coverage / `dotnet-format` 历史信号
+  - `dotnet build GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release -t:Rebuild --no-restore --disable-build-servers -m:1 -p:UseSharedCompilation=false -p:RestoreFallbackFolders="" -nologo -clp:"Summary;WarningsOnly"`
+    - 结果：`22 Warning(s)`，`0 Error(s)`；剩余 `MA0051` 全部集中在 `CqrsHandlerRegistryGeneratorTests.cs` 与
+      `SchemaConfigGeneratorTests.cs`
+- `RP-036` 的验证结果：
+  - `dotnet restore GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -p:RestoreFallbackFolders="" -nologo`
+    - 结果：通过；刷新测试依赖输出，规避 `--no-build` 场景下的缺包噪音
+  - `dotnet build GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release -t:Rebuild --no-restore --disable-build-servers -m:1 -p:UseSharedCompilation=false -p:RestoreFallbackFolders="" -nologo -clp:"Summary;WarningsOnly"`
+    - 结果：`15 Warning(s)`，`0 Error(s)`；`SchemaConfigGeneratorTests.cs` 已不再出现在 `MA0051` 列表中
+  - `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --no-build --disable-build-servers --filter FullyQualifiedName~SchemaConfigGeneratorTests -m:1 -p:RestoreFallbackFolders="" -nologo`
+    - 结果：`50 Passed`，`0 Failed`
 - active 跟踪文件只保留当前恢复点、活跃事实、风险与下一步，不再重复保存已完成阶段的长篇历史
 
 ## 下一步
 
 1. 若要继续该主题，先读 active tracking，再按需展开历史归档中的 warning 热点与验证记录
-2. 下一轮优先继续 `GFramework.SourceGenerators.Tests` 的 `MA0051` 收口，先在 `GeneratorSnapshotTest`、
-   `ContextRegistrationAnalyzerTests` 或 `ContextGetGeneratorTests` 中选择一个单写集推进，不再把已清零的 `MA0004` / `MA0048` 混回写集
+2. 下一轮优先继续 `GFramework.SourceGenerators.Tests` 的 `MA0051` 收口，并直接进入唯一剩余热点
+   `CqrsHandlerRegistryGeneratorTests.cs`
 3. 若改回推进 `MA0158`，先设计 `net8.0` / `net9.0` / `net10.0` 多 target 条件编译方案，不直接批量替换共享源码中的
    `object` lock
 4. 若后续继续改动 `GFramework.Godot`，先修复该项目的 Linux 侧 restore 资产，再补跑独立 build

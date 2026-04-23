@@ -1,5 +1,60 @@
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-23 — RP-036
+
+### 阶段：`SchemaConfigGeneratorTests.cs` `MA0051` 收口（RP-036）
+
+- 启动复核：
+  - 依据 `RP-035` 的恢复结论，选择低风险单写集 `GFramework.SourceGenerators.Tests/Config/SchemaConfigGeneratorTests.cs`
+    继续推进，而不直接跳入剩余 warning 数量更多的 `CqrsHandlerRegistryGeneratorTests.cs`
+  - 先用 `dotnet build ... -clp:"Summary;WarningsOnly"` 复核当前热点，确认该文件仍承担 `7` 条 `MA0051`
+- 决策：
+  - 保持全部 schema 文本、断言字符串和生成文件名不变，只收敛测试方法结构
+  - 将共享 consumer runtime fixture 提到类级常量，并把 generated-source 收集与 registration catalog 契约断言
+    抽成 helper，避免重复内联样板把测试方法重新撑长
+  - 继续避免并行运行同一测试项目的 build/test；该 worktree 下并发验证会触发 `MSB3030` / `CS0006` 级别的输出竞争噪音
+- 实施调整：
+  - 为 `SchemaConfigGeneratorTests` 新增 `DummySource` 与 `ConfigRuntimeSource` 类级常量
+  - 新增 `RunAndCollectGeneratedSources(...)` 与 `AssertGeneratedRegistrationCatalogContract(...)` helper
+  - 将 `if/then/else` 文档、config path、lookup index、reference metadata、query helper 与 project-level catalog
+    等长测试方法切换为复用共享 fixture / helper
+- 验证结果：
+  - `dotnet restore GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -p:RestoreFallbackFolders="" -nologo`
+    - 结果：通过
+  - `dotnet build GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release -t:Rebuild --no-restore --disable-build-servers -m:1 -p:UseSharedCompilation=false -p:RestoreFallbackFolders="" -nologo -clp:"Summary;WarningsOnly"`
+    - 结果：`15 Warning(s)`，`0 Error(s)`；`SchemaConfigGeneratorTests.cs` 已不再出现在 `MA0051` 列表中
+  - `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --no-build --disable-build-servers --filter FullyQualifiedName~SchemaConfigGeneratorTests -m:1 -p:RestoreFallbackFolders="" -nologo`
+    - 结果：`50 Passed`，`0 Failed`
+- 下一步建议：
+  - 继续进入 `GFramework.SourceGenerators.Tests/Cqrs/CqrsHandlerRegistryGeneratorTests.cs`，这是当前项目唯一剩余 `MA0051` 热点
+  - 若需要再次做定向测试，保持串行执行，避免把共享输出竞争误判成实现回退
+
+## 2026-04-23 — RP-035
+
+### 阶段：`boot` 恢复点重建与实时热点复核（RP-035）
+
+- 启动复核：
+  - 按 `gframework-boot` 流程读取 `AGENTS.md`、`.ai/environment/tools.ai.yaml`、`ai-plan/public/README.md`
+    与 `analyzer-warning-reduction` active tracking / trace，确认当前 worktree `GFramework-analyzer`
+    仍对应分支 `fix/analyzer-warning-reduction-batch`
+  - 额外检查 `ai-plan/private/`，确认当前 worktree 没有私有恢复上下文需要合并
+  - 使用 `gframework-pr-review` 脚本抓取当前分支关联 PR，确认 `PR #273` 已为 `CLOSED`
+- 决策：
+  - 不再把已关闭 PR 上残留的 open thread 直接当作下一轮主驱动信号；先以当前本地代码和实时 build 结果判断问题是否仍成立
+  - 将后续恢复入口从“继续看 `GeneratorSnapshotTest` / `ContextRegistrationAnalyzerTests`”切回
+    “重新跑 `warnings-only` build 后按真实热点推进”
+- 现场结论：
+  - `GeneratorSnapshotTest` 中关于 snapshot 路径的 `Path.GetDirectoryName(...)` 已改为显式空值防御，
+    相关 CodeRabbit 线程更像历史残留
+  - `SchemaConfigGenerator` 在 `dependentSchemas` / `allOf` / conditional schema 校验 helper 周围已经补齐 XML 文档，
+    当前也没有新的本地缺口需要仅为关闭旧线程而继续改动
+  - `dotnet build GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release -t:Rebuild --no-restore --disable-build-servers -m:1 -p:UseSharedCompilation=false -p:RestoreFallbackFolders="" -nologo -clp:"Summary;WarningsOnly"`
+    结果为 `22 Warning(s)`、`0 Error(s)`；剩余 `MA0051` 已集中到
+    `CqrsHandlerRegistryGeneratorTests.cs`（`15` 条）与 `SchemaConfigGeneratorTests.cs`（`7` 条）
+- 下一步建议：
+  - 若保持低风险单写集，先进入 `SchemaConfigGeneratorTests.cs`
+  - 若优先按 warning 数量收敛，则进入 `CqrsHandlerRegistryGeneratorTests.cs`
+
 ## 2026-04-23 — RP-033
 
 ### 阶段：`SchemaConfigGeneratorSnapshotTests.cs` `MA0051` 收口（RP-033）

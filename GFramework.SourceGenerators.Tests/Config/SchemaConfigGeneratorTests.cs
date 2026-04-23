@@ -6,6 +6,67 @@ namespace GFramework.SourceGenerators.Tests.Config;
 [TestFixture]
 public class SchemaConfigGeneratorTests
 {
+    // Keep shared fixture sources at class scope so MA0051 reduction does not change generator inputs.
+    private const string DummySource = """
+                                       namespace TestApp
+                                       {
+                                           public sealed class Dummy
+                                           {
+                                           }
+                                       }
+                                       """;
+
+    // These runtime contracts mirror the minimal consumer surface the generator expects when emitting registration helpers.
+    private const string ConfigRuntimeSource = """
+                                               using System;
+                                               using System.Collections.Generic;
+
+                                               namespace GFramework.Game.Abstractions.Config
+                                               {
+                                                   public interface IConfigTable
+                                                   {
+                                                       Type KeyType { get; }
+                                                       Type ValueType { get; }
+                                                       int Count { get; }
+                                                   }
+
+                                                   public interface IConfigTable<TKey, TValue> : IConfigTable
+                                                       where TKey : notnull
+                                                   {
+                                                       TValue Get(TKey key);
+                                                       bool TryGet(TKey key, out TValue? value);
+                                                       bool ContainsKey(TKey key);
+                                                       IReadOnlyCollection<TValue> All();
+                                                   }
+
+                                                   public interface IConfigRegistry
+                                                   {
+                                                       IConfigTable<TKey, TValue> GetTable<TKey, TValue>(string name)
+                                                           where TKey : notnull;
+
+                                                       bool TryGetTable<TKey, TValue>(string name, out IConfigTable<TKey, TValue>? table)
+                                                           where TKey : notnull;
+                                                   }
+                                               }
+
+                                               namespace GFramework.Game.Config
+                                               {
+                                                   public sealed class YamlConfigLoader
+                                                   {
+                                                       public YamlConfigLoader RegisterTable<TKey, TValue>(
+                                                           string tableName,
+                                                           string relativePath,
+                                                           string schemaRelativePath,
+                                                           Func<TValue, TKey> keySelector,
+                                                           IEqualityComparer<TKey>? comparer = null)
+                                                           where TKey : notnull
+                                                       {
+                                                           return this;
+                                                       }
+                                                   }
+                                               }
+                                               """;
+
     /// <summary>
     ///     验证 AdditionalFiles 读取被取消时会向上传播取消，而不是伪造成 schema 诊断。
     /// </summary>
@@ -1404,15 +1465,6 @@ public class SchemaConfigGeneratorTests
     [Test]
     public void Run_Should_Write_IfThenElse_Constraint_Into_Generated_Documentation()
     {
-        const string source = """
-                              namespace TestApp
-                              {
-                                  public sealed class Dummy
-                                  {
-                                  }
-                              }
-                              """;
-
         const string schema = """
                               {
                                 "type": "object",
@@ -1454,19 +1506,9 @@ public class SchemaConfigGeneratorTests
                               }
                               """;
 
-        var result = SchemaGeneratorTestDriver.Run(
-            source,
+        var generatedSources = RunAndCollectGeneratedSources(
+            DummySource,
             ("monster.schema.json", schema));
-
-        var generatedSources = result.Results
-            .Single()
-            .GeneratedSources
-            .ToDictionary(
-                static sourceResult => sourceResult.HintName,
-                static sourceResult => sourceResult.SourceText.ToString(),
-                StringComparer.Ordinal);
-
-        Assert.That(result.Results.Single().Diagnostics, Is.Empty);
         Assert.That(
             generatedSources["MonsterConfig.g.cs"],
             Does.Contain(
@@ -2024,56 +2066,6 @@ public class SchemaConfigGeneratorTests
     [Test]
     public void Run_Should_Use_Custom_Config_Path_Metadata_For_Generated_Registration()
     {
-        const string source = """
-                              using System;
-                              using System.Collections.Generic;
-
-                              namespace GFramework.Game.Abstractions.Config
-                              {
-                                  public interface IConfigTable
-                                  {
-                                      Type KeyType { get; }
-                                      Type ValueType { get; }
-                                      int Count { get; }
-                                  }
-
-                                  public interface IConfigTable<TKey, TValue> : IConfigTable
-                                      where TKey : notnull
-                                  {
-                                      TValue Get(TKey key);
-                                      bool TryGet(TKey key, out TValue? value);
-                                      bool ContainsKey(TKey key);
-                                      IReadOnlyCollection<TValue> All();
-                                  }
-
-                                  public interface IConfigRegistry
-                                  {
-                                      IConfigTable<TKey, TValue> GetTable<TKey, TValue>(string name)
-                                          where TKey : notnull;
-
-                                      bool TryGetTable<TKey, TValue>(string name, out IConfigTable<TKey, TValue>? table)
-                                          where TKey : notnull;
-                                  }
-                              }
-
-                              namespace GFramework.Game.Config
-                              {
-                                  public sealed class YamlConfigLoader
-                                  {
-                                      public YamlConfigLoader RegisterTable<TKey, TValue>(
-                                          string tableName,
-                                          string relativePath,
-                                          string schemaRelativePath,
-                                          Func<TValue, TKey> keySelector,
-                                          IEqualityComparer<TKey>? comparer = null)
-                                          where TKey : notnull
-                                      {
-                                          return this;
-                                      }
-                                  }
-                              }
-                              """;
-
         const string schema = """
                               {
                                 "type": "object",
@@ -2086,19 +2078,9 @@ public class SchemaConfigGeneratorTests
                               }
                               """;
 
-        var result = SchemaGeneratorTestDriver.Run(
-            source,
+        var generatedSources = RunAndCollectGeneratedSources(
+            ConfigRuntimeSource,
             ("monster.schema.json", schema));
-
-        var generatedSources = result.Results
-            .Single()
-            .GeneratedSources
-            .ToDictionary(
-                static sourceResult => sourceResult.HintName,
-                static sourceResult => sourceResult.SourceText.ToString(),
-                StringComparer.Ordinal);
-
-        Assert.That(result.Results.Single().Diagnostics, Is.Empty);
         Assert.That(generatedSources["MonsterConfigBindings.g.cs"],
             Does.Contain("public const string ConfigRelativePath = \"config/monster\";"));
         Assert.That(generatedSources["MonsterConfigBindings.g.cs"], Does.Contain("Metadata.ConfigRelativePath,"));
@@ -2126,56 +2108,6 @@ public class SchemaConfigGeneratorTests
     [Test]
     public void Run_Should_Skip_Runtime_Null_Keys_When_Generating_Indexed_Lookups()
     {
-        const string source = """
-                              using System;
-                              using System.Collections.Generic;
-
-                              namespace GFramework.Game.Abstractions.Config
-                              {
-                                  public interface IConfigTable
-                                  {
-                                      Type KeyType { get; }
-                                      Type ValueType { get; }
-                                      int Count { get; }
-                                  }
-
-                                  public interface IConfigTable<TKey, TValue> : IConfigTable
-                                      where TKey : notnull
-                                  {
-                                      TValue Get(TKey key);
-                                      bool TryGet(TKey key, out TValue? value);
-                                      bool ContainsKey(TKey key);
-                                      IReadOnlyCollection<TValue> All();
-                                  }
-
-                                  public interface IConfigRegistry
-                                  {
-                                      IConfigTable<TKey, TValue> GetTable<TKey, TValue>(string name)
-                                          where TKey : notnull;
-
-                                      bool TryGetTable<TKey, TValue>(string name, out IConfigTable<TKey, TValue>? table)
-                                          where TKey : notnull;
-                                  }
-                              }
-
-                              namespace GFramework.Game.Config
-                              {
-                                  public sealed class YamlConfigLoader
-                                  {
-                                      public YamlConfigLoader RegisterTable<TKey, TValue>(
-                                          string tableName,
-                                          string relativePath,
-                                          string schemaRelativePath,
-                                          Func<TValue, TKey> keySelector,
-                                          IEqualityComparer<TKey>? comparer = null)
-                                          where TKey : notnull
-                                      {
-                                          return this;
-                                      }
-                                  }
-                              }
-                              """;
-
         const string schema = """
                               {
                                 "type": "object",
@@ -2190,19 +2122,9 @@ public class SchemaConfigGeneratorTests
                               }
                               """;
 
-        var result = SchemaGeneratorTestDriver.Run(
-            source,
+        var generatedSources = RunAndCollectGeneratedSources(
+            ConfigRuntimeSource,
             ("monster.schema.json", schema));
-
-        var generatedSources = result.Results
-            .Single()
-            .GeneratedSources
-            .ToDictionary(
-                static sourceResult => sourceResult.HintName,
-                static sourceResult => sourceResult.SourceText.ToString(),
-                StringComparer.Ordinal);
-
-        Assert.That(result.Results.Single().Diagnostics, Is.Empty);
         Assert.That(generatedSources["MonsterTable.g.cs"], Does.Contain("if (key is null)"));
         Assert.That(generatedSources["MonsterTable.g.cs"],
             Does.Contain("Throwing here would permanently poison the cached index for this wrapper instance."));
@@ -2391,56 +2313,6 @@ public class SchemaConfigGeneratorTests
     [Test]
     public void Run_Should_Allow_Lookup_Index_For_Direct_Root_Property_With_Dotted_Schema_Key()
     {
-        const string source = """
-                              using System;
-                              using System.Collections.Generic;
-
-                              namespace GFramework.Game.Abstractions.Config
-                              {
-                                  public interface IConfigTable
-                                  {
-                                      Type KeyType { get; }
-                                      Type ValueType { get; }
-                                      int Count { get; }
-                                  }
-
-                                  public interface IConfigTable<TKey, TValue> : IConfigTable
-                                      where TKey : notnull
-                                  {
-                                      TValue Get(TKey key);
-                                      bool TryGet(TKey key, out TValue? value);
-                                      bool ContainsKey(TKey key);
-                                      IReadOnlyCollection<TValue> All();
-                                  }
-
-                                  public interface IConfigRegistry
-                                  {
-                                      IConfigTable<TKey, TValue> GetTable<TKey, TValue>(string name)
-                                          where TKey : notnull;
-
-                                      bool TryGetTable<TKey, TValue>(string name, out IConfigTable<TKey, TValue>? table)
-                                          where TKey : notnull;
-                                  }
-                              }
-
-                              namespace GFramework.Game.Config
-                              {
-                                  public sealed class YamlConfigLoader
-                                  {
-                                      public YamlConfigLoader RegisterTable<TKey, TValue>(
-                                          string tableName,
-                                          string relativePath,
-                                          string schemaRelativePath,
-                                          Func<TValue, TKey> keySelector,
-                                          IEqualityComparer<TKey>? comparer = null)
-                                          where TKey : notnull
-                                      {
-                                          return this;
-                                      }
-                                  }
-                              }
-                              """;
-
         const string schema = """
                               {
                                 "type": "object",
@@ -2455,19 +2327,9 @@ public class SchemaConfigGeneratorTests
                               }
                               """;
 
-        var result = SchemaGeneratorTestDriver.Run(
-            source,
+        var generatedSources = RunAndCollectGeneratedSources(
+            ConfigRuntimeSource,
             ("monster.schema.json", schema));
-
-        var generatedSources = result.Results
-            .Single()
-            .GeneratedSources
-            .ToDictionary(
-                static sourceResult => sourceResult.HintName,
-                static sourceResult => sourceResult.SourceText.ToString(),
-                StringComparer.Ordinal);
-
-        Assert.That(result.Results.Single().Diagnostics, Is.Empty);
         Assert.That(generatedSources["MonsterTable.g.cs"], Does.Contain("FindByDisplayName(string value)"));
         Assert.That(generatedSources["MonsterTable.g.cs"], Does.Contain("_displayNameIndex"));
     }
@@ -2478,56 +2340,6 @@ public class SchemaConfigGeneratorTests
     [Test]
     public void Run_Should_Assign_Globally_Unique_Reference_Metadata_Member_Names()
     {
-        const string source = """
-                              using System;
-                              using System.Collections.Generic;
-
-                              namespace GFramework.Game.Abstractions.Config
-                              {
-                                  public interface IConfigTable
-                                  {
-                                      Type KeyType { get; }
-                                      Type ValueType { get; }
-                                      int Count { get; }
-                                  }
-
-                                  public interface IConfigTable<TKey, TValue> : IConfigTable
-                                      where TKey : notnull
-                                  {
-                                      TValue Get(TKey key);
-                                      bool TryGet(TKey key, out TValue? value);
-                                      bool ContainsKey(TKey key);
-                                      IReadOnlyCollection<TValue> All();
-                                  }
-
-                                  public interface IConfigRegistry
-                                  {
-                                      IConfigTable<TKey, TValue> GetTable<TKey, TValue>(string name)
-                                          where TKey : notnull;
-
-                                      bool TryGetTable<TKey, TValue>(string name, out IConfigTable<TKey, TValue>? table)
-                                          where TKey : notnull;
-                                  }
-                              }
-
-                              namespace GFramework.Game.Config
-                              {
-                                  public sealed class YamlConfigLoader
-                                  {
-                                      public YamlConfigLoader RegisterTable<TKey, TValue>(
-                                          string tableName,
-                                          string relativePath,
-                                          string schemaRelativePath,
-                                          Func<TValue, TKey> keySelector,
-                                          IEqualityComparer<TKey>? comparer = null)
-                                          where TKey : notnull
-                                      {
-                                          return this;
-                                      }
-                                  }
-                              }
-                              """;
-
         const string schema = """
                               {
                                 "type": "object",
@@ -2561,19 +2373,9 @@ public class SchemaConfigGeneratorTests
                               }
                               """;
 
-        var result = SchemaGeneratorTestDriver.Run(
-            source,
+        var generatedSources = RunAndCollectGeneratedSources(
+            ConfigRuntimeSource,
             ("monster.schema.json", schema));
-
-        var generatedSources = result.Results
-            .Single()
-            .GeneratedSources
-            .ToDictionary(
-                static sourceResult => sourceResult.HintName,
-                static sourceResult => sourceResult.SourceText.ToString(),
-                StringComparer.Ordinal);
-
-        Assert.That(result.Results.Single().Diagnostics, Is.Empty);
         Assert.That(generatedSources.TryGetValue("MonsterConfigBindings.g.cs", out var bindingsSource), Is.True);
         Assert.That(bindingsSource, Does.Contain("public static readonly ReferenceMetadata DropItems ="));
         Assert.That(bindingsSource, Does.Contain("public static readonly ReferenceMetadata DropItems1 ="));
@@ -2588,56 +2390,6 @@ public class SchemaConfigGeneratorTests
     [Test]
     public void Run_Should_Generate_Query_Helpers_Only_For_Top_Level_Scalar_Properties()
     {
-        const string source = """
-                              using System;
-                              using System.Collections.Generic;
-
-                              namespace GFramework.Game.Abstractions.Config
-                              {
-                                  public interface IConfigTable
-                                  {
-                                      Type KeyType { get; }
-                                      Type ValueType { get; }
-                                      int Count { get; }
-                                  }
-
-                                  public interface IConfigTable<TKey, TValue> : IConfigTable
-                                      where TKey : notnull
-                                  {
-                                      TValue Get(TKey key);
-                                      bool TryGet(TKey key, out TValue? value);
-                                      bool ContainsKey(TKey key);
-                                      IReadOnlyCollection<TValue> All();
-                                  }
-
-                                  public interface IConfigRegistry
-                                  {
-                                      IConfigTable<TKey, TValue> GetTable<TKey, TValue>(string name)
-                                          where TKey : notnull;
-
-                                      bool TryGetTable<TKey, TValue>(string name, out IConfigTable<TKey, TValue>? table)
-                                          where TKey : notnull;
-                                  }
-                              }
-
-                              namespace GFramework.Game.Config
-                              {
-                                  public sealed class YamlConfigLoader
-                                  {
-                                      public YamlConfigLoader RegisterTable<TKey, TValue>(
-                                          string tableName,
-                                          string relativePath,
-                                          string schemaRelativePath,
-                                          Func<TValue, TKey> keySelector,
-                                          IEqualityComparer<TKey>? comparer = null)
-                                          where TKey : notnull
-                                      {
-                                          return this;
-                                      }
-                                  }
-                              }
-                              """;
-
         const string schema = """
                               {
                                 "type": "object",
@@ -2667,19 +2419,9 @@ public class SchemaConfigGeneratorTests
                               }
                               """;
 
-        var result = SchemaGeneratorTestDriver.Run(
-            source,
+        var generatedSources = RunAndCollectGeneratedSources(
+            ConfigRuntimeSource,
             ("monster.schema.json", schema));
-
-        var generatedSources = result.Results
-            .Single()
-            .GeneratedSources
-            .ToDictionary(
-                static sourceResult => sourceResult.HintName,
-                static sourceResult => sourceResult.SourceText.ToString(),
-                StringComparer.Ordinal);
-
-        Assert.That(result.Results.Single().Diagnostics, Is.Empty);
         Assert.That(generatedSources.TryGetValue("MonsterTable.g.cs", out var tableSource), Is.True);
 
         Assert.Multiple(() =>
@@ -2713,56 +2455,6 @@ public class SchemaConfigGeneratorTests
     [Test]
     public void Run_Should_Generate_Project_Level_Registration_Catalog()
     {
-        const string source = """
-                              using System;
-                              using System.Collections.Generic;
-
-                              namespace GFramework.Game.Abstractions.Config
-                              {
-                                  public interface IConfigTable
-                                  {
-                                      Type KeyType { get; }
-                                      Type ValueType { get; }
-                                      int Count { get; }
-                                  }
-
-                                  public interface IConfigTable<TKey, TValue> : IConfigTable
-                                      where TKey : notnull
-                                  {
-                                      TValue Get(TKey key);
-                                      bool TryGet(TKey key, out TValue? value);
-                                      bool ContainsKey(TKey key);
-                                      IReadOnlyCollection<TValue> All();
-                                  }
-
-                                  public interface IConfigRegistry
-                                  {
-                                      IConfigTable<TKey, TValue> GetTable<TKey, TValue>(string name)
-                                          where TKey : notnull;
-
-                                      bool TryGetTable<TKey, TValue>(string name, out IConfigTable<TKey, TValue>? table)
-                                          where TKey : notnull;
-                                  }
-                              }
-
-                              namespace GFramework.Game.Config
-                              {
-                                  public sealed class YamlConfigLoader
-                                  {
-                                      public YamlConfigLoader RegisterTable<TKey, TValue>(
-                                          string tableName,
-                                          string relativePath,
-                                          string schemaRelativePath,
-                                          Func<TValue, TKey> keySelector,
-                                          IEqualityComparer<TKey>? comparer = null)
-                                          where TKey : notnull
-                                      {
-                                          return this;
-                                      }
-                                  }
-                              }
-                              """;
-
         const string monsterSchema = """
                                      {
                                        "type": "object",
@@ -2785,22 +2477,24 @@ public class SchemaConfigGeneratorTests
                                   }
                                   """;
 
-        var result = SchemaGeneratorTestDriver.Run(
-            source,
+        var generatedSources = RunAndCollectGeneratedSources(
+            ConfigRuntimeSource,
             ("monster.schema.json", monsterSchema),
             ("item.schema.json", itemSchema));
+        if (!generatedSources.TryGetValue("GeneratedConfigCatalog.g.cs", out var catalogSource))
+        {
+            Assert.Fail("Expected GeneratedConfigCatalog.g.cs to be generated.");
+        }
 
-        var generatedSources = result.Results
-            .Single()
-            .GeneratedSources
-            .ToDictionary(
-                static sourceResult => sourceResult.HintName,
-                static sourceResult => sourceResult.SourceText.ToString(),
-                StringComparer.Ordinal);
+        AssertGeneratedRegistrationCatalogContract(catalogSource!);
+    }
 
-        Assert.That(result.Results.Single().Diagnostics, Is.Empty);
-        Assert.That(generatedSources.TryGetValue("GeneratedConfigCatalog.g.cs", out var catalogSource), Is.True);
-
+    /// <summary>
+    ///     断言聚合注册目录保留筛选选项、比较器透传和按条件注册的生成契约。
+    /// </summary>
+    /// <param name="catalogSource">`GeneratedConfigCatalog.g.cs` 的生成源码。</param>
+    private static void AssertGeneratedRegistrationCatalogContract(string catalogSource)
+    {
         Assert.Multiple(() =>
         {
             Assert.That(catalogSource, Does.Contain("public static class GeneratedConfigCatalog"));
@@ -2851,5 +2545,25 @@ public class SchemaConfigGeneratorTests
                     "if (GeneratedConfigCatalog.MatchesRegistrationOptions(GeneratedConfigCatalog.Tables[0], effectiveOptions))"));
             Assert.That(catalogSource, Does.Contain("private static bool MatchesOptionalAllowList("));
         });
+    }
+
+    /// <summary>
+    ///     运行 schema 生成器并收集生成输出，同时断言本次场景不产生诊断。
+    /// </summary>
+    /// <param name="source">测试输入源码。</param>
+    /// <param name="additionalFiles">参与本次生成的 schema 文件集合。</param>
+    /// <returns>按 HintName 索引的生成源码字典。</returns>
+    private static global::System.Collections.Generic.IReadOnlyDictionary<string, string> RunAndCollectGeneratedSources(
+        string source,
+        params (string path, string content)[] additionalFiles)
+    {
+        var result = SchemaGeneratorTestDriver.Run(source, additionalFiles);
+        var runResult = result.Results.Single();
+        Assert.That(runResult.Diagnostics, Is.Empty);
+
+        return runResult.GeneratedSources.ToDictionary(
+            static sourceResult => sourceResult.HintName,
+            static sourceResult => sourceResult.SourceText.ToString(),
+            StringComparer.Ordinal);
     }
 }
