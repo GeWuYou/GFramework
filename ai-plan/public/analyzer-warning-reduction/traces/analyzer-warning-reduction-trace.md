@@ -1,5 +1,34 @@
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-23 — RP-032
+
+### 阶段：`AutoRegisterModuleGeneratorTests.cs` `MA0051` 收口（RP-032）
+
+- 启动复核：
+  - 按 `gframework-boot` 流程恢复当前 worktree，读取 `AGENTS.md`、`.ai/environment/tools.ai.yaml`、
+    `ai-plan/public/README.md` 与 active topic 跟踪文件，确认当前分支 `fix/analyzer-warning-reduction-batch`
+    仍映射到 `analyzer-warning-reduction`
+  - 先用
+    `dotnet build GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release -t:Rebuild --no-restore --disable-build-servers -m:1 -p:UseSharedCompilation=false -p:RestoreFallbackFolders="" -nologo -clp:"Summary;WarningsOnly"`
+    复核当前 `MA0051` 热点，确认 `AutoRegisterModuleGeneratorTests.cs` 仍有 `3` 个超长方法，适合作为单文件低风险写集
+- 决策：
+  - 保持 `AutoRegisterModuleGeneratorTests` 的测试输入、生成文件名、快照文本与断言结构不变，只收敛方法长度
+  - 采用“提取类级常量承载大段测试源码与期望输出”的方式，避免引入新的共享 helper 或改变场景组装顺序
+  - 验证阶段改为串行执行 build/test；避免和同项目并行运行时拿到不完整 `bin/Release` 输出
+- 实施调整：
+  - 为 `AutoRegisterModuleGeneratorTests` 补齐测试类 XML 文档
+  - 将 3 个长测试方法中的源码与期望快照提取为类级 `const string`，保留原有生成文件名与断言目标
+  - 将仅转发 `GeneratorTest.RunAsync(...)` 的两个异步测试改为直接返回 `Task`
+- 验证结果：
+  - `dotnet build GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release -t:Rebuild --no-restore --disable-build-servers -m:1 -p:UseSharedCompilation=false -p:RestoreFallbackFolders="" -nologo -clp:"Summary;WarningsOnly"`
+    - 结果：`40 Warning(s)`，`0 Error(s)`；`AutoRegisterModuleGeneratorTests.cs` 已不再出现在 `MA0051` 列表中
+  - `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --no-restore --disable-build-servers --filter FullyQualifiedName~AutoRegisterModuleGeneratorTests -m:1 -p:RestoreFallbackFolders="" -nologo`
+    - 结果：`3 Passed`，`0 Failed`
+- 下一步建议：
+  - 若继续压缩 `GFramework.SourceGenerators.Tests` 的 `MA0051`，优先处理仅剩单个超长方法的
+    `GFramework.SourceGenerators.Tests/Core/GeneratorSnapshotTest.cs`
+  - 若希望单次继续多降几条 warning，则改选 `ContextGetGeneratorTests.cs`，但需要接受更大的单文件写集
+
 ## 2026-04-23 — RP-031
 
 ### 阶段：`LoggerGeneratorSnapshotTests.cs` `MA0051` 收口（RP-031）

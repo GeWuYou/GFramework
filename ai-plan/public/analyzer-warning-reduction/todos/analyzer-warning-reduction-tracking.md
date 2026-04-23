@@ -7,8 +7,8 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-031`
-- 当前阶段：`Phase 31`
+- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-032`
+- 当前阶段：`Phase 32`
 - 当前焦点：
   - 已完成 `GFramework.Core` 当前 `MA0016` / `MA0002` / `MA0015` / `MA0077` 低风险收口批次
   - 已复核 `net10.0` 下的 `MA0158` 基线：`GFramework.Core` / `GFramework.Cqrs` 当前共有 `16` 个 object lock
@@ -57,10 +57,14 @@
     场景已收敛为模板化 helper，保留原有快照目录与生成器输入语义不变
   - 当前 `GFramework.SourceGenerators.Tests` Release build 基线已从 `49` 条降到 `43` 条；`LoggerGeneratorSnapshotTests.cs`
     已不再出现在 `MA0051` 列表中
+  - 已完成 `GFramework.SourceGenerators.Tests/Architectures/AutoRegisterModuleGeneratorTests.cs` 的 `MA0051` 收口：
+    将内联测试源码与期望快照抽到类级常量、补齐测试类 XML 文档，并将仅作转发的异步测试改为直接返回 `Task`
+  - 当前 `GFramework.SourceGenerators.Tests` Release build 基线已从 `43` 条降到 `40` 条；
+    `AutoRegisterModuleGeneratorTests.cs` 已不再出现在 `MA0051` 列表中
   - `GFramework.Godot` 的 `Timing.cs` 已同步适配新事件签名，但当前 worktree 的 Godot restore 资产仍受 Windows fallback package folder 干扰，独立 build 需在修复资产后补跑
   - 后续继续按 warning 类型和数量批处理，而不是回退到按单文件切片推进
   - 下一轮默认继续拆分 `GFramework.SourceGenerators.Tests` 的 `MA0051` 热点，优先处理
-    `AutoRegisterModuleGeneratorTests`、`GeneratorSnapshotTest` 或 `ContextGetGeneratorTests`
+    `GeneratorSnapshotTest` 或 `ContextGetGeneratorTests`
   - 单次 `boot` 的工作树改动上限控制在约 `100` 个文件以内，避免 recovery context 与 review 面同时失控
   - 若任务边界互不冲突，允许使用不同模型的 subagent 并行处理不同 warning 类型或不同目录，但必须遵守显式 ownership
 
@@ -98,6 +102,8 @@
   全部收敛为 `MA0051`
 - 已完成 `LoggerGeneratorSnapshotTests` 的单文件 `MA0051` 收口；当前 `GFramework.SourceGenerators.Tests` Release build 基线已降到
   `43` 条，并通过 focused snapshot tests 保持行为不变
+- 已完成 `AutoRegisterModuleGeneratorTests` 的单文件 `MA0051` 收口；当前 `GFramework.SourceGenerators.Tests` Release build 基线已降到
+  `40` 条，并通过 focused generator tests 保持输出契约不变
 
 ## 当前活跃事实
 
@@ -138,6 +144,8 @@
   通过 schema 类型比较 helper 与显式 `StringComparison.Ordinal` 清空当前项目的 `MA0006`
 - `RP-020` 继续拆分 `SchemaConfigGenerator.cs` 的 `MA0051` 热点，将当前项目 warnings-only 基线从 `19` 条降到 `9` 条，
   并用 focused schema generator tests 验证 50 个用例通过
+- `RP-032` 已完成 `AutoRegisterModuleGeneratorTests` 的 3 个 `MA0051` 收口：通过提取类级常量承载测试源码与快照，保持
+  生成文件名、断言路径与源生成输出不变；`GFramework.SourceGenerators.Tests` warnings-only 基线由 `43` 降至 `40`
 - `RP-021` 使用 `$gframework-pr-review` 复核当前分支 PR #269 后，修复仍在本地成立的 4 个项：将
   `CqrsHandlerRegistryGenerator` 拆分为职责清晰的 partial 文件、为 `ContextAwareGenerator` 生成字段增加稳定前缀并补上
   `SetContextProvider` 的运行时 null 校验、为 `Option<T>` 补齐 `<remarks>`，并新增字段重名场景的生成器快照测试
