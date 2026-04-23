@@ -1,6 +1,6 @@
 # GFramework Skills
 
-文档工作流的公开入口已统一为 `gframework-doc-refresh`。
+公开入口目前包含 `gframework-doc-refresh` 与 `gframework-batch-boot`。
 
 ## 公开入口
 
@@ -27,6 +27,30 @@
 /gframework-doc-refresh Core
 /gframework-doc-refresh Godot.SourceGenerators
 /gframework-doc-refresh Cqrs
+```
+
+### `gframework-batch-boot`
+
+在 `gframework-boot` 的基础上，自动推进可分批执行的重复性任务，不需要人工一轮轮重新触发。
+
+适用场景：
+
+- analyzer warning reduction
+- 大批量测试结构收口
+- 分模块文档刷新 wave
+- 任何有明确 stop condition 的多批次任务
+
+推荐调用：
+
+```bash
+/gframework-batch-boot <task-or-stop-condition>
+```
+
+示例：
+
+```bash
+/gframework-batch-boot continue analyzer warning reduction until branch diff vs origin/main approaches 75 files
+/gframework-batch-boot keep refactoring repetitive source-generator tests in bounded batches
 ```
 
 ## 共享资源

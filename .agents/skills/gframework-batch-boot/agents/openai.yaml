@@ -1,0 +1,4 @@
+interface:
+  display_name: "GFramework Batch Boot"
+  short_description: "Run boot, then iterate bounded bulk batches"
+  default_prompt: "Use $gframework-batch-boot to start from the normal GFramework boot context and continue the current repetitive task in automatic bounded batches until the declared stop condition is reached."
