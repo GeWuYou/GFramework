@@ -273,3 +273,33 @@
 
 1. 提交本轮 PR review follow-up
 2. 推送当前分支后重新执行 `$gframework-pr-review`，观察 PR #271 的 open threads 是否收敛
+
+### 当前恢复点：RP-009
+
+- 按 `boot` 恢复 `documentation-full-coverage-governance` 主题
+- 重新读取 `AGENTS.md`、`.ai/environment/tools.ai.yaml`、`ai-plan/public/README.md` 与当前 topic 的 active todo / trace 后，确认当前 worktree `docs/sdk-update-documentation` 仍映射到本 topic
+- 当前 worktree Git 状态干净，且不存在 `ai-plan/private/` 的 worktree 私有恢复材料
+- 重新执行 `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output /tmp/gframework-current-pr-review.json`
+- 抓取结果显示 PR `#271` 已关闭，latest reviewed commit 仍为 `df91d3706ba9db71737e803ef2f40f4841ecbbf1`
+- 当前 latest commit 仍显示 `2` 条 open thread，但两条都落在 `ai-plan` 文件上，且本地文件已经满足评论要求：
+  - `ai-plan/public/archive/documentation-governance-and-refresh/traces/documentation-governance-and-refresh-trace.md` 已包含显式 `结果：通过`
+  - `ai-plan/public/documentation-full-coverage-governance/todos/documentation-full-coverage-governance-tracking.md` 已将 RP-001 至 RP-007 的详细验证明细迁入 archive
+- 因此本轮将 PR #271 follow-up 视为已完成，后续不再为 closed PR 上未自动收敛的陈旧 thread 状态追加仓库改动
+
+### 当前决策（RP-009）
+
+- `closed PR + stale open thread` 不再作为需要继续修改仓库内容的信号；除非后续 review 抓取显示新的 latest-head finding
+- `documentation-full-coverage-governance` 的默认下一步切回治理 backlog，优先判断是否把 `Godot` family 的关键 XML inventory 摘要迁回 active topic
+- 本轮 `boot` 不引入 subagent；关键恢复信号都能通过本地读取和单次 PR review 抓取直接确认
+
+### 当前验证（RP-009）
+
+- PR review 抓取：
+  - `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output /tmp/gframework-current-pr-review.json`：通过；PR `#271` 已关闭，latest reviewed commit 为 `df91d3706ba9db71737e803ef2f40f4841ecbbf1`，当前 `2` 条 open thread 都是已被本地文件满足的陈旧信号
+- 构建校验：
+  - `cd docs && bun run build`：通过；仅保留既有 VitePress 大 chunk warning，无构建失败
+
+### 下一步
+
+1. 评估是否需要把 `Godot` family 的关键 XML inventory 摘要迁回 active topic
+2. 若不迁回，则在 active todo / trace 保留足够的 archive 指针，并继续抽查 README / landing page / API reference 的 cross-link 是否出现新的漂移

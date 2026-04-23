@@ -12,12 +12,12 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`DOCUMENTATION-FULL-COVERAGE-GOV-RP-008`
+- 恢复点编号：`DOCUMENTATION-FULL-COVERAGE-GOV-RP-009`
 - 当前阶段：`Phase 5 - Governance Maintenance`
 - 当前焦点：
-  - 消化 PR #271 的 latest-head review follow-up，修正仍在本地成立的 docs / skill / ai-plan 问题
-  - 将 active tracking 的重复验证明细迁出默认 boot 路径，只保留最新可恢复摘要
+  - 记录 `2026-04-23` 再次执行 `$gframework-pr-review` 的结论，并把 closed PR 的陈旧 open-thread 信号标记为已本地核销
   - 评估是否需要把 `Godot` family 的关键 XML inventory 摘要迁回 active topic
+  - 继续抽查 README / landing page / API reference 之间的 cross-link 是否出现新的漂移
 
 ## 当前状态摘要
 
@@ -29,6 +29,7 @@
   - 从 `docs/zh-CN/abstractions/ecs-arch-abstractions.md` 删除误放的 source-generator 内部模块提醒，并微调 `docs/zh-CN/ecs/index.md` 的边界说明语序
   - 为 `ai-plan/public/archive/documentation-governance-and-refresh/traces/documentation-governance-and-refresh-trace.md` 的归档验证补写结果态
   - 将 RP-001 至 RP-007 的详细验证历史迁入 `ai-plan/public/documentation-full-coverage-governance/archive/todos/documentation-full-coverage-governance-validation-history-through-rp-007.md`
+  - `2026-04-23` 再次执行 `$gframework-pr-review` 后，确认 PR `#271` 已关闭，latest reviewed commit `df91d3706ba9db71737e803ef2f40f4841ecbbf1` 仍显示 `2` 条 open thread，但两条都对应已在当前 HEAD 满足的 `ai-plan` 变更，属于 closed PR 上未自动收敛的陈旧线程信号
 - 本轮已确认的消费属性结论：
   - `GFramework.Ecs.Arch.Abstractions`：可打包直接消费模块，需要 README 和文档入口
   - `GFramework.Core.SourceGenerators.Abstractions`：`IsPackable=false`，按内部支撑模块处理
@@ -104,21 +105,20 @@
 ## 验证说明
 
 - 详细验证历史已归档到 `ai-plan/public/documentation-full-coverage-governance/archive/todos/documentation-full-coverage-governance-validation-history-through-rp-007.md`
-- `2026-04-23` `python3 -B -c "from pathlib import Path; compile(Path('.agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py').read_text(encoding='utf-8'), '.agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py', 'exec')"`
-- 结果：通过
-- `2026-04-23` `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output /tmp/gframework-current-pr-review.json`
-- 结果：通过；成功抓取 PR `#271`，并确认当前 latest-head review threads 为 `4` 条 open
-- `2026-04-23` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/cqrs-handler-registry-generator.md`
-- 结果：通过
-- `2026-04-23` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/ecs/index.md`
-- 结果：通过
-- `2026-04-23` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/abstractions/ecs-arch-abstractions.md`
-- 结果：通过
-- `2026-04-23` `cd docs && bun run build`
-- 结果：通过；仅保留既有 VitePress 大 chunk warning，无构建失败
+- 最新 PR review 结论：
+  - `2026-04-23` `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output /tmp/gframework-current-pr-review.json`
+  - 结果：通过；PR `#271` 已关闭，latest reviewed commit 为 `df91d3706ba9db71737e803ef2f40f4841ecbbf1`，当前 `2` 条 open thread 都是已被本地文件满足的陈旧信号，不再构成本轮阻塞
+- 最新构建结论：
+  - `2026-04-23` `cd docs && bun run build`
+  - 结果：通过；仅保留既有 VitePress 大 chunk warning，无构建失败
+- 已完成的针对性校验：
+  - `2026-04-23` `python3 -B -c "from pathlib import Path; compile(Path('.agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py').read_text(encoding='utf-8'), '.agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py', 'exec')"`：通过
+  - `2026-04-23` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/cqrs-handler-registry-generator.md`：通过
+  - `2026-04-23` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/ecs/index.md`：通过
+  - `2026-04-23` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/abstractions/ecs-arch-abstractions.md`：通过
 
 ## 下一步
 
-1. 完成本轮 PR #271 follow-up 的针对性验证与 docs build，确认 open threads 是否都已被本地收敛
-2. 推送当前分支后重新执行 `$gframework-pr-review`，确认 PR #271 的 latest-head open threads 是否按预期收敛
-3. 评估是否需要把 `Godot` family 的关键 XML inventory 摘要迁回 active topic，避免长期治理只依赖 archive 恢复
+1. 评估是否需要把 `Godot` family 的关键 XML inventory 摘要迁回 active topic，避免长期治理只依赖 archive 恢复
+2. 若不迁回，则在 active todo / trace 保留足够的 archive 指针，并继续抽查 README / landing page / API reference 的 cross-link 是否出现新的漂移
+3. 当后续分支再修改 README / docs / 公共 API 时，回到对应 module family 追加 targeted 巡检与验证
