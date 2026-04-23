@@ -99,7 +99,7 @@ architecture.RegisterUtility<ISaveRepository<GameSaveData>>(new SaveRepository<G
 
 - `GodotFileStorage` 负责底层 key -> 文件读写
 - `UnifiedSettingsDataRepository` 负责设置节聚合与持久化
-- `SaveRepository&lt;TSaveData&gt;` 负责存档结构和保存槽位语义
+- `SaveRepository<TSaveData>` 负责存档结构和保存槽位语义
 
 不要把 `GodotFileStorage` 本身写成“设置系统”或“存档系统”的 owner。
 

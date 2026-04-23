@@ -72,7 +72,7 @@ description: 以当前 GFramework.Godot 源码、测试与 CoreGrid 接线为准
 
 ## 最小接入路径
 
-当前消费者 `ai-libs/CoreGrid` 的接法，是先注册 `SettingsModel&lt;ISettingsDataRepository&gt;`，再把 Godot applicator
+当前消费者 `ai-libs/CoreGrid` 的接法，是先注册 `SettingsModel<ISettingsDataRepository>`，再把 Godot applicator
 挂进去：
 
 ```csharp
