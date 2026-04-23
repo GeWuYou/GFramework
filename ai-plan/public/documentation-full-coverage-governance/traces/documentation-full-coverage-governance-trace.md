@@ -480,3 +480,49 @@
 1. 若后续分支继续调整 `GFramework.Godot` 运行时入口，优先复核 `docs/zh-CN/godot/storage.md`、`setting.md` 与根
    `README.md` / landing page 是否仍保持同一套职责边界
 2. 当后续分支再修改 `Godot` / `Game` family 的 README、docs 或公共 API 时，回到对应模块追加 targeted 巡检与验证
+
+### 当前恢复点：RP-014
+
+- 继续沿用 `RP-013` 的 `Godot` docs surface 巡检范围，补读：
+  - `docs/zh-CN/godot/storage.md`
+  - `docs/zh-CN/godot/setting.md`
+  - `GFramework.Godot/Storage/GodotFileStorage.cs`
+  - `GFramework.Godot/Setting/GodotAudioSettings.cs`
+  - `GFramework.Godot/Setting/GodotGraphicsSettings.cs`
+  - `GFramework.Godot/Setting/GodotLocalizationSettings.cs`
+  - `GFramework.Godot/Setting/Data/AudioBusMap.cs`
+  - `GFramework.Godot/Setting/Data/LocalizationMap.cs`
+  - `GFramework.Game.Tests/Setting/GodotLocalizationSettingsTests.cs`
+  - `ai-libs/CoreGrid/scripts/module/UtilityModule.cs`
+  - `ai-libs/CoreGrid/scripts/module/ModelModule.cs`
+- 巡检发现两处新的 topic 级漂移：
+  - `docs/zh-CN/godot/storage.md` 仍按旧版 API 手册组织，缺少 frontmatter、当前 `IStorage` / repository 分工与
+    `GodotYamlConfigLoader` 分流说明
+  - `docs/zh-CN/godot/setting.md` 仍使用过时的“settings data 直接注入 applicator 构造函数”叙述，没有反映当前
+    `ISettingsModel` + `RegisterApplicator(...)` 的真实接线方式
+- 因此本轮执行最小修复集：
+  - 重写 `docs/zh-CN/godot/storage.md`
+  - 重写 `docs/zh-CN/godot/setting.md`
+  - 更新 active tracking 的恢复点、巡检结论与验证结果
+
+### 当前决策（RP-014）
+
+- 继续遵循“README / landing 稳定时，不重写稳定入口；只修新发现的 topic 漂移”的治理节奏
+- `storage.md` 应强调宿主路径语义与 repository 分工，而不是重复 `Game` 通用存储手册
+- `setting.md` 应强调 applicator 注册和运行时边界，而不是重新维护一份过时的设置 API 摘要
+
+### 当前验证（RP-014）
+
+- 模块扫描：
+  - `python3 .agents/skills/gframework-doc-refresh/scripts/scan_module_evidence.py Godot`：通过
+- 文档校验：
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/storage.md`：通过
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/setting.md`：通过
+- 构建校验：
+  - `cd docs && bun run build`：通过；仅保留既有 VitePress 大 chunk warning，无构建失败
+
+### 下一步
+
+1. 若后续分支继续调整 `GFramework.Godot` 运行时入口，优先复核 `docs/zh-CN/godot/storage.md`、`setting.md` 与根
+   `README.md` / landing page 是否仍保持同一套职责边界
+2. 当后续分支再修改 `Godot` / `Game` family 的 README、docs 或公共 API 时，回到对应模块追加 targeted 巡检与验证

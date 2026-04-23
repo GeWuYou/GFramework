@@ -1,603 +1,156 @@
-# Godot 设置模块 (Godot Settings Module)
+---
+title: Godot 设置系统
+description: 以当前 GFramework.Godot 源码、测试与 CoreGrid 接线为准，说明 Godot settings applicator 的职责、注册方式和运行时边界。
+---
 
-## 概述
+# Godot 设置系统
 
-Godot 设置模块是 GFramework.Godot 的核心组件之一，专门为 Godot 引擎提供游戏设置系统的实现。该模块将通用的设置框架与 Godot
-引擎的特定功能相结合，提供了音频设置、图形设置和本地化设置的完整解决方案。
+`GFramework.Godot` 在设置这一层做的事情很克制：它没有重新发明一套设置模型，而是给
+`GFramework.Game` 的 `ISettingsModel` 提供三个 Godot 宿主 applicator：
 
-## 核心类
+- `GodotAudioSettings`
+- `GodotGraphicsSettings`
+- `GodotLocalizationSettings`
 
-### 音频设置系统
+这些类型的职责是“把已经存在的设置数据应用到 Godot 引擎和框架运行时”，不是负责设置 UI、设置持久化或设置迁移。
 
-#### AudioBusMap
+## 当前公开入口
 
-音频总线映射配置类，用于定义音频系统中不同类型音频的总线名称。
+### `GodotAudioSettings`
 
-**属性：**
+`GodotAudioSettings` 从 `ISettingsModel` 读取 `AudioSettings`，再按 `AudioBusMap` 中的总线名把音量写入
+`AudioServer`。
 
-- `Master` - 主音频总线名称（默认："Master"）
-- `Bgm` - 背景音乐音频总线名称（默认："BGM"）
-- `Sfx` - 音效音频总线名称（默认："SFX"）
+当前行为有几个关键点：
 
-#### GodotAudioApplier
+- `Master`、`Bgm`、`Sfx` 三类音量都来自 `AudioSettings`
+- 应用前会把线性音量限制在 `0.0001f ~ 1f`，再转换成分贝
+- 如果找不到对应 bus，当前实现只会 `GD.PushWarning(...)`，不会抛异常中断整个设置流程
 
-音频设置应用器，负责将音频设置应用到 Godot 引擎的音频总线系统。
+`AudioBusMap` 默认值是：
 
-**功能：**
+- `Master`
+- `BGM`
+- `SFX`
 
-- 应用音量设置到指定音频总线
-- 处理音量格式转换（线性值到分贝）
-- 音频总线存在性检查和警告
+如果项目里的 Godot Audio Bus 命名不同，需要在注册 applicator 时替换映射，而不是改写 applicator 本身。
 
-#### GodotAudioSettings
+### `GodotGraphicsSettings`
 
-Godot 音频设置实现类，接收 AudioSettings 配置并实现 IApplyAbleSettings 接口，负责将音频配置应用到 Godot 音频系统。
+`GodotGraphicsSettings` 从 `ISettingsModel` 读取 `GraphicsSettings`，并把结果同步到 `DisplayServer`：
 
-**实现关系：**
+- `Fullscreen = true` 时切到 `ExclusiveFullscreen`
+- 同时把 `Borderless` flag 设为 `true`
+- `Fullscreen = false` 时切回窗口模式，设置窗口尺寸，并按主屏尺寸重新居中
 
-```
-AudioSettings (配置数据)
-    ↓ [组合]
-GodotAudioSettings (Godot 特定实现) → IApplyAbleSettings (可应用设置接口)
-```
+当前实现没有扩展到分辨率档位之外的图形质量、渲染后端或平台特定显示策略。本页不再把这些未实现能力写成既成事实。
 
-**功能：**
+### `GodotLocalizationSettings`
 
-- 接收 AudioSettings 配置对象和 AudioBusMap 总线映射
-- 实现 `ApplyAsync()` 方法，将音量设置应用到指定音频总线
-- 支持自定义音频总线映射
-- 自动处理音量格式转换（线性值到分贝）
+`GodotLocalizationSettings` 负责把 `LocalizationSettings.Language` 同时同步到：
 
-### 图形设置系统
+- Godot `TranslationServer.SetLocale(...)`
+- GFramework `ILocalizationManager.SetLanguage(...)`
 
-#### GodotGraphicsSettings
+这一步依赖 `LocalizationMap` 把“用户可见语言值”拆成两套目标值：
 
-Godot 图形设置实现类，继承自 GraphicsSettings 并实现 IApplyAbleSettings。
+- Godot locale，例如 `zh_CN`
+- 框架语言码，例如 `zhs`
 
-**功能：**
+当前默认映射是：
 
-- 分辨率设置和窗口尺寸调整
-- 全屏模式切换
-- 窗口位置自动居中
-- 多显示器支持
+- `简体中文` -> Godot `zh_CN`，框架 `zhs`
+- `English` -> Godot `en`，框架 `eng`
 
-### 本地化设置系统
+`GFramework.Game.Tests/Setting/GodotLocalizationSettingsTests.cs` 已覆盖三条关键边界：
 
-#### LocalizationMap
+- 英文会同步到 `en` / `eng`
+- 简体中文会同步到 `zh_CN` / `zhs`
+- 未知语言值会稳定回退到英文，而不是让 Godot locale 与框架语言状态分裂
 
-本地化映射配置类，用于把设置系统中保存的用户可见语言值解析为：
+如果当前架构上下文里解析不到 `ILocalizationManager`，Godot locale 仍会被设置，只是不会额外同步框架语言管理器。
 
-- Godot `TranslationServer` 使用的 locale
-- GFramework `ILocalizationManager` 使用的语言码
+## 最小接入路径
 
-默认映射如下：
-
-- `"简体中文"` -> Godot `zh_CN`，框架语言码 `zhs`
-- `"English"` -> Godot `en`，框架语言码 `eng`
-
-未知语言值会稳定回退到英文，避免重启后出现设置值与运行时语言状态不一致。
-
-#### GodotLocalizationSettings
-
-Godot 本地化设置实现类，负责把 `LocalizationSettings` 同时应用到 Godot 引擎与 GFramework 本地化管理器。
-
-**功能：**
-
-- 将语言设置应用到 `TranslationServer.SetLocale(...)`
-- 同步 `ILocalizationManager.SetLanguage(...)`
-- 通过统一映射避免 Godot locale 与框架语言码分裂
-
-## 架构设计
-
-```mermaid
-graph TD
-    A[AudioSettings] --> B[GodotAudioSettings]
-    C[GraphicsSettings] --> D[GodotGraphicsSettings]
-    E[LocalizationSettings] --> F[GodotLocalizationSettings]
-    G[IApplyAbleSettings] --> B
-    G --> D
-    G --> F
-    
-    H[AudioBusMap] --> B
-    I[LocalizationMap] --> F
-    
-    B --> J[AudioServer API]
-    D --> K[DisplayServer API]
-    F --> L[TranslationServer API]
-    F --> M[ILocalizationManager]
-    
-    N[SettingsSystem] --> O[ApplyAsync Method]
-    O --> B
-    O --> D
-    O --> F
-```
-
-## 使用示例
-
-### 音频设置配置
-
-#### 基本音频设置
+当前消费者 `ai-libs/CoreGrid` 的接法，是先注册 `SettingsModel&lt;ISettingsDataRepository&gt;`，再把 Godot applicator
+挂进去：
 
 ```csharp
-// 创建音频配置数据
-var settings = new AudioSettings
-{
-    MasterVolume = 0.8f,  // 80% 主音量
-    BgmVolume = 0.6f,      // 60% 背景音乐音量
-    SfxVolume = 0.9f       // 90% 音效音量
-};
+using GFramework.Game.Abstractions.Data;
+using GFramework.Game.Abstractions.Setting;
+using GFramework.Game.Setting;
+using GFramework.Godot.Setting;
+using GFramework.Godot.Setting.Data;
 
-// 创建 Godot 音频设置应用器
-var audioSettings = new GodotAudioSettings(settings, new AudioBusMap());
+var settingsDataRepository = architecture.Context.GetUtility<ISettingsDataRepository>();
 
-// 应用设置
-await audioSettings.ApplyAsync();
+architecture.RegisterModel(
+    new SettingsModel<ISettingsDataRepository>(
+        new SettingDataLocationProvider(),
+        settingsDataRepository)
+        .Also(it =>
+        {
+            it.RegisterApplicator(new GodotAudioSettings(it, new AudioBusMap()))
+                .RegisterApplicator(new GodotGraphicsSettings(it))
+                .RegisterApplicator(new GodotLocalizationSettings(it, new LocalizationMap()));
+        }));
 ```
 
-#### 自定义音频总线映射
+这条接法说明了当前边界：
+
+- 设置数据和生命周期由 `SettingsModel` 管
+- `GodotAudioSettings` / `GodotGraphicsSettings` / `GodotLocalizationSettings` 只是 applicator
+- 保存、加载和迁移仍然走 `ISettingsDataRepository`、`SettingsModel.InitializeAsync()`、`SaveAllAsync()` 等 `Game`
+  family 入口
+
+## 运行时使用方式
+
+业务代码通常不会直接 new 一次 applicator 然后立即调用，而是通过 `ISettingsSystem` 或 `ISettingsModel` 触发应用：
 
 ```csharp
-// 自定义音频总线映射
-var customBusMap = new AudioBusMap
-{
-    Master = "Master_Bus",
-    Bgm = "Background_Music",
-    Sfx = "Sound_Effects"
-};
+using GFramework.Game.Abstractions.Setting;
+using GFramework.Godot.Setting;
 
-// 创建音频配置
-var settings = new AudioSettings
-{
-    MasterVolume = 0.7f,
-    BgmVolume = 0.5f,
-    SfxVolume = 0.8f
-};
-
-// 使用自定义总线映射应用设置
-var audioSettings = new GodotAudioSettings(settings, customBusMap);
-await audioSettings.ApplyAsync();
-```
-
-#### 通过设置系统使用
-
-```csharp
-// 注册音频设置到设置模型
 var settingsModel = this.GetModel<ISettingsModel>();
-var audioSettingsData = settingsModel.Get<AudioSettings>();
-audioSettingsData.MasterVolume = 0.8f;
-audioSettingsData.BgmVolume = 0.6f;
-audioSettingsData.SfxVolume = 0.9f;
+var audioData = settingsModel.GetData<AudioSettings>();
+audioData.MasterVolume = 0.8f;
+audioData.BgmVolume = 0.6f;
+audioData.SfxVolume = 0.9f;
 
-// 创建 Godot 音频设置应用器
-var godotAudioSettings = new GodotAudioSettings(audioSettingsData, new AudioBusMap());
-await godotAudioSettings.ApplyAsync();
+var settingsSystem = this.GetSystem<ISettingsSystem>();
+await settingsSystem.Apply<GodotAudioSettings>();
 ```
 
-### 图形设置配置
+对图形和语言设置的调用方式相同，区别只是 applicator 类型不同。
 
-#### 基本图形设置
+## 当前边界
 
-```csharp
-// 创建图形设置
-var graphicsSettings = new GodotGraphicsSettings
-{
-    ResolutionWidth = 1920,
-    ResolutionHeight = 1080,
-    Fullscreen = true
-};
+- 这三个类型都不是设置数据对象；它们读取的是 `AudioSettings`、`GraphicsSettings`、`LocalizationSettings`
+- 它们不负责设置持久化；是否保存到文件由 `ISettingsDataRepository` 和存储层决定
+- `ApplyAsync()` 当前都只是同步推进 Godot 引擎调用后返回 `Task.CompletedTask`，不会启动后台工作线程
+- `GodotAudioSettings` 依赖项目里已经存在对应 bus 名称；缺失时只会警告，不会帮你自动创建总线
+- `GodotGraphicsSettings` 当前只覆盖窗口模式、尺寸和居中，不等于一个完整的图形选项系统
+- `GodotLocalizationSettings` 解决的是“用户语言值 -> Godot locale / 框架语言码”双向对齐，不负责翻译资源本身的组织方式
 
-// 应用设置
-await graphicsSettings.ApplyAsync();
-```
+## 什么时候应该改看别的入口
 
-#### 窗口模式切换
+### 先理解设置模型和仓库
 
-```csharp
-public class DisplayManager : Node
-{
-    private GodotGraphicsSettings _graphicsSettings;
-    
-    public override void _Ready()
-    {
-        _graphicsSettings = new GodotGraphicsSettings();
-    }
-    
-    public async Task ToggleFullscreen()
-    {
-        _graphicsSettings.Fullscreen = !_graphicsSettings.Fullscreen;
-        await _graphicsSettings.ApplyAsync();
-    }
-    
-    public async Task SetResolution(int width, int height)
-    {
-        _graphicsSettings.ResolutionWidth = width;
-        _graphicsSettings.ResolutionHeight = height;
-        _graphicsSettings.Fullscreen = false; // 窗口化时自动关闭全屏
-        await _graphicsSettings.ApplyAsync();
-    }
-}
-```
+如果你想先理解 `ISettingsData`、`IResetApplyAbleSettings`、`SettingsModel`、`SettingsSystem` 与设置迁移，先看
+[`../game/setting.md`](../game/setting.md)。
 
-#### 预设分辨率配置
+### 先理解设置如何被持久化
 
-```csharp
-public class ResolutionPresets
-{
-    public static readonly (int width, int height)[] CommonResolutions = 
-    {
-        (1920, 1080), // Full HD
-        (2560, 1440), // QHD
-        (3840, 2160), // 4K
-        (1280, 720),  // HD
-        (1366, 768),  // 常见笔记本分辨率
-    };
-    
-    public static async Task ApplyResolution(GodotGraphicsSettings settings, int width, int height)
-    {
-        settings.ResolutionWidth = width;
-        settings.ResolutionHeight = height;
-        settings.Fullscreen = false;
-        await settings.ApplyAsync();
-    }
-}
-```
+如果你关注的是统一设置文件、备份、数据位置和底层存储实现，应该回到：
 
-## API 详细说明
+- [`../game/storage.md`](../game/storage.md)
+- [Godot 存储系统](./storage.md)
 
-### AudioBusMap
+本页只补 Godot 宿主如何“应用”设置，不重复维护一份完整设置系统手册。
 
-```csharp
-public sealed class AudioBusMap
-{
-    public string Master { get; init; } = "Master";
-    public string Bgm { get; init; } = "BGM";
-    public string Sfx { get; init; } = "SFX";
-}
-```
+## 继续阅读
 
-**特点：**
-
-- 使用 `init` 属性，创建后不可修改
-- 提供合理的默认值
-- 支持对象初始化语法
-
-### GodotAudioSettings
-
-```csharp
-public class GodotAudioSettings(AudioSettings settings, AudioBusMap busMap) : IApplyAbleSettings
-{
-    public Task ApplyAsync();
-}
-```
-
-**构造函数参数：**
-
-- `settings` - AudioSettings 配置对象，包含音量设置
-- `busMap` - AudioBusMap 对象，定义音频总线映射
-
-**Apply 方法实现：**
-
-```csharp
-public Task ApplyAsync()
-{
-    SetBus(busMap.Master, settings.MasterVolume);
-    SetBus(busMap.Bgm, settings.BgmVolume);
-    SetBus(busMap.Sfx, settings.SfxVolume);
-    return Task.CompletedTask;
-}
-```
-
-### GodotGraphicsSettings
-
-```csharp
-public class GodotGraphicsSettings : GraphicsSettings, IApplyAbleSettings
-{
-    public Task ApplyAsync();
-}
-```
-
-**Apply 方法功能：**
-
-- 设置窗口边框标志
-- 切换窗口模式（窗口化/全屏）
-- 调整窗口尺寸
-- 自动居中窗口
-
-## 技术实现细节
-
-### 音频音量转换
-
-Godot 音频系统使用分贝（dB）作为音量单位，而我们通常使用线性值（0-1）：
-
-```csharp
-// 线性值到分贝转换
-float linearVolume = 0.5f;  // 50% 音量
-float dbVolume = Mathf.LinearToDb(linearVolume); // 转换为分贝
-
-// 应用到音频总线
-AudioServer.SetBusVolumeDb(busIndex, dbVolume);
-```
-
-### 音量限制和保护
-
-为避免完全静音（-inf dB），应用了最小音量限制：
-
-```csharp
-float clampedVolume = Mathf.Clamp(linear, 0.0001f, 1f);
-float dbVolume = Mathf.LinearToDb(clampedVolume);
-```
-
-### 窗口管理
-
-#### 全屏模式
-
-```csharp
-// 设置全屏
-DisplayServer.WindowSetMode(DisplayServer.WindowMode.ExclusiveFullscreen);
-DisplayServer.WindowSetFlag(DisplayServer.WindowFlags.Borderless, true);
-```
-
-#### 窗口化模式
-
-```csharp
-// 设置窗口化
-DisplayServer.WindowSetMode(DisplayServer.WindowMode.Windowed);
-DisplayServer.WindowSetSize(newSize);
-
-// 居中窗口
-var screen = DisplayServer.GetPrimaryScreen();
-var screenSize = DisplayServer.ScreenGetSize(screen);
-var position = (screenSize - newSize) / 2;
-DisplayServer.WindowSetPosition(position);
-```
-
-## 最佳实践
-
-### 1. 音频设置管理
-
-#### 音量变化平滑过渡
-
-```csharp
-public class AudioManager : Node
-{
-    private Tween _volumeTween;
-    
-    public async Task SmoothVolumeTransition(float targetMasterVolume, float duration = 1.0f)
-    {
-        var currentVolume = AudioServer.GetBusVolumeDb(AudioServer.GetBusIndex("Master"));
-        var currentLinear = Mathf.DbToLinear(currentVolume);
-        
-        _volumeTween?.Kill();
-        _volumeTween = CreateTween();
-        
-        _volumeTween.TweenMethod(
-            new Callable(this, nameof(SetMasterVolume)),
-            currentLinear,
-            targetMasterVolume,
-            duration
-        );
-    }
-    
-    private async void SetMasterVolume(float linearVolume)
-    {
-        var settings = new AudioSettings { MasterVolume = linearVolume };
-        var audioSettings = new GodotAudioSettings(settings, new AudioBusMap());
-        await audioSettings.ApplyAsync();
-    }
-}
-
-// 使用自定义总线映射的平滑过渡
-public class CustomAudioManager : Node
-{
-    private Tween _volumeTween;
-    private AudioBusMap _customBusMap;
-    
-    public override void _Ready()
-    {
-        _customBusMap = new AudioBusMap
-        {
-            Master = "Master_Bus",
-            Bgm = "Background_Music",
-            Sfx = "Sound_Effects"
-        };
-    }
-    
-    public async Task SmoothVolumeTransition(float targetMasterVolume, float duration = 1.0f)
-    {
-        var settings = new AudioSettings { MasterVolume = targetMasterVolume };
-        var currentVolume = AudioServer.GetBusVolumeDb(AudioServer.GetBusIndex(_customBusMap.Master));
-        var currentLinear = Mathf.DbToLinear(currentVolume);
-        
-        _volumeTween?.Kill();
-        _volumeTween = CreateTween();
-        
-        _volumeTween.TweenMethod(
-            new Callable(this, nameof(SetMasterVolume)),
-            currentLinear,
-            targetMasterVolume,
-            duration
-        );
-    }
-    
-    private async void SetMasterVolume(float linearVolume)
-    {
-        var audioSettingsData = new AudioSettings { MasterVolume = linearVolume };
-        var audioSettings = new GodotAudioSettings(audioSettingsData, _customBusMap);
-        await audioSettings.ApplyAsync();
-    }
-}
-```
-
-#### 音频设置验证
-
-```csharp
-public static class AudioSettingsValidator
-{
-    public static bool ValidateBusNames(AudioBusMap busMap)
-    {
-        var masterIndex = AudioServer.GetBusIndex(busMap.Master);
-        var bgmIndex = AudioServer.GetBusIndex(busMap.Bgm);
-        var sfxIndex = AudioServer.GetBusIndex(busMap.Sfx);
-        
-        return masterIndex >= 0 && bgmIndex >= 0 && sfxIndex >= 0;
-    }
-    
-    public static void LogMissingBuses(AudioBusMap busMap)
-    {
-        if (AudioServer.GetBusIndex(busMap.Master) < 0)
-            GD.PrintErr($"Master bus not found: {busMap.Master}");
-        
-        if (AudioServer.GetBusIndex(busMap.Bgm) < 0)
-            GD.PrintErr($"BGM bus not found: {busMap.Bgm}");
-        
-        if (AudioServer.GetBusIndex(busMap.Sfx) < 0)
-            GD.PrintErr($"SFX bus not found: {busMap.Sfx}");
-    }
-}
-```
-
-### 2. 图形设置管理
-
-#### 分辨率变更安全检查
-
-```csharp
-public static class DisplayValidator
-{
-    public static bool IsResolutionSupported(int width, int height)
-    {
-        var screen = DisplayServer.GetPrimaryScreen();
-        var screenSize = DisplayServer.ScreenGetSize(screen);
-        
-        return width <= screenSize.x && height <= screenSize.y;
-    }
-    
-    public static (int width, int height) GetMaxSafeResolution()
-    {
-        var screen = DisplayServer.GetPrimaryScreen();
-        var screenSize = DisplayServer.ScreenGetSize(screen);
-        
-        return ((int)screenSize.x, (int)screenSize.y);
-    }
-}
-```
-
-#### 图形设置持久化
-
-```csharp
-public class GraphicsSettingsManager : Node
-{
-    private const string SettingsKey = "graphics_settings";
-    private GodotGraphicsSettings _settings;
-    
-    public override void _Ready()
-    {
-        LoadSettings();
-    }
-    
-    private void LoadSettings()
-    {
-        var storage = new GodotFileStorage(new JsonSerializer());
-        
-        try
-        {
-            _settings = storage.Read<GodotGraphicsSettings>(SettingsKey);
-        }
-        catch (FileNotFoundException)
-        {
-            _settings = new GodotGraphicsSettings
-            {
-                ResolutionWidth = 1920,
-                ResolutionHeight = 1080,
-                Fullscreen = false
-            };
-            SaveSettings();
-        }
-    }
-    
-    public void SaveSettings()
-    {
-        var storage = new GodotFileStorage(new JsonSerializer());
-        storage.Write(SettingsKey, _settings);
-    }
-    
-    public async Task ApplyAndSave()
-    {
-        await _settings.ApplyAsync();
-        SaveSettings();
-    }
-}
-```
-
-## 性能考虑
-
-### 1. 音频设置应用
-
-- 音频总线查找是 O(1) 操作
-- 音量转换计算开销很小
-- 建议批量应用多个音量设置
-
-### 2. 图形设置应用
-
-- 窗口操作需要系统调用，相对较慢
-- 分辨率变更可能触发窗口重建
-- 避免频繁切换显示模式
-
-### 3. 设置持久化
-
-- 使用异步文件 I/O
-- 考虑设置变更防抖机制
-- 压缩设置文件以减少 I/O 开销
-
-## 故障排除
-
-### 常见问题
-
-#### 1. 音频总线未找到
-
-```
-错误：Audio bus not found: CustomBGM
-解决：确保在 Godot 项目中创建了对应的音频总线
-```
-
-#### 2. 分辨率设置无效
-
-```
-错误：分辨率无法设置到指定值
-解决：检查分辨率是否超出显示器支持范围
-```
-
-#### 3. 全屏模式问题
-
-```
-错误：全屏切换失败
-解决：检查是否在调试器中运行，某些全屏模式在调试时可能不可用
-```
-
-### 调试技巧
-
-#### 音频调试
-
-```csharp
-// 打印所有音频总线信息
-for (int i = 0; i < AudioServer.GetBusCount(); i++)
-{
-    var name = AudioServer.GetBusName(i);
-    var volume = AudioServer.GetBusVolumeDb(i);
-    GD.Print($"Bus {i}: {name} ({volume} dB)");
-}
-```
-
-#### 图形调试
-
-```csharp
-// 打印当前显示信息
-var screen = DisplayServer.GetPrimaryScreen();
-var screenSize = DisplayServer.ScreenGetSize(screen);
-var windowSize = DisplayServer.WindowGetSize();
-var windowPos = DisplayServer.WindowGetPosition();
-var windowMode = DisplayServer.WindowGetMode();
-
-GD.Print($"Screen: {screenSize}");
-GD.Print($"Window: {windowSize} at {windowPos}");
-GD.Print($"Mode: {windowMode}");
-```
+1. [Godot 运行时集成](./index.md)
+2. [Game 设置系统](../game/setting.md)
+3. [Godot 存储系统](./storage.md)
+4. [Godot 集成教程](../tutorials/godot-integration.md)

@@ -12,11 +12,12 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`DOCUMENTATION-FULL-COVERAGE-GOV-RP-013`
+- 恢复点编号：`DOCUMENTATION-FULL-COVERAGE-GOV-RP-014`
 - 当前阶段：`Phase 5 - Governance Maintenance`
 - 当前焦点：
   - 继续巡检 `Godot` / `Game` 相关 README、landing page、tutorial 与 API reference 的 cross-link 是否回漂
   - 保持 `Godot` family 的模块 README、生成器 README 与站内专题页使用同一套 owner / adoption path 叙述
+  - 重点观察 `storage.md` / `setting.md` 这类子页是否继续沿用当前 applicator / adoption path 口径
   - 仅在发现新的入口漂移时补最小修复，不重复改写已经稳定的 landing page
 
 ## 当前状态摘要
@@ -42,6 +43,9 @@
 - `2026-04-23` 的 validation-only 巡检新增结论：
   - 根 `README.md`、`docs/zh-CN/godot/index.md`、`docs/zh-CN/tutorials/godot-integration.md`、`docs/zh-CN/source-generators/index.md` 与 `docs/zh-CN/api-reference/index.md` 当前仍保持同一套 `Godot` owner / adoption path 叙述，没有发现新的入口漂移
   - `scan_module_evidence.py Godot` 显示 `docs/zh-CN/godot/storage.md` 与 `setting.md` 仍属于 `Godot` runtime docs surface，应并入 active topic 的最小恢复摘要，避免后续 `boot` 漏掉当前 landing page 的关键入口
+- `2026-04-23` 的子页巡检新增结论：
+  - `docs/zh-CN/godot/storage.md` 之前仍停留在旧版 API 手册写法，缺少 frontmatter、`IStorage` / repository 边界和 `GodotYamlConfigLoader` 的分流说明
+  - `docs/zh-CN/godot/setting.md` 之前仍把 `GodotAudioSettings` / `GodotGraphicsSettings` 描述成直接持有设置数据对象的旧构造方式，没有反映当前 `ISettingsModel` + `RegisterApplicator(...)` 接法
 - `2026-04-23` 的交叉链接巡检新增结论：
   - `GFramework.Godot/README.md` 仍停留在旧版简略描述，缺少当前包关系、子系统地图、最小接入路径与 `docs/zh-CN` 入口
   - `GFramework.Godot.SourceGenerators/README.md` 虽有示例，但没有覆盖 `AutoScene`、`AutoUiPage`、`AutoRegisterExportedCollections` 等当前生成器分组，也没有把运行时 / 生成器边界说清
@@ -82,6 +86,8 @@
   - 更新 `docs/zh-CN/api-reference/index.md` 的 `Godot` 模块映射，使 API 参考能直接落到 `Godot` 专用生成器专题页，而不是仅回到总览页
   - 修正根 `README.md` 中 `GFramework.Godot.SourceGenerators` 的模块描述，使其与当前生成器职责边界一致
   - 扩充 `docs/zh-CN/source-generators/index.md` 的 Godot 选包说明，把 Scene / UI 包装与导出集合注册辅助纳入入口摘要
+  - 重写 `docs/zh-CN/godot/storage.md`，补齐 frontmatter、`GodotFileStorage` 的路径语义、repository 分工与 `GodotYamlConfigLoader` 分流边界
+  - 重写 `docs/zh-CN/godot/setting.md`，改回当前 `ISettingsModel` / `RegisterApplicator(...)` 口径，并补上 `LocalizationMap` fallback 与 `CoreGrid` 注册示例
 
 ## Inventory（第一版）
 
@@ -130,10 +136,10 @@
   - 结果：通过；PR `#271` 已关闭，latest reviewed commit 为 `df91d3706ba9db71737e803ef2f40f4841ecbbf1`，当前 `2` 条 open thread 都是已被本地文件满足的陈旧信号，不再构成本轮阻塞
 - 最新构建结论：
   - `2026-04-23` `cd docs && bun run build`
-  - 结果：通过；在 `Godot` docs surface 的 validation-only 巡检后再次验证通过，仅保留既有 VitePress 大 chunk warning，无构建失败
+  - 结果：通过；在修正 `docs/zh-CN/godot/storage.md` 与 `setting.md` 后再次验证通过，仅保留既有 VitePress 大 chunk warning，无构建失败
 - 最新稳定性巡检结论：
   - `2026-04-23` 重新执行 `Godot` docs surface 巡检
-  - 结果：通过；`README.md`、`docs/zh-CN/godot/index.md`、`docs/zh-CN/tutorials/godot-integration.md`、`docs/zh-CN/source-generators/index.md` 与 `docs/zh-CN/api-reference/index.md` 仍保持同一套职责边界，没有发现新的入口漂移
+  - 结果：通过；根入口链路保持稳定，并额外发现 `docs/zh-CN/godot/storage.md`、`setting.md` 两页存在旧版叙述残留，当前已按源码口径完成最小修复
 - 最新恢复治理结论：
   - `2026-04-23` 重新读取 `ai-plan/public/archive/documentation-governance-and-refresh/**`
   - 结果：通过；确认 `Godot` family 适合把最小恢复摘要迁回 active topic，但不需要把整段归档历史重新放回默认 `boot` 路径
@@ -153,6 +159,8 @@
   - `2026-04-23` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/index.md`：通过
   - `2026-04-23` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/index.md`：通过
   - `2026-04-23` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/tutorials/godot-integration.md`：通过
+  - `2026-04-23` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/storage.md`：通过
+  - `2026-04-23` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/setting.md`：通过
 
 ## 下一步
 
