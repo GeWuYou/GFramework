@@ -7,8 +7,8 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-025`
-- 当前阶段：`Phase 25`
+- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-026`
+- 当前阶段：`Phase 26`
 - 当前焦点：
   - 已完成 `GFramework.Core` 当前 `MA0016` / `MA0002` / `MA0015` / `MA0077` 低风险收口批次
   - 已复核 `net10.0` 下的 `MA0158` 基线：`GFramework.Core` / `GFramework.Cqrs` 当前共有 `16` 个 object lock
@@ -30,6 +30,9 @@
   - 已完成当前 PR #269 第五轮 follow-up：`SchemaConfigGenerator` 补上归一化后属性名冲突诊断并新增
     `GF_ConfigSchema_014`，`CqrsHandlerRegistryGenerator` 将 `dynamic` 归一化为 `global::System.Object`，
     同时收紧相关 generator regression tests
+  - 已完成当前 PR #269 failed-test follow-up：修正 `SchemaConfigGeneratorTests`
+    `Run_Should_Assign_Globally_Unique_Reference_Metadata_Member_Names` 的测试输入，使其继续覆盖
+    reference metadata 成员名全局去冲突，但不再依赖现已被 `GF_ConfigSchema_014` 拦截的非法同层 schema key 冲突
   - 已更新 `AGENTS.md`：变更模块必须运行对应 `dotnet build -c Release`，并处理或显式报告模块构建 warning，
     不再默认留给长期 warning 清理分支
   - `CoroutineScheduler` 的 tag/group 字典已显式使用 `StringComparer.Ordinal`，保持既有区分大小写语义
@@ -70,6 +73,8 @@
   已分别在 `CqrsHandlerRegistryGenerator` 与 `SchemaConfigGenerator` 中收口，并补齐定向 generator regression tests
 - 已完成当前 PR #269 的第五轮 review follow-up：收口 `SchemaConfigGenerator` 的归一化字段名冲突诊断、
   `CqrsHandlerRegistryGenerator` 的 `dynamic` 类型引用风险，并同步更新 `AGENTS.md` 的模块 build / warning 治理规范
+- 已完成当前 PR #269 的 failed-test follow-up：将 reference metadata 成员名唯一性回归测试改为合法 schema 路径组合，
+  并重新通过定向 generator test
 - 已完成 `GFramework.Game.SourceGenerators` 中 `SchemaConfigGenerator` 的第一批 `MA0051` 收口；warnings-only 基线剩余 `9` 条
   `MA0051`
 
@@ -144,7 +149,8 @@
   - 缓解措施：继续以被修改 generator 项目的独立 warnings-only build 作为主验收，并用 focused generator test 验证行为
 - source generator test warning 治理风险：`GFramework.SourceGenerators.Tests` 当前仍有既有 `MA0051` / `MA0004` / `MA0048`
   warning，本轮 focused test 已通过，但测试项目整包 warning 尚未进入本轮写集
-  - 缓解措施：后续若继续修改该测试项目，应按新增 `AGENTS.md` 规则先跑其独立 build，并在进入下一轮实现前明确 warning 收口范围
+  - 缓解措施：本轮已在 failed-test follow-up 的定向 `dotnet test` 中再次确认这些 warning 仍为既有基线；后续若继续修改该测试项目，
+    应按新增 `AGENTS.md` 规则先明确 warning 收口范围，再决定是否进入专门清理切片
 - Godot 资产文件环境风险：当前 worktree 的 `GFramework.Godot` restore/build 仍会命中 Windows fallback package folder
   - 缓解措施：后续若继续触达 Godot 模块，先用 Linux 侧 restore 资产或 Windows-hosted 构建链刷新该项目，再补跑定向 build
 - 并行实现风险：批量收敛时若 subagent 写入边界不清晰，容易引入命名冲突或重复重构

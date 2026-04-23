@@ -1,5 +1,31 @@
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-23 — RP-026
+
+### 阶段：PR #269 failed-test follow-up（RP-026）
+
+- 启动复核：
+  - 使用 `$gframework-pr-review` 抓取当前分支 PR #269 的 test report，确认最新失败信号来自
+    `SchemaConfigGeneratorTests.Run_Should_Assign_Globally_Unique_Reference_Metadata_Member_Names`
+  - 本地复测前先对 `GFramework.SourceGenerators.Tests` 执行 `dotnet restore -p:RestoreFallbackFolders=""`，
+    规避当前 WSL worktree 仍残留的 Windows NuGet fallback package folder 资产干扰
+- 决策：
+  - 保持 `SchemaConfigGenerator` 当前 `GF_ConfigSchema_014` 语义不变；PR 失败是测试输入陈旧，而不是生成器行为回退
+  - 将用例改写为“合法 schema 路径在 reference metadata member name 上碰撞”的场景，继续覆盖全局唯一后缀分配逻辑
+- 实施调整：
+  - 将测试 schema 从根级 `drop-items` / `drop_items` 非法同层冲突改为 `drop.items`、`drop.items1`、`dropItems`、
+    `dropItems1` 的合法组合
+  - 更新断言，验证 `MonsterConfigBindings.g.cs` 中继续生成 `DropItems`、`DropItems1`、`DropItems2` 与 `DropItems11`
+- 验证结果：
+  - `dotnet restore GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -p:RestoreFallbackFolders="" -nologo`
+    - 结果：通过
+  - `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --no-restore --filter FullyQualifiedName~Run_Should_Assign_Globally_Unique_Reference_Metadata_Member_Names -m:1 -p:RestoreFallbackFolders="" -nologo`
+    - 结果：`1 Passed`，`0 Failed`
+    - 说明：`GFramework.SourceGenerators.Tests` 在构建阶段仍会打印既有 `MA0048`、`MA0051`、`MA0004` warning；本轮未扩展到该测试项目的 warning 清理
+- 下一步建议：
+  - 若继续收口 PR #269，可再次抓取最新 test report / open thread，确认是否还有新的 CI 失败信号
+  - 若回到 analyzer 主线，优先决定是否为 `GFramework.SourceGenerators.Tests` 单独开一轮 warning 清理切片
+
 ## 2026-04-23 — RP-025
 
 ### 阶段：PR #269 第五轮 review follow-up 与模块 build / warning 治理补充（RP-025）

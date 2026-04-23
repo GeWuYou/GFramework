@@ -2473,7 +2473,7 @@ public class SchemaConfigGeneratorTests
     }
 
     /// <summary>
-    ///     验证引用元数据成员名在不同路径规范化后发生碰撞时，生成器仍会分配全局唯一的成员名。
+    ///     验证引用元数据成员名在不同合法字段路径规范化后发生碰撞时，生成器仍会分配全局唯一的成员名。
     /// </summary>
     [Test]
     public void Run_Should_Assign_Globally_Unique_Reference_Metadata_Member_Names()
@@ -2534,12 +2534,21 @@ public class SchemaConfigGeneratorTests
                                 "required": ["id"],
                                 "properties": {
                                   "id": { "type": "integer" },
-                                  "drop-items": {
-                                    "type": "array",
-                                    "items": { "type": "string" },
-                                    "x-gframework-ref-table": "item"
+                                  "drop": {
+                                    "type": "object",
+                                    "properties": {
+                                      "items": {
+                                        "type": "array",
+                                        "items": { "type": "string" },
+                                        "x-gframework-ref-table": "item"
+                                      },
+                                      "items1": {
+                                        "type": "string",
+                                        "x-gframework-ref-table": "item"
+                                      }
+                                    }
                                   },
-                                  "drop_items": {
+                                  "dropItems": {
                                     "type": "array",
                                     "items": { "type": "string" },
                                     "x-gframework-ref-table": "item"
@@ -2568,6 +2577,7 @@ public class SchemaConfigGeneratorTests
         Assert.That(generatedSources.TryGetValue("MonsterConfigBindings.g.cs", out var bindingsSource), Is.True);
         Assert.That(bindingsSource, Does.Contain("public static readonly ReferenceMetadata DropItems ="));
         Assert.That(bindingsSource, Does.Contain("public static readonly ReferenceMetadata DropItems1 ="));
+        Assert.That(bindingsSource, Does.Contain("public static readonly ReferenceMetadata DropItems2 ="));
         Assert.That(bindingsSource, Does.Contain("public static readonly ReferenceMetadata DropItems11 ="));
     }
 
