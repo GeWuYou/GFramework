@@ -32,6 +32,13 @@ public sealed partial class CqrsHandlerRegistryGenerator
             HasReflectionTypeLookups;
     }
 
+    /// <summary>
+    ///     标记某条 handler 注册语句在生成阶段采用的表达策略。
+    /// </summary>
+    /// <remarks>
+    ///     该枚举只服务于输出排序与代码分支选择，用来保证生成注册器在“直接注册”
+    ///     “反射实现类型查找”和“精确运行时类型解析”之间保持稳定顺序。
+    /// </remarks>
     private enum OrderedRegistrationKind
     {
         Direct,
@@ -39,6 +46,14 @@ public sealed partial class CqrsHandlerRegistryGenerator
         PreciseReflected
     }
 
+    /// <summary>
+    ///     描述生成注册器中某个运行时类型引用的构造方式。
+    /// </summary>
+    /// <remarks>
+    ///     某些 handler 服务类型可以直接以 <c>typeof(...)</c> 输出，某些则需要在运行时补充
+    ///     反射查找、数组封装或泛型实参重建。该记录把这些差异收敛为统一的递归结构，
+    ///     供源码输出阶段生成稳定的类型解析语句。
+    /// </remarks>
     private sealed record RuntimeTypeReferenceSpec(
         string? TypeDisplayName,
         string? ReflectionTypeMetadataName,
@@ -49,6 +64,9 @@ public sealed partial class CqrsHandlerRegistryGenerator
         RuntimeTypeReferenceSpec? GenericTypeDefinitionReference,
         ImmutableArray<RuntimeTypeReferenceSpec> GenericTypeArguments)
     {
+        /// <summary>
+        ///     创建一个可直接通过 <c>typeof(...)</c> 表达的类型引用。
+        /// </summary>
         public static RuntimeTypeReferenceSpec FromDirectReference(string typeDisplayName)
         {
             return new RuntimeTypeReferenceSpec(
@@ -62,6 +80,9 @@ public sealed partial class CqrsHandlerRegistryGenerator
                 ImmutableArray<RuntimeTypeReferenceSpec>.Empty);
         }
 
+        /// <summary>
+        ///     创建一个需要从当前消费端程序集反射解析的类型引用。
+        /// </summary>
         public static RuntimeTypeReferenceSpec FromReflectionLookup(string reflectionTypeMetadataName)
         {
             return new RuntimeTypeReferenceSpec(
@@ -75,6 +96,9 @@ public sealed partial class CqrsHandlerRegistryGenerator
                 ImmutableArray<RuntimeTypeReferenceSpec>.Empty);
         }
 
+        /// <summary>
+        ///     创建一个需要从被引用程序集反射解析的类型引用。
+        /// </summary>
         public static RuntimeTypeReferenceSpec FromExternalReflectionLookup(
             string reflectionAssemblyName,
             string reflectionTypeMetadataName)
@@ -90,6 +114,9 @@ public sealed partial class CqrsHandlerRegistryGenerator
                 ImmutableArray<RuntimeTypeReferenceSpec>.Empty);
         }
 
+        /// <summary>
+        ///     创建一个数组类型引用。
+        /// </summary>
         public static RuntimeTypeReferenceSpec FromArray(RuntimeTypeReferenceSpec elementTypeReference, int arrayRank)
         {
             return new RuntimeTypeReferenceSpec(
@@ -103,6 +130,9 @@ public sealed partial class CqrsHandlerRegistryGenerator
                 ImmutableArray<RuntimeTypeReferenceSpec>.Empty);
         }
 
+        /// <summary>
+        ///     创建一个封闭泛型类型引用。
+        /// </summary>
         public static RuntimeTypeReferenceSpec FromConstructedGeneric(
             RuntimeTypeReferenceSpec genericTypeDefinitionReference,
             ImmutableArray<RuntimeTypeReferenceSpec> genericTypeArguments)

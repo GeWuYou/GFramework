@@ -1,5 +1,30 @@
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-23 — RP-028
+
+### 阶段：`CqrsHandlerRegistryGenerator.cs` 文件级冲突化解（RP-028）
+
+- 启动复核：
+  - 用户指出当前分支与 `main` 在 `GFramework.Cqrs.SourceGenerators/Cqrs/CqrsHandlerRegistryGenerator.cs`
+    存在冲突，需要人工确认并解决
+  - 本地检查后确认工作树没有 `UU` 或冲突标记；进一步对比 `origin/main` 发现冲突根因不是运行逻辑回退，而是
+    `main` 在旧的单文件版本里新增了 `OrderedRegistrationKind` / `RuntimeTypeReferenceSpec` 的 XML 文档，
+    而当前分支已将这些类型拆分到 `CqrsHandlerRegistryGenerator.Models.cs`
+- 决策：
+  - 保留当前分支已经完成的 partial 拆分，不把模型重新塞回 `CqrsHandlerRegistryGenerator.cs`
+  - 以“迁移 `main` 侧文档意图到拆分后的归属文件”为人工合并策略，避免既回退结构拆分又遗漏 `main` 新增文档
+- 实施调整：
+  - 将 `OrderedRegistrationKind` 的枚举说明与 `RuntimeTypeReferenceSpec` / `FromDirectReference` /
+    `FromReflectionLookup` / `FromExternalReflectionLookup` / `FromArray` / `FromConstructedGeneric`
+    的 XML 文档迁移到 `CqrsHandlerRegistryGenerator.Models.cs`
+  - 保持 `CqrsHandlerRegistryGenerator.cs` 主文件只承载主生成管线，不引入重复模型定义
+- 验证结果：
+  - `dotnet build GFramework.Cqrs.SourceGenerators/GFramework.Cqrs.SourceGenerators.csproj -c Release --no-restore -p:RestoreFallbackFolders="" -clp:"Summary;WarningsOnly" -nologo`
+    - 结果：`0 Warning(s)`，`0 Error(s)`
+- 下一步建议：
+  - 若后续继续处理分支冲突，优先先判断 `main` 改动是否已在当前 partial 文件集里存在等价归属，再决定是否需要真正 merge/rebase
+  - 若回到 PR #269 收口，可继续抓取最新 unresolved threads 与 CI 状态
+
 ## 2026-04-23 — RP-027
 
 ### 阶段：PR #269 Greptile inherited-member collision follow-up（RP-027）

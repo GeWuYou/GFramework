@@ -7,8 +7,8 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-027`
-- 当前阶段：`Phase 27`
+- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-028`
+- 当前阶段：`Phase 28`
 - 当前焦点：
   - 已完成 `GFramework.Core` 当前 `MA0016` / `MA0002` / `MA0015` / `MA0077` 低风险收口批次
   - 已复核 `net10.0` 下的 `MA0158` 基线：`GFramework.Core` / `GFramework.Cqrs` 当前共有 `16` 个 object lock
@@ -35,6 +35,9 @@
     reference metadata 成员名全局去冲突，但不再依赖现已被 `GF_ConfigSchema_014` 拦截的非法同层 schema key 冲突
   - 已完成当前 PR #269 Greptile follow-up：`ContextAwareGenerator` 现在会把基类链显式成员名也纳入
     `_gFrameworkContextAware*` 字段分配冲突检测，并新增 inherited-field collision 快照回归测试
+  - 已完成当前分支与 `main` 的 `CqrsHandlerRegistryGenerator.cs` 文件级冲突收口：确认 `main` 侧新增的是
+    `OrderedRegistrationKind` / `RuntimeTypeReferenceSpec` 的 XML 文档，现已按当前 partial 拆分结构迁移到
+    `CqrsHandlerRegistryGenerator.Models.cs`，不回退已完成的生成器拆分
   - 已更新 `AGENTS.md`：变更模块必须运行对应 `dotnet build -c Release`，并处理或显式报告模块构建 warning，
     不再默认留给长期 warning 清理分支
   - `CoroutineScheduler` 的 tag/group 字典已显式使用 `StringComparer.Ordinal`，保持既有区分大小写语义
@@ -79,6 +82,8 @@
   并重新通过定向 generator test
 - 已完成当前 PR #269 的 Greptile follow-up：修复 `ContextAwareGenerator` 未覆盖基类成员名冲突的问题，并补齐
   inherited-collision 快照测试
+- 已完成当前分支与 `main` 的 `CqrsHandlerRegistryGenerator.cs` 冲突化解：保留当前 partial 结构，并把
+  `main` 侧新增的模型文档合并到 `CqrsHandlerRegistryGenerator.Models.cs`
 - 已完成 `GFramework.Game.SourceGenerators` 中 `SchemaConfigGenerator` 的第一批 `MA0051` 收口；warnings-only 基线剩余 `9` 条
   `MA0051`
 
