@@ -1,5 +1,28 @@
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-23 — RP-041
+
+### 阶段：subagent 循环第五个有效写集（RP-041）
+
+- 启动复核：
+  - 在 `RP-040` 成功后，继续按单方法级 subagent 推进同一热点文件
+  - 本轮目标收敛到 `Generates_Precise_Service_Type_For_Hidden_Generic_Type_Definitions()`
+- 决策：
+  - 仅提取该方法的内联 `source` 文本，继续复用现有
+    `HiddenGenericEnvelopeResponseExpected`
+  - 不改变 method name、expected 常量、生成文件名与断言语义
+- 实施调整：
+  - 新增类级常量 `HiddenGenericEnvelopeResponseSource`
+  - 将目标测试方法改为复用该常量调用 `GeneratorTest<CqrsHandlerRegistryGenerator>.RunAsync(...)`
+- 验证结果：
+  - `dotnet build GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release -t:Rebuild --no-restore --disable-build-servers -m:1 -p:UseSharedCompilation=false -p:RestoreFallbackFolders="" -nologo -clp:"Summary;WarningsOnly"`
+    - 结果：`10 Warning(s)`，`0 Error(s)`；原先位于行号 `680` 的 `MA0051` 已消失
+- 当前结论：
+  - subagent 循环已连续五轮产出 patch，但当前分支相对 `origin/main` 的唯一变更文件数依旧只有 `4`
+  - 若用户坚持把“接近 `75` 个唯一变更文件”作为停止条件，后续策略必须从“继续收口同一文件”切换到“优先进入新文件写集”
+- 下一步建议：
+  - 主线程需要决定：继续按 warning 热点清理同一文件，还是切到新的文件写集以增加唯一变更文件数
+
 ## 2026-04-23 — RP-040
 
 ### 阶段：subagent 循环第四个有效写集（RP-040）
