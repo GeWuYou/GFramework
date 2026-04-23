@@ -1,5 +1,45 @@
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-23 — RP-029
+
+### 阶段：`SchemaConfigGenerator.cs` 剩余 `MA0051` 收口（RP-029）
+
+- 启动复核：
+  - 按 `gframework-boot` 流程恢复当前 worktree 后，先读取 `AGENTS.md`、`.ai/environment/tools.ai.yaml`、`ai-plan/public/README.md`
+    与 active topic 跟踪文件，确认当前分支 `fix/analyzer-warning-reduction-batch` 仍映射到
+    `analyzer-warning-reduction`
+  - 用历史基线命令重新执行 `dotnet build GFramework.Game.SourceGenerators/GFramework.Game.SourceGenerators.csproj -c Release -t:Rebuild --no-restore -p:UseSharedCompilation=false -p:RestoreFallbackFolders="" -nologo -clp:"Summary;WarningsOnly"`，
+    复现 `SchemaConfigGenerator.cs` 剩余 `9` 条 `MA0051`
+- 决策：
+  - 继续沿用“低风险结构拆分、不改诊断 ID、不改生成顺序、不改快照输出”的收口策略
+  - 先把 schema 元数据校验方法拆成更小验证阶段，再把 `GenerateTableClass`、`GenerateBindingsClass` 与
+    `AppendGeneratedConfigCatalogType` 的代码发射流程分段，避免直接改动生成文本内容
+  - focused test 仍以 `SchemaConfigGenerator` 相关用例为主；`GFramework.SourceGenerators.Tests` 里既有测试项目 warning
+    不纳入本轮写集
+- 实施调整：
+  - 为 `dependentRequired`、`dependentSchemas`、`allOf`、conditional schema 等对象级校验补上细粒度 helper，
+    把 declared-properties 获取、分支校验、target 校验拆成独立阶段
+  - 为生成代码头部、表包装、bindings metadata/references、catalog metadata 发射补充结构化 helper，
+    将长方法按“头部 / 元数据 / 行为方法”拆分
+  - 修正 `References` 代码发射 helper 的闭合范围，确保重构后的 `MonsterConfigBindings.g.cs` 与现有快照保持一致
+  - 在构建阶段遇到 Linux `dotnet` 命中 Windows fallback package folder 时，先对
+    `GFramework.Game.SourceGenerators` 与 `GFramework.SourceGenerators.Tests` 执行
+    `dotnet restore -p:RestoreFallbackFolders=""`，再继续 `--no-restore` 验证
+- 验证结果：
+  - `dotnet restore GFramework.Game.SourceGenerators/GFramework.Game.SourceGenerators.csproj -p:RestoreFallbackFolders="" -nologo`
+    - 结果：通过
+  - `dotnet restore GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -p:RestoreFallbackFolders="" -nologo`
+    - 结果：通过
+  - `dotnet build GFramework.Game.SourceGenerators/GFramework.Game.SourceGenerators.csproj -c Release -t:Rebuild --no-restore -p:UseSharedCompilation=false -p:RestoreFallbackFolders="" -nologo -clp:"Summary;WarningsOnly"`
+    - 结果：`0 Warning(s)`，`0 Error(s)`
+  - `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --no-restore --filter FullyQualifiedName~SchemaConfigGenerator -m:1 -p:RestoreFallbackFolders="" -nologo`
+    - 结果：`54 Passed`，`0 Failed`
+    - 说明：测试项目构建仍打印既有 `MA0048` / `MA0051` / `MA0004` warning；这些 warning 属于 `GFramework.SourceGenerators.Tests`
+      基线，不属于本轮 `GFramework.Game.SourceGenerators` 写集
+- 下一步建议：
+  - 若继续 analyzer warning reduction，可评估是否为 `GFramework.SourceGenerators.Tests` 单独开新的 warning 清理切片
+  - 若改回推进运行时主线，则按 `RP-017` 记录的策略先设计 `MA0158` 的多 target 兼容方案，再决定是否动共享 `object` lock
+
 ## 2026-04-23 — RP-028
 
 ### 阶段：`CqrsHandlerRegistryGenerator.cs` 文件级冲突化解（RP-028）

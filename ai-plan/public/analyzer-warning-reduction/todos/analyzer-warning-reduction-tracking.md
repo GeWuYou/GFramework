@@ -7,8 +7,8 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-028`
-- 当前阶段：`Phase 28`
+- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-029`
+- 当前阶段：`Phase 29`
 - 当前焦点：
   - 已完成 `GFramework.Core` 当前 `MA0016` / `MA0002` / `MA0015` / `MA0077` 低风险收口批次
   - 已复核 `net10.0` 下的 `MA0158` 基线：`GFramework.Core` / `GFramework.Cqrs` 当前共有 `16` 个 object lock
@@ -38,6 +38,9 @@
   - 已完成当前分支与 `main` 的 `CqrsHandlerRegistryGenerator.cs` 文件级冲突收口：确认 `main` 侧新增的是
     `OrderedRegistrationKind` / `RuntimeTypeReferenceSpec` 的 XML 文档，现已按当前 partial 拆分结构迁移到
     `CqrsHandlerRegistryGenerator.Models.cs`，不回退已完成的生成器拆分
+  - 已完成 `SchemaConfigGenerator.cs` 剩余 `MA0051` 收口：将 `dependentRequired` / `allOf` / conditional schema 校验
+    拆成更小的验证阶段，并将 `GenerateTableClass`、`GenerateBindingsClass`、`AppendGeneratedConfigCatalogType`
+    拆成稳定的代码发射 helper，保持生成输出与快照一致
   - 已更新 `AGENTS.md`：变更模块必须运行对应 `dotnet build -c Release`，并处理或显式报告模块构建 warning，
     不再默认留给长期 warning 清理分支
   - `CoroutineScheduler` 的 tag/group 字典已显式使用 `StringComparer.Ordinal`，保持既有区分大小写语义
@@ -46,8 +49,7 @@
   - 当前 `GFramework.Core` `net8.0` warnings-only 基线已降到 `0` 条
   - 当前 `GFramework.Core.SourceGenerators` warnings-only 基线已降到 `0` 条
   - 当前 `GFramework.Cqrs.SourceGenerators` warnings-only 基线已降到 `0` 条
-  - 当前 `GFramework.Game.SourceGenerators` warnings-only 基线已从 `46` 条降到 `9` 条，剩余均为
-    `SchemaConfigGenerator.cs` 的 `MA0051`
+  - 当前 `GFramework.Game.SourceGenerators` warnings-only 基线已从 `46` 条降到 `0` 条
   - `GFramework.Godot` 的 `Timing.cs` 已同步适配新事件签名，但当前 worktree 的 Godot restore 资产仍受 Windows fallback package folder 干扰，独立 build 需在修复资产后补跑
   - 后续继续按 warning 类型和数量批处理，而不是回退到按单文件切片推进
   - 下一轮默认继续拆分 `GFramework.Game.SourceGenerators` 的 `MA0051` 热点，或评估跨 target 的 `MA0158`
@@ -84,8 +86,7 @@
   inherited-collision 快照测试
 - 已完成当前分支与 `main` 的 `CqrsHandlerRegistryGenerator.cs` 冲突化解：保留当前 partial 结构，并把
   `main` 侧新增的模型文档合并到 `CqrsHandlerRegistryGenerator.Models.cs`
-- 已完成 `GFramework.Game.SourceGenerators` 中 `SchemaConfigGenerator` 的第一批 `MA0051` 收口；warnings-only 基线剩余 `9` 条
-  `MA0051`
+- 已完成 `GFramework.Game.SourceGenerators` 中 `SchemaConfigGenerator` 的剩余 `MA0051` 收口；warnings-only 基线已降到 `0` 条
 
 ## 当前活跃事实
 
@@ -141,6 +142,8 @@
 - `RP-025` 继续复核 PR #269 剩余 outside-diff / nitpick 信号后，确认本地仍成立的是 `SchemaConfigGenerator`
   的归一化字段名冲突与 `Cqrs` 对 `dynamic` 的直接类型引用；已分别补上诊断、运行时类型归一化与回归测试，
   并把“变更模块必须运行对应 build 且处理 warning”的治理规则写回 `AGENTS.md`
+- `RP-029` 已完成 `SchemaConfigGenerator` 剩余 `MA0051` 收口：`GFramework.Game.SourceGenerators` 独立 Release
+  warnings-only build 已清零，并通过 `SchemaConfigGenerator` focused generator tests 锁定生成输出未回退
 - 当前工作树分支 `fix/analyzer-warning-reduction-batch` 已在 `ai-plan/public/README.md` 建立 topic 映射
 
 ## 当前风险
@@ -311,13 +314,24 @@
     - 说明：测试项目构建仍会显示既有 `GFramework.SourceGenerators.Tests` analyzer warning；不属于本轮写集
   - `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --no-restore --filter "FullyQualifiedName~CollectionExtensionsTests|FullyQualifiedName~LoggingConfigurationTests" -m:1 -p:RestoreFallbackFolders="" -v minimal`
     - 结果：`27 Passed`，`0 Failed`
+- `RP-029` 的验证结果：
+  - `dotnet restore GFramework.Game.SourceGenerators/GFramework.Game.SourceGenerators.csproj -p:RestoreFallbackFolders="" -nologo`
+    - 结果：通过；刷新 Linux 侧 restore 资产以移除 Windows fallback package folder 干扰
+  - `dotnet restore GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -p:RestoreFallbackFolders="" -nologo`
+    - 结果：通过；focused test 所属测试项目已同步刷新 Linux 侧 restore 资产
+  - `dotnet build GFramework.Game.SourceGenerators/GFramework.Game.SourceGenerators.csproj -c Release -t:Rebuild --no-restore -p:UseSharedCompilation=false -p:RestoreFallbackFolders="" -nologo -clp:"Summary;WarningsOnly"`
+    - 结果：`0 Warning(s)`，`0 Error(s)`；`SchemaConfigGenerator.cs` 剩余 `MA0051` 已清零
+  - `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --no-restore --filter FullyQualifiedName~SchemaConfigGenerator -m:1 -p:RestoreFallbackFolders="" -nologo`
+    - 结果：`54 Passed`，`0 Failed`
+    - 说明：测试项目构建仍显示既有 `GFramework.SourceGenerators.Tests` `MA0048` / `MA0051` / `MA0004` warning；不属于本轮
+      `GFramework.Game.SourceGenerators` 写集
 - active 跟踪文件只保留当前恢复点、活跃事实、风险与下一步，不再重复保存已完成阶段的长篇历史
 
 ## 下一步
 
 1. 若要继续该主题，先读 active tracking，再按需展开历史归档中的 warning 热点与验证记录
-2. 下一轮优先继续拆分 `GFramework.Game.SourceGenerators/Config/SchemaConfigGenerator.cs` 的剩余 `MA0051`；建议先从
-   `GenerateBindingsClass`、`AppendGeneratedConfigCatalogType` 或对象/条件 schema target 验证方法切入
+2. 下一轮优先评估是否将 `GFramework.SourceGenerators.Tests` 的既有 `MA0051` / `MA0004` / `MA0048` 作为独立 warning
+   清理切片；若进入该写集，需要先明确测试项目 warning 也属于本轮必须处理的模块范围
 3. 若改回推进 `MA0158`，先设计 `net8.0` / `net9.0` / `net10.0` 多 target 条件编译方案，不直接批量替换共享源码中的
    `object` lock
 4. 若后续继续改动 `GFramework.Godot`，先修复该项目的 Linux 侧 restore 资产，再补跑独立 build
