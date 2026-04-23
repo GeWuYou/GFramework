@@ -31,7 +31,7 @@
 | `GFramework.Core.SourceGenerators` | Core 侧通用源码生成器与分析器 | [README](GFramework.Core.SourceGenerators/README.md) |
 | `GFramework.Game.SourceGenerators` | 游戏内容配置 schema 生成器 | [README](GFramework.Game.SourceGenerators/README.md) |
 | `GFramework.Cqrs.SourceGenerators` | CQRS handler registry 生成器 | [README](GFramework.Cqrs.SourceGenerators/README.md) |
-| `GFramework.Godot.SourceGenerators` | Godot 场景专用源码生成器 | [README](GFramework.Godot.SourceGenerators/README.md) |
+| `GFramework.Godot.SourceGenerators` | Godot 项目元数据、节点注入、信号绑定与 Scene/UI 辅助生成器 | [README](GFramework.Godot.SourceGenerators/README.md) |
 
 ## 内部支撑模块
 

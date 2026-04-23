@@ -1,3 +1,8 @@
+---
+title: Source Generators
+description: 按模块梳理 GFramework 当前发布的源码生成器包、运行时归属与推荐选包入口。
+---
+
 # Source Generators
 
 `Source Generators` 栏目对应 `GFramework` 当前按模块拆分发布的编译期工具链。
@@ -23,7 +28,7 @@ GFramework 当前发布的生成器包是：
   - 选择 `GeWuYou.GFramework.Game.SourceGenerators`
 - 想让 CQRS handler registry 在编译期生成，缩小运行时反射扫描范围：
   - 选择 `GeWuYou.GFramework.Cqrs.SourceGenerators`
-- 想在 Godot 项目里生成 AutoLoad / Input Action 入口，或减少节点与信号样板代码：
+- 想在 Godot 项目里生成 AutoLoad / Input Action 入口、节点 / 信号样板，或补齐 Scene/UI 包装与导出集合注册辅助：
   - 选择 `GeWuYou.GFramework.Godot.SourceGenerators`
 
 ## 与运行时的关系

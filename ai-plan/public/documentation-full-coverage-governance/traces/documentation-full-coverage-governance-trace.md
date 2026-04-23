@@ -395,3 +395,39 @@
 
 1. 继续抽查根 `README.md`、`docs/zh-CN/source-generators/index.md` 与 `docs/zh-CN/tutorials/godot-integration.md` 是否仍把 `Godot` owner 写回旧边界
 2. 当后续分支继续修改 `Game` / `Godot` family 入口时，沿用当前 README -> landing -> API reference 的最小修复顺序
+
+### 当前恢复点：RP-012
+
+- 继续按 `boot` 恢复后的默认下一步执行 `Game` / `Godot` 入口巡检，并重新读取：
+  - `README.md`
+  - `docs/zh-CN/source-generators/index.md`
+  - `docs/zh-CN/tutorials/godot-integration.md`
+  - `docs/zh-CN/api-reference/index.md`
+  - `GFramework.Godot/README.md`
+  - `GFramework.Godot.SourceGenerators/README.md`
+- 巡检结果显示主体内容仍然稳定，但根入口摘要存在一处残留漂移：
+  - 根 `README.md` 仍把 `GFramework.Godot.SourceGenerators` 写成“Godot 场景专用源码生成器”，与当前包实际覆盖的 `project.godot` 元数据、节点注入、信号绑定、Scene / UI 包装和导出集合注册职责不符
+  - `docs/zh-CN/source-generators/index.md` 的选包描述同步缺少 Scene / UI 包装与导出集合注册辅助这组能力
+- 因此本轮执行最小修复集：
+  - 更新根 `README.md` 的 `GFramework.Godot.SourceGenerators` 模块描述
+  - 更新 `docs/zh-CN/source-generators/index.md` 的 Godot 选包摘要
+
+### 当前决策（RP-012）
+
+- 继续维持“只修新发现的入口漂移，不重写稳定页面”的治理节奏；这轮不改 `docs/zh-CN/tutorials/godot-integration.md`，因为教程与 README / 生成器专题页仍使用同一套职责边界
+- 根 `README.md` 作为仓库一级入口，必须与模块 README 保持同一粒度的职责摘要；如果根入口比模块 README 更旧，后续 `boot` 和人工恢复都会被误导
+- `source-generators/index.md` 的选包段落需要覆盖当前真实能力分组，但不重复展开各专题页细节，避免重新长成第二份 README
+
+### 当前验证（RP-012）
+
+- 文档校验：
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-links.sh README.md`：通过
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-code-blocks.sh README.md`：通过
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/index.md`：通过
+- 构建校验：
+  - `cd docs && bun run build`：通过；仅保留既有 VitePress 大 chunk warning，无构建失败
+
+### 下一步
+
+1. 继续抽查 `docs/zh-CN/tutorials/godot-integration.md`、`docs/zh-CN/godot/index.md` 与根 `README.md` 的职责摘要是否继续保持同一口径
+2. 当后续分支继续修改 `Game` / `Godot` family 入口时，沿用当前 README -> landing -> API reference 的最小修复顺序

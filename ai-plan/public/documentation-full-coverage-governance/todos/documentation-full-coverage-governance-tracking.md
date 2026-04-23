@@ -12,7 +12,7 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`DOCUMENTATION-FULL-COVERAGE-GOV-RP-011`
+- 恢复点编号：`DOCUMENTATION-FULL-COVERAGE-GOV-RP-012`
 - 当前阶段：`Phase 5 - Governance Maintenance`
 - 当前焦点：
   - 继续巡检 `Godot` / `Game` 相关 README、landing page 与 API reference 的 cross-link 是否回漂
@@ -43,6 +43,9 @@
   - `GFramework.Godot/README.md` 仍停留在旧版简略描述，缺少当前包关系、子系统地图、最小接入路径与 `docs/zh-CN` 入口
   - `GFramework.Godot.SourceGenerators/README.md` 虽有示例，但没有覆盖 `AutoScene`、`AutoUiPage`、`AutoRegisterExportedCollections` 等当前生成器分组，也没有把运行时 / 生成器边界说清
   - `docs/zh-CN/api-reference/index.md` 的 `Godot` 行此前只把生成器入口指向泛化的 `source-generators/index.md`，不利于从 API 参考直接落到 `Godot` 专题页
+- `2026-04-23` 的后续入口巡检新增结论：
+  - 根 `README.md` 的模块地图仍把 `GFramework.Godot.SourceGenerators` 写成“Godot 场景专用源码生成器”，范围过窄，不符合当前 `project.godot` 元数据、节点注入、信号绑定、Scene / UI 包装与导出集合注册的真实职责
+  - `docs/zh-CN/source-generators/index.md` 的选包说明此前只提到 `AutoLoad / Input Action` 与节点 / 信号样板，没有把 Scene / UI 包装与导出集合注册辅助纳入同一入口
 - 本轮已完成的治理动作：
   - 新建 `GFramework.Ecs.Arch.Abstractions/README.md`
   - 在根 `README.md` 中补齐 `GFramework.Ecs.Arch.Abstractions` 入口，并声明内部支撑模块 owner
@@ -74,6 +77,8 @@
   - 重写 `GFramework.Godot/README.md`，补齐包定位、相邻包关系、子系统地图、最小接入路径与站内文档入口，并明确它不拥有生成器职责
   - 重写 `GFramework.Godot.SourceGenerators/README.md`，按 `project.godot` 元数据、节点注入 / 信号绑定、行为包装与批量注册四组能力重建入口
   - 更新 `docs/zh-CN/api-reference/index.md` 的 `Godot` 模块映射，使 API 参考能直接落到 `Godot` 专用生成器专题页，而不是仅回到总览页
+  - 修正根 `README.md` 中 `GFramework.Godot.SourceGenerators` 的模块描述，使其与当前生成器职责边界一致
+  - 扩充 `docs/zh-CN/source-generators/index.md` 的 Godot 选包说明，把 Scene / UI 包装与导出集合注册辅助纳入入口摘要
 
 ## Inventory（第一版）
 
@@ -122,7 +127,7 @@
   - 结果：通过；PR `#271` 已关闭，latest reviewed commit 为 `df91d3706ba9db71737e803ef2f40f4841ecbbf1`，当前 `2` 条 open thread 都是已被本地文件满足的陈旧信号，不再构成本轮阻塞
 - 最新构建结论：
   - `2026-04-23` `cd docs && bun run build`
-  - 结果：通过；在 `Godot` README / API 入口修复后再次验证通过，仅保留既有 VitePress 大 chunk warning，无构建失败
+  - 结果：通过；在根 `README.md` 与 `source-generators` 总览页补齐 `Godot.SourceGenerators` 职责描述后再次验证通过，仅保留既有 VitePress 大 chunk warning，无构建失败
 - 最新恢复治理结论：
   - `2026-04-23` 重新读取 `ai-plan/public/archive/documentation-governance-and-refresh/**`
   - 结果：通过；确认 `Godot` family 适合把最小恢复摘要迁回 active topic，但不需要把整段归档历史重新放回默认 `boot` 路径
@@ -136,9 +141,12 @@
   - `2026-04-23` `bash .agents/skills/gframework-doc-refresh/scripts/validate-links.sh GFramework.Godot.SourceGenerators/README.md`：通过
   - `2026-04-23` `bash .agents/skills/gframework-doc-refresh/scripts/validate-code-blocks.sh GFramework.Godot.SourceGenerators/README.md`：通过
   - `2026-04-23` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/api-reference/index.md`：通过
+  - `2026-04-23` `bash .agents/skills/gframework-doc-refresh/scripts/validate-links.sh README.md`：通过
+  - `2026-04-23` `bash .agents/skills/gframework-doc-refresh/scripts/validate-code-blocks.sh README.md`：通过
+  - `2026-04-23` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/index.md`：通过
 
 ## 下一步
 
-1. 继续抽查 `Game` 与 `Godot` 相邻入口，优先看根 `README.md`、`docs/zh-CN/source-generators/index.md` 与教程页之间是否仍有旧 owner 描述
+1. 继续抽查 `Game` / `Godot` 相关教程与 landing page，优先确认 `docs/zh-CN/tutorials/godot-integration.md`、`docs/zh-CN/godot/index.md` 与根 `README.md` 的职责摘要是否继续保持同一口径
 2. 当后续分支再修改 `Godot` / `Game` family 的 README、docs 或公共 API 时，回到对应模块追加 targeted 巡检与验证
 3. 仅在需要阶段级细节时再读取 `documentation-governance-and-refresh` archive，而不是把 archive 重新当作默认 `boot` 入口
