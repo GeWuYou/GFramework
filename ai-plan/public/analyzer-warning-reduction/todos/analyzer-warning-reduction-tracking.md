@@ -7,9 +7,16 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-038`
-- 当前阶段：`Phase 38`
+- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-039`
+- 当前阶段：`Phase 39`
 - 当前焦点：
+  - 已通过第三个有效 subagent 切片完成
+    `CqrsHandlerRegistryGeneratorTests.cs`
+    `Generates_Direct_Interface_Registrations_For_Hidden_Implementation_When_Handler_Interface_Is_Public()`
+    的 `MA0051` 收口：将内联 `source` 文本提取为类级常量，保持既有 expected 常量和断言语义不变
+  - 当前 `GFramework.SourceGenerators.Tests` Release warnings-only 基线已从 `13` 条降到 `12` 条；
+    行号 `536` 已从 `MA0051` 输出中消失，剩余热点继续集中在
+    `CqrsHandlerRegistryGeneratorTests.cs`
   - 已通过第二个有效 subagent 切片完成
     `CqrsHandlerRegistryGeneratorTests.cs`
     `Generates_Visible_Handlers_And_Self_Registers_Private_Nested_Handler_When_Assembly_Contains_Hidden_Handler()`
@@ -167,6 +174,8 @@
   `Generates_Assembly_Level_Cqrs_Handler_Registry()` 已抽出类级 fixture，当前测试项目基线进一步降到 `14` 条
 - 已完成 `RP-038` 的第二个 subagent 接收：`HiddenNestedHandlerSelfRegistrationSource` 已提取到类级常量，
   当前测试项目基线进一步降到 `13` 条
+- 已完成 `RP-039` 的第三个 subagent 接收：`HiddenImplementationDirectInterfaceRegistrationSource`
+  已提取到类级常量，当前测试项目基线进一步降到 `12` 条
 
 ## 当前活跃事实
 
@@ -221,6 +230,8 @@
   若继续按“唯一变更文件数接近 `75`”推进，需要接受很多轮单文件、单方法级切片
 - `RP-038` 继续验证了“单方法 + 主线程记录恢复点”的 subagent 节奏可稳定复用，但按当前速度离
   “接近 `75` 个唯一变更文件”仍然非常远
+- `RP-039` 进一步确认：只要 subagent 继续在同一热点文件内逐点消除 warning，唯一变更文件数会基本停留在 `4`
+  左右，不会因为重复修改同一文件快速逼近 `75`
 - `RP-021` 使用 `$gframework-pr-review` 复核当前分支 PR #269 后，修复仍在本地成立的 4 个项：将
   `CqrsHandlerRegistryGenerator` 拆分为职责清晰的 partial 文件、为 `ContextAwareGenerator` 生成字段增加稳定前缀并补上
   `SetContextProvider` 的运行时 null 校验、为 `Option<T>` 补齐 `<remarks>`，并新增字段重名场景的生成器快照测试
@@ -462,13 +473,16 @@
 - `RP-038` 的验证结果：
   - `dotnet build GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release -t:Rebuild --no-restore --disable-build-servers -m:1 -p:UseSharedCompilation=false -p:RestoreFallbackFolders="" -nologo -clp:"Summary;WarningsOnly"`
     - 结果：`13 Warning(s)`，`0 Error(s)`；`CqrsHandlerRegistryGeneratorTests.cs` 的行号 `454` 已不再出现在 `MA0051` 列表中
+- `RP-039` 的验证结果：
+  - `dotnet build GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release -t:Rebuild --no-restore --disable-build-servers -m:1 -p:UseSharedCompilation=false -p:RestoreFallbackFolders="" -nologo -clp:"Summary;WarningsOnly"`
+    - 结果：`12 Warning(s)`，`0 Error(s)`；`CqrsHandlerRegistryGeneratorTests.cs` 的行号 `536` 已不再出现在 `MA0051` 列表中
 - active 跟踪文件只保留当前恢复点、活跃事实、风险与下一步，不再重复保存已完成阶段的长篇历史
 
 ## 下一步
 
 1. 若要继续该主题，先读 active tracking，再按需展开历史归档中的 warning 热点与验证记录
 2. 下一轮优先继续 `GFramework.SourceGenerators.Tests` 的 `MA0051` 收口，并直接进入唯一剩余热点
-   `CqrsHandlerRegistryGeneratorTests.cs`；优先把行号 `536`、`607`、`680` 对应的前半段长方法继续拆小
+   `CqrsHandlerRegistryGeneratorTests.cs`；优先把行号 `607`、`680` 对应的前半段长方法继续拆小
 3. 若改回推进 `MA0158`，先设计 `net8.0` / `net9.0` / `net10.0` 多 target 条件编译方案，不直接批量替换共享源码中的
    `object` lock
 4. 若后续继续改动 `GFramework.Godot`，先修复该项目的 Linux 侧 restore 资产，再补跑独立 build

@@ -1,5 +1,28 @@
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-23 — RP-039
+
+### 阶段：subagent 循环第三个有效写集（RP-039）
+
+- 启动复核：
+  - 在 `RP-038` 成功后，继续按单方法级 subagent 推进同一热点文件
+  - 本轮目标收敛到 `Generates_Direct_Interface_Registrations_For_Hidden_Implementation_When_Handler_Interface_Is_Public()`
+- 决策：
+  - 仅提取该方法的内联 `source` 文本，继续复用现有
+    `HiddenImplementationDirectInterfaceRegistrationExpected`
+  - 不改变 method name、expected 常量、生成文件名与断言语义
+- 实施调整：
+  - 新增类级常量 `HiddenImplementationDirectInterfaceRegistrationSource`
+  - 将目标测试方法改为复用该常量调用 `GeneratorTest<CqrsHandlerRegistryGenerator>.RunAsync(...)`
+- 验证结果：
+  - `dotnet build GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release -t:Rebuild --no-restore --disable-build-servers -m:1 -p:UseSharedCompilation=false -p:RestoreFallbackFolders="" -nologo -clp:"Summary;WarningsOnly"`
+    - 结果：`12 Warning(s)`，`0 Error(s)`；原先位于行号 `536` 的 `MA0051` 已消失
+- 当前结论：
+  - subagent 循环在当前热点文件内已经连续三轮产出 patch，但唯一变更文件数仍停留在 `4`
+  - 若用户坚持以“接近 `75` 个唯一变更文件”为停止条件，后续需要尽快从单文件热点转向新的文件写集
+- 下一步建议：
+  - 继续处理 `CqrsHandlerRegistryGeneratorTests.cs` 的下一处前半段热点：行号 `607`
+
 ## 2026-04-23 — RP-038
 
 ### 阶段：subagent 循环第二个有效写集（RP-038）
