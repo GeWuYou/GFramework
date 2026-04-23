@@ -352,3 +352,46 @@
 
 1. 抽查 `Godot` 与 `Game` 相关 README / landing page / API reference 的 cross-link 是否出现新的漂移
 2. 当后续分支修改相关 README / docs / 公共 API 时，回到对应 module family 追加 targeted 巡检与验证
+
+### 当前恢复点：RP-011
+
+- 继续按 `boot` 恢复后的默认下一步执行 `Godot` / `Game` cross-link 巡检，并额外补读：
+  - `GFramework.Godot/README.md`
+  - `GFramework.Godot.SourceGenerators/README.md`
+  - `docs/zh-CN/api-reference/index.md`
+  - `docs/zh-CN/godot/index.md`
+  - `docs/zh-CN/source-generators/index.md`
+- 结合 `GFramework.Godot.csproj`、`GFramework.Godot.SourceGenerators.csproj`、相关测试与 `scan_module_evidence.py` 输出，确认新的漂移点集中在入口 README：
+  - `GFramework.Godot/README.md` 仍是旧版简略说明，没有记录当前包关系、子系统地图、最小接入路径与 `docs/zh-CN` 入口
+  - `GFramework.Godot.SourceGenerators/README.md` 没有覆盖 `AutoScene`、`AutoUiPage`、`AutoRegisterExportedCollections` 这些当前已发布的生成器分组
+  - `docs/zh-CN/api-reference/index.md` 的 `Godot` 映射仍只把生成器入口落到泛化总览页，恢复效率偏低
+- 因此本轮执行最小修复集：
+  - 重写 `GFramework.Godot/README.md`
+  - 重写 `GFramework.Godot.SourceGenerators/README.md`
+  - 更新 `docs/zh-CN/api-reference/index.md` 的 `Godot` 行
+
+### 当前决策（RP-011）
+
+- 这轮不改 `docs/zh-CN/godot/**` landing / topic 页面，因为站内页面本身没有发现新的事实漂移，问题集中在仓库 README 与 API 入口的回退
+- `GFramework.Godot` README 必须和 `Game` / `Godot` 真实边界一致，明确它不是生成器 owner，也不引入虚构的 router 类型
+- `GFramework.Godot.SourceGenerators` README 采用“元数据 / 节点注入与信号绑定 / 行为包装 / 批量注册”四段式入口，避免读者只看到旧的三项能力
+- API 参考页对 `Godot` 生成器入口直接给出专题页链接，而不是仅要求读者再从总览页二次分流
+
+### 当前验证（RP-011）
+
+- 模块扫描：
+  - `python3 .agents/skills/gframework-doc-refresh/scripts/scan_module_evidence.py Godot`：通过
+  - `python3 .agents/skills/gframework-doc-refresh/scripts/scan_module_evidence.py Godot.SourceGenerators`：通过
+- 文档校验：
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-links.sh GFramework.Godot/README.md`：通过
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-code-blocks.sh GFramework.Godot/README.md`：通过
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-links.sh GFramework.Godot.SourceGenerators/README.md`：通过
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-code-blocks.sh GFramework.Godot.SourceGenerators/README.md`：通过
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/api-reference/index.md`：通过
+- 构建校验：
+  - `cd docs && bun run build`：通过；仅保留既有 VitePress 大 chunk warning，无构建失败
+
+### 下一步
+
+1. 继续抽查根 `README.md`、`docs/zh-CN/source-generators/index.md` 与 `docs/zh-CN/tutorials/godot-integration.md` 是否仍把 `Godot` owner 写回旧边界
+2. 当后续分支继续修改 `Game` / `Godot` family 入口时，沿用当前 README -> landing -> API reference 的最小修复顺序
