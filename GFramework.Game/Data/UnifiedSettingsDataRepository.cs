@@ -283,15 +283,21 @@ public class UnifiedSettingsDataRepository(
     ///     复制当前统一文件快照，确保未提交修改不会污染内存中的已提交状态。
     /// </summary>
     /// <param name="source">要复制的统一文件快照。</param>
-    /// <returns>包含独立 section 字典的新快照。</returns>
+    /// <returns>包含独立 section 映射副本的新快照。</returns>
     private static UnifiedSettingsFile CloneFile(UnifiedSettingsFile source)
     {
         ArgumentNullException.ThrowIfNull(source);
 
+        // 反序列化后的运行时类型可能只是 IDictionary 实现；若底层仍是 Dictionary，则保留其 comparer，
+        // 否则退回到按当前内容复制，避免因为 API 抽象化而改变持久化前后的键比较语义。
+        var sections = source.Sections is Dictionary<string, string> dictionary
+            ? new Dictionary<string, string>(dictionary, dictionary.Comparer)
+            : new Dictionary<string, string>(source.Sections);
+
         return new UnifiedSettingsFile
         {
             Version = source.Version,
-            Sections = new Dictionary<string, string>(source.Sections, source.Sections.Comparer)
+            Sections = sections
         };
     }
 

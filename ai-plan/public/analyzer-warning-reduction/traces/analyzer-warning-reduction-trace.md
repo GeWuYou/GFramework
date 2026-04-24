@@ -1,71 +1,23 @@
 # Analyzer Warning Reduction 追踪
 
-## 2026-04-24 — RP-046
+## 2026-04-24 — RP-047
 
-### 阶段：solution warning baseline 采样与 active plan 回写
-
-- 触发背景：
-  - 用户纠正本轮目标为“执行 `dotnet build` 收集当前项目 warning，并更新当前工作树激活计划”
-  - active topic 仍为 `analyzer-warning-reduction`，因此本轮需要先确认 solution 级 warning baseline 是否可直接从当前工作树获取
-- 主线程实施：
-  - 直接执行前台 `dotnet build GFramework.sln -c Release`
-  - 构建成功，得到 `891 Warning(s)` / `0 Error(s)` / `Time Elapsed 00:00:18.57`
-  - 从实时输出中确认 warning 热点主要集中在 `GFramework.Godot.SourceGenerators`、`GFramework.Godot.SourceGenerators.Tests`、`GFramework.Core`、`GFramework.Game`、`GFramework.Cqrs`、`GFramework.Godot`
-  - 从实时输出中确认规则热点以 `MA0051`、`MA0158`、`MA0004` 为主，并伴随 `MA0006`、`MA0002`、`MA0009`
-  - 追加尝试把同一命令改为“重定向到日志文件”“附加 file logger”“`script` 分配 TTY”几种采集方式；这些路径都未稳定复现前台结果，而是出现 `Build FAILED / 0 Warning(s) / 0 Error(s)` 或 `Restore failed`
-  - 基于上述差异，本轮把“前台普通构建”视为 warning baseline 真值来源，并把采集形态漂移记录为环境风险
-- 本轮验证结果：
-  - `dotnet build GFramework.sln -c Release`
-    - 结果：成功；`891 Warning(s)`、`0 Error(s)`
-  - `dotnet build GFramework.sln -c Release > /tmp/gframework-build-warnings.log 2>&1`
-    - 结果：失败；约 `0.78s` 结束，摘要仅显示 `Build FAILED / 0 Warning(s) / 0 Error(s)`
-  - `dotnet build GFramework.sln -c Release '/flp:logfile=/tmp/gframework-build-warnings.log;verbosity=normal'`
-    - 结果：成功；但日志文件只保留了构建摘要，没有留下 warning 行
-  - `dotnet build GFramework.sln -c Release '/flp1:logfile=/tmp/gframework-build-warnings-only.log;warningsonly'`
-    - 结果：成功；但 warning-only 日志文件为空
-  - `script -q -c "dotnet build GFramework.sln -c Release" /tmp/gframework-build-full-typescript.log`
-    - 结果：失败；TTY 形态下 restore 于约 `0.8s` 退出
-- 当前结论：
-  - 当前工作树的 solution 级 warning baseline 可以通过普通前台 `dotnet build` 获取，且样本值是 `891` 条 warning、`0` 条 error
-  - 当前环境对 stdout/TTY/logger 形态敏感，不能把“把输出落到文件”的结果直接当作同等可信的构建事实
-  - 下一轮 warning reduction 应以本轮前台 baseline 为准，而不是继续围绕空日志或快速失败结果做误判
-
-## 2026-04-24 — RP-045
-
-### 阶段：solution no-restore 阻塞面采样与 active plan 回写
+### 阶段：solution warning 基线复核与 active plan 去噪
 
 - 触发背景：
-  - 用户要求显式执行 `dotnet build GFramework.sln -c Release --no-restore`，收集当前项目报错并同步更新当前工作树激活计划
-  - active topic 仍为 `analyzer-warning-reduction`，因此本轮的核心工作是把 solution 级失败面与先前的 restore / warning 线索重新归并到同一个恢复点
+  - 用户要求继续按 `$gframework-batch-boot 75` 推进，并明确要求“通过 `dotnet build` 检查警告”
+  - 用户追加要求清理当前计划中的噪音内容，因此本轮除了复核 warning 基线，还要同步压缩 active todo / trace
 - 主线程实施：
-  - 先执行 `dotnet build GFramework.sln -c Release --no-restore`，发现命令约 `1` 秒即失败，标准摘要只有 `Build FAILED / 0 Warning(s) / 0 Error(s)`
-  - 补跑 `dotnet build GFramework.sln -c Release --no-restore -v:diag`，确认 solution 在根 `GFramework.csproj` 的 inner-build dispatch 阶段退出，没有进入各子项目编译
-  - 继续把根项目拆成 `net8.0`、`net9.0`、`net10.0` 三个 `--no-restore` 构建，全部稳定复现同一条 `MSB4018`
-  - 读取根项目 `obj/project.assets.json`，确认当前资产文件记录了 Windows restore 元数据与不存在的 fallback package folder
-  - 按用户追加要求执行默认 `dotnet build` 与 `dotnet build -v:diag`，确认它不是落在相同失败层，而是更早停在 solution restore 图生成阶段
-- 本轮验证结果：
-  - `dotnet build GFramework.sln -c Release --no-restore`
-    - 结果：失败；仅有失败摘要，没有暴露真实阻塞点
-  - `dotnet build GFramework.sln -c Release --no-restore -v:diag`
-    - 结果：失败；失败位置收敛到根 `GFramework.csproj`
-  - `dotnet build`
-    - 结果：失败；同样约 `1` 秒退出，摘要仍只有 `0 Warning(s) / 0 Error(s)`
-  - `dotnet build -v:diag`
-    - 结果：失败；停在 `GFramework.sln` 的 `Restore` 路径 `_FilterRestoreGraphProjectInputItems`
-    - 补充：具体落点是根 `GFramework.csproj` 的 `_IsProjectRestoreSupported`，日志记录 `MSB4276`，默认 SDK resolver 找不到 `Microsoft.NET.SDK.WorkloadAutoImportPropsLocator`
-  - `dotnet build GFramework.csproj -c Release -f net8.0 --no-restore`
-    - 结果：失败；`MSB4018`，`ResolvePackageAssets` 因缺失 `D:\Tool\Development Tools\Microsoft Visual Studio\Shared\NuGetPackages` 退出
-  - `dotnet build GFramework.csproj -c Release -f net9.0 --no-restore`
-    - 结果：失败；与 `net8.0` 相同
-  - `dotnet build GFramework.csproj -c Release -f net10.0 --no-restore`
-    - 结果：失败；与 `net8.0` 相同
+  - 先读取 active topic 文档、基线信息与 branch diff 指标，确认 baseline 仍是 `origin/main`（`e692ed3`）
+  - 复查当前工作树中的 warning-reduction 切片，确认主要未提交修改集中在 `GFramework.Game`、`GFramework.Godot`、`GFramework.SourceGenerators.Tests`
+  - 执行 `dotnet build GFramework.Game/GFramework.Game.csproj -c Release` 与 `dotnet build GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release`，二者均成功
+  - 发现默认 terminal logger 输出不利于读取 warning 数，因此改用 `dotnet build GFramework.sln -c Release -tl:off -nologo`
+  - solution Release build 在经典 logger 形态下成功完成，结果为 `0 Warning(s)` / `0 Error(s)` / `Time Elapsed 00:00:12.72`
+  - 基于该真值，压缩 active todo / trace，移除已经过期的 `891 warnings` 旧基线和过多执行形态细节
 - 当前结论：
-  - 默认 `dotnet build` 与 `dotnet build GFramework.sln -c Release --no-restore` 失败，但二者不是同一层错误；前者先死在 restore 图阶段，后者死在资产解析阶段
-  - 当前 solution 级 `--no-restore` 阻塞不是代码编译错误，而是根项目资产文件引用了当前 WSL 不存在的 Windows fallback package folder
-  - 当前 restore 路径还额外暴露出 SDK / workload resolver 环境问题，因此仅仅重建资产文件还不足以恢复默认 `dotnet build`
-  - 这一层阻塞比先前记录的 `NU1301` 更靠前，因为它会让 `--no-restore` 构建在读取资产阶段直接退出
-  - `Meziantou.Polyfill 1.0.116` 缺失 / `NU1301` 仍然是 restore 路径的独立风险；修复资产文件后仍需继续处理
-  - active tracking 已升级到 `RP-045`，下一轮恢复应先重建与当前环境一致的根项目资产文件，再回测 solution `--no-restore`
+  - 当前工作树的 solution warning 基线已经降到 `0 Warning(s)`；active plan 中旧的高噪音 warning 基线不再适合作为恢复入口
+  - `-tl:off` 是当前最可靠的 warning 采样入口；默认 terminal logger 更适合看进度，不适合记录计数
+  - 当前批次的主要剩余工作不再是继续找 warning，而是整理并提交现有切片，避免 reviewability 下降
 
 ## Archive Context
 
