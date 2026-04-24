@@ -10,6 +10,75 @@ namespace GFramework.SourceGenerators.Tests.Cqrs;
 [TestFixture]
 public class CqrsHandlerRegistryGeneratorTests
 {
+    private const string HiddenNestedHandlerSelfRegistrationSource = """
+                                                                    using System;
+
+                                                                    namespace Microsoft.Extensions.DependencyInjection
+                                                                    {
+                                                                        public interface IServiceCollection { }
+
+                                                                        public static class ServiceCollectionServiceExtensions
+                                                                        {
+                                                                            public static void AddTransient(IServiceCollection services, Type serviceType, Type implementationType) { }
+                                                                        }
+                                                                    }
+
+                                                                    namespace GFramework.Core.Abstractions.Logging
+                                                                    {
+                                                                        public interface ILogger
+                                                                        {
+                                                                            void Debug(string msg);
+                                                                        }
+                                                                    }
+
+                                                                    namespace GFramework.Cqrs.Abstractions.Cqrs
+                                                                    {
+                                                                        public interface IRequest<TResponse> { }
+                                                                        public interface INotification { }
+                                                                        public interface IStreamRequest<TResponse> { }
+
+                                                                        public interface IRequestHandler<in TRequest, TResponse> where TRequest : IRequest<TResponse> { }
+                                                                        public interface INotificationHandler<in TNotification> where TNotification : INotification { }
+                                                                        public interface IStreamRequestHandler<in TRequest, out TResponse> where TRequest : IStreamRequest<TResponse> { }
+                                                                    }
+
+                                                                    namespace GFramework.Cqrs
+                                                                    {
+                                                                        public interface ICqrsHandlerRegistry
+                                                                        {
+                                                                            void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                        }
+
+                                                                        [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
+                                                                        public sealed class CqrsHandlerRegistryAttribute : Attribute
+                                                                        {
+                                                                            public CqrsHandlerRegistryAttribute(Type registryType) { }
+                                                                        }
+
+                                                                        [AttributeUsage(AttributeTargets.Assembly)]
+                                                                        public sealed class CqrsReflectionFallbackAttribute : Attribute
+                                                                        {
+                                                                            public CqrsReflectionFallbackAttribute(params string[] fallbackHandlerTypeNames) { }
+                                                                        }
+                                                                    }
+
+                                                                    namespace TestApp
+                                                                    {
+                                                                        using GFramework.Cqrs.Abstractions.Cqrs;
+
+                                                                        public sealed record VisibleRequest() : IRequest<string>;
+
+                                                                        public sealed class Container
+                                                                        {
+                                                                            private sealed record HiddenRequest() : IRequest<string>;
+
+                                                                            private sealed class HiddenHandler : IRequestHandler<HiddenRequest, string> { }
+                                                                        }
+
+                                                                        public sealed class VisibleHandler : IRequestHandler<VisibleRequest, string> { }
+                                                                    }
+                                                                    """;
+
     private const string HiddenNestedHandlerSelfRegistrationExpected = """
                                                                        // <auto-generated />
                                                                        #nullable enable
@@ -53,6 +122,65 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                                        """;
 
+    private const string HiddenImplementationDirectInterfaceRegistrationSource = """
+                                                                              using System;
+
+                                                                              namespace Microsoft.Extensions.DependencyInjection
+                                                                              {
+                                                                                  public interface IServiceCollection { }
+
+                                                                                  public static class ServiceCollectionServiceExtensions
+                                                                                  {
+                                                                                      public static void AddTransient(IServiceCollection services, Type serviceType, Type implementationType) { }
+                                                                                  }
+                                                                              }
+
+                                                                              namespace GFramework.Core.Abstractions.Logging
+                                                                              {
+                                                                                  public interface ILogger
+                                                                                  {
+                                                                                      void Debug(string msg);
+                                                                                  }
+                                                                              }
+
+                                                                              namespace GFramework.Cqrs.Abstractions.Cqrs
+                                                                              {
+                                                                                  public interface IRequest<TResponse> { }
+                                                                                  public interface INotification { }
+                                                                                  public interface IStreamRequest<TResponse> { }
+
+                                                                                  public interface IRequestHandler<in TRequest, TResponse> where TRequest : IRequest<TResponse> { }
+                                                                                  public interface INotificationHandler<in TNotification> where TNotification : INotification { }
+                                                                                  public interface IStreamRequestHandler<in TRequest, out TResponse> where TRequest : IStreamRequest<TResponse> { }
+                                                                              }
+
+                                                                              namespace GFramework.Cqrs
+                                                                              {
+                                                                                  public interface ICqrsHandlerRegistry
+                                                                                  {
+                                                                                      void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                                  }
+
+                                                                                  [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
+                                                                                  public sealed class CqrsHandlerRegistryAttribute : Attribute
+                                                                                  {
+                                                                                      public CqrsHandlerRegistryAttribute(Type registryType) { }
+                                                                                  }
+                                                                              }
+
+                                                                              namespace TestApp
+                                                                              {
+                                                                                  using GFramework.Cqrs.Abstractions.Cqrs;
+
+                                                                                  public sealed record VisibleRequest() : IRequest<string>;
+
+                                                                                  public sealed class Container
+                                                                                  {
+                                                                                      private sealed class HiddenHandler : IRequestHandler<VisibleRequest, string> { }
+                                                                                  }
+                                                                              }
+                                                                              """;
+
     private const string HiddenImplementationDirectInterfaceRegistrationExpected = """
         // <auto-generated />
         #nullable enable
@@ -85,6 +213,67 @@ public class CqrsHandlerRegistryGeneratorTests
         }
 
         """;
+
+    private const string HiddenArrayResponseFallbackSource = """
+                                                            using System;
+
+                                                            namespace Microsoft.Extensions.DependencyInjection
+                                                            {
+                                                                public interface IServiceCollection { }
+
+                                                                public static class ServiceCollectionServiceExtensions
+                                                                {
+                                                                    public static void AddTransient(IServiceCollection services, Type serviceType, Type implementationType) { }
+                                                                }
+                                                            }
+
+                                                            namespace GFramework.Core.Abstractions.Logging
+                                                            {
+                                                                public interface ILogger
+                                                                {
+                                                                    void Debug(string msg);
+                                                                }
+                                                            }
+
+                                                            namespace GFramework.Cqrs.Abstractions.Cqrs
+                                                            {
+                                                                public interface IRequest<TResponse> { }
+                                                                public interface INotification { }
+                                                                public interface IStreamRequest<TResponse> { }
+
+                                                                public interface IRequestHandler<in TRequest, TResponse> where TRequest : IRequest<TResponse> { }
+                                                                public interface INotificationHandler<in TNotification> where TNotification : INotification { }
+                                                                public interface IStreamRequestHandler<in TRequest, out TResponse> where TRequest : IStreamRequest<TResponse> { }
+                                                            }
+
+                                                            namespace GFramework.Cqrs
+                                                            {
+                                                                public interface ICqrsHandlerRegistry
+                                                                {
+                                                                    void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                }
+
+                                                                [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
+                                                                public sealed class CqrsHandlerRegistryAttribute : Attribute
+                                                                {
+                                                                    public CqrsHandlerRegistryAttribute(Type registryType) { }
+                                                                }
+                                                            }
+
+                                                            namespace TestApp
+                                                            {
+                                                                using GFramework.Cqrs.Abstractions.Cqrs;
+
+                                                                public sealed class Container
+                                                                {
+                                                                    private sealed record HiddenResponse();
+
+                                                                    private sealed record HiddenRequest() : IRequest<HiddenResponse[]>;
+
+                                                                    private sealed class HiddenHandler : IRequestHandler<HiddenRequest, HiddenResponse[]> { }
+                                                                }
+                                                            }
+                                                            """;
 
     private const string HiddenArrayResponseFallbackExpected = """
                                                                // <auto-generated />
@@ -123,6 +312,67 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                    }
                                                                }
 
+                                                               """;
+
+    private const string HiddenGenericEnvelopeResponseSource = """
+                                                               using System;
+
+                                                               namespace Microsoft.Extensions.DependencyInjection
+                                                               {
+                                                                   public interface IServiceCollection { }
+
+                                                                   public static class ServiceCollectionServiceExtensions
+                                                                   {
+                                                                       public static void AddTransient(IServiceCollection services, Type serviceType, Type implementationType) { }
+                                                                   }
+                                                               }
+
+                                                               namespace GFramework.Core.Abstractions.Logging
+                                                               {
+                                                                   public interface ILogger
+                                                                   {
+                                                                       void Debug(string msg);
+                                                                   }
+                                                               }
+
+                                                               namespace GFramework.Cqrs.Abstractions.Cqrs
+                                                               {
+                                                                   public interface IRequest<TResponse> { }
+                                                                   public interface INotification { }
+                                                                   public interface IStreamRequest<TResponse> { }
+
+                                                                   public interface IRequestHandler<in TRequest, TResponse> where TRequest : IRequest<TResponse> { }
+                                                                   public interface INotificationHandler<in TNotification> where TNotification : INotification { }
+                                                                   public interface IStreamRequestHandler<in TRequest, out TResponse> where TRequest : IStreamRequest<TResponse> { }
+                                                               }
+
+                                                               namespace GFramework.Cqrs
+                                                               {
+                                                                   public interface ICqrsHandlerRegistry
+                                                                   {
+                                                                       void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                   }
+
+                                                                   [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
+                                                                   public sealed class CqrsHandlerRegistryAttribute : Attribute
+                                                                   {
+                                                                       public CqrsHandlerRegistryAttribute(Type registryType) { }
+                                                                   }
+                                                               }
+
+                                                               namespace TestApp
+                                                               {
+                                                                   using GFramework.Cqrs.Abstractions.Cqrs;
+
+                                                                   public sealed class Container
+                                                                   {
+                                                                       private sealed class HiddenEnvelope<T> { }
+
+                                                                       private sealed record HiddenRequest() : IRequest<HiddenEnvelope<string>>;
+
+                                                                       private sealed class HiddenHandler : IRequestHandler<HiddenRequest, HiddenEnvelope<string>> { }
+                                                                   }
+                                                               }
                                                                """;
 
     private const string HiddenGenericEnvelopeResponseExpected = """
@@ -330,119 +580,119 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                                  """;
 
+    private const string AssemblyLevelCqrsHandlerRegistrySource = """
+                                                                  using System;
+                                                                  using System.Collections.Generic;
+
+                                                                  namespace Microsoft.Extensions.DependencyInjection
+                                                                  {
+                                                                      public interface IServiceCollection { }
+
+                                                                      public static class ServiceCollectionServiceExtensions
+                                                                      {
+                                                                          public static void AddTransient(IServiceCollection services, Type serviceType, Type implementationType) { }
+                                                                      }
+                                                                  }
+
+                                                                  namespace GFramework.Core.Abstractions.Logging
+                                                                  {
+                                                                      public interface ILogger
+                                                                      {
+                                                                          void Debug(string msg);
+                                                                      }
+                                                                  }
+
+                                                                  namespace GFramework.Cqrs.Abstractions.Cqrs
+                                                                  {
+                                                                      public interface IRequest<TResponse> { }
+                                                                      public interface INotification { }
+                                                                      public interface IStreamRequest<TResponse> { }
+
+                                                                      public interface IRequestHandler<in TRequest, TResponse> where TRequest : IRequest<TResponse> { }
+                                                                      public interface INotificationHandler<in TNotification> where TNotification : INotification { }
+                                                                      public interface IStreamRequestHandler<in TRequest, out TResponse> where TRequest : IStreamRequest<TResponse> { }
+                                                                  }
+
+                                                                  namespace GFramework.Cqrs
+                                                                  {
+                                                                      public interface ICqrsHandlerRegistry
+                                                                      {
+                                                                          void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                      }
+
+                                                                      [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
+                                                                      public sealed class CqrsHandlerRegistryAttribute : Attribute
+                                                                      {
+                                                                          public CqrsHandlerRegistryAttribute(Type registryType) { }
+                                                                      }
+
+                                                                      [AttributeUsage(AttributeTargets.Assembly)]
+                                                                      public sealed class CqrsReflectionFallbackAttribute : Attribute
+                                                                      {
+                                                                          public CqrsReflectionFallbackAttribute(params string[] fallbackHandlerTypeNames) { }
+                                                                      }
+                                                                  }
+
+                                                                  namespace TestApp
+                                                                  {
+                                                                      using GFramework.Cqrs.Abstractions.Cqrs;
+
+                                                                      public sealed record PingQuery() : IRequest<string>;
+                                                                      public sealed record DomainEvent() : INotification;
+                                                                      public sealed record NumberStream() : IStreamRequest<int>;
+
+                                                                      public sealed class ZetaNotificationHandler : INotificationHandler<DomainEvent> { }
+                                                                      public sealed class AlphaQueryHandler : IRequestHandler<PingQuery, string> { }
+                                                                      public sealed class StreamHandler : IStreamRequestHandler<NumberStream, int> { }
+                                                                  }
+                                                                  """;
+
+    private const string AssemblyLevelCqrsHandlerRegistryExpected = """
+                                                                    // <auto-generated />
+                                                                    #nullable enable
+
+                                                                    [assembly: global::GFramework.Cqrs.CqrsHandlerRegistryAttribute(typeof(global::GFramework.Generated.Cqrs.__GFrameworkGeneratedCqrsHandlerRegistry))]
+
+                                                                    namespace GFramework.Generated.Cqrs;
+
+                                                                    internal sealed class __GFrameworkGeneratedCqrsHandlerRegistry : global::GFramework.Cqrs.ICqrsHandlerRegistry
+                                                                    {
+                                                                        public void Register(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services, global::GFramework.Core.Abstractions.Logging.ILogger logger)
+                                                                        {
+                                                                            if (services is null)
+                                                                                throw new global::System.ArgumentNullException(nameof(services));
+                                                                            if (logger is null)
+                                                                                throw new global::System.ArgumentNullException(nameof(logger));
+
+                                                                            global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(
+                                                                                services,
+                                                                                typeof(global::GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<global::TestApp.PingQuery, string>),
+                                                                                typeof(global::TestApp.AlphaQueryHandler));
+                                                                            logger.Debug("Registered CQRS handler TestApp.AlphaQueryHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<TestApp.PingQuery, string>.");
+                                                                            global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(
+                                                                                services,
+                                                                                typeof(global::GFramework.Cqrs.Abstractions.Cqrs.IStreamRequestHandler<global::TestApp.NumberStream, int>),
+                                                                                typeof(global::TestApp.StreamHandler));
+                                                                            logger.Debug("Registered CQRS handler TestApp.StreamHandler as GFramework.Cqrs.Abstractions.Cqrs.IStreamRequestHandler<TestApp.NumberStream, int>.");
+                                                                            global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(
+                                                                                services,
+                                                                                typeof(global::GFramework.Cqrs.Abstractions.Cqrs.INotificationHandler<global::TestApp.DomainEvent>),
+                                                                                typeof(global::TestApp.ZetaNotificationHandler));
+                                                                            logger.Debug("Registered CQRS handler TestApp.ZetaNotificationHandler as GFramework.Cqrs.Abstractions.Cqrs.INotificationHandler<TestApp.DomainEvent>.");
+                                                                        }
+                                                                    }
+
+                                                                    """;
+
     /// <summary>
     ///     验证生成器会为当前程序集中的 request、notification 和 stream 处理器生成稳定顺序的注册器。
     /// </summary>
     [Test]
     public async Task Generates_Assembly_Level_Cqrs_Handler_Registry()
     {
-        const string source = """
-                              using System;
-                              using System.Collections.Generic;
-
-                              namespace Microsoft.Extensions.DependencyInjection
-                              {
-                                  public interface IServiceCollection { }
-
-                                  public static class ServiceCollectionServiceExtensions
-                                  {
-                                      public static void AddTransient(IServiceCollection services, Type serviceType, Type implementationType) { }
-                                  }
-                              }
-
-                              namespace GFramework.Core.Abstractions.Logging
-                              {
-                                  public interface ILogger
-                                  {
-                                      void Debug(string msg);
-                                  }
-                              }
-
-                              namespace GFramework.Cqrs.Abstractions.Cqrs
-                              {
-                                  public interface IRequest<TResponse> { }
-                                  public interface INotification { }
-                                  public interface IStreamRequest<TResponse> { }
-
-                                  public interface IRequestHandler<in TRequest, TResponse> where TRequest : IRequest<TResponse> { }
-                                  public interface INotificationHandler<in TNotification> where TNotification : INotification { }
-                                  public interface IStreamRequestHandler<in TRequest, out TResponse> where TRequest : IStreamRequest<TResponse> { }
-                              }
-
-                              namespace GFramework.Cqrs
-                              {
-                                  public interface ICqrsHandlerRegistry
-                                  {
-                                      void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
-                                  }
-
-                                  [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
-                                  public sealed class CqrsHandlerRegistryAttribute : Attribute
-                                  {
-                                      public CqrsHandlerRegistryAttribute(Type registryType) { }
-                                  }
-
-                                  [AttributeUsage(AttributeTargets.Assembly)]
-                                  public sealed class CqrsReflectionFallbackAttribute : Attribute
-                                  {
-                                      public CqrsReflectionFallbackAttribute(params string[] fallbackHandlerTypeNames) { }
-                                  }
-                              }
-
-                              namespace TestApp
-                              {
-                                  using GFramework.Cqrs.Abstractions.Cqrs;
-
-                                  public sealed record PingQuery() : IRequest<string>;
-                                  public sealed record DomainEvent() : INotification;
-                                  public sealed record NumberStream() : IStreamRequest<int>;
-
-                                  public sealed class ZetaNotificationHandler : INotificationHandler<DomainEvent> { }
-                                  public sealed class AlphaQueryHandler : IRequestHandler<PingQuery, string> { }
-                                  public sealed class StreamHandler : IStreamRequestHandler<NumberStream, int> { }
-                              }
-                              """;
-
-        const string expected = """
-                                // <auto-generated />
-                                #nullable enable
-
-                                [assembly: global::GFramework.Cqrs.CqrsHandlerRegistryAttribute(typeof(global::GFramework.Generated.Cqrs.__GFrameworkGeneratedCqrsHandlerRegistry))]
-
-                                namespace GFramework.Generated.Cqrs;
-
-                                internal sealed class __GFrameworkGeneratedCqrsHandlerRegistry : global::GFramework.Cqrs.ICqrsHandlerRegistry
-                                {
-                                    public void Register(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services, global::GFramework.Core.Abstractions.Logging.ILogger logger)
-                                    {
-                                        if (services is null)
-                                            throw new global::System.ArgumentNullException(nameof(services));
-                                        if (logger is null)
-                                            throw new global::System.ArgumentNullException(nameof(logger));
-
-                                        global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(
-                                            services,
-                                            typeof(global::GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<global::TestApp.PingQuery, string>),
-                                            typeof(global::TestApp.AlphaQueryHandler));
-                                        logger.Debug("Registered CQRS handler TestApp.AlphaQueryHandler as GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<TestApp.PingQuery, string>.");
-                                        global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(
-                                            services,
-                                            typeof(global::GFramework.Cqrs.Abstractions.Cqrs.IStreamRequestHandler<global::TestApp.NumberStream, int>),
-                                            typeof(global::TestApp.StreamHandler));
-                                        logger.Debug("Registered CQRS handler TestApp.StreamHandler as GFramework.Cqrs.Abstractions.Cqrs.IStreamRequestHandler<TestApp.NumberStream, int>.");
-                                        global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient(
-                                            services,
-                                            typeof(global::GFramework.Cqrs.Abstractions.Cqrs.INotificationHandler<global::TestApp.DomainEvent>),
-                                            typeof(global::TestApp.ZetaNotificationHandler));
-                                        logger.Debug("Registered CQRS handler TestApp.ZetaNotificationHandler as GFramework.Cqrs.Abstractions.Cqrs.INotificationHandler<TestApp.DomainEvent>.");
-                                    }
-                                }
-
-                                """;
-
         await GeneratorTest<CqrsHandlerRegistryGenerator>.RunAsync(
-            source,
-            ("CqrsHandlerRegistry.g.cs", expected));
+            AssemblyLevelCqrsHandlerRegistrySource,
+            ("CqrsHandlerRegistry.g.cs", AssemblyLevelCqrsHandlerRegistryExpected));
     }
 
     /// <summary>
@@ -453,77 +703,8 @@ public class CqrsHandlerRegistryGeneratorTests
     public async Task
         Generates_Visible_Handlers_And_Self_Registers_Private_Nested_Handler_When_Assembly_Contains_Hidden_Handler()
     {
-        const string source = """
-                              using System;
-
-                              namespace Microsoft.Extensions.DependencyInjection
-                              {
-                                  public interface IServiceCollection { }
-
-                                  public static class ServiceCollectionServiceExtensions
-                                  {
-                                      public static void AddTransient(IServiceCollection services, Type serviceType, Type implementationType) { }
-                                  }
-                              }
-
-                              namespace GFramework.Core.Abstractions.Logging
-                              {
-                                  public interface ILogger
-                                  {
-                                      void Debug(string msg);
-                                  }
-                              }
-
-                              namespace GFramework.Cqrs.Abstractions.Cqrs
-                              {
-                                  public interface IRequest<TResponse> { }
-                                  public interface INotification { }
-                                  public interface IStreamRequest<TResponse> { }
-
-                                  public interface IRequestHandler<in TRequest, TResponse> where TRequest : IRequest<TResponse> { }
-                                  public interface INotificationHandler<in TNotification> where TNotification : INotification { }
-                                  public interface IStreamRequestHandler<in TRequest, out TResponse> where TRequest : IStreamRequest<TResponse> { }
-                              }
-
-                              namespace GFramework.Cqrs
-                              {
-                                  public interface ICqrsHandlerRegistry
-                                  {
-                                      void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
-                                  }
-
-                                  [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
-                                  public sealed class CqrsHandlerRegistryAttribute : Attribute
-                                  {
-                                      public CqrsHandlerRegistryAttribute(Type registryType) { }
-                                  }
-
-                                  [AttributeUsage(AttributeTargets.Assembly)]
-                                  public sealed class CqrsReflectionFallbackAttribute : Attribute
-                                  {
-                                      public CqrsReflectionFallbackAttribute(params string[] fallbackHandlerTypeNames) { }
-                                  }
-                              }
-
-                              namespace TestApp
-                              {
-                                  using GFramework.Cqrs.Abstractions.Cqrs;
-
-                                  public sealed record VisibleRequest() : IRequest<string>;
-
-                                  public sealed class Container
-                                  {
-                                      private sealed record HiddenRequest() : IRequest<string>;
-
-                                      private sealed class HiddenHandler : IRequestHandler<HiddenRequest, string> { }
-                                  }
-
-                                  public sealed class VisibleHandler : IRequestHandler<VisibleRequest, string> { }
-                              }
-                              """;
-
         await GeneratorTest<CqrsHandlerRegistryGenerator>.RunAsync(
-            source,
+            HiddenNestedHandlerSelfRegistrationSource,
             ("CqrsHandlerRegistry.g.cs", HiddenNestedHandlerSelfRegistrationExpected));
     }
 
@@ -535,67 +716,8 @@ public class CqrsHandlerRegistryGeneratorTests
     public async Task
         Generates_Direct_Interface_Registrations_For_Hidden_Implementation_When_Handler_Interface_Is_Public()
     {
-        const string source = """
-                              using System;
-
-                              namespace Microsoft.Extensions.DependencyInjection
-                              {
-                                  public interface IServiceCollection { }
-
-                                  public static class ServiceCollectionServiceExtensions
-                                  {
-                                      public static void AddTransient(IServiceCollection services, Type serviceType, Type implementationType) { }
-                                  }
-                              }
-
-                              namespace GFramework.Core.Abstractions.Logging
-                              {
-                                  public interface ILogger
-                                  {
-                                      void Debug(string msg);
-                                  }
-                              }
-
-                              namespace GFramework.Cqrs.Abstractions.Cqrs
-                              {
-                                  public interface IRequest<TResponse> { }
-                                  public interface INotification { }
-                                  public interface IStreamRequest<TResponse> { }
-
-                                  public interface IRequestHandler<in TRequest, TResponse> where TRequest : IRequest<TResponse> { }
-                                  public interface INotificationHandler<in TNotification> where TNotification : INotification { }
-                                  public interface IStreamRequestHandler<in TRequest, out TResponse> where TRequest : IStreamRequest<TResponse> { }
-                              }
-
-                              namespace GFramework.Cqrs
-                              {
-                                  public interface ICqrsHandlerRegistry
-                                  {
-                                      void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
-                                  }
-
-                                  [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
-                                  public sealed class CqrsHandlerRegistryAttribute : Attribute
-                                  {
-                                      public CqrsHandlerRegistryAttribute(Type registryType) { }
-                                  }
-                              }
-
-                              namespace TestApp
-                              {
-                                  using GFramework.Cqrs.Abstractions.Cqrs;
-
-                                  public sealed record VisibleRequest() : IRequest<string>;
-
-                                  public sealed class Container
-                                  {
-                                      private sealed class HiddenHandler : IRequestHandler<VisibleRequest, string> { }
-                                  }
-                              }
-                              """;
-
         await GeneratorTest<CqrsHandlerRegistryGenerator>.RunAsync(
-            source,
+            HiddenImplementationDirectInterfaceRegistrationSource,
             ("CqrsHandlerRegistry.g.cs", HiddenImplementationDirectInterfaceRegistrationExpected));
     }
 
@@ -606,69 +728,8 @@ public class CqrsHandlerRegistryGeneratorTests
     [Test]
     public async Task Generates_Precise_Service_Type_For_Hidden_Array_Type_Arguments()
     {
-        const string source = """
-                              using System;
-
-                              namespace Microsoft.Extensions.DependencyInjection
-                              {
-                                  public interface IServiceCollection { }
-
-                                  public static class ServiceCollectionServiceExtensions
-                                  {
-                                      public static void AddTransient(IServiceCollection services, Type serviceType, Type implementationType) { }
-                                  }
-                              }
-
-                              namespace GFramework.Core.Abstractions.Logging
-                              {
-                                  public interface ILogger
-                                  {
-                                      void Debug(string msg);
-                                  }
-                              }
-
-                              namespace GFramework.Cqrs.Abstractions.Cqrs
-                              {
-                                  public interface IRequest<TResponse> { }
-                                  public interface INotification { }
-                                  public interface IStreamRequest<TResponse> { }
-
-                                  public interface IRequestHandler<in TRequest, TResponse> where TRequest : IRequest<TResponse> { }
-                                  public interface INotificationHandler<in TNotification> where TNotification : INotification { }
-                                  public interface IStreamRequestHandler<in TRequest, out TResponse> where TRequest : IStreamRequest<TResponse> { }
-                              }
-
-                              namespace GFramework.Cqrs
-                              {
-                                  public interface ICqrsHandlerRegistry
-                                  {
-                                      void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
-                                  }
-
-                                  [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
-                                  public sealed class CqrsHandlerRegistryAttribute : Attribute
-                                  {
-                                      public CqrsHandlerRegistryAttribute(Type registryType) { }
-                                  }
-                              }
-
-                              namespace TestApp
-                              {
-                                  using GFramework.Cqrs.Abstractions.Cqrs;
-
-                                  public sealed class Container
-                                  {
-                                      private sealed record HiddenResponse();
-
-                                      private sealed record HiddenRequest() : IRequest<HiddenResponse[]>;
-
-                                      private sealed class HiddenHandler : IRequestHandler<HiddenRequest, HiddenResponse[]> { }
-                                  }
-                              }
-                              """;
-
         await GeneratorTest<CqrsHandlerRegistryGenerator>.RunAsync(
-            source,
+            HiddenArrayResponseFallbackSource,
             ("CqrsHandlerRegistry.g.cs", HiddenArrayResponseFallbackExpected));
     }
 
@@ -679,69 +740,8 @@ public class CqrsHandlerRegistryGeneratorTests
     [Test]
     public async Task Generates_Precise_Service_Type_For_Hidden_Generic_Type_Definitions()
     {
-        const string source = """
-                              using System;
-
-                              namespace Microsoft.Extensions.DependencyInjection
-                              {
-                                  public interface IServiceCollection { }
-
-                                  public static class ServiceCollectionServiceExtensions
-                                  {
-                                      public static void AddTransient(IServiceCollection services, Type serviceType, Type implementationType) { }
-                                  }
-                              }
-
-                              namespace GFramework.Core.Abstractions.Logging
-                              {
-                                  public interface ILogger
-                                  {
-                                      void Debug(string msg);
-                                  }
-                              }
-
-                              namespace GFramework.Cqrs.Abstractions.Cqrs
-                              {
-                                  public interface IRequest<TResponse> { }
-                                  public interface INotification { }
-                                  public interface IStreamRequest<TResponse> { }
-
-                                  public interface IRequestHandler<in TRequest, TResponse> where TRequest : IRequest<TResponse> { }
-                                  public interface INotificationHandler<in TNotification> where TNotification : INotification { }
-                                  public interface IStreamRequestHandler<in TRequest, out TResponse> where TRequest : IStreamRequest<TResponse> { }
-                              }
-
-                              namespace GFramework.Cqrs
-                              {
-                                  public interface ICqrsHandlerRegistry
-                                  {
-                                      void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
-                                  }
-
-                                  [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
-                                  public sealed class CqrsHandlerRegistryAttribute : Attribute
-                                  {
-                                      public CqrsHandlerRegistryAttribute(Type registryType) { }
-                                  }
-                              }
-
-                              namespace TestApp
-                              {
-                                  using GFramework.Cqrs.Abstractions.Cqrs;
-
-                                  public sealed class Container
-                                  {
-                                      private sealed class HiddenEnvelope<T> { }
-
-                                      private sealed record HiddenRequest() : IRequest<HiddenEnvelope<string>>;
-
-                                      private sealed class HiddenHandler : IRequestHandler<HiddenRequest, HiddenEnvelope<string>> { }
-                                  }
-                              }
-                              """;
-
         await GeneratorTest<CqrsHandlerRegistryGenerator>.RunAsync(
-            source,
+            HiddenGenericEnvelopeResponseSource,
             ("CqrsHandlerRegistry.g.cs", HiddenGenericEnvelopeResponseExpected));
     }
 
