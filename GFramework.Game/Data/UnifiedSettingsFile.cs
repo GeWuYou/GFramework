@@ -11,6 +11,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System;
+using System.Collections.Generic;
 using GFramework.Core.Abstractions.Versioning;
 
 namespace GFramework.Game.Data;
@@ -22,10 +24,16 @@ namespace GFramework.Game.Data;
 internal sealed class UnifiedSettingsFile : IVersioned
 {
     /// <summary>
-    ///     配置节集合，存储不同类型的配置数据
-    ///     键为配置节名称，值为配置对象
+    ///     配置节映射，存储不同类型的配置数据。
     /// </summary>
-    public Dictionary<string, string> Sections { get; set; } = new();
+    /// <remarks>
+    ///     这里公开为 <see cref="IDictionary{TKey,TValue}" /> 而不是具体的 <see cref="Dictionary{TKey,TValue}" />，
+    ///     以避免暴露可替换的具体集合实现，同时继续兼容 Newtonsoft.Json 对字典对象的序列化与反序列化。
+    ///     默认实例使用 <see cref="StringComparer.Ordinal" />；若调用方提供其他实现，仓库在可以识别底层
+    ///     <see cref="Dictionary{TKey,TValue}" /> comparer 时会保留原语义，否则克隆快照时会显式回退到
+    ///     <see cref="StringComparer.Ordinal" />。
+    /// </remarks>
+    public IDictionary<string, string> Sections { get; set; } = new Dictionary<string, string>(StringComparer.Ordinal);
 
     /// <summary>
     ///     配置文件版本号，用于版本控制和兼容性检查

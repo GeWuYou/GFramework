@@ -6,57 +6,61 @@ namespace GFramework.Godot.SourceGenerators.Tests.Behavior;
 [TestFixture]
 public class AutoSceneGeneratorTests
 {
+    private const string AutoSceneAttributeWithKeyDeclaration = """
+                                                                 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+                                                                 public sealed class AutoSceneAttribute : Attribute
+                                                                 {
+                                                                     public AutoSceneAttribute(string key) { }
+                                                                 }
+                                                                 """;
+
+    private const string AutoSceneAttributeWithoutKeyDeclaration = """
+                                                                    [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+                                                                    public sealed class AutoSceneAttribute : Attribute
+                                                                    {
+                                                                        public AutoSceneAttribute() { }
+                                                                    }
+                                                                    """;
+
+    private const string NodeTypes = """
+                                     public class Node { }
+                                     public class Node2D : Node { }
+                                     """;
+
+    private const string SceneBehaviorInfrastructure = """
+                                                       namespace GFramework.Game.Abstractions.Scene
+                                                       {
+                                                           public interface ISceneBehavior { }
+                                                       }
+
+                                                       namespace GFramework.Godot.Scene
+                                                       {
+                                                           using GFramework.Game.Abstractions.Scene;
+                                                           using Godot;
+
+                                                           public static class SceneBehaviorFactory
+                                                           {
+                                                               public static ISceneBehavior Create<T>(T owner, string key)
+                                                                   where T : Node
+                                                               {
+                                                                   return null!;
+                                                               }
+                                                           }
+                                                       }
+                                                       """;
+
     [Test]
     public async Task Generates_Scene_Behavior_Boilerplate()
     {
-        const string source = """
-                              using System;
-                              using GFramework.Godot.SourceGenerators.Abstractions.UI;
-                              using Godot;
-
-                              namespace GFramework.Godot.SourceGenerators.Abstractions.UI
-                              {
-                                  [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
-                                  public sealed class AutoSceneAttribute : Attribute
-                                  {
-                                      public AutoSceneAttribute(string key) { }
-                                  }
-                              }
-
-                              namespace Godot
-                              {
-                                  public class Node { }
-                                  public class Node2D : Node { }
-                              }
-
-                              namespace GFramework.Game.Abstractions.Scene
-                              {
-                                  public interface ISceneBehavior { }
-                              }
-
-                              namespace GFramework.Godot.Scene
-                              {
-                                  using GFramework.Game.Abstractions.Scene;
-                                  using Godot;
-
-                                  public static class SceneBehaviorFactory
-                                  {
-                                      public static ISceneBehavior Create<T>(T owner, string key)
-                                          where T : Node
-                                      {
-                                          return null!;
-                                      }
-                                  }
-                              }
-
-                              namespace TestApp
-                              {
-                                  [AutoScene("Gameplay")]
-                                  public partial class GameplayRoot : Node2D
-                                  {
-                                  }
-                              }
-                              """;
+        string source = CreateAutoSceneSource(
+            AutoSceneAttributeWithKeyDeclaration,
+            """
+                [AutoScene("Gameplay")]
+                public partial class GameplayRoot : Node2D
+                {
+                }
+            """,
+            includeBehaviorInfrastructure: true);
 
         const string expected = """
                                 // <auto-generated />
@@ -80,40 +84,20 @@ public class AutoSceneGeneratorTests
 
         await GeneratorTest<AutoSceneGenerator>.RunAsync(
             source,
-            ("TestApp_GameplayRoot.AutoScene.g.cs", expected));
+            ("TestApp_GameplayRoot.AutoScene.g.cs", expected)).ConfigureAwait(false);
     }
 
     [Test]
     public async Task Reports_Diagnostic_When_AutoScene_Arguments_Are_Invalid()
     {
-        const string source = """
-                              using System;
-                              using GFramework.Godot.SourceGenerators.Abstractions.UI;
-                              using Godot;
-
-                              namespace GFramework.Godot.SourceGenerators.Abstractions.UI
-                              {
-                                  [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
-                                  public sealed class AutoSceneAttribute : Attribute
-                                  {
-                                      public AutoSceneAttribute() { }
-                                  }
-                              }
-
-                              namespace Godot
-                              {
-                                  public class Node { }
-                                  public class Node2D : Node { }
-                              }
-
-                              namespace TestApp
-                              {
-                                  [{|#0:AutoScene|}]
-                                  public partial class GameplayRoot : Node2D
-                                  {
-                                  }
-                              }
-                              """;
+        string source = CreateAutoSceneSource(
+            AutoSceneAttributeWithoutKeyDeclaration,
+            """
+                [{|#0:AutoScene|}]
+                public partial class GameplayRoot : Node2D
+                {
+                }
+            """);
 
         var test = new CSharpSourceGeneratorTest<AutoSceneGenerator, DefaultVerifier>
         {
@@ -128,65 +112,26 @@ public class AutoSceneGeneratorTests
             .WithLocation(0)
             .WithArguments("AutoSceneAttribute", "GameplayRoot", "a single string scene key argument"));
 
-        await test.RunAsync();
+        await test.RunAsync().ConfigureAwait(false);
     }
 
     [Test]
     public async Task Generates_Type_Constraints_For_Nullable_Reference_NotNull_And_Unmanaged_Parameters()
     {
-        const string source = """
-                              #nullable enable
-                              using System;
-                              using GFramework.Godot.SourceGenerators.Abstractions.UI;
-                              using Godot;
-
-                              namespace GFramework.Godot.SourceGenerators.Abstractions.UI
-                              {
-                                  [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
-                                  public sealed class AutoSceneAttribute : Attribute
-                                  {
-                                      public AutoSceneAttribute(string key) { }
-                                  }
-                              }
-
-                              namespace Godot
-                              {
-                                  public class Node { }
-                                  public class Node2D : Node { }
-                              }
-
-                              namespace GFramework.Game.Abstractions.Scene
-                              {
-                                  public interface ISceneBehavior { }
-                              }
-
-                              namespace GFramework.Godot.Scene
-                              {
-                                  using GFramework.Game.Abstractions.Scene;
-                                  using Godot;
-
-                                  public static class SceneBehaviorFactory
-                                  {
-                                      public static ISceneBehavior Create<T>(T owner, string key)
-                                          where T : Node
-                                      {
-                                          return null!;
-                                      }
-                                  }
-                              }
-
-                              namespace TestApp
-                              {
-                                  [AutoScene("Gameplay")]
-                                  public partial class GameplayRoot<TReference, TNotNull, TValue, TUnmanaged> : Node2D
-                                      where TReference : class?
-                                      where TNotNull : notnull
-                                      where TValue : struct
-                                      where TUnmanaged : unmanaged
-                                  {
-                                  }
-                              }
-                              """;
+        string source = CreateAutoSceneSource(
+            AutoSceneAttributeWithKeyDeclaration,
+            """
+                [AutoScene("Gameplay")]
+                public partial class GameplayRoot<TReference, TNotNull, TValue, TUnmanaged> : Node2D
+                    where TReference : class?
+                    where TNotNull : notnull
+                    where TValue : struct
+                    where TUnmanaged : unmanaged
+                {
+                }
+            """,
+            includeBehaviorInfrastructure: true,
+            nullableEnabled: true);
 
         const string expected = """
                                 // <auto-generated />
@@ -214,7 +159,7 @@ public class AutoSceneGeneratorTests
 
         await GeneratorTest<AutoSceneGenerator>.RunAsync(
             source,
-            ("TestApp_GameplayRoot.AutoScene.g.cs", expected));
+            ("TestApp_GameplayRoot.AutoScene.g.cs", expected)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -267,7 +212,7 @@ public class AutoSceneGeneratorTests
             .WithLocation(0)
             .WithArguments("GameplayRoot", "SceneKeyStr"));
 
-        await test.RunAsync();
+        await test.RunAsync().ConfigureAwait(false);
     }
 
     /// <summary>
@@ -326,6 +271,39 @@ public class AutoSceneGeneratorTests
             .WithLocation(0)
             .WithArguments("GameplayRoot", "__autoSceneBehavior_Generated"));
 
-        await test.RunAsync();
+        await test.RunAsync().ConfigureAwait(false);
+    }
+
+    private static string CreateAutoSceneSource(
+        string attributeDeclaration,
+        string testAppSource,
+        bool includeBehaviorInfrastructure = false,
+        bool nullableEnabled = false)
+    {
+        string nullableDirective = nullableEnabled ? "#nullable enable\n" : string.Empty;
+        string infrastructure = includeBehaviorInfrastructure
+            ? $"{Environment.NewLine}{Environment.NewLine}{SceneBehaviorInfrastructure}"
+            : string.Empty;
+
+        return $$"""
+                 {{nullableDirective}}using System;
+                 using GFramework.Godot.SourceGenerators.Abstractions.UI;
+                 using Godot;
+
+                 namespace GFramework.Godot.SourceGenerators.Abstractions.UI
+                 {
+                 {{attributeDeclaration}}
+                 }
+
+                 namespace Godot
+                 {
+                 {{NodeTypes}}
+                 }{{infrastructure}}
+
+                 namespace TestApp
+                 {
+                 {{testAppSource}}
+                 }
+                 """;
     }
 }

@@ -126,7 +126,27 @@ public sealed class GodotProjectMetadataGenerator : IIncrementalGenerator
 
         var explicitMappings = new Dictionary<string, List<INamedTypeSymbol>>(StringComparer.Ordinal);
         var implicitCandidates = new Dictionary<string, List<INamedTypeSymbol>>(StringComparer.Ordinal);
+        CollectMappingCandidates(
+            context,
+            typeCandidates,
+            autoLoadAttributeSymbol,
+            godotNodeSymbol,
+            projectAutoLoadNames,
+            explicitMappings,
+            implicitCandidates);
 
+        return ResolveTypedMappings(context, projectAutoLoadNames, explicitMappings, implicitCandidates);
+    }
+
+    private static void CollectMappingCandidates(
+        SourceProductionContext context,
+        IReadOnlyList<GodotTypeCandidate> typeCandidates,
+        INamedTypeSymbol? autoLoadAttributeSymbol,
+        INamedTypeSymbol godotNodeSymbol,
+        ISet<string> projectAutoLoadNames,
+        IDictionary<string, List<INamedTypeSymbol>> explicitMappings,
+        IDictionary<string, List<INamedTypeSymbol>> implicitCandidates)
+    {
         foreach (var candidate in typeCandidates)
         {
             var typeSymbol = candidate.TypeSymbol;
@@ -176,7 +196,14 @@ public sealed class GodotProjectMetadataGenerator : IIncrementalGenerator
 
             explicitList.Add(typeSymbol);
         }
+    }
 
+    private static Dictionary<string, INamedTypeSymbol> ResolveTypedMappings(
+        SourceProductionContext context,
+        IEnumerable<string> projectAutoLoadNames,
+        IReadOnlyDictionary<string, List<INamedTypeSymbol>> explicitMappings,
+        IReadOnlyDictionary<string, List<INamedTypeSymbol>> implicitCandidates)
+    {
         var resolvedMappings = new Dictionary<string, INamedTypeSymbol>(StringComparer.Ordinal);
 
         foreach (var projectAutoLoadName in projectAutoLoadNames.OrderBy(static name => name, StringComparer.Ordinal))
@@ -408,24 +435,40 @@ public sealed class GodotProjectMetadataGenerator : IIncrementalGenerator
 
         foreach (var member in members)
         {
-            builder.AppendLine("    /// <summary>");
-            builder.AppendLine($"    ///     获取 AutoLoad <c>{member.AutoLoadName}</c>。");
-            builder.AppendLine("    /// </summary>");
-            builder.AppendLine(
-                $"    public static {member.TypeName} {member.Identifier} => GetRequiredNode<{member.TypeName}>({SymbolDisplay.FormatLiteral(member.AutoLoadName, true)});");
-            builder.AppendLine();
-            builder.AppendLine("    /// <summary>");
-            builder.AppendLine($"    ///     尝试获取 AutoLoad <c>{member.AutoLoadName}</c>。");
-            builder.AppendLine("    /// </summary>");
-            builder.AppendLine(
-                $"    public static bool TryGet{member.Identifier}(out {member.TypeName}? value)");
-            builder.AppendLine("    {");
-            builder.AppendLine(
-                $"        return TryGetNode({SymbolDisplay.FormatLiteral(member.AutoLoadName, true)}, out value);");
-            builder.AppendLine("    }");
-            builder.AppendLine();
+            AppendAutoLoadMemberSource(builder, member);
         }
 
+        AppendGetRequiredNodeSource(builder);
+        AppendTryGetNodeSource(builder);
+        builder.AppendLine("}");
+
+        return builder.ToString();
+    }
+
+    private static void AppendAutoLoadMemberSource(
+        StringBuilder builder,
+        GeneratedAutoLoadMember member)
+    {
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine($"    ///     获取 AutoLoad <c>{member.AutoLoadName}</c>。");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine(
+            $"    public static {member.TypeName} {member.Identifier} => GetRequiredNode<{member.TypeName}>({SymbolDisplay.FormatLiteral(member.AutoLoadName, true)});");
+        builder.AppendLine();
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine($"    ///     尝试获取 AutoLoad <c>{member.AutoLoadName}</c>。");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine(
+            $"    public static bool TryGet{member.Identifier}(out {member.TypeName}? value)");
+        builder.AppendLine("    {");
+        builder.AppendLine(
+            $"        return TryGetNode({SymbolDisplay.FormatLiteral(member.AutoLoadName, true)}, out value);");
+        builder.AppendLine("    }");
+        builder.AppendLine();
+    }
+
+    private static void AppendGetRequiredNodeSource(StringBuilder builder)
+    {
         builder.AppendLine("    /// <summary>");
         builder.AppendLine("    ///     获取一个必填的 AutoLoad 节点；缺失时抛出异常。");
         builder.AppendLine("    /// </summary>");
@@ -444,6 +487,10 @@ public sealed class GodotProjectMetadataGenerator : IIncrementalGenerator
             "        throw new global::System.InvalidOperationException($\"AutoLoad '{autoLoadName}' is not available on the active SceneTree root.\");");
         builder.AppendLine("    }");
         builder.AppendLine();
+    }
+
+    private static void AppendTryGetNodeSource(StringBuilder builder)
+    {
         builder.AppendLine("    /// <summary>");
         builder.AppendLine("    ///     尝试从当前 SceneTree 根节点解析 AutoLoad。");
         builder.AppendLine("    /// </summary>");
@@ -470,9 +517,6 @@ public sealed class GodotProjectMetadataGenerator : IIncrementalGenerator
         builder.AppendLine("        value = root.GetNodeOrNull<TNode>($\"/root/{autoLoadName}\");");
         builder.AppendLine("        return value is not null;");
         builder.AppendLine("    }");
-        builder.AppendLine("}");
-
-        return builder.ToString();
     }
 
     private static string GenerateInputActionsSource(IReadOnlyList<GeneratedInputActionMember> members)
@@ -530,45 +574,16 @@ public sealed class GodotProjectMetadataGenerator : IIncrementalGenerator
             if (string.IsNullOrWhiteSpace(content) || content.StartsWith(";", StringComparison.Ordinal))
                 continue;
 
-            if (content.StartsWith("[", StringComparison.Ordinal) && content.EndsWith("]", StringComparison.Ordinal))
-            {
-                currentSection = content.Substring(1, content.Length - 2).Trim();
+            if (TryUpdateSection(content, ref currentSection))
                 continue;
-            }
 
             if (!TryParseAssignment(content, out var key, out var value))
                 continue;
 
-            if (string.Equals(currentSection, "autoload", StringComparison.OrdinalIgnoreCase))
-            {
-                if (!seenAutoLoads.Add(key))
-                {
-                    diagnostics.Add(Diagnostic.Create(
-                        GodotProjectDiagnostics.DuplicateAutoLoadEntry,
-                        CreateFileLocation(file.Path),
-                        key));
-                    continue;
-                }
-
-                autoLoads.Add(new ProjectAutoLoadEntry(
-                    key,
-                    NormalizeProjectPath(value)));
+            if (TryCollectAutoLoadEntry(file, currentSection, key, value, seenAutoLoads, autoLoads, diagnostics))
                 continue;
-            }
 
-            if (string.Equals(currentSection, "input", StringComparison.OrdinalIgnoreCase))
-            {
-                if (!seenInputActions.Add(key))
-                {
-                    diagnostics.Add(Diagnostic.Create(
-                        GodotProjectDiagnostics.DuplicateInputActionEntry,
-                        CreateFileLocation(file.Path),
-                        key));
-                    continue;
-                }
-
-                inputActions.Add(key);
-            }
+            TryCollectInputAction(currentSection, key, seenInputActions, inputActions, diagnostics, file.Path);
         }
 
         return new ProjectMetadataParseResult(
@@ -576,6 +591,68 @@ public sealed class GodotProjectMetadataGenerator : IIncrementalGenerator
             autoLoads.ToImmutableArray(),
             inputActions.ToImmutableArray(),
             diagnostics.ToImmutableArray());
+    }
+
+    private static bool TryUpdateSection(string content, ref string currentSection)
+    {
+        if (!content.StartsWith("[", StringComparison.Ordinal) ||
+            !content.EndsWith("]", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        currentSection = content.Substring(1, content.Length - 2).Trim();
+        return true;
+    }
+
+    private static bool TryCollectAutoLoadEntry(
+        AdditionalText file,
+        string currentSection,
+        string key,
+        string value,
+        ISet<string> seenAutoLoads,
+        ICollection<ProjectAutoLoadEntry> autoLoads,
+        ICollection<Diagnostic> diagnostics)
+    {
+        if (!string.Equals(currentSection, "autoload", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (!seenAutoLoads.Add(key))
+        {
+            diagnostics.Add(Diagnostic.Create(
+                GodotProjectDiagnostics.DuplicateAutoLoadEntry,
+                CreateFileLocation(file.Path),
+                key));
+            return true;
+        }
+
+        autoLoads.Add(new ProjectAutoLoadEntry(
+            key,
+            NormalizeProjectPath(value)));
+        return true;
+    }
+
+    private static void TryCollectInputAction(
+        string currentSection,
+        string key,
+        ISet<string> seenInputActions,
+        ICollection<string> inputActions,
+        ICollection<Diagnostic> diagnostics,
+        string filePath)
+    {
+        if (!string.Equals(currentSection, "input", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        if (!seenInputActions.Add(key))
+        {
+            diagnostics.Add(Diagnostic.Create(
+                GodotProjectDiagnostics.DuplicateInputActionEntry,
+                CreateFileLocation(filePath),
+                key));
+            return;
+        }
+
+        inputActions.Add(key);
     }
 
     private static string NormalizeProjectPath(string rawValue)

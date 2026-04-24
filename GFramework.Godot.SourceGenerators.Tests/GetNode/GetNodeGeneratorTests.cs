@@ -5,61 +5,88 @@ namespace GFramework.Godot.SourceGenerators.Tests.GetNode;
 [TestFixture]
 public class GetNodeGeneratorTests
 {
+    private const string FullGetNodeAttributeDeclaration = """
+                                                            [AttributeUsage(AttributeTargets.Field, Inherited = false, AllowMultiple = false)]
+                                                            public sealed class GetNodeAttribute : Attribute
+                                                            {
+                                                                public GetNodeAttribute() {}
+                                                                public GetNodeAttribute(string path) { Path = path; }
+                                                                public string? Path { get; set; }
+                                                                public bool Required { get; set; } = true;
+                                                                public NodeLookupMode Lookup { get; set; } = NodeLookupMode.Auto;
+                                                            }
+
+                                                            public enum NodeLookupMode
+                                                            {
+                                                                Auto = 0,
+                                                                UniqueName = 1,
+                                                                RelativePath = 2,
+                                                                AbsolutePath = 3
+                                                            }
+                                                            """;
+
+    private const string MinimalGetNodeAttributeDeclaration = """
+                                                               [AttributeUsage(AttributeTargets.Field, Inherited = false, AllowMultiple = false)]
+                                                               public sealed class GetNodeAttribute : Attribute
+                                                               {
+                                                                   public GetNodeAttribute() {}
+                                                               }
+
+                                                               public enum NodeLookupMode
+                                                               {
+                                                                   Auto = 0
+                                                               }
+                                                               """;
+
+    private const string PropertyOnlyGetNodeAttributeDeclaration = """
+                                                                    [AttributeUsage(AttributeTargets.Field, Inherited = false, AllowMultiple = false)]
+                                                                    public sealed class GetNodeAttribute : Attribute
+                                                                    {
+                                                                        public string? Path { get; set; }
+                                                                        public bool Required { get; set; } = true;
+                                                                        public NodeLookupMode Lookup { get; set; } = NodeLookupMode.Auto;
+                                                                    }
+
+                                                                    public enum NodeLookupMode
+                                                                    {
+                                                                        Auto = 0,
+                                                                        UniqueName = 1,
+                                                                        RelativePath = 2,
+                                                                        AbsolutePath = 3
+                                                                    }
+                                                                    """;
+
+    private const string NodeWithReadyAndLookupMethods = """
+                                                         public class Node
+                                                         {
+                                                             public virtual void _Ready() {}
+                                                             public T GetNode<T>(string path) where T : Node => throw new InvalidOperationException(path);
+                                                             public T? GetNodeOrNull<T>(string path) where T : Node => default;
+                                                         }
+                                                         """;
+
+    private const string HBoxContainerType = """
+                                             public class HBoxContainer : Node
+                                             {
+                                             }
+                                             """;
+
     [Test]
     public async Task Generates_InferredUniqueNameBindings_And_ReadyHook_WhenReadyIsMissing()
     {
-        const string source = """
-                              using System;
-                              using GFramework.Godot.SourceGenerators.Abstractions;
-                              using Godot;
+        string source = CreateGetNodeSource(
+            FullGetNodeAttributeDeclaration,
+            """
+                public partial class TopBar : HBoxContainer
+                {
+                    [GetNode]
+                    private HBoxContainer _leftContainer = null!;
 
-                              namespace GFramework.Godot.SourceGenerators.Abstractions
-                              {
-                                  [AttributeUsage(AttributeTargets.Field, Inherited = false, AllowMultiple = false)]
-                                  public sealed class GetNodeAttribute : Attribute
-                                  {
-                                      public GetNodeAttribute() {}
-                                      public GetNodeAttribute(string path) { Path = path; }
-                                      public string? Path { get; set; }
-                                      public bool Required { get; set; } = true;
-                                      public NodeLookupMode Lookup { get; set; } = NodeLookupMode.Auto;
-                                  }
-
-                                  public enum NodeLookupMode
-                                  {
-                                      Auto = 0,
-                                      UniqueName = 1,
-                                      RelativePath = 2,
-                                      AbsolutePath = 3
-                                  }
-                              }
-
-                              namespace Godot
-                              {
-                                  public class Node
-                                  {
-                                      public virtual void _Ready() {}
-                                      public T GetNode<T>(string path) where T : Node => throw new InvalidOperationException(path);
-                                      public T? GetNodeOrNull<T>(string path) where T : Node => default;
-                                  }
-
-                                  public class HBoxContainer : Node
-                                  {
-                                  }
-                              }
-
-                              namespace TestApp
-                              {
-                                  public partial class TopBar : HBoxContainer
-                                  {
-                                      [GetNode]
-                                      private HBoxContainer _leftContainer = null!;
-
-                                      [GetNode]
-                                      private HBoxContainer m_rightContainer = null!;
-                                  }
-                              }
-                              """;
+                    [GetNode]
+                    private HBoxContainer m_rightContainer = null!;
+                }
+            """,
+            HBoxContainerType);
 
         const string expected = """
                                 // <auto-generated />
@@ -88,69 +115,30 @@ public class GetNodeGeneratorTests
 
         await GeneratorTest<GetNodeGenerator>.RunAsync(
             source,
-            ("TestApp_TopBar.GetNode.g.cs", expected));
+            ("TestApp_TopBar.GetNode.g.cs", expected)).ConfigureAwait(false);
     }
 
     [Test]
     public async Task Generates_ManualInjectionOnly_WhenReadyAlreadyExists()
     {
-        const string source = """
-                              using System;
-                              using GFramework.Godot.SourceGenerators.Abstractions;
-                              using Godot;
+        string source = CreateGetNodeSource(
+            FullGetNodeAttributeDeclaration,
+            """
+                public partial class TopBar : HBoxContainer
+                {
+                    [GetNode("%LeftContainer")]
+                    private HBoxContainer _leftContainer = null!;
 
-                              namespace GFramework.Godot.SourceGenerators.Abstractions
-                              {
-                                  [AttributeUsage(AttributeTargets.Field, Inherited = false, AllowMultiple = false)]
-                                  public sealed class GetNodeAttribute : Attribute
-                                  {
-                                      public GetNodeAttribute() {}
-                                      public GetNodeAttribute(string path) { Path = path; }
-                                      public string? Path { get; set; }
-                                      public bool Required { get; set; } = true;
-                                      public NodeLookupMode Lookup { get; set; } = NodeLookupMode.Auto;
-                                  }
+                    [GetNode(Required = false, Lookup = NodeLookupMode.RelativePath)]
+                    private HBoxContainer? _rightContainer;
 
-                                  public enum NodeLookupMode
-                                  {
-                                      Auto = 0,
-                                      UniqueName = 1,
-                                      RelativePath = 2,
-                                      AbsolutePath = 3
-                                  }
-                              }
-
-                              namespace Godot
-                              {
-                                  public class Node
-                                  {
-                                      public virtual void _Ready() {}
-                                      public T GetNode<T>(string path) where T : Node => throw new InvalidOperationException(path);
-                                      public T? GetNodeOrNull<T>(string path) where T : Node => default;
-                                  }
-
-                                  public class HBoxContainer : Node
-                                  {
-                                  }
-                              }
-
-                              namespace TestApp
-                              {
-                                  public partial class TopBar : HBoxContainer
-                                  {
-                                      [GetNode("%LeftContainer")]
-                                      private HBoxContainer _leftContainer = null!;
-
-                                      [GetNode(Required = false, Lookup = NodeLookupMode.RelativePath)]
-                                      private HBoxContainer? _rightContainer;
-
-                                      public override void _Ready()
-                                      {
-                                          __InjectGetNodes_Generated();
-                                      }
-                                  }
-                              }
-                              """;
+                    public override void _Ready()
+                    {
+                        __InjectGetNodes_Generated();
+                    }
+                }
+            """,
+            HBoxContainerType);
 
         const string expected = """
                                 // <auto-generated />
@@ -171,7 +159,7 @@ public class GetNodeGeneratorTests
 
         await GeneratorTest<GetNodeGenerator>.RunAsync(
             source,
-            ("TestApp_TopBar.GetNode.g.cs", expected));
+            ("TestApp_TopBar.GetNode.g.cs", expected)).ConfigureAwait(false);
     }
 
     [Test]
@@ -234,58 +222,26 @@ public class GetNodeGeneratorTests
             .WithSpan(39, 24, 39, 38)
             .WithArguments("_leftContainer"));
 
-        await test.RunAsync();
+        await test.RunAsync().ConfigureAwait(false);
     }
 
     [Test]
     public async Task Reports_Diagnostic_When_Generated_Injection_Method_Name_Already_Exists()
     {
-        const string source = """
-                              using System;
-                              using GFramework.Godot.SourceGenerators.Abstractions;
-                              using Godot;
+        string source = CreateGetNodeSource(
+            MinimalGetNodeAttributeDeclaration,
+            """
+                public partial class TopBar : HBoxContainer
+                {
+                    [GetNode]
+                    private HBoxContainer _leftContainer = null!;
 
-                              namespace GFramework.Godot.SourceGenerators.Abstractions
-                              {
-                                  [AttributeUsage(AttributeTargets.Field, Inherited = false, AllowMultiple = false)]
-                                  public sealed class GetNodeAttribute : Attribute
-                                  {
-                                      public GetNodeAttribute() {}
-                                  }
-
-                                  public enum NodeLookupMode
-                                  {
-                                      Auto = 0
-                                  }
-                              }
-
-                              namespace Godot
-                              {
-                                  public class Node
-                                  {
-                                      public virtual void _Ready() {}
-                                      public T GetNode<T>(string path) where T : Node => throw new InvalidOperationException(path);
-                                      public T? GetNodeOrNull<T>(string path) where T : Node => default;
-                                  }
-
-                                  public class HBoxContainer : Node
-                                  {
-                                  }
-                              }
-
-                              namespace TestApp
-                              {
-                                  public partial class TopBar : HBoxContainer
-                                  {
-                                      [GetNode]
-                                      private HBoxContainer _leftContainer = null!;
-
-                                      private void {|#0:__InjectGetNodes_Generated|}()
-                                      {
-                                      }
-                                  }
-                              }
-                              """;
+                    private void {|#0:__InjectGetNodes_Generated|}()
+                    {
+                    }
+                }
+            """,
+            HBoxContainerType);
 
         var test = new CSharpSourceGeneratorTest<GetNodeGenerator, DefaultVerifier>
         {
@@ -301,6 +257,39 @@ public class GetNodeGeneratorTests
             .WithLocation(0)
             .WithArguments("TopBar", "__InjectGetNodes_Generated"));
 
-        await test.RunAsync();
+        await test.RunAsync().ConfigureAwait(false);
+    }
+
+    private static string CreateGetNodeSource(
+        string attributeDeclaration,
+        string testAppSource,
+        params string[] godotTypes)
+    {
+        string[] allGodotTypes = new string[godotTypes.Length + 1];
+        allGodotTypes[0] = NodeWithReadyAndLookupMethods;
+        Array.Copy(godotTypes, 0, allGodotTypes, 1, godotTypes.Length);
+
+        string godotSource = string.Join($"{Environment.NewLine}{Environment.NewLine}", allGodotTypes);
+
+        return $$"""
+                 using System;
+                 using GFramework.Godot.SourceGenerators.Abstractions;
+                 using Godot;
+
+                 namespace GFramework.Godot.SourceGenerators.Abstractions
+                 {
+                 {{attributeDeclaration}}
+                 }
+
+                 namespace Godot
+                 {
+                 {{godotSource}}
+                 }
+
+                 namespace TestApp
+                 {
+                 {{testAppSource}}
+                 }
+                 """;
     }
 }

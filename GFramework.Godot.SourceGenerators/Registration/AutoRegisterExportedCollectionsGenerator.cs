@@ -190,6 +190,48 @@ public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGener
     {
         registration = null!;
 
+        if (!TryResolveCollectionType(context, collectionMember, enumerableType, out var collectionType))
+            return false;
+
+        if (!TryResolveRegistryTarget(
+                context,
+                compilation,
+                ownerType,
+                collectionMember,
+                attribute,
+                out var registryMemberName,
+                out var registerMethodName,
+                out var registryType))
+        {
+            return false;
+        }
+
+        if (!TryResolveElementType(context, collectionMember, collectionType, out var elementType))
+            return false;
+
+        if (!HasCompatibleRegisterMethod(compilation, ownerType, registryType, registerMethodName, elementType))
+        {
+            context.ReportDiagnostic(Diagnostic.Create(
+                AutoRegisterExportedCollectionsDiagnostics.RegisterMethodNotFound,
+                collectionMember.Locations.FirstOrDefault() ?? Location.None,
+                registerMethodName,
+                registryMemberName,
+                collectionMember.Name));
+            return false;
+        }
+
+        registration = new RegistrationSpec(collectionMember.Name, registryMemberName, registerMethodName);
+        return true;
+    }
+
+    private static bool TryResolveCollectionType(
+        SourceProductionContext context,
+        ISymbol collectionMember,
+        INamedTypeSymbol enumerableType,
+        out ITypeSymbol collectionType)
+    {
+        collectionType = null!;
+
         if (!IsInstanceReadableMember(collectionMember))
         {
             context.ReportDiagnostic(Diagnostic.Create(
@@ -199,17 +241,11 @@ public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGener
             return false;
         }
 
-        var collectionType = collectionMember switch
-        {
-            IFieldSymbol field => field.Type,
-            IPropertySymbol property => property.Type,
-            _ => null
-        };
-
-        if (collectionType is null)
+        var resolvedType = GetMemberType(collectionMember);
+        if (resolvedType is null)
             return false;
 
-        if (!collectionType.IsAssignableTo(enumerableType))
+        if (!resolvedType.IsAssignableTo(enumerableType))
         {
             context.ReportDiagnostic(Diagnostic.Create(
                 AutoRegisterExportedCollectionsDiagnostics.CollectionTypeMustBeEnumerable,
@@ -218,12 +254,35 @@ public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGener
             return false;
         }
 
-        if (!TryGetRegistrationAttributeArguments(context, collectionMember, attribute, out var registryMemberName,
-                out var registerMethodName))
+        collectionType = resolvedType;
+        return true;
+    }
+
+    private static bool TryResolveRegistryTarget(
+        SourceProductionContext context,
+        Compilation compilation,
+        INamedTypeSymbol ownerType,
+        ISymbol collectionMember,
+        AttributeData attribute,
+        out string registryMemberName,
+        out string registerMethodName,
+        out INamedTypeSymbol registryType)
+    {
+        registryMemberName = string.Empty;
+        registerMethodName = string.Empty;
+        registryType = null!;
+
+        if (!TryGetRegistrationAttributeArguments(
+                context,
+                collectionMember,
+                attribute,
+                out registryMemberName,
+                out registerMethodName))
+        {
             return false;
+        }
 
         var registryMember = FindRegistryMember(ownerType, registryMemberName);
-
         if (registryMember is null)
         {
             context.ReportDiagnostic(Diagnostic.Create(
@@ -246,18 +305,24 @@ public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGener
             return false;
         }
 
-        var registryType = registryMember switch
-        {
-            IFieldSymbol field => field.Type as INamedTypeSymbol,
-            IPropertySymbol property => property.Type as INamedTypeSymbol,
-            _ => null
-        };
-
-        if (registryType is null)
+        var resolvedRegistryType = GetMemberType(registryMember) as INamedTypeSymbol;
+        if (resolvedRegistryType is null)
             return false;
 
-        var elementType = TryGetElementType(collectionType);
-        if (elementType is null)
+        registryType = resolvedRegistryType;
+        return true;
+    }
+
+    private static bool TryResolveElementType(
+        SourceProductionContext context,
+        ISymbol collectionMember,
+        ITypeSymbol collectionType,
+        out ITypeSymbol elementType)
+    {
+        elementType = null!;
+
+        var resolvedElementType = TryGetElementType(collectionType);
+        if (resolvedElementType is null)
         {
             // Non-generic IEnumerable exposes elements as object at compile time, which is not safe
             // for validating or generating a strongly typed registry call.
@@ -268,26 +333,33 @@ public sealed class AutoRegisterExportedCollectionsGenerator : IIncrementalGener
             return false;
         }
 
-        var hasCompatibleMethod = EnumerateCandidateMethods(registryType, registerMethodName)
+        elementType = resolvedElementType;
+        return true;
+    }
+
+    private static bool HasCompatibleRegisterMethod(
+        Compilation compilation,
+        INamedTypeSymbol ownerType,
+        INamedTypeSymbol registryType,
+        string registerMethodName,
+        ITypeSymbol elementType)
+    {
+        return EnumerateCandidateMethods(registryType, registerMethodName)
             .Any(method =>
                 !method.IsStatic &&
                 method.Parameters.Length == 1 &&
                 compilation.IsSymbolAccessibleWithin(method, ownerType) &&
                 CanAcceptElementType(compilation, elementType, method.Parameters[0].Type));
+    }
 
-        if (!hasCompatibleMethod)
+    private static ITypeSymbol? GetMemberType(ISymbol member)
+    {
+        return member switch
         {
-            context.ReportDiagnostic(Diagnostic.Create(
-                AutoRegisterExportedCollectionsDiagnostics.RegisterMethodNotFound,
-                collectionMember.Locations.FirstOrDefault() ?? Location.None,
-                registerMethodName,
-                registryMemberName,
-                collectionMember.Name));
-            return false;
-        }
-
-        registration = new RegistrationSpec(collectionMember.Name, registryMemberName, registerMethodName);
-        return true;
+            IFieldSymbol field => field.Type,
+            IPropertySymbol property => property.Type,
+            _ => null
+        };
     }
 
     private static bool IsInstanceReadableMember(ISymbol member)

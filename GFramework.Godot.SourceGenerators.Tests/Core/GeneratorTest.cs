@@ -29,7 +29,7 @@ public static class GeneratorTest<TGenerator>
             test.TestState.GeneratedSources.Add(
                 (typeof(TGenerator), filename, NormalizeLineEndings(content)));
 
-        await test.RunAsync();
+        await test.RunAsync().ConfigureAwait(false);
     }
 
     /// <summary>

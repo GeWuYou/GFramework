@@ -259,11 +259,7 @@ public sealed class GetNodeGenerator : IIncrementalGenerator
     {
         return typeSymbol.GetMembers()
             .OfType<IMethodSymbol>()
-            .FirstOrDefault(static method =>
-                method.Name == "_Ready" &&
-                !method.IsStatic &&
-                method.Parameters.Length == 0 &&
-                method.MethodKind == MethodKind.Ordinary);
+            .FirstOrDefault(static method => IsParameterlessInstanceMethod(method, "_Ready"));
     }
 
     private static bool CallsGeneratedInjection(IMethodSymbol readyMethod)
@@ -304,6 +300,14 @@ public sealed class GetNodeGenerator : IIncrementalGenerator
     private static bool ResolveRequired(AttributeData attribute)
     {
         return attribute.GetNamedArgument("Required", true);
+    }
+
+    private static bool IsParameterlessInstanceMethod(IMethodSymbol method, string methodName)
+    {
+        return string.Equals(method.Name, methodName, StringComparison.Ordinal) &&
+               !method.IsStatic &&
+               method.Parameters.Length == 0 &&
+               method.MethodKind == MethodKind.Ordinary;
     }
 
     private static bool TryResolvePath(
@@ -373,7 +377,10 @@ public sealed class GetNodeGenerator : IIncrementalGenerator
             if (!string.Equals(namedArgument.Key, "Lookup", StringComparison.Ordinal))
                 continue;
 
-            if (namedArgument.Value.Type?.ToDisplayString() != GetNodeLookupModeMetadataName)
+            if (!string.Equals(
+                    namedArgument.Value.Type?.ToDisplayString(),
+                    GetNodeLookupModeMetadataName,
+                    StringComparison.Ordinal))
                 continue;
 
             if (namedArgument.Value.Value is int value)

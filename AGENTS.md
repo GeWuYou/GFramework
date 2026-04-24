@@ -29,6 +29,10 @@ All AI agents and contributors must follow these rules when writing, reviewing, 
 ## Git Workflow Rules
 
 - Every completed task MUST pass at least one build validation before it is considered done.
+- When the goal is to inspect or reduce warnings printed during project build, contributors MUST establish the warning
+  baseline from a non-incremental repository-root build by running `dotnet clean` and then `dotnet build`.
+- Contributors MUST NOT treat a repeated incremental `dotnet build` result as authoritative for warning inspection when
+  a clean baseline has not been captured in the same round.
 - If the task changes multiple projects or shared abstractions, prefer a solution-level or affected-project
   `dotnet build ... -c Release`; otherwise use the smallest build command that still proves the result compiles.
 - When a task adds a feature or modifies code, contributors MUST run a Release build for every directly affected
@@ -233,6 +237,10 @@ All generated or modified code MUST include clear and meaningful comments where 
 Use the smallest command set that proves the change, then expand if the change is cross-cutting.
 
 ```bash
+# Check warnings from the default repository build entrypoint
+dotnet clean
+dotnet build
+
 # Build the full solution
 dotnet build GFramework.sln -c Release
 
