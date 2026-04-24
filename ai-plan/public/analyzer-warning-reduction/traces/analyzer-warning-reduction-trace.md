@@ -1,22 +1,27 @@
 # Analyzer Warning Reduction 追踪
 
-## 2026-04-24 — RP-049
+## 2026-04-24 — RP-050
 
-### 阶段：plain `dotnet build` 入口固化与 active 文档归档压缩
+### 阶段：clean-build 基线修正与 `GFramework.Godot.SourceGenerators` 切片清零
 
 - 触发背景：
-  - 用户要求把“执行 `dotnet build` 来检查警告”写入 `AGENTS.md`
-  - 用户要求清理或归档 `analyzer-warning-reduction` 的 active todo / trace 内容
-  - 用户明确要求继续当前分支的真实目标：修复项目构建时打印的 warning，而不是继续纠结 warning 检查命令本身
+  - 用户确认之前的 `0 Warning(s)` 来自增量构建假阴性；只有先 `dotnet clean` 再 `dotnet build`，warning 才会重新出现
+  - 用户给出 clean solution build 的真实结果：`Build succeeded with 1193 warning(s)`
 - 主线程实施：
-  - 直接在仓库根目录执行 plain `dotnet build`
-  - 构建结果为 `Build succeeded.`、`0 Warning(s)`、`0 Error(s)`、`Time Elapsed 00:00:14.97`
-  - 更新 `AGENTS.md`，明确 plain `dotnet build` 是当前仓库默认的 build-warning 检查入口
-  - 将 RP-048 之前 active 文档中关于旧 baseline、batch 停点与构建参数形态的细节移入新的 archive 文件
-  - 重写 active todo / trace，只保留当前恢复点需要的真值
+  - 纠正当前 topic 的 active todo / trace，把 clean build 作为新的 warning 检查真值
+  - 在 `BindNodeSignalGenerator.cs`、`GetNodeGenerator.cs`、`GodotProjectMetadataGenerator.cs` 中完成分阶段方法抽取与字符串比较修正
+  - 在 `Registration/AutoRegisterExportedCollectionsGenerator.cs` 中拆分 `TryCreateRegistration`，清除最后一个 `MA0051`
+  - 更新 `AGENTS.md`，明确 warning 检查必须先 `dotnet clean` 再 `dotnet build`
+- 验证里程碑：
+  - `dotnet clean GFramework.Godot.SourceGenerators/GFramework.Godot.SourceGenerators.csproj -c Release`
+    - 结果：成功；`0 Warning(s)`、`0 Error(s)`
+  - `dotnet build GFramework.Godot.SourceGenerators/GFramework.Godot.SourceGenerators.csproj -c Release`
+    - 首次验证：成功；`1 Warning(s)`，剩余 `Registration/AutoRegisterExportedCollectionsGenerator.cs(182,25)` `MA0051`
+    - 修复后复验：成功；`0 Warning(s)`、`0 Error(s)`
 - 当前结论：
-  - 当前分支在默认 solution 构建入口下没有打印 warning，因此此刻没有新的 warning-fix 代码切片可继续实施
-  - 当前分支目标没有改变：后续只要 plain `dotnet build` 再次打印 warning，就以该输出为唯一切片来源继续修复
+  - `GFramework.Godot.SourceGenerators` 已在 clean `Release` build 下从 9 个 warning 降到 0 个 warning
+  - 整仓库 warning 基线仍以用户确认的 clean solution build `1193 warning(s)` 为准
+  - 下一轮应继续从 clean solution build 输出中选择新的低风险热点
 
 ## Archive Context
 

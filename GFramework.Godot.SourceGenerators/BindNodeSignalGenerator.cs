@@ -72,19 +72,8 @@ public sealed class BindNodeSignalGenerator : IIncrementalGenerator
         if (bindNodeSignalAttribute is null || godotNodeSymbol is null)
             return;
 
-        // 缓存每个方法上已解析的特性，避免在筛选和生成阶段重复做语义查询。
-        var methodAttributes = candidates
-            .Where(static candidate => candidate is not null)
-            .Select(static candidate => candidate!)
-            .ToDictionary(
-                static candidate => candidate,
-                candidate => ResolveAttributes(candidate.MethodSymbol, bindNodeSignalAttribute),
-                ReferenceEqualityComparer.Instance);
-
-        var methodCandidates = methodAttributes
-            .Where(static pair => pair.Value.Count > 0)
-            .Select(static pair => pair.Key)
-            .ToList();
+        var methodAttributes = BuildMethodAttributeMap(candidates, bindNodeSignalAttribute);
+        var methodCandidates = CollectMethodCandidates(methodAttributes);
 
         foreach (var group in GroupByContainingType(methodCandidates))
         {
@@ -99,19 +88,7 @@ public sealed class BindNodeSignalGenerator : IIncrementalGenerator
                     UnbindMethodName))
                 continue;
 
-            var bindings = new List<SignalBindingInfo>();
-
-            foreach (var candidate in group.Methods)
-            {
-                foreach (var attribute in methodAttributes[candidate])
-                {
-                    if (!TryCreateBinding(context, candidate, attribute, godotNodeSymbol, out var binding))
-                        continue;
-
-                    bindings.Add(binding);
-                }
-            }
-
+            var bindings = CollectBindings(context, group, methodAttributes, godotNodeSymbol);
             if (bindings.Count == 0)
                 continue;
 
@@ -171,104 +148,256 @@ public sealed class BindNodeSignalGenerator : IIncrementalGenerator
 
         if (candidate.MethodSymbol.IsStatic)
         {
-            ReportMethodDiagnostic(
-                context,
-                BindNodeSignalDiagnostics.StaticMethodNotSupported,
-                candidate,
-                attribute,
-                candidate.MethodSymbol.Name);
+            ReportStaticMethodDiagnostic(context, candidate, attribute);
             return false;
         }
 
-        if (!TryResolveCtorString(attribute, 0, out var nodeFieldName))
-        {
-            ReportMethodDiagnostic(
-                context,
-                BindNodeSignalDiagnostics.InvalidConstructorArgument,
-                candidate,
-                attribute,
-                candidate.MethodSymbol.Name,
-                "nodeFieldName");
+        if (!TryResolveBindingTargetNames(context, candidate, attribute, out var nodeFieldName, out var signalName))
             return false;
-        }
 
-        if (!TryResolveCtorString(attribute, 1, out var signalName))
-        {
-            ReportMethodDiagnostic(
-                context,
-                BindNodeSignalDiagnostics.InvalidConstructorArgument,
-                candidate,
-                attribute,
-                candidate.MethodSymbol.Name,
-                "signalName");
+        if (!TryFindCompatibleField(context, candidate, attribute, godotNodeSymbol, nodeFieldName, out var fieldSymbol))
             return false;
-        }
 
-        var fieldSymbol = FindField(candidate.MethodSymbol.ContainingType, nodeFieldName);
-        if (fieldSymbol is null)
-        {
-            ReportMethodDiagnostic(
-                context,
-                BindNodeSignalDiagnostics.NodeFieldNotFound,
-                candidate,
-                attribute,
-                candidate.MethodSymbol.Name,
-                nodeFieldName,
-                candidate.MethodSymbol.ContainingType.Name);
+        if (!TryFindCompatibleEvent(context, candidate, attribute, fieldSymbol, signalName, out var eventSymbol))
             return false;
-        }
-
-        if (fieldSymbol.IsStatic)
-        {
-            ReportMethodDiagnostic(
-                context,
-                BindNodeSignalDiagnostics.NodeFieldMustBeInstanceField,
-                candidate,
-                attribute,
-                candidate.MethodSymbol.Name,
-                fieldSymbol.Name);
-            return false;
-        }
-
-        if (!fieldSymbol.Type.IsAssignableTo(godotNodeSymbol))
-        {
-            ReportMethodDiagnostic(
-                context,
-                BindNodeSignalDiagnostics.FieldTypeMustDeriveFromNode,
-                candidate,
-                attribute,
-                fieldSymbol.Name);
-            return false;
-        }
-
-        var eventSymbol = FindEvent(fieldSymbol.Type, signalName);
-        if (eventSymbol is null)
-        {
-            ReportMethodDiagnostic(
-                context,
-                BindNodeSignalDiagnostics.SignalNotFound,
-                candidate,
-                attribute,
-                fieldSymbol.Name,
-                signalName);
-            return false;
-        }
 
         if (!IsMethodCompatibleWithEvent(candidate.MethodSymbol, eventSymbol))
         {
-            ReportMethodDiagnostic(
-                context,
-                BindNodeSignalDiagnostics.MethodSignatureNotCompatible,
-                candidate,
-                attribute,
-                candidate.MethodSymbol.Name,
-                eventSymbol.Name,
-                fieldSymbol.Name);
+            ReportIncompatibleSignatureDiagnostic(context, candidate, attribute, eventSymbol, fieldSymbol);
             return false;
         }
 
         binding = new SignalBindingInfo(fieldSymbol, eventSymbol, candidate.MethodSymbol);
         return true;
+    }
+
+    private static Dictionary<MethodCandidate, IReadOnlyList<AttributeData>> BuildMethodAttributeMap(
+        ImmutableArray<MethodCandidate?> candidates,
+        INamedTypeSymbol bindNodeSignalAttribute)
+    {
+        return candidates
+            .Where(static candidate => candidate is not null)
+            .Select(static candidate => candidate!)
+            .ToDictionary(
+                static candidate => candidate,
+                candidate => ResolveAttributes(candidate.MethodSymbol, bindNodeSignalAttribute),
+                ReferenceEqualityComparer.Instance);
+    }
+
+    private static List<MethodCandidate> CollectMethodCandidates(
+        IReadOnlyDictionary<MethodCandidate, IReadOnlyList<AttributeData>> methodAttributes)
+    {
+        return methodAttributes
+            .Where(static pair => pair.Value.Count > 0)
+            .Select(static pair => pair.Key)
+            .ToList();
+    }
+
+    private static List<SignalBindingInfo> CollectBindings(
+        SourceProductionContext context,
+        TypeGroup group,
+        IReadOnlyDictionary<MethodCandidate, IReadOnlyList<AttributeData>> methodAttributes,
+        INamedTypeSymbol godotNodeSymbol)
+    {
+        var bindings = new List<SignalBindingInfo>();
+
+        foreach (var candidate in group.Methods)
+        {
+            foreach (var attribute in methodAttributes[candidate])
+            {
+                if (!TryCreateBinding(context, candidate, attribute, godotNodeSymbol, out var binding))
+                    continue;
+
+                bindings.Add(binding);
+            }
+        }
+
+        return bindings;
+    }
+
+    private static void ReportStaticMethodDiagnostic(
+        SourceProductionContext context,
+        MethodCandidate candidate,
+        AttributeData attribute)
+    {
+        ReportMethodDiagnostic(
+            context,
+            BindNodeSignalDiagnostics.StaticMethodNotSupported,
+            candidate,
+            attribute,
+            candidate.MethodSymbol.Name);
+    }
+
+    private static bool TryResolveBindingTargetNames(
+        SourceProductionContext context,
+        MethodCandidate candidate,
+        AttributeData attribute,
+        out string nodeFieldName,
+        out string signalName)
+    {
+        nodeFieldName = string.Empty;
+        signalName = string.Empty;
+
+        if (!TryResolveCtorString(attribute, 0, out nodeFieldName))
+        {
+            ReportInvalidConstructorArgumentDiagnostic(context, candidate, attribute, "nodeFieldName");
+            return false;
+        }
+
+        if (!TryResolveCtorString(attribute, 1, out signalName))
+        {
+            ReportInvalidConstructorArgumentDiagnostic(context, candidate, attribute, "signalName");
+            return false;
+        }
+
+        return true;
+    }
+
+    private static void ReportInvalidConstructorArgumentDiagnostic(
+        SourceProductionContext context,
+        MethodCandidate candidate,
+        AttributeData attribute,
+        string argumentName)
+    {
+        ReportMethodDiagnostic(
+            context,
+            BindNodeSignalDiagnostics.InvalidConstructorArgument,
+            candidate,
+            attribute,
+            candidate.MethodSymbol.Name,
+            argumentName);
+    }
+
+    private static bool TryFindCompatibleField(
+        SourceProductionContext context,
+        MethodCandidate candidate,
+        AttributeData attribute,
+        INamedTypeSymbol godotNodeSymbol,
+        string nodeFieldName,
+        out IFieldSymbol fieldSymbol)
+    {
+        fieldSymbol = null!;
+
+        var resolvedField = FindField(candidate.MethodSymbol.ContainingType, nodeFieldName);
+        if (resolvedField is null)
+        {
+            ReportNodeFieldNotFoundDiagnostic(context, candidate, attribute, nodeFieldName);
+            return false;
+        }
+
+        if (resolvedField.IsStatic)
+        {
+            ReportNodeFieldMustBeInstanceDiagnostic(context, candidate, attribute, resolvedField);
+            return false;
+        }
+
+        if (!resolvedField.Type.IsAssignableTo(godotNodeSymbol))
+        {
+            ReportFieldTypeMustDeriveFromNodeDiagnostic(context, candidate, attribute, resolvedField);
+            return false;
+        }
+
+        fieldSymbol = resolvedField;
+        return true;
+    }
+
+    private static void ReportNodeFieldNotFoundDiagnostic(
+        SourceProductionContext context,
+        MethodCandidate candidate,
+        AttributeData attribute,
+        string nodeFieldName)
+    {
+        ReportMethodDiagnostic(
+            context,
+            BindNodeSignalDiagnostics.NodeFieldNotFound,
+            candidate,
+            attribute,
+            candidate.MethodSymbol.Name,
+            nodeFieldName,
+            candidate.MethodSymbol.ContainingType.Name);
+    }
+
+    private static void ReportNodeFieldMustBeInstanceDiagnostic(
+        SourceProductionContext context,
+        MethodCandidate candidate,
+        AttributeData attribute,
+        IFieldSymbol fieldSymbol)
+    {
+        ReportMethodDiagnostic(
+            context,
+            BindNodeSignalDiagnostics.NodeFieldMustBeInstanceField,
+            candidate,
+            attribute,
+            candidate.MethodSymbol.Name,
+            fieldSymbol.Name);
+    }
+
+    private static void ReportFieldTypeMustDeriveFromNodeDiagnostic(
+        SourceProductionContext context,
+        MethodCandidate candidate,
+        AttributeData attribute,
+        IFieldSymbol fieldSymbol)
+    {
+        ReportMethodDiagnostic(
+            context,
+            BindNodeSignalDiagnostics.FieldTypeMustDeriveFromNode,
+            candidate,
+            attribute,
+            fieldSymbol.Name);
+    }
+
+    private static bool TryFindCompatibleEvent(
+        SourceProductionContext context,
+        MethodCandidate candidate,
+        AttributeData attribute,
+        IFieldSymbol fieldSymbol,
+        string signalName,
+        out IEventSymbol eventSymbol)
+    {
+        eventSymbol = null!;
+
+        var resolvedEvent = FindEvent(fieldSymbol.Type, signalName);
+        if (resolvedEvent is null)
+        {
+            ReportSignalNotFoundDiagnostic(context, candidate, attribute, fieldSymbol, signalName);
+            return false;
+        }
+
+        eventSymbol = resolvedEvent;
+        return true;
+    }
+
+    private static void ReportSignalNotFoundDiagnostic(
+        SourceProductionContext context,
+        MethodCandidate candidate,
+        AttributeData attribute,
+        IFieldSymbol fieldSymbol,
+        string signalName)
+    {
+        ReportMethodDiagnostic(
+            context,
+            BindNodeSignalDiagnostics.SignalNotFound,
+            candidate,
+            attribute,
+            fieldSymbol.Name,
+            signalName);
+    }
+
+    private static void ReportIncompatibleSignatureDiagnostic(
+        SourceProductionContext context,
+        MethodCandidate candidate,
+        AttributeData attribute,
+        IEventSymbol eventSymbol,
+        IFieldSymbol fieldSymbol)
+    {
+        ReportMethodDiagnostic(
+            context,
+            BindNodeSignalDiagnostics.MethodSignatureNotCompatible,
+            candidate,
+            attribute,
+            candidate.MethodSymbol.Name,
+            eventSymbol.Name,
+            fieldSymbol.Name);
     }
 
     private static void ReportMethodDiagnostic(
@@ -404,11 +533,7 @@ public sealed class BindNodeSignalGenerator : IIncrementalGenerator
     {
         return typeSymbol.GetMembers()
             .OfType<IMethodSymbol>()
-            .FirstOrDefault(method =>
-                method.Name == methodName &&
-                !method.IsStatic &&
-                method.Parameters.Length == 0 &&
-                method.MethodKind == MethodKind.Ordinary);
+            .FirstOrDefault(method => IsParameterlessInstanceMethod(method, methodName));
     }
 
     private static bool CallsGeneratedMethod(
@@ -445,6 +570,14 @@ public sealed class BindNodeSignalGenerator : IIncrementalGenerator
                 StringComparison.Ordinal),
             _ => false
         };
+    }
+
+    private static bool IsParameterlessInstanceMethod(IMethodSymbol method, string methodName)
+    {
+        return string.Equals(method.Name, methodName, StringComparison.Ordinal) &&
+               !method.IsStatic &&
+               method.Parameters.Length == 0 &&
+               method.MethodKind == MethodKind.Ordinary;
     }
 
     private static bool IsBindNodeSignalAttributeName(NameSyntax attributeName)
