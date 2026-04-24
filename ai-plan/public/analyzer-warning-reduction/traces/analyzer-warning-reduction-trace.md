@@ -1,23 +1,24 @@
 # Analyzer Warning Reduction 追踪
 
-## 2026-04-24 — RP-047
+## 2026-04-24 — RP-048
 
-### 阶段：solution warning 基线复核与 active plan 去噪
+### 阶段：plain `dotnet build` 复核与 batch 停点确认
 
 - 触发背景：
-  - 用户要求继续按 `$gframework-batch-boot 75` 推进，并明确要求“通过 `dotnet build` 检查警告”
-  - 用户追加要求清理当前计划中的噪音内容，因此本轮除了复核 warning 基线，还要同步压缩 active todo / trace
+  - 用户继续按 `$gframework-batch-boot 75` 恢复 analyzer warning reduction
+  - 启动后发现 active todo 仍描述“工作树有未提交 warning 切片”，需要先核对仓库真值
+  - 用户随后明确要求“用 `dotnet build` 不用加其它参数试试”
 - 主线程实施：
-  - 先读取 active topic 文档、基线信息与 branch diff 指标，确认 baseline 仍是 `origin/main`（`e692ed3`）
-  - 复查当前工作树中的 warning-reduction 切片，确认主要未提交修改集中在 `GFramework.Game`、`GFramework.Godot`、`GFramework.SourceGenerators.Tests`
-  - 执行 `dotnet build GFramework.Game/GFramework.Game.csproj -c Release` 与 `dotnet build GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release`，二者均成功
-  - 发现默认 terminal logger 输出不利于读取 warning 数，因此改用 `dotnet build GFramework.sln -c Release -tl:off -nologo`
-  - solution Release build 在经典 logger 形态下成功完成，结果为 `0 Warning(s)` / `0 Error(s)` / `Time Elapsed 00:00:12.72`
-  - 基于该真值，压缩 active todo / trace，移除已经过期的 `891 warnings` 旧基线和过多执行形态细节
+  - 读取 `AGENTS.md`、`.ai/environment/tools.ai.yaml`、`ai-plan/public/README.md` 以及 `analyzer-warning-reduction` 的 active todo / trace
+  - 使用显式 `git --git-dir/--work-tree` 绑定确认当前分支为 `fix/analyzer-warning-reduction-batch`
+  - 重新选择 batch baseline 为 `origin/main`，并记录最新可用 ref：`a8447a6`（`2026-04-24 12:53:39 +0800`）；不再使用落后的本地 `main`（`84b40a2`）
+  - 复核 `origin/main...HEAD` 指标，当前 branch diff 为 `6` 个文件、`1566` 行
+  - 复核最近提交，确认 warning-reduction 代码切片已经在 `77e332f`（`fix(analyzer): 收口当前批次警告切片`）落地，工作树当前除 `.codex` 外无活动修改
+  - 按用户要求在仓库根目录直接执行 `dotnet build`，默认选中 solution 并成功完成，结果为 `Build succeeded in 16.2s`
 - 当前结论：
-  - 当前工作树的 solution warning 基线已经降到 `0 Warning(s)`；active plan 中旧的高噪音 warning 基线不再适合作为恢复入口
-  - `-tl:off` 是当前最可靠的 warning 采样入口；默认 terminal logger 更适合看进度，不适合记录计数
-  - 当前批次的主要剩余工作不再是继续找 warning，而是整理并提交现有切片，避免 reviewability 下降
+  - 当前 solution 在默认 `dotnet build` 路径下可正常通过，RP-047 中“需要额外构建参数才能稳定验证”的假设不应继续作为 active 真值
+  - 当前 warning-reduction branch 已没有新的低风险 warning hotspot；继续推进 batch 只会增加 branch 体积，不会继续降低 warning
+  - 因此本轮批处理应在 `6 / 75` 文件阈值处主动停止，而不是机械地继续扩展
 
 ## Archive Context
 

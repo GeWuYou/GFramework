@@ -6,36 +6,28 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-047`
-- 当前阶段：`Phase 47`
+- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-048`
+- 当前阶段：`Phase 48`
 - 当前焦点：
-  - 已重新用经典 logger 形态执行 `dotnet build GFramework.sln -c Release -tl:off -nologo`，当前 solution 基线是 `0 Warning(s)` / `0 Error(s)`
-  - 受影响项目 `GFramework.Game` 与 `GFramework.SourceGenerators.Tests` 的 Release build 也已通过，当前工作树中的 warning-reduction 切片至少在编译层面成立
-  - 当前 baseline 仍为 `origin/main`（`e692ed3`, `2026-04-24 09:36:17 +0800`）；batch stop condition 仍为 branch diff 接近 `75` 个文件
-  - 当前已提交 branch diff 仍只有 `3` 个文件、`234` 行，距离 stop condition 很远；工作树另外保留一批未提交切片待整理与提交
+  - 当前 baseline 为 `origin/main`（`a8447a6`, `2026-04-24 12:53:39 +0800`），batch stop condition 仍为 branch diff 接近 `75` 个文件
+  - 当前 branch diff 为 `6` 个文件、`1566` 行（相对 `origin/main...HEAD`），距离 stop condition 仍有空间
+  - 当前 warning-reduction 代码切片已经提交到 `77e332f`（`fix(analyzer): 收口当前批次警告切片`）
+  - 当前工作树除未跟踪的 `.codex` 目录外无活动代码修改
 
 ## 当前活跃事实
 
 - `UnifiedSettingsFile.Sections` 已抽象为 `IDictionary<string, string>`；`UnifiedSettingsDataRepository.CloneFile` 会在底层仍是 `Dictionary` 时保留 comparer，避免改变既有键比较语义
 - `LocalizationMap` 通过私有 `Dictionary` 字段配合 `IReadOnlyDictionary` 暴露映射，继续避免把可变集合直接暴露给调用方
-- `CqrsHandlerRegistryGeneratorTests.cs` 已把一批大型 fixture 提升到类级常量，当前目标是以更低噪音方式消化 `MA0051`
-- 当前工作树的 tracked 变更集中在：
-  - `GFramework.Game/Data/UnifiedSettingsFile.cs`
-  - `GFramework.Game/Data/UnifiedSettingsDataRepository.cs`
-  - `GFramework.Godot/Setting/Data/LocalizationMap.cs`
-  - `GFramework.SourceGenerators.Tests/Cqrs/CqrsHandlerRegistryGeneratorTests.cs`
-  - `docs/zh-CN/contributing.md`
-  - `docs/zh-CN/troubleshooting.md`
-- 当前还存在未跟踪的 `scripts/dotnet-wsl.sh`，用于 WSL Windows-backed worktree 下统一 `dotnet` 环境参数
+- `CqrsHandlerRegistryGeneratorTests.cs` 已把一批大型 fixture 提升到类级常量，以更低噪音方式消化 `MA0051`
+- 通过仓库根目录直接执行 `dotnet build` 已再次确认当前 solution 默认构建成功
+- 本地当前没有新的低风险 warning hotspot；继续扩展 batch 会先增加 branch 体积，而不是继续降低 warning
 
 ## 当前风险
 
-- `dotnet build` 默认 terminal logger 输出会折叠成进度视图，不适合作为 warning 基线采样入口
-  - 缓解措施：继续使用 `-tl:off` 收集 warning 计数
-- 当前工作树仍有多处未提交修改；如果直接继续扩展批次，会降低 reviewability
-  - 缓解措施：先整理并提交当前切片，再决定是否继续下一轮 warning cleanup
-- `scripts/dotnet-wsl.sh` 与文档更新属于环境治理切片，是否与本轮 warning-reduction 一起提交需要显式判断
-  - 缓解措施：提交前按主题拆分 staging，避免把环境文档与 warning 修正混成一个提交
+- active todo / trace 在 RP-047 之后一度滞后于仓库真值，曾错误保留“工作树仍有未提交切片”的描述
+  - 缓解措施：已在 RP-048 回写提交状态、默认 build 验证结果与最新 baseline
+- 当前 solution warning 已为 `0`，若继续按 warning-reduction 名义扩展分支，reviewability 收益会快速下降
+  - 缓解措施：将本轮 batch 视为自然停点；仅在出现新的 warning hotspot 或明确新切片目标后再继续
 
 ## 活跃文档
 
@@ -48,15 +40,11 @@
 
 ## 验证说明
 
-- `dotnet build GFramework.Game/GFramework.Game.csproj -c Release`
-  - 结果：成功
-- `dotnet build GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release`
-  - 结果：成功
-- `dotnet build GFramework.sln -c Release -tl:off -nologo`
-  - 结果：成功；`0 Warning(s)`、`0 Error(s)`、`Time Elapsed 00:00:12.72`
+- `dotnet build`
+  - 结果：成功；solution 默认构建通过，`Build succeeded in 16.2s`
 
 ## 下一步建议
 
-1. 先把当前工作树中的 warning-reduction 切片与环境文档切片拆分清楚，避免混合提交
-2. 若确认本轮目标只是收口 warning reduction，则优先提交 `Game` / `Godot` / `SourceGenerators.Tests` 相关修改
-3. 若 `scripts/dotnet-wsl.sh` 与中文文档属于独立环境治理工作，则单独跟踪或另起提交
+1. 将当前 warning-reduction batch 视为已到自然停点，不再为了“凑批次”继续扩大 branch diff
+2. 若后续仍要继续 warning work，先重新定位新的 warning hotspot 或回归来源，再开启下一轮批处理
+3. 继续下一轮前优先保持与 `origin/main` 的基线同步，避免在已清零 warning 的前提下无收益扩分支
