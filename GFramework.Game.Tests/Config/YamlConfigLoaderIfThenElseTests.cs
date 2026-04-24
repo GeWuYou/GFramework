@@ -105,7 +105,7 @@ public sealed class YamlConfigLoaderIfThenElseTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry).ConfigureAwait(false));
 
         Assert.Multiple(() =>
         {
@@ -137,7 +137,7 @@ public sealed class YamlConfigLoaderIfThenElseTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        await loader.LoadAsync(registry);
+        await loader.LoadAsync(registry).ConfigureAwait(false);
 
         var table = registry.GetTable<int, MonsterConditionalConfigStub>("monster");
         var reward = table.Get(1).Reward;
@@ -170,7 +170,7 @@ public sealed class YamlConfigLoaderIfThenElseTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry).ConfigureAwait(false));
 
         Assert.Multiple(() =>
         {
@@ -202,7 +202,7 @@ public sealed class YamlConfigLoaderIfThenElseTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        await loader.LoadAsync(registry);
+        await loader.LoadAsync(registry).ConfigureAwait(false);
 
         var table = registry.GetTable<int, MonsterConditionalConfigStub>("monster");
         var reward = table.Get(1).Reward;
@@ -250,7 +250,10 @@ public sealed class YamlConfigLoaderIfThenElseTests
             }
             """);
 
-        ArgumentNullException.ThrowIfNull(_rootPath);
+        if (_rootPath is null)
+        {
+            throw new InvalidOperationException("Root path is not initialized.");
+        }
 
         var loader = new YamlConfigLoader(_rootPath)
             .RegisterTable<int, MonsterTagConfigStub>(
@@ -260,7 +263,7 @@ public sealed class YamlConfigLoaderIfThenElseTests
                 static config => config.Id);
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry).ConfigureAwait(false));
 
         Assert.Multiple(() =>
         {
@@ -301,7 +304,7 @@ public sealed class YamlConfigLoaderIfThenElseTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry).ConfigureAwait(false));
 
         Assert.Multiple(() =>
         {
@@ -342,7 +345,7 @@ public sealed class YamlConfigLoaderIfThenElseTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry).ConfigureAwait(false));
 
         Assert.Multiple(() =>
         {
@@ -390,7 +393,7 @@ public sealed class YamlConfigLoaderIfThenElseTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry).ConfigureAwait(false));
 
         Assert.Multiple(() =>
         {
@@ -409,7 +412,10 @@ public sealed class YamlConfigLoaderIfThenElseTests
     /// <param name="content">配置文件内容。</param>
     private void CreateConfigFile(string relativePath, string content)
     {
-        ArgumentNullException.ThrowIfNull(_rootPath);
+        if (_rootPath is null)
+        {
+            throw new InvalidOperationException("Root path is not initialized.");
+        }
 
         var filePath = Path.Combine(_rootPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
         var directoryPath = Path.GetDirectoryName(filePath);
@@ -496,7 +502,10 @@ public sealed class YamlConfigLoaderIfThenElseTests
     /// <returns>已注册测试表与 schema 路径的加载器。</returns>
     private YamlConfigLoader CreateMonsterRewardLoader()
     {
-        ArgumentNullException.ThrowIfNull(_rootPath);
+        if (_rootPath is null)
+        {
+            throw new InvalidOperationException("Root path is not initialized.");
+        }
 
         return new YamlConfigLoader(_rootPath)
             .RegisterTable<int, MonsterConditionalConfigStub>(

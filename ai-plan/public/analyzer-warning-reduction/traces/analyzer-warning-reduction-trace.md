@@ -2,6 +2,36 @@
 
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-24 — RP-054
+
+### 阶段：`GFramework.Game.Tests` 低风险测试 warning 批次（触发文件数停止阈值）
+
+- 触发背景：
+  - 用户要求“直接进入下一批”，继续沿 `$gframework-batch-boot 75` 自动推进 warning reduction
+  - 以 `origin/main` 为基线时，上一批提交后分支累计 diff 仍只有 `8` 个文件，足够再落一个独立批次
+  - 重新执行 `dotnet clean GFramework.sln -c Release` 仍停在 `ValidateSolutionConfiguration`，因此继续以直接 `dotnet build GFramework.sln -c Release` 的输出挑选低风险热点
+- 主线程实施：
+  - 从整仓 `Release build` 的 `116 warning(s)` 入口观测值中，选择 `GFramework.Game.Tests` 的小型测试文件和 `PersistenceTestUtilities.cs` 作为当前批次，刻意避开 `YamlConfigLoaderTests.cs` 这类高上下文大文件
+  - 在 `YamlConfigLoaderIfThenElseTests.cs`、`YamlConfigLoaderDependentSchemasTests.cs`、`YamlConfigLoaderDependentRequiredTests.cs`、`YamlConfigLoaderNegationTests.cs`、`YamlConfigLoaderAllOfTests.cs`、`YamlConfigLoaderEnumTests.cs`、`YamlConfigTextValidatorTests.cs`、`PersistenceTests.cs` 中补齐 `.ConfigureAwait(false)`，并把字段态 `_rootPath` 的 `ThrowIfNull` 改为显式 `InvalidOperationException`
+  - 将 `PersistenceTestUtilities.cs` 拆分为 `TestDataLocation.cs`、`TestSaveData.cs`、`TestVersionedSaveData.cs`、`TestSimpleData.cs`、`TestNamedData.cs`，消除 `MA0048` 并对齐仓库的一文件一主类型风格
+  - 在 `YamlConfigSchemaValidatorTests.cs` 中把字段态 `_rootPath` 的校验改成显式状态异常，避免继续触发 `MA0015`
+- 验证里程碑：
+  - `dotnet clean GFramework.sln -c Release`
+    - 结果：失败；停在 `ValidateSolutionConfiguration`，`0 Warning(s)`、`0 Error(s)`
+  - `dotnet build GFramework.sln -c Release`
+    - 结果：成功；`116 Warning(s)`、`0 Error(s)`
+  - `dotnet clean GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release`
+    - 结果：失败；clean 阶段提前结束，`0 Warning(s)`、`0 Error(s)`
+  - `dotnet build GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release`
+    - 第一轮批次后：成功；`80 Warning(s)`、`0 Error(s)`
+    - 收尾修正后：成功；`71 Warning(s)`、`0 Error(s)`
+  - `dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --filter "FullyQualifiedName~YamlConfigLoaderIfThenElseTests|FullyQualifiedName~YamlConfigLoaderDependentSchemasTests|FullyQualifiedName~YamlConfigLoaderDependentRequiredTests|FullyQualifiedName~YamlConfigLoaderNegationTests|FullyQualifiedName~YamlConfigLoaderAllOfTests|FullyQualifiedName~YamlConfigLoaderEnumTests|FullyQualifiedName~YamlConfigTextValidatorTests|FullyQualifiedName~YamlConfigSchemaValidatorTests|FullyQualifiedName~PersistenceTests"`
+    - 结果：成功；`Passed: 63`、`Failed: 0`
+- 当前结论：
+  - `GFramework.Game.Tests` 本轮入口热点已从 `116 warning(s)` 收敛到 `71 warning(s)`，且本轮 touched files 不再出现在 warning 输出中
+  - 当前工作树相对 `origin/main` 的累计 diff 已达到 `76` 个文件、`986` 行，超过 `$gframework-batch-boot 75` 的主停止阈值
+  - 按批处理技能规则，本轮必须在提交当前批次后停止；剩余候选应在新一轮里单独评估，尤其是 `YamlConfigLoaderTests.cs`
+
 ## 2026-04-24 — RP-053
 
 ### 阶段：`GFramework.Godot` / `GFramework.Godot.Tests` 小批次 warning 清理

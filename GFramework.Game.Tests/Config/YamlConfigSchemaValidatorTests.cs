@@ -191,7 +191,10 @@ public sealed class YamlConfigSchemaValidatorTests
         string relativePath,
         string content)
     {
-        ArgumentNullException.ThrowIfNull(_rootPath);
+        if (_rootPath is null)
+        {
+            throw new InvalidOperationException("Root path is not initialized.");
+        }
 
         var fullPath = Path.Combine(_rootPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
         var directoryPath = Path.GetDirectoryName(fullPath);

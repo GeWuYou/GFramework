@@ -90,7 +90,7 @@ public sealed class YamlConfigLoaderAllOfTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry).ConfigureAwait(false));
 
         Assert.Multiple(() =>
         {
@@ -124,7 +124,7 @@ public sealed class YamlConfigLoaderAllOfTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        await loader.LoadAsync(registry);
+        await loader.LoadAsync(registry).ConfigureAwait(false);
 
         var table = registry.GetTable<int, MonsterAllOfConfigStub>("monster");
         var reward = table.Get(1).Reward;
@@ -165,7 +165,7 @@ public sealed class YamlConfigLoaderAllOfTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry).ConfigureAwait(false));
 
         Assert.Multiple(() =>
         {
@@ -210,7 +210,10 @@ public sealed class YamlConfigLoaderAllOfTests
             }
             """);
 
-        ArgumentNullException.ThrowIfNull(_rootPath);
+        if (_rootPath is null)
+        {
+            throw new InvalidOperationException("Root path is not initialized.");
+        }
 
         var loader = new YamlConfigLoader(_rootPath)
             .RegisterTable<int, MonsterTagConfigStub>(
@@ -220,7 +223,7 @@ public sealed class YamlConfigLoaderAllOfTests
                 static config => config.Id);
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry).ConfigureAwait(false));
 
         Assert.Multiple(() =>
         {
@@ -255,7 +258,7 @@ public sealed class YamlConfigLoaderAllOfTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry).ConfigureAwait(false));
 
         Assert.Multiple(() =>
         {
@@ -295,7 +298,7 @@ public sealed class YamlConfigLoaderAllOfTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry).ConfigureAwait(false));
 
         Assert.Multiple(() =>
         {
@@ -335,7 +338,7 @@ public sealed class YamlConfigLoaderAllOfTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry).ConfigureAwait(false));
 
         Assert.Multiple(() =>
         {
@@ -375,7 +378,7 @@ public sealed class YamlConfigLoaderAllOfTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry).ConfigureAwait(false));
 
         Assert.Multiple(() =>
         {
@@ -415,7 +418,7 @@ public sealed class YamlConfigLoaderAllOfTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry).ConfigureAwait(false));
 
         Assert.Multiple(() =>
         {
@@ -455,7 +458,7 @@ public sealed class YamlConfigLoaderAllOfTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry).ConfigureAwait(false));
 
         Assert.Multiple(() =>
         {
@@ -499,7 +502,7 @@ public sealed class YamlConfigLoaderAllOfTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry).ConfigureAwait(false));
 
         Assert.Multiple(() =>
         {

@@ -132,7 +132,7 @@ public sealed class YamlConfigTextValidatorTests
                 "monster/generated.yaml",
                 """
                 id: 1
-                """));
+                """).ConfigureAwait(false));
 
         Assert.Multiple(() =>
         {

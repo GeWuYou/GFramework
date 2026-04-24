@@ -74,7 +74,7 @@ public sealed class YamlConfigLoaderDependentSchemasTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry).ConfigureAwait(false));
 
         Assert.Multiple(() =>
         {
@@ -106,7 +106,7 @@ public sealed class YamlConfigLoaderDependentSchemasTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        await loader.LoadAsync(registry);
+        await loader.LoadAsync(registry).ConfigureAwait(false);
 
         var table = registry.GetTable<int, MonsterDependentSchemasConfigStub>("monster");
         Assert.That(table.Count, Is.EqualTo(1));
@@ -133,7 +133,7 @@ public sealed class YamlConfigLoaderDependentSchemasTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        await loader.LoadAsync(registry);
+        await loader.LoadAsync(registry).ConfigureAwait(false);
 
         var table = registry.GetTable<int, MonsterDependentSchemasConfigStub>("monster");
         var reward = table.Get(1).Reward;
@@ -174,7 +174,7 @@ public sealed class YamlConfigLoaderDependentSchemasTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry).ConfigureAwait(false));
 
         Assert.Multiple(() =>
         {
@@ -220,7 +220,7 @@ public sealed class YamlConfigLoaderDependentSchemasTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry).ConfigureAwait(false));
 
         Assert.Multiple(() =>
         {
@@ -264,7 +264,7 @@ public sealed class YamlConfigLoaderDependentSchemasTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry).ConfigureAwait(false));
 
         Assert.Multiple(() =>
         {
@@ -283,7 +283,10 @@ public sealed class YamlConfigLoaderDependentSchemasTests
     /// <param name="content">要写入的 YAML 或 schema 内容。</param>
     private void CreateConfigFile(string relativePath, string content)
     {
-        ArgumentNullException.ThrowIfNull(_rootPath);
+        if (_rootPath is null)
+        {
+            throw new InvalidOperationException("Root path is not initialized.");
+        }
 
         var filePath = Path.Combine(_rootPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
         var directoryPath = Path.GetDirectoryName(filePath);
@@ -353,7 +356,10 @@ public sealed class YamlConfigLoaderDependentSchemasTests
     /// <returns>已注册测试表与 schema 路径的加载器。</returns>
     private YamlConfigLoader CreateMonsterRewardLoader()
     {
-        ArgumentNullException.ThrowIfNull(_rootPath);
+        if (_rootPath is null)
+        {
+            throw new InvalidOperationException("Root path is not initialized.");
+        }
 
         return new YamlConfigLoader(_rootPath)
             .RegisterTable<int, MonsterDependentSchemasConfigStub>(

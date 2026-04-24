@@ -38,12 +38,12 @@ public class PersistenceTests
         using var storage = new FileStorage(root, new JsonSerializer(), ".json");
 
         var saved = new TestSimpleData { Value = 5 };
-        await storage.WriteAsync("folder/item", saved);
+        await storage.WriteAsync("folder/item", saved).ConfigureAwait(false);
 
-        var loaded = await storage.ReadAsync<TestSimpleData>("folder/item");
+        var loaded = await storage.ReadAsync<TestSimpleData>("folder/item").ConfigureAwait(false);
         Assert.That(loaded.Value, Is.EqualTo(saved.Value));
 
-        Assert.ThrowsAsync<ArgumentException>(async () => await storage.WriteAsync("../escape", new TestSimpleData()));
+        Assert.ThrowsAsync<ArgumentException>(async () => await storage.WriteAsync("../escape", new TestSimpleData()).ConfigureAwait(false));
     }
 
     /// <summary>
@@ -108,7 +108,7 @@ public class PersistenceTests
             .RegisterMigration(new TestSaveMigrationV2ToV3());
 
         var loaded = await repository.LoadAsync(1);
-        var persisted = await storage.ReadAsync<TestVersionedSaveData>("saves/slot_1/save");
+        var persisted = await storage.ReadAsync<TestVersionedSaveData>("saves/slot_1/save").ConfigureAwait(false);
 
         Assert.Multiple(() =>
         {
@@ -185,7 +185,7 @@ public class PersistenceTests
         var repository = new SaveRepository<TestVersionedSaveData>(storage, config)
             .RegisterMigration(new TestSaveMigrationV1ToV2());
 
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await repository.LoadAsync(1));
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await repository.LoadAsync(1).ConfigureAwait(false));
         Assert.That(exception!.Message, Does.Contain("from version 2"));
     }
 
@@ -218,8 +218,8 @@ public class PersistenceTests
         var repository = new SaveRepository<TestVersionedSaveData>(storage, config)
             .RegisterMigration(new TestSaveMigrationV1ToV2ReturningV3());
 
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await repository.LoadAsync(1));
-        var persisted = await storage.ReadAsync<TestVersionedSaveData>("saves/slot_1/save");
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await repository.LoadAsync(1).ConfigureAwait(false));
+        var persisted = await storage.ReadAsync<TestVersionedSaveData>("saves/slot_1/save").ConfigureAwait(false);
 
         Assert.Multiple(() =>
         {
@@ -270,7 +270,7 @@ public class PersistenceTests
         repository.RegisterMigration(new TestSaveMigrationV2ToV3());
         continueMigration.Set();
 
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await loadTask);
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await loadTask.ConfigureAwait(false));
         var persisted = await storage.ReadAsync<TestVersionedSaveData>("saves/slot_1/save");
 
         Assert.Multiple(() =>
