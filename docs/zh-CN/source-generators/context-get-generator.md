@@ -1,3 +1,8 @@
+---
+title: Context Get 注入生成器
+description: 介绍 Context Get 注入生成器的能力、依赖前提与使用方式。
+---
+
 # Context Get 注入生成器
 
 > 自动注入架构组件，消除样板代码

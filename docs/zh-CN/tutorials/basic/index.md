@@ -1,3 +1,8 @@
+---
+title: 基础教程：从零开始使用 GFramework
+description: 从零开始串联环境准备、项目搭建与核心概念的基础教程入口。
+---
+
 # 基础教程：从零开始使用 GFramework
 
 欢迎来到 GFramework 的基础教程！本教程将带你从零开始，创建一个完整的计数器应用，逐步掌握 GFramework 的核心概念和最佳实践。

@@ -1,3 +1,8 @@
+---
+title: 常见问题（FAQ）
+description: 汇总 GFramework 在安装、架构、命令、事件与性能方面的常见问题。
+---
+
 # 常见问题（FAQ）
 
 ## 安装与配置

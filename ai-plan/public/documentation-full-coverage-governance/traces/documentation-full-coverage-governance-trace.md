@@ -2,6 +2,48 @@
 
 ## 2026-04-24
 
+### 当前恢复点：RP-025
+
+- 继续沿用 `$gframework-batch-boot 75`，基线保持 `origin/main`（`2de57f5`，`2026-04-23T23:03:40+08:00`）。
+- 本轮目标从“继续治理公开文档边界”切换为“清空 `docs/zh-CN` 中仍然完全缺 frontmatter 的页面，同时把触达页暴露的真实格式错误一并收口”。
+- 本轮执行的修复：
+  - 为 `best-practices`、`getting-started`、`source-generators`、`tutorials` 等目录下共 `22` 个页面补齐
+    `title` / `description` frontmatter
+  - 修复 `docs/zh-CN/best-practices/multiplayer.md` 末尾缺失的代码块闭合符
+  - 修复 `docs/zh-CN/source-generators/*.md` 与 `docs/zh-CN/troubleshooting.md` 中一组缺少 `.md` 后缀或目录索引写法不兼容当前 validator 的站内链接
+
+### 当前决策（RP-025）
+
+- 对文档批处理，优先选择“元数据缺口 + 顺手修复真实结构错误”的组合，而不扩成正文语义刷新或大规模 code fence language 治理。
+- 当 focused validator 暴露的是触达页上的真实错误（如坏链、未闭合代码块）时，同批次直接收口；仅把纯 warning 留给下一轮专门治理。
+- 本轮结束时，`docs/zh-CN` 已没有“完全缺 frontmatter”的页面；下一批最稳定的切片是 `docs/zh-CN/index.md` 与
+  `docs/zh-CN/tutorials/basic/01-07.md` 这 `8` 个“已有 frontmatter 但缺 `title` / `description`”的页面。
+- 当前已提交分支 diff 仍为 `39` 个文件；将本轮工作连同 tracking / trace 提交后，预计累计 branch diff 约为 `63`
+  个文件，仍低于 `$gframework-batch-boot 75` 的停止阈值。
+
+### 当前验证（RP-025）
+
+- frontmatter 缺口巡检：
+  - `for f in $(find docs/zh-CN -type f -name '*.md' | sort); do if ! head -n 5 "$f" | grep -q '^---$'; then echo "$f"; fi; done`
+  - 结果：本轮前命中 `22` 个页面，当前已全部补齐。
+- focused validator：
+  - 逐个校验本轮触达的 `22` 个页面
+  - 结果：通过；只剩 `best-practices/architecture-patterns.md`、`best-practices/index.md`、`contributing.md`、
+    `troubleshooting.md` 与 `tutorials/index.md` 的既有代码块语言 warning。
+- 站点构建：
+  - `bun run build`（工作目录：`docs/`）
+  - 结果：通过；仅保留既有大 chunk warning。
+- 后续候选扫描：
+  - `python3 - <<'PY' ...`（扫描已有 frontmatter 但缺 `title` / `description` 的页面）
+  - 结果：命中 `docs/zh-CN/index.md` 与 `docs/zh-CN/tutorials/basic/01-07.md` 共 `8` 个页面，可作为下一批 metadata 修复入口。
+
+### 下一步
+
+1. 继续执行 `$gframework-batch-boot 75` 时，优先补齐 `docs/zh-CN/index.md` 与 `tutorials/basic/01-07.md` 的
+   `title` / `description` 缺口。
+2. 若仍有余量，再按目录收口 `best-practices`、`contributing`、`troubleshooting`、`tutorials/index.md`
+   的代码块语言 warning，而不是跨全站混做。
+
 ### 当前恢复点：RP-024
 
 - 根据用户反馈，将本轮目标重定义为“清理公开文档中的治理盘点式内容，并把同类约束补进仓库规范与 doc-refresh skill”。

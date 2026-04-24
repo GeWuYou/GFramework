@@ -1,3 +1,8 @@
+---
+title: 最佳实践
+description: 汇总使用 GFramework 时的架构、性能、错误处理与多人游戏等实践建议。
+---
+
 # 最佳实践
 
 本文档总结了使用 GFramework 的最佳实践和设计模式。

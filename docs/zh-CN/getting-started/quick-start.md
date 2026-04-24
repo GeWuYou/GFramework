@@ -1,3 +1,8 @@
+---
+title: 快速开始
+description: 通过只依赖 Core 的最小示例快速跑通 GFramework 基础架构。
+---
+
 # 快速开始
 
 本页给出一个只依赖 `Core` 的最小路径，用来确认你已经成功接入 `Architecture`、`Model`、`System` 与旧版命令执行器。

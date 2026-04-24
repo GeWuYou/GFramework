@@ -12,11 +12,11 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`DOCUMENTATION-FULL-COVERAGE-GOV-RP-024`
+- 恢复点编号：`DOCUMENTATION-FULL-COVERAGE-GOV-RP-025`
 - 当前阶段：`Phase 5 - Governance Maintenance`
 - 当前焦点：
   - 保持 `README.md` 与 `docs/**` 公开页面只承载读者需要的采用信息，不再混入 XML inventory、覆盖基线、恢复点或治理批次说明
-  - 继续按 `$gframework-batch-boot 75` 的 `origin/main` 分支 diff 阈值做小批量文档治理，优先处理低风险公开文案与导航热点
+  - 继续按 `$gframework-batch-boot 75` 的 `origin/main` 分支 diff 阈值做小批量文档治理，优先处理低风险 metadata 缺口、坏链与 Markdown 结构问题
   - 保持 `Game` persistence docs surface 与当前 `README`、源码、`PersistenceTests` 使用同一套 owner / adoption path 叙述
   - 保持 `GFramework.Godot.SourceGenerators/README.md` 与 `docs/zh-CN/tutorials/godot-integration.md` 在生命周期接法上的一致性
   - 保持 active tracking / trace 只承载当前恢复入口，把阶段细节留在 `archive/`
@@ -84,6 +84,17 @@
     再次通过，仅保留既有大 chunk warning
 - 截至当前未提交工作树，`HEAD` 相对 `origin/main` 的累计 branch diff 仍为 `18` 个文件；新增待提交批次为 `21` 个文件、
   `126` changed lines，合并后仍显著低于 `$gframework-batch-boot 75` 的停止阈值。
+- `2026-04-24` 继续在同一 stop condition 下执行第三个低风险批次，集中清理 `docs/zh-CN` 其余“完全缺 frontmatter”的页面：
+  - 已为 `best-practices/*.md` 中缺口页、`contributing.md`、`faq.md`、`game/config-system.md`、
+    `getting-started/*.md`、`godot/coroutine.md`、6 个 `source-generators/*.md`、`troubleshooting.md`、
+    `tutorials/advanced-patterns.md`、`tutorials/basic/index.md` 与 `tutorials/index.md` 补齐 frontmatter
+  - 在同批次内修复 `best-practices/multiplayer.md` 的未闭合代码块、`source-generators/*.md` 中缺少 `.md`
+    后缀的相对链接，以及 `troubleshooting.md` 里 3 处目录索引死链
+  - 当前 `docs/zh-CN` 已不存在“完全缺 frontmatter”的页面；剩余 metadata 热点只剩
+    `docs/zh-CN/index.md` 与 `docs/zh-CN/tutorials/basic/01-07.md` 共 `8` 个“已有 frontmatter 但缺 title /
+    description”的页面
+  - 本批次落地前，当前分支相对 `origin/main` 的累计 branch diff 为 `39` 个文件；连同本轮工作和 tracking / trace
+    更新后，预计提交后累计 diff 约为 `63` 个文件，仍低于 `$gframework-batch-boot 75` 的停止阈值
 
 ## 当前风险
 
@@ -126,6 +137,11 @@
     `core/state-management.md` 的 4 处站内坏链；剩余仅为既有代码块语言 warning，不影响任务级通过。
 - `2026-04-24` `bun run build`（工作目录：`docs/`，第二次）
   - 结果：通过；frontmatter 与坏链修复后站点仍可正常构建，仅保留既有大 chunk warning。
+- `2026-04-24` focused validator（逐个校验第三批触达的 `22` 个页面）
+  - 结果：通过；frontmatter、真实坏链与未闭合代码块问题均已修复，剩余仅为 `best-practices/architecture-patterns.md`、
+    `best-practices/index.md`、`contributing.md`、`troubleshooting.md` 与 `tutorials/index.md` 的既有代码块语言 warning。
+- `2026-04-24` `bun run build`（工作目录：`docs/`，第三次）
+  - 结果：通过；第三批 frontmatter 与链接修复后站点仍可正常构建，仅保留既有大 chunk warning。
 - `2026-04-23` `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --format json --json-output /tmp/current-pr-review.json`
   - 结果：通过；PR `#272` 处于 `OPEN`，latest head commit 存在 1 条 Greptile open thread，定位到
     `docs/zh-CN/godot/setting.md:75` 的 inline code HTML entity 渲染问题。
@@ -146,7 +162,8 @@
 
 ## 下一步
 
-1. 若继续执行 `$gframework-batch-boot 75`，优先改做代码块语言标记、少量残余坏链与其他栏目历史 frontmatter 缺口的分目录批次修复。
+1. 若继续执行 `$gframework-batch-boot 75`，优先处理 `docs/zh-CN/index.md` 与 `tutorials/basic/01-07.md` 这 `8`
+   个“已有 frontmatter 但缺 `title` / `description`”的 metadata 缺口。
 2. 若后续继续扩展批处理 skill，可考虑再补充显式单位写法，例如 `75 files 2000 lines`，但当前默认速记已足够覆盖
    常见分支阈值场景。
 3. 若后续分支继续调整 `Game` persistence runtime、README 或公共 API，优先复核 `docs/zh-CN/game/data.md`、

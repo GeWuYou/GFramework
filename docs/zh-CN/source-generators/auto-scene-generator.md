@@ -1,3 +1,8 @@
+---
+title: AutoScene 生成器
+description: 介绍 AutoScene 生成器如何生成场景包装入口与统一场景键声明。
+---
+
 # AutoScene 生成器
 
 > 为场景根节点生成 `GetScene()` 样板，统一场景键声明与行为包装。
@@ -116,5 +121,5 @@ partial class GameplayRoot
 
 ## 相关文档
 
-- [源码生成器总览](./index)
-- [AutoUiPage 生成器](./auto-ui-page-generator)
+- [源码生成器总览](./index.md)
+- [AutoUiPage 生成器](./auto-ui-page-generator.md)

@@ -1,3 +1,8 @@
+---
+title: 日志生成器
+description: 介绍日志生成器如何为标记类型生成 ILogger 字段并减少日志样板。
+---
+
 # 日志生成器
 
 > GFramework.Core.SourceGenerators 自动生成日志代码，减少样板代码
@@ -336,6 +341,6 @@ public static partial class StaticHelper
 
 **相关文档**：
 
-- [Source Generators 概述](./index)
-- [枚举扩展生成器](./enum-generator)
-- [ContextAware 生成器](./context-aware-generator)
+- [Source Generators 概述](./index.md)
+- [枚举扩展生成器](./enum-generator.md)
+- [ContextAware 生成器](./context-aware-generator.md)
