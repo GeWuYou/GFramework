@@ -75,7 +75,7 @@ XML 注释。这里先保留阅读基线，成员级 ``<param>`` / ``<returns>``
 | `Logging/` `Localization/` `Configuration/` `Environment/` `Ioc/` | `31/31` 个类型声明已带 XML 注释 | `ConsoleLogger`、`LocalizationManager`、`ConfigurationManager`、`DefaultEnvironment`、`MicrosoftDiContainer` |
 | `Model/` `Systems/` `Utility/` `Rule/` `Extensions/` `Functional/` | `34/34` 个类型声明已带 XML 注释 | `AbstractModel`、`AbstractSystem`、`NumericDisplayFormatter`、`ContextAwareBase`、`Result<T>` |
 
-完整的模块化阅读顺序和 inventory 说明见 [Core 栏目](../docs/zh-CN/core/index.md)。
+完整的模块化接入说明和阅读顺序见 [Core 栏目](../docs/zh-CN/core/index.md)。
 
 ## 最小接入路径
 

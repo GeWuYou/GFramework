@@ -2,25 +2,25 @@
 
 ## 2026-04-24
 
-### 当前恢复点：RP-029
+### 当前恢复点：RP-030
 
-- 以 `origin/main`（`a8447a6`，`2026-04-24T12:53:39+08:00`）为 `$gframework-batch-boot 75` baseline，确认 `RP-028` 提交后的当前分支累计 diff 为 `29` 个文件。
-- 选择“README 与落地页 reader-facing 文档入口对齐”作为本批次低风险切片，集中处理模块 README、仓库根 README、`docs/index.md` 与多组中文落地页中的裸路径标签和 code span 文档入口。
-- 本批次修改了 `29` 个 README / docs 页面，并补充了 `2` 个 `ai-plan` 入口更新。
+- 当前 follow-up 聚焦 `$gframework-pr-review` 在 PR `#284` 上仍然成立的 review 项，只处理公开 README 的 reader-facing 文案与 active tracking 精简问题。
+- 以 `origin/main`（`a8447a6`，`2026-04-24T12:53:39+08:00`）为 `$gframework-batch-boot 75` baseline，当前分支 cumulative diff 已接近 stop condition，应继续把 write set 控制在小批次范围内。
+- 本批次计划修改 `3` 个 README 与 `2` 个 `ai-plan` 入口文件，避免再次扩张到跨模块文档面。
 
-### 当前决策（RP-029）
+### 当前决策（RP-030）
 
-- 当 branch diff 接近 `58 / 75` 时，继续批量推进的前提应变成“每批只有很小的 write set 且收益明确”；否则优先停在当前恢复点，保留 reviewability。
-- README 与 landing page 的 reader-facing 入口应优先显示模块名、栏目名或功能名，而不是直接暴露仓库路径。
-- `docs/index.md` 作为语言落地页，即使主要依赖脚本跳转，也应保留明确的 `title` / `description` metadata，避免站点入口缺失基础说明。
+- 当 branch diff 已接近 `$gframework-batch-boot 75` 的阈值时，PR follow-up 只继续收口最新 head commit 上仍未消失、且能在本地验证成立的 review 线程。
+- 公开 README 不再使用 `inventory` 这类治理语境，也不把贡献指引缩窄到单一入口页；文案应明确“受影响页面”与“接入说明/阅读顺序”。
+- active tracking 需要保留恢复点与风险信息，但不再保留完整 commit SHA、精确时间戳与拆分式文件计数这类过细基线指标。
 
-### 当前验证（RP-029）
+### 当前验证（RP-030）
 
-- 站点构建：
-  - `bun run build`（工作目录：`docs/`）
-  - 结果：通过；模块 README、中文落地页 reader-facing 文档入口对齐，以及 `docs/index.md` metadata 调整后站点仍可正常构建，仅保留既有大 chunk warning。
+- PR review 抓取：
+  - `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output /tmp/current-pr-review.json`
+  - 结果：通过；PR `#284` 处于 `OPEN`，latest head commit `77540c07f0890cc05b10a849722c87b8bed8f561` 仍有 `3` 条 CodeRabbit 与 `1` 条 Greptile open thread，测试汇总为 `2156 passed`，仅剩 `Title check` 的 inconclusive PR 元数据提示。
 - 当前 stop-condition metric：
-  - 本批次 write set 为 `31` 个文件（`29` 个 README / docs 页面 + `2` 个 `ai-plan` 入口）；本批次提交后分支 diff 为 `58 / 75` 个 changed files。
+  - 分支 cumulative diff 已接近 `58 / 75`；本轮 follow-up 继续限制在 `3` 个 README 与 `2` 个 `ai-plan` 入口文件内。
 
 ### 归档指针
 
@@ -32,5 +32,5 @@
 
 ### 下一步
 
-1. 若继续执行 `$gframework-batch-boot 75`，优先选择 `5` 到 `10` 个文件以内的小批次，例如剩余零散的 README 路径引用或单页 reader-facing 标签修正。
-2. 推送本批次 commit 后，再次执行 `$gframework-pr-review`，确认 PR `#282` 的 unresolved review threads 是否已在新 head commit 上消失。
+1. 推送本批次 commit 后，再次执行 `$gframework-pr-review`，确认 PR `#284` 的 unresolved review threads 是否已在新 head commit 上消失。
+2. 若继续执行 `$gframework-batch-boot 75`，优先选择 `5` 到 `10` 个文件以内的小批次，例如剩余零散的 README reader-facing 文案修正。

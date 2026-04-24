@@ -25,9 +25,9 @@
 ## 当前状态摘要
 
 - `Core`、`Ecs.Arch`、`Cqrs`、`Game`、`Godot` 五个模块族当前都已有 README / landing / topic / API 参考层级的已验证入口。
-- `2026-04-24` 以 `origin/main`（`a8447a6`，`2026-04-24T12:53:39+08:00`）为 batch baseline 时，当前分支累计 diff 在 `RP-028` 提交后为 `29` 个文件；本批 write set 额外覆盖 `31` 个文件（`29` 个 README / docs 页面 + `2` 个 `ai-plan` 入口），提交后分支 diff 为 `58 / 75` 个 changed files。
-- `2026-04-24` 使用 `$gframework-pr-review` 抓取 PR `#282` 后，确认 latest head commit
-  `982249151ecf8acdff3e62e664034bf95dfacd75` 当前仍有 `3` 条 CodeRabbit 与 `1` 条 Greptile open thread；4 条建议均已在本地复核并纳入当前恢复点。
+- `2026-04-24` 当前分支累计 diff 已接近 `$gframework-batch-boot 75` 的 stop condition（约 `58 / 75` 个 changed files）；后续 follow-up 应继续保持小 write set，只处理仍然成立的 PR review 项。
+- `2026-04-24` 使用 `$gframework-pr-review` 抓取当前 PR `#284` 后，确认 latest head commit
+  `77540c07f0890cc05b10a849722c87b8bed8f561` 仍有 `3` 条 CodeRabbit 与 `1` 条 Greptile open thread；本轮仅继续收口本地复核后仍成立的 reader-facing 文档入口与 active tracking 精简问题。
 - 本轮 PR follow-up 仅收口仍然成立的 review 项：
   - 将过长的 active tracking / trace 瘦身，并把 `RP-023` 到 `RP-025` 的细节迁入 `archive/`
   - 将 `docs/zh-CN/core/context.md` 的标题本地化为中文读者友好的写法
@@ -66,8 +66,8 @@
 
 ## 最新验证
 
-- `2026-04-24` `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --format json --json-output /tmp/current-pr-review.json`
-  - 结果：通过；PR `#282` 处于 `OPEN`，latest head commit 有 `3` 条 CodeRabbit 与 `1` 条 Greptile open thread，测试汇总为 `2156 passed`，仅剩 `Title check` 的 inconclusive PR 元数据提示。
+- `2026-04-24` `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output /tmp/current-pr-review.json`
+  - 结果：通过；PR `#284` 处于 `OPEN`，latest head commit `77540c07f0890cc05b10a849722c87b8bed8f561` 有 `3` 条 CodeRabbit 与 `1` 条 Greptile open thread，测试汇总为 `2156 passed`，仅剩 `Title check` 的 inconclusive PR 元数据提示。
 - `2026-04-24` `rg -n --pcre2 '\\]\\(/zh-CN/[^)]+(?<!\\.md)\\)' docs/zh-CN/troubleshooting.md`
   - 结果：当前无命中；`/zh-CN/core/architecture` 与 `/zh-CN/faq` 已统一补成显式 `.md` 链接。
 - `2026-04-24` `bun run build`（工作目录：`docs/`）
@@ -85,8 +85,8 @@
 
 ## 下一步
 
-1. 当前分支达到 `58 / 75` 个 changed files 后，若继续执行 `$gframework-batch-boot 75`，应优先选择 `5` 到 `10` 个文件以内的小批次，避免显著降低 reviewability。
-2. 推送当前批次 commit 后，再次执行 `$gframework-pr-review`，确认 PR `#282` 的 unresolved review threads 是否已在新 head commit 上消失。
+1. 当前分支已接近 `$gframework-batch-boot 75` 的 stop condition；若继续执行后续批次，应优先选择 `5` 到 `10` 个文件以内的小批次，避免显著降低 reviewability。
+2. 推送当前批次 commit 后，再次执行 `$gframework-pr-review`，确认 PR `#284` 的 unresolved review threads 是否已在新 head commit 上消失。
 3. 若后续分支继续调整 `Game` persistence runtime、README 或公共 API，优先复核 `docs/zh-CN/game/data.md`、
    `storage.md`、`serialization.md`、`setting.md` 与 landing page 是否仍保持同一套职责边界。
 4. 若后续分支继续调整 `Godot` generator 接法，优先复核 `GFramework.Godot.SourceGenerators/README.md`、
