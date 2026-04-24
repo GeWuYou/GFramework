@@ -2,6 +2,37 @@
 
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-24 — RP-053
+
+### 阶段：`GFramework.Godot` / `GFramework.Godot.Tests` 小批次 warning 清理
+
+- 触发背景：
+  - 用户以 `$gframework-batch-boot 75` 要求继续按批次推进 analyzer warning reduction，并以 `origin/main` 作为累计分支 diff 基线
+  - 当前 worktree `fix/analyzer-warning-reduction-batch` 相对 `origin/main` 的已提交分支 diff 为 `0` 个文件，具备继续落一个低风险 warning batch 的空间
+  - solution-level `dotnet clean GFramework.sln -c Release` 仍在 `ValidateSolutionConfiguration` 阶段失败，因此本轮继续用直接 `dotnet build GFramework.sln -c Release` 建立热点观察值
+- 主线程实施：
+  - 运行 `dotnet build GFramework.sln -c Release`，确认当前整仓观测值为 `1122 warning(s)`，并从输出中挑选 `GFramework.Godot` 的小范围热点作为本轮批次
+  - 在 `GodotYamlConfigEnvironment.cs` 中按“普通文件系统 / Godot 路径”拆分目录枚举 helper，消除 `MA0051`
+  - 在 `AbstractArchitecture.cs` 与 `SceneBehaviorBase.cs` 中将必须保留 Godot 主线程上下文的 await 显式改为 `.ConfigureAwait(true)`，清理 `MA0004` 并把线程意图写入注释
+  - 在 `GFramework.Godot.Tests` 中补齐异步断言的 `.ConfigureAwait(false)`，并让 `RichTextMarkupTests` 的测试字典显式指定 `StringComparer.Ordinal`
+- 验证里程碑：
+  - `dotnet clean GFramework.sln -c Release`
+    - 结果：失败；停在 `ValidateSolutionConfiguration`，`0 Warning(s)`、`0 Error(s)`
+  - `dotnet build GFramework.sln -c Release`
+    - 结果：成功；`1122 Warning(s)`、`0 Error(s)`
+  - `dotnet build GFramework.Godot/GFramework.Godot.csproj -c Release`
+    - 第一轮修复后：成功；`12 Warning(s)`、`0 Error(s)`，仅剩 `MA0004`
+    - 第二轮修复后：成功；`0 Warning(s)`、`0 Error(s)`
+  - `dotnet test GFramework.Godot.Tests/GFramework.Godot.Tests.csproj -c Release --filter "FullyQualifiedName~AbstractArchitectureModuleInstallationTests|FullyQualifiedName~GodotYamlConfigLoaderTests|FullyQualifiedName~RichTextMarkupTests"`
+    - 结果：成功；`Passed: 15`、`Failed: 0`
+  - `dotnet build GFramework.Godot.Tests/GFramework.Godot.Tests.csproj -c Release`
+    - 并行验证时：成功；`1 Warning(s)`、`0 Error(s)`；`MSB3026` 为与并行 `dotnet test` 竞争输出 DLL 的文件占用
+    - 串行复验：成功；`0 Warning(s)`、`0 Error(s)`
+- 当前结论：
+  - `GFramework.Godot` 与 `GFramework.Godot.Tests` 本轮直接涉及的 warning 已全部清零
+  - 当前待提交代码批次相对 `origin/main` 的源码 diff 为 `6` 个文件、`107` 行，距离 `$gframework-batch-boot 75` 主停止阈值仍有充足余量
+  - 继续推进的下一批候选将主要落在 `GFramework.Game` 等高 warning 基线模块，已不再属于当前同等级低风险切片，因此本轮在这里收口并进入提交
+
 ## 2026-04-24 — RP-052
 
 ### 阶段：PR review follow-up（comparer 契约 + `ConfigureAwait(false)` 收尾）

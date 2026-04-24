@@ -104,41 +104,36 @@ internal sealed class GodotYamlConfigEnvironment
 
     private static IReadOnlyList<GodotYamlConfigDirectoryEntry>? EnumerateDirectoryCore(string path)
     {
-        if (!path.IsGodotPath())
+        return path.IsGodotPath()
+            ? EnumerateGodotDirectory(path)
+            : EnumerateFileSystemDirectory(path);
+    }
+
+    private static IReadOnlyList<GodotYamlConfigDirectoryEntry>? EnumerateFileSystemDirectory(string path)
+    {
+        try
         {
-            try
+            if (!Directory.Exists(path))
             {
-                if (!Directory.Exists(path))
-                {
-                    return null;
-                }
+                return null;
+            }
 
-                return Directory
-                    .EnumerateFileSystemEntries(path, "*", SearchOption.TopDirectoryOnly)
-                    .Select(static entryPath => new GodotYamlConfigDirectoryEntry(
-                        Path.GetFileName(entryPath),
-                        Directory.Exists(entryPath)))
-                    .ToArray();
-            }
-            catch (IOException)
-            {
-                // 非 Godot 路径分支与公开契约保持一致：宿主无法访问目录时返回 null，而不是泄漏底层异常。
-                return null;
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return null;
-            }
-            catch (ArgumentException)
-            {
-                return null;
-            }
-            catch (NotSupportedException)
-            {
-                return null;
-            }
+            return Directory
+                .EnumerateFileSystemEntries(path, "*", SearchOption.TopDirectoryOnly)
+                .Select(static entryPath => new GodotYamlConfigDirectoryEntry(
+                    Path.GetFileName(entryPath),
+                    Directory.Exists(entryPath)))
+                .ToArray();
         }
+        catch (Exception ex) when (IsExpectedDirectoryEnumerationException(ex))
+        {
+            // 非 Godot 路径分支与公开契约保持一致：宿主无法访问目录时返回 null，而不是泄漏底层异常。
+            return null;
+        }
+    }
 
+    private static IReadOnlyList<GodotYamlConfigDirectoryEntry>? EnumerateGodotDirectory(string path)
+    {
         using var directory = DirAccess.Open(path);
         if (directory == null)
         {
@@ -170,7 +165,13 @@ internal sealed class GodotYamlConfigEnvironment
             // 目录枚举句柄必须成对结束，避免未来循环体扩展后在异常路径上遗留引擎状态。
             directory.ListDirEnd();
         }
+
         return entries;
+    }
+
+    private static bool IsExpectedDirectoryEnumerationException(Exception exception)
+    {
+        return exception is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException;
     }
 
     private static bool FileExistsCore(string path)

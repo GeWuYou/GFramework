@@ -112,8 +112,8 @@ public abstract class AbstractArchitecture(
         // 在附加流程完成前先登记模块，保证后续任一步失败时仍能参与架构销毁阶段的清理。
         _extensions.Add(module);
 
-        // 等待锚点准备就绪，并保持 Godot 同步上下文，以便后续附加逻辑安全访问节点 API。
-        await anchor.WaitUntilReadyAsync();
+        // 显式保留 Godot 同步上下文，确保后续 AddChild 和 OnAttach 仍在节点可访问的主线程执行。
+        await anchor.WaitUntilReadyAsync().ConfigureAwait(true);
 
         // 延迟调用将扩展节点添加为锚点的子节点
         anchor.CallDeferred(Node.MethodName.AddChild, module.Node);

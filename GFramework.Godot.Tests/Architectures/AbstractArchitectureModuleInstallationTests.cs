@@ -20,7 +20,7 @@ public sealed class AbstractArchitectureModuleInstallationTests
         var module = new RecordingGodotModule();
 
         var exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await architecture.InstallGodotModuleForTestAsync(module));
+            await architecture.InstallGodotModuleForTestAsync(module).ConfigureAwait(false));
 
         Assert.Multiple(() =>
         {
