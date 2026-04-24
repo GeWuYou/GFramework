@@ -8,7 +8,7 @@
         <Copyright>Copyright © 2025</Copyright>
         <RepositoryUrl>https://github.com/GeWuYou/GFramework</RepositoryUrl>
         <PackageProjectUrl>https://github.com/GeWuYou/GFramework</PackageProjectUrl>
-        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
         <PackageTags>game;framework</PackageTags>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <PublishRepositoryUrl>true</PublishRepositoryUrl>
@@ -16,6 +16,7 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
         <IncludeBuildOutput>false</IncludeBuildOutput>
+        <EnableNETAnalyzers>true</EnableNETAnalyzers>
         <!-- This package is a pure meta-package that only aggregates dependencies. -->
         <NoPackageAnalysis>false</NoPackageAnalysis>
     </PropertyGroup>
