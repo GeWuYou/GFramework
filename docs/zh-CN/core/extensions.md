@@ -1,3 +1,8 @@
+---
+title: Extensions 包使用说明
+description: 说明 GFramework.Core.Extensions 常用扩展方法的分类、用途与访问入口。
+---
+
 # Extensions 包使用说明
 
 ## 概述

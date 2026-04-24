@@ -1,3 +1,8 @@
+---
+title: 函数式编程指南
+description: 说明 GFramework.Core 的 Option、Result 与函数式工具在业务代码中的用法。
+---
+
 # 函数式编程指南
 
 ## 概述

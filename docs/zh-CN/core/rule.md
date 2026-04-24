@@ -1,3 +1,8 @@
+---
+title: Rule 包使用说明
+description: 说明 GFramework.Core.Rule 中 IContextAware 规则接口与上下文访问约定。
+---
+
 # Rule 包使用说明
 
 ## 概述

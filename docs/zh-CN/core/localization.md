@@ -1,3 +1,8 @@
+---
+title: Localization 本地化系统
+description: 说明 GFramework.Core 本地化系统的核心接口、语言切换能力与使用场景。
+---
+
 # Localization 本地化系统
 
 ## 概述

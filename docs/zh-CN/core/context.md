@@ -1,3 +1,8 @@
+---
+title: Context
+description: 说明 IArchitectureContext 与 ArchitectureContext 的统一上下文入口和当前推荐用法。
+---
+
 # Context
 
 `IArchitectureContext` 是框架的统一上下文入口。

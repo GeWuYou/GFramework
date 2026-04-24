@@ -1,3 +1,8 @@
+---
+title: 对象池系统 (Object Pool System)
+description: 说明 GFramework.Core 对象池系统的核心组件、池化策略与生命周期管理。
+---
+
 # 对象池系统 (Object Pool System)
 
 ## 概述

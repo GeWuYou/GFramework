@@ -25,6 +25,8 @@
 - `$gframework-batch-boot 75` 的基线采用 `origin/main`（`2de57f5`，`2026-04-23T23:03:40+08:00`）。
 - 由于当前 `HEAD` 仍与 `origin/main` 对齐，分支级 diff 暂时仍为 `0`；提交前工作树待提交范围为 `16` 个文件、
   `224` changed lines，因此本轮仍远低于 `75` 文件阈值。
+- 在完成“公开文档边界”收口后，继续沿同一阈值推进一个新的低风险批次：为 `docs/zh-CN/core/*.md` 历史页面补齐 frontmatter。
+- 当 validator 因本轮触达页面暴露真实坏链时，直接在同批次内修复；当只剩历史 warning（如缺少代码块语言标记）时，本轮停止扩张。
 
 ### 当前验证（RP-024）
 
@@ -44,11 +46,23 @@
 - 站点构建：
   - `bun run build`（工作目录：`docs/`）
   - 结果：通过；仅保留既有大 chunk warning。
+- `core` frontmatter 波次：
+  - 已补齐 `docs/zh-CN/core/*.md` 中 `21` 个历史页面的 frontmatter。
+  - 过程中修复 `docs/zh-CN/core/ioc.md` 的 `ReaderWriterLockSlim` 坏链，以及
+    `docs/zh-CN/core/state-management.md` 的 4 处缺少 `.md` 后缀的站内链接。
+  - `python3 - <<'PY' ...` 检查结果为 `ALL_HAVE_FRONTMATTER`，说明 `docs/zh-CN/core/` 目录当前已无 frontmatter 缺口。
+  - focused validator 对这 `21` 个页面全部通过；剩余输出仅为既有代码块语言 warning。
+  - `bun run build` 在修复后再次通过。
+- 当前阈值状态：
+  - `git diff --name-only origin/main...HEAD | wc -l` => `18`
+  - `git diff --name-only | wc -l` => `21`
+  - `git diff --numstat` 汇总 => `126` changed lines
+  - 结论：当前已提交分支 diff 仍为 `18` 个文件，待提交新批次再增加 `21` 个文件；即使提交后也仍低于 `75` 文件阈值。
 
 ### 下一步
 
-1. 继续执行 `$gframework-batch-boot 75` 时，优先排查少量公开页里的内部工程术语残留、标题锚点和站内链接热点。
-2. 若后续需要大范围补 frontmatter / code fence language，应单独开一个新的低风险文档治理批次，而不是混入模块语义刷新。
+1. 继续执行 `$gframework-batch-boot 75` 时，优先按目录做历史 frontmatter / code fence language / 坏链修复，而不是把不同风格的文档语义刷新混成一批。
+2. 当前批次在 `core` 目录已经不再是“同样机械”的模式，后续若继续应转向其他目录或专门做代码块语言标记治理。
 
 ## 2026-04-23
 

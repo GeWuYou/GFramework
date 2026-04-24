@@ -73,6 +73,17 @@
     已通过，仅保留既有大 chunk warning
 - 当前分支 `HEAD` 仍与 `origin/main`（`2de57f5`，`2026-04-23T23:03:40+08:00`）对齐；在提交本轮工作前，
   工作树待提交范围为 `16` 个文件、`224` changed lines，距离 `$gframework-batch-boot 75` 的停止阈值仍很远。
+- `2026-04-24` 继续在同一 stop condition 下执行第二个低风险批次，集中修复 `docs/zh-CN/core/*.md` 的历史 frontmatter 缺口：
+  - 已为 `architecture.md`、`async-initialization.md`、`command.md`、`configuration.md`、`context.md`、
+    `environment.md`、`events.md`、`extensions.md`、`functional.md`、`ioc.md`、`localization.md`、
+    `logging.md`、`model.md`、`pause.md`、`pool.md`、`property.md`、`query.md`、`rule.md`、
+    `state-management.md`、`system.md`、`utility.md` 补齐 frontmatter
+  - 顺手修复 `core/ioc.md` 的 `xref:System.Threading.ReaderWriterLockSlim` 坏链，以及
+    `core/state-management.md` 中 4 处缺少 `.md` 后缀的站内链接
+  - 当前 `docs/zh-CN/core/*.md` 已全部具备 frontmatter；focused validator 对这 `21` 个页面全部通过，`bun run build`
+    再次通过，仅保留既有大 chunk warning
+- 截至当前未提交工作树，`HEAD` 相对 `origin/main` 的累计 branch diff 仍为 `18` 个文件；新增待提交批次为 `21` 个文件、
+  `126` changed lines，合并后仍显著低于 `$gframework-batch-boot 75` 的停止阈值。
 
 ## 当前风险
 
@@ -108,6 +119,13 @@
     `source-generators/get-node-generator.md` 的 frontmatter / links / code blocks 全部通过。
 - `2026-04-24` `bun run build`（工作目录：`docs/`）
   - 结果：通过；仅保留既有大 chunk warning。
+- `2026-04-24` `python3 - <<'PY' ...`（检查 `docs/zh-CN/core/*.md` frontmatter）
+  - 结果：通过；`docs/zh-CN/core/` 当前所有 Markdown 页面均已带 frontmatter。
+- `2026-04-24` focused validator（逐个校验 `docs/zh-CN/core/*.md` 的 `21` 个页面）
+  - 结果：通过；过程中暴露并已修复 `core/ioc.md` 的 `ReaderWriterLockSlim` 坏链与
+    `core/state-management.md` 的 4 处站内坏链；剩余仅为既有代码块语言 warning，不影响任务级通过。
+- `2026-04-24` `bun run build`（工作目录：`docs/`，第二次）
+  - 结果：通过；frontmatter 与坏链修复后站点仍可正常构建，仅保留既有大 chunk warning。
 - `2026-04-23` `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --format json --json-output /tmp/current-pr-review.json`
   - 结果：通过；PR `#272` 处于 `OPEN`，latest head commit 存在 1 条 Greptile open thread，定位到
     `docs/zh-CN/godot/setting.md:75` 的 inline code HTML entity 渲染问题。
@@ -128,7 +146,7 @@
 
 ## 下一步
 
-1. 若继续执行 `$gframework-batch-boot 75`，优先改做标题锚点、站内链接和少量内部术语残留的逐页复核，而不是回到大范围模板化替换。
+1. 若继续执行 `$gframework-batch-boot 75`，优先改做代码块语言标记、少量残余坏链与其他栏目历史 frontmatter 缺口的分目录批次修复。
 2. 若后续继续扩展批处理 skill，可考虑再补充显式单位写法，例如 `75 files 2000 lines`，但当前默认速记已足够覆盖
    常见分支阈值场景。
 3. 若后续分支继续调整 `Game` persistence runtime、README 或公共 API，优先复核 `docs/zh-CN/game/data.md`、
