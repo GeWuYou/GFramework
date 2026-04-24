@@ -2053,11 +2053,11 @@ public class MyLoader : IResourceLoader
 如果问题仍未解决：
 
 1. 查看 [Core 文档](/zh-CN/core/index.md) 了解更多细节
-2. 查看 [架构组件](/zh-CN/core/architecture) 了解架构设计
+2. 查看 [架构组件](/zh-CN/core/architecture.md) 了解架构设计
 3. 查看 [Godot 集成](/zh-CN/godot/index.md) 了解 Godot 特定问题
 4. 在 [GitHub Issues](https://github.com/GeWuYou/GFramework/issues) 提交问题
 5. 查看 [教程](/zh-CN/tutorials/index.md) 中的示例代码
-6. 查看 [常见问题](/zh-CN/faq) 获取快速答案
+6. 查看 [常见问题](/zh-CN/faq.md) 获取快速答案
 
 ---
 
