@@ -39,8 +39,8 @@
 
 | 目录 | 定位 | 跟随入口 |
 | --- | --- | --- |
-| `GFramework.Core.SourceGenerators.Abstractions` | `Core.SourceGenerators` 的内部契约层 | [GFramework.Core.SourceGenerators/README.md](GFramework.Core.SourceGenerators/README.md) |
-| `GFramework.Godot.SourceGenerators.Abstractions` | `Godot.SourceGenerators` 的内部契约层 | [GFramework.Godot.SourceGenerators/README.md](GFramework.Godot.SourceGenerators/README.md) |
+| `GFramework.Core.SourceGenerators.Abstractions` | `Core.SourceGenerators` 的内部契约层 | [Core.SourceGenerators 模块 README](GFramework.Core.SourceGenerators/README.md) |
+| `GFramework.Godot.SourceGenerators.Abstractions` | `Godot.SourceGenerators` 的内部契约层 | [Godot.SourceGenerators 模块 README](GFramework.Godot.SourceGenerators/README.md) |
 | `GFramework.SourceGenerators.Common` | 生成器家族共享的公共支撑代码 | [源码生成器总览](docs/zh-CN/source-generators/index.md) |
 
 ## 文档导航

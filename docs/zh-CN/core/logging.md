@@ -1,9 +1,9 @@
 ---
-title: Logging
+title: 日志（Logging）
 description: 说明 GFramework.Core.Logging 的日志接口、组合方式与常见使用入口。
 ---
 
-# Logging
+# 日志（Logging）
 
 `GFramework.Core.Logging` 是 Core runtime 的默认日志实现。只加载抽象层时，`LoggerFactoryResolver` 会退回
 silent provider；加载 `GFramework.Core` 或在 `ArchitectureConfiguration` 里显式提供 provider 后，日志才会

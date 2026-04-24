@@ -1,9 +1,9 @@
 ---
-title: Core
+title: Core 模块
 description: GFramework.Core 与 GFramework.Core.Abstractions 的运行时入口、采用顺序和源码阅读导航。
 ---
 
-# Core
+# Core 模块
 
 `Core` 栏目对应 `GFramework` 的基础运行时层，主要覆盖 `GFramework.Core` 与 `GFramework.Core.Abstractions`，以及与之直接相邻的旧版
 `Command` / `Query` 执行器和新版 `CQRS` 迁移入口。

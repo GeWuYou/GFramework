@@ -1,9 +1,9 @@
 ---
-title: Events
+title: 事件（Events）
 description: 说明 GFramework.Core.Events 的轻量广播模型、安装方式与常用事件入口。
 ---
 
-# Events
+# 事件（Events）
 
 `GFramework.Core.Events` 是架构内的轻量广播层。它适合表达“某件事已经发生”的运行时信号、模块间松耦合通知，
 以及为旧模块保留 `EventBus` 语义；如果你需要请求/响应、pipeline behavior 或 handler registry，优先使用
