@@ -2,6 +2,31 @@
 
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-24 — RP-058
+
+### 阶段：PR #286 latest-head review 格式跟进
+
+- 触发背景：
+  - 用户要求执行 `$gframework-pr-review`，需要以当前分支 PR 页面而不是本地记忆为准，重新核对 CodeRabbit、MegaLinter 和测试状态
+  - 抓取脚本当前解析到的 PR 是 `#286`，最新 reviewed commit 为 `2b707343577193fc9904517e6078149653e95698`
+  - 最新 head 上真正未解决的代码线程只剩 `GFramework.Godot/Scene/SceneBehaviorBase.cs:148` 的缩进问题；其余 nitpick 为可选建议或已留待后续批次
+- 主线程实施：
+  - 运行 `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output /tmp/current-pr-review.json`，确认 PR `OPEN`、测试 `2156/2156` 通过、MegaLinter 仅剩 `dotnet-format` 警告
+  - 复核 `SceneBehaviorBase.cs` 后确认 `OnPauseAsync` 的方法签名与方法体缩进异常仍存在于本地源码；同段的 `OnResumeAsync`、`OnUnloadAsync` 也有同类偏差
+  - 在不改变行为的前提下统一修正三个方法的缩进，保持现有 XML 注释、`ConfigureAwait(true)` 语义与 Godot 主线程说明不变
+  - 更新 active tracking / trace，记录当前 PR review follow-up 已完成，本地剩余外部信号只剩 PR 标题检查
+- 验证里程碑：
+  - `dotnet build GFramework.Godot/GFramework.Godot.csproj -c Release`
+    - 结果：成功；`565 Warning(s)`、`0 Error(s)`
+    - 结论：当前格式修复未引入编译错误；模块既有 warning 基线仍存在，但不属于本次 PR review 跟进范围
+  - `dotnet format GFramework.Godot/GFramework.Godot.csproj --verify-no-changes --no-restore --include GFramework.Godot/Scene/SceneBehaviorBase.cs`
+    - 首次运行：失败；sandbox 环境下在 build host / pipe 建立阶段报错，未进入真实格式比较
+    - 提权复验：成功；仅提示 workspace load warning，无格式差异
+- 当前结论：
+  - PR #286 当前 latest-head 上唯一未解决的实质代码 review thread 已在本地修复
+  - MegaLinter 暴露的 `dotnet-format` 问题已被本地 `verify-no-changes` 复验覆盖
+  - `Title check: Inconclusive` 仍然存在，但属于 GitHub PR 标题元数据问题，不能通过本地代码提交直接消除
+
 ## 2026-04-24 — RP-057
 
 ### 阶段：清理 `PersistenceTests.cs` 残余 `MA0004`

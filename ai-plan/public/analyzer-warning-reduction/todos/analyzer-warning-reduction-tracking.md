@@ -6,13 +6,13 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-057`
-- 当前阶段：`Phase 57`
+- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-058`
+- 当前阶段：`Phase 58`
 - 当前焦点：
-  - `2026-04-24` 本轮继续吃掉 `GFramework.Game.Tests` 中仍然独立且低风险的 `PersistenceTests.cs` 残余 `MA0004`
-  - 已补齐两个失败缓存一致性测试中的剩余 `.ConfigureAwait(false)`，使 `PersistenceTests.cs` 不再出现在非增量构建 warning 输出中
-  - 非增量 `dotnet build GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --no-incremental` 从 `253 Warning(s)` 进一步收敛到 `249 Warning(s)`，剩余热点几乎全部集中在 `YamlConfigLoaderTests.cs`
-  - 按当前工作树投影重新计算后，分支体积为 `27` 个文件、`991` 行，仍低于 `$gframework-batch-boot 75`
+  - `2026-04-24` 使用 `$gframework-pr-review` 复核当前分支 PR #286 的 latest-head review threads、MegaLinter 与测试状态
+  - 已确认最新 head 上唯一未解决的实质代码线程指向 `GFramework.Godot/Scene/SceneBehaviorBase.cs` 中 `OnPauseAsync` 的缩进异常，并顺带对齐 `OnResumeAsync`、`OnUnloadAsync`
+  - `dotnet build GFramework.Godot/GFramework.Godot.csproj -c Release` 通过，结果为 `565 Warning(s)`、`0 Error(s)`；当前跟进只处理 PR review 指向的格式问题，不扩散到既有 warning 基线
+  - `dotnet format GFramework.Godot/GFramework.Godot.csproj --verify-no-changes --no-restore --include GFramework.Godot/Scene/SceneBehaviorBase.cs` 已通过，当前文件不再残留格式差异
 
 ## 当前活跃事实
 
@@ -23,6 +23,11 @@
 - `RP-057` 已验证 `PersistenceTests.cs` 不再出现在 `dotnet build GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --no-incremental` 的 warning 输出中
 - 本轮已验证 `dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --filter "FullyQualifiedName~UnifiedSettingsDataRepository_SaveAsync_When_Persist_Fails_Should_Keep_Cache_Consistent|FullyQualifiedName~UnifiedSettingsDataRepository_DeleteAsync_When_Persist_Fails_Should_Keep_Cache_Consistent"`，结果为 `Passed: 2`
 - `GFramework.Game.Tests` 当前剩余热点已经几乎完全集中到 `YamlConfigLoaderTests.cs` 这一高上下文文件
+- PR #286 当前标题为 `Fix/analyzer warning reduction batch`；最新抓取时间点的 PR 状态仍为 `OPEN`
+- 最新 reviewed commit 为 `2b707343577193fc9904517e6078149653e95698`，CodeRabbit 于 `2026-04-24T12:44:12Z` 给出 `CHANGES_REQUESTED`
+- latest-head review threads 中只有 `1` 个未解决线程，内容是 `SceneBehaviorBase.OnPauseAsync` 的缩进不一致；本地源码已修复并扩展到同段的 `OnResumeAsync` / `OnUnloadAsync`
+- MegaLinter 的 `dotnet-format` 详细问题与上述格式异常一致；本地 `dotnet format --verify-no-changes` 已通过
+- PR 上其余 nitpick 仅为可选建议或已明确留待后续批次处理，当前没有额外需要立即修复的 latest-head 代码线程
 
 ## 当前风险
 
@@ -34,6 +39,8 @@
   - 缓解措施：提交当前批次时只暂存 analyzer-warning-reduction 相关源码与 `ai-plan` 文件，避免把工作目录辅助文件混入提交
 - 下一轮若继续深入 `GFramework.Game.Tests`，很可能需要进入 `YamlConfigLoaderTests.cs` 这种高上下文大文件
   - 缓解措施：把它单独作为一个明确的新批次处理，不与其它 warning family 混批
+- PR 标题检查当前仍显示 `Inconclusive`
+  - 缓解措施：如需让该检查转绿，需要单独更新 GitHub PR 标题；这不属于本地代码修改范围
 
 ## 活跃文档
 
@@ -67,8 +74,13 @@
   - 结果：成功；`Passed: 4`、`Failed: 0`
 - `dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --filter "FullyQualifiedName~UnifiedSettingsDataRepository_SaveAsync_When_Persist_Fails_Should_Keep_Cache_Consistent|FullyQualifiedName~UnifiedSettingsDataRepository_DeleteAsync_When_Persist_Fails_Should_Keep_Cache_Consistent"`
   - 结果：成功；`Passed: 2`、`Failed: 0`
+- `dotnet build GFramework.Godot/GFramework.Godot.csproj -c Release`
+  - 结果：成功；`565 Warning(s)`、`0 Error(s)`
+- `dotnet format GFramework.Godot/GFramework.Godot.csproj --verify-no-changes --no-restore --include GFramework.Godot/Scene/SceneBehaviorBase.cs`
+  - 首次运行：失败；restore 阶段异常退出，未进入格式验证
+  - 第二次运行（同命令追加 sandbox 提权）：成功；workspace 仅提示加载 warning，无格式差异
 
 ## 下一步建议
 
-1. 提交 `PersistenceTests.cs` 与 `RP-057` tracking/trace 更新，继续保持只纳入本 topic 相关文件
-2. 若继续 warning reduction，应把 `YamlConfigLoaderTests.cs` 视为独立的高上下文批次，不再与其它文件混批
+1. 提交 `SceneBehaviorBase.cs` 与 `RP-058` tracking/trace 更新，清掉 PR #286 当前 latest-head 上的格式类 review thread
+2. 若继续 warning reduction 主线，应回到 `GFramework.Game.Tests/Config/YamlConfigLoaderTests.cs`，把它作为独立高上下文批次处理

@@ -141,11 +141,11 @@ public abstract class SceneBehaviorBase<T> : ISceneBehavior
     ///     当场景被其他场景覆盖或失去焦点时调用。
     /// </summary>
     /// <returns>表示暂停操作完成的ValueTask。</returns>
-        public virtual async ValueTask OnPauseAsync()
-        {
-            if (_scene != null)
-                // 暂停后紧接着会修改 Owner 的处理开关，必须回到 Godot 主线程继续执行。
-                await _scene.OnPauseAsync().ConfigureAwait(true);
+    public virtual async ValueTask OnPauseAsync()
+    {
+        if (_scene != null)
+            // 暂停后紧接着会修改 Owner 的处理开关，必须回到 Godot 主线程继续执行。
+            await _scene.OnPauseAsync().ConfigureAwait(true);
 
         // 暂停处理
         Owner.SetProcess(false);
@@ -160,14 +160,14 @@ public abstract class SceneBehaviorBase<T> : ISceneBehavior
     ///     当场景重新获得焦点或从暂停状态恢复时调用。
     /// </summary>
     /// <returns>表示恢复操作完成的ValueTask。</returns>
-        public virtual async ValueTask OnResumeAsync()
-        {
-            if (Owner.IsInvalidNode())
-                return;
+    public virtual async ValueTask OnResumeAsync()
+    {
+        if (Owner.IsInvalidNode())
+            return;
 
-            if (_scene != null)
-                // 恢复完成后要立刻重新启用节点处理流程，因此显式保留当前同步上下文。
-                await _scene.OnResumeAsync().ConfigureAwait(true);
+        if (_scene != null)
+            // 恢复完成后要立刻重新启用节点处理流程，因此显式保留当前同步上下文。
+            await _scene.OnResumeAsync().ConfigureAwait(true);
 
         // 恢复处理
         Owner.SetProcess(true);
@@ -197,11 +197,11 @@ public abstract class SceneBehaviorBase<T> : ISceneBehavior
     ///     在场景完全退出后调用，释放占用的内存和资源。
     /// </summary>
     /// <returns>表示卸载操作完成的ValueTask。</returns>
-        public virtual async ValueTask OnUnloadAsync()
-        {
-            if (_scene != null)
-                // 卸载后的 QueueFreeX 必须在 Godot 节点线程上调用，不能切走同步上下文。
-                await _scene.OnUnloadAsync().ConfigureAwait(true);
+    public virtual async ValueTask OnUnloadAsync()
+    {
+        if (_scene != null)
+            // 卸载后的 QueueFreeX 必须在 Godot 节点线程上调用，不能切走同步上下文。
+            await _scene.OnUnloadAsync().ConfigureAwait(true);
 
         // 释放节点
         Owner.QueueFreeX();
