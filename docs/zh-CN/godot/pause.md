@@ -730,7 +730,7 @@ foreach (var reason in reasons)
 
 ## 相关文档
 
-- [Godot 架构集成](/zh-CN/godot/architecture) - Godot 架构基础
-- [Godot 场景系统](/zh-CN/godot/scene) - Godot 场景集成
-- [Godot UI 系统](/zh-CN/godot/ui) - Godot UI 集成
-- [Godot 扩展](/zh-CN/godot/extensions) - Godot 扩展方法
+- [Godot 架构集成](/zh-CN/godot/architecture.md) - Godot 架构基础
+- [Godot 场景系统](/zh-CN/godot/scene.md) - Godot 场景集成
+- [Godot UI 系统](/zh-CN/godot/ui.md) - Godot UI 集成
+- [Godot 扩展](/zh-CN/godot/extensions.md) - Godot 扩展方法

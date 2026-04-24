@@ -970,10 +970,10 @@ public class DeviceProfiler
 
 ## 相关文档
 
-- [资源管理系统](/zh-CN/core/resource) - 资源管理详细说明
-- [对象池系统](/zh-CN/core/pool) - 对象池优化
-- [协程系统](/zh-CN/core/coroutine) - 异步操作优化
-- [架构模式最佳实践](/zh-CN/best-practices/architecture-patterns) - 架构设计
+- [资源管理系统](/zh-CN/core/resource.md) - 资源管理详细说明
+- [对象池系统](/zh-CN/core/pool.md) - 对象池优化
+- [协程系统](/zh-CN/core/coroutine.md) - 异步操作优化
+- [架构模式最佳实践](/zh-CN/best-practices/architecture-patterns.md) - 架构设计
 
 ---
 

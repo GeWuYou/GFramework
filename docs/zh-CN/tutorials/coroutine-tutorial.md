@@ -188,5 +188,5 @@ BlinkCoroutine()
 
 ## 下一步
 
-- Core 侧更完整的 API 说明见 [Core 协程系统](/zh-CN/core/coroutine)
-- Godot 集成细节见 [Godot 协程系统](/zh-CN/godot/coroutine)
+- Core 侧更完整的 API 说明见 [Core 协程系统](/zh-CN/core/coroutine.md)
+- Godot 集成细节见 [Godot 协程系统](/zh-CN/godot/coroutine.md)

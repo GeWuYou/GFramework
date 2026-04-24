@@ -22,9 +22,9 @@ description: 从零开始使用 GFramework 构建一个完整的 Godot 游戏项
 - 已安装 .NET SDK 8.0+
 - 了解 C# 和 Godot 基础
 - 阅读过前面的教程：
-    - [使用协程系统](/zh-CN/tutorials/coroutine-tutorial)
-    - [实现状态机](/zh-CN/tutorials/state-machine-tutorial)
-    - [实现存档系统](/zh-CN/tutorials/save-system)
+    - [使用协程系统](/zh-CN/tutorials/coroutine-tutorial.md)
+    - [实现状态机](/zh-CN/tutorials/state-machine-tutorial.md)
+    - [实现存档系统](/zh-CN/tutorials/save-system.md)
 
 ## 项目概述
 
@@ -805,7 +805,7 @@ public partial class GameScene : Node2D, IController
 
 ## 相关文档
 
-- [Godot 架构集成](/zh-CN/godot/architecture) - 架构详细说明
-- [Godot 场景系统](/zh-CN/godot/scene) - 场景管理
-- [Godot UI 系统](/zh-CN/godot/ui) - UI 管理
-- [Godot 扩展](/zh-CN/godot/extensions) - 扩展功能
+- [Godot 架构集成](/zh-CN/godot/architecture.md) - 架构详细说明
+- [Godot 场景系统](/zh-CN/godot/scene.md) - 场景管理
+- [Godot UI 系统](/zh-CN/godot/ui.md) - UI 管理
+- [Godot 扩展](/zh-CN/godot/extensions.md) - 扩展功能

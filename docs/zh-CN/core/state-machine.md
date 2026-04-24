@@ -576,7 +576,7 @@ await stateMachine.GoBackAsync();
 
 ## 相关文档
 
-- [生命周期管理](/zh-CN/core/lifecycle) - 状态的初始化和销毁
-- [事件系统](/zh-CN/core/events) - 状态变更通知
-- [协程系统](/zh-CN/core/coroutine) - 异步状态操作
-- [状态机实现教程](/zh-CN/tutorials/state-machine-tutorial) - 完整示例
+- [生命周期管理](/zh-CN/core/lifecycle.md) - 状态的初始化和销毁
+- [事件系统](/zh-CN/core/events.md) - 状态变更通知
+- [协程系统](/zh-CN/core/coroutine.md) - 异步状态操作
+- [状态机实现教程](/zh-CN/tutorials/state-machine-tutorial.md) - 完整示例

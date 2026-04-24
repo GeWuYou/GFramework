@@ -22,8 +22,8 @@ description: 学习如何为 GFramework 项目编写单元测试
 - 已安装 .NET SDK 8.0 或更高版本
 - 了解 C# 基础语法
 - 熟悉 xUnit 或 NUnit 测试框架
-- 阅读过[快速开始](/zh-CN/getting-started/quick-start)
-- 了解[架构系统](/zh-CN/core/architecture)
+- 阅读过[快速开始](/zh-CN/getting-started/quick-start.md)
+- 了解[架构系统](/zh-CN/core/architecture.md)
 
 ## 步骤 1：创建测试项目
 
@@ -1143,5 +1143,5 @@ public void CalculateBonus_Should_Return_Double(int input, int expected)
 
 - [NUnit 官方文档](https://docs.nunit.org/)
 - [Moq 快速入门](https://github.com/moq/moq4/wiki/Quickstart)
-- [架构设计模式](/zh-CN/best-practices/architecture-patterns)
-- [性能优化最佳实践](/zh-CN/best-practices/performance)
+- [架构设计模式](/zh-CN/best-practices/architecture-patterns.md)
+- [性能优化最佳实践](/zh-CN/best-practices/performance.md)

@@ -20,8 +20,8 @@ description: 学习如何使用状态机系统管理游戏状态和场景切换
 
 - 已安装 GFramework.Core NuGet 包
 - 了解 C# 基础语法和 async/await
-- 阅读过[快速开始](/zh-CN/getting-started/quick-start)
-- 了解[生命周期管理](/zh-CN/core/lifecycle)
+- 阅读过[快速开始](/zh-CN/getting-started/quick-start.md)
+- 了解[生命周期管理](/zh-CN/core/lifecycle.md)
 
 ## 步骤 1：定义游戏状态
 
@@ -734,13 +734,13 @@ MyGame/
 
 恭喜！你已经掌握了状态机系统的使用。接下来可以学习：
 
-- [使用协程系统](/zh-CN/tutorials/coroutine-tutorial) - 在状态中使用协程
-- [资源管理最佳实践](/zh-CN/tutorials/resource-management) - 在加载状态中管理资源
-- [实现存档系统](/zh-CN/tutorials/save-system) - 保存和恢复游戏状态
+- [使用协程系统](/zh-CN/tutorials/coroutine-tutorial.md) - 在状态中使用协程
+- [资源管理最佳实践](/zh-CN/tutorials/resource-management.md) - 在加载状态中管理资源
+- [实现存档系统](/zh-CN/tutorials/save-system.md) - 保存和恢复游戏状态
 
 ## 相关文档
 
-- [状态机系统](/zh-CN/core/state-machine) - 状态机详细说明
-- [生命周期管理](/zh-CN/core/lifecycle) - 组件生命周期
-- [System 层](/zh-CN/core/system) - System 详细说明
-- [架构组件](/zh-CN/core/architecture) - 架构基础
+- [状态机系统](/zh-CN/core/state-machine.md) - 状态机详细说明
+- [生命周期管理](/zh-CN/core/lifecycle.md) - 组件生命周期
+- [System 层](/zh-CN/core/system.md) - System 详细说明
+- [架构组件](/zh-CN/core/architecture.md) - 架构基础

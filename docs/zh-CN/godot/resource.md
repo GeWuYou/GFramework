@@ -631,7 +631,7 @@ public class LazyResourceRepository<TKey, TResource>
 
 ## 相关文档
 
-- [数据与存档系统](/zh-CN/game/data) - 数据持久化
-- [Godot 架构集成](/zh-CN/godot/architecture) - Godot 架构基础
-- [Godot 场景系统](/zh-CN/godot/scene) - 场景资源管理
-- [资源管理系统](/zh-CN/core/resource) - 核心资源管理
+- [数据与存档系统](/zh-CN/game/data.md) - 数据持久化
+- [Godot 架构集成](/zh-CN/godot/architecture.md) - Godot 架构基础
+- [Godot 场景系统](/zh-CN/godot/scene.md) - 场景资源管理
+- [资源管理系统](/zh-CN/core/resource.md) - 核心资源管理

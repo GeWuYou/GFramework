@@ -3432,12 +3432,12 @@ public void GetPlayerStatsQuery_ShouldReturnCorrectStats()
 
 ### 相关资源
 
-- [架构核心文档](/zh-CN/core/architecture)
-- [命令模式文档](/zh-CN/core/command)
-- [查询模式文档](/zh-CN/core/query)
-- [事件系统文档](/zh-CN/core/events)
-- [状态机文档](/zh-CN/core/state-machine)
-- [IoC 容器文档](/zh-CN/core/ioc)
+- [架构核心文档](/zh-CN/core/architecture.md)
+- [命令模式文档](/zh-CN/core/command.md)
+- [查询模式文档](/zh-CN/core/query.md)
+- [事件系统文档](/zh-CN/core/events.md)
+- [状态机文档](/zh-CN/core/state-machine.md)
+- [IoC 容器文档](/zh-CN/core/ioc.md)
 
 记住，好的架构不是一蹴而就的，需要持续的学习、实践和改进。
 

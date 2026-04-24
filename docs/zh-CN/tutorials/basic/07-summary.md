@@ -646,10 +646,10 @@ public override void _Process(double delta)
 ### 推荐资源
 
 - **GFramework 文档**：
-    - [Core 核心框架](../../core/)
-    - [Game 游戏模块](../../game/)
-    - [Godot 集成](../../godot/)
-    - [源码生成器](../../source-generators/)
+    - [Core 核心框架](../../core/index.md)
+    - [Game 游戏模块](../../game/index.md)
+    - [Godot 集成](../../godot/index.md)
+    - [源码生成器](../../source-generators/index.md)
 
 - **设计模式**：
     - 命令模式（Command Pattern）

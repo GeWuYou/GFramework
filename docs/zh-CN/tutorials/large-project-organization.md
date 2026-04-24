@@ -20,8 +20,8 @@ description: 学习如何使用 GFramework 组织和管理大型游戏项目
 
 - 已安装 GFramework.Core 和 GFramework.Game NuGet 包
 - 了解 C# 基础语法和面向对象编程
-- 阅读过[快速开始](/zh-CN/getting-started/quick-start)
-- 了解[架构组件](/zh-CN/core/architecture)和[模块系统](/zh-CN/core/architecture#模块系统)
+- 阅读过[快速开始](/zh-CN/getting-started/quick-start.md)
+- 了解[架构组件](/zh-CN/core/architecture.md)和[模块系统](/zh-CN/core/architecture.md#模块系统)
 
 ## 步骤 1: 项目结构设计
 
@@ -1628,14 +1628,14 @@ namespace MyGame
 
 恭喜!你已经掌握了大型项目的组织方法。接下来可以学习:
 
-- [Godot 完整项目](/zh-CN/tutorials/godot-complete-project) - 在 Godot 中应用这些原则
-- [资源管理最佳实践](/zh-CN/tutorials/resource-management) - 管理大型项目的资源
-- [实现存档系统](/zh-CN/tutorials/save-system) - 保存复杂的游戏状态
-- [架构模式最佳实践](/zh-CN/best-practices/architecture-patterns) - 高级架构模式
+- [Godot 完整项目](/zh-CN/tutorials/godot-complete-project.md) - 在 Godot 中应用这些原则
+- [资源管理最佳实践](/zh-CN/tutorials/resource-management.md) - 管理大型项目的资源
+- [实现存档系统](/zh-CN/tutorials/save-system.md) - 保存复杂的游戏状态
+- [架构模式最佳实践](/zh-CN/best-practices/architecture-patterns.md) - 高级架构模式
 
 ## 相关文档
 
-- [架构组件](/zh-CN/core/architecture) - 架构系统详解
-- [模块系统](/zh-CN/core/architecture#模块系统) - 模块化设计
-- [依赖注入](/zh-CN/core/ioc) - IoC 容器使用
-- [最佳实践](/zh-CN/best-practices/) - 开发最佳实践
+- [架构组件](/zh-CN/core/architecture.md) - 架构系统详解
+- [模块系统](/zh-CN/core/architecture.md#模块系统) - 模块化设计
+- [依赖注入](/zh-CN/core/ioc.md) - IoC 容器使用
+- [最佳实践](/zh-CN/best-practices/index.md) - 开发最佳实践
