@@ -303,8 +303,8 @@
 
 ## 活跃文档
 
-- 历史跟踪归档：[analyzer-warning-reduction-history-rp001.md](../archive/todos/analyzer-warning-reduction-history-rp001.md)
-- 历史 trace 归档：[analyzer-warning-reduction-history-rp001.md](../archive/traces/analyzer-warning-reduction-history-rp001.md)
+- 历史跟踪归档：[analyzer-warning-reduction-history-rp001.md](analyzer-warning-reduction-history-rp001.md)
+- 历史 trace 归档：[analyzer-warning-reduction-history-rp001.md](../traces/analyzer-warning-reduction-history-rp001.md)
 
 ## 验证说明
 

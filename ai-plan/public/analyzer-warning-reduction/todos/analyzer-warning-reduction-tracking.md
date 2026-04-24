@@ -10,22 +10,23 @@
 - 当前阶段：`Phase 42`
 - 当前焦点：
   - 已于 `2026-04-24` 使用 `gframework-pr-review` 复核当前分支 PR #280，latest-head review 仍有 `3` 条 open threads
-  - 本地确认仍成立的项只有两类：`SchemaConfigGeneratorTests` 的冗余 `global::` 返回类型，以及 active tracking/trace 需要归档压缩
-  - `Greptile` 指出的返回类型冗余不影响行为；本轮按最小改动收口，避免扩大测试写集
+  - 本地确认这 `3` 条 open threads 均指向 `ai-plan` 文档：错误归档链接、`rp002-rp041` trace 混入 `RP-001` 段落，以及 active trace 的恢复信息失真
+  - 本轮按最小写集直接修正文档恢复入口，不再扩大 `GFramework.SourceGenerators.Tests` 的代码写集
   - `RP-041` 验证完成时，分支相对 `origin/main` 的唯一变更文件数为 `4`；这说明继续只处理同一热点文件时，该指标增长会很慢
   - `GFramework.SourceGenerators.Tests` 在 `RP-042` 的 `net10.0` Release build 中仍为 `10` 条 `MA0051` warning、`0` error；剩余热点继续集中在 `CqrsHandlerRegistryGeneratorTests.cs`
 
 ## 当前状态摘要
 
-- 已将旧 active tracking / trace 的详细阶段历史归档到主题内 `archive/`，避免 `boot` 默认入口继续承载 `RP-002` 到 `RP-041` 的长历史
-- 当前 active 文档仅保留恢复点、活跃事实、风险、验证结论与下一步建议
+- 已修正 `archive/todos/analyzer-warning-reduction-history-rp002-rp041.md` 中指向 `RP-001` 归档的相对链接，恢复历史入口可点击性
+- 已从 `archive/traces/analyzer-warning-reduction-history-rp002-rp041.md` 中移除误混入的 `RP-001` 段落，确保文件名与内容范围一致
+- 已刷新 active tracking / trace 的恢复点描述，使其反映当前仍待远端收敛的是文档类 review threads，而不是已处理过的代码项
 - PR #280 的 MegaLinter 仍显示 `dotnet-format` warning，但测试报告为 `2156 passed / 0 failed`；该 warning 目前更像 CI 环境 restore / SDK 噪音，而不是本地代码行为回归
 
 ## 当前活跃事实
 
 - 当前主题仍保持 active，因为 `GFramework.SourceGenerators.Tests` 尚有剩余 `MA0051` warning 需要决定是否继续推进
 - 继续按“单文件单方法”节奏处理 `CqrsHandlerRegistryGeneratorTests.cs` 可以稳定消除 warning，但不利于快速提高唯一变更文件数
-- 当前 PR review 已没有新的 failed-test 信号；后续优先级应回到本地仍成立的 review thread 和剩余 warning 热点
+- 当前 PR review 已没有新的 failed-test 信号；当前优先级是提交这轮 `ai-plan` 修正并等待远端 PR threads 收敛
 
 ## 当前风险
 
