@@ -1,3 +1,8 @@
+---
+title: Model 包使用说明
+description: 说明 GFramework.Core.Model 的模型职责、基类结构与常见生命周期入口。
+---
+
 # Model 包使用说明
 
 ## 概述

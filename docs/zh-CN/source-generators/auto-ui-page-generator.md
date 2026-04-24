@@ -1,3 +1,8 @@
+---
+title: AutoUiPage 生成器
+description: 介绍 AutoUiPage 生成器如何为 Godot UI 页面生成页面包装入口。
+---
+
 # AutoUiPage 生成器
 
 > 为 Godot UI 页面生成 `GetPage()` 样板，统一页面键与层级声明。
@@ -149,6 +154,6 @@ public partial class PauseMenu : Control
 
 ## 相关文档
 
-- [源码生成器总览](./index)
-- [GetNode 生成器](./get-node-generator)
-- [BindNodeSignal 生成器](./bind-node-signal-generator)
+- [源码生成器总览](./index.md)
+- [GetNode 生成器](./get-node-generator.md)
+- [BindNodeSignal 生成器](./bind-node-signal-generator.md)

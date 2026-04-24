@@ -312,6 +312,11 @@ bash scripts/validate-csharp-naming.sh
 
 - Update the relevant `README.md` or `docs/` page when behavior, setup steps, architecture guidance, or user-facing
   examples change.
+- Public documentation under `README.md` and `docs/**` MUST stay reader-facing. Do not publish governance-only content
+  such as inventory tables, coverage baselines, review queues, batch metrics, recovery points, trace summaries, or
+  “this still needs a later audit wave” notes in those user-facing pages.
+- Governance-only material such as XML audit snapshots, documentation remediation baselines, backlog status, and
+  recovery metadata belongs in `ai-plan/**` or other contributor-only artifacts, not in public docs.
 - Treat `ai-libs/` as a read-only third-party source reference area.
 - Code under `ai-libs/**` exists for comparison, tracing, design study, and behavior verification; do not modify it
   unless the user explicitly asks to sync or update that third-party snapshot.
@@ -323,6 +328,9 @@ bash scripts/validate-csharp-naming.sh
 - The main documentation site lives under `docs/`, with Chinese content under `docs/zh-CN/`.
 - Keep code samples, package names, and command examples aligned with the current repository state.
 - Prefer documenting behavior and design intent, not only API surface.
+- When a public page references XML docs or API coverage, convert that evidence into reader-facing guidance: explain
+  which types, namespaces, or entry points readers should inspect and why, instead of exposing audit counts or
+  governance terminology.
 - When a feature is added, removed, renamed, or substantially refactored, contributors MUST update or create the
   corresponding user-facing integration documentation in `docs/zh-CN/` in the same change.
 - For integration-oriented features such as the AI-First config system, documentation MUST cover:

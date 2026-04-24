@@ -1,3 +1,8 @@
+---
+title: State Management 包使用说明
+description: 说明 GFramework.Core.StateManagement 的 Store、Reducer 与状态容器用法。
+---
+
 # State Management 包使用说明
 
 ## 概述
@@ -482,7 +487,7 @@ public partial class PlayerPanelController : IController
 
 ## 相关文档
 
-- [`property`](./property) - 字段级响应式属性
-- [`model`](./model) - Store 常见承载位置
-- [`events`](./events) - 组件间事件通信
-- [`state-machine-tutorial`](../tutorials/state-machine-tutorial) - 流程状态切换能力
+- [`property`](./property.md) - 字段级响应式属性
+- [`model`](./model.md) - Store 常见承载位置
+- [`events`](./events.md) - 组件间事件通信
+- [`state-machine-tutorial`](../tutorials/state-machine-tutorial.md) - 流程状态切换能力

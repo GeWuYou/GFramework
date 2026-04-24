@@ -1,6 +1,6 @@
 ---
 title: Core
-description: GFramework.Core 与 GFramework.Core.Abstractions 的运行时入口、采用顺序和 XML 阅读导航。
+description: GFramework.Core 与 GFramework.Core.Abstractions 的运行时入口、采用顺序和源码阅读导航。
 ---
 
 # Core
@@ -82,22 +82,21 @@ dotnet add package GeWuYou.GFramework.Core.Abstractions
 
 统一入口见 [`../api-reference/index.md`](../api-reference/index.md)。
 
-## XML 覆盖基线
+## 源码阅读入口
 
-下面这份 inventory 记录的是 `2026-04-22` 对 `GFramework.Core` 做的一轮轻量 XML 盘点结果：只统计顶层目录中的公开 /
-内部类型声明是否带 XML 注释，用来确认阅读入口和治理优先级；成员级 ``<param>``、``<returns>``、异常语义与线程说明仍需要继续细审。
+如果你准备直接回到源码和 XML 文档确认契约，建议按能力域分批阅读，而不是按文件数量排查：
 
-| 类型族 | 基线状态 | 代表类型 | 阅读重点 |
-| --- | --- | --- | --- |
-| `Architectures/` | `16/16` 个类型声明已带 XML 注释 | `Architecture`、`ArchitectureContext`、`ArchitectureLifecycle`、`ArchitecturePhaseCoordinator` | 看架构启动、模块安装、阶段切换和上下文暴露边界 |
-| `Services/` | `6/6` 个类型声明已带 XML 注释 | `ServiceModuleManager`、`CommandExecutorModule`、`CqrsRuntimeModule` | 看服务模块的注册顺序、销毁语义和默认接线 |
-| `Command/` `Query/` | `15/15` 个类型声明已带 XML 注释 | `CommandExecutor`、`AsyncQueryExecutor`、`AbstractCommand<TInput>`、`AbstractQuery<TResult>` | 看旧入口兼容面与向 `CQRS` 迁移时还保留了哪些执行契约 |
-| `Events/` `Property/` | `19/19` 个类型声明已带 XML 注释 | `EventBus`、`EnhancedEventBus`、`BindableProperty<T>`、`OrEvent<T>` | 看事件传播、解绑约束和可绑定属性的订阅语义 |
-| `State/` `StateManagement/` | `10/10` 个类型声明已带 XML 注释 | `StateMachine`、`StateMachineSystem`、`Store<TState>`、`StoreBuilder<TState>` | 看状态切换、selector / middleware / dispatch 的单向流边界 |
-| `Coroutine/` `Time/` `Pause/` `Concurrency/` | `43/43` 个类型声明已带 XML 注释 | `CoroutineScheduler`、`CoroutineHandle`、`WaitForSecondsRealtime`、`PauseStackManager`、`AsyncKeyLockManager` | 看调度阶段、等待指令、时间源和暂停 / 锁的线程语义 |
-| `Resource/` `Pool/` | `8/8` 个类型声明已带 XML 注释 | `ResourceManager`、`AutoReleaseStrategy`、`ManualReleaseStrategy`、`AbstractObjectPoolSystem<TKey, TObject>` | 看资源句柄释放策略与对象池复用约束 |
-| `Logging/` `Localization/` `Configuration/` `Environment/` `Ioc/` | `31/31` 个类型声明已带 XML 注释 | `ConsoleLogger`、`CompositeLogger`、`LocalizationManager`、`ConfigurationManager`、`MicrosoftDiContainer` | 看日志组装、格式化 / filter、配置监听、环境对象与容器适配 |
-| `Model/` `Systems/` `Utility/` `Rule/` `Extensions/` `Functional/` | `34/34` 个类型声明已带 XML 注释 | `AbstractModel`、`AbstractSystem`、`NumericDisplayFormatter`、`ContextAwareBase`、`Result<T>` | 看默认基类、上下文感知 helper、数值格式化和通用扩展的使用边界 |
+| 类型族 | 代表类型 | 建议先确认什么 |
+| --- | --- | --- |
+| `Architectures/` | `Architecture`、`ArchitectureContext`、`ArchitectureLifecycle`、`ArchitecturePhaseCoordinator` | 架构启动、模块安装、阶段切换和上下文暴露边界 |
+| `Services/` | `ServiceModuleManager`、`CommandExecutorModule`、`CqrsRuntimeModule` | 服务模块的注册顺序、销毁语义和默认接线 |
+| `Command/` `Query/` | `CommandExecutor`、`AsyncQueryExecutor`、`AbstractCommand<TInput>`、`AbstractQuery<TResult>` | 旧入口兼容面，以及向 `CQRS` 迁移时保留的执行契约 |
+| `Events/` `Property/` | `EventBus`、`EnhancedEventBus`、`BindableProperty<T>`、`OrEvent<T>` | 事件传播、解绑约束和可绑定属性的订阅语义 |
+| `State/` `StateManagement/` | `StateMachine`、`StateMachineSystem`、`Store<TState>`、`StoreBuilder<TState>` | 状态切换，以及 selector / middleware / dispatch 的单向流边界 |
+| `Coroutine/` `Time/` `Pause/` `Concurrency/` | `CoroutineScheduler`、`CoroutineHandle`、`WaitForSecondsRealtime`、`PauseStackManager`、`AsyncKeyLockManager` | 调度阶段、等待指令、时间源，以及暂停 / 锁的线程语义 |
+| `Resource/` `Pool/` | `ResourceManager`、`AutoReleaseStrategy`、`ManualReleaseStrategy`、`AbstractObjectPoolSystem<TKey, TObject>` | 资源句柄释放策略与对象池复用约束 |
+| `Logging/` `Localization/` `Configuration/` `Environment/` `Ioc/` | `ConsoleLogger`、`CompositeLogger`、`LocalizationManager`、`ConfigurationManager`、`MicrosoftDiContainer` | 日志组装、格式化 / filter、配置监听、环境对象与容器适配 |
+| `Model/` `Systems/` `Utility/` `Rule/` `Extensions/` `Functional/` | `AbstractModel`、`AbstractSystem`、`NumericDisplayFormatter`、`ContextAwareBase`、`Result<T>` | 默认基类、上下文感知 helper、数值格式化和通用扩展的使用边界 |
 
 ## 最小接入路径
 

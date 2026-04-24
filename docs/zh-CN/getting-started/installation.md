@@ -1,3 +1,8 @@
+---
+title: 安装配置
+description: 说明 GFramework 各运行时与 source generator 包的安装选择和配置方式。
+---
+
 # 安装配置
 
 GFramework 提供多种安装方式，您可以根据项目需求选择合适的包进行安装。

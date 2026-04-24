@@ -1,3 +1,8 @@
+---
+title: Property
+description: 说明 GFramework.Core.Property 的可绑定属性模型、订阅方式与常见用法。
+---
+
 # Property
 
 `GFramework.Core.Property` 负责字段级响应式值。它最适合“一个字段变化就足以驱动视图或局部业务逻辑”的场景；

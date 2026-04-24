@@ -1,3 +1,8 @@
+---
+title: 枚举扩展生成器
+description: 介绍枚举扩展生成器生成的 IsX 与 IsIn 方法及其典型用法。
+---
+
 # 枚举扩展生成器
 
 > 自动为枚举类型生成扩展方法
@@ -267,6 +272,6 @@ public class PlayerController
 
 ## 相关文档
 
-- [Source Generators 概述](./index)
-- [日志生成器](./logging-generator)
-- [ContextAware 生成器](./context-aware-generator)
+- [Source Generators 概述](./index.md)
+- [日志生成器](./logging-generator.md)
+- [ContextAware 生成器](./context-aware-generator.md)

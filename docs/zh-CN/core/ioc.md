@@ -1,3 +1,8 @@
+---
+title: IoC 包使用说明
+description: 说明 GFramework.Core 的 IoC 容器、依赖注入职责与核心类型。
+---
+
 # IoC 包使用说明
 
 ## 概述
@@ -441,7 +446,7 @@ public class IocContainer
 
 ### 线程安全机制
 
-容器使用 [ReaderWriterLockSlim](xref:System.Threading.ReaderWriterLockSlim) 来确保线程安全操作，允许多个线程同时读取，但在写入时阻止其他线程访问。
+容器使用 `ReaderWriterLockSlim` 来确保线程安全操作，允许多个线程同时读取，但在写入时阻止其他线程访问。
 
 ### 注册流程
 

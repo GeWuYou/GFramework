@@ -1,3 +1,8 @@
+---
+title: Utility 包使用说明
+description: 说明 GFramework.Core.Utility 的工具组件定位、注册方式与使用场景。
+---
+
 # Utility 包使用说明
 
 ## 概述

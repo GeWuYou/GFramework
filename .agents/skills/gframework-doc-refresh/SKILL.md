@@ -173,6 +173,10 @@ Use this exact priority:
 
 - Prefer correcting the adoption path over expanding page count.
 - Do not copy wording from outdated docs just to keep page volume.
+- Public docs must stay reader-facing. Do not write inventory, coverage baseline, recovery-point, batch-metric, review
+  backlog, or audit-wave wording into `README.md` or `docs/**`.
+- If XML or audit evidence is relevant, translate it into reader guidance such as “which types to inspect first” or
+  “which entry points define the contract”, instead of exposing counts, dates, or governance status.
 - Escape generics outside code blocks.
 - Keep internal links real and current.
 - Mark code blocks with explicit languages.

@@ -1,3 +1,8 @@
+---
+title: 多人游戏架构指南
+description: 面向 GFramework 多人游戏项目的架构拆分、同步策略与网络优化建议。
+---
+
 # 多人游戏架构指南
 
 > 基于 GFramework 架构设计高性能、可扩展的多人游戏系统。
@@ -544,3 +549,4 @@ public class ClientPresentationSystem : AbstractSystem
         ShowKillFeed(e.KillerId, e.PlayerId);
     }
 }
+```

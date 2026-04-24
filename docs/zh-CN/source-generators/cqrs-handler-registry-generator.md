@@ -116,7 +116,7 @@ RegisterCqrsHandlersFromAssemblies(
 
 这条诊断的含义不是“某个 handler 写错了”，而是“当前 runtime 合同不足以安全承载这轮生成结果”。
 
-## XML / API 阅读入口
+## 源码与 API 阅读入口
 
 如果你要核对生成器对外暴露的契约，优先看这些类型：
 

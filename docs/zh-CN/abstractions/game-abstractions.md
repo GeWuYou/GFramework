@@ -1,6 +1,6 @@
 ---
 title: Game Abstractions
-description: GFramework.Game.Abstractions 的契约边界、包关系与 XML 阅读重点。
+description: GFramework.Game.Abstractions 的契约边界、包关系与源码阅读重点。
 ---
 
 # Game Abstractions
@@ -37,19 +37,18 @@ description: GFramework.Game.Abstractions 的契约边界、包关系与 XML 阅
 | `Routing/` | `IRoute`、`IRouteContext`、`IRouteGuard<TRoute>`，作为 Scene / UI 共享的路由基础约定 |
 | `Storage/` `Asset/` `Enums/` | 文件存储角色、资源注册表，以及转场 / UI 层级 / 输入动作等跨层枚举 |
 
-## XML 覆盖基线
+## 契约族阅读入口
 
-下面这份 inventory 记录的是 `2026-04-23` 对 `GFramework.Game.Abstractions` 做的一轮轻量 XML 盘点结果：只统计公开 /
-内部类型声明是否带 XML 注释，用来建立契约层阅读入口；成员级参数、返回值、异常和生命周期说明仍需要后续 API 波次继续细化。
+如果你要回到源码 XML 文档确认契约，请优先看下面这些族群：
 
-| 契约族 | 基线状态 | 代表类型 | 阅读重点 |
-| --- | --- | --- | --- |
-| `Config/` | `7/7` 个类型声明已带 XML 注释 | `IConfigLoader`、`IConfigRegistry`、`IConfigTable<TKey, TValue>`、`ConfigLoadException` | 看配置表注册、只读访问和失败诊断边界 |
-| `Data/` | `14/14` 个类型声明已带 XML 注释 | `IDataRepository`、`ISettingsDataRepository`、`ISaveRepository<TSaveData>`、`DataRepositoryOptions` | 看业务数据、统一设置文件、槽位存档与迁移契约 |
-| `Setting/` | `12/12` 个类型声明已带 XML 注释 | `ISettingsData`、`ISettingsModel`、`ISettingsSystem`、`LocalizationSettings` | 看设置生命周期、应用语义、迁移接口和内置设置对象 |
-| `Scene/` | `14/14` 个类型声明已带 XML 注释 | `IScene`、`ISceneRouter`、`ISceneFactory`、`SceneTransitionEvent` | 看场景行为、工厂 / root 边界和转场模型 |
-| `UI/` | `19/19` 个类型声明已带 XML 注释 | `IUiPage`、`IUiRouter`、`IUiFactory`、`UiInteractionProfile`、`UiTransitionHandlerOptions` | 看页面栈、层级 UI、输入动作和 UI 转场契约 |
-| `Routing/` `Storage/` `Asset/` `Enums/` | `13/13` 个类型声明已带 XML 注释 | `IRoute`、`IRouteContext`、`IFileStorage`、`IAssetRegistry<T>`、`UiLayer`、`SceneTransitionType` | 看公共路由上下文、存储角色、资源注册表与共享枚举 |
+| 契约族 | 代表类型 | 建议先确认什么 |
+| --- | --- | --- |
+| `Config/` | `IConfigLoader`、`IConfigRegistry`、`IConfigTable<TKey, TValue>`、`ConfigLoadException` | 配置表注册、只读访问和失败诊断边界 |
+| `Data/` | `IDataRepository`、`ISettingsDataRepository`、`ISaveRepository<TSaveData>`、`DataRepositoryOptions` | 业务数据、统一设置文件、槽位存档与迁移契约 |
+| `Setting/` | `ISettingsData`、`ISettingsModel`、`ISettingsSystem`、`LocalizationSettings` | 设置生命周期、应用语义、迁移接口和内置设置对象 |
+| `Scene/` | `IScene`、`ISceneRouter`、`ISceneFactory`、`SceneTransitionEvent` | 场景行为、工厂 / root 边界和转场模型 |
+| `UI/` | `IUiPage`、`IUiRouter`、`IUiFactory`、`UiInteractionProfile`、`UiTransitionHandlerOptions` | 页面栈、层级 UI、输入动作和 UI 转场契约 |
+| `Routing/` `Storage/` `Asset/` `Enums/` | `IRoute`、`IRouteContext`、`IFileStorage`、`IAssetRegistry<T>`、`UiLayer`、`SceneTransitionType` | 公共路由上下文、存储角色、资源注册表与共享枚举 |
 
 ## 最小接入路径
 

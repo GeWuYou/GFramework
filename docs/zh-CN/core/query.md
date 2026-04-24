@@ -1,3 +1,8 @@
+---
+title: Query
+description: 说明 GFramework.Core.Query 旧查询体系的兼容定位、可用基类与当前使用约束。
+---
+
 # Query
 
 本页说明 `GFramework.Core.Query` 里的旧查询体系。

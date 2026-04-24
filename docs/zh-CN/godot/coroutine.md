@@ -1,3 +1,8 @@
+---
+title: Godot 协程系统
+description: 说明 GFramework.Godot.Coroutine 的宿主集成能力、阶段语义与使用方式。
+---
+
 # Godot 协程系统
 
 ## 概述

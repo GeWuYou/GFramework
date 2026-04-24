@@ -1,6 +1,6 @@
 ---
 title: ECS 系统集成
-description: GFramework 当前 ECS 模块族的包边界、采用顺序与 XML 阅读入口。
+description: GFramework 当前 ECS 模块族的包边界、采用顺序与源码阅读入口。
 ---
 
 # ECS 系统集成
@@ -118,16 +118,16 @@ public sealed class GameLoop
 3. 只想保留共享边界时继续读 [`../abstractions/ecs-arch-abstractions.md`](../abstractions/ecs-arch-abstractions.md)
 4. 统一查阅 README / docs / XML 入口时回到 [`../api-reference/index.md`](../api-reference/index.md)
 
-## 类型族级 XML Inventory
+## 源码阅读入口
 
-下表记录当前 `Ecs.Arch` family 的类型声明级 XML 基线，便于从 README、站内 landing 和源码之间建立一致的审计入口。
+如果你要从栏目入口页回到源码和 XML 文档，建议按下面的入口阅读：
 
-| 包 | 类型族 | 代表类型 | XML 状态 | 阅读重点 |
-| --- | --- | --- | --- | --- |
-| `GFramework.Ecs.Arch` | 运行时装配与模块生命周期 | `ArchExtensions`、`ArchEcsModule` | 已覆盖 | `UseArch(...)` 的接入时机、`World` 注册、模块优先级 |
-| `GFramework.Ecs.Arch` | 系统桥接层 | `ArchSystemAdapter<T>` | 已覆盖 | GFramework `ISystem` 生命周期如何桥接到 Arch `ISystem<T>` |
-| `GFramework.Ecs.Arch` | 示例组件与系统 | `Position`、`Velocity`、`MovementSystem` | 已覆盖 | 查询写法、组件布局、最小可运行示例 |
-| `GFramework.Ecs.Arch.Abstractions` | 契约与配置对象 | `IArchEcsModule`、`IArchSystemAdapter<T>`、`ArchOptions` | 已覆盖 | 共享宿主循环、测试替身、跨程序集配置边界 |
+| 包 | 类型族 | 代表类型 | 建议先确认什么 |
+| --- | --- | --- | --- |
+| `GFramework.Ecs.Arch` | 运行时装配与模块生命周期 | `ArchExtensions`、`ArchEcsModule` | `UseArch(...)` 的接入时机、`World` 注册、模块优先级 |
+| `GFramework.Ecs.Arch` | 系统桥接层 | `ArchSystemAdapter<T>` | GFramework `ISystem` 生命周期如何桥接到 Arch `ISystem<T>` |
+| `GFramework.Ecs.Arch` | 示例组件与系统 | `Position`、`Velocity`、`MovementSystem` | 查询写法、组件布局和最小可运行示例 |
+| `GFramework.Ecs.Arch.Abstractions` | 契约与配置对象 | `IArchEcsModule`、`IArchSystemAdapter<T>`、`ArchOptions` | 共享宿主循环、测试替身和跨程序集配置边界 |
 
 ## 边界说明
 

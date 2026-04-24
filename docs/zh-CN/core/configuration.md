@@ -1,3 +1,8 @@
+---
+title: Configuration 包使用说明
+description: 说明 GFramework.Core 的 Configuration 包、线程安全配置管理能力与核心接口。
+---
+
 # Configuration 包使用说明
 
 ## 概述

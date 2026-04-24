@@ -1,3 +1,8 @@
+---
+title: 游戏内容配置系统
+description: 说明 GFramework.Game 配置系统的定位、目录约定、生成能力与最小采用路径。
+---
+
 # 游戏内容配置系统
 
 > 面向静态游戏内容的 AI-First 配表方案

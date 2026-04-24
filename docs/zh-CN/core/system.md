@@ -1,3 +1,8 @@
+---
+title: System 包使用说明
+description: 说明 GFramework.Core.System 的业务逻辑层职责、基类结构与协作方式。
+---
+
 # System 包使用说明
 
 ## 概述

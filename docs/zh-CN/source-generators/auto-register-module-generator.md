@@ -1,3 +1,8 @@
+---
+title: AutoRegisterModule 生成器
+description: 介绍 AutoRegisterModule 生成器如何为模块安装生成固定顺序的注册代码。
+---
+
 # AutoRegisterModule 生成器
 
 > 为架构模块生成固定顺序的组件注册代码，收敛 `Install(IArchitecture)` 样板。
@@ -149,5 +154,5 @@ partial class GameplayModule
 
 ## 相关文档
 
-- [源码生成器总览](./index)
-- [Context Get 注入生成器](./context-get-generator)
+- [源码生成器总览](./index.md)
+- [Context Get 注入生成器](./context-get-generator.md)

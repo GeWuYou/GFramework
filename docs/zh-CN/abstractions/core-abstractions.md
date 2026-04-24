@@ -1,6 +1,6 @@
 ---
 title: Core Abstractions
-description: GFramework.Core.Abstractions 的契约边界、包关系与 XML 阅读重点。
+description: GFramework.Core.Abstractions 的契约边界、包关系与源码阅读重点。
 ---
 
 # Core Abstractions
@@ -70,29 +70,28 @@ public sealed class DiagnosticsFeature
 
 ## XML 阅读重点
 
-如果你在做契约审计、采用设计或扩展适配，优先核对这些类型族的 XML 文档：
+如果你在做契约确认、采用设计或扩展适配，优先核对这些类型族的 XML 文档：
 
 - 架构与模块入口：`IArchitecture`、`IArchitectureContext`、`IServiceModule`
 - 运行时基础设施：`IIocContainer`、`ILogger`、`IResourceManager`、`IConfigurationManager`
 - 状态与并发能力：`IStateMachine`、`IStore`、`IAsyncKeyLockManager`、`ITimeProvider`
 - 迁移与组合边界：`ICommandExecutor`、`IQueryExecutor`、`ICqrsRuntime`
 
-## XML 覆盖基线
+## 契约族阅读入口
 
-下面这份 inventory 记录的是 `2026-04-22` 对 `GFramework.Core.Abstractions` 做的一轮轻量 XML 盘点结果：只统计公开 /
-内部类型声明是否带 XML 注释，用来建立契约层阅读入口；成员级参数、返回值、异常与生命周期说明仍需要后续波次继续细化。
+如果你要回到源码 XML 文档确认契约，请优先看下面这些族群：
 
-| 契约族 | 基线状态 | 代表类型 | 阅读重点 |
-| --- | --- | --- | --- |
-| `Architectures/` | `12/12` 个类型声明已带 XML 注释 | `IArchitecture`、`IArchitectureContext`、`IArchitectureServices`、`IServiceModule` | 看架构上下文、服务访问面与模块安装 / 生命周期约束 |
-| `Lifecycle/` `Registries/` | `8/8` 个类型声明已带 XML 注释 | `ILifecycle`、`IAsyncInitializable`、`IRegistry<T, TR>`、`KeyValueRegistryBase<TKey, TValue>` | 看初始化 / 销毁阶段和注册表抽象边界 |
-| `Command/` `Query/` `Cqrs/` | `10/10` 个类型声明已带 XML 注释 | `ICommandExecutor`、`IAsyncCommand<TResult>`、`IQueryExecutor`、`ICqrsRuntime` | 看旧命令 / 查询接口与新请求模型之间的兼容和迁移边界 |
-| `Events/` `Property/` | `10/10` 个类型声明已带 XML 注释 | `IEventBus`、`IEventFilter<T>`、`IBindableProperty<T>`、`IReadonlyBindableProperty<T>` | 看事件传播、过滤、解绑对象和属性订阅语义 |
-| `State/` `StateManagement/` | `15/15` 个类型声明已带 XML 注释 | `IStateMachine`、`IAsyncState`、`IStore<TState>`、`IStoreMiddleware<TState>` | 看状态机契约与 Store 的 reducer / middleware / diagnostics 边界 |
-| `Coroutine/` `Time/` `Pause/` `Concurrency/` | `17/17` 个类型声明已带 XML 注释 | `IYieldInstruction`、`ICoroutineStatistics`、`ITimeProvider`、`IPauseStackManager`、`IAsyncKeyLockManager` | 看调度模型、时间源、暂停栈和异步锁契约 |
-| `Resource/` `Pool/` `Logging/` `Localization/` | `27/27` 个类型声明已带 XML 注释 | `IResourceManager`、`IObjectPoolSystem`、`ILogger`、`IStructuredLogger`、`ILocalizationManager` | 看资源 / 池化 / 日志 / 本地化这些基础设施的宿主责任 |
-| `Configuration/` `Environment/` `Data/` `Serializer/` `Storage/` `Versioning/` | `7/7` 个类型声明已带 XML 注释 | `IConfigurationManager`、`IEnvironment`、`ILoadableFrom<T>`、`ISerializer`、`IStorage`、`IVersioned` | 看配置、环境、序列化和持久化边界，以及谁负责具体实现 |
-| `Bases/` `Controller/` `Model/` `Systems/` `Utility/` `Rule/` `Enums/` `Properties/` | `19/19` 个类型声明已带 XML 注释 | `IPrioritized`、`IController`、`IModel`、`ISystem`、`IContextUtility`、`ArchitecturePhase` | 看基础角色接口、辅助值对象和架构属性键的复用方式 |
+| 契约族 | 代表类型 | 建议先确认什么 |
+| --- | --- | --- |
+| `Architectures/` | `IArchitecture`、`IArchitectureContext`、`IArchitectureServices`、`IServiceModule` | 架构上下文、服务访问面与模块安装 / 生命周期约束 |
+| `Lifecycle/` `Registries/` | `ILifecycle`、`IAsyncInitializable`、`IRegistry<T, TR>`、`KeyValueRegistryBase<TKey, TValue>` | 初始化 / 销毁阶段和注册表抽象边界 |
+| `Command/` `Query/` `Cqrs/` | `ICommandExecutor`、`IAsyncCommand<TResult>`、`IQueryExecutor`、`ICqrsRuntime` | 旧命令 / 查询接口与新请求模型之间的兼容和迁移边界 |
+| `Events/` `Property/` | `IEventBus`、`IEventFilter<T>`、`IBindableProperty<T>`、`IReadonlyBindableProperty<T>` | 事件传播、过滤、解绑对象和属性订阅语义 |
+| `State/` `StateManagement/` | `IStateMachine`、`IAsyncState`、`IStore<TState>`、`IStoreMiddleware<TState>` | 状态机契约与 Store 的 reducer / middleware / diagnostics 边界 |
+| `Coroutine/` `Time/` `Pause/` `Concurrency/` | `IYieldInstruction`、`ICoroutineStatistics`、`ITimeProvider`、`IPauseStackManager`、`IAsyncKeyLockManager` | 调度模型、时间源、暂停栈和异步锁契约 |
+| `Resource/` `Pool/` `Logging/` `Localization/` | `IResourceManager`、`IObjectPoolSystem`、`ILogger`、`IStructuredLogger`、`ILocalizationManager` | 资源 / 池化 / 日志 / 本地化这些基础设施的宿主责任 |
+| `Configuration/` `Environment/` `Data/` `Serializer/` `Storage/` `Versioning/` | `IConfigurationManager`、`IEnvironment`、`ILoadableFrom<T>`、`ISerializer`、`IStorage`、`IVersioned` | 配置、环境、序列化和持久化边界，以及谁负责具体实现 |
+| `Bases/` `Controller/` `Model/` `Systems/` `Utility/` `Rule/` `Enums/` `Properties/` | `IPrioritized`、`IController`、`IModel`、`ISystem`、`IContextUtility`、`ArchitecturePhase` | 基础角色接口、辅助值对象和架构属性键的复用方式 |
 
 ## 阅读顺序
 
