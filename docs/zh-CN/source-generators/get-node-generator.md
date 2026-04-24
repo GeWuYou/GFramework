@@ -11,7 +11,7 @@ description: 说明 [GetNode] 当前生成什么、路径如何推断，以及 _
 
 - 特性来源：`GFramework.Godot.SourceGenerators.Abstractions`
 - 生成器实现：`GFramework.Godot.SourceGenerators`
-- 目标类型基线：字段类型必须继承 `Godot.Node`
+- 使用前提：字段类型必须继承 `Godot.Node`
 
 ## 最小用法
 

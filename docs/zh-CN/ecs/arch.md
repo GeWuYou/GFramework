@@ -1,6 +1,6 @@
 ---
 title: Arch ECS 集成
-description: GFramework.Ecs.Arch 的默认运行时装配路径、系统桥接方式与 XML 阅读入口。
+description: GFramework.Ecs.Arch 的默认运行时装配路径、系统桥接方式与源码阅读入口。
 ---
 
 # Arch ECS 集成
@@ -127,14 +127,14 @@ ecsModule.Update(deltaTime);
 - `Priority` 影响 `ArchEcsModule` 作为服务模块的排序
 - `EnableStatistics` 目前保留在公开配置面上；采用时应以源码 XML 注释和实现行为为准，而不是依赖旧文档推断
 
-## 类型族级 XML Inventory
+## 源码阅读入口
 
-| 类型族 | 代表类型 | XML 状态 | 阅读重点 |
-| --- | --- | --- | --- |
-| 装配入口 | `ArchExtensions` | 已覆盖 | `UseArch(...)` 的时机、链式调用返回值 |
-| 服务模块 | `ArchEcsModule` | 已覆盖 | `World` 注册、系统收集、模块销毁顺序 |
-| 系统桥接层 | `ArchSystemAdapter<T>` | 已覆盖 | `OnArchInitialize` / `OnUpdate` / `OnArchDispose` |
-| 示例类型 | `Position`、`Velocity`、`MovementSystem` | 已覆盖 | 组件布局、查询写法、最小集成样例 |
+| 类型族 | 代表类型 | 建议先确认什么 |
+| --- | --- | --- |
+| 装配入口 | `ArchExtensions` | `UseArch(...)` 的时机、链式调用返回值 |
+| 服务模块 | `ArchEcsModule` | `World` 注册、系统收集、模块销毁顺序 |
+| 系统桥接层 | `ArchSystemAdapter<T>` | `OnArchInitialize` / `OnUpdate` / `OnArchDispose` |
+| 示例类型 | `Position`、`Velocity`、`MovementSystem` | 组件布局、查询写法和最小集成样例 |
 
 ## 相关入口
 

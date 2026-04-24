@@ -12,11 +12,11 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`DOCUMENTATION-FULL-COVERAGE-GOV-RP-023`
+- 恢复点编号：`DOCUMENTATION-FULL-COVERAGE-GOV-RP-024`
 - 当前阶段：`Phase 5 - Governance Maintenance`
 - 当前焦点：
-  - 保持 landing page / API 导航页中的仓库 README 入口可点击，避免读者在 docs 站点里遇到裸路径文本
-  - 继续按 `origin/main` 分支 diff 阈值做小批量文档治理，优先处理低风险导航 / 渲染热点
+  - 保持 `README.md` 与 `docs/**` 公开页面只承载读者需要的采用信息，不再混入 XML inventory、覆盖基线、恢复点或治理批次说明
+  - 继续按 `$gframework-batch-boot 75` 的 `origin/main` 分支 diff 阈值做小批量文档治理，优先处理低风险公开文案与导航热点
   - 保持 `Game` persistence docs surface 与当前 `README`、源码、`PersistenceTests` 使用同一套 owner / adoption path 叙述
   - 保持 `GFramework.Godot.SourceGenerators/README.md` 与 `docs/zh-CN/tutorials/godot-integration.md` 在生命周期接法上的一致性
   - 保持 active tracking / trace 只承载当前恢复入口，把阶段细节留在 `archive/`
@@ -60,10 +60,23 @@
   为 `24` 个文件、`264` 行，仍低于 `$gframework-batch-boot 75` 的停止阈值；但剩余命中已主要是正文语义性提及，不再适合作为同类批处理。
 - 当前剩余的托管侧信号是 GitHub `Title check` 对 PR 标题过泛的 inconclusive 提示；这属于 PR 元数据，不是本地
   文件缺陷。
+- `2026-04-24` 根据用户反馈完成一轮“公开文档边界”治理，并继续按 `$gframework-batch-boot 75` 向前推进：
+  - 在 `AGENTS.md`、`.agents/skills/_shared/DOCUMENTATION_STANDARDS.md` 与
+    `.agents/skills/gframework-doc-refresh/SKILL.md` 中新增硬约束，明确禁止把 inventory、覆盖基线、恢复点、
+    review backlog、治理批次等 contributor-only 内容写进 `README.md` 与 `docs/**`
+  - 将 `docs/zh-CN/core/index.md`、`core/cqrs.md`、`game/index.md`、
+    `abstractions/core-abstractions.md`、`abstractions/game-abstractions.md`、`ecs/index.md`、
+    `ecs/arch.md`、`abstractions/ecs-arch-abstractions.md` 中的 XML 覆盖表述改写为面向读者的“源码阅读入口”
+  - 顺手收口 `api-reference/index.md`、`contributor/development-environment.md` 与
+    `source-generators/*.md` 中的内部口吻用语，例如 `landing page`、`验证基线`、`目标类型基线`
+  - focused validator 已覆盖本轮触达的 `13` 个公开文档页面并全部通过；站点构建 `cd docs && bun run build`
+    已通过，仅保留既有大 chunk warning
+- 当前分支 `HEAD` 仍与 `origin/main`（`2de57f5`，`2026-04-23T23:03:40+08:00`）对齐；在提交本轮工作前，
+  工作树待提交范围为 `16` 个文件、`224` changed lines，距离 `$gframework-batch-boot 75` 的停止阈值仍很远。
 
 ## 当前风险
 
-- 当前 `Core` / `Core.Abstractions`、`Ecs.Arch`、`Cqrs`、`Game` 的 XML 治理仍以“类型声明级基线”为主，不等于成员级契约全审计。
+- 当前 `Core` / `Core.Abstractions`、`Ecs.Arch`、`Cqrs`、`Game` 的 XML 治理证据仍主要来自类型与入口级阅读，不等于成员级契约全审计；这类治理状态只应保留在 `ai-plan/**`，不应再暴露到公开文档。
 - `GFramework.Cqrs` 在当前 WSL / dotnet 环境下仍会读取失效的 fallback package folder，并在标准 build 中触发
   `MSB4276` / `MSB4018`；这是已知环境阻塞，不属于本轮文档回归。
 - 当前 WSL 会话里 `git.exe` 可解析但不能执行，应继续使用显式 `--git-dir` / `--work-tree` 绑定作为默认 Git 策略。
@@ -79,6 +92,22 @@
 
 ## 最新验证
 
+- `2026-04-24` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN`
+  - 结果：失败；暴露出仓库既有的 `53` 个历史文档问题（大量缺少 frontmatter、既有坏链与未标语言代码块），不由本轮改动引入，因此本轮改用 focused validator 证明任务级结果。
+- `2026-04-24` `python3 .agents/skills/gframework-doc-refresh/scripts/scan_module_evidence.py Core`
+  - 结果：通过；确认 `Core` 模块的 README、landing、topic 与 fallback docs 入口仍可解析。
+- `2026-04-24` `python3 .agents/skills/gframework-doc-refresh/scripts/scan_module_evidence.py Game`
+  - 结果：通过；确认 `Game` 模块的 README、landing、topic 与 fallback docs 入口仍可解析。
+- `2026-04-24` focused validator（逐个校验本轮触达页面）
+  - 结果：通过；`docs/zh-CN/abstractions/core-abstractions.md`、
+    `abstractions/ecs-arch-abstractions.md`、`abstractions/game-abstractions.md`、
+    `api-reference/index.md`、`contributor/development-environment.md`、`core/cqrs.md`、`core/index.md`、
+    `ecs/arch.md`、`ecs/index.md`、`game/index.md`、
+    `source-generators/bind-node-signal-generator.md`、
+    `source-generators/cqrs-handler-registry-generator.md`、
+    `source-generators/get-node-generator.md` 的 frontmatter / links / code blocks 全部通过。
+- `2026-04-24` `bun run build`（工作目录：`docs/`）
+  - 结果：通过；仅保留既有大 chunk warning。
 - `2026-04-23` `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --format json --json-output /tmp/current-pr-review.json`
   - 结果：通过；PR `#272` 处于 `OPEN`，latest head commit 存在 1 条 Greptile open thread，定位到
     `docs/zh-CN/godot/setting.md:75` 的 inline code HTML entity 渲染问题。
@@ -99,7 +128,7 @@
 
 ## 下一步
 
-1. 若继续执行文档治理批处理，优先改做标题锚点、站内链接和少量非导航型裸路径引用的逐页复核，而不是继续按统一模板机械替换。
+1. 若继续执行 `$gframework-batch-boot 75`，优先改做标题锚点、站内链接和少量内部术语残留的逐页复核，而不是回到大范围模板化替换。
 2. 若后续继续扩展批处理 skill，可考虑再补充显式单位写法，例如 `75 files 2000 lines`，但当前默认速记已足够覆盖
    常见分支阈值场景。
 3. 若后续分支继续调整 `Game` persistence runtime、README 或公共 API，优先复核 `docs/zh-CN/game/data.md`、

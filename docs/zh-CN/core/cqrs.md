@@ -1,6 +1,6 @@
 ---
 title: CQRS
-description: Cqrs 模块族的运行时、契约层、生成器入口，以及 XML / API 阅读链路。
+description: Cqrs 模块族的运行时、契约层、生成器入口，以及源码与 API 阅读链路。
 ---
 
 # CQRS
@@ -169,17 +169,17 @@ RegisterCqrsPipelineBehavior<LoggingBehavior<,>>();
 - 在维护历史代码：允许继续使用旧 Command / Query
 - 在写新功能或新模块：优先使用 CQRS
 
-## XML 覆盖基线
+## 源码阅读入口
 
-下面这份 inventory 记录的是 `2026-04-22` 对 `Cqrs` 家族做的一轮轻量 XML 盘点结果：只统计当前运行时、契约层和生成器入口中的类型声明级 XML 覆盖，用来校对 README、landing page 与 API 入口，不把它表述成成员级契约全审计。
+如果你需要直接回到源码确认 CQRS 契约，建议按下面这几组入口阅读：
 
-| 类型族 | 基线状态 | 代表类型 | 阅读重点 |
-| --- | --- | --- | --- |
-| `GFramework.Cqrs.Abstractions/Cqrs/` | `20/20` 个类型声明已带 XML 注释 | `ICqrsRuntime`、`ICqrsHandlerRegistrar`、`IPipelineBehavior<,>`、`IRequestHandler<,>`、`Unit` | 先看请求、处理器和 runtime seam 的最小契约 |
-| `GFramework.Cqrs/Command` `Query` `Notification` `Request` `Extensions` | `7/7` 个类型声明已带 XML 注释 | `CommandBase<TInput, TResponse>`、`QueryBase<TInput, TResponse>`、`NotificationBase<TInput>`、`ContextAwareCqrsExtensions` | 看业务侧常用基类和上下文发送入口 |
-| `GFramework.Cqrs/Cqrs/` | `12/12` 个类型声明已带 XML 注释 | `AbstractCommandHandler<,>`、`AbstractQueryHandler<,>`、`AbstractNotificationHandler<>`、`LoggingBehavior<,>` | 看默认处理器基类、上下文注入与行为管道 |
-| `GFramework.Cqrs` 根入口与 `Internal/` | `19/19` 个类型声明已带 XML 注释 | `CqrsRuntimeFactory`、`ICqrsHandlerRegistry`、`CqrsHandlerRegistryAttribute`、`CqrsReflectionFallbackAttribute`、`DefaultCqrsRegistrationService` | 看 runtime 创建入口、registry 协议、fallback 语义和程序集去重规则 |
-| `GFramework.Cqrs.SourceGenerators/Cqrs/` | `3/3` 个类型声明已带 XML 注释 | `CqrsHandlerRegistryGenerator`、`RuntimeTypeReferenceSpec`、`OrderedRegistrationKind` | 看生成注册器、精确 type lookup 和 fallback 诊断边界 |
+| 类型族 | 代表类型 | 建议先确认什么 |
+| --- | --- | --- |
+| `GFramework.Cqrs.Abstractions/Cqrs/` | `ICqrsRuntime`、`ICqrsHandlerRegistrar`、`IPipelineBehavior<,>`、`IRequestHandler<,>`、`Unit` | 请求、处理器和 runtime seam 的最小契约 |
+| `GFramework.Cqrs/Command` `Query` `Notification` `Request` `Extensions` | `CommandBase<TInput, TResponse>`、`QueryBase<TInput, TResponse>`、`NotificationBase<TInput>`、`ContextAwareCqrsExtensions` | 业务侧常用基类和上下文发送入口 |
+| `GFramework.Cqrs/Cqrs/` | `AbstractCommandHandler<,>`、`AbstractQueryHandler<,>`、`AbstractNotificationHandler<>`、`LoggingBehavior<,>` | 默认处理器基类、上下文注入与行为管道 |
+| `GFramework.Cqrs` 根入口与 `Internal/` | `CqrsRuntimeFactory`、`ICqrsHandlerRegistry`、`CqrsHandlerRegistryAttribute`、`CqrsReflectionFallbackAttribute`、`DefaultCqrsRegistrationService` | runtime 创建入口、registry 协议、fallback 语义和程序集去重规则 |
+| `GFramework.Cqrs.SourceGenerators/Cqrs/` | `CqrsHandlerRegistryGenerator`、`RuntimeTypeReferenceSpec`、`OrderedRegistrationKind` | 生成注册器、精确 type lookup 和 fallback 诊断边界 |
 
 ## 继续阅读
 
