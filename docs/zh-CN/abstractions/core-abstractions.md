@@ -1,9 +1,9 @@
 ---
-title: Core Abstractions
+title: Core 抽象层
 description: GFramework.Core.Abstractions 的契约边界、包关系与源码阅读重点。
 ---
 
-# Core Abstractions
+# Core 抽象层
 
 `GFramework.Core.Abstractions` 是 `Core` 运行时的契约包。
 

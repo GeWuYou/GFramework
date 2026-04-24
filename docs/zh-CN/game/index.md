@@ -1,9 +1,9 @@
 ---
-title: Game
+title: Game 模块
 description: GFramework.Game family 的运行时入口、采用顺序与源码阅读导航。
 ---
 
-# Game
+# Game 模块
 
 `Game` 栏目对应 `GFramework.Game` 与 `GFramework.Game.Abstractions` 这层游戏运行时能力。
 

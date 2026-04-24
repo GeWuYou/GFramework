@@ -1,9 +1,9 @@
 ---
-title: Ecs.Arch Abstractions
+title: Ecs.Arch 抽象层
 description: GFramework.Ecs.Arch.Abstractions 的契约边界、包关系和最小接入路径。
 ---
 
-# Ecs.Arch Abstractions
+# Ecs.Arch 抽象层
 
 `GFramework.Ecs.Arch.Abstractions` 是 Arch ECS 集成层的契约包。
 

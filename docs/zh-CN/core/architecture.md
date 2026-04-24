@@ -1,9 +1,9 @@
 ---
-title: Architecture
+title: 架构（Architecture）
 description: 说明 GFramework.Core 的 Architecture 入口、生命周期职责与最常用注册 API。
 ---
 
-# Architecture
+# 架构（Architecture）
 
 `Architecture` 是 `GFramework.Core` 的运行时入口。它负责三件事：
 

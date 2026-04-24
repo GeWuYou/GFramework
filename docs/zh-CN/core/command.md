@@ -1,9 +1,9 @@
 ---
-title: Command
+title: 命令（Command）
 description: 说明 GFramework.Core.Command 旧命令体系的兼容定位、可用基类与当前使用约束。
 ---
 
-# Command
+# 命令（Command）
 
 本页只说明 `GFramework.Core.Command` 里的旧命令体系。
 

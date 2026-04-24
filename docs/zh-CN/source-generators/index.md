@@ -1,9 +1,9 @@
 ---
-title: Source Generators
+title: 源码生成器
 description: 按模块梳理 GFramework 当前发布的源码生成器包、运行时归属与推荐选包入口。
 ---
 
-# Source Generators
+# 源码生成器
 
 `Source Generators` 栏目对应 `GFramework` 当前按模块拆分发布的编译期工具链。
 

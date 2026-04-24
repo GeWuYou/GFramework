@@ -1,9 +1,9 @@
 ---
-title: Game Abstractions
+title: Game 抽象层
 description: GFramework.Game.Abstractions 的契约边界、包关系与源码阅读重点。
 ---
 
-# Game Abstractions
+# Game 抽象层
 
 `GFramework.Game.Abstractions` 是 `Game` 运行时的契约包。
 
