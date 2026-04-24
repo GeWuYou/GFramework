@@ -70,7 +70,7 @@ public sealed class YamlConfigLoaderNegationTests
         var loader = CreateMonsterLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry).ConfigureAwait(false));
 
         Assert.Multiple(() =>
         {
@@ -118,7 +118,7 @@ public sealed class YamlConfigLoaderNegationTests
         var loader = CreateMonsterLoader();
         var registry = CreateRegistry();
 
-        await loader.LoadAsync(registry);
+        await loader.LoadAsync(registry).ConfigureAwait(false);
 
         var table = registry.GetTable<int, MonsterConfigStub>("monster");
 
@@ -172,7 +172,7 @@ public sealed class YamlConfigLoaderNegationTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry).ConfigureAwait(false));
 
         Assert.Multiple(() =>
         {
@@ -227,7 +227,7 @@ public sealed class YamlConfigLoaderNegationTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        await loader.LoadAsync(registry);
+        await loader.LoadAsync(registry).ConfigureAwait(false);
 
         var table = registry.GetTable<int, MonsterRewardConfigStub>("monster");
 
@@ -272,7 +272,7 @@ public sealed class YamlConfigLoaderNegationTests
         var loader = CreateMonsterLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry).ConfigureAwait(false));
 
         Assert.Multiple(() =>
         {

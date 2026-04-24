@@ -2,6 +2,163 @@
 
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-24 — RP-058
+
+### 阶段：PR #286 latest-head review 格式跟进
+
+- 触发背景：
+  - 用户要求执行 `$gframework-pr-review`，需要以当前分支 PR 页面而不是本地记忆为准，重新核对 CodeRabbit、MegaLinter 和测试状态
+  - 抓取脚本当前解析到的 PR 是 `#286`，最新 reviewed commit 为 `2b707343577193fc9904517e6078149653e95698`
+  - 最新 head 上真正未解决的代码线程只剩 `GFramework.Godot/Scene/SceneBehaviorBase.cs:148` 的缩进问题；其余 nitpick 为可选建议或已留待后续批次
+- 主线程实施：
+  - 运行 `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output /tmp/current-pr-review.json`，确认 PR `OPEN`、测试 `2156/2156` 通过、MegaLinter 仅剩 `dotnet-format` 警告
+  - 复核 `SceneBehaviorBase.cs` 后确认 `OnPauseAsync` 的方法签名与方法体缩进异常仍存在于本地源码；同段的 `OnResumeAsync`、`OnUnloadAsync` 也有同类偏差
+  - 在不改变行为的前提下统一修正三个方法的缩进，保持现有 XML 注释、`ConfigureAwait(true)` 语义与 Godot 主线程说明不变
+  - 更新 active tracking / trace，记录当前 PR review follow-up 已完成，本地剩余外部信号只剩 PR 标题检查
+- 验证里程碑：
+  - `dotnet build GFramework.Godot/GFramework.Godot.csproj -c Release`
+    - 结果：成功；`565 Warning(s)`、`0 Error(s)`
+    - 结论：当前格式修复未引入编译错误；模块既有 warning 基线仍存在，但不属于本次 PR review 跟进范围
+  - `dotnet format GFramework.Godot/GFramework.Godot.csproj --verify-no-changes --no-restore --include GFramework.Godot/Scene/SceneBehaviorBase.cs`
+    - 首次运行：失败；sandbox 环境下在 build host / pipe 建立阶段报错，未进入真实格式比较
+    - 提权复验：成功；仅提示 workspace load warning，无格式差异
+- 当前结论：
+  - PR #286 当前 latest-head 上唯一未解决的实质代码 review thread 已在本地修复
+  - MegaLinter 暴露的 `dotnet-format` 问题已被本地 `verify-no-changes` 复验覆盖
+  - `Title check: Inconclusive` 仍然存在，但属于 GitHub PR 标题元数据问题，不能通过本地代码提交直接消除
+
+## 2026-04-24 — RP-057
+
+### 阶段：清理 `PersistenceTests.cs` 残余 `MA0004`
+
+- 触发背景：
+  - `RP-056` 提交后重新做非增量热点排序时，`GFramework.Game.Tests` 的剩余测试项目 warning 已明显收敛，只剩 `PersistenceTests.cs` 少量 `MA0004` 与 `YamlConfigLoaderTests.cs` 大量 warning
+  - 为避免在同一轮直接进入 `YamlConfigLoaderTests.cs` 的大文件高上下文批次，先吃掉 `PersistenceTests.cs` 这个独立小切片
+- 主线程实施：
+  - 在 `PersistenceTests.cs` 中为统一设置仓库失败缓存一致性相关测试补齐剩余 `.ConfigureAwait(false)`
+  - 覆盖保存失败与删除失败两个测试场景中的缓存读取、存在性检查、后续保存和最终验证读取
+  - 更新 active tracking / trace，明确下一批若继续推进应单独进入 `YamlConfigLoaderTests.cs`
+- 验证里程碑：
+  - `dotnet build GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --no-incremental`
+    - 热点重排前：成功；`253 Warning(s)`、`0 Error(s)`
+    - 修复后：成功；`249 Warning(s)`、`0 Error(s)`
+    - 结论：`PersistenceTests.cs` 不再出现在 warning 输出中
+  - `dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --filter "FullyQualifiedName~UnifiedSettingsDataRepository_SaveAsync_When_Persist_Fails_Should_Keep_Cache_Consistent|FullyQualifiedName~UnifiedSettingsDataRepository_DeleteAsync_When_Persist_Fails_Should_Keep_Cache_Consistent"`
+    - 结果：成功；`Passed: 2`、`Failed: 0`
+- 当前结论：
+  - `PersistenceTests.cs` 的残余 warning 已清零，`GFramework.Game.Tests` 剩余热点几乎全部压缩到了 `YamlConfigLoaderTests.cs`
+  - 当前工作树投影下，分支体积为 `27` 个文件、`991` 行，仍低于 `$gframework-batch-boot 75`
+  - 按 batch skill 的低风险边界，这一轮应在提交后收口；下一轮再把 `YamlConfigLoaderTests.cs` 作为单独批次处理
+
+## 2026-04-24 — RP-056
+
+### 阶段：修复 `GeneratedConfigConsumerIntegrationTests` 编译错误并清零该文件 warning
+
+- 触发背景：
+  - `RP-055` 继续推进时，`GeneratedConfigConsumerIntegrationTests.cs` 在 raw string `invalidYaml` 段落附近出现 `CS8999`，导致 `GFramework.Game.Tests` 暂时无法编译
+  - 该文件同时仍是项目内少数残留 warning 热点之一，因此适合作为同一批次中的单文件收尾
+- 主线程实施：
+  - 修复 `GeneratedConfigConsumerIntegrationTests.cs` 中损坏的 `CreateMonsterFiles` raw string 与方法边界，恢复文件可编译状态
+  - 保留并整理上一轮已开始的 `.ConfigureAwait(false)` 与断言 helper 抽取
+  - 继续将 `AssertGeneratedBindingsLoadResults` 再拆分为 catalog / monster / item 三个辅助方法，清除该文件剩余 `MA0051`
+  - 更新 active tracking / trace，沿用 `merge-base(origin/main, HEAD)` 作为 `$gframework-batch-boot 75` 的唯一 stop-condition 口径
+- 验证里程碑：
+  - `dotnet build GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release`
+    - 结果：成功；`59 Warning(s)`、`0 Error(s)`
+    - 结论：`GeneratedConfigConsumerIntegrationTests.cs` 不再出现在 warning 输出中
+  - `dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --filter "FullyQualifiedName~GeneratedConfigConsumerIntegrationTests"`
+    - 结果：成功；`Passed: 4`、`Failed: 0`
+- 当前结论：
+  - `GFramework.Game.Tests` 已从 `RP-055` 收尾时的 `63 warning(s)` 进一步收敛到 `59 warning(s)`
+  - 当前工作树投影下，分支体积为 `27` 个文件、`943` 行，仍低于 `$gframework-batch-boot 75`
+  - 后续若继续自动推进，最自然的下一批将进入 `YamlConfigLoaderTests.cs` 这类高上下文大文件
+
+## 2026-04-24 — RP-055
+
+### 阶段：修正 stop-condition 口径并继续 `GFramework.Game.Tests` 小热点
+
+- 触发背景：
+  - `RP-054` 之后复核 batch stop-condition 时，发现之前一度把工作树 diff 错当成了 skill 要求的 branch diff
+  - 按正确口径 `merge-base(origin/main, HEAD)` 计算，`RP-054` 提交后的真实分支体积是 `23` 个文件、`603` 行，因此仍可继续下一批
+  - 当前剩余 warning 里，`ArchitectureConfigIntegrationTests`、`GameConfigBootstrapTests`、`JsonSerializerTests` 属于独立且低风险的小切片
+- 主线程实施：
+  - 在 `ArchitectureConfigIntegrationTests.cs` 中补齐异步架构初始化 / 销毁和异常断言的 `.ConfigureAwait(false)`
+  - 在 `GameConfigBootstrapTests.cs` 中补齐启动流程、并发初始化断言与 `WaitForTaskWithinAsync` 的 `.ConfigureAwait(false)`
+  - 在 `JsonSerializerTests.cs` 中将坐标解析改为 `CultureInfo.InvariantCulture`
+  - 顺手清理 `YamlConfigLoaderAllOfTests.cs` 与 `PersistenceTests.cs` 中上一批遗漏的字段态状态检查和异步等待 warning
+  - 纠正 active tracking：明确 stop-condition 必须使用 `origin/main...HEAD` 的 merge-base 分支 diff，而不是工作树 diff
+- 验证里程碑：
+  - `dotnet build GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release`
+    - 并行误用 build/test 时：出现 `MSB3026` / `CS2012` 文件占用噪声，不计入代码结论
+    - 串行复验：成功；`63 Warning(s)`、`0 Error(s)`
+  - `dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --filter "FullyQualifiedName~ArchitectureConfigIntegrationTests|FullyQualifiedName~GameConfigBootstrapTests|FullyQualifiedName~JsonSerializerTests"`
+    - 结果：成功；`Passed: 19`、`Failed: 0`
+- 当前结论：
+  - `GFramework.Game.Tests` 已从上一批收尾时的 `71 warning(s)` 进一步降到 `63 warning(s)`
+  - 这次提交后的分支体积投影为 `26` 个文件、`691` 行，仍低于 `$gframework-batch-boot 75`
+  - 剩余热点越来越集中到 `YamlConfigLoaderTests.cs` 与 `GeneratedConfigConsumerIntegrationTests.cs`，后续继续时应把它们视为高上下文批次
+
+## 2026-04-24 — RP-054
+
+### 阶段：`GFramework.Game.Tests` 低风险测试 warning 批次（触发文件数停止阈值）
+
+- 触发背景：
+  - 用户要求“直接进入下一批”，继续沿 `$gframework-batch-boot 75` 自动推进 warning reduction
+  - 以 `origin/main` 为基线时，上一批提交后分支累计 diff 仍只有 `8` 个文件，足够再落一个独立批次
+  - 重新执行 `dotnet clean GFramework.sln -c Release` 仍停在 `ValidateSolutionConfiguration`，因此继续以直接 `dotnet build GFramework.sln -c Release` 的输出挑选低风险热点
+- 主线程实施：
+  - 从整仓 `Release build` 的 `116 warning(s)` 入口观测值中，选择 `GFramework.Game.Tests` 的小型测试文件和 `PersistenceTestUtilities.cs` 作为当前批次，刻意避开 `YamlConfigLoaderTests.cs` 这类高上下文大文件
+  - 在 `YamlConfigLoaderIfThenElseTests.cs`、`YamlConfigLoaderDependentSchemasTests.cs`、`YamlConfigLoaderDependentRequiredTests.cs`、`YamlConfigLoaderNegationTests.cs`、`YamlConfigLoaderAllOfTests.cs`、`YamlConfigLoaderEnumTests.cs`、`YamlConfigTextValidatorTests.cs`、`PersistenceTests.cs` 中补齐 `.ConfigureAwait(false)`，并把字段态 `_rootPath` 的 `ThrowIfNull` 改为显式 `InvalidOperationException`
+  - 将 `PersistenceTestUtilities.cs` 拆分为 `TestDataLocation.cs`、`TestSaveData.cs`、`TestVersionedSaveData.cs`、`TestSimpleData.cs`、`TestNamedData.cs`，消除 `MA0048` 并对齐仓库的一文件一主类型风格
+  - 在 `YamlConfigSchemaValidatorTests.cs` 中把字段态 `_rootPath` 的校验改成显式状态异常，避免继续触发 `MA0015`
+- 验证里程碑：
+  - `dotnet clean GFramework.sln -c Release`
+    - 结果：失败；停在 `ValidateSolutionConfiguration`，`0 Warning(s)`、`0 Error(s)`
+  - `dotnet build GFramework.sln -c Release`
+    - 结果：成功；`116 Warning(s)`、`0 Error(s)`
+  - `dotnet clean GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release`
+    - 结果：失败；clean 阶段提前结束，`0 Warning(s)`、`0 Error(s)`
+  - `dotnet build GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release`
+    - 第一轮批次后：成功；`80 Warning(s)`、`0 Error(s)`
+    - 收尾修正后：成功；`71 Warning(s)`、`0 Error(s)`
+  - `dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --filter "FullyQualifiedName~YamlConfigLoaderIfThenElseTests|FullyQualifiedName~YamlConfigLoaderDependentSchemasTests|FullyQualifiedName~YamlConfigLoaderDependentRequiredTests|FullyQualifiedName~YamlConfigLoaderNegationTests|FullyQualifiedName~YamlConfigLoaderAllOfTests|FullyQualifiedName~YamlConfigLoaderEnumTests|FullyQualifiedName~YamlConfigTextValidatorTests|FullyQualifiedName~YamlConfigSchemaValidatorTests|FullyQualifiedName~PersistenceTests"`
+    - 结果：成功；`Passed: 63`、`Failed: 0`
+- 当前结论：
+  - `GFramework.Game.Tests` 本轮入口热点已从 `116 warning(s)` 收敛到 `71 warning(s)`，且本轮 touched files 不再出现在 warning 输出中
+  - 当前工作树相对 `origin/main` 的累计 diff 已达到 `76` 个文件、`986` 行，超过 `$gframework-batch-boot 75` 的主停止阈值
+  - 按批处理技能规则，本轮必须在提交当前批次后停止；剩余候选应在新一轮里单独评估，尤其是 `YamlConfigLoaderTests.cs`
+
+## 2026-04-24 — RP-053
+
+### 阶段：`GFramework.Godot` / `GFramework.Godot.Tests` 小批次 warning 清理
+
+- 触发背景：
+  - 用户以 `$gframework-batch-boot 75` 要求继续按批次推进 analyzer warning reduction，并以 `origin/main` 作为累计分支 diff 基线
+  - 当前 worktree `fix/analyzer-warning-reduction-batch` 相对 `origin/main` 的已提交分支 diff 为 `0` 个文件，具备继续落一个低风险 warning batch 的空间
+  - solution-level `dotnet clean GFramework.sln -c Release` 仍在 `ValidateSolutionConfiguration` 阶段失败，因此本轮继续用直接 `dotnet build GFramework.sln -c Release` 建立热点观察值
+- 主线程实施：
+  - 运行 `dotnet build GFramework.sln -c Release`，确认当前整仓观测值为 `1122 warning(s)`，并从输出中挑选 `GFramework.Godot` 的小范围热点作为本轮批次
+  - 在 `GodotYamlConfigEnvironment.cs` 中按“普通文件系统 / Godot 路径”拆分目录枚举 helper，消除 `MA0051`
+  - 在 `AbstractArchitecture.cs` 与 `SceneBehaviorBase.cs` 中将必须保留 Godot 主线程上下文的 await 显式改为 `.ConfigureAwait(true)`，清理 `MA0004` 并把线程意图写入注释
+  - 在 `GFramework.Godot.Tests` 中补齐异步断言的 `.ConfigureAwait(false)`，并让 `RichTextMarkupTests` 的测试字典显式指定 `StringComparer.Ordinal`
+- 验证里程碑：
+  - `dotnet clean GFramework.sln -c Release`
+    - 结果：失败；停在 `ValidateSolutionConfiguration`，`0 Warning(s)`、`0 Error(s)`
+  - `dotnet build GFramework.sln -c Release`
+    - 结果：成功；`1122 Warning(s)`、`0 Error(s)`
+  - `dotnet build GFramework.Godot/GFramework.Godot.csproj -c Release`
+    - 第一轮修复后：成功；`12 Warning(s)`、`0 Error(s)`，仅剩 `MA0004`
+    - 第二轮修复后：成功；`0 Warning(s)`、`0 Error(s)`
+  - `dotnet test GFramework.Godot.Tests/GFramework.Godot.Tests.csproj -c Release --filter "FullyQualifiedName~AbstractArchitectureModuleInstallationTests|FullyQualifiedName~GodotYamlConfigLoaderTests|FullyQualifiedName~RichTextMarkupTests"`
+    - 结果：成功；`Passed: 15`、`Failed: 0`
+  - `dotnet build GFramework.Godot.Tests/GFramework.Godot.Tests.csproj -c Release`
+    - 并行验证时：成功；`1 Warning(s)`、`0 Error(s)`；`MSB3026` 为与并行 `dotnet test` 竞争输出 DLL 的文件占用
+    - 串行复验：成功；`0 Warning(s)`、`0 Error(s)`
+- 当前结论：
+  - `GFramework.Godot` 与 `GFramework.Godot.Tests` 本轮直接涉及的 warning 已全部清零
+  - 当前待提交代码批次相对 `origin/main` 的源码 diff 为 `6` 个文件、`107` 行，距离 `$gframework-batch-boot 75` 主停止阈值仍有充足余量
+  - 继续推进的下一批候选将主要落在 `GFramework.Game` 等高 warning 基线模块，已不再属于当前同等级低风险切片，因此本轮在这里收口并进入提交
+
 ## 2026-04-24 — RP-052
 
 ### 阶段：PR review follow-up（comparer 契约 + `ConfigureAwait(false)` 收尾）

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Newtonsoft.Json;
 using GameJsonSerializer = GFramework.Game.Serializer.JsonSerializer;
 
@@ -182,8 +183,8 @@ public sealed class JsonSerializerTests
             var parts = raw.Split(':');
             return new CoordinateStub
             {
-                X = int.Parse(parts[0]),
-                Y = int.Parse(parts[1])
+                X = int.Parse(parts[0], CultureInfo.InvariantCulture),
+                Y = int.Parse(parts[1], CultureInfo.InvariantCulture)
             };
         }
     }

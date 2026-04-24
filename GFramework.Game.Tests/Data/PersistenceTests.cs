@@ -38,12 +38,12 @@ public class PersistenceTests
         using var storage = new FileStorage(root, new JsonSerializer(), ".json");
 
         var saved = new TestSimpleData { Value = 5 };
-        await storage.WriteAsync("folder/item", saved);
+        await storage.WriteAsync("folder/item", saved).ConfigureAwait(false);
 
-        var loaded = await storage.ReadAsync<TestSimpleData>("folder/item");
+        var loaded = await storage.ReadAsync<TestSimpleData>("folder/item").ConfigureAwait(false);
         Assert.That(loaded.Value, Is.EqualTo(saved.Value));
 
-        Assert.ThrowsAsync<ArgumentException>(async () => await storage.WriteAsync("../escape", new TestSimpleData()));
+        Assert.ThrowsAsync<ArgumentException>(async () => await storage.WriteAsync("../escape", new TestSimpleData()).ConfigureAwait(false));
     }
 
     /// <summary>
@@ -108,7 +108,7 @@ public class PersistenceTests
             .RegisterMigration(new TestSaveMigrationV2ToV3());
 
         var loaded = await repository.LoadAsync(1);
-        var persisted = await storage.ReadAsync<TestVersionedSaveData>("saves/slot_1/save");
+        var persisted = await storage.ReadAsync<TestVersionedSaveData>("saves/slot_1/save").ConfigureAwait(false);
 
         Assert.Multiple(() =>
         {
@@ -185,7 +185,7 @@ public class PersistenceTests
         var repository = new SaveRepository<TestVersionedSaveData>(storage, config)
             .RegisterMigration(new TestSaveMigrationV1ToV2());
 
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await repository.LoadAsync(1));
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await repository.LoadAsync(1).ConfigureAwait(false));
         Assert.That(exception!.Message, Does.Contain("from version 2"));
     }
 
@@ -218,8 +218,8 @@ public class PersistenceTests
         var repository = new SaveRepository<TestVersionedSaveData>(storage, config)
             .RegisterMigration(new TestSaveMigrationV1ToV2ReturningV3());
 
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await repository.LoadAsync(1));
-        var persisted = await storage.ReadAsync<TestVersionedSaveData>("saves/slot_1/save");
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await repository.LoadAsync(1).ConfigureAwait(false));
+        var persisted = await storage.ReadAsync<TestVersionedSaveData>("saves/slot_1/save").ConfigureAwait(false);
 
         Assert.Multiple(() =>
         {
@@ -270,8 +270,8 @@ public class PersistenceTests
         repository.RegisterMigration(new TestSaveMigrationV2ToV3());
         continueMigration.Set();
 
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await loadTask);
-        var persisted = await storage.ReadAsync<TestVersionedSaveData>("saves/slot_1/save");
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await loadTask.ConfigureAwait(false));
+        var persisted = await storage.ReadAsync<TestVersionedSaveData>("saves/slot_1/save").ConfigureAwait(false);
 
         Assert.Multiple(() =>
         {
@@ -593,13 +593,13 @@ public class PersistenceTests
 
         throwingStorage.ThrowOnWrite = true;
         Assert.ThrowsAsync<InvalidOperationException>(
-            async () => await repository.SaveAsync(primaryLocation, new TestSimpleData { Value = 99 }));
+            async () => await repository.SaveAsync(primaryLocation, new TestSimpleData { Value = 99 }).ConfigureAwait(false));
 
-        var cachedAfterFailure = await repository.LoadAsync<TestSimpleData>(primaryLocation);
+        var cachedAfterFailure = await repository.LoadAsync<TestSimpleData>(primaryLocation).ConfigureAwait(false);
         Assert.That(cachedAfterFailure.Value, Is.EqualTo(1));
 
         throwingStorage.ThrowOnWrite = false;
-        await repository.SaveAsync(secondaryLocation, new TestSimpleData { Value = 7 });
+        await repository.SaveAsync(secondaryLocation, new TestSimpleData { Value = 7 }).ConfigureAwait(false);
 
         using var verifyStorage = new FileStorage(root, new JsonSerializer(), ".json");
         var verifyRepository = new UnifiedSettingsDataRepository(
@@ -609,8 +609,8 @@ public class PersistenceTests
         verifyRepository.RegisterDataType(primaryLocation, typeof(TestSimpleData));
         verifyRepository.RegisterDataType(secondaryLocation, typeof(TestSimpleData));
 
-        var persistedPrimary = await verifyRepository.LoadAsync<TestSimpleData>(primaryLocation);
-        var persistedSecondary = await verifyRepository.LoadAsync<TestSimpleData>(secondaryLocation);
+        var persistedPrimary = await verifyRepository.LoadAsync<TestSimpleData>(primaryLocation).ConfigureAwait(false);
+        var persistedSecondary = await verifyRepository.LoadAsync<TestSimpleData>(secondaryLocation).ConfigureAwait(false);
 
         Assert.Multiple(() =>
         {
@@ -655,12 +655,13 @@ public class PersistenceTests
         repository.RegisterDataType(secondaryLocation, typeof(TestSimpleData));
 
         throwingStorage.ThrowOnWrite = true;
-        Assert.ThrowsAsync<InvalidOperationException>(async () => await repository.DeleteAsync(secondaryLocation));
+        Assert.ThrowsAsync<InvalidOperationException>(
+            async () => await repository.DeleteAsync(secondaryLocation).ConfigureAwait(false));
 
-        Assert.That(await repository.ExistsAsync(secondaryLocation), Is.True);
+        Assert.That(await repository.ExistsAsync(secondaryLocation).ConfigureAwait(false), Is.True);
 
         throwingStorage.ThrowOnWrite = false;
-        await repository.SaveAsync(primaryLocation, new TestSimpleData { Value = 9 });
+        await repository.SaveAsync(primaryLocation, new TestSimpleData { Value = 9 }).ConfigureAwait(false);
 
         using var verifyStorage = new FileStorage(root, new JsonSerializer(), ".json");
         var verifyRepository = new UnifiedSettingsDataRepository(
@@ -670,8 +671,8 @@ public class PersistenceTests
         verifyRepository.RegisterDataType(primaryLocation, typeof(TestSimpleData));
         verifyRepository.RegisterDataType(secondaryLocation, typeof(TestSimpleData));
 
-        var persistedPrimary = await verifyRepository.LoadAsync<TestSimpleData>(primaryLocation);
-        var persistedSecondary = await verifyRepository.LoadAsync<TestSimpleData>(secondaryLocation);
+        var persistedPrimary = await verifyRepository.LoadAsync<TestSimpleData>(primaryLocation).ConfigureAwait(false);
+        var persistedSecondary = await verifyRepository.LoadAsync<TestSimpleData>(secondaryLocation).ConfigureAwait(false);
 
         Assert.Multiple(() =>
         {

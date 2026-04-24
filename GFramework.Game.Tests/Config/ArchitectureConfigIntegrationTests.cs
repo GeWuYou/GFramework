@@ -39,7 +39,7 @@ public class ArchitectureConfigIntegrationTests
         try
         {
             architecture = new ConsumerArchitecture(rootPath);
-            await architecture.InitializeAsync();
+            await architecture.InitializeAsync().ConfigureAwait(false);
             initialized = true;
 
             var table = architecture.MonsterTable;
@@ -63,7 +63,7 @@ public class ArchitectureConfigIntegrationTests
         {
             if (architecture is not null && initialized)
             {
-                await architecture.DestroyAsync();
+                await architecture.DestroyAsync().ConfigureAwait(false);
             }
 
             DeleteDirectoryIfExists(rootPath);
@@ -83,7 +83,7 @@ public class ArchitectureConfigIntegrationTests
         try
         {
             architecture = new ConsumerArchitecture(rootPath);
-            await architecture.InitializeAsync();
+            await architecture.InitializeAsync().ConfigureAwait(false);
             initialized = true;
 
             Assert.Multiple(() =>
@@ -97,7 +97,7 @@ public class ArchitectureConfigIntegrationTests
         {
             if (architecture is not null && initialized)
             {
-                await architecture.DestroyAsync();
+                await architecture.DestroyAsync().ConfigureAwait(false);
             }
 
             DeleteDirectoryIfExists(rootPath);
@@ -119,16 +119,16 @@ public class ArchitectureConfigIntegrationTests
             var module = CreateModule(rootPath);
 
             firstArchitecture = new ModuleOnlyArchitecture(module);
-            await firstArchitecture.InitializeAsync();
+            await firstArchitecture.InitializeAsync().ConfigureAwait(false);
             var wasInitializedBeforeDestroy = module.IsInitialized;
-            await firstArchitecture.DestroyAsync();
+            await firstArchitecture.DestroyAsync().ConfigureAwait(false);
             firstDestroyed = true;
             firstArchitecture = null;
             GameContext.Clear();
 
             var secondArchitecture = new ModuleOnlyArchitecture(module);
             var exception =
-                Assert.ThrowsAsync<InvalidOperationException>(async () => await secondArchitecture.InitializeAsync());
+                Assert.ThrowsAsync<InvalidOperationException>(async () => await secondArchitecture.InitializeAsync().ConfigureAwait(false));
 
             Assert.Multiple(() =>
             {
@@ -141,7 +141,7 @@ public class ArchitectureConfigIntegrationTests
         {
             if (firstArchitecture is not null && !firstDestroyed)
             {
-                await firstArchitecture.DestroyAsync();
+                await firstArchitecture.DestroyAsync().ConfigureAwait(false);
             }
 
             DeleteDirectoryIfExists(rootPath);
@@ -203,7 +203,7 @@ public class ArchitectureConfigIntegrationTests
             var module = CreateModule(rootPath);
 
             readyArchitecture = new ReadyOnlyArchitecture();
-            await readyArchitecture.InitializeAsync();
+            await readyArchitecture.InitializeAsync().ConfigureAwait(false);
             readyArchitectureInitialized = true;
 
             var exception = Assert.Throws<InvalidOperationException>(() => readyArchitecture.InstallModule(module));
@@ -216,13 +216,13 @@ public class ArchitectureConfigIntegrationTests
                 Assert.That(module.IsInitialized, Is.False);
             });
 
-            await readyArchitecture.DestroyAsync();
+            await readyArchitecture.DestroyAsync().ConfigureAwait(false);
             readyArchitectureInitialized = false;
             readyArchitecture = null;
             GameContext.Clear();
 
             retryArchitecture = new ModuleOnlyArchitecture(module);
-            await retryArchitecture.InitializeAsync();
+            await retryArchitecture.InitializeAsync().ConfigureAwait(false);
             retryArchitectureInitialized = true;
 
             Assert.Multiple(() =>
@@ -235,12 +235,12 @@ public class ArchitectureConfigIntegrationTests
         {
             if (retryArchitecture is not null && retryArchitectureInitialized)
             {
-                await retryArchitecture.DestroyAsync();
+                await retryArchitecture.DestroyAsync().ConfigureAwait(false);
             }
 
             if (readyArchitecture is not null && readyArchitectureInitialized)
             {
-                await readyArchitecture.DestroyAsync();
+                await readyArchitecture.DestroyAsync().ConfigureAwait(false);
             }
 
             DeleteDirectoryIfExists(rootPath);

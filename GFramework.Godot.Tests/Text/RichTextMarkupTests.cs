@@ -1,3 +1,4 @@
+using System;
 using GFramework.Godot.Text;
 
 namespace GFramework.Godot.Tests.Text;
@@ -25,7 +26,7 @@ public sealed class RichTextMarkupTests
     [Test]
     public void Effect_Should_Sort_Environment_Parameters_By_Key()
     {
-        var env = new Dictionary<string, object?>
+        var env = new Dictionary<string, object?>(StringComparer.Ordinal)
         {
             ["tick"] = 0.1f,
             ["speed"] = 4
@@ -53,7 +54,7 @@ public sealed class RichTextMarkupTests
     [Test]
     public void Effect_Should_Reject_Invalid_Environment_Key_Tokens()
     {
-        var env = new Dictionary<string, object?>
+        var env = new Dictionary<string, object?>(StringComparer.Ordinal)
         {
             ["bad key"] = 1
         };

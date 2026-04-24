@@ -50,7 +50,7 @@ public class GameConfigBootstrapTests
         var registry = new ConfigRegistry();
         using var bootstrap = CreateBootstrap(registry);
 
-        await bootstrap.InitializeAsync();
+        await bootstrap.InitializeAsync().ConfigureAwait(false);
 
         var monsterTable = registry.GetMonsterTable();
 
@@ -74,7 +74,7 @@ public class GameConfigBootstrapTests
         CreateMonsterFiles();
 
         using var bootstrap = CreateBootstrap();
-        await bootstrap.InitializeAsync();
+        await bootstrap.InitializeAsync().ConfigureAwait(false);
 
         var reloadTaskSource = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
         bootstrap.StartHotReload(
@@ -95,7 +95,7 @@ public class GameConfigBootstrapTests
                 faction: dungeon
                 """);
 
-            var tableName = await WaitForTaskWithinAsync(reloadTaskSource.Task, TimeSpan.FromSeconds(5));
+            var tableName = await WaitForTaskWithinAsync(reloadTaskSource.Task, TimeSpan.FromSeconds(5)).ConfigureAwait(false);
             var monsterTable = bootstrap.Registry.GetMonsterTable();
 
             Assert.Multiple(() =>
@@ -163,11 +163,11 @@ public class GameConfigBootstrapTests
             Is.True,
             "The first initialization attempt did not reach the guarded lifecycle section.");
 
-        var secondCallerException = Assert.ThrowsAsync<InvalidOperationException>(async () => await bootstrap.InitializeAsync());
+        var secondCallerException = Assert.ThrowsAsync<InvalidOperationException>(async () => await bootstrap.InitializeAsync().ConfigureAwait(false));
 
         continueInitialization.Set();
 
-        Assert.DoesNotThrowAsync(async () => await firstInitializeTask);
+        Assert.DoesNotThrowAsync(async () => await firstInitializeTask.ConfigureAwait(false));
 
         Assert.Multiple(() =>
         {
@@ -202,7 +202,7 @@ public class GameConfigBootstrapTests
                         })
             });
 
-        var exception = Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await bootstrap.InitializeAsync());
+        var exception = Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await bootstrap.InitializeAsync().ConfigureAwait(false));
 
         Assert.Multiple(() =>
         {
@@ -311,12 +311,12 @@ public class GameConfigBootstrapTests
     /// <returns>任务结果。</returns>
     private static async Task<T> WaitForTaskWithinAsync<T>(Task<T> task, TimeSpan timeout)
     {
-        var completedTask = await Task.WhenAny(task, Task.Delay(timeout));
+        var completedTask = await Task.WhenAny(task, Task.Delay(timeout)).ConfigureAwait(false);
         if (!ReferenceEquals(completedTask, task))
         {
             Assert.Fail($"Timed out after {timeout} while waiting for file watcher notification.");
         }
 
-        return await task;
+        return await task.ConfigureAwait(false);
     }
 }

@@ -197,7 +197,7 @@ public sealed class GodotYamlConfigLoaderTests
         var loader = CreateLoader(isEditor: false);
 
         var exception = Assert.ThrowsAsync<ConfigLoadException>(async () =>
-            await loader.LoadAsync(new ConfigRegistry()));
+            await loader.LoadAsync(new ConfigRegistry()).ConfigureAwait(false));
 
         Assert.Multiple(() =>
         {
@@ -225,7 +225,7 @@ public sealed class GodotYamlConfigLoaderTests
             configureLoader: static _ => { });
 
         var exception = Assert.ThrowsAsync<ArgumentException>(async () =>
-            await loader.LoadAsync(new ConfigRegistry()));
+            await loader.LoadAsync(new ConfigRegistry()).ConfigureAwait(false));
 
         Assert.That(exception!.ParamName, Is.EqualTo("relativePath"));
     }
@@ -254,7 +254,7 @@ public sealed class GodotYamlConfigLoaderTests
             configureLoader: static _ => { });
 
         var exception = Assert.ThrowsAsync<ArgumentException>(async () =>
-            await loader.LoadAsync(new ConfigRegistry()));
+            await loader.LoadAsync(new ConfigRegistry()).ConfigureAwait(false));
 
         Assert.That(exception!.ParamName, Is.EqualTo("relativePath"));
     }
