@@ -1,5 +1,32 @@
 # Analyzer Warning Reduction 追踪
 
+# Analyzer Warning Reduction 追踪
+
+## 2026-04-24 — RP-052
+
+### 阶段：PR review follow-up（comparer 契约 + `ConfigureAwait(false)` 收尾）
+
+- 触发背景：
+  - 当前分支 PR #283 的最新 review 中，`greptile-apps[bot]` 仍有一个未解决线程，指出 `UnifiedSettingsDataRepository.CloneFile` fallback 会静默丢失原 comparer
+  - CodeRabbit 另指出 `AutoRegisterExportedCollectionsGeneratorTests.cs` 中还残留 5 处 `await test.RunAsync();`，与同项目其他测试文件的 `.ConfigureAwait(false)` 风格不一致
+- 主线程实施：
+  - 复核 PR review JSON、`UnifiedSettingsDataRepository.cs`、`UnifiedSettingsFile.cs` 与 `AutoRegisterExportedCollectionsGeneratorTests.cs` 的当前代码，确认只有 comparer 契约线程仍属最新 head 上的实质问题
+  - 将 `UnifiedSettingsFile.Sections` 的 XML 注释补充为显式 comparer 契约，并把默认字典初始化改为 `StringComparer.Ordinal`
+  - 将 `CloneFile` fallback 从隐式默认 comparer 改为显式 `StringComparer.Ordinal`，并同步修正文档注释，避免继续暗含“保留原语义”的错误表述
+  - 把 `AutoRegisterExportedCollectionsGeneratorTests` 中剩余的 5 处 `await test.RunAsync();` 统一为 `.ConfigureAwait(false)`，同时让 `VerifyDiagnosticsAsync` 内部也消费 `ConfigureAwait(false)`
+- 验证里程碑：
+  - `dotnet build GFramework.Game/GFramework.Game.csproj -c Release`
+    - 结果：成功；`533 Warning(s)`、`0 Error(s)`；`GFramework.Game` 仍有既有 warning 基线，本轮 follow-up 仅处理 PR review 指向的 comparer 契约与测试异步等待一致性
+  - `dotnet build GFramework.Godot.SourceGenerators.Tests/GFramework.Godot.SourceGenerators.Tests.csproj -c Release`
+    - 结果：成功；`0 Warning(s)`、`0 Error(s)`
+  - `dotnet test GFramework.Godot.SourceGenerators.Tests/GFramework.Godot.SourceGenerators.Tests.csproj -c Release --no-build`
+    - 首次并行复验：失败；`FileNotFoundException`，原因是 `--no-build` 测试在 Release DLL 落盘前启动
+    - 串行复验：成功；`Passed: 48`、`Failed: 0`
+- 当前结论：
+  - PR #283 当前仍打开的 comparer review thread 已在本地代码与 XML 注释层面得到对应修复
+  - `AutoRegisterExportedCollectionsGeneratorTests` 的异步等待风格已与同项目其他测试保持一致
+  - 当前改动已通过直接受影响测试项目的 Release build 与串行 Release test 复验，可进入提交阶段
+
 ## 2026-04-24 — RP-051
 
 ### 阶段：`GFramework.Godot.SourceGenerators.Tests` warning 清零

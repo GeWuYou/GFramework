@@ -135,7 +135,7 @@ public class AutoRegisterExportedCollectionsGeneratorTests
             .WithLocation(0)
             .WithArguments("Values"));
 
-        await test.RunAsync();
+        await test.RunAsync().ConfigureAwait(false);
     }
 
     [Test]
@@ -302,7 +302,7 @@ public class AutoRegisterExportedCollectionsGeneratorTests
             .WithLocation(0)
             .WithArguments("Register", "_registry", "Values"));
 
-        await test.RunAsync();
+        await test.RunAsync().ConfigureAwait(false);
     }
 
     [Test]
@@ -500,7 +500,7 @@ public class AutoRegisterExportedCollectionsGeneratorTests
             .WithLocation(0)
             .WithArguments("_registry", "Values"));
 
-        await test.RunAsync();
+        await test.RunAsync().ConfigureAwait(false);
     }
 
     [Test]
@@ -555,7 +555,7 @@ public class AutoRegisterExportedCollectionsGeneratorTests
             .WithLocation(0)
             .WithArguments("Register", "_registry", "Values"));
 
-        await test.RunAsync();
+        await test.RunAsync().ConfigureAwait(false);
     }
 
     [Test]
@@ -610,7 +610,7 @@ public class AutoRegisterExportedCollectionsGeneratorTests
             .WithLocation(0)
             .WithArguments("Values"));
 
-        await test.RunAsync();
+        await test.RunAsync().ConfigureAwait(false);
     }
 
     [Test]
@@ -694,7 +694,7 @@ public class AutoRegisterExportedCollectionsGeneratorTests
                  """;
     }
 
-    private static Task VerifyDiagnosticsAsync(
+    private static async Task VerifyDiagnosticsAsync(
         string source,
         bool skipGeneratedSourcesCheck = false,
         params DiagnosticResult[] expectedDiagnostics)
@@ -718,6 +718,6 @@ public class AutoRegisterExportedCollectionsGeneratorTests
             test.ExpectedDiagnostics.Add(expectedDiagnostic);
         }
 
-        return test.RunAsync();
+        await test.RunAsync().ConfigureAwait(false);
     }
 }

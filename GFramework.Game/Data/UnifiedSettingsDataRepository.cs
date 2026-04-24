@@ -288,11 +288,11 @@ public class UnifiedSettingsDataRepository(
     {
         ArgumentNullException.ThrowIfNull(source);
 
-        // 反序列化后的运行时类型可能只是 IDictionary 实现；若底层仍是 Dictionary，则保留其 comparer，
-        // 否则退回到按当前内容复制，避免因为 API 抽象化而改变持久化前后的键比较语义。
+        // 反序列化后的运行时类型可能只是 IDictionary 实现；若底层仍是 Dictionary，则保留其 comparer。
+        // 若 comparer 已因接口抽象而不可恢复，则显式回退到 Ordinal，避免让默认 comparer 语义继续隐式存在。
         var sections = source.Sections is Dictionary<string, string> dictionary
             ? new Dictionary<string, string>(dictionary, dictionary.Comparer)
-            : new Dictionary<string, string>(source.Sections);
+            : new Dictionary<string, string>(source.Sections, StringComparer.Ordinal);
 
         return new UnifiedSettingsFile
         {
