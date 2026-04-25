@@ -1,5 +1,36 @@
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-25 — RP-065
+
+### 阶段：确认 .NET 验证噪音来自沙箱，并把无沙箱直跑写成仓库规则
+
+- 触发背景：
+  - 用户明确指出“之前很多清理、构建、测试报错像是环境问题，需要申请权限在沙箱外执行”，并要求把该解决方案写入 `AGENTS.md`
+  - 主线程随后在同一 worktree 中对比了沙箱内与提权后直接 shell 的 `dotnet clean` / `dotnet build`
+- 主线程实施：
+  - 在沙箱内直接运行 `dotnet clean` 时再次复现“Build FAILED but 0 errors”的无诊断噪音
+  - 申请提权后重新执行同一条 `dotnet clean`，确认命令可正常完成，说明先前 clean 失败并非仓库真值
+  - 在同一提权上下文直接执行 `dotnet build`，拿到当前仓库根权威基线：`656 Warning(s)`、`0 Error(s)`
+  - 关闭正在运行的 warning-reduction worker，把工作重心切到仓库治理与 active recovery 文档净化
+  - 更新 `AGENTS.md`，新增规则：当沙箱内 `dotnet clean` / `dotnet build` / `dotnet test` 产生缺少诊断、权限错误或其他环境噪音时，必须申请沙箱外重跑同一条直接命令，并以该结果为准
+  - 刷新 active todo/trace，把“环境阻塞”从默认恢复入口中降级为历史噪音，不再作为当前真值
+- 并行工作：
+  - worker 收敛了 4 个低风险测试噪音文件：
+    - `GFramework.Game.Tests/Config/GameConfigBootstrapTests.cs`
+    - `GFramework.Game.Tests/Config/GeneratedConfigConsumerIntegrationTests.cs`
+    - `GFramework.Game.Tests/Config/YamlConfigTextValidatorTests.cs`
+    - `GFramework.Ecs.Arch.Tests/Ecs/EcsAdvancedTests.cs`
+  - worker 验证：
+    - `dotnet build GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release`
+      - worker 初次结果：成功；随后主线程在同一提权环境复核后确认当前为 `0 Warning(s)`、`0 Error(s)`
+    - `dotnet build GFramework.Ecs.Arch.Tests/GFramework.Ecs.Arch.Tests.csproj -c Release`
+      - 主线程复核：成功；`0 Warning(s)`、`0 Error(s)`
+- 当前结论：
+  - 本仓库当前在 agent 沙箱内执行 `.NET` 验证时，确实可能出现假失败或缺失诊断
+  - 当前应把“提权后的直接 `dotnet` 命令输出”视为仓库真值，而不是继续围绕沙箱噪音扩展 workaround 命令形态
+  - `fix/analyzer-warning-reduction-batch` 当前 `HEAD` 已与 `origin/main` 对齐；新的 `$gframework-batch-boot 50` 轮次从 `0 files / 0 lines` committed diff 开始
+  - 下一轮低风险热点仍是 `GFramework.Game.Tests/Config/YamlConfigLoaderTests.cs` 的 `4` 个 `MA0051`
+
 ## 2026-04-25 — RP-064
 
 ### 阶段：按标准 WSL build 路径复核 PR #288 建议并完成本轮收口

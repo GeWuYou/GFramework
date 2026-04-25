@@ -60,11 +60,8 @@ public class EcsAdvancedTests
         InitializeEcsModule();
         _world!.Create(new Position(0, 0));
 
-        Assert.DoesNotThrow(() =>
-        {
-            World.Destroy(_world);
-            _world = null;
-        });
+        World.Destroy(_world);
+        _world = null;
     }
 
     [Test]
@@ -124,7 +121,7 @@ public class EcsAdvancedTests
 
         _world = _container!.Get<World>();
 
-        Assert.DoesNotThrow(() => _ecsModule.Update(1.0f));
+        _ecsModule.Update(1.0f);
     }
 
     [Test]

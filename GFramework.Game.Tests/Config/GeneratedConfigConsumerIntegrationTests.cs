@@ -198,11 +198,10 @@ public class GeneratedConfigConsumerIntegrationTests
             Assert.That(yaml.EndsWith("\n", StringComparison.Ordinal), Is.True);
         });
 
-        Assert.DoesNotThrow(() =>
-            MonsterConfigBindings.ValidateYaml(_rootPath, "monster/generated.yaml", yaml));
-
-        Assert.DoesNotThrowAsync(async () =>
-            await MonsterConfigBindings.ValidateYamlAsync(_rootPath, "monster/generated.yaml", yaml).ConfigureAwait(false));
+        MonsterConfigBindings.ValidateYaml(_rootPath, "monster/generated.yaml", yaml);
+        Assert.That(
+            async () => await MonsterConfigBindings.ValidateYamlAsync(_rootPath, "monster/generated.yaml", yaml).ConfigureAwait(false),
+            Throws.Nothing);
 
         var invalidYaml = """
                           id: 3

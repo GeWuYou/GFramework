@@ -54,16 +54,15 @@ public sealed class YamlConfigTextValidatorTests
             }
             """);
 
-        Assert.DoesNotThrow(() =>
-            YamlConfigTextValidator.Validate(
-                "monster",
-                schemaPath,
-                "monster/generated.yaml",
-                """
-                id: 1
-                name: Slime
-                hp: 10
-                """));
+        YamlConfigTextValidator.Validate(
+            "monster",
+            schemaPath,
+            "monster/generated.yaml",
+            """
+            id: 1
+            name: Slime
+            hp: 10
+            """);
     }
 
     /// <summary>
@@ -169,8 +168,7 @@ public sealed class YamlConfigTextValidatorTests
                    hp: 10
                    """;
 
-        Assert.DoesNotThrow(() =>
-            YamlConfigTextValidator.Validate("monster", schemaPath, "monster/generated.yaml", yaml));
+        YamlConfigTextValidator.Validate("monster", schemaPath, "monster/generated.yaml", yaml);
 
         File.WriteAllText(
             schemaPath,

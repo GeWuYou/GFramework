@@ -33,6 +33,13 @@ All AI agents and contributors must follow these rules when writing, reviewing, 
   baseline from a non-incremental repository-root build by running `dotnet clean` and then `dotnet build`.
 - Contributors MUST NOT treat a repeated incremental `dotnet build` result as authoritative for warning inspection when
   a clean baseline has not been captured in the same round.
+- If a direct `dotnet clean`、`dotnet build`、or `dotnet test` command fails inside the agent sandbox with missing
+  diagnostics, `Permission denied`, MSBuild pipe/socket errors, or other environment-only noise that does not match a
+  normal shell invocation, contributors MUST request permission and rerun the same direct command outside the sandbox
+  before concluding that the repository or toolchain is broken.
+- For repository truth, contributors MUST prefer the result of the original direct command executed outside the sandbox
+  over sandbox-only failures, workaround-heavy variants, or speculative environment flags unless the user explicitly
+  asks for a non-default command shape.
 - If the task changes multiple projects or shared abstractions, prefer a solution-level or affected-project
   `dotnet build ... -c Release`; otherwise use the smallest build command that still proves the result compiles.
 - When a task adds a feature or modifies code, contributors MUST run a Release build for every directly affected
@@ -235,6 +242,8 @@ All generated or modified code MUST include clear and meaningful comments where 
 ### Validation Commands
 
 Use the smallest command set that proves the change, then expand if the change is cross-cutting.
+If a sandboxed agent run reports environment-specific .NET failures, rerun the same direct command outside the sandbox
+and treat that unsandboxed result as authoritative for validation and warning baselines.
 
 ```bash
 # Check warnings from the default repository build entrypoint

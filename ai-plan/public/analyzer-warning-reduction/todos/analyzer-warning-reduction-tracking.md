@@ -6,85 +6,46 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-064`
-- 当前阶段：`Phase 64`
+- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-065`
+- 当前阶段：`Phase 65`
 - 当前焦点：
-  - `2026-04-25` 当前 turn 先执行 `$gframework-pr-review`，复核 PR #288 的 latest-head unresolved 线程与折叠评论
-  - 已收敛一批经本地复核后仍成立的 review 建议，包括 `ThrowIfNull` 回退、测试桩 XML 注释修正、`FileStorage` 资源所有权、`SceneRouterBase` 线程亲和语义与若干测试噪音
-  - 已确认用户在 WSL 下直接执行的标准 `dotnet build -c Release` 路径可用；前一轮失败主要来自主线程附加的 workaround 参数而非仓库本身不可构建
-  - 基线 `origin/main` 仍为 `9964962`（`2026-04-24T23:05:53+08:00`）
-  - 当前累计 branch diff 相对 `origin/main` 为 `75` 个文件、`2098` 行，已触达本轮 `75 files` 阈值
-  - `RP-061` 之后已接受 2 个批次提交：`03c73a8`、`9ce1fa6`
-  - 当前默认恢复入口不再继续扩写集；若要继续 analyzer reduction，优先重新抓取 PR #288 的 unresolved 线程并按最新 head 再做一轮收口
+  - `2026-04-25` 已确认此前一批 `dotnet clean` / `dotnet build` / `dotnet test` 异常主要来自 agent 沙箱环境，而不是仓库或 WSL 默认 shell 本身
+  - 已用提权后的直接命令重新建立仓库根基线：`dotnet clean` 成功，`dotnet build` 结果为 `656 Warning(s)`、`0 Error(s)`
+  - 当前 `HEAD` 与 `origin/main` 对齐；基于 `$gframework-batch-boot 50` 的 committed branch diff 现为 `0 files / 0 lines`
+- 当前活跃写集是 4 个测试噪音清理文件，属于新的低风险 warning-reduction 批次；提交前需由主线程在沙箱外重新验证
+  - 主线程已完成该批次的沙箱外复核，当前可安全并入本轮提交
+  - 已决定把“沙箱内 .NET 验证失败时必须申请沙箱外重跑并以该结果为准”写入 `AGENTS.md`，避免后续继续扩散伪环境阻塞
 
 ## 当前活跃事实
 
-- 当前 `origin/main` 基线提交为 `9964962`（`2026-04-24T23:05:53+08:00`）。
-- 本轮 `Core.Tests` 低风险机械型清理已落地到：
-  - `ArchitectureAdditionalCqrsHandlersTests.cs`
-  - `RegistryInitializationHookBaseTests.cs`
-  - `CommandCoroutineExtensionsTests.cs`
-  - `TaskCoroutineExtensionsTests.cs`
-  - `WaitForTaskTTests.cs`
-  - `AsyncExtensionsTests.cs`
-  - `LogContextTests.cs`
-  - `PauseStackManagerTests.cs`
-- 本 turn 结合 PR #288 latest-head review 额外收敛了以下仍然成立的问题：
-  - `AsyncExtensionsTests.cs`：修复 `WithTimeoutAsync` 无返回值测试中错误返回 `ConfiguredTaskAwaitable` 导致的 `CS0029` / `CS1662`
-  - `ContextAwareCommandExtensions.cs`
-  - `ContextAwareQueryExtensions.cs`
-  - `ContextAwareEventExtensions.cs`
-  - `AsyncExtensions.cs`
-  - `AsyncKeyLockManagerTests.cs`：去掉两处不会产生额外价值的 `Assert.DoesNotThrowAsync(() => Task.WhenAll(...))` 包装，并把取消断言改为直接消费 `ValueTask.AsTask()`
-  - `AsyncArchitectureTests.cs`
-  - `ArchitectureLifecycleBehaviorTests.cs`
-  - `StateMachineSystemTests.cs`
-  - `RegistryInitializationHookBaseTests.cs`
-  - `NumericExtensions.cs`
-  - `StringExtensions.cs`
-  - `StoreBuilder.cs`
-  - `StoreSelection.cs`
-  - `ArchitectureServicesTests.cs`
-  - `GameContextTests.cs`
-  - `RollingFileAppenderTests.cs`
-  - `TaskCoroutineExtensionsTests.cs`
-  - `WaitForTaskTests.cs`
-  - `ScopedStorage.cs`
-  - `FileStorage.cs`
-  - `SceneRouterBase.cs`
-- 当前 PR review 观察：
-  - PR：`#288`
-  - latest reviewed commit：`70c42b579f70c90ab5461a02e611c0fbd8d8a6f2`
-  - 抓取时 `coderabbitai[bot]` 有 `6` 个 open threads，`greptile-apps[bot]` 有 `2` 个 open threads
-  - `Actionable comments posted: 7` 与 `outside diff + nitpick = 19` 并不等于必须全收；本 turn 仅接受经本地复核后仍成立且不与仓库约束冲突的建议
-- 本轮 `Core` runtime 低风险机械型清理已落地到：
-  - `AsyncExtensions.cs`
-  - `CollectionExtensions.cs`
-  - `ContextAwareCommandExtensions.cs`
-  - `ContextAwareEnvironmentExtensions.cs`
-  - `ContextAwareEventExtensions.cs`
-  - `ContextAwareQueryExtensions.cs`
-  - `ContextAwareServiceExtensions.cs`
-  - `GuardExtensions.cs`
-  - `NumericExtensions.cs`
-  - `StoreEventBusExtensions.cs`
-  - `StringExtensions.cs`
-  - `StoreBuilder.cs`
-  - `StoreSelection.cs`
-- `dotnet build GFramework.Core/GFramework.Core.csproj -c Release --no-restore -p:TargetFramework=net8.0 -p:RestoreFallbackFolders="" -v minimal` 当前结果为 `0 Warning(s)`、`0 Error(s)`，可作为本轮 runtime 变更的最终最小 Release build 验证。
-- `GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --no-incremental` 在 `03c73a8` 提交前的最近一次可信主线程结果为 `198 Warning(s)`、`0 Error(s)`；该观测值覆盖了 `ArchitectureContextTests`、`ArchitectureServicesTests`、`GameContextTests`、`ResultTests`、`AsyncTestModel`、`AsyncTestSystem` 与 `ContextAwareEnvironmentExtensionsTests` 的 7 文件批次。
-- 当前累计 branch diff 相对 `origin/main` 为 `75` 个文件、`2098` 行；本轮主停止条件已经达到。
+- 当前 `origin/main` 基线提交为 `4ad880c`（`2026-04-25T14:35:38+08:00`）。
+- `fix/analyzer-warning-reduction-batch` 当前 `HEAD` 等于 `origin/main`；因此 shorthand 阈值 `$gframework-batch-boot 50` 的当前 committed 规模为：
+  - `git diff --name-only origin/main...HEAD | wc -l`：`0`
+  - `git diff --numstat origin/main...HEAD`：`0 added / 0 deleted`
+- 提权后的直接仓库根验证已经确认：
+  - `dotnet clean`
+    - 结果：成功；此前沙箱内 “Build FAILED but 0 errors” 的 clean 结果不是仓库真值
+  - `dotnet build`
+    - 结果：成功；`656 Warning(s)`、`0 Error(s)`，当前 warning reduction 应以此为总基线
+- 当前待集成的低风险批次文件：
+  - `GFramework.Game.Tests/Config/GameConfigBootstrapTests.cs`
+  - `GFramework.Game.Tests/Config/GeneratedConfigConsumerIntegrationTests.cs`
+  - `GFramework.Game.Tests/Config/YamlConfigTextValidatorTests.cs`
+  - `GFramework.Ecs.Arch.Tests/Ecs/EcsAdvancedTests.cs`
+- 上述批次的 worker 侧验证结果：
+  - `dotnet build GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release`
+    - 最新主线程结果：成功；`0 Warning(s)`、`0 Error(s)`
+  - `dotnet build GFramework.Ecs.Arch.Tests/GFramework.Ecs.Arch.Tests.csproj -c Release`
+    - 最新主线程结果：成功；`0 Warning(s)`、`0 Error(s)`
 
 ## 当前风险
 
-- `dotnet clean GFramework.sln -c Release` 与 `dotnet clean GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release` 仍无法稳定提供新的 clean 基线。
-  - 缓解措施：后续若继续整仓 warning reduction，需要单独定位 clean 失败原因，或明确继续沿用 direct build 观测值作为临时真值。
+- active `ai-plan` 之外的历史归档仍保留一部分沙箱内 workaround / 假阻塞记录。
+  - 缓解措施：active todo/trace 已刷新为新真值；历史归档保留为时间线，不再作为默认恢复入口。
 - 当前 worktree 仍存在未跟踪的 `.codex` 目录。
-  - 缓解措施：提交当前批次时只暂存 analyzer-warning-reduction 相关源码与 `ai-plan` 文件，避免把工作目录辅助文件混入提交。
-- 将分支继续推过 `75 files` 会明显降低本轮 reviewability。
-  - 缓解措施：当前恢复点默认停止；如需继续，建议在新 turn 明确新的文件阈值或先 rebase / refresh baseline。
-- `GFramework.Core`、`GFramework.Game`、`GFramework.Core.Tests` 当前都仍存在模块级历史 warning 基线。
-  - 缓解措施：本 turn 已确保本次 touched files 不再引入新的编译错误，并消化了当前 PR review 中仍成立的高信号问题；若要继续 warning reduction，应开新批次按模块系统化收敛。
+  - 缓解措施：提交时只暂存 analyzer-warning-reduction 相关源码与 `ai-plan` / `AGENTS.md` 变更。
+- `GFramework.Core`、`GFramework.Game`、`GFramework.Core.Tests`、`GFramework.Cqrs.Tests` 仍有较大 warning 基线。
+  - 缓解措施：后续批次继续优先挑低风险、少文件、可独立验证的测试与局部逻辑切片。
 
 ## 活跃文档
 
@@ -100,35 +61,21 @@
 
 ## 验证说明
 
-- `dotnet build GFramework.Core/GFramework.Core.csproj -c Release --no-restore -p:TargetFramework=net8.0 -p:RestoreFallbackFolders="" -v minimal`
-  - 历史结果：成功；`0 Warning(s)`、`0 Error(s)`
-- `dotnet build GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --no-incremental --no-restore -p:RestoreFallbackFolders= -v:diag`
-  - 历史结果：失败；`MSB4276`，默认 SDK resolver 无法解析 `Microsoft.NET.SDK.WorkloadAutoImportPropsLocator`，属于当前 WSL / dotnet 10 环境阻塞
-- `DOTNET_CLI_HOME=/tmp/dotnet-home MSBuildEnableWorkloadResolver=false dotnet build GFramework.Core/GFramework.Core.csproj -c Release --no-restore -p:TargetFramework=net8.0 -p:RestoreFallbackFolders="" -v minimal`
-  - 结果：失败；`MSB4018`，`ResolvePackageAssets` 命中失效 Windows fallback package folder `D:\Tool\Development Tools\Microsoft Visual Studio\Shared\NuGetPackages`
-- `DOTNET_CLI_HOME=/tmp/dotnet-home MSBuildEnableWorkloadResolver=false dotnet build GFramework.Core/GFramework.Core.csproj -c Release --no-restore -p:TargetFramework=net9.0 -p:RestoreFallbackFolders="" -v minimal`
-  - 结果：失败；`MSB4018`，原因同上
-- `DOTNET_CLI_HOME=/tmp/dotnet-home MSBuildEnableWorkloadResolver=false dotnet build GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --no-restore -p:TargetFramework=net10.0 -p:RestoreFallbackFolders="" -v minimal`
-  - 结果：失败；`MSB4018`，原因同上
-- `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output /tmp/current-pr-review.json`
-  - 结果：成功；定位到 PR `#288`，提取 latest-head unresolved AI review threads、MegaLinter 与 Docstring Coverage 信号
-- `dotnet restore GFramework.sln -p:RestoreFallbackFolders="" -v minimal`
-  - 结果：成功；已刷新 WSL 原生 restore 元数据，清除先前的 stale fallback package folder 阻塞
-- `dotnet build GFramework.Core/GFramework.Core.csproj -c Release`
-  - 结果：成功；`28 Warning(s)`、`0 Error(s)`
-- `dotnet build GFramework.Game/GFramework.Game.csproj -c Release`
-  - 结果：成功；`329 Warning(s)`、`0 Error(s)`
-- `dotnet build GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release`
-  - 结果：成功；`137 Warning(s)`、`0 Error(s)`
-- `dotnet restore GFramework.Core.Tests/GFramework.Core.Tests.csproj -p:TestTargetFrameworks=net8.0 -p:RestoreFallbackFolders="" -v minimal`
-  - 结果：失败；`NU1201`，`GFramework.Tests.Common` 仅支持 `net10.0`，因此不能用 `net8.0` 旁路验证 `Core.Tests`
+- `dotnet clean`
+  - 当前结果：成功；在提权后的直接 shell 中可正常完成仓库根 clean
+- `dotnet build`
+  - 当前结果：成功；`656 Warning(s)`、`0 Error(s)`
+- `dotnet build GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release`
+  - 当前结果：成功；`0 Warning(s)`、`0 Error(s)`
+- `dotnet build GFramework.Ecs.Arch.Tests/GFramework.Ecs.Arch.Tests.csproj -c Release`
+  - 当前结果：成功；`0 Warning(s)`、`0 Error(s)`
 - `git diff --name-only origin/main...HEAD | wc -l`
-  - 当前结果：`75`
+  - 当前结果：`0`
 - `git diff --numstat origin/main...HEAD`
-  - 当前结果：累计 `1083` added、`1015` deleted，即 `2098` changed lines
+  - 当前结果：`0 added / 0 deleted`
 
 ## 下一步建议
 
-1. 当前 turn 已按标准 WSL `dotnet build` 路径完成 `Core` / `Game` / `Core.Tests` Release build 验证；后续若继续 PR #288 收尾，优先重新抓取 unresolved threads，确认哪些线程已可直接 resolve。
-2. 若后续要继续 `Core` / `Core.Tests` / `Game` warning reduction，应以当前标准 build 输出为新真值，而不是继续沿用上一轮带 workaround 参数的失败命令。
-3. 若要开启下一轮批处理，优先选择新的 stop-condition（例如新的 file 阈值、warning 目标或限定到单模块）后再继续。
+1. 集成并复核当前 4 文件测试噪音批次后，用沙箱外 `dotnet build GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release` 与 `dotnet build GFramework.Ecs.Arch.Tests/GFramework.Ecs.Arch.Tests.csproj -c Release` 重新确认结果。
+2. 下一轮 warning reduction 继续优先处理 `GFramework.Game.Tests/Config/YamlConfigLoaderTests.cs` 的长方法切片；它仍是已确认的单文件低风险热点，适合继续用 worker 独立推进。
+3. 后续凡是沙箱内 `.NET` 验证再次出现无诊断失败、pipe/socket 权限问题或与普通 shell 不一致的结果，直接申请沙箱外重跑同一命令，不再扩散 workaround 型命令噪音。

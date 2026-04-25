@@ -167,7 +167,7 @@ public class GameConfigBootstrapTests
 
         continueInitialization.Set();
 
-        Assert.DoesNotThrowAsync(() => firstInitializeTask);
+        Assert.That(async () => await firstInitializeTask.ConfigureAwait(false), Throws.Nothing);
 
         Assert.Multiple(() =>
         {
