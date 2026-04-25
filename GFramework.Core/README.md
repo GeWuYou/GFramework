@@ -92,7 +92,7 @@ dotnet add package GeWuYou.GFramework.Core.Abstractions
 
 最小示例见：
 
-- [`../docs/zh-CN/getting-started/quick-start.md`](../docs/zh-CN/getting-started/quick-start.md)
+- [快速开始示例](../docs/zh-CN/getting-started/quick-start.md)
 
 ## 什么时候继续接别的包
 
@@ -103,8 +103,8 @@ dotnet add package GeWuYou.GFramework.Core.Abstractions
 
 ## 对应文档
 
-- Core 栏目：[`../docs/zh-CN/core/index.md`](../docs/zh-CN/core/index.md)
-- Core 抽象层：[`../docs/zh-CN/abstractions/core-abstractions.md`](../docs/zh-CN/abstractions/core-abstractions.md)
-- API 参考入口：[`../docs/zh-CN/api-reference/index.md`](../docs/zh-CN/api-reference/index.md)
-- CQRS：[`../docs/zh-CN/core/cqrs.md`](../docs/zh-CN/core/cqrs.md)
-- 入门指南：[`../docs/zh-CN/getting-started/index.md`](../docs/zh-CN/getting-started/index.md)
+- Core 栏目：[Core 文档首页](../docs/zh-CN/core/index.md)
+- Core 抽象层：[Core Abstractions 文档](../docs/zh-CN/abstractions/core-abstractions.md)
+- API 参考入口：[API 参考首页](../docs/zh-CN/api-reference/index.md)
+- CQRS：[CQRS 文档](../docs/zh-CN/core/cqrs.md)
+- 入门指南：[入门指南首页](../docs/zh-CN/getting-started/index.md)

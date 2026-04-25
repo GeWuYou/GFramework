@@ -132,7 +132,7 @@ ecsModule.Update(deltaTime);
 
 ## 对应文档入口
 
-- ECS 总览：[`../docs/zh-CN/ecs/index.md`](../docs/zh-CN/ecs/index.md)
-- Arch ECS 集成：[`../docs/zh-CN/ecs/arch.md`](../docs/zh-CN/ecs/arch.md)
-- 抽象契约页：[`../docs/zh-CN/abstractions/ecs-arch-abstractions.md`](../docs/zh-CN/abstractions/ecs-arch-abstractions.md)
-- 统一 API / XML 导航：[`../docs/zh-CN/api-reference/index.md`](../docs/zh-CN/api-reference/index.md)
+- ECS 总览：[ECS 文档首页](../docs/zh-CN/ecs/index.md)
+- Arch ECS 集成：[Arch ECS 集成说明](../docs/zh-CN/ecs/arch.md)
+- 抽象契约页：[ECS Arch Abstractions 文档](../docs/zh-CN/abstractions/ecs-arch-abstractions.md)
+- 统一 API / XML 导航：[API 参考首页](../docs/zh-CN/api-reference/index.md)

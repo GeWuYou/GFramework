@@ -91,5 +91,5 @@
 
 ## 对应文档
 
-- 源码生成器总览：[`../docs/zh-CN/source-generators/index.md`](../docs/zh-CN/source-generators/index.md)
-- Core 栏目：[`../docs/zh-CN/core/index.md`](../docs/zh-CN/core/index.md)
+- 源码生成器总览：[源码生成器文档首页](../docs/zh-CN/source-generators/index.md)
+- Core 栏目：[Core 文档首页](../docs/zh-CN/core/index.md)

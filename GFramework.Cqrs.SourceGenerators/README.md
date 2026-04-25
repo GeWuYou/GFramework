@@ -63,5 +63,5 @@ RegisterCqrsHandlersFromAssembly(typeof(GameArchitecture).Assembly);
 
 ## 对应文档
 
-- CQRS 栏目：[`../docs/zh-CN/core/cqrs.md`](../docs/zh-CN/core/cqrs.md)
-- 源码生成器总览：[`../docs/zh-CN/source-generators/index.md`](../docs/zh-CN/source-generators/index.md)
+- CQRS 栏目：[CQRS 文档](../docs/zh-CN/core/cqrs.md)
+- 源码生成器总览：[源码生成器文档首页](../docs/zh-CN/source-generators/index.md)

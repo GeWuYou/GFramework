@@ -75,5 +75,5 @@ GameProject/
 
 ## 对应文档
 
-- 配置系统：[`../docs/zh-CN/game/config-system.md`](../docs/zh-CN/game/config-system.md)
-- 源码生成器总览：[`../docs/zh-CN/source-generators/index.md`](../docs/zh-CN/source-generators/index.md)
+- 配置系统：[配置系统文档](../docs/zh-CN/game/config-system.md)
+- 源码生成器总览：[源码生成器文档首页](../docs/zh-CN/source-generators/index.md)
