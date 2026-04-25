@@ -1,5 +1,28 @@
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-25 — RP-067
+
+### 阶段：收口 Game runtime 单文件长方法切片，并继续压低根构建 warning 基线
+
+- 触发背景：
+  - `RP-066` 收尾后，当前分支已通过 `be26640` 把 `YamlConfigLoaderTests.cs` 的 4 个 `MA0051` 落地，仓库根基线降到 `652 Warning(s)`
+  - 主线程随后切到 `GFramework.Game/Internal/VersionedMigrationRunner.cs`，继续挑选单文件、低风险、可独立验证的 runtime warning 切片
+- 主线程实施：
+  - 将 `MigrateToTargetVersion` 中的运行时版本校验、迁移解析、单步应用与结果一致性校验拆分为具名 helper
+  - 为新增 helper 补齐 XML 注释，保持该共享迁移执行器的职责边界可读，并避免仅靠机械拆分留下语义不清的私有方法
+  - 保持外部行为不变，只收敛长方法 warning，不扩展到存储或日志相关调用方
+- 验证里程碑：
+  - `dotnet clean`
+    - 结果：成功
+  - `dotnet build`
+    - 结果：成功；`649 Warning(s)`、`0 Error(s)`，相较 `RP-066` 的 `652` 再下降 `3`
+  - `dotnet build GFramework.Game/GFramework.Game.csproj -c Release`
+    - 结果：成功；`0 Warning(s)`、`0 Error(s)`
+- 当前结论：
+  - `VersionedMigrationRunner.cs` 这个 runtime 单文件批次已被主线程收口，并继续压低仓库根 warning 基线
+  - 本轮只新增 1 个源码唯一文件，branch diff 仍显著低于 `$gframework-batch-boot 50` 的主停止阈值
+  - 下一轮可以继续挑选 `GFramework.Cqrs.Tests` 或 `GFramework.Game` 的单文件轻量切片，并保持主线程验证、subagent 并行探索的节奏
+
 ## 2026-04-25 — RP-066
 
 ### 阶段：主线程回收停滞的单文件批次，并继续压低根构建 warning 基线

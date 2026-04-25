@@ -6,38 +6,35 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-066`
-- 当前阶段：`Phase 66`
+- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-067`
+- 当前阶段：`Phase 67`
 - 当前焦点：
-  - `2026-04-25` 已先提交 `6a704f3` `fix(analyzer): 固化沙箱外验证并清理测试噪音`，把 AGENTS / active ai-plan 真值修正与 4 文件测试噪音批次一起收口
-  - 当前单文件批次聚焦 `GFramework.Game.Tests/Config/YamlConfigLoaderTests.cs`，已收敛 4 个根构建直接确认的 `MA0051`
-  - 提权后的直接仓库根基线已从 `656 Warning(s)` 降至 `652 Warning(s)`，说明本轮单文件批次有效
-  - `GFramework.Game.Tests` 的直接受影响 Release build 当前为 `0 Warning(s)`、`0 Error(s)`
-  - 本批次落地后，branch diff 相对 `origin/main` 将从 `7 files` 推进到 `8 files`，仍显著低于 `$gframework-batch-boot 50` 阈值
+  - `2026-04-25` 已连续提交 `6a704f3` `fix(analyzer): 固化沙箱外验证并清理测试噪音` 与 `be26640` `test(game-tests): 收敛热重载长方法 warning`
+  - 当前单文件批次聚焦 `GFramework.Game/Internal/VersionedMigrationRunner.cs`，通过拆分迁移主循环中的职责收敛根构建直接确认的 `MA0051`
+  - 提权后的直接仓库根基线已从 `652 Warning(s)` 降至 `649 Warning(s)`，说明本轮 runtime 单文件批次继续有效
+  - `GFramework.Game` 的直接受影响 `Release` build 当前为 `0 Warning(s)`、`0 Error(s)`
+  - 本轮只新增 1 个源码唯一文件，branch diff 仍显著低于 `$gframework-batch-boot 50` 阈值
 
 ## 当前活跃事实
 
 - 当前 `origin/main` 基线提交为 `4ad880c`（`2026-04-25T14:35:38+08:00`）。
-- `6a704f3` 落地后，当前 committed branch diff 相对 `origin/main` 为：
-  - `git diff --name-only origin/main...HEAD | wc -l`：`7`
-  - `git diff --numstat origin/main...HEAD`：累计 `104` added、`123` deleted
 - 提权后的直接仓库根验证当前确认为：
   - `dotnet clean`
     - 结果：成功；此前沙箱内 “Build FAILED but 0 errors” 的 clean 结果不是仓库真值
   - `dotnet build`
-    - 最新结果：成功；`652 Warning(s)`、`0 Error(s)`
+    - 最新结果：成功；`649 Warning(s)`、`0 Error(s)`
 - 已提交的低风险批次文件：
   - `AGENTS.md`
   - `GFramework.Ecs.Arch.Tests/Ecs/EcsAdvancedTests.cs`
   - `GFramework.Game.Tests/Config/GameConfigBootstrapTests.cs`
   - `GFramework.Game.Tests/Config/GeneratedConfigConsumerIntegrationTests.cs`
+  - `GFramework.Game.Tests/Config/YamlConfigLoaderTests.cs`
   - `GFramework.Game.Tests/Config/YamlConfigTextValidatorTests.cs`
+  - `GFramework.Game/Internal/VersionedMigrationRunner.cs`
   - `ai-plan/public/analyzer-warning-reduction/todos/analyzer-warning-reduction-tracking.md`
   - `ai-plan/public/analyzer-warning-reduction/traces/analyzer-warning-reduction-trace.md`
-- 当前待提交批次文件：
-  - `GFramework.Game.Tests/Config/YamlConfigLoaderTests.cs`
 - 当前批次验证结果：
-  - `dotnet build GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release`
+  - `dotnet build GFramework.Game/GFramework.Game.csproj -c Release`
     - 最新主线程结果：成功；`0 Warning(s)`、`0 Error(s)`
 
 ## 当前风险
@@ -66,16 +63,12 @@
 - `dotnet clean`
   - 当前结果：成功；在提权后的直接 shell 中可正常完成仓库根 clean
 - `dotnet build`
-  - 当前结果：成功；`652 Warning(s)`、`0 Error(s)`
-- `dotnet build GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release`
+  - 当前结果：成功；`649 Warning(s)`、`0 Error(s)`
+- `dotnet build GFramework.Game/GFramework.Game.csproj -c Release`
   - 当前结果：成功；`0 Warning(s)`、`0 Error(s)`
-- `git diff --name-only origin/main...HEAD | wc -l`
-  - 当前结果：`7`
-- `git diff --numstat origin/main...HEAD`
-  - 当前结果：累计 `104` added、`123` deleted
 
 ## 下一步建议
 
-1. 提交当前 `YamlConfigLoaderTests.cs` 单文件批次后，继续按 `$gframework-batch-boot 50` 规则重算 branch diff，并挑选下一个 1-3 文件的低风险热点。
-2. 下一轮优先从 `GFramework.Cqrs.Tests` 或 `GFramework.Game` 中继续选择单文件 `MA0051` / 测试噪音切片，避免过早推高 review 范围。
+1. 以当前 `649 Warning(s)` 根基线为新恢复点，继续按 `$gframework-batch-boot 50` 规则重算 branch diff，并挑选下一个 1-3 文件的低风险热点。
+2. 下一轮优先从 `GFramework.Cqrs.Tests` 或 `GFramework.Game` 中继续选择单文件 `MA0051`、`MA0016` 或测试噪音切片，避免过早推高 review 范围。
 3. 后续凡是沙箱内 `.NET` 验证再次出现无诊断失败、pipe/socket 权限问题或与普通 shell 不一致的结果，直接申请沙箱外重跑同一命令，不再扩散 workaround 型命令噪音。

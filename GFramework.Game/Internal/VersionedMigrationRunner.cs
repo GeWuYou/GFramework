@@ -92,11 +92,7 @@ internal static class VersionedMigrationRunner
         ArgumentException.ThrowIfNullOrWhiteSpace(migrationKind);
 
         var currentVersion = getVersion(data);
-        if (currentVersion > targetVersion)
-        {
-            throw new InvalidOperationException(
-                $"{subjectName} is version {currentVersion}, which is newer than the current runtime version {targetVersion}.");
-        }
+        EnsureRuntimeVersionIsSupported(currentVersion, targetVersion, subjectName);
 
         if (currentVersion == targetVersion)
         {
@@ -107,43 +103,148 @@ internal static class VersionedMigrationRunner
 
         while (currentVersion < targetVersion)
         {
-            var migration = resolveMigration(currentVersion);
-            if (migration is null)
-            {
-                throw new InvalidOperationException(
-                    $"No {migrationKind} is registered for {subjectName} from version {currentVersion}.");
-            }
-
-            current = applyMigration(migration, current)
-                ?? throw new InvalidOperationException(
-                    $"{migrationKind} for {subjectName} from version {currentVersion} returned null.");
-
-            var migratedVersion = getVersion(current);
-            var declaredTargetVersion = getToVersion(migration);
-
-            if (declaredTargetVersion != migratedVersion)
-            {
-                throw new InvalidOperationException(
-                    $"{migrationKind} for {subjectName} declared target version {declaredTargetVersion} " +
-                    $"but returned version {migratedVersion}.");
-            }
-
-            if (migratedVersion <= currentVersion)
-            {
-                throw new InvalidOperationException(
-                    $"{migrationKind} for {subjectName} must advance beyond version {currentVersion}.");
-            }
-
-            if (migratedVersion > targetVersion)
-            {
-                throw new InvalidOperationException(
-                    $"{migrationKind} for {subjectName} produced version {migratedVersion}, " +
-                    $"which exceeds the current runtime version {targetVersion}.");
-            }
-
-            currentVersion = migratedVersion;
+            var migration = GetRequiredMigration(resolveMigration, currentVersion, subjectName, migrationKind);
+            var result = ApplyMigrationStep(
+                migration,
+                current,
+                currentVersion,
+                targetVersion,
+                getVersion,
+                getToVersion,
+                applyMigration,
+                subjectName,
+                migrationKind);
+            current = result.Data;
+            currentVersion = result.Version;
         }
 
         return current;
+    }
+
+    /// <summary>
+    ///     拒绝比当前运行时更高的数据版本，避免迁移器在未知版本上继续执行。
+    /// </summary>
+    /// <param name="currentVersion">数据当前版本。</param>
+    /// <param name="targetVersion">运行时支持的目标版本。</param>
+    /// <param name="subjectName">迁移主体名称。</param>
+    /// <exception cref="InvalidOperationException">数据版本高于运行时版本时抛出。</exception>
+    private static void EnsureRuntimeVersionIsSupported(int currentVersion, int targetVersion, string subjectName)
+    {
+        if (currentVersion > targetVersion)
+        {
+            throw new InvalidOperationException(
+                $"{subjectName} is version {currentVersion}, which is newer than the current runtime version {targetVersion}.");
+        }
+    }
+
+    /// <summary>
+    ///     解析当前版本必须存在的下一步迁移器，避免在调用循环中重复拼接相同错误。
+    /// </summary>
+    /// <typeparam name="TMigration">迁移描述类型。</typeparam>
+    /// <param name="resolveMigration">迁移解析委托。</param>
+    /// <param name="currentVersion">当前版本。</param>
+    /// <param name="subjectName">迁移主体名称。</param>
+    /// <param name="migrationKind">迁移类别名称。</param>
+    /// <returns>已解析的迁移器。</returns>
+    /// <exception cref="InvalidOperationException">缺少迁移器时抛出。</exception>
+    private static TMigration GetRequiredMigration<TMigration>(
+        Func<int, TMigration?> resolveMigration,
+        int currentVersion,
+        string subjectName,
+        string migrationKind)
+    {
+        var migration = resolveMigration(currentVersion);
+        if (migration is null)
+        {
+            throw new InvalidOperationException(
+                $"No {migrationKind} is registered for {subjectName} from version {currentVersion}.");
+        }
+
+        return migration;
+    }
+
+    /// <summary>
+    ///     执行单步迁移并验证声明目标版本、结果版本与运行时上限之间的一致性。
+    /// </summary>
+    /// <typeparam name="TData">迁移数据类型。</typeparam>
+    /// <typeparam name="TMigration">迁移描述类型。</typeparam>
+    /// <param name="migration">当前步骤的迁移器。</param>
+    /// <param name="current">迁移前数据。</param>
+    /// <param name="currentVersion">迁移前版本。</param>
+    /// <param name="targetVersion">运行时目标版本。</param>
+    /// <param name="getVersion">数据版本读取委托。</param>
+    /// <param name="getToVersion">迁移器目标版本读取委托。</param>
+    /// <param name="applyMigration">迁移执行委托。</param>
+    /// <param name="subjectName">迁移主体名称。</param>
+    /// <param name="migrationKind">迁移类别名称。</param>
+    /// <returns>迁移后的数据与新版本号。</returns>
+    /// <exception cref="InvalidOperationException">
+    ///     迁移结果为空、声明目标版本不匹配、版本未前进或超出运行时版本时抛出。
+    /// </exception>
+    private static (TData Data, int Version) ApplyMigrationStep<TData, TMigration>(
+        TMigration migration,
+        TData current,
+        int currentVersion,
+        int targetVersion,
+        Func<TData, int> getVersion,
+        Func<TMigration, int> getToVersion,
+        Func<TMigration, TData, TData> applyMigration,
+        string subjectName,
+        string migrationKind)
+        where TData : class
+    {
+        var migratedData = applyMigration(migration, current)
+            ?? throw new InvalidOperationException(
+                $"{migrationKind} for {subjectName} from version {currentVersion} returned null.");
+        var migratedVersion = getVersion(migratedData);
+        ValidateMigrationResult(
+            currentVersion,
+            targetVersion,
+            migratedVersion,
+            getToVersion(migration),
+            subjectName,
+            migrationKind);
+        return (migratedData, migratedVersion);
+    }
+
+    /// <summary>
+    ///     校验单步迁移结果与声明目标版本一致，并确保版本严格单调递增且不越过运行时版本。
+    /// </summary>
+    /// <param name="currentVersion">迁移前版本。</param>
+    /// <param name="targetVersion">运行时目标版本。</param>
+    /// <param name="migratedVersion">迁移后实际版本。</param>
+    /// <param name="declaredTargetVersion">迁移器声明的目标版本。</param>
+    /// <param name="subjectName">迁移主体名称。</param>
+    /// <param name="migrationKind">迁移类别名称。</param>
+    /// <exception cref="InvalidOperationException">
+    ///     声明目标版本不匹配、版本未前进或超出运行时版本时抛出。
+    /// </exception>
+    private static void ValidateMigrationResult(
+        int currentVersion,
+        int targetVersion,
+        int migratedVersion,
+        int declaredTargetVersion,
+        string subjectName,
+        string migrationKind)
+    {
+        if (declaredTargetVersion != migratedVersion)
+        {
+            throw new InvalidOperationException(
+                $"{migrationKind} for {subjectName} declared target version {declaredTargetVersion} " +
+                $"but returned version {migratedVersion}.");
+        }
+
+        if (migratedVersion <= currentVersion)
+        {
+            throw new InvalidOperationException(
+                $"{migrationKind} for {subjectName} must advance beyond version {currentVersion}.");
+        }
+
+        if (migratedVersion > targetVersion)
+        {
+            throw new InvalidOperationException(
+                $"{migrationKind} for {subjectName} produced version {migratedVersion}, " +
+                $"which exceeds the current runtime version {targetVersion}.");
+        }
     }
 }
