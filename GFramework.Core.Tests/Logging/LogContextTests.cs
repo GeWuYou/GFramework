@@ -157,7 +157,7 @@ public class LogContextTests
             using (LogContext.Push("TaskId", "Task1"))
             {
                 task1Values.Add(LogContext.Current["TaskId"]);
-                await Task.Delay(50);
+                await Task.Delay(50).ConfigureAwait(false);
                 task1Values.Add(LogContext.Current["TaskId"]);
             }
         });
@@ -167,12 +167,12 @@ public class LogContextTests
             using (LogContext.Push("TaskId", "Task2"))
             {
                 task2Values.Add(LogContext.Current["TaskId"]);
-                await Task.Delay(50);
+                await Task.Delay(50).ConfigureAwait(false);
                 task2Values.Add(LogContext.Current["TaskId"]);
             }
         });
 
-        await Task.WhenAll(task1, task2);
+        await Task.WhenAll(task1, task2).ConfigureAwait(false);
 
         Assert.That(task1Values, Has.All.EqualTo("Task1"));
         Assert.That(task2Values, Has.All.EqualTo("Task2"));
