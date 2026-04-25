@@ -2,6 +2,39 @@
 
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-25 — RP-060
+
+### 阶段：并行子批次推进到 `9 files / 480 lines`
+
+- 触发背景：
+  - 用户明确要求“循环继续下一轮，直到 75 阈值”，并允许委派 subagent
+  - `RP-059` 结束后，相对 `origin/main` 的累计 branch diff 仅 `3` 个文件，继续只做单文件深挖无法有效推进主停止条件
+  - 主线程因此将任务拆成 4 个互不重叠的写集：1 个 `YamlConfigLoaderTests.cs` `MA0051` 批次、2 个 runtime `MA0004` 文件、3 个配置测试文件、1 个 Godot 测试文件
+- 主线程实施：
+  - 本地复核 `YamlConfigLoaderTests.cs` 的 `MA0051` 热点边界，确认前四个纯加载测试比热重载测试更适合作为 helper 抽取起点
+  - 用 explorer 只读排序下一批候选，再把 4 个 disjoint 写集交给 worker 并持续复核主工作树状态
+  - 接受并保留以下提交进入当前分支：
+    - `877d1f3` `fix(godot-tests): 清理模块安装测试异步断言包装`
+    - `1dae0b1` `test(game-tests): 清理配置测试中的机械型 MA0004 包装`
+    - `27f5a2f` `fix(game): 清理切换管道中的低风险 MA0004`
+    - `b27bcb5` `refactor(game-tests): 清理指定加载测试的 MA0051`
+- 验证里程碑：
+  - `dotnet build GFramework.Godot.Tests/GFramework.Godot.Tests.csproj -c Release`
+    - 结果：成功；`0 Warning(s)`、`0 Error(s)`
+  - `dotnet test GFramework.Godot.Tests/GFramework.Godot.Tests.csproj -c Release --no-build --filter "FullyQualifiedName~InstallGodotModuleAsync_ShouldThrowBeforeInvokingModuleInstall_WhenAnchorIsMissing"`
+    - 结果：成功；`Passed: 1`
+  - `dotnet build GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --no-incremental`
+    - 结果：成功；`189 Warning(s)`、`0 Error(s)`
+    - 结论：`YamlConfigLoaderTests.cs` 的四个纯加载 `MA0051` 热点已清零，剩余热点集中到热重载测试
+  - `dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --no-build --filter "FullyQualifiedName~YamlConfigTextValidatorTests|FullyQualifiedName~GameConfigBootstrapTests|FullyQualifiedName~YamlConfigLoaderDependentRequiredTests"`
+    - 结果：成功；`Passed: 15`
+  - `dotnet build GFramework.Game/GFramework.Game.csproj -c Release`
+    - 结果：成功；`519 Warning(s)`、`0 Error(s)`
+- 当前结论：
+  - 本轮并行批次把相对 `origin/main` 的累计 branch diff 推进到 `9` 个文件、`480` 行
+  - 当前剩余最自然的高上下文热点仍在 `YamlConfigLoaderTests.cs` 的热重载 `MA0051`，但从 branch-size 目标看，下一轮更应该优先挑新的单文件热点
+  - 只要低风险新文件仍存在，就应继续沿“新文件优先、同文件深挖次之”的策略推进 toward `75 files`
+
 ## 2026-04-25 — RP-059
 
 ### 阶段：`YamlConfigLoaderTests.cs` 单文件 `MA0004` 清理
