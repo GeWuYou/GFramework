@@ -1,4 +1,5 @@
 using System.IO;
+using GFramework.Core.Abstractions.Events;
 using GFramework.Game.Abstractions.Config;
 using GFramework.Game.Config;
 
@@ -2789,83 +2790,15 @@ public class YamlConfigLoaderTests
     [Test]
     public async Task EnableHotReload_Should_Keep_Previous_State_When_Contains_Reference_Dependency_Breaks()
     {
-        CreateConfigFile(
-            "item/potion.yaml",
-            """
-            id: potion
-            name: Potion
-            """);
-        CreateConfigFile(
-            "monster/slime.yaml",
-            """
-            id: 1
-            name: Slime
-            dropItemIds:
-              - potion
-            """);
-        CreateSchemaFile(
-            "schemas/item.schema.json",
-            """
-            {
-              "type": "object",
-              "required": ["id", "name"],
-              "properties": {
-                "id": { "type": "string" },
-                "name": { "type": "string" }
-              }
-            }
-            """);
-        CreateSchemaFile(
-            "schemas/monster.schema.json",
-            """
-            {
-              "type": "object",
-              "required": ["id", "name", "dropItemIds"],
-              "properties": {
-                "id": { "type": "integer" },
-                "name": { "type": "string" },
-                "dropItemIds": {
-                  "type": "array",
-                  "minContains": 1,
-                  "contains": {
-                    "type": "string",
-                    "x-gframework-ref-table": "item"
-                  },
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-            """);
-
-        var loader = new YamlConfigLoader(_rootPath)
-            .RegisterTable<string, ItemConfigStub>("item", "item", "schemas/item.schema.json",
-                static config => config.Id)
-            .RegisterTable<int, MonsterDropArrayConfigStub>("monster", "monster", "schemas/monster.schema.json",
-                static config => config.Id);
-        var registry = new ConfigRegistry();
-        await loader.LoadAsync(registry);
-
-        var reloadFailureTaskSource =
-            new TaskCompletionSource<(string TableName, Exception Exception)>(TaskCreationOptions
-                .RunContinuationsAsynchronously);
-        var hotReload = loader.EnableHotReload(
-            registry,
-            onTableReloadFailed: (tableName, exception) =>
-                reloadFailureTaskSource.TrySetResult((tableName, exception)),
-            debounceDelay: TimeSpan.FromMilliseconds(150));
+        var (loader, registry) = await CreateLoadedContainsReferenceHotReloadScenarioAsync().ConfigureAwait(false);
+        var (reloadFailureTaskSource, hotReload) = EnableHotReloadWithFailureCapture(loader, registry);
 
         try
         {
-            CreateConfigFile(
-                "item/potion.yaml",
-                """
-                id: elixir
-                name: Elixir
-                """);
+            CreateConfigFile("item/potion.yaml", UpdatedItemConfigContent);
 
-            var failure = await WaitForTaskWithinAsync(reloadFailureTaskSource.Task, TimeSpan.FromSeconds(5));
+            var failure = await WaitForTaskWithinAsync(reloadFailureTaskSource.Task, TimeSpan.FromSeconds(5))
+                .ConfigureAwait(false);
             var diagnosticException = failure.Exception as ConfigLoadException;
 
             Assert.Multiple(() =>
@@ -2958,65 +2891,17 @@ public class YamlConfigLoaderTests
     [Test]
     public async Task EnableHotReload_Should_Support_Options_Object()
     {
-        CreateConfigFile(
-            "monster/slime.yaml",
-            """
-            id: 1
-            name: Slime
-            hp: 10
-            """);
-        CreateSchemaFile(
-            "schemas/monster.schema.json",
-            """
-            {
-              "type": "object",
-              "required": ["id", "name"],
-              "properties": {
-                "id": { "type": "integer" },
-                "name": { "type": "string" },
-                "hp": { "type": "integer" }
-              }
-            }
-            """);
-
-        var loader = new YamlConfigLoader(_rootPath)
-            .RegisterTable(
-                new YamlConfigTableRegistrationOptions<int, MonsterConfigStub>(
-                    "monster",
-                    "monster",
-                    static config => config.Id)
-                {
-                    SchemaRelativePath = "schemas/monster.schema.json"
-                });
-        var registry = new ConfigRegistry();
-        await loader.LoadAsync(registry);
-
-        var reloadTaskSource = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var hotReload = loader.EnableHotReload(
-            registry,
-            new YamlConfigHotReloadOptions
-            {
-                OnTableReloaded = tableName => reloadTaskSource.TrySetResult(tableName),
-                DebounceDelay = TimeSpan.FromMilliseconds(150)
-            });
+        var (loader, registry) = await CreateLoadedMonsterHotReloadScenarioAsync(useOptionsObject: true)
+            .ConfigureAwait(false);
+        var (reloadTaskSource, hotReload) = EnableHotReloadWithReloadCapture(loader, registry, useOptionsObject: true);
 
         try
         {
-            CreateConfigFile(
-                "monster/slime.yaml",
-                """
-                id: 1
-                name: Slime
-                hp: 25
-                """);
+            CreateConfigFile("monster/slime.yaml", UpdatedMonsterConfigContent);
 
-            var tableName = await WaitForTaskWithinAsync(reloadTaskSource.Task, TimeSpan.FromSeconds(5));
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(tableName, Is.EqualTo("monster"));
-                Assert.That(registry.GetTable<int, MonsterConfigStub>("monster").Get(1).Hp, Is.EqualTo(25));
-            });
+            var tableName = await WaitForTaskWithinAsync(reloadTaskSource.Task, TimeSpan.FromSeconds(5))
+                .ConfigureAwait(false);
+            AssertMonsterHotReloadUpdated(tableName, registry);
         }
         finally
         {
@@ -3050,60 +2935,15 @@ public class YamlConfigLoaderTests
     [Test]
     public async Task EnableHotReload_Should_Keep_Previous_Table_When_Schema_Change_Makes_Reload_Fail()
     {
-        CreateConfigFile(
-            "monster/slime.yaml",
-            """
-            id: 1
-            name: Slime
-            hp: 10
-            """);
-        CreateSchemaFile(
-            "schemas/monster.schema.json",
-            """
-            {
-              "type": "object",
-              "required": ["id", "name"],
-              "properties": {
-                "id": { "type": "integer" },
-                "name": { "type": "string" },
-                "hp": { "type": "integer" }
-              }
-            }
-            """);
-
-        var loader = new YamlConfigLoader(_rootPath)
-            .RegisterTable<int, MonsterConfigStub>("monster", "monster", "schemas/monster.schema.json",
-                static config => config.Id);
-        var registry = new ConfigRegistry();
-        await loader.LoadAsync(registry);
-
-        var reloadFailureTaskSource =
-            new TaskCompletionSource<(string TableName, Exception Exception)>(TaskCreationOptions
-                .RunContinuationsAsynchronously);
-        var hotReload = loader.EnableHotReload(
-            registry,
-            onTableReloadFailed: (tableName, exception) =>
-                reloadFailureTaskSource.TrySetResult((tableName, exception)),
-            debounceDelay: TimeSpan.FromMilliseconds(150));
+        var (loader, registry) = await CreateLoadedMonsterHotReloadScenarioAsync().ConfigureAwait(false);
+        var (reloadFailureTaskSource, hotReload) = EnableHotReloadWithFailureCapture(loader, registry);
 
         try
         {
-            CreateSchemaFile(
-                "schemas/monster.schema.json",
-                """
-                {
-                  "type": "object",
-                  "required": ["id", "name", "rarity"],
-                  "properties": {
-                    "id": { "type": "integer" },
-                    "name": { "type": "string" },
-                    "hp": { "type": "integer" },
-                    "rarity": { "type": "string" }
-                  }
-                }
-                """);
+            CreateSchemaFile("schemas/monster.schema.json", MonsterSchemaWithRarityContent);
 
-            var failure = await WaitForTaskWithinAsync(reloadFailureTaskSource.Task, TimeSpan.FromSeconds(5));
+            var failure = await WaitForTaskWithinAsync(reloadFailureTaskSource.Task, TimeSpan.FromSeconds(5))
+                .ConfigureAwait(false);
             var diagnosticException = failure.Exception as ConfigLoadException;
 
             Assert.Multiple(() =>
@@ -3130,75 +2970,15 @@ public class YamlConfigLoaderTests
     [Test]
     public async Task EnableHotReload_Should_Keep_Previous_State_When_Dependency_Table_Breaks_Cross_Table_Reference()
     {
-        CreateConfigFile(
-            "item/potion.yaml",
-            """
-            id: potion
-            name: Potion
-            """);
-        CreateConfigFile(
-            "monster/slime.yaml",
-            """
-            id: 1
-            name: Slime
-            dropItemId: potion
-            """);
-        CreateSchemaFile(
-            "schemas/item.schema.json",
-            """
-            {
-              "type": "object",
-              "required": ["id", "name"],
-              "properties": {
-                "id": { "type": "string" },
-                "name": { "type": "string" }
-              }
-            }
-            """);
-        CreateSchemaFile(
-            "schemas/monster.schema.json",
-            """
-            {
-              "type": "object",
-              "required": ["id", "name", "dropItemId"],
-              "properties": {
-                "id": { "type": "integer" },
-                "name": { "type": "string" },
-                "dropItemId": {
-                  "type": "string",
-                  "x-gframework-ref-table": "item"
-                }
-              }
-            }
-            """);
-
-        var loader = new YamlConfigLoader(_rootPath)
-            .RegisterTable<string, ItemConfigStub>("item", "item", "schemas/item.schema.json",
-                static config => config.Id)
-            .RegisterTable<int, MonsterDropConfigStub>("monster", "monster", "schemas/monster.schema.json",
-                static config => config.Id);
-        var registry = new ConfigRegistry();
-        await loader.LoadAsync(registry);
-
-        var reloadFailureTaskSource =
-            new TaskCompletionSource<(string TableName, Exception Exception)>(TaskCreationOptions
-                .RunContinuationsAsynchronously);
-        var hotReload = loader.EnableHotReload(
-            registry,
-            onTableReloadFailed: (tableName, exception) =>
-                reloadFailureTaskSource.TrySetResult((tableName, exception)),
-            debounceDelay: TimeSpan.FromMilliseconds(150));
+        var (loader, registry) = await CreateLoadedCrossTableReferenceHotReloadScenarioAsync().ConfigureAwait(false);
+        var (reloadFailureTaskSource, hotReload) = EnableHotReloadWithFailureCapture(loader, registry);
 
         try
         {
-            CreateConfigFile(
-                "item/potion.yaml",
-                """
-                id: elixir
-                name: Elixir
-                """);
+            CreateConfigFile("item/potion.yaml", UpdatedItemConfigContent);
 
-            var failure = await WaitForTaskWithinAsync(reloadFailureTaskSource.Task, TimeSpan.FromSeconds(5));
+            var failure = await WaitForTaskWithinAsync(reloadFailureTaskSource.Task, TimeSpan.FromSeconds(5))
+                .ConfigureAwait(false);
             var diagnosticException = failure.Exception as ConfigLoadException;
 
             Assert.Multiple(() =>
@@ -3221,6 +3001,243 @@ public class YamlConfigLoaderTests
         {
             hotReload.UnRegister();
         }
+    }
+
+    private const string ItemSchemaContent =
+        """
+        {
+          "type": "object",
+          "required": ["id", "name"],
+          "properties": {
+            "id": { "type": "string" },
+            "name": { "type": "string" }
+          }
+        }
+        """;
+
+    private const string InitialMonsterConfigContent =
+        """
+        id: 1
+        name: Slime
+        hp: 10
+        """;
+
+    private const string UpdatedMonsterConfigContent =
+        """
+        id: 1
+        name: Slime
+        hp: 25
+        """;
+
+    private const string MonsterSchemaContent =
+        """
+        {
+          "type": "object",
+          "required": ["id", "name"],
+          "properties": {
+            "id": { "type": "integer" },
+            "name": { "type": "string" },
+            "hp": { "type": "integer" }
+          }
+        }
+        """;
+
+    private const string MonsterSchemaWithRarityContent =
+        """
+        {
+          "type": "object",
+          "required": ["id", "name", "rarity"],
+          "properties": {
+            "id": { "type": "integer" },
+            "name": { "type": "string" },
+            "hp": { "type": "integer" },
+            "rarity": { "type": "string" }
+          }
+        }
+        """;
+
+    private const string UpdatedItemConfigContent =
+        """
+        id: elixir
+        name: Elixir
+        """;
+
+    private const string MonsterDropArrayConfigContent =
+        """
+        id: 1
+        name: Slime
+        dropItemIds:
+          - potion
+        """;
+
+    private const string MonsterDropArraySchemaContent =
+        """
+        {
+          "type": "object",
+          "required": ["id", "name", "dropItemIds"],
+          "properties": {
+            "id": { "type": "integer" },
+            "name": { "type": "string" },
+            "dropItemIds": {
+              "type": "array",
+              "minContains": 1,
+              "contains": {
+                "type": "string",
+                "x-gframework-ref-table": "item"
+              },
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+        """;
+
+    private const string MonsterDropConfigContent =
+        """
+        id: 1
+        name: Slime
+        dropItemId: potion
+        """;
+
+    private const string MonsterDropSchemaContent =
+        """
+        {
+          "type": "object",
+          "required": ["id", "name", "dropItemId"],
+          "properties": {
+            "id": { "type": "integer" },
+            "name": { "type": "string" },
+            "dropItemId": {
+              "type": "string",
+              "x-gframework-ref-table": "item"
+            }
+          }
+        }
+        """;
+
+    /// <summary>
+    ///     创建并加载标准 monster 热重载夹具，供重载成功与 schema 失败场景复用。
+    /// </summary>
+    /// <param name="useOptionsObject">是否通过选项对象注册表。</param>
+    /// <returns>已完成首次加载的加载器与注册表。</returns>
+    private async Task<(YamlConfigLoader Loader, ConfigRegistry Registry)> CreateLoadedMonsterHotReloadScenarioAsync(
+        bool useOptionsObject = false)
+    {
+        CreateConfigFile("monster/slime.yaml", InitialMonsterConfigContent);
+        CreateSchemaFile("schemas/monster.schema.json", MonsterSchemaContent);
+
+        var loader = useOptionsObject
+            ? new YamlConfigLoader(_rootPath).RegisterTable(
+                new YamlConfigTableRegistrationOptions<int, MonsterConfigStub>(
+                    "monster",
+                    "monster",
+                    static config => config.Id)
+                {
+                    SchemaRelativePath = "schemas/monster.schema.json"
+                })
+            : new YamlConfigLoader(_rootPath)
+                .RegisterTable<int, MonsterConfigStub>("monster", "monster", "schemas/monster.schema.json",
+                    static config => config.Id);
+        var registry = new ConfigRegistry();
+        await loader.LoadAsync(registry).ConfigureAwait(false);
+        return (loader, registry);
+    }
+
+    /// <summary>
+    ///     创建并加载 contains 子 schema 引用场景，供热重载依赖回滚测试复用。
+    /// </summary>
+    /// <returns>已完成首次加载的加载器与注册表。</returns>
+    private async Task<(YamlConfigLoader Loader, ConfigRegistry Registry)>
+        CreateLoadedContainsReferenceHotReloadScenarioAsync()
+    {
+        var loader = CreateItemBackedMonsterLoader<MonsterDropArrayConfigStub>(
+            MonsterDropArrayConfigContent,
+            MonsterDropArraySchemaContent,
+            static config => config.Id,
+            ("item/potion.yaml", "potion", "Potion"));
+        var registry = new ConfigRegistry();
+        await loader.LoadAsync(registry).ConfigureAwait(false);
+        return (loader, registry);
+    }
+
+    /// <summary>
+    ///     创建并加载跨表单值引用场景，供热重载依赖回滚测试复用。
+    /// </summary>
+    /// <returns>已完成首次加载的加载器与注册表。</returns>
+    private async Task<(YamlConfigLoader Loader, ConfigRegistry Registry)>
+        CreateLoadedCrossTableReferenceHotReloadScenarioAsync()
+    {
+        var loader = CreateItemBackedMonsterLoader<MonsterDropConfigStub>(
+            MonsterDropConfigContent,
+            MonsterDropSchemaContent,
+            static config => config.Id,
+            ("item/potion.yaml", "potion", "Potion"));
+        var registry = new ConfigRegistry();
+        await loader.LoadAsync(registry).ConfigureAwait(false);
+        return (loader, registry);
+    }
+
+    /// <summary>
+    ///     以统一的失败回调配置启用热重载，避免每个测试重复接线相同的通知逻辑。
+    /// </summary>
+    /// <param name="loader">已完成首次加载的加载器。</param>
+    /// <param name="registry">要复用的配置注册表。</param>
+    /// <returns>失败通知任务源与取消注册句柄。</returns>
+    private static (TaskCompletionSource<(string TableName, Exception Exception)> TaskSource, IUnRegister Registration)
+        EnableHotReloadWithFailureCapture(YamlConfigLoader loader, ConfigRegistry registry)
+    {
+        var reloadFailureTaskSource =
+            new TaskCompletionSource<(string TableName, Exception Exception)>(TaskCreationOptions
+                .RunContinuationsAsynchronously);
+        var hotReload = loader.EnableHotReload(
+            registry,
+            onTableReloadFailed: (tableName, exception) =>
+                reloadFailureTaskSource.TrySetResult((tableName, exception)),
+            debounceDelay: TimeSpan.FromMilliseconds(150));
+        return (reloadFailureTaskSource, hotReload);
+    }
+
+    /// <summary>
+    ///     以统一的成功回调配置启用热重载，避免相同的防抖与回调装配在测试中重复出现。
+    /// </summary>
+    /// <param name="loader">已完成首次加载的加载器。</param>
+    /// <param name="registry">要复用的配置注册表。</param>
+    /// <param name="useOptionsObject">是否通过选项对象启用热重载。</param>
+    /// <returns>成功通知任务源与取消注册句柄。</returns>
+    private static (TaskCompletionSource<string> TaskSource, IUnRegister Registration) EnableHotReloadWithReloadCapture(
+        YamlConfigLoader loader,
+        ConfigRegistry registry,
+        bool useOptionsObject = false)
+    {
+        var reloadTaskSource = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var hotReload = useOptionsObject
+            ? loader.EnableHotReload(
+                registry,
+                new YamlConfigHotReloadOptions
+                {
+                    OnTableReloaded = tableName => reloadTaskSource.TrySetResult(tableName),
+                    DebounceDelay = TimeSpan.FromMilliseconds(150)
+                })
+            : loader.EnableHotReload(
+                registry,
+                onTableReloaded: tableName => reloadTaskSource.TrySetResult(tableName),
+                debounceDelay: TimeSpan.FromMilliseconds(150));
+        return (reloadTaskSource, hotReload);
+    }
+
+    /// <summary>
+    ///     断言标准 monster 热重载成功后，通知表名与刷新后的生命值都符合预期。
+    /// </summary>
+    /// <param name="tableName">热重载回调返回的表名。</param>
+    /// <param name="registry">承载刷新结果的注册表。</param>
+    private static void AssertMonsterHotReloadUpdated(string tableName, ConfigRegistry registry)
+    {
+        Assert.Multiple(() =>
+        {
+            Assert.That(tableName, Is.EqualTo("monster"));
+            Assert.That(registry.GetTable<int, MonsterConfigStub>("monster").Get(1).Hp, Is.EqualTo(25));
+        });
     }
 
     /// <summary>

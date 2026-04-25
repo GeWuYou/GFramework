@@ -1,5 +1,32 @@
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-25 — RP-066
+
+### 阶段：主线程回收停滞的单文件批次，并继续压低根构建 warning 基线
+
+- 触发背景：
+  - `RP-065` 收尾后，`fix/analyzer-warning-reduction-batch` 已通过 `6a704f3` 把 AGENTS / active ai-plan 真值修正和 4 文件测试噪音批次提交到分支
+  - 原先负责 `YamlConfigLoaderTests.cs` 的 worker 长时间无结果，主线程收回该单文件批次以避免继续阻塞
+- 主线程实施：
+  - 关闭停滞 worker，直接重构 `GFramework.Game.Tests/Config/YamlConfigLoaderTests.cs`
+  - 通过提取固定夹具内容、热重载接线 helper 与共享断言，收敛以下 4 个长方法 warning：
+    - `EnableHotReload_Should_Keep_Previous_State_When_Contains_Reference_Dependency_Breaks`
+    - `EnableHotReload_Should_Support_Options_Object`
+    - `EnableHotReload_Should_Keep_Previous_Table_When_Schema_Change_Makes_Reload_Fail`
+    - `EnableHotReload_Should_Keep_Previous_State_When_Dependency_Table_Breaks_Cross_Table_Reference`
+  - 在第一次仓库根重建中命中了两个 `CS0411` 泛型推断错误，主线程随即补上显式类型参数并重新建立 clean/build 基线
+- 验证里程碑：
+  - `dotnet clean`
+    - 结果：成功
+  - `dotnet build`
+    - 结果：成功；`652 Warning(s)`、`0 Error(s)`，相较 `RP-065` 的 `656` 再下降 `4`
+  - `dotnet build GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release`
+    - 结果：成功；`0 Warning(s)`、`0 Error(s)`
+- 当前结论：
+  - `YamlConfigLoaderTests.cs` 这 4 个根构建直接确认的 `MA0051` 已被消化
+  - 当前分支在 `6a704f3` 之后的下一提交只会新增 1 个唯一文件，因此 branch diff 仍明显低于 `$gframework-batch-boot 50` 阈值
+  - 下一轮可继续选择新的单文件或小写集热点，而不必暂停当前 batch loop
+
 ## 2026-04-25 — RP-065
 
 ### 阶段：确认 .NET 验证噪音来自沙箱，并把无沙箱直跑写成仓库规则
