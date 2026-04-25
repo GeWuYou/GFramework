@@ -2,6 +2,31 @@
 
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-25 — RP-059
+
+### 阶段：`YamlConfigLoaderTests.cs` 单文件 `MA0004` 清理
+
+- 触发背景：
+  - 用户要求继续按 `$gframework-batch-boot 75` 自动推进 warning reduction，需要先按 skill 重新确认基线与 stop-condition
+  - 当前 `HEAD` 与本地现有 `origin/main` 都是 `9964962`，因此已提交 branch diff 为 `0` 个文件，仍有充分批次空间
+  - `GFramework.Game.Tests/Config/YamlConfigLoaderTests.cs` 已是剩余 warning 的主要热点，但其中 `MA0004` 仍属于机械且低风险的单文件切片
+- 主线程实施：
+  - 运行 `dotnet build GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --no-incremental` 重新建立观测值，确认 `YamlConfigLoaderTests.cs` 主要由 `Assert.ThrowsAsync(... async () => await ...)` 与 `WaitForTaskWithinAsync` 触发 `MA0004`
+  - 将文件内 `44` 处 `Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry))` 统一改为 `Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry))`
+  - 在 `WaitForTaskWithinAsync` 中为 `Task.WhenAny` 与最终 `task` await 补齐 `.ConfigureAwait(false)`，避免文件监听测试 helper 继续触发 analyzer
+  - 更新 active tracking / trace，明确本轮停止原因是剩余切片已转为 `MA0051` 长方法重构，不再属于同等级低风险清理
+- 验证里程碑：
+  - `dotnet build GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --no-incremental`
+    - 修复前：成功；`249 Warning(s)`、`0 Error(s)`
+    - 修复后：成功；`203 Warning(s)`、`0 Error(s)`
+    - 结论：`YamlConfigLoaderTests.cs` 不再出现在 `MA0004` warning 输出中，仅剩同文件 `MA0051`
+  - `dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --no-build --filter "FullyQualifiedName~YamlConfigLoaderTests"`
+    - 结果：成功；`Passed: 74`、`Failed: 0`
+- 当前结论：
+  - 这轮以单文件单 warning-family 的边界完成了 `YamlConfigLoaderTests.cs` 的 `MA0004` 清理
+  - 当前工作树投影相对 `origin/main` 为 `1` 个文件、`92` 行，远低于 `$gframework-batch-boot 75`
+  - 下一候选若继续留在同文件，将进入 `MA0051` 长方法拆分，风险高于本轮，适合作为新的独立批次而不是立即连做
+
 ## 2026-04-24 — RP-058
 
 ### 阶段：PR #286 latest-head review 格式跟进

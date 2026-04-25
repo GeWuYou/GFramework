@@ -143,7 +143,7 @@ public class YamlConfigLoaderTests
             .RegisterTable<int, MonsterConfigStub>("monster", "monster", static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -185,7 +185,7 @@ public class YamlConfigLoaderTests
             .RegisterTable<int, MonsterConfigStub>("monster", "monster", static config => config.Id)
             .RegisterTable<int, MonsterConfigStub>("broken", "broken", static config => config.Id);
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -216,7 +216,7 @@ public class YamlConfigLoaderTests
             .RegisterTable<int, MonsterConfigStub>("monster", "monster", static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -257,7 +257,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -306,7 +306,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -352,7 +352,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -398,7 +398,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -445,7 +445,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -494,7 +494,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -543,7 +543,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -591,7 +591,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -681,7 +681,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -769,7 +769,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -817,7 +817,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -931,7 +931,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -980,7 +980,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -1028,7 +1028,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -1074,7 +1074,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -1174,7 +1174,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -1226,7 +1226,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -1280,7 +1280,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -1336,7 +1336,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -1394,7 +1394,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -1452,7 +1452,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -1561,7 +1561,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -1617,7 +1617,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -1740,7 +1740,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -1797,7 +1797,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -1904,7 +1904,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -1954,7 +1954,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -2004,7 +2004,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -2055,7 +2055,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -2107,7 +2107,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -2161,7 +2161,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -2261,7 +2261,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -2317,7 +2317,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -2369,7 +2369,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -2423,7 +2423,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -2478,7 +2478,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -2537,7 +2537,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -2618,7 +2618,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -2749,7 +2749,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -2824,7 +2824,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -2899,7 +2899,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -3389,13 +3389,13 @@ public class YamlConfigLoaderTests
     /// <returns>任务结果。</returns>
     private static async Task<T> WaitForTaskWithinAsync<T>(Task<T> task, TimeSpan timeout)
     {
-        var completedTask = await Task.WhenAny(task, Task.Delay(timeout));
+        var completedTask = await Task.WhenAny(task, Task.Delay(timeout)).ConfigureAwait(false);
         if (!ReferenceEquals(completedTask, task))
         {
             Assert.Fail($"Timed out after {timeout} while waiting for file watcher notification.");
         }
 
-        return await task;
+        return await task.ConfigureAwait(false);
     }
 
     /// <summary>
