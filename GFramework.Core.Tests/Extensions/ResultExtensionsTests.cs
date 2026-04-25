@@ -487,7 +487,7 @@ public class ResultExtensionsTests
     [Test]
     public void TryAsync_Should_Throw_ArgumentNullException_When_Function_Is_Null()
     {
-        Assert.ThrowsAsync<ArgumentNullException>(async () => await ResultExtensions.TryAsync<int>(null!));
+        Assert.ThrowsAsync<ArgumentNullException>(() => ResultExtensions.TryAsync<int>(null!));
     }
 
     /// <summary>
