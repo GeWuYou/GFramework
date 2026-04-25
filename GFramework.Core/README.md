@@ -62,18 +62,17 @@
 
 ## XML 阅读入口
 
-截至 `2026-04-22`，下面这份目录视图可以帮助你快速定位 `GFramework.Core` 的类型级 XML 文档入口；当前主目录族的类型声明都已带
-XML 注释。更细的参数、返回值和生命周期语义，适合在阅读对应类型与成员时继续结合源码确认。
+下面这份目录视图可以帮助你快速定位 `GFramework.Core` 的类型级 XML 文档入口。更细的参数、返回值和生命周期语义，适合在阅读对应类型与成员时继续结合源码确认。
 
-| 类型族 | 基线状态 | 代表类型 |
+| 类型族 | 代表类型 | 阅读重点 |
 | --- | --- | --- |
-| `Architectures/` `Services/` | `22/22` 个类型声明已带 XML 注释 | `Architecture`、`ArchitectureContext`、`ArchitectureLifecycle`、`ServiceModuleManager` |
-| `Command/` `Query/` | `15/15` 个类型声明已带 XML 注释 | `CommandExecutor`、`AsyncQueryExecutor`、`AbstractCommand<TInput>`、`AbstractQuery<TResult>` |
-| `Events/` `Property/` `State/` `StateManagement/` | `29/29` 个类型声明已带 XML 注释 | `EventBus`、`BindableProperty<T>`、`StateMachine`、`Store<TState>` |
-| `Coroutine/` `Time/` `Pause/` `Concurrency/` | `43/43` 个类型声明已带 XML 注释 | `CoroutineScheduler`、`CoroutineHandle`、`PauseStackManager`、`AsyncKeyLockManager` |
-| `Resource/` `Pool/` | `8/8` 个类型声明已带 XML 注释 | `ResourceManager`、`AutoReleaseStrategy`、`AbstractObjectPoolSystem<TKey, TObject>` |
-| `Logging/` `Localization/` `Configuration/` `Environment/` `Ioc/` | `31/31` 个类型声明已带 XML 注释 | `ConsoleLogger`、`LocalizationManager`、`ConfigurationManager`、`DefaultEnvironment`、`MicrosoftDiContainer` |
-| `Model/` `Systems/` `Utility/` `Rule/` `Extensions/` `Functional/` | `34/34` 个类型声明已带 XML 注释 | `AbstractModel`、`AbstractSystem`、`NumericDisplayFormatter`、`ContextAwareBase`、`Result<T>` |
+| `Architectures/` `Services/` | `Architecture`、`ArchitectureContext`、`ArchitectureLifecycle`、`ServiceModuleManager` | 先看架构入口、上下文对象与模块生命周期如何协同 |
+| `Command/` `Query/` | `CommandExecutor`、`AsyncQueryExecutor`、`AbstractCommand<TInput>`、`AbstractQuery<TResult>` | 看命令 / 查询执行入口、同步异步边界与抽象基类约束 |
+| `Events/` `Property/` `State/` `StateManagement/` | `EventBus`、`BindableProperty<T>`、`StateMachine`、`Store<TState>` | 看事件分发、状态绑定、状态机与 Store 的职责划分 |
+| `Coroutine/` `Time/` `Pause/` `Concurrency/` | `CoroutineScheduler`、`CoroutineHandle`、`PauseStackManager`、`AsyncKeyLockManager` | 看调度、暂停、时间推进与并发控制的生命周期语义 |
+| `Resource/` `Pool/` | `ResourceManager`、`AutoReleaseStrategy`、`AbstractObjectPoolSystem<TKey, TObject>` | 看资源释放策略、池化抽象与可复用对象边界 |
+| `Logging/` `Localization/` `Configuration/` `Environment/` `Ioc/` | `ConsoleLogger`、`LocalizationManager`、`ConfigurationManager`、`DefaultEnvironment`、`MicrosoftDiContainer` | 看基础设施入口与默认实现的组合方式 |
+| `Model/` `Systems/` `Utility/` `Rule/` `Extensions/` `Functional/` | `AbstractModel`、`AbstractSystem`、`NumericDisplayFormatter`、`ContextAwareBase`、`Result<T>` | 看业务模型、系统基类、上下文辅助类型与函数式工具如何配合 |
 
 完整的模块化接入说明和阅读顺序见 [Core 栏目](../docs/zh-CN/core/index.md)。
 

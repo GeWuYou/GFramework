@@ -248,13 +248,13 @@ export default defineConfig({
               items: [
                 { text: '概览', link: '/zh-CN/source-generators/' },
                 { text: '日志生成器', link: '/zh-CN/source-generators/logging-generator' },
-                { text: '枚举生成器', link: '/zh-CN/source-generators/enum-generator' },
+                { text: '枚举扩展生成器', link: '/zh-CN/source-generators/enum-generator' },
                 { text: 'ContextAware 生成器', link: '/zh-CN/source-generators/context-aware-generator' },
                 { text: 'Priority 生成器', link: '/zh-CN/source-generators/priority-generator' },
-                { text: 'ContextGet 生成器', link: '/zh-CN/source-generators/context-get-generator' },
+                { text: 'Context Get 注入生成器', link: '/zh-CN/source-generators/context-get-generator' },
                 { text: '模块自动注册生成器', link: '/zh-CN/source-generators/auto-register-module-generator' },
                 { text: 'CQRS Handler Registry 生成器', link: '/zh-CN/source-generators/cqrs-handler-registry-generator' },
-                { text: 'Godot 项目生成器', link: '/zh-CN/source-generators/godot-project-generator' },
+                { text: 'Godot 项目元数据生成器', link: '/zh-CN/source-generators/godot-project-generator' },
                 { text: 'GetNode 生成器 (Godot)', link: '/zh-CN/source-generators/get-node-generator' },
                 { text: 'BindNodeSignal 生成器 (Godot)', link: '/zh-CN/source-generators/bind-node-signal-generator' },
                 { text: 'AutoUiPage 生成器', link: '/zh-CN/source-generators/auto-ui-page-generator' },
@@ -272,21 +272,6 @@ export default defineConfig({
                 { text: 'Core 抽象层说明', link: '/zh-CN/abstractions/core-abstractions' },
                 { text: 'Game 抽象层说明', link: '/zh-CN/abstractions/game-abstractions' },
                 { text: 'Ecs.Arch 抽象层说明', link: '/zh-CN/abstractions/ecs-arch-abstractions' }
-              ]
-            }
-          ],
-
-          '/zh-CN/api-reference/': [
-            {
-              text: 'API 参考',
-              items: [
-                { text: '概览', link: '/zh-CN/api-reference/' },
-                { text: 'Core 栏目', link: '/zh-CN/core/' },
-                { text: 'Game 模块总览', link: '/zh-CN/game/' },
-                { text: 'Godot 模块总览', link: '/zh-CN/godot/' },
-                { text: 'ECS 模块总览', link: '/zh-CN/ecs/' },
-                { text: '抽象接口', link: '/zh-CN/abstractions/' },
-                { text: '源码生成器', link: '/zh-CN/source-generators/' }
               ]
             }
           ],

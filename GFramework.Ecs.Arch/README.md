@@ -123,12 +123,12 @@ ecsModule.Update(deltaTime);
 
 下表汇总当前模块 README 与源码可对照的类型级 XML 文档入口，方便先抓住 Arch ECS 集成的关键类型。
 
-| 类型族 | 代表类型 | XML 状态 | 阅读重点 |
-| --- | --- | --- | --- |
-| 装配入口 | `ArchExtensions` | 已覆盖 | `UseArch(...)` 的时机与返回值 |
-| 运行时模块 | `ArchEcsModule` | 已覆盖 | `World` 注册、系统排序、销毁顺序 |
-| 系统桥接层 | `ArchSystemAdapter<T>` | 已覆盖 | `OnArchInitialize`、`OnUpdate`、`OnArchDispose` |
-| 示例类型 | `Position`、`Velocity`、`MovementSystem` | 已覆盖 | 组件布局、查询写法、最小示例 |
+| 类型族 | 代表类型 | 阅读重点 |
+| --- | --- | --- |
+| 装配入口 | `ArchExtensions` | `UseArch(...)` 的接入时机、返回值与默认模块拼装方式 |
+| 运行时模块 | `ArchEcsModule` | `World` 注册、系统排序、销毁顺序与配置对象的消费方式 |
+| 系统桥接层 | `ArchSystemAdapter<T>` | `OnArchInitialize`、`OnUpdate`、`OnArchDispose` 的生命周期桥接 |
+| 示例类型 | `Position`、`Velocity`、`MovementSystem` | 组件布局、查询写法与最小更新循环示例 |
 
 ## 对应文档入口
 

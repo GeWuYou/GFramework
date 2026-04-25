@@ -12,25 +12,22 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`DOCUMENTATION-FULL-COVERAGE-GOV-RP-035`
+- 恢复点编号：`DOCUMENTATION-FULL-COVERAGE-GOV-RP-036`
 - 当前阶段：`Phase 5 - Governance Maintenance`
 - 当前焦点：
-  - 按本轮 `$gframework-batch-boot 50` 约束使用最新 `origin/main`（`4ad880c`，`2026-04-25 14:35:38 +08:00`）作为唯一 baseline，只推进低风险、可切片的 reader-facing 文档治理批次
-  - 已接受 worker 的导航 / 语义化链接批次，提交为 `094e29e`（`docs(docs): 统一中文文档导航与语义化链接文案`）
-  - 当前未提交批次覆盖 `abstractions` reader-facing 标签、`best-practices` / `troubleshooting` / `tutorials` 代码块语言标记、7 个模块 / 根 README 的 reader-facing XML 阅读入口改写，以及 `contributing` / `godot/resource` 的剩余 bare opening fence
-  - 当前批次连同 active tracking / trace 一并落地后，累计 branch diff 将达到 `34 / 50` 个 changed files；虽然仍有 `16` 个文件 headroom，但同类低风险、可重复批处理切片已经基本耗尽
-  - 若继续下一轮，不应再按当前模式盲目扩批，而应先复核 PR / review 状态，再决定是否进入新的非重复性文档巡检波次
+  - 继续以最新 `origin/main`（`4ad880c`，`2026-04-25 14:35:38 +08:00`）作为 baseline，当前只收口 PR `#290` latest-head review 仍然成立的 reader-facing 文档问题
+  - 已用 `$gframework-pr-review` 重新抓取 PR `#290`（`docs/sdk-update-documentation`），确认 `coderabbitai[bot]` 与 `greptile-apps[bot]` 仍各有 `1` 条 open thread，测试汇总保持 `2156 passed`
+  - 本轮未提交变更聚焦 3 个点：移除 `API 参考` 侧栏里的跨栏目重复入口、统一 3 个 source generator 侧栏标签与目标页标题、删除 `Core` / `Ecs.Arch` / `Game` README 中残留的 XML 覆盖基线表达
+  - 当前批次仍属于低风险 reader-facing 文档治理，但已经从批量“普查”切换为按 PR review 精确收口
+  - 若本轮收口并提交后仍存在 review 线程，应重新抓取最新 PR 状态，再决定是否继续扩展到其他未触达 README 或 docs 巡检点
 
 ## 当前状态摘要
 
 - `Core`、`Ecs.Arch`、`Cqrs`、`Game`、`Godot` 五个模块族当前都已有 README / landing / topic / API 参考层级的已验证入口。
-- `2026-04-25` worker A 已完成并提交 5 个模块 README 的 reader-facing 链接标签修正，提交为 `bd5cdb5`（`docs(readme): 优化链接标签`）；该切片仍作为本 topic 的已接受历史批次保留。
-- `2026-04-25` 最新 `origin/main` 已推进到 `4ad880c`；当前 `docs/sdk-update-documentation` 相对该 baseline 的已提交 branch diff 为 `7 / 50` 个文件，来自导航与语义化链接批次 `094e29e`。
-- `2026-04-25` 当前未提交工作树额外覆盖 `25` 个文件：`abstractions` 2 页链接标签、`best-practices` 2 页代码块标记、`troubleshooting` 1 页错误输出标记、`tutorials` 10 页目录树 / 路径 / 输出块标记、根 / 模块 README 8 页 reader-facing 改写，以及 `contributing` / `godot/resource` 2 页剩余 bare opening fence 处理。
-- `2026-04-25` `docs/.vitepress/config.mts` 已补齐 `abstractions`、`source-generators`、`api-reference` 的中文 sidebar / nav 入口，且 `docs/zh-CN/ecs/arch.md`、`game/*.md`、`godot/*.md` 的原始路径式可见标签已统一为读者可理解的语义化名称。
-- `2026-04-25` `docs/zh-CN/tutorials` 本轮已额外补齐 10 个非基础教程页的 bare fenced opening 语言标记；目录树、学习路径和控制台输出统一显式标注为 `text`，未改写示例内容。
-- `2026-04-25` 根 README 与 7 个模块 README 当前已把 `XML 覆盖基线` / `XML 阅读基线` / `inventory` / `后续治理项` 一类 maintainer-facing 标题与导语改为 reader-facing 的“XML 阅读入口 / 推荐优先阅读的 XML 类型族”等表达，保留了现有表格、链接与证据链。
-- `2026-04-25` 本轮主线程复核后确认：`docs/zh-CN` 中可由统一规则安全处理的 bare opening fence 只剩 `docs/zh-CN/contributing.md:631` 这一处既有嵌套 fenced 示例警告；它不适合继续按当前“只补 opening fence、不碰 closing fence”的批处理规则自动改写。
+- `2026-04-25` 已重新抓取 PR `#290` 并确认：latest reviewed commit 为 `54b8e5770af9ab3c8a86a396ffa4794fe4bb5181`，open thread 聚焦在 `docs/.vitepress/config.mts` 的侧栏重复 / 标签不一致，以及 `GFramework.Core`、`GFramework.Ecs.Arch`、`GFramework.Game` README 的 reader-facing 表格残留治理字段。
+- `2026-04-25` `docs/.vitepress/config.mts` 已保留 `source-generators` 栏目自有子页导航，但不再让 `api-reference` 侧栏重复跳回 `core`、`game`、`godot`、`ecs` 等独立栏目入口。
+- `2026-04-25` `GFramework.Core/README.md`、`GFramework.Ecs.Arch/README.md`、`GFramework.Game/README.md` 当前把 XML 阅读表统一收敛为“代表类型 + 阅读重点”，不再暴露日期、覆盖计数或 `已覆盖` 这类治理式字段。
+- `2026-04-25` `docs/zh-CN/tutorials`、`best-practices`、`troubleshooting`、`contributing`、`godot/resource` 的前一轮 reader-facing 与代码块标记治理已保持有效；本轮不再扩批这些同模板切片。
 - `Game` persistence docs surface 当前以 `docs/zh-CN/game/data.md`、`storage.md`、`serialization.md`、`setting.md`
   作为最小巡检集合；若后续 README、runtime public API 或 `PersistenceTests` 变动，应优先复核这一组页面。
 - `Godot` runtime 与 generator 入口当前以 `GFramework.Godot/README.md`、
@@ -41,13 +38,12 @@
 
 ## 当前风险
 
-- 当前 `Core` / `Core.Abstractions`、`Ecs.Arch`、`Cqrs`、`Game` 的 XML 治理证据仍主要来自类型与入口级阅读，不等于成员级契约全审计；这类治理状态只应保留在 `ai-plan/**`，不应再暴露到公开文档。
+- 当前 `Core` / `Core.Abstractions`、`Ecs.Arch`、`Cqrs`、`Game` 的 XML 治理证据仍主要来自类型与入口级阅读，不等于成员级契约全审计；这类治理状态只应保留在 `ai-plan/**`，不应再回流到公开文档。
 - `GFramework.Cqrs` 在当前 WSL / dotnet 环境下仍会读取失效的 fallback package folder，并在标准 build 中触发
   `MSB4276` / `MSB4018`；这是已知环境阻塞，不属于本轮文档回归。
 - 当前 WSL 会话里 `git.exe` 可解析但不能执行，应继续使用显式 `--git-dir` / `--work-tree` 绑定作为默认 Git 策略。
-- `docs/zh-CN/contributing.md:631` 仍有 1 条既有代码块语言警告；该位置属于嵌套 fenced 示例结构，不适合继续沿用本轮“只补 opening fence”规则自动改写。
-- 当前可用的低风险、可重复批处理切片已经基本消耗完毕；如果继续推进，剩余问题更可能落在非重复性 prose 调整、复杂示例结构或远端 review 反馈，不宜按本轮同一批处理模板继续盲扫。
-- PR `#287` 的 latest-head review 本轮未重新抓取；若继续下一轮，应先复核远端 review 状态再扩批。
+- `docs/zh-CN/contributing.md:631` 仍有 1 条既有代码块语言警告；该位置属于嵌套 fenced 示例结构，不适合继续沿用前一轮“只补 opening fence”规则自动改写。
+- PR `#290` 当前 review 线程来自 bot，对 reader-facing 导航和文案一致性的期望比较细；本轮提交后仍需重新抓取 latest-head review，确认是否还有新的 open thread 或旧线程未自动关闭。
 
 ## 归档指针
 
@@ -64,6 +60,12 @@
 
 ## 最新验证
 
+- `2026-04-25` `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output /tmp/gframework-current-pr-review.json`
+  - 结果：通过；PR `#290` 处于 `OPEN`，latest head commit `54b8e5770af9ab3c8a86a396ffa4794fe4bb5181` 有 `2` 条 open thread（CodeRabbit `1`、Greptile `1`），测试汇总为 `2156 passed`，无 failed checks。
+- `2026-04-25` `bash .agents/skills/gframework-doc-refresh/scripts/validate-links.sh GFramework.Core/README.md GFramework.Ecs.Arch/README.md GFramework.Game/README.md`
+  - 结果：通过；本轮 3 个模块 README 调整后链接目标仍然有效。
+- `2026-04-25` `bun run build`（工作目录：`docs/`）
+  - 结果：通过；移除 `api-reference` 侧栏重复项并统一 `source-generators` 标签后站点仍可正常构建，仅保留既有大 chunk warning。
 - `2026-04-25` `bash .agents/skills/gframework-doc-refresh/scripts/validate-links.sh README.md GFramework.Core/README.md GFramework.Core.Abstractions/README.md GFramework.Game/README.md GFramework.Game.Abstractions/README.md GFramework.Game.SourceGenerators/README.md GFramework.Ecs.Arch/README.md GFramework.Ecs.Arch.Abstractions/README.md`
   - 结果：通过；根 README 与本轮触达的模块 README 链接目标有效。
 - `2026-04-25` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/tutorials`
@@ -128,8 +130,8 @@
 
 ## 下一步
 
-1. 当前 `$gframework-batch-boot 50` 建议在本轮停止：待当前工作树与 active tracking / trace 一并提交后，累计 branch diff 将为 `34 / 50`，但同类低风险、可重复切片已基本耗尽。
-2. 若继续下一轮，优先重新抓取 `$gframework-pr-review` 确认 PR `#287` 的 latest-head review 是否还有 open thread，再决定是否进入新的非重复性 reader-facing 文档巡检。
+1. 完成本轮修改后先跑 `bun run build`（工作目录 `docs/`）与受影响 README 链接校验，再提交当前 PR review 收口批次。
+2. 提交完成后重新抓取 `$gframework-pr-review` 确认 PR `#290` 的 latest-head review 是否已清空 open thread，再决定是否继续巡检其他 reader-facing 文档。
 3. 若后续继续处理公开文档，优先人工评估 `docs/zh-CN/contributing.md:631` 的嵌套 fenced 示例是否值得做结构化改写，而不是继续沿用“只补 opening fence”的自动批处理规则。
 4. 若后续分支继续调整 `Game` persistence runtime、README 或公共 API，优先复核 `docs/zh-CN/game/data.md`、
    `storage.md`、`serialization.md`、`setting.md` 与 landing page 是否仍保持同一套职责边界。
