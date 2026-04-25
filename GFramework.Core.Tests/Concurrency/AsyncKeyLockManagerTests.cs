@@ -123,7 +123,7 @@ public sealed class AsyncKeyLockManagerTests
         }
 
         // Assert
-        Assert.DoesNotThrowAsync(() => Task.WhenAll(tasks));
+        await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
     [Test]
@@ -260,8 +260,8 @@ public sealed class AsyncKeyLockManagerTests
         await cts.CancelAsync().ConfigureAwait(false);
 
         // Assert
-        Assert.CatchAsync<OperationCanceledException>(async () =>
-            await manager.AcquireLockAsync("test-key", cts.Token).ConfigureAwait(false));
+        Assert.CatchAsync<OperationCanceledException>(() =>
+            manager.AcquireLockAsync("test-key", cts.Token).AsTask());
     }
 
     [Test]
@@ -302,7 +302,7 @@ public sealed class AsyncKeyLockManagerTests
         }
 
         // Assert
-        Assert.DoesNotThrowAsync(() => Task.WhenAll(tasks));
+        await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
     [Test]

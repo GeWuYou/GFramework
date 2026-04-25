@@ -39,17 +39,25 @@ public static class StringExtensions
     public static string Truncate(this string str, int maxLength, string suffix = "...")
     {
         if (str is null)
+        {
             throw new ArgumentNullException(nameof(str));
+        }
 
         if (suffix is null)
+        {
             throw new ArgumentNullException(nameof(suffix));
+        }
 
         if (maxLength < suffix.Length)
+        {
             throw new ArgumentOutOfRangeException(nameof(maxLength),
                 $"最大长度必须至少为后缀长度 ({suffix.Length})");
+        }
 
         if (str.Length <= maxLength)
+        {
             return str;
+        }
 
         return string.Concat(str.AsSpan(0, maxLength - suffix.Length), suffix);
     }
@@ -70,10 +78,14 @@ public static class StringExtensions
     public static string Join(this IEnumerable<string> values, string separator)
     {
         if (values is null)
+        {
             throw new ArgumentNullException(nameof(values));
+        }
 
         if (separator is null)
+        {
             throw new ArgumentNullException(nameof(separator));
+        }
 
         return string.Join(separator, values);
     }

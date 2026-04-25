@@ -123,7 +123,7 @@ public class AsyncExtensionsTests
         // Act & Assert
         Assert.ThrowsAsync<TimeoutException>(() =>
             AsyncExtensions.WithTimeoutAsync(
-                ct => Task.Delay(TimeSpan.FromSeconds(2), ct).ConfigureAwait(false),
+                ct => Task.Delay(TimeSpan.FromSeconds(2), ct),
                 TimeSpan.FromMilliseconds(100)));
     }
 

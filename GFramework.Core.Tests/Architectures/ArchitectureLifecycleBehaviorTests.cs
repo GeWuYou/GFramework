@@ -95,7 +95,7 @@ public class ArchitectureLifecycleBehaviorTests
     ///     验证用户初始化失败时，等待 Ready 的任务会失败并进入 FailedInitialization 阶段。
     /// </summary>
     [Test]
-    public async Task InitializeAsync_When_OnInitialize_Throws_Should_Mark_FailedInitialization()
+    public void InitializeAsync_When_OnInitialize_Throws_Should_Mark_FailedInitialization()
     {
         var architecture = new PhaseTrackingArchitecture(() => throw new InvalidOperationException("boom"));
 

@@ -40,7 +40,9 @@ public sealed class StoreBuilder<TState> : IStoreBuilder<TState>
     public IStoreBuilder<TState> UseMiddleware(IStoreMiddleware<TState> middleware)
     {
         if (middleware is null)
+        {
             throw new ArgumentNullException(nameof(middleware));
+        }
 
         _configurators.Add(store => store.UseMiddleware(middleware));
         return this;
@@ -111,7 +113,9 @@ public sealed class StoreBuilder<TState> : IStoreBuilder<TState>
     public IStoreBuilder<TState> AddReducer<TAction>(Func<TState, TAction, TState> reducer)
     {
         if (reducer is null)
+        {
             throw new ArgumentNullException(nameof(reducer));
+        }
 
         _configurators.Add(store => store.RegisterReducer(reducer));
         return this;
@@ -126,7 +130,9 @@ public sealed class StoreBuilder<TState> : IStoreBuilder<TState>
     public IStoreBuilder<TState> AddReducer<TAction>(IReducer<TState, TAction> reducer)
     {
         if (reducer is null)
+        {
             throw new ArgumentNullException(nameof(reducer));
+        }
 
         _configurators.Add(store => store.RegisterReducer(reducer));
         return this;

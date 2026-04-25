@@ -1,5 +1,35 @@
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-25 — RP-063
+
+### 阶段：先收口 PR #288 latest-head 编译错误，再暂停在环境阻塞点并准备提交
+
+- 触发背景：
+  - 用户显式要求先执行 `$gframework-pr-review`，并指出 `AsyncExtensionsTests.cs(126,23)` 当前存在 `CS0029` / `CS1662` 构建错误
+  - 当前 worktree 仍是 `fix/analyzer-warning-reduction-batch`，因此本 turn 继续沿用 `analyzer-warning-reduction` 的 active recovery 文档
+- 主线程实施：
+  - 运行 PR review 抓取脚本，确认当前分支对应 PR `#288`
+  - 核对 latest-head unresolved review threads 后，优先修复 `AsyncExtensionsTests.cs` 中 `ct => Task.Delay(...).ConfigureAwait(false)` 错误返回 `ConfiguredTaskAwaitable` 的问题
+  - 顺手收敛多处已被 latest review 点名且本地仍成立的低风险残留：
+    - 测试中的 `async` 无 `await`
+    - `ValueTask` 断言包装
+    - `RegistryInitializationHookBaseTests.cs` 的可空返回签名
+    - `NumericExtensions.cs`、`StringExtensions.cs`、`StoreBuilder.cs` 的 Allman 花括号残留
+    - `StoreSelection.cs` 在 `net9.0+` 下切到 `System.Threading.Lock`，同时保留 `net8.0` 兼容分支
+- 验证里程碑：
+  - `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output /tmp/current-pr-review.json`
+    - 结果：成功；确认 PR `#288` 的 latest-head unresolved AI review threads 共 `9` 个，其中 `AsyncExtensionsTests.cs:126` 为 critical 编译错误
+  - `DOTNET_CLI_HOME=/tmp/dotnet-home MSBuildEnableWorkloadResolver=false dotnet build GFramework.Core/GFramework.Core.csproj -c Release --no-restore -p:TargetFramework=net8.0 -p:RestoreFallbackFolders="" -v minimal`
+    - 结果：失败；`MSB4018`，`ResolvePackageAssets` 仍读取失效 Windows fallback package folder `D:\Tool\Development Tools\Microsoft Visual Studio\Shared\NuGetPackages`
+  - `DOTNET_CLI_HOME=/tmp/dotnet-home MSBuildEnableWorkloadResolver=false dotnet build GFramework.Core/GFramework.Core.csproj -c Release --no-restore -p:TargetFramework=net9.0 -p:RestoreFallbackFolders="" -v minimal`
+    - 结果：失败；原因同上
+  - `DOTNET_CLI_HOME=/tmp/dotnet-home MSBuildEnableWorkloadResolver=false dotnet build GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --no-restore -p:TargetFramework=net10.0 -p:RestoreFallbackFolders="" -v minimal`
+    - 结果：失败；原因同上
+- 当前结论：
+  - 用户点名的 `AsyncExtensionsTests.cs` 编译错误已在源码层修复
+  - 本 turn 未能拿到新的可通过 Release build，阻塞点已从先前记录的 `MSB4276` 收敛为当前 `obj/*.csproj.nuget.g.props` 中 stale Windows fallback package folder 导致的 `MSB4018`
+  - 用户随后要求“先不管这个了，先提交吧”，因此本 turn 在记录环境阻塞后先执行提交收口
+
 ## 2026-04-25 — RP-062
 
 ### 阶段：触达 `$gframework-batch-boot 75` 停止阈值并收口到 `75 files / 2098 lines`

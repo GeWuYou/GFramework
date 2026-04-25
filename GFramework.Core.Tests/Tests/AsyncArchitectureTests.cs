@@ -89,7 +89,7 @@ public class AsyncArchitectureTests : ArchitectureTestsBase<AsyncTestArchitectur
     /// </summary>
     /// <returns>异步任务</returns>
     [Test]
-    public async Task Architecture_Should_Stop_Initialization_When_Model_Init_Fails()
+    public void Architecture_Should_Stop_Initialization_When_Model_Init_Fails()
     {
         Architecture!.AddPostRegistrationHook(a => { a.RegisterModel(new FailingModel()); });
 
@@ -134,7 +134,7 @@ public class AsyncArchitectureTests : ArchitectureTestsBase<AsyncTestArchitectur
     /// </summary>
     /// <returns>异步任务</returns>
     [Test]
-    public async Task InitializeAsync_Should_Handle_Exception_Correctly()
+    public void InitializeAsync_Should_Handle_Exception_Correctly()
     {
         Architecture!.AddPostRegistrationHook(a =>
             a.RegisterModel(new FailingModel())

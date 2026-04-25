@@ -27,7 +27,17 @@ public sealed class StoreSelection<TState, TSelected> : IReadonlyBindablePropert
     /// <summary>
     ///     保护监听器集合和底层 Store 订阅句柄的同步锁。
     /// </summary>
+#if NET9_0_OR_GREATER
+    /// <summary>
+    ///     net9.0 及以上目标使用专用 Lock，以满足分析器对专用同步原语的建议。
+    /// </summary>
+    private readonly System.Threading.Lock _lock = new();
+#else
+    /// <summary>
+    ///     net8.0 目标仍回退到 object 锁，以保持多目标编译兼容性。
+    /// </summary>
     private readonly object _lock = new();
+#endif
 
     /// <summary>
     ///     负责从完整状态中投影出局部状态的选择器。
