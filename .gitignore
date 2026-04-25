@@ -23,5 +23,6 @@ ai-plan/public/*
 !ai-plan/public/**/*.md
 ai-plan/private/
 ai-libs/
+.codex
 # tool
 .venv/
