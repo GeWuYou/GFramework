@@ -9,9 +9,9 @@
 - 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-062`
 - 当前阶段：`Phase 62`
 - 当前焦点：
-  - `2026-04-25` 本轮 `$gframework-batch-boot 75` 已达到主停止条件，当前 `HEAD` 为 `9ce1fa6`
+  - `2026-04-25` 本轮 `$gframework-batch-boot 75` 已达到主停止条件，当前代码 stop commit 为 `9ce1fa6`
   - 基线 `origin/main` 仍为 `9964962`（`2026-04-24T23:05:53+08:00`）
-  - 当前累计 branch diff 相对 `origin/main` 为 `75` 个文件、`1855` 行，已触达本轮 `75 files` 阈值
+  - 当前累计 branch diff 相对 `origin/main` 为 `75` 个文件、`2098` 行，已触达本轮 `75 files` 阈值
   - `RP-061` 之后已接受 2 个批次提交：`03c73a8`、`9ce1fa6`
   - 当前默认恢复入口不再继续扩写集；若要继续 analyzer reduction，优先先处理 `GFramework.Core.Tests` 的 net10 build 环境阻塞
 
@@ -43,7 +43,7 @@
   - `StoreSelection.cs`
 - `dotnet build GFramework.Core/GFramework.Core.csproj -c Release --no-restore -p:TargetFramework=net8.0 -p:RestoreFallbackFolders="" -v minimal` 当前结果为 `0 Warning(s)`、`0 Error(s)`，可作为本轮 runtime 变更的最终最小 Release build 验证。
 - `GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --no-incremental` 在 `03c73a8` 提交前的最近一次可信主线程结果为 `198 Warning(s)`、`0 Error(s)`；该观测值覆盖了 `ArchitectureContextTests`、`ArchitectureServicesTests`、`GameContextTests`、`ResultTests`、`AsyncTestModel`、`AsyncTestSystem` 与 `ContextAwareEnvironmentExtensionsTests` 的 7 文件批次。
-- 当前累计 branch diff 相对 `origin/main` 为 `75` 个文件、`1855` 行；本轮主停止条件已经达到。
+- 当前累计 branch diff 相对 `origin/main` 为 `75` 个文件、`2098` 行；本轮主停止条件已经达到。
 
 ## 当前风险
 
@@ -79,7 +79,7 @@
 - `git diff --name-only origin/main...HEAD | wc -l`
   - 当前结果：`75`
 - `git diff --numstat origin/main...HEAD`
-  - 当前结果：累计 `1115` added、`740` deleted，即 `1855` changed lines
+  - 当前结果：累计 `1083` added、`1015` deleted，即 `2098` changed lines
 
 ## 下一步建议
 

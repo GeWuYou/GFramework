@@ -2,7 +2,7 @@
 
 ## 2026-04-25 — RP-062
 
-### 阶段：触达 `$gframework-batch-boot 75` 停止阈值并收口到 `75 files / 1855 lines`
+### 阶段：触达 `$gframework-batch-boot 75` 停止阈值并收口到 `75 files / 2098 lines`
 
 - 触发背景：
   - `RP-061` 收尾时分支相对 `origin/main` 仍只有 `48` 个已提交文件，距离本轮 `75 files` 停止条件还有明显空间
@@ -43,7 +43,7 @@
   - `git diff --name-only origin/main...HEAD | wc -l`
     - 结果：`75`
   - `git diff --numstat origin/main...HEAD`
-    - 结果：累计 `1115` added、`740` deleted，即 `1855` changed lines
+    - 结果：累计 `1083` added、`1015` deleted，即 `2098` changed lines
 - 当前结论：
   - 本轮 `$gframework-batch-boot 75` 已精确达到主停止条件，默认恢复点应停止在 `9ce1fa6`
   - `Core` runtime 的本轮机械型改动已有可通过的最小 Release build 验证
