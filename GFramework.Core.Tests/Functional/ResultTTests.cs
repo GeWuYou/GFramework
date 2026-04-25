@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Globalization;
 using GFramework.Core.Functional;
 using NUnit.Framework;
 
@@ -314,7 +315,7 @@ public class ResultTTests
     public void Map_Should_Transform_Value_When_Success()
     {
         var result = Result<int>.Succeed(42);
-        var mapped = result.Map(x => x.ToString());
+        var mapped = result.Map(x => x.ToString(CultureInfo.InvariantCulture));
         Assert.That(mapped.IsSuccess, Is.True);
         Assert.That(mapped.Match(succ: v => v, fail: _ => ""), Is.EqualTo("42"));
     }
@@ -327,7 +328,7 @@ public class ResultTTests
     {
         var exception = new Exception("Error");
         var result = Result<int>.Fail(exception);
-        var mapped = result.Map(x => x.ToString());
+        var mapped = result.Map(x => x.ToString(CultureInfo.InvariantCulture));
         Assert.That(mapped.IsFaulted, Is.True);
         Assert.That(mapped.Exception, Is.SameAs(exception));
     }
@@ -360,7 +361,7 @@ public class ResultTTests
     public void Bind_Should_Chain_Success_Results()
     {
         var result = Result<int>.Succeed(42);
-        var bound = result.Bind(x => Result<string>.Succeed(x.ToString()));
+        var bound = result.Bind(x => Result<string>.Succeed(x.ToString(CultureInfo.InvariantCulture)));
         Assert.That(bound.IsSuccess, Is.True);
         Assert.That(bound.Match(succ: v => v, fail: _ => ""), Is.EqualTo("42"));
     }
@@ -373,7 +374,7 @@ public class ResultTTests
     {
         var exception = new Exception("Error");
         var result = Result<int>.Fail(exception);
-        var bound = result.Bind(x => Result<string>.Succeed(x.ToString()));
+        var bound = result.Bind(x => Result<string>.Succeed(x.ToString(CultureInfo.InvariantCulture)));
         Assert.That(bound.IsFaulted, Is.True);
         Assert.That(bound.Exception, Is.SameAs(exception));
     }
@@ -413,9 +414,9 @@ public class ResultTTests
         var result = Result<int>.Succeed(42);
         var mapped = await result.MapAsync(async x =>
         {
-            await Task.Delay(1);
-            return x.ToString();
-        });
+            await Task.Delay(1).ConfigureAwait(false);
+            return x.ToString(CultureInfo.InvariantCulture);
+        }).ConfigureAwait(false);
         Assert.That(mapped.IsSuccess, Is.True);
         Assert.That(mapped.Match(succ: v => v, fail: _ => ""), Is.EqualTo("42"));
     }
@@ -430,9 +431,9 @@ public class ResultTTests
         var result = Result<int>.Fail(exception);
         var mapped = await result.MapAsync(async x =>
         {
-            await Task.Delay(1);
-            return x.ToString();
-        });
+            await Task.Delay(1).ConfigureAwait(false);
+            return x.ToString(CultureInfo.InvariantCulture);
+        }).ConfigureAwait(false);
         Assert.That(mapped.IsFaulted, Is.True);
         Assert.That(mapped.Exception, Is.SameAs(exception));
     }
@@ -446,9 +447,9 @@ public class ResultTTests
         var result = Result<int>.Succeed(42);
         var mapped = await result.MapAsync<string>(async _ =>
         {
-            await Task.Delay(1);
+            await Task.Delay(1).ConfigureAwait(false);
             throw new InvalidOperationException("Async error");
-        });
+        }).ConfigureAwait(false);
         Assert.That(mapped.IsFaulted, Is.True);
         Assert.That(mapped.Exception, Is.TypeOf<InvalidOperationException>());
     }
@@ -550,7 +551,7 @@ public class ResultTTests
     public void Equals_Should_Return_False_When_Exception_Types_Differ()
     {
         var result1 = Result<int>.Fail(new InvalidOperationException("Error"));
-        var result2 = Result<int>.Fail(new ArgumentException("Error"));
+        var result2 = Result<int>.Fail(new InvalidCastException("Error"));
         Assert.That(result1.Equals(result2), Is.False);
     }
 

@@ -14,7 +14,7 @@ namespace GFramework.Core.Tests.Coroutine
         }
 
         [Test]
-        public async Task Constructor_WithCompletedTask_IsDoneImmediately()
+        public void Constructor_WithCompletedTask_IsDoneImmediately()
         {
             // Arrange
             var completedTask = Task.FromResult("test");
@@ -28,7 +28,7 @@ namespace GFramework.Core.Tests.Coroutine
         }
 
         [Test]
-        public async Task Constructor_WithIncompleteTask_IsNotDoneInitially()
+        public void Constructor_WithIncompleteTask_IsNotDoneInitially()
         {
             // Arrange
             var tcs = new TaskCompletionSource<string>();
@@ -54,7 +54,7 @@ namespace GFramework.Core.Tests.Coroutine
 
             // Act
             tcs.SetResult("completed");
-            await Task.Delay(10); // Allow time for continuation
+            await Task.Delay(10).ConfigureAwait(false); // Allow time for continuation
 
             // Assert final state
             Assert.That(waitForTask.IsDone, Is.True);
@@ -62,7 +62,7 @@ namespace GFramework.Core.Tests.Coroutine
         }
 
         [Test]
-        public async Task Update_DoesNotChangeState()
+        public void Update_DoesNotChangeState()
         {
             // Arrange
             var completedTask = Task.FromResult("test");
@@ -85,7 +85,7 @@ namespace GFramework.Core.Tests.Coroutine
 
             // Act
             tcs.SetException(new InvalidOperationException("Test exception"));
-            await Task.Delay(10); // Allow time for continuation
+            await Task.Delay(10).ConfigureAwait(false); // Allow time for continuation
 
             // Assert
             Assert.That(waitForTask.IsDone, Is.True);

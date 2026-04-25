@@ -22,9 +22,9 @@ public class PauseStackManagerTests
     /// 在每个测试方法执行后清理资源
     /// </summary>
     [TearDown]
-    public void TearDown()
+    public async Task TearDown()
     {
-        _manager.DestroyAsync();
+        await _manager.DestroyAsync().ConfigureAwait(false);
     }
 
     private PauseStackManager _manager = null!;
@@ -416,7 +416,7 @@ public class PauseStackManagerTests
         _manager.Push("Gameplay", PauseGroup.Gameplay);
         mockHandler.Reset();
 
-        await _manager.DestroyAsync();
+        await _manager.DestroyAsync().ConfigureAwait(false);
 
         Assert.That(mockHandler.CallCount, Is.EqualTo(2));
         Assert.That(mockHandler.LastIsPaused, Is.False);

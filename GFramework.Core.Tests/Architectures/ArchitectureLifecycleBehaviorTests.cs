@@ -95,14 +95,14 @@ public class ArchitectureLifecycleBehaviorTests
     ///     验证用户初始化失败时，等待 Ready 的任务会失败并进入 FailedInitialization 阶段。
     /// </summary>
     [Test]
-    public async Task InitializeAsync_When_OnInitialize_Throws_Should_Mark_FailedInitialization()
+    public void InitializeAsync_When_OnInitialize_Throws_Should_Mark_FailedInitialization()
     {
         var architecture = new PhaseTrackingArchitecture(() => throw new InvalidOperationException("boom"));
 
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await architecture.InitializeAsync());
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(() => architecture.InitializeAsync());
         Assert.That(exception, Is.Not.Null);
         Assert.That(architecture.CurrentPhase, Is.EqualTo(ArchitecturePhase.FailedInitialization));
-        Assert.ThrowsAsync<InvalidOperationException>(async () => await architecture.WaitUntilReadyAsync());
+        Assert.ThrowsAsync<InvalidOperationException>(() => architecture.WaitUntilReadyAsync());
     }
 
     /// <summary>
@@ -139,7 +139,7 @@ public class ArchitectureLifecycleBehaviorTests
         var destroyOrder = new List<string>();
         var architecture = new FailingInitializationArchitecture(destroyOrder);
 
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () => await architecture.InitializeAsync());
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(() => architecture.InitializeAsync());
         Assert.That(exception, Is.Not.Null);
         Assert.That(architecture.CurrentPhase, Is.EqualTo(ArchitecturePhase.FailedInitialization));
 

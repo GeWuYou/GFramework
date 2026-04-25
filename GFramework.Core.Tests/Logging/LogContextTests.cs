@@ -152,22 +152,22 @@ public class LogContextTests
         var task1Values = new List<object?>();
         var task2Values = new List<object?>();
 
-        var task1 = Task.Run(() =>
+        var task1 = Task.Run(async () =>
         {
             using (LogContext.Push("TaskId", "Task1"))
             {
                 task1Values.Add(LogContext.Current["TaskId"]);
-                Task.Delay(50).Wait();
+                await Task.Delay(50);
                 task1Values.Add(LogContext.Current["TaskId"]);
             }
         });
 
-        var task2 = Task.Run(() =>
+        var task2 = Task.Run(async () =>
         {
             using (LogContext.Push("TaskId", "Task2"))
             {
                 task2Values.Add(LogContext.Current["TaskId"]);
-                Task.Delay(50).Wait();
+                await Task.Delay(50);
                 task2Values.Add(LogContext.Current["TaskId"]);
             }
         });

@@ -27,7 +27,9 @@ public static class GuardExtensions
         this T? value,
         [CallerArgumentExpression(nameof(value))] string? paramName = null) where T : class
     {
-        ArgumentNullException.ThrowIfNull(value, paramName);
+        if (value is null)
+            throw new ArgumentNullException(paramName);
+
         return value;
     }
 
@@ -51,7 +53,8 @@ public static class GuardExtensions
         this string? value,
         [CallerArgumentExpression(nameof(value))] string? paramName = null)
     {
-        ArgumentNullException.ThrowIfNull(value, paramName);
+        if (value is null)
+            throw new ArgumentNullException(paramName);
 
         if (value.Length == 0)
             throw new ArgumentException("字符串不能为空", paramName);
@@ -79,7 +82,8 @@ public static class GuardExtensions
         this string? value,
         [CallerArgumentExpression(nameof(value))] string? paramName = null)
     {
-        ArgumentNullException.ThrowIfNull(value, paramName);
+        if (value is null)
+            throw new ArgumentNullException(paramName);
 
         if (string.IsNullOrWhiteSpace(value))
             throw new ArgumentException("字符串不能为空或仅包含空白字符", paramName);
@@ -108,7 +112,8 @@ public static class GuardExtensions
         this IEnumerable<T>? source,
         [CallerArgumentExpression(nameof(source))] string? paramName = null)
     {
-        ArgumentNullException.ThrowIfNull(source, paramName);
+        if (source is null)
+            throw new ArgumentNullException(paramName);
 
         if (!source.Any())
             throw new ArgumentException("集合不能为空", paramName);

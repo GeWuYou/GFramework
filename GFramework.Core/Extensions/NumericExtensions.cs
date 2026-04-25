@@ -30,10 +30,14 @@ public static class NumericExtensions
         ArgumentNullException.ThrowIfNull(max);
 
         if (min.CompareTo(max) > 0)
+        {
             throw new ArgumentException($"最小值 ({min}) 不能大于最大值 ({max})", nameof(min));
+        }
 
         if (inclusive)
+        {
             return value.CompareTo(min) >= 0 && value.CompareTo(max) <= 0;
+        }
 
         return value.CompareTo(min) > 0 && value.CompareTo(max) < 0;
     }
@@ -71,7 +75,9 @@ public static class NumericExtensions
     public static float InverseLerp(this float value, float from, float to)
     {
         if (Math.Abs(to - from) < float.Epsilon)
+        {
             throw new DivideByZeroException("起始值和目标值不能相等");
+        }
 
         return (value - from) / (to - from);
     }

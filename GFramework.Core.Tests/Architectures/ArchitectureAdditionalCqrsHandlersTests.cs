@@ -174,8 +174,15 @@ internal sealed class AdditionalAssemblyNotificationHandlerRegistry : ICqrsHandl
     /// </exception>
     public void Register(IServiceCollection services, ILogger logger)
     {
-        ArgumentNullException.ThrowIfNull(services);
-        ArgumentNullException.ThrowIfNull(logger);
+        if (services is null)
+        {
+            throw new ArgumentNullException(nameof(services));
+        }
+
+        if (logger is null)
+        {
+            throw new ArgumentNullException(nameof(logger));
+        }
 
         services.AddTransient<INotificationHandler<AdditionalAssemblyNotification>>(_ => CreateHandler());
         logger.Debug(

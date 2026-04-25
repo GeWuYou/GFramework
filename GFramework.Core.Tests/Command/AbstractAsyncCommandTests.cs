@@ -110,7 +110,7 @@ public class AbstractAsyncCommandTests
         var command = new TestAsyncCommandWithExceptionV3(input);
         var asyncCommand = (IAsyncCommand)command;
 
-        Assert.ThrowsAsync<InvalidOperationException>(async () => await asyncCommand.ExecuteAsync());
+        Assert.ThrowsAsync<InvalidOperationException>(() => asyncCommand.ExecuteAsync());
     }
 
     /// <summary>

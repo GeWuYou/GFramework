@@ -104,7 +104,7 @@ public class AsyncOperationTests
 
         op.SetException(expectedException);
 
-        Assert.That(async () => await op.Task, Throws.InstanceOf<InvalidOperationException>());
+        Assert.That(() => op.Task, Throws.InstanceOf<InvalidOperationException>());
     }
 
     /// <summary>

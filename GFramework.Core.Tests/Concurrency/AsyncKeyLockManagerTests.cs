@@ -25,7 +25,7 @@ public sealed class AsyncKeyLockManagerTests
         using var manager = new AsyncKeyLockManager();
 
         // Act
-        await using var handle = await manager.AcquireLockAsync("test-key");
+        await using var handle = await manager.AcquireLockAsync("test-key").ConfigureAwait(false);
 
         // Assert
         Assert.That(handle, Is.Not.Null);
@@ -47,13 +47,13 @@ public sealed class AsyncKeyLockManagerTests
             var index = i;
             tasks.Add(Task.Run(async () =>
             {
-                await using var handle = await manager.AcquireLockAsync("same-key");
+                await using var handle = await manager.AcquireLockAsync("same-key").ConfigureAwait(false);
                 executionOrder.Add(index);
-                await Task.Delay(10);
+                await Task.Delay(10).ConfigureAwait(false);
             }));
         }
 
-        await Task.WhenAll(tasks);
+        await Task.WhenAll(tasks).ConfigureAwait(false);
 
         // Assert
         Assert.That(executionOrder.Count, Is.EqualTo(5));
@@ -75,15 +75,15 @@ public sealed class AsyncKeyLockManagerTests
             var key = $"key-{i}";
             tasks.Add(Task.Run(async () =>
             {
-                await using var handle = await manager.AcquireLockAsync(key);
+                await using var handle = await manager.AcquireLockAsync(key).ConfigureAwait(false);
                 var current = Interlocked.Increment(ref concurrentCount);
                 maxConcurrent = Math.Max(maxConcurrent, current);
-                await Task.Delay(50);
+                await Task.Delay(50).ConfigureAwait(false);
                 Interlocked.Decrement(ref concurrentCount);
             }));
         }
 
-        await Task.WhenAll(tasks);
+        await Task.WhenAll(tasks).ConfigureAwait(false);
 
         // Assert
         Assert.That(maxConcurrent, Is.GreaterThan(1));
@@ -94,13 +94,13 @@ public sealed class AsyncKeyLockManagerTests
     {
         // Arrange
         using var manager = new AsyncKeyLockManager();
-        var handle = await manager.AcquireLockAsync("test-key");
+        var handle = await manager.AcquireLockAsync("test-key").ConfigureAwait(false);
 
         // Act
-        await handle.DisposeAsync();
+        await handle.DisposeAsync().ConfigureAwait(false);
 
         // Assert - 应该能再次获取锁
-        await using var handle2 = await manager.AcquireLockAsync("test-key");
+        await using var handle2 = await manager.AcquireLockAsync("test-key").ConfigureAwait(false);
         Assert.That(handle2, Is.Not.Null);
     }
 
@@ -117,13 +117,13 @@ public sealed class AsyncKeyLockManagerTests
             var key = $"key-{i % 10}";
             tasks.Add(Task.Run(async () =>
             {
-                await using var handle = await manager.AcquireLockAsync(key);
-                await Task.Delay(1);
+                await using var handle = await manager.AcquireLockAsync(key).ConfigureAwait(false);
+                await Task.Delay(1).ConfigureAwait(false);
             }));
         }
 
         // Assert
-        Assert.DoesNotThrowAsync(async () => await Task.WhenAll(tasks));
+        await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
     [Test]
@@ -139,14 +139,14 @@ public sealed class AsyncKeyLockManagerTests
         {
             tasks.Add(Task.Run(async () =>
             {
-                await using var handle = await manager.AcquireLockAsync("same-key");
+                await using var handle = await manager.AcquireLockAsync("same-key").ConfigureAwait(false);
                 var temp = counter;
-                await Task.Delay(1);
+                await Task.Delay(1).ConfigureAwait(false);
                 counter = temp + 1;
             }));
         }
 
-        await Task.WhenAll(tasks);
+        await Task.WhenAll(tasks).ConfigureAwait(false);
 
         // Assert
         Assert.That(counter, Is.EqualTo(100));
@@ -161,13 +161,13 @@ public sealed class AsyncKeyLockManagerTests
             lockTimeout: TimeSpan.FromMilliseconds(200));
 
         // Act
-        await using (var handle = await manager.AcquireLockAsync("temp-key"))
+        await using (var handle = await manager.AcquireLockAsync("temp-key").ConfigureAwait(false))
         {
             // 持有锁
         }
 
         // 等待清理
-        await Task.Delay(400);
+        await Task.Delay(400).ConfigureAwait(false);
 
         var stats = manager.GetStatistics();
 
@@ -184,10 +184,10 @@ public sealed class AsyncKeyLockManagerTests
             lockTimeout: TimeSpan.FromMilliseconds(200));
 
         // Act
-        await using var handle = await manager.AcquireLockAsync("active-key");
+        await using var handle = await manager.AcquireLockAsync("active-key").ConfigureAwait(false);
 
         // 等待清理尝试
-        await Task.Delay(400);
+        await Task.Delay(400).ConfigureAwait(false);
 
         var activeLocks = manager.GetActiveLocks();
 
@@ -202,9 +202,9 @@ public sealed class AsyncKeyLockManagerTests
         using var manager = new AsyncKeyLockManager();
 
         // Act
-        await using (await manager.AcquireLockAsync("key1"))
+        await using (await manager.AcquireLockAsync("key1").ConfigureAwait(false))
         {
-            await using var handle2 = await manager.AcquireLockAsync("key2");
+            await using var handle2 = await manager.AcquireLockAsync("key2").ConfigureAwait(false);
             var stats = manager.GetStatistics();
 
             // Assert
@@ -223,8 +223,8 @@ public sealed class AsyncKeyLockManagerTests
         using var manager = new AsyncKeyLockManager();
 
         // Act
-        await using var handle1 = await manager.AcquireLockAsync("key1");
-        await using var handle2 = await manager.AcquireLockAsync("key2");
+        await using var handle1 = await manager.AcquireLockAsync("key1").ConfigureAwait(false);
+        await using var handle2 = await manager.AcquireLockAsync("key2").ConfigureAwait(false);
 
         var activeLocks = manager.GetActiveLocks();
 
@@ -243,7 +243,7 @@ public sealed class AsyncKeyLockManagerTests
         manager.Dispose();
 
         // Act & Assert
-        Assert.ThrowsAsync<ObjectDisposedException>(async () => await manager.AcquireLockAsync("test-key"));
+        Assert.ThrowsAsync<ObjectDisposedException>(() => manager.AcquireLockAsync("test-key").AsTask());
     }
 
     [Test]
@@ -254,14 +254,14 @@ public sealed class AsyncKeyLockManagerTests
         using var cts = new CancellationTokenSource();
 
         // 先获取锁
-        await using var handle = await manager.AcquireLockAsync("test-key", cts.Token);
+        await using var handle = await manager.AcquireLockAsync("test-key", cts.Token).ConfigureAwait(false);
 
         // Act
-        await cts.CancelAsync();
+        await cts.CancelAsync().ConfigureAwait(false);
 
         // Assert
-        Assert.CatchAsync<OperationCanceledException>(async () =>
-            await manager.AcquireLockAsync("test-key", cts.Token));
+        Assert.CatchAsync<OperationCanceledException>(() =>
+            manager.AcquireLockAsync("test-key", cts.Token).AsTask());
     }
 
     [Test]
@@ -295,14 +295,14 @@ public sealed class AsyncKeyLockManagerTests
             {
                 for (var j = 0; j < 10; j++)
                 {
-                    await using var handle = await manager.AcquireLockAsync($"key-{j % 5}");
-                    await Task.Delay(10);
+                    await using var handle = await manager.AcquireLockAsync($"key-{j % 5}").ConfigureAwait(false);
+                    await Task.Delay(10).ConfigureAwait(false);
                 }
             }));
         }
 
         // Assert
-        Assert.DoesNotThrowAsync(async () => await Task.WhenAll(tasks));
+        await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
     [Test]
@@ -324,11 +324,11 @@ public sealed class AsyncKeyLockManagerTests
     {
         // Arrange
         using var manager = new AsyncKeyLockManager();
-        var handle = await manager.AcquireLockAsync("test-key");
+        var handle = await manager.AcquireLockAsync("test-key").ConfigureAwait(false);
 
         // Act
-        await handle.DisposeAsync();
-        await handle.DisposeAsync();
+        await handle.DisposeAsync().ConfigureAwait(false);
+        await handle.DisposeAsync().ConfigureAwait(false);
         handle.Dispose();
 
         // Assert - 不应该抛出异常

@@ -1,251 +1,120 @@
 # Analyzer Warning Reduction 追踪
 
-# Analyzer Warning Reduction 追踪
+## 2026-04-25 — RP-064
 
-## 2026-04-24 — RP-058
-
-### 阶段：PR #286 latest-head review 格式跟进
+### 阶段：按标准 WSL build 路径复核 PR #288 建议并完成本轮收口
 
 - 触发背景：
-  - 用户要求执行 `$gframework-pr-review`，需要以当前分支 PR 页面而不是本地记忆为准，重新核对 CodeRabbit、MegaLinter 和测试状态
-  - 抓取脚本当前解析到的 PR 是 `#286`，最新 reviewed commit 为 `2b707343577193fc9904517e6078149653e95698`
-  - 最新 head 上真正未解决的代码线程只剩 `GFramework.Godot/Scene/SceneBehaviorBase.cs:148` 的缩进问题；其余 nitpick 为可选建议或已留待后续批次
+  - 用户指出“在 WSL 里直接执行 `dotnet build` 可以成功”，要求主线程按普通路径重新验证，而不是继续使用带 `MSBuildEnableWorkloadResolver=false`、`--no-restore`、手工 `TargetFramework` 的 workaround 命令
+  - 当前任务仍属于 PR #288 review follow-up，因此本轮重点改为“区分哪些 AI 建议值得采纳”以及“用真实 WSL build 结果验证”
 - 主线程实施：
-  - 运行 `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output /tmp/current-pr-review.json`，确认 PR `OPEN`、测试 `2156/2156` 通过、MegaLinter 仅剩 `dotnet-format` 警告
-  - 复核 `SceneBehaviorBase.cs` 后确认 `OnPauseAsync` 的方法签名与方法体缩进异常仍存在于本地源码；同段的 `OnResumeAsync`、`OnUnloadAsync` 也有同类偏差
-  - 在不改变行为的前提下统一修正三个方法的缩进，保持现有 XML 注释、`ConfigureAwait(true)` 语义与 Godot 主线程说明不变
-  - 更新 active tracking / trace，记录当前 PR review follow-up 已完成，本地剩余外部信号只剩 PR 标题检查
+  - 重新抓取 PR #288 review，确认 latest-head open threads 为 `CodeRabbit 6 + Greptile 2`
+  - 复核 `outside diff + nitpick` 的 19 条建议，只采纳本地仍成立的建议；拒绝把“评论总数”机械等同于“必须全改”
+  - 完成以下高信号修复：
+    - `ContextAware*` / `AsyncExtensions` / `NumericExtensions` / `StringExtensions` / `StoreBuilder`：回退为 `ArgumentNullException.ThrowIfNull(...)`
+    - `ArchitectureServicesTests` / `GameContextTests`：同步 XML `<exception>` 到 `NotSupportedException`
+    - `RegistryInitializationHookBaseTests`：修复 override 可空签名实现，避免再次引入编译错误
+    - `RollingFileAppenderTests` / `TaskCoroutineExtensionsTests` / `WaitForTaskTests` / `ScopedStorage`：移除无收益噪音代码
+    - `FileStorage`：通过 `leaveOpen: true` 修正 `FileStream` 的双重释放语义
+    - `SceneRouterBase`：统一显式 `ConfigureAwait(true)` 并补齐引擎线程亲和说明
+    - `StoreSelection`：保留 `net9.0+` 的 `System.Threading.Lock`，同时修正条件编译旁的注释写法，避免 `CS1587`
 - 验证里程碑：
-  - `dotnet build GFramework.Godot/GFramework.Godot.csproj -c Release`
-    - 结果：成功；`565 Warning(s)`、`0 Error(s)`
-    - 结论：当前格式修复未引入编译错误；模块既有 warning 基线仍存在，但不属于本次 PR review 跟进范围
-  - `dotnet format GFramework.Godot/GFramework.Godot.csproj --verify-no-changes --no-restore --include GFramework.Godot/Scene/SceneBehaviorBase.cs`
-    - 首次运行：失败；sandbox 环境下在 build host / pipe 建立阶段报错，未进入真实格式比较
-    - 提权复验：成功；仅提示 workspace load warning，无格式差异
-- 当前结论：
-  - PR #286 当前 latest-head 上唯一未解决的实质代码 review thread 已在本地修复
-  - MegaLinter 暴露的 `dotnet-format` 问题已被本地 `verify-no-changes` 复验覆盖
-  - `Title check: Inconclusive` 仍然存在，但属于 GitHub PR 标题元数据问题，不能通过本地代码提交直接消除
-
-## 2026-04-24 — RP-057
-
-### 阶段：清理 `PersistenceTests.cs` 残余 `MA0004`
-
-- 触发背景：
-  - `RP-056` 提交后重新做非增量热点排序时，`GFramework.Game.Tests` 的剩余测试项目 warning 已明显收敛，只剩 `PersistenceTests.cs` 少量 `MA0004` 与 `YamlConfigLoaderTests.cs` 大量 warning
-  - 为避免在同一轮直接进入 `YamlConfigLoaderTests.cs` 的大文件高上下文批次，先吃掉 `PersistenceTests.cs` 这个独立小切片
-- 主线程实施：
-  - 在 `PersistenceTests.cs` 中为统一设置仓库失败缓存一致性相关测试补齐剩余 `.ConfigureAwait(false)`
-  - 覆盖保存失败与删除失败两个测试场景中的缓存读取、存在性检查、后续保存和最终验证读取
-  - 更新 active tracking / trace，明确下一批若继续推进应单独进入 `YamlConfigLoaderTests.cs`
-- 验证里程碑：
-  - `dotnet build GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --no-incremental`
-    - 热点重排前：成功；`253 Warning(s)`、`0 Error(s)`
-    - 修复后：成功；`249 Warning(s)`、`0 Error(s)`
-    - 结论：`PersistenceTests.cs` 不再出现在 warning 输出中
-  - `dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --filter "FullyQualifiedName~UnifiedSettingsDataRepository_SaveAsync_When_Persist_Fails_Should_Keep_Cache_Consistent|FullyQualifiedName~UnifiedSettingsDataRepository_DeleteAsync_When_Persist_Fails_Should_Keep_Cache_Consistent"`
-    - 结果：成功；`Passed: 2`、`Failed: 0`
-- 当前结论：
-  - `PersistenceTests.cs` 的残余 warning 已清零，`GFramework.Game.Tests` 剩余热点几乎全部压缩到了 `YamlConfigLoaderTests.cs`
-  - 当前工作树投影下，分支体积为 `27` 个文件、`991` 行，仍低于 `$gframework-batch-boot 75`
-  - 按 batch skill 的低风险边界，这一轮应在提交后收口；下一轮再把 `YamlConfigLoaderTests.cs` 作为单独批次处理
-
-## 2026-04-24 — RP-056
-
-### 阶段：修复 `GeneratedConfigConsumerIntegrationTests` 编译错误并清零该文件 warning
-
-- 触发背景：
-  - `RP-055` 继续推进时，`GeneratedConfigConsumerIntegrationTests.cs` 在 raw string `invalidYaml` 段落附近出现 `CS8999`，导致 `GFramework.Game.Tests` 暂时无法编译
-  - 该文件同时仍是项目内少数残留 warning 热点之一，因此适合作为同一批次中的单文件收尾
-- 主线程实施：
-  - 修复 `GeneratedConfigConsumerIntegrationTests.cs` 中损坏的 `CreateMonsterFiles` raw string 与方法边界，恢复文件可编译状态
-  - 保留并整理上一轮已开始的 `.ConfigureAwait(false)` 与断言 helper 抽取
-  - 继续将 `AssertGeneratedBindingsLoadResults` 再拆分为 catalog / monster / item 三个辅助方法，清除该文件剩余 `MA0051`
-  - 更新 active tracking / trace，沿用 `merge-base(origin/main, HEAD)` 作为 `$gframework-batch-boot 75` 的唯一 stop-condition 口径
-- 验证里程碑：
-  - `dotnet build GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release`
-    - 结果：成功；`59 Warning(s)`、`0 Error(s)`
-    - 结论：`GeneratedConfigConsumerIntegrationTests.cs` 不再出现在 warning 输出中
-  - `dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --filter "FullyQualifiedName~GeneratedConfigConsumerIntegrationTests"`
-    - 结果：成功；`Passed: 4`、`Failed: 0`
-- 当前结论：
-  - `GFramework.Game.Tests` 已从 `RP-055` 收尾时的 `63 warning(s)` 进一步收敛到 `59 warning(s)`
-  - 当前工作树投影下，分支体积为 `27` 个文件、`943` 行，仍低于 `$gframework-batch-boot 75`
-  - 后续若继续自动推进，最自然的下一批将进入 `YamlConfigLoaderTests.cs` 这类高上下文大文件
-
-## 2026-04-24 — RP-055
-
-### 阶段：修正 stop-condition 口径并继续 `GFramework.Game.Tests` 小热点
-
-- 触发背景：
-  - `RP-054` 之后复核 batch stop-condition 时，发现之前一度把工作树 diff 错当成了 skill 要求的 branch diff
-  - 按正确口径 `merge-base(origin/main, HEAD)` 计算，`RP-054` 提交后的真实分支体积是 `23` 个文件、`603` 行，因此仍可继续下一批
-  - 当前剩余 warning 里，`ArchitectureConfigIntegrationTests`、`GameConfigBootstrapTests`、`JsonSerializerTests` 属于独立且低风险的小切片
-- 主线程实施：
-  - 在 `ArchitectureConfigIntegrationTests.cs` 中补齐异步架构初始化 / 销毁和异常断言的 `.ConfigureAwait(false)`
-  - 在 `GameConfigBootstrapTests.cs` 中补齐启动流程、并发初始化断言与 `WaitForTaskWithinAsync` 的 `.ConfigureAwait(false)`
-  - 在 `JsonSerializerTests.cs` 中将坐标解析改为 `CultureInfo.InvariantCulture`
-  - 顺手清理 `YamlConfigLoaderAllOfTests.cs` 与 `PersistenceTests.cs` 中上一批遗漏的字段态状态检查和异步等待 warning
-  - 纠正 active tracking：明确 stop-condition 必须使用 `origin/main...HEAD` 的 merge-base 分支 diff，而不是工作树 diff
-- 验证里程碑：
-  - `dotnet build GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release`
-    - 并行误用 build/test 时：出现 `MSB3026` / `CS2012` 文件占用噪声，不计入代码结论
-    - 串行复验：成功；`63 Warning(s)`、`0 Error(s)`
-  - `dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --filter "FullyQualifiedName~ArchitectureConfigIntegrationTests|FullyQualifiedName~GameConfigBootstrapTests|FullyQualifiedName~JsonSerializerTests"`
-    - 结果：成功；`Passed: 19`、`Failed: 0`
-- 当前结论：
-  - `GFramework.Game.Tests` 已从上一批收尾时的 `71 warning(s)` 进一步降到 `63 warning(s)`
-  - 这次提交后的分支体积投影为 `26` 个文件、`691` 行，仍低于 `$gframework-batch-boot 75`
-  - 剩余热点越来越集中到 `YamlConfigLoaderTests.cs` 与 `GeneratedConfigConsumerIntegrationTests.cs`，后续继续时应把它们视为高上下文批次
-
-## 2026-04-24 — RP-054
-
-### 阶段：`GFramework.Game.Tests` 低风险测试 warning 批次（触发文件数停止阈值）
-
-- 触发背景：
-  - 用户要求“直接进入下一批”，继续沿 `$gframework-batch-boot 75` 自动推进 warning reduction
-  - 以 `origin/main` 为基线时，上一批提交后分支累计 diff 仍只有 `8` 个文件，足够再落一个独立批次
-  - 重新执行 `dotnet clean GFramework.sln -c Release` 仍停在 `ValidateSolutionConfiguration`，因此继续以直接 `dotnet build GFramework.sln -c Release` 的输出挑选低风险热点
-- 主线程实施：
-  - 从整仓 `Release build` 的 `116 warning(s)` 入口观测值中，选择 `GFramework.Game.Tests` 的小型测试文件和 `PersistenceTestUtilities.cs` 作为当前批次，刻意避开 `YamlConfigLoaderTests.cs` 这类高上下文大文件
-  - 在 `YamlConfigLoaderIfThenElseTests.cs`、`YamlConfigLoaderDependentSchemasTests.cs`、`YamlConfigLoaderDependentRequiredTests.cs`、`YamlConfigLoaderNegationTests.cs`、`YamlConfigLoaderAllOfTests.cs`、`YamlConfigLoaderEnumTests.cs`、`YamlConfigTextValidatorTests.cs`、`PersistenceTests.cs` 中补齐 `.ConfigureAwait(false)`，并把字段态 `_rootPath` 的 `ThrowIfNull` 改为显式 `InvalidOperationException`
-  - 将 `PersistenceTestUtilities.cs` 拆分为 `TestDataLocation.cs`、`TestSaveData.cs`、`TestVersionedSaveData.cs`、`TestSimpleData.cs`、`TestNamedData.cs`，消除 `MA0048` 并对齐仓库的一文件一主类型风格
-  - 在 `YamlConfigSchemaValidatorTests.cs` 中把字段态 `_rootPath` 的校验改成显式状态异常，避免继续触发 `MA0015`
-- 验证里程碑：
-  - `dotnet clean GFramework.sln -c Release`
-    - 结果：失败；停在 `ValidateSolutionConfiguration`，`0 Warning(s)`、`0 Error(s)`
-  - `dotnet build GFramework.sln -c Release`
-    - 结果：成功；`116 Warning(s)`、`0 Error(s)`
-  - `dotnet clean GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release`
-    - 结果：失败；clean 阶段提前结束，`0 Warning(s)`、`0 Error(s)`
-  - `dotnet build GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release`
-    - 第一轮批次后：成功；`80 Warning(s)`、`0 Error(s)`
-    - 收尾修正后：成功；`71 Warning(s)`、`0 Error(s)`
-  - `dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --filter "FullyQualifiedName~YamlConfigLoaderIfThenElseTests|FullyQualifiedName~YamlConfigLoaderDependentSchemasTests|FullyQualifiedName~YamlConfigLoaderDependentRequiredTests|FullyQualifiedName~YamlConfigLoaderNegationTests|FullyQualifiedName~YamlConfigLoaderAllOfTests|FullyQualifiedName~YamlConfigLoaderEnumTests|FullyQualifiedName~YamlConfigTextValidatorTests|FullyQualifiedName~YamlConfigSchemaValidatorTests|FullyQualifiedName~PersistenceTests"`
-    - 结果：成功；`Passed: 63`、`Failed: 0`
-- 当前结论：
-  - `GFramework.Game.Tests` 本轮入口热点已从 `116 warning(s)` 收敛到 `71 warning(s)`，且本轮 touched files 不再出现在 warning 输出中
-  - 当前工作树相对 `origin/main` 的累计 diff 已达到 `76` 个文件、`986` 行，超过 `$gframework-batch-boot 75` 的主停止阈值
-  - 按批处理技能规则，本轮必须在提交当前批次后停止；剩余候选应在新一轮里单独评估，尤其是 `YamlConfigLoaderTests.cs`
-
-## 2026-04-24 — RP-053
-
-### 阶段：`GFramework.Godot` / `GFramework.Godot.Tests` 小批次 warning 清理
-
-- 触发背景：
-  - 用户以 `$gframework-batch-boot 75` 要求继续按批次推进 analyzer warning reduction，并以 `origin/main` 作为累计分支 diff 基线
-  - 当前 worktree `fix/analyzer-warning-reduction-batch` 相对 `origin/main` 的已提交分支 diff 为 `0` 个文件，具备继续落一个低风险 warning batch 的空间
-  - solution-level `dotnet clean GFramework.sln -c Release` 仍在 `ValidateSolutionConfiguration` 阶段失败，因此本轮继续用直接 `dotnet build GFramework.sln -c Release` 建立热点观察值
-- 主线程实施：
-  - 运行 `dotnet build GFramework.sln -c Release`，确认当前整仓观测值为 `1122 warning(s)`，并从输出中挑选 `GFramework.Godot` 的小范围热点作为本轮批次
-  - 在 `GodotYamlConfigEnvironment.cs` 中按“普通文件系统 / Godot 路径”拆分目录枚举 helper，消除 `MA0051`
-  - 在 `AbstractArchitecture.cs` 与 `SceneBehaviorBase.cs` 中将必须保留 Godot 主线程上下文的 await 显式改为 `.ConfigureAwait(true)`，清理 `MA0004` 并把线程意图写入注释
-  - 在 `GFramework.Godot.Tests` 中补齐异步断言的 `.ConfigureAwait(false)`，并让 `RichTextMarkupTests` 的测试字典显式指定 `StringComparer.Ordinal`
-- 验证里程碑：
-  - `dotnet clean GFramework.sln -c Release`
-    - 结果：失败；停在 `ValidateSolutionConfiguration`，`0 Warning(s)`、`0 Error(s)`
-  - `dotnet build GFramework.sln -c Release`
-    - 结果：成功；`1122 Warning(s)`、`0 Error(s)`
-  - `dotnet build GFramework.Godot/GFramework.Godot.csproj -c Release`
-    - 第一轮修复后：成功；`12 Warning(s)`、`0 Error(s)`，仅剩 `MA0004`
-    - 第二轮修复后：成功；`0 Warning(s)`、`0 Error(s)`
-  - `dotnet test GFramework.Godot.Tests/GFramework.Godot.Tests.csproj -c Release --filter "FullyQualifiedName~AbstractArchitectureModuleInstallationTests|FullyQualifiedName~GodotYamlConfigLoaderTests|FullyQualifiedName~RichTextMarkupTests"`
-    - 结果：成功；`Passed: 15`、`Failed: 0`
-  - `dotnet build GFramework.Godot.Tests/GFramework.Godot.Tests.csproj -c Release`
-    - 并行验证时：成功；`1 Warning(s)`、`0 Error(s)`；`MSB3026` 为与并行 `dotnet test` 竞争输出 DLL 的文件占用
-    - 串行复验：成功；`0 Warning(s)`、`0 Error(s)`
-- 当前结论：
-  - `GFramework.Godot` 与 `GFramework.Godot.Tests` 本轮直接涉及的 warning 已全部清零
-  - 当前待提交代码批次相对 `origin/main` 的源码 diff 为 `6` 个文件、`107` 行，距离 `$gframework-batch-boot 75` 主停止阈值仍有充足余量
-  - 继续推进的下一批候选将主要落在 `GFramework.Game` 等高 warning 基线模块，已不再属于当前同等级低风险切片，因此本轮在这里收口并进入提交
-
-## 2026-04-24 — RP-052
-
-### 阶段：PR review follow-up（comparer 契约 + `ConfigureAwait(false)` 收尾）
-
-- 触发背景：
-  - 当前分支 PR #283 的最新 review 中，`greptile-apps[bot]` 仍有一个未解决线程，指出 `UnifiedSettingsDataRepository.CloneFile` fallback 会静默丢失原 comparer
-  - CodeRabbit 另指出 `AutoRegisterExportedCollectionsGeneratorTests.cs` 中还残留 5 处 `await test.RunAsync();`，与同项目其他测试文件的 `.ConfigureAwait(false)` 风格不一致
-- 主线程实施：
-  - 复核 PR review JSON、`UnifiedSettingsDataRepository.cs`、`UnifiedSettingsFile.cs` 与 `AutoRegisterExportedCollectionsGeneratorTests.cs` 的当前代码，确认只有 comparer 契约线程仍属最新 head 上的实质问题
-  - 将 `UnifiedSettingsFile.Sections` 的 XML 注释补充为显式 comparer 契约，并把默认字典初始化改为 `StringComparer.Ordinal`
-  - 将 `CloneFile` fallback 从隐式默认 comparer 改为显式 `StringComparer.Ordinal`，并同步修正文档注释，避免继续暗含“保留原语义”的错误表述
-  - 把 `AutoRegisterExportedCollectionsGeneratorTests` 中剩余的 5 处 `await test.RunAsync();` 统一为 `.ConfigureAwait(false)`，同时让 `VerifyDiagnosticsAsync` 内部也消费 `ConfigureAwait(false)`
-- 验证里程碑：
+  - `dotnet restore GFramework.sln -p:RestoreFallbackFolders="" -v minimal`
+    - 结果：成功；证明先前 `MSB4018` 来自 stale restore 元数据，而不是当前 WSL 默认 build 路径本身不可用
+  - `dotnet build GFramework.Core/GFramework.Core.csproj -c Release`
+    - 结果：成功；`28 Warning(s)`、`0 Error(s)`
   - `dotnet build GFramework.Game/GFramework.Game.csproj -c Release`
-    - 结果：成功；`533 Warning(s)`、`0 Error(s)`；`GFramework.Game` 仍有既有 warning 基线，本轮 follow-up 仅处理 PR review 指向的 comparer 契约与测试异步等待一致性
-  - `dotnet build GFramework.Godot.SourceGenerators.Tests/GFramework.Godot.SourceGenerators.Tests.csproj -c Release`
-    - 结果：成功；`0 Warning(s)`、`0 Error(s)`
-  - `dotnet test GFramework.Godot.SourceGenerators.Tests/GFramework.Godot.SourceGenerators.Tests.csproj -c Release --no-build`
-    - 首次并行复验：失败；`FileNotFoundException`，原因是 `--no-build` 测试在 Release DLL 落盘前启动
-    - 串行复验：成功；`Passed: 48`、`Failed: 0`
+    - 结果：成功；`329 Warning(s)`、`0 Error(s)`
+  - `dotnet build GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release`
+    - 结果：成功；`137 Warning(s)`、`0 Error(s)`
 - 当前结论：
-  - PR #283 当前仍打开的 comparer review thread 已在本地代码与 XML 注释层面得到对应修复
-  - `AutoRegisterExportedCollectionsGeneratorTests` 的异步等待风格已与同项目其他测试保持一致
-  - 当前改动已通过直接受影响测试项目的 Release build 与串行 Release test 复验，可进入提交阶段
+  - 用户关于“WSL 里直接 `dotnet build` 可行”的判断正确
+  - 前一轮失败的核心原因不是仓库不可构建，而是主线程附加的 workaround 参数改变了 MSBuild 行为
+  - 本轮已完成 PR #288 中一组仍成立的建议修复，并重新拿到标准 WSL 路径下的 Release build 验证
+  - 剩余 review 线程需要在新 head 上重新抓取后再决定是否逐条 resolve
 
-## 2026-04-24 — RP-051
+## 2026-04-25 — RP-063
 
-### 阶段：`GFramework.Godot.SourceGenerators.Tests` warning 清零
+### 阶段：先收口 PR #288 latest-head 编译错误，再暂停在环境阻塞点并准备提交
 
 - 触发背景：
-  - 用户要求直接运行 `dotnet clean`，不再添加额外 shell 包装；solution-level `dotnet clean` 仍然在 `ValidateSolutionConfiguration` 阶段失败
-  - 直接执行仓库根目录 `dotnet build` 成功，并输出 `1184 warning(s)`，说明当前真实热点已从 `GFramework.Godot.SourceGenerators` 转移到对应测试项目
+  - 用户显式要求先执行 `$gframework-pr-review`，并指出 `AsyncExtensionsTests.cs(126,23)` 当前存在 `CS0029` / `CS1662` 构建错误
+  - 当前 worktree 仍是 `fix/analyzer-warning-reduction-batch`，因此本 turn 继续沿用 `analyzer-warning-reduction` 的 active recovery 文档
 - 主线程实施：
-  - 以 `GFramework.Godot.SourceGenerators.Tests` 为独立批次，先确认该项目本地基线为 `24 warning(s)`
-  - 在 `BindNodeSignalGeneratorTests.cs`、`AutoSceneGeneratorTests.cs`、`AutoUiPageGeneratorTests.cs`、`GetNodeGeneratorTests.cs`、`AutoRegisterExportedCollectionsGeneratorTests.cs`、`GodotProjectMetadataGeneratorTests.cs` 中抽取共享 source / diagnostic helper，压缩重复长方法
-  - 在 `Core/GeneratorTest.cs` 中补充 `ConfigureAwait(false)`，清除项目内唯一 `MA0004`
-  - 把 `GFramework.Godot.SourceGenerators.Tests` 项目 warning 从 `24` 降到 `0`
+  - 运行 PR review 抓取脚本，确认当前分支对应 PR `#288`
+  - 核对 latest-head unresolved review threads 后，优先修复 `AsyncExtensionsTests.cs` 中 `ct => Task.Delay(...).ConfigureAwait(false)` 错误返回 `ConfiguredTaskAwaitable` 的问题
+  - 顺手收敛多处已被 latest review 点名且本地仍成立的低风险残留：
+    - 测试中的 `async` 无 `await`
+    - `ValueTask` 断言包装
+    - `RegistryInitializationHookBaseTests.cs` 的可空返回签名
+    - `NumericExtensions.cs`、`StringExtensions.cs`、`StoreBuilder.cs` 的 Allman 花括号残留
+    - `StoreSelection.cs` 在 `net9.0+` 下切到 `System.Threading.Lock`，同时保留 `net8.0` 兼容分支
 - 验证里程碑：
-  - `dotnet build`
-    - 结果：成功；`1184 Warning(s)`、`0 Error(s)`
-  - `dotnet build GFramework.Godot.SourceGenerators.Tests/GFramework.Godot.SourceGenerators.Tests.csproj`
-    - 初始结果：成功；`24 Warning(s)`、`0 Error(s)`
-    - 第一批（`BindNodeSignal` + `GeneratorTest`）后：`16 Warning(s)`
-    - 第二批（`AutoScene` / `AutoUiPage` / `GetNode`）后：`8 Warning(s)`
-    - 第三批（`Registration` / `Project`）后：`1 Warning(s)`
-    - 收尾修复后：成功；`0 Warning(s)`、`0 Error(s)`
-  - `dotnet build GFramework.Godot.SourceGenerators.Tests/GFramework.Godot.SourceGenerators.Tests.csproj -c Release`
-    - 结果：成功；`0 Warning(s)`、`0 Error(s)`
-  - `dotnet test GFramework.Godot.SourceGenerators.Tests/GFramework.Godot.SourceGenerators.Tests.csproj -c Release --no-build`
-    - 结果：成功；`Passed: 48`、`Failed: 0`
+  - `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output /tmp/current-pr-review.json`
+    - 结果：成功；确认 PR `#288` 的 latest-head unresolved AI review threads 共 `9` 个，其中 `AsyncExtensionsTests.cs:126` 为 critical 编译错误
+  - `DOTNET_CLI_HOME=/tmp/dotnet-home MSBuildEnableWorkloadResolver=false dotnet build GFramework.Core/GFramework.Core.csproj -c Release --no-restore -p:TargetFramework=net8.0 -p:RestoreFallbackFolders="" -v minimal`
+    - 结果：失败；`MSB4018`，`ResolvePackageAssets` 仍读取失效 Windows fallback package folder `D:\Tool\Development Tools\Microsoft Visual Studio\Shared\NuGetPackages`
+  - `DOTNET_CLI_HOME=/tmp/dotnet-home MSBuildEnableWorkloadResolver=false dotnet build GFramework.Core/GFramework.Core.csproj -c Release --no-restore -p:TargetFramework=net9.0 -p:RestoreFallbackFolders="" -v minimal`
+    - 结果：失败；原因同上
+  - `DOTNET_CLI_HOME=/tmp/dotnet-home MSBuildEnableWorkloadResolver=false dotnet build GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --no-restore -p:TargetFramework=net10.0 -p:RestoreFallbackFolders="" -v minimal`
+    - 结果：失败；原因同上
 - 当前结论：
-  - `GFramework.Godot.SourceGenerators.Tests` 已在 `Debug` / `Release` 构建下达到 `0 warning(s)`
-  - 按 `origin/main` merge-base 计算并只纳入当前暂存批次时，累计分支 diff 为 `23` 个文件，低于 `$gframework-batch-boot 75` 的主停止阈值
-  - 仓库根目录 `dotnet clean` 仍无法稳定产出新的 clean 基线，需要在下一轮单独排查
-  - 当前 worktree 已有与本批次无关的既有改动；提交时必须只暂存 analyzer warning reduction 相关文件
+  - 用户点名的 `AsyncExtensionsTests.cs` 编译错误已在源码层修复
+  - 本 turn 未能拿到新的可通过 Release build，阻塞点已从先前记录的 `MSB4276` 收敛为当前 `obj/*.csproj.nuget.g.props` 中 stale Windows fallback package folder 导致的 `MSB4018`
+  - 用户随后要求“先不管这个了，先提交吧”，因此本 turn 在记录环境阻塞后先执行提交收口
 
-## 2026-04-24 — RP-050
+## 2026-04-25 — RP-062
 
-### 阶段：clean-build 基线修正与 `GFramework.Godot.SourceGenerators` 切片清零
+### 阶段：触达 `$gframework-batch-boot 75` 停止阈值并收口到 `75 files / 2098 lines`
 
 - 触发背景：
-  - 用户确认之前的 `0 Warning(s)` 来自增量构建假阴性；只有先 `dotnet clean` 再 `dotnet build`，warning 才会重新出现
-  - 用户给出 clean solution build 的真实结果：`Build succeeded with 1193 warning(s)`
+  - `RP-061` 收尾时分支相对 `origin/main` 仍只有 `48` 个已提交文件，距离本轮 `75 files` 停止条件还有明显空间
+  - 用户明确允许继续委派 subagent，因此主线程继续把低风险机械型写集拆成互不重叠的 test / runtime 小批次
+  - 本轮主目标不是继续深挖单个高上下文热点，而是用新的低风险文件精确把 branch diff 推到阈值后停止
 - 主线程实施：
-  - 纠正当前 topic 的 active todo / trace，把 clean build 作为新的 warning 检查真值
-  - 在 `BindNodeSignalGenerator.cs`、`GetNodeGenerator.cs`、`GodotProjectMetadataGenerator.cs` 中完成分阶段方法抽取与字符串比较修正
-  - 在 `Registration/AutoRegisterExportedCollectionsGenerator.cs` 中拆分 `TryCreateRegistration`，清除最后一个 `MA0051`
-  - 更新 `AGENTS.md`，明确 warning 检查必须先 `dotnet clean` 再 `dotnet build`
+  - 先接受并提交 7 文件 `Core.Tests` 收尾批次为 `03c73a8` `test(core-tests): 收敛测试桩与辅助类型 warning`
+  - 随后主线程与多个 worker 并行收口以下新增文件：
+    - `ArchitectureAdditionalCqrsHandlersTests.cs`
+    - `RegistryInitializationHookBaseTests.cs`
+    - `CommandCoroutineExtensionsTests.cs`
+    - `TaskCoroutineExtensionsTests.cs`
+    - `WaitForTaskTTests.cs`
+    - `AsyncExtensionsTests.cs`
+    - `LogContextTests.cs`
+    - `PauseStackManagerTests.cs`
+    - `AsyncExtensions.cs`
+    - `CollectionExtensions.cs`
+    - `ContextAwareCommandExtensions.cs`
+    - `ContextAwareEnvironmentExtensions.cs`
+    - `ContextAwareEventExtensions.cs`
+    - `ContextAwareQueryExtensions.cs`
+    - `ContextAwareServiceExtensions.cs`
+    - `GuardExtensions.cs`
+    - `NumericExtensions.cs`
+    - `StoreEventBusExtensions.cs`
+    - `StringExtensions.cs`
+    - `StoreBuilder.cs`
+    - `StoreSelection.cs`
+  - 将上述 22 文件批次收口为 `9ce1fa6` `refactor(core): 收敛 Core 扩展与测试的机械 warning`
 - 验证里程碑：
-  - `dotnet clean GFramework.Godot.SourceGenerators/GFramework.Godot.SourceGenerators.csproj -c Release`
+  - `dotnet build GFramework.Core/GFramework.Core.csproj -c Release --no-restore -p:TargetFramework=net8.0 -p:RestoreFallbackFolders="" -v minimal`
     - 结果：成功；`0 Warning(s)`、`0 Error(s)`
-  - `dotnet build GFramework.Godot.SourceGenerators/GFramework.Godot.SourceGenerators.csproj -c Release`
-    - 首次验证：成功；`1 Warning(s)`，剩余 `Registration/AutoRegisterExportedCollectionsGenerator.cs(182,25)` `MA0051`
-    - 修复后复验：成功；`0 Warning(s)`、`0 Error(s)`
+  - `dotnet build GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --no-incremental --no-restore -p:RestoreFallbackFolders= -v:diag`
+    - 结果：失败；`MSB4276`，默认 SDK resolver 缺少 `Microsoft.NET.SDK.WorkloadAutoImportPropsLocator`
+  - `dotnet restore GFramework.Core.Tests/GFramework.Core.Tests.csproj -p:TestTargetFrameworks=net8.0 -p:RestoreFallbackFolders="" -v minimal`
+    - 结果：失败；`NU1201`，`GFramework.Tests.Common` 仅支持 `net10.0`，不能作为 `Core.Tests` 的 net8 旁路验证
+  - `git diff --name-only origin/main...HEAD | wc -l`
+    - 结果：`75`
+  - `git diff --numstat origin/main...HEAD`
+    - 结果：累计 `1083` added、`1015` deleted，即 `2098` changed lines
 - 当前结论：
-  - `GFramework.Godot.SourceGenerators` 已在 clean `Release` build 下从 9 个 warning 降到 0 个 warning
-  - 整仓库 warning 基线仍以用户确认的 clean solution build `1193 warning(s)` 为准
-  - 下一轮应继续从 clean solution build 输出中选择新的低风险热点
+  - 本轮 `$gframework-batch-boot 75` 已精确达到主停止条件，默认恢复点应停止在 `9ce1fa6`
+  - `Core` runtime 的本轮机械型改动已有可通过的最小 Release build 验证
+  - `Core.Tests` 的继续推进当前首先受 `MSB4276` 环境阻塞影响；下一轮若要继续，应先修复构建环境，再重新建立 warning 基线
 
-## Archive Context
+## 历史归档指针
 
-- 当前轮次归档：
-  - [analyzer-warning-reduction-history-rp042-rp048.md](../archive/todos/analyzer-warning-reduction-history-rp042-rp048.md)
-  - [analyzer-warning-reduction-history-rp042-rp048.md](../archive/traces/analyzer-warning-reduction-history-rp042-rp048.md)
-- 历史跟踪归档：
-  - [analyzer-warning-reduction-history-rp001.md](../archive/todos/analyzer-warning-reduction-history-rp001.md)
-  - [analyzer-warning-reduction-history-rp002-rp041.md](../archive/todos/analyzer-warning-reduction-history-rp002-rp041.md)
-- 历史 trace 归档：
+- 早期 trace 归档：
   - [analyzer-warning-reduction-history-rp001.md](../archive/traces/analyzer-warning-reduction-history-rp001.md)
   - [analyzer-warning-reduction-history-rp002-rp041.md](../archive/traces/analyzer-warning-reduction-history-rp002-rp041.md)
+  - [analyzer-warning-reduction-history-rp042-rp048.md](../archive/traces/analyzer-warning-reduction-history-rp042-rp048.md)

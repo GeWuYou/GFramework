@@ -16,7 +16,7 @@ public sealed class AsyncTestSystem : ISystem, IAsyncInitializable
 
     public async Task InitializeAsync()
     {
-        await Task.Delay(10);
+        await Task.Delay(10).ConfigureAwait(false);
         Initialized = true;
     }
 

@@ -133,7 +133,7 @@ public class UiTransitionPipeline
         foreach (var handler in sortedHandlers)
         {
             var options = _options[handler];
-            await ExecuteSingleHandlerAsync(handler, options, @event, cancellationToken);
+            await ExecuteSingleHandlerAsync(handler, options, @event, cancellationToken).ConfigureAwait(false);
         }
 
         Log.Debug("Pipeline execution completed for phases: {0}", phases);
@@ -158,7 +158,7 @@ public class UiTransitionPipeline
 
         if (handlers.Count == 0)
         {
-            await coreAction();
+            await coreAction().ConfigureAwait(false);
             return;
         }
 
@@ -176,11 +176,11 @@ public class UiTransitionPipeline
             var options = _aroundOptions[handler];
             var next = pipeline;
 
-            pipeline = async () => await ExecuteSingleAroundHandlerAsync(
+            pipeline = () => ExecuteSingleAroundHandlerAsync(
                 handler, options, @event, next, cancellationToken);
         }
 
-        await pipeline();
+        await pipeline().ConfigureAwait(false);
     }
 
     private List<IUiTransitionHandler> FilterAndSortHandlers(
@@ -268,7 +268,7 @@ public class UiTransitionPipeline
                 ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token)
                 : null;
 
-            await handler.HandleAsync(@event, next, linkedCts?.Token ?? cancellationToken);
+            await handler.HandleAsync(@event, next, linkedCts?.Token ?? cancellationToken).ConfigureAwait(false);
 
             Log.Debug("Around handler completed: {0}", handler.GetType().Name);
         }

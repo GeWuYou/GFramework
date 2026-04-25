@@ -101,10 +101,10 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
 
         await _pipeline.ExecuteAroundAsync(@event, async () =>
         {
-            await BeforeChangeAsync(@event);
-            await DoPushPageInternalAsync(uiKey, param, policy);
-            await AfterChangeAsync(@event);
-        });
+            await BeforeChangeAsync(@event).ConfigureAwait(true);
+            await DoPushPageInternalAsync(uiKey, param, policy).ConfigureAwait(true);
+            await AfterChangeAsync(@event).ConfigureAwait(true);
+        }).ConfigureAwait(true);
     }
 
     /// <summary>
@@ -129,10 +129,10 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
 
         await _pipeline.ExecuteAroundAsync(@event, async () =>
         {
-            await BeforeChangeAsync(@event);
+            await BeforeChangeAsync(@event).ConfigureAwait(true);
             DoPushPageInternal(page, param, policy);
-            await AfterChangeAsync(@event);
-        });
+            await AfterChangeAsync(@event).ConfigureAwait(true);
+        }).ConfigureAwait(true);
     }
 
     /// <summary>
@@ -149,7 +149,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
 
         var leavingUiKey = Stack.Peek().Key;
 
-        if (!await ExecuteLeaveGuardsAsync(leavingUiKey))
+        if (!await ExecuteLeaveGuardsAsync(leavingUiKey).ConfigureAwait(true))
         {
             Log.Warn("Pop blocked by guard: {0}", leavingUiKey);
             return;
@@ -160,10 +160,10 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
 
         await _pipeline.ExecuteAroundAsync(@event, async () =>
         {
-            await BeforeChangeAsync(@event);
+            await BeforeChangeAsync(@event).ConfigureAwait(true);
             DoPopInternal(policy);
-            await AfterChangeAsync(@event);
-        });
+            await AfterChangeAsync(@event).ConfigureAwait(true);
+        }).ConfigureAwait(true);
     }
 
     /// <summary>
@@ -182,15 +182,15 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
 
         await _pipeline.ExecuteAroundAsync(@event, async () =>
         {
-            await BeforeChangeAsync(@event);
+            await BeforeChangeAsync(@event).ConfigureAwait(true);
             DoClearInternal(popPolicy);
 
             var page = _factory.Create(uiKey);
             Log.Debug("Get/Create UI Page instance for Replace: {0}", page.GetType().Name);
 
             DoPushPageInternal(page, param, pushPolicy);
-            await AfterChangeAsync(@event);
-        });
+            await AfterChangeAsync(@event).ConfigureAwait(true);
+        }).ConfigureAwait(true);
     }
 
     /// <summary>
@@ -211,12 +211,12 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
 
         await _pipeline.ExecuteAroundAsync(@event, async () =>
         {
-            await BeforeChangeAsync(@event);
+            await BeforeChangeAsync(@event).ConfigureAwait(true);
             DoClearInternal(popPolicy);
             Log.Debug("Use existing UI Page instance for Replace: {0}", page.GetType().Name);
             DoPushPageInternal(page, param, pushPolicy);
-            await AfterChangeAsync(@event);
-        });
+            await AfterChangeAsync(@event).ConfigureAwait(true);
+        }).ConfigureAwait(true);
     }
 
     /// <summary>
@@ -229,10 +229,10 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
 
         await _pipeline.ExecuteAroundAsync(@event, async () =>
         {
-            await BeforeChangeAsync(@event);
+            await BeforeChangeAsync(@event).ConfigureAwait(true);
             DoClearInternal(UiPopPolicy.Destroy);
-            await AfterChangeAsync(@event);
-        });
+            await AfterChangeAsync(@event).ConfigureAwait(true);
+        }).ConfigureAwait(true);
     }
 
     /// <summary>
@@ -650,7 +650,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     private async Task BeforeChangeAsync(UiTransitionEvent @event)
     {
         Log.Debug("BeforeChange phases started: {0}", @event.TransitionType);
-        await _pipeline.ExecuteAsync(@event, UiTransitionPhases.BeforeChange);
+        await _pipeline.ExecuteAsync(@event, UiTransitionPhases.BeforeChange).ConfigureAwait(true);
         Log.Debug("BeforeChange phases completed: {0}", @event.TransitionType);
     }
 
@@ -661,7 +661,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     private async Task AfterChangeAsync(UiTransitionEvent @event)
     {
         Log.Debug("AfterChange phases started: {0}", @event.TransitionType);
-        await _pipeline.ExecuteAsync(@event, UiTransitionPhases.AfterChange);
+        await _pipeline.ExecuteAsync(@event, UiTransitionPhases.AfterChange).ConfigureAwait(true);
         Log.Debug("AfterChange phases completed: {0}", @event.TransitionType);
     }
 
@@ -673,7 +673,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     /// <param name="policy">过渡策略</param>
     private async Task DoPushPageInternalAsync(string uiKey, IUiPageEnterParam? param, UiTransitionPolicy policy)
     {
-        if (!await ExecuteEnterGuardsAsync(uiKey, param))
+        if (!await ExecuteEnterGuardsAsync(uiKey, param).ConfigureAwait(true))
         {
             Log.Warn("Push blocked by guard: {0}", uiKey);
             return;

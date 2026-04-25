@@ -94,7 +94,7 @@ public class CommandExecutorTests
     [Test]
     public void SendAsync_WithNullCommand_Should_ThrowArgumentNullException()
     {
-        Assert.ThrowsAsync<ArgumentNullException>(async () => await _commandExecutor.SendAsync(null!));
+        Assert.ThrowsAsync<ArgumentNullException>(() => _commandExecutor.SendAsync(null!));
     }
 
     /// <summary>
@@ -118,7 +118,7 @@ public class CommandExecutorTests
     [Test]
     public void SendAsync_WithResult_AndNullCommand_Should_ThrowArgumentNullException()
     {
-        Assert.ThrowsAsync<ArgumentNullException>(async () => await _commandExecutor.SendAsync<int>(null!));
+        Assert.ThrowsAsync<ArgumentNullException>(() => _commandExecutor.SendAsync<int>(null!));
     }
 }
 

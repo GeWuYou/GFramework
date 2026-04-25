@@ -19,7 +19,7 @@ public class SettingsSystem : AbstractSystem, ISettingsSystem
     public async Task ApplyAll()
     {
         // 遍历所有设置应用器并尝试应用
-        foreach (var applicator in _model.AllApplicators()) await TryApplyAsync(applicator);
+        foreach (var applicator in _model.AllApplicators()) await TryApplyAsync(applicator).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -41,7 +41,7 @@ public class SettingsSystem : AbstractSystem, ISettingsSystem
     /// <returns>完成的任务</returns>
     public async Task SaveAll()
     {
-        await _model.SaveAllAsync();
+        await _model.SaveAllAsync().ConfigureAwait(false);
     }
 
     /// <summary>
@@ -51,7 +51,7 @@ public class SettingsSystem : AbstractSystem, ISettingsSystem
     public async Task ResetAll()
     {
         _model.ResetAll();
-        await ApplyAll();
+        await ApplyAll().ConfigureAwait(false);
     }
 
     /// <summary>
@@ -62,7 +62,7 @@ public class SettingsSystem : AbstractSystem, ISettingsSystem
     public async Task Reset<T>() where T : class, ISettingsData, IResetApplyAbleSettings, new()
     {
         _model.Reset<T>();
-        await Apply<T>();
+        await Apply<T>().ConfigureAwait(false);
     }
 
 
@@ -87,7 +87,7 @@ public class SettingsSystem : AbstractSystem, ISettingsSystem
 
         try
         {
-            await applyAbleSettings.ApplyAsync();
+            await applyAbleSettings.ApplyAsync().ConfigureAwait(false);
             // 发送设置应用成功事件
             this.SendEvent(new SettingsAppliedEvent<ISettingsSection>(section, true));
         }

@@ -20,7 +20,7 @@ public sealed class AsyncTestModel : AbstractModel, IAsyncInitializable
     /// <returns>表示异步操作的Task</returns>
     public async Task InitializeAsync()
     {
-        await Task.Delay(10);
+        await Task.Delay(10).ConfigureAwait(false);
         Initialized = true;
     }
 

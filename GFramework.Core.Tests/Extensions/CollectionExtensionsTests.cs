@@ -173,7 +173,7 @@ public class CollectionExtensionsTests
     {
         var method = typeof(GFramework.Core.Extensions.CollectionExtensions)
             .GetMethods()
-            .Single(static method => method.Name == nameof(GFramework.Core.Extensions.CollectionExtensions.ToDictionarySafe));
+            .Single(static method => string.Equals(method.Name, nameof(GFramework.Core.Extensions.CollectionExtensions.ToDictionarySafe), StringComparison.Ordinal));
         var methodGenericArguments = method.GetGenericArguments();
         var returnTypeGenericArguments = method.ReturnType.GetGenericArguments();
 

@@ -89,13 +89,9 @@ public abstract class SceneRouterBase
 
             var @event = CreateEvent(sceneKey, SceneTransitionType.Replace, param);
 
-            await _pipeline.ExecuteAroundAsync(@event, async () =>
-            {
-                await BeforeChangeAsync(@event);
-                await ClearInternalAsync();
-                await PushInternalAsync(sceneKey, param);
-                await AfterChangeAsync(@event);
-            });
+            await _pipeline.ExecuteAroundAsync(
+                @event,
+                () => ExecuteReplaceCoreAsync(@event, sceneKey, param)).ConfigureAwait(true);
         }
         finally
         {
@@ -195,12 +191,9 @@ public abstract class SceneRouterBase
 
             var @event = CreateEvent(sceneKey, SceneTransitionType.Push, param);
 
-            await _pipeline.ExecuteAroundAsync(@event, async () =>
-            {
-                await BeforeChangeAsync(@event);
-                await PushInternalAsync(sceneKey, param);
-                await AfterChangeAsync(@event);
-            });
+            await _pipeline.ExecuteAroundAsync(
+                @event,
+                () => ExecutePushCoreAsync(@event, sceneKey, param)).ConfigureAwait(true);
         }
         finally
         {
@@ -276,12 +269,9 @@ public abstract class SceneRouterBase
 
             var @event = CreateEvent(null, SceneTransitionType.Pop);
 
-            await _pipeline.ExecuteAroundAsync(@event, async () =>
-            {
-                await BeforeChangeAsync(@event);
-                await PopInternalAsync();
-                await AfterChangeAsync(@event);
-            });
+            await _pipeline.ExecuteAroundAsync(
+                @event,
+                () => ExecutePopCoreAsync(@event)).ConfigureAwait(true);
         }
         finally
         {
@@ -347,12 +337,9 @@ public abstract class SceneRouterBase
 
             var @event = CreateEvent(null, SceneTransitionType.Clear);
 
-            await _pipeline.ExecuteAroundAsync(@event, async () =>
-            {
-                await BeforeChangeAsync(@event);
-                await ClearInternalAsync();
-                await AfterChangeAsync(@event);
-            });
+            await _pipeline.ExecuteAroundAsync(
+                @event,
+                () => ExecuteClearCoreAsync(@event)).ConfigureAwait(true);
         }
         finally
         {
@@ -370,13 +357,74 @@ public abstract class SceneRouterBase
     {
         while (Stack.Count > 0)
         {
-            await PopInternalAsync();
+            await PopInternalAsync().ConfigureAwait(true);
         }
     }
 
     #endregion
 
     #region Helper Methods
+
+    // Scene 生命周期回调和 pipeline handlers 可能依赖引擎线程，因此这些核心切换顺序统一显式保留上下文。
+
+    /// <summary>
+    /// 执行 Replace 的核心切换顺序。
+    /// </summary>
+    /// <param name="event">场景转换事件。</param>
+    /// <param name="sceneKey">目标场景键名。</param>
+    /// <param name="param">场景进入参数。</param>
+    /// <returns>异步任务。</returns>
+    private async Task ExecuteReplaceCoreAsync(
+        SceneTransitionEvent @event,
+        string sceneKey,
+        ISceneEnterParam? param)
+    {
+        await BeforeChangeAsync(@event).ConfigureAwait(true);
+        await ClearInternalAsync().ConfigureAwait(true);
+        await PushInternalAsync(sceneKey, param).ConfigureAwait(true);
+        await AfterChangeAsync(@event).ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// 执行 Push 的核心切换顺序。
+    /// </summary>
+    /// <param name="event">场景转换事件。</param>
+    /// <param name="sceneKey">目标场景键名。</param>
+    /// <param name="param">场景进入参数。</param>
+    /// <returns>异步任务。</returns>
+    private async Task ExecutePushCoreAsync(
+        SceneTransitionEvent @event,
+        string sceneKey,
+        ISceneEnterParam? param)
+    {
+        await BeforeChangeAsync(@event).ConfigureAwait(true);
+        await PushInternalAsync(sceneKey, param).ConfigureAwait(true);
+        await AfterChangeAsync(@event).ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// 执行 Pop 的核心切换顺序。
+    /// </summary>
+    /// <param name="event">场景转换事件。</param>
+    /// <returns>异步任务。</returns>
+    private async Task ExecutePopCoreAsync(SceneTransitionEvent @event)
+    {
+        await BeforeChangeAsync(@event).ConfigureAwait(true);
+        await PopInternalAsync().ConfigureAwait(true);
+        await AfterChangeAsync(@event).ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// 执行 Clear 的核心切换顺序。
+    /// </summary>
+    /// <param name="event">场景转换事件。</param>
+    /// <returns>异步任务。</returns>
+    private async Task ExecuteClearCoreAsync(SceneTransitionEvent @event)
+    {
+        await BeforeChangeAsync(@event).ConfigureAwait(true);
+        await ClearInternalAsync().ConfigureAwait(true);
+        await AfterChangeAsync(@event).ConfigureAwait(true);
+    }
 
     /// <summary>
     /// 创建场景转换事件对象。
@@ -407,7 +455,7 @@ public abstract class SceneRouterBase
     private async Task BeforeChangeAsync(SceneTransitionEvent @event)
     {
         Log.Debug("BeforeChange phases started: {0}", @event.TransitionType);
-        await _pipeline.ExecuteAsync(@event, SceneTransitionPhases.BeforeChange);
+        await _pipeline.ExecuteAsync(@event, SceneTransitionPhases.BeforeChange).ConfigureAwait(true);
         Log.Debug("BeforeChange phases completed: {0}", @event.TransitionType);
     }
 
@@ -418,7 +466,7 @@ public abstract class SceneRouterBase
     private async Task AfterChangeAsync(SceneTransitionEvent @event)
     {
         Log.Debug("AfterChange phases started: {0}", @event.TransitionType);
-        await _pipeline.ExecuteAsync(@event, SceneTransitionPhases.AfterChange);
+        await _pipeline.ExecuteAsync(@event, SceneTransitionPhases.AfterChange).ConfigureAwait(true);
         Log.Debug("AfterChange phases completed: {0}", @event.TransitionType);
     }
 

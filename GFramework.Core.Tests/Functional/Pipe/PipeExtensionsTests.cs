@@ -1,3 +1,4 @@
+using System.Globalization;
 using GFramework.Core.Functional.Pipe;
 using NUnit.Framework;
 
@@ -123,7 +124,7 @@ public class PipeExtensionsTests
         var result = value
             .Pipe(x => x * 2)
             .Pipe(x => x + 10)
-            .Pipe(x => x.ToString());
+            .Pipe(x => x.ToString(CultureInfo.InvariantCulture));
 
         // Assert
         Assert.That(result, Is.EqualTo("20"));
@@ -139,7 +140,7 @@ public class PipeExtensionsTests
         var value = 42;
 
         // Act
-        var result = value.Let(x => x.ToString());
+        var result = value.Let(x => x.ToString(CultureInfo.InvariantCulture));
 
         // Assert
         Assert.That(result, Is.EqualTo("42"));
@@ -171,7 +172,7 @@ public class PipeExtensionsTests
         var result = value.Let(s => new
         {
             Original = s,
-            Upper = s.ToUpper(),
+            Upper = s.ToUpperInvariant(),
             Length = s.Length
         });
 

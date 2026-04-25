@@ -168,52 +168,52 @@ public class TestArchitectureWithRegistry : IArchitecture
 
     T IArchitecture.RegisterSystem<T>(T system)
     {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
     }
 
     T IArchitecture.RegisterModel<T>(T model)
     {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
     }
 
     T IArchitecture.RegisterUtility<T>(T utility)
     {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
     }
 
     public void RegisterCqrsPipelineBehavior<TBehavior>() where TBehavior : class
     {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
     }
 
     /// <summary>
     ///     测试替身未实现显式程序集 CQRS 处理器接入入口。
     /// </summary>
     /// <param name="assembly">包含 CQRS 处理器或生成注册器的程序集。</param>
-    /// <exception cref="NotImplementedException">该测试替身不参与 CQRS 程序集接入路径验证。</exception>
+    /// <exception cref="NotSupportedException">该测试替身不参与 CQRS 程序集接入路径验证。</exception>
     public void RegisterCqrsHandlersFromAssembly(Assembly assembly)
     {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
     }
 
     /// <summary>
     ///     测试替身未实现显式程序集 CQRS 处理器接入入口。
     /// </summary>
     /// <param name="assemblies">要接入的程序集集合。</param>
-    /// <exception cref="NotImplementedException">该测试替身不参与 CQRS 程序集接入路径验证。</exception>
+    /// <exception cref="NotSupportedException">该测试替身不参与 CQRS 程序集接入路径验证。</exception>
     public void RegisterCqrsHandlersFromAssemblies(IEnumerable<Assembly> assemblies)
     {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
     }
 
     public IArchitectureModule InstallModule(IArchitectureModule module)
     {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
     }
 
     IArchitectureLifecycleHook IArchitecture.RegisterLifecycleHook(IArchitectureLifecycleHook hook)
     {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
     }
 
     Task IArchitecture.WaitUntilReadyAsync()
@@ -223,17 +223,17 @@ public class TestArchitectureWithRegistry : IArchitecture
 
     public void RegisterUtility<T>(Action<T>? onCreated = default(Action<T>?)) where T : class, IUtility
     {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
     }
 
     public void RegisterModel<T>(Action<T>? onCreated = default(Action<T>?)) where T : class, IModel
     {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
     }
 
     public void RegisterSystem<T>(Action<T>? onCreated = default(Action<T>?)) where T : class, ISystem
     {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
     }
 
     public void Initialize()
@@ -242,7 +242,7 @@ public class TestArchitectureWithRegistry : IArchitecture
 
     public void Destroy()
     {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
     }
 
     Task IAsyncInitializable.InitializeAsync()
@@ -257,7 +257,7 @@ public class TestArchitectureWithRegistry : IArchitecture
 
     public Task WaitUntilReadyAsync()
     {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
     }
 
     public void RegisterLifecycleHook(IArchitectureLifecycleHook hook)
@@ -266,12 +266,12 @@ public class TestArchitectureWithRegistry : IArchitecture
 
     public Task InitializeAsync()
     {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
     }
 
     public ValueTask DestroyAsync()
     {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
     }
 }
 
@@ -287,7 +287,7 @@ public class TestArchitectureContextWithRegistry : TestArchitectureContext
         _registry = registry;
     }
 
-    public override TUtility GetUtility<TUtility>()
+    public override TUtility? GetUtility<TUtility>() where TUtility : class
     {
         if (typeof(TUtility) == typeof(TestRegistry))
         {
@@ -313,72 +313,72 @@ public class TestArchitectureWithoutRegistry : IArchitecture
 
     T IArchitecture.RegisterSystem<T>(T system)
     {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
     }
 
     T IArchitecture.RegisterModel<T>(T model)
     {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
     }
 
     T IArchitecture.RegisterUtility<T>(T utility)
     {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
     }
 
     public void RegisterCqrsPipelineBehavior<TBehavior>() where TBehavior : class
     {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
     }
 
     /// <summary>
     ///     测试替身未实现显式程序集 CQRS 处理器接入入口。
     /// </summary>
     /// <param name="assembly">包含 CQRS 处理器或生成注册器的程序集。</param>
-    /// <exception cref="NotImplementedException">该测试替身不参与 CQRS 程序集接入路径验证。</exception>
+    /// <exception cref="NotSupportedException">该测试替身不参与 CQRS 程序集接入路径验证。</exception>
     public void RegisterCqrsHandlersFromAssembly(Assembly assembly)
     {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
     }
 
     /// <summary>
     ///     测试替身未实现显式程序集 CQRS 处理器接入入口。
     /// </summary>
     /// <param name="assemblies">要接入的程序集集合。</param>
-    /// <exception cref="NotImplementedException">该测试替身不参与 CQRS 程序集接入路径验证。</exception>
+    /// <exception cref="NotSupportedException">该测试替身不参与 CQRS 程序集接入路径验证。</exception>
     public void RegisterCqrsHandlersFromAssemblies(IEnumerable<Assembly> assemblies)
     {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
     }
 
     public IArchitectureModule InstallModule(IArchitectureModule module)
     {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
     }
 
     IArchitectureLifecycleHook IArchitecture.RegisterLifecycleHook(IArchitectureLifecycleHook hook)
     {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
     }
 
     public Task WaitUntilReadyAsync()
     {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
     }
 
     public void RegisterUtility<T>(Action<T>? onCreated = default(Action<T>?)) where T : class, IUtility
     {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
     }
 
     public void RegisterModel<T>(Action<T>? onCreated = default(Action<T>?)) where T : class, IModel
     {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
     }
 
     public void RegisterSystem<T>(Action<T>? onCreated = default(Action<T>?)) where T : class, ISystem
     {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
     }
 
     public void Initialize()
@@ -387,17 +387,17 @@ public class TestArchitectureWithoutRegistry : IArchitecture
 
     public Task InitializeAsync()
     {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
     }
 
     public ValueTask DestroyAsync()
     {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
     }
 
     public void Destroy()
     {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
     }
 
     public void RegisterLifecycleHook(IArchitectureLifecycleHook hook)

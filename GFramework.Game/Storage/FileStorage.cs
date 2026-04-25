@@ -143,11 +143,11 @@ public sealed class FileStorage : IFileStorage, IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         var path = ToPath(key);
 
-        await using (await _lockManager.AcquireLockAsync(path).ConfigureAwait(false))
-        {
-            if (File.Exists(path))
-                File.Delete(path);
-        }
+        var pathLock = await _lockManager.AcquireLockAsync(path).ConfigureAwait(false);
+        await using var configuredPathLock = pathLock.ConfigureAwait(false);
+
+        if (File.Exists(path))
+            File.Delete(path);
     }
 
     #endregion
@@ -178,10 +178,10 @@ public sealed class FileStorage : IFileStorage, IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         var path = ToPath(key);
 
-        await using (await _lockManager.AcquireLockAsync(path).ConfigureAwait(false))
-        {
-            return File.Exists(path);
-        }
+        var pathLock = await _lockManager.AcquireLockAsync(path).ConfigureAwait(false);
+        await using var configuredPathLock = pathLock.ConfigureAwait(false);
+
+        return File.Exists(path);
     }
 
     #endregion
@@ -236,23 +236,24 @@ public sealed class FileStorage : IFileStorage, IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         var path = ToPath(key);
 
-        await using (await _lockManager.AcquireLockAsync(path).ConfigureAwait(false))
-        {
-            if (!File.Exists(path))
-                throw new FileNotFoundException($"Storage key not found: {key}", path);
+        var pathLock = await _lockManager.AcquireLockAsync(path).ConfigureAwait(false);
+        await using var configuredPathLock = pathLock.ConfigureAwait(false);
 
-            await using var fs = new FileStream(
-                path,
-                FileMode.Open,
-                FileAccess.Read,
-                FileShare.Read,
-                _bufferSize,
-                useAsync: true);
+        if (!File.Exists(path))
+            throw new FileNotFoundException($"Storage key not found: {key}", path);
 
-            using var sr = new StreamReader(fs, Encoding.UTF8);
-            var content = await sr.ReadToEndAsync().ConfigureAwait(false);
-            return _serializer.Deserialize<T>(content);
-        }
+        var fs = new FileStream(
+            path,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            _bufferSize,
+            useAsync: true);
+        await using var configuredFileStream = fs.ConfigureAwait(false);
+
+        using var sr = new StreamReader(fs, Encoding.UTF8, true, -1, leaveOpen: true);
+        var content = await sr.ReadToEndAsync().ConfigureAwait(false);
+        return _serializer.Deserialize<T>(content);
     }
 
     #endregion
@@ -354,36 +355,40 @@ public sealed class FileStorage : IFileStorage, IDisposable
         var path = ToPath(key);
         var tempPath = path + ".tmp";
 
-        await using (await _lockManager.AcquireLockAsync(path).ConfigureAwait(false))
+        var pathLock = await _lockManager.AcquireLockAsync(path).ConfigureAwait(false);
+        await using var configuredPathLock = pathLock.ConfigureAwait(false);
+
+        try
         {
-            try
-            {
-                var content = _serializer.Serialize(value);
+            var content = _serializer.Serialize(value);
 
-                // 先写入临时文件
-                await using (var fs = new FileStream(
-                                 tempPath,
-                                 FileMode.Create,
-                                 FileAccess.Write,
-                                 FileShare.None,
-                                 _bufferSize,
-                                 useAsync: true))
-                {
-                    await using var sw = new StreamWriter(fs, Encoding.UTF8);
-                    await sw.WriteAsync(content).ConfigureAwait(false);
-                    await sw.FlushAsync().ConfigureAwait(false);
-                }
-
-                // 原子性替换目标文件
-                File.Move(tempPath, path, overwrite: true);
-            }
-            catch
+            // 先写入临时文件
             {
-                // 清理临时文件
-                if (File.Exists(tempPath))
-                    File.Delete(tempPath);
-                throw;
+                var fs = new FileStream(
+                    tempPath,
+                    FileMode.Create,
+                    FileAccess.Write,
+                    FileShare.None,
+                    _bufferSize,
+                    useAsync: true);
+                await using var configuredFileStream = fs.ConfigureAwait(false);
+
+                var sw = new StreamWriter(fs, Encoding.UTF8, leaveOpen: true);
+                await using var configuredStreamWriter = sw.ConfigureAwait(false);
+
+                await sw.WriteAsync(content).ConfigureAwait(false);
+                await sw.FlushAsync().ConfigureAwait(false);
             }
+
+            // 原子性替换目标文件
+            File.Move(tempPath, path, overwrite: true);
+        }
+        catch
+        {
+            // 清理临时文件
+            if (File.Exists(tempPath))
+                File.Delete(tempPath);
+            throw;
         }
     }
 

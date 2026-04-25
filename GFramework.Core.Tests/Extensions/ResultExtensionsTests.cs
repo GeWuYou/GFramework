@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Globalization;
 using GFramework.Core.Functional;
 
 namespace GFramework.Core.Tests.Extensions;
@@ -122,7 +123,7 @@ public class ResultExtensionsTests
     public void Map_Should_Transform_Success_Value()
     {
         var result = Result<int>.Succeed(42);
-        var mapped = result.Map(x => x.ToString());
+        var mapped = result.Map(x => x.ToString(CultureInfo.InvariantCulture));
         Assert.That(mapped.IsSuccess, Is.True);
         Assert.That(mapped.Match(succ: v => v, fail: _ => ""), Is.EqualTo("42"));
     }
@@ -135,7 +136,7 @@ public class ResultExtensionsTests
     {
         var exception = new Exception("Error");
         var result = Result<int>.Fail(exception);
-        var mapped = result.Map(x => x.ToString());
+        var mapped = result.Map(x => x.ToString(CultureInfo.InvariantCulture));
         Assert.That(mapped.IsFaulted, Is.True);
         Assert.That(mapped.Exception, Is.SameAs(exception));
     }
@@ -157,7 +158,7 @@ public class ResultExtensionsTests
     public void Bind_Should_Chain_Success_Results()
     {
         var result = Result<int>.Succeed(42);
-        var bound = result.Bind(x => Result<string>.Succeed(x.ToString()));
+        var bound = result.Bind(x => Result<string>.Succeed(x.ToString(CultureInfo.InvariantCulture)));
         Assert.That(bound.IsSuccess, Is.True);
         Assert.That(bound.Match(succ: v => v, fail: _ => ""), Is.EqualTo("42"));
     }
@@ -170,7 +171,7 @@ public class ResultExtensionsTests
     {
         var exception = new Exception("Error");
         var result = Result<int>.Fail(exception);
-        var bound = result.Bind(x => Result<string>.Succeed(x.ToString()));
+        var bound = result.Bind(x => Result<string>.Succeed(x.ToString(CultureInfo.InvariantCulture)));
         Assert.That(bound.IsFaulted, Is.True);
         Assert.That(bound.Exception, Is.SameAs(exception));
     }
@@ -449,9 +450,9 @@ public class ResultExtensionsTests
     {
         var result = await ResultExtensions.TryAsync(async () =>
         {
-            await Task.Delay(1);
+            await Task.Delay(1).ConfigureAwait(false);
             return 42;
-        });
+        }).ConfigureAwait(false);
         Assert.That(result.IsSuccess, Is.True);
         Assert.That(result.Match(succ: v => v, fail: _ => 0), Is.EqualTo(42));
     }
@@ -464,9 +465,9 @@ public class ResultExtensionsTests
     {
         var result = await ResultExtensions.TryAsync<int>(async () =>
         {
-            await Task.Delay(1);
+            await Task.Delay(1).ConfigureAwait(false);
             throw new InvalidOperationException("Error");
-        });
+        }).ConfigureAwait(false);
         Assert.That(result.IsFaulted, Is.True);
         Assert.That(result.Exception, Is.TypeOf<InvalidOperationException>());
     }
@@ -477,7 +478,8 @@ public class ResultExtensionsTests
     [Test]
     public async Task TryAsync_Should_Handle_Synchronous_Exceptions()
     {
-        var result = await ResultExtensions.TryAsync<int>(() => throw new InvalidOperationException("Sync error"));
+        var result = await ResultExtensions.TryAsync<int>(() => throw new InvalidOperationException("Sync error"))
+            .ConfigureAwait(false);
         Assert.That(result.IsFaulted, Is.True);
     }
 
@@ -487,7 +489,7 @@ public class ResultExtensionsTests
     [Test]
     public void TryAsync_Should_Throw_ArgumentNullException_When_Function_Is_Null()
     {
-        Assert.ThrowsAsync<ArgumentNullException>(async () => await ResultExtensions.TryAsync<int>(null!));
+        Assert.ThrowsAsync<ArgumentNullException>(() => ResultExtensions.TryAsync<int>(null!));
     }
 
     /// <summary>

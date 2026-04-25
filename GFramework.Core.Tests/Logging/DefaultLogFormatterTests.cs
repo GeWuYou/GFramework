@@ -48,7 +48,7 @@ public class DefaultLogFormatterTests
     [Test]
     public void Format_WithProperties_ShouldIncludeProperties()
     {
-        var properties = new Dictionary<string, object?>
+        var properties = new Dictionary<string, object?>(StringComparer.Ordinal)
         {
             ["UserId"] = 12345,
             ["UserName"] = "TestUser"
@@ -66,7 +66,7 @@ public class DefaultLogFormatterTests
     [Test]
     public void Format_WithNullProperty_ShouldHandleNull()
     {
-        var properties = new Dictionary<string, object?>
+        var properties = new Dictionary<string, object?>(StringComparer.Ordinal)
         {
             ["Key1"] = null
         };

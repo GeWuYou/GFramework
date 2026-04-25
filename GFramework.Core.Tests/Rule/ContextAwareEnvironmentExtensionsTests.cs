@@ -93,7 +93,7 @@ public class ContextAwareEnvironmentExtensionsTests
             return false;
         }
 
-        public T GetRequired<T>(string key) where T : class => throw new NotImplementedException();
+        public T GetRequired<T>(string key) where T : class => throw new NotSupportedException();
 
         public void Register(string key, object value)
         {
@@ -115,7 +115,7 @@ public class ContextAwareEnvironmentExtensionsTests
             return false;
         }
 
-        public T GetRequired<T>(string key) where T : class => throw new NotImplementedException();
+        public T GetRequired<T>(string key) where T : class => throw new NotSupportedException();
 
         public void Register(string key, object value)
         {

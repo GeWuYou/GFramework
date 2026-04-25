@@ -17,6 +17,7 @@ public static class ContextAwareEventExtensions
     public static void SendEvent<TEvent>(this IContextAware contextAware) where TEvent : new()
     {
         ArgumentNullException.ThrowIfNull(contextAware);
+
         var context = contextAware.GetContext();
         context.SendEvent<TEvent>();
     }

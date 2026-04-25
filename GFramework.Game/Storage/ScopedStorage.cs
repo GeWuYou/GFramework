@@ -100,9 +100,9 @@ public sealed class ScopedStorage(IStorage inner, string prefix) : IScopedStorag
     /// </summary>
     /// <param name="key">要删除的键</param>
     /// <returns>异步操作任务</returns>
-    public async Task DeleteAsync(string key)
+    public Task DeleteAsync(string key)
     {
-        await inner.DeleteAsync(Key(key));
+        return inner.DeleteAsync(Key(key));
     }
 
     /// <summary>

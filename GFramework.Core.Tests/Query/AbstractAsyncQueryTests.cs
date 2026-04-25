@@ -80,7 +80,7 @@ public class AbstractAsyncQueryTests
         var query = new TestAsyncQueryWithExceptionV4(input);
         var asyncQuery = (IAsyncQuery<int>)query;
 
-        Assert.ThrowsAsync<InvalidOperationException>(async () => await asyncQuery.DoAsync());
+        Assert.ThrowsAsync<InvalidOperationException>(() => asyncQuery.DoAsync());
     }
 
     /// <summary>

@@ -44,7 +44,7 @@ public class AsyncQueryExecutorTests
     [Test]
     public void SendAsync_WithNullQuery_Should_ThrowArgumentNullException()
     {
-        Assert.ThrowsAsync<ArgumentNullException>(async () => await _asyncQueryExecutor.SendAsync<int>(null!));
+        Assert.ThrowsAsync<ArgumentNullException>(() => _asyncQueryExecutor.SendAsync<int>(null!));
     }
 
     /// <summary>
@@ -100,7 +100,7 @@ public class AsyncQueryExecutorTests
         var input = new TestAsyncQueryInput { Value = 0 };
         var query = new TestAsyncQueryWithException(input);
 
-        Assert.ThrowsAsync<InvalidOperationException>(async () => await _asyncQueryExecutor.SendAsync(query));
+        Assert.ThrowsAsync<InvalidOperationException>(() => _asyncQueryExecutor.SendAsync(query));
     }
 
     /// <summary>

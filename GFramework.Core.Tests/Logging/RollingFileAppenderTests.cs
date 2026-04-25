@@ -68,7 +68,7 @@ public class RollingFileAppenderTests
         }
 
         // 检查是否生成了多个文件
-        var files = Directory.GetFiles(_testDir, "*.log").OrderBy(f => f).ToArray();
+        var files = Directory.GetFiles(_testDir, "*.log");
         Assert.That(files.Length, Is.GreaterThan(1));
     }
 
@@ -108,13 +108,21 @@ public class RollingFileAppenderTests
             appender.Flush();
         }
 
-        var files = Directory.GetFiles(_testDir, "*.log").Select(Path.GetFileName).OrderBy(f => f).ToArray();
+        var files = Directory.GetFiles(_testDir, "*.log")
+            .Select(static path => Path.GetFileName(path) ?? string.Empty)
+            .OrderBy(f => f, System.StringComparer.Ordinal)
+            .ToArray();
 
         // 应该有 app.log, app.1.log, app.2.log 等
         Assert.That(files, Does.Contain("app.log"));
         if (files.Length > 1)
         {
-            Assert.That(files.Any(f => f.StartsWith("app.") && f.EndsWith(".log") && f != "app.log"), Is.True);
+            Assert.That(
+                files.Any(f =>
+                    f.StartsWith("app.", System.StringComparison.Ordinal) &&
+                    f.EndsWith(".log", System.StringComparison.Ordinal) &&
+                    !string.Equals(f, "app.log", System.StringComparison.Ordinal)),
+                Is.True);
         }
     }
 

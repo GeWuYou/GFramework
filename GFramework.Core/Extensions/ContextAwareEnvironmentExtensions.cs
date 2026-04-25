@@ -16,7 +16,11 @@ public static class ContextAwareEnvironmentExtensions
     /// <returns>指定类型的环境对象,如果无法转换则返回null</returns>
     public static T? GetEnvironment<T>(this IContextAware contextAware) where T : class
     {
-        ArgumentNullException.ThrowIfNull(contextAware);
+        if (contextAware is null)
+        {
+            throw new ArgumentNullException(nameof(contextAware));
+        }
+
         var context = contextAware.GetContext();
         return context.GetEnvironment() as T;
     }
@@ -28,7 +32,11 @@ public static class ContextAwareEnvironmentExtensions
     /// <returns>环境对象</returns>
     public static IEnvironment GetEnvironment(this IContextAware contextAware)
     {
-        ArgumentNullException.ThrowIfNull(contextAware);
+        if (contextAware is null)
+        {
+            throw new ArgumentNullException(nameof(contextAware));
+        }
+
         var context = contextAware.GetContext();
         return context.GetEnvironment();
     }

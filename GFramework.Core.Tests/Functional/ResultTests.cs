@@ -329,7 +329,7 @@ public class ResultTests
     {
         // Arrange
         var result1 = Result.Failure(new InvalidOperationException("Error"));
-        var result2 = Result.Failure(new ArgumentException("Error"));
+        var result2 = Result.Failure(new InvalidCastException("Error"));
 
         // Act & Assert
         Assert.That(result1.Equals(result2), Is.False);

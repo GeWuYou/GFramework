@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Globalization;
 using GFramework.Core.Functional;
 using NUnit.Framework;
 
@@ -122,7 +123,7 @@ public class OptionTests
     public void Map_WithSome_Should_Map_Value()
     {
         var option = Option<int>.Some(42);
-        var mapped = option.Map(x => x.ToString());
+        var mapped = option.Map(x => x.ToString(CultureInfo.InvariantCulture));
         Assert.That(mapped.IsSome, Is.True);
         Assert.That(mapped.GetOrElse(""), Is.EqualTo("42"));
     }
@@ -134,7 +135,7 @@ public class OptionTests
     public void Map_WithNone_Should_Return_None()
     {
         var option = Option<int>.None;
-        var mapped = option.Map(x => x.ToString());
+        var mapped = option.Map(x => x.ToString(CultureInfo.InvariantCulture));
         Assert.That(mapped.IsNone, Is.True);
     }
 
@@ -155,7 +156,7 @@ public class OptionTests
     public void Bind_WithSome_Should_Bind_Value()
     {
         var option = Option<string>.Some("42");
-        var bound = option.Bind(s => int.TryParse(s, out var i)
+        var bound = option.Bind(s => int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var i)
             ? Option<int>.Some(i)
             : Option<int>.None);
 
@@ -170,7 +171,7 @@ public class OptionTests
     public void Bind_WithSome_Can_Return_None()
     {
         var option = Option<string>.Some("invalid");
-        var bound = option.Bind(s => int.TryParse(s, out var i)
+        var bound = option.Bind(s => int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var i)
             ? Option<int>.Some(i)
             : Option<int>.None);
 

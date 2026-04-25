@@ -24,10 +24,13 @@ public sealed class StoreSelection<TState, TSelected> : IReadonlyBindablePropert
     /// </summary>
     private readonly List<SelectionListenerSubscription> _listeners = [];
 
-    /// <summary>
-    ///     保护监听器集合和底层 Store 订阅句柄的同步锁。
-    /// </summary>
+#if NET9_0_OR_GREATER
+    // net9.0 及以上目标使用专用 Lock，以满足分析器对专用同步原语的建议。
+    private readonly System.Threading.Lock _lock = new();
+#else
+    // net8.0 目标仍回退到 object 锁，以保持多目标编译兼容性。
     private readonly object _lock = new();
+#endif
 
     /// <summary>
     ///     负责从完整状态中投影出局部状态的选择器。
@@ -82,7 +85,9 @@ public sealed class StoreSelection<TState, TSelected> : IReadonlyBindablePropert
     /// <returns>用于取消订阅的句柄。</returns>
     IUnRegister IEvent.Register(Action onEvent)
     {
-        ArgumentNullException.ThrowIfNull(onEvent);
+        if (onEvent is null)
+            throw new ArgumentNullException(nameof(onEvent));
+
         return Register(_ => onEvent());
     }
 
@@ -94,7 +99,8 @@ public sealed class StoreSelection<TState, TSelected> : IReadonlyBindablePropert
     /// <exception cref="ArgumentNullException">当 <paramref name="onValueChanged"/> 为 <see langword="null"/> 时抛出。</exception>
     public IUnRegister Register(Action<TSelected> onValueChanged)
     {
-        ArgumentNullException.ThrowIfNull(onValueChanged);
+        if (onValueChanged is null)
+            throw new ArgumentNullException(nameof(onValueChanged));
 
         var subscription = new SelectionListenerSubscription(onValueChanged);
         var shouldAttach = false;
@@ -126,7 +132,8 @@ public sealed class StoreSelection<TState, TSelected> : IReadonlyBindablePropert
     /// <exception cref="ArgumentNullException">当 <paramref name="action"/> 为 <see langword="null"/> 时抛出。</exception>
     public IUnRegister RegisterWithInitValue(Action<TSelected> action)
     {
-        ArgumentNullException.ThrowIfNull(action);
+        if (action is null)
+            throw new ArgumentNullException(nameof(action));
 
         var subscription = new SelectionListenerSubscription(action)
         {
@@ -189,7 +196,8 @@ public sealed class StoreSelection<TState, TSelected> : IReadonlyBindablePropert
     /// <exception cref="ArgumentNullException">当 <paramref name="onValueChanged"/> 为 <see langword="null"/> 时抛出。</exception>
     public void UnRegister(Action<TSelected> onValueChanged)
     {
-        ArgumentNullException.ThrowIfNull(onValueChanged);
+        if (onValueChanged is null)
+            throw new ArgumentNullException(nameof(onValueChanged));
 
         SelectionListenerSubscription? subscriptionToRemove = null;
 

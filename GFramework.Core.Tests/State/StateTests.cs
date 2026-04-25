@@ -674,7 +674,7 @@ public sealed class ConcreteAsyncStateV2 : IState, IAsyncState
     /// <param name="from">从哪个状态进入</param>
     public async Task OnEnterAsync(IState? from)
     {
-        await Task.Delay(1);
+        await Task.Delay(1).ConfigureAwait(false);
         EnterCalled = true;
         EnterCallCount++;
         EnterFrom = from;
@@ -686,7 +686,7 @@ public sealed class ConcreteAsyncStateV2 : IState, IAsyncState
     /// <param name="to">退出到哪个状态</param>
     public async Task OnExitAsync(IState? to)
     {
-        await Task.Delay(1);
+        await Task.Delay(1).ConfigureAwait(false);
         ExitCalled = true;
         ExitCallCount++;
         ExitTo = to;
@@ -699,7 +699,7 @@ public sealed class ConcreteAsyncStateV2 : IState, IAsyncState
     /// <returns>如果可以转换则返回true，否则返回false</returns>
     public async Task<bool> CanTransitionToAsync(IState target)
     {
-        await Task.Delay(1);
+        await Task.Delay(1).ConfigureAwait(false);
         CanTransitionToAsyncAction?.Invoke(target);
         return AllowTransitions;
     }

@@ -339,7 +339,7 @@ public class ArchitectureContextTests
             {
                 workersReady.Signal();
                 startGate.Wait();
-                return await context.SendRequestAsync(new TestCqrsRequest());
+                return await context.SendRequestAsync(new TestCqrsRequest()).ConfigureAwait(false);
             }))
             .ToArray();
 

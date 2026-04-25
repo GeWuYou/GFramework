@@ -33,11 +33,11 @@ public class AsyncExtensionsTests
     public void WithTimeout_Should_Throw_TimeoutException_When_Task_Exceeds_Timeout()
     {
         // Act & Assert
-        Assert.ThrowsAsync<TimeoutException>(async () =>
-            await AsyncExtensions.WithTimeoutAsync(
+        Assert.ThrowsAsync<TimeoutException>(() =>
+            AsyncExtensions.WithTimeoutAsync(
                 async ct =>
                 {
-                    await Task.Delay(TimeSpan.FromSeconds(2), ct);
+                    await Task.Delay(TimeSpan.FromSeconds(2), ct).ConfigureAwait(false);
                     return 42;
                 },
                 TimeSpan.FromMilliseconds(100)));
@@ -53,11 +53,11 @@ public class AsyncExtensionsTests
         using var cts = new CancellationTokenSource();
         cts.Cancel();
         // Act & Assert
-        Assert.ThrowsAsync<TaskCanceledException>(async () =>
-            await AsyncExtensions.WithTimeoutAsync(
+        Assert.ThrowsAsync<TaskCanceledException>(() =>
+            AsyncExtensions.WithTimeoutAsync(
                 async ct =>
                 {
-                    await Task.Delay(TimeSpan.FromSeconds(2), ct);
+                    await Task.Delay(TimeSpan.FromSeconds(2), ct).ConfigureAwait(false);
                     return 42;
                 },
                 TimeSpan.FromSeconds(1),
@@ -74,13 +74,13 @@ public class AsyncExtensionsTests
         var innerTaskCanceled = false;
 
         // Act & Assert
-        Assert.ThrowsAsync<TimeoutException>(async () =>
-            await AsyncExtensions.WithTimeoutAsync(
+        Assert.ThrowsAsync<TimeoutException>(() =>
+            AsyncExtensions.WithTimeoutAsync(
                 async ct =>
                 {
                     try
                     {
-                        await Task.Delay(TimeSpan.FromSeconds(5), ct);
+                        await Task.Delay(TimeSpan.FromSeconds(5), ct).ConfigureAwait(false);
                         return 0;
                     }
                     catch (OperationCanceledException)
@@ -121,8 +121,8 @@ public class AsyncExtensionsTests
     public void WithTimeout_NoResult_Should_Throw_TimeoutException_When_Task_Exceeds_Timeout()
     {
         // Act & Assert
-        Assert.ThrowsAsync<TimeoutException>(async () =>
-            await AsyncExtensions.WithTimeoutAsync(
+        Assert.ThrowsAsync<TimeoutException>(() =>
+            AsyncExtensions.WithTimeoutAsync(
                 ct => Task.Delay(TimeSpan.FromSeconds(2), ct),
                 TimeSpan.FromMilliseconds(100)));
     }
@@ -137,13 +137,13 @@ public class AsyncExtensionsTests
         var innerTaskCanceled = false;
 
         // Act & Assert
-        Assert.ThrowsAsync<TimeoutException>(async () =>
-            await AsyncExtensions.WithTimeoutAsync(
+        Assert.ThrowsAsync<TimeoutException>(() =>
+            AsyncExtensions.WithTimeoutAsync(
                 async ct =>
                 {
                     try
                     {
-                        await Task.Delay(TimeSpan.FromSeconds(5), ct);
+                        await Task.Delay(TimeSpan.FromSeconds(5), ct).ConfigureAwait(false);
                     }
                     catch (OperationCanceledException)
                     {
@@ -217,8 +217,8 @@ public class AsyncExtensionsTests
         };
 
         // Act & Assert
-        Assert.ThrowsAsync<AggregateException>(async () =>
-            await taskFactory.WithRetryAsync(2, TimeSpan.FromMilliseconds(10)));
+        Assert.ThrowsAsync<AggregateException>(() =>
+            taskFactory.WithRetryAsync(2, TimeSpan.FromMilliseconds(10)));
     }
 
     /// <summary>
@@ -236,11 +236,11 @@ public class AsyncExtensionsTests
         };
 
         // Act & Assert
-        Assert.ThrowsAsync<AggregateException>(async () =>
-            await taskFactory.WithRetryAsync(3, TimeSpan.FromMilliseconds(10),
+        Assert.ThrowsAsync<AggregateException>(() =>
+            taskFactory.WithRetryAsync(3, TimeSpan.FromMilliseconds(10),
                 ex => ex is not ArgumentException));
 
-        await Task.Delay(50); // 等待任务完成
+        await Task.Delay(50).ConfigureAwait(false); // 等待任务完成
         Assert.That(attemptCount, Is.EqualTo(1)); // 不应该重试
     }
 

@@ -140,7 +140,7 @@ public abstract class RouterBase<TRoute, TContext> : AbstractSystem
             try
             {
                 Log.Debug("Executing enter guard: {0} for {1}", guard.GetType().Name, routeKey);
-                var canEnter = await guard.CanEnterAsync(routeKey, context);
+                var canEnter = await guard.CanEnterAsync(routeKey, context).ConfigureAwait(false);
 
                 if (!canEnter)
                 {
@@ -182,7 +182,7 @@ public abstract class RouterBase<TRoute, TContext> : AbstractSystem
             try
             {
                 Log.Debug("Executing leave guard: {0} for {1}", guard.GetType().Name, routeKey);
-                var canLeave = await guard.CanLeaveAsync(routeKey);
+                var canLeave = await guard.CanLeaveAsync(routeKey).ConfigureAwait(false);
 
                 if (!canLeave)
                 {

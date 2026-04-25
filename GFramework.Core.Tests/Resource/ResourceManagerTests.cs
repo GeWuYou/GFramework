@@ -33,7 +33,7 @@ public class TestResourceLoader : IResourceLoader<TestResource>
 
     public async Task<TestResource> LoadAsync(string path)
     {
-        await Task.Delay(10); // 模拟异步加载
+        await Task.Delay(10).ConfigureAwait(false); // 模拟异步加载
         return Load(path);
     }
 
@@ -99,7 +99,7 @@ public class ResourceManagerTests
     [Test]
     public async Task LoadAsync_Should_Load_Resource()
     {
-        var resource = await _resourceManager.LoadAsync<TestResource>("test/resource1.txt");
+        var resource = await _resourceManager.LoadAsync<TestResource>("test/resource1.txt").ConfigureAwait(false);
 
         Assert.That(resource, Is.Not.Null);
         Assert.That(resource!.Content, Is.EqualTo("Content 1"));

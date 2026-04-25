@@ -254,7 +254,7 @@ public class QueryCoroutineExtensionsTests
         {
             Name = "ComplexName",
             Values = new List<int> { 1, 2, 3 },
-            Metadata = new Dictionary<string, object> { { "key", "value" } }
+            Metadata = new Dictionary<string, object>(StringComparer.Ordinal) { { "key", "value" } }
         };
 
         ComplexResult? receivedResult = null;
@@ -362,7 +362,7 @@ internal class ComplexQuery : IQuery<ComplexResult>
     private IArchitectureContext? _context;
     public string Name { get; set; } = string.Empty;
     public List<int> Values { get; set; } = new();
-    public Dictionary<string, object> Metadata { get; set; } = new();
+    public Dictionary<string, object> Metadata { get; set; } = new(StringComparer.Ordinal);
 
     public void SetContext(IArchitectureContext context)
     {

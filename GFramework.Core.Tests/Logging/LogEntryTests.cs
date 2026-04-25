@@ -13,7 +13,7 @@ public class LogEntryTests
     public void Constructor_WithAllParameters_ShouldCreateEntry()
     {
         var timestamp = DateTime.UtcNow;
-        var properties = new Dictionary<string, object?> { ["Key1"] = "Value1" };
+        var properties = new Dictionary<string, object?>(StringComparer.Ordinal) { ["Key1"] = "Value1" };
         var exception = new InvalidOperationException("Test");
 
         var entry = new LogEntry(timestamp, LogLevel.Info, "TestLogger", "Test message", exception, properties);
@@ -63,7 +63,7 @@ public class LogEntryTests
     public void GetAllProperties_WithProperties_ShouldReturnOnlyProperties()
     {
         LogContext.Clear();
-        var properties = new Dictionary<string, object?> { ["PropKey"] = "PropValue" };
+        var properties = new Dictionary<string, object?>(StringComparer.Ordinal) { ["PropKey"] = "PropValue" };
         var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Test message", null, properties);
 
         var allProps = entry.GetAllProperties();
@@ -78,7 +78,7 @@ public class LogEntryTests
         LogContext.Clear();
         using (LogContext.Push("ContextKey", "ContextValue"))
         {
-            var properties = new Dictionary<string, object?> { ["PropKey"] = "PropValue" };
+            var properties = new Dictionary<string, object?>(StringComparer.Ordinal) { ["PropKey"] = "PropValue" };
             var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Test message", null, properties);
 
             var allProps = entry.GetAllProperties();
@@ -97,7 +97,7 @@ public class LogEntryTests
         LogContext.Clear();
         using (LogContext.Push("Key1", "ContextValue"))
         {
-            var properties = new Dictionary<string, object?> { ["Key1"] = "PropValue" };
+            var properties = new Dictionary<string, object?>(StringComparer.Ordinal) { ["Key1"] = "PropValue" };
             var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Test message", null, properties);
 
             var allProps = entry.GetAllProperties();
@@ -124,7 +124,7 @@ public class LogEntryTests
     public void RecordEquality_WithSameValues_ShouldBeEqual()
     {
         var timestamp = DateTime.UtcNow;
-        var properties = new Dictionary<string, object?> { ["Key1"] = "Value1" };
+        var properties = new Dictionary<string, object?>(StringComparer.Ordinal) { ["Key1"] = "Value1" };
 
         var entry1 = new LogEntry(timestamp, LogLevel.Info, "TestLogger", "Test message", null, properties);
         var entry2 = new LogEntry(timestamp, LogLevel.Info, "TestLogger", "Test message", null, properties);

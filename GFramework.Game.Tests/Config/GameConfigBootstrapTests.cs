@@ -163,11 +163,11 @@ public class GameConfigBootstrapTests
             Is.True,
             "The first initialization attempt did not reach the guarded lifecycle section.");
 
-        var secondCallerException = Assert.ThrowsAsync<InvalidOperationException>(async () => await bootstrap.InitializeAsync().ConfigureAwait(false));
+        var secondCallerException = Assert.ThrowsAsync<InvalidOperationException>(() => bootstrap.InitializeAsync());
 
         continueInitialization.Set();
 
-        Assert.DoesNotThrowAsync(async () => await firstInitializeTask.ConfigureAwait(false));
+        Assert.DoesNotThrowAsync(() => firstInitializeTask);
 
         Assert.Multiple(() =>
         {
@@ -202,7 +202,7 @@ public class GameConfigBootstrapTests
                         })
             });
 
-        var exception = Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await bootstrap.InitializeAsync().ConfigureAwait(false));
+        var exception = Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => bootstrap.InitializeAsync());
 
         Assert.Multiple(() =>
         {

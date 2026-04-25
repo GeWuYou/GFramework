@@ -128,7 +128,7 @@ public class ArchitectureConfigIntegrationTests
 
             var secondArchitecture = new ModuleOnlyArchitecture(module);
             var exception =
-                Assert.ThrowsAsync<InvalidOperationException>(async () => await secondArchitecture.InitializeAsync().ConfigureAwait(false));
+                Assert.ThrowsAsync<InvalidOperationException>(() => secondArchitecture.InitializeAsync());
 
             Assert.Multiple(() =>
             {

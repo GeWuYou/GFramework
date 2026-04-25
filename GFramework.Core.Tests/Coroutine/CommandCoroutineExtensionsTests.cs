@@ -6,6 +6,7 @@ using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Coroutine.Extensions;
 using GFramework.Core.Coroutine.Instructions;
 using Moq;
+using NUnit.Framework;
 
 namespace GFramework.Core.Tests.Coroutine;
 
@@ -18,6 +19,8 @@ namespace GFramework.Core.Tests.Coroutine;
 [TestFixture]
 public class CommandCoroutineExtensionsTests
 {
+    private static readonly TimeSpan WaitForTaskTimeout = TimeSpan.FromSeconds(1);
+
     /// <summary>
     ///     测试用的简单命令类
     /// </summary>
@@ -83,15 +86,10 @@ public class CommandCoroutineExtensionsTests
 
         var coroutine = contextAware.SendCommandCoroutineWithErrorHandler(command, ex => capturedException = ex);
 
-        // 迭代协程直到完成
-        while (coroutine.MoveNext())
-        {
-            if (coroutine.Current is WaitForTask waitForTask)
-            {
-                // 等待任务完成
-                await Task.Delay(10);
-            }
-        }
+        Assert.That(coroutine.MoveNext(), Is.True);
+        Assert.That(coroutine.Current, Is.TypeOf<WaitForTask>());
+        await WaitForTaskAsync((WaitForTask)coroutine.Current);
+        Assert.That(coroutine.MoveNext(), Is.False);
 
         Assert.That(capturedException, Is.Null);
     }
@@ -114,15 +112,10 @@ public class CommandCoroutineExtensionsTests
 
         var coroutine = contextAware.SendCommandCoroutineWithErrorHandler(command, ex => capturedException = ex);
 
-        // 迭代协程直到完成
-        while (coroutine.MoveNext())
-        {
-            if (coroutine.Current is WaitForTask waitForTask)
-            {
-                // 等待任务完成
-                await Task.Delay(10);
-            }
-        }
+        Assert.That(coroutine.MoveNext(), Is.True);
+        Assert.That(coroutine.Current, Is.TypeOf<WaitForTask>());
+        await WaitForTaskAsync((WaitForTask)coroutine.Current);
+        Assert.That(coroutine.MoveNext(), Is.False);
 
         Assert.That(capturedException, Is.Not.Null);
         // 异常被包装为 AggregateException
@@ -148,17 +141,12 @@ public class CommandCoroutineExtensionsTests
 
         var coroutine = contextAware.SendCommandCoroutineWithErrorHandler(command);
 
-        // 迭代协程应该抛出异常
-        Assert.Throws<InvalidOperationException>(() =>
-        {
-            while (coroutine.MoveNext())
-            {
-                if (coroutine.Current is WaitForTask waitForTask)
-                {
-                    Task.Delay(10).Wait();
-                }
-            }
-        });
+        Assert.That(coroutine.MoveNext(), Is.True);
+        Assert.That(coroutine.Current, Is.TypeOf<WaitForTask>());
+        Assert.That(
+            SpinWait.SpinUntil(() => ((WaitForTask)coroutine.Current).IsDone, WaitForTaskTimeout),
+            Is.True);
+        Assert.Throws<InvalidOperationException>(() => coroutine.MoveNext());
     }
 
     /// <summary>
@@ -201,8 +189,9 @@ public class CommandCoroutineExtensionsTests
             });
 
         // 启动协程并等待命令执行完成
-        coroutine.MoveNext(); // 进入命令发送阶段
-        if (coroutine.Current is WaitForTask waitForTask) await Task.Delay(10); // 等待命令任务完成
+        Assert.That(coroutine.MoveNext(), Is.True); // 进入命令发送阶段
+        Assert.That(coroutine.Current, Is.TypeOf<WaitForTask>());
+        await WaitForTaskAsync((WaitForTask)coroutine.Current);
 
         // 此时协程应该在等待事件
         Assert.That(coroutine.MoveNext(), Is.True); // 等待事件阶段
@@ -296,15 +285,16 @@ public class CommandCoroutineExtensionsTests
             command); // null回调
 
         // 启动协程
-        coroutine.MoveNext(); // 进入命令发送阶段
-        if (coroutine.Current is WaitForTask waitForTask) await Task.Delay(10); // 等待命令任务完成
+        Assert.That(coroutine.MoveNext(), Is.True); // 进入命令发送阶段
+        Assert.That(coroutine.Current, Is.TypeOf<WaitForTask>());
+        await WaitForTaskAsync((WaitForTask)coroutine.Current);
 
         // 触发事件
         var testEvent = new TestEvent { Data = "TestData" };
         eventCallback?.Invoke(testEvent);
 
         // 协程应该能正常完成
-        Assert.That(() => coroutine.MoveNext(), Throws.Nothing);
+        Assert.DoesNotThrow(() => coroutine.MoveNext());
     }
 
     /// <summary>
@@ -340,8 +330,9 @@ public class CommandCoroutineExtensionsTests
             _ => { });
 
         // 启动协程 - 命令失败时协程仍然继续
-        coroutine.MoveNext(); // 进入命令发送阶段
-        if (coroutine.Current is WaitForTask waitForTask) await Task.Delay(10); // 等待命令任务完成
+        Assert.That(coroutine.MoveNext(), Is.True); // 进入命令发送阶段
+        Assert.That(coroutine.Current, Is.TypeOf<WaitForTask>());
+        await WaitForTaskAsync((WaitForTask)coroutine.Current);
 
         // 命令执行失败后，协程继续执行
         Assert.Pass();
@@ -440,5 +431,19 @@ public class CommandCoroutineExtensionsTests
 
         // 调用 MoveNext 时应该抛出 InvalidOperationException
         Assert.Throws<InvalidOperationException>(() => coroutine.MoveNext());
+    }
+
+    private static async Task WaitForTaskAsync(WaitForTask waitForTask)
+    {
+        var timeoutAt = DateTime.UtcNow + WaitForTaskTimeout;
+
+        // 协程通过轮询 IsDone 观察异步命令完成，这里保持相同语义但避免固定延时。
+        while (!waitForTask.IsDone)
+        {
+            if (DateTime.UtcNow >= timeoutAt)
+                Assert.Fail("WaitForTask did not complete within the expected time.");
+
+            await Task.Yield();
+        }
     }
 }

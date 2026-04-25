@@ -127,7 +127,7 @@ public class YamlConfigLoaderEnumTests
         var loader = CreateLoader<MonsterRewardConfigStub>();
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry).ConfigureAwait(false));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -176,7 +176,7 @@ public class YamlConfigLoaderEnumTests
         var loader = CreateLoader<MonsterDropItemIdsConfigStub>();
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () => await loader.LoadAsync(registry).ConfigureAwait(false));
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {

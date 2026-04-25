@@ -42,11 +42,15 @@ public static class StringExtensions
         ArgumentNullException.ThrowIfNull(suffix);
 
         if (maxLength < suffix.Length)
+        {
             throw new ArgumentOutOfRangeException(nameof(maxLength),
                 $"最大长度必须至少为后缀长度 ({suffix.Length})");
+        }
 
         if (str.Length <= maxLength)
+        {
             return str;
+        }
 
         return string.Concat(str.AsSpan(0, maxLength - suffix.Length), suffix);
     }

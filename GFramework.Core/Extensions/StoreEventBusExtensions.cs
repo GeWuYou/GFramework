@@ -27,8 +27,15 @@ public static class StoreEventBusExtensions
         bool publishDispatches = true,
         bool publishStateChanges = true)
     {
-        ArgumentNullException.ThrowIfNull(store);
-        ArgumentNullException.ThrowIfNull(eventBus);
+        if (store is null)
+        {
+            throw new ArgumentNullException(nameof(store));
+        }
+
+        if (eventBus is null)
+        {
+            throw new ArgumentNullException(nameof(eventBus));
+        }
 
         IUnRegister? dispatchBridge = null;
         IUnRegister? stateBridge = null;
@@ -60,8 +67,15 @@ public static class StoreEventBusExtensions
     /// <returns>用于移除 dispatch 桥接中间件的句柄。</returns>
     public static IUnRegister BridgeDispatchesToEventBus<TState>(this Store<TState> store, IEventBus eventBus)
     {
-        ArgumentNullException.ThrowIfNull(store);
-        ArgumentNullException.ThrowIfNull(eventBus);
+        if (store is null)
+        {
+            throw new ArgumentNullException(nameof(store));
+        }
+
+        if (eventBus is null)
+        {
+            throw new ArgumentNullException(nameof(eventBus));
+        }
 
         return store.RegisterMiddleware(new DispatchEventBusMiddleware<TState>(eventBus));
     }
@@ -77,8 +91,15 @@ public static class StoreEventBusExtensions
     public static IUnRegister BridgeStateChangesToEventBus<TState>(this IReadonlyStore<TState> store,
         IEventBus eventBus)
     {
-        ArgumentNullException.ThrowIfNull(store);
-        ArgumentNullException.ThrowIfNull(eventBus);
+        if (store is null)
+        {
+            throw new ArgumentNullException(nameof(store));
+        }
+
+        if (eventBus is null)
+        {
+            throw new ArgumentNullException(nameof(eventBus));
+        }
 
         return store.Subscribe(state =>
             eventBus.Send(new StoreStateChangedEvent<TState>(state, DateTimeOffset.UtcNow)));

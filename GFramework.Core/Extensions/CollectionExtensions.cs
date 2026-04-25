@@ -20,8 +20,15 @@ public static class CollectionExtensions
     /// </example>
     public static void ForEach<T>(this IEnumerable<T> source, Action<T> action)
     {
-        ArgumentNullException.ThrowIfNull(source);
-        ArgumentNullException.ThrowIfNull(action);
+        if (source is null)
+        {
+            throw new ArgumentNullException(nameof(source));
+        }
+
+        if (action is null)
+        {
+            throw new ArgumentNullException(nameof(action));
+        }
 
         foreach (var item in source) action(item);
     }
@@ -58,7 +65,10 @@ public static class CollectionExtensions
     /// </example>
     public static IEnumerable<T> WhereNotNull<T>(this IEnumerable<T?> source) where T : class
     {
-        ArgumentNullException.ThrowIfNull(source);
+        if (source is null)
+        {
+            throw new ArgumentNullException(nameof(source));
+        }
 
         return source.Where(item => item is not null)!;
     }
@@ -88,9 +98,20 @@ public static class CollectionExtensions
         Func<T, TValue> valueSelector) where TKey : notnull
 #pragma warning restore MA0016
     {
-        ArgumentNullException.ThrowIfNull(source);
-        ArgumentNullException.ThrowIfNull(keySelector);
-        ArgumentNullException.ThrowIfNull(valueSelector);
+        if (source is null)
+        {
+            throw new ArgumentNullException(nameof(source));
+        }
+
+        if (keySelector is null)
+        {
+            throw new ArgumentNullException(nameof(keySelector));
+        }
+
+        if (valueSelector is null)
+        {
+            throw new ArgumentNullException(nameof(valueSelector));
+        }
 
         var dictionary = new Dictionary<TKey, TValue>();
 
