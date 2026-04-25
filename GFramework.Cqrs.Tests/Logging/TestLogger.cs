@@ -21,6 +21,8 @@ namespace GFramework.Cqrs.Tests.Logging;
 /// </summary>
 public sealed class TestLogger : AbstractLogger
 {
+    private readonly List<LogEntry> _logs = [];
+
     /// <summary>
     ///     初始化测试日志记录器。
     /// </summary>
@@ -33,7 +35,7 @@ public sealed class TestLogger : AbstractLogger
     /// <summary>
     ///     获取当前测试期间捕获到的日志条目。
     /// </summary>
-    public List<LogEntry> Logs { get; } = [];
+    public IReadOnlyList<LogEntry> Logs => _logs;
 
     /// <summary>
     ///     将日志写入内存，供断言使用。
@@ -43,7 +45,7 @@ public sealed class TestLogger : AbstractLogger
     /// <param name="exception">关联异常。</param>
     protected override void Write(LogLevel level, string message, Exception? exception)
     {
-        Logs.Add(new LogEntry(level, message, exception));
+        _logs.Add(new LogEntry(level, message, exception));
     }
 
     /// <summary>

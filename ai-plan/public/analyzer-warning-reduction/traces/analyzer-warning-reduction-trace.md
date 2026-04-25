@@ -1,5 +1,33 @@
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-25 — RP-069
+
+### 阶段：继续收口 Cqrs.Tests 双文件集合抽象 warning，并刷新新的仓库根基线
+
+- 触发背景：
+  - `RP-068` 收尾后，当前分支的仓库根基线已降到 `645 Warning(s)`，branch diff 仍远低于 `$gframework-batch-boot 50`
+  - 为保持批次小而连续，主线程继续留在 `GFramework.Cqrs.Tests` 项目内，选取两个不涉及跨文件重构的 `MA0016` 切片
+- 接受的委派范围：
+  - worker `Chandrasekhar`
+    - 文件：`GFramework.Cqrs.Tests/Mediator/MediatorAdvancedFeaturesTests.cs`
+    - 目标：在同一文件内收敛 `TestLoggingBehavior.LoggedMessages`、`SagaData`、`TestDatabaseRequest` 的集合抽象暴露问题
+    - 结果：未自行提交；主线程接受其工作树改动并纳入本轮批次
+- 主线程实施：
+  - 本地修改 `GFramework.Cqrs.Tests/Logging/TestLogger.cs`
+  - 将 `Logs` 从 `List<LogEntry>` 收口为 `IReadOnlyList<LogEntry>`，保留私有 `_logs` 作为内部存储
+  - 与 worker 的 `MediatorAdvancedFeaturesTests.cs` 改动合并后，重新执行 `GFramework.Cqrs.Tests` 与仓库根验证，确认双文件批次的净效果
+- 验证里程碑：
+  - `dotnet build GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release`
+    - 结果：成功；`0 Warning(s)`、`0 Error(s)`
+  - `dotnet clean`
+    - 结果：成功
+  - `dotnet build`
+    - 结果：成功；`640 Warning(s)`、`0 Error(s)`，相较 `RP-068` 的 `645` 再下降 `5`
+- 当前结论：
+  - `Cqrs.Tests` 双文件批次已确认有效，并继续压低仓库根 warning 基线
+  - 当前分支距离 `$gframework-batch-boot 50` 的停止阈值仍有很大空间，可以继续按“主线程小切片 + subagent 并行单文件”推进
+  - 下一轮可优先回到 `GFramework.Core.Tests` 或继续选择新的 `GFramework.Cqrs.Tests` 单文件热点
+
 ## 2026-04-25 — RP-068
 
 ### 阶段：吸收并行 subagent 小批次，并继续压低仓库根 warning 基线
