@@ -181,8 +181,8 @@ public class ContextAwareServiceExtensionsTests
 
         // Assert
         Assert.That(results, Has.Count.GreaterThanOrEqualTo(2));
-        Assert.That(results.Any(s => s is TestSystem ts && ts.Name == "System1"), Is.True);
-        Assert.That(results.Any(s => s is TestSystem ts && ts.Name == "System2"), Is.True);
+        Assert.That(results.Any(s => s is TestSystem ts && string.Equals(ts.Name, "System1", System.StringComparison.Ordinal)), Is.True);
+        Assert.That(results.Any(s => s is TestSystem ts && string.Equals(ts.Name, "System2", System.StringComparison.Ordinal)), Is.True);
     }
 
     [Test]
@@ -200,8 +200,8 @@ public class ContextAwareServiceExtensionsTests
 
         // Assert
         Assert.That(results, Has.Count.EqualTo(2));
-        Assert.That(results.Any(m => m.Name == "Model1"), Is.True);
-        Assert.That(results.Any(m => m.Name == "Model2"), Is.True);
+        Assert.That(results.Any(m => string.Equals(m.Name, "Model1", System.StringComparison.Ordinal)), Is.True);
+        Assert.That(results.Any(m => string.Equals(m.Name, "Model2", System.StringComparison.Ordinal)), Is.True);
     }
 
     [Test]
@@ -219,8 +219,8 @@ public class ContextAwareServiceExtensionsTests
 
         // Assert
         Assert.That(results, Has.Count.EqualTo(2));
-        Assert.That(results.Any(u => u.Name == "Utility1"), Is.True);
-        Assert.That(results.Any(u => u.Name == "Utility2"), Is.True);
+        Assert.That(results.Any(u => string.Equals(u.Name, "Utility1", System.StringComparison.Ordinal)), Is.True);
+        Assert.That(results.Any(u => string.Equals(u.Name, "Utility2", System.StringComparison.Ordinal)), Is.True);
     }
 
     [Test]
