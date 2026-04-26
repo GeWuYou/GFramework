@@ -25,7 +25,7 @@
   - 更新 active todo 恢复点为 `RP-071`，将 `.gitignore` 纳入“已提交的低风险批次文件”，并移除已过时的 `.codex` 活跃风险描述
   - 在 active todo 中明确保留当前仍未采纳的两条 non-blocking nitpick：`VersionedMigrationRunner.cs` 的上下文一致性建议，以及 active trace 归档 RP-062 ~ RP-064 的建议
 - 验证里程碑：
-  - `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output /tmp/current-pr-review.json`
+  - `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output <current-pr-review-json>`
     - 结果：成功；确认 PR `#291` latest-head open review threads 为 `1`，唯一路径为 `ai-plan/public/analyzer-warning-reduction/todos/analyzer-warning-reduction-tracking.md:54`
   - `dotnet build`
     - 结果：成功；`0 Warning(s)`、`0 Error(s)`；该次为增量 Debug 构建，只作为本轮文档同步的完成校验，warning 权威基线仍保持 `RP-070` 记录的 `639 Warning(s)`
@@ -48,7 +48,7 @@
   - 在 `GFramework.Game/Internal/VersionedMigrationRunner.cs` 内引入私有 `MigrationExecutionContext<TData, TMigration>`，把多处 helper 共享的不变迁移上下文收口为参数对象，并同步补齐新增泛型 helper 的 XML 文档
   - 明确拒绝把 `TestLogger` 重复实现与 `YamlConfigLoaderTests.cs` 常量位置这类“可选整理”混入本轮 warning 收敛批次
 - 验证里程碑：
-  - `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output /tmp/current-pr-review.json`
+  - `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output <current-pr-review-json>`
     - 结果：成功；确认 PR `#291` latest-head open review threads 为 `1`，MegaLinter 仅有 `dotnet-format` restore 失败，tests 为 `2156 passed`
   - `dotnet build GFramework.Game/GFramework.Game.csproj -c Release`
     - 结果：成功；`326 Warning(s)`、`0 Error(s)`
@@ -258,13 +258,13 @@
     - `NumericExtensions.cs`、`StringExtensions.cs`、`StoreBuilder.cs` 的 Allman 花括号残留
     - `StoreSelection.cs` 在 `net9.0+` 下切到 `System.Threading.Lock`，同时保留 `net8.0` 兼容分支
 - 验证里程碑：
-  - `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output /tmp/current-pr-review.json`
+  - `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output <current-pr-review-json>`
     - 结果：成功；确认 PR `#288` 的 latest-head unresolved AI review threads 共 `9` 个，其中 `AsyncExtensionsTests.cs:126` 为 critical 编译错误
-  - `DOTNET_CLI_HOME=/tmp/dotnet-home MSBuildEnableWorkloadResolver=false dotnet build GFramework.Core/GFramework.Core.csproj -c Release --no-restore -p:TargetFramework=net8.0 -p:RestoreFallbackFolders="" -v minimal`
-    - 结果：失败；`MSB4018`，`ResolvePackageAssets` 仍读取失效 Windows fallback package folder `D:\Tool\Development Tools\Microsoft Visual Studio\Shared\NuGetPackages`
-  - `DOTNET_CLI_HOME=/tmp/dotnet-home MSBuildEnableWorkloadResolver=false dotnet build GFramework.Core/GFramework.Core.csproj -c Release --no-restore -p:TargetFramework=net9.0 -p:RestoreFallbackFolders="" -v minimal`
+  - `DOTNET_CLI_HOME=<dotnet-cli-home> MSBuildEnableWorkloadResolver=false dotnet build GFramework.Core/GFramework.Core.csproj -c Release --no-restore -p:TargetFramework=net8.0 -p:RestoreFallbackFolders="" -v minimal`
+    - 结果：失败；`MSB4018`，`ResolvePackageAssets` 仍读取失效 Windows fallback package folder `<stale-windows-fallback-package-folder>`
+  - `DOTNET_CLI_HOME=<dotnet-cli-home> MSBuildEnableWorkloadResolver=false dotnet build GFramework.Core/GFramework.Core.csproj -c Release --no-restore -p:TargetFramework=net9.0 -p:RestoreFallbackFolders="" -v minimal`
     - 结果：失败；原因同上
-  - `DOTNET_CLI_HOME=/tmp/dotnet-home MSBuildEnableWorkloadResolver=false dotnet build GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --no-restore -p:TargetFramework=net10.0 -p:RestoreFallbackFolders="" -v minimal`
+  - `DOTNET_CLI_HOME=<dotnet-cli-home> MSBuildEnableWorkloadResolver=false dotnet build GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --no-restore -p:TargetFramework=net10.0 -p:RestoreFallbackFolders="" -v minimal`
     - 结果：失败；原因同上
 - 当前结论：
   - 用户点名的 `AsyncExtensionsTests.cs` 编译错误已在源码层修复
