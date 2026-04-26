@@ -30,38 +30,12 @@ jobs:
       # semantic-release 在 dry-run 中仍会执行一次 git push --dry-run 权限探测。
       # 这里提前要求与正式 release 相同的 PAT，避免 github-actions[bot] 因只读上下文触发误导性的 403。
       - name: Validate PAT token
-        env:
-          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
-          REPO_API_URL: ${{ github.api_url }}/repos/${{ github.repository }}
-        run: |
-          if [ -z "${PAT_TOKEN}" ]; then
-            echo "::error::PAT_TOKEN is required because semantic-release preview performs a git push --dry-run permission check."
-            exit 1
-          fi
-
-          response_file="$(mktemp)"
-          status_code="$(
-            curl -sS -o "${response_file}" -w "%{http_code}" \
-              -H "Authorization: Bearer ${PAT_TOKEN}" \
-              -H "Accept: application/vnd.github+json" \
-              -H "X-GitHub-Api-Version: 2022-11-28" \
-              "${REPO_API_URL}"
-          )"
-
-          case "${status_code}" in
-            200)
-              ;;
-            401|403)
-              echo "::error::PAT_TOKEN is invalid or lacks access to ${GITHUB_REPOSITORY} (HTTP ${status_code})."
-              cat "${response_file}"
-              exit 1
-              ;;
-            *)
-              echo "::error::Failed to validate PAT_TOKEN against ${REPO_API_URL} (HTTP ${status_code})."
-              cat "${response_file}"
-              exit 1
-              ;;
-          esac
+        uses: ./.github/actions/validate-pat
+        with:
+          pat-token: ${{ secrets.PAT_TOKEN }}
+          repo-api-url: ${{ github.api_url }}/repos/${{ github.repository }}
+          repository: ${{ github.repository }}
+          missing-token-message: PAT_TOKEN is required because semantic-release preview performs a git push --dry-run permission check.
 
       # preview 始终先运行，用于给当前 SHA 生成待发布版本预览。
       - name: Semantic release preview
@@ -130,38 +104,12 @@ jobs:
           ref: ${{ github.sha }}
 
       - name: Validate PAT token
-        env:
-          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
-          REPO_API_URL: ${{ github.api_url }}/repos/${{ github.repository }}
-        run: |
-          if [ -z "${PAT_TOKEN}" ]; then
-            echo "::error::PAT_TOKEN is required because a tag created with GITHUB_TOKEN will not trigger publish.yml."
-            exit 1
-          fi
-
-          response_file="$(mktemp)"
-          status_code="$(
-            curl -sS -o "${response_file}" -w "%{http_code}" \
-              -H "Authorization: Bearer ${PAT_TOKEN}" \
-              -H "Accept: application/vnd.github+json" \
-              -H "X-GitHub-Api-Version: 2022-11-28" \
-              "${REPO_API_URL}"
-          )"
-
-          case "${status_code}" in
-            200)
-              ;;
-            401|403)
-              echo "::error::PAT_TOKEN is invalid or lacks access to ${GITHUB_REPOSITORY} (HTTP ${status_code})."
-              cat "${response_file}"
-              exit 1
-              ;;
-            *)
-              echo "::error::Failed to validate PAT_TOKEN against ${REPO_API_URL} (HTTP ${status_code})."
-              cat "${response_file}"
-              exit 1
-              ;;
-          esac
+        uses: ./.github/actions/validate-pat
+        with:
+          pat-token: ${{ secrets.PAT_TOKEN }}
+          repo-api-url: ${{ github.api_url }}/repos/${{ github.repository }}
+          repository: ${{ github.repository }}
+          missing-token-message: PAT_TOKEN is required because a tag created with GITHUB_TOKEN will not trigger publish.yml.
 
       - name: Semantic release
         id: semantic_release
