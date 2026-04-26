@@ -1,0 +1,66 @@
+name: Validate PAT
+description: Validate that the release PAT can access the repository and push tags.
+
+inputs:
+  pat-token:
+    description: Personal access token used by semantic-release.
+    required: true
+  repo-api-url:
+    description: GitHub repository API URL, for example https://api.github.com/repos/owner/repo.
+    required: true
+  repository:
+    description: Repository slug used in error messages.
+    required: true
+  missing-token-message:
+    description: Error message emitted when the PAT is absent.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Validate PAT can push
+      shell: bash
+      env:
+        PAT_TOKEN: ${{ inputs.pat-token }}
+        REPO_API_URL: ${{ inputs.repo-api-url }}
+        REPOSITORY: ${{ inputs.repository }}
+        MISSING_TOKEN_MESSAGE: ${{ inputs.missing-token-message }}
+      run: |
+        if [ -z "${PAT_TOKEN}" ]; then
+          echo "::error::${MISSING_TOKEN_MESSAGE}"
+          exit 1
+        fi
+
+        response_file="$(mktemp)"
+        trap 'rm -f "${response_file}"' EXIT
+
+        status_code="$(
+          curl -sS -o "${response_file}" -w "%{http_code}" \
+            -H "Authorization: Bearer ${PAT_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "${REPO_API_URL}"
+        )"
+
+        case "${status_code}" in
+          200)
+            # The repository endpoint returns 200 for read-only tokens as well.
+            # semantic-release still performs a remote push probe, so require push permission here.
+            push_ok="$(jq -r '.permissions.push // false' "${response_file}")"
+            if [ "${push_ok}" != "true" ]; then
+              echo "::error::PAT_TOKEN can read ${REPOSITORY} but lacks push permission. semantic-release requires contents:write."
+              cat "${response_file}"
+              exit 1
+            fi
+            ;;
+          401|403)
+            echo "::error::PAT_TOKEN is invalid or lacks access to ${REPOSITORY} (HTTP ${status_code})."
+            cat "${response_file}"
+            exit 1
+            ;;
+          *)
+            echo "::error::Failed to validate PAT_TOKEN against ${REPO_API_URL} (HTTP ${status_code})."
+            cat "${response_file}"
+            exit 1
+            ;;
+        esac
