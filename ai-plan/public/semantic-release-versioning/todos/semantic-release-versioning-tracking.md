@@ -13,16 +13,18 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`SEMREL-RP-002`
+- 恢复点编号：`SEMREL-RP-003`
 - 当前阶段：`Phase 2`
 - 当前焦点：
-  - 让 `.releaserc.json` 对 `BREAKING CHANGE` 与 `feat!:` / `feat(scope)!:` 的 `major` 语义与文档保持一致
-  - 将 `auto-tag.yml` 的 preview / release 输出与 PR review 建议对齐，避免 release notes 被静默丢弃
-  - 提前校验 `PAT_TOKEN` 的真实可用性，并把当前 PR review 修复结果同步回 `AGENTS.md` 与 active trace
+  - 消除 `auto-tag.yml` preview job 中由 `github-actions[bot]` 触发的 `EGITNOPERMISSION` / `git push --dry-run` 403
+  - 让 preview 与 release 共用同一条 `PAT_TOKEN` 身份验证链路，避免 dry-run 与真实 release 的权限前提不一致
+  - 将本轮 preview 身份验证修复同步回 active trace，并等待 CI 复验结果
 
 ### 已知风险
 
 - `GITHUB_TOKEN` 推送 tag 不会再触发另一个 workflow，真实发布仍需要 `PAT_TOKEN`
+- `semantic-release` preview 虽然不会真实推送 tag，但仍会执行远端 `git push --dry-run` 权限探测；如果 preview 没有使用
+  可写入仓库的令牌，仍然会先于版本分析阶段失败
 - `semantic-release` 的版本判断完全依赖 Conventional Commits；不规范提交会直接影响版本计算
 - `cycjimmy/semantic-release-action@v6` 需要在 preview / release 两端都安装 `conventional-changelog-conventionalcommits`
   以保证 `conventionalcommits` preset 在 GitHub Actions 中可解析
@@ -54,6 +56,10 @@
   - 为 preview / release 的 semantic-release action 显式安装 `conventional-changelog-conventionalcommits@9.1.0`
   - 在 release 前通过 GitHub API 校验 `PAT_TOKEN` 是否真实可访问当前仓库
   - 在 preview / release summary 中补充 snapshot 语义与生成的 release notes
+- 已修复 preview 链路的鉴权前提：
+  - 在 preview 开始前通过 GitHub API 校验 `PAT_TOKEN`
+  - 将 preview 的 `semantic-release` 令牌从 `${{ github.token }}` 切换为 `${{ secrets.PAT_TOKEN }}`
+  - 在 preview summary 中明确说明 dry-run 仍会执行远端 push 权限探测，避免将 403 误判为版本计算失败
 - 已明确真实打 tag 仍使用 `PAT_TOKEN`，因为 `GITHUB_TOKEN` 推送的 tag 不会继续触发 `publish.yml`
 - 已更新 `AGENTS.md` 的 Conventional Commit 规则，显式补充：
   - `fix/perf/refactor -> patch`
@@ -93,9 +99,12 @@
 - `dotnet build GFramework.sln -c Release`
   - 结果：通过
   - 备注：Release 构建完成，`639 warning / 0 error`；warning 为仓库既有基线，与本轮 workflow / doc 改动无新增关联项
+- `dotnet build GFramework.sln -c Release`（preview 鉴权修复后复验）
+  - 结果：通过
+  - 备注：Release 构建完成，`639 warning / 0 error`；warning 基线与修复前一致，本轮仅涉及 workflow / `ai-plan` 变更
 
 ## 下一步
 
-1. 复核当前 PR review 的 open threads 是否只剩等待 push 的已修复项
-2. 将本轮修复提交到当前分支，等待 GitHub reviewer 重新评估
-3. 若后续需要，再在真实仓库主线最新快照上复验一次 `semantic-release` dry-run 结果展示
+1. 手动重跑 `Semantic Release Version and Tag` 的 preview job，确认不再出现 `git push --dry-run ... 403`
+2. 若 preview 通过，再复核当前 PR review 的 open threads 是否只剩等待 push 的已修复项
+3. 将本轮修复提交到当前分支，等待 GitHub reviewer 重新评估
