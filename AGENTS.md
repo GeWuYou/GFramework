@@ -59,9 +59,11 @@ All AI agents and contributors must follow these rules when writing, reviewing, 
   - Use `feat` only for user-facing or consumer-facing capability additions that should raise the next released version's
     `minor` segment.
   - Use `fix` for behavior corrections, `perf` for observable performance improvements, and `refactor` only for
-    non-feature code restructuring.
+    non-feature code restructuring; these should raise the next released version's `patch` segment.
   - Use `docs`、`test`、`chore`、`build`、`ci`、`style` for their literal categories; do not encode these changes as
-    `feat` just because they feel important.
+    `feat` just because they feel important. These categories MUST NOT trigger a release.
+  - Use `BREAKING CHANGE` in the commit footer or `!` after the type / scope header (for example `feat!:` or
+    `feat(core)!:`) when the change should raise the next released version's `major` segment.
 - Documentation-only changes MUST NOT use `feat`, including new guides, refreshed examples, navigation updates, and
   adoption notes for existing capabilities. If a commit changes both product behavior and related docs, either split the
   commit or use `feat` only when the code/package behavior is the primary released change.

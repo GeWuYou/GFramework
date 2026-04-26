@@ -2,49 +2,43 @@
 
 ## 2026-04-26
 
-### 阶段：方案落地准备（SEMREL-RP-001）
+### 当前恢复点（SEMREL-RP-002）
 
-- 读取当前 `auto-tag.yml` 与 `publish.yml`，确认最小侵入改法应只替换版本判断与打 tag，保留 tag 触发发布链
-- 核对最近 tag 与提交历史：
-  - 最新 tag 为 `v0.0.222`
-  - `v0.0.222..HEAD` 含多条 `feat(...)`，按目标规则首次 dry-run 预期结果为 `v0.1.0`
-- 补建本主题的 active tracking / trace 入口，并在 `ai-plan/public/README.md` 中为
-  `feat/semantic-release-versioning` 建立 worktree 映射
-
-### 阶段：配置落地与验证（SEMREL-RP-001）
-
-- 新增 `.releaserc.json`，显式固定：
+- 当前链路：
+  - `workflow_dispatch` 手动启动
+  - `preview` 对 dispatch SHA 执行 dry-run
+  - `release-approval` environment 审批
+  - `release` 在同一次 run、同一 SHA 上执行真实打 tag
+- 当前规则：
+  - `conventionalcommits` preset 负责解析 `feat!:` / `feat(scope)!:` 与 `BREAKING CHANGE`
   - `feat -> minor`
   - `fix/perf/refactor -> patch`
   - `docs/test/chore/build/ci/style -> no release`
-  - `BREAKING CHANGE` / `BREAKING CHANGES` 作为 major 信号
-- 重写 `auto-tag.yml`：
-  - 改为纯 `workflow_dispatch` 手动入口
-  - 增加 `release_mode=preview|release` 输入
-  - `preview` 只跑 dry-run 并输出 `last_tag`、`next_version`、`next_tag`
-  - `release` 由维护者手动触发真实打 tag，并要求 `PAT_TOKEN`
-- 收紧 `AGENTS.md` 的提交信息约束，明确提交类型必须反映 release semantics，纯文档变更禁止写成 `feat(...)`
-- 按用户反馈继续调整发版入口：
-  - 删除基于 `workflow_run` 的自动发版路径
-  - 统一改为 `workflow_dispatch` 手动触发
-  - 先在同一次 run 中执行 `preview`
-  - 再通过 `release-approval` environment 做人工确认
-  - 审批通过后继续同一 SHA 的真实 `release`
-- 复验最小构建命令：
-  - `dotnet build GFramework.Core.Abstractions/GFramework.Core.Abstractions.csproj -c Release -p:RestoreFallbackFolders=`
-  - 结果：通过，`0 warning / 0 error`
-- 完成最小构建验证：
-  - `dotnet build GFramework.Core.Abstractions/GFramework.Core.Abstractions.csproj -c Release -p:RestoreFallbackFolders=`
-  - 结果：通过，`0 warning / 0 error`
-- 直接在当前工作树执行 `semantic-release --dry-run` 时命中本地 tag 抓取冲突：
-  - `git fetch --tags ... would clobber existing tag`
-  - 结论：当前工作树不适合作为 dry-run 验证环境
-- 改用干净临时克隆 `/tmp/gframework-semrel-dryrun` 再跑 dry-run：
-  - 成功识别 `v0.0.222` 为最新 release
-  - 成功分析 `269` 个提交
-  - 按当前规则得出下一次应为 `minor` 发布，预期版本窗口从 `0.0.222` 提升到 `0.1.0`
+  - `breaking -> major`
+- 当前 workflow 加固：
+  - `release` 额外要求 `needs.preview.result == 'success'`
+  - `PAT_TOKEN` 在真实 release 前通过 GitHub API 做存活性校验
+  - preview / release summary 会展示 snapshot 语义与生成的 release notes
+
+### 本轮关键决策
+
+- 保留 `@semantic-release/release-notes-generator`，但不再让它白跑：
+  - 继续生成 notes
+  - 将 notes 写入 GitHub Actions summary
+- 不保留已废弃的 `release_mode=preview|release` 中间方案：
+  - active trace 只保留当前有效链路
+  - 历史演进以 tracking 文档的已完成项为准
+
+### 验证结论
+
+1. `npx --yes -p semantic-release -p conventional-changelog-conventionalcommits@9.1.0 semantic-release --dry-run --no-ci`
+   - 已确认新 preset 包可加载，`commit-analyzer` 与 `release-notes-generator` 正常初始化
+   - 本次 dry-run 未继续出版本，因为干净克隆的 `main` 已落后远端
+2. `dotnet build GFramework.sln -c Release`
+   - 通过，`639 warning / 0 error`
+   - warning 为仓库既有基线，本轮未新增关联 warning
 
 ### 下一步
 
-1. 复核变更 diff 并创建提交
-2. 向用户说明新的发版链路与可优化点
+1. 复查当前 PR 的 open review threads 是否只剩等待 push 的已修复项
+2. 创建提交并推送当前分支
