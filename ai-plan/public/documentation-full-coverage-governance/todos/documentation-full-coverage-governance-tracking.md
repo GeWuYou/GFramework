@@ -17,7 +17,7 @@
 - 当前焦点：
   - 继续以最新 `origin/main`（`617e0bf`，`2026-04-26 12:17:15 +08:00`）作为 baseline，当前批处理 stop condition 仍是 branch diff vs baseline 接近 `50` changed files
 - 本轮低风险切片聚焦 3 组 reader-facing 收口：安装页选包矩阵补齐、公开 README 的 XML 阅读入口去治理化、`config-system` / 基础教程入口的维护者口吻改写
-- 当前工作树相对 `origin/main` 的 tracked diff 为 `9` files / `191` changed lines；当前 committed branch diff vs `origin/main` 仍为 `0` files，本批次落地后仍明显低于 `50` 文件阈值
+- 当前 committed branch diff vs `origin/main` 已为 `9` files / `191` changed lines，仍明显低于 `50` 文件阈值；工作树只剩未纳入本批次的 `tools/gframework-config-tool/gframework-config-tool-0.0.3.vsix` untracked 打包产物
 - 当前已知 PR `#292` 远端 review 剩余上下文仍主要集中在 config tool adoption surface；本轮未继续抓取远端 review，而是优先收口本地可验证的 reader-facing 一致性问题
 
 ## 当前状态摘要
@@ -172,7 +172,7 @@
 
 ## 下一步
 
-1. 提交本轮 `9` 个 tracked files 的 reader-facing 文档批次后，重新抓取 `$gframework-pr-review`，确认 PR `#292` 的 latest-head review 是否已自动关闭或仅剩过期线程。
+1. 重新抓取 `$gframework-pr-review`，确认 PR `#292` 的 latest-head review 是否已自动关闭或仅剩过期线程。
 2. 若 branch diff vs `origin/main` 在提交后仍明显低于 `50` 文件阈值，继续优先扫描公开文档中的维护者口吻、治理式表格字段与过时安装说明，而不是扩新栏目。
 3. 若后续分支继续调整 `Game` persistence runtime、README 或公共 API，优先复核 `docs/zh-CN/game/data.md`、
    `storage.md`、`serialization.md`、`setting.md` 与 landing page 是否仍保持同一套职责边界。
