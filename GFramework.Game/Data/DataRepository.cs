@@ -52,7 +52,9 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
         var key = location.ToStorageKey();
 
         // 检查存储中是否存在指定键的数据
-        T result = await Storage.ExistsAsync(key) ? await Storage.ReadAsync<T>(key) : new T();
+        T result = await Storage.ExistsAsync(key).ConfigureAwait(false)
+            ? await Storage.ReadAsync<T>(key).ConfigureAwait(false)
+            : new T();
 
         // 如果启用事件功能，则发送数据加载完成事件
         if (_options.EnableEvents)
@@ -70,7 +72,7 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
     public async Task SaveAsync<T>(IDataLocation location, T data)
         where T : class, IData
     {
-        await SaveCoreAsync(location, data, emitSavedEvent: true);
+        await SaveCoreAsync(location, data, emitSavedEvent: true).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -91,12 +93,12 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
     {
         var key = location.ToStorageKey();
 
-        if (!await Storage.ExistsAsync(key))
+        if (!await Storage.ExistsAsync(key).ConfigureAwait(false))
         {
             return;
         }
 
-        await Storage.DeleteAsync(key);
+        await Storage.DeleteAsync(key).ConfigureAwait(false);
         if (_options.EnableEvents)
             this.SendEvent(new DataDeletedEvent(location));
     }
@@ -113,7 +115,7 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
         // 但抑制逐项 DataSavedEvent，避免监听器对同一批次收到重复语义的事件。
         foreach (var (location, data) in valueTuples)
         {
-            await SaveCoreUntypedAsync(location, data, emitSavedEvent: false);
+            await SaveCoreUntypedAsync(location, data, emitSavedEvent: false).ConfigureAwait(false);
         }
 
         if (_options.EnableEvents)
@@ -140,8 +142,8 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
     {
         var key = location.ToStorageKey();
 
-        await BackupIfNeededAsync<T>(key);
-        await Storage.WriteAsync(key, data);
+        await BackupIfNeededAsync<T>(key).ConfigureAwait(false);
+        await Storage.WriteAsync(key, data).ConfigureAwait(false);
 
         if (emitSavedEvent && _options.EnableEvents)
         {
@@ -156,14 +158,14 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
     private async Task BackupIfNeededAsync<T>(string key)
         where T : class, IData
     {
-        if (!_options.AutoBackup || !await Storage.ExistsAsync(key))
+        if (!_options.AutoBackup || !await Storage.ExistsAsync(key).ConfigureAwait(false))
         {
             return;
         }
 
         var backupKey = $"{key}.backup";
-        var existing = await Storage.ReadAsync<T>(key);
-        await Storage.WriteAsync(backupKey, existing);
+        var existing = await Storage.ReadAsync<T>(key).ConfigureAwait(false);
+        await Storage.WriteAsync(backupKey, existing).ConfigureAwait(false);
     }
 
     /// <summary>

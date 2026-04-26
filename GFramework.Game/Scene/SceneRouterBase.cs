@@ -82,7 +82,7 @@ public abstract class SceneRouterBase
         string sceneKey,
         ISceneEnterParam? param = null)
     {
-        await _transitionLock.WaitAsync();
+        await _transitionLock.WaitAsync().ConfigureAwait(true);
         try
         {
             IsTransitioning = true;
@@ -184,7 +184,7 @@ public abstract class SceneRouterBase
         string sceneKey,
         ISceneEnterParam? param = null)
     {
-        await _transitionLock.WaitAsync();
+        await _transitionLock.WaitAsync().ConfigureAwait(true);
         try
         {
             IsTransitioning = true;
@@ -220,7 +220,7 @@ public abstract class SceneRouterBase
         }
 
         // 守卫检查
-        if (!await ExecuteEnterGuardsAsync(sceneKey, param))
+        if (!await ExecuteEnterGuardsAsync(sceneKey, param).ConfigureAwait(true))
         {
             Log.Warn("Push blocked by guard: {0}", sceneKey);
             return;
@@ -233,20 +233,20 @@ public abstract class SceneRouterBase
         Root!.AddScene(scene);
 
         // 加载资源
-        await scene.OnLoadAsync(param);
+        await scene.OnLoadAsync(param).ConfigureAwait(true);
 
         // 暂停当前场景
         if (Stack.Count > 0)
         {
             var current = Stack.Peek();
-            await current.OnPauseAsync();
+            await current.OnPauseAsync().ConfigureAwait(true);
         }
 
         // 压入栈
         Stack.Push(scene);
 
         // 进入场景
-        await scene.OnEnterAsync();
+        await scene.OnEnterAsync().ConfigureAwait(true);
 
         Log.Debug("Push Scene: {0}, stackCount={1}",
             sceneKey, Stack.Count);
@@ -262,7 +262,7 @@ public abstract class SceneRouterBase
     /// <returns>异步任务。</returns>
     public async ValueTask PopAsync()
     {
-        await _transitionLock.WaitAsync();
+        await _transitionLock.WaitAsync().ConfigureAwait(true);
         try
         {
             IsTransitioning = true;
@@ -293,7 +293,7 @@ public abstract class SceneRouterBase
         var top = Stack.Peek();
 
         // 守卫检查
-        if (!await ExecuteLeaveGuardsAsync(top.Key))
+        if (!await ExecuteLeaveGuardsAsync(top.Key).ConfigureAwait(true))
         {
             Log.Warn("Pop blocked by guard: {0}", top.Key);
             return;
@@ -302,10 +302,10 @@ public abstract class SceneRouterBase
         Stack.Pop();
 
         // 退出场景
-        await top.OnExitAsync();
+        await top.OnExitAsync().ConfigureAwait(true);
 
         // 卸载资源
-        await top.OnUnloadAsync();
+        await top.OnUnloadAsync().ConfigureAwait(true);
 
         // 从场景树移除
         Root!.RemoveScene(top);
@@ -314,7 +314,7 @@ public abstract class SceneRouterBase
         if (Stack.Count > 0)
         {
             var next = Stack.Peek();
-            await next.OnResumeAsync();
+            await next.OnResumeAsync().ConfigureAwait(true);
         }
 
         Log.Debug("Pop Scene, stackCount={0}", Stack.Count);
@@ -330,7 +330,7 @@ public abstract class SceneRouterBase
     /// <returns>异步任务。</returns>
     public async ValueTask ClearAsync()
     {
-        await _transitionLock.WaitAsync();
+        await _transitionLock.WaitAsync().ConfigureAwait(true);
         try
         {
             IsTransitioning = true;

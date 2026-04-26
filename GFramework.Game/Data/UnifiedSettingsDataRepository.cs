@@ -37,7 +37,7 @@ public class UnifiedSettingsDataRepository(
 {
     private readonly SemaphoreSlim _lock = new(1, 1);
     private readonly DataRepositoryOptions _options = options ?? new DataRepositoryOptions();
-    private readonly Dictionary<string, Type> _typeRegistry = new();
+    private readonly Dictionary<string, Type> _typeRegistry = new(StringComparer.Ordinal);
     private UnifiedSettingsFile? _file;
     private bool _loaded;
     private IRuntimeTypeSerializer? _serializer = serializer;
@@ -67,7 +67,7 @@ public class UnifiedSettingsDataRepository(
     public async Task<T> LoadAsync<T>(IDataLocation location)
         where T : class, IData, new()
     {
-        await EnsureLoadedAsync();
+        await EnsureLoadedAsync().ConfigureAwait(false);
         var key = location.Key;
         var result = _file!.Sections.TryGetValue(key, out var raw) ? Serializer.Deserialize<T>(raw) : new T();
         if (_options.EnableEvents)
@@ -85,8 +85,9 @@ public class UnifiedSettingsDataRepository(
     public async Task SaveAsync<T>(IDataLocation location, T data)
         where T : class, IData
     {
-        await EnsureLoadedAsync();
-        await MutateAndPersistAsync(file => file.Sections[location.Key] = Serializer.Serialize(data));
+        await EnsureLoadedAsync().ConfigureAwait(false);
+        await MutateAndPersistAsync(file => file.Sections[location.Key] = Serializer.Serialize(data))
+            .ConfigureAwait(false);
 
         if (_options.EnableEvents)
         {
@@ -101,7 +102,7 @@ public class UnifiedSettingsDataRepository(
     /// <returns>如果数据存在则返回true，否则返回false</returns>
     public async Task<bool> ExistsAsync(IDataLocation location)
     {
-        await EnsureLoadedAsync();
+        await EnsureLoadedAsync().ConfigureAwait(false);
         return File.Sections.ContainsKey(location.Key);
     }
 
@@ -112,10 +113,10 @@ public class UnifiedSettingsDataRepository(
     /// <returns>异步操作任务</returns>
     public async Task DeleteAsync(IDataLocation location)
     {
-        await EnsureLoadedAsync();
+        await EnsureLoadedAsync().ConfigureAwait(false);
         var removed = false;
 
-        await _lock.WaitAsync();
+        await _lock.WaitAsync().ConfigureAwait(false);
         try
         {
             var currentFile = File;
@@ -126,7 +127,7 @@ public class UnifiedSettingsDataRepository(
                 return;
             }
 
-            await WriteUnifiedFileCoreAsync(currentFile, nextFile);
+            await WriteUnifiedFileCoreAsync(currentFile, nextFile).ConfigureAwait(false);
             _file = nextFile;
         }
         finally
@@ -148,17 +149,18 @@ public class UnifiedSettingsDataRepository(
     public async Task SaveAllAsync(
         IEnumerable<(IDataLocation location, IData data)> dataList)
     {
-        await EnsureLoadedAsync();
+        await EnsureLoadedAsync().ConfigureAwait(false);
 
         var valueTuples = dataList.ToList();
 
         await MutateAndPersistAsync(file =>
-        {
-            foreach (var (location, data) in valueTuples)
             {
-                file.Sections[location.Key] = Serializer.Serialize(data);
-            }
-        });
+                foreach (var (location, data) in valueTuples)
+                {
+                    file.Sections[location.Key] = Serializer.Serialize(data);
+                }
+            })
+            .ConfigureAwait(false);
 
         if (_options.EnableEvents)
             this.SendEvent(new DataBatchSavedEvent(valueTuples));
@@ -170,9 +172,9 @@ public class UnifiedSettingsDataRepository(
     /// <returns>包含所有数据项的字典，键为数据位置键，值为数据对象</returns>
     public async Task<IDictionary<string, IData>> LoadAllAsync()
     {
-        await EnsureLoadedAsync();
+        await EnsureLoadedAsync().ConfigureAwait(false);
 
-        var result = new Dictionary<string, IData>();
+        var result = new Dictionary<string, IData>(StringComparer.Ordinal);
 
         foreach (var (key, raw) in File.Sections)
         {
@@ -216,15 +218,15 @@ public class UnifiedSettingsDataRepository(
     {
         if (_loaded) return;
 
-        await _lock.WaitAsync();
+        await _lock.WaitAsync().ConfigureAwait(false);
         try
         {
             if (_loaded) return;
 
             var key = UnifiedKey;
 
-            _file = await Storage.ExistsAsync(key)
-                ? await Storage.ReadAsync<UnifiedSettingsFile>(key)
+            _file = await Storage.ExistsAsync(key).ConfigureAwait(false)
+                ? await Storage.ReadAsync<UnifiedSettingsFile>(key).ConfigureAwait(false)
                 : new UnifiedSettingsFile { Version = 1 };
 
             _loaded = true;
@@ -241,7 +243,7 @@ public class UnifiedSettingsDataRepository(
     /// </summary>
     private async Task MutateAndPersistAsync(Action<UnifiedSettingsFile> mutation)
     {
-        await _lock.WaitAsync();
+        await _lock.WaitAsync().ConfigureAwait(false);
         try
         {
             var currentFile = File;
@@ -250,7 +252,7 @@ public class UnifiedSettingsDataRepository(
             // 先在副本上计算“下一份已提交状态”，只有底层持久化成功后才交换缓存，
             // 这样即使备份或写入失败，也不会把未提交修改留在内存快照里。
             mutation(nextFile);
-            await WriteUnifiedFileCoreAsync(currentFile, nextFile);
+            await WriteUnifiedFileCoreAsync(currentFile, nextFile).ConfigureAwait(false);
             _file = nextFile;
         }
         finally
@@ -270,13 +272,13 @@ public class UnifiedSettingsDataRepository(
     /// <param name="nextFile">即将提交的新统一文件快照。</param>
     private async Task WriteUnifiedFileCoreAsync(UnifiedSettingsFile currentFile, UnifiedSettingsFile nextFile)
     {
-        if (_options.AutoBackup && await Storage.ExistsAsync(UnifiedKey))
+        if (_options.AutoBackup && await Storage.ExistsAsync(UnifiedKey).ConfigureAwait(false))
         {
             var backupKey = $"{UnifiedKey}.backup";
-            await Storage.WriteAsync(backupKey, currentFile);
+            await Storage.WriteAsync(backupKey, currentFile).ConfigureAwait(false);
         }
 
-        await Storage.WriteAsync(UnifiedKey, nextFile);
+        await Storage.WriteAsync(UnifiedKey, nextFile).ConfigureAwait(false);
     }
 
     /// <summary>
