@@ -1,5 +1,34 @@
 # Documentation Full Coverage Governance Trace
 
+## 2026-04-26
+
+### 当前恢复点：RP-040
+
+- 本轮继续从 `$gframework-pr-review` 恢复，沿用显式 `--git-dir` / `--work-tree` 绑定确认当前分支仍为 `docs/sdk-update-documentation`，并重新抓取 PR `#292` 的 latest-head review。
+- 使用 `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output /tmp/gframework-current-pr-review.json` 抓取后确认：PR `#292` 最新 reviewed commit 为 `d3d62cf4541063c46458f88eea0f5acd1b4503f9`，failed checks 为 `0`，测试汇总仍为 `2156 passed`；剩余 `2` 条 CodeRabbit open thread 都落在 `tools/gframework-config-tool/README.md`。
+- 本地逐项复核后确认：缺少 `docs/zh-CN` 链接的评论已经过期，因为 README 当前已有 `Documentation` 章节；仍成立的是补最小接入路径，以及统一 `stable config-schema subset` / `current schema subset` 术语。
+
+### 当前决策（RP-040）
+
+- 接受当前 latest-head review 中仍然成立的两项 README 收口：新增 `Quick Start` 最小接入路径，并统一校验支持范围术语。
+- 不对已经过期的“缺少中文文档入口链接”线程做额外扩展，只在本地结果里保留“已验证为 stale”的结论，等待后续 PR review 刷新反映最新状态。
+- 继续遵守 active topic 的恢复要求，在同一轮里同步更新 tracking / trace，并对直接受影响的工具模块执行最小验证。
+
+### 当前验证（RP-040）
+
+- PR review 抓取：
+  - `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output /tmp/gframework-current-pr-review.json`
+  - 结果：通过；PR `#292` 处于 `OPEN`，latest head review 还有 `2` 条 CodeRabbit open thread，failed checks 为 `0`，测试汇总为 `2156 passed`。
+- 工具 README 收口：
+  - `tools/gframework-config-tool/README.md`
+  - 结果：已新增 `Quick Start` 段落，并把 `Validation Coverage` 术语统一为 `current schema subset`。
+- 工具测试：
+  - `bun run test`（工作目录：`tools/gframework-config-tool/`）
+  - 结果：通过；`122` 个测试全部通过。
+- 工具打包：
+  - `bun run package:vsix`（工作目录：`tools/gframework-config-tool/`）
+  - 结果：通过；成功生成 `gframework-config-tool-0.0.3.vsix`，确认工具模块可完成最小打包验证。
+
 ## 2026-04-25
 
 ### 当前恢复点：RP-039

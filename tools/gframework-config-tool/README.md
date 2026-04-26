@@ -61,7 +61,7 @@ GameProject/
 
 ## Validation Coverage
 
-The extension currently validates the repository's stable config-schema subset:
+The extension currently validates the repository's current schema subset:
 
 - required properties in nested objects
 - unknown properties in nested objects
@@ -78,6 +78,16 @@ The extension currently validates the repository's stable config-schema subset:
   "gframeworkConfig.schemasPath": "schemas"
 }
 ```
+
+## Quick Start
+
+1. Install the extension in VS Code and open the workspace that contains your `config/` and `schemas/` directories.
+2. Keep the default workspace layout, or set `gframeworkConfig.configPath` and `gframeworkConfig.schemasPath` to your
+   project-specific paths.
+3. Open the `GFramework Config` explorer view and select a config file or domain.
+4. Run validation first to confirm the current YAML files still match the supported schema subset.
+5. Open the lightweight form preview or domain batch editing actions, then fall back to raw YAML for deeper nested edits
+   when needed.
 
 ## Documentation
 
