@@ -1,66 +1,174 @@
-name: Auto Increment Version and Tag
+name: Semantic Release Version and Tag
 
 on:
-  workflow_run:
-    workflows: ["CI - Build & Test"]
-    types:
-      - completed
-    branches:
-      - main
   workflow_dispatch:
+
 concurrency:
-  group: auto-tag-main
+  group: semantic-release-main
   cancel-in-progress: false
 
 jobs:
-  auto-tag:
+  preview:
     if: >
-      (
-        github.event_name == 'workflow_run' &&
-        github.event.workflow_run.conclusion == 'success' &&
-        contains(github.event.workflow_run.head_commit.message, '[release ci]')
-      )
-      ||
-      (
-        github.event_name == 'workflow_dispatch' &&
-        github.ref == 'refs/heads/main'
-      )
-    
+      github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
     outputs:
-      tagged: ${{ steps.create_tag.outcome == 'success' }}
+      published: ${{ steps.semantic_release.outputs.new_release_published }}
+      last_tag: ${{ steps.semantic_release.outputs.last_release_git_tag }}
+      next_version: ${{ steps.semantic_release.outputs.new_release_version }}
+      next_tag: ${{ steps.semantic_release.outputs.new_release_git_tag }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
+          ref: ${{ github.sha }}
 
-      - name: Get next version
-        id: version
-        run: |
-          LATEST_TAG=$(git tag --list "v*" --sort=-v:refname | head -n 1)
-          LATEST_TAG=${LATEST_TAG:-v0.0.0}
-          VERSION=${LATEST_TAG#v}
-          IFS=. read MAJOR MINOR PATCH <<< "$VERSION"
-          PATCH=$((PATCH+1))
-          echo "new_tag=v$MAJOR.$MINOR.$PATCH" >> $GITHUB_OUTPUT
-
-      - name: Create tag
+      # preview 始终先运行，用于给当前 SHA 生成待发布版本预览。
+      - name: Semantic release preview
+        id: semantic_release
+        uses: cycjimmy/semantic-release-action@v6
+        with:
+          dry_run: true
+          ci: false
+          extra_plugins: |
+            conventional-changelog-conventionalcommits@9.1.0
         env:
-          PAT: ${{ secrets.PAT_TOKEN }}
-          TAG: ${{ steps.version.outputs.new_tag }}
-        run: |
-          set -e
-          git config user.name "GitHub Action"
-          git config user.email "action@github.com"
+          GITHUB_TOKEN: ${{ github.token }}
 
-          if git show-ref --tags --verify --quiet "refs/tags/$TAG"; then
-            echo "Tag $TAG already exists, skipping"
-            exit 0
+      - name: Show preview result
+        run: |
+          echo "published=${{ steps.semantic_release.outputs.new_release_published }}"
+          echo "last_tag=${{ steps.semantic_release.outputs.last_release_git_tag }}"
+          echo "next_version=${{ steps.semantic_release.outputs.new_release_version }}"
+          echo "next_tag=${{ steps.semantic_release.outputs.new_release_git_tag }}"
+
+      - name: Write preview summary
+        env:
+          RELEASE_PUBLISHED: ${{ steps.semantic_release.outputs.new_release_published }}
+          RELEASE_NOTES: ${{ steps.semantic_release.outputs.new_release_notes }}
+        run: |
+          {
+            echo "## Semantic Release Preview"
+            echo
+            echo "- Commit: \`${{ github.sha }}\`"
+            echo "- Release needed: \`${{ steps.semantic_release.outputs.new_release_published }}\`"
+            echo "- Last tag: \`${{ steps.semantic_release.outputs.last_release_git_tag }}\`"
+            echo "- Next version: \`${{ steps.semantic_release.outputs.new_release_version }}\`"
+            echo "- Next tag: \`${{ steps.semantic_release.outputs.new_release_git_tag }}\`"
+            echo "- Snapshot semantics: this preview is pinned to dispatch SHA \`${{ github.sha }}\`; commits added to \`main\` after the run starts are not included."
+            if [ "${RELEASE_PUBLISHED}" = "true" ] && [ -n "${RELEASE_NOTES}" ]; then
+              echo
+              echo "<details><summary>Preview release notes</summary>"
+              echo
+              printf '%s\n' "${RELEASE_NOTES}"
+              echo
+              echo "</details>"
+            fi
+            echo
+            echo "If the version looks correct, approve the \`release-approval\` environment to continue."
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+  release:
+    if: >
+      github.ref == 'refs/heads/main' &&
+      needs.preview.result == 'success' &&
+      needs.preview.outputs.published == 'true'
+    needs:
+      - preview
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    environment:
+      name: release-approval
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+
+      - name: Validate PAT token
+        env:
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+          REPO_API_URL: ${{ github.api_url }}/repos/${{ github.repository }}
+        run: |
+          if [ -z "${PAT_TOKEN}" ]; then
+            echo "::error::PAT_TOKEN is required because a tag created with GITHUB_TOKEN will not trigger publish.yml."
+            exit 1
           fi
 
-          git tag -a "$TAG" -m "Auto tag $TAG"
-          git push "https://x-access-token:${PAT}@github.com/${{ github.repository }}.git" "$TAG"
+          response_file="$(mktemp)"
+          status_code="$(
+            curl -sS -o "${response_file}" -w "%{http_code}" \
+              -H "Authorization: Bearer ${PAT_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "${REPO_API_URL}"
+          )"
+
+          case "${status_code}" in
+            200)
+              ;;
+            401|403)
+              echo "::error::PAT_TOKEN is invalid or lacks access to ${GITHUB_REPOSITORY} (HTTP ${status_code})."
+              cat "${response_file}"
+              exit 1
+              ;;
+            *)
+              echo "::error::Failed to validate PAT_TOKEN against ${REPO_API_URL} (HTTP ${status_code})."
+              cat "${response_file}"
+              exit 1
+              ;;
+          esac
+
+      - name: Semantic release
+        id: semantic_release
+        uses: cycjimmy/semantic-release-action@v6
+        with:
+          dry_run: false
+          extra_plugins: |
+            conventional-changelog-conventionalcommits@9.1.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+
+      - name: Show release result
+        run: |
+          echo "published=${{ steps.semantic_release.outputs.new_release_published }}"
+          echo "preview_last_tag=${{ needs.preview.outputs.last_tag }}"
+          echo "preview_next_version=${{ needs.preview.outputs.next_version }}"
+          echo "preview_next_tag=${{ needs.preview.outputs.next_tag }}"
+          echo "last_tag=${{ steps.semantic_release.outputs.last_release_git_tag }}"
+          echo "next_version=${{ steps.semantic_release.outputs.new_release_version }}"
+          echo "next_tag=${{ steps.semantic_release.outputs.new_release_git_tag }}"
+
+      - name: Write release summary
+        env:
+          RELEASE_PUBLISHED: ${{ steps.semantic_release.outputs.new_release_published }}
+          RELEASE_NOTES: ${{ steps.semantic_release.outputs.new_release_notes }}
+        run: |
+          {
+            echo "## Semantic Release Publish"
+            echo
+            echo "- Commit: \`${{ github.sha }}\`"
+            echo "- Preview last tag: \`${{ needs.preview.outputs.last_tag }}\`"
+            echo "- Preview next version: \`${{ needs.preview.outputs.next_version }}\`"
+            echo "- Preview next tag: \`${{ needs.preview.outputs.next_tag }}\`"
+            echo "- Published: \`${{ steps.semantic_release.outputs.new_release_published }}\`"
+            echo "- Last tag: \`${{ steps.semantic_release.outputs.last_release_git_tag }}\`"
+            echo "- Next version: \`${{ steps.semantic_release.outputs.new_release_version }}\`"
+            echo "- Next tag: \`${{ steps.semantic_release.outputs.new_release_git_tag }}\`"
+            echo "- Snapshot semantics: this publish run still uses dispatch SHA \`${{ github.sha }}\`; commits added to \`main\` after the preview started are excluded."
+            if [ "${RELEASE_PUBLISHED}" = "true" ] && [ -n "${RELEASE_NOTES}" ]; then
+              echo
+              echo "<details><summary>Published release notes</summary>"
+              echo
+              printf '%s\n' "${RELEASE_NOTES}"
+              echo
+              echo "</details>"
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"

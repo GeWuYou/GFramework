@@ -29,6 +29,7 @@ WORK_TREE_ENVIRONMENT_KEY = "GFRAMEWORK_WORK_TREE"
 USER_AGENT = "codex-gframework-pr-review"
 CODERABBIT_LOGIN = "coderabbitai[bot]"
 GREPTILE_LOGIN = "greptile-apps[bot]"
+GEMINI_CODE_ASSIST_LOGIN = "gemini-code-assist[bot]"
 GITHUB_ACTIONS_LOGIN = "github-actions[bot]"
 REVIEW_COMMENT_ADDRESSED_MARKER = "<!-- <review_comment_addressed> -->"
 VISIBLE_ADDRESSED_IN_COMMIT_PATTERN = re.compile(r"✅\s*Addressed in commit\s+[0-9a-f]{7,40}", re.I)
@@ -45,6 +46,12 @@ SUPPORTED_AI_REVIEWERS = (
         "slug": "greptile",
         "login": GREPTILE_LOGIN,
         "display_name": "Greptile",
+        "supports_review_body_parsing": False,
+    },
+    {
+        "slug": "gemini-code-assist",
+        "login": GEMINI_CODE_ASSIST_LOGIN,
+        "display_name": "Gemini Code Assist",
         "supports_review_body_parsing": False,
     },
 )
