@@ -19,9 +19,18 @@
   - `docs/test/chore/build/ci/style -> no release`
   - `BREAKING CHANGE` / `BREAKING CHANGES` 作为 major 信号
 - 重写 `auto-tag.yml`：
-  - 保留 `workflow_run` 监听 `CI - Build & Test`
-  - `workflow_dispatch` 变为 dry-run 入口
-  - 真实打 tag 改由 `semantic-release-action` 处理，并要求 `PAT_TOKEN`
+  - 改为纯 `workflow_dispatch` 手动入口
+  - 增加 `release_mode=preview|release` 输入
+  - `preview` 只跑 dry-run 并输出 `last_tag`、`next_version`、`next_tag`
+  - `release` 由维护者手动触发真实打 tag，并要求 `PAT_TOKEN`
+- 收紧 `AGENTS.md` 的提交信息约束，明确提交类型必须反映 release semantics，纯文档变更禁止写成 `feat(...)`
+- 按用户反馈继续调整发版入口：
+  - 删除基于 `workflow_run` 的自动发版路径
+  - 统一改为 `workflow_dispatch` 手动触发
+  - 通过 `release_mode=preview|release` 区分“查看下个版本”和“真实打 tag”
+- 复验最小构建命令：
+  - `dotnet build GFramework.Core.Abstractions/GFramework.Core.Abstractions.csproj -c Release -p:RestoreFallbackFolders=`
+  - 结果：通过，`0 warning / 0 error`
 - 完成最小构建验证：
   - `dotnet build GFramework.Core.Abstractions/GFramework.Core.Abstractions.csproj -c Release -p:RestoreFallbackFolders=`
   - 结果：通过，`0 warning / 0 error`

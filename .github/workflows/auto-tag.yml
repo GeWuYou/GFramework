@@ -1,55 +1,25 @@
 name: Semantic Release Version and Tag
 
 on:
-  workflow_run:
-    workflows: ["CI - Build & Test"]
-    types:
-      - completed
-    branches:
-      - main
   workflow_dispatch:
+    inputs:
+      release_mode:
+        description: Choose preview to inspect the next version, or release to create and push the next tag.
+        required: true
+        default: preview
+        type: choice
+        options:
+          - preview
+          - release
+
 concurrency:
   group: semantic-release-main
   cancel-in-progress: false
 
 jobs:
-  dry-run:
+  semantic-release:
     if: >
-      github.event_name == 'workflow_dispatch' &&
       github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      # 手动触发仅用于验证 semantic-release 的版本推导结果，不会真正推送 tag。
-      - name: Semantic release dry-run
-        id: semantic_release
-        uses: cycjimmy/semantic-release-action@v6
-        with:
-          dry_run: true
-          ci: false
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-
-      - name: Show dry-run result
-        run: |
-          echo "published=${{ steps.semantic_release.outputs.new_release_published }}"
-          echo "last_tag=${{ steps.semantic_release.outputs.last_release_git_tag }}"
-          echo "next_version=${{ steps.semantic_release.outputs.new_release_version }}"
-          echo "next_tag=${{ steps.semantic_release.outputs.new_release_git_tag }}"
-
-  release-tag:
-    if: >
-      github.event_name == 'workflow_run' &&
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.head_branch == 'main' &&
-      contains(github.event.workflow_run.head_commit.message, '[release ci]')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -59,9 +29,16 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-          ref: ${{ github.event.workflow_run.head_branch }}
+
+      - name: Validate release branch
+        run: |
+          if [ "${GITHUB_REF}" != "refs/heads/main" ]; then
+            echo "::error::Semantic Release Version and Tag only supports workflow_dispatch on main."
+            exit 1
+          fi
 
       - name: Validate PAT token
+        if: inputs.release_mode == 'release'
         run: |
           if [ -z "${PAT_TOKEN}" ]; then
             echo "::error::PAT_TOKEN is required because a tag created with GITHUB_TOKEN will not trigger publish.yml."
@@ -70,21 +47,41 @@ jobs:
         env:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
 
-      # 真实 workflow_run 负责按 Conventional Commits 计算版本并推送 tag。
+      # preview 模式只输出版本推导结果，不会真正推送 tag。
+      - name: Semantic release preview
+        if: inputs.release_mode == 'preview'
+        id: semantic_release
+        uses: cycjimmy/semantic-release-action@v6
+        with:
+          dry_run: true
+          ci: false
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      # release 模式由维护者手动触发，直接创建并推送下一个 tag。
       - name: Semantic release
+        if: inputs.release_mode == 'release'
         id: semantic_release
         uses: cycjimmy/semantic-release-action@v6
         env:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
 
-      - name: Show release result
-        env:
-          PUBLISHED: ${{ steps.semantic_release.outputs.new_release_published }}
-          LAST_TAG: ${{ steps.semantic_release.outputs.last_release_git_tag }}
-          NEXT_VERSION: ${{ steps.semantic_release.outputs.new_release_version }}
-          NEXT_TAG: ${{ steps.semantic_release.outputs.new_release_git_tag }}
+      - name: Show result
         run: |
-          echo "published=${PUBLISHED}"
-          echo "last_tag=${LAST_TAG}"
-          echo "next_version=${NEXT_VERSION}"
-          echo "next_tag=${NEXT_TAG}"
+          echo "mode=${{ inputs.release_mode }}"
+          echo "published=${{ steps.semantic_release.outputs.new_release_published }}"
+          echo "last_tag=${{ steps.semantic_release.outputs.last_release_git_tag }}"
+          echo "next_version=${{ steps.semantic_release.outputs.new_release_version }}"
+          echo "next_tag=${{ steps.semantic_release.outputs.new_release_git_tag }}"
+
+      - name: Write summary
+        run: |
+          {
+            echo "## Semantic Release"
+            echo
+            echo "- Mode: \`${{ inputs.release_mode }}\`"
+            echo "- Published: \`${{ steps.semantic_release.outputs.new_release_published }}\`"
+            echo "- Last tag: \`${{ steps.semantic_release.outputs.last_release_git_tag }}\`"
+            echo "- Next version: \`${{ steps.semantic_release.outputs.new_release_version }}\`"
+            echo "- Next tag: \`${{ steps.semantic_release.outputs.new_release_git_tag }}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"

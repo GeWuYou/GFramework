@@ -17,7 +17,7 @@
 - 当前阶段：`Phase 1`
 - 当前焦点：
   - 增加 `.releaserc.json`，仅启用版本分析与 release notes 生成，不启用 GitHub Release 发布插件
-  - 将 `auto-tag.yml` 改成 `workflow_run` 真正打 tag、`workflow_dispatch` 只做 dry-run 的双入口
+  - 将 `auto-tag.yml` 改成纯 `workflow_dispatch` 双模式入口，由维护者手动选择 `preview` 或 `release`
   - 明确 `PAT_TOKEN` 与 `GITHUB_TOKEN` 的职责边界，确保 tag 继续触发 `publish.yml`
 
 ### 已知风险
@@ -35,9 +35,12 @@
 - 已新增 `.releaserc.json`，仅保留 `@semantic-release/commit-analyzer` 与
   `@semantic-release/release-notes-generator`，避免 `semantic-release` 直接创建 GitHub Release
 - 已将 `.github/workflows/auto-tag.yml` 重写为：
-  - `workflow_run` 在 `main` 上、CI 成功且提交消息包含 `[release ci]` 时执行真实打 tag
-  - `workflow_dispatch` 只执行 dry-run，输出 `last_tag`、`next_version` 与 `next_tag`
+  - `workflow_dispatch` 由维护者手动选择 `preview` 或 `release`
+  - `preview` 只执行 dry-run，输出 `last_tag`、`next_version` 与 `next_tag`
+  - `release` 由维护者手动触发真实打 tag，并把结果写入 job summary
 - 已明确真实打 tag 仍使用 `PAT_TOKEN`，因为 `GITHUB_TOKEN` 推送的 tag 不会继续触发 `publish.yml`
+- 已更新 `AGENTS.md` 的 Conventional Commit 规则，显式禁止把纯文档变更写成 `feat(...)` 或 `feat(docs)`
+- 已移除基于 `workflow_run` 和 `[release ci]` 的自动发版门闸，后续版本预览与真实发版都由维护者手动触发
 
 ## 验证
 
@@ -59,9 +62,12 @@
 - `npx --yes semantic-release --dry-run --no-ci`（在 `/tmp/gframework-semrel-dryrun`）
   - 结果：通过
   - 备注：dry-run 成功识别 `v0.0.222` 为最新 release，并分析 `269` 个提交；按当前规则会提升到下一次 `minor` 发布，预期 tag 为 `v0.1.0`
+- `dotnet build GFramework.Core.Abstractions/GFramework.Core.Abstractions.csproj -c Release -p:RestoreFallbackFolders=`（手动发版入口调整后复验）
+  - 结果：通过
+  - 备注：`0 warning / 0 error`
 
 ## 下一步
 
-1. 复核 `workflow_dispatch` dry-run 输出格式是否还需要额外收窄或增加说明
-2. 评估是否要把 `workflow_run` 的 `[release ci]` 门闸改成更显式的 PR label 或 manual approval
-3. 若本轮验证通过，按仓库要求创建提交并等待你审阅发版流程细节
+1. 复核 `workflow_dispatch` 的 `preview` / `release` 两种模式命名是否还要进一步收紧
+2. 评估是否要在 release 模式中补充额外输入，例如预期 tag 确认或二次确认文本
+3. 若本轮验证通过，按仓库要求创建补充提交并等待你审阅手动发版流程细节
