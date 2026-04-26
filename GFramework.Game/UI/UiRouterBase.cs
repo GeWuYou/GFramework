@@ -260,7 +260,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     /// <returns>如果栈顶是指定UI则返回true，否则返回false</returns>
     public new bool IsTop(string uiKey)
     {
-        return Stack.Count != 0 && Stack.Peek().Key.Equals(uiKey);
+        return Stack.Count != 0 && string.Equals(Stack.Peek().Key, uiKey, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -270,7 +270,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     /// <returns>如果栈中包含指定UI则返回true，否则返回false</returns>
     public new bool Contains(string uiKey)
     {
-        return Stack.Any(p => p.Key.Equals(uiKey));
+        return Stack.Any(p => string.Equals(p.Key, uiKey, StringComparison.Ordinal));
     }
 
     /// <summary>
@@ -293,7 +293,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     public UiHandle Show(string uiKey, UiLayer layer, IUiPageEnterParam? param = null)
     {
         if (layer == UiLayer.Page)
-            throw new ArgumentException("Use Push() for Page layer");
+            throw new ArgumentException("Use Push() for Page layer", nameof(layer));
 
         // 创建实例
         var page = _factory.Create(uiKey);
@@ -311,7 +311,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     public UiHandle Show(IUiPageBehavior page, UiLayer layer)
     {
         if (layer == UiLayer.Page)
-            throw new ArgumentException("Use Push() for Page layer");
+            throw new ArgumentException("Use Push() for Page layer", nameof(layer));
 
         return ShowInternal(page, layer, null);
     }
@@ -414,7 +414,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
             return Array.Empty<UiHandle>();
 
         return layerDict
-            .Where(kvp => kvp.Value.Key.Equals(uiKey))
+            .Where(kvp => string.Equals(kvp.Value.Key, uiKey, StringComparison.Ordinal))
             .Select(kvp => new UiHandle(uiKey, kvp.Key, layer))
             .ToList();
     }
@@ -593,14 +593,18 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
         var handle = new UiHandle(page.Key, instanceId, layer);
 
         // 初始化层级字典
-        if (!_layers.ContainsKey(layer))
-            _layers[layer] = new Dictionary<string, IUiPageBehavior>();
+        if (!_layers.TryGetValue(layer, out var layerDict))
+        {
+            layerDict = new Dictionary<string, IUiPageBehavior>(StringComparer.Ordinal);
+            _layers[layer] = layerDict;
+        }
+
         // 设置句柄
         page.Handle = handle;
-        var layerDict = _layers[layer];
 
         // 检查重入性
-        if (!page.IsReentrant && layerDict.Values.Any(p => p.Key == page.Key))
+        if (!page.IsReentrant &&
+            layerDict.Values.Any(p => string.Equals(p.Key, page.Key, StringComparison.Ordinal)))
         {
             Log.Warn("UI {0} is not reentrant but already exists in layer {1}", page.Key, layer);
             throw new InvalidOperationException(
