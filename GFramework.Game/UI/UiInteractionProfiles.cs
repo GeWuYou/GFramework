@@ -51,8 +51,8 @@ public static class UiInteractionProfiles
     {
         return action switch
         {
-            UiInputAction.Cancel => (profile.CapturedActions & UiInputActionMask.Cancel) != 0,
-            UiInputAction.Confirm => (profile.CapturedActions & UiInputActionMask.Confirm) != 0,
+            UiInputAction.Cancel => (profile.CapturedActions & UiInputActionMask.Cancel) != UiInputActionMask.None,
+            UiInputAction.Confirm => (profile.CapturedActions & UiInputActionMask.Confirm) != UiInputActionMask.None,
             _ => false
         };
     }

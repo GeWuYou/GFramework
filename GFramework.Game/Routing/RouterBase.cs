@@ -218,7 +218,7 @@ public abstract class RouterBase<TRoute, TContext> : AbstractSystem
     /// <returns>如果栈中包含指定路由返回 true,否则返回 false</returns>
     public bool Contains(string routeKey)
     {
-        return Stack.Any(r => r.Key == routeKey);
+        return Stack.Any(r => string.Equals(r.Key, routeKey, StringComparison.Ordinal));
     }
 
     /// <summary>
@@ -237,7 +237,7 @@ public abstract class RouterBase<TRoute, TContext> : AbstractSystem
     /// <returns>如果栈顶是指定路由返回 true,否则返回 false</returns>
     public bool IsTop(string routeKey)
     {
-        return Stack.Count != 0 && Stack.Peek().Key.Equals(routeKey);
+        return Stack.Count != 0 && string.Equals(Stack.Peek().Key, routeKey, StringComparison.Ordinal);
     }
 
     #endregion
