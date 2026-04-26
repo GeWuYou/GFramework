@@ -43,6 +43,10 @@ help the current worktree land on the right recovery documents without scanning 
   - Purpose: continue the data repository persistence hardening plus the settings / serialization follow-up backlog.
   - Tracking: `ai-plan/public/data-repository-persistence/todos/data-repository-persistence-tracking.md`
   - Trace: `ai-plan/public/data-repository-persistence/traces/data-repository-persistence-trace.md`
+- `semantic-release-versioning`
+  - Purpose: migrate release version calculation from fixed patch bumps to semantic-release while keeping the existing tag-driven NuGet publish flow.
+  - Tracking: `ai-plan/public/semantic-release-versioning/todos/semantic-release-versioning-tracking.md`
+  - Trace: `ai-plan/public/semantic-release-versioning/traces/semantic-release-versioning-trace.md`
 
 ## Worktree To Active Topic Map
 
@@ -63,6 +67,9 @@ help the current worktree land on the right recovery documents without scanning 
 - Branch: `feat/data-repository-persistence`
   - Worktree hint: `GFramework-data-repository-persistence`
   - Priority 1: `data-repository-persistence`
+- Branch: `feat/semantic-release-versioning`
+  - Worktree hint: `GFramework`
+  - Priority 1: `semantic-release-versioning`
 - Branch: `docs/sdk-update-documentation`
   - Worktree hint: `GFramework-update-documentation`
   - Priority 1: `documentation-full-coverage-governance`
