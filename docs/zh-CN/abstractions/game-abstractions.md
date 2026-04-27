@@ -116,6 +116,6 @@ public sealed class ContinueGameCommandHandler
    - [设置系统](../game/setting.md)
    - [场景系统](../game/scene.md)
    - [UI 系统](../game/ui.md)
-4. 需要仓库侧入口时，回到：
-   - [Game 抽象层说明](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Game.Abstractions/README.md)
-   - [Game 运行时说明](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Game/README.md)
+4. 需要统一入口时，回到：
+   - [Game 模块总览](../game/index.md)
+   - [入门指南](../getting-started/index.md)

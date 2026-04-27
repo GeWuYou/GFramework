@@ -214,4 +214,4 @@ RegisterCqrsPipelineBehavior<LoggingBehavior<,>>();
 - 上下文入口：[Context 上下文](./context.md)
 - 生成器专题：[CQRS Handler Registry 生成器](../source-generators/cqrs-handler-registry-generator.md)
 - 协程接法：[协程系统](./coroutine.md)
-- 模块说明：[CQRS 运行时说明](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Cqrs/README.md)
+- 选包与入口：[入门指南](../getting-started/index.md)

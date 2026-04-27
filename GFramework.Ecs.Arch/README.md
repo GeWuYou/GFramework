@@ -1,6 +1,6 @@
 # GFramework.Ecs.Arch
 
-`GFramework.Ecs.Arch` 是 `GFramework` 当前 Arch ECS family 的默认运行时实现包。
+`GFramework.Ecs.Arch` 是 `GFramework` 当前 Arch ECS 集成的默认运行时实现包。
 
 它负责把 Arch `World`、GFramework 的服务模块生命周期，以及 `ArchSystemAdapter<T>` 系统桥接到同一条采用路径中。
 如果你需要的只是共享契约，请改为依赖 `GFramework.Ecs.Arch.Abstractions`。

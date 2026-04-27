@@ -119,23 +119,19 @@ Godot 上。
 
 ### 4. 按需接入配置、存储和设置
 
-当项目已经使用 `Game` family 的配置、存储、设置契约时，再补 Godot 侧实现：
+当项目已经使用 `Game` 模块的配置、存储、设置契约时，再补 Godot 侧实现：
 
 - 配置：`GodotYamlConfigLoader`
 - 存储：`GodotFileStorage`
 - 设置：`GodotAudioSettings`、`GodotGraphicsSettings`、`GodotLocalizationSettings`
 
-不要把这些宿主实现误写成 `Game` family 的默认行为。
+不要把这些宿主实现误写成 `Game` 模块的默认行为。
 
-## `ai-libs/` 里的参考接入线索
-
-`ai-libs/CoreGrid` 仍是当前最直接的消费者证据来源：
+## 典型接入方式
 
 - 架构侧保持普通模块注册，再按需挂接 Godot 宿主
 - `project.godot` 元数据与节点样板交给 `GFramework.Godot.SourceGenerators`
-- Scene / UI 继续沿用 `Game` family 的 router 语义
-
-当 `ai-libs/` 与源码或测试冲突时，应以当前源码与测试为准。
+- Scene / UI 继续沿用 `Game` 模块的路由语义
 
 ## 文档入口
 

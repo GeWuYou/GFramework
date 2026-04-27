@@ -107,4 +107,4 @@ Console.WriteLine(count); // 1
 
 - 新功能的请求 / 通知处理：看 [CQRS 运行时](../core/cqrs.md)
 - 游戏层能力与接入顺序：看 [Game 模块总览](../game/index.md)
-- 包目录与最小安装组合：看 [Core 运行时说明](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Core/README.md)
+- 包目录与最小安装组合：看 [安装配置](./installation.md)

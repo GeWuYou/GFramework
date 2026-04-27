@@ -25,8 +25,7 @@
   - `FileStorage`、`ScopedStorage`、`JsonSerializer`、`SettingsModel<TRepository>`、`SaveRepository<TSaveData>`、`SceneRouterBase`、`UiRouterBase`、`YamlConfigLoader` 等都在实现这里的契约。
 - 引擎适配包或项目代码
   - `IUiFactory`、`ISceneFactory`、`IUiRoot`、`ISceneRoot`、资源注册表等通常由引擎适配层或游戏项目自己实现。
-  - 仓库内 `ai-libs/` 下的只读参考实现通常也是这样组织：页面 / 场景 factory、root、registry 在项目层，
-    运行时基类和契约来自 `GFramework.Game` 与本包。
+  - 常见做法也是这样组织：页面 / 场景 factory、root、registry 在项目层，运行时基类和契约来自 `GFramework.Game` 与本包。
 
 ## 子系统地图
 
@@ -209,9 +208,9 @@ public sealed class ContinueGameCommandHandler
 
 也就是说，本包回答的是“项目各层如何约定”，`GFramework.Game` 回答的是“这些约定默认怎么跑起来”。
 
-## `ai-libs/` 里的参考接入线索
+## 典型分层方式
 
-`ai-libs/` 下的只读参考实现对本包的使用方式，能比较清楚地说明它的职责边界：
+典型项目对本包的使用方式，通常能清楚体现它的职责边界：
 
 - 公共脚本广泛引用：
   - `IUiRouter`

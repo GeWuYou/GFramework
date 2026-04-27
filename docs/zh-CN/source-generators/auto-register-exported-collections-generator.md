@@ -220,4 +220,4 @@ public List<IntConfig>? Values { get; } = new();
 1. [源码生成器总览](./index.md)
 2. [配置系统](../game/config-system.md)
 3. [Godot 项目生成器](./godot-project-generator.md)
-4. [Godot 源码生成器说明](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Godot.SourceGenerators/README.md)
+4. [Godot 模块总览](../godot/index.md)

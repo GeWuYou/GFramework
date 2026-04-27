@@ -1,6 +1,6 @@
 # GFramework.Cqrs.Abstractions
 
-`GFramework.Cqrs.Abstractions` 提供 GFramework CQRS 的最小契约层。它只包含消息接口、处理器接口、运行时 seam 和管道契约，不包含默认 dispatcher、处理器扫描或任何 `GFramework.Core` 运行时实现。适合以下场景：
+`GFramework.Cqrs.Abstractions` 提供 GFramework CQRS 的最小契约层。它只包含消息接口、处理器接口、运行时协作接口和管道契约，不包含默认 dispatcher、处理器扫描或任何 `GFramework.Core` 运行时实现。适合以下场景：
 
 - 你的业务程序集只需要声明 Command、Query、Notification、Stream Request 或处理器接口。
 - 你希望把消息契约放在更稳定的基础层，避免直接依赖默认 runtime 实现。
@@ -43,7 +43,7 @@
   - `Cqrs/IRequestHandler.cs`
   - `Cqrs/INotificationHandler.cs`
   - `Cqrs/IStreamRequestHandler.cs`
-- 运行时 seam
+- 运行时协作接口
   - `Cqrs/ICqrsRuntime.cs`
   - `Cqrs/ICqrsContext.cs`
   - `Cqrs/ICqrsHandlerRegistrar.cs`
@@ -93,7 +93,7 @@ public sealed class GetPlayerProfileHandler
 
 - 只引用本包时，没有 `CommandBase<TInput, TResponse>`、`QueryBase<TInput, TResponse>`、`NotificationBase<TInput>` 等消息基类。
 - 只引用本包时，没有 `AbstractCommandHandler`、`AbstractQueryHandler`、`AbstractNotificationHandler` 等处理器基类。
-- `ICqrsContext` 当前是轻量 marker seam；默认 runtime 在需要向 `IContextAware` 处理器注入上下文时，仍要求传入的上下文同时实现 `IArchitectureContext`。
+- `ICqrsContext` 当前是轻量 marker 接口；默认 runtime 在需要向 `IContextAware` 处理器注入上下文时，仍要求传入的上下文同时实现 `IArchitectureContext`。
 
 ## 文档入口
 

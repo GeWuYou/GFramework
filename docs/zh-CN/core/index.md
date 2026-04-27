@@ -8,7 +8,7 @@ description: GFramework.Core 与 GFramework.Core.Abstractions 的运行时入口
 `Core` 栏目对应 `GFramework` 的基础运行时层，主要覆盖 `GFramework.Core` 与 `GFramework.Core.Abstractions`，以及与之直接相邻的旧版
 `Command` / `Query` 执行器和新版 `CQRS` 迁移入口。
 
-如果你第一次接入框架，建议先把这里当作“运行时底座说明”，再按需进入 `Game`、`Godot` 或 Source Generators 栏目。
+如果你第一次接入框架，可以先把这里当作“运行时底座说明”：先确认 `Core` 解决什么问题、最小安装组合是什么，再决定什么时候转向 `CQRS`、`Game`、`Godot` 或源码生成器。
 
 ## 模块与包关系
 
@@ -32,7 +32,7 @@ dotnet add package GeWuYou.GFramework.Core.Abstractions
 
 ## 栏目覆盖范围
 
-`Core` 栏目不是旧版“完整框架教程”的镜像，而是当前实现的入口导航。这里的页面按能力域组织：
+这里的页面按能力域组织，适合按“我要接什么能力”而不是“我要读完所有目录”的方式进入：
 
 - 架构与生命周期
   - [架构](./architecture.md)
@@ -71,7 +71,7 @@ dotnet add package GeWuYou.GFramework.Core.Abstractions
 
 如果你已经知道模块归属，但想确认公开类型的契约边界，建议按下面顺序阅读：
 
-1. 先看[Core 运行时说明](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Core/README.md)，确认包关系和目录边界
+1. 先读本页与 [Core 抽象层说明](../abstractions/core-abstractions.md)，确认运行时和契约层边界
 2. 再看本栏目对应专题页，确认采用顺序、生命周期与推荐接线方式
 3. 最后回到源码中的 XML 文档，重点核对这些类型族：
    - `Architecture` / `IArchitectureContext`
@@ -148,7 +148,8 @@ public sealed class CounterArchitecture : Architecture
 
 ## 对应模块入口
 
-- [Core 运行时说明](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Core/README.md)
-- [Core 抽象层说明](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Core.Abstractions/README.md)
+- [入门指南](../getting-started/index.md)
+- [Core 抽象层说明](../abstractions/core-abstractions.md)
+- [CQRS 运行时](./cqrs.md)
+- [源码生成器总览](../source-generators/index.md)
 - [API 参考入口](../api-reference/index.md)
-- [仓库总览](https://github.com/GeWuYou/GFramework/blob/main/README.md)

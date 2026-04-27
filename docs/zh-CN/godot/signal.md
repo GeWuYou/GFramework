@@ -104,7 +104,7 @@ slider.Signal(Range.SignalName.ValueChanged)
 
 ### 4. 静态场景绑定优先交给 `[BindNodeSignal]`
 
-从 [Godot 源码生成器说明](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Godot.SourceGenerators/README.md) 和 `ai-libs/CoreGrid` 的当前接法看，静态场景按钮、滑条、菜单项这类固定
+从 [源码生成器总览](../source-generators/index.md) 和当前 Godot 接线方式看，静态场景按钮、滑条、菜单项这类固定
 节点，更常见的路径仍然是 `[BindNodeSignal]`：
 
 ```csharp

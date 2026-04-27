@@ -195,4 +195,4 @@ finally
 1. [ContextGet 生成器](./context-get-generator.md)
 2. [日志生成器](./logging-generator.md)
 3. [Core 模块总览](../core/index.md)
-4. [Core 源码生成器说明](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Core.SourceGenerators/README.md)
+4. [源码生成器总览](./index.md)

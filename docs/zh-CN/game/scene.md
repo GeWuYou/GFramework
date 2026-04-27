@@ -258,5 +258,5 @@ await sceneRouter.PopAsync();
 
 1. [Game 模块总览](./index.md)
 2. [UI 系统](./ui.md)
-3. [Game 运行时说明](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Game/README.md)
-4. [Game 抽象层说明](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Game.Abstractions/README.md)
+3. [Game 抽象层说明](../abstractions/game-abstractions.md)
+4. [API 参考](../api-reference/index.md)

@@ -2,6 +2,50 @@
 
 ## 2026-04-27
 
+### 当前恢复点：RP-042
+
+- 用户明确要求在当前阈值内循环推进，并允许使用 subagent 降低主线程上下文压力；因此本轮在主线程保留实现与验证，把热点识别委派给 3 个 explorer。
+- 接受的 subagent 结论主要有三类：
+  - 入口页最划算的改法是统一 reader-facing 骨架，而不是继续保留治理说明或负向 framing。
+  - 若站内已有栏目页与专题页，GitHub blob README 不应继续作为公开文档主导航。
+  - `GFramework.Game` / `Game.Abstractions` / `Godot` 等 README 仍有 `ai-libs`、`family`、`seam`、`ReadMe.md` 等对外不友好的措辞，适合在同一轮里收口。
+- 基于这些结论，本轮连续落地 3 组低风险切片：入口页 reader-facing 改写、README / Godot 页去内部口吻、剩余 GitHub blob README 外链改回站内入口。
+
+### 当前决策（RP-042）
+
+- 继续保持 critical path 本地执行，不让 subagent 直接改文件；subagent 只负责热点排序与问题归类。
+- stop condition 继续沿用 `origin/main` + `50` changed files；当前工作树相对 baseline 的 tracked diff 已到 `36` files / `500` changed lines，意味着还能再做一小批，但应先提交当前稳定批次。
+- 当前批次不扩展到新栏目、新导航层或大段内容重写，只做 reader-facing 入口、术语和站内导航连通性收口。
+
+### 当前验证（RP-042）
+
+- README 链接校验：
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-links.sh GFramework.Game/README.md GFramework.Game.Abstractions/README.md GFramework.Godot/README.md GFramework.Cqrs.Abstractions/README.md GFramework.Ecs.Arch/README.md`
+  - 结果：通过；本轮 5 个 README 的 reader-facing 改写后链接目标有效。
+- 教程 / Godot 页面校验：
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/tutorials/index.md`
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/ui.md`
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/scene.md`
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/signal.md`
+  - 结果：通过；受影响页面的 frontmatter、链接与代码块校验通过。
+- 入口与专题页校验：
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/core/index.md`
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/game/index.md`
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/api-reference/index.md`
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/getting-started/quick-start.md`
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/core/cqrs.md`
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/game/scene.md`
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/game/ui.md`
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/ecs/arch.md`
+  - 结果：通过；入口页和相关推荐入口改写后页面校验通过。
+- 栏目级校验：
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/abstractions`
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators`
+  - 结果：通过；抽象层与生成器栏目改回站内入口后栏目校验通过。
+- 站点构建：
+  - `bun run build`（工作目录：`docs/`）
+  - 结果：通过；本轮 3 组 reader-facing 文档批次后站点仍可构建，仅保留既有大 chunk warning。
+
 ### 当前恢复点：RP-041
 
 - 通过 `$gframework-batch-boot 50` 重新进入后，先按仓库规则读取 `AGENTS.md`、`.ai/environment/tools.ai.yaml`、`ai-plan/public/README.md` 与 active topic tracking / trace，并继续使用显式 `--git-dir` / `--work-tree` 绑定确认当前分支仍为 `docs/sdk-update-documentation`。
