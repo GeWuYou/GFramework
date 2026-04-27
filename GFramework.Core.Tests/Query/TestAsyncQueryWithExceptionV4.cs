@@ -19,6 +19,7 @@ public sealed class TestAsyncQueryWithExceptionV4 : AbstractAsyncQuery<TestAsync
     ///     执行异步查询操作并抛出异常
     /// </summary>
     /// <param name="input">查询输入参数</param>
+    /// <returns>返回一个不会正常完成的 <see cref="Task{TResult}" />，因为该方法始终抛出异常。</returns>
     /// <exception cref="InvalidOperationException">总是抛出异常</exception>
     protected override Task<int> OnDoAsync(TestAsyncQueryInputV2 input)
     {

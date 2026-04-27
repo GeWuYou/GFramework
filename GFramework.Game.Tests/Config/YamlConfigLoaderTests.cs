@@ -1,4 +1,6 @@
 using System.IO;
+using System.Reflection;
+using System.Threading;
 using GFramework.Core.Abstractions.Events;
 using GFramework.Game.Abstractions.Config;
 using GFramework.Game.Config;
@@ -2785,6 +2787,48 @@ public class YamlConfigLoaderTests
     }
 
     /// <summary>
+    ///     验证底层文件读取在取消时会保留 <see cref="OperationCanceledException" />，
+    ///     避免热重载把会话级取消误报为配置读取失败。
+    /// </summary>
+    [Test]
+    public async Task ReadYamlAsync_Should_Preserve_OperationCanceledException_When_Cancellation_Is_Requested()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            """
+            id: 1
+            name: Slime
+            hp: 10
+            """);
+
+        var loader = new YamlConfigLoader(_rootPath)
+            .RegisterTable<int, MonsterConfigStub>("monster", "monster", static config => config.Id);
+        var registration = GetSingleYamlTableRegistration(loader);
+        var readYamlAsyncMethod = registration.GetType()
+            .GetMethod("ReadYamlAsync", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        Assert.That(readYamlAsyncMethod, Is.Not.Null);
+
+        using var cancellationTokenSource = new CancellationTokenSource();
+        cancellationTokenSource.Cancel();
+
+        // 通过反射直接命中注册项的文件读取路径，稳定回归本次取消语义修复。
+        var readTask = (Task<string>)readYamlAsyncMethod!.Invoke(
+            registration,
+            new object?[]
+            {
+                Path.Combine(_rootPath, "monster"),
+                Path.Combine(_rootPath, "monster", "slime.yaml"),
+                null,
+                cancellationTokenSource.Token
+            })!;
+
+        Assert.That(
+            async () => await readTask.ConfigureAwait(false),
+            Throws.InstanceOf<OperationCanceledException>());
+    }
+
+    /// <summary>
     ///     验证依赖关系仅来自 <c>contains</c> 子 schema 时，热重载仍会追踪该依赖并在目标表破坏引用后回滚。
     /// </summary>
     [Test]
@@ -2928,7 +2972,7 @@ public class YamlConfigLoaderTests
 
         Assert.That(exception!.ParamName, Is.EqualTo("options"));
     }
-    
+
     /// <summary>
     ///     验证热重载失败时会保留旧表状态，并通过失败回调暴露诊断信息。
     /// </summary>
@@ -3370,6 +3414,22 @@ public class YamlConfigLoaderTests
     private void CreateSchemaFile(string relativePath, string content)
     {
         CreateConfigFile(relativePath, content);
+    }
+
+    private static object GetSingleYamlTableRegistration(YamlConfigLoader loader)
+    {
+        var registrationsField = typeof(YamlConfigLoader).GetField(
+            "_registrations",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+
+        Assert.That(registrationsField, Is.Not.Null);
+
+        var registrations = registrationsField!.GetValue(loader) as System.Collections.IList;
+
+        Assert.That(registrations, Is.Not.Null);
+        Assert.That(registrations!.Count, Is.EqualTo(1));
+
+        return registrations[0]!;
     }
 
     /// <summary>

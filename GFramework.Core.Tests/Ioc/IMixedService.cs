@@ -5,5 +5,8 @@ namespace GFramework.Core.Tests.Ioc;
 /// </summary>
 public interface IMixedService
 {
+    /// <summary>
+    ///     获取或设置服务名称。
+    /// </summary>
     string? Name { get; set; }
 }

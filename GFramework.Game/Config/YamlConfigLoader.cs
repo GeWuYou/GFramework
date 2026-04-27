@@ -553,6 +553,11 @@ public sealed class YamlConfigLoader : IConfigLoader
             {
                 return await File.ReadAllTextAsync(file, cancellationToken).ConfigureAwait(false);
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // 保留原始取消语义，避免热重载把会话级取消误报为配置读取失败。
+                throw;
+            }
             catch (Exception exception)
             {
                 throw ConfigLoadExceptionFactory.Create(
@@ -699,7 +704,7 @@ public sealed class YamlConfigLoader : IConfigLoader
     private static class CrossTableReferenceValidator
     {
         private delegate bool IntegerTryParseDelegate<T>(
-            string value,
+            string? value,
             NumberStyles style,
             IFormatProvider? provider,
             out T result);

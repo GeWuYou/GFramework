@@ -3,7 +3,7 @@ namespace GFramework.Core.Tests.Ioc;
 /// <summary>
 ///     实现优先级的服务
 /// </summary>
-public sealed class PrioritizedService : IPrioritizedService, IMixedService
+public sealed class PrioritizedService : IPrioritizedService
 {
     /// <summary>
     ///     获取或设置优先级
