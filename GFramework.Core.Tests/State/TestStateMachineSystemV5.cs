@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using GFramework.Core.Abstractions.State;
 using GFramework.Core.State;
 
@@ -14,8 +15,8 @@ public class TestStateMachineSystemV5 : StateMachineSystem
     ///     获取状态机当前维护的状态实例映射，供测试断言注册结果使用。
     /// </summary>
     /// <returns>状态类型到状态实例的只读视图。</returns>
-    public IDictionary<Type, IState> GetStates()
+    public IReadOnlyDictionary<Type, IState> GetStates()
     {
-        return States;
+        return States as IReadOnlyDictionary<Type, IState> ?? new ReadOnlyDictionary<Type, IState>(States);
     }
 }

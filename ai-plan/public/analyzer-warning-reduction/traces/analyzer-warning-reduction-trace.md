@@ -1,5 +1,29 @@
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-27 — RP-086
+
+### 阶段：收敛 PR #298 的 CodeRabbit nitpick follow-up
+
+- 触发背景：
+  - 用户再次执行 `$gframework-pr-review` 后，要求按 `PR #298` 的 nitpick comments 收敛仍然适用的问题
+  - 复核 PR 真值后确认当前分支无 failed checks、无 open review threads，但仍有一批测试辅助类型的可维护性 nitpick 值得本地落地
+- 主线程实施：
+  - 校验 `TestStateMachineSystemV5`、`ComplexQuery`、`TrackingPipelineBehavior`、`TestEnvironment`、`TestContextUtilityV1/V2` 等改动后，分别修复可变内部状态暴露、`_context!` 空抑制、静态计数器非原子递增、`new Register(...)` 测试辅助入口和生命周期标记公开 setter 问题
+  - 统一更新 `TestQueryV2`、`TestCommandWithResultV2`、`TestAsyncQueryInput`、`TestAsyncQueryResult*` 的 XML 文档，使 `init` 属性语义与文档一致
+  - 将三倍结果属性从 `DoubleValue` 更名为 `TripleValue`，同步更新 `TestAsyncComplexQuery*` 与相关断言，避免名称与 `* 3` 的行为不一致
+  - 精简 active tracking，移除重复的 `GFramework.Core.Tests` Release build 记录，并把该项目的当前真值修正为 `28 Warning(s)`
+- 验证里程碑：
+  - `dotnet build GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release`
+    - 结果：成功；`28 Warning(s)`、`0 Error(s)`
+  - `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --no-build`
+    - 结果：成功；`1610` 通过、`0` 失败
+- 当前结论：
+  - `PR #298` 中仍然适用的低风险 nitpick 已完成收敛，且没有为当前 touched files 引入新的构建 warning 或测试回归
+  - `GFramework.Core.Tests` 的剩余 warning 仍集中在 `GameContextTests.cs`、`ArchitectureServicesTests.cs`、`RegistryInitializationHookBaseTests.cs` 等既有热点，不属于本轮 nitpick follow-up 新引入问题
+- 下一步：
+  1. 提交本轮 `PR #298` nitpick follow-up 与 `ai-plan` 同步。
+  2. 回到 `GameContextTests.cs` / `ArchitectureServicesTests.cs` 的 `CS8766` warning reduction 主线。
+
 ## 2026-04-27 — RP-085
 
 ### 阶段：按 `$gframework-batch-boot 100` 并行消化 `GFramework.Core.Tests` 低风险 `MA0048`

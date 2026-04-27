@@ -11,7 +11,7 @@ public sealed class TestQueryV2 : IQuery<int>
     private IArchitectureContext _context = null!;
 
     /// <summary>
-    ///     获取或设置查询返回值。
+    ///     获取查询返回值；该值只能在对象初始化阶段设置。
     /// </summary>
     public int Result { get; init; }
 

@@ -6,10 +6,11 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-085`
-- 当前阶段：`Phase 85`
+- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-086`
+- 当前阶段：`Phase 86`
 - 当前焦点：
   - `2026-04-27` 已按 `$gframework-batch-boot 100` 连续执行多波 `MA0048` 小切片，当前以 `GFramework.Core.Tests` 的测试辅助类型拆分为主
+  - `2026-04-27` 已按 `$gframework-pr-review` 收敛 `PR #298` 的有效 nitpick，修复测试辅助类型的只读暴露、线程安全、空安全与文档一致性问题
   - 本轮已完成 `ArchitectureContextTests`、`AsyncQueryExecutorTests`、`CommandExecutorTests`、`StateTests`、`StateMachineTests`、`StateMachineSystemTests`、`ArchitectureModulesBehaviorTests`、`ArchitectureAdditionalCqrsHandlersTests`、`QueryCoroutineExtensionsTests`、`ObjectPoolTests`、`AbstractContextUtilityTests` 等低风险单文件切片
   - 当前仓库根权威基线已从 `353 Warning(s)` / `279` 个唯一位点下降到 `288 Warning(s)` / `214` 个唯一位点
   - 当前分支下一波更适合转向 `GameContextTests.cs`、`ArchitectureServicesTests.cs`、`RegistryInitializationHookBaseTests.cs` 这类仍在 `GFramework.Core.Tests` 内、但已混入 `CS8766` / `MA0016` 的小型混合切片
@@ -19,14 +20,14 @@
 - 当前 `origin/main` 基线提交为 `7cfdd2c`（`2026-04-27T16:59:57+08:00`）。
 - 当前直接验证结果：
   - `dotnet build GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release`
-    - 最新结果：成功；`0 Warning(s)`、`0 Error(s)`
+    - 最新结果：成功；`28 Warning(s)`、`0 Error(s)`；当前 warning 来自 `GameContextTests.cs`、`ArchitectureServicesTests.cs`、`RegistryInitializationHookBaseTests.cs` 等既有热点
+  - `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --no-build`
+    - 最新结果：成功；`1610` 通过、`0` 失败
   - `dotnet clean`
     - 最新结果：成功；已刷新仓库根 non-incremental 基线
   - `dotnet build`
     - 最新结果：成功；`288 Warning(s)`、`0 Error(s)`，唯一位点 `214`
   - `dotnet build GFramework.Game/GFramework.Game.csproj -c Release`
-    - 最新结果：成功；`0 Warning(s)`、`0 Error(s)`
-  - `dotnet build GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release`
     - 最新结果：成功；`0 Warning(s)`、`0 Error(s)`
   - `dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --filter "FullyQualifiedName~YamlConfigLoaderTests.ReadYamlAsync_Should_Preserve_OperationCanceledException_When_Cancellation_Is_Requested"`
     - 最新结果：成功；`1` 通过、`0` 失败

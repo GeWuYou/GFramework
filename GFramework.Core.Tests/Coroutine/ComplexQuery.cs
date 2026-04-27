@@ -43,7 +43,8 @@ internal class ComplexQuery : IQuery<ComplexResult>
     /// <returns>此前通过 <see cref="SetContext" /> 绑定的上下文实例。</returns>
     public IArchitectureContext GetContext()
     {
-        return _context!;
+        return _context ?? throw new InvalidOperationException(
+            $"{nameof(SetContext)} must be called before {nameof(GetContext)}.");
     }
 
     /// <summary>

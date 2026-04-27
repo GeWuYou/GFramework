@@ -245,7 +245,7 @@ public class StateMachineTests
     [Test]
     public async Task ChangeToAsync_WhenCurrentStateDeniesTransition_WithAsyncState_Should_Call_CanTransitionToAsync()
     {
-        var state1 = new TestAsyncState { AllowTransition = false };
+        var state1 = new TestAsyncState { AllowTransitions = false };
         var state2 = new TestStateV3();
         _stateMachine.Register(state1);
         _stateMachine.Register(state2);

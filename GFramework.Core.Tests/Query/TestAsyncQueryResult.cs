@@ -6,12 +6,12 @@ namespace GFramework.Core.Tests.Query;
 public sealed class TestAsyncQueryResult
 {
     /// <summary>
-    ///     获取或设置主结果值。
+    ///     获取主结果值；该值只能在对象初始化阶段设置。
     /// </summary>
     public int Value { get; init; }
 
     /// <summary>
-    ///     获取或设置派生的双重结果值。
+    ///     获取派生的三倍结果值；该值只能在对象初始化阶段设置。
     /// </summary>
-    public int DoubleValue { get; init; }
+    public int TripleValue { get; init; }
 }

@@ -87,7 +87,7 @@ public class AsyncQueryExecutorTests
 
         Assert.That(result, Is.Not.Null);
         Assert.That(result.Value, Is.EqualTo(200));
-        Assert.That(result.DoubleValue, Is.EqualTo(300));
+        Assert.That(result.TripleValue, Is.EqualTo(300));
     }
 
     /// <summary>

@@ -25,7 +25,7 @@ public sealed class TestAsyncComplexQuery : AbstractAsyncQuery<TestAsyncQueryInp
         var result = new TestAsyncQueryResult
         {
             Value = input.Value * 2,
-            DoubleValue = input.Value * 3
+            TripleValue = input.Value * 3
         };
 
         return Task.FromResult(result);

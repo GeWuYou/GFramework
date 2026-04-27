@@ -5,7 +5,7 @@ namespace GFramework.Core.Tests.Coroutine;
 /// <summary>
 ///     为协程测试提供固定时间步长的时间源。
 /// </summary>
-public class TestTimeSource : ITimeSource
+public sealed class TestTimeSource : ITimeSource
 {
     /// <summary>
     ///     获取当前累计时间。

@@ -198,7 +198,7 @@ public class AbstractContextUtilityTests
         Assert.That(utility.Destroyed, Is.True);
 
         // 重置状态
-        utility.Destroyed = false;
+        utility.ResetDestroyedStateForTest();
 
         // 第二次初始化和销毁
         utility.Initialize();

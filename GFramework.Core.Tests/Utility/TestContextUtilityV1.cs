@@ -14,12 +14,13 @@ public sealed class TestContextUtilityV1 : AbstractContextUtility
     public bool Initialized { get; private set; }
 
     /// <summary>
-    ///     获取或设置一个值，该值指示当前工具是否已执行销毁逻辑。
+    ///     获取一个值，该值指示当前工具是否已执行销毁逻辑。
     /// </summary>
-    public bool Destroyed { get; set; }
+    public bool Destroyed { get; private set; }
 
     /// <summary>
-    ///     获取一个值，该值指示测试初始化钩子是否已被调用。
+    ///     获取一个值，该值指示测试专用的 <see cref="OnInit" /> 钩子是否已被调用。
+    ///     该标记与 <see cref="Initialized" /> 共享同一执行时机，但单独暴露以便断言钩子本身已运行。
     /// </summary>
     public bool InitCalled { get; private set; }
 
@@ -47,5 +48,13 @@ public sealed class TestContextUtilityV1 : AbstractContextUtility
     protected override void OnDestroy()
     {
         Destroyed = true;
+    }
+
+    /// <summary>
+    ///     重置销毁标记，供同一实例的重复生命周期测试在下一轮初始化前清理观测状态。
+    /// </summary>
+    public void ResetDestroyedStateForTest()
+    {
+        Destroyed = false;
     }
 }

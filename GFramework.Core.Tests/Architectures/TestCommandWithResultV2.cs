@@ -11,7 +11,7 @@ public sealed class TestCommandWithResultV2 : ICommand<int>
     private IArchitectureContext _context = null!;
 
     /// <summary>
-    ///     获取或设置命令执行结果。
+    ///     获取命令执行结果；该值只能在对象初始化阶段设置。
     /// </summary>
     public int Result { get; init; }
 

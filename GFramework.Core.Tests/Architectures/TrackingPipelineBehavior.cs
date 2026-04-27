@@ -1,3 +1,4 @@
+using System.Threading;
 using GFramework.Cqrs.Abstractions.Cqrs;
 
 namespace GFramework.Core.Tests.Architectures;
@@ -10,13 +11,20 @@ namespace GFramework.Core.Tests.Architectures;
 public sealed class TrackingPipelineBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
     where TRequest : IRequest<TResponse>
 {
-    /// <summary>
-    ///     获取当前测试进程中该请求类型对应的行为触发次数。
-    /// </summary>
-    public static int InvocationCount { get; set; }
+    private static int _invocationCount;
 
     /// <summary>
-    ///     记录一次行为执行，然后继续执行下一个处理器。
+    ///     获取当前测试进程中该请求类型对应的行为触发次数。
+    ///     该计数器是按泛型闭包共享的静态状态，测试需要在每次运行前显式重置。
+    /// </summary>
+    public static int InvocationCount
+    {
+        get => Volatile.Read(ref _invocationCount);
+        set => Volatile.Write(ref _invocationCount, value);
+    }
+
+    /// <summary>
+    ///     以线程安全方式记录一次行为执行，然后继续执行下一个处理器。
     /// </summary>
     /// <param name="message">当前请求消息。</param>
     /// <param name="next">下一个处理委托。</param>
@@ -27,7 +35,7 @@ public sealed class TrackingPipelineBehavior<TRequest, TResponse> : IPipelineBeh
         MessageHandlerDelegate<TRequest, TResponse> next,
         CancellationToken cancellationToken)
     {
-        InvocationCount++;
+        Interlocked.Increment(ref _invocationCount);
         return await next(message, cancellationToken).ConfigureAwait(false);
     }
 }

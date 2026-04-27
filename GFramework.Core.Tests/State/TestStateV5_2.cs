@@ -19,6 +19,7 @@ public class TestStateV5_2 : IState
     /// <returns>始终返回 <see langword="true" /> 以简化状态机切换测试。</returns>
     public bool CanTransitionTo(IState next)
     {
+        _ = next;
         return true;
     }
 
@@ -28,6 +29,7 @@ public class TestStateV5_2 : IState
     /// <param name="previous">前一个状态。</param>
     public void OnEnter(IState? previous)
     {
+        _ = previous;
     }
 
     /// <summary>
@@ -36,5 +38,6 @@ public class TestStateV5_2 : IState
     /// <param name="next">下一个状态。</param>
     public void OnExit(IState? next)
     {
+        _ = next;
     }
 }

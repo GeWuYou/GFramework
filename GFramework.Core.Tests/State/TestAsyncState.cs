@@ -10,7 +10,7 @@ public sealed class TestAsyncState : IState, IAsyncState
     /// <summary>
     ///     获取或设置是否允许向目标状态转移。
     /// </summary>
-    public bool AllowTransition { get; set; } = true;
+    public bool AllowTransitions { get; set; } = true;
 
     /// <summary>
     ///     获取异步进入状态是否已被调用。
@@ -80,7 +80,7 @@ public sealed class TestAsyncState : IState, IAsyncState
     {
         await Task.Delay(1).ConfigureAwait(false);
         CanTransitionToCallCount++;
-        return AllowTransition;
+        return AllowTransitions;
     }
 
     /// <summary>
