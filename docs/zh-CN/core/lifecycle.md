@@ -159,7 +159,7 @@ architecture.PhaseChanged += (_, args) =>
 ## 推荐做法
 
 - 新代码优先使用 `InitializeAsync()` / `DestroyAsync()`
-- 把注册逻辑放在 `OnInitialize()`，不要沿用旧文档里的 `Init()`
+- 把注册逻辑放在 `OnInitialize()`，不要继续使用 `Init()` 这类旧入口
 - 让 `Utility` 承载底层能力，让 `Model` 承载状态，再让 `System` 消费两者
 - 跨组件阶段逻辑优先写成 `IArchitectureLifecycleHook`
 

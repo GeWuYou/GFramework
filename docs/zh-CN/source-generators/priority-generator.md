@@ -68,7 +68,7 @@ var handlers = container.GetAllByPriority<IMyHandler>();
 - `this.GetModelsByPriority<TModel>()`
 - `this.GetUtilitiesByPriority<TUtility>()`
 
-这比旧文档里反复出现的 `this.GetAllByPriority<T>()` 更贴近当前公开扩展方法。
+当前公开扩展方法就是按角色拆分的这些 API，而不是泛化的 `this.GetAllByPriority<T>()`。
 
 ## 最小接入示例
 

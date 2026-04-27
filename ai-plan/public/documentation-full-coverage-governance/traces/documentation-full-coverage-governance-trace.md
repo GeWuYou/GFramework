@@ -2,6 +2,36 @@
 
 ## 2026-04-27
 
+### 当前恢复点：RP-047
+
+- 第 2 批次提交 `2d2cd0c` 后，重新计算 branch diff 确认当前相对 `origin/main` 为 `13` files / `124` lines，仍然远低于 `$gframework-batch-boot 50` 的 stop condition。
+- 本轮最后继续接受两组同类低风险文案收口：`core/query.md`、`core/command.md`、`core/context.md`、`game/scene.md`、`godot/ui.md`、`source-generators/priority-generator.md`，以及 `core/lifecycle.md`、`game/ui.md`、`godot/scene.md`、`source-generators/context-aware-generator.md`。
+- 这 10 个页面的共同点是：把“旧文档/旧入口对比”句式改成直接陈述当前契约、默认入口或推荐做法，不引入结构改造，也不删掉真实的迁移边界信息。
+
+### 当前决策（RP-047）
+
+- 将第 3、4 批次合并为本轮最后一个提交，避免继续把批次拆得过碎，同时仍保持文件范围可审阅。
+- 本轮在这里停止，不是因为触达了 `50` 文件阈值，而是因为剩余命中已经从机械可收口的 reader-facing 文案问题，转成是否保留迁移信息或 README 交叉引用的编辑判断题。
+- 下一轮若继续，优先从剩余 `旧文档` / `README.md` / `先理解` 命中里做人工复核，而不是继续按关键词机械替换。
+
+### 当前验证（RP-047）
+
+- 页面校验：
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/core/query.md`
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/core/command.md`
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/core/context.md`
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/game/scene.md`
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/game/ui.md`
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/ui.md`
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/priority-generator.md`
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/core/lifecycle.md`
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/scene.md`
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/context-aware-generator.md`
+  - 结果：通过；本轮最后 10 个公开页面的 frontmatter、链接与代码块校验均通过。
+- 站点构建：
+  - `bun run build`（工作目录：`docs/`）
+  - 结果：通过；本轮 batch boot 第 3、4 批次的 10 个公开页面 reader-facing 收口后站点仍可构建，仅保留既有大 chunk warning。
+
 ### 当前恢复点：RP-046
 
 - 第 1 批次提交 `c56260b` 后，重新计算 branch diff 确认当前相对 `origin/main` 为 `7` files / `68` lines，仍远低于 `$gframework-batch-boot 50` 的 stop condition。
