@@ -218,19 +218,3 @@ public class ObjectExtensionsTests
         Assert.That(executed, Is.False);
     }
 }
-
-/// <summary>
-///     测试用的简单类
-/// </summary>
-public class TestClass
-{
-    /// <summary>
-    ///     获取或设置整数值
-    /// </summary>
-    public int Value { get; set; }
-
-    /// <summary>
-    ///     获取或设置名称字符串
-    /// </summary>
-    public string Name { get; set; } = string.Empty;
-}

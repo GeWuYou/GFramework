@@ -610,28 +610,3 @@ public class CoroutineSchedulerTests
         throw new InvalidOperationException("Test exception");
     }
 }
-
-/// <summary>
-///     测试用时间源类，实现ITimeSource接口
-/// </summary>
-public class TestTimeSource : ITimeSource
-{
-    /// <summary>
-    ///     获取当前时间
-    /// </summary>
-    public double CurrentTime { get; private set; }
-
-    /// <summary>
-    ///     获取时间增量
-    /// </summary>
-    public double DeltaTime { get; private set; }
-
-    /// <summary>
-    ///     更新时间源状态
-    /// </summary>
-    public void Update()
-    {
-        DeltaTime = 0.1;
-        CurrentTime += DeltaTime;
-    }
-}

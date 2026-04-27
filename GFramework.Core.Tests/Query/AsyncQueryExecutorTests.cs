@@ -1,5 +1,4 @@
 using GFramework.Core.Query;
-using GFramework.Cqrs.Abstractions.Cqrs.Query;
 
 namespace GFramework.Core.Tests.Query;
 
@@ -88,7 +87,7 @@ public class AsyncQueryExecutorTests
 
         Assert.That(result, Is.Not.Null);
         Assert.That(result.Value, Is.EqualTo(200));
-        Assert.That(result.DoubleValue, Is.EqualTo(300));
+        Assert.That(result.TripleValue, Is.EqualTo(300));
     }
 
     /// <summary>
@@ -136,160 +135,4 @@ public class AsyncQueryExecutorTests
         Assert.That(result1, Is.EqualTo(20));
         Assert.That(result2, Is.EqualTo(40));
     }
-}
-
-/// <summary>
-///     测试用异步查询输入类，实现IQueryInput接口
-/// </summary>
-public sealed class TestAsyncQueryInput : IQueryInput
-{
-    /// <summary>
-    ///     获取或设置查询值
-    /// </summary>
-    public int Value { get; init; }
-}
-
-/// <summary>
-///     整数类型测试异步查询类，继承AbstractAsyncQuery
-///     实现具体的异步查询逻辑并返回整数结果
-/// </summary>
-public sealed class TestAsyncQuery : AbstractAsyncQuery<TestAsyncQueryInput, int>
-{
-    /// <summary>
-    ///     初始化TestAsyncQuery的新实例
-    /// </summary>
-    /// <param name="input">查询输入参数</param>
-    public TestAsyncQuery(TestAsyncQueryInput input) : base(input)
-    {
-    }
-
-    /// <summary>
-    ///     执行异步查询操作的具体实现
-    /// </summary>
-    /// <param name="input">查询输入参数</param>
-    /// <returns>查询结果，将输入值乘以2</returns>
-    protected override Task<int> OnDoAsync(TestAsyncQueryInput input)
-    {
-        return Task.FromResult(input.Value * 2);
-    }
-}
-
-/// <summary>
-///     字符串类型测试异步查询类，继承AbstractAsyncQuery
-///     实现具体的异步查询逻辑并返回字符串结果
-/// </summary>
-public sealed class TestAsyncStringQuery : AbstractAsyncQuery<TestAsyncQueryInput, string>
-{
-    /// <summary>
-    ///     初始化TestAsyncStringQuery的新实例
-    /// </summary>
-    /// <param name="input">查询输入参数</param>
-    public TestAsyncStringQuery(TestAsyncQueryInput input) : base(input)
-    {
-    }
-
-    /// <summary>
-    ///     执行异步查询操作的具体实现
-    /// </summary>
-    /// <param name="input">查询输入参数</param>
-    /// <returns>格式化的字符串结果</returns>
-    protected override Task<string> OnDoAsync(TestAsyncQueryInput input)
-    {
-        return Task.FromResult($"Result: {input.Value * 2}");
-    }
-}
-
-/// <summary>
-///     布尔类型测试异步查询类，继承AbstractAsyncQuery
-///     实现具体的异步查询逻辑并返回布尔结果
-/// </summary>
-public sealed class TestAsyncBooleanQuery : AbstractAsyncQuery<TestAsyncQueryInput, bool>
-{
-    /// <summary>
-    ///     初始化TestAsyncBooleanQuery的新实例
-    /// </summary>
-    /// <param name="input">查询输入参数</param>
-    public TestAsyncBooleanQuery(TestAsyncQueryInput input) : base(input)
-    {
-    }
-
-    /// <summary>
-    ///     执行异步查询操作的具体实现
-    /// </summary>
-    /// <param name="input">查询输入参数</param>
-    /// <returns>如果值大于0返回true，否则返回false</returns>
-    protected override Task<bool> OnDoAsync(TestAsyncQueryInput input)
-    {
-        return Task.FromResult(input.Value > 0);
-    }
-}
-
-/// <summary>
-///     复杂对象类型测试异步查询类，继承AbstractAsyncQuery
-///     实现具体的异步查询逻辑并返回复杂对象结果
-/// </summary>
-public sealed class TestAsyncComplexQuery : AbstractAsyncQuery<TestAsyncQueryInput, TestAsyncQueryResult>
-{
-    /// <summary>
-    ///     初始化TestAsyncComplexQuery的新实例
-    /// </summary>
-    /// <param name="input">查询输入参数</param>
-    public TestAsyncComplexQuery(TestAsyncQueryInput input) : base(input)
-    {
-    }
-
-    /// <summary>
-    ///     执行异步查询操作的具体实现
-    /// </summary>
-    /// <param name="input">查询输入参数</param>
-    /// <returns>复杂对象查询结果</returns>
-    protected override Task<TestAsyncQueryResult> OnDoAsync(TestAsyncQueryInput input)
-    {
-        var result = new TestAsyncQueryResult
-        {
-            Value = input.Value * 2,
-            DoubleValue = input.Value * 3
-        };
-        return Task.FromResult(result);
-    }
-}
-
-/// <summary>
-///     测试用异步查询类（抛出异常）
-/// </summary>
-public sealed class TestAsyncQueryWithException : AbstractAsyncQuery<TestAsyncQueryInput, int>
-{
-    /// <summary>
-    ///     初始化TestAsyncQueryWithException的新实例
-    /// </summary>
-    /// <param name="input">查询输入参数</param>
-    public TestAsyncQueryWithException(TestAsyncQueryInput input) : base(input)
-    {
-    }
-
-    /// <summary>
-    ///     执行异步查询操作并抛出异常
-    /// </summary>
-    /// <param name="input">查询输入参数</param>
-    /// <exception cref="InvalidOperationException">总是抛出异常</exception>
-    protected override Task<int> OnDoAsync(TestAsyncQueryInput input)
-    {
-        throw new InvalidOperationException("Test exception");
-    }
-}
-
-/// <summary>
-///     测试用复杂查询结果类
-/// </summary>
-public sealed class TestAsyncQueryResult
-{
-    /// <summary>
-    ///     获取或设置值
-    /// </summary>
-    public int Value { get; init; }
-
-    /// <summary>
-    ///     获取或设置双倍值
-    /// </summary>
-    public int DoubleValue { get; init; }
 }

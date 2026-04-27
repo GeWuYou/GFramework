@@ -99,29 +99,3 @@ public class ContextAwareTests
         Assert.DoesNotThrow(() => aware.GetContext());
     }
 }
-
-/// <summary>
-///     用于测试的 ContextAware 实现类
-///     继承自 ContextAwareBase，提供公共访问的上下文属性和回调状态跟踪
-/// </summary>
-public class TestContextAware : ContextAwareBase
-{
-    /// <summary>
-    ///     获取内部上下文的公共访问属性
-    /// </summary>
-    public IArchitectureContext? PublicContext => Context;
-
-    /// <summary>
-    ///     跟踪 OnContextReady 方法是否被调用的状态
-    /// </summary>
-    public bool OnContextReadyCalled { get; private set; }
-
-    /// <summary>
-    ///     重写上下文就绪回调方法
-    ///     设置 OnContextReadyCalled 标志为 true，用于测试验证
-    /// </summary>
-    protected override void OnContextReady()
-    {
-        OnContextReadyCalled = true;
-    }
-}

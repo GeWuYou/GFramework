@@ -1,4 +1,3 @@
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Abstractions.Utility;
 using GFramework.Core.Architectures;
@@ -199,96 +198,12 @@ public class AbstractContextUtilityTests
         Assert.That(utility.Destroyed, Is.True);
 
         // 重置状态
-        utility.Destroyed = false;
+        utility.ResetDestroyedStateForTest();
 
         // 第二次初始化和销毁
         utility.Initialize();
         Assert.That(utility.Initialized, Is.True);
         utility.Destroy();
         Assert.That(utility.Destroyed, Is.True);
-    }
-}
-
-/// <summary>
-///     测试用上下文工具类V1
-/// </summary>
-public sealed class TestContextUtilityV1 : AbstractContextUtility
-{
-    /// <summary>
-    ///     获取工具是否已初始化
-    /// </summary>
-    public bool Initialized { get; private set; }
-
-    /// <summary>
-    ///     获取工具是否已销毁
-    /// </summary>
-    public bool Destroyed { get; set; }
-
-    /// <summary>
-    ///     获取Init方法是否被调用
-    /// </summary>
-    public bool InitCalled { get; private set; }
-
-    /// <summary>
-    ///     获取Logger对象（用于测试）
-    /// </summary>
-    public ILogger? GetLogger()
-    {
-        return Logger;
-    }
-
-    /// <summary>
-    ///     初始化方法
-    /// </summary>
-    protected override void OnInit()
-    {
-        Initialized = true;
-        InitCalled = true;
-    }
-
-    /// <summary>
-    ///     销毁方法
-    /// </summary>
-    protected override void OnDestroy()
-    {
-        Destroyed = true;
-    }
-}
-
-/// <summary>
-///     测试用上下文工具类V2，自定义初始化逻辑
-/// </summary>
-public sealed class TestContextUtilityV2 : AbstractContextUtility
-{
-    /// <summary>
-    ///     获取工具是否已初始化
-    /// </summary>
-    public bool Initialized { get; private set; }
-
-    /// <summary>
-    ///     获取工具是否已销毁
-    /// </summary>
-    public bool Destroyed { get; set; }
-
-    /// <summary>
-    ///     获取自定义初始化是否完成
-    /// </summary>
-    public bool CustomInitializationDone { get; private set; }
-
-    /// <summary>
-    ///     初始化方法（自定义逻辑）
-    /// </summary>
-    protected override void OnInit()
-    {
-        Initialized = true;
-        CustomInitializationDone = true;
-    }
-
-    /// <summary>
-    ///     销毁方法
-    /// </summary>
-    protected override void OnDestroy()
-    {
-        Destroyed = true;
     }
 }

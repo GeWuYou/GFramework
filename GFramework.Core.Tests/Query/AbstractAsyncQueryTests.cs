@@ -212,7 +212,7 @@ public class AbstractAsyncQueryTests
 
         Assert.That(result, Is.Not.Null);
         Assert.That(result.Value, Is.EqualTo(20));
-        Assert.That(result.DoubleValue, Is.EqualTo(30));
+        Assert.That(result.TripleValue, Is.EqualTo(30));
     }
 
     /// <summary>

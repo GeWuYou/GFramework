@@ -1,5 +1,3 @@
-using GFramework.Core.Abstractions.Pool;
-using GFramework.Core.Pool;
 using NUnit.Framework;
 
 namespace GFramework.Core.Tests.Pool;
@@ -283,83 +281,5 @@ public class ObjectPoolTests
         // Assert
         Assert.That(_pool.GetActiveCount("key1"), Is.EqualTo(1));
         Assert.That(_pool.GetActiveCount("key2"), Is.EqualTo(0));
-    }
-}
-
-/// <summary>
-///     测试用对象池实现类，继承自AbstractObjectPoolSystem
-/// </summary>
-public class TestObjectPool : AbstractObjectPoolSystem<string, TestPoolableObject>
-{
-    /// <summary>
-    ///     创建新的池化对象
-    /// </summary>
-    /// <param name="key">用于标识对象的键</param>
-    /// <returns>新创建的TestPoolableObject实例</returns>
-    protected override TestPoolableObject Create(string key)
-    {
-        return new TestPoolableObject { PoolKey = key };
-    }
-
-    /// <summary>
-    ///     初始化方法，用于对象池初始化时的操作
-    /// </summary>
-    protected override void OnInit()
-    {
-    }
-}
-
-/// <summary>
-///     测试用池化对象类，实现了IPoolableObject接口
-/// </summary>
-public class TestPoolableObject : IPoolableObject
-{
-    /// <summary>
-    ///     获取或设置对象的池键
-    /// </summary>
-    public string PoolKey { get; set; } = string.Empty;
-
-    /// <summary>
-    ///     获取或设置测试用的整数值
-    /// </summary>
-    public int TestValue { get; set; }
-
-    /// <summary>
-    ///     获取或设置OnAcquire方法是否被调用的标志
-    /// </summary>
-    public bool OnAcquireCalled { get; set; }
-
-    /// <summary>
-    ///     获取或设置OnRelease方法是否被调用的标志
-    /// </summary>
-    public bool OnReleaseCalled { get; set; }
-
-    /// <summary>
-    ///     获取或设置OnPoolDestroy方法是否被调用的标志
-    /// </summary>
-    public bool OnPoolDestroyCalled { get; set; }
-
-    /// <summary>
-    ///     对象被获取时的回调方法
-    /// </summary>
-    public void OnAcquire()
-    {
-        OnAcquireCalled = true;
-    }
-
-    /// <summary>
-    ///     对象被释放时的回调方法
-    /// </summary>
-    public void OnRelease()
-    {
-        OnReleaseCalled = true;
-    }
-
-    /// <summary>
-    ///     对象被销毁时的回调方法
-    /// </summary>
-    public void OnPoolDestroy()
-    {
-        OnPoolDestroyCalled = true;
     }
 }

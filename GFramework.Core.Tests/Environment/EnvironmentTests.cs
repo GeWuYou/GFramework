@@ -49,7 +49,7 @@ public class EnvironmentTests
     [Test]
     public void Get_Should_Return_Value_When_Key_Exists()
     {
-        _environment.Register("testKey", "testValue");
+        _environment.RegisterForTest("testKey", "testValue");
 
         var result = _environment.Get<string>("testKey");
 
@@ -73,7 +73,7 @@ public class EnvironmentTests
     [Test]
     public void Get_Should_ReturnNull_When_Type_Does_Not_Match()
     {
-        _environment.Register("testKey", "testValue");
+        _environment.RegisterForTest("testKey", "testValue");
 
         var result = _environment.Get<List<int>>("testKey");
 
@@ -86,7 +86,7 @@ public class EnvironmentTests
     [Test]
     public void TryGet_Should_ReturnTrue_And_Value_When_Key_Exists()
     {
-        _environment.Register("testKey", "testValue");
+        _environment.RegisterForTest("testKey", "testValue");
 
         var result = _environment.TryGet<string>("testKey", out var value);
 
@@ -112,7 +112,7 @@ public class EnvironmentTests
     [Test]
     public void TryGet_Should_ReturnFalse_When_Type_Does_Not_Match()
     {
-        _environment.Register("testKey", "testValue");
+        _environment.RegisterForTest("testKey", "testValue");
 
         var result = _environment.TryGet<List<int>>("testKey", out var value);
 
@@ -126,7 +126,7 @@ public class EnvironmentTests
     [Test]
     public void GetRequired_Should_Return_Value_When_Key_Exists()
     {
-        _environment.Register("testKey", "testValue");
+        _environment.RegisterForTest("testKey", "testValue");
 
         var result = _environment.GetRequired<string>("testKey");
 
@@ -149,7 +149,7 @@ public class EnvironmentTests
     [Test]
     public void Register_Should_Add_Value_To_Dictionary()
     {
-        _environment.Register("newKey", "newValue");
+        _environment.RegisterForTest("newKey", "newValue");
 
         var result = _environment.Get<string>("newKey");
 
@@ -162,8 +162,8 @@ public class EnvironmentTests
     [Test]
     public void Register_Should_Overwrite_Existing_Value()
     {
-        _environment.Register("testKey", "value1");
-        _environment.Register("testKey", "value2");
+        _environment.RegisterForTest("testKey", "value1");
+        _environment.RegisterForTest("testKey", "value2");
 
         var result = _environment.Get<string>("testKey");
 
@@ -182,33 +182,5 @@ public class EnvironmentTests
         var result = env.Get<string>("interfaceKey");
 
         Assert.That(result, Is.EqualTo("interfaceValue"));
-    }
-}
-
-/// <summary>
-///     测试环境实现类，继承自EnvironmentBase
-/// </summary>
-public class TestEnvironment : EnvironmentBase
-{
-    /// <summary>
-    ///     获取环境名称
-    /// </summary>
-    public override string Name { get; } = "TestEnvironment";
-
-    /// <summary>
-    ///     注册键值对到环境中
-    /// </summary>
-    /// <param name="key">要注册的键</param>
-    /// <param name="value">要注册的值</param>
-    public new void Register(string key, object value)
-    {
-        base.Register(key, value);
-    }
-
-    /// <summary>
-    ///     初始化环境
-    /// </summary>
-    public override void Initialize()
-    {
     }
 }

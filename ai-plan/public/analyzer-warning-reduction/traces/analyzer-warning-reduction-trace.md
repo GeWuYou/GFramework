@@ -1,5 +1,73 @@
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-27 — RP-086
+
+### 阶段：收敛 PR #298 的 CodeRabbit nitpick follow-up
+
+- 触发背景：
+  - 用户再次执行 `$gframework-pr-review` 后，要求按 `PR #298` 的 nitpick comments 收敛仍然适用的问题
+  - 复核 PR 真值后确认当前分支无 failed checks、无 open review threads，但仍有一批测试辅助类型的可维护性 nitpick 值得本地落地
+- 主线程实施：
+  - 校验 `TestStateMachineSystemV5`、`ComplexQuery`、`TrackingPipelineBehavior`、`TestEnvironment`、`TestContextUtilityV1/V2` 等改动后，分别修复可变内部状态暴露、`_context!` 空抑制、静态计数器非原子递增、`new Register(...)` 测试辅助入口和生命周期标记公开 setter 问题
+  - 统一更新 `TestQueryV2`、`TestCommandWithResultV2`、`TestAsyncQueryInput`、`TestAsyncQueryResult*` 的 XML 文档，使 `init` 属性语义与文档一致
+  - 将三倍结果属性从 `DoubleValue` 更名为 `TripleValue`，同步更新 `TestAsyncComplexQuery*` 与相关断言，避免名称与 `* 3` 的行为不一致
+  - 精简 active tracking，移除重复的 `GFramework.Core.Tests` Release build 记录，并把该项目的当前真值修正为 `28 Warning(s)`
+- 验证里程碑：
+  - `dotnet build GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release`
+    - 结果：成功；`28 Warning(s)`、`0 Error(s)`
+  - `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --no-build`
+    - 结果：成功；`1610` 通过、`0` 失败
+- 当前结论：
+  - `PR #298` 中仍然适用的低风险 nitpick 已完成收敛，且没有为当前 touched files 引入新的构建 warning 或测试回归
+  - `GFramework.Core.Tests` 的剩余 warning 仍集中在 `GameContextTests.cs`、`ArchitectureServicesTests.cs`、`RegistryInitializationHookBaseTests.cs` 等既有热点，不属于本轮 nitpick follow-up 新引入问题
+- 下一步：
+  1. 提交本轮 `PR #298` nitpick follow-up 与 `ai-plan` 同步。
+  2. 回到 `GameContextTests.cs` / `ArchitectureServicesTests.cs` 的 `CS8766` warning reduction 主线。
+
+## 2026-04-27 — RP-085
+
+### 阶段：按 `$gframework-batch-boot 100` 并行消化 `GFramework.Core.Tests` 低风险 `MA0048`
+
+- 触发背景：
+  - 用户要求以仓库根 non-incremental 构建 warning 为准，并在上下文可控前提下把小切片分派给多个 subagent 并行处理
+  - 本轮开始时，当前分支与 `origin/main@7cfdd2c` 无提交差异，适合从纯 `MA0048` 单文件切片起步
+- 主线程实施：
+  - 执行权威基线：`dotnet clean` + 仓库根 `dotnet build`
+    - 初始结果：`353 Warning(s)`、唯一位点 `279`
+  - 分四波次并行下发 `GFramework.Core.Tests` 小切片，累计完成 `20+` 个文件的测试辅助类型拆分
+  - 主线程持续复核共享工作树、处理并发编译阻断，并在每一轮后复跑 `GFramework.Core.Tests` Release 构建
+  - 在工作树达到 `61` 个变更条目时主动停止扩批，保留对 `100` 文件停止线的充分余量
+- 代表性已落地切片：
+  - `ArchitectureContextTests.cs`
+  - `AsyncQueryExecutorTests.cs`
+  - `CommandExecutorTests.cs`
+  - `StateTests.cs`
+  - `StateMachineTests.cs`
+  - `StateMachineSystemTests.cs`
+  - `ArchitectureModulesBehaviorTests.cs`
+  - `ArchitectureAdditionalCqrsHandlersTests.cs`
+  - `QueryCoroutineExtensionsTests.cs`
+  - `ObjectPoolTests.cs`
+  - `AbstractContextUtilityTests.cs`
+  - `EnvironmentTests.cs`
+  - `EventBusTests.cs`
+  - `ContextAwareTests.cs`
+- 验证里程碑：
+  - `dotnet build GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release`
+    - 结果：成功；`0 Warning(s)`、`0 Error(s)`
+  - `dotnet clean`
+    - 结果：成功
+  - `dotnet build`
+    - 结果：成功；`288 Warning(s)`、`0 Error(s)`，唯一位点 `214`
+- 当前结论：
+  - 本轮主要收益来自 `GFramework.Core.Tests` 内的纯 `MA0048` 大范围收敛
+  - 仓库根权威 warning 已从 `353` 降到 `288`，唯一位点从 `279` 降到 `214`
+  - 下一波不再适合继续盲目平铺纯拆分，因为剩余 `GFramework.Core.Tests` 热点已开始混入 `CS8766` / `MA0016`
+- 下一步：
+  1. 提交本轮 warning reduction 与 `ai-plan` 同步。
+  2. 下一波优先由主线程处理 `GameContextTests.cs` / `ArchitectureServicesTests.cs` 的混合 warning。
+  3. 保持 `YamlConfigSchemaValidator*` 与 `GFramework.Cqrs.Tests/Mediator/*` 为独立高风险波次。
+
 ## 2026-04-27 — RP-084
 
 ### 阶段：收敛 PR #297 的 CodeRabbit follow-up

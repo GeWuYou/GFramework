@@ -1,5 +1,4 @@
 using GFramework.Core.Query;
-using GFramework.Cqrs.Abstractions.Cqrs.Query;
 
 namespace GFramework.Core.Tests.Query;
 
@@ -58,67 +57,5 @@ public class QueryExecutorTests
         var result = _queryExecutor.Send(query);
 
         Assert.That(result, Is.EqualTo("Result: 10"));
-    }
-}
-
-/// <summary>
-///     测试用查询输入类，实现IQueryInput接口
-///     用于传递查询所需的参数信息
-/// </summary>
-public sealed class TestQueryInput : IQueryInput
-{
-    /// <summary>
-    ///     获取或设置查询值
-    /// </summary>
-    public int Value { get; init; }
-}
-
-/// <summary>
-///     整数类型测试查询类，继承自AbstractQuery
-///     实现具体的查询逻辑并返回整数结果
-/// </summary>
-public sealed class TestQuery : AbstractQuery<TestQueryInput, int>
-{
-    /// <summary>
-    ///     初始化TestQuery的新实例
-    /// </summary>
-    /// <param name="input">查询输入参数</param>
-    public TestQuery(TestQueryInput input) : base(input)
-    {
-    }
-
-    /// <summary>
-    ///     执行查询操作的具体实现
-    /// </summary>
-    /// <param name="input">查询输入参数</param>
-    /// <returns>查询结果，将输入值乘以2</returns>
-    protected override int OnDo(TestQueryInput input)
-    {
-        return input.Value * 2;
-    }
-}
-
-/// <summary>
-///     字符串类型测试查询类，继承自AbstractQuery
-///     实现具体的查询逻辑并返回字符串结果
-/// </summary>
-public sealed class TestStringQuery : AbstractQuery<TestQueryInput, string>
-{
-    /// <summary>
-    ///     初始化TestStringQuery的新实例
-    /// </summary>
-    /// <param name="input">查询输入参数</param>
-    public TestStringQuery(TestQueryInput input) : base(input)
-    {
-    }
-
-    /// <summary>
-    ///     执行查询操作的具体实现
-    /// </summary>
-    /// <param name="input">查询输入参数</param>
-    /// <returns>格式化的字符串结果</returns>
-    protected override string OnDo(TestQueryInput input)
-    {
-        return $"Result: {input.Value * 2}";
     }
 }

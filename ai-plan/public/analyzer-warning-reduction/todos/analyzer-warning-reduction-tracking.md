@@ -6,21 +6,28 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-084`
-- 当前阶段：`Phase 84`
+- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-086`
+- 当前阶段：`Phase 86`
 - 当前焦点：
-  - `2026-04-27` 已完成 PR `#297` 的 CodeRabbit follow-up，修复 `YamlConfigLoader` 的取消语义与 `IntegerTryParseDelegate` 可空性问题
-  - 已补齐 `GFramework.Core.Tests/Ioc` 与 `GFramework.Core.Tests/Query` 中 review 指向的 XML 文档缺口，并让 `IPrioritizedService` 复用 `IMixedService.Name` 契约
-  - 已新增 `YamlConfigLoaderTests` 回归测试，锁定“取消时保留 `OperationCanceledException`”这一行为
-  - 当前分支的下一波 warning reduction 仍建议回到 `ArchitectureContextTests.cs`、`AsyncQueryExecutorTests.cs` 或 `YamlConfigSchemaValidator*` 的后续 slice
+  - `2026-04-27` 已按 `$gframework-batch-boot 100` 连续执行多波 `MA0048` 小切片，当前以 `GFramework.Core.Tests` 的测试辅助类型拆分为主
+  - `2026-04-27` 已按 `$gframework-pr-review` 收敛 `PR #298` 的有效 nitpick，修复测试辅助类型的只读暴露、线程安全、空安全与文档一致性问题
+  - 本轮已完成 `ArchitectureContextTests`、`AsyncQueryExecutorTests`、`CommandExecutorTests`、`StateTests`、`StateMachineTests`、`StateMachineSystemTests`、`ArchitectureModulesBehaviorTests`、`ArchitectureAdditionalCqrsHandlersTests`、`QueryCoroutineExtensionsTests`、`ObjectPoolTests`、`AbstractContextUtilityTests` 等低风险单文件切片
+  - 当前仓库根权威基线已从 `353 Warning(s)` / `279` 个唯一位点下降到 `288 Warning(s)` / `214` 个唯一位点
+  - 当前分支下一波更适合转向 `GameContextTests.cs`、`ArchitectureServicesTests.cs`、`RegistryInitializationHookBaseTests.cs` 这类仍在 `GFramework.Core.Tests` 内、但已混入 `CS8766` / `MA0016` 的小型混合切片
 
 ## 当前活跃事实
 
-- 当前 `origin/main` 基线提交为 `b6a9fef`（`2026-04-27T10:53:34+08:00`）。
+- 当前 `origin/main` 基线提交为 `7cfdd2c`（`2026-04-27T16:59:57+08:00`）。
 - 当前直接验证结果：
-  - `dotnet build GFramework.Game/GFramework.Game.csproj -c Release`
-    - 最新结果：成功；`0 Warning(s)`、`0 Error(s)`
   - `dotnet build GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release`
+    - 最新结果：成功；`28 Warning(s)`、`0 Error(s)`；当前 warning 来自 `GameContextTests.cs`、`ArchitectureServicesTests.cs`、`RegistryInitializationHookBaseTests.cs` 等既有热点
+  - `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --no-build`
+    - 最新结果：成功；`1610` 通过、`0` 失败
+  - `dotnet clean`
+    - 最新结果：成功；已刷新仓库根 non-incremental 基线
+  - `dotnet build`
+    - 最新结果：成功；`288 Warning(s)`、`0 Error(s)`，唯一位点 `214`
+  - `dotnet build GFramework.Game/GFramework.Game.csproj -c Release`
     - 最新结果：成功；`0 Warning(s)`、`0 Error(s)`
   - `dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --filter "FullyQualifiedName~YamlConfigLoaderTests.ReadYamlAsync_Should_Preserve_OperationCanceledException_When_Cancellation_Is_Requested"`
     - 最新结果：成功；`1` 通过、`0` 失败
@@ -29,18 +36,21 @@
   - `dotnet format GFramework.sln --verify-no-changes --include GFramework.Game/Config/YamlConfigLoader.cs GFramework.Game.Tests/Config/YamlConfigLoaderTests.cs GFramework.Core.Tests/Ioc/IMixedService.cs GFramework.Core.Tests/Ioc/IPrioritizedService.cs GFramework.Core.Tests/Ioc/PrioritizedService.cs GFramework.Core.Tests/Query/TestAsyncQueryWithExceptionV4.cs`
     - 最新结果：成功；本次 PR follow-up 改动文件无需额外格式化
 - 当前批次摘要：
-  - 本轮完成 PR `#297` 最新 head review 中仍然有效的 `3` 个 open threads 修复：`YamlConfigLoader` 取消语义、`IMixedService.Name` XML 文档、`IPrioritizedService` 相关契约整理
-  - 本轮同时吸收 CodeRabbit folded nitpick 中仍然成立的 `2` 个点：`IntegerTryParseDelegate` 可空性对齐、`TestAsyncQueryWithExceptionV4.OnDoAsync` 的 `<returns>` 文档
-  - 本轮新增一条精确回归测试，确保底层 YAML 文件读取在取消时继续抛出 `OperationCanceledException` 系列异常，而不是包装成 `ConfigLoadException`
+  - 本轮通过多批并行 worker 共完成 `20+` 个 `GFramework.Core.Tests` 文件的测试辅助类型拆分，集中消化纯 `MA0048` warning 热点
+  - 本轮停止时共享工作树共有 `61` 个变更条目，仍低于 `$gframework-batch-boot 100` 的文件停止线
+  - 本轮仓库根权威 warning 已从开始时的 `353` 下降到 `288`，且 `GFramework.Core.Tests` 受影响项目的 Release 构建已恢复到 `0 Warning(s)` / `0 Error(s)`
 - 当前建议保留到下一波次的候选：
-  - `GFramework.Core.Tests/Architectures/ArchitectureContextTests.cs` 的 `7` 个 `MA0048`
-  - `GFramework.Core.Tests/Query/AsyncQueryExecutorTests.cs` 的 `7` 个 `MA0048`
+  - `GFramework.Core.Tests/Architectures/GameContextTests.cs` 的 `4` 个 `CS8766` 与 `2` 个 `MA0048`
+  - `GFramework.Core.Tests/Architectures/ArchitectureServicesTests.cs` 的 `4` 个 `CS8766` 与 `1` 个 `MA0048`
+  - `GFramework.Core.Tests/Architectures/RegistryInitializationHookBaseTests.cs` 的 `1` 个 `MA0016` 与 `5` 个 `MA0048`
   - `GFramework.Game/Config/YamlConfigSchemaValidator.cs` 与 `YamlConfigSchemaValidator.ObjectKeywords.cs` 的高耦合 warning 热点
 
 ## 当前风险
 
 - `GFramework.Cqrs.Tests/Mediator/*` 仍有 `47` / `44` / `34` 个唯一 warning 位点，属于高 changed-file 风险的 `MA0048` 大波次。
   - 缓解措施：优先继续处理 `6-7` 个 warning 的小文件切片，避免一次性推高文件数。
+- `GameContextTests.cs`、`ArchitectureServicesTests.cs` 这类混合 `CS8766` / `MA0048` 文件不再适合继续用“纯拆分”模式批量下发。
+  - 缓解措施：下一波由主线程先局部修正可空签名，再决定是否继续并行拆分。
 - `YamlConfigSchemaValidator*` 仍然聚集多类高耦合 warning。
   - 缓解措施：继续把它们留在独立波次，不与测试项目的低风险拆分混提。
 
@@ -67,6 +77,6 @@
 
 ## 下一步建议
 
-1. 提交本轮 PR `#297` review follow-up 与 `ai-plan` 同步。
-2. 下一波优先挑选 `ArchitectureContextTests.cs` 或 `AsyncQueryExecutorTests.cs` 这类 `7`-warning 的纯 `MA0048` 单文件切片。
+1. 提交本轮多批 `MA0048` warning reduction 与 `ai-plan` 同步。
+2. 下一波由主线程先处理 `GameContextTests.cs` / `ArchitectureServicesTests.cs` 的 `CS8766`，再决定是否继续拆分剩余 `MA0048`。
 3. 继续将 `YamlConfigSchemaValidator*` 与 `GFramework.Cqrs.Tests/Mediator/*` 作为独立高风险波次处理。
