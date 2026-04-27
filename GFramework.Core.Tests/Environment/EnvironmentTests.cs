@@ -184,31 +184,3 @@ public class EnvironmentTests
         Assert.That(result, Is.EqualTo("interfaceValue"));
     }
 }
-
-/// <summary>
-///     测试环境实现类，继承自EnvironmentBase
-/// </summary>
-public class TestEnvironment : EnvironmentBase
-{
-    /// <summary>
-    ///     获取环境名称
-    /// </summary>
-    public override string Name { get; } = "TestEnvironment";
-
-    /// <summary>
-    ///     注册键值对到环境中
-    /// </summary>
-    /// <param name="key">要注册的键</param>
-    /// <param name="value">要注册的值</param>
-    public new void Register(string key, object value)
-    {
-        base.Register(key, value);
-    }
-
-    /// <summary>
-    ///     初始化环境
-    /// </summary>
-    public override void Initialize()
-    {
-    }
-}

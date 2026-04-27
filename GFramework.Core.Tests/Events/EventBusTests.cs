@@ -76,10 +76,3 @@ public class EventBusTests
         Assert.That(count2, Is.EqualTo(1));
     }
 }
-
-/// <summary>
-///     EventBus测试专用事件类
-/// </summary>
-public class EventBusTestsEvent
-{
-}
