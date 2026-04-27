@@ -1,4 +1,3 @@
-using GFramework.Core.Abstractions.Events;
 using GFramework.Core.Events;
 using GFramework.Core.Extensions;
 using NUnit.Framework;
@@ -118,15 +117,4 @@ public class UnRegisterListExtensionTests
 
         Assert.That(callCount, Is.EqualTo(1));
     }
-}
-
-/// <summary>
-///     测试用的UnRegisterList实现类，用于验证扩展方法功能
-/// </summary>
-public class TestUnRegisterList : IUnRegisterList
-{
-    /// <summary>
-    ///     获取或设置注销列表
-    /// </summary>
-    public IList<IUnRegister> UnregisterList { get; } = new List<IUnRegister>();
 }
