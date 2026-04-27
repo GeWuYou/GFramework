@@ -62,6 +62,7 @@ The script should produce:
 - Pre-merge failed checks, if present
 - Latest MegaLinter status and any detailed issues posted by `github-actions[bot]`
 - Test summary, including failed-test signals when present
+- Detailed failed-test rows from GitHub Test Reporter / CTRF comments when the PR comment includes `Name` / `Failure Message` content
 - CLI support for writing full JSON to a file and printing only narrowed text sections to stdout
 - Parse warnings only when both the primary API source and the intended fallback signal are unavailable
 

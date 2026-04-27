@@ -257,6 +257,11 @@ def strip_markdown_links(text: str) -> str:
     return re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
 
 
+def strip_markdown_images(text: str) -> str:
+    """Drop Markdown image syntax while keeping surrounding text readable."""
+    return re.sub(r"!\[[^\]]*\]\([^)]+\)", "", text)
+
+
 def extract_section(text: str, start_marker: str, end_markers: list[str]) -> str | None:
     """Extract text between a start marker and the earliest matching end marker."""
     start = text.find(start_marker)
@@ -486,43 +491,190 @@ def parse_megalinter_comment(comment_body: str) -> dict[str, Any]:
     return report
 
 
+def clean_markdown_table_cell(text: str) -> str:
+    """Normalize a Markdown table cell for structured parsing."""
+    cleaned = strip_markdown_images(strip_markdown_links(html.unescape(text)))
+    cleaned = cleaned.replace("\xa0", " ")
+    cleaned = cleaned.replace("**", "").replace("*", "").replace("`", "")
+    return collapse_whitespace(cleaned)
+
+
+def parse_int_from_text(text: str) -> int | None:
+    """Extract the first integer value from text."""
+    match = re.search(r"\d+", text)
+    return int(match.group(0)) if match else None
+
+
+def parse_duration_from_text(text: str) -> str:
+    """Extract a duration token from text when present."""
+    match = re.search(r"\d+(?:\.\d+)?(?:ms|s|m|h)", text)
+    if match is not None:
+        return match.group(0)
+
+    return collapse_whitespace(text)
+
+
+def parse_markdown_table(table_text: str) -> tuple[list[str], list[list[str]]]:
+    """Parse a Markdown table into header cells and row cells."""
+    lines = [line.strip() for line in table_text.splitlines() if line.strip().startswith("|")]
+    if len(lines) < 2:
+        return [], []
+
+    headers = [clean_markdown_table_cell(cell) for cell in lines[0].strip("|").split("|")]
+    rows: list[list[str]] = []
+    for line in lines[2:]:
+        cells = [clean_markdown_table_cell(cell) for cell in line.strip("|").split("|")]
+        if cells:
+            rows.append(cells)
+
+    return headers, rows
+
+
+def extract_markdown_table_after_heading(block: str, heading: str) -> tuple[list[str], list[list[str]]]:
+    """Extract the first Markdown table that appears after a heading."""
+    section = extract_section(block, heading, ["\n### ", "\n#### ", "\n<details>", "\n<table>", "\n<sub>"])
+    if section is None:
+        return [], []
+
+    table_match = re.search(r"(\|.*\|\n\|[-| :]+\|\n(?:\|.*\|\n?)*)", section, re.S)
+    if table_match is None:
+        return [], []
+
+    return parse_markdown_table(table_match.group(1))
+
+
+def normalize_stat_header(header: str) -> str:
+    """Normalize a human-readable stats header into a stable machine key."""
+    ascii_only = re.sub(r"[^A-Za-z]+", "", header).lower()
+    aliases = {
+        "tests": "tests",
+        "passed": "passed",
+        "failed": "failed",
+        "skipped": "skipped",
+        "pending": "pending",
+        "other": "other",
+        "flaky": "flaky",
+        "duration": "duration",
+    }
+    return aliases.get(ascii_only, ascii_only)
+
+
+def parse_stats_table(headers: list[str], rows: list[list[str]]) -> dict[str, Any]:
+    """Convert a parsed Markdown stats table into the report stats shape."""
+    if not headers or not rows:
+        return {}
+
+    first_row = rows[0]
+    stats: dict[str, Any] = {}
+    for header, value in zip(headers, first_row):
+        key = normalize_stat_header(header)
+        if not key:
+            continue
+
+        if key == "duration":
+            stats[key] = parse_duration_from_text(value)
+            continue
+
+        parsed_value = parse_int_from_text(value)
+        if parsed_value is not None:
+            stats[key] = parsed_value
+
+    return stats
+
+
+def normalize_failure_message(text: str) -> str:
+    """Normalize a failed-test message while preserving the meaningful lines."""
+    cleaned = html.unescape(text)
+    cleaned = re.sub(r"(?i)<br\s*/?>", "\n", cleaned)
+    cleaned = re.sub(r"</?(?:p|div|tbody|thead|tr|td|th|table)>", "\n", cleaned)
+    cleaned = re.sub(r"<[^>]+>", " ", cleaned)
+    lines = [collapse_whitespace(line) for line in cleaned.splitlines()]
+    meaningful_lines = [line for line in lines if line]
+    return "\n".join(meaningful_lines)
+
+
+def parse_failed_test_summary_list(block: str) -> list[str]:
+    """Parse the compact failed-tests summary list from CTRF details blocks."""
+    failed_tests_section = re.search(
+        r"<details><summary><strong>\s*Failed Tests.*?</summary>(?P<body>.*?)</details>",
+        block,
+        re.S,
+    )
+    if failed_tests_section is None:
+        return []
+
+    summary_body = strip_markdown_links(strip_markdown_images(html.unescape(failed_tests_section.group("body"))))
+    failed_tests: list[str] = []
+    for raw_line in summary_body.splitlines():
+        line = collapse_whitespace(raw_line)
+        if not line:
+            continue
+
+        if "arrow-right" in raw_line:
+            parts = [part.strip() for part in line.split("arrow-right") if part.strip()]
+            candidate = parts[-1] if parts else line
+        elif ">" in line:
+            candidate = line.split(">")[-1].strip()
+        else:
+            candidate = line
+
+        if candidate:
+            failed_tests.append(candidate)
+
+    return failed_tests
+
+
+def parse_failed_test_details(block: str) -> list[dict[str, str]]:
+    """Parse the detailed failed-test HTML table from GitHub Test Reporter comments."""
+    details: list[dict[str, str]] = []
+    table_section = re.search(
+        r"### ❌ \*\*Some tests failed!\*\*.*?<tbody>(?P<body>.*?)</tbody>",
+        block,
+        re.S,
+    )
+    if table_section is None:
+        return details
+
+    for name_cell, message_cell in re.findall(r"<tr>\s*<td>(.*?)</td>\s*<td>(.*?)</td>\s*</tr>", table_section.group("body"), re.S):
+        name = collapse_whitespace(strip_tags(html.unescape(name_cell))).lstrip("❌").strip()
+        failure_message = normalize_failure_message(message_cell)
+        if name:
+            details.append(
+                {
+                    "name": name,
+                    "failure_message": failure_message,
+                }
+            )
+
+    return details
+
+
 def parse_test_report(block: str) -> dict[str, Any]:
     """Parse a CTRF or GitHub test-reporter comment block."""
     report: dict[str, Any] = {
         "raw": block.strip(),
         "stats": {},
         "failed_tests": [],
+        "failed_test_details": [],
         "has_failed_tests": False,
     }
 
-    summary_row_match = re.search(
-        r"\|\s*\*?\*?(\d+)\*?\*?\s*\|\s*\*?\*?(\d+)\*?\*?\s*\|\s*\*?\*?(\d+)\*?\*?\s*\|"
-        r"\s*\*?\*?(\d+)\*?\*?\s*\|\s*\*?\*?(\d+)\*?\*?\s*\|\s*\*?\*?(\d+)\*?\*?\s*\|\s*\*?\*?([^\|]+?)\*?\*?\s*\|",
-        block,
-    )
-    if summary_row_match is not None:
-        report["stats"] = {
-            "tests": int(summary_row_match.group(1)),
-            "passed": int(summary_row_match.group(2)),
-            "failed": int(summary_row_match.group(3)),
-            "skipped": int(summary_row_match.group(4)),
-            "other": int(summary_row_match.group(5)),
-            "flaky": int(summary_row_match.group(6)),
-            "duration": summary_row_match.group(7).strip(),
-        }
+    summary_headers, summary_rows = extract_markdown_table_after_heading(block, "### Summary")
+    report["stats"] = parse_stats_table(summary_headers, summary_rows)
 
-    failed_tests_section = extract_section(
-        block,
-        "### Failed Tests",
-        ["### Slowest Tests", "### Insights", "<sub>", "[Github Test Reporter]"],
-    )
-    if failed_tests_section:
-        lines = [line.strip("- ").strip() for line in failed_tests_section.splitlines()[1:] if line.strip()]
-        report["failed_tests"] = lines
-        report["has_failed_tests"] = True
-    elif "No failed tests in this run." in block or "All tests passed!" in block:
-        report["failed_tests"] = []
-        report["has_failed_tests"] = False
+    if not report["stats"]:
+        build_headers, build_rows = extract_markdown_table_after_heading(block, "### build-and-test:")
+        report["stats"] = parse_stats_table(build_headers, build_rows)
+
+    failed_test_details = parse_failed_test_details(block)
+    failed_test_names = parse_failed_test_summary_list(block)
+    if not failed_test_names and failed_test_details:
+        failed_test_names = [detail["name"] for detail in failed_test_details]
+
+    report["failed_tests"] = failed_test_names
+    report["failed_test_details"] = failed_test_details
+    failed_count = int(report["stats"].get("failed", 0) or 0)
+    report["has_failed_tests"] = bool(failed_test_names or failed_test_details or failed_count > 0)
 
     return report
 
@@ -1103,8 +1255,17 @@ def format_text(
                 lines.append(f"- Report {index}: no structured test stats parsed")
 
             if report["has_failed_tests"]:
-                for failed_test in report["failed_tests"]:
-                    lines.append(f"  Failed test: {truncate_text(failed_test, max_description_length)}")
+                failed_test_details = report.get("failed_test_details", [])
+                if failed_test_details:
+                    for failed_test_detail in failed_test_details:
+                        lines.append(f"  Failed test: {truncate_text(failed_test_detail['name'], max_description_length)}")
+                        lines.append(
+                            "  Failure: "
+                            f"{truncate_text(failed_test_detail['failure_message'].replace(chr(10), ' | '), max_description_length)}"
+                        )
+                else:
+                    for failed_test in report["failed_tests"]:
+                        lines.append(f"  Failed test: {truncate_text(failed_test, max_description_length)}")
             else:
                 lines.append("  Failed tests: none reported")
 

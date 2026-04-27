@@ -137,12 +137,10 @@ public sealed class SettingsModelTests
         var migrationMapLock = lockField!.GetValue(model);
         Assert.That(migrationMapLock, Is.Not.Null);
 
-        Task initializeTask;
-        Task registerTask;
-        lock (migrationMapLock!)
+        var tasks = WithSynchronizationLockHeld(migrationMapLock!, () =>
         {
-            initializeTask = Task.Run(() => model.InitializeAsync());
-            registerTask = Task.Run(() => model.RegisterMigration(new TestLatestSettingsMigrationV2ToV3()));
+            var initializeTask = Task.Run(() => model.InitializeAsync());
+            var registerTask = Task.Run(() => model.RegisterMigration(new TestLatestSettingsMigrationV2ToV3()));
 
             Thread.Sleep(50);
 
@@ -151,7 +149,11 @@ public sealed class SettingsModelTests
                 Assert.That(initializeTask.IsCompleted, Is.False);
                 Assert.That(registerTask.IsCompleted, Is.False);
             });
-        }
+
+            return (initializeTask, registerTask);
+        });
+
+        var (initializeTask, registerTask) = tasks;
 
         await Task.WhenAll(initializeTask, registerTask);
 
@@ -169,6 +171,35 @@ public sealed class SettingsModelTests
             Assert.That(current.Version, Is.EqualTo(3));
             Assert.That(current.Value, Is.EqualTo("legacy-migrated-v3"));
         });
+    }
+
+    /// <summary>
+    ///     以与被测代码相同的同步原语持有反射获取到的锁对象，避免在 .NET 9+ 上把 <see cref="System.Threading.Lock" />
+    ///     退化成 <see cref="Monitor" /> 语义，导致并发测试误判。
+    /// </summary>
+    /// <param name="syncRoot">通过反射读取到的私有锁字段。</param>
+    /// <typeparam name="TResult">持锁代码返回的结果类型。</typeparam>
+    /// <param name="action">持锁期间执行的断言与并发调度逻辑。</param>
+    /// <returns>持锁代码的返回值。</returns>
+    private static TResult WithSynchronizationLockHeld<TResult>(object syncRoot, Func<TResult> action)
+    {
+        ArgumentNullException.ThrowIfNull(syncRoot);
+        ArgumentNullException.ThrowIfNull(action);
+
+#if NET9_0_OR_GREATER
+        if (syncRoot is System.Threading.Lock typedLock)
+        {
+            using (typedLock.EnterScope())
+            {
+                return action();
+            }
+        }
+#endif
+
+        lock (syncRoot)
+        {
+            return action();
+        }
     }
 
     private sealed class TestSettingsData : ISettingsData
