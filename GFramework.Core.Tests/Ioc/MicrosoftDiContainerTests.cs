@@ -1,5 +1,4 @@
 using System.Reflection;
-using GFramework.Core.Abstractions.Bases;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
@@ -733,75 +732,4 @@ public class MicrosoftDiContainerTests
         Assert.That(((IPrioritizedService)services[0]).Priority, Is.EqualTo(10));
         Assert.That(((IPrioritizedService)services[1]).Priority, Is.EqualTo(30));
     }
-}
-
-/// <summary>
-///     服务接口定义
-/// </summary>
-public interface IService;
-
-/// <summary>
-///     测试服务类，实现 IService 接口
-/// </summary>
-public sealed class TestService : IService
-{
-    /// <summary>
-    ///     获取或设置优先级
-    /// </summary>
-    public int Priority { get; set; }
-}
-
-/// <summary>
-///     优先级服务接口
-/// </summary>
-public interface IPrioritizedService : IPrioritized
-{
-    string? Name { get; set; }
-}
-
-/// <summary>
-///     混合服务接口（用于测试优先级和非优先级混合）
-/// </summary>
-public interface IMixedService
-{
-    string? Name { get; set; }
-}
-
-/// <summary>
-///     用于验证未冻结查询路径中的服务别名去重行为。
-/// </summary>
-public interface ISharedAliasService;
-
-/// <summary>
-///     主服务别名接口。
-/// </summary>
-public interface IPrimaryAliasService : ISharedAliasService;
-
-/// <summary>
-///     次级兼容别名接口。
-/// </summary>
-public interface ISecondaryAliasService : ISharedAliasService;
-
-/// <summary>
-///     同时实现多个别名接口的测试服务。
-/// </summary>
-public sealed class AliasAwareService : IPrimaryAliasService, ISecondaryAliasService
-{
-}
-
-/// <summary>
-///     实现优先级的服务
-/// </summary>
-public sealed class PrioritizedService : IPrioritizedService, IMixedService
-{
-    public int Priority { get; set; }
-    public string? Name { get; set; }
-}
-
-/// <summary>
-///     不实现优先级的服务
-/// </summary>
-public sealed class NonPrioritizedService : IMixedService
-{
-    public string? Name { get; set; }
 }
