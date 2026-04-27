@@ -2791,7 +2791,7 @@ public class YamlConfigLoaderTests
     ///     避免热重载把会话级取消误报为配置读取失败。
     /// </summary>
     [Test]
-    public async Task ReadYamlAsync_Should_Preserve_OperationCanceledException_When_Cancellation_Is_Requested()
+    public void ReadYamlAsync_Should_Preserve_OperationCanceledException_When_Cancellation_Is_Requested()
     {
         CreateConfigFile(
             "monster/slime.yaml",
