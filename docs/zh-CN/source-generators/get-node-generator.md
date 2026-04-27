@@ -179,7 +179,7 @@ public override void _Ready()
 
 先注入节点，再绑定事件；否则 `BindNodeSignal` 对应的字段还没完成解析。
 
-这也是 `ai-libs/CoreGrid` 里项目侧节点类的实际用法。
+这也是项目侧节点类的常见接法。
 
 ## 什么时候适合用 `[GetNode]`
 

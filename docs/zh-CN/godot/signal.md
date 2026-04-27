@@ -120,7 +120,7 @@ private void OnStartPressed()
 - 运行时选出的 signal 名称
 - 需要临时追加监听的 dock、panel、overlay
 
-`ai-libs/CoreGrid` 当前就有这类用法：
+项目侧常见也会这样写：
 
 ```csharp
 _quitConfirmDialog.Signal("Confirmed")

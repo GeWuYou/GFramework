@@ -161,7 +161,7 @@ public List<IntConfig>? Values { get; } = new();
 
 ## 真实采用路径
 
-`ai-libs/CoreGrid/global/GameEntryPoint.cs` 是当前最直接的消费者参考：
+一个典型的项目侧入口会这样组织导出集合：
 
 - `UiPageConfigs`
 - `GameSceneConfigs`

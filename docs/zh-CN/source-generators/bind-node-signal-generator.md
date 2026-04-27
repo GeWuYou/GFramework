@@ -130,7 +130,7 @@ private void OnAnyButtonPressed()
 
 当前生成器会为每个特性都生成一条 `+=` 和一条 `-=`。
 
-`ai-libs/CoreGrid` 里的 `GameplayHud`、`PauseMenu` 和 `OptionBrowser` 都在大量使用这种声明式绑定方式。
+项目侧的 HUD、菜单和选项面板节点，通常都会大量使用这种声明式绑定方式。
 
 ## 与 GetNode 的协作边界
 

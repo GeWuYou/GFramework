@@ -211,7 +211,7 @@ public sealed class GameUiRouter : UiRouterBase
 - `AddUiPage(IUiPageBehavior child, UiLayer layer, int orderInLayer = 0)`
 - `RemoveUiPage(IUiPageBehavior child)`
 
-当前 `ai-libs/` 的参考实现就是在项目自己的 `CanvasLayer` 上为每个 `UiLayer` 建独立容器，再在 `_Ready()` 时执行
+一种常见的项目侧实现方式，是在自己的 `CanvasLayer` 上为每个 `UiLayer` 建独立容器，再在 `_Ready()` 时执行
 `_uiRouter.BindRoot(this)`。
 
 ### 4. 装配 router 与 factory

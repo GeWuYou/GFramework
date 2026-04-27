@@ -2,6 +2,32 @@
 
 ## 2026-04-27
 
+### 当前恢复点：RP-046
+
+- 第 1 批次提交 `c56260b` 后，重新计算 branch diff 确认当前相对 `origin/main` 为 `7` files / `68` lines，仍远低于 `$gframework-batch-boot 50` 的 stop condition。
+- 基于上一轮搜索结果，本轮继续接收一组同样低风险的公开文案收口：`docs/zh-CN/game/ui.md`、`godot/signal.md` 以及 4 个 source-generators 专题页中直接暴露 `ai-libs/CoreGrid` 路径的段落。
+- 这些页面都只是把内部参考项目路径改写为“项目侧常见实现”或“典型入口组织方式”，不改变示例代码、采用顺序或专题页结构。
+
+### 当前决策（RP-046）
+
+- 第 2 批次继续保持单页文字级修正边界，不把 `ai-libs/**` 当成公开文档里的直接导航或消费者说明。
+- 在站点构建通过后立即提交本批次，以便 branch diff 能继续被 stop condition 精确计量。
+- 当前下一候选批次是清理仍残留在若干公开页面中的“旧文档式对比”提示，继续限定为文案级收口。
+
+### 当前验证（RP-046）
+
+- 页面校验：
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/game/ui.md`
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/signal.md`
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/godot-project-generator.md`
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/get-node-generator.md`
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/bind-node-signal-generator.md`
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/auto-register-exported-collections-generator.md`
+  - 结果：通过；本轮 6 个公开页面的 frontmatter、链接与代码块校验均通过。
+- 站点构建：
+  - `bun run build`（工作目录：`docs/`）
+  - 结果：通过；本轮 batch boot 第 2 批次的 6 个公开页面 reader-facing 收口后站点仍可构建，仅保留既有大 chunk warning。
+
 ### 当前恢复点：RP-045
 
 - 本轮通过 `$gframework-batch-boot 50` 重新进入，继续沿用显式 `--git-dir` / `--work-tree` 绑定确认当前分支仍为 `docs/sdk-update-documentation`，并按技能要求把 baseline 固定到最新本地 `origin/main` `7cfdd2c`（`2026-04-27 16:59:57 +08:00`）。

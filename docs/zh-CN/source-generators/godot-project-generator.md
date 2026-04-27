@@ -200,8 +200,8 @@ AutoLoad 名称也遵循同样的冲突处理策略。
 - 节点字段注入：`[GetNode]`
 - 节点 CLR event 订阅：`[BindNodeSignal]`
 
-在 `ai-libs/CoreGrid` 中，这三类能力是并行使用的：`project.godot` 负责 AutoLoad / Input Action，具体 UI 或场景节点再通过
-`[GetNode]` 和 `[BindNodeSignal]` 处理。
+在一个同时使用这些生成器的项目里，这三类能力通常并行存在：`project.godot` 负责 AutoLoad / Input Action，具体 UI
+或场景节点再通过 `[GetNode]` 和 `[BindNodeSignal]` 处理。
 
 ## 诊断与约束
 

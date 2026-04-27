@@ -12,13 +12,14 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`DOCUMENTATION-FULL-COVERAGE-GOV-RP-045`
+- 恢复点编号：`DOCUMENTATION-FULL-COVERAGE-GOV-RP-046`
 - 当前阶段：`Phase 5 - Governance Maintenance`
 - 当前焦点：
   - 继续以最新 `origin/main`（`7cfdd2c`，`2026-04-27 16:59:57 +08:00`）作为 baseline，当前批处理 stop condition 仍是 branch diff vs baseline 接近 `50` changed files
 - 本轮通过 `$gframework-batch-boot 50` 重新进入后确认 `HEAD == origin/main`，当前已提交 branch diff 为 `0` files / `0` lines，因此可以从新的低风险文档批次重新累计阈值
-- 当前已完成第 1 个低风险批次：统一 `source-generators`、`game`、`api-reference`、`godot/setting`、`abstractions` 五个入口页的 reader-facing 标题与导航口吻
-- 当前建议继续第 2 个批次，优先收口仍残留在公开文档里的 `ai-libs/CoreGrid` / `旧文档` 指向式表述，保持同样的低风险文字级修正边界
+- 当前已完成前 2 个低风险批次：先统一 `source-generators`、`game`、`api-reference`、`godot/setting`、`abstractions` 五个入口页的 reader-facing 标题与导航口吻，再清理 `game/ui`、`godot/signal` 与 4 个 source-generators 专题页里的 `ai-libs/CoreGrid` 路径暴露
+- 当前已提交 branch diff 相对 `origin/main` 为 `7` files / `68` lines；第 2 批次提交后预计会把 branch diff 推进到低双位数，仍明显低于 `50` 文件 stop condition
+- 当前建议继续第 3 个批次，优先收口仍残留在公开文档里的“旧文档式对比”提示，保持同样的低风险文字级修正边界
 
 ## 当前状态摘要
 
@@ -36,6 +37,7 @@
 - `2026-04-27` `docs/zh-CN/game/config-system.md` 与 `docs/zh-CN/tutorials/basic/index.md` 已把维护者 / 指挥式措辞改成中性的采用建议与阅读入口，避免公开页面继续暴露内部决策口吻。
 - `2026-04-27` `docs/zh-CN/getting-started/index.md`、`core/index.md`、`game/index.md`、`api-reference/index.md`、`source-generators/index.md` 已统一收敛为“适用场景 / 起步路线 / 继续阅读”式 reader-facing 入口，不再把 GitHub blob README 或治理说明当作主导航。
 - `2026-04-27` 新一轮 batch boot 第 1 批次已进一步收口 `docs/zh-CN/source-generators/index.md`、`game/index.md`、`api-reference/index.md`、`godot/setting.md`、`abstractions/index.md` 的标题与导航口吻，去掉 `family`、自我指涉标题、原始 `README.md` 文件名提示和“先理解…”式栏目标题。
+- `2026-04-27` 新一轮 batch boot 第 2 批次已把 `docs/zh-CN/game/ui.md`、`godot/signal.md`、`source-generators/godot-project-generator.md`、`get-node-generator.md`、`bind-node-signal-generator.md`、`auto-register-exported-collections-generator.md` 中直接暴露 `ai-libs/CoreGrid` 的路径型说明改成项目侧常见实现说明。
 - `2026-04-27` `GFramework.Game/README.md`、`GFramework.Game.Abstractions/README.md`、`GFramework.Godot/README.md`、`GFramework.Cqrs.Abstractions/README.md`、`GFramework.Ecs.Arch/README.md` 已收口 `ai-libs`、`family`、`seam`、`ReadMe.md` 等内部化或文件名式表述。
 - `2026-04-27` `docs/zh-CN` 当前已清空所有指向 `github.com/GeWuYou/GFramework/blob/main/.../README.md` 的公开外链，相关入口统一回到站内栏目页、专题页或 API 导航。
 - `2026-04-27` `docs/zh-CN/tutorials/godot-integration.md`、`game/setting.md`、`game/serialization.md`、`godot/index.md`、`godot/architecture.md`、`godot/storage.md`、`godot/logging.md`、`godot/setting.md`、`godot/extensions.md`、`core/architecture.md` 已把 `旧文档` / `ai-libs` / `.Wait()` / `family` 这类维护与内部语气改写成当前采用说明。
@@ -76,6 +78,20 @@
 
 ## 最新验证
 
+- `2026-04-27` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/game/ui.md`
+  - 结果：通过；Game UI 页去 `ai-libs/` 路径化说明后页面 frontmatter、链接与代码块校验均通过。
+- `2026-04-27` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/signal.md`
+  - 结果：通过；Godot signal 页改成项目侧示例口吻后页面 frontmatter、链接与代码块校验均通过。
+- `2026-04-27` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/godot-project-generator.md`
+  - 结果：通过；Godot project 生成器页去内部参考项目路径后页面 frontmatter、链接与代码块校验均通过。
+- `2026-04-27` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/get-node-generator.md`
+  - 结果：通过；GetNode 生成器页改成通用项目侧用法说明后页面 frontmatter、链接与代码块校验均通过。
+- `2026-04-27` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/bind-node-signal-generator.md`
+  - 结果：通过；BindNodeSignal 生成器页去具体内部项目名后页面 frontmatter、链接与代码块校验均通过。
+- `2026-04-27` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/auto-register-exported-collections-generator.md`
+  - 结果：通过；导出集合自动注册页改成通用入口描述后页面 frontmatter、链接与代码块校验均通过。
+- `2026-04-27` `bun run build`（工作目录：`docs/`）
+  - 结果：通过；本轮 batch boot 第 2 批次的 6 个公开页面 reader-facing 收口后站点仍可构建，仅保留既有大 chunk warning。
 - `2026-04-27` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/index.md`
   - 结果：通过；`source-generators` 入口页标题收口后页面 frontmatter、链接与代码块校验均通过。
 - `2026-04-27` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/game/index.md`
