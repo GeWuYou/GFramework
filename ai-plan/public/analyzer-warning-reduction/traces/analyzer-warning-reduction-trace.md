@@ -1,5 +1,35 @@
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-27 — RP-078
+
+### 阶段：完成第三轮 Core.Tests 低风险 slice 并在 30 files 处收口
+
+- 触发背景：
+  - 第二轮结束后，`GFramework.Game` 低风险单文件 warning 已基本耗尽，继续推进更适合转向测试项目
+  - 第三轮选择的 `Core.Tests` slice 仍保持单文件、低耦合，且不会明显放大 branch diff
+- 已接受的 delegated scope 与结果：
+  - worker-A：`GFramework.Core.Tests/Concurrency/AsyncKeyLockManagerTests.cs`
+    - 结果：与 `PauseStackManagerTests.cs` 一并落在提交 `650618b`，修复该文件的 `MA0004`
+  - worker-B：`GFramework.Core.Tests/Pause/PauseStackManagerTests.cs`
+    - 结果：与 `AsyncKeyLockManagerTests.cs` 一并落在提交 `650618b`，修复该文件的 `MA0158`
+  - worker-C：`GFramework.Core.Tests/Extensions/AsyncExtensionsTests.cs`、`GFramework.Core.Tests/Architectures/ArchitectureModulesBehaviorTests.cs`
+    - 结果：提交 `e19e60e`，修复 `MA0015` / `MA0004`
+- 主线程验证里程碑：
+  - 提权 `dotnet clean`
+    - 结果：成功
+  - 提权 `dotnet build`
+    - 结果：成功；warning 从上一轮的 `405` 降到 `397`
+  - 提权 `dotnet build GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release`
+    - 结果：成功；`0 Warning(s)`、`0 Error(s)`
+  - `git diff --name-only refs/remotes/origin/main...HEAD | wc -l`
+    - 结果：`30`
+  - `git diff --numstat refs/remotes/origin/main...HEAD`
+    - 结果：`642` changed lines
+- 当前结论：
+  - 当前分支在 `30 / 50` files 时仍保持可审阅性，且已经连续三轮拿到了实质 warning 降幅
+  - 继续推进的剩余候选主要是 `YamlConfig*` 高耦合热点与 `MA0048` 批量拆分，不再符合本轮的低风险边界
+  - 默认建议在这里收口当前波次，把下一波次留给更明确的热点专项
+
 ## 2026-04-27 — RP-077
 
 ### 阶段：完成第二轮 Game 侧低风险 slice 验证并转向测试项目候选

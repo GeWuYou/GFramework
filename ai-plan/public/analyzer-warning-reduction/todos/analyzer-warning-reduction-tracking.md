@@ -6,12 +6,12 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-077`
-- 当前阶段：`Phase 77`
+- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-078`
+- 当前阶段：`Phase 78`
 - 当前焦点：
-  - `2026-04-27` 第二轮 `GFramework.Game` 低风险 slice 已完成验证，当前待收口提交 `SettingsModel.cs` / `GameConfigBootstrap.cs` 的专用锁补修与 `ai-plan` 同步
-  - 当前轮次已重新确认 `origin/main` 基线与 `HEAD` 同为 `617e0bf`，已提交 branch diff 现为 `26 / 50` files、`483` changed lines
-  - 当前 `GFramework.Game` 的低风险单文件 warning 已基本耗尽；若继续逼近 `$gframework-batch-boot 50`，下一轮更适合切到 `Core.Tests` 等测试项目中的单文件 warning
+  - `2026-04-27` 第三轮 `Core.Tests` 低风险 slice 已完成验证，当前建议在 `30 / 50` files 处收口当前波次，而不是继续硬碰高耦合热点
+  - 当前轮次已重新确认 `origin/main` 基线与 `HEAD` 同为 `617e0bf`，已提交 branch diff 现为 `30 / 50` files、`642` changed lines
+  - 当前剩余 warning 主要集中在 `YamlConfigSchemaValidator*`、`YamlConfigLoader.cs` 与大批量 `MA0048` 文件名拆分；这些 slice 已明显高于本轮“低风险、单文件、可并行收口”的目标
 
 ## 当前活跃事实
 
@@ -20,32 +20,35 @@
   - `dotnet clean`
     - 结果：成功；此前沙箱内缺失 Windows fallback package folder 的 clean 失败属于环境噪音，不是仓库真值
   - `dotnet build`
-    - 最新结果：成功；`405 Warning(s)`、`0 Error(s)`
-  - `dotnet build GFramework.Game/GFramework.Game.csproj -c Release`
-    - 最新结果：成功；`122 Warning(s)`、`0 Error(s)`
+    - 最新结果：成功；`397 Warning(s)`、`0 Error(s)`
+  - `dotnet build GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release`
+    - 最新结果：成功；`0 Warning(s)`、`0 Error(s)`
 - 当前分支 stop-condition 指标：
   - `git diff --name-only refs/remotes/origin/main...HEAD | wc -l`
-    - 最新结果：`26`
+    - 最新结果：`30`
   - `git diff --numstat refs/remotes/origin/main...HEAD`
-    - 最新结果：`483` changed lines
+    - 最新结果：`642` changed lines
 - 当前批次已完成的 warning slice：
   - `GFramework.Core` 事件 / 状态 / 属性 / 协程统计中的 `MA0158` 专用锁迁移
   - `GFramework.Game/Data` 中 `DataRepository`、`UnifiedSettingsDataRepository`、`SaveRepository` 的 `ConfigureAwait` / 比较器 / 专用锁修正
   - `GFramework.Game/Scene/SceneRouterBase.cs` 与 `GFramework.Game/UI/UiRouterBase.cs` 中的显式上下文 / 参数名 / 比较器修正
 - 当前批次已完成并提交的收口：
   - `fb0a55f` `fix(analyzer): 收口首轮并行警告清理`
-- 当前批次已接受、待进入实现的下一轮 slice：
+- 当前批次已完成的第三轮 slice：
   - `GFramework.Core.Tests/Concurrency/AsyncKeyLockManagerTests.cs` 的 `MA0004`
   - `GFramework.Core.Tests/Pause/PauseStackManagerTests.cs` 的 `MA0158`
   - `GFramework.Core.Tests/Extensions/AsyncExtensionsTests.cs` 的 `MA0015`
   - `GFramework.Core.Tests/Architectures/ArchitectureModulesBehaviorTests.cs` 的 `MA0004`
+- 当前建议保留到下一波次的候选：
+  - `GFramework.Game/Config/YamlConfigLoader.cs` 的 `MA0158`（单点可修，但文件本身同时承载其他高耦合 warning）
+  - 测试项目中的 `MA0048` 文件名拆分波次（会显著增加 changed-file 数）
 - 当前批次验证结果：
   - `dotnet clean`
     - 最新主线程结果：提权直接执行成功，确认为当前权威 clean 基线
   - `dotnet build`
-    - 最新主线程结果：提权直接构建成功；`405 Warning(s)`、`0 Error(s)`
-  - `dotnet build GFramework.Game/GFramework.Game.csproj -c Release`
-    - 最新主线程结果：提权直接构建成功；`122 Warning(s)`、`0 Error(s)`
+    - 最新主线程结果：提权直接构建成功；`397 Warning(s)`、`0 Error(s)`
+  - `dotnet build GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release`
+    - 最新主线程结果：提权直接构建成功；`0 Warning(s)`、`0 Error(s)`
 
 ## 当前风险
 
@@ -76,6 +79,6 @@
 
 ## 下一步建议
 
-1. 下发 2-3 个 `worker` subagent，按文件边界拆分 `SettingsModel.cs`、`RouterBase.cs`+`UiInteractionProfiles.cs`，并视 `GameConfigBootstrap.cs` 的提取复杂度决定是否并行吸收。
-2. 若继续逼近 `$gframework-batch-boot 50`，优先把下一轮切到 `Core.Tests` 等测试项目的单文件 warning，避免被 `YamlConfigSchemaValidator*` / `YamlConfigLoader.cs` 等热点拖入高耦合重构。
-3. 若 branch diff 接近阈值，或剩余候选只剩高耦合热点与会明显放大文件数的 `MA0048` 批量拆分，则在新的恢复点收口并等待下一轮。
+1. 提交第三轮 `Core.Tests` 修复与 `ai-plan` 同步，保持当前恢复点可直接继续。
+2. 若后续继续推进，建议另开下一波次，优先明确是否接受 `YamlConfigLoader.cs` 热点触碰，或是否要专门做测试项目 `MA0048` 拆分波次。
+3. 默认在当前恢复点停下，因为继续推进已不再符合本轮“低风险、少文件、可并行收口”的原始边界。
