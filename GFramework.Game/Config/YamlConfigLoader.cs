@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Globalization;
+using System.Threading;
 using GFramework.Core.Abstractions.Events;
 using GFramework.Game.Abstractions.Config;
 using YamlDotNet.Serialization;
@@ -472,93 +474,178 @@ public sealed class YamlConfigLoader : IConfigLoader
             IDeserializer deserializer,
             CancellationToken cancellationToken)
         {
-            var directoryPath = Path.Combine(rootPath, RelativePath);
-            if (!Directory.Exists(directoryPath))
-            {
-                throw ConfigLoadExceptionFactory.Create(
-                    ConfigLoadFailureKind.ConfigDirectoryNotFound,
-                    Name,
-                    $"Config directory '{directoryPath}' was not found for table '{Name}'.",
-                    configDirectoryPath: directoryPath);
-            }
-
-            YamlConfigSchema? schema = null;
-            IReadOnlyCollection<string> referencedTableNames = Array.Empty<string>();
-            if (!string.IsNullOrEmpty(SchemaRelativePath))
-            {
-                var schemaPath = Path.Combine(rootPath, SchemaRelativePath);
-                schema = await YamlConfigSchemaValidator.LoadAsync(Name, schemaPath, cancellationToken)
-                    .ConfigureAwait(false);
-                referencedTableNames = schema.ReferencedTableNames;
-            }
-
+            var directoryPath = GetValidatedDirectoryPath(rootPath);
+            var schema = await LoadSchemaAsync(rootPath, cancellationToken).ConfigureAwait(false);
             var referenceUsages = new List<YamlConfigReferenceUsage>();
+            var values = await LoadValuesAsync(
+                    directoryPath,
+                    deserializer,
+                    schema,
+                    referenceUsages,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            return BuildLoadResult(directoryPath, schema, values, referenceUsages, cancellationToken);
+        }
+
+        private string GetValidatedDirectoryPath(string rootPath)
+        {
+            var directoryPath = Path.Combine(rootPath, RelativePath);
+            if (Directory.Exists(directoryPath))
+            {
+                return directoryPath;
+            }
+
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.ConfigDirectoryNotFound,
+                Name,
+                $"Config directory '{directoryPath}' was not found for table '{Name}'.",
+                configDirectoryPath: directoryPath);
+        }
+
+        private async Task<YamlConfigSchema?> LoadSchemaAsync(string rootPath, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrEmpty(SchemaRelativePath))
+            {
+                return null;
+            }
+
+            var schemaPath = Path.Combine(rootPath, SchemaRelativePath);
+            return await YamlConfigSchemaValidator.LoadAsync(Name, schemaPath, cancellationToken).ConfigureAwait(false);
+        }
+
+        private async Task<List<TValue>> LoadValuesAsync(
+            string directoryPath,
+            IDeserializer deserializer,
+            YamlConfigSchema? schema,
+            List<YamlConfigReferenceUsage> referenceUsages,
+            CancellationToken cancellationToken)
+        {
             var values = new List<TValue>();
-            var files = Directory
+            foreach (var file in GetYamlFiles(directoryPath))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var yaml = await ReadYamlAsync(directoryPath, file, schema, cancellationToken).ConfigureAwait(false);
+                CollectReferenceUsages(referenceUsages, schema, file, yaml);
+                values.Add(DeserializeValue(deserializer, directoryPath, file, schema, yaml, cancellationToken));
+            }
+
+            return values;
+        }
+
+        private static string[] GetYamlFiles(string directoryPath)
+        {
+            return Directory
                 .EnumerateFiles(directoryPath, "*.*", SearchOption.TopDirectoryOnly)
                 .Where(static path =>
                     path.EndsWith(".yaml", StringComparison.OrdinalIgnoreCase) ||
                     path.EndsWith(".yml", StringComparison.OrdinalIgnoreCase))
                 .OrderBy(static path => path, StringComparer.Ordinal)
                 .ToArray();
+        }
 
-            foreach (var file in files)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                string yaml;
-                try
-                {
-                    yaml = await File.ReadAllTextAsync(file, cancellationToken).ConfigureAwait(false);
-                }
-                catch (Exception exception)
-                {
-                    throw ConfigLoadExceptionFactory.Create(
-                        ConfigLoadFailureKind.ConfigFileReadFailed,
-                        Name,
-                        $"Failed to read config file '{file}' for table '{Name}'.",
-                        configDirectoryPath: directoryPath,
-                        yamlPath: file,
-                        schemaPath: schema?.SchemaPath,
-                        innerException: exception);
-                }
-
-                if (schema != null)
-                {
-                    // 先按 schema 拒绝结构问题并提取跨表引用，避免被 IgnoreUnmatchedProperties 或默认值掩盖配置错误。
-                    referenceUsages.AddRange(
-                        YamlConfigSchemaValidator.ValidateAndCollectReferences(Name, schema, file, yaml));
-                }
-
-                try
-                {
-                    var value = deserializer.Deserialize<TValue>(yaml);
-
-                    if (value == null)
-                    {
-                        throw new InvalidOperationException("YAML content was deserialized to null.");
-                    }
-
-                    values.Add(value);
-                }
-                catch (Exception exception)
-                {
-                    throw ConfigLoadExceptionFactory.Create(
-                        ConfigLoadFailureKind.DeserializationFailed,
-                        Name,
-                        $"Failed to deserialize config file '{file}' for table '{Name}' as '{typeof(TValue).Name}'.",
-                        configDirectoryPath: directoryPath,
-                        yamlPath: file,
-                        schemaPath: schema?.SchemaPath,
-                        detail: $"Target CLR type: {typeof(TValue).FullName}.",
-                        innerException: exception);
-                }
-            }
-
+        private async Task<string> ReadYamlAsync(
+            string directoryPath,
+            string file,
+            YamlConfigSchema? schema,
+            CancellationToken cancellationToken)
+        {
             try
             {
+                return await File.ReadAllTextAsync(file, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // 保留原始取消语义，避免热重载把会话级取消误报为配置读取失败。
+                throw;
+            }
+            catch (Exception exception)
+            {
+                throw ConfigLoadExceptionFactory.Create(
+                    ConfigLoadFailureKind.ConfigFileReadFailed,
+                    Name,
+                    $"Failed to read config file '{file}' for table '{Name}'.",
+                    configDirectoryPath: directoryPath,
+                    yamlPath: file,
+                    schemaPath: schema?.SchemaPath,
+                    innerException: exception);
+            }
+        }
+
+        private void CollectReferenceUsages(
+            List<YamlConfigReferenceUsage> referenceUsages,
+            YamlConfigSchema? schema,
+            string file,
+            string yaml)
+        {
+            if (schema == null)
+            {
+                return;
+            }
+
+            // 先按 schema 拒绝结构问题并提取跨表引用，避免被 IgnoreUnmatchedProperties 或默认值掩盖配置错误。
+            referenceUsages.AddRange(
+                YamlConfigSchemaValidator.ValidateAndCollectReferences(Name, schema, file, yaml));
+        }
+
+        private TValue DeserializeValue(
+            IDeserializer deserializer,
+            string directoryPath,
+            string file,
+            YamlConfigSchema? schema,
+            string yaml,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var value = deserializer.Deserialize<TValue>(yaml);
+                if (value != null)
+                {
+                    return value;
+                }
+
+                throw new InvalidOperationException("YAML content was deserialized to null.");
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // 同步反序列化阶段也要透传会话级取消，避免把停止加载误报为 YAML 解析失败。
+                throw;
+            }
+            catch (Exception exception)
+            {
+                throw ConfigLoadExceptionFactory.Create(
+                    ConfigLoadFailureKind.DeserializationFailed,
+                    Name,
+                    $"Failed to deserialize config file '{file}' for table '{Name}' as '{typeof(TValue).Name}'.",
+                    configDirectoryPath: directoryPath,
+                    yamlPath: file,
+                    schemaPath: schema?.SchemaPath,
+                    detail: $"Target CLR type: {typeof(TValue).FullName}.",
+                    innerException: exception);
+            }
+        }
+
+        private YamlTableLoadResult BuildLoadResult(
+            string directoryPath,
+            YamlConfigSchema? schema,
+            List<TValue> values,
+            List<YamlConfigReferenceUsage> referenceUsages,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
                 var table = new InMemoryConfigTable<TKey, TValue>(values, _keySelector, _comparer);
-                return new YamlTableLoadResult(Name, table, referencedTableNames, referenceUsages);
+                return new YamlTableLoadResult(
+                    Name,
+                    table,
+                    schema?.ReferencedTableNames ?? Array.Empty<string>(),
+                    referenceUsages);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // 构建最终配置表时继续保留原始取消语义，避免热重载把提交前取消记录成构表失败。
+                throw;
             }
             catch (Exception exception)
             {
@@ -630,6 +717,12 @@ public sealed class YamlConfigLoader : IConfigLoader
     /// </summary>
     private static class CrossTableReferenceValidator
     {
+        private delegate bool IntegerTryParseDelegate<T>(
+            string? value,
+            NumberStyles style,
+            IFormatProvider? provider,
+            out T result);
+
         /// <summary>
         ///     使用本轮新加载结果与注册表中保留的旧表，一起验证跨表引用是否全部有效。
         /// </summary>
@@ -754,65 +847,40 @@ public sealed class YamlConfigLoader : IConfigLoader
             convertedKey = null;
             errorMessage = string.Empty;
 
-            if (targetKeyType == typeof(int) &&
-                int.TryParse(rawValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var intValue))
+            if (TryConvertIntegerKey<int>(rawValue, targetKeyType, typeof(int), int.TryParse, out convertedKey) ||
+                TryConvertIntegerKey<long>(rawValue, targetKeyType, typeof(long), long.TryParse, out convertedKey) ||
+                TryConvertIntegerKey<short>(rawValue, targetKeyType, typeof(short), short.TryParse, out convertedKey) ||
+                TryConvertIntegerKey<byte>(rawValue, targetKeyType, typeof(byte), byte.TryParse, out convertedKey) ||
+                TryConvertIntegerKey<uint>(rawValue, targetKeyType, typeof(uint), uint.TryParse, out convertedKey) ||
+                TryConvertIntegerKey<ulong>(rawValue, targetKeyType, typeof(ulong), ulong.TryParse, out convertedKey) ||
+                TryConvertIntegerKey<ushort>(rawValue, targetKeyType, typeof(ushort), ushort.TryParse, out convertedKey) ||
+                TryConvertIntegerKey<sbyte>(rawValue, targetKeyType, typeof(sbyte), sbyte.TryParse, out convertedKey))
             {
-                convertedKey = intValue;
-                return true;
-            }
-
-            if (targetKeyType == typeof(long) &&
-                long.TryParse(rawValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var longValue))
-            {
-                convertedKey = longValue;
-                return true;
-            }
-
-            if (targetKeyType == typeof(short) &&
-                short.TryParse(rawValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var shortValue))
-            {
-                convertedKey = shortValue;
-                return true;
-            }
-
-            if (targetKeyType == typeof(byte) &&
-                byte.TryParse(rawValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var byteValue))
-            {
-                convertedKey = byteValue;
-                return true;
-            }
-
-            if (targetKeyType == typeof(uint) &&
-                uint.TryParse(rawValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var uintValue))
-            {
-                convertedKey = uintValue;
-                return true;
-            }
-
-            if (targetKeyType == typeof(ulong) &&
-                ulong.TryParse(rawValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var ulongValue))
-            {
-                convertedKey = ulongValue;
-                return true;
-            }
-
-            if (targetKeyType == typeof(ushort) &&
-                ushort.TryParse(rawValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var ushortValue))
-            {
-                convertedKey = ushortValue;
-                return true;
-            }
-
-            if (targetKeyType == typeof(sbyte) &&
-                sbyte.TryParse(rawValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var sbyteValue))
-            {
-                convertedKey = sbyteValue;
                 return true;
             }
 
             errorMessage =
                 $"Reference value '{rawValue}' cannot be converted to supported target key type '{targetKeyType.Name}'. Integer references currently support the standard signed and unsigned integer CLR key types.";
             return false;
+        }
+
+        private static bool TryConvertIntegerKey<T>(
+            string rawValue,
+            Type targetKeyType,
+            Type supportedType,
+            IntegerTryParseDelegate<T> tryParse,
+            out object? convertedKey)
+            where T : struct
+        {
+            convertedKey = null;
+            if (targetKeyType != supportedType ||
+                !tryParse(rawValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedValue))
+            {
+                return false;
+            }
+
+            convertedKey = parsedValue;
+            return true;
         }
 
         private static bool ContainsKey(IConfigTable table, object key)
@@ -838,7 +906,13 @@ public sealed class YamlConfigLoader : IConfigLoader
             new(StringComparer.Ordinal);
 
         private readonly IDeserializer _deserializer;
+#if NET9_0_OR_GREATER
+        // net9.0 及以上目标使用专用 Lock，以满足分析器对专用同步原语的建议。
+        private readonly Lock _gate = new();
+#else
+        // net8.0 目标仍回退到 object 锁，以保持多目标编译兼容性。
         private readonly object _gate = new();
+#endif
         private readonly Action<string>? _onTableReloaded;
         private readonly Action<string, Exception>? _onTableReloadFailed;
         private readonly Dictionary<string, IYamlTableRegistration> _registrations = new(StringComparer.Ordinal);
@@ -1121,7 +1195,7 @@ public sealed class YamlConfigLoader : IConfigLoader
 
                 foreach (var dependency in _dependenciesByTable)
                 {
-                    if (!dependency.Value.Contains(currentTableName))
+                    if (!ContainsDependency(dependency.Value, currentTableName))
                     {
                         continue;
                     }
@@ -1136,6 +1210,14 @@ public sealed class YamlConfigLoader : IConfigLoader
             return affectedTableNames
                 .OrderBy(static name => name, StringComparer.Ordinal)
                 .ToArray();
+        }
+
+        private static bool ContainsDependency(
+            IReadOnlyCollection<string> dependencies,
+            string tableName)
+        {
+            return dependencies.Any(
+                dependency => string.Equals(dependency, tableName, StringComparison.Ordinal));
         }
 
         private void InvokeReloaded(string tableName)

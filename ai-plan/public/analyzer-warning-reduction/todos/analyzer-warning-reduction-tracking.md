@@ -6,54 +6,43 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-081`
-- 当前阶段：`Phase 81`
+- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-084`
+- 当前阶段：`Phase 84`
 - 当前焦点：
-  - `2026-04-27` 已复核 PR `#295` 的 latest-head review，确认 `ThrowShouldNotRetry` 的 `ParamName` open thread 属于 stale finding，本地代码已经使用传入值而非 `nameof(parameterName)`
-  - 已清理 `AsyncExtensionsTests.WithRetry_Should_Respect_ShouldRetry_Predicate` 中的冗余 `Task.Delay(50)`，保留 `ParamName == nameof(taskFactory)` 断言锁定契约
-  - 已增强 `.agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py` 的 failed-test 表格解析，允许 `Name` / `Failure Message` 后出现尾随额外列
-  - 已新增 Python `unittest` 回归用例覆盖“尾随额外列不影响前两列提取”的场景
-  - 当前剩余 warning 热点仍集中在 `YamlConfigSchemaValidator*`、`YamlConfigLoader.cs` 与大批量 `MA0048` 文件名拆分；这些 slice 仍高于本轮 PR review follow-up 的低风险边界
+  - `2026-04-27` 已完成 PR `#297` 的 CodeRabbit follow-up，修复 `YamlConfigLoader` 的取消语义与 `IntegerTryParseDelegate` 可空性问题
+  - 已补齐 `GFramework.Core.Tests/Ioc` 与 `GFramework.Core.Tests/Query` 中 review 指向的 XML 文档缺口，并让 `IPrioritizedService` 复用 `IMixedService.Name` 契约
+  - 已新增 `YamlConfigLoaderTests` 回归测试，锁定“取消时保留 `OperationCanceledException`”这一行为
+  - 当前分支的下一波 warning reduction 仍建议回到 `ArchitectureContextTests.cs`、`AsyncQueryExecutorTests.cs` 或 `YamlConfigSchemaValidator*` 的后续 slice
 
 ## 当前活跃事实
 
-- 当前 `origin/main` 基线提交为 `617e0bf`（`2026-04-26T12:17:15+08:00`）。
-- 当前 PR review 真值：
-  - `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output <current-pr-review-json>`
-    - 最新结果：成功；当前分支对应 PR 为 `#295`
-    - 当前测试报告输出已能显示 `Summary` 统计、失败测试名称，以及 `Name / Failure Message` 表格中的关键信息
-    - 当前 GitHub latest-head review 仍显示 `1` 条 open thread，但该线程指向的 `nameof(parameterName)` 问题已不在本地代码中成立，属于 stale finding
-    - 当前 latest review 中仍有 `2` 条与本地工作树一致的 nitpick：`AsyncExtensionsTests` 冗余等待，以及 failed-test 表格解析对尾随列不鲁棒
+- 当前 `origin/main` 基线提交为 `b6a9fef`（`2026-04-27T10:53:34+08:00`）。
 - 当前直接验证结果：
-  - `python3 .agents/skills/gframework-pr-review/scripts/test_fetch_current_pr_review.py`
-    - 最新结果：成功；`Ran 1 test in 0.000s`, `OK`
-  - `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --section tests --json-output /tmp/current-pr-review-postfix.json`
-    - 最新结果：成功；真实 PR 评论抓取仍能输出 `2` 份测试报告，失败用例详情保持可见
-  - `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --filter "FullyQualifiedName~WithRetry_Should_Respect_ShouldRetry_Predicate"`
-    - 最新结果：成功；`Failed: 0, Passed: 1, Skipped: 0, Total: 1`
-  - `dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --filter "FullyQualifiedName~RegisterMigration_During_Cache_Rebuild_Should_Not_Leave_Stale_Type_Cache"`
-    - 最新结果：成功；`Failed: 0, Passed: 1, Skipped: 0, Total: 1`
-- 当前分支 stop-condition 指标：
-  - `git diff --name-only refs/remotes/origin/main...HEAD | wc -l`
-    - 最新结果：`35`
-  - `git diff --numstat refs/remotes/origin/main...HEAD`
-    - 最新结果：`642` changed lines
+  - `dotnet build GFramework.Game/GFramework.Game.csproj -c Release`
+    - 最新结果：成功；`0 Warning(s)`、`0 Error(s)`
+  - `dotnet build GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release`
+    - 最新结果：成功；`0 Warning(s)`、`0 Error(s)`
+  - `dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --filter "FullyQualifiedName~YamlConfigLoaderTests.ReadYamlAsync_Should_Preserve_OperationCanceledException_When_Cancellation_Is_Requested"`
+    - 最新结果：成功；`1` 通过、`0` 失败
+  - `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --filter "FullyQualifiedName~MicrosoftDiContainerTests.GetAllByPriority_Should_Sort_By_Priority_Ascending"`
+    - 最新结果：成功；`1` 通过、`0` 失败
+  - `dotnet format GFramework.sln --verify-no-changes --include GFramework.Game/Config/YamlConfigLoader.cs GFramework.Game.Tests/Config/YamlConfigLoaderTests.cs GFramework.Core.Tests/Ioc/IMixedService.cs GFramework.Core.Tests/Ioc/IPrioritizedService.cs GFramework.Core.Tests/Ioc/PrioritizedService.cs GFramework.Core.Tests/Query/TestAsyncQueryWithExceptionV4.cs`
+    - 最新结果：成功；本次 PR follow-up 改动文件无需额外格式化
 - 当前批次摘要：
-  - 三轮低风险 warning 清理已在此前验证中将仓库根 warning 从 `639` 降到 `397`
-  - 当前批次的已完成 slice 明细已迁移到归档，active todo 仅保留恢复真值
-  - 本轮新增内容为 PR review nitpick 收口与脚本回归测试补齐，不扩展 warning reduction 的热点清理边界
+  - 本轮完成 PR `#297` 最新 head review 中仍然有效的 `3` 个 open threads 修复：`YamlConfigLoader` 取消语义、`IMixedService.Name` XML 文档、`IPrioritizedService` 相关契约整理
+  - 本轮同时吸收 CodeRabbit folded nitpick 中仍然成立的 `2` 个点：`IntegerTryParseDelegate` 可空性对齐、`TestAsyncQueryWithExceptionV4.OnDoAsync` 的 `<returns>` 文档
+  - 本轮新增一条精确回归测试，确保底层 YAML 文件读取在取消时继续抛出 `OperationCanceledException` 系列异常，而不是包装成 `ConfigLoadException`
 - 当前建议保留到下一波次的候选：
-  - `GFramework.Game/Config/YamlConfigLoader.cs` 的 `MA0158`（单点可修，但文件本身同时承载其他高耦合 warning）
-  - 测试项目中的 `MA0048` 文件名拆分波次（会显著增加 changed-file 数）
+  - `GFramework.Core.Tests/Architectures/ArchitectureContextTests.cs` 的 `7` 个 `MA0048`
+  - `GFramework.Core.Tests/Query/AsyncQueryExecutorTests.cs` 的 `7` 个 `MA0048`
+  - `GFramework.Game/Config/YamlConfigSchemaValidator.cs` 与 `YamlConfigSchemaValidator.ObjectKeywords.cs` 的高耦合 warning 热点
 
 ## 当前风险
 
-- `GFramework.Game/Config/YamlConfigSchemaValidator*.cs` 仍然聚集多类高耦合 warning。
-  - 缓解措施：本轮先避开该热点，只清理低风险且 ownership 清晰的文件集合。
-- `MA0158` 迁移涉及 `net8.0` / `net9.0` / `net10.0` 多目标兼容。
-  - 缓解措施：复用 `StoreSelection.cs` 已存在的 `#if NET9_0_OR_GREATER` 专用锁模式，不在 `net8.0` 引入不兼容 API。
-- 当前 PR open thread 与 CI 失败信号仍依赖新提交进入远端 PR head 才能复核。
-  - 缓解措施：本轮提交并推送后重新执行 `$gframework-pr-review`，确认 stale open thread 是否被 GitHub 收口，以及两条 nitpick 是否从 latest review 中消失。
+- `GFramework.Cqrs.Tests/Mediator/*` 仍有 `47` / `44` / `34` 个唯一 warning 位点，属于高 changed-file 风险的 `MA0048` 大波次。
+  - 缓解措施：优先继续处理 `6-7` 个 warning 的小文件切片，避免一次性推高文件数。
+- `YamlConfigSchemaValidator*` 仍然聚集多类高耦合 warning。
+  - 缓解措施：继续把它们留在独立波次，不与测试项目的低风险拆分混提。
 
 ## 活跃文档
 
@@ -73,11 +62,11 @@
 ## 验证说明
 
 - 权威验证结果统一维护在“当前活跃事实”。
-- `GFramework.Core.Tests` 当前仍有既有 analyzer / nullable warning 基线，因此本轮验证只证明 PR review 修复未引入构建错误，未将该项目 warning 清零。
-- 后续若刷新构建或 PR review 真值，只更新上述权威区块，不在本节重复抄录。
+- `GFramework.Core.Tests` 项目级 Release 构建已在本轮清零，但仓库根 non-incremental 构建仍保留大量既有 warning。
+- warning reduction 的仓库级真值只以同轮 `dotnet clean` 后的 `dotnet build` 为准。
 
 ## 下一步建议
 
-1. 提交本轮 `AsyncExtensionsTests` / `$gframework-pr-review` nitpick 修复、Python 回归测试与 `ai-plan` 同步。
-2. 推送后重新执行 `$gframework-pr-review`，确认 PR `#295` 的 stale open thread、nitpick 与测试报告是否已刷新为新 head 真值。
-3. 若后续继续推进 warning reduction，建议另开下一波次处理 `YamlConfigLoader.cs` 热点或测试项目 `MA0048` 拆分波次。
+1. 提交本轮 PR `#297` review follow-up 与 `ai-plan` 同步。
+2. 下一波优先挑选 `ArchitectureContextTests.cs` 或 `AsyncQueryExecutorTests.cs` 这类 `7`-warning 的纯 `MA0048` 单文件切片。
+3. 继续将 `YamlConfigSchemaValidator*` 与 `GFramework.Cqrs.Tests/Mediator/*` 作为独立高风险波次处理。
