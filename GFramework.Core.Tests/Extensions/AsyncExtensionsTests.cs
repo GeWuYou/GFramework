@@ -229,7 +229,7 @@ public class AsyncExtensionsTests
     {
         static Task<int> ThrowShouldNotRetry(string parameterName)
         {
-            throw new ArgumentException("Should not retry", nameof(parameterName));
+            throw new ArgumentException("Should not retry", parameterName);
         }
 
         // Arrange
@@ -241,12 +241,16 @@ public class AsyncExtensionsTests
         };
 
         // Act & Assert
-        Assert.ThrowsAsync<AggregateException>(() =>
+        var exception = Assert.ThrowsAsync<AggregateException>(() =>
             taskFactory.WithRetryAsync(3, TimeSpan.FromMilliseconds(10),
                 ex => ex is not ArgumentException));
 
         await Task.Delay(50).ConfigureAwait(false); // 等待任务完成
         Assert.That(attemptCount, Is.EqualTo(1)); // 不应该重试
+        Assert.That(exception, Is.Not.Null);
+        Assert.That(exception!.InnerExceptions, Has.Count.EqualTo(1));
+        Assert.That(exception.InnerExceptions[0], Is.TypeOf<ArgumentException>());
+        Assert.That(((ArgumentException)exception.InnerExceptions[0]).ParamName, Is.EqualTo(nameof(taskFactory)));
     }
 
     /// <summary>
