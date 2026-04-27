@@ -1,0 +1,14 @@
+using GFramework.Core.Abstractions.Bases;
+
+namespace GFramework.Core.Tests.Architectures;
+
+/// <summary>
+///     表示优先级为 30 的测试工具。
+/// </summary>
+public class PriorityTestUtilityC : IPriorityTestUtility, IPrioritized
+{
+    /// <summary>
+    ///     获取当前测试工具的排序优先级。
+    /// </summary>
+    public int Priority => 30;
+}
