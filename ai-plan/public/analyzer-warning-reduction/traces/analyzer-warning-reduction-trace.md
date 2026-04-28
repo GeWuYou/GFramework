@@ -1,5 +1,24 @@
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-28 — RP-092
+
+### 阶段：复核 `PR #300` 的 open threads，并只修正当前分支仍然成立的 `ai-plan` 漂移
+
+- 触发背景：
+  - 用户要求恢复当前 `$gframework-pr-review` 任务，继续以 PR head 上的开放线程为准做 triage
+- 主线程实施：
+  - 重新读取 `fetch_current_pr_review.py --json-output /tmp/current-pr-review.json` 的 latest head open threads
+  - 逐条对照本地文件后确认：`TestArchitectureContextBehaviorTests`、`TestArchitectureWithRegistry`、`TestResourceLoader`、`PartialGeneratedNotificationHandlerRegistry` 相关 CodeRabbit 线程在当前工作树上都已匹配修复，仅线程状态尚未随新 head 折叠
+  - 继续核对 `RegistryInitializationHookBaseTests.OnPhase_Should_Not_Throw_When_Registry_Not_Found`，确认当前实现 `RegistryInitializationHookBase.OnPhase` 已在缺少注册表时保持 no-op，定向回归测试通过
+  - 修正 `analyzer-warning-reduction-tracking.md` 中仍然成立的两处漂移：
+    - 将文件计数更新为相对 `6cc87a9...HEAD` 的实际规模：`18` 个已修改文件、`38` 个新增文件、合计 `56` 个变更文件
+    - 将验证口径统一为 trace 已记录的 `dotnet build`、定向 `dotnet test`、`git diff --check`
+- 验证里程碑：
+  - `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --filter "FullyQualifiedName~RegistryInitializationHookBaseTests.OnPhase_Should_Not_Throw_When_Registry_Not_Found|FullyQualifiedName~TestArchitectureContextBehaviorTests"`
+    - 结果：成功；`10` 通过、`0` 失败
+  - `git diff --check`
+    - 结果：成功；无新增 whitespace / conflict-marker 问题
+
 ## 2026-04-28 — RP-091
 
 ### 阶段：收口 `PR #300` 的共享测试基础设施 nitpick，并升级 PR-review triage 规则
@@ -28,8 +47,8 @@
 
 ## 下一步
 
-1. 提交本轮共享基类重构、技能规则更新与 `ai-plan` 同步。
-2. 推送后重新执行 `$gframework-pr-review`，确认剩余 PR 线程是否已经下降。
+1. 提交本轮 `ai-plan` 同步修复，使 PR head 能重新折叠文档相关线程。
+2. 推送后重新执行 `$gframework-pr-review`，确认剩余 open threads 是否已经下降。
 
 ## 历史归档指针
 
