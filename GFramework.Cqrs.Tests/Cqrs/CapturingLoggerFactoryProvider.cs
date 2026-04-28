@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Logging;
 using GFramework.Cqrs.Tests.Logging;
@@ -11,10 +12,12 @@ namespace GFramework.Cqrs.Tests.Cqrs;
 /// <remarks>
 ///     处理器注册入口会分别为测试运行时、容器和注册器创建日志器。
 ///     该提供程序统一保留这些测试日志器，以便断言警告是否经由公开入口真正发出。
+///     并发创建日志器时会通过内部锁串行化，<see cref="Loggers" /> 每次返回快照，避免调用方观察到可变集合。
 /// </remarks>
 internal sealed class CapturingLoggerFactoryProvider : ILoggerFactoryProvider
 {
     private readonly List<TestLogger> _loggers = [];
+    private readonly Lock _sync = new();
 
     /// <summary>
     ///     使用指定的最小日志级别初始化一个新的捕获型日志工厂提供程序。
@@ -26,9 +29,18 @@ internal sealed class CapturingLoggerFactoryProvider : ILoggerFactoryProvider
     }
 
     /// <summary>
-    ///     获取通过当前提供程序创建的全部测试日志器。
+    ///     获取通过当前提供程序创建的全部测试日志器快照。
     /// </summary>
-    public IReadOnlyList<TestLogger> Loggers => _loggers;
+    public IReadOnlyList<TestLogger> Loggers
+    {
+        get
+        {
+            lock (_sync)
+            {
+                return _loggers.ToArray();
+            }
+        }
+    }
 
     /// <summary>
     ///     获取或设置新建测试日志器的最小日志级别。
@@ -43,7 +55,12 @@ internal sealed class CapturingLoggerFactoryProvider : ILoggerFactoryProvider
     public ILogger CreateLogger(string name)
     {
         var logger = new TestLogger(name, MinLevel);
-        _loggers.Add(logger);
+
+        lock (_sync)
+        {
+            _loggers.Add(logger);
+        }
+
         return logger;
     }
 }

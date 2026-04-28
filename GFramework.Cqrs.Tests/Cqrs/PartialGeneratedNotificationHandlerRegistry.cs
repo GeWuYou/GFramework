@@ -16,6 +16,9 @@ internal sealed class PartialGeneratedNotificationHandlerRegistry : ICqrsHandler
     /// </summary>
     /// <param name="services">承载处理器映射的服务集合。</param>
     /// <param name="logger">用于记录注册诊断的日志器。</param>
+    /// <exception cref="ArgumentNullException">
+    ///     <paramref name="services" /> 或 <paramref name="logger" /> 为 <see langword="null" />。
+    /// </exception>
     public void Register(IServiceCollection services, ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(services);

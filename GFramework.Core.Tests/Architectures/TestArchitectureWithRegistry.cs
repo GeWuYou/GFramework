@@ -95,7 +95,8 @@ public class TestArchitectureWithRegistry : IArchitecture
 
     IArchitectureLifecycleHook IArchitecture.RegisterLifecycleHook(IArchitectureLifecycleHook hook)
     {
-        throw new NotSupportedException();
+        RegisterLifecycleHook(hook);
+        return hook;
     }
 
     Task IArchitecture.WaitUntilReadyAsync()

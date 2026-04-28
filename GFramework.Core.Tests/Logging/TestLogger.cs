@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Threading;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Logging;
 
@@ -6,9 +9,13 @@ namespace GFramework.Core.Tests.Logging;
 /// <summary>
 ///     表示供日志相关测试复用的内存日志记录器。
 /// </summary>
+/// <remarks>
+///     并发写入会通过内部锁串行化；<see cref="Logs" /> 每次返回快照，避免断言观察到正在被修改的可变集合。
+/// </remarks>
 public sealed class TestLogger : AbstractLogger
 {
     private readonly List<LogEntry> _logs = new();
+    private readonly Lock _sync = new();
 
     /// <summary>
     ///     初始化 <see cref="TestLogger" /> 的新实例。
@@ -20,9 +27,18 @@ public sealed class TestLogger : AbstractLogger
     }
 
     /// <summary>
-    ///     获取按写入顺序保存的日志条目只读视图。
+    ///     获取按写入顺序保存的日志条目快照。
     /// </summary>
-    public IReadOnlyList<LogEntry> Logs => _logs;
+    public IReadOnlyList<LogEntry> Logs
+    {
+        get
+        {
+            lock (_sync)
+            {
+                return _logs.ToArray();
+            }
+        }
+    }
 
     /// <summary>
     ///     将日志信息追加到内存列表，供断言读取。
@@ -32,7 +48,10 @@ public sealed class TestLogger : AbstractLogger
     /// <param name="exception">相关异常；没有异常时为 <see langword="null" />。</param>
     protected override void Write(LogLevel level, string message, Exception? exception)
     {
-        _logs.Add(new LogEntry(level, message, exception));
+        lock (_sync)
+        {
+            _logs.Add(new LogEntry(level, message, exception));
+        }
     }
 
     /// <summary>

@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Command;
 using GFramework.Core.Abstractions.Environment;
@@ -27,6 +31,7 @@ namespace GFramework.Core.Tests.Architectures;
 public class TestArchitectureContext : IArchitectureContext
 {
     private readonly MicrosoftDiContainer _container = new();
+    private readonly EventBus _eventBus = new();
 
     /// <summary>
     ///     获取用于解析测试服务的依赖注入容器。
@@ -36,7 +41,11 @@ public class TestArchitectureContext : IArchitectureContext
     /// <summary>
     ///     获取测试事件总线实例。
     /// </summary>
-    public IEventBus EventBus => new EventBus();
+    /// <remarks>
+    ///     返回同一个缓存事件总线，以便 <see cref="RegisterEvent{TEvent}" />、<see cref="SendEvent{TEvent}()" /> 与
+    ///     <see cref="UnRegisterEvent{TEvent}" /> 在同一份订阅状态上协作。
+    /// </remarks>
+    public IEventBus EventBus => _eventBus;
 
     /// <summary>
     ///     获取测试命令执行器实例。
@@ -183,6 +192,7 @@ public class TestArchitectureContext : IArchitectureContext
     /// <typeparam name="TEvent">事件类型。</typeparam>
     public void SendEvent<TEvent>() where TEvent : new()
     {
+        _eventBus.Send<TEvent>();
     }
 
     /// <summary>
@@ -192,6 +202,8 @@ public class TestArchitectureContext : IArchitectureContext
     /// <param name="e">事件实例。</param>
     public void SendEvent<TEvent>(TEvent e) where TEvent : class
     {
+        ArgumentNullException.ThrowIfNull(e);
+        _eventBus.Send(e);
     }
 
     /// <summary>
@@ -199,10 +211,11 @@ public class TestArchitectureContext : IArchitectureContext
     /// </summary>
     /// <typeparam name="TEvent">事件类型。</typeparam>
     /// <param name="handler">事件处理委托。</param>
-    /// <returns>用于测试的空注销句柄。</returns>
+    /// <returns>用于测试的事件注销句柄。</returns>
     public IUnRegister RegisterEvent<TEvent>(Action<TEvent> handler)
     {
-        return new DefaultUnRegister(() => { });
+        ArgumentNullException.ThrowIfNull(handler);
+        return _eventBus.Register(handler);
     }
 
     /// <summary>
@@ -212,6 +225,8 @@ public class TestArchitectureContext : IArchitectureContext
     /// <param name="onEvent">事件处理委托。</param>
     public void UnRegisterEvent<TEvent>(Action<TEvent> onEvent)
     {
+        ArgumentNullException.ThrowIfNull(onEvent);
+        _eventBus.UnRegister(onEvent);
     }
 
     /// <summary>
@@ -358,8 +373,10 @@ public class TestArchitectureContext : IArchitectureContext
     ///     发送旧版命令。
     /// </summary>
     /// <param name="command">命令对象。</param>
+    /// <exception cref="NotSupportedException">该测试桩不支持旧版命令执行入口。</exception>
     public void SendCommand(ICommand command)
     {
+        throw new NotSupportedException();
     }
 
     /// <summary>
@@ -367,20 +384,21 @@ public class TestArchitectureContext : IArchitectureContext
     /// </summary>
     /// <typeparam name="TResult">返回值类型。</typeparam>
     /// <param name="command">命令对象。</param>
-    /// <returns>测试桩默认返回值。</returns>
+    /// <returns>此方法始终抛出异常，不返回结果。</returns>
+    /// <exception cref="NotSupportedException">该测试桩不支持旧版命令执行入口。</exception>
     public TResult SendCommand<TResult>(ICommand<TResult> command)
     {
-        return default!;
+        throw new NotSupportedException();
     }
 
     /// <summary>
     ///     异步发送旧版命令。
     /// </summary>
     /// <param name="command">命令对象。</param>
-    /// <returns>已完成任务。</returns>
+    /// <returns>已失败的任务。</returns>
     public Task SendCommandAsync(IAsyncCommand command)
     {
-        return Task.CompletedTask;
+        return Task.FromException(new NotSupportedException());
     }
 
     /// <summary>
@@ -388,10 +406,10 @@ public class TestArchitectureContext : IArchitectureContext
     /// </summary>
     /// <typeparam name="TResult">返回值类型。</typeparam>
     /// <param name="command">命令对象。</param>
-    /// <returns>包含测试桩默认返回值的任务。</returns>
+    /// <returns>已失败的任务。</returns>
     public Task<TResult> SendCommandAsync<TResult>(IAsyncCommand<TResult> command)
     {
-        return Task.FromResult(default(TResult)!);
+        return Task.FromException<TResult>(new NotSupportedException());
     }
 
     /// <summary>
@@ -399,10 +417,11 @@ public class TestArchitectureContext : IArchitectureContext
     /// </summary>
     /// <typeparam name="TResult">查询结果类型。</typeparam>
     /// <param name="query">查询对象。</param>
-    /// <returns>测试桩默认返回值。</returns>
+    /// <returns>此方法始终抛出异常，不返回结果。</returns>
+    /// <exception cref="NotSupportedException">该测试桩不支持旧版查询执行入口。</exception>
     public TResult SendQuery<TResult>(IQuery<TResult> query)
     {
-        return default!;
+        throw new NotSupportedException();
     }
 
     /// <summary>
@@ -410,10 +429,10 @@ public class TestArchitectureContext : IArchitectureContext
     /// </summary>
     /// <typeparam name="TResult">查询结果类型。</typeparam>
     /// <param name="query">异步查询对象。</param>
-    /// <returns>包含测试桩默认返回值的任务。</returns>
+    /// <returns>已失败的任务。</returns>
     public Task<TResult> SendQueryAsync<TResult>(IAsyncQuery<TResult> query)
     {
-        return Task.FromResult(default(TResult)!);
+        return Task.FromException<TResult>(new NotSupportedException());
     }
 
     /// <summary>

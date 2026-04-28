@@ -1,5 +1,37 @@
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-28 — RP-088
+
+### 阶段：收敛 PR #300 的 open review threads 与 failed-test follow-up
+
+- 触发背景：
+  - 用户执行 `$gframework-pr-review`，要求以当前分支 PR 真值为准核对 AI review / failed-test / linter 信号
+  - `fetch_current_pr_review.py --json-output /tmp/current-pr-review.json` 返回 `PR #300`，latest head 上仍有 `8` 条 CodeRabbit open threads、`1` 个失败测试 `RegistryInitializationHookBaseTests.OnPhase_Should_Not_Throw_When_Registry_Not_Found`，以及 `dotnet-format` restore failed 的 CI 噪音
+- 主线程实施：
+  - 核对 `TestArchitectureContext` / `TestArchitectureContextV3` 后，修复共享事件总线与旧版命令/查询入口的静默成功问题，统一改为显式 `NotSupportedException` 或 faulted task
+  - 校正 `TestArchitectureWithRegistry` / `TestArchitectureWithoutRegistry` 的显式接口 `RegisterLifecycleHook`，使接口视角与公开 no-op 语义一致
+  - 修复 `RegistryInitializationHookBase` 在注册表缺失场景下的 no-op 行为，并保持有注册表路径继续使用单实例 `GetUtility<TRegistry>()`
+  - 收敛 `TestResourceLoader`、`TestLogger`、`CapturingLoggerFactoryProvider`、`DeterministicNotificationHandlerState`、`PartialGeneratedNotificationHandlerRegistry` 的判空、XML 文档、快照访问与并发语义说明
+  - 新增 `TestArchitectureContextBehaviorTests.cs`，覆盖共享事件总线、旧入口失败契约与 `RegisterLifecycleHook` 接口行为
+- 验证里程碑：
+  - `dotnet build GFramework.Core/GFramework.Core.csproj -c Release`
+    - 结果：成功；`0 Warning(s)`、`0 Error(s)`
+  - `dotnet build GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release`
+    - 结果：成功；`0 Warning(s)`、`0 Error(s)`
+  - `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --no-build --filter "FullyQualifiedName~RegistryInitializationHookBaseTests|FullyQualifiedName~WaitForMultipleEventsTests|FullyQualifiedName~ResourceManagerTests|FullyQualifiedName~LoggerTests|FullyQualifiedName~TestArchitectureContextBehaviorTests"`
+    - 结果：成功；`97` 通过、`0` 失败
+  - `dotnet build GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release`
+    - 结果：成功；`125 Warning(s)`、`0 Error(s)`；warning 全部来自既有 `Mediator/*` 文件，当前 helper 改动未新增 warning
+  - `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --no-build --filter "FullyQualifiedName~CqrsHandlerRegistrarTests"`
+    - 结果：成功；`11` 通过、`0` 失败
+- 当前结论：
+  - `PR #300` 当前仍然成立的 open review threads 已在本地收敛，且 failed-test 信号已被现有测试回归覆盖
+  - `Core` / `Core.Tests` 的本轮受影响项目均保持 `0 Warning(s)`，新增测试也覆盖了此前没有直接回归的测试替身行为
+  - `GFramework.Cqrs.Tests` 仍保留 `125` 条既有 `Mediator/*` warning；这属于下一轮 warning reduction 波次，而不是本轮 PR review follow-up 的直接写集
+- 下一步：
+  1. 提交本轮 PR review follow-up 与 `ai-plan` 同步。
+  2. 若继续处理 `Cqrs.Tests` warning，以下一轮单独规划 `Mediator/*` 波次为起点。
+
 ## 2026-04-28 — RP-087
 
 ### 阶段：按 `$gframework-batch-boot 50` 并行收敛 `Core.Tests` / `Cqrs.Tests` 低风险切片

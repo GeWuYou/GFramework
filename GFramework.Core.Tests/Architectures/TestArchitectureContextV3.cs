@@ -343,8 +343,10 @@ public class TestArchitectureContextV3 : IArchitectureContext
     ///     发送旧版无返回值命令。
     /// </summary>
     /// <param name="command">要发送的命令。</param>
+    /// <exception cref="NotSupportedException">该测试桩不支持旧版命令执行入口。</exception>
     public void SendCommand(ICommand command)
     {
+        throw new NotSupportedException();
     }
 
     /// <summary>
@@ -352,20 +354,21 @@ public class TestArchitectureContextV3 : IArchitectureContext
     /// </summary>
     /// <typeparam name="TResult">命令响应类型。</typeparam>
     /// <param name="command">要发送的命令。</param>
-    /// <returns>默认响应值。</returns>
+    /// <returns>此方法始终抛出异常，不返回结果。</returns>
+    /// <exception cref="NotSupportedException">该测试桩不支持旧版命令执行入口。</exception>
     public TResult SendCommand<TResult>(GFramework.Core.Abstractions.Command.ICommand<TResult> command)
     {
-        return default!;
+        throw new NotSupportedException();
     }
 
     /// <summary>
     ///     异步发送旧版无返回值命令。
     /// </summary>
     /// <param name="command">要发送的命令。</param>
-    /// <returns>已完成任务。</returns>
+    /// <returns>已失败的任务。</returns>
     public Task SendCommandAsync(IAsyncCommand command)
     {
-        return Task.CompletedTask;
+        return Task.FromException(new NotSupportedException());
     }
 
     /// <summary>
@@ -373,10 +376,10 @@ public class TestArchitectureContextV3 : IArchitectureContext
     /// </summary>
     /// <typeparam name="TResult">命令响应类型。</typeparam>
     /// <param name="command">要发送的命令。</param>
-    /// <returns>占位任务。</returns>
+    /// <returns>已失败的任务。</returns>
     public Task<TResult> SendCommandAsync<TResult>(IAsyncCommand<TResult> command)
     {
-        return (Task<TResult>)Task.CompletedTask;
+        return Task.FromException<TResult>(new NotSupportedException());
     }
 
     /// <summary>
@@ -384,10 +387,11 @@ public class TestArchitectureContextV3 : IArchitectureContext
     /// </summary>
     /// <typeparam name="TResult">查询结果类型。</typeparam>
     /// <param name="query">要发送的查询。</param>
-    /// <returns>默认查询结果。</returns>
+    /// <returns>此方法始终抛出异常，不返回结果。</returns>
+    /// <exception cref="NotSupportedException">该测试桩不支持旧版查询执行入口。</exception>
     public TResult SendQuery<TResult>(GFramework.Core.Abstractions.Query.IQuery<TResult> query)
     {
-        return default!;
+        throw new NotSupportedException();
     }
 
     /// <summary>
@@ -395,10 +399,10 @@ public class TestArchitectureContextV3 : IArchitectureContext
     /// </summary>
     /// <typeparam name="TResult">查询结果类型。</typeparam>
     /// <param name="query">要发送的查询。</param>
-    /// <returns>占位任务。</returns>
+    /// <returns>已失败的任务。</returns>
     public Task<TResult> SendQueryAsync<TResult>(IAsyncQuery<TResult> query)
     {
-        return (Task<TResult>)Task.CompletedTask;
+        return Task.FromException<TResult>(new NotSupportedException());
     }
 
     /// <summary>

@@ -1,3 +1,4 @@
+using System;
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Enums;
 using GFramework.Core.Abstractions.Utility;
@@ -33,12 +34,29 @@ public abstract class RegistryInitializationHookBase<TRegistry, TConfig> : IArch
     /// </summary>
     /// <param name="phase">当前的架构阶段</param>
     /// <param name="architecture">相关的架构实例</param>
+    /// <remarks>
+    /// 当目标注册表未被装入当前架构上下文时，该钩子会保持 no-op，
+    /// 以便同一组配置可以安全复用于不包含该注册表的测试或裁剪场景。
+    /// </remarks>
     public void OnPhase(ArchitecturePhase phase, IArchitecture architecture)
     {
-        if (phase != _targetPhase) return;
+        ArgumentNullException.ThrowIfNull(architecture);
 
-        var registry = architecture.Context.GetUtility<TRegistry>();
-        if (registry == null) return;
+        if (phase != _targetPhase)
+        {
+            return;
+        }
+
+        TRegistry registry;
+
+        try
+        {
+            registry = architecture.Context.GetUtility<TRegistry>();
+        }
+        catch (InvalidOperationException)
+        {
+            return;
+        }
 
         foreach (var config in _configs)
         {

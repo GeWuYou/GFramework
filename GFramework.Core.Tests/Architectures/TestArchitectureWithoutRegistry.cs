@@ -93,7 +93,8 @@ public class TestArchitectureWithoutRegistry : IArchitecture
 
     IArchitectureLifecycleHook IArchitecture.RegisterLifecycleHook(IArchitectureLifecycleHook hook)
     {
-        throw new NotSupportedException();
+        RegisterLifecycleHook(hook);
+        return hook;
     }
 
     /// <summary>
