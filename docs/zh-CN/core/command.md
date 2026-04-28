@@ -20,7 +20,7 @@ description: 说明 GFramework.Core.Command 旧命令体系的兼容定位、可
 - `AbstractCommand<TInput, TResult>`
   - 有输入、有返回值
 
-注意一个和旧文档不同的点：泛型命令现在通过构造函数接收输入，而不是依赖 `Input` 可写属性。
+当前泛型命令通过构造函数接收输入，而不是依赖 `Input` 可写属性。
 
 ## 无输入命令
 

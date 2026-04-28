@@ -290,8 +290,7 @@ await sceneRouter.PopAsync();
 
 ### 没有 `GodotSceneRouter`
 
-仓库当前不存在 `GodotSceneRouter` 类型。旧文档里把它写成默认入口是失真的；实际入口仍然是项目侧继承
-`SceneRouterBase` 的 router。
+仓库当前不存在 `GodotSceneRouter` 类型；实际入口仍然是项目侧继承 `SceneRouterBase` 的 router。
 
 ### 没有自动注册所有场景
 

@@ -89,7 +89,9 @@ protected override void OnInitialize()
 
 ## 组件自己的生命周期
 
-大多数组件不需要手写 `Initialize()`；继承框架基类即可：
+大多数组件不需要手写 `Initialize()`；继承框架基类即可。
+
+这里的 `OnInit()` 是组件级入口，用来初始化单个 `Model` / `System`；上面的 `OnInitialize()` 则用于架构级注册：
 
 ```csharp
 public sealed class PlayerModel : AbstractModel
@@ -159,7 +161,7 @@ architecture.PhaseChanged += (_, args) =>
 ## 推荐做法
 
 - 新代码优先使用 `InitializeAsync()` / `DestroyAsync()`
-- 把注册逻辑放在 `OnInitialize()`，不要沿用旧文档里的 `Init()`
+- 把架构级注册逻辑放在 `OnInitialize()`；组件自己的初始化仍然使用 `OnInit()`，不要再尝试重写 `Init()` 这类旧入口
 - 让 `Utility` 承载底层能力，让 `Model` 承载状态，再让 `System` 消费两者
 - 跨组件阶段逻辑优先写成 `IArchitectureLifecycleHook`
 

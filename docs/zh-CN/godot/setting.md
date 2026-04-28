@@ -133,12 +133,12 @@ await settingsSystem.Apply<GodotAudioSettings>();
 
 ## 什么时候应该改看别的入口
 
-### 先理解设置模型和仓库
+### 相关设置模型
 
 如果你想先理解 `ISettingsData`、`IResetApplyAbleSettings`、`SettingsModel`、`SettingsSystem` 与设置迁移，先看
 [Game 设置系统](../game/setting.md)。
 
-### 先理解设置如何被持久化
+### 相关持久化入口
 
 如果你关注的是统一设置文件、备份、数据位置和底层存储实现，应该回到：
 

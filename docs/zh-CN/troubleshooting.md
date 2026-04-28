@@ -150,7 +150,7 @@ if (!arch.IsInitialized)
 // ✅ 更好：使用单例模式
 public class GameArchitecture : Architecture&lt;GameArchitecture&gt;
 {
-    protected override void Init()
+    protected override void OnInitialize()
     {
         // 注册组件
     }
@@ -176,7 +176,7 @@ InvalidOperationException: No service for type 'IPlayerService' has been registe
 // ❌ 错误：未注册服务
 public class GameArchitecture : Architecture
 {
-    protected override void Init()
+    protected override void OnInitialize()
     {
         // 忘记注册 IPlayerService
     }
@@ -187,7 +187,7 @@ var service = arch.GetService&lt;IPlayerService&gt;(); // 抛出异常
 // ✅ 正确：先注册服务
 public class GameArchitecture : Architecture
 {
-    protected override void Init()
+    protected override void OnInitialize()
     {
         // 注册服务
         RegisterService&lt;IPlayerService, PlayerService&gt;();
@@ -216,14 +216,14 @@ NullReferenceException: Object reference not set to an instance of an object
 
 ```csharp
 // ❌ 错误：SystemB 依赖 ModelA，但 ModelA 后注册
-protected override void Init()
+protected override void OnInitialize()
 {
     RegisterSystem(new SystemB()); // SystemB.OnInit() 中访问 ModelA 失败
     RegisterModel(new ModelA());
 }
 
 // ✅ 正确：先注册依赖项
-protected override void Init()
+protected override void OnInitialize()
 {
     // 1. 先注册 Model
     RegisterModel(new ModelA());
@@ -306,7 +306,7 @@ var model = arch.GetModel<PlayerModel>(); // 抛出异常
 // ✅ 正确：先注册再获取
 public class GameArchitecture : Architecture
 {
-    protected override void Init()
+    protected override void OnInitialize()
     {
         RegisterModel(new PlayerModel()); // 注册模型
     }
@@ -523,7 +523,7 @@ arch.RegisterEvent&lt;GameEvent&gt;(OnGameEvent);
 3. **检查事件总线是否正确注册**：
 
 ```csharp
-protected override void Init()
+protected override void OnInitialize()
 {
     // 确保注册了事件总线
     RegisterSystem(new EventBusModule());
@@ -825,7 +825,7 @@ else
 // ✅ 使用资源管理器
 public class GameArchitecture : Architecture
 {
-    protected override void Init()
+    protected override void OnInitialize()
     {
         RegisterSystem(new ResourceManager());
     }
@@ -1153,7 +1153,7 @@ public partial class Player : Node
 // ✅ 使用 Godot 模块
 public class GameArchitecture : AbstractArchitecture
 {
-    protected override void Init()
+    protected override void InstallModules()
     {
         // 注册 Godot 模块
         this.RegisterGodotModule&lt;PlayerModule&gt;();
@@ -1176,7 +1176,7 @@ await uiRouter.PushAsync("MainMenu"); // 失败：页面未注册
 // ✅ 正确：先注册 UI 页面
 public class GameArchitecture : Architecture
 {
-    protected override void Init()
+    protected override void OnInitialize()
     {
         var uiRegistry = new GodotUiRegistry();
         uiRegistry.Register("MainMenu", "res://ui/main_menu.tscn", UiLayer.Page);
@@ -1467,7 +1467,7 @@ _coroutineQueue.Enqueue(MyCoroutine());
 // 使用 GFramework 日志系统
 public class GameArchitecture : Architecture
 {
-    protected override void Init()
+    protected override void OnInitialize()
     {
         // 注册日志工厂
         RegisterUtility&lt;ILoggerFactory&gt;(new GodotLoggerFactory());
@@ -1554,7 +1554,7 @@ public class EventTracer : AbstractSystem
 
 // 在架构中启用事件追踪
 #if DEBUG
-protected override void Init()
+protected override void OnInitialize()
 {
     RegisterSystem(new EventTracer());
 }
@@ -1679,7 +1679,7 @@ System.Collections.Generic.KeyNotFoundException: 未找到类型为 'PlayerModel
 // 在架构中注册组件
 public class GameArchitecture : Architecture
 {
-    protected override void Init()
+    protected override void OnInitialize()
     {
         RegisterModel(new PlayerModel());
         RegisterSystem(new PlayerSystem());
@@ -1745,7 +1745,7 @@ var model = this.GetModel&lt;PlayerModel&gt;(); // 返回 null
 model.Health.Value = 100; // 抛出异常
 
 // ✅ 正确：先注册
-protected override void Init()
+protected override void OnInitialize()
 {
     RegisterModel(new PlayerModel());
 }
@@ -1814,20 +1814,20 @@ System.ArgumentException: An item with the same key has already been added. Key:
 
 ```csharp
 // ❌ 错误：重复注册
-protected override void Init()
+protected override void OnInitialize()
 {
     RegisterModel(new PlayerModel());
     RegisterModel(new PlayerModel()); // 重复注册
 }
 
 // ✅ 正确：只注册一次
-protected override void Init()
+protected override void OnInitialize()
 {
     RegisterModel(new PlayerModel());
 }
 
 // ✅ 如果需要多个实例，使用不同的键
-protected override void Init()
+protected override void OnInitialize()
 {
     RegisterModel(new PlayerModel(), "Player1");
     RegisterModel(new PlayerModel(), "Player2");

@@ -162,7 +162,7 @@ namespace MyGame.Core.Architecture
     {
         public static IArchitecture Interface { get; private set; }
 
-        protected override void Init()
+        protected override void OnInitialize()
         {
             Interface = this;
 
@@ -857,7 +857,7 @@ namespace MyGame.Core.Architecture
     {
         public static IArchitecture Interface { get; private set; }
 
-        protected override void Init()
+        protected override void OnInitialize()
         {
             Interface = this;
 

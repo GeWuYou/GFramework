@@ -1,6 +1,47 @@
 # Documentation Full Coverage Governance Trace
 
+## 2026-04-28
+
+### 当前恢复点：RP-048
+
+- 本轮按 `$gframework-pr-review` 抓取当前 PR `#299`，确认 latest head review 当前只剩 `1` 条 `CodeRabbit` open thread 与 `1` 条 nitpick；两者都指向 active tracking 文档本身，`Greptile` 与 `Gemini Code Assist` 当前无 open thread，测试汇总为 `2159 passed`，另有 `Title check` inconclusive。
+- 本地复核后确认：此前针对 `docs/zh-CN/abstractions/index.md`、`docs/zh-CN/core/lifecycle.md` 与相关教程 / 排障页的 review follow-up 已不再是当前 remote latest-head review 的剩余阻塞项。
+- 当前仍需收口的只剩两件事：为 `RP-048` 补齐明确的“下一步”段落，以及把 `RP-045` 到 `RP-047` 的逐命令时间线从 active trace 下沉到归档文件。
+
+### 当前决策（RP-048）
+
+- 本轮限定只修改 `ai-plan/public/documentation-full-coverage-governance` 下的 tracking / trace 文档，不再扩展到已经收口的公开文档页面。
+- active trace 只保留当前恢复点、验证结论、下一步与归档指针；`RP-041` 到 `RP-048` 的阶段细节转入专门的 trace archive，逐命令验证继续保留在 validation history archive。
+- 不把 `Title check` 当成仓库文件修复项；本轮完成后只需要在提交推送后重新抓取 PR review，确认 remote 线程状态是否清空。
+
+### 当前验证（RP-048）
+
+- PR review 抓取：
+  - `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --format json --json-output /tmp/current-pr-review.json`
+  - 结果：通过；PR `#299` 处于 `OPEN`，latest head review 有 `1` 条 `CodeRabbit` open thread 与 `1` 条 nitpick，`Greptile` / `Gemini Code Assist` 当前无 open thread，测试汇总为 `2159 passed`，仅剩 `Title check` inconclusive。
+- 站点构建：
+  - `bun run build`（工作目录：`docs/`）
+  - 结果：通过；active tracking 收口与时间线归档瘦身后站点仍可构建，仅保留既有大 chunk warning。
+- 详细时间线归档：
+  - `ai-plan/public/documentation-full-coverage-governance/archive/traces/documentation-full-coverage-governance-trace-history-rp-041-to-rp-048-2026-04-28.md`
+- 详细验证归档：
+  - `ai-plan/public/documentation-full-coverage-governance/archive/todos/documentation-full-coverage-governance-validation-history-rp-041-to-rp-048-2026-04-28.md`
+
+### 下一步（RP-048）
+
+1. 提交本轮 active tracking 收口改动，并将提交推送到 PR `#299`。
+2. 推送后重新抓取 `$gframework-pr-review`，确认 latest-head review 是否只剩 `Title check` 或已全部清空。
+3. 若仍有新的文档 review 线程，继续按 latest-head review 精确收口，不恢复关键词驱动的机械扩批。
+
 ## 2026-04-27
+
+### 已归档历史（RP-041 到 RP-047）
+
+- `RP-045` 到 `RP-047` 的 batch boot 逐阶段时间线、branch diff 计量与 review follow-up 决策，已迁入专门的 trace archive，避免 active trace 继续保留逐命令历史。
+- 对应的页面校验、README 链接校验与站点构建命令，继续保留在 validation history archive 中，供后续追溯。
+- 归档路径：
+  - `ai-plan/public/documentation-full-coverage-governance/archive/traces/documentation-full-coverage-governance-trace-history-rp-041-to-rp-048-2026-04-28.md`
+  - `ai-plan/public/documentation-full-coverage-governance/archive/todos/documentation-full-coverage-governance-validation-history-rp-041-to-rp-048-2026-04-28.md`
 
 ### 当前恢复点：RP-044
 

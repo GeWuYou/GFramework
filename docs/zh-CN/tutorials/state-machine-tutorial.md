@@ -356,7 +356,7 @@ namespace MyGame
     {
         public static IArchitecture Interface { get; private set; }
 
-        protected override void Init()
+        protected override void OnInitialize()
         {
             Interface = this;
 

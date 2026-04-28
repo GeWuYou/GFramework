@@ -18,14 +18,14 @@ description: 说明 IArchitectureContext 与 ArchitectureContext 的统一上下
 
 ## 先记住一个事实
 
-如果你还在找旧文档里的这些属性：
+如果你正在寻找这些属性式总线入口：
 
 - `CommandBus`
 - `QueryBus`
 - `EventBus`
 - `Container`
 
-那说明你看到的是旧写法。当前推荐入口是方法，不是这些属性式总线。
+当前公开入口是方法，不是这些属性式总线。
 
 ## 组件访问
 

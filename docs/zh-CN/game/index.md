@@ -1,6 +1,6 @@
 ---
 title: Game 模块
-description: GFramework.Game family 的运行时入口、采用顺序与源码阅读导航。
+description: GFramework.Game 运行时模块的入口、采用顺序与源码阅读导航。
 ---
 
 # Game 模块

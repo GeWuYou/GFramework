@@ -102,7 +102,7 @@ public partial class PlayerController : IController
   - 不维护共享 provider
   - 默认直接回退到 `GameContext.GetFirstArchitectureContext()`
 
-因此，旧文档里把两条路径混写成“只是写法不同”已经不准确。
+因此，这两条路径不是“只是写法不同”，而是共享 provider 策略和实例缓存边界都不同。
 
 ## 何时使用 `[ContextAware]`
 
