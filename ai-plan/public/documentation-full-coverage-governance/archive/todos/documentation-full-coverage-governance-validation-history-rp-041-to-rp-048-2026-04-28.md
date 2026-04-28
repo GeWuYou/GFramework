@@ -1,5 +1,17 @@
 # Documentation Full Coverage Governance Validation History (RP-041 to RP-048)
 
+## 2026-04-28 / RP-048 active tracking follow-up
+
+### PR review 抓取
+
+- `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --format json --json-output /tmp/current-pr-review.json`
+  - 结果：通过；PR `#299` 处于 `OPEN`，latest head review 有 `1` 条 `CodeRabbit` open thread 与 `1` 条 nitpick，`Greptile` / `Gemini Code Assist` 当前无 open thread，测试汇总为 `2159 passed`，仅剩 `Title check` inconclusive。
+
+### 站点构建
+
+- `bun run build`（工作目录：`docs/`）
+  - 结果：通过；active tracking 收口与时间线归档瘦身后站点仍可构建，仅保留既有大 chunk warning。
+
 ## 2026-04-28 / RP-048
 
 ### PR review 抓取

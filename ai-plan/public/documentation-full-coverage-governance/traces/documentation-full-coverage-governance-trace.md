@@ -4,117 +4,44 @@
 
 ### 当前恢复点：RP-048
 
-- 本轮按 `$gframework-pr-review` 抓取当前 PR `#299`，并确认 latest head review 仍有 `3` 条 `CodeRabbit` open thread；`Greptile` 与 `Gemini Code Assist` 当前无 open thread，测试汇总为 `2159 passed`，仅剩 `Title check` inconclusive。
-- 本地复核源码后确认：`GFramework.Core/Architectures/Architecture.cs` 只暴露架构级 `OnInitialize()`；`GFramework.Godot/Architectures/AbstractArchitecture.cs` 通过 `InstallModules()` 暴露模块注册入口；组件级 `OnInit()` 仍是 `Model` / `System` 的正确生命周期。
-- 仍成立的文件内问题只有三类：`docs/zh-CN/abstractions/index.md` 的原始文件名式导航、`docs/zh-CN/core/lifecycle.md` 与 `tutorials` / `troubleshooting` 里的架构级旧 `Init()` 示例、以及 active tracking 中过长的逐命令验证历史。
+- 本轮按 `$gframework-pr-review` 抓取当前 PR `#299`，确认 latest head review 当前只剩 `1` 条 `CodeRabbit` open thread 与 `1` 条 nitpick；两者都指向 active tracking 文档本身，`Greptile` 与 `Gemini Code Assist` 当前无 open thread，测试汇总为 `2159 passed`，另有 `Title check` inconclusive。
+- 本地复核后确认：此前针对 `docs/zh-CN/abstractions/index.md`、`docs/zh-CN/core/lifecycle.md` 与相关教程 / 排障页的 review follow-up 已不再是当前 remote latest-head review 的剩余阻塞项。
+- 当前仍需收口的只剩两件事：为 `RP-048` 补齐明确的“下一步”段落，以及把 `RP-045` 到 `RP-047` 的逐命令时间线从 active trace 下沉到归档文件。
 
 ### 当前决策（RP-048）
 
-- 在同一轮里收口所有仍然适用于仓库文件的 open thread；不把 `Title check` 当成仓库文件修复项。
-- 普通 `Architecture` 示例统一改回 `OnInitialize()`，`AbstractArchitecture` 示例改成 `InstallModules()`，组件级 `OnInit()` 示例保持不变。
-- 将 active tracking 的“最新验证”压缩为摘要，把详细命令历史迁入新的 `archive/todos` 文件，避免默认恢复入口继续膨胀。
+- 本轮限定只修改 `ai-plan/public/documentation-full-coverage-governance` 下的 tracking / trace 文档，不再扩展到已经收口的公开文档页面。
+- active trace 只保留当前恢复点、验证结论、下一步与归档指针；`RP-041` 到 `RP-048` 的阶段细节转入专门的 trace archive，逐命令验证继续保留在 validation history archive。
+- 不把 `Title check` 当成仓库文件修复项；本轮完成后只需要在提交推送后重新抓取 PR review，确认 remote 线程状态是否清空。
 
 ### 当前验证（RP-048）
 
 - PR review 抓取：
   - `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --format json --json-output /tmp/current-pr-review.json`
-  - 结果：通过；PR `#299` 处于 `OPEN`，latest head review 有 `3` 条 `CodeRabbit` open thread，`Greptile` / `Gemini Code Assist` 当前无 open thread，测试汇总为 `2159 passed`，仅剩 `Title check` inconclusive。
-- 页面校验：
-  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/abstractions/index.md`
-  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/core/lifecycle.md`
-  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/tutorials/state-machine-tutorial.md`
-  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/tutorials/resource-management.md`
-  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/tutorials/save-system.md`
-  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/tutorials/pause-system.md`
-  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/tutorials/large-project-organization.md`
-  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/troubleshooting.md`
-  - 结果：通过；本轮触达页面的 frontmatter、链接与代码块校验均通过。
+  - 结果：通过；PR `#299` 处于 `OPEN`，latest head review 有 `1` 条 `CodeRabbit` open thread 与 `1` 条 nitpick，`Greptile` / `Gemini Code Assist` 当前无 open thread，测试汇总为 `2159 passed`，仅剩 `Title check` inconclusive。
 - 站点构建：
   - `bun run build`（工作目录：`docs/`）
-  - 结果：通过；PR `#299` review follow-up 的文档修正与 active tracking 归档瘦身后站点仍可构建，仅保留既有大 chunk warning。
+  - 结果：通过；active tracking 收口与时间线归档瘦身后站点仍可构建，仅保留既有大 chunk warning。
+- 详细时间线归档：
+  - `ai-plan/public/documentation-full-coverage-governance/archive/traces/documentation-full-coverage-governance-trace-history-rp-041-to-rp-048-2026-04-28.md`
+- 详细验证归档：
+  - `ai-plan/public/documentation-full-coverage-governance/archive/todos/documentation-full-coverage-governance-validation-history-rp-041-to-rp-048-2026-04-28.md`
+
+### 下一步（RP-048）
+
+1. 提交本轮 active tracking 收口改动，并将提交推送到 PR `#299`。
+2. 推送后重新抓取 `$gframework-pr-review`，确认 latest-head review 是否只剩 `Title check` 或已全部清空。
+3. 若仍有新的文档 review 线程，继续按 latest-head review 精确收口，不恢复关键词驱动的机械扩批。
 
 ## 2026-04-27
 
-### 当前恢复点：RP-047
+### 已归档历史（RP-041 到 RP-047）
 
-- 第 2 批次提交 `2d2cd0c` 后，重新计算 branch diff 确认当前相对 `origin/main` 为 `13` files / `124` lines，仍然远低于 `$gframework-batch-boot 50` 的 stop condition。
-- 本轮最后继续接受两组同类低风险文案收口：`core/query.md`、`core/command.md`、`core/context.md`、`game/scene.md`、`godot/ui.md`、`source-generators/priority-generator.md`，以及 `core/lifecycle.md`、`game/ui.md`、`godot/scene.md`、`source-generators/context-aware-generator.md`。
-- 这 10 个页面的共同点是：把“旧文档/旧入口对比”句式改成直接陈述当前契约、默认入口或推荐做法，不引入结构改造，也不删掉真实的迁移边界信息。
-
-### 当前决策（RP-047）
-
-- 将第 3、4 批次合并为本轮最后一个提交，避免继续把批次拆得过碎，同时仍保持文件范围可审阅。
-- 本轮在这里停止，不是因为触达了 `50` 文件阈值，而是因为剩余命中已经从机械可收口的 reader-facing 文案问题，转成是否保留迁移信息或 README 交叉引用的编辑判断题。
-- 下一轮若继续，优先从剩余 `旧文档` / `README.md` / `先理解` 命中里做人工复核，而不是继续按关键词机械替换。
-
-### 当前验证（RP-047）
-
-- 页面校验：
-  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/core/query.md`
-  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/core/command.md`
-  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/core/context.md`
-  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/game/scene.md`
-  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/game/ui.md`
-  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/ui.md`
-  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/priority-generator.md`
-  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/core/lifecycle.md`
-  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/scene.md`
-  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/context-aware-generator.md`
-  - 结果：通过；本轮最后 10 个公开页面的 frontmatter、链接与代码块校验均通过。
-- 站点构建：
-  - `bun run build`（工作目录：`docs/`）
-  - 结果：通过；本轮 batch boot 第 3、4 批次的 10 个公开页面 reader-facing 收口后站点仍可构建，仅保留既有大 chunk warning。
-
-### 当前恢复点：RP-046
-
-- 第 1 批次提交 `c56260b` 后，重新计算 branch diff 确认当前相对 `origin/main` 为 `7` files / `68` lines，仍远低于 `$gframework-batch-boot 50` 的 stop condition。
-- 基于上一轮搜索结果，本轮继续接收一组同样低风险的公开文案收口：`docs/zh-CN/game/ui.md`、`godot/signal.md` 以及 4 个 source-generators 专题页中直接暴露 `ai-libs/CoreGrid` 路径的段落。
-- 这些页面都只是把内部参考项目路径改写为“项目侧常见实现”或“典型入口组织方式”，不改变示例代码、采用顺序或专题页结构。
-
-### 当前决策（RP-046）
-
-- 第 2 批次继续保持单页文字级修正边界，不把 `ai-libs/**` 当成公开文档里的直接导航或消费者说明。
-- 在站点构建通过后立即提交本批次，以便 branch diff 能继续被 stop condition 精确计量。
-- 当前下一候选批次是清理仍残留在若干公开页面中的“旧文档式对比”提示，继续限定为文案级收口。
-
-### 当前验证（RP-046）
-
-- 页面校验：
-  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/game/ui.md`
-  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/signal.md`
-  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/godot-project-generator.md`
-  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/get-node-generator.md`
-  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/bind-node-signal-generator.md`
-  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/auto-register-exported-collections-generator.md`
-  - 结果：通过；本轮 6 个公开页面的 frontmatter、链接与代码块校验均通过。
-- 站点构建：
-  - `bun run build`（工作目录：`docs/`）
-  - 结果：通过；本轮 batch boot 第 2 批次的 6 个公开页面 reader-facing 收口后站点仍可构建，仅保留既有大 chunk warning。
-
-### 当前恢复点：RP-045
-
-- 本轮通过 `$gframework-batch-boot 50` 重新进入，继续沿用显式 `--git-dir` / `--work-tree` 绑定确认当前分支仍为 `docs/sdk-update-documentation`，并按技能要求把 baseline 固定到最新本地 `origin/main` `7cfdd2c`（`2026-04-27 16:59:57 +08:00`）。
-- 重新计算 branch diff 后确认当前已提交范围相对 `origin/main` 为 `0` files / `0` lines；原因是本分支先前工作已经并入 `origin/main`，因此这一轮 batch boot 需要从零 diff 状态重新累计 stop condition。
-- 结合公开文档搜索结果，本轮先挑一组最稳的 reader-facing 入口页收口：`docs/zh-CN/source-generators/index.md`、`game/index.md`、`api-reference/index.md`、`godot/setting.md`、`abstractions/index.md`。
-
-### 当前决策（RP-045）
-
-- 第 1 批次只处理标题、描述和导航措辞，不改示例代码、不扩栏目结构，确保本轮重新起步时的风险保持最低。
-- 由于 branch-size stop condition 只统计已提交 diff，本轮应在每个稳定批次校验通过后尽快提交，再决定是否继续下一批。
-- 当前下一候选批次是清理公开文档里残留的 `ai-libs/CoreGrid` / `旧文档` 指向式表述，继续保持单页文案级修正边界。
-
-### 当前验证（RP-045）
-
-- 页面校验：
-  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/index.md`
-  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/game/index.md`
-  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/api-reference/index.md`
-  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/setting.md`
-  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/abstractions/index.md`
-  - 结果：通过；本轮 5 个 reader-facing 入口页的 frontmatter、链接与代码块校验均通过。
-- 站点构建：
-  - `bun run build`（工作目录：`docs/`）
-  - 结果：通过；本轮 batch boot 第 1 批次的 5 个入口页 reader-facing 收口后站点仍可构建，仅保留既有大 chunk warning。
+- `RP-045` 到 `RP-047` 的 batch boot 逐阶段时间线、branch diff 计量与 review follow-up 决策，已迁入专门的 trace archive，避免 active trace 继续保留逐命令历史。
+- 对应的页面校验、README 链接校验与站点构建命令，继续保留在 validation history archive 中，供后续追溯。
+- 归档路径：
+  - `ai-plan/public/documentation-full-coverage-governance/archive/traces/documentation-full-coverage-governance-trace-history-rp-041-to-rp-048-2026-04-28.md`
+  - `ai-plan/public/documentation-full-coverage-governance/archive/todos/documentation-full-coverage-governance-validation-history-rp-041-to-rp-048-2026-04-28.md`
 
 ### 当前恢复点：RP-044
 
