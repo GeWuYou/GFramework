@@ -150,7 +150,7 @@ var cacheStorage = new ScopedStorage(rootStorage, "runtime-cache");
 
 ## 与上层 repository 的关系
 
-`FileStorage` / `ScopedStorage` 是持久化最底层，不是最终采用入口。当前更常见的实际分工是：
+`FileStorage` / `ScopedStorage` 是持久化最底层，不是业务层最常直接接入的入口。当前更常见的实际分工是：
 
 - `DataRepository`
   - 每个 `IDataLocation` 对应一份独立持久化对象
@@ -161,8 +161,8 @@ var cacheStorage = new ScopedStorage(rootStorage, "runtime-cache");
 
 也就是说：
 
-- 业务层如果想保存一份独立数据，优先看 [数据与存档系统](./data.md)
-- 业务层如果想保存设置，优先看 [设置系统](./setting.md)
+- 业务层如果想保存一份独立数据，可继续阅读 [数据与存档系统](./data.md)
+- 业务层如果想保存设置，可继续阅读 [设置系统](./setting.md)
 - 业务层如果只是需要底层存储实现，才直接依赖 `IStorage`
 
 ## 当前边界

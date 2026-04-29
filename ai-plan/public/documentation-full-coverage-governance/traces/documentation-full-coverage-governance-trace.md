@@ -2,6 +2,39 @@
 
 ## 2026-04-29
 
+### 当前恢复点：RP-050
+
+- 本轮继续按 `$gframework-batch-boot 50` 推进，并沿用 `origin/main` `4557dde6`（`2026-04-29 11:14:56 +08:00`）作为唯一 branch-size baseline。
+- 当前 `HEAD` 相对 baseline 的 committed diff 仍是上一批的 `13` files / `133` lines；在本批次工作树修改与 `RP-050` 恢复文档更新后，working tree 相对 `origin/main` 为 `18` files / `225` lines，离 stop condition 仍有充足余量。
+- 本轮接受了 2 个 explorer 的只读排序：一个锁定 `docs/zh-CN/game/data.md`、`game/storage.md`、`godot/ui.md` 的低风险措辞问题，一个锁定 README 中仍能局部收口的标签问题。主线程只接受“改句子就能闭环”的项，不扩展到 README 结构重写。
+- 实际落地的收口集中在 5 个文件：`docs/zh-CN/game/data.md`、`game/storage.md`、`godot/ui.md`、`GFramework.Cqrs.Abstractions/README.md`、`GFramework.SourceGenerators.Common/README.md`。
+
+### 当前决策（RP-050）
+
+- 文档页只处理内部证据口吻、命令式导流、外部项目指代和生硬 adoption phrasing；不改示例结构和导航层次。
+- README 只处理两类低风险项：把源文件路径列表改成类型级契约说明，把 `IsPackable=false` 这类实现术语改成 reader-facing 安装说明。
+- `GFramework.Cqrs`、`GFramework.Game.SourceGenerators`、`GFramework.Ecs.Arch` 等 README 的大段源文件清单继续留到后续单独批次，因为那已经接近结构级重写，不适合和当前轻量文案收口混在一轮。
+
+### 当前验证（RP-050）
+
+- 页面校验：
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/game/data.md`
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/game/storage.md`
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/ui.md`
+  - 结果：通过；本轮 3 个页面的 frontmatter、链接与代码块校验全部通过。
+- README 链接校验：
+  - `bash .agents/skills/gframework-doc-refresh/scripts/validate-links.sh GFramework.Cqrs.Abstractions/README.md GFramework.SourceGenerators.Common/README.md`
+  - 结果：通过；本轮 2 个 README 的 reader-facing 标签调整后目标有效。
+- 站点构建：
+  - `bun run build`（工作目录：`docs/`）
+  - 结果：通过；本轮第 2 批 reader-facing 收口后站点仍可构建，仅保留既有大 chunk warning。
+
+### 下一步（RP-050）
+
+1. 提交本轮第 2 批 reader-facing 文案批次，并更新 committed branch diff vs `origin/main` 的精确计量。
+2. 若继续下一批，优先挑选仍可局部收口的页面或 README 标签，不把结构级 README 改写混入同一轮。
+3. 只有在 remote branch / 新 PR 重新建立后，再恢复 `$gframework-pr-review` 作为默认恢复入口。
+
 ### 当前恢复点：RP-049
 
 - 本轮按 `$gframework-batch-boot 50` 恢复，继续沿用显式 `--git-dir` / `--work-tree` 绑定确认当前分支仍为 `docs/sdk-update-documentation`；当前 upstream `origin/docs/sdk-update-documentation` 已 gone，因此改用 `origin/main` `4557dde6`（`2026-04-29 11:14:56 +08:00`）作为新的 branch-size baseline。
