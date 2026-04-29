@@ -1,5 +1,40 @@
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-29 — RP-094
+
+### 阶段：收尾 `YamlConfigSchemaValidator` 剩余 `MA0051` 并将仓库根 clean build 归零
+
+- 触发背景：
+  - 用户要求先拿构建 warning，再在 warning 很多时分批指派 subagent；本轮按 `$gframework-batch-boot 50` 继续执行
+- 基线与停机判断：
+  - 当前 `origin/main` 仍为 `0e32dab`（`2026-04-28T17:15:47+08:00`）
+  - 本轮标准仓库根 `dotnet clean` + `dotnet build` 直接成功；warning 总数为 `15`，但全部集中在 `GFramework.Game/Config/YamlConfigSchemaValidator.cs`
+  - 由于 `15` 条 warning 实际只对应同一文件内 `5` 个独立 `MA0051` 方法，不满足“warning 非常多且可安全分派多个独立写边界”的条件，因此不再新增 worker
+- 主线程实施：
+  - 将 `ParseNode` 拆成 `ResolveNodeTypeName`、`ValidateObjectOnlyKeywords`、`CreateParsedNodeForType`
+  - 将 `ValidateObjectNode` 拆成对象类型确认、属性遍历与 required 校验 helper
+  - 将 `ValidateObjectConstraints` 拆成 property count、`dependentRequired`、`dependentSchemas`、`allOf`、条件分支五个 helper
+  - 将 `ValidateScalarNode` 与 `ValidateNumericScalarConstraints` 分别拆成标量类型确认、引用回写、数值上下界和 `multipleOf` helper
+  - 追加 `ValidateConditionalSchemaBranch` 收口 if/then/else 分支；随后修正该 helper 引入的 `MA0006`
+- 验证里程碑：
+  - `dotnet build GFramework.Game/GFramework.Game.csproj -c Release -clp:Summary`
+    - 第一次结果：成功；`3` warnings、`0` errors（均为新 helper 中 `branchName == "then"` 引入的 `MA0006`）
+    - 第二次结果：成功；`0 Warning(s)`、`0 Error(s)`
+  - `dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --filter "FullyQualifiedName~YamlConfigLoaderTests|FullyQualifiedName~YamlConfigSchemaValidatorTests"`
+    - 结果：成功；`80` 通过、`0` 失败
+  - `dotnet clean`
+    - 结果：成功
+  - `dotnet build`
+    - 结果：成功；`0 Warning(s)`、`0 Error(s)`
+  - `git diff --check`
+    - 结果：成功；无新增 whitespace / conflict-marker 问题
+- 当前指标：
+  - 仓库根 clean build warning：`15` -> `0`
+  - 当前分支相对 `origin/main...HEAD` 仍为 `22` 个变更文件，低于 `$gframework-batch-boot 50` 的文件阈值
+  - 当前停止原因：warning hotspot 已耗尽，不再有可重复切片
+- 下一步：
+  - 提交 `YamlConfigSchemaValidator` 收尾重构与本轮 `ai-plan` 真值更新
+
 ## 2026-04-29 — RP-093
 
 ### 阶段：按 `$gframework-batch-boot 50` 从 clean build warning 基线分批清理

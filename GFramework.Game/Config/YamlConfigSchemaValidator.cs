@@ -321,6 +321,30 @@ internal static partial class YamlConfigSchemaValidator
         JsonElement element,
         bool isRoot = false)
     {
+        var typeName = ResolveNodeTypeName(tableName, schemaPath, propertyPath, element);
+        var referenceTableName = TryGetReferenceTableName(tableName, schemaPath, propertyPath, element);
+        ValidateObjectOnlyKeywords(tableName, schemaPath, propertyPath, element, typeName);
+
+        var parsedNode = CreateParsedNodeForType(
+            tableName,
+            schemaPath,
+            propertyPath,
+            element,
+            typeName,
+            referenceTableName,
+            isRoot);
+        return parsedNode.WithNegatedSchemaNode(ParseNegatedSchemaNode(tableName, schemaPath, propertyPath, element));
+    }
+
+    /// <summary>
+    ///     解析 schema 节点声明的类型名称，并在缺失或类型错误时立刻给出定位清晰的诊断。
+    /// </summary>
+    private static string ResolveNodeTypeName(
+        string tableName,
+        string schemaPath,
+        string propertyPath,
+        JsonElement element)
+    {
         if (!element.TryGetProperty("type", out var typeElement) ||
             typeElement.ValueKind != JsonValueKind.String)
         {
@@ -332,20 +356,46 @@ internal static partial class YamlConfigSchemaValidator
                 displayPath: GetDiagnosticPath(propertyPath));
         }
 
-        var typeName = typeElement.GetString() ?? string.Empty;
-        var referenceTableName = TryGetReferenceTableName(tableName, schemaPath, propertyPath, element);
-        if (!string.Equals(typeName, "object", StringComparison.Ordinal) &&
-            TryGetObjectOnlyKeywordName(element) is { } objectOnlyKeywordName)
+        return typeElement.GetString() ?? string.Empty;
+    }
+
+    /// <summary>
+    ///     限制只允许对象 schema 使用对象专属关键字，避免后续分支在运行时才发现语义不兼容。
+    /// </summary>
+    private static void ValidateObjectOnlyKeywords(
+        string tableName,
+        string schemaPath,
+        string propertyPath,
+        JsonElement element,
+        string typeName)
+    {
+        if (string.Equals(typeName, "object", StringComparison.Ordinal) ||
+            TryGetObjectOnlyKeywordName(element) is not { } objectOnlyKeywordName)
         {
-            throw ConfigLoadExceptionFactory.Create(
-                ConfigLoadFailureKind.SchemaUnsupported,
-                tableName,
-                $"Property '{propertyPath}' in schema file '{schemaPath}' can only declare '{objectOnlyKeywordName}' on object schemas.",
-                schemaPath: schemaPath,
-                displayPath: GetDiagnosticPath(propertyPath));
+            return;
         }
 
-        var parsedNode = typeName switch
+        throw ConfigLoadExceptionFactory.Create(
+            ConfigLoadFailureKind.SchemaUnsupported,
+            tableName,
+            $"Property '{propertyPath}' in schema file '{schemaPath}' can only declare '{objectOnlyKeywordName}' on object schemas.",
+            schemaPath: schemaPath,
+            displayPath: GetDiagnosticPath(propertyPath));
+    }
+
+    /// <summary>
+    ///     根据声明的 schema 类型分派到对应的节点解析器。
+    /// </summary>
+    private static YamlConfigSchemaNode CreateParsedNodeForType(
+        string tableName,
+        string schemaPath,
+        string propertyPath,
+        JsonElement element,
+        string typeName,
+        string? referenceTableName,
+        bool isRoot)
+    {
+        return typeName switch
         {
             "object" => ParseObjectSchemaNode(
                 tableName,
@@ -391,7 +441,6 @@ internal static partial class YamlConfigSchemaValidator
                 displayPath: GetDiagnosticPath(propertyPath),
                 rawValue: typeName)
         };
-        return parsedNode.WithNegatedSchemaNode(ParseNegatedSchemaNode(tableName, schemaPath, propertyPath, element));
     }
 
     /// <summary>
@@ -727,18 +776,68 @@ internal static partial class YamlConfigSchemaValidator
         ICollection<YamlConfigReferenceUsage>? references,
         bool allowUnknownObjectProperties)
     {
-        if (node is not YamlMappingNode mappingNode)
+        var mappingNode = GetObjectMappingNode(tableName, yamlPath, displayPath, node, schemaNode);
+        var seenProperties = ValidateObjectPropertyEntries(
+            tableName,
+            yamlPath,
+            displayPath,
+            mappingNode,
+            schemaNode,
+            references,
+            allowUnknownObjectProperties);
+        ValidateRequiredObjectProperties(tableName, yamlPath, displayPath, schemaNode, seenProperties);
+
+        ValidateObjectConstraints(
+            tableName,
+            yamlPath,
+            displayPath,
+            mappingNode,
+            seenProperties,
+            schemaNode,
+            references);
+
+        ValidateAllowedValues(tableName, yamlPath, displayPath, mappingNode, schemaNode);
+        ValidateConstantValue(tableName, yamlPath, displayPath, mappingNode, schemaNode);
+        ValidateNegatedSchemaConstraint(tableName, yamlPath, displayPath, mappingNode, schemaNode);
+    }
+
+    /// <summary>
+    ///     确认当前 YAML 节点确实是对象节点，避免后续属性枚举阶段再做重复判空与类型判断。
+    /// </summary>
+    private static YamlMappingNode GetObjectMappingNode(
+        string tableName,
+        string yamlPath,
+        string displayPath,
+        YamlNode node,
+        YamlConfigSchemaNode schemaNode)
+    {
+        if (node is YamlMappingNode mappingNode)
         {
-            var subject = displayPath.Length == 0 ? "Root object" : $"Property '{displayPath}'";
-            throw ConfigLoadExceptionFactory.Create(
-                ConfigLoadFailureKind.PropertyTypeMismatch,
-                tableName,
-                $"{subject} in config file '{yamlPath}' must be an object.",
-                yamlPath: yamlPath,
-                schemaPath: schemaNode.SchemaPathHint,
-                displayPath: GetDiagnosticPath(displayPath));
+            return mappingNode;
         }
 
+        var subject = displayPath.Length == 0 ? "Root object" : $"Property '{displayPath}'";
+        throw ConfigLoadExceptionFactory.Create(
+            ConfigLoadFailureKind.PropertyTypeMismatch,
+            tableName,
+            $"{subject} in config file '{yamlPath}' must be an object.",
+            yamlPath: yamlPath,
+            schemaPath: schemaNode.SchemaPathHint,
+            displayPath: GetDiagnosticPath(displayPath));
+    }
+
+    /// <summary>
+    ///     遍历对象属性并递归校验每个已声明字段，同时记录用于后续 required 与 dependency 判断的 sibling 集合。
+    /// </summary>
+    private static HashSet<string> ValidateObjectPropertyEntries(
+        string tableName,
+        string yamlPath,
+        string displayPath,
+        YamlMappingNode mappingNode,
+        YamlConfigSchemaNode schemaNode,
+        ICollection<YamlConfigReferenceUsage>? references,
+        bool allowUnknownObjectProperties)
+    {
         var seenProperties = new HashSet<string>(StringComparer.Ordinal);
         foreach (var entry in mappingNode.Children)
         {
@@ -795,6 +894,19 @@ internal static partial class YamlConfigSchemaValidator
                 allowUnknownObjectProperties);
         }
 
+        return seenProperties;
+    }
+
+    /// <summary>
+    ///     在对象主体字段遍历结束后统一检查缺失的 required 字段，保证错误消息使用稳定的完整路径。
+    /// </summary>
+    private static void ValidateRequiredObjectProperties(
+        string tableName,
+        string yamlPath,
+        string displayPath,
+        YamlConfigSchemaNode schemaNode,
+        HashSet<string> seenProperties)
+    {
         if (schemaNode.RequiredProperties is null)
         {
             return;
@@ -816,19 +928,6 @@ internal static partial class YamlConfigSchemaValidator
                 schemaPath: schemaNode.SchemaPathHint,
                 displayPath: requiredPath);
         }
-
-        ValidateObjectConstraints(
-            tableName,
-            yamlPath,
-            displayPath,
-            mappingNode,
-            seenProperties,
-            schemaNode,
-            references);
-
-        ValidateAllowedValues(tableName, yamlPath, displayPath, mappingNode, schemaNode);
-        ValidateConstantValue(tableName, yamlPath, displayPath, mappingNode, schemaNode);
-        ValidateNegatedSchemaConstraint(tableName, yamlPath, displayPath, mappingNode, schemaNode);
     }
 
     /// <summary>
@@ -864,11 +963,76 @@ internal static partial class YamlConfigSchemaValidator
         }
 
         var propertyCount = seenProperties.Count;
-        var subject = string.IsNullOrWhiteSpace(displayPath)
+        var subject = GetObjectConstraintSubject(displayPath);
+
+        ValidateObjectPropertyCountConstraints(
+            tableName,
+            yamlPath,
+            displayPath,
+            schemaNode,
+            constraints,
+            subject,
+            propertyCount);
+        ValidateDependentRequiredConstraints(
+            tableName,
+            yamlPath,
+            displayPath,
+            schemaNode,
+            constraints,
+            seenProperties);
+        ValidateDependentSchemas(
+            tableName,
+            yamlPath,
+            displayPath,
+            mappingNode,
+            schemaNode,
+            constraints,
+            references,
+            seenProperties,
+            subject);
+        ValidateAllOfSchemas(
+            tableName,
+            yamlPath,
+            displayPath,
+            mappingNode,
+            schemaNode,
+            constraints,
+            references,
+            subject);
+        ValidateConditionalObjectSchemas(
+            tableName,
+            yamlPath,
+            displayPath,
+            mappingNode,
+            schemaNode,
+            constraints,
+            references,
+            subject);
+    }
+
+    /// <summary>
+    ///     为对象约束构造统一的诊断主语，保证根对象与嵌套对象的错误消息格式一致。
+    /// </summary>
+    private static string GetObjectConstraintSubject(string displayPath)
+    {
+        return string.IsNullOrWhiteSpace(displayPath)
             ? "Root object"
             : $"Property '{displayPath}'";
-        var rawValue = propertyCount.ToString(CultureInfo.InvariantCulture);
+    }
 
+    /// <summary>
+    ///     校验对象属性数量上下限。
+    /// </summary>
+    private static void ValidateObjectPropertyCountConstraints(
+        string tableName,
+        string yamlPath,
+        string displayPath,
+        YamlConfigSchemaNode schemaNode,
+        YamlConfigObjectConstraints constraints,
+        string subject,
+        int propertyCount)
+    {
+        var rawValue = propertyCount.ToString(CultureInfo.InvariantCulture);
         if (constraints.MinProperties.HasValue &&
             propertyCount < constraints.MinProperties.Value)
         {
@@ -898,116 +1062,177 @@ internal static partial class YamlConfigSchemaValidator
                 detail:
                 $"Maximum property count: {constraints.MaxProperties.Value.ToString(CultureInfo.InvariantCulture)}.");
         }
+    }
 
-        if (constraints.DependentRequired is not null &&
-            constraints.DependentRequired.Count > 0)
+    /// <summary>
+    ///     使用已见 sibling 集合校验 dependentRequired，确保对象主路径与试匹配路径共用同一判定语义。
+    /// </summary>
+    private static void ValidateDependentRequiredConstraints(
+        string tableName,
+        string yamlPath,
+        string displayPath,
+        YamlConfigSchemaNode schemaNode,
+        YamlConfigObjectConstraints constraints,
+        HashSet<string> seenProperties)
+    {
+        if (constraints.DependentRequired is null ||
+            constraints.DependentRequired.Count == 0)
         {
-            // Reuse the collected sibling-name set so the main validation path and
-            // the contains/not matcher both interpret object dependencies identically.
-            foreach (var dependency in constraints.DependentRequired)
-            {
-                if (!seenProperties.Contains(dependency.Key))
-                {
-                    continue;
-                }
-
-                var triggerPath = CombineDisplayPath(displayPath, dependency.Key);
-                foreach (var dependentProperty in dependency.Value)
-                {
-                    if (seenProperties.Contains(dependentProperty))
-                    {
-                        continue;
-                    }
-
-                    var requiredPath = CombineDisplayPath(displayPath, dependentProperty);
-                    throw ConfigLoadExceptionFactory.Create(
-                        ConfigLoadFailureKind.MissingRequiredProperty,
-                        tableName,
-                        $"Property '{requiredPath}' in config file '{yamlPath}' is required when sibling property '{triggerPath}' is present.",
-                        yamlPath: yamlPath,
-                        schemaPath: schemaNode.SchemaPathHint,
-                        displayPath: requiredPath,
-                        detail:
-                        $"Dependent requirement: when '{triggerPath}' exists, '{requiredPath}' must also be declared.");
-                }
-            }
+            return;
         }
 
-        if (constraints.DependentSchemas is not null &&
-            constraints.DependentSchemas.Count > 0)
+        // Reuse the collected sibling-name set so the main validation path and
+        // the contains/not matcher both interpret object dependencies identically.
+        foreach (var dependency in constraints.DependentRequired)
         {
-            foreach (var dependency in constraints.DependentSchemas)
+            if (!seenProperties.Contains(dependency.Key))
             {
-                if (!seenProperties.Contains(dependency.Key))
+                continue;
+            }
+
+            var triggerPath = CombineDisplayPath(displayPath, dependency.Key);
+            foreach (var dependentProperty in dependency.Value)
+            {
+                if (seenProperties.Contains(dependentProperty))
                 {
                     continue;
                 }
 
-                var triggerPath = CombineDisplayPath(displayPath, dependency.Key);
-                // dependentSchemas acts as an additional conditional constraint block on the
-                // current object. Keep undeclared sibling fields outside the dependent sub-schema
-                // from blocking the match so schema authors can express focused follow-up rules.
-                // The trial matcher merges only new reference usages back into the outer collector,
-                // so re-checking the same scalar via a conditional sub-schema does not duplicate
-                // cross-table validation work later in the loader pipeline.
-                if (TryMatchSchemaNode(
-                        tableName,
-                        yamlPath,
-                        displayPath,
-                        mappingNode,
-                        dependency.Value,
-                        references,
-                        allowUnknownObjectProperties: true))
-                {
-                    continue;
-                }
-
+                var requiredPath = CombineDisplayPath(displayPath, dependentProperty);
                 throw ConfigLoadExceptionFactory.Create(
-                    ConfigLoadFailureKind.ConstraintViolation,
+                    ConfigLoadFailureKind.MissingRequiredProperty,
                     tableName,
-                    $"{subject} in config file '{yamlPath}' must satisfy the 'dependentSchemas' schema triggered by sibling property '{triggerPath}'.",
+                    $"Property '{requiredPath}' in config file '{yamlPath}' is required when sibling property '{triggerPath}' is present.",
                     yamlPath: yamlPath,
                     schemaPath: schemaNode.SchemaPathHint,
-                    displayPath: GetDiagnosticPath(displayPath),
+                    displayPath: requiredPath,
                     detail:
-                    $"Dependent schema: when '{triggerPath}' exists, the current object must satisfy the corresponding inline schema.");
+                    $"Dependent requirement: when '{triggerPath}' exists, '{requiredPath}' must also be declared.");
             }
         }
+    }
 
-        if (constraints.AllOfSchemas is not null &&
-            constraints.AllOfSchemas.Count > 0)
+    /// <summary>
+    ///     在触发字段出现时，以 focused matcher 语义试跑 dependentSchemas。
+    /// </summary>
+    private static void ValidateDependentSchemas(
+        string tableName,
+        string yamlPath,
+        string displayPath,
+        YamlMappingNode mappingNode,
+        YamlConfigSchemaNode schemaNode,
+        YamlConfigObjectConstraints constraints,
+        ICollection<YamlConfigReferenceUsage>? references,
+        HashSet<string> seenProperties,
+        string subject)
+    {
+        if (constraints.DependentSchemas is null ||
+            constraints.DependentSchemas.Count == 0)
         {
-            for (var index = 0; index < constraints.AllOfSchemas.Count; index++)
-            {
-                var allOfSchema = constraints.AllOfSchemas[index];
-                // allOf follows the same focused constraint block semantics as dependentSchemas:
-                // the inline schema may validate a subset of the current object without forcing
-                // unrelated sibling fields to be restated.
-                if (TryMatchSchemaNode(
-                        tableName,
-                        yamlPath,
-                        displayPath,
-                        mappingNode,
-                        allOfSchema,
-                        references,
-                        allowUnknownObjectProperties: true))
-                {
-                    continue;
-                }
-
-                var allOfEntryNumber = index + 1;
-                throw ConfigLoadExceptionFactory.Create(
-                    ConfigLoadFailureKind.ConstraintViolation,
-                    tableName,
-                    $"{subject} in config file '{yamlPath}' must satisfy all 'allOf' schemas, but entry #{allOfEntryNumber.ToString(CultureInfo.InvariantCulture)} did not match.",
-                    yamlPath: yamlPath,
-                    schemaPath: schemaNode.SchemaPathHint,
-                    displayPath: GetDiagnosticPath(displayPath),
-                    detail:
-                    $"allOf entry #{allOfEntryNumber.ToString(CultureInfo.InvariantCulture)} must match the current object.");
-            }
+            return;
         }
 
+        foreach (var dependency in constraints.DependentSchemas)
+        {
+            if (!seenProperties.Contains(dependency.Key))
+            {
+                continue;
+            }
+
+            var triggerPath = CombineDisplayPath(displayPath, dependency.Key);
+            // dependentSchemas acts as an additional conditional constraint block on the
+            // current object. Keep undeclared sibling fields outside the dependent sub-schema
+            // from blocking the match so schema authors can express focused follow-up rules.
+            // The trial matcher merges only new reference usages back into the outer collector,
+            // so re-checking the same scalar via a conditional sub-schema does not duplicate
+            // cross-table validation work later in the loader pipeline.
+            if (TryMatchSchemaNode(
+                    tableName,
+                    yamlPath,
+                    displayPath,
+                    mappingNode,
+                    dependency.Value,
+                    references,
+                    allowUnknownObjectProperties: true))
+            {
+                continue;
+            }
+
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.ConstraintViolation,
+                tableName,
+                $"{subject} in config file '{yamlPath}' must satisfy the 'dependentSchemas' schema triggered by sibling property '{triggerPath}'.",
+                yamlPath: yamlPath,
+                schemaPath: schemaNode.SchemaPathHint,
+                displayPath: GetDiagnosticPath(displayPath),
+                detail:
+                $"Dependent schema: when '{triggerPath}' exists, the current object must satisfy the corresponding inline schema.");
+        }
+    }
+
+    /// <summary>
+    ///     逐条校验 allOf 约束，保持与 dependentSchemas 相同的 focused object 匹配语义。
+    /// </summary>
+    private static void ValidateAllOfSchemas(
+        string tableName,
+        string yamlPath,
+        string displayPath,
+        YamlMappingNode mappingNode,
+        YamlConfigSchemaNode schemaNode,
+        YamlConfigObjectConstraints constraints,
+        ICollection<YamlConfigReferenceUsage>? references,
+        string subject)
+    {
+        if (constraints.AllOfSchemas is null ||
+            constraints.AllOfSchemas.Count == 0)
+        {
+            return;
+        }
+
+        for (var index = 0; index < constraints.AllOfSchemas.Count; index++)
+        {
+            var allOfSchema = constraints.AllOfSchemas[index];
+            // allOf follows the same focused constraint block semantics as dependentSchemas:
+            // the inline schema may validate a subset of the current object without forcing
+            // unrelated sibling fields to be restated.
+            if (TryMatchSchemaNode(
+                    tableName,
+                    yamlPath,
+                    displayPath,
+                    mappingNode,
+                    allOfSchema,
+                    references,
+                    allowUnknownObjectProperties: true))
+            {
+                continue;
+            }
+
+            var allOfEntryNumber = index + 1;
+            throw ConfigLoadExceptionFactory.Create(
+                ConfigLoadFailureKind.ConstraintViolation,
+                tableName,
+                $"{subject} in config file '{yamlPath}' must satisfy all 'allOf' schemas, but entry #{allOfEntryNumber.ToString(CultureInfo.InvariantCulture)} did not match.",
+                yamlPath: yamlPath,
+                schemaPath: schemaNode.SchemaPathHint,
+                displayPath: GetDiagnosticPath(displayPath),
+                detail:
+                $"allOf entry #{allOfEntryNumber.ToString(CultureInfo.InvariantCulture)} must match the current object.");
+        }
+    }
+
+    /// <summary>
+    ///     执行对象级 if/then/else 约束，并沿用 focused matcher 允许条件 schema 只声明关注字段。
+    /// </summary>
+    private static void ValidateConditionalObjectSchemas(
+        string tableName,
+        string yamlPath,
+        string displayPath,
+        YamlMappingNode mappingNode,
+        YamlConfigSchemaNode schemaNode,
+        YamlConfigObjectConstraints constraints,
+        ICollection<YamlConfigReferenceUsage>? references,
+        string subject)
+    {
         var conditionalSchemas = constraints.ConditionalSchemas;
         if (conditionalSchemas is null)
         {
@@ -1025,49 +1250,72 @@ internal static partial class YamlConfigSchemaValidator
             conditionalSchemas.IfSchema,
             references,
             allowUnknownObjectProperties: true);
-        if (ifMatched &&
-            conditionalSchemas.ThenSchema is not null &&
-            !TryMatchSchemaNode(
+        ValidateConditionalSchemaBranch(
+            tableName,
+            yamlPath,
+            displayPath,
+            mappingNode,
+            schemaNode,
+            references,
+            subject,
+            ifMatched,
+            conditionalSchemas.ThenSchema,
+            branchName: "then",
+            failureDetail:
+            "Conditional schema: the current object matched the inline 'if' schema, so it must also satisfy the corresponding 'then' schema.");
+        ValidateConditionalSchemaBranch(
+            tableName,
+            yamlPath,
+            displayPath,
+            mappingNode,
+            schemaNode,
+            references,
+            subject,
+            !ifMatched,
+            conditionalSchemas.ElseSchema,
+            branchName: "else",
+            failureDetail:
+            "Conditional schema: the current object did not match the inline 'if' schema, so it must satisfy the corresponding 'else' schema.");
+    }
+
+    /// <summary>
+    ///     校验 if/then/else 的单个分支，并在条件命中但分支未通过时提供统一诊断。
+    /// </summary>
+    private static void ValidateConditionalSchemaBranch(
+        string tableName,
+        string yamlPath,
+        string displayPath,
+        YamlMappingNode mappingNode,
+        YamlConfigSchemaNode schemaNode,
+        ICollection<YamlConfigReferenceUsage>? references,
+        string subject,
+        bool shouldValidate,
+        YamlConfigSchemaNode? branchSchema,
+        string branchName,
+        string failureDetail)
+    {
+        if (!shouldValidate ||
+            branchSchema is null ||
+            TryMatchSchemaNode(
                 tableName,
                 yamlPath,
                 displayPath,
                 mappingNode,
-                conditionalSchemas.ThenSchema,
+                branchSchema,
                 references,
                 allowUnknownObjectProperties: true))
         {
-            throw ConfigLoadExceptionFactory.Create(
-                ConfigLoadFailureKind.ConstraintViolation,
-                tableName,
-                $"{subject} in config file '{yamlPath}' must satisfy the 'then' schema because the inline 'if' condition matched.",
-                yamlPath: yamlPath,
-                schemaPath: schemaNode.SchemaPathHint,
-                displayPath: GetDiagnosticPath(displayPath),
-                detail:
-                "Conditional schema: the current object matched the inline 'if' schema, so it must also satisfy the corresponding 'then' schema.");
+            return;
         }
 
-        if (!ifMatched &&
-            conditionalSchemas.ElseSchema is not null &&
-            !TryMatchSchemaNode(
-                tableName,
-                yamlPath,
-                displayPath,
-                mappingNode,
-                conditionalSchemas.ElseSchema,
-                references,
-                allowUnknownObjectProperties: true))
-        {
-            throw ConfigLoadExceptionFactory.Create(
-                ConfigLoadFailureKind.ConstraintViolation,
-                tableName,
-                $"{subject} in config file '{yamlPath}' must satisfy the 'else' schema because the inline 'if' condition did not match.",
-                yamlPath: yamlPath,
-                schemaPath: schemaNode.SchemaPathHint,
-                displayPath: GetDiagnosticPath(displayPath),
-                detail:
-                "Conditional schema: the current object did not match the inline 'if' schema, so it must satisfy the corresponding 'else' schema.");
-        }
+        throw ConfigLoadExceptionFactory.Create(
+            ConfigLoadFailureKind.ConstraintViolation,
+            tableName,
+            $"{subject} in config file '{yamlPath}' must satisfy the '{branchName}' schema because the inline 'if' condition {(string.Equals(branchName, "then", StringComparison.Ordinal) ? "matched" : "did not match")}.",
+            yamlPath: yamlPath,
+            schemaPath: schemaNode.SchemaPathHint,
+            displayPath: GetDiagnosticPath(displayPath),
+            detail: failureDetail);
     }
 
     /// <summary>
@@ -1154,29 +1402,81 @@ internal static partial class YamlConfigSchemaValidator
         YamlConfigSchemaNode schemaNode,
         ICollection<YamlConfigReferenceUsage>? references)
     {
-        if (node is not YamlScalarNode scalarNode)
+        var scalarNode = GetScalarNodeOrThrow(tableName, yamlPath, displayPath, node, schemaNode);
+        var value = GetScalarValueOrThrow(tableName, yamlPath, displayPath, scalarNode, schemaNode);
+        ValidateScalarTypeOrThrow(tableName, yamlPath, displayPath, scalarNode, schemaNode, value);
+        var normalizedValue = NormalizeScalarValue(schemaNode.NodeType, value);
+        ValidateAllowedValues(tableName, yamlPath, displayPath, scalarNode, schemaNode);
+
+        if (schemaNode.Constraints is not null)
         {
-            throw ConfigLoadExceptionFactory.Create(
-                ConfigLoadFailureKind.PropertyTypeMismatch,
-                tableName,
-                $"Property '{displayPath}' in config file '{yamlPath}' must be a scalar value of type '{GetTypeName(schemaNode.NodeType)}'.",
-                yamlPath: yamlPath,
-                schemaPath: schemaNode.SchemaPathHint,
-                displayPath: GetDiagnosticPath(displayPath));
+            ValidateScalarConstraints(tableName, yamlPath, displayPath, value, normalizedValue, schemaNode);
         }
 
-        var value = scalarNode.Value;
-        if (value is null)
+        ValidateConstantValue(tableName, yamlPath, displayPath, scalarNode, schemaNode);
+        ValidateNegatedSchemaConstraint(tableName, yamlPath, displayPath, scalarNode, schemaNode);
+        CollectScalarReferenceUsage(yamlPath, displayPath, schemaNode, references, normalizedValue);
+    }
+
+    /// <summary>
+    ///     确认 schema 期望的节点在 YAML 中仍然表现为标量。
+    /// </summary>
+    private static YamlScalarNode GetScalarNodeOrThrow(
+        string tableName,
+        string yamlPath,
+        string displayPath,
+        YamlNode node,
+        YamlConfigSchemaNode schemaNode)
+    {
+        if (node is YamlScalarNode scalarNode)
         {
-            throw ConfigLoadExceptionFactory.Create(
-                ConfigLoadFailureKind.NullScalarValue,
-                tableName,
-                $"Property '{displayPath}' in config file '{yamlPath}' cannot be null when schema type is '{GetTypeName(schemaNode.NodeType)}'.",
-                yamlPath: yamlPath,
-                schemaPath: schemaNode.SchemaPathHint,
-                displayPath: GetDiagnosticPath(displayPath));
+            return scalarNode;
         }
 
+        throw ConfigLoadExceptionFactory.Create(
+            ConfigLoadFailureKind.PropertyTypeMismatch,
+            tableName,
+            $"Property '{displayPath}' in config file '{yamlPath}' must be a scalar value of type '{GetTypeName(schemaNode.NodeType)}'.",
+            yamlPath: yamlPath,
+            schemaPath: schemaNode.SchemaPathHint,
+            displayPath: GetDiagnosticPath(displayPath));
+    }
+
+    /// <summary>
+    ///     读取标量文本值，并把 YAML 显式 null 与普通空字符串区分开。
+    /// </summary>
+    private static string GetScalarValueOrThrow(
+        string tableName,
+        string yamlPath,
+        string displayPath,
+        YamlScalarNode scalarNode,
+        YamlConfigSchemaNode schemaNode)
+    {
+        if (scalarNode.Value is { } value)
+        {
+            return value;
+        }
+
+        throw ConfigLoadExceptionFactory.Create(
+            ConfigLoadFailureKind.NullScalarValue,
+            tableName,
+            $"Property '{displayPath}' in config file '{yamlPath}' cannot be null when schema type is '{GetTypeName(schemaNode.NodeType)}'.",
+            yamlPath: yamlPath,
+            schemaPath: schemaNode.SchemaPathHint,
+            displayPath: GetDiagnosticPath(displayPath));
+    }
+
+    /// <summary>
+    ///     按 schema 声明的标量类型验证 YAML 文本值。
+    /// </summary>
+    private static void ValidateScalarTypeOrThrow(
+        string tableName,
+        string yamlPath,
+        string displayPath,
+        YamlScalarNode scalarNode,
+        YamlConfigSchemaNode schemaNode,
+        string value)
+    {
         var tag = scalarNode.Tag.ToString();
         var isValid = schemaNode.NodeType switch
         {
@@ -1194,42 +1494,45 @@ internal static partial class YamlConfigSchemaValidator
             YamlConfigSchemaPropertyType.Boolean => bool.TryParse(value, out _),
             _ => false
         };
-
-        if (!isValid)
+        if (isValid)
         {
-            throw ConfigLoadExceptionFactory.Create(
-                ConfigLoadFailureKind.PropertyTypeMismatch,
-                tableName,
-                $"Property '{displayPath}' in config file '{yamlPath}' must be of type '{GetTypeName(schemaNode.NodeType)}', but the current YAML scalar value is '{value}'.",
-                yamlPath: yamlPath,
-                schemaPath: schemaNode.SchemaPathHint,
-                displayPath: GetDiagnosticPath(displayPath),
-                rawValue: value);
+            return;
         }
 
-        var normalizedValue = NormalizeScalarValue(schemaNode.NodeType, value);
-        ValidateAllowedValues(tableName, yamlPath, displayPath, scalarNode, schemaNode);
+        throw ConfigLoadExceptionFactory.Create(
+            ConfigLoadFailureKind.PropertyTypeMismatch,
+            tableName,
+            $"Property '{displayPath}' in config file '{yamlPath}' must be of type '{GetTypeName(schemaNode.NodeType)}', but the current YAML scalar value is '{value}'.",
+            yamlPath: yamlPath,
+            schemaPath: schemaNode.SchemaPathHint,
+            displayPath: GetDiagnosticPath(displayPath),
+            rawValue: value);
+    }
 
-        if (schemaNode.Constraints is not null)
+    /// <summary>
+    ///     在标量值成功通过本地校验后，再把引用信息回写给外层收集器。
+    /// </summary>
+    private static void CollectScalarReferenceUsage(
+        string yamlPath,
+        string displayPath,
+        YamlConfigSchemaNode schemaNode,
+        ICollection<YamlConfigReferenceUsage>? references,
+        string normalizedValue)
+    {
+        if (schemaNode.ReferenceTableName is null ||
+            references is null)
         {
-            ValidateScalarConstraints(tableName, yamlPath, displayPath, value, normalizedValue, schemaNode);
+            return;
         }
 
-        ValidateConstantValue(tableName, yamlPath, displayPath, scalarNode, schemaNode);
-        ValidateNegatedSchemaConstraint(tableName, yamlPath, displayPath, scalarNode, schemaNode);
-
-        if (schemaNode.ReferenceTableName != null &&
-            references is not null)
-        {
-            references.Add(
-                new YamlConfigReferenceUsage(
-                    yamlPath,
-                    schemaNode.SchemaPathHint,
-                    displayPath,
-                    normalizedValue,
-                    schemaNode.ReferenceTableName,
-                    schemaNode.NodeType));
-        }
+        references.Add(
+            new YamlConfigReferenceUsage(
+                yamlPath,
+                schemaNode.SchemaPathHint,
+                displayPath,
+                normalizedValue,
+                schemaNode.ReferenceTableName,
+                schemaNode.NodeType));
     }
 
     /// <summary>
@@ -2392,6 +2695,45 @@ internal static partial class YamlConfigSchemaValidator
             rawValue,
             normalizedValue,
             schemaNode);
+        ValidateNumericLowerBounds(
+            tableName,
+            yamlPath,
+            displayPath,
+            rawValue,
+            schemaNode,
+            constraints,
+            numericValue);
+        ValidateNumericUpperBounds(
+            tableName,
+            yamlPath,
+            displayPath,
+            rawValue,
+            schemaNode,
+            constraints,
+            numericValue);
+        ValidateNumericMultipleOfConstraint(
+            tableName,
+            yamlPath,
+            displayPath,
+            rawValue,
+            normalizedValue,
+            schemaNode,
+            constraints,
+            numericValue);
+    }
+
+    /// <summary>
+    ///     校验数值的最小值与开区间下界。
+    /// </summary>
+    private static void ValidateNumericLowerBounds(
+        string tableName,
+        string yamlPath,
+        string displayPath,
+        string rawValue,
+        YamlConfigSchemaNode schemaNode,
+        YamlConfigNumericConstraints constraints,
+        double numericValue)
+    {
         if (constraints.Minimum.HasValue && numericValue < constraints.Minimum.Value)
         {
             throw ConfigLoadExceptionFactory.Create(
@@ -2418,7 +2760,20 @@ internal static partial class YamlConfigSchemaValidator
                 detail:
                 $"Exclusive minimum allowed value: {constraints.ExclusiveMinimum.Value.ToString(CultureInfo.InvariantCulture)}.");
         }
+    }
 
+    /// <summary>
+    ///     校验数值的最大值与开区间上界。
+    /// </summary>
+    private static void ValidateNumericUpperBounds(
+        string tableName,
+        string yamlPath,
+        string displayPath,
+        string rawValue,
+        YamlConfigSchemaNode schemaNode,
+        YamlConfigNumericConstraints constraints,
+        double numericValue)
+    {
         if (constraints.Maximum.HasValue && numericValue > constraints.Maximum.Value)
         {
             throw ConfigLoadExceptionFactory.Create(
@@ -2445,21 +2800,37 @@ internal static partial class YamlConfigSchemaValidator
                 detail:
                 $"Exclusive maximum allowed value: {constraints.ExclusiveMaximum.Value.ToString(CultureInfo.InvariantCulture)}.");
         }
+    }
 
-        if (constraints.MultipleOf.HasValue &&
-            !IsMultipleOf(normalizedValue, numericValue, constraints.MultipleOf.Value))
+    /// <summary>
+    ///     校验数值是否满足 multipleOf 步进约束。
+    /// </summary>
+    private static void ValidateNumericMultipleOfConstraint(
+        string tableName,
+        string yamlPath,
+        string displayPath,
+        string rawValue,
+        string normalizedValue,
+        YamlConfigSchemaNode schemaNode,
+        YamlConfigNumericConstraints constraints,
+        double numericValue)
+    {
+        if (!constraints.MultipleOf.HasValue ||
+            IsMultipleOf(normalizedValue, numericValue, constraints.MultipleOf.Value))
         {
-            throw ConfigLoadExceptionFactory.Create(
-                ConfigLoadFailureKind.ConstraintViolation,
-                tableName,
-                $"Property '{displayPath}' in config file '{yamlPath}' must be a multiple of {constraints.MultipleOf.Value.ToString(CultureInfo.InvariantCulture)}, but the current YAML scalar value is '{rawValue}'.",
-                yamlPath: yamlPath,
-                schemaPath: schemaNode.SchemaPathHint,
-                displayPath: GetDiagnosticPath(displayPath),
-                rawValue: rawValue,
-                detail:
-                $"Required numeric step: {constraints.MultipleOf.Value.ToString(CultureInfo.InvariantCulture)}.");
+            return;
         }
+
+        throw ConfigLoadExceptionFactory.Create(
+            ConfigLoadFailureKind.ConstraintViolation,
+            tableName,
+            $"Property '{displayPath}' in config file '{yamlPath}' must be a multiple of {constraints.MultipleOf.Value.ToString(CultureInfo.InvariantCulture)}, but the current YAML scalar value is '{rawValue}'.",
+            yamlPath: yamlPath,
+            schemaPath: schemaNode.SchemaPathHint,
+            displayPath: GetDiagnosticPath(displayPath),
+            rawValue: rawValue,
+            detail:
+            $"Required numeric step: {constraints.MultipleOf.Value.ToString(CultureInfo.InvariantCulture)}.");
     }
 
     /// <summary>

@@ -6,48 +6,43 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-093`
-- 当前阶段：`Phase 93`
+- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-094`
+- 当前阶段：`Phase 94`
 - 当前焦点：
-  - `2026-04-29` 使用 `$gframework-batch-boot 50` 从 clean build warning 基线继续分批清理 analyzer warnings
-  - 已接受三个 worker 的 `GFramework.Cqrs.Tests/Mediator/*` 独立切片，三个 Mediator 测试文件的 warning 已清零
-  - 主线程补齐 `YamlConfigSchemaValidator` 运行时正则 timeout 与 ordinal 字符串比较，先收掉低风险 `MA0009` / `MA0006`
-  - 已收口两个 Game 追加切片：`YamlConfigSchemaValidator.ObjectKeywords.cs` 方法拆分与 schema model 类型拆文件
-  - 当前停止条件为相对 `origin/main` 接近 `50` 个变更文件；本轮按用户要求到此结束，不再继续开新切片
+  - `2026-04-29` 继续按 `$gframework-batch-boot 50` 从仓库根 `dotnet clean` + `dotnet build` 的权威 warning 基线收尾 `YamlConfigSchemaValidator`
+  - 本轮 clean build 只剩 `15` 条 warning，但实际只对应 `YamlConfigSchemaValidator.cs` 同一文件中的 `5` 个独立 `MA0051` 热点，因此不再并发派发 worker，避免同文件冲突
+  - 已将 `ParseNode`、`ValidateObjectNode`、`ValidateObjectConstraints`、`ValidateScalarNode`、`ValidateNumericScalarConstraints` 按语义拆成 helper，并补齐对象条件分支 helper
+  - 当前仓库根 clean build 已收敛到 `0` warnings、`0` errors；本轮停止原因从“接近文件阈值”切换为“当前 warning hotspot 已耗尽”
 
 ## 当前活跃事实
 
 - 当前 `origin/main` 基线提交为 `0e32dab`（`2026-04-28T17:15:47+08:00`）。
 - 当前直接验证结果：
-  - `dotnet clean -p:RestoreFallbackFolders= -v:quiet`
-    - 最新结果：成功；标准 `dotnet clean` 仍会先命中当前 WSL 环境的 Windows NuGet fallback 目录，已按既有环境口径先执行 `dotnet restore GFramework.sln -p:RestoreFallbackFolders= --disable-parallel` 后清理
-  - `dotnet build -p:RestoreFallbackFolders= -clp:WarningsOnly -v:minimal -m:1 -nodeReuse:false`
-    - 最新结果：成功；`15` warnings、`0` errors；warning 从本轮基线 `236` 降到 `15`
-  - `dotnet build GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release -p:RestoreFallbackFolders= -m:1 -nodeReuse:false -clp:Summary`
+  - `dotnet clean`
+    - 最新结果：成功；标准仓库根 clean 本轮可直接运行，未再命中需要额外绕开的环境噪音
+  - `dotnet build`
+    - 最新结果：成功；`0 Warning(s)`、`0 Error(s)`；本轮开始时同一口径 clean build 的 `15` 条 warning 已全部清零
+  - `dotnet build GFramework.Game/GFramework.Game.csproj -c Release -clp:Summary`
     - 最新结果：成功；`0 Warning(s)`、`0 Error(s)`
-  - `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --no-build -p:RestoreFallbackFolders= -m:1 -nodeReuse:false --filter "FullyQualifiedName~Mediator"`
-    - 最新结果：成功；`45` 通过、`0` 失败
-  - `dotnet build GFramework.Game/GFramework.Game.csproj -c Release -p:RestoreFallbackFolders= -m:1 -nodeReuse:false -clp:Summary`
-    - 最新结果：成功；`0 Warning(s)`、`0 Error(s)`
-  - `dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release -p:RestoreFallbackFolders= -m:1 -nodeReuse:false --filter "FullyQualifiedName~YamlConfigLoaderTests|FullyQualifiedName~YamlConfigSchemaValidatorTests"`
+  - `dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --filter "FullyQualifiedName~YamlConfigLoaderTests|FullyQualifiedName~YamlConfigSchemaValidatorTests"`
     - 最新结果：成功；`80` 通过、`0` 失败
+  - `git diff --check`
+    - 最新结果：成功；无新增 whitespace / conflict-marker 问题
 - 当前批次摘要：
   - 当前分支提交后预计相对 `origin/main...HEAD` 包含 `22` 个变更文件，低于 `50` 个文件阈值
   - 已完成 worker 切片：
     - `ed269d4`：`MediatorArchitectureIntegrationTests.cs`，清理 `MA0048` / `MA0004` / `MA0016`
     - `121df44`：`MediatorAdvancedFeaturesTests.cs`，清理 `MA0048` / `MA0004` / `MA0015`
     - `9109eec`：`MediatorComprehensiveTests.cs`，清理 `MA0048` / `MA0004` / `MA0016` / `MA0002` / `MA0015`
-  - 主线程切片：`YamlConfigSchemaValidator.cs` 正则 timeout 与 ordinal equality，清理 `MA0009` / `MA0006`
+  - 主线程切片：`YamlConfigSchemaValidator.cs` 方法拆分，清理剩余 `MA0051`，并修正新增 helper 里的 `MA0006`
   - Game 追加切片：
     - `1395b84`：`YamlConfigSchemaValidator.ObjectKeywords.cs`，清理该文件 `MA0051`
-    - 待提交：将 `YamlConfigSchemaValidator.cs` 末尾 schema model 类型拆到独立同名文件，清理 `MA0048`
+    - 已完成：将 `YamlConfigSchemaValidator.cs` 末尾 schema model 类型拆到独立同名文件，清理 `MA0048`
 
 ## 当前风险
 
-- `GFramework.Game/Config/YamlConfigSchemaValidator.cs` 仍有 `5` 个 `MA0051` 方法长度 warning，跨 `net8.0` / `net9.0` / `net10.0` 重复为 `15` 条。
-  - 缓解措施：下一轮只做主 validator 方法拆分，不再混入拆文件或正则安全修复。
-- 标准 `dotnet clean` 在当前 WSL 环境仍会读取失效的 Windows fallback package folder。
-  - 缓解措施：本主题验证继续沿用 `-p:RestoreFallbackFolders=`，必要时先执行 solution restore 刷新 Linux 侧资产。
+- 当前仓库根 clean build warning 已清零，本主题暂时没有剩余源码 warning 风险。
+  - 缓解措施：若后续继续 batch warning 清理，先重新执行同轮 `dotnet clean` + `dotnet build` 采样，再决定是否需要分派 subagent。
 
 ## 活跃文档
 
@@ -68,13 +63,13 @@
 ## 验证说明
 
 - 权威验证结果统一维护在“当前活跃事实”。
-- `GFramework.Cqrs.Tests` 的当前受影响项目 Release 构建已清零，并通过 Mediator 定向测试回归。
-- `GFramework.Game` 当前 Release 构建已清零，并通过 config 定向测试；仓库 Debug 构建剩余 warning 属于主 validator 方法复杂度拆分。
+- `GFramework.Game` 当前 Release 构建已清零，并通过 config 定向测试；本轮标准仓库根 Debug clean build 也已清零。
+- 本轮标准仓库根 `dotnet clean` + `dotnet build` 已直接回到 `0 Warning(s)`、`0 Error(s)`，因此 warning reduction 真值已从模块级验证收口到仓库级 clean build。
 - `git diff --check` 结果为空，说明本轮新增改动没有引入新的尾随空格或冲突标记。
 - warning reduction 的仓库级真值以同轮 `dotnet build`、定向 `dotnet test` 与 `git diff --check` 为准，并与 trace 中的验证里程碑保持一致。
 
 ## 下一步建议
 
-1. 提交 schema model 拆文件与本轮 `ai-plan` 收口。
-2. 下一轮只处理 `GFramework.Game/Config/YamlConfigSchemaValidator.cs` 剩余 `MA0051` 方法拆分。
-3. 保持 `RestoreFallbackFolders=` 验证口径，避免当前 WSL fallback package folder 干扰。
+1. 提交 `YamlConfigSchemaValidator` 收尾重构与本轮 `ai-plan` 同步。
+2. 如需继续 warning reduction，先从新的仓库根 clean build 重新采样是否还有新增 warning hotspot。
+3. 若未来 warning 再次分散到多个文件，再按 `$gframework-batch-boot 50` 规则切换回多 worker 并行模式。
