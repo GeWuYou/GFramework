@@ -2,6 +2,23 @@
 
 ## 2026-04-29
 
+### 阶段：dispatcher 上下文前置条件失败语义回归（CQRS-REWRITE-RP-060）
+
+- 延续 `gframework-batch-boot 50` 的 `Phase 8` 主线，本轮选择一个新的单文件测试切片：锁定默认 dispatcher 对“仅实现 `ICqrsContext`、但未实现 `IArchitectureContext` 的上下文”会如何失败
+- 主线程先复核当前公开契约与实现后确认：
+  - `GFramework.Cqrs.Abstractions.Cqrs.ICqrsRuntime` 的 XML 文档已经把这类失败语义写成公开契约
+  - `CqrsDispatcher.PrepareHandler(...)` 当前正是唯一的上下文前置条件检查点，因此本轮最稳妥的切片仍是测试补强，而不是继续改 runtime
+- 已完成的测试补强：
+  - 新增 `GFramework.Cqrs.Tests/Cqrs/CqrsDispatcherContextValidationTests.cs`
+  - 通过 `CqrsRuntimeFactory.CreateRuntime(...)` + `Mock<IIocContainer>` 构造最小 runtime，分别锁定 request、notification、stream 三条路径的失败语义
+  - 三个测试都只在需要上下文注入的 handler 已解析出来时触发，避免把“找不到 handler”与“上下文不满足注入前置条件”混淆成同一种异常
+- 定向验证已通过：
+  - `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~GFramework.Cqrs.Tests.Cqrs.CqrsDispatcherContextValidationTests"`
+  - `3/3` passed
+- 结果：
+  - 本轮只补测试，不改 `GFramework.Cqrs/Internal/CqrsDispatcher.cs`
+  - 若连同当前工作区一起计算，当前分支相对 `origin/main` 的累计 diff 将达到 `31 files`
+
 ### 阶段：notification / stream binding 上下文刷新回归（CQRS-REWRITE-RP-059）
 
 - 延续 `gframework-batch-boot 50` 的 `Phase 8` 主线，本轮继续沿着上一批 dispatcher cached executor 上下文回归往外扩一圈，但只覆盖 notification / stream 两条非 request 路径
