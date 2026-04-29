@@ -20,7 +20,7 @@
 - `GeWuYou.GFramework.Cqrs`
   - 默认 runtime 与业务侧常用基类。
 - `GeWuYou.GFramework.Cqrs.SourceGenerators`
-  - 可选。为消费端程序集生成 `ICqrsHandlerRegistry`，运行时优先走生成注册表；缺失或不适用时，回退到反射扫描。
+  - 可选。为消费端程序集生成 `ICqrsHandlerRegistry`，运行时优先走生成注册表；只有缺失、不适用，或 fallback 仍需补齐剩余 handler 时，才继续进入反射路径。
 - `GFramework.Core`
   - 架构上下文中实际调用 `ICqrsRuntime`，并在模块初始化时注册 CQRS 基础设施。
 
@@ -137,7 +137,10 @@ var playerId = await this.SendAsync(new CreatePlayerCommand(new CreatePlayerInpu
 
 - 同一程序集按稳定键去重，避免重复注册。
 - 优先尝试消费端程序集上的 `ICqrsHandlerRegistry` 生成注册器。
-- 生成注册器不可用，或声明了 `CqrsReflectionFallbackAttribute` 时，回退到反射扫描。
+- 生成注册器不可用或元数据损坏时，记录告警并回退到反射扫描。
+- 当程序集声明了 `CqrsReflectionFallbackAttribute` 时，运行时会先执行生成注册器，再只补它未覆盖的 handler。
+- `CqrsReflectionFallbackAttribute` 现在可以多次声明，并同时承载 `Type[]` 与 `string[]` 两类 fallback 清单。
+- 运行时会优先复用 fallback 特性里直接提供的 `Type` 条目，只对字符串条目执行定向 `Assembly.GetType(...)` 查找；只有旧版空 marker 才会退回整程序集扫描。
 - 处理器以 transient 方式注册，避免上下文感知处理器在并发请求间共享可变上下文。
 
 如果你走标准 `GFramework.Core` 架构初始化路径，这些步骤通常由框架自动完成；裸容器或测试环境则需要显式补齐 runtime 与注册入口。
