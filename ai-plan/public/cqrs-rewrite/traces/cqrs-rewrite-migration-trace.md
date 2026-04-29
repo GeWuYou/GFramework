@@ -2,6 +2,33 @@
 
 ## 2026-04-29
 
+### 阶段：notification / stream binding 上下文刷新回归（CQRS-REWRITE-RP-059）
+
+- 延续 `gframework-batch-boot 50` 的 `Phase 8` 主线，本轮继续沿着上一批 dispatcher cached executor 上下文回归往外扩一圈，但只覆盖 notification / stream 两条非 request 路径
+- 主线程先复核 `CqrsDispatcher` 当前实现后确认：
+  - `PublishAsync(...)` 与 `CreateStream(...)` 都会在命中缓存 binding 后重新解析 handler，并在调用前执行 `PrepareHandler(...)`
+  - 因此本轮最稳妥的切片仍是测试补强，而不是继续改 runtime
+- 已完成的测试补强：
+  - 在 `GFramework.Cqrs.Tests/Cqrs/` 新增 `DispatcherNotificationContextRefresh*` 与 `DispatcherStreamContextRefresh*` 测试替身，记录重复分发时 handler 实例身份与 `ArchitectureContext`
+  - `CqrsDispatcherCacheTests` 新增 `Dispatcher_Should_Reinject_Current_Context_When_Reusing_Cached_Notification_Dispatch_Binding`
+  - `CqrsDispatcherCacheTests` 新增 `Dispatcher_Should_Reinject_Current_Context_When_Reusing_Cached_Stream_Dispatch_Binding`
+- 定向验证已通过：
+  - `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~GFramework.Cqrs.Tests.Cqrs.CqrsDispatcherCacheTests"`
+  - `7/7` passed
+- 结果：
+  - 本轮未暴露新的 runtime 实现缺口，因此没有改动 `GFramework.Cqrs/Internal/CqrsDispatcher.cs`
+  - 若连同当前工作区一起计算，当前分支相对 `origin/main` 的累计 diff 将达到 `29 files`，继续低于 `gframework-batch-boot 50` 的主要 stop condition
+
+### 阶段：delegated fallback attribute 合同测试（CQRS-REWRITE-RP-058）
+
+- 本轮按 `gframework-batch-boot 50` 的并行约束，把一个与主线程写集完全独立的叶子级测试文件交给 worker：
+  - delegated scope：`GFramework.Cqrs.Tests/Cqrs/CqrsReflectionFallbackAttributeTests.cs`
+  - delegated objective：锁定 `CqrsReflectionFallbackAttribute` 的公开归一化合同，而不扩张到 registrar / generator / dispatcher 实现
+- 已接受的 worker 结果：
+  - 新增 `CqrsReflectionFallbackAttributeTests`，覆盖空 marker、字符串 fallback 名称的去空/去重/排序、直接 `Type` fallback 的去空/去重/排序，以及两个重载对空参数数组的防御行为
+  - worker 已独立验证 `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~GFramework.Cqrs.Tests.Cqrs.CqrsReflectionFallbackAttributeTests"`，结果为 `5/5` passed
+  - 该叶子级测试批次已作为独立提交落地：`86a24e00` `test(cqrs): 新增 ReflectionFallbackAttribute 合同测试`
+
 ### 阶段：cached executor 上下文刷新回归（CQRS-REWRITE-RP-057）
 
 - 延续 `gframework-batch-boot 50` 的 `Phase 8` 主线，本轮只处理一个窄写集测试批次：为 cached request pipeline executor 增加“重复分发仍重新注入上下文”的回归

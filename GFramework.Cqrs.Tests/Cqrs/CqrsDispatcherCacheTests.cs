@@ -35,7 +35,9 @@ internal sealed class CqrsDispatcherCacheTests
 
         _container.Freeze();
         _context = new ArchitectureContext(_container);
+        DispatcherNotificationContextRefreshState.Reset();
         DispatcherPipelineContextRefreshState.Reset();
+        DispatcherStreamContextRefreshState.Reset();
         ClearDispatcherCaches();
     }
 
@@ -291,6 +293,92 @@ internal sealed class CqrsDispatcherCacheTests
             Assert.That(behaviorSnapshots[1].Context, Is.SameAs(secondContext));
             Assert.That(behaviorSnapshots[1].Context, Is.Not.SameAs(behaviorSnapshots[0].Context));
 
+            Assert.That(handlerSnapshots[0].DispatchId, Is.EqualTo("first"));
+            Assert.That(handlerSnapshots[0].Context, Is.SameAs(firstContext));
+            Assert.That(handlerSnapshots[1].DispatchId, Is.EqualTo("second"));
+            Assert.That(handlerSnapshots[1].Context, Is.SameAs(secondContext));
+            Assert.That(handlerSnapshots[1].Context, Is.Not.SameAs(handlerSnapshots[0].Context));
+            Assert.That(handlerSnapshots[1].InstanceId, Is.Not.EqualTo(handlerSnapshots[0].InstanceId));
+        });
+    }
+
+    /// <summary>
+    ///     验证缓存的 notification dispatch binding 在重复分发时仍会重新解析 handler，
+    ///     并为当次实例重新注入当前架构上下文。
+    /// </summary>
+    [Test]
+    public async Task Dispatcher_Should_Reinject_Current_Context_When_Reusing_Cached_Notification_Dispatch_Binding()
+    {
+        DispatcherNotificationContextRefreshState.Reset();
+
+        var notificationBindings = GetCacheField("NotificationDispatchBindings");
+        var firstContext = new ArchitectureContext(_container!);
+        var secondContext = new ArchitectureContext(_container!);
+
+        await firstContext.PublishAsync(new DispatcherNotificationContextRefreshNotification("first"));
+
+        var bindingAfterFirstDispatch = GetSingleKeyCacheValue(
+            notificationBindings,
+            typeof(DispatcherNotificationContextRefreshNotification));
+
+        await secondContext.PublishAsync(new DispatcherNotificationContextRefreshNotification("second"));
+
+        var bindingAfterSecondDispatch = GetSingleKeyCacheValue(
+            notificationBindings,
+            typeof(DispatcherNotificationContextRefreshNotification));
+        var handlerSnapshots = DispatcherNotificationContextRefreshState.HandlerSnapshots.ToArray();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(bindingAfterFirstDispatch, Is.Not.Null);
+            Assert.That(bindingAfterSecondDispatch, Is.SameAs(bindingAfterFirstDispatch));
+
+            Assert.That(handlerSnapshots, Has.Length.EqualTo(2));
+            Assert.That(handlerSnapshots[0].DispatchId, Is.EqualTo("first"));
+            Assert.That(handlerSnapshots[0].Context, Is.SameAs(firstContext));
+            Assert.That(handlerSnapshots[1].DispatchId, Is.EqualTo("second"));
+            Assert.That(handlerSnapshots[1].Context, Is.SameAs(secondContext));
+            Assert.That(handlerSnapshots[1].Context, Is.Not.SameAs(handlerSnapshots[0].Context));
+            Assert.That(handlerSnapshots[1].InstanceId, Is.Not.EqualTo(handlerSnapshots[0].InstanceId));
+        });
+    }
+
+    /// <summary>
+    ///     验证缓存的 stream dispatch binding 在重复建流时仍会重新解析 handler，
+    ///     并为当次实例重新注入当前架构上下文。
+    /// </summary>
+    [Test]
+    public async Task Dispatcher_Should_Reinject_Current_Context_When_Reusing_Cached_Stream_Dispatch_Binding()
+    {
+        DispatcherStreamContextRefreshState.Reset();
+
+        var streamBindings = GetCacheField("StreamDispatchBindings");
+        var firstContext = new ArchitectureContext(_container!);
+        var secondContext = new ArchitectureContext(_container!);
+
+        var firstStream = firstContext.CreateStream(new DispatcherStreamContextRefreshRequest("first"));
+        await DrainAsync(firstStream);
+
+        var bindingAfterFirstDispatch = GetPairCacheValue(
+            streamBindings,
+            typeof(DispatcherStreamContextRefreshRequest),
+            typeof(int));
+
+        var secondStream = secondContext.CreateStream(new DispatcherStreamContextRefreshRequest("second"));
+        await DrainAsync(secondStream);
+
+        var bindingAfterSecondDispatch = GetPairCacheValue(
+            streamBindings,
+            typeof(DispatcherStreamContextRefreshRequest),
+            typeof(int));
+        var handlerSnapshots = DispatcherStreamContextRefreshState.HandlerSnapshots.ToArray();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(bindingAfterFirstDispatch, Is.Not.Null);
+            Assert.That(bindingAfterSecondDispatch, Is.SameAs(bindingAfterFirstDispatch));
+
+            Assert.That(handlerSnapshots, Has.Length.EqualTo(2));
             Assert.That(handlerSnapshots[0].DispatchId, Is.EqualTo("first"));
             Assert.That(handlerSnapshots[0].Context, Is.SameAs(firstContext));
             Assert.That(handlerSnapshots[1].DispatchId, Is.EqualTo("second"));
