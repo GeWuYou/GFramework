@@ -24,6 +24,7 @@ internal sealed class CqrsDispatcherCacheTests
         LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider();
         _container = new MicrosoftDiContainer();
         _container.RegisterCqrsPipelineBehavior<DispatcherPipelineCacheBehavior>();
+        _container.RegisterCqrsPipelineBehavior<DispatcherPipelineContextRefreshBehavior>();
         _container.RegisterCqrsPipelineBehavior<DispatcherPipelineOrderOuterBehavior>();
         _container.RegisterCqrsPipelineBehavior<DispatcherPipelineOrderInnerBehavior>();
 
@@ -34,6 +35,7 @@ internal sealed class CqrsDispatcherCacheTests
 
         _container.Freeze();
         _context = new ArchitectureContext(_container);
+        DispatcherPipelineContextRefreshState.Reset();
         ClearDispatcherCaches();
     }
 
@@ -241,6 +243,60 @@ internal sealed class CqrsDispatcherCacheTests
         {
             Assert.That(firstInvocation, Is.EqualTo(expectedOrder));
             Assert.That(secondInvocation, Is.EqualTo(expectedOrder));
+        });
+    }
+
+    /// <summary>
+    ///     验证缓存的 request pipeline executor 在重复分发时仍会重新解析 handler/behavior，
+    ///     并为当次实例重新注入当前架构上下文。
+    /// </summary>
+    [Test]
+    public async Task Dispatcher_Should_Reinject_Current_Context_When_Reusing_Cached_Request_Pipeline_Executor()
+    {
+        DispatcherPipelineContextRefreshState.Reset();
+
+        var requestBindings = GetCacheField("RequestDispatchBindings");
+        var firstContext = new ArchitectureContext(_container!);
+        var secondContext = new ArchitectureContext(_container!);
+
+        await firstContext.SendRequestAsync(new DispatcherPipelineContextRefreshRequest("first"));
+
+        var executorAfterFirstDispatch = GetRequestPipelineExecutorValue(
+            requestBindings,
+            typeof(DispatcherPipelineContextRefreshRequest),
+            typeof(int),
+            1);
+
+        await secondContext.SendRequestAsync(new DispatcherPipelineContextRefreshRequest("second"));
+
+        var executorAfterSecondDispatch = GetRequestPipelineExecutorValue(
+            requestBindings,
+            typeof(DispatcherPipelineContextRefreshRequest),
+            typeof(int),
+            1);
+        var behaviorSnapshots = DispatcherPipelineContextRefreshState.BehaviorSnapshots.ToArray();
+        var handlerSnapshots = DispatcherPipelineContextRefreshState.HandlerSnapshots.ToArray();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(executorAfterFirstDispatch, Is.Not.Null);
+            Assert.That(executorAfterSecondDispatch, Is.SameAs(executorAfterFirstDispatch));
+
+            Assert.That(behaviorSnapshots, Has.Length.EqualTo(2));
+            Assert.That(handlerSnapshots, Has.Length.EqualTo(2));
+
+            Assert.That(behaviorSnapshots[0].DispatchId, Is.EqualTo("first"));
+            Assert.That(behaviorSnapshots[0].Context, Is.SameAs(firstContext));
+            Assert.That(behaviorSnapshots[1].DispatchId, Is.EqualTo("second"));
+            Assert.That(behaviorSnapshots[1].Context, Is.SameAs(secondContext));
+            Assert.That(behaviorSnapshots[1].Context, Is.Not.SameAs(behaviorSnapshots[0].Context));
+
+            Assert.That(handlerSnapshots[0].DispatchId, Is.EqualTo("first"));
+            Assert.That(handlerSnapshots[0].Context, Is.SameAs(firstContext));
+            Assert.That(handlerSnapshots[1].DispatchId, Is.EqualTo("second"));
+            Assert.That(handlerSnapshots[1].Context, Is.SameAs(secondContext));
+            Assert.That(handlerSnapshots[1].Context, Is.Not.SameAs(handlerSnapshots[0].Context));
+            Assert.That(handlerSnapshots[1].InstanceId, Is.Not.EqualTo(handlerSnapshots[0].InstanceId));
         });
     }
 

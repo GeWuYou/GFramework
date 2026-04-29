@@ -7,7 +7,7 @@ CQRS 迁移与收敛。
 
 ## 当前恢复点
 
-- 恢复点编号：`CQRS-REWRITE-RP-056`
+- 恢复点编号：`CQRS-REWRITE-RP-057`
 - 当前阶段：`Phase 8`
 - 当前焦点：
   - 当前功能历史已归档，active 跟踪仅保留 `Phase 8` 主线的恢复入口
@@ -17,6 +17,7 @@ CQRS 迁移与收敛。
   - 当 runtime 不支持多实例 fallback 特性或缺少对应构造函数时，mixed fallback 场景仍会整体保守回退到字符串元数据，避免仅部分 handler 走 `Type[]` 时漏掉剩余需按名称恢复的 handlers
   - 已完成 request pipeline executor 形状缓存：`CqrsDispatcher` 现会在单个 request binding 内按 `behaviorCount` 复用强类型 pipeline executor，而不是每次 `SendAsync` 都重建整条 `next` 委托链
   - 已补充 dispatcher pipeline executor 缓存与双行为顺序回归，锁定缓存复用后仍保持现有行为执行顺序
+  - 已补充 cached request pipeline executor 的上下文刷新回归，锁定 executor 复用时仍会为当次 handler / singleton behavior 重新注入当前 `ArchitectureContext`
   - 已完成 generated registry 激活路径收敛：`CqrsHandlerRegistrar` 现优先复用缓存工厂委托，避免重复 `ConstructorInfo.Invoke`
   - 已补充私有无参构造 generated registry 的回归测试，确保兼容现有生成器产物
   - 已修正 pointer / function pointer 泛型合同的错误覆盖：生成器不再为这两类类型发射 precise runtime type 重建代码
@@ -90,6 +91,10 @@ CQRS 迁移与收敛。
   - `CqrsDispatcher` 现会继续按 `requestType + responseType` 缓存 request dispatch binding，并在 binding 内按 `behaviorCount` 缓存强类型 pipeline executor
   - 每次分发只绑定当前 handler / behaviors 实例，不缓存容器解析结果，因此不改变 transient 生命周期与上下文注入语义
   - `GFramework.Cqrs.Tests` 已补充 executor 首次创建 / 后续复用与双行为顺序回归
+- `2026-04-29` 已完成一轮 cached executor 上下文刷新回归补强：
+  - `GFramework.Cqrs.Tests` 已新增 `DispatcherPipelineContextRefresh*` 测试替身，分别记录 request handler 与 pipeline behavior 在每次分发中实际观察到的实例身份与 `ArchitectureContext`
+  - `CqrsDispatcherCacheTests` 现明确断言：同一个 cached request pipeline executor 在重复分发时会继续命中同一 executor 形状，但不会跨分发保留旧上下文
+  - 本轮定向测试未暴露新的 runtime 缺口，因此没有改动 `GFramework.Cqrs/Internal/CqrsDispatcher.cs`
 - `2026-04-29` 已完成一轮 CQRS 入口文档对齐：
   - `GFramework.Cqrs/README.md`、`docs/zh-CN/core/cqrs.md` 与 `docs/zh-CN/api-reference/index.md` 现已明确 generated registry 优先、targeted fallback 补齐剩余 handler 的当前语义
 - `2026-04-29` 已完成一轮 generator pointer runtime-reconstruction 残留清理：
@@ -117,6 +122,9 @@ CQRS 迁移与收敛。
 
 - `RP-043` 之前的详细阶段记录、定向验证命令和阶段性决策均已移入主题内归档
 - active 跟踪文件只保留当前恢复点、当前活跃事实、风险和下一步，避免 `boot` 在默认入口中重复扫描 1000+ 行历史 trace
+- `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~GFramework.Cqrs.Tests.Cqrs.CqrsDispatcherCacheTests"`
+  - 结果：通过
+  - 备注：`5/5` 测试通过；本轮新增 cached executor 上下文刷新回归，确认 executor 复用时仍按当次分发重新注入上下文
 - `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --no-restore -p:RestoreFallbackFolders= -m:1 -nodeReuse:false`
   - 结果：通过
   - 备注：`63/63` 测试通过；当前沙箱限制了 MSBuild named pipe，验证需在提权环境下运行

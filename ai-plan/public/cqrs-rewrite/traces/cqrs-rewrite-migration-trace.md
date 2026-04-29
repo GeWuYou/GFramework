@@ -2,6 +2,27 @@
 
 ## 2026-04-29
 
+### 阶段：cached executor 上下文刷新回归（CQRS-REWRITE-RP-057）
+
+- 延续 `gframework-batch-boot 50` 的 `Phase 8` 主线，本轮只处理一个窄写集测试批次：为 cached request pipeline executor 增加“重复分发仍重新注入上下文”的回归
+- 先复核上一轮 request pipeline executor 形状缓存实现与测试边界后确认：
+  - 当前 runtime 只允许本轮写集落在 `GFramework.Cqrs.Tests/Cqrs/`，除非测试直接打出 `CqrsDispatcher` 的真实缺陷
+  - 目标是锁定 executor 缓存不会跨分发保留旧 `ArchitectureContext`，且不扩张到 notification / stream 路径
+- 已完成的测试补强：
+  - 在 `GFramework.Cqrs.Tests/Cqrs/` 新增 `DispatcherPipelineContextRefreshRequest`、`DispatcherPipelineContextRefreshBehavior`、`DispatcherPipelineContextRefreshRequestHandler`、`DispatcherPipelineContextRefreshState` 与 `DispatcherPipelineContextSnapshot`
+  - `DispatcherPipelineContextRefreshBehavior` 与 `DispatcherPipelineContextRefreshRequestHandler` 都基于 `CqrsContextAwareHandlerBase` 记录当次看到的 `ArchitectureContext`
+  - `CqrsDispatcherCacheTests` 新增 `Dispatcher_Should_Reinject_Current_Context_When_Reusing_Cached_Request_Pipeline_Executor`，断言同一个 cached executor 在两次分发间保持 executor 形状复用，但 handler 不会被 executor 黏住，且 handler / behavior 都会观察到本次分发的新上下文
+- 调试过程中的结论：
+  - 初版断言曾要求 behavior 实例编号跨分发变化，随后确认这是错误假设
+  - `MicrosoftDiContainer.RegisterCqrsPipelineBehavior<TBehavior>()` 对已闭合的 pipeline behavior 使用的是 `AddSingleton(...)`
+  - 因此本轮最终锁定的是“singleton behavior 也必须重新注入上下文”，而不是强行要求 behavior 生命周期为 transient
+- 定向验证已通过：
+  - `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~GFramework.Cqrs.Tests.Cqrs.CqrsDispatcherCacheTests"`
+  - `5/5` passed
+- 结果：
+  - 本轮未暴露新的 runtime 实现缺口，因此没有改动 `GFramework.Cqrs/Internal/CqrsDispatcher.cs`
+  - 当前分支相对 `origin/main` 的累计提交 diff 仍为 `14 files`，继续低于 `gframework-batch-boot 50` 的主要 stop condition
+
 ### 阶段：pointer runtime-reconstruction 残留清理（CQRS-REWRITE-RP-056）
 
 - 延续 `gframework-batch-boot 50` 的 `Phase 8` 主线，本轮只处理一个写集很窄的 generator 清理切片：删除 `CqrsHandlerRegistryGenerator` 里已经不可达的 pointer runtime-reconstruction 残留
