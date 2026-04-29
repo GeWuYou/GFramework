@@ -83,7 +83,8 @@ internal static class CqrsHandlerRegistrar
         {
             var assemblyMetadata = AssemblyMetadataCache.GetOrAdd(
                 assembly,
-                key => AnalyzeAssemblyRegistrationMetadata(key, logger));
+                logger,
+                static (key, state) => AnalyzeAssemblyRegistrationMetadata(key, state));
             var registryTypes = assemblyMetadata.RegistryTypes;
 
             if (registryTypes.Count == 0)
@@ -442,7 +443,8 @@ internal static class CqrsHandlerRegistrar
     {
         return LoadableTypesCache.GetOrAdd(
             assembly,
-            key => LoadAndSortTypes(key, logger));
+            logger,
+            static (key, state) => LoadAndSortTypes(key, state));
     }
 
     /// <summary>

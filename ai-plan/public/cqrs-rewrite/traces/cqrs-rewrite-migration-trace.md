@@ -9,6 +9,10 @@
   - 当前分支头最初与 `origin/main` 对齐，批次阈值从 `0 files / 0 lines` 起算
   - 本轮可以安全拆成三个互不冲突的切片：request pipeline executor 形状缓存、precise runtime type lookup 数组回归补强、CQRS 入口文档对齐
   - 主线程保留集成与验证职责，subagent 只负责各自写集
+- 本轮继续收口一个更窄的 generator 覆盖缺口：
+  - 在 `GFramework.SourceGenerators.Tests/Cqrs/CqrsHandlerRegistryGeneratorTests.cs` 新增“外部程序集隐藏泛型定义 + 可见类型实参”的 precise registration 回归
+  - 该回归锁定生成器会输出 `ResolveReferencedAssemblyType("...ProtectedEnvelope\`1")` 与 `MakeGenericType(typeof(string))` 的组合，而不是退回程序集级字符串 fallback
+  - 定向测试 `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests"` 通过，结果为 `22/22` passed，因此本轮未触发 `RuntimeTypeReferences` / `SourceEmission` 的实现修正
 - 已接受并整合的并行写集：
   - docs 切片：更新 `GFramework.Cqrs/README.md`、`docs/zh-CN/core/cqrs.md`、`docs/zh-CN/api-reference/index.md`，明确 generated registry 优先、targeted fallback 只补剩余 handler
   - generator 切片：在 `GFramework.SourceGenerators.Tests/Cqrs/CqrsHandlerRegistryGeneratorTests.cs` 新增多维数组、交错数组、外部程序集隐藏元素类型三组 precise lookup 回归

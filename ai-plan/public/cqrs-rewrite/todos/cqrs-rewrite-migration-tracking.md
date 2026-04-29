@@ -77,6 +77,10 @@ CQRS 迁移与收敛。
   - `GFramework.SourceGenerators.Tests` 已新增多维数组、交错数组、外部程序集隐藏元素类型三类回归
   - 当前生成器在 precise runtime type lookup 下已稳定保留数组秩信息，并递归发射交错数组的 `MakeArrayType()` 链
   - 本轮定向测试未暴露数组发射缺陷，因此未改动 fallback 合同选择逻辑，也未调整 direct / named / mixed fallback 排版路径
+- `2026-04-29` 已补齐一轮外部程序集隐藏泛型定义回归覆盖：
+  - `GFramework.SourceGenerators.Tests` 已新增“外部程序集隐藏泛型定义 + 可见类型实参”的 precise registration 回归
+  - 当前生成器会继续为这类 handler 合同发射 `ResolveReferencedAssemblyType(...) + MakeGenericType(...)` 组合，而不是退回字符串 fallback 元数据
+  - 本轮定向测试未暴露新的实现缺口，因此未改动 direct / named / mixed fallback 选择逻辑，也未调整 generator runtime type 建模实现
 - `2026-04-29` 已完成一轮 request pipeline executor 形状缓存：
   - `CqrsDispatcher` 现会继续按 `requestType + responseType` 缓存 request dispatch binding，并在 binding 内按 `behaviorCount` 缓存强类型 pipeline executor
   - 每次分发只绑定当前 handler / behaviors 实例，不缓存容器解析结果，因此不改变 transient 生命周期与上下文注入语义
@@ -149,6 +153,9 @@ CQRS 迁移与收敛。
 - `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests"`
   - 结果：通过
   - 备注：`21/21` 测试通过；本轮新增多维数组、交错数组与外部程序集隐藏元素类型的 precise runtime type lookup 回归
+- `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests"`
+  - 结果：通过
+  - 备注：`22/22` 测试通过；本轮新增“外部程序集隐藏泛型定义 + 可见类型实参”的 precise registration 回归，确认仍走定向运行时类型重建
 - `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~GFramework.Cqrs.Tests.Cqrs.CqrsDispatcherCacheTests"`
   - 结果：通过
   - 备注：`4/4` 测试通过；本轮覆盖 request pipeline executor 的首次创建、复用与双行为顺序回归

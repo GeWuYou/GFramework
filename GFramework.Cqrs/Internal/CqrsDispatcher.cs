@@ -62,7 +62,7 @@ internal sealed class CqrsDispatcher(
         var notificationType = notification.GetType();
         var dispatchBinding = NotificationDispatchBindings.GetOrAdd(
             notificationType,
-            CreateNotificationDispatchBinding);
+            static notificationType => CreateNotificationDispatchBinding(notificationType));
         var handlers = container.GetAll(dispatchBinding.HandlerType);
 
         if (handlers.Count == 0)
@@ -134,7 +134,7 @@ internal sealed class CqrsDispatcher(
         var dispatchBinding = StreamDispatchBindings.GetOrAdd(
             requestType,
             typeof(TResponse),
-            CreateStreamDispatchBinding);
+            static (requestType, responseType) => CreateStreamDispatchBinding(requestType, responseType));
         var handler = container.Get(dispatchBinding.HandlerType)
                       ?? throw new InvalidOperationException(
                           $"No CQRS stream handler registered for {requestType.FullName}.");
@@ -181,7 +181,8 @@ internal sealed class CqrsDispatcher(
         var bindingBox = RequestDispatchBindings.GetOrAdd(
             requestType,
             typeof(TResponse),
-            CreateRequestDispatchBindingBox<TResponse>);
+            static (cachedRequestType, cachedResponseType) =>
+                CreateRequestDispatchBindingBox<TResponse>(cachedRequestType, cachedResponseType));
         return bindingBox.Get<TResponse>();
     }
 
@@ -438,9 +439,10 @@ internal sealed class CqrsDispatcher(
         public RequestPipelineExecutor<TResponse> GetPipelineExecutor(int behaviorCount)
         {
             ArgumentOutOfRangeException.ThrowIfNegative(behaviorCount);
-            return _pipelineExecutors.GetOrAdd(
+            return _pipelineExecutors.GetOrAdd<RequestPipelineExecutorFactoryState<TResponse>>(
                 behaviorCount,
-                count => CreateRequestPipelineExecutor<TResponse>(requestType, count));
+                static (count, state) => CreateRequestPipelineExecutor<TResponse>(state.RequestType, count),
+                new RequestPipelineExecutorFactoryState<TResponse>(requestType));
         }
 
         /// <summary>
@@ -503,6 +505,12 @@ internal sealed class CqrsDispatcher(
             return invoker(handler, behaviors, request, cancellationToken);
         }
     }
+
+    /// <summary>
+    ///     为 pipeline executor 缓存携带当前请求类型，避免按行为数量建缓存时创建闭包。
+    /// </summary>
+    /// <typeparam name="TResponse">请求响应类型。</typeparam>
+    private readonly record struct RequestPipelineExecutorFactoryState<TResponse>(Type RequestType);
 
     /// <summary>
     ///     保存单次 request pipeline 分发所需的当前 handler、behavior 列表和 continuation 缓存。

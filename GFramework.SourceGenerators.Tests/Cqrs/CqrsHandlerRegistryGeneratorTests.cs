@@ -1103,6 +1103,26 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                                   }
                                                                                   """;
 
+    private const string ExternalProtectedGenericDefinitionDependencySource = """
+                                                                              using GFramework.Cqrs.Abstractions.Cqrs;
+
+                                                                              namespace Dep;
+
+                                                                              public abstract class VisibilityScope
+                                                                              {
+                                                                                  protected internal sealed class ProtectedEnvelope<T>
+                                                                                  {
+                                                                                  }
+
+                                                                                  protected internal sealed record ProtectedRequest() : IRequest<ProtectedEnvelope<string>>;
+                                                                              }
+
+                                                                              public abstract class HandlerBase :
+                                                                                  IRequestHandler<VisibilityScope.ProtectedRequest, VisibilityScope.ProtectedEnvelope<string>>
+                                                                              {
+                                                                              }
+                                                                              """;
+
     private const string LegacyFallbackMarkerHiddenHandlerSource = """
                                                                     using System;
 
@@ -1897,6 +1917,44 @@ public class CqrsHandlerRegistryGeneratorTests
                 generatedSource,
                 Does.Contain(
                     "var serviceType0_0 = typeof(global::GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<,>).MakeGenericType(serviceType0_0Argument0, serviceType0_0Argument1Element.MakeArrayType(2));"));
+            Assert.That(generatedSource, Does.Not.Contain("CqrsReflectionFallbackAttribute("));
+        });
+    }
+
+    /// <summary>
+    ///     验证当外部程序集隐藏泛型定义以“隐藏定义 + 可见类型实参”的形式参与 CQRS 合同时，
+    ///     生成器会继续输出定向程序集查找与运行时泛型重建，而不是退回字符串 fallback 元数据。
+    /// </summary>
+    [Test]
+    public void Generates_Precise_Assembly_Type_Lookups_For_Inaccessible_External_Generic_Definitions_With_Visible_Type_Arguments()
+    {
+        var contractsReference = MetadataReferenceTestBuilder.CreateFromSource(
+            "Contracts",
+            ExternalProtectedTypeContractsSource);
+        var dependencyReference = MetadataReferenceTestBuilder.CreateFromSource(
+            "Dependency",
+            ExternalProtectedGenericDefinitionDependencySource,
+            contractsReference);
+        var generatedSource = RunGenerator(
+            ExternalProtectedTypeLookupSource,
+            contractsReference,
+            dependencyReference);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                generatedSource,
+                Does.Contain(
+                    "var serviceType0_0Argument0 = ResolveReferencedAssemblyType(\"Dependency, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null\", \"Dep.VisibilityScope+ProtectedRequest\");"));
+            Assert.That(
+                generatedSource,
+                Does.Contain(
+                    "var serviceType0_0Argument1GenericDefinition = ResolveReferencedAssemblyType(\"Dependency, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null\", \"Dep.VisibilityScope+ProtectedEnvelope`1\");"));
+            Assert.That(
+                generatedSource,
+                Does.Contain(
+                    "var serviceType0_0 = typeof(global::GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<,>).MakeGenericType(serviceType0_0Argument0, serviceType0_0Argument1GenericDefinition.MakeGenericType(typeof(string)));"));
+            Assert.That(generatedSource, Does.Not.Contain("RegisterRemainingReflectedHandlerInterfaces("));
             Assert.That(generatedSource, Does.Not.Contain("CqrsReflectionFallbackAttribute("));
         });
     }
