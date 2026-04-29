@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Architectures;
@@ -62,7 +63,7 @@ public class MediatorArchitectureIntegrationTests
         TestContextAwareHandler.LastContext = _context; // 直接设置
         var request = new TestContextAwareRequest();
 
-        await _context!.SendRequestAsync(request);
+        await _context!.SendRequestAsync(request).ConfigureAwait(false);
 
         Assert.That(TestContextAwareHandler.LastContext, Is.Not.Null);
         Assert.That(TestContextAwareHandler.LastContext, Is.SameAs(_context));
@@ -74,7 +75,7 @@ public class MediatorArchitectureIntegrationTests
         TestServiceRetrievalHandler.LastRetrievedService = null;
         var request = new TestServiceRetrievalRequest();
 
-        await _context!.SendRequestAsync(request);
+        await _context!.SendRequestAsync(request).ConfigureAwait(false);
 
         Assert.That(TestServiceRetrievalHandler.LastRetrievedService, Is.Not.Null);
         Assert.That(TestServiceRetrievalHandler.LastRetrievedService, Is.InstanceOf<TestService>());
@@ -86,7 +87,7 @@ public class MediatorArchitectureIntegrationTests
         TestNestedRequestHandler2.ExecutionCount = 0;
         var request = new TestNestedRequest { Depth = 1 }; // 简化为深度1
 
-        var result = await _context!.SendRequestAsync(request);
+        var result = await _context!.SendRequestAsync(request).ConfigureAwait(false);
 
         Assert.That(result, Is.EqualTo("Nested execution completed at depth 1"));
         Assert.That(TestNestedRequestHandler2.ExecutionCount, Is.EqualTo(1));
@@ -99,7 +100,7 @@ public class MediatorArchitectureIntegrationTests
         TestLifecycleHandler.DisposalCount = 0;
 
         var request = new TestLifecycleRequest();
-        await _context!.SendRequestAsync(request);
+        await _context!.SendRequestAsync(request).ConfigureAwait(false);
 
         // 验证生命周期管理
         Assert.That(TestLifecycleHandler.InitializationCount, Is.EqualTo(1));
@@ -116,14 +117,14 @@ public class MediatorArchitectureIntegrationTests
             .Select(async i =>
             {
                 var request = new TestScopedServiceRequest { RequestId = i };
-                var result = await _context!.SendRequestAsync(request);
+                var result = await _context!.SendRequestAsync(request).ConfigureAwait(false);
                 lock (results)
                 {
                     results.Add(result);
                 }
             });
 
-        await Task.WhenAll(tasks);
+        await Task.WhenAll(tasks).ConfigureAwait(false);
 
         // 验证每个请求都得到了独立的scope实例
         Assert.That(results.Distinct().Count(), Is.EqualTo(10));
@@ -135,7 +136,7 @@ public class MediatorArchitectureIntegrationTests
         var request = new TestErrorPropagationRequest();
 
         var ex = Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await _context!.SendRequestAsync(request));
+            await _context!.SendRequestAsync(request).ConfigureAwait(false));
 
         Assert.That(ex!.Message, Is.EqualTo("Test error from handler"));
         Assert.That(ex.Data["RequestId"], Is.Not.Null);
@@ -148,7 +149,7 @@ public class MediatorArchitectureIntegrationTests
         var request = new TestExceptionRequest();
 
         Assert.ThrowsAsync<DivideByZeroException>(async () =>
-            await _context!.SendRequestAsync(request));
+            await _context!.SendRequestAsync(request).ConfigureAwait(false));
 
         // 验证异常被捕获和记录
         Assert.That(TestExceptionHandler.LastException, Is.Not.Null);
@@ -164,7 +165,7 @@ public class MediatorArchitectureIntegrationTests
         for (int i = 0; i < iterations; i++)
         {
             var request = new TestPerformanceRequest2 { Id = i };
-            var result = await _context!.SendRequestAsync(request);
+            var result = await _context!.SendRequestAsync(request).ConfigureAwait(false);
             Assert.That(result, Is.EqualTo(i));
         }
 
@@ -188,7 +189,7 @@ public class MediatorArchitectureIntegrationTests
         {
             var stopwatch = Stopwatch.StartNew();
             var request = new TestUncachedRequest { Id = i };
-            await _context!.SendRequestAsync(request);
+            await _context!.SendRequestAsync(request).ConfigureAwait(false);
             stopwatch.Stop();
             uncachedTimes.Add(stopwatch.ElapsedMilliseconds);
         }
@@ -198,7 +199,7 @@ public class MediatorArchitectureIntegrationTests
         {
             var stopwatch = Stopwatch.StartNew();
             var request = new TestCachedRequest { Id = i };
-            await _context!.SendRequestAsync(request);
+            await _context!.SendRequestAsync(request).ConfigureAwait(false);
             stopwatch.Stop();
             cachedTimes.Add(stopwatch.ElapsedMilliseconds);
         }
@@ -224,12 +225,12 @@ public class MediatorArchitectureIntegrationTests
             var task = Task.Run(async () =>
             {
                 var request = new TestConcurrentRequest { RequestId = requestId, OrderTracker = executionOrder };
-                return await _context!.SendRequestAsync(request);
+                return await _context!.SendRequestAsync(request).ConfigureAwait(false);
             });
             tasks.Add(task);
         }
 
-        var results = await Task.WhenAll(tasks);
+        var results = await Task.WhenAll(tasks).ConfigureAwait(false);
 
         // 验证所有请求都成功完成
         Assert.That(results.Length, Is.EqualTo(concurrentRequests));
@@ -253,10 +254,10 @@ public class MediatorArchitectureIntegrationTests
                     SharedState = sharedState,
                     Increment = 1
                 };
-                await _context!.SendRequestAsync(request);
+                await _context!.SendRequestAsync(request).ConfigureAwait(false);
             });
 
-        await Task.WhenAll(tasks);
+        await Task.WhenAll(tasks).ConfigureAwait(false);
 
         // 验证最终状态正确（20个并发操作，每个+1）
         Assert.That(sharedState.Counter, Is.EqualTo(concurrentOperations));
@@ -269,7 +270,7 @@ public class MediatorArchitectureIntegrationTests
         TestIntegrationHandler.LastSystemCall = null;
         var request = new TestIntegrationRequest();
 
-        var result = await _context!.SendRequestAsync(request);
+        var result = await _context!.SendRequestAsync(request).ConfigureAwait(false);
 
         Assert.That(result, Is.EqualTo("Integration successful"));
         Assert.That(TestIntegrationHandler.LastSystemCall, Is.EqualTo("System executed"));
@@ -285,7 +286,7 @@ public class MediatorArchitectureIntegrationTests
 
         // 使用Mediator
         var mediatorRequest = new TestMediatorRequest { Value = 42 };
-        var result = await _context.SendRequestAsync(mediatorRequest);
+        var result = await _context.SendRequestAsync(mediatorRequest).ConfigureAwait(false);
         Assert.That(result, Is.EqualTo(42));
 
         // 验证两者可以共存
@@ -296,8 +297,8 @@ public class MediatorArchitectureIntegrationTests
     [Test]
     public async Task ContextAware_Handler_Should_Use_A_Fresh_Instance_Per_Request()
     {
-        var firstResult = await _context!.SendRequestAsync(new TestPerDispatchContextAwareRequest());
-        var secondResult = await _context.SendRequestAsync(new TestPerDispatchContextAwareRequest());
+        var firstResult = await _context!.SendRequestAsync(new TestPerDispatchContextAwareRequest()).ConfigureAwait(false);
+        var secondResult = await _context.SendRequestAsync(new TestPerDispatchContextAwareRequest()).ConfigureAwait(false);
 
         Assert.Multiple(() =>
         {
@@ -306,312 +307,312 @@ public class MediatorArchitectureIntegrationTests
             Assert.That(TestPerDispatchContextAwareHandler.Contexts, Has.All.SameAs(_context));
         });
     }
-}
+    #region Integration Test Classes
 
-#region Integration Test Classes
-
-public sealed class TestContextAwareRequestHandler : IRequestHandler<TestContextAwareRequest, string>
-{
-    public ValueTask<string> Handle(TestContextAwareRequest request, CancellationToken cancellationToken)
+    public sealed class TestContextAwareRequestHandler : IRequestHandler<TestContextAwareRequest, string>
     {
-        // 保持测试中设置的上下文，不要重置为null
-        return new ValueTask<string>("Context accessed");
-    }
-}
-
-public sealed class TestServiceRetrievalRequestHandler : IRequestHandler<TestServiceRetrievalRequest, string>
-{
-    public ValueTask<string> Handle(TestServiceRetrievalRequest request, CancellationToken cancellationToken)
-    {
-        TestServiceRetrievalHandler.LastRetrievedService = new TestService();
-        return new ValueTask<string>("Service retrieved");
-    }
-}
-
-public sealed class TestNestedRequestHandler : IRequestHandler<TestNestedRequest, string>
-{
-    public ValueTask<string> Handle(TestNestedRequest request, CancellationToken cancellationToken)
-    {
-        TestNestedRequestHandler2.ExecutionCount++;
-
-        if (request.Depth >= 1) // 简化条件
+        public ValueTask<string> Handle(TestContextAwareRequest request, CancellationToken cancellationToken)
         {
+            // 保持测试中设置的上下文，不要重置为null
+            return new ValueTask<string>("Context accessed");
+        }
+    }
+
+    public sealed class TestServiceRetrievalRequestHandler : IRequestHandler<TestServiceRetrievalRequest, string>
+    {
+        public ValueTask<string> Handle(TestServiceRetrievalRequest request, CancellationToken cancellationToken)
+        {
+            TestServiceRetrievalHandler.LastRetrievedService = new TestService();
+            return new ValueTask<string>("Service retrieved");
+        }
+    }
+
+    public sealed class TestNestedRequestHandler : IRequestHandler<TestNestedRequest, string>
+    {
+        public ValueTask<string> Handle(TestNestedRequest request, CancellationToken cancellationToken)
+        {
+            TestNestedRequestHandler2.ExecutionCount++;
             // 模拟嵌套调用
             return new ValueTask<string>($"Nested execution completed at depth {request.Depth}");
         }
-
-        return new ValueTask<string>($"Nested execution completed at depth {request.Depth}");
     }
-}
 
-public sealed class TestLifecycleRequestHandler : IRequestHandler<TestLifecycleRequest, string>
-{
-    public ValueTask<string> Handle(TestLifecycleRequest request, CancellationToken cancellationToken)
+    public sealed class TestLifecycleRequestHandler : IRequestHandler<TestLifecycleRequest, string>
     {
-        TestLifecycleHandler.InitializationCount++;
-        // 模拟一些工作
-        TestLifecycleHandler.DisposalCount++;
-        return new ValueTask<string>("Lifecycle managed");
-    }
-}
-
-public sealed class TestScopedServiceRequestHandler : IRequestHandler<TestScopedServiceRequest, int>
-{
-    public ValueTask<int> Handle(TestScopedServiceRequest request, CancellationToken cancellationToken)
-    {
-        // 模拟返回请求ID
-        return new ValueTask<int>(request.RequestId);
-    }
-}
-
-public sealed class TestErrorPropagationRequestHandler : IRequestHandler<TestErrorPropagationRequest, string>
-{
-    public ValueTask<string> Handle(TestErrorPropagationRequest request, CancellationToken cancellationToken)
-    {
-        var ex = new InvalidOperationException("Test error from handler");
-        ex.Data["RequestId"] = Guid.NewGuid();
-        throw ex;
-    }
-}
-
-public sealed class TestExceptionRequestHandler : IRequestHandler<TestExceptionRequest, string>
-{
-    public ValueTask<string> Handle(TestExceptionRequest request, CancellationToken cancellationToken)
-    {
-        TestExceptionHandler.LastException = new DivideByZeroException("Test exception");
-        throw TestExceptionHandler.LastException;
-    }
-}
-
-public sealed class TestPerformanceRequest2Handler : IRequestHandler<TestPerformanceRequest2, int>
-{
-    public ValueTask<int> Handle(TestPerformanceRequest2 request, CancellationToken cancellationToken)
-    {
-        return new ValueTask<int>(request.Id);
-    }
-}
-
-public sealed class TestUncachedRequestHandler : IRequestHandler<TestUncachedRequest, int>
-{
-    public ValueTask<int> Handle(TestUncachedRequest request, CancellationToken cancellationToken)
-    {
-        // 模拟一些处理时间
-        Task.Delay(5, cancellationToken).Wait(cancellationToken);
-        return new ValueTask<int>(request.Id);
-    }
-}
-
-public sealed class TestCachedRequestHandler : IRequestHandler<TestCachedRequest, int>
-{
-    private static readonly Dictionary<int, int> _cache = new();
-
-    public ValueTask<int> Handle(TestCachedRequest request, CancellationToken cancellationToken)
-    {
-        if (_cache.TryGetValue(request.Id, out var cachedValue))
+        public ValueTask<string> Handle(TestLifecycleRequest request, CancellationToken cancellationToken)
         {
-            return new ValueTask<int>(cachedValue);
+            TestLifecycleHandler.InitializationCount++;
+            // 模拟一些工作
+            TestLifecycleHandler.DisposalCount++;
+            return new ValueTask<string>("Lifecycle managed");
         }
-
-        // 模拟处理时间
-        Task.Delay(10, cancellationToken).Wait(cancellationToken);
-        var newValue = request.Id;
-        _cache[request.Id] = newValue;
-        return new ValueTask<int>(newValue);
     }
-}
 
-public sealed class TestConcurrentRequestHandler : IRequestHandler<TestConcurrentRequest, int>
-{
-    public ValueTask<int> Handle(TestConcurrentRequest request, CancellationToken cancellationToken)
+    public sealed class TestScopedServiceRequestHandler : IRequestHandler<TestScopedServiceRequest, int>
     {
-        lock (request.OrderTracker)
+        public ValueTask<int> Handle(TestScopedServiceRequest request, CancellationToken cancellationToken)
         {
-            request.OrderTracker.Add(request.RequestId);
+            // 模拟返回请求ID
+            return new ValueTask<int>(request.RequestId);
         }
-
-        return new ValueTask<int>(request.RequestId);
     }
-}
 
-public sealed class TestStateModificationRequestHandler : IRequestHandler<TestStateModificationRequest, string>
-{
-    public ValueTask<string> Handle(TestStateModificationRequest request, CancellationToken cancellationToken)
+    public sealed class TestErrorPropagationRequestHandler : IRequestHandler<TestErrorPropagationRequest, string>
     {
-        request.SharedState.Counter += request.Increment;
-        return new ValueTask<string>("State modified");
+        public ValueTask<string> Handle(TestErrorPropagationRequest request, CancellationToken cancellationToken)
+        {
+            var ex = new InvalidOperationException("Test error from handler");
+            ex.Data["RequestId"] = Guid.NewGuid();
+            throw ex;
+        }
     }
-}
 
-public sealed class TestIntegrationRequestHandler : IRequestHandler<TestIntegrationRequest, string>
-{
-    public ValueTask<string> Handle(TestIntegrationRequest request, CancellationToken cancellationToken)
+    public sealed class TestExceptionRequestHandler : IRequestHandler<TestExceptionRequest, string>
     {
-        TestIntegrationHandler.LastSystemCall = "System executed";
-        return new ValueTask<string>("Integration successful");
+        public ValueTask<string> Handle(TestExceptionRequest request, CancellationToken cancellationToken)
+        {
+            TestExceptionHandler.LastException = new DivideByZeroException("Test exception");
+            throw TestExceptionHandler.LastException;
+        }
     }
-}
 
-public sealed class TestMediatorRequestHandler : IRequestHandler<TestMediatorRequest, int>
-{
-    public ValueTask<int> Handle(TestMediatorRequest request, CancellationToken cancellationToken)
+    public sealed class TestPerformanceRequest2Handler : IRequestHandler<TestPerformanceRequest2, int>
     {
-        return new ValueTask<int>(request.Value);
+        public ValueTask<int> Handle(TestPerformanceRequest2 request, CancellationToken cancellationToken)
+        {
+            return new ValueTask<int>(request.Id);
+        }
     }
-}
 
-/// <summary>
-///     用于验证自动扫描到的上下文感知处理器会按请求创建新实例。
-/// </summary>
-public sealed class TestPerDispatchContextAwareHandler : ContextAwareBase,
-    IRequestHandler<TestPerDispatchContextAwareRequest, int>
-{
-    private static int _nextInstanceId;
-    private readonly int _instanceId = Interlocked.Increment(ref _nextInstanceId);
-
-    public static List<IArchitectureContext?> Contexts { get; } = [];
-    public static List<int> SeenInstanceIds { get; } = [];
-
-    /// <summary>
-    ///     记录当前实例编号与收到的架构上下文。
-    /// </summary>
-    /// <param name="request">请求实例。</param>
-    /// <param name="cancellationToken">取消令牌。</param>
-    /// <returns>当前处理器实例编号。</returns>
-    public ValueTask<int> Handle(TestPerDispatchContextAwareRequest request, CancellationToken cancellationToken)
+    public sealed class TestUncachedRequestHandler : IRequestHandler<TestUncachedRequest, int>
     {
-        Contexts.Add(Context);
-        SeenInstanceIds.Add(_instanceId);
-        return ValueTask.FromResult(_instanceId);
+        public async ValueTask<int> Handle(TestUncachedRequest request, CancellationToken cancellationToken)
+        {
+            // 模拟一些处理时间
+            await Task.Delay(5, cancellationToken).ConfigureAwait(false);
+            return request.Id;
+        }
+    }
+
+    public sealed class TestCachedRequestHandler : IRequestHandler<TestCachedRequest, int>
+    {
+        private static readonly ConcurrentDictionary<int, int> _cache = new();
+
+        public async ValueTask<int> Handle(TestCachedRequest request, CancellationToken cancellationToken)
+        {
+            if (_cache.TryGetValue(request.Id, out var cachedValue))
+            {
+                return cachedValue;
+            }
+
+            // 模拟处理时间
+            await Task.Delay(10, cancellationToken).ConfigureAwait(false);
+            return _cache.GetOrAdd(request.Id, static id => id);
+        }
+    }
+
+    public sealed class TestConcurrentRequestHandler : IRequestHandler<TestConcurrentRequest, int>
+    {
+        public ValueTask<int> Handle(TestConcurrentRequest request, CancellationToken cancellationToken)
+        {
+            lock (request.OrderTracker)
+            {
+                request.OrderTracker.Add(request.RequestId);
+            }
+
+            return new ValueTask<int>(request.RequestId);
+        }
+    }
+
+    public sealed class TestStateModificationRequestHandler : IRequestHandler<TestStateModificationRequest, string>
+    {
+        public ValueTask<string> Handle(TestStateModificationRequest request, CancellationToken cancellationToken)
+        {
+            request.SharedState.IncrementBy(request.Increment);
+            return new ValueTask<string>("State modified");
+        }
+    }
+
+    public sealed class TestIntegrationRequestHandler : IRequestHandler<TestIntegrationRequest, string>
+    {
+        public ValueTask<string> Handle(TestIntegrationRequest request, CancellationToken cancellationToken)
+        {
+            TestIntegrationHandler.LastSystemCall = "System executed";
+            return new ValueTask<string>("Integration successful");
+        }
+    }
+
+    public sealed class TestMediatorRequestHandler : IRequestHandler<TestMediatorRequest, int>
+    {
+        public ValueTask<int> Handle(TestMediatorRequest request, CancellationToken cancellationToken)
+        {
+            return new ValueTask<int>(request.Value);
+        }
     }
 
     /// <summary>
-    ///     重置跨测试共享的实例跟踪状态。
+    ///     用于验证自动扫描到的上下文感知处理器会按请求创建新实例。
     /// </summary>
-    public static void Reset()
+    public sealed class TestPerDispatchContextAwareHandler : ContextAwareBase,
+        IRequestHandler<TestPerDispatchContextAwareRequest, int>
     {
-        Contexts.Clear();
-        SeenInstanceIds.Clear();
-        _nextInstanceId = 0;
-    }
-}
+        private static int _nextInstanceId;
+        private static readonly List<IArchitectureContext?> TrackedContexts = [];
+        private static readonly List<int> TrackedInstanceIds = [];
+        private readonly int _instanceId = Interlocked.Increment(ref _nextInstanceId);
 
-public sealed record TestContextAwareRequest : IRequest<string>;
+        public static IReadOnlyList<IArchitectureContext?> Contexts => TrackedContexts;
+        public static IReadOnlyList<int> SeenInstanceIds => TrackedInstanceIds;
 
-public static class TestContextAwareHandler
-{
-    public static IArchitectureContext? LastContext { get; set; }
-}
+        /// <summary>
+        ///     记录当前实例编号与收到的架构上下文。
+        /// </summary>
+        /// <param name="request">请求实例。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>当前处理器实例编号。</returns>
+        public ValueTask<int> Handle(TestPerDispatchContextAwareRequest request, CancellationToken cancellationToken)
+        {
+            TrackedContexts.Add(Context);
+            TrackedInstanceIds.Add(_instanceId);
+            return ValueTask.FromResult(_instanceId);
+        }
 
-public sealed record TestServiceRetrievalRequest : IRequest<string>;
-
-public static class TestServiceRetrievalHandler
-{
-    public static object? LastRetrievedService { get; set; }
-}
-
-public class TestService
-{
-    public string Id { get; } = Guid.NewGuid().ToString();
-}
-
-public sealed record TestNestedRequest : IRequest<string>
-{
-    public int Depth { get; init; }
-}
-
-public static class TestNestedRequestHandler2
-{
-    public static int ExecutionCount { get; set; }
-}
-
-// 生命周期相关类
-public sealed record TestLifecycleRequest : IRequest<string>;
-
-public static class TestLifecycleHandler
-{
-    public static int InitializationCount { get; set; }
-    public static int DisposalCount { get; set; }
-}
-
-public sealed record TestScopedServiceRequest : IRequest<int>
-{
-    public int RequestId { get; init; }
-}
-
-// 错误处理相关类
-public sealed record TestErrorPropagationRequest : IRequest<string>;
-
-public static class TestExceptionHandler
-{
-    public static Exception? LastException { get; set; }
-}
-
-public sealed record TestExceptionRequest : IRequest<string>;
-
-// 性能测试相关类
-public sealed record TestPerformanceRequest2 : IRequest<int>
-{
-    public int Id { get; init; }
-}
-
-public sealed record TestUncachedRequest : IRequest<int>
-{
-    public int Id { get; init; }
-}
-
-public sealed record TestCachedRequest : IRequest<int>
-{
-    public int Id { get; init; }
-}
-
-// 并发测试相关类
-public class SharedState
-{
-    public int Counter { get; set; }
-}
-
-public sealed record TestConcurrentRequest : IRequest<int>
-{
-    public int RequestId { get; init; }
-    public List<int> OrderTracker { get; init; } = new();
-}
-
-public sealed record TestStateModificationRequest : IRequest<string>
-{
-    public SharedState SharedState { get; init; } = null!;
-    public int Increment { get; init; }
-}
-
-// 集成测试相关类
-public static class TestIntegrationHandler
-{
-    public static string? LastSystemCall { get; set; }
-}
-
-public sealed record TestIntegrationRequest : IRequest<string>;
-
-public sealed record TestMediatorRequest : IRequest<int>
-{
-    public int Value { get; init; }
-}
-
-/// <summary>
-///     用于验证每次请求分发都会获得新的上下文感知处理器实例。
-/// </summary>
-public sealed record TestPerDispatchContextAwareRequest : IRequest<int>;
-
-// 传统命令用于混合测试
-public class TestTraditionalCommand : ICommand
-{
-    public bool Executed { get; private set; }
-
-    public void Execute() => Executed = true;
-
-    public void SetContext(IArchitectureContext context)
-    {
+        /// <summary>
+        ///     重置跨测试共享的实例跟踪状态。
+        /// </summary>
+        public static void Reset()
+        {
+            TrackedContexts.Clear();
+            TrackedInstanceIds.Clear();
+            _nextInstanceId = 0;
+        }
     }
 
-    public IArchitectureContext GetContext() => null!;
-}
+    public sealed record TestContextAwareRequest : IRequest<string>;
 
-#endregion
+    public static class TestContextAwareHandler
+    {
+        public static IArchitectureContext? LastContext { get; set; }
+    }
+
+    public sealed record TestServiceRetrievalRequest : IRequest<string>;
+
+    public static class TestServiceRetrievalHandler
+    {
+        public static object? LastRetrievedService { get; set; }
+    }
+
+    public class TestService
+    {
+        public string Id { get; } = Guid.NewGuid().ToString();
+    }
+
+    public sealed record TestNestedRequest : IRequest<string>
+    {
+        public int Depth { get; init; }
+    }
+
+    public static class TestNestedRequestHandler2
+    {
+        public static int ExecutionCount { get; set; }
+    }
+
+    // 生命周期相关类
+    public sealed record TestLifecycleRequest : IRequest<string>;
+
+    public static class TestLifecycleHandler
+    {
+        public static int InitializationCount { get; set; }
+        public static int DisposalCount { get; set; }
+    }
+
+    public sealed record TestScopedServiceRequest : IRequest<int>
+    {
+        public int RequestId { get; init; }
+    }
+
+    // 错误处理相关类
+    public sealed record TestErrorPropagationRequest : IRequest<string>;
+
+    public static class TestExceptionHandler
+    {
+        public static Exception? LastException { get; set; }
+    }
+
+    public sealed record TestExceptionRequest : IRequest<string>;
+
+    // 性能测试相关类
+    public sealed record TestPerformanceRequest2 : IRequest<int>
+    {
+        public int Id { get; init; }
+    }
+
+    public sealed record TestUncachedRequest : IRequest<int>
+    {
+        public int Id { get; init; }
+    }
+
+    public sealed record TestCachedRequest : IRequest<int>
+    {
+        public int Id { get; init; }
+    }
+
+    // 并发测试相关类
+    public class SharedState
+    {
+        private int _counter;
+
+        public int Counter => _counter;
+
+        public void IncrementBy(int increment)
+        {
+            Interlocked.Add(ref _counter, increment);
+        }
+    }
+
+    public sealed record TestConcurrentRequest : IRequest<int>
+    {
+        public int RequestId { get; init; }
+        public ICollection<int> OrderTracker { get; init; } = new List<int>();
+    }
+
+    public sealed record TestStateModificationRequest : IRequest<string>
+    {
+        public SharedState SharedState { get; init; } = null!;
+        public int Increment { get; init; }
+    }
+
+    // 集成测试相关类
+    public static class TestIntegrationHandler
+    {
+        public static string? LastSystemCall { get; set; }
+    }
+
+    public sealed record TestIntegrationRequest : IRequest<string>;
+
+    public sealed record TestMediatorRequest : IRequest<int>
+    {
+        public int Value { get; init; }
+    }
+
+    /// <summary>
+    ///     用于验证每次请求分发都会获得新的上下文感知处理器实例。
+    /// </summary>
+    public sealed record TestPerDispatchContextAwareRequest : IRequest<int>;
+
+    // 传统命令用于混合测试
+    public class TestTraditionalCommand : ICommand
+    {
+        public bool Executed { get; private set; }
+
+        public void Execute() => Executed = true;
+
+        public void SetContext(IArchitectureContext context)
+        {
+        }
+
+        public IArchitectureContext GetContext() => null!;
+    }
+
+    #endregion
+}

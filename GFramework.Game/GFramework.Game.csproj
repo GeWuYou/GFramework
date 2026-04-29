@@ -9,6 +9,7 @@
         <EnableGFrameworkPackageTransitiveGlobalUsings>true</EnableGFrameworkPackageTransitiveGlobalUsings>
     </PropertyGroup>
     <ItemGroup>
+        <ProjectReference Include="..\GFramework.Core.SourceGenerators.Abstractions\GFramework.Core.SourceGenerators.Abstractions.csproj" />
         <ProjectReference Include="..\GFramework.Core\GFramework.Core.csproj"/>
         <ProjectReference Include="..\$(AssemblyName).Abstractions\$(AssemblyName).Abstractions.csproj"/>
     </ItemGroup>

@@ -86,7 +86,7 @@ public class MediatorComprehensiveTests
     public async Task SendRequestAsync_Should_ReturnResult_When_Request_IsValid()
     {
         var testRequest = new TestRequest { Value = 42 };
-        var result = await _context!.SendRequestAsync(testRequest);
+        var result = await _context!.SendRequestAsync(testRequest).ConfigureAwait(false);
 
         Assert.That(result, Is.EqualTo(42));
     }
@@ -98,7 +98,7 @@ public class MediatorComprehensiveTests
     public void SendRequestAsync_Should_ThrowArgumentNullException_When_Request_IsNull()
     {
         Assert.ThrowsAsync<ArgumentNullException>(async () =>
-            await _context!.SendRequestAsync<int>(null!));
+            await _context!.SendRequestAsync<int>(null!).ConfigureAwait(false));
     }
 
     /// <summary>
@@ -122,8 +122,8 @@ public class MediatorComprehensiveTests
         TestNotificationHandler.LastReceivedMessage = null;
         var notification = new TestNotification { Message = "test" };
 
-        await _context!.PublishAsync(notification);
-        await Task.Delay(100);
+        await _context!.PublishAsync(notification).ConfigureAwait(false);
+        await Task.Delay(100).ConfigureAwait(false);
 
         Assert.That(TestNotificationHandler.LastReceivedMessage, Is.EqualTo("test"));
     }
@@ -138,7 +138,7 @@ public class MediatorComprehensiveTests
         var stream = _context!.CreateStream(testStreamRequest);
 
         var results = new List<int>();
-        await foreach (var item in stream)
+        await foreach (var item in stream.ConfigureAwait(false))
         {
             results.Add(item);
         }
@@ -153,7 +153,7 @@ public class MediatorComprehensiveTests
     public async Task SendAsync_CommandWithoutResult_Should_Execute_When_Command_IsValid()
     {
         var testCommand = new TestCommand { ShouldExecute = true };
-        await _context!.SendAsync(testCommand);
+        await _context!.SendAsync(testCommand).ConfigureAwait(false);
 
         Assert.That(testCommand.Executed, Is.True);
     }
@@ -165,7 +165,7 @@ public class MediatorComprehensiveTests
     public async Task SendAsync_CommandWithResult_Should_ReturnResult_When_Command_IsValid()
     {
         var testCommand = new TestCommandWithResult { ResultValue = 42 };
-        var result = await _context!.SendAsync(testCommand);
+        var result = await _context!.SendAsync(testCommand).ConfigureAwait(false);
 
         Assert.That(result, Is.EqualTo(42));
     }
@@ -198,7 +198,7 @@ public class MediatorComprehensiveTests
         var testRequest = new TestRequest { Value = 42 };
 
         Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await contextWithoutHandlers.SendRequestAsync(testRequest));
+            await contextWithoutHandlers.SendRequestAsync(testRequest).ConfigureAwait(false));
     }
 
     /// <summary>
@@ -213,8 +213,8 @@ public class MediatorComprehensiveTests
         TestNotificationHandler3.LastReceivedMessage = null;
 
         var notification = new TestNotification { Message = "multi-handler test" };
-        await _context!.PublishAsync(notification);
-        await Task.Delay(100);
+        await _context!.PublishAsync(notification).ConfigureAwait(false);
+        await Task.Delay(100).ConfigureAwait(false);
 
         // 验证所有处理器都被调用
         Assert.That(TestNotificationHandler.LastReceivedMessage, Is.EqualTo("multi-handler test"));
@@ -233,7 +233,7 @@ public class MediatorComprehensiveTests
 
         // 应该在50ms后被取消
         Assert.ThrowsAsync<TaskCanceledException>(async () =>
-            await _context!.SendRequestAsync(longRequest, cts.Token));
+            await _context!.SendRequestAsync(longRequest, cts.Token).ConfigureAwait(false));
     }
 
     /// <summary>
@@ -251,7 +251,7 @@ public class MediatorComprehensiveTests
         // 流应该在100ms后被取消（TaskCanceledException 继承自 OperationCanceledException）
         Assert.CatchAsync<OperationCanceledException>(async () =>
         {
-            await foreach (var item in stream)
+            await foreach (var item in stream.ConfigureAwait(false))
             {
                 results.Add(item);
             }
@@ -277,7 +277,7 @@ public class MediatorComprehensiveTests
             tasks.Add(_context!.SendRequestAsync(request).AsTask());
         }
 
-        var results = await Task.WhenAll(tasks);
+        var results = await Task.WhenAll(tasks).ConfigureAwait(false);
 
         // 验证所有结果都正确返回
         Assert.That(results.Length, Is.EqualTo(requestCount));
@@ -293,7 +293,7 @@ public class MediatorComprehensiveTests
         var faultyRequest = new TestFaultyRequest();
 
         Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await _context!.SendRequestAsync(faultyRequest));
+            await _context!.SendRequestAsync(faultyRequest).ConfigureAwait(false));
     }
 
     /// <summary>
@@ -306,8 +306,8 @@ public class MediatorComprehensiveTests
         var command1 = new TestModifyDataCommand { Data = sharedData, Value = 10 };
         var command2 = new TestModifyDataCommand { Data = sharedData, Value = 20 };
 
-        await _context!.SendAsync(command1);
-        await _context.SendAsync(command2);
+        await _context!.SendAsync(command1).ConfigureAwait(false);
+        await _context.SendAsync(command2).ConfigureAwait(false);
 
         // 验证数据被正确修改
         Assert.That(sharedData.Value, Is.EqualTo(30)); // 10 + 20
@@ -331,10 +331,10 @@ public class MediatorComprehensiveTests
 
         foreach (var notification in notifications)
         {
-            await _context!.PublishAsync(notification);
+            await _context!.PublishAsync(notification).ConfigureAwait(false);
         }
 
-        await Task.Delay(200); // 等待所有处理完成
+        await Task.Delay(200).ConfigureAwait(false); // 等待所有处理完成
 
         // 验证接收顺序与发送顺序一致
         Assert.That(receivedOrder.Count, Is.EqualTo(3));
@@ -358,7 +358,7 @@ public class MediatorComprehensiveTests
         var stream = _context!.CreateStream(filterRequest);
         var results = new List<int>();
 
-        await foreach (var item in stream)
+        await foreach (var item in stream.ConfigureAwait(false))
         {
             results.Add(item);
         }
@@ -377,7 +377,7 @@ public class MediatorComprehensiveTests
         var invalidCommand = new TestValidatedCommand { Name = "" }; // 无效：空字符串
 
         Assert.ThrowsAsync<ArgumentException>(async () =>
-            await _context!.SendAsync(invalidCommand));
+            await _context!.SendAsync(invalidCommand).ConfigureAwait(false));
     }
 
     /// <summary>
@@ -392,7 +392,7 @@ public class MediatorComprehensiveTests
         for (int i = 0; i < iterations; i++)
         {
             var request = new TestRequest { Value = i };
-            var result = await _context!.SendRequestAsync(request);
+            var result = await _context!.SendRequestAsync(request).ConfigureAwait(false);
             Assert.That(result, Is.EqualTo(i));
         }
 
@@ -417,15 +417,13 @@ public class MediatorComprehensiveTests
 
         // 使用自有 CQRS 方式
         var mediatorCommand = new TestCommandWithResult { ResultValue = 999 };
-        var result = await _context.SendAsync(mediatorCommand);
+        var result = await _context.SendAsync(mediatorCommand).ConfigureAwait(false);
         Assert.That(result, Is.EqualTo(999));
 
         // 验证两者可以同时工作
         Assert.That(legacyCommand.Executed, Is.True);
         Assert.That(result, Is.EqualTo(999));
     }
-}
-
 #region Advanced Test Classes for CQRS Features
 
 public sealed record TestLongRunningRequest : IRequest<string>
@@ -437,7 +435,7 @@ public sealed class TestLongRunningRequestHandler : IRequestHandler<TestLongRunn
 {
     public async ValueTask<string> Handle(TestLongRunningRequest request, CancellationToken cancellationToken)
     {
-        await Task.Delay(request.DelayMs, cancellationToken);
+        await Task.Delay(request.DelayMs, cancellationToken).ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
         return "Completed";
     }
@@ -458,7 +456,7 @@ public sealed class TestLongStreamRequestHandler : IStreamRequestHandler<TestLon
         {
             cancellationToken.ThrowIfCancellationRequested();
             yield return i;
-            await Task.Delay(10, cancellationToken); // 模拟处理延迟
+            await Task.Delay(10, cancellationToken).ConfigureAwait(false); // 模拟处理延迟
         }
     }
 }
@@ -496,7 +494,7 @@ public sealed class TestModifyDataCommandHandler : IRequestHandler<TestModifyDat
 public sealed record TestCachingQuery : IRequest<string>
 {
     public string Key { get; init; } = string.Empty;
-    public Dictionary<string, string> Cache { get; init; } = new();
+    public IDictionary<string, string> Cache { get; init; } = new Dictionary<string, string>(StringComparer.Ordinal);
 }
 
 public sealed class TestCachingQueryHandler : IRequestHandler<TestCachingQuery, string>
@@ -522,7 +520,7 @@ public sealed record TestOrderedNotification : INotification
 
 public sealed class TestOrderedNotificationHandler : INotificationHandler<TestOrderedNotification>
 {
-    public static List<string> ReceivedMessages { get; set; } = new();
+    public static ICollection<string> ReceivedMessages { get; set; } = new List<string>();
 
     public ValueTask Handle(TestOrderedNotification notification, CancellationToken cancellationToken)
     {
@@ -590,7 +588,7 @@ public sealed class TestValidatedCommandHandler : IRequestHandler<TestValidatedC
     {
         if (string.IsNullOrWhiteSpace(request.Name))
         {
-            throw new ArgumentException($"Name cannot be empty {nameof(request.Name)}");
+            throw new ArgumentException("Name cannot be empty.", nameof(request));
         }
 
         return ValueTask.FromResult(Unit.Value);
@@ -719,3 +717,5 @@ public sealed class TestStreamRequestHandler : IStreamRequestHandler<TestStreamR
 }
 
 #endregion
+
+}
