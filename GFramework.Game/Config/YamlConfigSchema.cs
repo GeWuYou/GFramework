@@ -12,6 +12,7 @@ internal sealed class YamlConfigSchema
     /// <param name="schemaPath">Schema 文件路径。</param>
     /// <param name="rootNode">根节点模型。</param>
     /// <param name="referencedTableNames">Schema 声明的目标引用表名称集合。</param>
+    /// <exception cref="ArgumentNullException">当 <paramref name="schemaPath"/>、<paramref name="rootNode"/> 或 <paramref name="referencedTableNames"/> 为 <see langword="null" /> 时抛出。</exception>
     public YamlConfigSchema(
         string schemaPath,
         YamlConfigSchemaNode rootNode,
@@ -23,7 +24,7 @@ internal sealed class YamlConfigSchema
 
         SchemaPath = schemaPath;
         RootNode = rootNode;
-        ReferencedTableNames = referencedTableNames;
+        ReferencedTableNames = [.. referencedTableNames];
     }
 
     /// <summary>

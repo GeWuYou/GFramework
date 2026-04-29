@@ -236,6 +236,7 @@ public class MediatorAdvancedFeaturesTests
     }
 }
 
+// 这些高级特性测试需要把一组仅供当前文件使用的辅助类型共置，避免拆成多个噪声文件。
 #pragma warning disable MA0048
 #region Advanced Test Classes
 

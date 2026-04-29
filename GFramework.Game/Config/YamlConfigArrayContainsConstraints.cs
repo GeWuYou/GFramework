@@ -12,12 +12,31 @@ internal sealed class YamlConfigArrayContainsConstraints
     /// <param name="containsNode">contains 子 schema。</param>
     /// <param name="minContains">最小匹配数量；为 <see langword="null" /> 时按 JSON Schema 语义默认 1。</param>
     /// <param name="maxContains">最大匹配数量。</param>
+    /// <exception cref="ArgumentNullException">当 <paramref name="containsNode"/> 为 <see langword="null" /> 时抛出。</exception>
+    /// <exception cref="ArgumentOutOfRangeException">当 <paramref name="minContains"/> 或 <paramref name="maxContains"/> 为负数时抛出。</exception>
+    /// <exception cref="ArgumentException">当 <paramref name="minContains"/> 大于 <paramref name="maxContains"/> 时抛出。</exception>
     public YamlConfigArrayContainsConstraints(
         YamlConfigSchemaNode containsNode,
         int? minContains,
         int? maxContains)
     {
         ArgumentNullException.ThrowIfNull(containsNode);
+        if (minContains is < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(minContains), minContains, "minContains 不能为负数。");
+        }
+
+        if (maxContains is < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maxContains), maxContains, "maxContains 不能为负数。");
+        }
+
+        if (minContains.HasValue &&
+            maxContains.HasValue &&
+            minContains.Value > maxContains.Value)
+        {
+            throw new ArgumentException("minContains 不能大于 maxContains。", nameof(minContains));
+        }
 
         ContainsNode = containsNode;
         MinContains = minContains;

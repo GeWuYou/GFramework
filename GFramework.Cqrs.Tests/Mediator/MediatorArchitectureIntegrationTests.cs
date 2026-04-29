@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Architectures;
@@ -331,13 +332,7 @@ public class MediatorArchitectureIntegrationTests
         public ValueTask<string> Handle(TestNestedRequest request, CancellationToken cancellationToken)
         {
             TestNestedRequestHandler2.ExecutionCount++;
-
-            if (request.Depth >= 1) // 简化条件
-            {
-                // 模拟嵌套调用
-                return new ValueTask<string>($"Nested execution completed at depth {request.Depth}");
-            }
-
+            // 模拟嵌套调用
             return new ValueTask<string>($"Nested execution completed at depth {request.Depth}");
         }
     }
@@ -391,30 +386,28 @@ public class MediatorArchitectureIntegrationTests
 
     public sealed class TestUncachedRequestHandler : IRequestHandler<TestUncachedRequest, int>
     {
-        public ValueTask<int> Handle(TestUncachedRequest request, CancellationToken cancellationToken)
+        public async ValueTask<int> Handle(TestUncachedRequest request, CancellationToken cancellationToken)
         {
             // 模拟一些处理时间
-            Task.Delay(5, cancellationToken).Wait(cancellationToken);
-            return new ValueTask<int>(request.Id);
+            await Task.Delay(5, cancellationToken).ConfigureAwait(false);
+            return request.Id;
         }
     }
 
     public sealed class TestCachedRequestHandler : IRequestHandler<TestCachedRequest, int>
     {
-        private static readonly Dictionary<int, int> _cache = new();
+        private static readonly ConcurrentDictionary<int, int> _cache = new();
 
-        public ValueTask<int> Handle(TestCachedRequest request, CancellationToken cancellationToken)
+        public async ValueTask<int> Handle(TestCachedRequest request, CancellationToken cancellationToken)
         {
             if (_cache.TryGetValue(request.Id, out var cachedValue))
             {
-                return new ValueTask<int>(cachedValue);
+                return cachedValue;
             }
 
             // 模拟处理时间
-            Task.Delay(10, cancellationToken).Wait(cancellationToken);
-            var newValue = request.Id;
-            _cache[request.Id] = newValue;
-            return new ValueTask<int>(newValue);
+            await Task.Delay(10, cancellationToken).ConfigureAwait(false);
+            return _cache.GetOrAdd(request.Id, static id => id);
         }
     }
 
@@ -435,7 +428,7 @@ public class MediatorArchitectureIntegrationTests
     {
         public ValueTask<string> Handle(TestStateModificationRequest request, CancellationToken cancellationToken)
         {
-            request.SharedState.Counter += request.Increment;
+            request.SharedState.IncrementBy(request.Increment);
             return new ValueTask<string>("State modified");
         }
     }
@@ -567,7 +560,14 @@ public class MediatorArchitectureIntegrationTests
     // 并发测试相关类
     public class SharedState
     {
-        public int Counter { get; set; }
+        private int _counter;
+
+        public int Counter => _counter;
+
+        public void IncrementBy(int increment)
+        {
+            Interlocked.Add(ref _counter, increment);
+        }
     }
 
     public sealed record TestConcurrentRequest : IRequest<int>

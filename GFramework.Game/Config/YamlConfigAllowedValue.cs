@@ -11,9 +11,11 @@ internal sealed class YamlConfigAllowedValue
     /// </summary>
     /// <param name="comparableValue">用于与 YAML 节点比较的稳定键。</param>
     /// <param name="displayValue">用于诊断输出的原始 JSON 文本。</param>
+    /// <exception cref="ArgumentNullException">当 <paramref name="comparableValue"/> 或 <paramref name="displayValue"/> 为 <see langword="null" /> 时抛出。</exception>
+    /// <exception cref="ArgumentException">当 <paramref name="comparableValue"/> 或 <paramref name="displayValue"/> 为空或仅包含空白字符时抛出。</exception>
     public YamlConfigAllowedValue(string comparableValue, string displayValue)
     {
-        ArgumentNullException.ThrowIfNull(comparableValue);
+        ArgumentException.ThrowIfNullOrWhiteSpace(comparableValue);
         ArgumentException.ThrowIfNullOrWhiteSpace(displayValue);
 
         ComparableValue = comparableValue;

@@ -11,6 +11,8 @@ internal sealed class YamlConfigStringFormatConstraint
     /// </summary>
     /// <param name="schemaName">schema 中声明的 format 名称。</param>
     /// <param name="kind">归一化后的共享 format 枚举。</param>
+    /// <exception cref="ArgumentNullException">当 <paramref name="schemaName"/> 为 <see langword="null" /> 时抛出。</exception>
+    /// <exception cref="ArgumentException">当 <paramref name="schemaName"/> 为空或仅包含空白字符时抛出。</exception>
     public YamlConfigStringFormatConstraint(
         string schemaName,
         YamlConfigStringFormatKind kind)

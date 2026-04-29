@@ -12,6 +12,7 @@ internal sealed class YamlConfigConditionalSchemas
     /// <param name="ifSchema">条件判断 schema。</param>
     /// <param name="thenSchema">条件命中时需要满足的 schema。</param>
     /// <param name="elseSchema">条件未命中时需要满足的 schema。</param>
+    /// <exception cref="ArgumentNullException">当 <paramref name="ifSchema"/> 为 <see langword="null" /> 时抛出。</exception>
     public YamlConfigConditionalSchemas(
         YamlConfigSchemaNode ifSchema,
         YamlConfigSchemaNode? thenSchema,

@@ -6,43 +6,40 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-094`
-- 当前阶段：`Phase 94`
+- 恢复点编号：`ANALYZER-WARNING-REDUCTION-RP-095`
+- 当前阶段：`Phase 95`
 - 当前焦点：
-  - `2026-04-29` 继续按 `$gframework-batch-boot 50` 从仓库根 `dotnet clean` + `dotnet build` 的权威 warning 基线收尾 `YamlConfigSchemaValidator`
-  - 本轮 clean build 只剩 `15` 条 warning，但实际只对应 `YamlConfigSchemaValidator.cs` 同一文件中的 `5` 个独立 `MA0051` 热点，因此不再并发派发 worker，避免同文件冲突
-  - 已将 `ParseNode`、`ValidateObjectNode`、`ValidateObjectConstraints`、`ValidateScalarNode`、`ValidateNumericScalarConstraints` 按语义拆成 helper，并补齐对象条件分支 helper
-  - 当前仓库根 clean build 已收敛到 `0` warnings、`0` errors；本轮停止原因从“接近文件阈值”切换为“当前 warning hotspot 已耗尽”
+  - `2026-04-29` 继续处理 `PR #301` 的 latest-head review threads，只修复当前工作树上仍然成立的问题
+  - 已修复 `MediatorArchitectureIntegrationTests` 中仍然成立的并发与阻塞问题：移除冗余分支、把 `Task.Delay().Wait()` 改为 `await`、把静态缓存换成 `ConcurrentDictionary`、并把共享计数更新改成原子操作
+  - 已补 `GFramework.Game/Config` 运行时 schema 模型的构造期契约校验与 `<exception>` XML 文档，并新增 `YamlConfigModelContractTests` 锁定这些无效状态保护
+  - 本轮明确暂不接受两个误报方向：`YamlConfigReferenceUsage.DisplayPath` 别名删除建议，以及两个本地枚举补 `[GenerateEnumExtensions]` 的泛化建议
 
 ## 当前活跃事实
 
 - 当前 `origin/main` 基线提交为 `0e32dab`（`2026-04-28T17:15:47+08:00`）。
 - 当前直接验证结果：
-  - `dotnet clean`
-    - 最新结果：成功；标准仓库根 clean 本轮可直接运行，未再命中需要额外绕开的环境噪音
-  - `dotnet build`
-    - 最新结果：成功；`0 Warning(s)`、`0 Error(s)`；本轮开始时同一口径 clean build 的 `15` 条 warning 已全部清零
   - `dotnet build GFramework.Game/GFramework.Game.csproj -c Release -clp:Summary`
     - 最新结果：成功；`0 Warning(s)`、`0 Error(s)`
-  - `dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --filter "FullyQualifiedName~YamlConfigLoaderTests|FullyQualifiedName~YamlConfigSchemaValidatorTests"`
-    - 最新结果：成功；`80` 通过、`0` 失败
+  - `dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --filter "FullyQualifiedName~YamlConfigSchemaValidatorTests|FullyQualifiedName~YamlConfigModelContractTests"`
+    - 最新结果：成功；`10` 通过、`0` 失败
+  - `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~MediatorArchitectureIntegrationTests|FullyQualifiedName~MediatorAdvancedFeaturesTests"`
+    - 最新结果：成功；`25` 通过、`0` 失败
   - `git diff --check`
     - 最新结果：成功；无新增 whitespace / conflict-marker 问题
 - 当前批次摘要：
-  - 当前分支提交后预计相对 `origin/main...HEAD` 包含 `22` 个变更文件，低于 `50` 个文件阈值
-  - 已完成 worker 切片：
-    - `ed269d4`：`MediatorArchitectureIntegrationTests.cs`，清理 `MA0048` / `MA0004` / `MA0016`
-    - `121df44`：`MediatorAdvancedFeaturesTests.cs`，清理 `MA0048` / `MA0004` / `MA0015`
-    - `9109eec`：`MediatorComprehensiveTests.cs`，清理 `MA0048` / `MA0004` / `MA0016` / `MA0002` / `MA0015`
-  - 主线程切片：`YamlConfigSchemaValidator.cs` 方法拆分，清理剩余 `MA0051`，并修正新增 helper 里的 `MA0006`
-  - Game 追加切片：
-    - `1395b84`：`YamlConfigSchemaValidator.ObjectKeywords.cs`，清理该文件 `MA0051`
-    - 已完成：将 `YamlConfigSchemaValidator.cs` 末尾 schema model 类型拆到独立同名文件，清理 `MA0048`
+  - 当前切片直接修改 `12` 个已有文件，并新增 `YamlConfigModelContractTests.cs` 作为模型契约回归覆盖
+  - 本轮修复集中在 `GFramework.Cqrs.Tests` 与 `GFramework.Game` 两个最新 review thread 热区，没有再扩写回 warning-batch 的多文件并发清理范围
+  - PR review triage 结论：
+    - 接受：并发共享状态、阻塞等待、无效约束状态、缺失 `<exception>` 文档
+    - 延后：`DisplayPath` 诊断别名删除建议
+    - 驳回：两个枚举补 `[GenerateEnumExtensions]` 的泛化建议
 
 ## 当前风险
 
-- 当前仓库根 clean build warning 已清零，本主题暂时没有剩余源码 warning 风险。
-  - 缓解措施：若后续继续 batch warning 清理，先重新执行同轮 `dotnet clean` + `dotnet build` 采样，再决定是否需要分派 subagent。
+- 当前 GitHub PR 仍会保留尚未推送折叠的 open threads，以及被明确延后 / 驳回的机器人建议。
+  - 缓解措施：提交并推送后重新执行 `$gframework-pr-review`，只保留仍有真实依据的剩余线程。
+- 本轮未重跑仓库根 `dotnet clean` + `dotnet build`，因此 RP-094 的仓库级 warning 真值不能直接外推到这次 PR-review follow-up 之后。
+  - 缓解措施：若下一轮重新回到 analyzer warning reduction 主线，先按仓库规则重新采样仓库根 clean build。
 
 ## 活跃文档
 
@@ -63,13 +60,13 @@
 ## 验证说明
 
 - 权威验证结果统一维护在“当前活跃事实”。
-- `GFramework.Game` 当前 Release 构建已清零，并通过 config 定向测试；本轮标准仓库根 Debug clean build 也已清零。
-- 本轮标准仓库根 `dotnet clean` + `dotnet build` 已直接回到 `0 Warning(s)`、`0 Error(s)`，因此 warning reduction 真值已从模块级验证收口到仓库级 clean build。
+- `GFramework.Game` 当前 Release 构建已清零，并通过 config 定向测试。
+- `GFramework.Cqrs.Tests` 当前 PR-review follow-up 定向测试通过，说明并发/缓存测试辅助实现的行为修正没有破坏现有集成断言。
 - `git diff --check` 结果为空，说明本轮新增改动没有引入新的尾随空格或冲突标记。
-- warning reduction 的仓库级真值以同轮 `dotnet build`、定向 `dotnet test` 与 `git diff --check` 为准，并与 trace 中的验证里程碑保持一致。
+- 本轮以受影响项目的 Release build / tests 为完成条件；若下轮恢复 warning reduction 仓库级真值，需要重新执行仓库根 `dotnet clean` + `dotnet build`。
 
 ## 下一步建议
 
-1. 提交 `YamlConfigSchemaValidator` 收尾重构与本轮 `ai-plan` 同步。
-2. 如需继续 warning reduction，先从新的仓库根 clean build 重新采样是否还有新增 warning hotspot。
-3. 若未来 warning 再次分散到多个文件，再按 `$gframework-batch-boot 50` 规则切换回多 worker 并行模式。
+1. 提交当前 PR-review follow-up 与本轮 `ai-plan` 同步。
+2. 推送分支后重新执行 `$gframework-pr-review`，确认剩余 open threads 是否只剩延后 / 误报项。
+3. 若下一轮恢复 warning reduction 主线，先重新执行仓库根 `dotnet clean` + `dotnet build` 建立新的权威基线。

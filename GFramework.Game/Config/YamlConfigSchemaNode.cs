@@ -280,15 +280,6 @@ internal sealed class YamlConfigSchemaNode
             NegatedSchemaNode = negatedSchemaNode;
         }
 
-        public static NodeValidation None { get; } = new(
-            referenceTableName: null,
-            allowedValues: null,
-            constraints: null,
-            arrayConstraints: null,
-            objectConstraints: null,
-            constantValue: null,
-            negatedSchemaNode: null);
-
         public string? ReferenceTableName { get; }
 
         public IReadOnlyCollection<YamlConfigAllowedValue>? AllowedValues { get; }

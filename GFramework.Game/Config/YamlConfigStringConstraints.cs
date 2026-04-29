@@ -17,6 +17,7 @@ internal sealed class YamlConfigStringConstraints
     /// <param name="pattern">正则模式约束原文。</param>
     /// <param name="patternRegex">已编译的正则表达式。</param>
     /// <param name="formatConstraint">字符串 format 约束。</param>
+    /// <exception cref="ArgumentException">当 <paramref name="pattern"/> 与 <paramref name="patternRegex"/> 未成对出现时抛出。</exception>
     public YamlConfigStringConstraints(
         int? minLength,
         int? maxLength,
@@ -24,6 +25,11 @@ internal sealed class YamlConfigStringConstraints
         Regex? patternRegex,
         YamlConfigStringFormatConstraint? formatConstraint)
     {
+        if ((pattern is null) != (patternRegex is null))
+        {
+            throw new ArgumentException("pattern 与 patternRegex 必须同时为空或同时提供。", nameof(pattern));
+        }
+
         MinLength = minLength;
         MaxLength = maxLength;
         Pattern = pattern;

@@ -15,6 +15,8 @@ internal sealed class YamlConfigObjectConstraints
     /// <param name="dependentSchemas">对象内条件 schema 约束。</param>
     /// <param name="allOfSchemas">对象内组合 schema 约束。</param>
     /// <param name="conditionalSchemas">对象内条件分支约束。</param>
+    /// <exception cref="ArgumentOutOfRangeException">当 <paramref name="minProperties"/> 或 <paramref name="maxProperties"/> 为负数时抛出。</exception>
+    /// <exception cref="ArgumentException">当 <paramref name="minProperties"/> 大于 <paramref name="maxProperties"/> 时抛出。</exception>
     public YamlConfigObjectConstraints(
         int? minProperties,
         int? maxProperties,
@@ -23,6 +25,23 @@ internal sealed class YamlConfigObjectConstraints
         IReadOnlyList<YamlConfigSchemaNode>? allOfSchemas,
         YamlConfigConditionalSchemas? conditionalSchemas)
     {
+        if (minProperties is < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(minProperties), minProperties, "minProperties 不能为负数。");
+        }
+
+        if (maxProperties is < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maxProperties), maxProperties, "maxProperties 不能为负数。");
+        }
+
+        if (minProperties.HasValue &&
+            maxProperties.HasValue &&
+            minProperties.Value > maxProperties.Value)
+        {
+            throw new ArgumentException("minProperties 不能大于 maxProperties。", nameof(minProperties));
+        }
+
         MinProperties = minProperties;
         MaxProperties = maxProperties;
         DependentRequired = dependentRequired;

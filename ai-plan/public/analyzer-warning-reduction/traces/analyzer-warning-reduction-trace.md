@@ -1,5 +1,38 @@
 # Analyzer Warning Reduction 追踪
 
+## 2026-04-29 — RP-095
+
+### 阶段：复核 `PR #301` latest-head review threads，并只修复当前工作树上仍然成立的问题
+
+- 触发背景：
+  - 用户显式要求执行 `$gframework-pr-review`，需要把 GitHub PR review 信号与本地代码现状重新核对，而不是沿用旧的 warning-batch 假设
+- 本轮 triage 结论：
+  - 接受并修复：
+    - `MediatorArchitectureIntegrationTests` 中 `Task.Delay().Wait()` 阻塞、静态 `Dictionary` 竞态、`SharedState.Counter +=` 非原子更新、以及 `TestNestedRequestHandler` 冗余分支
+    - `GFramework.Game/Config` 中仍然成立的模型契约缺口：空白比较键、数组 / 对象边界非法状态、`Pattern` / `PatternRegex` 不一致、`ReferencedTableNames` 未做 defensive copy、以及缺失的 `<exception>` XML 文档
+    - `MediatorAdvancedFeaturesTests` 中 `MA0048` 抑制缺少原因注释
+    - `YamlConfigSchemaNode.NodeValidation.None` 未被引用，按 review 建议删除死代码
+  - 明确不接受或延后：
+    - `YamlConfigReferenceUsage.DisplayPath`：当前在 loader 诊断与测试断言中承担独立语义标签，不作为“纯冗余 alias”删除
+    - `YamlConfigSchemaPropertyType` / `YamlConfigStringFormatKind` 补 `[GenerateEnumExtensions]`：仓库产品代码没有现成约定或使用面，判断为泛化误报
+- 主线程实施：
+  - 将 CQRS 集成测试辅助处理器改为真正异步，并用 `ConcurrentDictionary` / `Interlocked` 收口并发共享状态
+  - 为 `YamlConfigAllowedValue`、`YamlConfigConstantValue`、`YamlConfigArrayContainsConstraints`、`YamlConfigArrayConstraints`、`YamlConfigObjectConstraints`、`YamlConfigStringConstraints`、`YamlConfigSchema`、`YamlConfigConditionalSchemas`、`YamlConfigStringFormatConstraint` 补运行时契约或 `<exception>` 注释
+  - 新增 `YamlConfigModelContractTests`，锁定上述模型拒绝无效状态的行为
+- 验证里程碑：
+  - `dotnet build GFramework.Game/GFramework.Game.csproj -c Release`
+    - 结果：成功；`0 Warning(s)`、`0 Error(s)`
+  - `dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --filter "FullyQualifiedName~YamlConfigSchemaValidatorTests|FullyQualifiedName~YamlConfigModelContractTests"`
+    - 第一次结果：成功；`10` 通过、`0` 失败，但新增测试触发 `MA0009`
+    - 第二次结果：成功；`10` 通过、`0` 失败；为测试中的 `Regex` 补 timeout 后 warning 清零
+  - `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~MediatorArchitectureIntegrationTests|FullyQualifiedName~MediatorAdvancedFeaturesTests"`
+    - 结果：成功；`25` 通过、`0` 失败
+  - `git diff --check`
+    - 结果：成功；无新增 whitespace / conflict-marker 问题
+- 下一步：
+  - 提交当前 PR-review follow-up 与 `ai-plan` 同步
+  - 推送后重新执行 `$gframework-pr-review`，确认 remaining open threads 是否已缩减到延后 / 误报项
+
 ## 2026-04-29 — RP-094
 
 ### 阶段：收尾 `YamlConfigSchemaValidator` 剩余 `MA0051` 并将仓库根 clean build 归零
