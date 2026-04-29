@@ -7,7 +7,7 @@ CQRS 迁移与收敛。
 
 ## 当前恢复点
 
-- 恢复点编号：`CQRS-REWRITE-RP-052`
+- 恢复点编号：`CQRS-REWRITE-RP-054`
 - 当前阶段：`Phase 8`
 - 当前焦点：
   - 当前功能历史已归档，active 跟踪仅保留 `Phase 8` 主线的恢复入口
@@ -15,6 +15,8 @@ CQRS 迁移与收敛。
   - `CqrsReflectionFallbackAttribute` 现允许多实例，以承载 `Type[]` 与字符串 fallback 元数据的组合输出
   - 已将 generator 的程序集级 fallback 元数据进一步收敛：当全部 fallback handlers 都可直接引用且 runtime 暴露 `params Type[]` 合同时，生成器现优先发射 `typeof(...)` 形式的 fallback 元数据
   - 当 runtime 不支持多实例 fallback 特性或缺少对应构造函数时，mixed fallback 场景仍会整体保守回退到字符串元数据，避免仅部分 handler 走 `Type[]` 时漏掉剩余需按名称恢复的 handlers
+  - 已完成 request pipeline executor 形状缓存：`CqrsDispatcher` 现会在单个 request binding 内按 `behaviorCount` 复用强类型 pipeline executor，而不是每次 `SendAsync` 都重建整条 `next` 委托链
+  - 已补充 dispatcher pipeline executor 缓存与双行为顺序回归，锁定缓存复用后仍保持现有行为执行顺序
   - 已完成 generated registry 激活路径收敛：`CqrsHandlerRegistrar` 现优先复用缓存工厂委托，避免重复 `ConstructorInfo.Invoke`
   - 已补充私有无参构造 generated registry 的回归测试，确保兼容现有生成器产物
   - 已修正 pointer / function pointer 泛型合同的错误覆盖：生成器不再为这两类类型发射 precise runtime type 重建代码
@@ -71,6 +73,17 @@ CQRS 迁移与收敛。
   - latest reviewed commit 当前剩余 `3` 条 open AI review threads：`2` 条 Greptile、`1` 条 CodeRabbit
   - 本地核对后确认 `dotnet-format` 仍只有 `Restore operation failed` 噪音，没有附带当前仍成立的文件级格式诊断
   - 已按 review triage 修正 generator source preamble 的多实例 fallback 特性排版、移除死参数，并补强 mixed/direct fallback 发射回归断言与 XML 文档
+- `2026-04-29` 已完成一轮 precise runtime type lookup 的数组回归补强：
+  - `GFramework.SourceGenerators.Tests` 已新增多维数组、交错数组、外部程序集隐藏元素类型三类回归
+  - 当前生成器在 precise runtime type lookup 下已稳定保留数组秩信息，并递归发射交错数组的 `MakeArrayType()` 链
+  - 本轮定向测试未暴露数组发射缺陷，因此未改动 fallback 合同选择逻辑，也未调整 direct / named / mixed fallback 排版路径
+- `2026-04-29` 已完成一轮 request pipeline executor 形状缓存：
+  - `CqrsDispatcher` 现会继续按 `requestType + responseType` 缓存 request dispatch binding，并在 binding 内按 `behaviorCount` 缓存强类型 pipeline executor
+  - 每次分发只绑定当前 handler / behaviors 实例，不缓存容器解析结果，因此不改变 transient 生命周期与上下文注入语义
+  - `GFramework.Cqrs.Tests` 已补充 executor 首次创建 / 后续复用与双行为顺序回归
+- `2026-04-29` 已完成一轮 CQRS 入口文档对齐：
+  - `GFramework.Cqrs/README.md`、`docs/zh-CN/core/cqrs.md` 与 `docs/zh-CN/api-reference/index.md` 现已明确 generated registry 优先、targeted fallback 补齐剩余 handler 的当前语义
+  - 当前工作区相对 `origin/main` 的累计 diff 已达到 `13 files / 709 lines`，仍低于本轮 `gframework-batch-boot 50` 的主要 stop condition
 - 当前主线优先级：
   - generator 覆盖面继续扩大
   - dispatch/invoker 反射占比继续下降
@@ -133,9 +146,18 @@ CQRS 迁移与收敛。
 - `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~GFramework.Cqrs.Tests.Cqrs.CqrsHandlerRegistrarTests"`
   - 结果：通过
   - 备注：`13/13` 测试通过；本轮确认 mixed fallback metadata 的 registrar 消费路径未回归
+- `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests"`
+  - 结果：通过
+  - 备注：`21/21` 测试通过；本轮新增多维数组、交错数组与外部程序集隐藏元素类型的 precise runtime type lookup 回归
+- `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~GFramework.Cqrs.Tests.Cqrs.CqrsDispatcherCacheTests"`
+  - 结果：通过
+  - 备注：`4/4` 测试通过；本轮覆盖 request pipeline executor 的首次创建、复用与双行为顺序回归
+- `dotnet build GFramework.Cqrs/GFramework.Cqrs.csproj -c Release`
+  - 结果：通过
+  - 备注：`0 warning / 0 error`；本轮确认 dispatcher request pipeline 形状缓存未破坏 `net8.0` / `net9.0` / `net10.0` 目标构建
 
 ## 下一步
 
-1. 继续 `Phase 8` 主线，优先再找一个收益明确的 generator 覆盖缺口，继续减少仍必须依赖字符串 fallback 元数据的 handler 类型形态
-2. 若继续文档主线，优先再扫 `docs/zh-CN/api-reference` 与教程入口页，补齐仍过时的 CQRS API / 命名空间表述
+1. 继续 `Phase 8` 主线，优先再找一个收益明确且写集独立的 generator 或 dispatch 热点；当前累计 diff 为 `13 files / 709 lines`，距离 `50 files` stop condition 仍有余量
+2. 若继续文档主线，优先再扫教程入口页与 API 参考中的 CQRS 采用说明，确认是否还有旧 Command / Query 迁移口径残留
 3. 若后续再出现新的 PR review 或 review thread 变化，再重新执行 `$gframework-pr-review` 作为独立验证步骤

@@ -2,6 +2,50 @@
 
 ## 2026-04-29
 
+### 阶段：低风险并行批次收口（CQRS-REWRITE-RP-054）
+
+- 继续按 `gframework-batch-boot 50` 推进 `Phase 8`，本轮先完成批次评估后再并行拆分写集，避免把 generator、runtime 与 docs 改动揉进同一片上下文
+- 先复核当前 worktree、active tracking 与 `origin/main` 基线后确认：
+  - 当前分支头最初与 `origin/main` 对齐，批次阈值从 `0 files / 0 lines` 起算
+  - 本轮可以安全拆成三个互不冲突的切片：request pipeline executor 形状缓存、precise runtime type lookup 数组回归补强、CQRS 入口文档对齐
+  - 主线程保留集成与验证职责，subagent 只负责各自写集
+- 已接受并整合的并行写集：
+  - docs 切片：更新 `GFramework.Cqrs/README.md`、`docs/zh-CN/core/cqrs.md`、`docs/zh-CN/api-reference/index.md`，明确 generated registry 优先、targeted fallback 只补剩余 handler
+  - generator 切片：在 `GFramework.SourceGenerators.Tests/Cqrs/CqrsHandlerRegistryGeneratorTests.cs` 新增多维数组、交错数组、外部程序集隐藏元素类型三组 precise lookup 回归
+  - dispatcher 切片：在 `GFramework.Cqrs/Internal/CqrsDispatcher.cs` 中将 request pipeline 从“每次分发重建 next 链”收敛为“binding 内按 behaviorCount 缓存 executor 形状”，并补充 dispatcher cache / 顺序回归
+- docs 切片已作为独立提交落地：
+  - `66830ba2` `docs(cqrs): 更新入口与回退语义说明`
+- 本轮定向验证已通过：
+  - `dotnet build GFramework.Cqrs/GFramework.Cqrs.csproj -c Release`
+  - `0 warning / 0 error`
+  - `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~GFramework.Cqrs.Tests.Cqrs.CqrsDispatcherCacheTests"`
+  - `4/4` passed
+  - `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests"`
+  - `21/21` passed
+- 本轮停止时，当前工作区相对 `origin/main` 的累计 diff 为 `13 files / 709 lines`
+- 结论：
+  - primary stop condition `50 files` 尚未触发，本轮停止是因为三条低风险切片已收口完毕
+  - 下一批更适合重新做一轮热点筛选，而不是在同一轮继续扩写集
+
+### 阶段：precise runtime type lookup 数组回归补强（CQRS-REWRITE-RP-053）
+
+- 延续 `gframework-batch-boot 50` 的 `Phase 8` 主线，本轮选择一个更窄的 generator 覆盖缺口：锁定 precise runtime type lookup 下数组类型形态的回归
+- 先复核当前实现后确认：
+  - `TryCreateRuntimeTypeReference` 已会把 `IArrayTypeSymbol` 递归建模为 `RuntimeTypeReferenceSpec.FromArray(element, rank)`
+  - `AppendArrayRuntimeTypeReferenceResolution` 已按 `ArrayRank == 1` 发射 `MakeArrayType()`，按 `rank > 1` 发射 `MakeArrayType(rank)`
+  - 当前缺口主要是测试面不足，尚未显式覆盖多维数组、交错数组、外部程序集隐藏元素类型这三类 precise lookup 场景
+- 已在 `GFramework.SourceGenerators.Tests/Cqrs/CqrsHandlerRegistryGeneratorTests.cs` 补充三组回归：
+  - 隐藏元素类型的多维数组响应，锁定 `MakeArrayType(2)` 发射
+  - 隐藏元素类型的交错数组响应，锁定递归 `MakeArrayType().MakeArrayType()` 发射
+  - 外部程序集隐藏元素类型的多维数组响应，锁定 `ResolveReferencedAssemblyType(...)` 与 `MakeArrayType(2)` 的组合
+- 本轮定向测试全部通过，未暴露数组发射缺陷：
+  - 因此没有修改 `GFramework.Cqrs.SourceGenerators/Cqrs/CqrsHandlerRegistryGenerator.SourceEmission.cs`
+  - 也没有改动 `CqrsHandlerRegistryGenerator.RuntimeTypeReferences.cs`
+  - fallback 合同选择逻辑与 direct / named / mixed fallback 排版路径保持不变
+- 定向验证已通过：
+  - `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests"`
+  - `21/21` passed
+
 ### 阶段：mixed fallback 元数据拆分（CQRS-REWRITE-RP-052）
 
 - 延续 `gframework-batch-boot 50` 的 `Phase 8` 主线，本轮把上一批的“全部可直接引用 fallback handlers 走 `Type[]`”继续推进到 mixed 场景

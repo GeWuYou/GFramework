@@ -314,6 +314,128 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                                """;
 
+    private const string HiddenMultiDimensionalArrayResponseSource = """
+                                                                      using System;
+
+                                                                      namespace Microsoft.Extensions.DependencyInjection
+                                                                      {
+                                                                          public interface IServiceCollection { }
+
+                                                                          public static class ServiceCollectionServiceExtensions
+                                                                          {
+                                                                              public static void AddTransient(IServiceCollection services, Type serviceType, Type implementationType) { }
+                                                                          }
+                                                                      }
+
+                                                                      namespace GFramework.Core.Abstractions.Logging
+                                                                      {
+                                                                          public interface ILogger
+                                                                          {
+                                                                              void Debug(string msg);
+                                                                          }
+                                                                      }
+
+                                                                      namespace GFramework.Cqrs.Abstractions.Cqrs
+                                                                      {
+                                                                          public interface IRequest<TResponse> { }
+                                                                          public interface INotification { }
+                                                                          public interface IStreamRequest<TResponse> { }
+
+                                                                          public interface IRequestHandler<in TRequest, TResponse> where TRequest : IRequest<TResponse> { }
+                                                                          public interface INotificationHandler<in TNotification> where TNotification : INotification { }
+                                                                          public interface IStreamRequestHandler<in TRequest, out TResponse> where TRequest : IStreamRequest<TResponse> { }
+                                                                      }
+
+                                                                      namespace GFramework.Cqrs
+                                                                      {
+                                                                          public interface ICqrsHandlerRegistry
+                                                                          {
+                                                                              void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                          }
+
+                                                                          [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
+                                                                          public sealed class CqrsHandlerRegistryAttribute : Attribute
+                                                                          {
+                                                                              public CqrsHandlerRegistryAttribute(Type registryType) { }
+                                                                          }
+                                                                      }
+
+                                                                      namespace TestApp
+                                                                      {
+                                                                          using GFramework.Cqrs.Abstractions.Cqrs;
+
+                                                                          public sealed class Container
+                                                                          {
+                                                                              private sealed record HiddenResponse();
+
+                                                                              private sealed record HiddenRequest() : IRequest<HiddenResponse[,]>;
+
+                                                                              private sealed class HiddenHandler : IRequestHandler<HiddenRequest, HiddenResponse[,]> { }
+                                                                          }
+                                                                      }
+                                                                      """;
+
+    private const string HiddenJaggedArrayResponseSource = """
+                                                             using System;
+
+                                                             namespace Microsoft.Extensions.DependencyInjection
+                                                             {
+                                                                 public interface IServiceCollection { }
+
+                                                                 public static class ServiceCollectionServiceExtensions
+                                                                 {
+                                                                     public static void AddTransient(IServiceCollection services, Type serviceType, Type implementationType) { }
+                                                                 }
+                                                             }
+
+                                                             namespace GFramework.Core.Abstractions.Logging
+                                                             {
+                                                                 public interface ILogger
+                                                                 {
+                                                                     void Debug(string msg);
+                                                                 }
+                                                             }
+
+                                                             namespace GFramework.Cqrs.Abstractions.Cqrs
+                                                             {
+                                                                 public interface IRequest<TResponse> { }
+                                                                 public interface INotification { }
+                                                                 public interface IStreamRequest<TResponse> { }
+
+                                                                 public interface IRequestHandler<in TRequest, TResponse> where TRequest : IRequest<TResponse> { }
+                                                                 public interface INotificationHandler<in TNotification> where TNotification : INotification { }
+                                                                 public interface IStreamRequestHandler<in TRequest, out TResponse> where TRequest : IStreamRequest<TResponse> { }
+                                                             }
+
+                                                             namespace GFramework.Cqrs
+                                                             {
+                                                                 public interface ICqrsHandlerRegistry
+                                                                 {
+                                                                     void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                 }
+
+                                                                 [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
+                                                                 public sealed class CqrsHandlerRegistryAttribute : Attribute
+                                                                 {
+                                                                     public CqrsHandlerRegistryAttribute(Type registryType) { }
+                                                                 }
+                                                             }
+
+                                                             namespace TestApp
+                                                             {
+                                                                 using GFramework.Cqrs.Abstractions.Cqrs;
+
+                                                                 public sealed class Container
+                                                                 {
+                                                                     private sealed record HiddenResponse();
+
+                                                                     private sealed record HiddenRequest() : IRequest<HiddenResponse[][]>;
+
+                                                                     private sealed class HiddenHandler : IRequestHandler<HiddenRequest, HiddenResponse[][]> { }
+                                                                 }
+                                                             }
+                                                             """;
+
     private const string HiddenGenericEnvelopeResponseSource = """
                                                                using System;
 
@@ -963,6 +1085,24 @@ public class CqrsHandlerRegistryGeneratorTests
                                                               }
                                                               """;
 
+    private const string ExternalProtectedMultiDimensionalTypeDependencySource = """
+                                                                                  using GFramework.Cqrs.Abstractions.Cqrs;
+
+                                                                                  namespace Dep;
+
+                                                                                  public abstract class VisibilityScope
+                                                                                  {
+                                                                                      protected internal sealed record ProtectedResponse();
+
+                                                                                      protected internal sealed record ProtectedRequest() : IRequest<ProtectedResponse[,]>;
+                                                                                  }
+
+                                                                                  public abstract class HandlerBase :
+                                                                                      IRequestHandler<VisibilityScope.ProtectedRequest, VisibilityScope.ProtectedResponse[,]>
+                                                                                  {
+                                                                                  }
+                                                                                  """;
+
     private const string LegacyFallbackMarkerHiddenHandlerSource = """
                                                                     using System;
 
@@ -1591,6 +1731,52 @@ public class CqrsHandlerRegistryGeneratorTests
     }
 
     /// <summary>
+    ///     验证精确重建路径会保留隐藏元素类型的多维数组秩信息，
+    ///     使生成注册器继续走定向运行时类型重建，而不是退回宽松接口发现。
+    /// </summary>
+    [Test]
+    public void Generates_Precise_Service_Type_For_Hidden_MultiDimensional_Array_Type_Arguments()
+    {
+        var generatedSource = RunGenerator(HiddenMultiDimensionalArrayResponseSource);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                generatedSource,
+                Does.Contain(
+                    "var serviceType0_0Argument1Element = registryAssembly.GetType(\"TestApp.Container+HiddenResponse\", throwOnError: false, ignoreCase: false);"));
+            Assert.That(
+                generatedSource,
+                Does.Contain(
+                    "var serviceType0_0 = typeof(global::GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<,>).MakeGenericType(serviceType0_0Argument0, serviceType0_0Argument1Element.MakeArrayType(2));"));
+            Assert.That(generatedSource, Does.Not.Contain("RegisterRemainingReflectedHandlerInterfaces("));
+        });
+    }
+
+    /// <summary>
+    ///     验证精确重建路径会递归覆盖交错数组，
+    ///     确保隐藏元素类型的每一层数组都继续通过数组发射分支稳定重建。
+    /// </summary>
+    [Test]
+    public void Generates_Precise_Service_Type_For_Hidden_Jagged_Array_Type_Arguments()
+    {
+        var generatedSource = RunGenerator(HiddenJaggedArrayResponseSource);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                generatedSource,
+                Does.Contain(
+                    "var serviceType0_0Argument1ElementElement = registryAssembly.GetType(\"TestApp.Container+HiddenResponse\", throwOnError: false, ignoreCase: false);"));
+            Assert.That(
+                generatedSource,
+                Does.Contain(
+                    "var serviceType0_0 = typeof(global::GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<,>).MakeGenericType(serviceType0_0Argument0, serviceType0_0Argument1ElementElement.MakeArrayType().MakeArrayType());"));
+            Assert.That(generatedSource, Does.Not.Contain("RegisterRemainingReflectedHandlerInterfaces("));
+        });
+    }
+
+    /// <summary>
     ///     验证当 handler 合同把 pointer 响应类型放进 CQRS 泛型参数时，
     ///     生成器会保守回退而不是继续发射不可构造的精确注册代码。
     /// </summary>
@@ -1680,6 +1866,39 @@ public class CqrsHandlerRegistryGeneratorTests
         Assert.That(
             generatedSource,
             Is.EqualTo(ExternalAssemblyPreciseLookupExpected));
+    }
+
+    /// <summary>
+    ///     验证当外部程序集隐藏元素类型以多维数组形式参与 CQRS 合同时，
+    ///     生成器仍会保留外部程序集定向查找与数组秩信息，而不是退回 fallback 元数据。
+    /// </summary>
+    [Test]
+    public void Generates_Precise_Assembly_Type_Lookups_For_Inaccessible_External_MultiDimensional_Array_Elements()
+    {
+        var contractsReference = MetadataReferenceTestBuilder.CreateFromSource(
+            "Contracts",
+            ExternalProtectedTypeContractsSource);
+        var dependencyReference = MetadataReferenceTestBuilder.CreateFromSource(
+            "Dependency",
+            ExternalProtectedMultiDimensionalTypeDependencySource,
+            contractsReference);
+        var generatedSource = RunGenerator(
+            ExternalProtectedTypeLookupSource,
+            contractsReference,
+            dependencyReference);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                generatedSource,
+                Does.Contain(
+                    "var serviceType0_0Argument1Element = ResolveReferencedAssemblyType(\"Dependency, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null\", \"Dep.VisibilityScope+ProtectedResponse\");"));
+            Assert.That(
+                generatedSource,
+                Does.Contain(
+                    "var serviceType0_0 = typeof(global::GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<,>).MakeGenericType(serviceType0_0Argument0, serviceType0_0Argument1Element.MakeArrayType(2));"));
+            Assert.That(generatedSource, Does.Not.Contain("CqrsReflectionFallbackAttribute("));
+        });
     }
 
     /// <summary>
