@@ -24,6 +24,8 @@ internal sealed class CqrsDispatcherCacheTests
         LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider();
         _container = new MicrosoftDiContainer();
         _container.RegisterCqrsPipelineBehavior<DispatcherPipelineCacheBehavior>();
+        _container.RegisterCqrsPipelineBehavior<DispatcherPipelineOrderOuterBehavior>();
+        _container.RegisterCqrsPipelineBehavior<DispatcherPipelineOrderInnerBehavior>();
 
         CqrsTestRuntime.RegisterHandlers(
             _container,
@@ -146,6 +148,103 @@ internal sealed class CqrsDispatcherCacheTests
     }
 
     /// <summary>
+    ///     验证 request pipeline executor 会按行为数量在 binding 内首次创建并在后续分发中复用。
+    /// </summary>
+    [Test]
+    public async Task Dispatcher_Should_Cache_Request_Pipeline_Executors_Per_Behavior_Count()
+    {
+        var requestBindings = GetCacheField("RequestDispatchBindings");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                GetRequestPipelineExecutorValue(
+                    requestBindings,
+                    typeof(DispatcherPipelineCacheRequest),
+                    typeof(int),
+                    1),
+                Is.Null);
+            Assert.That(
+                GetRequestPipelineExecutorValue(
+                    requestBindings,
+                    typeof(DispatcherPipelineOrderCacheRequest),
+                    typeof(int),
+                    2),
+                Is.Null);
+        });
+
+        await _context!.SendRequestAsync(new DispatcherPipelineCacheRequest());
+        await _context.SendRequestAsync(new DispatcherPipelineOrderCacheRequest());
+
+        var singleBehaviorExecutor = GetRequestPipelineExecutorValue(
+            requestBindings,
+            typeof(DispatcherPipelineCacheRequest),
+            typeof(int),
+            1);
+        var twoBehaviorExecutor = GetRequestPipelineExecutorValue(
+            requestBindings,
+            typeof(DispatcherPipelineOrderCacheRequest),
+            typeof(int),
+            2);
+
+        await _context.SendRequestAsync(new DispatcherPipelineCacheRequest());
+        await _context.SendRequestAsync(new DispatcherPipelineOrderCacheRequest());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(singleBehaviorExecutor, Is.Not.Null);
+            Assert.That(twoBehaviorExecutor, Is.Not.Null);
+            Assert.That(singleBehaviorExecutor, Is.Not.SameAs(twoBehaviorExecutor));
+            Assert.That(
+                GetRequestPipelineExecutorValue(
+                    requestBindings,
+                    typeof(DispatcherPipelineCacheRequest),
+                    typeof(int),
+                    1),
+                Is.SameAs(singleBehaviorExecutor));
+            Assert.That(
+                GetRequestPipelineExecutorValue(
+                    requestBindings,
+                    typeof(DispatcherPipelineOrderCacheRequest),
+                    typeof(int),
+                    2),
+                Is.SameAs(twoBehaviorExecutor));
+        });
+    }
+
+    /// <summary>
+    ///     验证复用缓存的 request pipeline executor 后，行为顺序和最终处理器顺序保持不变。
+    /// </summary>
+    [Test]
+    public async Task Dispatcher_Should_Preserve_Request_Pipeline_Order_When_Reusing_Cached_Executor()
+    {
+        DispatcherPipelineOrderState.Reset();
+
+        await _context!.SendRequestAsync(new DispatcherPipelineOrderCacheRequest());
+        var firstInvocation = DispatcherPipelineOrderState.Steps.ToArray();
+
+        DispatcherPipelineOrderState.Reset();
+
+        await _context.SendRequestAsync(new DispatcherPipelineOrderCacheRequest());
+        var secondInvocation = DispatcherPipelineOrderState.Steps.ToArray();
+
+        var expectedOrder = new[]
+        {
+            "Outer:Before",
+            "Inner:Before",
+            "Handler",
+            "Inner:After",
+            "Outer:After"
+        };
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(firstInvocation, Is.EqualTo(expectedOrder));
+            Assert.That(secondInvocation, Is.EqualTo(expectedOrder));
+        });
+    }
+
+    /// <summary>
     ///     通过反射读取 dispatcher 的静态缓存对象。
     /// </summary>
     private static object GetCacheField(string fieldName)
@@ -189,6 +288,21 @@ internal sealed class CqrsDispatcherCacheTests
     }
 
     /// <summary>
+    ///     读取 request dispatch binding 中指定行为数量的 pipeline executor 缓存项。
+    /// </summary>
+    private static object? GetRequestPipelineExecutorValue(
+        object requestBindings,
+        Type requestType,
+        Type responseType,
+        int behaviorCount)
+    {
+        var binding = GetRequestDispatchBindingValue(requestBindings, requestType, responseType);
+        return binding is null
+            ? null
+            : InvokeInstanceMethod(binding, "GetPipelineExecutorForTesting", behaviorCount);
+    }
+
+    /// <summary>
     ///     调用缓存实例上的无参清理方法。
     /// </summary>
     private static void ClearCache(object cache)
@@ -208,6 +322,28 @@ internal sealed class CqrsDispatcherCacheTests
         Assert.That(method, Is.Not.Null, $"Missing cache method {target.GetType().FullName}.{methodName}.");
 
         return method!.Invoke(target, arguments);
+    }
+
+    /// <summary>
+    ///     读取指定请求/响应类型对对应的强类型 request dispatch binding。
+    /// </summary>
+    private static object? GetRequestDispatchBindingValue(object requestBindings, Type requestType, Type responseType)
+    {
+        var bindingBox = GetPairCacheValue(requestBindings, requestType, responseType);
+        if (bindingBox is null)
+        {
+            return null;
+        }
+
+        var method = bindingBox.GetType().GetMethod(
+            "Get",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
+        Assert.That(method, Is.Not.Null, $"Missing request binding accessor on {bindingBox.GetType().FullName}.");
+
+        return method!
+            .MakeGenericMethod(responseType)
+            .Invoke(bindingBox, Array.Empty<object>());
     }
 
     /// <summary>

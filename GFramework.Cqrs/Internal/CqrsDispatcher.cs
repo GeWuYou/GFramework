@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Abstractions.Logging;
@@ -34,7 +35,7 @@ internal sealed class CqrsDispatcher(
         .GetMethod(nameof(InvokeRequestHandlerAsync), BindingFlags.NonPublic | BindingFlags.Static)!;
 
     private static readonly MethodInfo RequestPipelineInvokerMethodDefinition = typeof(CqrsDispatcher)
-        .GetMethod(nameof(InvokeRequestPipelineAsync), BindingFlags.NonPublic | BindingFlags.Static)!;
+        .GetMethod(nameof(InvokeRequestPipelineExecutorAsync), BindingFlags.NonPublic | BindingFlags.Static)!;
 
     private static readonly MethodInfo NotificationHandlerInvokerMethodDefinition = typeof(CqrsDispatcher)
         .GetMethod(nameof(InvokeNotificationHandlerAsync), BindingFlags.NonPublic | BindingFlags.Static)!;
@@ -108,7 +109,8 @@ internal sealed class CqrsDispatcher(
         if (behaviors.Count == 0)
             return await dispatchBinding.RequestInvoker(handler, request, cancellationToken).ConfigureAwait(false);
 
-        return await dispatchBinding.PipelineInvoker(handler, behaviors, request, cancellationToken)
+        return await dispatchBinding.GetPipelineExecutor(behaviors.Count)
+            .Invoke(handler, behaviors, request, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -168,7 +170,7 @@ internal sealed class CqrsDispatcher(
             typeof(IRequestHandler<,>).MakeGenericType(requestType, typeof(TResponse)),
             typeof(IPipelineBehavior<,>).MakeGenericType(requestType, typeof(TResponse)),
             CreateRequestInvoker<TResponse>(requestType),
-            CreateRequestPipelineInvoker<TResponse>(requestType));
+            requestType);
     }
 
     /// <summary>
@@ -228,18 +230,6 @@ internal sealed class CqrsDispatcher(
     }
 
     /// <summary>
-    ///     生成带管道行为的请求处理委托，避免每次发送都重复反射。
-    /// </summary>
-    private static RequestPipelineInvoker<TResponse> CreateRequestPipelineInvoker<TResponse>(Type requestType)
-    {
-        var method = RequestPipelineInvokerMethodDefinition
-            .MakeGenericMethod(requestType, typeof(TResponse));
-        return (RequestPipelineInvoker<TResponse>)Delegate.CreateDelegate(
-            typeof(RequestPipelineInvoker<TResponse>),
-            method);
-    }
-
-    /// <summary>
     ///     生成通知处理器调用委托，避免每次发布都重复反射。
     /// </summary>
     private static NotificationInvoker CreateNotificationInvoker(Type notificationType)
@@ -274,29 +264,20 @@ internal sealed class CqrsDispatcher(
     }
 
     /// <summary>
-    ///     执行包含管道行为链的请求处理。
+    ///     执行指定行为数量的强类型 request pipeline executor。
+    ///     该入口本身是缓存的固定 executor 形状；每次分发只绑定当前 handler 与 behaviors 实例。
     /// </summary>
-    private static ValueTask<TResponse> InvokeRequestPipelineAsync<TRequest, TResponse>(
+    private static ValueTask<TResponse> InvokeRequestPipelineExecutorAsync<TRequest, TResponse>(
         object handler,
         IReadOnlyList<object> behaviors,
         object request,
         CancellationToken cancellationToken)
         where TRequest : IRequest<TResponse>
     {
-        var typedHandler = (IRequestHandler<TRequest, TResponse>)handler;
-        var typedRequest = (TRequest)request;
-
-        MessageHandlerDelegate<TRequest, TResponse> next =
-            (message, token) => typedHandler.Handle(message, token);
-
-        for (var i = behaviors.Count - 1; i >= 0; i--)
-        {
-            var behavior = (IPipelineBehavior<TRequest, TResponse>)behaviors[i];
-            var currentNext = next;
-            next = (message, token) => behavior.Handle(message, currentNext, token);
-        }
-
-        return next(typedRequest, cancellationToken);
+        var invocation = new RequestPipelineInvocation<TRequest, TResponse>(
+            (IRequestHandler<TRequest, TResponse>)handler,
+            behaviors);
+        return invocation.InvokeAsync((TRequest)request, cancellationToken);
     }
 
     /// <summary>
@@ -424,15 +405,17 @@ internal sealed class CqrsDispatcher(
 
     /// <summary>
     ///     保存普通请求分发路径所需的 handler 服务类型、pipeline 服务类型与强类型调用委托。
-    ///     该绑定同时覆盖“直接请求处理”和“带 pipeline 的请求处理”两条路径。
+    ///     该绑定同时覆盖“直接请求处理”和“按行为数量缓存 pipeline executor 形状”的两条路径。
     /// </summary>
     /// <typeparam name="TResponse">请求响应类型。</typeparam>
     private sealed class RequestDispatchBinding<TResponse>(
         Type handlerType,
         Type behaviorType,
         RequestInvoker<TResponse> requestInvoker,
-        RequestPipelineInvoker<TResponse> pipelineInvoker)
+        Type requestType)
     {
+        private readonly ConcurrentDictionary<int, RequestPipelineExecutor<TResponse>> _pipelineExecutors = new();
+
         /// <summary>
         ///     获取请求处理器在容器中的服务类型。
         /// </summary>
@@ -449,8 +432,157 @@ internal sealed class CqrsDispatcher(
         public RequestInvoker<TResponse> RequestInvoker { get; } = requestInvoker;
 
         /// <summary>
-        ///     获取执行 pipeline 行为链的强类型委托。
+        ///     获取指定行为数量对应的 pipeline executor。
+        ///     executor 形状会按请求/响应类型与行为数量缓存，但不会缓存 handler 或 behavior 实例。
         /// </summary>
-        public RequestPipelineInvoker<TResponse> PipelineInvoker { get; } = pipelineInvoker;
+        public RequestPipelineExecutor<TResponse> GetPipelineExecutor(int behaviorCount)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(behaviorCount);
+            return _pipelineExecutors.GetOrAdd(
+                behaviorCount,
+                count => CreateRequestPipelineExecutor<TResponse>(requestType, count));
+        }
+
+        /// <summary>
+        ///     仅供测试读取指定行为数量是否已存在缓存 executor。
+        /// </summary>
+        public object? GetPipelineExecutorForTesting(int behaviorCount)
+        {
+            _pipelineExecutors.TryGetValue(behaviorCount, out var executor);
+            return executor;
+        }
+    }
+
+    /// <summary>
+    ///     为指定请求/响应类型与固定行为数量创建 pipeline executor。
+    ///     行为数量用于表达缓存形状，实际分发仍会消费本次容器解析出的 handler 与 behaviors 实例。
+    /// </summary>
+    private static RequestPipelineExecutor<TResponse> CreateRequestPipelineExecutor<TResponse>(
+        Type requestType,
+        int behaviorCount)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(behaviorCount);
+
+        var method = RequestPipelineInvokerMethodDefinition
+            .MakeGenericMethod(requestType, typeof(TResponse));
+        var invoker = (RequestPipelineInvoker<TResponse>)Delegate.CreateDelegate(
+            typeof(RequestPipelineInvoker<TResponse>),
+            method);
+        return new RequestPipelineExecutor<TResponse>(behaviorCount, invoker);
+    }
+
+    /// <summary>
+    ///     保存固定行为数量下的 typed pipeline executor 形状。
+    ///     该对象自身可跨分发复用，但每次调用都只绑定当前 handler 与 behavior 实例。
+    /// </summary>
+    /// <typeparam name="TResponse">请求响应类型。</typeparam>
+    private sealed class RequestPipelineExecutor<TResponse>(
+        int behaviorCount,
+        RequestPipelineInvoker<TResponse> invoker)
+    {
+        /// <summary>
+        ///     获取此 executor 预期处理的行为数量。
+        /// </summary>
+        public int BehaviorCount { get; } = behaviorCount;
+
+        /// <summary>
+        ///     使用当前 handler / behaviors / request 执行缓存的 pipeline 形状。
+        /// </summary>
+        public ValueTask<TResponse> Invoke(
+            object handler,
+            IReadOnlyList<object> behaviors,
+            object request,
+            CancellationToken cancellationToken)
+        {
+            if (behaviors.Count != BehaviorCount)
+            {
+                throw new InvalidOperationException(
+                    $"Cached request pipeline executor expected {BehaviorCount} behaviors, but received {behaviors.Count}.");
+            }
+
+            return invoker(handler, behaviors, request, cancellationToken);
+        }
+    }
+
+    /// <summary>
+    ///     保存单次 request pipeline 分发所需的当前 handler、behavior 列表和 continuation 缓存。
+    ///     该对象只存在于本次分发，不会跨请求保留容器解析出的实例。
+    /// </summary>
+    private sealed class RequestPipelineInvocation<TRequest, TResponse>(
+        IRequestHandler<TRequest, TResponse> handler,
+        IReadOnlyList<object> behaviors)
+        where TRequest : IRequest<TResponse>
+    {
+        private readonly IRequestHandler<TRequest, TResponse> _handler = handler;
+        private readonly IReadOnlyList<object> _behaviors = behaviors;
+        private readonly MessageHandlerDelegate<TRequest, TResponse>?[] _continuations =
+            new MessageHandlerDelegate<TRequest, TResponse>?[behaviors.Count + 1];
+
+        /// <summary>
+        ///     从 pipeline 起点执行当前请求。
+        /// </summary>
+        public ValueTask<TResponse> InvokeAsync(TRequest request, CancellationToken cancellationToken)
+        {
+            return GetContinuation(0)(request, cancellationToken);
+        }
+
+        /// <summary>
+        ///     获取指定阶段的 continuation，并在首次请求时为该阶段绑定一次不可变调用入口。
+        ///     同一行为多次调用 <c>next</c> 时会命中相同 continuation，保持与传统链式委托一致的语义。
+        /// </summary>
+        private MessageHandlerDelegate<TRequest, TResponse> GetContinuation(int index)
+        {
+            var continuation = _continuations[index];
+            if (continuation is not null)
+            {
+                return continuation;
+            }
+
+            continuation = index == _behaviors.Count
+                ? InvokeHandlerAsync
+                : new RequestPipelineContinuation<TRequest, TResponse>(this, index).InvokeAsync;
+            _continuations[index] = continuation;
+            return continuation;
+        }
+
+        /// <summary>
+        ///     执行指定索引的 pipeline behavior。
+        /// </summary>
+        private ValueTask<TResponse> InvokeBehaviorAsync(
+            int index,
+            TRequest request,
+            CancellationToken cancellationToken)
+        {
+            var behavior = (IPipelineBehavior<TRequest, TResponse>)_behaviors[index];
+            return behavior.Handle(request, GetContinuation(index + 1), cancellationToken);
+        }
+
+        /// <summary>
+        ///     调用最终请求处理器。
+        /// </summary>
+        private ValueTask<TResponse> InvokeHandlerAsync(TRequest request, CancellationToken cancellationToken)
+        {
+            return _handler.Handle(request, cancellationToken);
+        }
+
+        /// <summary>
+        ///     将固定阶段索引绑定为标准 <see cref="MessageHandlerDelegate{TRequest,TResponse}" />。
+        ///     该包装只在单次分发生命周期内存在，用于把缓存 shape 套入当前实例。
+        /// </summary>
+        private sealed class RequestPipelineContinuation<TCurrentRequest, TCurrentResponse>(
+            RequestPipelineInvocation<TCurrentRequest, TCurrentResponse> invocation,
+            int index)
+            where TCurrentRequest : IRequest<TCurrentResponse>
+        {
+            /// <summary>
+            ///     执行当前阶段并跳转到下一个 continuation。
+            /// </summary>
+            public ValueTask<TCurrentResponse> InvokeAsync(
+                TCurrentRequest request,
+                CancellationToken cancellationToken)
+            {
+                return invocation.InvokeBehaviorAsync(index, request, cancellationToken);
+            }
+        }
     }
 }
