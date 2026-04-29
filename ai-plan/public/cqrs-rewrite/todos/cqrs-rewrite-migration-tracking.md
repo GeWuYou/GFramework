@@ -66,6 +66,11 @@ CQRS 迁移与收敛。
   - 当本轮 fallback 同时包含可直接引用与仅能按名称恢复的 handlers，且 runtime 同时支持 `Type[]`、`string[]` 和多实例特性时，生成器会拆分输出两段 fallback 元数据
   - `GFramework.Cqrs.Tests` 已补充 mixed fallback metadata 回归，锁定 registrar 只对字符串条目执行定向 `Assembly.GetType(...)`
   - `GFramework.SourceGenerators.Tests` 已补充 mixed fallback emission 回归，锁定 generator 会输出两个程序集级 fallback 特性实例而不是整体退回字符串
+- `2026-04-29` 已重新执行 `$gframework-pr-review`：
+  - 当前分支对应 `PR #302`，状态为 `OPEN`
+  - latest reviewed commit 当前剩余 `3` 条 open AI review threads：`2` 条 Greptile、`1` 条 CodeRabbit
+  - 本地核对后确认 `dotnet-format` 仍只有 `Restore operation failed` 噪音，没有附带当前仍成立的文件级格式诊断
+  - 已按 review triage 修正 generator source preamble 的多实例 fallback 特性排版、移除死参数，并补强 mixed/direct fallback 发射回归断言与 XML 文档
 - 当前主线优先级：
   - generator 覆盖面继续扩大
   - dispatch/invoker 反射占比继续下降
@@ -116,6 +121,18 @@ CQRS 迁移与收敛。
 - `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests"`
   - 结果：通过
   - 备注：`18/18` 测试通过；本轮覆盖 mixed fallback metadata 的双特性发射路径
+- `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output /tmp/gframework-pr-review.json`
+  - 结果：通过
+  - 备注：确认当前分支对应 `PR #302`；latest head review 仍有 `3` 条 open AI threads，其中 MegaLinter 仅报告 `dotnet-format` restore failure 噪音
+- `dotnet build GFramework.Cqrs.SourceGenerators/GFramework.Cqrs.SourceGenerators.csproj -c Release`
+  - 结果：通过
+  - 备注：`0 warning / 0 error`
+- `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests"`
+  - 结果：通过
+  - 备注：`18/18` 测试通过；本轮直接覆盖 fallback preamble 排版与特性个数断言收紧
+- `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~GFramework.Cqrs.Tests.Cqrs.CqrsHandlerRegistrarTests"`
+  - 结果：通过
+  - 备注：`13/13` 测试通过；本轮确认 mixed fallback metadata 的 registrar 消费路径未回归
 
 ## 下一步
 

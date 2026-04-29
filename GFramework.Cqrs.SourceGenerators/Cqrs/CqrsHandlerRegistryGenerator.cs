@@ -296,7 +296,7 @@ public sealed partial class CqrsHandlerRegistryGenerator : IIncrementalGenerator
 
         context.AddSource(
             HintName,
-            GenerateSource(generationEnvironment, registrations, reflectionFallbackEmission));
+            GenerateSource(registrations, reflectionFallbackEmission));
     }
 
     /// <summary>

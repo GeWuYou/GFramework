@@ -32,6 +32,22 @@
   - `13/13` passed
   - `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests"`
   - `18/18` passed
+- 随后按 `$gframework-pr-review` 重新拉取当前分支 PR 审查数据：
+  - 当前 worktree `feat/cqrs-optimization` 已对应 `PR #302`
+  - latest head commit 仍有 `3` 条 open AI review threads：Greptile 指向 generator preamble 的死参数与多实例 fallback 特性空行，CodeRabbit 指向 mixed/direct fallback 测试断言过宽
+  - MegaLinter 仍只暴露 `dotnet-format` 的 `Restore operation failed`，未给出本地仍成立的格式文件线索，因此按环境噪音处理
+- 本轮已继续收口 `RP-052` 的 follow-up：
+  - 在 `GFramework.Cqrs.SourceGenerators/Cqrs/CqrsHandlerRegistryGenerator.SourceEmission.cs` 中移除已不再参与判断的 `generationEnvironment` 透传参数
+  - 调整多实例 fallback 特性发射时的换行策略，避免最后一个 fallback 特性与 `CqrsHandlerRegistryAttribute` 之间保留多余空行
+  - 在 `GFramework.SourceGenerators.Tests/Cqrs/CqrsHandlerRegistryGeneratorTests.cs` 中补强 direct/mixed fallback 发射断言，锁定特性实例个数、拒绝空 marker，并确保 mixed 场景的程序集级 preamble 排版稳定
+  - 在 `GFramework.Cqrs.Tests/Cqrs/ReflectionFallbackNotificationContainer.cs` 中为 `DirectFallbackHandlerType` 补齐 `<returns>` XML 文档
+- 本轮 review follow-up 验证已通过：
+  - `dotnet build GFramework.Cqrs.SourceGenerators/GFramework.Cqrs.SourceGenerators.csproj -c Release`
+  - `0 warning / 0 error`
+  - `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests"`
+  - `18/18` passed
+  - `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~GFramework.Cqrs.Tests.Cqrs.CqrsHandlerRegistrarTests"`
+  - `13/13` passed
 
 ## 2026-04-20
 

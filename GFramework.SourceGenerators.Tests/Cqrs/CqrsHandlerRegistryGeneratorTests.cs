@@ -1876,6 +1876,7 @@ public class CqrsHandlerRegistryGeneratorTests
         var generatorErrors = execution.GeneratorDiagnostics
             .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
             .ToArray();
+        var generatedSource = execution.GeneratedSources[0].content;
 
         Assert.Multiple(() =>
         {
@@ -1885,13 +1886,24 @@ public class CqrsHandlerRegistryGeneratorTests
             Assert.That(execution.GeneratedSources, Has.Length.EqualTo(1));
             Assert.That(execution.GeneratedSources[0].filename, Is.EqualTo("CqrsHandlerRegistry.g.cs"));
             Assert.That(
-                execution.GeneratedSources[0].content,
+                generatedSource,
                 Does.Contain(
                     "[assembly: global::GFramework.Cqrs.CqrsReflectionFallbackAttribute(typeof(global::TestApp.Container.AlphaHandler), typeof(global::TestApp.Container.BetaHandler))]"));
             Assert.That(
-                execution.GeneratedSources[0].content,
+                generatedSource,
                 Does.Not.Contain(
                     "[assembly: global::GFramework.Cqrs.CqrsReflectionFallbackAttribute(\"TestApp.Container+AlphaHandler\", \"TestApp.Container+BetaHandler\")]"));
+            Assert.That(generatedSource, Does.Not.Contain("CqrsReflectionFallbackAttribute()"));
+            Assert.That(
+                CountOccurrences(
+                    generatedSource,
+                    "[assembly: global::GFramework.Cqrs.CqrsReflectionFallbackAttribute"),
+                Is.EqualTo(1));
+            Assert.That(
+                CountOccurrences(
+                    generatedSource,
+                    "[assembly: global::GFramework.Cqrs.CqrsReflectionFallbackAttribute(\""),
+                Is.Zero);
         });
     }
 
@@ -1915,6 +1927,7 @@ public class CqrsHandlerRegistryGeneratorTests
         var generatorErrors = execution.GeneratorDiagnostics
             .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
             .ToArray();
+        var generatedSource = execution.GeneratedSources[0].content;
 
         Assert.Multiple(() =>
         {
@@ -1924,13 +1937,32 @@ public class CqrsHandlerRegistryGeneratorTests
             Assert.That(execution.GeneratedSources, Has.Length.EqualTo(1));
             Assert.That(execution.GeneratedSources[0].filename, Is.EqualTo("CqrsHandlerRegistry.g.cs"));
             Assert.That(
-                execution.GeneratedSources[0].content,
+                generatedSource,
                 Does.Contain(
                     "[assembly: global::GFramework.Cqrs.CqrsReflectionFallbackAttribute(typeof(global::TestApp.Container.AlphaHandler))]"));
             Assert.That(
-                execution.GeneratedSources[0].content,
+                generatedSource,
                 Does.Contain(
                     "[assembly: global::GFramework.Cqrs.CqrsReflectionFallbackAttribute(\"TestApp.Container+BetaHandler\")]"));
+            Assert.That(generatedSource, Does.Not.Contain("CqrsReflectionFallbackAttribute()"));
+            Assert.That(
+                CountOccurrences(
+                    generatedSource,
+                    "[assembly: global::GFramework.Cqrs.CqrsReflectionFallbackAttribute"),
+                Is.EqualTo(2));
+            Assert.That(
+                CountOccurrences(
+                    generatedSource,
+                    "[assembly: global::GFramework.Cqrs.CqrsReflectionFallbackAttribute(\""),
+                Is.EqualTo(1));
+            Assert.That(
+                generatedSource,
+                Does.Contain(
+                    "[assembly: global::GFramework.Cqrs.CqrsReflectionFallbackAttribute(typeof(global::TestApp.Container.AlphaHandler))]" +
+                    Environment.NewLine +
+                    "[assembly: global::GFramework.Cqrs.CqrsReflectionFallbackAttribute(\"TestApp.Container+BetaHandler\")]" +
+                    Environment.NewLine +
+                    "[assembly: global::GFramework.Cqrs.CqrsHandlerRegistryAttribute(typeof(global::GFramework.Generated.Cqrs.__GFrameworkGeneratedCqrsHandlerRegistry))]"));
         });
     }
 
@@ -1983,6 +2015,31 @@ public class CqrsHandlerRegistryGeneratorTests
         Assert.That(execution.GeneratedSources, Has.Length.EqualTo(1));
 
         return execution.GeneratedSources[0].content;
+    }
+
+    /// <summary>
+    ///     统计生成源码中某个固定片段的出现次数，用于锁定程序集级 fallback 特性的发射个数。
+    /// </summary>
+    /// <param name="text">待统计的完整生成源码。</param>
+    /// <param name="value">需要计数的固定片段。</param>
+    /// <returns><paramref name="value" /> 在 <paramref name="text" /> 中出现的次数。</returns>
+    private static int CountOccurrences(string text, string value)
+    {
+        if (string.IsNullOrEmpty(value))
+            throw new ArgumentException("The search value must not be null or empty.", nameof(value));
+
+        var count = 0;
+        var startIndex = 0;
+
+        while (true)
+        {
+            var nextIndex = text.IndexOf(value, startIndex, global::System.StringComparison.Ordinal);
+            if (nextIndex < 0)
+                return count;
+
+            count++;
+            startIndex = nextIndex + value.Length;
+        }
     }
 
     /// <summary>
