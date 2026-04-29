@@ -107,8 +107,8 @@ architecture.RegisterUtility<ISaveRepository<GameSaveData>>(new SaveRepository<G
 
 ### 配置 YAML / schema 文本加载
 
-如果你的目标是读取 `res://` 下的 YAML 配置，并在导出态同步到运行时缓存，请优先看
-[Game 配置系统](../game/config-system.md) 里的 `GodotYamlConfigLoader` 接法。
+如果你的目标是读取 `res://` 下的 YAML 配置，并在导出态同步到运行时缓存，可继续阅读
+[Game 配置系统](../game/config-system.md) 中 `GodotYamlConfigLoader` 的接法。
 
 这类场景的重点不是通用键值存储，而是：
 
@@ -118,7 +118,7 @@ architecture.RegisterUtility<ISaveRepository<GameSaveData>>(new SaveRepository<G
 
 ### 通用存储契约
 
-如果你想先理解 `IStorage`、`ScopedStorage`、`FileStorage` 和统一数据仓库的宿主无关语义，应先看
+宿主无关的 `IStorage`、`ScopedStorage`、`FileStorage` 和统一数据仓库语义，可继续阅读
 [Game 存储系统](../game/storage.md)。
 
 本页只补 Godot 宿主差异，不重复维护一份跨宿主 API 手册。

@@ -132,9 +132,9 @@ public sealed class CounterArchitecture : Architecture
 - 要写新的请求/通知处理流：
   - 优先阅读[CQRS 运行时](./cqrs.md)
 - 要接入游戏内容配置、设置、数据仓库、Scene 或 UI：
-  - 转到[Game 模块](../game/index.md)
+  - 继续阅读[Game 模块](../game/index.md)
 - 要接入 Godot 节点、场景和项目元数据生成：
-  - 转到[Godot 模块](../godot/index.md)与[源码生成器](../source-generators/index.md)栏目
+  - 继续阅读[Godot 模块](../godot/index.md)与[源码生成器](../source-generators/index.md)
 
 ## 阅读顺序
 

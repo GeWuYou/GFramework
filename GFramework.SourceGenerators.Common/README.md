@@ -25,7 +25,7 @@
 - `GFramework.Godot.SourceGenerators`
   - 同样复用这里的公共实现和共享约束。
 
-这个目录当前 `IsPackable=false`，不作为独立安装包推广。对 NuGet 使用者来说，更实际的入口仍然是具体的
+这个目录不会单独作为消费包提供。对 NuGet 使用者来说，更实际的入口仍然是具体的
 `GeWuYou.GFramework.*.SourceGenerators` 包。
 
 ## 什么时候需要读这里

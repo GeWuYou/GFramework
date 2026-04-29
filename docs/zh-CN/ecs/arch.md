@@ -125,7 +125,7 @@ ecsModule.Update(deltaTime);
 
 - `WorldCapacity` 用于 `World.Create(...)` 的容量参数
 - `Priority` 影响 `ArchEcsModule` 作为服务模块的排序
-- `EnableStatistics` 目前保留在公开配置面上；采用时应以源码 XML 注释和实现行为为准，而不是依赖旧文档推断
+- `EnableStatistics` 目前保留在公开配置面上；采用时应以源码 XML 注释和实现行为为准
 
 ## 源码阅读入口
 

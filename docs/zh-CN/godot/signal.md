@@ -139,11 +139,11 @@ _quitConfirmDialog.Signal("Confirmed")
   - 你已经在用 `[GetNode]`
   - 希望把 `_Ready()` 里的重复绑定样板交给生成器
 
-这两条路径是互补关系，不是前后代际关系。当前源码没有“先用 `CreateSignalBuilder(...)`，再升级到生成器”这种迁移链。
+这两条路径是互补关系，不要求按“先 fluent API、后生成器”的顺序迁移。
 
 ## 当前边界
 
-- 当前入口是 `Signal(...)`，不是旧文档里的 `CreateSignalBuilder(...)`
+- 动态连接的公开入口是 `Signal(...)`
 - 这里不会自动生成 `_Ready()` / `_ExitTree()`，这类能力属于 `GFramework.Godot.SourceGenerators`
 - `SignalBuilder` 不提供取消订阅 token，也不会替你包装 `Disconnect(...)`
 - `End()` 只返回原始对象，不会提交额外配置，也不是必须调用的终止步骤

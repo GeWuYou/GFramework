@@ -91,8 +91,8 @@ The extension currently validates the repository's current schema subset:
 
 ## Documentation
 
-- Chinese adoption guide: [`docs/zh-CN/game/config-tool.md`](../../docs/zh-CN/game/config-tool.md)
-- Related config runtime guide: [`docs/zh-CN/game/config-system.md`](../../docs/zh-CN/game/config-system.md)
+- Chinese adoption guide: [Game 配置工具](../../docs/zh-CN/game/config-tool.md)
+- Related config runtime guide: [Game 配置系统](../../docs/zh-CN/game/config-system.md)
 
 ## Current Constraints
 

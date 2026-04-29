@@ -159,8 +159,8 @@ RegisterHandler(new LoggingTransitionHandler());
 System.IO.IOException: ...
 ```
 
-如果你需要 JSON formatter、rolling file、namespace 级过滤、structured sink 组合，这已经超出
-`GFramework.Godot.Logging` 当前职责，应该回到 [Core 日志系统](../core/logging.md) 设计 provider 组合。
+如果你需要 JSON formatter、rolling file、namespace 级过滤或 structured sink 组合，可继续阅读
+[Core 日志系统](../core/logging.md) 里的 provider 组合方式。
 
 ## 什么时候用手写 logger，什么时候用 `[Log]`
 

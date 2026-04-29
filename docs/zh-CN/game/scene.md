@@ -159,7 +159,7 @@ public sealed class GameSceneRouter : SceneRouterBase
 - `AddScene(ISceneBehavior scene)`
 - `RemoveScene(ISceneBehavior scene)`
 
-也就是说，root 是“挂载/移除容器”，不是路由器本身。当前 `ai-libs/` 参考实现也是在项目自己的 Godot 节点里实现
+也就是说，root 是“挂载/移除容器”，不是路由器本身。项目通常会在自己的 Godot 节点里实现
 `ISceneRoot`，并在 `_Ready()` 时调用 `BindRoot(this)`。
 
 ### 4. 把 router 和 factory 装进架构

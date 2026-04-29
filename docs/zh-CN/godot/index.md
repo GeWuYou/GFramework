@@ -140,7 +140,7 @@ public partial class SettingsPanel : Control
 - 音频、图形与本地化设置接线：[Godot 设置系统](./setting.md)
 - `Signal(...)` fluent API 与动态连接边界：[Godot 信号系统](./signal.md)
 
-如果你要核对项目级接线，而不是运行时 API，本页之后优先看：
+如果你要核对项目级接线，而不是运行时 API，可继续阅读：
 
 - [Godot 集成教程](../tutorials/godot-integration.md)
 - [Godot 项目元数据生成器](../source-generators/godot-project-generator.md)

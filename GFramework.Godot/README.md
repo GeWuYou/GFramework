@@ -102,8 +102,7 @@ dotnet add package GeWuYou.GFramework.Godot.SourceGenerators
 只有模块自身暴露 `Node`、需要挂到 `ArchitectureAnchor`，或要在 `OnAttach(...)` / `OnDetach()` 里处理 Godot 生命周期副作用时，
 再使用 `InstallGodotModule(...)`。
 
-`GFramework.Godot.Tests/Architectures/AbstractArchitectureModuleInstallationTests.cs` 已覆盖一个关键边界：锚点缺失时会先抛
-`InvalidOperationException`，不会继续执行模块安装。
+这一点已有测试覆盖：锚点缺失时会先抛 `InvalidOperationException`，不会继续执行模块安装。
 
 ### 3. Scene / UI 继续沿用 `Game` 契约
 

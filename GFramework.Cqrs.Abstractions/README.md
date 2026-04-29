@@ -30,27 +30,15 @@
 本包当前可以分为几类契约：
 
 - 消息契约
-  - `Cqrs/IRequest.cs`
-  - `Cqrs/INotification.cs`
-  - `Cqrs/IStreamRequest.cs`
-  - `Cqrs/Command/ICommand.cs`
-  - `Cqrs/Query/IQuery.cs`
-  - `Cqrs/Request/IRequestInput.cs`
-  - `Cqrs/Command/ICommandInput.cs`
-  - `Cqrs/Query/IQueryInput.cs`
-  - `Cqrs/Notification/INotificationInput.cs`
+  - `IRequest<TResponse>`、`INotification`、`IStreamRequest<TResponse>`
+  - `ICommand<TInput, TResponse>`、`IQuery<TInput, TResponse>`
+  - `IRequestInput`、`ICommandInput`、`IQueryInput`、`INotificationInput`
 - 处理器契约
-  - `Cqrs/IRequestHandler.cs`
-  - `Cqrs/INotificationHandler.cs`
-  - `Cqrs/IStreamRequestHandler.cs`
+  - `IRequestHandler<,>`、`INotificationHandler<>`、`IStreamRequestHandler<,>`
 - 运行时协作接口
-  - `Cqrs/ICqrsRuntime.cs`
-  - `Cqrs/ICqrsContext.cs`
-  - `Cqrs/ICqrsHandlerRegistrar.cs`
+  - `ICqrsRuntime`、`ICqrsContext`、`ICqrsHandlerRegistrar`
 - 管道与辅助类型
-  - `Cqrs/IPipelineBehavior.cs`
-  - `Cqrs/MessageHandlerDelegate.cs`
-  - `Cqrs/Unit.cs`
+  - `IPipelineBehavior<,>`、`MessageHandlerDelegate<,>`、`Unit`
 
 ## 最小接入路径
 

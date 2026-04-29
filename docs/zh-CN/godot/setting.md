@@ -133,14 +133,14 @@ await settingsSystem.Apply<GodotAudioSettings>();
 
 ## 什么时候应该改看别的入口
 
-### 相关设置模型
+### 宿主无关设置契约
 
-如果你想先理解 `ISettingsData`、`IResetApplyAbleSettings`、`SettingsModel`、`SettingsSystem` 与设置迁移，先看
+`ISettingsData`、`IResetApplyAbleSettings`、`SettingsModel`、`SettingsSystem` 与设置迁移的宿主无关说明，可继续阅读
 [Game 设置系统](../game/setting.md)。
 
-### 相关持久化入口
+### 相关持久化文档
 
-如果你关注的是统一设置文件、备份、数据位置和底层存储实现，应该回到：
+如果你关注统一设置文件、备份、数据位置和底层存储实现，可继续阅读：
 
 - [Game 存储系统](../game/storage.md)
 - [Godot 存储系统](./storage.md)

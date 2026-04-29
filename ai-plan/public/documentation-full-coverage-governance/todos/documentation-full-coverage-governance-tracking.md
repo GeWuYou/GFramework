@@ -12,19 +12,23 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`DOCUMENTATION-FULL-COVERAGE-GOV-RP-048`
+- 恢复点编号：`DOCUMENTATION-FULL-COVERAGE-GOV-RP-050`
 - 当前阶段：`Phase 5 - Governance Maintenance`
 - 当前焦点：
-  - 按 `$gframework-pr-review` 复核 PR `#299` 的 latest-head review，并收口当前仍成立的 active tracking 问题：补齐 `RP-048` 下一步，以及把 `RP-045` 到 `RP-047` 的逐命令历史迁入归档
-- 本轮通过 `$gframework-batch-boot 50` 重新进入后确认 `HEAD == origin/main`，当前已提交 branch diff 为 `0` files / `0` lines，因此可以从新的低风险文档批次重新累计阈值
-- 当前已完成 4 个低风险批次，并在本轮额外完成 1 次 review-driven 收口：入口页 reader-facing 标题统一、内部参考路径去暴露，以及 `Core` / `Game` / `Godot` / `source-generators` 多个页面中“旧文档式对比”提示的直接契约化改写
-- 第 2 个已提交批次结束时，branch diff 相对 `origin/main` 为 `13` files / `124` lines；本轮最后一批提交后仍会明显低于 `50` 文件 stop condition
-- 本轮已确认 `Architecture` 只暴露 `OnInitialize()`，`AbstractArchitecture` 通过 `InstallModules()` 暴露模块注册入口，而组件级 `OnInit()` 仍然是当前有效生命周期
-- 当前建议在本轮停止：active tracking 收口完成并推送后，只需重新抓取 PR `#299`，确认剩余项是否只剩 GitHub 侧 `Title check` 元数据提示
+  - 按 `$gframework-batch-boot 50` 继续推进 `documentation-full-coverage-governance`，沿用 `origin/main` 作为 stop-condition 基线，收口 `Game` / `Godot` 细页与少量 README 中残留的 reader-facing 措辞与标签问题
+- `2026-04-29` 重新进入时确认当前分支仍为 `docs/sdk-update-documentation`，但 upstream `origin/docs/sdk-update-documentation` 已不存在；因此本轮不再把旧 PR review 线程作为默认恢复入口，而是以本地 diff vs `origin/main` 为主
+- `2026-04-29` 上一批已完成 11 个低风险文档文件的收口：去掉 `ai-libs`、`旧文档`、`优先看` / `先看` / `转到` 这类内部或指令式措辞，并把 README 中暴露原始路径的链接标签改成 reader-facing 标题
+- `2026-04-29` 本批次继续接受 2 个 explorer 的只读结论：一个负责 `game/data.md`、`game/storage.md`、`godot/ui.md` 的热点排序，一个负责 README reader-facing 标签巡检；主线程只接受低风险措辞问题，不扩展到结构重写
+- `2026-04-29` 本批次已收口 `docs/zh-CN/game/data.md`、`game/storage.md`、`godot/ui.md` 与 `GFramework.Cqrs.Abstractions/README.md`、`GFramework.SourceGenerators.Common/README.md` 的文案：把内部证据叙述、外部项目指代、命令式导流、源文件路径列表和 `IsPackable=false` 这类实现术语改成 reader-facing 说明
+- 本轮仍保持在新的低风险批次窗口内：当前工作树相对 `origin/main` 为 `18` files / `225` lines，仍明显低于 `50` 文件 stop condition
+- 本轮继续沿用已确认的生命周期事实：`Architecture` 只暴露 `OnInitialize()`，`AbstractArchitecture` 通过 `InstallModules()` 暴露模块注册入口，而组件级 `OnInit()` 仍然是当前有效生命周期
 
 ## 当前状态摘要
 
 - `Core`、`Ecs.Arch`、`Cqrs`、`Game`、`Godot` 五个模块族当前都已有 README / landing / topic / API 参考层级的已验证入口。
+- `2026-04-29` 新一轮 batch boot 第 2 批次已进一步收口 `docs/zh-CN/game/data.md`、`game/storage.md`、`godot/ui.md` 与 `GFramework.Cqrs.Abstractions/README.md`、`GFramework.SourceGenerators.Common/README.md`：移除 “仓库和测试确认”“真实消费者 wiring”“CoreGrid 当前的做法”“优先看” 这类内部或生硬口吻，并把 CQRS 抽象层 README 的源文件列表改成契约类型族说明。
+- `2026-04-29` 新一轮 batch boot 已收口 `docs/zh-CN/godot/storage.md`、`godot/setting.md`、`godot/signal.md`、`godot/logging.md`、`godot/index.md`、`game/scene.md`、`core/index.md`、`game/config-system.md`、`ecs/arch.md` 与 `GFramework.Godot/README.md`、`tools/gframework-config-tool/README.md` 的 reader-facing 文案：移除 `ai-libs`、旧文档对比、命令式跳转和原始路径标签。
+- `2026-04-29` 当前分支的 upstream `origin/docs/sdk-update-documentation` 已 gone；后续若继续批处理，应继续以 `origin/main` 作为 branch-size stop condition 的 authoritative baseline，而不是默认恢复旧 PR review 状态。
 - `2026-04-28` 已重新抓取 PR `#299` 并复核 latest-head review：remote 当前只剩 `1` 条 `CodeRabbit` open thread 与 `1` 条 nitpick，且都指向 active tracking 文档；`Greptile` / `Gemini Code Assist` 当前无 open thread，测试汇总为 `2159 passed`，`Title check` 仍是 PR 元数据问题。
 - `2026-04-25` 已重新抓取 PR `#290` 并确认：latest reviewed commit 为 `54b8e5770af9ab3c8a86a396ffa4794fe4bb5181`，open thread 聚焦在 `docs/.vitepress/config.mts` 的侧栏重复 / 标签不一致，以及 `GFramework.Core`、`GFramework.Ecs.Arch`、`GFramework.Game` README 的 reader-facing 表格残留治理字段。
 - `2026-04-25` `docs/.vitepress/config.mts` 已保留 `source-generators` 栏目自有子页导航，但不再让 `api-reference` 侧栏重复跳回 `core`、`game`、`godot`、`ecs` 等独立栏目入口。
@@ -64,8 +68,9 @@
   `MSB4276` / `MSB4018`；这是已知环境阻塞，不属于本轮文档回归。
 - 当前 WSL 会话里 `git.exe` 可解析但不能执行，应继续使用显式 `--git-dir` / `--work-tree` 绑定作为默认 Git 策略。
 - `dotnet build GFramework.csproj -c Release` 当前仍会输出仓库既有 analyzer warnings（如 `MA0158`、`MA0051`、`MA0004`）；本轮仅修改文档与 package metadata，不扩展到 warning 清理。
-- 当前 batch boot 已从 `origin/main` 零 diff 状态重新起步并完成 4 个低风险文案批次；剩余命中更偏向是否保留迁移说明的编辑判断，不再适合继续按同一批处理模式机械推进。
-- PR `#299` 在 remote latest-head review 中仍显示 `1` 条 open thread 与 `1` 条 nitpick，直到本轮 `ai-plan` 改动推送后才会反映关闭状态；`Title check` 仍需要直接修改 GitHub 上的 PR 标题。
+- 当前分支 upstream 已 gone；在重新建立 remote branch 或新的 PR 之前，不适合再把旧 PR `#299` 的 review 状态当作默认恢复信号。
+- 当前 batch boot 已从 `origin/main` 零 diff 状态重新起步；本轮仍是低风险措辞收口，但下一轮若继续深入 README 子系统地图或大段采用路径重写，review 面会明显扩大。
+- `GFramework.Cqrs`、`GFramework.Cqrs.SourceGenerators`、`GFramework.Game.SourceGenerators`、`GFramework.Ecs.Arch` 等 README 仍有若干源文件列表式“子系统地图”段落；这些已经接近结构级改写，不适合作为本轮剩余低风险批次继续机械推进。
 
 ## 归档指针
 
@@ -86,6 +91,38 @@
 
 ## 最新验证
 
+- `2026-04-29` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/game/data.md`
+  - 结果：通过；`game/data.md` 的 frontmatter、链接与代码块校验通过。
+- `2026-04-29` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/game/storage.md`
+  - 结果：通过；`game/storage.md` 的 frontmatter、链接与代码块校验通过。
+- `2026-04-29` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/ui.md`
+  - 结果：通过；`godot/ui.md` 的 frontmatter、链接与代码块校验通过。
+- `2026-04-29` `bash .agents/skills/gframework-doc-refresh/scripts/validate-links.sh GFramework.Cqrs.Abstractions/README.md GFramework.SourceGenerators.Common/README.md`
+  - 结果：通过；本轮 2 个 README 的 reader-facing 标签调整后目标有效。
+- `2026-04-29` `bun run build`（工作目录：`docs/`）
+  - 结果：通过；本轮第 2 批 reader-facing 收口后站点仍可构建，仅保留既有大 chunk warning。
+- `2026-04-29` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/storage.md`
+  - 结果：通过；`godot/storage.md` 的 frontmatter、链接与代码块校验通过。
+- `2026-04-29` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/setting.md`
+  - 结果：通过；`godot/setting.md` 的 frontmatter、链接与代码块校验通过。
+- `2026-04-29` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/signal.md`
+  - 结果：通过；`godot/signal.md` 的 frontmatter、链接与代码块校验通过。
+- `2026-04-29` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/logging.md`
+  - 结果：通过；`godot/logging.md` 的 frontmatter、链接与代码块校验通过。
+- `2026-04-29` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/godot/index.md`
+  - 结果：通过；`godot/index.md` 的 frontmatter、链接与代码块校验通过。
+- `2026-04-29` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/game/scene.md`
+  - 结果：通过；`game/scene.md` 的 frontmatter、链接与代码块校验通过。
+- `2026-04-29` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/game/config-system.md`
+  - 结果：通过；`game/config-system.md` 的 frontmatter、链接与代码块校验通过。
+- `2026-04-29` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/core/index.md`
+  - 结果：通过；`core/index.md` 的 frontmatter、链接与代码块校验通过。
+- `2026-04-29` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/ecs/arch.md`
+  - 结果：通过；`ecs/arch.md` 的 frontmatter、链接与代码块校验通过。
+- `2026-04-29` `bash .agents/skills/gframework-doc-refresh/scripts/validate-links.sh GFramework.Godot/README.md tools/gframework-config-tool/README.md`
+  - 结果：通过；本轮 2 个 README 的 reader-facing 链接标签调整后目标有效。
+- `2026-04-29` `bun run build`（工作目录：`docs/`）
+  - 结果：通过；本轮 reader-facing 收口后站点仍可构建，仅保留既有大 chunk warning。
 - `2026-04-28` `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --format json --json-output /tmp/current-pr-review.json`
   - 结果：通过；PR `#299` 处于 `OPEN`，latest head review 有 `1` 条 `CodeRabbit` open thread 与 `1` 条 nitpick，`Greptile` / `Gemini Code Assist` 当前无 open thread，测试汇总为 `2159 passed`，仅剩 `Title check` inconclusive。
 - `2026-04-28` `bun run build`（工作目录：`docs/`）
@@ -95,7 +132,7 @@
 
 ## 下一步
 
-1. 推送本轮提交后，优先重新抓取 `$gframework-pr-review`，确认 PR `#299` 仅剩标题元数据提示或已全部清空。
-2. 若 remote review 清空后仍继续文档治理，优先人工复核尚未触达的 `Game` persistence、Godot runtime 细页与少量残余迁移边界表述，而不是继续按关键词机械扩批。
-3. 若后续分支继续调整 `Game` persistence runtime、README 或公共 API，优先复核 `docs/zh-CN/game/data.md`、`storage.md`、`serialization.md`、`setting.md` 与 landing page 是否仍保持同一套职责边界。
-4. 若后续分支继续调整 `Godot` generator 接法，优先复核 `GFramework.Godot.SourceGenerators/README.md`、`docs/zh-CN/tutorials/godot-integration.md` 与相关专题页是否仍保持一致。
+1. 提交本轮第 2 批低风险 reader-facing 文案批次，并在提交后重新计算 branch diff vs `origin/main`，确认仍明显低于 `50` 文件 stop condition。
+2. 若继续下一批，优先挑选仍可“局部改句子”的页面或 README 标签问题；`Cqrs`、`Game.SourceGenerators`、`Ecs.Arch` 这类源文件列表式 README 应视作结构级专题，必要时单独开一轮更明确的写作目标。
+3. 只有在重新建立 remote branch 或新的 PR 之后，再恢复 `$gframework-pr-review` 作为默认恢复入口；在此之前以本地 diff 与验证结果为准。
+4. 若后续分支继续调整 `Game` persistence runtime、README 或公共 API，优先复核 `docs/zh-CN/game/data.md`、`storage.md`、`serialization.md`、`setting.md` 与 landing page 是否仍保持同一套职责边界。
