@@ -52,7 +52,7 @@ public class MediatorAdvancedFeaturesTests
         var request = new TestValidatedRequest { Value = -1 }; // 无效值
 
         Assert.ThrowsAsync<ArgumentException>(async () =>
-            await _context!.SendRequestAsync(request));
+            await _context!.SendRequestAsync(request).ConfigureAwait(false));
     }
 
     [Test]
@@ -62,7 +62,7 @@ public class MediatorAdvancedFeaturesTests
         TestRetryBehavior.AttemptCount = 0;
         var request = new TestRetryRequest { ShouldFailTimes = 0 }; // 不失败
 
-        var result = await _context!.SendRequestAsync(request);
+        var result = await _context!.SendRequestAsync(request).ConfigureAwait(false);
 
         Assert.That(result, Is.EqualTo("Success"));
         Assert.That(TestRetryBehavior.AttemptCount, Is.EqualTo(1));
@@ -82,7 +82,7 @@ public class MediatorAdvancedFeaturesTests
             tasks.Add(_context!.SendRequestAsync(request).AsTask());
         }
 
-        var results = await Task.WhenAll(tasks);
+        var results = await Task.WhenAll(tasks).ConfigureAwait(false);
         stopwatch.Stop();
 
         // 验证所有请求都成功处理
@@ -102,7 +102,7 @@ public class MediatorAdvancedFeaturesTests
         for (int i = 0; i < requestCount; i++)
         {
             var request = new TestMemoryRequest { Data = new string('x', 1000) };
-            await _context!.SendRequestAsync(request);
+            await _context!.SendRequestAsync(request).ConfigureAwait(false);
 
             // 定期强制GC来测试内存泄漏
             if (i % 100 == 0)
@@ -126,7 +126,7 @@ public class MediatorAdvancedFeaturesTests
         TestTransientErrorHandler.ErrorCount = 0;
         var request = new TestTransientErrorRequest { MaxErrors = 0 }; // 不出错
 
-        var result = await _context!.SendRequestAsync(request);
+        var result = await _context!.SendRequestAsync(request).ConfigureAwait(false);
 
         Assert.That(result, Is.EqualTo("Success"));
         Assert.That(TestTransientErrorHandler.ErrorCount, Is.EqualTo(0));
@@ -140,7 +140,8 @@ public class MediatorAdvancedFeaturesTests
         {
             try
             {
-                await _context!.SendRequestAsync(new TestCircuitBreakerRequest { ShouldFail = true });
+                await _context!.SendRequestAsync(new TestCircuitBreakerRequest { ShouldFail = true })
+                    .ConfigureAwait(false);
             }
             catch (Exception)
             {
@@ -151,7 +152,8 @@ public class MediatorAdvancedFeaturesTests
         // 验证断路器已打开，后续请求应该快速失败
         var stopwatch = Stopwatch.StartNew();
         Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await _context!.SendRequestAsync(new TestCircuitBreakerRequest { ShouldFail = false }));
+            await _context!.SendRequestAsync(new TestCircuitBreakerRequest { ShouldFail = false })
+                .ConfigureAwait(false));
         stopwatch.Stop();
 
         // 验证快速失败（应该在很短时间内完成）
@@ -172,7 +174,7 @@ public class MediatorAdvancedFeaturesTests
         // 执行saga
         foreach (var request in requests)
         {
-            await _context!.SendRequestAsync(request);
+            await _context!.SendRequestAsync(request).ConfigureAwait(false);
         }
 
         // 验证所有步骤都成功执行
@@ -192,10 +194,10 @@ public class MediatorAdvancedFeaturesTests
         };
 
         // 执行saga，第二步会失败
-        await _context!.SendRequestAsync(requests[0]);
+        await _context!.SendRequestAsync(requests[0]).ConfigureAwait(false);
 
         Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await _context.SendRequestAsync(requests[1]));
+            await _context.SendRequestAsync(requests[1]).ConfigureAwait(false));
 
         // 验证回滚机制被触发
         Assert.That(sagaData.CompletedSteps, Is.EqualTo(new[] { 1 })); // 只有第一步完成
@@ -206,7 +208,7 @@ public class MediatorAdvancedFeaturesTests
     [Test]
     public async Task Request_Chaining_With_Dependencies_Should_Work_Correctly()
     {
-        var chainResult = await _context!.SendRequestAsync(new TestChainStartRequest());
+        var chainResult = await _context!.SendRequestAsync(new TestChainStartRequest()).ConfigureAwait(false);
 
         Assert.That(chainResult, Is.EqualTo("Chain completed: Step1 -> Step2 -> Step3"));
     }
@@ -218,7 +220,7 @@ public class MediatorAdvancedFeaturesTests
         var request = new TestExternalServiceRequest { TimeoutMs = 1000 };
 
         Assert.ThrowsAsync<TaskCanceledException>(async () =>
-            await _context!.SendRequestAsync(request, cts.Token));
+            await _context!.SendRequestAsync(request, cts.Token).ConfigureAwait(false));
     }
 
     [Test]
@@ -227,13 +229,14 @@ public class MediatorAdvancedFeaturesTests
         var testData = new List<string>();
         var request = new TestDatabaseRequest { Data = "test data", Storage = testData };
 
-        var result = await _context!.SendRequestAsync(request);
+        var result = await _context!.SendRequestAsync(request).ConfigureAwait(false);
 
         Assert.That(result, Is.EqualTo("Data saved successfully"));
         Assert.That(testData, Contains.Item("test data"));
     }
 }
 
+#pragma warning disable MA0048
 #region Advanced Test Classes
 
 public sealed class TestRetryRequestHandler : IRequestHandler<TestRetryRequest, string>
@@ -329,7 +332,7 @@ public sealed class TestChainStartRequestHandler : IRequestHandler<TestChainStar
     public async ValueTask<string> Handle(TestChainStartRequest request, CancellationToken cancellationToken)
     {
         // 模拟链式调用
-        await Task.Delay(10, cancellationToken);
+        await Task.Delay(10, cancellationToken).ConfigureAwait(false);
         return "Chain completed: Step1 -> Step2 -> Step3";
     }
 }
@@ -338,7 +341,7 @@ public sealed class TestExternalServiceRequestHandler : IRequestHandler<TestExte
 {
     public async ValueTask<string> Handle(TestExternalServiceRequest request, CancellationToken cancellationToken)
     {
-        await Task.Delay(request.TimeoutMs, cancellationToken);
+        await Task.Delay(request.TimeoutMs, cancellationToken).ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
         return "External service response";
     }
@@ -378,7 +381,7 @@ public sealed class TestValidatedRequestHandler : IRequestHandler<TestValidatedR
         // 验证输入
         if (request.Value < 0)
         {
-            throw new ArgumentException("Value must be non-negative", nameof(request.Value));
+            throw new ArgumentException("Value must be non-negative", nameof(request));
         }
 
         return new ValueTask<string>($"Value: {request.Value}");
@@ -406,7 +409,7 @@ public sealed class TestPerformanceRequestHandler : IRequestHandler<TestPerforma
 {
     public async ValueTask<int> Handle(TestPerformanceRequest request, CancellationToken cancellationToken)
     {
-        await Task.Delay(request.ProcessingTimeMs, cancellationToken);
+        await Task.Delay(request.ProcessingTimeMs, cancellationToken).ConfigureAwait(false);
         return request.Id;
     }
 }
@@ -503,3 +506,4 @@ public sealed record TestDatabaseRequest : IRequest<string>
 }
 
 #endregion
+#pragma warning restore MA0048
