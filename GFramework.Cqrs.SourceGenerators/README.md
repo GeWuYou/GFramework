@@ -33,6 +33,7 @@
 - `Cqrs/CqrsHandlerRegistryGenerator.cs`
 
 它会在可以安全生成静态注册器时前移注册工作；对无法由生成代码直接引用的 handler，则通过 reflection fallback 元数据让运行时做定向补扫，而不是整程序集盲扫。
+当 fallback handler 本身仍可直接引用时，生成器会优先发射 `typeof(...)` 形式的 fallback 元数据；如果 runtime 允许同一程序集声明多个 fallback 特性实例，mixed 场景也会拆成 `Type` 元数据和字符串元数据两段，进一步减少运行时按类型名回查程序集的成本。
 
 ## 最小接入路径
 

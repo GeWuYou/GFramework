@@ -7,8 +7,10 @@ namespace GFramework.Cqrs;
 ///     该特性通常由源码生成器自动添加到消费端程序集。
 ///     当生成器只能安全生成部分 handler 映射时，运行时会先执行生成注册器，再补一次带去重的反射扫描，
 ///     以覆盖那些生成代码无法直接引用的 handler 类型。
+///     允许同一程序集声明多个该特性实例，以便生成器把“可直接引用的 fallback handlers”
+///     和“仍需按名称恢复的 fallback handlers”拆成独立元数据块，进一步减少运行时字符串查找成本。
 /// </remarks>
-[AttributeUsage(AttributeTargets.Assembly)]
+[AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
 public sealed class CqrsReflectionFallbackAttribute : Attribute
 {
     /// <summary>

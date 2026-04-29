@@ -154,6 +154,29 @@ public sealed partial class CqrsHandlerRegistryGenerator
         string HandlerInterfaceLogName,
         ImmutableArray<RuntimeTypeReferenceSpec> ServiceTypeArguments);
 
+    /// <summary>
+    ///     描述单个程序集级 reflection fallback 特性实例的发射内容。
+    /// </summary>
+    /// <remarks>
+    ///     某些运行时合同允许生成器把可直接引用的 fallback handlers 与必须按名称恢复的 handlers
+    ///     拆成多个特性实例，以进一步减少运行时字符串查找成本。
+    /// </remarks>
+    private readonly record struct ReflectionFallbackAttributeEmissionSpec(
+        bool EmitDirectTypeReferences,
+        ImmutableArray<string> Values);
+
+    /// <summary>
+    ///     描述本轮生成应如何发射程序集级 reflection fallback 元数据。
+    /// </summary>
+    private readonly record struct ReflectionFallbackEmissionSpec(
+        ImmutableArray<ReflectionFallbackAttributeEmissionSpec> Attributes)
+    {
+        /// <summary>
+        ///     获取当前是否需要发射任何 fallback 元数据。
+        /// </summary>
+        public bool HasFallbackHandlers => !Attributes.IsDefaultOrEmpty;
+    }
+
     private readonly record struct ImplementationRegistrationSpec(
         string ImplementationTypeDisplayName,
         string ImplementationLogName,
@@ -161,6 +184,7 @@ public sealed partial class CqrsHandlerRegistryGenerator
         ImmutableArray<ReflectedImplementationRegistrationSpec> ReflectedImplementationRegistrations,
         ImmutableArray<PreciseReflectedRegistrationSpec> PreciseReflectedRegistrations,
         string? ReflectionTypeMetadataName,
+        string? ReflectionFallbackHandlerTypeDisplayName,
         string? ReflectionFallbackHandlerTypeMetadataName);
 
     private readonly struct HandlerCandidateAnalysis : IEquatable<HandlerCandidateAnalysis>
@@ -172,6 +196,7 @@ public sealed partial class CqrsHandlerRegistryGenerator
             ImmutableArray<ReflectedImplementationRegistrationSpec> reflectedImplementationRegistrations,
             ImmutableArray<PreciseReflectedRegistrationSpec> preciseReflectedRegistrations,
             string? reflectionTypeMetadataName,
+            string? reflectionFallbackHandlerTypeDisplayName,
             string? reflectionFallbackHandlerTypeMetadataName)
         {
             ImplementationTypeDisplayName = implementationTypeDisplayName;
@@ -180,6 +205,7 @@ public sealed partial class CqrsHandlerRegistryGenerator
             ReflectedImplementationRegistrations = reflectedImplementationRegistrations;
             PreciseReflectedRegistrations = preciseReflectedRegistrations;
             ReflectionTypeMetadataName = reflectionTypeMetadataName;
+            ReflectionFallbackHandlerTypeDisplayName = reflectionFallbackHandlerTypeDisplayName;
             ReflectionFallbackHandlerTypeMetadataName = reflectionFallbackHandlerTypeMetadataName;
         }
 
@@ -195,6 +221,8 @@ public sealed partial class CqrsHandlerRegistryGenerator
 
         public string? ReflectionTypeMetadataName { get; }
 
+        public string? ReflectionFallbackHandlerTypeDisplayName { get; }
+
         public string? ReflectionFallbackHandlerTypeMetadataName { get; }
 
         public bool Equals(HandlerCandidateAnalysis other)
@@ -203,6 +231,10 @@ public sealed partial class CqrsHandlerRegistryGenerator
                     StringComparison.Ordinal) ||
                 !string.Equals(ImplementationLogName, other.ImplementationLogName, StringComparison.Ordinal) ||
                 !string.Equals(ReflectionTypeMetadataName, other.ReflectionTypeMetadataName,
+                    StringComparison.Ordinal) ||
+                !string.Equals(
+                    ReflectionFallbackHandlerTypeDisplayName,
+                    other.ReflectionFallbackHandlerTypeDisplayName,
                     StringComparison.Ordinal) ||
                 !string.Equals(
                     ReflectionFallbackHandlerTypeMetadataName,
@@ -255,6 +287,10 @@ public sealed partial class CqrsHandlerRegistryGenerator
                                ? 0
                                : StringComparer.Ordinal.GetHashCode(ReflectionTypeMetadataName));
                 hashCode = (hashCode * 397) ^
+                           (ReflectionFallbackHandlerTypeDisplayName is null
+                               ? 0
+                               : StringComparer.Ordinal.GetHashCode(ReflectionFallbackHandlerTypeDisplayName));
+                hashCode = (hashCode * 397) ^
                            (ReflectionFallbackHandlerTypeMetadataName is null
                                ? 0
                                : StringComparer.Ordinal.GetHashCode(ReflectionFallbackHandlerTypeMetadataName));
@@ -280,5 +316,7 @@ public sealed partial class CqrsHandlerRegistryGenerator
 
     private readonly record struct GenerationEnvironment(
         bool GenerationEnabled,
-        bool SupportsReflectionFallbackAttribute);
+        bool SupportsNamedReflectionFallbackTypes,
+        bool SupportsDirectReflectionFallbackTypes,
+        bool SupportsMultipleReflectionFallbackAttributes);
 }

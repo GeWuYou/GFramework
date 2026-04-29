@@ -342,6 +342,64 @@ internal sealed class CqrsHandlerRegistrarTests
     }
 
     /// <summary>
+    ///     验证当程序集同时声明直接 <see cref="Type" /> fallback 与字符串名称 fallback 时，
+    ///     运行时会优先复用直接类型，并只对名称 fallback 做定向 <c>GetType(...)</c> 查找。
+    /// </summary>
+    [Test]
+    public void RegisterHandlers_Should_Use_Mixed_Fallback_Metadata_With_Targeted_Type_Lookups_Only_For_Named_Entries()
+    {
+        var generatedAssembly = new Mock<Assembly>();
+        generatedAssembly
+            .SetupGet(static assembly => assembly.FullName)
+            .Returns(ReflectionFallbackNotificationContainer.ReflectionOnlyHandlerType.Assembly.FullName);
+        generatedAssembly
+            .Setup(static assembly => assembly.GetCustomAttributes(typeof(CqrsHandlerRegistryAttribute), false))
+            .Returns([new CqrsHandlerRegistryAttribute(typeof(PartialGeneratedNotificationHandlerRegistry))]);
+        generatedAssembly
+            .Setup(static assembly => assembly.GetCustomAttributes(typeof(CqrsReflectionFallbackAttribute), false))
+            .Returns(
+            [
+                new CqrsReflectionFallbackAttribute(
+                    ReflectionFallbackNotificationContainer.DirectFallbackHandlerType),
+                new CqrsReflectionFallbackAttribute(
+                    ReflectionFallbackNotificationContainer.ReflectionOnlyHandlerType.FullName!)
+            ]);
+        generatedAssembly
+            .Setup(static assembly => assembly.GetType(
+                ReflectionFallbackNotificationContainer.ReflectionOnlyHandlerType.FullName!,
+                false,
+                false))
+            .Returns(ReflectionFallbackNotificationContainer.ReflectionOnlyHandlerType);
+
+        var container = new MicrosoftDiContainer();
+        CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
+
+        var registrations = container.GetServicesUnsafe
+            .Where(static descriptor =>
+                descriptor.ServiceType == typeof(INotificationHandler<GeneratedRegistryNotification>) &&
+                descriptor.ImplementationType is not null)
+            .Select(static descriptor => descriptor.ImplementationType!)
+            .ToList();
+
+        Assert.That(
+            registrations,
+            Is.EqualTo(
+            [
+                typeof(GeneratedRegistryNotificationHandler),
+                ReflectionFallbackNotificationContainer.DirectFallbackHandlerType,
+                ReflectionFallbackNotificationContainer.ReflectionOnlyHandlerType
+            ]));
+
+        generatedAssembly.Verify(
+            static assembly => assembly.GetType(
+                ReflectionFallbackNotificationContainer.ReflectionOnlyHandlerType.FullName!,
+                false,
+                false),
+            Times.Once);
+        generatedAssembly.Verify(static assembly => assembly.GetTypes(), Times.Never);
+    }
+
+    /// <summary>
     ///     验证同一程序集对象重复接入多个容器时，会复用已解析的 registry / fallback 元数据，
     ///     而不是重复读取程序集级 attribute 或重复执行 type-name lookup。
     /// </summary>
