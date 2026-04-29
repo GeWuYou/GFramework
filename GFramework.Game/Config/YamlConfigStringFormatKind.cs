@@ -1,8 +1,11 @@
+using GFramework.Core.SourceGenerators.Abstractions.Enums;
+
 namespace GFramework.Game.Config;
 
 /// <summary>
 ///     表示当前 Runtime / Generator / Tooling 共享支持的字符串 format 子集。
 /// </summary>
+[GenerateEnumExtensions]
 internal enum YamlConfigStringFormatKind
 {
     /// <summary>
