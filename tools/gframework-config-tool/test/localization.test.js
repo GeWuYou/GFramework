@@ -70,6 +70,19 @@ test("createLocalizer should expose contains-count validation keys", () => {
         "属性“dropRates”最多只能包含 1 个匹配 contains 条件的元素。");
 });
 
+test("createLocalizer should resolve dependentRequired through the explicit validation key", () => {
+    const localizer = createLocalizer("en");
+
+    assert.equal(ValidationMessageKeys.dependentRequiredViolation, "validation.dependentRequiredViolation");
+    assert.equal(
+        localizer.t(ValidationMessageKeys.dependentRequiredViolation, {
+            displayPath: "reward.itemCount",
+            triggerProperty: "reward.itemId"
+        }),
+        "Property 'reward.itemCount' is required when sibling property 'reward.itemId' is present.");
+    assert.equal(localizer.t("undefined"), "undefined");
+});
+
 test("createLocalizer should expose not validation keys", () => {
     const englishLocalizer = createLocalizer("en");
     const chineseLocalizer = createLocalizer("zh-cn");
@@ -132,7 +145,7 @@ test("createLocalizer should expose dependentSchemas validation keys", () => {
             trigger: "reward.itemId",
             schema: "object, 必填字段：itemCount"
         }),
-        "当 reward.itemId 出现时：还必须满足 object, 必填字段：itemCount");
+        "当 reward.itemId 出现时：还必须满足以下条件：object, 必填字段：itemCount");
     assert.equal(
         englishLocalizer.t(ValidationMessageKeys.dependentSchemasViolation, {
             displayPath: "reward",
@@ -144,7 +157,7 @@ test("createLocalizer should expose dependentSchemas validation keys", () => {
             displayPath: "reward",
             triggerProperty: "reward.itemId"
         }),
-        "对象“reward”在属性“reward.itemId”存在时，必须满足对应的 dependent schema。");
+        "对象“reward”在属性“reward.itemId”存在时，必须满足对应的依赖 schema。");
 });
 
 test("createLocalizer should expose allOf validation keys", () => {

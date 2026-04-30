@@ -51,6 +51,7 @@ test("buildContainsHintLines should use explicit minContains when provided", () 
     const lines = buildContainsHintLines(
         {
             minContains: 2,
+            maxContains: 3,
             contains: {
                 type: "string",
                 constValue: "\"potion\"",
@@ -62,7 +63,8 @@ test("buildContainsHintLines should use explicit minContains when provided", () 
 
     assert.deepEqual(lines, [
         "Contains: string, Const: \"potion\", Ref table: item",
-        "Min contains: 2"
+        "Min contains: 2",
+        "Max contains: 3"
     ]);
 });
 
@@ -92,4 +94,25 @@ test("describeContainsSchema should format pattern-based contains schema in Chin
         localizer);
 
     assert.equal(summary, "string, 正则模式：^potion-, 引用表：item");
+});
+
+test("buildContainsHintLines should use updated Chinese contains hint wording", () => {
+    const localizer = createLocalizer("zh-cn");
+
+    const lines = buildContainsHintLines(
+        {
+            minContains: 1,
+            maxContains: 2,
+            contains: {
+                type: "string",
+                enumValues: ["potion", "elixir"]
+            }
+        },
+        localizer);
+
+    assert.deepEqual(lines, [
+        "Contains 条件：string, 允许值：potion, elixir",
+        "最少匹配数：1",
+        "最多匹配数：2"
+    ]);
 });

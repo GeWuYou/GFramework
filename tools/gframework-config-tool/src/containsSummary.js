@@ -39,7 +39,7 @@ function describeContainsSchema(containsSchema, localizer) {
 /**
  * Build localized contains-related hint lines for array fields.
  *
- * @param {{contains?: {type?: string, enumValues?: string[], constValue?: string, constDisplayValue?: string, pattern?: string, refTable?: string}, minContains?: number}} propertySchema Array property schema metadata.
+ * @param {{contains?: {type?: string, enumValues?: string[], constValue?: string, constDisplayValue?: string, pattern?: string, refTable?: string}, minContains?: number, maxContains?: number}} propertySchema Array property schema metadata.
  * @param {{t: (key: string, params?: Record<string, string | number>) => string}} localizer Runtime localizer.
  * @returns {string[]} Localized contains hint lines.
  */
@@ -51,7 +51,7 @@ function buildContainsHintLines(propertySchema, localizer) {
     const effectiveMinContains = typeof propertySchema.minContains === "number"
         ? propertySchema.minContains
         : 1;
-    return [
+    const lines = [
         localizer.t("webview.hint.contains", {
             summary: describeContainsSchema(propertySchema.contains, localizer)
         }),
@@ -59,6 +59,14 @@ function buildContainsHintLines(propertySchema, localizer) {
             value: effectiveMinContains
         })
     ];
+
+    if (typeof propertySchema.maxContains === "number") {
+        lines.push(localizer.t("webview.hint.maxContains", {
+            value: propertySchema.maxContains
+        }));
+    }
+
+    return lines;
 }
 
 module.exports = {
