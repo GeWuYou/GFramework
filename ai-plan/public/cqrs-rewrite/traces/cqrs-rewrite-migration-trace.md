@@ -2,6 +2,33 @@
 
 ## 2026-04-30
 
+### 阶段：测试命名收口与 ArchitectureContext lazy-resolution 回归（CQRS-REWRITE-RP-065）
+
+- 继续按 `gframework-batch-boot 50` 执行，基线仍为本地现有 `origin/main`
+- `22f608eb` 之后复算 branch diff，相对 `origin/main` 已达到 `18 files`，仍明显低于 `50 files` stop condition，因此继续下一批
+- 本轮拆成四个互不冲突切片：
+  - worker 1：`MediatorAdvancedFeaturesTests.cs`
+  - worker 2：`MediatorArchitectureIntegrationTests.cs`
+  - worker 3：`MediatorComprehensiveTests.cs`
+  - 主线程：`GFramework.Core.Tests/Architectures/ArchitectureContextTests.cs`
+- 三个 worker 均只收口单文件命名与注释语义，并把测试文件迁移到 `GFramework.Cqrs.Tests/Cqrs/`
+- 主线程新增 `ArchitectureContextTests` 并发 lazy-resolution 回归，锁定：
+  - `PublishAsync(...)` 在并发首次访问时只解析一次 `ICqrsRuntime`
+  - `CreateStream(...)` 在并发首次访问时只解析一次 `ICqrsRuntime`
+- 集成后已确认三份测试文件中不再残留 `GFramework.Cqrs.Tests.Mediator` 命名空间或 `Mediator` 语义命名
+
+### 验证
+
+- `dotnet build GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release`
+  - 结果：通过，`0 warning / 0 error`
+- `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --filter "FullyQualifiedName~ArchitectureContextTests"`
+  - 结果：通过，`22/22` passed
+
+### 当前下一步
+
+1. 继续 `Phase 8` 主线，回到 `dispatch/invoker` 生成前移或 `LegacyICqrsRuntime` 收口的下一个低风险切片
+2. 在下一次 batch 结束后复算 branch diff，确认距 `50 files` stop condition 的剩余 headroom
+
 ### 阶段：notification publisher seam 最小落地（CQRS-REWRITE-RP-064）
 
 - 本轮按 `gframework-batch-boot 50` 继续 `cqrs-rewrite`，基线使用本地现有 `origin/main`

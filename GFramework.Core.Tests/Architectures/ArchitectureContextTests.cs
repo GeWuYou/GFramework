@@ -365,7 +365,165 @@ public class ArchitectureContextTests
             Times.Exactly(requests.Length));
     }
 
+    /// <summary>
+    ///     测试 CQRS runtime 在并发首次发布通知时只会从容器解析一次。
+    /// </summary>
+    [Test]
+    public async Task PublishAsync_Should_ResolveCqrsRuntime_OnlyOnce_When_AccessedConcurrently()
+    {
+        const int workerCount = 8;
+        var workerStartupTimeout = TimeSpan.FromSeconds(5);
+        var firstResolutionTimeout = TimeSpan.FromSeconds(5);
+        using var startGate = new ManualResetEventSlim(false);
+        using var allowResolutionToComplete = new ManualResetEventSlim(false);
+        using var workersReady = new CountdownEvent(workerCount);
+        var resolutionCallCount = 0;
+        var runtime = new Mock<ICqrsRuntime>(MockBehavior.Strict);
+        var container = new Mock<IIocContainer>(MockBehavior.Strict);
+
+        runtime.Setup(mockRuntime => mockRuntime.PublishAsync(
+                It.IsAny<IArchitectureContext>(),
+                It.IsAny<TestCqrsNotification>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(ValueTask.CompletedTask);
+
+        container.Setup(mockContainer => mockContainer.Get<ICqrsRuntime>())
+            .Returns(() =>
+            {
+                Interlocked.Increment(ref resolutionCallCount);
+                allowResolutionToComplete.Wait();
+                return runtime.Object;
+            });
+
+        var context = new ArchitectureContext(container.Object);
+        var notifications = Enumerable.Range(0, workerCount)
+            .Select(_ => Task.Run(async () =>
+            {
+                workersReady.Signal();
+                startGate.Wait();
+                await context.PublishAsync(new TestCqrsNotification()).ConfigureAwait(false);
+            }))
+            .ToArray();
+
+        Assert.That(
+            workersReady.Wait(workerStartupTimeout),
+            Is.True,
+            "Expected all workers to be ready before releasing start gate.");
+        startGate.Set();
+
+        Assert.That(
+            SpinWait.SpinUntil(() => Volatile.Read(ref resolutionCallCount) > 0, firstResolutionTimeout),
+            Is.True,
+            "Expected at least one CQRS runtime resolution attempt.");
+
+        allowResolutionToComplete.Set();
+
+        await Task.WhenAll(notifications).ConfigureAwait(false);
+
+        Assert.That(resolutionCallCount, Is.EqualTo(1));
+        container.Verify(mockContainer => mockContainer.Get<ICqrsRuntime>(), Times.Once);
+        runtime.Verify(
+            mockRuntime => mockRuntime.PublishAsync(
+                It.IsAny<IArchitectureContext>(),
+                It.IsAny<TestCqrsNotification>(),
+                It.IsAny<CancellationToken>()),
+            Times.Exactly(notifications.Length));
+    }
+
+    /// <summary>
+    ///     测试 CQRS runtime 在并发首次创建流时只会从容器解析一次。
+    /// </summary>
+    [Test]
+    public async Task CreateStream_Should_ResolveCqrsRuntime_OnlyOnce_When_AccessedConcurrently()
+    {
+        const int workerCount = 8;
+        var workerStartupTimeout = TimeSpan.FromSeconds(5);
+        var firstResolutionTimeout = TimeSpan.FromSeconds(5);
+        using var startGate = new ManualResetEventSlim(false);
+        using var allowResolutionToComplete = new ManualResetEventSlim(false);
+        using var workersReady = new CountdownEvent(workerCount);
+        var resolutionCallCount = 0;
+        var runtime = new Mock<ICqrsRuntime>(MockBehavior.Strict);
+        var container = new Mock<IIocContainer>(MockBehavior.Strict);
+
+        runtime.Setup(mockRuntime => mockRuntime.CreateStream(
+                It.IsAny<IArchitectureContext>(),
+                It.IsAny<TestCqrsStreamRequest>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(static () => CreateTestCqrsStream());
+
+        container.Setup(mockContainer => mockContainer.Get<ICqrsRuntime>())
+            .Returns(() =>
+            {
+                Interlocked.Increment(ref resolutionCallCount);
+                allowResolutionToComplete.Wait();
+                return runtime.Object;
+            });
+
+        var context = new ArchitectureContext(container.Object);
+        var streamTasks = Enumerable.Range(0, workerCount)
+            .Select(_ => Task.Run(async () =>
+            {
+                workersReady.Signal();
+                startGate.Wait();
+                await DrainAsync(context.CreateStream(new TestCqrsStreamRequest())).ConfigureAwait(false);
+            }))
+            .ToArray();
+
+        Assert.That(
+            workersReady.Wait(workerStartupTimeout),
+            Is.True,
+            "Expected all workers to be ready before releasing start gate.");
+        startGate.Set();
+
+        Assert.That(
+            SpinWait.SpinUntil(() => Volatile.Read(ref resolutionCallCount) > 0, firstResolutionTimeout),
+            Is.True,
+            "Expected at least one CQRS runtime resolution attempt.");
+
+        allowResolutionToComplete.Set();
+
+        await Task.WhenAll(streamTasks).ConfigureAwait(false);
+
+        Assert.That(resolutionCallCount, Is.EqualTo(1));
+        container.Verify(mockContainer => mockContainer.Get<ICqrsRuntime>(), Times.Once);
+        runtime.Verify(
+            mockRuntime => mockRuntime.CreateStream(
+                It.IsAny<IArchitectureContext>(),
+                It.IsAny<TestCqrsStreamRequest>(),
+                It.IsAny<CancellationToken>()),
+            Times.Exactly(streamTasks.Length));
+    }
+
+    /// <summary>
+    ///     枚举完整个测试流，确保 `CreateStream` 路径真正执行到底。
+    /// </summary>
+    /// <param name="stream">要消费的异步流。</param>
+    /// <returns>表示消费完成的任务。</returns>
+    private static async Task DrainAsync(IAsyncEnumerable<int> stream)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+
+        await foreach (var _ in stream.ConfigureAwait(false))
+        {
+        }
+    }
+
+    /// <summary>
+    ///     为 `CreateStream` 并发解析测试提供最小异步流。
+    /// </summary>
+    /// <returns>只包含单个元素的异步流。</returns>
+    private static async IAsyncEnumerable<int> CreateTestCqrsStream()
+    {
+        yield return 42;
+        await Task.CompletedTask.ConfigureAwait(false);
+    }
+
     private sealed class TestCqrsRequest : IRequest<int>
     {
     }
+
+    private sealed record TestCqrsNotification : INotification;
+
+    private sealed record TestCqrsStreamRequest : IStreamRequest<int>;
 }

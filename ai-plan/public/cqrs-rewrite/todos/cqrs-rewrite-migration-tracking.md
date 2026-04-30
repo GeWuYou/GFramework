@@ -7,7 +7,7 @@ CQRS 迁移与收敛。
 
 ## 当前恢复点
 
-- 恢复点编号：`CQRS-REWRITE-RP-064`
+- 恢复点编号：`CQRS-REWRITE-RP-065`
 - 当前阶段：`Phase 8`
 - 当前焦点：
   - 已完成一轮 `CQRS vs Mediator` 只读评估归档，结论已沉淀到 `archive/todos/cqrs-vs-mediator-assessment-rp063.md`
@@ -26,6 +26,14 @@ CQRS 迁移与收敛。
     容器里已显式注册的 `INotificationPublisher`
   - 已补充 `CqrsNotificationPublisherTests`，覆盖自定义 publisher 接管、上下文注入、零处理器静默完成、首错即停，以及
     `RegisterInfrastructure` 默认接线复用预注册 publisher 的回归
+  - 已完成一轮 `Mediator` 测试命名收口：
+    - `MediatorAdvancedFeaturesTests` -> `CqrsArchitectureContextAdvancedFeaturesTests`
+    - `MediatorArchitectureIntegrationTests` -> `CqrsArchitectureContextIntegrationTests`
+    - `MediatorComprehensiveTests` -> `ArchitectureContextComprehensiveTests`
+  - `GFramework.Cqrs.Tests` 中这三份历史测试现已统一迁入 `Cqrs/` 目录，并将命名空间、类名、中文注释与嵌套测试类型中的
+    `Mediator` 语义收口为 `CQRS` / `ArchitectureContext`
+  - 已补充 `ArchitectureContextTests` 并发 lazy-resolution 回归，锁定 `PublishAsync(...)` 与 `CreateStream(...)`
+    在并发首次访问时也只会解析一次 `ICqrsRuntime`
   - 已将 mixed fallback 场景进一步收敛：当 runtime 允许同一程序集声明多个 `CqrsReflectionFallbackAttribute` 实例时，generator 现会把可直接引用的 fallback handlers 与仅能按名称恢复的 fallback handlers 拆分发射
   - `CqrsReflectionFallbackAttribute` 现允许多实例，以承载 `Type[]` 与字符串 fallback 元数据的组合输出
   - 已将 generator 的程序集级 fallback 元数据进一步收敛：当全部 fallback handlers 都可直接引用且 runtime 暴露 `params Type[]` 合同时，生成器现优先发射 `typeof(...)` 形式的 fallback 元数据
@@ -158,6 +166,10 @@ CQRS 迁移与收敛。
   - 当前 seam 刻意保持在默认 runtime 内部：`ICqrsRuntime.PublishAsync(...)` 外形不变，dispatcher 仍负责 handler 解析与
     `IContextAware` 上下文注入
   - 用户若需替换通知发布策略，只需在 runtime 创建前向容器显式注册 `INotificationPublisher`
+- `2026-04-30` 已接受三条 worker 切片并完成一轮测试命名收口：
+  - 三个 worker 分别独立拥有一份 `GFramework.Cqrs.Tests/Mediator/*.cs` 文件，主线程只做集成验证与后续追踪更新
+  - 当前分支已不再保留 `GFramework.Cqrs.Tests/Mediator/` 目录下的生产内涵测试，相关文件均迁移到 `GFramework.Cqrs.Tests/Cqrs/`
+  - 本轮没有修改测试行为，只收口命名、注释、局部变量与嵌套测试类型语义
 - 当前主线优先级：
   - dispatch/invoker 反射占比继续下降，并优先评估生成前移方案
   - 基于已落地 publisher seam，继续评估是否需要公开配置面、并行策略或 telemetry decorator
@@ -204,9 +216,15 @@ CQRS 迁移与收敛。
 - `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --filter "FullyQualifiedName~MicrosoftDiContainerTests"`
   - 结果：通过
   - 备注：`41/41` 通过；确认 CQRS 基础设施默认接线与容器行为未回归
+- `dotnet build GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release`
+  - 结果：通过
+  - 备注：`0 warning / 0 error`；确认三份 `Mediator` 命名收口后的 CQRS 测试项目构建仍然干净
+- `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --filter "FullyQualifiedName~ArchitectureContextTests"`
+  - 结果：通过
+  - 备注：`22/22` 通过；新增 `PublishAsync` / `CreateStream` 并发首次访问只解析一次 `ICqrsRuntime` 的回归
 
 ## 下一步
 
 1. 基于已落地的 notification publisher seam，评估是否需要第二阶段公开配置面、并行 publisher 或 telemetry decorator
 2. 继续以 `dispatch/invoker` 生成前移为优先对象，补一轮面向实现的设计评估
-3. 单独规划旧 `Command` / `Query` API、`LegacyICqrsRuntime` 与 `Mediator` 测试命名的收口顺序，避免与 runtime 微优化混做
+3. 单独规划旧 `Command` / `Query` API 与 `LegacyICqrsRuntime` 的收口顺序；`Mediator` 测试命名收口已完成，可移出该子问题
