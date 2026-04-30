@@ -3,6 +3,7 @@ using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Cqrs;
 using GFramework.Cqrs.Abstractions.Cqrs;
+using GFramework.Cqrs.Notification;
 using LegacyICqrsRuntime = GFramework.Core.Abstractions.Cqrs.ICqrsRuntime;
 
 namespace GFramework.Core.Services.Modules;
@@ -31,6 +32,8 @@ public sealed class CqrsRuntimeModule : IServiceModule
 
     /// <summary>
     ///     注册默认 CQRS runtime seam 实现。
+    ///     该入口会同时补齐旧命名空间下的 <c>ICqrsRuntime</c> 兼容别名，
+    ///     并保证新旧服务类型都解析到同一个 runtime 实例。
     /// </summary>
     /// <param name="container">目标依赖注入容器。</param>
     public void Register(IIocContainer container)
@@ -40,14 +43,29 @@ public sealed class CqrsRuntimeModule : IServiceModule
         var dispatcherLogger = LoggerFactoryResolver.Provider.CreateLogger("CqrsDispatcher");
         var registrarLogger = LoggerFactoryResolver.Provider.CreateLogger("DefaultCqrsHandlerRegistrar");
         var registrationLogger = LoggerFactoryResolver.Provider.CreateLogger("DefaultCqrsRegistrationService");
-        var runtime = CqrsRuntimeFactory.CreateRuntime(container, dispatcherLogger);
+        var notificationPublisher = container.Get<INotificationPublisher>();
+        var runtime = CqrsRuntimeFactory.CreateRuntime(container, dispatcherLogger, notificationPublisher);
         var registrar = CqrsRuntimeFactory.CreateHandlerRegistrar(container, registrarLogger);
 
         container.Register(runtime);
-        container.Register<LegacyICqrsRuntime>((LegacyICqrsRuntime)runtime);
+        RegisterLegacyRuntimeAlias(container, runtime);
         container.Register<ICqrsHandlerRegistrar>(registrar);
         container.Register<ICqrsRegistrationService>(
             CqrsRuntimeFactory.CreateRegistrationService(registrar, registrationLogger));
+    }
+
+    /// <summary>
+    ///     为旧命名空间下的 CQRS runtime 契约注册兼容别名。
+    /// </summary>
+    /// <param name="container">承载运行时实例的依赖注入容器。</param>
+    /// <param name="runtime">当前已创建的新 CQRS runtime 实例。</param>
+    /// <remarks>
+    ///     旧接口仍作为兼容入口保留，因此这里明确把别名注册收敛到单独 helper，
+    ///     便于后续独立评估 alias 收口，而不混入 runtime 主体行为。
+    /// </remarks>
+    private static void RegisterLegacyRuntimeAlias(IIocContainer container, ICqrsRuntime runtime)
+    {
+        container.Register<LegacyICqrsRuntime>((LegacyICqrsRuntime)runtime);
     }
 
     /// <summary>

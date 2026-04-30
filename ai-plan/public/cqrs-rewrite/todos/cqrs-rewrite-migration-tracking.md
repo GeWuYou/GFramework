@@ -7,10 +7,48 @@ CQRS 迁移与收敛。
 
 ## 当前恢复点
 
-- 恢复点编号：`CQRS-REWRITE-RP-062`
+- 恢复点编号：`CQRS-REWRITE-RP-067`
 - 当前阶段：`Phase 8`
 - 当前焦点：
+  - 已完成一轮 `CQRS vs Mediator` 只读评估归档，结论已沉淀到 `archive/todos/cqrs-vs-mediator-assessment-rp063.md`
+  - 当前评估结论已明确：`GFramework.Cqrs` 已完成对外部 `Mediator` 的生产级替代，但仓库内部旧总线 API、
+    兼容 seam、fallback 旧语义与测试命名仍未完全收口
+  - 当前评估结论已明确：相对 `ai-libs/Mediator`，框架已吸收统一消息模型、generator 优先注册与热路径缓存思路，
+    但仍未完整吸收 publisher 策略抽象、细粒度 pipeline、telemetry / diagnostics / benchmark 体系与 runtime 主体生成
+  - 下一阶段建议优先级已收敛为：`notification publisher seam`、`dispatch/invoker 生成前移`、`pipeline 分层扩展`、
+    `可观测性 seam` 与 `benchmark / allocation baseline`
   - 当前功能历史已归档，active 跟踪仅保留 `Phase 8` 主线的恢复入口
+  - 已完成一轮 notification publisher seam 最小落地：`GFramework.Cqrs` 新增 `INotificationPublisher`、
+    `NotificationPublishContext<TNotification>` 与默认 `SequentialNotificationPublisher`
+  - `CqrsDispatcher` 现会在解析当前通知处理器集合后，把执行顺序委托给 publisher seam；默认行为仍保持
+    “零处理器静默完成、顺序执行、首错即停”
+  - `CqrsRuntimeFactory`、`CqrsRuntimeModule` 与 `GFramework.Tests.Common.CqrsTestRuntime` 现支持在 runtime 创建前复用
+    容器里已显式注册的 `INotificationPublisher`
+  - 已补充 `CqrsNotificationPublisherTests`，覆盖自定义 publisher 接管、上下文注入、零处理器静默完成、首错即停，以及
+    `RegisterInfrastructure` 默认接线复用预注册 publisher 的回归
+  - 已完成一轮 `Mediator` 测试命名收口：
+    - `MediatorAdvancedFeaturesTests` -> `CqrsArchitectureContextAdvancedFeaturesTests`
+    - `MediatorArchitectureIntegrationTests` -> `CqrsArchitectureContextIntegrationTests`
+    - `MediatorComprehensiveTests` -> `ArchitectureContextComprehensiveTests`
+  - `GFramework.Cqrs.Tests` 中这三份历史测试现已统一迁入 `Cqrs/` 目录，并将命名空间、类名、中文注释与嵌套测试类型中的
+    `Mediator` 语义收口为 `CQRS` / `ArchitectureContext`
+  - 已补充 `ArchitectureContextTests` 并发 lazy-resolution 回归，锁定 `PublishAsync(...)` 与 `CreateStream(...)`
+    在并发首次访问时也只会解析一次 `ICqrsRuntime`
+  - 已完成一轮 `LegacyICqrsRuntime` compatibility slice 收口：
+    - `CqrsRuntimeModule` 与 `GFramework.Tests.Common.CqrsTestRuntime` 现把 legacy alias 注册收敛到显式 helper
+    - `MicrosoftDiContainerTests` 已补充“只预注册正式 `ICqrsRuntime` seam 时，也会回填 legacy alias 且保持同实例”的回归
+    - `GFramework.Core.Abstractions/README.md`、`docs/zh-CN/abstractions/core-abstractions.md` 与
+      `docs/zh-CN/core/cqrs.md` 现已明确：旧命名空间下的 `ICqrsRuntime` 仅作为 compatibility alias 保留，
+      新代码应直接依赖 `GFramework.Cqrs.Abstractions.Cqrs.ICqrsRuntime`
+  - 已完成一轮 `dispatch/invoker` 生成前移的最小 request 切片：
+    - `GFramework.Cqrs` 新增 `ICqrsRequestInvokerProvider`、`IEnumeratesCqrsRequestInvokerDescriptors`、
+      `CqrsRequestInvokerDescriptor` 与 `CqrsRequestInvokerDescriptorEntry`
+    - generated registry 若实现 request invoker provider 契约，`CqrsHandlerRegistrar` 现会在激活 registry 后把 provider 注册进容器，
+      并把 provider 枚举出的 request invoker 描述符写入 dispatcher 的进程级弱缓存
+    - `CqrsDispatcher` 现会在首次创建 request dispatch binding 时优先命中 generated request invoker 描述符；
+      未命中时仍回退到既有 `MakeGenericMethod + Delegate.CreateDelegate` 路径
+    - `GFramework.Cqrs.Tests` 已补充 `CqrsGeneratedRequestInvokerProviderTests`，锁定 registrar 接线和 dispatcher 消费 generated invoker 的最小语义
+    - `GFramework.SourceGenerators.Tests` 已补充 generator 回归，锁定当 runtime 暴露新契约时，generated registry 会额外发射 request invoker provider 成员与 invoker 方法
   - 已将 mixed fallback 场景进一步收敛：当 runtime 允许同一程序集声明多个 `CqrsReflectionFallbackAttribute` 实例时，generator 现会把可直接引用的 fallback handlers 与仅能按名称恢复的 fallback handlers 拆分发射
   - `CqrsReflectionFallbackAttribute` 现允许多实例，以承载 `Type[]` 与字符串 fallback 元数据的组合输出
   - 已将 generator 的程序集级 fallback 元数据进一步收敛：当全部 fallback handlers 都可直接引用且 runtime 暴露 `params Type[]` 合同时，生成器现优先发射 `typeof(...)` 形式的 fallback 元数据
@@ -41,6 +79,7 @@ CQRS 迁移与收敛。
 - 已完成 `GFramework.Cqrs.Abstractions` / `GFramework.Cqrs` 项目骨架与 runtime seam 收敛
 - 已完成 handler registry generator 的多轮收敛，当前合法 closed handler contract 已统一收敛到更窄的注册路径
 - 已完成一轮公开入口文档与 source-generator 命名空间收口
+- 已完成一轮 `CQRS vs Mediator` 对照评估，确认当前主问题已从“是否能替代外部依赖”转为“框架内部收口与能力深化顺序”
 - 已接入 `$gframework-pr-review`，可直接抓取当前分支对应 PR 的 CodeRabbit 评论、checks 和测试结果
 
 ## 当前活跃事实
@@ -84,10 +123,11 @@ CQRS 迁移与收敛。
   - 本地核对后确认 `dotnet-format` 仍只有 `Restore operation failed` 噪音，没有附带当前仍成立的文件级格式诊断
   - 已按 review triage 修正 generator source preamble 的多实例 fallback 特性排版、移除死参数，并补强 mixed/direct fallback 发射回归断言与 XML 文档
 - `2026-04-30` 已重新执行 `$gframework-pr-review`：
-  - 当前分支对应 `PR #304`，状态为 `OPEN`
-  - latest reviewed commit 当前剩余 `7` 条 CodeRabbit nitpick 与 `2` 条 Greptile open threads，集中在测试脆弱断言、共享测试状态并发保护，以及 `CqrsDispatcher` 的缓存线程模型文档
-  - 本地核对后，已确认这些评论仍对应当前代码；MegaLinter 继续只暴露 `dotnet-format` 的 `Restore operation failed` 环境噪音，CTRF 汇总为 `2203/2203` passed
-  - 已在本地完成 follow-up：request pipeline invoker 改为 binding 级复用、共享测试状态切换到 `System.Threading.Lock` 保护、顺序测试改为受控记录接口、`CqrsDispatcherCacheTests` 标记为 `NonParallelizable`，并补齐相关 XML / 线程模型注释
+  - 当前分支对应 `PR #305`，状态为 `OPEN`
+  - 当前抓取到 `9` 条 CodeRabbit open threads、`2` 条 Greptile open threads；远端 CTRF 汇总为 `2214/2214` passed，MegaLinter 仍只暴露 `dotnet-format` 的 `Restore operation failed` 环境噪音
+  - 本地核对后，已确认以下评论仍然成立并已完成修正：`ArchitectureContextTests` 并发测试失败路径释放、`CqrsGeneratedRequestInvokerProviderTests` 的全局 logger provider 恢复与私有缓存断言解耦、`CqrsArchitectureContextIntegrationTests` 的真实上下文注入断言、`GeneratedRequestInvokerRequest` / `INotificationPublisher` XML 文档、`CqrsHandlerRegistrar` 的 provider 注册顺序、`CqrsTestRuntime` 的 legacy alias 显式失败模式，以及 `cqrs-rewrite` trace 重复标题
+  - 对于 `ICqrsRequestInvokerProvider` / generated `TryGetDescriptor(...)` 相关 Greptile 评论，本地评估后未改 dispatcher 热路径语义；改为补齐公开注释与生成器方法级注释，明确默认 runtime 只在注册阶段经 `IEnumeratesCqrsRequestInvokerDescriptors` 预热缓存，`TryGetDescriptor(...)` 保留为显式查询 seam
+  - 本轮额外修正了 `GFramework.SourceGenerators.Tests` 中先读取 `GeneratedSources[0]` 再断言长度的脆弱顺序，并将 `ArchitectureContextTests` 的并发 orchestration 收敛到公共 helper，消除本轮引入的 `MA0051` warning
 - `2026-04-29` 已完成一轮 precise runtime type lookup 的数组回归补强：
   - `GFramework.SourceGenerators.Tests` 已新增多维数组、交错数组、外部程序集隐藏元素类型三类回归
   - 当前生成器在 precise runtime type lookup 下已稳定保留数组秩信息，并递归发射交错数组的 `MakeArrayType()` 链
@@ -129,20 +169,41 @@ CQRS 迁移与收敛。
   - `SourceEmission` 不再保留 `MakePointerType()` 源码发射分支，`RuntimeTypeReferences` 也已删掉对应的外部程序集递归扫描死代码
   - pointer / function pointer 的拒绝语义保持不变，direct / named / mixed fallback 逻辑未改动
   - 当前工作区相对 `origin/main` 的累计 diff 已达到 `14 files`，仍低于本轮 `gframework-batch-boot 50` 的主要 stop condition
+- `2026-04-30` 已完成一轮 `CQRS vs Mediator` 结构化评估：
+  - 生产依赖与默认 runtime 接线层面，`GFramework.Cqrs` 已完成对外部 `Mediator` 的替代
+  - 仓库内部收口层面，旧 `Command` / `Query` API、`LegacyICqrsRuntime` 别名、fallback 空 marker 兼容语义与
+    `Mediator` 测试命名仍然存在
+  - 设计吸收层面，当前已吸收统一消息模型、generator 优先注册与反射收敛思路；仍未完整吸收 publisher 策略抽象、
+    stream / exception pipeline、telemetry / diagnostics / benchmark 体系与 runtime 主体生成
+  - 详细结论与证据已归档到 `archive/todos/cqrs-vs-mediator-assessment-rp063.md`
+- `2026-04-30` 已接受两条只读 subagent 结论并完成 notification publisher seam 最小实现：
+  - 相对 `ai-libs/Mediator`，本轮只吸收 notification publisher 的策略接缝，不照搬 `NotificationHandlers<T>` 包装、
+    并行 publisher 或异常聚合语义
+  - 当前 seam 刻意保持在默认 runtime 内部：`ICqrsRuntime.PublishAsync(...)` 外形不变，dispatcher 仍负责 handler 解析与
+    `IContextAware` 上下文注入
+  - 用户若需替换通知发布策略，只需在 runtime 创建前向容器显式注册 `INotificationPublisher`
+- `2026-04-30` 已接受三条 worker 切片并完成一轮测试命名收口：
+  - 三个 worker 分别独立拥有一份 `GFramework.Cqrs.Tests/Mediator/*.cs` 文件，主线程只做集成验证与后续追踪更新
+  - 当前分支已不再保留 `GFramework.Cqrs.Tests/Mediator/` 目录下的生产内涵测试，相关文件均迁移到 `GFramework.Cqrs.Tests/Cqrs/`
+  - 本轮没有修改测试行为，只收口命名、注释、局部变量与嵌套测试类型语义
 - 当前主线优先级：
-  - generator 覆盖面继续扩大
-  - dispatch/invoker 反射占比继续下降
+  - dispatch/invoker 反射占比继续下降，并优先评估生成前移方案
+  - 基于已落地 publisher seam，继续评估是否需要公开配置面、并行策略或 telemetry decorator
   - package / facade / 兼容层继续收口
+  - pipeline 分层扩展、可观测性 seam 与 benchmark baseline 进入中期候选
 
 ## 当前风险
 
 - 当前 `dotnet build GFramework.sln -c Release` 在 WSL 环境仍会受顶层 `GFramework.csproj` 的 Windows NuGet fallback 配置影响
 - 当前 `GFramework.Cqrs.Tests` 仍直接引用 `GFramework.Core`，说明测试已按模块意图拆分，但 runtime 物理迁移尚未完全切断依赖
+- 当前对外替代已基本完成，但若不单独规划旧 `Command` / `Query`、`LegacyICqrsRuntime` 与测试命名的收口顺序，
+  后续仍会持续混淆“生产替代已完成”与“仓库内部收口未完成”这两个不同结论
 
 ## 活跃文档
 
 - 历史跟踪归档：[cqrs-rewrite-history-through-rp043.md](../archive/todos/cqrs-rewrite-history-through-rp043.md)
 - 验证历史归档：[cqrs-rewrite-validation-history-through-rp062.md](../archive/todos/cqrs-rewrite-validation-history-through-rp062.md)
+- CQRS 与 Mediator 评估归档：[cqrs-vs-mediator-assessment-rp063.md](../archive/todos/cqrs-vs-mediator-assessment-rp063.md)
 - 历史 trace 归档：[cqrs-rewrite-history-through-rp043.md](../archive/traces/cqrs-rewrite-history-through-rp043.md)
 - `RP-046` 至 `RP-061` trace 归档：[cqrs-rewrite-history-rp046-through-rp061.md](../archive/traces/cqrs-rewrite-history-rp046-through-rp061.md)
 
@@ -152,14 +213,61 @@ CQRS 迁移与收敛。
 - `RP-046` 至 `RP-062` 的历史验证命令与阶段性结果已移入验证归档，active tracking 只保留当前恢复入口需要的最新验证
 - `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --format json --json-output /tmp/current-pr-review.json`
   - 结果：通过
-  - 备注：确认当前分支对应 `PR #304`，并定位到仍需本地复核的 CodeRabbit / Greptile open thread
+  - 备注：确认当前分支对应 `PR #305`，并定位到仍需本地复核的 CodeRabbit / Greptile open thread
 - `dotnet build GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release`
   - 结果：通过
   - 备注：`0 warning / 0 error`；本轮确认 XML 文档补齐、`NonParallelizable`、`_syncRoot` 命名与 `ai-plan` 收敛未引入新增编译问题
+- `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsGeneratedRequestInvokerProviderTests|FullyQualifiedName~CqrsArchitectureContextIntegrationTests.Handler_Can_Access_Architecture_Context|FullyQualifiedName~CqrsArchitectureContextAdvancedFeaturesTests.Request_With_Retry_Behavior_Should_Succeed_On_First_Attempt|FullyQualifiedName~CqrsArchitectureContextAdvancedFeaturesTests.Transient_Error_Request_Should_Succeed_Without_Simulated_Errors"`
+  - 结果：通过
+  - 备注：`5/5` passed；覆盖 generated invoker provider、真实上下文注入与两条重命名高级行为测试
+- `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --filter "FullyQualifiedName~SendRequestAsync_Should_ResolveCqrsRuntime_OnlyOnce_When_AccessedConcurrently|FullyQualifiedName~PublishAsync_Should_ResolveCqrsRuntime_OnlyOnce_When_AccessedConcurrently|FullyQualifiedName~CreateStream_Should_ResolveCqrsRuntime_OnlyOnce_When_AccessedConcurrently"`
+  - 结果：通过
+  - 备注：`3/3` passed；确认并发首次解析测试在失败路径释放调整后保持通过
+- `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~Emits_Request_Invoker_Provider_Metadata_When_Runtime_Contract_Is_Available|FullyQualifiedName~Emits_Direct_Type_Fallback_Metadata_When_All_Fallback_Handlers_Are_Referenceable_And_Runtime_Type_Contract_Is_Available|FullyQualifiedName~Emits_Mixed_Direct_Type_And_String_Fallback_Metadata_When_Runtime_Allows_Multiple_Fallback_Attributes"`
+  - 结果：通过
+  - 备注：`3/3` passed；确认 provider 生成分支注释与断言顺序修正未改变生成语义
+- `dotnet build GFramework.Cqrs/GFramework.Cqrs.csproj -c Release`
+  - 结果：通过
+  - 备注：构建成功；并行验证期间出现过 `MSB3026` 拷贝重试噪音，属于同时运行多个 `dotnet` 命令时的输出文件竞争，不是持久性编译 warning
 - `bash scripts/validate-csharp-naming.sh`
   - 结果：通过
   - 备注：使用显式 `GIT_DIR` / `GIT_WORK_TREE` 绑定重跑后，`1045` 个 tracked C# 文件的命名校验全部通过；本轮 `_syncRoot` 改名未引入命名规则回归
+- `dotnet build GFramework.Cqrs/GFramework.Cqrs.csproj -c Release`
+  - 结果：通过
+  - 备注：`0 warning / 0 error`；本轮确认 notification publisher seam、README 与文档更新未引入 `GFramework.Cqrs` 构建告警
+- `dotnet build GFramework.Core/GFramework.Core.csproj -c Release`
+  - 结果：通过
+  - 备注：`0 warning / 0 error`；确认 `CqrsRuntimeModule` 接线变更未引入 `GFramework.Core` 模块构建问题
+- `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsNotificationPublisherTests"`
+  - 结果：通过
+  - 备注：`5/5` 通过；覆盖自定义 publisher 顺序、上下文注入、零处理器、首错即停与默认接线复用
+- `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --filter "FullyQualifiedName~MicrosoftDiContainerTests"`
+  - 结果：通过
+  - 备注：`41/41` 通过；确认 CQRS 基础设施默认接线与容器行为未回归
+- `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --filter "FullyQualifiedName~MicrosoftDiContainerTests"`
+  - 结果：通过
+  - 备注：`42/42` 通过；本轮新增 legacy alias 回填回归后，确认正式 seam 与旧命名空间 alias 仍指向同一实例
+- `dotnet build GFramework.Core/GFramework.Core.csproj -c Release`
+  - 结果：通过
+  - 备注：`0 warning / 0 error`；确认 legacy alias helper 收敛与文档更新未引入 `GFramework.Core` 模块构建告警
+- `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsGeneratedRequestInvokerProviderTests|FullyQualifiedName~CqrsHandlerRegistrarTests|FullyQualifiedName~CqrsDispatcherCacheTests"`
+  - 结果：通过
+  - 备注：`22/22` 通过；确认 generated request invoker provider 的 registrar 接线、dispatcher 消费与现有 request/notification/stream cache 语义未回归
+- `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Emits_Request_Invoker_Provider_Metadata_When_Runtime_Contract_Is_Available"`
+  - 结果：通过
+  - 备注：`1/1` 通过；锁定 generator 会在 runtime 合同可用时发射 request invoker provider 成员
+- `dotnet build GFramework.Cqrs/GFramework.Cqrs.csproj -c Release`
+  - 结果：通过
+  - 备注：`0 warning / 0 error`；确认 request invoker provider seam 与 dispatcher/registrar 接线未引入新增构建告警
+- `dotnet build GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release`
+  - 结果：通过
+  - 备注：`0 warning / 0 error`；确认三份 `Mediator` 命名收口后的 CQRS 测试项目构建仍然干净
+- `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --filter "FullyQualifiedName~ArchitectureContextTests"`
+  - 结果：通过
+  - 备注：`22/22` 通过；新增 `PublishAsync` / `CreateStream` 并发首次访问只解析一次 `ICqrsRuntime` 的回归
 
 ## 下一步
 
-1. push 当前 follow-up 提交后，重新执行 `$gframework-pr-review`，确认 `PR #304` 的 latest unresolved threads 是否已刷新为已解决，或仅剩新增有效项
+1. 基于已落地的 notification publisher seam，评估是否需要第二阶段公开配置面、并行 publisher 或 telemetry decorator
+2. 基于已落地的 request invoker provider，评估是否继续把 notification / stream 的 invoker 也前移，或先补 provider 发现/诊断与文档入口
+3. 单独规划旧 `Command` / `Query` API 的收口顺序；`LegacyICqrsRuntime` compatibility slice 已收口到显式 helper 与专门测试，可暂时移出最高优先级

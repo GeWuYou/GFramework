@@ -2,6 +2,7 @@ using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Internal;
+using GFramework.Cqrs.Notification;
 
 namespace GFramework.Cqrs;
 
@@ -25,10 +26,31 @@ public static class CqrsRuntimeFactory
     /// </exception>
     public static ICqrsRuntime CreateRuntime(IIocContainer container, ILogger logger)
     {
+        return CreateRuntime(container, logger, notificationPublisher: null);
+    }
+
+    /// <summary>
+    ///     创建默认 CQRS runtime 分发器，并允许调用方指定通知发布策略。
+    /// </summary>
+    /// <param name="container">目标依赖注入容器。</param>
+    /// <param name="logger">用于 runtime 诊断的日志器。</param>
+    /// <param name="notificationPublisher">可选的通知发布策略；若为 <see langword="null" /> 则使用默认顺序发布器。</param>
+    /// <returns>默认 CQRS runtime。</returns>
+    /// <exception cref="ArgumentNullException">
+    ///     <paramref name="container" /> 或 <paramref name="logger" /> 为 <see langword="null" />。
+    /// </exception>
+    public static ICqrsRuntime CreateRuntime(
+        IIocContainer container,
+        ILogger logger,
+        INotificationPublisher? notificationPublisher)
+    {
         ArgumentNullException.ThrowIfNull(container);
         ArgumentNullException.ThrowIfNull(logger);
 
-        return new CqrsDispatcher(container, logger);
+        return new CqrsDispatcher(
+            container,
+            logger,
+            notificationPublisher ?? new SequentialNotificationPublisher());
     }
 
     /// <summary>

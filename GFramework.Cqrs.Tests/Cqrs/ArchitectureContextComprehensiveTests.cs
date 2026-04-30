@@ -11,10 +11,13 @@ using GFramework.Core.Query;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using ICommand = GFramework.Core.Abstractions.Command.ICommand;
 
-namespace GFramework.Cqrs.Tests.Mediator;
+namespace GFramework.Cqrs.Tests.Cqrs;
 
+/// <summary>
+///     覆盖 <see cref="ArchitectureContext" /> 在 CQRS 请求、通知、流式处理和传统总线共存场景下的综合行为。
+/// </summary>
 [TestFixture]
-public class MediatorComprehensiveTests
+public sealed class ArchitectureContextComprehensiveTests
 {
     /// <summary>
     ///     测试初始化方法，在每个测试方法执行前运行。
@@ -29,9 +32,9 @@ public class MediatorComprehensiveTests
         var loggerField = typeof(MicrosoftDiContainer).GetField("_logger",
             BindingFlags.NonPublic | BindingFlags.Instance);
         loggerField?.SetValue(_container,
-            LoggerFactoryResolver.Provider.CreateLogger(nameof(MediatorComprehensiveTests)));
+            LoggerFactoryResolver.Provider.CreateLogger(nameof(ArchitectureContextComprehensiveTests)));
 
-        // 注册基础服务（Legacy CQRS）
+        // 注册传统 CQRS 基础服务，验证其与 ArchitectureContext 请求管线可以共存。
         _eventBus = new EventBus();
         _commandBus = new CommandExecutor();
         _queryBus = new QueryExecutor();
@@ -46,7 +49,7 @@ public class MediatorComprehensiveTests
 
         CqrsTestRuntime.RegisterHandlers(
             _container,
-            typeof(MediatorComprehensiveTests).Assembly,
+            typeof(ArchitectureContextComprehensiveTests).Assembly,
             typeof(ArchitectureContext).Assembly);
 
         _container.Freeze();
@@ -416,306 +419,304 @@ public class MediatorComprehensiveTests
         Assert.That(legacyCommand.Executed, Is.True);
 
         // 使用自有 CQRS 方式
-        var mediatorCommand = new TestCommandWithResult { ResultValue = 999 };
-        var result = await _context.SendAsync(mediatorCommand).ConfigureAwait(false);
+        var cqrsCommand = new TestCommandWithResult { ResultValue = 999 };
+        var result = await _context.SendAsync(cqrsCommand).ConfigureAwait(false);
         Assert.That(result, Is.EqualTo(999));
 
         // 验证两者可以同时工作
         Assert.That(legacyCommand.Executed, Is.True);
         Assert.That(result, Is.EqualTo(999));
     }
-#region Advanced Test Classes for CQRS Features
+    #region ArchitectureContext CQRS Test Helpers
 
-public sealed record TestLongRunningRequest : IRequest<string>
-{
-    public int DelayMs { get; init; }
-}
-
-public sealed class TestLongRunningRequestHandler : IRequestHandler<TestLongRunningRequest, string>
-{
-    public async ValueTask<string> Handle(TestLongRunningRequest request, CancellationToken cancellationToken)
+    private sealed record TestLongRunningRequest : IRequest<string>
     {
-        await Task.Delay(request.DelayMs, cancellationToken).ConfigureAwait(false);
-        cancellationToken.ThrowIfCancellationRequested();
-        return "Completed";
+        public int DelayMs { get; init; }
     }
-}
 
-public sealed record TestLongStreamRequest : IStreamRequest<int>
-{
-    public int ItemCount { get; init; }
-}
-
-public sealed class TestLongStreamRequestHandler : IStreamRequestHandler<TestLongStreamRequest, int>
-{
-    public async IAsyncEnumerable<int> Handle(
-        TestLongStreamRequest request,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+    private sealed class TestLongRunningRequestHandler : IRequestHandler<TestLongRunningRequest, string>
     {
-        for (int i = 0; i < request.ItemCount; i++)
+        public async ValueTask<string> Handle(TestLongRunningRequest request, CancellationToken cancellationToken)
         {
+            await Task.Delay(request.DelayMs, cancellationToken).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
-            yield return i;
-            await Task.Delay(10, cancellationToken).ConfigureAwait(false); // 模拟处理延迟
+            return "Completed";
         }
     }
-}
 
-public sealed record TestFaultyRequest : IRequest<string>;
-
-public sealed class TestFaultyRequestHandler : IRequestHandler<TestFaultyRequest, string>
-{
-    public ValueTask<string> Handle(TestFaultyRequest request, CancellationToken cancellationToken)
+    private sealed record TestLongStreamRequest : IStreamRequest<int>
     {
-        throw new InvalidOperationException("Handler failed intentionally");
+        public int ItemCount { get; init; }
     }
-}
 
-public class SharedData
-{
-    public int Value { get; set; }
-}
-
-public sealed record TestModifyDataCommand : IRequest<Unit>
-{
-    public SharedData Data { get; init; } = null!;
-    public int Value { get; init; }
-}
-
-public sealed class TestModifyDataCommandHandler : IRequestHandler<TestModifyDataCommand, Unit>
-{
-    public ValueTask<Unit> Handle(TestModifyDataCommand request, CancellationToken cancellationToken)
+    private sealed class TestLongStreamRequestHandler : IStreamRequestHandler<TestLongStreamRequest, int>
     {
-        request.Data.Value += request.Value;
-        return ValueTask.FromResult(Unit.Value);
-    }
-}
-
-public sealed record TestCachingQuery : IRequest<string>
-{
-    public string Key { get; init; } = string.Empty;
-    public IDictionary<string, string> Cache { get; init; } = new Dictionary<string, string>(StringComparer.Ordinal);
-}
-
-public sealed class TestCachingQueryHandler : IRequestHandler<TestCachingQuery, string>
-{
-    public ValueTask<string> Handle(TestCachingQuery request, CancellationToken cancellationToken)
-    {
-        if (request.Cache.TryGetValue(request.Key, out var cachedValue))
+        public async IAsyncEnumerable<int> Handle(
+            TestLongStreamRequest request,
+            [EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            return new ValueTask<string>(cachedValue);
+            for (int i = 0; i < request.ItemCount; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                yield return i;
+                await Task.Delay(10, cancellationToken).ConfigureAwait(false); // 模拟处理延迟
+            }
         }
-
-        var newValue = $"Value_for_{request.Key}";
-        request.Cache[request.Key] = newValue;
-        return new ValueTask<string>(newValue);
     }
-}
 
-public sealed record TestOrderedNotification : INotification
-{
-    public int Order { get; init; }
-    public string Message { get; init; } = string.Empty;
-}
+    private sealed record TestFaultyRequest : IRequest<string>;
 
-public sealed class TestOrderedNotificationHandler : INotificationHandler<TestOrderedNotification>
-{
-    public static ICollection<string> ReceivedMessages { get; set; } = new List<string>();
-
-    public ValueTask Handle(TestOrderedNotification notification, CancellationToken cancellationToken)
+    private sealed class TestFaultyRequestHandler : IRequestHandler<TestFaultyRequest, string>
     {
-        ReceivedMessages.Add(notification.Message);
-        return ValueTask.CompletedTask;
-    }
-}
-
-// 额外的通知处理器来测试多处理器场景
-public sealed class TestNotificationHandler2 : INotificationHandler<TestNotification>
-{
-    public static string? LastReceivedMessage { get; set; }
-
-    public ValueTask Handle(TestNotification notification, CancellationToken cancellationToken)
-    {
-        LastReceivedMessage = notification.Message;
-        return ValueTask.CompletedTask;
-    }
-}
-
-public sealed class TestNotificationHandler3 : INotificationHandler<TestNotification>
-{
-    public static string? LastReceivedMessage { get; set; }
-
-    public ValueTask Handle(TestNotification notification, CancellationToken cancellationToken)
-    {
-        LastReceivedMessage = notification.Message;
-        return ValueTask.CompletedTask;
-    }
-}
-
-public sealed record TestFilterStreamRequest : IStreamRequest<int>
-{
-    public int[] Values { get; init; } = [];
-    public bool FilterEven { get; init; }
-}
-
-public sealed class TestFilterStreamRequestHandler : IStreamRequestHandler<TestFilterStreamRequest, int>
-{
-    public async IAsyncEnumerable<int> Handle(
-        TestFilterStreamRequest request,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        foreach (var value in request.Values)
+        public ValueTask<string> Handle(TestFaultyRequest request, CancellationToken cancellationToken)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            if (request.FilterEven && value % 2 != 0)
-                continue;
-
-            yield return value;
-            await Task.Yield();
+            throw new InvalidOperationException("Handler failed intentionally");
         }
     }
-}
 
-public sealed record TestValidatedCommand : IRequest<Unit>
-{
-    public string Name { get; init; } = string.Empty;
-}
-
-public sealed class TestValidatedCommandHandler : IRequestHandler<TestValidatedCommand, Unit>
-{
-    public ValueTask<Unit> Handle(TestValidatedCommand request, CancellationToken cancellationToken)
+    private sealed class SharedData
     {
-        if (string.IsNullOrWhiteSpace(request.Name))
+        public int Value { get; set; }
+    }
+
+    private sealed record TestModifyDataCommand : IRequest<Unit>
+    {
+        public SharedData Data { get; init; } = null!;
+        public int Value { get; init; }
+    }
+
+    private sealed class TestModifyDataCommandHandler : IRequestHandler<TestModifyDataCommand, Unit>
+    {
+        public ValueTask<Unit> Handle(TestModifyDataCommand request, CancellationToken cancellationToken)
         {
-            throw new ArgumentException("Name cannot be empty.", nameof(request));
+            request.Data.Value += request.Value;
+            return ValueTask.FromResult(Unit.Value);
         }
-
-        return ValueTask.FromResult(Unit.Value);
-    }
-}
-
-// 传统命令用于共存测试
-public class TestLegacyCommand : ICommand
-{
-    public bool Executed { get; private set; }
-
-    public void Execute()
-    {
-        Executed = true;
     }
 
-    public void SetContext(IArchitectureContext context)
+    private sealed record TestCachingQuery : IRequest<string>
     {
-        // 不需要实现
+        public string Key { get; init; } = string.Empty;
+        public IDictionary<string, string> Cache { get; init; } = new Dictionary<string, string>(StringComparer.Ordinal);
     }
 
-    public IArchitectureContext GetContext()
+    private sealed class TestCachingQueryHandler : IRequestHandler<TestCachingQuery, string>
     {
-        return null!;
-    }
-}
-
-#endregion
-
-#region Test Classes - CQRS Runtime
-
-// ✅ 这些类使用自有 CQRS IRequest
-public sealed record TestRequest : IRequest<int>
-{
-    public int Value { get; init; }
-}
-
-public sealed record TestCommand : IRequest<Unit>
-{
-    public bool ShouldExecute { get; init; }
-    public bool Executed { get; set; }
-}
-
-public sealed record TestCommandWithResult : IRequest<int>
-{
-    public int ResultValue { get; init; }
-}
-
-public sealed record TestQuery : IRequest<string>
-{
-    public string QueryResult { get; init; } = string.Empty;
-}
-
-public sealed record TestNotification : INotification
-{
-    public string Message { get; init; } = string.Empty;
-}
-
-public sealed record TestStreamRequest : IStreamRequest<int>
-{
-    public int[] Values { get; init; } = [];
-}
-
-// ✅ 这些 Handler 使用自有 CQRS IRequestHandler
-public sealed class TestRequestHandler : IRequestHandler<TestRequest, int>
-{
-    public ValueTask<int> Handle(TestRequest request, CancellationToken cancellationToken)
-    {
-        return new ValueTask<int>(request.Value);
-    }
-}
-
-public sealed class TestCommandHandler : IRequestHandler<TestCommand, Unit>
-{
-    public ValueTask<Unit> Handle(TestCommand request, CancellationToken cancellationToken)
-    {
-        if (request.ShouldExecute)
+        public ValueTask<string> Handle(TestCachingQuery request, CancellationToken cancellationToken)
         {
-            request.Executed = true;
+            if (request.Cache.TryGetValue(request.Key, out var cachedValue))
+            {
+                return new ValueTask<string>(cachedValue);
+            }
+
+            var newValue = $"Value_for_{request.Key}";
+            request.Cache[request.Key] = newValue;
+            return new ValueTask<string>(newValue);
         }
-
-        return ValueTask.FromResult(Unit.Value);
     }
-}
 
-public sealed class TestCommandWithResultHandler : IRequestHandler<TestCommandWithResult, int>
-{
-    public ValueTask<int> Handle(TestCommandWithResult request, CancellationToken cancellationToken)
+    private sealed record TestOrderedNotification : INotification
     {
-        return new ValueTask<int>(request.ResultValue);
+        public int Order { get; init; }
+        public string Message { get; init; } = string.Empty;
     }
-}
 
-public sealed class TestQueryHandler : IRequestHandler<TestQuery, string>
-{
-    public ValueTask<string> Handle(TestQuery request, CancellationToken cancellationToken)
+    private sealed class TestOrderedNotificationHandler : INotificationHandler<TestOrderedNotification>
     {
-        return new ValueTask<string>(request.QueryResult);
-    }
-}
+        public static ICollection<string> ReceivedMessages { get; set; } = new List<string>();
 
-public sealed class TestNotificationHandler : INotificationHandler<TestNotification>
-{
-    public static string? LastReceivedMessage { get; set; }
-
-    public ValueTask Handle(TestNotification notification, CancellationToken cancellationToken)
-    {
-        LastReceivedMessage = notification.Message;
-        return ValueTask.CompletedTask;
-    }
-}
-
-public sealed class TestStreamRequestHandler : IStreamRequestHandler<TestStreamRequest, int>
-{
-    public async IAsyncEnumerable<int> Handle(
-        TestStreamRequest request,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        foreach (var value in request.Values)
+        public ValueTask Handle(TestOrderedNotification notification, CancellationToken cancellationToken)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            yield return value;
-            await Task.Yield();
+            ReceivedMessages.Add(notification.Message);
+            return ValueTask.CompletedTask;
         }
     }
-}
 
-#endregion
+    // 额外的通知处理器用于验证多处理器通知分发场景。
+    private sealed class TestNotificationHandler2 : INotificationHandler<TestNotification>
+    {
+        public static string? LastReceivedMessage { get; set; }
+
+        public ValueTask Handle(TestNotification notification, CancellationToken cancellationToken)
+        {
+            LastReceivedMessage = notification.Message;
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class TestNotificationHandler3 : INotificationHandler<TestNotification>
+    {
+        public static string? LastReceivedMessage { get; set; }
+
+        public ValueTask Handle(TestNotification notification, CancellationToken cancellationToken)
+        {
+            LastReceivedMessage = notification.Message;
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed record TestFilterStreamRequest : IStreamRequest<int>
+    {
+        public int[] Values { get; init; } = [];
+        public bool FilterEven { get; init; }
+    }
+
+    private sealed class TestFilterStreamRequestHandler : IStreamRequestHandler<TestFilterStreamRequest, int>
+    {
+        public async IAsyncEnumerable<int> Handle(
+            TestFilterStreamRequest request,
+            [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            foreach (var value in request.Values)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (request.FilterEven && value % 2 != 0)
+                    continue;
+
+                yield return value;
+                await Task.Yield();
+            }
+        }
+    }
+
+    private sealed record TestValidatedCommand : IRequest<Unit>
+    {
+        public string Name { get; init; } = string.Empty;
+    }
+
+    private sealed class TestValidatedCommandHandler : IRequestHandler<TestValidatedCommand, Unit>
+    {
+        public ValueTask<Unit> Handle(TestValidatedCommand request, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(request.Name))
+            {
+                throw new ArgumentException("Name cannot be empty.", nameof(request));
+            }
+
+            return ValueTask.FromResult(Unit.Value);
+        }
+    }
+
+    // 传统命令用于验证旧命令总线与 ArchitectureContext 的 CQRS API 可以同时工作。
+    private sealed class TestLegacyCommand : ICommand
+    {
+        public bool Executed { get; private set; }
+
+        public void Execute()
+        {
+            Executed = true;
+        }
+
+        public void SetContext(IArchitectureContext context)
+        {
+            // 该测试只验证传统命令是否被执行，不依赖上下文回填。
+        }
+
+        public IArchitectureContext GetContext()
+        {
+            return null!;
+        }
+    }
+
+    #endregion
+
+    #region ArchitectureContext CQRS Runtime Types
+
+    private sealed record TestRequest : IRequest<int>
+    {
+        public int Value { get; init; }
+    }
+
+    private sealed record TestCommand : IRequest<Unit>
+    {
+        public bool ShouldExecute { get; init; }
+        public bool Executed { get; set; }
+    }
+
+    private sealed record TestCommandWithResult : IRequest<int>
+    {
+        public int ResultValue { get; init; }
+    }
+
+    private sealed record TestQuery : IRequest<string>
+    {
+        public string QueryResult { get; init; } = string.Empty;
+    }
+
+    private sealed record TestNotification : INotification
+    {
+        public string Message { get; init; } = string.Empty;
+    }
+
+    private sealed record TestStreamRequest : IStreamRequest<int>
+    {
+        public int[] Values { get; init; } = [];
+    }
+
+    private sealed class TestRequestHandler : IRequestHandler<TestRequest, int>
+    {
+        public ValueTask<int> Handle(TestRequest request, CancellationToken cancellationToken)
+        {
+            return new ValueTask<int>(request.Value);
+        }
+    }
+
+    private sealed class TestCommandHandler : IRequestHandler<TestCommand, Unit>
+    {
+        public ValueTask<Unit> Handle(TestCommand request, CancellationToken cancellationToken)
+        {
+            if (request.ShouldExecute)
+            {
+                request.Executed = true;
+            }
+
+            return ValueTask.FromResult(Unit.Value);
+        }
+    }
+
+    private sealed class TestCommandWithResultHandler : IRequestHandler<TestCommandWithResult, int>
+    {
+        public ValueTask<int> Handle(TestCommandWithResult request, CancellationToken cancellationToken)
+        {
+            return new ValueTask<int>(request.ResultValue);
+        }
+    }
+
+    private sealed class TestQueryHandler : IRequestHandler<TestQuery, string>
+    {
+        public ValueTask<string> Handle(TestQuery request, CancellationToken cancellationToken)
+        {
+            return new ValueTask<string>(request.QueryResult);
+        }
+    }
+
+    private sealed class TestNotificationHandler : INotificationHandler<TestNotification>
+    {
+        public static string? LastReceivedMessage { get; set; }
+
+        public ValueTask Handle(TestNotification notification, CancellationToken cancellationToken)
+        {
+            LastReceivedMessage = notification.Message;
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class TestStreamRequestHandler : IStreamRequestHandler<TestStreamRequest, int>
+    {
+        public async IAsyncEnumerable<int> Handle(
+            TestStreamRequest request,
+            [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            foreach (var value in request.Values)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                yield return value;
+                await Task.Yield();
+            }
+        }
+    }
+
+    #endregion
 
 }

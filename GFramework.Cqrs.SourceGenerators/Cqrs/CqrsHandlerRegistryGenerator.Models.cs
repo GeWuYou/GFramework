@@ -5,11 +5,16 @@ namespace GFramework.Cqrs.SourceGenerators.Cqrs;
 /// </summary>
 public sealed partial class CqrsHandlerRegistryGenerator
 {
+    private readonly record struct RequestInvokerRegistrationSpec(
+        string RequestTypeDisplayName,
+        string ResponseTypeDisplayName);
+
     private readonly record struct HandlerRegistrationSpec(
         string HandlerInterfaceDisplayName,
         string ImplementationTypeDisplayName,
         string HandlerInterfaceLogName,
-        string ImplementationLogName);
+        string ImplementationLogName,
+        RequestInvokerRegistrationSpec? RequestInvokerRegistration);
 
     private readonly record struct ReflectedImplementationRegistrationSpec(
         string HandlerInterfaceDisplayName,
@@ -24,13 +29,23 @@ public sealed partial class CqrsHandlerRegistryGenerator
         bool HasReflectedImplementationRegistrations,
         bool HasPreciseReflectedRegistrations,
         bool HasReflectionTypeLookups,
-        bool HasExternalAssemblyTypeLookups)
+        bool HasExternalAssemblyTypeLookups,
+        bool SupportsRequestInvokerProvider,
+        ImmutableArray<RequestInvokerEmissionSpec> RequestInvokerEmissions)
     {
         public bool RequiresRegistryAssemblyVariable =>
             HasReflectedImplementationRegistrations ||
             HasPreciseReflectedRegistrations ||
             HasReflectionTypeLookups;
+
+        public bool HasRequestInvokerProvider => SupportsRequestInvokerProvider && !RequestInvokerEmissions.IsDefaultOrEmpty;
     }
+
+    private readonly record struct RequestInvokerEmissionSpec(
+        string RequestTypeDisplayName,
+        string ResponseTypeDisplayName,
+        string HandlerInterfaceDisplayName,
+        int MethodIndex);
 
     /// <summary>
     ///     标记某条 handler 注册语句在生成阶段采用的表达策略。
@@ -312,5 +327,6 @@ public sealed partial class CqrsHandlerRegistryGenerator
         bool GenerationEnabled,
         bool SupportsNamedReflectionFallbackTypes,
         bool SupportsDirectReflectionFallbackTypes,
-        bool SupportsMultipleReflectionFallbackAttributes);
+        bool SupportsMultipleReflectionFallbackAttributes,
+        bool SupportsRequestInvokerProvider);
 }

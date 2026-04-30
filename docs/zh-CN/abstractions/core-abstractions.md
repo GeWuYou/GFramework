@@ -75,7 +75,10 @@ public sealed class DiagnosticsFeature
 - 架构与模块入口：`IArchitecture`、`IArchitectureContext`、`IServiceModule`
 - 运行时基础设施：`IIocContainer`、`ILogger`、`IResourceManager`、`IConfigurationManager`
 - 状态与并发能力：`IStateMachine`、`IStore`、`IAsyncKeyLockManager`、`ITimeProvider`
-- 迁移与组合边界：`ICommandExecutor`、`IQueryExecutor`、`ICqrsRuntime`
+- 迁移与组合边界：`ICommandExecutor`、`IQueryExecutor`，以及旧命名空间下作为 compatibility alias 暴露的 `ICqrsRuntime`
+
+`GFramework.Core.Abstractions.Cqrs.ICqrsRuntime` 当前主要承担旧命名空间兼容入口的角色。编写新模块或新增请求处理逻辑时，
+应直接引用 `GFramework.Cqrs.Abstractions.Cqrs.ICqrsRuntime`，让 runtime seam 与 CQRS 请求契约保持一致。
 
 ## 契约族阅读入口
 
@@ -85,7 +88,7 @@ public sealed class DiagnosticsFeature
 | --- | --- | --- |
 | `Architectures/` | `IArchitecture`、`IArchitectureContext`、`IArchitectureServices`、`IServiceModule` | 架构上下文、服务访问面与模块安装 / 生命周期约束 |
 | `Lifecycle/` `Registries/` | `ILifecycle`、`IAsyncInitializable`、`IRegistry<T, TR>`、`KeyValueRegistryBase<TKey, TValue>` | 初始化 / 销毁阶段和注册表抽象边界 |
-| `Command/` `Query/` `Cqrs/` | `ICommandExecutor`、`IAsyncCommand<TResult>`、`IQueryExecutor`、`ICqrsRuntime` | 旧命令 / 查询接口与新请求模型之间的兼容和迁移边界 |
+| `Command/` `Query/` `Cqrs/` | `ICommandExecutor`、`IAsyncCommand<TResult>`、`IQueryExecutor`、`ICqrsRuntime` | 旧命令 / 查询接口，以及 CQRS runtime compatibility alias 的迁移边界 |
 | `Events/` `Property/` | `IEventBus`、`IEventFilter<T>`、`IBindableProperty<T>`、`IReadonlyBindableProperty<T>` | 事件传播、过滤、解绑对象和属性订阅语义 |
 | `State/` `StateManagement/` | `IStateMachine`、`IAsyncState`、`IStore<TState>`、`IStoreMiddleware<TState>` | 状态机契约与 Store 的 reducer / middleware / diagnostics 边界 |
 | `Coroutine/` `Time/` `Pause/` `Concurrency/` | `IYieldInstruction`、`ICoroutineStatistics`、`ITimeProvider`、`IPauseStackManager`、`IAsyncKeyLockManager` | 调度模型、时间源、暂停栈和异步锁契约 |

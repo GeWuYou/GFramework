@@ -7,6 +7,7 @@ using GFramework.Core.Ioc;
 using GFramework.Cqrs;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Command;
+using GFramework.Cqrs.Notification;
 using LegacyICqrsRuntime = GFramework.Core.Abstractions.Cqrs.ICqrsRuntime;
 
 namespace GFramework.Tests.Common;
@@ -51,6 +52,8 @@ public static class CqrsTestRuntime
     ///     这使仅使用 <see cref="MicrosoftDiContainer" /> 的测试环境也能观察与生产路径一致的 runtime 行为，
     ///     而无需完整启动服务模块管理器。
     ///     该方法按服务类型执行幂等注册，只会补齐当前容器中尚未接线的 CQRS 基础设施。
+    ///     若容器里只预注册了正式 <see cref="ICqrsRuntime" /> seam，本方法也会补齐旧命名空间下的
+    ///     <see cref="LegacyICqrsRuntime" /> 兼容别名，并保持它与正式 seam 指向同一实例。
     /// </remarks>
     public static void RegisterInfrastructure(MicrosoftDiContainer container)
     {
@@ -59,13 +62,14 @@ public static class CqrsTestRuntime
         if (container.Get<ICqrsRuntime>() is null)
         {
             var runtimeLogger = LoggerFactoryResolver.Provider.CreateLogger("CqrsDispatcher");
-            var runtime = CqrsRuntimeFactory.CreateRuntime(container, runtimeLogger);
+            var notificationPublisher = container.Get<INotificationPublisher>();
+            var runtime = CqrsRuntimeFactory.CreateRuntime(container, runtimeLogger, notificationPublisher);
             container.Register(runtime);
-            container.Register<LegacyICqrsRuntime>((LegacyICqrsRuntime)runtime);
+            RegisterLegacyRuntimeAlias(container, runtime);
         }
         else if (container.Get<LegacyICqrsRuntime>() is null)
         {
-            container.Register<LegacyICqrsRuntime>((LegacyICqrsRuntime)container.GetRequired<ICqrsRuntime>());
+            RegisterLegacyRuntimeAlias(container, container.GetRequired<ICqrsRuntime>());
         }
 
         if (container.Get<ICqrsHandlerRegistrar>() is null)
@@ -82,6 +86,25 @@ public static class CqrsTestRuntime
             var registrationService = CqrsRuntimeFactory.CreateRegistrationService(registrar, registrationLogger);
             container.Register<ICqrsRegistrationService>(registrationService);
         }
+    }
+
+    /// <summary>
+    ///     为旧命名空间下的 CQRS runtime 契约注册兼容别名。
+    /// </summary>
+    /// <param name="container">承载运行时实例的测试容器。</param>
+    /// <param name="runtime">当前正式 CQRS runtime 实例。</param>
+    /// <remarks>
+    ///     测试辅助层显式保留这条 helper，避免“已存在正式 seam 时再补旧别名”的兼容语义分散在多个分支里。
+    /// </remarks>
+    private static void RegisterLegacyRuntimeAlias(MicrosoftDiContainer container, ICqrsRuntime runtime)
+    {
+        if (runtime is not LegacyICqrsRuntime legacyRuntime)
+        {
+            throw new InvalidOperationException(
+                $"The registered {nameof(ICqrsRuntime)} must also implement {typeof(LegacyICqrsRuntime).FullName}.");
+        }
+
+        container.Register<LegacyICqrsRuntime>(legacyRuntime);
     }
 
     /// <summary>

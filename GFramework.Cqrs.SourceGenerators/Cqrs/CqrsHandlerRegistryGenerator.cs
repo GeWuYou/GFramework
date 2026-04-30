@@ -15,6 +15,13 @@ public sealed partial class CqrsHandlerRegistryGenerator : IIncrementalGenerator
     private const string INotificationHandlerMetadataName = $"{CqrsContractsNamespace}.INotificationHandler`1";
     private const string IStreamRequestHandlerMetadataName = $"{CqrsContractsNamespace}.IStreamRequestHandler`2";
     private const string ICqrsHandlerRegistryMetadataName = $"{CqrsRuntimeNamespace}.ICqrsHandlerRegistry";
+    private const string ICqrsRequestInvokerProviderMetadataName = $"{CqrsRuntimeNamespace}.ICqrsRequestInvokerProvider";
+    private const string IEnumeratesCqrsRequestInvokerDescriptorsMetadataName =
+        $"{CqrsRuntimeNamespace}.IEnumeratesCqrsRequestInvokerDescriptors";
+    private const string CqrsRequestInvokerDescriptorMetadataName =
+        $"{CqrsRuntimeNamespace}.CqrsRequestInvokerDescriptor";
+    private const string CqrsRequestInvokerDescriptorEntryMetadataName =
+        $"{CqrsRuntimeNamespace}.CqrsRequestInvokerDescriptorEntry";
 
     private const string CqrsHandlerRegistryAttributeMetadataName =
         $"{CqrsRuntimeNamespace}.CqrsHandlerRegistryAttribute";
@@ -66,6 +73,11 @@ public sealed partial class CqrsHandlerRegistryGenerator : IIncrementalGenerator
                                     CqrsHandlerRegistryAttributeMetadataName) is not null &&
                                 compilation.GetTypeByMetadataName(ILoggerMetadataName) is not null &&
                                 compilation.GetTypeByMetadataName(IServiceCollectionMetadataName) is not null;
+        var supportsRequestInvokerProvider =
+            compilation.GetTypeByMetadataName(ICqrsRequestInvokerProviderMetadataName) is not null &&
+            compilation.GetTypeByMetadataName(IEnumeratesCqrsRequestInvokerDescriptorsMetadataName) is not null &&
+            compilation.GetTypeByMetadataName(CqrsRequestInvokerDescriptorMetadataName) is not null &&
+            compilation.GetTypeByMetadataName(CqrsRequestInvokerDescriptorEntryMetadataName) is not null;
         var stringType = compilation.GetSpecialType(SpecialType.System_String);
         var typeType = compilation.GetTypeByMetadataName("System.Type");
         var supportsNamedReflectionFallbackTypes = reflectionFallbackAttributeType is not null &&
@@ -85,7 +97,8 @@ public sealed partial class CqrsHandlerRegistryGenerator : IIncrementalGenerator
             generationEnabled,
             supportsNamedReflectionFallbackTypes,
             supportsDirectReflectionFallbackTypes,
-            supportsMultipleReflectionFallbackAttributes);
+            supportsMultipleReflectionFallbackAttributes,
+            supportsRequestInvokerProvider);
     }
 
     private static bool IsHandlerCandidate(SyntaxNode node)
@@ -218,7 +231,10 @@ public sealed partial class CqrsHandlerRegistryGenerator : IIncrementalGenerator
                 handlerInterface.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                 implementationTypeDisplayName,
                 GetLogDisplayName(handlerInterface),
-                implementationLogName));
+                implementationLogName,
+                TryCreateRequestInvokerRegistrationSpec(handlerInterface, out var requestInvokerRegistration)
+                    ? requestInvokerRegistration
+                    : null));
             return true;
         }
 
@@ -234,6 +250,34 @@ public sealed partial class CqrsHandlerRegistryGenerator : IIncrementalGenerator
             return false;
 
         preciseReflectedRegistrations.Add(preciseReflectedRegistration);
+        return true;
+    }
+
+    /// <summary>
+    ///     当当前直接注册项属于请求处理器时，提取 request invoker provider 所需的请求/响应类型显示名。
+    /// </summary>
+    private static bool TryCreateRequestInvokerRegistrationSpec(
+        INamedTypeSymbol handlerInterface,
+        out RequestInvokerRegistrationSpec requestInvokerRegistration)
+    {
+        if (!string.Equals(
+                handlerInterface.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                $"global::{CqrsContractsNamespace}.IRequestHandler<TRequest, TResponse>",
+                StringComparison.Ordinal))
+        {
+            requestInvokerRegistration = default;
+            return false;
+        }
+
+        if (handlerInterface.TypeArguments.Length != 2)
+        {
+            requestInvokerRegistration = default;
+            return false;
+        }
+
+        requestInvokerRegistration = new RequestInvokerRegistrationSpec(
+            handlerInterface.TypeArguments[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+            handlerInterface.TypeArguments[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
         return true;
     }
 
@@ -296,7 +340,7 @@ public sealed partial class CqrsHandlerRegistryGenerator : IIncrementalGenerator
 
         context.AddSource(
             HintName,
-            GenerateSource(registrations, reflectionFallbackEmission));
+            GenerateSource(generationEnvironment, registrations, reflectionFallbackEmission));
     }
 
     /// <summary>

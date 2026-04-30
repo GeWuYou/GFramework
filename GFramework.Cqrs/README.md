@@ -49,6 +49,7 @@
 - 默认 runtime 与注册入口
   - `CqrsRuntimeFactory.cs`
   - `Internal/CqrsDispatcher.cs`
+  - `Notification/INotificationPublisher.cs`
   - `Internal/CqrsHandlerRegistrar.cs`
   - `Internal/DefaultCqrsHandlerRegistrar.cs`
   - `Internal/DefaultCqrsRegistrationService.cs`
@@ -122,6 +123,8 @@ var playerId = await this.SendAsync(new CreatePlayerCommand(new CreatePlayerInpu
   - `CqrsDispatcher` 按请求实际类型解析 `IRequestHandler<,>`，未找到处理器会抛出异常。
 - 通知分发
   - 通知会分发给所有已注册 `INotificationHandler<>`；零处理器时默认静默完成。
+  - 默认通知发布器会按容器解析顺序逐个执行处理器，并在首个处理器抛出异常时立即停止后续分发。
+  - 若容器在 runtime 创建前已显式注册 `INotificationPublisher`，默认 runtime 会复用该策略；未注册时回退到内置顺序发布器。
 - 流式请求
   - 通过 `IStreamRequest<TResponse>` 和 `IStreamRequestHandler<,>` 返回 `IAsyncEnumerable<TResponse>`。
 - 上下文注入

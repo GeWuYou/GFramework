@@ -239,6 +239,62 @@ internal static class CqrsHandlerRegistrar
             logger.Debug(
                 $"Registering CQRS handlers for assembly {assemblyName} via generated registry {registry.GetType().FullName}.");
             registry.Register(services, logger);
+            RegisterGeneratedRequestInvokerProvider(services, registry, assemblyName, logger);
+        }
+    }
+
+    /// <summary>
+    ///     当 generated registry 同时提供 request invoker 元数据时，把该 provider 注册到当前容器中。
+    /// </summary>
+    /// <param name="services">目标服务集合。</param>
+    /// <param name="registry">当前已激活的 generated registry。</param>
+    /// <param name="assemblyName">当前程序集的稳定名称。</param>
+    /// <param name="logger">日志记录器。</param>
+    /// <remarks>
+    ///     provider 作为 registry 的附加能力注册到容器后，dispatcher 才能在首次请求分发时优先消费编译期生成的 invoker 元数据。
+    ///     若 registry 不实现该契约，则保持现有纯反射 request binding 创建语义。
+    /// </remarks>
+    private static void RegisterGeneratedRequestInvokerProvider(
+        IServiceCollection services,
+        ICqrsHandlerRegistry registry,
+        string assemblyName,
+        ILogger logger)
+    {
+        if (registry is not ICqrsRequestInvokerProvider provider)
+            return;
+
+        RegisterGeneratedRequestInvokerDescriptors(provider, assemblyName, logger);
+        services.AddSingleton(typeof(ICqrsRequestInvokerProvider), provider);
+        logger.Debug(
+            $"Registered CQRS request invoker provider {provider.GetType().FullName} for assembly {assemblyName}.");
+    }
+
+    /// <summary>
+    ///     读取 generated request invoker provider 中当前可见的描述符，并写入 dispatcher 的进程级弱缓存。
+    /// </summary>
+    /// <param name="provider">当前已激活的 request invoker provider。</param>
+    /// <param name="assemblyName">当前程序集的稳定名称。</param>
+    /// <param name="logger">日志记录器。</param>
+    /// <remarks>
+    ///     运行时当前只要求 provider 暴露可枚举的描述符集合，而不是在 dispatcher 首次命中时再回调容器。
+    ///     这样 request dispatch binding 的静态缓存创建仍然只依赖类型键，不需要依赖具体容器实例。
+    /// </remarks>
+    private static void RegisterGeneratedRequestInvokerDescriptors(
+        ICqrsRequestInvokerProvider provider,
+        string assemblyName,
+        ILogger logger)
+    {
+        if (provider is not IEnumeratesCqrsRequestInvokerDescriptors descriptorSource)
+            return;
+
+        foreach (var descriptorEntry in descriptorSource.GetDescriptors())
+        {
+            CqrsDispatcher.RegisterGeneratedRequestInvokerDescriptor(
+                descriptorEntry.RequestType,
+                descriptorEntry.ResponseType,
+                descriptorEntry.Descriptor);
+            logger.Debug(
+                $"Registered generated CQRS request invoker descriptor for {descriptorEntry.RequestType.FullName} -> {descriptorEntry.ResponseType.FullName} from assembly {assemblyName}.");
         }
     }
 

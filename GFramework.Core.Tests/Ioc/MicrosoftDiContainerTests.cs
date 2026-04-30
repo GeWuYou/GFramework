@@ -4,6 +4,7 @@ using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
 using GFramework.Core.Tests.Cqrs;
 using GFramework.Core.Tests.Systems;
+using GFramework.Cqrs;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using LegacyICqrsRuntime = GFramework.Core.Abstractions.Cqrs.ICqrsRuntime;
 
@@ -169,6 +170,30 @@ public class MicrosoftDiContainerTests
         Assert.That(_container.GetAll<LegacyICqrsRuntime>(), Has.Count.EqualTo(1));
         Assert.That(_container.GetAll<ICqrsHandlerRegistrar>(), Has.Count.EqualTo(1));
         Assert.That(_container.Get<ICqrsRuntime>(), Is.SameAs(_container.Get<LegacyICqrsRuntime>()));
+    }
+
+    /// <summary>
+    ///     测试当容器里仅预注册正式 CQRS runtime seam 时，基础设施接线会补齐 legacy alias，
+    ///     并保持新旧服务类型解析到同一实例。
+    /// </summary>
+    [Test]
+    public void RegisterInfrastructure_Should_Backfill_Legacy_Cqrs_Runtime_Alias_With_The_Same_Instance()
+    {
+        _container.Clear();
+
+        var runtime = CqrsRuntimeFactory.CreateRuntime(
+            _container,
+            LoggerFactoryResolver.Provider.CreateLogger("CqrsDispatcher"));
+        _container.Register<ICqrsRuntime>(runtime);
+
+        Assert.That(_container.Get<LegacyICqrsRuntime>(), Is.Null);
+
+        CqrsTestRuntime.RegisterInfrastructure(_container);
+
+        Assert.That(_container.GetAll<ICqrsRuntime>(), Has.Count.EqualTo(1));
+        Assert.That(_container.GetAll<LegacyICqrsRuntime>(), Has.Count.EqualTo(1));
+        Assert.That(_container.Get<ICqrsRuntime>(), Is.SameAs(runtime));
+        Assert.That(_container.Get<LegacyICqrsRuntime>(), Is.SameAs(runtime));
     }
 
     /// <summary>

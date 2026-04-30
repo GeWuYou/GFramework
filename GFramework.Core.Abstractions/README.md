@@ -26,7 +26,7 @@
 | --- | --- |
 | `Architectures/` `Lifecycle/` `Registries/` | `IArchitecture`、上下文、模块、服务模块、阶段监听、注册表基类与生命周期契约 |
 | `Bases/` `Controller/` `Model/` `Systems/` `Utility/` `Rule/` | 组件角色接口、优先级 / key 值对象、上下文感知约束与扩展边界 |
-| `Command/` `Query/` `Cqrs/` | 旧版命令 / 查询执行器接口，以及 `ICqrsRuntime` 这类新请求模型接线契约 |
+| `Command/` `Query/` `Cqrs/` | 旧版命令 / 查询执行器接口，以及面向 CQRS runtime 的兼容别名入口 |
 | `Events/` `Property/` `State/` `StateManagement/` | 事件总线、解绑对象、可绑定属性、状态机、Store / reducer / middleware 契约 |
 | `Coroutine/` `Time/` `Pause/` `Concurrency/` | 协程状态、时间源、暂停栈、键控异步锁和统计对象 |
 | `Resource/` `Pool/` `Logging/` `Localization/` | 资源句柄、对象池、日志、日志工厂、本地化表与格式化契约 |
@@ -41,7 +41,7 @@
 | 类型族 | 代表类型 | 阅读重点 |
 | --- | --- | --- |
 | `Architectures/` `Lifecycle/` `Registries/` | `IArchitecture`、`IArchitectureContext`、`IServiceModule`、`KeyValueRegistryBase<TKey, TValue>` | 看架构、上下文、模块装配与注册表基类边界 |
-| `Command/` `Query/` `Cqrs/` | `ICommandExecutor`、`IAsyncQueryExecutor`、`ICqrsRuntime` | 看命令、查询与新请求模型的调用入口 |
+| `Command/` `Query/` `Cqrs/` | `ICommandExecutor`、`IAsyncQueryExecutor`、`ICqrsRuntime` | 看旧命令 / 查询契约，以及 CQRS runtime 的兼容别名入口 |
 | `Events/` `Property/` `State/` `StateManagement/` | `IEventBus`、`IBindableProperty<T>`、`IStateMachine`、`IStore<TState>` | 看事件分发、可绑定状态与 store 契约 |
 | `Coroutine/` `Time/` `Pause/` `Concurrency/` | `IYieldInstruction`、`ITimeProvider`、`IPauseStackManager`、`IAsyncKeyLockManager` | 看协程、时间源、暂停栈与并发协调能力 |
 | `Resource/` `Pool/` `Logging/` `Localization/` | `IResourceManager`、`IObjectPoolSystem`、`ILogger`、`ILocalizationManager` | 看资源、对象池、日志与本地化服务角色 |
@@ -63,7 +63,11 @@
 - 架构与模块入口：`IArchitecture`、`IArchitectureContext`、`IServiceModule`
 - 运行时基础设施：`IIocContainer`、`ILogger`、`IResourceManager`、`IConfigurationManager`
 - 状态与并发能力：`IStateMachine`、`IStore`、`IAsyncKeyLockManager`、`ITimeProvider`
-- 迁移与组合边界：`ICommandExecutor`、`IQueryExecutor`、`ICqrsRuntime`
+- 迁移与组合边界：`ICommandExecutor`、`IQueryExecutor`，以及旧命名空间下作为 compatibility alias 暴露的 `ICqrsRuntime`
+
+`GFramework.Core.Abstractions.Cqrs.ICqrsRuntime` 当前主要用于兼容旧命名空间引用。新代码应直接依赖
+`GFramework.Cqrs.Abstractions.Cqrs.ICqrsRuntime`，这样可以把请求模型、handler 和 runtime seam 保持在同一套
+CQRS 契约下。
 
 ## 对应文档
 

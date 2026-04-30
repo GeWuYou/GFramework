@@ -25,10 +25,11 @@ public sealed partial class CqrsHandlerRegistryGenerator
     ///     该方法本身不报告诊断；“fallback 必需但 runtime 契约缺失”的错误由调用方在进入本方法前处理。
     /// </remarks>
     private static string GenerateSource(
+        GenerationEnvironment generationEnvironment,
         IReadOnlyList<ImplementationRegistrationSpec> registrations,
         ReflectionFallbackEmissionSpec reflectionFallbackEmission)
     {
-        var sourceShape = CreateGeneratedRegistrySourceShape(registrations);
+        var sourceShape = CreateGeneratedRegistrySourceShape(generationEnvironment, registrations);
         var builder = new StringBuilder();
         AppendGeneratedSourcePreamble(builder, reflectionFallbackEmission);
         AppendGeneratedRegistryType(builder, registrations, sourceShape);
@@ -41,6 +42,7 @@ public sealed partial class CqrsHandlerRegistryGenerator
     /// <param name="registrations">已整理并排序的 handler 注册描述。</param>
     /// <returns>当前生成输出需要启用的结构分支。</returns>
     private static GeneratedRegistrySourceShape CreateGeneratedRegistrySourceShape(
+        GenerationEnvironment generationEnvironment,
         IReadOnlyList<ImplementationRegistrationSpec> registrations)
     {
         var hasReflectedImplementationRegistrations = registrations.Any(static registration =>
@@ -52,12 +54,61 @@ public sealed partial class CqrsHandlerRegistryGenerator
         var hasExternalAssemblyTypeLookups = registrations.Any(static registration =>
             registration.PreciseReflectedRegistrations.Any(static preciseRegistration =>
                 preciseRegistration.ServiceTypeArguments.Any(ContainsExternalAssemblyTypeLookup)));
+        var requestInvokerEmissions = CreateRequestInvokerEmissions(
+            generationEnvironment.SupportsRequestInvokerProvider,
+            registrations);
 
         return new GeneratedRegistrySourceShape(
             hasReflectedImplementationRegistrations,
             hasPreciseReflectedRegistrations,
             hasReflectionTypeLookups,
-            hasExternalAssemblyTypeLookups);
+            hasExternalAssemblyTypeLookups,
+            generationEnvironment.SupportsRequestInvokerProvider,
+            requestInvokerEmissions);
+    }
+
+    /// <summary>
+    ///     从 direct handler 注册描述中提取 request invoker 发射计划。
+    /// </summary>
+    /// <param name="supportsRequestInvokerProvider">
+    ///     指示当前 runtime 是否同时暴露 <c>ICqrsRequestInvokerProvider</c> 与
+    ///     <c>IEnumeratesCqrsRequestInvokerDescriptors</c> 契约；若不支持，则本方法必须返回空结果并让后续发射路径整体跳过。
+    /// </param>
+    /// <param name="registrations">已按稳定顺序整理完成的 handler 注册描述。</param>
+    /// <returns>
+    ///     由 <c>directRegistration.RequestInvokerRegistration</c> 派生出的 <see cref="RequestInvokerEmissionSpec" /> 集合。
+    ///     <c>methodIndex</c> 按 <paramref name="registrations" /> 与其 direct registration 的遍历顺序单调递增，
+    ///     因而只要上游排序稳定，生成的 invoker 方法名与描述符顺序就跨运行保持稳定。
+    /// </returns>
+    /// <remarks>
+    ///     缺少 <c>RequestInvokerRegistration</c> 的 direct registration 会被显式跳过，而不会生成半成品 provider 成员；
+    ///     调用方应把“为什么没有 request invoker registration”对应的诊断留在更早的建模阶段，而不是在源码发射阶段兜底。
+    /// </remarks>
+    private static ImmutableArray<RequestInvokerEmissionSpec> CreateRequestInvokerEmissions(
+        bool supportsRequestInvokerProvider,
+        IReadOnlyList<ImplementationRegistrationSpec> registrations)
+    {
+        if (!supportsRequestInvokerProvider)
+            return ImmutableArray<RequestInvokerEmissionSpec>.Empty;
+
+        var builder = ImmutableArray.CreateBuilder<RequestInvokerEmissionSpec>();
+        var methodIndex = 0;
+        foreach (var registration in registrations)
+        {
+            foreach (var directRegistration in registration.DirectRegistrations)
+            {
+                if (directRegistration.RequestInvokerRegistration is not { } requestInvokerRegistration)
+                    continue;
+
+                builder.Add(new RequestInvokerEmissionSpec(
+                    requestInvokerRegistration.RequestTypeDisplayName,
+                    requestInvokerRegistration.ResponseTypeDisplayName,
+                    directRegistration.HandlerInterfaceDisplayName,
+                    methodIndex++));
+            }
+        }
+
+        return builder.ToImmutable();
     }
 
     /// <summary>
@@ -160,9 +211,25 @@ public sealed partial class CqrsHandlerRegistryGenerator
         builder.Append(GeneratedTypeName);
         builder.Append(" : global::");
         builder.Append(CqrsRuntimeNamespace);
-        builder.AppendLine(".ICqrsHandlerRegistry");
+        builder.Append(".ICqrsHandlerRegistry");
+        if (sourceShape.HasRequestInvokerProvider)
+        {
+            builder.Append(", global::");
+            builder.Append(CqrsRuntimeNamespace);
+            builder.Append(".ICqrsRequestInvokerProvider, global::");
+            builder.Append(CqrsRuntimeNamespace);
+            builder.Append(".IEnumeratesCqrsRequestInvokerDescriptors");
+        }
+
+        builder.AppendLine();
         builder.AppendLine("{");
         AppendRegisterMethod(builder, registrations, sourceShape);
+
+        if (sourceShape.HasRequestInvokerProvider)
+        {
+            builder.AppendLine();
+            AppendRequestInvokerProviderMembers(builder, sourceShape.RequestInvokerEmissions);
+        }
 
         if (sourceShape.HasExternalAssemblyTypeLookups)
         {
@@ -220,6 +287,140 @@ public sealed partial class CqrsHandlerRegistryGenerator
             }
         }
 
+        builder.AppendLine("    }");
+    }
+
+    /// <summary>
+    ///     发射 generated registry 的 request invoker provider 成员。
+    /// </summary>
+    /// <param name="builder">生成源码构造器。</param>
+    /// <param name="requestInvokerEmissions">
+    ///     来自 <see cref="CreateRequestInvokerEmissions(bool, IReadOnlyList{ImplementationRegistrationSpec})" /> 的稳定发射计划。
+    /// </param>
+    /// <remarks>
+    ///     该输出包含三部分：描述符数组、provider 查询方法，以及与描述符逐项对应的静态 invoker 方法。
+    ///     若发射计划为空，调用方应直接跳过整个 provider 分支，而不是输出空的 registry seam。
+    /// </remarks>
+    private static void AppendRequestInvokerProviderMembers(
+        StringBuilder builder,
+        ImmutableArray<RequestInvokerEmissionSpec> requestInvokerEmissions)
+    {
+        AppendRequestInvokerDescriptorArray(builder, requestInvokerEmissions);
+        builder.AppendLine();
+        AppendRequestInvokerProviderMethods(builder);
+
+        for (var index = 0; index < requestInvokerEmissions.Length; index++)
+        {
+            builder.AppendLine();
+            AppendRequestInvokerMethod(builder, requestInvokerEmissions[index]);
+        }
+    }
+
+    /// <summary>
+    ///     发射 generated registry 的 request invoker 描述符数组。
+    /// </summary>
+    /// <param name="builder">生成源码构造器。</param>
+    /// <param name="requestInvokerEmissions">当前要输出的 request invoker 发射计划。</param>
+    /// <remarks>
+    ///     每个条目都会把请求类型、响应类型和对应的静态 invoker 方法打包成
+    ///     <c>CqrsRequestInvokerDescriptorEntry</c>，供 registrar 在注册阶段写入 dispatcher 的弱缓存。
+    /// </remarks>
+    private static void AppendRequestInvokerDescriptorArray(
+        StringBuilder builder,
+        ImmutableArray<RequestInvokerEmissionSpec> requestInvokerEmissions)
+    {
+        builder.AppendLine("    private static readonly global::GFramework.Cqrs.CqrsRequestInvokerDescriptorEntry[] RequestInvokerDescriptors =");
+        builder.AppendLine("    [");
+
+        for (var index = 0; index < requestInvokerEmissions.Length; index++)
+        {
+            var emission = requestInvokerEmissions[index];
+            builder.Append("        new global::");
+            builder.Append(CqrsRuntimeNamespace);
+            builder.Append(".CqrsRequestInvokerDescriptorEntry(typeof(");
+            builder.Append(emission.RequestTypeDisplayName);
+            builder.Append("), typeof(");
+            builder.Append(emission.ResponseTypeDisplayName);
+            builder.Append("), new global::");
+            builder.Append(CqrsRuntimeNamespace);
+            builder.Append(".CqrsRequestInvokerDescriptor(typeof(");
+            builder.Append(emission.HandlerInterfaceDisplayName);
+            builder.Append("), typeof(");
+            builder.Append(GeneratedTypeName);
+            builder.Append(").GetMethod(nameof(InvokeRequestHandler");
+            builder.Append(emission.MethodIndex);
+            builder.Append("), global::System.Reflection.BindingFlags.NonPublic | global::System.Reflection.BindingFlags.Static)!))");
+            builder.AppendLine(index == requestInvokerEmissions.Length - 1 ? string.Empty : ",");
+        }
+
+        builder.AppendLine("    ];");
+    }
+
+    /// <summary>
+    ///     发射 generated registry 对 request invoker provider 契约的实现方法。
+    /// </summary>
+    /// <param name="builder">生成源码构造器。</param>
+    /// <remarks>
+    ///     默认 runtime 真正消费的是 <c>GetDescriptors()</c> 暴露的完整描述符集合，并在注册阶段一次性写入缓存；
+    ///     <c>TryGetDescriptor(...)</c> 保留为显式查询接口，因此这里使用线性扫描即可保持生成代码简单且无额外字典分配。
+    /// </remarks>
+    private static void AppendRequestInvokerProviderMethods(StringBuilder builder)
+    {
+        builder.Append("    public global::System.Collections.Generic.IReadOnlyList<global::");
+        builder.Append(CqrsRuntimeNamespace);
+        builder.AppendLine(".CqrsRequestInvokerDescriptorEntry> GetDescriptors()");
+        builder.AppendLine("    {");
+        builder.AppendLine("        return RequestInvokerDescriptors;");
+        builder.AppendLine("    }");
+        builder.AppendLine();
+        builder.Append("    public bool TryGetDescriptor(global::System.Type requestType, global::System.Type responseType, out global::");
+        builder.Append(CqrsRuntimeNamespace);
+        builder.AppendLine(".CqrsRequestInvokerDescriptor? descriptor)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        if (requestType is null)");
+        builder.AppendLine("            throw new global::System.ArgumentNullException(nameof(requestType));");
+        builder.AppendLine("        if (responseType is null)");
+        builder.AppendLine("            throw new global::System.ArgumentNullException(nameof(responseType));");
+        builder.AppendLine();
+        builder.AppendLine("        foreach (var entry in RequestInvokerDescriptors)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            if (entry.RequestType == requestType && entry.ResponseType == responseType)");
+        builder.AppendLine("            {");
+        builder.AppendLine("                descriptor = entry.Descriptor;");
+        builder.AppendLine("                return true;");
+        builder.AppendLine("            }");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        descriptor = null;");
+        builder.AppendLine("        return false;");
+        builder.AppendLine("    }");
+    }
+
+    /// <summary>
+    ///     为单个 request invoker 描述符发射对应的静态强类型桥接方法。
+    /// </summary>
+    /// <param name="builder">生成源码构造器。</param>
+    /// <param name="emission">当前要输出的 invoker 发射计划。</param>
+    /// <remarks>
+    ///     这些方法的编号与 <see cref="RequestInvokerEmissionSpec.MethodIndex" /> 一一对应，
+    ///     dispatcher 通过描述符里的 <see cref="MethodInfo" /> 把 object 形参桥接回强类型 handler 与 request。
+    /// </remarks>
+    private static void AppendRequestInvokerMethod(StringBuilder builder, RequestInvokerEmissionSpec emission)
+    {
+        builder.Append("    private static global::System.Threading.Tasks.ValueTask<");
+        builder.Append(emission.ResponseTypeDisplayName);
+        builder.Append("> InvokeRequestHandler");
+        builder.Append(emission.MethodIndex);
+        builder.Append("(object handler, object request, global::System.Threading.CancellationToken cancellationToken)");
+        builder.AppendLine();
+        builder.AppendLine("    {");
+        builder.Append("        var typedHandler = (");
+        builder.Append(emission.HandlerInterfaceDisplayName);
+        builder.AppendLine(")handler;");
+        builder.Append("        var typedRequest = (");
+        builder.Append(emission.RequestTypeDisplayName);
+        builder.AppendLine(")request;");
+        builder.AppendLine("        return typedHandler.Handle(typedRequest, cancellationToken);");
         builder.AppendLine("    }");
     }
 

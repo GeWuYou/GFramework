@@ -4,6 +4,7 @@ using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Rule;
 using GFramework.Cqrs.Abstractions.Cqrs;
+using GFramework.Cqrs.Notification;
 using ICqrsRuntime = GFramework.Core.Abstractions.Cqrs.ICqrsRuntime;
 
 namespace GFramework.Cqrs.Internal;
@@ -14,8 +15,14 @@ namespace GFramework.Cqrs.Internal;
 /// </summary>
 internal sealed class CqrsDispatcher(
     IIocContainer container,
-    ILogger logger) : ICqrsRuntime
+    ILogger logger,
+    INotificationPublisher notificationPublisher) : ICqrsRuntime
 {
+    // 卸载安全的进程级缓存：当 generated registry 提供 request invoker 元数据时，
+    // registrar 会按请求/响应类型对把它们写入这里；若类型被卸载，条目会自然失效。
+    private static readonly WeakTypePairCache<GeneratedRequestInvokerMetadata>
+        GeneratedRequestInvokers = new();
+
     // 卸载安全的进程级缓存：通知类型只以弱键语义保留。
     // 若插件/热重载程序集中的通知类型被卸载，对应分发绑定会自然失效，下次命中时再重新计算。
     private static readonly WeakKeyCache<Type, NotificationDispatchBinding>
@@ -42,6 +49,10 @@ internal sealed class CqrsDispatcher(
 
     private static readonly MethodInfo StreamHandlerInvokerMethodDefinition = typeof(CqrsDispatcher)
         .GetMethod(nameof(InvokeStreamHandler), BindingFlags.NonPublic | BindingFlags.Static)!;
+
+    private readonly INotificationPublisher _notificationPublisher = notificationPublisher
+                                                                     ?? throw new ArgumentNullException(
+                                                                         nameof(notificationPublisher));
 
     /// <summary>
     ///     发布通知到所有已注册处理器。
@@ -71,11 +82,8 @@ internal sealed class CqrsDispatcher(
             return;
         }
 
-        foreach (var handler in handlers)
-        {
-            PrepareHandler(handler, context);
-            await dispatchBinding.Invoker(handler, notification, cancellationToken).ConfigureAwait(false);
-        }
+        var publishContext = CreateNotificationPublishContext(notification, handlers, context, dispatchBinding.Invoker);
+        await _notificationPublisher.PublishAsync(publishContext, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -166,6 +174,17 @@ internal sealed class CqrsDispatcher(
     /// </summary>
     private static RequestDispatchBinding<TResponse> CreateRequestDispatchBinding<TResponse>(Type requestType)
     {
+        var generatedDescriptor = TryGetGeneratedRequestInvokerDescriptor<TResponse>(requestType);
+        if (generatedDescriptor is not null)
+        {
+            var resolvedGeneratedDescriptor = generatedDescriptor.Value;
+            return new RequestDispatchBinding<TResponse>(
+                resolvedGeneratedDescriptor.HandlerType,
+                typeof(IPipelineBehavior<,>).MakeGenericType(requestType, typeof(TResponse)),
+                resolvedGeneratedDescriptor.Invoker,
+                requestType);
+        }
+
         return new RequestDispatchBinding<TResponse>(
             typeof(IRequestHandler<,>).MakeGenericType(requestType, typeof(TResponse)),
             typeof(IPipelineBehavior<,>).MakeGenericType(requestType, typeof(TResponse)),
@@ -198,6 +217,48 @@ internal sealed class CqrsDispatcher(
                 $"Request dispatch binding cache expected response type {typeof(TResponse).FullName}, but received {responseType.FullName}.");
 
         return RequestDispatchBindingBox.Create(CreateRequestDispatchBinding<TResponse>(requestType));
+    }
+
+    /// <summary>
+    ///     尝试从容器已注册的 generated request invoker provider 中获取指定请求/响应类型对的元数据。
+    /// </summary>
+    /// <typeparam name="TResponse">当前请求响应类型。</typeparam>
+    /// <param name="requestType">请求运行时类型。</param>
+    /// <returns>命中时返回强类型化后的描述符；否则返回 <see langword="null" />。</returns>
+    private static RequestInvokerDescriptor<TResponse>? TryGetGeneratedRequestInvokerDescriptor<TResponse>(Type requestType)
+    {
+        return GeneratedRequestInvokers.TryGetValue(requestType, typeof(TResponse), out var metadata) &&
+               metadata is not null
+            ? CreateRequestInvokerDescriptor<TResponse>(requestType, metadata)
+            : null;
+    }
+
+    /// <summary>
+    ///     把 provider 返回的弱类型描述符转换为 dispatcher 内部使用的强类型 request invoker 描述符。
+    /// </summary>
+    /// <typeparam name="TResponse">当前请求响应类型。</typeparam>
+    /// <param name="requestType">请求运行时类型。</param>
+    /// <param name="descriptor">provider 返回的弱类型描述符。</param>
+    /// <returns>可直接用于创建 request dispatch binding 的强类型描述符。</returns>
+    /// <exception cref="InvalidOperationException">当 provider 返回的委托签名与当前请求/响应类型对不匹配时抛出。</exception>
+    private static RequestInvokerDescriptor<TResponse> CreateRequestInvokerDescriptor<TResponse>(
+        Type requestType,
+        GeneratedRequestInvokerMetadata descriptor)
+    {
+        if (!descriptor.InvokerMethod.IsStatic)
+        {
+            throw new InvalidOperationException(
+                $"Generated CQRS request invoker provider returned a non-static invoker method for request type {requestType.FullName} and response type {typeof(TResponse).FullName}.");
+        }
+
+        if (Delegate.CreateDelegate(typeof(RequestInvoker<TResponse>), descriptor.InvokerMethod) is not
+            RequestInvoker<TResponse> invoker)
+        {
+            throw new InvalidOperationException(
+                $"Generated CQRS request invoker provider returned an incompatible invoker for request type {requestType.FullName} and response type {typeof(TResponse).FullName}.");
+        }
+
+        return new RequestInvokerDescriptor<TResponse>(descriptor.HandlerType, invoker);
     }
 
     /// <summary>
@@ -238,6 +299,50 @@ internal sealed class CqrsDispatcher(
         var method = NotificationHandlerInvokerMethodDefinition
             .MakeGenericMethod(notificationType);
         return (NotificationInvoker)Delegate.CreateDelegate(typeof(NotificationInvoker), method);
+    }
+
+    /// <summary>
+    ///     为当前通知发布调用创建发布上下文，把处理器集合与执行入口收敛到同一对象。
+    /// </summary>
+    /// <typeparam name="TNotification">通知类型。</typeparam>
+    /// <param name="notification">当前通知。</param>
+    /// <param name="handlers">当前发布调用已解析到的处理器集合。</param>
+    /// <param name="context">当前 CQRS 分发上下文。</param>
+    /// <param name="invoker">执行单个通知处理器时复用的强类型调用委托。</param>
+    /// <returns>供通知发布器消费的执行上下文。</returns>
+    private static NotificationPublishContext<TNotification> CreateNotificationPublishContext<TNotification>(
+        TNotification notification,
+        IReadOnlyList<object> handlers,
+        ICqrsContext context,
+        NotificationInvoker invoker)
+        where TNotification : INotification
+    {
+        return new DelegatingNotificationPublishContext<TNotification, NotificationDispatchState>(
+            notification,
+            handlers,
+            new NotificationDispatchState(context, invoker),
+            static (handler, currentNotification, state, currentCancellationToken) =>
+                InvokePublishedNotificationHandlerAsync(handler, currentNotification, state, currentCancellationToken));
+    }
+
+    /// <summary>
+    ///     执行通知发布器选中的单个处理器，并在调用前注入当前分发上下文。
+    /// </summary>
+    /// <typeparam name="TNotification">通知类型。</typeparam>
+    /// <param name="handler">要执行的处理器实例。</param>
+    /// <param name="notification">当前通知。</param>
+    /// <param name="state">当前处理器执行所需的 dispatcher 状态。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>表示当前处理器执行完成的值任务。</returns>
+    private static ValueTask InvokePublishedNotificationHandlerAsync<TNotification>(
+        object handler,
+        TNotification notification,
+        NotificationDispatchState state,
+        CancellationToken cancellationToken)
+        where TNotification : INotification
+    {
+        PrepareHandler(handler, state.Context);
+        return state.Invoker(handler, notification!, cancellationToken);
     }
 
     /// <summary>
@@ -388,6 +493,15 @@ internal sealed class CqrsDispatcher(
     }
 
     /// <summary>
+    ///     保存通知发布器执行单个 handler 时需要复用的 dispatcher 状态。
+    /// </summary>
+    /// <param name="Context">当前 CQRS 分发上下文。</param>
+    /// <param name="Invoker">执行单个通知处理器的强类型调用委托。</param>
+    private readonly record struct NotificationDispatchState(
+        ICqrsContext Context,
+        NotificationInvoker Invoker);
+
+    /// <summary>
     ///     保存流式请求分发路径所需的服务类型与调用委托。
     ///     该绑定让建流热路径只需一次缓存命中即可获得解析与调用所需元数据。
     /// </summary>
@@ -522,6 +636,46 @@ internal sealed class CqrsDispatcher(
     /// <typeparam name="TResponse">请求响应类型。</typeparam>
     private readonly record struct RequestPipelineExecutorFactoryState<TResponse>(
         RequestPipelineInvoker<TResponse> PipelineInvoker);
+
+    /// <summary>
+    ///     记录 registrar 写入的 generated request invoker 元数据。
+    /// </summary>
+    /// <param name="HandlerType">请求处理器在容器中的服务类型。</param>
+    /// <param name="InvokerMethod">执行请求处理器的开放静态方法。</param>
+    private sealed record GeneratedRequestInvokerMetadata(
+        Type HandlerType,
+        MethodInfo InvokerMethod);
+
+    /// <summary>
+    ///     保存 provider 返回的请求处理器服务类型与强类型 request invoker。
+    /// </summary>
+    /// <typeparam name="TResponse">当前请求响应类型。</typeparam>
+    private readonly record struct RequestInvokerDescriptor<TResponse>(
+        Type HandlerType,
+        RequestInvoker<TResponse> Invoker);
+
+    /// <summary>
+    ///     供 registrar 在 generated registry 激活后登记 request invoker 元数据。
+    /// </summary>
+    /// <param name="requestType">请求运行时类型。</param>
+    /// <param name="responseType">响应运行时类型。</param>
+    /// <param name="descriptor">要登记的 generated request invoker 描述符。</param>
+    internal static void RegisterGeneratedRequestInvokerDescriptor(
+        Type requestType,
+        Type responseType,
+        CqrsRequestInvokerDescriptor descriptor)
+    {
+        ArgumentNullException.ThrowIfNull(requestType);
+        ArgumentNullException.ThrowIfNull(responseType);
+        ArgumentNullException.ThrowIfNull(descriptor);
+
+        _ = GeneratedRequestInvokers.GetOrAdd(
+            requestType,
+            responseType,
+            (_, _) => new GeneratedRequestInvokerMetadata(
+                descriptor.HandlerType,
+                descriptor.InvokerMethod));
+    }
 
     /// <summary>
     ///     保存单次 request pipeline 分发所需的当前 handler、behavior 列表和 continuation 缓存。

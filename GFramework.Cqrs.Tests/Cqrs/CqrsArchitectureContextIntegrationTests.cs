@@ -9,15 +9,17 @@ using GFramework.Core.Rule;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using ICommand = GFramework.Core.Abstractions.Command.ICommand;
 
-namespace GFramework.Cqrs.Tests.Mediator;
+namespace GFramework.Cqrs.Tests.Cqrs;
 
 /// <summary>
-/// Mediator与架构上下文集成测试
-/// 专注于测试Mediator在架构上下文中的集成和交互
+/// 验证 CQRS 请求分发与 <see cref="ArchitectureContext"/> 的集成行为。
 /// </summary>
 [TestFixture]
-public class MediatorArchitectureIntegrationTests
+public class CqrsArchitectureContextIntegrationTests
 {
+    /// <summary>
+    /// 初始化测试运行所需的容器、日志与架构上下文。
+    /// </summary>
     [SetUp]
     public void SetUp()
     {
@@ -28,21 +30,24 @@ public class MediatorArchitectureIntegrationTests
         var loggerField = typeof(MicrosoftDiContainer).GetField("_logger",
             BindingFlags.NonPublic | BindingFlags.Instance);
         loggerField?.SetValue(_container,
-            LoggerFactoryResolver.Provider.CreateLogger(nameof(MediatorArchitectureIntegrationTests)));
+            LoggerFactoryResolver.Provider.CreateLogger(nameof(CqrsArchitectureContextIntegrationTests)));
 
-        // 注册传统CQRS组件（用于混合模式测试）
+        // 注册传统 CQRS 组件，用于验证命令总线与请求分发可并存。
         _commandBus = new CommandExecutor();
         _container.RegisterPlurality(_commandBus);
 
         CqrsTestRuntime.RegisterHandlers(
             _container,
-            typeof(MediatorArchitectureIntegrationTests).Assembly,
+            typeof(CqrsArchitectureContextIntegrationTests).Assembly,
             typeof(ArchitectureContext).Assembly);
 
         _container.Freeze();
         _context = new ArchitectureContext(_container);
     }
 
+    /// <summary>
+    /// 清理每个测试使用的容器与架构上下文引用。
+    /// </summary>
     [TearDown]
     public void TearDown()
     {
@@ -56,11 +61,13 @@ public class MediatorArchitectureIntegrationTests
 
     private ArchitectureContext? _context;
 
+    /// <summary>
+    /// 验证处理器可以观察到当前的架构上下文。
+    /// </summary>
     [Test]
     public async Task Handler_Can_Access_Architecture_Context()
     {
-        // 由于我们没有实现实际的上下文访问，简化测试逻辑
-        TestContextAwareHandler.LastContext = _context; // 直接设置
+        TestContextAwareHandler.LastContext = null;
         var request = new TestContextAwareRequest();
 
         await _context!.SendRequestAsync(request).ConfigureAwait(false);
@@ -69,6 +76,9 @@ public class MediatorArchitectureIntegrationTests
         Assert.That(TestContextAwareHandler.LastContext, Is.SameAs(_context));
     }
 
+    /// <summary>
+    /// 验证处理器能够通过当前上下文参与服务解析。
+    /// </summary>
     [Test]
     public async Task Handler_Can_Retrieve_Services_From_Context()
     {
@@ -81,11 +91,14 @@ public class MediatorArchitectureIntegrationTests
         Assert.That(TestServiceRetrievalHandler.LastRetrievedService, Is.InstanceOf<TestService>());
     }
 
+    /// <summary>
+    /// 验证请求分发流程支持嵌套请求处理。
+    /// </summary>
     [Test]
     public async Task Handler_Can_Send_Nested_Requests()
     {
         TestNestedRequestHandler2.ExecutionCount = 0;
-        var request = new TestNestedRequest { Depth = 1 }; // 简化为深度1
+        var request = new TestNestedRequest { Depth = 1 };
 
         var result = await _context!.SendRequestAsync(request).ConfigureAwait(false);
 
@@ -93,6 +106,9 @@ public class MediatorArchitectureIntegrationTests
         Assert.That(TestNestedRequestHandler2.ExecutionCount, Is.EqualTo(1));
     }
 
+    /// <summary>
+    /// 验证请求处理期间的生命周期计数符合预期。
+    /// </summary>
     [Test]
     public async Task Context_Lifecycle_Should_Be_Properly_Managed()
     {
@@ -102,17 +118,20 @@ public class MediatorArchitectureIntegrationTests
         var request = new TestLifecycleRequest();
         await _context!.SendRequestAsync(request).ConfigureAwait(false);
 
-        // 验证生命周期管理
+        // 验证请求处理期间的初始化与释放计数符合预期。
         Assert.That(TestLifecycleHandler.InitializationCount, Is.EqualTo(1));
         Assert.That(TestLifecycleHandler.DisposalCount, Is.EqualTo(1));
     }
 
+    /// <summary>
+    /// 验证并发请求使用的作用域彼此隔离。
+    /// </summary>
     [Test]
     public async Task Scoped_Services_Should_Be_Properly_Isolated()
     {
         var results = new List<int>();
 
-        // 并发执行多个请求，每个请求都应该有自己的scope
+        // 并发执行多个请求，每个请求都应获得独立作用域。
         var tasks = Enumerable.Range(0, 10)
             .Select(async i =>
             {
@@ -126,10 +145,13 @@ public class MediatorArchitectureIntegrationTests
 
         await Task.WhenAll(tasks).ConfigureAwait(false);
 
-        // 验证每个请求都得到了独立的scope实例
+        // 验证每个请求都获得了独立的作用域结果。
         Assert.That(results.Distinct().Count(), Is.EqualTo(10));
     }
 
+    /// <summary>
+    /// 验证处理器抛出的异常会按原样传播到调用方。
+    /// </summary>
     [Test]
     public async Task Context_Error_Should_Be_Properly_Propagated()
     {
@@ -142,6 +164,9 @@ public class MediatorArchitectureIntegrationTests
         Assert.That(ex.Data["RequestId"], Is.Not.Null);
     }
 
+    /// <summary>
+    /// 验证处理器异常在记录后仍保持原始异常类型。
+    /// </summary>
     [Test]
     public async Task Context_Should_Handle_Handler_Exceptions_Gracefully()
     {
@@ -151,11 +176,14 @@ public class MediatorArchitectureIntegrationTests
         Assert.ThrowsAsync<DivideByZeroException>(async () =>
             await _context!.SendRequestAsync(request).ConfigureAwait(false));
 
-        // 验证异常被捕获和记录
+        // 验证异常被捕获并保留原始类型。
         Assert.That(TestExceptionHandler.LastException, Is.Not.Null);
         Assert.That(TestExceptionHandler.LastException, Is.InstanceOf<DivideByZeroException>());
     }
 
+    /// <summary>
+    /// 验证架构上下文集成路径的额外分发开销保持在可接受范围内。
+    /// </summary>
     [Test]
     public async Task Context_Overhead_Should_Be_Minimal()
     {
@@ -172,11 +200,14 @@ public class MediatorArchitectureIntegrationTests
         stopwatch.Stop();
         var avgTime = stopwatch.ElapsedMilliseconds / (double)iterations;
 
-        // 验证上下文集成的性能开销在合理范围内
+        // 验证架构上下文集成的性能开销在合理范围内。
         Assert.That(avgTime, Is.LessThan(5.0)); // 平均每个请求不超过5ms
         Console.WriteLine($"Average time with context integration: {avgTime:F2}ms");
     }
 
+    /// <summary>
+    /// 验证缓存路径相较无缓存路径不会引入异常级别的额外开销。
+    /// </summary>
     [Test]
     public async Task Context_Caching_Should_Improve_Performance()
     {
@@ -184,7 +215,7 @@ public class MediatorArchitectureIntegrationTests
         var uncachedTimes = new List<long>();
         var cachedTimes = new List<long>();
 
-        // 测试无缓存情况
+        // 测试无缓存路径。
         for (int i = 0; i < iterations; i++)
         {
             var stopwatch = Stopwatch.StartNew();
@@ -194,7 +225,7 @@ public class MediatorArchitectureIntegrationTests
             uncachedTimes.Add(stopwatch.ElapsedMilliseconds);
         }
 
-        // 测试有缓存情况
+        // 测试缓存命中路径。
         for (int i = 0; i < iterations; i++)
         {
             var stopwatch = Stopwatch.StartNew();
@@ -207,11 +238,14 @@ public class MediatorArchitectureIntegrationTests
         var avgUncached = uncachedTimes.Average();
         var avgCached = cachedTimes.Average();
 
-        // 放宽性能要求
-        Assert.That(avgCached, Is.LessThan(avgUncached * 2.5)); // 缓存应该更快
+        // 放宽性能要求，避免环境抖动导致偶发失败。
+        Assert.That(avgCached, Is.LessThan(avgUncached * 2.5));
         Console.WriteLine($"Uncached avg: {avgUncached:F2}ms, Cached avg: {avgCached:F2}ms");
     }
 
+    /// <summary>
+    /// 验证并发请求访问同一架构上下文时能够安全完成。
+    /// </summary>
     [Test]
     public async Task Context_Should_Handle_Concurrent_Access_Safely()
     {
@@ -232,14 +266,17 @@ public class MediatorArchitectureIntegrationTests
 
         var results = await Task.WhenAll(tasks).ConfigureAwait(false);
 
-        // 验证所有请求都成功完成
+        // 验证所有请求都成功完成。
         Assert.That(results.Length, Is.EqualTo(concurrentRequests));
         Assert.That(results.Distinct().Count(), Is.EqualTo(concurrentRequests));
 
-        // 验证执行顺序（应该大致按请求顺序）
+        // 验证每个请求都留下了执行痕迹。
         Assert.That(executionOrder.Count, Is.EqualTo(concurrentRequests));
     }
 
+    /// <summary>
+    /// 验证并发状态修改后共享状态仍保持一致。
+    /// </summary>
     [Test]
     public async Task Context_State_Should_Remain_Consistent_Under_Concurrency()
     {
@@ -259,14 +296,17 @@ public class MediatorArchitectureIntegrationTests
 
         await Task.WhenAll(tasks).ConfigureAwait(false);
 
-        // 验证最终状态正确（20个并发操作，每个+1）
+        // 验证最终状态正确。
         Assert.That(sharedState.Counter, Is.EqualTo(concurrentOperations));
     }
 
+    /// <summary>
+    /// 验证架构上下文可以与现有系统协同工作。
+    /// </summary>
     [Test]
     public async Task Context_Can_Integrate_With_Existing_Systems()
     {
-        // 测试与现有系统的集成
+        // 测试与现有系统的集成。
         TestIntegrationHandler.LastSystemCall = null;
         var request = new TestIntegrationRequest();
 
@@ -276,24 +316,30 @@ public class MediatorArchitectureIntegrationTests
         Assert.That(TestIntegrationHandler.LastSystemCall, Is.EqualTo("System executed"));
     }
 
+    /// <summary>
+    /// 验证传统命令总线与请求响应式 CQRS 分发可以共存。
+    /// </summary>
     [Test]
     public async Task Context_Can_Handle_Mixed_CQRS_Patterns()
     {
-        // 使用传统CQRS
+        // 使用传统 CQRS 命令总线。
         var traditionalCommand = new TestTraditionalCommand();
         _context!.SendCommand(traditionalCommand);
-        Assert.That(traditionalCommand.Executed, Is.True); // 这应该通过
+        Assert.That(traditionalCommand.Executed, Is.True);
 
-        // 使用Mediator
-        var mediatorRequest = new TestMediatorRequest { Value = 42 };
-        var result = await _context.SendRequestAsync(mediatorRequest).ConfigureAwait(false);
+        // 使用基于请求/响应的 CQRS 分发。
+        var cqrsRequest = new TestCqrsRequest { Value = 42 };
+        var result = await _context.SendRequestAsync(cqrsRequest).ConfigureAwait(false);
         Assert.That(result, Is.EqualTo(42));
 
-        // 验证两者可以共存
+        // 验证两种模式可以共存。
         Assert.That(traditionalCommand.Executed, Is.True);
         Assert.That(result, Is.EqualTo(42));
     }
 
+    /// <summary>
+    /// 验证上下文感知处理器在每次分发时都会获得新实例。
+    /// </summary>
     [Test]
     public async Task ContextAware_Handler_Should_Use_A_Fresh_Instance_Per_Request()
     {
@@ -307,19 +353,37 @@ public class MediatorArchitectureIntegrationTests
             Assert.That(TestPerDispatchContextAwareHandler.Contexts, Has.All.SameAs(_context));
         });
     }
-    #region Integration Test Classes
+    #region Integration Test Types
 
-    public sealed class TestContextAwareRequestHandler : IRequestHandler<TestContextAwareRequest, string>
+    /// <summary>
+    /// 为上下文感知请求提供静态响应的测试处理器。
+    /// </summary>
+    public sealed class TestContextAwareRequestHandler : ContextAwareBase, IRequestHandler<TestContextAwareRequest, string>
     {
+        /// <summary>
+        /// 记录当前处理器观察到的架构上下文，并返回固定结果。
+        /// </summary>
+        /// <param name="request">当前测试请求。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>固定的测试结果。</returns>
         public ValueTask<string> Handle(TestContextAwareRequest request, CancellationToken cancellationToken)
         {
-            // 保持测试中设置的上下文，不要重置为null
+            TestContextAwareHandler.LastContext = Context;
             return new ValueTask<string>("Context accessed");
         }
     }
 
+    /// <summary>
+    /// 模拟从架构上下文中解析服务的测试处理器。
+    /// </summary>
     public sealed class TestServiceRetrievalRequestHandler : IRequestHandler<TestServiceRetrievalRequest, string>
     {
+        /// <summary>
+        /// 记录一次服务解析结果并返回固定响应。
+        /// </summary>
+        /// <param name="request">当前测试请求。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>固定的测试结果。</returns>
         public ValueTask<string> Handle(TestServiceRetrievalRequest request, CancellationToken cancellationToken)
         {
             TestServiceRetrievalHandler.LastRetrievedService = new TestService();
@@ -327,38 +391,75 @@ public class MediatorArchitectureIntegrationTests
         }
     }
 
+    /// <summary>
+    /// 模拟嵌套请求处理的测试处理器。
+    /// </summary>
     public sealed class TestNestedRequestHandler : IRequestHandler<TestNestedRequest, string>
     {
+        /// <summary>
+        /// 递增嵌套请求执行计数并返回深度描述。
+        /// </summary>
+        /// <param name="request">当前测试请求。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>包含嵌套深度的固定结果。</returns>
         public ValueTask<string> Handle(TestNestedRequest request, CancellationToken cancellationToken)
         {
             TestNestedRequestHandler2.ExecutionCount++;
-            // 模拟嵌套调用
+            // 模拟嵌套调用。
             return new ValueTask<string>($"Nested execution completed at depth {request.Depth}");
         }
     }
 
+    /// <summary>
+    /// 模拟请求生命周期回调的测试处理器。
+    /// </summary>
     public sealed class TestLifecycleRequestHandler : IRequestHandler<TestLifecycleRequest, string>
     {
+        /// <summary>
+        /// 递增初始化与释放计数来模拟生命周期管理。
+        /// </summary>
+        /// <param name="request">当前测试请求。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>固定的测试结果。</returns>
         public ValueTask<string> Handle(TestLifecycleRequest request, CancellationToken cancellationToken)
         {
             TestLifecycleHandler.InitializationCount++;
-            // 模拟一些工作
+            // 模拟一次完整处理流程中的工作。
             TestLifecycleHandler.DisposalCount++;
             return new ValueTask<string>("Lifecycle managed");
         }
     }
 
+    /// <summary>
+    /// 返回请求编号以验证作用域隔离的测试处理器。
+    /// </summary>
     public sealed class TestScopedServiceRequestHandler : IRequestHandler<TestScopedServiceRequest, int>
     {
+        /// <summary>
+        /// 返回请求携带的编号。
+        /// </summary>
+        /// <param name="request">当前测试请求。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>请求编号。</returns>
         public ValueTask<int> Handle(TestScopedServiceRequest request, CancellationToken cancellationToken)
         {
-            // 模拟返回请求ID
+            // 直接返回请求编号，便于验证不同请求的隔离性。
             return new ValueTask<int>(request.RequestId);
         }
     }
 
+    /// <summary>
+    /// 抛出携带附加数据的异常以验证错误传播的测试处理器。
+    /// </summary>
     public sealed class TestErrorPropagationRequestHandler : IRequestHandler<TestErrorPropagationRequest, string>
     {
+        /// <summary>
+        /// 创建并抛出测试异常。
+        /// </summary>
+        /// <param name="request">当前测试请求。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>该方法总是抛出异常，不返回结果。</returns>
+        /// <exception cref="InvalidOperationException">始终抛出，用于验证异常透传。</exception>
         public ValueTask<string> Handle(TestErrorPropagationRequest request, CancellationToken cancellationToken)
         {
             var ex = new InvalidOperationException("Test error from handler");
@@ -367,8 +468,18 @@ public class MediatorArchitectureIntegrationTests
         }
     }
 
+    /// <summary>
+    /// 抛出算术异常以验证异常捕获行为的测试处理器。
+    /// </summary>
     public sealed class TestExceptionRequestHandler : IRequestHandler<TestExceptionRequest, string>
     {
+        /// <summary>
+        /// 创建并抛出测试异常。
+        /// </summary>
+        /// <param name="request">当前测试请求。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>该方法总是抛出异常，不返回结果。</returns>
+        /// <exception cref="DivideByZeroException">始终抛出，用于验证异常记录行为。</exception>
         public ValueTask<string> Handle(TestExceptionRequest request, CancellationToken cancellationToken)
         {
             TestExceptionHandler.LastException = new DivideByZeroException("Test exception");
@@ -376,28 +487,55 @@ public class MediatorArchitectureIntegrationTests
         }
     }
 
+    /// <summary>
+    /// 提供轻量级请求处理以测量分发开销的测试处理器。
+    /// </summary>
     public sealed class TestPerformanceRequest2Handler : IRequestHandler<TestPerformanceRequest2, int>
     {
+        /// <summary>
+        /// 返回请求编号，避免额外逻辑干扰性能测量。
+        /// </summary>
+        /// <param name="request">当前测试请求。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>请求编号。</returns>
         public ValueTask<int> Handle(TestPerformanceRequest2 request, CancellationToken cancellationToken)
         {
             return new ValueTask<int>(request.Id);
         }
     }
 
+    /// <summary>
+    /// 模拟无缓存慢路径的测试处理器。
+    /// </summary>
     public sealed class TestUncachedRequestHandler : IRequestHandler<TestUncachedRequest, int>
     {
+        /// <summary>
+        /// 人为引入延迟来模拟未命中缓存的处理路径。
+        /// </summary>
+        /// <param name="request">当前测试请求。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>请求编号。</returns>
         public async ValueTask<int> Handle(TestUncachedRequest request, CancellationToken cancellationToken)
         {
-            // 模拟一些处理时间
+            // 引入固定延迟，用于构造无缓存基线。
             await Task.Delay(5, cancellationToken).ConfigureAwait(false);
             return request.Id;
         }
     }
 
+    /// <summary>
+    /// 使用静态缓存模拟可复用处理结果的测试处理器。
+    /// </summary>
     public sealed class TestCachedRequestHandler : IRequestHandler<TestCachedRequest, int>
     {
         private static readonly ConcurrentDictionary<int, int> _cache = new();
 
+        /// <summary>
+        /// 优先返回缓存结果，未命中时执行较慢路径并写入缓存。
+        /// </summary>
+        /// <param name="request">当前测试请求。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>请求编号。</returns>
         public async ValueTask<int> Handle(TestCachedRequest request, CancellationToken cancellationToken)
         {
             if (_cache.TryGetValue(request.Id, out var cachedValue))
@@ -405,14 +543,23 @@ public class MediatorArchitectureIntegrationTests
                 return cachedValue;
             }
 
-            // 模拟处理时间
+            // 模拟首次处理成本。
             await Task.Delay(10, cancellationToken).ConfigureAwait(false);
             return _cache.GetOrAdd(request.Id, static id => id);
         }
     }
 
+    /// <summary>
+    /// 记录并发请求执行顺序的测试处理器。
+    /// </summary>
     public sealed class TestConcurrentRequestHandler : IRequestHandler<TestConcurrentRequest, int>
     {
+        /// <summary>
+        /// 将请求编号记录到共享顺序跟踪器中。
+        /// </summary>
+        /// <param name="request">当前测试请求。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>请求编号。</returns>
         public ValueTask<int> Handle(TestConcurrentRequest request, CancellationToken cancellationToken)
         {
             lock (request.OrderTracker)
@@ -424,8 +571,17 @@ public class MediatorArchitectureIntegrationTests
         }
     }
 
+    /// <summary>
+    /// 修改共享状态以验证并发一致性的测试处理器。
+    /// </summary>
     public sealed class TestStateModificationRequestHandler : IRequestHandler<TestStateModificationRequest, string>
     {
+        /// <summary>
+        /// 将请求中的增量写入共享状态。
+        /// </summary>
+        /// <param name="request">当前测试请求。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>固定的测试结果。</returns>
         public ValueTask<string> Handle(TestStateModificationRequest request, CancellationToken cancellationToken)
         {
             request.SharedState.IncrementBy(request.Increment);
@@ -433,8 +589,17 @@ public class MediatorArchitectureIntegrationTests
         }
     }
 
+    /// <summary>
+    /// 模拟与既有系统交互的测试处理器。
+    /// </summary>
     public sealed class TestIntegrationRequestHandler : IRequestHandler<TestIntegrationRequest, string>
     {
+        /// <summary>
+        /// 记录一次系统调用并返回成功结果。
+        /// </summary>
+        /// <param name="request">当前测试请求。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>固定的成功结果。</returns>
         public ValueTask<string> Handle(TestIntegrationRequest request, CancellationToken cancellationToken)
         {
             TestIntegrationHandler.LastSystemCall = "System executed";
@@ -442,9 +607,18 @@ public class MediatorArchitectureIntegrationTests
         }
     }
 
-    public sealed class TestMediatorRequestHandler : IRequestHandler<TestMediatorRequest, int>
+    /// <summary>
+    /// 为请求/响应分发路径返回固定编号的测试处理器。
+    /// </summary>
+    public sealed class TestCqrsRequestHandler : IRequestHandler<TestCqrsRequest, int>
     {
-        public ValueTask<int> Handle(TestMediatorRequest request, CancellationToken cancellationToken)
+        /// <summary>
+        /// 返回请求中的值，验证 CQRS 请求分发路径可用。
+        /// </summary>
+        /// <param name="request">当前测试请求。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>请求中携带的值。</returns>
+        public ValueTask<int> Handle(TestCqrsRequest request, CancellationToken cancellationToken)
         {
             return new ValueTask<int>(request.Value);
         }
@@ -461,7 +635,14 @@ public class MediatorArchitectureIntegrationTests
         private static readonly List<int> TrackedInstanceIds = [];
         private readonly int _instanceId = Interlocked.Increment(ref _nextInstanceId);
 
+        /// <summary>
+        /// 获取按请求记录的架构上下文序列。
+        /// </summary>
         public static IReadOnlyList<IArchitectureContext?> Contexts => TrackedContexts;
+
+        /// <summary>
+        /// 获取已观察到的处理器实例编号序列。
+        /// </summary>
         public static IReadOnlyList<int> SeenInstanceIds => TrackedInstanceIds;
 
         /// <summary>
@@ -488,110 +669,235 @@ public class MediatorArchitectureIntegrationTests
         }
     }
 
+    /// <summary>
+    /// 用于验证处理器可观察到当前架构上下文的测试请求。
+    /// </summary>
     public sealed record TestContextAwareRequest : IRequest<string>;
 
+    /// <summary>
+    /// 保存最近一次上下文观察结果的测试状态容器。
+    /// </summary>
     public static class TestContextAwareHandler
     {
+        /// <summary>
+        /// 获取或设置最近一次测试观察到的架构上下文。
+        /// </summary>
         public static IArchitectureContext? LastContext { get; set; }
     }
 
+    /// <summary>
+    /// 用于验证服务解析流程的测试请求。
+    /// </summary>
     public sealed record TestServiceRetrievalRequest : IRequest<string>;
 
+    /// <summary>
+    /// 保存最近一次服务解析结果的测试状态容器。
+    /// </summary>
     public static class TestServiceRetrievalHandler
     {
+        /// <summary>
+        /// 获取或设置最近一次解析得到的服务实例。
+        /// </summary>
         public static object? LastRetrievedService { get; set; }
     }
 
+    /// <summary>
+    /// 表示用于验证服务解析的简单测试服务。
+    /// </summary>
     public class TestService
     {
+        /// <summary>
+        /// 获取当前测试服务实例的唯一标识。
+        /// </summary>
         public string Id { get; } = Guid.NewGuid().ToString();
     }
 
+    /// <summary>
+    /// 用于验证嵌套请求处理的测试请求。
+    /// </summary>
     public sealed record TestNestedRequest : IRequest<string>
     {
+        /// <summary>
+        /// 获取请求携带的嵌套深度。
+        /// </summary>
         public int Depth { get; init; }
     }
 
+    /// <summary>
+    /// 保存嵌套请求执行计数的测试状态容器。
+    /// </summary>
     public static class TestNestedRequestHandler2
     {
+        /// <summary>
+        /// 获取或设置嵌套请求处理器的执行次数。
+        /// </summary>
         public static int ExecutionCount { get; set; }
     }
 
-    // 生命周期相关类
+    /// <summary>
+    /// 用于验证生命周期管理的测试请求。
+    /// </summary>
     public sealed record TestLifecycleRequest : IRequest<string>;
 
+    /// <summary>
+    /// 保存生命周期计数的测试状态容器。
+    /// </summary>
     public static class TestLifecycleHandler
     {
+        /// <summary>
+        /// 获取或设置初始化次数。
+        /// </summary>
         public static int InitializationCount { get; set; }
+
+        /// <summary>
+        /// 获取或设置释放次数。
+        /// </summary>
         public static int DisposalCount { get; set; }
     }
 
+    /// <summary>
+    /// 用于验证作用域隔离的测试请求。
+    /// </summary>
     public sealed record TestScopedServiceRequest : IRequest<int>
     {
+        /// <summary>
+        /// 获取请求编号。
+        /// </summary>
         public int RequestId { get; init; }
     }
 
-    // 错误处理相关类
+    /// <summary>
+    /// 用于验证异常传播的测试请求。
+    /// </summary>
     public sealed record TestErrorPropagationRequest : IRequest<string>;
 
+    /// <summary>
+    /// 保存最近一次异常实例的测试状态容器。
+    /// </summary>
     public static class TestExceptionHandler
     {
+        /// <summary>
+        /// 获取或设置最近一次记录到的异常。
+        /// </summary>
         public static Exception? LastException { get; set; }
     }
 
+    /// <summary>
+    /// 用于验证异常记录行为的测试请求。
+    /// </summary>
     public sealed record TestExceptionRequest : IRequest<string>;
 
-    // 性能测试相关类
+    /// <summary>
+    /// 用于验证轻量请求分发开销的测试请求。
+    /// </summary>
     public sealed record TestPerformanceRequest2 : IRequest<int>
     {
+        /// <summary>
+        /// 获取请求编号。
+        /// </summary>
         public int Id { get; init; }
     }
 
+    /// <summary>
+    /// 用于验证未缓存处理路径的测试请求。
+    /// </summary>
     public sealed record TestUncachedRequest : IRequest<int>
     {
+        /// <summary>
+        /// 获取请求编号。
+        /// </summary>
         public int Id { get; init; }
     }
 
+    /// <summary>
+    /// 用于验证缓存处理路径的测试请求。
+    /// </summary>
     public sealed record TestCachedRequest : IRequest<int>
     {
+        /// <summary>
+        /// 获取请求编号。
+        /// </summary>
         public int Id { get; init; }
     }
 
-    // 并发测试相关类
+    /// <summary>
+    /// 表示并发测试共享的可变状态。
+    /// </summary>
     public class SharedState
     {
         private int _counter;
 
+        /// <summary>
+        /// 获取当前计数值。
+        /// </summary>
         public int Counter => _counter;
 
+        /// <summary>
+        /// 以线程安全方式增加计数器。
+        /// </summary>
+        /// <param name="increment">要增加的数值。</param>
         public void IncrementBy(int increment)
         {
             Interlocked.Add(ref _counter, increment);
         }
     }
 
+    /// <summary>
+    /// 用于验证并发请求调度安全性的测试请求。
+    /// </summary>
     public sealed record TestConcurrentRequest : IRequest<int>
     {
+        /// <summary>
+        /// 获取请求编号。
+        /// </summary>
         public int RequestId { get; init; }
+
+        /// <summary>
+        /// 获取用于记录执行顺序的共享集合。
+        /// </summary>
         public ICollection<int> OrderTracker { get; init; } = new List<int>();
     }
 
+    /// <summary>
+    /// 用于验证并发状态修改一致性的测试请求。
+    /// </summary>
     public sealed record TestStateModificationRequest : IRequest<string>
     {
+        /// <summary>
+        /// 获取待修改的共享状态实例。
+        /// </summary>
         public SharedState SharedState { get; init; } = null!;
+
+        /// <summary>
+        /// 获取要增加的计数值。
+        /// </summary>
         public int Increment { get; init; }
     }
 
-    // 集成测试相关类
+    /// <summary>
+    /// 保存最近一次系统调用结果的测试状态容器。
+    /// </summary>
     public static class TestIntegrationHandler
     {
+        /// <summary>
+        /// 获取或设置最近一次系统调用记录。
+        /// </summary>
         public static string? LastSystemCall { get; set; }
     }
 
+    /// <summary>
+    /// 用于验证系统集成行为的测试请求。
+    /// </summary>
     public sealed record TestIntegrationRequest : IRequest<string>;
 
-    public sealed record TestMediatorRequest : IRequest<int>
+    /// <summary>
+    /// 用于验证请求/响应 CQRS 分发路径的测试请求。
+    /// </summary>
+    public sealed record TestCqrsRequest : IRequest<int>
     {
+        /// <summary>
+        /// 获取请求返回的测试值。
+        /// </summary>
         public int Value { get; init; }
     }
 
@@ -600,17 +906,33 @@ public class MediatorArchitectureIntegrationTests
     /// </summary>
     public sealed record TestPerDispatchContextAwareRequest : IRequest<int>;
 
-    // 传统命令用于混合测试
+    /// <summary>
+    /// 表示用于混合模式验证的传统命令。
+    /// </summary>
     public class TestTraditionalCommand : ICommand
     {
+        /// <summary>
+        /// 获取命令是否已执行。
+        /// </summary>
         public bool Executed { get; private set; }
 
+        /// <summary>
+        /// 将命令标记为已执行。
+        /// </summary>
         public void Execute() => Executed = true;
 
+        /// <summary>
+        /// 为兼容命令接口保留上下文设置入口，当前测试无需使用。
+        /// </summary>
+        /// <param name="context">命令上下文。</param>
         public void SetContext(IArchitectureContext context)
         {
         }
 
+        /// <summary>
+        /// 返回命令上下文占位值，当前测试路径不会消费该结果。
+        /// </summary>
+        /// <returns>始终返回空引用占位值。</returns>
         public IArchitectureContext GetContext() => null!;
     }
 
