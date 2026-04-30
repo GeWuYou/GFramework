@@ -136,8 +136,6 @@
 2. 不再重复评估 `oneOf` / `anyOf` 的 object-focused 子集，除非未来主线明确接受联合形状生成
 3. 若后续关键字需要新诊断编号或文档边界说明，继续保持 Runtime / Generator / Tooling 同步收口
 
-## 2026-04-30
-
 ### 阶段：Tooling lane 收口整理（AI-FIRST-CONFIG-RP-003）
 
 - 已把 Tooling / Docs 后续动作从 active 入口的主线叙述中剥离，改成 backlog 文件里的非阻塞并行 lane
@@ -165,8 +163,6 @@
 2. 若另开 Tooling / Docs batch，先读取 `ai-first-config-system-csharp-experience-next.md` 的并行 lane，再把结果摘要写回 active tracking / trace
 3. 继续保持 active 入口精简，不在默认恢复文件中追加 UI 细节、治理台账或面向读者的文档草稿
 
-## 2026-04-30
-
 ### 阶段：Tooling / Docs reader-facing 边界补齐（AI-FIRST-CONFIG-RP-003）
 
 - 已在 `config-tool.md`、`config-system.md` 和 `tools/gframework-config-tool/README.md` 明确 reader-facing 能力边界
@@ -189,8 +185,6 @@
 
 1. Tooling / Docs 后续若继续推进，优先补真实采用示例，而不是重复扩写边界清单
 2. 主线代码批次继续以 Runtime / Generator / Tooling 三端共享关键字收口为中心
-
-## 2026-04-30
 
 ### 阶段：Tooling parser 坏形状拒绝收紧（AI-FIRST-CONFIG-RP-003）
 

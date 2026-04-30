@@ -325,6 +325,60 @@ public sealed class YamlConfigLoaderAllOfTests
     }
 
     /// <summary>
+    ///     验证运行时会显式拒绝当前共享子集尚未支持的 <c>anyOf</c>。
+    /// </summary>
+    [Test]
+    public void LoadAsync_Should_Throw_When_Object_Schema_Declares_Unsupported_AnyOf()
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            BuildMonsterConfigYaml(
+                """
+                itemCount: 3
+                """));
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            BuildMonsterSchema(
+                DefaultRewardPropertiesJson,
+                """
+                [
+                  {
+                    "type": "object",
+                    "required": ["itemCount"],
+                    "properties": {
+                      "itemCount": { "type": "integer" }
+                    }
+                  }
+                ]
+                """,
+                """
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "required": ["bonus"],
+                    "properties": {
+                      "bonus": { "type": "integer" }
+                    }
+                  }
+                ]
+                """));
+
+        var loader = CreateMonsterRewardLoader();
+        var registry = CreateRegistry();
+
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Diagnostic.FailureKind, Is.EqualTo(ConfigLoadFailureKind.SchemaUnsupported));
+            Assert.That(exception.Diagnostic.DisplayPath, Is.EqualTo("reward"));
+            Assert.That(exception.Message, Does.Contain("unsupported combinator keyword 'anyOf'"));
+            Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
     ///     验证运行时接受显式声明的 <c>additionalProperties: false</c>，
     ///     因为这与当前闭合对象字段集语义保持一致。
     /// </summary>

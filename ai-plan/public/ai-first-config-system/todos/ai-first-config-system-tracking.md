@@ -85,21 +85,8 @@
 
 - `2026-04-17` 之前的详细实现记录与定向验证命令已归档到历史 tracking / trace
 - active 跟踪文件只保留当前恢复点、当前状态和下一步，不再重复堆积已完成阶段的完整历史
-- `2026-04-20` 当前恢复点验证：
-  - `python3 .codex/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --pr 262 --format json`：通过（`CodeRabbit outside-diff comments: 1 declared, 1 parsed`，`CodeRabbit nitpick comments: 2 declared, 2 parsed`）
-  - `bun run test`（`tools/gframework-config-tool`）：通过（122 tests；包含条件分支坏形状回归）
-  - `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~SchemaConfigGeneratorTests"`：通过
-  - `dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --filter "FullyQualifiedName~YamlConfigLoaderIfThenElseTests"`：通过（8 tests；新增 `else without if` 运行时回归）
-  - `dotnet build GFramework.sln -c Release`：通过（存在仓库既有 analyzer warning，无新增错误）
-- `2026-04-30` Tooling lane 收口验证：
-  - `dotnet build GFramework.sln -c Release`：通过（0 Warnings, 0 Errors；本轮仅改 ai-plan 文件，确认没有伴随未验证的代码漂移）
-- `2026-04-30` Tooling / Docs reader-facing 收口：
-  - `git diff --check -- docs/zh-CN/game/config-tool.md docs/zh-CN/game/config-system.md tools/gframework-config-tool/README.md ai-plan/public/ai-first-config-system/todos/ai-first-config-system-tracking.md ai-plan/public/ai-first-config-system/traces/ai-first-config-system-trace.md`：通过
-  - 已补齐工具能力边界、`additionalProperties: false` / `oneOf` / `anyOf` 说明、工具与 Runtime 契约关系，以及复杂 shape 的 raw YAML 回退路径
-- `2026-04-30` Tooling parser 边界收紧：
-  - `bun run test`（`tools/gframework-config-tool`）：通过（4 test files）
-  - 已让工具侧对 `additionalProperties` 的共享边界与 Runtime / Generator 对齐，只接受 `additionalProperties: false`
-  - 已让数组 `items` / `contains` 子 schema 必须显式声明 object-shaped 且带 `type`，避免 tuple-array 或缺失类型的坏形状被工具侧宽松吞掉
+- 最近验证摘要：`2026-04-30` 已完成 Tooling / Docs reader-facing 收口与工具 parser 边界收紧，详细命令、批次背景与验证结果保留在 trace 的 `2026-04-30` 分阶段记录中
+- PR review 跟进指针：当前分支的 latest review follow-up 与后续本地核验结论以 `ai-first-config-system-trace.md` 为准，active tracking 不再重复展开逐条命令历史
 
 ## 下一步
 

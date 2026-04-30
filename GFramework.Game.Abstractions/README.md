@@ -278,4 +278,4 @@ public sealed class ContinueGameCommandHandler
   - 最常见。公共层依赖 abstractions，应用层或引擎层依赖 runtime
 
 For configuration-specific adoption decisions, treat `GFramework.Game` and
-[`docs/zh-CN/game/config-system.md`](../docs/zh-CN/game/config-system.md) as the authoritative next step.
+[配置系统](../docs/zh-CN/game/config-system.md) as the authoritative next step.
