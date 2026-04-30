@@ -981,52 +981,10 @@ var hotReload = loader.EnableHotReload(
 
 ## VS Code 工具
 
-完整采用说明见：[VS Code 配置工具](./config-tool.md)。
+`GFramework Config Tool` 是这套配置系统的编辑器侧辅助入口，用来把 `config/`、`schemas/`、轻量校验、
+表单预览和批量维护收敛到一条 VS Code 工作流里。
 
-仓库中的 `tools/gframework-config-tool` 当前提供以下能力：
+它不改变本页定义的运行时、生成器和 schema 语义边界，只负责把这些既有约束投射到编辑器采用路径中。
 
-- 浏览 `config/` 目录
-- 打开 raw YAML 文件
-- 打开匹配的 schema 文件
-- 根据 VS Code 当前界面语言在英文和简体中文之间切换主要工具界面文本
-- 对嵌套对象中的必填字段、未知字段、基础标量类型、标量数组和对象数组元素做轻量校验
-- 对嵌套对象字段、对象数组、顶层标量字段和顶层标量数组提供轻量表单入口
-- 在表单中渲染已有 YAML 注释，并允许直接编辑字段级 YAML 注释
-- 对带 `x-gframework-ref-table` 的字段提供引用 schema / 配置域 / 引用文件跳转入口
-- 对空配置文件提供基于 schema 的示例 YAML 初始化入口
-- 对同一配置域内的多份 YAML 文件执行批量字段更新
-- 在表单入口中显示 `title / description / default / const / enum / x-gframework-ref-table（UI 中显示为 ref-table） / multipleOf / pattern / format / uniqueItems / contains / minContains / maxContains / minProperties / maxProperties / dependentRequired / dependentSchemas / allOf / if / then / else` 元数据；批量编辑入口当前只暴露顶层可批量改写字段所需的基础信息
-
-当前表单入口适合编辑嵌套对象中的标量字段、标量数组，以及对象数组中的对象项。
-
-对象数组编辑器当前支持：
-
-- 新增和删除对象项
-- 编辑对象项中的标量字段
-- 编辑对象项中的标量数组
-- 编辑对象项中的嵌套对象字段
-- 编辑对象项内部继续嵌套的对象数组，只要这些内层对象数组项仍然由对象、标量字段、标量数组和嵌套对象组成
-
-如果对象数组中混入了标量项，或者更深层结构超出当前 schema 子集，表单入口会明确提示该路径需要回退到 raw YAML。
-
-当前批量编辑入口仍刻意限制在“同域文件统一改动顶层标量字段和顶层标量数组”，避免复杂结构批量写回时破坏人工维护的 YAML 排版。
-
-## 适用范围
-
-当前这套工具更适合已经定义好 schema、需要校验、轻量表单和批量改写能力的内容维护场景，尤其适合由开发者或技术策划主导的游戏项目配置工作流。
-
-以下场景目前仍建议保留 raw YAML 编辑，或由项目补充专用工具：
-
-- 需要更完整的 JSON Schema 支持
-- 需要覆盖更复杂的数组结构和更深层 schema 关键字
-
-## 工具形态建议
-
-对当前仓库已经落地的工作流而言，`VS Code Extension` 形态已经可以覆盖 schema 校验、轻量表单、批量编辑和 raw YAML 回退这条采用路径。
-
-如果你的团队出现以下需求，再评估独立 `Config Studio` 会更合适：
-
-- 配置维护主要由非开发角色承担，希望进一步降低 VS Code 的安装和使用门槛
-- 需要更重的表格视图、跨表可视化关系编辑、复杂审批流或离线发布流程
-- 插件形态已经明显受限于 VS Code Webview / Extension API，而不是 schema 与工作流本身
-- 已经沉淀出稳定的 schema 元数据约定，足以支撑单独工具的长期维护
+如果你要了解工作区约定、命令入口、表单与批量编辑边界、适用场景，以及何时应该回退到 raw YAML，
+完整说明见：[VS Code 配置工具](./config-tool.md)。
