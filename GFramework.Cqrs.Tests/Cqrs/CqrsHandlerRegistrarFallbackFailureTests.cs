@@ -10,6 +10,7 @@ namespace GFramework.Cqrs.Tests.Cqrs;
 ///     验证 CQRS handler registrar 在 reflection fallback 元数据失效时的可观察告警行为。
 /// </summary>
 [TestFixture]
+[NonParallelizable]
 internal sealed class CqrsHandlerRegistrarFallbackFailureTests
 {
     private ILoggerFactoryProvider? _originalLoggerFactoryProvider;

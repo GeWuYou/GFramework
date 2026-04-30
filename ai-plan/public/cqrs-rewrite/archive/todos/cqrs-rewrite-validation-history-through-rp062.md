@@ -1,0 +1,91 @@
+# CQRS 重写迁移验证归档（至 RP-062）
+
+## 说明
+
+- 本文件归档原 active tracking 中累积的历史验证命令与阶段性验证结论。
+- `boot` 默认恢复入口应回到 `ai-plan/public/cqrs-rewrite/todos/cqrs-rewrite-migration-tracking.md`，不要再从这里挑选旧命令作为当前下一步。
+
+## 原验证记录
+
+- `RP-043` 之前的详细阶段记录、定向验证命令和阶段性决策均已移入主题内归档
+- `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~GFramework.Cqrs.Tests.Cqrs.CqrsDispatcherCacheTests"`
+  - 结果：通过
+  - 备注：`5/5` 测试通过；本轮新增 cached executor 上下文刷新回归，确认 executor 复用时仍按当次分发重新注入上下文
+- `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~GFramework.Cqrs.Tests.Cqrs.CqrsReflectionFallbackAttributeTests"`
+  - 结果：通过
+  - 备注：`5/5` 测试通过；本轮锁定 fallback attribute 的公开归一化合同与空参数防御语义
+- `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~GFramework.Cqrs.Tests.Cqrs.CqrsDispatcherCacheTests"`
+  - 结果：通过
+  - 备注：`7/7` 测试通过；本轮新增 cached notification / stream binding 上下文刷新回归，确认 binding 复用时仍按当次分发重新注入上下文
+- `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~GFramework.Cqrs.Tests.Cqrs.CqrsDispatcherContextValidationTests"`
+  - 结果：通过
+  - 备注：`3/3` 测试通过；本轮锁定默认 dispatcher 对非 `IArchitectureContext` 上下文的 request / notification / stream 失败语义，且未引入新增 warning
+- `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~GFramework.Cqrs.Tests.Cqrs.CqrsHandlerRegistrarFallbackFailureTests"`
+  - 结果：通过
+  - 备注：`3/3` 测试通过；本轮锁定 registrar 在 fallback 元数据失效时的 warning 语义，且保持 generated registry 主路径不回退
+- `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --no-restore -p:RestoreFallbackFolders= -m:1 -nodeReuse:false`
+  - 结果：通过
+  - 备注：`63/63` 测试通过；当前沙箱限制了 MSBuild named pipe，验证需在提权环境下运行
+- `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --no-restore -p:RestoreFallbackFolders= -m:1 -nodeReuse:false --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests"`
+  - 结果：通过
+  - 备注：`14/14` 测试通过；本轮覆盖 pointer / function pointer 合同拒绝、fallback 诊断与现有精确注册路径
+- `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --no-restore -p:RestoreFallbackFolders= -m:1 -nodeReuse:false --filter "FullyQualifiedName~Reports_Compilation_Error_And_Skips_Precise_Registration_For_Hidden_Pointer_Response|FullyQualifiedName~Reports_Diagnostic_And_Skips_Registry_When_Fallback_Metadata_Is_Required_But_Runtime_Contract_Lacks_Fallback_Attribute|FullyQualifiedName~Emits_Assembly_Level_Fallback_Metadata_When_Fallback_Is_Required_And_Runtime_Contract_Is_Available"`
+  - 结果：通过
+  - 备注：`3/3` 测试通过；本轮直接覆盖 PR #261 指向的 3 个 pointer / function pointer 回归场景
+- `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --no-restore -p:RestoreFallbackFolders= -m:1 -nodeReuse:false --filter "FullyQualifiedName~GFramework.Cqrs.Tests.Cqrs.CqrsHandlerRegistrarTests"`
+  - 结果：通过
+  - 备注：`11/11` 测试通过；本轮覆盖 registrar 的 supported handler interface 缓存与 duplicate mapping 去重路径
+- `dotnet build GFramework.Cqrs.SourceGenerators/GFramework.Cqrs.SourceGenerators.csproj -c Release`
+  - 结果：通过
+  - 备注：`0 warning / 0 error`
+- `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests"`
+  - 结果：通过
+  - 备注：`17/17` 测试通过；本轮覆盖字符串 fallback 合同兼容路径与直接 `Type` fallback 元数据优先级
+- `dotnet build GFramework.Cqrs/GFramework.Cqrs.csproj -c Release`
+  - 结果：通过
+  - 备注：`0 warning / 0 error`
+- `dotnet build GFramework.Cqrs.SourceGenerators/GFramework.Cqrs.SourceGenerators.csproj -c Release`
+  - 结果：通过
+  - 备注：`0 warning / 0 error`
+- `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~GFramework.Cqrs.Tests.Cqrs.CqrsHandlerRegistrarTests"`
+  - 结果：通过
+  - 备注：`13/13` 测试通过；本轮覆盖 mixed fallback metadata 的 registrar 消费路径
+- `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests"`
+  - 结果：通过
+  - 备注：`18/18` 测试通过；本轮覆盖 mixed fallback metadata 的双特性发射路径
+- `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output /tmp/gframework-pr-review.json`
+  - 结果：通过
+  - 备注：确认当前分支对应 `PR #302`；latest head review 仍有 `3` 条 open AI threads，其中 MegaLinter 仅报告 `dotnet-format` restore failure 噪音
+- `dotnet build GFramework.Cqrs.SourceGenerators/GFramework.Cqrs.SourceGenerators.csproj -c Release`
+  - 结果：通过
+  - 备注：`0 warning / 0 error`
+- `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests"`
+  - 结果：通过
+  - 备注：`18/18` 测试通过；本轮直接覆盖 fallback preamble 排版与特性个数断言收紧
+- `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~GFramework.Cqrs.Tests.Cqrs.CqrsHandlerRegistrarTests"`
+  - 结果：通过
+  - 备注：`13/13` 测试通过；本轮确认 mixed fallback metadata 的 registrar 消费路径未回归
+- `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests"`
+  - 结果：通过
+  - 备注：`21/21` 测试通过；本轮新增多维数组、交错数组与外部程序集隐藏元素类型的 precise runtime type lookup 回归
+- `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests"`
+  - 结果：通过
+  - 备注：`22/22` 测试通过；本轮新增“外部程序集隐藏泛型定义 + 可见类型实参”的 precise registration 回归，确认仍走定向运行时类型重建
+- `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~GFramework.Cqrs.Tests.Cqrs.CqrsDispatcherCacheTests"`
+  - 结果：通过
+  - 备注：`4/4` 测试通过；本轮覆盖 request pipeline executor 的首次创建、复用与双行为顺序回归
+- `dotnet build GFramework.Cqrs/GFramework.Cqrs.csproj -c Release`
+  - 结果：通过
+  - 备注：`0 warning / 0 error`；本轮确认 dispatcher request pipeline 形状缓存未破坏 `net8.0` / `net9.0` / `net10.0` 目标构建
+- `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~RegisterHandlers_Should_Cache_Assembly_Metadata_Across_Containers|FullyQualifiedName~RegisterHandlers_Should_Cache_Loadable_Types_Across_Containers|FullyQualifiedName~Dispatcher_Should_Cache_Request_Pipeline_Executors_Per_Behavior_Count"`
+  - 结果：通过
+  - 备注：`3/3` 测试通过；本轮确认无捕获缓存工厂没有破坏 registrar / dispatcher 现有缓存行为
+- `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests"`
+  - 结果：通过
+  - 备注：`22/22` 测试通过；本轮新增外部程序集隐藏泛型定义的 precise registration 回归
+- `dotnet build GFramework.Cqrs.SourceGenerators/GFramework.Cqrs.SourceGenerators.csproj -c Release`
+  - 结果：通过
+  - 备注：`0 warning / 0 error`；本轮确认删除 pointer runtime-reconstruction 残留后生成器项目仍可正常构建
+- `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests"`
+  - 结果：通过
+  - 备注：`22/22` 测试通过；本轮确认 pointer / function pointer 拒绝语义保持不变，且未回归既有 precise runtime type lookup 场景
