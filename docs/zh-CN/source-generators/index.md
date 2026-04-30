@@ -42,6 +42,30 @@ GFramework 当前发布的生成器包是：
 | `GFramework.Cqrs.SourceGenerators` | `GFramework.Cqrs` |
 | `GFramework.Godot.SourceGenerators` | `GFramework.Godot` |
 
+对 `GFramework.Game.SourceGenerators` 而言，这个“服务 `GFramework.Game`”的关系还包含一个采用前提：
+
+- 它面向的是与 `GFramework.Game` Runtime 对齐的共享 schema 子集
+- 它的目标是把当前运行时已经明确支持的配置契约生成成类型与表包装，而不是承诺任意 JSON Schema 都能直接生成
+- 读者在评估配置工作流时，应始终把 [配置系统](../game/config-system.md) 视为实际采用边界的说明页
+
+## Game 配置生成器的采用边界
+
+如果你选择的是 `GFramework.Game.SourceGenerators`，请先按“共享子集”来理解它，而不是按“JSON Schema 全量实现”来理解它。
+
+当前 reader-facing 的采用路径是：
+
+- Runtime、Source Generator 与 Tooling 共同对齐一组共享关键字与对象形状约束
+- 生成器只为这组已经收口的契约生成 C# 配置类型、表包装和相关注册入口
+- 一旦 schema 超出这组共享边界，就应该回到 schema 本体与运行时专题页重新判断，而不是假设生成器会替你兜底
+
+当前不属于默认采用路径的典型情况包括：
+
+- `oneOf`、`anyOf` 这类会改变生成类型形状的组合关键字
+- 非 `false` 的 `additionalProperties`
+- 其他需要开放对象形状、联合分支或更自由属性合并的 schema 设计
+
+这些场景当前不应被理解为“文档还没写到的隐藏支持”，而应被理解为：它们不在 `GFramework.Game` 现阶段共享配置契约内。
+
 安装时通常保持生成器包与对应运行时包版本一致，并将生成器声明为：
 
 ```xml
@@ -85,6 +109,7 @@ GFramework 当前发布的生成器包是：
 
 - 配置 schema 生成与运行时接法：
   - [配置系统](../game/config-system.md)
+  - 读者若需要确认共享 schema 子集、关闭对象边界或复杂组合关键字的限制，应以该页为准，而不是只从本页推断支持范围
 - CQRS handler registry 生成器：
   - [CQRS Handler Registry 生成器](./cqrs-handler-registry-generator.md)
 - CQRS 模块族采用入口：

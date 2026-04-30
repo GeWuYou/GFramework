@@ -27,6 +27,29 @@
   - `IUiFactory`、`ISceneFactory`、`IUiRoot`、`ISceneRoot`、资源注册表等通常由引擎适配层或游戏项目自己实现。
   - 常见做法也是这样组织：页面 / 场景 factory、root、registry 在项目层，运行时基类和契约来自 `GFramework.Game` 与本包。
 
+## Config Workflow Boundary
+
+If you only depend on `GFramework.Game.Abstractions`, keep the configuration boundary explicit.
+
+`Config/` in this package defines read-side contracts such as `IConfigLoader`, `IConfigRegistry`, `IConfigTable`, and
+diagnostic models. It does not define the full adoption boundary of the AI-First configuration workflow by itself.
+
+The actual implementation and support boundary still lives in `GFramework.Game` and its companion documentation:
+
+- `YamlConfigLoader`, `GameConfigBootstrap`, and `GameConfigModule` are runtime features from `GFramework.Game`
+- `GFramework.Game.SourceGenerators` targets the shared schema subset that stays aligned with the runtime contract
+- schema designs outside that shared subset should be evaluated against `GFramework.Game` and
+  `docs/zh-CN/game/config-system.md`, not inferred from abstractions alone
+
+Typical examples that are outside the current adoption path include:
+
+- combinators such as `oneOf` and `anyOf`
+- non-`false` forms of `additionalProperties`
+- other schema designs that rely on open object shapes, union-like branching, or shape-merging behavior
+
+If your project needs those boundaries clarified, move from this package-level contract view to the runtime-facing
+configuration documentation instead of assuming `Game.Abstractions` implies broader schema support.
+
 ## 子系统地图
 
 ### `Config/`
@@ -205,6 +228,8 @@ public sealed class ContinueGameCommandHandler
 - 槽位存档仓库实现
 - YAML 配置加载器
 - Scene / UI 路由基类
+- AI-First configuration boundary details, including the supported shared schema subset and the unsupported combinator /
+  open-shape cases
 
 也就是说，本包回答的是“项目各层如何约定”，`GFramework.Game` 回答的是“这些约定默认怎么跑起来”。
 
@@ -251,3 +276,6 @@ public sealed class ContinueGameCommandHandler
   - 你需要默认实现、基础设施拼装、运行时启动入口
 - 两者一起用
   - 最常见。公共层依赖 abstractions，应用层或引擎层依赖 runtime
+
+For configuration-specific adoption decisions, treat `GFramework.Game` and
+[`docs/zh-CN/game/config-system.md`](../docs/zh-CN/game/config-system.md) as the authoritative next step.
