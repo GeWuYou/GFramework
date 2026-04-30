@@ -122,6 +122,9 @@ internal sealed class CqrsDispatcherContextValidationTests
         /// <summary>
         ///     返回固定结果；当前测试只关心调用前的上下文校验。
         /// </summary>
+        /// <param name="request">当前请求。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>固定整型结果。</returns>
         public ValueTask<int> Handle(ContextAwareRequest request, CancellationToken cancellationToken)
         {
             return ValueTask.FromResult(1);
@@ -138,6 +141,9 @@ internal sealed class CqrsDispatcherContextValidationTests
         /// <summary>
         ///     返回已完成任务；当前测试只关心调用前的上下文校验。
         /// </summary>
+        /// <param name="notification">当前通知。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>已完成任务。</returns>
         public ValueTask Handle(ContextAwareNotification notification, CancellationToken cancellationToken)
         {
             return ValueTask.CompletedTask;
@@ -154,6 +160,9 @@ internal sealed class CqrsDispatcherContextValidationTests
         /// <summary>
         ///     返回一个最小流；当前测试只关心建流前的上下文校验。
         /// </summary>
+        /// <param name="request">当前流请求。</param>
+        /// <param name="cancellationToken">取消枚举时使用的取消令牌。</param>
+        /// <returns>包含单个固定元素的异步流。</returns>
         public async IAsyncEnumerable<int> Handle(
             ContextAwareStreamRequest request,
             [EnumeratorCancellation] CancellationToken cancellationToken)

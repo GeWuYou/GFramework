@@ -30,6 +30,7 @@ CQRS 迁移与收敛。
   - 已完成一轮 `static lambda + state` 微收敛：`CqrsDispatcher` 与 `CqrsHandlerRegistrar` 现会在弱缓存 / 并发缓存入口优先使用无捕获工厂，继续压低热路径上的额外闭包分配
   - 已补充 `CqrsReflectionFallbackAttribute` 叶子级合同测试，锁定空 marker、字符串 fallback 名称归一化、直接 `Type` fallback 归一化与空参数防御语义
   - 已完成 `PR #304` review follow-up 收敛：`CqrsDispatcher` 现补齐 pipeline executor / continuation 缓存的线程模型文档，并把 request pipeline invoker 从按 `behaviorCount` 重复创建收敛为 binding 内复用
+  - 已补齐 `CqrsDispatcherContextValidationTests` 三个上下文校验 handler 的 XML `param` / `returns` 注释，以及 `DispatcherNotificationContextRefreshNotification`、`DispatcherStreamContextRefreshRequest` 的 `DispatchId` XML 参数注释，收敛上一轮 PR review 遗留的文档类 minor feedback
   - 已收紧 CQRS / generator 回归测试的脆弱断言：日志断言改为语义匹配，precise runtime type lookup 回归改为锁定数组秩、外部类型查找与“未发射 fallback metadata”这些稳定语义
   - 已为 dispatcher cache / context refresh / pipeline order 三组测试状态容器补齐并发保护，并将 `CqrsDispatcherCacheTests` 标记为 `NonParallelizable`，避免静态缓存与共享快照在并行测试中相互污染
   - 中期上继续 `Phase 8` 主线：参考 `ai-libs/Mediator`，继续扩大 generator 覆盖，并选择下一个收益明确的 dispatch / invoker 反射收敛点
