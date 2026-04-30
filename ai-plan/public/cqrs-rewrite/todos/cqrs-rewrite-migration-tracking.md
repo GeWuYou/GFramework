@@ -7,7 +7,7 @@ CQRS 迁移与收敛。
 
 ## 当前恢复点
 
-- 恢复点编号：`CQRS-REWRITE-RP-072`
+- 恢复点编号：`CQRS-REWRITE-RP-073`
 - 当前阶段：`Phase 8`
 - 当前焦点：
   - 已完成一轮 `CQRS vs Mediator` 只读评估归档，结论已沉淀到 `archive/todos/cqrs-vs-mediator-assessment-rp063.md`
@@ -74,6 +74,10 @@ CQRS 迁移与收敛。
   - 已完成一轮 invoker provider gate 合同回归：
     - `GFramework.SourceGenerators.Tests/Cqrs/CqrsHandlerRegistryGeneratorTests.cs` 现新增四条回归，分别锁定 request / stream 在缺少 `ICqrsRequestInvokerProvider`、`IEnumeratesCqrsRequestInvokerDescriptors`、`ICqrsStreamInvokerProvider` 或 `IEnumeratesCqrsStreamInvokerDescriptors` 时，generator 都会整体跳过对应 provider 元数据发射
     - 本轮最初采用固定源码片段替换来裁剪测试输入，但因三引号字符串缩进差异导致 helper 过脆；当前已收敛为按稳定起止标记移除源码块的 `RemoveBlock(...)` helper，避免 gate 回归依赖精确空格对齐
+  - 已完成一轮 generated invoker provider runtime 失败边界修复：
+    - `GFramework.Cqrs.Tests/Cqrs/CqrsGeneratedRequestInvokerProviderTests.cs` 现新增 request / stream 两组 `non-static invoker` 与 `incompatible invoker` 回归，锁定 dispatcher 在首次绑定阶段会显式拒绝非法 generated descriptor
+    - `GFramework.Cqrs/Internal/CqrsDispatcher.cs` 现把 `Delegate.CreateDelegate(...)` 抛出的 `ArgumentException` 统一包装为已有 XML 文档承诺的 `InvalidOperationException`，保持 request / stream 两条错误消息语义一致
+    - 本轮顺手为新增异步断言补齐 `ConfigureAwait(false)`，消除新测试引入的 `MA0004` warning
   - 当前相对 `origin/main` 的累计 branch diff 为 `24 files / 1754 changed lines`，仍低于本轮 `$gframework-batch-boot 50` 的主要 stop condition，可继续推进下一批低风险切片
   - 已将 mixed fallback 场景进一步收敛：当 runtime 允许同一程序集声明多个 `CqrsReflectionFallbackAttribute` 实例时，generator 现会把可直接引用的 fallback handlers 与仅能按名称恢复的 fallback handlers 拆分发射
   - `CqrsReflectionFallbackAttribute` 现允许多实例，以承载 `Type[]` 与字符串 fallback 元数据的组合输出
@@ -297,6 +301,12 @@ CQRS 迁移与收敛。
 - `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Does_Not_Emit_Request_Invoker_Provider_Metadata_When_Runtime_Lacks_Request_Provider_Interface|FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Does_Not_Emit_Request_Invoker_Provider_Metadata_When_Runtime_Lacks_Request_Descriptor_Enumerator|FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Does_Not_Emit_Stream_Invoker_Provider_Metadata_When_Runtime_Lacks_Stream_Provider_Interface|FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Does_Not_Emit_Stream_Invoker_Provider_Metadata_When_Runtime_Lacks_Stream_Descriptor_Enumerator|FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Emits_Request_Invoker_Provider_Metadata_When_Runtime_Contract_Is_Available|FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Emits_Stream_Invoker_Provider_Metadata_When_Runtime_Contract_Is_Available"`
   - 结果：通过
   - 备注：`6/6` passed；锁定 request / stream provider gate 依赖“provider 接口 + descriptor 枚举接口”同时存在，且原有 happy-path 发射仍保持通过
+- `dotnet build GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release`
+  - 结果：通过
+  - 备注：并行执行 build/test 时出现 `MSB3026` 输出文件竞争噪音；当前已确认没有新增 analyzer warning，`GFramework.Cqrs.Tests` 仍能完成 Release 构建
+- `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsGeneratedRequestInvokerProviderTests.SendAsync_Should_Throw_When_Generated_Request_Invoker_Is_Not_Static|FullyQualifiedName~CqrsGeneratedRequestInvokerProviderTests.SendAsync_Should_Throw_When_Generated_Request_Invoker_Is_Incompatible|FullyQualifiedName~CqrsGeneratedRequestInvokerProviderTests.CreateStream_Should_Throw_When_Generated_Stream_Invoker_Is_Not_Static|FullyQualifiedName~CqrsGeneratedRequestInvokerProviderTests.CreateStream_Should_Throw_When_Generated_Stream_Invoker_Is_Incompatible|FullyQualifiedName~CqrsGeneratedRequestInvokerProviderTests.SendAsync_Should_Use_Generated_Request_Invoker_When_Provider_Is_Registered|FullyQualifiedName~CqrsGeneratedRequestInvokerProviderTests.CreateStream_Should_Use_Generated_Stream_Invoker_When_Provider_Is_Registered"`
+  - 结果：通过
+  - 备注：`6/6` passed；确认 request / stream 的非法 generated invoker 现统一抛出 `InvalidOperationException`，且原有 happy-path 未回归
 - `dotnet build GFramework.Core/GFramework.Core.csproj -c Release`
   - 结果：通过
   - 备注：`0 warning / 0 error`；确认 `CqrsRuntimeModule` 接线变更未引入 `GFramework.Core` 模块构建问题
@@ -330,6 +340,6 @@ CQRS 迁移与收敛。
 
 ## 下一步
 
-1. 在保持 branch diff 明显低于 `50 files` 的前提下，继续挑选下一批低风险 `dispatch/invoker` 收敛切片，并优先考虑 request / stream provider 的 runtime 失败边界或 generator gate 合同补强
+1. 在保持 branch diff 明显低于 `50 files` 的前提下，继续挑选下一批低风险 `dispatch/invoker` 收敛切片，并优先考虑 request / stream provider 的剩余 runtime 失败边界或 generator gate 合同补强
 2. 基于已落地的 notification publisher seam，评估是否需要第二阶段公开配置面、并行 publisher 或 telemetry decorator
 3. 单独规划旧 `Command` / `Query` API 的收口顺序；`LegacyICqrsRuntime` compatibility slice 已收口到显式 helper 与专门测试，可暂时移出最高优先级

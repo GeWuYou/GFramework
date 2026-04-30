@@ -256,14 +256,23 @@ internal sealed class CqrsDispatcher(
                 $"Generated CQRS request invoker provider returned a non-static invoker method for request type {requestType.FullName} and response type {typeof(TResponse).FullName}.");
         }
 
-        if (Delegate.CreateDelegate(typeof(RequestInvoker<TResponse>), descriptor.InvokerMethod) is not
-            RequestInvoker<TResponse> invoker)
+        try
+        {
+            if (Delegate.CreateDelegate(typeof(RequestInvoker<TResponse>), descriptor.InvokerMethod) is not
+                RequestInvoker<TResponse> invoker)
+            {
+                throw new InvalidOperationException(
+                    $"Generated CQRS request invoker provider returned an incompatible invoker for request type {requestType.FullName} and response type {typeof(TResponse).FullName}.");
+            }
+
+            return new RequestInvokerDescriptor<TResponse>(descriptor.HandlerType, invoker);
+        }
+        catch (ArgumentException exception)
         {
             throw new InvalidOperationException(
-                $"Generated CQRS request invoker provider returned an incompatible invoker for request type {requestType.FullName} and response type {typeof(TResponse).FullName}.");
+                $"Generated CQRS request invoker provider returned an incompatible invoker for request type {requestType.FullName} and response type {typeof(TResponse).FullName}.",
+                exception);
         }
-
-        return new RequestInvokerDescriptor<TResponse>(descriptor.HandlerType, invoker);
     }
 
     /// <summary>
@@ -328,13 +337,22 @@ internal sealed class CqrsDispatcher(
                 $"Generated CQRS stream invoker provider returned a non-static invoker method for request type {requestType.FullName} and response type {responseType.FullName}.");
         }
 
-        if (Delegate.CreateDelegate(typeof(StreamInvoker), descriptor.InvokerMethod) is not StreamInvoker invoker)
+        try
+        {
+            if (Delegate.CreateDelegate(typeof(StreamInvoker), descriptor.InvokerMethod) is not StreamInvoker invoker)
+            {
+                throw new InvalidOperationException(
+                    $"Generated CQRS stream invoker provider returned an incompatible invoker for request type {requestType.FullName} and response type {responseType.FullName}.");
+            }
+
+            return new StreamInvokerDescriptor(descriptor.HandlerType, invoker);
+        }
+        catch (ArgumentException exception)
         {
             throw new InvalidOperationException(
-                $"Generated CQRS stream invoker provider returned an incompatible invoker for request type {requestType.FullName} and response type {responseType.FullName}.");
+                $"Generated CQRS stream invoker provider returned an incompatible invoker for request type {requestType.FullName} and response type {responseType.FullName}.",
+                exception);
         }
-
-        return new StreamInvokerDescriptor(descriptor.HandlerType, invoker);
     }
 
     /// <summary>

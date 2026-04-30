@@ -2,6 +2,31 @@
 
 ## 2026-04-30
 
+### 阶段：generated invoker provider runtime 失败边界修复（CQRS-REWRITE-RP-073）
+
+- 在 `RP-072` 提交后继续按 `gframework-batch-boot 50` 执行；当前 branch diff 相对 `origin/main` 仍为 `24 files`，文件阈值 headroom 依然充足，因此继续推进下一批 runtime 失败边界回归
+- 本轮原计划只补 `CqrsGeneratedRequestInvokerProviderTests` 的 request / stream 非 happy-path 回归，但定向测试首轮直接暴露出一个真实 runtime 缺口：
+  - `CqrsDispatcher.CreateRequestInvokerDescriptor(...)` 与 `CreateStreamInvokerDescriptor(...)` 的 XML 文档和消息语义都承诺会抛 `InvalidOperationException`
+  - 实际实现先调用 `Delegate.CreateDelegate(...)`，当 invoker 签名不兼容时会直接冒出 `ArgumentException`，导致文档承诺与运行时行为不一致
+- 主线程已完成：
+  - `GFramework.Cqrs.Tests/Cqrs/CqrsGeneratedRequestInvokerProviderTests.cs` 新增 request / stream 两组 `non-static invoker` 与 `incompatible invoker` 回归，并保留 request / stream happy-path 作为同批守护断言
+  - `GFramework.Cqrs/Internal/CqrsDispatcher.cs` 现对 request / stream 两条 descriptor 创建路径统一捕获 `ArgumentException`，并转换成带原有错误消息的 `InvalidOperationException`
+  - 新增异步断言已补齐 `ConfigureAwait(false)`，避免测试批次自身引入 `MA0004` analyzer warning
+
+### 验证（RP-073）
+
+- `dotnet build GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release`
+  - 结果：通过
+  - 备注：并行执行 build/test 时曾出现 `MSB3026` 输出文件竞争噪音；无真实编译失败，也未引入新增 analyzer warning
+- `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsGeneratedRequestInvokerProviderTests.SendAsync_Should_Throw_When_Generated_Request_Invoker_Is_Not_Static|FullyQualifiedName~CqrsGeneratedRequestInvokerProviderTests.SendAsync_Should_Throw_When_Generated_Request_Invoker_Is_Incompatible|FullyQualifiedName~CqrsGeneratedRequestInvokerProviderTests.CreateStream_Should_Throw_When_Generated_Stream_Invoker_Is_Not_Static|FullyQualifiedName~CqrsGeneratedRequestInvokerProviderTests.CreateStream_Should_Throw_When_Generated_Stream_Invoker_Is_Incompatible|FullyQualifiedName~CqrsGeneratedRequestInvokerProviderTests.SendAsync_Should_Use_Generated_Request_Invoker_When_Provider_Is_Registered|FullyQualifiedName~CqrsGeneratedRequestInvokerProviderTests.CreateStream_Should_Use_Generated_Stream_Invoker_When_Provider_Is_Registered"`
+  - 结果：通过，`6/6` passed
+
+### 当前下一步（RP-073）
+
+1. 先提交本轮 runtime 失败边界修复与恢复点更新
+2. 重新复算 branch diff 后，再判断是否继续推进剩余 provider 失败边界或在接近阈值前停下
+3. 若继续下一批，优先保持单文件或双文件写集，避免在本轮后段扩散 review 面积
+
 ### 阶段：invoker provider gate 合同回归（CQRS-REWRITE-RP-072）
 
 - 在 `RP-071` 提交后继续按 `gframework-batch-boot 50` 执行；当前 branch diff 相对 `origin/main` 仍为 `24 files`，未接近主要 stop condition，因此继续追加一轮 test-only generator 合同回归

@@ -186,6 +186,318 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
     }
 
     /// <summary>
+    ///     验证当 generated request invoker provider 返回实例方法时，
+    ///     dispatcher 会显式拒绝该描述符，而不是在后续绑定阶段静默接受非法合同。
+    /// </summary>
+    [Test]
+    public void SendAsync_Should_Throw_When_Generated_Request_Invoker_Is_Not_Static()
+    {
+        var generatedAssembly = CreateGeneratedAssembly(
+            typeof(NonStaticRequestInvokerProviderRegistry),
+            "GFramework.Cqrs.Tests.Cqrs.NonStaticRequestInvokerAssembly, Version=1.0.0.0");
+        var container = new MicrosoftDiContainer();
+
+        CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
+        container.Freeze();
+
+        var context = new ArchitectureContext(container);
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await context.SendRequestAsync(new GeneratedRequestInvokerRequest("payload")).ConfigureAwait(false));
+        Assert.That(exception, Is.Not.Null);
+        Assert.That(exception!.Message, Does.Contain("non-static invoker method"));
+    }
+
+    /// <summary>
+    ///     验证当 generated request invoker provider 返回与 dispatcher 委托签名不兼容的方法时，
+    ///     dispatcher 会显式抛出契约错误。
+    /// </summary>
+    [Test]
+    public void SendAsync_Should_Throw_When_Generated_Request_Invoker_Is_Incompatible()
+    {
+        var generatedAssembly = CreateGeneratedAssembly(
+            typeof(IncompatibleRequestInvokerProviderRegistry),
+            "GFramework.Cqrs.Tests.Cqrs.IncompatibleRequestInvokerAssembly, Version=1.0.0.0");
+        var container = new MicrosoftDiContainer();
+
+        CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
+        container.Freeze();
+
+        var context = new ArchitectureContext(container);
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await context.SendRequestAsync(new GeneratedRequestInvokerRequest("payload")).ConfigureAwait(false));
+        Assert.That(exception, Is.Not.Null);
+        Assert.That(exception!.Message, Does.Contain("incompatible invoker"));
+    }
+
+    /// <summary>
+    ///     验证当 generated stream invoker provider 返回实例方法时，
+    ///     dispatcher 会在首次建流时显式拒绝该描述符。
+    /// </summary>
+    [Test]
+    public void CreateStream_Should_Throw_When_Generated_Stream_Invoker_Is_Not_Static()
+    {
+        var generatedAssembly = CreateGeneratedAssembly(
+            typeof(NonStaticStreamInvokerProviderRegistry),
+            "GFramework.Cqrs.Tests.Cqrs.NonStaticStreamInvokerAssembly, Version=1.0.0.0");
+        var container = new MicrosoftDiContainer();
+
+        CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
+        container.Freeze();
+
+        var context = new ArchitectureContext(container);
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await DrainAsync(context.CreateStream(new GeneratedStreamInvokerRequest(3))).ConfigureAwait(false));
+        Assert.That(exception, Is.Not.Null);
+        Assert.That(exception!.Message, Does.Contain("non-static invoker method"));
+    }
+
+    /// <summary>
+    ///     验证当 generated stream invoker provider 返回与 dispatcher 委托签名不兼容的方法时，
+    ///     dispatcher 会显式抛出契约错误。
+    /// </summary>
+    [Test]
+    public void CreateStream_Should_Throw_When_Generated_Stream_Invoker_Is_Incompatible()
+    {
+        var generatedAssembly = CreateGeneratedAssembly(
+            typeof(IncompatibleStreamInvokerProviderRegistry),
+            "GFramework.Cqrs.Tests.Cqrs.IncompatibleStreamInvokerAssembly, Version=1.0.0.0");
+        var container = new MicrosoftDiContainer();
+
+        CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
+        container.Freeze();
+
+        var context = new ArchitectureContext(container);
+        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await DrainAsync(context.CreateStream(new GeneratedStreamInvokerRequest(3))).ConfigureAwait(false));
+        Assert.That(exception, Is.Not.Null);
+        Assert.That(exception!.Message, Does.Contain("incompatible invoker"));
+    }
+
+    /// <summary>
+    ///     模拟返回实例 request invoker 方法的 generated registry。
+    /// </summary>
+    private sealed class NonStaticRequestInvokerProviderRegistry :
+        ICqrsHandlerRegistry,
+        ICqrsRequestInvokerProvider,
+        IEnumeratesCqrsRequestInvokerDescriptors
+    {
+        private static readonly CqrsRequestInvokerDescriptorEntry DescriptorEntry = new(
+            typeof(GeneratedRequestInvokerRequest),
+            typeof(string),
+            new CqrsRequestInvokerDescriptor(
+                typeof(IRequestHandler<GeneratedRequestInvokerRequest, string>),
+                typeof(NonStaticRequestInvokerProviderRegistry).GetMethod(
+                    nameof(InvokeGenerated),
+                    BindingFlags.NonPublic | BindingFlags.Instance)!));
+
+        /// <inheritdoc />
+        public void Register(IServiceCollection services, ILogger logger)
+        {
+            ArgumentNullException.ThrowIfNull(services);
+            ArgumentNullException.ThrowIfNull(logger);
+
+            services.AddTransient(
+                typeof(IRequestHandler<GeneratedRequestInvokerRequest, string>),
+                typeof(GeneratedRequestInvokerRequestHandler));
+        }
+
+        /// <inheritdoc />
+        public bool TryGetDescriptor(
+            Type requestType,
+            Type responseType,
+            out CqrsRequestInvokerDescriptor? descriptor)
+        {
+            if (requestType == typeof(GeneratedRequestInvokerRequest) && responseType == typeof(string))
+            {
+                descriptor = DescriptorEntry.Descriptor;
+                return true;
+            }
+
+            descriptor = null;
+            return false;
+        }
+
+        /// <inheritdoc />
+        public IReadOnlyList<CqrsRequestInvokerDescriptorEntry> GetDescriptors()
+        {
+            return [DescriptorEntry];
+        }
+
+        private ValueTask<string> InvokeGenerated(object handler, object request, CancellationToken cancellationToken)
+        {
+            return ValueTask.FromResult(string.Empty);
+        }
+    }
+
+    /// <summary>
+    ///     模拟返回不兼容 request invoker 方法的 generated registry。
+    /// </summary>
+    private sealed class IncompatibleRequestInvokerProviderRegistry :
+        ICqrsHandlerRegistry,
+        ICqrsRequestInvokerProvider,
+        IEnumeratesCqrsRequestInvokerDescriptors
+    {
+        private static readonly CqrsRequestInvokerDescriptorEntry DescriptorEntry = new(
+            typeof(GeneratedRequestInvokerRequest),
+            typeof(string),
+            new CqrsRequestInvokerDescriptor(
+                typeof(IRequestHandler<GeneratedRequestInvokerRequest, string>),
+                typeof(IncompatibleRequestInvokerProviderRegistry).GetMethod(
+                    nameof(InvokeGenerated),
+                    BindingFlags.NonPublic | BindingFlags.Static)!));
+
+        /// <inheritdoc />
+        public void Register(IServiceCollection services, ILogger logger)
+        {
+            ArgumentNullException.ThrowIfNull(services);
+            ArgumentNullException.ThrowIfNull(logger);
+
+            services.AddTransient(
+                typeof(IRequestHandler<GeneratedRequestInvokerRequest, string>),
+                typeof(GeneratedRequestInvokerRequestHandler));
+        }
+
+        /// <inheritdoc />
+        public bool TryGetDescriptor(
+            Type requestType,
+            Type responseType,
+            out CqrsRequestInvokerDescriptor? descriptor)
+        {
+            if (requestType == typeof(GeneratedRequestInvokerRequest) && responseType == typeof(string))
+            {
+                descriptor = DescriptorEntry.Descriptor;
+                return true;
+            }
+
+            descriptor = null;
+            return false;
+        }
+
+        /// <inheritdoc />
+        public IReadOnlyList<CqrsRequestInvokerDescriptorEntry> GetDescriptors()
+        {
+            return [DescriptorEntry];
+        }
+
+        private static string InvokeGenerated(object handler, object request)
+        {
+            return string.Empty;
+        }
+    }
+
+    /// <summary>
+    ///     模拟返回实例 stream invoker 方法的 generated registry。
+    /// </summary>
+    private sealed class NonStaticStreamInvokerProviderRegistry :
+        ICqrsHandlerRegistry,
+        ICqrsStreamInvokerProvider,
+        IEnumeratesCqrsStreamInvokerDescriptors
+    {
+        private static readonly CqrsStreamInvokerDescriptorEntry DescriptorEntry = new(
+            typeof(GeneratedStreamInvokerRequest),
+            typeof(int),
+            new CqrsStreamInvokerDescriptor(
+                typeof(IStreamRequestHandler<GeneratedStreamInvokerRequest, int>),
+                typeof(NonStaticStreamInvokerProviderRegistry).GetMethod(
+                    nameof(InvokeGenerated),
+                    BindingFlags.NonPublic | BindingFlags.Instance)!));
+
+        /// <inheritdoc />
+        public void Register(IServiceCollection services, ILogger logger)
+        {
+            ArgumentNullException.ThrowIfNull(services);
+            ArgumentNullException.ThrowIfNull(logger);
+
+            services.AddTransient(
+                typeof(IStreamRequestHandler<GeneratedStreamInvokerRequest, int>),
+                typeof(GeneratedStreamInvokerRequestHandler));
+        }
+
+        /// <inheritdoc />
+        public bool TryGetDescriptor(
+            Type requestType,
+            Type responseType,
+            out CqrsStreamInvokerDescriptor? descriptor)
+        {
+            if (requestType == typeof(GeneratedStreamInvokerRequest) && responseType == typeof(int))
+            {
+                descriptor = DescriptorEntry.Descriptor;
+                return true;
+            }
+
+            descriptor = null;
+            return false;
+        }
+
+        /// <inheritdoc />
+        public IReadOnlyList<CqrsStreamInvokerDescriptorEntry> GetDescriptors()
+        {
+            return [DescriptorEntry];
+        }
+
+        private object InvokeGenerated(object handler, object request, CancellationToken cancellationToken)
+        {
+            return Array.Empty<int>().ToAsyncEnumerable();
+        }
+    }
+
+    /// <summary>
+    ///     模拟返回不兼容 stream invoker 方法的 generated registry。
+    /// </summary>
+    private sealed class IncompatibleStreamInvokerProviderRegistry :
+        ICqrsHandlerRegistry,
+        ICqrsStreamInvokerProvider,
+        IEnumeratesCqrsStreamInvokerDescriptors
+    {
+        private static readonly CqrsStreamInvokerDescriptorEntry DescriptorEntry = new(
+            typeof(GeneratedStreamInvokerRequest),
+            typeof(int),
+            new CqrsStreamInvokerDescriptor(
+                typeof(IStreamRequestHandler<GeneratedStreamInvokerRequest, int>),
+                typeof(IncompatibleStreamInvokerProviderRegistry).GetMethod(
+                    nameof(InvokeGenerated),
+                    BindingFlags.NonPublic | BindingFlags.Static)!));
+
+        /// <inheritdoc />
+        public void Register(IServiceCollection services, ILogger logger)
+        {
+            ArgumentNullException.ThrowIfNull(services);
+            ArgumentNullException.ThrowIfNull(logger);
+
+            services.AddTransient(
+                typeof(IStreamRequestHandler<GeneratedStreamInvokerRequest, int>),
+                typeof(GeneratedStreamInvokerRequestHandler));
+        }
+
+        /// <inheritdoc />
+        public bool TryGetDescriptor(
+            Type requestType,
+            Type responseType,
+            out CqrsStreamInvokerDescriptor? descriptor)
+        {
+            if (requestType == typeof(GeneratedStreamInvokerRequest) && responseType == typeof(int))
+            {
+                descriptor = DescriptorEntry.Descriptor;
+                return true;
+            }
+
+            descriptor = null;
+            return false;
+        }
+
+        /// <inheritdoc />
+        public IReadOnlyList<CqrsStreamInvokerDescriptorEntry> GetDescriptors()
+        {
+            return [DescriptorEntry];
+        }
+
+        private static object InvokeGenerated(object handler, object request)
+        {
+            return Array.Empty<int>().ToAsyncEnumerable();
+        }
+    }
+
+    /// <summary>
     ///     创建带有 generated request invoker registry 元数据的程序集替身。
     /// </summary>
     private static Mock<Assembly> CreateGeneratedRequestInvokerAssembly()
@@ -212,6 +524,27 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
         generatedAssembly
             .Setup(static assembly => assembly.GetCustomAttributes(typeof(CqrsHandlerRegistryAttribute), false))
             .Returns([new CqrsHandlerRegistryAttribute(typeof(GeneratedStreamInvokerProviderRegistry))]);
+        return generatedAssembly;
+    }
+
+    /// <summary>
+    ///     创建带有指定 generated registry 元数据的程序集替身。
+    /// </summary>
+    /// <param name="registryType">测试 registry 类型。</param>
+    /// <param name="assemblyFullName">模拟程序集全名。</param>
+    /// <returns>可用于 registrar 注册流程的程序集替身。</returns>
+    private static Mock<Assembly> CreateGeneratedAssembly(Type registryType, string assemblyFullName)
+    {
+        ArgumentNullException.ThrowIfNull(registryType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(assemblyFullName);
+
+        var generatedAssembly = new Mock<Assembly>();
+        generatedAssembly
+            .SetupGet(static assembly => assembly.FullName)
+            .Returns(assemblyFullName);
+        generatedAssembly
+            .Setup(static assembly => assembly.GetCustomAttributes(typeof(CqrsHandlerRegistryAttribute), false))
+            .Returns([new CqrsHandlerRegistryAttribute(registryType)]);
         return generatedAssembly;
     }
 
