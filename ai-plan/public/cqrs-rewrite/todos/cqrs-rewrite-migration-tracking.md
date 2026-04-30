@@ -7,7 +7,7 @@ CQRS 迁移与收敛。
 
 ## 当前恢复点
 
-- 恢复点编号：`CQRS-REWRITE-RP-070`
+- 恢复点编号：`CQRS-REWRITE-RP-071`
 - 当前阶段：`Phase 8`
 - 当前焦点：
   - 已完成一轮 `CQRS vs Mediator` 只读评估归档，结论已沉淀到 `archive/todos/cqrs-vs-mediator-assessment-rp063.md`
@@ -68,6 +68,9 @@ CQRS 迁移与收敛。
     - `GFramework.Cqrs.Tests/Cqrs/CqrsGeneratedRequestInvokerProviderTests.cs` 现覆盖“实现类型隐藏、但 handler interface 可见”场景下的 generated request / stream invoker 消费路径
     - `HiddenImplementationGeneratedRequestInvokerProviderRegistry`、`HiddenImplementationGeneratedStreamInvokerProviderRegistry` 与对应 container / handler fixture 现锁定 registrar 接线后，dispatcher 会优先命中 generated descriptor，而不是退回反射 invoker
     - 当前 runtime 回归继续保持 `PreciseReflectedRegistrationSpec` 排除边界不变，只验证已允许发射 provider 元数据的 visible-interface hidden-implementation 场景
+  - 已完成一轮 precise reflected invoker provider 合同边界回归：
+    - `GFramework.SourceGenerators.Tests/Cqrs/CqrsHandlerRegistryGeneratorTests.cs` 现新增 request / stream 两条回归，明确当 handler 仍需走 `PreciseReflectedRegistrationSpec` 时，generator 即使检测到 invoker provider runtime 合同，也不会错误发射 descriptor、枚举接口或静态 invoker 桥接
+    - 本轮接受了一条只读 subagent 的“继续评估 precise reflected + provider 发射”候选思路，但主线程复核后确认该候选并不存在可安全放宽的 `typeof(request/response)` 子集，因此收敛为“锁定当前排除边界”的测试批次，而不是修改生产 generator 逻辑
   - 当前相对 `origin/main` 的累计 branch diff 为 `24 files / 1754 changed lines`，仍低于本轮 `$gframework-batch-boot 50` 的主要 stop condition，可继续推进下一批低风险切片
   - 已将 mixed fallback 场景进一步收敛：当 runtime 允许同一程序集声明多个 `CqrsReflectionFallbackAttribute` 实例时，generator 现会把可直接引用的 fallback handlers 与仅能按名称恢复的 fallback handlers 拆分发射
   - `CqrsReflectionFallbackAttribute` 现允许多实例，以承载 `Type[]` 与字符串 fallback 元数据的组合输出
@@ -276,6 +279,15 @@ CQRS 迁移与收敛。
 - `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsGeneratedRequestInvokerProviderTests"`
   - 结果：通过
   - 备注：`8/8` passed；补齐 hidden implementation + visible interface 场景后，确认 generated request / stream invoker 在 runtime 侧也会优先命中 provider descriptor
+- `dotnet build GFramework.Cqrs.SourceGenerators/GFramework.Cqrs.SourceGenerators.csproj -c Release`
+  - 结果：通过
+  - 备注：`0 warning / 0 error`；确认本轮 precise reflected invoker provider 合同回归未引入 generator 编译告警
+- `dotnet build GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release`
+  - 结果：通过
+  - 备注：`0 warning / 0 error`；并行验证时曾出现过 `MSB3026` 输出文件竞争噪音，随后已串行重跑并得到干净构建结果
+- `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Does_Not_Emit_Request_Invoker_Provider_Metadata_For_Precise_Reflected_Request_Registrations|FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Does_Not_Emit_Stream_Invoker_Provider_Metadata_For_Precise_Reflected_Stream_Registrations|FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Emits_Request_Invoker_Provider_Metadata_For_Hidden_Implementation_With_Visible_Handler_Interface|FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Emits_Stream_Invoker_Provider_Metadata_For_Hidden_Implementation_With_Visible_Handler_Interface"`
+  - 结果：通过
+  - 备注：`4/4` passed；串行确认 visible-interface hidden-implementation 仍发射 provider 元数据，而 precise reflected 注册继续保持“不发射 provider descriptor”的当前合同
 - `dotnet build GFramework.Core/GFramework.Core.csproj -c Release`
   - 结果：通过
   - 备注：`0 warning / 0 error`；确认 `CqrsRuntimeModule` 接线变更未引入 `GFramework.Core` 模块构建问题
@@ -309,6 +321,6 @@ CQRS 迁移与收敛。
 
 ## 下一步
 
-1. 在保持 branch diff 明显低于 `50 files` 的前提下，继续挑选下一批低风险 `dispatch/invoker` 收敛切片，并优先考虑 request / stream provider 的诊断、入口或测试补强
+1. 在保持 branch diff 明显低于 `50 files` 的前提下，继续挑选下一批低风险 `dispatch/invoker` 收敛切片，并优先考虑 request / stream provider 的诊断、入口或 runtime / generator 合同测试补强
 2. 基于已落地的 notification publisher seam，评估是否需要第二阶段公开配置面、并行 publisher 或 telemetry decorator
 3. 单独规划旧 `Command` / `Query` API 的收口顺序；`LegacyICqrsRuntime` compatibility slice 已收口到显式 helper 与专门测试，可暂时移出最高优先级

@@ -2,6 +2,39 @@
 
 ## 2026-04-30
 
+### 阶段：precise reflected invoker provider 合同边界回归（CQRS-REWRITE-RP-071）
+
+- 在 `RP-070` 提交后继续按 `gframework-batch-boot 50` 执行；当前已提交 branch diff 仍为 `24 files`，headroom 充足，因此继续下一批 generator-only 合同收敛
+- 本轮先接受一条只读 subagent 的候选建议，评估是否可把 `PreciseReflectedRegistrationSpec` 的某个安全子集也纳入 request / stream provider 发射
+- 主线程复核 `TryCreatePreciseReflectedRegistration(...)`、`CreateRequestInvokerEmissions(...)` / `CreateStreamInvokerEmissions(...)` 与现有 precise 测试素材后确认：
+  - precise reflected 分支之所以存在，正是因为 handler interface 的请求或响应类型无法完全通过 `typeof(...)` 稳定表达
+  - 当前 provider descriptor 合同需要直接发射 `typeof(requestType)` / `typeof(responseType)`；因此不存在可无条件放宽的“安全子集”
+  - 本轮最终不改生产 generator，而是把这条边界显式固化到回归测试，避免后续误把不存在的子集当成已支持能力
+- 主线程已完成：
+  - `GFramework.SourceGenerators.Tests/Cqrs/CqrsHandlerRegistryGeneratorTests.cs` 新增两条回归，分别锁定 request / stream 的 precise reflected 注册不会发射 invoker provider 元数据
+  - 同一组定向测试同时复核 hidden-implementation + visible-interface 场景仍会继续发射 provider 元数据，确保“允许发射”和“继续排除”的边界没有被本轮测试收紧弄混
+
+### 验证（RP-071）
+
+- `dotnet build GFramework.Cqrs.SourceGenerators/GFramework.Cqrs.SourceGenerators.csproj -c Release`
+  - 结果：通过，`0 warning / 0 error`
+- `dotnet build GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release`
+  - 结果：通过，`0 warning / 0 error`
+  - 备注：并行验证时曾出现 `MSB3026` 输出文件竞争噪音，随后已串行重跑同批命令并取得干净结果
+- `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Does_Not_Emit_Request_Invoker_Provider_Metadata_For_Precise_Reflected_Request_Registrations|FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Does_Not_Emit_Stream_Invoker_Provider_Metadata_For_Precise_Reflected_Stream_Registrations|FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Emits_Request_Invoker_Provider_Metadata_For_Hidden_Implementation_With_Visible_Handler_Interface|FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Emits_Stream_Invoker_Provider_Metadata_For_Hidden_Implementation_With_Visible_Handler_Interface"`
+  - 结果：通过，`4/4` passed
+- `git diff --name-only origin/main...HEAD | wc -l`
+  - 结果：通过
+  - 备注：当前相对 `origin/main` 的已提交 branch diff 仍为 `24 files`
+- `git diff --numstat origin/main...HEAD`
+  - 结果：通过
+  - 备注：当前相对 `origin/main` 的工作分支累计 diff 为 `1793 changed lines`
+
+### 当前下一步（RP-071）
+
+1. 先提交本轮 generator 合同边界回归，保持恢复点、trace 与已验证测试状态一致
+2. 继续挑选下一批低风险切片，优先考虑 request / stream provider 的 runtime 或 generator 诊断边界，而不是贸然扩大 precise reflected 支持面
+3. 若下一批仍可拆分为非冲突文件，再恢复只读 / 写入 subagent 的分工方式压低主线程上下文
 ### 阶段：hidden-implementation generated invoker runtime 回归补强（CQRS-REWRITE-RP-070）
 
 - 在 `5a77e2fb` 提交后补齐 active `ai-plan` 恢复入口，继续按 `gframework-batch-boot 50` 执行，基线仍为当前本地 `origin/main`
