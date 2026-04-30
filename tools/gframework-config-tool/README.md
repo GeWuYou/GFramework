@@ -78,6 +78,17 @@ The extension currently validates the repository's current schema subset:
 - array constraints such as `minItems`, `maxItems`, `contains`, `minContains`, `maxContains`, and `uniqueItems`
 - object constraints such as `minProperties`, `maxProperties`, `dependentRequired`, `dependentSchemas`, `allOf`, and
   object-focused `if` / `then` / `else`
+- closed-object validation through `additionalProperties: false`
+- explicit rejection for unsupported combinators such as `oneOf` and `anyOf`, instead of silently ignoring them
+
+## Contract Boundary
+
+This extension is an editor-side helper. It does not define the runtime contract for `GFramework.Game`.
+
+- The runtime and source generator remain the source of truth for which schema shapes are formally supported
+- The VS Code experience mirrors that shared subset so unsupported shapes fail early during browsing or validation
+- If a shape is too complex for the lightweight editors, fall back to raw YAML and the schema file first; do not assume
+  the runtime accepts a broader contract just because the editor has no custom form for it
 
 ## Workspace Settings
 
@@ -98,6 +109,13 @@ The extension currently validates the repository's current schema subset:
 5. Open the lightweight form preview or domain batch editing actions, then fall back to raw YAML for deeper nested edits
    when needed.
 
+Use raw YAML directly when you need:
+
+- deeper or more heterogeneous array shapes
+- object rules centered on `allOf`, `dependentSchemas`, or object-focused `if` / `then` / `else`
+- `contains` / `minContains` / `maxContains` verification on structures that are easier to reason about in source form
+- schema designs outside the current shared subset, including `oneOf`, `anyOf`, or non-`false` `additionalProperties`
+
 ## Documentation
 
 - Chinese adoption guide: [Game 配置工具](../../docs/zh-CN/game/config-tool.md)
@@ -110,6 +128,8 @@ The extension currently validates the repository's current schema subset:
 - Form preview supports nested objects and object-array editing, but deeper nested object arrays inside array items still
   fall back to raw YAML
 - Batch editing remains limited to top-level scalar fields and top-level scalar arrays
+- Closed-object support is limited to `additionalProperties: false`, and unsupported combinators such as `oneOf` /
+  `anyOf` are rejected on purpose
 
 ## Local Testing
 

@@ -83,6 +83,7 @@ Explorer + 表单预览。
 - 对空配置文件提供基于 schema 的示例 YAML 初始化入口
 - 对同一配置域内的多份 YAML 文件执行批量字段更新
 - 在表单入口中显示 `title / description / default / const / enum / x-gframework-ref-table（UI 中显示为 ref-table） / multipleOf / pattern / format / uniqueItems / contains / minContains / maxContains / minProperties / maxProperties / dependentRequired / dependentSchemas / allOf / if / then / else` 元数据；批量编辑入口当前只暴露顶层可批量改写字段所需的基础信息
+- 对 `additionalProperties: false` 提供闭合对象边界校验，并在遇到 `oneOf` / `anyOf` 或其他当前未收口的组合形状时明确提示该 schema 不属于当前工具支持子集
 
 当前表单入口适合编辑嵌套对象中的标量字段、标量数组，以及对象数组中的对象项。
 
@@ -97,6 +98,16 @@ Explorer + 表单预览。
 如果对象数组中混入了标量项，或者更深层结构超出当前 schema 子集，表单入口会明确提示该路径需要回退到 raw YAML。
 
 当前批量编辑入口仍刻意限制在“同域文件统一改动顶层标量字段和顶层标量数组”，避免复杂结构批量写回时破坏人工维护的 YAML 排版。
+
+### 工具边界与 Runtime 契约
+
+这个扩展是编辑器侧的辅助层，不定义 `GFramework.Game` 的 Runtime 契约。
+
+- Runtime / Source Generator 是否接受某份 schema，决定了它是否属于当前配置系统的正式支持范围
+- 工具里的表单、hint、校验和批量编辑，只是把这套已落地契约搬到 VS Code 中帮助你更快发现问题
+- 如果工具界面暂时没有把某个 shape 做成可视化编辑入口，不代表 Runtime 会自动接受更宽松的 schema；同样，如果 Runtime / Generator 已明确拒绝某类关键字，工具也不会把它包装成可继续编辑的“可用能力”
+
+日常采用时，建议把它理解为“优先用工具加速已支持子集的维护；遇到边界时立刻回到 schema + raw YAML 本体确认”。
 
 ## 推荐工作流
 
@@ -124,12 +135,22 @@ Explorer + 表单预览。
 - 顶层标量数组
 - 嵌套对象字段
 - 对象数组
+- object-focused `if` / `then` / `else`、`dependentRequired`、`dependentSchemas`、`allOf`
+- `contains` / `minContains` / `maxContains`
+- `additionalProperties: false`
 
 如果你进入更深层对象数组嵌套，当前更稳妥的做法通常是：
 
 1. 用 Explorer 找到目标文件
 2. 先看表单预览确认字段结构
 3. 再回到 raw YAML 完成最终编辑
+
+以下 shape 目前也建议直接回退到 raw YAML，并同时检查 schema 是否仍在当前共享支持子集内：
+
+- 需要表达 `oneOf` / `anyOf` 这类会改变生成类型形状的组合关键字
+- 需要 `additionalProperties` 的其他形态，而不是当前明确支持的 `additionalProperties: false`
+- 需要在 `allOf`、`dependentSchemas`、`if` / `then` / `else` 中引入父对象未声明的新字段
+- 需要比当前对象数组编辑器更深、更异构的数组结构
 
 ## 工作区设置
 
@@ -155,6 +176,7 @@ Explorer + 表单预览。
 - 校验聚焦仓库当前支持的 schema 子集
 - 表单预览支持对象数组，但更深的嵌套对象数组仍可能需要回退到 raw YAML
 - 批量编辑当前聚焦顶层标量和顶层标量数组字段
+- 共享约束里只支持闭合对象边界 `additionalProperties: false`；`oneOf` / `anyOf` 等改变生成形状的组合关键字会被明确拒绝
 
 因此，最稳妥的理解方式是：
 

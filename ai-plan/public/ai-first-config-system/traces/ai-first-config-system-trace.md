@@ -164,3 +164,28 @@
 1. 若继续做主线代码批次，直接回到共享关键字盘点，不让 Tooling / Docs 成为阻塞条件
 2. 若另开 Tooling / Docs batch，先读取 `ai-first-config-system-csharp-experience-next.md` 的并行 lane，再把结果摘要写回 active tracking / trace
 3. 继续保持 active 入口精简，不在默认恢复文件中追加 UI 细节、治理台账或面向读者的文档草稿
+
+## 2026-04-30
+
+### 阶段：Tooling / Docs reader-facing 边界补齐（AI-FIRST-CONFIG-RP-003）
+
+- 已在 `config-tool.md`、`config-system.md` 和 `tools/gframework-config-tool/README.md` 明确 reader-facing 能力边界
+- 本轮重点不是新增能力，而是把当前分支已经落地的结论写清楚：
+  - `contains` / `minContains` / `maxContains`
+  - `dependentRequired`、`dependentSchemas`、`allOf`
+  - object-focused `if` / `then` / `else`
+  - `additionalProperties: false`
+  - `oneOf` / `anyOf` rejection
+- 同时补充了两个采用原则：
+  - VS Code 工具是辅助层，不定义 Runtime 契约
+  - 复杂 shape 或超出共享子集的 schema，应回退到 raw YAML 与 schema 文件本体处理
+
+### 验证
+
+- 2026-04-30：`git diff --check -- docs/zh-CN/game/config-tool.md docs/zh-CN/game/config-system.md tools/gframework-config-tool/README.md ai-plan/public/ai-first-config-system/todos/ai-first-config-system-tracking.md ai-plan/public/ai-first-config-system/traces/ai-first-config-system-trace.md`
+  - 结果：通过
+
+### 下一步
+
+1. Tooling / Docs 后续若继续推进，优先补真实采用示例，而不是重复扩写边界清单
+2. 主线代码批次继续以 Runtime / Generator / Tooling 三端共享关键字收口为中心

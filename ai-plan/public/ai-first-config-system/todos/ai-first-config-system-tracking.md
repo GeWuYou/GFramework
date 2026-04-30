@@ -93,9 +93,12 @@
   - `dotnet build GFramework.sln -c Release`：通过（存在仓库既有 analyzer warning，无新增错误）
 - `2026-04-30` Tooling lane 收口验证：
   - `dotnet build GFramework.sln -c Release`：通过（0 Warnings, 0 Errors；本轮仅改 ai-plan 文件，确认没有伴随未验证的代码漂移）
+- `2026-04-30` Tooling / Docs reader-facing 收口：
+  - `git diff --check -- docs/zh-CN/game/config-tool.md docs/zh-CN/game/config-system.md tools/gframework-config-tool/README.md ai-plan/public/ai-first-config-system/todos/ai-first-config-system-tracking.md ai-plan/public/ai-first-config-system/traces/ai-first-config-system-trace.md`：通过
+  - 已补齐工具能力边界、`additionalProperties: false` / `oneOf` / `anyOf` 说明、工具与 Runtime 契约关系，以及复杂 shape 的 raw YAML 回退路径
 
 ## 下一步
 
 1. 主线继续回到 `YamlConfigSchemaValidator.cs`、`SchemaConfigGenerator.cs` 与 `configValidation.js` 的共享关键字盘点，默认跳过 `oneOf` / `anyOf`
-2. Tooling / Docs 若要并发推进，直接从 `ai-first-config-system-csharp-experience-next.md` 的并行 lane 开新 batch，不再扩写 active 入口
+2. Tooling / Docs 若要并发推进，优先补 reader-facing 示例或采用路径，不再重复扩写能力边界说明
 3. 保持 active tracking / trace 精简，只记录当前恢复点、最近验证和下一步恢复指针
