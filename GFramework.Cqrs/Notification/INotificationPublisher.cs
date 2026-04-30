@@ -16,9 +16,10 @@ public interface INotificationPublisher
     ///     执行一次通知发布。
     /// </summary>
     /// <typeparam name="TNotification">通知类型。</typeparam>
-    /// <param name="context">当前发布调用的处理器集合与执行入口。</param>
+    /// <param name="context">当前发布调用的处理器集合与执行入口，不能为空。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>表示通知发布完成的值任务。</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="context" /> 为 <see langword="null" />。</exception>
     ValueTask PublishAsync<TNotification>(
         NotificationPublishContext<TNotification> context,
         CancellationToken cancellationToken = default)

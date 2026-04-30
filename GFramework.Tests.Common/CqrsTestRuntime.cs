@@ -98,7 +98,13 @@ public static class CqrsTestRuntime
     /// </remarks>
     private static void RegisterLegacyRuntimeAlias(MicrosoftDiContainer container, ICqrsRuntime runtime)
     {
-        container.Register<LegacyICqrsRuntime>((LegacyICqrsRuntime)runtime);
+        if (runtime is not LegacyICqrsRuntime legacyRuntime)
+        {
+            throw new InvalidOperationException(
+                $"The registered {nameof(ICqrsRuntime)} must also implement {typeof(LegacyICqrsRuntime).FullName}.");
+        }
+
+        container.Register<LegacyICqrsRuntime>(legacyRuntime);
     }
 
     /// <summary>

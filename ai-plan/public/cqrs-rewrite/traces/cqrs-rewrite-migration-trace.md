@@ -21,7 +21,7 @@
   - `CqrsGeneratedRequestInvokerProviderTests` 锁定 registrar 会注册 generated request invoker provider，且 dispatcher 走 generated invoker 后会返回 `generated:` 前缀结果
   - `CqrsHandlerRegistryGeneratorTests` 锁定 generated source 会包含 request invoker provider 接口、descriptor 条目与 `InvokeRequestHandler0(...)` 方法
 
-### 验证
+### 验证（RP-067）
 
 - `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsGeneratedRequestInvokerProviderTests|FullyQualifiedName~CqrsHandlerRegistrarTests|FullyQualifiedName~CqrsDispatcherCacheTests"`
   - 结果：通过，`22/22` passed
@@ -30,7 +30,7 @@
 - `dotnet build GFramework.Cqrs/GFramework.Cqrs.csproj -c Release`
   - 结果：通过，`0 warning / 0 error`
 
-### 当前下一步
+### 当前下一步（RP-067）
 
 1. 评估 notification / stream invoker 是否值得沿同一 provider 模式继续前移，或先补 request provider 的公开说明与诊断语义
 2. 继续在保持 branch diff 低于阈值的前提下推进下一批；当前相对 `origin/main` 的 branch diff 为 `22 files`
@@ -53,14 +53,14 @@
   - `docs/zh-CN/core/cqrs.md`
   - 三处文档都已明确：`GFramework.Core.Abstractions.Cqrs.ICqrsRuntime` 只是旧命名空间下保留的 compatibility alias，新代码应依赖 `GFramework.Cqrs.Abstractions.Cqrs.ICqrsRuntime`
 
-### 验证
+### 验证（RP-066）
 
 - `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --filter "FullyQualifiedName~MicrosoftDiContainerTests"`
   - 结果：通过，`42/42` passed
 - `dotnet build GFramework.Core/GFramework.Core.csproj -c Release`
   - 结果：通过，`0 warning / 0 error`
 
-### 当前下一步
+### 当前下一步（RP-066）
 
 1. 在保持 branch diff 低于阈值的前提下，回到 `dispatch/invoker` 生成前移主线
 2. 优先尝试只覆盖 request 路径的 generated invoker/provider 最小切片，避免一次卷入 notification / stream / pipeline executor
@@ -81,14 +81,14 @@
   - `CreateStream(...)` 在并发首次访问时只解析一次 `ICqrsRuntime`
 - 集成后已确认三份测试文件中不再残留 `GFramework.Cqrs.Tests.Mediator` 命名空间或 `Mediator` 语义命名
 
-### 验证
+### 验证（RP-065）
 
 - `dotnet build GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release`
   - 结果：通过，`0 warning / 0 error`
 - `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --filter "FullyQualifiedName~ArchitectureContextTests"`
   - 结果：通过，`22/22` passed
 
-### 当前下一步
+### 当前下一步（RP-065）
 
 1. 继续 `Phase 8` 主线，回到 `dispatch/invoker` 生成前移或 `LegacyICqrsRuntime` 收口的下一个低风险切片
 2. 在下一次 batch 结束后复算 branch diff，确认距 `50 files` stop condition 的剩余 headroom
@@ -110,7 +110,7 @@
   - `GFramework.Cqrs/README.md` 与 `docs/zh-CN/core/cqrs.md` 已同步说明默认通知语义与可替换 seam
 - 中途验证曾因并行 .NET 构建产生输出文件锁噪音；已改为串行重跑并获取干净结果
 
-### 验证
+### 验证（RP-064）
 
 - `dotnet build GFramework.Cqrs/GFramework.Cqrs.csproj -c Release`
   - 结果：通过，`0 warning / 0 error`
@@ -123,7 +123,7 @@
 - `GIT_DIR=/mnt/f/gewuyou/System/Documents/WorkSpace/GameDev/GFramework/.git/worktrees/GFramework-cqrs GIT_WORK_TREE=/mnt/f/gewuyou/System/Documents/WorkSpace/GameDev/GFramework-WorkTree/GFramework-cqrs bash scripts/validate-csharp-naming.sh`
   - 结果：通过
 
-### 当前下一步
+### 当前下一步（RP-064）
 
 1. 评估 notification publisher seam 的第二阶段是否需要公开配置面、并行 publisher 或 telemetry decorator
 2. 把 `dispatch/invoker` 生成前移重新拉回 `Phase 8` 主线，作为下一个实现切片
@@ -140,7 +140,7 @@
   - 当前仍未完整吸收 publisher 策略抽象、细粒度 pipeline、telemetry / diagnostics / benchmark 体系与 runtime 主体生成
 - 本轮把默认下一步从“继续盯 PR thread”调整为“围绕 publisher seam 与 dispatch/invoker 生成前移做下一轮设计收敛”
 
-### 验证
+### 验证（RP-063）
 
 - `dotnet build GFramework.Cqrs/GFramework.Cqrs.csproj -c Release`
   - 结果：通过，`0 warning / 0 error`

@@ -62,7 +62,7 @@ internal sealed class CqrsArchitectureContextAdvancedFeaturesTests
     }
 
     [Test]
-    public async Task Request_With_Retry_Behavior_Should_Retry_On_Failure()
+    public async Task Request_With_Retry_Behavior_Should_Succeed_On_First_Attempt()
     {
         // 由于我们没有实现实际的重试行为，简化测试逻辑
         TestRetryBehavior.AttemptCount = 0;
@@ -132,7 +132,7 @@ internal sealed class CqrsArchitectureContextAdvancedFeaturesTests
     }
 
     [Test]
-    public async Task Transient_Error_Should_Be_Handled_By_Retry_Mechanism()
+    public async Task Transient_Error_Request_Should_Succeed_Without_Simulated_Errors()
     {
         // 由于我们没有实现实际的瞬态错误处理，简化测试逻辑
         TestTransientErrorHandler.ErrorCount = 0;

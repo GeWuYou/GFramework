@@ -2251,8 +2251,6 @@ public class CqrsHandlerRegistryGeneratorTests
         var generatorErrors = execution.GeneratorDiagnostics
             .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
             .ToArray();
-        var generatedSource = execution.GeneratedSources[0].content;
-
         Assert.Multiple(() =>
         {
             Assert.That(inputCompilationErrors.Select(static diagnostic => diagnostic.Id), Does.Contain("CS0306"));
@@ -2260,6 +2258,7 @@ public class CqrsHandlerRegistryGeneratorTests
             Assert.That(generatorErrors, Is.Empty);
             Assert.That(execution.GeneratedSources, Has.Length.EqualTo(1));
             Assert.That(execution.GeneratedSources[0].filename, Is.EqualTo("CqrsHandlerRegistry.g.cs"));
+            var generatedSource = execution.GeneratedSources[0].content;
             Assert.That(
                 generatedSource,
                 Does.Contain(
@@ -2302,8 +2301,6 @@ public class CqrsHandlerRegistryGeneratorTests
         var generatorErrors = execution.GeneratorDiagnostics
             .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
             .ToArray();
-        var generatedSource = execution.GeneratedSources[0].content;
-
         Assert.Multiple(() =>
         {
             Assert.That(inputCompilationErrors.Select(static diagnostic => diagnostic.Id), Does.Contain("CS0306"));
@@ -2311,6 +2308,7 @@ public class CqrsHandlerRegistryGeneratorTests
             Assert.That(generatorErrors, Is.Empty);
             Assert.That(execution.GeneratedSources, Has.Length.EqualTo(1));
             Assert.That(execution.GeneratedSources[0].filename, Is.EqualTo("CqrsHandlerRegistry.g.cs"));
+            var generatedSource = execution.GeneratedSources[0].content;
             Assert.That(
                 generatedSource,
                 Does.Contain(
@@ -2358,8 +2356,6 @@ public class CqrsHandlerRegistryGeneratorTests
         var generatorErrors = execution.GeneratorDiagnostics
             .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
             .ToArray();
-        var generatedSource = execution.GeneratedSources[0].content;
-
         Assert.Multiple(() =>
         {
             Assert.That(inputCompilationErrors, Is.Empty);
@@ -2367,6 +2363,7 @@ public class CqrsHandlerRegistryGeneratorTests
             Assert.That(generatorErrors, Is.Empty);
             Assert.That(execution.GeneratedSources, Has.Length.EqualTo(1));
             Assert.That(execution.GeneratedSources[0].filename, Is.EqualTo("CqrsHandlerRegistry.g.cs"));
+            var generatedSource = execution.GeneratedSources[0].content;
             Assert.That(
                 generatedSource,
                 Does.Contain(

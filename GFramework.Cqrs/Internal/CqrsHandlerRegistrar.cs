@@ -263,8 +263,8 @@ internal static class CqrsHandlerRegistrar
         if (registry is not ICqrsRequestInvokerProvider provider)
             return;
 
-        services.AddSingleton(typeof(ICqrsRequestInvokerProvider), provider);
         RegisterGeneratedRequestInvokerDescriptors(provider, assemblyName, logger);
+        services.AddSingleton(typeof(ICqrsRequestInvokerProvider), provider);
         logger.Debug(
             $"Registered CQRS request invoker provider {provider.GetType().FullName} for assembly {assemblyName}.");
     }

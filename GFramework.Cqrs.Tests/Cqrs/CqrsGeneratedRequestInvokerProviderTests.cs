@@ -14,12 +14,15 @@ namespace GFramework.Cqrs.Tests.Cqrs;
 [NonParallelizable]
 internal sealed class CqrsGeneratedRequestInvokerProviderTests
 {
+    private ILoggerFactoryProvider? _previousLoggerFactoryProvider;
+
     /// <summary>
     ///     在每个用例前重置 registrar / dispatcher 的静态缓存，避免跨用例共享状态影响断言。
     /// </summary>
     [SetUp]
     public void SetUp()
     {
+        _previousLoggerFactoryProvider = LoggerFactoryResolver.Provider;
         LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider();
         ClearRegistrarCaches();
         ClearDispatcherCaches();
@@ -31,6 +34,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
     [TearDown]
     public void TearDown()
     {
+        LoggerFactoryResolver.Provider = _previousLoggerFactoryProvider ?? new ConsoleLoggerFactoryProvider();
         ClearRegistrarCaches();
         ClearDispatcherCaches();
     }
@@ -67,18 +71,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
 
         var context = new ArchitectureContext(container);
         var response = await context.SendRequestAsync(new GeneratedRequestInvokerRequest("payload"));
-
-        var requestBindings = GetDispatcherCacheField("RequestDispatchBindings");
-        var binding = GetRequestDispatchBindingValue(
-            requestBindings,
-            typeof(GeneratedRequestInvokerRequest),
-            typeof(string));
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(response, Is.EqualTo("generated:payload"));
-            Assert.That(binding, Is.Not.Null);
-        });
+        Assert.That(response, Is.EqualTo("generated:payload"));
     }
 
     /// <summary>
@@ -156,22 +149,4 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
             .Invoke(cache, Array.Empty<object>());
     }
 
-    /// <summary>
-    ///     读取指定请求/响应类型对当前缓存的 request dispatch binding。
-    /// </summary>
-    private static object? GetRequestDispatchBindingValue(object requestBindings, Type requestType, Type responseType)
-    {
-        var bindingBox = requestBindings.GetType()
-            .GetMethod("GetValueOrDefaultForTesting", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!
-            .Invoke(requestBindings, [requestType, responseType]);
-        if (bindingBox is null)
-        {
-            return null;
-        }
-
-        return bindingBox.GetType()
-            .GetMethod("Get", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!
-            .MakeGenericMethod(responseType)
-            .Invoke(bindingBox, Array.Empty<object>());
-    }
 }

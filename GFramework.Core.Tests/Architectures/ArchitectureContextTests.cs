@@ -306,8 +306,6 @@ public class ArchitectureContextTests
     public async Task SendRequestAsync_Should_ResolveCqrsRuntime_OnlyOnce_When_AccessedConcurrently()
     {
         const int workerCount = 8;
-        var workerStartupTimeout = TimeSpan.FromSeconds(5);
-        var firstResolutionTimeout = TimeSpan.FromSeconds(5);
         using var startGate = new ManualResetEventSlim(false);
         using var allowResolutionToComplete = new ManualResetEventSlim(false);
         using var workersReady = new CountdownEvent(workerCount);
@@ -339,18 +337,11 @@ public class ArchitectureContextTests
             }))
             .ToArray();
 
-        Assert.That(
-            workersReady.Wait(workerStartupTimeout),
-            Is.True,
-            "Expected all workers to be ready before releasing start gate.");
-        startGate.Set();
-
-        Assert.That(
-            SpinWait.SpinUntil(() => Volatile.Read(ref resolutionCallCount) > 0, firstResolutionTimeout),
-            Is.True,
-            "Expected at least one CQRS runtime resolution attempt.");
-
-        allowResolutionToComplete.Set();
+        ReleaseWorkersAfterFirstResolutionAttempt(
+            workersReady,
+            startGate,
+            allowResolutionToComplete,
+            () => Volatile.Read(ref resolutionCallCount) > 0);
 
         var responses = await Task.WhenAll(requests);
 
@@ -372,8 +363,6 @@ public class ArchitectureContextTests
     public async Task PublishAsync_Should_ResolveCqrsRuntime_OnlyOnce_When_AccessedConcurrently()
     {
         const int workerCount = 8;
-        var workerStartupTimeout = TimeSpan.FromSeconds(5);
-        var firstResolutionTimeout = TimeSpan.FromSeconds(5);
         using var startGate = new ManualResetEventSlim(false);
         using var allowResolutionToComplete = new ManualResetEventSlim(false);
         using var workersReady = new CountdownEvent(workerCount);
@@ -405,18 +394,11 @@ public class ArchitectureContextTests
             }))
             .ToArray();
 
-        Assert.That(
-            workersReady.Wait(workerStartupTimeout),
-            Is.True,
-            "Expected all workers to be ready before releasing start gate.");
-        startGate.Set();
-
-        Assert.That(
-            SpinWait.SpinUntil(() => Volatile.Read(ref resolutionCallCount) > 0, firstResolutionTimeout),
-            Is.True,
-            "Expected at least one CQRS runtime resolution attempt.");
-
-        allowResolutionToComplete.Set();
+        ReleaseWorkersAfterFirstResolutionAttempt(
+            workersReady,
+            startGate,
+            allowResolutionToComplete,
+            () => Volatile.Read(ref resolutionCallCount) > 0);
 
         await Task.WhenAll(notifications).ConfigureAwait(false);
 
@@ -437,8 +419,6 @@ public class ArchitectureContextTests
     public async Task CreateStream_Should_ResolveCqrsRuntime_OnlyOnce_When_AccessedConcurrently()
     {
         const int workerCount = 8;
-        var workerStartupTimeout = TimeSpan.FromSeconds(5);
-        var firstResolutionTimeout = TimeSpan.FromSeconds(5);
         using var startGate = new ManualResetEventSlim(false);
         using var allowResolutionToComplete = new ManualResetEventSlim(false);
         using var workersReady = new CountdownEvent(workerCount);
@@ -470,18 +450,11 @@ public class ArchitectureContextTests
             }))
             .ToArray();
 
-        Assert.That(
-            workersReady.Wait(workerStartupTimeout),
-            Is.True,
-            "Expected all workers to be ready before releasing start gate.");
-        startGate.Set();
-
-        Assert.That(
-            SpinWait.SpinUntil(() => Volatile.Read(ref resolutionCallCount) > 0, firstResolutionTimeout),
-            Is.True,
-            "Expected at least one CQRS runtime resolution attempt.");
-
-        allowResolutionToComplete.Set();
+        ReleaseWorkersAfterFirstResolutionAttempt(
+            workersReady,
+            startGate,
+            allowResolutionToComplete,
+            () => Volatile.Read(ref resolutionCallCount) > 0);
 
         await Task.WhenAll(streamTasks).ConfigureAwait(false);
 
@@ -506,6 +479,46 @@ public class ArchitectureContextTests
 
         await foreach (var _ in stream.ConfigureAwait(false))
         {
+        }
+    }
+
+    /// <summary>
+    ///     释放并发 worker，并确保在断言失败时也能放行首次 runtime 解析。
+    /// </summary>
+    /// <param name="workersReady">用于确认 worker 已就绪的倒计时器。</param>
+    /// <param name="startGate">用于同时放行 worker 的门闩。</param>
+    /// <param name="allowResolutionToComplete">用于解除首次 runtime 解析阻塞的门闩。</param>
+    /// <param name="hasObservedResolutionAttempt">用于判断当前是否已观察到首次 runtime 解析尝试。</param>
+    private static void ReleaseWorkersAfterFirstResolutionAttempt(
+        CountdownEvent workersReady,
+        ManualResetEventSlim startGate,
+        ManualResetEventSlim allowResolutionToComplete,
+        Func<bool> hasObservedResolutionAttempt)
+    {
+        ArgumentNullException.ThrowIfNull(workersReady);
+        ArgumentNullException.ThrowIfNull(startGate);
+        ArgumentNullException.ThrowIfNull(allowResolutionToComplete);
+        ArgumentNullException.ThrowIfNull(hasObservedResolutionAttempt);
+
+        var workerStartupTimeout = TimeSpan.FromSeconds(5);
+        var firstResolutionTimeout = TimeSpan.FromSeconds(5);
+
+        Assert.That(
+            workersReady.Wait(workerStartupTimeout),
+            Is.True,
+            "Expected all workers to be ready before releasing start gate.");
+        startGate.Set();
+
+        try
+        {
+            Assert.That(
+                SpinWait.SpinUntil(hasObservedResolutionAttempt, firstResolutionTimeout),
+                Is.True,
+                "Expected at least one CQRS runtime resolution attempt.");
+        }
+        finally
+        {
+            allowResolutionToComplete.Set();
         }
     }
 

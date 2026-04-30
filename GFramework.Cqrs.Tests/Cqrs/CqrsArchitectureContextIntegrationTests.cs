@@ -67,8 +67,7 @@ public class CqrsArchitectureContextIntegrationTests
     [Test]
     public async Task Handler_Can_Access_Architecture_Context()
     {
-        // 当前测试通过直接注入上下文来聚焦验证架构上下文集成结果。
-        TestContextAwareHandler.LastContext = _context;
+        TestContextAwareHandler.LastContext = null;
         var request = new TestContextAwareRequest();
 
         await _context!.SendRequestAsync(request).ConfigureAwait(false);
@@ -359,17 +358,17 @@ public class CqrsArchitectureContextIntegrationTests
     /// <summary>
     /// 为上下文感知请求提供静态响应的测试处理器。
     /// </summary>
-    public sealed class TestContextAwareRequestHandler : IRequestHandler<TestContextAwareRequest, string>
+    public sealed class TestContextAwareRequestHandler : ContextAwareBase, IRequestHandler<TestContextAwareRequest, string>
     {
         /// <summary>
-        /// 处理请求并返回固定结果。
+        /// 记录当前处理器观察到的架构上下文，并返回固定结果。
         /// </summary>
         /// <param name="request">当前测试请求。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>固定的测试结果。</returns>
         public ValueTask<string> Handle(TestContextAwareRequest request, CancellationToken cancellationToken)
         {
-            // 保持测试中设置的上下文，不要重置为空。
+            TestContextAwareHandler.LastContext = Context;
             return new ValueTask<string>("Context accessed");
         }
     }

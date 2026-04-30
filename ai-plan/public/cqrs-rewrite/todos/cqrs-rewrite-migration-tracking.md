@@ -123,10 +123,11 @@ CQRS 迁移与收敛。
   - 本地核对后确认 `dotnet-format` 仍只有 `Restore operation failed` 噪音，没有附带当前仍成立的文件级格式诊断
   - 已按 review triage 修正 generator source preamble 的多实例 fallback 特性排版、移除死参数，并补强 mixed/direct fallback 发射回归断言与 XML 文档
 - `2026-04-30` 已重新执行 `$gframework-pr-review`：
-  - 当前分支对应 `PR #304`，状态为 `OPEN`
-  - latest reviewed commit 当前剩余 `7` 条 CodeRabbit nitpick 与 `2` 条 Greptile open threads，集中在测试脆弱断言、共享测试状态并发保护，以及 `CqrsDispatcher` 的缓存线程模型文档
-  - 本地核对后，已确认这些评论仍对应当前代码；MegaLinter 继续只暴露 `dotnet-format` 的 `Restore operation failed` 环境噪音，CTRF 汇总为 `2203/2203` passed
-  - 已在本地完成 follow-up：request pipeline invoker 改为 binding 级复用、共享测试状态切换到 `System.Threading.Lock` 保护、顺序测试改为受控记录接口、`CqrsDispatcherCacheTests` 标记为 `NonParallelizable`，并补齐相关 XML / 线程模型注释
+  - 当前分支对应 `PR #305`，状态为 `OPEN`
+  - 当前抓取到 `9` 条 CodeRabbit open threads、`2` 条 Greptile open threads；远端 CTRF 汇总为 `2214/2214` passed，MegaLinter 仍只暴露 `dotnet-format` 的 `Restore operation failed` 环境噪音
+  - 本地核对后，已确认以下评论仍然成立并已完成修正：`ArchitectureContextTests` 并发测试失败路径释放、`CqrsGeneratedRequestInvokerProviderTests` 的全局 logger provider 恢复与私有缓存断言解耦、`CqrsArchitectureContextIntegrationTests` 的真实上下文注入断言、`GeneratedRequestInvokerRequest` / `INotificationPublisher` XML 文档、`CqrsHandlerRegistrar` 的 provider 注册顺序、`CqrsTestRuntime` 的 legacy alias 显式失败模式，以及 `cqrs-rewrite` trace 重复标题
+  - 对于 `ICqrsRequestInvokerProvider` / generated `TryGetDescriptor(...)` 相关 Greptile 评论，本地评估后未改 dispatcher 热路径语义；改为补齐公开注释与生成器方法级注释，明确默认 runtime 只在注册阶段经 `IEnumeratesCqrsRequestInvokerDescriptors` 预热缓存，`TryGetDescriptor(...)` 保留为显式查询 seam
+  - 本轮额外修正了 `GFramework.SourceGenerators.Tests` 中先读取 `GeneratedSources[0]` 再断言长度的脆弱顺序，并将 `ArchitectureContextTests` 的并发 orchestration 收敛到公共 helper，消除本轮引入的 `MA0051` warning
 - `2026-04-29` 已完成一轮 precise runtime type lookup 的数组回归补强：
   - `GFramework.SourceGenerators.Tests` 已新增多维数组、交错数组、外部程序集隐藏元素类型三类回归
   - 当前生成器在 precise runtime type lookup 下已稳定保留数组秩信息，并递归发射交错数组的 `MakeArrayType()` 链
@@ -212,10 +213,22 @@ CQRS 迁移与收敛。
 - `RP-046` 至 `RP-062` 的历史验证命令与阶段性结果已移入验证归档，active tracking 只保留当前恢复入口需要的最新验证
 - `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --format json --json-output /tmp/current-pr-review.json`
   - 结果：通过
-  - 备注：确认当前分支对应 `PR #304`，并定位到仍需本地复核的 CodeRabbit / Greptile open thread
+  - 备注：确认当前分支对应 `PR #305`，并定位到仍需本地复核的 CodeRabbit / Greptile open thread
 - `dotnet build GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release`
   - 结果：通过
   - 备注：`0 warning / 0 error`；本轮确认 XML 文档补齐、`NonParallelizable`、`_syncRoot` 命名与 `ai-plan` 收敛未引入新增编译问题
+- `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsGeneratedRequestInvokerProviderTests|FullyQualifiedName~CqrsArchitectureContextIntegrationTests.Handler_Can_Access_Architecture_Context|FullyQualifiedName~CqrsArchitectureContextAdvancedFeaturesTests.Request_With_Retry_Behavior_Should_Succeed_On_First_Attempt|FullyQualifiedName~CqrsArchitectureContextAdvancedFeaturesTests.Transient_Error_Request_Should_Succeed_Without_Simulated_Errors"`
+  - 结果：通过
+  - 备注：`5/5` passed；覆盖 generated invoker provider、真实上下文注入与两条重命名高级行为测试
+- `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --filter "FullyQualifiedName~SendRequestAsync_Should_ResolveCqrsRuntime_OnlyOnce_When_AccessedConcurrently|FullyQualifiedName~PublishAsync_Should_ResolveCqrsRuntime_OnlyOnce_When_AccessedConcurrently|FullyQualifiedName~CreateStream_Should_ResolveCqrsRuntime_OnlyOnce_When_AccessedConcurrently"`
+  - 结果：通过
+  - 备注：`3/3` passed；确认并发首次解析测试在失败路径释放调整后保持通过
+- `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~Emits_Request_Invoker_Provider_Metadata_When_Runtime_Contract_Is_Available|FullyQualifiedName~Emits_Direct_Type_Fallback_Metadata_When_All_Fallback_Handlers_Are_Referenceable_And_Runtime_Type_Contract_Is_Available|FullyQualifiedName~Emits_Mixed_Direct_Type_And_String_Fallback_Metadata_When_Runtime_Allows_Multiple_Fallback_Attributes"`
+  - 结果：通过
+  - 备注：`3/3` passed；确认 provider 生成分支注释与断言顺序修正未改变生成语义
+- `dotnet build GFramework.Cqrs/GFramework.Cqrs.csproj -c Release`
+  - 结果：通过
+  - 备注：构建成功；并行验证期间出现过 `MSB3026` 拷贝重试噪音，属于同时运行多个 `dotnet` 命令时的输出文件竞争，不是持久性编译 warning
 - `bash scripts/validate-csharp-naming.sh`
   - 结果：通过
   - 备注：使用显式 `GIT_DIR` / `GIT_WORK_TREE` 绑定重跑后，`1045` 个 tracked C# 文件的命名校验全部通过；本轮 `_syncRoot` 改名未引入命名规则回归
