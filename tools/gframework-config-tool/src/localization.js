@@ -247,7 +247,7 @@ const zhCnMessages = {
     "webview.hint.format": "格式：{value}",
     "webview.hint.minItems": "最少元素数：{value}",
     "webview.hint.maxItems": "最多元素数：{value}",
-    "webview.hint.contains": "Contains 条件：{summary}",
+    "webview.hint.contains": "contains 条件：{summary}",
     "webview.hint.minContains": "最少匹配数：{value}",
     "webview.hint.maxContains": "最多匹配数：{value}",
     "webview.hint.uniqueItems": "元素必须唯一",

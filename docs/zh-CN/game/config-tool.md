@@ -109,6 +109,97 @@ Explorer + 表单预览。
 
 日常采用时，建议把它理解为“优先用工具加速已支持子集的维护；遇到边界时立刻回到 schema + raw YAML 本体确认”。
 
+### 最小接入示例与兼容 / 迁移说明
+
+项目里至少需要准备三类内容：
+
+- `config/<domain>/*.yaml`：实际配置文件
+- `schemas/<domain>.schema.json`：与该配置域对应的 schema
+- VS Code 工作区里的 `GFramework Config Tool` 扩展，以及与 schema 保持一致的 `x-gframework-ref-table` 引用约定
+
+最小目录可以从下面这个形态起步：
+
+```text
+GameProject/
+├─ config/
+│  └─ monster/
+│     └─ slime.yaml
+└─ schemas/
+   └─ monster.schema.json
+```
+
+最小 schema 示例：
+
+```json
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name", "rarity", "dropItems"],
+  "properties": {
+    "id": {
+      "type": "integer",
+      "title": "Monster Id",
+      "description": "Primary monster key.",
+      "default": 1
+    },
+    "name": {
+      "type": "string",
+      "title": "Display Name",
+      "minLength": 1
+    },
+    "rarity": {
+      "type": "string",
+      "enum": ["common", "elite", "boss"],
+      "default": "common"
+    },
+    "spawnTime": {
+      "type": "string",
+      "format": "time"
+    },
+    "dropItems": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "rewardTableId": {
+      "type": "string",
+      "x-gframework-ref-table": "reward-table"
+    }
+  }
+}
+```
+
+对应的 YAML 初始文件可以保持很小：
+
+```yaml
+id: 1
+name: Slime
+rarity: common
+spawnTime: 08:30:00Z
+dropItems:
+  - potion
+rewardTableId: starter-reward
+```
+
+推荐接入顺序：
+
+1. 在 VS Code 中打开包含 `config/` 和 `schemas/` 的工作区
+2. 如果目录不是默认值，先设置 `gframeworkConfig.configPath` 与 `gframeworkConfig.schemasPath`
+3. 通过 Explorer 打开目标 YAML 或 schema，先跑一次全量校验
+4. 对空 YAML 使用“基于 schema 的示例 YAML 初始化”，或直接从 raw YAML 开始录入
+5. 需要统一改同域顶层标量字段时，再进入批量编辑
+
+迁移自纯 raw YAML 工作流时，至少先检查下面几件事：
+
+- `additionalProperties` 是否显式设置为 `false`；省略或 `true` 不属于当前共享支持子集
+- schema 是否依赖 `oneOf` / `anyOf`；这些组合关键字会被 Runtime / Generator / Tooling 直接拒绝
+- 对象数组里是否混入标量项，或是否存在更深、更异构的数组结构
+- Runtime / Source Generator 是否已经接受这份 schema，而不是只有编辑器里“暂时看起来能写”
+
+当 schema 仍在共享支持子集内，但某段编辑路径已经超出轻量表单可视化边界时，优先回到 raw YAML；不要把“工具暂时没有表单入口”误判成“运行时契约已放宽”。
+
 ## 推荐工作流
 
 ### 1. 浏览配置与 schema

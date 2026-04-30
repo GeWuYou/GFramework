@@ -77,7 +77,7 @@
 
 如果你采用 AI-First 配置工作流，建议在进入实现前先确认两条边界：
 
-- 当前共享子集接受闭合对象边界 `additionalProperties: false`
+- 当前共享子集接受闭合对象边界 `additionalProperties: false`（需显式设置为 `false`；省略或 `true` 视为不支持）
 - `oneOf` / `anyOf` 这类会改变生成类型形状的组合关键字当前会被 Runtime / Generator / Tooling 直接拒绝
 
 更复杂的 schema shape 需要先回到 schema 设计与 raw YAML 维护路径，而不是假定编辑器工具存在隐藏支持。

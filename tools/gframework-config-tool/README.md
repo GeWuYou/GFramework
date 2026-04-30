@@ -109,11 +109,21 @@ This extension is an editor-side helper. It does not define the runtime contract
 5. Open the lightweight form preview or domain batch editing actions, then fall back to raw YAML for deeper nested edits
    when needed.
 
+Minimal adoption checklist:
+
+- Keep one workspace folder that contains both `config/` and `schemas/`
+- Place each config domain under `config/<domain>/*.yaml`
+- Place the matching schema at `schemas/<domain>.schema.json`
+- Use `x-gframework-ref-table` only on fields that should link to another config domain or reference file
+- Keep `additionalProperties` explicitly set to `false` when you need closed-object validation; omitting it or setting
+  it to `true` is outside the supported subset
+
 Use raw YAML directly when you need:
 
 - deeper or more heterogeneous array shapes
-- object rules centered on `allOf`, `dependentSchemas`, or object-focused `if` / `then` / `else`
-- `contains` / `minContains` / `maxContains` verification on structures that are easier to reason about in source form
+- supported object rules such as `allOf`, `dependentSchemas`, or object-focused `if` / `then` / `else` only when they
+  push the edit path beyond the lightweight form boundary
+- `contains` / `minContains` / `maxContains` when the structure is easier to reason about directly in YAML
 - schema designs outside the current shared subset, including `oneOf`, `anyOf`, or non-`false` `additionalProperties`
 
 ## Documentation

@@ -225,6 +225,21 @@ test("parseSchemaContent should reject unsupported additionalProperties forms", 
         /unsupported 'additionalProperties' metadata/u);
 });
 
+test("parseSchemaContent should reject unsupported explicit schema types", () => {
+    assert.throws(
+        () => parseSchemaContent(`
+            {
+              "type": "object",
+              "properties": {
+                "reward": {
+                  "type": "bogus"
+                }
+              }
+            }
+        `),
+        /declares unsupported type 'bogus'/u);
+});
+
 test("parseSchemaContent should build object const comparable keys with ordinal property ordering", () => {
     const schema = parseSchemaContent(`
         {
@@ -2699,6 +2714,49 @@ test("applyFormUpdates should rewrite nested object arrays from structured form 
     assert.match(updated, /^          -$/mu);
     assert.match(updated, /^            type: night$/mu);
     assert.match(updated, /^            value: true$/mu);
+});
+
+test("applyFormUpdates should not mix nested object-array items into the parent array", () => {
+    const updated = applyFormUpdates(
+        [
+            "phases:",
+            "  -",
+            "    wave: 1"
+        ].join("\n"),
+        {
+            objectArrays: {
+                phases: [
+                    {
+                        wave: "1",
+                        spawns: [
+                            {
+                                monsterId: "slime"
+                            },
+                            {
+                                monsterId: "goblin"
+                            }
+                        ]
+                    },
+                    {
+                        wave: "2",
+                        spawns: [
+                            {
+                                monsterId: "bat"
+                            }
+                        ]
+                    }
+                ]
+            }
+        });
+
+    assert.equal((updated.match(/^  -$/gmu) || []).length, 2);
+    assert.equal((updated.match(/^      -$/gmu) || []).length, 3);
+    assert.doesNotMatch(updated, /^    monsterId: slime$/mu);
+    assert.doesNotMatch(updated, /^    monsterId: goblin$/mu);
+    assert.match(updated, /^      -$/mu);
+    assert.match(updated, /^        monsterId: slime$/mu);
+    assert.match(updated, /^        monsterId: goblin$/mu);
+    assert.match(updated, /^        monsterId: bat$/mu);
 });
 
 test("applyFormUpdates should clear object arrays when the form removes all items", () => {

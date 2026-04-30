@@ -174,7 +174,7 @@ var cacheStorage = new ScopedStorage(rootStorage, "runtime-cache");
 - `ScopedStorage` 只做 key 前缀，不做权限、事务或迁移控制
 - 锁粒度是“当前实例内的目标路径”，不是跨进程文件锁
 - 原子写入只覆盖单文件替换，不等于多文件事务
-- 如果配置建模依赖 `oneOf`、`anyOf`、非 `false` 的 `additionalProperties`，或其他超出当前共享 schema 子集的复杂组合约束，这不是 `IStorage` 层能放宽的限制；应直接回到配置系统主文档与 raw YAML / schema 设计处理
+- 如果配置建模依赖 `oneOf`、`anyOf`、非 `false` 的 `additionalProperties`（例如省略或 `true`），或其他超出当前共享 schema 子集的复杂组合约束，这不是 `IStorage` 层能放宽的限制；应直接回到配置系统主文档与 raw YAML / schema 设计处理
 
 ## 继续阅读
 

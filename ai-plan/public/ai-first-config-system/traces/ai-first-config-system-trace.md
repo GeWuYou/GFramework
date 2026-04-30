@@ -205,3 +205,29 @@
 
 1. 继续盘点 Runtime / Generator / Tooling 三端是否还有类似“工具宽松吞掉、主线不支持”的 schema 形状
 2. 若继续做 Tooling lane，优先补 reader-facing 示例或采用路径，而不是继续堆积边界清单
+
+### 阶段：PR #306 open threads 收口（AI-FIRST-CONFIG-RP-003）
+
+- 已重新抓取 PR `#306` 的 latest open review threads，并按“本地仍成立 / 已被当前分支吸收”重新核验
+- 本轮收口重点不是继续扩能力，而是把 open threads 中仍成立的三类问题一次性补齐：
+  - Generator：补齐 `GF_ConfigSchema_015` 的 `anyOf` 对称负例，避免组合关键字只覆盖 `oneOf`
+  - Tooling：拒绝未知显式 `type`、收窄 object-array 只遍历当前 editor 直属 items、统一 `contains` hint 文案
+  - Docs：把 `additionalProperties: false` 的“必须显式设置为 false”写清，并为工具补最小接入示例、迁移提示与更准确的 raw YAML 回退条件
+- 本轮同时更新了 JS / .NET 回归测试与 active tracking，避免只修 review comment 不保留恢复点
+
+### 验证
+
+- 2026-04-30：`bun run test`（`tools/gframework-config-tool`）
+  - 结果：通过（132 tests）
+  - 备注：新增未知 schema `type` 拒绝、嵌套 object-array 不串层，以及 `contains` hint 文案回归
+- 2026-04-30：`dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~SchemaConfigGeneratorTests"`
+  - 结果：通过（54 tests）
+  - 备注：补齐 `Run_Should_Report_Diagnostic_When_Object_Schema_Declares_Unsupported_AnyOf`
+- 2026-04-30：`git diff --check`
+  - 结果：通过
+  - 备注：本轮代码与文档改动未引入空白或冲突标记问题
+
+### 下一步
+
+1. 推送本轮修复后，重新抓取 PR `#306` review 状态，确认哪些 open threads 会被 GitHub 自动折叠或仍需人工回复
+2. 若还有残留 open threads，优先区分“远端未刷新 / 已过时评论 / 仍成立问题”，不要再把 review body 摘要和 latest open threads 混在一起处理

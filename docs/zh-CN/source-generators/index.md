@@ -61,7 +61,7 @@ GFramework 当前发布的生成器包是：
 当前不属于默认采用路径的典型情况包括：
 
 - `oneOf`、`anyOf` 这类会改变生成类型形状的组合关键字
-- 非 `false` 的 `additionalProperties`
+- 非 `false` 的 `additionalProperties`（例如省略或 `true`）
 - 其他需要开放对象形状、联合分支或更自由属性合并的 schema 设计
 
 这些场景当前不应被理解为“文档还没写到的隐藏支持”，而应被理解为：它们不在 `GFramework.Game` 现阶段共享配置契约内。

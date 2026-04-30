@@ -111,7 +111,7 @@ test("buildContainsHintLines should use updated Chinese contains hint wording", 
         localizer);
 
     assert.deepEqual(lines, [
-        "Contains 条件：string, 允许值：potion, elixir",
+        "contains 条件：string, 允许值：potion, elixir",
         "最少匹配数：1",
         "最多匹配数：2"
     ]);

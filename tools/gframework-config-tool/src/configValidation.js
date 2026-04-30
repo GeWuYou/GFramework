@@ -19,6 +19,7 @@ const DurationFormatPattern =
 const TimeFormatPattern =
     /^(?<hour>\d{2}):(?<minute>\d{2}):(?<second>\d{2})(?<fraction>\.\d+)?(?<offset>Z|[+-]\d{2}:\d{2})$/u;
 const SupportedStringFormats = new Set(["date", "date-time", "duration", "email", "time", "uri", "uuid"]);
+const SupportedSchemaTypes = new Set(["object", "array", "string", "integer", "number", "boolean"]);
 
 /**
  * Compare two strings using the same UTF-16 code-unit ordering as C#'s
@@ -1104,7 +1105,7 @@ function parseSchemaNode(rawNode, displayPath) {
 
     validateUnsupportedOpenObjectKeyword(value, displayPath);
 
-    const type = typeof value.type === "string" ? value.type : "object";
+    const type = resolveSupportedSchemaType(value.type, displayPath);
     const patternMetadata = normalizeSchemaPattern(value.pattern, displayPath);
     const stringFormat = normalizeSchemaStringFormat(value.format, type, displayPath);
     const negatedSchemaNode = parseNegatedSchemaNode(value.not, displayPath);
@@ -1298,13 +1299,7 @@ function validateUnsupportedOpenObjectKeyword(schemaNode, displayPath) {
  * @returns {SchemaNode} Parsed child schema node.
  */
 function parseRequiredArrayChildSchema(rawChild, displayPath, keywordName) {
-    const childNode = parseArrayChildSchema(rawChild, displayPath, keywordName);
-    if (childNode) {
-        return childNode;
-    }
-
-    throw new Error(
-        `Schema property '${displayPath}' must declare '${keywordName}' as an object-valued schema with an explicit 'type'.`);
+    return parseArrayChildSchema(rawChild, displayPath, keywordName);
 }
 
 /**
@@ -1316,13 +1311,7 @@ function parseRequiredArrayChildSchema(rawChild, displayPath, keywordName) {
  * @returns {SchemaNode | undefined} Parsed child schema node.
  */
 function parseOptionalArrayChildSchema(rawChild, displayPath, keywordName) {
-    const childNode = parseArrayChildSchema(rawChild, displayPath, keywordName);
-    if (childNode) {
-        return childNode;
-    }
-
-    throw new Error(
-        `Schema property '${displayPath}' must declare '${keywordName}' as an object-valued schema with an explicit 'type'.`);
+    return parseArrayChildSchema(rawChild, displayPath, keywordName);
 }
 
 /**
@@ -1333,18 +1322,40 @@ function parseOptionalArrayChildSchema(rawChild, displayPath, keywordName) {
  * @param {unknown} rawChild Raw child schema node.
  * @param {string} displayPath Logical parent array path.
  * @param {"items" | "contains"} keywordName Child schema keyword.
- * @returns {SchemaNode | undefined} Parsed child schema node.
+ * @returns {SchemaNode} Parsed child schema node.
  */
 function parseArrayChildSchema(rawChild, displayPath, keywordName) {
     if (!rawChild || typeof rawChild !== "object" || Array.isArray(rawChild)) {
-        return undefined;
+        throw new Error(
+            `Schema property '${displayPath}' must declare '${keywordName}' as an object-valued schema with an explicit 'type'.`);
     }
 
     if (typeof rawChild.type !== "string") {
-        return undefined;
+        throw new Error(
+            `Schema property '${displayPath}' must declare '${keywordName}' as an object-valued schema with an explicit 'type'.`);
     }
 
-    return parseSchemaNode(rawChild, joinArrayTemplatePath(displayPath, keywordName));
+    return parseSchemaNode(rawChild, joinArrayTemplatePath(displayPath));
+}
+
+/**
+ * Resolve one schema type while rejecting explicit strings that the shared
+ * subset does not support.
+ *
+ * @param {unknown} rawType Raw schema type value.
+ * @param {string} displayPath Logical property path.
+ * @returns {"object" | "array" | "string" | "integer" | "number" | "boolean"} Supported schema type.
+ */
+function resolveSupportedSchemaType(rawType, displayPath) {
+    if (typeof rawType !== "string") {
+        return "object";
+    }
+
+    if (!SupportedSchemaTypes.has(rawType)) {
+        throw new Error(`Schema property '${displayPath}' declares unsupported type '${rawType}'.`);
+    }
+
+    return rawType;
 }
 
 /**

@@ -68,6 +68,9 @@ test("createLocalizer should expose contains-count validation keys", () => {
     assert.equal(
         chineseLocalizer.t(ValidationMessageKeys.maxContainsViolation, {displayPath: "dropRates", value: 1}),
         "属性“dropRates”最多只能包含 1 个匹配 contains 条件的元素。");
+    assert.equal(
+        chineseLocalizer.t("webview.hint.contains", {summary: "object, Required: itemCount"}),
+        "contains 条件：object, Required: itemCount");
 });
 
 test("createLocalizer should resolve dependentRequired through the explicit validation key", () => {

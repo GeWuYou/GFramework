@@ -148,14 +148,14 @@ var restored = serializer.Deserialize(json, data.GetType());
 
 如果你的目标是静态内容配置表，而不是运行时持久化对象，请改看 [配置系统](./config-system.md)。
 
-如果你在配置系统里进一步碰到更复杂的 schema shape，也要尽快回到配置系统主文档和 raw YAML / schema 本体继续设计。当前默认采用路径面向的是与 `GFramework.Game` Runtime 和 `Game.SourceGenerators` 对齐的共享 schema 子集，不是任意 `JSON Schema` 的全量支持。
+如果你在配置系统里进一步碰到更复杂的 schema shape，也要尽快回到配置系统主文档和 raw YAML / schema 本体继续设计。当前默认采用路径面向的是与 `GFramework.Game` Runtime 和 `GFramework.Game.SourceGenerators` 对齐的共享 schema 子集，不是任意 `JSON Schema` 的全量支持。
 
 ## 当前边界
 
 - 当前公开默认实现只有 JSON，没有内建 MessagePack、Binary 或 ProtoBuf 实现
 - `JsonSerializer` 负责序列化，不负责对象版本迁移；版本迁移属于 `SettingsModel<TRepository>` 或 `SaveRepository<TSaveData>`
 - 序列化器共享后应视为只读配置对象，避免在运行期继续修改 settings / converters
-- 如果配置设计依赖 `oneOf`、`anyOf`、非 `false` 的 `additionalProperties`，或其他需要开放对象形状与联合分支的复杂约束，请直接按配置系统主文档回到 raw YAML / schema 方案处理，而不是把这些场景归到序列化层
+- 如果配置设计依赖 `oneOf`、`anyOf`、非 `false` 的 `additionalProperties`（例如省略或 `true`），或其他需要开放对象形状与联合分支的复杂约束，请直接按配置系统主文档回到 raw YAML / schema 方案处理，而不是把这些场景归到序列化层
 
 ## 继续阅读
 

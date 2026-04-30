@@ -1009,8 +1009,14 @@ function renderFormHtml(fileName, schemaInfo, parsedYaml, options) {
                 current = current[segment];
             }
         }
+        function getDirectObjectArrayItems(editor) {
+            const itemsHost = editor.querySelector(":scope > [data-object-array-items]");
+            return itemsHost
+                ? Array.from(itemsHost.querySelectorAll(":scope > [data-object-array-item]"))
+                : [];
+        }
         function renumberObjectArrayItems(editor) {
-            const items = editor.querySelectorAll("[data-object-array-items] > [data-object-array-item]");
+            const items = getDirectObjectArrayItems(editor);
             items.forEach((item, index) => {
                 const title = item.querySelector(".object-array-item-title");
                 if (title) {
@@ -1023,7 +1029,7 @@ function renderFormHtml(fileName, schemaInfo, parsedYaml, options) {
         }
         function collectObjectArrayEditorItems(editor) {
             const items = [];
-            for (const item of editor.querySelectorAll("[data-object-array-items] > [data-object-array-item]")) {
+            for (const item of getDirectObjectArrayItems(editor)) {
                 items.push(collectObjectArrayItemValue(item));
             }
 
