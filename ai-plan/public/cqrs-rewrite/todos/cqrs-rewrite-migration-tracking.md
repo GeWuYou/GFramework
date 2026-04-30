@@ -7,9 +7,16 @@ CQRS 迁移与收敛。
 
 ## 当前恢复点
 
-- 恢复点编号：`CQRS-REWRITE-RP-062`
+- 恢复点编号：`CQRS-REWRITE-RP-063`
 - 当前阶段：`Phase 8`
 - 当前焦点：
+  - 已完成一轮 `CQRS vs Mediator` 只读评估归档，结论已沉淀到 `archive/todos/cqrs-vs-mediator-assessment-rp063.md`
+  - 当前评估结论已明确：`GFramework.Cqrs` 已完成对外部 `Mediator` 的生产级替代，但仓库内部旧总线 API、
+    兼容 seam、fallback 旧语义与测试命名仍未完全收口
+  - 当前评估结论已明确：相对 `ai-libs/Mediator`，框架已吸收统一消息模型、generator 优先注册与热路径缓存思路，
+    但仍未完整吸收 publisher 策略抽象、细粒度 pipeline、telemetry / diagnostics / benchmark 体系与 runtime 主体生成
+  - 下一阶段建议优先级已收敛为：`notification publisher seam`、`dispatch/invoker 生成前移`、`pipeline 分层扩展`、
+    `可观测性 seam` 与 `benchmark / allocation baseline`
   - 当前功能历史已归档，active 跟踪仅保留 `Phase 8` 主线的恢复入口
   - 已将 mixed fallback 场景进一步收敛：当 runtime 允许同一程序集声明多个 `CqrsReflectionFallbackAttribute` 实例时，generator 现会把可直接引用的 fallback handlers 与仅能按名称恢复的 fallback handlers 拆分发射
   - `CqrsReflectionFallbackAttribute` 现允许多实例，以承载 `Type[]` 与字符串 fallback 元数据的组合输出
@@ -41,6 +48,7 @@ CQRS 迁移与收敛。
 - 已完成 `GFramework.Cqrs.Abstractions` / `GFramework.Cqrs` 项目骨架与 runtime seam 收敛
 - 已完成 handler registry generator 的多轮收敛，当前合法 closed handler contract 已统一收敛到更窄的注册路径
 - 已完成一轮公开入口文档与 source-generator 命名空间收口
+- 已完成一轮 `CQRS vs Mediator` 对照评估，确认当前主问题已从“是否能替代外部依赖”转为“框架内部收口与能力深化顺序”
 - 已接入 `$gframework-pr-review`，可直接抓取当前分支对应 PR 的 CodeRabbit 评论、checks 和测试结果
 
 ## 当前活跃事实
@@ -129,20 +137,31 @@ CQRS 迁移与收敛。
   - `SourceEmission` 不再保留 `MakePointerType()` 源码发射分支，`RuntimeTypeReferences` 也已删掉对应的外部程序集递归扫描死代码
   - pointer / function pointer 的拒绝语义保持不变，direct / named / mixed fallback 逻辑未改动
   - 当前工作区相对 `origin/main` 的累计 diff 已达到 `14 files`，仍低于本轮 `gframework-batch-boot 50` 的主要 stop condition
+- `2026-04-30` 已完成一轮 `CQRS vs Mediator` 结构化评估：
+  - 生产依赖与默认 runtime 接线层面，`GFramework.Cqrs` 已完成对外部 `Mediator` 的替代
+  - 仓库内部收口层面，旧 `Command` / `Query` API、`LegacyICqrsRuntime` 别名、fallback 空 marker 兼容语义与
+    `Mediator` 测试命名仍然存在
+  - 设计吸收层面，当前已吸收统一消息模型、generator 优先注册与反射收敛思路；仍未完整吸收 publisher 策略抽象、
+    stream / exception pipeline、telemetry / diagnostics / benchmark 体系与 runtime 主体生成
+  - 详细结论与证据已归档到 `archive/todos/cqrs-vs-mediator-assessment-rp063.md`
 - 当前主线优先级：
-  - generator 覆盖面继续扩大
-  - dispatch/invoker 反射占比继续下降
+  - `notification publisher seam` 评估与设计优先
+  - dispatch/invoker 反射占比继续下降，并优先评估生成前移方案
   - package / facade / 兼容层继续收口
+  - pipeline 分层扩展、可观测性 seam 与 benchmark baseline 进入中期候选
 
 ## 当前风险
 
 - 当前 `dotnet build GFramework.sln -c Release` 在 WSL 环境仍会受顶层 `GFramework.csproj` 的 Windows NuGet fallback 配置影响
 - 当前 `GFramework.Cqrs.Tests` 仍直接引用 `GFramework.Core`，说明测试已按模块意图拆分，但 runtime 物理迁移尚未完全切断依赖
+- 当前对外替代已基本完成，但若不单独规划旧 `Command` / `Query`、`LegacyICqrsRuntime` 与测试命名的收口顺序，
+  后续仍会持续混淆“生产替代已完成”与“仓库内部收口未完成”这两个不同结论
 
 ## 活跃文档
 
 - 历史跟踪归档：[cqrs-rewrite-history-through-rp043.md](../archive/todos/cqrs-rewrite-history-through-rp043.md)
 - 验证历史归档：[cqrs-rewrite-validation-history-through-rp062.md](../archive/todos/cqrs-rewrite-validation-history-through-rp062.md)
+- CQRS 与 Mediator 评估归档：[cqrs-vs-mediator-assessment-rp063.md](../archive/todos/cqrs-vs-mediator-assessment-rp063.md)
 - 历史 trace 归档：[cqrs-rewrite-history-through-rp043.md](../archive/traces/cqrs-rewrite-history-through-rp043.md)
 - `RP-046` 至 `RP-061` trace 归档：[cqrs-rewrite-history-rp046-through-rp061.md](../archive/traces/cqrs-rewrite-history-rp046-through-rp061.md)
 
@@ -159,7 +178,11 @@ CQRS 迁移与收敛。
 - `bash scripts/validate-csharp-naming.sh`
   - 结果：通过
   - 备注：使用显式 `GIT_DIR` / `GIT_WORK_TREE` 绑定重跑后，`1045` 个 tracked C# 文件的命名校验全部通过；本轮 `_syncRoot` 改名未引入命名规则回归
+- `dotnet build GFramework.Cqrs/GFramework.Cqrs.csproj -c Release`
+  - 结果：通过
+  - 备注：`0 warning / 0 error`；本轮确认 `ai-plan` 评估与恢复文档更新未影响 `GFramework.Cqrs` 的最小 Release 构建
 
 ## 下一步
 
-1. push 当前 follow-up 提交后，重新执行 `$gframework-pr-review`，确认 `PR #304` 的 latest unresolved threads 是否已刷新为已解决，或仅剩新增有效项
+1. 以 `notification publisher seam` 与 `dispatch/invoker` 生成前移为优先对象，补一轮面向实现的设计评估
+2. 单独规划旧 `Command` / `Query` API、`LegacyICqrsRuntime` 与 `Mediator` 测试命名的收口顺序，避免与 runtime 微优化混做
