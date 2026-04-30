@@ -2,6 +2,33 @@
 
 ## 2026-04-30
 
+### 阶段：hidden-implementation generated invoker runtime 回归补强（CQRS-REWRITE-RP-070）
+
+- 在 `5a77e2fb` 提交后补齐 active `ai-plan` 恢复入口，继续按 `gframework-batch-boot 50` 执行，基线仍为当前本地 `origin/main`
+- 当前已提交 branch diff 复算为 `24 files / 1754 changed lines`，仍低于主要 stop condition，因此本轮只补 runtime 回归与恢复点，不改 generator / runtime 生产实现
+- 本轮关键目标是把 `RP-069` 已落地的 hidden-implementation provider 发射范围补强，继续向 runtime 消费侧闭环，避免 active tracking 只记录了 generator 侧验证
+- 主线程已完成：
+  - `GFramework.Cqrs.Tests/Cqrs/CqrsGeneratedRequestInvokerProviderTests.cs` 新增 hidden-implementation + visible-interface 的 request / stream runtime 回归
+  - `HiddenImplementationGeneratedRequestInvokerProviderRegistry`、`HiddenImplementationGeneratedStreamInvokerProviderRegistry` 与对应 container fixture 已被纳入同一组 provider 消费测试，锁定 registrar 接线与 dispatcher 优先命中 generated descriptor 的语义
+  - 当前测试仍保持 `PreciseReflectedRegistrationSpec` 排除边界不变，不把隐藏 request/response 类型场景错误抬升为 runtime 支持承诺
+
+### 验证（RP-070）
+
+- `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsGeneratedRequestInvokerProviderTests"`
+  - 结果：通过，`8/8` passed
+- `git diff --name-only origin/main...HEAD | wc -l`
+  - 结果：通过
+  - 备注：当前相对 `origin/main` 的已提交 branch diff 为 `24 files`
+- `git diff --numstat origin/main...HEAD`
+  - 结果：通过
+  - 备注：当前相对 `origin/main` 的已提交 branch diff 为 `1754 changed lines`
+
+### 当前下一步（RP-070）
+
+1. 先提交本轮 `ai-plan` 恢复点更新，保持 batch 追踪与已提交代码状态一致
+2. 在剩余 headroom 内继续选择下一批低风险 `dispatch/invoker` 收敛切片，优先考虑 request / stream provider 的诊断、入口或测试补强
+3. 如下一批写集仍可拆分，再用只读 / 写入 subagent 分离非冲突切片，继续降低主线程上下文压力
+
 ### 阶段：generated stream invoker provider 最小落地（CQRS-REWRITE-RP-068）
 
 - 继续按 `gframework-batch-boot 50` 执行，基线仍为当前本地 `origin/main`

@@ -7,7 +7,7 @@ CQRS 迁移与收敛。
 
 ## 当前恢复点
 
-- 恢复点编号：`CQRS-REWRITE-RP-069`
+- 恢复点编号：`CQRS-REWRITE-RP-070`
 - 当前阶段：`Phase 8`
 - 当前焦点：
   - 已完成一轮 `CQRS vs Mediator` 只读评估归档，结论已沉淀到 `archive/todos/cqrs-vs-mediator-assessment-rp063.md`
@@ -64,6 +64,11 @@ CQRS 迁移与收敛。
     - `CqrsHandlerRegistryGenerator` 现会把 generated request / stream invoker 的发射范围，从“仅 direct registration”扩大到“实现类型隐藏、但 handler interface 仍可直接表达”的 reflected-implementation registration
     - 当前扩展仍刻意避开 `PreciseReflectedRegistrationSpec`，不把隐藏 request/response 类型误拉进 provider 发射，继续保持生成源码可编译边界
     - `GFramework.SourceGenerators.Tests` 已新增两条 hidden-implementation 回归，锁定 request / stream provider 在该场景下都会继续发射 descriptor 与静态 invoker 方法
+  - 已完成一轮 hidden-implementation generated invoker runtime 回归补强：
+    - `GFramework.Cqrs.Tests/Cqrs/CqrsGeneratedRequestInvokerProviderTests.cs` 现覆盖“实现类型隐藏、但 handler interface 可见”场景下的 generated request / stream invoker 消费路径
+    - `HiddenImplementationGeneratedRequestInvokerProviderRegistry`、`HiddenImplementationGeneratedStreamInvokerProviderRegistry` 与对应 container / handler fixture 现锁定 registrar 接线后，dispatcher 会优先命中 generated descriptor，而不是退回反射 invoker
+    - 当前 runtime 回归继续保持 `PreciseReflectedRegistrationSpec` 排除边界不变，只验证已允许发射 provider 元数据的 visible-interface hidden-implementation 场景
+  - 当前相对 `origin/main` 的累计 branch diff 为 `24 files / 1754 changed lines`，仍低于本轮 `$gframework-batch-boot 50` 的主要 stop condition，可继续推进下一批低风险切片
   - 已将 mixed fallback 场景进一步收敛：当 runtime 允许同一程序集声明多个 `CqrsReflectionFallbackAttribute` 实例时，generator 现会把可直接引用的 fallback handlers 与仅能按名称恢复的 fallback handlers 拆分发射
   - `CqrsReflectionFallbackAttribute` 现允许多实例，以承载 `Type[]` 与字符串 fallback 元数据的组合输出
   - 已将 generator 的程序集级 fallback 元数据进一步收敛：当全部 fallback handlers 都可直接引用且 runtime 暴露 `params Type[]` 合同时，生成器现优先发射 `typeof(...)` 形式的 fallback 元数据
@@ -268,6 +273,9 @@ CQRS 迁移与收敛。
 - `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Emits_Request_Invoker_Provider_Metadata_For_Hidden_Implementation_With_Visible_Interface|FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Emits_Stream_Invoker_Provider_Metadata_For_Hidden_Implementation_With_Visible_Interface|FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Emits_Request_Invoker_Provider_Metadata_When_Runtime_Contract_Is_Available|FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Emits_Stream_Invoker_Provider_Metadata_When_Runtime_Contract_Is_Available"`
   - 结果：通过
   - 备注：`4/4` passed；确认 hidden implementation + visible interface 场景也会继续发射 request / stream invoker provider 元数据
+- `dotnet test GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsGeneratedRequestInvokerProviderTests"`
+  - 结果：通过
+  - 备注：`8/8` passed；补齐 hidden implementation + visible interface 场景后，确认 generated request / stream invoker 在 runtime 侧也会优先命中 provider descriptor
 - `dotnet build GFramework.Core/GFramework.Core.csproj -c Release`
   - 结果：通过
   - 备注：`0 warning / 0 error`；确认 `CqrsRuntimeModule` 接线变更未引入 `GFramework.Core` 模块构建问题
@@ -301,6 +309,6 @@ CQRS 迁移与收敛。
 
 ## 下一步
 
-1. 基于已落地的 notification publisher seam，评估是否需要第二阶段公开配置面、并行 publisher 或 telemetry decorator
-2. 基于已落地的 request invoker provider，评估是否继续把 notification / stream 的 invoker 也前移，或先补 provider 发现/诊断与文档入口
+1. 在保持 branch diff 明显低于 `50 files` 的前提下，继续挑选下一批低风险 `dispatch/invoker` 收敛切片，并优先考虑 request / stream provider 的诊断、入口或测试补强
+2. 基于已落地的 notification publisher seam，评估是否需要第二阶段公开配置面、并行 publisher 或 telemetry decorator
 3. 单独规划旧 `Command` / `Query` API 的收口顺序；`LegacyICqrsRuntime` compatibility slice 已收口到显式 helper 与专门测试，可暂时移出最高优先级
