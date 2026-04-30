@@ -20,7 +20,7 @@
 - `GeWuYou.GFramework.Cqrs`
   - 默认 runtime 与业务侧常用基类。
 - `GeWuYou.GFramework.Cqrs.SourceGenerators`
-  - 可选。为消费端程序集生成 `ICqrsHandlerRegistry`，运行时优先走生成注册表；只有缺失、不适用，或 fallback 仍需补齐剩余 handler 时，才继续进入反射路径。
+  - 可选。为消费端程序集生成 `ICqrsHandlerRegistry`，并在可用时补充 generated request / stream invoker provider 元数据；运行时会优先消费这些编译期元数据，只有缺失、不适用，或 fallback 仍需补齐剩余 handler 时，才继续进入反射路径。
 - `GFramework.Core`
   - 架构上下文中实际调用 `ICqrsRuntime`，并在模块初始化时注册 CQRS 基础设施。
 
@@ -120,13 +120,15 @@ var playerId = await this.SendAsync(new CreatePlayerCommand(new CreatePlayerInpu
 ## 运行时行为
 
 - 请求分发
-  - `CqrsDispatcher` 按请求实际类型解析 `IRequestHandler<,>`，未找到处理器会抛出异常。
+  - `CqrsDispatcher` 按请求实际类型解析 `IRequestHandler<,>`，若当前程序集提供 generated request invoker provider，则会先复用对应 descriptor 中的处理器服务类型与 invoker 元数据；未命中时仍回退到既有反射 request binding 创建路径。
+  - 未找到处理器会抛出异常。
 - 通知分发
   - 通知会分发给所有已注册 `INotificationHandler<>`；零处理器时默认静默完成。
   - 默认通知发布器会按容器解析顺序逐个执行处理器，并在首个处理器抛出异常时立即停止后续分发。
   - 若容器在 runtime 创建前已显式注册 `INotificationPublisher`，默认 runtime 会复用该策略；未注册时回退到内置顺序发布器。
 - 流式请求
   - 通过 `IStreamRequest<TResponse>` 和 `IStreamRequestHandler<,>` 返回 `IAsyncEnumerable<TResponse>`。
+  - 当消费端程序集提供 generated stream invoker provider / descriptor 后，runtime 会优先消费这组 stream invoker 元数据；未命中时仍回退到既有反射 stream binding 创建路径。
 - 上下文注入
   - 处理器基类继承 `CqrsContextAwareHandlerBase`，runtime 会在分发前注入当前 `IArchitectureContext`。
   - 如果处理器或行为需要上下文注入，而当前 `ICqrsContext` 不是 `IArchitectureContext`，默认实现会抛出异常。
@@ -140,6 +142,7 @@ var playerId = await this.SendAsync(new CreatePlayerCommand(new CreatePlayerInpu
 
 - 同一程序集按稳定键去重，避免重复注册。
 - 优先尝试消费端程序集上的 `ICqrsHandlerRegistry` 生成注册器。
+- 当生成注册器同时暴露 generated request invoker provider 或 generated stream invoker provider 时，registrar 会把对应 descriptor 元数据接线到 runtime 缓存。
 - 生成注册器不可用或元数据损坏时，记录告警并回退到反射扫描。
 - 当程序集声明了 `CqrsReflectionFallbackAttribute` 时，运行时会先执行生成注册器，再只补它未覆盖的 handler。
 - `CqrsReflectionFallbackAttribute` 现在可以多次声明，并同时承载 `Type[]` 与 `string[]` 两类 fallback 清单。
