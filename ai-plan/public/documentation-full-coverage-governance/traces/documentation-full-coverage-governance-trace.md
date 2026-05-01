@@ -4,28 +4,34 @@
 
 ### 当前恢复点：RP-055
 
-- 通过 `$gframework-pr-review` 重新抓取当前分支 PR `#308`，确认 latest reviewed commit 已前进到 `4fdb1e7398e4f114757b5c988698af203dce24c8`，当前 `CodeRabbit` 仍有 `2` 条 latest-head open threads 和 `1` 条 outside-diff comment。
-- 本地复核确认真正仍成立的是 `2` 条 reader-facing 文档表述问题：`cqrs-handler-registry-generator.md` 与 `schema-config-generator.md` 都直接暴露了测试源码路径；`schema-config-generator.md` 的“迁移与兼容性”建议则已经本地满足，应视为 stale。
-- GitHub Test Reporter 当前汇总为 `2222 passed / 0 failed`；`Title check` 仍然只是 PR 元数据问题，因此不纳入仓库文件修复范围。
+- 通过 `$gframework-pr-review` 重新抓取当前分支 PR `#308`，确认 latest reviewed commit 已前进到 `896e3efaa9c7496043fdaeee4dceff3d0e46b318`，当前 `CodeRabbit` 仍有 `3` 条 latest-head open threads 和 `1` 条 outside-diff comment。
+- 本地复核确认真正仍成立的 `4` 条问题已经全部在当前工作树完成修复：`cqrs-handler-registry-generator.md` 的 fallback 条件说明、`schema-config-generator.md` 的 `configRootPath` 示例、active trace 的显式风险段，以及 active tracking 的“最新验证”压缩；`schema-config-generator.md` 的“迁移与兼容性”建议则已经本地满足，应视为 stale。
+- GitHub Test Reporter 当前汇总为 `2247 passed / 0 failed`；`Title check` 仍然只是 PR 元数据问题，因此不纳入仓库文件修复范围。
 
 ### 当前决策（RP-055）
 
-- 把两处测试源码路径改成语义化 GitHub 链接标签，避免把原始文件路径暴露成 reader-facing 导航文本。
-- active tracking 与 active trace 改写为与本次 PR 抓取一致的事实，修正 latest reviewed commit、线程来源和本地结论。
+- 补齐 `cqrs-handler-registry-generator.md` 的 fallback 条件说明，以及 `schema-config-generator.md` 的自包含运行时示例。
+- active tracking 与 active trace 改写为与本次 PR 抓取一致的事实，修正 latest reviewed commit、线程数量、本地结论与验证摘要。
 - 本轮只做 PR review 精确收口，不扩展到新的 docs coverage 批次。
+
+### 当前风险（RP-055）
+
+- 在本轮提交推送前，PR 页面仍会继续展示基于旧 diff 的 open threads，因此远端线程数量短时间内不会反映本地已修复状态。
+- `schema-config-generator.md` 的“迁移与兼容性”线程已经由当前文件内容满足，但仍需依赖远端下一次 review 重新计算后才能从 open thread 列表中消失。
+- `Title check` 仍是 PR 元数据层面的 `Inconclusive` 项；即使仓库文件全部修完，也不能仅凭本地改动让该检查转绿。
 
 ### 当前验证（RP-055）
 
 - PR review 抓取：
   - `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output /tmp/current-pr-review.json`
-  - 结果：通过；PR `#308` 处于 `OPEN`，latest reviewed commit 为 `4fdb1e7398e4f114757b5c988698af203dce24c8`，`CodeRabbit` 当前有 `2` 条 latest-head open threads 和 `1` 条 outside-diff comment，测试汇总为 `2222 passed / 0 failed`。
+  - 结果：通过；PR `#308` 处于 `OPEN`，latest reviewed commit 为 `896e3efaa9c7496043fdaeee4dceff3d0e46b318`，`CodeRabbit` 当前有 `3` 条 latest-head open threads 和 `1` 条 outside-diff comment，测试汇总为 `2247 passed / 0 failed`。
 - 页面校验：
   - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/schema-config-generator.md`
   - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/cqrs-handler-registry-generator.md`
-  - 结果：通过；两篇 source-generators 页面在改成语义化 GitHub 链接后，frontmatter、链接与代码块校验均通过。
+  - 结果：通过；fallback 条件说明与自包含示例改动后，两篇页面的 frontmatter、链接与代码块校验仍然通过。
 - 站点构建：
   - `bun run build`（工作目录：`docs/`）
-  - 结果：通过；两篇 source-generators 页面链接改写与 active `ai-plan` 事实更新后站点仍可构建，仅保留既有大 chunk warning。
+  - 结果：通过；source-generators 页面与 active `ai-plan` 更新后站点仍可构建，仅保留既有大 chunk warning。
 
 ### 归档指针
 

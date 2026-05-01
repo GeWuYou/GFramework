@@ -154,6 +154,8 @@ loader.RegisterAllGeneratedConfigTables();
 using GFramework.Game.Config;
 using GFramework.Game.Config.Generated;
 
+var configRootPath = Path.Combine(AppContext.BaseDirectory, "schemas");
+
 var bootstrap = new GameConfigBootstrap(
     new GameConfigBootstrapOptions
     {

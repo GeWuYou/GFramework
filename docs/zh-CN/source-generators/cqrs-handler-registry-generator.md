@@ -88,7 +88,7 @@ RegisterCqrsHandlersFromAssemblies(
 3. 若生成注册器同时提供 request invoker provider / descriptor，registrar 会把这些 request invoker 元数据预先登记到 dispatcher 缓存
 4. 若生成注册器同时提供 stream invoker provider / descriptor，runtime 也会优先消费对应的 generated stream invoker 元数据；未命中时仍回退到既有反射 stream binding
 5. 若生成元数据损坏、registry 不可激活，记录告警并回退到反射路径
-6. 若存在 `CqrsReflectionFallbackAttribute`，只补扫剩余 handler
+6. 若存在 `CqrsReflectionFallbackAttribute`，优先按其中携带的 `Type` 或类型名补扫剩余 handler；若元数据为空或只保留 marker 语义，则退回整程序集补扫
 7. 同一程序集按稳定键去重，避免重复注册
 
 这个行为由
