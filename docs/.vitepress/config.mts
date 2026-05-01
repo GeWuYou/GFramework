@@ -248,6 +248,7 @@ export default defineConfig({
               text: '源码生成器',
               items: [
                 { text: '概览', link: '/zh-CN/source-generators/' },
+                { text: 'Schema 配置生成器', link: '/zh-CN/source-generators/schema-config-generator' },
                 { text: '日志生成器', link: '/zh-CN/source-generators/logging-generator' },
                 { text: '枚举扩展生成器', link: '/zh-CN/source-generators/enum-generator' },
                 { text: 'ContextAware 生成器', link: '/zh-CN/source-generators/context-aware-generator' },

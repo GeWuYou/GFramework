@@ -88,11 +88,14 @@ RegisterCqrsHandlersFromAssemblies(
 3. 若生成注册器同时提供 request invoker provider / descriptor，registrar 会把这些 request invoker 元数据预先登记到 dispatcher 缓存
 4. 若生成注册器同时提供 stream invoker provider / descriptor，runtime 也会优先消费对应的 generated stream invoker 元数据；未命中时仍回退到既有反射 stream binding
 5. 若生成元数据损坏、registry 不可激活，记录告警并回退到反射路径
-6. 若存在 `CqrsReflectionFallbackAttribute`，只补扫剩余 handler
+6. 若存在 `CqrsReflectionFallbackAttribute`，优先按其中携带的 `Type` 或类型名补扫剩余 handler；若元数据为空或只保留 marker 语义，则退回整程序集补扫
 7. 同一程序集按稳定键去重，避免重复注册
 
-这个行为由 `GFramework.Cqrs.Tests/Cqrs/CqrsHandlerRegistrarTests.cs` 和
-`GFramework.SourceGenerators.Tests/Cqrs/CqrsHandlerRegistryGeneratorTests.cs` 共同覆盖。
+这个行为由
+[运行时注册流程测试](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Cqrs.Tests/Cqrs/CqrsHandlerRegistrarTests.cs)
+和
+[生成器行为测试](https://github.com/GeWuYou/GFramework/blob/main/GFramework.SourceGenerators.Tests/Cqrs/CqrsHandlerRegistryGeneratorTests.cs)
+共同覆盖。
 
 ## 什么时候值得安装
 
@@ -124,11 +127,46 @@ RegisterCqrsHandlersFromAssemblies(
 - 其余场景统一回退到字符串元数据，避免 mixed 场景漏注册
 - 只有在 runtime 提供 `CqrsReflectionFallbackAttribute` 合同时，才允许发射依赖 fallback 的结果
 
+## 生成策略层级
+
+把这个生成器理解成“静态注册 or 整程序集扫描”的二选一，会低估它的收益。当前策略实际上分成四层：
+
+1. 直接静态注册
+   - handler 接口和实现类型都能被生成代码安全引用
+2. 实现类型定向反射查找
+   - handler 接口还能精确表达，但实现类型只能在运行时按具体类型名恢复
+3. service type 精确运行时查找
+   - handler 接口本身也需要运行时构造，但仍能把查找范围收窄到具体 service type
+4. 程序集级 fallback 元数据
+   - 只有前面几层都无法覆盖的剩余 handler，才交给 `CqrsReflectionFallbackAttribute`
+
+这意味着安装生成器后，并不要求“所有 handler 都可直接引用”才有收益。很多只能部分静态表达的项目，仍然可以把大部分注册路径前移到编译期，再对少数复杂类型做定向补扫。
+
+## 哪些场景通常不会直接退回整程序集扫描
+
+下列类型形态经常仍然能保留精细化注册，而不是立刻退回整程序集盲扫：
+
+| 场景 | 常见结果 |
+| --- | --- |
+| 私有嵌套 handler，但对外 handler 接口仍可直接引用 | 生成器改为按实现类型定向反射查找 |
+| 响应或参数里包含需要运行时恢复的隐藏类型 | 生成器改为精确 service type runtime lookup |
+| mixed 场景里同时存在可直接引用和仅能按名称恢复的 fallback handlers | 生成器拆分 `Type` 元数据和字符串元数据，减少后续字符串回查 |
+| 响应类型写成 `dynamic` | 生成器会按 `System.Object` 归一化，而不是发射非法的 `typeof(dynamic)` |
+
+相反，pointer、function-pointer 这类无法安全重建的类型形态，不属于这里承诺的精确生成边界。
+
 如果当前编译环境缺少这个 fallback 合同，而某些 handler 又必须依赖它，生成器会报：
 
 - `GF_Cqrs_001`
 
 这条诊断的含义不是“某个 handler 写错了”，而是“当前 runtime 合同不足以安全承载这轮生成结果”。
+遇到它时，优先按这个顺序判断：
+
+1. 当前消费端是否已经引用支持 `CqrsReflectionFallbackAttribute` 的 `GFramework.Cqrs` runtime
+2. 当前项目里是否存在只能部分静态表达的 handler 类型
+3. 如果确实不想引入 fallback 合同，是否需要把这类 handler 改成更容易被生成器直接引用的公开形态
+
+`CqrsReflectionFallbackAttribute` 出现也不等于“运行时一定回到整程序集扫描”。只有 fallback 元数据为空、或旧版只保留 marker 语义时，runtime 才会退回整程序集补扫；当元数据里已经带了具体 `Type` 或类型名时，runtime 会优先按这些剩余 handler 做定向补扫。
 
 ## 源码与 API 阅读入口
 

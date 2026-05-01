@@ -184,6 +184,11 @@ protected override void OnInitialize()
 
 两者的共同点都是“优先消费 generated invoker 元数据，未命中时保留既有反射绑定作为兜底”，而不是要求业务侧切换到另一套 runtime 入口。
 
+对接入方来说，更关键的 reader-facing 语义是：安装 `Cqrs.SourceGenerators` 后，不要求“所有 handler 都能被生成代码直接引用”才有收益。
+即使仍有 fallback，runtime 也会先消费 generated registry，再只对剩余 handler 做定向补扫；只有旧版 marker 语义或空 fallback 元数据才会退回整程序集扫描。
+`Type` fallback、按名称恢复的 fallback，以及 mixed fallback 只影响补扫精度，不改变
+`RegisterCqrsHandlersFromAssembly(...)` 或 `RegisterCqrsHandlersFromAssemblies(...)` 的接法。
+
 `Cqrs.SourceGenerators` 的专题入口见[CQRS Handler Registry 生成器](../source-generators/cqrs-handler-registry-generator.md)。
 
 ## Pipeline Behavior

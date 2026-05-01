@@ -25,7 +25,7 @@ GFramework 当前发布的生成器包是：
 | 使用场景 | 安装包 | 继续阅读 |
 | --- | --- | --- |
 | 减少日志、上下文注入、模块自动注册等 Core 侧样板代码 | `GeWuYou.GFramework.Core.SourceGenerators` | [Core 模块](../core/index.md)、[日志生成器](./logging-generator.md)、[ContextAware 生成器](./context-aware-generator.md) |
-| 把 `schemas/**/*.schema.json` 生成成配置类型和表包装 | `GeWuYou.GFramework.Game.SourceGenerators` | [配置系统](../game/config-system.md)、[VS Code 配置工具](../game/config-tool.md) |
+| 把 `schemas/**/*.schema.json` 生成成配置类型和表包装 | `GeWuYou.GFramework.Game.SourceGenerators` | [Schema 配置生成器](./schema-config-generator.md)、[配置系统](../game/config-system.md)、[VS Code 配置工具](../game/config-tool.md) |
 | 让 CQRS handler registry 在编译期生成，缩小运行时反射扫描范围 | `GeWuYou.GFramework.Cqrs.SourceGenerators` | [CQRS 运行时](../core/cqrs.md)、[CQRS Handler Registry 生成器](./cqrs-handler-registry-generator.md) |
 | 在 Godot 项目里生成 AutoLoad / Input Action 入口、节点 / 信号样板，或补齐 Scene/UI 包装与导出集合注册辅助 | `GeWuYou.GFramework.Godot.SourceGenerators` | [Godot 模块总览](../godot/index.md)、[Godot 项目生成器](./godot-project-generator.md)、[GetNode 生成器](./get-node-generator.md) |
 
@@ -94,6 +94,15 @@ GFramework 当前发布的生成器包是：
 - 再根据 attribute 或 diagnostics 回到对应专题页
 - 只有在排查生成失败原因时，才继续下钻到这些共享支撑目录
 
+如果你更关心“多个生成器为什么会给出一致的 `partial` 要求、方法名冲突错误或 trace 诊断”，可以把这三类目录当成共享排障层来理解：
+
+- `*.SourceGenerators.Abstractions`
+  - 先看公开 attribute 能写什么，再回到对应专题页确认生成语义
+- `GFramework.SourceGenerators.Common`
+  - 先看共享 diagnostics，再看公共生成基类和冲突规则
+
+这层仍然不是新的安装入口。只有在排查生成失败、对比多个生成器的共同约束，或准备扩展生成器时，才值得继续下钻。
+
 ## 阅读路线
 
 ### Core 侧通用生成器
@@ -107,6 +116,8 @@ GFramework 当前发布的生成器包是：
 
 ### Game / CQRS 相关生成器
 
+- schema 到配置类型 / 表包装 / 聚合注册的生成路径：
+  - [Schema 配置生成器](./schema-config-generator.md)
 - 配置 schema 生成与运行时接法：
   - [配置系统](../game/config-system.md)
   - 读者若需要确认共享 schema 子集、关闭对象边界或复杂组合关键字的限制，应以该页为准，而不是只从本页推断支持范围
@@ -138,6 +149,8 @@ GFramework 当前发布的生成器包是：
   - 安装 `Game` + `Game.SourceGenerators`
 - 需要 CQRS 生成注册表：
   - 安装 `Cqrs` + `Cqrs.SourceGenerators`
+- 需要排查跨生成器共享的 diagnostics 或 attribute 契约：
+  - 保持原有 `*.SourceGenerators` 包入口不变，再回到本页的共享支撑模块说明
 
 ## 对应模块入口
 
