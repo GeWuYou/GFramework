@@ -91,8 +91,11 @@ RegisterCqrsHandlersFromAssemblies(
 6. 若存在 `CqrsReflectionFallbackAttribute`，只补扫剩余 handler
 7. 同一程序集按稳定键去重，避免重复注册
 
-这个行为由 `GFramework.Cqrs.Tests/Cqrs/CqrsHandlerRegistrarTests.cs` 和
-`GFramework.SourceGenerators.Tests/Cqrs/CqrsHandlerRegistryGeneratorTests.cs` 共同覆盖。
+这个行为由
+[运行时注册流程测试](https://github.com/GeWuYou/GFramework/blob/main/GFramework.Cqrs.Tests/Cqrs/CqrsHandlerRegistrarTests.cs)
+和
+[生成器行为测试](https://github.com/GeWuYou/GFramework/blob/main/GFramework.SourceGenerators.Tests/Cqrs/CqrsHandlerRegistryGeneratorTests.cs)
+共同覆盖。
 
 ## 什么时候值得安装
 

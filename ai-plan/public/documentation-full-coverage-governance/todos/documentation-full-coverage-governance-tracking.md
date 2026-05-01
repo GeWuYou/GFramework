@@ -10,20 +10,20 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`DOCUMENTATION-FULL-COVERAGE-GOV-RP-054`
+- 恢复点编号：`DOCUMENTATION-FULL-COVERAGE-GOV-RP-055`
 - 当前阶段：`Phase 5 - Governance Maintenance`
 - 当前焦点：
-  - 处理 PR `#308` latest-head review 中经本地复核仍成立的 `CodeRabbit` open threads，并清理 active `ai-plan` 对旧结论的漂移
+  - 处理 PR `#308` 当前 latest-head review 与 outside-diff review 中经本地复核仍成立的 reader-facing 文档表述问题，并清理 active `ai-plan` 对旧结论的漂移
 - 当前事实：
-  - `2026-05-01` 重新抓取 `$gframework-pr-review` 后确认：PR `#308` 处于 `OPEN`，latest reviewed commit 为 `241c9ffeb3dbd11872b23ecf4a80971feeca475b`
-  - 当前 latest-head review 只剩 `CodeRabbit` `3` 条 open threads，但本地复核后只有 `2` 条仍然成立，均指向 `documentation-full-coverage-governance` 的归档 Markdown 反引号问题
-  - `docs/zh-CN/source-generators/schema-config-generator.md` 已包含独立的“迁移与兼容性”章节，因此对应 open thread 现阶段应视为 stale，等待提交推送后再由远端重新计算
+  - `2026-05-01` 重新抓取 `$gframework-pr-review` 后确认：PR `#308` 处于 `OPEN`，latest reviewed commit 已前进到 `4fdb1e7398e4f114757b5c988698af203dce24c8`
+  - 当前 `CodeRabbit` 仍有 `2` 条 latest-head open threads 和 `1` 条 outside-diff comment；本地复核后真正成立的是 `2` 条 reader-facing 文档问题，分别位于 `schema-config-generator.md` 与 `cqrs-handler-registry-generator.md` 的测试入口表述
+  - `docs/zh-CN/source-generators/schema-config-generator.md` 已包含独立的“迁移与兼容性”章节，因此对应 major open thread 现阶段应视为 stale，等待提交推送后再由远端重新计算
   - GitHub Test Reporter 汇总为 `2222 passed / 0 failed`
   - `Title check` 仍为 `Inconclusive`，属于 PR 元数据问题，不是仓库文件内可直接修复的阻塞项
   - 本地对 review 指向文件的修复在提交推送前，不会改变远端 latest reviewed commit 与 open-thread 统计
 - 当前风险：
-  - 如果 active tracking / trace 继续保留已失效的 review 判断，会让后续恢复点重复处理已经本地闭环的问题
-  - 在变更推送前，PR 页面仍会继续展示旧的 open-thread 数量，容易把 stale 线程误判为新的本地缺陷
+  - 如果 active tracking / trace 继续保留旧的 commit SHA 和 review 归因，会让后续恢复点重复处理已经本地闭环的问题
+  - 在变更推送前，PR 页面仍会继续展示旧的 open-thread / outside-diff 数量，容易把 stale 线程误判为新的本地缺陷
 
 ## 当前状态摘要
 
@@ -58,11 +58,13 @@
 ## 最新验证
 
 - `2026-05-01` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/schema-config-generator.md`
-  - 结果：通过；新增“迁移与兼容性”小节后，页面的 frontmatter、链接与代码块校验仍然通过。
+  - 结果：通过；在把测试入口改成语义化链接后，页面的 frontmatter、链接与代码块校验仍然通过。
+- `2026-05-01` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/cqrs-handler-registry-generator.md`
+  - 结果：通过；测试源码路径改成语义化链接标签后，页面的 frontmatter、链接与代码块校验通过。
 - `2026-05-01` `bun run build`（工作目录：`docs/`）
-  - 结果：通过；active `ai-plan` 瘦身与 schema 专题页更新后站点仍可构建，仅保留既有大 chunk warning。
+  - 结果：通过；两篇 source-generators 页面链接改写与 active `ai-plan` 事实更新后站点仍可构建，仅保留既有大 chunk warning。
 - `2026-05-01` `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output /tmp/current-pr-review.json`
-  - 结果：通过；PR `#308` 处于 `OPEN`，latest-head review 当前只剩 `3` 条 `CodeRabbit` open threads，测试汇总为 `2222 passed / 0 failed`，`Greptile` / `Gemini Code Assist` 当前无 open thread。
+  - 结果：通过；PR `#308` 处于 `OPEN`，latest reviewed commit 为 `4fdb1e7398e4f114757b5c988698af203dce24c8`，`CodeRabbit` 当前有 `2` 条 latest-head open threads 和 `1` 条 outside-diff comment，测试汇总为 `2222 passed / 0 failed`，`Greptile` / `Gemini Code Assist` 当前无 open thread。
 - `2026-04-30` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/schema-config-generator.md`
   - 结果：通过；`Schema 配置生成器` 专题页的 frontmatter、链接与代码块校验通过。
 - `2026-04-30` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/index.md`
@@ -78,6 +80,6 @@
 
 ## 下一步
 
-1. 提交并推送本轮归档修正与 active `ai-plan` 事实校正，然后重新抓取 `$gframework-pr-review`，确认 remote open threads 是否只剩 stale / metadata 项。
-2. 若 review 线程清空或只剩 `Title check`，再按 `$gframework-batch-boot 50` 继续挑选新的 coverage 切片，避免在同一轮混入无关改稿。
-3. 若远端仍保留 schema 页线程，则基于推送后的 latest reviewed commit 再判断是否需要单独在 PR 上回复说明，而不是继续修改已覆盖的本地文档。
+1. 提交并推送本轮 source-generators 文档 follow-up，然后重新抓取 `$gframework-pr-review`。
+2. 若 remote open threads 只剩 stale 的“迁移与兼容性”线程或 `Title check` 这类 metadata 项，则停止本轮仓库内修复。
+3. 若 review 线程清空或只剩 metadata 项，再按 `$gframework-batch-boot 50` 继续挑选新的 coverage 切片，避免在同一轮混入无关改稿。

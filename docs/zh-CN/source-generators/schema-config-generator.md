@@ -199,7 +199,11 @@ var bootstrap = new GameConfigBootstrap(
 - 额外约束元数据不合法
   - 例如 `GF_ConfigSchema_008` 到 `GF_ConfigSchema_014`
 
-这些边界由 `GFramework.SourceGenerators.Tests/Config/SchemaConfigGeneratorTests.cs` 和快照测试共同覆盖。遇到生成失败时，优先先看诊断 ID，再回头核对 schema 本身是否超出当前公开子集。
+这些边界由
+[Schema 生成器行为测试](https://github.com/GeWuYou/GFramework/blob/main/GFramework.SourceGenerators.Tests/Config/SchemaConfigGeneratorTests.cs)
+和
+[生成结果快照测试](https://github.com/GeWuYou/GFramework/blob/main/GFramework.SourceGenerators.Tests/Config/SchemaConfigGeneratorSnapshotTests.cs)
+共同覆盖。遇到生成失败时，优先先看诊断 ID，再回头核对 schema 本身是否超出当前公开子集。
 
 ## 什么时候优先看这页
 
