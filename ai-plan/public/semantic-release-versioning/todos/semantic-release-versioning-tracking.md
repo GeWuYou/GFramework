@@ -16,9 +16,9 @@
 - 恢复点编号：`SEMREL-RP-004`
 - 当前阶段：`Phase 2`
 - 当前焦点：
-  - 将 preview / release 的 PAT 校验收敛为同一个复用入口，避免后续修复在两段脚本间漂移
-  - 在 PAT 校验阶段提前识别“仅有 read、没有 push”的 token，真正覆盖 `git push --dry-run` 的权限前提
-  - 将 active tracking 中已稳定的历史完成项归档，恢复默认入口的可读性
+  - 收敛 PR #312 最新 AI review 的 release notes 输出问题
+  - 确保 `.github/cliff.toml` 不再重复输出同一批 commits
+  - 确保 `publish.yml` 创建 GitHub Release 时通过文件传递多行 release notes
 
 ### 已知风险
 
@@ -29,6 +29,8 @@
 - `cycjimmy/semantic-release-action@v6` 需要在 preview / release 两端都安装 `conventional-changelog-conventionalcommits`
   以保证 `conventionalcommits` preset 在 GitHub Actions 中可解析
 - 当前仓库本地 `dotnet clean/build` 会带出既有 analyzer warnings；本轮仅修正发版配置与文档，不额外处理这些历史 warning
+- `git-cliff-action` 的 `OUTPUT` 文件需要在 `softprops/action-gh-release` 执行时保留在当前工作目录，后续如调整
+  working-directory 或 artifact 路径，需要同步复查 `body_path`
 
 ## 已完成
 
@@ -39,17 +41,32 @@
   `semantic-release` 的 `git push --dry-run` 阶段才失败
 - 已为 PAT 校验的 `mktemp` 文件补充 `trap` 清理，避免异常退出时遗留临时文件路径干扰日志
 - 已同步更新 active trace 到 `SEMREL-RP-004`，记录本轮 PR review 收敛结果
+- 已用 `$gframework-pr-review` 抓取 PR #312 最新 review payload，确认未失败测试、未发现 MegaLinter 明细，仍有
+  CodeRabbit / Greptile 针对 release notes 的未解决线程
+- 已移除 `.github/cliff.toml` 中 `## What's Changed` 下的未分组 commit 循环，仅保留按 Conventional Commit group
+  分类后的输出，避免每个 commit 在生成的 changelog 中出现两次
+- 已将 `.github/workflows/publish.yml` 的 GitHub Release 正文从多行 expression 改为 `body_path: RELEASE_NOTES.md`，
+  复用 `git-cliff-action` 写出的 release notes 文件
 
 ## 验证
 
+- `python3 -c 'import tomllib; tomllib.load(open(".github/cliff.toml", "rb")); print("cliff.toml OK")'`
+  - 结果：通过
+  - 备注：确认 `.github/cliff.toml` 仍为合法 TOML
+- `python3 -c 'import yaml; yaml.safe_load(open(".github/workflows/publish.yml", encoding="utf-8")); print("publish.yml OK")'`
+  - 结果：通过
+  - 备注：确认 `.github/workflows/publish.yml` 仍可解析为 YAML
+- `yq '.jobs."create-release".steps[] | select(.name == "Create GitHub Release and Upload Assets") | .with' .github/workflows/publish.yml`
+  - 结果：通过
+  - 备注：确认 release step 现在使用 `body_path: RELEASE_NOTES.md`
 - `dotnet build GFramework.sln -c Release`
   - 结果：通过
-  - 备注：Release 构建通过，`639 warning / 0 error`；warning 为仓库既有基线，preview 鉴权修复后与本轮 PAT 校验收敛后复验结果一致
+  - 备注：Release 构建通过，`0 warning / 0 error`；本轮只改动 GitHub Actions / git-cliff 配置
 - 更早阶段的 dry-run / tag /抽象项目验证已归档到
   `ai-plan/public/semantic-release-versioning/archive/todos/semantic-release-versioning-2026-04-26.md`
 
 ## 下一步
 
-1. 手动重跑 `Semantic Release Version and Tag` 的 preview job，确认 read-only PAT 会在校验步骤提前失败、可写 PAT 不再进入 `git push --dry-run ... 403`
-2. 推送本轮修复后重新抓取 PR review，确认 CodeRabbit / Greptile 的 open threads 已转为过时或可关闭
-3. 如 CI 仍报告权限边界问题，再决定是否将 PAT 校验升级为更贴近真实链路的远端 git 探测
+1. 提交并推送本轮 PR review 修复
+2. 重新抓取 PR review，确认 CodeRabbit / Greptile 的 release notes open threads 已转为过时或可关闭
+3. 如 CI 仍报告 release notes 发布问题，再优先复查 `git-cliff-action` 输出文件路径与 `action-gh-release` 输入契约

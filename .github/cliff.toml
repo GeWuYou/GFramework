@@ -54,11 +54,6 @@ https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}
 
 {% endif -%}
 
-## What's Changed
-{% for commit in commits -%}
-{{ self::print_commit(commit=commit) }}
-{% endfor %}
-
 {% for group, commits in commits | group_by(attribute="group") -%}
 ### {{ group | striptags | trim }}
 {% for commit in commits -%}

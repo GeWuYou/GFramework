@@ -1,5 +1,30 @@
 # Semantic Release 版本迁移追踪
 
+## 2026-05-01
+
+### 当前恢复点（SEMREL-RP-004）
+
+- 通过 `$gframework-pr-review` 抓取当前分支 PR #312：
+  - CodeRabbit 对 `.github/cliff.toml` 提出 1 个未解决线程，指出 release notes 会重复输出 commit
+  - Greptile 对 `.github/cliff.toml` 提出同一问题的未解决线程
+  - Greptile 对 `.github/workflows/publish.yml` 提出 1 个未解决线程，指出多行 release notes expression 作为
+    `body` 传入 GitHub Release action 风险较高
+  - CTRF 测试报告显示 `2247 passed / 0 failed`
+  - 未找到 MegaLinter 明细块
+- 本地复核结论：
+  - `.github/cliff.toml` 先遍历 `commits` 输出平铺列表，再对同一批 `commits` 按 `group` 输出，重复问题成立
+  - `.github/workflows/publish.yml` 已让 `git-cliff-action` 写出 `RELEASE_NOTES.md`，因此 `action-gh-release` 可直接使用
+    `body_path`
+- 已应用修复：
+  - 删除 `.github/cliff.toml` 中 `## What's Changed` 下的未分组循环，只保留 grouped 输出
+  - 将 `.github/workflows/publish.yml` 的 `body` 改为 `body_path: RELEASE_NOTES.md`
+- 已完成语法检查：
+  - `.github/cliff.toml` 通过 Python `tomllib` 解析
+  - `.github/workflows/publish.yml` 通过 PyYAML 解析
+  - `yq` 确认 release step 使用 `body_path`
+- `dotnet build GFramework.sln -c Release` 通过，`0 warning / 0 error`。
+- 下一步是提交并推送本轮 PR review 修复，然后重新抓取 PR review 确认相关线程状态。
+
 ## 2026-04-26
 
 ### 当前恢复点（SEMREL-RP-004）

@@ -272,7 +272,7 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           name: "Release ${{ github.ref_name }}"
-          body: ${{ steps.cliff_release.outputs.content }}
+          body_path: RELEASE_NOTES.md
           draft: false
           prerelease: false
           files: |
