@@ -56,13 +56,27 @@ jobs:
           echo "next_version=${{ steps.semantic_release.outputs.new_release_version }}"
           echo "next_tag=${{ steps.semantic_release.outputs.new_release_git_tag }}"
 
+      - name: Generate preview release notes
+        if: ${{ steps.semantic_release.outputs.new_release_published == 'true' }}
+        id: cliff_preview
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: .github/cliff.toml
+          args: >-
+            -vv --unreleased --strip header
+            --tag "${{ steps.semantic_release.outputs.new_release_git_tag }}"
+        env:
+          OUTPUT: PREVIEW_RELEASE_NOTES.md
+          GITHUB_REPO: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+
       - name: Write preview summary
         env:
           RELEASE_PUBLISHED: ${{ steps.semantic_release.outputs.new_release_published }}
-          RELEASE_NOTES: ${{ steps.semantic_release.outputs.new_release_notes }}
+          CLIFF_RELEASE_NOTES: ${{ steps.cliff_preview.outputs.content }}
         run: |
           {
-            echo "## Semantic Release Preview"
+            echo "## Release Preview"
             echo
             echo "- Commit: \`${{ github.sha }}\`"
             echo "- Release needed: \`${{ steps.semantic_release.outputs.new_release_published }}\`"
@@ -71,13 +85,11 @@ jobs:
             echo "- Next tag: \`${{ steps.semantic_release.outputs.new_release_git_tag }}\`"
             echo "- Preview auth: uses \`PAT_TOKEN\` because semantic-release dry-run still performs a remote push permission probe."
             echo "- Snapshot semantics: this preview is pinned to dispatch SHA \`${{ github.sha }}\`; commits added to \`main\` after the run starts are not included."
-            if [ "${RELEASE_PUBLISHED}" = "true" ] && [ -n "${RELEASE_NOTES}" ]; then
+            if [ "${RELEASE_PUBLISHED}" = "true" ] && [ -n "${CLIFF_RELEASE_NOTES}" ]; then
               echo
-              echo "<details><summary>Preview release notes</summary>"
+              echo "### 候选发布说明"
               echo
-              printf '%s\n' "${RELEASE_NOTES}"
-              echo
-              echo "</details>"
+              printf '%s\n' "${CLIFF_RELEASE_NOTES}"
             fi
             echo
             echo "If the version looks correct, approve the \`release-approval\` environment to continue."
@@ -131,13 +143,26 @@ jobs:
           echo "next_version=${{ steps.semantic_release.outputs.new_release_version }}"
           echo "next_tag=${{ steps.semantic_release.outputs.new_release_git_tag }}"
 
+      - name: Generate published release notes
+        if: ${{ steps.semantic_release.outputs.new_release_published == 'true' }}
+        id: cliff_release
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: .github/cliff.toml
+          args: >-
+            -vv --latest --strip header
+        env:
+          OUTPUT: PUBLISHED_RELEASE_NOTES.md
+          GITHUB_REPO: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+
       - name: Write release summary
         env:
           RELEASE_PUBLISHED: ${{ steps.semantic_release.outputs.new_release_published }}
-          RELEASE_NOTES: ${{ steps.semantic_release.outputs.new_release_notes }}
+          CLIFF_RELEASE_NOTES: ${{ steps.cliff_release.outputs.content }}
         run: |
           {
-            echo "## Semantic Release Publish"
+            echo "## Release Publish"
             echo
             echo "- Commit: \`${{ github.sha }}\`"
             echo "- Preview last tag: \`${{ needs.preview.outputs.last_tag }}\`"
@@ -148,12 +173,10 @@ jobs:
             echo "- Next version: \`${{ steps.semantic_release.outputs.new_release_version }}\`"
             echo "- Next tag: \`${{ steps.semantic_release.outputs.new_release_git_tag }}\`"
             echo "- Snapshot semantics: this publish run still uses dispatch SHA \`${{ github.sha }}\`; commits added to \`main\` after the preview started are excluded."
-            if [ "${RELEASE_PUBLISHED}" = "true" ] && [ -n "${RELEASE_NOTES}" ]; then
+            if [ "${RELEASE_PUBLISHED}" = "true" ] && [ -n "${CLIFF_RELEASE_NOTES}" ]; then
               echo
-              echo "<details><summary>Published release notes</summary>"
+              echo "### 已发布说明"
               echo
-              printf '%s\n' "${RELEASE_NOTES}"
-              echo
-              echo "</details>"
+              printf '%s\n' "${CLIFF_RELEASE_NOTES}"
             fi
           } >> "${GITHUB_STEP_SUMMARY}"

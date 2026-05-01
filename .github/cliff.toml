@@ -1,0 +1,100 @@
+[remote.github]
+owner = "GeWuYou"
+repo = "GFramework"
+
+[changelog]
+header = ""
+
+body = """
+{%- macro remote_url() -%}
+https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}
+{%- endmacro -%}
+
+{% macro has_release_highlight(commit) -%}
+{%- set highlighted = false -%}
+{%- if commit.remote and commit.remote.pr_labels -%}
+  {%- for label in commit.remote.pr_labels -%}
+    {%- if label == "release-highlight" or label == "highlight" -%}
+      {%- set highlighted = true -%}
+    {%- endif -%}
+  {%- endfor -%}
+{%- endif -%}
+{%- if not highlighted and commit.footers -%}
+  {%- for footer in commit.footers -%}
+    {%- if footer.token == "Release-Highlight" and footer.value | trim == "true" -%}
+      {%- set highlighted = true -%}
+    {%- endif -%}
+  {%- endfor -%}
+{%- endif -%}
+{{ highlighted }}
+{%- endmacro %}
+
+{% macro print_commit(commit) -%}
+- {{ commit.message | split(pat="\n") | first | trim | upper_first }}{% if commit.remote and commit.remote.username %} by @{{ commit.remote.username }}{% elif commit.author.name %} by {{ commit.author.name }}{% endif %}{% if commit.remote and commit.remote.pr_number %} in [#{{ commit.remote.pr_number }}]({{ self::remote_url() }}/pull/{{ commit.remote.pr_number }}){% endif %}
+{%- endmacro %}
+
+{% if version -%}
+## {{ version }} ({{ timestamp | date(format="%Y-%m-%d") }})
+{% else -%}
+## 未发布
+{% endif %}
+
+{% set highlights = commits | filter(attribute="breaking", value=true) %}
+{% for commit in commits -%}
+  {% if self::has_release_highlight(commit=commit) == "true" -%}
+    {% set_global highlights = highlights | concat(with=commit) -%}
+  {% endif -%}
+{% endfor -%}
+
+{% if highlights | length > 0 -%}
+## 重点条目
+{% for commit in highlights -%}
+{{ self::print_commit(commit=commit) }}
+{% endfor %}
+
+{% endif -%}
+
+## What's Changed
+{% for commit in commits -%}
+{{ self::print_commit(commit=commit) }}
+{% endfor %}
+
+{% for group, commits in commits | group_by(attribute="group") -%}
+### {{ group | striptags | trim }}
+{% for commit in commits -%}
+{{ self::print_commit(commit=commit) }}
+{% endfor %}
+
+{% endfor -%}
+
+{% if previous and previous.version and version -%}
+Full Changelog: [{{ previous.version }}...{{ version }}]({{ self::remote_url() }}/compare/{{ previous.version }}...{{ version }})
+{% endif -%}
+"""
+
+footer = ""
+
+[git]
+conventional_commits = true
+filter_unconventional = true
+split_commits = false
+protect_breaking_commits = false
+sort_commits = "oldest"
+
+commit_parsers = [
+  { message = ".*\\[skip changelog\\].*", skip = true },
+  { body = ".*\\[skip changelog\\].*", skip = true },
+  { message = "^feat", group = "<!-- 0 -->✨ 新功能" },
+  { message = "^fix", group = "<!-- 1 -->🐛 Bug 修复" },
+  { message = "^perf", group = "<!-- 2 -->⚡ 优化" },
+  { message = "^refactor", group = "<!-- 2 -->⚡ 优化" },
+  { message = "^docs", group = "<!-- 3 -->📝 文档/其他" },
+  { message = "^test", group = "<!-- 3 -->📝 文档/其他" },
+  { message = "^chore", group = "<!-- 3 -->📝 文档/其他" },
+  { message = "^build", group = "<!-- 3 -->📝 文档/其他" },
+  { message = "^ci", group = "<!-- 3 -->📝 文档/其他" },
+  { message = "^style", group = "<!-- 3 -->📝 文档/其他" }
+]
+
+[git.github]
+commits = true
