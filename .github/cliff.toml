@@ -54,6 +54,9 @@ https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}
 
 {% endif -%}
 
+{% if commits | length > 0 -%}
+## What's Changed
+
 {% for group, commits in commits | group_by(attribute="group") -%}
 ### {{ group | striptags | trim }}
 {% for commit in commits -%}
@@ -61,6 +64,7 @@ https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}
 {% endfor %}
 
 {% endfor -%}
+{% endif -%}
 
 {% if previous and previous.version and version -%}
 Full Changelog: [{{ previous.version }}...{{ version }}]({{ self::remote_url() }}/compare/{{ previous.version }}...{{ version }})

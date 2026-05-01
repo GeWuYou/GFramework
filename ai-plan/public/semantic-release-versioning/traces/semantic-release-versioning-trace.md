@@ -2,6 +2,21 @@
 
 ## 2026-05-01
 
+### 发布说明 PR 归属展示（SEMREL-RP-004）
+
+- 本轮取舍：
+  - 不新增单独 PR 索引章节，避免和分类变更列表重复展示同一批 PR
+  - 保留 `print_commit` 的 `by @user in #PR` 输出，让每条变更直接具备 PR 追溯入口
+  - 在 grouped 分类列表外层补回 `## What's Changed`，让该区域明确承担完整变更清单语义
+- 已更新：
+  - `.github/cliff.toml`：分类变更列表现在位于 `## What's Changed` 下，未恢复旧的未分组 commit 循环
+  - `ai-plan/public/README.md`：新增 `feat/release-summary-notes` 到 `semantic-release-versioning` 的 active topic 映射
+- 验证：
+  - `.github/cliff.toml` 通过 Python `tomllib` 解析
+  - 本地未安装 `git-cliff`，无法直接预览 action 渲染输出
+  - `dotnet build GFramework.sln -c Release` 通过，`0 warning / 0 error`
+- 下一步是提交并推送本轮 release notes 模板调整。
+
 ### 当前恢复点（SEMREL-RP-004）
 
 - 通过 `$gframework-pr-review` 抓取当前分支 PR #312：
