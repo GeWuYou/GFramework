@@ -26,6 +26,6 @@
 
 ## 2026-04-30 / RP-052
 
-- 这一轮 coverage 扩展提交为 `f88f96c3`，提交后 branch diff 相对 `origin/main` 回落到 `8` files / `337` lines`，重新释放了 stop-condition 余量。
+- 这一轮 coverage 扩展提交为 `f88f96c3`，提交后 branch diff 相对 `origin/main` 回落到 `8` files / `337` lines，重新释放了 stop-condition 余量。
 - active topic 后续仍可继续扩批，但更适合选择“已有 package README、但站内 docs 仍缺 reader-facing 专题”的切片，而不是继续给共享支撑层单开页面。
 - 该状态也为后续用 `$gframework-pr-review` 精确跟进最新 review 线程提供了更清晰的恢复入口。

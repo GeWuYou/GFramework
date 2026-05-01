@@ -10,19 +10,20 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`DOCUMENTATION-FULL-COVERAGE-GOV-RP-053`
+- 恢复点编号：`DOCUMENTATION-FULL-COVERAGE-GOV-RP-054`
 - 当前阶段：`Phase 5 - Governance Maintenance`
 - 当前焦点：
-  - 处理 PR `#308` latest-head review 中仍成立的 3 条 `CodeRabbit` open threads：继续瘦身 active `ai-plan` 文档，并为 `Schema 配置生成器` 专题补集中式迁移与兼容性说明
+  - 处理 PR `#308` latest-head review 中经本地复核仍成立的 `CodeRabbit` open threads，并清理 active `ai-plan` 对旧结论的漂移
 - 当前事实：
-  - `2026-05-01` 重新抓取 `$gframework-pr-review` 后确认：PR `#308` 处于 `OPEN`，latest reviewed commit 为 `097e97bcd66c89c79b4dafc30e24e8b650c7db63`
-  - 当前 latest-head review 只剩 `CodeRabbit` `3` 条 open threads，分别指向本 tracking、active trace 和 `docs/zh-CN/source-generators/schema-config-generator.md`
+  - `2026-05-01` 重新抓取 `$gframework-pr-review` 后确认：PR `#308` 处于 `OPEN`，latest reviewed commit 为 `241c9ffeb3dbd11872b23ecf4a80971feeca475b`
+  - 当前 latest-head review 只剩 `CodeRabbit` `3` 条 open threads，但本地复核后只有 `2` 条仍然成立，均指向 `documentation-full-coverage-governance` 的归档 Markdown 反引号问题
+  - `docs/zh-CN/source-generators/schema-config-generator.md` 已包含独立的“迁移与兼容性”章节，因此对应 open thread 现阶段应视为 stale，等待提交推送后再由远端重新计算
   - GitHub Test Reporter 汇总为 `2222 passed / 0 failed`
   - `Title check` 仍为 `Inconclusive`，属于 PR 元数据问题，不是仓库文件内可直接修复的阻塞项
-  - 本地已完成 review 指向文件的收口，但在变更尚未提交推送前，重新抓取的 PR review 仍会继续显示旧的 latest reviewed commit 与同一批 open threads
+  - 本地对 review 指向文件的修复在提交推送前，不会改变远端 latest reviewed commit 与 open-thread 统计
 - 当前风险：
-  - active tracking / trace 若继续保留阶段性细节与逐项验证，会再次偏离“快速恢复入口”的用途
-  - `Schema 配置生成器` 页已经说明边界，但迁移步骤、兼容边界和回退方式仍分散在多个段落中
+  - 如果 active tracking / trace 继续保留已失效的 review 判断，会让后续恢复点重复处理已经本地闭环的问题
+  - 在变更推送前，PR 页面仍会继续展示旧的 open-thread 数量，容易把 stale 线程误判为新的本地缺陷
 
 ## 当前状态摘要
 
@@ -62,8 +63,6 @@
   - 结果：通过；active `ai-plan` 瘦身与 schema 专题页更新后站点仍可构建，仅保留既有大 chunk warning。
 - `2026-05-01` `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output /tmp/current-pr-review.json`
   - 结果：通过；PR `#308` 处于 `OPEN`，latest-head review 当前只剩 `3` 条 `CodeRabbit` open threads，测试汇总为 `2222 passed / 0 failed`，`Greptile` / `Gemini Code Assist` 当前无 open thread。
-- `2026-05-01` `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output /tmp/current-pr-review-after-fix.json`
-  - 结果：通过；remote latest reviewed commit 仍是 `097e97bcd66c89c79b4dafc30e24e8b650c7db63`，因此在本地改动尚未提交推送前，PR 页面仍显示同一批 `3` 条 open threads。
 - `2026-04-30` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/schema-config-generator.md`
   - 结果：通过；`Schema 配置生成器` 专题页的 frontmatter、链接与代码块校验通过。
 - `2026-04-30` `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/index.md`
@@ -79,6 +78,6 @@
 
 ## 下一步
 
-1. 完成本轮 3 个 latest-head review follow-up 后，重新运行最小文档验证，并重新抓取 `$gframework-pr-review`，确认 remote open threads 是否清空。
-2. 若 review 线程清空，再继续按 `$gframework-batch-boot 50` 挑选“已有 package README、但站内专题仍不足”的 coverage 切片，而不是继续扩写共享支撑层。
-3. 若 `Title check` 仍保留，则单独修改 GitHub PR 标题，不把它和仓库文件内容混为同一类修复项。
+1. 提交并推送本轮归档修正与 active `ai-plan` 事实校正，然后重新抓取 `$gframework-pr-review`，确认 remote open threads 是否只剩 stale / metadata 项。
+2. 若 review 线程清空或只剩 `Title check`，再按 `$gframework-batch-boot 50` 继续挑选新的 coverage 切片，避免在同一轮混入无关改稿。
+3. 若远端仍保留 schema 页线程，则基于推送后的 latest reviewed commit 再判断是否需要单独在 PR 上回复说明，而不是继续修改已覆盖的本地文档。
