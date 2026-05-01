@@ -15,16 +15,17 @@
 - 当前焦点：
   - 处理 PR `#308` 当前 latest-head review 与 outside-diff review 中经本地复核仍成立的 reader-facing 文档与 active `ai-plan` 漂移问题
 - 当前事实：
-  - `2026-05-01` 重新抓取 `$gframework-pr-review` 后确认：PR `#308` 处于 `OPEN`，latest reviewed commit 已前进到 `896e3efaa9c7496043fdaeee4dceff3d0e46b318`
-  - 当前 `CodeRabbit` 仍有 `3` 条 latest-head open threads 和 `1` 条 outside-diff comment；`Greptile` / `Gemini Code Assist` 当前无 open thread
-  - 本地复核后真正仍成立的 `4` 条问题已经全部在当前工作树完成修复：`cqrs-handler-registry-generator.md` 的 fallback 条件说明、`schema-config-generator.md` 的 `configRootPath` 示例、active trace 的显式风险段，以及 active tracking 的验证摘要压缩
-  - `docs/zh-CN/source-generators/schema-config-generator.md` 已包含独立的“迁移与兼容性”章节，因此对应 major open thread 现阶段应视为 stale，等待提交推送后再由远端重新计算
+  - `2026-05-01` 重新抓取 `$gframework-pr-review` 后确认：PR `#308` 处于 `OPEN`，latest reviewed commit 已前进到 `00ecf6fb1083e9039c9dc544a3265c38e1ba9117`
+  - 当前 `CodeRabbit` 仍有 `5` 条 latest-head open threads；其中 `2` 条是本轮 latest review 针对 active tracking 与 `schema-config-generator.md` 措辞提出的新 actionable comments，另有 `3` 条为已被当前文件内容满足但尚未由远端重新计算关闭的 stale 线程
+  - `Greptile` / `Gemini Code Assist` 当前无 open thread，CodeRabbit latest review 状态为 `CHANGES_REQUESTED`
+  - 本地复核后，最新 review 中真正仍成立的 `2` 条问题分别是：active tracking 的 RP-055 验证引用仍指向 `RP-049` 到 `RP-052` 归档，以及 `schema-config-generator.md` 的“更稳妥地回退”措辞未同步
+  - `docs/zh-CN/source-generators/schema-config-generator.md` 已包含独立的“迁移与兼容性”章节，且运行时示例已补齐 `configRootPath` 定义，因此对应的 major / minor open threads 现阶段应视为 stale，等待提交推送后再由远端重新计算
   - GitHub Test Reporter 汇总为 `2247 passed / 0 failed`
   - `Title check` 仍为 `Inconclusive`，属于 PR 元数据问题，不是仓库文件内可直接修复的阻塞项
   - 本地修复尚未推送前，不会改变远端 latest reviewed commit 与 open-thread 统计
 - 当前风险：
   - 如果 active tracking / trace 继续保留旧的 commit SHA 和 review 归因，会让后续恢复点重复处理已经本地闭环的问题
-  - 在变更推送前，PR 页面仍会继续展示旧的 open-thread / outside-diff 数量，容易把 stale 线程误判为新的本地缺陷
+  - 在变更推送前，PR 页面仍会继续展示 latest reviewed commit `00ecf6fb...` 下的 open-thread 数量，容易把 stale 线程误判为新的本地缺陷
 
 ## 当前状态摘要
 
@@ -58,10 +59,9 @@
 
 ## 最新验证
 
-- `2026-05-01` 本轮关键验证结论：`$gframework-pr-review` 重新抓取通过，确认 PR `#308` 的 latest reviewed commit 为 `896e3efaa9c7496043fdaeee4dceff3d0e46b318`，`CodeRabbit` 当前仍有 `3` 条 latest-head open threads 与 `1` 条 outside-diff comment；两篇 source-generators 页面校验通过，`docs/` 站点构建通过并仅保留既有大 chunk warning。
-- 逐条命令与详细结果见：
-  - `ai-plan/public/documentation-full-coverage-governance/archive/todos/documentation-full-coverage-governance-validation-history-rp-049-to-rp-052-2026-05-01.md`
-  - `ai-plan/public/documentation-full-coverage-governance/archive/traces/documentation-full-coverage-governance-trace-history-rp-049-to-rp-052-2026-05-01.md`
+- `2026-05-01` 本轮关键验证结论：`$gframework-pr-review` 重新抓取通过，确认 PR `#308` 的 latest reviewed commit 为 `00ecf6fb1083e9039c9dc544a3265c38e1ba9117`，`CodeRabbit` 当前仍有 `5` 条 latest-head open threads；其中最新 review 的 `2` 条 actionable comments 已在当前工作树完成修复，其余 `3` 条因当前文件内容已满足而应视为 stale。两篇 source-generators 页面校验通过，`docs/` 站点构建通过并仅保留既有大 chunk warning。
+- 本轮逐条命令与详细结果见 active trace 的 `RP-055` 验证段：
+  - `ai-plan/public/documentation-full-coverage-governance/traces/documentation-full-coverage-governance-trace.md`
 
 ## 下一步
 

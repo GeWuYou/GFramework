@@ -4,27 +4,29 @@
 
 ### 当前恢复点：RP-055
 
-- 通过 `$gframework-pr-review` 重新抓取当前分支 PR `#308`，确认 latest reviewed commit 已前进到 `896e3efaa9c7496043fdaeee4dceff3d0e46b318`，当前 `CodeRabbit` 仍有 `3` 条 latest-head open threads 和 `1` 条 outside-diff comment。
-- 本地复核确认真正仍成立的 `4` 条问题已经全部在当前工作树完成修复：`cqrs-handler-registry-generator.md` 的 fallback 条件说明、`schema-config-generator.md` 的 `configRootPath` 示例、active trace 的显式风险段，以及 active tracking 的“最新验证”压缩；`schema-config-generator.md` 的“迁移与兼容性”建议则已经本地满足，应视为 stale。
+- 通过 `$gframework-pr-review` 重新抓取当前分支 PR `#308`，确认 latest reviewed commit 已前进到 `00ecf6fb1083e9039c9dc544a3265c38e1ba9117`，当前 `CodeRabbit` 仍有 `5` 条 latest-head open threads。
+- 本地复核确认最新 review 中真正仍成立的 `2` 条问题已经在当前工作树完成修复：active tracking 的 RP-055 验证引用改为指向 active trace，以及 `schema-config-generator.md` 的“更稳妥地回退”措辞同步。
+- `schema-config-generator.md` 的“迁移与兼容性”章节与自包含运行时示例已在当前文件内容中满足 earlier open threads，对应 `3` 条历史线程现阶段应视为 stale，等待提交推送后由远端重新计算。
 - GitHub Test Reporter 当前汇总为 `2247 passed / 0 failed`；`Title check` 仍然只是 PR 元数据问题，因此不纳入仓库文件修复范围。
 
 ### 当前决策（RP-055）
 
 - 补齐 `cqrs-handler-registry-generator.md` 的 fallback 条件说明，以及 `schema-config-generator.md` 的自包含运行时示例。
 - active tracking 与 active trace 改写为与本次 PR 抓取一致的事实，修正 latest reviewed commit、线程数量、本地结论与验证摘要。
+- 只修仍然成立的 latest review 问题，不重复处理已被当前内容满足但尚未关闭的 stale 线程。
 - 本轮只做 PR review 精确收口，不扩展到新的 docs coverage 批次。
 
 ### 当前风险（RP-055）
 
-- 在本轮提交推送前，PR 页面仍会继续展示基于旧 diff 的 open threads，因此远端线程数量短时间内不会反映本地已修复状态。
-- `schema-config-generator.md` 的“迁移与兼容性”线程已经由当前文件内容满足，但仍需依赖远端下一次 review 重新计算后才能从 open thread 列表中消失。
+- 在本轮提交推送前，PR 页面仍会继续展示 latest reviewed commit `00ecf6fb...` 下的 open threads，因此远端线程数量短时间内不会反映本地已修复状态。
+- `schema-config-generator.md` 的“迁移与兼容性”线程和 `configRootPath` 线程已经由当前文件内容满足，但仍需依赖远端下一次 review 重新计算后才能从 open thread 列表中消失。
 - `Title check` 仍是 PR 元数据层面的 `Inconclusive` 项；即使仓库文件全部修完，也不能仅凭本地改动让该检查转绿。
 
 ### 当前验证（RP-055）
 
 - PR review 抓取：
   - `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output /tmp/current-pr-review.json`
-  - 结果：通过；PR `#308` 处于 `OPEN`，latest reviewed commit 为 `896e3efaa9c7496043fdaeee4dceff3d0e46b318`，`CodeRabbit` 当前有 `3` 条 latest-head open threads 和 `1` 条 outside-diff comment，测试汇总为 `2247 passed / 0 failed`。
+  - 结果：通过；PR `#308` 处于 `OPEN`，latest reviewed commit 为 `00ecf6fb1083e9039c9dc544a3265c38e1ba9117`，`CodeRabbit` 当前有 `5` 条 latest-head open threads，其中最新 review 的 `2` 条 actionable comments 已本地修复，其余 `3` 条应视为 stale；测试汇总为 `2247 passed / 0 failed`。
 - 页面校验：
   - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/schema-config-generator.md`
   - `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/source-generators/cqrs-handler-registry-generator.md`
