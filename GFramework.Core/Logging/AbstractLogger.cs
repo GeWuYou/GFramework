@@ -6,16 +6,42 @@ namespace GFramework.Core.Logging;
 ///     日志抽象基类，封装日志级别判断、格式化与异常处理逻辑。
 ///     平台日志器只需实现 Write 方法即可。
 /// </summary>
-public abstract class AbstractLogger(
-    string? name = null,
-    LogLevel minLevel = LogLevel.Info) : IStructuredLogger
+public abstract class AbstractLogger : IStructuredLogger
 {
     /// <summary>
     ///     根日志记录器的名称常量
     /// </summary>
     public const string RootLoggerName = "ROOT";
 
-    private readonly string _name = name ?? RootLoggerName;
+    private readonly Func<LogLevel> _minLevelProvider;
+    private readonly string _name;
+
+    /// <summary>
+    ///     使用固定最小日志级别初始化日志器。
+    /// </summary>
+    /// <param name="name">日志器名称。</param>
+    /// <param name="minLevel">最小日志级别。</param>
+    protected AbstractLogger(
+        string? name = null,
+        LogLevel minLevel = LogLevel.Info)
+        : this(name, () => minLevel)
+    {
+    }
+
+    /// <summary>
+    ///     使用动态最小日志级别提供器初始化日志器。
+    /// </summary>
+    /// <param name="name">日志器名称。</param>
+    /// <param name="minLevelProvider">最小日志级别提供器。</param>
+    protected AbstractLogger(
+        string? name,
+        Func<LogLevel> minLevelProvider)
+    {
+        ArgumentNullException.ThrowIfNull(minLevelProvider);
+
+        _name = name ?? RootLoggerName;
+        _minLevelProvider = minLevelProvider;
+    }
 
     #region Metadata
 
@@ -47,7 +73,7 @@ public abstract class AbstractLogger(
     /// <returns>如果指定级别大于等于最小级别则返回true，否则返回false</returns>
     protected bool IsEnabled(LogLevel level)
     {
-        return level >= minLevel;
+        return level >= _minLevelProvider();
     }
 
     /// <summary>

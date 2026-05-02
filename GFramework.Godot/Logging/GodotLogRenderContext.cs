@@ -8,4 +8,5 @@ internal readonly record struct GodotLogRenderContext(
     LogLevel Level,
     string Category,
     string Message,
-    string Color);
+    string Color,
+    string Properties);

@@ -38,6 +38,10 @@ help the current worktree land on the right recovery documents without scanning 
   - Purpose: continue the data repository persistence hardening plus the settings / serialization follow-up backlog.
   - Tracking: `ai-plan/public/data-repository-persistence/todos/data-repository-persistence-tracking.md`
   - Trace: `ai-plan/public/data-repository-persistence/traces/data-repository-persistence-trace.md`
+- `godot-logging-compliance-polish`
+  - Purpose: continue Godot logging host integration, configuration reload, structured-output polish, and follow-up work without forking the Core logging model.
+  - Tracking: `ai-plan/public/godot-logging-compliance-polish/todos/godot-logging-compliance-polish-tracking.md`
+  - Trace: `ai-plan/public/godot-logging-compliance-polish/traces/godot-logging-compliance-polish-trace.md`
 - `semantic-release-versioning`
   - Purpose: migrate release version calculation from fixed patch bumps to semantic-release while keeping the existing tag-driven NuGet publish flow.
   - Tracking: `ai-plan/public/semantic-release-versioning/todos/semantic-release-versioning-tracking.md`
@@ -59,6 +63,9 @@ help the current worktree land on the right recovery documents without scanning 
 - Branch: `feat/data-repository-persistence`
   - Worktree hint: `GFramework-data-repository-persistence`
   - Priority 1: `data-repository-persistence`
+- Branch: `feat/godot-logging-compliance-polish`
+  - Worktree hint: `GFramework`
+  - Priority 1: `godot-logging-compliance-polish`
 - Branch: `feat/semantic-release-versioning`
   - Worktree hint: `GFramework`
   - Priority 1: `semantic-release-versioning`

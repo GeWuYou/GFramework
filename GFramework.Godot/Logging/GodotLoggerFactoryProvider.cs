@@ -1,6 +1,6 @@
 using System;
+using System.Collections.Concurrent;
 using GFramework.Core.Abstractions.Logging;
-using GFramework.Core.Logging;
 
 namespace GFramework.Godot.Logging;
 
@@ -9,14 +9,15 @@ namespace GFramework.Godot.Logging;
 /// </summary>
 public sealed class GodotLoggerFactoryProvider : ILoggerFactoryProvider
 {
-    private readonly ILoggerFactory _cachedFactory;
+    private readonly ConcurrentDictionary<string, ILogger> _loggers = new(StringComparer.Ordinal);
+    private readonly Func<GodotLoggerSettings> _settingsProvider;
 
     /// <summary>
     ///     Initializes a Godot logger provider with the default logger factory.
     /// </summary>
     public GodotLoggerFactoryProvider()
+        : this(static () => GodotLoggerSettings.Default)
     {
-        _cachedFactory = CreateCachedFactory(new GodotLoggerFactory());
     }
 
     /// <summary>
@@ -24,8 +25,13 @@ public sealed class GodotLoggerFactoryProvider : ILoggerFactoryProvider
     /// </summary>
     /// <param name="options">The logger options.</param>
     public GodotLoggerFactoryProvider(GodotLoggerOptions options)
+        : this(CreateStaticSettingsProvider(options))
     {
-        _cachedFactory = CreateCachedFactory(new GodotLoggerFactory(options));
+    }
+
+    internal GodotLoggerFactoryProvider(Func<GodotLoggerSettings> settingsProvider)
+    {
+        _settingsProvider = settingsProvider ?? throw new ArgumentNullException(nameof(settingsProvider));
     }
 
     /// <summary>
@@ -40,12 +46,31 @@ public sealed class GodotLoggerFactoryProvider : ILoggerFactoryProvider
     /// <returns>A logger configured with <see cref="MinLevel"/>.</returns>
     public ILogger CreateLogger(string name)
     {
-        return _cachedFactory.GetLogger(name, MinLevel);
+        ArgumentNullException.ThrowIfNull(name);
+
+        return _loggers.GetOrAdd(
+            name,
+            static (loggerName, provider) => new GodotLogger(
+                loggerName,
+                provider.GetOptions,
+                () => provider.GetEffectiveMinLevel(loggerName)),
+            this);
     }
 
-    private static ILoggerFactory CreateCachedFactory(ILoggerFactory innerFactory)
+    private GodotLoggerOptions GetOptions()
     {
-        ArgumentNullException.ThrowIfNull(innerFactory);
-        return new CachedLoggerFactory(innerFactory);
+        return _settingsProvider().Options;
+    }
+
+    private LogLevel GetEffectiveMinLevel(string categoryName)
+    {
+        return _settingsProvider().GetEffectiveMinLevel(categoryName, MinLevel);
+    }
+
+    private static Func<GodotLoggerSettings> CreateStaticSettingsProvider(GodotLoggerOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        var settings = GodotLoggerSettings.FromOptions(options);
+        return () => settings;
     }
 }

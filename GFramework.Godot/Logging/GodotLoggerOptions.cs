@@ -39,7 +39,7 @@ public sealed class GodotLoggerOptions
     /// </summary>
 #pragma warning disable MA0016 // Keep configuration mutable for object initializer and serializer scenarios.
     public string DebugOutputTemplate { get; set; } =
-        "[{timestamp:yyyy-MM-dd HH:mm:ss.fff}] [color={color}][{level:u3}][/color] [{category:l16}] {message}";
+        "[{timestamp:yyyy-MM-dd HH:mm:ss.fff}] [color={color}][{level:u3}][/color] [{category:l16}] {message}{properties}";
 #pragma warning restore MA0016
 
     /// <summary>
@@ -47,7 +47,7 @@ public sealed class GodotLoggerOptions
     /// </summary>
 #pragma warning disable MA0016 // Keep configuration mutable for object initializer and serializer scenarios.
     public string ReleaseOutputTemplate { get; set; } =
-        "[{timestamp:yyyy-MM-dd HH:mm:ss.fff}] [{level:u3}] [{category:l16}] {message}";
+        "[{timestamp:yyyy-MM-dd HH:mm:ss.fff}] [{level:u3}] [{category:l16}] {message}{properties}";
 #pragma warning restore MA0016
 
     /// <summary>
@@ -69,8 +69,8 @@ public sealed class GodotLoggerOptions
             Mode = GodotLoggerMode.Debug,
             DebugMinLevel = minLevel,
             ReleaseMinLevel = minLevel,
-            DebugOutputTemplate = "[{timestamp:yyyy-MM-dd HH:mm:ss.fff}] {level:padded} [{category}] {message}",
-            ReleaseOutputTemplate = "[{timestamp:yyyy-MM-dd HH:mm:ss.fff}] {level:padded} [{category}] {message}",
+            DebugOutputTemplate = "[{timestamp:yyyy-MM-dd HH:mm:ss.fff}] {level:padded} [{category}] {message}{properties}",
+            ReleaseOutputTemplate = "[{timestamp:yyyy-MM-dd HH:mm:ss.fff}] {level:padded} [{category}] {message}{properties}",
             Colors = new Dictionary<LogLevel, string>(DefaultColors)
         };
     }

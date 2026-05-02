@@ -91,6 +91,7 @@ internal sealed class GodotLogTemplate
             "color" => static (builder, context) => builder.Append(context.Color),
             "level" => static (builder, context) => builder.Append(context.Level),
             "message" => static (builder, context) => builder.Append(context.Message),
+            "properties" => static (builder, context) => builder.Append(context.Properties),
             "timestamp" => static (builder, context) => builder.Append(context.Timestamp.ToString(
                 "yyyy-MM-dd HH:mm:ss.fff",
                 CultureInfo.InvariantCulture)),

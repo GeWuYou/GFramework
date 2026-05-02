@@ -16,7 +16,8 @@ public sealed class GodotLogTemplateTests
             LogLevel.Warning,
             "Game.Services.Inventory",
             "Loaded",
-            "orange");
+            "orange",
+            string.Empty);
 
         var result = template.Render(context);
 
@@ -32,7 +33,8 @@ public sealed class GodotLogTemplateTests
             LogLevel.Debug,
             "Game",
             "Ready",
-            "cyan");
+            "cyan",
+            string.Empty);
 
         var result = template.Render(context);
 
@@ -48,7 +50,8 @@ public sealed class GodotLogTemplateTests
             LogLevel.Info,
             "UI",
             "Ready",
-            "white");
+            "white",
+            string.Empty);
 
         var result = template.Render(context);
 
@@ -64,7 +67,8 @@ public sealed class GodotLogTemplateTests
             LogLevel.Info,
             "Game",
             "Ready",
-            "white");
+            "white",
+            string.Empty);
 
         var result = template.Render(context);
 
@@ -80,11 +84,29 @@ public sealed class GodotLogTemplateTests
             LogLevel.Info,
             "Game",
             "Ready",
-            "white");
+            "white",
+            string.Empty);
 
         var result = template.Render(context);
 
         Assert.That(result, Is.EqualTo("INFO   "));
+    }
+
+    [Test]
+    public void Render_Should_Append_Properties_Placeholder()
+    {
+        var template = GodotLogTemplate.Parse("{message}{properties}");
+        var context = new GodotLogRenderContext(
+            new DateTime(2026, 5, 2, 1, 2, 3, DateTimeKind.Utc),
+            LogLevel.Info,
+            "Game",
+            "Ready",
+            "white",
+            " | Scene=Boot");
+
+        var result = template.Render(context);
+
+        Assert.That(result, Is.EqualTo("Ready | Scene=Boot"));
     }
 
     [Test]
