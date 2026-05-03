@@ -7,12 +7,12 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`GODOT-LOGGING-CORE-SINK-RP-001`
-- 当前阶段：`启动与边界确认`
+- 恢复点编号：`GODOT-LOGGING-CORE-SINK-RP-002`
+- 当前阶段：`Godot appender 最小实现已验证`
 - 当前焦点：
-  - 复查 `GFramework.Core` 当前日志抽象、provider、appender / sink 能力与扩展边界
-  - 对照已归档的 `godot-logging-compliance-polish` 结论，确认哪些能力应迁移为 Core 通用扩展，哪些能力应保留在 Godot 宿主层
-  - 形成最小实现路径，避免同时引入第二套日志 API 或破坏现有 `GodotLog` 入口
+  - `GFramework.Godot.Logging.GodotLogAppender` 已作为 Core `ILogAppender` 的 Godot 宿主落点落地
+  - `GodotLogger` 保留原有 `ILogger` 入口，但底层输出委托给 appender
+  - Godot / Core logging 文档已说明 provider 与 appender 的组合边界
 
 ## 已知输入
 
@@ -25,19 +25,26 @@
 
 ## 待办
 
-1. 盘点 `GFramework.Core` 日志扩展点与 Godot 侧 logger/provider 的实际耦合点
-2. 判断 Core appender / sink 抽象是否已足够承载 Godot 输出，还是需要先补齐抽象层能力
-3. 制定兼容路径：保留 `GodotLog` 用户入口，同时让底层输出走 Core 可组合管线
-4. 为选定方案补充 targeted tests 与 `docs/zh-CN/` adoption guidance
+1. 已完成：盘点 `GFramework.Core` 日志扩展点与 Godot 侧 logger/provider 的实际耦合点
+2. 已完成：确认现有 Core `ILogAppender` 足够承载 Godot 输出，无需新增第二套 sink API
+3. 已完成：保留 `GodotLog` / `GodotLoggerFactoryProvider` 入口，并让 `GodotLogger` 底层走 `GodotLogAppender`
+4. 已完成：补充 `GodotLogAppender` targeted tests 与 `docs/zh-CN/` adoption guidance
+5. 待确认：是否还需要在后续阶段补一个配置化 factory 示例，把 `GodotLogAppender` 与文件 / async appender 显式组合
 
 ## 验证
 
 - `dotnet build GFramework.sln -c Release`
   - 结果：通过，`0 warning / 0 error`
   - 备注：2026-05-03 在创建本 active topic 前已验证归档收尾分支；后续实现改动需要按受影响项目重新验证
+- `dotnet test GFramework.Godot.Tests -c Release`
+  - 结果：通过，`75 passed / 0 failed / 0 skipped`
+  - 备注：覆盖 `GodotLogAppender` 渲染、动态 options provider、既有 Godot logging tests
+- `dotnet build GFramework.Godot -c Release`
+  - 结果：通过，`0 warning / 0 error`
+  - 备注：验证受影响运行时项目
 
 ## 下一步
 
-1. 从 `GFramework.Core` 与 `GFramework.Godot.Logging` 源码开始做只读盘点
-2. 在 trace 中记录候选设计和不采用的扩张路径
-3. 确认实现边界后再修改代码与文档
+1. 提交当前 appender 实现、测试、文档与 tracking 更新
+2. 如继续扩展本主题，优先评估是否需要示例化 `CompositeLogger + GodotLogAppender + FileAppender`，而不是新增 API
+3. 若无新增需求，本主题可在 PR 验证通过后归档
