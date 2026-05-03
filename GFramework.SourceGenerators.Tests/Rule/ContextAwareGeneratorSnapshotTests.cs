@@ -1,4 +1,7 @@
-﻿using System;
+﻿// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
+
+using System;
 using System.IO;
 using System.Linq;
 using GFramework.Core.SourceGenerators.Rule;

@@ -1,4 +1,7 @@
-﻿namespace GFramework.SourceGenerators.Common.Constants;
+﻿// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
+
+namespace GFramework.SourceGenerators.Common.Constants;
 
 /// <summary>
 ///     定义GFramework项目中使用的路径常量

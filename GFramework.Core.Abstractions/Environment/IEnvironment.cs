@@ -1,4 +1,7 @@
-﻿namespace GFramework.Core.Abstractions.Environment;
+﻿// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
+
+namespace GFramework.Core.Abstractions.Environment;
 
 /// <summary>
 ///     定义环境接口，提供应用程序运行环境的相关信息

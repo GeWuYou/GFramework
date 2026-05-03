@@ -1,4 +1,7 @@
-﻿namespace GFramework.Core.Abstractions.Controller;
+﻿// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
+
+namespace GFramework.Core.Abstractions.Controller;
 
 /// <summary>
 ///     控制器标记接口，用于标识控制器组件

@@ -1,4 +1,7 @@
-﻿// IsExternalInit.cs
+﻿// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
+
+// IsExternalInit.cs
 // This type is required to support init-only setters and record types
 // when targeting netstandard2.0 or older frameworks.
 

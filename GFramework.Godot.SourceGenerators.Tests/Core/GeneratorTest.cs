@@ -1,4 +1,7 @@
-﻿namespace GFramework.Godot.SourceGenerators.Tests.Core;
+﻿// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
+
+namespace GFramework.Godot.SourceGenerators.Tests.Core;
 
 /// <summary>
 ///     提供源代码生成器测试的通用功能。

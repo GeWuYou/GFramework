@@ -1,4 +1,9 @@
-﻿<Project>
+﻿<!--
+  Copyright (c) 2025-2026 GeWuYou
+  SPDX-License-Identifier: Apache-2.0
+-->
+
+<Project>
     <!-- import parent: https://docs.microsoft.com/en-us/visualstudio/msbuild/customize-your-build -->
     <PropertyGroup>
         <TargetFramework>netstandard2.1</TargetFramework>

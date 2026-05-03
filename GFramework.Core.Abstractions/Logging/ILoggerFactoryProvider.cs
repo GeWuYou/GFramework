@@ -1,4 +1,7 @@
-﻿namespace GFramework.Core.Abstractions.Logging;
+﻿// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
+
+namespace GFramework.Core.Abstractions.Logging;
 
 /// <summary>
 ///     定义日志工厂提供者的接口，用于创建具有指定名称和最小日志级别的日志记录器

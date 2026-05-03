@@ -1,3 +1,6 @@
+# Copyright (c) 2025-2026 GeWuYou
+# SPDX-License-Identifier: Apache-2.0
+
 name: "Feature Request / 功能建议"
 description: "Suggest a new capability or an API improvement. / 提出新能力或 API 改进建议。"
 title: "[Feature]: "

@@ -1,3 +1,6 @@
+# Copyright (c) 2025-2026 GeWuYou
+# SPDX-License-Identifier: Apache-2.0
+
 # GitHub Actions工作流配置：CodeQL静态代码分析
 # 该工作流用于对C#项目进行安全漏洞和代码质量分析
 name: "CodeQL"

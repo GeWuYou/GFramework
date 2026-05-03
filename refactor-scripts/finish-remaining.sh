@@ -1,4 +1,7 @@
 #!/bin/bash
+# Copyright (c) 2025-2026 GeWuYou
+# SPDX-License-Identifier: Apache-2.0
+
 set -e
 
 ROOT_DIR="/mnt/f/gewuyou/System/Documents/WorkSpace/GameDev/GFramework"

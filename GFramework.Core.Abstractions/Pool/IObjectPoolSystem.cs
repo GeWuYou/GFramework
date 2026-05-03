@@ -1,4 +1,7 @@
-﻿namespace GFramework.Core.Abstractions.Pool;
+﻿// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
+
+namespace GFramework.Core.Abstractions.Pool;
 
 /// <summary>
 ///     对象池系统接口，定义了对象池的基本操作

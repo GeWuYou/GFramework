@@ -1,4 +1,7 @@
-﻿using System.Reflection;
+﻿// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
+
+using System.Reflection;
 using GFramework.Core.Abstractions.Coroutine;
 using GFramework.Core.Coroutine;
 using GFramework.Core.Coroutine.Instructions;

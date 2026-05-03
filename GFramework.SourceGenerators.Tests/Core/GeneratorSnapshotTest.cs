@@ -1,4 +1,7 @@
-﻿using System.Collections.Immutable;
+﻿// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
+
+using System.Collections.Immutable;
 using System.IO;
 
 namespace GFramework.SourceGenerators.Tests.Core;

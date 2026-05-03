@@ -1,4 +1,7 @@
-﻿namespace GFramework.Game.Abstractions.Setting;
+﻿// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
+
+namespace GFramework.Game.Abstractions.Setting;
 
 /// <summary>
 ///     设置变更事件基类

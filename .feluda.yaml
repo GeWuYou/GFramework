@@ -1,4 +1,7 @@
-﻿license_overrides:
+﻿# Copyright (c) 2025-2026 GeWuYou
+# SPDX-License-Identifier: Apache-2.0
+
+license_overrides:
   NETStandard.Library: MIT
   Microsoft.NETCore.Platforms: MIT
   System.Buffers: MIT

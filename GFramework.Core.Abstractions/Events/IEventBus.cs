@@ -1,4 +1,7 @@
-﻿namespace GFramework.Core.Abstractions.Events;
+﻿// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
+
+namespace GFramework.Core.Abstractions.Events;
 
 /// <summary>
 ///     事件总线接口，提供事件的发送、注册和注销功能

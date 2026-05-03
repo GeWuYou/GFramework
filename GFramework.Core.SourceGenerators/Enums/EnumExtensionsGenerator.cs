@@ -1,4 +1,7 @@
-﻿using GFramework.Core.SourceGenerators.Abstractions.Enums;
+﻿// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
+
+using GFramework.Core.SourceGenerators.Abstractions.Enums;
 using GFramework.SourceGenerators.Common.Constants;
 using GFramework.SourceGenerators.Common.Diagnostics;
 using GFramework.SourceGenerators.Common.Generator;

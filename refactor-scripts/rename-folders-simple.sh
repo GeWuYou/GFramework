@@ -1,4 +1,7 @@
 #!/bin/bash
+# Copyright (c) 2025-2026 GeWuYou
+# SPDX-License-Identifier: Apache-2.0
+
 # 简化版文件夹重命名脚本 - 一次处理一个项目
 
 set -e

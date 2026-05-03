@@ -1,4 +1,7 @@
-﻿namespace GFramework.Core.Abstractions.Bases;
+﻿// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
+
+namespace GFramework.Core.Abstractions.Bases;
 
 /// <summary>
 ///     表示键值对的接口，定义了通用的键值对数据结构契约

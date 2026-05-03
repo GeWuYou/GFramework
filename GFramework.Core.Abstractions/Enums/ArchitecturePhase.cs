@@ -1,4 +1,7 @@
-﻿namespace GFramework.Core.Abstractions.Enums;
+﻿// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
+
+namespace GFramework.Core.Abstractions.Enums;
 
 /// <summary>
 ///     架构阶段枚举，定义了系统架构初始化和运行过程中的各个关键阶段

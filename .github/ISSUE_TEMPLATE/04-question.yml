@@ -1,3 +1,6 @@
+# Copyright (c) 2025-2026 GeWuYou
+# SPDX-License-Identifier: Apache-2.0
+
 name: "Question / 使用咨询"
 description: "Ask for guidance about usage, behavior, or adoption. / 询问用法、行为或接入方式。"
 title: "[Question]: "

@@ -1,3 +1,6 @@
+// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
+
 /**
  * Build a compact contains-schema summary for array field hints.
  * The summary reuses existing localized hint strings so Chinese UI surfaces

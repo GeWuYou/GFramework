@@ -1,3 +1,6 @@
+# Copyright (c) 2025-2026 GeWuYou
+# SPDX-License-Identifier: Apache-2.0
+
 # 发布工作流（NuGet + GitHub Packages + GitHub Release）
 #
 # 功能：当推送标签时自动构建、打包，并将相同产物并发发布到 NuGet.org 与 GitHub Packages，

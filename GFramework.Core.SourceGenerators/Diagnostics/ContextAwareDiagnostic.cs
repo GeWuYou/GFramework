@@ -1,4 +1,7 @@
-﻿namespace GFramework.Core.SourceGenerators.Diagnostics;
+﻿// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
+
+namespace GFramework.Core.SourceGenerators.Diagnostics;
 
 /// <summary>
 ///     提供与上下文感知相关的诊断规则定义

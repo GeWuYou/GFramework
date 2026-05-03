@@ -1,4 +1,7 @@
-﻿using GFramework.Core.Abstractions.Enums;
+﻿// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
+
+using GFramework.Core.Abstractions.Enums;
 using GFramework.Core.Architectures;
 
 namespace GFramework.Core.Tests.Architectures;

@@ -1,3 +1,6 @@
+# Copyright (c) 2025-2026 GeWuYou
+# SPDX-License-Identifier: Apache-2.0
+
 name: "Documentation / 文档改进"
 description: "Report missing, outdated, or unclear documentation. / 报告缺失、过期或不清晰的文档。"
 title: "[Docs]: "

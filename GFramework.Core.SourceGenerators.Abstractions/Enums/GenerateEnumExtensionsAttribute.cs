@@ -1,4 +1,7 @@
-﻿namespace GFramework.Core.SourceGenerators.Abstractions.Enums;
+﻿// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
+
+namespace GFramework.Core.SourceGenerators.Abstractions.Enums;
 
 /// <summary>
 ///     标注在 enum 上，Source Generator 会为该 enum 生成扩展方法。

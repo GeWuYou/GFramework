@@ -1,0 +1,54 @@
+# Copyright (c) 2025-2026 GeWuYou
+# SPDX-License-Identifier: Apache-2.0
+
+# 维护者手动触发的 Apache-2.0 文件头修复流程。
+name: License Header Fix
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_branch:
+        description: Branch to fix and target with the generated pull request.
+        required: true
+        default: main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  fix-license-headers:
+    name: Create license header fix PR
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout target branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.base_branch }}
+
+      - name: Add missing license headers
+        run: python3 scripts/license-header.py --fix
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: ${{ inputs.base_branch }}
+          branch: chore/license-headers-${{ github.run_id }}
+          delete-branch: true
+          commit-message: |
+            chore(license): 补齐 Apache-2.0 文件头
+
+            - 补充缺失源文件许可证声明
+            - 更新文件头治理校验结果
+          title: "chore(license): 补齐 Apache-2.0 文件头"
+          body: |
+            ## Summary
+
+            - 补齐仓库维护源码和配置文件缺失的 Apache-2.0 文件头
+            - 使用 `scripts/license-header.py --fix` 生成本次修复
+
+            ## Validation
+
+            - `python3 scripts/license-header.py --check`

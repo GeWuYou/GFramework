@@ -161,4 +161,5 @@ GFramework.sln
 
 ## 许可证
 
-本仓库当前采用 [Apache License 2.0](LICENSE)。
+本仓库当前采用 [Apache License 2.0](LICENSE)。贡献源码或配置文件时，请遵循
+[贡献指南中的许可证文件头要求](docs/zh-CN/contributing.md#许可证文件头)。

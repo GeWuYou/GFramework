@@ -1,3 +1,6 @@
+# Copyright (c) 2025-2026 GeWuYou
+# SPDX-License-Identifier: Apache-2.0
+
 name: "Bug Report / 缺陷报告"
 description: "Report a reproducible defect in GFramework. / 报告可稳定复现的 GFramework 缺陷。"
 title: "[Bug]: "

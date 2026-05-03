@@ -105,6 +105,32 @@ GFramework 是一个开源的游戏开发框架，我们欢迎所有形式的贡
 - **测试覆盖**：为新功能添加测试
 - **文档更新**：更新相关文档
 
+#### 许可证文件头
+
+仓库采用 Apache License 2.0。新增或修改仓库维护的源码和配置文件时，请保留或补齐文件头声明。CI 会检查
+C#、JavaScript、TypeScript、Python、Shell、YAML 与 MSBuild 项目文件中的 Apache-2.0 声明。
+
+本地检查：
+
+```bash
+python3 scripts/license-header.py --check
+```
+
+本地自动修复：
+
+```bash
+python3 scripts/license-header.py --fix
+```
+
+如只想预览会修改哪些文件，可运行：
+
+```bash
+python3 scripts/license-header.py --fix --dry-run
+```
+
+维护者也可以在 GitHub Actions 中手动运行 `License Header Fix` workflow。该流程会基于目标分支创建
+`chore/license-headers-<run-id>` 分支，自动补齐缺失文件头，并提交一个待审查的 Pull Request。
+
 ### 改进文档
 
 文档改进同样重要：

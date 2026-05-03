@@ -1,4 +1,7 @@
 #!/bin/bash
+# Copyright (c) 2025-2026 GeWuYou
+# SPDX-License-Identifier: Apache-2.0
+
 # 重命名 GFramework.Core 文件夹
 
 set -e

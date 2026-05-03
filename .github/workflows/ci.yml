@@ -1,3 +1,6 @@
+# Copyright (c) 2025-2026 GeWuYou
+# SPDX-License-Identifier: Apache-2.0
+
 # CI/CD工作流配置：构建和测试.NET项目
 # 该工作流仅在创建或更新面向任意分支的 pull request 时触发
 name: CI - Build & Test
@@ -27,6 +30,10 @@ jobs:
       # 校验C#命名空间与源码目录是否符合命名规范
       - name: Validate C# naming
         run: bash scripts/validate-csharp-naming.sh
+
+      # 校验仓库维护源码是否包含 Apache-2.0 文件头声明
+      - name: Validate license headers
+        run: python3 scripts/license-header.py --check
 
       # 缓存MegaLinter
       - name: Cache MegaLinter

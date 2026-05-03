@@ -1,4 +1,7 @@
-﻿namespace GFramework.Godot.Extensions;
+﻿// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
+
+namespace GFramework.Godot.Extensions;
 
 /// <summary>
 /// 提供对 Godot 路径相关操作的扩展方法。

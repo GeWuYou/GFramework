@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Copyright (c) 2025-2026 GeWuYou
+  SPDX-License-Identifier: Apache-2.0
+-->
+
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <!--

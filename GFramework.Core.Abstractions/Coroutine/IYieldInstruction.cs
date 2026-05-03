@@ -1,4 +1,7 @@
-﻿namespace GFramework.Core.Abstractions.Coroutine;
+﻿// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
+
+namespace GFramework.Core.Abstractions.Coroutine;
 
 /// <summary>
 ///     定义一个可等待指令的接口，用于协程系统中的异步操作控制

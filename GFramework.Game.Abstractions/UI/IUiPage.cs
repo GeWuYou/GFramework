@@ -1,4 +1,7 @@
-﻿namespace GFramework.Game.Abstractions.UI;
+﻿// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
+
+namespace GFramework.Game.Abstractions.UI;
 
 /// <summary>
 ///     UI页面生命周期接口

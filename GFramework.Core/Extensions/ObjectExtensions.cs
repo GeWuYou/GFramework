@@ -1,4 +1,7 @@
-﻿namespace GFramework.Core.Extensions;
+﻿// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
+
+namespace GFramework.Core.Extensions;
 
 /// <summary>
 ///     提供基于运行时类型判断的对象扩展方法，

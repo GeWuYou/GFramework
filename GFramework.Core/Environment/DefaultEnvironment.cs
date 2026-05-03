@@ -1,4 +1,7 @@
-﻿namespace GFramework.Core.Environment;
+﻿// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
+
+namespace GFramework.Core.Environment;
 
 /// <summary>
 ///     默认环境实现类，继承自EnvironmentBase

@@ -1,3 +1,6 @@
+// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
+
 // meta-name: 控制器类模板
 // meta-description: 负责管理场景的生命周期和架构关联
 using Godot;

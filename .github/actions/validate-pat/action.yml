@@ -1,3 +1,6 @@
+# Copyright (c) 2025-2026 GeWuYou
+# SPDX-License-Identifier: Apache-2.0
+
 name: Validate PAT
 description: Validate that the release PAT can access the repository and push tags.
 

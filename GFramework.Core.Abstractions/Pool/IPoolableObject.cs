@@ -1,4 +1,7 @@
-﻿namespace GFramework.Core.Abstractions.Pool;
+﻿// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
+
+namespace GFramework.Core.Abstractions.Pool;
 
 /// <summary>
 ///     定义可池化对象的接口，提供对象在池中的生命周期管理方法

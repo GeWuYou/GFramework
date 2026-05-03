@@ -1,4 +1,7 @@
-﻿namespace GFramework.Core.Tests.Events;
+﻿// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
+
+namespace GFramework.Core.Tests.Events;
 
 /// <summary>
 ///     表示包含整型载荷的测试事件。

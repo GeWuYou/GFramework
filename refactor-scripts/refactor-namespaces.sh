@@ -1,4 +1,7 @@
 #!/bin/bash
+# Copyright (c) 2025-2026 GeWuYou
+# SPDX-License-Identifier: Apache-2.0
+
 #
 # GFramework 命名空间重构脚本 - 将所有文件夹和命名空间从小写改为 PascalCase
 #

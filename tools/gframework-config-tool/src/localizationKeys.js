@@ -1,3 +1,6 @@
+// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
+
 const ValidationMessageKeys = Object.freeze({
     allOfViolation: "validation.allOfViolation",
     constMismatch: "validation.constMismatch",

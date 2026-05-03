@@ -1,4 +1,7 @@
-﻿namespace GFramework.Core.Abstractions.Logging;
+﻿// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
+
+namespace GFramework.Core.Abstractions.Logging;
 
 /// <summary>
 ///     定义日志级别的枚举，用于标识不同严重程度的日志消息

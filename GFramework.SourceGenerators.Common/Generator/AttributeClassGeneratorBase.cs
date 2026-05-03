@@ -1,4 +1,7 @@
-﻿using GFramework.SourceGenerators.Common.Diagnostics;
+﻿// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
+
+using GFramework.SourceGenerators.Common.Diagnostics;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
