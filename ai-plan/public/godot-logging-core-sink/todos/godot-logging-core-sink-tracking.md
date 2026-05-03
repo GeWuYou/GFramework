@@ -7,13 +7,14 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`GODOT-LOGGING-CORE-SINK-RP-003`
-- 当前阶段：`PR review follow-up 已验证`
+- 恢复点编号：`GODOT-LOGGING-CORE-SINK-RP-004`
+- 当前阶段：`PR review follow-up 复查已验证`
 - 当前焦点：
   - `GFramework.Godot.Logging.GodotLogAppender` 已作为 Core `ILogAppender` 的 Godot 宿主落点落地
   - `GodotLogger` 保留原有 `ILogger` 入口，但底层输出委托给 appender
   - Godot / Core logging 文档已说明 provider 与 appender 的组合边界
   - PR #315 最新 AI review 中仍适用的测试稳定性、dead private wrapper、boot index 与 trace heading 问题已处理
+  - 最新 CodeRabbit outside-diff 复查指出的反射测试诊断不清晰问题已处理
 
 ## 已知输入
 
@@ -31,7 +32,8 @@
 3. 已完成：保留 `GodotLog` / `GodotLoggerFactoryProvider` 入口，并让 `GodotLogger` 底层走 `GodotLogAppender`
 4. 已完成：补充 `GodotLogAppender` targeted tests 与 `docs/zh-CN/` adoption guidance
 5. 已完成：处理 PR #315 最新 review follow-up，移除默认 boot index 的 archived topics 区块并消除 trace 重复 heading
-6. 待确认：是否还需要在后续阶段补一个配置化 factory 示例，把 `GodotLogAppender` 与文件 / async appender 显式组合
+6. 已完成：处理最新 CodeRabbit outside-diff 反馈，显式断言反射目标与返回类型以改善测试失败定位
+7. 待确认：是否还需要在后续阶段补一个配置化 factory 示例，把 `GodotLogAppender` 与文件 / async appender 显式组合
 
 ## 验证
 
@@ -48,12 +50,18 @@
   - 结果：通过
 - `dotnet format GFramework.Godot.Tests --verify-no-changes --no-restore --include GFramework.Godot.Tests/Logging/GodotLogAppenderTests.cs GFramework.Godot.Tests/Logging/GodotLoggerSettingsLoaderTests.cs`
   - 结果：通过
+- `dotnet test GFramework.Godot.Tests -c Release`
+  - 结果：通过，`75 passed / 0 failed / 0 skipped`
+  - 备注：2026-05-03 最新 PR review outside-diff 复查后重新验证
+- `dotnet format GFramework.Godot.Tests --verify-no-changes --no-restore --include GFramework.Godot.Tests/Logging/GodotLoggerSettingsLoaderTests.cs`
+  - 结果：通过
+  - 备注：覆盖最新改动的测试文件
 - `dotnet format GFramework.sln --verify-no-changes --no-restore`
   - 结果：失败
   - 备注：失败集中在仓库既有的 whitespace、final newline 与 charset 诊断，跨 `GFramework.Core`、`GFramework.Cqrs`、`GFramework.Game.Abstractions` 等未触碰项目；本轮改动用 scoped format 验证
 
 ## 下一步
 
-1. 提交当前 PR review follow-up
-2. 等待 PR #315 复查并确认 CodeRabbit / Greptile 线程是否关闭
+1. 提交最新 PR review follow-up
+2. 等待 PR #315 复查并确认 CodeRabbit outside-diff 反馈是否关闭
 3. 如继续扩展本主题，优先评估是否需要示例化 `CompositeLogger + GodotLogAppender + FileAppender`，而不是新增 API

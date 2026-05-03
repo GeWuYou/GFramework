@@ -195,6 +195,8 @@ public sealed class GodotLoggerSettingsLoaderTests
         var toPropertiesDictionary = typeof(GodotLogger).GetMethod(
             "ToPropertiesDictionary",
             BindingFlags.NonPublic | BindingFlags.Static);
+        Assert.That(toPropertiesDictionary, Is.Not.Null, "Unable to reflect GodotLogger.ToPropertiesDictionary.");
+
         var properties = new (string Key, object? Value)[]
         {
             (null!, "ignored"),
@@ -202,7 +204,9 @@ public sealed class GodotLoggerSettingsLoaderTests
             (" Player ", 42)
         };
 
-        var dictionary = toPropertiesDictionary?.Invoke(null, [properties]) as IReadOnlyDictionary<string, object?>;
+        var dictionary = toPropertiesDictionary!.Invoke(null, [properties]) as IReadOnlyDictionary<string, object?>;
+        Assert.That(dictionary, Is.Not.Null, "ToPropertiesDictionary should return structured log properties.");
+
         var result = GodotLogAppender.FormatProperties(dictionary);
 
         Assert.That(result, Is.EqualTo(" | Player=42"));

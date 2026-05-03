@@ -91,3 +91,27 @@
 
 1. 提交 PR review follow-up
 2. 等待 PR #315 复查，确认 CodeRabbit / Greptile open threads 是否关闭
+
+### RP-004 PR Review Outside-Diff 复查
+
+- 使用 `$gframework-pr-review` 重新抓取 PR #315 最新 review payload：
+  - CodeRabbit：无 open thread，但 latest review body 仍有 1 条 outside-diff 反馈
+  - Greptile：无 open thread
+  - Gemini Code Assist：无 open thread
+  - GitHub Test Reporter：最新 run 显示 `2264 passed / 0 failed`
+  - MegaLinter：仍为 `dotnet-format` restore failure，未提供具体源文件格式诊断
+- 已实施：
+  - `GodotLoggerSettingsLoaderTests.StructuredProperties_Should_Skip_Blank_Keys_And_Trim_Valid_Keys` 在调用反射目标前显式断言 `ToPropertiesDictionary` 存在
+  - 同一测试在交给 `GodotLogAppender.FormatProperties` 前显式断言反射返回值类型符合预期
+
+### RP-004 验证
+
+- `dotnet test GFramework.Godot.Tests -c Release`
+  - 结果：通过，`75 passed / 0 failed / 0 skipped`
+- `dotnet format GFramework.Godot.Tests --verify-no-changes --no-restore --include GFramework.Godot.Tests/Logging/GodotLoggerSettingsLoaderTests.cs`
+  - 结果：通过
+
+### RP-004 下一步
+
+1. 提交最新 PR review follow-up
+2. 等待 PR #315 复查，确认 CodeRabbit outside-diff 反馈是否关闭
