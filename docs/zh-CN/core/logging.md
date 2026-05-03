@@ -79,6 +79,10 @@ using (LogContext.Push("RequestId", requestId))
 `LoggingConfigurationLoader` 读取 `LoggingConfiguration`，再把自定义 `ILoggerFactoryProvider` 挂到
 `ArchitectureConfiguration.LoggerProperties.LoggerFactoryProvider` 或 `LoggerFactoryResolver.Provider`。
 
+宿主包也可以提供自己的 appender。Godot 项目如果需要把 Core 日志管线输出到 Godot 控制台，可以引用
+`GFramework.Godot.Logging.GodotLogAppender`，再用 `CompositeLogger` 或自定义 factory 把它和文件、JSON、异步输出等
+Core 组件组合在同一条调用面下。
+
 ## 什么时候该换 provider
 
 下面这些场景通常不该只靠改 `MinLevel`：
@@ -87,5 +91,6 @@ using (LogContext.Push("RequestId", requestId))
 - 需要按 namespace / level 做过滤
 - 需要 JSON 格式日志
 - 需要组合多个 appender
+- 需要把输出落到 Godot、Unity 或其他宿主控制台
 
 这时更合理的做法是保留 `ILogger` 调用面不变，只替换 provider / factory / formatter / appender 组合。

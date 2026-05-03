@@ -117,3 +117,24 @@
 1. 提交 RP-003 review follow-up 改动
 2. 刷新 PR review，确认 CodeRabbit / Greptile 线程是否关闭或 stale
 3. 若 CI 仍只有 MegaLinter `dotnet-format` restore 失败，继续定位 Actions restore 环境而不是扩大本地格式清理范围
+
+### 阶段：主题归档（RP-004）
+
+- PR #314 已合并，当前分支 head 与 `origin/main` 同为 merge commit `918a61f3`
+- 旧 upstream branch `origin/feat/godot-logging-compliance-polish` 已不存在
+- 当前 batch stop condition 使用 `origin/main` 作为 baseline；归档前分支累计 diff 为 `0` 个文件
+- 接受的收尾动作：
+  - 将 `godot-logging-compliance-polish` 从默认 boot active topic 中移除
+  - 将主题恢复文档移动到 `ai-plan/public/archive/godot-logging-compliance-polish/`
+  - 在 public index 的 archived topics 中保留主题位置和合并结论
+
+### RP-004 验证
+
+- `dotnet build GFramework.sln -c Release`
+  - 结果：通过，`0 warning / 0 error`
+  - 备注：归档维护只触及 `ai-plan/public/**`，本次 build 用于满足仓库完成标准并确认解决方案仍可构建
+
+### RP-004 下一步
+
+1. 若继续推进 Godot logging 与 Core 的统一输出管线，建立新的 active topic
+2. 当前归档维护已完成；后续只需提交并发布归档分支

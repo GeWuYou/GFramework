@@ -38,14 +38,15 @@ help the current worktree land on the right recovery documents without scanning 
   - Purpose: continue the data repository persistence hardening plus the settings / serialization follow-up backlog.
   - Tracking: `ai-plan/public/data-repository-persistence/todos/data-repository-persistence-tracking.md`
   - Trace: `ai-plan/public/data-repository-persistence/traces/data-repository-persistence-trace.md`
-- `godot-logging-compliance-polish`
-  - Purpose: continue Godot logging host integration, configuration reload, structured-output polish, and follow-up work without forking the Core logging model.
-  - Tracking: `ai-plan/public/godot-logging-compliance-polish/todos/godot-logging-compliance-polish-tracking.md`
-  - Trace: `ai-plan/public/godot-logging-compliance-polish/traces/godot-logging-compliance-polish-trace.md`
 - `semantic-release-versioning`
   - Purpose: migrate release version calculation from fixed patch bumps to semantic-release while keeping the existing tag-driven NuGet publish flow.
   - Tracking: `ai-plan/public/semantic-release-versioning/todos/semantic-release-versioning-tracking.md`
   - Trace: `ai-plan/public/semantic-release-versioning/traces/semantic-release-versioning-trace.md`
+- `godot-logging-core-sink`
+  - Purpose: evaluate and implement the next Godot logging stage by unifying Godot output with the Core logging
+    appender / sink model instead of expanding a separate Godot-only logging pipeline.
+  - Tracking: `ai-plan/public/godot-logging-core-sink/todos/godot-logging-core-sink-tracking.md`
+  - Trace: `ai-plan/public/godot-logging-core-sink/traces/godot-logging-core-sink-trace.md`
 
 ## Worktree To Active Topic Map
 
@@ -63,23 +64,12 @@ help the current worktree land on the right recovery documents without scanning 
 - Branch: `feat/data-repository-persistence`
   - Worktree hint: `GFramework-data-repository-persistence`
   - Priority 1: `data-repository-persistence`
-- Branch: `feat/godot-logging-compliance-polish`
-  - Worktree hint: `GFramework`
-  - Priority 1: `godot-logging-compliance-polish`
 - Branch: `feat/semantic-release-versioning`
   - Worktree hint: `GFramework`
   - Priority 1: `semantic-release-versioning`
+- Branch: `feat/godot-logging-core-sink`
+  - Worktree hint: `GFramework`
+  - Priority 1: `godot-logging-core-sink`
 - Branch: `docs/sdk-update-documentation`
   - Worktree hint: `GFramework-update-documentation`
   - Priority 1: `documentation-full-coverage-governance`
-## Archived Topics
-
-- `analyzer-warning-reduction`
-  - Archive root: `ai-plan/public/archive/analyzer-warning-reduction/`
-  - Note: 长期 warning-reduction 分支已收尾；PR #301 的最终 review follow-up 已本地闭环，后续仅作为历史恢复材料保留。
-- `cqrs-cache-docs-hardening`
-  - Archive root: `ai-plan/public/archive/cqrs-cache-docs-hardening/`
-  - Note: archived topics stay outside the default `boot` context until a user explicitly requests historical review.
-- `documentation-governance-and-refresh`
-  - Archive root: `ai-plan/public/archive/documentation-governance-and-refresh/`
-  - Note: PR #268 已合并；文档治理与 Godot 栏目刷新阶段已完成，后续仅作为历史恢复材料保留。

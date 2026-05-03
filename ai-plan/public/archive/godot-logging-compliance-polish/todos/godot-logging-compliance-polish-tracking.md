@@ -5,17 +5,17 @@
 继续把 `GFramework.Godot.Logging` 从“基础可用的 Godot 输出适配”收敛成“对齐 `GodotLogger` 优点、但保持
 GFramework 自身日志抽象不分叉”的稳定宿主层，并为后续 Godot / Core 日志统一留下清晰恢复点。
 
-## 当前恢复点
+## 完成状态
 
 - 恢复点编号：`GODOT-LOGGING-COMPLIANCE-POLISH-RP-003`
-- 当前阶段：`PR review follow-up`
-- 当前焦点：
+- 当前阶段：`已完成并归档`
+- 完成结论：
   - 已补齐 `GodotLog` 静态入口、延迟 logger 解析、配置自动发现与热重载
   - 已让 `GodotLoggerFactoryProvider` 对已缓存 logger 生效动态配置，而不是只在新建 logger 时读快照
   - 已让 `GodotLogger` 支持 `{properties}` 占位符，并把 `IStructuredLogger` / `LogContext` 属性落到 Godot 输出
   - 已兼容 `GodotLogger` 风格配置值，如 `Information` / `Critical`
   - 已处理 PR #314 最新 AI review 中仍适用的 XML docs、热路径分配、结构化属性兜底、文档示例和 tracking 精简问题
-  - 下一轮优先刷新 PR review / CI 反馈，避免继续扩大 Godot logging API 面
+  - PR #314 已合并到 `origin/main`，当前主题从默认 boot 路径移入归档
 
 ## 当前状态摘要
 
@@ -31,7 +31,8 @@ GFramework 自身日志抽象不分叉”的稳定宿主层，并为后续 Godot
 
 ## 当前活跃事实
 
-- 当前主题由分支 `feat/godot-logging-compliance-polish` 驱动，并已在 `ai-plan/public/README.md` 建立映射
+- 本主题归档前由分支 `feat/godot-logging-compliance-polish` 驱动，PR #314 合并后已从
+  `ai-plan/public/README.md` 的 active topic 映射移除
 - `ai-libs/GodotLogger` 的 MIT 许可证已复制到 `third-party-licenses/GodotLogger/LICENSE`
 - `GodotLog` 当前的配置发现顺序为：
   - `GODOT_LOGGER_CONFIG`
@@ -53,12 +54,12 @@ GFramework 自身日志抽象不分叉”的稳定宿主层，并为后续 Godot
 - PR #314 最新 follow-up 中，`DeferredLogger` 格式化重载现在委托给 inner logger，`GodotLogger` 默认 options
   provider 已改为构造时缓存，结构化属性会跳过空白 key 并使用 trimmed key
 
-## 当前风险
+## 收尾风险
 
 - 双入口生命周期风险：如果同一宿主同时混用 `LoggerFactoryResolver.Provider` 与 `GodotLog`，需要明确谁是最终默认 provider
   - 缓解措施：当前文档与实现都保留 `GodotLog.UseAsDefaultProvider()`，并继续把 `ArchitectureConfiguration` 方式写成默认推荐路径
 - Core / Godot 管线分离风险：Godot 侧虽然已有热重载与配置发现，但还没有变成 Core 可组合 appender
-  - 缓解措施：下一轮只评估“Godot sink / appender 化”，不再继续扩张独立的 Godot logging 面
+  - 缓解措施：若后续重启本方向，应新建独立 topic 评估“Godot sink / appender 化”，不要在已归档主题继续扩张独立的 Godot logging 面
 - 配置热重载的宿主差异风险：Godot 编辑器、导出包和测试宿主的文件系统语义不完全一致
   - 缓解措施：active 入口先锁定 discovery / reload 语义，后续若遇到平台差异，再用定向回归和文档补充收口
 - `GodotLog.ConfigurationPath` 的“不会 materialize”语义没有加入自动化测试
@@ -80,11 +81,14 @@ GFramework 自身日志抽象不分叉”的稳定宿主层，并为后续 Godot
 - `dotnet format GFramework.Godot.Tests/GFramework.Godot.Tests.csproj --verify-no-changes --no-restore --include ...`
   - 结果：通过
   - 备注：include 范围为本轮修改的 C# 文件；全项目 format 仍命中既有行尾 / 编码问题，详见 trace
+- `dotnet build GFramework.sln -c Release`
+  - 结果：通过，`0 warning / 0 error`
+  - 备注：2026-05-03 在归档维护分支补跑仓库级 Release build，验证归档改动不会影响解决方案构建
 - 历史验证明细已保留在 [执行 trace](../traces/godot-logging-compliance-polish-trace.md) 的 `RP-001 验证` 与
   `RP-002 验证` 小节，active tracking 入口只保留当前恢复点相关结果
 
-## 下一步
+## 归档说明
 
-1. 提交 RP-003 review follow-up 改动
-2. 刷新 PR review / CI 状态，确认最新 head 上 CodeRabbit 与 Greptile 线程是否关闭或变为 stale
-3. 若 CI 仍报 MegaLinter `dotnet-format` restore 失败，优先复核 Actions restore 环境，而不是继续改本地格式
+1. 本主题已随 PR #314 合并到 `origin/main`
+2. 默认 boot 索引不再指向本主题
+3. 后续若继续做 Godot logging 与 Core appender / sink 的统一设计，应建立新的 active topic

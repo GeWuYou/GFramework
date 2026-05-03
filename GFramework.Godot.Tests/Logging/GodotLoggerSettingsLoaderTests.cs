@@ -192,9 +192,11 @@ public sealed class GodotLoggerSettingsLoaderTests
     [Test]
     public void StructuredProperties_Should_Skip_Blank_Keys_And_Trim_Valid_Keys()
     {
-        var formatProperties = typeof(GodotLogger).GetMethod(
-            "FormatProperties",
+        var toPropertiesDictionary = typeof(GodotLogger).GetMethod(
+            "ToPropertiesDictionary",
             BindingFlags.NonPublic | BindingFlags.Static);
+        Assert.That(toPropertiesDictionary, Is.Not.Null, "Unable to reflect GodotLogger.ToPropertiesDictionary.");
+
         var properties = new (string Key, object? Value)[]
         {
             (null!, "ignored"),
@@ -202,7 +204,10 @@ public sealed class GodotLoggerSettingsLoaderTests
             (" Player ", 42)
         };
 
-        var result = formatProperties?.Invoke(null, [properties]);
+        var dictionary = toPropertiesDictionary!.Invoke(null, [properties]) as IReadOnlyDictionary<string, object?>;
+        Assert.That(dictionary, Is.Not.Null, "ToPropertiesDictionary should return structured log properties.");
+
+        var result = GodotLogAppender.FormatProperties(dictionary);
 
         Assert.That(result, Is.EqualTo(" | Player=42"));
     }

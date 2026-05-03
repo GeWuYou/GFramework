@@ -16,7 +16,7 @@ description: 以当前 GFramework.Godot 源码、测试与 CoreGrid 接线为准
 - 节点运行时辅助：`WaitUntilReadyAsync()`、`AddChildXAsync()`、`QueueFreeX()`、`UnRegisterWhenNodeExitTree(...)`
 - Godot 风格的 Scene / UI 工厂与 registry：`GodotSceneFactory`、`GodotUiFactory`
 - Godot 特化的存储、设置与配置加载：`GodotFileStorage`、`GodotAudioSettings`、`GodotYamlConfigLoader`
-- 少量面向运行时交互的扩展：`Signal(...)` fluent API、暂停处理、富文本效果、协程时间源
+- 少量面向运行时交互的扩展：`Signal(...)` fluent API、`GodotLogAppender`、暂停处理、富文本效果、协程时间源
 
 它不是 `[GetNode]`、`[BindNodeSignal]`、`AutoLoads`、`InputActions` 的来源。这些能力属于
 `GFramework.Godot.SourceGenerators`。
