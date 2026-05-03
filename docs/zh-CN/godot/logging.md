@@ -216,11 +216,71 @@ public partial class SettingsPanel : Control
 如果你已经在用 `GFramework.Core.SourceGenerators`，也可以继续让 `[Log]` 生成字段。Godot provider 只改变输出落点，
 不会改变 `[Log]` 的生成契约。需要静态字段延迟初始化时，也可以直接用 `GodotLog.CreateLogger<T>()`。
 
-### 3. Scene / UI 迁移日志会自动复用同一套 provider
+### 3. 组合 Godot 控制台和文件输出
+
+如果项目需要在 Godot 控制台显示日志，同时把完整日志写到文件，不需要扩展 `GodotLogger` 本身。用自定义
+`ILoggerFactoryProvider` 返回 `CompositeLogger`，把 `GodotLogAppender` 和 Core appender 组合起来即可：
+
+```csharp
+using GFramework.Core.Abstractions.Logging;
+using GFramework.Core.Logging;
+using GFramework.Core.Logging.Appenders;
+using GFramework.Core.Logging.Formatters;
+using GFramework.Godot.Logging;
+
+public sealed class GodotCompositeLoggerFactoryProvider : ILoggerFactoryProvider
+{
+    private readonly string _filePath;
+
+    public GodotCompositeLoggerFactoryProvider(string filePath)
+    {
+        _filePath = filePath;
+    }
+
+    public LogLevel MinLevel { get; set; } = LogLevel.Info;
+
+    public ILogger CreateLogger(string name)
+    {
+        return new CompositeLogger(
+            name,
+            MinLevel,
+            new GodotLogAppender(),
+            new AsyncLogAppender(new FileAppender(_filePath, new DefaultLogFormatter())));
+    }
+}
+```
+
+挂到架构配置时，先把 Godot 的 `user://` 路径转换为普通文件系统路径：
+
+```csharp
+using GFramework.Core.Abstractions.Logging;
+using GFramework.Core.Abstractions.Properties;
+using GFramework.Core.Architectures;
+using Godot;
+
+var logPath = ProjectSettings.GlobalizePath("user://logs/game.log");
+var architecture = new GameArchitecture(
+    new ArchitectureConfiguration
+    {
+        LoggerProperties = new LoggerProperties
+        {
+            LoggerFactoryProvider = new GodotCompositeLoggerFactoryProvider(logPath)
+            {
+                MinLevel = LogLevel.Debug
+            }
+        }
+    },
+    environment);
+```
+
+这种接法适合“Godot 控制台 + 文件落盘”的宿主组合。JSON formatter、namespace filter、rolling file 或更复杂的
+异步策略继续使用 Core logging 组件，不需要在 `GFramework.Godot.Logging` 里新增一套专用 API。
+
+### 4. Scene / UI 迁移日志会自动复用同一套 provider
 
 `GFramework.Game.Scene.Handler.LoggingTransitionHandler` 和
 `GFramework.Game.UI.Handler.LoggingTransitionHandler` 都是普通 `ILogger` 使用者。只要当前架构挂的是
-`GodotLoggerFactoryProvider`，这些迁移日志就会直接进 Godot 控制台。
+`GodotLoggerFactoryProvider` 或包含 `GodotLogAppender` 的自定义 provider，这些迁移日志就会直接进 Godot 控制台。
 
 ```csharp
 using GFramework.Game.Scene.Handler;

@@ -42,11 +42,6 @@ help the current worktree land on the right recovery documents without scanning 
   - Purpose: migrate release version calculation from fixed patch bumps to semantic-release while keeping the existing tag-driven NuGet publish flow.
   - Tracking: `ai-plan/public/semantic-release-versioning/todos/semantic-release-versioning-tracking.md`
   - Trace: `ai-plan/public/semantic-release-versioning/traces/semantic-release-versioning-trace.md`
-- `godot-logging-core-sink`
-  - Purpose: evaluate and implement the next Godot logging stage by unifying Godot output with the Core logging
-    appender / sink model instead of expanding a separate Godot-only logging pipeline.
-  - Tracking: `ai-plan/public/godot-logging-core-sink/todos/godot-logging-core-sink-tracking.md`
-  - Trace: `ai-plan/public/godot-logging-core-sink/traces/godot-logging-core-sink-trace.md`
 
 ## Worktree To Active Topic Map
 
@@ -67,9 +62,6 @@ help the current worktree land on the right recovery documents without scanning 
 - Branch: `feat/semantic-release-versioning`
   - Worktree hint: `GFramework`
   - Priority 1: `semantic-release-versioning`
-- Branch: `feat/godot-logging-core-sink`
-  - Worktree hint: `GFramework`
-  - Priority 1: `godot-logging-core-sink`
 - Branch: `docs/sdk-update-documentation`
   - Worktree hint: `GFramework-update-documentation`
   - Priority 1: `documentation-full-coverage-governance`

@@ -115,3 +115,29 @@
 
 1. 提交最新 PR review follow-up
 2. 等待 PR #315 复查，确认 CodeRabbit outside-diff 反馈是否关闭
+
+### RP-005 组合示例与主题归档
+
+- PR #315 已合并，当前短分支从 `origin/main` 创建，用于收口最后的文档示例与 active topic 归档
+- 复核结论：
+  - `ai-libs/GodotLogger` 的宿主便利层能力已由 `godot-logging-compliance-polish` 吸收并归档
+  - 本主题已把 Godot 输出落到 Core `ILogAppender`，无需新增第二套 sink API
+  - 仅剩有价值的补强是示例化 Core appender 组合，而不是继续扩展 Logger 框架代码
+- 已实施：
+  - 在 `docs/zh-CN/core/logging.md` 补充 `GodotLogAppender + AsyncLogAppender + FileAppender` 组合 provider 示例
+  - 在 `docs/zh-CN/godot/logging.md` 补充 Godot 宿主下的组合接入路径，并说明 `user://` 路径需先转换为文件系统路径
+  - 将 `godot-logging-core-sink` 移入 `ai-plan/public/archive/`
+  - 从 `ai-plan/public/README.md` 移除本主题 active topic 与 `feat/godot-logging-core-sink` 分支映射
+
+### RP-005 验证
+
+- 首次并行运行 `dotnet build GFramework.Godot -c Release` 与 `dotnet test GFramework.Godot.Tests -c Release` 时，
+  build 命中 MSBuild 输出文件锁竞争；随后改为串行重跑同样的 direct 命令作为最终结果
+- `dotnet build GFramework.Godot -c Release`
+  - 结果：通过，`0 warning / 0 error`
+- `dotnet test GFramework.Godot.Tests -c Release`
+  - 结果：通过，`75 passed / 0 failed / 0 skipped`
+
+### RP-005 下一步
+
+1. 提交短分支
