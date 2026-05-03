@@ -1,5 +1,26 @@
 # Semantic Release 版本迁移追踪
 
+## 2026-05-03
+
+### patch 级提交类型扩展（SEMREL-RP-005）
+
+- 本轮目标：
+  - 允许 `deps` 提交触发 patch 发布，用于依赖版本、依赖锁定和包维护变更
+  - 允许 `security` 提交触发 patch 发布，用于安全修复、漏洞缓解和安全配置修正
+  - 同步 `.releaserc.json`、`AGENTS.md`、公开贡献文档和 active topic 映射，避免 release 规则与提交规范漂移
+- 已更新：
+  - `.releaserc.json`：新增 `deps -> patch` 和 `security -> patch`
+  - `AGENTS.md`：补充 `deps` / `security` 的 release 语义
+  - `docs/zh-CN/contributing.md`：补充公开贡献指南中的 Type 说明
+  - `ai-plan/public/README.md`：新增 `build/semantic-release-rules` 到 `semantic-release-versioning` 的分支映射
+- 验证：
+  - `jq . .releaserc.json` 通过
+  - `npx --yes -p semantic-release -p conventional-changelog-conventionalcommits@9.1.0 semantic-release --dry-run --no-ci`
+    成功加载 `commit-analyzer` 和 `release-notes-generator`；随后在 `git fetch --tags` 阶段因远端 tag 会 clobber
+    本地既有 tags 而终止，未暴露本轮配置解析错误
+  - `dotnet build GFramework.sln -c Release` 通过，`0 warning / 0 error`
+- 下一步是提交本轮规则扩展；如后续需要完整 semantic-release 版本预览，先处理本地 tag 与远端 tag 的 clobber 冲突。
+
 ## 2026-05-01
 
 ### 发布说明 PR 归属展示（SEMREL-RP-004）

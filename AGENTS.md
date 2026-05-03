@@ -60,6 +60,10 @@ All AI agents and contributors must follow these rules when writing, reviewing, 
     `minor` segment.
   - Use `fix` for behavior corrections, `perf` for observable performance improvements, and `refactor` only for
     non-feature code restructuring; these should raise the next released version's `patch` segment.
+  - Use `deps` for dependency version updates, dependency lockfile refreshes, and package maintenance that should raise
+    the next released version's `patch` segment.
+  - Use `security` for vulnerability fixes, dependency security mitigations, and security configuration corrections
+    that should raise the next released version's `patch` segment.
   - Use `docs`、`test`、`chore`、`build`、`ci`、`style` for their literal categories; do not encode these changes as
     `feat` just because they feel important. These categories MUST NOT trigger a release.
   - Use `BREAKING CHANGE` in the commit footer or `!` after the type / scope header (for example `feat!:` or

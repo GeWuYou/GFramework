@@ -34,6 +34,14 @@
             "release": "patch"
           },
           {
+            "type": "deps",
+            "release": "patch"
+          },
+          {
+            "type": "security",
+            "release": "patch"
+          },
+          {
             "type": "docs",
             "release": false
           },

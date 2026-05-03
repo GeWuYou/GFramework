@@ -334,6 +334,8 @@ public TModel RegisterModel&lt;TModel&gt;(TModel model) where TModel : IModel
 - **style**：代码格式调整（不影响功能）
 - **refactor**：重构（不是新功能也不是修复）
 - **perf**：性能优化
+- **deps**：依赖版本、依赖锁定或包维护变更
+- **security**：安全修复、漏洞缓解或安全配置修正
 - **test**：添加或修改测试
 - **chore**：构建过程或辅助工具的变动
 - **ci**：CI 配置文件和脚本的变动
