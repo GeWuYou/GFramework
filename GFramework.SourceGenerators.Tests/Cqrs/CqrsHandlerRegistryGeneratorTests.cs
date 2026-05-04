@@ -2345,6 +2345,9 @@ public class CqrsHandlerRegistryGeneratorTests
         "public interface INotificationHandler",
         "public interface IStreamRequestHandler")]
     [TestCase(
+        "public interface IRequestHandler",
+        "rename:MissingIRequestHandler")]
+    [TestCase(
         "public interface IStreamRequestHandler",
         "rename:MissingIStreamRequestHandler")]
     [TestCase(

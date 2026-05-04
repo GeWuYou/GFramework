@@ -157,3 +157,31 @@
 
 1. 继续复算 branch diff vs `origin/main`，若仍低于 `25` 个文件可继续下一批
 2. 下一批优先复核基础 generation gate 中 request handler contract 与 handler registry attribute 以外是否还有可安全构造的缺失分支
+
+### 阶段：基础 generated registry request handler gate 回归（CQRS-REWRITE-RP-082）
+
+- 延续 `RP-081` 的基础 generation gate 参数化测试，补齐 `IRequestHandler<TRequest,TResponse>` 缺失分支
+- 该变体同样通过类型重命名构造 runtime metadata miss，保持输入源码可编译
+- 至此基础 generation gate 中可安全构造的缺失分支已覆盖：
+  - request handler interface
+  - notification handler interface
+  - stream handler interface
+  - handler registry interface
+  - handler registry attribute
+  - logging interface
+  - DI service collection interface
+
+### 验证（RP-082）
+
+- `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Does_Not_Generate_Registry_When_Runtime_Lacks_Required_Generation_Contract"`
+  - 结果：通过，`7/7` passed
+- `python3 scripts/license-header.py --check`
+  - 结果：通过
+  - 备注：当前 WSL worktree 需要显式绑定 `GIT_DIR` / `GIT_WORK_TREE` 后运行
+- `git diff --check`
+  - 结果：通过
+
+### 当前下一步（RP-082）
+
+1. 继续复算 branch diff vs `origin/main`，若仍低于 `25` 个文件可继续下一批
+2. 下一批优先复核基础 generation gate 之外的 runtime contract 或 fallback selection 分支；基础 gate 的可安全构造缺失分支已覆盖
