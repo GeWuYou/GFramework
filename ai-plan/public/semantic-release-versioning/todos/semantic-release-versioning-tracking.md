@@ -13,13 +13,15 @@
 
 ## 当前恢复点
 
-- 恢复点编号：SEMREL-RP-006
-- 当前阶段：处理 PR review 中的 release notes 类型映射漂移
+- 恢复点编号：SEMREL-RP-007
+- 当前阶段：修复 git-cliff 发布说明 PR 链接缺失
 - 当前焦点：
-  - `.releaserc.json` 的 `release-notes-generator` 增加 `presetConfig.types`
-  - 让 `refactor`、`deps` 与 `security` 这类 patch 级发布原因出现在 semantic-release 生成的 notes 中
-  - `AGENTS.md` 和 `docs/zh-CN/contributing.md` 同步提交类型说明
-  - `build/semantic-release-rules` 分支映射到当前 active topic
+  - `.github/workflows/auto-tag.yml` 的 preview / release job 增加 `pull-requests: read`
+  - `.github/workflows/auto-tag.yml` 的 `git-cliff-action` 改用 `${{ github.token }}` 读取 PR 元数据，`PAT_TOKEN`
+    只保留给 `semantic-release` 的 dry-run push 探测与真实打 tag
+  - `.github/workflows/publish.yml` 的 GitHub Release job 增加 `pull-requests: read`
+  - 保持 `.github/cliff.toml` 的 `by @user in #PR` 模板不变，只补足 GitHub PR 元数据读取权限
+  - `fix/release-notes-pr-links` 分支映射到当前 active topic
 
 ### 已知风险
 
@@ -33,6 +35,10 @@
   以保证 `conventionalcommits` preset 在 GitHub Actions 中可解析
 - `git-cliff-action` 的 `OUTPUT` 文件需要在 `softprops/action-gh-release` 执行时保留在当前工作目录，后续如调整
   working-directory 或 artifact 路径，需要同步复查 `body_path`
+- `git-cliff-action` 依赖 GitHub API 补充 `commit.remote.pr_number`；生成 release notes 的 workflow job 必须具备
+  `pull-requests: read`，否则模板只能稳定输出作者，不能稳定输出 `in #PR`
+- `auto-tag.yml` 中 job 级 `permissions` 只约束 `${{ github.token }}`，不约束 `${{ secrets.PAT_TOKEN }}`；生成
+  release notes 时必须使用 `${{ github.token }}` 才能让 `pull-requests: read` 声明真正生效
 
 ## 已完成
 
@@ -46,6 +52,8 @@
   `ai-plan/public/semantic-release-versioning/archive/todos/semantic-release-versioning-rp004-2026-05-02.md`
 - `SEMREL-RP-005` 已扩展 `deps` / `security` 的 patch 发布规则，并同步提交规范文档
 - `SEMREL-RP-006` 已根据 PR review 复核结果补齐 release notes 类型映射，避免 patch 发布原因只触发版本而不进入 notes
+- `SEMREL-RP-007` 已为所有 `git-cliff-action` release notes 生成 job 补齐 PR 读取权限，并让 `auto-tag.yml`
+  的 `git-cliff-action` 改用 `${{ github.token }}`，避免未来 GitHub Release 正文缺失 PR 链接
 
 ## 验证
 
@@ -60,10 +68,16 @@
   - `semantic-release --dry-run --no-ci` 已成功加载 `commit-analyzer` 和 `release-notes-generator`，随后因远端 tag
     fetch 会 clobber 本地既有 tags 而终止，未暴露 `presetConfig.types` 配置解析错误
   - `dotnet build GFramework.sln -c Release` 通过，`0 warning / 0 error`
+- `SEMREL-RP-007` 已完成本地验证：
+  - workflow 权限静态检查通过，所有 `git-cliff-action` 所在 job 均使用具备 `pull-requests: read` 的
+    `${{ github.token }}`
+  - `.github/cliff.toml` 通过 Python `tomllib` 解析
+  - `python3 scripts/license-header.py --check` 通过
+  - `dotnet build GFramework.sln -c Release` 通过，`0 warning / 0 error`
 - 更早阶段的 dry-run / tag /抽象项目验证已归档到
   `ai-plan/public/semantic-release-versioning/archive/todos/semantic-release-versioning-2026-04-26.md`
 
 ## 下一步
 
-1. 提交 `SEMREL-RP-006` 的 PR review 修复
-2. 如后续需要完整 semantic-release 版本预览，先处理本地 tag 与远端 tag 的 clobber 冲突
+1. 推送 `SEMREL-RP-007` 的 PR review 修复，并重新抓取 PR review 确认重复标题线程和 PAT token 说明已收敛
+2. 如后续需要回填当前 GitHub Release 正文，使用带 PR read 权限的 GitHub CLI 或 API token 重新生成并更新 notes

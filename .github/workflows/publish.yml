@@ -243,6 +243,7 @@ jobs:
     permissions:
       contents: write
       packages: read
+      pull-requests: read
 
     steps:
       - name: Checkout repository (at tag)
