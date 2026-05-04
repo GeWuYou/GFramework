@@ -2333,6 +2333,66 @@ public class CqrsHandlerRegistryGeneratorTests
     }
 
     /// <summary>
+    ///     验证当 runtime 缺少 generated registry 需要依赖的基础合同时，
+    ///     生成器会整体跳过发射，避免产出无法承载运行时注册合同的半成品源码。
+    /// </summary>
+    /// <param name="startMarker">待移除 runtime 合同块的起始标记。</param>
+    /// <param name="endMarker">待移除 runtime 合同块之后的下一个稳定标记。</param>
+    [TestCase(
+        "public interface ICqrsHandlerRegistry",
+        "[AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]")]
+    [TestCase(
+        "public interface INotificationHandler",
+        "public interface IStreamRequestHandler")]
+    [TestCase(
+        "public interface IRequestHandler",
+        "rename:MissingIRequestHandler")]
+    [TestCase(
+        "public interface IStreamRequestHandler",
+        "rename:MissingIStreamRequestHandler")]
+    [TestCase(
+        "[AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]",
+        "[AttributeUsage(AttributeTargets.Assembly)]")]
+    [TestCase(
+        "public interface ILogger",
+        "rename:MissingILogger")]
+    [TestCase(
+        "public interface IServiceCollection",
+        "rename:MissingServiceCollection")]
+    public void Does_Not_Generate_Registry_When_Runtime_Lacks_Required_Generation_Contract(
+        string startMarker,
+        string endMarker)
+    {
+        var source = endMarker.StartsWith("rename:", StringComparison.Ordinal)
+            ? RenameTypeIdentifier(
+                HiddenNestedHandlerSelfRegistrationSource,
+                startMarker.Replace("public interface ", string.Empty, StringComparison.Ordinal),
+                endMarker["rename:".Length..])
+            : RemoveBlock(
+                HiddenNestedHandlerSelfRegistrationSource,
+                startMarker,
+                endMarker);
+        var execution = ExecuteGenerator(source);
+        var inputCompilationErrors = execution.InputCompilationDiagnostics
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ToArray();
+        var generatedCompilationErrors = execution.GeneratedCompilationDiagnostics
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ToArray();
+        var generatorErrors = execution.GeneratorDiagnostics
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ToArray();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(inputCompilationErrors, Is.Empty);
+            Assert.That(generatedCompilationErrors, Is.Empty);
+            Assert.That(generatorErrors, Is.Empty);
+            Assert.That(execution.GeneratedSources, Is.Empty);
+        });
+    }
+
+    /// <summary>
     ///     验证当程序集包含生成代码无法合法引用的私有嵌套处理器时，生成器会在生成注册器内部执行定向反射注册，
     ///     不再依赖程序集级 fallback marker。
     /// </summary>
@@ -2871,6 +2931,50 @@ public class CqrsHandlerRegistryGeneratorTests
     }
 
     /// <summary>
+    ///     验证当 runtime 同时支持直接 <see cref="Type" /> 与字符串 fallback 元数据、但不允许多个 fallback 特性实例时，
+    ///     mixed 场景会整体回退到单个字符串特性，避免生成会违反 runtime attribute usage 的多实例元数据。
+    /// </summary>
+    [Test]
+    public void
+        Emits_String_Fallback_Metadata_For_Mixed_Fallback_When_Runtime_Disallows_Multiple_Fallback_Attributes()
+    {
+        var source = ReplaceAttributeUsageForType(
+            AssemblyLevelMixedFallbackMetadataSource,
+            "CqrsReflectionFallbackAttribute",
+            "[AttributeUsage(AttributeTargets.Assembly)]");
+        var execution = ExecuteGenerator(
+            source,
+            allowUnsafe: true);
+        var inputCompilationErrors = execution.InputCompilationDiagnostics
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ToArray();
+        var generatedCompilationErrors = execution.GeneratedCompilationDiagnostics
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ToArray();
+        var generatorErrors = execution.GeneratorDiagnostics
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ToArray();
+        Assert.Multiple(() =>
+        {
+            Assert.That(inputCompilationErrors.Select(static diagnostic => diagnostic.Id), Does.Contain("CS0306"));
+            Assert.That(generatedCompilationErrors, Is.Empty);
+            Assert.That(generatorErrors, Is.Empty);
+            Assert.That(execution.GeneratedSources, Has.Length.EqualTo(1));
+            var generatedSource = execution.GeneratedSources[0].content;
+            Assert.That(
+                generatedSource,
+                Does.Contain(
+                    "[assembly: global::GFramework.Cqrs.CqrsReflectionFallbackAttribute(\"TestApp.Container+AlphaHandler\", \"TestApp.Container+BetaHandler\")]"));
+            Assert.That(generatedSource, Does.Not.Contain("CqrsReflectionFallbackAttribute(typeof("));
+            Assert.That(
+                CountOccurrences(
+                    generatedSource,
+                    "[assembly: global::GFramework.Cqrs.CqrsReflectionFallbackAttribute"),
+                Is.EqualTo(1));
+        });
+    }
+
+    /// <summary>
     ///     验证当 runtime 暴露 request invoker provider 契约时，生成器会让 generated registry 同时发射
     ///     request invoker 描述符与对应的开放静态 invoker 方法。
     /// </summary>
@@ -2984,6 +3088,58 @@ public class CqrsHandlerRegistryGeneratorTests
             RequestInvokerProviderSource,
             "public interface IEnumeratesCqrsRequestInvokerDescriptors",
             "public sealed class CqrsRequestInvokerDescriptor"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                generatedSource,
+                Does.Contain(
+                    "internal sealed class __GFrameworkGeneratedCqrsHandlerRegistry : global::GFramework.Cqrs.ICqrsHandlerRegistry"));
+            Assert.That(generatedSource, Does.Not.Contain("ICqrsRequestInvokerProvider"));
+            Assert.That(generatedSource, Does.Not.Contain("IEnumeratesCqrsRequestInvokerDescriptors"));
+            Assert.That(generatedSource, Does.Not.Contain("CqrsRequestInvokerDescriptorEntry("));
+            Assert.That(generatedSource, Does.Not.Contain("InvokeRequestHandler0"));
+        });
+    }
+
+    /// <summary>
+    ///     验证当 runtime 缺少 <c>CqrsRequestInvokerDescriptor</c> 时，
+    ///     生成器不会继续发射依赖描述符类型的 request provider 元数据。
+    /// </summary>
+    [Test]
+    public void Does_Not_Emit_Request_Invoker_Provider_Metadata_When_Runtime_Lacks_Request_Descriptor_Type()
+    {
+        var source = RenameTypeIdentifier(
+            RequestInvokerProviderSource,
+            "CqrsRequestInvokerDescriptor",
+            "MissingCqrsRequestInvokerDescriptor");
+        var generatedSource = RunGenerator(source);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                generatedSource,
+                Does.Contain(
+                    "internal sealed class __GFrameworkGeneratedCqrsHandlerRegistry : global::GFramework.Cqrs.ICqrsHandlerRegistry"));
+            Assert.That(generatedSource, Does.Not.Contain("ICqrsRequestInvokerProvider"));
+            Assert.That(generatedSource, Does.Not.Contain("IEnumeratesCqrsRequestInvokerDescriptors"));
+            Assert.That(generatedSource, Does.Not.Contain("CqrsRequestInvokerDescriptorEntry("));
+            Assert.That(generatedSource, Does.Not.Contain("InvokeRequestHandler0"));
+        });
+    }
+
+    /// <summary>
+    ///     验证当 runtime 缺少 <c>CqrsRequestInvokerDescriptorEntry</c> 时，
+    ///     生成器不会继续保留 request provider 的枚举接口或静态 invoker 元数据。
+    /// </summary>
+    [Test]
+    public void Does_Not_Emit_Request_Invoker_Provider_Metadata_When_Runtime_Lacks_Request_Descriptor_Entry_Type()
+    {
+        var source = RenameTypeIdentifier(
+            RequestInvokerProviderSource,
+            "CqrsRequestInvokerDescriptorEntry",
+            "MissingCqrsRequestInvokerDescriptorEntry");
+        var generatedSource = RunGenerator(source);
 
         Assert.Multiple(() =>
         {
@@ -3371,6 +3527,47 @@ public class CqrsHandlerRegistryGeneratorTests
 
         var character = source[index];
         return !char.IsLetterOrDigit(character) && character != '_';
+    }
+
+    /// <summary>
+    ///     替换指定测试类型紧邻的 <c>AttributeUsage</c> 声明，用于构造 runtime contract 的 attribute usage 变体。
+    /// </summary>
+    /// <param name="source">原始测试源码。</param>
+    /// <param name="typeName">需要定位的类型名。</param>
+    /// <param name="replacementAttributeUsage">替换后的完整 <c>AttributeUsage</c> 声明。</param>
+    /// <returns>完成 attribute usage 替换后的源码。</returns>
+    private static string ReplaceAttributeUsageForType(
+        string source,
+        string typeName,
+        string replacementAttributeUsage)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(typeName);
+        ArgumentNullException.ThrowIfNull(replacementAttributeUsage);
+
+        var typeIndex = source.IndexOf($"public sealed class {typeName}", StringComparison.Ordinal);
+        if (typeIndex < 0)
+        {
+            throw new InvalidOperationException("The requested type declaration was not found in the generator test input.");
+        }
+
+        const string attributeUsagePrefix = "[AttributeUsage(";
+        var attributeUsageStartIndex = source.LastIndexOf(attributeUsagePrefix, typeIndex, StringComparison.Ordinal);
+        if (attributeUsageStartIndex < 0)
+        {
+            throw new InvalidOperationException("The requested AttributeUsage declaration was not found in the generator test input.");
+        }
+
+        var attributeUsageEndIndex = source.IndexOf(']', attributeUsageStartIndex);
+        if (attributeUsageEndIndex < 0 || attributeUsageEndIndex > typeIndex)
+        {
+            throw new InvalidOperationException("The requested AttributeUsage declaration is malformed.");
+        }
+
+        return source.Remove(
+                attributeUsageStartIndex,
+                attributeUsageEndIndex - attributeUsageStartIndex + 1)
+            .Insert(attributeUsageStartIndex, replacementAttributeUsage);
     }
 
     /// <summary>
