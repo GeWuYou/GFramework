@@ -79,8 +79,8 @@ public sealed partial class CqrsHandlerRegistryGenerator
     ///     从可直接表达 handler 接口的注册描述中提取 request invoker 发射计划。
     /// </summary>
     /// <param name="supportsRequestInvokerProvider">
-    ///     指示当前 runtime 是否同时暴露 <c>ICqrsRequestInvokerProvider</c> 与
-    ///     <c>IEnumeratesCqrsRequestInvokerDescriptors</c> 契约；若不支持，则本方法必须返回空结果并让后续发射路径整体跳过。
+    ///     指示当前 runtime 是否完整暴露 request invoker provider、descriptor 与 descriptor entry 契约；
+    ///     若不支持，则本方法必须返回空结果并让后续发射路径整体跳过。
     /// </param>
     /// <param name="registrations">已按稳定顺序整理完成的 handler 注册描述。</param>
     /// <returns>
@@ -136,8 +136,8 @@ public sealed partial class CqrsHandlerRegistryGenerator
     ///     从可直接表达 handler 接口的注册描述中提取 stream invoker 发射计划。
     /// </summary>
     /// <param name="supportsStreamInvokerProvider">
-    ///     指示当前 runtime 是否同时暴露 <c>ICqrsStreamInvokerProvider</c> 与
-    ///     <c>IEnumeratesCqrsStreamInvokerDescriptors</c> 契约；若不支持，则本方法必须返回空结果并让后续发射路径整体跳过。
+    ///     指示当前 runtime 是否完整暴露 stream invoker provider、descriptor 与 descriptor entry 契约；
+    ///     若不支持，则本方法必须返回空结果并让后续发射路径整体跳过。
     /// </param>
     /// <param name="registrations">已按稳定顺序整理完成的 handler 注册描述。</param>
     /// <returns>

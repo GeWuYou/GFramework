@@ -7,13 +7,13 @@ CQRS 迁移与收敛。
 
 ## 当前恢复点
 
-- 恢复点编号：`CQRS-REWRITE-RP-076`
+- 恢复点编号：`CQRS-REWRITE-RP-077`
 - 当前阶段：`Phase 8`
 - 当前 PR 锚点：`PR #307`
 - 当前结论：
   - `GFramework.Cqrs` 已完成对外部 `Mediator` 的生产级替代，当前主线已从“是否可替代”转向“仓库内部收口与能力深化顺序”
-  - `dispatch/invoker` 生成前移已扩展到 request / stream 路径，当前 `RP-076` 已补齐 stream invoker provider gate 的四项 runtime 合同分支
-  - `ai-plan` active 入口现以 `PR #307` 和 `RP-076` 为唯一权威恢复锚点；更早 PR 与阶段细节均以下方归档为准
+  - `dispatch/invoker` 生成前移已扩展到 request / stream 路径，当前 `RP-077` 已补齐 request invoker provider gate 与 stream gate 对称的 descriptor / descriptor entry runtime 合同回归
+  - `ai-plan` active 入口现以 `PR #307` 和 `RP-077` 为唯一权威恢复锚点；更早 PR 与阶段细节均以下方归档为准
 
 ## 当前活跃事实
 
@@ -37,11 +37,18 @@ CQRS 迁移与收敛。
   - 结果：通过，`0 warning / 0 error`
 - `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Does_Not_Emit_Stream_Invoker_Provider_Metadata_When_Runtime_Lacks_Stream_Provider_Interface|FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Does_Not_Emit_Stream_Invoker_Provider_Metadata_When_Runtime_Lacks_Stream_Descriptor_Enumerator|FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Does_Not_Emit_Stream_Invoker_Provider_Metadata_When_Runtime_Lacks_Stream_Descriptor_Type|FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Does_Not_Emit_Stream_Invoker_Provider_Metadata_When_Runtime_Lacks_Stream_Descriptor_Entry_Type|FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Emits_Stream_Invoker_Provider_Metadata_When_Runtime_Contract_Is_Available"`
   - 结果：通过，`5/5` passed
+- `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Does_Not_Emit_Request_Invoker_Provider_Metadata_When_Runtime_Lacks_Request_Descriptor_Type|FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Does_Not_Emit_Request_Invoker_Provider_Metadata_When_Runtime_Lacks_Request_Descriptor_Entry_Type|FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Does_Not_Emit_Request_Invoker_Provider_Metadata_When_Runtime_Lacks_Request_Provider_Interface|FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Does_Not_Emit_Request_Invoker_Provider_Metadata_When_Runtime_Lacks_Request_Descriptor_Enumerator"`
+  - 结果：通过，`4/4` passed
+- `dotnet build GFramework.Cqrs.SourceGenerators/GFramework.Cqrs.SourceGenerators.csproj -c Release`
+  - 结果：通过，`0 warning / 0 error`
+- `python3 scripts/license-header.py --check`
+  - 结果：通过
+  - 备注：当前 WSL worktree 需要显式绑定 `GIT_DIR` / `GIT_WORK_TREE` 后运行，避免脚本内部 plain `git ls-files` 误判仓库上下文
 
 ## 下一推荐步骤
 
 1. 继续处理 `PR #307` 的剩余 review 收尾，优先保持 `ai-plan` active 入口与 trace 的单一锚点一致
-2. 若继续推进代码切片，优先复核 request 侧是否存在与 stream gate 对称的生成合同遗漏，再决定是否补同批 generator 回归
+2. 若继续推进代码切片，优先复核 request / stream invoker provider runtime 合同以外是否还有同类对称测试缺口
 3. 在进入下一批 runtime / generator 收敛前，保持最小 Release build 或 targeted test 作为权威验证
 
 ## 活跃文档

@@ -2999,6 +2999,58 @@ public class CqrsHandlerRegistryGeneratorTests
     }
 
     /// <summary>
+    ///     验证当 runtime 缺少 <c>CqrsRequestInvokerDescriptor</c> 时，
+    ///     生成器不会继续发射依赖描述符类型的 request provider 元数据。
+    /// </summary>
+    [Test]
+    public void Does_Not_Emit_Request_Invoker_Provider_Metadata_When_Runtime_Lacks_Request_Descriptor_Type()
+    {
+        var source = RenameTypeIdentifier(
+            RequestInvokerProviderSource,
+            "CqrsRequestInvokerDescriptor",
+            "MissingCqrsRequestInvokerDescriptor");
+        var generatedSource = RunGenerator(source);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                generatedSource,
+                Does.Contain(
+                    "internal sealed class __GFrameworkGeneratedCqrsHandlerRegistry : global::GFramework.Cqrs.ICqrsHandlerRegistry"));
+            Assert.That(generatedSource, Does.Not.Contain("ICqrsRequestInvokerProvider"));
+            Assert.That(generatedSource, Does.Not.Contain("IEnumeratesCqrsRequestInvokerDescriptors"));
+            Assert.That(generatedSource, Does.Not.Contain("CqrsRequestInvokerDescriptorEntry("));
+            Assert.That(generatedSource, Does.Not.Contain("InvokeRequestHandler0"));
+        });
+    }
+
+    /// <summary>
+    ///     验证当 runtime 缺少 <c>CqrsRequestInvokerDescriptorEntry</c> 时，
+    ///     生成器不会继续保留 request provider 的枚举接口或静态 invoker 元数据。
+    /// </summary>
+    [Test]
+    public void Does_Not_Emit_Request_Invoker_Provider_Metadata_When_Runtime_Lacks_Request_Descriptor_Entry_Type()
+    {
+        var source = RenameTypeIdentifier(
+            RequestInvokerProviderSource,
+            "CqrsRequestInvokerDescriptorEntry",
+            "MissingCqrsRequestInvokerDescriptorEntry");
+        var generatedSource = RunGenerator(source);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                generatedSource,
+                Does.Contain(
+                    "internal sealed class __GFrameworkGeneratedCqrsHandlerRegistry : global::GFramework.Cqrs.ICqrsHandlerRegistry"));
+            Assert.That(generatedSource, Does.Not.Contain("ICqrsRequestInvokerProvider"));
+            Assert.That(generatedSource, Does.Not.Contain("IEnumeratesCqrsRequestInvokerDescriptors"));
+            Assert.That(generatedSource, Does.Not.Contain("CqrsRequestInvokerDescriptorEntry("));
+            Assert.That(generatedSource, Does.Not.Contain("InvokeRequestHandler0"));
+        });
+    }
+
+    /// <summary>
     ///     验证当 request handler 仍需走 precise reflected 注册时，
     ///     生成器即使检测到 request invoker provider runtime 合同，也不会错误发射无法稳定表达隐藏请求/响应类型的 provider 元数据。
     /// </summary>
