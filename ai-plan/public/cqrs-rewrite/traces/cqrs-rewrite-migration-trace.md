@@ -87,3 +87,25 @@
 
 1. 继续复算 branch diff vs `origin/main`，若仍低于 `25` 个文件可继续下一批
 2. 下一批优先查看 fallback metadata 与 generated invoker provider 之外是否还有同类 runtime contract gate 回归缺口
+
+### 阶段：基础 generated registry contract gate 回归（CQRS-REWRITE-RP-079）
+
+- 继续沿用 `$gframework-batch-boot 25`，当前 branch diff 仍低于阈值
+- 复核 generator 基础启用条件后确认：缺少 `ICqrsHandlerRegistry` 时，runtime 不具备承载 generated registry 的基础接口合同，应整体跳过发射
+- 已补齐：
+  - `Does_Not_Generate_Registry_When_Runtime_Lacks_Handler_Registry_Interface`
+
+### 验证（RP-079）
+
+- `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Does_Not_Generate_Registry_When_Runtime_Lacks_Handler_Registry_Interface"`
+  - 结果：通过，`1/1` passed
+- `python3 scripts/license-header.py --check`
+  - 结果：通过
+  - 备注：当前 WSL worktree 需要显式绑定 `GIT_DIR` / `GIT_WORK_TREE` 后运行
+- `git diff --check`
+  - 结果：通过
+
+### 当前下一步（RP-079）
+
+1. 继续复算 branch diff vs `origin/main`，若仍低于 `25` 个文件可继续下一批
+2. 下一批优先复核基础 generation gate 中其他必需 runtime contracts 是否也需要同类回归覆盖

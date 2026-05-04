@@ -2333,6 +2333,37 @@ public class CqrsHandlerRegistryGeneratorTests
     }
 
     /// <summary>
+    ///     验证当 runtime 缺少 generated registry 需要实现的基础注册接口时，
+    ///     生成器会整体跳过发射，避免产出无法承载运行时注册合同的半成品源码。
+    /// </summary>
+    [Test]
+    public void Does_Not_Generate_Registry_When_Runtime_Lacks_Handler_Registry_Interface()
+    {
+        var source = RemoveBlock(
+            HiddenNestedHandlerSelfRegistrationSource,
+            "public interface ICqrsHandlerRegistry",
+            "[AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]");
+        var execution = ExecuteGenerator(source);
+        var inputCompilationErrors = execution.InputCompilationDiagnostics
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ToArray();
+        var generatedCompilationErrors = execution.GeneratedCompilationDiagnostics
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ToArray();
+        var generatorErrors = execution.GeneratorDiagnostics
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ToArray();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(inputCompilationErrors, Is.Empty);
+            Assert.That(generatedCompilationErrors, Is.Empty);
+            Assert.That(generatorErrors, Is.Empty);
+            Assert.That(execution.GeneratedSources, Is.Empty);
+        });
+    }
+
+    /// <summary>
     ///     验证当程序集包含生成代码无法合法引用的私有嵌套处理器时，生成器会在生成注册器内部执行定向反射注册，
     ///     不再依赖程序集级 fallback marker。
     /// </summary>
