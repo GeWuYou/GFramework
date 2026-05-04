@@ -2871,6 +2871,50 @@ public class CqrsHandlerRegistryGeneratorTests
     }
 
     /// <summary>
+    ///     验证当 runtime 同时支持直接 <see cref="Type" /> 与字符串 fallback 元数据、但不允许多个 fallback 特性实例时，
+    ///     mixed 场景会整体回退到单个字符串特性，避免生成会违反 runtime attribute usage 的多实例元数据。
+    /// </summary>
+    [Test]
+    public void
+        Emits_String_Fallback_Metadata_For_Mixed_Fallback_When_Runtime_Disallows_Multiple_Fallback_Attributes()
+    {
+        var source = ReplaceAttributeUsageForType(
+            AssemblyLevelMixedFallbackMetadataSource,
+            "CqrsReflectionFallbackAttribute",
+            "[AttributeUsage(AttributeTargets.Assembly)]");
+        var execution = ExecuteGenerator(
+            source,
+            allowUnsafe: true);
+        var inputCompilationErrors = execution.InputCompilationDiagnostics
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ToArray();
+        var generatedCompilationErrors = execution.GeneratedCompilationDiagnostics
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ToArray();
+        var generatorErrors = execution.GeneratorDiagnostics
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ToArray();
+        Assert.Multiple(() =>
+        {
+            Assert.That(inputCompilationErrors.Select(static diagnostic => diagnostic.Id), Does.Contain("CS0306"));
+            Assert.That(generatedCompilationErrors, Is.Empty);
+            Assert.That(generatorErrors, Is.Empty);
+            Assert.That(execution.GeneratedSources, Has.Length.EqualTo(1));
+            var generatedSource = execution.GeneratedSources[0].content;
+            Assert.That(
+                generatedSource,
+                Does.Contain(
+                    "[assembly: global::GFramework.Cqrs.CqrsReflectionFallbackAttribute(\"TestApp.Container+AlphaHandler\", \"TestApp.Container+BetaHandler\")]"));
+            Assert.That(generatedSource, Does.Not.Contain("CqrsReflectionFallbackAttribute(typeof("));
+            Assert.That(
+                CountOccurrences(
+                    generatedSource,
+                    "[assembly: global::GFramework.Cqrs.CqrsReflectionFallbackAttribute"),
+                Is.EqualTo(1));
+        });
+    }
+
+    /// <summary>
     ///     验证当 runtime 暴露 request invoker provider 契约时，生成器会让 generated registry 同时发射
     ///     request invoker 描述符与对应的开放静态 invoker 方法。
     /// </summary>
@@ -3423,6 +3467,47 @@ public class CqrsHandlerRegistryGeneratorTests
 
         var character = source[index];
         return !char.IsLetterOrDigit(character) && character != '_';
+    }
+
+    /// <summary>
+    ///     替换指定测试类型紧邻的 <c>AttributeUsage</c> 声明，用于构造 runtime contract 的 attribute usage 变体。
+    /// </summary>
+    /// <param name="source">原始测试源码。</param>
+    /// <param name="typeName">需要定位的类型名。</param>
+    /// <param name="replacementAttributeUsage">替换后的完整 <c>AttributeUsage</c> 声明。</param>
+    /// <returns>完成 attribute usage 替换后的源码。</returns>
+    private static string ReplaceAttributeUsageForType(
+        string source,
+        string typeName,
+        string replacementAttributeUsage)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(typeName);
+        ArgumentNullException.ThrowIfNull(replacementAttributeUsage);
+
+        var typeIndex = source.IndexOf($"public sealed class {typeName}", StringComparison.Ordinal);
+        if (typeIndex < 0)
+        {
+            throw new InvalidOperationException("The requested type declaration was not found in the generator test input.");
+        }
+
+        const string attributeUsagePrefix = "[AttributeUsage(";
+        var attributeUsageStartIndex = source.LastIndexOf(attributeUsagePrefix, typeIndex, StringComparison.Ordinal);
+        if (attributeUsageStartIndex < 0)
+        {
+            throw new InvalidOperationException("The requested AttributeUsage declaration was not found in the generator test input.");
+        }
+
+        var attributeUsageEndIndex = source.IndexOf(']', attributeUsageStartIndex);
+        if (attributeUsageEndIndex < 0 || attributeUsageEndIndex > typeIndex)
+        {
+            throw new InvalidOperationException("The requested AttributeUsage declaration is malformed.");
+        }
+
+        return source.Remove(
+                attributeUsageStartIndex,
+                attributeUsageEndIndex - attributeUsageStartIndex + 1)
+            .Insert(attributeUsageStartIndex, replacementAttributeUsage);
     }
 
     /// <summary>

@@ -62,3 +62,28 @@
 
 1. 继续使用 `origin/main` 作为 `$gframework-batch-boot 25` 的基线，复算 branch diff 后决定是否还能接下一批
 2. 若继续推进代码切片，优先查找 request / stream invoker provider runtime 合同之外的同类对称测试缺口
+
+### 阶段：mixed fallback attribute usage 回归（CQRS-REWRITE-RP-078）
+
+- 继续沿用 `$gframework-batch-boot 25`，当前 branch diff 仍低于阈值
+- 复核 fallback metadata runtime contract 后确认：
+  - mixed fallback 在 runtime 允许多个 fallback attribute 实例时已有直接 `Type` + 字符串拆分回归
+  - runtime 同时支持 `params Type[]` / `params string[]` 但不允许多个 fallback attribute 实例时，缺少锁定“整体回退到单个字符串 attribute”的回归
+- 已补齐：
+  - `Emits_String_Fallback_Metadata_For_Mixed_Fallback_When_Runtime_Disallows_Multiple_Fallback_Attributes`
+  - `ReplaceAttributeUsageForType` 测试辅助方法，用于构造 runtime attribute usage 变体而不复制大型 source fixture
+
+### 验证（RP-078）
+
+- `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Emits_String_Fallback_Metadata_For_Mixed_Fallback_When_Runtime_Disallows_Multiple_Fallback_Attributes"`
+  - 结果：通过，`1/1` passed
+- `python3 scripts/license-header.py --check`
+  - 结果：通过
+  - 备注：当前 WSL worktree 需要显式绑定 `GIT_DIR` / `GIT_WORK_TREE` 后运行
+- `git diff --check`
+  - 结果：通过
+
+### 当前下一步（RP-078）
+
+1. 继续复算 branch diff vs `origin/main`，若仍低于 `25` 个文件可继续下一批
+2. 下一批优先查看 fallback metadata 与 generated invoker provider 之外是否还有同类 runtime contract gate 回归缺口

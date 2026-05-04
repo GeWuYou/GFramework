@@ -7,13 +7,14 @@ CQRS 迁移与收敛。
 
 ## 当前恢复点
 
-- 恢复点编号：`CQRS-REWRITE-RP-077`
+- 恢复点编号：`CQRS-REWRITE-RP-078`
 - 当前阶段：`Phase 8`
 - 当前 PR 锚点：`PR #307`
 - 当前结论：
   - `GFramework.Cqrs` 已完成对外部 `Mediator` 的生产级替代，当前主线已从“是否可替代”转向“仓库内部收口与能力深化顺序”
-  - `dispatch/invoker` 生成前移已扩展到 request / stream 路径，当前 `RP-077` 已补齐 request invoker provider gate 与 stream gate 对称的 descriptor / descriptor entry runtime 合同回归
-  - `ai-plan` active 入口现以 `PR #307` 和 `RP-077` 为唯一权威恢复锚点；更早 PR 与阶段细节均以下方归档为准
+  - `dispatch/invoker` 生成前移已扩展到 request / stream 路径，`RP-077` 已补齐 request invoker provider gate 与 stream gate 对称的 descriptor / descriptor entry runtime 合同回归
+  - 当前 `RP-078` 已补齐 mixed fallback metadata 在 runtime 不允许多个 fallback attribute 实例时的单字符串 attribute 回退回归
+  - `ai-plan` active 入口现以 `PR #307` 和 `RP-078` 为唯一权威恢复锚点；更早 PR 与阶段细节均以下方归档为准
 
 ## 当前活跃事实
 
@@ -44,11 +45,18 @@ CQRS 迁移与收敛。
 - `python3 scripts/license-header.py --check`
   - 结果：通过
   - 备注：当前 WSL worktree 需要显式绑定 `GIT_DIR` / `GIT_WORK_TREE` 后运行，避免脚本内部 plain `git ls-files` 误判仓库上下文
+- `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Emits_String_Fallback_Metadata_For_Mixed_Fallback_When_Runtime_Disallows_Multiple_Fallback_Attributes"`
+  - 结果：通过，`1/1` passed
+- `python3 scripts/license-header.py --check`
+  - 结果：通过
+  - 备注：当前 WSL worktree 需要显式绑定 `GIT_DIR` / `GIT_WORK_TREE` 后运行
+- `git diff --check`
+  - 结果：通过
 
 ## 下一推荐步骤
 
 1. 继续处理 `PR #307` 的剩余 review 收尾，优先保持 `ai-plan` active 入口与 trace 的单一锚点一致
-2. 若继续推进代码切片，优先复核 request / stream invoker provider runtime 合同以外是否还有同类对称测试缺口
+2. 若继续推进代码切片，优先复核 fallback metadata 与 generated invoker provider 之外是否还有同类 runtime contract gate 回归缺口
 3. 在进入下一批 runtime / generator 收敛前，保持最小 Release build 或 targeted test 作为权威验证
 
 ## 活跃文档
