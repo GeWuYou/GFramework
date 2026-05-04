@@ -17,6 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      pull-requests: read
     outputs:
       published: ${{ steps.semantic_release.outputs.new_release_published }}
       last_tag: ${{ steps.semantic_release.outputs.last_release_git_tag }}
@@ -108,6 +109,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: read
     environment:
       name: release-approval
     steps:

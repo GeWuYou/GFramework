@@ -2,6 +2,31 @@
 
 ## 2026-05-04
 
+### 发布说明 PR 链接权限修复（SEMREL-RP-007）
+
+- 触发原因：
+  - v0.3.0 GitHub Release 中多数条目只显示 `by @GeWuYou`，没有 `in #xxx`
+  - `.github/cliff.toml` 的 `print_commit` 只有在 `commit.remote.pr_number` 存在时才追加 PR 链接
+  - `auto-tag.yml` 与 `publish.yml` 的 `git-cliff-action` job 只声明了 `contents` / `packages` 权限，没有显式
+    `pull-requests: read`
+- 本地复核结论：
+  - 模板本身已经包含 `by @user in #PR` 输出，不需要改 release notes 格式
+  - 修复点应放在 workflow permissions，确保 git-cliff 能通过 GitHub API 稳定补全 PR 元数据
+  - 当前环境未安装 `git-cliff` 或 `gh`，无法在本地直接重渲染并回填已发布的 GitHub Release 正文
+- 已应用修复：
+  - `.github/workflows/auto-tag.yml` 的 preview / release job 增加 `pull-requests: read`
+  - `.github/workflows/publish.yml` 的 `create-release` job 增加 `pull-requests: read`
+  - `ai-plan/public/README.md` 新增 `fix/release-notes-pr-links` 到 `semantic-release-versioning` 的 active topic 映射
+- 验证：
+  - workflow 权限静态检查通过，所有 `git-cliff-action` 所在 job 均声明 `pull-requests: read`
+  - `.github/cliff.toml` 通过 Python `tomllib` 解析
+  - `python3 scripts/license-header.py --check` 通过
+  - `dotnet build GFramework.sln -c Release` 通过，`0 warning / 0 error`
+- 下一步是提交本轮 workflow 权限修复；如需回填 v0.3.0 Release 正文，需要在具备 `git-cliff` / `gh`
+  或 GitHub release API 能力的环境中执行。
+
+## 2026-05-04
+
 ### PR review notes 类型映射修复（SEMREL-RP-006）
 
 - 通过 `$gframework-pr-review` 抓取当前分支 PR #319：

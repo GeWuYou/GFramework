@@ -65,6 +65,9 @@ help the current worktree land on the right recovery documents without scanning 
 - Branch: `build/semantic-release-rules`
   - Worktree hint: `GFramework`
   - Priority 1: `semantic-release-versioning`
+- Branch: `fix/release-notes-pr-links`
+  - Worktree hint: `GFramework`
+  - Priority 1: `semantic-release-versioning`
 - Branch: `docs/sdk-update-documentation`
   - Worktree hint: `GFramework-update-documentation`
   - Priority 1: `documentation-full-coverage-governance`
