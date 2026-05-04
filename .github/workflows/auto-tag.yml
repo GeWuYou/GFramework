@@ -72,7 +72,7 @@ jobs:
         env:
           OUTPUT: PREVIEW_RELEASE_NOTES.md
           GITHUB_REPO: ${{ github.repository }}
-          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Write preview summary
         env:
@@ -159,7 +159,7 @@ jobs:
         env:
           OUTPUT: PUBLISHED_RELEASE_NOTES.md
           GITHUB_REPO: ${{ github.repository }}
-          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Write release summary
         env:
