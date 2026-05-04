@@ -1,5 +1,31 @@
 # Semantic Release 版本迁移追踪
 
+## 2026-05-04
+
+### PR review notes 类型映射修复（SEMREL-RP-006）
+
+- 通过 `$gframework-pr-review` 抓取当前分支 PR #319：
+  - CodeRabbit 在最新 review body 中提出 1 个 nitpick，指出 `deps` / `security` 已触发 patch，但
+    `release-notes-generator` 缺少 `presetConfig.types`，workflow summary 可能看不到对应发布原因
+  - 最新 head commit 没有未解决 review threads
+  - CTRF 测试报告显示 `2264 passed / 0 failed`
+  - 未找到 MegaLinter 明细块
+- 本地复核结论：
+  - `.releaserc.json` 的 `commit-analyzer` 已配置 `deps -> patch` 与 `security -> patch`
+  - `release-notes-generator` 仍只配置 `conventionalcommits` preset 和 `parserOpts.noteKeywords`
+  - 该 drift 会让 patch 级发布原因与 release notes 可读性不一致，评论成立
+- 已应用修复：
+  - `.releaserc.json` 为 `release-notes-generator` 增加 `presetConfig.types`
+  - `feat`、`fix`、`perf`、`refactor`、`deps`、`security` 和 `revert` 均保留可见 notes section
+- 验证：
+  - `jq . .releaserc.json` 通过
+  - `npx --yes -p semantic-release -p conventional-changelog-conventionalcommits@9.1.0 semantic-release --dry-run --no-ci`
+    成功加载 `commit-analyzer` 和 `release-notes-generator`；随后在 `git fetch --tags` 阶段因远端 tag 会 clobber
+    本地既有 tags 而终止，未暴露 `presetConfig.types` 配置解析错误
+  - `dotnet build GFramework.sln -c Release` 通过，`0 warning / 0 error`
+- 下一步是提交本轮 PR review 修复；如后续需要完整 semantic-release 版本预览，先处理本地 tag 与远端 tag 的
+  clobber 冲突。
+
 ## 2026-05-03
 
 ### patch 级提交类型扩展（SEMREL-RP-005）
