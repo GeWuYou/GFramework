@@ -218,14 +218,6 @@ git push origin your-branch
 
 ### 命名规范
 
-### 代码生成器边界
-
-- 框架内部的运行时模块、抽象层模块和顶层元包不得依赖 `*.SourceGenerators*` 项目或包。
-- `GenerateEnumExtensions`、`ContextAware`、`GetModel`、`GetService` 等代码生成器 attribute 只允许出现在消费端项目、
-  生成器项目本身、专门验证生成器行为的测试项目，或明确用于演示生成器接入的示例中。
-- 如果某个运行时模块为了编译而需要引入生成器 attribute，说明模块边界已经漂移；应优先移除该 attribute 使用，而不是把
-  generator abstractions 暴露成新的运行时依赖。
-
 遵循 C# 标准命名约定：
 
 - **类、接口、方法**：PascalCase

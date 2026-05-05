@@ -40,8 +40,8 @@ FORBIDDEN_ATTRIBUTE_NAMES = (
     "GetService",
     "GetServices",
     "GetAll",
-    "Log",
-    "Priority",
+    "Log",  # GFramework.Core.SourceGenerators.Abstractions.Logging.LogAttribute
+    "Priority",  # GFramework.Core.SourceGenerators.Abstractions.Bases.PriorityAttribute
 )
 
 FORBIDDEN_PROJECT_REFERENCE_PREFIX = "GFramework."
@@ -145,8 +145,9 @@ def validate_project_references() -> list[Violation]:
 def compile_attribute_patterns() -> dict[str, re.Pattern[str]]:
     patterns: dict[str, re.Pattern[str]] = {}
     for attribute_name in FORBIDDEN_ATTRIBUTE_NAMES:
+        escaped_attribute_name = re.escape(attribute_name)
         patterns[attribute_name] = re.compile(
-            rf"\[(?P<body>[^\]]*?(?:^|[\s,(])(?:global::)?(?:[A-Za-z_][A-Za-z0-9_]*\.)*{attribute_name}(?:Attribute)?(?=[\s,)\]])[^\]]*)\]",
+            rf"\[[^\]]*(?:(?<=\[)|(?<=[\s,(]))(?:global::)?(?:[A-Za-z_][A-Za-z0-9_]*\.)*{escaped_attribute_name}(?:Attribute)?(?=\s*(?:\(|,|\]))[^\]]*\]",
             re.MULTILINE,
         )
 
@@ -155,6 +156,12 @@ def compile_attribute_patterns() -> dict[str, re.Pattern[str]]:
 
 def line_number_for_offset(text: str, offset: int) -> int:
     return text.count("\n", 0, offset) + 1
+
+
+def is_comment_attribute_match(text: str, offset: int) -> bool:
+    line_start = text.rfind("\n", 0, offset) + 1
+    line_prefix = text[line_start:offset].lstrip()
+    return line_prefix.startswith("///") or line_prefix.startswith("//") or line_prefix.startswith("/*") or line_prefix.startswith("*")
 
 
 def validate_source_attributes() -> list[Violation]:
@@ -173,6 +180,9 @@ def validate_source_attributes() -> list[Violation]:
             text = file_path.read_text(encoding="utf-8-sig")
             for attribute_name, pattern in patterns.items():
                 for match in pattern.finditer(text):
+                    if is_comment_attribute_match(text, match.start()):
+                        continue
+
                     line_number = line_number_for_offset(text, match.start())
                     relative_path = file_path.relative_to(REPO_ROOT)
                     violations.append(
