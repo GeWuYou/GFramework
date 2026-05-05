@@ -118,6 +118,9 @@ jobs:
 
           diff -u expected-packages.txt actual-packages.txt
 
+      - name: Validate runtime-generator package boundaries
+        run: python3 scripts/validate-runtime-generator-boundaries.py --package-dir ./packages
+
       - name: Show packages
         run: ls -la ./packages || true
 

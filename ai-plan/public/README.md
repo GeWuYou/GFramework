@@ -42,6 +42,10 @@ help the current worktree land on the right recovery documents without scanning 
   - Purpose: migrate release version calculation from fixed patch bumps to semantic-release while keeping the existing tag-driven NuGet publish flow.
   - Tracking: `ai-plan/public/semantic-release-versioning/todos/semantic-release-versioning-tracking.md`
   - Trace: `ai-plan/public/semantic-release-versioning/traces/semantic-release-versioning-trace.md`
+- `runtime-generator-boundary`
+  - Purpose: keep runtime and abstractions packages isolated from source-generator dependencies, packaging leaks, and attribute usage.
+  - Tracking: `ai-plan/public/runtime-generator-boundary/todos/runtime-generator-boundary-tracking.md`
+  - Trace: `ai-plan/public/runtime-generator-boundary/traces/runtime-generator-boundary-trace.md`
 
 ## Worktree To Active Topic Map
 
@@ -68,6 +72,9 @@ help the current worktree land on the right recovery documents without scanning 
 - Branch: `fix/release-notes-pr-links`
   - Worktree hint: `GFramework`
   - Priority 1: `semantic-release-versioning`
+- Branch: `fix/runtime-generator-boundary`
+  - Worktree hint: `GFramework`
+  - Priority 1: `runtime-generator-boundary`
 - Branch: `docs/sdk-update-documentation`
   - Worktree hint: `GFramework-update-documentation`
   - Priority 1: `documentation-full-coverage-governance`

@@ -1,14 +1,11 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using GFramework.Core.SourceGenerators.Abstractions.Enums;
-
 namespace GFramework.Game.Config;
 
 /// <summary>
 ///     表示当前运行时 schema 校验器支持的属性类型。
 /// </summary>
-[GenerateEnumExtensions]
 internal enum YamlConfigSchemaPropertyType
 {
     /// <summary>

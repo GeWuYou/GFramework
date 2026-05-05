@@ -35,6 +35,9 @@ jobs:
       - name: Validate license headers
         run: python3 scripts/license-header.py --check
 
+      - name: Validate runtime-generator boundaries
+        run: python3 scripts/validate-runtime-generator-boundaries.py
+
       # 缓存MegaLinter
       - name: Cache MegaLinter
         uses: actions/cache@v5
