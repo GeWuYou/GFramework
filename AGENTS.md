@@ -212,6 +212,9 @@ All generated or modified code MUST include clear and meaningful comments where 
   - Private fields: `_camelCase`
 - Keep abstractions projects free of implementation details and engine-specific dependencies.
 - Preserve existing module boundaries. Do not introduce new cross-module dependencies without clear architectural need.
+- Framework runtime, abstractions, and meta-package projects MUST NOT reference `*.SourceGenerators*` projects or packages,
+  and MUST NOT use source-generator attributes such as `GenerateEnumExtensions` or `ContextAware`. Those capabilities are
+  reserved for consumer projects, generator projects, examples explicitly meant to demonstrate generator usage, and related tests.
 
 ### Formatting
 
