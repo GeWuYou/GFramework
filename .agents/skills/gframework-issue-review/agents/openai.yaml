@@ -1,0 +1,4 @@
+interface:
+  display_name: "GFramework Issue Review"
+  short_description: "Inspect the current repository issue and triage next steps"
+  default_prompt: "Use $gframework-issue-review to inspect the current repository issue through the GitHub API, summarize the issue body, discussion, and key timeline signals, highlight what must be verified locally, and then hand follow-up execution to $gframework-boot."

@@ -46,6 +46,11 @@ help the current worktree land on the right recovery documents without scanning 
   - Purpose: keep runtime and abstractions packages isolated from source-generator dependencies, packaging leaks, and attribute usage.
   - Tracking: `ai-plan/public/runtime-generator-boundary/todos/runtime-generator-boundary-tracking.md`
   - Trace: `ai-plan/public/runtime-generator-boundary/traces/runtime-generator-boundary-trace.md`
+- `github-issue-review-skill`
+  - Purpose: add a GitHub issue triage skill that fetches the current repository issue, summarizes actionable context,
+    and hands follow-up execution to `gframework-boot`.
+  - Tracking: `ai-plan/public/github-issue-review-skill/todos/github-issue-review-skill-tracking.md`
+  - Trace: `ai-plan/public/github-issue-review-skill/traces/github-issue-review-skill-trace.md`
 
 ## Worktree To Active Topic Map
 
@@ -75,6 +80,9 @@ help the current worktree land on the right recovery documents without scanning 
 - Branch: `fix/runtime-generator-boundary`
   - Worktree hint: `GFramework`
   - Priority 1: `runtime-generator-boundary`
+- Branch: `feat/github-issue-review-skill`
+  - Worktree hint: `GFramework`
+  - Priority 1: `github-issue-review-skill`
 - Branch: `docs/sdk-update-documentation`
   - Worktree hint: `GFramework-update-documentation`
   - Priority 1: `documentation-full-coverage-governance`
