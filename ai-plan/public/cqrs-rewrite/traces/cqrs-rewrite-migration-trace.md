@@ -334,3 +334,38 @@
 
 1. 继续扩展 `GFramework.Cqrs.Benchmarks`，优先补齐 request pipeline 数量矩阵，随后再评估 cold-start / initialization
 2. 当需要验证 generated invoker provider 的实际收益时，把 request benchmark 扩展为 reflection / generated provider 对照，而不是只停留在框架间对比
+
+### 阶段：request pipeline 数量矩阵（CQRS-REWRITE-RP-086）
+
+- 继续沿用 `$gframework-batch-boot 50`，当前 branch diff 相对 `origin/main` 仍明显低于阈值
+- 本轮把 benchmark 关注点从单纯 messaging steady-state 扩展到 request pipeline 编排行为，原因是：
+  - `ai-libs/Mediator` 的对照价值已经不只在 request / notification / stream 三个入口本身，还在 pipeline 包装策略与生命周期取舍
+  - `GFramework.Cqrs.Internal.CqrsDispatcher` 已按 `behaviorCount` 缓存 `RequestPipelineExecutor<TResponse>` 形状，因此单独量化 `0 / 1 / 4` 个行为的 steady-state 开销有直接信息密度
+- 本轮新增：
+  - `GFramework.Cqrs.Benchmarks/Messaging/RequestPipelineBenchmarks.cs`
+  - `GFramework.Cqrs.Benchmarks/README.md` 中的 request pipeline 场景说明
+- 设计取舍：
+  - 采用 `0 / 1 / 4` 个 pipeline 行为，而不是立即扩到更大的参数空间，先锁定最有代表性的无行为 / 少量行为 / 常见多行为矩阵
+  - 使用最小 no-op 行为族，不引入日志、计时或上下文刷新逻辑，避免把测量结果污染成业务行为成本
+  - `GFramework.Cqrs` 与 `MediatR` 侧都只注册当前 benchmark 请求对应的闭合行为类型，确保矩阵反映编排成本而非程序集扫描差异
+- 接受的只读 subagent 结论：
+  - 下一批 benchmark 继续优先考虑 `cold-start / initialization` 与 `generated provider` 对照，而不是立即照搬 `Mediator` 的 large-project 维度
+  - 当前 `GFramework.Cqrs.Benchmarks` 仍未接入 `Mediator` 包和 `GFramework.Cqrs.SourceGenerators`，因此本轮不扩成 `Mediator_IMediator` / generated-provider 对照，避免 scope 失控
+- 结论：
+  - 当前 benchmark 项目已经覆盖 `Request`、`Notification`、`StreamRequest` 与 `RequestPipeline`
+  - 后续若要继续贴近 `Mediator` 的 comparison benchmark，最值得优先补的是 initialization / first-hit 与 generated invoker provider，而不是继续横向堆更多 steady-state messaging 入口
+
+### 验证（RP-086）
+
+- `dotnet build GFramework.Cqrs.Benchmarks/GFramework.Cqrs.Benchmarks.csproj -c Release`
+  - 结果：通过，`0 warning / 0 error`
+
+### 当前 stop-condition 度量（RP-086）
+
+- primary metric：branch diff files vs `origin/main`
+- 当前说明：提交前基于 `HEAD` 的 branch diff 仍为 `14` files，距离 `50` 文件阈值仍有明显余量
+
+### 当前下一步（RP-086）
+
+1. 提交本轮 request pipeline benchmark 后，继续扩展 `GFramework.Cqrs.Benchmarks`，优先补齐 initialization / cold-start 场景
+2. 当需要验证 dispatcher 预热与 source generator 收益时，引入 generated invoker provider 对照，并评估是否同时接入 `Mediator` concrete runtime 作为更贴近设计哲学的外部参照
