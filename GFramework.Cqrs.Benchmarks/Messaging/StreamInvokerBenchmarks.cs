@@ -103,8 +103,14 @@ public class StreamInvokerBenchmarks
     [GlobalCleanup]
     public void Cleanup()
     {
-        _serviceProvider.Dispose();
-        BenchmarkDispatcherCacheHelper.ClearDispatcherCaches();
+        try
+        {
+            BenchmarkCleanupHelper.DisposeAll(_reflectionContainer, _generatedContainer, _serviceProvider);
+        }
+        finally
+        {
+            BenchmarkDispatcherCacheHelper.ClearDispatcherCaches();
+        }
     }
 
     /// <summary>

@@ -85,7 +85,7 @@ public class RequestBenchmarks
     [GlobalCleanup]
     public void Cleanup()
     {
-        _serviceProvider.Dispose();
+        BenchmarkCleanupHelper.DisposeAll(_container, _serviceProvider);
     }
 
     /// <summary>

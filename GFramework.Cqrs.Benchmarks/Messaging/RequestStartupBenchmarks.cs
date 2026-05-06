@@ -29,6 +29,7 @@ public class RequestStartupBenchmarks
     private static readonly ILogger RuntimeLogger = CreateLogger(nameof(RequestStartupBenchmarks));
     private static readonly BenchmarkRequest Request = new(Guid.NewGuid());
 
+    private MicrosoftDiContainer _container = null!;
     private ServiceProvider _serviceProvider = null!;
     private IMediator _mediatr = null!;
     private ICqrsRuntime _runtime = null!;
@@ -62,7 +63,8 @@ public class RequestStartupBenchmarks
 
         _serviceProvider = CreateMediatRServiceProvider();
         _mediatr = _serviceProvider.GetRequiredService<IMediator>();
-        _runtime = CreateGFrameworkRuntime();
+        _container = CreateGFrameworkContainer();
+        _runtime = CreateGFrameworkRuntime(_container);
     }
 
     /// <summary>
@@ -84,7 +86,7 @@ public class RequestStartupBenchmarks
     [GlobalCleanup]
     public void Cleanup()
     {
-        _serviceProvider.Dispose();
+        BenchmarkCleanupHelper.DisposeAll(_container, _serviceProvider);
     }
 
     /// <summary>
@@ -124,10 +126,11 @@ public class RequestStartupBenchmarks
     /// </summary>
     [Benchmark]
     [BenchmarkCategory("ColdStart")]
-    public ValueTask<BenchmarkResponse> ColdStart_GFrameworkCqrs()
+    public async ValueTask<BenchmarkResponse> ColdStart_GFrameworkCqrs()
     {
-        var runtime = CreateGFrameworkRuntime();
-        return runtime.SendAsync(BenchmarkContext.Instance, Request, CancellationToken.None);
+        using var container = CreateGFrameworkContainer();
+        var runtime = CreateGFrameworkRuntime(container);
+        return await runtime.SendAsync(BenchmarkContext.Instance, Request, CancellationToken.None).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -137,12 +140,21 @@ public class RequestStartupBenchmarks
     ///     该 benchmark 故意保持与 MediatR 对照组同样的“单 handler 最小宿主”模型，
     ///     因此这里继续使用单点手工注册，而不引入依赖完整 CQRS 注册协调器的程序集扫描路径。
     /// </remarks>
-    private static ICqrsRuntime CreateGFrameworkRuntime()
+    private static MicrosoftDiContainer CreateGFrameworkContainer()
     {
-        var container = BenchmarkHostFactory.CreateFrozenGFrameworkContainer(static currentContainer =>
+        return BenchmarkHostFactory.CreateFrozenGFrameworkContainer(static currentContainer =>
         {
             currentContainer.RegisterTransient<GFramework.Cqrs.Abstractions.Cqrs.IRequestHandler<BenchmarkRequest, BenchmarkResponse>, BenchmarkRequestHandler>();
         });
+    }
+
+    /// <summary>
+    ///     基于已冻结的 benchmark 容器构建最小 GFramework.CQRS runtime。
+    /// </summary>
+    /// <param name="container">当前 benchmark 拥有并负责释放的容器。</param>
+    private static ICqrsRuntime CreateGFrameworkRuntime(MicrosoftDiContainer container)
+    {
+        ArgumentNullException.ThrowIfNull(container);
         return GFramework.Cqrs.CqrsRuntimeFactory.CreateRuntime(container, RuntimeLogger);
     }
 

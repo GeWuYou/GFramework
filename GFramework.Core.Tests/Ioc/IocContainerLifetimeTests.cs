@@ -3,6 +3,9 @@
 
 using GFramework.Core.Ioc;
 using Microsoft.Extensions.DependencyInjection;
+using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace GFramework.Core.Tests.Ioc;
 
@@ -20,6 +23,18 @@ public class IocContainerLifetimeTests
     private class TestService : ITestService
     {
         public Guid Id { get; } = Guid.NewGuid();
+    }
+
+    private sealed class DisposableTestService : ITestService, IDisposable
+    {
+        public Guid Id { get; } = Guid.NewGuid();
+
+        public bool IsDisposed { get; private set; }
+
+        public void Dispose()
+        {
+            IsDisposed = true;
+        }
     }
 
     [Test]
@@ -206,5 +221,113 @@ public class IocContainerLifetimeTests
         scope1.Dispose();
         scope2.Dispose();
         scope3.Dispose();
+    }
+
+    [Test]
+    public void Dispose_Should_Dispose_Resolved_Singleton_And_Block_Further_Use()
+    {
+        // Arrange
+        var container = new MicrosoftDiContainer();
+        container.RegisterSingleton<DisposableTestService, DisposableTestService>();
+        container.Freeze();
+        var service = container.GetRequired<DisposableTestService>();
+
+        // Act
+        container.Dispose();
+
+        // Assert
+        Assert.That(service.IsDisposed, Is.True);
+        Assert.Throws<ObjectDisposedException>(() => container.Get<DisposableTestService>());
+        Assert.Throws<ObjectDisposedException>(() => container.CreateScope());
+    }
+
+    [Test]
+    public void Dispose_Should_Be_Idempotent()
+    {
+        var container = new MicrosoftDiContainer();
+
+        Assert.DoesNotThrow(container.Dispose);
+        Assert.DoesNotThrow(container.Dispose);
+    }
+
+    [Test]
+    public void Dispose_Should_Be_Idempotent_When_Called_Concurrently()
+    {
+        var container = new MicrosoftDiContainer();
+        var containerLock = GetContainerLock(container);
+        var releasedGate = false;
+
+        containerLock.EnterWriteLock();
+        try
+        {
+            var firstDisposeTask = Task.Run(container.Dispose);
+            Thread.Sleep(50);
+            var secondDisposeTask = Task.Run(container.Dispose);
+            Thread.Sleep(50);
+
+            containerLock.ExitWriteLock();
+            releasedGate = true;
+
+            Assert.That(async () => await Task.WhenAll(firstDisposeTask, secondDisposeTask).ConfigureAwait(false), Throws.Nothing);
+        }
+        finally
+        {
+            if (!releasedGate)
+            {
+                containerLock.ExitWriteLock();
+            }
+        }
+    }
+
+    [Test]
+    public void Dispose_Should_Only_Attempt_Lock_Disposal_Once_When_Called_Concurrently()
+    {
+        var container = new MicrosoftDiContainer();
+        var containerLock = GetContainerLock(container);
+        var releasedGate = false;
+
+        containerLock.EnterWriteLock();
+        try
+        {
+            var firstDisposeTask = Task.Run(container.Dispose);
+            Thread.Sleep(50);
+            var secondDisposeTask = Task.Run(container.Dispose);
+            Thread.Sleep(50);
+
+            containerLock.ExitWriteLock();
+            releasedGate = true;
+
+            Assert.That(async () => await Task.WhenAll(firstDisposeTask, secondDisposeTask).ConfigureAwait(false), Throws.Nothing);
+            Assert.That(GetLockDisposalStarted(container), Is.EqualTo(1));
+        }
+        finally
+        {
+            if (!releasedGate)
+            {
+                containerLock.ExitWriteLock();
+            }
+        }
+    }
+
+    /// <summary>
+    ///     通过反射获取容器内部锁，用于构造可重复的并发释放竞态回归。
+    /// </summary>
+    private static ReaderWriterLockSlim GetContainerLock(MicrosoftDiContainer container)
+    {
+        ArgumentNullException.ThrowIfNull(container);
+        var lockField = typeof(MicrosoftDiContainer).GetField("_lock", BindingFlags.NonPublic | BindingFlags.Instance);
+        Assert.That(lockField, Is.Not.Null);
+        return (ReaderWriterLockSlim)lockField!.GetValue(container)!;
+    }
+
+    /// <summary>
+    ///     读取锁销毁启动标记，验证并发释放路径不会重复执行底层锁销毁。
+    /// </summary>
+    private static int GetLockDisposalStarted(MicrosoftDiContainer container)
+    {
+        ArgumentNullException.ThrowIfNull(container);
+        var flagField = typeof(MicrosoftDiContainer).GetField("_lockDisposalStarted", BindingFlags.NonPublic | BindingFlags.Instance);
+        Assert.That(flagField, Is.Not.Null);
+        return (int)flagField!.GetValue(container)!;
     }
 }

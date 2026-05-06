@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
@@ -759,5 +761,74 @@ public class MicrosoftDiContainerTests
         Assert.That(services, Has.Count.EqualTo(2));
         Assert.That(((IPrioritizedService)services[0]).Priority, Is.EqualTo(10));
         Assert.That(((IPrioritizedService)services[1]).Priority, Is.EqualTo(30));
+    }
+
+    /// <summary>
+    ///     测试容器释放后会阻止后续注册与解析，避免 benchmark 或短生命周期宿主继续使用已回收状态。
+    /// </summary>
+    [Test]
+    public void Dispose_Should_Block_Subsequent_Registration_And_Query_Operations()
+    {
+        _container.Dispose();
+
+        Assert.Throws<ObjectDisposedException>(() => _container.Register(new TestService()));
+        Assert.Throws<ObjectDisposedException>(() => _container.Contains<TestService>());
+        Assert.Throws<ObjectDisposedException>(() => _container.GetAll<TestService>());
+    }
+
+    /// <summary>
+    ///     测试等待中的读取线程在容器释放后也会收到稳定的容器级释放异常，而不是底层锁异常。
+    /// </summary>
+    [Test]
+    public async Task Dispose_Should_Translate_Waiting_Readers_To_Container_ObjectDisposedException()
+    {
+        _container.RegisterSingleton(new TestService());
+        _container.Freeze();
+
+        var containerLock = GetContainerLock(_container);
+        var releasedGate = false;
+        using var queryStarted = new ManualResetEventSlim(false);
+
+        containerLock.EnterWriteLock();
+        try
+        {
+            var queryTask = Task.Run(() =>
+            {
+                queryStarted.Set();
+                return _container.Get<TestService>();
+            });
+
+            Assert.That(queryStarted.Wait(TimeSpan.FromSeconds(1)), Is.True);
+
+            var disposeTask = Task.Run(_container.Dispose);
+            Thread.Sleep(50);
+
+            containerLock.ExitWriteLock();
+            releasedGate = true;
+
+            await disposeTask.ConfigureAwait(false);
+
+            var exception = Assert.ThrowsAsync<ObjectDisposedException>(async () => await queryTask.ConfigureAwait(false));
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.ObjectName, Is.EqualTo(nameof(MicrosoftDiContainer)));
+        }
+        finally
+        {
+            if (!releasedGate)
+            {
+                containerLock.ExitWriteLock();
+            }
+        }
+    }
+
+    /// <summary>
+    ///     通过反射获取容器内部锁，用于构造可重复的并发释放竞态回归。
+    /// </summary>
+    private static ReaderWriterLockSlim GetContainerLock(MicrosoftDiContainer container)
+    {
+        ArgumentNullException.ThrowIfNull(container);
+        var lockField = typeof(MicrosoftDiContainer).GetField("_lock", BindingFlags.NonPublic | BindingFlags.Instance);
+        Assert.That(lockField, Is.Not.Null);
+        return (ReaderWriterLockSlim)lockField!.GetValue(container)!;
     }
 }

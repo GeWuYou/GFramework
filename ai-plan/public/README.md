@@ -38,6 +38,10 @@ help the current worktree land on the right recovery documents without scanning 
   - Purpose: continue the data repository persistence hardening plus the settings / serialization follow-up backlog.
   - Tracking: `ai-plan/public/data-repository-persistence/todos/data-repository-persistence-tracking.md`
   - Trace: `ai-plan/public/data-repository-persistence/traces/data-repository-persistence-trace.md`
+- `microsoft-di-container-disposal`
+  - Purpose: track `PR #330` disposal-contract fixes for `MicrosoftDiContainer`, related benchmark cleanup hardening, and review follow-up.
+  - Tracking: `ai-plan/public/microsoft-di-container-disposal/todos/microsoft-di-container-disposal-tracking.md`
+  - Trace: `ai-plan/public/microsoft-di-container-disposal/traces/microsoft-di-container-disposal-trace.md`
 
 ## Worktree To Active Topic Map
 
@@ -58,3 +62,5 @@ help the current worktree land on the right recovery documents without scanning 
 - Branch: `docs/sdk-update-documentation`
   - Worktree hint: `GFramework-update-documentation`
   - Priority 1: `documentation-full-coverage-governance`
+- Branch: `fix/microsoft-di-container-disposal`
+  - Priority 1: `microsoft-di-container-disposal`
