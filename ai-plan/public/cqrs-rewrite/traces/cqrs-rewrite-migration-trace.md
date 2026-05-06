@@ -429,4 +429,38 @@
 ### 当前下一步（RP-088）
 
 1. 提交本轮 request invoker benchmark 后，继续扩展 `GFramework.Cqrs.Benchmarks`，优先评估 registration / service lifetime 或 stream generated provider
+
+### 阶段：stream invoker reflection / generated 对照（CQRS-REWRITE-RP-089）
+
+- 使用 `$gframework-batch-boot 30` 继续 `feat/cqrs-optimization` 的 CQRS 收口批次
+- 本轮基线选择：
+  - `origin/main c01abac0`，committer date `2026-05-06 09:40:08 +0800`
+  - `main a8c6c11e`，committer date `2026-05-05 13:14:24 +0800`
+- 启动时 branch diff vs `origin/main` 为 `18` files / `2100` lines，低于 `30` 文件阈值，因此继续选择单模块、低风险 benchmark 切片
+- 复核 `GFramework.Cqrs.Benchmarks` 与 `ai-libs/Mediator/benchmarks` 后确认：
+  - `RP-088` 已把 generated descriptor 预热收益量化到 request dispatch 路径
+  - stream benchmark 仍停留在 direct handler / reflection runtime / `MediatR` 三路对照，尚未量化 generated stream invoker provider 的收益
+  - 虽然 `Mediator` 参考基准大量使用 service lifetime 矩阵，但当前 `GFramework.Cqrs.Benchmarks` 尚未建立对称的 scoped host 模式；直接扩 lifetime 会引入超出本批风险预算的宿主语义变化
+- 本轮因此优先选择 request 对称切片，而不是 service lifetime 扩展：
+  - 新增 `Messaging/StreamInvokerBenchmarks.cs`
+  - 新增 `Messaging/GeneratedStreamInvokerBenchmarkRegistry.cs`
+  - 更新 `GFramework.Cqrs.Benchmarks/README.md`
+- 设计约束：
+  - 继续沿用 handwritten generated registry/provider 模式，避免把 benchmark 基础设施与真实 source-generator 输出耦合
+  - 复用与 `RP-088` 相同的 dispatcher 缓存清理策略，确保 reflection / generated 路径对照不受静态缓存残留污染
+  - 使用统一的异步枚举体工厂，让三组 stream handler 共享同一枚举成本基线，把变量收敛到 invoker/provider 接线路径
+
+### 当前下一步（RP-089）
+
+1. 完成本轮 benchmark 项目 Release build、license header 检查与 diff 校验后，更新 active tracking 的权威验证列表
+2. 若 branch diff 仍明显低于 `30` 文件阈值，可继续评估 notification publish strategy 或更贴近 `Mediator` concrete runtime 的单批对照
+
+### 验证（RP-089）
+
+- `dotnet build GFramework.Cqrs.Benchmarks/GFramework.Cqrs.Benchmarks.csproj -c Release`
+  - 结果：通过，`0 warning / 0 error`
+- `GIT_DIR=<worktree-git-dir> GIT_WORK_TREE=<worktree-root> python3 scripts/license-header.py --check`
+  - 结果：通过
+- `git diff --check`
+  - 结果：通过
 2. 若要继续贴近 `Mediator` 的 comparison benchmark 设计哲学，评估是否把 `Mediator` concrete runtime 本身接入 benchmark 项目，而不是长期只保留 `MediatR`
