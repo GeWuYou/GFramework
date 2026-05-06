@@ -12,6 +12,7 @@
 - 当前焦点：
   - 已完成 object-focused `if` / `then` / `else`，继续评估下一批仍不改变生成类型形状的共享关键字
   - 已明确将 `oneOf` / `anyOf` 归类为当前不支持的组合关键字，并在 Runtime / Generator / Tooling 三端显式拒绝，避免静默接受导致形状漂移
+  - 已把开放对象关键字边界收紧为只接受 `additionalProperties: false`，并在 Runtime / Generator / Tooling 三端显式拒绝 `patternProperties`、`propertyNames`、`unevaluatedProperties`
   - 已完成 PR #262 的 CodeRabbit follow-up，补齐 latest review body 中 folded `Nitpick comments` 的 skill 解析并按建议收口 Tooling / Tests
   - 先以 Runtime / Generator / Tooling 三端一致语义为前提筛选下一项，而不是盲目扩全量 JSON Schema
   - Tooling / Docs 后续改为非阻塞并行 lane；active 入口只保留主线恢复点，把批处理细节下沉到 backlog 文件
@@ -20,6 +21,8 @@
 
 - 组合关键字扩展风险：下一批候选关键字可能像标准 `oneOf` / `anyOf` 一样更容易引入生成类型形状漂移
   - 缓解措施：`oneOf` / `anyOf` 已改为三端显式拒绝；后续仅继续评估不会引入联合形状、属性合并或分支生成漂移的关键字子集
+- 开放对象形状风险：如果某一端静默接受 `patternProperties`、`propertyNames`、`unevaluatedProperties` 等关键字，会重新打开对象形状并造成契约漂移
+  - 缓解措施：当前三端已统一把开放对象边界收紧为只接受 `additionalProperties: false`，其余开放对象关键字直接报错
 - 工具链验证风险：VS Code 与 CI / 发布管道验证覆盖不足
   - 缓解措施：继续为新增共享关键字补齐三端测试覆盖，优先保证 C# Runtime 与 Generator 回归通过，并记录 JS 测试与构建验证
 - PR review 信号漂移风险：CodeRabbit 可能把建议折叠在 latest review body，而不是 issue comments
@@ -40,6 +43,9 @@
   - `minProperties`、`maxProperties`、`dependentRequired`、`dependentSchemas`、`allOf`、object-focused `if` / `then` / `else`
 - 已明确拒绝会改变生成类型形状的组合关键字：
   - `oneOf`、`anyOf` 当前会在 Runtime / Generator / Tooling 三端直接报错，而不是静默忽略
+- 已明确拒绝会重新打开对象形状的开放对象关键字：
+  - 当前只接受 `additionalProperties: false`
+  - `patternProperties`、`propertyNames`、`unevaluatedProperties` 当前会在 Runtime / Generator / Tooling 三端直接报错，而不是静默忽略
 - `if` / `then` / `else` 已按“不改变生成类型形状”的边界落地：
   - 只允许 object 节点上的 object-typed inline schema
   - `if` 必填，且必须至少伴随 `then` 或 `else` 之一
@@ -86,11 +92,13 @@
 - `2026-04-17` 之前的详细实现记录与定向验证命令已归档到历史 tracking / trace
 - active 跟踪文件只保留当前恢复点、当前状态和下一步，不再重复堆积已完成阶段的完整历史
 - 最近验证摘要：`2026-04-30` 已完成 Tooling / Docs reader-facing 收口与工具 parser 边界收紧，详细命令、批次背景与验证结果保留在 trace 的 `2026-04-30` 分阶段记录中
+- 最近验证摘要：`2026-05-06` 已完成开放对象关键字边界收口；Runtime / Generator / Tooling 现统一拒绝 `patternProperties`、`propertyNames`、`unevaluatedProperties`，并保留 `additionalProperties: false` 作为唯一共享闭合对象入口；详细命令与批次背景保留在 trace 的 `2026-05-06` 记录中
+- 最近验证摘要：`2026-05-06` 已按 PR `#325` latest review follow-up 移除三端开放对象校验中的不可达 `additionalProperties: false` 放行分支，补齐 Tooling 正向回归，并同步拆分 reader-facing docs 对开放对象边界的表述；细节与验证命令保留在 trace 的 `2026-05-06` 追加记录中
 - PR `#306` follow-up 摘要：已按 latest open review threads 补齐 Generator `anyOf` 对称回归、Tooling schema type 白名单、object-array 直系收集边界，以及 reader-facing docs 的显式 `additionalProperties: false` / adoption guidance 说明；细节和验证命令保留在 trace 的 `2026-04-30` 新增阶段记录中
 - PR review 跟进指针：当前分支的 latest review follow-up 与后续本地核验结论以 `ai-first-config-system-trace.md` 为准，active tracking 不再重复展开逐条命令历史
 
 ## 下一步
 
-1. 主线继续回到 `YamlConfigSchemaValidator.cs`、`SchemaConfigGenerator.cs` 与 `configValidation.js` 的共享关键字盘点，默认跳过 `oneOf` / `anyOf`
+1. 主线继续回到 `YamlConfigSchemaValidator.cs`、`SchemaConfigGenerator.cs` 与 `configValidation.js` 的共享关键字盘点，默认跳过 `oneOf` / `anyOf` 以及开放对象关键字扩展
 2. Tooling / Docs 若要并发推进，优先补 reader-facing 示例或采用路径，不再重复扩写能力边界说明
 3. 保持 active tracking / trace 精简，只记录当前恢复点、最近验证和下一步恢复指针

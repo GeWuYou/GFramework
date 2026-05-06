@@ -81,6 +81,9 @@ GameProject/
 - `oneOf`
 - `anyOf`
 - 非 `false` 的 `additionalProperties`
+- `patternProperties`
+- `propertyNames`
+- `unevaluatedProperties`
 - 其他依赖开放对象形状、联合分支或属性合并的复杂组合约束
 
 遇到这些情况时，建议先回到 [配置系统文档](../docs/zh-CN/game/config-system.md) 和原始 schema / YAML 设计本体，确认是否需要调整配置建模方式，而不是默认期待生成器直接支持完整 `JSON Schema` 语义。

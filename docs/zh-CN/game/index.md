@@ -86,8 +86,7 @@ IStorage storage = new FileStorage("GameData", serializer);
 这条工作流的正式契约，以 `GFramework.Game` Runtime 和 `GFramework.Game.SourceGenerators` 当前共享支持的 schema
 子集为准。`VS Code` 配置工具主要负责编辑期提示和表单辅助，不单独扩展运行时可接受的 schema 形状。
 
-开始接入时，建议先把 schema 约束控制在共享子集内，并尽早确认像 `additionalProperties: false`（需显式设置为 `false`；省略或 `true` 视为非 `false`）这类已收口的对象边界，以及
-`oneOf` / `anyOf` 当前会被直接拒绝，而不是在工具里看起来“可以先写”。如果你的配置模型需要更深层的嵌套数组、联合分支或其他超出共享子集的复杂
+开始接入时，建议先把 schema 约束控制在共享子集内，并尽早确认像 `additionalProperties: false` 这类已收口的对象边界：它必须显式设置为 `false`，省略或 `true` 都视为非 `false`。`patternProperties` / `propertyNames` / `unevaluatedProperties` 当前也不属于共享子集。`oneOf` / `anyOf` 当前会被直接拒绝，而不是在工具里看起来“可以先写”。如果你的配置模型需要更深层的嵌套数组、联合分支或其他超出共享子集的复杂
 shape，优先回到 raw YAML 和 schema 设计本体处理，再决定是否拆分结构或调整约束方式。
 
 完整约定见：

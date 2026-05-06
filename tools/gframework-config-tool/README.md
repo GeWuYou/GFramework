@@ -115,8 +115,8 @@ Minimal adoption checklist:
 - Place each config domain under `config/<domain>/*.yaml`
 - Place the matching schema at `schemas/<domain>.schema.json`
 - Use `x-gframework-ref-table` only on fields that should link to another config domain or reference file
-- Keep `additionalProperties` explicitly set to `false` when you need closed-object validation; omitting it or setting
-  it to `true` is outside the supported subset
+- Keep `additionalProperties` explicitly set to `false` when you need closed-object validation; omitting it, setting
+  it to `true`, or mixing in `patternProperties`, `propertyNames`, or `unevaluatedProperties` is outside the supported subset
 
 Use raw YAML directly when you need:
 
@@ -124,7 +124,8 @@ Use raw YAML directly when you need:
 - supported object rules such as `allOf`, `dependentSchemas`, or object-focused `if` / `then` / `else` only when they
   push the edit path beyond the lightweight form boundary
 - `contains` / `minContains` / `maxContains` when the structure is easier to reason about directly in YAML
-- schema designs outside the current shared subset, including `oneOf`, `anyOf`, or non-`false` `additionalProperties`
+- schema designs outside the current shared subset, including `oneOf`, `anyOf`, non-`false` `additionalProperties`, or
+  other open-object keywords such as `patternProperties`, `propertyNames`, and `unevaluatedProperties`
 
 ## Documentation
 
@@ -138,8 +139,9 @@ Use raw YAML directly when you need:
 - Form preview supports nested objects and object-array editing, but deeper nested object arrays inside array items still
   fall back to raw YAML
 - Batch editing remains limited to top-level scalar fields and top-level scalar arrays
-- Closed-object support is limited to `additionalProperties: false`, and unsupported combinators such as `oneOf` /
-  `anyOf` are rejected on purpose
+- Closed-object support is limited to `additionalProperties: false`; open-object keywords such as
+  `patternProperties`, `propertyNames`, and `unevaluatedProperties` are rejected on purpose, as are unsupported
+  combinators such as `oneOf` / `anyOf`
 
 ## Local Testing
 

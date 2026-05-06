@@ -812,14 +812,14 @@ if (MonsterConfigBindings.References.TryGetByDisplayPath("dropItems", out var re
 - `dependentSchemas`：供运行时校验、VS Code 校验、对象 section 表单 hint 和生成代码 XML 文档复用；当前只接受“已声明 sibling 字段触发 object 子 schema”的形状，不改变生成类型形状，并按 focused constraint block 语义允许条件子 schema 未声明的额外同级字段继续存在
 - `allOf`：供运行时校验、VS Code 校验、对象 section 表单 hint 和生成代码 XML 文档复用；当前只接受 object 节点上的 object-typed inline schema 数组，并按 focused constraint block 语义把每个条目叠加到当前对象上，不做属性合并，也不改变生成类型形状
 - `if` / `then` / `else`：供运行时校验、VS Code 校验、对象 section 表单 hint 和生成代码 XML 文档复用；当前只接受 object 节点上的 object-typed inline schema，`if` 必填且必须至少配合 `then` 或 `else` 之一使用，分支只能约束父对象已声明的字段，不做属性合并，也不改变生成类型形状；条件匹配本身沿用 `dependentSchemas` / `allOf` 的 focused matcher 语义，允许对象保留未在条件块中声明的额外同级字段
-- `additionalProperties`：当前共享支持边界只接受 `additionalProperties: false`；它用于声明对象是闭合的，运行时、生成器和工具都会据此拒绝未声明字段。其他 `additionalProperties` 形态当前不属于共享支持子集，会在解析或生成阶段直接被拒绝
+- `additionalProperties`：当前共享支持边界只接受 `additionalProperties: false`；它用于声明对象是闭合的，运行时、生成器和工具都会据此拒绝未声明字段。其他 `additionalProperties` 形态，以及 `patternProperties`、`propertyNames`、`unevaluatedProperties` 这类会重新打开对象形状的关键字，当前都不属于共享支持子集，会在解析或生成阶段直接被拒绝
 - `oneOf` / `anyOf`：当前不属于共享支持子集；Runtime / Generator / Tooling 会在解析或生成阶段直接拒绝，避免静默接受会改变生成类型形状的组合关键字
 
 如果你的 schema 需要超出这些边界的复杂 shape，推荐采用下面的回退顺序：
 
 1. 先在 raw YAML 与 schema 文件中直接编辑，而不是强行依赖表单入口
 2. 再核对该 shape 是否仍符合这里列出的共享支持子集
-3. 如果它依赖 `oneOf` / `anyOf`、非 `false` 的 `additionalProperties`、会向父对象注入新字段的 `allOf` / `dependentSchemas` / `if` 分支，或者更异构的深层数组结构，就应当把它视为当前版本之外的设计，而不是工具层遗漏的“隐藏能力”
+3. 如果它依赖 `oneOf` / `anyOf`、非 `false` 的 `additionalProperties`、`patternProperties` / `propertyNames` / `unevaluatedProperties` 这类开放对象关键字、会向父对象注入新字段的 `allOf` / `dependentSchemas` / `if` 分支，或者更异构的深层数组结构，就应当把它视为当前版本之外的设计，而不是工具层遗漏的“隐藏能力”
 
 `allOf` 的最小可工作示例如下。关键点是：字段形状先在父对象 `properties` 中声明，再用 `allOf` 叠加 `required` 或更细的字段约束；`allOf` 条目不会把新字段并回父对象。
 

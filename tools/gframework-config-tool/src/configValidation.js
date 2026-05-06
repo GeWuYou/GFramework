@@ -1273,23 +1273,21 @@ function parseSchemaNode(rawNode, displayPath) {
 /**
  * Reject open-object keyword forms that would drift away from the Runtime and
  * Source Generator contracts. The current shared subset keeps object fields
- * closed and only accepts an explicit `additionalProperties: false` reminder.
+ * closed, only accepts an explicit `additionalProperties: false` reminder, and
+ * rejects other keywords that would reopen object shapes.
  *
  * @param {Record<string, unknown>} schemaNode Raw schema object.
  * @param {string} displayPath Logical property path.
  */
 function validateUnsupportedOpenObjectKeyword(schemaNode, displayPath) {
-    if (!Object.prototype.hasOwnProperty.call(schemaNode, "additionalProperties")) {
-        return;
-    }
-
-    if (schemaNode.additionalProperties === false) {
+    const unsupportedKeyword = getUnsupportedOpenObjectKeywordName(schemaNode);
+    if (!unsupportedKeyword) {
         return;
     }
 
     throw new Error(
-        `Schema property '${displayPath}' uses unsupported 'additionalProperties' metadata. ` +
-        "The current config schema subset only accepts 'additionalProperties: false' so object fields remain closed and strongly typed.");
+        `Schema property '${displayPath}' uses unsupported '${unsupportedKeyword}' metadata. ` +
+        "The current config schema subset only accepts 'additionalProperties: false' and rejects keywords that reopen object shapes so fields remain closed and strongly typed.");
 }
 
 /**
@@ -1375,6 +1373,34 @@ function getUnsupportedCombinatorKeywordName(schemaNode) {
 
     if (Object.prototype.hasOwnProperty.call(schemaNode, "anyOf")) {
         return "anyOf";
+    }
+
+    return undefined;
+}
+
+/**
+ * Return the first open-object keyword that the current shared schema subset
+ * intentionally rejects to keep object shapes closed and strongly typed.
+ *
+ * @param {Record<string, unknown>} schemaNode Raw schema object.
+ * @returns {string | undefined} Unsupported keyword name when present.
+ */
+function getUnsupportedOpenObjectKeywordName(schemaNode) {
+    if (Object.prototype.hasOwnProperty.call(schemaNode, "additionalProperties") &&
+        schemaNode.additionalProperties !== false) {
+        return "additionalProperties";
+    }
+
+    if (Object.prototype.hasOwnProperty.call(schemaNode, "patternProperties")) {
+        return "patternProperties";
+    }
+
+    if (Object.prototype.hasOwnProperty.call(schemaNode, "propertyNames")) {
+        return "propertyNames";
+    }
+
+    if (Object.prototype.hasOwnProperty.call(schemaNode, "unevaluatedProperties")) {
+        return "unevaluatedProperties";
     }
 
     return undefined;

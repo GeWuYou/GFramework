@@ -884,7 +884,9 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     /// <summary>
     ///     递归拒绝当前共享子集尚未支持的开放对象关键字形状。
     ///     当前对象字段集默认是闭合的，因此这里只接受显式重复该语义的
-    ///     <c>additionalProperties: false</c>。
+    ///     <c>additionalProperties: false</c>，并继续拒绝
+    ///     <c>patternProperties</c>、<c>propertyNames</c> 与
+    ///     <c>unevaluatedProperties</c> 这类会重新打开对象形状的关键字。
     /// </summary>
     /// <param name="filePath">Schema 文件路径。</param>
     /// <param name="displayPath">逻辑字段路径。</param>
@@ -959,12 +961,7 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
         out Diagnostic? diagnostic)
     {
         diagnostic = null;
-        if (!element.TryGetProperty("additionalProperties", out var additionalPropertiesElement))
-        {
-            return true;
-        }
-
-        if (additionalPropertiesElement.ValueKind == JsonValueKind.False)
+        if (TryGetUnsupportedOpenObjectKeywordName(element) is not { } keywordName)
         {
             return true;
         }
@@ -974,8 +971,8 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
             CreateFileLocation(filePath),
             Path.GetFileName(filePath),
             displayPath,
-            "additionalProperties",
-            "The current config schema subset only accepts 'additionalProperties: false' so object fields remain closed and strongly typed.");
+            keywordName,
+            "The current config schema subset only accepts 'additionalProperties: false' and rejects keywords that reopen object shapes so fields remain closed and strongly typed.");
         return false;
     }
 
@@ -988,6 +985,25 @@ public sealed class SchemaConfigGenerator : IIncrementalGenerator
     {
         return element.TryGetProperty("oneOf", out _) ? "oneOf" :
             element.TryGetProperty("anyOf", out _) ? "anyOf" :
+            null;
+    }
+
+    /// <summary>
+    ///     返回当前节点声明的首个未支持开放对象关键字。
+    /// </summary>
+    /// <param name="element">当前 schema 节点。</param>
+    /// <returns>命中的关键字名称；未声明时返回空。</returns>
+    private static string? TryGetUnsupportedOpenObjectKeywordName(JsonElement element)
+    {
+        if (element.TryGetProperty("additionalProperties", out var additionalPropertiesElement) &&
+            additionalPropertiesElement.ValueKind != JsonValueKind.False)
+        {
+            return "additionalProperties";
+        }
+
+        return element.TryGetProperty("patternProperties", out _) ? "patternProperties" :
+            element.TryGetProperty("propertyNames", out _) ? "propertyNames" :
+            element.TryGetProperty("unevaluatedProperties", out _) ? "unevaluatedProperties" :
             null;
     }
 

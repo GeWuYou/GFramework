@@ -449,6 +449,55 @@ public sealed class YamlConfigLoaderAllOfTests
     }
 
     /// <summary>
+    ///     验证运行时会拒绝会重新打开对象形状的其他开放对象关键字。
+    /// </summary>
+    [TestCase("patternProperties", """
+                                   {
+                                     "^dynamic-": { "type": "integer" }
+                                   }
+                                   """)]
+    [TestCase("propertyNames", """
+                               {
+                                 "pattern": "^[a-z]+$"
+                               }
+                               """)]
+    [TestCase("unevaluatedProperties", "false")]
+    public void LoadAsync_Should_Throw_When_Object_Schema_Declares_Unsupported_OpenObject_Keyword(
+        string keywordName,
+        string keywordValueJson)
+    {
+        CreateConfigFile(
+            "monster/slime.yaml",
+            BuildMonsterConfigYaml(
+                """
+                itemCount: 3
+                """));
+        CreateSchemaFile(
+            "schemas/monster.schema.json",
+            BuildMonsterSchema(
+                DefaultRewardPropertiesJson,
+                DefaultAllOfJson,
+                $$"""
+                  "{{keywordName}}": {{keywordValueJson}}
+                  """));
+
+        var loader = CreateMonsterRewardLoader();
+        var registry = CreateRegistry();
+
+        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception, Is.Not.Null);
+            Assert.That(exception!.Diagnostic.FailureKind, Is.EqualTo(ConfigLoadFailureKind.SchemaUnsupported));
+            Assert.That(exception.Diagnostic.DisplayPath, Is.EqualTo("reward"));
+            Assert.That(exception.Message, Does.Contain($"unsupported '{keywordName}' metadata"));
+            Assert.That(exception.Message, Does.Contain("rejects keywords that reopen object shapes"));
+            Assert.That(registry.Count, Is.EqualTo(0));
+        });
+    }
+
+    /// <summary>
     ///     验证 allOf 条目只接受 object-typed schema。
     /// </summary>
     [Test]

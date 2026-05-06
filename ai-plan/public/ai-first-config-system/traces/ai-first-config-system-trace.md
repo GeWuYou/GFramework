@@ -231,3 +231,96 @@
 
 1. 推送本轮修复后，重新抓取 PR `#306` review 状态，确认哪些 open threads 会被 GitHub 自动折叠或仍需人工回复
 2. 若还有残留 open threads，优先区分“远端未刷新 / 已过时评论 / 仍成立问题”，不要再把 review body 摘要和 latest open threads 混在一起处理
+
+## 2026-05-06
+
+### 阶段：开放对象关键字边界收口（AI-FIRST-CONFIG-RP-003）
+
+- 已在 Runtime、Source Generator 与 VS Code Tooling 三端统一收紧开放对象关键字边界
+- 本轮不是扩 JSON Schema 能力，而是避免某一端静默接受会重新打开对象形状的 schema：
+  - 当前继续接受 `additionalProperties: false` 作为显式闭合对象提醒
+  - `patternProperties`、`propertyNames`、`unevaluatedProperties` 当前改为三端直接失败
+- reader-facing docs 也已同步更新，避免采用文档继续把这类关键字描述成“也许工具没做但运行时可能支持”的灰区
+
+### 关键决定
+
+- `additionalProperties: false` 仍是唯一共享支持的开放对象相关关键字形状
+- 任何会重新引入动态字段集的开放对象关键字，都视为当前主线之外的设计，而不是后续工具增强项
+- 本轮继续保持主线为 `C# Runtime + Source Generator + Consumer DX`，没有把工作重心切回复杂表单或宿主验证
+
+### Stop Condition
+
+- Batch baseline：`origin/main` (`a8c6c11e`, `2026-05-05 13:14:24 +0800`)
+- Primary metric：branch diff vs `origin/main` changed files，阈值 `50`
+- 本轮执行时的 branch diff 指标仍为 `0`，说明当前批次尚未把 `HEAD` 推进到接近阈值；reviewability headroom 充足
+
+### 验证
+
+- 2026-05-06：`bun run test`（`tools/gframework-config-tool`）
+  - 结果：通过（133 tests）
+  - 备注：新增 JS 回归覆盖 `patternProperties`、`propertyNames` 与 `unevaluatedProperties` 的显式拒绝
+- 2026-05-06：`dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --filter "FullyQualifiedName~YamlConfigLoaderAllOfTests"`
+  - 结果：通过（18 tests）
+  - 备注：运行时新增开放对象关键字拒绝回归，继续沿用 `SchemaUnsupported` + `reward` 诊断路径
+- 2026-05-06：`dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~SchemaConfigGeneratorTests"`
+  - 结果：通过（57 tests）
+  - 备注：生成器新增 `GF_ConfigSchema_016` 对称回归，覆盖 3 类开放对象关键字
+- 2026-05-06：`dotnet build GFramework.Game/GFramework.Game.csproj -c Release`
+  - 结果：通过（0 warnings, 0 errors）
+- 2026-05-06：`dotnet build GFramework.Game.SourceGenerators/GFramework.Game.SourceGenerators.csproj -c Release`
+  - 结果：通过（0 warnings, 0 errors）
+- 2026-05-06：`python3 scripts/license-header.py --check --paths ...`
+  - 结果：通过
+  - 备注：仓库脚本默认 `git ls-files` 在当前 WSL worktree 绑定下无法直接解析仓库上下文，因此本轮改为对受影响文件执行 targeted check
+- 2026-05-06：`git diff --check`
+  - 结果：通过
+
+### 下一步
+
+1. 继续盘点下一批不会改变生成类型形状、也不会重新打开对象形状的共享关键字
+2. Tooling / Docs 如继续并发推进，优先补真实采用示例，不再重复扩写开放对象边界清单
+3. 若后续 batch 再触碰 schema contract，继续保持 Runtime / Generator / Tooling 三端同步失败语义与 reader-facing docs 一致
+
+### 阶段：PR #325 latest review follow-up 收口（AI-FIRST-CONFIG-RP-003）
+
+- 已使用 `gframework-pr-review` 抓取并复核 PR `#325` 的 latest review body、未解决 latest-head 线程、MegaLinter 摘要与测试报告
+- 本轮按“仅修复本地仍成立项”收口 5 条 review 信号：
+  - Runtime / Generator / Tooling 三端均移除开放对象关键字校验中的不可达 `additionalProperties: false` 放行分支
+  - Tooling 测试补齐 `additionalProperties: false` 的正向回归，避免共享允许边界后续回退
+  - `docs/zh-CN/game/index.md` 将开放对象边界说明拆成并列语句，避免把 `patternProperties` / `propertyNames` / `unevaluatedProperties` 误读成 `additionalProperties` 的变体
+- 本轮没有跟进 stale 信号：
+  - PR 当前 failed checks 为 `0`
+  - latest test report 为 `2280 passed / 0 failed`
+  - MegaLinter 仅保留 `dotnet-format` 摘要噪音，未提供需要额外修复的新代码格式差异
+
+### 验证
+
+- 2026-05-06：`python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output /tmp/gframework-current-pr-review.json`
+  - 结果：通过
+  - 备注：确认 PR `#325` 仍有 3 条 CodeRabbit nitpick 与 2 条 Greptile open threads，需要本地核验
+- 2026-05-06：`node --test ./test/*.test.js`（`tools/gframework-config-tool`）
+  - 结果：通过（134 tests）
+  - 备注：新增 `additionalProperties: false` 正向回归后，工具端继续显式接受唯一共享闭合对象入口
+- 2026-05-06：`dotnet test GFramework.Game.Tests/GFramework.Game.Tests.csproj -c Release --filter "FullyQualifiedName~YamlConfigLoaderAllOfTests"`
+  - 结果：通过（18 tests）
+  - 备注：运行时开放对象关键字回归保持通过，未引入额外诊断路径漂移
+- 2026-05-06：`dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~SchemaConfigGeneratorTests"`
+  - 结果：通过（57 tests）
+  - 备注：生成器开放对象关键字诊断回归保持通过，移除不可达分支未影响既有诊断契约
+- 2026-05-06：`dotnet build GFramework.Game/GFramework.Game.csproj -c Release`
+  - 结果：通过（0 warnings, 0 errors）
+- 2026-05-06：`dotnet build GFramework.Game.SourceGenerators/GFramework.Game.SourceGenerators.csproj -c Release`
+  - 结果：通过（0 warnings, 0 errors）
+- 2026-05-06：`python3 scripts/license-header.py --check`
+  - 结果：环境受限
+  - 备注：仓库脚本默认通过 `git ls-files` 枚举文件，在当前 WSL worktree 绑定下返回 `128`；已改为对受影响文件执行 targeted check 并通过
+- 2026-05-06：`python3 scripts/license-header.py --check --paths GFramework.Game/Config/YamlConfigSchemaValidator.cs GFramework.Game.SourceGenerators/Config/SchemaConfigGenerator.cs tools/gframework-config-tool/src/configValidation.js tools/gframework-config-tool/test/configValidation.test.js`
+  - 结果：通过
+- 2026-05-06：`git diff --check`
+  - 结果：通过
+
+### 下一步
+
+1. 执行本轮受影响 Tooling / Runtime / Generator 定向验证，并确认没有新增 warning 或格式漂移
+2. 若验证通过，重新抓取 PR `#325` review 状态，区分哪些 open threads 会随推送自动折叠
+3. 继续把 PR review follow-up 约束在“latest unresolved thread + 本地仍成立问题”，不回头追旧 summary 噪音

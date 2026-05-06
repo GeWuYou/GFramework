@@ -1966,6 +1966,58 @@ public class SchemaConfigGeneratorTests
     }
 
     /// <summary>
+    ///     验证生成器会拒绝会重新打开对象形状的其他开放对象关键字。
+    /// </summary>
+    [TestCase("patternProperties", """
+                                   {
+                                     "^dynamic-": { "type": "integer" }
+                                   }
+                                   """)]
+    [TestCase("propertyNames", """
+                               {
+                                 "pattern": "^[a-z]+$"
+                               }
+                               """)]
+    [TestCase("unevaluatedProperties", "false")]
+    public void Run_Should_Report_Diagnostic_When_Object_Schema_Declares_Unsupported_OpenObject_Keyword(
+        string keywordName,
+        string keywordValueJson)
+    {
+        const string source = DummySource;
+        var schema = $$"""
+                       {
+                         "type": "object",
+                         "required": ["id", "reward"],
+                         "properties": {
+                           "id": { "type": "integer" },
+                           "reward": {
+                             "type": "object",
+                             "{{keywordName}}": {{keywordValueJson}},
+                             "properties": {
+                               "itemCount": { "type": "integer" }
+                             }
+                           }
+                         }
+                       }
+                       """;
+
+        var result = SchemaGeneratorTestDriver.Run(
+            source,
+            ("monster.schema.json", schema));
+
+        var diagnostic = result.Results.Single().Diagnostics.Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(diagnostic.Id, Is.EqualTo("GF_ConfigSchema_016"));
+            Assert.That(diagnostic.Severity, Is.EqualTo(DiagnosticSeverity.Error));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("reward"));
+            Assert.That(diagnostic.GetMessage(), Does.Contain(keywordName));
+            Assert.That(diagnostic.GetMessage(), Does.Contain("rejects keywords that reopen object shapes"));
+        });
+    }
+
+    /// <summary>
     ///     验证 <c>then</c> 子 schema 内的非法 <c>format</c> 也会在生成阶段直接给出诊断。
     /// </summary>
     [Test]
