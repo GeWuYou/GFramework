@@ -23,6 +23,19 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     #region Helper Methods
 
     /// <summary>
+    ///     检查容器是否已释放，避免访问已经失效的服务提供者与同步原语。
+    /// </summary>
+    /// <exception cref="ObjectDisposedException">当容器已释放时抛出。</exception>
+    private void ThrowIfDisposed()
+    {
+        if (!_disposed) return;
+
+        const string objectName = nameof(MicrosoftDiContainer);
+        _logger.Warn("Attempted to use a disposed MicrosoftDiContainer.");
+        throw new ObjectDisposedException(objectName);
+    }
+
+    /// <summary>
     /// 检查容器是否已冻结，如果已冻结则抛出异常
     /// 用于保护注册操作的安全性
     /// </summary>
@@ -58,6 +71,11 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     private volatile bool _frozen;
 
     /// <summary>
+    ///     容器释放状态标志，true 表示容器已释放，不允许继续访问。
+    /// </summary>
+    private volatile bool _disposed;
+
+    /// <summary>
     /// 读写锁，确保多线程环境下的线程安全操作
     /// </summary>
     private readonly ReaderWriterLockSlim _lock = new(LockRecursionPolicy.NoRecursion);
@@ -85,6 +103,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// <exception cref="InvalidOperationException">当容器已冻结或类型已被注册时抛出</exception>
     public void RegisterSingleton<T>(T instance)
     {
+        ThrowIfDisposed();
         var type = typeof(T);
         _lock.EnterWriteLock();
         try
@@ -119,6 +138,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
         where TImpl : class, TService
         where TService : class
     {
+        ThrowIfDisposed();
         _lock.EnterWriteLock();
         try
         {
@@ -142,6 +162,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
         where TImpl : class, TService
         where TService : class
     {
+        ThrowIfDisposed();
         _lock.EnterWriteLock();
         try
         {
@@ -165,6 +186,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
         where TImpl : class, TService
         where TService : class
     {
+        ThrowIfDisposed();
         _lock.EnterWriteLock();
         try
         {
@@ -187,6 +209,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// <exception cref="InvalidOperationException">当容器已冻结时抛出</exception>
     public void RegisterPlurality(object instance)
     {
+        ThrowIfDisposed();
         var concreteType = instance.GetType();
         var interfaces = concreteType.GetInterfaces();
 
@@ -219,6 +242,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// </summary>
     public void RegisterPlurality<T>() where T : class
     {
+        ThrowIfDisposed();
         _lock.EnterWriteLock();
         try
         {
@@ -262,6 +286,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// <exception cref="InvalidOperationException">当容器已冻结时抛出</exception>
     public void Register<T>(T instance)
     {
+        ThrowIfDisposed();
         _lock.EnterWriteLock();
         try
         {
@@ -284,6 +309,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// <exception cref="InvalidOperationException">当容器已冻结时抛出</exception>
     public void Register(Type type, object instance)
     {
+        ThrowIfDisposed();
         _lock.EnterWriteLock();
         try
         {
@@ -307,6 +333,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     public void RegisterFactory<TService>(
         Func<IServiceProvider, TService> factory) where TService : class
     {
+        ThrowIfDisposed();
         _lock.EnterWriteLock();
         try
         {
@@ -328,6 +355,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// <typeparam name="TBehavior">行为类型，必须是引用类型</typeparam>
     public void RegisterCqrsPipelineBehavior<TBehavior>() where TBehavior : class
     {
+        ThrowIfDisposed();
         _lock.EnterWriteLock();
         try
         {
@@ -392,6 +420,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     public void RegisterCqrsHandlersFromAssemblies(IEnumerable<Assembly> assemblies)
     {
         ArgumentNullException.ThrowIfNull(assemblies);
+        ThrowIfDisposed();
         var assemblyArray = assemblies.ToArray();
         foreach (var assembly in assemblyArray)
         {
@@ -419,6 +448,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// <param name="configurator">服务配置委托</param>
     public void ExecuteServicesHook(Action<IServiceCollection>? configurator = null)
     {
+        ThrowIfDisposed();
         _lock.EnterWriteLock();
         try
         {
@@ -464,6 +494,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// <returns>服务实例或null</returns>
     public T? Get<T>() where T : class
     {
+        ThrowIfDisposed();
         _lock.EnterReadLock();
         try
         {
@@ -503,6 +534,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// <returns>服务实例或null</returns>
     public object? Get(Type type)
     {
+        ThrowIfDisposed();
         _lock.EnterReadLock();
         try
         {
@@ -593,6 +625,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// <returns>只读的服务实例列表</returns>
     public IReadOnlyList<T> GetAll<T>() where T : class
     {
+        ThrowIfDisposed();
         _lock.EnterReadLock();
         try
         {
@@ -620,6 +653,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     public IReadOnlyList<object> GetAll(Type type)
     {
         ArgumentNullException.ThrowIfNull(type);
+        ThrowIfDisposed();
 
         _lock.EnterReadLock();
         try
@@ -750,6 +784,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// <returns>排序后的只读服务实例列表</returns>
     public IReadOnlyList<T> GetAllSorted<T>(Comparison<T> comparison) where T : class
     {
+        ThrowIfDisposed();
         var list = GetAll<T>().ToList();
         list.Sort(comparison);
         return list;
@@ -816,6 +851,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// <returns>true表示包含该类型实例，false表示不包含</returns>
     public bool Contains<T>() where T : class
     {
+        ThrowIfDisposed();
         _lock.EnterReadLock();
         try
         {
@@ -838,6 +874,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// <returns>true表示包含该实例，false表示不包含</returns>
     public bool ContainsInstance(object instance)
     {
+        ThrowIfDisposed();
         _lock.EnterReadLock();
         try
         {
@@ -855,6 +892,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// </summary>
     public void Clear()
     {
+        ThrowIfDisposed();
         _lock.EnterWriteLock();
         try
         {
@@ -867,7 +905,9 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
 
             GetServicesUnsafe.Clear();
             _registeredInstances.Clear();
+            (_provider as IDisposable)?.Dispose();
             _provider = null;
+            _frozen = false;
             _logger.Info("Container cleared");
         }
         finally
@@ -882,6 +922,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// </summary>
     public void Freeze()
     {
+        ThrowIfDisposed();
         _lock.EnterWriteLock();
         try
         {
@@ -917,6 +958,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// <exception cref="InvalidOperationException">当容器未冻结时抛出</exception>
     public IServiceScope CreateScope()
     {
+        ThrowIfDisposed();
         _lock.EnterReadLock();
         try
         {
@@ -935,6 +977,45 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
         finally
         {
             _lock.ExitReadLock();
+        }
+    }
+
+    /// <summary>
+    ///     释放容器持有的服务提供者、注册状态和同步原语。
+    /// </summary>
+    /// <remarks>
+    ///     冻结后的根 <see cref="IServiceProvider" /> 会拥有 DI 创建的单例与作用域根缓存，因此 benchmark、
+    ///     测试宿主或短生命周期架构在结束时需要显式释放容器，避免这些对象与内部
+    ///     <see cref="ReaderWriterLockSlim" /> 一起滞留。
+    ///     释放是幂等的；首次释放后所有后续访问都会抛出 <see cref="ObjectDisposedException" />。
+    /// </remarks>
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _lock.EnterWriteLock();
+        try
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
+            (_provider as IDisposable)?.Dispose();
+            _provider = null;
+            GetServicesUnsafe.Clear();
+            _registeredInstances.Clear();
+            _frozen = false;
+            _logger.Info("IOC Container disposed");
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+            _lock.Dispose();
         }
     }
 

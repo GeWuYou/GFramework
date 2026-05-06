@@ -10,7 +10,7 @@ namespace GFramework.Core.Abstractions.Ioc;
 /// <summary>
 ///     依赖注入容器接口，定义了服务注册、解析和管理的基本操作
 /// </summary>
-public interface IIocContainer : IContextAware
+public interface IIocContainer : IContextAware, IDisposable
 {
     #region Register Methods
 

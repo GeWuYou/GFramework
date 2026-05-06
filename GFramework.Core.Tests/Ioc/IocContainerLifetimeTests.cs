@@ -22,6 +22,18 @@ public class IocContainerLifetimeTests
         public Guid Id { get; } = Guid.NewGuid();
     }
 
+    private sealed class DisposableTestService : ITestService, IDisposable
+    {
+        public Guid Id { get; } = Guid.NewGuid();
+
+        public bool IsDisposed { get; private set; }
+
+        public void Dispose()
+        {
+            IsDisposed = true;
+        }
+    }
+
     [Test]
     public void RegisterSingleton_Should_Return_Same_Instance()
     {
@@ -206,5 +218,32 @@ public class IocContainerLifetimeTests
         scope1.Dispose();
         scope2.Dispose();
         scope3.Dispose();
+    }
+
+    [Test]
+    public void Dispose_Should_Dispose_Resolved_Singleton_And_Block_Further_Use()
+    {
+        // Arrange
+        var container = new MicrosoftDiContainer();
+        container.RegisterSingleton<DisposableTestService, DisposableTestService>();
+        container.Freeze();
+        var service = container.GetRequired<DisposableTestService>();
+
+        // Act
+        container.Dispose();
+
+        // Assert
+        Assert.That(service.IsDisposed, Is.True);
+        Assert.Throws<ObjectDisposedException>(() => container.Get<DisposableTestService>());
+        Assert.Throws<ObjectDisposedException>(() => container.CreateScope());
+    }
+
+    [Test]
+    public void Dispose_Should_Be_Idempotent()
+    {
+        var container = new MicrosoftDiContainer();
+
+        Assert.DoesNotThrow(container.Dispose);
+        Assert.DoesNotThrow(container.Dispose);
     }
 }

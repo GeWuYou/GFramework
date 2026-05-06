@@ -760,4 +760,17 @@ public class MicrosoftDiContainerTests
         Assert.That(((IPrioritizedService)services[0]).Priority, Is.EqualTo(10));
         Assert.That(((IPrioritizedService)services[1]).Priority, Is.EqualTo(30));
     }
+
+    /// <summary>
+    ///     测试容器释放后会阻止后续注册与解析，避免 benchmark 或短生命周期宿主继续使用已回收状态。
+    /// </summary>
+    [Test]
+    public void Dispose_Should_Block_Subsequent_Registration_And_Query_Operations()
+    {
+        _container.Dispose();
+
+        Assert.Throws<ObjectDisposedException>(() => _container.Register(new TestService()));
+        Assert.Throws<ObjectDisposedException>(() => _container.Contains<TestService>());
+        Assert.Throws<ObjectDisposedException>(() => _container.GetAll<TestService>());
+    }
 }
