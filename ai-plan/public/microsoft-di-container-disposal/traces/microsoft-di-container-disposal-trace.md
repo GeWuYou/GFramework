@@ -27,3 +27,14 @@
 ### 当前下一步
 
 1. 推送当前分支后重新运行 `$gframework-pr-review`，确认 latest-head open threads 是否已与本地修复对齐
+
+### 阶段：收敛剩余并发 Dispose 双重锁销毁竞态（MICROSOFT-DI-DISPOSAL-RP-001）
+
+- 根据用户补充的 `greptile` P1，重新核对 `MicrosoftDiContainer.Dispose()` 的尾部流程后确认还存在一个更窄的窗口：
+  - 线程 A 与线程 B 都可能通过最外层 `_disposed` 快速路径
+  - 线程 A 完成主释放并退出写锁后，线程 B 仍可能拿到写锁、因为 `_disposed == true` 直接返回，但 `finally` 仍会调用 `DisposeLockWhenQuiescent()`
+  - 这样两个线程都可能执行 `_lock.Dispose()`；第二次调用会抛出 `ObjectDisposedException`
+- 本轮修复决策：
+  - 在 `DisposeLockWhenQuiescent()` 入口增加 `Interlocked.CompareExchange` 守卫，把底层锁销毁流程收敛为单次执行
+  - 保持现有“先发布 `_disposed`、再等待 waiter 退场”的语义不变，只修复重复销毁底层锁的尾部竞态
+  - 在 `IocContainerLifetimeTests` 增加更直接的回归断言，验证并发 `Dispose()` 后锁销毁启动标记只会变为 `1`

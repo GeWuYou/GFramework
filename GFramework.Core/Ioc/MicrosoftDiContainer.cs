@@ -118,9 +118,16 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     ///     容器会先把 <see cref="_disposed" /> 置为 <see langword="true" /> 并退出写锁，
     ///     这样所有已在等待队列中的线程都能醒来并通过统一路径抛出容器级
     ///     <see cref="ObjectDisposedException" />。只有当这些线程退场后，底层锁才可安全释放。
+    ///     该步骤只允许一个释放调用者执行，避免并发 <see cref="Dispose" /> 重复销毁同一个
+    ///     <see cref="ReaderWriterLockSlim" /> 并破坏幂等契约。
     /// </remarks>
     private void DisposeLockWhenQuiescent()
     {
+        if (Interlocked.CompareExchange(ref _lockDisposalStarted, 1, 0) != 0)
+        {
+            return;
+        }
+
         const int maxDisposeSpinAttempts = 512;
         var spinWait = new SpinWait();
 
@@ -187,6 +194,11 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     ///     容器释放状态标志，true 表示容器已释放，不允许继续访问。
     /// </summary>
     private volatile bool _disposed;
+
+    /// <summary>
+    ///     标记底层读写锁的销毁流程是否已经启动，确保并发释放时最多只有一个线程尝试销毁锁实例。
+    /// </summary>
+    private int _lockDisposalStarted;
 
     /// <summary>
     /// 读写锁，确保多线程环境下的线程安全操作

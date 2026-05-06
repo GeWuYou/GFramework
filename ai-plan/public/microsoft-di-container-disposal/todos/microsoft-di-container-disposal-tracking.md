@@ -13,6 +13,7 @@
   - `$gframework-pr-review` 已确认 latest-head review 仍存在 5 条 open AI thread，其中 `IIocContainer` 文档契约、`MicrosoftDiContainer.Clear()` 的不可达释放逻辑、`Dispose()` 并发竞态，以及 benchmark `Cleanup()` 缺乏异常隔离均已在本地补齐
   - `CodeRabbit` 关于 `GFramework.Cqrs.Benchmarks` 的 cleanup 问题虽然标在单个文件上，但同类模式实际覆盖 `RequestBenchmarks`、`NotificationBenchmarks`、`RequestPipelineBenchmarks`、`RequestStartupBenchmarks`、`StreamingBenchmarks`、`RequestInvokerBenchmarks`、`StreamInvokerBenchmarks`，当前已通过共享 helper 一次性收敛
   - `MicrosoftDiContainer.Dispose()` 现会先对外发布 `_disposed` 状态并释放写锁，让等待线程统一抛出容器级 `ObjectDisposedException`；随后仅在锁静默后才销毁底层 `ReaderWriterLockSlim`
+  - 针对剩余的 `greptile` P1，本轮进一步将底层锁销毁收敛为单次执行，避免两个并发 `Dispose()` 调用都进入 `DisposeLockWhenQuiescent()` 时触发双重 `ReaderWriterLockSlim.Dispose()`
 
 ## 当前活跃事实
 
@@ -42,7 +43,12 @@
 - `dotnet build GFramework.Cqrs.Benchmarks/GFramework.Cqrs.Benchmarks.csproj -c Release`
   - 结果：通过，`0 warning / 0 error`
 
+## 待补最新验证
+
+- `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --filter "FullyQualifiedName~IocContainerLifetimeTests"`
+- `dotnet build GFramework.Core/GFramework.Core.csproj -c Release`
+
 ## 下一推荐步骤
 
-1. 再次运行 `$gframework-pr-review` 或检查生成的 JSON，确认当前 latest-head open threads 是否只剩待推送的 GitHub 状态差异
-2. 关注 push 后若仍有 review thread 未关闭，优先核对其是否属于 stale comment 还是需要额外文档/测试补充
+1. 运行 `IocContainerLifetimeTests` 与 `GFramework.Core` Release build，确认单次锁销毁修复没有引入新的 warning 或回归
+2. 再次运行 `$gframework-pr-review` 或检查生成的 JSON，确认当前 latest-head open threads 是否只剩待推送的 GitHub 状态差异
