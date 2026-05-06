@@ -7,7 +7,7 @@ CQRS 迁移与收敛。
 
 ## 当前恢复点
 
-- 恢复点编号：`CQRS-REWRITE-RP-087`
+- 恢复点编号：`CQRS-REWRITE-RP-088`
 - 当前阶段：`Phase 8`
 - 当前 PR 锚点：`PR #323`
 - 当前结论：
@@ -22,7 +22,8 @@ CQRS 迁移与收敛。
   - `RP-084` 已引入独立 `GFramework.Cqrs.Benchmarks` 项目，作为持续吸收 `Mediator` benchmark 组织方式的第一落点
   - `RP-085` 已补齐 stream request benchmark，对齐 `Mediator` messaging benchmark 的第二个核心场景
   - `RP-086` 已补齐 request pipeline `0 / 1 / 4` 数量矩阵，开始把 benchmark 关注点从单纯 messaging steady-state 扩展到行为编排开销
-  - 当前 `RP-087` 已补齐 request startup benchmark，把 initialization 与 cold-start 维度正式纳入 `GFramework.Cqrs.Benchmarks`
+  - `RP-087` 已补齐 request startup benchmark，把 initialization 与 cold-start 维度正式纳入 `GFramework.Cqrs.Benchmarks`
+  - 当前 `RP-088` 已补齐 request invoker reflection / generated-provider 对照，开始直接量化 dispatcher 预热 generated descriptor 的收益
   - `ai-plan` active 入口现以 `PR #323` 和 `RP-082` 为唯一权威恢复锚点；`PR #307`、其他更早 PR 与阶段细节均以下方归档或说明为准
 
 ## 当前活跃事实
@@ -63,6 +64,9 @@ CQRS 迁移与收敛。
 - `dotnet build GFramework.Cqrs.Benchmarks/GFramework.Cqrs.Benchmarks.csproj -c Release`
   - 结果：通过，`0 warning / 0 error`
   - 备注：包含新增 `RequestStartupBenchmarks` 后再次复核通过
+- `dotnet build GFramework.Cqrs.Benchmarks/GFramework.Cqrs.Benchmarks.csproj -c Release`
+  - 结果：通过，`0 warning / 0 error`
+  - 备注：包含新增 `RequestInvokerBenchmarks` 与 handwritten generated registry/provider 后再次复核通过
 - `GIT_DIR=<worktree-git-dir> GIT_WORK_TREE=<worktree-root> python3 scripts/license-header.py --check`
   - 结果：通过
 - `git diff --check`
@@ -115,7 +119,7 @@ CQRS 迁移与收敛。
 ## 下一推荐步骤
 
 1. 继续处理 `PR #323` 的剩余 review 收尾，优先保持 `ai-plan` active 入口与 trace 的单一锚点一致
-2. 若继续推进“吸收 Mediator 设计哲学”的切片，优先扩展 benchmark 场景矩阵到 generated invoker provider、registration / service lifetime 与更贴近 `Mediator` concrete runtime 的对照
+2. 若继续推进“吸收 Mediator 设计哲学”的切片，优先扩展 benchmark 场景矩阵到 registration / service lifetime、stream generated provider 与更贴近 `Mediator` concrete runtime 的对照
 3. 在进入下一批 runtime / generator 收敛前，保持最小 Release build、targeted test 或 benchmark project build 作为权威验证
 
 ## 活跃文档

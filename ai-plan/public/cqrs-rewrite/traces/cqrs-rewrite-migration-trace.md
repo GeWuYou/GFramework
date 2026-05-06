@@ -399,3 +399,34 @@
 
 1. 提交本轮 request startup benchmark 后，继续扩展 `GFramework.Cqrs.Benchmarks`，优先评估 generated invoker provider 与 registration / service lifetime 矩阵
 2. 若要更贴近 `Mediator` 的 comparison benchmark 设计哲学，评估是否在 benchmark 项目中同时接入 `Mediator` concrete runtime 对照，而不只保留 `MediatR`
+
+### 阶段：request invoker reflection / generated 对照（CQRS-REWRITE-RP-088）
+
+- 继续沿用 `$gframework-batch-boot 50`，当前 branch diff 相对 `origin/main` 仍明显低于阈值
+- 本轮目标：不再只比较 `GFramework.Cqrs` 与 `MediatR` 的外层框架差异，而是开始直接量化 `GFramework.Cqrs` 内部 reflection request binding 与 generated invoker provider 路径的 steady-state 差异
+- 本轮新增：
+  - `GFramework.Cqrs.Benchmarks/Messaging/RequestInvokerBenchmarks.cs`
+  - `GFramework.Cqrs.Benchmarks/Messaging/GeneratedRequestInvokerBenchmarkRegistry.cs`
+  - `GFramework.Cqrs.Benchmarks/README.md` 中的 generated invoker 场景说明
+- 设计取舍：
+  - 采用 benchmark 内手写的 generated registry/provider“等价物”，而不是当轮就把真实 `GFramework.Cqrs.SourceGenerators` 接到 benchmark 项目中，目的是先走通真实的 registrar -> descriptor 预热 -> dispatcher generated path，同时把写入面控制在低风险范围
+  - generated 对照使用程序集级 `CqrsHandlerRegistryAttribute` + `ICqrsRequestInvokerProvider` + `IEnumeratesCqrsRequestInvokerDescriptors`，确保运行时语义与生产路径一致
+  - 在 benchmark 生命周期前后清理 dispatcher 静态缓存，避免 generated descriptor 预热状态跨场景泄漏，污染 reflection 对照
+- 结论：
+  - 当前 benchmark 项目已经能区分 `GFramework.Cqrs` 的 reflection request 路径、generated request 路径与 `MediatR` 外部对照
+  - 后续若继续贴近 `Mediator` comparison benchmark，下一批更适合扩到 registration / service lifetime、stream generated provider，或再决定是否接入 `Mediator` concrete runtime
+
+### 验证（RP-088）
+
+- `dotnet build GFramework.Cqrs.Benchmarks/GFramework.Cqrs.Benchmarks.csproj -c Release`
+  - 结果：通过，`0 warning / 0 error`
+
+### 当前 stop-condition 度量（RP-088）
+
+- primary metric：branch diff files vs `origin/main`
+- 当前说明：提交前 branch diff 仍远低于 `50` 文件阈值，可继续推进下一批 benchmark 对照切片
+
+### 当前下一步（RP-088）
+
+1. 提交本轮 request invoker benchmark 后，继续扩展 `GFramework.Cqrs.Benchmarks`，优先评估 registration / service lifetime 或 stream generated provider
+2. 若要继续贴近 `Mediator` 的 comparison benchmark 设计哲学，评估是否把 `Mediator` concrete runtime 本身接入 benchmark 项目，而不是长期只保留 `MediatR`

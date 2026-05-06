@@ -20,6 +20,8 @@
   - `0 / 1 / 4` 个 pipeline 行为下，direct handler、`GFramework.Cqrs` runtime 与 `MediatR` 的 request steady-state dispatch 对比
 - `Messaging/RequestStartupBenchmarks.cs`
   - `Initialization` 与 `ColdStart` 两组 request startup 成本对比，补齐与 `Mediator` comparison benchmark 更接近的 startup 维度
+- `Messaging/RequestInvokerBenchmarks.cs`
+  - direct handler、`GFramework.Cqrs` reflection runtime、handwritten generated-invoker runtime 与 `MediatR` 的 request steady-state dispatch 对比
 - `Messaging/NotificationBenchmarks.cs`
   - `GFramework.Cqrs` runtime 与 `MediatR` 的单处理器 notification publish 对比
 - `Messaging/StreamingBenchmarks.cs`
@@ -37,4 +39,4 @@ dotnet run --project GFramework.Cqrs.Benchmarks/GFramework.Cqrs.Benchmarks.cspro
 
 - generated invoker provider 与纯反射 dispatch 对比
 - registration / service lifetime 矩阵
-- request / stream 的 generated provider 与 concrete runtime 对照
+- request / stream 的真实 source-generator 产物与 handwritten generated provider 对照
