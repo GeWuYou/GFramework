@@ -8,8 +8,14 @@ using GFramework.Core.Abstractions.Systems;
 namespace GFramework.Core.Abstractions.Ioc;
 
 /// <summary>
-///     依赖注入容器接口，定义了服务注册、解析和管理的基本操作
+///     依赖注入容器接口，定义服务注册、解析与生命周期管理的统一入口。
 /// </summary>
+/// <remarks>
+///     实现者必须在 <see cref="IDisposable.Dispose" /> 中释放容器拥有的根 <see cref="IServiceProvider" /> 及其
+///     关联同步资源，并保证释放操作幂等。
+///     容器一旦释放，后续任何注册、解析、查询或作用域创建调用都必须抛出
+///     <see cref="ObjectDisposedException" />，避免消费者继续访问失效的运行时状态。
+/// </remarks>
 public interface IIocContainer : IContextAware, IDisposable
 {
     #region Register Methods

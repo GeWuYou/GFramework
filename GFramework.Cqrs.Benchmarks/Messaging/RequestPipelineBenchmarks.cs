@@ -101,9 +101,14 @@ public class RequestPipelineBenchmarks
     [GlobalCleanup]
     public void Cleanup()
     {
-        _container.Dispose();
-        _serviceProvider.Dispose();
-        BenchmarkDispatcherCacheHelper.ClearDispatcherCaches();
+        try
+        {
+            BenchmarkCleanupHelper.DisposeAll(_container, _serviceProvider);
+        }
+        finally
+        {
+            BenchmarkDispatcherCacheHelper.ClearDispatcherCaches();
+        }
     }
 
     /// <summary>
