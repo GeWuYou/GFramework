@@ -32,6 +32,7 @@ CQRS 迁移与收敛。
 - 当前分支对应 `PR #326`，状态为 `OPEN`
 - latest-head review 仍以 `ai-plan` 恢复文档收敛为主要待闭环项；代码与测试侧的本地有效问题已收敛
 - `RequestStartupBenchmarks` 已修复 baseline 分组冲突、MediatR 13 logging/license 构造失败与重复注册问题，但 `ColdStart_GFrameworkCqrs` 仍存在 `No CQRS request handler registered` 的运行级残留
+- 已新增手动触发的 benchmark workflow；默认只验证 benchmark 项目 Release build，只有显式提供过滤器时才执行 BenchmarkDotNet 运行
 - 远端 `CTRF` 最新汇总为 `2274/2274` passed
 - `MegaLinter` 当前只暴露 `dotnet-format` 的 `Restore operation failed` 环境噪音，尚未提供本地仍成立的文件级格式诊断
 
@@ -44,14 +45,17 @@ CQRS 迁移与收敛。
 
 ## 最近权威验证
 
+- `dotnet build GFramework.Cqrs.Benchmarks/GFramework.Cqrs.Benchmarks.csproj -c Release`
+  - 结果：通过，`0 warning / 0 error`
+  - 备注：用于验证新增手动 benchmark workflow 依赖的 benchmark 项目入口仍可在 Release 下编译
 - `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --format json --json-output <temporary-json-output>`
   - 结果：通过
   - 备注：确认当前分支对应 `PR #326`，本轮剩余 open AI feedback 主要集中在 benchmark 对照语义与 `ai-plan` 结构收敛
-- `git diff --check`
-  - 结果：通过
 - `python3 scripts/license-header.py --check`
   - 结果：通过
   - 备注：当前 WSL worktree 需要显式绑定 `GIT_DIR` / `GIT_WORK_TREE` 后运行
+- `git diff --check`
+  - 结果：通过
 - `dotnet build GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release`
   - 结果：通过，`0 warning / 0 error`
 - `dotnet test GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj -c Release --filter "FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Emits_Request_Invoker_Provider_Metadata_In_Stable_Order_For_Mixed_Direct_And_Reflected_Implementations|FullyQualifiedName~CqrsHandlerRegistryGeneratorTests.Emits_Stream_Invoker_Provider_Metadata_In_Stable_Order_For_Mixed_Direct_And_Reflected_Implementations"`
@@ -116,7 +120,7 @@ CQRS 迁移与收敛。
 
 1. 继续处理 `PR #326` 的剩余 review 收尾，优先保持 benchmark 对照语义与 `ai-plan` active 入口一致
 2. 优先定位 `RequestStartupBenchmarks.ColdStart_GFrameworkCqrs` 在清空 dispatcher 缓存后的 request handler 绑定缺口，再决定是调整最小宿主注册方式还是补充专用 benchmark fixture
-3. 若继续推进“吸收 Mediator 设计哲学”的切片，优先扩展 benchmark 场景矩阵到 registration / service lifetime、notification publish strategy 或更贴近 `Mediator` concrete runtime 的对照
+3. 若需要在 CI 中手动复核 benchmark，优先使用新增 workflow 的 `benchmark_filter` 输入按场景筛选，避免默认运行命中当前已知 startup 残留
 
 ## 活跃文档
 

@@ -1,0 +1,69 @@
+# Copyright (c) 2025-2026 GeWuYou
+# SPDX-License-Identifier: Apache-2.0
+
+name: Benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      benchmark_filter:
+        description: '可选的 BenchmarkDotNet 过滤器；留空时仅执行 benchmark 项目 Release build'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    name: Benchmark Build Or Run
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.nuget/packages
+            ~/.local/share/NuGet
+          key: ${{ runner.os }}-nuget-benchmarks-${{ hashFiles('GFramework.Cqrs.Benchmarks/*.csproj', 'GFramework.Cqrs/*.csproj', 'GFramework.Cqrs.Abstractions/*.csproj', 'GFramework.Core/*.csproj', 'GFramework.Core.Abstractions/*.csproj', '**/nuget.config') }}
+
+      - name: Restore benchmark project
+        run: dotnet restore GFramework.Cqrs.Benchmarks/GFramework.Cqrs.Benchmarks.csproj
+
+      - name: Build benchmark project
+        run: dotnet build GFramework.Cqrs.Benchmarks/GFramework.Cqrs.Benchmarks.csproj -c Release --no-restore
+
+      - name: Report build-only mode
+        if: ${{ inputs.benchmark_filter == '' }}
+        run: |
+          echo "No benchmark filter provided."
+          echo "Workflow completed after validating the benchmark project build."
+
+      - name: Run filtered benchmarks
+        if: ${{ inputs.benchmark_filter != '' }}
+        run: |
+          set -euo pipefail
+          dotnet run --project GFramework.Cqrs.Benchmarks/GFramework.Cqrs.Benchmarks.csproj -c Release --no-build -- \
+            --filter "${{ inputs.benchmark_filter }}"
+
+      - name: Upload BenchmarkDotNet artifacts
+        if: ${{ always() && inputs.benchmark_filter != '' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: benchmark-artifacts
+          path: |
+            BenchmarkDotNet.Artifacts/**
+            GFramework.Cqrs.Benchmarks/bin/Release/net10.0/BenchmarkDotNet.Artifacts/**
+          if-no-files-found: ignore

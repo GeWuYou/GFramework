@@ -466,3 +466,9 @@
   - 结果：通过
 - `dotnet run --project GFramework.Cqrs.Benchmarks/GFramework.Cqrs.Benchmarks.csproj -c Release -- --filter "*RequestStartupBenchmarks*" --job short --warmupCount 1 --iterationCount 1 --launchCount 1`
   - 结果：部分通过；`MediatR` startup benchmark 已恢复真实测量，`ColdStart_GFrameworkCqrs` 仍因 `No CQRS request handler registered` 失败
+
+### 阶段：手动 benchmark workflow（CQRS-REWRITE-RP-089）
+
+- 新增 `.github/workflows/benchmark.yml`，提供仅 `workflow_dispatch` 触发的 benchmark 入口
+- workflow 默认只执行 `GFramework.Cqrs.Benchmarks` 的 Release build，避免在当前已知 `RequestStartupBenchmarks` 残留未清时默认运行失败
+- 只有在手动输入 `benchmark_filter` 时才执行 BenchmarkDotNet，并上传 `BenchmarkDotNet.Artifacts` 供后续比较
