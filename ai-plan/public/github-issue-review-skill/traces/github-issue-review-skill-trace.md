@@ -46,3 +46,39 @@
   - `comment_count=0`
   - `next_action=clarify-issue-before-code`
   - `affected_active_topics=cqrs-rewrite`
+
+### 阶段：PR review 跟进修复（ISSUE-SKILL-RP-002）
+
+- 使用 `$gframework-pr-review` 抓取当前分支 PR #328 后，确认以下评论在本地代码中仍然有效：
+  - `fetch_current_issue_review.py` 和回归测试缺少 shebang 后 license header
+  - issue-review 脚本仍保留开发机特定的 Windows Git 绝对路径回退
+  - `open_url()` 无条件禁用代理，且未支持 GitHub token 认证
+  - `build_information_flags()` 仍把 bug 场景的澄清门槛套用到 feature / docs issue
+  - `--format json --json-output` 组合时 stdout 只输出路径而不是 JSON
+  - skill 文档命令和示例中把 issue 号 `312` 写死
+- 已在活跃 topic 下同步恢复点：
+  - 跟踪文件更新为 `ISSUE-SKILL-RP-002`
+  - 记录本轮修复范围、验证待办与后续恢复入口
+- 已落盘修复：
+  - 为 issue-review 脚本和测试补齐 license header
+  - 将 GitHub 请求改为“先按环境代理请求，代理失败再无代理重试”
+  - 支持 `GFRAMEWORK_GITHUB_TOKEN` / `GITHUB_TOKEN` / `GH_TOKEN`
+  - 将 triage 澄清逻辑改为按主 issue 类型分支
+  - 为 docs / feature issue 增加 next-action 回归测试
+  - 将 skill 示例 issue 号改为占位符
+  - 让 `--format json --json-output` 同时保留 stdout JSON 与落盘副作用
+- 已完成验证：
+  - `python3 scripts/license-header.py --check`
+  - `python3 .agents/skills/gframework-issue-review/scripts/test_fetch_current_issue_review.py`
+  - `python3 .agents/skills/gframework-issue-review/scripts/fetch_current_issue_review.py --issue 327 --format json --json-output /tmp/gframework-open-issue-review.json`
+  - `dotnet build GFramework.sln -c Release`
+- 本轮验证结论：
+  - license header 检查通过
+  - 脚本级测试 `5/5` 通过
+  - `--format json --json-output` 现在会同时输出 stdout JSON 并写出 JSON 文件
+  - 仓库 Release build 通过，`0 Warning(s)` / `0 Error(s)`
+
+### 下一步
+
+1. 按仓库规范提交本轮 PR review 修复
+2. 需要继续跟进 issue `#327` 时，再切回 `$gframework-issue-review` + `$gframework-boot` 路径

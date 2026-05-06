@@ -34,11 +34,11 @@ Shortcut: `$gframework-issue-review`
 - Default:
   - `python3 .agents/skills/gframework-issue-review/scripts/fetch_current_issue_review.py`
 - Force a specific issue:
-  - `python3 .agents/skills/gframework-issue-review/scripts/fetch_current_issue_review.py --issue 312`
+  - `python3 .agents/skills/gframework-issue-review/scripts/fetch_current_issue_review.py --issue <issue-number>`
 - Machine-readable output:
   - `python3 .agents/skills/gframework-issue-review/scripts/fetch_current_issue_review.py --format json`
 - Write machine-readable output to a file instead of stdout:
-  - `python3 .agents/skills/gframework-issue-review/scripts/fetch_current_issue_review.py --issue 312 --format json --json-output /tmp/issue312-review.json`
+  - `python3 .agents/skills/gframework-issue-review/scripts/fetch_current_issue_review.py --issue <issue-number> --format json --json-output /tmp/issue-review.json`
 - Inspect only a high-signal section:
   - `python3 .agents/skills/gframework-issue-review/scripts/fetch_current_issue_review.py --section summary`
 - Combine triage with a boot handoff:
@@ -79,5 +79,5 @@ The script should produce:
 
 - `Use $gframework-issue-review on the current repository issue`
 - `Check the open GitHub issue and summarize what should be verified locally`
-- `Inspect issue 312 and tell me whether this looks like bug triage or a feature request`
+- `Inspect issue <issue-number> and tell me whether this looks like bug triage or a feature request`
 - `先用 $gframework-issue-review 看当前 open issue，再用 $gframework-boot 继续`

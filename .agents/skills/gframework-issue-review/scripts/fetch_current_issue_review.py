@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2025-2026 GeWuYou
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Fetch the current GFramework GitHub issue and extract the signals needed for
 local follow-up work without relying on gh CLI.
@@ -14,17 +17,19 @@ import re
 import shutil
 import subprocess
 import sys
+import urllib.error
 import urllib.request
 from typing import Any
 
 OWNER = "GeWuYou"
 REPO = "GFramework"
 WORKTREE_ROOT_DIRECTORY_NAME = "GFramework-WorkTree"
-DEFAULT_WINDOWS_GIT = "/mnt/d/Tool/Development Tools/Git/cmd/git.exe"
 GIT_ENVIRONMENT_KEY = "GFRAMEWORK_WINDOWS_GIT"
 GIT_DIR_ENVIRONMENT_KEY = "GFRAMEWORK_GIT_DIR"
 WORK_TREE_ENVIRONMENT_KEY = "GFRAMEWORK_WORK_TREE"
 REQUEST_TIMEOUT_ENVIRONMENT_KEY = "GFRAMEWORK_ISSUE_REVIEW_TIMEOUT_SECONDS"
+GITHUB_TOKEN_ENVIRONMENT_KEYS = ("GFRAMEWORK_GITHUB_TOKEN", "GITHUB_TOKEN", "GH_TOKEN")
+PROXY_ENVIRONMENT_KEYS = ("http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "all_proxy")
 DEFAULT_REQUEST_TIMEOUT_SECONDS = 60
 USER_AGENT = "codex-gframework-issue-review"
 DISPLAY_SECTION_CHOICES = (
@@ -100,7 +105,6 @@ def resolve_git_command() -> str:
     """Resolve the git executable to use for this repository."""
     candidates = [
         os.environ.get(GIT_ENVIRONMENT_KEY),
-        DEFAULT_WINDOWS_GIT,
         "git.exe",
         "git",
     ]
@@ -195,12 +199,56 @@ def get_current_branch() -> str:
     return run_command([*resolve_git_invocation(), "rev-parse", "--abbrev-ref", "HEAD"])
 
 
-def open_url(url: str, accept: str) -> tuple[str, Any]:
-    """Open a URL with proxy variables disabled and return decoded text plus headers."""
-    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-    request = urllib.request.Request(url, headers={"Accept": accept, "User-Agent": USER_AGENT})
+def resolve_github_token() -> str | None:
+    """Return the first configured GitHub token for authenticated API requests."""
+    for environment_key in GITHUB_TOKEN_ENVIRONMENT_KEYS:
+        token = os.environ.get(environment_key)
+        if token:
+            return token
+
+    return None
+
+
+def build_request_headers(accept: str) -> dict[str, str]:
+    """Build GitHub request headers and include auth when a token is available."""
+    headers = {"Accept": accept, "User-Agent": USER_AGENT}
+    token = resolve_github_token()
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    return headers
+
+
+def has_proxy_environment() -> bool:
+    """Return whether the current process is configured to use an outbound proxy."""
+    return any(os.environ.get(environment_key) for environment_key in PROXY_ENVIRONMENT_KEYS)
+
+
+def perform_request(url: str, headers: dict[str, str], *, disable_proxy: bool) -> tuple[str, Any]:
+    """Execute a single HTTP request and return decoded text plus response headers."""
+    opener = (
+        urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        if disable_proxy
+        else urllib.request.build_opener()
+    )
+    request = urllib.request.Request(url, headers=headers)
     with opener.open(request, timeout=resolve_request_timeout_seconds()) as response:
         return response.read().decode("utf-8", "replace"), response.headers
+
+
+def open_url(url: str, accept: str) -> tuple[str, Any]:
+    """Open a URL, retrying without proxies only when the configured proxy path fails."""
+    headers = build_request_headers(accept)
+
+    try:
+        return perform_request(url, headers, disable_proxy=False)
+    except urllib.error.HTTPError:
+        raise
+    except (urllib.error.URLError, TimeoutError, OSError):
+        if not has_proxy_environment():
+            raise
+
+    return perform_request(url, headers, disable_proxy=True)
 
 
 def fetch_json(url: str, accept: str = "application/vnd.github+json") -> tuple[Any, Any]:
@@ -491,18 +539,31 @@ def build_references(issue: dict[str, Any], comments: list[dict[str, Any]], even
     }
 
 
-def build_information_flags(issue: dict[str, Any], comments: list[dict[str, Any]]) -> dict[str, bool]:
-    """Derive missing-information and readiness flags from the issue discussion."""
+def build_information_flags(
+    issue: dict[str, Any],
+    comments: list[dict[str, Any]],
+    issue_type_candidates: list[str],
+) -> dict[str, bool]:
+    """Derive missing-information and readiness flags with issue-type-aware heuristics."""
     text_blocks = gather_text_blocks(issue, comments)
     has_reproduction_steps = has_any_pattern(text_blocks, REPRODUCTION_PATTERNS)
     has_expected_behavior = has_any_pattern(text_blocks, EXPECTED_BEHAVIOR_PATTERNS)
     has_actual_behavior = has_any_pattern(text_blocks, ACTUAL_BEHAVIOR_PATTERNS)
     has_environment_details = has_any_pattern(text_blocks, ENVIRONMENT_PATTERNS)
     has_acceptance_signals = has_any_pattern(text_blocks, ACCEPTANCE_PATTERNS)
-    needs_clarification = not (
-        (has_actual_behavior and (has_reproduction_steps or has_environment_details))
-        or has_acceptance_signals
-    )
+    primary_issue_type = issue_type_candidates[0] if issue_type_candidates else "bug"
+
+    if primary_issue_type == "bug":
+        needs_clarification = not (
+            (has_actual_behavior and (has_reproduction_steps or has_environment_details))
+            or has_acceptance_signals
+        )
+    elif primary_issue_type in {"feature", "docs"}:
+        needs_clarification = not (has_expected_behavior or has_acceptance_signals)
+    elif primary_issue_type == "maintenance":
+        needs_clarification = not (has_expected_behavior or has_actual_behavior or has_acceptance_signals)
+    else:
+        needs_clarification = not (has_expected_behavior or has_actual_behavior or has_acceptance_signals)
 
     return {
         "has_reproduction_steps": has_reproduction_steps,
@@ -544,7 +605,7 @@ def build_triage_hints(issue: dict[str, Any], comments: list[dict[str, Any]]) ->
     """Build lightweight, reviewable triage hints for boot follow-up."""
     text_blocks = gather_text_blocks(issue, comments)
     issue_type_candidates = choose_issue_type_candidates(issue, text_blocks)
-    information_flags = build_information_flags(issue, comments)
+    information_flags = build_information_flags(issue, comments, issue_type_candidates)
     affected_topics = choose_affected_topics(issue, comments)
     next_action = choose_next_action(information_flags, issue_type_candidates, affected_topics)
 
@@ -776,10 +837,6 @@ def main() -> None:
         json_output_path = write_json_output(result, args.json_output)
 
     if args.format == "json":
-        if json_output_path:
-            print(json_output_path)
-            return
-
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return
 

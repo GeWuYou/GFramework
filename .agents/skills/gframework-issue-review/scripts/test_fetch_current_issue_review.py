@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2025-2026 GeWuYou
+# SPDX-License-Identifier: Apache-2.0
+
 """Regression tests for the GFramework issue review fetch helper."""
 
 from __future__ import annotations
@@ -49,6 +52,42 @@ class ExtractReferencesFromTextTests(unittest.TestCase):
         self.assertEqual(references["issues"], ["#123"])
         self.assertEqual(references["commit_shas"], ["abcdef1234567890"])
         self.assertEqual(references["file_paths"], ["GFramework.Core/Systems/Runner.cs"])
+
+
+class BuildTriageHintsTests(unittest.TestCase):
+    """Cover next-action classification for non-bug issue flows."""
+
+    def test_build_triage_hints_routes_docs_issue_to_docs_topic_without_bug_style_clarification(self) -> None:
+        """Docs issues with a clear requested change should not be forced through bug-style clarification."""
+        triage_hints = MODULE.build_triage_hints(
+            {
+                "title": "Update documentation landing page",
+                "labels": ["docs"],
+                "body": "The guide should explain the landing-page layout for new contributors.",
+            },
+            [],
+        )
+
+        self.assertEqual(triage_hints["issue_type_candidates"][0], "docs")
+        self.assertEqual(triage_hints["affected_active_topics"], [])
+        self.assertFalse(triage_hints["information_flags"]["needs_clarification"])
+        self.assertEqual(triage_hints["next_action"], "start-new-docs-topic-with-boot")
+
+    def test_build_triage_hints_routes_feature_issue_to_new_topic_when_request_is_clear(self) -> None:
+        """Feature requests with explicit desired behavior should stay actionable without fake bug repro gates."""
+        triage_hints = MODULE.build_triage_hints(
+            {
+                "title": "Support release note previews",
+                "labels": ["enhancement"],
+                "body": "The workflow should support previewing generated notes before completion.",
+            },
+            [],
+        )
+
+        self.assertEqual(triage_hints["issue_type_candidates"][0], "feature")
+        self.assertEqual(triage_hints["affected_active_topics"], [])
+        self.assertFalse(triage_hints["information_flags"]["needs_clarification"])
+        self.assertEqual(triage_hints["next_action"], "start-new-topic-with-boot")
 
 
 if __name__ == "__main__":

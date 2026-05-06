@@ -13,12 +13,12 @@
 
 ## 当前恢复点
 
-- 恢复点编号：`ISSUE-SKILL-RP-001`
-- 当前阶段：`Phase 2`
+- 恢复点编号：`ISSUE-SKILL-RP-002`
+- 当前阶段：`Phase 3`
 - 当前焦点：
-  - 保持 `$gframework-issue-review` 可供后续 issue 分诊直接复用
-  - 通过 `$gframework-boot` 继续 issue `#327` 的澄清优先处理路径
-  - 若后续 issue 数量从 `1` 变为 `0` 或 `>1`，要求显式传 `--issue`
+  - 收敛 PR #328 上仍然有效的 AI review 评论，避免新 skill 在仓库中留下已知漂移
+  - 保持 `$gframework-issue-review` 的 GitHub API 抓取在代理、认证与 JSON CLI 契约上更稳健
+  - 确保非 bug issue 的 triage 结果不会被错误导向 `clarify-issue-before-code`
 
 ### 已知风险
 
@@ -28,6 +28,8 @@
   - 缓解措施：脚本明确报错并要求 `--issue <number>`，验证时同时保留显式 issue 号路径
 - issue 文本中的模块归因和处理建议只能是启发式结果，不能替代本地代码验证
   - 缓解措施：skill 文档明确要求后续仍通过 `$gframework-boot` 与本地源码核实
+- GitHub API 仍可能在无 token 环境下命中匿名 rate limit
+  - 缓解措施：脚本现已支持从 `GFRAMEWORK_GITHUB_TOKEN`、`GITHUB_TOKEN`、`GH_TOKEN` 读取认证；无 token 时保持匿名降级
 
 ## 已完成
 
@@ -46,24 +48,35 @@
   - 支持“仅当当前仓库恰好一个 open issue 时自动解析，否则要求显式传号”
 - 已修正新脚本在当前 WSL 会话下误回退到 `git.exe` 的兼容问题：
   - 在主仓库根目录且存在 Linux `git` 时，也优先绑定 `--git-dir` / `--work-tree`
+- 已根据 PR #328 review 收敛仍然有效的问题：
+  - 为 `fetch_current_issue_review.py` 与回归测试补齐 shebang 后 license header
+  - 去掉开发机特定的 Windows Git 绝对路径回退，改为环境变量覆盖 + `git.exe` / `git`
+  - GitHub 请求先走环境代理，并在代理请求失败且检测到代理环境变量时再无代理重试
+  - 支持通过标准 token 环境变量附带 `Authorization` 头，避免高频运行时过早命中匿名限流
+  - 将 `needs_clarification` 改为按 issue 主类型分支，避免 feature / docs issue 被 bug 规则误判
+  - 修正 `--format json --json-output` 时 stdout 仍输出 JSON，文件写入只作为附加副作用
+  - 补充 docs / feature 场景回归测试，并将 skill 示例 issue 号改为占位符
 
 ## 验证
 
+- `python3 scripts/license-header.py --check`
+  - 结果：通过
+  - 备注：本轮修改涉及的受支持文件均包含 Apache-2.0 license header
 - `python3 .agents/skills/gframework-issue-review/scripts/test_fetch_current_issue_review.py`
   - 结果：通过
-  - 备注：`3` 个脚本级测试全部通过
+  - 备注：`5` 个脚本级测试全部通过，新增 docs / feature 分诊回归覆盖
 - `python3 .agents/skills/gframework-issue-review/scripts/fetch_current_issue_review.py --section summary --section warnings`
   - 结果：通过
   - 备注：真实 GitHub API 抓取成功，自动解析到当前唯一 open issue `#327`
 - `python3 .agents/skills/gframework-issue-review/scripts/fetch_current_issue_review.py --format json --json-output /tmp/gframework-open-issue-review.json`
   - 结果：通过
-  - 备注：JSON 文件成功写出，`resolution_mode=auto-single-open-issue`，`next_action=clarify-issue-before-code`
+  - 备注：stdout 输出 JSON，文件也成功写出；显式抓取 `#327` 时 `next_action=clarify-issue-before-code`
 - `dotnet build GFramework.sln -c Release`
   - 结果：通过
   - 备注：`0 Warning(s)`，`0 Error(s)`
 
 ## 下一步
 
-1. 使用 `$gframework-issue-review` 重新抓取或显式抓取目标 issue，并把 triage 结果带入 `$gframework-boot`
-2. 针对 issue `#327` 先执行“澄清优先”路径，再决定是否创建新的代码改动 topic
+1. 将本轮 PR review 修复提交到当前分支，并回到 PR 线程确认相关评论是否可关闭
+2. 需要继续处理 issue `#327` 时，重新用 `$gframework-issue-review` 抓取目标 issue，并把结果带入 `$gframework-boot`
 3. 若后续需要更细的 issue 事件语义，再补强 timeline 解析与脚本级回归测试
