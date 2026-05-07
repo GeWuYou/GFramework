@@ -6,12 +6,13 @@ using GFramework.Core.Abstractions.Architectures;
 namespace GFramework.Core.Architectures;
 
 /// <summary>
-/// 基于 GameContext 的默认上下文提供者
+/// 基于 GameContext 的默认上下文提供者。
+/// 默认只面向当前活动上下文工作，而不是维护多个并存的全局上下文。
 /// </summary>
 public sealed class GameContextProvider : IArchitectureContextProvider
 {
     /// <summary>
-    /// 获取当前的架构上下文（返回第一个注册的架构上下文）
+    /// 获取当前的架构上下文。
     /// </summary>
     /// <returns>架构上下文实例</returns>
     public IArchitectureContext GetContext()
@@ -20,7 +21,8 @@ public sealed class GameContextProvider : IArchitectureContextProvider
     }
 
     /// <summary>
-    /// 尝试获取指定类型的架构上下文
+    /// 尝试获取指定类型的架构上下文。
+    /// 若当前活动上下文本身兼容 <typeparamref name="T" />，则无需显式类型别名也会返回成功。
     /// </summary>
     /// <typeparam name="T">架构上下文类型</typeparam>
     /// <param name="context">输出的上下文实例</param>

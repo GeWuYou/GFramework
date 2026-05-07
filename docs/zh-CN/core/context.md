@@ -142,7 +142,7 @@ var playerId = await this.SendAsync(
 
 `GameContext` 仍然存在，但已经退到兼容和回退路径。
 
-`ContextAwareBase` 在实例未显式注入上下文时，会回退到 `GameContext.GetFirstArchitectureContext()`。这能保证部分旧代码继续工作，但它不是新代码的首选接法。
+`ContextAwareBase` 在实例未显式注入上下文时，会回退到 `GameContext.GetFirstArchitectureContext()`。这个入口现在表示“当前活动上下文”，不再依赖全局注册表里的任意首项。这能保证部分旧代码继续工作，但它不是新代码的首选接法。
 
 新代码更推荐：
 

@@ -46,7 +46,7 @@ public abstract class ContextAwareBase : IContextAware
     /// </summary>
     /// <returns>当前架构上下文对象。</returns>
     /// <remarks>
-    ///     当 <see cref="Context" /> 为空时，该实现会直接回退到 <see cref="GameContext.GetFirstArchitectureContext" />。
+    ///     当 <see cref="Context" /> 为空时，该实现会直接回退到 <see cref="GameContext.GetFirstArchitectureContext" /> 返回的当前活动上下文。
     ///     该回退过程不执行额外同步，也不支持替换 provider；如需这些能力，请改用生成的 ContextAware 实现。
     /// </remarks>
     IArchitectureContext IContextAware.GetContext()

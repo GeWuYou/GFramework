@@ -599,14 +599,17 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// <exception cref="InvalidOperationException">未找到可用的 CQRS 程序集注册协调器实例时抛出。</exception>
     private ICqrsRegistrationService ResolveCqrsRegistrationService()
     {
-        var descriptor = GetServicesUnsafe.LastOrDefault(static service =>
-            service.ServiceType == typeof(ICqrsRegistrationService));
+        var registrationService = CollectRegisteredImplementationInstances(typeof(ICqrsRegistrationService))
+            .OfType<ICqrsRegistrationService>()
+            .LastOrDefault();
 
-        if (descriptor?.ImplementationInstance is ICqrsRegistrationService registrationService)
+        if (registrationService != null)
             return registrationService;
 
         const string errorMessage =
-            "ICqrsRegistrationService not registered. Ensure the CQRS runtime module has been installed before registering handlers.";
+            "ICqrsRegistrationService is not visible during the registration stage. Ensure the CQRS runtime module " +
+            "has been installed and that the registration service is pre-materialized as an instance binding before " +
+            "registering handlers.";
         _logger.Error(errorMessage);
         throw new InvalidOperationException(errorMessage);
     }
@@ -625,18 +628,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
         {
             if (_provider == null)
             {
-                // 如果容器未冻结，从服务集合中查找已注册的实例
-                var serviceType = typeof(T);
-                var descriptor = GetServicesUnsafe.FirstOrDefault(s =>
-                    s.ServiceType == serviceType || serviceType.IsAssignableFrom(s.ServiceType));
-
-                if (descriptor?.ImplementationInstance is T instance)
-                {
-                    return instance;
-                }
-
-                // 在未冻结状态下无法调用工厂方法或创建实例，返回null
-                return null;
+                return CollectRegisteredImplementationInstances(typeof(T)).OfType<T>().FirstOrDefault();
             }
 
             var result = _provider!.GetService<T>();
@@ -659,18 +651,14 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// <returns>服务实例或null</returns>
     public object? Get(Type type)
     {
+        ArgumentNullException.ThrowIfNull(type);
         ThrowIfDisposed();
         EnterReadLockOrThrowDisposed();
         try
         {
             if (_provider == null)
             {
-                // 如果容器未冻结，从服务集合中查找已注册的实例
-                var descriptor =
-                    GetServicesUnsafe.FirstOrDefault(s =>
-                        s.ServiceType == type || type.IsAssignableFrom(s.ServiceType));
-
-                return descriptor?.ImplementationInstance;
+                return CollectRegisteredImplementationInstances(type).FirstOrDefault();
             }
 
             var result = _provider!.GetService(type);

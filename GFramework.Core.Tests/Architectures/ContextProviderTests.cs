@@ -9,7 +9,7 @@ namespace GFramework.Core.Tests.Architectures;
 /// <summary>
 /// ContextProvider 相关类的单元测试
 /// 测试内容包括：
-/// - GameContextProvider 获取第一个架构上下文
+/// - GameContextProvider 获取当前活动架构上下文
 /// - GameContextProvider 尝试获取指定类型的上下文
 /// - ScopedContextProvider 获取绑定的上下文
 /// - ScopedContextProvider 尝试获取指定类型的上下文
@@ -37,10 +37,10 @@ public class ContextProviderTests
     }
 
     /// <summary>
-    /// 测试 GameContextProvider 是否能正确获取第一个架构上下文
+    /// 测试 GameContextProvider 是否能正确获取当前活动架构上下文
     /// </summary>
     [Test]
-    public void GameContextProvider_GetContext_Should_Return_First_Context()
+    public void GameContextProvider_GetContext_Should_Return_Current_Context()
     {
         var context = new TestArchitectureContext();
         GameContext.Bind(typeof(TestArchitecture), context);
@@ -63,13 +63,13 @@ public class ContextProviderTests
     }
 
     /// <summary>
-    /// 测试 GameContextProvider 的 TryGetContext 方法在找到上下文时返回 true
+    /// 测试 GameContextProvider 的 TryGetContext 方法在仅绑定架构类型时也能返回 true
     /// </summary>
     [Test]
-    public void GameContextProvider_TryGetContext_Should_Return_True_When_Found()
+    public void GameContextProvider_TryGetContext_Should_Return_True_When_Current_Context_Matches()
     {
         var context = new TestArchitectureContext();
-        GameContext.Bind(typeof(TestArchitectureContext), context);
+        GameContext.Bind(typeof(TestArchitecture), context);
 
         var provider = new GameContextProvider();
         var result = provider.TryGetContext<TestArchitectureContext>(out var foundContext);

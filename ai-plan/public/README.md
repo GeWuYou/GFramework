@@ -42,6 +42,10 @@ help the current worktree land on the right recovery documents without scanning 
   - Purpose: track `PR #330` disposal-contract fixes for `MicrosoftDiContainer`, related benchmark cleanup hardening, and review follow-up.
   - Tracking: `ai-plan/public/microsoft-di-container-disposal/todos/microsoft-di-container-disposal-tracking.md`
   - Trace: `ai-plan/public/microsoft-di-container-disposal/traces/microsoft-di-container-disposal-trace.md`
+- `single-context-priority`
+  - Purpose: converge `GameContext` toward a single active architecture context model and tighten related `MicrosoftDiContainer` pre-freeze lookup semantics.
+  - Tracking: `ai-plan/public/single-context-priority/todos/single-context-priority-tracking.md`
+  - Trace: `ai-plan/public/single-context-priority/traces/single-context-priority-trace.md`
 
 ## Worktree To Active Topic Map
 
@@ -64,3 +68,5 @@ help the current worktree land on the right recovery documents without scanning 
   - Priority 1: `documentation-full-coverage-governance`
 - Branch: `fix/microsoft-di-container-disposal`
   - Priority 1: `microsoft-di-container-disposal`
+- Branch: `refactor/single-context-priority`
+  - Priority 1: `single-context-priority`

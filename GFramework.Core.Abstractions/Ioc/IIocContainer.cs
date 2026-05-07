@@ -141,6 +141,10 @@ public interface IIocContainer : IContextAware, IDisposable
     /// </summary>
     /// <typeparam name="T">期望获取的实例类型</typeparam>
     /// <returns>找到的第一个实例；如果未找到则返回 null</returns>
+    /// <remarks>
+    ///     在 <see cref="Freeze" /> 之前，该查询只保证返回已经物化为实例绑定的服务。
+    ///     仅通过工厂或实现类型注册的服务在预冻结阶段可能不可见；若需要完整激活语义，请先冻结容器。
+    /// </remarks>
     T? Get<T>() where T : class;
 
     /// <summary>
@@ -149,6 +153,10 @@ public interface IIocContainer : IContextAware, IDisposable
     /// </summary>
     /// <param name="type">期望获取的实例类型</param>
     /// <returns>找到的第一个实例；如果未找到则返回 null</returns>
+    /// <remarks>
+    ///     在 <see cref="Freeze" /> 之前，该查询只保证返回已经物化为实例绑定的服务。
+    ///     仅通过工厂或实现类型注册的服务在预冻结阶段可能不可见；若需要完整激活语义，请先冻结容器。
+    /// </remarks>
     object? Get(Type type);
 
 
@@ -174,6 +182,9 @@ public interface IIocContainer : IContextAware, IDisposable
     /// </summary>
     /// <typeparam name="T">期望获取的实例类型</typeparam>
     /// <returns>所有符合条件的实例列表；如果没有则返回空数组</returns>
+    /// <remarks>
+    ///     在 <see cref="Freeze" /> 之前，该查询只会枚举当前已经可见的实例绑定，不会主动执行工厂或创建实现类型。
+    /// </remarks>
     IReadOnlyList<T> GetAll<T>() where T : class;
 
     /// <summary>
@@ -181,6 +192,9 @@ public interface IIocContainer : IContextAware, IDisposable
     /// </summary>
     /// <param name="type">期望获取的实例类型</param>
     /// <returns>所有符合条件的实例列表；如果没有则返回空数组</returns>
+    /// <remarks>
+    ///     在 <see cref="Freeze" /> 之前，该查询只会枚举当前已经可见的实例绑定，不会主动执行工厂或创建实现类型。
+    /// </remarks>
     IReadOnlyList<object> GetAll(Type type);
 
 
@@ -219,6 +233,9 @@ public interface IIocContainer : IContextAware, IDisposable
     /// </summary>
     /// <typeparam name="T">要检查的类型</typeparam>
     /// <returns>如果容器中包含指定类型的实例则返回true，否则返回false</returns>
+    /// <remarks>
+    ///     在 <see cref="Freeze" /> 之前，该方法更接近“是否存在对应注册”的检查，而不是完整的 DI 可解析性判断。
+    /// </remarks>
     bool Contains<T>() where T : class;
 
     /// <summary>

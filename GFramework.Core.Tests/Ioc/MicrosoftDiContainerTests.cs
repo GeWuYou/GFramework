@@ -159,6 +159,21 @@ public class MicrosoftDiContainerTests
     }
 
     /// <summary>
+    ///     测试预冻结阶段通过 RegisterPlurality 注册的接口别名仍可通过 Get 解析到同一实例。
+    /// </summary>
+    [Test]
+    public void Get_Should_Return_RegisterPlurality_Interface_Instance_Before_Freeze()
+    {
+        var instance = new TestService();
+
+        _container.RegisterPlurality(instance);
+
+        var result = _container.Get<IService>();
+
+        Assert.That(result, Is.SameAs(instance));
+    }
+
+    /// <summary>
     ///     测试当 CQRS 基础设施已手动接线后，再调用处理器注册入口不会重复注册 runtime seam。
     /// </summary>
     [Test]
@@ -279,6 +294,32 @@ public class MicrosoftDiContainerTests
     }
 
     /// <summary>
+    ///     测试预冻结阶段通过实现类型注册的服务不会被当作已物化实例返回。
+    /// </summary>
+    [Test]
+    public void Get_Should_Return_Null_PreFreeze_For_ImplementationType_Registration()
+    {
+        _container.RegisterSingleton<IService, TestService>();
+
+        var result = _container.Get<IService>();
+
+        Assert.That(result, Is.Null);
+    }
+
+    /// <summary>
+    ///     测试预冻结阶段通过实现类型注册的服务在 GetAll 中同样不可见。
+    /// </summary>
+    [Test]
+    public void GetAll_Should_Return_Empty_PreFreeze_For_ImplementationType_Registration()
+    {
+        _container.RegisterSingleton<IService, TestService>();
+
+        var results = _container.GetAll<IService>();
+
+        Assert.That(results, Is.Empty);
+    }
+
+    /// <summary>
     ///     测试容器未冻结时，会折叠“不同服务类型指向同一实例”的兼容别名重复，
     ///     但会保留同一服务类型的重复显式注册。
     /// </summary>
@@ -351,6 +392,21 @@ public class MicrosoftDiContainerTests
         Assert.That(_container.Contains<TestService>(), Is.True);
         // 验证实例确实是单例
         Assert.That(_container.Get<TestService>(), Is.SameAs(instance));
+    }
+
+    /// <summary>
+    ///     测试预冻结阶段通过 RegisterPlurality 注册的接口别名对 Contains 与 GetAll 都可见。
+    /// </summary>
+    [Test]
+    public void Contains_Should_Return_True_For_RegisterPlurality_Interface_Alias_Before_Freeze()
+    {
+        var instance = new TestService();
+        _container.RegisterPlurality(instance);
+
+        var services = _container.GetAll<IService>();
+
+        Assert.That(services, Has.Count.EqualTo(1));
+        Assert.That(_container.Contains<IService>(), Is.True);
     }
 
 
@@ -428,6 +484,16 @@ public class MicrosoftDiContainerTests
             _container.GetServicesUnsafe.Any(static descriptor =>
                 descriptor.ServiceType == typeof(INotificationHandler<DeterministicOrderNotification>)),
             Is.True);
+    }
+
+    /// <summary>
+    ///     测试 RegisterCqrsHandlersFromAssemblies 会通过注册阶段可见实例解析 CQRS 注册服务。
+    /// </summary>
+    [Test]
+    public void RegisterCqrsHandlersFromAssemblies_Should_Resolve_Registration_Service_When_Registered_As_Instance()
+    {
+        Assert.DoesNotThrow(() =>
+            _container.RegisterCqrsHandlersFromAssemblies([typeof(DeterministicOrderNotification).Assembly]));
     }
 
     /// <summary>

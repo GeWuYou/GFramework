@@ -6,20 +6,12 @@ using GFramework.Core.Architectures;
 namespace GFramework.Core.Tests.Architectures;
 
 /// <summary>
-///     GameContext类的单元测试
+///     GameContext 类的单元测试
 ///     测试内容包括：
-///     - ArchitectureReadOnlyDictionary在启动时为空
-///     - Bind方法添加上下文到字典
-///     - Bind重复类型时抛出异常
-///     - GetByType返回正确的上下文
-///     - GetByType未找到时抛出异常
-///     - Get泛型方法返回正确的上下文
-///     - TryGet方法在找到时返回true
-///     - TryGet方法在未找到时返回false
-///     - GetFirstArchitectureContext在存在时返回
-///     - GetFirstArchitectureContext为空时抛出异常
-///     - Unbind移除上下文
-///     - Clear移除所有上下文
+///     - 初始状态为空
+///     - 绑定后可通过架构类型和上下文类型回查
+///     - 不允许并存绑定两个不同上下文实例
+///     - 清理和解绑会同步更新当前活动上下文
 /// </summary>
 [TestFixture]
 public class GameContextTests
@@ -82,6 +74,21 @@ public class GameContextTests
     }
 
     /// <summary>
+    ///     测试绑定第二个不同的上下文实例时会被拒绝。
+    /// </summary>
+    [Test]
+    public void Bind_WithDifferentContextInstance_Should_ThrowInvalidOperationException()
+    {
+        var firstContext = new TestArchitectureContext();
+        var secondContext = new TestArchitectureContext();
+
+        GameContext.Bind(typeof(TestArchitecture), firstContext);
+
+        Assert.Throws<InvalidOperationException>(() =>
+            GameContext.Bind(typeof(AnotherTestArchitectureContext), secondContext));
+    }
+
+    /// <summary>
     ///     测试GetByType方法是否返回正确的上下文
     /// </summary>
     [Test]
@@ -106,13 +113,27 @@ public class GameContextTests
     }
 
     /// <summary>
-    ///     测试Get泛型方法是否返回正确的上下文
+    ///     测试 GetByType 支持按当前活动上下文的具体类型回查。
     /// </summary>
     [Test]
-    public void GetGeneric_Should_Return_Correct_Context()
+    public void GetByType_Should_Return_Current_Context_When_Requested_By_Context_Type()
     {
         var context = new TestArchitectureContext();
-        GameContext.Bind(typeof(TestArchitectureContext), context);
+        GameContext.Bind(typeof(TestArchitecture), context);
+
+        var result = GameContext.GetByType(typeof(TestArchitectureContext));
+
+        Assert.That(result, Is.SameAs(context));
+    }
+
+    /// <summary>
+    ///     测试 Get 泛型方法在仅绑定架构类型时也能返回当前上下文
+    /// </summary>
+    [Test]
+    public void GetGeneric_Should_Return_Current_Context_When_Bound_By_Architecture_Type()
+    {
+        var context = new TestArchitectureContext();
+        GameContext.Bind(typeof(TestArchitecture), context);
 
         var result = GameContext.Get<TestArchitectureContext>();
 
@@ -120,13 +141,13 @@ public class GameContextTests
     }
 
     /// <summary>
-    ///     测试TryGet方法在找到上下文时是否返回true并正确设置输出参数
+    ///     测试 TryGet 方法在仅绑定架构类型时也能找到当前上下文
     /// </summary>
     [Test]
-    public void TryGet_Should_ReturnTrue_When_Found()
+    public void TryGet_Should_ReturnTrue_When_Bound_By_Architecture_Type()
     {
         var context = new TestArchitectureContext();
-        GameContext.Bind(typeof(TestArchitectureContext), context);
+        GameContext.Bind(typeof(TestArchitecture), context);
 
         var result = GameContext.TryGet(out TestArchitectureContext? foundContext);
 
@@ -135,7 +156,7 @@ public class GameContextTests
     }
 
     /// <summary>
-    ///     测试TryGet方法在未找到上下文时是否返回false且输出参数为null
+    ///     测试 TryGet 方法在未找到上下文时是否返回 false 且输出参数为 null
     /// </summary>
     [Test]
     public void TryGet_Should_ReturnFalse_When_Not_Found()
@@ -171,10 +192,10 @@ public class GameContextTests
     }
 
     /// <summary>
-    ///     测试Unbind方法是否正确移除指定类型的上下文
+    ///     测试 Unbind 方法在移除最后一个别名时会清空当前活动上下文
     /// </summary>
     [Test]
-    public void Unbind_Should_Remove_Context()
+    public void Unbind_Should_Remove_Context_When_Last_Alias_Is_Removed()
     {
         var context = new TestArchitectureContext();
         GameContext.Bind(typeof(TestArchitecture), context);
@@ -185,16 +206,34 @@ public class GameContextTests
     }
 
     /// <summary>
-    ///     测试Clear方法是否正确移除所有上下文
+    ///     测试 Unbind 方法在仍有其他别名时保留当前活动上下文
+    /// </summary>
+    [Test]
+    public void Unbind_Should_Keep_Current_Context_When_Another_Alias_Remains()
+    {
+        var context = new TestArchitectureContext();
+        GameContext.Bind(typeof(TestArchitecture), context);
+        GameContext.Bind(typeof(TestArchitectureContext), context);
+
+        GameContext.Unbind(typeof(TestArchitecture));
+
+        Assert.That(GameContext.GetFirstArchitectureContext(), Is.SameAs(context));
+        Assert.That(GameContext.ArchitectureReadOnlyDictionary.Count, Is.EqualTo(1));
+    }
+
+    /// <summary>
+    ///     测试 Clear 方法是否正确移除所有上下文
     /// </summary>
     [Test]
     public void Clear_Should_Remove_All_Contexts()
     {
-        GameContext.Bind(typeof(TestArchitecture), new TestArchitectureContext());
-        GameContext.Bind(typeof(TestArchitectureContext), new TestArchitectureContext());
+        var context = new TestArchitectureContext();
+        GameContext.Bind(typeof(TestArchitecture), context);
+        GameContext.Bind(typeof(TestArchitectureContext), context);
 
         GameContext.Clear();
 
         Assert.That(GameContext.ArchitectureReadOnlyDictionary.Count, Is.EqualTo(0));
+        Assert.Throws<InvalidOperationException>(() => GameContext.GetFirstArchitectureContext());
     }
 }

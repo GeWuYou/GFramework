@@ -100,7 +100,7 @@ public partial class PlayerController : IController
 - `ContextAwareBase`
   - 只维护简单的实例级缓存
   - 不维护共享 provider
-  - 默认直接回退到 `GameContext.GetFirstArchitectureContext()`
+  - 默认直接回退到 `GameContext.GetFirstArchitectureContext()` 返回的当前活动上下文
 
 因此，这两条路径不是“只是写法不同”，而是共享 provider 策略和实例缓存边界都不同。
 

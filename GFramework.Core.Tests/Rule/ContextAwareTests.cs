@@ -83,22 +83,15 @@ public class ContextAwareTests
     }
 
     /// <summary>
-    ///     测试 GetContext 方法在未设置上下文时的行为
-    ///     验证当内部 Context 为 null 时，GetContext 方法不会抛出异常
-    ///     此时应返回第一个架构上下文（在测试环境中验证不抛出异常即可）
+    ///     测试 GetContext 方法在未设置上下文时会回退到当前活动上下文
     /// </summary>
     [Test]
-    public void GetContext_Should_Return_FirstArchitectureContext_When_Not_Set()
+    public void GetContext_Should_Return_CurrentArchitectureContext_When_Not_Set()
     {
-        // Arrange - 暂时不调用 SetContext，让 Context 为 null
         IContextAware aware = _contextAware;
 
-        // Act - 当 Context 为 null 时，应该返回第一个 Architecture Context
-        // 由于测试环境中没有实际的 Architecture Context，这里只测试调用不会抛出异常
-        // 在实际使用中，当 Context 为 null 时会调用 GameContext.GetFirstArchitectureContext()
+        var result = aware.GetContext();
 
-        // Assert - 验证在没有设置 Context 时的行为
-        // 注意：由于测试环境中可能没有 Architecture Context，这里我们只测试不抛出异常
-        Assert.DoesNotThrow(() => aware.GetContext());
+        Assert.That(result, Is.SameAs(_mockContext));
     }
 }

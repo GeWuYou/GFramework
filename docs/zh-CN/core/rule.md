@@ -90,7 +90,7 @@ public abstract class ContextAwareBase : IContextAware
 
 - `Context` 属性 - 存储架构上下文的引用
 - `OnContextReady()` 钩子 - 在上下文设置完成后调用，用于初始化逻辑
-- 自动回退机制 - 如果上下文未被显式设置，会自动从 `GameContext.GetFirstArchitectureContext()` 获取
+- 自动回退机制 - 如果上下文未被显式设置，会自动从 `GameContext.GetFirstArchitectureContext()` 获取当前活动上下文
 
 ## 扩展方法：框架能力的来源
 
@@ -310,7 +310,7 @@ public class SaveManager : ContextAwareBase
 
 ### 回退机制
 
-如果组件的上下文未被显式设置，`GetContext()` 会自动尝试从 `GameContext.GetFirstArchitectureContext()` 获取。这提供了一个安全的回退机制。
+如果组件的上下文未被显式设置，`GetContext()` 会自动尝试从 `GameContext.GetFirstArchitectureContext()` 获取当前活动上下文。这提供了一个安全的回退机制。
 
 ```csharp
 IArchitectureContext IContextAware.GetContext()
