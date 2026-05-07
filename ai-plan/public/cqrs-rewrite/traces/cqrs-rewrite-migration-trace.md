@@ -2,6 +2,38 @@
 
 ## 2026-05-07
 
+### 阶段：PR #334 legacy bridge / 文档 review 收尾（CQRS-REWRITE-RP-094）
+
+- 使用 `$gframework-pr-review` 抓取当前分支公开 PR，确认 `feat/cqrs-optimization` 当前对应 `PR #334`
+- latest-head open AI review 复核后，主线程接受并执行的修复集中在六类：
+  - `GFramework.Core.Tests/Architectures/ArchitectureContextTests.cs` 通过字符串字面量反射实例化内部 bridge handler，维护成本高且不利于 rename-safe 重构
+  - `ArchitectureModulesBehaviorTests` 在断言失败路径下未保证 `DestroyAsync()` 执行，且 `TearDown` 未重置 `LegacyBridgePipelineTracker`
+  - `LegacyBridgePipelineTracker` 以静态共享计数器记录 bridge pipeline 命中，但未文档化线程安全语义，且用字符串匹配类型名识别 bridge request
+  - `LegacyAsyncQueryDispatchRequestHandler` / `LegacyAsyncCommandResultDispatchRequestHandler` 丢弃了 runtime 传入的 `CancellationToken`
+  - `CommandExecutorModule` / `QueryExecutorModule` / `AsyncQueryExecutorModule` 依赖 `container.Get<ICqrsRuntime>()` 的隐式注册顺序，但此前既未显式失败，也未写进 API 契约
+  - 多个 legacy bridge request / docs 页面仍缺 XML 文档或回退边界说明
+- 本轮主线程决策：
+  - 为 `GFramework.Core` 新增 `Properties/AssemblyInfo.cs`，用 `InternalsVisibleTo("GFramework.Core.Tests")` 让测试直接实例化内部 handler
+  - 把 `ArchitectureContextTests.RegisterLegacyBridgeHandlers` 改成显式构造 6 个 handler，移除字符串反射装配
+  - 为 bridge 相关测试补 `TearDown` 清理和 `try/finally` 销毁，减少失败路径资源泄露
+  - 为 `LegacyBridgePipelineTracker` 增补 `<remarks>`，并改用 `typeof(LegacyCqrsDispatchRequestBase).IsAssignableFrom(requestType)` 识别 bridge request
+  - 为 `LegacyAsyncQueryDispatchRequestHandler` / `LegacyAsyncCommandResultDispatchRequestHandler` 加入预取消检查与 `WaitAsync(cancellationToken)`
+  - 将三个 executor module 改为 `GetRequired<ICqrsRuntime>()`，同时在 XML 文档中显式声明 `CqrsRuntimeModule` 的前置注册约束
+  - 为 `CommandExecutor` / `QueryExecutor` / `AsyncQueryExecutor` 的 dispatch-context helper 增加 `[MemberNotNullWhen]`，收敛重复 `_runtime is not null` 判空与 null-forgiving
+  - 补齐 legacy bridge request / handler 的 XML 文档，以及 `docs/zh-CN/core/command.md`、`context.md` 的 fallback 边界说明
+- 本轮没有跟进的 thread：
+  - `GFramework.Cqrs.Benchmarks/Messaging/RequestLifetimeBenchmarks.cs` 的 `sealed` 建议属于低价值性能/风格提示，不影响 `PR #334` 的行为正确性
+  - 若 review 在 GitHub 重新索引前仍显示旧 thread，下一轮以最新 head commit 再次抓取为准，不在本地重复造改动
+- 本轮权威验证：
+  - `dotnet build GFramework.Core/GFramework.Core.csproj -c Release`
+    - 结果：通过，`0 warning / 0 error`
+  - `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --filter "FullyQualifiedName~ArchitectureContextTests|FullyQualifiedName~ArchitectureModulesBehaviorTests|FullyQualifiedName~CommandExecutorTests|FullyQualifiedName~QueryExecutorTests|FullyQualifiedName~AsyncQueryExecutorTests"`
+    - 结果：通过，`48/48` passed
+  - `env GIT_DIR=... GIT_WORK_TREE=... python3 scripts/license-header.py --check`
+    - 结果：通过
+  - `git diff --check`
+    - 结果：通过
+
 ### 阶段：legacy Core CQRS -> GFramework.Cqrs bridge（CQRS-REWRITE-RP-093）
 
 - 延续 `$gframework-batch-boot 50`，本轮明确不只盯 benchmark，而是同时处理两个目标：

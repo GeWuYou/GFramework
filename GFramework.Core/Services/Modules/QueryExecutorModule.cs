@@ -33,11 +33,19 @@ public sealed class QueryExecutorModule : IServiceModule
     ///     注册查询执行器到依赖注入容器。
     ///     创建查询执行器实例并将其注册为多例服务。
     /// </summary>
-    /// <param name="container">依赖注入容器实例。</param>
+    /// <param name="container">承载查询执行器与 CQRS runtime 的依赖注入容器实例。</param>
+    /// <exception cref="ArgumentNullException"><paramref name="container" /> 为 <see langword="null" />。</exception>
+    /// <exception cref="InvalidOperationException">
+    ///     容器中尚未注册唯一的 <see cref="ICqrsRuntime" /> 实例，无法构建统一 runtime 版本的查询执行器。
+    /// </exception>
+    /// <remarks>
+    ///     该模块会在注册阶段立即解析 <see cref="ICqrsRuntime" />，因此
+    ///     <see cref="CqrsRuntimeModule" /> 必须先于当前模块完成注册。
+    /// </remarks>
     public void Register(IIocContainer container)
     {
         ArgumentNullException.ThrowIfNull(container);
-        container.RegisterPlurality(new QueryExecutor(container.Get<ICqrsRuntime>()));
+        container.RegisterPlurality(new QueryExecutor(container.GetRequired<ICqrsRuntime>()));
     }
 
     /// <summary>

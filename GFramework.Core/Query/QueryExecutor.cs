@@ -1,6 +1,7 @@
 ﻿// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Diagnostics.CodeAnalysis;
 using GFramework.Core.Abstractions.Query;
 using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Cqrs;
@@ -35,7 +36,7 @@ public sealed class QueryExecutor(ICqrsRuntime? runtime = null) : IQueryExecutor
     {
         ArgumentNullException.ThrowIfNull(query);
 
-        if (TryResolveDispatchContext(query, out var context) && _runtime is not null)
+        if (TryResolveDispatchContext(query, out var context))
         {
             var boxedResult = _runtime.SendAsync(
                     context,
@@ -57,7 +58,10 @@ public sealed class QueryExecutor(ICqrsRuntime? runtime = null) : IQueryExecutor
     /// <param name="query">即将执行的 legacy 查询对象。</param>
     /// <param name="context">命中时返回可用于 CQRS runtime 的架构上下文。</param>
     /// <returns>如果既接入了 runtime 且查询对象提供了上下文，则返回 <see langword="true" />。</returns>
-    private bool TryResolveDispatchContext(object query, out GFramework.Core.Abstractions.Architectures.IArchitectureContext context)
+    [MemberNotNullWhen(true, nameof(_runtime))]
+    private bool TryResolveDispatchContext(
+        object query,
+        out GFramework.Core.Abstractions.Architectures.IArchitectureContext context)
     {
         context = null!;
 

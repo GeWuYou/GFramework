@@ -7,9 +7,9 @@ CQRS 迁移与收敛。
 
 ## 当前恢复点
 
-- 恢复点编号：`CQRS-REWRITE-RP-093`
+- 恢复点编号：`CQRS-REWRITE-RP-094`
 - 当前阶段：`Phase 8`
-- 当前 PR 锚点：`待创建（当前分支 feat/cqrs-optimization 尚未为 RP-092 建立新 PR）`
+- 当前 PR 锚点：`PR #334`
 - 当前结论：
   - `GFramework.Cqrs` 已完成对外部 `Mediator` 的生产级替代，当前主线已从“是否可替代”转向“仓库内部收口与能力深化顺序”
   - `dispatch/invoker` 生成前移已扩展到 request / stream 路径，`RP-077` 已补齐 request invoker provider gate 与 stream gate 对称的 descriptor / descriptor entry runtime 合同回归
@@ -28,8 +28,9 @@ CQRS 迁移与收敛。
   - 当前 `RP-090` 已收敛 `PR #326` benchmark review：统一 benchmark 最小宿主构建、冻结 GFramework 容器、限制 MediatR 扫描范围，并恢复 request startup cold-start 对照
   - 当前 `RP-091` 已把 benchmark 项目发布面隔离与包清单校验前移到 PR：`GFramework.Cqrs.Benchmarks` 明确保持不可打包，`publish.yml` 与 `ci.yml` 复用同一份 packed-modules 校验脚本
   - `RP-092` 已补齐 request handler `Singleton / Transient` 生命周期矩阵 benchmark，并明确把 `Scoped` 对照留到具备真实显式作用域边界的宿主模型后再评估
-  - 当前 `RP-093` 已把 `GFramework.Core` 的 legacy `SendCommand` / `SendQuery` 兼容入口收敛到底层统一 `GFramework.Cqrs` runtime，同时补充 `Mediator` 未吸收能力差距复核
-- `ai-plan` active 入口现以 `RP-093` 为最新恢复锚点；`PR #331`、`PR #326`、`PR #323`、`PR #307` 与其他更早阶段细节均以下方归档或说明为准
+  - `RP-093` 已把 `GFramework.Core` 的 legacy `SendCommand` / `SendQuery` 兼容入口收敛到底层统一 `GFramework.Cqrs` runtime，同时补充 `Mediator` 未吸收能力差距复核
+  - 当前 `RP-094` 已按 `PR #334` latest-head review 收口 legacy bridge 的测试注册方式、模块运行时依赖契约、异步取消语义、XML 文档缺口与兼容文档回退边界
+- `ai-plan` active 入口现以 `RP-094` 为最新恢复锚点；`PR #334`、`PR #331`、`PR #326`、`PR #323`、`PR #307` 与其他更早阶段细节均以下方归档或说明为准
 
 ## 当前活跃事实
 
@@ -41,6 +42,9 @@ CQRS 迁移与收敛。
 - `GFramework.Core` 当前已通过内部 bridge request / handler 把 legacy `ICommand`、`IAsyncCommand`、`IQuery`、`IAsyncQuery` 接到统一 `ICqrsRuntime`
 - 标准 `Architecture` 初始化路径会自动扫描 `GFramework.Core` 程序集中的 legacy bridge handler，因此旧 `SendCommand(...)` / `SendQuery(...)` 无需改变用法即可进入统一 pipeline
 - `CommandExecutor`、`QueryExecutor`、`AsyncQueryExecutor` 仍保留“无 runtime 时直接执行”的回退路径，用于不依赖容器的隔离单元测试
+- `GFramework.Core.Tests` 现通过 `InternalsVisibleTo("GFramework.Core.Tests")` 直接实例化内部 bridge handler，不再依赖字符串反射装配测试桥接注册
+- `CommandExecutorModule`、`QueryExecutorModule`、`AsyncQueryExecutorModule` 现改为 `GetRequired<ICqrsRuntime>()` 并在 XML 文档里显式声明注册顺序契约，避免 runtime 缺失时静默回退
+- `LegacyAsyncQueryDispatchRequestHandler` 与 `LegacyAsyncCommandResultDispatchRequestHandler` 现通过 `ThrowIfCancellationRequested()` + `WaitAsync(cancellationToken)` 显式保留调用方取消可见性
 - 相对 `ai-libs/Mediator`，当前仍未完全吸收的能力集中在六类：facade 公开入口、telemetry、stream pipeline、notification publisher 策略、生成器配置与诊断、生命周期/缓存公开配置面
 - 发布工作流已有 packed modules 校验，但 PR 工作流此前没有等价的 solution pack 产物名单校验
 - 本地 `dotnet pack GFramework.sln -c Release --no-restore -o <temp-dir>` 当前只产出 14 个预期包，未复现 benchmark `.nupkg`
@@ -51,6 +55,7 @@ CQRS 迁移与收敛。
 - 已新增手动触发的 benchmark workflow；默认只验证 benchmark 项目 Release build，只有显式提供过滤器时才执行 BenchmarkDotNet 运行；过滤器输入现通过环境变量传入 shell，避免 workflow_dispatch 输入直接插值到命令行
 - 远端 `CTRF` 最新汇总为 `2274/2274` passed
 - `MegaLinter` 当前只暴露 `dotnet-format` 的 `Restore operation failed` 环境噪音，尚未提供本地仍成立的文件级格式诊断
+- `PR #334` 当前 latest-head open AI feedback 已集中到 legacy bridge / 文档收尾；本轮本地修复后，剩余 thread 应主要是待 GitHub 重新索引的状态差异或低价值建议
 
 ## 当前风险
 
@@ -61,6 +66,7 @@ CQRS 迁移与收敛。
 - 仓库内部仍保留旧 `Command` / `Query` API、`LegacyICqrsRuntime` alias 与部分历史命名语义，后续若不继续分批收口，容易混淆“对外替代已完成”与“内部收口未完成”
 - 若继续扩大 generated invoker 覆盖面，需要持续区分“可静态表达的合同”与 `PreciseReflectedRegistrationSpec` 等仍需保守回退的场景
 - legacy bridge 当前只为已有 `Command` / `Query` 兼容入口接到统一 request pipeline；若后续要继续对齐 `Mediator`，仍需要单独设计 stream pipeline、telemetry 与 facade 公开面，而不是把这次 bridge 当成“全部收口完成”
+- `LegacyBridgePipelineTracker` 仍是进程级静态测试辅助；虽然现在已在相关 fixture 清理阶段重置并补充线程安全说明，但若将来扩大并行 bridge fixture 数量，仍要继续控制共享状态扩散
 
 ## 最近权威验证
 
@@ -108,12 +114,25 @@ CQRS 迁移与收敛。
   - 结果：通过
 - `git diff --check`
   - 结果：通过
+- `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output /tmp/current-pr-review.json`
+  - 结果：通过
+  - 备注：确认当前分支对应 `PR #334`；仍有效的 latest-head review 已收敛到 legacy bridge 测试装配、运行时依赖契约、异步取消、XML 文档与兼容文档边界
+- `dotnet build GFramework.Core/GFramework.Core.csproj -c Release`
+  - 结果：通过，`0 warning / 0 error`
+  - 备注：修复新增 XML 文档 warning 后复跑，当前 `GFramework.Core` 三个 target framework 均已干净通过
+- `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --filter "FullyQualifiedName~ArchitectureContextTests|FullyQualifiedName~ArchitectureModulesBehaviorTests|FullyQualifiedName~CommandExecutorTests|FullyQualifiedName~QueryExecutorTests|FullyQualifiedName~AsyncQueryExecutorTests"`
+  - 结果：通过，`48/48` passed
+  - 备注：覆盖 legacy bridge 兼容入口、测试装配、执行器 runtime fallback 与相关模块行为
+- `env GIT_DIR=... GIT_WORK_TREE=... python3 scripts/license-header.py --check`
+  - 结果：通过
+- `git diff --check`
+  - 结果：通过
 
 ## 下一推荐步骤
 
-1. 若继续沿用 `$gframework-batch-boot 50` 且优先处理 `Mediator` 能力吸收，下一批建议从 `stream pipeline` 或 `notification publisher` 策略中选择一个独立切片推进
-2. 若继续收敛 legacy Core CQRS，可评估是否补一个 `IMediator` 风格 facade，而不是继续扩大 `ArchitectureContext` 兼容入口的职责
-3. 若回到 benchmark 方向，优先补 `stream handler` 生命周期矩阵；若要扩到 `Scoped` 生命周期，先为 benchmark 宿主设计真实显式 scope 基线
+1. 先用新提交和最新 CI 再跑一次 `$gframework-pr-review`，确认 `PR #334` 的 latest-head open threads 是否已实质清空
+2. 若继续沿用 `$gframework-batch-boot 50` 且优先处理 `Mediator` 能力吸收，下一批建议从 `stream pipeline` 或 `notification publisher` 策略中选择一个独立切片推进
+3. 若继续收敛 legacy Core CQRS，可评估是否补一个 `IMediator` 风格 facade，而不是继续扩大 `ArchitectureContext` 兼容入口的职责
 
 ## 活跃文档
 

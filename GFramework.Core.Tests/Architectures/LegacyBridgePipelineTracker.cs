@@ -2,12 +2,19 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Threading;
+using GFramework.Core.Cqrs;
 
 namespace GFramework.Core.Tests.Architectures;
 
 /// <summary>
 ///     为 legacy bridge pipeline 回归测试保存跨泛型闭包共享的计数状态。
 /// </summary>
+/// <remarks>
+///     该计数器通过 <see cref="Interlocked.Increment(ref int)" /> 原子递增，并使用
+///     <see cref="Volatile" /> 读写，因此单次读写操作本身是线程安全的。
+///     由于状态在同一进程内跨 fixture 共享，所有使用它的测试都必须在清理阶段调用 <see cref="Reset" />，
+///     以避免并行或失败测试把旧计数泄露给后续断言。
+/// </remarks>
 public static class LegacyBridgePipelineTracker
 {
     private static int _invocationCount;
@@ -32,8 +39,7 @@ public static class LegacyBridgePipelineTracker
     {
         ArgumentNullException.ThrowIfNull(requestType);
 
-        if (string.Equals(requestType.Namespace, "GFramework.Core.Cqrs", StringComparison.Ordinal) &&
-            requestType.Name.Contains("Legacy", StringComparison.Ordinal))
+        if (typeof(LegacyCqrsDispatchRequestBase).IsAssignableFrom(requestType))
         {
             Interlocked.Increment(ref _invocationCount);
         }

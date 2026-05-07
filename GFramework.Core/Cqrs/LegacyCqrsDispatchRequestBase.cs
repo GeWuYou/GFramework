@@ -6,6 +6,7 @@ namespace GFramework.Core.Cqrs;
 /// <summary>
 ///     为 legacy Command / Query 到自有 CQRS runtime 的桥接请求提供共享的目标对象封装。
 /// </summary>
+/// <param name="target">需要在 bridge handler 中接收上下文注入的 legacy 目标对象。</param>
 internal abstract class LegacyCqrsDispatchRequestBase(object target)
 {
     /// <summary>

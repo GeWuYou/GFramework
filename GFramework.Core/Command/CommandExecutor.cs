@@ -1,6 +1,7 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Diagnostics.CodeAnalysis;
 using GFramework.Core.Abstractions.Command;
 using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Cqrs;
@@ -77,7 +78,7 @@ public sealed class CommandExecutor(ICqrsRuntime? runtime = null) : ICommandExec
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        if (TryResolveDispatchContext(command, out var context) && _runtime is not null)
+        if (TryResolveDispatchContext(command, out var context))
         {
             return _runtime.SendAsync(context, new LegacyAsyncCommandDispatchRequest(command)).AsTask();
         }
@@ -96,9 +97,9 @@ public sealed class CommandExecutor(ICqrsRuntime? runtime = null) : ICommandExec
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        if (TryResolveDispatchContext(command, out var context) && _runtime is not null)
+        if (TryResolveDispatchContext(command, out var context))
         {
-            return BridgeAsyncCommandWithResultAsync(context, command);
+            return BridgeAsyncCommandWithResultAsync(_runtime, context, command);
         }
 
         return command.ExecuteAsync();
@@ -118,7 +119,7 @@ public sealed class CommandExecutor(ICqrsRuntime? runtime = null) : ICommandExec
         where TTarget : class
         where TRequest : IRequest<Unit>
     {
-        if (!TryResolveDispatchContext(target, out var context) || _runtime is null)
+        if (!TryResolveDispatchContext(target, out var context))
         {
             return false;
         }
@@ -144,7 +145,7 @@ public sealed class CommandExecutor(ICqrsRuntime? runtime = null) : ICommandExec
         where TTarget : class
         where TRequest : IRequest<object?>
     {
-        if (!TryResolveDispatchContext(target, out var context) || _runtime is null)
+        if (!TryResolveDispatchContext(target, out var context))
         {
             result = default;
             return false;
@@ -159,14 +160,16 @@ public sealed class CommandExecutor(ICqrsRuntime? runtime = null) : ICommandExec
     ///     通过统一 CQRS runtime 异步执行 legacy 带返回值命令，并把装箱结果还原为目标类型。
     /// </summary>
     /// <typeparam name="TResult">命令返回值类型。</typeparam>
+    /// <param name="runtime">负责调度当前 bridge request 的统一 CQRS runtime。</param>
     /// <param name="context">当前架构上下文。</param>
     /// <param name="command">要桥接的 legacy 命令。</param>
     /// <returns>命令执行结果。</returns>
-    private async Task<TResult> BridgeAsyncCommandWithResultAsync<TResult>(
+    private static async Task<TResult> BridgeAsyncCommandWithResultAsync<TResult>(
+        ICqrsRuntime runtime,
         GFramework.Core.Abstractions.Architectures.IArchitectureContext context,
         IAsyncCommand<TResult> command)
     {
-        var boxedResult = await _runtime!.SendAsync(
+        var boxedResult = await runtime.SendAsync(
                 context,
                 new LegacyAsyncCommandResultDispatchRequest(
                     command,
@@ -181,7 +184,10 @@ public sealed class CommandExecutor(ICqrsRuntime? runtime = null) : ICommandExec
     /// <param name="target">即将执行的 legacy 目标对象。</param>
     /// <param name="context">命中时返回可用于 CQRS runtime 的架构上下文。</param>
     /// <returns>如果既接入了 runtime 且目标对象提供了上下文，则返回 <see langword="true" />。</returns>
-    private bool TryResolveDispatchContext(object target, out GFramework.Core.Abstractions.Architectures.IArchitectureContext context)
+    [MemberNotNullWhen(true, nameof(_runtime))]
+    private bool TryResolveDispatchContext(
+        object target,
+        out GFramework.Core.Abstractions.Architectures.IArchitectureContext context)
     {
         context = null!;
 

@@ -37,6 +37,7 @@ public class ArchitectureModulesBehaviorTests
     {
         GameContext.Clear();
         TrackingPipelineBehavior<ModuleBehaviorRequest, string>.InvocationCount = 0;
+        LegacyBridgePipelineTracker.Reset();
     }
 
     /// <summary>
@@ -49,15 +50,19 @@ public class ArchitectureModulesBehaviorTests
         var architecture = new ModuleTestArchitecture(target => target.InstallModule(module));
 
         await architecture.InitializeAsync();
-
-        Assert.Multiple(() =>
+        try
         {
-            Assert.That(module.InstalledArchitecture, Is.SameAs(architecture));
-            Assert.That(module.InstallCallCount, Is.EqualTo(1));
-            Assert.That(architecture.Context.GetUtility<InstalledByModuleUtility>(), Is.Not.Null);
-        });
-
-        await architecture.DestroyAsync();
+            Assert.Multiple(() =>
+            {
+                Assert.That(module.InstalledArchitecture, Is.SameAs(architecture));
+                Assert.That(module.InstallCallCount, Is.EqualTo(1));
+                Assert.That(architecture.Context.GetUtility<InstalledByModuleUtility>(), Is.Not.Null);
+            });
+        }
+        finally
+        {
+            await architecture.DestroyAsync();
+        }
     }
 
     /// <summary>
@@ -70,16 +75,20 @@ public class ArchitectureModulesBehaviorTests
             target.RegisterCqrsPipelineBehavior<TrackingPipelineBehavior<ModuleBehaviorRequest, string>>());
 
         await architecture.InitializeAsync();
-
-        var response = await architecture.Context.SendRequestAsync(new ModuleBehaviorRequest());
-
-        Assert.Multiple(() =>
+        try
         {
-            Assert.That(response, Is.EqualTo("handled"));
-            Assert.That(TrackingPipelineBehavior<ModuleBehaviorRequest, string>.InvocationCount, Is.EqualTo(1));
-        });
+            var response = await architecture.Context.SendRequestAsync(new ModuleBehaviorRequest());
 
-        await architecture.DestroyAsync();
+            Assert.Multiple(() =>
+            {
+                Assert.That(response, Is.EqualTo("handled"));
+                Assert.That(TrackingPipelineBehavior<ModuleBehaviorRequest, string>.InvocationCount, Is.EqualTo(1));
+            });
+        }
+        finally
+        {
+            await architecture.DestroyAsync();
+        }
     }
 
     /// <summary>
@@ -93,23 +102,27 @@ public class ArchitectureModulesBehaviorTests
         var architecture = new LegacyBridgeArchitecture();
 
         await architecture.InitializeAsync();
-
-        var query = new LegacyArchitectureBridgeQuery();
-        var command = new LegacyArchitectureBridgeCommand();
-
-        var queryResult = architecture.Context.SendQuery(query);
-        architecture.Context.SendCommand(command);
-
-        Assert.Multiple(() =>
+        try
         {
-            Assert.That(queryResult, Is.EqualTo(24));
-            Assert.That(query.ObservedContext, Is.SameAs(architecture.Context));
-            Assert.That(command.Executed, Is.True);
-            Assert.That(command.ObservedContext, Is.SameAs(architecture.Context));
-            Assert.That(LegacyBridgePipelineTracker.InvocationCount, Is.EqualTo(2));
-        });
+            var query = new LegacyArchitectureBridgeQuery();
+            var command = new LegacyArchitectureBridgeCommand();
 
-        await architecture.DestroyAsync();
+            var queryResult = architecture.Context.SendQuery(query);
+            architecture.Context.SendCommand(command);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(queryResult, Is.EqualTo(24));
+                Assert.That(query.ObservedContext, Is.SameAs(architecture.Context));
+                Assert.That(command.Executed, Is.True);
+                Assert.That(command.ObservedContext, Is.SameAs(architecture.Context));
+                Assert.That(LegacyBridgePipelineTracker.InvocationCount, Is.EqualTo(2));
+            });
+        }
+        finally
+        {
+            await architecture.DestroyAsync();
+        }
     }
 
     /// <summary>

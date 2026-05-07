@@ -10,6 +10,7 @@ using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Query;
 using GFramework.Core.Architectures;
 using GFramework.Core.Command;
+using GFramework.Core.Cqrs;
 using GFramework.Core.Environment;
 using GFramework.Core.Events;
 using GFramework.Core.Ioc;
@@ -45,6 +46,9 @@ namespace GFramework.Core.Tests.Architectures;
 [TestFixture]
 public class ArchitectureContextTests
 {
+    /// <summary>
+    ///     初始化测试所需的容器与默认服务实例。
+    /// </summary>
     [SetUp]
     public void SetUp()
     {
@@ -76,6 +80,16 @@ public class ArchitectureContextTests
         RegisterLegacyBridgeHandlers(_container);
 
         _context = new ArchitectureContext(_container);
+    }
+
+    /// <summary>
+    ///     释放当前测试创建的容器，并清理 legacy bridge 共享计数状态。
+    /// </summary>
+    [TearDown]
+    public void TearDown()
+    {
+        LegacyBridgePipelineTracker.Reset();
+        _container?.Dispose();
     }
 
     private AsyncQueryExecutor? _asyncQueryBus;
@@ -258,34 +272,19 @@ public class ArchitectureContextTests
     }
 
     /// <summary>
-    ///     通过反射把 GFramework.Core 内部的 legacy bridge handler 实例预先注册成可见的实例绑定。
+    ///     把 GFramework.Core 内部的 legacy bridge handler 实例预先注册成可见的实例绑定。
     /// </summary>
     /// <param name="container">目标测试容器。</param>
     private static void RegisterLegacyBridgeHandlers(MicrosoftDiContainer container)
     {
         ArgumentNullException.ThrowIfNull(container);
 
-        string[] handlerTypeNames =
-        [
-            "LegacyCommandDispatchRequestHandler",
-            "LegacyCommandResultDispatchRequestHandler",
-            "LegacyAsyncCommandDispatchRequestHandler",
-            "LegacyAsyncCommandResultDispatchRequestHandler",
-            "LegacyQueryDispatchRequestHandler",
-            "LegacyAsyncQueryDispatchRequestHandler"
-        ];
-
-        var coreAssembly = typeof(ArchitectureContext).Assembly;
-
-        foreach (var handlerTypeName in handlerTypeNames)
-        {
-            var handlerType = coreAssembly.GetType($"GFramework.Core.Cqrs.{handlerTypeName}")
-                              ?? throw new InvalidOperationException($"Bridge handler type '{handlerTypeName}' was not found.");
-            var handlerInstance = Activator.CreateInstance(handlerType)
-                                  ?? throw new InvalidOperationException(
-                                      $"Bridge handler type '{handlerType.FullName}' could not be instantiated.");
-            container.RegisterPlurality(handlerInstance);
-        }
+        container.RegisterPlurality(new LegacyCommandDispatchRequestHandler());
+        container.RegisterPlurality(new LegacyCommandResultDispatchRequestHandler());
+        container.RegisterPlurality(new LegacyAsyncCommandDispatchRequestHandler());
+        container.RegisterPlurality(new LegacyAsyncCommandResultDispatchRequestHandler());
+        container.RegisterPlurality(new LegacyQueryDispatchRequestHandler());
+        container.RegisterPlurality(new LegacyAsyncQueryDispatchRequestHandler());
     }
 
     /// <summary>

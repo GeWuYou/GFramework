@@ -113,7 +113,7 @@ this.SendEvent(new PlayerDiedEvent());
 
 在标准 `Architecture` 初始化路径里，这些旧入口现在会复用同一个 `ICqrsRuntime`：
 旧 `SendCommand(...)` / `SendQuery(...)` 仍保持原有调用方式，但会经过统一的 request pipeline 与上下文注入链路。
-只有在你直接 `new CommandExecutor()`、`new QueryExecutor()` 做隔离测试，且没有提供 runtime 时，才会回退到 legacy 直接执行。
+只有在你直接 `new CommandExecutor()`、`new QueryExecutor()` 或 `new AsyncQueryExecutor()` 做隔离测试，且没有提供 `ICqrsRuntime` 时，才会回退到 legacy 直接执行；此时 `SendQueryAsync(...)` 兼容入口也会沿用同样的 legacy 路径，而不会进入统一 runtime pipeline。
 
 ## 新 CQRS 入口
 

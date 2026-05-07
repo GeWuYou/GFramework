@@ -1,6 +1,7 @@
 ﻿// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Diagnostics.CodeAnalysis;
 using GFramework.Core.Abstractions.Query;
 using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Cqrs;
@@ -30,9 +31,9 @@ public sealed class AsyncQueryExecutor(ICqrsRuntime? runtime = null) : IAsyncQue
     {
         ArgumentNullException.ThrowIfNull(query);
 
-        if (TryResolveDispatchContext(query, out var context) && _runtime is not null)
+        if (TryResolveDispatchContext(query, out var context))
         {
-            return BridgeAsyncQueryAsync<TResult>(context, query);
+            return BridgeAsyncQueryAsync(_runtime, context, query);
         }
 
         return query.DoAsync();
@@ -42,14 +43,16 @@ public sealed class AsyncQueryExecutor(ICqrsRuntime? runtime = null) : IAsyncQue
     ///     通过统一 CQRS runtime 异步执行 legacy 查询，并把装箱结果还原为目标类型。
     /// </summary>
     /// <typeparam name="TResult">查询结果类型。</typeparam>
+    /// <param name="runtime">负责调度当前 bridge request 的统一 CQRS runtime。</param>
     /// <param name="context">当前架构上下文。</param>
     /// <param name="query">要桥接的 legacy 查询。</param>
     /// <returns>查询执行结果。</returns>
-    private async Task<TResult> BridgeAsyncQueryAsync<TResult>(
+    private static async Task<TResult> BridgeAsyncQueryAsync<TResult>(
+        ICqrsRuntime runtime,
         GFramework.Core.Abstractions.Architectures.IArchitectureContext context,
         IAsyncQuery<TResult> query)
     {
-        var boxedResult = await _runtime!.SendAsync(
+        var boxedResult = await runtime.SendAsync(
                 context,
                 new LegacyAsyncQueryDispatchRequest(
                     query,
@@ -64,7 +67,10 @@ public sealed class AsyncQueryExecutor(ICqrsRuntime? runtime = null) : IAsyncQue
     /// <param name="query">即将执行的 legacy 查询对象。</param>
     /// <param name="context">命中时返回可用于 CQRS runtime 的架构上下文。</param>
     /// <returns>如果既接入了 runtime 且查询对象提供了上下文，则返回 <see langword="true" />。</returns>
-    private bool TryResolveDispatchContext(object query, out GFramework.Core.Abstractions.Architectures.IArchitectureContext context)
+    [MemberNotNullWhen(true, nameof(_runtime))]
+    private bool TryResolveDispatchContext(
+        object query,
+        out GFramework.Core.Abstractions.Architectures.IArchitectureContext context)
     {
         context = null!;
 
