@@ -1,5 +1,216 @@
 # CQRS 重写迁移追踪
 
+## 2026-05-07
+
+### 阶段：PR #334 latest-head helper 异常边界收口（CQRS-REWRITE-RP-098）
+
+- 再次使用 `$gframework-pr-review` 抓取 `feat/cqrs-optimization` 对应的 `PR #334` latest-head review，并重新核对 `/tmp/current-pr-review.json` 中最新 open thread：
+  - 当前公开 PR 仍为 `PR #334`
+  - `CodeRabbit` 最新 review 在 `2026-05-07T12:20:24Z` 为 `APPROVED`
+  - latest-head 当前显示 `CodeRabbit 10` / `Greptile 5` 个 open thread
+- 本轮逐条回到本地代码后，确认大多数 open thread 仍是 stale 状态；唯一继续成立的问题集中在 `LegacyCqrsDispatchHelper.TryResolveDispatchContext(...)`：
+  - 该 helper 之前会把 `IContextAware.GetContext()` 抛出的任意 `InvalidOperationException` 都吞掉并回退到 legacy 直执行
+  - 这会把真实运行时故障误判为“上下文未就绪”，导致 bridge 路径悄悄绕过统一 runtime，退化为难以诊断的行为差异
+- 本轮主线程决策：
+  - 将异常过滤收窄为只接受两类缺上下文信号：`Architecture context has not been set...` 与 `No active architecture context is currently bound.`
+  - 其他 `InvalidOperationException` 一律继续向上传播，避免掩盖容器、生命周期或自定义 `GetContext()` 内的真实错误
+  - 在 `CommandExecutorTests` 中新增两条回归：一条验证缺上下文时仍会 fallback 到 legacy 直执行；一条验证意外 `InvalidOperationException` 不会被 bridge 逻辑静默吞掉
+  - 同步刷新 `cqrs-rewrite` active tracking，把本轮修复记录为新的恢复锚点 `RP-098`
+- 本轮权威验证：
+  - `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --json-output /tmp/current-pr-review.json`
+    - 结果：通过
+  - `dotnet build GFramework.Core/GFramework.Core.csproj -c Release`
+    - 结果：通过，`0 warning / 0 error`
+  - `dotnet build GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release`
+    - 结果：通过，`0 warning / 0 error`
+  - `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --no-build --filter "FullyQualifiedName~CommandExecutorTests|FullyQualifiedName~QueryExecutorTests"`
+    - 结果：通过，`25/25` passed
+  - `python3 scripts/license-header.py --check`
+    - 结果：通过
+  - `git diff --check`
+    - 结果：通过
+
+### 阶段：PR #334 nitpick 测试收尾（CQRS-REWRITE-RP-097）
+
+- 继续处理 `PR #334` latest-head review 中仍值得本地吸收的轻量 nitpick，范围限定在 legacy bridge 测试可观察性与测试替身诊断质量：
+  - `AsyncQueryExecutorTests.SendAsync_Should_Bridge_Through_Runtime_And_Preserve_Context` 标题声明“保留上下文”，但此前只断言了返回值与 bridge request 类型
+  - `CommandExecutorTests.Send_WithResult_Should_Bridge_Through_Runtime_And_Preserve_Context` 同样缺少可观察的上下文注入断言
+  - `RecordingCqrsRuntime` 直接强转响应对象，若测试工厂回错类型，失败信息不够聚焦
+- 本轮主线程决策：
+  - 为两个 “Preserve_Context” 用例补齐 `ObservedContext` 与 `expectedContext` 的同一实例断言，使测试标题、注释与断言对象保持一致
+  - 让 `RecordingCqrsRuntime` 通过私有 helper 显式执行响应类型还原；当工厂返回 `null` 或错误装箱类型时，抛出包含 request 类型与期望/实际响应类型的 `InvalidOperationException`
+  - 同步刷新 `cqrs-rewrite` active tracking，把本轮 nitpick 收敛与验证结果记录为新的恢复锚点 `RP-097`
+- 本轮权威验证：
+  - `dotnet build GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release`
+    - 结果：通过，`0 warning / 0 error`
+  - `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --filter "FullyQualifiedName~CommandExecutorTests|FullyQualifiedName~AsyncQueryExecutorTests"`
+    - 结果：通过，`19/19` passed
+  - `python3 scripts/license-header.py --check`
+    - 结果：通过
+  - `git diff --check`
+    - 结果：通过
+
+### 阶段：PR #334 latest-head review 复核（CQRS-REWRITE-RP-096）
+
+- 再次使用 `$gframework-pr-review` 抓取 `feat/cqrs-optimization` 对应的 `PR #334` latest-head review，并读取 `/tmp/current-pr-review.json` 中的 `review_agents`、`latest_commit_review`、`megalinter_report` 与 `test_reports`
+- 本轮复核结论：
+  - 当前公开 PR 为 `PR #334`，head commit 为 `dc3bd3744e2ceaa557ef03bc991fc88daedb460b`
+  - `CodeRabbit` latest review 在 `2026-05-07T11:46:42Z` 已是 `APPROVED`，但 latest-head 仍显示 `10` 个 open thread；`Greptile` 仍显示 `3` 个 open thread
+  - 逐条回到本地代码后，相关修复已在当前分支落地：`ArchitectureBootstrapper` 已自动扫描 `typeof(ArchitectureContext).Assembly`；`ArchitectureContextTests` / `ArchitectureModulesBehaviorTests` 已标注 `NonParallelizable` 并保证资源释放；`LegacyAsync*DispatchRequestHandler` 已统一补 `ThrowIfCancellationRequested()` + `WaitAsync(cancellationToken)`；`QueryExecutor` / legacy bridge request XML 文档与 `docs/zh-CN/core/command.md` fallback 说明也已齐备
+  - 远端 CTRF 最新测试汇总为 `2311/2311 passed`（run `#1079`），`MegaLinter` 仅剩 `dotnet-format` restore failed 的环境噪音，没有新的文件级诊断
+- 主线程决策：
+  - 不再为这些 stale open thread 追加新的本地代码改动，避免重复修补已吸收的问题
+  - 仅更新 `cqrs-rewrite` active tracking/trace，把“当前剩余差异主要是 GitHub thread 状态滞后”记录为最新权威事实
+- 本轮权威验证：
+  - `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --format json --json-output /tmp/current-pr-review.json`
+    - 结果：通过
+  - `dotnet build GFramework.Core/GFramework.Core.csproj -c Release`
+    - 结果：通过，`0 warning / 0 error`
+
+### 阶段：PR #334 legacy bridge sync follow-up（CQRS-REWRITE-RP-095）
+
+- 再次使用 `$gframework-pr-review` 抓取 `feat/cqrs-optimization` 对应的 `PR #334` latest-head review，并只保留本地复核后仍成立的问题：
+  - `QueryExecutor` / `CommandExecutor` 新增的同步 bridge 仍直接阻塞 `ICqrsRuntime.SendAsync(...)`，在调用方存在 `SynchronizationContext` 时容易放大 sync-over-async 死锁面
+  - `QueryExecutor` / `CommandExecutor` / `AsyncQueryExecutor` 各自保留一份相同的 dispatch-context 解析逻辑，仍有漂移风险
+  - `ArchitectureContextTests` 的 bridge fixture 依然共享静态 tracker 且未显式声明非并行；冻结容器所有权也未交还给调用方释放
+  - `LegacyAsyncCommandDispatchRequestHandler` 仍未沿用另两个 async bridge handler 的取消可见性模式
+- 本轮主线程决策：
+  - 新增 `GFramework.Core/Cqrs/LegacyCqrsDispatchHelper.cs`，统一收口 legacy bridge 的 dispatch-context 解析，以及同步 bridge 对 `ICqrsRuntime.SendAsync(...)` 的线程池隔离等待
+  - 将 `QueryExecutor`、`CommandExecutor`、`AsyncQueryExecutor` 的重复 helper 改为复用共享 helper，并把 `ArchitectureContext` 的同步 CQRS 包装入口一并切换到同一阻塞策略，避免留下半修状态
+  - 为 `ICqrsRuntime.SendAsync(...)` 补充 `<remarks>`，显式说明 legacy 同步入口会在后台线程上等待该异步契约，处理链路不应依赖调用方 `SynchronizationContext`
+  - 把 `ArchitectureContextTests`、`ArchitectureModulesBehaviorTests` 标记为 `NonParallelizable`，并让 `CreateFrozenBridgeContext(...)` 把冻结容器通过 `out` 参数返还给每个测试在 `finally` 中释放
+  - 为 `LegacyAsyncCommandDispatchRequestHandler` 增补 `ThrowIfCancellationRequested()` + `WaitAsync(cancellationToken)`，与另外两个 async bridge handler 保持一致
+  - 新增回归测试覆盖同步 bridge 的 `SynchronizationContext` 隔离、legacy async command handler 的取消语义，以及 async/sync bridge request 的 request-type 命中
+- 本轮权威验证：
+  - `env GIT_DIR=... GIT_WORK_TREE=... python3 scripts/license-header.py --check`
+    - 结果：通过
+  - `dotnet build GFramework.Core/GFramework.Core.csproj -c Release`
+    - 结果：通过，`0 warning / 0 error`
+  - `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --filter "FullyQualifiedName~ArchitectureContextTests|FullyQualifiedName~ArchitectureModulesBehaviorTests|FullyQualifiedName~CommandExecutorTests|FullyQualifiedName~QueryExecutorTests|FullyQualifiedName~AsyncQueryExecutorTests|FullyQualifiedName~LegacyAsyncCommandDispatchRequestHandlerTests"`
+    - 结果：通过，`54/54` passed
+
+### 阶段：PR #334 legacy bridge / 文档 review 收尾（CQRS-REWRITE-RP-094）
+
+- 使用 `$gframework-pr-review` 抓取当前分支公开 PR，确认 `feat/cqrs-optimization` 当前对应 `PR #334`
+- latest-head open AI review 复核后，主线程接受并执行的修复集中在六类：
+  - `GFramework.Core.Tests/Architectures/ArchitectureContextTests.cs` 通过字符串字面量反射实例化内部 bridge handler，维护成本高且不利于 rename-safe 重构
+  - `ArchitectureModulesBehaviorTests` 在断言失败路径下未保证 `DestroyAsync()` 执行，且 `TearDown` 未重置 `LegacyBridgePipelineTracker`
+  - `LegacyBridgePipelineTracker` 以静态共享计数器记录 bridge pipeline 命中，但未文档化线程安全语义，且用字符串匹配类型名识别 bridge request
+  - `LegacyAsyncQueryDispatchRequestHandler` / `LegacyAsyncCommandResultDispatchRequestHandler` 丢弃了 runtime 传入的 `CancellationToken`
+  - `CommandExecutorModule` / `QueryExecutorModule` / `AsyncQueryExecutorModule` 依赖 `container.Get<ICqrsRuntime>()` 的隐式注册顺序，但此前既未显式失败，也未写进 API 契约
+  - 多个 legacy bridge request / docs 页面仍缺 XML 文档或回退边界说明
+- 本轮主线程决策：
+  - 为 `GFramework.Core` 新增 `Properties/AssemblyInfo.cs`，用 `InternalsVisibleTo("GFramework.Core.Tests")` 让测试直接实例化内部 handler
+  - 把 `ArchitectureContextTests.RegisterLegacyBridgeHandlers` 改成显式构造 6 个 handler，移除字符串反射装配
+  - 为 bridge 相关测试补 `TearDown` 清理和 `try/finally` 销毁，减少失败路径资源泄露
+  - 为 `LegacyBridgePipelineTracker` 增补 `<remarks>`，并改用 `typeof(LegacyCqrsDispatchRequestBase).IsAssignableFrom(requestType)` 识别 bridge request
+  - 为 `LegacyAsyncQueryDispatchRequestHandler` / `LegacyAsyncCommandResultDispatchRequestHandler` 加入预取消检查与 `WaitAsync(cancellationToken)`
+  - 将三个 executor module 改为 `GetRequired<ICqrsRuntime>()`，同时在 XML 文档中显式声明 `CqrsRuntimeModule` 的前置注册约束
+  - 为 `CommandExecutor` / `QueryExecutor` / `AsyncQueryExecutor` 的 dispatch-context helper 增加 `[MemberNotNullWhen]`，收敛重复 `_runtime is not null` 判空与 null-forgiving
+  - 补齐 legacy bridge request / handler 的 XML 文档，以及 `docs/zh-CN/core/command.md`、`context.md` 的 fallback 边界说明
+- 本轮没有跟进的 thread：
+  - `GFramework.Cqrs.Benchmarks/Messaging/RequestLifetimeBenchmarks.cs` 的 `sealed` 建议属于低价值性能/风格提示，不影响 `PR #334` 的行为正确性
+  - 若 review 在 GitHub 重新索引前仍显示旧 thread，下一轮以最新 head commit 再次抓取为准，不在本地重复造改动
+- 本轮权威验证：
+  - `dotnet build GFramework.Core/GFramework.Core.csproj -c Release`
+    - 结果：通过，`0 warning / 0 error`
+  - `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --filter "FullyQualifiedName~ArchitectureContextTests|FullyQualifiedName~ArchitectureModulesBehaviorTests|FullyQualifiedName~CommandExecutorTests|FullyQualifiedName~QueryExecutorTests|FullyQualifiedName~AsyncQueryExecutorTests"`
+    - 结果：通过，`48/48` passed
+  - `env GIT_DIR=... GIT_WORK_TREE=... python3 scripts/license-header.py --check`
+    - 结果：通过
+  - `git diff --check`
+    - 结果：通过
+
+### 阶段：legacy Core CQRS -> GFramework.Cqrs bridge（CQRS-REWRITE-RP-093）
+
+- 延续 `$gframework-batch-boot 50`，本轮明确不只盯 benchmark，而是同时处理两个目标：
+  - 复核 `ai-libs/Mediator` 还有哪些能力尚未被 `GFramework.Cqrs` 吸收
+  - 验证 `GFramework.Core` 的简单 `Command` / `Query` 兼容入口能否在不改外部用法的前提下，底层统一改走 `GFramework.Cqrs`
+- 主线程先完成 `GFramework.Core` bridge 实现收尾与测试修正：
+  - `ArchitectureContext` 的 legacy `SendCommand(...)` / `SendQuery(...)` / `SendQueryAsync(...)` 现在会创建内部 bridge request，并直接通过统一 `ICqrsRuntime` 分发
+  - `CommandExecutor`、`QueryExecutor`、`AsyncQueryExecutor` 在解析到 runtime 且目标对象可提供架构上下文时，也会复用同一条 bridge/runtime 路径
+  - 为避免破坏不依赖容器的旧测试，执行器仍保留“未接入 runtime 时直接执行”的回退语义
+- 新增 `GFramework.Core/Cqrs/Legacy*DispatchRequest*.cs` 与对应 handler，把 legacy 命令/查询包装成内部 request：
+  - bridge handler 在执行前会显式把当前 `IArchitectureContext` 注入给 `IContextAware` 目标
+  - 这让旧调用链在不改 public API 的情况下，也能复用统一 pipeline 与 handler dispatch 语义
+- 生产接线结论已经本地复核：
+  - `CqrsRuntimeModule` 只注册 runtime / registrar / registration service，本身不直接手工注册 bridge handler
+  - 默认生产路径依赖 `ArchitectureBootstrapper.ConfigureServices(...)` 自动调用 `RegisterCqrsHandlersFromAssemblies([architectureType.Assembly, typeof(ArchitectureContext).Assembly])`
+  - 因此 `GFramework.Core` 程序集中的 internal bridge handler 会在标准架构初始化阶段自动被扫描和注册，不需要业务侧手工补注册
+- 为防止以后有人改坏默认扫描范围，本轮额外补了一条更接近真实启动路径的回归：
+  - `ArchitectureModulesBehaviorTests.InitializeAsync_Should_AutoRegister_LegacyBridgeHandlers_For_Default_Core_Assemblies`
+  - 该用例通过 `Architecture.Configurator` 注册 open-generic pipeline behavior，然后直接走 `Architecture.InitializeAsync()`，验证旧 `SendCommand` / `SendQuery` 兼容入口能命中统一 pipeline
+- 只读 subagent 同步完成 `Mediator` 差距复核，接受的结论是六类未完全吸收能力：
+  - `IMediator` / `ISender` / `IPublisher` 风格 facade
+  - telemetry / tracing / metrics
+  - stream pipeline
+  - notification publisher 策略
+  - 生成器配置与诊断公开面
+  - 生命周期 / 缓存公开配置面
+- 文档与恢复入口同步更新：
+  - `docs/zh-CN/core/context.md`、`command.md`、`query.md`、`cqrs.md`
+  - `GFramework.Core/README.md`
+  - active tracking / trace 升级到 `RP-093`
+
+### 验证（RP-093）
+
+- `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --filter "FullyQualifiedName~ArchitectureContextTests|FullyQualifiedName~CommandExecutorTests|FullyQualifiedName~QueryExecutorTests|FullyQualifiedName~AsyncQueryExecutorTests"`
+  - 结果：通过，`45/45` passed
+- `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release`
+  - 结果：通过，`1644/1644` passed
+- `env GIT_DIR=... GIT_WORK_TREE=... python3 scripts/license-header.py --check`
+  - 结果：通过
+- `git diff --check`
+  - 结果：通过
+
+### 当前下一步（RP-093）
+
+1. 若继续沿用 `$gframework-batch-boot 50`，优先从 `stream pipeline` 或 `notification publisher` 策略中切一块对齐 `Mediator`
+2. 若要继续收敛 public seam，下一批优先设计 facade，而不是继续扩大 `ArchitectureContext` 的兼容职责
+
+### 阶段：request handler 生命周期矩阵 benchmark（CQRS-REWRITE-RP-092）
+
+- 使用 `$gframework-batch-boot 50` 启动本轮批次，并按技能要求先复核 `origin/main` 基线与 branch diff：
+  - `origin/main` = `2c58d8b6`，提交时间 `2026-05-07 13:24:46 +0800`
+  - 本地 `main` = `c2d22285`，已落后于 remote-tracking ref，因此不作为本轮 batch baseline
+  - 当前 `feat/cqrs-optimization` 相对 `origin/main` 的累计 branch diff 在开工前为 `0 files / 0 lines`
+- 本轮批次目标：继续推进 `GFramework.Cqrs.Benchmarks`，补一个独立、低风险、可单项目 Release 验证的 request 生命周期对照切片
+- 主线程先复核现有 benchmark 宿主与 runtime 解析路径后确认：
+  - `RequestBenchmarks` 与 `StreamingBenchmarks` 当前都固定使用单根容器宿主
+  - `MicrosoftDiContainer` 虽支持 `RegisterScoped` / `CreateScope()`，但当前 `CqrsDispatcher` 的 steady-state benchmark 路径直接从根容器解析 handler
+  - 因此若直接把 `Scoped` 注册加入现有 benchmark，会把“根作用域下的 scoped 解析”误当成公平对照，语义不成立
+- 本轮决策：
+  - 新增 `Messaging/RequestLifetimeBenchmarks.cs`
+  - 生命周期矩阵只覆盖 `Singleton / Transient`
+  - 在 XML 文档与 README 中显式注明：`Scoped` 需要等未来具备真实显式作用域边界的 benchmark host 后再比较
+- 已修改：
+  - `GFramework.Cqrs.Benchmarks/Messaging/RequestLifetimeBenchmarks.cs`
+  - `GFramework.Cqrs.Benchmarks/README.md`
+  - `ai-plan/public/cqrs-rewrite/todos/cqrs-rewrite-migration-tracking.md`
+  - `ai-plan/public/cqrs-rewrite/traces/cqrs-rewrite-migration-trace.md`
+- 预期结果：
+  - `GFramework.Cqrs.Benchmarks` 不再只覆盖“有无 generated provider / startup / pipeline”的维度，也开始覆盖 request steady-state 下的 handler 生命周期成本差异
+  - benchmark 设计继续保持“只加入语义公平的矩阵”，避免把作用域模型不对称的结论写进基线
+
+### 验证（RP-092）
+
+- `dotnet build GFramework.Cqrs.Benchmarks/GFramework.Cqrs.Benchmarks.csproj -c Release`
+  - 结果：通过，`0 warning / 0 error`
+- `dotnet run --project GFramework.Cqrs.Benchmarks/GFramework.Cqrs.Benchmarks.csproj -c Release --no-build -- --filter "*RequestLifetimeBenchmarks*" --job short --warmupCount 1 --iterationCount 1 --launchCount 1`
+  - 结果：通过（沙箱外权威结果）
+  - 备注：当前 agent 沙箱内执行同一 benchmark 会在 BenchmarkDotNet 自动生成 bootstrap 阶段失败；切换到沙箱外后，`restore/build` 自举与 6 个 benchmark case 全部通过
+  - 备注：`Singleton` 下 baseline / MediatR / GFramework 分别约 `5.633 ns / 58.687 ns / 301.731 ns`
+  - 备注：`Transient` 下 baseline / MediatR / GFramework 分别约 `5.044 ns / 52.274 ns / 287.863 ns`
+- `env GIT_DIR=... GIT_WORK_TREE=... python3 scripts/license-header.py --check`
+  - 结果：通过
+- `git diff --check`
+  - 结果：通过
+
+### 当前下一步（RP-092）
+
+1. 若 branch diff 仍明显低于 `$gframework-batch-boot 50` 阈值，下一批优先补 `stream handler` 生命周期矩阵，保持 request / stream benchmark 维度对称
+2. 若准备扩到 `Scoped` 生命周期，先为 benchmark host 设计真实显式作用域基线，再进入运行时对照
+
 ## 2026-05-06
 
 ### 阶段：PR #331 review 收尾补丁（CQRS-REWRITE-RP-091）

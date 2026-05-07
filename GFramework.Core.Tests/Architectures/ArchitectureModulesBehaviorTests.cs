@@ -6,6 +6,8 @@ using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Utility;
 using GFramework.Core.Architectures;
 using GFramework.Core.Logging;
+using GFramework.Cqrs.Abstractions.Cqrs;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GFramework.Core.Tests.Architectures;
 
@@ -13,6 +15,7 @@ namespace GFramework.Core.Tests.Architectures;
 ///     验证 Architecture 通过 <c>ArchitectureModules</c> 暴露出的模块安装与 CQRS 行为注册能力。
 ///     这些测试覆盖模块安装回调和请求管道行为接入，确保模块管理器仍然保持可观察行为不变。
 /// </summary>
+[NonParallelizable]
 [TestFixture]
 public class ArchitectureModulesBehaviorTests
 {
@@ -35,6 +38,7 @@ public class ArchitectureModulesBehaviorTests
     {
         GameContext.Clear();
         TrackingPipelineBehavior<ModuleBehaviorRequest, string>.InvocationCount = 0;
+        LegacyBridgePipelineTracker.Reset();
     }
 
     /// <summary>
@@ -47,15 +51,19 @@ public class ArchitectureModulesBehaviorTests
         var architecture = new ModuleTestArchitecture(target => target.InstallModule(module));
 
         await architecture.InitializeAsync();
-
-        Assert.Multiple(() =>
+        try
         {
-            Assert.That(module.InstalledArchitecture, Is.SameAs(architecture));
-            Assert.That(module.InstallCallCount, Is.EqualTo(1));
-            Assert.That(architecture.Context.GetUtility<InstalledByModuleUtility>(), Is.Not.Null);
-        });
-
-        await architecture.DestroyAsync();
+            Assert.Multiple(() =>
+            {
+                Assert.That(module.InstalledArchitecture, Is.SameAs(architecture));
+                Assert.That(module.InstallCallCount, Is.EqualTo(1));
+                Assert.That(architecture.Context.GetUtility<InstalledByModuleUtility>(), Is.Not.Null);
+            });
+        }
+        finally
+        {
+            await architecture.DestroyAsync();
+        }
     }
 
     /// <summary>
@@ -68,16 +76,54 @@ public class ArchitectureModulesBehaviorTests
             target.RegisterCqrsPipelineBehavior<TrackingPipelineBehavior<ModuleBehaviorRequest, string>>());
 
         await architecture.InitializeAsync();
-
-        var response = await architecture.Context.SendRequestAsync(new ModuleBehaviorRequest());
-
-        Assert.Multiple(() =>
+        try
         {
-            Assert.That(response, Is.EqualTo("handled"));
-            Assert.That(TrackingPipelineBehavior<ModuleBehaviorRequest, string>.InvocationCount, Is.EqualTo(1));
-        });
+            var response = await architecture.Context.SendRequestAsync(new ModuleBehaviorRequest());
 
-        await architecture.DestroyAsync();
+            Assert.Multiple(() =>
+            {
+                Assert.That(response, Is.EqualTo("handled"));
+                Assert.That(TrackingPipelineBehavior<ModuleBehaviorRequest, string>.InvocationCount, Is.EqualTo(1));
+            });
+        }
+        finally
+        {
+            await architecture.DestroyAsync();
+        }
+    }
+
+    /// <summary>
+    ///     验证默认架构初始化路径会自动扫描 Core 程序集里的 legacy bridge handler，
+    ///     使旧 <c>SendCommand</c> / <c>SendQuery</c> 入口也能进入统一 CQRS pipeline。
+    /// </summary>
+    [Test]
+    public async Task InitializeAsync_Should_AutoRegister_LegacyBridgeHandlers_For_Default_Core_Assemblies()
+    {
+        LegacyBridgePipelineTracker.Reset();
+        var architecture = new LegacyBridgeArchitecture();
+
+        await architecture.InitializeAsync();
+        try
+        {
+            var query = new LegacyArchitectureBridgeQuery();
+            var command = new LegacyArchitectureBridgeCommand();
+
+            var queryResult = architecture.Context.SendQuery(query);
+            architecture.Context.SendCommand(command);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(queryResult, Is.EqualTo(24));
+                Assert.That(query.ObservedContext, Is.SameAs(architecture.Context));
+                Assert.That(command.Executed, Is.True);
+                Assert.That(command.ObservedContext, Is.SameAs(architecture.Context));
+                Assert.That(LegacyBridgePipelineTracker.InvocationCount, Is.EqualTo(2));
+            });
+        }
+        finally
+        {
+            await architecture.DestroyAsync();
+        }
     }
 
     /// <summary>
@@ -91,6 +137,27 @@ public class ArchitectureModulesBehaviorTests
         protected override void OnInitialize()
         {
             registrationAction(this);
+        }
+    }
+
+    /// <summary>
+    ///     通过公开初始化入口注册测试 pipeline behavior 的最小架构，
+    ///     用于验证默认 Core 程序集扫描是否会自动接入 legacy bridge handler。
+    /// </summary>
+    private sealed class LegacyBridgeArchitecture : Architecture
+    {
+        /// <summary>
+        ///     在容器钩子阶段注册 open-generic pipeline behavior，
+        ///     以便 bridge request 走真实的架构初始化与 handler 自动扫描链路。
+        /// </summary>
+        public override Action<IServiceCollection>? Configurator => services =>
+            services.AddSingleton(typeof(IPipelineBehavior<,>), typeof(LegacyBridgeTrackingPipelineBehavior<,>));
+
+        /// <summary>
+        ///     保持空初始化，让测试只聚焦默认 CQRS 接线与 legacy bridge handler 自动发现。
+        /// </summary>
+        protected override void OnInitialize()
+        {
         }
     }
 

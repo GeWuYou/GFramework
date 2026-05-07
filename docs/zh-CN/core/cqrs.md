@@ -224,6 +224,7 @@ RegisterCqrsPipelineBehavior<LoggingBehavior<,>>();
 这里有两个边界需要分开理解：
 
 - 旧 `Command` / `Query` 入口仍可用于维护历史调用链
+- 标准 `Architecture` 启动路径下，旧入口现在会通过内部 bridge request 复用同一个 `ICqrsRuntime`
 - 旧命名空间下的 `ICqrsRuntime` 只是为了兼容既有引用而保留的 alias；面向新代码时，应直接使用
   `GFramework.Cqrs.Abstractions.Cqrs.ICqrsRuntime`
 
@@ -231,6 +232,15 @@ RegisterCqrsPipelineBehavior<LoggingBehavior<,>>();
 
 - 在维护历史代码：允许继续使用旧 Command / Query
 - 在写新功能或新模块：优先使用 CQRS
+
+相对 `ai-libs/Mediator`，当前 `GFramework.Cqrs` 仍有几类能力差距尚未完全吸收：
+
+- `IMediator` / `ISender` / `IPublisher` 风格的一等 facade 公开入口
+- telemetry / tracing / metrics 的运行时与生成器配置面
+- 独立的 stream pipeline 行为体系
+- 更丰富的 notification publisher 策略
+- 更强的生成器配置与诊断公开面
+- 生命周期 / 缓存策略的显式公开配置面
 
 ## 源码阅读入口
 

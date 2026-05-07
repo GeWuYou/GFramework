@@ -11,6 +11,7 @@ using GFramework.Core.Abstractions.Model;
 using GFramework.Core.Abstractions.Query;
 using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Abstractions.Utility;
+using GFramework.Core.Cqrs;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using ICommand = GFramework.Core.Abstractions.Command.ICommand;
 
@@ -111,7 +112,8 @@ public class ArchitectureContext : IArchitectureContext
     /// <returns>响应结果</returns>
     public TResponse SendRequest<TResponse>(IRequest<TResponse> request)
     {
-        return SendRequestAsync(request).AsTask().GetAwaiter().GetResult();
+        ArgumentNullException.ThrowIfNull(request);
+        return LegacyCqrsDispatchHelper.SendSynchronously(CqrsRuntime, this, request);
     }
 
     /// <summary>
@@ -180,10 +182,12 @@ public class ArchitectureContext : IArchitectureContext
     /// <returns>查询结果</returns>
     public TResult SendQuery<TResult>(IQuery<TResult> query)
     {
-        if (query == null) throw new ArgumentNullException(nameof(query));
-        var queryBus = GetOrCache<IQueryExecutor>();
-        if (queryBus == null) throw new InvalidOperationException("IQueryExecutor not registered");
-        return queryBus.Send(query);
+        ArgumentNullException.ThrowIfNull(query);
+        var boxedResult = SendRequest(
+            new LegacyQueryDispatchRequest(
+                query,
+                () => query.Do()));
+        return (TResult)boxedResult!;
     }
 
     /// <summary>
@@ -192,9 +196,10 @@ public class ArchitectureContext : IArchitectureContext
     /// <typeparam name="TResponse">查询响应类型</typeparam>
     /// <param name="query">要发送的查询对象</param>
     /// <returns>查询结果</returns>
-    public TResponse SendQuery<TResponse>(Cqrs.Abstractions.Cqrs.Query.IQuery<TResponse> query)
+    public TResponse SendQuery<TResponse>(global::GFramework.Cqrs.Abstractions.Cqrs.Query.IQuery<TResponse> query)
     {
-        return SendQueryAsync(query).AsTask().GetAwaiter().GetResult();
+        ArgumentNullException.ThrowIfNull(query);
+        return LegacyCqrsDispatchHelper.SendSynchronously(CqrsRuntime, this, query);
     }
 
     /// <summary>
@@ -205,10 +210,13 @@ public class ArchitectureContext : IArchitectureContext
     /// <returns>查询结果</returns>
     public async Task<TResult> SendQueryAsync<TResult>(IAsyncQuery<TResult> query)
     {
-        if (query == null) throw new ArgumentNullException(nameof(query));
-        var asyncQueryBus = GetOrCache<IAsyncQueryExecutor>();
-        if (asyncQueryBus == null) throw new InvalidOperationException("IAsyncQueryExecutor not registered");
-        return await asyncQueryBus.SendAsync(query).ConfigureAwait(false);
+        ArgumentNullException.ThrowIfNull(query);
+        var boxedResult = await SendRequestAsync(
+                new LegacyAsyncQueryDispatchRequest(
+                    query,
+                    async () => await query.DoAsync().ConfigureAwait(false)))
+            .ConfigureAwait(false);
+        return (TResult)boxedResult!;
     }
 
     /// <summary>
@@ -218,7 +226,7 @@ public class ArchitectureContext : IArchitectureContext
     /// <param name="query">要发送的查询对象</param>
     /// <param name="cancellationToken">取消令牌，用于取消操作</param>
     /// <returns>包含查询结果的ValueTask</returns>
-    public async ValueTask<TResponse> SendQueryAsync<TResponse>(Cqrs.Abstractions.Cqrs.Query.IQuery<TResponse> query,
+    public async ValueTask<TResponse> SendQueryAsync<TResponse>(global::GFramework.Cqrs.Abstractions.Cqrs.Query.IQuery<TResponse> query,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
@@ -355,7 +363,7 @@ public class ArchitectureContext : IArchitectureContext
     /// <param name="cancellationToken">取消令牌，用于取消操作</param>
     /// <returns>包含命令执行结果的ValueTask</returns>
     public async ValueTask<TResponse> SendCommandAsync<TResponse>(
-        Cqrs.Abstractions.Cqrs.Command.ICommand<TResponse> command,
+        global::GFramework.Cqrs.Abstractions.Cqrs.Command.ICommand<TResponse> command,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
@@ -369,9 +377,7 @@ public class ArchitectureContext : IArchitectureContext
     public async Task SendCommandAsync(IAsyncCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
-        var commandBus = GetOrCache<ICommandExecutor>();
-        if (commandBus == null) throw new InvalidOperationException("ICommandExecutor not registered");
-        await commandBus.SendAsync(command).ConfigureAwait(false);
+        await SendRequestAsync(new LegacyAsyncCommandDispatchRequest(command)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -383,9 +389,12 @@ public class ArchitectureContext : IArchitectureContext
     public async Task<TResult> SendCommandAsync<TResult>(IAsyncCommand<TResult> command)
     {
         ArgumentNullException.ThrowIfNull(command);
-        var commandBus = GetOrCache<ICommandExecutor>();
-        if (commandBus == null) throw new InvalidOperationException("ICommandExecutor not registered");
-        return await commandBus.SendAsync(command).ConfigureAwait(false);
+        var boxedResult = await SendRequestAsync(
+                new LegacyAsyncCommandResultDispatchRequest(
+                    command,
+                    async () => await command.ExecuteAsync().ConfigureAwait(false)))
+            .ConfigureAwait(false);
+        return (TResult)boxedResult!;
     }
 
     /// <summary>
@@ -394,9 +403,10 @@ public class ArchitectureContext : IArchitectureContext
     /// <typeparam name="TResponse">命令响应类型</typeparam>
     /// <param name="command">要发送的命令对象</param>
     /// <returns>命令执行结果</returns>
-    public TResponse SendCommand<TResponse>(Cqrs.Abstractions.Cqrs.Command.ICommand<TResponse> command)
+    public TResponse SendCommand<TResponse>(global::GFramework.Cqrs.Abstractions.Cqrs.Command.ICommand<TResponse> command)
     {
-        return SendCommandAsync(command).AsTask().GetAwaiter().GetResult();
+        ArgumentNullException.ThrowIfNull(command);
+        return LegacyCqrsDispatchHelper.SendSynchronously(CqrsRuntime, this, command);
     }
 
     /// <summary>
@@ -406,8 +416,7 @@ public class ArchitectureContext : IArchitectureContext
     public void SendCommand(ICommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
-        var commandBus = GetOrCache<ICommandExecutor>();
-        commandBus.Send(command);
+        SendRequest(new LegacyCommandDispatchRequest(command));
     }
 
     /// <summary>
@@ -419,9 +428,11 @@ public class ArchitectureContext : IArchitectureContext
     public TResult SendCommand<TResult>(ICommand<TResult> command)
     {
         ArgumentNullException.ThrowIfNull(command);
-        var commandBus = GetOrCache<ICommandExecutor>();
-        if (commandBus == null) throw new InvalidOperationException("ICommandExecutor not registered");
-        return commandBus.Send(command);
+        var boxedResult = SendRequest(
+            new LegacyCommandResultDispatchRequest(
+                command,
+                () => command.Execute()));
+        return (TResult)boxedResult!;
     }
 
     #endregion

@@ -10,11 +10,13 @@ using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Query;
 using GFramework.Core.Architectures;
 using GFramework.Core.Command;
+using GFramework.Core.Cqrs;
 using GFramework.Core.Environment;
 using GFramework.Core.Events;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
 using GFramework.Core.Query;
+using GFramework.Core.Services.Modules;
 using GFramework.Cqrs.Abstractions.Cqrs;
 
 namespace GFramework.Core.Tests.Architectures;
@@ -41,9 +43,13 @@ namespace GFramework.Core.Tests.Architectures;
 ///     - GetUtility方法 - 获取未注册工具时抛出异常
 ///     - GetEnvironment方法 - 获取环境对象
 /// </summary>
+[NonParallelizable]
 [TestFixture]
 public class ArchitectureContextTests
 {
+    /// <summary>
+    ///     初始化测试所需的容器与默认服务实例。
+    /// </summary>
     [SetUp]
     public void SetUp()
     {
@@ -71,8 +77,20 @@ public class ArchitectureContextTests
         _container.RegisterPlurality(_queryBus);
         _container.RegisterPlurality(_asyncQueryBus);
         _container.RegisterPlurality(_environment);
+        new CqrsRuntimeModule().Register(_container);
+        RegisterLegacyBridgeHandlers(_container);
 
         _context = new ArchitectureContext(_container);
+    }
+
+    /// <summary>
+    ///     释放当前测试创建的容器，并清理 legacy bridge 共享计数状态。
+    /// </summary>
+    [TearDown]
+    public void TearDown()
+    {
+        LegacyBridgePipelineTracker.Reset();
+        _container?.Dispose();
     }
 
     private AsyncQueryExecutor? _asyncQueryBus;
@@ -125,6 +143,31 @@ public class ArchitectureContextTests
     }
 
     /// <summary>
+    ///     测试 legacy 查询通过 <see cref="ArchitectureContext" /> 发送时会进入统一 CQRS pipeline，
+    ///     并把当前架构上下文注入到查询对象。
+    /// </summary>
+    [Test]
+    public void SendQuery_Should_Bridge_Through_CqrsRuntime_And_Preserve_Context()
+    {
+        LegacyBridgePipelineTracker.Reset();
+        var testQuery = new LegacyArchitectureBridgeQuery();
+        var bridgeContext = CreateFrozenBridgeContext(out var bridgeContainer);
+
+        try
+        {
+            var result = bridgeContext.SendQuery(testQuery);
+
+            Assert.That(result, Is.EqualTo(24));
+            Assert.That(testQuery.ObservedContext, Is.SameAs(bridgeContext));
+            Assert.That(LegacyBridgePipelineTracker.InvocationCount, Is.EqualTo(1));
+        }
+        finally
+        {
+            bridgeContainer.Dispose();
+        }
+    }
+
+    /// <summary>
     ///     测试SendQuery方法在查询为null时应抛出ArgumentNullException
     /// </summary>
     [Test]
@@ -147,6 +190,31 @@ public class ArchitectureContextTests
     }
 
     /// <summary>
+    ///     测试 legacy 命令通过 <see cref="ArchitectureContext" /> 发送时会进入统一 CQRS pipeline，
+    ///     并把当前架构上下文注入到命令对象。
+    /// </summary>
+    [Test]
+    public void SendCommand_Should_Bridge_Through_CqrsRuntime_And_Preserve_Context()
+    {
+        LegacyBridgePipelineTracker.Reset();
+        var testCommand = new LegacyArchitectureBridgeCommand();
+        var bridgeContext = CreateFrozenBridgeContext(out var bridgeContainer);
+
+        try
+        {
+            bridgeContext.SendCommand(testCommand);
+
+            Assert.That(testCommand.Executed, Is.True);
+            Assert.That(testCommand.ObservedContext, Is.SameAs(bridgeContext));
+            Assert.That(LegacyBridgePipelineTracker.InvocationCount, Is.EqualTo(1));
+        }
+        finally
+        {
+            bridgeContainer.Dispose();
+        }
+    }
+
+    /// <summary>
     ///     测试SendCommand方法在命令为null时应抛出ArgumentNullException
     /// </summary>
     [Test]
@@ -166,6 +234,87 @@ public class ArchitectureContextTests
         var result = _context!.SendCommand(testCommand);
 
         Assert.That(result, Is.EqualTo(123));
+    }
+
+    /// <summary>
+    ///     测试 legacy 带返回值命令通过 <see cref="ArchitectureContext" /> 发送时会进入统一 CQRS pipeline，
+    ///     并保持原始返回值语义。
+    /// </summary>
+    [Test]
+    public void SendCommand_WithResult_Should_Bridge_Through_CqrsRuntime()
+    {
+        LegacyBridgePipelineTracker.Reset();
+        var testCommand = new LegacyArchitectureBridgeCommandWithResult();
+        var bridgeContext = CreateFrozenBridgeContext(out var bridgeContainer);
+
+        try
+        {
+            var result = bridgeContext.SendCommand(testCommand);
+
+            Assert.That(result, Is.EqualTo(42));
+            Assert.That(testCommand.ObservedContext, Is.SameAs(bridgeContext));
+            Assert.That(LegacyBridgePipelineTracker.InvocationCount, Is.EqualTo(1));
+        }
+        finally
+        {
+            bridgeContainer.Dispose();
+        }
+    }
+
+    /// <summary>
+    ///     测试 legacy 异步查询通过 <see cref="ArchitectureContext" /> 发送时也会进入统一 CQRS pipeline。
+    /// </summary>
+    [Test]
+    public async Task SendQueryAsync_Should_Bridge_Through_CqrsRuntime_And_Preserve_Context()
+    {
+        LegacyBridgePipelineTracker.Reset();
+        var testQuery = new LegacyArchitectureBridgeAsyncQuery();
+        var bridgeContext = CreateFrozenBridgeContext(out var bridgeContainer);
+
+        try
+        {
+            var result = await bridgeContext.SendQueryAsync(testQuery).ConfigureAwait(false);
+
+            Assert.That(result, Is.EqualTo(64));
+            Assert.That(testQuery.ObservedContext, Is.SameAs(bridgeContext));
+            Assert.That(LegacyBridgePipelineTracker.InvocationCount, Is.EqualTo(1));
+        }
+        finally
+        {
+            bridgeContainer.Dispose();
+        }
+    }
+
+    /// <summary>
+    ///     为需要验证统一 CQRS pipeline 的用例创建一个已冻结的最小 bridge 上下文。
+    /// </summary>
+    /// <param name="container">返回承载当前 bridge 上下文的冻结容器，供测试在 finally 中显式释放。</param>
+    /// <returns>能够执行 legacy bridge request 且会 materialize open-generic pipeline behavior 的上下文。</returns>
+    private static ArchitectureContext CreateFrozenBridgeContext(out MicrosoftDiContainer container)
+    {
+        container = new MicrosoftDiContainer();
+        RegisterLegacyBridgeHandlers(container);
+        new CqrsRuntimeModule().Register(container);
+        container.ExecuteServicesHook(services =>
+            services.AddSingleton(typeof(IPipelineBehavior<,>), typeof(LegacyBridgeTrackingPipelineBehavior<,>)));
+        container.Freeze();
+        return new ArchitectureContext(container);
+    }
+
+    /// <summary>
+    ///     把 GFramework.Core 内部的 legacy bridge handler 实例预先注册成可见的实例绑定。
+    /// </summary>
+    /// <param name="container">目标测试容器。</param>
+    private static void RegisterLegacyBridgeHandlers(MicrosoftDiContainer container)
+    {
+        ArgumentNullException.ThrowIfNull(container);
+
+        container.RegisterPlurality(new LegacyCommandDispatchRequestHandler());
+        container.RegisterPlurality(new LegacyCommandResultDispatchRequestHandler());
+        container.RegisterPlurality(new LegacyAsyncCommandDispatchRequestHandler());
+        container.RegisterPlurality(new LegacyAsyncCommandResultDispatchRequestHandler());
+        container.RegisterPlurality(new LegacyQueryDispatchRequestHandler());
+        container.RegisterPlurality(new LegacyAsyncQueryDispatchRequestHandler());
     }
 
     /// <summary>

@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Query;
+using GFramework.Core.Tests.Architectures;
+using GFramework.Core.Tests.Command;
 
 namespace GFramework.Core.Tests.Query;
 
@@ -60,5 +62,45 @@ public class QueryExecutorTests
         var result = _queryExecutor.Send(query);
 
         Assert.That(result, Is.EqualTo("Result: 10"));
+    }
+
+    /// <summary>
+    ///     验证 legacy 同步查询桥接会在线程池上等待 runtime，
+    ///     避免直接复用调用方的同步上下文。
+    /// </summary>
+    [Test]
+    public void Send_Should_Bridge_Through_Runtime_Without_Reusing_Caller_SynchronizationContext()
+    {
+        var runtime = new RecordingCqrsRuntime(static _ => 24);
+        var executor = new QueryExecutor(runtime);
+        var query = new ContextAwareLegacyQuery(24);
+        var expectedContext = new TestArchitectureContextBaseStub();
+        ((GFramework.Core.Abstractions.Rule.IContextAware)query).SetContext(expectedContext);
+        var originalContext = SynchronizationContext.Current;
+
+        try
+        {
+            SynchronizationContext.SetSynchronizationContext(new TestLegacySynchronizationContext());
+
+            var result = executor.Send(query);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.EqualTo(24));
+                Assert.That(runtime.LastRequest, Is.TypeOf<GFramework.Core.Cqrs.LegacyQueryDispatchRequest>());
+                Assert.That(runtime.ObservedSynchronizationContextType, Is.Null);
+            });
+        }
+        finally
+        {
+            SynchronizationContext.SetSynchronizationContext(originalContext);
+        }
+    }
+
+    /// <summary>
+    ///     为同步 bridge 测试提供最小架构上下文替身。
+    /// </summary>
+    private sealed class TestArchitectureContextBaseStub : TestArchitectureContextBase
+    {
     }
 }

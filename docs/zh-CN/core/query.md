@@ -83,6 +83,9 @@ var count = this.SendQuery(
 - `SendQuery<TResult>(IQuery<TResult>)`
 - `SendQueryAsync<TResult>(IAsyncQuery<TResult>)`
 
+在标准架构启动路径中，这些兼容入口底层同样会转到统一 `ICqrsRuntime`。
+因此历史查询对象仍保持原始 `SendQuery(...)` / `SendQueryAsync(...)` 用法，但会共享新版 request pipeline 与上下文注入链路。
+
 在 `IContextAware` 对象内部，通常直接使用 `GFramework.Core.Extensions` 里的扩展：
 
 ```csharp

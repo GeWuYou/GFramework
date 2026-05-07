@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Query;
+using GFramework.Core.Tests.Architectures;
+using GFramework.Core.Tests.Command;
 
 namespace GFramework.Core.Tests.Query;
 
@@ -137,5 +139,34 @@ public class AsyncQueryExecutorTests
 
         Assert.That(result1, Is.EqualTo(20));
         Assert.That(result2, Is.EqualTo(40));
+    }
+
+    /// <summary>
+    ///     验证 legacy 异步查询桥接会保留上下文注入，并通过 runtime 返回结果。
+    /// </summary>
+    [Test]
+    public async Task SendAsync_Should_Bridge_Through_Runtime_And_Preserve_Context()
+    {
+        var runtime = new RecordingCqrsRuntime(static _ => 64);
+        var executor = new AsyncQueryExecutor(runtime);
+        var query = new ContextAwareLegacyAsyncQuery(64);
+        var expectedContext = new TestArchitectureContextBaseStub();
+        ((GFramework.Core.Abstractions.Rule.IContextAware)query).SetContext(expectedContext);
+
+        var result = await executor.SendAsync(query);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.EqualTo(64));
+            Assert.That(runtime.LastRequest, Is.TypeOf<GFramework.Core.Cqrs.LegacyAsyncQueryDispatchRequest>());
+            Assert.That(query.ObservedContext, Is.SameAs(expectedContext));
+        });
+    }
+
+    /// <summary>
+    ///     为异步 bridge 测试提供最小架构上下文替身。
+    /// </summary>
+    private sealed class TestArchitectureContextBaseStub : TestArchitectureContextBase
+    {
     }
 }

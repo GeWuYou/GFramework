@@ -28,6 +28,9 @@ public interface ICqrsRuntime
     /// <remarks>
     ///     该契约允许调用方传入任意 <see cref="ICqrsContext" />，
     ///     但默认运行时在需要向处理器或行为注入框架上下文时，仍要求该上下文同时实现 <c>IArchitectureContext</c>。
+    ///     为了兼容 legacy 同步入口，<c>ArchitectureContext</c>、<c>QueryExecutor</c> 与 <c>CommandExecutor</c>
+    ///     可能会在后台线程上同步等待该异步结果；实现者与 pipeline 行为不应依赖调用方的
+    ///     <see cref="SynchronizationContext" />，并应优先在内部异步链路上使用 <c>ConfigureAwait(false)</c>。
     /// </remarks>
     ValueTask<TResponse> SendAsync<TResponse>(
         ICqrsContext context,
