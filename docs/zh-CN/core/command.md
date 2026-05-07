@@ -105,6 +105,9 @@ var reward = this.SendCommand(new GetGoldRewardCommand(new GetGoldRewardInput(3)
 - `SendCommandAsync(IAsyncCommand)`
 - `SendCommandAsync<TResult>(IAsyncCommand<TResult>)`
 
+在标准架构启动路径中，这些兼容入口底层已经统一改走 `ICqrsRuntime`。
+这意味着历史命令调用链在不改调用方式的前提下，也会复用同一套 pipeline 与上下文注入语义。
+
 在 `IContextAware` 对象内，通常直接通过扩展使用：
 
 ```csharp

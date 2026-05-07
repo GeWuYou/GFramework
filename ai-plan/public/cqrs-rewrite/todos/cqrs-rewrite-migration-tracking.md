@@ -7,7 +7,7 @@ CQRS 迁移与收敛。
 
 ## 当前恢复点
 
-- 恢复点编号：`CQRS-REWRITE-RP-092`
+- 恢复点编号：`CQRS-REWRITE-RP-093`
 - 当前阶段：`Phase 8`
 - 当前 PR 锚点：`待创建（当前分支 feat/cqrs-optimization 尚未为 RP-092 建立新 PR）`
 - 当前结论：
@@ -27,15 +27,21 @@ CQRS 迁移与收敛。
   - 当前 `RP-089` 已补齐 stream invoker reflection / generated-provider 对照，使 generated descriptor 预热收益从 request 扩展到 stream 路径
   - 当前 `RP-090` 已收敛 `PR #326` benchmark review：统一 benchmark 最小宿主构建、冻结 GFramework 容器、限制 MediatR 扫描范围，并恢复 request startup cold-start 对照
   - 当前 `RP-091` 已把 benchmark 项目发布面隔离与包清单校验前移到 PR：`GFramework.Cqrs.Benchmarks` 明确保持不可打包，`publish.yml` 与 `ci.yml` 复用同一份 packed-modules 校验脚本
-  - 当前 `RP-092` 已补齐 request handler `Singleton / Transient` 生命周期矩阵 benchmark，并明确把 `Scoped` 对照留到具备真实显式作用域边界的宿主模型后再评估
-- `ai-plan` active 入口现以 `RP-092` 为最新恢复锚点；`PR #331`、`PR #326`、`PR #323`、`PR #307` 与其他更早阶段细节均以下方归档或说明为准
+  - `RP-092` 已补齐 request handler `Singleton / Transient` 生命周期矩阵 benchmark，并明确把 `Scoped` 对照留到具备真实显式作用域边界的宿主模型后再评估
+  - 当前 `RP-093` 已把 `GFramework.Core` 的 legacy `SendCommand` / `SendQuery` 兼容入口收敛到底层统一 `GFramework.Cqrs` runtime，同时补充 `Mediator` 未吸收能力差距复核
+- `ai-plan` active 入口现以 `RP-093` 为最新恢复锚点；`PR #331`、`PR #326`、`PR #323`、`PR #307` 与其他更早阶段细节均以下方归档或说明为准
 
 ## 当前活跃事实
 
 - 当前分支为 `feat/cqrs-optimization`
 - 本轮 `$gframework-batch-boot 50` 以 `origin/main` (`2c58d8b6`, 2026-05-07 13:24:46 +0800) 为基线；本地 `main` (`c2d22285`) 已落后，不作为 branch diff 基线
+- 当前分支相对 `origin/main` 的累计 branch diff 为 `4 files / 303 lines`，仍明显低于 `$gframework-batch-boot 50` 的文件阈值
 - `GFramework.Cqrs.Benchmarks` 作为 benchmark 基础设施项目，必须持续排除在 NuGet / GitHub Packages 发布集合之外
 - `GFramework.Cqrs.Benchmarks` 现已覆盖 request steady-state、pipeline 数量矩阵、startup、request/stream generated invoker，以及 request handler `Singleton / Transient` 生命周期矩阵
+- `GFramework.Core` 当前已通过内部 bridge request / handler 把 legacy `ICommand`、`IAsyncCommand`、`IQuery`、`IAsyncQuery` 接到统一 `ICqrsRuntime`
+- 标准 `Architecture` 初始化路径会自动扫描 `GFramework.Core` 程序集中的 legacy bridge handler，因此旧 `SendCommand(...)` / `SendQuery(...)` 无需改变用法即可进入统一 pipeline
+- `CommandExecutor`、`QueryExecutor`、`AsyncQueryExecutor` 仍保留“无 runtime 时直接执行”的回退路径，用于不依赖容器的隔离单元测试
+- 相对 `ai-libs/Mediator`，当前仍未完全吸收的能力集中在六类：facade 公开入口、telemetry、stream pipeline、notification publisher 策略、生成器配置与诊断、生命周期/缓存公开配置面
 - 发布工作流已有 packed modules 校验，但 PR 工作流此前没有等价的 solution pack 产物名单校验
 - 本地 `dotnet pack GFramework.sln -c Release --no-restore -o <temp-dir>` 当前只产出 14 个预期包，未复现 benchmark `.nupkg`
 - latest-head review 现仍有少量 open thread，但本地复核后，仍成立的问题已收敛到 benchmark 对照公平性、workflow 输入安全性与 active 文档压缩
@@ -54,6 +60,7 @@ CQRS 迁移与收敛。
 - 当前 benchmark 宿主仍刻意保持“单根容器最小宿主”模型；若要公平比较 `Scoped` handler 生命周期，需要先引入显式 scope 创建与 scope 内首次解析的对照基线
 - 仓库内部仍保留旧 `Command` / `Query` API、`LegacyICqrsRuntime` alias 与部分历史命名语义，后续若不继续分批收口，容易混淆“对外替代已完成”与“内部收口未完成”
 - 若继续扩大 generated invoker 覆盖面，需要持续区分“可静态表达的合同”与 `PreciseReflectedRegistrationSpec` 等仍需保守回退的场景
+- legacy bridge 当前只为已有 `Command` / `Query` 兼容入口接到统一 request pipeline；若后续要继续对齐 `Mediator`，仍需要单独设计 stream pipeline、telemetry 与 facade 公开面，而不是把这次 bridge 当成“全部收口完成”
 
 ## 最近权威验证
 
@@ -91,12 +98,22 @@ CQRS 迁移与收敛。
   - 备注：当前 WSL worktree 需要显式绑定 `GIT_DIR` / `GIT_WORK_TREE`
 - `git diff --check`
   - 结果：通过
+- `dotnet build GFramework.Core/GFramework.Core.csproj -c Release`
+  - 结果：通过，`0 warning / 0 error`
+- `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --filter "FullyQualifiedName~ArchitectureContextTests|FullyQualifiedName~CommandExecutorTests|FullyQualifiedName~QueryExecutorTests|FullyQualifiedName~AsyncQueryExecutorTests"`
+  - 结果：通过，`45/45` passed
+- `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release`
+  - 结果：通过，`1644/1644` passed
+- `env GIT_DIR=... GIT_WORK_TREE=... python3 scripts/license-header.py --check`
+  - 结果：通过
+- `git diff --check`
+  - 结果：通过
 
 ## 下一推荐步骤
 
-1. 若继续沿用 `$gframework-batch-boot 50`，优先补 `stream handler` 生命周期矩阵，与当前 request 生命周期切片保持对称
-2. 若要扩到 `Scoped` 生命周期，对 benchmark 宿主先补显式 scope 基线，而不是直接在根容器上解析 scoped handler
-3. 若后续继续跑 BenchmarkDotNet，本地 agent 环境优先直接使用沙箱外命令，避免再次命中自动生成脚本在沙箱内的 bootstrap 异常
+1. 若继续沿用 `$gframework-batch-boot 50` 且优先处理 `Mediator` 能力吸收，下一批建议从 `stream pipeline` 或 `notification publisher` 策略中选择一个独立切片推进
+2. 若继续收敛 legacy Core CQRS，可评估是否补一个 `IMediator` 风格 facade，而不是继续扩大 `ArchitectureContext` 兼容入口的职责
+3. 若回到 benchmark 方向，优先补 `stream handler` 生命周期矩阵；若要扩到 `Scoped` 生命周期，先为 benchmark 宿主设计真实显式 scope 基线
 
 ## 活跃文档
 

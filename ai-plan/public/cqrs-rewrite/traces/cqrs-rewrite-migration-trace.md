@@ -2,6 +2,53 @@
 
 ## 2026-05-07
 
+### 阶段：legacy Core CQRS -> GFramework.Cqrs bridge（CQRS-REWRITE-RP-093）
+
+- 延续 `$gframework-batch-boot 50`，本轮明确不只盯 benchmark，而是同时处理两个目标：
+  - 复核 `ai-libs/Mediator` 还有哪些能力尚未被 `GFramework.Cqrs` 吸收
+  - 验证 `GFramework.Core` 的简单 `Command` / `Query` 兼容入口能否在不改外部用法的前提下，底层统一改走 `GFramework.Cqrs`
+- 主线程先完成 `GFramework.Core` bridge 实现收尾与测试修正：
+  - `ArchitectureContext` 的 legacy `SendCommand(...)` / `SendQuery(...)` / `SendQueryAsync(...)` 现在会创建内部 bridge request，并直接通过统一 `ICqrsRuntime` 分发
+  - `CommandExecutor`、`QueryExecutor`、`AsyncQueryExecutor` 在解析到 runtime 且目标对象可提供架构上下文时，也会复用同一条 bridge/runtime 路径
+  - 为避免破坏不依赖容器的旧测试，执行器仍保留“未接入 runtime 时直接执行”的回退语义
+- 新增 `GFramework.Core/Cqrs/Legacy*DispatchRequest*.cs` 与对应 handler，把 legacy 命令/查询包装成内部 request：
+  - bridge handler 在执行前会显式把当前 `IArchitectureContext` 注入给 `IContextAware` 目标
+  - 这让旧调用链在不改 public API 的情况下，也能复用统一 pipeline 与 handler dispatch 语义
+- 生产接线结论已经本地复核：
+  - `CqrsRuntimeModule` 只注册 runtime / registrar / registration service，本身不直接手工注册 bridge handler
+  - 默认生产路径依赖 `ArchitectureBootstrapper.ConfigureServices(...)` 自动调用 `RegisterCqrsHandlersFromAssemblies([architectureType.Assembly, typeof(ArchitectureContext).Assembly])`
+  - 因此 `GFramework.Core` 程序集中的 internal bridge handler 会在标准架构初始化阶段自动被扫描和注册，不需要业务侧手工补注册
+- 为防止以后有人改坏默认扫描范围，本轮额外补了一条更接近真实启动路径的回归：
+  - `ArchitectureModulesBehaviorTests.InitializeAsync_Should_AutoRegister_LegacyBridgeHandlers_For_Default_Core_Assemblies`
+  - 该用例通过 `Architecture.Configurator` 注册 open-generic pipeline behavior，然后直接走 `Architecture.InitializeAsync()`，验证旧 `SendCommand` / `SendQuery` 兼容入口能命中统一 pipeline
+- 只读 subagent 同步完成 `Mediator` 差距复核，接受的结论是六类未完全吸收能力：
+  - `IMediator` / `ISender` / `IPublisher` 风格 facade
+  - telemetry / tracing / metrics
+  - stream pipeline
+  - notification publisher 策略
+  - 生成器配置与诊断公开面
+  - 生命周期 / 缓存公开配置面
+- 文档与恢复入口同步更新：
+  - `docs/zh-CN/core/context.md`、`command.md`、`query.md`、`cqrs.md`
+  - `GFramework.Core/README.md`
+  - active tracking / trace 升级到 `RP-093`
+
+### 验证（RP-093）
+
+- `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --filter "FullyQualifiedName~ArchitectureContextTests|FullyQualifiedName~CommandExecutorTests|FullyQualifiedName~QueryExecutorTests|FullyQualifiedName~AsyncQueryExecutorTests"`
+  - 结果：通过，`45/45` passed
+- `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release`
+  - 结果：通过，`1644/1644` passed
+- `env GIT_DIR=... GIT_WORK_TREE=... python3 scripts/license-header.py --check`
+  - 结果：通过
+- `git diff --check`
+  - 结果：通过
+
+### 当前下一步（RP-093）
+
+1. 若继续沿用 `$gframework-batch-boot 50`，优先从 `stream pipeline` 或 `notification publisher` 策略中切一块对齐 `Mediator`
+2. 若要继续收敛 public seam，下一批优先设计 facade，而不是继续扩大 `ArchitectureContext` 的兼容职责
+
 ### 阶段：request handler 生命周期矩阵 benchmark（CQRS-REWRITE-RP-092）
 
 - 使用 `$gframework-batch-boot 50` 启动本轮批次，并按技能要求先复核 `origin/main` 基线与 branch diff：

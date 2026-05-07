@@ -4,6 +4,7 @@
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Command;
+using GFramework.Cqrs.Abstractions.Cqrs;
 
 namespace GFramework.Core.Services.Modules;
 
@@ -35,7 +36,8 @@ public sealed class CommandExecutorModule : IServiceModule
     /// <param name="container">依赖注入容器实例。</param>
     public void Register(IIocContainer container)
     {
-        container.RegisterPlurality(new CommandExecutor());
+        ArgumentNullException.ThrowIfNull(container);
+        container.RegisterPlurality(new CommandExecutor(container.Get<ICqrsRuntime>()));
     }
 
     /// <summary>
