@@ -1,5 +1,50 @@
 # CQRS 重写迁移追踪
 
+## 2026-05-07
+
+### 阶段：request handler 生命周期矩阵 benchmark（CQRS-REWRITE-RP-092）
+
+- 使用 `$gframework-batch-boot 50` 启动本轮批次，并按技能要求先复核 `origin/main` 基线与 branch diff：
+  - `origin/main` = `2c58d8b6`，提交时间 `2026-05-07 13:24:46 +0800`
+  - 本地 `main` = `c2d22285`，已落后于 remote-tracking ref，因此不作为本轮 batch baseline
+  - 当前 `feat/cqrs-optimization` 相对 `origin/main` 的累计 branch diff 在开工前为 `0 files / 0 lines`
+- 本轮批次目标：继续推进 `GFramework.Cqrs.Benchmarks`，补一个独立、低风险、可单项目 Release 验证的 request 生命周期对照切片
+- 主线程先复核现有 benchmark 宿主与 runtime 解析路径后确认：
+  - `RequestBenchmarks` 与 `StreamingBenchmarks` 当前都固定使用单根容器宿主
+  - `MicrosoftDiContainer` 虽支持 `RegisterScoped` / `CreateScope()`，但当前 `CqrsDispatcher` 的 steady-state benchmark 路径直接从根容器解析 handler
+  - 因此若直接把 `Scoped` 注册加入现有 benchmark，会把“根作用域下的 scoped 解析”误当成公平对照，语义不成立
+- 本轮决策：
+  - 新增 `Messaging/RequestLifetimeBenchmarks.cs`
+  - 生命周期矩阵只覆盖 `Singleton / Transient`
+  - 在 XML 文档与 README 中显式注明：`Scoped` 需要等未来具备真实显式作用域边界的 benchmark host 后再比较
+- 已修改：
+  - `GFramework.Cqrs.Benchmarks/Messaging/RequestLifetimeBenchmarks.cs`
+  - `GFramework.Cqrs.Benchmarks/README.md`
+  - `ai-plan/public/cqrs-rewrite/todos/cqrs-rewrite-migration-tracking.md`
+  - `ai-plan/public/cqrs-rewrite/traces/cqrs-rewrite-migration-trace.md`
+- 预期结果：
+  - `GFramework.Cqrs.Benchmarks` 不再只覆盖“有无 generated provider / startup / pipeline”的维度，也开始覆盖 request steady-state 下的 handler 生命周期成本差异
+  - benchmark 设计继续保持“只加入语义公平的矩阵”，避免把作用域模型不对称的结论写进基线
+
+### 验证（RP-092）
+
+- `dotnet build GFramework.Cqrs.Benchmarks/GFramework.Cqrs.Benchmarks.csproj -c Release`
+  - 结果：通过，`0 warning / 0 error`
+- `dotnet run --project GFramework.Cqrs.Benchmarks/GFramework.Cqrs.Benchmarks.csproj -c Release --no-build -- --filter "*RequestLifetimeBenchmarks*" --job short --warmupCount 1 --iterationCount 1 --launchCount 1`
+  - 结果：通过（沙箱外权威结果）
+  - 备注：当前 agent 沙箱内执行同一 benchmark 会在 BenchmarkDotNet 自动生成 bootstrap 阶段失败；切换到沙箱外后，`restore/build` 自举与 6 个 benchmark case 全部通过
+  - 备注：`Singleton` 下 baseline / MediatR / GFramework 分别约 `5.633 ns / 58.687 ns / 301.731 ns`
+  - 备注：`Transient` 下 baseline / MediatR / GFramework 分别约 `5.044 ns / 52.274 ns / 287.863 ns`
+- `env GIT_DIR=... GIT_WORK_TREE=... python3 scripts/license-header.py --check`
+  - 结果：通过
+- `git diff --check`
+  - 结果：通过
+
+### 当前下一步（RP-092）
+
+1. 若 branch diff 仍明显低于 `$gframework-batch-boot 50` 阈值，下一批优先补 `stream handler` 生命周期矩阵，保持 request / stream benchmark 维度对称
+2. 若准备扩到 `Scoped` 生命周期，先为 benchmark host 设计真实显式作用域基线，再进入运行时对照
+
 ## 2026-05-06
 
 ### 阶段：PR #331 review 收尾补丁（CQRS-REWRITE-RP-091）
