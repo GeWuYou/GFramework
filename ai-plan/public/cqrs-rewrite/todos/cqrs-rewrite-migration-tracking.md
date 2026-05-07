@@ -7,7 +7,7 @@ CQRS 迁移与收敛。
 
 ## 当前恢复点
 
-- 恢复点编号：`CQRS-REWRITE-RP-096`
+- 恢复点编号：`CQRS-REWRITE-RP-097`
 - 当前阶段：`Phase 8`
 - 当前 PR 锚点：`PR #334`
 - 当前结论：
@@ -31,8 +31,9 @@ CQRS 迁移与收敛。
   - `RP-093` 已把 `GFramework.Core` 的 legacy `SendCommand` / `SendQuery` 兼容入口收敛到底层统一 `GFramework.Cqrs` runtime，同时补充 `Mediator` 未吸收能力差距复核
   - `RP-094` 已按 `PR #334` latest-head review 收口 legacy bridge 的测试注册方式、模块运行时依赖契约、异步取消语义、XML 文档缺口与兼容文档回退边界
   - `RP-095` 已继续收口 `PR #334` 剩余 review：把 legacy 同步 bridge 的阻塞等待统一切到线程池隔离 helper、补齐 `ArchitectureContext` / executor 共享 dispatch helper、修正 bridge fixture 的并行与容器释放约束，并为 runtime bridge 与 async void command cancellation 增补回归测试
-  - 当前 `RP-096` 已再次使用 `$gframework-pr-review` 复核 `PR #334` latest-head review，确认仍显示为 open 的 AI threads 在本地代码中已无新增仍成立的运行时 / 测试 / 文档缺陷，剩余差异主要是 GitHub thread 未 resolve 的状态滞后
-- `ai-plan` active 入口现以 `RP-096` 为最新恢复锚点；`PR #334`、`PR #331`、`PR #326`、`PR #323`、`PR #307` 与其他更早阶段细节均以下方归档或说明为准
+  - `RP-096` 已再次使用 `$gframework-pr-review` 复核 `PR #334` latest-head review，确认仍显示为 open 的 AI threads 在本地代码中已无新增仍成立的运行时 / 测试 / 文档缺陷，剩余差异主要是 GitHub thread 未 resolve 的状态滞后
+  - 当前 `RP-097` 已继续收口 `PR #334` latest-head nitpick：为 `AsyncQueryExecutorTests` / `CommandExecutorTests` 补齐可观察的上下文保留断言，并让 `RecordingCqrsRuntime` 在测试替身返回错误响应类型时抛出带请求/类型信息的诊断异常
+- `ai-plan` active 入口现以 `RP-097` 为最新恢复锚点；`PR #334`、`PR #331`、`PR #326`、`PR #323`、`PR #307` 与其他更早阶段细节均以下方归档或说明为准
 
 ## 当前活跃事实
 
@@ -62,6 +63,8 @@ CQRS 迁移与收敛。
 - 远端 `CTRF` 最新汇总为 `2311/2311` passed（run `#1079`, 2026-05-07）
 - `MegaLinter` 当前只暴露 `dotnet-format` 的 `Restore operation failed` 环境噪音，尚未提供本地仍成立的文件级格式诊断
 - `PR #334` 当前 latest-head open AI feedback 经过本轮本地复核与修复后，应主要剩余待 GitHub 重新索引的状态差异或已实质关闭但未 resolve 的 thread
+- `GFramework.Core.Tests` 中 legacy bridge 的“保留上下文”回归现在同时断言 bridge request 类型与目标对象执行期观察到的 `IArchitectureContext`
+- `RecordingCqrsRuntime` 对非 `Unit` 响应已显式校验返回值类型；若测试工厂返回了 `null` 或错误装箱类型，异常会直接指出 request 类型与期望/实际响应类型
 
 ## 当前风险
 
@@ -97,6 +100,14 @@ CQRS 迁移与收敛。
   - 备注：确认当前分支对应 `PR #334`；`CodeRabbit` latest review 已 `APPROVED`，但 latest-head 仍显示 `10` 个 open thread、`Greptile` 仍显示 `3` 个 open thread；本地逐项复核后未发现新的仍成立缺陷，最新 CI 测试汇总为 `2311/2311` passed，`MegaLinter` 仅剩 `dotnet-format` restore 环境噪音
 - `dotnet build GFramework.Core/GFramework.Core.csproj -c Release`
   - 结果：通过，`0 warning / 0 error`
+- `dotnet build GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release`
+  - 结果：通过，`0 warning / 0 error`
+- `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --filter "FullyQualifiedName~CommandExecutorTests|FullyQualifiedName~AsyncQueryExecutorTests"`
+  - 结果：通过，`19/19` passed
+- `python3 scripts/license-header.py --check`
+  - 结果：通过
+- `git diff --check`
+  - 结果：通过
 - `python3 .agents/skills/gframework-pr-review/scripts/fetch_current_pr_review.py --format json --json-output <temporary-json-output>`
   - 结果：通过
   - 备注：确认当前分支对应 `PR #331`，本轮 latest-head open AI feedback 已收敛到 `dotnet pack --no-build`、共享包校验脚本跨平台兼容性与 active 文档 PR 锚点同步

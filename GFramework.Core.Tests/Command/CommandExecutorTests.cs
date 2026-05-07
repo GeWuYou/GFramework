@@ -126,6 +126,7 @@ public class CommandExecutorTests
         {
             Assert.That(result, Is.EqualTo(123));
             Assert.That(runtime.LastRequest, Is.TypeOf<GFramework.Core.Cqrs.LegacyCommandResultDispatchRequest>());
+            Assert.That(command.ObservedContext, Is.SameAs(expectedContext));
         });
     }
 

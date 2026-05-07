@@ -159,6 +159,7 @@ public class AsyncQueryExecutorTests
         {
             Assert.That(result, Is.EqualTo(64));
             Assert.That(runtime.LastRequest, Is.TypeOf<GFramework.Core.Cqrs.LegacyAsyncQueryDispatchRequest>());
+            Assert.That(query.ObservedContext, Is.SameAs(expectedContext));
         });
     }
 

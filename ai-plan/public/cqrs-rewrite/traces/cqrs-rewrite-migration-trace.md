@@ -2,6 +2,26 @@
 
 ## 2026-05-07
 
+### 阶段：PR #334 nitpick 测试收尾（CQRS-REWRITE-RP-097）
+
+- 继续处理 `PR #334` latest-head review 中仍值得本地吸收的轻量 nitpick，范围限定在 legacy bridge 测试可观察性与测试替身诊断质量：
+  - `AsyncQueryExecutorTests.SendAsync_Should_Bridge_Through_Runtime_And_Preserve_Context` 标题声明“保留上下文”，但此前只断言了返回值与 bridge request 类型
+  - `CommandExecutorTests.Send_WithResult_Should_Bridge_Through_Runtime_And_Preserve_Context` 同样缺少可观察的上下文注入断言
+  - `RecordingCqrsRuntime` 直接强转响应对象，若测试工厂回错类型，失败信息不够聚焦
+- 本轮主线程决策：
+  - 为两个 “Preserve_Context” 用例补齐 `ObservedContext` 与 `expectedContext` 的同一实例断言，使测试标题、注释与断言对象保持一致
+  - 让 `RecordingCqrsRuntime` 通过私有 helper 显式执行响应类型还原；当工厂返回 `null` 或错误装箱类型时，抛出包含 request 类型与期望/实际响应类型的 `InvalidOperationException`
+  - 同步刷新 `cqrs-rewrite` active tracking，把本轮 nitpick 收敛与验证结果记录为新的恢复锚点 `RP-097`
+- 本轮权威验证：
+  - `dotnet build GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release`
+    - 结果：通过，`0 warning / 0 error`
+  - `dotnet test GFramework.Core.Tests/GFramework.Core.Tests.csproj -c Release --filter "FullyQualifiedName~CommandExecutorTests|FullyQualifiedName~AsyncQueryExecutorTests"`
+    - 结果：通过，`19/19` passed
+  - `python3 scripts/license-header.py --check`
+    - 结果：通过
+  - `git diff --check`
+    - 结果：通过
+
 ### 阶段：PR #334 latest-head review 复核（CQRS-REWRITE-RP-096）
 
 - 再次使用 `$gframework-pr-review` 抓取 `feat/cqrs-optimization` 对应的 `PR #334` latest-head review，并读取 `/tmp/current-pr-review.json` 中的 `review_agents`、`latest_commit_review`、`megalinter_report` 与 `test_reports`
