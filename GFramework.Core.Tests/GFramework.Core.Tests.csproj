@@ -21,7 +21,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Scriban" Version="7.1.0" />
+      <PackageReference Include="Scriban" Version="7.2.0" />
         <ProjectReference Include="..\GFramework.Tests.Common\GFramework.Tests.Common.csproj"/>
         <ProjectReference Include="..\GFramework.Core.Abstractions\GFramework.Core.Abstractions.csproj"/>
         <ProjectReference Include="..\GFramework.Core\GFramework.Core.csproj"/>
