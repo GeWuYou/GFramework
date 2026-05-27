@@ -127,6 +127,26 @@ public sealed class HudModule : AbstractGodotModule
 - 模块会在挂接节点前先完成框架侧注册
 - 只有等锚点真正 ready 后，才进入需要访问 Godot 节点 API 的附加阶段
 
+### Godot 主线程同步 CQRS 保护
+
+继承 `AbstractArchitecture` 且未自定义 `IArchitectureContext` 时，默认上下文会启用 Godot 主线程同步 CQRS guard。
+
+当满足下面两个条件时：
+
+1. 当前进程存在有效的 `SceneTree`
+2. 当前调用发生在 Godot 主线程
+
+同步 `SendRequest(...)`、同步 `SendCommand(...)`、同步 `SendQuery(...)` 会直接抛出明确异常，而不是继续走 legacy 同步 bridge。
+
+原因不是这些 API 本身必然错误，而是当前 legacy bridge 可能把 handler 执行切到工作线程；一旦 handler 内部触达
+`Node`、`SceneTree`、UI 路由、暂停处理器等线程亲和 Godot API，就会产生越线程调用。
+
+Godot 场景中的推荐入口是：
+
+- `SendAsync(...)`
+- `SendCommandAsync(...)`
+- `RunCommandCoroutine(...)`
+
 ### 销毁阶段
 
 `ArchitectureAnchor._ExitTree()` 会触发绑定好的退出回调，随后 `AbstractArchitecture` 会开始观察异步销毁流程：
