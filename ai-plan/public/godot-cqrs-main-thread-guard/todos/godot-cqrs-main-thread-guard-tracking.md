@@ -59,11 +59,17 @@ SPDX-License-Identifier: Apache-2.0
   - 结果：通过，`0 warning / 0 error`
   - 备注：覆盖本轮测试代码改动
 - `dotnet test GFramework.Godot.Tests/GFramework.Godot.Tests.csproj -c Release --filter "FullyQualifiedName~AbstractArchitectureModuleInstallationTests" -m:1`
-  - 结果：失败
-  - 备注：`VSTest` 在 `net10.0` 下直接报告 `Test host process crashed`，属于当前测试宿主运行时问题，尚未拿到用例级失败输出
+  - 结果：已修复后通过
+  - 备注：根因是 `AbstractArchitecture_ShouldUseGodotContextWrapper_ByDefault` 在无 Godot 宿主的测试环境里调用 `Initialize()`，触发 `Engine.GetMainLoop()` 原生路径并导致 test host 崩溃
+- `dotnet test GFramework.Godot.Tests/GFramework.Godot.Tests.csproj -c Release --filter "FullyQualifiedName~GFramework.Godot.Tests.Architectures.AbstractArchitectureModuleInstallationTests.AbstractArchitecture_ShouldUseGodotContextWrapper_ByDefault"`
+  - 结果：通过
+  - 备注：调整为仅验证默认 `Context` 包装后，该单测不再依赖 Godot 原生宿主
+- `dotnet test GFramework.Godot.Tests/GFramework.Godot.Tests.csproj -c Release`
+  - 结果：通过，`83 passed / 0 failed`
+  - 备注：确认 `GFramework.Godot.Tests` 的全量 `net10.0` 测试已恢复正常退出
 
 ## 下一推荐步骤
 
 1. 提交本轮已验证的 runtime / test 文档修复。
 2. 推送后重新执行 `$gframework-pr-review`，确认当前 open threads 是否只剩 stale 信号。
-3. 若仍需测试级证明，再单独排查 `GFramework.Godot.Tests` 的 `net10.0` test host 崩溃原因。
+3. 若 CI 仍出现 Godot 测试宿主问题，再检查是否有新的测试在无宿主环境里直接调用依赖 `Engine.GetMainLoop()` 的初始化路径。

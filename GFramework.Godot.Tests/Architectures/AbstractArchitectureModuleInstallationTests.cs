@@ -64,8 +64,6 @@ public sealed class AbstractArchitectureModuleInstallationTests
     {
         var architecture = new TestArchitecture();
 
-        architecture.Initialize();
-
         Assert.That(architecture.Context, Is.TypeOf<GodotArchitectureContext>());
     }
 

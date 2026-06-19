@@ -46,4 +46,7 @@ SPDX-License-Identifier: Apache-2.0
   - `git diff --check`：通过
   - `dotnet build GFramework.Godot/GFramework.Godot.csproj -c Release`：通过，`0 warning / 0 error`
   - `dotnet build GFramework.Godot.Tests/GFramework.Godot.Tests.csproj -c Release`：通过，`0 warning / 0 error`
-  - `dotnet test ... AbstractArchitectureModuleInstallationTests`：失败，`Test host process crashed`
+  - 初次 `dotnet test ... AbstractArchitectureModuleInstallationTests`：失败，`Test host process crashed`
+  - 复核根因：`AbstractArchitecture_ShouldUseGodotContextWrapper_ByDefault` 在无 Godot 宿主环境里调用 `Initialize()`，执行 `Engine.GetMainLoop()` 时直接打崩 test host
+  - 修复后 `dotnet test ... AbstractArchitecture_ShouldUseGodotContextWrapper_ByDefault`：通过
+  - 修复后 `dotnet test GFramework.Godot.Tests/GFramework.Godot.Tests.csproj -c Release`：通过，`83 passed / 0 failed`
