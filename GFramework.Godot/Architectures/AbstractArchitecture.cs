@@ -17,6 +17,16 @@ public abstract class AbstractArchitecture : Architecture
     /// <summary>
     ///     初始化新的 Godot 架构，并为未显式提供上下文的场景自动启用 Godot 主线程同步 CQRS 保护。
     /// </summary>
+    /// <param name="configuration">可选的架构配置；当为 <see langword="null" /> 时沿用基类默认配置解析流程。</param>
+    /// <param name="environment">可选的运行环境实例；当为 <see langword="null" /> 时由基类按默认规则解析。</param>
+    /// <param name="services">可选的服务容器包装；若未提供，则创建新的 <see cref="ArchitectureServices" />。</param>
+    /// <param name="context">
+    ///     可选的架构上下文；若未提供，则自动包装为 <see cref="GodotArchitectureContext" />，
+    ///     以确保默认同步 CQRS 调用在 Godot 主线程上受到保护。
+    /// </param>
+    /// <remarks>
+    ///     该构造函数会让默认服务实例与默认上下文共享同一容器，避免模块安装阶段出现服务注册与解析容器不一致的问题。
+    /// </remarks>
     protected AbstractArchitecture(
         IArchitectureConfiguration? configuration = null,
         IEnvironment? environment = null,
