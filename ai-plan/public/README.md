@@ -42,6 +42,10 @@ help the current worktree land on the right recovery documents without scanning 
   - Purpose: establish the shared input abstraction, default binding runtime, and Godot InputMap integration path.
   - Tracking: `ai-plan/public/input-system-godot-integration/todos/input-system-godot-integration-tracking.md`
   - Trace: `ai-plan/public/input-system-godot-integration/traces/input-system-godot-integration-trace.md`
+- `godot-cqrs-main-thread-guard`
+  - Purpose: triage the active PR review for Godot main-thread CQRS guard work and keep the minimal recovery entrypoint for documentation, guard-message, and regression-test fixes.
+  - Tracking: `ai-plan/public/godot-cqrs-main-thread-guard/todos/godot-cqrs-main-thread-guard-tracking.md`
+  - Trace: `ai-plan/public/godot-cqrs-main-thread-guard/traces/godot-cqrs-main-thread-guard-trace.md`
 
 ## Worktree To Active Topic Map
 
@@ -62,6 +66,9 @@ help the current worktree land on the right recovery documents without scanning 
 - Branch: `feat/input-system-godot-integration`
   - Worktree hint: `GFramework-input-system-godot-integration`
   - Priority 1: `input-system-godot-integration`
+- Branch: `fix/godot-cqrs-main-thread-guard`
+  - Worktree hint: `GFramework`
+  - Priority 1: `godot-cqrs-main-thread-guard`
 - Branch: `docs/sdk-update-documentation`
   - Worktree hint: `GFramework-update-documentation`
   - Priority 1: `documentation-full-coverage-governance`

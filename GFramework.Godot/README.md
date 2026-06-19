@@ -133,6 +133,25 @@ Godot 上。
 
 不要把这些宿主实现误写成 `Game` 模块的默认行为。
 
+### 5. Godot 主线程不要走同步 CQRS
+
+`AbstractArchitecture` 现在会为默认上下文启用 Godot 主线程同步 CQRS 保护。
+
+如果当前进程存在 `SceneTree`，且调用发生在 Godot 主线程上：
+
+- 不要调用同步 `SendRequest(...)`
+- 不要调用同步 `SendCommand(...)`
+- 不要调用同步 `SendQuery(...)`
+
+这些入口会命中 legacy 同步 bridge，而 bridge 可能把 handler 执行切到工作线程，进而让 `Node`、`SceneTree`、`UiRoot`、
+暂停处理器等线程亲和 Godot API 在非主线程运行。
+
+在 Godot 节点、UI、输入和场景回调里，改用：
+
+- `SendAsync(...)`
+- `SendCommandAsync(...)`
+- `RunCommandCoroutine(...)`
+
 ## 典型接入方式
 
 - 架构侧保持普通模块注册，再按需挂接 Godot 宿主
