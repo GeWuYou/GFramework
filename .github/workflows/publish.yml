@@ -38,7 +38,7 @@ jobs:
 
     steps:
       - name: Checkout repository (at tag)
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: true
@@ -216,7 +216,7 @@ jobs:
 
     steps:
       - name: Checkout repository (at tag)
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: true
