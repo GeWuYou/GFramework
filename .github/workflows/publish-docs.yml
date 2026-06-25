@@ -51,7 +51,7 @@ jobs:
     steps:
       # 检出代码
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       # 按 GitHub Pages 官方流程初始化部署元数据。
       - name: Configure GitHub Pages
