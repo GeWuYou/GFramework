@@ -40,7 +40,7 @@ jobs:
 
       # 缓存MegaLinter
       - name: Cache MegaLinter
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/megalinter
           key: ${{ runner.os }}-megalinter-v9
@@ -64,7 +64,7 @@ jobs:
 
       # 缓存TruffleHog
       - name: Cache TruffleHog
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/trufflehog
           key: ${{ runner.os }}-trufflehog
@@ -112,7 +112,7 @@ jobs:
 
       # 配置NuGet包缓存以加速后续构建
       - name: Cache NuGet packages
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             ~/.nuget/packages
@@ -121,7 +121,7 @@ jobs:
       
       # 配置.NET本地工具缓存以加速后续构建
       - name: Cache dotnet tools
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.dotnet/tools
           key: ${{ runner.os }}-dotnet-tools-${{ hashFiles('.config/dotnet-tools.json') }}
