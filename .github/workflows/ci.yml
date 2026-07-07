@@ -23,7 +23,7 @@ jobs:
     steps:
       # 检出源代码，设置fetch-depth为0以获取完整的git历史
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -90,7 +90,7 @@ jobs:
     steps:
       # 检出源代码
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
     
