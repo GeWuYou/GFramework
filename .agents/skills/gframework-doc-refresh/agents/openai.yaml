@@ -1,4 +1,4 @@
 interface:
-  display_name: "GFramework Doc Refresh"
-  short_description: "Refresh module docs from code-first evidence"
-  default_prompt: "Use $gframework-doc-refresh to refresh a GFramework module's docs from source, tests, README, current docs, and ai-libs evidence."
+  display_name: "GFramework · 文档刷新"
+  short_description: "依据模块源码与测试核对文档接入路径，按需更新页面并保留项目契约边界"
+  default_prompt: "使用 $gframework-doc-refresh 根据当前源码与测试刷新指定模块的文档。"

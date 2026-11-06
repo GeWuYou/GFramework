@@ -72,6 +72,8 @@ class BuildTriageHintsTests(unittest.TestCase):
         self.assertEqual(triage_hints["affected_active_topics"], [])
         self.assertFalse(triage_hints["information_flags"]["needs_clarification"])
         self.assertEqual(triage_hints["next_action"], "start-new-docs-topic-with-boot")
+        self.assertIsNone(triage_hints["boot_handoff"]["recommended_skill"])
+        self.assertEqual(triage_hints["boot_handoff"]["mode"], "new")
 
     def test_build_triage_hints_routes_feature_issue_to_new_topic_when_request_is_clear(self) -> None:
         """Feature requests with explicit desired behavior should stay actionable without fake bug repro gates."""
@@ -88,6 +90,28 @@ class BuildTriageHintsTests(unittest.TestCase):
         self.assertEqual(triage_hints["affected_active_topics"], [])
         self.assertFalse(triage_hints["information_flags"]["needs_clarification"])
         self.assertEqual(triage_hints["next_action"], "start-new-topic-with-boot")
+
+    def test_incomplete_issue_keeps_clarification_without_skill_dispatch(self) -> None:
+        """Insufficient evidence must not become an implementation or skill handoff."""
+        hints = MODULE.build_triage_hints(
+            {"title": "Something failed", "labels": ["bug"], "body": "Please investigate."}, []
+        )
+
+        self.assertTrue(hints["information_flags"]["needs_clarification"])
+        self.assertEqual(hints["next_action"], "clarify-issue-before-code")
+        self.assertIsNone(hints["boot_handoff"]["recommended_skill"])
+
+    def test_matching_topic_keeps_resume_hint_without_skill_dispatch(self) -> None:
+        """Existing topic navigation must survive removal of the startup skill."""
+        hints = MODULE.build_triage_hints(
+            {"title": "Improve coroutine scheduling", "labels": ["enhancement"],
+             "body": "The coroutine scheduler should support cancellation."}, []
+        )
+
+        self.assertIn("coroutine-optimization", hints["affected_active_topics"])
+        self.assertEqual(hints["next_action"], "resume-existing-topic-with-boot")
+        self.assertEqual(hints["boot_handoff"]["mode"], "resume")
+        self.assertIsNone(hints["boot_handoff"]["recommended_skill"])
 
 
 if __name__ == "__main__":

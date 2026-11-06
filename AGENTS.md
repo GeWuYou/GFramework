@@ -100,86 +100,29 @@ All AI agents and contributors must follow these rules when writing, reviewing, 
 - If CI reports a license-header failure, either fix it locally with `python3 scripts/license-header.py --fix` or, for
   maintainer-owned cleanup, use the manual `License Header Fix` GitHub Actions workflow to create a reviewed repair PR.
 
-## Repository Boot Skill
+## Task Startup and Recovery
 
-- The repository-maintained Codex boot skill lives at `.agents/skills/gframework-boot/`.
-- The repository-maintained multi-agent coordination skill lives at `.agents/skills/gframework-multi-agent-batch/`.
-- Prefer invoking `$gframework-boot` when the user uses short startup prompts such as `boot`、`continue`、`next step`、
-  `按 boot 开始`、`先看 AGENTS`、`继续当前任务`.
-- Prefer invoking `$gframework-multi-agent-batch` when the user explicitly wants the main agent to delegate bounded
-  parallel work, track subagent progress, maintain `ai-plan`, verify subagent output, and keep coordinating until the
-  current multi-agent batch reaches a natural stop boundary.
-- The boot skill is a startup convenience layer, not a replacement for this document. If the skill and `AGENTS.md`
-  diverge, follow `AGENTS.md` first and update the skill in the same change.
-- The boot skill MUST read `AGENTS.md`、`.ai/environment/tools.ai.yaml`、`ai-plan/public/README.md` and the relevant
-  active-topic `ai-plan/` artifacts before substantive execution.
+- Read this document and `.ai/environment/tools.ai.yaml` before substantive work.
+- Inspect the current branch, HEAD and working-tree changes; preserve unrelated work.
+- Read `ai-plan/public/README.md`. For continuation, follow the current branch/worktree mapping to the relevant
+  topic's active todo and trace. Without a mapping, search active topics for the requested task rather than loading
+  every topic. Ask only when competing recovery points would materially change the scope.
+- Read topic archives only when the active recovery entry points to them or historical investigation requires them.
+  Worktree-private notes remain private and do not override current source, Git state or user instructions.
+- Ordinary tasks proceed directly under these rules; startup and continued execution do not require a separate skill.
+- For multi-step work, maintain the recovery artifacts described in Task Tracking. At a scope boundary or interruption,
+  record verified progress, remaining work and the next recovery point instead of using a fixed context percentage.
 
 ## Subagent Usage Rules
 
-- Use subagents only when the task is complex, the context is likely to grow too large, or the work can be split into
-  independent parallel subtasks.
-- The main agent MUST identify the critical path first. Do not delegate the immediate blocking task if the next local
-  step depends on that result.
-- Use `explorer` subagents for read-only discovery, comparison, tracing, and narrow codebase questions.
-- Use `worker` subagents only for bounded implementation tasks with an explicit file or module ownership boundary.
-- Every delegation MUST specify:
-    - the concrete objective
-    - the expected output format
-    - the files or subsystem the subagent owns
-    - any constraints about tests, diagnostics, or compatibility
-- Subagents are not allowed to revert or overwrite unrelated changes from the user or other agents. They must adapt to
-  concurrent work instead of assuming exclusive ownership of the repository.
-- Prefer lightweight models such as `gpt-5.1-codex-mini` for narrow exploration, indexing, and comparison tasks.
-- Prefer stronger models such as `gpt-5.4` for cross-module design work, non-trivial refactors, and tasks that require
-  higher confidence reasoning.
-- The main agent remains responsible for reviewing and integrating subagent output. Unreviewed subagent conclusions do
-  not count as final results.
-
-### Multi-Agent Coordination Rules
-
-The terms below describe the default guardrails for multi-agent batches and how they affect worker-launch decisions.
-
-- `branch-diff budget`: the maximum acceptable branch diff size in files or lines before another worker wave becomes
-  harder to review as a single PR.
-- `reviewability budget`: the cumulative complexity limit beyond which accepting more parallel slices would materially
-  reduce review quality, even if the raw file count still looks acceptable.
-- `context-budget`: the main agent's remaining capacity to track active workers, validation, and integration state
-  without losing critical execution context.
-- When any of these budgets approaches its safe limit, the main agent SHOULD stop launching more workers and close the
-  current wave first.
-- `$gframework-multi-agent-batch` contains the fuller workflow and stop-condition guidance for applying these budgets in
-  practice.
-
-- Prefer the repository's multi-agent coordination mode when the user explicitly wants the main agent to keep
-  orchestrating parallel subagents, or when the work naturally splits into `2+` disjoint write slices that can proceed
-  in parallel without blocking the next local step.
-- In that mode, the main agent MUST keep ownership of:
-  - critical-path selection
-  - baseline and stop-condition tracking
-  - `ai-plan` updates
-  - validation planning and final validation
-  - review and acceptance of every subagent result
-  - the final integration and completion decision
-- Before spawning any `worker` subagent, the main agent MUST:
-  - identify the immediate blocking step and keep it local
-  - define disjoint file or subsystem ownership for each worker
-  - state the required validation commands and expected output format
-  - check that the expected write set still fits the current branch-diff and reviewability budget
-- While workers run, the main agent MUST avoid overlapping edits and focus on non-conflicting work such as:
-  - ranking the next candidate slices
-  - reviewing completed worker output
-  - recomputing branch-diff and context-budget posture
-  - keeping `ai-plan/public/**` recovery artifacts current
-- Before accepting a worker result, the main agent MUST confirm:
-  - the worker stayed within its owned files or subsystem
-  - the reported validation is sufficient for that slice
-  - any accepted findings or follow-up scope are recorded in the active `ai-plan` todo or trace when the task is
-    complex or multi-step
-- Do not continue launching workers merely because a file-count threshold still has room. Stop the current wave when
-  ownership boundaries start to overlap, reviewability materially degrades, or the context-budget signal says the main
-  agent should close the batch.
-- When a complex task uses multiple workers, the main agent SHOULD prefer the public workflow documented by
-  `$gframework-multi-agent-batch` unless a more task-specific skill already provides stricter rules.
+- Use one agent by default. Delegate only when the user requests parallel or delegated work.
+- Before dispatch, agree on the interfaces and dependencies, concrete objective, disjoint file/subsystem ownership,
+  required validation and expected output. Keep the immediate critical path local.
+- Workers must preserve other contributors' changes and stay within their assigned scope. They do not stage or commit
+  in a shared checkout; the main agent integrates the task-owned changes.
+- The main agent owns validation, review of each result, final integration and recovery updates. Worker reports alone
+  do not establish acceptance. Stop adding slices when ownership overlaps or the combined change becomes hard to review.
+- Use the models and agent capabilities available in the current session; do not require historical model names.
 
 ## Commenting Rules (MUST)
 
@@ -499,7 +442,7 @@ bash scripts/validate-csharp-naming.sh
 - Tracking updates MUST reflect completed work, newly discovered issues, validation results, and the next recommended
   recovery point.
 - Active tracking and trace files are recovery entrypoints, not append-only changelogs. They MUST stay concise enough
-  for `boot` to locate the current recovery point quickly.
+  for task startup to locate the current recovery point quickly.
 - Completing code changes without updating the active tracking document is considered incomplete work.
 - For any multi-step refactor, migration, or cross-module task, contributors MUST create or adopt a dedicated recovery
   document under `ai-plan/public/<topic>/todos/` before making substantive code changes.

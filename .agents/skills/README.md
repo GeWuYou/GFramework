@@ -1,113 +1,16 @@
 # GFramework Skills
 
-公开入口目前包含 `gframework-doc-refresh`、`gframework-batch-boot` 与 `gframework-multi-agent-batch`。
+普通启动、续作和显式委派按仓库 [工作规则](../../AGENTS.md)执行，不需要加载流程包装 skill。
+以下三个入口只保留项目专用取证与文档能力；审阅请求本身不授权修改、提交或发布。
 
-## 公开入口
+| 场景 | 入口与结果 | 调用示例 |
+| --- | --- | --- |
+| 根据模块源码刷新文档 | [文档刷新](gframework-doc-refresh/SKILL.md)：解析模块与别名，核对接入路径并更新必要页面 | `$gframework-doc-refresh Core` |
+| 梳理 GitHub Issue | [Issue 梳理](gframework-issue-review/SKILL.md)：读取问题、讨论与时间线，列出需本地核实的事实 | `$gframework-issue-review 梳理 issue <number>` |
+| 核对 PR 审查与失败信号 | [PR 审查](gframework-pr-review/SKILL.md)：提取最新未解决审查线程、检查失败和测试诊断 | `$gframework-pr-review 检查当前分支 PR` |
 
-### `gframework-doc-refresh`
+保留现有 skill 调用名和脚本 CLI。普通启动、批处理与多 agent 编排的旧 skill 入口已移除；
+继续历史任务时，直接读取当前分支对应的恢复文档。
 
-按源码模块驱动文档刷新，而不是按 `guide`、`tutorial`、`api` 等类型拆入口。
-
-适用场景：
-
-- 刷新某个模块的 landing page
-- 复核专题页是否与源码、测试、README 一致
-- 评估是否需要补 API reference 或教程
-- 在 adoption path 不清晰时引入 `ai-libs/` 消费者接法作为补充证据
-
-推荐调用：
-
-```bash
-/gframework-doc-refresh <module>
-```
-
-示例：
-
-```bash
-/gframework-doc-refresh Core
-/gframework-doc-refresh Godot.SourceGenerators
-/gframework-doc-refresh Cqrs
-```
-
-### `gframework-batch-boot`
-
-在 `gframework-boot` 的基础上，自动推进可分批执行的重复性任务，不需要人工一轮轮重新触发。
-
-适用场景：
-
-- analyzer warning reduction
-- 大批量测试结构收口
-- 分模块文档刷新 wave
-- 任何有明确 stop condition 的多批次任务
-
-推荐调用：
-
-```bash
-/gframework-batch-boot <task-or-stop-condition>
-```
-
-批处理阈值速记：
-
-```bash
-/gframework-batch-boot 75
-/gframework-batch-boot 75 2000
-```
-
-- 单个数字默认表示“当前分支全部提交相对远程 `origin/main` 接近多少个文件变更时停止”
-- 两个数字默认表示“当前分支全部提交相对远程 `origin/main` 的 `文件数 OR 变更行数`”，顺序固定为 `<files> <lines>`
-- 不推荐写 `/gframework-batch-boot 75 | 2000`，因为 `|` 很像 shell pipe；若用户这样写，也应按 OR 语义理解并在后续说明中归一化成无 `|` 版本
-
-示例：
-
-```bash
-/gframework-batch-boot 75
-/gframework-batch-boot 75 2000
-/gframework-batch-boot continue analyzer warning reduction until branch diff vs origin/main approaches 75 files
-/gframework-batch-boot keep refactoring repetitive source-generator tests in bounded batches
-```
-
-### `gframework-multi-agent-batch`
-
-当用户希望主 Agent 负责拆分任务、派发互不冲突的 subagent 切片、核对进度、维护 `ai-plan`、验收结果并持续推进时，使用该入口。
-
-适用场景：
-
-- 复杂任务已经明确可以拆成多个互不冲突的写面
-- 主 Agent 需要持续 review / integrate，而不是把执行权完全交给单个 worker
-- 需要把 delegated scope、验证结果与下一恢复点同步写回 `ai-plan`
-- 任务仍要受 branch diff、context budget 与 reviewability 边界约束
-
-推荐调用：
-
-```bash
-/gframework-multi-agent-batch <task>
-```
-
-示例：
-
-```bash
-/gframework-multi-agent-batch continue the current cqrs optimization by delegating non-conflicting benchmark and runtime slices
-/gframework-multi-agent-batch coordinate parallel subagents, keep ai-plan updated, and stop when reviewability starts to degrade
-```
-
-## 共享资源
-
-- `_shared/DOCUMENTATION_STANDARDS.md`
-  - 统一的文档规则、证据顺序与验证要求
-- `_shared/module-map.json`
-  - 机器可读的模块映射表
-- `_shared/module-config.sh`
-  - 轻量 shell 辅助函数
-
-## 内部资源
-
-`gframework-doc-refresh/` 下包含：
-
-- `references/`
-  - 模块选择、证据顺序、输出策略
-- `templates/`
-  - landing page、专题页、API reference、教程模板
-- `scripts/`
-  - 模块扫描与文档验证脚本
-
-旧 `vitepress-*` skills 不再作为并列公开入口保留。
+文档专用资源包括 `_shared/module-map.json`、[文档规范](_shared/DOCUMENTATION_STANDARDS.md)，
+以及文档刷新入口下的 references、templates 和校验脚本。模块映射只维护 JSON 一份。

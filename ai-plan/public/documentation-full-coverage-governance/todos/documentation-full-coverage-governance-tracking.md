@@ -67,4 +67,4 @@
 
 1. 提交并推送本轮 source-generators 文档与 active `ai-plan` follow-up，然后重新抓取 `$gframework-pr-review`。
 2. 若 remote open threads 只剩 stale 的“迁移与兼容性”线程或 `Title check` 这类 metadata 项，则停止本轮仓库内修复。
-3. 若 review 线程清空或只剩 metadata 项，再按 `$gframework-batch-boot 50` 继续挑选新的 coverage 切片，避免在同一轮混入无关改稿。
+3. 若 review 线程清空或只剩 metadata 项，再按当前任务范围与审阅边界继续挑选新的 coverage 切片，避免在同一轮混入无关改稿。

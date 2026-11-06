@@ -1,4 +1,4 @@
 interface:
-  display_name: "GFramework PR Review"
-  short_description: "Inspect the current PR and AI review findings"
-  default_prompt: "Use $gframework-pr-review to inspect the current branch PR through the GitHub API, prioritize unresolved review threads on the latest head commit from supported AI reviewers such as CodeRabbit and greptile-apps, and summarize failed checks or failed tests."
+  display_name: "GFramework · PR 审查"
+  short_description: "核对当前 PR 的最新审查线程与检查失败信号，区分有效发现和已过时建议"
+  default_prompt: "使用 $gframework-pr-review 核对当前分支 PR 的审查发现与失败诊断。"
