@@ -16,7 +16,7 @@
 
 - 契约层：`GFramework.Core.Abstractions`
 - 实现层：`GFramework.Core`
-- 直接依赖：`GFramework.Cqrs.Abstractions` 与 Microsoft DI 抽象；单独引用本包仍会带入 CQRS 契约
+- 直接依赖：Microsoft DI 抽象；不依赖 CQRS 契约
 - 上层契约：`GFramework.Game.Abstractions`
 
 ## 契约地图
@@ -25,7 +25,6 @@
 | --- | --- |
 | `Architectures/` `Lifecycle/` `Registries/` | `IArchitecture`、上下文、模块、服务模块、阶段监听、注册表基类与生命周期契约 |
 | `Bases/` `Controller/` `Model/` `Systems/` `Utility/` `Rule/` | 组件角色接口、优先级 / key 值对象、上下文感知约束与扩展边界 |
-| `Command/` `Query/` `Cqrs/` | 旧版命令 / 查询执行器接口，以及面向 CQRS runtime 的兼容别名入口 |
 | `Events/` `Property/` `State/` `StateManagement/` | 事件总线、解绑对象、可绑定属性、状态机、Store / reducer / middleware 契约 |
 | `Coroutine/` `Time/` `Pause/` `Concurrency/` | 协程状态、时间源、暂停栈、键控异步锁和统计对象 |
 | `Resource/` `Pool/` `Logging/` `Localization/` | 资源句柄、对象池、日志、日志工厂、本地化表与格式化契约 |
@@ -40,7 +39,6 @@
 | 类型族 | 代表类型 | 阅读重点 |
 | --- | --- | --- |
 | `Architectures/` `Lifecycle/` `Registries/` | `IArchitecture`、`IArchitectureContext`、`IServiceModule`、`KeyValueRegistryBase<TKey, TValue>` | 看架构、上下文、模块装配与注册表基类边界 |
-| `Command/` `Query/` `Cqrs/` | `ICommandExecutor`、`IAsyncQueryExecutor`、`ICqrsRuntime` | 看旧命令 / 查询契约，以及 CQRS runtime 的兼容别名入口 |
 | `Events/` `Property/` `State/` `StateManagement/` | `IEventBus`、`IBindableProperty<T>`、`IStateMachine`、`IStore<TState>` | 看事件分发、可绑定状态与 store 契约 |
 | `Coroutine/` `Time/` `Pause/` `Concurrency/` | `IYieldInstruction`、`ITimeProvider`、`IPauseStackManager`、`IAsyncKeyLockManager` | 看协程、时间源、暂停栈与并发协调能力 |
 | `Resource/` `Pool/` `Logging/` `Localization/` | `IResourceManager`、`IObjectPoolSystem`、`ILogger`、`ILocalizationManager` | 看资源、对象池、日志与本地化服务角色 |
@@ -55,7 +53,7 @@ IAsyncInitializable.InitializeAsync 接受 CancellationToken；IArchitecture 同
 
 IContextAware 要求显式绑定实例上下文；未绑定时不回退到全局状态。IIocContainer 的类型/工厂注册由正式 provider 拥有，实例注册保持外部所有权。generic RegisterPlurality 对可释放类型拒绝隐式 owning aliases，调用方应使用单一规范拥有绑定或外部实例。
 
-这些契约不改变 Core.Abstractions 对 CQRS 契约的现有依赖。
+`IArchitectureContext` 只承载组件获取、事件系统与环境访问。request / notification / stream 的分发契约位于 `GFramework.Cqrs.Abstractions`（`ICqrsRuntime` 等），按需安装，不在本包的契约面内。
 
 ## 采用建议
 
@@ -70,11 +68,6 @@ IContextAware 要求显式绑定实例上下文；未绑定时不回退到全局
 - 架构与模块入口：`IArchitecture`、`IArchitectureContext`、`IServiceModule`
 - 运行时基础设施：`IIocContainer`、`ILogger`、`IResourceManager`、`IConfigurationManager`
 - 状态与并发能力：`IStateMachine`、`IStore`、`IAsyncKeyLockManager`、`ITimeProvider`
-- 迁移与组合边界：`ICommandExecutor`、`IQueryExecutor`，以及旧命名空间下作为 compatibility alias 暴露的 `ICqrsRuntime`
-
-`GFramework.Core.Abstractions.Cqrs.ICqrsRuntime` 当前主要用于兼容旧命名空间引用。新代码应直接依赖
-`GFramework.Cqrs.Abstractions.Cqrs.ICqrsRuntime`，这样可以把请求模型、handler 和 runtime seam 保持在同一套
-CQRS 契约下。
 
 ## 对应文档
 

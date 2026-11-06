@@ -4,11 +4,9 @@
 using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Abstractions.Utility;
 using GFramework.Core.Architectures;
-using GFramework.Core.Command;
 using GFramework.Core.Environment;
 using GFramework.Core.Events;
 using GFramework.Core.Ioc;
-using GFramework.Core.Query;
 using GFramework.Core.Utility;
 
 namespace GFramework.Core.Tests.Utility;
@@ -33,10 +31,7 @@ public class AbstractContextUtilityTests
     {
         _container = new MicrosoftDiContainer();
         _container.RegisterPlurality(new EventBus());
-        _container.RegisterPlurality(new CommandExecutor());
-        _container.RegisterPlurality(new QueryExecutor());
         _container.RegisterPlurality(new DefaultEnvironment());
-        _container.RegisterPlurality(new AsyncQueryExecutor());
         _context = new ArchitectureContext(_container);
     }
 

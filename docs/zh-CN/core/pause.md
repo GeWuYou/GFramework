@@ -898,22 +898,13 @@ public class PauseEventBridge : AbstractSystem
     }
 }
 
-// 与命令系统配合
-public class PauseCommand : AbstractCommand
+// 与暂停工具配合
+public class PauseControlSystem : AbstractSystem
 {
-    private readonly string _reason;
-    private readonly PauseGroup _group;
-
-    public PauseCommand(string reason, PauseGroup group = PauseGroup.Global)
-    {
-        _reason = reason;
-        _group = group;
-    }
-
-    protected override void OnExecute()
+    public void Pause(string reason, PauseGroup group = PauseGroup.Global)
     {
         var pauseManager = this.GetUtility<IPauseStackManager>();
-        pauseManager.Push(_reason, _group);
+        pauseManager.Push(reason, group);
     }
 }
 ```

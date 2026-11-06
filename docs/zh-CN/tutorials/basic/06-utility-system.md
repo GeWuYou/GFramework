@@ -24,39 +24,43 @@ next:
 - 当 Count > 10 时，输出提示信息
 - 当 Count < -10 时，输出提示信息
 
-## 方案一：在 Command 中实现（❌ 不推荐）
+## 方案一：在 Handler 中实现（❌ 不推荐）
 
 ### 错误示范
 
 ```csharp
-public class IncreaseCountCommand : AbstractCommand
+public sealed class IncreaseCountHandler
+    : AbstractRequestHandler<IncreaseCountRequest, Unit>
 {
-    protected override void OnExecute()
+    public override ValueTask<Unit> Handle(
+        IncreaseCountRequest request,
+        CancellationToken cancellationToken)
     {
-        var model = this.GetModel<ICounterModel>()!;
-        
-        // ❌ 在 Command 里写业务规则
+        var model = Context.GetModel<ICounterModel>()!;
+
+        // ❌ 在 Handler 里写业务规则
         if (model.Count >= 20)
         {
-            return;  // 超过上限，不执行
+            return ValueTask.FromResult(Unit.Value);  // 超过上限，不执行
         }
-        
+
         model.Increment();
+        return ValueTask.FromResult(Unit.Value);
     }
 }
 ```
 
 ### 问题
 
-1. **规则写死在 Command 里**
+1. **规则写死在 Handler 里**
     - 如果别的地方也要用"最大 20"的限制怎么办？
     - 规则变更（如改成 100）需要修改业务代码
 
 2. **无法单独测试规则**
-    - 只能通过 Command 测试，无法单独测试规则逻辑
+    - 只能通过 Handler 测试，无法单独测试规则逻辑
 
 3. **违反单一职责原则**
-    - Command 应该只负责"执行操作"
+    - Handler 应该只负责"执行操作"
     - 不应该负责"业务规则验证"
 
 ## 引入 Utility
@@ -193,32 +197,36 @@ public class UtilityModule : AbstractModule
 }
 ```
 
-### 4. 在 Command 中使用 Utility
+### 4. 在 Handler 中使用 Utility
 
-编辑 `IncreaseCountCommand.cs`：
+编辑 `IncreaseCountHandler.cs`：
 
 ```csharp
-using GFramework.Core.Command;
-using GFramework.Core.Extensions;
+using GFramework.Cqrs.Abstractions.Cqrs;
+using GFramework.Cqrs.Cqrs.Request;
 using MyGFrameworkGame.scripts.Model;
 using MyGFrameworkGame.scripts.Utility;
 
-namespace MyGFrameworkGame.scripts.Command;
+namespace MyGFrameworkGame.scripts.Cqrs;
 
-public class IncreaseCountCommand : AbstractCommand
+public sealed class IncreaseCountHandler
+    : AbstractRequestHandler<IncreaseCountRequest, Unit>
 {
-    protected override void OnExecute()
+    public override ValueTask<Unit> Handle(
+        IncreaseCountRequest request,
+        CancellationToken cancellationToken)
     {
-        var model = this.GetModel<ICounterModel>()!;
-        var utility = this.GetUtility<ICounterUtility>()!;
+        var model = Context.GetModel<ICounterModel>()!;
+        var utility = Context.GetUtility<ICounterUtility>()!;
 
         // ✅ 使用 Utility 检查规则
         if (!utility.CanIncrease(model.Count))
         {
-            return;  // 超过上限，不执行
+            return ValueTask.FromResult(Unit.Value);  // 超过上限，不执行
         }
 
         model.Increment();
+        return ValueTask.FromResult(Unit.Value);
     }
 }
 ```
@@ -234,7 +242,7 @@ public class IncreaseCountCommand : AbstractCommand
 假设多个地方需要检查上限：
 
 ```csharp
-// Command 中
+// Handler 中
 if (!utility.CanIncrease(model.Count)) return;
 
 // System 中
@@ -283,22 +291,26 @@ public void CanIncrease_WhenAtMax_ReturnsFalse()
 
 这些逻辑应该写在哪里？
 
-**❌ 不应该在 Command 里**：
+**❌ 不应该在 Handler 里**：
 
 ```csharp
-protected override void OnExecute()
+public override ValueTask<Unit> Handle(
+    IncreaseCountRequest request,
+    CancellationToken cancellationToken)
 {
     model.Increment();
-    
-    // ❌ Command 不应该关心这些"连锁反应"
+
+    // ❌ Handler 不应该关心这些"连锁反应"
     if (model.Count > 10) { /* ... */ }
     if (model.Count < -10) { /* ... */ }
+
+    return ValueTask.FromResult(Unit.Value);
 }
 ```
 
 **为什么？**
 
-- Command 只应该关心"行为"
+- Handler 只应该关心"行为"
 - 不应该关心"系统状态带来的连锁反应"
 
 **✅ 应该在 System 里**：
@@ -314,7 +326,7 @@ protected override void OnExecute()
 
 System **不应该**：
 
-❌ 直接修改 Model（应通过 Command）  
+❌ 直接修改 Model（应通过请求处理器）  
 ❌ 包含 UI 逻辑
 
 ### 1. 定义 System 接口
@@ -421,7 +433,7 @@ public class SystemModule : AbstractModule
 
 ### 1. 关注点分离
 
-**Command 负责"做什么"**：
+**Handler 负责"做什么"**：
 
 ```csharp
 model.Increment();  // 执行操作
@@ -441,10 +453,10 @@ if (count > 10) { /* 触发反应 */ }
 - 达到 15 触发警告
 - 达到 20 锁定按钮
 
-**❌ 如果写在 Command**：
+**❌ 如果写在 Handler**：
 
 ```csharp
-// 在 N 个 Command 里重复相同逻辑
+// 在 N 个 Handler 里重复相同逻辑
 if (count == 5) PlaySound();
 if (count == 15) ShowWarning();
 if (count == 20) LockButton();
@@ -492,11 +504,11 @@ protected override void OnInit()
 └──────┬──────┘
        │
 ┌──────▼──────┐
-│ Controller  │  将用户操作转为命令
+│ Controller  │  将用户操作转为请求
 └──────┬──────┘
        │
 ┌──────▼──────┐
-│  Command    │  封装业务逻辑
+│  Handler    │  封装业务逻辑
 └──────┬──────┘
        │
 ┌──────▼──────┐
@@ -523,11 +535,11 @@ protected override void OnInit()
 ```text
 用户点击按钮
     ↓
-Controller: SendCommand(IncreaseCommand)
+Controller: SendAsync(IncreaseCountRequest)
     ↓
-Command: GetUtility().CanIncrease() → 检查规则
+Handler: GetUtility().CanIncrease() → 检查规则
     ↓
-Command: GetModel().Increment() → 修改状态
+Handler: GetModel().Increment() → 修改状态
     ↓
 Model: SendEvent(ChangedCountEvent) → 发送事件
     ↓
@@ -540,8 +552,8 @@ Model: SendEvent(ChangedCountEvent) → 发送事件
 | 层级             | 职责         | 示例                |
 |----------------|------------|-------------------|
 | **View**       | 呈现 UI，接收输入 | Label、Button      |
-| **Controller** | 转发用户意图     | 将点击转为命令           |
-| **Command**    | 执行业务操作     | 增加计数              |
+| **Controller** | 转发用户意图     | 将点击转为请求           |
+| **Handler**    | 执行业务操作     | 增加计数              |
 | **Model**      | 存储状态，发送事件  | 计数器的值             |
 | **Event**      | 通知状态变化     | ChangedCountEvent |
 | **System**     | 响应状态，执行规则  | 阈值检查              |
@@ -552,7 +564,7 @@ Model: SendEvent(ChangedCountEvent) → 发送事件
 ### 单向数据流
 
 ```text
-Action → Command → Model → Event → View/System
+Action → Request → Handler → Model → Event → View/System
 ```
 
 - 数据总是单向流动
@@ -563,10 +575,10 @@ Action → Command → Model → Event → View/System
 
 ```text
 Controller → "做什么"
-Command   → "怎么做"
-Model     → "状态是什么"
-System    → "状态变化后做什么"
-Utility   → "规则是什么"
+Handler    → "怎么做"
+Model      → "状态是什么"
+System     → "状态变化后做什么"
+Utility    → "规则是什么"
 ```
 
 ### 依赖倒置
@@ -647,9 +659,9 @@ MyGFrameworkGame/
 │   ├── model/
 │   │   ├── ICounterModel.cs
 │   │   └── CounterModel.cs
-│   ├── command/
-│   │   ├── IncreaseCountCommand.cs
-│   │   └── DecreaseCountCommand.cs
+│   ├── cqrs/
+│   │   ├── IncreaseCountRequest.cs
+│   │   └── DecreaseCountRequest.cs
 │   ├── utility/
 │   │   ├── ICounterUtility.cs
 │   │   └── CounterUtility.cs
@@ -696,7 +708,7 @@ Module (模块)
 
 - [ ] ICounterUtility 和 CounterUtility 已创建
 - [ ] Utility 已注册到 UtilityModule
-- [ ] IncreaseCountCommand 使用 Utility 检查规则
+- [ ] IncreaseCountHandler 使用 Utility 检查规则
 - [ ] ICounterThresholdSystem 和 CounterThresholdSystem 已创建
 - [ ] System 已注册到 SystemModule
 - [ ] 运行游戏，计数最大为 20

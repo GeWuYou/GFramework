@@ -65,7 +65,7 @@ public sealed class DiagnosticsFeature
 
 - 继承 `Architecture` 并完成默认初始化流程
 - 使用 `ContextAwareBase`、`AbstractModel`、`AbstractSystem` 等默认基类
-- 使用默认的 `CommandExecutor`、`QueryExecutor`、`BindableProperty<T>`、`StateMachine`
+- 使用默认的 `BindableProperty<T>`、`StateMachine`
 - 直接启用默认的 `Microsoft.Extensions.DependencyInjection` 容器适配或资源 / 协程 / 日志实现
 
 ## XML 阅读重点
@@ -75,10 +75,8 @@ public sealed class DiagnosticsFeature
 - 架构与模块入口：`IArchitecture`、`IArchitectureContext`、`IServiceModule`
 - 运行时基础设施：`IIocContainer`、`ILogger`、`IResourceManager`、`IConfigurationManager`
 - 状态与并发能力：`IStateMachine`、`IStore`、`IAsyncKeyLockManager`、`ITimeProvider`
-- 迁移与组合边界：`ICommandExecutor`、`IQueryExecutor`，以及旧命名空间下作为 compatibility alias 暴露的 `ICqrsRuntime`
 
-`GFramework.Core.Abstractions.Cqrs.ICqrsRuntime` 当前主要承担旧命名空间兼容入口的角色。编写新模块或新增请求处理逻辑时，
-应直接引用 `GFramework.Cqrs.Abstractions.Cqrs.ICqrsRuntime`，让 runtime seam 与 CQRS 请求契约保持一致。
+`IArchitectureContext` 不再声明消息分发成员；request / notification / stream 的分发契约位于 `GFramework.Cqrs.Abstractions`，按需安装。
 
 ## 契约族阅读入口
 
@@ -88,7 +86,7 @@ public sealed class DiagnosticsFeature
 | --- | --- | --- |
 | `Architectures/` | `IArchitecture`、`IArchitectureContext`、`IArchitectureServices`、`IServiceModule` | 架构上下文、服务访问面与模块安装 / 生命周期约束 |
 | `Lifecycle/` `Registries/` | `ILifecycle`、`IAsyncInitializable`、`IRegistry<T, TR>`、`KeyValueRegistryBase<TKey, TValue>` | 初始化 / 销毁阶段和注册表抽象边界 |
-| `Command/` `Query/` `Cqrs/` | `ICommandExecutor`、`IAsyncCommand<TResult>`、`IQueryExecutor`、`ICqrsRuntime` | 旧命令 / 查询接口，以及 CQRS runtime compatibility alias 的迁移边界 |
+| `Architectures/` 消息分发边界 | `IArchitectureContext` 的组件获取、事件与环境方法 | 上下文只承载组件与事件；消息分发契约位于 `GFramework.Cqrs.Abstractions` |
 | `Events/` `Property/` | `IEventBus`、`IEventFilter<T>`、`IBindableProperty<T>`、`IReadonlyBindableProperty<T>` | 事件传播、过滤、解绑对象和属性订阅语义 |
 | `State/` `StateManagement/` | `IStateMachine`、`IAsyncState`、`IStore<TState>`、`IStoreMiddleware<TState>` | 状态机契约与 Store 的 reducer / middleware / diagnostics 边界 |
 | `Coroutine/` `Time/` `Pause/` `Concurrency/` | `IYieldInstruction`、`ICoroutineStatistics`、`ITimeProvider`、`IPauseStackManager`、`IAsyncKeyLockManager` | 调度模型、时间源、暂停栈和异步锁契约 |

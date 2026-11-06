@@ -57,24 +57,28 @@ descriptor。只有当前类型对没有 generated metadata，或 registry / fal
 </ItemGroup>
 ```
 
-运行时侧仍然按 `Core` 的标准入口注册程序集：
+运行时侧通过 CQRS 的注册入口登记程序集：
 
 ```csharp
+using GFramework.Cqrs;
+
 protected override void ConfigureServices(Microsoft.Extensions.DependencyInjection.IServiceCollection services)
 {
-    RegisterCqrsHandlersFromAssembly(typeof(GameArchitecture).Assembly);
+    services.AddCqrsHandlersFromAssembly(typeof(GameArchitecture).Assembly);
 }
 ```
 
 如果你的 handlers 分布在多个业务程序集里，则改用：
 
 ```csharp
-RegisterCqrsHandlersFromAssemblies(
+services.AddCqrsHandlersFromAssemblies(
 [
     typeof(InventoryCqrsMarker).Assembly,
     typeof(BattleCqrsMarker).Assembly
 ]);
 ```
+
+在 Architecture 集成路径中，也可以把同样的程序集直接交给 `architecture.UseCqrsRuntime(...)` 或 `CqrsRuntimeModule(...)`。
 
 文档示例统一用 marker 类型承载程序集引用。框架本身不要求固定目录或固定命名，但团队实践里可以把这类空 marker
 集中放在每个业务程序集自己的 `Application/Markers` 或等价目录，并采用 `InventoryCqrsMarker` 这类能直接看出来源

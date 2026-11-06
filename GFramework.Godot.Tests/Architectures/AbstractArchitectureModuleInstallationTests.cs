@@ -2,17 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Architectures;
-using GFramework.Core.Abstractions.Command;
+using GFramework.Core.Abstractions.Enums;
 using GFramework.Core.Abstractions.Environment;
 using GFramework.Core.Abstractions.Events;
 using GFramework.Core.Abstractions.Model;
-using GFramework.Core.Abstractions.Query;
 using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Abstractions.Utility;
-using GFramework.Core.Architectures;
 using GFramework.Godot.Architectures;
-using GFramework.Cqrs.Abstractions.Cqrs;
-using ICommand = GFramework.Core.Abstractions.Command.ICommand;
 
 namespace GFramework.Godot.Tests.Architectures;
 
@@ -23,41 +19,56 @@ namespace GFramework.Godot.Tests.Architectures;
 public sealed class AbstractArchitectureModuleInstallationTests
 {
     /// <summary>
-    ///     验证主线程同步 CQRS 保护启用时，请求与查询入口都会抛出异常，并给出对应的异步迁移指引。
+    ///     验证装饰器把收缩后的非 CQRS 上下文能力面完整转发到底层上下文。
     /// </summary>
     [Test]
-    public void GodotArchitectureContext_ShouldThrow_ForSyncCqrsCalls_WhenGuardIsActive()
+    public void GodotArchitectureContext_ShouldForwardNonCqrsMembers_ToInnerContext()
     {
-        var context = new GodotArchitectureContext(new ArchitectureContext(new GFramework.Core.Ioc.MicrosoftDiContainer()), () => true);
+        var inner = new RecordingArchitectureContext();
+        var context = new GodotArchitectureContext(inner);
 
-        var requestException = Assert.Throws<InvalidOperationException>(() =>
-            context.SendRequest(new TestRequest()));
-        var queryException = Assert.Throws<InvalidOperationException>(() =>
-            context.SendQuery(new TestLegacyQuery()));
+        context.GetService<DummyService>();
+        context.GetServices<DummyService>();
+        context.GetSystem<DummySystem>();
+        context.GetSystems<DummySystem>();
+        context.GetModel<DummyModel>();
+        context.GetModels<DummyModel>();
+        context.GetUtility<DummyUtility>();
+        context.GetUtilities<DummyUtility>();
+        context.GetServicesByPriority<DummyService>();
+        context.GetSystemsByPriority<DummySystem>();
+        context.GetModelsByPriority<DummyModel>();
+        context.GetUtilitiesByPriority<DummyUtility>();
+        context.SendEvent<DummyEvent>();
+        context.SendEvent(new DummyEvent());
+        context.RegisterEvent<DummyEvent>(_ => { });
+        context.UnRegisterEvent<DummyEvent>(_ => { });
+        context.GetEnvironment();
 
-        Assert.Multiple(() =>
+        Assert.That(inner.Calls, Is.EquivalentTo(new[]
         {
-            Assert.That(requestException!.Message, Does.Contain("SendRequestAsync(...)"));
-            Assert.That(requestException.Message, Does.Contain("SendAsync(...)"));
-            Assert.That(queryException!.Message, Does.Contain("SendQueryAsync(...)"));
-        });
+            nameof(IArchitectureContext.GetService),
+            nameof(IArchitectureContext.GetServices),
+            nameof(IArchitectureContext.GetSystem),
+            nameof(IArchitectureContext.GetSystems),
+            nameof(IArchitectureContext.GetModel),
+            nameof(IArchitectureContext.GetModels),
+            nameof(IArchitectureContext.GetUtility),
+            nameof(IArchitectureContext.GetUtilities),
+            nameof(IArchitectureContext.GetServicesByPriority),
+            nameof(IArchitectureContext.GetSystemsByPriority),
+            nameof(IArchitectureContext.GetModelsByPriority),
+            nameof(IArchitectureContext.GetUtilitiesByPriority),
+            nameof(IArchitectureContext.SendEvent),
+            nameof(IArchitectureContext.SendEvent),
+            nameof(IArchitectureContext.RegisterEvent),
+            nameof(IArchitectureContext.UnRegisterEvent),
+            nameof(IArchitectureContext.GetEnvironment),
+        }));
     }
 
     /// <summary>
-    ///     验证主线程同步 CQRS 保护关闭时，请求入口会继续委托到底层上下文。
-    /// </summary>
-    [Test]
-    public void GodotArchitectureContext_ShouldForwardSyncCqrsCalls_WhenGuardIsInactive()
-    {
-        var context = new GodotArchitectureContext(new ForwardingArchitectureContext(), () => false);
-
-        var result = context.SendRequest(new TestRequest());
-
-        Assert.That(result, Is.EqualTo("ok"));
-    }
-
-    /// <summary>
-    ///     验证未显式传入上下文时，架构默认会包装成带 Godot 主线程保护的上下文实现。
+    ///     验证未显式传入上下文时，架构默认会包装成 Godot 上下文装饰器实现。
     /// </summary>
     [Test]
     public void AbstractArchitecture_ShouldUseGodotContextWrapper_ByDefault()
@@ -136,218 +147,127 @@ public sealed class AbstractArchitectureModuleInstallationTests
         }
     }
 
-    private sealed class ForwardingArchitectureContext : IArchitectureContext
+    /// <summary>
+    ///     只记录成员调用名并返回空结果的上下文桩，用于验证装饰器的转发面。
+    /// </summary>
+    private sealed class RecordingArchitectureContext : IArchitectureContext
     {
+        public List<string> Calls { get; } = new();
+
         /// <inheritdoc />
         public TService GetService<TService>() where TService : class
         {
-            throw new NotSupportedException();
+            Calls.Add(nameof(GetService));
+            return null!;
         }
 
         /// <inheritdoc />
         public IReadOnlyList<TService> GetServices<TService>() where TService : class
         {
-            throw new NotSupportedException();
+            Calls.Add(nameof(GetServices));
+            return null!;
         }
 
         /// <inheritdoc />
         public TSystem GetSystem<TSystem>() where TSystem : class, ISystem
         {
-            throw new NotSupportedException();
+            Calls.Add(nameof(GetSystem));
+            return null!;
         }
 
         /// <inheritdoc />
         public IReadOnlyList<TSystem> GetSystems<TSystem>() where TSystem : class, ISystem
         {
-            throw new NotSupportedException();
+            Calls.Add(nameof(GetSystems));
+            return null!;
         }
 
         /// <inheritdoc />
         public TModel GetModel<TModel>() where TModel : class, IModel
         {
-            throw new NotSupportedException();
+            Calls.Add(nameof(GetModel));
+            return null!;
         }
 
         /// <inheritdoc />
         public IReadOnlyList<TModel> GetModels<TModel>() where TModel : class, IModel
         {
-            throw new NotSupportedException();
+            Calls.Add(nameof(GetModels));
+            return null!;
         }
 
         /// <inheritdoc />
         public TUtility GetUtility<TUtility>() where TUtility : class, IUtility
         {
-            throw new NotSupportedException();
+            Calls.Add(nameof(GetUtility));
+            return null!;
         }
 
         /// <inheritdoc />
         public IReadOnlyList<TUtility> GetUtilities<TUtility>() where TUtility : class, IUtility
         {
-            throw new NotSupportedException();
+            Calls.Add(nameof(GetUtilities));
+            return null!;
         }
 
         /// <inheritdoc />
         public IReadOnlyList<TService> GetServicesByPriority<TService>() where TService : class
         {
-            throw new NotSupportedException();
+            Calls.Add(nameof(GetServicesByPriority));
+            return null!;
         }
 
         /// <inheritdoc />
         public IReadOnlyList<TSystem> GetSystemsByPriority<TSystem>() where TSystem : class, ISystem
         {
-            throw new NotSupportedException();
+            Calls.Add(nameof(GetSystemsByPriority));
+            return null!;
         }
 
         /// <inheritdoc />
         public IReadOnlyList<TModel> GetModelsByPriority<TModel>() where TModel : class, IModel
         {
-            throw new NotSupportedException();
+            Calls.Add(nameof(GetModelsByPriority));
+            return null!;
         }
 
         /// <inheritdoc />
         public IReadOnlyList<TUtility> GetUtilitiesByPriority<TUtility>() where TUtility : class, IUtility
         {
-            throw new NotSupportedException();
-        }
-
-        /// <inheritdoc />
-        public void SendCommand(ICommand command)
-        {
-            throw new NotSupportedException();
-        }
-
-        /// <inheritdoc />
-        public TResult SendCommand<TResult>(ICommand<TResult> command)
-        {
-            throw new NotSupportedException();
-        }
-
-        /// <inheritdoc />
-        public TResponse SendCommand<TResponse>(GFramework.Cqrs.Abstractions.Cqrs.Command.ICommand<TResponse> command)
-        {
-            throw new NotSupportedException();
-        }
-
-        /// <inheritdoc />
-        public Task SendCommandAsync(IAsyncCommand command)
-        {
-            throw new NotSupportedException();
-        }
-
-        /// <inheritdoc />
-        public ValueTask<TResponse> SendCommandAsync<TResponse>(
-            GFramework.Cqrs.Abstractions.Cqrs.Command.ICommand<TResponse> command,
-            CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        /// <inheritdoc />
-        public Task<TResult> SendCommandAsync<TResult>(IAsyncCommand<TResult> command)
-        {
-            throw new NotSupportedException();
-        }
-
-        /// <inheritdoc />
-        public TResult SendQuery<TResult>(IQuery<TResult> query)
-        {
-            return (TResult)(object)"ok";
-        }
-
-        /// <inheritdoc />
-        public TResponse SendQuery<TResponse>(GFramework.Cqrs.Abstractions.Cqrs.Query.IQuery<TResponse> query)
-        {
-            return (TResponse)(object)"ok";
-        }
-
-        /// <inheritdoc />
-        public Task<TResult> SendQueryAsync<TResult>(IAsyncQuery<TResult> query)
-        {
-            throw new NotSupportedException();
-        }
-
-        /// <inheritdoc />
-        public ValueTask<TResponse> SendQueryAsync<TResponse>(
-            GFramework.Cqrs.Abstractions.Cqrs.Query.IQuery<TResponse> query,
-            CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
+            Calls.Add(nameof(GetUtilitiesByPriority));
+            return null!;
         }
 
         /// <inheritdoc />
         public void SendEvent<TEvent>() where TEvent : new()
         {
-            throw new NotSupportedException();
+            Calls.Add(nameof(SendEvent));
         }
 
         /// <inheritdoc />
         public void SendEvent<TEvent>(TEvent e) where TEvent : class
         {
-            throw new NotSupportedException();
+            Calls.Add(nameof(SendEvent));
         }
 
         /// <inheritdoc />
         public IUnRegister RegisterEvent<TEvent>(Action<TEvent> handler)
         {
-            throw new NotSupportedException();
+            Calls.Add(nameof(RegisterEvent));
+            return null!;
         }
 
         /// <inheritdoc />
         public void UnRegisterEvent<TEvent>(Action<TEvent> onEvent)
         {
-            throw new NotSupportedException();
+            Calls.Add(nameof(UnRegisterEvent));
         }
 
         /// <inheritdoc />
         public IEnvironment GetEnvironment()
         {
-            throw new NotSupportedException();
-        }
-
-        /// <inheritdoc />
-        public ValueTask<TResponse> SendRequestAsync<TResponse>(
-            IRequest<TResponse> request,
-            CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        /// <inheritdoc />
-        public TResponse SendRequest<TResponse>(IRequest<TResponse> request)
-        {
-            return (TResponse)(object)"ok";
-        }
-
-        /// <inheritdoc />
-        public ValueTask PublishAsync<TNotification>(
-            TNotification notification,
-            CancellationToken cancellationToken = default)
-            where TNotification : INotification
-        {
-            throw new NotSupportedException();
-        }
-
-        /// <inheritdoc />
-        public IAsyncEnumerable<TResponse> CreateStream<TResponse>(
-            IStreamRequest<TResponse> request,
-            CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        /// <inheritdoc />
-        public ValueTask SendAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
-            where TCommand : IRequest<Unit>
-        {
-            throw new NotSupportedException();
-        }
-
-        /// <inheritdoc />
-        public ValueTask<TResponse> SendAsync<TResponse>(
-            IRequest<TResponse> command,
-            CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
+            Calls.Add(nameof(GetEnvironment));
+            return null!;
         }
     }
 
@@ -383,9 +303,9 @@ public sealed class AbstractArchitectureModuleInstallationTests
         }
     }
 
-    private sealed class TestRequest : IRequest<string>;
+    private sealed class DummyService;
 
-    private sealed class TestLegacyQuery : IQuery<string>
+    private sealed class DummySystem : ISystem
     {
         private IArchitectureContext? _context;
 
@@ -399,9 +319,43 @@ public sealed class AbstractArchitectureModuleInstallationTests
             return _context!;
         }
 
-        public string Do()
+        public void OnArchitecturePhase(ArchitecturePhase phase)
         {
-            return "ok";
+        }
+
+        public void Initialize()
+        {
+        }
+
+        public void Destroy()
+        {
         }
     }
+
+    private sealed class DummyModel : IModel
+    {
+        private IArchitectureContext? _context;
+
+        public void SetContext(IArchitectureContext context)
+        {
+            _context = context;
+        }
+
+        public IArchitectureContext GetContext()
+        {
+            return _context!;
+        }
+
+        public void OnArchitecturePhase(ArchitecturePhase phase)
+        {
+        }
+
+        public void Initialize()
+        {
+        }
+    }
+
+    private sealed class DummyUtility : IUtility;
+
+    private sealed class DummyEvent;
 }

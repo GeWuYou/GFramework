@@ -118,7 +118,7 @@ public class RequestBenchmarks
     [Benchmark]
     public ValueTask<BenchmarkResponse> SendRequest_GFrameworkCqrs()
     {
-        return _runtime.SendAsync(BenchmarkContext.Instance, _request, CancellationToken.None);
+        return _runtime.SendAsync(_request, CancellationToken.None);
     }
 
     /// <summary>

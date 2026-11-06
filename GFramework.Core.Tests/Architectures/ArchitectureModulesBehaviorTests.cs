@@ -9,14 +9,16 @@ using GFramework.Core.Architectures;
 using GFramework.Core.Logging;
 using GFramework.Cqrs;
 using GFramework.Cqrs.Abstractions.Cqrs;
+using GFramework.Cqrs.Extensions;
 using GFramework.Cqrs.Notification;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GFramework.Core.Tests.Architectures;
 
 /// <summary>
-///     验证 Architecture 通过 <c>ArchitectureModules</c> 暴露出的模块安装与 CQRS 行为注册能力。
-///     这些测试覆盖模块安装回调和请求管道行为接入，确保模块管理器仍然保持可观察行为不变。
+///     验证 Architecture 在 <c>ConfigureServices</c> 阶段暴露出的模块安装与 CQRS 行为接入能力。
+///     这些测试覆盖模块安装回调、请求/流式管道行为接入与自定义 notification publisher 复用，
+///     确保显式安装 <see cref="CqrsRuntimeModule" /> 后模块管理器保持可观察行为不变。
 /// </summary>
 [NonParallelizable]
 [TestFixture]
@@ -45,7 +47,6 @@ public class ArchitectureModulesBehaviorTests
         GameContext.Clear();
         TrackingPipelineBehavior<ModuleBehaviorRequest, string>.InvocationCount = 0;
         TrackingStreamPipelineBehavior<ModuleStreamBehaviorRequest, int>.InvocationCount = 0;
-        LegacyBridgePipelineTracker.Reset();
     }
 
     /// <summary>
@@ -74,13 +75,16 @@ public class ArchitectureModulesBehaviorTests
     }
 
     /// <summary>
-    ///     验证注册的 CQRS 行为会参与请求管道执行。
+    ///     验证在配置阶段接入的 CQRS 请求行为会参与请求管道执行。
     /// </summary>
     [Test]
-    public async Task RegisterCqrsPipelineBehavior_Should_Apply_Pipeline_Behavior_To_Request()
+    public async Task AddCqrsPipelineBehavior_Should_Apply_Pipeline_Behavior_To_Request()
     {
-        var architecture = new ModuleTestArchitecture(target =>
-            target.RegisterCqrsPipelineBehavior<TrackingPipelineBehavior<ModuleBehaviorRequest, string>>());
+        var architecture = new CqrsWiringArchitecture(services =>
+        {
+            services.AddCqrsPipelineBehavior<TrackingPipelineBehavior<ModuleBehaviorRequest, string>>();
+            services.AddCqrsHandlersFromAssembly(typeof(ModuleBehaviorRequest).Assembly);
+        });
 
         await architecture.InitializeAsync();
         try
@@ -100,13 +104,16 @@ public class ArchitectureModulesBehaviorTests
     }
 
     /// <summary>
-    ///     验证注册的 CQRS stream 行为会参与建流处理流程。
+    ///     验证在配置阶段接入的 CQRS stream 行为会参与建流处理流程。
     /// </summary>
     [Test]
-    public async Task RegisterCqrsStreamPipelineBehavior_Should_Apply_Pipeline_Behavior_To_Stream_Request()
+    public async Task AddCqrsStreamPipelineBehavior_Should_Apply_Pipeline_Behavior_To_Stream_Request()
     {
-        var architecture = new ModuleTestArchitecture(target =>
-            target.RegisterCqrsStreamPipelineBehavior<TrackingStreamPipelineBehavior<ModuleStreamBehaviorRequest, int>>());
+        var architecture = new CqrsWiringArchitecture(services =>
+        {
+            services.AddCqrsStreamPipelineBehavior<TrackingStreamPipelineBehavior<ModuleStreamBehaviorRequest, int>>();
+            services.AddCqrsHandlersFromAssembly(typeof(ModuleBehaviorRequest).Assembly);
+        });
 
         await architecture.InitializeAsync();
         try
@@ -128,42 +135,8 @@ public class ArchitectureModulesBehaviorTests
     }
 
     /// <summary>
-    ///     验证默认架构初始化路径会自动扫描 Core 程序集里的 legacy bridge handler，
-    ///     使旧 <c>SendCommand</c> / <c>SendQuery</c> 入口也能进入统一 CQRS pipeline。
-    /// </summary>
-    [Test]
-    public async Task InitializeAsync_Should_AutoRegister_LegacyBridgeHandlers_For_Default_Core_Assemblies()
-    {
-        LegacyBridgePipelineTracker.Reset();
-        var architecture = new LegacyBridgeArchitecture();
-
-        await architecture.InitializeAsync();
-        try
-        {
-            var query = new LegacyArchitectureBridgeQuery();
-            var command = new LegacyArchitectureBridgeCommand();
-
-            var queryResult = architecture.Context.SendQuery(query);
-            architecture.Context.SendCommand(command);
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(queryResult, Is.EqualTo(24));
-                Assert.That(query.ObservedContext, Is.SameAs(architecture.Context));
-                Assert.That(command.Executed, Is.True);
-                Assert.That(command.ObservedContext, Is.SameAs(architecture.Context));
-                Assert.That(LegacyBridgePipelineTracker.InvocationCount, Is.EqualTo(2));
-            });
-        }
-        finally
-        {
-            await architecture.DestroyAsync();
-        }
-    }
-
-    /// <summary>
     ///     验证标准架构启动路径会复用通过 <see cref="Architecture.Configurator" /> 声明的自定义 notification publisher，
-    ///     而不是在 <see cref="GFramework.Core.Services.Modules.CqrsRuntimeModule" /> 创建 runtime 时提前固化默认顺序策略。
+    ///     而不是在 <see cref="CqrsRuntimeModule" /> 创建 runtime 时提前固化默认顺序策略。
     /// </summary>
     [Test]
     public async Task InitializeAsync_Should_Reuse_Custom_NotificationPublisher_From_Configurator()
@@ -206,24 +179,19 @@ public class ArchitectureModulesBehaviorTests
     }
 
     /// <summary>
-    ///     通过公开初始化入口注册测试 pipeline behavior 的最小架构，
-    ///     用于验证默认 Core 程序集扫描是否会自动接入 legacy bridge handler。
+    ///     显式接线 CQRS runtime 与测试声明行为的架构封装。
+    ///     行为与 handler 注册统一走标准 <see cref="IServiceCollection" /> 组合根入口。
     /// </summary>
-    private sealed class LegacyBridgeArchitecture : Architecture
+    private sealed class CqrsWiringArchitecture(Action<IServiceCollection> configureCqrs) : Architecture
     {
         /// <summary>
-        ///     在容器钩子阶段注册 open-generic pipeline behavior，
-        ///     以便 bridge request 走真实的架构初始化与 handler 自动扫描链路。
-        /// </summary>
-        public override Action<IServiceCollection>? Configurator => services =>
-            services.AddSingleton(typeof(IPipelineBehavior<,>), typeof(LegacyBridgeTrackingPipelineBehavior<,>));
-
-        /// <summary>
-        ///     保持空初始化，让测试只聚焦默认 CQRS 接线与 legacy bridge handler 自动发现。
+        ///     在服务配置阶段安装默认 runtime，并执行测试注入的 CQRS 行为接线。
         /// </summary>
         /// <param name="services">当前配置阶段的服务描述集合。</param>
         protected override void ConfigureServices(IServiceCollection services)
         {
+            services.AddCqrsRuntime(LoggerFactoryResolver.Provider);
+            configureCqrs(services);
         }
     }
 
@@ -238,6 +206,7 @@ public class ArchitectureModulesBehaviorTests
         /// </summary>
         public override Action<IServiceCollection>? Configurator => services =>
         {
+            services.AddCqrsRuntime(LoggerFactoryResolver.Provider);
             services.AddSingleton<ArchitectureNotificationPublisherProbe>();
             services.AddSingleton<INotificationPublisher, ArchitectureTrackingNotificationPublisher>();
         };
@@ -249,7 +218,7 @@ public class ArchitectureModulesBehaviorTests
         /// <param name="services">当前配置阶段的服务描述集合。</param>
         protected override void ConfigureServices(IServiceCollection services)
         {
-            RegisterCqrsHandlersFromAssembly(generatedAssembly);
+            services.AddCqrsHandlersFromAssembly(generatedAssembly);
         }
     }
 

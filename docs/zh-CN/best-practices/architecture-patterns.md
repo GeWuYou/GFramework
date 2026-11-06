@@ -48,8 +48,8 @@ description: 围绕 GFramework 常见架构模式的职责划分、适用场景�
 |-----------|--------------|-------------------------|
 | **MVC**   | 分离数据、视图和控制逻辑 | Model, Controller       |
 | **MVVM**  | 数据绑定和响应式 UI  | Model, BindableProperty |
-| **命令模式**  | 封装操作请求       | ICommand, CommandBus    |
-| **查询模式**  | 分离读操作        | IQuery, QueryBus        |
+| **命令模式**  | 封装操作请求       | IRequest, IRequestHandler |
+| **查询模式**  | 分离读操作        | IRequest, IRequestHandler |
 | **事件驱动**  | 松耦合通信        | IEventBus, Event        |
 | **依赖注入**  | 控制反转         | IIocContainer           |
 | **服务定位器** | 服务查找         | Architecture.GetSystem  |
@@ -111,8 +111,8 @@ public partial class PlayerController : Node, IController
         {
             if (keyEvent.Keycode == Key.Space)
             {
-                // 发送命令修改 Model
-                this.SendCommand(new AttackCommand());
+                // 发送事件修改 Model
+                this.SendEvent(new PlayerInputEvent());
             }
         }
     }
@@ -136,10 +136,10 @@ public class CombatSystem : AbstractSystem
 {
     protected override void OnInit()
     {
-        this.RegisterEvent&lt;AttackCommand&gt;(OnAttack);
+        this.RegisterEvent&lt;PlayerInputEvent&gt;(OnAttack);
     }
 
-    private void OnAttack(AttackCommand cmd)
+    private void OnAttack(PlayerInputEvent cmd)
     {
         var playerModel = this.GetModel&lt;PlayerModel&gt;();
         var enemyModel = this.GetModel&lt;EnemyModel&gt;();
@@ -275,155 +275,123 @@ public partial class PlayerView : Control, IController
 
 ### 概念
 
-命令模式将请求封装为对象，从而支持参数化、队列化、日志记录和撤销操作。
+命令模式将请求封装为对象，从而支持参数化、队列化、日志记录和撤销操作。在 GFramework 中，写操作通过 CQRS 请求模型实现。
 
 ### 在 GFramework 中的实现
 
 ```csharp
-// 定义命令输入
-public class BuyItemInput : ICommandInput
-{
-    public string ItemId { get; set; }
-    public int Quantity { get; set; }
-}
+using GFramework.Cqrs.Abstractions.Cqrs;
+using GFramework.Cqrs.Cqrs.Request;
+using GFramework.Cqrs.Extensions;
 
-// 实现命令
-public class BuyItemCommand : AbstractCommand&lt;BuyItemInput&gt;
+// 定义请求
+public sealed record BuyItemRequest(string ItemId, int Quantity) : IRequest<Unit>;
+
+// 实现处理器
+public sealed class BuyItemHandler : AbstractRequestHandler<BuyItemRequest, Unit>
 {
-    protected override void OnExecute(BuyItemInput input)
+    public override ValueTask<Unit> Handle(BuyItemRequest request, CancellationToken cancellationToken)
     {
-        var playerModel = this.GetModel&lt;PlayerModel&gt;();
-        var inventoryModel = this.GetModel&lt;InventoryModel&gt;();
-        var shopModel = this.GetModel&lt;ShopModel&gt;();
+        var playerModel = Context.GetModel<PlayerModel>();
+        var inventoryModel = Context.GetModel<InventoryModel>();
+        var shopModel = Context.GetModel<ShopModel>();
 
         // 获取物品信息
-        var item = shopModel.GetItem(input.ItemId);
-        var totalCost = item.Price * input.Quantity;
+        var item = shopModel.GetItem(request.ItemId);
+        var totalCost = item.Price * request.Quantity;
 
         // 检查金币
-        if (playerModel.Gold.Value &lt; totalCost)
+        if (playerModel.Gold.Value < totalCost)
         {
-            this.SendEvent(new InsufficientGoldEvent());
-            return;
+            Context.SendEvent(new InsufficientGoldEvent());
+            return ValueTask.FromResult(Unit.Value);
         }
 
         // 扣除金币
         playerModel.Gold.Value -= totalCost;
 
         // 添加物品
-        inventoryModel.AddItem(input.ItemId, input.Quantity);
+        inventoryModel.AddItem(request.ItemId, request.Quantity);
 
         // 发送事件
-        this.SendEvent(new ItemPurchasedEvent
+        Context.SendEvent(new ItemPurchasedEvent
         {
-            ItemId = input.ItemId,
-            Quantity = input.Quantity,
+            ItemId = request.ItemId,
+            Quantity = request.Quantity,
             Cost = totalCost
         });
+        return ValueTask.FromResult(Unit.Value);
     }
 }
 
-// 使用命令
+// 使用请求
 [ContextAware]
 public partial class ShopController : IController
 {
-    public void OnBuyButtonClicked(string itemId, int quantity)
+    public async Task OnBuyButtonClicked(string itemId, int quantity)
     {
-        // 创建并发送命令
-        var input = new BuyItemInput
-        {
-            ItemId = itemId,
-            Quantity = quantity
-        };
-
-        this.SendCommand(new BuyItemCommand { Input = input });
+        await this.SendAsync(new BuyItemRequest(itemId, quantity));
     }
 }
 ```
 
-### 支持撤销的命令
+### 撤销支持
+
+撤销逻辑由请求对象与历史记录协作完成，历史管理器保存恢复所需的数据：
 
 ```csharp
-public interface IUndoableCommand : ICommand
+public sealed record MovePlayerRequest(Vector2 NewPosition) : IRequest<Unit>;
+
+public sealed record MovePlayerSnapshot(Vector2 PreviousPosition);
+
+public sealed class MovePlayerHandler : AbstractRequestHandler<MovePlayerRequest, Unit>
 {
-    void Undo();
-}
-
-public class MoveCommand : AbstractCommand, IUndoableCommand
-{
-    private Vector2 _previousPosition;
-    private Vector2 _newPosition;
-
-    public MoveCommand(Vector2 newPosition)
+    public override ValueTask<Unit> Handle(MovePlayerRequest request, CancellationToken cancellationToken)
     {
-        _newPosition = newPosition;
-    }
+        var playerModel = Context.GetModel<PlayerModel>();
+        var previous = playerModel.Position.Value;
+        playerModel.Position.Value = request.NewPosition;
 
-    protected override void OnExecute()
-    {
-        var playerModel = this.GetModel&lt;PlayerModel&gt;();
-        _previousPosition = playerModel.Position.Value;
-        playerModel.Position.Value = _newPosition;
-    }
-
-    public void Undo()
-    {
-        var playerModel = this.GetModel&lt;PlayerModel&gt;();
-        playerModel.Position.Value = _previousPosition;
+        Context.SendEvent(new MovePlayerSnapshot(previous));
+        return ValueTask.FromResult(Unit.Value);
     }
 }
 
-// 命令历史管理器
-public class CommandHistory
+// 位置历史管理器
+public class MoveHistory
 {
-    private readonly Stack&lt;IUndoableCommand&gt; _history = new();
+    private readonly Stack<Vector2> _history = new();
 
-    public void Execute(IUndoableCommand command)
-    {
-        command.Execute();
-        _history.Push(command);
-    }
+    public void Push(Vector2 position) => _history.Push(position);
 
-    public void Undo()
-    {
-        if (_history.Count &gt; 0)
-        {
-            var command = _history.Pop();
-            command.Undo();
-        }
-    }
+    public bool TryPop(out Vector2 position) => _history.TryPop(out position!);
 }
 ```
 
 ### 命令模式优势
 
 - ✅ **解耦发送者和接收者**：调用者不需要知道实现细节
-- ✅ **支持撤销/重做**：保存命令历史
+- ✅ **支持撤销/重做**：结合历史记录实现
 - ✅ **支持队列和日志**：可以记录所有操作
-- ✅ **易于扩展**：添加新命令不影响现有代码
+- ✅ **易于扩展**：添加新请求不影响现有代码
+- ✅ **统一横切能力**：pipeline behavior 统一处理日志、校验
 
 ### 最佳实践
 
-1. **命令保持原子性**：一个命令完成一个完整操作
-2. **使用输入对象传参**：避免构造函数参数过多
-3. **命令无状态**：执行完即可丢弃
+1. **请求保持原子性**：一个请求完成一个完整操作
+2. **请求数据不可变**：使用 `record` 承载参数
+3. **处理器无状态**：执行完即可丢弃
 4. **发送事件通知结果**：而不是返回值
 
 ## 查询模式
 
 ### 概念
 
-查询模式（CQRS 的一部分）将读操作与写操作分离，查询只读取数据，不修改状态。
+查询模式（CQRS 的一部分）将读操作与写操作分离，查询只读取数据，不修改状态。在 GFramework 中，读操作与写操作共用 CQRS 请求模型。
 
 ### 在 GFramework 中的实现
 
 ```csharp
-// 定义查询输入
-public class GetPlayerStatsInput : IQueryInput
-{
-    public string PlayerId { get; set; }
-}
-
 // 定义查询结果
 public class PlayerStats
 {
@@ -435,19 +403,25 @@ public class PlayerStats
     public int TotalPower { get; set; }
 }
 
-// 实现查询
-public class GetPlayerStatsQuery : AbstractQuery&lt;GetPlayerStatsInput, PlayerStats&gt;
+// 定义请求
+public sealed record GetPlayerStatsRequest(string PlayerId) : IRequest<PlayerStats>;
+
+// 实现处理器
+public sealed class GetPlayerStatsHandler
+    : AbstractRequestHandler<GetPlayerStatsRequest, PlayerStats>
 {
-    protected override PlayerStats OnDo(GetPlayerStatsInput input)
+    public override ValueTask<PlayerStats> Handle(
+        GetPlayerStatsRequest request,
+        CancellationToken cancellationToken)
     {
-        var playerModel = this.GetModel&lt;PlayerModel&gt;();
-        var equipmentModel = this.GetModel&lt;EquipmentModel&gt;();
+        var playerModel = Context.GetModel<PlayerModel>();
+        var equipmentModel = Context.GetModel<EquipmentModel>();
 
         // 计算总战力
         int basePower = playerModel.Level.Value * 10;
         int equipmentPower = equipmentModel.GetTotalPower();
 
-        return new PlayerStats
+        return ValueTask.FromResult(new PlayerStats
         {
             Level = playerModel.Level.Value,
             Health = playerModel.Health.Value,
@@ -455,19 +429,18 @@ public class GetPlayerStatsQuery : AbstractQuery&lt;GetPlayerStatsInput, PlayerS
             Attack = playerModel.Attack.Value + equipmentModel.GetAttackBonus(),
             Defense = playerModel.Defense.Value + equipmentModel.GetDefenseBonus(),
             TotalPower = basePower + equipmentPower
-        };
+        });
     }
 }
 
-// 使用查询
+// 使用请求
 [ContextAware]
 public partial class CharacterPanelController : IController
 {
-    public void ShowCharacterStats()
+    public async Task ShowCharacterStats()
     {
-        var input = new GetPlayerStatsInput { PlayerId = "player1" };
-        var query = new GetPlayerStatsQuery { Input = input };
-        var stats = this.SendQuery(query);
+        var stats = await this.SendRequestAsync<PlayerStats>(
+            new GetPlayerStatsRequest("player1"));
 
         // 显示统计信息
         DisplayStats(stats);
@@ -488,40 +461,50 @@ public partial class CharacterPanelController : IController
 
 ```csharp
 // 查询背包中可装备的物品
-public class GetEquippableItemsQuery : AbstractQuery&lt;EmptyQueryInput, List&lt;Item&gt;&gt;
-{
-    protected override List&lt;Item&gt; OnDo(EmptyQueryInput input)
-    {
-        var inventoryModel = this.GetModel&lt;InventoryModel&gt;();
-        var playerModel = this.GetModel&lt;PlayerModel&gt;();
+public sealed record GetEquippableItemsRequest : IRequest<List<Item>>;
 
-        return inventoryModel.GetAllItems()
-            .Where(item =&gt; item.Type == ItemType.Equipment)
-            .Where(item =&gt; item.RequiredLevel &lt;= playerModel.Level.Value)
-            .OrderByDescending(item =&gt; item.Power)
-            .ToList();
+public sealed class GetEquippableItemsHandler
+    : AbstractRequestHandler<GetEquippableItemsRequest, List<Item>>
+{
+    public override ValueTask<List<Item>> Handle(
+        GetEquippableItemsRequest request,
+        CancellationToken cancellationToken)
+    {
+        var inventoryModel = Context.GetModel<InventoryModel>();
+        var playerModel = Context.GetModel<PlayerModel>();
+
+        return ValueTask.FromResult(inventoryModel.GetAllItems()
+            .Where(item => item.Type == ItemType.Equipment)
+            .Where(item => item.RequiredLevel <= playerModel.Level.Value)
+            .OrderByDescending(item => item.Power)
+            .ToList());
     }
 }
 
 // 组合查询
-public class CanUseSkillQuery : AbstractQuery&lt;CanUseSkillInput, bool&gt;
+public sealed record CanUseSkillRequest(string SkillId) : IRequest<bool>;
+
+public sealed class CanUseSkillHandler
+    : AbstractRequestHandler<CanUseSkillRequest, bool>
 {
-    protected override bool OnDo(CanUseSkillInput input)
+    public override async ValueTask<bool> Handle(
+        CanUseSkillRequest request,
+        CancellationToken cancellationToken)
     {
-        var playerModel = this.GetModel&lt;PlayerModel&gt;();
+        var playerModel = Context.GetModel<PlayerModel>();
 
         // 查询技能消耗
-        var costQuery = new GetSkillCostQuery { Input = new GetSkillCostInput { SkillId = input.SkillId } };
-        var cost = this.SendQuery(costQuery);
+        var cost = await Context.SendRequestAsync<ManaCost>(
+            new GetSkillCostRequest(request.SkillId));
 
         // 查询冷却状态
-        var cooldownQuery = new IsSkillOnCooldownQuery { Input = new IsSkillOnCooldownInput { SkillId = input.SkillId } };
-        var onCooldown = this.SendQuery(cooldownQuery);
+        var onCooldown = await Context.SendRequestAsync<bool>(
+            new IsSkillOnCooldownRequest(request.SkillId));
 
         // 综合判断
-        return playerModel.Mana.Value &gt;= cost.ManaCost
-            &amp;&amp; !onCooldown
-            &amp;&amp; playerModel.Health.Value &gt; 0;
+        return playerModel.Mana.Value >= cost.ManaCost
+            && !onCooldown
+            && playerModel.Health.Value > 0;
     }
 }
 ```
@@ -531,7 +514,7 @@ public class CanUseSkillQuery : AbstractQuery&lt;CanUseSkillInput, bool&gt;
 - ✅ **职责分离**：读写操作明确分离
 - ✅ **易于优化**：可以针对查询进行缓存优化
 - ✅ **提高可读性**：查询意图清晰
-- ✅ **支持复杂查询**：可以组合多个简单查询
+- ✅ **支持复杂查询**：可以组合多个简单请求
 
 ### 最佳实践
 
@@ -891,8 +874,8 @@ public partial class MenuController : IController
         var gameModel = this.GetModel<GameModel>();
         gameModel.GameState.Value = GameState.Playing;
 
-        // 发送命令
-        this.SendCommand(new StartGameCommand());
+        // 发送事件通知其他组件
+        this.SendEvent(new GameStartedEvent());
     }
 }
 ```
@@ -1185,7 +1168,8 @@ public class GameplayState : ContextAwareStateBase
         gameModel.Reset();
 
         // 加载关卡
-        this.SendCommand(new LoadLevelCommand { LevelId = 1 });
+        var levelSystem = this.GetSystem&lt;LevelSystem&gt;();
+        levelSystem.Load(1);
 
         // 播放游戏音乐
         var audioSystem = this.GetSystem&lt;AudioSystem&gt;();
@@ -1197,7 +1181,8 @@ public class GameplayState : ContextAwareStateBase
         Console.WriteLine("退出游戏状态");
 
         // 保存游戏进度
-        this.SendCommand(new SaveGameCommand());
+        var saveSystem = this.GetSystem&lt;SaveSystem&gt;();
+        saveSystem.Save();
     }
 
     public override bool CanTransitionTo(IState target)
@@ -2944,13 +2929,10 @@ public class ShopView : Control
         });
     }
 
-    private void OnBuyButtonPressed()
+    private async void OnBuyButtonPressed()
     {
-        // 发送命令
-        this.SendCommand(new BuyItemCommand
-        {
-            Input = new BuyItemInput { ItemId = "sword_01" }
-        });
+        // 发送写请求
+        await this.SendAsync(new BuyItemRequest("sword_01", 1));
     }
 }
 ```
@@ -3011,11 +2993,10 @@ public class AchievementSystem : AbstractSystem
         this.RegisterEvent&lt;LevelCompletedEvent&gt;(OnLevelCompleted);
     }
 
-    private void OnEnemyKilled(EnemyKilledEvent e)
+    private async void OnEnemyKilled(EnemyKilledEvent e)
     {
         // 查询击杀总数
-        var query = new GetTotalKillsQuery { Input = new EmptyQueryInput() };
-        var totalKills = this.SendQuery(query);
+        var totalKills = await this.SendRequestAsync<int>(new GetTotalKillsRequest());
 
         // 检查成就
         if (totalKills == 100)
@@ -3024,14 +3005,11 @@ public class AchievementSystem : AbstractSystem
         }
     }
 
-    private void OnLevelCompleted(LevelCompletedEvent e)
+    private async void OnLevelCompleted(LevelCompletedEvent e)
     {
         // 查询是否满足完美通关条件
-        var query = new IsPerfectClearQuery
-        {
-            Input = new IsPerfectClearInput { LevelId = e.LevelId }
-        };
-        var isPerfect = this.SendQuery(query);
+        var isPerfect = await this.SendRequestAsync<bool>(
+            new IsPerfectClearRequest(e.LevelId));
 
         if (isPerfect)
         {
@@ -3100,11 +3078,11 @@ public class AchievementSystem : AbstractSystem
 | **目的**  | 修改状态           | 读取数据                |
 | **返回值** | 可选             | 必须有                 |
 | **副作用** | 有              | 无                   |
-| **示例**  | BuyItemCommand | GetPlayerStatsQuery |
+| **示例**  | BuyItemRequest | GetPlayerStatsRequest |
 
-**原则**：命令改变状态，查询读取状态，两者不混用。
+**原则**：写请求改变状态，读请求读取状态，两者不混用。
 
-### Q3: 何时使用事件，何时使用命令？
+### Q3: 何时使用事件，何时使用请求？
 
 **A**:
 
@@ -3114,7 +3092,7 @@ public class AchievementSystem : AbstractSystem
     - 跨模块通信
     - 不关心处理结果
 
-- **使用命令**：
+- **使用请求**：
     - 执行具体操作
     - 需要封装逻辑
     - 需要撤销/重做
@@ -3123,8 +3101,8 @@ public class AchievementSystem : AbstractSystem
 **示例**：
 
 ```csharp
-// 使用命令执行操作
-this.SendCommand(new BuyItemCommand());
+// 使用请求执行操作
+await this.SendAsync(new BuyItemRequest("sword_01", 1));
 
 // 使用事件通知结果
 this.SendEvent(new ItemPurchasedEvent());
@@ -3298,25 +3276,33 @@ public class PlayerModel : AbstractModel
    }
    ```
 
-3. **第三步：引入命令模式**
+3. **第三步：引入 CQRS 请求模型**
    ```csharp
-   // 封装操作为命令
-   public class HealPlayerCommand : AbstractCommand
+   // 封装操作为请求与处理器
+   public sealed record HealPlayerRequest : IRequest&lt;Unit&gt;;
+
+   public sealed class HealPlayerHandler : AbstractRequestHandler&lt;HealPlayerRequest, Unit&gt;
    {
-       protected override void OnExecute()
+       public override ValueTask&lt;Unit&gt; Handle(HealPlayerRequest request, CancellationToken cancellationToken)
        {
-           var player = this.GetModel&lt;PlayerModel&gt;();
+           var player = Context.GetModel&lt;PlayerModel&gt;();
            player.Health.Value = player.MaxHealth.Value;
+           return ValueTask.FromResult(Unit.Value);
        }
    }
    ```
 
-4. **第四步：添加查询模式**
+4. **第四步：添加查询请求**
    ```csharp
    // 分离读操作
-   public class GetPlayerStatsQuery : AbstractQuery&lt;PlayerStats&gt;
+   public sealed record GetPlayerStatsRequest : IRequest&lt;PlayerStats&gt;;
+
+   public sealed class GetPlayerStatsHandler
+       : AbstractRequestHandler&lt;GetPlayerStatsRequest, PlayerStats&gt;
    {
-       protected override PlayerStats OnDo()
+       public override ValueTask&lt;PlayerStats&gt; Handle(
+           GetPlayerStatsRequest request,
+           CancellationToken cancellationToken)
        {
            // 查询逻辑
        }
@@ -3330,7 +3316,7 @@ public class PlayerModel : AbstractModel
 **影响很小**：
 
 - 事件系统：微秒级开销
-- 命令/查询：几乎无开销
+- 请求分发：几乎无开销
 - IoC 容器：字典查找，O(1)
 
 **优化建议**：
@@ -3346,8 +3332,8 @@ public class PlayerModel : AbstractModel
 // 直接调用：~1ns
 player.Health = 100;
 
-// 通过命令：~100ns
-SendCommand(new SetHealthCommand { Health = 100 });
+// 通过请求分发：~100ns
+await this.SendAsync(new SetHealthRequest(100));
 
 // 差异可以忽略不计，但带来了更好的架构
 ```
@@ -3356,46 +3342,43 @@ SendCommand(new SetHealthCommand { Health = 100 });
 
 **A**:
 
-**单元测试示例**：
+**单元测试示例**（通过测试架构安装 CQRS runtime 后分发请求）：
 
 ```csharp
 [Test]
-public void BuyItemCommand_InsufficientGold_ShouldNotBuyItem()
+public async Task BuyItem_InsufficientGold_ShouldNotBuyItem()
 {
     // Arrange
     var architecture = new TestArchitecture();
-    var playerModel = new PlayerModel();
-    playerModel.Gold.Value = 50; // 金币不足
-    architecture.RegisterModel(playerModel);
+    architecture.UseCqrsRuntime(typeof(BuyItemHandler).Assembly);
+    await architecture.InitializeAsync();
 
-    var command = new BuyItemCommand
-    {
-        Input = new BuyItemInput { ItemId = "sword", Price = 100 }
-    };
-    command.SetArchitecture(architecture);
+    var playerModel = architecture.Context.GetModel&lt;PlayerModel&gt;();
+    playerModel.Gold.Value = 50; // 金币不足
 
     // Act
-    command.Execute();
+    await architecture.Context.SendAsync(
+        new BuyItemRequest("sword", 1));
 
     // Assert
     Assert.AreEqual(50, playerModel.Gold.Value); // 金币未变化
 }
 
 [Test]
-public void GetPlayerStatsQuery_ShouldReturnCorrectStats()
+public async Task GetPlayerStats_ShouldReturnCorrectStats()
 {
     // Arrange
     var architecture = new TestArchitecture();
-    var playerModel = new PlayerModel();
+    architecture.UseCqrsRuntime(typeof(GetPlayerStatsHandler).Assembly);
+    await architecture.InitializeAsync();
+
+    var playerModel = architecture.Context.GetModel&lt;PlayerModel&gt;();
     playerModel.Level.Value = 10;
     playerModel.Health.Value = 80;
-    architecture.RegisterModel(playerModel);
-
-    var query = new GetPlayerStatsQuery();
-    query.SetArchitecture(architecture);
 
     // Act
-    var stats = query.Do();
+    var stats = await architecture.Context.SendRequestAsync&lt;PlayerStats&gt;(
+        new GetPlayerStatsRequest("player1"));
 
     // Assert
     Assert.AreEqual(10, stats.Level);
@@ -3433,8 +3416,9 @@ public void GetPlayerStatsQuery_ShouldReturnCorrectStats()
 ### 相关资源
 
 - [架构核心文档](/zh-CN/core/architecture.md)
-- [命令模式文档](/zh-CN/core/command.md)
-- [查询模式文档](/zh-CN/core/query.md)
+- [CQRS 运行时文档](/zh-CN/core/cqrs.md)
+- [写操作请求](/zh-CN/core/command.md)
+- [读操作请求](/zh-CN/core/query.md)
 - [事件系统文档](/zh-CN/core/events.md)
 - [状态机文档](/zh-CN/core/state-machine.md)
 - [IoC 容器文档](/zh-CN/core/ioc.md)

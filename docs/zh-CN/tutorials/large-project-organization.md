@@ -73,16 +73,14 @@ MyLargeGame/
 │   │   │   └── Combat/
 │   │   │       ├── CombatSystem.cs
 │   │   │       └── SkillSystem.cs
-│   │   ├── Commands/                   # 命令
+│   │   ├── Cqrs/                       # 请求与处理器
 │   │   │   ├── Player/
-│   │   │   │   └── MovePlayerCommand.cs
+│   │   │   │   ├── MovePlayerRequest.cs
+│   │   │   │   └── MovePlayerHandler.cs
 │   │   │   └── Inventory/
-│   │   │       └── AddItemCommand.cs
-│   │   ├── Queries/                    # 查询
-│   │   │   ├── Player/
-│   │   │   │   └── GetPlayerStatsQuery.cs
-│   │   │   └── Inventory/
-│   │   │       └── GetItemsQuery.cs
+│   │   │       ├── AddItemRequest.cs
+│   │   │       ├── GetPlayerStatsRequest.cs
+│   │   │       └── GetItemsRequest.cs
 │   │   └── Utilities/                  # 工具类
 │   │       ├── MathUtility.cs
 │   │       └── PathfindingUtility.cs
@@ -388,57 +386,36 @@ namespace MyGame.Application.Systems.Player
 ### 2.4 应用层 - 命令模式
 
 ```csharp
-using GFramework.Core.Command;
+using GFramework.Cqrs.Abstractions.Cqrs;
+using GFramework.Cqrs.Cqrs.Request;
 using MyGame.Domain.Models.Player;
 
-namespace MyGame.Application.Commands.Player
+namespace MyGame.Application.Cqrs.Player
 {
     /// &lt;summary&gt;
-    /// 移动玩家命令
+    /// 移动玩家请求
     /// &lt;/summary&gt;
-    public class MovePlayerCommand : AbstractCommand
+    public sealed record MovePlayerRequest(float X, float Y, float Z) : IRequest&lt;Unit&gt;;
+
+    /// &lt;summary&gt;
+    /// 移动玩家处理器
+    /// &lt;/summary&gt;
+    public sealed class MovePlayerHandler
+        : AbstractRequestHandler&lt;MovePlayerRequest, Unit&gt;
     {
-        private readonly float _x;
-        private readonly float _y;
-        private readonly float _z;
-        private float _oldX;
-        private float _oldY;
-        private float _oldZ;
-
-        public MovePlayerCommand(float x, float y, float z)
+        public override ValueTask&lt;Unit&gt; Handle(
+            MovePlayerRequest request,
+            CancellationToken cancellationToken)
         {
-            _x = x;
-            _y = y;
-            _z = z;
-        }
-
-        protected override void OnExecute()
-        {
-            var playerModel = this.GetModel&lt;PlayerModel&gt;();
-
-            // 保存旧位置(用于撤销)
-            _oldX = playerModel.PositionX.Value;
-            _oldY = playerModel.PositionY.Value;
-            _oldZ = playerModel.PositionZ.Value;
+            var playerModel = Context.GetModel&lt;PlayerModel&gt;();
 
             // 移动到新位置
-            playerModel.PositionX.Value = _x;
-            playerModel.PositionY.Value = _y;
-            playerModel.PositionZ.Value = _z;
+            playerModel.PositionX.Value = request.X;
+            playerModel.PositionY.Value = request.Y;
+            playerModel.PositionZ.Value = request.Z;
 
-            Console.WriteLine($"玩家移动到 ({_x}, {_y}, {_z})");
-        }
-
-        protected override void OnUndo()
-        {
-            var playerModel = this.GetModel&lt;PlayerModel&gt;();
-
-            // 恢复旧位置
-            playerModel.PositionX.Value = _oldX;
-            playerModel.PositionY.Value = _oldY;
-            playerModel.PositionZ.Value = _oldZ;
-
-            Console.WriteLine($"撤销移动,返回 ({_oldX}, {_oldY}, {_oldZ})");
+            Console.WriteLine($"玩家移动到 ({request.X}, {request.Y}, {request.Z})");
+            return ValueTask.FromResult(Unit.Value);
         }
     }
 }

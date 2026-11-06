@@ -93,7 +93,7 @@ var second = new PlayerController();
 
 `ContextAwareBase` 也要求显式实例绑定、拒绝未绑定访问，并且不会读取全局上下文。它使用简单实例字段，不额外同步绑定和读取；调用方应遵循对象自身的线程模型。
 
-已经继承 `AbstractSystem`、`AbstractModel`、`AbstractCommand` 等框架基类的类型通常已获得这项能力，无需重复添加 `[ContextAware]`。
+已经继承 `AbstractSystem`、`AbstractModel` 等框架基类的类型通常已获得这项能力，无需重复添加 `[ContextAware]`。
 
 ## 与 Context Get 注入的关系
 

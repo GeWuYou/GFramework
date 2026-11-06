@@ -5,7 +5,7 @@ description: 说明 MicrosoftDiContainer 的注册、冻结、作用域与资源
 
 # IoC 容器
 
-`MicrosoftDiContainer` 是 Microsoft DI 的框架适配层，实现 `IIocContainer`，额外提供组件别名、优先级查询和 CQRS 注册入口。它不是可随时修改的动态容器；预冻结查询与正式 provider 解析也有不同语义。
+`MicrosoftDiContainer` 是 Microsoft DI 的框架适配层，实现 `IIocContainer` 与 `IServiceProvider`，额外提供组件别名和优先级查询。它不是可随时修改的动态容器；预冻结查询与正式 provider 解析也有不同语义。CQRS 的注册入口位于 `GFramework.Cqrs` 的标准 `IServiceCollection` 扩展，不在容器适配层上。
 
 ## 注册与冻结
 

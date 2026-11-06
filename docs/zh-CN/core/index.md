@@ -5,10 +5,9 @@ description: GFramework.Core 与 GFramework.Core.Abstractions 的运行时入口
 
 # Core 模块
 
-`Core` 栏目对应 `GFramework` 的基础运行时层，主要覆盖 `GFramework.Core` 与 `GFramework.Core.Abstractions`，以及与之直接相邻的旧版
-`Command` / `Query` 执行器和新版 `CQRS` 迁移入口。
+`Core` 栏目对应 `GFramework` 的基础运行时层，主要覆盖 `GFramework.Core` 与 `GFramework.Core.Abstractions`，以及独立的 CQRS 消息模型运行时。
 
-如果你第一次接入框架，可以先把这里当作“运行时底座说明”：先确认 `Core` 解决什么问题、最小安装组合是什么，再决定是否采用 CQRS 消息模型、Game、Godot 或源码生成器。Core 当前已经传递依赖 CQRS runtime，使用消息模型与安装传递依赖是两回事。
+如果你第一次接入框架，可以先把这里当作“运行时底座说明”：先确认 `Core` 解决什么问题、最小安装组合是什么，再决定是否采用 CQRS 消息模型、Game、Godot 或源码生成器。Core 不传递包含 CQRS；需要 request / notification / stream 能力的项目显式安装 `GeWuYou.GFramework.Cqrs` 并安装 runtime 模块。
 
 ## 模块与包关系
 
@@ -17,7 +16,7 @@ description: GFramework.Core 与 GFramework.Core.Abstractions 的运行时入口
 - `GeWuYou.GFramework.Core.Abstractions`
   - 对应的契约层，适合只依赖接口、做模块拆分或测试替身。
 - `GeWuYou.GFramework.Cqrs`
-  - 当前由 Core 依赖并自动接线的请求模型运行时。
+  - 独立安装的请求模型运行时，运行在标准 DI 上，通过 `CqrsRuntimeModule` 接入架构。
 - `GeWuYou.GFramework.Game`
   - 在 `Core` 之上叠加游戏层配置、数据、设置、场景与 UI。
 - `GeWuYou.GFramework.Core.SourceGenerators`
@@ -45,9 +44,9 @@ dotnet add package GeWuYou.GFramework.Core.Abstractions
   - [工具](./utility.md)
   - [环境](./environment.md)
   - [扩展方法](./extensions.md)
-- 旧版命令 / 查询执行器与迁移入口
-  - [命令执行](./command.md)
-  - [查询执行](./query.md)
+- 消息模型
+  - [写操作请求](./command.md)
+  - [读操作请求](./query.md)
   - [CQRS 运行时](./cqrs.md)
 - 状态、事件与规则
   - [事件系统](./events.md)
@@ -75,7 +74,6 @@ dotnet add package GeWuYou.GFramework.Core.Abstractions
 2. 再看本栏目对应专题页，确认采用顺序、生命周期与推荐接线方式
 3. 最后回到源码中的 XML 文档，重点核对这些类型族：
    - `Architecture` / `IArchitectureContext`
-   - `CommandExecutor` / `QueryExecutor`
    - `ILogger` / `ILoggerFactory`
    - `IResourceManager` / `IConfigurationManager`
    - `IAsyncKeyLockManager` / `ITimeProvider`
@@ -89,8 +87,8 @@ dotnet add package GeWuYou.GFramework.Core.Abstractions
 | 类型族 | 代表类型 | 建议先确认什么 |
 | --- | --- | --- |
 | `Architectures/` | `Architecture`、`ArchitectureContext`、`ArchitectureLifecycle`、`ArchitecturePhaseCoordinator` | 架构启动、模块安装、阶段切换和上下文暴露边界 |
-| `Services/` | `ServiceModuleManager`、`CommandExecutorModule`、`CqrsRuntimeModule` | 服务模块的注册顺序、销毁语义和默认接线 |
-| `Command/` `Query/` | `CommandExecutor`、`AsyncQueryExecutor`、`AbstractCommand<TInput>`、`AbstractQuery<TResult>` | 旧入口兼容面，以及向 `CQRS` 迁移时保留的执行契约 |
+| `Services/` | `ServiceModuleManager`、服务模块默认接线 | 服务模块的注册顺序、销毁语义和默认接线 |
+| CQRS 消息模型 | `CqrsRuntimeModule`、`ICqrsRuntime`、`AbstractRequestHandler<,>`（位于 `GFramework.Cqrs`） | 独立安装的请求运行时与架构集成入口，见 [CQRS 运行时](./cqrs.md) |
 | `Events/` `Property/` | `EventBus`、`EnhancedEventBus`、`BindableProperty<T>`、`OrEvent<T>` | 事件传播、解绑约束和可绑定属性的订阅语义 |
 | `State/` `StateManagement/` | `StateMachine`、`StateMachineSystem`、`Store<TState>`、`StoreBuilder<TState>` | 状态切换，以及 selector / middleware / dispatch 的单向流边界 |
 | `Coroutine/` `Time/` `Pause/` `Concurrency/` | `CoroutineScheduler`、`CoroutineHandle`、`WaitForSecondsRealtime`、`PauseStackManager`、`AsyncKeyLockManager` | 调度阶段、等待指令、时间源，以及暂停 / 锁的线程语义 |

@@ -6,6 +6,7 @@ using GFramework.Core.Architectures;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
+using GFramework.Cqrs.Extensions;
 using GFramework.Cqrs.Internal;
 using GFramework.Cqrs.Tests.Logging;
 
@@ -183,7 +184,7 @@ internal sealed class CqrsHandlerRegistrarTests
 
         var exception = Assert.Throws<InvalidOperationException>(() =>
             CqrsHandlerRegistrar.RegisterGeneratedRegistry(
-                container,
+                container.GetServicesUnsafe,
                 typeof(AbstractGeneratedNotificationHandlerRegistry),
                 logger));
 
@@ -216,7 +217,7 @@ internal sealed class CqrsHandlerRegistrarTests
 
         var exception = Assert.Throws<InvalidOperationException>(() =>
             CqrsHandlerRegistrar.RegisterGeneratedRegistry(
-                container,
+                container.GetServicesUnsafe,
                 typeof(ConstructorArgumentNotificationHandlerRegistry),
                 logger));
 

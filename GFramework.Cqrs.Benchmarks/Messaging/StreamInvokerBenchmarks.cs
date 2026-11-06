@@ -159,7 +159,6 @@ public class StreamInvokerBenchmarks
     {
         return ObserveAsync(
             _reflectionRuntime.CreateStream(
-                BenchmarkContext.Instance,
                 _reflectionRequest,
                 CancellationToken.None),
             Observation);
@@ -174,7 +173,6 @@ public class StreamInvokerBenchmarks
     {
         return ObserveAsync(
             _generatedRuntime.CreateStream(
-                BenchmarkContext.Instance,
                 _generatedRequest,
                 CancellationToken.None),
             Observation);

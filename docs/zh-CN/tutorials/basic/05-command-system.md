@@ -1,6 +1,6 @@
 ---
 title: 第 5 章：命令系统优化
-description: 通过引入 Command 模式拆分 Controller 交互逻辑，建立更清晰的执行职责边界。
+description: 通过 CQRS 请求模型拆分 Controller 交互逻辑，建立更清晰的执行职责边界。
 prev:
   text: '引入 Model 重构'
   link: './04-model-refactor'
@@ -11,8 +11,7 @@ next:
 
 # 第 5 章：命令系统优化
 
-在上一章中，我们通过 Model 和事件系统实现了数据驱动的架构。但 Controller 仍然承担着交互逻辑，本章将引入 **Command（命令）模式
-** 进一步优化。
+在上一章中，我们通过 Model 和事件系统实现了数据驱动的架构。但 Controller 仍然承担着交互逻辑，本章将引入 **CQRS 请求模型** 进一步优化。
 
 ## Controller 的职责问题
 
@@ -77,99 +76,108 @@ AddButton.Pressed += async () =>
 - 难以测试（需要 mock 按钮）
 - 违反单一职责原则
 
-## 理解 Command 模式
+## 理解请求模型
 
-### Command 的作用
+### 请求的作用
 
-**Command（命令）** 是一种设计模式，它将"请求"封装成对象：
+CQRS 请求模型将“请求”封装成对象，处理逻辑放在独立的处理器中：
 
 ```text
-用户操作 → Command → Model
+用户操作 → Request → Handler → Model
 ```
 
 优势：
 
-- **解耦**：Controller 不关心如何增加计数，只负责"发送命令"
-- **复用**：同一个命令可以被多个地方调用
-- **扩展**：新增逻辑只需修改命令，不影响 Controller
-- **可测试**：可以独立测试命令逻辑
+- **解耦**：Controller 不关心如何增加计数，只负责“发送请求”
+- **复用**：同一个请求可以被多个地方调用
+- **扩展**：新增逻辑只需修改处理器，不影响 Controller
+- **可测试**：可以独立测试处理器逻辑
+- **横切能力**：pipeline behavior 可以统一处理日志、校验等关注点
 
 ### 职责划分
 
 | 层级             | 职责         |
 |----------------|------------|
-| **Controller** | 将用户操作转换为命令 |
-| **Command**    | 封装具体的业务逻辑  |
+| **Controller** | 将用户操作转换为请求 |
+| **Handler**    | 封装具体的业务逻辑  |
 | **Model**      | 存储状态，发送事件  |
 
-## 创建 Command
+## 创建请求与处理器
 
-### 1. 创建增加命令
+### 1. 创建增加计数请求
 
-在 `scripts/command/` 创建 `IncreaseCountCommand.cs`：
+在 `scripts/cqrs/` 创建 `IncreaseCountRequest.cs`：
 
 ```csharp
-using GFramework.Core.Command;
-using GFramework.Core.Extensions;
+using GFramework.Cqrs.Abstractions.Cqrs;
+using GFramework.Cqrs.Cqrs.Request;
 using MyGFrameworkGame.scripts.Model;
 
-namespace MyGFrameworkGame.scripts.Command;
+namespace MyGFrameworkGame.scripts.Cqrs;
 
 /// <summary>
-/// 增加计数器值的命令
+/// 增加计数器值的请求
 /// </summary>
-public class IncreaseCountCommand : AbstractCommand
+public sealed record IncreaseCountRequest : IRequest<Unit>;
+
+/// <summary>
+/// 增加计数器值的处理器
+/// </summary>
+public sealed class IncreaseCountHandler
+    : AbstractRequestHandler<IncreaseCountRequest, Unit>
 {
-    /// <summary>
-    /// 执行命令的核心逻辑
-    /// </summary>
-    protected override void OnExecute()
+    public override ValueTask<Unit> Handle(
+        IncreaseCountRequest request,
+        CancellationToken cancellationToken)
     {
-        // 获取 Model 并调用方法
-        var model = this.GetModel<ICounterModel>()!;
+        var model = Context.GetModel<ICounterModel>()!;
         model.Increment();
+        return ValueTask.FromResult(Unit.Value);
     }
 }
 ```
 
-::: tip AbstractCommand
-`AbstractCommand` 是 GFramework 提供的基类，它：
+::: tip AbstractRequestHandler
+`AbstractRequestHandler` 是 CQRS 模块提供的基类，它：
 
-- 自动注入 `Architecture` 上下文
-- 提供 `GetModel`、`GetSystem`、`GetUtility` 等方法
-- 管理命令的生命周期
+- 在分发前接收 runtime 注入的架构上下文
+- 提供 `GetModel`、`GetSystem`、`GetUtility` 等上下文方法
   :::
 
-### 2. 创建减少命令
-
-在 `scripts/command/` 创建 `DecreaseCountCommand.cs`：
+### 2. 创建减少计数请求
 
 ```csharp
-using GFramework.Core.Command;
-using GFramework.Core.Extensions;
-using MyGFrameworkGame.scripts.Model;
+public sealed record DecreaseCountRequest : IRequest<Unit>;
 
-namespace MyGFrameworkGame.scripts.Command;
-
-/// <summary>
-/// 减少计数器值的命令
-/// </summary>
-public class DecreaseCountCommand : AbstractCommand
+public sealed class DecreaseCountHandler
+    : AbstractRequestHandler<DecreaseCountRequest, Unit>
 {
-    /// <summary>
-    /// 执行命令的核心逻辑
-    /// </summary>
-    protected override void OnExecute()
+    public override ValueTask<Unit> Handle(
+        DecreaseCountRequest request,
+        CancellationToken cancellationToken)
     {
-        var model = this.GetModel<ICounterModel>()!;
+        var model = Context.GetModel<ICounterModel>()!;
         model.Decrement();
+        return ValueTask.FromResult(Unit.Value);
     }
 }
+```
+
+## 安装 CQRS 运行时
+
+CQRS runtime 不随 Core 自动安装。在架构中显式接入：
+
+```csharp
+using GFramework.Cqrs.Extensions;
+
+var architecture = new CounterArchitecture();
+architecture.UseCqrsRuntime(); // 自动包含架构所在程序集的处理器
+await architecture.InitializeAsync();
 ```
 
 ## 重构 Controller
 
-### 使用命令替换直接调用
+### 使用请求替换直接调用
 
 编辑 `App.cs`：
 
@@ -177,8 +185,9 @@ public class DecreaseCountCommand : AbstractCommand
 using GFramework.Core.Abstractions.Controller;
 using GFramework.Core.Extensions;
 using GFramework.Core.SourceGenerators.Abstractions.Rule;
+using GFramework.Cqrs.Extensions;
 using Godot;
-using MyGFrameworkGame.scripts.Command;
+using MyGFrameworkGame.scripts.Cqrs;
 using MyGFrameworkGame.scripts.Model;
 
 namespace MyGFrameworkGame.scripts.app;
@@ -198,15 +207,15 @@ public partial class App : Control, IController
             UpdateView(e.Count);
         });
 
-        // 使用命令替换直接调用
-        AddButton.Pressed += () =>
+        // 使用请求替换直接调用
+        AddButton.Pressed += async () =>
         {
-            this.SendCommand(new IncreaseCountCommand());
+            await this.SendAsync(new IncreaseCountRequest());
         };
 
-        SubButton.Pressed += () =>
+        SubButton.Pressed += async () =>
         {
-            this.SendCommand(new DecreaseCountCommand());
+            await this.SendAsync(new DecreaseCountRequest());
         };
 
         // 初始化界面
@@ -240,22 +249,22 @@ AddButton.Pressed += () =>
 - Controller 知道如何增加计数
 - 如果逻辑复杂化，Controller 会变臃肿
 
-### 重构后（使用 Command）
+### 重构后（使用请求）
 
 ```csharp
-AddButton.Pressed += () =>
+AddButton.Pressed += async () =>
 {
-    this.SendCommand(new IncreaseCountCommand());  // ← 发送命令
+    await this.SendAsync(new IncreaseCountRequest());  // ← 发送请求
 };
 ```
 
 **优势**：
 
 - Controller 不关心如何增加计数
-- 逻辑封装在 Command 中
-- Controller 只负责"转发用户意图"
+- 逻辑封装在 Handler 中
+- Controller 只负责“转发用户意图”
 
-## Command 的优势
+## 请求模型的优势
 
 ### 1. 解耦 Controller
 
@@ -277,22 +286,25 @@ Controller 必须知道所有细节。
 **现在**：
 
 ```csharp
-AddButton.Pressed += () =>
+AddButton.Pressed += async () =>
 {
-    this.SendCommand(new IncreaseCountCommand());
+    await this.SendAsync(new IncreaseCountRequest());
 };
 ```
 
-所有逻辑在 Command 中：
+所有逻辑在 Handler 中：
 
 ```csharp
-protected override void OnExecute()
+public override ValueTask<Unit> Handle(
+    IncreaseCountRequest request,
+    CancellationToken cancellationToken)
 {
-    if (!CanIncrement()) return;
+    if (!CanIncrement()) return ValueTask.FromResult(Unit.Value);
     await SaveData();
-    this.GetModel<ICounterModel>()!.Increment();
+    Context.GetModel<ICounterModel>()!.Increment();
     PlaySound();
     LogAnalytics();
+    return ValueTask.FromResult(Unit.Value);
 }
 ```
 
@@ -312,8 +324,8 @@ Input.IsActionPressed("increment") => { /* 复制相同逻辑 */ };
 **现在**：
 
 ```csharp
-AddButton.Pressed += () => this.SendCommand(new IncreaseCountCommand());
-Input.IsActionPressed("increment") => this.SendCommand(new IncreaseCountCommand());
+AddButton.Pressed += async () => await this.SendAsync(new IncreaseCountRequest());
+Input.IsActionPressed("increment") => this.SendAsync(new IncreaseCountRequest());
 ```
 
 逻辑只写一次！
@@ -330,63 +342,59 @@ AddButton.Pressed += () => { /* 逻辑 */ };
 **现在**：
 
 ```csharp
-// 可以直接测试命令
+// 通过架构上下文直接分发请求
 [Test]
-public void IncreaseCommand_ShouldIncrementCount()
+public async Task IncreaseRequest_ShouldIncrementCount()
 {
-    var model = new CounterModel();
-    var command = new IncreaseCountCommand();
-    
-    command.Execute();
-    
+    var architecture = new CounterArchitecture();
+    architecture.UseCqrsRuntime();
+    await architecture.InitializeAsync();
+
+    await architecture.Context.SendAsync(new IncreaseCountRequest());
+
+    var model = architecture.Context.GetModel<ICounterModel>();
     Assert.AreEqual(1, model.Count);
 }
 ```
 
-### 4. 支持撤销/重做（扩展）
+### 4. 统一的横切能力
 
-Command 模式天然支持撤销功能：
+pipeline behavior 可以统一处理日志、校验、性能统计，而不需要修改每个处理器：
 
 ```csharp
-public class IncreaseCountCommand : AbstractCommand
+protected override void ConfigureServices(IServiceCollection services)
 {
-    protected override void OnExecute()
-    {
-        // 执行
-        this.GetModel<ICounterModel>()!.Increment();
-    }
-    
-    public void Undo()
-    {
-        // 撤销
-        this.GetModel<ICounterModel>()!.Decrement();
-    }
+    services.AddCqrsPipelineBehavior<LoggingBehavior<,>>();
 }
 ```
 
-## Command 的实际应用
+## 请求模型与异步操作
 
-让我们看一个更复杂的例子：
+请求处理器天然异步，适合承载网络请求等异步逻辑：
 
 ```csharp
 /// <summary>
-/// 更改语言命令
+/// 更改语言请求与处理器
 /// </summary>
-public class ChangeLanguageCommand : AbstractAsyncCommand<ChangeLanguageInput>
+public sealed record ChangeLanguageRequest(string Language) : IRequest<Unit>;
+
+public sealed class ChangeLanguageHandler
+    : AbstractRequestHandler<ChangeLanguageRequest, Unit>
 {
-    protected override async Task OnExecuteAsync(ChangeLanguageInput input)
+    public override async ValueTask<Unit> Handle(
+        ChangeLanguageRequest request,
+        CancellationToken cancellationToken)
     {
         // 1. 获取设置 Model
-        var settingsModel = this.GetModel<ISettingsModel>()!;
-        
-        // 2. 获取设置数据
+        var settingsModel = Context.GetModel<ISettingsModel>()!;
+
+        // 2. 修改语言配置
         var settings = settingsModel.GetData();
-        
-        // 3. 修改语言配置
-        settings.Language = input.Language;
-        
-        // 4. 应用设置（通过 System）
-        await this.GetSystem<ISettingsSystem>()!.Apply();
+        settings.Language = request.Language;
+
+        // 3. 应用设置（通过 System）
+        await Context.GetSystem<ISettingsSystem>()!.Apply();
+        return Unit.Value;
     }
 }
 ```
@@ -411,31 +419,31 @@ LanguageButton.Pressed += async () =>
 
 ## 理解职责边界
 
-### Controller vs Command
+### Controller vs Handler
 
 | 层级             | 职责         | 示例          |
 |----------------|------------|-------------|
-| **Controller** | 将用户操作转换为意图 | "用户点击了增加按钮" |
-| **Command**    | 封装业务逻辑     | "如何增加计数"    |
-| **Model**      | 存储和管理状态    | "计数的值是多少"   |
+| **Controller** | 将用户操作转换为意图 | “用户点击了增加按钮” |
+| **Handler**    | 封装业务逻辑     | “如何增加计数”    |
+| **Model**      | 存储和管理状态    | “计数的值是多少”   |
 
 **类比**：
 
 - **Controller**：服务员（接收顾客点单）
-- **Command**：厨师（制作菜品）
+- **Handler**：厨师（制作菜品）
 - **Model**：菜单（菜品信息）
 
-### 何时使用 Command？
+### 何时使用请求模型？
 
-✅ **应该使用 Command**：
+✅ **应该使用请求模型**：
 
 - 逻辑超过 3 行
 - 需要复用的操作
 - 涉及多个 Model/System 的协作
 - 需要异步操作
-- 需要撤销/重做
+- 需要 pipeline 横切能力
 
-❌ **不需要 Command**：
+❌ **不需要请求模型**：
 
 - 极简单的操作（如 `model.GetData()`）
 - 纯 UI 逻辑（如切换界面状态）
@@ -446,11 +454,11 @@ LanguageButton.Pressed += async () =>
 
 | 概念             | 解释                           |
 |----------------|------------------------------|
-| **Command 模式** | 将请求封装成对象                     |
-| **职责分离**       | Controller 负责转发，Command 负责执行 |
-| **逻辑复用**       | 同一命令可被多处调用                   |
-| **可测试性**       | 命令可独立测试                      |
-| **单一职责**       | 每个 Command 只做一件事             |
+| **请求模型** | 将请求封装成对象，处理器负责执行      |
+| **职责分离**       | Controller 负责转发，Handler 负责执行 |
+| **逻辑复用**       | 同一请求可被多处调用                   |
+| **可测试性**       | 处理器可通过架构上下文独立测试              |
+| **单一职责**       | 每个处理器只做一件事             |
 
 ## 对比三个阶段
 
@@ -481,29 +489,29 @@ AddButton.Pressed += () =>
 
 **改进**：状态抽离到 Model，但交互逻辑仍在 Controller
 
-### 阶段 3：引入 Command
+### 阶段 3：引入请求模型
 
 ```csharp
-AddButton.Pressed += () =>
+AddButton.Pressed += async () =>
 {
-    this.SendCommand(new IncreaseCountCommand());
+    await this.SendAsync(new IncreaseCountRequest());
 };
 ```
 
-**完善**：Controller 不再关心"如何"，只负责"转发"
+**完善**：Controller 不再关心“如何”，只负责“转发”
 
 ## 下一步
 
 现在我们的架构已经很清晰了：
 
 ```text
-View → Controller → Command → Model → Event → View
+View → Controller → Request → Handler → Model → Event → View
 ```
 
 但还有两个问题：
 
-1. **业务规则**：如何实现"计数不能超过 20"？
-2. **状态响应**：如何实现"计数超过 10 时触发某个逻辑"？
+1. **业务规则**：如何实现“计数不能超过 20”？
+2. **状态响应**：如何实现“计数超过 10 时触发某个逻辑”？
 
 这些问题需要 **Utility** 和 **System** 来解决。
 
@@ -519,19 +527,20 @@ View → Controller → Command → Model → Event → View
 
 ::: details 本章检查清单
 
-- [ ] IncreaseCountCommand 已创建
-- [ ] DecreaseCountCommand 已创建
-- [ ] App.cs 使用 SendCommand 替换了直接调用
+- [ ] IncreaseCountRequest 与 IncreaseCountHandler 已创建
+- [ ] DecreaseCountRequest 与 DecreaseCountHandler 已创建
+- [ ] 架构已通过 UseCqrsRuntime 安装 CQRS 运行时
+- [ ] App.cs 使用 SendAsync 替换了直接调用
 - [ ] 运行游戏，功能正常
-- [ ] 理解了 Command 的职责和优势
-- [ ] 理解了 Controller、Command、Model 的职责边界
+- [ ] 理解了请求模型的职责和优势
+- [ ] 理解了 Controller、Handler、Model 的职责边界
   :::
 
 ::: tip 思考题
 
-1. 如果需要实现"撤销"功能，应该如何修改 Command？
-2. 异步命令（如网络请求）应该如何实现？
-3. 多个 Command 需要按顺序执行时，应该怎么做？
+1. 如果需要实现“撤销”功能，应该如何设计请求？
+2. 需要返回值的请求（如查询背包数量）应该如何实现？
+3. 多个请求需要统一记录日志时，应该怎么做？
 
 这些高级用法可以在后续深入学习！
 :::

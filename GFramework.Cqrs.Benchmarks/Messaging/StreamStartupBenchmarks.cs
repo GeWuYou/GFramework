@@ -175,7 +175,7 @@ public class StreamStartupBenchmarks
         using var container = CreateReflectionContainer();
         var runtime = CreateRuntime(container, ReflectionRuntimeLogger);
         return await ConsumeFirstItemAsync(
-                runtime.CreateStream(BenchmarkContext.Instance, Request, CancellationToken.None),
+                runtime.CreateStream(Request, CancellationToken.None),
                 CancellationToken.None)
             .ConfigureAwait(false);
     }
@@ -191,7 +191,7 @@ public class StreamStartupBenchmarks
         using var container = CreateGeneratedContainer();
         var runtime = CreateRuntime(container, GeneratedRuntimeLogger);
         return await ConsumeFirstItemAsync(
-                runtime.CreateStream(BenchmarkContext.Instance, Request, CancellationToken.None),
+                runtime.CreateStream(Request, CancellationToken.None),
                 CancellationToken.None)
             .ConfigureAwait(false);
     }

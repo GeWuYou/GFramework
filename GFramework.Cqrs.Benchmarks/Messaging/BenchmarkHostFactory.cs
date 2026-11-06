@@ -12,7 +12,6 @@ using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Internal;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
-using LegacyICqrsRuntime = GFramework.Core.Abstractions.Cqrs.ICqrsRuntime;
 
 namespace GFramework.Cqrs.Benchmarks.Messaging;
 
@@ -22,7 +21,8 @@ namespace GFramework.Cqrs.Benchmarks.Messaging;
 /// <remarks>
 ///     基准工程里的对照目标是“相同消息合同下的调度差异”，而不是程序集扫描量或容器生命周期差异。
 ///     因此这里统一封装两类宿主的最小注册形状，确保：
-///     1. GFramework 容器在首次发送前已经冻结，可真实解析按类型注册的 handler；
+///     1. GFramework 宿主基于标准 <see cref="IServiceProvider" /> 契约：容器冻结后即构建根 provider，
+///        CQRS runtime 直接以标准服务解析语义复用该 provider；
 ///     2. MediatR 只扫描当前 benchmark 明确拥有的 handler / behavior 类型，避免整个程序集的额外注册污染结果。
 /// </remarks>
 internal static class BenchmarkHostFactory
@@ -31,58 +31,15 @@ internal static class BenchmarkHostFactory
     ///     创建一个已经冻结的 GFramework benchmark 容器。
     /// </summary>
     /// <param name="configure">向容器写入 benchmark 所需 handler / pipeline 的注册动作。</param>
-    /// <returns>已冻结、可立即用于 runtime 分发的容器。</returns>
+    /// <returns>已冻结、可立即以标准 <see cref="IServiceProvider" /> 语义用于 runtime 分发的容器。</returns>
     internal static MicrosoftDiContainer CreateFrozenGFrameworkContainer(Action<MicrosoftDiContainer> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
 
         var container = new MicrosoftDiContainer();
-        RegisterCqrsInfrastructure(container);
         configure(container);
         container.Freeze();
         return container;
-    }
-
-    /// <summary>
-    ///     为 benchmark 宿主补齐默认 CQRS runtime seam，确保它既能手工注册 handler，也能走真实的程序集注册入口。
-    /// </summary>
-    /// <param name="container">当前 benchmark 拥有的 GFramework 容器。</param>
-    /// <remarks>
-    ///     `RegisterCqrsHandlersFromAssembly(...)` 依赖预先可见的 runtime / registrar / registration service 实例绑定。
-    ///     benchmark 宿主直接使用裸 <see cref="MicrosoftDiContainer" />，因此需要在配置阶段先补齐这组基础设施，
-    ///     避免各个 benchmark 用例各自复制同一段前置接线逻辑。
-    /// </remarks>
-    private static void RegisterCqrsInfrastructure(MicrosoftDiContainer container)
-    {
-        ArgumentNullException.ThrowIfNull(container);
-
-        if (container.Get<ICqrsRuntime>() is null)
-        {
-            var runtimeLogger = LoggerFactoryResolver.Provider.CreateLogger("CqrsDispatcher");
-            var notificationPublisher = container.Get<GFramework.Cqrs.Notification.INotificationPublisher>();
-            var runtime = GFramework.Cqrs.CqrsRuntimeFactory.CreateRuntime(container, runtimeLogger, notificationPublisher);
-            container.Register(runtime);
-            RegisterLegacyRuntimeAlias(container, runtime);
-        }
-        else if (container.Get<LegacyICqrsRuntime>() is null)
-        {
-            RegisterLegacyRuntimeAlias(container, container.GetRequired<ICqrsRuntime>());
-        }
-
-        if (container.Get<ICqrsHandlerRegistrar>() is null)
-        {
-            var registrarLogger = LoggerFactoryResolver.Provider.CreateLogger("DefaultCqrsHandlerRegistrar");
-            var registrar = GFramework.Cqrs.CqrsRuntimeFactory.CreateHandlerRegistrar(container, registrarLogger);
-            container.Register<ICqrsHandlerRegistrar>(registrar);
-        }
-
-        if (container.Get<ICqrsRegistrationService>() is null)
-        {
-            var registrationLogger = LoggerFactoryResolver.Provider.CreateLogger("DefaultCqrsRegistrationService");
-            var registrar = container.GetRequired<ICqrsHandlerRegistrar>();
-            var registrationService = GFramework.Cqrs.CqrsRuntimeFactory.CreateRegistrationService(registrar, registrationLogger);
-            container.Register<ICqrsRegistrationService>(registrationService);
-        }
     }
 
     /// <summary>
@@ -91,35 +48,17 @@ internal static class BenchmarkHostFactory
     /// </summary>
     /// <typeparam name="TRegistry">当前 benchmark 需要接入的 generated registry 类型。</typeparam>
     /// <param name="container">承载 generated registry 注册结果的 GFramework benchmark 容器。</param>
+    /// <remarks>
+    ///     generated registry 注册发生在标准 <see cref="IServiceCollection" /> 上，
+    ///     因此这里直接复用 runtime 内部的单 registry 激活入口，而不触发整程序集扫描。
+    /// </remarks>
     internal static void RegisterGeneratedBenchmarkRegistry<TRegistry>(MicrosoftDiContainer container)
         where TRegistry : class, GFramework.Cqrs.ICqrsHandlerRegistry
     {
         ArgumentNullException.ThrowIfNull(container);
 
         var registrarLogger = LoggerFactoryResolver.Provider.CreateLogger("DefaultCqrsHandlerRegistrar");
-        CqrsHandlerRegistrar.RegisterGeneratedRegistry(container, typeof(TRegistry), registrarLogger);
-    }
-
-    /// <summary>
-    ///     为旧命名空间下的 CQRS runtime 契约注册兼容别名。
-    /// </summary>
-    /// <param name="container">承载 runtime 别名的 benchmark 容器。</param>
-    /// <param name="runtime">当前正式 CQRS runtime 实例。</param>
-    /// <exception cref="InvalidOperationException">
-    ///     <paramref name="runtime" /> 未同时实现 legacy CQRS runtime 契约。
-    /// </exception>
-    private static void RegisterLegacyRuntimeAlias(MicrosoftDiContainer container, ICqrsRuntime runtime)
-    {
-        ArgumentNullException.ThrowIfNull(container);
-        ArgumentNullException.ThrowIfNull(runtime);
-
-        if (runtime is not LegacyICqrsRuntime legacyRuntime)
-        {
-            throw new InvalidOperationException(
-                $"The registered {typeof(ICqrsRuntime).FullName} must also implement {typeof(LegacyICqrsRuntime).FullName}. Actual runtime type: {runtime.GetType().FullName}.");
-        }
-
-        container.Register<LegacyICqrsRuntime>(legacyRuntime);
+        CqrsHandlerRegistrar.RegisterGeneratedRegistry(container.GetServicesUnsafe, typeof(TRegistry), registrarLogger);
     }
 
     /// <summary>
@@ -166,30 +105,27 @@ internal static class BenchmarkHostFactory
     /// </summary>
     /// <typeparam name="TResponse">请求响应类型。</typeparam>
     /// <param name="runtime">复用的 scoped benchmark runtime。</param>
-    /// <param name="scopedContainer">负责为每次 request 激活独立作用域的只读容器适配层。</param>
-    /// <param name="context">当前 CQRS 分发上下文。</param>
+    /// <param name="scopedContainer">负责为每次 request 激活独立作用域的标准 provider 适配层。</param>
     /// <param name="request">要发送的 request。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>当前 request 的响应结果。</returns>
     /// <remarks>
     ///     该入口只服务 request lifetime benchmark：它会复用同一个 dispatcher/runtime 实例，
     ///     但在每次调用前后显式创建并释放新的 DI 作用域，
-    ///     让 `Scoped` handler 在真实 request 边界内解析，而不是退化为根容器解析或额外计入 runtime 构造成本。
+    ///     让 `Scoped` handler 在真实 request 边界内解析，而不是退化为根 provider 解析或额外计入 runtime 构造成本。
     /// </remarks>
     internal static async ValueTask<TResponse> SendScopedGFrameworkRequestAsync<TResponse>(
         ICqrsRuntime runtime,
         ScopedBenchmarkContainer scopedContainer,
-        ICqrsContext context,
         GFramework.Cqrs.Abstractions.Cqrs.IRequest<TResponse> request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(runtime);
         ArgumentNullException.ThrowIfNull(scopedContainer);
-        ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(request);
 
         using var scopeLease = scopedContainer.EnterScope();
-        return await runtime.SendAsync(context, request, cancellationToken).ConfigureAwait(false);
+        return await runtime.SendAsync(request, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -221,29 +157,26 @@ internal static class BenchmarkHostFactory
     /// </summary>
     /// <typeparam name="TResponse">stream 响应元素类型。</typeparam>
     /// <param name="runtime">复用的 scoped benchmark runtime。</param>
-    /// <param name="scopedContainer">负责为每次 stream 激活独立作用域的只读容器适配层。</param>
-    /// <param name="context">当前 CQRS 分发上下文。</param>
+    /// <param name="scopedContainer">负责为每次 stream 激活独立作用域的标准 provider 适配层。</param>
     /// <param name="request">要创建 stream 的 request。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>绑定到单次显式作用域的异步响应序列。</returns>
     /// <remarks>
     ///     stream 与 request 的区别在于：handler 解析发生在建流时，但 scoped 依赖必须一直存活到枚举完成。
     ///     因此这里返回一个包装后的 async iterator，把 scope 的释放时机推迟到调用方结束枚举之后，
-    ///     避免 `Scoped` handler 退化成“建流后立刻释放 scope，再在根容器语义下继续枚举”的错误模型。
+    ///     避免 `Scoped` handler 退化成“建流后立刻释放 scope，再在根 provider 语义下继续枚举”的错误模型。
     /// </remarks>
     internal static IAsyncEnumerable<TResponse> CreateScopedGFrameworkStream<TResponse>(
         ICqrsRuntime runtime,
         ScopedBenchmarkContainer scopedContainer,
-        ICqrsContext context,
         GFramework.Cqrs.Abstractions.Cqrs.IStreamRequest<TResponse> request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(runtime);
         ArgumentNullException.ThrowIfNull(scopedContainer);
-        ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(request);
 
-        return EnumerateScopedGFrameworkStreamAsync(runtime, scopedContainer, context, request, cancellationToken);
+        return EnumerateScopedGFrameworkStreamAsync(runtime, scopedContainer, request, cancellationToken);
     }
 
     /// <summary>
@@ -310,12 +243,11 @@ internal static class BenchmarkHostFactory
     private static async IAsyncEnumerable<TResponse> EnumerateScopedGFrameworkStreamAsync<TResponse>(
         ICqrsRuntime runtime,
         ScopedBenchmarkContainer scopedContainer,
-        ICqrsContext context,
         GFramework.Cqrs.Abstractions.Cqrs.IStreamRequest<TResponse> request,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
     {
         using var scopeLease = scopedContainer.EnterScope();
-        var stream = runtime.CreateStream(context, request, cancellationToken);
+        var stream = runtime.CreateStream(request, cancellationToken);
 
         await foreach (var response in stream.ConfigureAwait(false))
         {

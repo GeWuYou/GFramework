@@ -127,7 +127,7 @@ public class RequestPipelineBenchmarks
     [Benchmark]
     public ValueTask<BenchmarkResponse> SendRequest_GFrameworkCqrs()
     {
-        return _runtime.SendAsync(BenchmarkContext.Instance, _request, CancellationToken.None);
+        return _runtime.SendAsync(_request, CancellationToken.None);
     }
 
     /// <summary>
@@ -155,13 +155,13 @@ public class RequestPipelineBenchmarks
             case 0:
                 return;
             case 1:
-                container.RegisterCqrsPipelineBehavior<BenchmarkPipelineBehavior1>();
+                container.GetServicesUnsafe.AddCqrsPipelineBehavior<BenchmarkPipelineBehavior1>();
                 return;
             case 4:
-                container.RegisterCqrsPipelineBehavior<BenchmarkPipelineBehavior1>();
-                container.RegisterCqrsPipelineBehavior<BenchmarkPipelineBehavior2>();
-                container.RegisterCqrsPipelineBehavior<BenchmarkPipelineBehavior3>();
-                container.RegisterCqrsPipelineBehavior<BenchmarkPipelineBehavior4>();
+                container.GetServicesUnsafe.AddCqrsPipelineBehavior<BenchmarkPipelineBehavior1>();
+                container.GetServicesUnsafe.AddCqrsPipelineBehavior<BenchmarkPipelineBehavior2>();
+                container.GetServicesUnsafe.AddCqrsPipelineBehavior<BenchmarkPipelineBehavior3>();
+                container.GetServicesUnsafe.AddCqrsPipelineBehavior<BenchmarkPipelineBehavior4>();
                 return;
             default:
                 throw new ArgumentOutOfRangeException(nameof(pipelineCount), pipelineCount,

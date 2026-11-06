@@ -5,9 +5,7 @@ description: 通过只依赖 Core 的最小示例快速跑通 GFramework 基础�
 
 # 快速开始
 
-本页给出一个只依赖 `Core` 的最小路径，用来确认你已经成功接入 `Architecture`、`Model`、`System` 与旧版命令执行器。
-
-> 说明：当前仓库同时存在旧版 `Command` / `Query` 执行器与新版 `CQRS` runtime。本页先用最短路径说明基础架构如何跑起来；新功能优先采用 [CQRS 运行时](../core/cqrs.md)。
+本页给出一个只依赖 `Core` 的最小路径，用来确认你已经成功接入 `Architecture`、`Model`、`System` 与事件系统。
 
 ## 1. 安装最小依赖
 
@@ -67,44 +65,28 @@ public sealed class CounterSystem : AbstractSystem
 }
 ```
 
-## 5. 定义一个命令
-
-```csharp
-using GFramework.Core.Command;
-
-public sealed class IncreaseCountCommand : AbstractCommand
-{
-    protected override void OnExecute()
-    {
-        var model = GetModel<CounterModel>();
-        model.Count.Value += 1;
-    }
-}
-```
-
-`AbstractCommand` 继承自 `ContextAwareBase`，所以命令内部可以直接访问 `GetModel<T>()`、`GetSystem<T>()` 等上下文方法。
-
-## 6. 初始化并执行
+## 5. 初始化并验证上下文访问
 
 ```csharp
 var architecture = new CounterArchitecture();
 architecture.Initialize();
 
-architecture.Context.SendCommand(new IncreaseCountCommand());
+var model = architecture.Context.GetModel<CounterModel>();
+var system = architecture.Context.GetSystem<CounterSystem>();
 
-var count = architecture.Context.GetModel<CounterModel>().Count.Value;
-Console.WriteLine(count); // 1
+Console.WriteLine(model.Count.Value); // 0
 ```
+
+架构会在启动时向组件注入上下文，Model / System 内部可以用 `GetModel<T>()`、`GetSystem<T>()` 等扩展访问彼此；组合根则直接通过 `architecture.Context` 访问。
 
 如果你能走通这一步，说明以下链路已经成立：
 
 - 架构初始化
 - 模型 / 系统注册
 - 上下文访问
-- 旧版命令执行
 
 ## 下一步
 
-- 新功能的请求 / 通知处理：看 [CQRS 运行时](../core/cqrs.md)
+- request / notification / stream 消息模型与接入：看 [CQRS 运行时](../core/cqrs.md)
 - 游戏层能力与接入顺序：看 [Game 模块总览](../game/index.md)
 - 包目录与最小安装组合：看 [安装配置](./installation.md)

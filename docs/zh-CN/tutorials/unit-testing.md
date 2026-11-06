@@ -12,7 +12,7 @@ description: 学习如何为 GFramework 项目编写单元测试
 - 创建和配置测试项目
 - 为架构组件（Model、System、Controller）编写单元测试
 - 测试事件系统的发送和订阅功能
-- 测试命令和查询的执行
+- 测试 CQRS 请求处理器
 - 使用 Moq 模拟依赖项
 - 编写集成测试验证完整流程
 - 理解测试最佳实践
@@ -357,212 +357,99 @@ public class EventBusTests
 }
 ```
 
-## 步骤 4：测试命令和查询
+## 步骤 4：测试 CQRS 请求处理器
 
-命令和查询是 CQRS 模式的核心，需要测试其执行逻辑。
-
-### 4.1 测试 Command
+CQRS 请求与处理器是业务逻辑的核心，通过架构上下文分发请求来验证处理逻辑。
 
 ```csharp
-using GFramework.Core.Abstractions.CQRS.Command;
-using GFramework.Core.Command;
+using GFramework.Cqrs.Abstractions.Cqrs;
+using GFramework.Cqrs.Extensions;
 
 namespace MyGame.Tests.command;
 
 /// <summary>
-/// 测试命令输入
+/// 测试请求：数值翻倍
 /// </summary>
-public sealed class TestCommandInput : ICommandInput
-{
-    public int Value { get; init; }
-}
+public sealed record DoubleValueRequest(int Value) : IRequest<int>;
 
 /// <summary>
-/// 测试命令
+/// 测试请求处理器
 /// </summary>
-public sealed class TestCommand : AbstractCommand&lt;TestCommandInput&gt;
+public sealed class DoubleValueHandler : IRequestHandler<DoubleValueRequest, int>
 {
-    public TestCommand(TestCommandInput input) : base(input)
+    public ValueTask<int> Handle(DoubleValueRequest request, CancellationToken cancellationToken)
     {
-    }
-
-    public bool Executed { get; private set; }
-    public int ExecutedValue { get; private set; }
-
-    protected override void OnExecute(TestCommandInput input)
-    {
-        Executed = true;
-        ExecutedValue = input.Value;
+        return ValueTask.FromResult(request.Value * 2);
     }
 }
 
 /// <summary>
-/// 带返回值的测试命令
+/// 字符串结果处理器
 /// </summary>
-public sealed class TestCommandWithResult : AbstractCommand&lt;TestCommandInput, int&gt;
+public sealed record DescribeValueRequest(int Value) : IRequest<string>;
+
+public sealed class DescribeValueHandler : IRequestHandler<DescribeValueRequest, string>
 {
-    public TestCommandWithResult(TestCommandInput input) : base(input)
+    public ValueTask<string> Handle(DescribeValueRequest request, CancellationToken cancellationToken)
     {
-    }
-
-    public bool Executed { get; private set; }
-
-    protected override int OnExecute(TestCommandInput input)
-    {
-        Executed = true;
-        return input.Value * 2;
+        return ValueTask.FromResult($"Result: {request.Value * 2}");
     }
 }
 
 /// <summary>
-/// 命令执行器测试类
+/// 通过测试架构分发请求
 /// </summary>
 [TestFixture]
-public class CommandExecutorTests
+public class CqrsRequestTests
 {
-    private CommandExecutor _commandExecutor = null!;
+    private sealed class TestArchitecture : Architecture
+    {
+        protected override void ConfigureServices(IServiceCollection services)
+        {
+        }
+    }
+
+    private TestArchitecture _architecture = null!;
 
     [SetUp]
     public void SetUp()
     {
-        _commandExecutor = new CommandExecutor();
+        _architecture = new TestArchitecture();
+        _architecture.UseCqrsRuntime(typeof(CqrsRequestTests).Assembly);
+        _architecture.Initialize();
+    }
+
+    [TearDown]
+    public async Task TearDown()
+    {
+        await _architecture.DisposeAsync();
     }
 
     [Test]
-    public void Send_Should_Execute_Command()
+    public async Task Send_Should_Return_Query_Result()
     {
-        // Arrange
-        var input = new TestCommandInput { Value = 42 };
-        var command = new TestCommand(input);
-
         // Act
-        _commandExecutor.Send(command);
-
-        // Assert
-        Assert.That(command.Executed, Is.True);
-        Assert.That(command.ExecutedValue, Is.EqualTo(42));
-    }
-
-    [Test]
-    public void Send_WithNullCommand_Should_ThrowArgumentNullException()
-    {
-        // Act & Assert
-        Assert.Throws&lt;ArgumentNullException&gt;(() =&gt; _commandExecutor.Send(null!));
-    }
-
-    [Test]
-    public void Send_WithResult_Should_Return_Value()
-    {
-        // Arrange
-        var input = new TestCommandInput { Value = 100 };
-        var command = new TestCommandWithResult(input);
-
-        // Act
-        var result = _commandExecutor.Send(command);
-
-        // Assert
-        Assert.That(command.Executed, Is.True);
-        Assert.That(result, Is.EqualTo(200));
-    }
-}
-```
-
-### 4.2 测试 Query
-
-```csharp
-using GFramework.Core.Abstractions.CQRS.Query;
-using GFramework.Core.Query;
-
-namespace MyGame.Tests.query;
-
-/// <summary>
-/// 测试查询输入
-/// </summary>
-public sealed class TestQueryInput : IQueryInput
-{
-    public int Value { get; init; }
-}
-
-/// <summary>
-/// 整数查询
-/// </summary>
-public sealed class TestQuery : AbstractQuery&lt;TestQueryInput, int&gt;
-{
-    public TestQuery(TestQueryInput input) : base(input)
-    {
-    }
-
-    protected override int OnDo(TestQueryInput input)
-    {
-        return input.Value * 2;
-    }
-}
-
-/// <summary>
-/// 字符串查询
-/// </summary>
-public sealed class TestStringQuery : AbstractQuery&lt;TestQueryInput, string&gt;
-{
-    public TestStringQuery(TestQueryInput input) : base(input)
-    {
-    }
-
-    protected override string OnDo(TestQueryInput input)
-    {
-        return $"Result: {input.Value * 2}";
-    }
-}
-
-/// <summary>
-/// 查询执行器测试类
-/// </summary>
-[TestFixture]
-public class QueryExecutorTests
-{
-    private QueryExecutor _queryExecutor = null!;
-
-    [SetUp]
-    public void SetUp()
-    {
-        _queryExecutor = new QueryExecutor();
-    }
-
-    [Test]
-    public void Send_Should_Return_Query_Result()
-    {
-        // Arrange
-        var input = new TestQueryInput { Value = 10 };
-        var query = new TestQuery(input);
-
-        // Act
-        var result = _queryExecutor.Send(query);
+        var result = await _architecture.Context.SendRequestAsync<int>(
+            new DoubleValueRequest(10));
 
         // Assert
         Assert.That(result, Is.EqualTo(20));
     }
 
     [Test]
-    public void Send_WithNullQuery_Should_ThrowArgumentNullException()
+    public async Task Send_WithStringResult_Should_Return_String()
     {
-        // Act & Assert
-        Assert.Throws&lt;ArgumentNullException&gt;(() =&gt; _queryExecutor.Send&lt;int&gt;(null!));
-    }
-
-    [Test]
-    public void Send_WithStringResult_Should_Return_String()
-    {
-        // Arrange
-        var input = new TestQueryInput { Value = 5 };
-        var query = new TestStringQuery(input);
-
         // Act
-        var result = _queryExecutor.Send(query);
+        var result = await _architecture.Context.SendRequestAsync<string>(
+            new DescribeValueRequest(5));
 
         // Assert
         Assert.That(result, Is.EqualTo("Result: 10"));
     }
 }
 ```
+
+如果被测处理器依赖上下文组件（Model / System），先在测试架构中注册对应组件，再通过 `architecture.Context` 分发请求；无返回值的请求使用 `SendAsync(request)` 便捷入口。
 
 ## 步骤 5：使用 Mock 和 Stub
 
@@ -832,7 +719,7 @@ public class ArchitectureIntegrationTests
         await _architecture.DestroyAsync();
 
         // Assert
-        var system = _architecture.this.GetSystem&lt;TestSystem&gt;();
+        var system = _architecture.Context.GetSystem&lt;TestSystem&gt;();
         Assert.That(system!.DestroyCalled, Is.True);
         Assert.That(_architecture.CurrentPhase, Is.EqualTo(ArchitecturePhase.Destroyed));
     }
@@ -957,9 +844,7 @@ MyGame.Tests/
 ├── events/
 │   └── EventBusTests.cs
 ├── command/
-│   └── CommandExecutorTests.cs
-├── query/
-│   └── QueryExecutorTests.cs
+│   └── CqrsRequestTests.cs
 ├── mock/
 │   ├── MockExampleTests.cs
 │   └── VerificationTests.cs

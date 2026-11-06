@@ -9,8 +9,6 @@ using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Logging;
 using GFramework.Core.Rule;
-using GFramework.Cqrs;
-using GFramework.Cqrs.Abstractions.Cqrs;
 
 namespace GFramework.Core.Ioc;
 
@@ -28,7 +26,7 @@ namespace GFramework.Core.Ioc;
 /// <param name="loggerFactoryProvider">实例级日志工厂；为空时创建独立默认工厂，不读取或修改全局 provider。</param>
 public partial class MicrosoftDiContainer(
     IServiceCollection? serviceCollection = null,
-    ILoggerFactoryProvider? loggerFactoryProvider = null) : ContextAwareBase, IIocContainer
+    ILoggerFactoryProvider? loggerFactoryProvider = null) : ContextAwareBase, IIocContainer, IServiceProvider
 {
     #region Helper Methods
 
@@ -496,145 +494,6 @@ public partial class MicrosoftDiContainer(
 
 
     /// <summary>
-    ///     注册 CQRS 请求管道行为。
-    ///     同时支持开放泛型行为类型和已闭合的具体行为类型，
-    ///     以兼容通用行为和针对单一请求的专用行为两种注册方式。
-    /// </summary>
-    /// <typeparam name="TBehavior">行为类型，必须是引用类型</typeparam>
-    public void RegisterCqrsPipelineBehavior<TBehavior>() where TBehavior : class
-    {
-        ThrowIfDisposed();
-        EnterWriteLockOrThrowDisposed();
-        try
-        {
-            ThrowIfFrozen();
-            RegisterCqrsPipelineBehaviorCore(
-                typeof(TBehavior),
-                typeof(IPipelineBehavior<,>),
-                "IPipelineBehavior<,>",
-                "pipeline behavior");
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
-        }
-    }
-
-    /// <summary>
-    ///     注册 CQRS 流式请求管道行为。
-    ///     同时支持开放泛型行为类型和已闭合的具体行为类型，
-    ///     以兼容通用行为和针对单一流式请求的专用行为两种注册方式。
-    /// </summary>
-    /// <typeparam name="TBehavior">行为类型，必须是引用类型</typeparam>
-    public void RegisterCqrsStreamPipelineBehavior<TBehavior>() where TBehavior : class
-    {
-        ThrowIfDisposed();
-        EnterWriteLockOrThrowDisposed();
-        try
-        {
-            ThrowIfFrozen();
-            RegisterCqrsPipelineBehaviorCore(
-                typeof(TBehavior),
-                typeof(IStreamPipelineBehavior<,>),
-                "IStreamPipelineBehavior<,>",
-                "stream pipeline behavior");
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
-        }
-    }
-
-    /// <summary>
-    ///     复用 CQRS 行为注册的开放泛型/封闭接口校验逻辑，
-    ///     让 request 与 stream 两条入口保持一致的容器注册语义。
-    /// </summary>
-    /// <param name="behaviorType">待注册的行为运行时类型。</param>
-    /// <param name="openGenericInterfaceType">行为必须实现的开放泛型接口类型。</param>
-    /// <param name="interfaceTypeDisplayName">用于日志与异常的接口显示名称。</param>
-    /// <param name="registrationLabel">用于日志的注册类别名称。</param>
-    /// <exception cref="InvalidOperationException"><paramref name="behaviorType" /> 未实现目标行为接口。</exception>
-    private void RegisterCqrsPipelineBehaviorCore(
-        Type behaviorType,
-        Type openGenericInterfaceType,
-        string interfaceTypeDisplayName,
-        string registrationLabel)
-    {
-        if (behaviorType.IsGenericTypeDefinition)
-        {
-            GetServicesUnsafe.AddSingleton(openGenericInterfaceType, behaviorType);
-        }
-        else
-        {
-            var pipelineInterfaces = behaviorType
-                .GetInterfaces()
-                .Where(type => type.IsGenericType &&
-                               type.GetGenericTypeDefinition() == openGenericInterfaceType)
-                .ToList();
-
-            if (pipelineInterfaces.Count == 0)
-            {
-                var errorMessage = $"{behaviorType.Name} does not implement {interfaceTypeDisplayName}";
-                _logger.Error(errorMessage);
-                throw new InvalidOperationException(errorMessage);
-            }
-
-            // 为每个已闭合的行为接口建立显式映射，支持针对特定请求/响应对的专用行为。
-            foreach (var pipelineInterface in pipelineInterfaces)
-            {
-                GetServicesUnsafe.AddSingleton(pipelineInterface, behaviorType);
-            }
-        }
-
-        _logger.Debug($"CQRS {registrationLabel} registered: {behaviorType.Name}");
-    }
-
-    /// <summary>
-    ///     从指定程序集显式注册 CQRS 处理器。
-    /// </summary>
-    /// <param name="assembly">包含 CQRS 处理器或生成注册器的程序集。</param>
-    /// <exception cref="ArgumentNullException"><paramref name="assembly" /> 为 <see langword="null" />。</exception>
-    /// <exception cref="InvalidOperationException">容器已冻结，无法继续注册 CQRS 处理器。</exception>
-    public void RegisterCqrsHandlersFromAssembly(Assembly assembly)
-    {
-        ArgumentNullException.ThrowIfNull(assembly);
-        RegisterCqrsHandlersFromAssemblies([assembly]);
-    }
-
-    /// <summary>
-    ///     从多个程序集显式注册 CQRS 处理器。
-    ///     同一程序集只会被接入一次，避免默认启动路径与扩展模块重复注册相同 handlers。
-    /// </summary>
-    /// <param name="assemblies">要接入的程序集集合。</param>
-    /// <exception cref="ArgumentNullException"><paramref name="assemblies" /> 为 <see langword="null" />。</exception>
-    /// <exception cref="ArgumentNullException"><paramref name="assemblies" /> 中存在 <see langword="null" /> 元素。</exception>
-    /// <exception cref="InvalidOperationException">    容器已冻结，无法继续注册 CQRS 处理器。</exception>
-    public void RegisterCqrsHandlersFromAssemblies(IEnumerable<Assembly> assemblies)
-    {
-        ArgumentNullException.ThrowIfNull(assemblies);
-        ThrowIfDisposed();
-        var assemblyArray = assemblies.ToArray();
-        foreach (var assembly in assemblyArray)
-        {
-            if (assembly is null)
-            {
-                throw new ArgumentNullException(nameof(assemblies), "Assemblies collection cannot contain null items.");
-            }
-        }
-
-        EnterWriteLockOrThrowDisposed();
-        try
-        {
-            ThrowIfFrozen();
-            ResolveCqrsRegistrationService().RegisterHandlers(assemblyArray);
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
-        }
-    }
-
-    /// <summary>
     ///     配置服务
     /// </summary>
     /// <param name="configurator">服务配置委托</param>
@@ -658,27 +517,30 @@ public partial class MicrosoftDiContainer(
     #region Get
 
     /// <summary>
-    ///     获取当前容器中已注册的 CQRS 程序集注册协调器。
-    ///     该方法仅供容器内部在注册阶段使用，因此直接读取服务描述符中的实例绑定，
-    ///     避免在容器未冻结前依赖完整的服务提供者构建流程。
+    ///     显式暴露容器冻结后的根 <see cref="IServiceProvider" />。
+    ///     该入口供标准 DI 生态组件（例如 CQRS runtime）以标准服务解析语义访问同一 provider，
+    ///     不绕过容器的释放检查；provider 尚未构建时访问属于编程错误，直接抛出异常。
     /// </summary>
-    /// <returns>已注册的 CQRS 程序集注册协调器实例。</returns>
-    /// <exception cref="InvalidOperationException">未找到可用的 CQRS 程序集注册协调器实例时抛出。</exception>
-    private ICqrsRegistrationService ResolveCqrsRegistrationService()
+    /// <param name="serviceType">要解析的服务类型。</param>
+    /// <returns>解析到的服务实例；未注册时返回 <see langword="null" />。</returns>
+    /// <exception cref="ObjectDisposedException">容器已释放。</exception>
+    /// <exception cref="InvalidOperationException">容器尚未冻结，根 provider 还不可用。</exception>
+    object? IServiceProvider.GetService(Type serviceType)
     {
-        var registrationService = CollectRegisteredImplementationInstances(typeof(ICqrsRegistrationService))
-            .OfType<ICqrsRegistrationService>()
-            .LastOrDefault();
+        ThrowIfDisposed();
+        EnterReadLockOrThrowDisposed();
+        try
+        {
+            if (_provider == null)
+                throw new InvalidOperationException(
+                    "The root service provider has not been built yet. Resolve standard services only after the container is frozen.");
 
-        if (registrationService != null)
-            return registrationService;
-
-        const string errorMessage =
-            "ICqrsRegistrationService is not visible during the registration stage. Ensure the CQRS runtime module " +
-            "has been installed and that the registration service is pre-materialized as an instance binding before " +
-            "registering handlers.";
-        _logger.Error(errorMessage);
-        throw new InvalidOperationException(errorMessage);
+            return _provider.GetService(serviceType);
+        }
+        finally
+        {
+            _lock.ExitReadLock();
+        }
     }
 
     /// <summary>

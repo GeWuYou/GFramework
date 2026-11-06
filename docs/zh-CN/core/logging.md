@@ -7,7 +7,7 @@ description: 说明 GFramework.Core.Logging 的日志接口、组合方式与常
 
 GFramework.Core.Logging 提供当前的日志接口实现、factory 与输出组合。Architecture 从本实例的 ArchitectureConfiguration 获取日志工厂，容器、服务模块和上下文组件沿用该实例依赖，不覆盖 LoggerFactoryResolver.Provider。
 
-LoggerFactoryResolver 仍是显式使用的兼容全局入口；它不会替代当前架构的实例配置。本批保留自有 ILogger/ILoggerFactoryProvider 契约。
+LoggerFactoryResolver 仍是显式使用的兼容全局入口；它不会替代当前架构的实例配置。框架当前保留自有 ILogger/ILoggerFactoryProvider 契约。
 
 ## 最小用法
 

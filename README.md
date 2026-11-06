@@ -67,9 +67,9 @@
 ## 包选择
 
 - `GeWuYou.GFramework`
-  当前直接聚合 `GFramework.Core` 与 `GFramework.Game`，并通过 Core 间接包含 `Cqrs` runtime 与契约；不自动包含 `Godot` 或任何 Source Generator。
+  当前直接聚合 `GFramework.Core` 与 `GFramework.Game`；不自动包含 `Cqrs`、`Godot` 或任何 Source Generator。
 - `GeWuYou.GFramework.Core`
-  架构采用的起步包，当前已依赖 `Cqrs` runtime。可按需追加 `Game`、`Godot` 和 Source Generators；消息契约项目可直接引用 `Cqrs.Abstractions`。
+  架构采用的起步包，不依赖 CQRS。需要 request / notification / stream 消息模型的项目按需追加 `Cqrs`、`Game`、`Godot` 和 Source Generators；消息契约项目可直接引用 `Cqrs.Abstractions`。
 - `GeWuYou.GFramework.*.Abstractions`
   适合需要单独依赖契约层、插件化、测试替身或多模块解耦的场景。
 - `GeWuYou.GFramework.*.SourceGenerators`
@@ -89,7 +89,7 @@
 dotnet add package GeWuYou.GFramework.Core
 dotnet add package GeWuYou.GFramework.Core.Abstractions
 
-# 直接声明 CQRS 依赖（Core 已传递包含；直接使用其 API 时可显式引用）
+# 消息模型（使用 request / notification / stream 时安装）
 dotnet add package GeWuYou.GFramework.Cqrs
 dotnet add package GeWuYou.GFramework.Cqrs.Abstractions
 

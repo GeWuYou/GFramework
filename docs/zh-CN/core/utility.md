@@ -203,22 +203,19 @@ public class SaveSystem : AbstractSystem
     }
 }
 
-// 在 Command 中使用
-public class MovePlayerCommand : AbstractCommand
+// 在 System 中使用
+public class MovementSystem : AbstractSystem
 {
-    public Vector3 TargetPosition { get; set; }
-    public float Speed { get; set; }
-    
-    protected override void OnExecute()
+    public void MoveTo(Vector3 targetPosition, float speed)
     {
         var playerModel = this.GetModel<PlayerModel>();
         var mathUtil = this.GetUtility<MathUtility>();
-        
+
         // 使用工具类计算
         Vector3 currentPos = playerModel.Position.Value;
-        Vector3 direction = (TargetPosition - currentPos).Normalized();
-        Vector3 newPos = currentPos + direction * Speed;
-        
+        Vector3 direction = (targetPosition - currentPos).Normalized();
+        Vector3 newPos = currentPos + direction * speed;
+
         playerModel.Position.Value = newPos;
     }
 }

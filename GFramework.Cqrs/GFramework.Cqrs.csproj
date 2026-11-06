@@ -19,4 +19,9 @@
         <ProjectReference Include="..\GFramework.Core.Abstractions\GFramework.Core.Abstractions.csproj"/>
     </ItemGroup>
 
+    <!-- runtime 直接基于标准 DI 工作，显式声明该依赖而不是依赖 Core.Abstractions 传递 -->
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.8"/>
+    </ItemGroup>
+
 </Project>

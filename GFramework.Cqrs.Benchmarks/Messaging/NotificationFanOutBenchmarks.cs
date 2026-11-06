@@ -140,7 +140,7 @@ public class NotificationFanOutBenchmarks
     [Benchmark]
     public ValueTask PublishNotification_GFrameworkCqrsSequential()
     {
-        return _sequentialRuntime.PublishAsync(BenchmarkContext.Instance, _notification, CancellationToken.None);
+        return _sequentialRuntime.PublishAsync(_notification, CancellationToken.None);
     }
 
     /// <summary>
@@ -150,7 +150,7 @@ public class NotificationFanOutBenchmarks
     [Benchmark]
     public ValueTask PublishNotification_GFrameworkCqrsTaskWhenAll()
     {
-        return _taskWhenAllRuntime.PublishAsync(BenchmarkContext.Instance, _notification, CancellationToken.None);
+        return _taskWhenAllRuntime.PublishAsync(_notification, CancellationToken.None);
     }
 
     /// <summary>

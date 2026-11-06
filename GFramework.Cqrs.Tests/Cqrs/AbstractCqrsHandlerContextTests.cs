@@ -4,8 +4,7 @@
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Rule;
 using GFramework.Cqrs.Abstractions.Cqrs;
-using GFramework.Cqrs.Abstractions.Cqrs.Command;
-using GFramework.Cqrs.Cqrs.Command;
+using GFramework.Cqrs.Cqrs.Request;
 
 namespace GFramework.Cqrs.Tests.Cqrs;
 
@@ -21,7 +20,7 @@ internal sealed class AbstractCqrsHandlerContextTests
     [Test]
     public void GetContext_Should_Throw_When_Handler_Has_Not_Been_Initialized_By_Runtime()
     {
-        var handler = new TestCommandHandler();
+        var handler = new TestRequestHandler();
 
         var exception = Assert.Throws<InvalidOperationException>(() => ((IContextAware)handler).GetContext());
 
@@ -36,11 +35,11 @@ internal sealed class AbstractCqrsHandlerContextTests
     [Test]
     public async Task Handle_Should_Observe_Injected_Context_And_OnContextReady_Callback()
     {
-        var handler = new TestCommandHandler();
+        var handler = new TestRequestHandler();
         var context = new Mock<IArchitectureContext>(MockBehavior.Strict).Object;
 
         ((IContextAware)handler).SetContext(context);
-        await handler.Handle(new TestCommand(), CancellationToken.None);
+        await handler.Handle(new TestRequest(), CancellationToken.None);
 
         Assert.Multiple(() =>
         {
@@ -50,14 +49,14 @@ internal sealed class AbstractCqrsHandlerContextTests
     }
 
     /// <summary>
-    ///     用于验证上下文注入行为的最小 CQRS 命令。
+    ///     用于验证上下文注入行为的最小 CQRS 请求。
     /// </summary>
-    private sealed record TestCommand : ICommand<Unit>;
+    private sealed record TestRequest : IRequest<Unit>;
 
     /// <summary>
     ///     暴露基类上下文访问与初始化回调的测试处理器。
     /// </summary>
-    private sealed class TestCommandHandler : AbstractCommandHandler<TestCommand>
+    private sealed class TestRequestHandler : AbstractRequestHandler<TestRequest>
     {
         public int OnContextReadyCallCount { get; private set; }
 
@@ -68,7 +67,7 @@ internal sealed class AbstractCqrsHandlerContextTests
             OnContextReadyCallCount++;
         }
 
-        public override ValueTask<Unit> Handle(TestCommand command, CancellationToken cancellationToken)
+        public override ValueTask<Unit> Handle(TestRequest request, CancellationToken cancellationToken)
         {
             LastObservedContext = Context;
             return ValueTask.FromResult(Unit.Value);

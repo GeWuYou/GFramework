@@ -109,8 +109,8 @@ public class RequestLifetimeBenchmarks
             BenchmarkHostFactory.RegisterGeneratedBenchmarkRegistry<GeneratedRequestLifetimeBenchmarkRegistry>(container);
             RegisterGFrameworkHandler(container, Lifetime);
         });
-        // 容器内已提前保留默认 runtime 以支撑 generated registry 接线；
-        // 这里额外创建带生命周期后缀的 runtime，只是为了区分不同 benchmark 矩阵的 dispatcher 日志。
+        // runtime 在 provider 构建后按当前矩阵惰性解析；
+        // 这里显式创建带生命周期后缀的 runtime，只是为了区分不同 benchmark 矩阵的 dispatcher 日志。
         if (Lifetime != HandlerLifetime.Scoped)
         {
             _runtime = GFramework.Cqrs.CqrsRuntimeFactory.CreateRuntime(
@@ -174,12 +174,11 @@ public class RequestLifetimeBenchmarks
             return BenchmarkHostFactory.SendScopedGFrameworkRequestAsync(
                 _scopedRuntime!,
                 _scopedContainer!,
-                BenchmarkContext.Instance,
                 _request,
                 CancellationToken.None);
         }
 
-        return _runtime!.SendAsync(BenchmarkContext.Instance, _request, CancellationToken.None);
+        return _runtime!.SendAsync(_request, CancellationToken.None);
     }
 
     /// <summary>

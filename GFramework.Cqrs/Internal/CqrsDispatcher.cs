@@ -2,28 +2,34 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using GFramework.Core.Abstractions.Architectures;
-using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Rule;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Notification;
-using ICqrsRuntime = GFramework.Core.Abstractions.Cqrs.ICqrsRuntime;
 
 namespace GFramework.Cqrs.Internal;
 
 /// <summary>
 ///     GFramework 自有 CQRS 运行时分发器。
-///     该类型负责解析请求/通知处理器，并在调用前为上下文感知对象注入当前 CQRS 分发上下文。
+///     该类型基于标准 <see cref="IServiceProvider" /> 解析请求/通知/流式处理器与 pipeline 行为，
+///     并在调用前为上下文感知对象注入宿主提供的架构上下文。
 /// </summary>
+/// <param name="provider">
+///     承载 handler、behavior 与 notification publisher 注册的标准服务提供者。
+///     runtime 单例由 provider 自身创建，因此其解析结果与调用方使用的 provider 一致。
+/// </param>
+/// <param name="logger">用于 runtime 诊断的日志器。</param>
+/// <param name="notificationPublisher">可选的固定通知发布策略；缺省时在首次发布时按容器注册解析。</param>
 internal sealed class CqrsDispatcher(
-    IIocContainer container,
+    IServiceProvider provider,
     ILogger logger,
     INotificationPublisher? notificationPublisher) : ICqrsRuntime
 {
-    // 实例级热路径缓存：默认 runtime 在容器冻结前创建，但请求/stream 行为注册在架构生命周期内保持稳定。
-    // 因此这里按 behavior service type 记住“当前 dispatcher 对应容器里是否存在该行为”，避免 0-pipeline steady-state
-    // 每次 SendAsync 都重复询问容器。缓存值只反映当前 dispatcher 持有容器的注册可见性，不跨 runtime 共享。
+    // 实例级热路径缓存：默认 runtime 在 provider 构建后才解析，行为注册此后保持稳定。
+    // 因此这里按 behavior service type 记住“当前 dispatcher 对应 provider 里是否存在该行为”，避免 0-pipeline steady-state
+    // 每次 SendAsync 都重复询问容器。缓存值只反映当前 dispatcher 持有 provider 的注册可见性，不跨 runtime 共享。
     private readonly ConcurrentDictionary<Type, bool> _requestBehaviorPresenceCache = new();
 
     // 与 request 路径相同，stream 的 behavior 注册可见性在当前 dispatcher 生命周期内保持稳定。
@@ -71,12 +77,11 @@ internal sealed class CqrsDispatcher(
     private static readonly MethodInfo StreamPipelineInvokerMethodDefinition = typeof(CqrsDispatcher)
         .GetMethod(nameof(InvokeStreamPipelineExecutor), BindingFlags.NonPublic | BindingFlags.Static)!;
 
-    // runtime 通常会在容器冻结前创建；此时通过实现类型注册的 notification publisher
-    // 还没有被底层 provider 物化，因此不能只在构造阶段抓取一次。
-    // 显式传入实例时仍优先复用该实例；否则在真正 publish 时再尝试从容器解析。
+    // runtime 单例在 provider 构建后才解析；此时通过实现类型注册的 notification publisher
+    // 也已经物化，但显式传入实例的路径仍优先于容器解析，保持组合根可覆盖的语义。
     private readonly INotificationPublisher? _notificationPublisher = notificationPublisher;
 
-    // 容器冻结后 notification publisher 解析结果在当前 dispatcher 生命周期内保持稳定；
+    // provider 构建后 notification publisher 解析结果在当前 dispatcher 生命周期内保持稳定；
     // 因此首次 publish 后缓存最终策略实例，避免后续热路径重复查容器和重复分配默认 publisher。
     private INotificationPublisher? _resolvedNotificationPublisher;
 
@@ -84,23 +89,22 @@ internal sealed class CqrsDispatcher(
     ///     发布通知到所有已注册处理器。
     /// </summary>
     /// <typeparam name="TNotification">通知类型。</typeparam>
-    /// <param name="context">当前 CQRS 分发上下文，用于上下文感知处理器注入。</param>
     /// <param name="notification">通知对象。</param>
     /// <param name="cancellationToken">取消令牌。</param>
+    /// <param name="context">可选的宿主分发上下文，用于上下文感知处理器注入。</param>
     public async ValueTask PublishAsync<TNotification>(
-        ICqrsContext context,
         TNotification notification,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        ICqrsContext? context = null)
         where TNotification : INotification
     {
-        ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(notification);
 
         var notificationType = notification.GetType();
         var dispatchBinding = NotificationDispatchBindings.GetOrAdd(
             notificationType,
             static notificationType => CreateNotificationDispatchBinding(notificationType));
-        var handlers = container.GetAll(dispatchBinding.HandlerType);
+        var handlers = ResolveHandlers(dispatchBinding.HandlerType);
 
         if (handlers.Count == 0)
         {
@@ -116,23 +120,22 @@ internal sealed class CqrsDispatcher(
     ///     发送请求并返回结果。
     /// </summary>
     /// <typeparam name="TResponse">响应类型。</typeparam>
-    /// <param name="context">当前 CQRS 分发上下文，用于上下文感知处理器注入。</param>
     /// <param name="request">请求对象。</param>
     /// <param name="cancellationToken">取消令牌。</param>
+    /// <param name="context">可选的宿主分发上下文，用于上下文感知处理器注入。</param>
     /// <returns>请求响应。</returns>
     public ValueTask<TResponse> SendAsync<TResponse>(
-        ICqrsContext context,
         IRequest<TResponse> request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        ICqrsContext? context = null)
     {
         try
         {
-            ArgumentNullException.ThrowIfNull(context);
             ArgumentNullException.ThrowIfNull(request);
 
             var requestType = request.GetType();
             var dispatchBinding = GetRequestDispatchBinding<TResponse>(requestType);
-            var handler = container.Get(dispatchBinding.HandlerType)
+            var handler = provider.GetService(dispatchBinding.HandlerType)
                           ?? throw new InvalidOperationException(
                               $"No CQRS request handler registered for {requestType.FullName}.");
 
@@ -142,7 +145,7 @@ internal sealed class CqrsDispatcher(
                 return dispatchBinding.RequestInvoker(handler, request, cancellationToken);
             }
 
-            var behaviors = container.GetAll(dispatchBinding.BehaviorType);
+            var behaviors = ResolveHandlers(dispatchBinding.BehaviorType);
 
             foreach (var behavior in behaviors)
             {
@@ -160,7 +163,7 @@ internal sealed class CqrsDispatcher(
     }
 
     /// <summary>
-    ///     读取当前 dispatcher 容器里是否存在指定 request pipeline 行为注册，并在首次命中后缓存结果。
+    ///     读取当前 dispatcher provider 里是否存在指定 request pipeline 行为注册，并在首次命中后缓存结果。
     /// </summary>
     /// <param name="behaviorType">目标 pipeline 行为服务类型。</param>
     /// <returns>存在注册时返回 <see langword="true" />；否则返回 <see langword="false" />。</returns>
@@ -170,29 +173,28 @@ internal sealed class CqrsDispatcher(
 
         return _requestBehaviorPresenceCache.GetOrAdd(
             behaviorType,
-            static (cachedBehaviorType, currentContainer) => currentContainer.HasRegistration(cachedBehaviorType),
-            container);
+            static (cachedBehaviorType, currentProvider) => HasRegistration(currentProvider, cachedBehaviorType),
+            provider);
     }
 
     /// <summary>
     ///     创建流式请求并返回异步响应序列。
     /// </summary>
     /// <typeparam name="TResponse">响应元素类型。</typeparam>
-    /// <param name="context">当前 CQRS 分发上下文，用于上下文感知处理器注入。</param>
     /// <param name="request">流式请求对象。</param>
     /// <param name="cancellationToken">取消令牌。</param>
+    /// <param name="context">可选的宿主分发上下文，用于上下文感知处理器注入。</param>
     /// <returns>异步响应序列。</returns>
     public IAsyncEnumerable<TResponse> CreateStream<TResponse>(
-        ICqrsContext context,
         IStreamRequest<TResponse> request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        ICqrsContext? context = null)
     {
-        ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(request);
 
         var requestType = request.GetType();
         var dispatchBinding = GetStreamDispatchBinding<TResponse>(requestType);
-        var handler = container.Get(dispatchBinding.HandlerType)
+        var handler = provider.GetService(dispatchBinding.HandlerType)
                       ?? throw new InvalidOperationException(
                           $"No CQRS stream handler registered for {requestType.FullName}.");
 
@@ -202,7 +204,7 @@ internal sealed class CqrsDispatcher(
             return dispatchBinding.StreamInvoker(handler, request, cancellationToken);
         }
 
-        var behaviors = container.GetAll(dispatchBinding.BehaviorType);
+        var behaviors = ResolveHandlers(dispatchBinding.BehaviorType);
 
         foreach (var behavior in behaviors)
         {
@@ -214,7 +216,7 @@ internal sealed class CqrsDispatcher(
     }
 
     /// <summary>
-    ///     读取当前 dispatcher 容器里是否存在指定 stream pipeline 行为注册，并在首次命中后缓存结果。
+    ///     读取当前 dispatcher provider 里是否存在指定 stream pipeline 行为注册，并在首次命中后缓存结果。
     /// </summary>
     /// <param name="behaviorType">目标 stream pipeline 行为服务类型。</param>
     /// <returns>存在注册时返回 <see langword="true" />；否则返回 <see langword="false" />。</returns>
@@ -224,22 +226,57 @@ internal sealed class CqrsDispatcher(
 
         return _streamBehaviorPresenceCache.GetOrAdd(
             behaviorType,
-            static (cachedBehaviorType, currentContainer) => currentContainer.HasRegistration(cachedBehaviorType),
-            container);
+            static (cachedBehaviorType, currentProvider) => HasRegistration(currentProvider, cachedBehaviorType),
+            provider);
     }
 
     /// <summary>
-    ///     为上下文感知处理器注入当前 CQRS 分发上下文。
+    ///     从标准 provider 解析指定服务类型的全部实例。
+    /// </summary>
+    /// <param name="serviceType">目标服务类型。</param>
+    /// <returns>已解析实例的只读列表；无注册时为空列表。</returns>
+    private IReadOnlyList<object> ResolveHandlers(Type serviceType)
+    {
+        return provider.GetServices(serviceType).OfType<object>().ToArray();
+    }
+
+    /// <summary>
+    ///     判断标准 provider 中是否存在指定服务类型的注册。
+    ///     优先使用 <see cref="IServiceProviderIsService" /> 做非物化探测，
+    ///     避免为只判断“是否有行为”的热路径实例化 Transient 行为。
+    /// </summary>
+    /// <param name="currentProvider">当前 dispatcher 持有的 provider。</param>
+    /// <param name="serviceType">目标服务类型。</param>
+    /// <returns>存在注册时返回 <see langword="true" />；否则返回 <see langword="false" />。</returns>
+    private static bool HasRegistration(IServiceProvider currentProvider, Type serviceType)
+    {
+        if (currentProvider is IServiceProviderIsService isService)
+            return isService.IsService(serviceType);
+
+        // 兜底路径仅面向未实现 IServiceProviderIsService 的自定义 provider；
+        // 该探测会物化实例，调用方负责其资源责任。
+        return currentProvider.GetServices(serviceType).Any();
+    }
+
+    /// <summary>
+    ///     为上下文感知处理器注入宿主提供的架构上下文。
+    ///     标准独立使用场景没有宿主上下文；此时处理器必须通过构造函数注入获取依赖，
+    ///     声明 <see cref="IContextAware" /> 的处理器会得到明确的失败而不是隐式空上下文。
     /// </summary>
     /// <param name="handler">处理器实例。</param>
-    /// <param name="context">当前 CQRS 分发上下文。</param>
-    private static void PrepareHandler(object handler, ICqrsContext context)
+    /// <param name="context">可选的宿主分发上下文。</param>
+    private static void PrepareHandler(object handler, ICqrsContext? context)
     {
         if (handler is IContextAware contextAware)
         {
-            if (context is not IArchitectureContext architectureContext)
-                throw new InvalidOperationException(
-                    "The current CQRS context does not implement IArchitectureContext, so it cannot be injected into IContextAware handlers.");
+            var architectureContext = context switch
+            {
+                ArchitectureCqrsDispatchContext boundContext => boundContext.ArchitectureContext,
+                IArchitectureContext directContext => directContext,
+                _ => throw new InvalidOperationException(
+                    "The current CQRS context does not provide an IArchitectureContext, so it cannot be injected into IContextAware handlers. " +
+                    "Use the architecture context extensions from GFramework.Cqrs.Extensions, or remove the IContextAware declaration and use constructor injection.")
+            };
 
             contextAware.SetContext(architectureContext);
         }
@@ -266,7 +303,7 @@ internal sealed class CqrsDispatcher(
             return resolvedNotificationPublisher;
         }
 
-        var registeredPublishers = container.GetAll(typeof(INotificationPublisher));
+        var registeredPublishers = ResolveHandlers(typeof(INotificationPublisher));
         resolvedNotificationPublisher = registeredPublishers.Count switch
         {
             0 => new SequentialNotificationPublisher(),
@@ -535,13 +572,13 @@ internal sealed class CqrsDispatcher(
     /// <typeparam name="TNotification">通知类型。</typeparam>
     /// <param name="notification">当前通知。</param>
     /// <param name="handlers">当前发布调用已解析到的处理器集合。</param>
-    /// <param name="context">当前 CQRS 分发上下文。</param>
+    /// <param name="context">可选的宿主分发上下文。</param>
     /// <param name="invoker">执行单个通知处理器时复用的强类型调用委托。</param>
     /// <returns>供通知发布器消费的执行上下文。</returns>
     private static NotificationPublishContext<TNotification> CreateNotificationPublishContext<TNotification>(
         TNotification notification,
         IReadOnlyList<object> handlers,
-        ICqrsContext context,
+        ICqrsContext? context,
         NotificationInvoker invoker)
         where TNotification : INotification
     {
@@ -823,10 +860,10 @@ internal sealed class CqrsDispatcher(
     /// <summary>
     ///     保存通知发布器执行单个 handler 时需要复用的 dispatcher 状态。
     /// </summary>
-    /// <param name="Context">当前 CQRS 分发上下文。</param>
+    /// <param name="Context">可选的宿主分发上下文。</param>
     /// <param name="Invoker">执行单个通知处理器的强类型调用委托。</param>
     private readonly record struct NotificationDispatchState(
-        ICqrsContext Context,
+        ICqrsContext? Context,
         NotificationInvoker Invoker);
 
     /// <summary>

@@ -168,10 +168,10 @@ public partial class GameController : IController
     }
 }
 
-// 在 Command 中
-public class StartBattleCommand : AbstractCommand
+// 在 System 中
+public class BattleFlowSystem : AbstractSystem
 {
-    protected override void OnExecute()
+    public void BeginBattle()
     {
         var combatSystem = this.GetSystem<CombatSystem>();
         combatSystem.StartBattle();
@@ -496,7 +496,7 @@ public class GameStateSystem : AbstractSystem
         {
             case GameState.Playing:
                 // 开始游戏
-                this.SendCommand(new StartGameCommand());
+                this.GetSystem<GameFlowSystem>().Start();
                 break;
             case GameState.Paused:
                 // 暂停游戏
@@ -504,7 +504,7 @@ public class GameStateSystem : AbstractSystem
                 break;
             case GameState.GameOver:
                 // 游戏结束
-                this.SendCommand(new GameOverCommand());
+                this.GetSystem<GameFlowSystem>().Stop();
                 break;
         }
     }

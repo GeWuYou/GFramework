@@ -5,7 +5,9 @@ using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Architectures;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
+using GFramework.Cqrs;
 using GFramework.Cqrs.Abstractions.Cqrs;
+using GFramework.Cqrs.Extensions;
 
 namespace GFramework.Cqrs.Tests.Cqrs;
 
@@ -75,9 +77,9 @@ internal sealed class CqrsDispatcherCacheTests
         });
 
         await _context!.SendRequestAsync(new DispatcherCacheRequest());
-        await _context.SendRequestAsync(new DispatcherPipelineCacheRequest());
-        await _context.PublishAsync(new DispatcherCacheNotification());
-        await DrainAsync(_context.CreateStream(new DispatcherCacheStreamRequest()));
+        await _context!.SendRequestAsync(new DispatcherPipelineCacheRequest());
+        await _context!.PublishAsync(new DispatcherCacheNotification());
+        await DrainAsync(_context!.CreateStream(new DispatcherCacheStreamRequest()));
 
         var notificationAfterFirstDispatch =
             GetSingleKeyCacheValue(notificationBindings, typeof(DispatcherCacheNotification));
@@ -88,10 +90,10 @@ internal sealed class CqrsDispatcherCacheTests
         var streamAfterFirstDispatch =
             GetPairCacheValue(streamBindings, typeof(DispatcherCacheStreamRequest), typeof(int));
 
-        await _context.SendRequestAsync(new DispatcherCacheRequest());
-        await _context.SendRequestAsync(new DispatcherPipelineCacheRequest());
-        await _context.PublishAsync(new DispatcherCacheNotification());
-        await DrainAsync(_context.CreateStream(new DispatcherCacheStreamRequest()));
+        await _context!.SendRequestAsync(new DispatcherCacheRequest());
+        await _context!.SendRequestAsync(new DispatcherPipelineCacheRequest());
+        await _context!.PublishAsync(new DispatcherCacheNotification());
+        await DrainAsync(_context!.CreateStream(new DispatcherCacheStreamRequest()));
 
         Assert.Multiple(() =>
         {
@@ -124,15 +126,15 @@ internal sealed class CqrsDispatcherCacheTests
         var requestBindings = GetCacheField("RequestDispatchBindings");
 
         await _context!.SendRequestAsync(new DispatcherCacheRequest());
-        await _context.SendRequestAsync(new DispatcherStringCacheRequest());
+        await _context!.SendRequestAsync(new DispatcherStringCacheRequest());
 
         var intAfterFirstDispatch =
             GetPairCacheValue(requestBindings, typeof(DispatcherCacheRequest), typeof(int));
         var stringAfterFirstDispatch =
             GetPairCacheValue(requestBindings, typeof(DispatcherStringCacheRequest), typeof(string));
 
-        await _context.SendRequestAsync(new DispatcherCacheRequest());
-        await _context.SendRequestAsync(new DispatcherStringCacheRequest());
+        await _context!.SendRequestAsync(new DispatcherCacheRequest());
+        await _context!.SendRequestAsync(new DispatcherStringCacheRequest());
 
         Assert.Multiple(() =>
         {
@@ -271,7 +273,7 @@ internal sealed class CqrsDispatcherCacheTests
         });
 
         await _context!.SendRequestAsync(new DispatcherPipelineCacheRequest());
-        await _context.SendRequestAsync(new DispatcherPipelineOrderCacheRequest());
+        await _context!.SendRequestAsync(new DispatcherPipelineOrderCacheRequest());
 
         var singleBehaviorExecutor = GetRequestPipelineExecutorValue(
             requestBindings,
@@ -284,8 +286,8 @@ internal sealed class CqrsDispatcherCacheTests
             typeof(int),
             2);
 
-        await _context.SendRequestAsync(new DispatcherPipelineCacheRequest());
-        await _context.SendRequestAsync(new DispatcherPipelineOrderCacheRequest());
+        await _context!.SendRequestAsync(new DispatcherPipelineCacheRequest());
+        await _context!.SendRequestAsync(new DispatcherPipelineOrderCacheRequest());
 
         Assert.Multiple(() =>
         {
@@ -390,7 +392,7 @@ internal sealed class CqrsDispatcherCacheTests
         });
 
         await DrainAsync(_context!.CreateStream(new DispatcherCacheStreamRequest()));
-        await DrainAsync(_context.CreateStream(new DispatcherStreamPipelineOrderRequest()));
+        await DrainAsync(_context!.CreateStream(new DispatcherStreamPipelineOrderRequest()));
 
         var singleBehaviorExecutor = GetStreamPipelineExecutorValue(
             streamBindings,
@@ -403,8 +405,8 @@ internal sealed class CqrsDispatcherCacheTests
             typeof(int),
             2);
 
-        await DrainAsync(_context.CreateStream(new DispatcherCacheStreamRequest()));
-        await DrainAsync(_context.CreateStream(new DispatcherStreamPipelineOrderRequest()));
+        await DrainAsync(_context!.CreateStream(new DispatcherCacheStreamRequest()));
+        await DrainAsync(_context!.CreateStream(new DispatcherStreamPipelineOrderRequest()));
 
         Assert.Multiple(() =>
         {
@@ -495,7 +497,7 @@ internal sealed class CqrsDispatcherCacheTests
 
         DispatcherPipelineOrderState.Reset();
 
-        await _context.SendRequestAsync(new DispatcherPipelineOrderCacheRequest());
+        await _context!.SendRequestAsync(new DispatcherPipelineOrderCacheRequest());
         var secondInvocation = DispatcherPipelineOrderState.Steps.ToArray();
 
         var expectedOrder = new[]
@@ -527,7 +529,7 @@ internal sealed class CqrsDispatcherCacheTests
 
         DispatcherStreamPipelineOrderState.Reset();
 
-        await DrainAsync(_context.CreateStream(new DispatcherStreamPipelineOrderRequest()));
+        await DrainAsync(_context!.CreateStream(new DispatcherStreamPipelineOrderRequest()));
         var secondInvocation = DispatcherStreamPipelineOrderState.Steps.ToArray();
 
         var expectedOrder = new[]
@@ -925,28 +927,14 @@ internal sealed class CqrsDispatcherCacheTests
     }
 
     /// <summary>
-    ///     从架构上下文中解析当前延迟创建的 dispatcher 实例，便于验证其实例级热路径缓存。
+    ///     从架构上下文绑定的容器中解析当前 CQRS runtime 单例，
+    ///     便于验证其实例级热路径缓存；runtime 在 provider 构建后由标准 DI 惰性创建。
     /// </summary>
     private static object GetDispatcherFromContext(ArchitectureContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        var lazyRuntimeField = typeof(ArchitectureContext).GetField(
-            "_cqrsRuntime",
-            BindingFlags.Instance | BindingFlags.NonPublic);
-
-        Assert.That(lazyRuntimeField, Is.Not.Null, "Missing ArchitectureContext._cqrsRuntime field.");
-
-        var lazyRuntime = lazyRuntimeField!.GetValue(context)
-                          ?? throw new InvalidOperationException(
-                              "ArchitectureContext._cqrsRuntime returned null.");
-        var lazyValueProperty = lazyRuntime.GetType().GetProperty(
-            "Value",
-            BindingFlags.Instance | BindingFlags.Public);
-
-        Assert.That(lazyValueProperty, Is.Not.Null, "Missing Lazy<ICqrsRuntime>.Value accessor.");
-
-        return lazyValueProperty!.GetValue(lazyRuntime)
+        return context.GetService<ICqrsRuntime>()
                ?? throw new InvalidOperationException("Resolved CQRS runtime instance was null.");
     }
 
@@ -977,34 +965,34 @@ internal sealed class CqrsDispatcherCacheTests
 
         if (options.IncludeRequestPipelineCacheBehavior)
         {
-            container.RegisterCqrsPipelineBehavior<DispatcherPipelineCacheBehavior>();
+            container.GetServicesUnsafe.AddCqrsPipelineBehavior<DispatcherPipelineCacheBehavior>();
         }
 
         if (options.IncludeRequestPipelineContextRefreshBehavior)
         {
-            container.RegisterCqrsPipelineBehavior<DispatcherPipelineContextRefreshBehavior>();
+            container.GetServicesUnsafe.AddCqrsPipelineBehavior<DispatcherPipelineContextRefreshBehavior>();
         }
 
         if (options.IncludeRequestPipelineOrderBehaviors)
         {
-            container.RegisterCqrsPipelineBehavior<DispatcherPipelineOrderOuterBehavior>();
-            container.RegisterCqrsPipelineBehavior<DispatcherPipelineOrderInnerBehavior>();
+            container.GetServicesUnsafe.AddCqrsPipelineBehavior<DispatcherPipelineOrderOuterBehavior>();
+            container.GetServicesUnsafe.AddCqrsPipelineBehavior<DispatcherPipelineOrderInnerBehavior>();
         }
 
         if (options.IncludeStreamPipelineCacheBehavior)
         {
-            container.RegisterCqrsStreamPipelineBehavior<DispatcherStreamPipelineCacheBehavior>();
+            container.GetServicesUnsafe.AddCqrsStreamPipelineBehavior<DispatcherStreamPipelineCacheBehavior>();
         }
 
         if (options.IncludeStreamPipelineContextRefreshBehavior)
         {
-            container.RegisterCqrsStreamPipelineBehavior<DispatcherStreamPipelineContextRefreshBehavior>();
+            container.GetServicesUnsafe.AddCqrsStreamPipelineBehavior<DispatcherStreamPipelineContextRefreshBehavior>();
         }
 
         if (options.IncludeStreamPipelineOrderBehaviors)
         {
-            container.RegisterCqrsStreamPipelineBehavior<DispatcherStreamPipelineOrderOuterBehavior>();
-            container.RegisterCqrsStreamPipelineBehavior<DispatcherStreamPipelineOrderInnerBehavior>();
+            container.GetServicesUnsafe.AddCqrsStreamPipelineBehavior<DispatcherStreamPipelineOrderOuterBehavior>();
+            container.GetServicesUnsafe.AddCqrsStreamPipelineBehavior<DispatcherStreamPipelineOrderInnerBehavior>();
         }
 
         CqrsTestRuntime.RegisterHandlers(

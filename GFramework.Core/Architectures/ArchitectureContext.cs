@@ -2,52 +2,35 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Architectures;
-using GFramework.Core.Abstractions.Command;
 using GFramework.Core.Abstractions.Environment;
 using GFramework.Core.Abstractions.Events;
 using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Abstractions.Model;
-using GFramework.Core.Abstractions.Query;
 using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Abstractions.Utility;
-using GFramework.Core.Cqrs;
-using GFramework.Cqrs.Abstractions.Cqrs;
-using ICommand = GFramework.Core.Abstractions.Command.ICommand;
 
 namespace GFramework.Core.Architectures;
 
 /// <summary>
-///     架构上下文类，提供对系统、模型、工具等组件的访问以及命令、查询、事件的执行管理
+///     架构上下文类，提供对系统、模型、工具等组件的访问、服务解析与事件管理。
+///     请求/通知/流式分发由可选安装的 CQRS runtime 提供，推荐通过
+///     <c>GFramework.Cqrs.Extensions</c> 的上下文扩展方法或解析 <c>ICqrsRuntime</c> 服务进入 dispatcher。
 /// </summary>
 public class ArchitectureContext : IArchitectureContext
 {
     private readonly IIocContainer _container;
-    private readonly Lazy<ICqrsRuntime> _cqrsRuntime;
 
     /// <summary>
     ///     初始化新的架构上下文，并绑定其依赖容器。
     /// </summary>
     /// <param name="container">
     ///     当前架构使用的 IOC 容器。
-    ///     CQRS runtime 与其他框架服务会通过该容器延迟解析，以避免在上下文构造阶段强制拉起整条运行时链路。
+    ///     框架服务会通过该容器延迟解析，以避免在上下文构造阶段强制拉起整条运行时链路。
     /// </param>
     /// <exception cref="ArgumentNullException"><paramref name="container" /> 为 <see langword="null" />。</exception>
     public ArchitectureContext(IIocContainer container)
     {
         _container = container ?? throw new ArgumentNullException(nameof(container));
-        _cqrsRuntime = new Lazy<ICqrsRuntime>(ResolveCqrsRuntime, LazyThreadSafetyMode.ExecutionAndPublication);
-    }
-
-    #region CQRS Integration
-
-    /// <summary>单例运行时只解析一次，每次使用前仍检查当前架构访问窗口。</summary>
-    private ICqrsRuntime CqrsRuntime
-    {
-        get
-        {
-            EnsureAvailable();
-            return _cqrsRuntime.Value;
-        }
     }
 
     /// <summary>共享自有标准容器的实例状态使包装上下文遵守同一窗口；自定义容器负责自身访问与释放契约。</summary>
@@ -55,16 +38,6 @@ public class ArchitectureContext : IArchitectureContext
     {
         if (_container is global::GFramework.Core.Ioc.MicrosoftDiContainer ownedContainer)
             ownedContainer.ContextAccess?.EnsureAvailable();
-    }
-
-    /// <summary>
-    ///     从容器解析当前架构上下文依赖的 CQRS runtime。
-    /// </summary>
-    /// <returns>已注册的 CQRS runtime 实例。</returns>
-    /// <exception cref="InvalidOperationException">容器中未注册 <see cref="ICqrsRuntime" />。</exception>
-    private ICqrsRuntime ResolveCqrsRuntime()
-    {
-        return _container.Get<ICqrsRuntime>() ?? throw new InvalidOperationException("ICqrsRuntime not registered");
     }
 
     /// <summary>
@@ -89,152 +62,6 @@ public class ArchitectureContext : IArchitectureContext
                ?? throw new InvalidOperationException($"Service {typeof(TService)} not registered");
     }
 
-    /// <summary>
-    /// 发送请求（Command/Query）
-    /// 使用 GFramework 自有 CQRS runtime 统一处理命令和查询。
-    /// </summary>
-    /// <typeparam name="TResponse">响应类型</typeparam>
-    /// <param name="request">请求对象（Command 或 Query）</param>
-    /// <param name="cancellationToken">取消令牌</param>
-    /// <returns>响应结果</returns>
-    public async ValueTask<TResponse> SendRequestAsync<TResponse>(
-        IRequest<TResponse> request,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        return await CqrsRuntime.SendAsync(this, request, cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// 发送请求的同步版本（不推荐，仅用于兼容性）
-    /// </summary>
-    /// <typeparam name="TResponse">响应类型</typeparam>
-    /// <param name="request">请求对象</param>
-    /// <returns>响应结果</returns>
-    public TResponse SendRequest<TResponse>(IRequest<TResponse> request)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        return LegacyCqrsDispatchHelper.SendSynchronously(CqrsRuntime, this, request);
-    }
-
-    /// <summary>
-    /// 发布通知（一对多）
-    /// 使用 GFramework 自有 CQRS runtime 分发到所有已注册通知处理器。
-    /// </summary>
-    /// <typeparam name="TNotification">通知类型</typeparam>
-    /// <param name="notification">通知对象</param>
-    /// <param name="cancellationToken">取消令牌</param>
-    public async ValueTask PublishAsync<TNotification>(
-        TNotification notification,
-        CancellationToken cancellationToken = default)
-        where TNotification : INotification
-    {
-        ArgumentNullException.ThrowIfNull(notification);
-        await CqrsRuntime.PublishAsync(this, notification, cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// 发送请求并返回流（用于大数据集）
-    /// </summary>
-    /// <typeparam name="TResponse">响应项类型</typeparam>
-    /// <param name="request">流式请求</param>
-    /// <param name="cancellationToken">取消令牌</param>
-    /// <returns>异步流</returns>
-    public IAsyncEnumerable<TResponse> CreateStream<TResponse>(
-        IStreamRequest<TResponse> request,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        return CqrsRuntime.CreateStream(this, request, cancellationToken);
-    }
-
-    /// <summary>
-    /// [扩展] 发送命令（无返回值）
-    /// 语法糖，等同于 SendRequestAsync&lt;Unit&gt;
-    /// </summary>
-    public async ValueTask SendAsync<TCommand>(
-        TCommand command,
-        CancellationToken cancellationToken = default)
-        where TCommand : IRequest<Unit>
-    {
-        await SendRequestAsync(command, cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// [扩展] 发送命令（有返回值）
-    /// 语法糖，等同于 SendRequestAsync&lt;TResponse&gt;
-    /// </summary>
-    public async ValueTask<TResponse> SendAsync<TResponse>(
-        IRequest<TResponse> command,
-        CancellationToken cancellationToken = default)
-    {
-        return await SendRequestAsync(command, cancellationToken).ConfigureAwait(false);
-    }
-
-    #endregion
-
-    #region Query Execution
-
-    /// <summary>
-    ///     发送一个查询请求
-    /// </summary>
-    /// <typeparam name="TResult">查询结果类型</typeparam>
-    /// <param name="query">要发送的查询</param>
-    /// <returns>查询结果</returns>
-    public TResult SendQuery<TResult>(IQuery<TResult> query)
-    {
-        ArgumentNullException.ThrowIfNull(query);
-        var boxedResult = SendRequest(
-            new LegacyQueryDispatchRequest(
-                query,
-                () => query.Do()));
-        return (TResult)boxedResult!;
-    }
-
-    /// <summary>
-    /// 发送 CQRS 查询的同步版本（不推荐，仅用于兼容性）
-    /// </summary>
-    /// <typeparam name="TResponse">查询响应类型</typeparam>
-    /// <param name="query">要发送的查询对象</param>
-    /// <returns>查询结果</returns>
-    public TResponse SendQuery<TResponse>(global::GFramework.Cqrs.Abstractions.Cqrs.Query.IQuery<TResponse> query)
-    {
-        ArgumentNullException.ThrowIfNull(query);
-        return LegacyCqrsDispatchHelper.SendSynchronously(CqrsRuntime, this, query);
-    }
-
-    /// <summary>
-    ///     异步发送一个查询请求
-    /// </summary>
-    /// <typeparam name="TResult">查询结果类型</typeparam>
-    /// <param name="query">要发送的异步查询</param>
-    /// <returns>查询结果</returns>
-    public async Task<TResult> SendQueryAsync<TResult>(IAsyncQuery<TResult> query)
-    {
-        ArgumentNullException.ThrowIfNull(query);
-        var boxedResult = await SendRequestAsync(
-                new LegacyAsyncQueryDispatchRequest(
-                    query,
-                    async () => await query.DoAsync().ConfigureAwait(false)))
-            .ConfigureAwait(false);
-        return (TResult)boxedResult!;
-    }
-
-    /// <summary>
-    /// 异步发送 CQRS 查询并返回结果。
-    /// </summary>
-    /// <typeparam name="TResponse">查询响应类型</typeparam>
-    /// <param name="query">要发送的查询对象</param>
-    /// <param name="cancellationToken">取消令牌，用于取消操作</param>
-    /// <returns>包含查询结果的ValueTask</returns>
-    public async ValueTask<TResponse> SendQueryAsync<TResponse>(global::GFramework.Cqrs.Abstractions.Cqrs.Query.IQuery<TResponse> query,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(query);
-        return await SendRequestAsync(query, cancellationToken).ConfigureAwait(false);
-    }
-
-    #endregion
 
     #region Component Retrieval
 
@@ -358,90 +185,6 @@ public class ArchitectureContext : IArchitectureContext
     {
         EnsureAvailable();
         return _container.GetAllByPriority<TUtility>();
-    }
-
-    #endregion
-
-    #region Command Execution
-
-    /// <summary>
-    /// 异步发送 CQRS 命令并返回结果。
-    /// </summary>
-    /// <typeparam name="TResponse">命令响应类型</typeparam>
-    /// <param name="command">要发送的命令对象</param>
-    /// <param name="cancellationToken">取消令牌，用于取消操作</param>
-    /// <returns>包含命令执行结果的ValueTask</returns>
-    public async ValueTask<TResponse> SendCommandAsync<TResponse>(
-        global::GFramework.Cqrs.Abstractions.Cqrs.Command.ICommand<TResponse> command,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(command);
-        return await SendRequestAsync(command, cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    ///     发送并异步执行一个命令请求
-    /// </summary>
-    /// <param name="command">要发送的命令</param>
-    public async Task SendCommandAsync(IAsyncCommand command)
-    {
-        ArgumentNullException.ThrowIfNull(command);
-        await SendRequestAsync(new LegacyAsyncCommandDispatchRequest(command)).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    ///     发送并异步执行一个带返回值的命令请求
-    /// </summary>
-    /// <typeparam name="TResult">命令执行结果类型</typeparam>
-    /// <param name="command">要发送的命令</param>
-    /// <returns>命令执行结果</returns>
-    public async Task<TResult> SendCommandAsync<TResult>(IAsyncCommand<TResult> command)
-    {
-        ArgumentNullException.ThrowIfNull(command);
-        var boxedResult = await SendRequestAsync(
-                new LegacyAsyncCommandResultDispatchRequest(
-                    command,
-                    async () => await command.ExecuteAsync().ConfigureAwait(false)))
-            .ConfigureAwait(false);
-        return (TResult)boxedResult!;
-    }
-
-    /// <summary>
-    /// 发送 CQRS 命令的同步版本（不推荐，仅用于兼容性）
-    /// </summary>
-    /// <typeparam name="TResponse">命令响应类型</typeparam>
-    /// <param name="command">要发送的命令对象</param>
-    /// <returns>命令执行结果</returns>
-    public TResponse SendCommand<TResponse>(global::GFramework.Cqrs.Abstractions.Cqrs.Command.ICommand<TResponse> command)
-    {
-        ArgumentNullException.ThrowIfNull(command);
-        return LegacyCqrsDispatchHelper.SendSynchronously(CqrsRuntime, this, command);
-    }
-
-    /// <summary>
-    ///     发送一个命令请求
-    /// </summary>
-    /// <param name="command">要发送的命令</param>
-    public void SendCommand(ICommand command)
-    {
-        ArgumentNullException.ThrowIfNull(command);
-        SendRequest(new LegacyCommandDispatchRequest(command));
-    }
-
-    /// <summary>
-    ///     发送一个带返回值的命令请求
-    /// </summary>
-    /// <typeparam name="TResult">命令执行结果类型</typeparam>
-    /// <param name="command">要发送的命令</param>
-    /// <returns>命令执行结果</returns>
-    public TResult SendCommand<TResult>(ICommand<TResult> command)
-    {
-        ArgumentNullException.ThrowIfNull(command);
-        var boxedResult = SendRequest(
-            new LegacyCommandResultDispatchRequest(
-                command,
-                () => command.Execute()));
-        return (TResult)boxedResult!;
     }
 
     #endregion

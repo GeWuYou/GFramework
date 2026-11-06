@@ -1,6 +1,6 @@
 # 当前架构
 
-核对日期：2026-11-07。本页随首批核心实现更新，当前任务与验证见[路线图](../roadmap/core-governance.md)。后续方向见[架构决策](adr-001-standard-dotnet-foundation.md)。
+核对日期：2026-11-07。本页随核心治理实现更新，当前任务与验证见[路线图](../roadmap/core-governance.md)。后续方向见[架构决策](adr-001-standard-dotnet-foundation.md)。
 
 ## 包依赖与责任
 
@@ -8,29 +8,29 @@
 
 | 层 | 当前依赖与责任 | 源码 |
 | --- | --- | --- |
-| 聚合包 | 直接聚合 Core 与 Game；通过 Core 间接包含 CQRS，不包含 Godot 或生成器 | [聚合项目](../../GFramework.csproj) |
-| Core | 依赖 Core.Abstractions、Cqrs、Cqrs.Abstractions；承载架构、容器适配及通用子系统 | [Core 项目](../../GFramework.Core/GFramework.Core.csproj) |
-| Core.Abstractions | 依赖 Cqrs.Abstractions 和 Microsoft DI 抽象；上下文与容器契约包含 CQRS 能力 | [契约项目](../../GFramework.Core.Abstractions/GFramework.Core.Abstractions.csproj) |
-| CQRS | Runtime 依赖 Core.Abstractions 与 Cqrs.Abstractions；消息契约包可单独引用 | [CQRS 项目](../../GFramework.Cqrs/GFramework.Cqrs.csproj)、[运行时工厂](../../GFramework.Cqrs/CqrsRuntimeFactory.cs) |
+| 聚合包 | 直接聚合 Core 与 Game；不包含 CQRS、Godot 或生成器 | [聚合项目](../../GFramework.csproj) |
+| Core | 依赖 Core.Abstractions；承载架构、容器适配及通用子系统，不含 CQRS 引用 | [Core 项目](../../GFramework.Core/GFramework.Core.csproj) |
+| Core.Abstractions | 依赖 Microsoft DI 抽象；上下文与容器契约不再包含 CQRS 能力 | [契约项目](../../GFramework.Core.Abstractions/GFramework.Core.Abstractions.csproj) |
+| CQRS | Runtime 依赖 Core.Abstractions 与 Cqrs.Abstractions，运行在标准 DI 上；消息契约包可单独引用 | [CQRS 项目](../../GFramework.Cqrs/GFramework.Cqrs.csproj)、[运行时工厂](../../GFramework.Cqrs/CqrsRuntimeFactory.cs) |
 | Game | 依赖 Core 与 Game.Abstractions；配置、设置、存储、Scene/UI 等游戏能力 | [Game 项目](../../GFramework.Game/GFramework.Game.csproj) |
 | Godot | 在 Game/Core 之上接入节点、主线程与场景树生命周期 | [Godot 项目](../../GFramework.Godot/GFramework.Godot.csproj)、[宿主架构](../../GFramework.Godot/Architectures/AbstractArchitecture.cs) |
 | Arch ECS | 依赖 Core 与自身抽象；服务模块创建 World、解析系统并负责更新与销毁 | [ECS 模块](../../GFramework.Ecs.Arch/ArchEcsModule.cs) |
 | Source Generators | 编译消费项目，生成注册表、上下文与宿主样板；运行时包不反向引用生成器 | [边界校验器](../../scripts/validate-runtime-generator-boundaries.py) |
 
-这些引用没有形成项目引用环，但 Core 与 CQRS 的采用边界并不独立。契约包拆分也不等于不含其他领域的契约依赖。
+这些引用没有形成项目引用环。Core-only 消费方没有 CQRS 传递依赖；需要消息模型的项目显式安装 `GFramework.Cqrs` 并安装 runtime 模块。契约包拆分也不等于不含其他领域的契约依赖。
 
 ## 启动与依赖解析
 
 [Architecture](../../GFramework.Core/Architectures/Architecture.cs) 创建当前实例配置、容器访问窗口和上下文。实例日志不写全局工厂；同一容器不能同时属于两个架构。
 
-1. [Bootstrapper](../../GFramework.Core/Architectures/ArchitectureBootstrapper.cs) 登记环境、实例上下文和现有 CQRS 基础设施。
+1. [Bootstrapper](../../GFramework.Core/Architectures/ArchitectureBootstrapper.cs) 登记环境、实例上下文与实例服务模块；CQRS 基础设施通过显式安装的 `CqrsRuntimeModule`（`architecture.UseCqrsRuntime(...)` 或 `RegisterServiceModule(new CqrsRuntimeModule(...))`）进入同一列表，不在默认模块列表中。
 2. 执行 Configurator 与 ConfigureServices，只记录服务描述、组件元数据、实例服务模块和阶段钩子。
 3. [容器](../../GFramework.Core/Ioc/MicrosoftDiContainer.cs) Freeze 一次，启用标准作用域与构造依赖验证；之后禁止注册。
 4. [组件注册器](../../GFramework.Core/Architectures/ArchitectureComponentRegistry.cs) 从同一 provider 激活组件、显式注入上下文并执行 onCreated。
 5. 服务模块按稳定优先级启动，组件按 Utility → Model → System 初始化；异步阶段 hook 接收取消令牌。
 6. OnStarted/OnStartedAsync 完成宿主准备后进入 Ready。同步启动拒绝异步组件、钩子与宿主。
 
-Core/CQRS 包依赖与内置 dispatcher 注册仍保持本批之前的边界，独立采用属于后续任务。旧注册期解析器与单例缓存已移除，Context 不再把普通 Transient/Scoped 服务缓存为单例。
+CQRS runtime 使用标准服务解析：`services.AddCqrsRuntime()` 创建单例 runtime，handler、pipeline 行为与通知发布策略通过 `IServiceCollection` 扩展登记。旧注册期解析器与单例缓存已移除，Context 不再把普通 Transient/Scoped 服务缓存为单例。
 
 ## 停止、失败与资源责任
 
@@ -44,7 +44,7 @@ Core/CQRS 包依赖与内置 dispatcher 注册仍保持本批之前的边界，�
 
 ## 调用、宿主与生成代码
 
-- [ArchitectureContext](../../GFramework.Core/Architectures/ArchitectureContext.cs) 仍提供旧命令/查询、事件和新版 request/notification/stream。单例 CQRS runtime 保留并发首次解析缓存，但每次调用先检查生命周期窗口。
+- [ArchitectureContext](../../GFramework.Core/Architectures/ArchitectureContext.cs) 只承载组件获取、事件与环境访问，不含任何 CQRS 成员。request/notification/stream 分发通过 `GFramework.Cqrs.Extensions` 的异步上下文扩展（解析容器中的单例 `ICqrsRuntime` 并绑定架构上下文）或直接解析 `ICqrsRuntime` 完成；未安装 `CqrsRuntimeModule` 的架构没有分发能力。
 - [ContextAwareBase](../../GFramework.Core/Rule/ContextAwareBase.cs) 和[生成上下文](../../GFramework.Core.SourceGenerators/Rule/ContextAwareGenerator.cs)只接受实例绑定，无默认 GameContext/provider 回退。兼容的显式全局工具仍在，但核心启动不使用它们。
 - [GameConfigModule](../../GFramework.Game/Config/GameConfigModule.cs) 以异步 BeforeUtilityInit hook 首载，类型登记的 lifetime utility 由 provider 拥有，失败也释放 watcher/bootstrap；[独立 bootstrap](../../GFramework.Game/Config/GameConfigBootstrap.cs)路径保留。
 - Godot 配置期声明模块，异步启动通过[主线程调度器](../../GFramework.Godot/Architectures/GodotMainThreadDispatcher.cs)等待锚点和模块附加，清理回到同一主线程并使用根停止流程；QueueFree 是引擎排队操作，不声称原生内存已经同步回收。

@@ -152,7 +152,7 @@ public class NotificationStartupBenchmarks
     {
         using var container = CreateGFrameworkContainer();
         var runtime = CreateGFrameworkRuntime(container);
-        await runtime.PublishAsync(BenchmarkContext.Instance, Notification, CancellationToken.None).ConfigureAwait(false);
+        await runtime.PublishAsync(Notification, CancellationToken.None).ConfigureAwait(false);
     }
 
     /// <summary>

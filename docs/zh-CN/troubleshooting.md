@@ -466,21 +466,21 @@ public class SystemB : AbstractSystem
     }
 }
 
-// ✅ 使用 Command 模式
+// ✅ 使用事件通知跨系统行为
 public class SystemA : AbstractSystem
 {
     private void OnEvent(EventA e)
     {
-        this.SendCommand(new ProcessDataCommand());
+        this.SendEvent(new ProcessDataEvent());
     }
 }
 
-// ✅ 使用 Query 模式获取数据
+// ✅ 通过 System 方法读取数据
 public class SystemA : AbstractSystem
 {
     private void ProcessData()
     {
-        var data = this.SendQuery(new GetPlayerDataQuery());
+        var data = this.GetSystem<PlayerDataSystem>().GetPlayerData();
         // 处理数据
     }
 }

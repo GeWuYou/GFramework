@@ -167,7 +167,7 @@ public class NotificationLifetimeBenchmarks
                 CancellationToken.None);
         }
 
-        return _runtime!.PublishAsync(BenchmarkContext.Instance, _notification, CancellationToken.None);
+        return _runtime!.PublishAsync(_notification, CancellationToken.None);
     }
 
     /// <summary>
@@ -252,7 +252,7 @@ public class NotificationLifetimeBenchmarks
         ArgumentNullException.ThrowIfNull(notification);
 
         using var scopeLease = scopedContainer.EnterScope();
-        await runtime.PublishAsync(BenchmarkContext.Instance, notification, cancellationToken).ConfigureAwait(false);
+        await runtime.PublishAsync(notification, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

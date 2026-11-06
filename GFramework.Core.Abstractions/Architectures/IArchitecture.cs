@@ -76,47 +76,6 @@ public interface IArchitecture : IAsyncInitializable, IAsyncDestroyable, IInitia
     void RegisterUtility<T>(Action<T>? onCreated = null) where T : class, IUtility;
 
     /// <summary>
-    ///     注册 CQRS 请求管道行为。
-    ///     既支持实现 <c>IPipelineBehavior&lt;,&gt;</c> 的开放泛型行为类型，
-    ///     也支持绑定到单一请求/响应对的封闭行为类型。
-    /// </summary>
-    /// <typeparam name="TBehavior">行为类型，必须是引用类型</typeparam>
-    void RegisterCqrsPipelineBehavior<TBehavior>()
-        where TBehavior : class;
-
-    /// <summary>
-    ///     注册 CQRS 流式请求管道行为。
-    ///     既支持实现 <c>IStreamPipelineBehavior&lt;,&gt;</c> 的开放泛型行为类型，
-    ///     也支持绑定到单一流式请求/响应对的封闭行为类型。
-    /// </summary>
-    /// <typeparam name="TBehavior">行为类型，必须是引用类型</typeparam>
-    /// <exception cref="InvalidOperationException">当前架构的底层容器已冻结，无法继续注册流式管道行为。</exception>
-    /// <exception cref="ObjectDisposedException">当前架构的底层容器已释放，无法继续注册流式管道行为。</exception>
-    /// <remarks>
-    ///     该入口应在架构初始化冻结容器之前调用；具体开放泛型或封闭行为类型的校验逻辑由底层容器负责。
-    /// </remarks>
-    void RegisterCqrsStreamPipelineBehavior<TBehavior>()
-        where TBehavior : class;
-
-    /// <summary>
-    ///     从指定程序集显式注册 CQRS 处理器。
-    ///     当处理器位于默认架构程序集之外的模块或扩展程序集中时，可在初始化阶段调用该入口接入对应程序集。
-    /// </summary>
-    /// <param name="assembly">包含 CQRS 处理器或生成注册器的程序集。</param>
-    /// <exception cref="ArgumentNullException"><paramref name="assembly" /> 为 <see langword="null" />。</exception>
-    /// <exception cref="InvalidOperationException">当前架构的底层容器已冻结，无法继续注册处理器。</exception>
-    void RegisterCqrsHandlersFromAssembly(Assembly assembly);
-
-    /// <summary>
-    ///     从多个程序集显式注册 CQRS 处理器。
-    ///     该入口会对程序集集合去重，适用于统一接入多个扩展包或模块程序集。
-    /// </summary>
-    /// <param name="assemblies">要接入的程序集集合。</param>
-    /// <exception cref="ArgumentNullException"><paramref name="assemblies" /> 为 <see langword="null" />。</exception>
-    /// <exception cref="InvalidOperationException">当前架构的底层容器已冻结，无法继续注册处理器。</exception>
-    void RegisterCqrsHandlersFromAssemblies(IEnumerable<Assembly> assemblies);
-
-    /// <summary>
     ///     安装架构模块
     /// </summary>
     /// <param name="module">要安装的模块</param>
