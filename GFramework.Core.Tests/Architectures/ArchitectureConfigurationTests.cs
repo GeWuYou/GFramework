@@ -14,7 +14,7 @@ namespace GFramework.Core.Tests.Architectures;
 ///     测试内容包括：
 ///     - 构造函数默认值
 ///     - LoggerProperties默认配置（ConsoleLoggerFactoryProvider + Info级别）
-///     - ArchitectureProperties默认配置（AllowLateRegistration=false, StrictPhaseValidation=true）
+///     - ArchitectureProperties默认配置（StrictPhaseValidation=true）
 ///     - 自定义配置替换
 ///     - LoggerProperties独立修改
 ///     - ArchitectureProperties独立修改
@@ -65,16 +65,6 @@ public class ArchitectureConfigurationTests
     }
 
     /// <summary>
-    ///     测试ArchitectureProperties的AllowLateRegistration默认为false
-    /// </summary>
-    [Test]
-    public void ArchitectureProperties_Should_Have_AllowLateRegistration_Set_To_False_By_Default()
-    {
-        Assert.That(_configuration!.ArchitectureProperties.AllowLateRegistration,
-            Is.False);
-    }
-
-    /// <summary>
     ///     测试ArchitectureProperties的StrictPhaseValidation默认为true
     /// </summary>
     [Test]
@@ -114,15 +104,12 @@ public class ArchitectureConfigurationTests
     {
         var customProperties = new ArchitectureProperties
         {
-            AllowLateRegistration = true,
             StrictPhaseValidation = false
         };
 
         _configuration!.ArchitectureProperties = customProperties;
 
         Assert.That(_configuration.ArchitectureProperties, Is.SameAs(customProperties));
-        Assert.That(_configuration.ArchitectureProperties.AllowLateRegistration,
-            Is.True);
         Assert.That(_configuration.ArchitectureProperties.StrictPhaseValidation,
             Is.False);
     }
@@ -149,11 +136,8 @@ public class ArchitectureConfigurationTests
     [Test]
     public void ArchitectureProperties_Should_Be_Modifiable_Independently()
     {
-        _configuration!.ArchitectureProperties.AllowLateRegistration = true;
-        _configuration.ArchitectureProperties.StrictPhaseValidation = false;
+        _configuration!.ArchitectureProperties.StrictPhaseValidation = false;
 
-        Assert.That(_configuration.ArchitectureProperties.AllowLateRegistration,
-            Is.True);
         Assert.That(_configuration.ArchitectureProperties.StrictPhaseValidation,
             Is.False);
     }

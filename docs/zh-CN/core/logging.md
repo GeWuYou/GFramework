@@ -5,16 +5,18 @@ description: 说明 GFramework.Core.Logging 的日志接口、组合方式与常
 
 # 日志（Logging）
 
-`GFramework.Core.Logging` 是 Core runtime 的默认日志实现。只加载抽象层时，`LoggerFactoryResolver` 会退回
-silent provider；加载 `GFramework.Core` 或在 `ArchitectureConfiguration` 里显式提供 provider 后，日志才会
-真正输出。
+GFramework.Core.Logging 提供当前的日志接口实现、factory 与输出组合。Architecture 从本实例的 ArchitectureConfiguration 获取日志工厂，容器、服务模块和上下文组件沿用该实例依赖，不覆盖 LoggerFactoryResolver.Provider。
+
+LoggerFactoryResolver 仍是显式使用的兼容全局入口；它不会替代当前架构的实例配置。本批保留自有 ILogger/ILoggerFactoryProvider 契约。
 
 ## 最小用法
 
 ```csharp
 using GFramework.Core.Abstractions.Logging;
+using GFramework.Core.Logging;
 
-var logger = LoggerFactoryResolver.Provider.CreateLogger("Bootstrap");
+var factory = new ConsoleLoggerFactoryProvider();
+var logger = factory.CreateLogger("Bootstrap");
 
 logger.Info("Application started");
 logger.Warn("Config file missing");
@@ -52,8 +54,10 @@ var configuration = new ArchitectureConfiguration
 
 ```csharp
 using GFramework.Core.Abstractions.Logging;
+using GFramework.Core.Logging;
 
-var logger = LoggerFactoryResolver.Provider.CreateLogger("Matchmaking");
+var factory = new ConsoleLoggerFactoryProvider();
+var logger = factory.CreateLogger("Matchmaking");
 
 using (LogContext.Push("RequestId", requestId))
 {
@@ -77,7 +81,7 @@ using (LogContext.Push("RequestId", requestId))
 
 如果你需要文件输出、rolling file、async appender 或 JSON formatter，可以先用
 `LoggingConfigurationLoader` 读取 `LoggingConfiguration`，再把自定义 `ILoggerFactoryProvider` 挂到
-`ArchitectureConfiguration.LoggerProperties.LoggerFactoryProvider` 或 `LoggerFactoryResolver.Provider`。
+`ArchitectureConfiguration.LoggerProperties.LoggerFactoryProvider`。只有主动使用兼容全局调用链时才配置 LoggerFactoryResolver；该配置不会重新设置已经独立持有工厂的架构。
 
 宿主包也可以提供自己的 appender。Godot 项目如果需要把 Core 日志管线输出到 Godot 控制台，可以引用
 `GFramework.Godot.Logging.GodotLogAppender`，再用 `CompositeLogger` 或自定义 factory 把它和文件、JSON、异步输出等

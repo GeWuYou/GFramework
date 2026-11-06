@@ -858,26 +858,20 @@ public partial class AsyncPauseExample : IController
 
 ### 在架构中注册
 
+Godot 宿主传入已有的 SceneTree；配置阶段只登记管理器，启动后再连接宿主处理器。
+
 ```csharp
-public class GameArchitecture : Architecture<GameArchitecture>
+public class GameArchitecture(SceneTree tree) : Architecture
 {
-    protected override void OnRegisterUtility()
+    protected override void ConfigureServices(IServiceCollection services)
     {
-        // 注册暂停管理器
         RegisterUtility<IPauseStackManager>(new PauseStackManager());
     }
 
-    protected override void OnInit()
+    protected override void OnStarted()
     {
-        // 注册默认处理器
-        var pauseManager = GetUtility<IPauseStackManager>();
-
-        // Godot 处理器
-        if (Engine.IsEditorHint() == false)
-        {
-            var tree = (GetTree() as SceneTree)!;
-            pauseManager.RegisterHandler(new GodotPauseHandler(tree));
-        }
+        var pauseManager = Context.GetUtility<IPauseStackManager>();
+        pauseManager.RegisterHandler(new GodotPauseHandler(tree));
     }
 }
 ```

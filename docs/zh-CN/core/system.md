@@ -13,75 +13,36 @@ System 是 GFramework 架构中业务逻辑的核心组件，通过事件系统�
 
 ## 核心接口
 
-### ICanGetSystem
-
-标记接口，表示该类型可以获取其他 System。
-
-**继承关系：**
-
-```csharp
-public interface ICanGetSystem : IBelongToArchitecture
-```
-
 ### ISystem
 
-System 接口，定义了系统的基本行为。
-
-**核心成员：**
+ISystem 继承 IContextAware、IArchitecturePhaseListener 和 ILifecycle。业务停止由 IDestroyable.Destroy 定义，与标准 IDisposable 的资源所有权不同。
 
 ```csharp
-void Init();  // 系统初始化方法
-void Destroy();  // 系统销毁方法
-void OnArchitecturePhase(ArchitecturePhase phase);  // 处理架构阶段事件
+void Initialize();
+void Destroy();
+void OnArchitecturePhase(ArchitecturePhase phase);
 ```
-
-**继承的能力：**
-
-- `IContextAware` - 上下文感知
-- `IInitializable` - 可初始化
-- `IDisposable` - 可销毁
-- `IArchitecturePhaseAware` - 架构阶段感知
-- `ICanGetModel` - 可获取 Model
-- `ICanGetUtility` - 可获取 Utility
-- `ICanGetSystem` - 可获取其他 System
-- `ICanRegisterEvent` - 可注册事件
-- `ICanSendEvent` - 可发送事件
 
 ## 核心类
 
 ### AbstractSystem
 
-抽象 System 基类，提供了 System 的基础实现。继承自 ContextAwareBase，具有上下文感知能力。
-
-**核心方法：**
+AbstractSystem 继承 ContextAwareBase。同步 Initialize 调用派生类的 OnInit；业务 Destroy 调用 OnDestroy。需要异步工作时实现 IAsyncInitializable，并通过异步架构入口驱动；实例日志工厂从当前架构服务获取。
 
 ```csharp
-void IInitializable.Init();                    // 实现初始化接口
-void IDisposable.Destroy();                   // 实现销毁接口
-protected abstract void OnInit();             // 抽象初始化方法，由子类实现
-protected virtual void OnDestroy();           // 虚拟销毁方法，子类可重写
-public virtual void OnArchitecturePhase(ArchitecturePhase phase);  // 处理架构阶段事件
+protected abstract void OnInit();
+protected virtual void OnDestroy();
+public virtual void OnArchitecturePhase(ArchitecturePhase phase);
 ```
 
-**使用方式：**
-
-```csharp
-public abstract class AbstractSystem : ContextAwareBase, ISystem
-{
-    void IInitializable.Init() => OnInit();     // 系统初始化，内部调用抽象方法 OnInit()
-    void IDisposable.Destroy() => OnDestroy();  // 系统销毁，内部调用 OnDestroy()
-    protected abstract void OnInit();           // 子类实现初始化逻辑
-    protected virtual void OnDestroy();         // 子类可选择重写销毁逻辑
-    public virtual void OnArchitecturePhase(ArchitecturePhase phase);  // 处理架构阶段事件
-}
-```
+普通服务可直接使用标准 DI，不要求实现 System 角色。
 
 ## System 生命周期
 
 System 的生命周期由架构管理：
 
-1. **注册阶段**：通过 `architecture.RegisterSystem()` 注册到架构
-2. **初始化阶段**：架构调用 `Init()` 方法，内部执行 `OnInit()`
+1. **注册阶段**：在 ConfigureServices 中通过 RegisterSystem 登记描述
+2. **初始化阶段**：正式 provider 激活后调用同步 Initialize/OnInit 或异步 InitializeAsync
 3. **运行阶段**：处理事件和执行业务逻辑
 4. **销毁阶段**：架构调用 `Destroy()` 方法，内部执行 `OnDestroy()`
 
@@ -97,7 +58,7 @@ public class CombatSystem : AbstractSystem
     
     protected override void OnInit()
     {
-        _logger = this.GetUtility<ILogger>();
+        _logger = this.GetService<ILoggerFactoryProvider>().CreateLogger(GetType().Name);
         _logger.Info("CombatSystem initialized");
         
         // 注册事件监听
@@ -170,14 +131,14 @@ public class CombatSystem : AbstractSystem
 ```csharp
 public class GameArchitecture : Architecture
 {
-    protected override void Init()
+    protected override void ConfigureServices(IServiceCollection services)
     {
         // 注册 Model
         this.RegisterModel(new PlayerModel());
         this.RegisterModel(new EnemyModel());
         this.RegisterModel(new InventoryModel());
 
-        // 注册 System（系统注册后会自动调用 Init）
+        // 登记 System；配置结束并构建 provider 后统一初始化
         this.RegisterSystem(new CombatSystem());
         this.RegisterSystem(new InventorySystem());
         this.RegisterSystem(new QuestSystem());
@@ -246,7 +207,7 @@ public class DataLoadSystem : AbstractSystem, IAsyncInitializable
         this.RegisterEvent<GameStartedEvent>(OnGameStarted);
     }
 
-    public async Task InitializeAsync()
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         // 异步加载游戏数据
         var storage = this.GetUtility<IStorageUtility>();
@@ -272,7 +233,7 @@ public class DataLoadSystem : AbstractSystem, IAsyncInitializable
 // 在架构中使用异步 System
 public class GameArchitecture : Architecture
 {
-    protected override void Init()
+    protected override void ConfigureServices(IServiceCollection services)
     {
         RegisterModel(new PlayerModel());
         RegisterSystem(new DataLoadSystem());

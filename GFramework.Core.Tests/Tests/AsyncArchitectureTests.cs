@@ -112,9 +112,11 @@ public class AsyncArchitectureTests : ArchitectureTestsBase<AsyncTestArchitectur
     public async Task Architecture_Destroy_Should_Destroy_All_Systems()
     {
         await Architecture!.InitializeAsync();
+        var context = Architecture.Context;
+        var system = context.GetSystem<AsyncTestSystem>();
         await Architecture.DestroyAsync();
 
-        var system = Architecture.Context.GetSystem<AsyncTestSystem>();
+        Assert.Throws<ObjectDisposedException>(() => context.GetSystem<AsyncTestSystem>());
         Assert.That(system!.DestroyCalled, Is.True);
         Assert.That(Architecture.CurrentPhase, Is.EqualTo(ArchitecturePhase.Destroyed));
     }

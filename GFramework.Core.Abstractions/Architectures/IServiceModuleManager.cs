@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Ioc;
+using System.Threading;
 
 namespace GFramework.Core.Abstractions.Architectures;
 
@@ -32,8 +33,9 @@ public interface IServiceModuleManager
     ///     异步初始化所有已注册的服务模块。
     /// </summary>
     /// <param name="asyncMode">是否以异步模式初始化模块。</param>
+    /// <param name="cancellationToken">启动取消令牌。</param>
     /// <returns>表示异步操作的任务。</returns>
-    Task InitializeAllAsync(bool asyncMode);
+    Task InitializeAllAsync(bool asyncMode, CancellationToken cancellationToken = default);
 
     /// <summary>
     ///     异步销毁所有已注册的服务模块。

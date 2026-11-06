@@ -206,7 +206,7 @@ using GFramework.Core.Property;
 // 定义简单的架构
 public class TestArchitecture : Architecture
 {
-    protected override void OnInitialize()
+    protected override void ConfigureServices(Microsoft.Extensions.DependencyInjection.IServiceCollection services)
     {
         // 注册一个简单的模型
         RegisterModel(new TestModel());

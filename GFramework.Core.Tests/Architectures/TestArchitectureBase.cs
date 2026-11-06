@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Enums;
@@ -41,7 +41,8 @@ public abstract class TestArchitectureBase : Architecture
     /// <summary>
     ///     初始化架构组件，注册模型、系统并设置事件监听器
     /// </summary>
-    protected override void OnInitialize()
+    /// <param name="services">当前配置阶段的服务描述集合。</param>
+    protected override void ConfigureServices(IServiceCollection services)
     {
         InitCalled = true;
         _postRegistrationHook?.Invoke(this);

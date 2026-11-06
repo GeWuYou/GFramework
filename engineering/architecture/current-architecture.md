@@ -1,6 +1,6 @@
 # 当前架构
 
-核对日期：2026-11-07。运行时基线：`5b727587f8860761a0c132203cb4d7e0cdae30af`。本页描述已实现行为，未来方向见[架构决策](adr-001-standard-dotnet-foundation.md)。
+核对日期：2026-11-07。本页随首批核心实现更新，当前任务与验证见[路线图](../roadmap/core-governance.md)。后续方向见[架构决策](adr-001-standard-dotnet-foundation.md)。
 
 ## 包依赖与责任
 
@@ -21,28 +21,33 @@
 
 ## 启动与依赖解析
 
-[Architecture](../../GFramework.Core/Architectures/Architecture.cs) 构造默认服务包装、配置和日志，并写入进程级日志工厂。其启动顺序为：
+[Architecture](../../GFramework.Core/Architectures/Architecture.cs) 创建当前实例配置、容器访问窗口和上下文。实例日志不写全局工厂；同一容器不能同时属于两个架构。
 
-1. [Bootstrapper](../../GFramework.Core/Architectures/ArchitectureBootstrapper.cs) 初始化环境，注册内置事件、旧执行器和 CQRS 服务模块。
-2. 创建上下文并强制绑定全局 [GameContext](../../GFramework.Core/Architectures/GameContext.cs)，设置容器上下文，注册默认程序集 handlers，执行 `Configurator`。
-3. 初始化服务模块，再调用用户的 `OnInitialize()`。
-4. [组件注册器](../../GFramework.Core/Architectures/ArchitectureComponentRegistry.cs) 立即创建按类型注册的 System/Model；其构造依赖由[注册期解析器](../../GFramework.Core/Architectures/ArchitectureComponentActivator.cs)解析。
-5. [生命周期](../../GFramework.Core/Architectures/ArchitectureLifecycle.cs) 按 ContextUtility → Model → System 初始化，随后 `Freeze()` 构建正式 DI provider，进入 Ready。
+1. [Bootstrapper](../../GFramework.Core/Architectures/ArchitectureBootstrapper.cs) 登记环境、实例上下文和现有 CQRS 基础设施。
+2. 执行 Configurator 与 ConfigureServices，只记录服务描述、组件元数据、实例服务模块和阶段钩子。
+3. [容器](../../GFramework.Core/Ioc/MicrosoftDiContainer.cs) Freeze 一次，启用标准作用域与构造依赖验证；之后禁止注册。
+4. [组件注册器](../../GFramework.Core/Architectures/ArchitectureComponentRegistry.cs) 从同一 provider 激活组件、显式注入上下文并执行 onCreated。
+5. 服务模块按稳定优先级启动，组件按 Utility → Model → System 初始化；异步阶段 hook 接收取消令牌。
+6. OnStarted/OnStartedAsync 完成宿主准备后进入 Ready。同步启动拒绝异步组件、钩子与宿主。
 
-普通 Utility 的类型注册使用延迟工厂，与 System/Model 的立即激活不同。预冻结容器查询主要暴露已注册实例，不是完整 Microsoft DI 解析。晚注册配置与冻结容器的限制也不是同一套规则。
+Core/CQRS 包依赖与内置 dispatcher 注册仍保持本批之前的边界，独立采用属于后续任务。旧注册期解析器与单例缓存已移除，Context 不再把普通 Transient/Scoped 服务缓存为单例。
 
-## 销毁与资源责任
+## 停止、失败与资源责任
 
-[ArchitectureDisposer](../../GFramework.Core/Architectures/ArchitectureDisposer.cs) 逆序执行已登记组件的自有 Destroy 契约，隔离单个清理异常，销毁服务模块，广播 Destroyed，然后调用容器 `Clear()`。Architecture 最后按类型解除全局上下文绑定。
+销毁立即关闭外部上下文访问，取消并等待启动，然后依次等待 OnStoppingAsync、组件业务停止、服务模块停止、根 provider 异步释放。参与者停止按实际开始的逆序进行；单个停止错误不跳过后续动作，最终聚合报告。
 
-[MicrosoftDiContainer](../../GFramework.Core/Ioc/MicrosoftDiContainer.cs) 的 `Clear()` 在冻结后直接返回；只有独立的 `Dispose()` 路径会释放正式根 provider。接口只有同步 `IDisposable`。因此不能把“进入 Destroyed”理解成“所有 DI 资源已经释放”。诊断结果见[核心评估](core-assessment.md)。
+启动失败/取消执行同一宿主和 provider 清理，并在清理后完成启动与 Ready 等待者的失败/取消任务。原对象不能重试；重复销毁等待同一成功或失败结果。linked-token 注册随启动完成或移交给销毁操作后释放。
+
+类型/工厂创建的资源由标准 provider 拥有；传入实例仍由调用者拥有。外部实例 alias 不转移所有权。泛型自动 alias 拒绝可释放类型，后者使用一个明确拥有注册，避免多 factory alias 重复跟踪。业务 Destroy 不再次释放 DI 依赖。
+
+生命周期门禁属于本架构拥有的 MicrosoftDiContainer，默认及 Godot 包装上下文都遵守同一配置/停止窗口；自定义容器负责自己的访问和释放契约。通用外部 provider/Generic Host 集成尚不在本批范围。
 
 ## 调用、宿主与生成代码
 
-- [ArchitectureContext](../../GFramework.Core/Architectures/ArchitectureContext.cs) 同时提供服务定位、事件、旧命令/查询及新版 request/notification/stream。同步包装和异步入口并存。
-- [ContextAwareBase](../../GFramework.Core/Rule/ContextAwareBase.cs) 在未注入时回退全局上下文，并缓存引用；[生成实现](../../GFramework.Core.SourceGenerators/Rule/ContextAwareGenerator.cs)还包含按生成类型共享的静态 provider。仅修改基类不能改变生成路径。
-- [GameConfigModule](../../GFramework.Game/Config/GameConfigModule.cs) 在 Utility 初始化前的同步阶段钩子中等待异步首载，并通过 Utility 停止热重载；[GameConfigBootstrap](../../GFramework.Game/Config/GameConfigBootstrap.cs) 也支持不使用 Architecture 的直接接入。
-- Godot 通过 [ArchitectureAnchor](../../GFramework.Godot/Architectures/ArchitectureAnchor.cs) 接场景树销毁，并用 [GodotArchitectureContext](../../GFramework.Godot/Architectures/GodotArchitectureContext.cs) 防止危险的主线程同步 CQRS 调用；这不保证通用生命周期回调始终在 Godot 主线程。
-- ECS 模块在 Register 创建 World，Initialize 解析适配系统。未来改变容器构建时机时，必须重新检查其初始化和失败清理窗口。
+- [ArchitectureContext](../../GFramework.Core/Architectures/ArchitectureContext.cs) 仍提供旧命令/查询、事件和新版 request/notification/stream。单例 CQRS runtime 保留并发首次解析缓存，但每次调用先检查生命周期窗口。
+- [ContextAwareBase](../../GFramework.Core/Rule/ContextAwareBase.cs) 和[生成上下文](../../GFramework.Core.SourceGenerators/Rule/ContextAwareGenerator.cs)只接受实例绑定，无默认 GameContext/provider 回退。兼容的显式全局工具仍在，但核心启动不使用它们。
+- [GameConfigModule](../../GFramework.Game/Config/GameConfigModule.cs) 以异步 BeforeUtilityInit hook 首载，类型登记的 lifetime utility 由 provider 拥有，失败也释放 watcher/bootstrap；[独立 bootstrap](../../GFramework.Game/Config/GameConfigBootstrap.cs)路径保留。
+- Godot 配置期声明模块，异步启动通过[主线程调度器](../../GFramework.Godot/Architectures/GodotMainThreadDispatcher.cs)等待锚点和模块附加，清理回到同一主线程并使用根停止流程；QueueFree 是引擎排队操作，不声称原生内存已经同步回收。
+- [Arch ECS](../../GFramework.Ecs.Arch/ArchEcsModule.cs) 通过实例 RegisterServiceModule 接入；World 工厂在正式 provider 激活后创建，系统业务停止和资源 Dispose 分开。
 
-当前 Core 含很多独立价值的能力，但本轮没有逐一验证协程、状态管理、资源、池、日志、配置的全部运行时语义，也未证明 Native AOT 或引擎实机支持。
+本批不改写全部工具子系统或完整日志家族。原生 Godot/VS Code、Native AOT 和性能需各自独立证据；托管构建/测试不能代替这些验收。

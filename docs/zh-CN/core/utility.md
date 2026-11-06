@@ -32,9 +32,8 @@ public interface IUtility
 **接口定义：**
 
 ```csharp
-public interface IContextUtility : IUtility
+public interface IContextUtility : IUtility, IContextAware, ILifecycle
 {
-    void Init();  // 初始化上下文工具
 }
 ```
 
@@ -51,10 +50,11 @@ public abstract class AbstractContextUtility : ContextAwareBase, IContextUtility
 {
     protected ILogger Logger = null!;
     
-    void IContextUtility.Init() 
+    public void Initialize()
     {
         var name = GetType().Name;
-        Logger = LoggerFactoryResolver.Provider.CreateLogger(name);
+        Logger = ((IContextAware)this).GetContext()
+            .GetService<ILoggerFactoryProvider>().CreateLogger(name);
         Logger.Debug($"Initializing Context Utility: {name}");
         
         OnInit();  // 子类实现初始化逻辑
@@ -147,7 +147,7 @@ public class TimeUtility : IUtility
 ```csharp
 public class GameArchitecture : Architecture
 {
-    protected override void Init()
+    protected override void ConfigureServices(IServiceCollection services)
     {
         // 注册 Utility（不需要初始化）
         this.RegisterUtility<StorageUtility>(new StorageUtility());

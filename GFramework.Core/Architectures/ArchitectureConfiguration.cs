@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Architectures;
@@ -32,7 +32,6 @@ public sealed class ArchitectureConfiguration : IArchitectureConfiguration
     /// </summary>
     public ArchitectureProperties ArchitectureProperties { get; set; } = new()
     {
-        AllowLateRegistration = false,
         StrictPhaseValidation = true
     };
 }

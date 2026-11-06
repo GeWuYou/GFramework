@@ -3,6 +3,7 @@
 
 using GFramework.Core.Abstractions.Enums;
 using GFramework.Core.Abstractions.Logging;
+using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Logging;
 using GFramework.Core.Rule;
@@ -23,7 +24,7 @@ public abstract class AbstractSystem : ContextAwareBase, ISystem
     public void Initialize()
     {
         var name = GetType().Name;
-        _logger = LoggerFactoryResolver.Provider.CreateLogger(name);
+        _logger = CreateInstanceLogger(name);
         _logger.Debug($"Initializing system: {name}");
 
         OnInit();
@@ -36,6 +37,7 @@ public abstract class AbstractSystem : ContextAwareBase, ISystem
     /// </summary>
     public void Destroy()
     {
+        _logger ??= CreateInstanceLogger(GetType().Name);
         _logger.Debug($"Destroying system: {GetType().Name}");
 
         OnDestroy();
@@ -62,4 +64,15 @@ public abstract class AbstractSystem : ContextAwareBase, ISystem
     protected virtual void OnDestroy()
     {
     }
+    /// <summary>绑定架构时使用其实例工厂，独立使用时创建本地工厂，不读取进程级 resolver。</summary>
+    /// <param name="name">日志名称。</param>
+    /// <returns>当前组件日志。</returns>
+    private ILogger CreateInstanceLogger(string name)
+    {
+        var factory = Context == null
+            ? new ConsoleLoggerFactoryProvider()
+            : Context.GetService<ILoggerFactoryProvider>();
+        return factory.CreateLogger(name);
+    }
+
 }

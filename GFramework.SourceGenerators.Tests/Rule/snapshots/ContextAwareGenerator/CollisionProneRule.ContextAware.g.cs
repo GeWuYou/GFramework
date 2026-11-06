@@ -7,82 +7,34 @@ namespace TestApp;
 /// 为当前规则类型补充自动生成的架构上下文访问实现。
 /// </summary>
 /// <remarks>
-/// 生成代码会在实例级缓存首次解析到的上下文，并在未显式配置提供者时回退到 <see cref="GFramework.Core.Architectures.GameContextProvider" />。
-/// 同一生成类型的所有实例共享一个静态上下文提供者；切换或重置提供者只会影响尚未缓存上下文的新实例或未初始化实例，
-/// 已缓存的实例上下文需要通过 <see cref="GFramework.Core.Abstractions.Rule.IContextAware.SetContext(GFramework.Core.Abstractions.Architectures.IArchitectureContext)" /> 显式覆盖。
-/// 与手动继承 <see cref="global::GFramework.Core.Rule.ContextAwareBase" /> 的路径相比，生成实现会使用 <c>_gFrameworkContextAwareSync1</c> 协调惰性初始化、provider 切换和显式上下文注入；
-/// <see cref="global::GFramework.Core.Rule.ContextAwareBase" /> 则保持无锁的实例级缓存语义，更适合已经由调用方线程模型保证串行访问的简单场景。
+/// 上下文由 <c>IContextAware.SetContext(...)</c> 显式绑定到当前实例；访问未绑定的实例会抛出异常。
+/// 生成实现使用实例级 <c>_gFrameworkContextAwareSync1</c> 协调绑定与读取，不读取全局上下文或其他实例的状态。
 /// </remarks>
 partial class CollisionProneRule : global::GFramework.Core.Abstractions.Rule.IContextAware
 {
     private global::GFramework.Core.Abstractions.Architectures.IArchitectureContext? _gFrameworkContextAwareContext1;
-    private static global::GFramework.Core.Abstractions.Architectures.IArchitectureContextProvider? _gFrameworkContextAwareProvider1;
-    private static readonly object _gFrameworkContextAwareSync1 = new();
+    private readonly object _gFrameworkContextAwareSync1 = new();
 
     /// <summary>
-    /// 获取当前实例绑定的架构上下文。
+    /// 获取当前实例显式绑定的架构上下文。
     /// </summary>
-    /// <remarks>
-    /// 该属性会先返回通过 <c>IContextAware.SetContext(...)</c> 显式注入的实例上下文；若尚未设置，则在同一个同步域内惰性初始化共享提供者。
-    /// 当静态提供者尚未配置时，生成代码会回退到 <see cref="GFramework.Core.Architectures.GameContextProvider" />。
-    /// 一旦某个实例成功缓存上下文，后续 <see cref="SetContextProvider(GFramework.Core.Abstractions.Architectures.IArchitectureContextProvider)" />
-    /// 或 <see cref="ResetContextProvider" /> 不会自动清除此缓存；如需覆盖，请显式调用 <c>IContextAware.SetContext(...)</c>。
-    /// 当前实现还假设 <see cref="GFramework.Core.Abstractions.Architectures.IArchitectureContextProvider.GetContext" /> 可在持有 <c>_gFrameworkContextAwareSync1</c> 时安全执行；
-    /// 自定义 provider 不应在该调用链内重新进入当前类型的 provider 配置 API，且应避免引入与外部全局锁相互等待的锁顺序。
-    /// </remarks>
+    /// <exception cref="global::System.InvalidOperationException">当前实例尚未通过 IContextAware.SetContext 绑定上下文。</exception>
     protected global::GFramework.Core.Abstractions.Architectures.IArchitectureContext Context
     {
         get
         {
-            // 在同一个同步域内协调懒加载与 provider 切换，避免读取到被并发重置的空提供者。
-            // provider 的 GetContext() 会在持有 _gFrameworkContextAwareSync1 时执行；自定义 provider 必须避免在该调用链内回调 SetContextProvider/ResetContextProvider 或形成反向锁顺序。
             lock (_gFrameworkContextAwareSync1)
             {
-                _gFrameworkContextAwareProvider1 ??= new global::GFramework.Core.Architectures.GameContextProvider();
-                _gFrameworkContextAwareContext1 ??= _gFrameworkContextAwareProvider1.GetContext();
-                return _gFrameworkContextAwareContext1;
+                return _gFrameworkContextAwareContext1
+                    ?? throw new global::System.InvalidOperationException("Architecture context has not been initialized. Bind this instance through IContextAware.SetContext before accessing it.");
             }
-        }
-    }
-
-    /// <summary>
-    /// 配置当前生成类型共享的上下文提供者。
-    /// </summary>
-    /// <param name="provider">后续懒加载上下文时要使用的提供者实例。</param>
-    /// <exception cref="global::System.ArgumentNullException">当 <paramref name="provider" /> 为 null 时抛出。</exception>
-    /// <remarks>
-    /// 该方法使用与 <see cref="Context" /> 相同的同步锁，避免提供者切换与惰性初始化交错。
-    /// 已经缓存上下文的实例不会因为提供者切换而自动失效；该变更仅影响尚未初始化上下文的新实例或未缓存实例。
-    /// 如需覆盖已有实例的上下文，请显式调用 <c>IContextAware.SetContext(...)</c>。
-    /// </remarks>
-    public static void SetContextProvider(global::GFramework.Core.Abstractions.Architectures.IArchitectureContextProvider provider)
-    {
-        global::System.ArgumentNullException.ThrowIfNull(provider);
-        lock (_gFrameworkContextAwareSync1)
-        {
-            _gFrameworkContextAwareProvider1 = provider;
-        }
-    }
-
-    /// <summary>
-    /// 重置共享上下文提供者，使后续懒加载回退到默认提供者。
-    /// </summary>
-    /// <remarks>
-    /// 该方法主要用于测试清理或跨用例恢复默认行为。
-    /// 它不会清除已经缓存到实例字段中的上下文；只有后续尚未初始化上下文的实例会重新回退到 <see cref="GFramework.Core.Architectures.GameContextProvider" />。
-    /// 如需覆盖已有实例的上下文，请显式调用 <c>IContextAware.SetContext(...)</c>。
-    /// </remarks>
-    public static void ResetContextProvider()
-    {
-        lock (_gFrameworkContextAwareSync1)
-        {
-            _gFrameworkContextAwareProvider1 = null;
         }
     }
 
     void global::GFramework.Core.Abstractions.Rule.IContextAware.SetContext(global::GFramework.Core.Abstractions.Architectures.IArchitectureContext context)
     {
-        // 与 Context getter 共享同一同步协议，避免显式注入被并发懒加载覆盖。
+        global::System.ArgumentNullException.ThrowIfNull(context);
+        // 与 Context getter 使用同一实例锁，避免并发读取观察到不一致的绑定。
         lock (_gFrameworkContextAwareSync1)
         {
             _gFrameworkContextAwareContext1 = context;

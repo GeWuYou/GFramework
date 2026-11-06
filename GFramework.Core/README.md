@@ -81,7 +81,11 @@
 
 ## 当前使用边界
 
-标准架构启动会绑定进程内单活动上下文，不能同时启动两个不同上下文。初始化完成后服务注册冻结；业务组件停止与 DI 资源释放是不同责任，当前 Architecture 销毁并不等于已释放根 provider。相关约束见[架构生命周期](../docs/zh-CN/core/architecture.md)与[IoC 容器](../docs/zh-CN/core/ioc.md)。
+Architecture 的配置阶段只登记描述，随后构建一次正式 provider，再激活和初始化组件。服务、上下文和日志按实例隔离；框架不再绑定全局 GameContext，也不替换全局日志工厂。
+
+DestroyAsync/DisposeAsync 会停止业务组件并异步释放 provider 拥有的资源。传入的外部实例由调用者负责最终释放。角色组件的类型注册使用同一 provider；可释放实现采用单一拥有服务键，避免工厂别名重复捕获资源。
+
+当前 Core 与 Core.Abstractions 仍依赖 CQRS runtime/契约，包边界没有改变。采用方式见[架构生命周期](../docs/zh-CN/core/architecture.md)与[IoC 容器](../docs/zh-CN/core/ioc.md)。
 
 ## 最小接入路径
 
@@ -93,8 +97,8 @@ dotnet add package GeWuYou.GFramework.Core.Abstractions
 最小入口：
 
 1. 继承 `Architecture`
-2. 在 `OnInitialize()` 中注册模型、系统、工具或模块
-3. 通过 `architecture.Context` 或 `ContextAwareBase` 的扩展方法访问上下文
+2. 在 `ConfigureServices(IServiceCollection services)` 中登记服务、组件与模块，在 OnStarted/OnStartedAsync 中执行已构建后的宿主操作
+3. 等待 InitializeAsync 后，通过 architecture.Context 或已绑定的 ContextAwareBase 访问服务；使用完成后等待 DisposeAsync
 
 最小示例见：
 

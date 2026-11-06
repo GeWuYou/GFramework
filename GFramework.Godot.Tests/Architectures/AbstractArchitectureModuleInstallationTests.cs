@@ -68,24 +68,60 @@ public sealed class AbstractArchitectureModuleInstallationTests
     }
 
     /// <summary>
-    ///     验证当锚点尚未初始化时，安装流程会直接失败，且不会执行模块安装逻辑。
+    ///     配置阶段之外的模块安装必须先失败，不能留下半安装副作用。
     /// </summary>
-    /// <returns>表示异步断言完成的任务。</returns>
     [Test]
-    public async Task InstallGodotModuleAsync_ShouldThrowBeforeInvokingModuleInstall_WhenAnchorIsMissing()
+    public void InstallGodotModule_ShouldRejectOutsideConfigurationBeforeModuleInstall()
     {
         var architecture = new TestArchitecture();
         var module = new RecordingGodotModule();
 
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(() =>
-            architecture.InstallGodotModuleForTestAsync(module));
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            architecture.InstallGodotModuleForTest(module));
 
         Assert.Multiple(() =>
         {
-            Assert.That(exception, Is.Not.Null);
-            Assert.That(exception!.Message, Is.EqualTo("Anchor not initialized"));
+            Assert.That(exception!.Message, Does.Contain("ConfigureServices"));
             Assert.That(module.InstallCalled, Is.False);
         });
+    }
+
+    /// <summary>
+    ///     模块声明可以在无原生节点的配置阶段完成；实际主线程附加由宿主启动钩子另行负责。
+    /// </summary>
+    /// <returns>纯托管配置测试生命周期任务。</returns>
+    [Test]
+    public async Task InstallGodotModule_ShouldDeclareServicesBeforeHostAttachment()
+    {
+        var module = new RecordingGodotModule();
+        await using var architecture = new ManagedHostArchitecture(module);
+        await architecture.InitializeAsync();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(module.InstallCalled, Is.True);
+            Assert.That(module.AttachCalled, Is.False);
+            Assert.That(module.NodeReadCount, Is.Zero);
+        });
+    }
+
+    /// <summary>
+    ///     隔离原生宿主，单独验证配置阶段的模块声明路径。
+    /// </summary>
+    /// <param name="module">只记录调用的模块。</param>
+    private sealed class ManagedHostArchitecture(RecordingGodotModule module) : AbstractArchitecture
+    {
+        /// <inheritdoc />
+        protected override void InstallModules()
+        {
+            InstallGodotModule(module);
+        }
+
+        /// <inheritdoc />
+        protected override ValueTask OnStartedAsync(CancellationToken cancellationToken)
+        {
+            return ValueTask.CompletedTask;
+        }
     }
 
     private sealed class TestArchitecture : AbstractArchitecture
@@ -94,9 +130,9 @@ public sealed class AbstractArchitectureModuleInstallationTests
         {
         }
 
-        public Task InstallGodotModuleForTestAsync(RecordingGodotModule module)
+        public void InstallGodotModuleForTest(RecordingGodotModule module)
         {
-            return InstallGodotModule(module);
+            InstallGodotModule(module);
         }
     }
 
@@ -319,7 +355,18 @@ public sealed class AbstractArchitectureModuleInstallationTests
     {
         public bool InstallCalled { get; private set; }
 
-        public global::Godot.Node Node => null!;
+        public bool AttachCalled { get; private set; }
+
+        public int NodeReadCount { get; private set; }
+
+        public global::Godot.Node Node
+        {
+            get
+            {
+                NodeReadCount++;
+                return null!;
+            }
+        }
 
         public void Install(IArchitecture architecture)
         {
@@ -328,6 +375,7 @@ public sealed class AbstractArchitectureModuleInstallationTests
 
         public void OnAttach(GFramework.Core.Architectures.Architecture architecture)
         {
+            AttachCalled = true;
         }
 
         public void OnDetach()

@@ -105,15 +105,9 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
         sb.AppendLine("/// </summary>");
         sb.AppendLine("/// <remarks>");
         sb.AppendLine(
-            "/// 生成代码会在实例级缓存首次解析到的上下文，并在未显式配置提供者时回退到 <see cref=\"GFramework.Core.Architectures.GameContextProvider\" />。");
+            "/// 上下文由 <c>IContextAware.SetContext(...)</c> 显式绑定到当前实例；访问未绑定的实例会抛出异常。");
         sb.AppendLine(
-            "/// 同一生成类型的所有实例共享一个静态上下文提供者；切换或重置提供者只会影响尚未缓存上下文的新实例或未初始化实例，");
-        sb.AppendLine(
-            "/// 已缓存的实例上下文需要通过 <see cref=\"GFramework.Core.Abstractions.Rule.IContextAware.SetContext(GFramework.Core.Abstractions.Architectures.IArchitectureContext)\" /> 显式覆盖。");
-        sb.AppendLine(
-            $"/// 与手动继承 <see cref=\"global::GFramework.Core.Rule.ContextAwareBase\" /> 的路径相比，生成实现会使用 <c>{memberNames.SyncFieldName}</c> 协调惰性初始化、provider 切换和显式上下文注入；");
-        sb.AppendLine(
-            "/// <see cref=\"global::GFramework.Core.Rule.ContextAwareBase\" /> 则保持无锁的实例级缓存语义，更适合已经由调用方线程模型保证串行访问的简单场景。");
+            $"/// 生成实现使用实例级 <c>{memberNames.SyncFieldName}</c> 协调绑定与读取，不读取全局上下文或其他实例的状态。");
         sb.AppendLine("/// </remarks>");
         sb.AppendLine($"partial class {symbol.Name} : {interfaceName}");
         sb.AppendLine("{");
@@ -136,7 +130,7 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
     }
 
     // =========================
-    // Context 属性（使用 IArchitectureContextProvider）
+    // Context 属性（显式实例绑定）
     // =========================
     /// <summary>
     ///     生成Context属性
@@ -149,118 +143,51 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
     {
         GenerateContextBackingFields(sb, memberNames);
         GenerateContextGetter(sb, memberNames);
-        GenerateContextProviderConfiguration(sb, memberNames);
     }
 
     /// <summary>
-    ///     生成上下文缓存和同步所需的字段。
+    ///     生成当前实例的上下文缓存和同步字段。
     /// </summary>
     /// <param name="sb">字符串构建器。</param>
+    /// <param name="memberNames">当前目标类型使用的上下文字段名。</param>
     private static void GenerateContextBackingFields(
         StringBuilder sb,
         GeneratedContextMemberNames memberNames)
     {
         sb.AppendLine(
             $"    private global::GFramework.Core.Abstractions.Architectures.IArchitectureContext? {memberNames.ContextFieldName};");
-        sb.AppendLine(
-            $"    private static global::GFramework.Core.Abstractions.Architectures.IArchitectureContextProvider? {memberNames.ProviderFieldName};");
-        sb.AppendLine($"    private static readonly object {memberNames.SyncFieldName} = new();");
+        sb.AppendLine($"    private readonly object {memberNames.SyncFieldName} = new();");
         sb.AppendLine();
     }
 
     /// <summary>
-    ///     生成实例上下文访问器，包含显式注入优先和 provider 惰性回退语义。
+    ///     生成只读取当前实例显式绑定的上下文访问器。
     /// </summary>
     /// <param name="sb">字符串构建器。</param>
+    /// <param name="memberNames">当前目标类型使用的上下文字段名。</param>
     private static void GenerateContextGetter(
         StringBuilder sb,
         GeneratedContextMemberNames memberNames)
     {
         sb.AppendLine("    /// <summary>");
-        sb.AppendLine("    /// 获取当前实例绑定的架构上下文。");
+        sb.AppendLine("    /// 获取当前实例显式绑定的架构上下文。");
         sb.AppendLine("    /// </summary>");
-        sb.AppendLine("    /// <remarks>");
         sb.AppendLine(
-            "    /// 该属性会先返回通过 <c>IContextAware.SetContext(...)</c> 显式注入的实例上下文；若尚未设置，则在同一个同步域内惰性初始化共享提供者。");
-        sb.AppendLine(
-            "    /// 当静态提供者尚未配置时，生成代码会回退到 <see cref=\"GFramework.Core.Architectures.GameContextProvider\" />。");
-        sb.AppendLine(
-            "    /// 一旦某个实例成功缓存上下文，后续 <see cref=\"SetContextProvider(GFramework.Core.Abstractions.Architectures.IArchitectureContextProvider)\" />");
-        sb.AppendLine(
-            "    /// 或 <see cref=\"ResetContextProvider\" /> 不会自动清除此缓存；如需覆盖，请显式调用 <c>IContextAware.SetContext(...)</c>。");
-        sb.AppendLine(
-            $"    /// 当前实现还假设 <see cref=\"GFramework.Core.Abstractions.Architectures.IArchitectureContextProvider.GetContext\" /> 可在持有 <c>{memberNames.SyncFieldName}</c> 时安全执行；");
-        sb.AppendLine(
-            "    /// 自定义 provider 不应在该调用链内重新进入当前类型的 provider 配置 API，且应避免引入与外部全局锁相互等待的锁顺序。");
-        sb.AppendLine("    /// </remarks>");
+            "    /// <exception cref=\"global::System.InvalidOperationException\">当前实例尚未通过 IContextAware.SetContext 绑定上下文。</exception>");
         sb.AppendLine("    protected global::GFramework.Core.Abstractions.Architectures.IArchitectureContext Context");
         sb.AppendLine("    {");
         sb.AppendLine("        get");
         sb.AppendLine("        {");
-        sb.AppendLine("            // 在同一个同步域内协调懒加载与 provider 切换，避免读取到被并发重置的空提供者。");
-        sb.AppendLine(
-            $"            // provider 的 GetContext() 会在持有 {memberNames.SyncFieldName} 时执行；自定义 provider 必须避免在该调用链内回调 SetContextProvider/ResetContextProvider 或形成反向锁顺序。");
         sb.AppendLine($"            lock ({memberNames.SyncFieldName})");
         sb.AppendLine("            {");
+        sb.AppendLine($"                return {memberNames.ContextFieldName}");
         sb.AppendLine(
-            $"                {memberNames.ProviderFieldName} ??= new global::GFramework.Core.Architectures.GameContextProvider();");
-        sb.AppendLine($"                {memberNames.ContextFieldName} ??= {memberNames.ProviderFieldName}.GetContext();");
-        sb.AppendLine($"                return {memberNames.ContextFieldName};");
+            "                    ?? throw new global::System.InvalidOperationException(\"Architecture context has not been initialized. Bind this instance through IContextAware.SetContext before accessing it.\");");
         sb.AppendLine("            }");
         sb.AppendLine("        }");
         sb.AppendLine("    }");
         sb.AppendLine();
     }
-
-    /// <summary>
-    ///     生成静态 provider 配置 API，供测试和宿主在懒加载前替换默认上下文来源。
-    /// </summary>
-    /// <param name="sb">字符串构建器。</param>
-    private static void GenerateContextProviderConfiguration(
-        StringBuilder sb,
-        GeneratedContextMemberNames memberNames)
-    {
-        sb.AppendLine("    /// <summary>");
-        sb.AppendLine("    /// 配置当前生成类型共享的上下文提供者。");
-        sb.AppendLine("    /// </summary>");
-        sb.AppendLine("    /// <param name=\"provider\">后续懒加载上下文时要使用的提供者实例。</param>");
-        sb.AppendLine(
-            "    /// <exception cref=\"global::System.ArgumentNullException\">当 <paramref name=\"provider\" /> 为 null 时抛出。</exception>");
-        sb.AppendLine("    /// <remarks>");
-        sb.AppendLine("    /// 该方法使用与 <see cref=\"Context\" /> 相同的同步锁，避免提供者切换与惰性初始化交错。");
-        sb.AppendLine(
-            "    /// 已经缓存上下文的实例不会因为提供者切换而自动失效；该变更仅影响尚未初始化上下文的新实例或未缓存实例。");
-        sb.AppendLine("    /// 如需覆盖已有实例的上下文，请显式调用 <c>IContextAware.SetContext(...)</c>。");
-        sb.AppendLine("    /// </remarks>");
-        sb.AppendLine(
-            "    public static void SetContextProvider(global::GFramework.Core.Abstractions.Architectures.IArchitectureContextProvider provider)");
-        sb.AppendLine("    {");
-        sb.AppendLine("        global::System.ArgumentNullException.ThrowIfNull(provider);");
-        sb.AppendLine($"        lock ({memberNames.SyncFieldName})");
-        sb.AppendLine("        {");
-        sb.AppendLine($"            {memberNames.ProviderFieldName} = provider;");
-        sb.AppendLine("        }");
-        sb.AppendLine("    }");
-        sb.AppendLine();
-        sb.AppendLine("    /// <summary>");
-        sb.AppendLine("    /// 重置共享上下文提供者，使后续懒加载回退到默认提供者。");
-        sb.AppendLine("    /// </summary>");
-        sb.AppendLine("    /// <remarks>");
-        sb.AppendLine("    /// 该方法主要用于测试清理或跨用例恢复默认行为。");
-        sb.AppendLine(
-            "    /// 它不会清除已经缓存到实例字段中的上下文；只有后续尚未初始化上下文的实例会重新回退到 <see cref=\"GFramework.Core.Architectures.GameContextProvider\" />。");
-        sb.AppendLine("    /// 如需覆盖已有实例的上下文，请显式调用 <c>IContextAware.SetContext(...)</c>。");
-        sb.AppendLine("    /// </remarks>");
-        sb.AppendLine("    public static void ResetContextProvider()");
-        sb.AppendLine("    {");
-        sb.AppendLine($"        lock ({memberNames.SyncFieldName})");
-        sb.AppendLine("        {");
-        sb.AppendLine($"            {memberNames.ProviderFieldName} = null;");
-        sb.AppendLine("        }");
-        sb.AppendLine("    }");
-        sb.AppendLine();
-    }
-
 
     // =========================
     // 显式接口实现（使用 global::）
@@ -329,7 +256,8 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
         switch (method.Name)
         {
             case "SetContext":
-                sb.AppendLine("        // 与 Context getter 共享同一同步协议，避免显式注入被并发懒加载覆盖。");
+                sb.AppendLine("        global::System.ArgumentNullException.ThrowIfNull(context);");
+                sb.AppendLine("        // 与 Context getter 使用同一实例锁，避免并发读取观察到不一致的绑定。");
                 sb.AppendLine($"        lock ({memberNames.SyncFieldName})");
                 sb.AppendLine("        {");
                 sb.AppendLine($"            {memberNames.ContextFieldName} = context;");
@@ -360,7 +288,6 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
 
         return new GeneratedContextMemberNames(
             AllocateGeneratedMemberName(reservedNames, "_gFrameworkContextAwareContext"),
-            AllocateGeneratedMemberName(reservedNames, "_gFrameworkContextAwareProvider"),
             AllocateGeneratedMemberName(reservedNames, "_gFrameworkContextAwareSync"));
     }
 
@@ -413,10 +340,8 @@ public sealed class ContextAwareGenerator : MetadataAttributeClassGeneratorBase
     ///     描述一次 ContextAware 代码生成中选定的上下文字段名。
     /// </summary>
     /// <param name="ContextFieldName">实例上下文缓存字段名。</param>
-    /// <param name="ProviderFieldName">共享上下文提供者字段名。</param>
     /// <param name="SyncFieldName">用于串行化访问的同步字段名。</param>
     private readonly record struct GeneratedContextMemberNames(
         string ContextFieldName,
-        string ProviderFieldName,
         string SyncFieldName);
 }

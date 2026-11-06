@@ -62,38 +62,37 @@ description: 以当前 GFramework.Godot 源码、测试与 CoreGrid 接线为准
 - `简体中文` -> Godot `zh_CN`，框架 `zhs`
 - `English` -> Godot `en`，框架 `eng`
 
-`GFramework.Game.Tests/Setting/GodotLocalizationSettingsTests.cs` 已覆盖三条关键边界：
+默认应用器从设置模型显式绑定的实例上下文解析 ILocalizationManager，不查找进程级 GameContext。不同模型绑定不同上下文时，语言变更互不影响。模型必须先完成上下文注入；当前实例未安装可选 ILocalizationManager 时，仍会设置 Godot locale。
 
-- 英文会同步到 `en` / `eng`
-- 简体中文会同步到 `zh_CN` / `zhs`
-- 未知语言值会稳定回退到英文，而不是让 Godot locale 与框架语言状态分裂
-
-如果当前架构上下文里解析不到 `ILocalizationManager`，Godot locale 仍会被设置，只是不会额外同步框架语言管理器。
+需要测试或定制引擎接线时，可传入独立的 locale 应用动作，或显式的管理器 resolver。原生 TranslationServer 调用应由宿主主线程执行。
 
 ## 最小接入路径
 
-当前更常见的接法，是先注册 `SettingsModel<ISettingsDataRepository>`，再把 Godot applicator 挂进去：
+在配置阶段声明模型及其 applicator。下面示例由调用者提供已配置的仓库，模块在当前架构配置阶段安装：
 
 ```csharp
+using GFramework.Core.Abstractions.Architectures;
 using GFramework.Game.Abstractions.Data;
 using GFramework.Game.Abstractions.Setting;
 using GFramework.Game.Setting;
 using GFramework.Godot.Setting;
 using GFramework.Godot.Setting.Data;
 
-var settingsDataRepository = architecture.Context.GetUtility<ISettingsDataRepository>();
-
-architecture.RegisterModel(
-    new SettingsModel<ISettingsDataRepository>(
-        new SettingDataLocationProvider(),
-        settingsDataRepository)
-        .Also(it =>
-        {
-            it.RegisterApplicator(new GodotAudioSettings(it, new AudioBusMap()))
-                .RegisterApplicator(new GodotGraphicsSettings(it))
-                .RegisterApplicator(new GodotLocalizationSettings(it, new LocalizationMap()));
-        }));
+public sealed class SettingsModule(ISettingsDataRepository repository) : IArchitectureModule
+{
+    public void Install(IArchitecture architecture)
+    {
+        var model = new SettingsModel<ISettingsDataRepository>(
+            new SettingDataLocationProvider(), repository);
+        model.RegisterApplicator(new GodotAudioSettings(model, new AudioBusMap()))
+            .RegisterApplicator(new GodotGraphicsSettings(model))
+            .RegisterApplicator(new GodotLocalizationSettings(model, new LocalizationMap()));
+        architecture.RegisterModel<ISettingsModel>(model);
+    }
+}
 ```
+
+把模块安装放入 Godot 架构的 InstallModules，或通用 Architecture 的 ConfigureServices(IServiceCollection)。不要在配置阶段用 Context 解析仓库，也不要在架构就绪后追加 RegisterModel。传入的仓库和模型实例由创建者拥有最终资源释放责任。
 
 这条接法说明了当前边界：
 

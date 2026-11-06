@@ -10,12 +10,6 @@ namespace GFramework.Core.Abstractions.Properties;
 public sealed class ArchitectureProperties
 {
     /// <summary>
-    ///     允许延迟注册开关，当设置为 true 时允许在初始化完成后进行组件注册。
-    ///     默认值为 false，表示不允许延迟注册。
-    /// </summary>
-    public bool AllowLateRegistration { get; set; }
-
-    /// <summary>
     ///     严格阶段验证开关，当设置为 true 时启用严格的阶段验证机制。
     ///     默认值为 false，表示不启用严格验证。
     /// </summary>

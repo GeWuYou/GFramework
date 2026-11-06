@@ -60,7 +60,7 @@ descriptor。只有当前类型对没有 generated metadata，或 registry / fal
 运行时侧仍然按 `Core` 的标准入口注册程序集：
 
 ```csharp
-protected override void OnInitialize()
+protected override void ConfigureServices(Microsoft.Extensions.DependencyInjection.IServiceCollection services)
 {
     RegisterCqrsHandlersFromAssembly(typeof(GameArchitecture).Assembly);
 }

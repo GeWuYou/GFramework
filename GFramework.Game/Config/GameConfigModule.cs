@@ -17,7 +17,7 @@ namespace GFramework.Game.Config;
 ///     首次加载以及架构销毁时的资源回收。
 /// </summary>
 /// <remarks>
-///     使用该模块时，推荐在 <c>Architecture.OnInitialize()</c> 的较早位置调用 <see cref="IArchitecture.InstallModule" />，
+///     使用该模块时，推荐在 <c>Architecture.ConfigureServices(IServiceCollection)</c> 的较早位置调用 <see cref="IArchitecture.InstallModule" />，
 ///     以便其他 utility、model 和 system 在各自初始化阶段都能读取到已经完成首次加载的配置表。
 ///     如果消费项目不基于 <see cref="Architecture" />，则继续直接使用 <see cref="GameConfigBootstrap" /> 更合适。
 /// </remarks>
@@ -28,7 +28,6 @@ public sealed class GameConfigModule : IArchitectureModule
     private const int InstallStateConsumed = 2;
 
     private readonly GameConfigBootstrap _bootstrap;
-    private readonly ModuleBootstrapLifetimeUtility _lifetimeUtility;
     private int _installState;
 
     /// <summary>
@@ -44,7 +43,6 @@ public sealed class GameConfigModule : IArchitectureModule
         ArgumentNullException.ThrowIfNull(options);
 
         _bootstrap = new GameConfigBootstrap(options);
-        _lifetimeUtility = new ModuleBootstrapLifetimeUtility(_bootstrap);
     }
 
     /// <summary>
@@ -104,7 +102,7 @@ public sealed class GameConfigModule : IArchitectureModule
             // 阶段窗口已经在前面做过无副作用校验，因此这里优先注册 utility，
             // 让常见的容器/上下文接线失败在不可回滚的 hook 注册之前暴露出来。
             architecture.RegisterUtility(Registry);
-            architecture.RegisterUtility(_lifetimeUtility);
+            architecture.RegisterUtility<ModuleBootstrapLifetimeUtility>(utility => utility.Bind(_bootstrap));
             architecture.RegisterLifecycleHook(new BootstrapInitializationHook(_bootstrap));
             Volatile.Write(ref _installState, InstallStateConsumed);
         }
@@ -141,7 +139,7 @@ public sealed class GameConfigModule : IArchitectureModule
     ///     在 utility 初始化之前完成首次配置加载的生命周期钩子。
     ///     这样后续 utility、model 和 system 在各自初始化阶段就能直接依赖已加载的注册表。
     /// </summary>
-    private sealed class BootstrapInitializationHook(GameConfigBootstrap bootstrap) : IArchitectureLifecycleHook
+    private sealed class BootstrapInitializationHook(GameConfigBootstrap bootstrap) : IAsyncArchitectureLifecycleHook
     {
         /// <summary>
         ///     在目标阶段触发配置加载。
@@ -150,14 +148,29 @@ public sealed class GameConfigModule : IArchitectureModule
         /// <param name="architecture">相关架构实例；当前实现不直接使用，但保留用于接口契约一致性。</param>
         public void OnPhase(ArchitecturePhase phase, IArchitecture architecture)
         {
-            if (phase != ArchitecturePhase.BeforeUtilityInit)
+            if (phase == ArchitecturePhase.BeforeUtilityInit)
             {
-                return;
+                throw new InvalidOperationException(
+                    "GameConfigModule requires Architecture.InitializeAsync(...); synchronous config loading is not supported.");
             }
+        }
 
-            // 架构生命周期钩子当前是同步接口，因此这里显式桥接到统一的 bootstrap 异步实现，
-            // 让 Architecture 模式和独立运行时模式保持同一套加载、诊断和热重载启动语义。
-            bootstrap.InitializeAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+        /// <summary>
+        ///     在配置阶段钩子中真正等待首载，取消和异常均返回到架构的失败清理路径。
+        /// </summary>
+        /// <param name="phase">当前架构阶段。</param>
+        /// <param name="architecture">当前架构实例。</param>
+        /// <param name="cancellationToken">架构初始化取消令牌。</param>
+        /// <returns>表示当前阶段处理完成的值任务。</returns>
+        public async ValueTask OnPhaseAsync(
+            ArchitecturePhase phase,
+            IArchitecture architecture,
+            CancellationToken cancellationToken = default)
+        {
+            if (phase == ArchitecturePhase.BeforeUtilityInit)
+            {
+                await bootstrap.InitializeAsync(cancellationToken).ConfigureAwait(false);
+            }
         }
     }
 
@@ -185,25 +198,51 @@ public sealed class GameConfigModule : IArchitectureModule
     }
 
     /// <summary>
-    ///     跟随架构 utility 生命周期释放底层 bootstrap 资源的薄封装。
-    ///     该 utility 本身不承担加载职责，只负责在架构销毁时停止热重载并释放监听句柄。
+    ///     正式 provider 拥有的 bootstrap 生命周期适配器。
+    ///     业务停止先关闭热重载，资源释放由 provider 完成；未初始化成功也可安全释放。
     /// </summary>
-    private sealed class ModuleBootstrapLifetimeUtility(GameConfigBootstrap bootstrap) : AbstractContextUtility
+    private sealed class ModuleBootstrapLifetimeUtility : AbstractContextUtility, IDisposable
     {
+        private GameConfigBootstrap? _bootstrap;
+
         /// <summary>
-        ///     该 utility 不需要在初始化阶段执行额外逻辑。
-        ///     首次加载已经由 <see cref="BootstrapInitializationHook" /> 在 utility 初始化前完成。
+        ///     供正式 DI provider 激活生命周期适配器；此时尚不执行文件加载。
+        /// </summary>
+        public ModuleBootstrapLifetimeUtility()
+        {
+        }
+
+        /// <summary>
+        ///     将本模块的 bootstrap 交由当前 provider 拥有的适配器负责释放。
+        /// </summary>
+        /// <param name="bootstrap">尚未加载的模块 bootstrap。</param>
+        public void Bind(GameConfigBootstrap bootstrap)
+        {
+            _bootstrap = bootstrap;
+        }
+
+        /// <summary>
+        ///     首载由更早的异步阶段钩子负责。
         /// </summary>
         protected override void OnInit()
         {
         }
 
         /// <summary>
-        ///     架构销毁时释放 bootstrap 资源，确保热重载监听句柄不会泄漏到架构生命周期之外。
+        ///     停止业务监听；资源最终释放由 provider 的 Dispose 路径完成。
         /// </summary>
         protected override void OnDestroy()
         {
-            bootstrap.Dispose();
+            _bootstrap?.StopHotReload();
+        }
+
+        /// <summary>
+        ///     即使首载钩子失败、适配器尚未完成初始化，也释放 bootstrap。
+        /// </summary>
+        public void Dispose()
+        {
+            _bootstrap?.Dispose();
+            _bootstrap = null;
         }
     }
 }

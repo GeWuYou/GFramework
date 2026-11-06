@@ -5,8 +5,10 @@ using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Command;
 using GFramework.Core.Abstractions.Events;
 using GFramework.Core.Abstractions.Ioc;
+using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Query;
 using GFramework.Core.Ioc;
+using GFramework.Core.Logging;
 using GFramework.Core.Services;
 
 namespace GFramework.Core.Architectures;
@@ -25,10 +27,12 @@ public class ArchitectureServices : IArchitectureServices
     ///     初始化依赖注入容器，并创建事件总线、命令执行器、查询执行器和异步查询执行器的实例，
     ///     然后将这些服务注册到容器中。
     /// </summary>
-    public ArchitectureServices()
+    /// <param name="loggerFactoryProvider">当前实例的日志工厂；缺省创建独立工厂。</param>
+    public ArchitectureServices(ILoggerFactoryProvider? loggerFactoryProvider = null)
     {
-        Container = new MicrosoftDiContainer();
-        _moduleManager = new ServiceModuleManager();
+        var factory = loggerFactoryProvider ?? new ConsoleLoggerFactoryProvider();
+        Container = new MicrosoftDiContainer(loggerFactoryProvider: factory);
+        _moduleManager = new ServiceModuleManager(factory);
     }
 
     /// <summary>

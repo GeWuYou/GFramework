@@ -249,7 +249,7 @@ public class BulletPoolSystem : AbstractObjectPoolSystem<string, Bullet>
 ```csharp
 public class GameArchitecture : Architecture
 {
-    protected override void Init()
+    protected override void ConfigureServices(IServiceCollection services)
     {
         // 注册其他组件
         RegisterModel(new PlayerModel());

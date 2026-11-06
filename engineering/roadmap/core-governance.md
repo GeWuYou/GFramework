@@ -31,13 +31,31 @@
 
 ## 第一批：DI、资源与实例隔离
 
-状态：planned。依赖：上述文档阶段完成。规格见[首批改造设计](../architecture/first-core-batch.md)。
+状态：done。日期：2026-11-07。实现基线：b54d7cac。依赖：上述文档阶段完成。规格见[首批改造设计](../architecture/first-core-batch.md)。
 
 验收：同一 Singleton 实例、一次 provider 构建、阶段前完成注册、同步/异步资源一次释放、外部所有权、失败/取消清理、两架构隔离、生成上下文无全局回退，以及 Game/Godot/ECS 直接使用方接线。
 
 涉及入口：Architecture 配置/初始化/销毁，组件注册、容器与 ContextAware、实例日志、异步阶段 hook；不同时拆包或移除全部旧消息 API。
 
-下一步：按设计先增加能复现现有错误的行为回归，再实施最小闭环；真实宿主缺口单独记录。
+实现：配置只描述依赖，唯一 provider 构建后激活；异步阶段钩子、取消传播、一次宿主停止和 provider 释放已接通。ContextAware 手写及生成路径均显式实例绑定。Game、Godot、ECS、基准适配器与采用文档同步迁移。
+
+委派结果已由主线审查并通过整体验证：容器所有权/并发释放，上下文生成器/快照/分析器，Game/Godot/ECS 直接使用方。构建和测试由主线串行执行。
+
+实现取舍：标准 DI 会重复跟踪多个工厂 alias 返回的可释放对象。外部实例 alias 使用借用描述；泛型自动 alias 明确拒绝可释放类型，资源组件使用单一 canonical owning 类型键。未新增自有生命周期容器。重复类型组件登记拒绝，相同外部多角色实例只启动一次。
+
+验证：
+
+- `dotnet test GFramework.sln -c Release`：2435 passed / 0 failed / 0 skipped。Core 1693、CQRS 151、Game 254、Godot 91、ECS 36、通用生成器 162、Godot 生成器 48。
+- `dotnet build GFramework.sln -c Release`：所有受影响项目及 net8.0/net9.0/net10.0 目标通过，0 warning / 0 error。
+- 新回归覆盖实例身份、Transient/Scoped、外部所有权、异步释放屏障、取消回调抛错、清理失败保留、重入与过期执行上下文、linked CTS 释放、多角色去重、稳定模块顺序、Ready 异步完成边界及主线程调度的 ExecutionContext。
+- 48 份修改文档的适用校验、58 项检查结果通过；实际站点 HTML 的 4 处入链/自链标题核对通过。VitePress 构建通过，仍有超过 1000 kB 的压缩 bundle 提示。
+- 许可证、运行时/生成器边界与 diff 格式通过。命名检查在最终暂存后覆盖新增文件；完整输出保存在忽略的 .local/core-runtime。
+
+边界：未进行真实 Godot 场景树、原生 InputMap/节点释放、VS Code 交互、Native AOT 或性能验收；托管宿主测试和编译不能替代它们。完整 Microsoft.Extensions.Logging 接入、CQRS 包独立与旧消息 API 移除仍是后续阶段。
+
+交付：本批按独立运行时任务进行本地提交与 GitHub PR；前置开发文档提交一并纳入该变更，原文档工作树保留。准确 PR/head、CI 待办与任务租约仅保存在本地交接，不把临时状态扩写成新的执行流水。
+
+下一步：按 adapter 的 PR/自动合并设置后交接策略返回；后续经允许唤醒核对实际合并与资源释放。继续设计开发时进入第二批，不能把本地通过等同于 CI 或原生宿主验收。
 
 ## 第二批：CQRS 独立采用与调用入口
 

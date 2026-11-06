@@ -104,7 +104,7 @@ public class TextureLoader : IResourceLoader<Texture>
 // 在架构中注册加载器
 public class GameArchitecture : Architecture
 {
-    protected override void Init()
+    protected override void ConfigureServices(IServiceCollection services)
     {
         var resourceManager = new ResourceManager();
         resourceManager.RegisterLoader(new TextureLoader());

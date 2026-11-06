@@ -108,7 +108,7 @@ using GFramework.Core.State;
 
 public class GameArchitecture : Architecture
 {
-    protected override void Init()
+    protected override void ConfigureServices(IServiceCollection services)
     {
         // 创建状态机系统
         var stateMachine = new StateMachineSystem();

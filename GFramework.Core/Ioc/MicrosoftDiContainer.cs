@@ -7,6 +7,7 @@ using GFramework.Core.Abstractions.Bases;
 using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Systems;
+using GFramework.Core.Logging;
 using GFramework.Core.Rule;
 using GFramework.Cqrs;
 using GFramework.Cqrs.Abstractions.Cqrs;
@@ -24,7 +25,10 @@ namespace GFramework.Core.Ioc;
 ///     以避免 benchmark、测试宿主或短生命周期架构误用失效的 DI 状态。
 /// </remarks>
 /// <param name="serviceCollection">可选的IServiceCollection实例，默认创建新的ServiceCollection</param>
-public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) : ContextAwareBase, IIocContainer
+/// <param name="loggerFactoryProvider">实例级日志工厂；为空时创建独立默认工厂，不读取或修改全局 provider。</param>
+public partial class MicrosoftDiContainer(
+    IServiceCollection? serviceCollection = null,
+    ILoggerFactoryProvider? loggerFactoryProvider = null) : ContextAwareBase, IIocContainer
 {
     #region Helper Methods
 
@@ -219,7 +223,8 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// <summary>
     /// 日志记录器，用于记录容器操作日志
     /// </summary>
-    private readonly ILogger _logger = LoggerFactoryResolver.Provider.CreateLogger(nameof(MicrosoftDiContainer));
+    private readonly ILogger _logger =
+        (loggerFactoryProvider ?? new ConsoleLoggerFactoryProvider()).CreateLogger(nameof(MicrosoftDiContainer));
 
     #endregion
 
@@ -340,6 +345,7 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
     /// <exception cref="InvalidOperationException">当容器已冻结时抛出</exception>
     public void RegisterPlurality(object instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
         ThrowIfDisposed();
         var concreteType = instance.GetType();
         var interfaces = concreteType.GetInterfaces();
@@ -355,7 +361,9 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
             // 注册所有接口类型映射（指向同一实例）
             foreach (var interfaceType in interfaces)
             {
-                GetServicesUnsafe.AddSingleton(interfaceType, _ => instance);
+                // Instance descriptors preserve caller ownership; factory aliases would make Microsoft DI
+                // capture the same external disposable again for every resolved interface.
+                GetServicesUnsafe.AddSingleton(interfaceType, instance);
             }
 
             _registeredInstances.Add(instance);
@@ -380,6 +388,15 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
             ThrowIfFrozen();
 
             var concreteType = typeof(T);
+            if (typeof(IDisposable).IsAssignableFrom(concreteType) ||
+                typeof(IAsyncDisposable).IsAssignableFrom(concreteType))
+            {
+                throw new InvalidOperationException(
+                    $"Disposable type '{concreteType.Name}' cannot be registered through owning plurality aliases. " +
+                    "Register one canonical owning service with RegisterSingleton<TService, TImpl>(), " +
+                    "or pass a caller-owned instance to RegisterPlurality(instance).");
+            }
+
             var interfaces = concreteType.GetInterfaces();
 
             // 注册具体类型
@@ -1177,7 +1194,11 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
                 return;
             }
 
-            _provider = GetServicesUnsafe.BuildServiceProvider();
+            _provider = GetServicesUnsafe.BuildServiceProvider(new ServiceProviderOptions
+            {
+                ValidateScopes = true,
+                ValidateOnBuild = true
+            });
             _frozenServiceTypeIndex = FrozenServiceTypeIndex.Create(GetServicesUnsafe);
             _frozen = true;
             _logger.Info("IOC Container frozen - ServiceProvider built");
@@ -1275,60 +1296,6 @@ public class MicrosoftDiContainer(IServiceCollection? serviceCollection = null) 
         finally
         {
             _lock.ExitReadLock();
-        }
-    }
-
-    /// <summary>
-    ///     释放容器持有的服务提供者、注册状态和同步原语。
-    /// </summary>
-    /// <remarks>
-    ///     冻结后的根 <see cref="IServiceProvider" /> 会拥有 DI 创建的单例与作用域根缓存，因此 benchmark、
-    ///     测试宿主或短生命周期架构在结束时需要显式释放容器，避免这些对象与内部
-    ///     <see cref="ReaderWriterLockSlim" /> 一起滞留。
-    ///     释放是幂等的；首次释放后所有后续访问都会抛出 <see cref="ObjectDisposedException" />。
-    /// </remarks>
-    public void Dispose()
-    {
-        if (_disposed)
-        {
-            return;
-        }
-
-        var lockTaken = false;
-
-        try
-        {
-            try
-            {
-                _lock.EnterWriteLock();
-                lockTaken = true;
-            }
-            catch (ObjectDisposedException) when (_disposed)
-            {
-                return;
-            }
-
-            if (_disposed)
-            {
-                return;
-            }
-
-            _disposed = true;
-            (_provider as IDisposable)?.Dispose();
-            _provider = null;
-            _frozenServiceTypeIndex = null;
-            GetServicesUnsafe.Clear();
-            _registeredInstances.Clear();
-            _frozen = false;
-            _logger.Info("IOC Container disposed");
-        }
-        finally
-        {
-            if (lockTaken)
-            {
-                _lock.ExitWriteLock();
-                DisposeLockWhenQuiescent();
-            }
         }
     }
 

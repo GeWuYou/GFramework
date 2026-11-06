@@ -570,7 +570,8 @@ public sealed class ContextRegistrationAnalyzer : DiagnosticAnalyzer
                     if (method.IsStatic)
                         continue;
 
-                    if (method.Name is not ("OnInitialize" or "InstallModules"))
+                    // Registration belongs to the configuration pass; the removed initialization hook is not executed.
+                    if (method.Name is not ("ConfigureServices" or "InstallModules"))
                         continue;
 
                     if (method.DeclaringSyntaxReferences.Length == 0)

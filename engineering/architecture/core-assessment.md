@@ -1,10 +1,10 @@
 # 核心设计评估
 
-评估日期：2026-11-07。源码基线：`5b727587f8860761a0c132203cb4d7e0cdae30af`。本轮只修改开发文档和采用说明；下述运行时问题尚未修复。
+评估日期：2026-11-07。源码基线：`5b727587f8860761a0c132203cb4d7e0cdae30af`。本报告保留治理前基线的设计评估与诊断，不代表后续提交仍有同样缺陷。当前实现见[当前架构](current-architecture.md)，修正与验收结果由[核心路线图](../roadmap/core-governance.md)维护。
 
 ## 结论
 
-当前框架有可保留的模块划分、宿主适配与生成器边界。主要问题是注册、实例激活、初始化、全局上下文和资源释放由多套机制共同决定，调用方难以推导完整行为。继续拆分内部 helper 无法单独解决这些所有权和时序问题。
+评估基线有可保留的模块划分、宿主适配与生成器边界。主要问题是注册、实例激活、初始化、全局上下文和资源释放由多套机制共同决定，调用方难以推导完整行为。继续拆分内部 helper 无法单独解决这些所有权和时序问题。
 
 推荐[标准 .NET 基础与可选编排](adr-001-standard-dotnet-foundation.md)。先纠正实例和生命周期，再收敛包与调用入口；不因代码曾由 AI 编写而推定全部需要重写。
 
@@ -14,19 +14,19 @@
 
 “已观察”指本轮对该基线执行的最小纯托管探针；“静态事实”可直接从调用路径确定；“待验证风险”尚未通过相应宿主或故障场景验证。已有测试在本轮只是契约证据，未全部重新运行，不代表完整回归或性能验收。
 
-## 优先问题
+## 治理前优先问题
 
 | 编号 | 发现与机制 | 证据 | 判断 |
 | --- | --- | --- | --- |
-| C1 | 启动始终 GameContext.Bind，表内拒绝不同上下文；实例级 ScopedContextProvider 无法绕过此启动步骤 | [Bootstrapper.EnsureContext](../../GFramework.Core/Architectures/ArchitectureBootstrapper.cs)、[GameContext.Bind](../../GFramework.Core/Architectures/GameContext.cs)、[provider](../../GFramework.Core/Architectures/ScopedContextProvider.cs) | 静态事实且已观察；当前有意的单上下文约束不符合新目标 |
-| C2 | System/Model 在正式 provider 构建前激活；依赖单例保存在独立缓存，Freeze 后不再复用该缓存 | [ComponentActivator](../../GFramework.Core/Architectures/ArchitectureComponentActivator.cs)、[组件注册器](../../GFramework.Core/Architectures/ArchitectureComponentRegistry.cs)、[Freeze](../../GFramework.Core/Ioc/MicrosoftDiContainer.cs) | 静态事实且已观察；同一 Singleton 描述可能有两份实例 |
-| C3 | 架构销毁调用 Clear；冻结容器的 Clear 直接返回，未调用已有 Dispose | [ArchitectureDisposer.DestroyAsync](../../GFramework.Core/Architectures/ArchitectureDisposer.cs)、[容器 Clear/Dispose](../../GFramework.Core/Ioc/MicrosoftDiContainer.cs) | 已观察：DI 资源未释放，旧上下文仍可解析已缓存服务 |
-| C4 | Core 依赖 CQRS runtime，Core.Abstractions 继承并暴露其契约；CQRS runtime 又依赖 Core 契约 | [Core 项目](../../GFramework.Core/GFramework.Core.csproj)、[上下文契约](../../GFramework.Core.Abstractions/Architectures/IArchitectureContext.cs)、[工厂](../../GFramework.Cqrs/CqrsRuntimeFactory.cs) | 静态事实；无项目引用环，但按需采用不成立 |
-| C5 | 旧命令/查询、新 request/notification/stream、兼容 alias 和同步包装长期并存 | [上下文实现](../../GFramework.Core/Architectures/ArchitectureContext.cs)、[内置模块](../../GFramework.Core/Services/ServiceModuleManager.cs) | 静态事实；新代码只推荐异步 request 主路径，历史 API 后续移除 |
-| C6 | Architecture 构造写全局日志 provider；基类与生成上下文存在不同的缓存和静态 provider 规则 | [Architecture 构造函数](../../GFramework.Core/Architectures/Architecture.cs)、[日志工厂](../../GFramework.Core.Abstractions/Logging/LoggerFactoryResolver.cs)、[生成器](../../GFramework.Core.SourceGenerators/Rule/ContextAwareGenerator.cs) | 静态事实；日志隔离和生成代码迁移必须一起考虑 |
-| C7 | 配置允许晚注册，而 Freeze 禁止容器注册；Utility 延迟创建、System/Model 立即创建 | [注册器](../../GFramework.Core/Architectures/ArchitectureComponentRegistry.cs)、[生命周期](../../GFramework.Core/Architectures/ArchitectureLifecycle.cs)、[相关测试](../../GFramework.Core.Tests/Architectures/ArchitectureLifecycleBehaviorTests.cs) | 静态事实；配置不能作为统一的热插拔保证 |
+| C1 | 启动始终 GameContext.Bind，表内拒绝不同上下文；实例级 ScopedContextProvider 无法绕过此启动步骤 | [Bootstrapper.EnsureContext](https://github.com/GeWuYou/GFramework/blob/5b727587f8860761a0c132203cb4d7e0cdae30af/GFramework.Core/Architectures/ArchitectureBootstrapper.cs)、[GameContext.Bind](https://github.com/GeWuYou/GFramework/blob/5b727587f8860761a0c132203cb4d7e0cdae30af/GFramework.Core/Architectures/GameContext.cs)、[provider](https://github.com/GeWuYou/GFramework/blob/5b727587f8860761a0c132203cb4d7e0cdae30af/GFramework.Core/Architectures/ScopedContextProvider.cs) | 静态事实且已观察；当前有意的单上下文约束不符合新目标 |
+| C2 | System/Model 在正式 provider 构建前激活；依赖单例保存在独立缓存，Freeze 后不再复用该缓存 | [ComponentActivator](https://github.com/GeWuYou/GFramework/blob/5b727587f8860761a0c132203cb4d7e0cdae30af/GFramework.Core/Architectures/ArchitectureComponentActivator.cs)、[组件注册器](https://github.com/GeWuYou/GFramework/blob/5b727587f8860761a0c132203cb4d7e0cdae30af/GFramework.Core/Architectures/ArchitectureComponentRegistry.cs)、[Freeze](https://github.com/GeWuYou/GFramework/blob/5b727587f8860761a0c132203cb4d7e0cdae30af/GFramework.Core/Ioc/MicrosoftDiContainer.cs) | 静态事实且已观察；同一 Singleton 描述可能有两份实例 |
+| C3 | 架构销毁调用 Clear；冻结容器的 Clear 直接返回，未调用已有 Dispose | [ArchitectureDisposer.DestroyAsync](https://github.com/GeWuYou/GFramework/blob/5b727587f8860761a0c132203cb4d7e0cdae30af/GFramework.Core/Architectures/ArchitectureDisposer.cs)、[容器 Clear/Dispose](https://github.com/GeWuYou/GFramework/blob/5b727587f8860761a0c132203cb4d7e0cdae30af/GFramework.Core/Ioc/MicrosoftDiContainer.cs) | 已观察：DI 资源未释放，旧上下文仍可解析已缓存服务 |
+| C4 | Core 依赖 CQRS runtime，Core.Abstractions 继承并暴露其契约；CQRS runtime 又依赖 Core 契约 | [Core 项目](https://github.com/GeWuYou/GFramework/blob/5b727587f8860761a0c132203cb4d7e0cdae30af/GFramework.Core/GFramework.Core.csproj)、[上下文契约](https://github.com/GeWuYou/GFramework/blob/5b727587f8860761a0c132203cb4d7e0cdae30af/GFramework.Core.Abstractions/Architectures/IArchitectureContext.cs)、[工厂](https://github.com/GeWuYou/GFramework/blob/5b727587f8860761a0c132203cb4d7e0cdae30af/GFramework.Cqrs/CqrsRuntimeFactory.cs) | 静态事实；无项目引用环，但按需采用不成立 |
+| C5 | 旧命令/查询、新 request/notification/stream、兼容 alias 和同步包装长期并存 | [上下文实现](https://github.com/GeWuYou/GFramework/blob/5b727587f8860761a0c132203cb4d7e0cdae30af/GFramework.Core/Architectures/ArchitectureContext.cs)、[内置模块](https://github.com/GeWuYou/GFramework/blob/5b727587f8860761a0c132203cb4d7e0cdae30af/GFramework.Core/Services/ServiceModuleManager.cs) | 静态事实；推荐异步 request 主路径，历史 API 在独立批次移除 |
+| C6 | Architecture 构造写全局日志 provider；基类与生成上下文存在不同的缓存和静态 provider 规则 | [Architecture 构造函数](https://github.com/GeWuYou/GFramework/blob/5b727587f8860761a0c132203cb4d7e0cdae30af/GFramework.Core/Architectures/Architecture.cs)、[日志工厂](https://github.com/GeWuYou/GFramework/blob/5b727587f8860761a0c132203cb4d7e0cdae30af/GFramework.Core.Abstractions/Logging/LoggerFactoryResolver.cs)、[生成器](https://github.com/GeWuYou/GFramework/blob/5b727587f8860761a0c132203cb4d7e0cdae30af/GFramework.Core.SourceGenerators/Rule/ContextAwareGenerator.cs) | 静态事实；日志隔离和生成代码迁移必须一起考虑 |
+| C7 | 配置允许晚注册，而 Freeze 禁止容器注册；Utility 延迟创建、System/Model 立即创建 | [注册器](https://github.com/GeWuYou/GFramework/blob/5b727587f8860761a0c132203cb4d7e0cdae30af/GFramework.Core/Architectures/ArchitectureComponentRegistry.cs)、[生命周期](https://github.com/GeWuYou/GFramework/blob/5b727587f8860761a0c132203cb4d7e0cdae30af/GFramework.Core/Architectures/ArchitectureLifecycle.cs)、[相关测试](https://github.com/GeWuYou/GFramework/blob/5b727587f8860761a0c132203cb4d7e0cdae30af/GFramework.Core.Tests/Architectures/ArchitectureLifecycleBehaviorTests.cs) | 静态事实；配置不能作为统一的热插拔保证 |
 
-### 本轮诊断结果
+### 基线诊断结果
 
 使用 .NET SDK 10.0.403、net10.0 Release 运行一次组合探针。探针只创建计数对象，不访问外部服务，不修改运行时源码；源码和原始日志保存在忽略目录 `.local/core-assessment/`。
 
@@ -44,7 +44,7 @@
 
 ### 历史修复为何不足
 
-先前容器释放工作增加了 Dispose 和独立容器测试，当前[生命周期测试](../../GFramework.Core.Tests/Ioc/IocContainerLifetimeTests.cs)也验证直接释放容器。缺失条件是“通过正常 Architecture 销毁路径抵达同一资源所有者”；阶段通知及全局解绑测试并不覆盖根 provider 的释放。
+先前容器释放工作增加了 Dispose 和独立容器测试，当前[生命周期测试](https://github.com/GeWuYou/GFramework/blob/5b727587f8860761a0c132203cb4d7e0cdae30af/GFramework.Core.Tests/Ioc/IocContainerLifetimeTests.cs)也验证直接释放容器。缺失条件是“通过正常 Architecture 销毁路径抵达同一资源所有者”；阶段通知及全局解绑测试并不覆盖根 provider 的释放。
 
 单活动上下文曾用于消除“任意字典首项”的歧义，当前源码确实实现了这个规则。本轮目标已变为通用实例隔离，因此应撤销其默认全局绑定，而不是在全局表里再发明上下文选择策略。
 
@@ -55,7 +55,7 @@
 | 保留 | Runtime/Abstractions/Generator 分离 | 已有职责边界和包校验有价值 | [边界校验器](../../scripts/validate-runtime-generator-boundaries.py)、生成器与打包测试继续通过 |
 | 保留 | 可选 Architecture/Module 编排 | Game 配置首载、宿主接线实际使用其顺序 | 最小应用可不用该层；使用时生命周期顺序可验证 |
 | 保留 | Game 配置直接接入、Godot/ECS 适配 | 已有独立 bootstrap 与宿主职责 | 宿主采用路径仍可构建，实机边界单独验证 |
-| 保留 | dispatcher 与生成注册表能力 | 有现成实现与覆盖，暂无收益证据支持替换第三方或重写 | [CQRS 测试](../../GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj)与[注册生成测试](../../GFramework.SourceGenerators.Tests/Cqrs/CqrsHandlerRegistryGeneratorTests.cs)保持语义 |
+| 保留 | dispatcher 与生成注册表能力 | 有现成实现与覆盖，暂无收益证据支持替换第三方或重写 | [CQRS 测试](https://github.com/GeWuYou/GFramework/blob/5b727587f8860761a0c132203cb4d7e0cdae30af/GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj)与[注册生成测试](https://github.com/GeWuYou/GFramework/blob/5b727587f8860761a0c132203cb4d7e0cdae30af/GFramework.SourceGenerators.Tests/Cqrs/CqrsHandlerRegistryGeneratorTests.cs)保持语义 |
 | 调整 | DI 注册与初始化窗口 | 一次构建后激活，统一实例身份 | System/Model/Utility、CQRS、Game/ECS 的构造与生命周期场景通过 |
 | 调整 | 停止、销毁与 Dispose 责任 | 业务停止与内存/句柄释放分开，失败也能清理 | 同步/异步/alias/外部实例、失败中途清理均有断言 |
 | 调整 | 日志和上下文依赖 | 显式实例依赖消除跨架构污染 | 两实例不同配置，销毁一个不影响另一个 |

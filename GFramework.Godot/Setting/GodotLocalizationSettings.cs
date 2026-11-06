@@ -12,7 +12,6 @@
 // limitations under the License.
 
 using GFramework.Core.Abstractions.Localization;
-using GFramework.Core.Architectures;
 using GFramework.Game.Abstractions.Setting;
 using GFramework.Game.Abstractions.Setting.Data;
 using GFramework.Godot.Setting.Data;
@@ -30,12 +29,26 @@ public class GodotLocalizationSettings : IResetApplyAbleSettings
     private readonly ISettingsModel _model;
 
     /// <summary>
-    ///     初始化 Godot 本地化设置应用器，并默认从当前架构上下文解析框架本地化管理器。
+    ///     初始化 Godot 本地化设置应用器，并从设置模型显式绑定的实例上下文解析框架本地化管理器。
     /// </summary>
     /// <param name="model">设置模型。</param>
     /// <param name="localizationMap">本地化映射表。</param>
     public GodotLocalizationSettings(ISettingsModel model, LocalizationMap localizationMap)
-        : this(model, localizationMap, TryResolveLocalizationManager, TranslationServer.SetLocale)
+        : this(model, localizationMap, TranslationServer.SetLocale)
+    {
+    }
+
+    /// <summary>
+    ///     从设置模型的显式实例上下文解析本地化管理器，并使用指定的引擎语言应用动作。
+    /// </summary>
+    /// <param name="model">已绑定架构上下文的设置模型。</param>
+    /// <param name="localizationMap">本地化映射表。</param>
+    /// <param name="applyGodotLocale">引擎 locale 应用动作。</param>
+    public GodotLocalizationSettings(
+        ISettingsModel model,
+        LocalizationMap localizationMap,
+        Action<string> applyGodotLocale)
+        : this(model, localizationMap, () => TryResolveLocalizationManager(model), applyGodotLocale)
     {
     }
 
@@ -111,11 +124,13 @@ public class GodotLocalizationSettings : IResetApplyAbleSettings
     /// </summary>
     public Type DataType { get; } = typeof(LocalizationSettings);
 
-    private static ILocalizationManager? TryResolveLocalizationManager()
+    private static ILocalizationManager? TryResolveLocalizationManager(ISettingsModel model)
     {
+        // 缺少显式上下文是调用错误；仅允许当前实例未安装可选本地化服务。
+        var context = model.GetContext();
         try
         {
-            return GameContext.GetFirstArchitectureContext().GetSystem<ILocalizationManager>();
+            return context.GetSystem<ILocalizationManager>();
         }
         catch (InvalidOperationException)
         {

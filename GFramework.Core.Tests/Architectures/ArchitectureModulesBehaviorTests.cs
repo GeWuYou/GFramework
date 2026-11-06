@@ -198,7 +198,8 @@ public class ArchitectureModulesBehaviorTests
         /// <summary>
         ///     在初始化阶段执行测试注入的模块注册逻辑。
         /// </summary>
-        protected override void OnInitialize()
+        /// <param name="services">当前配置阶段的服务描述集合。</param>
+        protected override void ConfigureServices(IServiceCollection services)
         {
             registrationAction(this);
         }
@@ -220,7 +221,8 @@ public class ArchitectureModulesBehaviorTests
         /// <summary>
         ///     保持空初始化，让测试只聚焦默认 CQRS 接线与 legacy bridge handler 自动发现。
         /// </summary>
-        protected override void OnInitialize()
+        /// <param name="services">当前配置阶段的服务描述集合。</param>
+        protected override void ConfigureServices(IServiceCollection services)
         {
         }
     }
@@ -244,7 +246,8 @@ public class ArchitectureModulesBehaviorTests
         ///     在用户初始化阶段显式接入额外程序集里的 notification handler，
         ///     让测试聚焦“publisher 是否被复用”，而不是依赖当前测试文件自己的 handler 扫描形状。
         /// </summary>
-        protected override void OnInitialize()
+        /// <param name="services">当前配置阶段的服务描述集合。</param>
+        protected override void ConfigureServices(IServiceCollection services)
         {
             RegisterCqrsHandlersFromAssembly(generatedAssembly);
         }

@@ -5,6 +5,7 @@ using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Environment;
 using GFramework.Core.Architectures;
 using GFramework.Core.Constants;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GFramework.Godot.Architectures;
 
@@ -54,11 +55,10 @@ public abstract class AbstractArchitecture : Architecture
     /// </summary>
     private string _architectureAnchorName = null!;
 
-    /// <summary>
-    ///     标记架构是否已被销毁的状态标志
-    ///     用于防止架构被重复销毁，确保资源清理只执行一次
-    /// </summary>
-    private bool _destroyed;
+    private readonly List<IGodotModule> _attachedExtensions = [];
+    private readonly GodotMainThreadDispatcher _dispatcher = new(
+        GodotThread.IsMainThread,
+        action => Callable.From(action).CallDeferred());
 
     /// <summary>
     ///     使用已解析的构造参数继续初始化基类。
@@ -99,15 +99,47 @@ public abstract class AbstractArchitecture : Architecture
 
 
     /// <summary>
-    ///     初始化架构，按顺序注册模型、系统和工具。
-    ///     包括将架构绑定到Godot生命周期并调用模块安装逻辑。
+    ///     只声明模块和组件，不访问场景树；正式 provider 由核心随后构建。
     /// </summary>
-    protected override void OnInitialize()
+    /// <param name="services">当前实例的标准服务集合。</param>
+    protected override void ConfigureServices(IServiceCollection services)
     {
-        _architectureAnchorName =
-            $"__{GFrameworkConstants.FrameworkName}__{GetType().Name}__{GetHashCode()}__ArchitectureAnchor__";
-        AttachToGodotLifecycle();
         InstallModules();
+    }
+
+    /// <summary>
+    ///     将所有节点操作显式派发回 Godot 主线程，并等待注册模块完成附加后才允许 Ready。
+    /// </summary>
+    /// <param name="cancellationToken">架构启动取消令牌。</param>
+    /// <returns>宿主锚点与模块附加完成的值任务。</returns>
+    protected override async ValueTask OnStartedAsync(CancellationToken cancellationToken)
+    {
+        await _dispatcher.InvokeAsync(AttachToGodotLifecycle, cancellationToken).ConfigureAwait(false);
+        var anchor = _anchor;
+        if (anchor is null)
+        {
+            if (_extensions.Count != 0)
+                throw new InvalidOperationException("Godot modules require an active SceneTree.");
+
+            return;
+        }
+
+        Task anchorReady = Task.CompletedTask;
+        await _dispatcher.InvokeAsync(
+            () => anchorReady = anchor.WaitUntilReadyAsync(),
+            cancellationToken).ConfigureAwait(false);
+        await anchorReady.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+        foreach (var module in _extensions)
+        {
+            await _dispatcher.InvokeAsync(() =>
+            {
+                anchor.AddChild(module.Node);
+                // OnAttach 失败后同样必须执行 OnDetach，所以先登记清理责任。
+                _attachedExtensions.Add(module);
+                module.OnAttach(this);
+            }, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     /// <summary>
@@ -122,10 +154,12 @@ public abstract class AbstractArchitecture : Architecture
     /// </summary>
     private void AttachToGodotLifecycle()
     {
+        _architectureAnchorName =
+            $"__{GFrameworkConstants.FrameworkName}__{GetType().Name}__{GetHashCode()}__ArchitectureAnchor__";
         if (Engine.GetMainLoop() is not SceneTree tree)
             return;
 
-        // 防止重复挂载（热重载 / 多次 OnInitialize）
+        // 当前实例只创建一个锚点；同名节点不会被另一个初始化流程复用。
         if (tree.Root.GetNodeOrNull(_architectureAnchorName) != null)
             return;
 
@@ -141,57 +175,62 @@ public abstract class AbstractArchitecture : Architecture
 
 
     /// <summary>
-    ///     安装Godot模块扩展
+    ///     在配置期声明 Godot 模块，模块只在异步启动阶段访问节点并附加到场景树。
     /// </summary>
-    /// <typeparam name="TModule">模块类型，必须实现IGodotModule接口</typeparam>
-    /// <param name="module">要安装的模块实例</param>
-    /// <returns>异步任务</returns>
-    /// <exception cref="ArgumentNullException">当 <paramref name="module" /> 为 <see langword="null" /> 时抛出。</exception>
-    /// <exception cref="InvalidOperationException">当架构锚点尚未初始化时抛出。</exception>
-    /// <remarks>
-    ///     该方法会等待锚点进入场景树后再继续执行附加回调，避免模块在非主线程或未就绪状态下访问 Godot 节点 API。
-    /// </remarks>
-    protected async Task InstallGodotModule<TModule>(TModule module) where TModule : IGodotModule
+    /// <typeparam name="TModule">模块类型。</typeparam>
+    /// <param name="module">属于当前架构的模块实例。</param>
+    /// <exception cref="InvalidOperationException">当前架构已经离开配置阶段。</exception>
+    protected void InstallGodotModule<TModule>(TModule module) where TModule : IGodotModule
     {
         ArgumentNullException.ThrowIfNull(module);
-
-        // 先确认锚点可用，避免模块安装产生副作用后再因架构未绑定场景树而失败。
-        var anchor = _anchor ?? throw new InvalidOperationException("Anchor not initialized");
-
-        module.Install(this);
-
-        // 在附加流程完成前先登记模块，保证后续任一步失败时仍能参与架构销毁阶段的清理。
+        InstallModule(module);
         _extensions.Add(module);
-
-        // 显式保留 Godot 同步上下文，确保后续 AddChild 和 OnAttach 仍在节点可访问的主线程执行。
-        await anchor.WaitUntilReadyAsync().ConfigureAwait(true);
-
-        // 延迟调用将扩展节点添加为锚点的子节点
-        anchor.CallDeferred(Node.MethodName.AddChild, module.Node);
-
-        // 调用扩展的附加回调方法
-        module.OnAttach(this);
     }
 
+    /// <summary>
+    ///     核心已取消并等待启动、进入清理访问作用域后，再分离本实例宿主节点。
+    ///     调度与并发销毁由核心唯一清理任务负责。
+    /// </summary>
+    /// <returns>宿主分离完成的值任务。</returns>
+    protected override ValueTask OnStoppingAsync()
+    {
+        return new ValueTask(CleanupHostAsync());
+    }
 
     /// <summary>
-    ///     销毁架构及其相关资源。
-    ///     调用所有已安装扩展的OnDetach方法，并清空扩展列表。
-    ///     若已被销毁则直接返回。
+    ///     仅在主线程分离已经附加的模块，并释放本实例拥有的锚点。
     /// </summary>
-    public override async ValueTask DestroyAsync()
+    /// <returns>宿主对象清理任务。</returns>
+    private Task CleanupHostAsync()
     {
-        if (_destroyed)
-            return;
+        if (_anchor is null && _attachedExtensions.Count == 0)
+            return Task.CompletedTask;
 
-        _destroyed = true;
+        return _dispatcher.InvokeAsync(() =>
+        {
+            List<Exception>? errors = null;
+            for (var i = _attachedExtensions.Count - 1; i >= 0; i--)
+            {
+                try
+                {
+                    _attachedExtensions[i].OnDetach();
+                }
+                catch (Exception exception)
+                {
+                    (errors ??= []).Add(exception);
+                }
+            }
 
-        foreach (var ext in _extensions)
-            ext.OnDetach();
+            _attachedExtensions.Clear();
+            _extensions.Clear();
+            var anchor = _anchor;
+            _anchor = null;
+            if (GodotObject.IsInstanceValid(anchor) && !anchor!.IsQueuedForDeletion())
+                anchor.QueueFree();
 
-        _extensions.Clear();
-
-        await base.DestroyAsync().ConfigureAwait(false);
+            if (errors is not null)
+                throw new AggregateException("One or more Godot modules failed to detach.", errors);
+        });
     }
 
     /// <summary>

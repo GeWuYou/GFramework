@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Lifecycle;
@@ -94,6 +95,26 @@ public class TestArchitectureWithoutRegistry : IArchitecture
     }
 
     /// <summary>
+    ///     当前测试替身不参与服务模块注册。
+    /// </summary>
+    /// <param name="module">待注册服务模块。</param>
+    /// <returns>不返回结果。</returns>
+    /// <exception cref="NotSupportedException">本测试替身不模拟服务模块生命周期。</exception>
+    public IServiceModule RegisterServiceModule(IServiceModule module)
+    {
+        throw new NotSupportedException();
+    }
+
+    /// <summary>
+    ///     当前测试替身没有拥有的容器或资源。
+    /// </summary>
+    /// <returns>已完成的资源释放操作。</returns>
+    public ValueTask DisposeAsync()
+    {
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
     ///     测试替身未实现模块安装流程。
     /// </summary>
     /// <param name="module">要安装的模块。</param>
@@ -164,9 +185,10 @@ public class TestArchitectureWithoutRegistry : IArchitecture
     /// <summary>
     ///     测试替身未实现异步初始化路径。
     /// </summary>
+    /// <param name="cancellationToken">本替身不执行初始化，因此不消费该令牌。</param>
     /// <returns>此方法始终抛出异常，不返回初始化任务。</returns>
     /// <exception cref="NotSupportedException">该测试替身不参与异步初始化验证。</exception>
-    public Task InitializeAsync()
+    public Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         throw new NotSupportedException();
     }

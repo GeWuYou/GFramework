@@ -1,6 +1,7 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Threading;
 using Arch.Core;
 using GFramework.Core.Extensions;
 using GFramework.Core.Systems;
@@ -14,6 +15,9 @@ namespace GFramework.Ecs.Arch;
 /// <typeparam name="T">系统数据类型（通常是 float 表示 deltaTime）</typeparam>
 public abstract class ArchSystemAdapter<T> : AbstractSystem, IArchSystemAdapter<T>, ArchSys.ISystem<T>
 {
+    private int _disposed;
+    private bool _isInitialized;
+
     /// <summary>
     ///     获取或设置 Arch ECS 世界的实例
     /// </summary>
@@ -66,7 +70,8 @@ public abstract class ArchSystemAdapter<T> : AbstractSystem, IArchSystemAdapter<
     /// </summary>
     void IDisposable.Dispose()
     {
-        OnArchDispose();
+        if (Interlocked.Exchange(ref _disposed, 1) == 0)
+            OnArchDispose();
     }
 
     // ===== GFramework 生命周期 =====
@@ -77,19 +82,23 @@ public abstract class ArchSystemAdapter<T> : AbstractSystem, IArchSystemAdapter<
     /// </summary>
     protected override void OnInit()
     {
+        if (_isInitialized)
+            return;
+
         World = this.GetService<World>()!;
 
         // 调用 Arch 初始化
         ((ArchSys.ISystem<T>)this).Initialize();
+        _isInitialized = true;
     }
 
     /// <summary>
     ///     系统销毁方法
-    ///     在此方法中调用 Arch 系统的资源释放逻辑
+    ///     停止后的资源由拥有该实例的 DI provider 或外部调用者释放，不在此处重复 Dispose
     /// </summary>
     protected override void OnDestroy()
     {
-        ((ArchSys.ISystem<T>)this).Dispose();
+        _isInitialized = false;
     }
 
     // ===== 子类可重写 Hook =====

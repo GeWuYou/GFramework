@@ -52,16 +52,28 @@ public class SyncArchitectureTests : ArchitectureTestsBase<SyncTestArchitecture>
     }
 
     /// <summary>
-    ///     测试架构是否按类型正确注册上下文
+    ///     测试两个同类型架构拥有独立上下文，不依赖全局绑定
     /// </summary>
     [Test]
-    public void Architecture_Should_Register_Context_By_Type()
+    public void Architectures_Should_Own_Independent_Contexts()
     {
         // Act
         Architecture!.Initialize();
-        var ctx = GameContext.GetByType(Architecture!.GetType());
-
-        Assert.That(ctx, Is.Not.Null);
+        var second = new SyncTestArchitecture();
+        try
+        {
+            second.Initialize();
+            Assert.Multiple(() =>
+            {
+                Assert.That(second.Context, Is.Not.SameAs(Architecture.Context));
+                Assert.That(second.Context.GetModel<TestModel>(), Is.Not.SameAs(Architecture.Context.GetModel<TestModel>()));
+                Assert.That(GameContext.TryGet<ArchitectureContext>(out _), Is.False);
+            });
+        }
+        finally
+        {
+            second.DestroyAsync().AsTask().GetAwaiter().GetResult();
+        }
     }
 
     /// <summary>
@@ -119,9 +131,11 @@ public class SyncArchitectureTests : ArchitectureTestsBase<SyncTestArchitecture>
     public async Task Architecture_Destroy_Should_Destroy_All_Systems_And_Enter_Destroyed()
     {
         Architecture!.Initialize();
+        var context = Architecture.Context;
+        var system = context.GetSystem<TestSystem>();
         await Architecture.DestroyAsync();
 
-        var system = Architecture.Context.GetSystem<TestSystem>();
+        Assert.Throws<ObjectDisposedException>(() => context.GetSystem<TestSystem>());
         Assert.That(system!.DestroyCalled, Is.True);
 
         var phase = Architecture.CurrentPhase;

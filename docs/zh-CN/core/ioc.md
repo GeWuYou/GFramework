@@ -41,9 +41,9 @@ public sealed class SystemClock : IClock
 | RegisterScoped&lt;TService, TImpl&gt;() | 在标准 scope 内复用实例 |
 | RegisterTransient&lt;TService, TImpl&gt;() | 每次解析创建 |
 | RegisterFactory&lt;TService&gt;(factory) | 当前注册的是 Singleton 工厂，不是 Transient 工厂 |
-| RegisterPlurality(instance) | 暴露具体类型及实现接口；生命周期和资源归属需要单独确认 |
+| RegisterPlurality(instance) | 以借用实例暴露具体类型及全部接口；调用者仍拥有释放责任 |
 | ExecuteServicesHook(configurator) | 在冻结前配置标准 IServiceCollection |
-| Freeze() | 构建根 ServiceProvider 并禁止后续注册 |
+| Freeze() | 构建一次根 ServiceProvider，验证构造依赖及 scoped 捕获，禁止后续注册 |
 | Get&lt;T&gt;() / GetRequired&lt;T&gt;() | 获取可选/必需服务；预冻结时主要读取已注册实例 |
 | CreateScope() | 从已冻结 provider 创建 Microsoft DI scope |
 
@@ -62,24 +62,28 @@ using var scope = container.CreateScope();
 var operation = scope.ServiceProvider.GetRequiredService<IOperation>();
 ```
 
-该片段需要在配置阶段注册 IOperation 及其实现。作用域中的标准 IDisposable 服务由 scope 释放；若服务仅支持 IAsyncDisposable，应使用标准异步 scope，并等待 DisposeAsync。根容器当前只实现同步 IDisposable，含 async-only 资源的根容器不能假定同步释放可用。
+该片段需要在配置阶段注册 IOperation 及其实现。作用域中的标准 IDisposable 服务由 scope 释放；若服务仅支持 IAsyncDisposable，应使用标准异步 scope，并等待 DisposeAsync。根容器实现 IDisposable 和 IAsyncDisposable；包含 async-only 资源时必须等待 DisposeAsync，不能使用同步 Dispose。
 
 ## 资源所有权
 
-- 由正式 DI provider 创建的对象，按标准 DI 的生命周期由其 scope 或根 provider 负责释放。
-- 直接传入的实例由创建者负责；RegisterPlurality 的工厂别名会影响 provider 的跟踪，不要仅凭实例注册重载推断所有 alias 都不参与释放。资源敏感对象优先用明确的服务绑定。
-- 容器的 Dispose 会释放其拥有的根 provider；重复 Dispose 可调用。释放后注册、解析、查询和创建 scope 会抛出 ObjectDisposedException。
-- Clear 在冻结后会直接返回，不能作为 Dispose 的替代。
+- 由正式 DI provider 通过类型或工厂创建的对象，由其 scope 或根 provider 释放。
+- 直接传入的实例由创建者拥有。RegisterPlurality(instance) 的具体类型和全部接口都使用实例描述符，解析别名不会转移释放责任。
+- RegisterPlurality&lt;T&gt;() 只接受不实现 IDisposable/IAsyncDisposable 的类型；这类普通单例的多个接口仍共享同一实例。
+- 可释放类型应使用一个规范拥有绑定，例如 RegisterSingleton&lt;IConnection, Connection&gt;()。标准 DI 会跟踪工厂返回的 IDisposable，多个 owning factory aliases 可能重复捕获同一对象，因此框架拒绝隐式生成这种资源别名。
+- DisposeAsync 等待标准 provider 释放其同步和异步资源；并发释放调用等待同一任务，重复调用不重复清理。释放后注册、解析、查询和创建 scope 均拒绝继续访问。
+- Clear 只用于尚未冻结的描述集合，不能代替 Dispose 或 DisposeAsync。
 
-当前 Architecture.DestroyAsync 会执行组件停止和服务模块销毁，但随后调用的是 Clear，未释放冻结 provider。若组合根显式传入并拥有 ArchitectureServices，应在组件停止后释放其 Container。仅持有 Architecture 时，没有公开的独立容器释放入口。注册期创建的构造依赖还可能不属于正式 provider，不能把显式 Dispose 当成所有生命周期缺口的通用补救。
+Architecture 的类型注册会对可释放组件使用单一具体类型拥有键，生命周期参与关系单独登记；这类组件不会自动暴露所有接口别名。若组件需要被其他服务按接口依赖，应在组合根明确选择一个资源拥有服务键，避免另加返回同一资源的 owning factory。
 
 ## 在 Architecture 中使用
 
-当前在 OnInitialize 注册组件；额外 DI 服务可通过 Configurator 配置。Architecture 自己在组件初始化之后冻结容器，调用方无需再次 Freeze。
+在 ConfigureServices(IServiceCollection services) 中登记组件、模块和标准 DI 服务；Configurator 也只能描述服务。配置结束后 Architecture 会调用一次 Freeze，再统一激活组件、注入上下文、执行创建回调并初始化。调用方不应再次构建 provider。
 
-按类型注册 System/Model 使用注册期激活路径，之后才构建正式 provider。因此它们收到的 Singleton 构造依赖可能与 Ready 后 GetService 得到的实例不同。需要稳定身份的现有调用方应显式保留并传入同一实例，同时承担相应资源责任。
+System、Model、Utility 的构造依赖和 Ready 后解析使用同一正式容器，Singleton 身份保持一致。GetService 不额外缓存普通服务：Transient 每次解析、Scoped 在明确 scope 内复用。根上下文不能解析 Scoped 服务，Contains 也不是无副作用的激活能力检查；只查询注册应使用 HasRegistration。
 
-初始化完成后的注册会被冻结容器拒绝，即使架构配置打开 AllowLateRegistration，也不能将其理解为完整的运行中注册支持。
+配置阶段不能通过 Context 获取服务，也不能在 onCreated、初始化或 OnStarted 回调里追加注册。原 AllowLateRegistration 配置已经移除。
+
+等待 DestroyAsync 或 DisposeAsync 会先停止业务组件及模块，再异步释放当前 provider。停止开始后外部旧 Context 拒绝新操作；框架的清理调用链仍可访问停止所需依赖。业务 Destroy 不应重复释放 DI 拥有的依赖；传入的外部实例仍由调用者最终 Dispose/DisposeAsync。
 
 ## 相关主题
 

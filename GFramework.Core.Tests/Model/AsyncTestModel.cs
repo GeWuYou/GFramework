@@ -21,7 +21,7 @@ public sealed class AsyncTestModel : AbstractModel, IAsyncInitializable
     ///     异步初始化方法，模拟异步初始化过程
     /// </summary>
     /// <returns>表示异步操作的Task</returns>
-    public async Task InitializeAsync()
+    public async Task InitializeAsync(global::System.Threading.CancellationToken cancellationToken = default)
     {
         await Task.Delay(10).ConfigureAwait(false);
         Initialized = true;

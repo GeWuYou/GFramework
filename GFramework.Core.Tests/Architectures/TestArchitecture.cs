@@ -13,7 +13,8 @@ public class TestArchitecture : Architecture
     /// <summary>
     ///     保持空初始化流程，便于测试仅验证 <see cref="GameContext" /> 的上下文绑定行为。
     /// </summary>
-    protected override void OnInitialize()
+    /// <param name="services">当前配置阶段的服务描述集合。</param>
+    protected override void ConfigureServices(IServiceCollection services)
     {
     }
 }

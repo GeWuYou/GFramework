@@ -1,7 +1,6 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using System.Collections.Concurrent;
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Command;
 using GFramework.Core.Abstractions.Environment;
@@ -24,7 +23,6 @@ public class ArchitectureContext : IArchitectureContext
 {
     private readonly IIocContainer _container;
     private readonly Lazy<ICqrsRuntime> _cqrsRuntime;
-    private readonly ConcurrentDictionary<Type, object> _serviceCache = new();
 
     /// <summary>
     ///     初始化新的架构上下文，并绑定其依赖容器。
@@ -37,21 +35,27 @@ public class ArchitectureContext : IArchitectureContext
     public ArchitectureContext(IIocContainer container)
     {
         _container = container ?? throw new ArgumentNullException(nameof(container));
-        _cqrsRuntime = new Lazy<ICqrsRuntime>(
-            ResolveCqrsRuntime,
-            LazyThreadSafetyMode.ExecutionAndPublication);
+        _cqrsRuntime = new Lazy<ICqrsRuntime>(ResolveCqrsRuntime, LazyThreadSafetyMode.ExecutionAndPublication);
     }
 
     #region CQRS Integration
 
-    /// <summary>
-    ///     获取 CQRS runtime seam。
-    /// </summary>
-    /// <remarks>
-    ///     该实例会在首次访问时从容器解析，并通过 <see cref="Lazy{T}" /> 保证并发场景下只执行一次初始化，
-    ///     避免多个请求线程重复触发同一个 runtime 的容器解析。
-    /// </remarks>
-    private ICqrsRuntime CqrsRuntime => _cqrsRuntime.Value;
+    /// <summary>单例运行时只解析一次，每次使用前仍检查当前架构访问窗口。</summary>
+    private ICqrsRuntime CqrsRuntime
+    {
+        get
+        {
+            EnsureAvailable();
+            return _cqrsRuntime.Value;
+        }
+    }
+
+    /// <summary>共享自有标准容器的实例状态使包装上下文遵守同一窗口；自定义容器负责自身访问与释放契约。</summary>
+    private void EnsureAvailable()
+    {
+        if (_container is global::GFramework.Core.Ioc.MicrosoftDiContainer ownedContainer)
+            ownedContainer.ContextAccess?.EnsureAvailable();
+    }
 
     /// <summary>
     ///     从容器解析当前架构上下文依赖的 CQRS runtime。
@@ -64,7 +68,7 @@ public class ArchitectureContext : IArchitectureContext
     }
 
     /// <summary>
-    /// 获取指定类型的服务实例，如果缓存中存在则直接返回，否则从容器中获取并缓存
+    /// 按正式容器的生命周期获取服务；Transient 不会被上下文额外缓存
     /// </summary>
     /// <typeparam name="TService">服务类型，必须为引用类型</typeparam>
     /// <returns>服务实例，如果不存在则抛出异常</returns>
@@ -74,18 +78,15 @@ public class ArchitectureContext : IArchitectureContext
     }
 
     /// <summary>
-    /// 从缓存中获取或创建指定类型的服务实例
-    /// 首先尝试从缓存中获取服务实例，如果缓存中不存在则从容器中获取并存入缓存
+    /// 从当前正式容器解析实例，保持标准 DI 的 Singleton、Scoped 和 Transient 语义
     /// </summary>
     /// <typeparam name="TService">服务类型，必须为引用类型</typeparam>
     /// <returns>服务实例，如果不存在则抛出异常</returns>
     private TService GetOrCache<TService>() where TService : class
     {
-        return (TService)_serviceCache.GetOrAdd(
-            typeof(TService),
-            _ => _container.Get<TService>()
-                 ?? throw new InvalidOperationException(
-                     $"Service {typeof(TService)} not registered"));
+        EnsureAvailable();
+        return _container.Get<TService>()
+               ?? throw new InvalidOperationException($"Service {typeof(TService)} not registered");
     }
 
     /// <summary>
@@ -244,6 +245,7 @@ public class ArchitectureContext : IArchitectureContext
     /// <returns>所有符合条件的服务实例列表</returns>
     public IReadOnlyList<TService> GetServices<TService>() where TService : class
     {
+        EnsureAvailable();
         return _container.GetAll<TService>();
     }
 
@@ -264,6 +266,7 @@ public class ArchitectureContext : IArchitectureContext
     /// <returns>所有符合条件的系统实例列表</returns>
     public IReadOnlyList<TSystem> GetSystems<TSystem>() where TSystem : class, ISystem
     {
+        EnsureAvailable();
         return _container.GetAll<TSystem>();
     }
 
@@ -284,6 +287,7 @@ public class ArchitectureContext : IArchitectureContext
     /// <returns>所有符合条件的模型实例列表</returns>
     public IReadOnlyList<TModel> GetModels<TModel>() where TModel : class, IModel
     {
+        EnsureAvailable();
         return _container.GetAll<TModel>();
     }
 
@@ -304,6 +308,7 @@ public class ArchitectureContext : IArchitectureContext
     /// <returns>所有符合条件的工具实例列表</returns>
     public IReadOnlyList<TUtility> GetUtilities<TUtility>() where TUtility : class, IUtility
     {
+        EnsureAvailable();
         return _container.GetAll<TUtility>();
     }
 
@@ -315,6 +320,7 @@ public class ArchitectureContext : IArchitectureContext
     /// <returns>按优先级排序后的服务实例列表</returns>
     public IReadOnlyList<TService> GetServicesByPriority<TService>() where TService : class
     {
+        EnsureAvailable();
         return _container.GetAllByPriority<TService>();
     }
 
@@ -326,6 +332,7 @@ public class ArchitectureContext : IArchitectureContext
     /// <returns>按优先级排序后的系统实例列表</returns>
     public IReadOnlyList<TSystem> GetSystemsByPriority<TSystem>() where TSystem : class, ISystem
     {
+        EnsureAvailable();
         return _container.GetAllByPriority<TSystem>();
     }
 
@@ -337,6 +344,7 @@ public class ArchitectureContext : IArchitectureContext
     /// <returns>按优先级排序后的模型实例列表</returns>
     public IReadOnlyList<TModel> GetModelsByPriority<TModel>() where TModel : class, IModel
     {
+        EnsureAvailable();
         return _container.GetAllByPriority<TModel>();
     }
 
@@ -348,6 +356,7 @@ public class ArchitectureContext : IArchitectureContext
     /// <returns>按优先级排序后的工具实例列表</returns>
     public IReadOnlyList<TUtility> GetUtilitiesByPriority<TUtility>() where TUtility : class, IUtility
     {
+        EnsureAvailable();
         return _container.GetAllByPriority<TUtility>();
     }
 

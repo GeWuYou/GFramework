@@ -103,17 +103,18 @@ dotnet add package GeWuYou.GFramework.Core.Abstractions
 当前版本的最小运行时入口只有三个关键动作：
 
 1. 继承 `Architecture`
-2. 在 `OnInitialize()` 中注册模型、系统、工具或模块
+2. 在 `ConfigureServices(IServiceCollection services)` 中注册模型、系统、工具或模块
 3. 通过 `architecture.Context` 或 `ContextAwareBase` 的扩展方法访问上下文
 
 最小示例：
 
 ```csharp
 using GFramework.Core.Architectures;
+using Microsoft.Extensions.DependencyInjection;
 
 public sealed class CounterArchitecture : Architecture
 {
-    protected override void OnInitialize()
+    protected override void ConfigureServices(IServiceCollection services)
     {
         RegisterModel(new CounterModel());
         RegisterSystem(new CounterSystem());

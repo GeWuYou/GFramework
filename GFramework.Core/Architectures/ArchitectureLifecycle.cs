@@ -6,14 +6,13 @@ using GFramework.Core.Abstractions.Enums;
 using GFramework.Core.Abstractions.Lifecycle;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Model;
-using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Abstractions.Utility;
 
 namespace GFramework.Core.Architectures;
 
 /// <summary>
-///     架构生命周期管理器
-///     负责管理架构的阶段转换、组件初始化和销毁
+///     在同一个正式 provider 上编排组件初始化、阶段和业务停止。配置、激活和资源释放职责分开，
+///     失败的启动与正常销毁共享一次清理，不需要额外容器或预注册单例缓存。
 /// </summary>
 internal sealed class ArchitectureLifecycle(
     IArchitecture architecture,
@@ -21,305 +20,208 @@ internal sealed class ArchitectureLifecycle(
     IArchitectureServices services,
     ILogger logger)
 {
-    #region Lifecycle Hook Management
-
-    /// <summary>
-    ///     注册生命周期钩子
-    /// </summary>
-    /// <param name="hook">生命周期钩子实例</param>
-    /// <returns>注册的钩子实例</returns>
-    public IArchitectureLifecycleHook RegisterLifecycleHook(IArchitectureLifecycleHook hook)
-    {
-        return _phaseCoordinator.RegisterLifecycleHook(hook);
-    }
-
-    #endregion
-
-    #region Component Lifecycle Management
-
-    /// <summary>
-    ///     统一的组件生命周期注册逻辑
-    /// </summary>
-    /// <param name="component">要注册的组件</param>
-    public void RegisterLifecycleComponent(object component)
-    {
-        if (component is IInitializable initializable)
-        {
-            if (_initialized)
-            {
-                if (!configuration.ArchitectureProperties.AllowLateRegistration)
-                    throw new InvalidOperationException("Cannot initialize component after Architecture is Ready");
-
-                InitializeLateRegisteredComponent(initializable);
-            }
-
-            else if (_pendingInitializableSet.Add(initializable))
-            {
-                _pendingInitializableList.Add(initializable);
-                logger.Trace($"Added {component.GetType().Name} to pending initialization queue");
-            }
-        }
-
-        _disposer.Register(component);
-    }
-
-    #endregion
-
-    #region Phase Management
-
-    /// <summary>
-    ///     进入指定的架构阶段，并执行相应的生命周期管理操作
-    /// </summary>
-    /// <param name="next">要进入的下一个架构阶段</param>
-    public void EnterPhase(ArchitecturePhase next)
-    {
-        _phaseCoordinator.EnterPhase(next);
-        PhaseChanged?.Invoke(this, new ArchitecturePhaseChangedEventArgs(next));
-    }
-
-    #endregion
-
-    #region Fields
-
-    private readonly TaskCompletionSource _readyTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-    /// <summary>
-    ///     待初始化组件的去重集合
-    /// </summary>
-    private readonly HashSet<IInitializable> _pendingInitializableSet = [];
-
-    /// <summary>
-    ///     存储所有待初始化的组件（统一管理，保持注册顺序）
-    /// </summary>
-    private readonly List<IInitializable> _pendingInitializableList = [];
-
-    /// <summary>
-    ///     架构阶段协调器
-    /// </summary>
-    private readonly ArchitecturePhaseCoordinator _phaseCoordinator =
-        new(architecture, configuration, services, logger);
-
-    /// <summary>
-    ///     架构销毁协调器
-    /// </summary>
-    private readonly ArchitectureDisposer _disposer = new(services, logger);
-
-    /// <summary>
-    ///     标记架构是否已初始化完成
-    /// </summary>
+    private readonly ArchitecturePhaseCoordinator _phases = new(architecture, configuration, logger);
+    private readonly ArchitectureDisposer _disposer = new();
+    private readonly List<object> _components = [];
+    private readonly HashSet<object> _componentSet = new(ReferenceEqualityComparer.Instance);
+    private readonly TaskCompletionSource _ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private bool _initialized;
+    private Task? _cleanupTask;
 
-    #endregion
+    /// <summary>当前阶段。</summary>
+    public ArchitecturePhase CurrentPhase => _phases.CurrentPhase;
 
-    #region Properties
+    /// <summary>当前实例是否完全就绪。</summary>
+    public bool IsReady => CurrentPhase == ArchitecturePhase.Ready && _ready.Task.IsCompletedSuccessfully;
 
-    /// <summary>
-    ///     当前架构的阶段
-    /// </summary>
-    public ArchitecturePhase CurrentPhase => _phaseCoordinator.CurrentPhase;
-
-    /// <summary>
-    ///     获取一个布尔值，指示当前架构是否处于就绪状态
-    /// </summary>
-    public bool IsReady => CurrentPhase == ArchitecturePhase.Ready;
-
-    /// <summary>
-    ///     获取一个布尔值，指示架构是否已初始化
-    /// </summary>
+    /// <summary>组件初始化是否已经完成。</summary>
     public bool IsInitialized => _initialized;
 
-    /// <summary>
-    ///     阶段变更事件（用于测试和扩展）
-    /// </summary>
+    /// <summary>阶段完成广播；异常会进入同一失败清理路径。</summary>
     public event EventHandler<ArchitecturePhaseChangedEventArgs>? PhaseChanged;
 
-    #endregion
+    /// <summary>在配置阶段登记当前实例钩子。</summary>
+    /// <param name="hook">钩子。</param>
+    /// <returns>传入钩子。</returns>
+    public IArchitectureLifecycleHook RegisterLifecycleHook(IArchitectureLifecycleHook hook) =>
+        _phases.RegisterLifecycleHook(hook);
 
-    #region Initialization
-
-    /// <summary>
-    ///     初始化所有待初始化的组件
-    /// </summary>
-    /// <param name="asyncMode">是否使用异步模式</param>
-    public async Task InitializeAllComponentsAsync(bool asyncMode)
+    /// <summary>正式 provider 激活后登记参与者，不通过全局或 alias 反向推断生命周期。</summary>
+    /// <param name="component">实际实例。</param>
+    public void RegisterLifecycleComponent(object component)
     {
-        logger.Info($"Initializing {_pendingInitializableList.Count} components");
-
-        var initializationPlan = CreateInitializationPlan();
-
-        await InitializePhaseComponentsAsync(
-                initializationPlan.Utilities,
-                ArchitecturePhase.BeforeUtilityInit,
-                ArchitecturePhase.AfterUtilityInit,
-                "context utilities",
-                "utility",
-                asyncMode)
-            .ConfigureAwait(false);
-        await InitializePhaseComponentsAsync(
-                initializationPlan.Models,
-                ArchitecturePhase.BeforeModelInit,
-                ArchitecturePhase.AfterModelInit,
-                "models",
-                "model",
-                asyncMode)
-            .ConfigureAwait(false);
-        await InitializePhaseComponentsAsync(
-                initializationPlan.Systems,
-                ArchitecturePhase.BeforeSystemInit,
-                ArchitecturePhase.AfterSystemInit,
-                "systems",
-                "system",
-                asyncMode)
-            .ConfigureAwait(false);
-
-        MarkInitializationCompleted();
+        if (_initialized)
+            throw new InvalidOperationException("Component registration is closed.");
+        if (_componentSet.Add(component))
+            _components.Add(component);
     }
 
-    /// <summary>
-    ///     异步初始化单个组件
-    /// </summary>
-    /// <param name="component">要初始化的组件</param>
-    /// <param name="asyncMode">是否使用异步模式</param>
-    private static async Task InitializeComponentAsync(IInitializable component, bool asyncMode)
+    /// <summary>为阶段广播保留组件和额外显式监听器；不重复调用同一个 alias。</summary>
+    public void CapturePhaseListeners()
     {
-        if (asyncMode && component is IAsyncInitializable asyncInit)
-            await asyncInit.InitializeAsync().ConfigureAwait(false);
-        else
-            component.Initialize();
+        _phases.SetListeners(_components.OfType<IArchitecturePhaseListener>()
+            .Concat(services.Container.GetAll<IArchitecturePhaseListener>()));
     }
 
-    /// <summary>
-    ///     按架构既有阶段语义把待初始化组件拆分为 utility、model 和 system 三个批次。
-    ///     这样可以在压缩主流程复杂度的同时，继续复用注册顺序和接口类型决定的初始化分层。
-    /// </summary>
-    /// <returns>当前待初始化组件的阶段化批次。</returns>
-    private InitializationPlan CreateInitializationPlan()
+    /// <summary>按 Utility、Model、System 顺序初始化，不在初始化过程中修改容器。</summary>
+    /// <param name="asyncMode">是否允许异步参与者。</param>
+    /// <param name="cancellationToken">启动取消令牌。</param>
+    /// <returns>全部组件初始化完成。</returns>
+    public async Task InitializeAllComponentsAsync(bool asyncMode, CancellationToken cancellationToken)
     {
-        return new InitializationPlan(
-            _pendingInitializableList.OfType<IContextUtility>().ToList(),
-            _pendingInitializableList.OfType<IModel>().ToList(),
-            _pendingInitializableList.OfType<ISystem>().ToList());
-    }
-
-    /// <summary>
-    ///     执行单个生命周期阶段的批量初始化，并统一维护阶段切换、日志输出和异步初始化策略。
-    /// </summary>
-    /// <typeparam name="TComponent">当前阶段要初始化的组件类型。</typeparam>
-    /// <param name="components">当前阶段的组件列表。</param>
-    /// <param name="beforePhase">阶段开始前要进入的生命周期状态。</param>
-    /// <param name="afterPhase">阶段结束后要进入的生命周期状态。</param>
-    /// <param name="componentGroupName">用于批量日志的组件组名称。</param>
-    /// <param name="componentLogName">用于单个组件日志的组件角色名称。</param>
-    /// <param name="asyncMode">是否允许优先走异步初始化契约。</param>
-    private async Task InitializePhaseComponentsAsync<TComponent>(
-        IReadOnlyList<TComponent> components,
-        ArchitecturePhase beforePhase,
-        ArchitecturePhase afterPhase,
-        string componentGroupName,
-        string componentLogName,
-        bool asyncMode)
-        where TComponent : class, IInitializable
-    {
-        EnterPhase(beforePhase);
-
-        if (components.Count != 0)
-        {
-            logger.Info($"Initializing {components.Count} {componentGroupName}");
-
-            foreach (var component in components)
-            {
-                logger.Debug($"Initializing {componentLogName}: {component.GetType().Name}");
-                await InitializeComponentAsync(component, asyncMode).ConfigureAwait(false);
-            }
-
-            logger.Info($"All {componentGroupName} initialized");
-        }
-
-        EnterPhase(afterPhase);
-    }
-
-    /// <summary>
-    ///     在所有阶段初始化完成后清理挂起列表，并把生命周期状态切换到“已初始化”。
-    /// </summary>
-    private void MarkInitializationCompleted()
-    {
-        _pendingInitializableList.Clear();
-        _pendingInitializableSet.Clear();
+        await InitializeGroupAsync(
+            _components.Where(component => component is IUtility),
+            ArchitecturePhase.BeforeUtilityInit, ArchitecturePhase.AfterUtilityInit,
+            asyncMode, cancellationToken).ConfigureAwait(false);
+        await InitializeGroupAsync(
+            _components.Where(component => component is IModel and not IUtility),
+            ArchitecturePhase.BeforeModelInit, ArchitecturePhase.AfterModelInit,
+            asyncMode, cancellationToken).ConfigureAwait(false);
+        await InitializeGroupAsync(
+            _components.Where(component => component is not IUtility and not IModel),
+            ArchitecturePhase.BeforeSystemInit, ArchitecturePhase.AfterSystemInit,
+            asyncMode, cancellationToken).ConfigureAwait(false);
         _initialized = true;
-        logger.Info("All components initialized");
     }
 
-    /// <summary>
-    ///     立即初始化在常规初始化批次完成后新增的组件。
-    ///     当启用 <c>AllowLateRegistration</c> 时，生命周期层需要和注册层保持一致，
-    ///     让新增组件在注册当下完成同步初始化，而不是停留在未初始化状态。
-    /// </summary>
-    /// <param name="component">后注册的可初始化组件。</param>
-    private void InitializeLateRegisteredComponent(IInitializable component)
+    /// <summary>进入阶段、顺序初始化参与者，再完成阶段通知。</summary>
+    /// <param name="components">当前角色实例。</param>
+    /// <param name="before">开始阶段。</param>
+    /// <param name="after">完成阶段。</param>
+    /// <param name="asyncMode">是否允许异步初始化。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>当前批次完成。</returns>
+    private async Task InitializeGroupAsync(
+        IEnumerable<object> components,
+        ArchitecturePhase before,
+        ArchitecturePhase after,
+        bool asyncMode,
+        CancellationToken cancellationToken)
     {
-        logger.Debug($"Initializing late-registered component: {component.GetType().Name}");
-        component.Initialize();
+        await EnterPhaseAsync(before, asyncMode, cancellationToken).ConfigureAwait(false);
+        foreach (var component in components)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (component is IAsyncInitializable && !asyncMode)
+                throw new InvalidOperationException("An asynchronous component requires InitializeAsync().");
+            // 只记录真正开始的初始化；尝试中途失败仍需要业务清理。
+            _disposer.Register(component);
+            if (component is IAsyncInitializable asyncInitializable)
+            {
+                await asyncInitializable.InitializeAsync(cancellationToken).ConfigureAwait(false);
+            }
+            else if (component is IInitializable initializable)
+                initializable.Initialize();
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+        await EnterPhaseAsync(after, asyncMode, cancellationToken).ConfigureAwait(false);
     }
 
-    #endregion
+    /// <summary>更新阶段并通知观察者。</summary>
+    /// <param name="phase">目标阶段。</param>
+    /// <param name="asyncMode">是否允许异步钩子。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>阶段处理完成。</returns>
+    private async ValueTask EnterPhaseAsync(
+        ArchitecturePhase phase, bool asyncMode, CancellationToken cancellationToken = default)
+    {
+        await _phases.EnterPhaseAsync(phase, asyncMode, cancellationToken).ConfigureAwait(false);
+        PhaseChanged?.Invoke(this, new ArchitecturePhaseChangedEventArgs(phase));
+    }
 
-    #region Destruction
+    /// <summary>完成 Ready 阶段之后才唤醒等待者。</summary>
+    /// <param name="asyncMode">是否允许异步阶段钩子。</param>
+    /// <param name="cancellationToken">启动取消令牌。</param>
+    /// <returns>就绪广播完成。</returns>
+    public async ValueTask MarkAsReadyAsync(bool asyncMode, CancellationToken cancellationToken)
+    {
+        await EnterPhaseAsync(ArchitecturePhase.Ready, asyncMode, cancellationToken).ConfigureAwait(false);
+        _ready.TrySetResult();
+    }
 
-    /// <summary>
-    ///     异步销毁架构及所有组件
-    /// </summary>
+    /// <summary>先标记失败；等待者由外层在自动清理完成后唤醒。</summary>
+    /// <returns>失败阶段广播完成。</returns>
+    public ValueTask MarkAsFailedAsync() => EnterPhaseAsync(ArchitecturePhase.FailedInitialization, true);
+
+    /// <summary>失败清理完成后让 Ready 等待者观察原失败或取消。</summary>
+    /// <param name="exception">启动失败。</param>
+    public void CompleteFailure(Exception exception)
+    {
+        if (exception is OperationCanceledException canceled)
+            _ready.TrySetCanceled(canceled.CancellationToken);
+        else
+            _ready.TrySetException(exception);
+    }
+
+    /// <summary>等待本轮启动结果；仅创建但未启动的架构不会被误判为就绪。</summary>
+    /// <returns>启动结果。</returns>
+    public Task WaitUntilReadyAsync() => _ready.Task;
+
+    /// <summary>只执行一次的业务停止、模块停止及异步 provider 释放，失败时继续后续清理。</summary>
+    /// <returns>全部清理完成。</returns>
+    public ValueTask CleanupAsync()
+    {
+        _cleanupTask ??= CleanupCoreAsync();
+        return new ValueTask(_cleanupTask);
+    }
+
+    /// <summary>缓存成功或失败结果，避免失败启动后的显式销毁遗失先前清理异常。</summary>
+    /// <returns>唯一资源清理结果。</returns>
+    private async Task CleanupCoreAsync()
+    {
+        var errors = new List<Exception>();
+        errors.AddRange(await _disposer.StopAsync().ConfigureAwait(false));
+        try
+        {
+            await services.ModuleManager.DestroyAllAsync().ConfigureAwait(false);
+        }
+        catch (Exception error)
+        {
+            errors.Add(error);
+        }
+        try
+        {
+            await services.Container.DisposeAsync().ConfigureAwait(false);
+        }
+        catch (Exception error)
+        {
+            errors.Add(error);
+        }
+        if (errors.Count != 0)
+            throw new AggregateException("Architecture cleanup failed.", errors);
+    }
+
+    /// <summary>停止阶段回调失败不能绕过资源清理；终态在 provider 释放之后广播。</summary>
+    /// <returns>停止与释放全部完成。</returns>
     public async ValueTask DestroyAsync()
     {
-        await _disposer.DestroyAsync(CurrentPhase, EnterPhase).ConfigureAwait(false);
+        var errors = new List<Exception>();
+        try
+        {
+            await EnterPhaseAsync(ArchitecturePhase.Destroying, true).ConfigureAwait(false);
+        }
+        catch (Exception error)
+        {
+            errors.Add(error);
+        }
+        try
+        {
+            await CleanupAsync().ConfigureAwait(false);
+        }
+        catch (Exception error)
+        {
+            errors.Add(error);
+        }
+        try
+        {
+            await EnterPhaseAsync(ArchitecturePhase.Destroyed, true).ConfigureAwait(false);
+        }
+        catch (Exception error)
+        {
+            errors.Add(error);
+        }
+        _ready.TrySetException(new ObjectDisposedException(nameof(Architecture)));
+        if (errors.Count != 0)
+            throw new AggregateException("Architecture destruction failed.", errors);
     }
-
-    /// <summary>
-    ///     销毁架构并清理所有组件资源（同步方法，保留用于向后兼容）
-    /// </summary>
-    [Obsolete("建议使用 DestroyAsync() 以支持异步清理")]
-    public void Destroy()
-    {
-        DestroyAsync().AsTask().GetAwaiter().GetResult();
-    }
-
-    #endregion
-
-    /// <summary>
-    ///     保存一次完整初始化流程所需的三个阶段批次。
-    /// </summary>
-    /// <param name="Utilities">Utility 初始化批次。</param>
-    /// <param name="Models">Model 初始化批次。</param>
-    /// <param name="Systems">System 初始化批次。</param>
-    private readonly record struct InitializationPlan(
-        IReadOnlyList<IContextUtility> Utilities,
-        IReadOnlyList<IModel> Models,
-        IReadOnlyList<ISystem> Systems);
-
-    #region Ready State
-
-    /// <summary>
-    ///     标记架构为就绪状态
-    /// </summary>
-    public void MarkAsReady()
-    {
-        EnterPhase(ArchitecturePhase.Ready);
-        _readyTcs.TrySetResult();
-    }
-
-    /// <summary>
-    ///     标记架构初始化失败
-    /// </summary>
-    /// <param name="exception">失败异常</param>
-    public void MarkAsFailed(Exception exception)
-    {
-        EnterPhase(ArchitecturePhase.FailedInitialization);
-        _readyTcs.TrySetException(exception);
-    }
-
-    /// <summary>
-    ///     等待架构就绪
-    /// </summary>
-    public Task WaitUntilReadyAsync() => _readyTcs.Task;
-
-    #endregion
 }

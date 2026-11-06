@@ -197,13 +197,13 @@ container.UseNotificationPublisher<MyCustomNotificationPublisher>();
 
 ## 处理器注册与生成器协作
 
-在标准 `Architecture` 启动路径中，CQRS runtime 会自动接入基础设施。你通常只需要在 `OnInitialize()` 里追加行为或额外程序集：
+在标准 `Architecture` 启动路径中，CQRS runtime 会自动接入基础设施。你通常只需要在 `ConfigureServices(...)` 里追加行为或额外程序集：
 
 ```csharp
-protected override void OnInitialize()
+protected override void ConfigureServices(IServiceCollection services)
 {
-    RegisterCqrsPipelineBehavior<LoggingBehavior<,>>();
-    RegisterCqrsPipelineBehavior<PerformanceBehavior<,>>();
+    services.AddSingleton(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+    services.AddSingleton(typeof(IPipelineBehavior<,>), typeof(PerformanceBehavior<,>));
 
     RegisterCqrsHandlersFromAssemblies(
     [

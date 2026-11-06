@@ -22,41 +22,42 @@ GFramework 当前仓库内已经交付并持续维护的 ECS 模块族是 `Ecs.A
 - 需要默认实现时安装 `GeWuYou.GFramework.Ecs.Arch`
 - 只需要契约时安装 `GeWuYou.GFramework.Ecs.Arch.Abstractions`
 
-### 2. 在 `Initialize()` 前显式接入运行时
+### 2. 在配置阶段声明 ECS 模块与系统
 
-`UseArch(...)` 通过 `ArchitectureModuleRegistry` 注册服务模块。按当前源码与集成测试，它应在架构实例调用
-`Initialize()` 之前完成。
+在 `ConfigureServices(IServiceCollection)` 中调用 `UseArch(...)`。该入口只登记到当前架构实例；配置结束后会拒绝新增模块，不再写入全局注册表。
+
+将 ECS 驱动的系统显式注册为 `ArchSystemAdapter<float>` 服务。模块负责注入当前实例上下文及系统的初始化、更新和停止；provider 负责 World 与自己创建的系统资源。
 
 ```csharp
 using Arch.Core;
 using GFramework.Core.Architectures;
+using GFramework.Ecs.Arch;
 using GFramework.Ecs.Arch.Abstractions;
 using GFramework.Ecs.Arch.Extensions;
+using GFramework.Ecs.Arch.Systems;
+using Microsoft.Extensions.DependencyInjection;
 
-public sealed class GameArchitecture : Architecture
-{
-    public GameArchitecture() : base(new ArchitectureConfiguration())
-    {
-    }
-
-    protected override void OnInitialize()
-    {
-        RegisterSystem<MovementSystem>();
-    }
-}
-
-var architecture = new GameArchitecture()
-    .UseArch(options =>
-    {
-        options.WorldCapacity = 2048;
-        options.Priority = 50;
-    });
-
-architecture.Initialize();
+await using var architecture = new GameArchitecture();
+await architecture.InitializeAsync();
 
 var world = architecture.Context.GetService<World>();
 var ecsModule = architecture.Context.GetService<IArchEcsModule>();
+
+public sealed class GameArchitecture : Architecture
+{
+    protected override void ConfigureServices(IServiceCollection services)
+    {
+        this.UseArch(options =>
+        {
+            options.WorldCapacity = 2048;
+            options.Priority = 50;
+        });
+        services.AddSingleton<ArchSystemAdapter<float>, MovementSystem>();
+    }
+}
 ```
+
+不要把同一系统同时声明为 Architecture 的独立 System 和 ECS 模块的拥有系统，也不要通过多个 owning 工厂为可释放对象建立 alias。纯契约的共享宿主循环仍可只引用抽象包。
 
 ### 3. 让 ECS 系统继承 `ArchSystemAdapter<float>`
 
@@ -110,6 +111,10 @@ public sealed class GameLoop
     }
 }
 ```
+
+World 在配置阶段尚未创建。初始化解析同一个 Singleton World；若系统中途失败，模块停止已经启动的系统，provider 仍释放已创建资源。手动 `World.Destroy(world)` 不应与 provider 所有权混用。
+
+`ArchSystemAdapter.OnDestroy()` 负责业务停止；`OnArchDispose()` 由拥有该适配器的 provider 或外部创建者释放时调用。需要自有停止逻辑时重写 `OnDestroy()` 并调用基类，不在其中重复释放 DI 拥有的资源。
 
 ## 阅读顺序
 

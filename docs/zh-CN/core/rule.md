@@ -7,7 +7,7 @@ description: 说明 GFramework.Core.Rule 中 IContextAware 规则接口与上下
 
 ## 概述
 
-Rule 包定义了框架的核心规则接口 `IContextAware`，这是所有框架组件的基础。通过这个接口，框架实现了统一的上下文管理和能力访问机制。所有框架组件（Command、Query、Model、System）都实现此接口，并通过扩展方法获得访问架构服务的能力。
+Rule 包定义了框架的核心规则接口 `IContextAware`，它用于需要架构上下文的组件，普通 DI 服务无需实现它。通过这个接口，框架实现了统一的上下文管理和能力访问机制。所有框架组件（Command、Query、Model、System）都实现此接口，并通过扩展方法获得访问架构服务的能力。
 
 ## 核心接口：IContextAware
 
@@ -64,6 +64,7 @@ public abstract class ContextAwareBase : IContextAware
     /// </summary>
     void IContextAware.SetContext(IArchitectureContext context)
     {
+        ArgumentNullException.ThrowIfNull(context);
         Context = context;
         OnContextReady();  // 上下文准备好后调用此方法
     }
@@ -73,8 +74,8 @@ public abstract class ContextAwareBase : IContextAware
     /// </summary>
     IArchitectureContext IContextAware.GetContext()
     {
-        Context ??= GameContext.GetFirstArchitectureContext();
-        return Context;
+        return Context ?? throw new InvalidOperationException(
+            "Bind this instance through IContextAware.SetContext before accessing it.");
     }
 
     /// <summary>
@@ -90,7 +91,7 @@ public abstract class ContextAwareBase : IContextAware
 
 - `Context` 属性 - 存储架构上下文的引用
 - `OnContextReady()` 钩子 - 在上下文设置完成后调用，用于初始化逻辑
-- 自动回退机制 - 如果上下文未被显式设置，会自动从 `GameContext.GetFirstArchitectureContext()` 获取当前活动上下文
+- 显式绑定 - 未调用 SetContext 的实例访问上下文会抛出 InvalidOperationException，不回退全局上下文
 
 ## 扩展方法：框架能力的来源
 
@@ -308,15 +309,15 @@ public class SaveManager : ContextAwareBase
 3. **初始化回调** - `ContextAwareBase` 在 `SetContext()` 中调用 `OnContextReady()` 钩子
 4. **能力访问** - 组件现在可以通过扩展方法访问所有架构服务
 
-### 回退机制
+### 未绑定实例
 
-如果组件的上下文未被显式设置，`GetContext()` 会自动尝试从 `GameContext.GetFirstArchitectureContext()` 获取当前活动上下文。这提供了一个安全的回退机制。
+GetContext 只返回当前实例明确绑定的上下文。未绑定时抛出 InvalidOperationException；即使进程中存在其他 Architecture 或显式 GameContext 绑定，也不会隐式选择它们。生成的 ContextAware 实现使用相同的实例绑定规则，不再共享静态 provider。
 
 ```csharp
 IArchitectureContext IContextAware.GetContext()
 {
-    Context ??= GameContext.GetFirstArchitectureContext();
-    return Context;
+    return Context ?? throw new InvalidOperationException(
+        "Bind this instance through IContextAware.SetContext before accessing it.");
 }
 ```
 

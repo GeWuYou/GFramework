@@ -11,12 +11,13 @@ namespace GFramework.Core.Abstractions.Ioc;
 ///     依赖注入容器接口，定义服务注册、解析与生命周期管理的统一入口。
 /// </summary>
 /// <remarks>
-///     实现者必须在 <see cref="IDisposable.Dispose" /> 中释放容器拥有的根 <see cref="IServiceProvider" /> 及其
-///     关联同步资源，并保证释放操作幂等。
+///     实现者必须在 <see cref="IDisposable.Dispose" /> 或 <see cref="IAsyncDisposable.DisposeAsync" /> 中释放
+///     容器拥有的根 <see cref="IServiceProvider" />。异步释放必须支持仅实现 <see cref="IAsyncDisposable" />
+///     的服务；并发释放调用等待同一清理结果，资源只能释放一次。
 ///     容器一旦释放，后续任何注册、解析、查询或作用域创建调用都必须抛出
 ///     <see cref="ObjectDisposedException" />，避免消费者继续访问失效的运行时状态。
 /// </remarks>
-public interface IIocContainer : IContextAware, IDisposable
+public interface IIocContainer : IContextAware, IDisposable, IAsyncDisposable
 {
     #region Register Methods
 
@@ -60,14 +61,18 @@ public interface IIocContainer : IContextAware, IDisposable
     ///     注册多个实例
     ///     将实例注册到其实现的所有接口和具体类型上
     /// </summary>
-    /// <param name="instance">要注册的实例</param>
+    /// <param name="instance">要注册的调用者拥有实例；容器不会接管其同步或异步资源释放责任。</param>
     public void RegisterPlurality(object instance);
 
     /// <summary>
     ///     注册多个实例
-    ///     将实例注册到其实现所有接口
+    ///     将非资源拥有型单例注册到其实现的所有接口和具体类型，所有别名共享同一实例。
     /// </summary>
-    /// <typeparam name="T">要注册的实例类型</typeparam>
+    /// <typeparam name="T">不实现 IDisposable 或 IAsyncDisposable 的实例类型。</typeparam>
+    /// <exception cref="InvalidOperationException">
+    ///     类型实现 IDisposable 或 IAsyncDisposable。标准 DI 的工厂别名会重复捕获资源；请注册一个规范拥有服务，
+    ///     或通过实例重载注册调用者自行释放的对象。
+    /// </exception>
     public void RegisterPlurality<T>() where T : class;
 
     /// <summary>

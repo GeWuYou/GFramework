@@ -235,43 +235,39 @@ var settingsStorage = new ScopedStorage(storage, "settings");
 6. 注册 `SettingsSystem`
 7. 注册 `ISaveRepository<TSaveData>`
 
-示意代码：
+以下配置方法放在项目的 Architecture 类中；MySettingsLocationProvider、MyAudioSettingsApplicator、MySaveData 为项目自行提供的类型。可释放存储通过一个 owning 工厂交给 provider，配置阶段不创建文件目录或读取服务：
 
 ```csharp
-var serializer = new JsonSerializer();
-var storage = new FileStorage("GameData", serializer);
+using Microsoft.Extensions.DependencyInjection;
 
-architecture.RegisterUtility(serializer);
-architecture.RegisterUtility<IStorage>(storage);
+protected override void ConfigureServices(IServiceCollection services)
+{
+    RegisterUtility<JsonSerializer>();
+    services.AddSingleton<IStorage>(provider =>
+        new FileStorage("GameData", provider.GetRequiredService<JsonSerializer>()));
+    services.AddSingleton(new DataRepositoryOptions { BasePath = "settings", AutoBackup = true });
+    services.AddSingleton(new SaveConfiguration
+    {
+        SaveRoot = "saves",
+        SaveSlotPrefix = "slot_",
+        SaveFileName = "save.json"
+    });
 
-architecture.RegisterUtility<ISettingsDataRepository>(
-    new UnifiedSettingsDataRepository(
-        storage,
-        serializer,
-        new DataRepositoryOptions { BasePath = "settings", AutoBackup = true }));
-
-architecture.RegisterModel(
-    new SettingsModel<ISettingsDataRepository>(
-        new MySettingsLocationProvider(),
-        architecture.Context.GetUtility<ISettingsDataRepository>())
-        .RegisterApplicator(new MyAudioSettingsApplicator()));
-
-architecture.RegisterSystem<ISettingsSystem>(new SettingsSystem());
-
-architecture.RegisterUtility<ISaveRepository<MySaveData>>(
-    new SaveRepository<MySaveData>(
-        storage,
-        new SaveConfiguration
-        {
-            SaveRoot = "saves",
-            SaveSlotPrefix = "slot_",
-            SaveFileName = "save.json"
-        }));
+    RegisterUtility<IDataLocationProvider>(new MySettingsLocationProvider());
+    RegisterUtility<UnifiedSettingsDataRepository>();
+    RegisterModel<SettingsModel<ISettingsDataRepository>>(model =>
+        model.RegisterApplicator(new MyAudioSettingsApplicator()));
+    RegisterSystem<SettingsSystem>();
+    RegisterUtility<SaveRepository<MySaveData>>();
+}
 ```
 
-启动时：
+启动时先等待架构完成，再通过已初始化的实例上下文触发设置加载和应用：
 
 ```csharp
+await architecture.InitializeAsync();
+var settingsModel = architecture.Context.GetModel<ISettingsModel>();
+var settingsSystem = architecture.Context.GetSystem<ISettingsSystem>();
 await settingsModel.InitializeAsync();
 await settingsSystem.ApplyAll();
 ```
@@ -289,7 +285,7 @@ await settingsSystem.SaveAll();
 如果你不走 `Architecture` 生命周期，直接使用 `GameConfigBootstrap`：
 
 ```csharp
-var bootstrap = new GameConfigBootstrap(
+using var bootstrap = new GameConfigBootstrap(
     new GameConfigBootstrapOptions
     {
         RootPath = contentRootPath,
@@ -304,7 +300,7 @@ await bootstrap.InitializeAsync();
 var registry = bootstrap.Registry;
 ```
 
-如果你走 `Architecture`，优先使用 `GameConfigModule`，并在较早阶段安装。
+如果使用 Architecture，在 ConfigureServices(IServiceCollection) 中 InstallModule(new GameConfigModule(options))；随后等待 architecture.InitializeAsync(cancellationToken)。模块首载由异步 BeforeUtilityInit 钩子执行，同步 Initialize 会拒绝此路径。provider 拥有 bootstrap 生命周期适配器，失败、取消和正常销毁都会释放监听资源。
 
 这一能力几乎总是与 source generators 绑定使用。目录、schema、生成器与热重载约定请直接看：
 

@@ -4,10 +4,12 @@
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Enums;
 using GFramework.Core.Abstractions.Events;
+using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Architectures;
 using GFramework.Core.Events;
 using GFramework.Core.Ioc;
+using GFramework.Core.Logging;
 using GFramework.Game.Abstractions.Setting;
 using GFramework.Game.Setting;
 using GFramework.Game.Setting.Events;
@@ -128,6 +130,7 @@ public sealed class SettingsSystemTests
         var container = new MicrosoftDiContainer();
         container.Register<IEventBus>(new EventBus());
         container.Register<ISettingsModel>(model);
+        container.Register<ILoggerFactoryProvider>(new ConsoleLoggerFactoryProvider());
         container.Freeze();
         return new ArchitectureContext(container);
     }

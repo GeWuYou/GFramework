@@ -42,9 +42,10 @@ public sealed class CqrsRuntimeModule : IServiceModule
     {
         ArgumentNullException.ThrowIfNull(container);
 
-        var dispatcherLogger = LoggerFactoryResolver.Provider.CreateLogger("CqrsDispatcher");
-        var registrarLogger = LoggerFactoryResolver.Provider.CreateLogger("DefaultCqrsHandlerRegistrar");
-        var registrationLogger = LoggerFactoryResolver.Provider.CreateLogger("DefaultCqrsRegistrationService");
+        var factory = container.Get<ILoggerFactoryProvider>() ?? new global::GFramework.Core.Logging.ConsoleLoggerFactoryProvider();
+        var dispatcherLogger = factory.CreateLogger("CqrsDispatcher");
+        var registrarLogger = factory.CreateLogger("DefaultCqrsHandlerRegistrar");
+        var registrationLogger = factory.CreateLogger("DefaultCqrsRegistrationService");
         var runtime = CqrsRuntimeFactory.CreateRuntime(container, dispatcherLogger);
         var registrar = CqrsRuntimeFactory.CreateHandlerRegistrar(container, registrarLogger);
 
