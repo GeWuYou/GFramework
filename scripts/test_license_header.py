@@ -117,7 +117,8 @@ class LicenseHeaderTests(unittest.TestCase):
 
     def test_excludes_generated_snapshots_and_third_party_paths(self) -> None:
         self.assertFalse(license_header.is_supported_path("ai-libs/project/file.cs"))
-        self.assertFalse(license_header.is_supported_path(".agents/skills/_shared/module-config.sh"))
+        self.assertFalse(license_header.is_supported_path(
+            ".agents/skills/gframework-doc-refresh/scripts/scan_module_evidence.py"))
         self.assertFalse(license_header.is_supported_path("third-party-licenses/package/LICENSE"))
         self.assertFalse(license_header.is_supported_path("GFramework.Tests/snapshots/Generated.g.cs"))
         self.assertFalse(license_header.is_supported_path(".ai/environment/tools.ai.yaml"))

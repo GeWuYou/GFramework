@@ -1,4 +1,4 @@
 interface:
-  display_name: "GFramework Issue Review"
-  short_description: "Inspect the current repository issue and triage next steps"
-  default_prompt: "Use $gframework-issue-review to inspect the current repository issue through the GitHub API, summarize the issue body, discussion, and key timeline signals, highlight what must be verified locally, and then hand follow-up execution to $gframework-boot."
+  display_name: "GFramework · Issue 梳理"
+  short_description: "读取 GitHub Issue 的讨论与时间线，整理需要本地核实的事实与验收缺口"
+  default_prompt: "使用 $gframework-issue-review 梳理指定 Issue，列出事实、证据缺口和下一核实步骤。"

@@ -1,67 +1,34 @@
 # AI-Plan Governance 跟踪
 
-## 目标
-
-保持仓库级 AI 工作流规则、公开恢复入口与多 Agent 协作约定在 `AGENTS.md`、`.agents/skills/**` 与
-`ai-plan/public/**` 之间一致，并让 `boot` 能稳定恢复这类治理主题。
-
 ## 当前恢复点
 
-- 恢复点编号：`AI-PLAN-GOVERNANCE-RP-002`
-- 当前阶段：`Phase 2`
-- 当前焦点：
-  - 已补齐 `ai-plan/public/README.md` 的 active-topic 暴露，使 `feat/cqrs-optimization` 映射到
-    `ai-plan-governance` 时，`boot` 能落到真实的 public tracking / trace 入口。
-  - 已在 `AGENTS.md` 增补主 Agent 协调多 worker wave 时的强约束，明确 critical path、`ai-plan`、
-    review、validation 与 final integration 归主 Agent 所有。
-  - 已新增 `.agents/skills/gframework-multi-agent-batch/`，把“主 Agent 负责派发、核对、更新 `ai-plan`、
-    验收并决定是否继续下一波”的流程沉淀为可复用 skill。
-  - 已轻量更新 `gframework-boot`、`gframework-batch-boot` 与 `.agents/skills/README.md`，把该模式接入既有
-    boot / batch 入口而不重复定义规则。
-  - 当前变更面仍限定在 `AGENTS.md`、`.agents/skills/**` 与 `ai-plan/public/**`，没有扩散到运行时代码或产品
-    模块。
+- 编号：`AI-PLAN-GOVERNANCE-RP-003`
+- 分支：`chore/skill-governance`
+- 阶段：本地实现与检查完成，准备提交及 GitHub PR；创建后交接。
+- 目标：将六个 skills 收敛为文档刷新、Issue 梳理和 PR 审查三个专用入口。
 
-## 当前状态摘要
+## 决策与边界
 
-- 已落地“`AGENTS.md` 负责强治理约束，skill 负责可执行流程”的混合方案。
-- 已修复本 worktree 的一个恢复入口缺口：topic 映射存在，但 active-topic 列表和 public recovery 文件此前缺失。
-- 当前主题已经具备后续继续演进 AI workflow 规则所需的 public tracking / trace 基线。
+- 启动、续作与显式委派规则归 AGENTS.md；删除三个流程包装及其菜单，不复制到适配器或全局 skills。
+- 保留模块 JSON 映射、文档校验器、模板和 GitHub 取证脚本 CLI；删除无消费者的重复 shell 映射与提示脚本。
+- Issue JSON 保留旧模式标签与 boot_handoff 字段，recommended_skill 改为 null；按 AGENTS.md 直接核实和续作。
+- 审阅与梳理本身保持只读；必要启动规则和恢复文档不依赖 harness，框架 API 与运行时不变。
+- 工作区接入采用独立本地适配器，机器绑定与证据不进入本仓库。
+- GitHub 发布使用 gh；PR 创建后只允许一次自动合并设置与回读，随后保留任务工作树交接。
 
-## 当前活跃事实
+## 验证与风险
 
-- 当前分支：`feat/cqrs-optimization`
-- `AGENTS.md` 的 `Repository Boot Skill` 现已与仓库实际目录对齐，使用 `.agents/skills/gframework-boot/`
-  而不是失效的 `.codex/skills/gframework-boot/` 路径。
-- `AGENTS.md` 新增 `Multi-Agent Coordination Rules`，用于约束主 Agent 的职责边界、worker ownership、
-  acceptance gate 与 stop condition。
-- `.agents/skills/gframework-multi-agent-batch/` 现已包含：
-  - `SKILL.md`
-  - `agents/openai.yaml`
-- `.agents/skills/gframework-boot/SKILL.md` 与 `.agents/skills/gframework-batch-boot/SKILL.md` 现已明确在
-  orchestration-heavy 场景下切换或让位给 `gframework-multi-agent-batch`。
-- `.agents/skills/README.md` 已把 `gframework-multi-agent-batch` 纳入公开入口说明。
-- `ai-plan/public/ai-plan-governance/` 已建立 public tracking / trace 入口，可供后续治理任务继续复用。
-
-## 当前风险
-
-- 漂移风险：若后续只改 `AGENTS.md` 或只改 skill，主 Agent 职责定义可能再次分叉。
-- 入口重叠风险：若 `gframework-batch-boot` 与 `gframework-multi-agent-batch` 的边界被继续模糊，公开入口会变得难以选择。
-- 恢复噪音风险：若该 topic 后续把每一轮治理细节都堆进 active 文件，`boot` 的默认恢复效率会下降。
-
-## 验证说明
-
-- `python3 scripts/license-header.py --check --paths AGENTS.md ai-plan/public/README.md ai-plan/public/ai-plan-governance/todos/ai-plan-governance-tracking.md ai-plan/public/ai-plan-governance/traces/ai-plan-governance-trace.md`
-  - 结果：通过
-  - 备注：本轮受 license-header 规则约束的 public 文档文件均已具备 Apache-2.0 头
-- `git diff --check`
-  - 结果：通过
-  - 备注：本轮治理变更未引入 trailing whitespace 或 patch 格式问题
-- `dotnet build GFramework.Core.Abstractions/GFramework.Core.Abstractions.csproj -c Release`
-  - 结果：通过
-  - 备注：`0 warning / 0 error`；满足仓库“完成任务前至少通过一条 build validation”的要求
+- 通过：三个 skill 的 quick_validate、中文菜单配置、相对链接与失效入口检查。
+- 通过：六个模块输入场景（正常、三个别名、歧义、未知）；Issue 7 项、PR 1 项、许可证脚本 7 项单元测试。
+- 通过：许可证、1182 个已跟踪 C# 文件命名、运行时/生成器边界、git diff --check。
+- 通过：独立适配器 schema 校验、六个能力 dry-run、带任务工具链的 workspace doctor，以及 harness check。
+- 通过：Core.Abstractions Release 构建及其 Cqrs.Abstractions 依赖，0 warning / 0 error；本次不修改 C# 代码。
+- 未执行：完整 solution 构建与 .NET 测试、文档站构建（本次无运行时或站点页面变更）。
+- 文件结构检查与人工场景审阅不能证明未来 agent 行为或效率提升；客户端菜单渲染需单独观察。
+- 历史 skill 调用保留在归档中，不应作为当前执行入口。
 
 ## 下一步
 
-1. 后续如再次出现“主 Agent 持续派发并验收多个 worker”的任务，优先直接用真实任务验证 `gframework-multi-agent-batch`
-   的可恢复性与边界清晰度
-2. 若该 skill 的 stop condition、ownership 或 `ai-plan` 记录格式在实战中出现歧义，再回到本 topic 做下一轮治理收口
+审查并提交完整任务 diff；通过 gh 核对关联 issue、发布 PR 并设置一次自动合并，回读后停止等待。
+准确 PR/head、租约与本地证据保存在任务交接记录；后续在允许的唤醒后核实合并再释放工作树。
+历史阶段见 [RP-002 跟踪归档](../archive/todos/ai-plan-governance-tracking-rp002.md)。

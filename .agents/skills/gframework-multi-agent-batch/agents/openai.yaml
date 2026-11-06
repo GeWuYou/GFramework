@@ -1,4 +1,0 @@
-interface:
-  display_name: "GFramework Multi-Agent Batch"
-  short_description: "Coordinate bounded parallel subagents with ai-plan tracking"
-  default_prompt: "Use $gframework-multi-agent-batch to coordinate multiple bounded parallel subagents in this GFramework repository while the main agent owns ai-plan updates, validation, review, and integration."

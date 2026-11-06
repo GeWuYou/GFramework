@@ -1,13 +1,13 @@
 # AI-Plan Public Index
 
-`ai-plan/public/README.md` is the shared startup index for `boot`. It should stay short, list only active topics, and
+`ai-plan/public/README.md` is the shared startup and recovery index. It should stay short, list only active topics, and
 help the current worktree land on the right recovery documents without scanning every public artifact.
 
-## Boot Rules
+## Recovery Rules
 
 1. Read this file before scanning `ai-plan/public/<topic>/`.
 2. If the current branch or worktree appears in the map below, read the listed topics in priority order.
-3. If there is no match, fall back to scanning active topic directories.
+3. If there is no match, search active topics for the requested task; do not load every topic.
 4. Ignore `ai-plan/public/archive/**` by default unless the user explicitly asks for historical context.
 
 ## Active Topics
@@ -72,3 +72,6 @@ help the current worktree land on the right recovery documents without scanning 
 - Branch: `docs/sdk-update-documentation`
   - Worktree hint: `GFramework-update-documentation`
   - Priority 1: `documentation-full-coverage-governance`
+
+- Branch: `chore/skill-governance`
+  - Priority 1: `ai-plan-governance`

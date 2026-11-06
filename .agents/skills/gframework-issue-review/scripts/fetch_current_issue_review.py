@@ -591,7 +591,7 @@ def choose_next_action(
     issue_type_candidates: list[str],
     affected_topics: list[str],
 ) -> str:
-    """Choose the next handling mode for boot handoff."""
+    """Choose a handling hint, retaining legacy mode labels for JSON consumers."""
     if information_flags["needs_clarification"]:
         return "clarify-issue-before-code"
     if affected_topics:
@@ -602,7 +602,7 @@ def choose_next_action(
 
 
 def build_triage_hints(issue: dict[str, Any], comments: list[dict[str, Any]]) -> dict[str, Any]:
-    """Build lightweight, reviewable triage hints for boot follow-up."""
+    """Build triage hints without dispatching a skill or authorizing code changes."""
     text_blocks = gather_text_blocks(issue, comments)
     issue_type_candidates = choose_issue_type_candidates(issue, text_blocks)
     information_flags = build_information_flags(issue, comments, issue_type_candidates)
@@ -615,12 +615,14 @@ def build_triage_hints(issue: dict[str, Any], comments: list[dict[str, Any]]) ->
         "affected_active_topics": affected_topics,
         "next_action": next_action,
         "boot_handoff": {
-            "recommended_skill": "gframework-boot",
+            # Keep the legacy JSON key; startup now follows AGENTS.md directly.
+            "recommended_skill": None,
             "mode": "resume" if affected_topics else "new",
             "notes": (
-                "Use gframework-boot to verify the issue against local code and active ai-plan topics."
+                "Follow AGENTS.md to verify the issue against local code and the matching active topic. "
+                "Continue implementation only when authorized."
                 if not information_flags["needs_clarification"]
-                else "Use gframework-boot to record a clarification-first task before changing code."
+                else "Clarify the missing issue evidence under AGENTS.md before changing code."
             ),
         },
     }
@@ -750,7 +752,7 @@ def format_text(
             + (", ".join(triage_hints["affected_active_topics"]) if triage_hints["affected_active_topics"] else "(none)")
         )
         lines.append(f"- Next action: {triage_hints['next_action']}")
-        lines.append(f"- Boot handoff: {triage_hints['boot_handoff']['notes']}")
+        lines.append(f"- Follow-up: {triage_hints['boot_handoff']['notes']}")
 
     if "comments" in selected_sections:
         lines.append("")
