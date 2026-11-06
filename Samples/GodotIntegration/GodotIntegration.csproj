@@ -8,6 +8,8 @@
         <ImplicitUsings>disable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <GenerateDocumentationFile>false</GenerateDocumentationFile>
+        <!-- 样例不参与 NuGet 打包与 CI 打包清单。 -->
+        <IsPackable>false</IsPackable>
         <!-- Godot.SourceGenerators expects this property from Godot.NET.Sdk.
              Provide a safe default so source generators can run in plain SDK-style builds as well. -->
         <GodotProjectDir Condition="'$(GodotProjectDir)' == ''">$(MSBuildProjectDirectory)</GodotProjectDir>
