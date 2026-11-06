@@ -1,7 +1,7 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using GFramework.Core.Abstractions.Ioc;
+
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using System.Diagnostics.CodeAnalysis;
@@ -45,15 +45,15 @@ internal static class CqrsHandlerRegistrar
     /// <summary>
     ///     扫描指定程序集并注册所有 CQRS 请求/通知/流式处理器。
     /// </summary>
-    /// <param name="container">目标容器。</param>
+    /// <param name="services">目标容器。</param>
     /// <param name="assemblies">要扫描的程序集集合。</param>
     /// <param name="logger">日志记录器。</param>
     public static void RegisterHandlers(
-        IIocContainer container,
+        IServiceCollection services,
         IEnumerable<Assembly> assemblies,
         ILogger logger)
     {
-        ArgumentNullException.ThrowIfNull(container);
+        ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(assemblies);
         ArgumentNullException.ThrowIfNull(logger);
 
@@ -63,12 +63,12 @@ internal static class CqrsHandlerRegistrar
                      .OrderBy(GetAssemblySortKey, StringComparer.Ordinal))
         {
             var generatedRegistrationResult =
-                TryRegisterGeneratedHandlers(container.GetServicesUnsafe, assembly, logger);
+                TryRegisterGeneratedHandlers(services, assembly, logger);
             if (generatedRegistrationResult is { UsedGeneratedRegistry: true, RequiresReflectionFallback: false })
                 continue;
 
             RegisterAssemblyHandlers(
-                container.GetServicesUnsafe,
+                services,
                 assembly,
                 logger,
                 generatedRegistrationResult.ReflectionFallbackMetadata);
@@ -79,19 +79,19 @@ internal static class CqrsHandlerRegistrar
     ///     直接激活并注册单个 generated registry，避免调用方为了只接入一个 benchmark registry
     ///     而额外扫描同一程序集里的其他 registry / handler。
     /// </summary>
-    /// <param name="container">承载 generated registry 注册结果的目标容器。</param>
+    /// <param name="services">承载 generated registry 注册结果的目标容器。</param>
     /// <param name="registryType">要直接激活的 generated registry 类型。</param>
     /// <param name="logger">当前注册过程使用的日志记录器。</param>
     /// <exception cref="ArgumentNullException">
-    ///     <paramref name="container" />、<paramref name="registryType" /> 或 <paramref name="logger" /> 为 <see langword="null" />。
+    ///     <paramref name="services" />、<paramref name="registryType" /> 或 <paramref name="logger" /> 为 <see langword="null" />。
     /// </exception>
     /// <exception cref="InvalidOperationException">指定 registry 类型不满足 generated registry 运行时契约。</exception>
     internal static void RegisterGeneratedRegistry(
-        IIocContainer container,
+        IServiceCollection services,
         Type registryType,
         ILogger logger)
     {
-        ArgumentNullException.ThrowIfNull(container);
+        ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(registryType);
         ArgumentNullException.ThrowIfNull(logger);
 
@@ -102,7 +102,7 @@ internal static class CqrsHandlerRegistrar
                 $"Unable to activate generated CQRS handler registry {registryType.FullName} in assembly {assemblyName}.");
         }
 
-        RegisterGeneratedRegistries(container.GetServicesUnsafe, [registry], assemblyName, logger);
+        RegisterGeneratedRegistries(services, [registry], assemblyName, logger);
     }
 
     /// <summary>

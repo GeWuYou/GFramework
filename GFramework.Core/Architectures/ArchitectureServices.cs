@@ -2,11 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Architectures;
-using GFramework.Core.Abstractions.Command;
 using GFramework.Core.Abstractions.Events;
 using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Abstractions.Logging;
-using GFramework.Core.Abstractions.Query;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
 using GFramework.Core.Services;
@@ -14,7 +12,7 @@ using GFramework.Core.Services;
 namespace GFramework.Core.Architectures;
 
 /// <summary>
-///     架构服务类，提供依赖注入容器、事件系统、命令总线和查询总线等核心服务。
+///     架构服务类，提供依赖注入容器、事件系统等核心服务。
 ///     该类负责管理架构运行所需的核心组件，并提供统一的服务访问接口。
 /// </summary>
 public class ArchitectureServices : IArchitectureServices
@@ -24,8 +22,7 @@ public class ArchitectureServices : IArchitectureServices
 
     /// <summary>
     ///     构造函数，初始化架构服务。
-    ///     初始化依赖注入容器，并创建事件总线、命令执行器、查询执行器和异步查询执行器的实例，
-    ///     然后将这些服务注册到容器中。
+    ///     初始化依赖注入容器，并创建事件总线的实例，然后将这些服务注册到容器中。
     /// </summary>
     /// <param name="loggerFactoryProvider">当前实例的日志工厂；缺省创建独立工厂。</param>
     public ArchitectureServices(ILoggerFactoryProvider? loggerFactoryProvider = null)
@@ -52,24 +49,6 @@ public class ArchitectureServices : IArchitectureServices
     ///     事件总线用于在架构中发布和订阅事件，实现组件间的松耦合通信。
     /// </summary>
     public IEventBus EventBus => Container.Get<IEventBus>()!;
-
-    /// <summary>
-    ///     获取命令执行器实例。
-    ///     命令执行器用于处理命令请求，执行业务逻辑。
-    /// </summary>
-    public ICommandExecutor CommandExecutor => Container.Get<ICommandExecutor>()!;
-
-    /// <summary>
-    ///     获取查询执行器实例。
-    ///     查询执行器用于处理同步查询请求，获取数据或状态信息。
-    /// </summary>
-    public IQueryExecutor QueryExecutor => Container.Get<IQueryExecutor>()!;
-
-    /// <summary>
-    ///     获取异步查询执行器实例。
-    ///     异步查询执行器用于处理异步查询请求，支持非阻塞的数据获取操作。
-    /// </summary>
-    public IAsyncQueryExecutor AsyncQueryExecutor => Container.Get<IAsyncQueryExecutor>()!;
 
     /// <summary>
     ///     设置架构上下文。

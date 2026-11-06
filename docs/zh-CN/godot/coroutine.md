@@ -159,11 +159,15 @@ Timing.CallDelayed(1.0, () => GD.Print("节点仍然有效时执行"), this);
 
 ## 与 IContextAware 集成
 
-Godot 层还提供以下扩展方法，用于把命令、查询和通知直接包装成协程并交给 Timing 调度：
+Godot 层还提供以下扩展方法，用于把 CQRS 请求、通知和流式请求直接包装成协程并交给 Timing 调度：
 
-- `RunCommandCoroutine(...)`
-- `RunCommandCoroutine<TResponse>(...)`
-- `RunQueryCoroutine<TResponse>(...)`
-- `RunPublishCoroutine(...)`
+- `RunRequestCoroutine<TCommand>(TCommand command)`
+  - 发送无返回值请求（`TCommand : IRequest<Unit>`）
+- `RunRequestCoroutine<TResponse>(IRequest<TResponse> request)`
+  - 发送带返回值请求
+- `RunPublishCoroutine(INotification notification)`
+  - 发布通知
+- `RunStreamCoroutine<TResponse>(IStreamRequest<TResponse> request)`
+  - 发送流式请求
 
-这些 API 仍然可以与 `Segment`、节点归属和标签控制一起使用。
+这些 API 仍然可以与 `Segment`、节点归属和标签控制一起使用。使用前需要架构安装 CQRS 运行时，接入方式见 [CQRS 运行时](../core/cqrs.md)。

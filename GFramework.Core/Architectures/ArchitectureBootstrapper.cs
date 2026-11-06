@@ -10,9 +10,9 @@ namespace GFramework.Core.Architectures;
 /// <summary>
 ///     在用户配置之前登记当前实例的环境、上下文和内置基础设施描述。
 ///     不构建 provider、不启动模块，也不绑定进程级 GameContext。
+///     CQRS 等可选基础设施由用户在配置阶段通过服务模块显式安装。
 /// </summary>
 internal sealed class ArchitectureBootstrapper(
-    Type architectureType,
     IEnvironment environment,
     IArchitectureServices services,
     ILoggerFactoryProvider loggerFactoryProvider)
@@ -31,11 +31,6 @@ internal sealed class ArchitectureBootstrapper(
         if (!services.Container.HasRegistration(typeof(IArchitectureContext)))
             services.Container.Register<IArchitectureContext>(context);
         services.ModuleManager.RegisterBuiltInModules(services.Container);
-        services.Container.RegisterCqrsHandlersFromAssemblies(
-        [
-            architectureType.Assembly,
-            typeof(ArchitectureContext).Assembly
-        ]);
         services.Container.ExecuteServicesHook(configurator);
     }
 }

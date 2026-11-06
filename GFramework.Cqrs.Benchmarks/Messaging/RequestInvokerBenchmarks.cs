@@ -130,7 +130,7 @@ public class RequestInvokerBenchmarks
     [Benchmark]
     public ValueTask<ReflectionBenchmarkResponse> SendRequest_GFrameworkReflection()
     {
-        return _reflectionRuntime.SendAsync(BenchmarkContext.Instance, _reflectionRequest, CancellationToken.None);
+        return _reflectionRuntime.SendAsync(_reflectionRequest, CancellationToken.None);
     }
 
     /// <summary>
@@ -140,7 +140,7 @@ public class RequestInvokerBenchmarks
     [Benchmark]
     public ValueTask<GeneratedBenchmarkResponse> SendRequest_GFrameworkGenerated()
     {
-        return _generatedRuntime.SendAsync(BenchmarkContext.Instance, _generatedRequest, CancellationToken.None);
+        return _generatedRuntime.SendAsync(_generatedRequest, CancellationToken.None);
     }
 
     /// <summary>

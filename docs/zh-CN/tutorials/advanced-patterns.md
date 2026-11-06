@@ -18,38 +18,42 @@ description: 通过高级模式示例说明 GFramework 中的复杂架构组织�
 
 ### 1. CQRS (命令查询职责分离)
 
-实现完整的 CQRS 模式，分离读写操作：
+通过 CQRS 请求模型分离读写操作：
 
 ```csharp
-using GFramework.Core.Command;
-using GFramework.Core.Query;
-using GFramework.Core.Events;
+using GFramework.Cqrs.Abstractions.Cqrs;
+using GFramework.Cqrs.Cqrs.Request;
+using GFramework.Cqrs.Extensions;
 
-// 命令 - 负责写操作
-public class CreatePlayerCommand : AbstractCommand
+// 写请求 - 负责写操作
+public sealed record CreatePlayerRequest(
+    string PlayerName,
+    PlayerClass Class,
+    Vector3 InitialPosition) : IRequest<Unit>;
+
+public sealed class CreatePlayerHandler
+    : AbstractRequestHandler<CreatePlayerRequest, Unit>
 {
-    public string PlayerName { get; set; }
-    public PlayerClass Class { get; set; }
-    public Vector3 InitialPosition { get; set; }
-    
-    protected override void OnExecute()
+    public override ValueTask<Unit> Handle(
+        CreatePlayerRequest request,
+        CancellationToken cancellationToken)
     {
-        var playerModel = GetModel<PlayerModel>();
-        
-        // 验证命令
-        if (string.IsNullOrWhiteSpace(PlayerName))
+        var playerModel = Context.GetModel<PlayerModel>();
+
+        // 验证请求
+        if (string.IsNullOrWhiteSpace(request.PlayerName))
             throw new ArgumentException("Player name cannot be empty");
-            
-        if (playerModel.PlayerExists(PlayerName))
-            throw new InvalidOperationException($"Player {PlayerName} already exists");
-        
+
+        if (playerModel.PlayerExists(request.PlayerName))
+            throw new InvalidOperationException($"Player {request.PlayerName} already exists");
+
         // 创建玩家
         var playerData = new PlayerData
         {
             Id = Guid.NewGuid(),
-            Name = PlayerName,
-            Class = Class,
-            Position = InitialPosition,
+            Name = request.PlayerName,
+            Class = request.Class,
+            Position = request.InitialPosition,
             Level = 1,
             Experience = 0,
             Health = 100,
@@ -58,65 +62,76 @@ public class CreatePlayerCommand : AbstractCommand
             MaxMana = 50,
             CreatedAt = DateTime.UtcNow
         };
-        
+
         // 保存玩家数据
         playerModel.AddPlayer(playerData);
-        
+
         // 发送事件
-        SendEvent(new PlayerCreatedEvent { Player = playerData });
+        Context.SendEvent(new PlayerCreatedEvent { Player = playerData });
+        return ValueTask.FromResult(Unit.Value);
     }
 }
 
-// 查询 - 负责读操作
-public class GetPlayerQuery : AbstractQuery<PlayerData>
+// 读请求 - 负责读操作
+public sealed record GetPlayerRequest(string PlayerName) : IRequest<PlayerData>;
+
+public sealed class GetPlayerHandler
+    : AbstractRequestHandler<GetPlayerRequest, PlayerData>
 {
-    public string PlayerName { get; set; }
-    
-    protected override PlayerData OnDo()
+    public override ValueTask<PlayerData> Handle(
+        GetPlayerRequest request,
+        CancellationToken cancellationToken)
     {
-        var playerModel = GetModel<PlayerModel>();
-        return playerModel.GetPlayer(PlayerName);
+        var playerModel = Context.GetModel<PlayerModel>();
+        return ValueTask.FromResult(playerModel.GetPlayer(request.PlayerName));
     }
 }
 
-public class GetAllPlayersQuery : AbstractQuery<List<PlayerData>>
+public sealed record GetAllPlayersRequest(
+    PlayerClass? FilterByClass = null,
+    int? MinLevel = null) : IRequest<List<PlayerData>>;
+
+public sealed class GetAllPlayersHandler
+    : AbstractRequestHandler<GetAllPlayersRequest, List<PlayerData>>
 {
-    public PlayerClass? FilterByClass { get; set; }
-    public int? MinLevel { get; set; }
-    
-    protected override List<PlayerData> OnDo()
+    public override ValueTask<List<PlayerData>> Handle(
+        GetAllPlayersRequest request,
+        CancellationToken cancellationToken)
     {
-        var playerModel = GetModel<PlayerModel>();
+        var playerModel = Context.GetModel<PlayerModel>();
         var players = playerModel.GetAllPlayers();
-        
+
         // 应用过滤器
-        if (FilterByClass.HasValue)
+        if (request.FilterByClass.HasValue)
         {
-            players = players.Where(p => p.Class == FilterByClass.Value).ToList();
+            players = players.Where(p => p.Class == request.FilterByClass.Value).ToList();
         }
-        
-        if (MinLevel.HasValue)
+
+        if (request.MinLevel.HasValue)
         {
-            players = players.Where(p => p.Level >= MinLevel.Value).ToList();
+            players = players.Where(p => p.Level >= request.MinLevel.Value).ToList();
         }
-        
-        return players;
+
+        return ValueTask.FromResult(players);
     }
 }
 
 // 复杂查询示例
-public class GetPlayerStatisticsQuery : AbstractQuery<PlayerStatistics>
+public sealed record GetPlayerStatisticsRequest(string PlayerName) : IRequest<PlayerStatistics>;
+
+public sealed class GetPlayerStatisticsHandler
+    : AbstractRequestHandler<GetPlayerStatisticsRequest, PlayerStatistics>
 {
-    public string PlayerName { get; set; }
-    
-    protected override PlayerStatistics OnDo()
+    public override ValueTask<PlayerStatistics> Handle(
+        GetPlayerStatisticsRequest request,
+        CancellationToken cancellationToken)
     {
-        var playerModel = GetModel<PlayerModel>();
-        var player = playerModel.GetPlayer(PlayerName);
-        
+        var playerModel = Context.GetModel<PlayerModel>();
+        var player = playerModel.GetPlayer(request.PlayerName);
+
         if (player == null)
-            return null;
-        
+            return ValueTask.FromResult<PlayerStatistics>(null!);
+
         // 计算统计数据
         var statistics = new PlayerStatistics
         {
@@ -132,10 +147,10 @@ public class GetPlayerStatisticsQuery : AbstractQuery<PlayerStatistics>
             AchievementsUnlocked = player.Achievements.Count,
             TotalItemsOwned = player.Inventory.Count
         };
-        
-        return statistics;
+
+        return ValueTask.FromResult(statistics);
     }
-    
+
     private int CalculateExperienceToNextLevel(int currentLevel)
     {
         // 经验值计算公式
@@ -162,18 +177,14 @@ public struct PlayerLevelUpEvent
 [Log]
 public partial class PlayerService : IController
 {
-    public void CreateNewPlayer(string name, PlayerClass playerClass)
+    public async Task CreateNewPlayer(string name, PlayerClass playerClass)
     {
-        var command = new CreatePlayerCommand
-        {
-            PlayerName = name,
-            Class = playerClass,
-            InitialPosition = Vector3.Zero
-        };
-        
+        var request = new CreatePlayerRequest(
+            name, playerClass, Vector3.Zero);
+
         try
         {
-            this.SendCommand(command);
+            await this.SendAsync(request);
             Logger.Info($"Player {name} created successfully");
         }
         catch (Exception ex)
@@ -182,27 +193,22 @@ public partial class PlayerService : IController
             throw;
         }
     }
-    
-    public PlayerData GetPlayer(string name)
+
+    public Task<PlayerData> GetPlayer(string name)
     {
-        var query = new GetPlayerQuery { PlayerName = name };
-        return this.SendQuery(query);
+        return this.SendRequestAsync<PlayerData>(new GetPlayerRequest(name));
     }
-    
-    public List<PlayerData> GetAllPlayers(PlayerClass? classFilter = null, int? minLevel = null)
+
+    public Task<List<PlayerData>> GetAllPlayers(PlayerClass? classFilter = null, int? minLevel = null)
     {
-        var query = new GetAllPlayersQuery 
-        { 
-            FilterByClass = classFilter, 
-            MinLevel = minLevel 
-        };
-        return this.SendQuery(query);
+        return this.SendRequestAsync<List<PlayerData>>(
+            new GetAllPlayersRequest(classFilter, minLevel));
     }
-    
-    public PlayerStatistics GetPlayerStatistics(string playerName)
+
+    public Task<PlayerStatistics> GetPlayerStatistics(string playerName)
     {
-        var query = new GetPlayerStatisticsQuery { PlayerName = playerName };
-        return this.SendQuery(query);
+        return this.SendRequestAsync<PlayerStatistics>(
+            new GetPlayerStatisticsRequest(playerName));
     }
 }
 ```

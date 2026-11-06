@@ -162,7 +162,6 @@ public class StreamPipelineBenchmarks
     {
         return ObserveAsync(
             _runtime.CreateStream(
-                BenchmarkContext.Instance,
                 _request,
                 CancellationToken.None),
             Observation);
@@ -193,13 +192,13 @@ public class StreamPipelineBenchmarks
             case 0:
                 return;
             case 1:
-                container.RegisterCqrsStreamPipelineBehavior<BenchmarkStreamPipelineBehavior1>();
+                container.GetServicesUnsafe.AddCqrsStreamPipelineBehavior<BenchmarkStreamPipelineBehavior1>();
                 return;
             case 4:
-                container.RegisterCqrsStreamPipelineBehavior<BenchmarkStreamPipelineBehavior1>();
-                container.RegisterCqrsStreamPipelineBehavior<BenchmarkStreamPipelineBehavior2>();
-                container.RegisterCqrsStreamPipelineBehavior<BenchmarkStreamPipelineBehavior3>();
-                container.RegisterCqrsStreamPipelineBehavior<BenchmarkStreamPipelineBehavior4>();
+                container.GetServicesUnsafe.AddCqrsStreamPipelineBehavior<BenchmarkStreamPipelineBehavior1>();
+                container.GetServicesUnsafe.AddCqrsStreamPipelineBehavior<BenchmarkStreamPipelineBehavior2>();
+                container.GetServicesUnsafe.AddCqrsStreamPipelineBehavior<BenchmarkStreamPipelineBehavior3>();
+                container.GetServicesUnsafe.AddCqrsStreamPipelineBehavior<BenchmarkStreamPipelineBehavior4>();
                 return;
             default:
                 throw new ArgumentOutOfRangeException(nameof(pipelineCount), pipelineCount,

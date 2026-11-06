@@ -28,7 +28,7 @@ description: 说明 GFramework.Core 的 Architecture 入口、生命周期职责
 最常见的成员只有这些：
 
 - `ConfigureServices(IServiceCollection services)`
-  - 配置标准 DI 服务、组件、模块和 CQRS 行为；默认可为空
+  - 配置标准 DI 服务、组件与模块；默认可为空
 - `OnStarted()` / `OnStartedAsync(CancellationToken)`
   - 组件启动完成后、Ready 前执行宿主接线，不再注册服务
 - `RegisterModel(...)` / `RegisterSystem(...)` / `RegisterUtility(...)`
@@ -37,10 +37,6 @@ description: 说明 GFramework.Core 的 Architecture 入口、生命周期职责
   - 分别安装架构装配模块、登记当前实例的服务模块
 - `RegisterLifecycleHook(...)`
   - 注册阶段钩子
-- `RegisterCqrsPipelineBehavior<TBehavior>()`
-  - 注册 CQRS pipeline 行为
-- `RegisterCqrsHandlersFromAssembly(...)` / `RegisterCqrsHandlersFromAssemblies(...)`
-  - 显式接入其他程序集中的 CQRS handlers
 - `InitializeAsync(CancellationToken)` / `WaitUntilReadyAsync()`
   - 启动架构并等待进入 `Ready`
 - `DestroyAsync()` / `DisposeAsync()`
@@ -117,22 +113,23 @@ protected override void ConfigureServices(IServiceCollection services)
 
 如果你的功能以模块形式组织，优先通过 `InstallModule(...)` 接入，而不是把所有注册逻辑都堆进一个超大的 `ConfigureServices(...)`。
 
-如果 handlers 不只在当前架构程序集里，需要显式追加程序集：
+CQRS runtime 通过显式安装的服务模块接入（不在默认模块列表中）：
 
 ```csharp
+using GFramework.Cqrs.Extensions;
+
 protected override void ConfigureServices(IServiceCollection services)
 {
-    services.AddSingleton(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
-
-    RegisterCqrsHandlersFromAssemblies(
-    [
-        typeof(InventoryCqrsMarker).Assembly,
-        typeof(BattleCqrsMarker).Assembly
-    ]);
+    services.AddCqrsPipelineBehavior<LoggingBehavior<,>>();
 }
 ```
 
-默认运行时会优先尝试消费端程序集上的生成注册表；缺失或不适用时回退到反射扫描。
+```csharp
+var architecture = new GameArchitecture();
+architecture.UseCqrsRuntime(typeof(InventoryModule).Assembly);
+```
+
+`UseCqrsRuntime(...)` 自动包含架构所在程序集，也可以改用 `RegisterServiceModule(new CqrsRuntimeModule(...))` 显式登记。详细语义见 [CQRS 运行时](./cqrs.md)。
 
 ## 阶段与钩子
 
@@ -144,7 +141,7 @@ protected override void ConfigureServices(IServiceCollection services)
 - `RegisterLifecycleHook(...)`
 
 其中 `PhaseChanged` 现在遵循标准 `EventHandler<ArchitecturePhaseChangedEventArgs>` 约定，
-阶段值通过 `args.Phase` 读取。开放泛型 CQRS 行为可通过配置参数的标准 IServiceCollection 注册，封闭行为可使用 RegisterCqrsPipelineBehavior。
+阶段值通过 `args.Phase` 读取。CQRS pipeline 行为通过配置阶段的标准 `IServiceCollection` 登记（`services.AddCqrsPipelineBehavior<...>()`）。
 
 如果你正在从旧版本迁移，需要把单参数写法 `phase => ...` 改成 `(_, args) => ...`，
 并通过 `ArchitecturePhaseChangedEventArgs.Phase` 读取阶段值。
@@ -176,5 +173,4 @@ public sealed class MetricsHook : IArchitectureLifecycleHook
 
 - 上下文访问与 `ArchitectureContext`：阅读[上下文](./context.md)
 - 初始化阶段、事件与销毁流程：阅读[生命周期](./lifecycle.md)
-- 旧版命令 / 查询执行器兼容入口：阅读[命令执行](./command.md)与[查询执行](./query.md)
-- 新项目的请求 / 通知模型：阅读[CQRS 运行时](./cqrs.md)
+- 请求 / 通知 / 流式消息模型与 runtime 安装：阅读[CQRS 运行时](./cqrs.md)

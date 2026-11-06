@@ -251,7 +251,7 @@ git push origin your-branch
 - **接口**：I 前缀
   ```csharp
   public interface IArchitecture { }
-  public interface ICommand&lt;TInput&gt; { }
+  public interface IRequestHandler&lt;TRequest, TResponse&gt; { }
   ```
 
 ### 代码风格
@@ -634,13 +634,13 @@ FAQ 列表。
 var architecture = new GameArchitecture();
 
 // 初始化架构
-await architecture.InitAsync();
+await architecture.InitializeAsync();
 
-// 注册模型
-var playerModel = architecture.GetModel&lt;PlayerModel&gt;();
+// 访问模型
+var playerModel = architecture.Context.GetModel&lt;PlayerModel&gt;();
 
-// 发送命令
-await architecture.SendCommandAsync(new AttackCommand
+// 发送事件
+architecture.Context.SendEvent(new AttackEvent
 {
     TargetId = enemyId
 });

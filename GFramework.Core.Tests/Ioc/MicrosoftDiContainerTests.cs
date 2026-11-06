@@ -11,7 +11,6 @@ using GFramework.Core.Tests.Cqrs;
 using GFramework.Core.Tests.Systems;
 using GFramework.Cqrs;
 using GFramework.Cqrs.Abstractions.Cqrs;
-using LegacyICqrsRuntime = GFramework.Core.Abstractions.Cqrs.ICqrsRuntime;
 
 namespace GFramework.Core.Tests.Ioc;
 
@@ -174,46 +173,39 @@ public class MicrosoftDiContainerTests
     }
 
     /// <summary>
-    ///     测试当 CQRS 基础设施已手动接线后，再调用处理器注册入口不会重复注册 runtime seam。
+    ///     测试 CQRS 基础设施重复安装会被显式拒绝，且测试接线包装保持幂等，冻结后只解析到同一 runtime 单例。
     /// </summary>
     [Test]
     public void RegisterHandlers_Should_Not_Duplicate_Cqrs_Infrastructure_When_It_Is_Already_Registered()
     {
-        Assert.That(_container.GetAll<ICqrsRuntime>(), Has.Count.EqualTo(1));
-        Assert.That(_container.GetAll<LegacyICqrsRuntime>(), Has.Count.EqualTo(1));
-        Assert.That(_container.GetAll<ICqrsHandlerRegistrar>(), Has.Count.EqualTo(1));
-        Assert.That(_container.Get<ICqrsRuntime>(), Is.SameAs(_container.Get<LegacyICqrsRuntime>()));
+        // SetUp 已通过测试包装安装一次;组合根直接重复安装属于配置错误，应显式拒绝。
+        Assert.Throws<InvalidOperationException>(() => _container.GetServicesUnsafe.AddCqrsRuntime());
 
+        // 测试包装是幂等的，重复驱动处理器注册入口不会叠加第二个 runtime 描述。
         CqrsTestRuntime.RegisterHandlers(_container);
+        _container.Freeze();
 
         Assert.That(_container.GetAll<ICqrsRuntime>(), Has.Count.EqualTo(1));
-        Assert.That(_container.GetAll<LegacyICqrsRuntime>(), Has.Count.EqualTo(1));
-        Assert.That(_container.GetAll<ICqrsHandlerRegistrar>(), Has.Count.EqualTo(1));
-        Assert.That(_container.Get<ICqrsRuntime>(), Is.SameAs(_container.Get<LegacyICqrsRuntime>()));
     }
 
     /// <summary>
-    ///     测试当容器里仅预注册正式 CQRS runtime seam 时，基础设施接线会补齐 legacy alias，
-    ///     并保持新旧服务类型解析到同一实例。
+    ///     测试容器冻结后可以通过显式实现的 <see cref="IServiceProvider" /> 解析惰性创建的 CQRS runtime 单例。
     /// </summary>
     [Test]
-    public void RegisterInfrastructure_Should_Backfill_Legacy_Cqrs_Runtime_Alias_With_The_Same_Instance()
+    public void GetService_Via_IServiceProvider_Should_Resolve_Cqrs_Runtime_After_Freeze()
     {
-        _container.Clear();
+        var provider = (IServiceProvider)_container;
 
-        var runtime = CqrsRuntimeFactory.CreateRuntime(
-            _container,
-            LoggerFactoryResolver.Provider.CreateLogger("CqrsDispatcher"));
-        _container.Register<ICqrsRuntime>(runtime);
+        // 冻结前根 provider 尚未构建，标准解析入口应显式失败而不是返回 null。
+        Assert.Throws<InvalidOperationException>(() => provider.GetService(typeof(ICqrsRuntime)));
 
-        Assert.That(_container.Get<LegacyICqrsRuntime>(), Is.Null);
+        _container.Freeze();
 
-        CqrsTestRuntime.RegisterInfrastructure(_container);
+        var runtime = provider.GetService(typeof(ICqrsRuntime));
 
-        Assert.That(_container.GetAll<ICqrsRuntime>(), Has.Count.EqualTo(1));
-        Assert.That(_container.GetAll<LegacyICqrsRuntime>(), Has.Count.EqualTo(1));
-        Assert.That(_container.Get<ICqrsRuntime>(), Is.SameAs(runtime));
-        Assert.That(_container.Get<LegacyICqrsRuntime>(), Is.SameAs(runtime));
+        Assert.That(runtime, Is.Not.Null);
+        Assert.That(runtime, Is.InstanceOf<ICqrsRuntime>());
+        Assert.That(provider.GetService(typeof(IService)), Is.Null);
     }
 
     /// <summary>
@@ -505,7 +497,7 @@ public class MicrosoftDiContainerTests
     {
         var assembly = typeof(DeterministicOrderNotification).Assembly;
 
-        _container.RegisterCqrsHandlersFromAssembly(assembly);
+        _container.GetServicesUnsafe.AddCqrsHandlersFromAssembly(assembly);
         Assert.That(
             _container.GetServicesUnsafe.Any(static descriptor =>
                 descriptor.ServiceType == typeof(INotificationHandler<DeterministicOrderNotification>)),
@@ -519,7 +511,7 @@ public class MicrosoftDiContainerTests
 
         // Clear 会移除测试手工补齐的 CQRS seam，需要先恢复基础设施再验证程序集去重状态是否已重置。
         CqrsTestRuntime.RegisterInfrastructure(_container);
-        _container.RegisterCqrsHandlersFromAssembly(assembly);
+        _container.GetServicesUnsafe.AddCqrsHandlersFromAssembly(assembly);
 
         Assert.That(
             _container.GetServicesUnsafe.Any(static descriptor =>
@@ -528,13 +520,14 @@ public class MicrosoftDiContainerTests
     }
 
     /// <summary>
-    ///     测试 RegisterCqrsHandlersFromAssemblies 会通过注册阶段可见实例解析 CQRS 注册服务。
+    ///     测试 AddCqrsHandlersFromAssemblies 会通过注册阶段可见实例解析 CQRS 注册服务。
     /// </summary>
     [Test]
-    public void RegisterCqrsHandlersFromAssemblies_Should_Resolve_Registration_Service_When_Registered_As_Instance()
+    public void AddCqrsHandlersFromAssemblies_Should_Resolve_Registration_Service_When_Registered_As_Instance()
     {
         Assert.DoesNotThrow(() =>
-            _container.RegisterCqrsHandlersFromAssemblies([typeof(DeterministicOrderNotification).Assembly]));
+            _container.GetServicesUnsafe.AddCqrsHandlersFromAssemblies(
+                [typeof(DeterministicOrderNotification).Assembly]));
 
         Assert.That(
             _container.GetServicesUnsafe.Any(static descriptor =>
@@ -546,11 +539,12 @@ public class MicrosoftDiContainerTests
     ///     测试当程序集集合中包含空元素时，CQRS handler 注册入口会在委托给注册服务前直接失败。
     /// </summary>
     [Test]
-    public void RegisterCqrsHandlersFromAssemblies_WithNullAssemblyItem_Should_ThrowArgumentNullException()
+    public void AddCqrsHandlersFromAssemblies_WithNullAssemblyItem_Should_ThrowArgumentNullException()
     {
         var assemblies = new Assembly[] { typeof(DeterministicOrderNotification).Assembly, null! };
 
-        Assert.Throws<ArgumentNullException>(() => _container.RegisterCqrsHandlersFromAssemblies(assemblies));
+        Assert.Throws<ArgumentNullException>(
+            () => _container.GetServicesUnsafe.AddCqrsHandlersFromAssemblies(assemblies));
     }
 
     /// <summary>

@@ -7,7 +7,7 @@ description: 说明 GFramework.Core.Rule 中 IContextAware 规则接口与上下
 
 ## 概述
 
-Rule 包定义了框架的核心规则接口 `IContextAware`，它用于需要架构上下文的组件，普通 DI 服务无需实现它。通过这个接口，框架实现了统一的上下文管理和能力访问机制。所有框架组件（Command、Query、Model、System）都实现此接口，并通过扩展方法获得访问架构服务的能力。
+Rule 包定义了框架的核心规则接口 `IContextAware`，它用于需要架构上下文的组件，普通 DI 服务无需实现它。通过这个接口，框架实现了统一的上下文管理和能力访问机制。框架组件（Model、System）与 CQRS 的上下文感知处理器都实现此接口，并通过扩展方法获得访问架构服务的能力。
 
 ## 核心接口：IContextAware
 
@@ -39,10 +39,9 @@ public interface IContextAware
 
 **实现此接口的类型：**
 
-- `AbstractCommand` / `AbstractAsyncCommand` - 命令基类
-- `AbstractQuery<TResult>` - 查询基类
 - `AbstractModel` - 模型基类
 - `AbstractSystem` - 系统基类
+- CQRS 的上下文感知处理器基类（`AbstractRequestHandler` 等，位于 `GFramework.Cqrs`）
 - 以及其他需要感知架构上下文的自定义组件
 
 ## 基类实现：ContextAwareBase
@@ -117,31 +116,26 @@ public static TService? GetService<TService>(this IContextAware contextAware)
     where TService : class
 ```
 
-### 发送命令
+### CQRS 消息分发
+
+CQRS 的分发扩展位于 `GFramework.Cqrs.Extensions`（仅异步入口，需要架构安装 CQRS runtime）：
 
 ```csharp
-// 发送无返回值的命令
-public static void SendCommand(this IContextAware contextAware, ICommand command)
+// 发送请求并获取结果
+public static ValueTask<TResponse> SendRequestAsync<TResponse>(this IContextAware contextAware,
+    IRequest<TResponse> request, CancellationToken ct = default)
 
-// 发送有返回值的命令
-public static TResult SendCommand<TResult>(this IContextAware contextAware,
-    ICommand<TResult> command)
+// 发送无返回值请求
+public static ValueTask SendAsync<TCommand>(this IContextAware contextAware,
+    TCommand command, CancellationToken ct = default) where TCommand : IRequest<Unit>
 
-// 异步发送无返回值的命令
-public static async Task SendCommandAsync(this IContextAware contextAware,
-    IAsyncCommand command)
+// 发布通知
+public static ValueTask PublishAsync<TNotification>(this IContextAware contextAware,
+    TNotification notification, CancellationToken ct = default) where TNotification : INotification
 
-// 异步发送有返回值的命令
-public static async Task<TResult> SendCommandAsync<TResult>(this IContextAware contextAware,
-    IAsyncCommand<TResult> command)
-```
-
-### 发送查询
-
-```csharp
-// 发送查询并获取结果
-public static TResult SendQuery<TResult>(this IContextAware contextAware,
-    IQuery<TResult> query)
+// 创建流式请求
+public static IAsyncEnumerable<TResponse> CreateStream<TResponse>(this IContextAware contextAware,
+    IStreamRequest<TResponse> request, CancellationToken ct = default)
 ```
 
 ### 事件系统
@@ -177,25 +171,25 @@ public static IEnvironment GetEnvironment(this IContextAware contextAware)
 
 ## 框架组件如何使用 IContextAware
 
-### Command 和 AsyncCommand
+### CQRS 请求处理器
 
-所有命令都继承自 `AbstractCommand` 或 `AbstractAsyncCommand`，这些基类实现了 `IContextAware`。
+CQRS 的处理器基类继承轻量上下文基类，分发前由 runtime 注入架构上下文。
 
 ```csharp
-public class BuyItemCommand : AbstractCommand<BuyItemInput, bool>
+public sealed class BuyItemHandler : AbstractRequestHandler<BuyItemRequest, bool>
 {
-    protected override bool OnExecute()
+    public override async ValueTask<bool> Handle(BuyItemRequest request, CancellationToken cancellationToken)
     {
-        // 通过扩展方法访问 Model
-        var playerModel = this.GetModel<PlayerModel>();
-        var shopModel = this.GetModel<ShopModel>();
+        // 通过 Context 属性访问 Model
+        var playerModel = Context.GetModel<PlayerModel>();
+        var shopModel = Context.GetModel<ShopModel>();
 
         // 业务逻辑
-        if (playerModel.Gold.Value >= Input.Price)
+        if (playerModel.Gold.Value >= request.Price)
         {
-            playerModel.Gold.Value -= Input.Price;
-            // 发送其他命令
-            this.SendCommand(new AddItemCommand { ItemId = Input.ItemId });
+            playerModel.Gold.Value -= request.Price;
+            // 分发其他请求
+            await Context.SendAsync(new AddItemRequest(request.ItemId));
             return true;
         }
         return false;
@@ -203,19 +197,12 @@ public class BuyItemCommand : AbstractCommand<BuyItemInput, bool>
 }
 ```
 
-### Query
-
-所有查询都继承自 `AbstractQuery<TResult>`，实现了 `IContextAware`。
+在架构集成路径中分发这个请求：
 
 ```csharp
-public class GetPlayerLevelQuery : AbstractQuery<int>
-{
-    public override int OnQuery()
-    {
-        var playerModel = this.GetModel<PlayerModel>();
-        return playerModel.Level.Value;
-    }
-}
+using GFramework.Cqrs.Extensions;
+
+var bought = await this.SendRequestAsync<bool>(new BuyItemRequest(...));
 ```
 
 ### Model
@@ -304,7 +291,7 @@ public class SaveManager : ContextAwareBase
 
 ### 自动注入流程
 
-1. **组件创建** - 框架创建 Command、Query、Model、System 等组件
+1. **组件创建** - 框架创建 Model、System 等组件，CQRS runtime 创建请求处理器
 2. **上下文注入** - 框架调用组件的 `SetContext()` 方法，传入 `IArchitectureContext`
 3. **初始化回调** - `ContextAwareBase` 在 `SetContext()` 中调用 `OnContextReady()` 钩子
 4. **能力访问** - 组件现在可以通过扩展方法访问所有架构服务
@@ -350,8 +337,8 @@ IArchitectureContext IContextAware.GetContext()
 ## 相关包
 
 - [`architecture`](./architecture.md) - 定义 `IArchitectureContext` 接口
-- [`command`](./command.md) - Command 继承 `AbstractCommand` (实现 `IContextAware`)
-- [`query`](./query.md) - Query 继承 `AbstractQuery<TResult>` (实现 `IContextAware`)
+- [`command`](./command.md) - 写操作请求的 CQRS 表达
+- [`query`](./query.md) - 读操作请求的 CQRS 表达
 - [`model`](./model.md) - Model 继承 `AbstractModel` (实现 `IContextAware`)
 - [`system`](./system.md) - System 继承 `AbstractSystem` (实现 `IContextAware`)
 - [`extensions`](./extensions.md) - 提供 `ContextAwareExtensions` 扩展方法

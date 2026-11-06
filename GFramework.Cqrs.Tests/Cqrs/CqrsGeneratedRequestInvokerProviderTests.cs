@@ -7,7 +7,9 @@ using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Architectures;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
+using GFramework.Cqrs;
 using GFramework.Cqrs.Abstractions.Cqrs;
+using GFramework.Cqrs.Extensions;
 using GFramework.Cqrs.Internal;
 
 namespace GFramework.Cqrs.Tests.Cqrs;
@@ -113,7 +115,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
         var logger = LoggerFactoryResolver.Provider.CreateLogger(nameof(CqrsGeneratedRequestInvokerProviderTests));
 
         CqrsHandlerRegistrar.RegisterGeneratedRegistry(
-            container,
+            container.GetServicesUnsafe,
             typeof(GeneratedRequestInvokerProviderRegistry),
             logger);
 
@@ -193,7 +195,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
     {
         var generatedAssembly = CreateGeneratedRequestInvokerAssembly();
         var container = new MicrosoftDiContainer();
-        container.RegisterCqrsPipelineBehavior<GeneratedRequestPipelineTrackingBehavior>();
+        container.GetServicesUnsafe.AddCqrsPipelineBehavior<GeneratedRequestPipelineTrackingBehavior>();
 
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
         container.Freeze();
@@ -234,7 +236,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
     {
         var generatedAssembly = CreateGeneratedStreamInvokerAssembly();
         var container = new MicrosoftDiContainer();
-        container.RegisterCqrsStreamPipelineBehavior<GeneratedStreamPipelineTrackingBehavior>();
+        container.GetServicesUnsafe.AddCqrsStreamPipelineBehavior<GeneratedStreamPipelineTrackingBehavior>();
 
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
         container.Freeze();
@@ -258,7 +260,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
     {
         var generatedAssembly = CreateGeneratedStreamInvokerAssembly();
         var container = new MicrosoftDiContainer();
-        container.RegisterCqrsStreamPipelineBehavior<GeneratedStreamPipelineTrackingBehavior>();
+        container.GetServicesUnsafe.AddCqrsStreamPipelineBehavior<GeneratedStreamPipelineTrackingBehavior>();
 
         CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
         container.Freeze();

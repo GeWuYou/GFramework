@@ -150,7 +150,7 @@ public class RequestStartupBenchmarks
     {
         using var container = CreateGFrameworkContainer();
         var runtime = CreateGFrameworkRuntime(container);
-        return await runtime.SendAsync(BenchmarkContext.Instance, Request, CancellationToken.None).ConfigureAwait(false);
+        return await runtime.SendAsync(Request, CancellationToken.None).ConfigureAwait(false);
     }
 
     /// <summary>

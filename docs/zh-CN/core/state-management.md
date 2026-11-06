@@ -357,23 +357,19 @@ public class PlayerPanelModel : AbstractModel
 - 高频访问的局部状态通过缓存选择视图复用实例
 - Controller 只消费局部只读视图，不直接修改 Store
 
-### 3. 通过 Command 修改状态
+### 3. 通过 System 或请求处理器修改状态
 
 ```csharp
-using GFramework.Core.Command;
-
-public sealed class DamagePlayerCommand(int amount) : AbstractCommand
+// 通过 System 分发状态变更
+public sealed class PlayerPanelSystem : AbstractSystem
 {
-    protected override void OnExecute()
+    public void DamagePlayer(int amount)
     {
         var model = this.GetModel<PlayerPanelModel>();
         model.Store.Dispatch(new DamagePlayerAction(amount));
     }
-}
 
-public sealed class RenamePlayerCommand(string name) : AbstractCommand
-{
-    protected override void OnExecute()
+    public void RenamePlayer(string name)
     {
         var model = this.GetModel<PlayerPanelModel>();
         model.Store.Dispatch(new RenamePlayerAction(name));
@@ -384,7 +380,7 @@ public sealed class RenamePlayerCommand(string name) : AbstractCommand
 这里仍然遵循 GFramework 现有分层：
 
 - Controller 负责转发用户意图
-- Command 负责执行业务操作
+- System 或 CQRS 请求处理器负责执行业务操作
 - Model 持有状态
 - Store 负责统一归约状态变化
 
@@ -430,12 +426,12 @@ public partial class PlayerPanelController : IController
 
     public void OnDamageButtonClicked()
     {
-        this.SendCommand(new DamagePlayerCommand(15));
+        this.GetSystem<PlayerPanelSystem>().DamagePlayer(15);
     }
 
     public void OnRenameButtonClicked(string newName)
     {
-        this.SendCommand(new RenamePlayerCommand(newName));
+        this.GetSystem<PlayerPanelSystem>().RenamePlayer(newName);
     }
 }
 ```

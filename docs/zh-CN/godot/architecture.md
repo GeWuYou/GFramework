@@ -107,11 +107,11 @@ Godot 架构需要使用 InitializeAsync。同步 Initialize 会明确拒绝该�
 
 取消可以撤销尚未开始的主线程队列动作；已经开始的短节点操作先完成，再允许失败清理继续，避免清理与同一节点操作并发。
 
-### Godot 主线程同步 CQRS 保护
+### Godot 主线程与异步分发
 
-未自定义 IArchitectureContext 时，默认的 GodotArchitectureContext 会在当前存在 SceneTree 且调用发生于主线程时拒绝同步 SendRequest、SendCommand 和 SendQuery。同步桥接可能把 handler 放到工作线程，无法保证 Node、SceneTree 或 UI 的线程亲和性。
+CQRS 的上下文分发入口只提供异步版本（`SendRequestAsync` / `SendAsync` / `PublishAsync` / `CreateStream`），避免同步桥接把 handler 放到工作线程、破坏 Node、SceneTree 或 UI 的线程亲和性。
 
-使用 SendAsync、SendCommandAsync、SendQueryAsync 或协程桥接入口，并让实际访问节点的业务代码遵守 Godot 主线程约束。架构对节点模块附加/分离的派发不等于所有业务 handler 和组件回调都自动回到主线程。
+使用这些异步入口或协程桥接入口，并让实际访问节点的业务代码遵守 Godot 主线程约束。架构对节点模块附加/分离的派发不等于所有业务 handler 和组件回调都自动回到主线程。
 
 ### 销毁阶段
 

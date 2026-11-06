@@ -59,13 +59,23 @@
 
 ## 第二批：CQRS 独立采用与调用入口
 
-状态：planned。依赖：第一批完成。
+状态：done。日期：2026-11-07。实现基线：f651cd53。依赖：第一批完成。
 
 目标：Core 不再强制引用 CQRS runtime/契约；CQRS runtime 使用标准服务解析，Architecture 的便捷接线放在明确集成边界。保留 request、notification、stream 能力，移除旧 Command/Query 执行器、重复封装及兼容别名。
 
 验收：Core-only 不含 CQRS 传递依赖；CQRS-only 可不带 Architecture 使用；pipeline、handler 生命周期、取消、stream 和生成注册行为保持；仓库调用、快照与采用文档同步更新。
 
-下一步：在第一批语义稳定后确定最小集成接口，不提前创建额外桥接包。
+实现：Core 与 Core.Abstractions 仅依赖自身契约，构建产物经程序集引用探针确认不含 CQRS；CQRS runtime 基于标准 IServiceProvider/IServiceCollection，行为存在性探测使用 IServiceProviderIsService；注册入口收敛为 AddCqrsRuntime/AddCqrsPipelineBehavior/AddCqrsHandlersFromAssembly 等组合根扩展，架构接线为 UseCqrsRuntime/CqrsRuntimeModule 加上下文扩展入口（仅异步）。旧 Command/Query 执行器体系、Legacy 桥接、TypeForwarders、兼容别名与同步包装移除；重复安装 runtime 显式拒绝。
+
+验证：
+
+- ：0 warning / 0 error。
+- ：2340 passed / 0 failed / 0 skipped；新增架构上下文 CQRS 集成、缺失 runtime、生命周期窗口与生成注册回归；旧执行器/桥接套件随子系统删除。
+- 命名、许可证与运行时/生成器边界检查通过；VitePress 构建通过（保留既有大 bundle 提示）。
+- 探针确认 Core/Core.Abstractions 构建产物零 CQRS 程序集引用；聚合包显式引用 CQRS 保持 all-in-one 语义。
+- 未做真实 Godot 场景树、Native AOT 与性能验收；CQRS-only 独立采用路径由测试与文档示例覆盖，未接入真实第三方宿主。
+
+下一步：进入第三批。
 
 ## 第三批：日志标准化与可选角色组织
 

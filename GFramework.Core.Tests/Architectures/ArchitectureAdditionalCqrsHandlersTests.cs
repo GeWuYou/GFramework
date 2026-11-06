@@ -6,12 +6,13 @@ using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Architectures;
 using GFramework.Core.Logging;
 using GFramework.Cqrs;
-using GFramework.Cqrs.Abstractions.Cqrs;
+using GFramework.Cqrs.Extensions;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GFramework.Core.Tests.Architectures;
 
 /// <summary>
-///     验证架构初始化阶段可以显式接入默认程序集之外的 CQRS handlers。
+///     验证架构初始化阶段可以通过标准组合根入口显式接入默认程序集之外的 CQRS handlers。
 /// </summary>
 [TestFixture]
 public sealed class ArchitectureAdditionalCqrsHandlersTests
@@ -48,11 +49,11 @@ public sealed class ArchitectureAdditionalCqrsHandlersTests
     /// </summary>
     /// <returns>The asynchronous test task.</returns>
     [Test]
-    public async Task RegisterCqrsHandlersFromAssembly_Should_Register_Handlers_From_Explicit_Assembly()
+    public async Task AddCqrsHandlersFromAssembly_Should_Register_Handlers_From_Explicit_Assembly()
     {
         var generatedAssembly = CreateGeneratedHandlerAssembly();
-        var architecture = CreateArchitecture(target =>
-            target.RegisterCqrsHandlersFromAssembly(generatedAssembly.Object));
+        var architecture = CreateArchitecture(services =>
+            services.AddCqrsHandlersFromAssembly(generatedAssembly.Object));
 
         await architecture.InitializeAsync();
         try
@@ -72,14 +73,14 @@ public sealed class ArchitectureAdditionalCqrsHandlersTests
     /// </summary>
     /// <returns>The asynchronous test task.</returns>
     [Test]
-    public async Task RegisterCqrsHandlersFromAssembly_Should_Deduplicate_Repeated_Assembly_Registration()
+    public async Task AddCqrsHandlersFromAssembly_Should_Deduplicate_Repeated_Assembly_Registration()
     {
         var generatedAssemblyA = CreateGeneratedHandlerAssembly();
         var generatedAssemblyB = CreateGeneratedHandlerAssembly();
-        var architecture = CreateArchitecture(target =>
+        var architecture = CreateArchitecture(services =>
         {
-            target.RegisterCqrsHandlersFromAssembly(generatedAssemblyA.Object);
-            target.RegisterCqrsHandlersFromAssemblies([generatedAssemblyB.Object]);
+            services.AddCqrsHandlersFromAssembly(generatedAssemblyA.Object);
+            services.AddCqrsHandlersFromAssemblies([generatedAssemblyB.Object]);
         });
 
         await architecture.InitializeAsync();
@@ -113,14 +114,33 @@ public sealed class ArchitectureAdditionalCqrsHandlersTests
     }
 
     /// <summary>
-    ///     创建复用现有测试架构基建的测试架构，并在注册阶段后执行额外程序集接入逻辑。
+    ///     创建在配置阶段显式安装 CQRS runtime 并接入测试声明的 handler 程序集的测试架构。
     /// </summary>
-    /// <param name="configure">初始化阶段执行的额外 CQRS 程序集接入逻辑。</param>
-    /// <returns>带有注册后钩子的测试架构实例。</returns>
-    private static SyncTestArchitecture CreateArchitecture(Action<TestArchitectureBase> configure)
+    /// <param name="configureHandlers">配置阶段执行的额外 CQRS 程序集接入逻辑。</param>
+    /// <returns>已接线 runtime 与额外 handler 注册的测试架构实例。</returns>
+    private static HandlerWiringArchitecture CreateArchitecture(Action<IServiceCollection> configureHandlers)
     {
-        var architecture = new SyncTestArchitecture();
-        architecture.AddPostRegistrationHook(configure);
-        return architecture;
+        return new HandlerWiringArchitecture(configureHandlers);
+    }
+
+    /// <summary>
+    ///     通过标准组合根入口安装 CQRS runtime 的最小测试架构。
+    /// </summary>
+    private sealed class HandlerWiringArchitecture(Action<IServiceCollection> configureHandlers) : Architecture
+    {
+        /// <summary>
+        ///     在组合根阶段安装默认 CQRS runtime。
+        /// </summary>
+        public override Action<IServiceCollection>? Configurator => services =>
+            services.AddCqrsRuntime(LoggerFactoryResolver.Provider);
+
+        /// <summary>
+        ///     在用户配置阶段接入测试声明的 handler 程序集。
+        /// </summary>
+        /// <param name="services">当前配置阶段的服务描述集合。</param>
+        protected override void ConfigureServices(IServiceCollection services)
+        {
+            configureHandlers(services);
+        }
     }
 }

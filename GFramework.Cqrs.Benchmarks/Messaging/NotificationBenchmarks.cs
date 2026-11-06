@@ -99,7 +99,7 @@ public class NotificationBenchmarks
     [Benchmark(Baseline = true)]
     public ValueTask PublishNotification_GFrameworkCqrs()
     {
-        return _runtime.PublishAsync(BenchmarkContext.Instance, _notification, CancellationToken.None);
+        return _runtime.PublishAsync(_notification, CancellationToken.None);
     }
 
     /// <summary>

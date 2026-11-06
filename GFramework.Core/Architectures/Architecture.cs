@@ -57,14 +57,14 @@ public abstract class Architecture : IArchitecture
         _logger = factory.CreateLogger(GetType().Name);
 
         // 初始化管理器
-        _bootstrapper = new ArchitectureBootstrapper(GetType(), resolvedEnvironment, resolvedServices, factory);
+        _bootstrapper = new ArchitectureBootstrapper(resolvedEnvironment, resolvedServices, factory);
         _lifecycle = new ArchitectureLifecycle(this, resolvedConfiguration, resolvedServices, _logger);
         _lifecycle.PhaseChanged += HandleLifecyclePhaseChanged;
         _componentRegistry = new ArchitectureComponentRegistry(
             this,
             resolvedServices,
             _lifecycle);
-        _modules = new ArchitectureModules(this, resolvedServices, _logger);
+        _modules = new ArchitectureModules(this, _logger);
     }
 
     #endregion
@@ -206,59 +206,6 @@ public abstract class Architecture : IArchitecture
     #endregion
 
     #region Module Management
-
-    /// <summary>
-    ///     注册 CQRS 请求管道行为。
-    ///     可以传入开放泛型行为类型，也可以传入绑定到特定请求的封闭行为类型。
-    /// </summary>
-    /// <typeparam name="TBehavior">行为类型，必须是引用类型</typeparam>
-    public void RegisterCqrsPipelineBehavior<TBehavior>() where TBehavior : class
-    {
-        EnsureConfigurationOpen();
-        _modules.RegisterCqrsPipelineBehavior<TBehavior>();
-    }
-
-    /// <summary>
-    ///     注册 CQRS 流式请求管道行为。
-    ///     可以传入开放泛型行为类型，也可以传入绑定到特定流式请求的封闭行为类型。
-    /// </summary>
-    /// <typeparam name="TBehavior">行为类型，必须是引用类型</typeparam>
-    /// <exception cref="InvalidOperationException">当前架构的底层容器已冻结，无法继续注册流式管道行为。</exception>
-    /// <exception cref="ObjectDisposedException">当前架构的底层容器已释放，无法继续注册流式管道行为。</exception>
-    /// <remarks>
-    ///     该调用会委托到底层容器完成校验与注册，因此应在初始化冻结前完成所有流式行为接线。
-    /// </remarks>
-    public void RegisterCqrsStreamPipelineBehavior<TBehavior>() where TBehavior : class
-    {
-        EnsureConfigurationOpen();
-        _modules.RegisterCqrsStreamPipelineBehavior<TBehavior>();
-    }
-
-    /// <summary>
-    ///     从指定程序集显式注册 CQRS 处理器。
-    ///     该入口适用于把拆分到其他模块或扩展包程序集中的 handlers 接入当前架构。
-    /// </summary>
-    /// <param name="assembly">包含 CQRS 处理器或生成注册器的程序集。</param>
-    /// <exception cref="ArgumentNullException"><paramref name="assembly" /> 为 <see langword="null" />。</exception>
-    /// <exception cref="InvalidOperationException">当前架构的底层容器已冻结，无法继续注册处理器。</exception>
-    public void RegisterCqrsHandlersFromAssembly(Assembly assembly)
-    {
-        EnsureConfigurationOpen();
-        _modules.RegisterCqrsHandlersFromAssembly(assembly);
-    }
-
-    /// <summary>
-    ///     从多个程序集显式注册 CQRS 处理器。
-    ///     适用于在初始化阶段批量接入多个扩展程序集，并沿用容器的去重策略避免重复注册。
-    /// </summary>
-    /// <param name="assemblies">要接入的程序集集合。</param>
-    /// <exception cref="ArgumentNullException"><paramref name="assemblies" /> 为 <see langword="null" />。</exception>
-    /// <exception cref="InvalidOperationException">当前架构的底层容器已冻结，无法继续注册处理器。</exception>
-    public void RegisterCqrsHandlersFromAssemblies(IEnumerable<Assembly> assemblies)
-    {
-        EnsureConfigurationOpen();
-        _modules.RegisterCqrsHandlersFromAssemblies(assemblies);
-    }
 
     /// <summary>
     ///     安装架构模块

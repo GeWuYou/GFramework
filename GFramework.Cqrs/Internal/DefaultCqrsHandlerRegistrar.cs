@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Reflection;
-using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
 
@@ -10,12 +9,14 @@ namespace GFramework.Cqrs.Internal;
 
 /// <summary>
 ///     默认的 CQRS 处理器注册器实现。
-///     该适配器把容器公开的 handler 接入入口转发到现有的注册流水线，
-///     使容器主路径只依赖 <see cref="ICqrsHandlerRegistrar" /> 抽象。
+///     该适配器把标准 <see cref="IServiceCollection" /> 上的 handler 接入入口转发到现有注册流水线，
+///     使组合根只依赖 <see cref="ICqrsHandlerRegistrar" /> 抽象。
 /// </summary>
-internal sealed class DefaultCqrsHandlerRegistrar(IIocContainer container, ILogger logger) : ICqrsHandlerRegistrar
+/// <param name="services">承载 handler 注册结果的标准服务集合。</param>
+/// <param name="logger">注册阶段诊断日志器。</param>
+internal sealed class DefaultCqrsHandlerRegistrar(IServiceCollection services, ILogger logger) : ICqrsHandlerRegistrar
 {
-    private readonly IIocContainer _container = container ?? throw new ArgumentNullException(nameof(container));
+    private readonly IServiceCollection _services = services ?? throw new ArgumentNullException(nameof(services));
     private readonly ILogger _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
     /// <summary>
@@ -25,6 +26,6 @@ internal sealed class DefaultCqrsHandlerRegistrar(IIocContainer container, ILogg
     public void RegisterHandlers(IEnumerable<Assembly> assemblies)
     {
         ArgumentNullException.ThrowIfNull(assemblies);
-        CqrsHandlerRegistrar.RegisterHandlers(_container, assemblies, _logger);
+        CqrsHandlerRegistrar.RegisterHandlers(_services, assemblies, _logger);
     }
 }

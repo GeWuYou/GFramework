@@ -1,10 +1,8 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using GFramework.Core.Abstractions.Command;
 using GFramework.Core.Abstractions.Events;
 using GFramework.Core.Abstractions.Ioc;
-using GFramework.Core.Abstractions.Query;
 using GFramework.Core.Abstractions.Rule;
 
 namespace GFramework.Core.Abstractions.Architectures;
@@ -25,24 +23,6 @@ public interface IArchitectureServices : IContextAware
     /// </summary>
     /// <returns>ITypeEventSystem类型的事件系统实例</returns>
     IEventBus EventBus { get; }
-
-    /// <summary>
-    ///     获取命令执行器
-    /// </summary>
-    /// <returns>ICommandExecutor类型的命令执行器实例</returns>
-    ICommandExecutor CommandExecutor { get; }
-
-    /// <summary>
-    ///     获取查询执行器
-    /// </summary>
-    /// <returns>IQueryExecutor类型的查询执行器实例</returns>
-    IQueryExecutor QueryExecutor { get; }
-
-    /// <summary>
-    ///     获取异步查询执行器
-    /// </summary>
-    /// <returns>IAsyncQueryExecutor类型的异步查询执行器实例</returns>
-    IAsyncQueryExecutor AsyncQueryExecutor { get; }
 
     /// <summary>
     ///     获取服务模块管理器

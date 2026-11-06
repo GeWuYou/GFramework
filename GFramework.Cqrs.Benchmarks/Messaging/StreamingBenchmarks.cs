@@ -151,7 +151,6 @@ public class StreamingBenchmarks
     {
         return ObserveAsync(
             _runtime.CreateStream(
-                BenchmarkContext.Instance,
                 _request,
                 CancellationToken.None),
             Observation);

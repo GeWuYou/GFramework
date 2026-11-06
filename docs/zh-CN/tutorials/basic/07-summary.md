@@ -65,26 +65,26 @@ this.RegisterEvent<ChangedCountEvent>(e =>
 
 ---
 
-### 阶段 3：引入 Command
+### 阶段 3：引入 CQRS 请求模型
 
 **代码**：
 
 ```csharp
-AddButton.Pressed += () =>
+AddButton.Pressed += async () =>
 {
-    this.SendCommand(new IncreaseCountCommand());
+    await this.SendAsync(new IncreaseCountRequest());
 };
 ```
 
 **改进**：
 
 - ✅ Controller 不关心"如何"，只负责"转发"
-- ✅ 逻辑封装在 Command 中
-- ✅ 命令可复用、可测试
+- ✅ 逻辑封装在 Handler 中
+- ✅ 请求可复用、可测试
 
 **剩余问题**：
 
-- ⚠️ 业务规则写在 Command 里
+- ⚠️ 业务规则写在 Handler 里
 
 ---
 
@@ -93,7 +93,7 @@ AddButton.Pressed += () =>
 **代码**：
 
 ```csharp
-// Command 使用 Utility 检查规则
+// Handler 使用 Utility 检查规则
 if (!utility.CanIncrease(model.Count)) return;
 model.Increment();
 
@@ -122,12 +122,12 @@ this.RegisterEvent<ChangedCountEvent>(e =>
 ┌────────────▼─────────────────────────────────┐
 │              Controller                      │
 │  - 接收用户输入                              │
-│  - 转发命令                                  │
+│  - 转发请求                                  │
 │  - 监听事件更新 UI                           │
 └────────────┬─────────────────────────────────┘
-             │ SendCommand
+             │ SendAsync
 ┌────────────▼─────────────────────────────────┐
-│               Command                        │
+│               Handler                        │
 │  - 获取 Utility 检查规则                     │
 │  - 调用 Model 修改状态                       │
 └────────────┬─────────────────────────────────┘
@@ -154,11 +154,11 @@ this.RegisterEvent<ChangedCountEvent>(e =>
 | 层级             | 职责    | 可以做                 | 不能做                     |
 |----------------|-------|---------------------|-------------------------|
 | **View**       | UI 展示 | 渲染节点、接收输入           | 包含业务逻辑                  |
-| **Controller** | 协调层   | 转发命令、监听事件、更新 UI     | 直接修改 Model              |
-| **Command**    | 业务操作  | 调用 Model、使用 Utility | 持有状态、直接更新 UI            |
+| **Controller** | 协调层   | 转发请求、监听事件、更新 UI     | 直接修改 Model              |
+| **Handler**    | 业务操作  | 调用 Model、使用 Utility | 持有状态、直接更新 UI            |
 | **Model**      | 数据状态  | 存储数据、发送事件           | 知道 View、调用 Controller   |
 | **Utility**    | 业务规则  | 无状态计算、验证            | 持有状态、依赖场景               |
-| **System**     | 系统逻辑  | 监听事件、协调 Model       | 直接修改 Model（应通过 Command） |
+| **System**     | 系统逻辑  | 监听事件、协调 Model       | 直接修改 Model（应通过请求处理器） |
 
 ## 设计原则
 
@@ -174,10 +174,13 @@ public class CounterModel : AbstractModel
     public void Increment() { /* ... */ }
 }
 
-// ✅ Command 只负责操作
-public class IncreaseCountCommand : AbstractCommand
+// ✅ Handler 只负责操作
+public sealed class IncreaseCountHandler
+    : AbstractRequestHandler<IncreaseCountRequest, Unit>
 {
-    protected override void OnExecute() { /* ... */ }
+    public override ValueTask<Unit> Handle(
+        IncreaseCountRequest request,
+        CancellationToken cancellationToken) { /* ... */ }
 }
 ```
 
@@ -225,7 +228,7 @@ _view.UpdateView();
 数据总是单向流动：
 
 ```text
-Action → Command → Model → Event → View/System
+Action → Request → Handler → Model → Event → View/System
 ```
 
 ## 最佳实践
@@ -269,33 +272,40 @@ public class CountEvent { }  // 不清晰
 public class Data { }        // 太泛化
 ```
 
-### 3. Command 职责
+### 3. Handler 职责
 
 **✅ 推荐**：
 
 ```csharp
-protected override void OnExecute()
+public override ValueTask<Unit> Handle(
+    IncreaseCountRequest request,
+    CancellationToken cancellationToken)
 {
     // 1. 获取依赖
-    var model = this.GetModel<ICounterModel>();
-    var utility = this.GetUtility<ICounterUtility>();
-    
+    var model = Context.GetModel<ICounterModel>();
+    var utility = Context.GetUtility<ICounterUtility>();
+
     // 2. 检查规则
-    if (!utility.CanIncrease(model.Count)) return;
-    
+    if (!utility.CanIncrease(model.Count))
+        return ValueTask.FromResult(Unit.Value);
+
     // 3. 执行操作
     model.Increment();
+    return ValueTask.FromResult(Unit.Value);
 }
 ```
 
 **❌ 不推荐**：
 
 ```csharp
-protected override void OnExecute()
+public override ValueTask<Unit> Handle(
+    IncreaseCountRequest request,
+    CancellationToken cancellationToken)
 {
     _count++;  // 直接修改状态
     UpdateUI();  // 直接更新 UI
     PlaySound();  // 混入太多逻辑
+    return ValueTask.FromResult(Unit.Value);
 }
 ```
 
@@ -342,7 +352,7 @@ protected override void OnInit()
 public void UpdateCounter()
 {
     // 直接修改 Model
-    model.Count++;  // 应该通过 Command
+    model.Count++;  // 应该通过请求处理器
 }
 ```
 
@@ -363,32 +373,39 @@ public class PlayerModel : AbstractModel
 }
 ```
 
-**✅ 推荐**：通过 Command 或 System 协调：
+**✅ 推荐**：通过请求处理器或 System 协调：
 
 ```csharp
-public class AttackCommand : AbstractCommand
+public sealed class AttackHandler
+    : AbstractRequestHandler<AttackRequest, Unit>
 {
-    protected override void OnExecute()
+    public override ValueTask<Unit> Handle(
+        AttackRequest request,
+        CancellationToken cancellationToken)
     {
-        var player = this.GetModel<IPlayerModel>();
-        var enemy = this.GetModel<IEnemyModel>();
-        
+        var player = Context.GetModel<IPlayerModel>();
+        var enemy = Context.GetModel<IEnemyModel>();
+
         enemy.TakeDamage(player.AttackPower);
+        return ValueTask.FromResult(Unit.Value);
     }
 }
 ```
 
 ---
 
-### Q2: Command 可以嵌套调用吗？
+### Q2: Handler 可以嵌套分发请求吗？
 
 **✅ 可以**：
 
 ```csharp
-protected override void OnExecute()
+public override async ValueTask<Unit> Handle(
+    ComplexRequest request,
+    CancellationToken cancellationToken)
 {
-    this.SendCommand(new SaveDataCommand());
-    this.SendCommand(new UpdateUICommand());
+    await Context.SendAsync(new SaveDataRequest());
+    await Context.SendAsync(new UpdateUIRequest());
+    return Unit.Value;
 }
 ```
 
@@ -429,28 +446,34 @@ if (count > 10) PlaySound();
 // ✅ 只读操作
 var count = this.GetModel<ICounterModel>().Count;
 
-// ❌ 修改操作（应通过 Command）
+// ❌ 修改操作（应通过请求处理器）
 this.GetModel<ICounterModel>().Increment();
 ```
 
 **原则**：
 
 - 读取数据：可以直接调用
-- 修改数据：应该通过 Command
+- 修改数据：应该通过请求处理器
 
 ---
 
 ### Q5: 如何处理异步操作？
 
-使用 `AbstractAsyncCommand`：
+CQRS 请求处理器天然异步：
 
 ```csharp
-public class SaveDataCommand : AbstractAsyncCommand
+public sealed record SaveDataRequest : IRequest<Unit>;
+
+public sealed class SaveDataHandler
+    : AbstractRequestHandler<SaveDataRequest, Unit>
 {
-    protected override async Task OnExecuteAsync()
+    public override async ValueTask<Unit> Handle(
+        SaveDataRequest request,
+        CancellationToken cancellationToken)
     {
-        var model = this.GetModel<ICounterModel>();
+        var model = Context.GetModel<ICounterModel>();
         await SaveToFileAsync(model.Count);
+        return Unit.Value;
     }
 }
 ```
@@ -502,14 +525,15 @@ public void CanIncrease_WhenAtMax_ReturnsFalse()
 }
 ```
 
-**Command 测试**（需要 mock）：
+**Handler 测试**（通过架构上下文分发）：
 
 ```csharp
 [Test]
-public void ExecuteCommand_ShouldIncrementModel()
+public async Task SendRequest_ShouldIncrementModel()
 {
-    // 需要 mock IArchitecture
-    // 或使用集成测试
+    // 通过测试架构安装 CQRS runtime 后
+    // 使用 architecture.Context.SendAsync(new IncreaseCountRequest())
+    // 或参考单元测试实践章节
 }
 ```
 
@@ -523,15 +547,15 @@ public void ExecuteCommand_ShouldIncrementModel()
 scripts/
 ├── counter/
 │   ├── model/
-│   ├── command/
+│   ├── cqrs/
 │   └── system/
 ├── player/
 │   ├── model/
-│   ├── command/
+│   ├── cqrs/
 │   └── system/
 └── inventory/
     ├── model/
-    ├── command/
+    ├── cqrs/
     └── system/
 ```
 
@@ -652,7 +676,7 @@ public override void _Process(double delta)
     - [源码生成器](../../source-generators/index.md)
 
 - **设计模式**：
-    - 命令模式（Command Pattern）
+    - 命令查询职责分离（CQRS）
     - 观察者模式（Observer Pattern）
     - 依赖注入（Dependency Injection）
 
@@ -676,7 +700,7 @@ public override void _Process(double delta)
 ### 核心概念
 
 - ✅ Model：存储状态，发送事件
-- ✅ Command：封装业务逻辑
+- ✅ CQRS 请求与处理器：封装业务逻辑
 - ✅ Controller：协调用户输入
 - ✅ Utility：提供业务规则
 - ✅ System：响应状态变化
@@ -730,7 +754,7 @@ public override void _Process(double delta)
 **核心组件**
 
 - [ ] Model 已创建并注册
-- [ ] Command 已创建
+- [ ] CQRS 请求与处理器已创建
 - [ ] Utility 已创建并注册
 - [ ] System 已创建并注册
 - [ ] Controller 实现了 IController

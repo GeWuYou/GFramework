@@ -84,54 +84,6 @@ public class GameModel : AbstractModel, IContextAware
 }
 ```
 
-#### SendCommand 扩展方法
-
-```csharp
-// 发送无返回值的命令
-public static void SendCommand(this IContextAware contextAware, ICommand command)
-
-// 发送带返回值的命令
-public static TResult SendCommand<TResult>(this IContextAware contextAware, ICommand<TResult> command)
-```
-
-**使用示例：**
-
-```csharp
-public class GameController : IController
-{
-    public void OnStartButtonClicked()
-    {
-        // 发送命令实例
-        this.SendCommand(new StartGameCommand());
-        
-        // 发送带返回值的命令
-        var result = this.SendCommand(new CalculateScoreCommand());
-    }
-}
-```
-
-#### SendQuery 扩展方法
-
-```csharp
-public static TResult SendQuery<TResult>(this IContextAware contextAware, IQuery<TResult> query)
-```
-
-**使用示例：**
-
-```csharp
-public class InventoryController : IController
-{
-    public void ShowInventory()
-    {
-        // 发送查询获取数据
-        var items = this.SendQuery(new GetInventoryItemsQuery());
-        var gold = this.SendQuery(new GetPlayerGoldQuery());
-        
-        UpdateInventoryUI(items, gold);
-    }
-}
-```
-
 #### SendEvent 扩展方法
 
 ```csharp
@@ -208,7 +160,48 @@ public static T? GetEnvironment<T>(this IContextAware contextAware) where T : cl
 public static IEnvironment GetEnvironment(this IContextAware contextAware)
 ```
 
-### 2. Object 扩展 (`ObjectExtensions.cs`)
+### 2. CQRS 分发扩展（`GFramework.Cqrs.Extensions`）
+
+CQRS 模块为 `IContextAware` 与 `IArchitectureContext` 提供了一组异步分发扩展，把当前上下文绑定为分发上下文：
+
+```csharp
+// 单次请求分发
+public static ValueTask<TResponse> SendRequestAsync<TResponse>(
+    this IContextAware contextAware, IRequest<TResponse> request, CancellationToken ct = default)
+
+// 命令语义与请求语义的分发入口
+public static ValueTask SendAsync<TCommand>(this IContextAware contextAware, TCommand command, CancellationToken ct = default)
+public static ValueTask<TResponse> SendAsync<TResponse>(this IContextAware contextAware, IRequest<TResponse> request, CancellationToken ct = default)
+
+// 通知分发
+public static ValueTask PublishAsync<TNotification>(this IContextAware contextAware, TNotification notification, CancellationToken ct = default)
+
+// 流式请求
+public static IAsyncEnumerable<TResponse> CreateStream<TResponse>(
+    this IContextAware contextAware, IStreamRequest<TResponse> request, CancellationToken ct = default)
+```
+
+`IArchitectureContext` 上有同名扩展，语义一致。使用前需要在架构中安装 CQRS runtime 模块，接入方式见 [CQRS 运行时](./cqrs.md)。
+
+**使用示例：**
+
+```csharp
+using GFramework.Cqrs.Extensions;
+
+public class InventoryController : IController
+{
+    public async Task ShowInventory()
+    {
+        // 发送读请求获取数据
+        var items = await this.SendRequestAsync<IReadOnlyList<Item>>(new GetInventoryItemsRequest());
+        var gold = await this.SendRequestAsync<int>(new GetPlayerGoldRequest());
+
+        UpdateInventoryUI(items, gold);
+    }
+}
+```
+
+### 3. Object 扩展 (`ObjectExtensions.cs`)
 
 提供基于运行时类型判断的对象扩展方法，用于简化类型分支、链式调用和架构分派逻辑。
 
@@ -324,7 +317,7 @@ obj.SwitchType(
 );
 ```
 
-### 3. OrEvent 扩展 (`OrEventExtensions.cs`)
+### 4. OrEvent 扩展 (`OrEventExtensions.cs`)
 
 为 `IEvent` 提供事件组合功能。
 
@@ -351,7 +344,7 @@ var onAnyDamage = onPhysicalDamage
     .Or(onPoisonDamage);
 ```
 
-### 4. UnRegisterList 扩展 (`UnRegisterListExtension.cs`)
+### 5. UnRegisterList 扩展 (`UnRegisterListExtension.cs`)
 
 为 `IUnRegister` 和 `IUnRegisterList` 提供批量管理功能。
 
@@ -423,27 +416,31 @@ public partial class GameplayController : IController
     
     public void Process(double delta)
     {
-        // 发送命令
-        this.SendCommand(new AttackCommand(targetId: 1));
-        
-        // 发送查询
-        var hasPotion = this.SendQuery(new HasItemQuery("health_potion"));
+        // 发送事件
+        this.SendEvent(new AttackInputEvent(targetId: 1));
+    }
+
+    private async Task OnUsePotionClicked()
+    {
+        // 发送读请求
+        var hasPotion = await this.SendRequestAsync<bool>(new HasItemRequest("health_potion"));
         if (hasPotion)
         {
-            this.SendCommand<UseHealthPotionCommand>();
+            // 发送写请求
+            await this.SendAsync(new UseHealthPotionRequest());
         }
     }
-    
+
     private void OnGameStarted(GameStartedEvent e)
     {
         Console.WriteLine("Game started!");
     }
-    
+
     private void OnHealthChanged(int health)
     {
         UpdateHealthBar(health);
     }
-    
+
     public void Cleanup()
     {
         _unregisterList.UnRegisterAll();
@@ -451,27 +448,28 @@ public partial class GameplayController : IController
 }
 ```
 
-### Command 示例
+### Request 处理器示例
 
 ```csharp
-public class ComplexGameCommand : AbstractCommand
+using GFramework.Cqrs.Cqrs.Request;
+
+public class SaveGameHandler : AbstractRequestHandler<SaveGameRequest, Unit>
 {
-    protected override void OnExecute()
+    public override ValueTask<Unit> Handle(SaveGameRequest request, CancellationToken cancellationToken)
     {
         // 获取多个组件
         var playerModel = this.GetModel<PlayerModel>();
         var gameSystem = this.GetSystem<GameSystem>();
         var timeUtility = this.GetUtility<TimeUtility>();
-        
+
         // 执行业务逻辑
         var currentTime = timeUtility.GetCurrentTime();
         gameSystem.ProcessGameLogic(playerModel, currentTime);
-        
+
         // 发送事件通知
         this.SendEvent(new GameStateChangedEvent());
-        
-        // 可以发送其他命令（谨慎使用）
-        this.SendCommand<SaveGameCommand>();
+
+        return ValueTask.FromResult(Unit.Value);
     }
 }
 ```
@@ -487,34 +485,34 @@ public class AchievementSystem : AbstractSystem
         this.RegisterEvent<EnemyKilledEvent>(OnEnemyKilled);
         this.RegisterEvent<LevelCompletedEvent>(OnLevelCompleted);
     }
-    
+
     private void OnEnemyKilled(EnemyKilledEvent e)
     {
         // 获取模型
         var playerModel = this.GetModel<PlayerModel>();
         playerModel.EnemyKillCount++;
-        
+
         // 检查成就
         if (playerModel.EnemyKillCount >= 100)
         {
             // 发送成就解锁事件
-            this.SendEvent(new AchievementUnlockedEvent 
-            { 
-                AchievementId = "kill_100_enemies" 
+            this.SendEvent(new AchievementUnlockedEvent
+            {
+                AchievementId = "kill_100_enemies"
             });
         }
     }
-    
-    private void OnLevelCompleted(LevelCompletedEvent e)
+
+    private async void OnLevelCompleted(LevelCompletedEvent e)
     {
-        // 发送查询
-        var completionTime = this.SendQuery(new GetLevelTimeQuery(e.LevelId));
-        
+        // 发送读请求
+        var completionTime = await this.SendRequestAsync<int>(new GetLevelTimeRequest(e.LevelId));
+
         if (completionTime < 60)
         {
-            this.SendEvent(new AchievementUnlockedEvent 
-            { 
-                AchievementId = "speed_runner" 
+            this.SendEvent(new AchievementUnlockedEvent
+            {
+                AchievementId = "speed_runner"
             });
         }
     }
@@ -549,8 +547,7 @@ public class AchievementSystem : AbstractSystem
 ## 相关包
 
 - [`architecture`](./architecture.md) - 扩展方法最终调用架构方法
-- [`command`](./command.md) - 命令发送扩展
-- [`query`](./query.md) - 查询发送扩展
+- [`cqrs`](./cqrs.md) - CQRS 分发扩展与 runtime 接入
 - [`events`](./events.md) - 事件注册和 Or 组合扩展
 - [`model`](./model.md) - 模型获取扩展
 - [`system`](./system.md) - 系统获取扩展

@@ -28,4 +28,10 @@
         <ProjectReference Include="..\GFramework.Game.Abstractions\GFramework.Game.Abstractions.csproj" PrivateAssets="all"/>
         <ProjectReference Include="..\GFramework.Core.Abstractions\GFramework.Core.Abstractions.csproj" PrivateAssets="all"/>
     </ItemGroup>
+
+    <!-- CQRS 不再经由 Core 传递；协程便捷扩展依赖 request/notification/stream 契约与运行时 -->
+    <ItemGroup>
+        <ProjectReference Include="..\GFramework.Cqrs\GFramework.Cqrs.csproj"/>
+        <ProjectReference Include="..\GFramework.Cqrs.Abstractions\GFramework.Cqrs.Abstractions.csproj"/>
+    </ItemGroup>
 </Project>

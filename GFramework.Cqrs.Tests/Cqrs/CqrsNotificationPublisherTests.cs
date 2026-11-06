@@ -2,13 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Architectures;
-using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Architectures;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
+using GFramework.Cqrs;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Cqrs;
+using GFramework.Cqrs.Extensions;
 using GFramework.Cqrs.Notification;
 using GFramework.Cqrs.Tests.Logging;
 
@@ -27,21 +28,17 @@ internal sealed class CqrsNotificationPublisherTests
     public async Task PublishAsync_Should_Use_Custom_NotificationPublisher_When_Runtime_Is_Created_With_It()
     {
         var invocationOrder = new List<string>();
-        var handlers = new object[]
-        {
-            new RecordingNotificationHandler<PublisherNotification>("first", invocationOrder),
-            new RecordingNotificationHandler<PublisherNotification>("second", invocationOrder)
-        };
         var runtime = CreateRuntime(
-            container =>
+            provider =>
             {
-                container
-                    .Setup(currentContainer => currentContainer.GetAll(typeof(INotificationHandler<PublisherNotification>)))
-                    .Returns(handlers);
+                provider.Register(
+                    typeof(INotificationHandler<PublisherNotification>),
+                    new RecordingNotificationHandler<PublisherNotification>("first", invocationOrder),
+                    new RecordingNotificationHandler<PublisherNotification>("second", invocationOrder));
             },
             new ReverseOrderNotificationPublisher());
 
-        await runtime.PublishAsync(new FakeCqrsContext(), new PublisherNotification()).ConfigureAwait(false);
+        await runtime.PublishAsync(new PublisherNotification()).ConfigureAwait(false);
 
         Assert.That(invocationOrder, Is.EqualTo(["second", "first"]));
     }
@@ -78,15 +75,16 @@ internal sealed class CqrsNotificationPublisherTests
         var handler = new ContextAwarePublisherTestHandler();
         var architectureContext = new Mock<IArchitectureContext>(MockBehavior.Strict);
         var runtime = CreateRuntime(
-            container =>
+            provider =>
             {
-                container
-                    .Setup(currentContainer => currentContainer.GetAll(typeof(INotificationHandler<PublisherNotification>)))
-                    .Returns([handler]);
+                provider.Register(typeof(INotificationHandler<PublisherNotification>), handler);
             },
             new PassthroughNotificationPublisher());
 
-        await runtime.PublishAsync(architectureContext.Object, new PublisherNotification()).ConfigureAwait(false);
+        // 架构集成路径会把宿主上下文包装成公开的 ArchitectureCqrsDispatchContext 后传入 runtime。
+        var dispatchContext = new ArchitectureCqrsDispatchContext(architectureContext.Object);
+
+        await runtime.PublishAsync(new PublisherNotification(), cancellationToken: default, dispatchContext).ConfigureAwait(false);
 
         Assert.That(handler.ObservedContext, Is.SameAs(architectureContext.Object));
     }
@@ -98,22 +96,19 @@ internal sealed class CqrsNotificationPublisherTests
     public void PublishAsync_Should_Throw_When_Multiple_NotificationPublishers_Are_Registered()
     {
         var runtime = CreateRuntime(
-            container =>
+            provider =>
             {
-                container
-                    .Setup(currentContainer => currentContainer.GetAll(typeof(INotificationHandler<PublisherNotification>)))
-                    .Returns([new RecordingNotificationHandler<PublisherNotification>("only", [])]);
-                container
-                    .Setup(currentContainer => currentContainer.GetAll(typeof(INotificationPublisher)))
-                    .Returns(
-                    [
-                        new TrackingNotificationPublisher(),
-                        new TrackingNotificationPublisher()
-                    ]);
+                provider.Register(
+                    typeof(INotificationHandler<PublisherNotification>),
+                    new RecordingNotificationHandler<PublisherNotification>("only", []));
+                provider.Register(
+                    typeof(INotificationPublisher),
+                    new TrackingNotificationPublisher(),
+                    new TrackingNotificationPublisher());
             });
 
         Assert.That(
-            async () => await runtime.PublishAsync(new FakeCqrsContext(), new PublisherNotification()).ConfigureAwait(false),
+            async () => await runtime.PublishAsync(new PublisherNotification()).ConfigureAwait(false),
             Throws.InvalidOperationException.With.Message.EqualTo(
                 $"Multiple {typeof(INotificationPublisher).FullName} instances are registered. Remove duplicate notification publisher strategies before publishing notifications."));
     }
@@ -126,33 +121,23 @@ internal sealed class CqrsNotificationPublisherTests
     {
         var firstPublisher = new TrackingNotificationPublisher();
         var secondPublisher = new TrackingNotificationPublisher();
-        var notificationPublisherLookupCount = 0;
         var runtime = CreateRuntime(
-            container =>
+            provider =>
             {
-                container
-                    .Setup(currentContainer => currentContainer.GetAll(typeof(INotificationHandler<PublisherNotification>)))
-                    .Returns([new RecordingNotificationHandler<PublisherNotification>("only", [])]);
-                container
-                    .Setup(currentContainer => currentContainer.GetAll(typeof(INotificationPublisher)))
-                    .Returns(() =>
-                    {
-                        notificationPublisherLookupCount++;
-                        return notificationPublisherLookupCount switch
-                        {
-                            1 => [firstPublisher],
-                            2 => [secondPublisher],
-                            _ => throw new AssertionException("Notification publisher should be resolved at most once.")
-                        };
-                    });
+                provider.Register(
+                    typeof(INotificationHandler<PublisherNotification>),
+                    new RecordingNotificationHandler<PublisherNotification>("only", []));
+                provider.RegisterPublisherSequence(firstPublisher, secondPublisher);
             });
 
-        await runtime.PublishAsync(new FakeCqrsContext(), new PublisherNotification()).ConfigureAwait(false);
-        await runtime.PublishAsync(new FakeCqrsContext(), new PublisherNotification()).ConfigureAwait(false);
+        await runtime.PublishAsync(new PublisherNotification()).ConfigureAwait(false);
+        await runtime.PublishAsync(new PublisherNotification()).ConfigureAwait(false);
 
-        Assert.That(notificationPublisherLookupCount, Is.EqualTo(1));
-        Assert.That(firstPublisher.PublishCallCount, Is.EqualTo(2));
-        Assert.That(secondPublisher.PublishCallCount, Is.Zero);
+        Assert.Multiple(() =>
+        {
+            Assert.That(firstPublisher.PublishCallCount, Is.EqualTo(2));
+            Assert.That(secondPublisher.PublishCallCount, Is.Zero);
+        });
     }
 
     /// <summary>
@@ -163,36 +148,25 @@ internal sealed class CqrsNotificationPublisherTests
     public async Task PublishAsync_Should_Fallback_To_SequentialNotificationPublisher_And_Cache_It_When_None_Is_Registered()
     {
         var invocationOrder = new List<string>();
-        var notificationPublisherLookupCount = 0;
+        var publisherLookupCount = 0;
         var runtime = CreateRuntime(
-            container =>
+            provider =>
             {
-                container
-                    .Setup(currentContainer => currentContainer.GetAll(typeof(INotificationHandler<PublisherNotification>)))
-                    .Returns(
-                    [
-                        new RecordingNotificationHandler<PublisherNotification>("first", invocationOrder),
-                        new RecordingNotificationHandler<PublisherNotification>("second", invocationOrder)
-                    ]);
-                container
-                    .Setup(currentContainer => currentContainer.GetAll(typeof(INotificationPublisher)))
-                    .Returns(() =>
-                    {
-                        notificationPublisherLookupCount++;
-                        if (notificationPublisherLookupCount == 1)
-                        {
-                            return Array.Empty<object>();
-                        }
-
-                        throw new AssertionException("Notification publisher should not be resolved more than once.");
-                    });
+                provider.Register(
+                    typeof(INotificationHandler<PublisherNotification>),
+                    new RecordingNotificationHandler<PublisherNotification>("first", invocationOrder),
+                    new RecordingNotificationHandler<PublisherNotification>("second", invocationOrder));
+                provider.OnPublisherResolved = () => publisherLookupCount++;
             });
 
-        await runtime.PublishAsync(new FakeCqrsContext(), new PublisherNotification()).ConfigureAwait(false);
-        await runtime.PublishAsync(new FakeCqrsContext(), new PublisherNotification()).ConfigureAwait(false);
+        await runtime.PublishAsync(new PublisherNotification()).ConfigureAwait(false);
+        await runtime.PublishAsync(new PublisherNotification()).ConfigureAwait(false);
 
-        Assert.That(notificationPublisherLookupCount, Is.EqualTo(1));
-        Assert.That(invocationOrder, Is.EqualTo(["first", "second", "first", "second"]));
+        Assert.Multiple(() =>
+        {
+            Assert.That(publisherLookupCount, Is.EqualTo(1));
+            Assert.That(invocationOrder, Is.EqualTo(["first", "second", "first", "second"]));
+        });
     }
 
     /// <summary>
@@ -203,19 +177,16 @@ internal sealed class CqrsNotificationPublisherTests
     {
         var trailingHandler = new RecordingNotificationHandler<PublisherNotification>("second", []);
         var runtime = CreateRuntime(
-            container =>
+            provider =>
             {
-                container
-                    .Setup(currentContainer => currentContainer.GetAll(typeof(INotificationHandler<PublisherNotification>)))
-                    .Returns(
-                    [
-                        new ThrowingNotificationHandler(),
-                        trailingHandler
-                    ]);
+                provider.Register(
+                    typeof(INotificationHandler<PublisherNotification>),
+                    new ThrowingNotificationHandler(),
+                    trailingHandler);
             },
             new TaskWhenAllNotificationPublisher());
 
-        var publishTask = runtime.PublishAsync(new FakeCqrsContext(), new PublisherNotification()).AsTask();
+        var publishTask = runtime.PublishAsync(new PublisherNotification()).AsTask();
 
         try
         {
@@ -226,8 +197,11 @@ internal sealed class CqrsNotificationPublisherTests
             // 并行发布会把处理器失败收敛到返回任务；这里仅消费异常并继续验证所有处理器都已被触发。
         }
 
-        Assert.That(trailingHandler.Invoked, Is.True);
-        Assert.That(publishTask.Exception, Is.Not.Null);
+        Assert.Multiple(() =>
+        {
+            Assert.That(trailingHandler.Invoked, Is.True);
+            Assert.That(publishTask.Exception, Is.Not.Null);
+        });
     }
 
     /// <summary>
@@ -236,16 +210,10 @@ internal sealed class CqrsNotificationPublisherTests
     [Test]
     public void PublishAsync_Should_Complete_When_No_Handlers_Are_Registered()
     {
-        var runtime = CreateRuntime(
-            container =>
-            {
-                container
-                    .Setup(currentContainer => currentContainer.GetAll(typeof(INotificationHandler<PublisherNotification>)))
-                    .Returns(Array.Empty<object>());
-            });
+        var runtime = CreateRuntime(_ => { });
 
         Assert.That(
-            async () => await runtime.PublishAsync(new FakeCqrsContext(), new PublisherNotification()).ConfigureAwait(false),
+            async () => await runtime.PublishAsync(new PublisherNotification()).ConfigureAwait(false),
             Throws.Nothing);
     }
 
@@ -257,19 +225,16 @@ internal sealed class CqrsNotificationPublisherTests
     {
         var trailingHandler = new RecordingNotificationHandler<PublisherNotification>("second", []);
         var runtime = CreateRuntime(
-            container =>
+            provider =>
             {
-                container
-                    .Setup(currentContainer => currentContainer.GetAll(typeof(INotificationHandler<PublisherNotification>)))
-                    .Returns(
-                    [
-                        new ThrowingNotificationHandler(),
-                        trailingHandler
-                    ]);
+                provider.Register(
+                    typeof(INotificationHandler<PublisherNotification>),
+                    new ThrowingNotificationHandler(),
+                    trailingHandler);
             });
 
         Assert.That(
-            async () => await runtime.PublishAsync(new FakeCqrsContext(), new PublisherNotification()).ConfigureAwait(false),
+            async () => await runtime.PublishAsync(new PublisherNotification()).ConfigureAwait(false),
             Throws.InvalidOperationException.With.Message.EqualTo("boom"));
         Assert.That(trailingHandler.Invoked, Is.False);
     }
@@ -277,36 +242,82 @@ internal sealed class CqrsNotificationPublisherTests
     /// <summary>
     ///     创建一个只满足当前测试最小依赖面的 dispatcher runtime。
     /// </summary>
-    /// <param name="configureContainer">对容器 mock 的额外配置。</param>
-    /// <param name="notificationPublisher">要注入的自定义通知发布器；若为 <see langword="null" /> 则使用默认发布器。</param>
+    /// <param name="configureProvider">对测试用服务提供者的额外注册。</param>
+    /// <param name="notificationPublisher">要注入的自定义通知发布器；若为 <see langword="null" /> 则按容器注册解析。</param>
     /// <returns>默认 CQRS runtime。</returns>
     private static GFramework.Cqrs.Abstractions.Cqrs.ICqrsRuntime CreateRuntime(
-        Action<Mock<IIocContainer>> configureContainer,
+        Action<FakeDispatchServiceProvider> configureProvider,
         INotificationPublisher? notificationPublisher = null)
     {
-        var container = new Mock<IIocContainer>(MockBehavior.Strict);
+        var provider = new FakeDispatchServiceProvider();
+        configureProvider(provider);
         var logger = new TestLogger(nameof(CqrsNotificationPublisherTests), LogLevel.Debug);
-
-        // 默认 runtime 会延迟解析通知发布器；strict mock 需要声明“未注册自定义 publisher”的空集合返回。
-        container
-            .Setup(currentContainer => currentContainer.GetAll(typeof(INotificationPublisher)))
-            .Returns(Array.Empty<object>());
-
-        configureContainer(container);
-        return CqrsRuntimeFactory.CreateRuntime(container.Object, logger, notificationPublisher);
+        return CqrsRuntimeFactory.CreateRuntime(provider, logger, notificationPublisher);
     }
 
     /// <summary>
-    ///     为当前测试提供最小的 CQRS 上下文标记。
+    ///     记录通知调用顺序的显式装配处理器；名称和共享列表属于具体测试用例。
     /// </summary>
-    private sealed class FakeCqrsContext : ICqrsContext
-    {
-    }
-
-    /// <summary>
-    ///     为通知发布器测试提供最小通知类型。
-    /// </summary>
+    /// <typeparam name="TNotification">当前用例的通知类型。</typeparam>
+    /// <summary>发布场景使用的最小通知载体。</summary>
     private sealed record PublisherNotification : INotification;
+
+    private sealed class RecordingNotificationHandler<TNotification> : INotificationHandler<TNotification>
+        where TNotification : INotification
+    {
+        private readonly List<string> _invocationOrder;
+        private readonly string _name;
+
+        /// <summary>
+        ///     初始化一个记录调用顺序的测试处理器。
+        /// </summary>
+        /// <param name="name">当前处理器对应的名称。</param>
+        /// <param name="invocationOrder">承载调用顺序的列表。</param>
+        public RecordingNotificationHandler(string name, List<string> invocationOrder)
+        {
+            ArgumentNullException.ThrowIfNull(name);
+            ArgumentNullException.ThrowIfNull(invocationOrder);
+
+            _name = name;
+            _invocationOrder = invocationOrder;
+        }
+
+        /// <summary>
+        ///     获取当前处理器是否已被调用。
+        /// </summary>
+        public bool Invoked { get; private set; }
+
+        /// <summary>
+        ///     把当前处理器名称追加到调用顺序列表。
+        /// </summary>
+        /// <param name="notification">当前通知。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>已完成的值任务。</returns>
+        public ValueTask Handle(TNotification notification, CancellationToken cancellationToken)
+        {
+            Invoked = true;
+            _invocationOrder.Add(_name);
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    /// <summary>
+    ///     在被调用时主动抛出异常的测试处理器。
+    /// </summary>
+    private sealed class ThrowingNotificationHandler : INotificationHandler<PublisherNotification>
+    {
+        /// <summary>
+        ///     抛出固定异常，验证默认发布器的失败即停语义。
+        /// </summary>
+        /// <param name="notification">当前通知。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>不会成功返回。</returns>
+        /// <exception cref="InvalidOperationException">始终抛出，表示当前处理器失败。</exception>
+        public ValueTask Handle(PublisherNotification notification, CancellationToken cancellationToken)
+        {
+            throw new InvalidOperationException("boom");
+        }
+    }
 
     /// <summary>
     ///     按传入顺序直接执行处理器的测试发布器。
@@ -394,68 +405,6 @@ internal sealed class CqrsNotificationPublisherTests
     }
 
     /// <summary>
-    ///     记录通知调用顺序的显式装配处理器；名称和共享列表属于具体测试用例。
-    ///     保持开放泛型定义，使整程序集扫描不会把这些需要用例参数的探针当成可自动装配的业务处理器。
-    /// </summary>
-    /// <typeparam name="TNotification">当前用例的通知类型。</typeparam>
-    private sealed class RecordingNotificationHandler<TNotification> : INotificationHandler<TNotification>
-        where TNotification : INotification
-    {
-        private readonly List<string> _invocationOrder;
-        private readonly string _name;
-
-        /// <summary>
-        ///     初始化一个记录调用顺序的测试处理器。
-        /// </summary>
-        /// <param name="name">当前处理器对应的名称。</param>
-        /// <param name="invocationOrder">承载调用顺序的列表。</param>
-        public RecordingNotificationHandler(string name, List<string> invocationOrder)
-        {
-            ArgumentNullException.ThrowIfNull(name);
-            ArgumentNullException.ThrowIfNull(invocationOrder);
-
-            _name = name;
-            _invocationOrder = invocationOrder;
-        }
-
-        /// <summary>
-        ///     获取当前处理器是否已被调用。
-        /// </summary>
-        public bool Invoked { get; private set; }
-
-        /// <summary>
-        ///     把当前处理器名称追加到调用顺序列表。
-        /// </summary>
-        /// <param name="notification">当前通知。</param>
-        /// <param name="cancellationToken">取消令牌。</param>
-        /// <returns>已完成的值任务。</returns>
-        public ValueTask Handle(TNotification notification, CancellationToken cancellationToken)
-        {
-            Invoked = true;
-            _invocationOrder.Add(_name);
-            return ValueTask.CompletedTask;
-        }
-    }
-
-    /// <summary>
-    ///     在被调用时主动抛出异常的测试处理器。
-    /// </summary>
-    private sealed class ThrowingNotificationHandler : INotificationHandler<PublisherNotification>
-    {
-        /// <summary>
-        ///     抛出固定异常，验证默认发布器的失败即停语义。
-        /// </summary>
-        /// <param name="notification">当前通知。</param>
-        /// <param name="cancellationToken">取消令牌。</param>
-        /// <returns>不会成功返回。</returns>
-        /// <exception cref="InvalidOperationException">始终抛出，表示当前处理器失败。</exception>
-        public ValueTask Handle(PublisherNotification notification, CancellationToken cancellationToken)
-        {
-            throw new InvalidOperationException("boom");
-        }
-    }
-
-    /// <summary>
     ///     记录 dispatcher 是否在自定义发布器路径中完成上下文注入的测试处理器。
     /// </summary>
     private sealed class ContextAwarePublisherTestHandler
@@ -479,4 +428,121 @@ internal sealed class CqrsNotificationPublisherTests
             return ValueTask.CompletedTask;
         }
     }
+
+    /// <summary>
+    ///     最小化实现标准 <see cref="IServiceProvider" /> 解析契约的测试替身。
+    ///     同时实现 <see cref="IServiceProviderIsService" />，覆盖 dispatcher 的行为注册探测路径。
+    /// </summary>
+    private sealed class FakeDispatchServiceProvider : IServiceProvider, IServiceProviderIsService
+    {
+        private readonly Dictionary<Type, List<object>> _registrations = [];
+        private IEnumerator<INotificationPublisher>? _publisherSequence;
+
+        /// <summary>
+        ///     获取或设置每次解析 <see cref="INotificationPublisher" /> 注册集合时触发的回调。
+        /// </summary>
+        public Action? OnPublisherResolved { get; set; }
+
+        /// <summary>
+        ///     注册指定服务类型的一个或多个实例。
+        /// </summary>
+        /// <param name="serviceType">服务类型。</param>
+        /// <param name="instances">要暴露的实例集合。</param>
+        public void Register(Type serviceType, params object[] instances)
+        {
+            ArgumentNullException.ThrowIfNull(serviceType);
+            ArgumentNullException.ThrowIfNull(instances);
+
+            if (!_registrations.TryGetValue(serviceType, out var bucket))
+            {
+                bucket = [];
+                _registrations[serviceType] = bucket;
+            }
+
+            bucket.AddRange(instances);
+        }
+
+        /// <summary>
+        ///     注册一个按解析次数逐个返回 publisher 的序列，用于验证 dispatcher 只解析一次发布策略。
+        /// </summary>
+        /// <param name="firstPublisher">首次解析返回的发布器。</param>
+        /// <param name="secondPublisher">第二次解析才会返回的发布器。</param>
+        public void RegisterPublisherSequence(
+            INotificationPublisher firstPublisher,
+            INotificationPublisher secondPublisher)
+        {
+            ArgumentNullException.ThrowIfNull(firstPublisher);
+            ArgumentNullException.ThrowIfNull(secondPublisher);
+
+            _publisherSequence = new List<INotificationPublisher> { firstPublisher, secondPublisher }.GetEnumerator();
+        }
+
+        /// <inheritdoc />
+        public object? GetService(Type serviceType)
+        {
+            ArgumentNullException.ThrowIfNull(serviceType);
+
+            // 标准 DI 的 GetServices(Type) 扩展会把多实例解析转换为 IEnumerable<serviceType> 的单例请求；
+            // 这里按同样语义暴露注册集合，使 dispatcher 的多实例解析路径保持真实。
+            if (serviceType.IsGenericType &&
+                serviceType.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+            {
+                var elementType = serviceType.GetGenericArguments()[0];
+                return ResolveSequence(elementType);
+            }
+
+            if (_registrations.TryGetValue(serviceType, out var instances) && instances.Count > 0)
+            {
+                return instances[0];
+            }
+
+            return null;
+        }
+
+        /// <inheritdoc />
+        public bool IsService(Type serviceType)
+        {
+            ArgumentNullException.ThrowIfNull(serviceType);
+
+            if (_registrations.ContainsKey(serviceType))
+            {
+                return true;
+            }
+
+            return serviceType.IsConstructedGenericType &&
+                   _registrations.ContainsKey(serviceType.GetGenericTypeDefinition());
+        }
+
+        /// <summary>
+        ///     按 <see cref="GetService" /> 的多实例语义返回注册序列，并触发 publisher 解析回调。
+        /// </summary>
+        /// <param name="elementType">序列元素服务类型。</param>
+        /// <returns>注册实例的强类型序列；标准 DI 扩展随后会统一按 <c>IEnumerable&lt;object?&gt;</c> 消费。</returns>
+        private IEnumerable<object?> ResolveSequence(Type elementType)
+        {
+            if (elementType == typeof(INotificationPublisher))
+            {
+                OnPublisherResolved?.Invoke();
+                if (_publisherSequence is not null)
+                {
+                    var moved = _publisherSequence.MoveNext();
+                    if (moved)
+                    {
+                        yield return _publisherSequence.Current;
+                    }
+
+                    yield break;
+                }
+            }
+
+            if (_registrations.TryGetValue(elementType, out var instances))
+            {
+                foreach (var instance in instances)
+                {
+                    yield return instance;
+                }
+            }
+        }
+    }
 }
+

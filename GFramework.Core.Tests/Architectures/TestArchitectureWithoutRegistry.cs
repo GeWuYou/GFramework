@@ -2,8 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System;
-using System.Collections.Generic;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using GFramework.Core.Abstractions.Architectures;
@@ -50,46 +48,6 @@ public class TestArchitectureWithoutRegistry : IArchitecture
     }
 
     T IArchitecture.RegisterUtility<T>(T utility)
-    {
-        throw new NotSupportedException();
-    }
-
-    /// <summary>
-    ///     测试替身未实现 CQRS 管道行为注册。
-    /// </summary>
-    /// <typeparam name="TBehavior">行为类型。</typeparam>
-    /// <exception cref="NotSupportedException">该测试替身不参与 CQRS 管道配置验证。</exception>
-    public void RegisterCqrsPipelineBehavior<TBehavior>() where TBehavior : class
-    {
-        throw new NotSupportedException();
-    }
-
-    /// <summary>
-    ///     测试替身未实现 CQRS 流式管道行为注册。
-    /// </summary>
-    /// <typeparam name="TBehavior">行为类型。</typeparam>
-    /// <exception cref="NotSupportedException">该测试替身不参与 CQRS 流式管道配置验证。</exception>
-    public void RegisterCqrsStreamPipelineBehavior<TBehavior>() where TBehavior : class
-    {
-        throw new NotSupportedException();
-    }
-
-    /// <summary>
-    ///     测试替身未实现显式程序集 CQRS 处理器接入入口。
-    /// </summary>
-    /// <param name="assembly">包含 CQRS 处理器或生成注册器的程序集。</param>
-    /// <exception cref="NotSupportedException">该测试替身不参与 CQRS 程序集接入路径验证。</exception>
-    public void RegisterCqrsHandlersFromAssembly(Assembly assembly)
-    {
-        throw new NotSupportedException();
-    }
-
-    /// <summary>
-    ///     测试替身未实现显式程序集 CQRS 处理器接入入口。
-    /// </summary>
-    /// <param name="assemblies">要接入的程序集集合。</param>
-    /// <exception cref="NotSupportedException">该测试替身不参与 CQRS 程序集接入路径验证。</exception>
-    public void RegisterCqrsHandlersFromAssemblies(IEnumerable<Assembly> assemblies)
     {
         throw new NotSupportedException();
     }

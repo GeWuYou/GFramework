@@ -6,6 +6,7 @@ using GFramework.Core.Architectures;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
+using GFramework.Cqrs.Extensions;
 
 namespace GFramework.Cqrs.Tests.Cqrs;
 
@@ -221,7 +222,7 @@ internal sealed class CqrsArchitectureContextAdvancedFeaturesTests
         await _context!.SendRequestAsync(requests[0]).ConfigureAwait(false);
 
         Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await _context.SendRequestAsync(requests[1]).ConfigureAwait(false));
+            await _context!.SendRequestAsync(requests[1]).ConfigureAwait(false));
 
         // 验证回滚机制被触发
         Assert.That(sagaData.CompletedSteps, Is.EqualTo(new[] { 1 })); // 只有第一步完成

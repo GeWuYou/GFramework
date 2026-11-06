@@ -92,27 +92,34 @@ public class SystemB : AbstractSystem
 
 ### 3. 命令查询分离
 
-**原则**：明确区分修改状态（Command）和查询状态（Query）。
+**原则**：明确区分修改状态（写请求）和查询状态（读请求）。
 
 ```csharp
-// ✅ 正确的 CQRS
-public class MovePlayerCommand : AbstractCommand
-{
-    public Vector2 Direction { get; set; }
+// ✅ 写请求：修改状态
+public sealed record MovePlayerRequest(Vector2 Direction) : IRequest<Unit>;
 
-    protected override void OnDo()
+public sealed class MovePlayerHandler : AbstractRequestHandler<MovePlayerRequest, Unit>
+{
+    public override ValueTask<Unit> Handle(MovePlayerRequest request, CancellationToken cancellationToken)
     {
-        // 修改状态
-        this.SendEvent(new PlayerMovedEvent { Direction = Direction });
+        var playerModel = Context.GetModel<PlayerModel>();
+        playerModel.Position.Value += request.Direction;
+        Context.SendEvent(new PlayerMovedEvent { Direction = request.Direction });
+        return ValueTask.FromResult(Unit.Value);
     }
 }
 
-public class GetPlayerPositionQuery : AbstractQuery<Vector2>
+// ✅ 读请求：只查询，不修改
+public sealed record GetPlayerPositionRequest : IRequest<Vector2>;
+
+public sealed class GetPlayerPositionHandler
+    : AbstractRequestHandler<GetPlayerPositionRequest, Vector2>
 {
-    protected override Vector2 OnDo()
+    public override ValueTask<Vector2> Handle(
+        GetPlayerPositionRequest request,
+        CancellationToken cancellationToken)
     {
-        // 只查询，不修改
-        return this.GetModel<PlayerModel>().Position.Value;
+        return ValueTask.FromResult(Context.GetModel<PlayerModel>().Position.Value);
     }
 }
 ```
@@ -131,13 +138,12 @@ GameProject/
 │   ├── CombatSystem.cs
 │   ├── InventorySystem.cs
 │   └── GameLogicSystem.cs
-├── Commands/
-│   ├── AttackCommand.cs
-│   ├── MoveCommand.cs
-│   └── UseItemCommand.cs
-├── Queries/
-│   ├── GetPlayerHealthQuery.cs
-│   └── GetInventoryItemsQuery.cs
+├── Cqrs/
+│   ├── AttackRequest.cs
+│   ├── MoveRequest.cs
+│   ├── UseItemRequest.cs
+│   ├── GetPlayerHealthRequest.cs
+│   └── GetInventoryItemsRequest.cs
 ├── Events/
 │   ├── PlayerDiedEvent.cs
 │   ├── ItemUsedEvent.cs
@@ -162,13 +168,11 @@ public class GameStateModel : AbstractModel { }
 public class CombatSystem : AbstractSystem { }
 public class InventorySystem : AbstractSystem { }
 
-// Commands：使用 Command 后缀
-public class AttackCommand : AbstractCommand { }
-public class MoveCommand : AbstractCommand { }
-
-// Queries：使用 Query 后缀
-public class GetPlayerHealthQuery : AbstractQuery<int> { }
-public class GetInventoryItemsQuery : AbstractQuery<List<Item>> { }
+// 请求：写请求描述动作，读请求以 Get / Has 等开头
+public sealed record AttackRequest : IRequest<Unit> { }
+public sealed record MoveRequest(Vector2 Direction) : IRequest<Unit> { }
+public sealed record GetPlayerHealthRequest : IRequest<int> { }
+public sealed record GetInventoryItemsRequest : IRequest<List<Item>> { }
 
 // Events：使用 Event 后缀
 public class PlayerDiedEvent : IEvent { }
@@ -287,22 +291,28 @@ public void Update()
 ### 3. 异步处理重操作
 
 ```csharp
-public class LoadDataCommand : AbstractCommand
+using GFramework.Cqrs.Abstractions.Cqrs;
+using GFramework.Cqrs.Cqrs.Request;
+
+public sealed record LoadDataRequest : IRequest<Unit>;
+
+public sealed class LoadDataHandler : AbstractRequestHandler<LoadDataRequest, Unit>
 {
-    protected override async void OnDo()
+    public override async ValueTask<Unit> Handle(LoadDataRequest request, CancellationToken cancellationToken)
     {
         // 异步加载数据，不阻塞主线程
-        var data = await LoadDataAsync();
-        this.SendEvent(new DataLoadedEvent { Data = data });
+        var data = await LoadDataAsync(cancellationToken);
+        Context.SendEvent(new DataLoadedEvent { Data = data });
+        return Unit.Value;
     }
 
-    private async Task<Data> LoadDataAsync()
+    private async Task<Data> LoadDataAsync(CancellationToken cancellationToken)
     {
         return await Task.Run(() =>
         {
             // 耗时操作
             return new Data();
-        });
+        }, cancellationToken);
     }
 }
 ```
@@ -373,7 +383,7 @@ public class GameFlowTests
         Assert.AreEqual(100, player.Health.Value);
 
         // 执行操作
-        _architecture.SendCommand(new AttackCommand { Damage = 20 });
+        _architecture.SendEvent(new DamageEvent { Amount = 20 });
 
         // 验证结果
         Assert.AreEqual(80, player.Health.Value);

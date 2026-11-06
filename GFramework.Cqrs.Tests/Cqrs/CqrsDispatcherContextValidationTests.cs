@@ -3,7 +3,7 @@
 
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using GFramework.Core.Abstractions.Ioc;
+using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Cqrs;
@@ -26,22 +26,14 @@ internal sealed class CqrsDispatcherContextValidationTests
     public void SendAsync_Should_Throw_When_Context_Does_Not_Implement_IArchitectureContext()
     {
         var runtime = CreateRuntime(
-            container =>
+            provider =>
             {
-                container
-                    .Setup(currentContainer => currentContainer.Get(typeof(IRequestHandler<ContextAwareRequest, int>)))
-                    .Returns(new ContextAwareRequestHandler());
-                container
-                    .Setup(currentContainer => currentContainer.HasRegistration(typeof(IPipelineBehavior<ContextAwareRequest, int>)))
-                    .Returns(false);
-                container
-                    .Setup(currentContainer => currentContainer.GetAll(typeof(IPipelineBehavior<ContextAwareRequest, int>)))
-                    .Returns(Array.Empty<object>());
+                provider.Register(typeof(IRequestHandler<ContextAwareRequest, int>), new ContextAwareRequestHandler());
             });
 
         Assert.That(
-            async () => await runtime.SendAsync(new FakeCqrsContext(), new ContextAwareRequest()).ConfigureAwait(false),
-            Throws.InvalidOperationException.With.Message.Contains("does not implement IArchitectureContext"));
+            async () => await runtime.SendAsync(new ContextAwareRequest(), cancellationToken: default, new FakeCqrsContext()).ConfigureAwait(false),
+            Throws.InvalidOperationException.With.Message.Contains("does not provide an IArchitectureContext"));
     }
 
     /// <summary>
@@ -52,23 +44,18 @@ internal sealed class CqrsDispatcherContextValidationTests
     public void SendAsync_Should_Return_Faulted_ValueTask_When_Context_Preparation_Fails()
     {
         var runtime = CreateRuntime(
-            container =>
+            provider =>
             {
-                container
-                    .Setup(currentContainer => currentContainer.Get(typeof(IRequestHandler<ContextAwareRequest, int>)))
-                    .Returns(new ContextAwareRequestHandler());
-                container
-                    .Setup(currentContainer => currentContainer.HasRegistration(typeof(IPipelineBehavior<ContextAwareRequest, int>)))
-                    .Returns(false);
+                provider.Register(typeof(IRequestHandler<ContextAwareRequest, int>), new ContextAwareRequestHandler());
             });
 
         ValueTask<int> dispatch = default;
         Assert.That(
-            () => { dispatch = runtime.SendAsync(new FakeCqrsContext(), new ContextAwareRequest()); },
+            () => { dispatch = runtime.SendAsync(new ContextAwareRequest(), cancellationToken: default, new FakeCqrsContext()); },
             Throws.Nothing);
         Assert.That(
             async () => await dispatch.ConfigureAwait(false),
-            Throws.InvalidOperationException.With.Message.Contains("does not implement IArchitectureContext"));
+            Throws.InvalidOperationException.With.Message.Contains("does not provide an IArchitectureContext"));
     }
 
     /// <summary>
@@ -78,23 +65,11 @@ internal sealed class CqrsDispatcherContextValidationTests
     [Test]
     public void SendAsync_Should_Return_Faulted_ValueTask_When_Handler_Is_Missing()
     {
-        var runtime = CreateRuntime(
-            container =>
-            {
-                container
-                    .Setup(currentContainer => currentContainer.Get(typeof(IRequestHandler<ContextAwareRequest, int>)))
-                    .Returns((object?)null);
-                container
-                    .Setup(currentContainer => currentContainer.HasRegistration(typeof(IPipelineBehavior<ContextAwareRequest, int>)))
-                    .Returns(false);
-                container
-                    .Setup(currentContainer => currentContainer.GetAll(typeof(IPipelineBehavior<ContextAwareRequest, int>)))
-                    .Returns(Array.Empty<object>());
-            });
+        var runtime = CreateRuntime(_ => { });
 
         ValueTask<int> dispatch = default;
         Assert.That(
-            () => { dispatch = runtime.SendAsync(new FakeCqrsContext(), new ContextAwareRequest()); },
+            () => { dispatch = runtime.SendAsync(new ContextAwareRequest()); },
             Throws.Nothing);
         Assert.That(
             async () => await dispatch.ConfigureAwait(false),
@@ -109,16 +84,14 @@ internal sealed class CqrsDispatcherContextValidationTests
     public void PublishAsync_Should_Throw_When_Context_Does_Not_Implement_IArchitectureContext()
     {
         var runtime = CreateRuntime(
-            container =>
+            provider =>
             {
-                container
-                    .Setup(currentContainer => currentContainer.GetAll(typeof(INotificationHandler<ContextAwareNotification>)))
-                    .Returns([new ContextAwareNotificationHandler()]);
+                provider.Register(typeof(INotificationHandler<ContextAwareNotification>), new ContextAwareNotificationHandler());
             });
 
         Assert.That(
-            async () => await runtime.PublishAsync(new FakeCqrsContext(), new ContextAwareNotification()).ConfigureAwait(false),
-            Throws.InvalidOperationException.With.Message.Contains("does not implement IArchitectureContext"));
+            async () => await runtime.PublishAsync(new ContextAwareNotification(), cancellationToken: default, new FakeCqrsContext()).ConfigureAwait(false),
+            Throws.InvalidOperationException.With.Message.Contains("does not provide an IArchitectureContext"));
     }
 
     /// <summary>
@@ -129,22 +102,14 @@ internal sealed class CqrsDispatcherContextValidationTests
     public void CreateStream_Should_Throw_When_Context_Does_Not_Implement_IArchitectureContext()
     {
         var runtime = CreateRuntime(
-            container =>
+            provider =>
             {
-                container
-                    .Setup(currentContainer => currentContainer.Get(typeof(IStreamRequestHandler<ContextAwareStreamRequest, int>)))
-                    .Returns(new ContextAwareStreamHandler());
-                container
-                    .Setup(currentContainer => currentContainer.HasRegistration(typeof(IStreamPipelineBehavior<ContextAwareStreamRequest, int>)))
-                    .Returns(false);
-                container
-                    .Setup(currentContainer => currentContainer.GetAll(typeof(IStreamPipelineBehavior<ContextAwareStreamRequest, int>)))
-                    .Returns(Array.Empty<object>());
+                provider.Register(typeof(IStreamRequestHandler<ContextAwareStreamRequest, int>), new ContextAwareStreamHandler());
             });
 
         Assert.That(
-            () => runtime.CreateStream(new FakeCqrsContext(), new ContextAwareStreamRequest()),
-            Throws.InvalidOperationException.With.Message.Contains("does not implement IArchitectureContext"));
+            () => runtime.CreateStream(new ContextAwareStreamRequest(), cancellationToken: default, new FakeCqrsContext()),
+            Throws.InvalidOperationException.With.Message.Contains("does not provide an IArchitectureContext"));
     }
 
     /// <summary>
@@ -154,19 +119,10 @@ internal sealed class CqrsDispatcherContextValidationTests
     [Test]
     public void CreateStream_Should_Throw_When_Handler_Is_Missing()
     {
-        var runtime = CreateRuntime(
-            container =>
-            {
-                container
-                    .Setup(currentContainer => currentContainer.Get(typeof(IStreamRequestHandler<ContextAwareStreamRequest, int>)))
-                    .Returns((object?)null);
-                container
-                    .Setup(currentContainer => currentContainer.HasRegistration(typeof(IStreamPipelineBehavior<ContextAwareStreamRequest, int>)))
-                    .Returns(false);
-            });
+        var runtime = CreateRuntime(_ => { });
 
         Assert.That(
-            () => runtime.CreateStream(new FakeCqrsContext(), new ContextAwareStreamRequest()),
+            () => runtime.CreateStream(new ContextAwareStreamRequest()),
             Throws.InvalidOperationException.With.Message.Contains("No CQRS stream handler registered"));
     }
 
@@ -179,42 +135,29 @@ internal sealed class CqrsDispatcherContextValidationTests
     public void CreateStream_Should_Throw_When_Stream_Pipeline_Behavior_Context_Does_Not_Implement_IArchitectureContext()
     {
         var runtime = CreateRuntime(
-            container =>
+            provider =>
             {
-                container
-                    .Setup(currentContainer => currentContainer.Get(typeof(IStreamRequestHandler<ContextAwareStreamRequest, int>)))
-                    .Returns(new PassthroughStreamHandler());
-                container
-                    .Setup(currentContainer => currentContainer.HasRegistration(typeof(IStreamPipelineBehavior<ContextAwareStreamRequest, int>)))
-                    .Returns(true);
-                container
-                    .Setup(currentContainer => currentContainer.GetAll(typeof(IStreamPipelineBehavior<ContextAwareStreamRequest, int>)))
-                    .Returns([new ContextAwareStreamBehavior()]);
+                provider.Register(typeof(IStreamRequestHandler<ContextAwareStreamRequest, int>), new PassthroughStreamHandler());
+                provider.Register(typeof(IStreamPipelineBehavior<ContextAwareStreamRequest, int>), new ContextAwareStreamBehavior());
             });
 
         Assert.That(
-            () => runtime.CreateStream(new FakeCqrsContext(), new ContextAwareStreamRequest()),
-            Throws.InvalidOperationException.With.Message.Contains("does not implement IArchitectureContext"));
+            () => runtime.CreateStream(new ContextAwareStreamRequest(), cancellationToken: default, new FakeCqrsContext()),
+            Throws.InvalidOperationException.With.Message.Contains("does not provide an IArchitectureContext"));
     }
 
     /// <summary>
     ///     创建一个只满足当前测试最小依赖面的 dispatcher runtime。
     /// </summary>
-    /// <param name="configureContainer">对容器 mock 的额外配置。</param>
+    /// <param name="configureProvider">对测试用服务提供者的额外注册。</param>
     /// <returns>默认 CQRS runtime。</returns>
     private static GFramework.Cqrs.Abstractions.Cqrs.ICqrsRuntime CreateRuntime(
-        Action<Mock<IIocContainer>> configureContainer)
+        Action<FakeDispatchServiceProvider> configureProvider)
     {
-        var container = new Mock<IIocContainer>(MockBehavior.Strict);
+        var provider = new FakeDispatchServiceProvider();
+        configureProvider(provider);
         var logger = new TestLogger("CqrsDispatcherContextValidationTests", LogLevel.Debug);
-
-        // PublishAsync 的默认路径会在真正发布时查询通知发布器注册；strict mock 需显式覆盖空注册分支。
-        container
-            .Setup(currentContainer => currentContainer.GetAll(typeof(INotificationPublisher)))
-            .Returns(Array.Empty<object>());
-
-        configureContainer(container);
-        return CqrsRuntimeFactory.CreateRuntime(container.Object, logger);
+        return GFramework.Cqrs.CqrsRuntimeFactory.CreateRuntime(provider, logger);
     }
 
     /// <summary>
@@ -337,6 +280,69 @@ internal sealed class CqrsDispatcherContextValidationTests
             CancellationToken cancellationToken)
         {
             return next(message, cancellationToken);
+        }
+    }
+
+    /// <summary>
+    ///     最小化实现标准 <see cref="IServiceProvider" /> 解析契约的测试替身。
+    ///     同时实现 <see cref="IServiceProviderIsService" />，覆盖 dispatcher 的行为注册探测路径。
+    /// </summary>
+    private sealed class FakeDispatchServiceProvider : IServiceProvider, IServiceProviderIsService
+    {
+        private readonly Dictionary<Type, List<object>> _registrations = [];
+
+        /// <summary>
+        ///     注册指定服务类型的一个或多个实例。
+        /// </summary>
+        /// <param name="serviceType">服务类型。</param>
+        /// <param name="instances">要暴露的实例集合。</param>
+        public void Register(Type serviceType, params object[] instances)
+        {
+            ArgumentNullException.ThrowIfNull(serviceType);
+            ArgumentNullException.ThrowIfNull(instances);
+
+            if (!_registrations.TryGetValue(serviceType, out var bucket))
+            {
+                bucket = [];
+                _registrations[serviceType] = bucket;
+            }
+
+            bucket.AddRange(instances);
+        }
+
+        /// <inheritdoc />
+        public object? GetService(Type serviceType)
+        {
+            ArgumentNullException.ThrowIfNull(serviceType);
+
+            // 标准 DI 的 GetServices(Type) 扩展会把多实例解析转换为 IEnumerable<serviceType> 的单例请求；
+            // 这里按同样语义暴露注册集合，使 dispatcher 的多实例解析路径保持真实。
+            if (serviceType.IsGenericType &&
+                serviceType.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+            {
+                var elementType = serviceType.GetGenericArguments()[0];
+                return _registrations.TryGetValue(elementType, out var instances)
+                    ? instances.ToArray()
+                    : Array.Empty<object>();
+            }
+
+            return _registrations.TryGetValue(serviceType, out var singleInstances) && singleInstances.Count > 0
+                ? singleInstances[0]
+                : null;
+        }
+
+        /// <inheritdoc />
+        public bool IsService(Type serviceType)
+        {
+            ArgumentNullException.ThrowIfNull(serviceType);
+
+            if (_registrations.ContainsKey(serviceType))
+            {
+                return true;
+            }
+
+            return serviceType.IsConstructedGenericType &&
+                   _registrations.ContainsKey(serviceType.GetGenericTypeDefinition());
         }
     }
 }

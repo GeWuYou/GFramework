@@ -5,12 +5,11 @@ using System.Collections.Concurrent;
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Architectures;
-using GFramework.Core.Command;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
 using GFramework.Core.Rule;
 using GFramework.Cqrs.Abstractions.Cqrs;
-using ICommand = GFramework.Core.Abstractions.Command.ICommand;
+using GFramework.Cqrs.Extensions;
 
 namespace GFramework.Cqrs.Tests.Cqrs;
 
@@ -35,10 +34,7 @@ public class CqrsArchitectureContextIntegrationTests
         loggerField?.SetValue(_container,
             LoggerFactoryResolver.Provider.CreateLogger(nameof(CqrsArchitectureContextIntegrationTests)));
 
-        // 注册传统 CQRS 组件，用于验证命令总线与请求分发可并存。
-        _commandBus = new CommandExecutor();
-        _container.RegisterPlurality(_commandBus);
-
+        // 通过与生产一致的测试组合根接线安装 CQRS runtime 与处理器注册。
         CqrsTestRuntime.RegisterHandlers(
             _container,
             typeof(CqrsArchitectureContextIntegrationTests).Assembly,
@@ -56,10 +52,8 @@ public class CqrsArchitectureContextIntegrationTests
     {
         _context = null;
         _container = null;
-        _commandBus = null;
     }
 
-    private CommandExecutor? _commandBus;
     private MicrosoftDiContainer? _container;
 
     private ArchitectureContext? _context;
@@ -320,24 +314,34 @@ public class CqrsArchitectureContextIntegrationTests
     }
 
     /// <summary>
-    /// 验证传统命令总线与请求响应式 CQRS 分发可以共存。
+    /// 验证架构未安装 CQRS runtime 时，上下文分发扩展会显式抛出缺失 runtime 异常。
     /// </summary>
     [Test]
-    public async Task Context_Can_Handle_Mixed_CQRS_Patterns()
+    public void Missing_Cqrs_Runtime_Should_Throw_InvalidOperationException()
     {
-        // 使用传统 CQRS 命令总线。
-        var traditionalCommand = new TestTraditionalCommand();
-        _context!.SendCommand(traditionalCommand);
-        Assert.That(traditionalCommand.Executed, Is.True);
+        var containerWithoutRuntime = new MicrosoftDiContainer();
+        containerWithoutRuntime.Freeze();
 
-        // 使用基于请求/响应的 CQRS 分发。
-        var cqrsRequest = new TestCqrsRequest { Value = 42 };
-        var result = await _context.SendRequestAsync(cqrsRequest).ConfigureAwait(false);
-        Assert.That(result, Is.EqualTo(42));
+        var contextWithoutRuntime = new ArchitectureContext(containerWithoutRuntime);
 
-        // 验证两种模式可以共存。
-        Assert.That(traditionalCommand.Executed, Is.True);
-        Assert.That(result, Is.EqualTo(42));
+        Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await contextWithoutRuntime.SendRequestAsync(new TestCqrsRequest { Value = 42 }).ConfigureAwait(false));
+    }
+
+    /// <summary>
+    /// 验证容器尚未冻结（根 provider 还未构建）时，上下文分发扩展会以显式失败阻止提前分发。
+    /// </summary>
+    [Test]
+    public void Dispatch_Before_Container_Freeze_Should_Throw_InvalidOperationException()
+    {
+        var unfrozenContainer = new MicrosoftDiContainer();
+        CqrsTestRuntime.RegisterHandlers(
+            unfrozenContainer,
+            typeof(CqrsArchitectureContextIntegrationTests).Assembly);
+        var contextOnUnfrozenContainer = new ArchitectureContext(unfrozenContainer);
+
+        Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await contextOnUnfrozenContainer.SendRequestAsync(new TestCqrsRequest { Value = 42 }).ConfigureAwait(false));
     }
 
     /// <summary>
@@ -347,7 +351,7 @@ public class CqrsArchitectureContextIntegrationTests
     public async Task ContextAware_Handler_Should_Use_A_Fresh_Instance_Per_Request()
     {
         var firstResult = await _context!.SendRequestAsync(new TestPerDispatchContextAwareRequest()).ConfigureAwait(false);
-        var secondResult = await _context.SendRequestAsync(new TestPerDispatchContextAwareRequest()).ConfigureAwait(false);
+        var secondResult = await _context!.SendRequestAsync(new TestPerDispatchContextAwareRequest()).ConfigureAwait(false);
 
         Assert.Multiple(() =>
         {
@@ -908,36 +912,6 @@ public class CqrsArchitectureContextIntegrationTests
     ///     用于验证每次请求分发都会获得新的上下文感知处理器实例。
     /// </summary>
     public sealed record TestPerDispatchContextAwareRequest : IRequest<int>;
-
-    /// <summary>
-    /// 表示用于混合模式验证的传统命令。
-    /// </summary>
-    public class TestTraditionalCommand : ICommand
-    {
-        /// <summary>
-        /// 获取命令是否已执行。
-        /// </summary>
-        public bool Executed { get; private set; }
-
-        /// <summary>
-        /// 将命令标记为已执行。
-        /// </summary>
-        public void Execute() => Executed = true;
-
-        /// <summary>
-        /// 为兼容命令接口保留上下文设置入口，当前测试无需使用。
-        /// </summary>
-        /// <param name="context">命令上下文。</param>
-        public void SetContext(IArchitectureContext context)
-        {
-        }
-
-        /// <summary>
-        /// 返回命令上下文占位值，当前测试路径不会消费该结果。
-        /// </summary>
-        /// <returns>始终返回空引用占位值。</returns>
-        public IArchitectureContext GetContext() => null!;
-    }
 
     #endregion
 }

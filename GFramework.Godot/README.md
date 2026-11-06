@@ -133,24 +133,22 @@ Godot 上。
 
 不要把这些宿主实现误写成 `Game` 模块的默认行为。
 
-### 5. Godot 主线程不要走同步 CQRS
+### 5. CQRS 分发不再由架构上下文承载
 
-`AbstractArchitecture` 现在会为默认上下文启用 Godot 主线程同步 CQRS 保护。
+`IArchitectureContext` 不包含任何 CQRS 成员，也没有同步分发入口；Godot 侧也不再有主线程同步 CQRS 保护包装。
+请求、通知与流式分发由可选安装的 `CqrsRuntimeModule`（或组合根的 `UseCqrsRuntime(...)` 扩展）提供，调用统一走
+`GFramework.Cqrs.Extensions` 中的异步上下文扩展方法：
 
-如果当前进程存在 `SceneTree`，且调用发生在 Godot 主线程上：
-
-- 不要调用同步 `SendRequest(...)`
-- 不要调用同步 `SendCommand(...)`
-- 不要调用同步 `SendQuery(...)`
-
-这些入口会命中 legacy 同步 bridge，而 bridge 可能把 handler 执行切到工作线程，进而让 `Node`、`SceneTree`、`UiRoot`、
-暂停处理器等线程亲和 Godot API 在非主线程运行。
-
-在 Godot 节点、UI、输入和场景回调里，改用：
-
+- `SendRequestAsync(...)`
+- `PublishAsync(...)`
+- `CreateStream(...)`
 - `SendAsync(...)`
-- `SendCommandAsync(...)`
-- `RunCommandCoroutine(...)`
+
+在 Godot 节点、UI、输入和场景回调里，可以用协程包装：
+
+- `RunRequestCoroutine(...)`
+- `RunPublishCoroutine(...)`
+- `RunStreamCoroutine(...)`
 
 ## 典型接入方式
 

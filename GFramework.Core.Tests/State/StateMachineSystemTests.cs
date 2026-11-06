@@ -6,12 +6,10 @@ using GFramework.Core.Abstractions.Enums;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Architectures;
-using GFramework.Core.Command;
 using GFramework.Core.Environment;
 using GFramework.Core.Events;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
-using GFramework.Core.Query;
 using GFramework.Core.State;
 
 namespace GFramework.Core.Tests.State;
@@ -52,10 +50,7 @@ public class StateMachineSystemTests
             LoggerFactoryResolver.Provider.CreateLogger(nameof(StateMachineSystemTests)));
 
         container.RegisterPlurality(_eventBus);
-        container.RegisterPlurality(new CommandExecutor());
-        container.RegisterPlurality(new QueryExecutor());
         container.RegisterPlurality(new DefaultEnvironment());
-        container.RegisterPlurality(new AsyncQueryExecutor());
 
         _context = new ArchitectureContext(container);
 

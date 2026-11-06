@@ -28,7 +28,6 @@ description: 概览 GFramework 的模块组成、最小接入路径与继续阅�
 
 - `Architecture`
 - `Model` / `System` / `Utility`
-- 旧版 `Command` / `Query` 执行器
 - 事件、属性、状态机、状态管理、资源、日志、协程等基础设施
 
 对应文档：
@@ -37,9 +36,9 @@ description: 概览 GFramework 的模块组成、最小接入路径与继续阅�
 - [快速开始](./quick-start.md)
 - [安装配置](./installation.md)
 
-### 新版 CQRS 请求流
+### CQRS 消息模型
 
-在 `Core` 基础上补：
+在 `Core` 基础上补（也可脱离 `Core` 在标准 DI 上独立使用）：
 
 - `GeWuYou.GFramework.Cqrs`
 - `GeWuYou.GFramework.Cqrs.Abstractions`

@@ -9,7 +9,7 @@
         <PackageId>GeWuYou.GFramework</PackageId>
         <Authors>gewuyou</Authors>
         <Product>GeWuYou.GFramework</Product>
-        <Description>Meta-package that aggregates GFramework.Core and GFramework.Game for a minimal runtime adoption path.</Description>
+        <Description>Meta-package that aggregates GFramework.Core, GFramework.Cqrs and GFramework.Game for a full runtime adoption path.</Description>
         <Copyright>Copyright © 2025</Copyright>
         <RepositoryUrl>https://github.com/GeWuYou/GFramework</RepositoryUrl>
         <PackageProjectUrl>https://github.com/GeWuYou/GFramework</PackageProjectUrl>
@@ -79,9 +79,11 @@
         <None Remove="GFramework.Tests.Common\**"/>
         <None Remove="ai-libs\**" />
     </ItemGroup>
-    <!-- 聚合核心模块 -->
+    <!-- 聚合核心模块；CQRS 不再经由 Core 传递，改为显式聚合以保持 all-in-one 语义 -->
     <ItemGroup>
         <ProjectReference Include="GFramework.Core\GFramework.Core.csproj" />
+        <ProjectReference Include="GFramework.Cqrs\GFramework.Cqrs.csproj" />
+        <ProjectReference Include="GFramework.Cqrs.Abstractions\GFramework.Cqrs.Abstractions.csproj" />
         <ProjectReference Include="GFramework.Game\GFramework.Game.csproj" />
     </ItemGroup>
     <ItemGroup>

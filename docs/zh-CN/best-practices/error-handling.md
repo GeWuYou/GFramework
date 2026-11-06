@@ -1551,39 +1551,47 @@ public async Task&lt;Result&lt;Player&gt;&gt; LoadAndValidatePlayerAsync(string 
 }
 ```
 
-### Q3: 如何在 Command 和 Query 中处理错误？
+### Q3: 如何在请求处理器中处理错误？
 
-**A:** Command 和 Query 可以返回 Result：
+**A:** 请求处理器可以返回 Result 或 Option：
 
 ```csharp
-// Command 返回 Result
-public class SaveGameCommand : AbstractCommand&lt;Result&lt;SaveData&gt;&gt;
+// 写请求返回 Result
+public sealed record SaveGameRequest : IRequest<Result<SaveData>>;
+
+public sealed class SaveGameHandler
+    : AbstractRequestHandler<SaveGameRequest, Result<SaveData>>
 {
-    protected override Result&lt;SaveData&gt; OnDo()
+    public override ValueTask<Result<SaveData>> Handle(
+        SaveGameRequest request,
+        CancellationToken cancellationToken)
     {
         try
         {
             var data = CollectSaveData();
-            var saveSystem = this.GetSystem&lt;SaveSystem&gt;();
-            return saveSystem.SaveGame(data);
+            var saveSystem = Context.GetSystem<SaveSystem>();
+            return ValueTask.FromResult(saveSystem.SaveGame(data));
         }
         catch (Exception ex)
         {
-            this.GetUtility&lt;ILogger&gt;().Error("保存游戏失败", ex);
-            return Result&lt;SaveData&gt;.Failure(ex);
+            Context.GetUtility<ILogger>().Error("保存游戏失败", ex);
+            return ValueTask.FromResult(Result<SaveData>.Failure(ex));
         }
     }
 }
 
-// Query 返回 Option
-public class GetPlayerQuery : AbstractQuery&lt;Option&lt;Player&gt;&gt;
-{
-    public string PlayerId { get; set; }
+// 读请求返回 Option
+public sealed record GetPlayerRequest(string PlayerId) : IRequest<Option<Player>>;
 
-    protected override Option&lt;Player&gt; OnDo()
+public sealed class GetPlayerHandler
+    : AbstractRequestHandler<GetPlayerRequest, Option<Player>>
+{
+    public override ValueTask<Option<Player>> Handle(
+        GetPlayerRequest request,
+        CancellationToken cancellationToken)
     {
-        var playerSystem = this.GetSystem&lt;PlayerSystem&gt;();
-        return playerSystem.FindPlayerById(PlayerId);
+        var playerSystem = Context.GetSystem<PlayerSystem>();
+        return ValueTask.FromResult(playerSystem.FindPlayerById(request.PlayerId));
     }
 }
 ```
@@ -1645,9 +1653,9 @@ public class UIController : IController
 {
     private readonly ErrorMessageService _errorMessageService;
 
-    public void OnSaveButtonClicked()
+    public async void OnSaveButtonClicked()
     {
-        var result = this.SendCommand(new SaveGameCommand());
+        var result = await this.SendRequestAsync<Result<SaveData>>(new SaveGameRequest());
 
         result.Match(
             succ: data => {

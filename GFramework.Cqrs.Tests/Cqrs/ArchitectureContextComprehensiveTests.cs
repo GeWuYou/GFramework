@@ -1,30 +1,27 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Events;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Architectures;
-using GFramework.Core.Command;
 using GFramework.Core.Environment;
 using GFramework.Core.Events;
 using GFramework.Core.Ioc;
 using GFramework.Core.Logging;
-using GFramework.Core.Query;
 using GFramework.Cqrs.Abstractions.Cqrs;
-using ICommand = GFramework.Core.Abstractions.Command.ICommand;
+using GFramework.Cqrs.Extensions;
 
 namespace GFramework.Cqrs.Tests.Cqrs;
 
 /// <summary>
-///     覆盖 <see cref="ArchitectureContext" /> 在 CQRS 请求、通知、流式处理和传统总线共存场景下的综合行为。
+///     覆盖 <see cref="ArchitectureContext" /> 通过可选安装的 CQRS runtime 分发请求、通知与流式请求的综合行为。
 /// </summary>
 [TestFixture]
 public sealed class ArchitectureContextComprehensiveTests
 {
     /// <summary>
     ///     测试初始化方法，在每个测试方法执行前运行。
-    ///     负责初始化日志工厂、依赖注入容器、自有 CQRS 处理器以及各种总线服务。
+    ///     负责初始化日志工厂、依赖注入容器、自有 CQRS 处理器以及架构基础设施服务。
     /// </summary>
     [SetUp]
     public void SetUp()
@@ -37,17 +34,11 @@ public sealed class ArchitectureContextComprehensiveTests
         loggerField?.SetValue(_container,
             LoggerFactoryResolver.Provider.CreateLogger(nameof(ArchitectureContextComprehensiveTests)));
 
-        // 注册传统 CQRS 基础服务，验证其与 ArchitectureContext 请求管线可以共存。
+        // 注册架构自身的基础设施服务，验证其与 CQRS 上下文扩展分发可以共存。
         _eventBus = new EventBus();
-        _commandBus = new CommandExecutor();
-        _queryBus = new QueryExecutor();
-        _asyncQueryBus = new AsyncQueryExecutor();
         _environment = new DefaultEnvironment();
 
         _container.RegisterPlurality(_eventBus);
-        _container.RegisterPlurality(_commandBus);
-        _container.RegisterPlurality(_queryBus);
-        _container.RegisterPlurality(_asyncQueryBus);
         _container.RegisterPlurality(_environment);
 
         CqrsTestRuntime.RegisterHandlers(
@@ -70,20 +61,14 @@ public sealed class ArchitectureContextComprehensiveTests
         _context = null;
         _container = null;
         _eventBus = null;
-        _commandBus = null;
-        _queryBus = null;
-        _asyncQueryBus = null;
         _environment = null;
     }
 
-    private AsyncQueryExecutor? _asyncQueryBus;
-    private CommandExecutor? _commandBus;
     private MicrosoftDiContainer? _container;
 
     private ArchitectureContext? _context;
     private DefaultEnvironment? _environment;
     private EventBus? _eventBus;
-    private QueryExecutor? _queryBus;
 
     /// <summary>
     ///     测试SendRequestAsync方法在请求有效时返回结果
@@ -105,18 +90,6 @@ public sealed class ArchitectureContextComprehensiveTests
     {
         Assert.ThrowsAsync<ArgumentNullException>(async () =>
             await _context!.SendRequestAsync<int>(null!).ConfigureAwait(false));
-    }
-
-    /// <summary>
-    ///     测试SendRequest方法在请求有效时返回结果
-    /// </summary>
-    [Test]
-    public void SendRequest_Should_ReturnResult_When_Request_IsValid()
-    {
-        var testRequest = new TestRequest { Value = 123 };
-        var result = _context!.SendRequest(testRequest);
-
-        Assert.That(result, Is.EqualTo(123));
     }
 
     /// <summary>
@@ -153,25 +126,25 @@ public sealed class ArchitectureContextComprehensiveTests
     }
 
     /// <summary>
-    ///     测试SendAsync方法（无返回值命令）在命令有效时执行
+    ///     测试SendAsync方法（无返回值请求）在请求有效时执行
     /// </summary>
     [Test]
-    public async Task SendAsync_CommandWithoutResult_Should_Execute_When_Command_IsValid()
+    public async Task SendAsync_RequestWithoutResult_Should_Execute_When_Request_IsValid()
     {
-        var testCommand = new TestCommand { ShouldExecute = true };
-        await _context!.SendAsync(testCommand).ConfigureAwait(false);
+        var testRequest = new TestCommand { ShouldExecute = true };
+        await _context!.SendAsync(testRequest).ConfigureAwait(false);
 
-        Assert.That(testCommand.Executed, Is.True);
+        Assert.That(testRequest.Executed, Is.True);
     }
 
     /// <summary>
-    ///     测试SendAsync方法（带返回值命令）在命令有效时返回结果
+    ///     测试SendAsync方法（带返回值请求）在请求有效时返回结果
     /// </summary>
     [Test]
-    public async Task SendAsync_CommandWithResult_Should_ReturnResult_When_Command_IsValid()
+    public async Task SendAsync_RequestWithResult_Should_ReturnResult_When_Request_IsValid()
     {
-        var testCommand = new TestCommandWithResult { ResultValue = 42 };
-        var result = await _context!.SendAsync(testCommand).ConfigureAwait(false);
+        var testRequest = new TestCommandWithResult { ResultValue = 42 };
+        var result = await _context!.SendAsync(testRequest).ConfigureAwait(false);
 
         Assert.That(result, Is.EqualTo(42));
     }
@@ -190,21 +163,20 @@ public sealed class ArchitectureContextComprehensiveTests
         Assert.That(secondResult, Is.SameAs(firstResult));
     }
 
-
     /// <summary>
-    ///     测试未注册的 CQRS handler 时抛出 InvalidOperationException
+    ///     测试架构未安装 CQRS runtime 时，上下文分发入口会显式抛出缺失 runtime 异常。
     /// </summary>
     [Test]
-    public void Unregistered_Cqrs_Handler_Should_Throw_InvalidOperationException()
+    public void Missing_Cqrs_Runtime_Should_Throw_InvalidOperationException()
     {
-        var containerWithoutHandlers = new MicrosoftDiContainer();
-        containerWithoutHandlers.Freeze();
+        var containerWithoutRuntime = new MicrosoftDiContainer();
+        containerWithoutRuntime.Freeze();
 
-        var contextWithoutHandlers = new ArchitectureContext(containerWithoutHandlers);
+        var contextWithoutRuntime = new ArchitectureContext(containerWithoutRuntime);
         var testRequest = new TestRequest { Value = 42 };
 
         Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await contextWithoutHandlers.SendRequestAsync(testRequest).ConfigureAwait(false));
+            await contextWithoutRuntime.SendRequestAsync(testRequest).ConfigureAwait(false));
     }
 
     /// <summary>
@@ -303,17 +275,17 @@ public sealed class ArchitectureContextComprehensiveTests
     }
 
     /// <summary>
-    ///     测试多个命令处理器可以修改同一对象
+    ///     测试多个请求处理器可以修改同一对象
     /// </summary>
     [Test]
-    public async Task Multiple_Command_Handlers_Can_Modify_Same_Object()
+    public async Task Multiple_Request_Handlers_Can_Modify_Same_Object()
     {
         var sharedData = new SharedData();
-        var command1 = new TestModifyDataCommand { Data = sharedData, Value = 10 };
-        var command2 = new TestModifyDataCommand { Data = sharedData, Value = 20 };
+        var request1 = new TestModifyDataRequest { Data = sharedData, Value = 10 };
+        var request2 = new TestModifyDataRequest { Data = sharedData, Value = 20 };
 
-        await _context!.SendAsync(command1).ConfigureAwait(false);
-        await _context.SendAsync(command2).ConfigureAwait(false);
+        await _context!.SendAsync(request1).ConfigureAwait(false);
+        await _context!.SendAsync(request2).ConfigureAwait(false);
 
         // 验证数据被正确修改
         Assert.That(sharedData.Value, Is.EqualTo(30)); // 10 + 20
@@ -380,10 +352,10 @@ public sealed class ArchitectureContextComprehensiveTests
     [Test]
     public async Task Request_Validation_With_Behaviors()
     {
-        var invalidCommand = new TestValidatedCommand { Name = "" }; // 无效：空字符串
+        var invalidRequest = new TestValidatedRequest { Name = "" }; // 无效：空字符串
 
         Assert.ThrowsAsync<ArgumentException>(async () =>
-            await _context!.SendAsync(invalidCommand).ConfigureAwait(false));
+            await _context!.SendAsync(invalidRequest).ConfigureAwait(false));
     }
 
     /// <summary>
@@ -410,26 +382,6 @@ public sealed class ArchitectureContextComprehensiveTests
         Console.WriteLine($"Average time per request: {avgTime:F2}ms");
     }
 
-    /// <summary>
-    ///     测试自有 CQRS 和传统 CQRS 可以共存
-    /// </summary>
-    [Test]
-    public async Task Cqrs_And_Legacy_CQRS_Can_Coexist()
-    {
-        // 使用传统方式
-        var legacyCommand = new TestLegacyCommand();
-        _context!.SendCommand(legacyCommand);
-        Assert.That(legacyCommand.Executed, Is.True);
-
-        // 使用自有 CQRS 方式
-        var cqrsCommand = new TestCommandWithResult { ResultValue = 999 };
-        var result = await _context.SendAsync(cqrsCommand).ConfigureAwait(false);
-        Assert.That(result, Is.EqualTo(999));
-
-        // 验证两者可以同时工作
-        Assert.That(legacyCommand.Executed, Is.True);
-        Assert.That(result, Is.EqualTo(999));
-    }
     #region ArchitectureContext CQRS Test Helpers
 
     private sealed record TestLongRunningRequest : IRequest<string>
@@ -482,30 +434,30 @@ public sealed class ArchitectureContextComprehensiveTests
         public int Value { get; set; }
     }
 
-    private sealed record TestModifyDataCommand : IRequest<Unit>
+    private sealed record TestModifyDataRequest : IRequest<Unit>
     {
         public SharedData Data { get; init; } = null!;
         public int Value { get; init; }
     }
 
-    private sealed class TestModifyDataCommandHandler : IRequestHandler<TestModifyDataCommand, Unit>
+    private sealed class TestModifyDataRequestHandler : IRequestHandler<TestModifyDataRequest, Unit>
     {
-        public ValueTask<Unit> Handle(TestModifyDataCommand request, CancellationToken cancellationToken)
+        public ValueTask<Unit> Handle(TestModifyDataRequest request, CancellationToken cancellationToken)
         {
             request.Data.Value += request.Value;
             return ValueTask.FromResult(Unit.Value);
         }
     }
 
-    private sealed record TestCachingQuery : IRequest<string>
+    private sealed record TestCachingRequest : IRequest<string>
     {
         public string Key { get; init; } = string.Empty;
         public IDictionary<string, string> Cache { get; init; } = new Dictionary<string, string>(StringComparer.Ordinal);
     }
 
-    private sealed class TestCachingQueryHandler : IRequestHandler<TestCachingQuery, string>
+    private sealed class TestCachingRequestHandler : IRequestHandler<TestCachingRequest, string>
     {
-        public ValueTask<string> Handle(TestCachingQuery request, CancellationToken cancellationToken)
+        public ValueTask<string> Handle(TestCachingRequest request, CancellationToken cancellationToken)
         {
             if (request.Cache.TryGetValue(request.Key, out var cachedValue))
             {
@@ -583,14 +535,14 @@ public sealed class ArchitectureContextComprehensiveTests
         }
     }
 
-    private sealed record TestValidatedCommand : IRequest<Unit>
+    private sealed record TestValidatedRequest : IRequest<Unit>
     {
         public string Name { get; init; } = string.Empty;
     }
 
-    private sealed class TestValidatedCommandHandler : IRequestHandler<TestValidatedCommand, Unit>
+    private sealed class TestValidatedRequestHandler : IRequestHandler<TestValidatedRequest, Unit>
     {
-        public ValueTask<Unit> Handle(TestValidatedCommand request, CancellationToken cancellationToken)
+        public ValueTask<Unit> Handle(TestValidatedRequest request, CancellationToken cancellationToken)
         {
             if (string.IsNullOrWhiteSpace(request.Name))
             {
@@ -598,27 +550,6 @@ public sealed class ArchitectureContextComprehensiveTests
             }
 
             return ValueTask.FromResult(Unit.Value);
-        }
-    }
-
-    // 传统命令用于验证旧命令总线与 ArchitectureContext 的 CQRS API 可以同时工作。
-    private sealed class TestLegacyCommand : ICommand
-    {
-        public bool Executed { get; private set; }
-
-        public void Execute()
-        {
-            Executed = true;
-        }
-
-        public void SetContext(IArchitectureContext context)
-        {
-            // 该测试只验证传统命令是否被执行，不依赖上下文回填。
-        }
-
-        public IArchitectureContext GetContext()
-        {
-            return null!;
         }
     }
 

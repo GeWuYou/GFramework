@@ -57,10 +57,6 @@ public sealed class ServiceModuleManager : IServiceModuleManager
             return;
         _container = container;
         RegisterModule(new EventBusModule());
-        RegisterModule(new CommandExecutorModule());
-        RegisterModule(new CqrsRuntimeModule());
-        RegisterModule(new QueryExecutorModule());
-        RegisterModule(new AsyncQueryExecutorModule());
         foreach (var module in ArchitectureModuleRegistry.CreateModules())
             RegisterModule(module);
         foreach (var module in _modules.Where(module => module.IsEnabled))

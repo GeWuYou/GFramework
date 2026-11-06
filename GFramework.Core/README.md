@@ -2,7 +2,7 @@
 
 `GFramework.Core` 是框架的基础运行时，负责架构生命周期、组件注册、上下文访问，以及不依赖具体引擎的通用能力。
 
-如果你需要使用 Architecture，可从这个模块开始。当前 Core 已传递依赖 CQRS runtime。
+如果你需要使用 Architecture，可从这个模块开始。Core 不传递依赖 CQRS；需要 request / notification / stream 消息模型的项目显式安装 `GFramework.Cqrs` 并安装 runtime 模块。
 
 ## 模块定位
 
@@ -10,27 +10,24 @@
 
 - `Architecture` 与 `ArchitectureContext`
 - `Model` / `System` / `Utility` 运行时
-- 旧版 `Command` / `Query` 执行器，以及与新版 `CQRS` runtime 的接线入口
 - 事件、属性、状态机、状态管理、规则与上下文扩展
 - 资源、对象池、日志、协程、并发、环境、配置与本地化
 - 服务模块管理、时间提供器与默认的 IoC 容器适配
 
-标准架构启动路径下，旧 `Command` / `Query` 兼容入口现在会继续保持原有使用方式，
-但底层会通过 `GFramework.Cqrs` 的统一 runtime、pipeline 与上下文注入链路执行。
+`IArchitectureContext` 只承载组件获取、事件系统与环境访问；消息分发不在上下文接口上，由显式安装的 CQRS runtime 及其上下文扩展提供。
 
 它不负责：
 
 - 游戏内容配置、Scene / UI / Storage 等游戏层能力
 - Godot 节点与场景集成
-- 新版 CQRS 请求模型的消息契约定义
+- CQRS 消息契约与 runtime
 
 ## 包关系
 
 - 直接依赖：
-  - `GFramework.Cqrs`
-  - `GFramework.Cqrs.Abstractions`
   - `GFramework.Core.Abstractions`
-- 常见上层模块：
+- 常见上层模块（按需安装）：
+  - `GFramework.Cqrs`
   - `GFramework.Game`
   - `GFramework.Godot`
 
@@ -42,8 +39,6 @@
 | --- | --- |
 | `Architectures/` | 架构入口、上下文、生命周期、模块安装与组件注册 |
 | `Services/` | 服务模块注册、生命周期协调与模块管理 |
-| `Command/` | 旧版命令执行器与同步 / 异步命令基类 |
-| `Query/` | 旧版查询执行器与同步 / 异步查询基类 |
 | `Events/` | 事件总线、事件作用域、统计与过滤 |
 | `Property/` | `BindableProperty<T>` 与相关解绑对象 |
 | `State/` | 状态机与状态切换事件 |
@@ -70,7 +65,6 @@
 | 类型族 | 代表类型 | 阅读重点 |
 | --- | --- | --- |
 | `Architectures/` `Services/` | `Architecture`、`ArchitectureContext`、`ArchitectureLifecycle`、`ServiceModuleManager` | 先看架构入口、上下文对象与模块生命周期如何协同 |
-| `Command/` `Query/` | `CommandExecutor`、`AsyncQueryExecutor`、`AbstractCommand<TInput>`、`AbstractQuery<TResult>` | 看命令 / 查询执行入口、同步异步边界与抽象基类约束 |
 | `Events/` `Property/` `State/` `StateManagement/` | `EventBus`、`BindableProperty<T>`、`StateMachine`、`Store<TState>` | 看事件分发、状态绑定、状态机与 Store 的职责划分 |
 | `Coroutine/` `Time/` `Pause/` `Concurrency/` | `CoroutineScheduler`、`CoroutineHandle`、`PauseStackManager`、`AsyncKeyLockManager` | 看调度、暂停、时间推进与并发控制的生命周期语义 |
 | `Resource/` `Pool/` | `ResourceManager`、`AutoReleaseStrategy`、`AbstractObjectPoolSystem<TKey, TObject>` | 看资源释放策略、池化抽象与可复用对象边界 |
@@ -85,7 +79,7 @@ Architecture 的配置阶段只登记描述，随后构建一次正式 provider�
 
 DestroyAsync/DisposeAsync 会停止业务组件并异步释放 provider 拥有的资源。传入的外部实例由调用者负责最终释放。角色组件的类型注册使用同一 provider；可释放实现采用单一拥有服务键，避免工厂别名重复捕获资源。
 
-当前 Core 与 Core.Abstractions 仍依赖 CQRS runtime/契约，包边界没有改变。采用方式见[架构生命周期](../docs/zh-CN/core/architecture.md)与[IoC 容器](../docs/zh-CN/core/ioc.md)。
+Core-only 的消费方没有 CQRS 传递依赖。需要消息模型时，安装 `GeWuYou.GFramework.Cqrs` 并通过 `architecture.UseCqrsRuntime(...)` 或 `RegisterServiceModule(new CqrsRuntimeModule(...))` 显式安装 runtime，见[架构生命周期](../docs/zh-CN/core/architecture.md)与 [CQRS 运行时](../docs/zh-CN/core/cqrs.md)。
 
 ## 最小接入路径
 
@@ -106,7 +100,7 @@ dotnet add package GeWuYou.GFramework.Core.Abstractions
 
 ## 可选采用包
 
-- 直接使用新请求模型：可显式引用 `GFramework.Cqrs`；Core 已传递包含其 runtime
+- 需要 request / notification / stream 消息模型：显式引用 `GFramework.Cqrs` 并安装 runtime 模块
 - 需要游戏层路由、设置、配置和存储：加 `GFramework.Game`
 - 需要 Godot 节点与场景适配：加 `GFramework.Godot`
 - 需要编译期生成日志、上下文注入或模块注册：加 `GFramework.Core.SourceGenerators`
@@ -116,5 +110,5 @@ dotnet add package GeWuYou.GFramework.Core.Abstractions
 - Core 栏目：[Core 文档首页](../docs/zh-CN/core/index.md)
 - Core 抽象层：[Core Abstractions 文档](../docs/zh-CN/abstractions/core-abstractions.md)
 - API 参考入口：[API 参考首页](../docs/zh-CN/api-reference/index.md)
-- CQRS：[CQRS 文档](../docs/zh-CN/core/cqrs.md)
+- CQRS：[CQRS 运行时](../docs/zh-CN/core/cqrs.md)
 - 入门指南：[入门指南首页](../docs/zh-CN/getting-started/index.md)

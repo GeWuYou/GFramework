@@ -2,22 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Architectures;
-using GFramework.Core.Abstractions.Command;
 using GFramework.Core.Abstractions.Environment;
 using GFramework.Core.Abstractions.Events;
 using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Abstractions.Model;
-using GFramework.Core.Abstractions.Query;
 using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Abstractions.Utility;
 using GFramework.Core.Architectures;
-using GFramework.Core.Command;
 using GFramework.Core.Environment;
 using GFramework.Core.Events;
 using GFramework.Core.Ioc;
-using GFramework.Core.Query;
-using GFramework.Cqrs.Abstractions.Cqrs;
-using ICommand = GFramework.Core.Abstractions.Command.ICommand;
 
 namespace GFramework.Core.Tests.Architectures;
 
@@ -25,7 +19,7 @@ namespace GFramework.Core.Tests.Architectures;
 ///     ArchitectureServices类的单元测试
 ///     测试内容包括：
 ///     - 服务容器初始化
-///     - 所有服务实例创建（Container, EventBus, CommandExecutor, QueryExecutor）
+///     - 所有服务实例创建（Container, EventBus）
 ///     - SetContext方法 - 设置上下文
 ///     - SetContext方法 - 重复设置上下文
 ///     - GetContext方法 - 获取已设置上下文
@@ -79,42 +73,6 @@ public class ArchitectureServicesTests
 
         Assert.That(_services!.EventBus, Is.InstanceOf<IEventBus>());
         Assert.That(_services.EventBus, Is.InstanceOf<EventBus>());
-    }
-
-    /// <summary>
-    ///     测试注册内置服务后CommandExecutor可用
-    /// </summary>
-    [Test]
-    public void After_RegisterBuiltInModules_CommandExecutor_Should_Be_Available()
-    {
-        RegisterBuiltInServices();
-
-        Assert.That(_services!.CommandExecutor, Is.InstanceOf<ICommandExecutor>());
-        Assert.That(_services.CommandExecutor, Is.InstanceOf<CommandExecutor>());
-    }
-
-    /// <summary>
-    ///     测试注册内置服务后QueryExecutor可用
-    /// </summary>
-    [Test]
-    public void After_RegisterBuiltInModules_QueryExecutor_Should_Be_Available()
-    {
-        RegisterBuiltInServices();
-
-        Assert.That(_services!.QueryExecutor, Is.InstanceOf<IQueryExecutor>());
-        Assert.That(_services.QueryExecutor, Is.InstanceOf<QueryExecutor>());
-    }
-
-    /// <summary>
-    ///     测试注册内置服务后AsyncQueryExecutor可用
-    /// </summary>
-    [Test]
-    public void After_RegisterBuiltInModules_AsyncQueryExecutor_Should_Be_Available()
-    {
-        RegisterBuiltInServices();
-
-        Assert.That(_services!.AsyncQueryExecutor, Is.InstanceOf<IAsyncQueryExecutor>());
-        Assert.That(_services.AsyncQueryExecutor, Is.InstanceOf<AsyncQueryExecutor>());
     }
 
     /// <summary>
@@ -224,36 +182,6 @@ public class ArchitectureServicesTests
         services2.ModuleManager.RegisterBuiltInModules(services2.Container);
 
         Assert.That(services1.EventBus, Is.Not.SameAs(services2.EventBus));
-    }
-
-    /// <summary>
-    ///     测试多个实例有独立的CommandBus
-    /// </summary>
-    [Test]
-    public void Multiple_Instances_Should_Have_Independent_CommandBus()
-    {
-        var services1 = new ArchitectureServices();
-        services1.ModuleManager.RegisterBuiltInModules(services1.Container);
-
-        var services2 = new ArchitectureServices();
-        services2.ModuleManager.RegisterBuiltInModules(services2.Container);
-
-        Assert.That(services1.CommandExecutor, Is.Not.SameAs(services2.CommandExecutor));
-    }
-
-    /// <summary>
-    ///     测试多个实例有独立的QueryBus
-    /// </summary>
-    [Test]
-    public void Multiple_Instances_Should_Have_Independent_QueryBus()
-    {
-        var services1 = new ArchitectureServices();
-        services1.ModuleManager.RegisterBuiltInModules(services1.Container);
-
-        var services2 = new ArchitectureServices();
-        services2.ModuleManager.RegisterBuiltInModules(services2.Container);
-
-        Assert.That(services1.QueryExecutor, Is.Not.SameAs(services2.QueryExecutor));
     }
 
     /// <summary>
