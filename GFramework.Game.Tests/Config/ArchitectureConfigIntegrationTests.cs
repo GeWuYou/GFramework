@@ -9,6 +9,7 @@ using GFramework.Core.Utility;
 using GFramework.Game.Abstractions.Config;
 using GFramework.Game.Config;
 using GFramework.Game.Config.Generated;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GFramework.Game.Tests.Config;
 
@@ -19,16 +20,6 @@ namespace GFramework.Game.Tests.Config;
 [TestFixture]
 public class ArchitectureConfigIntegrationTests
 {
-    /// <summary>
-    ///     清理全局架构上下文，避免测试之间残留同类型架构绑定。
-    /// </summary>
-    [SetUp]
-    [TearDown]
-    public void ResetGlobalArchitectureContext()
-    {
-        GameContext.Clear();
-    }
-
     /// <summary>
     ///     架构初始化期间，通过 <see cref="GameConfigModule" /> 收敛生成表注册、加载与注册表暴露，
     ///     并将 <see cref="IConfigRegistry" /> 作为 utility 暴露给架构上下文读取。
@@ -127,7 +118,6 @@ public class ArchitectureConfigIntegrationTests
             await firstArchitecture.DestroyAsync().ConfigureAwait(false);
             firstDestroyed = true;
             firstArchitecture = null;
-            GameContext.Clear();
 
             var secondArchitecture = new ModuleOnlyArchitecture(module);
             var exception =
@@ -152,11 +142,10 @@ public class ArchitectureConfigIntegrationTests
     }
 
     /// <summary>
-    ///     验证配置模块在同步阻塞且存在 <see cref="SynchronizationContext" /> 的线程上仍可完成架构初始化，
-    ///     直接覆盖 <see cref="GameConfigModule" /> 通过生命周期钩子执行同步桥接的真实路径。
+    ///     验证显式异步阶段钩子不依赖调用方同步上下文；测试驱动器故意阻塞其上下文线程。
     /// </summary>
     [Test]
-    public void GameConfigModuleShouldSupportSynchronousBridgeOnBlockingSynchronizationContext()
+    public void GameConfigModuleShouldAwaitAsyncHooksWithoutCapturingBlockingSynchronizationContext()
     {
         var rootPath = CreateTempConfigRoot();
         ConsumerArchitecture? architecture = null;
@@ -190,6 +179,113 @@ public class ArchitectureConfigIntegrationTests
     }
 
     /// <summary>
+    ///     配置首载只能由异步架构入口驱动，拒绝同步阻塞桥接。
+    /// </summary>
+    [Test]
+    public void GameConfigModuleShouldRejectSynchronousArchitectureInitialization()
+    {
+        var rootPath = CreateTempConfigRoot();
+        try
+        {
+            var architecture = new ModuleOnlyArchitecture(CreateModule(rootPath));
+            var exception = Assert.Throws<InvalidOperationException>(() => architecture.Initialize());
+            Assert.That(exception!.Message, Does.Contain("InitializeAsync"));
+        }
+        finally
+        {
+            DeleteDirectoryIfExists(rootPath);
+        }
+    }
+
+    /// <summary>
+    ///     首载失败时，即使 lifetime utility 尚未完成初始化，provider 仍释放 bootstrap。
+    /// </summary>
+    /// <returns>失败初始化与清理任务。</returns>
+    [Test]
+    public async Task GameConfigModuleShouldDisposeBootstrapWhenInitialLoadFails()
+    {
+        var rootPath = CreateTempConfigRoot();
+        try
+        {
+            File.WriteAllText(Path.Combine(rootPath, "monster", "slime.yaml"),
+                "id: 1\nname: Slime\nhp: invalid-number\nfaction: dungeon\n");
+            var module = CreateModule(rootPath);
+            await using var architecture = new ModuleOnlyArchitecture(module);
+
+            Assert.ThrowsAsync<ConfigLoadException>(() => architecture.InitializeAsync());
+            Assert.Throws<ObjectDisposedException>(() => _ = module.Loader);
+        }
+        finally
+        {
+            DeleteDirectoryIfExists(rootPath);
+        }
+    }
+
+    /// <summary>
+    ///     配置首载完成后其他 utility 失败，已经启动的热重载也必须停止。
+    /// </summary>
+    /// <returns>失败初始化与 watcher 清理任务。</returns>
+    [Test]
+    public async Task GameConfigModuleShouldStopHotReloadWhenLaterInitializationFails()
+    {
+        var rootPath = CreateTempConfigRoot();
+        try
+        {
+            var defaults = CreateBootstrapOptions(rootPath);
+            var module = new GameConfigModule(new GameConfigBootstrapOptions
+            {
+                RootPath = rootPath,
+                ConfigureLoader = defaults.ConfigureLoader,
+                EnableHotReload = true
+            });
+            await using var architecture = new FailingConfigArchitecture(module);
+
+            Assert.ThrowsAsync<InvalidOperationException>(() => architecture.InitializeAsync());
+            Assert.Multiple(() =>
+            {
+                Assert.That(module.IsHotReloadEnabled, Is.False);
+                Assert.Throws<ObjectDisposedException>(() => _ = module.Loader);
+            });
+        }
+        finally
+        {
+            DeleteDirectoryIfExists(rootPath);
+        }
+    }
+
+    /// <summary>
+    ///     配置阶段触发的取消沿异步阶段钩子传播，并释放已经激活的 bootstrap 适配器。
+    /// </summary>
+    /// <returns>取消初始化与资源清理任务。</returns>
+    [Test]
+    public async Task GameConfigModuleShouldPropagateCancellationAndDisposeBootstrap()
+    {
+        var rootPath = CreateTempConfigRoot();
+        using var cancellation = new CancellationTokenSource();
+        try
+        {
+            var module = new GameConfigModule(new GameConfigBootstrapOptions
+            {
+                RootPath = rootPath,
+                ConfigureLoader = _ => cancellation.Cancel()
+            });
+            await using var architecture = new ModuleOnlyArchitecture(module);
+
+            var exception = Assert.CatchAsync<OperationCanceledException>(() =>
+                architecture.InitializeAsync(cancellation.Token));
+            Assert.Multiple(() =>
+            {
+                Assert.That(exception!.CancellationToken, Is.EqualTo(cancellation.Token));
+                Assert.Throws<ObjectDisposedException>(() => _ = module.Loader);
+            });
+        }
+        finally
+        {
+            DeleteDirectoryIfExists(rootPath);
+        }
+    }
+
+    /// <summary>
     ///     验证模块在架构已经越过安装窗口时会拒绝安装，
     ///     并且失败不会消耗模块实例，便于后续在新的架构上重试安装。
     /// </summary>
@@ -214,7 +310,7 @@ public class ArchitectureConfigIntegrationTests
             Assert.Multiple(() =>
             {
                 Assert.That(exception, Is.Not.Null);
-                Assert.That(exception!.Message, Does.Contain("BeforeUtilityInit"));
+                Assert.That(exception!.Message, Does.Contain("ConfigureServices"));
                 Assert.That(readyArchitecture.Context.GetUtilities<IConfigRegistry>(), Is.Empty);
                 Assert.That(module.IsInitialized, Is.False);
             });
@@ -222,7 +318,6 @@ public class ArchitectureConfigIntegrationTests
             await readyArchitecture.DestroyAsync().ConfigureAwait(false);
             readyArchitectureInitialized = false;
             readyArchitecture = null;
-            GameContext.Clear();
 
             retryArchitecture = new ModuleOnlyArchitecture(module);
             await retryArchitecture.InitializeAsync().ConfigureAwait(false);
@@ -416,7 +511,7 @@ public class ArchitectureConfigIntegrationTests
         ///     获取当前架构安装的配置模块。
         /// </summary>
         /// <remarks>
-        ///     该模块会在 <see cref="OnInitialize" /> 中安装，并在架构进入
+        ///     该模块会在 <see cref="ConfigureServices" /> 中安装，并在架构进入
         ///     <see cref="GFramework.Core.Abstractions.Enums.ArchitecturePhase.BeforeUtilityInit" /> 时完成首次加载。
         ///     调用方可通过该属性观察模块初始化状态，但不应在架构初始化完成前假定加载已经成功。
         /// </remarks>
@@ -446,7 +541,7 @@ public class ArchitectureConfigIntegrationTests
         ///     获取用于观测 utility 初始化阶段配置可见性的探针 utility。
         /// </summary>
         /// <remarks>
-        ///     该 utility 会在 <see cref="OnInitialize" /> 中注册，并在 utility 初始化阶段读取配置表，
+        ///     该 utility 会在 <see cref="ConfigureServices" /> 中注册，并在 utility 初始化阶段读取配置表，
         ///     用于验证配置模块是否按约定在更早的生命周期阶段完成首载。
         /// </remarks>
         public ConfigAwareProbeUtility ProbeUtility => _probeUtility;
@@ -455,7 +550,7 @@ public class ArchitectureConfigIntegrationTests
         ///     在用户初始化阶段安装配置模块，并注册一个依赖配置的测试 utility，
         ///     以验证模块会在 utility 初始化前完成首次加载。
         /// </summary>
-        protected override void OnInitialize()
+        protected override void ConfigureServices(IServiceCollection services)
         {
             InstallModule(_configModule);
             RegisterUtility(_probeUtility);
@@ -487,7 +582,7 @@ public class ArchitectureConfigIntegrationTests
         /// <summary>
         ///     安装外部传入的配置模块。
         /// </summary>
-        protected override void OnInitialize()
+        protected override void ConfigureServices(IServiceCollection services)
         {
             InstallModule(configModule);
         }
@@ -501,8 +596,41 @@ public class ArchitectureConfigIntegrationTests
         /// <summary>
         ///     该测试架构不注册任何组件，仅验证模块的安装窗口约束。
         /// </summary>
-        protected override void OnInitialize()
+        protected override void ConfigureServices(IServiceCollection services)
         {
+        }
+    }
+
+    /// <summary>
+    ///     模拟配置模块之后的业务 utility 初始化失败。
+    /// </summary>
+    /// <param name="module">测试配置模块。</param>
+    private sealed class FailingConfigArchitecture(GameConfigModule module) : Architecture
+    {
+        /// <inheritdoc />
+        protected override void ConfigureServices(IServiceCollection services)
+        {
+            InstallModule(module);
+            RegisterUtility<FailingConfigUtility>();
+        }
+    }
+
+    /// <summary>
+    ///     用于验证配置模块启动之后的失败清理。
+    /// </summary>
+    private sealed class FailingConfigUtility : AbstractContextUtility
+    {
+        /// <summary>
+        ///     允许正式 DI provider 激活测试 utility，使故障发生在首载之后而非构造阶段。
+        /// </summary>
+        public FailingConfigUtility()
+        {
+        }
+
+        /// <inheritdoc />
+        protected override void OnInit()
+        {
+            throw new InvalidOperationException("Expected utility initialization failure.");
         }
     }
 

@@ -41,7 +41,7 @@ public class ArchitectureInitializationPipelineTests
     ///     验证异步初始化会在执行用户初始化逻辑之前准备环境、服务和上下文。
     /// </summary>
     [Test]
-    public async Task InitializeAsync_Should_Prepare_Runtime_Before_OnInitialize()
+    public async Task InitializeAsync_Should_Prepare_Runtime_Before_OnStarted()
     {
         var environment = new TrackingEnvironment();
         var marker = new BootstrapMarker();
@@ -57,7 +57,7 @@ public class ArchitectureInitializationPipelineTests
     ///     验证同步初始化路径复用同一套基础设施准备流程。
     /// </summary>
     [Test]
-    public async Task Initialize_Should_Prepare_Runtime_Before_OnInitialize()
+    public async Task Initialize_Should_Prepare_Runtime_Before_OnStarted()
     {
         var environment = new TrackingEnvironment();
         var marker = new BootstrapMarker();
@@ -85,7 +85,7 @@ public class ArchitectureInitializationPipelineTests
             Assert.That(architecture.ObservedEnvironmentInitialized, Is.True);
             Assert.That(architecture.ObservedConfiguredServiceAvailable, Is.True);
             Assert.That(architecture.ObservedEventBusAvailable, Is.True);
-            Assert.That(architecture.ObservedContextWasBound, Is.True);
+            Assert.That(architecture.ObservedGlobalContextWasAbsent, Is.True);
             Assert.That(architecture.ObservedEnvironmentRegistered, Is.True);
             Assert.That(architecture.Context.GetEnvironment(), Is.SameAs(environment));
             Assert.That(architecture.Context.GetService<BootstrapMarker>(), Is.SameAs(marker));
@@ -131,9 +131,9 @@ public class ArchitectureInitializationPipelineTests
         public bool ObservedEventBusAvailable { get; private set; }
 
         /// <summary>
-        ///     记录当前上下文是否已在用户初始化前绑定到全局游戏上下文表。
+        ///     记录启动后没有自动绑定全局游戏上下文，避免不同实例互相占用全局入口。
         /// </summary>
-        public bool ObservedContextWasBound { get; private set; }
+        public bool ObservedGlobalContextWasAbsent { get; private set; }
 
         /// <summary>
         ///     记录环境对象是否已在用户初始化前注册到架构上下文。
@@ -148,12 +148,20 @@ public class ArchitectureInitializationPipelineTests
         /// <summary>
         ///     在用户初始化逻辑中采集运行时准备状态。
         /// </summary>
-        protected override void OnInitialize()
+        /// <param name="services">当前配置阶段的服务描述集合。</param>
+        protected override void ConfigureServices(IServiceCollection services)
+        {
+        }
+
+        /// <summary>
+        ///     在容器构建并完成组件初始化之后采集运行时状态。
+        /// </summary>
+        protected override void OnStarted()
         {
             ObservedEnvironmentInitialized = _environment.InitializeCallCount == 1;
             ObservedConfiguredServiceAvailable = ReferenceEquals(Context.GetService<BootstrapMarker>(), _marker);
             ObservedEventBusAvailable = Context.GetService<IEventBus>() is not null;
-            ObservedContextWasBound = ReferenceEquals(GameContext.GetByType(GetType()), Context);
+            ObservedGlobalContextWasAbsent = !GameContext.TryGet<ArchitectureContext>(out _);
             ObservedEnvironmentRegistered = ReferenceEquals(Context.GetEnvironment(), _environment);
         }
     }

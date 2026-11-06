@@ -104,12 +104,12 @@ dotnet add package GeWuYou.GFramework.Godot.SourceGenerators
 
 ### 2. 保持原有架构注册方式，只把宿主协作接到 Godot
 
-常规模块继续使用 `InstallModule(...)`。
+常规模块在 InstallModules() 中继续使用 InstallModule(...)；该方法由 ConfigureServices(IServiceCollection) 驱动，只声明依赖，不解析服务或访问原生节点。
 
 只有模块自身暴露 `Node`、需要挂到 `ArchitectureAnchor`，或要在 `OnAttach(...)` / `OnDetach()` 里处理 Godot 生命周期副作用时，
 再使用 `InstallGodotModule(...)`。
 
-这一点已有测试覆盖：锚点缺失时会先抛 `InvalidOperationException`，不会继续执行模块安装。
+InstallGodotModule(...) 现在是配置期声明入口。启动时等待 InitializeAsync(...)，架构会显式把锚点和节点操作派发到 Godot 主线程，并在模块完成附加后进入 Ready。停止会逆序分离已附加模块，然后继续释放核心 provider；并发销毁等待同一个完整任务。
 
 ### 3. Scene / UI 继续沿用 `Game` 契约
 

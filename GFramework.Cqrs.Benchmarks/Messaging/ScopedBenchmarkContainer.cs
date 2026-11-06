@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System;
+using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Linq;
 using GFramework.Core.Abstractions.Bases;
@@ -429,6 +430,19 @@ internal sealed class ScopedBenchmarkContainer : IIocContainer
     public void Dispose()
     {
         ReleaseActiveScope();
+    }
+
+    /// <summary>异步释放当前适配器拥有的作用域，不释放外部根容器。</summary>
+    /// <returns>作用域资源已完成释放。</returns>
+    public async ValueTask DisposeAsync()
+    {
+        _scopedProvider = null;
+        var scope = _activeScope;
+        _activeScope = null;
+        if (scope is IAsyncDisposable asyncScope)
+            await asyncScope.DisposeAsync().ConfigureAwait(false);
+        else
+            scope?.Dispose();
     }
 
     /// <summary>

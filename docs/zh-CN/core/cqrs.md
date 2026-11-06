@@ -26,7 +26,9 @@ legacy compatibility alias。新代码应直接依赖 `GFramework.Cqrs.Abstracti
 
 ## 最小接入路径
 
-最小安装组合是：
+Core 当前已经传递包含 CQRS runtime 与契约，标准架构会自动注册运行时。直接使用 CQRS API 的项目可显式声明以下依赖；仅声明消息契约可只引用 Abstractions。默认运行时工厂仍接受 Core 的 IIocContainer，不应把拆包理解为脱离 Core 契约的独立标准 DI 接入。
+
+显式引用组合：
 
 ```bash
 dotnet add package GeWuYou.GFramework.Cqrs
@@ -195,13 +197,13 @@ container.UseNotificationPublisher<MyCustomNotificationPublisher>();
 
 ## 处理器注册与生成器协作
 
-在标准 `Architecture` 启动路径中，CQRS runtime 会自动接入基础设施。你通常只需要在 `OnInitialize()` 里追加行为或额外程序集：
+在标准 `Architecture` 启动路径中，CQRS runtime 会自动接入基础设施。你通常只需要在 `ConfigureServices(...)` 里追加行为或额外程序集：
 
 ```csharp
-protected override void OnInitialize()
+protected override void ConfigureServices(IServiceCollection services)
 {
-    RegisterCqrsPipelineBehavior<LoggingBehavior<,>>();
-    RegisterCqrsPipelineBehavior<PerformanceBehavior<,>>();
+    services.AddSingleton(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+    services.AddSingleton(typeof(IPipelineBehavior<,>), typeof(PerformanceBehavior<,>));
 
     RegisterCqrsHandlersFromAssemblies(
     [

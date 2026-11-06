@@ -15,6 +15,11 @@ public sealed class ContextRegistrationAnalyzerTests
                                         using System;
                                         using System.Collections.Generic;
 
+                                        namespace Microsoft.Extensions.DependencyInjection
+                                        {
+                                            public interface IServiceCollection { }
+                                        }
+
                                         namespace GFramework.Core.Abstractions.Rule
                                         {
                                             public interface IContextAware { }
@@ -68,7 +73,7 @@ public sealed class ContextRegistrationAnalyzerTests
                                         {
                                             public abstract class Architecture : GFramework.Core.Abstractions.Architectures.IArchitecture
                                             {
-                                                protected abstract void OnInitialize();
+                                                protected abstract void ConfigureServices(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services);
                                                 
                                                 public virtual T RegisterModel<T>(T model) where T : GFramework.Core.Abstractions.Model.IModel => model;
                                                 
@@ -154,7 +159,7 @@ public sealed class ContextRegistrationAnalyzerTests
 
                                                                           public sealed class GameArchitecture : Architecture
                                                                           {
-                                                                              protected override void OnInitialize()
+                                                                              protected override void ConfigureServices(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services)
                                                                               {
                                                                                   RegisterSystem(new InventoryPanelSystem());
                                                                               }
@@ -182,7 +187,7 @@ public sealed class ContextRegistrationAnalyzerTests
 
                                                                   public sealed class GameArchitecture : Architecture
                                                                   {
-                                                                      protected override void OnInitialize()
+                                                                      protected override void ConfigureServices(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services)
                                                                       {
                                                                           RegisterModel(new InventoryModel());
                                                                           RegisterSystem(new InventoryPanelSystem());
@@ -211,7 +216,7 @@ public sealed class ContextRegistrationAnalyzerTests
 
                                                                             public sealed class GameArchitecture : Architecture
                                                                             {
-                                                                                protected override void OnInitialize()
+                                                                                protected override void ConfigureServices(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services)
                                                                                 {
                                                                                     RegisterUtility(new UiUtility());
                                                                                 }
@@ -248,7 +253,7 @@ public sealed class ContextRegistrationAnalyzerTests
 
                                                                      public sealed class GameArchitecture : Architecture
                                                                      {
-                                                                         protected override void OnInitialize()
+                                                                         protected override void ConfigureServices(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services)
                                                                          {
                                                                              InstallModule(new InventoryModule());
                                                                              RegisterSystem(new InventoryPanelSystem());
@@ -275,7 +280,7 @@ public sealed class ContextRegistrationAnalyzerTests
 
                                                                 public sealed class FirstArchitecture : Architecture
                                                                 {
-                                                                    protected override void OnInitialize()
+                                                                    protected override void ConfigureServices(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services)
                                                                     {
                                                                         RegisterSystem(new InventoryPanelSystem());
                                                                     }
@@ -283,7 +288,7 @@ public sealed class ContextRegistrationAnalyzerTests
 
                                                                 public sealed class SecondArchitecture : Architecture
                                                                 {
-                                                                    protected override void OnInitialize()
+                                                                    protected override void ConfigureServices(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services)
                                                                     {
                                                                         RegisterSystem(new InventoryPanelSystem());
                                                                     }
@@ -310,7 +315,7 @@ public sealed class ContextRegistrationAnalyzerTests
 
                                                                      public sealed class GameArchitecture : Architecture
                                                                      {
-                                                                         protected override void OnInitialize()
+                                                                         protected override void ConfigureServices(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services)
                                                                          {
                                                                              RegisterSystem(new InventoryPanelSystem());
                                                                          }
@@ -332,7 +337,7 @@ public sealed class ContextRegistrationAnalyzerTests
 
                                                                                 public abstract class ArchitectureBase : Architecture
                                                                                 {
-                                                                                    protected override void OnInitialize()
+                                                                                    protected override void ConfigureServices(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services)
                                                                                     {
                                                                                         RegisterComponents();
                                                                                     }
@@ -400,7 +405,7 @@ public sealed class ContextRegistrationAnalyzerTests
 
                                                                            public sealed class GameArchitecture : Architecture
                                                                            {
-                                                                               protected override void OnInitialize()
+                                                                               protected override void ConfigureServices(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services)
                                                                                {
                                                                                    InstallModule(new DerivedInventoryModule());
                                                                                    RegisterSystem(new InventoryPanelSystem());
@@ -437,7 +442,7 @@ public sealed class ContextRegistrationAnalyzerTests
 
                                                                       public sealed class GameArchitecture : ArchitectureBase
                                                                       {
-                                                                          protected override void OnInitialize()
+                                                                          protected override void ConfigureServices(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services)
                                                                           {
                                                                               base.RegisterComponents();
                                                                           }
@@ -498,7 +503,7 @@ public sealed class ContextRegistrationAnalyzerTests
 
                                                                 public sealed class GameArchitecture : Architecture
                                                                 {
-                                                                    protected override void OnInitialize()
+                                                                    protected override void ConfigureServices(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services)
                                                                     {
                                                                         InstallModule(new DerivedInventoryModule());
                                                                     }
@@ -506,11 +511,81 @@ public sealed class ContextRegistrationAnalyzerTests
                                                             }
                                                             """;
 
+    private const string UncalledLegacyHookRegistrationSource = """
+        namespace TestApp
+        {
+            using GFramework.Core.Abstractions.Model;
+            using GFramework.Core.Abstractions.Systems;
+            using GFramework.Core.Architectures;
+            using GFramework.Core.SourceGenerators.Abstractions.Rule;
+
+            public interface IInventoryModel : IModel { }
+            public sealed class InventoryModel : IInventoryModel { }
+
+            public sealed class InventoryPanelSystem : ISystem
+            {
+                [GetModel]
+                private IInventoryModel {|#0:_model|} = null!;
+            }
+
+            public sealed class GameArchitecture : Architecture
+            {
+                protected override void ConfigureServices(
+                    global::Microsoft.Extensions.DependencyInjection.IServiceCollection services)
+                {
+                    RegisterSystem(new InventoryPanelSystem());
+                }
+
+                private void OnInitialize()
+                {
+                    RegisterModel(new InventoryModel());
+                }
+            }
+        }
+        """;
+
+    private const string MissingInstallModulesRegistrationSource = """
+        namespace TestApp
+        {
+            using GFramework.Core.Abstractions.Model;
+            using GFramework.Core.Abstractions.Systems;
+            using GFramework.Core.Architectures;
+            using GFramework.Core.SourceGenerators.Abstractions.Rule;
+
+            public interface IInventoryModel : IModel { }
+
+            public sealed class InventoryPanelSystem : ISystem
+            {
+                [GetModel]
+                private IInventoryModel {|#0:_model|} = null!;
+            }
+
+            public abstract class HostArchitecture : Architecture
+            {
+                protected override void ConfigureServices(
+                    global::Microsoft.Extensions.DependencyInjection.IServiceCollection services)
+                {
+                    InstallModules();
+                }
+
+                protected abstract void InstallModules();
+            }
+
+            public sealed class GameArchitecture : HostArchitecture
+            {
+                protected override void InstallModules()
+                {
+                    RegisterSystem(new InventoryPanelSystem());
+                }
+            }
+        }
+        """;
+
     /// <summary>
     ///     验证字段注入模型未注册时会报告缺失注册告警。
     /// </summary>
     [Test]
-    public Task Reports_Warning_When_FieldInjectedModel_Is_Not_Registered()
+    public Task Reports_Warning_When_ConfigureServices_Does_Not_Register_FieldInjectedModel()
     {
         return RunWarningScenarioAsync(
             MissingFieldInjectedModelRegistrationSource,
@@ -525,7 +600,7 @@ public sealed class ContextRegistrationAnalyzerTests
     ///     验证字段注入模型已注册时不会产生误报。
     /// </summary>
     [Test]
-    public Task Does_Not_Report_When_FieldInjectedModel_Is_Registered()
+    public Task Does_Not_Report_When_ConfigureServices_Registers_FieldInjectedModel()
     {
         return RunNoDiagnosticScenarioAsync(RegisteredFieldInjectedModelSource);
     }
@@ -583,7 +658,7 @@ public sealed class ContextRegistrationAnalyzerTests
     /// </summary>
     [Test]
     public Task
-        Does_Not_Report_When_Inherited_OnInitialize_Calls_Virtual_Helper_Overridden_In_Derived_Architecture()
+        Does_Not_Report_When_Inherited_ConfigureServices_Calls_Virtual_Helper_Overridden_In_Derived_Architecture()
     {
         return RunNoDiagnosticScenarioAsync(DerivedArchitectureVirtualHelperRegistrationSource);
     }
@@ -620,6 +695,36 @@ public sealed class ContextRegistrationAnalyzerTests
     {
         return RunWarningScenarioAsync(
             DerivedModuleBaseHelperCallSource,
+            CreateContextRegistrationWarning(
+                "GF_ContextRegistration_001",
+                "IInventoryModel",
+                "InventoryPanelSystem",
+                "GameArchitecture"));
+    }
+
+    /// <summary>
+    ///     未调用的旧初始化同名方法不能掩盖当前配置阶段实际缺少的注册。
+    /// </summary>
+    [Test]
+    public Task Reports_Warning_When_Registration_Exists_Only_In_Uncalled_Legacy_Hook()
+    {
+        return RunWarningScenarioAsync(
+            UncalledLegacyHookRegistrationSource,
+            CreateContextRegistrationWarning(
+                "GF_ContextRegistration_001",
+                "IInventoryModel",
+                "InventoryPanelSystem",
+                "GameArchitecture"));
+    }
+
+    /// <summary>
+    ///     宿主的 InstallModules 仍能关联组件所有者并报告缺少的模型注册。
+    /// </summary>
+    [Test]
+    public Task Reports_Warning_When_InstallModules_Does_Not_Register_FieldInjectedModel()
+    {
+        return RunWarningScenarioAsync(
+            MissingInstallModulesRegistrationSource,
             CreateContextRegistrationWarning(
                 "GF_ContextRegistration_001",
                 "IInventoryModel",

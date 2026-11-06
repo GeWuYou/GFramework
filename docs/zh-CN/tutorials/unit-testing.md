@@ -728,7 +728,7 @@ public abstract class TestArchitectureBase : Architecture&lt;TestArchitectureBas
     public ArchitecturePhase CurrentPhase { get; private set; }
     public List&lt;ArchitecturePhase&gt; PhaseHistory { get; } = new();
 
-    protected override void OnInitialize()
+    protected override void ConfigureServices(Microsoft.Extensions.DependencyInjection.IServiceCollection services)
     {
         InitCalled = true;
     }
@@ -746,11 +746,11 @@ public abstract class TestArchitectureBase : Architecture&lt;TestArchitectureBas
 /// </summary>
 public sealed class SyncTestArchitecture : TestArchitectureBase
 {
-    protected override void OnInitialize()
+    protected override void ConfigureServices(Microsoft.Extensions.DependencyInjection.IServiceCollection services)
     {
         RegisterModel(new TestModel());
         RegisterSystem(new TestSystem());
-        base.OnInitialize();
+        base.ConfigureServices(services);
     }
 }
 

@@ -1,46 +1,28 @@
 ---
 title: Godot 架构集成
-description: 说明 AbstractArchitecture、ArchitectureAnchor 和 Godot 模块挂接的当前生命周期语义，以及推荐的初始化路径。
+description: 说明 Godot 架构的配置声明、异步主线程启动和确定性清理方式。
 ---
 
 # Godot 架构集成
 
 ## 概述
 
-`GFramework.Godot` 当前的架构集成目标很直接：让 `Architecture` 能安全地感知 Godot `SceneTree` 生命周期，并在需要时把
-带 `Node` 的扩展模块挂到场景树上。
-
-当前真正参与这条链路的核心类型只有三类：
-
-- `AbstractArchitecture`：在原有 `Architecture` 之上增加 Godot 生命周期绑定
-- `ArchitectureAnchor`：挂在 `SceneTree.Root` 下的锚点节点，负责把 `_ExitTree()` 事件转回架构销毁
-- `IGodotModule` / `AbstractGodotModule`：当模块本身需要携带 Godot `Node` 时使用
-
-它不是另一套独立的模块系统，也不意味着所有模块都必须改成 `InstallGodotModule(...)`。
+`AbstractArchitecture` 在 Core Architecture 之上连接 Godot SceneTree；`ArchitectureAnchor` 接收退出树回调，`IGodotModule` 为携带 Node 的模块提供附加和分离入口。普通模块仍使用 `InstallModule(...)`。
 
 ## 什么时候该用 `AbstractArchitecture`
 
-当你的架构需要满足下面任一条件时，可以让它继承 `AbstractArchitecture`：
-
-- 需要把架构生命周期绑定到 Godot `SceneTree`
-- 需要在架构里安装带 `Node` 的扩展模块
-- 需要通过受保护的 `ArchitectureRoot` 访问锚点节点，继续挂接 Godot 子节点
-
-如果你只是做普通的 Model / System / Utility 注册，`AbstractArchitecture` 的主要价值仍然是“让架构知道自己何时跟随
-Godot 场景树销毁”，而不是改变注册方式。
+需要随场景树结束架构生命周期、安装节点模块或通过受保护的 `ArchitectureRoot` 访问宿主锚点时，可继承该类。模块和组件的依赖由当前架构的同一个正式 provider 解析；不额外运行 Generic Host。
 
 ## 最小接入路径
 
 ### 常规模块仍然用 `InstallModule(...)`
 
-当前更稳的默认做法，是保持普通模块注册方式：
+`InstallModules()` 在配置阶段由 `ConfigureServices(IServiceCollection)` 调用，只描述服务、组件和模块，不解析依赖、不加载资源，也不访问原生节点。
 
 ```csharp
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Environment;
 using GFramework.Godot.Architectures;
-
-namespace MyGame.Scripts.Core;
 
 public sealed class GameArchitecture(
     IArchitectureConfiguration configuration,
@@ -52,140 +34,104 @@ public sealed class GameArchitecture(
         InstallModule(new UtilityModule());
         InstallModule(new ModelModule());
         InstallModule(new GameplayModule());
-        InstallModule(new SystemModule());
     }
 }
 ```
 
-这里继承 `AbstractArchitecture` 的意义，是把架构绑定到 Godot 生命周期，而不是把普通模块注册改写成 Godot 风格 API。
+这些业务模块在各自 Install 方法中声明所需组件。等待 `InitializeAsync(...)` 成功之后再使用已初始化的服务。
 
 ### 只有携带 `Node` 的模块才需要 `InstallGodotModule(...)`
 
-如果模块本身暴露一个 Godot `Node`，并且希望由架构锚点统一托管，可以这样写：
+在配置阶段声明节点模块，将原生 Node 创建推迟到宿主启动阶段：
 
 ```csharp
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Godot.Architectures;
 using Godot;
 
-namespace MyGame.Scripts.Core;
-
 public sealed class HudModule : AbstractGodotModule
 {
-    private readonly Control _root = new()
-    {
-        Name = "HudModule"
-    };
+    private Control? _root;
 
-    public override Node Node => _root;
+    public override Node Node => _root ??= new Control { Name = "HudModule" };
 
     public override void Install(IArchitecture architecture)
     {
+        // 这里仅声明服务；Node 属性在主线程附加阶段才被读取。
     }
 
     public override void OnAttach(GFramework.Core.Architectures.Architecture architecture)
     {
+        // 此时节点已经加入锚点，可建立宿主事件连接。
     }
 
     public override void OnDetach()
     {
-        _root.QueueFree();
+        // 解除模块自己的连接；锚点负责释放其子节点。
+    }
+}
+
+public sealed class HudArchitecture : AbstractArchitecture
+{
+    protected override void InstallModules()
+    {
+        InstallGodotModule(new HudModule());
     }
 }
 ```
 
-这类模块的关键点不是“注册更多框架能力”，而是“让模块节点跟着架构锚点进出场景树”。
-真正调用 `InstallGodotModule(...)` 时，也应该把它放在能够接受异步挂接流程的初始化路径里。
+启动调用应被真正等待：
+
+```csharp
+var architecture = new HudArchitecture();
+await architecture.InitializeAsync(cancellationToken);
+```
+
+配置期的 InstallGodotModule 是声明动作，不是异步附加任务。不要在初始化结束后再调用它，也不要同步阻塞等待节点就绪。
 
 ## 当前生命周期
 
 ### 初始化阶段
 
-`AbstractArchitecture.OnInitialize()` 目前会按这个顺序工作：
+1. 执行 ConfigureServices / InstallModules，声明当前实例的注册图。
+2. 构建一次 provider，激活组件并完成业务初始化。
+3. 在 OnStartedAsync 中把锚点创建派发到 Godot 主线程，等待锚点进入树。
+4. 在主线程依次添加模块节点、执行 OnAttach。
+5. 完成以上操作后进入 Ready。
 
-1. 生成唯一的锚点节点名称
-2. 调用 `AttachToGodotLifecycle()`
-3. 在可用的 `SceneTree` 上创建并绑定 `ArchitectureAnchor`
-4. 执行你重写的 `InstallModules()`
-
-也就是说，Godot 生命周期绑定先发生，业务模块注册后发生。
+Godot 架构需要使用 InitializeAsync。同步 Initialize 会明确拒绝该异步宿主启动路径，不通过阻塞桥接等待场景树。
 
 ### `InstallGodotModule(...)` 的执行顺序
 
-当前实现里，`InstallGodotModule(...)` 会：
+配置阶段校验安装窗口、调用 module.Install 并登记模块。启动阶段等待锚点后才访问 Node、添加子节点和执行 OnAttach；该回调失败时也会执行对应的分离清理。
 
-1. 检查模块参数是否为 `null`
-2. 检查 `_anchor` 是否已初始化
-3. 先执行 `module.Install(this)`
-4. 把模块登记进内部 `_extensions`
-5. `await anchor.WaitUntilReadyAsync()`
-6. 通过 `CallDeferred(AddChild, module.Node)` 把模块节点挂到锚点下
-7. 调用 `module.OnAttach(this)`
-
-这条顺序有两个实际意义：
-
-- 模块会在挂接节点前先完成框架侧注册
-- 只有等锚点真正 ready 后，才进入需要访问 Godot 节点 API 的附加阶段
+取消可以撤销尚未开始的主线程队列动作；已经开始的短节点操作先完成，再允许失败清理继续，避免清理与同一节点操作并发。
 
 ### Godot 主线程同步 CQRS 保护
 
-继承 `AbstractArchitecture` 且未自定义 `IArchitectureContext` 时，默认上下文会启用 Godot 主线程同步 CQRS guard。
+未自定义 IArchitectureContext 时，默认的 GodotArchitectureContext 会在当前存在 SceneTree 且调用发生于主线程时拒绝同步 SendRequest、SendCommand 和 SendQuery。同步桥接可能把 handler 放到工作线程，无法保证 Node、SceneTree 或 UI 的线程亲和性。
 
-当满足下面两个条件时：
-
-1. 当前进程存在有效的 `SceneTree`
-2. 当前调用发生在 Godot 主线程
-
-同步 `SendRequest(...)`、同步 `SendCommand(...)`、同步 `SendQuery(...)` 会直接抛出明确异常，而不是继续走 legacy 同步 bridge。
-
-原因不是这些 API 本身必然错误，而是当前 legacy bridge 可能把 handler 执行切到工作线程；一旦 handler 内部触达
-`Node`、`SceneTree`、UI 路由、暂停处理器等线程亲和 Godot API，就会产生越线程调用。
-
-Godot 场景中的推荐入口是：
-
-- `SendAsync(...)`
-- `SendCommandAsync(...)`
-- `RunCommandCoroutine(...)`
+使用 SendAsync、SendCommandAsync、SendQueryAsync 或协程桥接入口，并让实际访问节点的业务代码遵守 Godot 主线程约束。架构对节点模块附加/分离的派发不等于所有业务 handler 和组件回调都自动回到主线程。
 
 ### 销毁阶段
 
-`ArchitectureAnchor._ExitTree()` 会触发绑定好的退出回调，随后 `AbstractArchitecture` 会开始观察异步销毁流程：
+显式等待 DestroyAsync 可观察完整清理结果。核心先取消并等待正在进行的初始化，再通过 OnStoppingAsync 在主线程逆序执行已附加模块的 OnDetach、清空宿主引用并排队释放锚点，然后继续核心组件停止与 provider 异步释放。即使某个 OnDetach 失败，也继续其他模块和核心清理，最后报告错误。
 
-- 防止重复销毁
-- 依次调用已登记 Godot 模块的 `OnDetach()`
-- 清空内部扩展列表
-- 再进入基类 `DestroyAsync()`
-
-如果异步销毁抛异常，当前实现会把错误写到 Godot 错误输出，而不是静默吞掉。
+DestroyAsync 等待业务和 provider 清理完成；QueueFree 排队的节点释放仍由引擎帧处理。并发销毁调用等待同一个完成任务。ArchitectureAnchor 的退出树回调会启动并观察这一任务；因为 Godot 的同步退出回调不能等待异步工作，退出驱动中的错误会写入 Godot 错误输出。
 
 ## 当前边界
 
-### 没有锚点时不会偷偷安装模块
+### 模块只在配置阶段声明
 
-`GFramework.Godot.Tests/Architectures/AbstractArchitectureModuleInstallationTests.cs` 已覆盖一个关键边界：
-
-- 当锚点尚未初始化时，`InstallGodotModule(...)` 会直接抛 `InvalidOperationException("Anchor not initialized")`
-- 失败发生在 `module.Install(...)` 之前，因此不会留下半安装副作用
-
-这也是为什么 `InstallGodotModule(...)` 更适合放在异步初始化路径里，而不是同步阻塞地等待挂接结果。
+配置窗口之外的 InstallGodotModule 会在 module.Install 之前失败。此时锚点是否存在不再决定能否注册；节点创建和挂接属于后续异步启动阶段。安装节点模块需要正在运行的 SceneTree。
 
 ### `AbstractGodotModule` 只是便捷基类，不代表自动阶段广播
 
-当前接口 `IGodotModule` 真正保证的成员只有：
-
-- `Node`
-- `Install(IArchitecture architecture)`
-- `OnAttach(Architecture architecture)`
-- `OnDetach()`
-
-`AbstractGodotModule` 里虽然保留了 `OnPhase(...)` / `OnArchitecturePhase(...)` 虚方法，但它们不在当前接口契约内，也没有在
-这条挂接流程里形成稳定的自动广播语义。不要把它写成当前公开保证。
+IGodotModule 保证的成员为 Node、Install、OnAttach 和 OnDetach。基类中保留的 OnPhase / OnArchitecturePhase 不是自动阶段订阅；需要阶段协作时显式注册相应钩子。
 
 ### `ArchitectureRoot` 只在锚点就绪后可用
 
-`ArchitectureRoot` 是受保护属性，底层直接返回 `_anchor`。如果锚点尚未准备好或架构已经失效，它会抛
-`InvalidOperationException("Architecture root not ready")`。因此它适合放在明确依赖锚点存在的挂接逻辑里，而不是拿来做
-任意时机的全局节点查找。
+配置阶段不能访问 ArchitectureRoot。异步 InitializeAsync 完成后，或模块 OnAttach 中，可以使用本实例已进入树的锚点。销毁后该属性不再可用；不要把它用作全局节点查找入口。
 
 ## 继续阅读
 

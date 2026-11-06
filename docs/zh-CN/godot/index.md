@@ -87,7 +87,7 @@ public sealed class GameArchitecture(
 ```
 
 也就是说，`GFramework.Godot` 的默认接入点不是“把所有注册都改成 Godot 模块”，而是“保持现有架构注册方式，只把需要
-Godot 生命周期协作的部分接到场景树上”。
+Godot 生命周期协作的部分接到场景树上”。InstallModules 由配置阶段驱动，只声明依赖；启动必须等待 InitializeAsync(...)，不要在配置阶段解析服务或访问节点。
 
 ### 3. 只在真的需要 Godot 节点挂接时使用 `InstallGodotModule(...)`
 
@@ -150,8 +150,8 @@ public partial class SettingsPanel : Control
 ## 当前边界
 
 - `AbstractArchitecture` 会在 `SceneTree.Root` 下创建 `ArchitectureAnchor`，并在锚点退出场景树时触发架构销毁观察流程
-- `InstallGodotModule(...)` 会先检查锚点是否存在；测试覆盖了“锚点缺失时直接抛 `InvalidOperationException`，且不会执行
-  `module.Install(...)`”这一路径
+- InstallGodotModule(...) 仅在配置阶段声明模块；异步启动把锚点与节点操作派发到 Godot 主线程，并在 OnAttach 完成后进入 Ready
+- 锚点退出树会触发被观察的清理；显式等待 DestroyAsync 才能观察完整清理结果，分离失败也不会跳过核心 provider 的释放
 - `Signal(...)` 是当前的 fluent API 入口
 - `NodeExtensions` 目前保留的是 `FindChildX<T>()`、`GetParentX<T>()`、`GetOrCreateNode<T>()`、`QueueFreeX()`、
   `FreeX()`、`WaitUntilReadyAsync()` 这一类运行时辅助；不要再把它描述成一个“默认覆盖所有 Godot 节点操作”的大而全层

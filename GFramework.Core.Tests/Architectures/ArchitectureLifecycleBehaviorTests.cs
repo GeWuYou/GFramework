@@ -1,7 +1,6 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using System.Reflection;
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Enums;
 using GFramework.Core.Abstractions.Lifecycle;
@@ -100,7 +99,7 @@ public class ArchitectureLifecycleBehaviorTests
     ///     验证用户初始化失败时，等待 Ready 的任务会失败并进入 FailedInitialization 阶段。
     /// </summary>
     [Test]
-    public void InitializeAsync_When_OnInitialize_Throws_Should_Mark_FailedInitialization()
+    public void InitializeAsync_When_Configuration_Throws_Should_Mark_FailedInitialization()
     {
         var architecture = new PhaseTrackingArchitecture(() => throw new InvalidOperationException("boom"));
 
@@ -164,11 +163,10 @@ public class ArchitectureLifecycleBehaviorTests
     }
 
     /// <summary>
-    ///     验证 Destroyed 阶段会在容器清空前广播给容器内的阶段监听器。
-    ///     该回归测试保护销毁尾声的阶段通知，确保依赖最终阶段信号的服务仍能收到 Destroyed。
+    ///     验证已登记的阶段监听器收到销毁阶段通知。
     /// </summary>
     [Test]
-    public async Task DestroyAsync_Should_Notify_Container_Phase_Listeners_About_Destroyed_Before_Clear()
+    public async Task DestroyAsync_Should_Notify_Phase_Listeners_About_Destroyed()
     {
         var listener = new TrackingPhaseListener();
         var architecture = new ListenerTrackingArchitecture(listener);
@@ -184,97 +182,101 @@ public class ArchitectureLifecycleBehaviorTests
     }
 
     /// <summary>
-    ///     验证架构销毁后会解除全局 GameContext 绑定。
-    ///     该回归测试用于防止已销毁架构继续充当默认上下文回退入口。
+    ///     验证架构销毁后拒绝通过其原实例上下文继续解析服务。
     /// </summary>
     [Test]
-    public async Task DestroyAsync_Should_Unbind_Context_From_GameContext()
+    public async Task DestroyAsync_Should_Invalidate_Instance_Context()
     {
         var architecture = new PhaseTrackingArchitecture();
-
         await architecture.InitializeAsync();
-
-        Assert.That(GameContext.GetByType(architecture.GetType()), Is.SameAs(architecture.Context));
+        var context = architecture.Context;
+        Assert.That(GameContext.TryGet<ArchitectureContext>(out _), Is.False);
 
         await architecture.DestroyAsync();
 
-        Assert.Throws<InvalidOperationException>(() => GameContext.GetByType(architecture.GetType()));
-        Assert.Throws<InvalidOperationException>(() => GameContext.GetFirstArchitectureContext());
+        Assert.Throws<ObjectDisposedException>(() => context.GetService<TrackingPhaseListener>());
     }
 
     /// <summary>
-    ///     验证失败初始化后的销毁同样会解除全局上下文绑定。
+    ///     验证失败初始化自动清理，不再等待调用方显式销毁才释放服务。
     /// </summary>
     [Test]
-    public async Task DestroyAsync_After_FailedInitialization_Should_Unbind_Context_From_GameContext()
+    public async Task FailedInitialization_Should_Invalidate_Instance_Context_Automatically()
     {
         var destroyOrder = new List<string>();
         var architecture = new FailingInitializationArchitecture(destroyOrder);
 
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(() => architecture.InitializeAsync());
-        Assert.That(exception, Is.Not.Null);
-        Assert.That(GameContext.GetByType(architecture.GetType()), Is.SameAs(architecture.Context));
+        Assert.ThrowsAsync<InvalidOperationException>(() => architecture.InitializeAsync());
+        var context = architecture.Context;
+        Assert.Multiple(() =>
+        {
+            Assert.That(destroyOrder, Is.EqualTo(new[] { "model", "utility" }));
+            Assert.That(GameContext.TryGet<ArchitectureContext>(out _), Is.False);
+            Assert.Throws<ObjectDisposedException>(() => context.GetService<TrackingPhaseListener>());
+        });
 
         await architecture.DestroyAsync();
-
-        Assert.Throws<InvalidOperationException>(() => GameContext.GetByType(architecture.GetType()));
-        Assert.Throws<InvalidOperationException>(() => GameContext.GetFirstArchitectureContext());
+        Assert.That(destroyOrder, Is.EqualTo(new[] { "model", "utility" }));
     }
 
     /// <summary>
-    ///     验证销毁后的新 ContextAware 实例不会再通过全局回退命中过期上下文。
+    ///     验证 ContextAware 从启动开始就只接受显式实例上下文。
     /// </summary>
     [Test]
-    public async Task DestroyAsync_Should_Prevent_New_ContextAware_Fallback_From_Using_Destroyed_Context()
+    public async Task ContextAware_Should_Require_Explicit_Context_Even_While_Architecture_IsReady()
     {
         var architecture = new PhaseTrackingArchitecture();
-
         await architecture.InitializeAsync();
-        await architecture.DestroyAsync();
-
         IContextAware probe = new LifecycleContextAwareProbe();
-
         Assert.Throws<InvalidOperationException>(() => probe.GetContext());
+
+        probe.SetContext(architecture.Context);
+        Assert.That(probe.GetContext(), Is.SameAs(architecture.Context));
+        await architecture.DestroyAsync();
+
+        Assert.Throws<ObjectDisposedException>(() => probe.GetContext().GetService<TrackingPhaseListener>());
     }
 
     /// <summary>
-    ///     验证同步兼容销毁入口同样会解除全局 GameContext 绑定。
+    ///     验证同步销毁入口与异步入口共享终态和实例上下文失效语义。
     /// </summary>
     [Test]
-    public async Task Destroy_Should_Unbind_Context_From_GameContext()
+    public async Task Destroy_Should_Invalidate_Instance_Context()
     {
         var architecture = new PhaseTrackingArchitecture();
-
         await architecture.InitializeAsync();
-
-        Assert.That(GameContext.GetByType(architecture.GetType()), Is.SameAs(architecture.Context));
+        var context = architecture.Context;
 
 #pragma warning disable CS0618
         architecture.Destroy();
 #pragma warning restore CS0618
 
-        Assert.Throws<InvalidOperationException>(() => GameContext.GetByType(architecture.GetType()));
-        Assert.Throws<InvalidOperationException>(() => GameContext.GetFirstArchitectureContext());
+        Assert.Throws<ObjectDisposedException>(() => context.GetService<TrackingPhaseListener>());
+        await architecture.DestroyAsync();
     }
 
     /// <summary>
-    ///     验证启用 AllowLateRegistration 时，生命周期层会立即初始化后注册的组件，而不是继续沿用初始化期的拒绝策略。
-    ///     由于公共架构 API 在 Ready 之后会先触发容器限制，此回归测试直接覆盖生命周期协作者的对齐逻辑。
+    ///     配置结束后即关闭注册窗口；就绪前的启动回调也不能追加组件或触发其初始化。
     /// </summary>
     [Test]
-    public async Task
-        RegisterLifecycleComponent_After_Initialization_Should_Initialize_Immediately_When_LateRegistration_Is_Enabled()
+    public async Task Registration_After_Configuration_Should_Reject_Without_Initializing_Component()
     {
-        var architecture = new AllowLateRegistrationArchitecture();
+        var destroyOrder = new List<string>();
+        var lateComponent = new TrackingDestroyableSystem(destroyOrder);
+        var architecture = new PhaseTrackingArchitecture(onStarted: target =>
+            Assert.Throws<InvalidOperationException>(() => target.RegisterSystem(lateComponent)));
+
         await architecture.InitializeAsync();
 
-        var lateComponent = new LateRegisteredInitializableComponent();
-
-        architecture.RegisterLateComponentForTesting(lateComponent);
-
-        Assert.That(lateComponent.InitializeCallCount, Is.EqualTo(1));
+        Assert.Multiple(() =>
+        {
+            Assert.That(lateComponent.InitializeCallCount, Is.Zero);
+            Assert.Throws<InvalidOperationException>(() =>
+                architecture.Context.GetSystem<TrackingDestroyableSystem>());
+        });
 
         await architecture.DestroyAsync();
+        Assert.That(destroyOrder, Is.Empty);
     }
 
     /// <summary>
@@ -283,14 +285,19 @@ public class ArchitectureLifecycleBehaviorTests
     private sealed class PhaseTrackingArchitecture : Architecture
     {
         private readonly Action? _onInitializeAction;
+        private readonly Action<IArchitecture>? _onStarted;
 
         /// <summary>
         ///     创建一个可选地在用户初始化阶段执行自定义逻辑的测试架构。
         /// </summary>
-        /// <param name="onInitializeAction">用户初始化时执行的测试回调。</param>
-        public PhaseTrackingArchitecture(Action? onInitializeAction = null)
+        /// <param name="onInitializeAction">配置阶段执行的测试回调。</param>
+        /// <param name="onStarted">配置结束后、就绪前执行的回调。</param>
+        public PhaseTrackingArchitecture(
+            Action? onInitializeAction = null,
+            Action<IArchitecture>? onStarted = null)
         {
             _onInitializeAction = onInitializeAction;
+            _onStarted = onStarted;
             PhaseChanged += (_, eventArgs) => PhaseHistory.Add(eventArgs.Phase);
         }
 
@@ -302,9 +309,18 @@ public class ArchitectureLifecycleBehaviorTests
         /// <summary>
         ///     执行测试注入的初始化逻辑。
         /// </summary>
-        protected override void OnInitialize()
+        /// <param name="services">当前配置阶段的服务描述集合。</param>
+        protected override void ConfigureServices(IServiceCollection services)
         {
             _onInitializeAction?.Invoke();
+        }
+
+        /// <summary>
+        ///     验证服务已经构建后的操作约束。
+        /// </summary>
+        protected override void OnStarted()
+        {
+            _onStarted?.Invoke(this);
         }
     }
 
@@ -340,7 +356,8 @@ public class ArchitectureLifecycleBehaviorTests
         /// <summary>
         ///     注册会记录销毁顺序的 Utility、Model 和 System。
         /// </summary>
-        protected override void OnInitialize()
+        /// <param name="services">当前配置阶段的服务描述集合。</param>
+        protected override void ConfigureServices(IServiceCollection services)
         {
             RegisterUtility(new TrackingDestroyableUtility(_destroyOrder));
             RegisterModel(new TrackingDestroyableModel(_destroyOrder));
@@ -373,10 +390,18 @@ public class ArchitectureLifecycleBehaviorTests
         /// <summary>
         ///     注册可销毁组件后故意抛出异常，模拟初始化失败场景。
         /// </summary>
-        protected override void OnInitialize()
+        /// <param name="services">当前配置阶段的服务描述集合。</param>
+        protected override void ConfigureServices(IServiceCollection services)
         {
             RegisterUtility(new TrackingDestroyableUtility(_destroyOrder));
             RegisterModel(new TrackingDestroyableModel(_destroyOrder));
+        }
+
+        /// <summary>
+        ///     在组件已经成功初始化后失败，验证自动停止已启动组件。
+        /// </summary>
+        protected override void OnStarted()
+        {
             throw new InvalidOperationException("boom");
         }
     }
@@ -395,56 +420,9 @@ public class ArchitectureLifecycleBehaviorTests
         /// <summary>
         ///     该测试不需要额外组件注册。
         /// </summary>
-        protected override void OnInitialize()
+        /// <param name="services">当前配置阶段的服务描述集合。</param>
+        protected override void ConfigureServices(IServiceCollection services)
         {
-        }
-    }
-
-    /// <summary>
-    ///     启用 AllowLateRegistration 的测试架构。
-    ///     该架构暴露生命周期协作者供回归测试验证内部注册策略对齐。
-    /// </summary>
-    private sealed class AllowLateRegistrationArchitecture : Architecture
-    {
-        /// <summary>
-        ///     使用允许后注册的配置创建测试架构。
-        /// </summary>
-        public AllowLateRegistrationArchitecture()
-            : base(new ArchitectureConfiguration
-            {
-                ArchitectureProperties = new()
-                {
-                    AllowLateRegistration = true,
-                    StrictPhaseValidation = true
-                }
-            })
-        {
-        }
-
-        /// <summary>
-        ///     该测试不需要初始组件。
-        /// </summary>
-        protected override void OnInitialize()
-        {
-        }
-
-        /// <summary>
-        ///     通过反射调用内部生命周期协作者的注册逻辑，以便覆盖无法通过公共 API 直接到达的后注册初始化路径。
-        /// </summary>
-        /// <param name="component">要登记到生命周期中的后注册组件。</param>
-        public void RegisterLateComponentForTesting(object component)
-        {
-            var field = typeof(Architecture).GetField(
-                "_lifecycle",
-                BindingFlags.Instance | BindingFlags.NonPublic);
-            var lifecycle = field?.GetValue(this) ??
-                            throw new InvalidOperationException("Architecture lifecycle field was not found.");
-            var registerMethod = lifecycle.GetType().GetMethod(nameof(RegisterLateComponentForTesting)) ??
-                                 lifecycle.GetType().GetMethod("RegisterLifecycleComponent") ??
-                                 throw new InvalidOperationException(
-                                     "Architecture lifecycle registration method was not found.");
-
-            registerMethod.Invoke(lifecycle, [component]);
         }
     }
 
@@ -496,25 +474,6 @@ public class ArchitectureLifecycleBehaviorTests
     }
 
     /// <summary>
-    ///     记录即时初始化次数的后注册测试组件。
-    /// </summary>
-    private sealed class LateRegisteredInitializableComponent : IInitializable
-    {
-        /// <summary>
-        ///     获取组件被即时初始化的次数。
-        /// </summary>
-        public int InitializeCallCount { get; private set; }
-
-        /// <summary>
-        ///     记录一次初始化调用。
-        /// </summary>
-        public void Initialize()
-        {
-            InitializeCallCount++;
-        }
-    }
-
-    /// <summary>
     ///     用于验证逆序销毁的模型。
     /// </summary>
     private sealed class TrackingDestroyableModel(List<string> destroyOrder) : IModel, IDestroyable
@@ -552,8 +511,17 @@ public class ArchitectureLifecycleBehaviorTests
     {
         private IArchitectureContext _context = null!;
 
+        /// <summary>
+        ///     记录是否真的进入过初始化。
+        /// </summary>
+        public int InitializeCallCount { get; private set; }
+
+        /// <summary>
+        ///     记录一次初始化。
+        /// </summary>
         public void Initialize()
         {
+            InitializeCallCount++;
         }
 
         public void Destroy()

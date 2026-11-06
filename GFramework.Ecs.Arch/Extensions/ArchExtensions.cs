@@ -26,8 +26,8 @@ public static class ArchExtensions
         var options = new ArchOptions();
         configure?.Invoke(options);
 
-        // 注册模块（传递配置选项）
-        ArchitectureModuleRegistry.Register(() => new ArchEcsModule(options, enabled: true));
+        // 模块属于当前架构，不能通过全局注册表影响其他架构实例。
+        architecture.RegisterServiceModule(new ArchEcsModule(options, enabled: true));
 
         return architecture;
     }

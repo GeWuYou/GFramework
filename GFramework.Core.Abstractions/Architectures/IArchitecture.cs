@@ -13,7 +13,7 @@ namespace GFramework.Core.Abstractions.Architectures;
 ///     架构接口，专注于生命周期管理，包括系统、模型、工具的注册和获取
 ///     业务操作通过 ArchitectureRuntime 提供
 /// </summary>
-public interface IArchitecture : IAsyncInitializable, IAsyncDestroyable, IInitializable, IDestroyable
+public interface IArchitecture : IAsyncInitializable, IAsyncDestroyable, IInitializable, IDestroyable, IAsyncDisposable
 {
     /// <summary>
     ///     获取架构上下文
@@ -129,6 +129,11 @@ public interface IArchitecture : IAsyncInitializable, IAsyncDestroyable, IInitia
     /// <param name="hook">生命周期钩子实例</param>
     /// <returns>注册的钩子实例</returns>
     IArchitectureLifecycleHook RegisterLifecycleHook(IArchitectureLifecycleHook hook);
+
+    /// <summary>在配置阶段注册仅属于当前架构的服务模块。</summary>
+    /// <param name="module">配置时声明服务、构建后初始化的模块。</param>
+    /// <returns>传入模块。</returns>
+    IServiceModule RegisterServiceModule(IServiceModule module);
 
     /// <summary>
     ///     等待直到架构准备就绪的异步操作

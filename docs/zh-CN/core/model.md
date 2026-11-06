@@ -18,19 +18,16 @@ Model 包定义了数据模型层的接口和基类。Model 是 MVC 架构中的
 
 **继承的能力接口：**
 
-- [`IContextAware`](./rule.md) - 上下文感知接口
-- [`ILogAware`](./rule.md) - 日志感知接口
-
-**核心方法：**
+- IContextAware：实例上下文注入
+- IInitializable：同步 Initialize
+- IArchitecturePhaseListener：阶段通知
 
 ```csharp
-void Init();  // 初始化模型
-void OnArchitecturePhase(ArchitecturePhase phase);  // 处理架构阶段事件
+void Initialize();
+void OnArchitecturePhase(ArchitecturePhase phase);
 ```
 
-### [`ICanGetModel`](./model.md)
-
-标记接口，表示实现者可以获取模型。继承自 [`IBelongToArchitecture`](./rule.md)。
+类型注册在配置阶段只记录描述；实例激活和初始化发生在正式 provider 构建之后。普通 C# 服务可直接使用标准 DI，无需实现 IModel。
 
 ## 核心类
 
@@ -192,11 +189,13 @@ public class ConfigModel : AbstractModel, IAsyncInitializable
         // 同步初始化逻辑
     }
 
-    public async Task InitializeAsync()
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         // 异步加载配置
         var storage = this.GetUtility<IStorageUtility>();
+        cancellationToken.ThrowIfCancellationRequested();
         var config = await storage.LoadConfigAsync();
+        cancellationToken.ThrowIfCancellationRequested();
         Config.Value = config;
 
         // 配置加载完成后发送事件
@@ -207,7 +206,7 @@ public class ConfigModel : AbstractModel, IAsyncInitializable
 // 在架构中使用异步 Model
 public class GameArchitecture : Architecture
 {
-    protected override void Init()
+    protected override void ConfigureServices(IServiceCollection services)
     {
         RegisterModel(new ConfigModel());
         RegisterModel(new PlayerModel());

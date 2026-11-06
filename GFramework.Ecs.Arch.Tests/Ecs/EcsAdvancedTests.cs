@@ -3,6 +3,8 @@
 
 using System.Diagnostics.CodeAnalysis;
 using Arch.Core;
+using GFramework.Core.Abstractions.Logging;
+using GFramework.Core.Logging;
 using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Architectures;
 using GFramework.Core.Ioc;
@@ -22,19 +24,17 @@ public class EcsAdvancedTests
     public void Setup()
     {
         _container = new MicrosoftDiContainer();
+        _container.Register<ILoggerFactoryProvider>(new ConsoleLoggerFactoryProvider());
         _context = new ArchitectureContext(_container);
+        ((IContextAware)_container).SetContext(_context);
     }
 
     [TearDown]
     public void TearDown()
     {
-        if (_world != null)
-        {
-            World.Destroy(_world);
-            _world = null;
-        }
-
-        _container?.Clear();
+        _ecsModule?.DestroyAsync().GetAwaiter().GetResult();
+        _container?.Dispose();
+        _world = null;
         _context = null;
         _ecsModule = null;
     }
@@ -48,10 +48,11 @@ public class EcsAdvancedTests
     {
         var movementSystem = new MovementSystem();
         ((IContextAware)movementSystem).SetContext(_context!);
-        _container!.RegisterPlurality(movementSystem);
+        _container!.Register<ArchSystemAdapter<float>>(movementSystem);
 
         _ecsModule = new ArchEcsModule(enabled: true);
         _ecsModule.Register(_container);
+        _container.Freeze();
         _ecsModule.Initialize();
 
         _world = _container.Get<World>();
@@ -63,7 +64,7 @@ public class EcsAdvancedTests
         InitializeEcsModule();
         _world!.Create(new Position(0, 0));
 
-        World.Destroy(_world);
+        Assert.DoesNotThrow(() => _container!.Dispose());
         _world = null;
     }
 
@@ -120,6 +121,7 @@ public class EcsAdvancedTests
         // 不注册任何系统
         _ecsModule = new ArchEcsModule(enabled: true);
         _ecsModule.Register(_container!);
+        _container!.Freeze();
         _ecsModule.Initialize();
 
         _world = _container!.Get<World>();

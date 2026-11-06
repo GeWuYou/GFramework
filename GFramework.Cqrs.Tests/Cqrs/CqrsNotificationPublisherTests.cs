@@ -29,8 +29,8 @@ internal sealed class CqrsNotificationPublisherTests
         var invocationOrder = new List<string>();
         var handlers = new object[]
         {
-            new RecordingNotificationHandler("first", invocationOrder),
-            new RecordingNotificationHandler("second", invocationOrder)
+            new RecordingNotificationHandler<PublisherNotification>("first", invocationOrder),
+            new RecordingNotificationHandler<PublisherNotification>("second", invocationOrder)
         };
         var runtime = CreateRuntime(
             container =>
@@ -58,7 +58,7 @@ internal sealed class CqrsNotificationPublisherTests
         var container = new MicrosoftDiContainer();
         var publisher = new TrackingNotificationPublisher();
         container.Register<INotificationPublisher>(publisher);
-        container.Register<INotificationHandler<PublisherNotification>>(new RecordingNotificationHandler("only", []));
+        container.Register<INotificationHandler<PublisherNotification>>(new RecordingNotificationHandler<PublisherNotification>("only", []));
         CqrsTestRuntime.RegisterInfrastructure(container);
         container.Freeze();
 
@@ -102,7 +102,7 @@ internal sealed class CqrsNotificationPublisherTests
             {
                 container
                     .Setup(currentContainer => currentContainer.GetAll(typeof(INotificationHandler<PublisherNotification>)))
-                    .Returns([new RecordingNotificationHandler("only", [])]);
+                    .Returns([new RecordingNotificationHandler<PublisherNotification>("only", [])]);
                 container
                     .Setup(currentContainer => currentContainer.GetAll(typeof(INotificationPublisher)))
                     .Returns(
@@ -132,7 +132,7 @@ internal sealed class CqrsNotificationPublisherTests
             {
                 container
                     .Setup(currentContainer => currentContainer.GetAll(typeof(INotificationHandler<PublisherNotification>)))
-                    .Returns([new RecordingNotificationHandler("only", [])]);
+                    .Returns([new RecordingNotificationHandler<PublisherNotification>("only", [])]);
                 container
                     .Setup(currentContainer => currentContainer.GetAll(typeof(INotificationPublisher)))
                     .Returns(() =>
@@ -171,8 +171,8 @@ internal sealed class CqrsNotificationPublisherTests
                     .Setup(currentContainer => currentContainer.GetAll(typeof(INotificationHandler<PublisherNotification>)))
                     .Returns(
                     [
-                        new RecordingNotificationHandler("first", invocationOrder),
-                        new RecordingNotificationHandler("second", invocationOrder)
+                        new RecordingNotificationHandler<PublisherNotification>("first", invocationOrder),
+                        new RecordingNotificationHandler<PublisherNotification>("second", invocationOrder)
                     ]);
                 container
                     .Setup(currentContainer => currentContainer.GetAll(typeof(INotificationPublisher)))
@@ -201,7 +201,7 @@ internal sealed class CqrsNotificationPublisherTests
     [Test]
     public async Task PublishAsync_Should_Invoke_All_Handlers_When_Using_TaskWhenAll_NotificationPublisher()
     {
-        var trailingHandler = new RecordingNotificationHandler("second", []);
+        var trailingHandler = new RecordingNotificationHandler<PublisherNotification>("second", []);
         var runtime = CreateRuntime(
             container =>
             {
@@ -255,7 +255,7 @@ internal sealed class CqrsNotificationPublisherTests
     [Test]
     public void PublishAsync_Should_Stop_After_First_Handler_Exception_When_Using_Default_Publisher()
     {
-        var trailingHandler = new RecordingNotificationHandler("second", []);
+        var trailingHandler = new RecordingNotificationHandler<PublisherNotification>("second", []);
         var runtime = CreateRuntime(
             container =>
             {
@@ -394,9 +394,12 @@ internal sealed class CqrsNotificationPublisherTests
     }
 
     /// <summary>
-    ///     记录调用顺序的最小通知处理器。
+    ///     记录通知调用顺序的显式装配处理器；名称和共享列表属于具体测试用例。
+    ///     保持开放泛型定义，使整程序集扫描不会把这些需要用例参数的探针当成可自动装配的业务处理器。
     /// </summary>
-    private sealed class RecordingNotificationHandler : INotificationHandler<PublisherNotification>
+    /// <typeparam name="TNotification">当前用例的通知类型。</typeparam>
+    private sealed class RecordingNotificationHandler<TNotification> : INotificationHandler<TNotification>
+        where TNotification : INotification
     {
         private readonly List<string> _invocationOrder;
         private readonly string _name;
@@ -426,7 +429,7 @@ internal sealed class CqrsNotificationPublisherTests
         /// <param name="notification">当前通知。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>已完成的值任务。</returns>
-        public ValueTask Handle(PublisherNotification notification, CancellationToken cancellationToken)
+        public ValueTask Handle(TNotification notification, CancellationToken cancellationToken)
         {
             Invoked = true;
             _invocationOrder.Add(_name);

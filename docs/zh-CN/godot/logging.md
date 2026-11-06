@@ -183,7 +183,7 @@ var architecture = new GameArchitecture(
     },
     environment);
 
-architecture.Initialize();
+await architecture.InitializeAsync();
 ```
 
 这样做的好处是：

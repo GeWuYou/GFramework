@@ -32,36 +32,42 @@
 dotnet add package GeWuYou.GFramework.Ecs.Arch
 ```
 
-### 2. 在 `Initialize()` 之前显式接入 Arch runtime
+### 2. 在配置阶段声明 ECS 模块与系统
 
-按当前实现，`UseArch(...)` 会把 `ArchEcsModule` 提前登记到 `ArchitectureModuleRegistry`，因此调用时机应早于
-`Initialize()`。
+在 `ConfigureServices(IServiceCollection)` 中调用 `UseArch(...)`。该入口只登记到当前架构实例；配置结束后会拒绝新增模块，不再写入全局注册表。
+
+将 ECS 驱动的系统显式注册为 `ArchSystemAdapter<float>` 服务。模块负责注入当前实例上下文及系统的初始化、更新和停止；provider 负责 World 与自己创建的系统资源。
 
 ```csharp
+using Arch.Core;
 using GFramework.Core.Architectures;
+using GFramework.Ecs.Arch;
+using GFramework.Ecs.Arch.Abstractions;
 using GFramework.Ecs.Arch.Extensions;
+using GFramework.Ecs.Arch.Systems;
+using Microsoft.Extensions.DependencyInjection;
+
+await using var architecture = new GameArchitecture();
+await architecture.InitializeAsync();
+
+var world = architecture.Context.GetService<World>();
+var ecsModule = architecture.Context.GetService<IArchEcsModule>();
 
 public sealed class GameArchitecture : Architecture
 {
-    public GameArchitecture() : base(new ArchitectureConfiguration())
+    protected override void ConfigureServices(IServiceCollection services)
     {
-    }
-
-    protected override void OnInitialize()
-    {
-        RegisterSystem<MovementSystem>();
+        this.UseArch(options =>
+        {
+            options.WorldCapacity = 2048;
+            options.Priority = 50;
+        });
+        services.AddSingleton<ArchSystemAdapter<float>, MovementSystem>();
     }
 }
-
-var architecture = new GameArchitecture()
-    .UseArch(options =>
-    {
-        options.WorldCapacity = 2048;
-        options.Priority = 50;
-    });
-
-architecture.Initialize();
 ```
+
+不要把同一系统同时声明为 Architecture 的独立 System 和 ECS 模块的拥有系统，也不要通过多个 owning 工厂为可释放对象建立 alias。纯契约的共享宿主循环仍可只引用抽象包。
 
 ### 3. 编写并注册系统
 
@@ -109,12 +115,16 @@ var ecsModule = architecture.Context.GetService<IArchEcsModule>();
 ecsModule.Update(deltaTime);
 ```
 
+World 在配置阶段尚未创建。初始化解析同一个 Singleton World；若系统中途失败，模块停止已经启动的系统，provider 仍释放已创建资源。手动 `World.Destroy(world)` 不应与 provider 所有权混用。
+
+`ArchSystemAdapter.OnDestroy()` 负责业务停止；`OnArchDispose()` 由拥有该适配器的 provider 或外部创建者释放时调用。需要自有停止逻辑时重写 `OnDestroy()` 并调用基类，不在其中重复释放 DI 拥有的资源。
+
 ## 运行时职责地图
 
 | 文件 | 作用 |
 | --- | --- |
-| `Extensions/ArchExtensions.cs` | 通过 `UseArch(...)` 把默认模块注册到 `ArchitectureModuleRegistry` |
-| `ArchEcsModule.cs` | 创建并注册 `World`，按优先级收集 `ArchSystemAdapter<float>`，负责初始化、销毁和逐帧更新 |
+| `Extensions/ArchExtensions.cs` | 通过 `UseArch(...)` 把默认模块登记到当前架构实例 |
+| `ArchEcsModule.cs` | 声明 provider 拥有的 World 工厂，按优先级初始化系统，逆序停止已启动部分并驱动帧更新 |
 | `ArchSystemAdapter.cs` | 把 GFramework 系统生命周期桥接到 Arch `ISystem<T>` 生命周期 |
 | `ArchOptions.cs` | 承载 `WorldCapacity`、`EnableStatistics`、`Priority` 这组运行时配置 |
 | `Components/*.cs`、`Systems/*.cs` | 提供最小组件与系统示例，帮助对照查询写法和更新模式 |

@@ -132,7 +132,7 @@ public sealed class GodotFileStorage : IStorage, IDisposable
 
         key = key.Replace('\\', '/');
 
-        if (key.Contains(".."))
+        if (key.Contains("..", StringComparison.Ordinal))
             throw new ArgumentException("Storage key cannot contain '..'", nameof(key));
 
         // Godot 虚拟路径直接使用 FileAccess 支持

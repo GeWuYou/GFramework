@@ -2,196 +2,109 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Architectures;
-using GFramework.Core.Abstractions.Enums;
-using GFramework.Core.Abstractions.Logging;
+using GFramework.Core.Abstractions.Lifecycle;
 using GFramework.Core.Abstractions.Model;
+using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Abstractions.Utility;
-using GFramework.Core.Extensions;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace GFramework.Core.Architectures;
 
 /// <summary>
-///     架构组件注册管理器
-///     负责管理 System、Model、Utility 的注册
+///     配置阶段只记录组件的 DI 描述和生命周期参与关系。正式 provider 构建后统一激活，
+///     所有构造依赖都由同一容器拥有，不再维护预注册解析器或第二份单例缓存。
 /// </summary>
 internal sealed class ArchitectureComponentRegistry(
     IArchitecture architecture,
-    IArchitectureConfiguration configuration,
     IArchitectureServices services,
-    ArchitectureLifecycle lifecycle,
-    ILogger logger)
+    ArchitectureLifecycle lifecycle)
 {
-    private readonly ArchitectureComponentActivator _activator = new(services.Container, logger);
+    private readonly List<Action> _activations = [];
+    private readonly HashSet<Type> _registeredTypes = [];
+    private readonly HashSet<object> _registeredInstances = new(ReferenceEqualityComparer.Instance);
 
-    #region Validation
+    /// <summary>登记借用的 System 实例，停止业务但不接管其 IDisposable 所有权。</summary>
+    /// <typeparam name="T">组件契约。</typeparam>
+    /// <param name="system">调用者拥有的实例。</param>
+    /// <returns>传入实例。</returns>
+    public T RegisterSystem<T>(T system) where T : ISystem => RegisterInstance(system);
 
-    /// <summary>
-    ///     验证是否允许注册组件
-    /// </summary>
-    /// <param name="componentType">组件类型描述</param>
-    /// <exception cref="InvalidOperationException">当不允许注册时抛出</exception>
-    private void ValidateRegistration(string componentType)
+    /// <summary>登记由正式 DI 创建的 System。</summary>
+    /// <typeparam name="T">实现类型。</typeparam>
+    /// <param name="onCreated">激活后、初始化前执行一次的回调。</param>
+    public void RegisterSystem<T>(Action<T>? onCreated = null) where T : class, ISystem => RegisterType(onCreated);
+
+    /// <summary>登记借用的 Model。</summary>
+    /// <typeparam name="T">组件契约。</typeparam>
+    /// <param name="model">调用者拥有的实例。</param>
+    /// <returns>传入实例。</returns>
+    public T RegisterModel<T>(T model) where T : IModel => RegisterInstance(model);
+
+    /// <summary>登记由正式 DI 创建的 Model。</summary>
+    /// <typeparam name="T">实现类型。</typeparam>
+    /// <param name="onCreated">激活后回调。</param>
+    public void RegisterModel<T>(Action<T>? onCreated = null) where T : class, IModel => RegisterType(onCreated);
+
+    /// <summary>登记借用的 Utility。</summary>
+    /// <typeparam name="T">工具契约。</typeparam>
+    /// <param name="utility">调用者拥有的实例。</param>
+    /// <returns>传入实例。</returns>
+    public T RegisterUtility<T>(T utility) where T : IUtility => RegisterInstance(utility);
+
+    /// <summary>登记由正式 DI 创建的 Utility，包含普通无上下文工具。</summary>
+    /// <typeparam name="T">实现类型。</typeparam>
+    /// <param name="onCreated">激活后回调。</param>
+    public void RegisterUtility<T>(Action<T>? onCreated = null) where T : class, IUtility => RegisterType(onCreated);
+
+    /// <summary>统一激活，不允许回调在此阶段添加新的服务描述。</summary>
+    public void ActivateComponents()
     {
-        if (lifecycle.CurrentPhase < ArchitecturePhase.Ready ||
-            configuration.ArchitectureProperties.AllowLateRegistration) return;
-        var errorMsg = $"Cannot register {componentType} after Architecture is Ready";
-        logger.Error(errorMsg);
-        throw new InvalidOperationException(errorMsg);
+        foreach (var activate in _activations)
+            activate();
+        _activations.Clear();
     }
 
-    #endregion
-
-    #region System Registration
-
-    /// <summary>
-    ///     注册一个系统到架构中
-    /// </summary>
-    /// <typeparam name="TSystem">要注册的系统类型</typeparam>
-    /// <param name="system">要注册的系统实例</param>
-    /// <returns>注册成功的系统实例</returns>
-    public TSystem RegisterSystem<TSystem>(TSystem system) where TSystem : ISystem
+    /// <summary>实例 alias 全部为外部实例绑定，由原创建者负责最终释放。</summary>
+    /// <typeparam name="T">实例类型。</typeparam>
+    /// <param name="instance">组件。</param>
+    /// <returns>传入实例。</returns>
+    private T RegisterInstance<T>(T instance)
     {
-        ValidateRegistration("system");
-
-        logger.Debug($"Registering system: {typeof(TSystem).Name}");
-
-        system.SetContext(architecture.Context);
-        services.Container.RegisterPlurality(system);
-
-        // 处理生命周期
-        lifecycle.RegisterLifecycleComponent(system);
-
-        logger.Info($"System registered: {typeof(TSystem).Name}");
-        return system;
-    }
-
-    /// <summary>
-    ///     注册系统类型，并在注册阶段由当前服务集合立即创建实例。
-    ///     这样可以确保该系统参与当前架构初始化批次，而不是等到 Ready 之后首次解析时才延迟创建。
-    /// </summary>
-    /// <typeparam name="T">系统类型</typeparam>
-    /// <param name="onCreated">可选的实例创建后回调</param>
-    public void RegisterSystem<T>(Action<T>? onCreated = null) where T : class, ISystem
-    {
-        ValidateRegistration("system");
-        logger.Debug($"Registering system type: {typeof(T).Name}");
-
-        // 类型注册路径在注册阶段就物化实例，确保组件能参与当前初始化批次。
-        var system = _activator.CreateInstance<T>();
-        system.SetContext(architecture.Context);
-        lifecycle.RegisterLifecycleComponent(system);
-        onCreated?.Invoke(system);
-        services.Container.RegisterPlurality(system);
-
-        logger.Info($"System type registered: {typeof(T).Name}");
-    }
-
-    #endregion
-
-    #region Model Registration
-
-    /// <summary>
-    ///     注册一个模型到架构中
-    /// </summary>
-    /// <typeparam name="TModel">要注册的模型类型</typeparam>
-    /// <param name="model">要注册的模型实例</param>
-    /// <returns>注册成功的模型实例</returns>
-    public TModel RegisterModel<TModel>(TModel model) where TModel : IModel
-    {
-        ValidateRegistration("model");
-
-        logger.Debug($"Registering model: {typeof(TModel).Name}");
-
-        model.SetContext(architecture.Context);
-        services.Container.RegisterPlurality(model);
-
-        // 处理生命周期
-        lifecycle.RegisterLifecycleComponent(model);
-
-        logger.Info($"Model registered: {typeof(TModel).Name}");
-        return model;
+        ArgumentNullException.ThrowIfNull(instance);
+        if (!_registeredInstances.Add(instance))
+            return instance;
+        services.Container.RegisterPlurality(instance);
+        _activations.Add(() => Activate(instance, onCreated: null));
+        return instance;
     }
 
     /// <summary>
-    ///     注册模型类型，并在注册阶段由当前服务集合立即创建实例。
-    ///     这样可以确保该模型参与当前架构初始化批次，而不是等到 Ready 之后首次解析时才延迟创建。
+    ///     可释放实现只使用一个 owning 服务键，避免标准 DI 将多个 factory alias 重复跟踪为资源。
+    ///     普通不可释放组件保留接口 alias；生命周期由这里显式登记，不依赖 alias 扫描。
     /// </summary>
-    /// <typeparam name="T">模型类型</typeparam>
-    /// <param name="onCreated">可选的实例创建后回调</param>
-    public void RegisterModel<T>(Action<T>? onCreated = null) where T : class, IModel
+    /// <typeparam name="T">组件类型。</typeparam>
+    /// <param name="onCreated">正式激活后的回调。</param>
+    private void RegisterType<T>(Action<T>? onCreated) where T : class
     {
-        ValidateRegistration("model");
-        logger.Debug($"Registering model type: {typeof(T).Name}");
-
-        var model = _activator.CreateInstance<T>();
-        model.SetContext(architecture.Context);
-        lifecycle.RegisterLifecycleComponent(model);
-        onCreated?.Invoke(model);
-        services.Container.RegisterPlurality(model);
-
-        logger.Info($"Model type registered: {typeof(T).Name}");
+        if (!_registeredTypes.Add(typeof(T)))
+            throw new InvalidOperationException($"Component type {typeof(T)} is already registered. Select one lifecycle role.");
+        if (typeof(IDisposable).IsAssignableFrom(typeof(T)) ||
+            typeof(IAsyncDisposable).IsAssignableFrom(typeof(T)))
+            services.Container.RegisterSingleton<T, T>();
+        else
+            services.Container.RegisterPlurality<T>();
+        _activations.Add(() => Activate(services.Container.GetRequired<T>(), onCreated));
     }
 
-    #endregion
-
-    #region Utility Registration
-
-    /// <summary>
-    ///     注册一个工具到架构中
-    /// </summary>
-    /// <typeparam name="TUtility">要注册的工具类型</typeparam>
-    /// <param name="utility">要注册的工具实例</param>
-    /// <returns>注册成功的工具实例</returns>
-    public TUtility RegisterUtility<TUtility>(TUtility utility) where TUtility : IUtility
+    /// <summary>显式注入上下文，登记参与者，再执行用户激活回调。</summary>
+    /// <typeparam name="T">组件类型。</typeparam>
+    /// <param name="component">正式解析的实例。</param>
+    /// <param name="onCreated">可选回调。</param>
+    private void Activate<T>(T component, Action<T>? onCreated)
     {
-        ValidateRegistration("utility");
-        logger.Debug($"Registering utility: {typeof(TUtility).Name}");
-
-        // 处理上下文工具类型的设置和生命周期管理
-        utility.IfType<IContextUtility>(contextUtility =>
-        {
-            contextUtility.SetContext(architecture.Context);
-            // 处理生命周期
-            lifecycle.RegisterLifecycleComponent(contextUtility);
-        });
-
-        services.Container.RegisterPlurality(utility);
-        logger.Info($"Utility registered: {typeof(TUtility).Name}");
-        return utility;
+        if (component is IContextAware aware)
+            aware.SetContext(architecture.Context);
+        lifecycle.RegisterLifecycleComponent(component!);
+        onCreated?.Invoke(component);
     }
-
-    /// <summary>
-    ///     注册工具类型，由 DI 容器自动创建实例
-    /// </summary>
-    /// <typeparam name="T">工具类型</typeparam>
-    /// <param name="onCreated">可选的实例创建后回调</param>
-    public void RegisterUtility<T>(Action<T>? onCreated = null) where T : class, IUtility
-    {
-        ValidateRegistration("utility");
-        logger.Debug($"Registering utility type: {typeof(T).Name}");
-
-        services.Container.RegisterFactory<T>(sp =>
-        {
-            var utility = ActivatorUtilities.CreateInstance<T>(sp);
-
-            // 如果是 IContextUtility，设置上下文
-            if (utility is IContextUtility contextUtility)
-            {
-                contextUtility.SetContext(architecture.Context);
-                lifecycle.RegisterLifecycleComponent(contextUtility);
-            }
-
-            // 用户自定义钩子
-            onCreated?.Invoke(utility);
-
-            logger.Debug($"Utility created: {typeof(T).Name}");
-            return utility;
-        });
-
-        logger.Info($"Utility type registered: {typeof(T).Name}");
-    }
-
-    #endregion
 }

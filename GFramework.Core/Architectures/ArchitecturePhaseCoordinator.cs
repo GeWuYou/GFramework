@@ -8,105 +8,77 @@ using GFramework.Core.Abstractions.Logging;
 namespace GFramework.Core.Architectures;
 
 /// <summary>
-///     负责架构阶段流转的验证与通知。
-///     该类型集中管理阶段值、生命周期钩子和阶段监听器，避免 <see cref="ArchitectureLifecycle" />
-///     同时承担阶段广播与组件初始化队列管理两类职责。
+///     顺序执行当前实例的阶段钩子和监听器。监听器在 provider 存活时快照，
+///     因而终态广播不需要重新解析已释放容器，也不会把进程级注册表当作运行态。
 /// </summary>
 internal sealed class ArchitecturePhaseCoordinator(
     IArchitecture architecture,
     IArchitectureConfiguration configuration,
-    IArchitectureServices services,
     ILogger logger)
 {
-    private readonly List<IArchitectureLifecycleHook> _lifecycleHooks = [];
+    private readonly List<IArchitectureLifecycleHook> _hooks = [];
+    private IReadOnlyList<IArchitecturePhaseListener> _listeners = [];
 
-    /// <summary>
-    ///     获取当前架构阶段。
-    /// </summary>
+    /// <summary>当前阶段；先更新状态再广播，使失败的回调也不能隐藏已开始的阶段。</summary>
     public ArchitecturePhase CurrentPhase { get; private set; }
 
-    /// <summary>
-    ///     注册一个生命周期钩子。
-    ///     就绪后是否允许追加注册由架构配置控制，以保证阶段回调的一致性。
-    /// </summary>
-    /// <param name="hook">要注册的生命周期钩子。</param>
-    /// <returns>原样返回注册的钩子实例，便于链式调用或测试断言。</returns>
+    /// <summary>在配置阶段登记钩子，外层架构负责注册窗口约束。</summary>
+    /// <param name="hook">当前实例的钩子。</param>
+    /// <returns>传入钩子。</returns>
     public IArchitectureLifecycleHook RegisterLifecycleHook(IArchitectureLifecycleHook hook)
     {
-        if (CurrentPhase >= ArchitecturePhase.Ready && !configuration.ArchitectureProperties.AllowLateRegistration)
-            throw new InvalidOperationException("Cannot register lifecycle hook after architecture is Ready");
-
-        _lifecycleHooks.Add(hook);
+        ArgumentNullException.ThrowIfNull(hook);
+        _hooks.Add(hook);
         return hook;
     }
 
-    /// <summary>
-    ///     进入指定阶段并广播给所有阶段消费者。
-    ///     顺序保持为“更新阶段值 → 生命周期钩子 → 容器中的阶段监听器”，
-    ///     以保证框架扩展与运行时组件看到一致的阶段视图。
-    /// </summary>
-    /// <param name="next">目标阶段。</param>
-    public void EnterPhase(ArchitecturePhase next)
+    /// <summary>在组件全部激活后确定阶段消费者，按引用去重。</summary>
+    /// <param name="listeners">显式组件及容器中的额外监听器。</param>
+    public void SetListeners(IEnumerable<IArchitecturePhaseListener> listeners)
     {
-        ValidatePhaseTransition(next);
-
-        var previousPhase = CurrentPhase;
-        CurrentPhase = next;
-
-        if (previousPhase != next)
-            logger.Info($"Architecture phase changed: {previousPhase} -> {next}");
-
-        NotifyLifecycleHooks(next);
-        NotifyPhaseListeners(next);
+        _listeners = listeners.Distinct<IArchitecturePhaseListener>(ReferenceEqualityComparer.Instance).ToArray();
     }
 
-    /// <summary>
-    ///     根据配置验证阶段迁移是否合法。
-    ///     在关闭严格校验时直接放行，以兼容对阶段流转有特殊需求的宿主。
-    /// </summary>
+    /// <summary>进入阶段，等待异步钩子；同步模式遇到异步钩子明确拒绝。</summary>
     /// <param name="next">目标阶段。</param>
-    /// <exception cref="InvalidOperationException">当迁移不在允许集合中时抛出。</exception>
+    /// <param name="asyncMode">是否允许异步钩子。</param>
+    /// <param name="cancellationToken">启动取消令牌。</param>
+    /// <returns>全部阶段观察者完成。</returns>
+    public async ValueTask EnterPhaseAsync(
+        ArchitecturePhase next,
+        bool asyncMode,
+        CancellationToken cancellationToken = default)
+    {
+        ValidatePhaseTransition(next);
+        CurrentPhase = next;
+        logger.Debug($"Architecture phase: {next}");
+        foreach (var hook in _hooks)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (hook is IAsyncArchitectureLifecycleHook asyncHook)
+            {
+                if (!asyncMode)
+                    throw new InvalidOperationException("An asynchronous lifecycle hook requires InitializeAsync().");
+                await asyncHook.OnPhaseAsync(next, architecture, cancellationToken).ConfigureAwait(false);
+            }
+            else
+                hook.OnPhase(next, architecture);
+        }
+        foreach (var listener in _listeners)
+            listener.OnArchitecturePhase(next);
+    }
+
+    /// <summary>失败和停止可从任意非终态进入；正常阶段仍按既有顺序验证。</summary>
+    /// <param name="next">下一阶段。</param>
     private void ValidatePhaseTransition(ArchitecturePhase next)
     {
         if (!configuration.ArchitectureProperties.StrictPhaseValidation)
             return;
-
-        if (next == ArchitecturePhase.FailedInitialization)
+        if (next == ArchitecturePhase.FailedInitialization ||
+            (next == ArchitecturePhase.Destroying && CurrentPhase != ArchitecturePhase.Destroyed))
             return;
-
         if (ArchitectureConstants.PhaseTransitions.TryGetValue(CurrentPhase, out var allowed) && allowed.Contains(next))
             return;
-
-        var errorMessage = $"Invalid phase transition: {CurrentPhase} -> {next}";
-        logger.Fatal(errorMessage);
-        throw new InvalidOperationException(errorMessage);
-    }
-
-    /// <summary>
-    ///     通知所有生命周期钩子当前阶段已变更。
-    ///     生命周期钩子通常承载注册表装配等框架扩展逻辑，因此优先于普通阶段监听器执行。
-    /// </summary>
-    /// <param name="phase">当前阶段。</param>
-    private void NotifyLifecycleHooks(ArchitecturePhase phase)
-    {
-        foreach (var hook in _lifecycleHooks)
-        {
-            hook.OnPhase(phase, architecture);
-            logger.Trace($"Notifying lifecycle hook {hook.GetType().Name} of phase {phase}");
-        }
-    }
-
-    /// <summary>
-    ///     通知容器中的阶段监听器当前阶段已变更。
-    ///     这些对象通常是系统、模型或工具本身，依赖容器解析保证通知范围与运行时实例一致。
-    /// </summary>
-    /// <param name="phase">当前阶段。</param>
-    private void NotifyPhaseListeners(ArchitecturePhase phase)
-    {
-        foreach (var listener in services.Container.GetAll<IArchitecturePhaseListener>())
-        {
-            logger.Trace($"Notifying phase-aware object {listener.GetType().Name} of phase change to {phase}");
-            listener.OnArchitecturePhase(phase);
-        }
+        throw new InvalidOperationException($"Invalid phase transition: {CurrentPhase} -> {next}");
     }
 }

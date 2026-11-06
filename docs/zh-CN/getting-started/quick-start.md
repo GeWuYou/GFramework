@@ -23,7 +23,7 @@ using GFramework.Core.Architectures;
 
 public sealed class CounterArchitecture : Architecture
 {
-    protected override void OnInitialize()
+    protected override void ConfigureServices(Microsoft.Extensions.DependencyInjection.IServiceCollection services)
     {
         RegisterModel(new CounterModel());
         RegisterSystem(new CounterSystem());
@@ -34,7 +34,7 @@ public sealed class CounterArchitecture : Architecture
 这里要点只有两个：
 
 - 架构入口是 `Architecture`
-- 当前版本使用 `protected override void OnInitialize()` 注册模型、系统和工具
+- 当前版本使用 `protected override void ConfigureServices(Microsoft.Extensions.DependencyInjection.IServiceCollection services)` 注册模型、系统和工具
 
 ## 3. 定义一个模型
 

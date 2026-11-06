@@ -1,7 +1,8 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Logging;
+using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Abstractions.Utility;
 using GFramework.Core.Logging;
 using GFramework.Core.Rule;
@@ -26,7 +27,7 @@ public abstract class AbstractContextUtility : ContextAwareBase, IContextUtility
     {
         var name = GetType().Name;
         // 获取上下文中的日志记录器
-        Logger = LoggerFactoryResolver.Provider.CreateLogger(name);
+        Logger = CreateInstanceLogger(name);
         Logger.Debug($"Initializing Context Utility: {name}");
 
         // 执行子类实现的初始化逻辑
@@ -41,6 +42,7 @@ public abstract class AbstractContextUtility : ContextAwareBase, IContextUtility
     /// </summary>
     public void Destroy()
     {
+        Logger ??= CreateInstanceLogger(GetType().Name);
         var name = GetType().Name;
         Logger.Debug($"Destroying Context Utility: {name}");
         OnDestroy();
@@ -58,4 +60,15 @@ public abstract class AbstractContextUtility : ContextAwareBase, IContextUtility
     protected virtual void OnDestroy()
     {
     }
+    /// <summary>绑定架构时使用其实例工厂，独立使用时创建本地工厂，不读取进程级 resolver。</summary>
+    /// <param name="name">日志名称。</param>
+    /// <returns>当前组件日志。</returns>
+    private ILogger CreateInstanceLogger(string name)
+    {
+        var factory = Context == null
+            ? new ConsoleLoggerFactoryProvider()
+            : Context.GetService<ILoggerFactoryProvider>();
+        return factory.CreateLogger(name);
+    }
+
 }

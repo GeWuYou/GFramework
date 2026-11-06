@@ -166,10 +166,11 @@ public class IocContainerLifetimeTests
         container.Freeze();
 
         // Act
-        var singletonInstances = container.GetAll<ITestService>().ToList();
+        using var scope = container.CreateScope();
+        var scopedInstances = scope.ServiceProvider.GetServices<ITestService>().ToList();
 
         // Assert
-        Assert.That(singletonInstances.Count, Is.EqualTo(3));
+        Assert.That(scopedInstances.Count, Is.EqualTo(3));
     }
 
     [Test]

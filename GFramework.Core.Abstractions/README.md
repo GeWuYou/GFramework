@@ -16,9 +16,8 @@
 
 - 契约层：`GFramework.Core.Abstractions`
 - 实现层：`GFramework.Core`
-- 相关扩展：
-  - `GFramework.Cqrs.Abstractions`
-  - `GFramework.Game.Abstractions`
+- 直接依赖：`GFramework.Cqrs.Abstractions` 与 Microsoft DI 抽象；单独引用本包仍会带入 CQRS 契约
+- 上层契约：`GFramework.Game.Abstractions`
 
 ## 契约地图
 
@@ -49,6 +48,14 @@
 | `Bases/` `Controller/` `Model/` `Systems/` `Utility/` `Rule/` `Enums/` `Properties/` | `IPrioritized`、`IController`、`IModel`、`ISystem`、`IContextUtility`、`ArchitecturePhase` | 看组件角色、优先级和值对象约定 |
 
 完整接入说明与阅读顺序见 [Core 抽象层说明](../docs/zh-CN/abstractions/core-abstractions.md)。
+
+## 生命周期与上下文契约
+
+IAsyncInitializable.InitializeAsync 接受 CancellationToken；IArchitecture 同时提供 IAsyncDisposable。取消或初始化失败由实现方清理已进入启动的资源；业务停止与 IDisposable/IAsyncDisposable 资源所有权分别处理。
+
+IContextAware 要求显式绑定实例上下文；未绑定时不回退到全局状态。IIocContainer 的类型/工厂注册由正式 provider 拥有，实例注册保持外部所有权。generic RegisterPlurality 对可释放类型拒绝隐式 owning aliases，调用方应使用单一规范拥有绑定或外部实例。
+
+这些契约不改变 Core.Abstractions 对 CQRS 契约的现有依赖。
 
 ## 采用建议
 

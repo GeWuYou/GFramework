@@ -17,58 +17,29 @@ namespace GFramework.SourceGenerators.Tests.Rule;
 public class ContextAwareGeneratorSnapshotTests
 {
     private const string SharedContextAwareInfrastructure = """
-                                                            using System;
+        using System;
 
-                                                            namespace GFramework.Core.SourceGenerators.Abstractions.Rule
-                                                            {
-                                                                [AttributeUsage(AttributeTargets.Class)]
-                                                                public sealed class ContextAwareAttribute : Attribute { }
-                                                            }
+        namespace GFramework.Core.SourceGenerators.Abstractions.Rule
+        {
+            [AttributeUsage(AttributeTargets.Class)]
+            public sealed class ContextAwareAttribute : Attribute { }
+        }
 
-                                                            namespace GFramework.Core.Abstractions.Rule
-                                                            {
-                                                                public interface IContextAware
-                                                                {
-                                                                    void SetContext(
-                                                                        GFramework.Core.Abstractions.Architectures.IArchitectureContext context);
+        namespace GFramework.Core.Abstractions.Rule
+        {
+            public interface IContextAware
+            {
+                void SetContext(GFramework.Core.Abstractions.Architectures.IArchitectureContext context);
+                GFramework.Core.Abstractions.Architectures.IArchitectureContext GetContext();
+            }
+        }
 
-                                                                    GFramework.Core.Abstractions.Architectures.IArchitectureContext GetContext();
-                                                                }
-                                                            }
+        namespace GFramework.Core.Abstractions.Architectures
+        {
+            public interface IArchitectureContext { }
+        }
 
-                                                            namespace GFramework.Core.Abstractions.Architectures
-                                                            {
-                                                                public interface IArchitectureContext { }
-
-                                                                public interface IArchitectureContextProvider
-                                                                {
-                                                                    IArchitectureContext GetContext();
-                                                                    bool TryGetContext<T>(out T? context) where T : class, IArchitectureContext;
-                                                                }
-                                                            }
-
-                                                            namespace GFramework.Core.Architectures
-                                                            {
-                                                                using GFramework.Core.Abstractions.Architectures;
-
-                                                                public sealed class GameContextProvider : IArchitectureContextProvider
-                                                                {
-                                                                    public IArchitectureContext GetContext() => null;
-                                                                    public bool TryGetContext<T>(out T? context) where T : class, IArchitectureContext
-                                                                    {
-                                                                        context = null;
-                                                                        return false;
-                                                                    }
-                                                                }
-                                                            """;
-
-    private const string GameContextHelperSource = """
-
-                                                    public static class GameContext
-                                                    {
-                                                        public static IArchitectureContext GetFirstArchitectureContext() => null;
-                                                    }
-                                                    """;
+        """;
 
     /// <summary>
     ///     测试ContextAwareGenerator源代码生成器的快照功能
@@ -86,8 +57,7 @@ public class ContextAwareGeneratorSnapshotTests
                 public partial class MyRule : IContextAware
                 {
                 }
-                """,
-                includeGameContextHelper: true),
+                """),
             GetSnapshotFolder());
     }
 
@@ -107,10 +77,8 @@ public class ContextAwareGeneratorSnapshotTests
                 public partial class CollisionProneRule : IContextAware
                 {
                     private readonly string _context = "user-field";
-                    private static readonly string _contextProvider = "user-provider";
                     private static readonly object _contextSync = new();
                     private IArchitectureContext? _gFrameworkContextAwareContext;
-                    private static IArchitectureContextProvider? _gFrameworkContextAwareProvider;
                     private static readonly object _gFrameworkContextAwareSync = new();
                 }
                 """),
@@ -132,7 +100,6 @@ public class ContextAwareGeneratorSnapshotTests
                 public abstract class ContextAwareRuleBase
                 {
                     protected IArchitectureContext? _gFrameworkContextAwareContext;
-                    protected static IArchitectureContextProvider? _gFrameworkContextAwareProvider;
                     protected static readonly object _gFrameworkContextAwareSync = new();
                 }
 
@@ -148,19 +115,14 @@ public class ContextAwareGeneratorSnapshotTests
     ///     组装 ContextAwareGenerator 快照测试共用的最小宿主源码，避免每个用例都重复长块样板代码。
     /// </summary>
     /// <param name="testTypeDeclarations">放在 <c>TestApp</c> 命名空间内的测试类型声明。</param>
-    /// <param name="includeGameContextHelper">是否额外包含兼容旧快照输入的 <c>GameContext</c> 帮助类型。</param>
     /// <returns>可直接交给生成器测试驱动的完整源码文本。</returns>
-    private static string CreateContextAwareTestSource(string testTypeDeclarations, bool includeGameContextHelper = false)
+    private static string CreateContextAwareTestSource(string testTypeDeclarations)
     {
-        var gameContextHelper = includeGameContextHelper ? GameContextHelperSource : string.Empty;
         var testAppDeclarations = IndentBlock(testTypeDeclarations, 4);
 
         return string.Concat(
             SharedContextAwareInfrastructure,
-            gameContextHelper,
             """
-            }
-
             namespace TestApp
             {
                 using GFramework.Core.SourceGenerators.Abstractions.Rule;

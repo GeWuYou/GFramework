@@ -120,15 +120,16 @@ public class GameEnvironment : EnvironmentBase
 ```csharp
 public class GameArchitecture : Architecture
 {
-    protected override void Init()
+    protected override void ConfigureServices(IServiceCollection services)
     {
-        // 环境已经在架构初始化过程中自动初始化
-        // 但是我们可以在需要的时候获取环境值
-        var gameMode = this.Context.Environment.Get<string>("GameMode");
-
-        // 注册模型和系统
         RegisterModel(new PlayerModel());
         RegisterSystem(new GameplaySystem());
+    }
+
+    protected override void OnStarted()
+    {
+        var gameMode = Context.GetEnvironment().Get<string>("GameMode");
+        Console.WriteLine(gameMode);
     }
 }
 ```
@@ -143,7 +144,7 @@ public class NetworkSystem : AbstractSystem
     protected override void OnInit()
     {
         // 从环境中获取服务器地址
-        _serverAddress = this.GetContext().Environment.Get<string>("ServerAddress") ?? "localhost";
+        _serverAddress = this.GetContext().GetEnvironment().Get<string>("ServerAddress") ?? "localhost";
 
         // 注册事件
         this.RegisterEvent<ConnectToServerEvent>(OnConnectToServer);
@@ -211,7 +212,7 @@ public class GoodExampleSystem : AbstractSystem
         }
 
         // 或者提供默认值
-        var gameMode = this.GetContext().Environment.Get<string>("GameMode") ?? "Default";
+        var gameMode = this.GetContext().GetEnvironment().Get<string>("GameMode") ?? "Default";
     }
 }
 ```

@@ -1,10 +1,9 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using GFramework.Core.Abstractions.Architectures;
+using System;
 using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Architectures;
-using GFramework.Core.Rule;
 using GFramework.Core.Tests.Architectures;
 
 namespace GFramework.Core.Tests.Rule;
@@ -83,15 +82,46 @@ public class ContextAwareTests
     }
 
     /// <summary>
-    ///     测试 GetContext 方法在未设置上下文时会回退到当前活动上下文
+    ///     测试未绑定的对象不会从已经存在的全局上下文隐式获取绑定
     /// </summary>
     [Test]
-    public void GetContext_Should_Return_CurrentArchitectureContext_When_Not_Set()
+    public void GetContext_Should_Reject_Unbound_Instance_Even_When_Global_Context_Exists()
     {
         IContextAware aware = _contextAware;
 
-        var result = aware.GetContext();
+        Assert.That(() => aware.GetContext(),
+            Throws.InvalidOperationException.With.Message.Contains("IContextAware.SetContext"));
+    }
 
-        Assert.That(result, Is.SameAs(_mockContext));
+    /// <summary>
+    ///     验证同一类型的两个对象分别保留其显式绑定，不互相覆盖。
+    /// </summary>
+    [Test]
+    public void SetContext_Should_Keep_Instances_Isolated()
+    {
+        IContextAware first = _contextAware;
+        IContextAware second = new TestContextAware();
+        var secondContext = new TestArchitectureContext();
+        first.SetContext(_mockContext);
+        second.SetContext(secondContext);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(first.GetContext(), Is.SameAs(_mockContext));
+            Assert.That(second.GetContext(), Is.SameAs(secondContext));
+        });
+    }
+
+    /// <summary>
+    ///     验证 null 绑定会明确失败且不会破坏之前有效的上下文。
+    /// </summary>
+    [Test]
+    public void SetContext_Null_Should_Reject_Without_Changing_Binding()
+    {
+        IContextAware aware = _contextAware;
+        aware.SetContext(_mockContext);
+
+        Assert.Throws<ArgumentNullException>(() => aware.SetContext(null!));
+        Assert.That(aware.GetContext(), Is.SameAs(_mockContext));
     }
 }

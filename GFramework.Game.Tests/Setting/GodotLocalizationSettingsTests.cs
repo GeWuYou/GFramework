@@ -1,6 +1,7 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Localization;
 using GFramework.Game.Abstractions.Setting;
 using GFramework.Game.Abstractions.Setting.Data;
@@ -70,6 +71,39 @@ public sealed class GodotLocalizationSettingsTests
 
         Assert.That(appliedLocale, Is.EqualTo("en"));
         manager.Verify(it => it.SetLanguage("eng"), Times.Once);
+    }
+
+    /// <summary>
+    ///     同时存在两个模型时，每个应用器只解析其模型显式绑定的上下文。
+    /// </summary>
+    /// <returns>表示两个独立语言应用完成的任务。</returns>
+    [Test]
+    public async Task ApplyAsync_ShouldResolveOnlyItsModelsExplicitContext()
+    {
+        var firstManager = new Mock<ILocalizationManager>(MockBehavior.Strict);
+        var secondManager = new Mock<ILocalizationManager>(MockBehavior.Strict);
+        firstManager.Setup(manager => manager.SetLanguage("eng"));
+        secondManager.Setup(manager => manager.SetLanguage("zhs"));
+        var firstContext = new Mock<IArchitectureContext>(MockBehavior.Strict);
+        var secondContext = new Mock<IArchitectureContext>(MockBehavior.Strict);
+        firstContext.Setup(context => context.GetSystem<ILocalizationManager>()).Returns(firstManager.Object);
+        secondContext.Setup(context => context.GetSystem<ILocalizationManager>()).Returns(secondManager.Object);
+        var firstModel = new Mock<ISettingsModel>(MockBehavior.Strict);
+        var secondModel = new Mock<ISettingsModel>(MockBehavior.Strict);
+        firstModel.Setup(model => model.GetContext()).Returns(firstContext.Object);
+        secondModel.Setup(model => model.GetContext()).Returns(secondContext.Object);
+        firstModel.Setup(model => model.GetData<LocalizationSettings>())
+            .Returns(new LocalizationSettings { Language = "English" });
+        secondModel.Setup(model => model.GetData<LocalizationSettings>())
+            .Returns(new LocalizationSettings { Language = "简体中文" });
+
+        var first = new GodotLocalizationSettings(firstModel.Object, new LocalizationMap(), _ => { });
+        var second = new GodotLocalizationSettings(secondModel.Object, new LocalizationMap(), _ => { });
+        await first.ApplyAsync();
+        await second.ApplyAsync();
+
+        firstManager.Verify(manager => manager.SetLanguage("eng"), Times.Once);
+        secondManager.Verify(manager => manager.SetLanguage("zhs"), Times.Once);
     }
 
     private static GodotLocalizationSettings CreateApplicator(

@@ -563,9 +563,9 @@ public class ConfigurationGroups
 ### 注册为 Utility
 
 ```csharp
-public class GameArchitecture : Architecture<GameArchitecture>
+public class GameArchitecture : Architecture
 {
-    protected override void Init()
+    protected override void ConfigureServices(IServiceCollection services)
     {
         // 注册配置管理器
         this.RegisterUtility<IConfigurationManager>(new ConfigurationManager());

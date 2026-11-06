@@ -2,7 +2,7 @@
 
 `GFramework.Core` 是框架的基础运行时，负责架构生命周期、组件注册、上下文访问，以及不依赖具体引擎的通用能力。
 
-如果你只想先把框架跑起来，应先从这个模块开始。
+如果你需要使用 Architecture，可从这个模块开始。当前 Core 已传递依赖 CQRS runtime。
 
 ## 模块定位
 
@@ -79,6 +79,14 @@
 
 完整的模块化接入说明和阅读顺序见 [Core 栏目](../docs/zh-CN/core/index.md)。
 
+## 当前使用边界
+
+Architecture 的配置阶段只登记描述，随后构建一次正式 provider，再激活和初始化组件。服务、上下文和日志按实例隔离；框架不再绑定全局 GameContext，也不替换全局日志工厂。
+
+DestroyAsync/DisposeAsync 会停止业务组件并异步释放 provider 拥有的资源。传入的外部实例由调用者负责最终释放。角色组件的类型注册使用同一 provider；可释放实现采用单一拥有服务键，避免工厂别名重复捕获资源。
+
+当前 Core 与 Core.Abstractions 仍依赖 CQRS runtime/契约，包边界没有改变。采用方式见[架构生命周期](../docs/zh-CN/core/architecture.md)与[IoC 容器](../docs/zh-CN/core/ioc.md)。
+
 ## 最小接入路径
 
 ```bash
@@ -89,16 +97,16 @@ dotnet add package GeWuYou.GFramework.Core.Abstractions
 最小入口：
 
 1. 继承 `Architecture`
-2. 在 `OnInitialize()` 中注册模型、系统、工具或模块
-3. 通过 `architecture.Context` 或 `ContextAwareBase` 的扩展方法访问上下文
+2. 在 `ConfigureServices(IServiceCollection services)` 中登记服务、组件与模块，在 OnStarted/OnStartedAsync 中执行已构建后的宿主操作
+3. 等待 InitializeAsync 后，通过 architecture.Context 或已绑定的 ContextAwareBase 访问服务；使用完成后等待 DisposeAsync
 
 最小示例见：
 
 - [快速开始示例](../docs/zh-CN/getting-started/quick-start.md)
 
-## 什么时候继续接别的包
+## 可选采用包
 
-- 需要推荐的新请求模型：加 `GFramework.Cqrs`
+- 直接使用新请求模型：可显式引用 `GFramework.Cqrs`；Core 已传递包含其 runtime
 - 需要游戏层路由、设置、配置和存储：加 `GFramework.Game`
 - 需要 Godot 节点与场景适配：加 `GFramework.Godot`
 - 需要编译期生成日志、上下文注入或模块注册：加 `GFramework.Core.SourceGenerators`

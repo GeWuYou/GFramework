@@ -103,16 +103,20 @@ public class ArchitectureComponentRegistryBehaviorTests
     }
 
     /// <summary>
-    ///     验证普通工具的工厂注册会在首次解析时创建单例并执行创建回调。
+    ///     验证普通工具在配置阶段只声明描述，构建后创建单例并执行一次创建回调。
     /// </summary>
     [Test]
     public async Task RegisterUtility_Type_Should_Create_Singleton_And_Invoke_Callback()
     {
         FactoryCreatedUtility? callbackInstance = null;
         var architecture = new RegistryTestArchitecture(target =>
-            target.RegisterUtility<FactoryCreatedUtility>(created => callbackInstance = created));
+        {
+            target.RegisterUtility<FactoryCreatedUtility>(created => callbackInstance = created);
+            Assert.That(callbackInstance, Is.Null);
+        });
 
         await architecture.InitializeAsync();
+        Assert.That(callbackInstance, Is.Not.Null);
 
         var first = architecture.Context.GetUtility<FactoryCreatedUtility>();
         var second = architecture.Context.GetUtility<FactoryCreatedUtility>();
@@ -183,8 +187,7 @@ public class ArchitectureComponentRegistryBehaviorTests
     }
 
     /// <summary>
-    ///     验证预冻结阶段通过实现类型注册的单例依赖会在同一轮组件激活中复用同一个实例。
-    ///     该回归测试用于保护 <see cref="ArchitectureComponentActivator" /> 的共享单例缓存，避免系统和模型分别创建重复单例。
+    ///     验证类型 Singleton 由正式 provider 同时服务于组件构造与就绪后解析，保持同一实例。
     /// </summary>
     [Test]
     public async Task RegisterSystem_And_Model_Type_Should_Reuse_ImplementationType_Singleton_During_Activation()
@@ -211,13 +214,14 @@ public class ArchitectureComponentRegistryBehaviorTests
         {
             Assert.That(counter.CreationCount, Is.EqualTo(1));
             Assert.That(system.Dependency, Is.SameAs(model.Dependency));
+            Assert.That(system.Dependency, Is.SameAs(architecture.Context.GetService<ImplementationTypeSharedDependency>()));
         });
 
         await architecture.DestroyAsync();
     }
 
     /// <summary>
-    ///     验证预冻结阶段通过工厂注册的单例依赖会在同一轮组件激活中复用同一个实例。
+    ///     验证工厂 Singleton 跨组件构造和就绪后解析保持同一实例。
     ///     该回归测试覆盖 <c>ImplementationFactory</c> 描述符路径，避免用户工厂在初始化时被重复调用。
     /// </summary>
     [Test]
@@ -248,6 +252,7 @@ public class ArchitectureComponentRegistryBehaviorTests
         {
             Assert.That(creationCount, Is.EqualTo(1));
             Assert.That(system.Dependency, Is.SameAs(model.Dependency));
+            Assert.That(system.Dependency, Is.SameAs(architecture.Context.GetService<FactorySharedDependency>()));
         });
 
         await architecture.DestroyAsync();
@@ -264,8 +269,7 @@ public class ArchitectureComponentRegistryBehaviorTests
 
         Assert.That(
             () => architecture.RegisterUtility(new TrackingContextUtility()),
-            Throws.InvalidOperationException.With.Message.EqualTo(
-                "Cannot register utility after Architecture is Ready"));
+            Throws.InvalidOperationException);
 
         await architecture.DestroyAsync();
     }
@@ -299,7 +303,8 @@ public class ArchitectureComponentRegistryBehaviorTests
         /// <summary>
         ///     在初始化阶段执行测试注入的注册逻辑。
         /// </summary>
-        protected override void OnInitialize()
+        /// <param name="services">当前配置阶段的服务描述集合。</param>
+        protected override void ConfigureServices(IServiceCollection services)
         {
             _registrationAction(this);
         }

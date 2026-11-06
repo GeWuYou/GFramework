@@ -1,448 +1,135 @@
 ---
 title: 异步初始化指南
-description: 说明 GFramework.Core 异步初始化接口、生命周期顺序与常见接入方式。
+description: 说明配置、正式 DI 构建、可取消初始化和异步资源清理的接入方式。
 ---
 
 # 异步初始化指南
 
-## 概述
-
-异步初始化是 GFramework 中的一个重要特性，允许 Architecture、Model、System 等组件在初始化时执行异步操作。这对于需要加载大量资源、进行网络请求或其他耗时操作的场景特别有用。
+异步初始化用于资源加载、文件和网络等需要等待的工作。服务注册始终是同步描述阶段；InitializeAsync 在构建唯一 provider 后激活组件，再等待组件、阶段钩子和宿主接线。
 
 ## 核心接口
 
-### IAsyncInitializable
-
-异步初始化接口，定义了异步初始化的契约。
-
-**核心方法：**
+IAsyncInitializable 的方法为：
 
 ```csharp
-Task InitializeAsync();  // 异步初始化方法
+Task InitializeAsync(CancellationToken cancellationToken = default);
 ```
 
-**实现者：**
-
-- `Architecture` - 架构支持异步初始化
-- `AbstractModel` - Model 可以实现异步初始化
-- `AbstractSystem` - System 可以实现异步初始化
-- `AbstractUtility` - Utility 可以实现异步初始化
+异步工作应传递该令牌，不在同步 Initialize/OnInit 中通过 GetResult 或 Task.Run 等待它。组件实现异步接口时，异步架构启动优先调用该方法，不会额外再调用同步 Initialize。
 
 ## 异步 Architecture
 
-### 基本使用
+下面使用一个可取消的加载 Model。业务项目把 Task.Delay 替换为自身异步加载入口即可：
 
 ```csharp
-public class GameArchitecture : Architecture
+using System.Threading;
+using System.Threading.Tasks;
+using GFramework.Core.Abstractions.Lifecycle;
+using GFramework.Core.Architectures;
+using GFramework.Core.Model;
+using Microsoft.Extensions.DependencyInjection;
+
+public sealed class GameArchitecture : Architecture
 {
-    protected override void Init()
+    protected override void ConfigureServices(IServiceCollection services)
     {
-        // 同步初始化逻辑
-        RegisterModel(new PlayerModel());
-        RegisterSystem(new CombatSystem());
+        RegisterModel<LoadingModel>();
     }
 }
 
-// 异步初始化架构
-var architecture = new GameArchitecture();
-await architecture.InitializeAsync();
+public sealed class LoadingModel : AbstractModel, IAsyncInitializable
+{
+    public bool IsLoaded { get; private set; }
 
-// 等待架构就绪
+    protected override void OnInit()
+    {
+    }
+
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
+    {
+        await Task.Delay(10, cancellationToken);
+        IsLoaded = true;
+    }
+
+}
+```
+
+从组合根启动并确保异步释放：
+
+```csharp
+using System;
+using System.Threading;
+
+using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+await using var architecture = new GameArchitecture();
+await architecture.InitializeAsync(cancellation.Token);
 await architecture.WaitUntilReadyAsync();
+
+var loading = architecture.Context.GetModel<LoadingModel>();
 ```
 
-### 初始化流程
+## 初始化流程
 
-异步初始化遵循以下流程：
+1. 登记环境、上下文、实例日志工厂和内置服务模块描述。
+2. 执行 Configurator 与 ConfigureServices，只注册描述，不解析服务。
+3. 构建一次正式 provider，激活组件并注入实例上下文；执行 onCreated 回调。
+4. 初始化服务模块，再按 Utility → Model → System 等待组件初始化。
+5. 执行 OnStartedAsync，完成 Ready 阶段后唤醒等待者。
 
-1. 创建架构实例
-2. 调用 `InitializeAsync()` 方法
-3. 执行同步初始化（`Init()` 方法）
-4. 按顺序异步初始化各个阶段：
-    - 工具异步初始化（BeforeUtilityInit → AfterUtilityInit）
-    - 模型异步初始化（BeforeModelInit → AfterModelInit）
-    - 系统异步初始化（BeforeSystemInit → AfterSystemInit）
-5. 进入 Ready 阶段
-6. 返回 Task 完成
+OnStartedAsync(CancellationToken) 用于组件启动后的宿主接线，默认调用同步 OnStarted。此时注册窗口已经关闭。异步实现不能保证代码始终在引擎主线程；Godot 节点操作仍需宿主线程调度。
 
-##
+## 异步阶段钩子
 
-### 定义异步 Model
+IAsyncArchitectureLifecycleHook 继承同步阶段接口，异步启动时只调用其异步入口。同步入口可以明确拒绝不支持的调用：
 
 ```csharp
-public class ConfigModel : AbstractModel, IAsyncInitializable
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using GFramework.Core.Abstractions.Architectures;
+using GFramework.Core.Abstractions.Enums;
+
+public sealed class LoadHook : IAsyncArchitectureLifecycleHook
 {
-    public BindableProperty<GameConfig> Config { get; } = new(null);
-
-    protected override void OnInit()
+    public void OnPhase(ArchitecturePhase phase, IArchitecture architecture)
     {
-        // 同步初始化逻辑
-        Console.WriteLine("ConfigModel sync init");
+        throw new InvalidOperationException("Use InitializeAsync.");
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask OnPhaseAsync(
+        ArchitecturePhase phase,
+        IArchitecture architecture,
+        CancellationToken cancellationToken = default)
     {
-        // 异步加载配置
-        var storage = this.GetUtility<IStorageUtility>();
-        var config = await storage.LoadConfigAsync();
-        Config.Value = config;
-
-        Console.WriteLine("ConfigModel async init completed");
-        this.SendEvent(new ConfigLoadedEvent { Config = config });
-    }
-}
-
-public class PlayerDataModel : AbstractModel, IAsyncInitializable
-{
-    public BindableProperty<PlayerData> PlayerData { get; } = new(null);
-
-    protected override void OnInit()
-    {
-        // 同步初始化逻辑
-    }
-
-    public async Task InitializeAsync()
-    {
-        // 异步加载玩家数据
-        var storage = this.GetUtility<IStorageUtility>();
-        var playerId = this.GetContext().Environment.Get<string>("PlayerId");
-        var playerData = await storage.LoadPlayerDataAsync(playerId);
-        PlayerData.Value = playerData;
+        if (phase == ArchitecturePhase.BeforeUtilityInit)
+        {
+            await Task.Delay(10, cancellationToken);
+        }
     }
 }
 ```
 
-### 在架构中使用异步 Model
+在 ConfigureServices 中通过 RegisterLifecycleHook(new LoadHook()) 登记。示例使用的阶段与架构接口位于 GFramework.Core.Abstractions.Enums 和 GFramework.Core.Abstractions.Architectures。
 
-```csharp
-public class GameArchitecture : Architecture
-{
-    protected override void Init()
-    {
-        // 注册异步 Model
-        RegisterModel(new ConfigModel());
-        RegisterModel(new PlayerDataModel());
-        RegisterModel(new PlayerModel());
+## 取消、失败与清理
 
-        // 注册 System
-        RegisterSystem(new CombatSystem());
-    }
-}
+传给 InitializeAsync 的令牌贯穿模块、组件与异步阶段。调用 DestroyAsync 会取消并等待尚未结束的启动，再抵达同一资源清理路径。取消需要参与者合作，不能强行中断忽略令牌的阻塞工作。
 
-// 使用
-var architecture = new GameArchitecture();
-await architecture.InitializeAsync();
-```
+初始化失败或取消时，框架自动停止已进入初始化的业务参与者并释放 provider。InitializeAsync 和 WaitUntilReadyAsync 在清理结束后报告结果；清理失败通过异常保留，不宣称资源已经成功释放。失败对象不能重新初始化，应创建新架构。
 
-## 异步 System
+异步停止接口 IAsyncDestroyable 与标准 IAsyncDisposable 的责任不同：前者停止业务，后者释放拥有的资源。外部实例不转移最终释放责任；多个 DisposeAsync/DestroyAsync 调用等待同一结果，不重复清理。
 
-### 定义异步 System
+## 同步与异步选择
 
-```csharp
-public class DataLoadSystem : AbstractSystem, IAsyncInitializable
-{
-    private GameData _gameData;
+- 全部参与者均为同步工作时可调用 Initialize。
+- 只要有异步组件、阶段钩子或宿主工作，应调用并等待 InitializeAsync。
+- 包含 async-only 资源时等待 DestroyAsync/DisposeAsync，不用同步包装掩盖释放时序。
+- 回调不要等待自身所属架构的 InitializeAsync、WaitUntilReadyAsync 或 DestroyAsync，否则会形成自等待。
 
-    protected override void OnInit()
-    {
-        // 同步初始化逻辑
-        this.RegisterEvent<GameStartedEvent>(OnGameStarted);
-    }
+## 相关主题
 
-    public async Task InitializeAsync()
-    {
-        // 异步加载游戏数据
-        var storage = this.GetUtility<IStorageUtility>();
-        _gameData = await storage.LoadGameDataAsync();
-
-        Console.WriteLine("Game data loaded");
-        this.SendEvent(new GameDataLoadedEvent { Data = _gameData });
-    }
-
-    private void OnGameStarted(GameStartedEvent e)
-    {
-        Console.WriteLine($"Game started with data version: {_gameData.Version}");
-    }
-}
-
-public class ResourceLoadSystem : AbstractSystem, IAsyncInitializable
-{
-    private Dictionary<string, Resource> _resources = new();
-
-    protected override void OnInit()
-    {
-        // 同步初始化逻辑
-    }
-
-    public async Task InitializeAsync()
-    {
-        // 异步加载资源
-        var resourceManager = this.GetUtility<IResourceManager>();
-        _resources = await resourceManager.LoadAllResourcesAsync();
-
-        Console.WriteLine($"Loaded {_resources.Count} resources");
-    }
-}
-```
-
-## 异步 Utility
-
-### 定义异步 Utility
-
-```csharp
-public class DatabaseUtility : IUtility, IAsyncInitializable
-{
-    private Database _database;
-
-    public void Init()
-    {
-        // 同步初始化逻辑
-    }
-
-    public async Task InitializeAsync()
-    {
-        // 异步连接数据库
-        _database = new Database();
-        await _database.ConnectAsync("connection_string");
-
-        Console.WriteLine("Database connected");
-    }
-
-    public async Task<T> QueryAsync<T>(string sql)
-    {
-        return await _database.QueryAsync<T>(sql);
-    }
-}
-```
-
-## 完整示例
-
-### 场景：游戏启动流程
-
-```csharp
-// 1. 定义各个异步组件
-public class ConfigModel : AbstractModel, IAsyncInitializable
-{
-    public BindableProperty<GameConfig> Config { get; } = new(null);
-
-    protected override void OnInit() { }
-
-    public async Task InitializeAsync()
-    {
-        var storage = this.GetUtility<IStorageUtility>();
-        Config.Value = await storage.LoadConfigAsync();
-    }
-}
-
-public class PlayerModel : AbstractModel, IAsyncInitializable
-{
-    public BindableProperty<PlayerData> PlayerData { get; } = new(null);
-
-    protected override void OnInit() { }
-
-    public async Task InitializeAsync()
-    {
-        var storage = this.GetUtility<IStorageUtility>();
-        var playerId = this.GetContext().Environment.Get<string>("PlayerId");
-        PlayerData.Value = await storage.LoadPlayerDataAsync(playerId);
-    }
-}
-
-public class ResourceLoadSystem : AbstractSystem, IAsyncInitializable
-{
-    private Dictionary<string, Resource> _resources = new();
-
-    protected override void OnInit()
-    {
-        this.RegisterEvent<GameStartedEvent>(OnGameStarted);
-    }
-
-    public async Task InitializeAsync()
-    {
-        var resourceManager = this.GetUtility<IResourceManager>();
-        _resources = await resourceManager.LoadAllResourcesAsync();
-    }
-
-    private void OnGameStarted(GameStartedEvent e)
-    {
-        Console.WriteLine("Game started with all resources loaded");
-    }
-}
-
-// 2. 定义架构
-public class GameArchitecture : Architecture
-{
-    protected override void Init()
-    {
-        RegisterModel(new ConfigModel());
-        RegisterModel(new PlayerModel());
-        RegisterSystem(new ResourceLoadSystem());
-        RegisterSystem(new CombatSystem());
-    }
-}
-
-// 3. 使用架构
-public class GameBootstrapper
-{
-    public async Task StartGameAsync()
-    {
-        var architecture = new GameArchitecture();
-
-        // 异步初始化架构
-        await architecture.InitializeAsync();
-
-        // 等待架构就绪
-        await architecture.WaitUntilReadyAsync();
-
-        Console.WriteLine("Game is ready!");
-
-        // 发送游戏启动事件
-        architecture.SendEvent(new GameStartedEvent());
-    }
-}
-```
-
-## 同步 vs 异步初始化
-
-### 同步初始化
-
-```csharp
-var architecture = new GameArchitecture();
-architecture.Initialize();  // 阻塞等待初始化完成
-
-// 立即可以使用架构
-var playerModel = architecture.GetModel<PlayerModel>();
-```
-
-**特点：**
-
-- 阻塞式，等待初始化完成
-- 适用于简单场景或控制台应用
-- 初始化失败时抛出异常
-
-### 异步初始化
-
-```csharp
-var architecture = new GameArchitecture();
-await architecture.InitializeAsync();  // 非阻塞等待
-
-// 初始化完成后可以使用架构
-var playerModel = architecture.GetModel<PlayerModel>();
-```
-
-**特点：**
-
-- 非阻塞式，不会阻塞主线程
-- 支持异步组件初始化
-- 适用于需要加载大量资源的场景
-- 初始化失败时抛出异常
-
-## 最佳实践
-
-### 1. 合理划分同步和异步初始化
-
-```csharp
-public class MyModel : AbstractModel, IAsyncInitializable
-{
-    protected override void OnInit()
-    {
-        // 同步初始化：快速的初始化逻辑
-        // - 注册事件监听
-        // - 初始化本地数据结构
-        // - 设置默认值
-    }
-
-    public async Task InitializeAsync()
-    {
-        // 异步初始化：耗时的初始化逻辑
-        // - 加载文件
-        // - 网络请求
-        // - 数据库查询
-    }
-}
-```
-
-### 2. 处理异步初始化异常
-
-```csharp
-public async Task StartGameAsync()
-{
-    var architecture = new GameArchitecture();
-
-    try
-    {
-        await architecture.InitializeAsync();
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"Initialization failed: {ex.Message}");
-        // 处理初始化失败
-    }
-}
-```
-
-### 3. 显示加载进度
-
-```csharp
-public class ProgressTrackingArchitecture : Architecture
-{
-    public event Action<float> OnProgressChanged;
-
-    protected override void Init()
-    {
-        RegisterModel(new ConfigModel());
-        RegisterModel(new PlayerModel());
-        RegisterSystem(new ResourceLoadSystem());
-    }
-
-    public async Task InitializeAsyncWithProgress()
-    {
-        OnProgressChanged?.Invoke(0.0f);
-
-        // 初始化各个阶段
-        await InitializeAsync();
-
-        OnProgressChanged?.Invoke(1.0f);
-    }
-}
-
-// 使用
-var architecture = new ProgressTrackingArchitecture();
-architecture.OnProgressChanged += progress =>
-{
-    Console.WriteLine($"Loading: {progress * 100}%");
-};
-
-await architecture.InitializeAsyncWithProgress();
-```
-
-### 4. 超时控制
-
-```csharp
-public async Task StartGameWithTimeoutAsync()
-{
-    var architecture = new GameArchitecture();
-    var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-
-    try
-    {
-        var initTask = architecture.InitializeAsync();
-        await initTask.ConfigureAwait(false);
-    }
-    catch (OperationCanceledException)
-    {
-        Console.WriteLine("Initialization timeout");
-    }
-}
-```
-
-## 相关包
-
-- [`architecture`](./architecture.md) - 架构核心，支持异步初始化
-- [`model`](./model.md) - Model 可以实现异步初始化
-- [`system`](./system.md) - System 可以实现异步初始化
-- [`utility`](./utility.md) - Utility 可以实现异步初始化
-
----
-
-**许可证**：Apache 2.0
+- [架构入口](./architecture.md)
+- [生命周期](./lifecycle.md)
+- [模型](./model.md)
+- [系统](./system.md)
+- [工具](./utility.md)

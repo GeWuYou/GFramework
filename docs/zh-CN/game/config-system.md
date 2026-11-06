@@ -487,64 +487,53 @@ if (monsterTable.TryFindFirstByFaction("dungeon", out var firstDungeonMonster))
 
 ### Architecture 推荐接入模板
 
-如果你的项目已经基于 `GFramework.Core.Architectures.Architecture` 组织初始化流程，推荐优先使用 `GameConfigModule`，而不是在 `OnInitialize()` 里手动拼装 `GameConfigBootstrap` 的注册、加载和销毁顺序：
+在 `ConfigureServices(IServiceCollection)` 中声明 `GameConfigModule`。配置阶段不执行文件加载；正式 provider 建立后，异步 `BeforeUtilityInit` 钩子会等待首载完成，再初始化依赖配置的组件。
 
 ```csharp
 using GFramework.Core.Architectures;
-using GFramework.Game.Abstractions.Config;
 using GFramework.Game.Config;
 using GFramework.Game.Config.Generated;
+using Microsoft.Extensions.DependencyInjection;
 
-public sealed class GameArchitecture : Architecture
+public sealed class GameArchitecture(string configRootPath) : Architecture
 {
-    private readonly GameConfigModule _configModule;
-
-    public GameArchitecture(string configRootPath)
+    protected override void ConfigureServices(IServiceCollection services)
     {
-        _configModule = new GameConfigModule(
+        InstallModule(new GameConfigModule(
             new GameConfigBootstrapOptions
             {
                 RootPath = configRootPath,
                 ConfigureLoader = static loader => loader.RegisterAllGeneratedConfigTables()
-            });
-    }
-
-    protected override void OnInitialize()
-    {
-        InstallModule(_configModule);
+            }));
     }
 }
 ```
 
-这个模板里的 `.GetAwaiter().GetResult()` 只是“同步 `OnInitialize()` 到异步配置加载”的桥接写法，不应被理解为无条件推荐：
-
-- 如果宿主已经提供异步组合根、启动器或更早的异步初始化阶段，优先在那里直接 `await _configBootstrap.InitializeAsync()`
-- 只有在 `Architecture` 只暴露同步 `OnInitialize()`，且当前线程不存在需要恢复的 `SynchronizationContext` 时，才适合使用这类同步桥接
-- 在 UI 线程、ASP.NET Classic 等存在活动 `SynchronizationContext` 的环境中，不要直接阻塞等待异步初始化；应把配置初始化前移到异步入口，或改为由不受该上下文约束的启动线程完成
-
-初始化完成后，业务组件可以继续通过架构上下文读取 utility，再走生成的强类型入口：
+启动和结束都使用可等待的生命周期：
 
 ```csharp
-var registry = Context.GetUtility<IConfigRegistry>();
+await using var architecture = new GameArchitecture(configRootPath);
+await architecture.InitializeAsync(cancellationToken);
+```
+
+包含 `GameConfigModule` 的架构需要使用 `InitializeAsync(...)`；同步 `Initialize()` 会拒绝异步首载，不再通过 `GetAwaiter().GetResult()` 阻塞桥接。
+
+初始化完成后，业务组件通过自己的实例上下文读取注册表，再访问生成表：
+
+```csharp
+var registry = architecture.Context.GetUtility<IConfigRegistry>();
 var monsterTable = registry.GetMonsterTable();
 var slime = monsterTable.Get(1);
 ```
 
-推荐遵循以下顺序：
+资源责任如下：
 
-- 先构造 `GameConfigModule`
-- 在 `OnInitialize()` 的较早位置调用 `InstallModule(_configModule)`
-- 让模块在 `BeforeUtilityInit` 阶段完成首次加载
-- 架构销毁时让模块跟随 utility 生命周期自动释放 `GameConfigBootstrap`
-- 初始化完成后只通过注册表和生成表包装访问配置
+- 配置阶段只声明注册表和生命周期适配器，不能提前解析服务或读取表。
+- 首载发生在 `BeforeUtilityInit`，utility、model、system 的初始化可以使用已加载的数据。
+- provider 拥有模块的 bootstrap 释放适配器；首载失败、取消或后续组件初始化失败时也会释放它。
+- 正常停止先关闭热重载，再由 provider 释放资源；调用方无需为模块重复调用 `Dispose()`。
 
-这样做的收益是：
-
-- `IConfigRegistry` 会在模块安装时立即注册为 utility，后续组件统一从上下文读取
-- 首次加载发生在 `BeforeUtilityInit`，因此依赖配置的 utility、model 和 system 在自己的初始化阶段就能直接读取表
-- 架构销毁时不再需要手写 `Dispose()` 样板来停止热重载句柄
-
-如果你仍然需要在架构外直接控制 `InitializeAsync()`、`StartHotReload(...)` 或 `StopHotReload()` 的调用时机，继续直接使用 `GameConfigBootstrap` 仍然是合适的；`GameConfigModule` 是面向 `Architecture` 宿主的官方薄封装，而不是替代底层 bootstrap。
+不使用 Architecture 的场景仍可直接创建 `GameConfigBootstrap`，用 `using` 管理它，并自行等待 `InitializeAsync(...)`、控制热重载。
 
 ### 热重载模板
 

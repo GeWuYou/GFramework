@@ -136,9 +136,8 @@ public sealed class GameConfigBootstrap : IDisposable
     /// </summary>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <remarks>
-    ///     该入口会被 <see cref="GameConfigModule" /> 的同步生命周期钩子桥接调用，
-    ///     因此内部所有异步等待都必须使用 <c>ConfigureAwait(false)</c>，避免在 Unity 主线程、
-    ///     UI Dispatcher 或带 <see cref="SynchronizationContext" /> 的测试线程上发生同步阻塞死锁。
+    ///     该入口由 <see cref="GameConfigModule" /> 的异步阶段钩子直接等待，
+    ///     内部 IO 不依赖宿主同步上下文，取消会沿同一异步链传播给调用方。
     /// </remarks>
     /// <returns>表示异步初始化流程的任务。</returns>
     /// <exception cref="ObjectDisposedException">当当前实例已释放时抛出。</exception>

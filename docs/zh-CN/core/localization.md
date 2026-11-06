@@ -180,11 +180,11 @@ locManager.Initialize();
 ### 在 Architecture 中注册
 
 ```csharp
-public class GameArchitecture : Architecture<GameArchitecture>
+public class GameArchitecture : Architecture
 {
-    protected override void OnInit()
+    protected override void ConfigureServices(IServiceCollection services)
     {
-        // 注册本地化管理器
+        // 登记本地化管理器
         this.RegisterSystem<ILocalizationManager>(new LocalizationManager());
     }
 }

@@ -3,130 +3,117 @@
 
 using Arch.Core;
 using GFramework.Core.Abstractions.Ioc;
+using GFramework.Core.Abstractions.Rule;
 
 namespace GFramework.Ecs.Arch;
 
 /// <summary>
-///     Arch ECS 模块 - 核心适配器，桥接 Arch 到框架生命周期
+///     把 Arch 的 World 和系统接入当前架构。配置只声明服务，正式 provider 创建并拥有 World；
+///     模块负责系统开始、更新与停止，provider 在模块停止后释放资源。
 /// </summary>
 public sealed class ArchEcsModule : IArchEcsModule
 {
     private readonly ArchOptions _options;
     private IIocContainer? _container;
     private bool _isInitialized;
-    private IReadOnlyList<ArchSystemAdapter<float>> _systems = [];
-    private World? _world;
+    private readonly List<ArchSystemAdapter<float>> _startedSystems = [];
 
     /// <summary>
-    ///     构造函数
+    ///     创建属于单个架构实例的 ECS 服务模块。
     /// </summary>
-    /// <param name="options">配置选项</param>
-    /// <param name="enabled">是否启用模块</param>
+    /// <param name="options">World 容量和模块优先级。</param>
+    /// <param name="enabled">是否参与本架构生命周期。</param>
     public ArchEcsModule(ArchOptions? options = null, bool enabled = true)
     {
         _options = options ?? new ArchOptions();
         IsEnabled = enabled;
     }
 
-    /// <summary>
-    ///     模块名称
-    /// </summary>
+    /// <inheritdoc />
     public string ModuleName => nameof(ArchEcsModule);
 
-    /// <summary>
-    ///     模块优先级
-    /// </summary>
+    /// <inheritdoc />
     public int Priority => _options.Priority;
 
-    /// <summary>
-    ///     是否启用
-    /// </summary>
+    /// <inheritdoc />
     public bool IsEnabled { get; }
 
     /// <summary>
-    ///     注册服务 - 创建并注册 World
+    ///     声明单一 owning World 工厂；注册阶段不创建原生资源。
     /// </summary>
+    /// <param name="container">当前架构的注册容器。</param>
     public void Register(IIocContainer container)
     {
-        if (!IsEnabled) return;
+        ArgumentNullException.ThrowIfNull(container);
+        if (!IsEnabled)
+            return;
 
         _container = container;
-
-        // 注册模块自身
         container.RegisterPlurality(this);
-
-        // 创建并注册 World（使用配置的容量）
-        _world = World.Create(_options.WorldCapacity);
-        container.Register(_world);
+        container.RegisterFactory<World>(_ => World.Create(_options.WorldCapacity));
     }
 
     /// <summary>
-    ///     初始化 - 从容器获取所有适配器并初始化
+    ///     在 provider 建立之后解析同一 World 和显式注册的 ArchSystemAdapter 服务，并初始化系统。
     /// </summary>
     public void Initialize()
     {
-        if (!IsEnabled || _world == null || _container == null) return;
-
-        // 防止重复初始化
-        if (_isInitialized)
-        {
+        if (!IsEnabled || _isInitialized)
             return;
-        }
 
-        // 从容器按优先级获取所有适配器
-        _systems = _container.GetAllByPriority<ArchSystemAdapter<float>>();
+        var container = _container ??
+            throw new InvalidOperationException("Register the ECS module before initializing it.");
 
-        // 初始化所有系统（会调用 Arch 系统的 Initialize）
-        foreach (var system in _systems)
+        // 必须先解析 World，保证系统构造和运行时查询复用同一 owning 单例。
+        _ = container.GetRequired<World>();
+        foreach (var system in container.GetAllByPriority<ArchSystemAdapter<float>>())
         {
+            ((IContextAware)system).SetContext(container.GetContext());
             system.Initialize();
+            _startedSystems.Add(system);
         }
 
         _isInitialized = true;
     }
 
     /// <summary>
-    ///     异步销毁
+    ///     逆序停止已经成功启动的系统。即使初始化中途失败也执行已启动部分的停止；
+    ///     World 及 DI 拥有的系统资源由 provider 释放，避免重复销毁。
     /// </summary>
+    /// <returns>系统停止完成的值任务。</returns>
     public ValueTask DestroyAsync()
     {
-        if (!IsEnabled || !_isInitialized)
+        List<Exception>? errors = null;
+        for (var i = _startedSystems.Count - 1; i >= 0; i--)
         {
-            return ValueTask.CompletedTask;
+            try
+            {
+                _startedSystems[i].Destroy();
+            }
+            catch (Exception exception)
+            {
+                (errors ??= []).Add(exception);
+            }
         }
 
-        // 销毁所有系统
-        foreach (var system in _systems)
-        {
-            system.Destroy();
-        }
-
-        _systems = [];
-
-        // 销毁 World
-        if (_world != null)
-        {
-            World.Destroy(_world);
-            _world = null;
-        }
-
+        _startedSystems.Clear();
         _isInitialized = false;
+        if (errors is not null)
+            throw new AggregateException("One or more ECS systems failed to stop.", errors);
 
         return ValueTask.CompletedTask;
     }
 
     /// <summary>
-    ///     更新所有 ECS 系统
+    ///     更新本模块已经启动的系统；未初始化或停止后不触发更新。
     /// </summary>
-    /// <param name="deltaTime">帧间隔时间</param>
+    /// <param name="deltaTime">当前宿主帧间隔。</param>
     public void Update(float deltaTime)
     {
-        if (!IsEnabled) return;
+        if (!_isInitialized)
+            return;
 
-        // 调用所有系统的更新
-        foreach (var system in _systems)
-        {
+        foreach (var system in _startedSystems)
             system.Update(deltaTime);
-        }
     }
 }

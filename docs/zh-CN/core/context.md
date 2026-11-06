@@ -16,7 +16,15 @@ description: 说明 IArchitectureContext 与 ArchitectureContext 的统一上下
 
 默认实现类型是 `ArchitectureContext`。
 
-## 先记住一个事实
+## 当前上下文约束
+
+Architecture 激活组件时显式注入自己的上下文。ContextAwareBase 和生成的 ContextAware 实现都不会回退到 GameContext；未绑定对象调用 GetContext 会抛出 InvalidOperationException。
+
+同类型或不同类型 Architecture 可以同时存在，各自持有服务、上下文与日志配置。配置阶段禁止服务解析；停止开始后外部保留的 Context 拒绝新操作。调用方应等待 InitializeAsync 后使用服务，并在使用完成后等待 DisposeAsync。
+
+GetService 和组件获取方法遵循正式容器生命周期，不额外缓存 Transient。根上下文不能代替业务 scope；Scoped 服务通过显式 scope.ServiceProvider 解析。CQRS 单例 runtime 的 Lazy 仍保留，但每次调用都会先检查上下文访问窗口，销毁后不能凭借缓存继续分发。
+
+## 公开总线入口
 
 如果你正在寻找这些属性式总线入口：
 
@@ -144,15 +152,13 @@ var playerId = await this.SendAsync(
 
 ## `GameContext` 现在是什么角色
 
-`GameContext` 仍然存在，但已经退到兼容和回退路径。
+GameContext 与 GameContextProvider 仍是显式使用的兼容工具；Architecture 不再自动绑定或解绑它们。它们不会为未绑定的 ContextAware 对象提供隐式上下文。
 
-`ContextAwareBase` 在实例未显式注入上下文时，会回退到 `GameContext.GetFirstArchitectureContext()`。这个入口现在表示“当前活动上下文”，不再依赖全局注册表里的任意首项。这能保证部分旧代码继续工作，但它不是新代码的首选接法。
+新代码通过以下方式建立调用链：
 
-新代码更推荐：
-
-- 让对象通过框架流程注入 `IArchitectureContext`
-- 或使用 `[ContextAware]` 生成路径
-- 或显式从 `architecture.Context` 启动调用链
+- 让 Architecture 激活组件并注入实例上下文
+- 使用生成的 ContextAware 实例接口，显式调用 SetContext
+- 在组合根直接从 architecture.Context 发起调用
 
 ## 什么时候需要手动拿 `architecture.Context`
 

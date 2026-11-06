@@ -3,6 +3,8 @@
 
 using System.Diagnostics.CodeAnalysis;
 using Arch.Core;
+using GFramework.Core.Abstractions.Logging;
+using GFramework.Core.Logging;
 using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Architectures;
 using GFramework.Core.Ioc;
@@ -22,19 +24,17 @@ public class EcsBasicTests
     public void Setup()
     {
         _container = new MicrosoftDiContainer();
+        _container.Register<ILoggerFactoryProvider>(new ConsoleLoggerFactoryProvider());
         _context = new ArchitectureContext(_container);
+        ((IContextAware)_container).SetContext(_context);
     }
 
     [TearDown]
     public void TearDown()
     {
-        if (_world != null)
-        {
-            World.Destroy(_world);
-            _world = null;
-        }
-
-        _container?.Clear();
+        _ecsModule?.DestroyAsync().GetAwaiter().GetResult();
+        _container?.Dispose();
+        _world = null;
         _context = null;
         _ecsModule = null;
     }
@@ -52,11 +52,12 @@ public class EcsBasicTests
         // 注册系统（直接继承 ArchSystemAdapter，它继承自 AbstractSystem）
         var movementSystem = new MovementSystem();
         ((IContextAware)movementSystem).SetContext(_context!);
-        _container!.RegisterPlurality(movementSystem);
+        _container!.Register<ArchSystemAdapter<float>>(movementSystem);
 
         // 创建并注册 ArchEcsModule
         _ecsModule = new ArchEcsModule(enabled: true);
         _ecsModule.Register(_container);
+        _container.Freeze();
         _ecsModule.Initialize();
 
         // 获取 World
