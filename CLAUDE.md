@@ -12,7 +12,9 @@ All coding rules are defined in:
 
 @AGENTS.md
 
-Follow them strictly.
+Follow them strictly. Multi-step tasks do not require plan or recovery files; the retired
+`ai-plan/` directory must not be recreated. Locate durable contributor documentation through
+`engineering/README.md`; temporary notes remain local and ignored.
 
 ## Module Dependency Graph
 

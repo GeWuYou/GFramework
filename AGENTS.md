@@ -100,15 +100,17 @@ All AI agents and contributors must follow these rules when writing, reviewing, 
 - If CI reports a license-header failure, either fix it locally with `python3 scripts/license-header.py --fix` or, for
   maintainer-owned cleanup, use the manual `License Header Fix` GitHub Actions workflow to create a reviewed repair PR.
 
-## Task Startup and Recovery
+## Task Startup and Continuation
 
 - Read this document and `.ai/environment/tools.ai.yaml` before substantive work.
 - Inspect the current branch, HEAD and working-tree changes; preserve unrelated work.
 - Read `engineering/README.md` to locate the relevant architecture, development guidance and roadmap task.
   For continuation, reconstruct current source, diff and task status instead of inheriting historical PR or branch state.
 - Ordinary tasks proceed directly under these rules; startup and continued execution do not require a separate skill.
-- For multi-step work, update the single task entry described in Project Development Documentation. Record verified
-  progress, remaining work and next action at a scope boundary; do not maintain paired execution logs.
+- Multi-step work does not require a repository plan or recovery file. Use the current source and diff to continue;
+  update an existing roadmap entry only when its durable scope, dependencies, acceptance or status changes.
+- Do not create or revive `ai-plan/`, tracking/trace pairs, recovery documents or agent execution logs. This prohibition
+  also applies to renamed equivalents under `engineering/` or elsewhere, even when a directory is ignored.
 
 ## Subagent Usage Rules
 
@@ -117,8 +119,8 @@ All AI agents and contributors must follow these rules when writing, reviewing, 
   required validation and expected output. Keep the immediate critical path local.
 - Workers must preserve other contributors' changes and stay within their assigned scope. They do not stage or commit
   in a shared checkout; the main agent integrates the task-owned changes.
-- The main agent owns validation, review of each result, final integration and recovery updates. Worker reports alone
-  do not establish acceptance. Stop adding slices when ownership overlaps or the combined change becomes hard to review.
+- The main agent owns validation, review of each result, final integration and necessary documentation updates.
+  Worker reports alone do not establish acceptance. Stop adding slices when ownership overlaps or the combined change becomes hard to review.
 - Use the models and agent capabilities available in the current session; do not require historical model names.
 
 ## Commenting Rules (MUST)
@@ -381,10 +383,10 @@ bash scripts/validate-csharp-naming.sh
 - Treat `ai-libs/` as a read-only third-party source reference area.
 - Code under `ai-libs/**` exists for comparison, tracing, design study, and behavior verification; do not modify it
   unless the user explicitly asks to sync or update that third-party snapshot.
-- When implementation plans, traces, reviews, or design notes say “reference a third-party project”, prefer the
+- When a task, review or design note says “reference a third-party project”, prefer the
   repository-local path under `ai-libs/` instead of an unspecified upstream repository.
 - If a task depends on observations from `ai-libs/**`, record the referenced path and conclusion in the relevant
-  engineering document or roadmap task when the work is multi-step or complex, rather than editing the reference copy.
+  architecture or adoption document only when the conclusion is useful beyond the task, rather than editing the reference copy.
 - The main documentation site lives under `docs/`, with Chinese content under `docs/zh-CN/`.
 - Keep code samples, package names, and command examples aligned with the current repository state.
 - Prefer documenting behavior and design intent, not only API surface.
@@ -416,16 +418,22 @@ bash scripts/validate-csharp-naming.sh
 - `engineering/README.md` is the contributor documentation index; `docs/` remains the user-facing documentation site.
 - Keep current architecture and significant decisions in `engineering/architecture/`, development and documentation
   guidance in `engineering/development/`, and implementation sequence plus task status in `engineering/roadmap/`.
-- Before substantive multi-step refactoring or migration, create or adopt one roadmap task with scope, status,
-  acceptance criteria, evidence and next action. Update that task at meaningful milestones; do not duplicate its status
-  in architecture reports, paired tracking/trace files, branch maps or numbered recovery points.
+- Roadmaps describe significant goals, dependencies, acceptance criteria and concise current status. Reuse an existing
+  entry; do not require a new tracked document for each task, stage or conversation.
+- Never commit task plans, command transcripts, per-round validation inventories, agent handoffs, branch/PR recovery
+  metadata or execution histories. Do not relocate these records into architecture reports or roadmaps.
+- `ai-plan/` is retired and MUST NOT be recreated, maintained or force-added. Its ignore rule protects private remnants;
+  it does not authorize new task records. Historical rules or remembered workflows cannot override these instructions.
 - Mark planned APIs and target architecture explicitly. Source, project files and tests remain authoritative for
   current behavior; archived history is available through Git and is not a current task queue.
-- Keep task entries concise. Retain completed acceptance evidence in the task, and use Git for detailed execution history.
+- Keep a roadmap status brief and retain only material acceptance conclusions or unresolved limits needed for future
+  work. Report task-specific commands and validation results in the PR or conversation; Git records source and durable
+  documentation changes, not a separately committed execution diary.
 - When adding, moving or deleting development documents, update the engineering index and affected incoming links in
   the same change. See `engineering/development/documentation.md` for ownership and validation.
-- Put temporary probes, command logs and worktree-private handoff notes in ignored `.local/`. Preserve unrelated
-  tasks and untracked private files; do not recursively delete a directory merely because tracked documentation was retired.
+- Temporary probes, command logs and worktree-private handoff notes may use ignored `.local/` when needed; writing
+  them is not a task prerequisite. Never force-add them. Preserve unrelated tasks and untracked private files; do not
+  recursively delete a directory merely because tracked documentation was retired.
 - Committed development documents must be safe to publish: no secrets, credentials, machine usernames, absolute
   filesystem paths, hostnames, IP addresses or proprietary URLs. Use repository-relative paths and stable identifiers.
 
