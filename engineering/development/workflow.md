@@ -23,8 +23,32 @@
 | 运行时/生成器边界 | `python3 scripts/validate-runtime-generator-boundaries.py` |
 | 公开文档定向检查 | `bash .agents/skills/gframework-doc-refresh/scripts/validate-all.sh docs/zh-CN/core/index.md` |
 | 文档站构建 | `cd docs && bun install --frozen-lockfile && bun run build` |
+| 查看累计提交的 CI 影响范围 | `python3 scripts/ci_impact.py --base origin/main --head HEAD --json` |
+| 验证 CI 路由与执行边界 | `python3 -m unittest discover -s scripts -p 'test_ci_*.py'` |
 
 选择能证明本次改动的最小命令，不把全量门禁变成每次文案迭代的前提。提交前 review 完整 diff、受影响使用方及有意义的现有覆盖；改变运行时行为需补对应回归，纯文档不新增机械复述正文的测试。
+
+## 按需 CI
+
+PR 先分析从共同祖先到源分支 head 的累计差异，再验证 GitHub 提供的合并修订。分析入口只读取 Git 提交，不包含未提交改动；手动运行 CI 或使用 `--full` 始终执行完整验证。选择结果记录比较修订、实际验证修订、项目清单和原因，执行入口拒绝用于其他修订的结果。
+
+| 输入 | PR 验证范围 |
+| --- | --- |
+| 工程文档、贡献说明、个人技能 | 轻量仓库约束、脚本回归与差异秘密扫描 |
+| 文档站内容、配置和依赖 | 文档构建；支持的源码或配置还执行 MegaLinter |
+| 配置工具 | 独立工具测试及相关质量检查 |
+| .NET 源码、测试、生成器与模块构建配置 | 受影响项目及实际使用方的 Release 构建、测试和包校验 |
+| 根级构建配置、解决方案、共享 CI 路由 | 完整验证 |
+
+模块关系来自项目引用，包括 private/analyzer 引用、共享源码和导入的 targets；比较前、源分支和实际合并修订的关系共同决定范围，删除或移除引用不会隐藏原使用方。包内 README 属于打包输入，AnalyzerReleases 属于编译输入；普通模块说明不触发 .NET。未知输入、不能可靠解析的引用或缺失基线回退完整验证。
+
+.NET 使用一个构建任务和临时 solution filter 复用 MSBuild 依赖图；只执行选中的测试项目并保留各自退出码。没有测试的选择不生成测试报告。包清单校验的 `--expected-packages` 参数仅用于显式子集，正式发布继续使用默认完整清单。
+
+CodeQL 仅在 C# 或相关构建配置变化时响应 PR，触发后仍分析全部 C#，保留跨模块安全数据流。每日及手动扫描继续全量运行。秘密扫描覆盖文档；MegaLinter 保持现有非阻塞语义。`CI Result` 要求分析、轻量治理和全部选中任务成功，失败、取消、缺失或意外跳过均不能通过汇总。
+
+框架包与合规工作流仅接受合法的 `v1.2.3`、`V1.2.3`、`1.2.3` 及 SemVer 预发布/构建后缀。配置工具继续使用 `gframework-config-tool-v*`；文档仅随正式小写 `v` 标签或手动操作发布。触发过滤后还会校验版本，格式错误的标签不会启动发布任务。版本审批、Benchmark 和许可证修复仍使用各自手动入口。
+
+GitHub 自动管理的 NuGet 依赖提交独立于这些仓库工作流，仍可能运行。此调整不修改仓库保护、自动依赖提交设置或发布审批。
 
 ## 证据与边界
 

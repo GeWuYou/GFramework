@@ -5,6 +5,15 @@
 set -euo pipefail
 
 package_dir="${1:-./packages}"
+if [ "$#" -gt 0 ]; then shift; fi
+expected_override=""
+if [ "$#" -gt 0 ]; then
+  if [ "$#" -ne 2 ] || [ "$1" != "--expected-packages" ] || [ ! -s "$2" ]; then
+    echo "Usage: $0 [package-directory] [--expected-packages nonempty-file]" >&2
+    exit 2
+  fi
+  expected_override="$2"
+fi
 
 if [ ! -d "$package_dir" ]; then
   echo "Package directory not found: $package_dir" >&2
@@ -41,6 +50,10 @@ mapfile -t actual_packages < <(
 )
 
 printf '%s\n' "${expected_packages[@]}" | sort > "$expected_file"
+if [ -n "$expected_override" ]; then
+  # CI may validate a subset; release callers retain the complete default package contract.
+  LC_ALL=C sort -u "$expected_override" > "$expected_file"
+fi
 printf '%s\n' "${actual_packages[@]}" > "$actual_file"
 
 echo "Expected packages:"

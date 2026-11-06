@@ -1,6 +1,8 @@
 bin/
 obj/
 /packages/
+/TestResults/
+/ctrf/
 riderModule.iml
 /_ReSharper.Caches/
 GFramework.sln.DotSettings.user
