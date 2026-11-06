@@ -1,273 +1,161 @@
 # Copyright (c) 2025-2026 GeWuYou
 # SPDX-License-Identifier: Apache-2.0
 
-# CI/CD工作流配置：构建和测试.NET项目
-# 该工作流仅在创建或更新面向任意分支的 pull request 时触发
 name: CI - Build & Test
 
 on:
   pull_request:
-    branches: [ '**' ]
+    branches: ['**']
+  workflow_dispatch:
 
 permissions:
   contents: read
-  pull-requests: write
-  security-events: write
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  # 代码质量检查 job（并行执行，不阻塞构建）
-  code-quality:
-    name: Code Quality & Security
+  impact:
+    name: Select affected checks
     runs-on: ubuntu-latest
-
+    outputs:
+      dotnet: ${{ steps.select.outputs.dotnet }}
+      tool: ${{ steps.select.outputs.tool }}
+      docs: ${{ steps.select.outputs.docs }}
+      lint: ${{ steps.select.outputs.lint }}
+      codeql: ${{ steps.select.outputs.codeql }}
     steps:
-      # 检出源代码，设置fetch-depth为0以获取完整的git历史
-      - name: Checkout code
-        uses: actions/checkout@v7
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          persist-credentials: false
+      - name: Analyze cumulative PR changes
+        id: select
+        env:
+          CI_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          CI_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          mkdir -p .local/ci
+          python3 scripts/ci_impact.py --json > .local/ci/impact.json
+          cat .local/ci/impact.json >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ci-impact
+          path: .local/ci/impact.json
+          include-hidden-files: true
+          if-no-files-found: error
 
-      # 校验C#命名空间与源码目录是否符合命名规范
+  governance:
+    name: Code Quality & Security
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate CI and repository scripts
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
       - name: Validate C# naming
         run: bash scripts/validate-csharp-naming.sh
-
-      # 校验仓库维护源码是否包含 Apache-2.0 文件头声明
       - name: Validate license headers
         run: python3 scripts/license-header.py --check
-
       - name: Validate runtime-generator boundaries
         run: python3 scripts/validate-runtime-generator-boundaries.py
+      # Secrets can be introduced in documentation as well as source code.
+      - name: TruffleHog OSS
+        if: github.event_name == 'pull_request'
+        uses: trufflesecurity/trufflehog@v3.95.7
+        with:
+          path: .
+          base: ${{ github.event.pull_request.base.sha }}
+          head: ${{ github.event.pull_request.head.sha }}
 
-      # 缓存MegaLinter
-      - name: Cache MegaLinter
-        uses: actions/cache@v6
+  megalinter:
+    name: Source and configuration lint
+    needs: impact
+    if: needs.impact.outputs.lint == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      security-events: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/cache@v6
         with:
           path: ~/.cache/megalinter
           key: ${{ runner.os }}-megalinter-v9
-          restore-keys: |
-            ${{ runner.os }}-megalinter-
-
-      # MegaLinter扫描步骤
-      # 执行代码质量检查和安全扫描，生成SARIF格式报告
       - name: MegaLinter
         uses: oxsecurity/megalinter@v9.6.0
         continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FAIL_ON_ERROR: ${{ github.ref == 'refs/heads/main' }}
-
-      # 上传SARIF格式的安全和代码质量问题报告到GitHub安全中心
       - name: Upload SARIF
+        if: ${{ !cancelled() && hashFiles('megalinter-reports/sarif/**') != '' }}
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: megalinter-reports/sarif
 
-      # 缓存TruffleHog
-      - name: Cache TruffleHog
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/trufflehog
-          key: ${{ runner.os }}-trufflehog
-
-      # TruffleHog OSS 扫描步骤
-      # 使用 TruffleHog 工具扫描代码库中的敏感信息泄露，如API密钥、密码等
-      # 该步骤会比较基础分支和当前提交之间的差异，检测新增内容中是否包含敏感数据
-      - name: TruffleHog OSS
-        uses: trufflesecurity/trufflehog@v3.95.7
-        with:
-          # 扫描路径，. 表示扫描整个仓库
-          path: .
-          # 基础提交哈希，用于与当前提交进行比较
-          base: ${{ github.event.pull_request.base.sha }}
-          # 当前提交哈希，作为扫描的目标版本
-          head: ${{ github.event.pull_request.head.sha }}
-
-  # 构建和测试 job（并行执行）
   build-and-test:
     name: Build and Test
+    needs: impact
+    if: needs.impact.outputs.dotnet == 'true'
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
     steps:
-      # 检出源代码
-      - name: Checkout code
-        uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
-          fetch-depth: 0
-    
-      # 安装和配置.NET SDK版本
-      - name: Setup .NET 8
+          name: ci-impact
+          path: .local/ci
+      - name: Setup .NET SDKs
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 8.0.x
-    
-      - name: Setup .NET 9
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: 9.0.x
-    
-      - name: Setup .NET 10
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: 10.0.x
-
-      # 配置NuGet包缓存以加速后续构建
-      - name: Cache NuGet packages
-        uses: actions/cache@v6
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+      - uses: actions/cache@v6
         with:
           path: |
             ~/.nuget/packages
             ~/.local/share/NuGet
-          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/nuget.config') }}
-      
-      # 配置.NET本地工具缓存以加速后续构建
-      - name: Cache dotnet tools
-        uses: actions/cache@v6
-        with:
-          path: ~/.dotnet/tools
-          key: ${{ runner.os }}-dotnet-tools-${{ hashFiles('.config/dotnet-tools.json') }}
-
-      # 执行NuGet包恢复操作
-      - name: Restore
-        run: dotnet restore GFramework.sln
-      # 恢复.NET本地工具
-      - name: Restore .NET tools
-        run: dotnet tool restore
-
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v6
-        with:
-          node-version: 20
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.2.15
-
-      - name: Install config tool dependencies
-        working-directory: tools/gframework-config-tool
-        run: bun install
-
-      - name: Run config tool tests
-        working-directory: tools/gframework-config-tool
-        run: bun run test
-        
-      # 构建项目，使用Release配置且跳过恢复步骤
-      - name: Build
-        run: dotnet build GFramework.sln -c Release --no-restore
-
-      - name: Pack published modules
-        run: |
-          rm -rf ./packages
-          dotnet pack GFramework.sln \
-            -c Release \
-            --no-build \
-            --no-restore \
-            -o ./packages \
-            -p:IncludeSymbols=false
-
-      - name: Validate packed modules
-        run: bash scripts/validate-packed-modules.sh ./packages
-
-      # 运行单元测试，输出TRX格式结果到TestResults目录
-      # 顺序执行各测试项目，避免并发 dotnet test 进程导致“TRX 全绿但 step 仍返回失败”的假红状态
-      - name: Test All Projects
-        id: test_all_projects
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/nuget.config', '**/*.props') }}
+      - name: Build affected projects
+        run: python3 scripts/ci_run.py build
+      - name: Pack and validate affected modules
+        run: python3 scripts/ci_run.py pack
+      - name: Test affected projects sequentially
+        id: tests
+        run: python3 scripts/ci_run.py test
+      - name: Run GFramework.Godot.Tests Diagnostics
+        if: always() && steps.tests.outputs.godot_failed == 'true'
+        continue-on-error: true
+        shell: bash
         run: |
           set -euo pipefail
-          mkdir -p TestResults
-
-          test_projects=(
-            "GFramework.Core.Tests/GFramework.Core.Tests.csproj:core"
-            "GFramework.Game.Tests/GFramework.Game.Tests.csproj:game"
-            "GFramework.SourceGenerators.Tests/GFramework.SourceGenerators.Tests.csproj:sg"
-            "GFramework.Cqrs.Tests/GFramework.Cqrs.Tests.csproj:cqrs"
-            "GFramework.Ecs.Arch.Tests/GFramework.Ecs.Arch.Tests.csproj:ecs-arch"
-            "GFramework.Godot.Tests/GFramework.Godot.Tests.csproj:godot"
-            "GFramework.Godot.SourceGenerators.Tests/GFramework.Godot.SourceGenerators.Tests.csproj:godot-sg"
-          )
-
-          failed=0
-          failed_projects=()
-          failed_log_paths=()
-
-          for entry in "${test_projects[@]}"; do
-            project="${entry%%:*}"
-            name="${entry##*:}"
-            log_path="TestResults/${name}.console.log"
-
-            echo "::group::dotnet test $project"
-            if ! dotnet test "$project" \
-              -c Release \
-              --no-build \
-              --logger "trx;LogFileName=${name}.trx" \
-              --results-directory TestResults \
-              2>&1 | tee "$log_path"; then
-              failed=1
-              failed_projects+=("$project")
-              failed_log_paths+=("$log_path")
-              echo "::error title=Test project failed::$project returned a non-zero exit code."
-            fi
-            echo "::endgroup::"
-          done
-
-          if [ "$failed" -eq 1 ]; then
-            printf 'Failed test projects:\n'
-            printf '  %s\n' "${failed_projects[@]}"
-          fi
-
-          {
-            echo "failed=$failed"
-            echo "failed_projects<<EOF"
-            if [ "${#failed_projects[@]}" -gt 0 ]; then
-              printf '%s\n' "${failed_projects[@]}"
-            fi
-            echo "EOF"
-            echo "failed_log_paths<<EOF"
-            if [ "${#failed_log_paths[@]}" -gt 0 ]; then
-              printf '%s\n' "${failed_log_paths[@]}"
-            fi
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Generate CTRF report
-        run: |
-          mkdir -p ctrf
-
-          for trx in TestResults/*.trx; do
-            name=$(basename "$trx" .trx)
-            echo "Processing $trx -> ctrf/$name.json"
-
-            dotnet tool run DotnetCtrfJsonReporter \
-              -p "$trx" \
-              -t nunit \
-              -d ctrf \
-              -f "$name.json"
-          done
-
-      - name: Run GFramework.Godot.Tests Diagnostics
-        if: always() && contains(steps.test_all_projects.outputs.failed_projects, 'GFramework.Godot.Tests/GFramework.Godot.Tests.csproj')
-        continue-on-error: true
-        run: |
-          mkdir -p TestResults
           dotnet test GFramework.Godot.Tests/GFramework.Godot.Tests.csproj \
-            -c Release \
-            --no-build \
-            --blame-crash \
+            -c Release --no-build --blame-crash \
             --diag TestResults/godot-testhost-diag.log \
             --logger "trx;LogFileName=godot-diagnostic.trx" \
             --results-directory TestResults \
             2>&1 | tee TestResults/godot-diagnostic.console.log
-      
-      
-      # 生成并发布测试报告，无论测试成功或失败都会执行
       - name: Test Report
+        if: always() && steps.tests.outputs.ran_tests == 'true'
         uses: dorny/test-reporter@v3
-        if: always()
         with:
           name: .NET Test Results
           path: TestResults/*.trx
           reporter: dotnet-trx
       - name: Publish Test Report
+        if: always() && steps.tests.outputs.ran_tests == 'true'
         uses: ctrf-io/github-test-reporter@v1
         with:
           report-path: './ctrf/*.json'
@@ -282,23 +170,69 @@ jobs:
           fetch-previous-results: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: always()
+      - name: Preserve test diagnostics
+        if: always() && steps.tests.outputs.ran_tests == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: dotnet-test-diagnostics
+          path: TestResults/
 
-      - name: Fail if any test project failed
-        if: always() && steps.test_all_projects.outputs.failed == '1'
-        env:
-          FAILED_PROJECTS: ${{ steps.test_all_projects.outputs.failed_projects }}
-          FAILED_LOG_PATHS: ${{ steps.test_all_projects.outputs.failed_log_paths }}
+  config-tool:
+    name: Config tool tests
+    needs: impact
+    if: needs.impact.outputs.tool == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.15
+      - name: Install and test config tool
+        working-directory: tools/gframework-config-tool
         run: |
-          echo "The following test projects returned non-zero exit codes:"
-          printf '%s\n' "$FAILED_PROJECTS"
-          echo
-          echo "Captured dotnet test output:"
-          while IFS= read -r log_path; do
-            if [ -n "$log_path" ] && [ -f "$log_path" ]; then
-              echo "--- BEGIN $log_path ---"
-              cat "$log_path"
-              echo "--- END $log_path ---"
-            fi
-          done <<< "$FAILED_LOG_PATHS"
-          exit 1
+          bun install --frozen-lockfile
+          bun run test
+
+  docs:
+    name: Documentation build
+    needs: impact
+    if: needs.impact.outputs.docs == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Build documentation without deployment
+        working-directory: docs
+        run: |
+          bun install --frozen-lockfile
+          bun run build
+
+  codeql:
+    name: CodeQL
+    needs: impact
+    if: needs.impact.outputs.codeql == 'true'
+    permissions:
+      contents: read
+      security-events: write
+    uses: ./.github/workflows/codeql.yml
+
+  required-checks:
+    name: CI Result
+    if: always()
+    needs: [impact, governance, megalinter, build-and-test, config-tool, docs, codeql]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: ci-impact
+          path: .local/ci
+      - name: Require every selected job to succeed
+        env:
+          CI_NEEDS: ${{ toJSON(needs) }}
+        run: python3 scripts/ci_run.py summary

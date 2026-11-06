@@ -5,14 +5,16 @@
 #
 # 功能：当推送标签时自动构建、打包，并将相同产物并发发布到 NuGet.org 与 GitHub Packages，
 #       最后创建 GitHub Release。
-# 触发条件：推送任何标签（如 v1.0.0 或 1.0.0）
+# 触发条件：框架版本标签；配置工具有独立发布入口。
 # 权限：允许写入内容、包和使用 OIDC 身份验证
 name: Publish (NuGet + GitHub Packages + GitHub Release)
 
 on:
   push:
     tags:
-      - '*'
+      - 'v[0-9]*'
+      - 'V[0-9]*'
+      - '[0-9]*'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -24,8 +26,23 @@ permissions:
   id-token: write
 
 jobs:
+  version:
+    name: Validate framework tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      framework: ${{ steps.tag.outputs.framework }}
+      version: ${{ steps.tag.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: tag
+        run: python3 scripts/ci_release_tag.py
+
   build-pack:
     name: Build And Pack
+    needs: version
+    if: needs.version.outputs.framework == 'true'
     runs-on: ubuntu-latest
 
     permissions:
@@ -61,14 +78,10 @@ jobs:
       # 提取逻辑：去除 refs/tags/ 前缀，然后去除 v/V 前缀。
       - name: Determine tag version
         id: tag_version
+        env:
+          PACKAGE_VERSION: ${{ needs.version.outputs.version }}
         run: |
-          set -e
-          echo "GITHUB_REF = ${GITHUB_REF}"
-          TAG=${GITHUB_REF#refs/tags/}
-          VERSION=${TAG#v}
-          VERSION=${VERSION#V}
-          echo "tag='$TAG' -> version='$VERSION'"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "version=$PACKAGE_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Pack (use tag version)
         run: |

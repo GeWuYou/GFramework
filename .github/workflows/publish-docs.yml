@@ -11,7 +11,7 @@ name: Publish Docs
 on:
   push:
     tags:
-      - 'v*'
+      - 'v[0-9]*'
   workflow_dispatch:
 
 # 权限配置
@@ -32,12 +32,22 @@ concurrency:
 
 # 定义工作流中的任务
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      docs: ${{ steps.tag.outputs.docs }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: tag
+        run: python3 scripts/ci_release_tag.py
+
   # 构建和部署任务
   build-and-deploy:
     # 条件判断：仅当推送的是正式版本标签（不包含预发布标识）或手动触发时执行
-    if: |
-      (startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-'))
-      || github.event_name == 'workflow_dispatch'
+    needs: version
+    if: needs.version.outputs.docs == 'true' || github.event_name == 'workflow_dispatch'
 
     # 指定运行环境为最新版 Ubuntu
     runs-on: ubuntu-latest
