@@ -67,9 +67,9 @@
 ## 包选择
 
 - `GeWuYou.GFramework`
-  当前是聚合元包，只聚合 `GFramework.Core` 与 `GFramework.Game` 这两层运行时；不会自动带上 `Cqrs`、`Godot` 或任何 Source Generator，适合快速试用或先起一个最小运行时骨架。
+  当前直接聚合 `GFramework.Core` 与 `GFramework.Game`，并通过 Core 间接包含 `Cqrs` runtime 与契约；不自动包含 `Godot` 或任何 Source Generator。
 - `GeWuYou.GFramework.Core`
-  推荐的最小起步包。先从核心运行时开始，再按需叠加 `Cqrs`、`Game`、`Godot` 和 Source Generators。
+  架构采用的起步包，当前已依赖 `Cqrs` runtime。可按需追加 `Game`、`Godot` 和 Source Generators；消息契约项目可直接引用 `Cqrs.Abstractions`。
 - `GeWuYou.GFramework.*.Abstractions`
   适合需要单独依赖契约层、插件化、测试替身或多模块解耦的场景。
 - `GeWuYou.GFramework.*.SourceGenerators`
@@ -89,7 +89,7 @@
 dotnet add package GeWuYou.GFramework.Core
 dotnet add package GeWuYou.GFramework.Core.Abstractions
 
-# 新版 CQRS
+# 直接声明 CQRS 依赖（Core 已传递包含；直接使用其 API 时可显式引用）
 dotnet add package GeWuYou.GFramework.Cqrs
 dotnet add package GeWuYou.GFramework.Cqrs.Abstractions
 
@@ -157,7 +157,7 @@ GFramework.sln
 
 1. 先阅读对应模块的说明页
 2. 如果改动影响采用路径、安装方式、公共 API 或目录结构，同时更新受影响的中文文档页面，必要时同步调整 [中文文档入口](docs/zh-CN/index.md)
-3. 对跨模块或多阶段任务，维护 `ai-plan/public/README.md` 与对应主题目录下的 tracking / trace
+3. 项目开发、架构决策与多阶段任务见[开发文档索引](engineering/README.md)，实施状态在对应路线图任务中维护
 
 ## 许可证
 

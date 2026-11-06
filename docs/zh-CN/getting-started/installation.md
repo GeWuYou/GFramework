@@ -14,7 +14,7 @@ GFramework 采用模块化设计，不同包提供不同的功能：
 | 包名 | 说明 | 适用场景 |
 | --- | --- | --- |
 | `GeWuYou.GFramework` | 聚合元包 | 快速试用、原型开发，或先起一个最小运行时骨架 |
-| `GeWuYou.GFramework.Core` | Core 运行时 | 生产项目推荐的最小运行时起点 |
+| `GeWuYou.GFramework.Core` | Core 运行时 | Architecture 采用起点，当前传递包含 CQRS |
 | `GeWuYou.GFramework.Core.Abstractions` | Core 抽象契约 | 面向接口开发、测试替身、插件化拆分 |
 | `GeWuYou.GFramework.Cqrs` | CQRS runtime | 命令 / 查询 / 通知分发与处理器注册 |
 | `GeWuYou.GFramework.Cqrs.Abstractions` | CQRS 抽象契约 | 共享 request、handler 与 pipeline 契约 |
@@ -35,12 +35,12 @@ GFramework 采用模块化设计，不同包提供不同的功能：
 - `GFramework.Core`
 - `GFramework.Game`
 
-它不会自动带上 `Cqrs`、`Godot` 或任何 `*.SourceGenerators` 包。如果你需要这些能力，请按模块单独安装。
+Core 当前直接依赖 `GFramework.Cqrs` 与 `GFramework.Cqrs.Abstractions`，因此聚合包也会间接带入 CQRS。它不自动包含 `Godot` 或任何 `*.SourceGenerators` 包；这些按需单独安装。
 
 ## 推荐组合
 
 - 最小运行时：`GeWuYou.GFramework.Core` + `GeWuYou.GFramework.Core.Abstractions`
-- 新版 CQRS：在 Core 基础上追加 `GeWuYou.GFramework.Cqrs` + `GeWuYou.GFramework.Cqrs.Abstractions`
+- 新版 CQRS：Core 已传递包含 runtime 与契约；直接使用其 API 的项目可显式声明 `GeWuYou.GFramework.Cqrs` + `GeWuYou.GFramework.Cqrs.Abstractions`；纯消息契约项目仅引用后者
 - Game 配置工作流：在 Core 基础上追加 `GeWuYou.GFramework.Game` + `GeWuYou.GFramework.Game.Abstractions` + `GeWuYou.GFramework.Game.SourceGenerators`
 - Godot 项目：在所需运行时基础上追加 `GeWuYou.GFramework.Godot`，需要生成器辅助时再加 `GeWuYou.GFramework.Godot.SourceGenerators`
 - Arch ECS：直接安装 `GeWuYou.GFramework.Ecs.Arch`；如果只想共享宿主循环或接口边界，可改为 `GeWuYou.GFramework.Ecs.Arch.Abstractions`
@@ -58,7 +58,7 @@ GFramework 采用模块化设计，不同包提供不同的功能：
 dotnet add package GeWuYou.GFramework.Core
 dotnet add package GeWuYou.GFramework.Core.Abstractions
 
-# CQRS runtime
+# 显式声明直接使用的 CQRS API（Core 已传递包含）
 dotnet add package GeWuYou.GFramework.Cqrs
 dotnet add package GeWuYou.GFramework.Cqrs.Abstractions
 

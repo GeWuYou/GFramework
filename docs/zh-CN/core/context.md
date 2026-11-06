@@ -16,7 +16,13 @@ description: 说明 IArchitectureContext 与 ArchitectureContext 的统一上下
 
 默认实现类型是 `ArchitectureContext`。
 
-## 先记住一个事实
+## 当前上下文约束
+
+Architecture 会注入自己的上下文；未注入的 ContextAwareBase 会回退到进程内的活动 GameContext。该全局入口不能承载多个不同上下文，ScopedContextProvider 也不会改变 Architecture 启动时的绑定步骤。
+
+手写基类按实例缓存上下文，生成的 ContextAware 实现还会共享静态 provider；切换 provider 不会清除已缓存引用。不要依赖销毁后的旧上下文继续解析服务。当前资源限制见 [架构](./architecture.md)。
+
+## 公开总线入口
 
 如果你正在寻找这些属性式总线入口：
 

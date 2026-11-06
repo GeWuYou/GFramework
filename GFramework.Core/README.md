@@ -2,7 +2,7 @@
 
 `GFramework.Core` 是框架的基础运行时，负责架构生命周期、组件注册、上下文访问，以及不依赖具体引擎的通用能力。
 
-如果你只想先把框架跑起来，应先从这个模块开始。
+如果你需要使用 Architecture，可从这个模块开始。当前 Core 已传递依赖 CQRS runtime。
 
 ## 模块定位
 
@@ -79,6 +79,10 @@
 
 完整的模块化接入说明和阅读顺序见 [Core 栏目](../docs/zh-CN/core/index.md)。
 
+## 当前使用边界
+
+标准架构启动会绑定进程内单活动上下文，不能同时启动两个不同上下文。初始化完成后服务注册冻结；业务组件停止与 DI 资源释放是不同责任，当前 Architecture 销毁并不等于已释放根 provider。相关约束见[架构生命周期](../docs/zh-CN/core/architecture.md)与[IoC 容器](../docs/zh-CN/core/ioc.md)。
+
 ## 最小接入路径
 
 ```bash
@@ -96,9 +100,9 @@ dotnet add package GeWuYou.GFramework.Core.Abstractions
 
 - [快速开始示例](../docs/zh-CN/getting-started/quick-start.md)
 
-## 什么时候继续接别的包
+## 可选采用包
 
-- 需要推荐的新请求模型：加 `GFramework.Cqrs`
+- 直接使用新请求模型：可显式引用 `GFramework.Cqrs`；Core 已传递包含其 runtime
 - 需要游戏层路由、设置、配置和存储：加 `GFramework.Game`
 - 需要 Godot 节点与场景适配：加 `GFramework.Godot`
 - 需要编译期生成日志、上下文注入或模块注册：加 `GFramework.Core.SourceGenerators`

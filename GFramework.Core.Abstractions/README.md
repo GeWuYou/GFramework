@@ -16,9 +16,8 @@
 
 - 契约层：`GFramework.Core.Abstractions`
 - 实现层：`GFramework.Core`
-- 相关扩展：
-  - `GFramework.Cqrs.Abstractions`
-  - `GFramework.Game.Abstractions`
+- 直接依赖：`GFramework.Cqrs.Abstractions` 与 Microsoft DI 抽象；单独引用本包仍会带入 CQRS 契约
+- 上层契约：`GFramework.Game.Abstractions`
 
 ## 契约地图
 

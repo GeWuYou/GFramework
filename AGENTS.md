@@ -104,14 +104,11 @@ All AI agents and contributors must follow these rules when writing, reviewing, 
 
 - Read this document and `.ai/environment/tools.ai.yaml` before substantive work.
 - Inspect the current branch, HEAD and working-tree changes; preserve unrelated work.
-- Read `ai-plan/public/README.md`. For continuation, follow the current branch/worktree mapping to the relevant
-  topic's active todo and trace. Without a mapping, search active topics for the requested task rather than loading
-  every topic. Ask only when competing recovery points would materially change the scope.
-- Read topic archives only when the active recovery entry points to them or historical investigation requires them.
-  Worktree-private notes remain private and do not override current source, Git state or user instructions.
+- Read `engineering/README.md` to locate the relevant architecture, development guidance and roadmap task.
+  For continuation, reconstruct current source, diff and task status instead of inheriting historical PR or branch state.
 - Ordinary tasks proceed directly under these rules; startup and continued execution do not require a separate skill.
-- For multi-step work, maintain the recovery artifacts described in Task Tracking. At a scope boundary or interruption,
-  record verified progress, remaining work and the next recovery point instead of using a fixed context percentage.
+- For multi-step work, update the single task entry described in Project Development Documentation. Record verified
+  progress, remaining work and next action at a scope boundary; do not maintain paired execution logs.
 
 ## Subagent Usage Rules
 
@@ -378,17 +375,16 @@ bash scripts/validate-csharp-naming.sh
   Do not publish internal-governance or product-roadmap wording such as “当前阶段的结论”、
   “不建议立即启动”、
   “仓库当前的主要使用者” or similar maintainer-facing decision records in `README.md` or `docs/**`; that material
-  belongs in `ai-plan/**` if it must be tracked.
+  belongs in `engineering/**` if it must be tracked.
 - Governance-only material such as XML audit snapshots, documentation remediation baselines, backlog status, and
-  recovery metadata belongs in `ai-plan/**` or other contributor-only artifacts, not in public docs.
+  durable development decisions belong in `engineering/**`; local recovery metadata belongs in ignored `.local/`.
 - Treat `ai-libs/` as a read-only third-party source reference area.
 - Code under `ai-libs/**` exists for comparison, tracing, design study, and behavior verification; do not modify it
   unless the user explicitly asks to sync or update that third-party snapshot.
 - When implementation plans, traces, reviews, or design notes say “reference a third-party project”, prefer the
   repository-local path under `ai-libs/` instead of an unspecified upstream repository.
-- If a task depends on observations from `ai-libs/**`, record the referenced path and conclusion in the active plan or
-  trace when the work is multi-step or complex, or when an active tracking document already exists, rather than editing
-  the third-party reference copy.
+- If a task depends on observations from `ai-libs/**`, record the referenced path and conclusion in the relevant
+  engineering document or roadmap task when the work is multi-step or complex, rather than editing the reference copy.
 - The main documentation site lives under `docs/`, with Chinese content under `docs/zh-CN/`.
 - Keep code samples, package names, and command examples aligned with the current repository state.
 - Prefer documenting behavior and design intent, not only API surface.
@@ -415,52 +411,23 @@ bash scripts/validate-csharp-naming.sh
 - When examples are rewritten, preserve only the parts that remain true. Delete or replace speculative examples instead
   of lightly editing them into another inaccurate form.
 
-### Task Tracking
+### Project Development Documentation
 
-- `ai-plan/` is split by intent:
-  - `ai-plan/public/README.md`: the shared startup index that binds worktrees or branches to active topics and resume
-    entry points
-  - `ai-plan/public/<topic>/todos/`: repository-safe recovery documents for an active topic
-  - `ai-plan/public/<topic>/traces/`: repository-safe execution traces for an active topic
-  - `ai-plan/public/<topic>/archive/`: archived stage-level artifacts that still belong to an active topic; prefer
-    `archive/todos/` and `archive/traces/` when archiving content cut out of the active entry files
-  - `ai-plan/public/archive/<topic>/`: completed-topic archives that should not be treated as default boot context
-  - `ai-plan/private/`: worktree-private recovery artifacts; keep these untracked and scoped to the current worktree
-- Contributors MUST keep committed `ai-plan/public/**` content safe to publish in Git history.
-- Never write secrets, tokens, credentials, private keys, machine usernames, home-directory paths, hostnames, IP
-  addresses, proprietary URLs, or other sensitive environment details into any `ai-plan/**` file.
-- Never record absolute file-system paths in `ai-plan/**`; use repository-relative paths, branch names, PR numbers, or
-  stable document identifiers instead.
-- Use `ai-plan/public/**` only for durable, handoff-safe task state. Put temporary notes, local experiments, or
-  worktree-specific scratch recovery data under `ai-plan/private/`.
-- `ai-plan/public/README.md` MUST list only active topics. Do not add `ai-plan/public/archive/**` content to the
-  default boot index.
-- When a worktree-to-topic mapping changes, or when a topic becomes active/inactive, contributors MUST update
-  `ai-plan/public/README.md` in the same change.
-- When working from a tracked implementation plan, contributors MUST update the corresponding tracking document under
-  `ai-plan/public/<topic>/todos/` in the same change.
-- Tracking updates MUST reflect completed work, newly discovered issues, validation results, and the next recommended
-  recovery point.
-- Active tracking and trace files are recovery entrypoints, not append-only changelogs. They MUST stay concise enough
-  for task startup to locate the current recovery point quickly.
-- Completing code changes without updating the active tracking document is considered incomplete work.
-- For any multi-step refactor, migration, or cross-module task, contributors MUST create or adopt a dedicated recovery
-  document under `ai-plan/public/<topic>/todos/` before making substantive code changes.
-- Recovery documents MUST record the current phase, the active recovery point identifier, known risks, and the next
-  recommended resume step so another contributor or subagent can continue the work safely.
-- Contributors MUST maintain a matching execution trace under `ai-plan/public/<topic>/traces/` for complex work. The
-  trace should record the current date, key decisions, validation milestones, and the immediate next step.
-- When a stage inside an active topic is fully complete, move the finished artifacts into that topic's `archive/`
-  directory instead of leaving every completed step in the default boot path.
-- When completed and validated stages begin to accumulate, contributors MUST archive their detailed history out of the
-  active `todos/` and `traces/` entry files in the same change. Keep only the current recovery point, active facts,
-  active risks, immediate next step, and pointers to the relevant archive files in the default boot path.
-- When a topic is fully complete, move the entire topic directory under `ai-plan/public/archive/<topic>/` and remove it
-  from `ai-plan/public/README.md` in the same change.
-- When a task spans multiple commits or is likely to exceed a single agent context window, update both the recovery
-  document and the trace at each meaningful milestone before pausing or handing work off.
-- If subagents are used on a complex task, the main agent MUST capture the delegated scope and any accepted findings in
-  the active recovery document or trace before continuing implementation.
+- `engineering/README.md` is the contributor documentation index; `docs/` remains the user-facing documentation site.
+- Keep current architecture and significant decisions in `engineering/architecture/`, development and documentation
+  guidance in `engineering/development/`, and implementation sequence plus task status in `engineering/roadmap/`.
+- Before substantive multi-step refactoring or migration, create or adopt one roadmap task with scope, status,
+  acceptance criteria, evidence and next action. Update that task at meaningful milestones; do not duplicate its status
+  in architecture reports, paired tracking/trace files, branch maps or numbered recovery points.
+- Mark planned APIs and target architecture explicitly. Source, project files and tests remain authoritative for
+  current behavior; archived history is available through Git and is not a current task queue.
+- Keep task entries concise. Retain completed acceptance evidence in the task, and use Git for detailed execution history.
+- When adding, moving or deleting development documents, update the engineering index and affected incoming links in
+  the same change. See `engineering/development/documentation.md` for ownership and validation.
+- Put temporary probes, command logs and worktree-private handoff notes in ignored `.local/`. Preserve unrelated
+  tasks and untracked private files; do not recursively delete a directory merely because tracked documentation was retired.
+- Committed development documents must be safe to publish: no secrets, credentials, machine usernames, absolute
+  filesystem paths, hostnames, IP addresses or proprietary URLs. Use repository-relative paths and stable identifiers.
 
 ### Documentation Preview
 

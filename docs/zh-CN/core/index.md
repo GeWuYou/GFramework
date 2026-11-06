@@ -8,7 +8,7 @@ description: GFramework.Core 与 GFramework.Core.Abstractions 的运行时入口
 `Core` 栏目对应 `GFramework` 的基础运行时层，主要覆盖 `GFramework.Core` 与 `GFramework.Core.Abstractions`，以及与之直接相邻的旧版
 `Command` / `Query` 执行器和新版 `CQRS` 迁移入口。
 
-如果你第一次接入框架，可以先把这里当作“运行时底座说明”：先确认 `Core` 解决什么问题、最小安装组合是什么，再决定什么时候转向 `CQRS`、`Game`、`Godot` 或源码生成器。
+如果你第一次接入框架，可以先把这里当作“运行时底座说明”：先确认 `Core` 解决什么问题、最小安装组合是什么，再决定是否采用 CQRS 消息模型、Game、Godot 或源码生成器。Core 当前已经传递依赖 CQRS runtime，使用消息模型与安装传递依赖是两回事。
 
 ## 模块与包关系
 
@@ -17,7 +17,7 @@ description: GFramework.Core 与 GFramework.Core.Abstractions 的运行时入口
 - `GeWuYou.GFramework.Core.Abstractions`
   - 对应的契约层，适合只依赖接口、做模块拆分或测试替身。
 - `GeWuYou.GFramework.Cqrs`
-  - 推荐给新功能使用的新请求模型运行时。
+  - 当前由 Core 依赖并自动接线的请求模型运行时。
 - `GeWuYou.GFramework.Game`
   - 在 `Core` 之上叠加游戏层配置、数据、设置、场景与 UI。
 - `GeWuYou.GFramework.Core.SourceGenerators`

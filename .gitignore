@@ -14,16 +14,12 @@ opencode.json
 .omc/
 docs/.omc/
 docs/.vitepress/cache/
-ai-plan/*
-!ai-plan/README.md
-!ai-plan/public/
-ai-plan/public/*
-!ai-plan/public/README.md
-!ai-plan/public/**/
-!ai-plan/public/**/*.md
-ai-plan/private/
 ai-libs/
 .codex
 # tool
 .venv/
 BenchmarkDotNet.Artifacts/
+
+# Local task evidence and retired private notes
+.local/
+ai-plan/

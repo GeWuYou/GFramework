@@ -11,7 +11,16 @@ description: 说明 GFramework.Core 的 Architecture 入口、生命周期职责
 - 接入模型、系统、工具和模块
 - 暴露 `ArchitectureContext` 作为统一上下文入口
 
-当前版本的 `Architecture` 已经是协调器外观。对外仍保留稳定的注册与生命周期 API，但内部职责已经拆给专门协作者处理。
+当前版本的 `Architecture` 将内部职责委托给初始化、组件注册、生命周期与模块管理协作者。
+
+## 运行边界
+
+- 默认启动会绑定全局 GameContext；同一进程的全局表只接受一个活动上下文，ScopedContextProvider 不会绕过此绑定。
+- OnInitialize 是注册期入口；服务容器在组件初始化后 Freeze。按类型注册 System/Model 会先于正式 provider 创建实例，依赖 Singleton 的实例身份不能假定与 Ready 后解析一致。
+- DestroyAsync 会停止已登记组件并解除全局绑定，但当前冻结容器的 Clear 不释放根 provider。若组合根显式持有 ArchitectureServices，应在组件停止后释放其拥有的 Container；外部实例仍由调用者负责。仅持有 Architecture 时没有独立的公开容器释放入口。
+- 已缓存的上下文引用不会在销毁后自动清空，不应继续使用。
+
+容器级所有权与释放方式见 [IoC 容器](./ioc.md)。这些是当前实现的使用限制，调用方需要按实际生命周期约束接入。
 
 ## 常用公开入口
 
