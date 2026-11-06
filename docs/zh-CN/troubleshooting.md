@@ -1464,25 +1464,26 @@ _coroutineQueue.Enqueue(MyCoroutine());
 ### 1. 启用日志系统
 
 ```csharp
-// 使用 GFramework 日志系统
-public class GameArchitecture : Architecture
+// 日志契约是 Microsoft.Extensions.Logging；架构实例在配置中提供标准 ILoggerFactory
+var configuration = new ArchitectureConfiguration
 {
-    protected override void ConfigureServices(Microsoft.Extensions.DependencyInjection.IServiceCollection services)
+    LoggerProperties = new LoggerProperties
     {
-        // 注册日志工厂
-        RegisterUtility&lt;ILoggerFactory&gt;(new GodotLoggerFactory());
+        LoggerFactory = LoggerFactory.Create(builder =>
+        {
+            builder.SetMinimumLevel(LogLevel.Debug);
+            builder.AddConsole();
+        })
     }
-}
+};
+var architecture = new GameArchitecture(configuration, environment);
 
-// 在组件中使用日志
+// 组件通过基类提供的 _logger 或构造注入 ILogger<T> 使用日志
 public class PlayerSystem : AbstractSystem
 {
-    private ILogger _logger;
-
     protected override void OnInit()
     {
-        _logger = this.GetUtility&lt;ILoggerFactory&gt;().CreateLogger&lt;PlayerSystem&gt;();
-        _logger.LogInfo("PlayerSystem initialized");
+        _logger.LogInformation("PlayerSystem initialized");
     }
 
     private void OnPlayerDied(PlayerDiedEvent e)
@@ -1490,17 +1491,6 @@ public class PlayerSystem : AbstractSystem
         _logger.LogWarning($"Player died at position {e.Position}");
     }
 }
-
-// 配置日志级别
-var loggingConfig = new LoggingConfiguration
-{
-    MinimumLevel = LogLevel.Debug,
-    Appenders = new[]
-    {
-        new ConsoleAppender(),
-        new FileAppender("logs/game.log")
-    }
-};
 ```
 
 ### 2. 使用断点调试

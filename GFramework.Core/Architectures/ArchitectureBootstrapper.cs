@@ -3,7 +3,8 @@
 
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Environment;
-using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Core.Architectures;
 
@@ -15,7 +16,7 @@ namespace GFramework.Core.Architectures;
 internal sealed class ArchitectureBootstrapper(
     IEnvironment environment,
     IArchitectureServices services,
-    ILoggerFactoryProvider loggerFactoryProvider)
+    ILoggerFactory loggerFactory)
 {
     /// <summary>登记可供后续正式 provider 使用的实例与模块。</summary>
     /// <param name="context">当前实例上下文。</param>
@@ -24,8 +25,11 @@ internal sealed class ArchitectureBootstrapper(
     {
         environment.Initialize();
         services.SetContext(context);
-        if (!services.Container.HasRegistration(typeof(ILoggerFactoryProvider)))
-            services.Container.Register(loggerFactoryProvider);
+        if (!services.Container.HasRegistration(typeof(ILoggerFactory)))
+            services.Container.Register(loggerFactory);
+        // 组件通过标准 ILogger<T> 构造注入获取日志；解析由容器组合根完成。
+        services.Container.ExecuteServicesHook(static registered =>
+            registered.TryAddSingleton(typeof(ILogger<>), typeof(Logger<>)));
         if (!services.Container.HasRegistration(typeof(IEnvironment)))
             services.Container.Register<IEnvironment>(environment);
         if (!services.Container.HasRegistration(typeof(IArchitectureContext)))

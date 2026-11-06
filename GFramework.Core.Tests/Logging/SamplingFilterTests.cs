@@ -4,6 +4,7 @@
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Logging.Filters;
 using GFramework.Core.Tests.Time;
+using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 
 namespace GFramework.Core.Tests.Logging;
@@ -18,7 +19,7 @@ public class SamplingFilterTests
         var filter = new SamplingFilter(sampleRate: 3, timeWindow: TimeSpan.FromMinutes(1), timeProvider: timeProvider);
         var entry = new LogEntry(
             timeProvider.UtcNow,
-            LogLevel.Info,
+            LogLevel.Information,
             "TestLogger",
             "Test message",
             null,
@@ -44,7 +45,7 @@ public class SamplingFilterTests
             timeProvider: timeProvider);
         var entry = new LogEntry(
             timeProvider.UtcNow,
-            LogLevel.Info,
+            LogLevel.Information,
             "TestLogger",
             "Test message",
             null,
@@ -69,8 +70,8 @@ public class SamplingFilterTests
         var timeProvider = new FakeTimeProvider();
         var filter = new SamplingFilter(sampleRate: 2, timeWindow: TimeSpan.FromMinutes(1), timeProvider: timeProvider);
 
-        var entry1 = new LogEntry(timeProvider.UtcNow, LogLevel.Info, "Logger1", "Message", null, null);
-        var entry2 = new LogEntry(timeProvider.UtcNow, LogLevel.Info, "Logger2", "Message", null, null);
+        var entry1 = new LogEntry(timeProvider.UtcNow, LogLevel.Information, "Logger1", "Message", null, null);
+        var entry2 = new LogEntry(timeProvider.UtcNow, LogLevel.Information, "Logger2", "Message", null, null);
 
         // Logger1 的第一条
         Assert.That(filter.ShouldLog(entry1), Is.True);
@@ -92,9 +93,9 @@ public class SamplingFilterTests
         var filter = new SamplingFilter(sampleRate: 2, timeWindow: TimeSpan.FromMinutes(1), maxLoggers: 2,
             timeProvider: timeProvider);
 
-        var entry1 = new LogEntry(timeProvider.UtcNow, LogLevel.Info, "Logger1", "Message", null, null);
-        var entry2 = new LogEntry(timeProvider.UtcNow, LogLevel.Info, "Logger2", "Message", null, null);
-        var entry3 = new LogEntry(timeProvider.UtcNow, LogLevel.Info, "Logger3", "Message", null, null);
+        var entry1 = new LogEntry(timeProvider.UtcNow, LogLevel.Information, "Logger1", "Message", null, null);
+        var entry2 = new LogEntry(timeProvider.UtcNow, LogLevel.Information, "Logger2", "Message", null, null);
+        var entry3 = new LogEntry(timeProvider.UtcNow, LogLevel.Information, "Logger3", "Message", null, null);
 
         // Logger1 和 Logger2 各自独立
         Assert.That(filter.ShouldLog(entry1), Is.True); // Logger1: 1st
@@ -111,7 +112,7 @@ public class SamplingFilterTests
         var timeProvider = new FakeTimeProvider();
         var filter = new SamplingFilter(sampleRate: 2, timeWindow: TimeSpan.FromMinutes(1), timeProvider: timeProvider);
 
-        var entry = new LogEntry(timeProvider.UtcNow, LogLevel.Info, "TestLogger", "Message", null, null);
+        var entry = new LogEntry(timeProvider.UtcNow, LogLevel.Information, "TestLogger", "Message", null, null);
 
         // 使用过滤器
         filter.ShouldLog(entry);
@@ -171,7 +172,7 @@ public class SamplingFilterTests
         var timeProvider = new FakeTimeProvider();
         var filter = new SamplingFilter(sampleRate: 10, timeWindow: TimeSpan.FromMinutes(1),
             timeProvider: timeProvider);
-        var entry = new LogEntry(timeProvider.UtcNow, LogLevel.Info, "TestLogger", "Message", null, null);
+        var entry = new LogEntry(timeProvider.UtcNow, LogLevel.Information, "TestLogger", "Message", null, null);
 
         var passedCount = 0;
         var tasks = new List<Task>();

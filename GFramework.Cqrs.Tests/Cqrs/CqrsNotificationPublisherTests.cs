@@ -2,16 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Architectures;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Architectures;
 using GFramework.Core.Ioc;
-using GFramework.Core.Logging;
 using GFramework.Cqrs;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Cqrs;
 using GFramework.Cqrs.Extensions;
 using GFramework.Cqrs.Notification;
 using GFramework.Cqrs.Tests.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Cqrs.Tests.Cqrs;
 
@@ -50,8 +49,6 @@ internal sealed class CqrsNotificationPublisherTests
     [Test]
     public async Task RegisterInfrastructure_Should_Use_PreRegistered_NotificationPublisher()
     {
-        LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider();
-
         var container = new MicrosoftDiContainer();
         var publisher = new TrackingNotificationPublisher();
         container.Register<INotificationPublisher>(publisher);

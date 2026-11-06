@@ -246,7 +246,7 @@ obj.IfType<MyRule>(
 // 带不匹配处理的类型判断
 obj.IfType<IRule>(
     rule => rule.Execute(),
-    other => Logger.Warn($"Unsupported type: {other.GetType()}")
+    other => Logger.LogWarning($"Unsupported type: {other.GetType()}")
 );
 ```
 

@@ -93,7 +93,7 @@ dotnet add package GeWuYou.GFramework.Core.Abstractions
 | `State/` `StateManagement/` | `StateMachine`、`StateMachineSystem`、`Store<TState>`、`StoreBuilder<TState>` | 状态切换，以及 selector / middleware / dispatch 的单向流边界 |
 | `Coroutine/` `Time/` `Pause/` `Concurrency/` | `CoroutineScheduler`、`CoroutineHandle`、`WaitForSecondsRealtime`、`PauseStackManager`、`AsyncKeyLockManager` | 调度阶段、等待指令、时间源，以及暂停 / 锁的线程语义 |
 | `Resource/` `Pool/` | `ResourceManager`、`AutoReleaseStrategy`、`ManualReleaseStrategy`、`AbstractObjectPoolSystem<TKey, TObject>` | 资源句柄释放策略与对象池复用约束 |
-| `Logging/` `Localization/` `Configuration/` `Environment/` `Ioc/` | `ConsoleLogger`、`CompositeLogger`、`LocalizationManager`、`ConfigurationManager`、`MicrosoftDiContainer` | 日志组装、格式化 / filter、配置监听、环境对象与容器适配 |
+| `Logging/` `Localization/` `Configuration/` `Environment/` `Ioc/` | `AppenderLoggerProvider`、`LoggingConfigurationLoader`、`LocalizationManager`、`ConfigurationManager`、`MicrosoftDiContainer` | 标准日志到 appender 管线的适配、格式化 / filter、配置监听、环境对象与容器适配 |
 | `Model/` `Systems/` `Utility/` `Rule/` `Extensions/` `Functional/` | `AbstractModel`、`AbstractSystem`、`NumericDisplayFormatter`、`ContextAwareBase`、`Result<T>` | 默认基类、上下文感知 helper、数值格式化和通用扩展的使用边界 |
 
 ## 最小接入路径

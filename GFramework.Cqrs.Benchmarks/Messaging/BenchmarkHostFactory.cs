@@ -6,12 +6,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Ioc;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Internal;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Cqrs.Benchmarks.Messaging;
 
@@ -57,7 +57,7 @@ internal static class BenchmarkHostFactory
     {
         ArgumentNullException.ThrowIfNull(container);
 
-        var registrarLogger = LoggerFactoryResolver.Provider.CreateLogger("DefaultCqrsHandlerRegistrar");
+        var registrarLogger = BenchmarkLogging.CreateLogger("DefaultCqrsHandlerRegistrar");
         CqrsHandlerRegistrar.RegisterGeneratedRegistry(container.GetServicesUnsafe, typeof(TRegistry), registrarLogger);
     }
 

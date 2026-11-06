@@ -47,7 +47,7 @@
 | `Time/` | 默认时间提供器与协程时间源 |
 | `Resource/` | 资源缓存、句柄和释放策略 |
 | `Pool/` | 对象池系统与常用池化辅助实现 |
-| `Logging/` | logger、factory、配置与组合日志器 |
+| `Logging/` | 标准 ILoggerFactory 接线、appender 输出引擎与配置加载 |
 | `Ioc/` | 基于 `Microsoft.Extensions.DependencyInjection` 的容器适配 |
 | `Concurrency/` | 键控异步锁与统计 |
 | `Configuration/` | 配置管理器与配置监听解绑对象 |
@@ -68,7 +68,7 @@
 | `Events/` `Property/` `State/` `StateManagement/` | `EventBus`、`BindableProperty<T>`、`StateMachine`、`Store<TState>` | 看事件分发、状态绑定、状态机与 Store 的职责划分 |
 | `Coroutine/` `Time/` `Pause/` `Concurrency/` | `CoroutineScheduler`、`CoroutineHandle`、`PauseStackManager`、`AsyncKeyLockManager` | 看调度、暂停、时间推进与并发控制的生命周期语义 |
 | `Resource/` `Pool/` | `ResourceManager`、`AutoReleaseStrategy`、`AbstractObjectPoolSystem<TKey, TObject>` | 看资源释放策略、池化抽象与可复用对象边界 |
-| `Logging/` `Localization/` `Configuration/` `Environment/` `Ioc/` | `ConsoleLogger`、`LocalizationManager`、`ConfigurationManager`、`DefaultEnvironment`、`MicrosoftDiContainer` | 看基础设施入口与默认实现的组合方式 |
+| `Logging/` `Localization/` `Configuration/` `Environment/` `Ioc/` | `AppenderLoggerProvider`、`LoggingConfigurationLoader`、`LocalizationManager`、`ConfigurationManager`、`DefaultEnvironment`、`MicrosoftDiContainer` | 看基础设施入口与默认实现的组合方式 |
 | `Model/` `Systems/` `Utility/` `Rule/` `Extensions/` `Functional/` | `AbstractModel`、`AbstractSystem`、`NumericDisplayFormatter`、`ContextAwareBase`、`Result<T>` | 看业务模型、系统基类、上下文辅助类型与函数式工具如何配合 |
 
 完整的模块化接入说明和阅读顺序见 [Core 栏目](../docs/zh-CN/core/index.md)。

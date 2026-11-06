@@ -3,6 +3,7 @@
 
 using System.IO;
 using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Core.Logging.Appenders;
 
@@ -84,10 +85,10 @@ public sealed class ConsoleAppender : ILogAppender, IDisposable
         {
             LogLevel.Trace => "90", // 暗灰色
             LogLevel.Debug => "36", // 青色
-            LogLevel.Info => "37", // 白色
+            LogLevel.Information => "37", // 白色
             LogLevel.Warning => "33", // 黄色
             LogLevel.Error => "31", // 红色
-            LogLevel.Fatal => "35", // 洋红色
+            LogLevel.Critical => "35", // 洋红色
             _ => "37"
         };
     }

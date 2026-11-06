@@ -862,9 +862,9 @@ namespace MyGame.Core.Architecture
         /// &lt;/summary&gt;
         private void RegisterCoreServices()
         {
-            // 注册日志服务
-            var loggerFactory = new ConsoleLoggerFactory();
-            RegisterService&lt;ILoggerFactory&gt;(loggerFactory);
+            // 注册日志服务（实际项目使用 ArchitectureConfiguration.LoggerProperties.LoggerFactory 提供标准 ILoggerFactory）
+            var loggingService = new ConsoleLoggingService();
+            RegisterService&lt;ILoggingService&gt;(loggingService);
 
             // 注册配置服务
             var configManager = new ConfigurationManager();
@@ -879,8 +879,8 @@ namespace MyGame.Core.Architecture
     }
 
     // 简化的服务实现示例
-    public interface ILoggerFactory { }
-    public class ConsoleLoggerFactory : ILoggerFactory { }
+    public interface ILoggingService { }
+    public class ConsoleLoggingService : ILoggingService { }
 
     public interface IConfigurationManager { }
     public class ConfigurationManager : IConfigurationManager { }

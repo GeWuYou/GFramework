@@ -1,12 +1,11 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Architectures;
 using GFramework.Core.Ioc;
-using GFramework.Core.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Extensions;
+using GFramework.Cqrs.Tests.Logging;
 
 namespace GFramework.Cqrs.Tests.Cqrs;
 
@@ -25,14 +24,13 @@ internal sealed class CqrsArchitectureContextAdvancedFeaturesTests
     [SetUp]
     public void SetUp()
     {
-        LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider();
         _container = new MicrosoftDiContainer();
         TestCircuitBreakerHandler.Reset();
 
         var loggerField = typeof(MicrosoftDiContainer).GetField("_logger",
             BindingFlags.NonPublic | BindingFlags.Instance);
         loggerField?.SetValue(_container,
-            LoggerFactoryResolver.Provider.CreateLogger(nameof(CqrsArchitectureContextAdvancedFeaturesTests)));
+            new TestLogger(nameof(CqrsArchitectureContextAdvancedFeaturesTests)));
 
         CqrsTestRuntime.RegisterHandlers(
             _container,

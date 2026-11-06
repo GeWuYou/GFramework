@@ -11,9 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Ioc;
-using GFramework.Core.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -61,10 +59,6 @@ public class RequestInvokerBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider
-        {
-            MinLevel = LogLevel.Fatal
-        };
         Fixture.Setup("RequestInvoker", handlerCount: 1, pipelineCount: 0);
         BenchmarkDispatcherCacheHelper.ClearDispatcherCaches();
 
@@ -79,7 +73,7 @@ public class RequestInvokerBenchmarks
         });
         _reflectionRuntime = GFramework.Cqrs.CqrsRuntimeFactory.CreateRuntime(
             _reflectionContainer,
-            LoggerFactoryResolver.Provider.CreateLogger(nameof(RequestInvokerBenchmarks) + ".Reflection"));
+            BenchmarkLogging.CreateLogger(nameof(RequestInvokerBenchmarks) + ".Reflection"));
 
         _generatedContainer = BenchmarkHostFactory.CreateFrozenGFrameworkContainer(container =>
         {
@@ -87,7 +81,7 @@ public class RequestInvokerBenchmarks
         });
         _generatedRuntime = GFramework.Cqrs.CqrsRuntimeFactory.CreateRuntime(
             _generatedContainer,
-            LoggerFactoryResolver.Provider.CreateLogger(nameof(RequestInvokerBenchmarks) + ".Generated"));
+            BenchmarkLogging.CreateLogger(nameof(RequestInvokerBenchmarks) + ".Generated"));
 
         _serviceProvider = BenchmarkHostFactory.CreateMediatRServiceProvider(
             configure: null,

@@ -27,7 +27,7 @@
 | `Bases/` `Controller/` `Model/` `Systems/` `Utility/` `Rule/` | 组件角色接口、优先级 / key 值对象、上下文感知约束与扩展边界 |
 | `Events/` `Property/` `State/` `StateManagement/` | 事件总线、解绑对象、可绑定属性、状态机、Store / reducer / middleware 契约 |
 | `Coroutine/` `Time/` `Pause/` `Concurrency/` | 协程状态、时间源、暂停栈、键控异步锁和统计对象 |
-| `Resource/` `Pool/` `Logging/` `Localization/` | 资源句柄、对象池、日志、日志工厂、本地化表与格式化契约 |
+| `Resource/` `Pool/` `Logging/` `Localization/` | 资源句柄、对象池、appender / filter / formatter 日志输出契约、本地化表与格式化契约 |
 | `Configuration/` `Environment/` | 配置管理器、环境对象与运行时环境访问契约 |
 | `Data/` `Serializer/` `Storage/` `Versioning/` | 数据装载、序列化、存储与版本化契约 |
 | `Enums/` `Properties/` | 架构阶段枚举，以及架构 / logger 相关属性键 |
@@ -41,7 +41,7 @@
 | `Architectures/` `Lifecycle/` `Registries/` | `IArchitecture`、`IArchitectureContext`、`IServiceModule`、`KeyValueRegistryBase<TKey, TValue>` | 看架构、上下文、模块装配与注册表基类边界 |
 | `Events/` `Property/` `State/` `StateManagement/` | `IEventBus`、`IBindableProperty<T>`、`IStateMachine`、`IStore<TState>` | 看事件分发、可绑定状态与 store 契约 |
 | `Coroutine/` `Time/` `Pause/` `Concurrency/` | `IYieldInstruction`、`ITimeProvider`、`IPauseStackManager`、`IAsyncKeyLockManager` | 看协程、时间源、暂停栈与并发协调能力 |
-| `Resource/` `Pool/` `Logging/` `Localization/` | `IResourceManager`、`IObjectPoolSystem`、`ILogger`、`ILocalizationManager` | 看资源、对象池、日志与本地化服务角色 |
+| `Resource/` `Pool/` `Logging/` `Localization/` | `IResourceManager`、`IObjectPoolSystem`、`ILogAppender`、`ILocalizationManager` | 看资源、对象池、日志输出引擎与本地化服务角色；日志记录契约使用 `Microsoft.Extensions.Logging` 的 `ILogger` |
 | `Configuration/` `Environment/` `Data/` `Serializer/` `Storage/` `Versioning/` | `IConfigurationManager`、`IEnvironment`、`ILoadableFrom<T>`、`ISerializer`、`IStorage` | 看配置、环境、数据装载、序列化与存储边界 |
 | `Bases/` `Controller/` `Model/` `Systems/` `Utility/` `Rule/` `Enums/` `Properties/` | `IPrioritized`、`IController`、`IModel`、`ISystem`、`IContextUtility`、`ArchitecturePhase` | 看组件角色、优先级和值对象约定 |
 
@@ -66,7 +66,7 @@ IContextAware 要求显式绑定实例上下文；未绑定时不回退到全局
 如果你在做模块拆分、测试替身或接口适配，优先看这些类型族的 XML 文档：
 
 - 架构与模块入口：`IArchitecture`、`IArchitectureContext`、`IServiceModule`
-- 运行时基础设施：`IIocContainer`、`ILogger`、`IResourceManager`、`IConfigurationManager`
+- 运行时基础设施：`IIocContainer`、`ILogAppender`、`IResourceManager`、`IConfigurationManager`
 - 状态与并发能力：`IStateMachine`、`IStore`、`IAsyncKeyLockManager`、`ITimeProvider`
 
 ## 对应文档

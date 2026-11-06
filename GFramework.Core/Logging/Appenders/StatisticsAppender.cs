@@ -5,6 +5,7 @@ using System.Collections.Concurrent;
 using System.Text;
 using System.Globalization;
 using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.Logging;
 using GFramework.Core.Abstractions.Time;
 using GFramework.Core.Time;
 

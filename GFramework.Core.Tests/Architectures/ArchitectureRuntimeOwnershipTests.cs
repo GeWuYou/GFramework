@@ -6,10 +6,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Enums;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Architectures;
-using GFramework.Core.Logging;
+using Microsoft.Extensions.Logging;
 using GFramework.Core.Systems;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
@@ -65,9 +64,8 @@ public sealed class ArchitectureRuntimeOwnershipTests
     [Test]
     public async Task Two_Architectures_Should_Isolate_Context_And_Log_Factory()
     {
-        var globalFactory = LoggerFactoryResolver.Provider;
-        var factoryA = new ConsoleLoggerFactoryProvider();
-        var factoryB = new ConsoleLoggerFactoryProvider();
+        using var factoryA = LoggerFactory.Create(static _ => { });
+        using var factoryB = LoggerFactory.Create(static _ => { });
         var a = new OwnedArchitecture((_, services) => services.AddSingleton(new Marker("A")), factoryA);
         var b = new OwnedArchitecture((_, services) => services.AddSingleton(new Marker("B")), factoryB);
         await a.InitializeAsync().ConfigureAwait(false);
@@ -76,9 +74,8 @@ public sealed class ArchitectureRuntimeOwnershipTests
         {
             Assert.That(a.Context.GetService<Marker>().Name, Is.EqualTo("A"));
             Assert.That(b.Context.GetService<Marker>().Name, Is.EqualTo("B"));
-            Assert.That(a.Context.GetService<ILoggerFactoryProvider>(), Is.SameAs(factoryA));
-            Assert.That(b.Context.GetService<ILoggerFactoryProvider>(), Is.SameAs(factoryB));
-            Assert.That(LoggerFactoryResolver.Provider, Is.SameAs(globalFactory));
+            Assert.That(a.Context.GetService<ILoggerFactory>(), Is.SameAs(factoryA));
+            Assert.That(b.Context.GetService<ILoggerFactory>(), Is.SameAs(factoryB));
         });
         var oldContext = a.Context;
         await a.DestroyAsync().ConfigureAwait(false);
@@ -242,7 +239,7 @@ public sealed class ArchitectureRuntimeOwnershipTests
         /// <param name="factory">实例日志工厂。</param>
         public OwnedArchitecture(
             Action<OwnedArchitecture, IServiceCollection> configure,
-            ILoggerFactoryProvider? factory = null)
+            ILoggerFactory? factory = null)
             : base(configuration: CreateConfiguration(factory))
         {
             _configure = configure;
@@ -261,11 +258,11 @@ public sealed class ArchitectureRuntimeOwnershipTests
         /// <summary>构建本测试独立的实例日志配置。</summary>
         /// <param name="factory">显式工厂。</param>
         /// <returns>配置。</returns>
-        private static ArchitectureConfiguration CreateConfiguration(ILoggerFactoryProvider? factory)
+        private static ArchitectureConfiguration CreateConfiguration(ILoggerFactory? factory)
         {
             var result = new ArchitectureConfiguration();
             if (factory != null)
-                result.LoggerProperties.LoggerFactoryProvider = factory;
+                result.LoggerProperties.LoggerFactory = factory;
             return result;
         }
     }

@@ -3,14 +3,14 @@
 
 using System.Reflection;
 using System.Threading;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Architectures;
 using GFramework.Core.Ioc;
-using GFramework.Core.Logging;
 using GFramework.Cqrs;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Extensions;
 using GFramework.Cqrs.Internal;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace GFramework.Cqrs.Tests.Cqrs;
 
@@ -21,16 +21,12 @@ namespace GFramework.Cqrs.Tests.Cqrs;
 [NonParallelizable]
 internal sealed class CqrsGeneratedRequestInvokerProviderTests
 {
-    private ILoggerFactoryProvider? _previousLoggerFactoryProvider;
-
     /// <summary>
     ///     在每个用例前重置 registrar / dispatcher 的静态缓存，避免跨用例共享状态影响断言。
     /// </summary>
     [SetUp]
     public void SetUp()
     {
-        _previousLoggerFactoryProvider = LoggerFactoryResolver.Provider;
-        LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider();
         GeneratedRequestPipelineTrackingBehavior.InvocationCount = 0;
         GeneratedStreamPipelineTrackingBehavior.InvocationCount = 0;
         ClearRegistrarCaches();
@@ -43,7 +39,6 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
     [TearDown]
     public void TearDown()
     {
-        LoggerFactoryResolver.Provider = _previousLoggerFactoryProvider ?? new ConsoleLoggerFactoryProvider();
         GeneratedRequestPipelineTrackingBehavior.InvocationCount = 0;
         GeneratedStreamPipelineTrackingBehavior.InvocationCount = 0;
         ClearRegistrarCaches();
@@ -112,7 +107,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
     public void RegisterGeneratedRegistry_Should_Register_Only_The_Selected_Provider()
     {
         var container = new MicrosoftDiContainer();
-        var logger = LoggerFactoryResolver.Provider.CreateLogger(nameof(CqrsGeneratedRequestInvokerProviderTests));
+        var logger = NullLogger<CqrsGeneratedRequestInvokerProviderTests>.Instance;
 
         CqrsHandlerRegistrar.RegisterGeneratedRegistry(
             container.GetServicesUnsafe,

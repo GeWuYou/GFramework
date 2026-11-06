@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using GFramework.Core.Extensions;
 using GFramework.Core.Logging;
 using GFramework.Core.Model;
@@ -17,12 +19,12 @@ namespace GFramework.Game.Setting;
 ///     - 管理 Settings Data 的生命周期（Load / Save / Reset / Migration）
 ///     - 编排 Settings Applicator 的 Apply 行为
 /// </summary>
-public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider, TRepository? repository)
+public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider, TRepository? repository, ILogger? logger = null)
     : AbstractModel, ISettingsModel
     where TRepository : class, ISettingsDataRepository
 {
-    private static readonly ILogger Log =
-        LoggerFactoryResolver.Provider.CreateLogger(nameof(SettingsModel<TRepository>));
+    // 标准日志记录器；未注入时使用空输出，不读取进程级状态。
+    private readonly ILogger _logger = logger ?? NullLogger<SettingsModel<TRepository>>.Instance;
 
     private readonly ConcurrentDictionary<Type, IResetApplyAbleSettings> _applicators = new();
 
@@ -182,7 +184,7 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
         }
         catch (Exception ex)
         {
-            Log.Error("Failed to load unified settings file.", ex);
+            _logger.LogError(ex, "Failed to load unified settings file.");
             return;
         }
 
@@ -205,7 +207,7 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
             }
             catch (Exception ex)
             {
-                Log.Error($"Failed to initialize settings data: {data.GetType().Name}", ex);
+                _logger.LogError(ex, $"Failed to initialize settings data: {data.GetType().Name}");
             }
 
         _initialized = true;
@@ -226,7 +228,7 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
             }
             catch (Exception ex)
             {
-                Log.Error($"Failed to save settings data: {data.GetType().Name}", ex);
+                _logger.LogError(ex, $"Failed to save settings data: {data.GetType().Name}");
             }
 
         this.SendEvent(new SettingsSavedAllEvent());
@@ -244,7 +246,7 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
             }
             catch (Exception ex)
             {
-                Log.Error($"Failed to apply settings: {applicator.GetType().Name}", ex);
+                _logger.LogError(ex, $"Failed to apply settings: {applicator.GetType().Name}");
             }
 
         this.SendEvent(new SettingsAppliedAllEvent());

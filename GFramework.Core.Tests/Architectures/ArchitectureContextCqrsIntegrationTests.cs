@@ -2,10 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Architectures;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Architectures;
 using GFramework.Core.Ioc;
-using GFramework.Core.Logging;
 using GFramework.Cqrs;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Cqrs.Request;
@@ -27,12 +25,11 @@ namespace GFramework.Core.Tests.Architectures;
 public class ArchitectureContextCqrsIntegrationTests
 {
     /// <summary>
-    ///     初始化测试所需的日志工厂解析器。
+    ///     初始化测试所需的全局上下文状态。
     /// </summary>
     [SetUp]
     public void SetUp()
     {
-        LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider();
         GameContext.Clear();
     }
 
@@ -240,7 +237,7 @@ public class ArchitectureContextCqrsIntegrationTests
         /// </summary>
         public override Action<IServiceCollection>? Configurator => services =>
         {
-            services.AddCqrsRuntime(LoggerFactoryResolver.Provider);
+            services.AddCqrsRuntime();
             services.AddSingleton<IRequestHandler<PingRequest, int>, PingRequestHandler>();
         };
 

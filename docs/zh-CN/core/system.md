@@ -51,15 +51,12 @@ System 的生命周期由架构管理：
 ### 1. 定义 System
 
 ```csharp
-// 战斗系统
+// 战斗系统（基类提供经架构上下文解析的 _logger）
 public class CombatSystem : AbstractSystem
 {
-    private ILogger _logger;
-    
     protected override void OnInit()
     {
-        _logger = this.GetService<ILoggerFactoryProvider>().CreateLogger(GetType().Name);
-        _logger.Info("CombatSystem initialized");
+        _logger.LogInformation("CombatSystem initialized");
         
         // 注册事件监听
         this.RegisterEvent<EnemyAttackEvent>(OnEnemyAttack);
@@ -79,7 +76,7 @@ public class CombatSystem : AbstractSystem
         // 发送伤害事件
         this.SendEvent(new PlayerTookDamageEvent { Damage = damage });
         
-        _logger.Debug($"Player took {damage} damage from enemy attack");
+        _logger.LogDebug($"Player took {damage} damage from enemy attack");
     }
     
     private void OnPlayerAttack(PlayerAttackEvent e)
@@ -96,7 +93,7 @@ public class CombatSystem : AbstractSystem
             Damage = damage 
         });
         
-        _logger.Debug($"Enemy {e.Enemy.Id} took {damage} damage from player attack");
+        _logger.LogDebug($"Enemy {e.Enemy.Id} took {damage} damage from player attack");
     }
     
     private int CalculateDamage(int attackPower, int defense)
@@ -106,7 +103,7 @@ public class CombatSystem : AbstractSystem
 
     protected override void OnDestroy()
     {
-        _logger.Info("CombatSystem destroyed");
+        _logger.LogInformation("CombatSystem destroyed");
         // 清理资源
         base.OnDestroy();
     }
@@ -116,10 +113,10 @@ public class CombatSystem : AbstractSystem
         switch (phase)
         {
             case ArchitecturePhase.AfterSystemInit:
-                _logger.Info("CombatSystem is ready");
+                _logger.LogInformation("CombatSystem is ready");
                 break;
             case ArchitecturePhase.Destroying:
-                _logger.Info("CombatSystem is shutting down");
+                _logger.LogInformation("CombatSystem is shutting down");
                 break;
         }
     }

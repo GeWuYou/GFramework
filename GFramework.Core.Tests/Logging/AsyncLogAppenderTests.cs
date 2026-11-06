@@ -3,6 +3,7 @@
 
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Logging.Appenders;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Core.Tests.Logging;
 
@@ -35,7 +36,7 @@ public class AsyncLogAppenderTests
         var startTime = DateTime.UtcNow;
         for (int i = 0; i < 10; i++)
         {
-            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", $"Message {i}", null, null);
+            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", $"Message {i}", null, null);
             asyncAppender.Append(entry);
         }
 
@@ -53,7 +54,7 @@ public class AsyncLogAppenderTests
         {
             for (int i = 0; i < 10; i++)
             {
-                var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", $"Message {i}", null, null);
+                var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", $"Message {i}", null, null);
                 asyncAppender.Append(entry);
             }
 
@@ -71,7 +72,7 @@ public class AsyncLogAppenderTests
 
         for (int i = 0; i < 100; i++)
         {
-            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", $"Message {i}", null, null);
+            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", $"Message {i}", null, null);
             asyncAppender.Append(entry);
         }
 
@@ -88,7 +89,7 @@ public class AsyncLogAppenderTests
         object? observedSender = null;
         AsyncLogFlushCompletedEventArgs? observedArgs = null;
 
-        asyncAppender.Append(new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Flush check", null, null));
+        asyncAppender.Append(new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Flush check", null, null));
 
         asyncAppender.OnFlushCompleted += (sender, eventArgs) =>
         {
@@ -114,7 +115,7 @@ public class AsyncLogAppenderTests
         ILogAppender logAppender = asyncAppender;
         var observedResults = new List<bool>();
 
-        asyncAppender.Append(new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Interface flush check", null, null));
+        asyncAppender.Append(new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Interface flush check", null, null));
         asyncAppender.OnFlushCompleted += (_, eventArgs) => observedResults.Add(eventArgs.Success);
 
         logAppender.Flush();
@@ -131,7 +132,7 @@ public class AsyncLogAppenderTests
         using var asyncAppender = new AsyncLogAppender(innerAppender, bufferSize: 10);
         var observedResults = new List<bool>();
 
-        asyncAppender.Append(new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Already processed", null, null));
+        asyncAppender.Append(new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Already processed", null, null));
         Assert.That(appendCompleted.Wait(TimeSpan.FromSeconds(1)), Is.True);
 
         asyncAppender.OnFlushCompleted += (_, eventArgs) => observedResults.Add(eventArgs.Success);
@@ -155,7 +156,7 @@ public class AsyncLogAppenderTests
         {
             for (int i = 0; i < 50; i++)
             {
-                var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", $"Message {i}", null, null);
+                var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", $"Message {i}", null, null);
                 asyncAppender.Append(entry);
             }
         } // Dispose 会等待所有日志处理完成
@@ -170,7 +171,7 @@ public class AsyncLogAppenderTests
         var asyncAppender = new AsyncLogAppender(innerAppender);
         asyncAppender.Dispose();
 
-        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Test", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test", null, null);
 
         Assert.Throws<ObjectDisposedException>(() => asyncAppender.Append(entry));
     }
@@ -183,7 +184,7 @@ public class AsyncLogAppenderTests
 
         for (int i = 0; i < 10; i++)
         {
-            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", $"Message {i}", null, null);
+            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", $"Message {i}", null, null);
             asyncAppender.Append(entry);
         }
 
@@ -205,7 +206,7 @@ public class AsyncLogAppenderTests
             {
                 for (int i = 0; i < 100; i++)
                 {
-                    var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger",
+                    var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger",
                         $"Thread {threadId} Message {i}", null, null);
                     asyncAppender.Append(entry);
                 }
@@ -233,7 +234,7 @@ public class AsyncLogAppenderTests
         {
             for (int i = 0; i < 10; i++)
             {
-                var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", $"Message {i}", null, null);
+                var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", $"Message {i}", null, null);
                 asyncAppender.Append(entry);
             }
         });
@@ -259,7 +260,7 @@ public class AsyncLogAppenderTests
         {
             for (int i = 0; i < 10; i++)
             {
-                var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", $"Message {i}", null, null);
+                var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", $"Message {i}", null, null);
                 asyncAppender.Append(entry);
             }
         });
@@ -281,7 +282,7 @@ public class AsyncLogAppenderTests
         {
             for (int i = 0; i < 10; i++)
             {
-                var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", $"Message {i}", null, null);
+                var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", $"Message {i}", null, null);
                 asyncAppender.Append(entry);
             }
         });

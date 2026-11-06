@@ -2292,13 +2292,13 @@ public class SaveSystem : AbstractSystem
         }
         catch (StorageException ex)
         {
-            Logger.Warning($"Failed to load from primary storage: {ex.Message}");
+            Logger.LogWarning($"Failed to load from primary storage: {ex.Message}");
             
             try
             {
                 // 尝试从备份存储加载
                 var backupData = await _backupStorage.ReadAsync<SaveData>(saveId);
-                Logger.Info($"Successfully loaded from backup storage: {saveId}");
+                Logger.LogInformation($"Successfully loaded from backup storage: {saveId}");
                 
                 // 恢复到主存储
                 await _primaryStorage.WriteAsync(saveId, backupData);
@@ -2307,7 +2307,7 @@ public class SaveSystem : AbstractSystem
             }
             catch (Exception backupEx)
             {
-                Logger.Error($"Failed to load from backup storage: {backupEx.Message}");
+                Logger.LogError($"Failed to load from backup storage: {backupEx.Message}");
                 
                 // 返回默认存档数据
                 return GetDefaultSaveData();
@@ -2317,7 +2317,7 @@ public class SaveSystem : AbstractSystem
     
     private SaveData GetDefaultSaveData()
     {
-        Logger.Warning("Returning default save data due to loading failures");
+        Logger.LogWarning("Returning default save data due to loading failures");
         return new SaveData
         {
             PlayerId = "default",

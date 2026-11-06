@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection.Emit;
@@ -141,9 +140,9 @@ internal static class CqrsHandlerRegistrar
         }
         catch (Exception exception)
         {
-            logger.Warn(
+            logger.LogWarning(
                 $"Generated CQRS handler registry discovery failed for assembly {assemblyName}. Falling back to reflection scan.");
-            logger.Warn(
+            logger.LogWarning(
                 $"Failed to use generated CQRS handler registry for assembly {assemblyName}: {exception.Message}");
             return GeneratedRegistrationResult.NoGeneratedRegistry();
         }
@@ -171,7 +170,7 @@ internal static class CqrsHandlerRegistrar
             {
                 if (!registeredMappings.Add(new HandlerMapping(handlerInterface, implementationType)))
                 {
-                    logger.Debug(
+                    logger.LogDebug(
                         $"Skipping duplicate CQRS handler {implementationType.FullName} as {handlerInterface.FullName}.");
                     continue;
                 }
@@ -179,7 +178,7 @@ internal static class CqrsHandlerRegistrar
                 // Request/notification handlers receive context injection before every dispatch.
                 // Transient registration avoids sharing mutable Context across concurrent requests.
                 services.AddTransient(handlerInterface, implementationType);
-                logger.Debug(
+                logger.LogDebug(
                     $"Registered CQRS handler {implementationType.FullName} as {handlerInterface.FullName}.");
             }
         }
@@ -235,7 +234,7 @@ internal static class CqrsHandlerRegistrar
 
         if (!activationMetadata.ImplementsRegistryContract)
         {
-            logger.Warn(
+            logger.LogWarning(
                 $"Ignoring generated CQRS handler registry {registryType.FullName} in assembly {assemblyName} because it does not implement {typeof(ICqrsHandlerRegistry).FullName}.");
             registry = null;
             return false;
@@ -243,7 +242,7 @@ internal static class CqrsHandlerRegistrar
 
         if (activationMetadata.IsAbstract)
         {
-            logger.Warn(
+            logger.LogWarning(
                 $"Ignoring generated CQRS handler registry {registryType.FullName} in assembly {assemblyName} because it is abstract.");
             registry = null;
             return false;
@@ -251,7 +250,7 @@ internal static class CqrsHandlerRegistrar
 
         if (activationMetadata.Factory is null)
         {
-            logger.Warn(
+            logger.LogWarning(
                 $"Ignoring generated CQRS handler registry {registryType.FullName} in assembly {assemblyName} because it does not expose an accessible parameterless constructor.");
             registry = null;
             return false;
@@ -276,7 +275,7 @@ internal static class CqrsHandlerRegistrar
     {
         foreach (var registry in registries)
         {
-            logger.Debug(
+            logger.LogDebug(
                 $"Registering CQRS handlers for assembly {assemblyName} via generated registry {registry.GetType().FullName}.");
             registry.Register(services, logger);
             RegisterGeneratedRequestInvokerProvider(services, registry, assemblyName, logger);
@@ -306,7 +305,7 @@ internal static class CqrsHandlerRegistrar
 
         RegisterGeneratedRequestInvokerDescriptors(provider, assemblyName, logger);
         services.AddSingleton(typeof(ICqrsRequestInvokerProvider), provider);
-        logger.Debug(
+        logger.LogDebug(
             $"Registered CQRS request invoker provider {provider.GetType().FullName} for assembly {assemblyName}.");
     }
 
@@ -335,14 +334,14 @@ internal static class CqrsHandlerRegistrar
         }
         catch (Exception exception)
         {
-            logger.Warn(
+            logger.LogWarning(
                 $"Failed to enumerate generated CQRS request invoker descriptors from provider {provider.GetType().FullName} in assembly {assemblyName}. Falling back to runtime reflection for request invokers: {exception.Message}");
             return;
         }
 
         if (descriptors is null)
         {
-            logger.Warn(
+            logger.LogWarning(
                 $"Ignoring generated CQRS request invoker descriptors from provider {provider.GetType().FullName} in assembly {assemblyName} because GetDescriptors() returned null.");
             return;
         }
@@ -352,7 +351,7 @@ internal static class CqrsHandlerRegistrar
         {
             if (descriptorEntry is null)
             {
-                logger.Warn(
+                logger.LogWarning(
                     $"Ignoring null generated CQRS request invoker descriptor entry from provider {provider.GetType().FullName} in assembly {assemblyName}.");
                 continue;
             }
@@ -366,7 +365,7 @@ internal static class CqrsHandlerRegistrar
 
             if (!registeredKeys.Add(descriptorKey))
             {
-                logger.Warn(
+                logger.LogWarning(
                     $"Ignoring duplicate generated CQRS request invoker descriptor for {descriptorEntry.RequestType.FullName} -> {descriptorEntry.ResponseType.FullName} from provider {provider.GetType().FullName} in assembly {assemblyName}.");
                 continue;
             }
@@ -375,7 +374,7 @@ internal static class CqrsHandlerRegistrar
                 descriptorEntry.RequestType,
                 descriptorEntry.ResponseType,
                 descriptorEntry.Descriptor);
-            logger.Debug(
+            logger.LogDebug(
                 $"Registered generated CQRS request invoker descriptor for {descriptorEntry.RequestType.FullName} -> {descriptorEntry.ResponseType.FullName} from assembly {assemblyName}.");
         }
     }
@@ -402,7 +401,7 @@ internal static class CqrsHandlerRegistrar
 
         RegisterGeneratedStreamInvokerDescriptors(provider, assemblyName, logger);
         services.AddSingleton(typeof(ICqrsStreamInvokerProvider), provider);
-        logger.Debug(
+        logger.LogDebug(
             $"Registered CQRS stream invoker provider {provider.GetType().FullName} for assembly {assemblyName}.");
     }
 
@@ -431,14 +430,14 @@ internal static class CqrsHandlerRegistrar
         }
         catch (Exception exception)
         {
-            logger.Warn(
+            logger.LogWarning(
                 $"Failed to enumerate generated CQRS stream invoker descriptors from provider {provider.GetType().FullName} in assembly {assemblyName}. Falling back to runtime reflection for stream invokers: {exception.Message}");
             return;
         }
 
         if (descriptors is null)
         {
-            logger.Warn(
+            logger.LogWarning(
                 $"Ignoring generated CQRS stream invoker descriptors from provider {provider.GetType().FullName} in assembly {assemblyName} because GetDescriptors() returned null.");
             return;
         }
@@ -448,7 +447,7 @@ internal static class CqrsHandlerRegistrar
         {
             if (descriptorEntry is null)
             {
-                logger.Warn(
+                logger.LogWarning(
                     $"Ignoring null generated CQRS stream invoker descriptor entry from provider {provider.GetType().FullName} in assembly {assemblyName}.");
                 continue;
             }
@@ -462,7 +461,7 @@ internal static class CqrsHandlerRegistrar
 
             if (!registeredKeys.Add(descriptorKey))
             {
-                logger.Warn(
+                logger.LogWarning(
                     $"Ignoring duplicate generated CQRS stream invoker descriptor for {descriptorEntry.RequestType.FullName} -> {descriptorEntry.ResponseType.FullName} from provider {provider.GetType().FullName} in assembly {assemblyName}.");
                 continue;
             }
@@ -471,7 +470,7 @@ internal static class CqrsHandlerRegistrar
                 descriptorEntry.RequestType,
                 descriptorEntry.ResponseType,
                 descriptorEntry.Descriptor);
-            logger.Debug(
+            logger.LogDebug(
                 $"Registered generated CQRS stream invoker descriptor for {descriptorEntry.RequestType.FullName} -> {descriptorEntry.ResponseType.FullName} from assembly {assemblyName}.");
         }
     }
@@ -498,7 +497,7 @@ internal static class CqrsHandlerRegistrar
                     out var resolvedDescriptor) ||
                 resolvedDescriptor is null)
             {
-                logger.Warn(
+                logger.LogWarning(
                     $"Ignoring generated CQRS request invoker descriptor for {descriptorEntry.RequestType.FullName} -> {descriptorEntry.ResponseType.FullName} from provider {provider.GetType().FullName} in assembly {assemblyName} because TryGetDescriptor did not return a matching descriptor.");
                 return false;
             }
@@ -506,7 +505,7 @@ internal static class CqrsHandlerRegistrar
             if (!resolvedDescriptor.InvokerMethod.Equals(descriptorEntry.Descriptor.InvokerMethod) ||
                 resolvedDescriptor.HandlerType != descriptorEntry.Descriptor.HandlerType)
             {
-                logger.Warn(
+                logger.LogWarning(
                     $"Ignoring generated CQRS request invoker descriptor for {descriptorEntry.RequestType.FullName} -> {descriptorEntry.ResponseType.FullName} from provider {provider.GetType().FullName} in assembly {assemblyName} because the enumerated descriptor does not match TryGetDescriptor.");
                 return false;
             }
@@ -515,7 +514,7 @@ internal static class CqrsHandlerRegistrar
         }
         catch (Exception exception)
         {
-            logger.Warn(
+            logger.LogWarning(
                 $"Ignoring generated CQRS request invoker descriptor for {descriptorEntry.RequestType.FullName} -> {descriptorEntry.ResponseType.FullName} from provider {provider.GetType().FullName} in assembly {assemblyName} because TryGetDescriptor threw: {exception.Message}");
             return false;
         }
@@ -543,7 +542,7 @@ internal static class CqrsHandlerRegistrar
                     out var resolvedDescriptor) ||
                 resolvedDescriptor is null)
             {
-                logger.Warn(
+                logger.LogWarning(
                     $"Ignoring generated CQRS stream invoker descriptor for {descriptorEntry.RequestType.FullName} -> {descriptorEntry.ResponseType.FullName} from provider {provider.GetType().FullName} in assembly {assemblyName} because TryGetDescriptor did not return a matching descriptor.");
                 return false;
             }
@@ -551,7 +550,7 @@ internal static class CqrsHandlerRegistrar
             if (!resolvedDescriptor.InvokerMethod.Equals(descriptorEntry.Descriptor.InvokerMethod) ||
                 resolvedDescriptor.HandlerType != descriptorEntry.Descriptor.HandlerType)
             {
-                logger.Warn(
+                logger.LogWarning(
                     $"Ignoring generated CQRS stream invoker descriptor for {descriptorEntry.RequestType.FullName} -> {descriptorEntry.ResponseType.FullName} from provider {provider.GetType().FullName} in assembly {assemblyName} because the enumerated descriptor does not match TryGetDescriptor.");
                 return false;
             }
@@ -560,7 +559,7 @@ internal static class CqrsHandlerRegistrar
         }
         catch (Exception exception)
         {
-            logger.Warn(
+            logger.LogWarning(
                 $"Ignoring generated CQRS stream invoker descriptor for {descriptorEntry.RequestType.FullName} -> {descriptorEntry.ResponseType.FullName} from provider {provider.GetType().FullName} in assembly {assemblyName} because TryGetDescriptor threw: {exception.Message}");
             return false;
         }
@@ -583,12 +582,12 @@ internal static class CqrsHandlerRegistrar
 
         if (reflectionFallbackMetadata.HasExplicitTypes)
         {
-            logger.Debug(
+            logger.LogDebug(
                 $"Generated CQRS registry for assembly {assemblyName} requested targeted reflection fallback for {reflectionFallbackMetadata.Types.Count} unsupported handler type(s).");
         }
         else
         {
-            logger.Debug(
+            logger.LogDebug(
                 $"Generated CQRS registry for assembly {assemblyName} requested full reflection fallback for unsupported handlers.");
         }
 
@@ -692,7 +691,7 @@ internal static class CqrsHandlerRegistrar
                     assemblyName,
                     StringComparison.Ordinal))
             {
-                logger.Warn(
+                logger.LogWarning(
                     $"Generated CQRS reflection fallback type {fallbackType.FullName} was declared on assembly {assemblyName} but belongs to assembly {GetAssemblySortKey(fallbackType.Assembly)}. Skipping mismatched fallback entry.");
                 continue;
             }
@@ -746,7 +745,7 @@ internal static class CqrsHandlerRegistrar
             var type = assembly.GetType(typeName, throwOnError: false, ignoreCase: false);
             if (type is null)
             {
-                logger.Warn(
+                logger.LogWarning(
                     $"Generated CQRS reflection fallback type {typeName} could not be resolved in assembly {assemblyName}. Skipping targeted fallback entry.");
                 return;
             }
@@ -755,7 +754,7 @@ internal static class CqrsHandlerRegistrar
         }
         catch (Exception exception)
         {
-            logger.Warn(
+            logger.LogWarning(
                 $"Generated CQRS reflection fallback type {typeName} failed to load in assembly {assemblyName}: {exception.Message}");
         }
     }
@@ -888,12 +887,12 @@ internal static class CqrsHandlerRegistrar
         ILogger logger)
     {
         var assemblyName = GetAssemblySortKey(assembly);
-        logger.Warn(
+        logger.LogWarning(
             $"CQRS handler scan partially failed for assembly {assemblyName}. Continuing with loadable types.");
 
         foreach (var loaderException in exception.LoaderExceptions.Where(static ex => ex is not null))
         {
-            logger.Warn(
+            logger.LogWarning(
                 $"Failed to load one or more types while scanning {assemblyName}: {loaderException!.Message}");
         }
 

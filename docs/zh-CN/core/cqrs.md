@@ -46,7 +46,7 @@ await using var provider = services.BuildServiceProvider();
 var runtime = provider.GetRequiredService<ICqrsRuntime>();
 ```
 
-`AddCqrsRuntime` 提供 `AddCqrsRuntime()`、`AddCqrsRuntime(ILoggerFactoryProvider)` 与 `AddCqrsRuntime(ILogger)` 三种重载，runtime 单例在 provider 构建完成后惰性创建。
+`AddCqrsRuntime` 提供 `AddCqrsRuntime()`、`AddCqrsRuntime(ILoggerFactory?)`（提供标准 `ILoggerFactory` 时注册进 `IServiceCollection`）与 `AddCqrsRuntime(ILogger)` 三种重载，runtime 单例在 provider 构建完成后惰性创建。`LoggingBehavior`、`PerformanceBehavior` 等 pipeline 行为通过构造注入 `ILogger<T>` 获取日志。
 
 从 `ICqrsRuntime` 分发（全部为异步入口）：
 

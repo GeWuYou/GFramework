@@ -1,39 +1,39 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using System.Collections.Generic;
-using System.Threading;
-using GFramework.Core.Abstractions.Logging;
-using GFramework.Core.Logging;
 using GFramework.Cqrs.Tests.Logging;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace GFramework.Cqrs.Tests.Cqrs;
 
 /// <summary>
 ///     为 CQRS 注册测试捕获真实启动路径中创建的日志记录器。
+///     实现标准 <see cref="ILoggerFactory" />，可直接登记到服务集合或传给
+///     <c>AddCqrsRuntime</c>，让注册流水线的诊断日志经由测试可控的工厂创建。
 /// </summary>
 /// <remarks>
 ///     处理器注册入口会分别为测试运行时、容器和注册器创建日志器。
-///     该提供程序统一保留这些测试日志器，以便断言警告是否经由公开入口真正发出。
+///     该工厂统一保留这些测试日志器，以便断言警告是否经由公开入口真正发出。
 ///     并发创建日志器时会通过内部锁串行化，<see cref="Loggers" /> 每次返回快照，避免调用方观察到可变集合。
 /// </remarks>
-internal sealed class CapturingLoggerFactoryProvider : ILoggerFactoryProvider
+internal sealed class CapturingLoggerFactoryProvider : ILoggerFactory
 {
     private readonly List<TestLogger> _loggers = [];
-    private LogLevel _minLevel;
     private readonly Lock _sync = new();
+    private LogLevel _minLevel;
 
     /// <summary>
-    ///     使用指定的最小日志级别初始化一个新的捕获型日志工厂提供程序。
+    ///     使用指定的最小日志级别初始化一个新的捕获型日志工厂。
     /// </summary>
     /// <param name="minLevel">要应用到新建测试日志器的最小日志级别。</param>
-    public CapturingLoggerFactoryProvider(LogLevel minLevel = LogLevel.Info)
+    public CapturingLoggerFactoryProvider(LogLevel minLevel = LogLevel.Information)
     {
         _minLevel = minLevel;
     }
 
     /// <summary>
-    ///     获取通过当前提供程序创建的全部测试日志器快照。
+    ///     获取通过当前工厂创建的全部测试日志器快照。
     /// </summary>
     public IReadOnlyList<TestLogger> Loggers
     {
@@ -71,15 +71,35 @@ internal sealed class CapturingLoggerFactoryProvider : ILoggerFactoryProvider
     /// <summary>
     ///     创建一个测试日志器并将其纳入捕获集合。
     /// </summary>
-    /// <param name="name">日志记录器名称。</param>
+    /// <param name="categoryName">日志类别名称。</param>
     /// <returns>用于后续断言的测试日志器。</returns>
-    public ILogger CreateLogger(string name)
+    public ILogger CreateLogger(string categoryName)
     {
         lock (_sync)
         {
-            var logger = new TestLogger(name, _minLevel);
+            var logger = new TestLogger(categoryName, _minLevel);
             _loggers.Add(logger);
             return logger;
+        }
+    }
+
+    /// <summary>
+    ///     注册额外的日志提供程序。捕获型工厂自身已覆盖捕获职责，额外提供程序被直接忽略。
+    /// </summary>
+    /// <param name="provider">要注册的日志提供程序。</param>
+    public void AddProvider(ILoggerProvider provider)
+    {
+        ArgumentNullException.ThrowIfNull(provider);
+    }
+
+    /// <summary>
+    ///     释放工厂持有的测试日志器捕获集合。
+    /// </summary>
+    public void Dispose()
+    {
+        lock (_sync)
+        {
+            _loggers.Clear();
         }
     }
 }

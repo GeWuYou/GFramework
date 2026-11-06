@@ -5,9 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 [assembly: GFramework.Cqrs.CqrsHandlerRegistryAttribute(
     typeof(GFramework.Cqrs.Benchmarks.Messaging.GeneratedStreamLifetimeBenchmarkRegistry))]
@@ -55,7 +55,7 @@ public sealed class GeneratedStreamLifetimeBenchmarkRegistry :
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(logger);
 
-        logger.Debug("Registered generated stream lifetime benchmark descriptors.");
+        logger.LogDebug("Registered generated stream lifetime benchmark descriptors.");
     }
 
     /// <summary>

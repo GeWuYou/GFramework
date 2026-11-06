@@ -11,9 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Ioc;
-using GFramework.Core.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -88,10 +86,6 @@ public class StreamInvokerBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider
-        {
-            MinLevel = LogLevel.Fatal
-        };
         Fixture.Setup("StreamInvoker", handlerCount: 1, pipelineCount: 0);
         BenchmarkDispatcherCacheHelper.ClearDispatcherCaches();
 
@@ -106,7 +100,7 @@ public class StreamInvokerBenchmarks
         });
         _reflectionRuntime = GFramework.Cqrs.CqrsRuntimeFactory.CreateRuntime(
             _reflectionContainer,
-            LoggerFactoryResolver.Provider.CreateLogger(nameof(StreamInvokerBenchmarks) + ".Reflection"));
+            BenchmarkLogging.CreateLogger(nameof(StreamInvokerBenchmarks) + ".Reflection"));
 
         _generatedContainer = BenchmarkHostFactory.CreateFrozenGFrameworkContainer(container =>
         {
@@ -114,7 +108,7 @@ public class StreamInvokerBenchmarks
         });
         _generatedRuntime = GFramework.Cqrs.CqrsRuntimeFactory.CreateRuntime(
             _generatedContainer,
-            LoggerFactoryResolver.Provider.CreateLogger(nameof(StreamInvokerBenchmarks) + ".Generated"));
+            BenchmarkLogging.CreateLogger(nameof(StreamInvokerBenchmarks) + ".Generated"));
 
         _serviceProvider = BenchmarkHostFactory.CreateMediatRServiceProvider(
             configure: null,

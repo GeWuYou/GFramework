@@ -3,12 +3,10 @@
 
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Enums;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Model;
 using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Abstractions.Utility;
 using GFramework.Core.Architectures;
-using GFramework.Core.Logging;
 
 namespace GFramework.Core.Tests.Architectures;
 
@@ -21,12 +19,11 @@ namespace GFramework.Core.Tests.Architectures;
 public class ArchitectureComponentRegistryBehaviorTests
 {
     /// <summary>
-    ///     初始化日志工厂和全局上下文状态。
+    ///     初始化全局上下文状态。
     /// </summary>
     [SetUp]
     public void SetUp()
     {
-        LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider();
         GameContext.Clear();
     }
 

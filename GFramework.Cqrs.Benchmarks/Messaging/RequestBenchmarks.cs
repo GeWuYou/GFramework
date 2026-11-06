@@ -10,9 +10,7 @@ using BenchmarkDotNet.Order;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Ioc;
-using GFramework.Core.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -56,10 +54,6 @@ public class RequestBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider
-        {
-            MinLevel = LogLevel.Fatal
-        };
         Fixture.Setup("Request", handlerCount: 1, pipelineCount: 0);
         BenchmarkDispatcherCacheHelper.ClearDispatcherCaches();
 
@@ -70,7 +64,7 @@ public class RequestBenchmarks
         });
         _runtime = GFramework.Cqrs.CqrsRuntimeFactory.CreateRuntime(
             _container,
-            LoggerFactoryResolver.Provider.CreateLogger(nameof(RequestBenchmarks)));
+            BenchmarkLogging.CreateLogger(nameof(RequestBenchmarks)));
 
         _mediatrServiceProvider = BenchmarkHostFactory.CreateMediatRServiceProvider(
             configure: null,

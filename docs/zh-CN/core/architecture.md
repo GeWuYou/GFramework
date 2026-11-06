@@ -15,7 +15,7 @@ description: 说明 GFramework.Core 的 Architecture 入口、生命周期职责
 
 ## 运行边界
 
-- 每个 Architecture 拥有自己的容器、上下文和日志配置，启动不会绑定 GameContext，也不会覆盖全局 LoggerFactoryResolver。
+- 每个 Architecture 拥有自己的容器、上下文和日志配置；日志工厂来自 `LoggerProperties.LoggerFactory`（缺省为实例独立的控制台工厂），架构实例之间互不影响。
 - ConfigureServices 只描述依赖与参与者，不能解析服务或执行初始化 IO。配置完成后只构建一次 provider，再激活和初始化组件；构造依赖与 Ready 后解析共享同一 Singleton。
 - 配置窗口关闭后不再允许追加组件、模块或钩子。需要读取服务的宿主接线写在 OnStarted 或 OnStartedAsync。
 - DestroyAsync 和 DisposeAsync 等待同一次业务停止与 provider 异步释放。销毁开始后，外部保留的上下文不能继续解析服务；业务清理回调仍可访问所需依赖。

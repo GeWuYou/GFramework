@@ -258,18 +258,18 @@ public class PoolMonitorSystem : AbstractSystem
     {
         var stats = _bulletPool.GetStatistics(poolKey);
 
-        Logger.Info($"Pool Statistics for '{poolKey}':");
-        Logger.Info($"  Available: {stats.AvailableCount}");
-        Logger.Info($"  Active: {stats.ActiveCount}");
-        Logger.Info($"  Total Created: {stats.TotalCreated}");
-        Logger.Info($"  Total Acquired: {stats.TotalAcquired}");
-        Logger.Info($"  Total Released: {stats.TotalReleased}");
-        Logger.Info($"  Total Destroyed: {stats.TotalDestroyed}");
+        Logger.LogInformation($"Pool Statistics for '{poolKey}':");
+        Logger.LogInformation($"  Available: {stats.AvailableCount}");
+        Logger.LogInformation($"  Active: {stats.ActiveCount}");
+        Logger.LogInformation($"  Total Created: {stats.TotalCreated}");
+        Logger.LogInformation($"  Total Acquired: {stats.TotalAcquired}");
+        Logger.LogInformation($"  Total Released: {stats.TotalReleased}");
+        Logger.LogInformation($"  Total Destroyed: {stats.TotalDestroyed}");
 
         // 检查是否需要调整池大小
         if (stats.TotalDestroyed &gt; stats.TotalCreated * 0.5)
         {
-            Logger.Warning($"Pool '{poolKey}' has high destruction rate, consider increasing max capacity");
+            Logger.LogWarning($"Pool '{poolKey}' has high destruction rate, consider increasing max capacity");
         }
     }
 }
@@ -1221,7 +1221,7 @@ public class PerformanceMonitor : AbstractSystem
     {
         foreach (var metric in _metrics.Values)
         {
-            Logger.Info($"{metric.Name}: Avg={metric.Average:F2}ms, " +
+            Logger.LogInformation($"{metric.Name}: Avg={metric.Average:F2}ms, " +
                        $"Min={metric.Min:F2}ms, Max={metric.Max:F2}ms");
             metric.Reset();
         }

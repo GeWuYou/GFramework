@@ -1,7 +1,7 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.Logging;
 using GFramework.Cqrs;
 using GFramework.Cqrs.Abstractions.Cqrs;
 
@@ -26,7 +26,7 @@ internal sealed class AdditionalAssemblyNotificationHandlerRegistry : ICqrsHandl
         ArgumentNullException.ThrowIfNull(logger);
 
         services.AddTransient<INotificationHandler<AdditionalAssemblyNotification>>(_ => CreateHandler());
-        logger.Debug(
+        logger.LogDebug(
             $"Registered CQRS handler proxy for {typeof(INotificationHandler<AdditionalAssemblyNotification>).FullName}.");
     }
 

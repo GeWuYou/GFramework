@@ -1,7 +1,8 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Abstractions.Utility;
 using GFramework.Core.Logging;
@@ -28,13 +29,13 @@ public abstract class AbstractContextUtility : ContextAwareBase, IContextUtility
         var name = GetType().Name;
         // 获取上下文中的日志记录器
         Logger = CreateInstanceLogger(name);
-        Logger.Debug($"Initializing Context Utility: {name}");
+        Logger.LogDebug($"Initializing Context Utility: {name}");
 
         // 执行子类实现的初始化逻辑
         OnInit();
 
         // 记录初始化完成信息
-        Logger.Info($"Context Utility initialized: {name}");
+        Logger.LogInformation($"Context Utility initialized: {name}");
     }
 
     /// <summary>
@@ -44,9 +45,9 @@ public abstract class AbstractContextUtility : ContextAwareBase, IContextUtility
     {
         Logger ??= CreateInstanceLogger(GetType().Name);
         var name = GetType().Name;
-        Logger.Debug($"Destroying Context Utility: {name}");
+        Logger.LogDebug($"Destroying Context Utility: {name}");
         OnDestroy();
-        Logger.Info($"Context Utility destroyed: {name}");
+        Logger.LogInformation($"Context Utility destroyed: {name}");
     }
 
     /// <summary>
@@ -60,14 +61,14 @@ public abstract class AbstractContextUtility : ContextAwareBase, IContextUtility
     protected virtual void OnDestroy()
     {
     }
-    /// <summary>绑定架构时使用其实例工厂，独立使用时创建本地工厂，不读取进程级 resolver。</summary>
-    /// <param name="name">日志名称。</param>
+    /// <summary>绑定架构时通过其实例工厂解析标准日志工厂；未绑定时使用空输出。</summary>
+    /// <param name="name">日志类别名。</param>
     /// <returns>当前组件日志。</returns>
     private ILogger CreateInstanceLogger(string name)
     {
         var factory = Context == null
-            ? new ConsoleLoggerFactoryProvider()
-            : Context.GetService<ILoggerFactoryProvider>();
+            ? NullLoggerFactory.Instance
+            : Context.GetService<ILoggerFactory>();
         return factory.CreateLogger(name);
     }
 

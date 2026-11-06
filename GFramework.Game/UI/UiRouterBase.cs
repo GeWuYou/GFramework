@@ -7,6 +7,9 @@ using GFramework.Game.Abstractions.Enums;
 using GFramework.Game.Abstractions.UI;
 using GFramework.Game.Routing;
 
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+
 namespace GFramework.Game.UI;
 
 /// <summary>
@@ -15,7 +18,6 @@ namespace GFramework.Game.UI;
 /// </summary>
 public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterParam>, IUiRouter
 {
-    private static readonly ILogger Log = LoggerFactoryResolver.Provider.CreateLogger(nameof(UiRouterBase));
 
     /// <summary>
     /// 层级管理字典（非栈层级），用于管理Overlay、Modal、Toast等浮层UI
@@ -79,7 +81,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     public void BindRoot(IUiRoot root)
     {
         _uiRoot = root;
-        Log.Debug("Bind UI Root: {0}", root.GetType().Name);
+        _logger.LogDebug("Bind UI Root: {0}", root.GetType().Name);
     }
 
     #region Page Stack Management
@@ -95,12 +97,12 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     {
         if (IsTop(uiKey))
         {
-            Log.Warn("Push ignored: UI already on top: {0}", uiKey);
+            _logger.LogWarning("Push ignored: UI already on top: {0}", uiKey);
             return;
         }
 
         var @event = CreateEvent(uiKey, UiTransitionType.Push, policy, param);
-        Log.Debug("Push UI Page: key={0}, policy={1}, stackBefore={2}", uiKey, policy, Stack.Count);
+        _logger.LogDebug("Push UI Page: key={0}, policy={1}, stackBefore={2}", uiKey, policy, Stack.Count);
 
         await _pipeline.ExecuteAroundAsync(@event, async () =>
         {
@@ -123,12 +125,12 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
 
         if (IsTop(uiKey))
         {
-            Log.Warn("Push ignored: UI already on top: {0}", uiKey);
+            _logger.LogWarning("Push ignored: UI already on top: {0}", uiKey);
             return;
         }
 
         var @event = CreateEvent(uiKey, UiTransitionType.Push, policy, param);
-        Log.Debug("Push existing UI Page: key={0}, policy={1}, stackBefore={2}", uiKey, policy, Stack.Count);
+        _logger.LogDebug("Push existing UI Page: key={0}, policy={1}, stackBefore={2}", uiKey, policy, Stack.Count);
 
         await _pipeline.ExecuteAroundAsync(@event, async () =>
         {
@@ -146,7 +148,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     {
         if (Stack.Count == 0)
         {
-            Log.Debug("Pop ignored: stack is empty");
+            _logger.LogDebug("Pop ignored: stack is empty");
             return;
         }
 
@@ -154,7 +156,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
 
         if (!await ExecuteLeaveGuardsAsync(leavingUiKey).ConfigureAwait(true))
         {
-            Log.Warn("Pop blocked by guard: {0}", leavingUiKey);
+            _logger.LogWarning("Pop blocked by guard: {0}", leavingUiKey);
             return;
         }
 
@@ -181,7 +183,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
         UiTransitionPolicy pushPolicy = UiTransitionPolicy.Exclusive)
     {
         var @event = CreateEvent(uiKey, UiTransitionType.Replace, pushPolicy, param);
-        Log.Debug("Replace UI Stack with page: key={0}, popPolicy={1}, pushPolicy={2}", uiKey, popPolicy, pushPolicy);
+        _logger.LogDebug("Replace UI Stack with page: key={0}, popPolicy={1}, pushPolicy={2}", uiKey, popPolicy, pushPolicy);
 
         await _pipeline.ExecuteAroundAsync(@event, async () =>
         {
@@ -189,7 +191,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
             DoClearInternal(popPolicy);
 
             var page = _factory.Create(uiKey);
-            Log.Debug("Get/Create UI Page instance for Replace: {0}", page.GetType().Name);
+            _logger.LogDebug("Get/Create UI Page instance for Replace: {0}", page.GetType().Name);
 
             DoPushPageInternal(page, param, pushPolicy);
             await AfterChangeAsync(@event).ConfigureAwait(true);
@@ -209,14 +211,14 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     {
         var uiKey = page.Key;
         var @event = CreateEvent(uiKey, UiTransitionType.Replace, pushPolicy, param);
-        Log.Debug("Replace UI Stack with existing page: key={0}, popPolicy={1}, pushPolicy={2}",
+        _logger.LogDebug("Replace UI Stack with existing page: key={0}, popPolicy={1}, pushPolicy={2}",
             uiKey, popPolicy, pushPolicy);
 
         await _pipeline.ExecuteAroundAsync(@event, async () =>
         {
             await BeforeChangeAsync(@event).ConfigureAwait(true);
             DoClearInternal(popPolicy);
-            Log.Debug("Use existing UI Page instance for Replace: {0}", page.GetType().Name);
+            _logger.LogDebug("Use existing UI Page instance for Replace: {0}", page.GetType().Name);
             DoPushPageInternal(page, param, pushPolicy);
             await AfterChangeAsync(@event).ConfigureAwait(true);
         }).ConfigureAwait(true);
@@ -228,7 +230,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     public async ValueTask ClearAsync()
     {
         var @event = CreateEvent(string.Empty, UiTransitionType.Clear);
-        Log.Debug("Clear UI Stack, stackCount={0}", Stack.Count);
+        _logger.LogDebug("Clear UI Stack, stackCount={0}", Stack.Count);
 
         await _pipeline.ExecuteAroundAsync(@event, async () =>
         {
@@ -339,13 +341,13 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
             SyncPauseRequest(page, isVisible: false);
             _uiRoot.RemoveUiPage(page);
             layerDict.Remove(handle.InstanceId);
-            Log.Debug("Hide & Destroy UI: instanceId={0}, layer={1}", handle.InstanceId, layer);
+            _logger.LogDebug("Hide & Destroy UI: instanceId={0}, layer={1}", handle.InstanceId, layer);
         }
         else
         {
             page.OnHide();
             SyncPauseRequest(page, isVisible: false);
-            Log.Debug("Hide UI (suspend): instanceId={0}, layer={1}", handle.InstanceId, layer);
+            _logger.LogDebug("Hide UI (suspend): instanceId={0}, layer={1}", handle.InstanceId, layer);
         }
     }
 
@@ -364,7 +366,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
 
         page.OnShow();
         SyncPauseRequest(page, isVisible: true);
-        Log.Debug("Resume UI: instanceId={0}, layer={1}", handle.InstanceId, layer);
+        _logger.LogDebug("Resume UI: instanceId={0}, layer={1}", handle.InstanceId, layer);
     }
 
     /// <summary>
@@ -388,7 +390,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
         foreach (var handle in handles)
             Hide(handle, layer, destroy);
 
-        Log.Debug("Cleared layer: {0}, destroyed={1}", layer, destroy);
+        _logger.LogDebug("Cleared layer: {0}, destroyed={1}", layer, destroy);
     }
 
     /// <summary>
@@ -484,7 +486,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
 
         var handled = owner.TryHandleUiAction(action);
         if (!handled)
-            Log.Debug("UI action captured without explicit handler: key={0}, action={1}", owner.Key, action);
+            _logger.LogDebug("UI action captured without explicit handler: key={0}, action={1}", owner.Key, action);
 
         return true;
     }
@@ -536,7 +538,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
         TryBindPauseStackManager();
 
         // 输出调试日志，记录UI路由器基类已初始化及使用的工厂类型
-        Log.Debug("UiRouterBase initialized. Factory={0}", _factory.GetType().Name);
+        _logger.LogDebug("UiRouterBase initialized. Factory={0}", _factory.GetType().Name);
 
         // 调用抽象方法以注册具体的处理程序
         RegisterHandlers();
@@ -609,7 +611,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
         if (!page.IsReentrant &&
             layerDict.Values.Any(p => string.Equals(p.Key, page.Key, StringComparison.Ordinal)))
         {
-            Log.Warn("UI {0} is not reentrant but already exists in layer {1}", page.Key, layer);
+            _logger.LogWarning("UI {0} is not reentrant but already exists in layer {1}", page.Key, layer);
             throw new InvalidOperationException(
                 $"UI {page.Key} does not support multiple instances in layer {layer}");
         }
@@ -625,7 +627,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
         page.OnShow();
         SyncPauseRequest(page, isVisible: true);
 
-        Log.Debug("Show UI: key={0}, instanceId={1}, layer={2}", page.Key, instanceId, layer);
+        _logger.LogDebug("Show UI: key={0}, instanceId={1}, layer={2}", page.Key, instanceId, layer);
         return handle;
     }
 
@@ -656,9 +658,9 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     /// <param name="event">UI过渡事件</param>
     private async Task BeforeChangeAsync(UiTransitionEvent @event)
     {
-        Log.Debug("BeforeChange phases started: {0}", @event.TransitionType);
+        _logger.LogDebug("BeforeChange phases started: {0}", @event.TransitionType);
         await _pipeline.ExecuteAsync(@event, UiTransitionPhases.BeforeChange).ConfigureAwait(true);
-        Log.Debug("BeforeChange phases completed: {0}", @event.TransitionType);
+        _logger.LogDebug("BeforeChange phases completed: {0}", @event.TransitionType);
     }
 
     /// <summary>
@@ -667,9 +669,9 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     /// <param name="event">UI过渡事件</param>
     private async Task AfterChangeAsync(UiTransitionEvent @event)
     {
-        Log.Debug("AfterChange phases started: {0}", @event.TransitionType);
+        _logger.LogDebug("AfterChange phases started: {0}", @event.TransitionType);
         await _pipeline.ExecuteAsync(@event, UiTransitionPhases.AfterChange).ConfigureAwait(true);
-        Log.Debug("AfterChange phases completed: {0}", @event.TransitionType);
+        _logger.LogDebug("AfterChange phases completed: {0}", @event.TransitionType);
     }
 
     /// <summary>
@@ -682,12 +684,12 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     {
         if (!await ExecuteEnterGuardsAsync(uiKey, param).ConfigureAwait(true))
         {
-            Log.Warn("Push blocked by guard: {0}", uiKey);
+            _logger.LogWarning("Push blocked by guard: {0}", uiKey);
             return;
         }
 
         var page = _factory.Create(uiKey);
-        Log.Debug("Get/Create UI Page instance: {0}", page.GetType().Name);
+        _logger.LogDebug("Get/Create UI Page instance: {0}", page.GetType().Name);
         DoPushPageInternal(page, param, policy);
     }
 
@@ -702,23 +704,23 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
         if (Stack.Count > 0)
         {
             var current = Stack.Peek();
-            Log.Debug("Pause current page: {0}", current.View.GetType().Name);
+            _logger.LogDebug("Pause current page: {0}", current.View.GetType().Name);
             current.OnPause();
 
             if (policy == UiTransitionPolicy.Exclusive)
             {
-                Log.Debug("Suspend current page (Exclusive): {0}", current.View.GetType().Name);
+                _logger.LogDebug("Suspend current page (Exclusive): {0}", current.View.GetType().Name);
                 current.OnHide();
                 SyncPauseRequest(current, isVisible: false);
             }
         }
 
-        Log.Debug("Add page to UiRoot: {0}", page.View.GetType().Name);
+        _logger.LogDebug("Add page to UiRoot: {0}", page.View.GetType().Name);
         _uiRoot.AddUiPage(page);
 
         Stack.Push(page);
 
-        Log.Debug("Enter & Show page: {0}, stackAfter={1}", page.View.GetType().Name, Stack.Count);
+        _logger.LogDebug("Enter & Show page: {0}, stackAfter={1}", page.View.GetType().Name, Stack.Count);
         page.OnEnter(param);
         page.OnShow();
         SyncPauseRequest(page, isVisible: true);
@@ -734,7 +736,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
             return;
 
         var top = Stack.Pop();
-        Log.Debug("Pop UI Page internal: {0}, policy={1}, stackAfterPop={2}",
+        _logger.LogDebug("Pop UI Page internal: {0}, policy={1}, stackAfterPop={2}",
             top.GetType().Name, policy, Stack.Count);
 
         if (policy == UiPopPolicy.Destroy)
@@ -763,7 +765,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     /// <param name="policy">页面弹出策略</param>
     private void DoClearInternal(UiPopPolicy policy)
     {
-        Log.Debug("Clear UI Stack internal, count={0}", Stack.Count);
+        _logger.LogDebug("Clear UI Stack internal, count={0}", Stack.Count);
         while (Stack.Count > 0)
             DoPopInternal(policy);
     }
@@ -780,7 +782,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
         catch (InvalidOperationException)
         {
             _pauseStackManager = null;
-            Log.Debug("PauseStackManager not available. Pause integration is disabled for the UI router.");
+            _logger.LogDebug("PauseStackManager not available. Pause integration is disabled for the UI router.");
         }
     }
 

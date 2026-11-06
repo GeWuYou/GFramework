@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Ioc;
-using GFramework.Core.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
+
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Cqrs.Tests.Cqrs;
 
@@ -30,7 +30,7 @@ internal sealed class PartialGeneratedNotificationHandlerRegistry : ICqrsHandler
         services.AddTransient(
             typeof(INotificationHandler<GeneratedRegistryNotification>),
             typeof(GeneratedRegistryNotificationHandler));
-        logger.Debug(
+        logger.LogDebug(
             $"Registered CQRS handler {typeof(GeneratedRegistryNotificationHandler).FullName} as {typeof(INotificationHandler<GeneratedRegistryNotification>).FullName}.");
     }
 }

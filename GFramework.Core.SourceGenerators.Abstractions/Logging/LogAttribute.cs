@@ -33,8 +33,6 @@ public sealed class LogAttribute : Attribute
     /// <summary>生成字段名</summary>
     public string FieldName { get; set; } = "Logger";
 
-    /// <summary>是否生成 static 字段</summary>
-    public bool IsStatic { get; set; } = true;
 
     /// <summary>访问修饰符</summary>
     public string AccessModifier { get; set; } = "private";

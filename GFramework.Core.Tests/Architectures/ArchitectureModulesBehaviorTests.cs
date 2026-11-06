@@ -3,10 +3,8 @@
 
 using System.Reflection;
 using GFramework.Core.Abstractions.Architectures;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Utility;
 using GFramework.Core.Architectures;
-using GFramework.Core.Logging;
 using GFramework.Cqrs;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Extensions;
@@ -25,12 +23,11 @@ namespace GFramework.Core.Tests.Architectures;
 public class ArchitectureModulesBehaviorTests
 {
     /// <summary>
-    ///     初始化日志工厂和全局上下文状态。
+    ///     初始化全局上下文状态。
     /// </summary>
     [SetUp]
     public void SetUp()
     {
-        LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider();
         GameContext.Clear();
         AdditionalAssemblyNotificationHandlerState.Reset();
         TrackingPipelineBehavior<ModuleBehaviorRequest, string>.InvocationCount = 0;
@@ -190,7 +187,7 @@ public class ArchitectureModulesBehaviorTests
         /// <param name="services">当前配置阶段的服务描述集合。</param>
         protected override void ConfigureServices(IServiceCollection services)
         {
-            services.AddCqrsRuntime(LoggerFactoryResolver.Provider);
+            services.AddCqrsRuntime();
             configureCqrs(services);
         }
     }
@@ -206,7 +203,7 @@ public class ArchitectureModulesBehaviorTests
         /// </summary>
         public override Action<IServiceCollection>? Configurator => services =>
         {
-            services.AddCqrsRuntime(LoggerFactoryResolver.Provider);
+            services.AddCqrsRuntime();
             services.AddSingleton<ArchitectureNotificationPublisherProbe>();
             services.AddSingleton<INotificationPublisher, ArchitectureTrackingNotificationPublisher>();
         };

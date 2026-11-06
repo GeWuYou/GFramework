@@ -4,7 +4,8 @@
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Ioc;
 using GFramework.Core.Abstractions.Lifecycle;
-using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using GFramework.Core.Logging;
 using GFramework.Core.Services.Modules;
 
@@ -23,10 +24,10 @@ public sealed class ServiceModuleManager : IServiceModuleManager
     private IIocContainer? _container;
 
     /// <summary>使用实例工厂创建管理器；缺省不访问全局日志解析器。</summary>
-    /// <param name="loggerFactoryProvider">当前实例日志工厂。</param>
-    public ServiceModuleManager(ILoggerFactoryProvider? loggerFactoryProvider = null)
+    /// <param name="loggerFactory">当前实例日志工厂。</param>
+    public ServiceModuleManager(ILoggerFactory? loggerFactory = null)
     {
-        _logger = (loggerFactoryProvider ?? new ConsoleLoggerFactoryProvider())
+        _logger = (loggerFactory ?? NullLoggerFactory.Instance)
             .CreateLogger(nameof(ServiceModuleManager));
     }
 
@@ -106,7 +107,7 @@ public sealed class ServiceModuleManager : IServiceModuleManager
             }
             catch (Exception error)
             {
-                _logger.Error($"Module {_modules[i].ModuleName} cleanup failed.", error);
+                _logger.LogError(error, $"Module {_modules[i].ModuleName} cleanup failed.");
                 errors.Add(error);
             }
         }

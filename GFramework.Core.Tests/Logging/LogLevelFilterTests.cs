@@ -3,6 +3,7 @@
 
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Logging.Filters;
+using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 
 namespace GFramework.Core.Tests.Logging;
@@ -16,7 +17,7 @@ public class LogLevelFilterTests
     [Test]
     public void ShouldLog_WithLevelAboveMinimum_ShouldReturnTrue()
     {
-        var filter = new LogLevelFilter(LogLevel.Info);
+        var filter = new LogLevelFilter(LogLevel.Information);
         var entry = new LogEntry(DateTime.UtcNow, LogLevel.Warning, "TestLogger", "Test", null, null);
 
         Assert.That(filter.ShouldLog(entry), Is.True);
@@ -25,8 +26,8 @@ public class LogLevelFilterTests
     [Test]
     public void ShouldLog_WithLevelEqualToMinimum_ShouldReturnTrue()
     {
-        var filter = new LogLevelFilter(LogLevel.Info);
-        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Test", null, null);
+        var filter = new LogLevelFilter(LogLevel.Information);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test", null, null);
 
         Assert.That(filter.ShouldLog(entry), Is.True);
     }
@@ -34,7 +35,7 @@ public class LogLevelFilterTests
     [Test]
     public void ShouldLog_WithLevelBelowMinimum_ShouldReturnFalse()
     {
-        var filter = new LogLevelFilter(LogLevel.Info);
+        var filter = new LogLevelFilter(LogLevel.Information);
         var entry = new LogEntry(DateTime.UtcNow, LogLevel.Debug, "TestLogger", "Test", null, null);
 
         Assert.That(filter.ShouldLog(entry), Is.False);
@@ -47,10 +48,10 @@ public class LogLevelFilterTests
 
         var traceEntry = new LogEntry(DateTime.UtcNow, LogLevel.Trace, "TestLogger", "Test", null, null);
         var debugEntry = new LogEntry(DateTime.UtcNow, LogLevel.Debug, "TestLogger", "Test", null, null);
-        var infoEntry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Test", null, null);
+        var infoEntry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test", null, null);
         var warningEntry = new LogEntry(DateTime.UtcNow, LogLevel.Warning, "TestLogger", "Test", null, null);
         var errorEntry = new LogEntry(DateTime.UtcNow, LogLevel.Error, "TestLogger", "Test", null, null);
-        var fatalEntry = new LogEntry(DateTime.UtcNow, LogLevel.Fatal, "TestLogger", "Test", null, null);
+        var fatalEntry = new LogEntry(DateTime.UtcNow, LogLevel.Critical, "TestLogger", "Test", null, null);
 
         Assert.That(filter.ShouldLog(traceEntry), Is.False);
         Assert.That(filter.ShouldLog(debugEntry), Is.False);

@@ -90,7 +90,7 @@ public sealed class DiagnosticsFeature
 | `Events/` `Property/` | `IEventBus`、`IEventFilter<T>`、`IBindableProperty<T>`、`IReadonlyBindableProperty<T>` | 事件传播、过滤、解绑对象和属性订阅语义 |
 | `State/` `StateManagement/` | `IStateMachine`、`IAsyncState`、`IStore<TState>`、`IStoreMiddleware<TState>` | 状态机契约与 Store 的 reducer / middleware / diagnostics 边界 |
 | `Coroutine/` `Time/` `Pause/` `Concurrency/` | `IYieldInstruction`、`ICoroutineStatistics`、`ITimeProvider`、`IPauseStackManager`、`IAsyncKeyLockManager` | 调度模型、时间源、暂停栈和异步锁契约 |
-| `Resource/` `Pool/` `Logging/` `Localization/` | `IResourceManager`、`IObjectPoolSystem`、`ILogger`、`IStructuredLogger`、`ILocalizationManager` | 资源 / 池化 / 日志 / 本地化这些基础设施的宿主责任 |
+| `Resource/` `Pool/` `Logging/` `Localization/` | `IResourceManager`、`IObjectPoolSystem`、`ILogAppender`、`ILogFilter`、`ILocalizationManager` | 资源 / 池化 / 日志 / 本地化这些基础设施的宿主责任；日志契约使用 `Microsoft.Extensions.Logging` 的 `ILogger`，输出引擎契约是 appender / filter / formatter |
 | `Configuration/` `Environment/` `Data/` `Serializer/` `Storage/` `Versioning/` | `IConfigurationManager`、`IEnvironment`、`ILoadableFrom<T>`、`ISerializer`、`IStorage`、`IVersioned` | 配置、环境、序列化和持久化边界，以及谁负责具体实现 |
 | `Bases/` `Controller/` `Model/` `Systems/` `Utility/` `Rule/` `Enums/` `Properties/` | `IPrioritized`、`IController`、`IModel`、`ISystem`、`IContextUtility`、`ArchitecturePhase` | 基础角色接口、辅助值对象和架构属性键的复用方式 |
 

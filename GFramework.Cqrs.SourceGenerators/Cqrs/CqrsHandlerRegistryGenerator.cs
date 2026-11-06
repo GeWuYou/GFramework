@@ -13,7 +13,7 @@ public sealed partial class CqrsHandlerRegistryGenerator : IIncrementalGenerator
 {
     private const string CqrsContractsNamespace = $"{PathContests.CqrsAbstractionsNamespace}.Cqrs";
     private const string CqrsRuntimeNamespace = PathContests.CqrsNamespace;
-    private const string LoggingNamespace = $"{PathContests.CoreAbstractionsNamespace}.Logging";
+    private const string LoggingNamespace = "Microsoft.Extensions.Logging";
     private const string IRequestHandlerMetadataName = $"{CqrsContractsNamespace}.IRequestHandler`2";
     private const string INotificationHandlerMetadataName = $"{CqrsContractsNamespace}.INotificationHandler`1";
     private const string IStreamRequestHandlerMetadataName = $"{CqrsContractsNamespace}.IStreamRequestHandler`2";

@@ -4,7 +4,6 @@
 using System.Reflection;
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Ioc;
-using GFramework.Core.Abstractions.Logging;
 
 namespace GFramework.Cqrs;
 
@@ -40,6 +39,8 @@ public sealed class CqrsRuntimeModule(params Assembly[] handlerAssemblies) : ISe
     /// <summary>
     ///     在配置阶段接入默认 CQRS runtime 与声明的处理器程序集。
     ///     所有注册只写入服务描述，不在 provider 构建前解析服务。
+    ///     日志沿用容器已登记的标准 <see cref="Microsoft.Extensions.Logging.ILoggerFactory" />；
+    ///     容器未提供时 CQRS 不注册任何日志基础设施，诊断日志回退到空实现。
     /// </summary>
     /// <param name="container">目标依赖注入容器。</param>
     public void Register(IIocContainer container)
@@ -47,8 +48,8 @@ public sealed class CqrsRuntimeModule(params Assembly[] handlerAssemblies) : ISe
         ArgumentNullException.ThrowIfNull(container);
 
         var services = container.GetServicesUnsafe;
-        var loggerFactoryProvider = container.Get<ILoggerFactoryProvider>() ?? LoggerFactoryResolver.Provider;
-        services.AddCqrsRuntime(loggerFactoryProvider);
+        var loggerFactory = container.Get<ILoggerFactory>();
+        services.AddCqrsRuntime(loggerFactory);
         if (handlerAssemblies.Length > 0)
         {
             services.AddCqrsHandlersFromAssemblies(handlerAssemblies);

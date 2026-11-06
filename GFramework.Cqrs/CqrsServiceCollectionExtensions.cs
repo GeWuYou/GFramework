@@ -2,10 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Reflection;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Internal;
 using GFramework.Cqrs.Notification;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace GFramework.Cqrs;
 
@@ -24,7 +25,10 @@ namespace GFramework.Cqrs;
 public static class CqrsServiceCollectionExtensions
 {
     /// <summary>
-    ///     安装默认 CQRS runtime，并使用全局日志工厂解析器创建诊断日志器。
+    ///     安装默认 CQRS runtime。
+    ///     日志由宿主决定：CQRS 不创建也不拥有进程级日志工厂，
+    ///     runtime 会在首次解析时从容器解析 <see cref="Microsoft.Extensions.Logging.ILogger{TCategoryName}" />，
+    ///     未注册日志基础设施时回退到空实现。
     /// </summary>
     /// <param name="services">目标服务集合。</param>
     /// <returns>同一个 <paramref name="services" />，便于链式配置。</returns>
@@ -32,34 +36,60 @@ public static class CqrsServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        return services.AddCqrsRuntime(LoggerFactoryResolver.Provider);
+        return services.AddCqrsRuntime(loggerFactory: null);
     }
 
     /// <summary>
-    ///     安装默认 CQRS runtime，并从指定日志工厂创建诊断日志器。
+    ///     安装默认 CQRS runtime，并可选地把调用方提供的标准日志工厂登记到容器。
     /// </summary>
     /// <param name="services">目标服务集合。</param>
-    /// <param name="loggerFactoryProvider">用于创建 runtime 诊断日志器的日志工厂。</param>
+    /// <param name="loggerFactory">
+    ///     可选的标准 <see cref="Microsoft.Extensions.Logging.ILoggerFactory" />；
+    ///     提供时会以 <c>TryAddSingleton</c> 登记该实例并补充开放泛型
+    ///     <c>ILogger&lt;&gt;</c> → <c>Logger&lt;&gt;</c> 映射（已注册时保持现状），
+    ///     使 DI 激活的服务与行为可以通过构造函数注入 <see cref="Microsoft.Extensions.Logging.ILogger{TCategoryName}" />；
+    ///     为 <see langword="null" /> 时不登记任何日志基础设施，由宿主或 Architecture 负责注册。
+    ///     CQRS 本身不创建、不拥有进程级日志工厂。
+    /// </param>
     /// <returns>同一个 <paramref name="services" />，便于链式配置。</returns>
     /// <exception cref="ArgumentNullException">
-    ///     <paramref name="services" /> 或 <paramref name="loggerFactoryProvider" /> 为 <see langword="null" />。
+    ///     <paramref name="services" /> 为 <see langword="null" />。
     /// </exception>
     public static IServiceCollection AddCqrsRuntime(
         this IServiceCollection services,
-        ILoggerFactoryProvider loggerFactoryProvider)
+        ILoggerFactory? loggerFactory)
     {
         ArgumentNullException.ThrowIfNull(services);
-        ArgumentNullException.ThrowIfNull(loggerFactoryProvider);
 
-        return services.AddCqrsRuntime(loggerFactoryProvider.CreateLogger("CqrsDispatcher"));
+        // 仅登记调用方显式提供的工厂；TryAdd 语义保证不覆盖宿主已注册的日志配置。
+        if (loggerFactory is not null)
+        {
+            services.TryAddSingleton(loggerFactory);
+            services.TryAddSingleton(typeof(ILogger<>), typeof(Logger<>));
+        }
+
+        // 同一容器只允许一个 runtime 描述;重复安装属于组合根配置错误，显式拒绝避免工厂叠加出多个单例。
+        if (services.Any(static descriptor => descriptor.ServiceType == typeof(ICqrsRuntime)))
+        {
+            throw new InvalidOperationException(
+                $"An {typeof(ICqrsRuntime).FullName} registration already exists. Remove the duplicate " +
+                $"{nameof(AddCqrsRuntime)} call before building the provider.");
+        }
+
+        services.AddSingleton<ICqrsRuntime>(static serviceProvider =>
+            CqrsRuntimeFactory.CreateRuntime(serviceProvider, notificationPublisher: null));
+        return services;
     }
 
     /// <summary>
-    ///     安装默认 CQRS runtime 单例。
+    ///     安装默认 CQRS runtime 单例，并显式指定 runtime 诊断日志器。
     /// </summary>
     /// <param name="services">目标服务集合。</param>
     /// <param name="dispatcherLogger">用于 runtime 诊断的日志器。</param>
     /// <returns>同一个 <paramref name="services" />，便于链式配置。</returns>
+    /// <exception cref="ArgumentNullException">
+    ///     <paramref name="services" /> 或 <paramref name="dispatcherLogger" /> 为 <see langword="null" />。
+    /// </exception>
     /// <exception cref="InvalidOperationException">
     ///     当前服务集合已存在 <see cref="ICqrsRuntime" /> 注册；同一容器只允许安装一个 runtime。
     /// </exception>
@@ -205,6 +235,8 @@ public static class CqrsServiceCollectionExtensions
     /// <summary>
     ///     获取当前服务集合中的程序集注册协调器；尚未安装时按需创建并登记实例绑定。
     ///     实例绑定让后续多次 handler 注册共享同一份程序集去重状态。
+    ///     注册阶段日志优先复用服务集合中已登记的标准 <see cref="Microsoft.Extensions.Logging.ILoggerFactory" />
+    ///     实例；不存在时回退到空实现，注册期诊断默认静默。
     /// </summary>
     private static ICqrsRegistrationService ResolveRegistrationService(IServiceCollection services)
     {
@@ -215,8 +247,14 @@ public static class CqrsServiceCollectionExtensions
         if (existingRegistrationService is not null)
             return existingRegistrationService;
 
-        var registrarLogger = LoggerFactoryResolver.Provider.CreateLogger("DefaultCqrsHandlerRegistrar");
-        var registrationLogger = LoggerFactoryResolver.Provider.CreateLogger("DefaultCqrsRegistrationService");
+        var loggerFactory = services
+            .Select(static descriptor => descriptor.ImplementationInstance)
+            .OfType<ILoggerFactory>()
+            .LastOrDefault();
+        var registrarLogger = loggerFactory?.CreateLogger(nameof(DefaultCqrsHandlerRegistrar))
+                              ?? NullLogger<DefaultCqrsHandlerRegistrar>.Instance;
+        var registrationLogger = loggerFactory?.CreateLogger(nameof(DefaultCqrsRegistrationService))
+                                 ?? NullLogger<DefaultCqrsRegistrationService>.Instance;
         var registrar = new DefaultCqrsHandlerRegistrar(services, registrarLogger);
         var registrationService = new DefaultCqrsRegistrationService(registrar, registrationLogger);
         services.AddSingleton(registrationService);

@@ -1,10 +1,7 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using System.Reflection;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Ioc;
-using GFramework.Core.Logging;
 
 namespace GFramework.Core.Tests.Architectures;
 
@@ -18,14 +15,7 @@ public class PriorityServiceTests
     [SetUp]
     public void SetUp()
     {
-        LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider();
         _container = new MicrosoftDiContainer();
-
-        // 初始化 logger 字段
-        var loggerField = typeof(MicrosoftDiContainer).GetField("_logger",
-            BindingFlags.NonPublic | BindingFlags.Instance);
-        loggerField?.SetValue(_container,
-            LoggerFactoryResolver.Provider.CreateLogger(nameof(MicrosoftDiContainer)));
     }
 
     private MicrosoftDiContainer _container = null!;

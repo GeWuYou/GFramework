@@ -1,11 +1,11 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Extensions;
-using GFramework.Core.Logging;
 using GFramework.Core.Utility;
 using GFramework.Game.Abstractions.UI;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace GFramework.Godot.UI;
 
@@ -16,15 +16,30 @@ namespace GFramework.Godot.UI;
 public class GodotUiFactory : AbstractContextUtility, IUiFactory
 {
     /// <summary>
-    ///     日志记录器，用于记录调试信息。
+    ///     构造注入的标准日志记录器；未注入时为 null。
     /// </summary>
-    private static readonly ILogger Log =
-        LoggerFactoryResolver.Provider.CreateLogger(nameof(GodotUiFactory));
+    private readonly ILogger<GodotUiFactory>? _injectedLogger;
+
+    /// <summary>
+    ///     获取当前生效的日志记录器：优先构造注入，其次回退到上下文提供的记录器，最后退化为空记录器。
+    /// </summary>
+    private ILogger Log =>
+        (ILogger?)_injectedLogger
+        ?? (Logger is { } contextLogger ? contextLogger : NullLogger<GodotUiFactory>.Instance);
 
     /// <summary>
     ///     UI注册表，用于管理UI场景资源。
     /// </summary>
     private IGodotUiRegistry _registry = null!;
+
+    /// <summary>
+    ///     创建Godot UI工厂实例。
+    /// </summary>
+    /// <param name="logger">标准日志记录器；依赖注入容器会自动提供，手动创建时可省略。</param>
+    public GodotUiFactory(ILogger<GodotUiFactory>? logger = null)
+    {
+        _injectedLogger = logger;
+    }
 
     /// <summary>
     ///     根据指定的UI键创建UI页面实例。
@@ -51,7 +66,7 @@ public class GodotUiFactory : AbstractContextUtility, IUiFactory
         var page = provider.GetPage();
 
         // 记录调试日志
-        Log.Debug("Created UI instance: {0}", uiKey);
+        Log.LogDebug("Created UI instance: {UiKey}", uiKey);
         return page;
     }
 

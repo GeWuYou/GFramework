@@ -2,9 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Reflection;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Architectures;
-using GFramework.Core.Logging;
 using GFramework.Cqrs;
 using GFramework.Cqrs.Extensions;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,13 +16,11 @@ namespace GFramework.Core.Tests.Architectures;
 public sealed class ArchitectureAdditionalCqrsHandlersTests
 {
     /// <summary>
-    ///     初始化日志工厂和共享测试状态。
+    ///     初始化共享测试状态。
     /// </summary>
     [SetUp]
     public void SetUp()
     {
-        _previousLoggerFactoryProvider = LoggerFactoryResolver.Provider;
-        LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider();
         GameContext.Clear();
         AdditionalAssemblyNotificationHandlerState.Reset();
     }
@@ -37,12 +33,7 @@ public sealed class ArchitectureAdditionalCqrsHandlersTests
     {
         AdditionalAssemblyNotificationHandlerState.Reset();
         GameContext.Clear();
-        LoggerFactoryResolver.Provider = _previousLoggerFactoryProvider
-                                         ?? throw new InvalidOperationException(
-                                             "LoggerFactoryResolver.Provider should be captured during setup.");
     }
-
-    private ILoggerFactoryProvider? _previousLoggerFactoryProvider;
 
     /// <summary>
     ///     验证显式声明的额外程序集会在初始化阶段接入当前架构容器。
@@ -132,7 +123,7 @@ public sealed class ArchitectureAdditionalCqrsHandlersTests
         ///     在组合根阶段安装默认 CQRS runtime。
         /// </summary>
         public override Action<IServiceCollection>? Configurator => services =>
-            services.AddCqrsRuntime(LoggerFactoryResolver.Provider);
+            services.AddCqrsRuntime();
 
         /// <summary>
         ///     在用户配置阶段接入测试声明的 handler 程序集。

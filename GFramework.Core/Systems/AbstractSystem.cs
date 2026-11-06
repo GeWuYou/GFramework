@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Enums;
-using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Logging;
@@ -16,7 +17,14 @@ namespace GFramework.Core.Systems;
 /// </summary>
 public abstract class AbstractSystem : ContextAwareBase, ISystem
 {
-    private ILogger _logger = null!;
+    /// <summary>当前系统实例日志的底层缓存。</summary>
+    private ILogger? _loggerInstance;
+
+    /// <summary>
+    ///     当前系统实例日志；首次访问时经由上下文或空输出解析并缓存，
+    ///     不依赖初始化时机，也不读取进程级状态。
+    /// </summary>
+    protected ILogger _logger => _loggerInstance ??= CreateInstanceLogger(GetType().Name);
 
     /// <summary>
     ///     系统初始化方法，调用抽象初始化方法
@@ -24,12 +32,11 @@ public abstract class AbstractSystem : ContextAwareBase, ISystem
     public void Initialize()
     {
         var name = GetType().Name;
-        _logger = CreateInstanceLogger(name);
-        _logger.Debug($"Initializing system: {name}");
+        _logger.LogDebug($"Initializing system: {name}");
 
         OnInit();
 
-        _logger.Info($"System initialized: {name}");
+        _logger.LogInformation($"System initialized: {name}");
     }
 
     /// <summary>
@@ -37,12 +44,11 @@ public abstract class AbstractSystem : ContextAwareBase, ISystem
     /// </summary>
     public void Destroy()
     {
-        _logger ??= CreateInstanceLogger(GetType().Name);
-        _logger.Debug($"Destroying system: {GetType().Name}");
+        _logger.LogDebug($"Destroying system: {GetType().Name}");
 
         OnDestroy();
 
-        _logger.Info($"System destroyed: {GetType().Name}");
+        _logger.LogInformation($"System destroyed: {GetType().Name}");
     }
 
     /// <summary>
@@ -64,14 +70,14 @@ public abstract class AbstractSystem : ContextAwareBase, ISystem
     protected virtual void OnDestroy()
     {
     }
-    /// <summary>绑定架构时使用其实例工厂，独立使用时创建本地工厂，不读取进程级 resolver。</summary>
-    /// <param name="name">日志名称。</param>
+    /// <summary>绑定架构时通过其实例工厂解析标准日志工厂；未绑定时使用空输出。</summary>
+    /// <param name="name">日志类别名。</param>
     /// <returns>当前组件日志。</returns>
-    private ILogger CreateInstanceLogger(string name)
+    protected ILogger CreateInstanceLogger(string name)
     {
         var factory = Context == null
-            ? new ConsoleLoggerFactoryProvider()
-            : Context.GetService<ILoggerFactoryProvider>();
+            ? NullLoggerFactory.Instance
+            : Context.GetService<ILoggerFactory>();
         return factory.CreateLogger(name);
     }
 

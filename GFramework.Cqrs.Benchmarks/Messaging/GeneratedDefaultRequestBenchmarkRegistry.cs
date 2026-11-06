@@ -6,9 +6,9 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 [assembly: GFramework.Cqrs.CqrsHandlerRegistryAttribute(
     typeof(GFramework.Cqrs.Benchmarks.Messaging.GeneratedDefaultRequestBenchmarkRegistry))]
@@ -53,7 +53,7 @@ public sealed class GeneratedDefaultRequestBenchmarkRegistry :
         services.AddSingleton(
             typeof(IRequestHandler<RequestBenchmarks.BenchmarkRequest, RequestBenchmarks.BenchmarkResponse>),
             typeof(RequestBenchmarks.BenchmarkRequestHandler));
-        logger.Debug("Registered generated default request benchmark handler.");
+        logger.LogDebug("Registered generated default request benchmark handler.");
     }
 
     /// <summary>

@@ -10,9 +10,7 @@ using BenchmarkDotNet.Order;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Ioc;
-using GFramework.Core.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -55,10 +53,6 @@ public class NotificationBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider
-        {
-            MinLevel = LogLevel.Fatal
-        };
         Fixture.Setup("Notification", handlerCount: 1, pipelineCount: 0);
 
         _container = BenchmarkHostFactory.CreateFrozenGFrameworkContainer(container =>
@@ -68,7 +62,7 @@ public class NotificationBenchmarks
         });
         _runtime = GFramework.Cqrs.CqrsRuntimeFactory.CreateRuntime(
             _container,
-            LoggerFactoryResolver.Provider.CreateLogger(nameof(NotificationBenchmarks)));
+            BenchmarkLogging.CreateLogger(nameof(NotificationBenchmarks)));
 
         _mediatrServiceProvider = BenchmarkHostFactory.CreateMediatRServiceProvider(
             services => services.AddSingleton<MediatR.INotificationHandler<BenchmarkNotification>, BenchmarkNotificationHandler>(),

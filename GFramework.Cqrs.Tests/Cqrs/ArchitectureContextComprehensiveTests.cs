@@ -2,14 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Events;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Architectures;
 using GFramework.Core.Environment;
 using GFramework.Core.Events;
 using GFramework.Core.Ioc;
-using GFramework.Core.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Extensions;
+using GFramework.Cqrs.Tests.Logging;
 
 namespace GFramework.Cqrs.Tests.Cqrs;
 
@@ -21,18 +20,17 @@ public sealed class ArchitectureContextComprehensiveTests
 {
     /// <summary>
     ///     测试初始化方法，在每个测试方法执行前运行。
-    ///     负责初始化日志工厂、依赖注入容器、自有 CQRS 处理器以及架构基础设施服务。
+    ///     负责初始化依赖注入容器、自有 CQRS 处理器以及架构基础设施服务。
     /// </summary>
     [SetUp]
     public void SetUp()
     {
-        LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider();
         _container = new MicrosoftDiContainer();
 
         var loggerField = typeof(MicrosoftDiContainer).GetField("_logger",
             BindingFlags.NonPublic | BindingFlags.Instance);
         loggerField?.SetValue(_container,
-            LoggerFactoryResolver.Provider.CreateLogger(nameof(ArchitectureContextComprehensiveTests)));
+            new TestLogger(nameof(ArchitectureContextComprehensiveTests)));
 
         // 注册架构自身的基础设施服务，验证其与 CQRS 上下文扩展分发可以共存。
         _eventBus = new EventBus();

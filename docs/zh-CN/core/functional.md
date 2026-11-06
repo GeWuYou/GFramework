@@ -210,7 +210,7 @@ var result = 42
 ```csharp
 var result = GetUser()
     .Tap(user => Console.WriteLine($"User: {user.Name}"))
-    .Tap(user => _logger.LogInfo($"Processing user {user.Id}"))
+    .Tap(user => _logger.LogInformation($"Processing user {user.Id}"))
     .Pipe(user => new UserDto { Id = user.Id, Name = user.Name });
 ```
 
@@ -501,7 +501,7 @@ var result = FormatResult(
 var result = GetInput()
     .Pipe(ParseInput)
     .Pipe(ValidateInput)
-    .Tap(x => _logger.LogInfo($"Validated: {x}"))
+    .Tap(x => _logger.LogInformation($"Validated: {x}"))
     .Pipe(FormatResult);
 ```
 
@@ -569,7 +569,7 @@ public Result<UserDto> ProcessUser(int id)
 {
     return Result<int>.Succeed(id)
         .Bind(GetUser)
-        .Map(user => user.Tap(u => _logger.LogInfo($"Processing {u.Name}")))
+        .Map(user => user.Tap(u => _logger.LogInformation($"Processing {u.Name}")))
         .Map(user => new UserDto { Id = user.Id, Name = user.Name });
 }
 ```

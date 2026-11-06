@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
-using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Godot.Logging;
 
@@ -207,7 +207,7 @@ internal sealed class GodotLogConfigurationSource : IDisposable
             DebugOutputTemplate = options.DebugOutputTemplate,
             ReleaseOutputTemplate = options.ReleaseOutputTemplate,
             Colors = options.Colors is { } colors
-                ? new Dictionary<GFramework.Core.Abstractions.Logging.LogLevel, string>(colors)
+                ? new Dictionary<LogLevel, string>(colors)
                 : []
         }.CreateNormalizedCopy();
     }

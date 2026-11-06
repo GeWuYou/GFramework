@@ -3,6 +3,7 @@
 
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Logging.Filters;
+using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 
 namespace GFramework.Core.Tests.Logging;
@@ -28,11 +29,11 @@ public class CompositeFilterTests
     [Test]
     public void ShouldLog_WithAllFiltersReturningTrue_ShouldReturnTrue()
     {
-        var filter1 = new LogLevelFilter(LogLevel.Info);
+        var filter1 = new LogLevelFilter(LogLevel.Information);
         var filter2 = new NamespaceFilter("GFramework");
         var compositeFilter = new CompositeFilter(filter1, filter2);
 
-        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "GFramework.Core", "Test", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "GFramework.Core", "Test", null, null);
 
         Assert.That(compositeFilter.ShouldLog(entry), Is.True);
     }
@@ -44,7 +45,7 @@ public class CompositeFilterTests
         var filter2 = new NamespaceFilter("GFramework");
         var compositeFilter = new CompositeFilter(filter1, filter2);
 
-        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "GFramework.Core", "Test", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "GFramework.Core", "Test", null, null);
 
         Assert.That(compositeFilter.ShouldLog(entry), Is.False);
     }
@@ -56,7 +57,7 @@ public class CompositeFilterTests
         var filter2 = new NamespaceFilter("MyApp");
         var compositeFilter = new CompositeFilter(filter1, filter2);
 
-        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "GFramework.Core", "Test", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "GFramework.Core", "Test", null, null);
 
         Assert.That(compositeFilter.ShouldLog(entry), Is.False);
     }
@@ -64,12 +65,12 @@ public class CompositeFilterTests
     [Test]
     public void ShouldLog_WithMultipleFilters_ShouldApplyAndLogic()
     {
-        var levelFilter = new LogLevelFilter(LogLevel.Info);
+        var levelFilter = new LogLevelFilter(LogLevel.Information);
         var namespaceFilter = new NamespaceFilter("GFramework");
         var compositeFilter = new CompositeFilter(levelFilter, namespaceFilter);
 
         // 满足所有条件
-        var entry1 = new LogEntry(DateTime.UtcNow, LogLevel.Info, "GFramework.Core", "Test", null, null);
+        var entry1 = new LogEntry(DateTime.UtcNow, LogLevel.Information, "GFramework.Core", "Test", null, null);
         Assert.That(compositeFilter.ShouldLog(entry1), Is.True);
 
         // 级别不满足
@@ -77,7 +78,7 @@ public class CompositeFilterTests
         Assert.That(compositeFilter.ShouldLog(entry2), Is.False);
 
         // 命名空间不满足
-        var entry3 = new LogEntry(DateTime.UtcNow, LogLevel.Info, "OtherNamespace", "Test", null, null);
+        var entry3 = new LogEntry(DateTime.UtcNow, LogLevel.Information, "OtherNamespace", "Test", null, null);
         Assert.That(compositeFilter.ShouldLog(entry3), Is.False);
 
         // 都不满足
@@ -88,7 +89,7 @@ public class CompositeFilterTests
     [Test]
     public void ShouldLog_WithNestedCompositeFilters_ShouldWork()
     {
-        var filter1 = new LogLevelFilter(LogLevel.Info);
+        var filter1 = new LogLevelFilter(LogLevel.Information);
         var filter2 = new NamespaceFilter("GFramework");
         var innerComposite = new CompositeFilter(filter1, filter2);
 
@@ -99,7 +100,7 @@ public class CompositeFilterTests
         var entry1 = new LogEntry(DateTime.UtcNow, LogLevel.Warning, "GFramework.Core", "Test", null, null);
         Assert.That(outerComposite.ShouldLog(entry1), Is.True);
 
-        var entry2 = new LogEntry(DateTime.UtcNow, LogLevel.Info, "GFramework.Core", "Test", null, null);
+        var entry2 = new LogEntry(DateTime.UtcNow, LogLevel.Information, "GFramework.Core", "Test", null, null);
         Assert.That(outerComposite.ShouldLog(entry2), Is.False); // 不满足 Warning
     }
 }

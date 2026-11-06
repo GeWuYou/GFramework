@@ -208,7 +208,7 @@ public class AudioManager : AbstractSystem
         _volumeWatcher = config.WatchConfig<float>("audio.masterVolume", newVolume =>
         {
             UpdateMasterVolume(newVolume);
-            this.GetUtility<ILogger>()?.Info($"Master volume changed to: {newVolume}");
+            _logger.LogInformation($"Master volume changed to: {newVolume}");
         });
 
         // 监听音效开关

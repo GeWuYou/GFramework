@@ -1,11 +1,10 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Ioc;
-using GFramework.Core.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Tests.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Cqrs.Tests.Cqrs;
 
@@ -16,30 +15,26 @@ namespace GFramework.Cqrs.Tests.Cqrs;
 [NonParallelizable]
 internal sealed class CqrsHandlerRegistrarFallbackFailureTests
 {
-    private ILoggerFactoryProvider? _originalLoggerFactoryProvider;
     private CapturingLoggerFactoryProvider? _capturingLoggerFactoryProvider;
 
     /// <summary>
-    ///     切换为捕获型日志工厂，并清空 registrar 进程级缓存，避免跨用例共享状态污染断言。
+    ///     准备捕获型日志工厂，并清空 registrar 进程级缓存，避免跨用例共享状态污染断言。
     /// </summary>
     [SetUp]
     public void SetUp()
     {
-        _originalLoggerFactoryProvider = LoggerFactoryResolver.Provider;
         _capturingLoggerFactoryProvider = new CapturingLoggerFactoryProvider(LogLevel.Warning);
-        LoggerFactoryResolver.Provider = _capturingLoggerFactoryProvider;
         ClearRegistrarCaches();
     }
 
     /// <summary>
-    ///     恢复测试前的日志工厂，并清理 registrar 缓存。
+    ///     释放捕获型日志工厂，并清理 registrar 缓存。
     /// </summary>
     [TearDown]
     public void TearDown()
     {
-        LoggerFactoryResolver.Provider = _originalLoggerFactoryProvider!;
+        _capturingLoggerFactoryProvider?.Dispose();
         _capturingLoggerFactoryProvider = null;
-        _originalLoggerFactoryProvider = null;
         ClearRegistrarCaches();
     }
 
@@ -59,7 +54,7 @@ internal sealed class CqrsHandlerRegistrarFallbackFailureTests
             .Returns((Type?)null);
 
         var container = new MicrosoftDiContainer();
-        CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
+        RegisterHandlersWithCapture(container, generatedAssembly.Object);
 
         Assert.Multiple(() =>
         {
@@ -92,7 +87,7 @@ internal sealed class CqrsHandlerRegistrarFallbackFailureTests
             .Throws(new TypeLoadException(exceptionMessage));
 
         var container = new MicrosoftDiContainer();
-        CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
+        RegisterHandlersWithCapture(container, generatedAssembly.Object);
 
         Assert.Multiple(() =>
         {
@@ -121,7 +116,7 @@ internal sealed class CqrsHandlerRegistrarFallbackFailureTests
             new CqrsReflectionFallbackAttribute(crossAssemblyFallbackType));
 
         var container = new MicrosoftDiContainer();
-        CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
+        RegisterHandlersWithCapture(container, generatedAssembly.Object);
 
         Assert.Multiple(() =>
         {
@@ -152,7 +147,7 @@ internal sealed class CqrsHandlerRegistrarFallbackFailureTests
             .Returns([typeof(GeneratedRegistryNotificationHandler)]);
 
         var container = new MicrosoftDiContainer();
-        CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
+        RegisterHandlersWithCapture(container, generatedAssembly.Object);
 
         Assert.Multiple(() =>
         {
@@ -182,7 +177,7 @@ internal sealed class CqrsHandlerRegistrarFallbackFailureTests
             .Returns([typeof(GeneratedRegistryNotificationHandler)]);
 
         var container = new MicrosoftDiContainer();
-        CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
+        RegisterHandlersWithCapture(container, generatedAssembly.Object);
 
         Assert.Multiple(() =>
         {
@@ -198,6 +193,21 @@ internal sealed class CqrsHandlerRegistrarFallbackFailureTests
         });
 
         generatedAssembly.Verify(static assembly => assembly.GetTypes(), Times.Once);
+    }
+
+    /// <summary>
+    ///     通过公开组合根入口接入默认 CQRS runtime 与 handler 注册，并把捕获型日志工厂登记到服务集合，
+    ///     使注册流水线的诊断日志经由 <see cref="CapturingLoggerFactoryProvider" /> 可观测。
+    /// </summary>
+    /// <param name="container">目标测试容器。</param>
+    /// <param name="assemblies">要扫描注册的程序集集合。</param>
+    private void RegisterHandlersWithCapture(MicrosoftDiContainer container, params Assembly[] assemblies)
+    {
+        Assert.That(_capturingLoggerFactoryProvider, Is.Not.Null);
+
+        var services = container.GetServicesUnsafe;
+        services.AddCqrsRuntime(_capturingLoggerFactoryProvider);
+        services.AddCqrsHandlersFromAssemblies(assemblies);
     }
 
     /// <summary>

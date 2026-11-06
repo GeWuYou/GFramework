@@ -1,14 +1,13 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Architectures;
 using GFramework.Core.Ioc;
-using GFramework.Core.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Extensions;
 using GFramework.Cqrs.Internal;
 using GFramework.Cqrs.Tests.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Cqrs.Tests.Cqrs;
 
@@ -27,7 +26,6 @@ internal sealed class CqrsHandlerRegistrarTests
     [SetUp]
     public void SetUp()
     {
-        LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider();
         DeterministicNotificationHandlerState.Reset();
 
         _container = new MicrosoftDiContainer();
@@ -75,7 +73,6 @@ internal sealed class CqrsHandlerRegistrarTests
     [Test]
     public void RegisterHandlers_Should_Register_Loadable_Types_And_Log_Warnings_When_Assembly_Load_Partially_Fails()
     {
-        var originalProvider = LoggerFactoryResolver.Provider;
         var capturingProvider = new CapturingLoggerFactoryProvider(LogLevel.Warning);
         var reflectionTypeLoadException = new ReflectionTypeLoadException(
             [typeof(AlphaDeterministicNotificationHandler), null],
@@ -88,11 +85,10 @@ internal sealed class CqrsHandlerRegistrarTests
             .Setup(static assembly => assembly.GetTypes())
             .Throws(reflectionTypeLoadException);
 
-        LoggerFactoryResolver.Provider = capturingProvider;
         try
         {
             var container = new MicrosoftDiContainer();
-            CqrsTestRuntime.RegisterHandlers(container, partiallyLoadableAssembly.Object);
+            RegisterHandlersWithCapture(container, capturingProvider, partiallyLoadableAssembly.Object);
             container.Freeze();
 
             var handlers = container.GetAll<INotificationHandler<DeterministicOrderNotification>>();
@@ -118,7 +114,7 @@ internal sealed class CqrsHandlerRegistrarTests
         }
         finally
         {
-            LoggerFactoryResolver.Provider = originalProvider;
+            capturingProvider.Dispose();
         }
     }
 
@@ -246,7 +242,6 @@ internal sealed class CqrsHandlerRegistrarTests
     [Test]
     public void RegisterHandlers_Should_Fall_Back_To_Reflection_When_Generated_Registry_Is_Invalid()
     {
-        var originalProvider = LoggerFactoryResolver.Provider;
         var capturingProvider = new CapturingLoggerFactoryProvider(LogLevel.Warning);
         var generatedAssembly = new Mock<Assembly>();
         generatedAssembly
@@ -259,11 +254,10 @@ internal sealed class CqrsHandlerRegistrarTests
             .Setup(static assembly => assembly.GetTypes())
             .Returns([typeof(AlphaDeterministicNotificationHandler)]);
 
-        LoggerFactoryResolver.Provider = capturingProvider;
         try
         {
             var container = new MicrosoftDiContainer();
-            CqrsTestRuntime.RegisterHandlers(container, generatedAssembly.Object);
+            RegisterHandlersWithCapture(container, capturingProvider, generatedAssembly.Object);
             container.Freeze();
 
             var handlers = container.GetAll<INotificationHandler<DeterministicOrderNotification>>();
@@ -285,7 +279,7 @@ internal sealed class CqrsHandlerRegistrarTests
         }
         finally
         {
-            LoggerFactoryResolver.Provider = originalProvider;
+            capturingProvider.Dispose();
         }
     }
 
@@ -304,8 +298,8 @@ internal sealed class CqrsHandlerRegistrarTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(warningLogger.IsDebugEnabled(), Is.False);
-            Assert.That(debugLogger.IsDebugEnabled(), Is.True);
+            Assert.That(warningLogger.IsEnabled(LogLevel.Debug), Is.False);
+            Assert.That(debugLogger.IsEnabled(LogLevel.Debug), Is.True);
             Assert.That(provider.Loggers, Has.Count.EqualTo(2));
         });
     }
@@ -610,6 +604,23 @@ internal sealed class CqrsHandlerRegistrarTests
             .ToArray();
 
         Assert.That(registrations, Has.Length.EqualTo(1));
+    }
+
+    /// <summary>
+    ///     通过公开组合根入口接入默认 CQRS runtime 与 handler 注册，并把捕获型日志工厂登记到服务集合，
+    ///     使注册流水线的诊断日志经由 <see cref="CapturingLoggerFactoryProvider" /> 可观测。
+    /// </summary>
+    /// <param name="container">目标测试容器。</param>
+    /// <param name="capturingProvider">捕获注册阶段诊断日志的标准日志工厂。</param>
+    /// <param name="assemblies">要扫描注册的程序集集合。</param>
+    private static void RegisterHandlersWithCapture(
+        MicrosoftDiContainer container,
+        CapturingLoggerFactoryProvider capturingProvider,
+        params Assembly[] assemblies)
+    {
+        var services = container.GetServicesUnsafe;
+        services.AddCqrsRuntime(capturingProvider);
+        services.AddCqrsHandlersFromAssemblies(assemblies);
     }
 
     /// <summary>

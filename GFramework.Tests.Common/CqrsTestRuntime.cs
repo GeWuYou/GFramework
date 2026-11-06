@@ -4,7 +4,6 @@
 using System;
 using System.Linq;
 using System.Reflection;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Ioc;
 using GFramework.Cqrs;
 
@@ -41,7 +40,8 @@ public static class CqrsTestRuntime
             return;
         }
 
-        services.AddCqrsRuntime(LoggerFactoryResolver.Provider);
+        // CQRS 运行时不要求进程级日志；未提供工厂时使用空输出。
+        services.AddCqrsRuntime();
     }
 
     /// <summary>

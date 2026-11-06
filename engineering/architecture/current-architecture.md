@@ -21,7 +21,7 @@
 
 ## 启动与依赖解析
 
-[Architecture](../../GFramework.Core/Architectures/Architecture.cs) 创建当前实例配置、容器访问窗口和上下文。实例日志不写全局工厂；同一容器不能同时属于两个架构。
+[Architecture](../../GFramework.Core/Architectures/Architecture.cs) 创建当前实例配置、容器访问窗口和上下文。日志契约是 Microsoft.Extensions.Logging：工厂来自 `LoggerProperties.LoggerFactory`，缺省时实例自建控制台工厂并在销毁时释放；实例工厂注册进 DI 容器，没有进程级日志覆盖。同一容器不能同时属于两个架构。
 
 1. [Bootstrapper](../../GFramework.Core/Architectures/ArchitectureBootstrapper.cs) 登记环境、实例上下文与实例服务模块；CQRS 基础设施通过显式安装的 `CqrsRuntimeModule`（`architecture.UseCqrsRuntime(...)` 或 `RegisterServiceModule(new CqrsRuntimeModule(...))`）进入同一列表，不在默认模块列表中。
 2. 执行 Configurator 与 ConfigureServices，只记录服务描述、组件元数据、实例服务模块和阶段钩子。
@@ -50,4 +50,4 @@ CQRS runtime 使用标准服务解析：`services.AddCqrsRuntime()` 创建单例
 - Godot 配置期声明模块，异步启动通过[主线程调度器](../../GFramework.Godot/Architectures/GodotMainThreadDispatcher.cs)等待锚点和模块附加，清理回到同一主线程并使用根停止流程；QueueFree 是引擎排队操作，不声称原生内存已经同步回收。
 - [Arch ECS](../../GFramework.Ecs.Arch/ArchEcsModule.cs) 通过实例 RegisterServiceModule 接入；World 工厂在正式 provider 激活后创建，系统业务停止和资源 Dispose 分开。
 
-本批不改写全部工具子系统或完整日志家族。原生 Godot/VS Code、Native AOT 和性能需各自独立证据；托管构建/测试不能代替这些验收。
+日志家族已改用 Microsoft.Extensions.Logging 契约：自有 `ILogger`/`ILoggerFactoryProvider`、`LoggerFactoryResolver` 与 `GodotLog.UseAsDefaultProvider()` 已移除，Core 输出引擎（appender/formatter/filter）经 `AppenderLoggerProvider` 继续使用。本批不改写全部工具子系统。原生 Godot/VS Code、Native AOT 和性能需各自独立证据；托管构建/测试不能代替这些验收。

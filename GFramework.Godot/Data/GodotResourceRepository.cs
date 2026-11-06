@@ -12,9 +12,9 @@
 // limitations under the License.
 
 using GFramework.Core.Abstractions.Bases;
-using GFramework.Core.Abstractions.Logging;
-using GFramework.Core.Logging;
 using Godot;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace GFramework.Godot.Data;
 
@@ -29,8 +29,19 @@ public class GodotResourceRepository<TKey, TResource>
     where TResource : Resource, IHasKey<TKey>
     where TKey : notnull
 {
-    private static readonly ILogger Log =
-        LoggerFactoryResolver.Provider.CreateLogger(nameof(GodotResourceRepository<TKey, TResource>));
+    /// <summary>
+    /// 标准日志记录器，通过构造注入获取；未注入时退化为空记录器。
+    /// </summary>
+    private readonly ILogger<GodotResourceRepository<TKey, TResource>> _logger;
+
+    /// <summary>
+    /// 创建资源仓储实例。
+    /// </summary>
+    /// <param name="logger">标准日志记录器；依赖注入容器会自动提供，手动创建时可省略。</param>
+    public GodotResourceRepository(ILogger<GodotResourceRepository<TKey, TResource>>? logger = null)
+    {
+        _logger = logger ?? NullLogger<GodotResourceRepository<TKey, TResource>>.Instance;
+    }
 
     /// <summary>
     /// 内部存储字典，用于保存键值对形式的资源
@@ -165,7 +176,7 @@ public class GodotResourceRepository<TKey, TResource>
         var dir = DirAccess.Open(path);
         if (dir == null)
         {
-            Log.Warn($"Path not found: {path}");
+            _logger.LogWarning("Path not found: {Path}", path);
             return;
         }
 
@@ -217,12 +228,12 @@ public class GodotResourceRepository<TKey, TResource>
         var resource = GD.Load<TResource>(fullPath);
         if (resource == null)
         {
-            Log.Warn($"Failed to load resource: {fullPath}");
+            _logger.LogWarning("Failed to load resource: {FullPath}", fullPath);
             return;
         }
 
         // 将资源添加到存储中，如果键已存在则记录警告
         if (!_storage.TryAdd(resource.Key, resource))
-            Log.Warn($"Duplicate key detected: {resource.Key}");
+            _logger.LogWarning("Duplicate key detected: {ResourceKey}", resource.Key);
     }
 }

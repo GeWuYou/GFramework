@@ -8,6 +8,8 @@ using System.Text.Json;
 using GFramework.Core.Abstractions.Configuration;
 using GFramework.Core.Abstractions.Events;
 using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using GFramework.Core.Logging;
 
 namespace GFramework.Core.Configuration;
@@ -38,7 +40,7 @@ public class ConfigurationManager : IConfigurationManager
     /// </summary>
     private readonly ConcurrentDictionary<string, object> _configs = new(StringComparer.Ordinal);
 
-    private readonly ILogger _logger = LoggerFactoryResolver.Provider.CreateLogger(nameof(ConfigurationManager));
+    private readonly ILogger _logger;
 
     /// <summary>
     ///     用于保护监听器列表的锁
@@ -56,6 +58,15 @@ public class ConfigurationManager : IConfigurationManager
     ///     键：配置键，值：监听器列表
     /// </summary>
     private readonly ConcurrentDictionary<string, List<Delegate>> _watchers = new(StringComparer.Ordinal);
+
+    /// <summary>
+    ///     创建配置管理器；未注入日志时使用空输出，不读取进程级状态。
+    /// </summary>
+    /// <param name="logger">标准日志记录器。</param>
+    public ConfigurationManager(ILogger? logger = null)
+    {
+        _logger = logger ?? NullLoggerFactory.Instance.CreateLogger(nameof(ConfigurationManager));
+    }
 
     /// <summary>
     ///     获取配置数量
@@ -307,7 +318,7 @@ public class ConfigurationManager : IConfigurationManager
             catch (Exception ex)
             {
                 // 防止监听器异常影响其他监听器
-                _logger.Error($"Error in config watcher for key '{key}'", ex);
+                _logger.LogError(ex, $"Error in config watcher for key '{key}'");
             }
         }
     }

@@ -6,9 +6,9 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 [assembly: GFramework.Cqrs.CqrsHandlerRegistryAttribute(
     typeof(GFramework.Cqrs.Benchmarks.Messaging.GeneratedRequestLifetimeBenchmarkRegistry))]
@@ -56,7 +56,7 @@ public sealed class GeneratedRequestLifetimeBenchmarkRegistry :
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(logger);
 
-        logger.Debug("Registered generated request lifetime benchmark descriptors.");
+        logger.LogDebug("Registered generated request lifetime benchmark descriptors.");
     }
 
     /// <summary>

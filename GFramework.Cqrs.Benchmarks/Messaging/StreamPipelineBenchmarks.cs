@@ -13,12 +13,11 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Ioc;
-using GFramework.Core.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 [assembly: GFramework.Cqrs.CqrsHandlerRegistryAttribute(
     typeof(GFramework.Cqrs.Benchmarks.Messaging.StreamPipelineBenchmarks.GeneratedStreamPipelineBenchmarkRegistry))]
@@ -92,10 +91,6 @@ public class StreamPipelineBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider
-        {
-            MinLevel = LogLevel.Fatal
-        };
         Fixture.Setup("StreamPipeline", handlerCount: 1, pipelineCount: PipelineCount);
         BenchmarkDispatcherCacheHelper.ClearDispatcherCaches();
 
@@ -107,7 +102,7 @@ public class StreamPipelineBenchmarks
         });
         _runtime = GFramework.Cqrs.CqrsRuntimeFactory.CreateRuntime(
             _container,
-            LoggerFactoryResolver.Provider.CreateLogger(nameof(StreamPipelineBenchmarks)));
+            BenchmarkLogging.CreateLogger(nameof(StreamPipelineBenchmarks)));
 
         _serviceProvider = BenchmarkHostFactory.CreateMediatRServiceProvider(
             services =>
@@ -469,7 +464,7 @@ public class StreamPipelineBenchmarks
             services.AddSingleton(
                 typeof(GFramework.Cqrs.Abstractions.Cqrs.IStreamRequestHandler<BenchmarkStreamRequest, BenchmarkResponse>),
                 typeof(BenchmarkStreamHandler));
-            logger.Debug("Registered generated stream pipeline benchmark handler.");
+            logger.LogDebug("Registered generated stream pipeline benchmark handler.");
         }
 
         /// <summary>

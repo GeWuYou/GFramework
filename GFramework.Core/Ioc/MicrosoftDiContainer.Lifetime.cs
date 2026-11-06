@@ -3,6 +3,7 @@
 
 using System;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Core.Ioc;
 
@@ -106,7 +107,7 @@ public partial class MicrosoftDiContainer
                 DisposeLockWhenQuiescent();
             }
 
-            _logger.Info("IOC Container disposed");
+            _logger.LogInformation("IOC Container disposed");
             completion.TrySetResult(null);
         }
         catch (Exception exception)
