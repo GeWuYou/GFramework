@@ -3,7 +3,7 @@
 
 using System;
 using System.Collections.Generic;
-using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Godot.Logging;
 

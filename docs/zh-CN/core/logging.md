@@ -1,158 +1,158 @@
 ---
 title: 日志（Logging）
-description: 说明 GFramework.Core.Logging 的日志接口、组合方式与常见使用入口。
+description: 说明 GFramework 如何使用 Microsoft.Extensions.Logging 契约记录日志、架构实例如何接线日志工厂，以及如何继续使用内置输出引擎。
 ---
 
 # 日志（Logging）
 
-GFramework.Core.Logging 提供当前的日志接口实现、factory 与输出组合。Architecture 从本实例的 ArchitectureConfiguration 获取日志工厂，容器、服务模块和上下文组件沿用该实例依赖，不覆盖 LoggerFactoryResolver.Provider。
+GFramework 的日志契约是 `Microsoft.Extensions.Logging` 的标准接口：`ILogger`、`ILogger<T>`、`ILoggerFactory`、`ILoggerProvider` 与 `LogLevel`（`Trace`/`Debug`/`Information`/`Warning`/`Error`/`Critical`）。框架不再提供自有日志接口，也没有进程级全局日志入口；每个架构实例的日志互不影响。
 
-LoggerFactoryResolver 仍是显式使用的兼容全局入口；它不会替代当前架构的实例配置。框架当前保留自有 ILogger/ILoggerFactoryProvider 契约。
-
-## 最小用法
+组件获取 logger 的首选方式是构造注入 `ILogger<T>`：
 
 ```csharp
-using GFramework.Core.Abstractions.Logging;
-using GFramework.Core.Logging;
+using Microsoft.Extensions.Logging;
 
-var factory = new ConsoleLoggerFactoryProvider();
-var logger = factory.CreateLogger("Bootstrap");
+public sealed class MatchmakingService
+{
+    private readonly ILogger<MatchmakingService> _logger;
 
-logger.Info("Application started");
-logger.Warn("Config file missing");
+    public MatchmakingService(ILogger<MatchmakingService> logger)
+    {
+        _logger = logger;
+    }
+
+    public void OnPlayerMatched(string playerId, string roomId)
+    {
+        _logger.LogInformation("Player matched: {PlayerId} in {RoomId}", playerId, roomId);
+    }
+}
 ```
 
-默认 `ArchitectureConfiguration` 会把 provider 配成 `ConsoleLoggerFactoryProvider`，最小级别是 `Info`。如果你
-直接走标准 `Architecture` 启动路径，这条配置会自动生效。
+## 架构实例接线
 
-## 在 Architecture 中调整日志级别
+日志工厂在 `ArchitectureConfiguration.LoggerProperties.LoggerFactory` 上配置，类型是标准 `ILoggerFactory?`：
 
 ```csharp
 using GFramework.Core.Architectures;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Properties;
-using GFramework.Core.Logging;
+using Microsoft.Extensions.Logging;
 
 var configuration = new ArchitectureConfiguration
 {
     LoggerProperties = new LoggerProperties
     {
-        LoggerFactoryProvider = new ConsoleLoggerFactoryProvider
+        LoggerFactory = LoggerFactory.Create(builder =>
         {
-            MinLevel = LogLevel.Debug
-        }
+            builder.SetMinimumLevel(LogLevel.Debug);
+            builder.AddConsole();
+        })
     }
 };
 ```
 
-如果你只是想减少噪音或临时打开 `Debug`，通常只调 `MinLevel` 就够了。
+接线规则：
 
-## 结构化日志与上下文
+- `LoggerFactory` 为空时，架构实例会创建一个独立的默认控制台工厂，并在架构销毁时负责释放它。
+- 外部传入的工厂所有权归调用方，架构销毁不会释放它。
+- 实例工厂会注册进该架构的 DI 容器；组件通过构造注入 `ILogger<T>` 获取日志。
+- 不存在进程级日志覆盖：两个架构实例可以分别使用不同工厂，互不干扰。
 
-默认 Core logger 实现支持 `IStructuredLogger` 和 `LogContext`。当你需要把 `requestId`、`sceneName` 之类的
-上下文随异步流透传时，优先用上下文属性，而不是把所有信息拼进字符串。
+## 通过 JSON 配置创建工厂
+
+`LoggingConfigurationLoader` 可以从 JSON 读取输出配置，并用 `CreateFactory` 得到标准 `ILoggerFactory`：
 
 ```csharp
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Logging;
-
-var factory = new ConsoleLoggerFactoryProvider();
-var logger = factory.CreateLogger("Matchmaking");
-
-using (LogContext.Push("RequestId", requestId))
-{
-    if (logger is IStructuredLogger structured)
-    {
-        structured.Log(
-            LogLevel.Info,
-            "Player matched",
-            ("PlayerId", playerId),
-            ("RoomId", roomId));
-    }
-}
-```
-
-## 当前仓库内置的常用实现
-
-- `ConsoleLoggerFactoryProvider`
-- `ConsoleLoggerFactory`
-- `CompositeLogger`
-- `LoggingConfigurationLoader`
-
-如果你需要文件输出、rolling file、async appender 或 JSON formatter，可以先用
-`LoggingConfigurationLoader` 读取 `LoggingConfiguration`，再把自定义 `ILoggerFactoryProvider` 挂到
-`ArchitectureConfiguration.LoggerProperties.LoggerFactoryProvider`。只有主动使用兼容全局调用链时才配置 LoggerFactoryResolver；该配置不会重新设置已经独立持有工厂的架构。
-
-宿主包也可以提供自己的 appender。Godot 项目如果需要把 Core 日志管线输出到 Godot 控制台，可以引用
-`GFramework.Godot.Logging.GodotLogAppender`，再用 `CompositeLogger` 或自定义 factory 把它和文件、JSON、异步输出等
-Core 组件组合在同一条调用面下。
-
-## 组合多个输出目标
-
-需要同时写入宿主控制台和文件时，保留业务侧 `ILogger` 调用面不变，替换 provider 即可。下面的 provider 会为每个
-logger 创建一个 `CompositeLogger`，并把同步的 Godot 控制台输出和异步文件输出组合在一起：
-
-```csharp
-using GFramework.Core.Abstractions.Logging;
-using GFramework.Core.Logging;
-using GFramework.Core.Logging.Appenders;
-using GFramework.Core.Logging.Formatters;
-using GFramework.Godot.Logging;
-
-public sealed class GodotCompositeLoggerFactoryProvider : ILoggerFactoryProvider
-{
-    private readonly GodotLogAppender _godotAppender = new();
-    private readonly AsyncLogAppender _fileAppender;
-
-    public GodotCompositeLoggerFactoryProvider(string filePath)
-    {
-        _fileAppender = new AsyncLogAppender(new FileAppender(filePath, new DefaultLogFormatter()));
-    }
-
-    public LogLevel MinLevel { get; set; } = LogLevel.Info;
-
-    public ILogger CreateLogger(string name)
-    {
-        return new CompositeLogger(
-            name,
-            MinLevel,
-            _godotAppender,
-            _fileAppender);
-    }
-}
-```
-
-把 provider 挂到架构配置时，传入已经解析好的普通文件系统路径：
-
-```csharp
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Properties;
 using GFramework.Core.Architectures;
 
-var logPath = "path/to/game.log";
+var factory = LoggingConfigurationLoader.CreateFactory(
+    LoggingConfigurationLoader.LoadFromJson("logging.json"));
+
 var configuration = new ArchitectureConfiguration
 {
     LoggerProperties = new LoggerProperties
     {
-        LoggerFactoryProvider = new GodotCompositeLoggerFactoryProvider(logPath)
-        {
-            MinLevel = LogLevel.Debug
-        }
+        LoggerFactory = factory
     }
 };
 ```
 
-`GodotLogAppender` 只负责 Godot 控制台落点；文件生命周期、异步缓冲、formatter 与过滤规则仍然来自 Core logging 组件。
-Godot 项目的 `user://` 路径解析方式见 [Godot 日志集成](../godot/logging.md#_3-组合-godot-控制台和文件输出)。
+- `LoggingConfiguration.MinLevel` 映射为工厂的 `SetMinimumLevel(...)`。
+- `LoggingConfiguration.LoggerLevels` 中的每一项映射为 `AddFilter(category, level)`。
+- JSON 中的级别别名使用 `Microsoft.Extensions.Logging` 名称（`information`、`critical` 等），大小写不敏感。
+- `LoadFromJson(string filePath)` 与 `LoadFromJsonString(string json)` 的读取方式保持不变。
 
-## 什么时候该换 provider
+## 输出引擎：appender 管线
 
-下面这些场景通常不该只靠改 `MinLevel`：
+GFramework.Core 保留了自己的输出引擎。`GFramework.Core.Logging.AppenderLoggerProvider` 实现标准 `ILoggerProvider`，把标准日志调用转换为 `LogEntry` 交给 appender 管线。这样标准 `ILogger` 调用面和既有输出能力可以组合使用：
 
-- 需要文件输出、rolling file 或 async appender
-- 需要按 namespace / level 做过滤
-- 需要 JSON 格式日志
-- 需要组合多个 appender
-- 需要把输出落到 Godot、Unity 或其他宿主控制台
+- Appender：`ConsoleAppender`（支持颜色）、`FileAppender`、`RollingFileAppender`、`AsyncLogAppender`、`StatisticsAppender`
+- Formatter：`DefaultLogFormatter`、`JsonLogFormatter`
+- Filter：`LogLevelFilter`、`NamespaceFilter`、`SamplingFilter`、`CompositeFilter`
 
-这时更合理的做法是保留 `ILogger` 调用面不变，只替换 provider / factory / formatter / appender 组合。
+appender 管线内的级别统一使用 MEL 的 `LogLevel`。单个 appender 抛出异常不会影响其它 appender 的输出；结构化模板中的 `{OriginalFormat}` 占位符本身不会进入属性集合，属性仍然来自标准结构化状态。
+
+### 自定义 appender
+
+需要新的输出落点时，实现 `ILogAppender`（位于 `GFramework.Core.Abstractions.Logging`），再通过 `AppenderLoggerProvider` 接入标准工厂：
+
+```csharp
+using GFramework.Core.Abstractions.Logging;
+using GFramework.Core.Logging;
+using Microsoft.Extensions.Logging;
+
+// 自定义 appender：实现 ILogAppender，在 Append(LogEntry) 中写出条目
+public sealed class OtelLogAppender : ILogAppender
+{
+    public void Append(LogEntry entry)
+    {
+        // 把 entry 写入你的目标系统
+    }
+
+    public void Flush()
+    {
+        // 需要时冲刷缓冲
+    }
+
+    public void Dispose()
+    {
+        // 释放持有的外部资源；实现为空也可以
+    }
+}
+
+var factory = LoggerFactory.Create(builder =>
+{
+    builder.AddProvider(new AppenderLoggerProvider(new[]
+    {
+        new OtelLogAppender()
+    }));
+});
+```
+
+`AppenderLoggerProvider` 由标准工厂持有并随工厂一起释放；实现了 `IDisposable` 的 appender 会在释放时被转发调用。
+
+### 用 JSON 声明 appender
+
+`LoggingConfiguration` 的 `Appenders` 列表同样交给 `AppenderLoggerProvider` 组装：
+
+```json
+{
+  "MinLevel": "Information",
+  "Appenders": [
+    { "Type": "Console", "Formatter": "Default", "UseColors": true },
+    { "Type": "RollingFile", "FilePath": "logs/game.log", "MaxFileSize": 10485760, "MaxFileCount": 5 },
+    {
+      "Type": "Async",
+      "BufferSize": 10000,
+      "InnerAppender": { "Type": "File", "FilePath": "logs/game.async.log" }
+    }
+  ]
+}
+```
+
+## 什么时候直接注入，什么时候接入输出引擎
+
+- 普通服务和组件：直接构造注入 `ILogger<T>`，把输出落地交给宿主选择。
+- 需要文件、rolling file、异步缓冲、采样过滤或 JSON 格式输出时：用 `LoggingConfigurationLoader` 或手动 `AddProvider(new AppenderLoggerProvider(...))` 组装工厂，再交给 `LoggerProperties.LoggerFactory`。
+- 需要 Godot 控制台输出时：见 [Godot 日志系统](../godot/logging.md)。

@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Reflection;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Ioc;
-using GFramework.Core.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
+
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Cqrs.Tests.Cqrs;
 
@@ -41,7 +41,7 @@ internal sealed class GeneratedRequestInvokerProviderRegistry :
         services.AddTransient(
             typeof(IRequestHandler<GeneratedRequestInvokerRequest, string>),
             typeof(GeneratedRequestInvokerRequestHandler));
-        logger.Debug(
+        logger.LogDebug(
             $"Registered CQRS handler {typeof(GeneratedRequestInvokerRequestHandler).FullName} as {typeof(IRequestHandler<GeneratedRequestInvokerRequest, string>).FullName}.");
     }
 

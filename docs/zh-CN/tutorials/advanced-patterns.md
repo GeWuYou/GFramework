@@ -185,11 +185,11 @@ public partial class PlayerService : IController
         try
         {
             await this.SendAsync(request);
-            Logger.Info($"Player {name} created successfully");
+            Logger.LogInformation($"Player {name} created successfully");
         }
         catch (Exception ex)
         {
-            Logger.Error($"Failed to create player {name}: {ex.Message}");
+            Logger.LogError($"Failed to create player {name}: {ex.Message}");
             throw;
         }
     }
@@ -333,7 +333,7 @@ public class Player : AbstractEntity
         Mana.IncreaseMax(manaIncrease);
         Mana.RestoreToFull();
         
-        Logger.Info($"Player {Name.Value} leveled up to {Level.Value}");
+        Logger.LogInformation($"Player {Name.Value} leveled up to {Level.Value}");
     }
     
     private int CalculateRequiredExperience(int level)
@@ -947,7 +947,7 @@ public class PluginManager : IPluginContext
     {
         try
         {
-            _logger.Info($"Loading plugin from: {pluginPath}");
+            _logger.LogInformation($"Loading plugin from: {pluginPath}");
             
             // 加载程序集
             var assembly = Assembly.LoadFrom(pluginPath);
@@ -964,7 +964,7 @@ public class PluginManager : IPluginContext
         }
         catch (Exception ex)
         {
-            _logger.Error($"Failed to load plugin from {pluginPath}: {ex.Message}");
+            _logger.LogError($"Failed to load plugin from {pluginPath}: {ex.Message}");
             throw;
         }
     }
@@ -994,7 +994,7 @@ public class PluginManager : IPluginContext
         await plugin.InitializeAsync(this);
         _loadedPlugins[plugin.Name] = plugin;
         
-        _logger.Info($"Plugin {plugin.Name} v{plugin.Version} loaded successfully");
+        _logger.LogInformation($"Plugin {plugin.Name} v{plugin.Version} loaded successfully");
     }
     
     public async Task UnloadPluginAsync(string pluginName)
@@ -1023,11 +1023,11 @@ public class PluginManager : IPluginContext
             await plugin.ShutdownAsync();
             _loadedPlugins.Remove(pluginName);
             
-            _logger.Info($"Plugin {pluginName} unloaded successfully");
+            _logger.LogInformation($"Plugin {pluginName} unloaded successfully");
         }
         catch (Exception ex)
         {
-            _logger.Error($"Failed to unload plugin {pluginName}: {ex.Message}");
+            _logger.LogError($"Failed to unload plugin {pluginName}: {ex.Message}");
             throw;
         }
     }
@@ -1046,7 +1046,7 @@ public class PluginManager : IPluginContext
     public void RegisterService<T>(T service) where T : class
     {
         _services.TryAdd(typeof(T), service);
-        _logger.Debug($"Service {typeof(T).Name} registered by plugin system");
+        _logger.LogDebug($"Service {typeof(T).Name} registered by plugin system");
     }
     
     public T GetService<T>() where T : class
@@ -1064,7 +1064,7 @@ public class PluginManager : IPluginContext
     {
         _eventHandlers.Add(handler);
         _architecture.this.RegisterEvent<T>(handler.Handle);
-        _logger.Debug($"Event handler for {typeof(T).Name} registered by plugin system");
+        _logger.LogDebug($"Event handler for {typeof(T).Name} registered by plugin system");
     }
     
     private string GetCurrentFrameworkVersion()
@@ -1100,7 +1100,7 @@ public class ChatPlugin : IPlugin
         context.RegisterEventHandler<PlayerLeaveEvent>(OnPlayerLeave);
         context.RegisterEventHandler<ChatMessageEvent>(OnChatMessage);
         
-        _logger.Info("Chat plugin initialized");
+        _logger.LogInformation("Chat plugin initialized");
         
         await Task.CompletedTask;
     }
@@ -1108,7 +1108,7 @@ public class ChatPlugin : IPlugin
     public async Task ShutdownAsync()
     {
         _chatService?.Dispose();
-        _logger.Info("Chat plugin shutdown");
+        _logger.LogInformation("Chat plugin shutdown");
         await Task.CompletedTask;
     }
     
@@ -1577,7 +1577,7 @@ public partial class NetworkController : Node, IController
     
     public async Task ConnectToServer(string url)
     {
-        Logger.Info($"Connecting to server: {url}");
+        Logger.LogInformation($"Connecting to server: {url}");
         await _networkManager.ConnectAsync(url);
     }
     
@@ -1608,24 +1608,24 @@ public partial class NetworkController : Node, IController
     
     private void OnNetworkConnected()
     {
-        Logger.Info("Connected to network server");
+        Logger.LogInformation("Connected to network server");
         this.SendEvent(new NetworkConnectedEvent());
     }
     
     private void OnNetworkDisconnected(string reason)
     {
-        Logger.Info($"Disconnected from network server: {reason}");
+        Logger.LogInformation($"Disconnected from network server: {reason}");
         this.SendEvent(new NetworkDisconnectedEvent { Reason = reason });
     }
     
     private void OnNetworkMessageReceived(NetworkMessage message)
     {
-        Logger.Debug($"Received network message: {message.Type}");
+        Logger.LogDebug($"Received network message: {message.Type}");
     }
     
     private void OnConnectionFailed(string error)
     {
-        Logger.Error($"Network connection failed: {error}");
+        Logger.LogError($"Network connection failed: {error}");
         this.SendEvent(new NetworkConnectionFailedEvent { Error = error });
     }
 }

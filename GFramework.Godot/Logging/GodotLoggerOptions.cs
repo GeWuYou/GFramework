@@ -3,7 +3,7 @@
 
 using System;
 using System.Collections.Generic;
-using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Godot.Logging;
 
@@ -16,10 +16,10 @@ public sealed class GodotLoggerOptions
     {
         [LogLevel.Trace] = "gray",
         [LogLevel.Debug] = "cyan",
-        [LogLevel.Info] = "white",
+        [LogLevel.Information] = "white",
         [LogLevel.Warning] = "orange",
         [LogLevel.Error] = "red",
-        [LogLevel.Fatal] = "deep_pink"
+        [LogLevel.Critical] = "deep_pink"
     };
 
     /// <summary>
@@ -35,7 +35,7 @@ public sealed class GodotLoggerOptions
     /// <summary>
     ///     Gets or sets the minimum level used by <see cref="GodotLoggerMode.Release"/>.
     /// </summary>
-    public LogLevel ReleaseMinLevel { get; set; } = LogLevel.Info;
+    public LogLevel ReleaseMinLevel { get; set; } = LogLevel.Information;
 
     /// <summary>
     ///     Gets or sets the BBCode-capable template used by <see cref="GodotLoggerMode.Debug"/>.
@@ -61,7 +61,7 @@ public sealed class GodotLoggerOptions
 #pragma warning restore MA0016
 
     /// <summary>
-    ///     Creates options that preserve the previous Godot logger defaults for a fixed minimum level.
+    ///     Creates options that preserve the fixed-format Godot logger defaults for a fixed minimum level.
     /// </summary>
     /// <param name="minLevel">The minimum enabled level.</param>
     /// <returns>Options equivalent to the previous fixed-format logger behavior.</returns>

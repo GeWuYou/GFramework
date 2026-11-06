@@ -3,6 +3,8 @@
 
 using GFramework.Core.Abstractions.Lifecycle;
 using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using GFramework.Core.Abstractions.Pause;
 using GFramework.Core.Logging;
 using GFramework.Core.Utility;
@@ -15,9 +17,15 @@ namespace GFramework.Core.Pause;
 /// </summary>
 public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAsyncDestroyable
 {
+    /// <summary>创建暂停栈管理器；未注入日志时使用空输出。</summary>
+    public PauseStackManager(ILogger? logger = null)
+    {
+        _logger = logger ?? NullLogger.Instance;
+    }
+
     private readonly List<IPauseHandler> _handlers = new();
     private readonly ReaderWriterLockSlim _lock = new();
-    private readonly ILogger _logger = LoggerFactoryResolver.Provider.CreateLogger(nameof(PauseStackManager));
+    private readonly ILogger _logger;
     private readonly Dictionary<PauseGroup, Stack<PauseEntry>> _pauseStacks = new();
     private readonly Dictionary<Guid, PauseEntry> _tokenMap = new();
     private volatile bool _disposed;
@@ -85,7 +93,7 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
             stack.Push(entry);
             _tokenMap[entry.TokenId] = entry;
 
-            _logger.Debug($"Pause pushed: {reason} (Group: {group}, Depth: {stack.Count})");
+            _logger.LogDebug($"Pause pushed: {reason} (Group: {group}, Depth: {stack.Count})");
 
             token = new PauseToken(entry.TokenId);
 
@@ -229,7 +237,7 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
 
             stack.Clear();
 
-            _logger.Warn($"Cleared all pauses for group: {group}");
+            _logger.LogWarning($"Cleared all pauses for group: {group}");
 
             // 状态变化检测
             shouldNotify = wasPaused;
@@ -266,7 +274,7 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
             _pauseStacks.Clear();
             _tokenMap.Clear();
 
-            _logger.Warn("Cleared all pauses for all groups");
+            _logger.LogWarning("Cleared all pauses for all groups");
         }
         finally
         {
@@ -294,7 +302,7 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
             if (!_handlers.Contains(handler))
             {
                 _handlers.Add(handler);
-                _logger.Debug($"Registered pause handler: {handler.GetType().Name}");
+                _logger.LogDebug($"Registered pause handler: {handler.GetType().Name}");
             }
         }
         finally
@@ -316,7 +324,7 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
 
             if (_handlers.Remove(handler))
             {
-                _logger.Debug($"Unregistered pause handler: {handler.GetType().Name}");
+                _logger.LogDebug($"Unregistered pause handler: {handler.GetType().Name}");
             }
         }
         finally
@@ -366,7 +374,7 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
             _tokenMap.Clear();
             _handlers.Clear();
 
-            _logger.Debug("PauseStackManager destroyed");
+            _logger.LogDebug("PauseStackManager destroyed");
 
             return new DestroySnapshot(pausedGroups, handlersSnapshot);
         }
@@ -384,7 +392,7 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
     {
         foreach (var group in destroySnapshot.PausedGroups)
         {
-            _logger.Debug($"Notifying handlers of destruction: Group={group}, IsPaused=false");
+            _logger.LogDebug($"Notifying handlers of destruction: Group={group}, IsPaused=false");
 
             NotifyHandlersSnapshot(group, false, destroySnapshot.HandlersSnapshot, isDestroying: true);
             RaiseDestroyStateChanged(group);
@@ -409,7 +417,7 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
 
             if (!_tokenMap.TryGetValue(token.Id, out var entry))
             {
-                _logger.Warn($"Attempted to pop invalid/expired token: {token.Id}");
+                _logger.LogWarning($"Attempted to pop invalid/expired token: {token.Id}");
                 return PopResult.NotFound;
             }
 
@@ -422,7 +430,7 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
             }
 
             _tokenMap.Remove(token.Id);
-            _logger.Debug($"Pause popped: {entry.Reason} (Group: {entry.Group}, Remaining: {stack.Count})");
+            _logger.LogDebug($"Pause popped: {entry.Reason} (Group: {entry.Group}, Remaining: {stack.Count})");
 
             return new PopResult(true, wasPaused && stack.Count == 0, entry.Group);
         }
@@ -510,7 +518,7 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
                 var message = isDestroying
                     ? $"Handler {handler.GetType().Name} failed during destruction"
                     : $"Handler {handler.GetType().Name} failed";
-                _logger.Error(message, ex);
+                _logger.LogError(ex, message);
             }
         }
     }
@@ -527,7 +535,7 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
         }
         catch (Exception ex)
         {
-            _logger.Error($"Event subscriber failed during destruction for group {group}", ex);
+            _logger.LogError(ex, $"Event subscriber failed during destruction for group {group}");
         }
     }
 
@@ -548,7 +556,7 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
     /// <param name="isPaused">新的暂停状态。</param>
     private void NotifyHandlers(PauseGroup group, bool isPaused)
     {
-        _logger.Debug($"Notifying handlers: Group={group}, IsPaused={isPaused}");
+        _logger.LogDebug($"Notifying handlers: Group={group}, IsPaused={isPaused}");
 
         // 在锁内获取处理器快照，避免并发修改异常
         IPauseHandler[] handlersSnapshot;

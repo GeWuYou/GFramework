@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Architectures;
-using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Core.Architectures;
 
@@ -22,9 +22,9 @@ internal sealed class ArchitectureModules(
     public IArchitectureModule InstallModule(IArchitectureModule module)
     {
         var name = module.GetType().Name;
-        logger.Debug($"Installing module: {name}");
+        logger.LogDebug($"Installing module: {name}");
         module.Install(architecture);
-        logger.Info($"Module installed: {name}");
+        logger.LogInformation($"Module installed: {name}");
         return module;
     }
 }

@@ -4,7 +4,8 @@
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Enums;
 using GFramework.Core.Abstractions.Events;
-using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Architectures;
 using GFramework.Core.Events;
@@ -130,7 +131,7 @@ public sealed class SettingsSystemTests
         var container = new MicrosoftDiContainer();
         container.Register<IEventBus>(new EventBus());
         container.Register<ISettingsModel>(model);
-        container.Register<ILoggerFactoryProvider>(new ConsoleLoggerFactoryProvider());
+        container.Register<ILoggerFactory>(NullLoggerFactory.Instance);
         container.Freeze();
         return new ArchitectureContext(container);
     }

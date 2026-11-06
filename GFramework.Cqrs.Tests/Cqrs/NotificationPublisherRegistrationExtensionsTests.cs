@@ -2,9 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Architectures;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Ioc;
-using GFramework.Core.Logging;
 using GFramework.Cqrs;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Extensions;
@@ -25,8 +23,6 @@ internal sealed class NotificationPublisherRegistrationExtensionsTests
     [Test]
     public async Task UseTaskWhenAllNotificationPublisher_Should_Be_Used_By_Default_Runtime_Infrastructure()
     {
-        LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider();
-
         var trailingHandler = new RecordingNotificationHandler();
         var container = new MicrosoftDiContainer();
         container.GetServicesUnsafe.UseTaskWhenAllNotificationPublisher();
@@ -63,8 +59,6 @@ internal sealed class NotificationPublisherRegistrationExtensionsTests
     [Test]
     public void UseSequentialNotificationPublisher_Should_Preserve_Stop_On_First_Failure_Semantics()
     {
-        LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider();
-
         var trailingHandler = new RecordingNotificationHandler();
         var container = new MicrosoftDiContainer();
         container.GetServicesUnsafe.UseSequentialNotificationPublisher();
@@ -132,8 +126,6 @@ internal sealed class NotificationPublisherRegistrationExtensionsTests
     [Test]
     public async Task UseNotificationPublisher_Generic_Overload_Should_Be_Used_By_Default_Runtime_Infrastructure()
     {
-        LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider();
-
         var probe = new NotificationPublisherProbe();
         var handler = new RecordingNotificationHandler();
         var container = new MicrosoftDiContainer();

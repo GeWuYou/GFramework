@@ -3,7 +3,8 @@
 
 using System.Diagnostics.CodeAnalysis;
 using Arch.Core;
-using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using GFramework.Core.Logging;
 using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Architectures;
@@ -24,7 +25,7 @@ public class EcsIntegrationTests
     public void Setup()
     {
         _container = new MicrosoftDiContainer();
-        _container.Register<ILoggerFactoryProvider>(new ConsoleLoggerFactoryProvider());
+        _container.Register<ILoggerFactory>(NullLoggerFactory.Instance);
         _context = new ArchitectureContext(_container);
         ((IContextAware)_container).SetContext(_context);
     }

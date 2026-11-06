@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System;
-using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.Logging;
 using GFramework.Godot.Logging;
 
 namespace GFramework.Godot.Tests.Logging;
@@ -50,7 +50,7 @@ public sealed class GodotLogTemplateTests
         var template = GodotLogTemplate.Parse("[{category:r10}]");
         var context = new GodotLogRenderContext(
             new DateTime(2026, 5, 2, 1, 2, 3, DateTimeKind.Utc),
-            LogLevel.Info,
+            LogLevel.Information,
             "UI",
             "Ready",
             "white",
@@ -67,7 +67,7 @@ public sealed class GodotLogTemplateTests
         var template = GodotLogTemplate.Parse("{message} {unknown}");
         var context = new GodotLogRenderContext(
             new DateTime(2026, 5, 2, 1, 2, 3, DateTimeKind.Utc),
-            LogLevel.Info,
+            LogLevel.Information,
             "Game",
             "Ready",
             "white",
@@ -84,7 +84,7 @@ public sealed class GodotLogTemplateTests
         var template = GodotLogTemplate.Parse("{level:padded}");
         var context = new GodotLogRenderContext(
             new DateTime(2026, 5, 2, 1, 2, 3, DateTimeKind.Utc),
-            LogLevel.Info,
+            LogLevel.Information,
             "Game",
             "Ready",
             "white",
@@ -101,7 +101,7 @@ public sealed class GodotLogTemplateTests
         var template = GodotLogTemplate.Parse("{message}{properties}");
         var context = new GodotLogRenderContext(
             new DateTime(2026, 5, 2, 1, 2, 3, DateTimeKind.Utc),
-            LogLevel.Info,
+            LogLevel.Information,
             "Game",
             "Ready",
             "white",

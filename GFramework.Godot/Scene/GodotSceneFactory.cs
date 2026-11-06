@@ -11,11 +11,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Extensions;
-using GFramework.Core.Logging;
 using GFramework.Core.Utility;
 using GFramework.Game.Abstractions.Scene;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace GFramework.Godot.Scene;
 
@@ -26,15 +26,30 @@ namespace GFramework.Godot.Scene;
 public class GodotSceneFactory : AbstractContextUtility, ISceneFactory
 {
     /// <summary>
-    ///     日志记录器，用于记录调试信息。
+    ///     构造注入的标准日志记录器；未注入时为 null。
     /// </summary>
-    private static readonly ILogger Log =
-        LoggerFactoryResolver.Provider.CreateLogger(nameof(GodotSceneFactory));
+    private readonly ILogger<GodotSceneFactory>? _injectedLogger;
+
+    /// <summary>
+    ///     获取当前生效的日志记录器：优先构造注入，其次回退到上下文提供的记录器，最后退化为空记录器。
+    /// </summary>
+    private ILogger Log =>
+        (ILogger?)_injectedLogger
+        ?? (Logger is { } contextLogger ? contextLogger : NullLogger<GodotSceneFactory>.Instance);
 
     /// <summary>
     ///     场景注册表，用于管理场景资源。
     /// </summary>
     private IGodotSceneRegistry _registry = null!;
+
+    /// <summary>
+    ///     创建Godot场景工厂实例。
+    /// </summary>
+    /// <param name="logger">标准日志记录器；依赖注入容器会自动提供，手动创建时可省略。</param>
+    public GodotSceneFactory(ILogger<GodotSceneFactory>? logger = null)
+    {
+        _injectedLogger = logger;
+    }
 
     /// <summary>
     ///     根据指定的场景键创建场景行为实例。
@@ -53,13 +68,13 @@ public class GodotSceneFactory : AbstractContextUtility, ISceneFactory
         if (node is ISceneBehaviorProvider provider)
         {
             var behavior = provider.GetScene();
-            Log.Debug("Created scene instance from provider: {0}", sceneKey);
+            Log.LogDebug("Created scene instance from provider: {SceneKey}", sceneKey);
             return behavior;
         }
 
         // 否则使用工厂自动创建
         var autoBehavior = SceneBehaviorFactory.Create(node, sceneKey);
-        Log.Debug("Created scene instance with auto factory: {0}", sceneKey);
+        Log.LogDebug("Created scene instance with auto factory: {SceneKey}", sceneKey);
         return autoBehavior;
     }
 

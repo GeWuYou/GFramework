@@ -44,7 +44,7 @@ public sealed class CombatSystem : AbstractSystem
 
     private void OnPlayerDied(PlayerDiedEvent @event)
     {
-        Logger.Info("Player died: {0}", @event.PlayerId);
+        _logger.LogInformation("Player died: {PlayerId}", @event.PlayerId);
     }
 
     public void KillPlayer(int playerId)

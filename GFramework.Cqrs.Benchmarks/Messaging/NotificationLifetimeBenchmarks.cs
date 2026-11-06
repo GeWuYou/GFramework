@@ -10,12 +10,11 @@ using BenchmarkDotNet.Order;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Ioc;
-using GFramework.Core.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Cqrs.Benchmarks.Messaging;
 
@@ -88,16 +87,12 @@ public class NotificationLifetimeBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider
-        {
-            MinLevel = LogLevel.Fatal
-        };
         Fixture.Setup($"NotificationLifetime/{Lifetime}", handlerCount: 1, pipelineCount: 0);
         BenchmarkDispatcherCacheHelper.ClearDispatcherCaches();
 
         _baselineHandler = new BenchmarkNotificationHandler();
         _notification = new BenchmarkNotification(Guid.NewGuid());
-        _runtimeLogger = LoggerFactoryResolver.Provider.CreateLogger(nameof(NotificationLifetimeBenchmarks) + "." + Lifetime);
+        _runtimeLogger = BenchmarkLogging.CreateLogger(nameof(NotificationLifetimeBenchmarks) + "." + Lifetime);
 
         _container = BenchmarkHostFactory.CreateFrozenGFrameworkContainer(container =>
         {

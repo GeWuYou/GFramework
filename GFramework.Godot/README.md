@@ -79,7 +79,7 @@ Scene / UI、配置、存储、设置、日志与协程能力接到 `Node`、`Sc
 
 - 节点扩展与 `Signal(...)` fluent API
 - `GodotTimeSource` 与协程时间分段
-- Godot 日志 provider 与 `GodotLogAppender`
+- Godot 日志入口 `GodotLog`（标准 `ILoggerProvider`）与 `GodotLogAppender` 输出落点
 - 暂停处理、节点池与富文本效果支持
 
 这些目录都是“宿主适配层”，不是新的 gameplay 抽象层。

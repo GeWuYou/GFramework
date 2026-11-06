@@ -26,7 +26,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                         }
                                                                     }
 
-                                                                    namespace GFramework.Core.Abstractions.Logging
+                                                                    namespace Microsoft.Extensions.Logging
                                                                     {
                                                                         public interface ILogger
                                                                         {
@@ -49,7 +49,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                     {
                                                                         public interface ICqrsHandlerRegistry
                                                                         {
-                                                                            void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                            void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, Microsoft.Extensions.Logging.ILogger logger);
                                                                         }
 
                                                                         [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
@@ -92,7 +92,7 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                                        internal sealed class __GFrameworkGeneratedCqrsHandlerRegistry : global::GFramework.Cqrs.ICqrsHandlerRegistry
                                                                        {
-                                                                           public void Register(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services, global::GFramework.Core.Abstractions.Logging.ILogger logger)
+                                                                           public void Register(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services, global::Microsoft.Extensions.Logging.ILogger logger)
                                                                            {
                                                                                if (services is null)
                                                                                    throw new global::System.ArgumentNullException(nameof(services));
@@ -138,7 +138,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                                   }
                                                                               }
 
-                                                                              namespace GFramework.Core.Abstractions.Logging
+                                                                              namespace Microsoft.Extensions.Logging
                                                                               {
                                                                                   public interface ILogger
                                                                                   {
@@ -161,7 +161,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                               {
                                                                                   public interface ICqrsHandlerRegistry
                                                                                   {
-                                                                                      void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                                      void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, Microsoft.Extensions.Logging.ILogger logger);
                                                                                   }
 
                                                                                   [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
@@ -194,7 +194,7 @@ public class CqrsHandlerRegistryGeneratorTests
 
         internal sealed class __GFrameworkGeneratedCqrsHandlerRegistry : global::GFramework.Cqrs.ICqrsHandlerRegistry
         {
-            public void Register(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services, global::GFramework.Core.Abstractions.Logging.ILogger logger)
+            public void Register(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services, global::Microsoft.Extensions.Logging.ILogger logger)
             {
                 if (services is null)
                     throw new global::System.ArgumentNullException(nameof(services));
@@ -230,7 +230,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                 }
                                                             }
 
-                                                            namespace GFramework.Core.Abstractions.Logging
+                                                            namespace Microsoft.Extensions.Logging
                                                             {
                                                                 public interface ILogger
                                                                 {
@@ -253,7 +253,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                             {
                                                                 public interface ICqrsHandlerRegistry
                                                                 {
-                                                                    void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                    void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, Microsoft.Extensions.Logging.ILogger logger);
                                                                 }
 
                                                                 [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
@@ -288,7 +288,7 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                                internal sealed class __GFrameworkGeneratedCqrsHandlerRegistry : global::GFramework.Cqrs.ICqrsHandlerRegistry
                                                                {
-                                                                   public void Register(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services, global::GFramework.Core.Abstractions.Logging.ILogger logger)
+                                                                   public void Register(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services, global::Microsoft.Extensions.Logging.ILogger logger)
                                                                    {
                                                                        if (services is null)
                                                                            throw new global::System.ArgumentNullException(nameof(services));
@@ -330,7 +330,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                           }
                                                                       }
 
-                                                                      namespace GFramework.Core.Abstractions.Logging
+                                                                      namespace Microsoft.Extensions.Logging
                                                                       {
                                                                           public interface ILogger
                                                                           {
@@ -353,7 +353,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                       {
                                                                           public interface ICqrsHandlerRegistry
                                                                           {
-                                                                              void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                              void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, Microsoft.Extensions.Logging.ILogger logger);
                                                                           }
 
                                                                           [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
@@ -391,7 +391,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                  }
                                                              }
 
-                                                             namespace GFramework.Core.Abstractions.Logging
+                                                             namespace Microsoft.Extensions.Logging
                                                              {
                                                                  public interface ILogger
                                                                  {
@@ -414,7 +414,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                              {
                                                                  public interface ICqrsHandlerRegistry
                                                                  {
-                                                                     void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                     void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, Microsoft.Extensions.Logging.ILogger logger);
                                                                  }
 
                                                                  [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
@@ -452,7 +452,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                    }
                                                                }
 
-                                                               namespace GFramework.Core.Abstractions.Logging
+                                                               namespace Microsoft.Extensions.Logging
                                                                {
                                                                    public interface ILogger
                                                                    {
@@ -475,7 +475,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                {
                                                                    public interface ICqrsHandlerRegistry
                                                                    {
-                                                                       void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                       void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, Microsoft.Extensions.Logging.ILogger logger);
                                                                    }
 
                                                                    [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
@@ -510,7 +510,7 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                                  internal sealed class __GFrameworkGeneratedCqrsHandlerRegistry : global::GFramework.Cqrs.ICqrsHandlerRegistry
                                                                  {
-                                                                     public void Register(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services, global::GFramework.Core.Abstractions.Logging.ILogger logger)
+                                                                     public void Register(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services, global::Microsoft.Extensions.Logging.ILogger logger)
                                                                      {
                                                                          if (services is null)
                                                                              throw new global::System.ArgumentNullException(nameof(services));
@@ -549,7 +549,7 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                                       internal sealed class __GFrameworkGeneratedCqrsHandlerRegistry : global::GFramework.Cqrs.ICqrsHandlerRegistry
                                                                       {
-                                                                          public void Register(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services, global::GFramework.Core.Abstractions.Logging.ILogger logger)
+                                                                          public void Register(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services, global::Microsoft.Extensions.Logging.ILogger logger)
                                                                           {
                                                                               if (services is null)
                                                                                   throw new global::System.ArgumentNullException(nameof(services));
@@ -593,7 +593,7 @@ public class CqrsHandlerRegistryGeneratorTests
 
         internal sealed class __GFrameworkGeneratedCqrsHandlerRegistry : global::GFramework.Cqrs.ICqrsHandlerRegistry
         {
-            public void Register(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services, global::GFramework.Core.Abstractions.Logging.ILogger logger)
+            public void Register(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services, global::Microsoft.Extensions.Logging.ILogger logger)
             {
                 if (services is null)
                     throw new global::System.ArgumentNullException(nameof(services));
@@ -637,7 +637,7 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                                  internal sealed class __GFrameworkGeneratedCqrsHandlerRegistry : global::GFramework.Cqrs.ICqrsHandlerRegistry
                                                                  {
-                                                                     public void Register(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services, global::GFramework.Core.Abstractions.Logging.ILogger logger)
+                                                                     public void Register(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services, global::Microsoft.Extensions.Logging.ILogger logger)
                                                                      {
                                                                          if (services is null)
                                                                              throw new global::System.ArgumentNullException(nameof(services));
@@ -719,7 +719,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                       }
                                                                   }
 
-                                                                  namespace GFramework.Core.Abstractions.Logging
+                                                                  namespace Microsoft.Extensions.Logging
                                                                   {
                                                                       public interface ILogger
                                                                       {
@@ -742,7 +742,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                   {
                                                                       public interface ICqrsHandlerRegistry
                                                                       {
-                                                                          void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                          void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, Microsoft.Extensions.Logging.ILogger logger);
                                                                       }
 
                                                                       [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
@@ -782,7 +782,7 @@ public class CqrsHandlerRegistryGeneratorTests
 
                                                                     internal sealed class __GFrameworkGeneratedCqrsHandlerRegistry : global::GFramework.Cqrs.ICqrsHandlerRegistry
                                                                     {
-                                                                        public void Register(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services, global::GFramework.Core.Abstractions.Logging.ILogger logger)
+                                                                        public void Register(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services, global::Microsoft.Extensions.Logging.ILogger logger)
                                                                         {
                                                                             if (services is null)
                                                                                 throw new global::System.ArgumentNullException(nameof(services));
@@ -823,7 +823,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                            }
                                                                        }
 
-                                                                       namespace GFramework.Core.Abstractions.Logging
+                                                                       namespace Microsoft.Extensions.Logging
                                                                        {
                                                                            public interface ILogger
                                                                            {
@@ -846,7 +846,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                        {
                                                                            public interface ICqrsHandlerRegistry
                                                                            {
-                                                                               void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                               void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, Microsoft.Extensions.Logging.ILogger logger);
                                                                            }
 
                                                                            [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
@@ -888,7 +888,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                          }
                                                                      }
 
-                                                                     namespace GFramework.Core.Abstractions.Logging
+                                                                     namespace Microsoft.Extensions.Logging
                                                                      {
                                                                          public interface ILogger
                                                                          {
@@ -911,7 +911,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                      {
                                                                          public interface ICqrsHandlerRegistry
                                                                          {
-                                                                             void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                             void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, Microsoft.Extensions.Logging.ILogger logger);
                                                                          }
 
                                                                          [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
@@ -955,7 +955,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                                          }
                                                                                      }
 
-                                                                                     namespace GFramework.Core.Abstractions.Logging
+                                                                                     namespace Microsoft.Extensions.Logging
                                                                                      {
                                                                                          public interface ILogger
                                                                                          {
@@ -978,7 +978,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                                      {
                                                                                          public interface ICqrsHandlerRegistry
                                                                                          {
-                                                                                             void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                                             void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, Microsoft.Extensions.Logging.ILogger logger);
                                                                                          }
 
                                                                                          [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
@@ -1058,7 +1058,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                   }
                                                               }
 
-                                                              namespace GFramework.Core.Abstractions.Logging
+                                                              namespace Microsoft.Extensions.Logging
                                                               {
                                                                   public interface ILogger
                                                                   {
@@ -1070,7 +1070,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                               {
                                                                   public interface ICqrsHandlerRegistry
                                                                   {
-                                                                      void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                      void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, Microsoft.Extensions.Logging.ILogger logger);
                                                                   }
 
                                                                   [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
@@ -1139,7 +1139,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                         }
                                                                     }
 
-                                                                    namespace GFramework.Core.Abstractions.Logging
+                                                                    namespace Microsoft.Extensions.Logging
                                                                     {
                                                                         public interface ILogger
                                                                         {
@@ -1162,7 +1162,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                     {
                                                                         public interface ICqrsHandlerRegistry
                                                                         {
-                                                                            void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                            void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, Microsoft.Extensions.Logging.ILogger logger);
                                                                         }
 
                                                                         [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
@@ -1208,7 +1208,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                             }
                                                                         }
 
-                                                                        namespace GFramework.Core.Abstractions.Logging
+                                                                        namespace Microsoft.Extensions.Logging
                                                                         {
                                                                             public interface ILogger
                                                                             {
@@ -1231,7 +1231,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                         {
                                                                             public interface ICqrsHandlerRegistry
                                                                             {
-                                                                                void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                                void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, Microsoft.Extensions.Logging.ILogger logger);
                                                                             }
 
                                                                             [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
@@ -1271,7 +1271,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                         }
                                                                     }
 
-                                                                    namespace GFramework.Core.Abstractions.Logging
+                                                                    namespace Microsoft.Extensions.Logging
                                                                     {
                                                                         public interface ILogger
                                                                         {
@@ -1294,7 +1294,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                     {
                                                                         public interface ICqrsHandlerRegistry
                                                                         {
-                                                                            void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                            void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, Microsoft.Extensions.Logging.ILogger logger);
                                                                         }
 
                                                                         [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
@@ -1336,7 +1336,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                       }
                                                                   }
 
-                                                                  namespace GFramework.Core.Abstractions.Logging
+                                                                  namespace Microsoft.Extensions.Logging
                                                                   {
                                                                       public interface ILogger
                                                                       {
@@ -1359,7 +1359,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                   {
                                                                       public interface ICqrsHandlerRegistry
                                                                       {
-                                                                          void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                          void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, Microsoft.Extensions.Logging.ILogger logger);
                                                                       }
 
                                                                       [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
@@ -1400,7 +1400,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                   }
                                                               }
 
-                                                              namespace GFramework.Core.Abstractions.Logging
+                                                              namespace Microsoft.Extensions.Logging
                                                               {
                                                                   public interface ILogger
                                                                   {
@@ -1423,7 +1423,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                               {
                                                                   public interface ICqrsHandlerRegistry
                                                                   {
-                                                                      void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                      void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, Microsoft.Extensions.Logging.ILogger logger);
                                                                   }
 
                                                                   [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
@@ -1458,7 +1458,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                    }
                                                                }
 
-                                                               namespace GFramework.Core.Abstractions.Logging
+                                                               namespace Microsoft.Extensions.Logging
                                                                {
                                                                    public interface ILogger
                                                                    {
@@ -1481,7 +1481,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                {
                                                                    public interface ICqrsHandlerRegistry
                                                                    {
-                                                                       void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                       void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, Microsoft.Extensions.Logging.ILogger logger);
                                                                    }
 
                                                                    [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
@@ -1539,7 +1539,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                          }
                                                                      }
 
-                                                                     namespace GFramework.Core.Abstractions.Logging
+                                                                     namespace Microsoft.Extensions.Logging
                                                                      {
                                                                          public interface ILogger
                                                                          {
@@ -1562,7 +1562,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                      {
                                                                          public interface ICqrsHandlerRegistry
                                                                          {
-                                                                             void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                             void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, Microsoft.Extensions.Logging.ILogger logger);
                                                                          }
 
                                                                          [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
@@ -1622,7 +1622,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                         }
                                                                     }
 
-                                                                    namespace GFramework.Core.Abstractions.Logging
+                                                                    namespace Microsoft.Extensions.Logging
                                                                     {
                                                                         public interface ILogger
                                                                         {
@@ -1645,7 +1645,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                     {
                                                                         public interface ICqrsHandlerRegistry
                                                                         {
-                                                                            void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                            void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, Microsoft.Extensions.Logging.ILogger logger);
                                                                         }
 
                                                                         [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
@@ -1709,7 +1709,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                             }
                                                         }
 
-                                                        namespace GFramework.Core.Abstractions.Logging
+                                                        namespace Microsoft.Extensions.Logging
                                                         {
                                                             public interface ILogger
                                                             {
@@ -1736,7 +1736,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                         {
                                                             public interface ICqrsHandlerRegistry
                                                             {
-                                                                void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, Microsoft.Extensions.Logging.ILogger logger);
                                                             }
 
                                                             public interface ICqrsRequestInvokerProvider
@@ -1810,7 +1810,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                            }
                                                        }
 
-                                                       namespace GFramework.Core.Abstractions.Logging
+                                                       namespace Microsoft.Extensions.Logging
                                                        {
                                                            public interface ILogger
                                                            {
@@ -1841,7 +1841,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                        {
                                                            public interface ICqrsHandlerRegistry
                                                            {
-                                                               void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                               void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, Microsoft.Extensions.Logging.ILogger logger);
                                                            }
 
                                                            public interface ICqrsStreamInvokerProvider
@@ -1916,7 +1916,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                                }
                                                                            }
 
-                                                                           namespace GFramework.Core.Abstractions.Logging
+                                                                           namespace Microsoft.Extensions.Logging
                                                                            {
                                                                                public interface ILogger
                                                                                {
@@ -1943,7 +1943,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                            {
                                                                                public interface ICqrsHandlerRegistry
                                                                                {
-                                                                                   void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                                   void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, Microsoft.Extensions.Logging.ILogger logger);
                                                                                }
 
                                                                                public interface ICqrsRequestInvokerProvider
@@ -2020,7 +2020,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                 }
                                                             }
 
-                                                            namespace GFramework.Core.Abstractions.Logging
+                                                            namespace Microsoft.Extensions.Logging
                                                             {
                                                                 public interface ILogger
                                                                 {
@@ -2047,7 +2047,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                             {
                                                                 public interface ICqrsHandlerRegistry
                                                                 {
-                                                                    void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                    void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, Microsoft.Extensions.Logging.ILogger logger);
                                                                 }
 
                                                                 public interface ICqrsRequestInvokerProvider
@@ -2134,7 +2134,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                               }
                                                                           }
 
-                                                                          namespace GFramework.Core.Abstractions.Logging
+                                                                          namespace Microsoft.Extensions.Logging
                                                                           {
                                                                               public interface ILogger
                                                                               {
@@ -2161,7 +2161,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                           {
                                                                               public interface ICqrsHandlerRegistry
                                                                               {
-                                                                                  void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                                  void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, Microsoft.Extensions.Logging.ILogger logger);
                                                                               }
 
                                                                               public interface ICqrsStreamInvokerProvider
@@ -2239,7 +2239,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                }
                                                            }
 
-                                                           namespace GFramework.Core.Abstractions.Logging
+                                                           namespace Microsoft.Extensions.Logging
                                                            {
                                                                public interface ILogger
                                                                {
@@ -2266,7 +2266,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                            {
                                                                public interface ICqrsHandlerRegistry
                                                                {
-                                                                   void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                   void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, Microsoft.Extensions.Logging.ILogger logger);
                                                                }
 
                                                                public interface ICqrsStreamInvokerProvider
@@ -2355,7 +2355,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                                     }
                                                                                 }
 
-                                                                                namespace GFramework.Core.Abstractions.Logging
+                                                                                namespace Microsoft.Extensions.Logging
                                                                                 {
                                                                                     public interface ILogger
                                                                                     {
@@ -2382,7 +2382,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                                 {
                                                                                     public interface ICqrsHandlerRegistry
                                                                                     {
-                                                                                        void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                                        void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, Microsoft.Extensions.Logging.ILogger logger);
                                                                                     }
 
                                                                                     public interface ICqrsRequestInvokerProvider
@@ -2461,7 +2461,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                                    }
                                                                                }
 
-                                                                               namespace GFramework.Core.Abstractions.Logging
+                                                                               namespace Microsoft.Extensions.Logging
                                                                                {
                                                                                    public interface ILogger
                                                                                    {
@@ -2488,7 +2488,7 @@ public class CqrsHandlerRegistryGeneratorTests
                                                                                {
                                                                                    public interface ICqrsHandlerRegistry
                                                                                    {
-                                                                                       void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, GFramework.Core.Abstractions.Logging.ILogger logger);
+                                                                                       void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services, Microsoft.Extensions.Logging.ILogger logger);
                                                                                    }
 
                                                                                    public interface ICqrsStreamInvokerProvider

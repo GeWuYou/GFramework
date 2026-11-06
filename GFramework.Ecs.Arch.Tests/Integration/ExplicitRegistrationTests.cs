@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Arch.Core;
-using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Architectures;
 using GFramework.Core.Ioc;
@@ -138,7 +139,7 @@ public class ExplicitRegistrationTests
     public async Task DestroyAsync_Should_Stop_Started_Systems_After_Partial_Initialization_Failure()
     {
         using var container = new MicrosoftDiContainer();
-        container.Register<ILoggerFactoryProvider>(new ConsoleLoggerFactoryProvider());
+        container.Register<ILoggerFactory>(NullLoggerFactory.Instance);
         ((IContextAware)container).SetContext(new ArchitectureContext(container));
         var started = new StartedSystem();
         var failing = new FailingSystem();

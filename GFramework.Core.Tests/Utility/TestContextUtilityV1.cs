@@ -1,7 +1,7 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.Logging;
 using GFramework.Core.Utility;
 
 namespace GFramework.Core.Tests.Utility;

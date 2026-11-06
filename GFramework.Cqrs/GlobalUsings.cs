@@ -8,6 +8,7 @@ global using System.Threading;
 global using System.Threading.Tasks;
 global using System.Reflection;
 global using Microsoft.Extensions.DependencyInjection;
+global using Microsoft.Extensions.Logging;
 global using System.Diagnostics;
 global using System.Collections.Concurrent;
 global using System.Runtime.CompilerServices;

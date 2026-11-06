@@ -42,10 +42,20 @@
 
 ## 第三批：日志标准化与可选角色组织
 
-状态：planned。依赖：第一批完成；与第二批保持改动边界。
+状态：done。日期：2026-11-07。实现基线：refactor/logging-standards。依赖：第一批完成；与第二批保持改动边界。
 
 目标：标准 ILogger/ILoggerFactory 成为接入契约，保留有价值的 Godot/文件输出与配置能力；普通服务不要求 Model/System/Utility 角色或 ContextAware。Architecture 仅保留经实际场景验证的编排价值。
 
 验收：一个使用标准 DI/日志的最小非游戏应用和一个 Godot 接入路径；无进程级日志覆盖；角色便利层不阻碍独立使用。
 
-边界：以现有 appender/provider 和配置首载场景评估迁移，不为假设的宿主家族扩张 API。
+实现：自有 ILogger 家族（含 LoggerFactoryResolver 进程级解析器、LogContext、自有 LogLevel）删除，契约收敛为 Microsoft.Extensions.Logging 的 ILogger/ILogger<T>/ILoggerFactory/ILoggerProvider。架构实例工厂经 LoggerProperties.LoggerFactory 注入：缺省由实例创建独立控制台工厂并在销毁时释放，外部工厂所有权归调用方；工厂与 ILogger<> 开放泛型注册进容器，组件经构造注入 ILogger<T>。appender/formatter/filter 输出引擎保留，新增 AppenderLoggerProvider 把标准日志调用转换为 LogEntry；配置加载器返回标准工厂，JSON 级别名采用 MEL 语义。Godot 输出引擎（GD.Print/模板/颜色/appsettings 首载与热重载）以 GodotLog 标准提供者接入，UseAsDefaultProvider 全局覆盖路径删除。[Log] 生成器改为生成经架构上下文解析的实例属性（默认 `_log`），要求上下文访问能力并新增 GF_Logger_001 诊断，IsStatic 移除；CQRS 注册生成器与 CqrsHandlerRegistry 契约同步迁移。AddCqrsRuntime 收敛为 AddCqrsRuntime()/AddCqrsRuntime(ILoggerFactory?)/AddCqrsRuntime(ILogger)。新增 Samples/MinimalApp（纯标准 DI+日志路径与可选 Architecture 路径）与 Samples/GodotIntegration（Godot 接入路径）。
+
+验证：
+
+- `dotnet build GFramework.sln -c Release`：全部项目（含样例）及 net8.0/net9.0/net10.0 目标通过，0 warning / 0 error。
+- `dotnet test GFramework.sln -c Release`：2253 passed / 0 failed / 0 skipped；新增 AppenderLoggerProvider 转换、配置工厂过滤、双架构日志隔离回归；旧解析器/包装套件随类型删除。
+- 命名、许可证与运行时/生成器边界检查通过；`[Log]` 生成器快照与 CQRS 注册生成器测试更新后通过。
+- Samples/MinimalApp 构建并实际运行：两条路径均启动、处理、销毁成功；Samples/GodotIntegration Release 构建通过。真实 Godot 宿主（场景树与 GD.Print 实机输出）、Native AOT 与性能验收未执行；托管构建/测试不能替代它们。
+- 进程级日志覆盖已移除：仓库源码无 LoggerFactoryResolver/UseAsDefaultProvider 残留；架构实例日志工厂按实例隔离并有测试覆盖。
+
+下一步：后续收敛以本路线图为准；Godot 实机日志输出与 Generic Host 集成按需单独立项。

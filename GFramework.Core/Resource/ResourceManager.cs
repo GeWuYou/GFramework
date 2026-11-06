@@ -3,6 +3,8 @@
 
 using System.Collections.Concurrent;
 using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using GFramework.Core.Abstractions.Resource;
 using GFramework.Core.Logging;
 
@@ -28,15 +30,16 @@ public class ResourceManager : IResourceManager
     // net8.0 目标仍回退到 object 锁，以保持多目标编译兼容性。
     private readonly object _loadLock = new();
 #endif
-    private readonly ILogger _logger = LoggerFactoryResolver.Provider.CreateLogger(nameof(ResourceManager));
+    private readonly ILogger _logger;
     private IResourceReleaseStrategy _releaseStrategy;
 
     /// <summary>
     ///     创建资源管理器
     ///     默认使用手动释放策略
     /// </summary>
-    public ResourceManager()
+    public ResourceManager(ILogger? logger = null)
     {
+        _logger = logger ?? NullLogger.Instance;
         _releaseStrategy = new ManualReleaseStrategy();
     }
 
@@ -84,7 +87,7 @@ public class ResourceManager : IResourceManager
             }
             catch (Exception ex)
             {
-                _logger.Error($"Failed to load resource '{path}'", ex);
+                _logger.LogError(ex, $"Failed to load resource '{path}'");
                 return null;
             }
         }
@@ -138,7 +141,7 @@ public class ResourceManager : IResourceManager
         }
         catch (Exception ex)
         {
-            _logger.Error($"Failed to load resource '{path}'", ex);
+            _logger.LogError(ex, $"Failed to load resource '{path}'");
             return null;
         }
     }
@@ -177,7 +180,7 @@ public class ResourceManager : IResourceManager
             var refCount = _cache.GetReferenceCount(path);
             if (refCount > 0)
             {
-                _logger.Error($"Cannot unload resource '{path}' with {refCount} active references");
+                _logger.LogError($"Cannot unload resource '{path}' with {refCount} active references");
                 return false;
             }
 
@@ -301,7 +304,7 @@ public class ResourceManager : IResourceManager
             }
             catch (Exception ex)
             {
-                _logger.Error("Error unloading resource", ex);
+                _logger.LogError(ex, "Error unloading resource");
             }
         }
 
@@ -314,7 +317,7 @@ public class ResourceManager : IResourceManager
             }
             catch (Exception ex)
             {
-                _logger.Error("Error disposing resource", ex);
+                _logger.LogError(ex, "Error disposing resource");
             }
         }
     }

@@ -78,6 +78,7 @@
         <None Remove="GFramework.Cqrs.Tests\**"/>
         <None Remove="GFramework.Tests.Common\**"/>
         <None Remove="ai-libs\**" />
+        <None Remove="Samples\**" />
     </ItemGroup>
     <!-- 聚合核心模块；CQRS 不再经由 Core 传递，改为显式聚合以保持 all-in-one 语义 -->
     <ItemGroup>
@@ -130,6 +131,7 @@
         <Compile Remove="GFramework.Cqrs.Tests\**" />
         <Compile Remove="GFramework.Tests.Common\**" />
         <Compile Remove="ai-libs\**" />
+        <Compile Remove="Samples\**" />
     </ItemGroup>
     <ItemGroup>
         <EmbeddedResource Remove="GFramework.Core\**" />
@@ -166,6 +168,7 @@
         <EmbeddedResource Remove="GFramework.Cqrs.Tests\**" />
         <EmbeddedResource Remove="GFramework.Tests.Common\**" />
         <EmbeddedResource Remove="ai-libs\**" />
+        <EmbeddedResource Remove="Samples\**" />
     </ItemGroup>
     <ItemGroup>
         <AdditionalFiles Remove="AnalyzerReleases.Shipped.md"/>

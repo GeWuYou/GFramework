@@ -47,7 +47,7 @@
 
 删除核心启动/销毁中的 GameContext.Bind/Unbind，以及 ContextAwareBase 默认全局回退；未显式绑定的 ContextAware 访问给出清晰错误。GameContext 的兼容公共类型留到历史 API 清理批次，但核心不依赖它运行。
 
-日志从本架构配置或构造参数接入实例级 ILoggerFactoryProvider；缺省实例工厂不写 LoggerFactoryResolver.Provider。独立使用的 System/Utility 可创建本地日志工厂，不借用全局上下文。这是第一批的隔离接口，下一日志批次再改用 Microsoft.Extensions.Logging 契约；本批不引入永久双向日志适配层。
+日志从本架构配置或构造参数接入实例级 ILoggerFactoryProvider；缺省实例工厂不写 LoggerFactoryResolver.Provider。独立使用的 System/Utility 可创建本地日志工厂，不借用全局上下文。这是第一批的隔离接口，下一日志批次再改用 Microsoft.Extensions.Logging 契约；本批不引入永久双向日志适配层。（状态更新：后续日志标准化批次已完成该迁移——`ILoggerFactoryProvider` 与 `LoggerFactoryResolver` 已删除，实例工厂改为标准 `ILoggerFactory`，见 `LoggerProperties.LoggerFactory`。）
 
 ContextAwareGenerator 同步取消静态共享 provider 和默认 GameContextProvider。生成对象通过实例级显式上下文注入工作，未注入时失败；更新 snapshot、诊断说明和采用示例，不仅修改运行时基类。
 

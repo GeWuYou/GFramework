@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System;
-using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Godot.Logging;
 

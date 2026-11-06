@@ -1,0 +1,30 @@
+#!/bin/sh
+# 提交前把暂存的文本文件统一为 LF。
+# 二进制文件按 .gitattributes 的 binary 判定跳过；其余文件将 CRLF 规范为 LF 后重新暂存。
+# 本钩子是最后防线：日常规范化仍以 .gitattributes（* text=auto eol=lf）与 clean 过滤器为准。
+set -eu
+
+files=$(git diff --cached --name-only --diff-filter=ACM)
+[ -z "$files" ] && exit 0
+
+changed=""
+for f in $files; do
+    [ -f "$f" ] || continue
+    case "$f" in
+        *.png|*.jpg|*.jpeg|*.gif|*.ico|*.zip|*.dll|*.so|*.pdb) continue ;;
+    esac
+    if git check-attr binary -- "$f" | grep -q "set: binary"; then
+        continue
+    fi
+    if grep -qI -U "$(printf '\r')" "$f" 2>/dev/null; then
+        # 仅替换行尾 CR，文本文件中的 CR 均为行尾；-I 保证误判二进制时不动文件。
+        sed -i 's/\r$//' "$f"
+        changed="$changed $f"
+    fi
+done
+
+if [ -n "$changed" ]; then
+    git add --renormalize -- $changed
+    echo "pre-commit: 已将以下文件统一为 LF 并重新暂存:$changed"
+fi
+exit 0

@@ -4,6 +4,7 @@
 using System.Text.Json;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Logging.Formatters;
+using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 
 namespace GFramework.Core.Tests.Logging;
@@ -26,14 +27,14 @@ public class JsonLogFormatterTests
     public void Format_WithBasicEntry_ShouldProduceValidJson()
     {
         var timestamp = new DateTime(2026, 2, 26, 10, 30, 45, 123, DateTimeKind.Utc);
-        var entry = new LogEntry(timestamp, LogLevel.Info, "TestLogger", "Test message", null, null);
+        var entry = new LogEntry(timestamp, LogLevel.Information, "TestLogger", "Test message", null, null);
 
         var result = _formatter.Format(entry);
 
         Assert.That(() => JsonDocument.Parse(result), Throws.Nothing);
 
         var doc = JsonDocument.Parse(result);
-        Assert.That(doc.RootElement.GetProperty("level").GetString(), Is.EqualTo("INFO"));
+        Assert.That(doc.RootElement.GetProperty("level").GetString(), Is.EqualTo("INFORMATION"));
         Assert.That(doc.RootElement.GetProperty("logger").GetString(), Is.EqualTo("TestLogger"));
         Assert.That(doc.RootElement.GetProperty("message").GetString(), Is.EqualTo("Test message"));
     }
@@ -63,7 +64,7 @@ public class JsonLogFormatterTests
             ["UserName"] = "TestUser",
             ["IsActive"] = true
         };
-        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "User action", null, properties);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "User action", null, properties);
 
         var result = _formatter.Format(entry);
 
@@ -101,7 +102,7 @@ public class JsonLogFormatterTests
             ["Key1"] = null,
             ["Key2"] = "value"
         };
-        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Test message", null, properties);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", null, properties);
 
         var result = _formatter.Format(entry);
 
@@ -130,8 +131,8 @@ public class JsonLogFormatterTests
     public void Format_WithAllLogLevels_ShouldFormatCorrectly()
     {
         var levels = new[]
-            { LogLevel.Trace, LogLevel.Debug, LogLevel.Info, LogLevel.Warning, LogLevel.Error, LogLevel.Fatal };
-        var expectedStrings = new[] { "TRACE", "DEBUG", "INFO", "WARNING", "ERROR", "FATAL" };
+            { LogLevel.Trace, LogLevel.Debug, LogLevel.Information, LogLevel.Warning, LogLevel.Error, LogLevel.Critical };
+        var expectedStrings = new[] { "TRACE", "DEBUG", "INFORMATION", "WARNING", "ERROR", "CRITICAL" };
 
         for (int i = 0; i < levels.Length; i++)
         {
@@ -147,7 +148,7 @@ public class JsonLogFormatterTests
     public void Format_WithSpecialCharacters_ShouldEscapeCorrectly()
     {
         var message = "Test \"quoted\" and \n newline";
-        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", message, null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", message, null, null);
 
         var result = _formatter.Format(entry);
 
@@ -159,7 +160,7 @@ public class JsonLogFormatterTests
     public void Format_ShouldUseIso8601Timestamp()
     {
         var timestamp = new DateTime(2026, 2, 26, 10, 30, 45, 123, DateTimeKind.Utc);
-        var entry = new LogEntry(timestamp, LogLevel.Info, "TestLogger", "Test", null, null);
+        var entry = new LogEntry(timestamp, LogLevel.Information, "TestLogger", "Test", null, null);
 
         var result = _formatter.Format(entry);
 
@@ -181,7 +182,7 @@ public class JsonLogFormatterTests
             ["Null"] = null,
             ["Array"] = new[] { 1, 2, 3 }
         };
-        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Test", null, properties);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test", null, properties);
 
         var result = _formatter.Format(entry);
 

@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Godot.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Godot.Tests.Logging;
 
@@ -15,13 +16,11 @@ namespace GFramework.Godot.Tests.Logging;
 public sealed class GodotLogAppenderTests
 {
     /// <summary>
-    ///     Verifies that the appender renders Core log entry data and merged structured properties.
+    ///     Verifies that the appender renders Core log entry data and entry-provided structured properties.
     /// </summary>
     [Test]
-    public void Render_Should_Use_Core_LogEntry_And_Merged_Properties()
+    public void Render_Should_Use_Core_LogEntry_And_Entry_Properties()
     {
-        LogContext.Clear();
-        using var sceneContext = LogContext.Push("Scene", "Boot");
         var appender = new GodotLogAppender(new GodotLoggerOptions
         {
             Mode = GodotLoggerMode.Release,
@@ -29,13 +28,14 @@ public sealed class GodotLogAppenderTests
         });
         var entry = new LogEntry(
             new DateTime(2026, 5, 3, 4, 5, 6, DateTimeKind.Utc),
-            LogLevel.Info,
+            LogLevel.Information,
             "Game.Services.Inventory",
             "Ready",
             null,
             new Dictionary<string, object?>(StringComparer.Ordinal)
             {
                 ["   "] = "ignored",
+                ["Scene"] = "Boot",
                 ["Score"] = 12.5m
             });
 

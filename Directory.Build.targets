@@ -173,4 +173,12 @@
                 NamespaceItemName="$(_GFrameworkTransitiveGlobalUsingsItemName)"/>
     </Target>
 
+
+    <!-- 每次构建幂等地启用仓库级 git 钩子目录（pre-commit 统一 LF），无需手动配置。 -->
+    <Target Name="EnsureGitHooksPath" BeforeTargets="Build">
+        <Exec Command="git config core.hooksPath .githooks"
+              WorkingDirectory="$(MSBuildThisFileDirectory)"
+              IgnoreExitCode="true"
+              StandardOutputImportance="low"/>
+    </Target>
 </Project>

@@ -10,13 +10,11 @@ using BenchmarkDotNet.Order;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Ioc;
-using GFramework.Core.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
-using ILogger = GFramework.Core.Abstractions.Logging.ILogger;
+using Microsoft.Extensions.Logging;
 using GeneratedMediator = Mediator.Mediator;
 
 namespace GFramework.Cqrs.Benchmarks.Messaging;
@@ -217,17 +215,13 @@ public class NotificationStartupBenchmarks
     }
 
     /// <summary>
-    ///     为 benchmark 创建稳定的 fatal 级 logger，避免把日志成本混入 startup 测量。
+    ///     为 benchmark 创建安静的标准诊断 logger，避免把日志成本混入 startup 测量。
     /// </summary>
     /// <param name="categoryName">logger 分类名。</param>
     /// <returns>当前 benchmark 使用的稳定 logger。</returns>
     private static ILogger CreateLogger(string categoryName)
     {
-        LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider
-        {
-            MinLevel = LogLevel.Fatal
-        };
-        return LoggerFactoryResolver.Provider.CreateLogger(categoryName);
+        return BenchmarkLogging.CreateLogger(categoryName);
     }
 
     /// <summary>

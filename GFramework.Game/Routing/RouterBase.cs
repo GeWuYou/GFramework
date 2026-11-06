@@ -12,6 +12,8 @@
 // limitations under the License.
 
 using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using GFramework.Core.Logging;
 using GFramework.Core.Systems;
 using GFramework.Game.Abstractions.Routing;
@@ -34,8 +36,6 @@ public abstract class RouterBase<TRoute, TContext> : AbstractSystem
     where TRoute : IRoute
     where TContext : IRouteContext
 {
-    private static readonly ILogger Log =
-        LoggerFactoryResolver.Provider.CreateLogger(nameof(RouterBase<TRoute, TContext>));
 
     /// <summary>
     /// 路由守卫列表,按优先级排序
@@ -88,13 +88,13 @@ public abstract class RouterBase<TRoute, TContext> : AbstractSystem
 
         if (_guards.Contains(guard))
         {
-            Log.Debug("Guard already registered: {0}", guard.GetType().Name);
+            _logger.LogDebug("Guard already registered: {0}", guard.GetType().Name);
             return;
         }
 
         _guards.Add(guard);
         _guards.Sort((a, b) => a.Priority.CompareTo(b.Priority));
-        Log.Debug("Guard registered: {0}, Priority={1}", guard.GetType().Name, guard.Priority);
+        _logger.LogDebug("Guard registered: {0}, Priority={1}", guard.GetType().Name, guard.Priority);
     }
 
     /// <summary>
@@ -115,7 +115,7 @@ public abstract class RouterBase<TRoute, TContext> : AbstractSystem
     {
         ArgumentNullException.ThrowIfNull(guard);
         if (_guards.Remove(guard))
-            Log.Debug("Guard removed: {0}", guard.GetType().Name);
+            _logger.LogDebug("Guard removed: {0}", guard.GetType().Name);
     }
 
     #endregion
@@ -139,24 +139,24 @@ public abstract class RouterBase<TRoute, TContext> : AbstractSystem
         {
             try
             {
-                Log.Debug("Executing enter guard: {0} for {1}", guard.GetType().Name, routeKey);
+                _logger.LogDebug("Executing enter guard: {0} for {1}", guard.GetType().Name, routeKey);
                 var canEnter = await guard.CanEnterAsync(routeKey, context).ConfigureAwait(false);
 
                 if (!canEnter)
                 {
-                    Log.Debug("Enter guard blocked: {0}", guard.GetType().Name);
+                    _logger.LogDebug("Enter guard blocked: {0}", guard.GetType().Name);
                     return false;
                 }
 
                 if (guard.CanInterrupt)
                 {
-                    Log.Debug("Enter guard {0} passed, can interrupt = true", guard.GetType().Name);
+                    _logger.LogDebug("Enter guard {0} passed, can interrupt = true", guard.GetType().Name);
                     return true;
                 }
             }
             catch (Exception ex)
             {
-                Log.Error("Enter guard {0} failed: {1}", guard.GetType().Name, ex.Message);
+                _logger.LogError("Enter guard {0} failed: {1}", guard.GetType().Name, ex.Message);
                 if (guard.CanInterrupt)
                     return false;
             }
@@ -181,24 +181,24 @@ public abstract class RouterBase<TRoute, TContext> : AbstractSystem
         {
             try
             {
-                Log.Debug("Executing leave guard: {0} for {1}", guard.GetType().Name, routeKey);
+                _logger.LogDebug("Executing leave guard: {0} for {1}", guard.GetType().Name, routeKey);
                 var canLeave = await guard.CanLeaveAsync(routeKey).ConfigureAwait(false);
 
                 if (!canLeave)
                 {
-                    Log.Debug("Leave guard blocked: {0}", guard.GetType().Name);
+                    _logger.LogDebug("Leave guard blocked: {0}", guard.GetType().Name);
                     return false;
                 }
 
                 if (guard.CanInterrupt)
                 {
-                    Log.Debug("Leave guard {0} passed, can interrupt = true", guard.GetType().Name);
+                    _logger.LogDebug("Leave guard {0} passed, can interrupt = true", guard.GetType().Name);
                     return true;
                 }
             }
             catch (Exception ex)
             {
-                Log.Error("Leave guard {0} failed: {1}", guard.GetType().Name, ex.Message);
+                _logger.LogError("Leave guard {0} failed: {1}", guard.GetType().Name, ex.Message);
                 if (guard.CanInterrupt)
                     return false;
             }

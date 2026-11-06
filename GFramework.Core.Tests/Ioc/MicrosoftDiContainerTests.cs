@@ -4,9 +4,7 @@
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Ioc;
-using GFramework.Core.Logging;
 using GFramework.Core.Tests.Cqrs;
 using GFramework.Core.Tests.Systems;
 using GFramework.Cqrs;
@@ -26,15 +24,7 @@ public class MicrosoftDiContainerTests
     [SetUp]
     public void SetUp()
     {
-        // 初始化 LoggerFactoryResolver 以支持 MicrosoftDiContainer
-        LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider();
         _container = new MicrosoftDiContainer();
-
-        // 直接初始化 logger 字段
-        var loggerField = typeof(MicrosoftDiContainer).GetField("_logger",
-            BindingFlags.NonPublic | BindingFlags.Instance);
-        loggerField?.SetValue(_container,
-            LoggerFactoryResolver.Provider.CreateLogger(nameof(MicrosoftDiContainer)));
 
         CqrsTestRuntime.RegisterInfrastructure(_container);
     }

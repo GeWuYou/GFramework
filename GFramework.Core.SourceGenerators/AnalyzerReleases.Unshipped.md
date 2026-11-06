@@ -28,4 +28,5 @@
  GF_Priority_003            | GFramework.Priority                      | Error    | PriorityDiagnostic             
  GF_Priority_004            | GFramework.Priority                      | Error    | PriorityDiagnostic             
  GF_Priority_005            | GFramework.Priority                      | Error    | PriorityDiagnostic             
- GF_Priority_Usage_001      | GFramework.Usage                         | Info     | PriorityUsageAnalyzer          
+ GF_Priority_Usage_001      | GFramework.Usage                         | Info     | PriorityUsageAnalyzer
+ GF_Logger_001              | GFramework.SourceGenerators.logging      | Error    | LoggerGeneratorDiagnostics     

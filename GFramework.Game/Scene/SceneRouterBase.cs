@@ -13,6 +13,8 @@
 
 using System;
 using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using GFramework.Core.Extensions;
 using GFramework.Core.Logging;
 using GFramework.Game.Abstractions.Enums;
@@ -28,8 +30,6 @@ namespace GFramework.Game.Scene;
 public abstract class SceneRouterBase
     : RouterBase<ISceneBehavior, ISceneEnterParam>, ISceneRouter
 {
-    private static readonly ILogger Log =
-        LoggerFactoryResolver.Provider.CreateLogger(nameof(SceneRouterBase));
 
     private readonly SceneTransitionPipeline _pipeline = new();
 
@@ -68,7 +68,7 @@ public abstract class SceneRouterBase
     public void BindRoot(ISceneRoot root)
     {
         Root = root;
-        Log.Debug("Bind Scene Root: {0}", root.GetType().Name);
+        _logger.LogDebug("Bind Scene Root: {0}", root.GetType().Name);
     }
 
     #region Replace
@@ -169,7 +169,7 @@ public abstract class SceneRouterBase
     protected override void OnInit()
     {
         _factory = this.GetUtility<ISceneFactory>()!;
-        Log.Debug("SceneRouterBase initialized. Factory={0}", _factory.GetType().Name);
+        _logger.LogDebug("SceneRouterBase initialized. Factory={0}", _factory.GetType().Name);
         RegisterHandlers();
     }
 
@@ -216,14 +216,14 @@ public abstract class SceneRouterBase
     {
         if (Contains(sceneKey))
         {
-            Log.Warn("Scene already in stack: {0}", sceneKey);
+            _logger.LogWarning("Scene already in stack: {0}", sceneKey);
             return;
         }
 
         // 守卫检查
         if (!await ExecuteEnterGuardsAsync(sceneKey, param).ConfigureAwait(true))
         {
-            Log.Warn("Push blocked by guard: {0}", sceneKey);
+            _logger.LogWarning("Push blocked by guard: {0}", sceneKey);
             return;
         }
 
@@ -249,7 +249,7 @@ public abstract class SceneRouterBase
         // 进入场景
         await scene.OnEnterAsync().ConfigureAwait(true);
 
-        Log.Debug("Push Scene: {0}, stackCount={1}",
+        _logger.LogDebug("Push Scene: {0}, stackCount={1}",
             sceneKey, Stack.Count);
     }
 
@@ -296,7 +296,7 @@ public abstract class SceneRouterBase
         // 守卫检查
         if (!await ExecuteLeaveGuardsAsync(top.Key).ConfigureAwait(true))
         {
-            Log.Warn("Pop blocked by guard: {0}", top.Key);
+            _logger.LogWarning("Pop blocked by guard: {0}", top.Key);
             return;
         }
 
@@ -318,7 +318,7 @@ public abstract class SceneRouterBase
             await next.OnResumeAsync().ConfigureAwait(true);
         }
 
-        Log.Debug("Pop Scene, stackCount={0}", Stack.Count);
+        _logger.LogDebug("Pop Scene, stackCount={0}", Stack.Count);
     }
 
     #endregion
@@ -455,9 +455,9 @@ public abstract class SceneRouterBase
     /// <returns>异步任务。</returns>
     private async Task BeforeChangeAsync(SceneTransitionEvent @event)
     {
-        Log.Debug("BeforeChange phases started: {0}", @event.TransitionType);
+        _logger.LogDebug("BeforeChange phases started: {0}", @event.TransitionType);
         await _pipeline.ExecuteAsync(@event, SceneTransitionPhases.BeforeChange).ConfigureAwait(true);
-        Log.Debug("BeforeChange phases completed: {0}", @event.TransitionType);
+        _logger.LogDebug("BeforeChange phases completed: {0}", @event.TransitionType);
     }
 
     /// <summary>
@@ -466,9 +466,9 @@ public abstract class SceneRouterBase
     /// <param name="event">场景转换事件。</param>
     private async Task AfterChangeAsync(SceneTransitionEvent @event)
     {
-        Log.Debug("AfterChange phases started: {0}", @event.TransitionType);
+        _logger.LogDebug("AfterChange phases started: {0}", @event.TransitionType);
         await _pipeline.ExecuteAsync(@event, SceneTransitionPhases.AfterChange).ConfigureAwait(true);
-        Log.Debug("AfterChange phases completed: {0}", @event.TransitionType);
+        _logger.LogDebug("AfterChange phases completed: {0}", @event.TransitionType);
     }
 
     #endregion

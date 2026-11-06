@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using GFramework.Core.Abstractions.Resource;
 using GFramework.Core.Logging;
 
@@ -21,7 +23,7 @@ internal sealed class ResourceHandle<T> : IResourceHandle<T> where T : class
     // net8.0 目标仍回退到 object 锁，以保持多目标编译兼容性。
     private readonly object _lock = new();
 #endif
-    private readonly ILogger _logger = LoggerFactoryResolver.Provider.CreateLogger(nameof(ResourceHandle<T>));
+    private readonly ILogger _logger;
     private readonly Action<string> _onDispose;
     private bool _disposed;
     private int _referenceCount;
@@ -29,11 +31,13 @@ internal sealed class ResourceHandle<T> : IResourceHandle<T> where T : class
     /// <summary>
     ///     创建资源句柄
     /// </summary>
+/// <param name="logger">标准日志记录器；未提供时使用空输出。</param>
     /// <param name="resource">资源实例</param>
     /// <param name="path">资源路径</param>
     /// <param name="onDispose">释放时的回调</param>
-    public ResourceHandle(T resource, string path, Action<string> onDispose)
+    public ResourceHandle(T resource, string path, Action<string> onDispose, ILogger? logger = null)
     {
+        _logger = logger ?? NullLogger.Instance;
         Resource = resource ?? throw new ArgumentNullException(nameof(resource));
         Path = path ?? throw new ArgumentNullException(nameof(path));
         _onDispose = onDispose ?? throw new ArgumentNullException(nameof(onDispose));
@@ -147,7 +151,7 @@ internal sealed class ResourceHandle<T> : IResourceHandle<T> where T : class
         }
         catch (Exception ex)
         {
-            _logger.Error($"[ResourceHandle] Error disposing resource '{Path}': {ex.Message}");
+            _logger.LogError($"[ResourceHandle] Error disposing resource '{Path}': {ex.Message}");
         }
     }
 }

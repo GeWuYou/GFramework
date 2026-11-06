@@ -52,6 +52,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.Game.SourceGener
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GFramework.Cqrs.Benchmarks", "GFramework.Cqrs.Benchmarks\GFramework.Cqrs.Benchmarks.csproj", "{5609D017-E481-431B-874A-7D06BFF698F9}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Samples", "Samples", "{5D20AA90-6969-D8BD-9DCD-8634F4692FDA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MinimalApp", "Samples\MinimalApp\MinimalApp.csproj", "{1DBEE32D-839F-450D-9A05-EA23F4AA5543}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GodotIntegration", "Samples\GodotIntegration\GodotIntegration.csproj", "{33606A51-BC51-4A6A-95AE-EAE73C3F9AF7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -374,8 +380,36 @@ Global
 		{5609D017-E481-431B-874A-7D06BFF698F9}.Release|x64.Build.0 = Release|Any CPU
 		{5609D017-E481-431B-874A-7D06BFF698F9}.Release|x86.ActiveCfg = Release|Any CPU
 		{5609D017-E481-431B-874A-7D06BFF698F9}.Release|x86.Build.0 = Release|Any CPU
+		{1DBEE32D-839F-450D-9A05-EA23F4AA5543}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1DBEE32D-839F-450D-9A05-EA23F4AA5543}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1DBEE32D-839F-450D-9A05-EA23F4AA5543}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{1DBEE32D-839F-450D-9A05-EA23F4AA5543}.Debug|x64.Build.0 = Debug|Any CPU
+		{1DBEE32D-839F-450D-9A05-EA23F4AA5543}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{1DBEE32D-839F-450D-9A05-EA23F4AA5543}.Debug|x86.Build.0 = Debug|Any CPU
+		{1DBEE32D-839F-450D-9A05-EA23F4AA5543}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1DBEE32D-839F-450D-9A05-EA23F4AA5543}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1DBEE32D-839F-450D-9A05-EA23F4AA5543}.Release|x64.ActiveCfg = Release|Any CPU
+		{1DBEE32D-839F-450D-9A05-EA23F4AA5543}.Release|x64.Build.0 = Release|Any CPU
+		{1DBEE32D-839F-450D-9A05-EA23F4AA5543}.Release|x86.ActiveCfg = Release|Any CPU
+		{1DBEE32D-839F-450D-9A05-EA23F4AA5543}.Release|x86.Build.0 = Release|Any CPU
+		{33606A51-BC51-4A6A-95AE-EAE73C3F9AF7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{33606A51-BC51-4A6A-95AE-EAE73C3F9AF7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{33606A51-BC51-4A6A-95AE-EAE73C3F9AF7}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{33606A51-BC51-4A6A-95AE-EAE73C3F9AF7}.Debug|x64.Build.0 = Debug|Any CPU
+		{33606A51-BC51-4A6A-95AE-EAE73C3F9AF7}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{33606A51-BC51-4A6A-95AE-EAE73C3F9AF7}.Debug|x86.Build.0 = Debug|Any CPU
+		{33606A51-BC51-4A6A-95AE-EAE73C3F9AF7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{33606A51-BC51-4A6A-95AE-EAE73C3F9AF7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{33606A51-BC51-4A6A-95AE-EAE73C3F9AF7}.Release|x64.ActiveCfg = Release|Any CPU
+		{33606A51-BC51-4A6A-95AE-EAE73C3F9AF7}.Release|x64.Build.0 = Release|Any CPU
+		{33606A51-BC51-4A6A-95AE-EAE73C3F9AF7}.Release|x86.ActiveCfg = Release|Any CPU
+		{33606A51-BC51-4A6A-95AE-EAE73C3F9AF7}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{1DBEE32D-839F-450D-9A05-EA23F4AA5543} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
+		{33606A51-BC51-4A6A-95AE-EAE73C3F9AF7} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
 	EndGlobalSection
 EndGlobal

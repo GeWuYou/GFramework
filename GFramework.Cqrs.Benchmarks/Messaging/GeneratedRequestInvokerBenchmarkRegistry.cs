@@ -6,9 +6,9 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Cqrs.Benchmarks.Messaging;
 
@@ -51,7 +51,7 @@ public sealed class GeneratedRequestInvokerBenchmarkRegistry :
                 RequestInvokerBenchmarks.GeneratedBenchmarkRequest,
                 RequestInvokerBenchmarks.GeneratedBenchmarkResponse>),
             typeof(RequestInvokerBenchmarks.GeneratedBenchmarkRequestHandler));
-        logger.Debug("Registered generated request invoker benchmark handler.");
+        logger.LogDebug("Registered generated request invoker benchmark handler.");
     }
 
     /// <summary>

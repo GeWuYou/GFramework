@@ -7,6 +7,7 @@ using System.Globalization;
 using System.Linq;
 using GFramework.Core.Abstractions.Logging;
 using Godot;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Godot.Logging;
 
@@ -14,11 +15,11 @@ namespace GFramework.Godot.Logging;
 ///     Writes Core <see cref="LogEntry"/> instances to the Godot output APIs.
 /// </summary>
 /// <remarks>
-///     This appender is the Godot-specific edge of the Core logging pipeline. It keeps formatting, color selection, and
-///     Godot debugger routing in the host package while allowing consumers to compose Godot output with Core
-///     <see cref="ILogAppender"/> features such as <c>CompositeLogger</c>, filters, and async appenders. The appender
-///     does not own unmanaged resources; <see cref="Flush"/> and <see cref="Dispose"/> are therefore no-op lifecycle
-///     hooks that satisfy the shared appender contract.
+///     This appender is the Godot-specific edge of the Core appender pipeline. It keeps formatting, color selection,
+///     and Godot debugger routing in the host package while remaining composable with Core <see cref="ILogAppender"/>
+///     features such as filters and async appenders. The appender does not own unmanaged resources;
+///     <see cref="Flush"/> and <see cref="Dispose"/> are therefore no-op lifecycle hooks that satisfy the shared
+///     appender contract.
 /// </remarks>
 public sealed class GodotLogAppender : ILogAppender
 {
@@ -112,7 +113,7 @@ public sealed class GodotLogAppender : ILogAppender
     /// <summary>
     ///     Formats structured properties for the <c>{properties}</c> template placeholder.
     /// </summary>
-    /// <param name="properties">The already-merged property set from a Core <see cref="LogEntry"/>.</param>
+    /// <param name="properties">The property set carried by a Core <see cref="LogEntry"/>.</param>
     /// <returns>
     ///     A leading separator plus formatted properties, or an empty string when no valid properties exist.
     /// </returns>
@@ -171,16 +172,17 @@ public sealed class GodotLogAppender : ILogAppender
             entry.LoggerName,
             entry.Message,
             options.GetColor(entry.Level),
-            FormatProperties(GetMergedProperties(entry)));
+            FormatProperties(GetEntryProperties(entry)));
 
         return GodotLogTemplate.Parse(templateText).Render(context);
     }
 
-    private static IReadOnlyDictionary<string, object?> GetMergedProperties(LogEntry entry)
+    private static IReadOnlyDictionary<string, object?> GetEntryProperties(LogEntry entry)
     {
         var allProperties = entry.GetAllProperties();
         return allProperties.Count == 0 ? EmptyProperties : allProperties;
     }
+
 
     private static string FormatValue(object? value)
     {
@@ -202,7 +204,7 @@ public sealed class GodotLogAppender : ILogAppender
 
         switch (level)
         {
-            case LogLevel.Fatal:
+            case LogLevel.Critical:
             case LogLevel.Error:
                 GD.PushError(rendered);
                 break;

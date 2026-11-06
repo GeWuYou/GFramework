@@ -1,8 +1,8 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace GFramework.Cqrs.Internal;
 
@@ -17,10 +17,14 @@ namespace GFramework.Cqrs.Internal;
 ///         例如由容器写锁串行化程序集注册流程。
 ///     </para>
 /// </remarks>
-internal sealed class DefaultCqrsRegistrationService(ICqrsHandlerRegistrar registrar, ILogger logger)
+/// <param name="registrar">底层 handler 注册器。</param>
+/// <param name="logger">
+///     注册阶段诊断日志器；为 <see langword="null" /> 时回退到空实现，注册期诊断默认静默。
+/// </param>
+internal sealed class DefaultCqrsRegistrationService(ICqrsHandlerRegistrar registrar, ILogger? logger = null)
     : ICqrsRegistrationService
 {
-    private readonly ILogger _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    private readonly ILogger _logger = logger ?? NullLogger<DefaultCqrsRegistrationService>.Instance;
     private readonly HashSet<string> _registeredAssemblyKeys = new(StringComparer.Ordinal);
     private readonly ICqrsHandlerRegistrar _registrar = registrar ?? throw new ArgumentNullException(nameof(registrar));
 
@@ -43,7 +47,7 @@ internal sealed class DefaultCqrsRegistrationService(ICqrsHandlerRegistrar regis
 
             if (_registeredAssemblyKeys.Contains(assemblyKey))
             {
-                _logger.Debug(
+                _logger.LogDebug(
                     $"Skipping CQRS handler registration for assembly {assemblyKey} because it was already registered.");
                 continue;
             }

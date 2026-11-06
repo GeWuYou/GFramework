@@ -3,7 +3,7 @@
 
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Enums;
-using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Core.Architectures;
 
@@ -51,7 +51,7 @@ internal sealed class ArchitecturePhaseCoordinator(
     {
         ValidatePhaseTransition(next);
         CurrentPhase = next;
-        logger.Debug($"Architecture phase: {next}");
+        logger.LogDebug($"Architecture phase: {next}");
         foreach (var hook in _hooks)
         {
             cancellationToken.ThrowIfCancellationRequested();

@@ -11,9 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Ioc;
-using GFramework.Core.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -87,10 +85,6 @@ public class StreamingBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider
-        {
-            MinLevel = LogLevel.Fatal
-        };
         Fixture.Setup("StreamRequest", handlerCount: 1, pipelineCount: 0);
         BenchmarkDispatcherCacheHelper.ClearDispatcherCaches();
 
@@ -101,7 +95,7 @@ public class StreamingBenchmarks
         });
         _runtime = GFramework.Cqrs.CqrsRuntimeFactory.CreateRuntime(
             _container,
-            LoggerFactoryResolver.Provider.CreateLogger(nameof(StreamingBenchmarks)));
+            BenchmarkLogging.CreateLogger(nameof(StreamingBenchmarks)));
 
         _mediatrServiceProvider = BenchmarkHostFactory.CreateMediatRServiceProvider(
             configure: null,

@@ -9,6 +9,9 @@ using GFramework.Core.Logging.Appenders;
 using GFramework.Core.Logging.Filters;
 using GFramework.Core.Logging.Formatters;
 
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+
 namespace GFramework.Core.Logging;
 
 /// <summary>
@@ -52,13 +55,27 @@ public static class LoggingConfigurationLoader
     }
 
     /// <summary>
-    ///     根据配置创建 Logger 工厂
+    ///     根据配置创建标准 <see cref="ILoggerFactory"/>。
+    ///     工厂内置一个把输出转发到配置 appender 的 <see cref="AppenderLoggerProvider"/>，
+    ///     配置的全局最小级别与分类级别映射为标准 filter 规则。
     /// </summary>
     /// <param name="config">日志配置</param>
-    /// <returns>Logger 工厂</returns>
-    public static ILoggerFactory CreateFactory(LoggingConfiguration config)
+    /// <returns>标准 Logger 工厂；调用方拥有释放责任。</returns>
+    public static Microsoft.Extensions.Logging.ILoggerFactory CreateFactory(LoggingConfiguration config)
     {
-        return new ConfigurableLoggerFactory(config);
+        ArgumentNullException.ThrowIfNull(config);
+        var appenders = config.Appenders.Select(CreateAppender).ToArray();
+        return Microsoft.Extensions.Logging.LoggerFactory.Create(builder =>
+        {
+            builder.SetMinimumLevel(config.MinLevel);
+            foreach (var pair in config.LoggerLevels)
+            {
+                var category = pair.Key;
+                var level = pair.Value;
+                builder.AddFilter(category, level);
+            }
+            builder.AddProvider(new AppenderLoggerProvider(appenders));
+        });
     }
 
     /// <summary>

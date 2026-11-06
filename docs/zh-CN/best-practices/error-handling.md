@@ -82,12 +82,12 @@ public async Task&lt;SaveData&gt; LoadSaveFileAsync(string path)
     }
     catch (FileNotFoundException ex)
     {
-        _logger.Error($"存档文件不存在: {path}", ex);
+        _logger.LogError($"存档文件不存在: {path}", ex);
         throw new SaveSystemException("无法加载存档文件", ex);
     }
     catch (JsonException ex)
     {
-        _logger.Error($"存档文件格式错误: {path}", ex);
+        _logger.LogError($"存档文件格式错误: {path}", ex);
         throw new SaveSystemException("存档文件已损坏", ex);
     }
 }
@@ -169,7 +169,7 @@ public async Task&lt;GameConfig&gt; LoadConfigAsync()
     var cloudResult = await TryLoadFromCloudAsync();
     if (cloudResult.IsSuccess)
     {
-        _logger.Info("从云端加载配置成功");
+        _logger.LogInformation("从云端加载配置成功");
         return cloudResult.Match(succ: c =&gt; c, fail: _ =&gt; null);
     }
 
@@ -177,12 +177,12 @@ public async Task&lt;GameConfig&gt; LoadConfigAsync()
     var cacheResult = await TryLoadFromCacheAsync();
     if (cacheResult.IsSuccess)
     {
-        _logger.Warn("云端加载失败，使用本地缓存");
+        _logger.LogWarning("云端加载失败，使用本地缓存");
         return cacheResult.Match(succ: c =&gt; c, fail: _ =&gt; null);
     }
 
     // 3. 使用默认配置
-    _logger.Error("所有配置源加载失败，使用默认配置");
+    _logger.LogError("所有配置源加载失败，使用默认配置");
     return GetDefaultConfig();
 }
 ```
@@ -237,8 +237,8 @@ var result = Result&lt;int&gt;.Success(42)
 
 // OnSuccess/OnFailure：执行副作用
 result
-    .OnSuccess(value =&gt; _logger.Info($"成功: {value}"))
-    .OnFailure(ex =&gt; _logger.Error($"失败: {ex.Message}"));
+    .OnSuccess(value =&gt; _logger.LogInformation($"成功: {value}"))
+    .OnFailure(ex =&gt; _logger.LogError($"失败: {ex.Message}"));
 ```
 
 ### 实际应用示例
@@ -257,10 +257,10 @@ public class UserRegistrationSystem : AbstractSystem
             .Bind(_ =&gt; CheckEmailAvailability(email))
             .Map(_ =&gt; CreateUser(username, email, password))
             .OnSuccess(user =&gt; {
-                _logger.Info($"用户注册成功: {username}");
+                _logger.LogInformation($"用户注册成功: {username}");
                 this.SendEvent(new UserRegisteredEvent { User = user });
             })
-            .OnFailure(ex =&gt; _logger.Warn($"用户注册失败: {ex.Message}"));
+            .OnFailure(ex =&gt; _logger.LogWarning($"用户注册失败: {ex.Message}"));
     }
 
     private Result&lt;string&gt; ValidateUsername(string username)
@@ -352,11 +352,11 @@ public class TradingSystem : AbstractSystem
             .Bind(_ =&gerCurrency(buyerId, sellerId, price))
             .Map(_ =&gt; CreateTradeRecord(sellerId, buyerId, itemId, price))
             .OnSuccess(trade =&gt; {
-                _logger.Info($"交易完成: {trade.Id}");
+                _logger.LogInformation($"交易完成: {trade.Id}");
                 this.SendEvent(new TradeCompletedEvent { Trade = trade });
             })
             .OnFailure(ex =&gt; {
-                _logger.Error($"交易失败: {ex.Message}");
+                _logger.LogError($"交易失败: {ex.Message}");
                 RollbackTrade(sellerId, buyerId, itemId, price);
             });
     }
@@ -438,11 +438,11 @@ var combinedResult = results.Combine(); // Result&lt;List&lt;string&gt;&gt;
 
 if (combinedResult.IsSuccess)
 {
-    _logger.Info("所有验证通过");
+    _logger.LogInformation("所有验证通过");
 }
 else
 {
-    _logger.Error($"验证失败: {combinedResult.Exception.Message}");
+    _logger.LogError($"验证失败: {combinedResult.Exception.Message}");
 }
 ```
 
@@ -467,7 +467,7 @@ if (option.IsSome)
 
 if (option.IsNone)
 {
-    _logger.Warn("值不存在");
+    _logger.LogWarning("值不存在");
 }
 ```
 
@@ -520,10 +520,10 @@ public class PlayerSystem : AbstractSystem
         FindPlayerById(playerId).Match(
             some: player => {
                 player.Score += score;
-                _logger.Info($"玩家 {player.Name} 得分更新: {player.Score}");
+                _logger.LogInformation($"玩家 {player.Name} 得分更新: {player.Score}");
                 this.SendEvent(new PlayerScoreUpdatedEvent { Player = player });
             },
-            none: () => _logger.Warn($"玩家不存在: {playerId}")
+            none: () => _logger.LogWarning($"玩家不存在: {playerId}")
         );
     }
 }
@@ -597,7 +597,7 @@ public class InventorySystem : AbstractSystem
                 : Result&lt;Item&gt;.Failure("物品不可使用"))
             .OnSuccess(item => {
                 item.Use();
-                _logger.Info($"使用物品: {item.Name}");
+                _logger.LogInformation($"使用物品: {item.Name}");
                 this.SendEvent(new ItemUsedEvent { Item = item });
             });
     }
@@ -637,12 +637,12 @@ public class SaveSystem : AbstractSystem
         }
         catch (UnauthorizedAccessException ex)
         {
-            _logger.Fatal("没有写入权限", ex);
+            _logger.LogError(ex, "没有写入权限");
             throw new SaveSystemException("无法保存游戏：权限不足", ex);
         }
         catch (IOException ex)
         {
-            _logger.Error("IO 错误", ex);
+            _logger.LogError(ex, "IO 错误");
             throw new SaveSystemException("无法保存游戏：磁盘错误", ex);
         }
     }
@@ -738,7 +738,7 @@ public class NetworkSystem : AbstractSystem
         }
         catch (HttpRequestException ex)
         {
-            _logger.Error($"网络请求失败: {playerId}", ex);
+            _logger.LogError($"网络请求失败: {playerId}", ex);
             throw new NetworkException("网络连接失败", 0, ex);
         }
     }
@@ -757,17 +757,17 @@ try
 }
 catch (FileNotFoundException ex)
 {
-    _logger.Warn("文件不存在", ex);
+    _logger.LogWarning(ex, "文件不存在");
     return GetDefaultData();
 }
 catch (JsonException ex)
 {
-    _logger.Error("JSON 解析失败", ex);
+    _logger.LogError(ex, "JSON 解析失败");
     throw new DataException("数据格式错误", ex);
 }
 catch (IOException ex)
 {
-    _logger.Error("IO 错误", ex);
+    _logger.LogError(ex, "IO 错误");
     throw new DataException("读取数据失败", ex);
 }
 
@@ -778,7 +778,7 @@ try
 }
 catch (Exception ex) // 太宽泛
 {
-    _logger.Error("加载失败", ex);
+    _logger.LogError(ex, "加载失败");
     return null;
 }
 ```
@@ -803,7 +803,7 @@ try
 }
 catch (Exception ex)
 {
-    _logger.Error("操作失败", ex);
+    _logger.LogError(ex, "操作失败");
     throw; // 重新抛出原始异常
 }
 ```
@@ -820,7 +820,7 @@ try
 }
 catch (IOException ex)
 {
-    _logger.Error("文件读取失败", ex);
+    _logger.LogError(ex, "文件读取失败");
     throw;
 }
 finally
@@ -846,19 +846,19 @@ GFramework 提供多个日志级别，根据错误严重程度选择合适的级
 _logger.Trace("进入 ProcessInput 方法");
 
 // Debug：调试信息
-_logger.Debug($"玩家位置: {player.Position}");
+_logger.LogDebug($"玩家位置: {player.Position}");
 
 // Info：一般信息
-_logger.Info("游戏启动成功");
+_logger.LogInformation("游戏启动成功");
 
 // Warning：警告信息
-_logger.Warn("配置文件不存在，使用默认配置");
+_logger.LogWarning("配置文件不存在，使用默认配置");
 
 // Error：错误信息
-_logger.Error("保存游戏失败", exception);
+_logger.LogError("保存游戏失败", exception);
 
 // Fatal：致命错误
-_logger.Fatal("无法初始化渲染系统", exception);
+_logger.LogError(exception, "无法初始化渲染系统");
 ```
 
 ### 结构化日志
@@ -867,24 +867,15 @@ _logger.Fatal("无法初始化渲染系统", exception);
 
 ```csharp
 // 记录带上下文的日志
-_logger.Log(
-    LogLevel.Error,
-    "玩家操作失败",
-    ("playerId", playerId),
-    ("action", "attack"),
-    ("targetId", targetId),
-    ("timestamp", DateTime.UtcNow)
-);
+_logger.LogError(
+    "玩家操作失败 PlayerId={PlayerId} Action={Action} TargetId={TargetId}",
+    playerId, "attack", targetId);
 
 // 记录带异常的结构化日志
-_logger.Log(
-    LogLevel.Error,
-    "数据库操作失败",
+_logger.LogError(
     exception,
-    ("operation", "insert"),
-    ("table", "players"),
-    ("retryCount", retryCount)
-);
+    "数据库操作失败 Operation={Operation} Table={Table} RetryCount={RetryCount}",
+    "insert", "players", retryCount);
 ```
 
 ### 日志最佳实践
@@ -893,23 +884,23 @@ _logger.Log(
 
 ```csharp
 // ❌ 避免：信息不足
-_logger.Error("操作失败");
+_logger.LogError("操作失败");
 
 // ✅ 好的做法：包含上下文
-_logger.Error(
-    $"保存玩家数据失败: PlayerId={playerId}, Reason={ex.Message}",
-    ex
-);
+_logger.LogError(
+    ex,
+    "保存玩家数据失败 PlayerId={PlayerId} Reason={Reason}",
+    playerId, ex.Message);
 ```
 
 **2. 不要记录敏感信息**
 
 ```csharp
 // ❌ 避免：记录密码等敏感信息
-_logger.Info($"用户登录: {username}, 密码: {password}");
+_logger.LogInformation($"用户登录: {username}, 密码: {password}");
 
 // ✅ 好的做法：不记录敏感信息
-_logger.Info($"用户登录: {username}");
+_logger.LogInformation($"用户登录: {username}");
 ```
 
 **3. 使用合适的日志级别**
@@ -919,7 +910,7 @@ public class SaveSystem : AbstractSystem
 {
     public async Task&lt;Result&lt;SaveData&gt;&gt; LoadSaveAsync(string saveId)
     {
-        _logger.Debug($"开始加载存档: {saveId}");
+        _logger.LogDebug($"开始加载存档: {saveId}");
 
         try
         {
@@ -927,16 +918,16 @@ public class SaveSystem : AbstractSystem
 
             if (data == null)
             {
-                _logger.Warn($"存档不存在: {saveId}");
+                _logger.LogWarning($"存档不存在: {saveId}");
                 return Result&lt;SaveData&gt;.Failure("存档不存在");
             }
 
-            _logger.Info($"存档加载成功: {saveId}");
+            _logger.LogInformation($"存档加载成功: {saveId}");
             return Result&lt;SaveData&gt;.Success(data);
         }
         catch (Exception ex)
         {
-            _logger.Error($"加载存档失败: {saveId}", ex);
+            _logger.LogError($"加载存档失败: {saveId}", ex);
             return Result&lt;SaveData&gt;.Failure(ex);
         }
     }
@@ -1163,25 +1154,25 @@ public class ConfigurationSystem : AbstractSystem
         var remoteResult = await TryLoadFromRemoteAsync();
         if (remoteResult.IsSuccess)
         {
-            _logger.Info("从远程服务器加载配置成功");
+            _logger.LogInformation("从远程服务器加载配置成功");
             await CacheConfigAsync(remoteResult.Match(succ: c => c, fail: _ => null));
             return remoteResult.Match(succ: c => c, fail: _ => null);
         }
 
-        _logger.Warn($"远程加载失败: {remoteResult.Exception.Message}");
+        _logger.LogWarning($"远程加载失败: {remoteResult.Exception.Message}");
 
         // 2. 尝试从本地缓存加载
         var cacheResult = await TryLoadFromCacheAsync();
         if (cacheResult.IsSuccess)
         {
-            _logger.Info("从本地缓存加载配置成功");
+            _logger.LogInformation("从本地缓存加载配置成功");
             return cacheResult.Match(succ: c => c, fail: _ => null);
         }
 
-        _logger.Warn($"缓存加载失败: {cacheResult.Exception.Message}");
+        _logger.LogWarning($"缓存加载失败: {cacheResult.Exception.Message}");
 
         // 3. 使用内置默认配置
-        _logger.Error("所有配置源加载失败，使用默认配置");
+        _logger.LogError("所有配置源加载失败，使用默认配置");
         return GetDefaultConfig();
     }
 
@@ -1224,7 +1215,7 @@ public class ConfigurationSystem : AbstractSystem
         }
         catch (Exception ex)
         {
-            _logger.Warn("缓存配置失败", ex);
+            _logger.LogWarning(ex, "缓存配置失败");
         }
     }
 
@@ -1343,7 +1334,7 @@ public class InventorySystem : AbstractSystem
             .Bind(item => ValidateItemUsage(item))
             .Bind(item => ConsumeItem(item))
             .OnSuccess(item => this.SendEvent(new ItemUsedEvent { Item = item }))
-            .OnFailure(ex => _logger.Warn($"使用物品失败: {ex.Message}"));
+            .OnFailure(ex => _logger.LogWarning($"使用物品失败: {ex.Message}"));
     }
 }
 
@@ -1402,18 +1393,13 @@ return Result&lt;Item&gt;.Failure($"物品 {itemName} 不可交易");
 
 ```csharp
 // ❌ 避免：缺少上下文
-_logger.Error("保存失败", ex);
+_logger.LogError(ex, "保存失败");
 
 // ✅ 好的做法：包含完整上下文
-_logger.Log(
-    LogLevel.Error,
-    "保存玩家数据失败",
+_logger.LogError(
     ex,
-    ("playerId", playerId),
-    ("saveSlot", saveSlot),
-    ("dataSize", data.Length),
-    ("timestamp", DateTime.UtcNow)
-);
+    "保存玩家数据失败 PlayerId={PlayerId} SaveSlot={SaveSlot} DataSize={DataSize}",
+    playerId, saveSlot, data.Length);
 ```
 
 ### 6. 优雅降级
@@ -1428,13 +1414,13 @@ public async Task&lt;Texture&gt; LoadTextureAsync(string path)
         return result.Match(succ: t => t, fail: _ => null);
 
     // 2. 尝试加载备用纹理
-    _logger.Warn($"加载纹理失败: {path}，使用备用纹理");
+    _logger.LogWarning($"加载纹理失败: {path}，使用备用纹理");
     var fallbackResult = await TryLoadTextureAsync(_fallbackTexturePath);
     if (fallbackResult.IsSuccess)
         return fallbackResult.Match(succ: t => t, fail: _ => null);
 
     // 3. 使用默认纹理
-    _logger.Error("所有纹理加载失败，使用默认纹理");
+    _logger.LogError("所有纹理加载失败，使用默认纹理");
     return _defaultTexture;
 }
 ```
@@ -1574,7 +1560,8 @@ public sealed class SaveGameHandler
         }
         catch (Exception ex)
         {
-            Context.GetUtility<ILogger>().Error("保存游戏失败", ex);
+            Context.GetService<ILoggerFactory>().CreateLogger(nameof(SaveGameHandler))
+                .LogError(ex, "保存游戏失败");
             return ValueTask.FromResult(Result<SaveData>.Failure(ex));
         }
     }

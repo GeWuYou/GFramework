@@ -6,8 +6,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using GFramework.Core.Abstractions.Logging;
 using Godot;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Godot.Logging;
 
@@ -203,10 +203,10 @@ internal static class GodotLoggerSettingsLoader
             {
                 "Trace" or "trace" => LogLevel.Trace,
                 "Debug" or "debug" => LogLevel.Debug,
-                "Info" or "info" or "Information" or "information" => LogLevel.Info,
+                "Info" or "info" or "Information" or "information" => LogLevel.Information,
                 "Warning" or "warning" or "Warn" or "warn" => LogLevel.Warning,
                 "Error" or "error" => LogLevel.Error,
-                "Fatal" or "fatal" or "Critical" or "critical" => LogLevel.Fatal,
+                "Fatal" or "fatal" or "Critical" or "critical" => LogLevel.Critical,
                 _ => throw new JsonException($"Unsupported log level '{value}'.")
             };
         }

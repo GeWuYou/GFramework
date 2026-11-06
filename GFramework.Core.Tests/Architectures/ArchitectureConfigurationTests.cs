@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Architectures;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Properties;
 using GFramework.Core.Architectures;
-using GFramework.Core.Logging;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace GFramework.Core.Tests.Architectures;
 
@@ -13,7 +13,7 @@ namespace GFramework.Core.Tests.Architectures;
 ///     ArchitectureConfiguration类的单元测试
 ///     测试内容包括：
 ///     - 构造函数默认值
-///     - LoggerProperties默认配置（ConsoleLoggerFactoryProvider + Info级别）
+///     - LoggerProperties默认配置（LoggerFactory为null，由架构创建默认工厂）
 ///     - ArchitectureProperties默认配置（StrictPhaseValidation=true）
 ///     - 自定义配置替换
 ///     - LoggerProperties独立修改
@@ -42,26 +42,12 @@ public class ArchitectureConfigurationTests
     }
 
     /// <summary>
-    ///     测试LoggerProperties默认使用ConsoleLoggerFactoryProvider
+    ///     测试LoggerProperties默认不携带外部工厂（架构为每个实例创建自己的默认工厂）
     /// </summary>
     [Test]
-    public void LoggerProperties_Should_Use_ConsoleLoggerFactoryProvider_By_Default()
+    public void LoggerProperties_Should_Default_To_Null_LoggerFactory()
     {
-        Assert.That(_configuration!.LoggerProperties.LoggerFactoryProvider,
-            Is.InstanceOf<ConsoleLoggerFactoryProvider>());
-    }
-
-    /// <summary>
-    ///     测试LoggerProperties默认使用Info日志级别
-    /// </summary>
-    [Test]
-    public void LoggerProperties_Should_Use_Info_LogLevel_By_Default()
-    {
-        var consoleProvider = _configuration!.LoggerProperties.LoggerFactoryProvider
-            as ConsoleLoggerFactoryProvider;
-
-        Assert.That(consoleProvider, Is.Not.Null);
-        Assert.That(consoleProvider!.MinLevel, Is.EqualTo(LogLevel.Info));
+        Assert.That(_configuration!.LoggerProperties.LoggerFactory, Is.Null);
     }
 
     /// <summary>
@@ -80,20 +66,19 @@ public class ArchitectureConfigurationTests
     [Test]
     public void LoggerProperties_Should_Be_Replaced_With_Custom_Configuration()
     {
-        var customProvider = new ConsoleLoggerFactoryProvider { MinLevel = LogLevel.Debug };
+        var customFactory = NullLoggerFactory.Instance;
         var customLoggerProperties = new LoggerProperties
         {
-            LoggerFactoryProvider = customProvider
+            LoggerFactory = customFactory
         };
 
         _configuration!.LoggerProperties = customLoggerProperties;
 
-        Assert.That(_configuration.LoggerProperties, Is.SameAs(customLoggerProperties));
-        Assert.That(_configuration.LoggerProperties.LoggerFactoryProvider,
-            Is.InstanceOf<ConsoleLoggerFactoryProvider>());
-        var currentProvider = _configuration.LoggerProperties.LoggerFactoryProvider
-            as ConsoleLoggerFactoryProvider;
-        Assert.That(currentProvider!.MinLevel, Is.EqualTo(LogLevel.Debug));
+        Assert.Multiple(() =>
+        {
+            Assert.That(_configuration.LoggerProperties, Is.SameAs(customLoggerProperties));
+            Assert.That(_configuration.LoggerProperties.LoggerFactory, Is.SameAs(customFactory));
+        });
     }
 
     /// <summary>
@@ -120,14 +105,11 @@ public class ArchitectureConfigurationTests
     [Test]
     public void LoggerProperties_Should_Be_Modifiable_Independently()
     {
-        var originalProvider = _configuration!.LoggerProperties.LoggerFactoryProvider
-            as ConsoleLoggerFactoryProvider;
+        var factory = NullLoggerFactory.Instance;
 
-        originalProvider!.MinLevel = LogLevel.Debug;
+        _configuration!.LoggerProperties.LoggerFactory = factory;
 
-        var modifiedProvider = _configuration.LoggerProperties.LoggerFactoryProvider
-            as ConsoleLoggerFactoryProvider;
-        Assert.That(modifiedProvider!.MinLevel, Is.EqualTo(LogLevel.Debug));
+        Assert.That(_configuration.LoggerProperties.LoggerFactory, Is.SameAs(factory));
     }
 
     /// <summary>

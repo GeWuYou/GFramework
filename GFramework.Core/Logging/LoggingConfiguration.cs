@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Core.Logging;
 
@@ -13,7 +14,7 @@ public sealed class LoggingConfiguration
     /// <summary>
     ///     全局最小日志级别
     /// </summary>
-    public LogLevel MinLevel { get; set; } = LogLevel.Info;
+    public LogLevel MinLevel { get; set; } = LogLevel.Information;
 
     /// <summary>
     ///     Appender 配置列表

@@ -4,10 +4,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 using System.Text.Json;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Godot.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Godot.Tests.Logging;
 
@@ -96,7 +95,7 @@ public sealed class GodotLoggerSettingsLoaderTests
         {
             Assert.That(settings.Options.Mode, Is.EqualTo(GodotLoggerMode.Release));
             Assert.That(settings.Options.ReleaseOutputTemplate, Is.EqualTo("[rel] {message}{properties}"));
-            Assert.That(settings.Options.GetColor(LogLevel.Info), Is.EqualTo("aqua"));
+            Assert.That(settings.Options.GetColor(LogLevel.Information), Is.EqualTo("aqua"));
             Assert.That(settings.GetEffectiveMinLevel("Game.Services.Inventory", LogLevel.Trace), Is.EqualTo(LogLevel.Error));
             Assert.That(settings.GetEffectiveMinLevel("Game.Other", LogLevel.Trace), Is.EqualTo(LogLevel.Warning));
         });
@@ -126,7 +125,7 @@ public sealed class GodotLoggerSettingsLoaderTests
         {
             Assert.That(settings.Options.DebugOutputTemplate, Is.Not.Null.And.Not.Empty);
             Assert.That(settings.Options.ReleaseOutputTemplate, Is.Not.Null.And.Not.Empty);
-            Assert.That(settings.Options.GetColor(LogLevel.Info), Is.EqualTo("white"));
+            Assert.That(settings.Options.GetColor(LogLevel.Information), Is.EqualTo("white"));
             Assert.That(settings.Options.GetColor(LogLevel.Error), Is.EqualTo("red"));
         });
     }
@@ -158,23 +157,23 @@ public sealed class GodotLoggerSettingsLoaderTests
     [Test]
     public void Provider_Should_Apply_Updated_Settings_To_Existing_Loggers()
     {
-        var settings = new GodotLoggerSettings(new GodotLoggerOptions
+        GodotLoggerSettings settings = new GodotLoggerSettings(new GodotLoggerOptions
         {
             Mode = GodotLoggerMode.Debug,
             DebugMinLevel = LogLevel.Error,
             ReleaseMinLevel = LogLevel.Error
         });
-        var provider = new GodotLoggerFactoryProvider(() => settings);
+        var provider = new GodotLogProvider(() => settings);
         var logger = provider.CreateLogger("Game.Services.Inventory");
 
-        Assert.That(logger.IsInfoEnabled(), Is.False);
+        Assert.That(logger.IsEnabled(LogLevel.Information), Is.False);
 
         settings = new GodotLoggerSettings(
             new GodotLoggerOptions
             {
                 Mode = GodotLoggerMode.Debug,
-                DebugMinLevel = LogLevel.Info,
-                ReleaseMinLevel = LogLevel.Info
+                DebugMinLevel = LogLevel.Information,
+                ReleaseMinLevel = LogLevel.Information
             },
             defaultLogLevel: LogLevel.Trace,
             loggerLevels: new Dictionary<string, LogLevel>(StringComparer.Ordinal)
@@ -184,8 +183,8 @@ public sealed class GodotLoggerSettingsLoaderTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(logger.IsInfoEnabled(), Is.True);
-            Assert.That(logger.IsDebugEnabled(), Is.False);
+            Assert.That(logger.IsEnabled(LogLevel.Information), Is.True);
+            Assert.That(logger.IsEnabled(LogLevel.Debug), Is.False);
         });
     }
 
@@ -195,20 +194,16 @@ public sealed class GodotLoggerSettingsLoaderTests
     [Test]
     public void StructuredProperties_Should_Skip_Blank_Keys_And_Trim_Valid_Keys()
     {
-        var toPropertiesDictionary = typeof(GodotLogger).GetMethod(
-            "ToPropertiesDictionary",
-            BindingFlags.NonPublic | BindingFlags.Static);
-        Assert.That(toPropertiesDictionary, Is.Not.Null, "Unable to reflect GodotLogger.ToPropertiesDictionary.");
-
-        var properties = new (string Key, object? Value)[]
+        var properties = new List<KeyValuePair<string, object?>>
         {
-            (null!, "ignored"),
-            ("   ", "ignored"),
-            (" Player ", 42)
+            new("{OriginalFormat}", "template"),
+            new(null!, "ignored"),
+            new("   ", "ignored"),
+            new(" Player ", 42)
         };
 
-        var dictionary = toPropertiesDictionary!.Invoke(null, [properties]) as IReadOnlyDictionary<string, object?>;
-        Assert.That(dictionary, Is.Not.Null, "ToPropertiesDictionary should return structured log properties.");
+        var dictionary = GodotLogProvider.NormalizeProperties(properties);
+        Assert.That(dictionary, Is.Not.Null, "NormalizeProperties should return structured log properties.");
 
         var result = GodotLogAppender.FormatProperties(dictionary);
 

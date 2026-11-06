@@ -3,13 +3,26 @@
 
 using System;
 using System.Threading;
-using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Godot.Logging;
 
 /// <summary>
-///     Static Godot logging entry point with auto-discovered configuration and deferred logger creation.
+///     Static Godot logging composition entry with auto-discovered configuration and deferred provider materialization.
 /// </summary>
+/// <remarks>
+///     <para>
+///         <see cref="GodotLog"/> owns the <see cref="GodotLogProvider"/> and the configuration source
+///         (appsettings.json discovery plus hot reload). DI hosts attach the provider to their own standard
+///         logger factory, for example <c>LoggerFactory.Create(builder =&gt; builder.AddProvider(GodotLog.Provider))</c>,
+///         and pass that factory to the architecture; non-DI hosts can call <see cref="CreateLogger(string)"/> directly.
+///     </para>
+///     <para>
+///         There is deliberately no process-level default-provider override: two architecture instances must not
+///         pollute each other's logs, so every host composes its own factory. The provider resolves settings lazily,
+///         which keeps <see cref="Configure"/> usable until the first log call even when loggers were created earlier.
+///     </para>
+/// </remarks>
 public static class GodotLog
 {
 #if NET9_0_OR_GREATER
@@ -23,14 +36,17 @@ public static class GodotLog
         CreateConfigurationSource,
         LazyThreadSafetyMode.ExecutionAndPublication);
 
-    private static readonly Lazy<GodotLoggerFactoryProvider> LazyProvider = new(
-        static () => new GodotLoggerFactoryProvider(() => LazyConfigurationSource.Value.CurrentSettings),
+    private static readonly Lazy<GodotLogProvider> LazyProvider = new(
+        static () => new GodotLogProvider(() => LazyConfigurationSource.Value.CurrentSettings),
         LazyThreadSafetyMode.ExecutionAndPublication);
 
     /// <summary>
-    ///     Applies imperative option overrides before the global Godot logger provider is materialized.
+    ///     Applies imperative option overrides before the Godot logging pipeline is materialized.
     /// </summary>
     /// <param name="configure">The options mutator.</param>
+    /// <exception cref="InvalidOperationException">
+    ///     Thrown when the provider or the configuration source has already been materialized.
+    /// </exception>
     public static void Configure(Action<GodotLoggerOptions> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
@@ -48,9 +64,13 @@ public static class GodotLog
     }
 
     /// <summary>
-    ///     Gets the lazily-configured Godot logger provider.
+    ///     Gets the Godot <see cref="ILoggerProvider"/> that renders standard log calls to Godot's output APIs.
     /// </summary>
-    public static ILoggerFactoryProvider Provider
+    /// <remarks>
+    ///     Accessing this property materializes the provider but not the configuration source, so the provider
+    ///     still picks up later <see cref="Configure"/> calls and hot-reloaded settings on the log path.
+    /// </remarks>
+    public static ILoggerProvider Provider
     {
         get
         {
@@ -74,41 +94,45 @@ public static class GodotLog
         : GodotLoggerSettingsLoader.DiscoverConfigurationPath();
 
     /// <summary>
-    ///     Creates a logger for the specified category without materializing the provider until first use.
+    ///     Creates a standard logger for the specified category without materializing the configuration source.
     /// </summary>
+    /// <param name="category">The logger category name.</param>
+    /// <returns>A standard logger rendering through the Godot provider.</returns>
+    /// <exception cref="ObjectDisposedException">Thrown when the provider has been disposed by <see cref="Shutdown"/>.</exception>
     public static ILogger CreateLogger(string category)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(category);
-        return new DeferredLogger(category, static () => Provider);
+        return Provider.CreateLogger(category);
     }
 
     /// <summary>
-    ///     Creates a logger for the specified type without materializing the provider until first use.
+    ///     Creates a standard logger for the specified type without materializing the configuration source.
     /// </summary>
+    /// <typeparam name="T">The type whose full name becomes the logger category.</typeparam>
+    /// <returns>A standard logger rendering through the Godot provider.</returns>
+    /// <exception cref="ObjectDisposedException">Thrown when the provider has been disposed by <see cref="Shutdown"/>.</exception>
     public static ILogger CreateLogger<T>()
     {
         return CreateLogger(GetCategoryName(typeof(T)));
     }
 
     /// <summary>
-    ///     Installs the Godot provider as the current global resolver provider.
-    /// </summary>
-    public static void UseAsDefaultProvider()
-    {
-        LoggerFactoryResolver.Provider = Provider;
-    }
-
-    /// <summary>
-    ///     Stops the file watcher owned by the materialized configuration source, if the source has been created.
+    ///     Stops the file watcher owned by the materialized configuration source and disposes the provider, if materialized.
     /// </summary>
     /// <remarks>
-    ///     Godot hosts often keep process-wide logging for the whole game lifetime. Dedicated servers and tests can call
-    ///     this method during teardown to release the watcher handle deterministically. The static lazy source is not
-    ///     reset; later logger usage continues with the last published settings snapshot but no longer receives reload
-    ///     notifications from the disposed watcher.
+    ///     Godot hosts often keep logging for the whole game lifetime. Dedicated servers and tests can call this method
+    ///     during teardown to release the watcher handle deterministically. The static lazy instances are not reset:
+    ///     <see cref="Provider"/> and <see cref="CreateLogger(string)"/> throw <see cref="ObjectDisposedException"/>
+    ///     afterwards, while logger instances created earlier keep emitting with the last published settings snapshot
+    ///     but no longer receive reload notifications.
     /// </remarks>
     public static void Shutdown()
     {
+        if (LazyProvider.IsValueCreated)
+        {
+            LazyProvider.Value.Dispose();
+        }
+
         if (LazyConfigurationSource.IsValueCreated)
         {
             LazyConfigurationSource.Value.Dispose();

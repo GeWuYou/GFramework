@@ -5,6 +5,7 @@ using System.IO;
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Logging.Appenders;
 using GFramework.Core.Logging.Formatters;
+using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 
 namespace GFramework.Core.Tests.Logging;
@@ -77,7 +78,7 @@ public class FileAppenderTests
     {
         using (var appender = new FileAppender(_testFilePath))
         {
-            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Test message", null, null);
+            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", null, null);
             appender.Append(entry);
             appender.Flush();
         }
@@ -94,7 +95,7 @@ public class FileAppenderTests
         {
             for (int i = 0; i < 10; i++)
             {
-                var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", $"Message {i}", null, null);
+                var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", $"Message {i}", null, null);
                 appender.Append(entry);
             }
 
@@ -114,7 +115,7 @@ public class FileAppenderTests
     {
         using (var appender = new FileAppender(_testFilePath, new JsonLogFormatter()))
         {
-            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Test message", null, null);
+            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", null, null);
             appender.Append(entry);
             appender.Flush();
         }
@@ -130,7 +131,7 @@ public class FileAppenderTests
         var appender = new FileAppender(_testFilePath);
         appender.Dispose();
 
-        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Test message", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", null, null);
 
         Assert.Throws<ObjectDisposedException>(() => appender.Append(entry));
     }
@@ -141,7 +142,7 @@ public class FileAppenderTests
         // 第一次写入
         using (var appender1 = new FileAppender(_testFilePath))
         {
-            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "First message", null, null);
+            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "First message", null, null);
             appender1.Append(entry);
             appender1.Flush();
         }
@@ -149,7 +150,7 @@ public class FileAppenderTests
         // 第二次写入
         using (var appender2 = new FileAppender(_testFilePath))
         {
-            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Second message", null, null);
+            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Second message", null, null);
             appender2.Append(entry);
             appender2.Flush();
         }
@@ -165,7 +166,7 @@ public class FileAppenderTests
     {
         using (var appender = new FileAppender(_testFilePath))
         {
-            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Test message", null, null);
+            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", null, null);
 
             appender.Append(entry);
             appender.Flush();

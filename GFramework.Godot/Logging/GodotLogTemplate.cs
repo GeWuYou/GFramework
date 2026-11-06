@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 using System.Threading;
-using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Godot.Logging;
 
@@ -283,17 +283,17 @@ internal sealed class GodotLogTemplate
     /// </summary>
     /// <param name="level">The level to format.</param>
     /// <param name="upper">Whether the result should use uppercase letters.</param>
-    /// <returns>A three-character level label, or <c>unk</c> for undefined enum values.</returns>
+    /// <returns>A three-character level label, or <c>unk</c> for undefined or <see cref="LogLevel.None"/> values.</returns>
     private static string ToShortLevel(LogLevel level, bool upper)
     {
         var value = level switch
         {
             LogLevel.Trace => "trc",
             LogLevel.Debug => "dbg",
-            LogLevel.Info => "inf",
+            LogLevel.Information => "inf",
             LogLevel.Warning => "wrn",
             LogLevel.Error => "err",
-            LogLevel.Fatal => "ftl",
+            LogLevel.Critical => "ftl",
             _ => "unk"
         };
 
@@ -311,10 +311,10 @@ internal sealed class GodotLogTemplate
         {
             LogLevel.Trace => "TRACE  ",
             LogLevel.Debug => "DEBUG  ",
-            LogLevel.Info => "INFO   ",
+            LogLevel.Information => "INFO   ",
             LogLevel.Warning => "WARNING",
             LogLevel.Error => "ERROR  ",
-            LogLevel.Fatal => "FATAL  ",
+            LogLevel.Critical => "FATAL  ",
             _ => level.ToString()
         };
     }

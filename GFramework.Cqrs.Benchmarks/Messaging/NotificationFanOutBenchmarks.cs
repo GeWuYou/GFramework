@@ -10,9 +10,7 @@ using BenchmarkDotNet.Order;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Ioc;
-using GFramework.Core.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Notification;
 using MediatR;
@@ -62,10 +60,6 @@ public class NotificationFanOutBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider
-        {
-            MinLevel = LogLevel.Fatal
-        };
         Fixture.Setup("NotificationFanOut", handlerCount: 4, pipelineCount: 0);
 
         _baselineHandler1 = new BenchmarkNotificationHandler1();
@@ -82,10 +76,10 @@ public class NotificationFanOutBenchmarks
         });
         _sequentialRuntime = GFramework.Cqrs.CqrsRuntimeFactory.CreateRuntime(
             _container,
-            LoggerFactoryResolver.Provider.CreateLogger(nameof(NotificationFanOutBenchmarks)));
+            BenchmarkLogging.CreateLogger(nameof(NotificationFanOutBenchmarks)));
         _taskWhenAllRuntime = GFramework.Cqrs.CqrsRuntimeFactory.CreateRuntime(
             _container,
-            LoggerFactoryResolver.Provider.CreateLogger($"{nameof(NotificationFanOutBenchmarks)}.{nameof(TaskWhenAllNotificationPublisher)}"),
+            BenchmarkLogging.CreateLogger($"{nameof(NotificationFanOutBenchmarks)}.{nameof(TaskWhenAllNotificationPublisher)}"),
             new TaskWhenAllNotificationPublisher());
 
         _mediatrServiceProvider = BenchmarkHostFactory.CreateMediatRServiceProvider(

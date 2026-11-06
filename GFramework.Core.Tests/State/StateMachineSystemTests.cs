@@ -1,15 +1,12 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using System.Reflection;
 using GFramework.Core.Abstractions.Enums;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Architectures;
 using GFramework.Core.Environment;
 using GFramework.Core.Events;
 using GFramework.Core.Ioc;
-using GFramework.Core.Logging;
 using GFramework.Core.State;
 
 namespace GFramework.Core.Tests.State;
@@ -37,17 +34,8 @@ public class StateMachineSystemTests
     [SetUp]
     public void SetUp()
     {
-        // 初始化 LoggerFactoryResolver 以支持 MicrosoftDiContainer
-        LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider();
-
         _eventBus = new EventBus();
         var container = new MicrosoftDiContainer();
-
-        // 直接初始化 logger 字段
-        var loggerField = typeof(MicrosoftDiContainer).GetField("_logger",
-            BindingFlags.NonPublic | BindingFlags.Instance);
-        loggerField?.SetValue(container,
-            LoggerFactoryResolver.Provider.CreateLogger(nameof(StateMachineSystemTests)));
 
         container.RegisterPlurality(_eventBus);
         container.RegisterPlurality(new DefaultEnvironment());

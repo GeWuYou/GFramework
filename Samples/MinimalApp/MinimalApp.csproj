@@ -1,0 +1,20 @@
+<!--
+  Copyright (c) 2025-2026 GeWuYou
+  SPDX-License-Identifier: Apache-2.0
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>disable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\..\GFramework.Core\GFramework.Core.csproj"/>
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.7"/>
+        <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.7"/>
+    </ItemGroup>
+</Project>

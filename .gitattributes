@@ -1,12 +1,7 @@
 # Keep repository text normalized to LF unless a file format is known to require CRLF.
 * text=auto eol=lf
 
-# Solution and Windows-native scripts are more interoperable when they keep CRLF in the working tree.
-*.sln text eol=crlf
-*.bat text eol=crlf
-*.cmd text eol=crlf
-*.ps1 text eol=crlf
-
+# Solution and Windows-native scripts also stay LF; editors and git handle the conversion.
 # Source, config, scripts, and documentation stay LF across WSL and Windows editors.
 *.sh text eol=lf
 *.cs text eol=lf

@@ -3,6 +3,7 @@
 
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Logging.Formatters;
+using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 
 namespace GFramework.Core.Tests.Logging;
@@ -25,7 +26,7 @@ public class DefaultLogFormatterTests
     public void Format_WithBasicEntry_ShouldFormatCorrectly()
     {
         var timestamp = new DateTime(2026, 2, 26, 10, 30, 45, 123);
-        var entry = new LogEntry(timestamp, LogLevel.Info, "TestLogger", "Test message", null, null);
+        var entry = new LogEntry(timestamp, LogLevel.Information, "TestLogger", "Test message", null, null);
 
         var result = _formatter.Format(entry);
 
@@ -56,7 +57,7 @@ public class DefaultLogFormatterTests
             ["UserId"] = 12345,
             ["UserName"] = "TestUser"
         };
-        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "User action", null, properties);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "User action", null, properties);
 
         var result = _formatter.Format(entry);
 
@@ -73,7 +74,7 @@ public class DefaultLogFormatterTests
         {
             ["Key1"] = null
         };
-        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Test message", null, properties);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", null, properties);
 
         var result = _formatter.Format(entry);
 
@@ -84,7 +85,7 @@ public class DefaultLogFormatterTests
     public void Format_WithAllLogLevels_ShouldFormatCorrectly()
     {
         var levels = new[]
-            { LogLevel.Trace, LogLevel.Debug, LogLevel.Info, LogLevel.Warning, LogLevel.Error, LogLevel.Fatal };
+            { LogLevel.Trace, LogLevel.Debug, LogLevel.Information, LogLevel.Warning, LogLevel.Error, LogLevel.Critical };
         var expectedStrings = new[] { "TRACE", "DEBUG", "INFO", "WARNING", "ERROR", "FATAL" };
 
         for (int i = 0; i < levels.Length; i++)
@@ -100,7 +101,7 @@ public class DefaultLogFormatterTests
     public void Format_WithLongMessage_ShouldNotTruncate()
     {
         var longMessage = new string('A', 1000);
-        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", longMessage, null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", longMessage, null, null);
 
         var result = _formatter.Format(entry);
 
@@ -111,7 +112,7 @@ public class DefaultLogFormatterTests
     public void Format_WithSpecialCharacters_ShouldPreserveCharacters()
     {
         var message = "Test\nNew\tLine\r\nSpecial: <>&\"'";
-        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", message, null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", message, null, null);
 
         var result = _formatter.Format(entry);
 

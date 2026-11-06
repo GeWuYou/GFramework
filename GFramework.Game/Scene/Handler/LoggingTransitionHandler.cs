@@ -12,6 +12,8 @@
 // limitations under the License.
 
 using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using GFramework.Core.Logging;
 using GFramework.Game.Abstractions.Enums;
 using GFramework.Game.Abstractions.Scene;
@@ -23,8 +25,16 @@ namespace GFramework.Game.Scene.Handler;
 /// </summary>
 public sealed class LoggingTransitionHandler : SceneTransitionHandlerBase
 {
-    private static readonly ILogger Log = LoggerFactoryResolver.Provider.CreateLogger(nameof(LoggingTransitionHandler));
+    /// <summary>创建日志切换处理器；未注入日志时使用空输出。</summary>
+    /// <param name="logger">标准日志记录器。</param>
+    public LoggingTransitionHandler(ILogger? logger = null)
+    {
+        _logger = logger ?? NullLogger<LoggingTransitionHandler>.Instance;
+    }
 
+    // 标准日志记录器；未注入时使用空输出，不读取进程级状态。
+    private readonly ILogger _logger;
+    
     /// <summary>
     /// 获取处理器优先级，数值越大优先级越低（最后执行）。
     /// </summary>
@@ -43,7 +53,7 @@ public sealed class LoggingTransitionHandler : SceneTransitionHandlerBase
     /// <returns>表示异步操作的任务。</returns>
     public override Task HandleAsync(SceneTransitionEvent @event, CancellationToken cancellationToken)
     {
-        Log.Info(
+        _logger.LogInformation(
             "Scene Transition: Phases={0}, Type={1}, From={2}, To={3}",
             @event.Get<string>("Phases", "Unknown"),
             @event.TransitionType,

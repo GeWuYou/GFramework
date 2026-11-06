@@ -4,6 +4,7 @@
 using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Logging.Appenders;
 using GFramework.Core.Tests.Time;
+using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 
 namespace GFramework.Core.Tests.Logging;
@@ -30,7 +31,7 @@ public class StatisticsAppenderTests
     [Test]
     public void StatisticsAppender_Should_Count_Total_Logs()
     {
-        var entry = CreateLogEntry(LogLevel.Info, "TestLogger", "Message");
+        var entry = CreateLogEntry(LogLevel.Information, "TestLogger", "Message");
 
         _appender.Append(entry);
         _appender.Append(entry);
@@ -42,9 +43,9 @@ public class StatisticsAppenderTests
     [Test]
     public void StatisticsAppender_Should_Count_Errors()
     {
-        _appender.Append(CreateLogEntry(LogLevel.Info, "Logger", "Info"));
+        _appender.Append(CreateLogEntry(LogLevel.Information, "Logger", "Info"));
         _appender.Append(CreateLogEntry(LogLevel.Error, "Logger", "Error"));
-        _appender.Append(CreateLogEntry(LogLevel.Fatal, "Logger", "Fatal"));
+        _appender.Append(CreateLogEntry(LogLevel.Critical, "Logger", "Fatal"));
         _appender.Append(CreateLogEntry(LogLevel.Warning, "Logger", "Warning"));
 
         Assert.That(_appender.ErrorCount, Is.EqualTo(2)); // Error + Fatal
@@ -54,10 +55,10 @@ public class StatisticsAppenderTests
     [Test]
     public void StatisticsAppender_Should_Calculate_Error_Rate()
     {
-        _appender.Append(CreateLogEntry(LogLevel.Info, "Logger", "Info"));
+        _appender.Append(CreateLogEntry(LogLevel.Information, "Logger", "Info"));
         _appender.Append(CreateLogEntry(LogLevel.Error, "Logger", "Error"));
-        _appender.Append(CreateLogEntry(LogLevel.Info, "Logger", "Info"));
-        _appender.Append(CreateLogEntry(LogLevel.Info, "Logger", "Info"));
+        _appender.Append(CreateLogEntry(LogLevel.Information, "Logger", "Info"));
+        _appender.Append(CreateLogEntry(LogLevel.Information, "Logger", "Info"));
 
         // 1 error out of 4 total = 0.25
         Assert.That(_appender.ErrorRate, Is.EqualTo(0.25).Within(0.001));
@@ -66,12 +67,12 @@ public class StatisticsAppenderTests
     [Test]
     public void StatisticsAppender_Should_Count_By_Level()
     {
-        _appender.Append(CreateLogEntry(LogLevel.Info, "Logger", "Info1"));
-        _appender.Append(CreateLogEntry(LogLevel.Info, "Logger", "Info2"));
+        _appender.Append(CreateLogEntry(LogLevel.Information, "Logger", "Info1"));
+        _appender.Append(CreateLogEntry(LogLevel.Information, "Logger", "Info2"));
         _appender.Append(CreateLogEntry(LogLevel.Error, "Logger", "Error"));
         _appender.Append(CreateLogEntry(LogLevel.Warning, "Logger", "Warning"));
 
-        Assert.That(_appender.GetCountByLevel(LogLevel.Info), Is.EqualTo(2));
+        Assert.That(_appender.GetCountByLevel(LogLevel.Information), Is.EqualTo(2));
         Assert.That(_appender.GetCountByLevel(LogLevel.Error), Is.EqualTo(1));
         Assert.That(_appender.GetCountByLevel(LogLevel.Warning), Is.EqualTo(1));
         Assert.That(_appender.GetCountByLevel(LogLevel.Debug), Is.EqualTo(0));
@@ -80,9 +81,9 @@ public class StatisticsAppenderTests
     [Test]
     public void StatisticsAppender_Should_Count_By_Logger()
     {
-        _appender.Append(CreateLogEntry(LogLevel.Info, "Logger1", "Message"));
-        _appender.Append(CreateLogEntry(LogLevel.Info, "Logger1", "Message"));
-        _appender.Append(CreateLogEntry(LogLevel.Info, "Logger2", "Message"));
+        _appender.Append(CreateLogEntry(LogLevel.Information, "Logger1", "Message"));
+        _appender.Append(CreateLogEntry(LogLevel.Information, "Logger1", "Message"));
+        _appender.Append(CreateLogEntry(LogLevel.Information, "Logger2", "Message"));
 
         Assert.That(_appender.GetCountByLogger("Logger1"), Is.EqualTo(2));
         Assert.That(_appender.GetCountByLogger("Logger2"), Is.EqualTo(1));
@@ -102,7 +103,7 @@ public class StatisticsAppenderTests
     [Test]
     public void StatisticsAppender_Should_Reset_Statistics()
     {
-        _appender.Append(CreateLogEntry(LogLevel.Info, "Logger", "Message"));
+        _appender.Append(CreateLogEntry(LogLevel.Information, "Logger", "Message"));
         _appender.Append(CreateLogEntry(LogLevel.Error, "Logger", "Error"));
 
         Assert.That(_appender.TotalCount, Is.EqualTo(2));
@@ -122,7 +123,7 @@ public class StatisticsAppenderTests
     [Test]
     public void StatisticsAppender_Should_Generate_Report()
     {
-        _appender.Append(CreateLogEntry(LogLevel.Info, "Logger1", "Info"));
+        _appender.Append(CreateLogEntry(LogLevel.Information, "Logger1", "Info"));
         _appender.Append(CreateLogEntry(LogLevel.Error, "Logger2", "Error"));
         _appender.Append(CreateLogEntry(LogLevel.Warning, "Logger1", "Warning"));
 
@@ -159,7 +160,7 @@ public class StatisticsAppenderTests
             {
                 for (int j = 0; j < 100; j++)
                 {
-                    var level = j % 2 == 0 ? LogLevel.Info : LogLevel.Error;
+                    var level = j % 2 == 0 ? LogLevel.Information : LogLevel.Error;
                     _appender.Append(CreateLogEntry(level, $"Logger{loggerId}", "Message"));
                 }
             }));
@@ -169,7 +170,7 @@ public class StatisticsAppenderTests
 
         Assert.That(_appender.TotalCount, Is.EqualTo(1000));
         Assert.That(_appender.ErrorCount, Is.EqualTo(500));
-        Assert.That(_appender.GetCountByLevel(LogLevel.Info), Is.EqualTo(500));
+        Assert.That(_appender.GetCountByLevel(LogLevel.Information), Is.EqualTo(500));
         Assert.That(_appender.GetCountByLevel(LogLevel.Error), Is.EqualTo(500));
     }
 

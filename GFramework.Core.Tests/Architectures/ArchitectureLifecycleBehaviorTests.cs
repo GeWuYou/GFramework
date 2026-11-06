@@ -4,13 +4,11 @@
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Enums;
 using GFramework.Core.Abstractions.Lifecycle;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Abstractions.Model;
 using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Abstractions.Utility;
 using GFramework.Core.Architectures;
-using GFramework.Core.Logging;
 using GFramework.Core.Rule;
 
 namespace GFramework.Core.Tests.Architectures;
@@ -24,12 +22,11 @@ namespace GFramework.Core.Tests.Architectures;
 public class ArchitectureLifecycleBehaviorTests
 {
     /// <summary>
-    ///     为每个测试准备独立的日志工厂和全局上下文状态。
+    ///     为每个测试准备独立的全局上下文状态。
     /// </summary>
     [SetUp]
     public void SetUp()
     {
-        LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider();
         GameContext.Clear();
     }
 

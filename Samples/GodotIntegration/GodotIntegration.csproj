@@ -1,0 +1,31 @@
+<!--
+  Copyright (c) 2025-2026 GeWuYou
+  SPDX-License-Identifier: Apache-2.0
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>disable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <GenerateDocumentationFile>false</GenerateDocumentationFile>
+        <!-- Godot.SourceGenerators expects this property from Godot.NET.Sdk.
+             Provide a safe default so source generators can run in plain SDK-style builds as well. -->
+        <GodotProjectDir Condition="'$(GodotProjectDir)' == ''">$(MSBuildProjectDirectory)</GodotProjectDir>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="Godot.SourceGenerators" Version="4.6.3" PrivateAssets="all"/>
+        <PackageReference Include="GodotSharp" Version="4.7.0"/>
+        <PackageReference Include="GodotSharpEditor" Version="4.7.0" PrivateAssets="all"/>
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.7"/>
+        <PackageReference Include="System.Collections.Immutable" Version="9.0.0"/>
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\..\GFramework.Godot\GFramework.Godot.csproj"/>
+        <ProjectReference Include="..\..\GFramework.Core.Abstractions\GFramework.Core.Abstractions.csproj"/>
+        <!-- 示例需要演示 [ContextAware]/[Log] 生成路径；运行时包不反向引用生成器。 -->
+        <ProjectReference Include="..\..\GFramework.Core.SourceGenerators\GFramework.Core.SourceGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all"/>
+        <ProjectReference Include="..\..\GFramework.SourceGenerators.Common\GFramework.SourceGenerators.Common.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all"/>
+        <ProjectReference Include="..\..\GFramework.Core.SourceGenerators.Abstractions\GFramework.Core.SourceGenerators.Abstractions.csproj" OutputItemType="Analyzer" PrivateAssets="all"/>
+        <ProjectReference Include="..\..\GFramework.Core.SourceGenerators.Abstractions\GFramework.Core.SourceGenerators.Abstractions.csproj"/>
+    </ItemGroup>
+</Project>

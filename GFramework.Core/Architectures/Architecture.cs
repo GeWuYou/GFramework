@@ -10,6 +10,7 @@ using GFramework.Core.Abstractions.Model;
 using GFramework.Core.Abstractions.Systems;
 using GFramework.Core.Abstractions.Utility;
 using GFramework.Core.Environment;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Core.Architectures;
 
@@ -42,7 +43,11 @@ public abstract class Architecture : IArchitecture
     {
         var resolvedConfiguration = configuration ?? new ArchitectureConfiguration();
         var resolvedEnvironment = environment ?? new DefaultEnvironment();
-        var factory = resolvedConfiguration.LoggerProperties.LoggerFactoryProvider;
+        // 工厂属于当前架构实例：未提供时创建独立的默认控制台工厂并由架构释放；
+        // 外部工厂的所有权归调用方，架构不重复释放。不读取或修改任何进程级状态。
+        _ownsLoggerFactory = resolvedConfiguration.LoggerProperties.LoggerFactory == null;
+        var factory = resolvedConfiguration.LoggerProperties.LoggerFactory ?? CreateDefaultLoggerFactory();
+        _loggerFactory = factory;
         var resolvedServices = services ?? new ArchitectureServices(factory);
         _services = resolvedServices;
         if (resolvedServices.Container is global::GFramework.Core.Ioc.MicrosoftDiContainer ownedContainer)
@@ -53,8 +58,7 @@ public abstract class Architecture : IArchitecture
         }
         _context = context ?? new ArchitectureContext(resolvedServices.Container);
 
-        // 日志工厂属于当前架构，不覆盖进程级配置。
-        _logger = factory.CreateLogger(GetType().Name);
+        _logger = factory.CreateLogger(GetType());
 
         // 初始化管理器
         _bootstrapper = new ArchitectureBootstrapper(resolvedEnvironment, resolvedServices, factory);
@@ -65,6 +69,32 @@ public abstract class Architecture : IArchitecture
             resolvedServices,
             _lifecycle);
         _modules = new ArchitectureModules(this, _logger);
+    }
+
+    #endregion
+
+    #region Logger Factory
+
+    /// <summary>创建当前实例独立的默认日志工厂（控制台输出）。</summary>
+    /// <remarks>默认输出沿用既有行为：未配置日志时仍能看到 Info 及以上级别的控制台日志。</remarks>
+    /// <returns>由当前架构拥有和释放的标准日志工厂。</returns>
+    private static ILoggerFactory CreateDefaultLoggerFactory() =>
+        LoggerFactory.Create(builder => builder.AddConsole());
+
+    /// <summary>释放当前架构拥有的实例日志工厂；外部传入的工厂不在此列。</summary>
+    private void DisposeOwnedLoggerFactory()
+    {
+        if (!_ownsLoggerFactory)
+            return;
+        try
+        {
+            _loggerFactory.Dispose();
+        }
+        catch (Exception error)
+        {
+            // 日志工厂释放失败不能中断宿主与 provider 清理的聚合报告。
+            Console.Error.WriteLine($"Architecture logger factory disposal failed: {error.Message}");
+        }
     }
 
     #endregion
@@ -124,10 +154,14 @@ public abstract class Architecture : IArchitecture
 
     #region Fields
 
-    /// <summary>
-    ///     日志记录器实例
-    /// </summary>
+    /// <summary>当前架构实例的标准日志记录器。</summary>
     private readonly ILogger _logger;
+
+    /// <summary>当前架构是否拥有并需要释放实例日志工厂。</summary>
+    private readonly bool _ownsLoggerFactory;
+
+    /// <summary>实例日志工厂；架构级输出（包括组件 ILogger&lt;T&gt; 解析）都经由它。</summary>
+    private readonly ILoggerFactory _loggerFactory;
 
     /// <summary>
     ///     架构上下文实例
@@ -402,6 +436,7 @@ public abstract class Architecture : IArchitecture
             await RecordCleanupErrorAsync(_lifecycle.MarkAsFailedAsync, errors).ConfigureAwait(false);
             await RecordCleanupErrorAsync(StopHostAsync, errors).ConfigureAwait(false);
             await RecordCleanupErrorAsync(_lifecycle.CleanupAsync, errors).ConfigureAwait(false);
+            DisposeOwnedLoggerFactory();
         }
         if (errors.Count != 1)
             return new AggregateException("Architecture startup failed.", errors);
@@ -577,6 +612,7 @@ public abstract class Architecture : IArchitecture
             {
                 await RecordCleanupErrorAsync(StopHostAsync, errors).ConfigureAwait(false);
                 await RecordCleanupErrorAsync(_lifecycle.DestroyAsync, errors).ConfigureAwait(false);
+                DisposeOwnedLoggerFactory();
             }
         }
         finally

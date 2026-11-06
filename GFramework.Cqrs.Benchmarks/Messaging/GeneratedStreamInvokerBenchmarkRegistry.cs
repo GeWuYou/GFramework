@@ -5,9 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Cqrs.Benchmarks.Messaging;
 
@@ -50,7 +50,7 @@ public sealed class GeneratedStreamInvokerBenchmarkRegistry :
                 StreamInvokerBenchmarks.GeneratedBenchmarkStreamRequest,
                 StreamInvokerBenchmarks.GeneratedBenchmarkResponse>),
             typeof(StreamInvokerBenchmarks.GeneratedBenchmarkStreamHandler));
-        logger.Debug("Registered generated stream invoker benchmark handler.");
+        logger.LogDebug("Registered generated stream invoker benchmark handler.");
     }
 
     /// <summary>

@@ -12,12 +12,11 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Ioc;
-using GFramework.Core.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Cqrs.Benchmarks.Messaging;
 
@@ -318,10 +317,6 @@ public class StreamLifetimeBenchmarks
     /// </summary>
     private void ConfigureBenchmarkInfrastructure()
     {
-        LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider
-        {
-            MinLevel = LogLevel.Fatal
-        };
         Fixture.Setup($"StreamLifetime/{Lifetime}", handlerCount: 1, pipelineCount: 0);
         BenchmarkDispatcherCacheHelper.ClearDispatcherCaches();
     }
@@ -336,9 +331,9 @@ public class StreamLifetimeBenchmarks
         _generatedRequest = new GeneratedBenchmarkStreamRequest(Guid.NewGuid(), 3);
         _mediatrRequest = new MediatRBenchmarkStreamRequest(Guid.NewGuid(), 3);
         _reflectionRuntimeLogger =
-            LoggerFactoryResolver.Provider.CreateLogger(nameof(StreamLifetimeBenchmarks) + ".Reflection." + Lifetime);
+            BenchmarkLogging.CreateLogger(nameof(StreamLifetimeBenchmarks) + ".Reflection." + Lifetime);
         _generatedRuntimeLogger =
-            LoggerFactoryResolver.Provider.CreateLogger(nameof(StreamLifetimeBenchmarks) + ".Generated." + Lifetime);
+            BenchmarkLogging.CreateLogger(nameof(StreamLifetimeBenchmarks) + ".Generated." + Lifetime);
     }
 
     /// <summary>

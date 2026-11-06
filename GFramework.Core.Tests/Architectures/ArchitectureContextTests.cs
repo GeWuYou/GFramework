@@ -4,13 +4,10 @@
 using GFramework.Core.Abstractions.Architectures;
 using GFramework.Core.Abstractions.Environment;
 using GFramework.Core.Abstractions.Ioc;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Architectures;
 using GFramework.Core.Environment;
 using GFramework.Core.Events;
 using GFramework.Core.Ioc;
-using GFramework.Core.Logging;
-using System.Reflection;
 
 namespace GFramework.Core.Tests.Architectures;
 
@@ -40,16 +37,7 @@ public class ArchitectureContextTests
     [SetUp]
     public void SetUp()
     {
-        // 初始化 LoggerFactoryResolver 以支持 MicrosoftDiContainer
-        LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider();
-
         _container = new MicrosoftDiContainer();
-
-        // 直接初始化 logger 字段
-        var loggerField = typeof(MicrosoftDiContainer).GetField("_logger",
-            BindingFlags.NonPublic | BindingFlags.Instance);
-        loggerField?.SetValue(_container,
-            LoggerFactoryResolver.Provider.CreateLogger(nameof(ArchitectureContextTests)));
 
         // 创建服务实例
         _eventBus = new EventBus();

@@ -3,10 +3,8 @@
 
 using GFramework.Core.Abstractions.Enums;
 using GFramework.Core.Abstractions.Events;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Architectures;
 using GFramework.Core.Environment;
-using GFramework.Core.Logging;
 
 namespace GFramework.Core.Tests.Architectures;
 
@@ -19,12 +17,11 @@ namespace GFramework.Core.Tests.Architectures;
 public class ArchitectureInitializationPipelineTests
 {
     /// <summary>
-    ///     为每个测试准备独立的日志工厂和游戏上下文状态。
+    ///     为每个测试准备独立的游戏上下文状态。
     /// </summary>
     [SetUp]
     public void SetUp()
     {
-        LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider();
         GameContext.Clear();
     }
 

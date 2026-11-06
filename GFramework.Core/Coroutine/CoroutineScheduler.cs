@@ -4,6 +4,8 @@
 using System.Collections.Concurrent;
 using GFramework.Core.Abstractions.Coroutine;
 using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using GFramework.Core.Coroutine.Instructions;
 using GFramework.Core.Logging;
 
@@ -29,13 +31,15 @@ namespace GFramework.Core.Coroutine;
 ///     当前调度器所代表的宿主阶段。
 ///     阶段型等待指令仅会在匹配的调度器阶段中完成。
 /// </param>
+/// <param name="logger">标准日志记录器；未提供时使用空输出。</param>
 public sealed class CoroutineScheduler(
     ITimeSource timeSource,
     byte instanceId = 1,
     int initialCapacity = 256,
     bool enableStatistics = false,
     ITimeSource? realtimeTimeSource = null,
-    CoroutineExecutionStage executionStage = CoroutineExecutionStage.Update)
+    CoroutineExecutionStage executionStage = CoroutineExecutionStage.Update,
+    ILogger? logger = null)
 {
     private const int CompletionStatusHistoryLimit = 1024;
 
@@ -45,7 +49,7 @@ public sealed class CoroutineScheduler(
     private readonly Dictionary<CoroutineHandle, CoroutineCompletionStatus> _completionStatuses = new();
     private readonly Queue<CoroutineHandle> _completionStatusOrder = new();
     private readonly Dictionary<string, HashSet<CoroutineHandle>> _grouped = new(StringComparer.Ordinal);
-    private readonly ILogger _logger = LoggerFactoryResolver.Provider.CreateLogger(nameof(CoroutineScheduler));
+    private readonly ILogger _logger = logger ?? NullLogger.Instance;
     private readonly Dictionary<CoroutineHandle, CoroutineMetadata> _metadata = new();
     private readonly ConcurrentQueue<CoroutineHandle> _pendingKills = new();
 
@@ -649,12 +653,12 @@ public sealed class CoroutineScheduler(
                 }
                 catch (Exception callbackEx)
                 {
-                    _logger.Error($"[CoroutineScheduler] Exception in error callback: {callbackEx}");
+                    _logger.LogError($"[CoroutineScheduler] Exception in error callback: {callbackEx}");
                 }
             });
         }
 
-        _logger.Error($"[CoroutineScheduler] Coroutine {handle.ToString()} failed with exception: {ex}");
+        _logger.LogError($"[CoroutineScheduler] Coroutine {handle.ToString()} failed with exception: {ex}");
         FinalizeCoroutine(slotIndex, CoroutineCompletionStatus.Faulted, ex);
     }
 

@@ -3,13 +3,12 @@
 
 using System.Collections.Concurrent;
 using GFramework.Core.Abstractions.Architectures;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Architectures;
 using GFramework.Core.Ioc;
-using GFramework.Core.Logging;
 using GFramework.Core.Rule;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Extensions;
+using GFramework.Cqrs.Tests.Logging;
 
 namespace GFramework.Cqrs.Tests.Cqrs;
 
@@ -25,14 +24,13 @@ public class CqrsArchitectureContextIntegrationTests
     [SetUp]
     public void SetUp()
     {
-        LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider();
         _container = new MicrosoftDiContainer();
         TestPerDispatchContextAwareHandler.Reset();
 
         var loggerField = typeof(MicrosoftDiContainer).GetField("_logger",
             BindingFlags.NonPublic | BindingFlags.Instance);
         loggerField?.SetValue(_container,
-            LoggerFactoryResolver.Provider.CreateLogger(nameof(CqrsArchitectureContextIntegrationTests)));
+            new TestLogger(nameof(CqrsArchitectureContextIntegrationTests)));
 
         // 通过与生产一致的测试组合根接线安装 CQRS runtime 与处理器注册。
         CqrsTestRuntime.RegisterHandlers(

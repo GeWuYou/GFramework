@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Logging;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using GFramework.Core.Logging;
 using GFramework.Game.Abstractions.Enums;
 using GFramework.Game.Abstractions.UI;
@@ -13,11 +15,19 @@ namespace GFramework.Game.UI.Handler;
 /// </summary>
 public sealed class LoggingTransitionHandler : UiTransitionHandlerBase
 {
+    /// <summary>创建日志切换处理器；未注入日志时使用空输出。</summary>
+    /// <param name="logger">标准日志记录器。</param>
+    public LoggingTransitionHandler(ILogger? logger = null)
+    {
+        _logger = logger ?? NullLogger<LoggingTransitionHandler>.Instance;
+    }
+
     /// <summary>
     ///     日志记录器实例，用于记录UI切换相关信息
     /// </summary>
-    private static readonly ILogger Log = LoggerFactoryResolver.Provider.CreateLogger(nameof(LoggingTransitionHandler));
-
+    // 标准日志记录器；未注入时使用空输出，不读取进程级状态。
+    private readonly ILogger _logger;
+    
     /// <summary>
     ///     获取处理器优先级，数值越大优先级越高
     /// </summary>
@@ -37,7 +47,7 @@ public sealed class LoggingTransitionHandler : UiTransitionHandlerBase
     public override Task HandleAsync(UiTransitionEvent @event, CancellationToken cancellationToken)
     {
         // 记录UI切换的详细信息到日志
-        Log.Info(
+        _logger.LogInformation(
             "UI Transition: Phases={0}, Type={1}, From={2}, To={3}, Policy={4}",
             @event.Get<string>("Phases", "Unknown"),
             @event.TransitionType,

@@ -13,12 +13,11 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Ioc;
-using GFramework.Core.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using GeneratedMediator = Mediator.Mediator;
 
 [assembly: GFramework.Cqrs.CqrsHandlerRegistryAttribute(
@@ -293,15 +292,11 @@ public class StreamStartupBenchmarks
     }
 
     /// <summary>
-    ///     为 benchmark 创建稳定的 fatal 级 logger，避免把日志成本混入 startup 测量。
+    ///     为 benchmark 创建安静的标准诊断 logger，避免把日志成本混入 startup 测量。
     /// </summary>
     private static ILogger CreateLogger(string categoryName)
     {
-        LoggerFactoryResolver.Provider = new ConsoleLoggerFactoryProvider
-        {
-            MinLevel = LogLevel.Fatal
-        };
-        return LoggerFactoryResolver.Provider.CreateLogger(categoryName);
+        return BenchmarkLogging.CreateLogger(categoryName);
     }
 
     /// <summary>
@@ -428,7 +423,7 @@ public class StreamStartupBenchmarks
                     BenchmarkStreamRequest,
                     BenchmarkResponse>),
                 typeof(BenchmarkStreamHandler));
-            logger.Debug("Registered generated stream startup benchmark handler.");
+            logger.LogDebug("Registered generated stream startup benchmark handler.");
         }
 
         /// <summary>

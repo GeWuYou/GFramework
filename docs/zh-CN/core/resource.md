@@ -421,7 +421,7 @@ public class MaterialLoader : IResourceLoader<Material>
 var texture = resourceManager.Load<Texture>(path);
 if (texture == null)
 {
-    Logger.Error($"Failed to load texture: {path}");
+    Logger.LogError($"Failed to load texture: {path}");
     // 使用默认纹理
     texture = defaultTexture;
 }

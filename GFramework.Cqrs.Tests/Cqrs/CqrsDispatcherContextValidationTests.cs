@@ -4,11 +4,11 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using GFramework.Core.Abstractions.Architectures;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Cqrs;
 using GFramework.Cqrs.Notification;
 using GFramework.Cqrs.Tests.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace GFramework.Cqrs.Tests.Cqrs;
 

@@ -53,13 +53,12 @@ public abstract class AbstractContextUtility : ContextAwareBase, IContextUtility
     public void Initialize()
     {
         var name = GetType().Name;
-        Logger = ((IContextAware)this).GetContext()
-            .GetService<ILoggerFactoryProvider>().CreateLogger(name);
-        Logger.Debug($"Initializing Context Utility: {name}");
-        
+        Logger = Context.GetService<ILoggerFactory>().CreateLogger(name);
+        Logger.LogDebug($"Initializing Context Utility: {name}");
+
         OnInit();  // 子类实现初始化逻辑
-        
-        Logger.Info($"Context Utility initialized: {name}");
+
+        Logger.LogInformation($"Context Utility initialized: {name}");
     }
     
     protected abstract void OnInit();  // 子类实现具体的初始化逻辑
@@ -78,7 +77,7 @@ public class StorageUtility : AbstractContextUtility
     
     protected override void OnInit()
     {
-        Logger.Info("StorageUtility initialized");
+        Logger.LogInformation("StorageUtility initialized");
     }
     
     public void Save<T>(T data)

@@ -4,7 +4,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using GFramework.Core.Abstractions.Architectures;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Rule;
 using GFramework.Cqrs.Abstractions.Cqrs;
 using GFramework.Cqrs.Notification;
@@ -108,7 +107,7 @@ internal sealed class CqrsDispatcher(
 
         if (handlers.Count == 0)
         {
-            logger.Debug($"No CQRS notification handler registered for {notificationType.FullName}.");
+            logger.LogDebug($"No CQRS notification handler registered for {notificationType.FullName}.");
             return;
         }
 

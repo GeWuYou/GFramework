@@ -2,9 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Architectures;
-using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Abstractions.Properties;
-using GFramework.Core.Logging;
 
 namespace GFramework.Core.Architectures;
 
@@ -15,16 +13,10 @@ namespace GFramework.Core.Architectures;
 public sealed class ArchitectureConfiguration : IArchitectureConfiguration
 {
     /// <summary>
-    ///     获取或设置日志选项
-    ///     默认配置为Info级别日志，使用控制台日志工厂提供程序
+    ///     获取或设置日志选项。
+    ///     默认不绑定工厂：架构在构造时创建独立的默认控制台工厂并负责释放。
     /// </summary>
-    public LoggerProperties LoggerProperties { get; set; } = new()
-    {
-        LoggerFactoryProvider = new ConsoleLoggerFactoryProvider
-        {
-            MinLevel = LogLevel.Info
-        }
-    };
+    public LoggerProperties LoggerProperties { get; set; } = new();
 
     /// <summary>
     ///     获取或设置架构选项

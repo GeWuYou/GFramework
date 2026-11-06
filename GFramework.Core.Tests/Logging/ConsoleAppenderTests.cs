@@ -6,6 +6,7 @@ using GFramework.Core.Abstractions.Logging;
 using GFramework.Core.Logging.Appenders;
 using GFramework.Core.Logging.Filters;
 using GFramework.Core.Logging.Formatters;
+using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 
 namespace GFramework.Core.Tests.Logging;
@@ -42,7 +43,7 @@ public class ConsoleAppenderTests
     [Test]
     public void Append_ShouldWriteToWriter()
     {
-        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Test message", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", null, null);
 
         _appender.Append(entry);
 
@@ -57,7 +58,7 @@ public class ConsoleAppenderTests
         var filter = new LogLevelFilter(LogLevel.Warning);
         var appender = new ConsoleAppender(new DefaultLogFormatter(), _stringWriter, useColors: false, filter: filter);
 
-        var infoEntry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Info message", null, null);
+        var infoEntry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Info message", null, null);
         var warningEntry = new LogEntry(DateTime.UtcNow, LogLevel.Warning, "TestLogger", "Warning message", null, null);
 
         appender.Append(infoEntry);
@@ -73,7 +74,7 @@ public class ConsoleAppenderTests
     [Test]
     public void Flush_ShouldFlushWriter()
     {
-        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Test message", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", null, null);
 
         _appender.Append(entry);
         _appender.Flush();
@@ -85,7 +86,7 @@ public class ConsoleAppenderTests
     [Test]
     public void Dispose_ShouldFlushWriter()
     {
-        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", "Test message", null, null);
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", "Test message", null, null);
 
         _appender.Append(entry);
         _appender.Dispose();
@@ -99,7 +100,7 @@ public class ConsoleAppenderTests
     {
         for (int i = 0; i < 10; i++)
         {
-            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Info, "TestLogger", $"Message {i}", null, null);
+            var entry = new LogEntry(DateTime.UtcNow, LogLevel.Information, "TestLogger", $"Message {i}", null, null);
             _appender.Append(entry);
         }
 
