@@ -863,7 +863,7 @@ public class MicrosoftDiContainerTests
     ///     测试容器释放后会阻止后续注册与解析，避免 benchmark 或短生命周期宿主继续使用已回收状态。
     /// </summary>
     [Test]
-    public void Dispose_Should_Block_Subsequent_Registration_And_Query_Operations()
+    public async Task Dispose_Should_Block_Subsequent_Registration_And_Query_Operations()
     {
         _container.Dispose();
 
@@ -904,7 +904,7 @@ public class MicrosoftDiContainerTests
 
             await disposeTask.ConfigureAwait(false);
 
-            var exception = Assert.ThrowsAsync<ObjectDisposedException>(async () => await queryTask.ConfigureAwait(false));
+            var exception = await Assert.ThrowsAsync<ObjectDisposedException>(async () => await queryTask.ConfigureAwait(false)).ConfigureAwait(false);
             Assert.That(exception, Is.Not.Null);
             Assert.That(exception!.ObjectName, Is.EqualTo(nameof(MicrosoftDiContainer)));
         }

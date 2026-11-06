@@ -332,7 +332,7 @@ public class AutoRegisterModuleGeneratorTests
     [Test]
     public async Task Generates_Module_Install_Method_In_Deterministic_Order_Across_Partial_Declarations()
     {
-        var test = new CSharpSourceGeneratorTest<AutoRegisterModuleGenerator, DefaultVerifier>
+        var test = new CSharpSourceGeneratorTest<AutoRegisterModuleGenerator, GeneratorTestVerifier>
         {
             TestState =
             {

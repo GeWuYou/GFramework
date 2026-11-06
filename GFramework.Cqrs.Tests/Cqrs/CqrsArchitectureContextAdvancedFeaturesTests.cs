@@ -22,7 +22,7 @@ internal sealed class CqrsArchitectureContextAdvancedFeaturesTests
     ///     初始化测试容器、日志器和 CQRS 处理器注册表。
     /// </summary>
     [SetUp]
-    public void SetUp()
+    public async Task SetUp()
     {
         _container = new MicrosoftDiContainer();
         TestCircuitBreakerHandler.Reset();
@@ -45,7 +45,7 @@ internal sealed class CqrsArchitectureContextAdvancedFeaturesTests
     ///     释放当前测试用到的上下文和容器引用。
     /// </summary>
     [TearDown]
-    public void TearDown()
+    public async Task TearDown()
     {
         _context = null;
         _container = null;
@@ -59,7 +59,7 @@ internal sealed class CqrsArchitectureContextAdvancedFeaturesTests
     {
         var request = new TestValidatedRequest { Value = -1 }; // 无效值
 
-        Assert.ThrowsAsync<ArgumentException>(async () =>
+        await Assert.ThrowsAsync<ArgumentException>(async () =>
             await _context!.SendRequestAsync(request).ConfigureAwait(false));
     }
 
@@ -168,7 +168,7 @@ internal sealed class CqrsArchitectureContextAdvancedFeaturesTests
 
         // 验证断路器已打开，后续请求应该快速失败
         var stopwatch = Stopwatch.StartNew();
-        Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await _context!.SendRequestAsync(new TestCircuitBreakerRequest { ShouldFail = false })
                 .ConfigureAwait(false));
         stopwatch.Stop();
@@ -219,7 +219,7 @@ internal sealed class CqrsArchitectureContextAdvancedFeaturesTests
         // 执行saga，第二步会失败
         await _context!.SendRequestAsync(requests[0]).ConfigureAwait(false);
 
-        Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await _context!.SendRequestAsync(requests[1]).ConfigureAwait(false));
 
         // 验证回滚机制被触发
@@ -248,7 +248,7 @@ internal sealed class CqrsArchitectureContextAdvancedFeaturesTests
         using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
         var request = new TestExternalServiceRequest { TimeoutMs = 1000 };
 
-        Assert.ThrowsAsync<TaskCanceledException>(async () =>
+        await Assert.ThrowsAsync<TaskCanceledException>(async () =>
             await _context!.SendRequestAsync(request, cts.Token).ConfigureAwait(false));
     }
 

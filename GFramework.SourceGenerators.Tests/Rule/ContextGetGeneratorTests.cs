@@ -1334,9 +1334,9 @@ public class ContextGetGeneratorTests
     /// </summary>
     /// <param name="source">测试输入源码。</param>
     /// <returns>配置完成的生成器测试对象。</returns>
-    private static CSharpSourceGeneratorTest<ContextGetGenerator, DefaultVerifier> CreateGeneratorTest(string source)
+    private static CSharpSourceGeneratorTest<ContextGetGenerator, GeneratorTestVerifier> CreateGeneratorTest(string source)
     {
-        return new CSharpSourceGeneratorTest<ContextGetGenerator, DefaultVerifier>
+        return new CSharpSourceGeneratorTest<ContextGetGenerator, GeneratorTestVerifier>
         {
             TestState =
             {

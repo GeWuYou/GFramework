@@ -41,7 +41,7 @@ public sealed class YamlConfigLoaderNegationTests
     ///     验证运行时会拒绝命中 <c>not</c> 子 schema 的标量值。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Value_Matches_Not_Schema()
+    public async Task LoadAsync_Should_Throw_When_Value_Matches_Not_Schema()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -73,7 +73,7 @@ public sealed class YamlConfigLoaderNegationTests
         var loader = CreateMonsterLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -137,7 +137,7 @@ public sealed class YamlConfigLoaderNegationTests
     ///     验证对象完整命中禁用 schema 时，同样会触发 <c>not</c> 约束失败。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Object_Fully_Matches_Not_Schema()
+    public async Task LoadAsync_Should_Throw_When_Object_Fully_Matches_Not_Schema()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -175,7 +175,7 @@ public sealed class YamlConfigLoaderNegationTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -246,7 +246,7 @@ public sealed class YamlConfigLoaderNegationTests
     ///     验证 schema 将 <c>not</c> 声明为非对象值时，会在解析阶段被拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Not_Is_Not_An_Object()
+    public async Task LoadAsync_Should_Throw_When_Not_Is_Not_An_Object()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -275,7 +275,7 @@ public sealed class YamlConfigLoaderNegationTests
         var loader = CreateMonsterLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {

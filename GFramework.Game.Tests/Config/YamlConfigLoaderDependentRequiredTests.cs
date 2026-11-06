@@ -41,7 +41,7 @@ public sealed class YamlConfigLoaderDependentRequiredTests
     ///     验证触发字段出现但依赖字段缺失时，运行时会拒绝当前对象。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_DependentRequired_Property_Is_Missing()
+    public async Task LoadAsync_Should_Throw_When_DependentRequired_Property_Is_Missing()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -78,7 +78,7 @@ public sealed class YamlConfigLoaderDependentRequiredTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -188,7 +188,7 @@ public sealed class YamlConfigLoaderDependentRequiredTests
     ///     验证非对象 dependentRequired 声明会在 schema 解析阶段被拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_DependentRequired_Is_Not_An_Object()
+    public async Task LoadAsync_Should_Throw_When_DependentRequired_Is_Not_An_Object()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -220,7 +220,7 @@ public sealed class YamlConfigLoaderDependentRequiredTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -236,7 +236,7 @@ public sealed class YamlConfigLoaderDependentRequiredTests
     ///     验证 dependentRequired 的 schema 诊断会保留对象路径原始大小写，避免作者难以定位大小写敏感的坏元数据。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Preserve_Object_Path_Casing_In_DependentRequired_Diagnostics()
+    public async Task LoadAsync_Should_Preserve_Object_Path_Casing_In_DependentRequired_Diagnostics()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -270,7 +270,7 @@ public sealed class YamlConfigLoaderDependentRequiredTests
         var loader = CreateCaseSensitiveRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -287,7 +287,7 @@ public sealed class YamlConfigLoaderDependentRequiredTests
     ///     验证 dependentRequired 只能引用同一对象内已声明的字段。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_DependentRequired_Target_Is_Not_Declared()
+    public async Task LoadAsync_Should_Throw_When_DependentRequired_Target_Is_Not_Declared()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -320,7 +320,7 @@ public sealed class YamlConfigLoaderDependentRequiredTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {

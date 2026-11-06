@@ -212,7 +212,7 @@ public class GetNodeGeneratorTests
                               }
                               """;
 
-        var test = new CSharpSourceGeneratorTest<GetNodeGenerator, DefaultVerifier>
+        var test = new CSharpSourceGeneratorTest<GetNodeGenerator, GeneratorTestVerifier>
         {
             TestState =
             {
@@ -246,7 +246,7 @@ public class GetNodeGeneratorTests
             """,
             HBoxContainerType);
 
-        var test = new CSharpSourceGeneratorTest<GetNodeGenerator, DefaultVerifier>
+        var test = new CSharpSourceGeneratorTest<GetNodeGenerator, GeneratorTestVerifier>
         {
             TestState =
             {

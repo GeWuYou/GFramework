@@ -116,10 +116,10 @@ public sealed class ArchitectureOperationBoundaryTests
 
         external.Cancel();
 
-        var startupError = Assert.CatchAsync<OperationCanceledException>(
-            async () => await startup.WaitAsync(OperationTimeout).ConfigureAwait(false));
-        var readyError = Assert.CatchAsync<OperationCanceledException>(
-            async () => await ready.WaitAsync(OperationTimeout).ConfigureAwait(false));
+        var startupError = await Assert.CatchAsync<OperationCanceledException>(
+            async () => await startup.WaitAsync(OperationTimeout).ConfigureAwait(false)).ConfigureAwait(false);
+        var readyError = await Assert.CatchAsync<OperationCanceledException>(
+            async () => await ready.WaitAsync(OperationTimeout).ConfigureAwait(false)).ConfigureAwait(false);
         Assert.Multiple(() =>
         {
             Assert.That(startupError!.CancellationToken, Is.EqualTo(external.Token));
@@ -229,17 +229,17 @@ public sealed class ArchitectureOperationBoundaryTests
         };
         if (failStartup)
         {
-            var startupError = Assert.CatchAsync<AggregateException>(
+            var startupError = await Assert.CatchAsync<AggregateException>(
                 async () => await architecture.InitializeAsync().ConfigureAwait(false));
             Assert.That(startupError!.ToString(), Does.Contain("host failed"));
         }
         else
             await architecture.InitializeAsync().ConfigureAwait(false);
 
-        var firstError = Assert.CatchAsync<AggregateException>(
-            async () => await architecture.DestroyAsync().ConfigureAwait(false));
-        var secondError = Assert.CatchAsync<AggregateException>(
-            async () => await architecture.DestroyAsync().ConfigureAwait(false));
+        var firstError = await Assert.CatchAsync<AggregateException>(
+            async () => await architecture.DestroyAsync().ConfigureAwait(false)).ConfigureAwait(false);
+        var secondError = await Assert.CatchAsync<AggregateException>(
+            async () => await architecture.DestroyAsync().ConfigureAwait(false)).ConfigureAwait(false);
 
         Assert.Multiple(() =>
         {

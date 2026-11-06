@@ -22,7 +22,7 @@ public static class AnalyzerTestDriver<TAnalyzer>
         string source,
         params DiagnosticResult[] diagnostics)
     {
-        var test = new CSharpAnalyzerTest<TAnalyzer, DefaultVerifier>
+        var test = new CSharpAnalyzerTest<TAnalyzer, GeneratorTestVerifier>
         {
             TestState =
             {

@@ -144,13 +144,13 @@ public class YamlConfigLoaderTests
     ///     验证注册的配置目录不存在时会抛出清晰错误。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Config_Directory_Does_Not_Exist()
+    public async Task LoadAsync_Should_Throw_When_Config_Directory_Does_Not_Exist()
     {
         var loader = new YamlConfigLoader(_rootPath)
             .RegisterTable<int, MonsterConfigStub>("monster", "monster", static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -168,7 +168,7 @@ public class YamlConfigLoaderTests
     ///     验证某个配置表加载失败时，注册表不会留下部分成功的中间状态。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Not_Mutate_Registry_When_A_Later_Table_Fails()
+    public async Task LoadAsync_Should_Not_Mutate_Registry_When_A_Later_Table_Fails()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -192,7 +192,7 @@ public class YamlConfigLoaderTests
             .RegisterTable<int, MonsterConfigStub>("monster", "monster", static config => config.Id)
             .RegisterTable<int, MonsterConfigStub>("broken", "broken", static config => config.Id);
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -210,7 +210,7 @@ public class YamlConfigLoaderTests
     ///     验证非法 YAML 会被包装成带文件路径的反序列化错误。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_With_File_Path_When_Yaml_Is_Invalid()
+    public async Task LoadAsync_Should_Throw_With_File_Path_When_Yaml_Is_Invalid()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -223,7 +223,7 @@ public class YamlConfigLoaderTests
             .RegisterTable<int, MonsterConfigStub>("monster", "monster", static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -237,7 +237,7 @@ public class YamlConfigLoaderTests
     ///     验证启用 schema 校验后，缺失必填字段会在反序列化前被拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Required_Property_Is_Missing_According_To_Schema()
+    public async Task LoadAsync_Should_Throw_When_Required_Property_Is_Missing_According_To_Schema()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -264,7 +264,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -285,7 +285,7 @@ public class YamlConfigLoaderTests
     ///     验证启用 schema 校验后，类型不匹配的标量字段会被拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Property_Type_Does_Not_Match_Schema()
+    public async Task LoadAsync_Should_Throw_When_Property_Type_Does_Not_Match_Schema()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -313,7 +313,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -328,7 +328,7 @@ public class YamlConfigLoaderTests
     ///     验证启用 schema 校验后，标量 enum 限制会在运行时被拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Scalar_Value_Is_Not_Declared_In_Schema_Enum()
+    public async Task LoadAsync_Should_Throw_When_Scalar_Value_Is_Not_Declared_In_Schema_Enum()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -359,7 +359,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -374,7 +374,7 @@ public class YamlConfigLoaderTests
     ///     验证标量 <c>const</c> 限制会在运行时被拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Scalar_Value_Does_Not_Match_Schema_Const()
+    public async Task LoadAsync_Should_Throw_When_Scalar_Value_Does_Not_Match_Schema_Const()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -405,7 +405,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -420,7 +420,7 @@ public class YamlConfigLoaderTests
     ///     验证数值最小值与最大值约束会在运行时被统一拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Number_Violates_Minimum_Or_Maximum()
+    public async Task LoadAsync_Should_Throw_When_Number_Violates_Minimum_Or_Maximum()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -452,7 +452,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -469,7 +469,7 @@ public class YamlConfigLoaderTests
     ///     验证数值命中开区间下界时会按 schema 在运行时被拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Number_Violates_Exclusive_Minimum()
+    public async Task LoadAsync_Should_Throw_When_Number_Violates_Exclusive_Minimum()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -501,7 +501,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -518,7 +518,7 @@ public class YamlConfigLoaderTests
     ///     验证数值命中开区间上界时会按 schema 在运行时被拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Number_Violates_Exclusive_Maximum()
+    public async Task LoadAsync_Should_Throw_When_Number_Violates_Exclusive_Maximum()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -550,7 +550,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -567,7 +567,7 @@ public class YamlConfigLoaderTests
     ///     验证数值不满足 <c>multipleOf</c> 时会在运行时被拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Number_Violates_MultipleOf()
+    public async Task LoadAsync_Should_Throw_When_Number_Violates_MultipleOf()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -598,7 +598,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -659,7 +659,7 @@ public class YamlConfigLoaderTests
     ///     验证大数量级但实际不满足 <c>multipleOf</c> 的数值会被运行时拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Large_Number_Is_Not_Actually_MultipleOf()
+    public async Task LoadAsync_Should_Throw_When_Large_Number_Is_Not_Actually_MultipleOf()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -688,7 +688,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -744,7 +744,7 @@ public class YamlConfigLoaderTests
     ///     验证字符串最小长度与最大长度约束会在运行时被统一拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_String_Violates_MinLength_Or_MaxLength()
+    public async Task LoadAsync_Should_Throw_When_String_Violates_MinLength_Or_MaxLength()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -776,7 +776,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -793,7 +793,7 @@ public class YamlConfigLoaderTests
     ///     验证字符串正则模式约束会在运行时被统一拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_String_Does_Not_Match_Pattern()
+    public async Task LoadAsync_Should_Throw_When_String_Does_Not_Match_Pattern()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -824,7 +824,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -905,7 +905,7 @@ public class YamlConfigLoaderTests
     [TestCase("time", "08:30:00")]
     [TestCase("uri", "/loot-table")]
     [TestCase("uuid", "123e4567e89b12d3a456426614174000")]
-    public void LoadAsync_Should_Throw_When_String_Does_Not_Match_Supported_Format(
+    public async Task LoadAsync_Should_Throw_When_String_Does_Not_Match_Supported_Format(
         string formatName,
         string value)
     {
@@ -938,7 +938,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -956,7 +956,7 @@ public class YamlConfigLoaderTests
     ///     验证 schema 使用当前未支持的字符串 <c>format</c> 时会在解析阶段被拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_String_Format_Is_Not_Supported()
+    public async Task LoadAsync_Should_Throw_When_String_Format_Is_Not_Supported()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -987,7 +987,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -1006,7 +1006,7 @@ public class YamlConfigLoaderTests
     ///     验证 schema 在非字符串节点上声明 <c>format</c> 时，会在 schema 解析阶段被拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Format_Is_Used_On_Non_String_Property()
+    public async Task LoadAsync_Should_Throw_When_Format_Is_Used_On_Non_String_Property()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -1035,7 +1035,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -1050,7 +1050,7 @@ public class YamlConfigLoaderTests
     ///     验证 schema 将 <c>format</c> 声明为非字符串值时，会在 schema 解析阶段被拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Format_Is_Not_A_String()
+    public async Task LoadAsync_Should_Throw_When_Format_Is_Not_A_String()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -1081,7 +1081,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -1142,7 +1142,7 @@ public class YamlConfigLoaderTests
     ///     验证数组元素数量命中上界时会在运行时被统一拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Array_Violates_MaxItems()
+    public async Task LoadAsync_Should_Throw_When_Array_Violates_MaxItems()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -1181,7 +1181,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -1198,7 +1198,7 @@ public class YamlConfigLoaderTests
     ///     验证数组元素数量命中下界时会在运行时被统一拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Array_Violates_MinItems()
+    public async Task LoadAsync_Should_Throw_When_Array_Violates_MinItems()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -1233,7 +1233,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -1250,7 +1250,7 @@ public class YamlConfigLoaderTests
     ///     验证数组声明 <c>uniqueItems</c> 后，重复元素会在运行时被拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Array_Violates_UniqueItems()
+    public async Task LoadAsync_Should_Throw_When_Array_Violates_UniqueItems()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -1287,7 +1287,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -1304,7 +1304,7 @@ public class YamlConfigLoaderTests
     ///     验证数组声明 <c>contains</c> 后，默认至少要有一个匹配元素。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Array_Violates_Default_Contains_Match_Count()
+    public async Task LoadAsync_Should_Throw_When_Array_Violates_Default_Contains_Match_Count()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -1343,7 +1343,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -1360,7 +1360,7 @@ public class YamlConfigLoaderTests
     ///     验证数组声明 <c>minContains</c> 后，会按匹配数量而不是总元素数做约束判断。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Array_Violates_MinContains()
+    public async Task LoadAsync_Should_Throw_When_Array_Violates_MinContains()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -1401,7 +1401,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -1418,7 +1418,7 @@ public class YamlConfigLoaderTests
     ///     验证数组声明 <c>maxContains</c> 后，会拒绝匹配元素过多的序列。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Array_Violates_MaxContains()
+    public async Task LoadAsync_Should_Throw_When_Array_Violates_MaxContains()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -1459,7 +1459,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -1533,7 +1533,7 @@ public class YamlConfigLoaderTests
     ///     验证数组字段将 <c>contains</c> 声明为非对象 schema 时，会在 schema 解析阶段被拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Contains_Is_Not_Object_Schema()
+    public async Task LoadAsync_Should_Throw_When_Contains_Is_Not_Object_Schema()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -1568,7 +1568,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -1584,7 +1584,7 @@ public class YamlConfigLoaderTests
     ///     验证数组字段将 <c>contains</c> 声明为嵌套数组 schema 时，会在 schema 解析阶段被拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Contains_Uses_Nested_Array_Schema()
+    public async Task LoadAsync_Should_Throw_When_Contains_Uses_Nested_Array_Schema()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -1624,7 +1624,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -1648,7 +1648,7 @@ public class YamlConfigLoaderTests
                               """)]
     [TestCase("additionalItems", "false")]
     [TestCase("unevaluatedItems", "false")]
-    public void LoadAsync_Should_Throw_When_Array_Schema_Declares_Unsupported_ArrayShape_Keyword(
+    public async Task LoadAsync_Should_Throw_When_Array_Schema_Declares_Unsupported_ArrayShape_Keyword(
         string keywordName,
         string keywordValueJson)
     {
@@ -1685,7 +1685,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -1724,7 +1724,7 @@ public class YamlConfigLoaderTests
     ///     验证数组在未声明 <c>contains</c> 时不能单独使用 <c>minContains</c>。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_MinContains_Is_Declared_Without_Contains()
+    public async Task LoadAsync_Should_Throw_When_MinContains_Is_Declared_Without_Contains()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -1759,7 +1759,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -1776,7 +1776,7 @@ public class YamlConfigLoaderTests
     ///     验证数组字段将 <c>minContains</c> 声明为大于 <c>maxContains</c> 时，会在 schema 解析阶段被拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Array_Contains_Count_Constraints_Are_Inverted()
+    public async Task LoadAsync_Should_Throw_When_Array_Contains_Count_Constraints_Are_Inverted()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -1816,7 +1816,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -1895,7 +1895,7 @@ public class YamlConfigLoaderTests
     ///     验证启用 schema 校验后，未知字段不会再被静默忽略。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Unknown_Property_Is_Present_In_Schema_Bound_Mode()
+    public async Task LoadAsync_Should_Throw_When_Unknown_Property_Is_Present_In_Schema_Bound_Mode()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -1923,7 +1923,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -1937,7 +1937,7 @@ public class YamlConfigLoaderTests
     ///     验证数组字段的元素类型会按 schema 校验。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Array_Item_Type_Does_Not_Match_Schema()
+    public async Task LoadAsync_Should_Throw_When_Array_Item_Type_Does_Not_Match_Schema()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -1973,7 +1973,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -1987,7 +1987,7 @@ public class YamlConfigLoaderTests
     ///     验证数组元素上的 enum 限制会按 schema 在运行时生效。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Array_Item_Is_Not_Declared_In_Schema_Enum()
+    public async Task LoadAsync_Should_Throw_When_Array_Item_Is_Not_Declared_In_Schema_Enum()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -2023,7 +2023,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -2038,7 +2038,7 @@ public class YamlConfigLoaderTests
     ///     验证数组 <c>const</c> 限制会保留元素顺序并按完整序列比较。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Array_Value_Does_Not_Match_Schema_Const()
+    public async Task LoadAsync_Should_Throw_When_Array_Value_Does_Not_Match_Schema_Const()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -2074,7 +2074,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -2090,7 +2090,7 @@ public class YamlConfigLoaderTests
     ///     验证嵌套对象中的必填字段同样会按 schema 在运行时生效。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Nested_Object_Is_Missing_Required_Property()
+    public async Task LoadAsync_Should_Throw_When_Nested_Object_Is_Missing_Required_Property()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -2126,7 +2126,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -2140,7 +2140,7 @@ public class YamlConfigLoaderTests
     ///     验证嵌套对象 <c>const</c> 限制会按完整对象内容比较。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Nested_Object_Does_Not_Match_Schema_Const()
+    public async Task LoadAsync_Should_Throw_When_Nested_Object_Does_Not_Match_Schema_Const()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -2180,7 +2180,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -2244,7 +2244,7 @@ public class YamlConfigLoaderTests
     ///     验证对象字段不满足 <c>minProperties</c> 时会在运行时被拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Object_Violates_MinProperties()
+    public async Task LoadAsync_Should_Throw_When_Object_Violates_MinProperties()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -2280,7 +2280,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -2297,7 +2297,7 @@ public class YamlConfigLoaderTests
     ///     验证对象字段不满足 <c>maxProperties</c> 时会在运行时被拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Object_Violates_MaxProperties()
+    public async Task LoadAsync_Should_Throw_When_Object_Violates_MaxProperties()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -2336,7 +2336,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -2353,7 +2353,7 @@ public class YamlConfigLoaderTests
     ///     验证对象字段将 <c>minProperties</c> 声明为非法值时，会在 schema 解析阶段被拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Object_Property_Count_Constraint_Is_Not_NonNegative_Integer()
+    public async Task LoadAsync_Should_Throw_When_Object_Property_Count_Constraint_Is_Not_NonNegative_Integer()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -2388,7 +2388,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -2405,7 +2405,7 @@ public class YamlConfigLoaderTests
     ///     验证对象字段将 <c>maxProperties</c> 声明为非整数数值时，会在 schema 解析阶段被拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Object_MaxProperties_Constraint_Is_Not_Integer()
+    public async Task LoadAsync_Should_Throw_When_Object_MaxProperties_Constraint_Is_Not_Integer()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -2442,7 +2442,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -2459,7 +2459,7 @@ public class YamlConfigLoaderTests
     ///     验证对象字段将 <c>minProperties</c> 声明为大于 <c>maxProperties</c> 时，会在 schema 解析阶段被拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Object_Property_Count_Constraints_Are_Inverted()
+    public async Task LoadAsync_Should_Throw_When_Object_Property_Count_Constraints_Are_Inverted()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -2497,7 +2497,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -2514,7 +2514,7 @@ public class YamlConfigLoaderTests
     ///     验证对象数组中的嵌套字段也会按 schema 递归校验。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Object_Array_Item_Contains_Unknown_Property()
+    public async Task LoadAsync_Should_Throw_When_Object_Array_Item_Contains_Unknown_Property()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -2556,7 +2556,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -2570,7 +2570,7 @@ public class YamlConfigLoaderTests
     ///     验证深层对象数组中的跨表引用也会参与整批加载校验。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Nested_Object_Array_Reference_Target_Is_Missing()
+    public async Task LoadAsync_Should_Throw_When_Nested_Object_Array_Reference_Target_Is_Missing()
     {
         var loader = CreateItemBackedMonsterLoader<MonsterPhaseDropConfigStub>(
             """
@@ -2612,7 +2612,7 @@ public class YamlConfigLoaderTests
             ("item/potion.yaml", "potion", "Potion"));
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -2692,7 +2692,7 @@ public class YamlConfigLoaderTests
     ///     验证缺失的跨表引用会阻止整批配置写入注册表。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Cross_Table_Reference_Target_Is_Missing()
+    public async Task LoadAsync_Should_Throw_When_Cross_Table_Reference_Target_Is_Missing()
     {
         CreateConfigFile(
             "item/slime-gel.yaml",
@@ -2743,7 +2743,7 @@ public class YamlConfigLoaderTests
                 static config => config.Id);
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -2758,7 +2758,7 @@ public class YamlConfigLoaderTests
     ///     验证跨表引用同样支持标量数组中的每个元素。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Array_Reference_Item_Is_Missing()
+    public async Task LoadAsync_Should_Throw_When_Array_Reference_Item_Is_Missing()
     {
         var loader = CreateItemBackedMonsterLoader<MonsterDropArrayConfigStub>(
             """
@@ -2788,7 +2788,7 @@ public class YamlConfigLoaderTests
             ("item/slime-gel.yaml", "slime_gel", "Slime Gel"));
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -2803,7 +2803,7 @@ public class YamlConfigLoaderTests
     ///     验证仅声明在 <c>contains</c> 子 schema 里的跨表引用也会参与整批加载校验。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Contains_Matched_Reference_Target_Is_Missing()
+    public async Task LoadAsync_Should_Throw_When_Contains_Matched_Reference_Target_Is_Missing()
     {
         var loader = CreateItemBackedMonsterLoader<MonsterDropArrayConfigStub>(
             """
@@ -2838,7 +2838,7 @@ public class YamlConfigLoaderTests
             ("item/potion.yaml", "potion", "Potion"));
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {

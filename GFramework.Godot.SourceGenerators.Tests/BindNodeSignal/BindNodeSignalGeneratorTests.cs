@@ -384,7 +384,7 @@ public class BindNodeSignalGeneratorTests
 
     private static Task VerifyDiagnosticsAsync(string source, params DiagnosticResult[] expectedDiagnostics)
     {
-        var test = new CSharpSourceGeneratorTest<BindNodeSignalGenerator, DefaultVerifier>
+        var test = new CSharpSourceGeneratorTest<BindNodeSignalGenerator, GeneratorTestVerifier>
         {
             TestState =
             {

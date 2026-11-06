@@ -33,10 +33,10 @@ public class AsyncExtensionsTests
     ///     测试WithTimeout方法在任务超过超时时抛出TimeoutException
     /// </summary>
     [Test]
-    public void WithTimeout_Should_Throw_TimeoutException_When_Task_Exceeds_Timeout()
+    public async Task WithTimeout_Should_Throw_TimeoutException_When_Task_Exceeds_Timeout()
     {
         // Act & Assert
-        Assert.ThrowsAsync<TimeoutException>(() =>
+        await Assert.ThrowsAsync<TimeoutException>(() =>
             AsyncExtensions.WithTimeoutAsync(
                 async ct =>
                 {
@@ -50,13 +50,13 @@ public class AsyncExtensionsTests
     ///     测试WithTimeout方法在取消请求时抛出OperationCanceledException
     /// </summary>
     [Test]
-    public void WithTimeout_Should_Throw_OperationCanceledException_When_Cancellation_Requested()
+    public async Task WithTimeout_Should_Throw_OperationCanceledException_When_Cancellation_Requested()
     {
         // Arrange
         using var cts = new CancellationTokenSource();
         cts.Cancel();
         // Act & Assert
-        Assert.ThrowsAsync<TaskCanceledException>(() =>
+        await Assert.ThrowsAsync<TaskCanceledException>(() =>
             AsyncExtensions.WithTimeoutAsync(
                 async ct =>
                 {
@@ -71,13 +71,13 @@ public class AsyncExtensionsTests
     ///     测试WithTimeout方法在超时时取消内部任务
     /// </summary>
     [Test]
-    public void WithTimeout_Should_Cancel_Inner_Task_When_Timeout_Elapses()
+    public async Task WithTimeout_Should_Cancel_Inner_Task_When_Timeout_Elapses()
     {
         // Arrange
         var innerTaskCanceled = false;
 
         // Act & Assert
-        Assert.ThrowsAsync<TimeoutException>(() =>
+        await Assert.ThrowsAsync<TimeoutException>(() =>
             AsyncExtensions.WithTimeoutAsync(
                 async ct =>
                 {
@@ -121,10 +121,10 @@ public class AsyncExtensionsTests
     ///     测试无返回值的WithTimeout在任务超时时抛出TimeoutException
     /// </summary>
     [Test]
-    public void WithTimeout_NoResult_Should_Throw_TimeoutException_When_Task_Exceeds_Timeout()
+    public async Task WithTimeout_NoResult_Should_Throw_TimeoutException_When_Task_Exceeds_Timeout()
     {
         // Act & Assert
-        Assert.ThrowsAsync<TimeoutException>(() =>
+        await Assert.ThrowsAsync<TimeoutException>(() =>
             AsyncExtensions.WithTimeoutAsync(
                 ct => Task.Delay(TimeSpan.FromSeconds(2), ct),
                 TimeSpan.FromMilliseconds(100)));
@@ -134,13 +134,13 @@ public class AsyncExtensionsTests
     ///     测试无返回值的WithTimeout在超时时取消内部任务
     /// </summary>
     [Test]
-    public void WithTimeout_NoResult_Should_Cancel_Inner_Task_When_Timeout_Elapses()
+    public async Task WithTimeout_NoResult_Should_Cancel_Inner_Task_When_Timeout_Elapses()
     {
         // Arrange
         var innerTaskCanceled = false;
 
         // Act & Assert
-        Assert.ThrowsAsync<TimeoutException>(() =>
+        await Assert.ThrowsAsync<TimeoutException>(() =>
             AsyncExtensions.WithTimeoutAsync(
                 async ct =>
                 {
@@ -209,7 +209,7 @@ public class AsyncExtensionsTests
     ///     测试WithRetry方法在所有重试都失败时抛出AggregateException
     /// </summary>
     [Test]
-    public void WithRetry_Should_Throw_AggregateException_When_All_Retries_Fail()
+    public async Task WithRetry_Should_Throw_AggregateException_When_All_Retries_Fail()
     {
         // Arrange
         var attemptCount = 0;
@@ -220,7 +220,7 @@ public class AsyncExtensionsTests
         };
 
         // Act & Assert
-        Assert.ThrowsAsync<AggregateException>(() =>
+        await Assert.ThrowsAsync<AggregateException>(() =>
             taskFactory.WithRetryAsync(2, TimeSpan.FromMilliseconds(10)));
     }
 
@@ -228,7 +228,7 @@ public class AsyncExtensionsTests
     ///     测试WithRetry方法遵守ShouldRetry谓词
     /// </summary>
     [Test]
-    public void WithRetry_Should_Respect_ShouldRetry_Predicate()
+    public async Task WithRetry_Should_Respect_ShouldRetry_Predicate()
     {
         static Task<int> ThrowShouldNotRetry(string parameterName)
         {
@@ -244,7 +244,7 @@ public class AsyncExtensionsTests
         };
 
         // Act & Assert
-        var exception = Assert.ThrowsAsync<AggregateException>(() =>
+        var exception = await Assert.ThrowsAsync<AggregateException>(() =>
             taskFactory.WithRetryAsync(3, TimeSpan.FromMilliseconds(10),
                 ex => ex is not ArgumentException));
 

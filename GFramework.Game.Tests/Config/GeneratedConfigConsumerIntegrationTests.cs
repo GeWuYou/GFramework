@@ -65,7 +65,7 @@ public class GeneratedConfigConsumerIntegrationTests
     ///     验证项目级生成目录既能按配置域枚举元数据，也能直接复用聚合注册筛选规则产出启动诊断视图。
     /// </summary>
     [Test]
-    public void GeneratedConfigCatalog_Should_Expose_Domain_And_Registration_Diagnostic_Views()
+    public async Task GeneratedConfigCatalog_Should_Expose_Domain_And_Registration_Diagnostic_Views()
     {
         Assert.That(GeneratedConfigCatalog.TryGetByTableName("monster", out var monsterMetadata), Is.True);
         Assert.That(GeneratedConfigCatalog.TryGetByTableName("item", out var itemMetadata), Is.True);
@@ -215,7 +215,7 @@ public class GeneratedConfigConsumerIntegrationTests
 
         var exception = Assert.Throws<ConfigLoadException>(() =>
             MonsterConfigBindings.ValidateYaml(_rootPath, "monster/generated.yaml", invalidYaml));
-        var asyncException = Assert.ThrowsAsync<ConfigLoadException>(async () =>
+        var asyncException = await Assert.ThrowsAsync<ConfigLoadException>(async () =>
             await MonsterConfigBindings.ValidateYamlAsync(_rootPath, "monster/generated.yaml", invalidYaml).ConfigureAwait(false));
 
         Assert.Multiple(() =>

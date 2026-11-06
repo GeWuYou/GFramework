@@ -93,7 +93,7 @@ public sealed class YamlConfigLoaderIfThenElseTests
     ///     验证 <c>if</c> 命中而 <c>then</c> 约束未满足时，运行时会拒绝加载。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_If_Matches_But_Then_Is_Not_Satisfied()
+    public async Task LoadAsync_Should_Throw_When_If_Matches_But_Then_Is_Not_Satisfied()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -108,7 +108,7 @@ public sealed class YamlConfigLoaderIfThenElseTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -157,7 +157,7 @@ public sealed class YamlConfigLoaderIfThenElseTests
     ///     验证 <c>if</c> 未命中而 <c>else</c> 约束未满足时，运行时会拒绝加载。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_If_Does_Not_Match_But_Else_Is_Not_Satisfied()
+    public async Task LoadAsync_Should_Throw_When_If_Does_Not_Match_But_Else_Is_Not_Satisfied()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -173,7 +173,7 @@ public sealed class YamlConfigLoaderIfThenElseTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -222,7 +222,7 @@ public sealed class YamlConfigLoaderIfThenElseTests
     ///     验证非对象字段声明 <c>if</c> 时，会在 schema 解析阶段被拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_NonObject_Schema_Declares_If()
+    public async Task LoadAsync_Should_Throw_When_NonObject_Schema_Declares_If()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -266,7 +266,7 @@ public sealed class YamlConfigLoaderIfThenElseTests
                 static config => config.Id);
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -282,7 +282,7 @@ public sealed class YamlConfigLoaderIfThenElseTests
     ///     验证缺少 <c>if</c> 却声明 <c>then</c> 时，会在 schema 解析阶段被拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Then_Is_Declared_Without_If()
+    public async Task LoadAsync_Should_Throw_When_Then_Is_Declared_Without_If()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -307,7 +307,7 @@ public sealed class YamlConfigLoaderIfThenElseTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -323,7 +323,7 @@ public sealed class YamlConfigLoaderIfThenElseTests
     ///     验证缺少 <c>if</c> 却声明 <c>else</c> 时，会在 schema 解析阶段被拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Else_Is_Declared_Without_If()
+    public async Task LoadAsync_Should_Throw_When_Else_Is_Declared_Without_If()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -348,7 +348,7 @@ public sealed class YamlConfigLoaderIfThenElseTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -364,7 +364,7 @@ public sealed class YamlConfigLoaderIfThenElseTests
     ///     验证条件分支不能要求父对象未声明的字段。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Conditional_Schema_Requires_Undeclared_Parent_Property()
+    public async Task LoadAsync_Should_Throw_When_Conditional_Schema_Requires_Undeclared_Parent_Property()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -396,7 +396,7 @@ public sealed class YamlConfigLoaderIfThenElseTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {

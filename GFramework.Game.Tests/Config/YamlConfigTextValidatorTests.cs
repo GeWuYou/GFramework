@@ -112,7 +112,7 @@ public sealed class YamlConfigTextValidatorTests
     ///     验证异步入口与同步入口共享相同校验语义。
     /// </summary>
     [Test]
-    public void ValidateAsync_Should_Throw_ConfigLoadException_When_Required_Field_Is_Missing()
+    public async Task ValidateAsync_Should_Throw_ConfigLoadException_When_Required_Field_Is_Missing()
     {
         var schemaPath = CreateSchemaFile(
             "schemas/monster.schema.json",
@@ -127,7 +127,7 @@ public sealed class YamlConfigTextValidatorTests
             }
             """);
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() =>
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() =>
             YamlConfigTextValidator.ValidateAsync(
                 "monster",
                 schemaPath,

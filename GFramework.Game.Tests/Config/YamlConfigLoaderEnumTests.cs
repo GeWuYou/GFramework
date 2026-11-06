@@ -93,7 +93,7 @@ public class YamlConfigLoaderEnumTests
     ///     验证对象 <c>enum</c> 不匹配时，运行时会拒绝整个对象值并输出候选 JSON 文本。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Object_Value_Is_Not_Declared_In_Schema_Enum()
+    public async Task LoadAsync_Should_Throw_When_Object_Value_Is_Not_Declared_In_Schema_Enum()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -130,7 +130,7 @@ public class YamlConfigLoaderEnumTests
         var loader = CreateLoader<MonsterRewardConfigStub>();
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -146,7 +146,7 @@ public class YamlConfigLoaderEnumTests
     ///     验证数组 <c>enum</c> 会保留元素顺序；同一批元素但顺序不同仍视为不同候选值。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Array_Value_Order_Does_Not_Match_Schema_Enum()
+    public async Task LoadAsync_Should_Throw_When_Array_Value_Order_Does_Not_Match_Schema_Enum()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -179,7 +179,7 @@ public class YamlConfigLoaderEnumTests
         var loader = CreateLoader<MonsterDropItemIdsConfigStub>();
         var registry = new ConfigRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {

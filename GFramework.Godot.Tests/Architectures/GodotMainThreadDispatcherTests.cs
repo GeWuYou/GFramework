@@ -52,7 +52,7 @@ public sealed class GodotMainThreadDispatcherTests
     ///     排队期间取消后，晚到的宿主回调不得再触碰节点。
     /// </summary>
     [Test]
-    public void InvokeAsync_ShouldSkipCancelledQueuedAction()
+    public async Task InvokeAsync_ShouldSkipCancelledQueuedAction()
     {
         using var cancellation = new CancellationTokenSource();
         var queued = new List<Action>();
@@ -61,7 +61,7 @@ public sealed class GodotMainThreadDispatcherTests
         var pending = dispatcher.InvokeAsync(() => calls++, cancellation.Token);
 
         cancellation.Cancel();
-        Assert.CatchAsync<OperationCanceledException>(() => pending);
+        await Assert.CatchAsync<OperationCanceledException>(() => pending);
         queued.Single()();
         Assert.That(calls, Is.Zero);
     }
@@ -136,14 +136,14 @@ public sealed class GodotMainThreadDispatcherTests
     ///     动作异常回传给等待者，而非落入未观察的后台任务。
     /// </summary>
     [Test]
-    public void InvokeAsync_ShouldPropagateActionFailure()
+    public async Task InvokeAsync_ShouldPropagateActionFailure()
     {
         var queued = new List<Action>();
         var dispatcher = new GodotMainThreadDispatcher(() => false, queued.Add);
         var pending = dispatcher.InvokeAsync(() => throw new InvalidOperationException("Expected node failure."));
 
         queued.Single()();
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(() => pending);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => pending);
 
         Assert.That(exception!.Message, Is.EqualTo("Expected node failure."));
     }

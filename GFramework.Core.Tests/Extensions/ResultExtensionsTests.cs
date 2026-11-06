@@ -437,7 +437,7 @@ public class ResultExtensionsTests
     ///     测试Try方法在函数为null时抛出ArgumentNullException
     /// </summary>
     [Test]
-    public void Try_Should_Throw_ArgumentNullException_When_Function_Is_Null()
+    public async Task Try_Should_Throw_ArgumentNullException_When_Function_Is_Null()
     {
         Assert.Throws<ArgumentNullException>(() => ResultExtensions.Try<int>(null!));
     }
@@ -487,9 +487,9 @@ public class ResultExtensionsTests
     ///     测试TryAsync方法在函数为null时抛出ArgumentNullException
     /// </summary>
     [Test]
-    public void TryAsync_Should_Throw_ArgumentNullException_When_Function_Is_Null()
+    public async Task TryAsync_Should_Throw_ArgumentNullException_When_Function_Is_Null()
     {
-        Assert.ThrowsAsync<ArgumentNullException>(() => ResultExtensions.TryAsync<int>(null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => ResultExtensions.TryAsync<int>(null!));
     }
 
     /// <summary>
