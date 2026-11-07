@@ -202,6 +202,9 @@ def select(root: Path, base: str | None, head: str, *, full: bool = False) -> di
             if name == ".github/workflows/codeql.yml":
                 report["codeql"] = True
                 continue
+            if name == ".github/workflows/megalinter.yml":
+                report["lint"] = True
+                continue
             if name.startswith("docs/"):
                 report["docs"] = True
                 continue
