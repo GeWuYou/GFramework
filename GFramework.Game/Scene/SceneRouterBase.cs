@@ -1,22 +1,7 @@
-// Copyright (c) 2026 GeWuYou
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-// 
-//     http://www.apache.org/licenses/LICENSE-2.0
-// 
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright (c) 2025-2026 GeWuYou
+// SPDX-License-Identifier: Apache-2.0
 
-using System;
-using GFramework.Core.Abstractions.Logging;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using GFramework.Core.Extensions;
-using GFramework.Core.Logging;
 using GFramework.Game.Abstractions.Enums;
 using GFramework.Game.Abstractions.Scene;
 using GFramework.Game.Routing;
@@ -24,452 +9,285 @@ using GFramework.Game.Routing;
 namespace GFramework.Game.Scene;
 
 /// <summary>
-/// 场景路由基类，提供场景切换和卸载的基础功能。
-/// 实现了 <see cref="ISceneRouter"/> 接口，用于管理场景的加载、替换和卸载操作。
+///     Owns a scene stack and serializes guarded navigation on the root's host context.
+///     Preparation failures preserve the previous scene; shutdown bypasses guards and attempts every cleanup.
 /// </summary>
-public abstract class SceneRouterBase
-    : RouterBase<ISceneBehavior, ISceneEnterParam>, ISceneRouter
+public abstract class SceneRouterBase : RouterBase<ISceneBehavior, ISceneEnterParam>, ISceneRouter
 {
-
     private readonly SceneTransitionPipeline _pipeline = new();
-
-    private readonly SemaphoreSlim _transitionLock = new(1, 1);
     private ISceneFactory _factory = null!;
 
-    /// <summary>
-    ///  场景根节点
-    /// </summary>
+    /// <summary>The host root that attaches and removes scene instances.</summary>
     protected ISceneRoot? Root;
 
-    /// <summary>
-    /// 获取当前场景行为对象。
-    /// </summary>
-    public new ISceneBehavior? Current => Stack.Count > 0 ? Stack.Peek() : null;
+    /// <summary>The current stack scene, or null when empty.</summary>
+    public new ISceneBehavior? Current => base.Current;
 
-    /// <summary>
-    /// 获取当前场景的键名。
-    /// </summary>
+    /// <summary>The current scene key, or null when empty.</summary>
     public new string? CurrentKey => Current?.Key;
 
-    /// <summary>
-    /// 获取场景栈的只读视图，按压入顺序排列（从栈底到栈顶）。
-    /// </summary>
-    IEnumerable<ISceneBehavior> ISceneRouter.Stack => base.Stack.Reverse();
+    /// <summary>A bottom-to-top snapshot of the scene stack.</summary>
+    IEnumerable<ISceneBehavior> ISceneRouter.Stack => Stack.Reverse().ToArray();
 
-    /// <summary>
-    /// 获取是否正在进行场景转换。
-    /// </summary>
+    /// <summary>Whether the router is executing a navigation operation.</summary>
     public bool IsTransitioning { get; private set; }
 
-    /// <summary>
-    /// 绑定场景根节点。
-    /// </summary>
-    /// <param name="root">场景根节点实例。</param>
+    /// <summary>Binds a root and captures its host synchronization context.</summary>
+    /// <param name="root">The root that owns scene attachment.</param>
     public void BindRoot(ISceneRoot root)
     {
+        ArgumentNullException.ThrowIfNull(root);
+        EnsureRouteAvailable();
         Root = root;
-        _logger.LogDebug("Bind Scene Root: {0}", root.GetType().Name);
+        BindRouteContext();
     }
 
-    #region Replace
+    /// <summary>Prepares a target before removing the previous scene stack.</summary>
+    /// <param name="sceneKey">Target scene key.</param>
+    /// <param name="param">Optional scene loading parameters.</param>
+    /// <returns>Navigation completion; a rejected guard leaves the stack unchanged.</returns>
+    public ValueTask ReplaceAsync(string sceneKey, ISceneEnterParam? param = null) =>
+        TransitionAsync(sceneKey, SceneTransitionType.Replace, param, () => ReplaceCoreAsync(sceneKey, param));
 
-    /// <summary>
-    /// 替换当前场景为指定场景。
-    /// </summary>
-    /// <param name="sceneKey">目标场景键名。</param>
-    /// <param name="param">场景进入参数。</param>
-    /// <returns>异步任务。</returns>
-    public async ValueTask ReplaceAsync(
-        string sceneKey,
-        ISceneEnterParam? param = null)
-    {
-        await _transitionLock.WaitAsync().ConfigureAwait(true);
-        try
-        {
-            IsTransitioning = true;
+    /// <summary>Pushes a prepared scene, restoring the previous scene if entering fails.</summary>
+    /// <param name="sceneKey">Target scene key.</param>
+    /// <param name="param">Optional scene loading parameters.</param>
+    /// <returns>Navigation completion.</returns>
+    public ValueTask PushAsync(string sceneKey, ISceneEnterParam? param = null) =>
+        TransitionAsync(sceneKey, SceneTransitionType.Push, param, () => PushCoreAsync(sceneKey, param));
 
-            var @event = CreateEvent(sceneKey, SceneTransitionType.Replace, param);
+    /// <summary>Exits the top scene and resumes the remaining scene even if cleanup reports an error.</summary>
+    /// <returns>Navigation completion.</returns>
+    public ValueTask PopAsync() => TransitionAsync(null, SceneTransitionType.Pop, null, PopCoreAsync);
 
-            await _pipeline.ExecuteAroundAsync(
-                @event,
-                () => ExecuteReplaceCoreAsync(@event, sceneKey, param)).ConfigureAwait(true);
-        }
-        finally
-        {
-            IsTransitioning = false;
-            _transitionLock.Release();
-        }
-    }
+    /// <summary>Clears the stack only when every leave guard accepts; refusal terminates immediately.</summary>
+    /// <returns>Navigation completion.</returns>
+    public ValueTask ClearAsync() => TransitionAsync(null, SceneTransitionType.Clear, null, ClearCoreAsync);
 
-    #endregion
+    /// <summary>Checks whether a scene key is present in the stack.</summary>
+    /// <param name="sceneKey">Scene key.</param>
+    /// <returns>Whether the scene is present.</returns>
+    public new bool Contains(string sceneKey) => base.Contains(sceneKey);
 
-    #region Query
-
-    /// <summary>
-    /// 检查指定场景是否在栈中。
-    /// </summary>
-    /// <param name="sceneKey">场景键名。</param>
-    /// <returns>如果场景在栈中返回true，否则返回false。</returns>
-    public new bool Contains(string sceneKey)
-    {
-        return Stack.Any(s => string.Equals(s.Key, sceneKey, StringComparison.Ordinal));
-    }
-
-    #endregion
-
-    /// <summary>
-    /// 注册场景过渡处理器。
-    /// </summary>
-    /// <param name="handler">处理器实例。</param>
-    /// <param name="options">执行选项。</param>
-    public void RegisterHandler(ISceneTransitionHandler handler, SceneTransitionHandlerOptions? options = null)
-    {
+    /// <summary>Registers a transition stage handler.</summary>
+    /// <param name="handler">Handler instance.</param>
+    /// <param name="options">Optional timeout and error policy.</param>
+    public void RegisterHandler(ISceneTransitionHandler handler, SceneTransitionHandlerOptions? options = null) =>
         _pipeline.RegisterHandler(handler, options);
-    }
 
-    /// <summary>
-    /// 注销场景过渡处理器。
-    /// </summary>
-    /// <param name="handler">处理器实例。</param>
-    public void UnregisterHandler(ISceneTransitionHandler handler)
-    {
-        _pipeline.UnregisterHandler(handler);
-    }
+    /// <summary>Removes a transition stage handler.</summary>
+    /// <param name="handler">Handler instance.</param>
+    public void UnregisterHandler(ISceneTransitionHandler handler) => _pipeline.UnregisterHandler(handler);
 
-    /// <summary>
-    /// 注册环绕场景过渡处理器。
-    /// </summary>
-    /// <param name="handler">环绕处理器实例。</param>
-    /// <param name="options">处理器选项配置。</param>
-    public void RegisterAroundHandler(
-        ISceneAroundTransitionHandler handler,
-        SceneTransitionHandlerOptions? options = null)
-    {
+    /// <summary>Registers middleware around a complete transition.</summary>
+    /// <param name="handler">Middleware instance.</param>
+    /// <param name="options">Optional timeout and error policy.</param>
+    public void RegisterAroundHandler(ISceneAroundTransitionHandler handler, SceneTransitionHandlerOptions? options = null) =>
         _pipeline.RegisterAroundHandler(handler, options);
-    }
 
-    /// <summary>
-    /// 注销环绕场景过渡处理器。
-    /// </summary>
-    /// <param name="handler">环绕处理器实例。</param>
-    public void UnregisterAroundHandler(
-        ISceneAroundTransitionHandler handler)
-    {
-        _pipeline.UnregisterAroundHandler(handler);
-    }
+    /// <summary>Removes transition middleware.</summary>
+    /// <param name="handler">Middleware instance.</param>
+    public void UnregisterAroundHandler(ISceneAroundTransitionHandler handler) => _pipeline.UnregisterAroundHandler(handler);
 
-    /// <summary>
-    /// 注册场景过渡处理器的抽象方法，由子类实现。
-    /// </summary>
+    /// <summary>Registers the scene-specific transition handlers.</summary>
     protected override abstract void RegisterHandlers();
 
-    /// <summary>
-    /// 系统初始化方法，获取场景工厂并注册处理器。
-    /// </summary>
+    /// <summary>Resolves the scene factory after the architecture provider is ready.</summary>
     protected override void OnInit()
     {
         _factory = this.GetUtility<ISceneFactory>()!;
-        _logger.LogDebug("SceneRouterBase initialized. Factory={0}", _factory.GetType().Name);
         RegisterHandlers();
     }
 
-    #region Push
+    /// <summary>Runs every scene cleanup without navigation guards during asynchronous shutdown.</summary>
+    /// <returns>The cleanup task.</returns>
+    protected override Task OnStopAsync() => ClearWithoutGuardsAsync();
 
-    /// <summary>
-    /// 将指定场景推入栈顶。
-    /// </summary>
-    /// <param name="sceneKey">目标场景键名。</param>
-    /// <param name="param">场景进入参数。</param>
-    /// <returns>异步任务。</returns>
-    public async ValueTask PushAsync(
-        string sceneKey,
-        ISceneEnterParam? param = null)
+    /// <summary>Holds the navigation gate across guards, middleware, callbacks and state updates.</summary>
+    private ValueTask TransitionAsync(string? key, SceneTransitionType type, ISceneEnterParam? param,
+        Func<Task<bool>> action)
     {
-        await _transitionLock.WaitAsync().ConfigureAwait(true);
-        try
+        return new ValueTask(ExecuteRouteOperationAsync(async () =>
         {
             IsTransitioning = true;
-
-            var @event = CreateEvent(sceneKey, SceneTransitionType.Push, param);
-
-            await _pipeline.ExecuteAroundAsync(
-                @event,
-                () => ExecutePushCoreAsync(@event, sceneKey, param)).ConfigureAwait(true);
-        }
-        finally
-        {
-            IsTransitioning = false;
-            _transitionLock.Release();
-        }
+            try
+            {
+                var transition = new SceneTransitionEvent
+                {
+                    FromSceneKey = CurrentKey,
+                    ToSceneKey = key,
+                    TransitionType = type,
+                    EnterParam = param
+                };
+                await _pipeline.ExecuteAroundAsync(transition, async () =>
+                {
+                    await _pipeline.ExecuteAsync(transition, SceneTransitionPhases.BeforeChange).ConfigureAwait(true);
+                    if (await action().ConfigureAwait(true))
+                        await _pipeline.ExecuteAsync(transition, SceneTransitionPhases.AfterChange).ConfigureAwait(true);
+                }).ConfigureAwait(true);
+            }
+            finally
+            {
+                IsTransitioning = false;
+            }
+        }));
     }
 
-    /// <summary>
-    /// 内部推送场景实现方法。
-    /// 执行守卫检查、场景创建、添加到场景树、加载资源、暂停当前场景、压入栈等操作。
-    /// </summary>
-    /// <param name="sceneKey">场景键名。</param>
-    /// <param name="param">场景进入参数。</param>
-    /// <returns>异步任务。</returns>
-    private async ValueTask PushInternalAsync(
-        string sceneKey,
-        ISceneEnterParam? param)
+    /// <summary>Checks every leave guard before a destructive clear or replacement.</summary>
+    private async Task<bool> CanLeaveStackAsync()
     {
-        if (Contains(sceneKey))
+        foreach (var scene in Stack)
         {
-            _logger.LogWarning("Scene already in stack: {0}", sceneKey);
-            return;
+            if (!await ExecuteLeaveGuardsAsync(scene.Key).ConfigureAwait(true))
+                return false;
         }
-
-        // 守卫检查
-        if (!await ExecuteEnterGuardsAsync(sceneKey, param).ConfigureAwait(true))
-        {
-            _logger.LogWarning("Push blocked by guard: {0}", sceneKey);
-            return;
-        }
-
-        // 通过 Factory 创建场景实例
-        var scene = _factory.Create(sceneKey);
-
-        // 添加到场景树
-        Root!.AddScene(scene);
-
-        // 加载资源
-        await scene.OnLoadAsync(param).ConfigureAwait(true);
-
-        // 暂停当前场景
-        if (Stack.Count > 0)
-        {
-            var current = Stack.Peek();
-            await current.OnPauseAsync().ConfigureAwait(true);
-        }
-
-        // 压入栈
-        Stack.Push(scene);
-
-        // 进入场景
-        await scene.OnEnterAsync().ConfigureAwait(true);
-
-        _logger.LogDebug("Push Scene: {0}, stackCount={1}",
-            sceneKey, Stack.Count);
+        return true;
     }
 
-    #endregion
-
-    #region Pop
-
-    /// <summary>
-    /// 弹出栈顶场景。
-    /// </summary>
-    /// <returns>异步任务。</returns>
-    public async ValueTask PopAsync()
+    /// <summary>Checks admission and prepares the target while old scenes are still intact.</summary>
+    private async Task<bool> ReplaceCoreAsync(string key, ISceneEnterParam? param)
     {
-        await _transitionLock.WaitAsync().ConfigureAwait(true);
+        if (!await ExecuteEnterGuardsAsync(key, param).ConfigureAwait(true) ||
+            !await CanLeaveStackAsync().ConfigureAwait(true))
+            return false;
+
+        var scene = await PrepareSceneAsync(key, param).ConfigureAwait(true);
         try
         {
-            IsTransitioning = true;
-
-            var @event = CreateEvent(null, SceneTransitionType.Pop);
-
-            await _pipeline.ExecuteAroundAsync(
-                @event,
-                () => ExecutePopCoreAsync(@event)).ConfigureAwait(true);
+            await ClearWithoutGuardsAsync().ConfigureAwait(true);
         }
-        finally
+        catch (Exception exception)
         {
-            IsTransitioning = false;
-            _transitionLock.Release();
+            var errors = new List<Exception> { exception };
+            await CleanupSceneAsync(scene, entered: false, errors).ConfigureAwait(true);
+            throw new AggregateException("Scene replacement cleanup failed.", errors);
+        }
+        await EnterSceneAsync(scene).ConfigureAwait(true);
+        return true;
+    }
+
+    /// <summary>Prepares a unique target before pausing the previous stack top.</summary>
+    private async Task<bool> PushCoreAsync(string key, ISceneEnterParam? param)
+    {
+        if (Contains(key) || !await ExecuteEnterGuardsAsync(key, param).ConfigureAwait(true))
+            return false;
+
+        var scene = await PrepareSceneAsync(key, param).ConfigureAwait(true);
+        await EnterSceneAsync(scene).ConfigureAwait(true);
+        return true;
+    }
+
+    /// <summary>Attaches and loads a target, reclaiming even partially loaded instances on failure.</summary>
+    private async Task<ISceneBehavior> PrepareSceneAsync(string key, ISceneEnterParam? param)
+    {
+        var root = Root ?? throw new InvalidOperationException("Bind a scene root before navigation.");
+        var scene = _factory.Create(key);
+        try
+        {
+            root.AddScene(scene);
+            await scene.OnLoadAsync(param).ConfigureAwait(true);
+            return scene;
+        }
+        catch (Exception exception)
+        {
+            var errors = new List<Exception> { exception };
+            await CleanupSceneAsync(scene, entered: false, errors).ConfigureAwait(true);
+            throw new AggregateException("Scene preparation failed; the previous stack was retained.", errors);
         }
     }
 
-    /// <summary>
-    /// 内部弹出场景实现方法。
-    /// 执行守卫检查、退出场景、卸载资源、从场景树移除、恢复下一个场景等操作。
-    /// </summary>
-    /// <returns>异步任务。</returns>
-    private async ValueTask PopInternalAsync()
+    /// <summary>Commits a prepared scene and compensates a failed pause or enter operation.</summary>
+    private async Task EnterSceneAsync(ISceneBehavior scene)
     {
-        if (Stack.Count == 0)
-            return;
-
-        var top = Stack.Peek();
-
-        // 守卫检查
-        if (!await ExecuteLeaveGuardsAsync(top.Key).ConfigureAwait(true))
+        var previous = Current;
+        var enterAttempted = false;
+        try
         {
-            _logger.LogWarning("Pop blocked by guard: {0}", top.Key);
-            return;
+            if (previous is not null)
+                await previous.OnPauseAsync().ConfigureAwait(true);
+            Stack.Push(scene);
+            enterAttempted = true;
+            await scene.OnEnterAsync().ConfigureAwait(true);
         }
+        catch (Exception exception)
+        {
+            if (ReferenceEquals(Current, scene))
+                Stack.Pop();
+
+            var errors = new List<Exception> { exception };
+            await CleanupSceneAsync(scene, enterAttempted, errors).ConfigureAwait(true);
+            if (previous is not null)
+                await AttemptAsync(() => previous.OnResumeAsync(), errors).ConfigureAwait(true);
+            throw new AggregateException("Scene enter failed; the previous scene was restored where possible.", errors);
+        }
+    }
+
+    /// <summary>Removes a guarded scene, then always attempts to restore the scene underneath.</summary>
+    private async Task<bool> PopCoreAsync()
+    {
+        if (Current is not { } scene || !await ExecuteLeaveGuardsAsync(scene.Key).ConfigureAwait(true))
+            return false;
 
         Stack.Pop();
-
-        // 退出场景
-        await top.OnExitAsync().ConfigureAwait(true);
-
-        // 卸载资源
-        await top.OnUnloadAsync().ConfigureAwait(true);
-
-        // 从场景树移除
-        Root!.RemoveScene(top);
-
-        // 恢复下一个场景
-        if (Stack.Count > 0)
-        {
-            var next = Stack.Peek();
-            await next.OnResumeAsync().ConfigureAwait(true);
-        }
-
-        _logger.LogDebug("Pop Scene, stackCount={0}", Stack.Count);
+        var errors = new List<Exception>();
+        await CleanupSceneAsync(scene, entered: true, errors).ConfigureAwait(true);
+        if (Current is { } next)
+            await AttemptAsync(() => next.OnResumeAsync(), errors).ConfigureAwait(true);
+        ThrowCleanupErrors(errors);
+        return true;
     }
 
-    #endregion
-
-    #region Clear
-
-    /// <summary>
-    /// 清空所有场景栈。
-    /// </summary>
-    /// <returns>异步任务。</returns>
-    public async ValueTask ClearAsync()
+    /// <summary>Terminates a blocked clear without repeatedly invoking the same guard.</summary>
+    private async Task<bool> ClearCoreAsync()
     {
-        await _transitionLock.WaitAsync().ConfigureAwait(true);
+        if (!await CanLeaveStackAsync().ConfigureAwait(true))
+            return false;
+        await ClearWithoutGuardsAsync().ConfigureAwait(true);
+        return true;
+    }
+
+    /// <summary>Drains all tracked scenes without resuming scenes that are about to be removed.</summary>
+    private async Task ClearWithoutGuardsAsync()
+    {
+        var errors = new List<Exception>();
+        while (Stack.TryPop(out var scene))
+            await CleanupSceneAsync(scene, entered: true, errors).ConfigureAwait(true);
+        ThrowCleanupErrors(errors);
+    }
+
+    /// <summary>Attempts exit, unload and root removal independently so one error cannot orphan a node.</summary>
+    private async Task CleanupSceneAsync(ISceneBehavior scene, bool entered, List<Exception> errors)
+    {
+        if (entered)
+            await AttemptAsync(() => scene.OnExitAsync(), errors).ConfigureAwait(true);
+        await AttemptAsync(() => scene.OnUnloadAsync(), errors).ConfigureAwait(true);
         try
         {
-            IsTransitioning = true;
-
-            var @event = CreateEvent(null, SceneTransitionType.Clear);
-
-            await _pipeline.ExecuteAroundAsync(
-                @event,
-                () => ExecuteClearCoreAsync(@event)).ConfigureAwait(true);
+            Root?.RemoveScene(scene);
         }
-        finally
+        catch (Exception exception)
         {
-            IsTransitioning = false;
-            _transitionLock.Release();
+            errors.Add(exception);
         }
     }
 
-    /// <summary>
-    /// 内部清空场景栈实现方法。
-    /// 循环调用弹出操作直到栈为空。
-    /// </summary>
-    /// <returns>异步任务。</returns>
-    private async ValueTask ClearInternalAsync()
+    /// <summary>Records a lifecycle error while allowing the remaining cleanup to continue.</summary>
+    private static async Task AttemptAsync(Func<ValueTask> callback, List<Exception> errors)
     {
-        while (Stack.Count > 0)
+        try
         {
-            await PopInternalAsync().ConfigureAwait(true);
+            await callback().ConfigureAwait(true);
+        }
+        catch (Exception exception)
+        {
+            errors.Add(exception);
         }
     }
 
-    #endregion
-
-    #region Helper Methods
-
-    // Scene 生命周期回调和 pipeline handlers 可能依赖引擎线程，因此这些核心切换顺序统一显式保留上下文。
-
-    /// <summary>
-    /// 执行 Replace 的核心切换顺序。
-    /// </summary>
-    /// <param name="event">场景转换事件。</param>
-    /// <param name="sceneKey">目标场景键名。</param>
-    /// <param name="param">场景进入参数。</param>
-    /// <returns>异步任务。</returns>
-    private async Task ExecuteReplaceCoreAsync(
-        SceneTransitionEvent @event,
-        string sceneKey,
-        ISceneEnterParam? param)
+    /// <summary>Reports all cleanup errors only after every owned route has been processed.</summary>
+    private static void ThrowCleanupErrors(List<Exception> errors)
     {
-        await BeforeChangeAsync(@event).ConfigureAwait(true);
-        await ClearInternalAsync().ConfigureAwait(true);
-        await PushInternalAsync(sceneKey, param).ConfigureAwait(true);
-        await AfterChangeAsync(@event).ConfigureAwait(true);
+        if (errors.Count != 0)
+            throw new AggregateException("One or more scene cleanup operations failed.", errors);
     }
-
-    /// <summary>
-    /// 执行 Push 的核心切换顺序。
-    /// </summary>
-    /// <param name="event">场景转换事件。</param>
-    /// <param name="sceneKey">目标场景键名。</param>
-    /// <param name="param">场景进入参数。</param>
-    /// <returns>异步任务。</returns>
-    private async Task ExecutePushCoreAsync(
-        SceneTransitionEvent @event,
-        string sceneKey,
-        ISceneEnterParam? param)
-    {
-        await BeforeChangeAsync(@event).ConfigureAwait(true);
-        await PushInternalAsync(sceneKey, param).ConfigureAwait(true);
-        await AfterChangeAsync(@event).ConfigureAwait(true);
-    }
-
-    /// <summary>
-    /// 执行 Pop 的核心切换顺序。
-    /// </summary>
-    /// <param name="event">场景转换事件。</param>
-    /// <returns>异步任务。</returns>
-    private async Task ExecutePopCoreAsync(SceneTransitionEvent @event)
-    {
-        await BeforeChangeAsync(@event).ConfigureAwait(true);
-        await PopInternalAsync().ConfigureAwait(true);
-        await AfterChangeAsync(@event).ConfigureAwait(true);
-    }
-
-    /// <summary>
-    /// 执行 Clear 的核心切换顺序。
-    /// </summary>
-    /// <param name="event">场景转换事件。</param>
-    /// <returns>异步任务。</returns>
-    private async Task ExecuteClearCoreAsync(SceneTransitionEvent @event)
-    {
-        await BeforeChangeAsync(@event).ConfigureAwait(true);
-        await ClearInternalAsync().ConfigureAwait(true);
-        await AfterChangeAsync(@event).ConfigureAwait(true);
-    }
-
-    /// <summary>
-    /// 创建场景转换事件对象。
-    /// </summary>
-    /// <param name="toSceneKey">目标场景键名。</param>
-    /// <param name="type">转换类型。</param>
-    /// <param name="param">进入参数。</param>
-    /// <returns>场景转换事件实例。</returns>
-    private SceneTransitionEvent CreateEvent(
-        string? toSceneKey,
-        SceneTransitionType type,
-        ISceneEnterParam? param = null)
-    {
-        return new SceneTransitionEvent
-        {
-            FromSceneKey = CurrentKey,
-            ToSceneKey = toSceneKey,
-            TransitionType = type,
-            EnterParam = param
-        };
-    }
-
-    /// <summary>
-    /// 执行转换前阶段的处理逻辑。
-    /// </summary>
-    /// <param name="event">场景转换事件。</param>
-    /// <returns>异步任务。</returns>
-    private async Task BeforeChangeAsync(SceneTransitionEvent @event)
-    {
-        _logger.LogDebug("BeforeChange phases started: {0}", @event.TransitionType);
-        await _pipeline.ExecuteAsync(@event, SceneTransitionPhases.BeforeChange).ConfigureAwait(true);
-        _logger.LogDebug("BeforeChange phases completed: {0}", @event.TransitionType);
-    }
-
-    /// <summary>
-    /// 执行转换后阶段的处理逻辑。
-    /// </summary>
-    /// <param name="event">场景转换事件。</param>
-    private async Task AfterChangeAsync(SceneTransitionEvent @event)
-    {
-        _logger.LogDebug("AfterChange phases started: {0}", @event.TransitionType);
-        await _pipeline.ExecuteAsync(@event, SceneTransitionPhases.AfterChange).ConfigureAwait(true);
-        _logger.LogDebug("AfterChange phases completed: {0}", @event.TransitionType);
-    }
-
-    #endregion
 }

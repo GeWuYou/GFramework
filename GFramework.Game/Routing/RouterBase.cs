@@ -16,6 +16,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using GFramework.Core.Logging;
 using GFramework.Core.Systems;
+using GFramework.Core.Abstractions.Lifecycle;
 using GFramework.Game.Abstractions.Routing;
 
 namespace GFramework.Game.Routing;
@@ -32,7 +33,7 @@ namespace GFramework.Game.Routing;
 /// - 路由栈管理 (Stack/Current/CurrentKey)
 /// - 栈操作方法 (Contains/PeekKey/IsTop)
 /// </remarks>
-public abstract class RouterBase<TRoute, TContext> : AbstractSystem
+public abstract class RouterBase<TRoute, TContext> : AbstractSystem, IAsyncDestroyable
     where TRoute : IRoute
     where TContext : IRouteContext
 {
@@ -61,6 +62,33 @@ public abstract class RouterBase<TRoute, TContext> : AbstractSystem
     /// 获取栈深度
     /// </summary>
     public int Count => Stack.Count;
+
+    private readonly RouterOperationQueue _operations = new();
+
+    /// <summary>Runs navigation in submission order on the bound host context.</summary>
+    /// <param name="operation">The complete navigation operation.</param>
+    /// <returns>The navigation completion task.</returns>
+    protected Task ExecuteRouteOperationAsync(Func<Task> operation) => _operations.RunAsync(operation);
+
+    /// <summary>Captures the context used by host-bound callbacks and asynchronous shutdown.</summary>
+    protected void BindRouteContext() => _operations.BindContext();
+
+    /// <summary>Checks that a synchronous host operation is allowed.</summary>
+    protected void EnsureRouteAvailable() => _operations.EnsureAvailable();
+
+    /// <summary>Stops admission, waits for navigation, and releases routes once without running guards.</summary>
+    /// <returns>The shared shutdown result.</returns>
+    public ValueTask DestroyAsync() => new(_operations.StopAsync(OnStopAsync));
+
+    /// <summary>Releases routes after in-flight navigation has finished.</summary>
+    /// <returns>The route cleanup task.</returns>
+    protected virtual Task OnStopAsync() => Task.CompletedTask;
+
+    /// <summary>Prevents synchronous blocking of asynchronous host cleanup.</summary>
+    protected override void OnDestroy()
+    {
+        throw new InvalidOperationException("Use DestroyAsync to stop a router.");
+    }
 
     #region Abstract Methods
 
@@ -140,7 +168,7 @@ public abstract class RouterBase<TRoute, TContext> : AbstractSystem
             try
             {
                 _logger.LogDebug("Executing enter guard: {0} for {1}", guard.GetType().Name, routeKey);
-                var canEnter = await guard.CanEnterAsync(routeKey, context).ConfigureAwait(false);
+                var canEnter = await guard.CanEnterAsync(routeKey, context).ConfigureAwait(true);
 
                 if (!canEnter)
                 {
@@ -153,6 +181,10 @@ public abstract class RouterBase<TRoute, TContext> : AbstractSystem
                     _logger.LogDebug("Enter guard {0} passed, can interrupt = true", guard.GetType().Name);
                     return true;
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -182,7 +214,7 @@ public abstract class RouterBase<TRoute, TContext> : AbstractSystem
             try
             {
                 _logger.LogDebug("Executing leave guard: {0} for {1}", guard.GetType().Name, routeKey);
-                var canLeave = await guard.CanLeaveAsync(routeKey).ConfigureAwait(false);
+                var canLeave = await guard.CanLeaveAsync(routeKey).ConfigureAwait(true);
 
                 if (!canLeave)
                 {
@@ -195,6 +227,10 @@ public abstract class RouterBase<TRoute, TContext> : AbstractSystem
                     _logger.LogDebug("Leave guard {0} passed, can interrupt = true", guard.GetType().Name);
                     return true;
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (Exception ex)
             {

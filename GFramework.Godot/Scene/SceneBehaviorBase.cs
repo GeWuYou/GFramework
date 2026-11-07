@@ -199,15 +199,19 @@ public abstract class SceneBehaviorBase<T> : ISceneBehavior
     /// <returns>表示卸载操作完成的ValueTask。</returns>
     public virtual async ValueTask OnUnloadAsync()
     {
-        if (_scene != null)
-            // 卸载后的 QueueFreeX 必须在 Godot 节点线程上调用，不能切走同步上下文。
-            await _scene.OnUnloadAsync().ConfigureAwait(true);
-
-        // 释放节点
-        Owner.QueueFreeX();
-
-        _isLoaded = false;
-        _isTransitioning = false;
+        try
+        {
+            if (_scene != null)
+                await _scene.OnUnloadAsync().ConfigureAwait(true);
+        }
+        finally
+        {
+            // A failed user unload cannot orphan a detached native node; stay on the host context.
+            _isLoaded = false;
+            _isActive = false;
+            _isTransitioning = false;
+            Owner.QueueFreeX();
+        }
     }
 
     #endregion

@@ -31,7 +31,7 @@ description: 以当前 GFramework.Game 源码与持久化测试为准，说明 F
 - 把业务 key 映射到根目录下的层级文件路径
 - 通过构造函数注入的 `ISerializer` 负责对象序列化和反序列化
 - 对同一目标路径使用 `IAsyncKeyLockManager` 做细粒度串行化
-- 写入时先落 `.tmp` 临时文件，再原子替换目标文件
+- 写入时先落同目录下独立命名的 `.tmp` 临时文件，再替换目标文件
 - 自动创建父目录
 - 拒绝包含 `..` 的非法 key，并清理路径段中的非法文件名字符
 
@@ -147,6 +147,29 @@ var cacheStorage = new ScopedStorage(rootStorage, "runtime-cache");
 
 不过在默认仓库接法里，项目通常不需要直接创建 `saveStorage` 这种 scoped instance，因为 `SaveRepository<TSaveData>`
 会再根据 `SaveConfiguration` 自己组织槽位目录。
+
+## Godot 持久化路径
+
+Godot 项目可以使用 `GodotFileStorage` 读写 `user://` 下的存档和设置：
+
+```csharp
+using GFramework.Game.Serializer;
+using GFramework.Godot.Storage;
+
+using var storage = new GodotFileStorage(new JsonSerializer());
+await storage.WriteAsync("user://saves/player.json", new Dictionary<string, int>
+{
+    ["level"] = 12
+});
+```
+
+`GodotFileStorage` 将 `user://` 解析为宿主的用户数据目录，并复用与 `FileStorage` 相同的临时文件替换逻辑。
+写入完整内容并关闭临时文件后才替换目标文件；序列化或写入失败时，旧文件保持不变，错误继续交给调用方处理。
+它使用完整文件名，不会自动附加 `.dat` 或 `.json`。
+
+`res://` 继续用于读取项目打包资源，写入会抛出 `NotSupportedException`。已有代码若把设置或存档写到
+`res://`，应迁移到 `user://`。普通文件路径也使用临时文件替换。该保证限于同一文件系统中的单文件替换，
+不等于多文件事务或断电后数据必然已落到物理介质。
 
 ## 与上层 repository 的关系
 

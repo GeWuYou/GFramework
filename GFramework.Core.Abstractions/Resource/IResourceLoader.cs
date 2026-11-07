@@ -27,6 +27,10 @@ public interface IResourceLoader<T> where T : class
     ///     卸载资源
     /// </summary>
     /// <param name="resource">要卸载的资源</param>
+    /// <remarks>
+    ///     加载器拥有其创建实例的完整释放责任，包括所需的 Dispose 操作。
+    ///     管理器保存原始加载器的释放操作，不依据实例实际类型重新寻找加载器，也不额外 Dispose。
+    /// </remarks>
     void Unload(T resource);
 
     /// <summary>

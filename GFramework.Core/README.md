@@ -112,3 +112,12 @@ dotnet add package GeWuYou.GFramework.Core.Abstractions
 - API 参考入口：[API 参考首页](../docs/zh-CN/api-reference/index.md)
 - CQRS：[CQRS 运行时](../docs/zh-CN/core/cqrs.md)
 - 入门指南：[入门指南首页](../docs/zh-CN/getting-started/index.md)
+
+## 资源释放责任
+
+资源缓存保留创建条目时的 loader 释放操作；loader 的 Unload 负责完整释放，管理器不再额外 Dispose。同一路径仍被句柄持有时，Unload 与 UnloadAll 都保留该资源。采用方式见[资源管理](../docs/zh-CN/core/resource.md)。
+
+
+## 宿主停止顺序
+
+OnStoppingAsync 先关闭宿主接入，随后停止组件和服务模块；OnStoppedAsync 在它们停止后分离宿主根节点，最后释放 provider。需要异步退出回调的宿主应把节点分离放在 OnStoppedAsync，确保回调执行期间节点和依赖仍然存活。

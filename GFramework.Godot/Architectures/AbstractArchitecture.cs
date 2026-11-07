@@ -188,11 +188,11 @@ public abstract class AbstractArchitecture : Architecture
     }
 
     /// <summary>
-    ///     核心已取消并等待启动、进入清理访问作用域后，再分离本实例宿主节点。
-    ///     调度与并发销毁由核心唯一清理任务负责。
+    ///     核心已等待组件和服务模块停止后，才分离本实例宿主节点。
+    ///     异步场景退出和 UI 清理期间，模块根节点及锚点仍然存活；分离和并发销毁由核心唯一清理任务负责。
     /// </summary>
     /// <returns>宿主分离完成的值任务。</returns>
-    protected override ValueTask OnStoppingAsync()
+    protected override ValueTask OnStoppedAsync()
     {
         return new ValueTask(CleanupHostAsync());
     }

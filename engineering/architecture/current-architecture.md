@@ -34,7 +34,7 @@ CQRS runtime 使用标准服务解析：`services.AddCqrsRuntime()` 创建单例
 
 ## 停止、失败与资源责任
 
-销毁立即关闭外部上下文访问，取消并等待启动，然后依次等待 OnStoppingAsync、组件业务停止、服务模块停止、根 provider 异步释放。参与者停止按实际开始的逆序进行；单个停止错误不跳过后续动作，最终聚合报告。
+销毁立即关闭外部上下文访问，取消并等待启动，然后依次等待 OnStoppingAsync 关闭接入、组件业务停止、服务模块停止、OnStoppedAsync 分离宿主、根 provider 异步释放。宿主根节点在业务停止期间保持存活，允许路由异步回调完成；Godot 在 OnStoppedAsync 才分离模块和排队释放锚点。参与者停止按实际开始的逆序进行；单个停止错误不跳过后续动作，最终聚合报告。
 
 启动失败/取消执行同一宿主和 provider 清理，并在清理后完成启动与 Ready 等待者的失败/取消任务。原对象不能重试；重复销毁等待同一成功或失败结果。linked-token 注册随启动完成或移交给销毁操作后释放。
 
@@ -51,3 +51,12 @@ CQRS runtime 使用标准服务解析：`services.AddCqrsRuntime()` 创建单例
 - [Arch ECS](../../GFramework.Ecs.Arch/ArchEcsModule.cs) 通过实例 RegisterServiceModule 接入；World 工厂在正式 provider 激活后创建，系统业务停止和资源 Dispose 分开。
 
 日志家族已改用 Microsoft.Extensions.Logging 契约：自有 `ILogger`/`ILoggerFactoryProvider`、`LoggerFactoryResolver` 与 `GodotLog.UseAsDefaultProvider()` 已移除，Core 输出引擎（appender/formatter/filter）经 `AppenderLoggerProvider` 继续使用。本批不改写全部工具子系统。原生 Godot/VS Code、Native AOT 和性能需各自独立证据；托管构建/测试不能代替这些验收。
+
+
+## 场景、UI 与持久化边界
+
+Scene/UI 路由在根绑定时捕获宿主同步上下文，完整导航串行执行；Around 中间件离开上下文后调用 next，框架回调仍派发回原上下文。拒绝等待同一路由器的嵌套导航，避免操作等待自身。路由异步销毁关闭接入、等待当前操作并绕过守卫清理；单个回调错误不跳过后续资源清理。
+
+场景替换先验证守卫并准备目标，准备失败保留旧栈；已发生的业务副作用不承诺事务回滚。UI 跟踪弹出后保留的页面，停止时与页面栈、浮层统一清理。Godot 行为包装器即使业务退出或卸载失败也排队释放原生节点。
+
+FileStorage 和 GodotFileStorage 共用同目录临时文件替换逻辑；Godot 可变数据放入 user://，res:// 只读。资源缓存保存创建条目时的 loader 释放责任，活跃句柄阻止普通卸载，不按派生对象类型重新寻找 loader 或额外 Dispose。

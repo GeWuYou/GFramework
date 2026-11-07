@@ -7,6 +7,7 @@ using GFramework.Core.Abstractions.Concurrency;
 using GFramework.Core.Abstractions.Serializer;
 using GFramework.Core.Abstractions.Storage;
 using GFramework.Core.Concurrency;
+using GFramework.Game.Storage;
 using GFramework.Godot.Extensions;
 using Godot;
 using FileAccess = Godot.FileAccess;
@@ -15,13 +16,15 @@ namespace GFramework.Godot.Storage;
 
 /// <summary>
 ///     Godot 特化的文件存储实现，支持 res://、user:// 和普通文件路径
-///     支持按 key 细粒度锁保证线程安全，使用异步安全的锁机制
+///     支持按 key 细粒度锁保证线程安全，持久化写入先写临时文件再替换目标文件。
+///     res:// 只用于读取打包资源；存档和设置应使用 user://。
 /// </summary>
 public sealed class GodotFileStorage : IStorage, IDisposable
 {
     private readonly IAsyncKeyLockManager _lockManager;
     private readonly bool _ownsLockManager;
     private readonly ISerializer _serializer;
+    private readonly Func<string, string> _globalizePath;
     private bool _disposed;
 
     /// <summary>
@@ -30,8 +33,21 @@ public sealed class GodotFileStorage : IStorage, IDisposable
     /// <param name="serializer">序列化器实例</param>
     /// <param name="lockManager">可选的锁管理器，用于依赖注入</param>
     public GodotFileStorage(ISerializer serializer, IAsyncKeyLockManager? lockManager = null)
+        : this(serializer, lockManager, ProjectSettings.GlobalizePath)
+    {
+    }
+
+    /// <summary>
+    ///     Creates storage with an explicit native-path resolver, allowing file write behavior to be tested without Godot.
+    /// </summary>
+    /// <param name="serializer">Content serializer.</param>
+    /// <param name="lockManager">Optional caller-owned lock manager.</param>
+    /// <param name="globalizePath">Resolves a user:// path to a physical desktop path before asynchronous I/O begins.</param>
+    internal GodotFileStorage(ISerializer serializer, IAsyncKeyLockManager? lockManager,
+        Func<string, string> globalizePath)
     {
         _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
+        _globalizePath = globalizePath ?? throw new ArgumentNullException(nameof(globalizePath));
 
         if (lockManager == null)
         {
@@ -139,15 +155,16 @@ public sealed class GodotFileStorage : IStorage, IDisposable
         if (key.IsGodotPath())
             return key;
 
-        // 普通文件系统路径
-        var segments = key.Split('/', StringSplitOptions.RemoveEmptyEntries)
+        // Preserve the file-system root before sanitizing individual names; otherwise /tmp/save becomes tmp/save.
+        var root = Path.GetPathRoot(key) ?? string.Empty;
+        var segments = key[root.Length..].Split('/', StringSplitOptions.RemoveEmptyEntries)
             .Select(SanitizeSegment)
             .ToArray();
 
         if (segments.Length == 0)
             throw new ArgumentException("Invalid storage key", nameof(key));
 
-        var dir = Path.Combine(segments[..^1]);
+        var dir = Path.Combine(root, Path.Combine(segments[..^1]));
         var fileName = segments[^1];
 
         if (!string.IsNullOrEmpty(dir))
@@ -380,26 +397,26 @@ public sealed class GodotFileStorage : IStorage, IDisposable
     /// <param name="key">存储键</param>
     /// <param name="value">要写入的对象实例</param>
     /// <returns>表示异步操作的任务</returns>
+    /// <exception cref="NotSupportedException">目标位于只读资源路径 res://。</exception>
+    /// <remarks>
+    ///     user:// 在第一次异步等待之前解析为桌面文件路径；完整内容写入同目录临时文件后才替换目标。
+    ///     不添加文件扩展名。失败保留原文件，原子替换不承诺断电持久性。
+    /// </remarks>
     public async Task WriteAsync<T>(string key, T value)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         var path = ToAbsolutePath(key);
+        if (path.IsResPath())
+            throw new NotSupportedException("res:// is a read-only resource path. Store saves and settings under user://.");
+
+        // Resolve engine paths while still on the caller's thread; all subsequent work uses ordinary file APIs.
+        var physicalPath = path.IsUserPath() ? _globalizePath(path) : path;
         var pathLock = await _lockManager.AcquireLockAsync(path).ConfigureAwait(false);
 
         await using (pathLock.ConfigureAwait(false))
         {
             var content = _serializer.Serialize(value);
-            if (path.IsGodotPath())
-            {
-                using var file = FileAccess.Open(path, FileAccess.ModeFlags.Write);
-                if (file == null) throw new IOException($"Cannot write file: {path}");
-                file.StoreString(content);
-            }
-            else
-            {
-                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-                await File.WriteAllTextAsync(path, content, Encoding.UTF8).ConfigureAwait(false);
-            }
+            await AtomicFileWriter.WriteAllTextAsync(physicalPath, content).ConfigureAwait(false);
         }
     }
 

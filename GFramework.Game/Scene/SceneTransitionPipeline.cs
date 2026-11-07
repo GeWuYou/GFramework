@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using GFramework.Game.Routing;
 using GFramework.Core.Abstractions.Logging;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -151,7 +152,7 @@ public class SceneTransitionPipeline(ILogger? logger = null)
         foreach (var handler in sortedHandlers)
         {
             var options = _options[handler];
-            await ExecuteSingleHandlerAsync(handler, options, @event, cancellationToken).ConfigureAwait(false);
+            await ExecuteSingleHandlerAsync(handler, options, @event, cancellationToken).ConfigureAwait(true);
         }
 
         _logger.LogDebug("Pipeline execution completed for phases: {0}", phases);
@@ -176,7 +177,7 @@ public class SceneTransitionPipeline(ILogger? logger = null)
 
         if (handlers.Count == 0)
         {
-            await coreAction().ConfigureAwait(false);
+            await coreAction().ConfigureAwait(true);
             return;
         }
 
@@ -187,18 +188,20 @@ public class SceneTransitionPipeline(ILogger? logger = null)
         );
 
         // 构建中间件链
-        Func<Task> pipeline = coreAction;
+        var hostContext = SynchronizationContext.Current;
+        Func<Task> pipeline = () => RouterCallbackDispatcher.InvokeAsync(hostContext, coreAction);
         for (int i = handlers.Count - 1; i >= 0; i--)
         {
             var handler = handlers[i];
             var options = _aroundOptions[handler];
-            var next = pipeline;
+            var nextCallback = pipeline;
+            Func<Task> next = () => RouterCallbackDispatcher.InvokeAsync(hostContext, nextCallback);
 
             pipeline = () => ExecuteSingleAroundHandlerAsync(
                 handler, options, @event, next, cancellationToken);
         }
 
-        await pipeline().ConfigureAwait(false);
+        await pipeline().ConfigureAwait(true);
     }
 
     private List<ISceneTransitionHandler> FilterAndSortHandlers(
@@ -223,24 +226,23 @@ public class SceneTransitionPipeline(ILogger? logger = null)
             handler.Priority
         );
 
+        using var timeoutCts = options.TimeoutMs > 0
+            ? new CancellationTokenSource(options.TimeoutMs)
+            : null;
+        using var linkedCts = timeoutCts != null && cancellationToken.CanBeCanceled
+            ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token)
+            : null;
+
         try
         {
-            using var timeoutCts = options.TimeoutMs > 0
-                ? new CancellationTokenSource(options.TimeoutMs)
-                : null;
-
-            using var linkedCts = timeoutCts != null && cancellationToken.CanBeCanceled
-                ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token)
-                : null;
-
             await handler.HandleAsync(
                 @event,
-                linkedCts?.Token ?? cancellationToken
-            ).ConfigureAwait(false);
+                linkedCts?.Token ?? timeoutCts?.Token ?? cancellationToken
+            ).ConfigureAwait(true);
 
             _logger.LogDebug("Handler completed: {0}", handler.GetType().Name);
         }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && timeoutCts?.IsCancellationRequested == true)
         {
             _logger.LogError(
                 "Handler timeout: {0}, TimeoutMs={1}",
@@ -276,19 +278,23 @@ public class SceneTransitionPipeline(ILogger? logger = null)
     {
         _logger.LogDebug("Executing around handler: {0}", handler.GetType().Name);
 
+        using var timeoutCts = options.TimeoutMs > 0
+            ? new CancellationTokenSource(options.TimeoutMs)
+            : null;
+        using var linkedCts = timeoutCts != null && cancellationToken.CanBeCanceled
+            ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token)
+            : null;
+
         try
         {
-            using var timeoutCts = options.TimeoutMs > 0
-                ? new CancellationTokenSource(options.TimeoutMs)
-                : null;
-
-            using var linkedCts = timeoutCts != null && cancellationToken.CanBeCanceled
-                ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token)
-                : null;
-
-            await handler.HandleAsync(@event, next, linkedCts?.Token ?? cancellationToken).ConfigureAwait(false);
+            await handler.HandleAsync(@event, next, linkedCts?.Token ?? timeoutCts?.Token ?? cancellationToken).ConfigureAwait(true);
 
             _logger.LogDebug("Around handler completed: {0}", handler.GetType().Name);
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancellation must not turn into a successful transition, even with ContinueOnError.
+            throw;
         }
         catch (Exception ex)
         {

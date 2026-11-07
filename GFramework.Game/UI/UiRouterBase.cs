@@ -16,7 +16,7 @@ namespace GFramework.Game.UI;
 /// UI路由基类，提供页面栈管理和层级UI管理功能
 /// 负责UI页面的导航、显示、隐藏以及生命周期管理
 /// </summary>
-public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterParam>, IUiRouter
+public abstract partial class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterParam>, IUiRouter
 {
 
     /// <summary>
@@ -39,6 +39,9 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     /// UI工厂实例，用于创建UI页面和相关对象
     /// </summary>
     private IUiFactory _factory = null!;
+
+    // Hidden popped pages remain root-owned until reused or the router shuts down.
+    private readonly HashSet<IUiPageBehavior> _retainedPages = new(ReferenceEqualityComparer.Instance);
 
     /// <summary>
     /// 实例ID计数器，用于生成唯一的UI实例标识符
@@ -80,7 +83,10 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     /// <param name="root">UI根节点实例</param>
     public void BindRoot(IUiRoot root)
     {
+        ArgumentNullException.ThrowIfNull(root);
+        EnsureRouteAvailable();
         _uiRoot = root;
+        BindRouteContext();
         _logger.LogDebug("Bind UI Root: {0}", root.GetType().Name);
     }
 
@@ -92,24 +98,28 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     /// <param name="uiKey">UI页面的唯一标识键</param>
     /// <param name="param">页面进入参数</param>
     /// <param name="policy">UI过渡策略</param>
-    public async ValueTask PushAsync(string uiKey, IUiPageEnterParam? param = null,
+    public ValueTask PushAsync(string uiKey, IUiPageEnterParam? param = null,
         UiTransitionPolicy policy = UiTransitionPolicy.Exclusive)
     {
-        if (IsTop(uiKey))
+        return new ValueTask(ExecuteRouteOperationAsync(async () =>
         {
-            _logger.LogWarning("Push ignored: UI already on top: {0}", uiKey);
-            return;
-        }
+            if (IsTop(uiKey))
+            {
+                _logger.LogWarning("Push ignored: UI already on top: {0}", uiKey);
+                return;
+            }
 
-        var @event = CreateEvent(uiKey, UiTransitionType.Push, policy, param);
-        _logger.LogDebug("Push UI Page: key={0}, policy={1}, stackBefore={2}", uiKey, policy, Stack.Count);
+            var @event = CreateEvent(uiKey, UiTransitionType.Push, policy, param);
+            _logger.LogDebug("Push UI Page: key={0}, policy={1}, stackBefore={2}", uiKey, policy, Stack.Count);
 
-        await _pipeline.ExecuteAroundAsync(@event, async () =>
-        {
-            await BeforeChangeAsync(@event).ConfigureAwait(true);
-            await DoPushPageInternalAsync(uiKey, param, policy).ConfigureAwait(true);
-            await AfterChangeAsync(@event).ConfigureAwait(true);
-        }).ConfigureAwait(true);
+            await _pipeline.ExecuteAroundAsync(@event, async () =>
+            {
+                await BeforeChangeAsync(@event).ConfigureAwait(true);
+                await DoPushPageInternalAsync(uiKey, param, policy).ConfigureAwait(true);
+                await AfterChangeAsync(@event).ConfigureAwait(true);
+            }).ConfigureAwait(true);
+
+        }));
     }
 
     /// <summary>
@@ -118,57 +128,67 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     /// <param name="page">已存在的UI页面行为实例</param>
     /// <param name="param">页面进入参数</param>
     /// <param name="policy">UI过渡策略</param>
-    public async ValueTask PushAsync(IUiPageBehavior page, IUiPageEnterParam? param = null,
+    public ValueTask PushAsync(IUiPageBehavior page, IUiPageEnterParam? param = null,
         UiTransitionPolicy policy = UiTransitionPolicy.Exclusive)
     {
-        var uiKey = page.Key;
-
-        if (IsTop(uiKey))
+        return new ValueTask(ExecuteRouteOperationAsync(async () =>
         {
-            _logger.LogWarning("Push ignored: UI already on top: {0}", uiKey);
-            return;
-        }
+            var uiKey = page.Key;
 
-        var @event = CreateEvent(uiKey, UiTransitionType.Push, policy, param);
-        _logger.LogDebug("Push existing UI Page: key={0}, policy={1}, stackBefore={2}", uiKey, policy, Stack.Count);
+            if (IsTop(uiKey))
+            {
+                _logger.LogWarning("Push ignored: UI already on top: {0}", uiKey);
+                return;
+            }
 
-        await _pipeline.ExecuteAroundAsync(@event, async () =>
-        {
-            await BeforeChangeAsync(@event).ConfigureAwait(true);
-            DoPushPageInternal(page, param, policy);
-            await AfterChangeAsync(@event).ConfigureAwait(true);
-        }).ConfigureAwait(true);
+            var @event = CreateEvent(uiKey, UiTransitionType.Push, policy, param);
+            _logger.LogDebug("Push existing UI Page: key={0}, policy={1}, stackBefore={2}", uiKey, policy, Stack.Count);
+
+            await _pipeline.ExecuteAroundAsync(@event, async () =>
+            {
+                await BeforeChangeAsync(@event).ConfigureAwait(true);
+                if (!await ExecuteEnterGuardsAsync(uiKey, param).ConfigureAwait(true))
+                    return;
+                DoPushPageInternal(page, param, policy);
+                await AfterChangeAsync(@event).ConfigureAwait(true);
+            }).ConfigureAwait(true);
+
+        }));
     }
 
     /// <summary>
     /// 弹出栈顶页面
     /// </summary>
     /// <param name="policy">页面弹出策略</param>
-    public async ValueTask PopAsync(UiPopPolicy policy = UiPopPolicy.Destroy)
+    public ValueTask PopAsync(UiPopPolicy policy = UiPopPolicy.Destroy)
     {
-        if (Stack.Count == 0)
+        return new ValueTask(ExecuteRouteOperationAsync(async () =>
         {
-            _logger.LogDebug("Pop ignored: stack is empty");
-            return;
-        }
+            if (Stack.Count == 0)
+            {
+                _logger.LogDebug("Pop ignored: stack is empty");
+                return;
+            }
 
-        var leavingUiKey = Stack.Peek().Key;
+            var leavingUiKey = Stack.Peek().Key;
 
-        if (!await ExecuteLeaveGuardsAsync(leavingUiKey).ConfigureAwait(true))
-        {
-            _logger.LogWarning("Pop blocked by guard: {0}", leavingUiKey);
-            return;
-        }
+            if (!await ExecuteLeaveGuardsAsync(leavingUiKey).ConfigureAwait(true))
+            {
+                _logger.LogWarning("Pop blocked by guard: {0}", leavingUiKey);
+                return;
+            }
 
-        var nextUiKey = Stack.Count > 1 ? Stack.ElementAt(1).Key : null;
-        var @event = CreateEvent(nextUiKey, UiTransitionType.Pop);
+            var nextUiKey = Stack.Count > 1 ? Stack.ElementAt(1).Key : null;
+            var @event = CreateEvent(nextUiKey, UiTransitionType.Pop);
 
-        await _pipeline.ExecuteAroundAsync(@event, async () =>
-        {
-            await BeforeChangeAsync(@event).ConfigureAwait(true);
-            DoPopInternal(policy);
-            await AfterChangeAsync(@event).ConfigureAwait(true);
-        }).ConfigureAwait(true);
+            await _pipeline.ExecuteAroundAsync(@event, async () =>
+            {
+                await BeforeChangeAsync(@event).ConfigureAwait(true);
+                DoPopInternal(policy);
+                await AfterChangeAsync(@event).ConfigureAwait(true);
+            }).ConfigureAwait(true);
+
+        }));
     }
 
     /// <summary>
@@ -178,24 +198,40 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     /// <param name="param">页面进入参数</param>
     /// <param name="popPolicy">页面弹出策略</param>
     /// <param name="pushPolicy">页面压入策略</param>
-    public async ValueTask ReplaceAsync(string uiKey, IUiPageEnterParam? param = null,
+    public ValueTask ReplaceAsync(string uiKey, IUiPageEnterParam? param = null,
         UiPopPolicy popPolicy = UiPopPolicy.Destroy,
         UiTransitionPolicy pushPolicy = UiTransitionPolicy.Exclusive)
     {
-        var @event = CreateEvent(uiKey, UiTransitionType.Replace, pushPolicy, param);
-        _logger.LogDebug("Replace UI Stack with page: key={0}, popPolicy={1}, pushPolicy={2}", uiKey, popPolicy, pushPolicy);
-
-        await _pipeline.ExecuteAroundAsync(@event, async () =>
+        return new ValueTask(ExecuteRouteOperationAsync(async () =>
         {
-            await BeforeChangeAsync(@event).ConfigureAwait(true);
-            DoClearInternal(popPolicy);
+            var @event = CreateEvent(uiKey, UiTransitionType.Replace, pushPolicy, param);
+            _logger.LogDebug("Replace UI Stack with page: key={0}, popPolicy={1}, pushPolicy={2}", uiKey, popPolicy, pushPolicy);
 
-            var page = _factory.Create(uiKey);
-            _logger.LogDebug("Get/Create UI Page instance for Replace: {0}", page.GetType().Name);
+            await _pipeline.ExecuteAroundAsync(@event, async () =>
+            {
+                await BeforeChangeAsync(@event).ConfigureAwait(true);
+                if (!await ExecuteEnterGuardsAsync(uiKey, param).ConfigureAwait(true) ||
+                    !await CanLeavePagesAsync().ConfigureAwait(true))
+                    return;
 
-            DoPushPageInternal(page, param, pushPolicy);
-            await AfterChangeAsync(@event).ConfigureAwait(true);
-        }).ConfigureAwait(true);
+                var page = _factory.Create(uiKey);
+                try
+                {
+                    DoClearInternal(popPolicy);
+                }
+                catch (Exception exception)
+                {
+                    var errors = new List<Exception> { exception };
+                    CleanupPage(page, errors);
+                    throw new AggregateException("UI replacement failed after target cleanup.", errors);
+                }
+                _logger.LogDebug("Get/Create UI Page instance for Replace: {0}", page.GetType().Name);
+
+                DoPushPageInternal(page, param, pushPolicy);
+                await AfterChangeAsync(@event).ConfigureAwait(true);
+            }).ConfigureAwait(true);
+
+        }));
     }
 
     /// <summary>
@@ -205,39 +241,52 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     /// <param name="param">页面进入参数</param>
     /// <param name="popPolicy">页面弹出策略</param>
     /// <param name="pushPolicy">页面压入策略</param>
-    public async ValueTask ReplaceAsync(IUiPageBehavior page, IUiPageEnterParam? param = null,
+    public ValueTask ReplaceAsync(IUiPageBehavior page, IUiPageEnterParam? param = null,
         UiPopPolicy popPolicy = UiPopPolicy.Destroy,
         UiTransitionPolicy pushPolicy = UiTransitionPolicy.Exclusive)
     {
-        var uiKey = page.Key;
-        var @event = CreateEvent(uiKey, UiTransitionType.Replace, pushPolicy, param);
-        _logger.LogDebug("Replace UI Stack with existing page: key={0}, popPolicy={1}, pushPolicy={2}",
-            uiKey, popPolicy, pushPolicy);
-
-        await _pipeline.ExecuteAroundAsync(@event, async () =>
+        return new ValueTask(ExecuteRouteOperationAsync(async () =>
         {
-            await BeforeChangeAsync(@event).ConfigureAwait(true);
-            DoClearInternal(popPolicy);
-            _logger.LogDebug("Use existing UI Page instance for Replace: {0}", page.GetType().Name);
-            DoPushPageInternal(page, param, pushPolicy);
-            await AfterChangeAsync(@event).ConfigureAwait(true);
-        }).ConfigureAwait(true);
+            var uiKey = page.Key;
+            var @event = CreateEvent(uiKey, UiTransitionType.Replace, pushPolicy, param);
+            _logger.LogDebug("Replace UI Stack with existing page: key={0}, popPolicy={1}, pushPolicy={2}",
+                uiKey, popPolicy, pushPolicy);
+
+            await _pipeline.ExecuteAroundAsync(@event, async () =>
+            {
+                await BeforeChangeAsync(@event).ConfigureAwait(true);
+                if (!await ExecuteEnterGuardsAsync(uiKey, param).ConfigureAwait(true) ||
+                    !await CanLeavePagesAsync().ConfigureAwait(true))
+                    return;
+                DoClearInternal(popPolicy);
+                _logger.LogDebug("Use existing UI Page instance for Replace: {0}", page.GetType().Name);
+                DoPushPageInternal(page, param, pushPolicy);
+                await AfterChangeAsync(@event).ConfigureAwait(true);
+            }).ConfigureAwait(true);
+
+        }));
     }
 
     /// <summary>
     /// 清空所有页面栈
     /// </summary>
-    public async ValueTask ClearAsync()
+    public ValueTask ClearAsync()
     {
-        var @event = CreateEvent(string.Empty, UiTransitionType.Clear);
-        _logger.LogDebug("Clear UI Stack, stackCount={0}", Stack.Count);
-
-        await _pipeline.ExecuteAroundAsync(@event, async () =>
+        return new ValueTask(ExecuteRouteOperationAsync(async () =>
         {
-            await BeforeChangeAsync(@event).ConfigureAwait(true);
-            DoClearInternal(UiPopPolicy.Destroy);
-            await AfterChangeAsync(@event).ConfigureAwait(true);
-        }).ConfigureAwait(true);
+            var @event = CreateEvent(string.Empty, UiTransitionType.Clear);
+            _logger.LogDebug("Clear UI Stack, stackCount={0}", Stack.Count);
+
+            await _pipeline.ExecuteAroundAsync(@event, async () =>
+            {
+                await BeforeChangeAsync(@event).ConfigureAwait(true);
+                if (!await CanLeavePagesAsync().ConfigureAwait(true))
+                    return;
+                DoClearInternal(UiPopPolicy.Destroy);
+                await AfterChangeAsync(@event).ConfigureAwait(true);
+            }).ConfigureAwait(true);
+
+        }));
     }
 
     /// <summary>
@@ -297,10 +346,14 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     /// <exception cref="ArgumentException">当尝试在Page层级使用此方法时抛出</exception>
     public UiHandle Show(string uiKey, UiLayer layer, IUiPageEnterParam? param = null)
     {
+        EnsureRouteAvailable();
         if (layer == UiLayer.Page)
             throw new ArgumentException("Use Push() for Page layer", nameof(layer));
 
-        // 创建实例
+        if (_layers.TryGetValue(layer, out var existing) &&
+            existing.Values.Any(page => !page.IsReentrant && string.Equals(page.Key, uiKey, StringComparison.Ordinal)))
+            throw new InvalidOperationException($"UI {uiKey} does not support multiple instances in layer {layer}");
+
         var page = _factory.Create(uiKey);
 
         return ShowInternal(page, layer, param);
@@ -315,6 +368,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     /// <exception cref="ArgumentException">当尝试在Page层级使用此方法时抛出</exception>
     public UiHandle Show(IUiPageBehavior page, UiLayer layer)
     {
+        EnsureRouteAvailable();
         if (layer == UiLayer.Page)
             throw new ArgumentException("Use Push() for Page layer", nameof(layer));
 
@@ -329,6 +383,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     /// <param name="destroy">是否销毁UI实例，默认为false</param>
     public void Hide(UiHandle handle, UiLayer layer, bool destroy = false)
     {
+        EnsureRouteAvailable();
         if (!_layers.TryGetValue(layer, out var layerDict))
             return;
 
@@ -337,10 +392,11 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
 
         if (destroy)
         {
-            page.OnExit();
-            SyncPauseRequest(page, isVisible: false);
-            _uiRoot.RemoveUiPage(page);
             layerDict.Remove(handle.InstanceId);
+            var errors = new List<Exception>();
+            CleanupPage(page, errors);
+            if (errors.Count != 0)
+                throw new AggregateException("Floating UI cleanup failed.", errors);
             _logger.LogDebug("Hide & Destroy UI: instanceId={0}, layer={1}", handle.InstanceId, layer);
         }
         else
@@ -358,6 +414,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     /// <param name="layer">UI层级</param>
     public void Resume(UiHandle handle, UiLayer layer)
     {
+        EnsureRouteAvailable();
         if (!_layers.TryGetValue(layer, out var layerDict))
             return;
 
@@ -376,6 +433,7 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     /// <param name="destroy">是否销毁UI实例，默认为false</param>
     public void ClearLayer(UiLayer layer, bool destroy = false)
     {
+        EnsureRouteAvailable();
         if (!_layers.TryGetValue(layer, out var layerDict))
             return;
 
@@ -550,24 +608,6 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     /// </summary>
     protected override abstract void RegisterHandlers();
 
-    /// <summary>
-    ///     路由销毁时释放所有由页面持有的暂停请求。
-    /// </summary>
-    protected override void OnDestroy()
-    {
-        base.OnDestroy();
-
-        if (_pauseStackManager is null)
-            return;
-
-        foreach (var token in _pauseTokens.Values.ToArray())
-        {
-            _pauseStackManager.Pop(token);
-        }
-
-        _pauseTokens.Clear();
-    }
-
     #endregion
 
     #region Internal Helpers
@@ -616,16 +656,22 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
                 $"UI {page.Key} does not support multiple instances in layer {layer}");
         }
 
-        // 添加到层级管理
+        _retainedPages.Remove(page);
         layerDict[instanceId] = page;
-
-        // 添加到UiRoot
-        _uiRoot.AddUiPage(page, layer);
-
-        // 生命周期
-        page.OnEnter(param);
-        page.OnShow();
-        SyncPauseRequest(page, isVisible: true);
+        try
+        {
+            _uiRoot.AddUiPage(page, layer);
+            page.OnEnter(param);
+            page.OnShow();
+            SyncPauseRequest(page, isVisible: true);
+        }
+        catch (Exception exception)
+        {
+            layerDict.Remove(instanceId);
+            var errors = new List<Exception> { exception };
+            CleanupPage(page, errors);
+            throw new AggregateException("Floating UI creation failed after cleanup.", errors);
+        }
 
         _logger.LogDebug("Show UI: key={0}, instanceId={1}, layer={2}", page.Key, instanceId, layer);
         return handle;
@@ -701,62 +747,67 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     /// <param name="policy">过渡策略</param>
     private void DoPushPageInternal(IUiPageBehavior page, IUiPageEnterParam? param, UiTransitionPolicy policy)
     {
-        if (Stack.Count > 0)
+        var previous = Current;
+        try
         {
-            var current = Stack.Peek();
-            _logger.LogDebug("Pause current page: {0}", current.View.GetType().Name);
-            current.OnPause();
-
-            if (policy == UiTransitionPolicy.Exclusive)
+            if (previous is not null)
             {
-                _logger.LogDebug("Suspend current page (Exclusive): {0}", current.View.GetType().Name);
-                current.OnHide();
-                SyncPauseRequest(current, isVisible: false);
+                previous.OnPause();
+                if (policy == UiTransitionPolicy.Exclusive)
+                {
+                    previous.OnHide();
+                    SyncPauseRequest(previous, isVisible: false);
+                }
             }
+            _uiRoot.AddUiPage(page);
+            _retainedPages.Remove(page);
+            Stack.Push(page);
+            page.OnEnter(param);
+            page.OnShow();
+            SyncPauseRequest(page, isVisible: true);
         }
-
-        _logger.LogDebug("Add page to UiRoot: {0}", page.View.GetType().Name);
-        _uiRoot.AddUiPage(page);
-
-        Stack.Push(page);
-
-        _logger.LogDebug("Enter & Show page: {0}, stackAfter={1}", page.View.GetType().Name, Stack.Count);
-        page.OnEnter(param);
-        page.OnShow();
-        SyncPauseRequest(page, isVisible: true);
+        catch (Exception exception)
+        {
+            if (ReferenceEquals(Current, page))
+                Stack.Pop();
+            var errors = new List<Exception> { exception };
+            CleanupPage(page, errors);
+            if (previous is not null)
+            {
+                AttemptCleanup(previous.OnShow, errors);
+                AttemptCleanup(() => SyncPauseRequest(previous, isVisible: true), errors);
+            }
+            throw new AggregateException("UI push failed; the previous page was restored where possible.", errors);
+        }
     }
 
     /// <summary>
     /// 内部弹出页面实现
     /// </summary>
     /// <param name="policy">页面弹出策略</param>
-    private void DoPopInternal(UiPopPolicy policy)
+    /// <param name="resumeNext">Whether the next page should resume; clear operations skip this.</param>
+    private void DoPopInternal(UiPopPolicy policy, bool resumeNext = true)
     {
-        if (Stack.Count == 0)
+        if (!Stack.TryPop(out var top))
             return;
 
-        var top = Stack.Pop();
-        _logger.LogDebug("Pop UI Page internal: {0}, policy={1}, stackAfterPop={2}",
-            top.GetType().Name, policy, Stack.Count);
-
+        var errors = new List<Exception>();
         if (policy == UiPopPolicy.Destroy)
-        {
-            top.OnExit();
-            _uiRoot.RemoveUiPage(top);
-        }
+            CleanupPage(top, errors);
         else
         {
-            top.OnHide();
+            _retainedPages.Add(top);
+            AttemptCleanup(top.OnHide, errors);
+            AttemptCleanup(() => ReleasePauseRequest(top), errors);
         }
 
-        SyncPauseRequest(top, isVisible: false);
-
-        if (Stack.Count > 0)
+        if (resumeNext && Stack.TryPeek(out var next))
         {
-            var next = Stack.Peek();
-            next.OnShow();
-            SyncPauseRequest(next, isVisible: true);
+            AttemptCleanup(next.OnShow, errors);
+            AttemptCleanup(() => SyncPauseRequest(next, isVisible: true), errors);
         }
+        if (errors.Count != 0)
+            throw new AggregateException("UI pop failed after cleanup.", errors);
     }
 
     /// <summary>
@@ -765,9 +816,11 @@ public abstract class UiRouterBase : RouterBase<IUiPageBehavior, IUiPageEnterPar
     /// <param name="policy">页面弹出策略</param>
     private void DoClearInternal(UiPopPolicy policy)
     {
-        _logger.LogDebug("Clear UI Stack internal, count={0}", Stack.Count);
+        var errors = new List<Exception>();
         while (Stack.Count > 0)
-            DoPopInternal(policy);
+            AttemptCleanup(() => DoPopInternal(policy, resumeNext: false), errors);
+        if (errors.Count != 0)
+            throw new AggregateException("UI clear failed after cleanup.", errors);
     }
 
     /// <summary>

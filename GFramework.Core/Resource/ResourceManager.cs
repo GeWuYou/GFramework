@@ -12,7 +12,8 @@ namespace GFramework.Core.Resource;
 
 /// <summary>
 ///     资源管理器实现，提供资源加载、缓存和卸载功能
-///     线程安全：所有公共方法都是线程安全的
+///     句柄获取、卸载和释放策略在同一操作锁内串行化。加载器拥有它创建的资源及释放责任；
+///     管理器保留原始加载器的释放操作，不额外调用资源的 Dispose。
 /// </summary>
 public class ResourceManager : IResourceManager
 {
@@ -56,18 +57,9 @@ public class ResourceManager : IResourceManager
         if (string.IsNullOrWhiteSpace(path))
             throw new ArgumentException(PathCannotBeNullOrEmptyMessage, nameof(path));
 
-        // 检查缓存
-        var cached = _cache.Get<T>(path);
-        if (cached != null)
-        {
-            return cached;
-        }
-
-        // 加载资源
         lock (_loadLock)
         {
-            // 双重检查
-            cached = _cache.Get<T>(path);
+            var cached = GetCachedResource<T>(path);
             if (cached != null)
             {
                 return cached;
@@ -82,7 +74,7 @@ public class ResourceManager : IResourceManager
             try
             {
                 var resource = loader.Load(path);
-                _cache.Add(path, resource);
+                _cache.Add(path, resource, value => loader.Unload((T)value));
                 return resource;
             }
             catch (Exception ex)
@@ -107,11 +99,11 @@ public class ResourceManager : IResourceManager
         if (string.IsNullOrWhiteSpace(path))
             throw new ArgumentException(PathCannotBeNullOrEmptyMessage, nameof(path));
 
-        // 检查缓存
-        var cached = _cache.Get<T>(path);
-        if (cached != null)
+        lock (_loadLock)
         {
-            return cached;
+            var cached = GetCachedResource<T>(path);
+            if (cached != null)
+                return cached;
         }
 
         var loader = GetLoader<T>();
@@ -126,15 +118,23 @@ public class ResourceManager : IResourceManager
             lock (_loadLock)
             {
                 // 双重检查
-                cached = _cache.Get<T>(path);
+                var cached = _cache.Get<T>(path);
                 if (cached != null)
                 {
-                    // 已经被其他线程加载了，卸载当前加载的资源
-                    loader.Unload(resource);
+                    // 有些加载器内部也会缓存实例；同一引用仍被缓存拥有时不能把它当作失败竞争者释放。
+                    if (!ReferenceEquals(cached, resource))
+                        loader.Unload(resource);
                     return cached;
                 }
 
-                _cache.Add(path, resource);
+                if (_cache.Contains(path))
+                {
+                    // 另一个类型已经占用同一路径时不覆盖其所有权，也不能泄漏本次创建的实例。
+                    loader.Unload(resource);
+                    throw new InvalidOperationException($"Resource '{path}' is already loaded with a different type.");
+                }
+
+                _cache.Add(path, resource, value => loader.Unload((T)value));
             }
 
             return resource;
@@ -154,12 +154,16 @@ public class ResourceManager : IResourceManager
         if (string.IsNullOrWhiteSpace(path))
             throw new ArgumentException(PathCannotBeNullOrEmptyMessage, nameof(path));
 
-        var resource = _cache.Get<T>(path);
-        if (resource == null)
-            return null;
+        lock (_loadLock)
+        {
+            var entry = _cache.GetEntry(path);
+            if (entry?.Resource is not T resource)
+                return null;
 
-        _cache.AddReference(path);
-        return new ResourceHandle<T>(resource, path, HandleDispose);
+            // 检查实例和增加引用必须与卸载互斥；回调绑定条目身份，不能作用到同一路径的后续实例。
+            _cache.AddReference(path);
+            return new ResourceHandle<T>(resource, path, releasedPath => HandleDispose(releasedPath, entry));
+        }
     }
 
     /// <summary>
@@ -172,8 +176,8 @@ public class ResourceManager : IResourceManager
 
         lock (_loadLock)
         {
-            var resource = _cache.Get<object>(path);
-            if (resource == null)
+            var entry = _cache.GetEntry(path);
+            if (entry == null)
                 return false;
 
             // 检查引用计数
@@ -184,16 +188,15 @@ public class ResourceManager : IResourceManager
                 return false;
             }
 
-            // 卸载资源
-            UnloadResource(resource);
-
-            // 从缓存中移除
-            return _cache.Remove(path);
+            // 先移除条目，再调用拥有者，避免重入查询取得正在释放的实例。
+            _cache.Remove(path);
+            UnloadResource(entry);
+            return true;
         }
     }
 
     /// <summary>
-    ///     卸载所有资源
+    ///     卸载所有没有活跃句柄的资源。仍被句柄引用的条目保持有效，调用方释放句柄后可再次卸载。
     /// </summary>
     public void UnloadAll()
     {
@@ -203,14 +206,8 @@ public class ResourceManager : IResourceManager
 
             foreach (var path in paths)
             {
-                var resource = _cache.Get<object>(path);
-                if (resource != null)
-                {
-                    UnloadResource(resource);
-                }
+                Unload(path);
             }
-
-            _cache.Clear();
         }
     }
 
@@ -272,7 +269,11 @@ public class ResourceManager : IResourceManager
     /// <param name="strategy">资源释放策略</param>
     public void SetReleaseStrategy(IResourceReleaseStrategy strategy)
     {
-        _releaseStrategy = strategy ?? throw new ArgumentNullException(nameof(strategy));
+        ArgumentNullException.ThrowIfNull(strategy);
+        lock (_loadLock)
+        {
+            _releaseStrategy = strategy;
+        }
     }
 
     /// <summary>
@@ -289,63 +290,56 @@ public class ResourceManager : IResourceManager
     }
 
     /// <summary>
-    ///     卸载资源实例
+    ///     从当前条目取得类型兼容的缓存实例；调用方必须持有操作锁。
     /// </summary>
-    private void UnloadResource(object resource)
+    /// <typeparam name="T">请求的资源类型。</typeparam>
+    /// <param name="path">缓存路径。</param>
+    /// <returns>缓存实例；路径尚未加载时返回 null。</returns>
+    /// <exception cref="InvalidOperationException">路径已经绑定到不兼容的资源类型。</exception>
+    private T? GetCachedResource<T>(string path) where T : class
     {
-        var resourceType = resource.GetType();
+        var entry = _cache.GetEntry(path);
+        if (entry == null)
+            return null;
+        if (entry.Resource is T resource)
+            return resource;
+        throw new InvalidOperationException($"Resource '{path}' is already loaded with a different type.");
+    }
 
-        if (_loaders.TryGetValue(resourceType, out var loaderObj))
+    /// <summary>
+    ///     交由创建条目的原始加载器释放资源，管理器不推断运行时类型或再次 Dispose。
+    /// </summary>
+    /// <param name="entry">已经从缓存移除的条目。</param>
+    private void UnloadResource(ResourceCacheEntry entry)
+    {
+        try
         {
-            try
-            {
-                var unloadMethod = loaderObj.GetType().GetMethod("Unload");
-                unloadMethod?.Invoke(loaderObj, new[] { resource });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error unloading resource");
-            }
+            entry.Release(entry.Resource);
         }
-
-        // 如果资源实现了 IDisposable，调用 Dispose
-        if (resource is IDisposable disposable)
+        catch (Exception ex)
         {
-            try
-            {
-                disposable.Dispose();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error disposing resource");
-            }
+            _logger.LogError(ex, "Error unloading resource");
         }
     }
 
     /// <summary>
     ///     句柄释放时的回调
     /// </summary>
-    private void HandleDispose(string path)
+    /// <param name="path">句柄持有的路径。</param>
+    /// <param name="entry">句柄获取时所绑定的条目。</param>
+    private void HandleDispose(string path, ResourceCacheEntry entry)
     {
-        var refCount = _cache.RemoveReference(path);
-
-        // 使用策略模式判断是否应该释放资源
-        if (_releaseStrategy.ShouldRelease(path, refCount))
+        lock (_loadLock)
         {
-            lock (_loadLock)
-            {
-                // 双重检查引用计数，避免竞态条件
-                var currentRefCount = _cache.GetReferenceCount(path);
-                if (currentRefCount <= 0)
-                {
-                    var resource = _cache.Get<object>(path);
-                    if (resource != null)
-                    {
-                        UnloadResource(resource);
-                        _cache.Remove(path);
-                    }
-                }
-            }
+            if (!ReferenceEquals(_cache.GetEntry(path), entry))
+                return;
+
+            var refCount = _cache.RemoveReference(path);
+            if (refCount > 0 || !_releaseStrategy.ShouldRelease(path, refCount))
+                return;
+
+            _cache.Remove(path);
+            UnloadResource(entry);
         }
     }
 }
