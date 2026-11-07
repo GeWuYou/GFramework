@@ -112,14 +112,12 @@ partial class GameplayRoot
 
 如果你自己声明了 `SceneKeyStr`、`__autoSceneBehavior_Generated` 或 `GetScene()`，编译阶段还会出现成员冲突错误或对应的冲突诊断。
 
-## 与页面生成器的区别
+## 与 UI 接入的关系
 
-- `AutoUiPage` 生成的是 `IUiPageBehavior` 与 `UiLayer`
-- `AutoScene` 生成的是 `ISceneBehavior` 与场景 Key
-
-一个类型通常只应承担一种路由语义。不要把纯页面节点和纯场景根节点混为一体。
+`AutoScene` 为场景根提供 `ISceneBehavior` 包装入口。普通 UI 场景通过强类型注册和 `GodotUiView` 直接接入，采用方式见 [Godot UI](../godot/ui.md)。
 
 ## 相关文档
 
 - [源码生成器总览](./index.md)
-- [AutoUiPage 生成器](./auto-ui-page-generator.md)
+- [Godot 场景](../godot/scene.md)
+- [Godot UI](../godot/ui.md)

@@ -1,358 +1,175 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using GFramework.Core.Abstractions.Architectures;
-using GFramework.Core.Abstractions.Enums;
-using GFramework.Core.Abstractions.Events;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
-using GFramework.Core.Abstractions.Rule;
-using GFramework.Core.Architectures;
-using GFramework.Core.Events;
-using GFramework.Core.Ioc;
-using GFramework.Core.Logging;
+using System.Threading;
+using System.Collections.Concurrent;
+using GFramework.Game.Runtime;
 using GFramework.Game.Abstractions.Setting;
 using GFramework.Game.Setting;
 using GFramework.Game.Setting.Events;
 
 namespace GFramework.Game.Tests.Setting;
 
-/// <summary>
-///     覆盖 <see cref="SettingsSystem" /> 的系统层语义，确保系统对模型编排、事件发送和重置流程保持稳定。
-/// </summary>
+/// <summary>Exercises settings coordination through explicit dependencies and observable notifications.</summary>
 [TestFixture]
 public sealed class SettingsSystemTests
 {
-    /// <summary>
-    ///     验证 <see cref="SettingsSystem.ApplyAll" /> 会尝试应用全部 applicator，并为成功与失败结果分别发送事件。
-    /// </summary>
-    /// <returns>表示异步测试完成的任务。</returns>
+    /// <summary>Independent application failures publish their result while later applicators still run.</summary>
     [Test]
-    public async Task ApplyAll_Should_Apply_All_Applicators_And_Publish_Result_Events()
+    public async Task ApplyAllAsync_AttemptsEveryApplicator_AndPublishesResults()
     {
-        var successfulApplicator = new PrimaryTestSettings();
-        var failingApplicator = new SecondaryTestSettings(throwOnApply: true);
-        var model = new FakeSettingsModel(successfulApplicator, failingApplicator);
-        var context = CreateContext(model);
-        var system = CreateSystem(context);
+        var successful = new Mock<IResetApplyAbleSettings>();
+        successful.Setup(value => value.ApplyAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        var failing = new Mock<IResetApplyAbleSettings>();
+        failing.Setup(value => value.ApplyAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.FromException(new InvalidOperationException("apply failed")));
+        var model = new Mock<ISettingsModel>();
+        model.Setup(value => value.AllApplicators()).Returns(new[] { successful.Object, failing.Object });
+        var events = new List<object>();
+        var system = new SettingsSystem(model.Object, events.Add);
 
-        var applyingEventCount = 0;
-        var appliedEventCount = 0;
-        var failedEventCount = 0;
+        await Assert.CatchAsync<AggregateException>(() => system.ApplyAllAsync());
 
-        context.RegisterEvent<SettingsApplyingEvent<ISettingsSection>>(_ => applyingEventCount++);
-        context.RegisterEvent<SettingsAppliedEvent<ISettingsSection>>(eventData =>
-        {
-            appliedEventCount++;
-            if (!eventData.Success)
-            {
-                failedEventCount++;
-            }
-        });
-
-        await system.ApplyAll();
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(successfulApplicator.ApplyCount, Is.EqualTo(1));
-            Assert.That(failingApplicator.ApplyCount, Is.EqualTo(1));
-            Assert.That(applyingEventCount, Is.EqualTo(2));
-            Assert.That(appliedEventCount, Is.EqualTo(2));
-            Assert.That(failedEventCount, Is.EqualTo(1));
-        });
+        successful.Verify(value => value.ApplyAsync(It.IsAny<CancellationToken>()), Times.Once);
+        failing.Verify(value => value.ApplyAsync(It.IsAny<CancellationToken>()), Times.Once);
+        Assert.That(events.OfType<SettingsApplyingEvent<ISettingsSection>>().Count(), Is.EqualTo(2));
+        Assert.That(events.OfType<SettingsAppliedEvent<ISettingsSection>>().Count(value => value.Success), Is.EqualTo(1));
+        Assert.That(events.OfType<SettingsAppliedEvent<ISettingsSection>>().Count(value => !value.Success), Is.EqualTo(1));
     }
 
-    /// <summary>
-    ///     验证 <see cref="SettingsSystem.SaveAll" /> 会直接委托给模型层统一保存。
-    /// </summary>
-    /// <returns>表示异步测试完成的任务。</returns>
+    /// <summary>Persistence receives the caller token rather than a separate context-based lifetime.</summary>
     [Test]
-    public async Task SaveAll_Should_Delegate_To_Model()
+    public async Task SaveAllAsync_ForwardsTokenToModel()
     {
-        var model = new FakeSettingsModel(new PrimaryTestSettings());
-        var system = CreateSystem(CreateContext(model));
+        using var cancellation = new CancellationTokenSource();
+        var model = new Mock<ISettingsModel>();
+        model.Setup(value => value.SaveAllAsync(cancellation.Token)).Returns(Task.CompletedTask);
+        var system = new SettingsSystem(model.Object);
 
-        await system.SaveAll();
+        await system.SaveAllAsync(cancellation.Token);
 
-        Assert.That(model.SaveAllCallCount, Is.EqualTo(1));
+        model.Verify(value => value.SaveAllAsync(cancellation.Token), Times.Once);
     }
 
-    /// <summary>
-    ///     验证 <see cref="SettingsSystem.ResetAll" /> 会先委托模型统一重置，再重新应用全部 applicator。
-    /// </summary>
-    /// <returns>表示异步测试完成的任务。</returns>
+    /// <summary>Reset completes before applying the changed data.</summary>
     [Test]
-    public async Task ResetAll_Should_Reset_Model_And_Reapply_All_Applicators()
+    public async Task ResetAllAsync_ResetsBeforeApplication()
     {
-        var primaryApplicator = new PrimaryTestSettings();
-        var secondaryApplicator = new SecondaryTestSettings();
-        var model = new FakeSettingsModel(primaryApplicator, secondaryApplicator);
-        var system = CreateSystem(CreateContext(model));
+        var calls = new List<string>();
+        var applicator = new Mock<IResetApplyAbleSettings>();
+        applicator.Setup(value => value.ApplyAsync(It.IsAny<CancellationToken>()))
+            .Returns(() => { calls.Add("apply"); return Task.CompletedTask; });
+        var model = new Mock<ISettingsModel>();
+        model.Setup(value => value.ResetAll()).Callback(() => calls.Add("reset"));
+        model.Setup(value => value.AllApplicators()).Returns(new[] { applicator.Object });
 
-        await system.ResetAll();
+        await new SettingsSystem(model.Object).ResetAllAsync();
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(model.ResetAllCallCount, Is.EqualTo(1));
-            Assert.That(primaryApplicator.ApplyCount, Is.EqualTo(1));
-            Assert.That(secondaryApplicator.ApplyCount, Is.EqualTo(1));
-        });
+        Assert.That(calls, Is.EqualTo(new[] { "reset", "apply" }));
     }
 
-    /// <summary>
-    ///     验证 <see cref="SettingsSystem.Reset{T}" /> 会重置目标数据类型，并只重新应用对应的 applicator。
-    /// </summary>
-    /// <returns>表示异步测试完成的任务。</returns>
+    /// <summary>A missing targeted applicator produces no unrelated application.</summary>
     [Test]
-    public async Task Reset_Should_Reset_Target_Data_And_Reapply_Target_Applicator()
+    public async Task ApplyAsync_WithoutMatchingApplicator_DoesNothing()
     {
-        var primaryApplicator = new PrimaryTestSettings();
-        var secondaryApplicator = new SecondaryTestSettings();
-        var model = new FakeSettingsModel(primaryApplicator, secondaryApplicator);
-        var system = CreateSystem(CreateContext(model));
+        var model = new Mock<ISettingsModel>(MockBehavior.Strict);
+        model.Setup(value => value.GetApplicator<TestSettings>()).Returns((TestSettings?)null);
 
-        await system.Reset<PrimaryTestSettings>();
+        await new SettingsSystem(model.Object).ApplyAsync<TestSettings>();
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(model.ResetTypes, Is.EquivalentTo(new[] { typeof(PrimaryTestSettings) }));
-            Assert.That(primaryApplicator.ApplyCount, Is.EqualTo(1));
-            Assert.That(secondaryApplicator.ApplyCount, Is.Zero);
-        });
+        model.VerifyAll();
     }
 
-    /// <summary>
-    ///     创建带事件总线和设置模型的真实架构上下文。
-    /// </summary>
-    /// <param name="model">测试使用的设置模型。</param>
-    /// <returns>可供系统解析依赖与发送事件的上下文。</returns>
-    private static ArchitectureContext CreateContext(ISettingsModel model)
+    /// <summary>Cancellation never becomes an ordinary failed-application notification.</summary>
+    [Test]
+    public async Task ApplyAllAsync_WhenAlreadyCanceled_DoesNotReadModel()
     {
-        var container = new MicrosoftDiContainer();
-        container.Register<IEventBus>(new EventBus());
-        container.Register<ISettingsModel>(model);
-        container.Register<ILoggerFactory>(NullLoggerFactory.Instance);
-        container.Freeze();
-        return new ArchitectureContext(container);
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        var model = new Mock<ISettingsModel>(MockBehavior.Strict);
+        var system = new SettingsSystem(model.Object);
+
+        await Assert.CatchAsync<OperationCanceledException>(() => system.ApplyAllAsync(cancellation.Token));
     }
 
-    /// <summary>
-    ///     创建并初始化绑定到指定上下文的设置系统。
-    /// </summary>
-    /// <param name="context">系统运行所需的架构上下文。</param>
-    /// <returns>已完成初始化的设置系统实例。</returns>
-    private static SettingsSystem CreateSystem(IArchitectureContext context)
+    /// <summary>Every applicator, including those after an asynchronous one, returns to the explicit host thread.</summary>
+    [Test]
+    public async Task ApplyAllAsync_UsesHostDispatcherForEveryApplicator()
     {
-        var system = new SettingsSystem();
-        ((IContextAware)system).SetContext(context);
-        system.Initialize();
-        return system;
-    }
-
-    /// <summary>
-    ///     用于系统层测试的简化设置模型，记录系统对模型的调用行为。
-    /// </summary>
-    private sealed class FakeSettingsModel : ISettingsModel
-    {
-        private readonly IReadOnlyDictionary<Type, IResetApplyAbleSettings> _applicators;
-
-        /// <summary>
-        ///     初始化测试模型，并注册参与测试的 applicator 集合。
-        /// </summary>
-        /// <param name="applicators">测试使用的 applicator。</param>
-        public FakeSettingsModel(params IResetApplyAbleSettings[] applicators)
+        using var host = new DedicatedHostContext();
+        var first = new Mock<IResetApplyAbleSettings>();
+        first.Setup(value => value.ApplyAsync(It.IsAny<CancellationToken>())).Returns(async () =>
         {
-            _applicators = applicators.ToDictionary(applicator => applicator.GetType());
-        }
-
-        /// <summary>
-        ///     获取保存全量设置的调用次数。
-        /// </summary>
-        public int SaveAllCallCount { get; private set; }
-
-        /// <summary>
-        ///     获取重置全部设置的调用次数。
-        /// </summary>
-        public int ResetAllCallCount { get; private set; }
-
-        /// <summary>
-        ///     获取被请求重置的设置数据类型列表。
-        /// </summary>
-        public List<Type> ResetTypes { get; } = [];
-
-        /// <inheritdoc />
-        public bool IsInitialized => true;
-
-        /// <inheritdoc />
-        public void SetContext(IArchitectureContext context)
-        {
-        }
-
-        /// <inheritdoc />
-        public IArchitectureContext GetContext()
-        {
-            throw new NotSupportedException("Fake settings model does not expose a context.");
-        }
-
-        /// <inheritdoc />
-        public void OnArchitecturePhase(ArchitecturePhase phase)
-        {
-        }
-
-        /// <inheritdoc />
-        public void Initialize()
-        {
-        }
-
-        /// <inheritdoc />
-        public T GetData<T>() where T : class, ISettingsData, new()
-        {
-            return new T();
-        }
-
-        /// <inheritdoc />
-        public IEnumerable<ISettingsData> AllData()
-        {
-            return [];
-        }
-
-        /// <inheritdoc />
-        public ISettingsModel RegisterApplicator<T>(T applicator) where T : class, IResetApplyAbleSettings
-        {
-            return this;
-        }
-
-        /// <inheritdoc />
-        public T? GetApplicator<T>() where T : class, IResetApplyAbleSettings
-        {
-            return _applicators.TryGetValue(typeof(T), out var applicator) ? (T)applicator : null;
-        }
-
-        /// <inheritdoc />
-        public IEnumerable<IResetApplyAbleSettings> AllApplicators()
-        {
-            return _applicators.Values;
-        }
-
-        /// <inheritdoc />
-        public ISettingsModel RegisterMigration(ISettingsMigration migration)
-        {
-            return this;
-        }
-
-        /// <inheritdoc />
-        public Task InitializeAsync()
-        {
-            return Task.CompletedTask;
-        }
-
-        /// <inheritdoc />
-        public Task SaveAllAsync()
-        {
-            SaveAllCallCount++;
-            return Task.CompletedTask;
-        }
-
-        /// <inheritdoc />
-        public Task ApplyAllAsync()
-        {
-            return Task.CompletedTask;
-        }
-
-        /// <inheritdoc />
-        public void Reset<T>() where T : class, ISettingsData, new()
-        {
-            ResetTypes.Add(typeof(T));
-        }
-
-        /// <inheritdoc />
-        public void ResetAll()
-        {
-            ResetAllCallCount++;
-        }
-    }
-
-    /// <summary>
-    ///     为系统层测试提供的最小设置数据实现。
-    /// </summary>
-    private abstract class TestSettingsBase : ISettingsData, IResetApplyAbleSettings
-    {
-        /// <inheritdoc />
-        public int Version { get; set; } = 1;
-
-        /// <inheritdoc />
-        public DateTime LastModified { get; } = DateTime.UtcNow;
-
-        /// <summary>
-        ///     获取测试用的数值字段，用于确认重置与加载行为。
-        /// </summary>
-        public int Value { get; private set; }
-
-        /// <summary>
-        ///     获取应用操作被调用的次数。
-        /// </summary>
-        public int ApplyCount { get; private set; }
-
-        /// <inheritdoc />
-        public ISettingsData Data => this;
-
-        /// <inheritdoc />
-        public Type DataType => GetType();
-
-        /// <summary>
-        ///     获取或设置是否在应用时抛出异常。
-        /// </summary>
-        protected bool ThrowOnApply { get; init; }
-
-        /// <inheritdoc />
-        public void Reset()
-        {
-            Value = 0;
-        }
-
-        /// <inheritdoc />
-        public void LoadFrom(ISettingsData source)
-        {
-            if (source is TestSettingsBase data)
-            {
-                Value = data.Value;
-                Version = data.Version;
-            }
-        }
-
-        /// <inheritdoc />
-        public async Task ApplyAsync()
-        {
-            ApplyCount++;
-
+            Assert.That(Environment.CurrentManagedThreadId, Is.EqualTo(host.ThreadId));
             await Task.Yield();
-
-            if (ThrowOnApply)
-            {
-                throw new InvalidOperationException("Test applicator failed.");
-            }
-        }
-    }
-
-    /// <summary>
-    ///     代表主设置分支的测试设置对象。
-    /// </summary>
-    private sealed class PrimaryTestSettings : TestSettingsBase
-    {
-    }
-
-    /// <summary>
-    ///     代表第二个设置分支的测试设置对象，可选择在应用时失败。
-    /// </summary>
-    private sealed class SecondaryTestSettings : TestSettingsBase
-    {
-        /// <summary>
-        ///     初始化第二个测试设置对象。
-        /// </summary>
-        /// <param name="throwOnApply">是否在应用时抛出异常。</param>
-        public SecondaryTestSettings(bool throwOnApply = false)
+            Assert.That(Environment.CurrentManagedThreadId, Is.EqualTo(host.ThreadId));
+        });
+        var second = new Mock<IResetApplyAbleSettings>();
+        second.Setup(value => value.ApplyAsync(It.IsAny<CancellationToken>())).Returns(() =>
         {
-            ThrowOnApply = throwOnApply;
+            Assert.That(Environment.CurrentManagedThreadId, Is.EqualTo(host.ThreadId));
+            return Task.CompletedTask;
+        });
+        var model = new Mock<ISettingsModel>();
+        model.Setup(value => value.AllApplicators()).Returns(new[] { first.Object, second.Object });
+        var system = new SettingsSystem(model.Object, dispatcher: new SynchronizationContextGameDispatcher(host));
+
+        await system.ApplyAllAsync();
+
+        first.Verify(value => value.ApplyAsync(It.IsAny<CancellationToken>()), Times.Once);
+        second.Verify(value => value.ApplyAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    /// <summary>Emulates an engine-owned callback thread while keeping the test independent of an engine package.</summary>
+    private sealed class DedicatedHostContext : SynchronizationContext, IDisposable
+    {
+        private readonly BlockingCollection<Action> _callbacks = new();
+        private readonly TaskCompletionSource _ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly Thread _thread;
+
+        /// <summary>Starts a bounded test callback pump.</summary>
+        public DedicatedHostContext()
+        {
+            _thread = new Thread(Run) { IsBackground = true };
+            _thread.Start();
+            _ready.Task.GetAwaiter().GetResult();
         }
+
+        /// <summary>Gets the thread which owns all simulated native objects.</summary>
+        public int ThreadId => _thread.ManagedThreadId;
+
+        /// <inheritdoc />
+        public override void Post(SendOrPostCallback callback, object? state) => _callbacks.Add(() => callback(state));
+
+        /// <summary>Installs the host context before executing queued work.</summary>
+        private void Run()
+        {
+            SetSynchronizationContext(this);
+            _ready.TrySetResult();
+            foreach (var callback in _callbacks.GetConsumingEnumerable())
+                callback();
+        }
+
+        /// <summary>Joins the owned host thread after all observed operations have completed.</summary>
+        public void Dispose()
+        {
+            _callbacks.CompleteAdding();
+            if (!_thread.Join(TimeSpan.FromSeconds(5)))
+                throw new InvalidOperationException("Test host did not stop.");
+            _callbacks.Dispose();
+        }
+    }
+
+    /// <summary>Concrete target type for the generic lookup regression.</summary>
+    private sealed class TestSettings : IResetApplyAbleSettings
+    {
+        /// <inheritdoc />
+        public ISettingsData Data => throw new NotSupportedException();
+        /// <inheritdoc />
+        public Type DataType => typeof(TestSettings);
+        /// <inheritdoc />
+        public Task ApplyAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+        /// <inheritdoc />
+        public void Reset() { }
     }
 }

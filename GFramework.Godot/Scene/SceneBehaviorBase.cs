@@ -55,6 +55,10 @@ public abstract class SceneBehaviorBase<T> : ISceneBehavior
     /// </summary>
     private bool _isTransitioning;
 
+    // Retain the first pre-pause state through repeated calls and callback failures.
+    // Only successful restoration consumes the snapshot, allowing compensating resume.
+    private (bool Process, bool Physics, bool Input)? _pausedProcessing;
+
     /// <summary>
     ///     初始化 SceneBehaviorBase 实例。
     /// </summary>
@@ -107,14 +111,15 @@ public abstract class SceneBehaviorBase<T> : ISceneBehavior
     ///     在场景正式进入前调用，负责预加载场景所需的各类资源。
     /// </summary>
     /// <param name="param">场景进入参数，可能包含初始化数据或上下文信息。</param>
+    /// <param name="cancellationToken">Cancellation of host preparation; cleanup receives an uncancelled token.</param>
     /// <returns>表示加载操作完成的ValueTask。</returns>
-    public virtual async ValueTask OnLoadAsync(ISceneEnterParam? param)
+    public virtual async ValueTask OnLoadAsync(ISceneEnterParam? param, CancellationToken cancellationToken = default)
     {
         _isTransitioning = true;
 
         // 调用可选接口
         if (_scene != null)
-            await _scene.OnLoadAsync(param).ConfigureAwait(false);
+            await _scene.OnLoadAsync(param, cancellationToken).ConfigureAwait(true);
 
         _isLoaded = true;
         _isTransitioning = false;
@@ -124,13 +129,14 @@ public abstract class SceneBehaviorBase<T> : ISceneBehavior
     ///     异步处理场景正式进入逻辑。
     ///     在资源加载完成后调用，启动场景的主要运行逻辑。
     /// </summary>
+    /// <param name="cancellationToken">Cancellation of host preparation; cleanup receives an uncancelled token.</param>
     /// <returns>表示进入操作完成的ValueTask。</returns>
-    public virtual async ValueTask OnEnterAsync()
+    public virtual async ValueTask OnEnterAsync(CancellationToken cancellationToken = default)
     {
         _isTransitioning = true;
 
         if (_scene != null)
-            await _scene.OnEnterAsync().ConfigureAwait(false);
+            await _scene.OnEnterAsync(cancellationToken).ConfigureAwait(true);
 
         _isActive = true;
         _isTransitioning = false;
@@ -139,13 +145,17 @@ public abstract class SceneBehaviorBase<T> : ISceneBehavior
     /// <summary>
     ///     异步处理场景暂停逻辑。
     ///     当场景被其他场景覆盖或失去焦点时调用。
+    ///     首次暂停保存节点原有的处理开关；重复暂停及业务回调失败保留同一快照。
     /// </summary>
+    /// <param name="cancellationToken">Cancellation of host preparation; cleanup receives an uncancelled token.</param>
     /// <returns>表示暂停操作完成的ValueTask。</returns>
-    public virtual async ValueTask OnPauseAsync()
+    public virtual async ValueTask OnPauseAsync(CancellationToken cancellationToken = default)
     {
+        _pausedProcessing ??= (Owner.IsProcessing(), Owner.IsPhysicsProcessing(), Owner.IsProcessingInput());
+
         if (_scene != null)
             // 暂停后紧接着会修改 Owner 的处理开关，必须回到 Godot 主线程继续执行。
-            await _scene.OnPauseAsync().ConfigureAwait(true);
+            await _scene.OnPauseAsync(cancellationToken).ConfigureAwait(true);
 
         // 暂停处理
         Owner.SetProcess(false);
@@ -158,21 +168,26 @@ public abstract class SceneBehaviorBase<T> : ISceneBehavior
     /// <summary>
     ///     异步处理场景恢复逻辑。
     ///     当场景重新获得焦点或从暂停状态恢复时调用。
+    ///     业务恢复成功后还原暂停前的处理开关；没有快照时保持当前原生设置。
     /// </summary>
+    /// <param name="cancellationToken">Cancellation of host preparation; cleanup receives an uncancelled token.</param>
     /// <returns>表示恢复操作完成的ValueTask。</returns>
-    public virtual async ValueTask OnResumeAsync()
+    public virtual async ValueTask OnResumeAsync(CancellationToken cancellationToken = default)
     {
         if (Owner.IsInvalidNode())
             return;
 
         if (_scene != null)
-            // 恢复完成后要立刻重新启用节点处理流程，因此显式保留当前同步上下文。
-            await _scene.OnResumeAsync().ConfigureAwait(true);
+            // Keep processing paused until business resume succeeds on the native host context.
+            await _scene.OnResumeAsync(cancellationToken).ConfigureAwait(true);
 
-        // 恢复处理
-        Owner.SetProcess(true);
-        Owner.SetPhysicsProcess(true);
-        Owner.SetProcessInput(true);
+        if (_pausedProcessing is { } processing)
+        {
+            Owner.SetProcess(processing.Process);
+            Owner.SetPhysicsProcess(processing.Physics);
+            Owner.SetProcessInput(processing.Input);
+            _pausedProcessing = null;
+        }
 
         _isActive = true;
     }
@@ -181,13 +196,14 @@ public abstract class SceneBehaviorBase<T> : ISceneBehavior
     ///     异步处理场景退出逻辑。
     ///     在场景即将被替换或关闭时调用，执行清理工作。
     /// </summary>
+    /// <param name="cancellationToken">Cancellation of host preparation; cleanup receives an uncancelled token.</param>
     /// <returns>表示退出操作完成的ValueTask。</returns>
-    public virtual async ValueTask OnExitAsync()
+    public virtual async ValueTask OnExitAsync(CancellationToken cancellationToken = default)
     {
         _isTransitioning = true;
 
         if (_scene != null)
-            await _scene.OnExitAsync().ConfigureAwait(false);
+            await _scene.OnExitAsync(cancellationToken).ConfigureAwait(true);
 
         _isActive = false;
     }
@@ -196,13 +212,14 @@ public abstract class SceneBehaviorBase<T> : ISceneBehavior
     ///     异步卸载场景资源。
     ///     在场景完全退出后调用，释放占用的内存和资源。
     /// </summary>
+    /// <param name="cancellationToken">Cancellation of host preparation; cleanup receives an uncancelled token.</param>
     /// <returns>表示卸载操作完成的ValueTask。</returns>
-    public virtual async ValueTask OnUnloadAsync()
+    public virtual async ValueTask OnUnloadAsync(CancellationToken cancellationToken = default)
     {
         try
         {
             if (_scene != null)
-                await _scene.OnUnloadAsync().ConfigureAwait(true);
+                await _scene.OnUnloadAsync(cancellationToken).ConfigureAwait(true);
         }
         finally
         {
@@ -210,6 +227,7 @@ public abstract class SceneBehaviorBase<T> : ISceneBehavior
             _isLoaded = false;
             _isActive = false;
             _isTransitioning = false;
+            _pausedProcessing = null;
             Owner.QueueFreeX();
         }
     }

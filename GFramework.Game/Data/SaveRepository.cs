@@ -17,7 +17,6 @@ using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using GFramework.Core.Abstractions.Storage;
-using GFramework.Core.Utility;
 using GFramework.Game.Abstractions.Data;
 using GFramework.Game.Internal;
 using GFramework.Game.Storage;
@@ -28,7 +27,7 @@ namespace GFramework.Game.Data;
 ///     基于槽位的存档仓库实现
 /// </summary>
 /// <typeparam name="TSaveData">存档数据类型</typeparam>
-public class SaveRepository<TSaveData> : AbstractContextUtility, ISaveRepository<TSaveData>
+public class SaveRepository<TSaveData> : ISaveRepository<TSaveData>
     where TSaveData : class, IData, new()
 {
     private readonly SaveConfiguration _config;
@@ -102,8 +101,10 @@ public class SaveRepository<TSaveData> : AbstractContextUtility, ISaveRepository
     /// </summary>
     /// <param name="slot">存档槽位编号</param>
     /// <returns>如果存档存在返回true，否则返回false</returns>
-    public async Task<bool> ExistsAsync(int slot)
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    public async Task<bool> ExistsAsync(int slot, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var storage = GetSlotStorage(slot);
         return await storage.ExistsAsync(_config.SaveFileName).ConfigureAwait(false);
     }
@@ -113,14 +114,17 @@ public class SaveRepository<TSaveData> : AbstractContextUtility, ISaveRepository
     /// </summary>
     /// <param name="slot">存档槽位编号</param>
     /// <returns>存档数据对象，如果不存在则返回新实例</returns>
-    public async Task<TSaveData> LoadAsync(int slot)
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    public async Task<TSaveData> LoadAsync(int slot, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var storage = GetSlotStorage(slot);
 
         if (await storage.ExistsAsync(_config.SaveFileName).ConfigureAwait(false))
         {
             var loaded = await storage.ReadAsync<TSaveData>(_config.SaveFileName).ConfigureAwait(false);
-            return await MigrateIfNeededAsync(slot, storage, loaded).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            return await MigrateIfNeededAsync(slot, storage, loaded, cancellationToken).ConfigureAwait(false);
         }
 
         return new TSaveData();
@@ -131,8 +135,10 @@ public class SaveRepository<TSaveData> : AbstractContextUtility, ISaveRepository
     /// </summary>
     /// <param name="slot">存档槽位编号</param>
     /// <param name="data">要保存的存档数据</param>
-    public async Task SaveAsync(int slot, TSaveData data)
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    public async Task SaveAsync(int slot, TSaveData data, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var slotPath = $"{_config.SaveSlotPrefix}{slot}";
 
         // 确保槽位目录存在
@@ -140,6 +146,8 @@ public class SaveRepository<TSaveData> : AbstractContextUtility, ISaveRepository
             await _rootStorage.CreateDirectoryAsync(slotPath).ConfigureAwait(false);
 
         var storage = GetSlotStorage(slot);
+        cancellationToken.ThrowIfCancellationRequested();
+        // Once admitted, the atomic write is awaited to completion before shutdown may release storage.
         await storage.WriteAsync(_config.SaveFileName, data).ConfigureAwait(false);
     }
 
@@ -147,8 +155,10 @@ public class SaveRepository<TSaveData> : AbstractContextUtility, ISaveRepository
     ///     删除指定槽位的存档
     /// </summary>
     /// <param name="slot">存档槽位编号</param>
-    public async Task DeleteAsync(int slot)
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    public async Task DeleteAsync(int slot, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var storage = GetSlotStorage(slot);
         await storage.DeleteAsync(_config.SaveFileName).ConfigureAwait(false);
     }
@@ -157,8 +167,10 @@ public class SaveRepository<TSaveData> : AbstractContextUtility, ISaveRepository
     ///     列出所有有效的存档槽位
     /// </summary>
     /// <returns>包含所有有效存档槽位编号的只读列表，按升序排列</returns>
-    public async Task<IReadOnlyList<int>> ListSlotsAsync()
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    public async Task<IReadOnlyList<int>> ListSlotsAsync(CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         // 列举所有槽位目录
         var directories = await _rootStorage.ListDirectoriesAsync().ConfigureAwait(false);
 
@@ -166,6 +178,7 @@ public class SaveRepository<TSaveData> : AbstractContextUtility, ISaveRepository
 
         foreach (var dirName in directories)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             // 检查目录名是否符合槽位前缀
             if (!dirName.StartsWith(_config.SaveSlotPrefix, StringComparison.Ordinal))
                 continue;
@@ -200,11 +213,12 @@ public class SaveRepository<TSaveData> : AbstractContextUtility, ISaveRepository
     /// <param name="slot">当前加载的存档槽位。</param>
     /// <param name="storage">对应槽位的存储对象。</param>
     /// <param name="data">原始加载出来的存档数据。</param>
+    /// <param name="cancellationToken">Cancels before the migrated snapshot is committed.</param>
     /// <returns>迁移后的最新存档；如果无需迁移则返回原始对象。</returns>
     /// <exception cref="InvalidOperationException">
     ///     当前运行时缺少必要的迁移链、读取到更高版本的存档，或迁移器返回了非法版本。
     /// </exception>
-    private async Task<TSaveData> MigrateIfNeededAsync(int slot, IStorage storage, TSaveData data)
+    private async Task<TSaveData> MigrateIfNeededAsync(int slot, IStorage storage, TSaveData data, CancellationToken cancellationToken)
     {
         if (data is not IVersionedData versionedData)
         {
@@ -252,6 +266,7 @@ public class SaveRepository<TSaveData> : AbstractContextUtility, ISaveRepository
             $"{typeof(TSaveData).Name} in slot {slot}",
             "save migration");
 
+        cancellationToken.ThrowIfCancellationRequested();
         await storage.WriteAsync(_config.SaveFileName, migrated).ConfigureAwait(false);
         return migrated;
     }
@@ -271,10 +286,4 @@ public class SaveRepository<TSaveData> : AbstractContextUtility, ISaveRepository
         }
     }
 
-    /// <summary>
-    ///     初始化逻辑
-    /// </summary>
-    protected override void OnInit()
-    {
-    }
 }

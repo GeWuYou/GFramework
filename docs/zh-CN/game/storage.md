@@ -53,7 +53,7 @@ IStorage storage = new FileStorage("GameData", serializer, ".json");
 它适合做的是：
 
 - 把 `settings/`、`profiles/`、`runtime-cache/` 这类键空间隔离开
-- 让多个 repository 或 utility 共用同一份根存储
+- 让多个 repository 或普通服务共用同一份根存储
 - 避免项目层到处手写 `"settings/xxx"`、`"save/slot_1/xxx"` 之类的字符串拼接
 
 当前实现还支持继续嵌套：
@@ -205,3 +205,7 @@ await storage.WriteAsync("user://saves/player.json", new Dictionary<string, int>
 2. [设置系统](./setting.md)
 3. [序列化系统](./serialization.md)
 4. [Game 入口](./index.md)
+
+## 服务取消与存储所有权
+
+`FileStorage` 和 `ScopedStorage` 通过构造函数接收依赖，独立于 Architecture 使用。上层仓库的取消令牌控制接纳、锁等待和后续操作；已经开始的底层存储任务会被完整等待。关闭流程先等待保存任务和仓库操作，再释放底层存储。`ScopedStorage` 只包装键前缀，不取得根存储的释放责任。

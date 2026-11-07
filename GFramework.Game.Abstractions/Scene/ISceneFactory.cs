@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2026 GeWuYou
+// Copyright (c) 2026 GeWuYou
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,15 +11,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using GFramework.Core.Abstractions.Utility;
+
 
 namespace GFramework.Game.Abstractions.Scene;
 
 /// <summary>
-/// 场景工厂接口，继承自上下文工具接口。
+/// 场景工厂接口，通过显式依赖创建场景。
 /// 负责根据场景键值创建对应的场景行为实例，是场景管理系统的核心工厂模式实现。
 /// </summary>
-public interface ISceneFactory : IContextUtility
+public interface ISceneFactory
 {
     /// <summary>
     /// 根据指定的场景键值创建场景行为实例。

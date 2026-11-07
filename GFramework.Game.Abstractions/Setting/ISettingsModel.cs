@@ -1,7 +1,7 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using GFramework.Core.Abstractions.Model;
+
 
 namespace GFramework.Game.Abstractions.Setting;
 
@@ -11,7 +11,7 @@ namespace GFramework.Game.Abstractions.Setting;
 ///     - 管理并编排 Settings Applicator
 ///     - 管理 Settings Migration
 /// </summary>
-public interface ISettingsModel : IModel
+public interface ISettingsModel
 {
     /// <summary>
     /// 获取一个布尔值，指示当前对象是否已初始化。
@@ -86,19 +86,22 @@ public interface ISettingsModel : IModel
     ///     初始化所有设置数据（加载 + 迁移）
     /// </summary>
     /// <returns>异步操作任务</returns>
-    Task InitializeAsync();
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    Task InitializeAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     ///     保存所有设置数据
     /// </summary>
     /// <returns>异步操作任务</returns>
-    Task SaveAllAsync();
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    Task SaveAllAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     ///     应用所有设置
     /// </summary>
     /// <returns>异步操作任务</returns>
-    Task ApplyAllAsync();
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    Task ApplyAllAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     ///     重置指定类型的设置

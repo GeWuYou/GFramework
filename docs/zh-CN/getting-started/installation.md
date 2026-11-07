@@ -19,7 +19,7 @@ GFramework 采用模块化设计，不同包提供不同的功能：
 | `GeWuYou.GFramework.Cqrs` | CQRS runtime | request / notification / stream 分发与处理器注册，按需安装 |
 | `GeWuYou.GFramework.Cqrs.Abstractions` | CQRS 抽象契约 | 共享 request、handler 与 pipeline 契约 |
 | `GeWuYou.GFramework.Game` | Game 运行时 | 配置、存储、设置、Scene、UI 等游戏层能力 |
-| `GeWuYou.GFramework.Game.Abstractions` | Game 抽象契约 | 共享 `IConfigRegistry`、`ISceneRouter`、`IUiRouter` 等接口 |
+| `GeWuYou.GFramework.Game.Abstractions` | Game 抽象契约 | 共享 `IConfigRegistry`、`ISceneRouter`、`IUiService` 等接口 |
 | `GeWuYou.GFramework.Godot` | Godot 集成 | Godot 项目的运行时接线、节点扩展与宿主适配 |
 | `GeWuYou.GFramework.Ecs.Arch` | Arch ECS 运行时 | 需要 `UseArch(...)`、默认 `World` 注册与系统桥接 |
 | `GeWuYou.GFramework.Ecs.Arch.Abstractions` | Arch ECS 抽象契约 | 只共享 ECS 模块接口、配置对象与宿主循环边界 |

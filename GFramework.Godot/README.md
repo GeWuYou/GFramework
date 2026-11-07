@@ -1,187 +1,45 @@
 # GFramework.Godot
 
-`GFramework.Godot` 是 `GFramework` 在 Godot 宿主侧的运行时适配包。
+将 GFramework 通用运行时接入 Godot 的节点、场景树、InputMap、资源、暂停和文件路径。引擎继续拥有原生主循环，框架服务使用显式宿主调度。
 
-它建立在 `GFramework.Game`、`GFramework.Game.Abstractions` 与 `GFramework.Core.Abstractions` 之上，把框架已有的架构、
-Scene / UI、配置、存储、设置、日志与协程能力接到 `Node`、`SceneTree`、`PackedScene`、`FileAccess` 与 `AudioServer`
-等 Godot 运行时对象上。
+## 相邻模块
 
-如果你需要的是 `[GetNode]`、`[BindNodeSignal]`、`AutoLoads` 或 `InputActions` 这类编译期能力，请改为同时安装
-`GFramework.Godot.SourceGenerators`。这些能力不属于本包。
+- `Game` 提供 `UiService`、`SceneRouter`、设置、存档和配置运行时。
+- `Core` 提供标准 DI、日志、暂停和可选 Architecture 编排。
+- `Godot.SourceGenerators` 按需生成节点注入、信号、场景包装和项目元数据；普通 UI 直接登记 `Control` 场景。
 
-## 包定位
+## 子系统
 
-当前包解决的是 Godot 运行时接线，而不是重新定义一套 Godot 专属框架：
+| 目录 | 主要入口 | 作用 |
+| --- | --- | --- |
+| `UI/` | `GodotUiRoot`、`GodotUiView`、注册扩展、`GodotUiInputBridge` | 原生挂载、焦点、模态与异步动作 |
+| `Scene/` | `GodotSceneFactory`、`GodotSceneRegistry`、`SceneBehaviorFactory` | 原生场景创建和生命周期 |
+| `Architectures/` | `AbstractArchitecture` | 可选引擎宿主编排 |
+| `Input/` | `GodotInputBindingStore` | InputMap 绑定和快照 |
+| `Pause/` | `GodotPauseHandler` | 暂停组与场景树连接 |
+| `Storage/` | `GodotFileStorage` | `user://` 持久化与原子写入 |
+| `Setting/` | 音频、图形、语言应用器 | 将设置数据应用到引擎 |
+| `Config/`、`Resource/` | Godot 配置与资源适配 | 项目资源和内容加载 |
+| `Coroutine/`、`Extensions/`、`Signal/`、`Logging/`、`Text/` | 协程、节点与日志等扩展 | 保留的引擎能力 |
 
-- 架构生命周期与场景树绑定：`AbstractArchitecture`、`ArchitectureAnchor`
-- 节点运行时辅助：`WaitUntilReadyAsync()`、`AddChildXAsync()`、`QueueFreeX()`、`UnRegisterWhenNodeExitTree(...)`
-- Godot 风格的 Scene / UI 工厂与 registry：`GodotSceneFactory`、`GodotUiFactory`
-- 基于 `InputMap` 的动作绑定适配：`GodotInputBindingStore`
-- Godot 特化的配置、存储与设置实现：`GodotYamlConfigLoader`、`GodotFileStorage`、`GodotAudioSettings`
-- 宿主侧辅助能力：`Signal(...)` fluent API、Godot 时间源、暂停处理、富文本效果
+## 最小采用
 
-它不负责：
+在 Godot 主线程挂载 `GodotUiRoot`，捕获宿主同步上下文创建 `SynchronizationContextGameDispatcher`，通过 `UiRegistry.RegisterGodot` 或 `RegisterGodotScene` 登记普通 `Control`。创建 `UiService` 后，即可通过共享强类型路由打开页面和窗口。
 
-- 自动生成节点字段注入代码
-- 自动生成 `_Ready()` / `_ExitTree()` 接线
-- 自动扫描所有场景或页面并完成统一注册
-- 提供 `GodotSceneRouter` 或 `GodotUiRouter` 这类额外 router 类型
+场景使用显式注册表构造 `GodotSceneFactory`，再创建 `SceneRouter(factory, root, dispatcher)`。需要暂停的 UI 共享一个 `PauseStackManager`，通过 `GodotPauseHandler` 接到场景树。
 
-## 与相邻包的关系
+### 关闭顺序
 
-- `GFramework.Game`
-  - 提供 Scene / UI / 配置 / 数据等默认运行时契约与基类。
-  - `GFramework.Godot` 负责把这些能力落到 Godot 宿主。
-- `GFramework.Game.Abstractions`
-  - 提供 `ISceneFactory`、`IUiFactory`、设置与配置相关契约。
-  - 本包的大部分工厂和适配层都实现这些接口。
-- `GFramework.Core.Abstractions`
-  - 提供架构、日志、环境等基础契约。
-  - `AbstractArchitecture` 与日志 provider 都建立在这层之上。
-- `GFramework.Godot.SourceGenerators`
-  - 提供 `project.godot` 元数据、`[GetNode]`、`[BindNodeSignal]`、`[AutoScene]`、`[AutoUiPage]` 等编译期样板生成。
-  - 推荐与本包配套使用，但职责边界要分开理解。
+观察按钮、输入和启动任务的错误。退出时关闭新的业务入口、等待在途操作，停止 UI 和场景服务，再释放暂停、存储与原生 root。使用 Architecture 时，`GameRuntimeModule(dispatcher, configure)` 将普通服务停止接入宿主分离之前的阶段。
 
-## 子系统地图
+## 可运行工程与文档
 
-### `Architectures/`
-
-- `AbstractArchitecture`
-- `AbstractGodotModule`
-- `ArchitectureAnchor`
-- `IGodotModule`
-
-用于把架构生命周期绑定到 `SceneTree`，并在需要时把 Godot 模块挂到场景树。
-
-### `Scene/` 与 `UI/`
-
-- `GodotSceneFactory`、`GodotSceneRegistry`
-- `GodotUiFactory`、`GodotUiRegistry`
-- `SceneBehaviorFactory`、`UiPageBehaviorFactory`
-
-这部分负责把 `PackedScene`、`Control`、`CanvasLayer` 等 Godot 对象接入 `GFramework.Game` 的 Scene / UI 契约。
-
-### `Input/`
-
-- `GodotInputBindingStore`
-
-这部分负责把 `InputMap` 默认绑定、动作重绑定与快照导入导出接到 `GFramework.Game.Abstractions.Input` 契约。
-
-### `Config/`、`Storage/` 与 `Setting/`
-
-- `GodotYamlConfigLoader`
-- `GodotFileStorage`
-- `GodotAudioSettings`、`GodotGraphicsSettings`、`GodotLocalizationSettings`
-
-这部分解决的是 Godot 文件系统、音频总线、图形与本地化设置等宿主差异。
-
-### `Extensions/`、`Coroutine/`、`Logging/`、`Pause/`、`Text/`、`Pool/`
-
-- 节点扩展与 `Signal(...)` fluent API
-- `GodotTimeSource` 与协程时间分段
-- Godot 日志入口 `GodotLog`（标准 `ILoggerProvider`）与 `GodotLogAppender` 输出落点
-- 暂停处理、节点池与富文本效果支持
-
-这些目录都是“宿主适配层”，不是新的 gameplay 抽象层。
-
-## 最小接入路径
-
-### 1. 先区分运行时包和生成器包
-
-如果你只需要 Godot 运行时适配：
-
-```bash
-dotnet add package GeWuYou.GFramework
-dotnet add package GeWuYou.GFramework.Godot
-```
-
-如果你还需要 `project.godot` 强类型入口、节点字段注入和信号绑定，再额外安装：
-
-```bash
-dotnet add package GeWuYou.GFramework.Core.SourceGenerators
-dotnet add package GeWuYou.GFramework.Godot.SourceGenerators
-```
-
-### 2. 保持原有架构注册方式，只把宿主协作接到 Godot
-
-常规模块在 InstallModules() 中继续使用 InstallModule(...)；该方法由 ConfigureServices(IServiceCollection) 驱动，只声明依赖，不解析服务或访问原生节点。
-
-只有模块自身暴露 `Node`、需要挂到 `ArchitectureAnchor`，或要在 `OnAttach(...)` / `OnDetach()` 里处理 Godot 生命周期副作用时，
-再使用 `InstallGodotModule(...)`。
-
-InstallGodotModule(...) 现在是配置期声明入口。启动时等待 InitializeAsync(...)，架构会显式把锚点和节点操作派发到 Godot 主线程，并在模块完成附加后进入 Ready。停止会逆序分离已附加模块，然后继续释放核心 provider；并发销毁等待同一个完整任务。
-
-### 3. Scene / UI 继续沿用 `Game` 契约
-
-当前真实边界是：
-
-- 没有 `GodotSceneRouter`
-- 没有 `GodotUiRouter`
-- `GodotSceneFactory` 在 provider 缺失时回退到 `SceneBehaviorFactory`
-- `GodotUiFactory` 仍要求 `IUiPageBehaviorProvider`
-
-也就是说，项目通常仍然继承 `GFramework.Game.Scene.SceneRouterBase` 与 `GFramework.Game.UI.UiRouterBase`，只是把工厂和行为落到
-Godot 上。
-
-### 4. 按需接入配置、存储和设置
-
-当项目已经使用 `Game` 模块的配置、存储、设置契约时，再补 Godot 侧实现：
-
-- 配置：`GodotYamlConfigLoader`
-- 存储：`GodotFileStorage`
-- 设置：`GodotAudioSettings`、`GodotGraphicsSettings`、`GodotLocalizationSettings`
-
-不要把这些宿主实现误写成 `Game` 模块的默认行为。
-
-### 5. CQRS 分发不再由架构上下文承载
-
-`IArchitectureContext` 不包含任何 CQRS 成员，也没有同步分发入口；Godot 侧也不再有主线程同步 CQRS 保护包装。
-请求、通知与流式分发由可选安装的 `CqrsRuntimeModule`（或组合根的 `UseCqrsRuntime(...)` 扩展）提供，调用统一走
-`GFramework.Cqrs.Extensions` 中的异步上下文扩展方法：
-
-- `SendRequestAsync(...)`
-- `PublishAsync(...)`
-- `CreateStream(...)`
-- `SendAsync(...)`
-
-在 Godot 节点、UI、输入和场景回调里，可以用协程包装：
-
-- `RunRequestCoroutine(...)`
-- `RunPublishCoroutine(...)`
-- `RunStreamCoroutine(...)`
-
-## 典型接入方式
-
-- 架构侧保持普通模块注册，再按需挂接 Godot 宿主
-- `project.godot` 元数据与节点样板交给 `GFramework.Godot.SourceGenerators`
-- Scene / UI 继续沿用 `Game` 模块的路由语义
-
-## 文档入口
-
-- Godot 运行时总览：[Godot 模块总览](../docs/zh-CN/godot/index.md)
-- 架构集成：[Godot 架构集成](../docs/zh-CN/godot/architecture.md)
-- 场景系统：[Godot 场景系统](../docs/zh-CN/godot/scene.md)
-- UI 系统：[Godot UI 系统](../docs/zh-CN/godot/ui.md)
-- 输入系统：[Godot 输入集成](../docs/zh-CN/godot/input.md)
-- 节点扩展：[Godot 节点扩展](../docs/zh-CN/godot/extensions.md)
-- 信号系统：[Godot 信号系统](../docs/zh-CN/godot/signal.md)
-- 日志系统：[Godot 日志系统](../docs/zh-CN/godot/logging.md)
-- 集成教程：[Godot 集成教程](../docs/zh-CN/tutorials/godot-integration.md)
-- 生成器入口：[Godot 源码生成器说明](../GFramework.Godot.SourceGenerators/README.md)
-
-## 什么时候不该把它当成主入口
-
-以下场景更适合先回到其他包：
-
-- 只需要 Scene / UI / 配置契约，不需要 Godot 宿主：
-  - 选 `GFramework.Game.Abstractions`
-- 需要默认运行时实现，但暂时不接 Godot：
-  - 选 `GFramework.Game`
-- 需要的是 `project.godot` 元数据、节点字段注入或编译期样板：
-  - 选 `GFramework.Godot.SourceGenerators`
-
-## 持久化与宿主示例
-
-GodotFileStorage 对 user:// 和普通文件路径先写同目录临时文件，再替换目标文件；res:// 用于读取随游戏打包的资源，写入会被拒绝。存档与设置应放在 user://。
-
-[可运行的桌面样例](../Samples/GodotIntegration/README.md)接入场景、UI、配置、暂停、输入与持久化；使用匹配的 Godot .NET 编辑器运行。
+- [官方素材小游戏](../Samples/DodgeTheCreeps/README.md)：实际玩法、强类型菜单、暂停、设置和保存继续。
+- [Godot 运行时示例](../Samples/GodotIntegration/README.md)：配置、输入、场景、协程与持久化接入。
+- [Godot 概览](../docs/zh-CN/godot/index.md)
+- [UI 系统](../docs/zh-CN/godot/ui.md)
+- [场景系统](../docs/zh-CN/godot/scene.md)
+- [输入](../docs/zh-CN/godot/input.md)
+- [暂停](../docs/zh-CN/godot/pause.md)
+- [设置](../docs/zh-CN/godot/setting.md)
+- [存储](../docs/zh-CN/godot/storage.md)

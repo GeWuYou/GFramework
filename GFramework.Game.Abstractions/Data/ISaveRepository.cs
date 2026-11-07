@@ -14,7 +14,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using GFramework.Core.Abstractions.Utility;
+
 
 namespace GFramework.Game.Abstractions.Data;
 
@@ -22,7 +22,7 @@ namespace GFramework.Game.Abstractions.Data;
 ///     存档仓库接口，管理基于槽位的存档系统
 /// </summary>
 /// <typeparam name="TSaveData">存档数据类型，必须实现IData接口并具有无参构造函数</typeparam>
-public interface ISaveRepository<TSaveData> : IUtility
+public interface ISaveRepository<TSaveData>
     where TSaveData : class, IData, new()
 {
     /// <summary>
@@ -44,31 +44,36 @@ public interface ISaveRepository<TSaveData> : IUtility
     /// </summary>
     /// <param name="slot">存档槽位编号</param>
     /// <returns>如果存档存在返回true，否则返回false</returns>
-    Task<bool> ExistsAsync(int slot);
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    Task<bool> ExistsAsync(int slot, CancellationToken cancellationToken = default);
 
     /// <summary>
     ///     加载指定槽位的存档
     /// </summary>
     /// <param name="slot">存档槽位编号</param>
     /// <returns>存档数据对象，如果不存在则返回新实例</returns>
-    Task<TSaveData> LoadAsync(int slot);
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    Task<TSaveData> LoadAsync(int slot, CancellationToken cancellationToken = default);
 
     /// <summary>
     ///     保存存档到指定槽位
     /// </summary>
     /// <param name="slot">存档槽位编号</param>
     /// <param name="data">要保存的存档数据</param>
-    Task SaveAsync(int slot, TSaveData data);
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    Task SaveAsync(int slot, TSaveData data, CancellationToken cancellationToken = default);
 
     /// <summary>
     ///     删除指定槽位的存档
     /// </summary>
     /// <param name="slot">存档槽位编号</param>
-    Task DeleteAsync(int slot);
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    Task DeleteAsync(int slot, CancellationToken cancellationToken = default);
 
     /// <summary>
     ///     列出所有有效的存档槽位
     /// </summary>
     /// <returns>包含所有有效存档槽位编号的只读列表，按升序排列</returns>
-    Task<IReadOnlyList<int>> ListSlotsAsync();
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    Task<IReadOnlyList<int>> ListSlotsAsync(CancellationToken cancellationToken = default);
 }

@@ -1,14 +1,14 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using GFramework.Core.Abstractions.Utility;
+
 
 namespace GFramework.Core.Abstractions.Pause;
 
 /// <summary>
 /// 暂停栈管理器接口，管理嵌套暂停状态
 /// </summary>
-public interface IPauseStackManager : IContextUtility
+public interface IPauseStackManager : IAsyncDisposable
 {
     /// <summary>
     /// 推入暂停请求

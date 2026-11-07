@@ -1,213 +1,72 @@
 ---
 title: 数据与存档系统
-description: 以当前 GFramework.Game 源码与 PersistenceTests 为准，说明 DataRepository、UnifiedSettingsDataRepository 和 SaveRepository 的职责边界。
+description: 使用构造注入的数据仓库、统一设置文件和槽位存档，管理取消、迁移与通知。
 ---
 
 # 数据与存档系统
 
-`GFramework.Game` 的数据持久化不是“只有一个万能仓库”。
+Game 提供三类普通服务，可直接构造或登记到标准 DI：
 
-当前更准确的理解是三层分工：
+| 服务 | 数据组织 | 适用场景 |
+| --- | --- | --- |
+| `DataRepository` | 一个 `IDataLocation` 对应一份对象 | 玩家档案、缓存与独立业务数据 |
+| `UnifiedSettingsDataRepository` | 多个 section 聚合到一个文件 | 音频、图形、语言和输入设置 |
+| `SaveRepository<TSaveData>` | 按槽位组织数据 | 游戏进度及版本迁移 |
 
-- `DataRepository`
-  - 面向“一个 location 对应一份持久化对象”的通用数据仓库
-- `UnifiedSettingsDataRepository`
-  - 面向“多个设置 section 聚合到同一个文件”的设置仓库
-- `SaveRepository<TSaveData>`
-  - 面向“按槽位组织的版本化存档”
+仓库通过构造函数接收存储和序列化依赖，操作不要求 Architecture、Utility 角色或初始化调用。静态内容配置使用独立的 [配置系统](./config-system.md)。
 
-如果先把这三类入口分开理解，后续接入时会清晰很多。
-
-## 与 AI-First 配置系统的边界
-
-如果你是从 AI-First 配置工作流一路读到这里，需要先把“配置契约”和“运行时持久化”分开理解：
-
-- 配置系统的 schema 支持边界，仍以 `GFramework.Game` Runtime 和 `GFramework.Game.SourceGenerators` 当前共享的 schema 子集为准
-- `DataRepository`、`UnifiedSettingsDataRepository` 和 `SaveRepository<TSaveData>` 负责的是数据怎么落盘、怎么回读、怎么组织槽位，而不是放宽配置契约
-- 如果配置设计依赖 `oneOf`、`anyOf`、非 `false` 的 `additionalProperties`（例如省略或 `true`），或其他更复杂的 schema shape，应直接回到 [配置系统](./config-system.md) 与 raw YAML / schema 本体继续处理，而不是期待 repository 层自动接管这些边界
-
-## 什么时候用哪个仓库
-
-### `DataRepository`
-
-适合：
-
-- 单份玩家档案
-- 单份运行时缓存
-- 一条 location 对应一个文件的普通业务数据
-
-默认语义是：
-
-- `IDataLocation` 决定 key
-- 一条 location 对应一份对象
-- 覆盖保存时可按 `DataRepositoryOptions.AutoBackup` 创建 `<key>.backup`
-- `SaveAllAsync(...)` 视为一次批量提交，只发送批量事件，不重复发送单项保存事件
-
-### `UnifiedSettingsDataRepository`
-
-适合：
-
-- 音频、图形、语言等多个设置 section 统一落到一份文件
-- 启动时一次性加载所有设置，再交给 `SettingsModel<TRepository>` 编排
-
-默认语义是：
-
-- 底层持久化文件只有一份，默认文件名是 `settings.json`
-- 各个设置 section 仍然通过 `IDataLocation` 的 key 区分
-- 保存、删除时会整文件回写，而不是只改单个 section 文件
-- 开启 `AutoBackup` 时，备份粒度也是整个统一文件，不是单个 section
-
-当 `DataRepositoryOptions.BasePath = "settings"`，并保持默认文件名时，最小目录结构通常是：
-
-```text
-settings/
-  settings.json
-```
-
-如果同时开启 `AutoBackup = true`，则同一路径下还会额外出现：
-
-```text
-settings/
-  settings.json
-  settings.backup
-```
-
-### `SaveRepository<TSaveData>`
-
-适合：
-
-- 多槽位存档
-- 需要版本迁移的 save data
-- 需要列举现有槽位和删除槽位
-
-默认语义是：
-
-- 按 `SaveRoot` / `SaveSlotPrefix` / `SaveFileName` 组织目录
-- 槽位不存在时，`LoadAsync(slot)` 返回新的 `TSaveData` 实例，而不是 `null`
-- `ListSlotsAsync()` 只返回真实存在存档文件的槽位，并按升序排列
-- 迁移成功后会把升级后的结果自动回写到槽位文件
-
-## 当前公开入口
-
-### `DataRepository`
-
-`DataRepository` 是最通用的默认实现。有几条默认行为需要特别注意：
-
-- `LoadAsync<T>(location)` 在文件不存在时返回 `new T()`，不是抛异常
-- `DeleteAsync(location)` 只有在目标数据真实存在并被删除时才发送删除事件
-- `SaveAllAsync(...)` 会抑制逐项 `DataSavedEvent<T>`，只保留一次 `DataBatchSavedEvent`
-- `AutoBackup = true` 时，覆盖旧值前会先把旧值写到 `<key>.backup`
-
-最小接法通常是：项目先准备一个 `IDataLocation` 或 `IDataLocationProvider`，再把它交给 `DataRepository` 做
-`location -> key` 的映射；repository 自己不负责推导业务对象应该落在哪个位置。
-
-### `UnifiedSettingsDataRepository`
-
-当前 `SettingsModel<TRepository>` 依赖的默认设置仓库就是它。
-
-它和普通 `DataRepository` 的关键区别不是接口，而是落盘形态：
-
-- `DataRepository`
-  - 每个 location 对应一个独立文件
-- `UnifiedSettingsDataRepository`
-  - 所有 section 聚合到同一个统一文件
-
-还有两个容易遗漏的点：
-
-- `LoadAllAsync()` 依赖 `RegisterDataType(location, type)` 建立 section -> 运行时类型映射
-- 仓库内部会先把统一文件加载进缓存，再在保存 / 删除时基于快照整文件提交
-
-这就是为什么 `SettingsModel<TRepository>` 会在拿到 `GetData<T>()` 或 `RegisterApplicator(...)` 后主动把类型注册回 repository。
-
-### `SaveRepository<TSaveData>`
-
-`SaveRepository<TSaveData>` 用于槽位存档，不直接复用 `IDataLocation`。
-
-最重要的公开配置是 `SaveConfiguration`：
+## 槽位存档
 
 ```csharp
-var config = new SaveConfiguration
-{
-    SaveRoot = "saves",
-    SaveSlotPrefix = "slot_",
-    SaveFileName = "save.json"
-};
-```
-
-按这个配置，槽位 `1` 的默认文件结构就是：
-
-```text
-saves/
-  slot_1/
-    save.json
-```
-
-当前实现内部会先把根存储包装成 `ScopedStorage(storage, config.SaveRoot)`，再按槽位继续加前缀，因此项目层一般不需要手工再拼一次 `"saves/slot_1"`。
-
-## 存档迁移的真实语义
-
-`SaveRepository<TSaveData>` 只有在 `TSaveData` 实现了 `IVersionedData` 时，才支持 `RegisterMigration(...)`。
-
-当前源码和 `PersistenceTests` 明确约束了下面这些行为：
-
-- 非版本化 save type 注册迁移器会直接失败
-- 同一个 `FromVersion` 不能重复注册迁移器
-- 迁移链缺口会显式抛错，不会静默返回半升级结果
-- 迁移器声明的 `ToVersion` 必须与实际返回对象的版本一致
-- 如果读到比当前运行时代码更高版本的存档，也会明确失败
-- 单次加载会先固定一份迁移表快照，避免并发注册让同一次加载看到变化中的链路
-
-也就是说，`SaveRepository<TSaveData>` 的迁移语义更偏“严格升级管线”，而不是“尽量帮你读出来”。
-
-## 最小接入路径
-
-下面是当前 `Game` 层最常见的一套组合方式：
-
-```csharp
-using GFramework.Core.Abstractions.Serializer;
-using GFramework.Core.Abstractions.Storage;
 using GFramework.Game.Abstractions.Data;
 using GFramework.Game.Data;
 using GFramework.Game.Serializer;
 using GFramework.Game.Storage;
 
-var serializer = new JsonSerializer();
-var storage = new FileStorage("GameData", serializer, ".json");
-
-ISettingsDataRepository settingsRepository = new UnifiedSettingsDataRepository(
-    storage,
-    serializer,
-    new DataRepositoryOptions
-    {
-        BasePath = "settings",
-        AutoBackup = true
-    });
-
-var saveConfiguration = new SaveConfiguration
+using var storage = new FileStorage("GameData", new JsonSerializer());
+var saves = new SaveRepository<PlayerSave>(storage, new SaveConfiguration
 {
-    SaveRoot = "saves",
-    SaveSlotPrefix = "slot_",
-    SaveFileName = "save.json"
-};
+    SaveRoot = "saves"
+});
+await saves.SaveAsync(1, new PlayerSave { Score = 12 });
+var restored = await saves.LoadAsync(1);
+
+public sealed class PlayerSave : IData
+{
+    public int Score { get; set; }
+}
 ```
 
-分工应保持清晰：
+`ExistsAsync` 检查槽位；`LoadAsync` 在槽位不存在时创建默认对象；`ListSlotsAsync` 按编号返回包含存档文件的槽位。缺失文件、损坏文件和不支持的版本由应用按业务需要处理，保存应由明确的业务动作触发。
 
-- `storage` 只负责底层文件读写
-- `settingsRepository` 负责统一设置文件
-- `SaveRepository<TSaveData>` 负责槽位目录和存档迁移
+版本化 DTO 实现 `IVersionedData`，通过 `RegisterMigration` 登记递增版本的迁移。重复起始版本被拒绝；缺少迁移链、非法输出版本和高于当前运行时的文件版本会失败。迁移使用注册表快照，全部成功后才回写升级内容。
 
-## 当前边界
+## 数据与统一设置仓库
 
-- `DataRepositoryOptions` 描述的是仓库公开行为契约，不是某一种固定落盘格式
-- `UnifiedSettingsDataRepository` 不是通用万能仓库，它专门服务“多 section 聚合单文件”的场景
-- `SaveRepository<TSaveData>` 不负责业务层的 autosave 策略、云同步或存档选择 UI
-- `LoadAsync(...)` 返回新实例的行为适合默认启动路径；如果项目需要“缺档即报错”，应在业务层显式调用 `ExistsAsync(...)`
-- 如果 AI-First 配置系统里的 schema 已经超出 Runtime / Generator 共享子集，repository 也不会替你放宽这些约束；这时应优先回到 [配置系统](./config-system.md) 与 raw YAML / schema 设计本身
+`DataRepository` 接收 `IStorage`；`UnifiedSettingsDataRepository` 同时接收 `IRuntimeTypeSerializer`。使用统一文件时，在加载前调用 `RegisterDataType(location, typeof(T))` 明确登记允许恢复的类型。
 
-## 继续阅读
+`DataRepositoryOptions.AutoBackup` 在覆盖前保存旧快照。独立数据按 key 备份，统一设置按完整文件备份。统一仓库先生成下一份缓存快照，在写入成功后交换缓存，失败不会把未提交数据留在内存中。
 
-1. [设置系统](./setting.md)
-2. [存储系统](./storage.md)
-3. [序列化系统](./serialization.md)
-4. [Game 入口](./index.md)
+`SaveAllAsync` 发出一次批量通知。独立数据仓库逐项写入；统一设置仓库将本批 section 合并到一次文件提交。
+
+## 通知
+
+仓库构造函数最后的 `Action<object>? publishEvent` 是可选通知出口，`EnableEvents` 控制是否发布。宿主可在组合根把它接到自己的事件总线或显式回调。没有回调时，仓库只执行数据操作。
+
+通知使用 `DataLoadedEvent<T>`、`DataSavedEvent<T>`、`DataDeletedEvent` 和 `DataBatchSavedEvent`。通知在对应操作成功后发生；内部加载、备份和迁移回写不额外生成公开操作通知。
+
+## 取消与关闭
+
+仓库异步方法的最后一个参数是 `CancellationToken`。令牌撤销尚未接纳的工作、设置提交锁等待和后续批次项；已经开始的底层写入会被完整等待。调用方应等待所有保存任务，再释放底层存储。
+
+`IStorage` 提供同步与异步读写；文件存储使用同目录临时文件替换目标。路径、扩展名和存储所有权见 [存储系统](./storage.md)。
+
+## 迁移
+
+删除仓库的 `SetContext`、Utility 注册和空初始化代码，改为显式传入依赖。需要事件时传入通知回调；文件布局、槽位命名和已有序列化格式保持原样。
+
+## 相关主题
+
+- [设置系统](./setting.md)
+- [序列化系统](./serialization.md)
+- [存储系统](./storage.md)

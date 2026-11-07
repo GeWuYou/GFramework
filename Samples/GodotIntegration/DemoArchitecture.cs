@@ -1,27 +1,29 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using GFramework.Core.Abstractions.Pause;
-using GFramework.Core.Pause;
-using GFramework.Game.Abstractions.Scene;
-using GFramework.Game.Abstractions.UI;
+using GFramework.Game.Abstractions.Runtime;
+using GFramework.Game.Runtime;
+using GFramework.Game.UI;
 using GFramework.Godot.Architectures;
+using GFramework.Godot.UI;
 
 namespace GodotIntegration;
 
 /// <summary>
-/// Installs the sample's Scene/UI composition. The Godot host owns the scene tree,
-/// while Architecture owns component startup and reverse-order shutdown.
+/// Installs ordinary game services into the optional Godot Architecture host.
+/// GameRuntimeModule joins UI, scene and pause shutdown before native host detachment.
 /// </summary>
-internal sealed class DemoArchitecture(DemoRoot root) : AbstractArchitecture
+internal sealed class DemoArchitecture(
+    DemoRoot root, UiRegistry routes, GodotUiRoot uiRoot, IGameDispatcher dispatcher) : AbstractArchitecture
 {
-    /// <summary>Registers interfaces before the provider is built; no nodes are attached during configuration.</summary>
+    /// <summary>Describes registrations without creating or attaching native nodes.</summary>
     protected override void InstallModules()
     {
-        RegisterUtility<IPauseStackManager>(new PauseStackManager());
-        RegisterUtility<ISceneFactory>(new DemoSceneFactory(root));
-        RegisterUtility<IUiFactory>(new DemoUiFactory(root));
-        RegisterSystem(new DemoSceneRouter(root));
-        RegisterSystem(new DemoUiRouter(root));
+        RegisterServiceModule(new GameRuntimeModule(dispatcher, services =>
+        {
+            services.AddGamePause();
+            services.AddGameUi(routes, uiRoot, dispatcher);
+            services.AddGameScenes(new DemoSceneFactory(root), root, dispatcher);
+        }));
     }
 }

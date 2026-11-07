@@ -7,7 +7,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using GFramework.Core.Abstractions.Pause;
 using GFramework.Core.Logging;
-using GFramework.Core.Utility;
 
 namespace GFramework.Core.Pause;
 
@@ -15,7 +14,7 @@ namespace GFramework.Core.Pause;
 /// 暂停栈管理器实现，用于管理游戏中的暂停状态。
 /// 支持多组暂停、嵌套暂停、以及暂停状态的通知机制。
 /// </summary>
-public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAsyncDestroyable
+public class PauseStackManager : IPauseStackManager, IAsyncDestroyable
 {
     /// <summary>创建暂停栈管理器；未注入日志时使用空输出。</summary>
     public PauseStackManager(ILogger? logger = null)
@@ -34,6 +33,10 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
     /// 异步销毁方法，在组件销毁时调用。
     /// </summary>
     /// <returns>表示异步操作完成的任务。</returns>
+    public ValueTask DisposeAsync() => DestroyAsync();
+
+    /// <summary>Stops this manager and releases its synchronization resources once.</summary>
+    /// <returns>The completed shutdown operation.</returns>
     public ValueTask DestroyAsync()
     {
         if (_disposed)
@@ -588,12 +591,6 @@ public class PauseStackManager : AbstractContextUtility, IPauseStackManager, IAs
         OnPauseStateChanged?.Invoke(this, new PauseStateChangedEventArgs(group, isPaused));
     }
 
-    /// <summary>
-    /// 初始化方法，在组件初始化时调用。
-    /// </summary>
-    protected override void OnInit()
-    {
-    }
 
     /// <summary>
     /// 锁内采集的销毁快照，供锁外补发恢复通知使用。

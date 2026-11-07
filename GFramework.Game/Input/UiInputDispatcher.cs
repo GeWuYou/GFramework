@@ -7,34 +7,35 @@ using GFramework.Game.Abstractions.UI;
 namespace GFramework.Game.Input;
 
 /// <summary>
-///     提供逻辑动作到 UI 路由语义分发的默认桥接。
+///     Bridges logical input mappings to the standalone UI service's ordered asynchronous dispatch.
 /// </summary>
 public sealed class UiInputDispatcher : IUiInputDispatcher
 {
     private readonly IUiInputActionMap _actionMap;
-    private readonly IUiRouter _router;
+    private readonly IUiService _service;
 
     /// <summary>
-    ///     初始化 UI 输入分发器。
+    ///     Creates an explicit input bridge; neither dependency requires an Architecture.
     /// </summary>
-    /// <param name="actionMap">动作映射表。</param>
-    /// <param name="router">目标 UI 路由器。</param>
+    /// <param name="actionMap">Logical-to-semantic action map.</param>
+    /// <param name="service">Target UI service.</param>
     /// <exception cref="ArgumentNullException">当 <paramref name="actionMap" /> 为 <see langword="null" /> 时抛出。</exception>
-    /// <exception cref="ArgumentNullException">当 <paramref name="router" /> 为 <see langword="null" /> 时抛出。</exception>
-    public UiInputDispatcher(IUiInputActionMap actionMap, IUiRouter router)
+    /// <exception cref="ArgumentNullException">The service is null.</exception>
+    public UiInputDispatcher(IUiInputActionMap actionMap, IUiService service)
     {
         _actionMap = actionMap ?? throw new ArgumentNullException(nameof(actionMap));
-        _router = router ?? throw new ArgumentNullException(nameof(router));
+        _service = service ?? throw new ArgumentNullException(nameof(service));
     }
 
     /// <inheritdoc />
-    public bool TryDispatch(string actionName)
+    public Task<bool> DispatchAsync(string actionName, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (!_actionMap.TryMap(actionName, out var action))
         {
-            return false;
+            return Task.FromResult(false);
         }
 
-        return _router.TryDispatchUiAction(action);
+        return _service.DispatchActionAsync(action, cancellationToken);
     }
 }

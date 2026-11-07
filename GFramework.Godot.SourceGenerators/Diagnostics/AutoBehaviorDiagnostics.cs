@@ -9,7 +9,7 @@ namespace GFramework.Godot.SourceGenerators.Diagnostics;
 ///     定义行为类自动生成器使用的诊断描述符。
 /// </summary>
 /// <remarks>
-///     这些规则覆盖 <c>AutoScene</c> 与 <c>AutoUiPage</c> 等行为生成器的常见使用约束，
+///     这些规则覆盖 <c>AutoScene</c> 的常见使用约束，
 ///     以便在生成被跳过前向调用方报告明确的失败原因。
 /// </remarks>
 internal static class AutoBehaviorDiagnostics
@@ -34,17 +34,6 @@ internal static class AutoBehaviorDiagnostics
         "GF_AutoBehavior_002",
         "Auto behavior generators require a compatible base type",
         "Type '{0}' must inherit from '{1}' to use '{2}'",
-        Category,
-        DiagnosticSeverity.Error,
-        true);
-
-    /// <summary>
-    ///     报告 UI 页面声明中使用了不存在的 <c>UiLayer</c> 名称。
-    /// </summary>
-    public static readonly DiagnosticDescriptor InvalidUiLayerName = new(
-        "GF_AutoBehavior_003",
-        "Unknown UiLayer name",
-        "Ui layer '{0}' on '{1}' does not exist on GFramework.Game.Abstractions.Enums.UiLayer",
         Category,
         DiagnosticSeverity.Error,
         true);

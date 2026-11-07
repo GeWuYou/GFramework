@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Game.Abstractions.Setting;
@@ -16,9 +16,11 @@ public class GodotGraphicsSettings(ISettingsModel model) : IResetApplyAbleSettin
     /// <summary>
     ///     将当前图形设置同步应用到 Godot 引擎。
     /// </summary>
+    /// <param name="cancellationToken">Cancels before applying native changes.</param>
     /// <returns>已完成的任务；该实现只执行同步引擎调用，不会启动后台异步工作。</returns>
-    public Task ApplyAsync()
+    public Task ApplyAsync(CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var settings = model.GetData<GraphicsSettings>();
         // 创建分辨率向量
         var size = new Vector2I(settings.ResolutionWidth, settings.ResolutionHeight);

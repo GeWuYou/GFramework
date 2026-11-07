@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2026 GeWuYou
+// Copyright (c) 2026 GeWuYou
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -50,41 +50,47 @@ public interface ISceneBehavior : IRoute
     /// 在场景正式进入前调用，负责预加载场景所需的各类资源。
     /// </summary>
     /// <param name="param">场景进入参数，可能包含初始化数据或上下文信息。</param>
+    /// <param name="cancellationToken">Cancellation before commit; cleanup receives a non-cancelable token.</param>
     /// <returns>表示加载操作完成的ValueTask。</returns>
-    ValueTask OnLoadAsync(ISceneEnterParam? param);
+    ValueTask OnLoadAsync(ISceneEnterParam? param, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 异步处理场景正式进入逻辑。
     /// 在资源加载完成后调用，启动场景的主要运行逻辑。
     /// </summary>
+    /// <param name="cancellationToken">Cancellation before commit; cleanup receives a non-cancelable token.</param>
     /// <returns>表示进入操作完成的ValueTask。</returns>
-    ValueTask OnEnterAsync();
+    ValueTask OnEnterAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 异步处理场景暂停逻辑。
     /// 当场景被其他场景覆盖或失去焦点时调用。
     /// </summary>
+    /// <param name="cancellationToken">Cancellation before commit; cleanup receives a non-cancelable token.</param>
     /// <returns>表示暂停操作完成的ValueTask。</returns>
-    ValueTask OnPauseAsync();
+    ValueTask OnPauseAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 异步处理场景恢复逻辑。
     /// 当场景重新获得焦点或从暂停状态恢复时调用。
     /// </summary>
+    /// <param name="cancellationToken">Cancellation before commit; cleanup receives a non-cancelable token.</param>
     /// <returns>表示恢复操作完成的ValueTask。</returns>
-    ValueTask OnResumeAsync();
+    ValueTask OnResumeAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 异步处理场景退出逻辑。
     /// 在场景即将被替换或关闭时调用，执行清理工作。
     /// </summary>
+    /// <param name="cancellationToken">Cancellation before commit; cleanup receives a non-cancelable token.</param>
     /// <returns>表示退出操作完成的ValueTask。</returns>
-    ValueTask OnExitAsync();
+    ValueTask OnExitAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 异步卸载场景资源。
     /// 在场景完全退出后调用，释放占用的内存和资源。
     /// </summary>
+    /// <param name="cancellationToken">Cancellation before commit; cleanup receives a non-cancelable token.</param>
     /// <returns>表示卸载操作完成的ValueTask。</returns>
-    ValueTask OnUnloadAsync();
+    ValueTask OnUnloadAsync(CancellationToken cancellationToken = default);
 }

@@ -4,7 +4,6 @@
 using System.IO;
 using System.Threading;
 using GFramework.Core.Abstractions.Events;
-using GFramework.Core.Abstractions.Rule;
 using GFramework.Core.Abstractions.Storage;
 using GFramework.Core.Architectures;
 using GFramework.Core.Events;
@@ -362,15 +361,14 @@ public class PersistenceTests
     {
         var root = CreateTempRoot();
         using var storage = new FileStorage(root, new JsonSerializer(), ".json");
+        var context = new TestEventSink();
         var repository = new DataRepository(
             storage,
             new DataRepositoryOptions
             {
                 AutoBackup = false,
                 EnableEvents = true
-            });
-        var context = CreateEventContext();
-        ((IContextAware)repository).SetContext(context);
+            }, publishEvent: context.Publish);
 
         var location1 = new TestDataLocation("graphics", namespaceValue: "settings");
         var location2 = new TestDataLocation("audio", namespaceValue: "settings");
@@ -466,6 +464,7 @@ public class PersistenceTests
         }
 
         using var storage = new FileStorage(root, new JsonSerializer(), ".json");
+        var context = new TestEventSink();
         var repository = new UnifiedSettingsDataRepository(
             storage,
             new JsonSerializer(),
@@ -473,12 +472,10 @@ public class PersistenceTests
             {
                 AutoBackup = true,
                 EnableEvents = true
-            });
+            }, publishEvent: context.Publish);
         repository.RegisterDataType(location1, typeof(TestSimpleData));
         repository.RegisterDataType(location2, typeof(TestSimpleData));
 
-        var context = CreateEventContext();
-        ((IContextAware)repository).SetContext(context);
 
         var savedEventCount = 0;
         var batchEventCount = 0;
@@ -693,6 +690,7 @@ public class PersistenceTests
     {
         var root = CreateTempRoot();
         using var storage = new FileStorage(root, new JsonSerializer(), ".json");
+        var context = new TestEventSink();
         var repository = new UnifiedSettingsDataRepository(
             storage,
             new JsonSerializer(),
@@ -700,9 +698,7 @@ public class PersistenceTests
             {
                 AutoBackup = true,
                 EnableEvents = true
-            });
-        var context = CreateEventContext();
-        ((IContextAware)repository).SetContext(context);
+            }, publishEvent: context.Publish);
 
         var location1 = new TestDataLocation("settings/graphics");
         var location2 = new TestDataLocation("settings/audio");
@@ -737,16 +733,30 @@ public class PersistenceTests
         });
     }
 
-    /// <summary>
-    ///     创建带事件总线的真实架构上下文，供上下文感知仓库测试使用。
-    /// </summary>
-    /// <returns>可用于发送和监听事件的架构上下文。</returns>
-    private static ArchitectureContext CreateEventContext()
+    /// <summary>Dispatches explicit repository notifications to typed test subscribers.</summary>
+    private sealed class TestEventSink
     {
-        var container = new MicrosoftDiContainer();
-        container.Register<IEventBus>(new EventBus());
-        container.Freeze();
-        return new ArchitectureContext(container);
+        private readonly Dictionary<Type, List<Action<object>>> _handlers = new();
+
+        /// <summary>Registers a typed subscriber without an architecture dependency.</summary>
+        public void RegisterEvent<T>(Action<T> handler)
+        {
+            if (!_handlers.TryGetValue(typeof(T), out var handlers))
+            {
+                handlers = new List<Action<object>>();
+                _handlers.Add(typeof(T), handlers);
+            }
+            handlers.Add(value => handler((T)value));
+        }
+
+        /// <summary>Publishes a notification using its concrete runtime type.</summary>
+        public void Publish(object notification)
+        {
+            if (!_handlers.TryGetValue(notification.GetType(), out var handlers))
+                return;
+            foreach (var handler in handlers)
+                handler(notification);
+        }
     }
 
     private sealed class TestSaveMigrationV1ToV2 : ISaveMigration<TestVersionedSaveData>

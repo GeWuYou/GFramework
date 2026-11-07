@@ -1,14 +1,14 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Core.Abstractions.Logging;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using GFramework.Core.Extensions;
 using GFramework.Core.Logging;
-using GFramework.Core.Model;
 using GFramework.Game.Abstractions.Data;
 using GFramework.Game.Abstractions.Setting;
+using GFramework.Game.Abstractions.Runtime;
+using GFramework.Game.Runtime;
 using GFramework.Game.Internal;
 using GFramework.Game.Setting.Events;
 
@@ -19,12 +19,14 @@ namespace GFramework.Game.Setting;
 ///     - 管理 Settings Data 的生命周期（Load / Save / Reset / Migration）
 ///     - 编排 Settings Applicator 的 Apply 行为
 /// </summary>
-public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider, TRepository? repository, ILogger? logger = null)
-    : AbstractModel, ISettingsModel
+public class SettingsModel<TRepository>(IDataLocationProvider locationProvider, TRepository repository, ILogger? logger = null,
+    Action<object>? publishEvent = null, IGameDispatcher? dispatcher = null)
+    : ISettingsModel
     where TRepository : class, ISettingsDataRepository
 {
     // 标准日志记录器；未注入时使用空输出，不读取进程级状态。
     private readonly ILogger _logger = logger ?? NullLogger<SettingsModel<TRepository>>.Instance;
+    private readonly IGameDispatcher _dispatcher = dispatcher ?? new InlineGameDispatcher();
 
     private readonly ConcurrentDictionary<Type, IResetApplyAbleSettings> _applicators = new();
 
@@ -44,15 +46,13 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
     private readonly ConcurrentDictionary<(Type type, int from), ISettingsMigration> _migrations = new();
     private volatile bool _initialized;
 
-    private IDataLocationProvider? _locationProvider = locationProvider;
+    private readonly IDataLocationProvider _locationProvider = locationProvider ?? throw new ArgumentNullException(nameof(locationProvider));
 
-    private ISettingsDataRepository? _repository = repository;
+    private readonly ISettingsDataRepository _repository = repository ?? throw new ArgumentNullException(nameof(repository));
 
-    private ISettingsDataRepository DataRepository =>
-        _repository ?? throw new InvalidOperationException("ISettingsDataRepository not initialized.");
+    private ISettingsDataRepository DataRepository => _repository;
 
-    private IDataLocationProvider LocationProvider =>
-        _locationProvider ?? throw new InvalidOperationException("IDataLocationProvider not initialized.");
+    private IDataLocationProvider LocationProvider => _locationProvider;
 
     /// <summary>
     /// 获取一个布尔值，指示当前对象是否已初始化。
@@ -174,82 +174,101 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
     ///     - 加载所有已存在的 Settings Data
     ///     - 执行必要的迁移
     /// </summary>
-    public async Task InitializeAsync()
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        _initialized = false;
         IDictionary<string, IData> allData;
-
         try
         {
-            allData = await DataRepository.LoadAllAsync().ConfigureAwait(false);
+            allData = await DataRepository.LoadAllAsync(cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch (OperationCanceledException)
         {
-            _logger.LogError(ex, "Failed to load unified settings file.");
-            return;
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Failed to load unified settings file.");
+            throw new AggregateException("Settings initialization failed; current data was retained.", exception);
         }
 
+        var pending = new List<(ISettingsData Target, ISettingsData Source)>();
+        var errors = new List<Exception>();
         foreach (var data in _data.Values)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                var type = data.GetType();
-                var location = LocationProvider.GetLocation(type);
-
+                var location = LocationProvider.GetLocation(data.GetType());
                 if (!allData.TryGetValue(location.Key, out var raw))
                     continue;
-
-                if (raw is not ISettingsData loaded)
-                    continue;
-
-                var migrated = MigrateIfNeeded(loaded, data);
-
-                // 回填（不替换实例）
-                data.LoadFrom(migrated);
+                if (raw is not ISettingsData loaded || loaded.GetType() != data.GetType())
+                    throw new InvalidOperationException($"Settings section '{location.Key}' has an incompatible type.");
+                // Stage all migration results before touching existing business instances.
+                pending.Add((data, MigrateIfNeeded(loaded, data)));
             }
-            catch (Exception ex)
+            catch (OperationCanceledException)
             {
-                _logger.LogError(ex, $"Failed to initialize settings data: {data.GetType().Name}");
+                throw;
             }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Failed to initialize settings data: {SettingsType}", data.GetType().Name);
+                errors.Add(exception);
+            }
+        }
+        if (errors.Count != 0)
+            throw new AggregateException("Settings initialization failed; current data was retained.", errors);
 
+        cancellationToken.ThrowIfCancellationRequested();
+        foreach (var (target, source) in pending)
+            target.LoadFrom(source);
         _initialized = true;
-        this.SendEvent(new SettingsInitializedEvent());
+        publishEvent?.Invoke(new SettingsInitializedEvent());
     }
-
 
     /// <summary>
     ///     将所有 Settings Data 持久化
     /// </summary>
-    public async Task SaveAllAsync()
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    public async Task SaveAllAsync(CancellationToken cancellationToken = default)
     {
-        foreach (var data in _data.Values)
-            try
-            {
-                var location = LocationProvider.GetLocation(data.GetType());
-                await DataRepository.SaveAsync(location, data).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Failed to save settings data: {data.GetType().Name}");
-            }
-
-        this.SendEvent(new SettingsSavedAllEvent());
+        cancellationToken.ThrowIfCancellationRequested();
+        var items = _data.Values.Select(data => (LocationProvider.GetLocation(data.GetType()), (IData)data)).ToArray();
+        await DataRepository.SaveAllAsync(items, cancellationToken).ConfigureAwait(false);
+        publishEvent?.Invoke(new SettingsSavedAllEvent());
     }
 
     /// <summary>
     ///     应用所有设置
     /// </summary>
-    public async Task ApplyAllAsync()
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    public async Task ApplyAllAsync(CancellationToken cancellationToken = default)
     {
-        foreach (var applicator in _applicators)
+        cancellationToken.ThrowIfCancellationRequested();
+        var errors = new List<Exception>();
+        foreach (var applicator in _applicators.Values)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                await applicator.Value.ApplyAsync().ConfigureAwait(false);
+                await _dispatcher.InvokeAsync(() => applicator.ApplyAsync(cancellationToken), cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception ex)
+            catch (OperationCanceledException)
             {
-                _logger.LogError(ex, $"Failed to apply settings: {applicator.GetType().Name}");
+                throw;
             }
-
-        this.SendEvent(new SettingsAppliedAllEvent());
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Failed to apply settings: {SettingsType}", applicator.GetType().Name);
+                errors.Add(exception);
+            }
+        }
+        if (errors.Count != 0)
+            throw new AggregateException("One or more settings applicators failed.", errors);
+        publishEvent?.Invoke(new SettingsAppliedAllEvent());
     }
 
     /// <summary>
@@ -260,7 +279,7 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
     {
         var data = GetData<T>();
         data.Reset();
-        this.SendEvent(new SettingsResetEvent<T>(data));
+        publishEvent?.Invoke(new SettingsResetEvent<T>(data));
     }
 
     /// <summary>
@@ -273,7 +292,7 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
 
         foreach (var applicator in _applicators)
             applicator.Value.Reset();
-        this.SendEvent(new SettingsResetAllEvent(_data.Values));
+        publishEvent?.Invoke(new SettingsResetAllEvent(_data.Values));
     }
 
     /// <summary>
@@ -287,36 +306,8 @@ public class SettingsModel<TRepository>(IDataLocationProvider? locationProvider,
             ? (T)app
             : null;
     }
-    // =========================
-    // OnInitialize
-    // =========================
-
-    /// <summary>
-    /// 初始化函数，在对象创建时调用。该函数负责初始化数据仓库和位置提供者，
-    /// 并注册所有已知数据类型到数据仓库中。
-    /// </summary>
-    protected override void OnInit()
-    {
-        // 初始化数据仓库实例，如果尚未赋值则通过依赖注入获取
-        _repository ??= this.GetUtility<TRepository>()!;
-
-        // 初始化位置提供者实例，如果尚未赋值则通过依赖注入获取
-        _locationProvider ??= this.GetUtility<IDataLocationProvider>()!;
-
-        // 遍历所有已知的数据类型，为其分配位置并注册到数据仓库中
-        foreach (var type in _data.Keys)
-        {
-            TryRegisterDataType(type);
-        }
-    }
-
     private void TryRegisterDataType(Type type)
     {
-        if (_repository == null || _locationProvider == null)
-        {
-            return;
-        }
-
         var location = _locationProvider.GetLocation(type);
         _repository.RegisterDataType(location, type);
     }

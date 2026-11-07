@@ -1,4 +1,4 @@
-﻿; Unshipped analyzer release
+; Unshipped analyzer release
 ; https://github.com/dotnet/roslyn/blob/main/src/RoslynAnalyzers/Microsoft.CodeAnalysis.Analyzers/ReleaseTrackingAnalyzers.Help.md
 
 ### New Rules
@@ -23,7 +23,6 @@
  GF_Godot_BindNodeSignal_010 | GFramework.Godot                               | Error    | BindNodeSignalDiagnostics                  
  GF_AutoBehavior_001         | GFramework.Godot.SourceGenerators.Behavior     | Error    | AutoBehaviorDiagnostics                    
  GF_AutoBehavior_002         | GFramework.Godot.SourceGenerators.Behavior     | Error    | AutoBehaviorDiagnostics                    
- GF_AutoBehavior_003         | GFramework.Godot.SourceGenerators.Behavior     | Error    | AutoBehaviorDiagnostics                    
  GF_AutoBehavior_004         | GFramework.Godot.SourceGenerators.Behavior     | Error    | AutoBehaviorDiagnostics                    
  GF_AutoExport_001           | GFramework.Godot.SourceGenerators.Registration | Error    | AutoRegisterExportedCollectionsDiagnostics 
  GF_AutoExport_002           | GFramework.Godot.SourceGenerators.Registration | Error    | AutoRegisterExportedCollectionsDiagnostics 

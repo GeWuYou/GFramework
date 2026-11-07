@@ -370,52 +370,24 @@ protected override void ConfigureServices(IServiceCollection services)
 
 ## 请求模型与异步操作
 
-请求处理器天然异步，适合承载网络请求等异步逻辑：
+请求处理器通过构造注入接收普通服务，并传播调用方取消令牌。设置流程可依赖 `ISettingsModel` 与 `ISettingsSystem`：
 
 ```csharp
-/// <summary>
-/// 更改语言请求与处理器
-/// </summary>
 public sealed record ChangeLanguageRequest(string Language) : IRequest<Unit>;
 
-public sealed class ChangeLanguageHandler
-    : AbstractRequestHandler<ChangeLanguageRequest, Unit>
+public sealed class ChangeLanguageHandler(ISettingsModel model, ISettingsSystem settings)
+    : IRequestHandler<ChangeLanguageRequest, Unit>
 {
-    public override async ValueTask<Unit> Handle(
-        ChangeLanguageRequest request,
-        CancellationToken cancellationToken)
+    public async ValueTask<Unit> Handle(ChangeLanguageRequest request, CancellationToken cancellationToken)
     {
-        // 1. 获取设置 Model
-        var settingsModel = Context.GetModel<ISettingsModel>()!;
-
-        // 2. 修改语言配置
-        var settings = settingsModel.GetData();
-        settings.Language = request.Language;
-
-        // 3. 应用设置（通过 System）
-        await Context.GetSystem<ISettingsSystem>()!.Apply();
+        model.GetData<LocalizationSettings>().Language = request.Language;
+        await settings.ApplyAllAsync(cancellationToken);
         return Unit.Value;
     }
 }
 ```
 
-如果这些逻辑都写在 Controller：
-
-```csharp
-LanguageButton.Pressed += async () =>
-{
-    var settingsModel = this.GetModel<ISettingsModel>()!;
-    var settings = settingsModel.GetData();
-    settings.Language = newLanguage;
-    await this.GetSystem<ISettingsSystem>()!.Apply();
-};
-```
-
-**问题**：
-
-- Controller 臃肿
-- 逻辑分散
-- 难以复用
+`LocalizationSettings` 是 Game 契约中的语言设置数据。宿主显式登记应用器与 dispatcher，Controller 只负责构造请求并观察任务。设置的实际采用路径见 [设置系统](../../game/setting.md)。
 
 ## 理解职责边界
 

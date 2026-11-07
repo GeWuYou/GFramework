@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2026 GeWuYou
+// Copyright (c) 2026 GeWuYou
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -13,8 +13,6 @@
 
 using GFramework.Core.Abstractions.Serializer;
 using GFramework.Core.Abstractions.Storage;
-using GFramework.Core.Extensions;
-using GFramework.Core.Utility;
 using GFramework.Game.Abstractions.Data;
 using GFramework.Game.Abstractions.Data.Events;
 
@@ -29,25 +27,24 @@ namespace GFramework.Game.Data;
 ///     启用自动备份时，覆盖写入前会为整个统一文件创建单份备份；批量保存只发出批量事件，不重复发出单项保存事件。
 /// </remarks>
 public class UnifiedSettingsDataRepository(
-    IStorage? storage,
-    IRuntimeTypeSerializer? serializer,
+    IStorage storage,
+    IRuntimeTypeSerializer serializer,
     DataRepositoryOptions? options = null,
-    string fileName = "settings.json")
-    : AbstractContextUtility, ISettingsDataRepository
+    string fileName = "settings.json",
+    Action<object>? publishEvent = null)
+    : ISettingsDataRepository
 {
     private readonly SemaphoreSlim _lock = new(1, 1);
     private readonly DataRepositoryOptions _options = options ?? new DataRepositoryOptions();
     private readonly Dictionary<string, Type> _typeRegistry = new(StringComparer.Ordinal);
     private UnifiedSettingsFile? _file;
     private bool _loaded;
-    private IRuntimeTypeSerializer? _serializer = serializer;
-    private IStorage? _storage = storage;
+    private readonly IRuntimeTypeSerializer _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
+    private readonly IStorage _storage = storage ?? throw new ArgumentNullException(nameof(storage));
 
-    private IStorage Storage =>
-        _storage ?? throw new InvalidOperationException("IStorage not initialized.");
+    private IStorage Storage => _storage;
 
-    private IRuntimeTypeSerializer Serializer =>
-        _serializer ?? throw new InvalidOperationException("ISerializer not initialized.");
+    private IRuntimeTypeSerializer Serializer => _serializer;
 
     private UnifiedSettingsFile File =>
         _file ?? throw new InvalidOperationException("UnifiedSettingsFile not set.");
@@ -64,14 +61,16 @@ public class UnifiedSettingsDataRepository(
     /// <typeparam name="T">数据类型，必须继承自IData接口</typeparam>
     /// <param name="location">数据位置信息</param>
     /// <returns>加载的数据对象</returns>
-    public async Task<T> LoadAsync<T>(IDataLocation location)
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    public async Task<T> LoadAsync<T>(IDataLocation location, CancellationToken cancellationToken = default)
         where T : class, IData, new()
     {
-        await EnsureLoadedAsync().ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        await EnsureLoadedAsync(cancellationToken).ConfigureAwait(false);
         var key = location.Key;
         var result = _file!.Sections.TryGetValue(key, out var raw) ? Serializer.Deserialize<T>(raw) : new T();
         if (_options.EnableEvents)
-            this.SendEvent(new DataLoadedEvent<T>(result));
+            publishEvent?.Invoke(new DataLoadedEvent<T>(result));
         return result;
     }
 
@@ -82,16 +81,18 @@ public class UnifiedSettingsDataRepository(
     /// <param name="location">数据位置信息</param>
     /// <param name="data">要保存的数据对象</param>
     /// <returns>异步操作任务</returns>
-    public async Task SaveAsync<T>(IDataLocation location, T data)
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    public async Task SaveAsync<T>(IDataLocation location, T data, CancellationToken cancellationToken = default)
         where T : class, IData
     {
-        await EnsureLoadedAsync().ConfigureAwait(false);
-        await MutateAndPersistAsync(file => file.Sections[location.Key] = Serializer.Serialize(data))
+        cancellationToken.ThrowIfCancellationRequested();
+        await EnsureLoadedAsync(cancellationToken).ConfigureAwait(false);
+        await MutateAndPersistAsync(file => file.Sections[location.Key] = Serializer.Serialize(data), cancellationToken)
             .ConfigureAwait(false);
 
         if (_options.EnableEvents)
         {
-            this.SendEvent(new DataSavedEvent<T>(data));
+            publishEvent?.Invoke(new DataSavedEvent<T>(data));
         }
     }
 
@@ -100,9 +101,11 @@ public class UnifiedSettingsDataRepository(
     /// </summary>
     /// <param name="location">数据位置信息</param>
     /// <returns>如果数据存在则返回true，否则返回false</returns>
-    public async Task<bool> ExistsAsync(IDataLocation location)
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    public async Task<bool> ExistsAsync(IDataLocation location, CancellationToken cancellationToken = default)
     {
-        await EnsureLoadedAsync().ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        await EnsureLoadedAsync(cancellationToken).ConfigureAwait(false);
         return File.Sections.ContainsKey(location.Key);
     }
 
@@ -111,14 +114,17 @@ public class UnifiedSettingsDataRepository(
     /// </summary>
     /// <param name="location">数据位置信息</param>
     /// <returns>异步操作任务</returns>
-    public async Task DeleteAsync(IDataLocation location)
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    public async Task DeleteAsync(IDataLocation location, CancellationToken cancellationToken = default)
     {
-        await EnsureLoadedAsync().ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        await EnsureLoadedAsync(cancellationToken).ConfigureAwait(false);
         var removed = false;
 
-        await _lock.WaitAsync().ConfigureAwait(false);
+        await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var currentFile = File;
             var nextFile = CloneFile(currentFile);
             removed = nextFile.Sections.Remove(location.Key);
@@ -137,7 +143,7 @@ public class UnifiedSettingsDataRepository(
 
         if (removed && _options.EnableEvents)
         {
-            this.SendEvent(new DataDeletedEvent(location));
+            publishEvent?.Invoke(new DataDeletedEvent(location));
         }
     }
 
@@ -146,10 +152,12 @@ public class UnifiedSettingsDataRepository(
     /// </summary>
     /// <param name="dataList">包含数据位置和数据对象的枚举集合</param>
     /// <returns>异步操作任务</returns>
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
     public async Task SaveAllAsync(
-        IEnumerable<(IDataLocation location, IData data)> dataList)
+        IEnumerable<(IDataLocation location, IData data)> dataList, CancellationToken cancellationToken = default)
     {
-        await EnsureLoadedAsync().ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        await EnsureLoadedAsync(cancellationToken).ConfigureAwait(false);
 
         var valueTuples = dataList.ToList();
 
@@ -159,20 +167,22 @@ public class UnifiedSettingsDataRepository(
                 {
                     file.Sections[location.Key] = Serializer.Serialize(data);
                 }
-            })
+            }, cancellationToken)
             .ConfigureAwait(false);
 
         if (_options.EnableEvents)
-            this.SendEvent(new DataBatchSavedEvent(valueTuples));
+            publishEvent?.Invoke(new DataBatchSavedEvent(valueTuples));
     }
 
     /// <summary>
     ///     加载所有存储的数据项
     /// </summary>
     /// <returns>包含所有数据项的字典，键为数据位置键，值为数据对象</returns>
-    public async Task<IDictionary<string, IData>> LoadAllAsync()
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    public async Task<IDictionary<string, IData>> LoadAllAsync(CancellationToken cancellationToken = default)
     {
-        await EnsureLoadedAsync().ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        await EnsureLoadedAsync(cancellationToken).ConfigureAwait(false);
 
         var result = new Dictionary<string, IData>(StringComparer.Ordinal);
 
@@ -198,14 +208,6 @@ public class UnifiedSettingsDataRepository(
         _typeRegistry[location.Key] = type;
     }
 
-    /// <summary>
-    ///     初始化
-    /// </summary>
-    protected override void OnInit()
-    {
-        _storage ??= this.GetUtility<IStorage>()!;
-        _serializer ??= this.GetUtility<IRuntimeTypeSerializer>()!;
-    }
 
     // =========================
     // Internals
@@ -214,15 +216,17 @@ public class UnifiedSettingsDataRepository(
     /// <summary>
     ///     确保数据已从存储中加载到缓存
     /// </summary>
-    private async Task EnsureLoadedAsync()
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    private async Task EnsureLoadedAsync(CancellationToken cancellationToken)
     {
         if (_loaded) return;
 
-        await _lock.WaitAsync().ConfigureAwait(false);
+        await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             if (_loaded) return;
 
+            cancellationToken.ThrowIfCancellationRequested();
             var key = UnifiedKey;
 
             _file = await Storage.ExistsAsync(key).ConfigureAwait(false)
@@ -241,11 +245,14 @@ public class UnifiedSettingsDataRepository(
     /// <summary>
     ///     将缓存中的所有数据保存到统一文件
     /// </summary>
-    private async Task MutateAndPersistAsync(Action<UnifiedSettingsFile> mutation)
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    /// <param name="mutation">Builds the next uncommitted settings snapshot while holding the commit gate.</param>
+    private async Task MutateAndPersistAsync(Action<UnifiedSettingsFile> mutation, CancellationToken cancellationToken)
     {
-        await _lock.WaitAsync().ConfigureAwait(false);
+        await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var currentFile = File;
             var nextFile = CloneFile(currentFile);
 

@@ -1,213 +1,81 @@
 ---
 title: 设置系统
-description: 以当前 SettingsModel、SettingsSystem 与相关测试为准，说明设置数据、applicator、迁移和持久化的真实接法。
+description: 通过显式依赖组织设置数据、迁移、应用和持久化，并观察初始化与应用失败。
 ---
 
 # 设置系统
 
-`GFramework.Game` 的设置系统负责三件事：
+`SettingsModel<TRepository>` 管理设置数据、迁移和应用器；`SettingsSystem` 编排应用、保存和重置。两者都是普通服务，通过构造函数接收依赖，可直接使用或交给标准 DI 管理。
 
-- 管理 `ISettingsData` 实例的生命周期
-- 管理设置 applicator，并把设置真正作用到运行时环境
-- 在初始化时加载、迁移、保存和重置设置
+## 数据与应用器
 
-当前默认 owner 是：
+- `ISettingsData` 定义版本、重置和 `LoadFrom`。载入后更新已有实例，业务对象可继续持有同一引用。
+- `IResetApplyAbleSettings` 包含数据实例、数据类型、重置和带 `CancellationToken` 的 `ApplyAsync`。
+- `IDataLocationProvider` 将设置数据类型映射到存储位置。
+- `ISettingsDataRepository` 执行加载与保存；统一文件采用 `UnifiedSettingsDataRepository`。
 
-- `SettingsModel<TRepository>`
-- `SettingsSystem`
+模型通过 `GetData<T>()` 创建并登记数据，通过 `RegisterApplicator` 登记应用器，通过 `RegisterMigration` 登记版本迁移。依赖在构造时确定，无需设置上下文或调用同步初始化。
 
-而不是只靠若干 `Get<T>() / Register(...)` 辅助方法就能自动完成一切的模型。
-
-## 与 AI-First 配置系统的边界
-
-如果你关注的是“配置内容最后怎么变成运行时设置”，这里也需要先分清职责：
-
-- 配置 schema 的正式支持边界，仍以 `GFramework.Game` Runtime 和 `GFramework.Game.SourceGenerators` 当前共享的 schema 子集为准
-- `UnifiedSettingsDataRepository`、`SettingsModel<TRepository>` 和 `SettingsSystem` 负责设置数据的加载、迁移、保存与应用，不负责放宽 `oneOf`、`anyOf`、非 `false` 的 `additionalProperties`（例如省略或 `true`）等配置边界
-- 一旦配置设计开始依赖更复杂的 schema shape，应直接回到 [配置系统](./config-system.md) 与 raw YAML / schema 本体处理，再决定设置层怎么消费这些结果
-
-## 当前公开入口
-
-### `ISettingsData`
-
-设置数据对象需要同时承担：
-
-- 默认值持有者
-- 版本化 section
-- 从已加载数据回填到当前实例的入口
-
-当前接口组合是：
+## 采用流程
 
 ```csharp
-public interface ISettingsData : IResettable, IVersionedData, ILoadableFrom<ISettingsData>;
-```
-
-这意味着一个设置数据类型至少要处理：
-
-- `Reset()`
-- `Version`
-- `LastModified`
-- `LoadFrom(ISettingsData source)`
-
-### `IResetApplyAbleSettings`
-
-applicator 的职责不是保存数据，而是把设置结果作用到实际运行时对象。
-
-它当前需要暴露：
-
-- `Data`
-- `DataType`
-- `Reset()`
-- `ApplyAsync()`
-
-典型场景包括：
-
-- 把音量设置同步到音频系统
-- 把画质设置同步到窗口或渲染配置
-- 把语言设置同步到本地化服务
-
-### `SettingsModel<TRepository>`
-
-这是当前设置系统的核心编排器。按当前源码，它负责：
-
-- `GetData<T>()`
-  - 返回某个设置类型的唯一实例
-- `RegisterApplicator(...)`
-  - 注册 applicator，并把其 `Data` 一并纳入模型管理
-- `RegisterMigration(...)`
-  - 注册同一设置类型的前进式迁移链
-- `InitializeAsync()`
-  - 从 repository 读取所有设置、执行迁移、回填到当前实例
-- `SaveAllAsync()`
-  - 持久化所有已登记的设置数据
-- `ApplyAllAsync()`
-  - 依次应用所有 applicator
-- `Reset<T>() / ResetAll()`
-  - 重置单个或全部设置
-
-### `SettingsSystem`
-
-`SettingsSystem` 是面向业务代码更直接的一层系统封装：
-
-- `ApplyAll()`
-- `Apply<T>()`
-- `SaveAll()`
-- `Reset<T>()`
-- `ResetAll()`
-
-它自己不持有独立设置状态，而是把工作委托给 `ISettingsModel`，并在应用时补发 settings 相关事件。
-
-## 初始化与迁移的真实语义
-
-`SettingsModel<TRepository>.InitializeAsync()` 会按更完整的初始化与迁移顺序工作：
-
-- 它会先调用 `ISettingsDataRepository.LoadAllAsync()`
-- 再逐个匹配当前模型里已经登记的设置类型
-- 如果读到了旧版本设置，会以“当前内存实例声明的 `Version`”为目标版本执行迁移
-- 迁移完成后通过 `LoadFrom(...)` 回填到现有实例，而不是直接替换对象引用
-
-当前测试还确认了几个关键边界：
-
-- 同一设置类型的同一个 `FromVersion` 不能重复注册迁移器
-- 注册新迁移器后，类型级迁移缓存会失效并重建，不会继续使用旧快照
-- 如果迁移链缺口导致无法安全升级，模型会保留当前内存中的最新实例，而不是把不完整的旧数据覆盖进来
-- 单个设置 section 初始化失败时，模型会记录错误并继续处理其他 section
-
-这套语义更接近“尽量保证运行时实例总是可用”，而不是“任意旧设置都必须成功导入”。
-
-## 最小接入路径
-
-当前最常见的接法是：
-
-1. 准备一个 `IStorage`
-2. 准备一个 `IRuntimeTypeSerializer`
-3. 注册 `ISettingsDataRepository`
-4. 注册 `IDataLocationProvider`
-5. 创建并注册 `SettingsModel<TRepository>`
-6. 注册 applicator
-7. 注册 `SettingsSystem`
-
-示意代码：
-
-```csharp
-using GFramework.Core.Abstractions.Storage;
-using GFramework.Game.Abstractions.Data;
-using GFramework.Game.Abstractions.Setting;
 using GFramework.Game.Data;
-using GFramework.Game.Serializer;
 using GFramework.Game.Setting;
-using GFramework.Game.Storage;
 
-var serializer = new JsonSerializer();
-var storage = new FileStorage("GameData", serializer, ".json");
+var repository = new UnifiedSettingsDataRepository(storage, serializer);
+var model = new SettingsModel<UnifiedSettingsDataRepository>(locations, repository, dispatcher: dispatcher);
+var audio = model.GetData<AudioSettingsData>();
+model.RegisterApplicator(audioApplicator);
+await model.InitializeAsync(cancellationToken);
 
-var repository = new UnifiedSettingsDataRepository(
-    storage,
-    serializer,
-    new DataRepositoryOptions
-    {
-        BasePath = "settings",
-        AutoBackup = true
-    });
-
-architecture.RegisterUtility<IStorage>(storage);
-architecture.RegisterUtility<IRuntimeTypeSerializer>(serializer);
-architecture.RegisterUtility<ISettingsDataRepository>(repository);
-// 此处注册项目侧的 IDataLocationProvider 实现，用于把设置类型映射到 section key。
-
-var settingsModel = new SettingsModel<ISettingsDataRepository>(null, null);
-// 在注册到架构前，继续补 applicator 与 migration。
-
-architecture.RegisterModel<ISettingsModel>(settingsModel);
-architecture.RegisterSystem<ISettingsSystem>(new SettingsSystem());
+var settings = new SettingsSystem(model, dispatcher: dispatcher);
+await settings.ApplyAllAsync(cancellationToken);
+await settings.SaveAllAsync(cancellationToken);
 ```
 
-启动阶段通常是：
+`storage`、`serializer`、`locations`、`AudioSettingsData` 和 `audioApplicator` 由项目提供。`dispatcher` 是宿主共享的 `IGameDispatcher`；每个应用器都通过它运行。纯托管、无线程要求的设置可以省略该参数，缺省使用 `InlineGameDispatcher`。仓库在加载前完成类型登记；应用器的 `Data` 应与模型中使用的数据实例一致。
 
-```csharp
-await settingsModel.InitializeAsync();
-await settingsModel.ApplyAllAsync();
-```
+最小流程是先登记、加载，再应用。保存由明确的用户或业务动作触发，载入失败时保留现有文件。
 
-退出或显式保存时：
+## 初始化与迁移
 
-```csharp
-await settingsModel.SaveAllAsync();
-```
+`InitializeAsync` 先从仓库获取已登记数据，再独立准备各 section 的迁移结果。所有加载和迁移成功后才调用 `LoadFrom` 更新现有业务实例，并将 `IsInitialized` 设为 `true`。
 
-## `GetData<T>()` 和 `RegisterApplicator(...)` 的分工
+任一 section 的读取、类型或迁移失败会收集为 `AggregateException`；当前业务数据保留，`IsInitialized` 为 `false`，不发出初始化成功通知。取消通过 `OperationCanceledException` 返回。
 
-这两个入口经常被混用，但职责不同：
+迁移必须前进，不能为同一设置类型登记重复的起始版本。加载使用迁移表快照；缺链、非法版本和不兼容结果会失败。设置模型不在初始化失败时保存默认值。
 
-- `GetData<T>()`
-  - 只保证某个设置数据实例存在，并在 repository / location provider 已就绪时把类型注册回去
-- `RegisterApplicator(...)`
-  - 同时注册 applicator 和 applicator 绑定的 `Data`
+项目实现的 `LoadFrom` 应只负责复制已验证的数据，保持确定性，并避免 I/O 或其他不可恢复副作用。
 
-如果一个设置类型需要真正作用到运行时对象，推荐让它通过 applicator 进入模型；这样 `ApplyAllAsync()`、`ResetAll()` 和
-`SettingsSystem` 才能完整覆盖到它。
+## 应用、保存和重置
 
-## 与 repository 的关系
+`SettingsSystem` 提供：
 
-设置系统默认不是直接写文件，而是依赖 `ISettingsDataRepository`。
+- `ApplyAllAsync`：尝试所有独立应用器，收集失败后抛出聚合异常。
+- `ApplyAsync<T>`：应用指定应用器；不存在时正常结束。
+- `SaveAllAsync`：委托模型和仓库保存所有数据，写入失败向调用方传播。
+- `ResetAsync<T>`：重置指定数据，再应用对应应用器。
+- `ResetAllAsync`：重置全部数据和应用器，再重新应用。
 
-当前仓库里更推荐的默认实现是 `UnifiedSettingsDataRepository`，原因很直接：
+每个异步入口的最后一个参数都是 `CancellationToken`。取消在后续操作开始前检查；已接纳的底层持久化任务等待到完成。
 
-- 多个设置 section 会被聚合到同一份统一文件
-- 启动时能一次性 `LoadAllAsync()`
-- `AutoBackup` 针对整个统一文件生效，更贴近“设置快照”的真实语义
+## 通知与失败
 
-如果你的项目明确需要“一类设置一个独立文件”，才考虑回到通用 `DataRepository` 路径。
+构造函数可接收 `Action<object>? publishEvent`，将通知接入宿主自己的事件机制。未提供回调时，服务只执行操作。
 
-## 当前边界
+应用器执行前发布 `SettingsApplyingEvent`，完成后发布携带 `Success` 和错误信息的 `SettingsAppliedEvent`。独立应用器的失败不会阻止后续应用器尝试，最终通过聚合异常向调用方报告。保存和初始化成功通知只在对应操作成功后发布。
 
-- `SettingsModel<TRepository>` 负责数据生命周期，`SettingsSystem` 负责系统级调用入口；两者不要混成一个巨型服务
-- applicator 决定“怎么把数据应用到宿主”，repository 决定“怎么保存数据”，两层职责不要互相侵入
-- 设置迁移和存档迁移是两条不同管线；后者看 [数据与存档系统](./data.md) 里的 `SaveRepository<TSaveData>`
-- 如果某个配置 shape 已经超出 Runtime / Generator 共享支持子集，settings repository 和 `SettingsModel` 也不会替代配置系统去放宽它；应回到 [配置系统](./config-system.md) 与 raw YAML / schema 设计处理
+取消是独立的控制流程，不转成普通应用失败通知。业务按钮、启动流程和关闭流程都应观察返回任务。
 
-## 继续阅读
+## 迁移
 
-1. [数据与存档系统](./data.md)
-2. [存储系统](./storage.md)
-3. [Game 入口](./index.md)
+- 用构造注入替换 `GetModel`、`GetUtility` 和上下文绑定。
+- 将 `ApplyAll`、`Apply<T>`、`SaveAll`、`Reset<T>`、`ResetAll` 分别迁移到带 `Async` 后缀的接口。
+- 给设置应用器的 `ApplyAsync` 增加最后一个取消令牌参数。
+- 需要通知时显式传入回调，原有设置文件和 section 布局继续使用。
+
+## 相关主题
+
+- [数据与存档系统](./data.md)
+- [存储系统](./storage.md)
+- [Godot 设置接入](../godot/setting.md)

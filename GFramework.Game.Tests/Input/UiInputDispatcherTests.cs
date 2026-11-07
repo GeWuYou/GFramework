@@ -1,52 +1,68 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
-using GFramework.Game.Abstractions.Input;
+using System.Threading;
 using GFramework.Game.Input;
 
 namespace GFramework.Game.Tests.Input;
 
-/// <summary>
-///     验证逻辑动作到 UI 路由分发的默认桥接行为。
-/// </summary>
+/// <summary>Checks action mapping, asynchronous completion and cancellation through the public input bridge.</summary>
 [TestFixture]
 public sealed class UiInputDispatcherTests
 {
-    /// <summary>
-    ///     验证 `ui_cancel` 会被映射为 `UiInputAction.Cancel` 并继续分发给路由器。
-    /// </summary>
-    [Test]
-    public void TryDispatch_WhenActionCanMapToUiAction_ForwardsToRouter()
+    /// <summary>Mapped actions retain the caller's cancellation token and the service's captured outcome.</summary>
+    [TestCase(true)]
+    [TestCase(false)]
+    public async Task DispatchAsync_MappedAction_ForwardsToService(bool captured)
     {
-        var router = new Mock<IUiRouter>();
-        router.Setup(mock => mock.TryDispatchUiAction(UiInputAction.Cancel)).Returns(true);
+        using var cancellation = new CancellationTokenSource();
+        var service = new Mock<IUiService>();
+        service.Setup(value => value.DispatchActionAsync(UiInputAction.Cancel, cancellation.Token))
+            .ReturnsAsync(captured);
+        var dispatcher = new UiInputDispatcher(new UiInputActionMap(), service.Object);
 
-        var dispatcher = new UiInputDispatcher(new UiInputActionMap(), router.Object);
+        var result = await dispatcher.DispatchAsync("ui_cancel", cancellation.Token);
 
-        var dispatched = dispatcher.TryDispatch("ui_cancel");
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(dispatched, Is.True);
-            router.Verify(mock => mock.TryDispatchUiAction(UiInputAction.Cancel), Times.Once);
-        });
+        Assert.That(result, Is.EqualTo(captured));
+        service.Verify(value => value.DispatchActionAsync(UiInputAction.Cancel, cancellation.Token), Times.Once);
     }
 
-    /// <summary>
-    ///     验证未映射的逻辑动作不会触发 UI 路由。
-    /// </summary>
+    /// <summary>An unmapped logical action never enters the UI mutation queue.</summary>
     [Test]
-    public void TryDispatch_WhenActionIsUnknown_ReturnsFalseWithoutRouting()
+    public async Task DispatchAsync_UnmappedAction_ReturnsFalse()
     {
-        var router = new Mock<IUiRouter>();
-        var dispatcher = new UiInputDispatcher(new UiInputActionMap(), router.Object);
+        var service = new Mock<IUiService>();
+        var dispatcher = new UiInputDispatcher(new UiInputActionMap(), service.Object);
 
-        var dispatched = dispatcher.TryDispatch("inventory_toggle");
+        Assert.That(await dispatcher.DispatchAsync("inventory_toggle"), Is.False);
+        service.Verify(value => value.DispatchActionAsync(It.IsAny<UiInputAction>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(dispatched, Is.False);
-            router.Verify(mock => mock.TryDispatchUiAction(It.IsAny<UiInputAction>()), Times.Never);
-        });
+    /// <summary>Cancellation before dispatch cannot invoke a service operation.</summary>
+    [Test]
+    public void DispatchAsync_PreCancelled_DoesNotDispatch()
+    {
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        var service = new Mock<IUiService>();
+        var dispatcher = new UiInputDispatcher(new UiInputActionMap(), service.Object);
+
+        Assert.Throws<OperationCanceledException>(() => { _ = dispatcher.DispatchAsync("ui_cancel", cancellation.Token); });
+        service.Verify(value => value.DispatchActionAsync(It.IsAny<UiInputAction>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    /// <summary>Callers can await native or lifecycle dispatch failures at the input boundary.</summary>
+    [Test]
+    public async Task DispatchAsync_ServiceFailure_Propagates()
+    {
+        var failure = new InvalidOperationException("native dispatch failed");
+        var service = new Mock<IUiService>();
+        service.Setup(value => value.DispatchActionAsync(UiInputAction.Cancel, It.IsAny<CancellationToken>()))
+            .Returns(Task.FromException<bool>(failure));
+        var dispatcher = new UiInputDispatcher(new UiInputActionMap(), service.Object);
+
+        var observed = await Assert.ThrowsAsync<InvalidOperationException>(() => dispatcher.DispatchAsync("ui_cancel"));
+
+        Assert.That(observed, Is.SameAs(failure));
     }
 }

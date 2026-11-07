@@ -75,3 +75,5 @@ IContextAware 要求显式绑定实例上下文；未绑定时不回退到全局
 - Core 抽象页：[Core 抽象层说明](../docs/zh-CN/abstractions/core-abstractions.md)
 - Core 运行时入口：[Core 运行时说明](../GFramework.Core/README.md)
 - API 参考入口：[API 参考](../docs/zh-CN/api-reference/index.md)
+
+`IPauseStackManager` 是独立的异步释放服务契约，供 UI、业务流程和宿主共享。实现与采用说明见 [暂停系统](../docs/zh-CN/core/pause.md)。

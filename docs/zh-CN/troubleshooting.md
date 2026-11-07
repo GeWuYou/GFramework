@@ -961,49 +961,11 @@ private async void PreloadResources()
 
 ### 场景加载失败
 
-**问题**：无法加载或实例化场景。
+先确认注册表中的 key 对应实际 `PackedScene`，资源在编辑器与导出包中都存在。`GodotSceneFactory` 通过构造函数接收注册表，场景服务通过 `SceneRouter(factory, root, dispatcher)` 创建。
 
-**错误信息**：
+导航的 `Rejected` 表示守卫拒绝；准备、业务回调和清理错误由返回任务报告。检查传入的 `ISceneRoot`、共享 host dispatcher，以及根节点在停止期间是否仍然存活。
 
-```text
-NullReferenceException: Object reference not set to an instance of an object
-```
-
-**解决方案**：
-
-```csharp
-// ❌ 错误：路径错误或场景未导出
-var scene = GD.Load&lt;PackedScene&gt;("scenes/player.tscn"); // 缺少 res://
-
-// ✅ 正确：使用完整路径
-var scene = GD.Load&lt;PackedScene&gt;("res://scenes/player.tscn");
-var instance = scene.Instantiate();
-
-// ✅ 检查场景是否存在
-if (ResourceLoader.Exists("res://scenes/player.tscn"))
-{
-    var scene = GD.Load&lt;PackedScene&gt;("res://scenes/player.tscn");
-    var instance = scene.Instantiate&lt;Player&gt;();
-    AddChild(instance);
-}
-else
-{
-    GD.PrintErr("Scene not found!");
-}
-
-// ✅ 使用场景路由器
-public class GameSceneRouter : SceneRouterBase
-{
-    protected override void RegisterScenes()
-    {
-        Register&lt;MainMenuScene&gt;("MainMenu", "res://scenes/main_menu.tscn");
-        Register&lt;GameScene&gt;("Game", "res://scenes/game.tscn");
-    }
-}
-
-// 导航到场景
-await sceneRouter.NavigateToAsync("Game");
-```
+具体接入见 [Godot 场景系统](./godot/scene.md)。
 
 ### 节点查找失败
 
@@ -1164,50 +1126,17 @@ public class GameArchitecture : AbstractArchitecture
 
 ### UI 页面导航问题
 
-**问题**：UI 页面无法正确显示或切换。
+按以下顺序检查：
 
-**解决方案**：
+1. 路由已在构造 `UiService` 前登记，注册和调用复用同一份强类型定义。
+2. 页面使用 `PushAsync`／`ReplaceAsync`，独立窗口使用 `ShowAsync`。
+3. `Snapshot.Views` 中的 `Visible`、`Active` 和路由策略符合当前业务状态。
+4. `GodotUiRoot` 已挂入场景树，工厂返回未挂载的普通 Control。
+5. 所有操作任务都由宿主观察，guard 拒绝、取消和运行异常被区分处理。
 
-```csharp
-// ❌ 错误：未注册 UI 页面
-var uiRouter = this.GetSystem&lt;IUiRouter&gt;();
-await uiRouter.PushAsync("MainMenu"); // 失败：页面未注册
+实例关闭使用句柄或 `UiViewContext.CloseAsync`。重复显示单实例窗口沿用原参数，需要刷新参数时关闭后重新打开。业务订阅在打开时建立、关闭时解除。
 
-// ✅ 正确：先注册 UI 页面
-public class GameArchitecture : Architecture
-{
-    protected override void ConfigureServices(Microsoft.Extensions.DependencyInjection.IServiceCollection services)
-    {
-        var uiRegistry = new GodotUiRegistry();
-        uiRegistry.Register("MainMenu", "res://ui/main_menu.tscn", UiLayer.Page);
-        uiRegistry.Register("Settings", "res://ui/settings.tscn", UiLayer.Modal);
-
-        RegisterUtility&lt;IGodotUiRegistry&gt;(uiRegistry);
-        RegisterSystem(new UiRouter(uiRegistry));
-    }
-}
-
-// 导航到页面
-var uiRouter = this.GetSystem&lt;IUiRouter&gt;();
-await uiRouter.PushAsync("MainMenu");
-
-// ✅ 使用转场效果
-await uiRouter.PushAsync("Settings", new UiTransitionOptions
-{
-    TransitionType = UiTransitionType.Fade,
-    Duration = 0.3f
-});
-
-// ✅ 处理导航失败
-try
-{
-    await uiRouter.PushAsync("NonExistentPage");
-}
-catch (InvalidOperationException ex)
-{
-    GD.PrintErr($"Navigation failed: {ex.Message}");
-}
-```
+具体示例见 [Godot UI](./godot/ui.md) 和 [完整小游戏](./tutorials/godot-complete-project.md)。
 
 ## 性能问题
 

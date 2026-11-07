@@ -42,13 +42,15 @@ public interface IRouteGuard<TRoute> where TRoute : IRoute
     /// </summary>
     /// <param name="routeKey">路由键值</param>
     /// <param name="context">路由上下文</param>
+    /// <param name="cancellationToken">Navigation cancellation; asynchronous guards should observe this token and finish their callbacks before returning.</param>
     /// <returns>如果允许进入返回 true,否则返回 false</returns>
-    ValueTask<bool> CanEnterAsync(string routeKey, IRouteContext? context);
+    ValueTask<bool> CanEnterAsync(string routeKey, IRouteContext? context, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 检查是否可以离开指定路由
     /// </summary>
     /// <param name="routeKey">路由键值</param>
+    /// <param name="cancellationToken">Navigation cancellation; asynchronous guards should observe this token and finish their callbacks before returning.</param>
     /// <returns>如果允许离开返回 true,否则返回 false</returns>
-    ValueTask<bool> CanLeaveAsync(string routeKey);
+    ValueTask<bool> CanLeaveAsync(string routeKey, CancellationToken cancellationToken = default);
 }

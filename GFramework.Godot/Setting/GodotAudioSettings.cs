@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2025-2026 GeWuYou
+// Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
 using GFramework.Game.Abstractions.Setting;
@@ -19,9 +19,11 @@ public class GodotAudioSettings(ISettingsModel model, AudioBusMap audioBusMap)
     /// <summary>
     ///     应用音频设置到Godot音频系统
     /// </summary>
+    /// <param name="cancellationToken">Cancels before applying native changes.</param>
     /// <returns>已完成的任务；该实现只执行同步音频总线更新。</returns>
-    public Task ApplyAsync()
+    public Task ApplyAsync(CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var settings = model.GetData<AudioSettings>();
         SetBus(audioBusMap.Master, settings.MasterVolume);
         SetBus(audioBusMap.Bgm, settings.BgmVolume);
