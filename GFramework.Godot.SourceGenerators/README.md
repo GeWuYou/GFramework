@@ -6,7 +6,7 @@
 
 - `project.godot` 元数据入口：生成 `AutoLoads` 与 `InputActions`
 - 节点字段与信号接线：`[GetNode]`、`[BindNodeSignal]`
-- Scene / UI 与启动注册样板：`[AutoScene]`、`[AutoUiPage]`、`[AutoRegisterExportedCollections]`
+- Scene 与启动注册样板：`[AutoScene]`、`[AutoRegisterExportedCollections]`
 
 它是 Analyzer 包，不是运行时库。
 
@@ -17,7 +17,7 @@
 - 从 `project.godot` 手写 AutoLoad / Input Action 字符串
 - 在 `_Ready()` 里重复写 `GetNode<T>()`
 - 在 `_Ready()` / `_ExitTree()` 里重复写 CLR event 订阅与解绑
-- 为 Godot 场景根节点和页面根节点重复声明 `GetScene()` / `GetPage()` 样板
+- 为 Godot 场景根节点重复声明 `GetScene()` 样板
 - 在启动入口里重复遍历导出集合并逐项注册到 registry
 
 它不负责：
@@ -62,9 +62,8 @@
 ### `Behavior/`
 
 - `AutoSceneGenerator`
-- `AutoUiPageGenerator`
 
-用于给场景根节点和 UI 页面根节点生成稳定的 `GetScene()` / `GetPage()` 包装入口。
+用于给场景根节点生成稳定的 `GetScene()` 包装入口。
 
 ### `Registration/`
 
@@ -78,7 +77,7 @@
 
 - `project.godot` 文件与元数据约束
 - `GetNode` / `BindNodeSignal` 的目标成员合法性
-- `AutoScene` / `AutoUiPage` 的宿主类型与参数合法性
+- `AutoScene` 的宿主类型与参数合法性
 - 导出集合注册的成员形状与方法匹配约束
 
 ## 最小接入路径
@@ -125,7 +124,7 @@
 - `[GetNode]` 在类型手写 `_Ready()` 时，需要显式调用 `__InjectGetNodes_Generated()`
 - `[BindNodeSignal]` 在手写 `_Ready()` / `_ExitTree()` 时，需要显式调用
   `__BindNodeSignals_Generated()` 与 `__UnbindNodeSignals_Generated()`
-- `[AutoScene]`、`[AutoUiPage]`、`[AutoRegisterExportedCollections]` 都只生成辅助入口，不会替你织入生命周期
+- `[AutoScene]`、`[AutoRegisterExportedCollections]` 都只生成辅助入口，不会替你织入生命周期
 
 也就是说，本包负责生成辅助方法，但调用时机仍由项目侧决定。
 
@@ -168,8 +167,6 @@ public partial class MainMenu : Control
   - `[BindNodeSignal]`
 - Godot 场景根节点：
   - `[AutoScene]`
-- Godot UI 页面根节点：
-  - `[AutoUiPage]`
 - 启动入口中的集合批量注册：
   - `[AutoRegisterExportedCollections]`
 
@@ -178,7 +175,7 @@ public partial class MainMenu : Control
 - `GFrameworkGodotProjectFile` 可以改相对路径，但文件名必须仍然是 `project.godot`
 - `[GetNode]` 与 `[BindNodeSignal]` 都要求宿主类型是顶层 `partial class`
 - `[BindNodeSignal]` 面向 CLR event，不会自动调用 `Connect()` / `Disconnect()`
-- `[AutoScene]` 与 `[AutoUiPage]` 只生成行为包装入口，不会替代 `SceneRouterBase` 或 `UiRouterBase`
+- `[AutoScene]` 生成场景包装入口；导航由显式构造的 `SceneRouter` 驱动。
 - `[AutoRegisterExportedCollections]` 只适合“集合 -> registry -> 单参数注册方法”这类稳定形状
 
 ## 文档入口
@@ -188,12 +185,11 @@ public partial class MainMenu : Control
 - `GetNode`：[GetNode 生成器](../docs/zh-CN/source-generators/get-node-generator.md)
 - `BindNodeSignal`：[BindNodeSignal 生成器](../docs/zh-CN/source-generators/bind-node-signal-generator.md)
 - `AutoScene`：[AutoScene 生成器](../docs/zh-CN/source-generators/auto-scene-generator.md)
-- `AutoUiPage`：[AutoUiPage 生成器](../docs/zh-CN/source-generators/auto-ui-page-generator.md)
 - `AutoRegisterExportedCollections`：[AutoRegisterExportedCollections 生成器](../docs/zh-CN/source-generators/auto-register-exported-collections-generator.md)
 - Godot 运行时入口：[Godot 运行时说明](../GFramework.Godot/README.md)
 - 集成教程：[Godot 集成教程](../docs/zh-CN/tutorials/godot-integration.md)
 
-## 什么时候不该先看这个包
+## 相关入口
 
 以下场景更适合先回到其他入口：
 
@@ -203,3 +199,5 @@ public partial class MainMenu : Control
   - 先看 `GFramework.Game` 或 `GFramework.Game.Abstractions`
 - 你在确认项目接线顺序，而不是单个生成器契约：
   - 先看 [Godot 集成教程](../docs/zh-CN/tutorials/godot-integration.md)
+
+普通 UI 场景通过 [Godot UI 注册](../docs/zh-CN/godot/ui.md) 直接采用；运行时接入无需页面包装生成步骤。

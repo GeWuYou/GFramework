@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2026 GeWuYou
+// Copyright (c) 2026 GeWuYou
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -30,7 +30,8 @@ public interface ISettingsDataRepository : IDataRepository
     /// <remarks>
     ///     此方法将从数据源中异步读取所有可用的设置项，并将其组织成字典格式返回
     /// </remarks>
-    Task<IDictionary<string, IData>> LoadAllAsync();
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    Task<IDictionary<string, IData>> LoadAllAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     ///     注册数据类型到类型注册表中

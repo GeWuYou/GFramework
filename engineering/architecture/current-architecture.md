@@ -4,7 +4,7 @@
 
 ## 包依赖与责任
 
-下表箭头表示左侧项目引用右侧项目。依据是各项目的 `ProjectReference`，不代表每条调用均经过所有包。
+下表箭头表示左侧项目引用右侧项目。依据是各项目的 `ProjectReference`。
 
 | 层 | 当前依赖与责任 | 源码 |
 | --- | --- | --- |
@@ -17,7 +17,7 @@
 | Arch ECS | 依赖 Core 与自身抽象；服务模块创建 World、解析系统并负责更新与销毁 | [ECS 模块](../../GFramework.Ecs.Arch/ArchEcsModule.cs) |
 | Source Generators | 编译消费项目，生成注册表、上下文与宿主样板；运行时包不反向引用生成器 | [边界校验器](../../scripts/validate-runtime-generator-boundaries.py) |
 
-这些引用没有形成项目引用环。Core-only 消费方没有 CQRS 传递依赖；需要消息模型的项目显式安装 `GFramework.Cqrs` 并安装 runtime 模块。契约包拆分也不等于不含其他领域的契约依赖。
+这些引用没有形成项目引用环。Core-only 消费方没有 CQRS 传递依赖；需要消息模型的项目显式安装 `GFramework.Cqrs` 并安装 runtime 模块。契约包仍可引用其实际需要的其他领域契约。
 
 ## 启动与依赖解析
 
@@ -50,13 +50,35 @@ CQRS runtime 使用标准服务解析：`services.AddCqrsRuntime()` 创建单例
 - Godot 配置期声明模块，异步启动通过[主线程调度器](../../GFramework.Godot/Architectures/GodotMainThreadDispatcher.cs)等待锚点和模块附加，清理回到同一主线程并使用根停止流程；QueueFree 是引擎排队操作，不声称原生内存已经同步回收。
 - [Arch ECS](../../GFramework.Ecs.Arch/ArchEcsModule.cs) 通过实例 RegisterServiceModule 接入；World 工厂在正式 provider 激活后创建，系统业务停止和资源 Dispose 分开。
 
-日志家族已改用 Microsoft.Extensions.Logging 契约：自有 `ILogger`/`ILoggerFactoryProvider`、`LoggerFactoryResolver` 与 `GodotLog.UseAsDefaultProvider()` 已移除，Core 输出引擎（appender/formatter/filter）经 `AppenderLoggerProvider` 继续使用。本批不改写全部工具子系统。原生 Godot/VS Code、Native AOT 和性能需各自独立证据；托管构建/测试不能代替这些验收。
+日志家族已改用 Microsoft.Extensions.Logging 契约：自有 `ILogger`/`ILoggerFactoryProvider`、`LoggerFactoryResolver` 与 `GodotLog.UseAsDefaultProvider()` 已移除，Core 输出引擎（appender/formatter/filter）经 `AppenderLoggerProvider` 继续使用。其他通用工具子系统保留已有实现。原生宿主、编辑工具、Native AOT 和性能按各自采用目标验证。
 
 
-## 场景、UI 与持久化边界
+## 游戏服务与宿主边界
 
-Scene/UI 路由在根绑定时捕获宿主同步上下文，完整导航串行执行；Around 中间件离开上下文后调用 next，框架回调仍派发回原上下文。拒绝等待同一路由器的嵌套导航，避免操作等待自身。路由异步销毁关闭接入、等待当前操作并绕过守卫清理；单个回调错误不跳过后续资源清理。
+[UiService](../../GFramework.Game/UI/UiService.cs)、[SceneRouter](../../GFramework.Game/Scene/SceneRouter.cs)、[设置模型](../../GFramework.Game/Setting/SettingsModel.cs)、[数据仓库](../../GFramework.Game/Data/DataRepository.cs)、[存档仓库](../../GFramework.Game/Data/SaveRepository.cs) 和 [暂停管理器](../../GFramework.Core/Pause/PauseStackManager.cs) 通过构造依赖独立采用。对应契约不继承 Model／System／Utility；普通服务不解析全局上下文。
 
-场景替换先验证守卫并准备目标，准备失败保留旧栈；已发生的业务副作用不承诺事务回滚。UI 跟踪弹出后保留的页面，停止时与页面栈、浮层统一清理。Godot 行为包装器即使业务退出或卸载失败也排队释放原生节点。
+[标准注册扩展](../../GFramework.Game/Runtime/GameServiceCollectionExtensions.cs) 提供 AddGamePause、AddGameUi 和 AddGameScenes。[GameRuntimeModule](../../GFramework.Game/Runtime/GameRuntimeModule.cs) 把相同服务接到 Architecture：配置回调只登记服务，provider 构建后解析实例，停止时依次关闭 UI、Scene 和暂停。模块要求显式 dispatcher，使原生暂停处理器也在宿主线程停止；provider 最后释放拥有对象，传入 root 和 dispatcher 保持调用方所有权。
 
-FileStorage 和 GodotFileStorage 共用同目录临时文件替换逻辑；Godot 可变数据放入 user://，res:// 只读。资源缓存保存创建条目时的 loader 释放责任，活跃句柄阻止普通卸载，不按派生对象类型重新寻找 loader 或额外 Dispose。
+[IGameDispatcher](../../GFramework.Game.Abstractions/Runtime/IGameDispatcher.cs) 是宿主回调边界。纯托管实现直接执行；同步上下文实现将回调派发到显式提供的宿主上下文，取消尚未开始的工作，等待已经开始的工作完成。Scene 与 UI 各自管理业务状态和串行队列。
+
+## UI 状态与原生视图
+
+[强类型路由](../../GFramework.Game.Abstractions/UI/UiRoute.cs) 和 [UiRegistry](../../GFramework.Game/UI/UiRegistry.cs) 在组合根定义参数与工厂；业务调用复用同一定义实例。展示类型、显示层、模态、输入阻断、暂停和多实例独立声明。窗口默认单实例，关闭默认释放；页面历史与独立窗口各自保留。
+
+所有修改操作、动作分发、对话框完成与停止由同一操作链串行执行。对话框等待用户选择时不持有该链。工厂、生命周期、挂载、焦点和释放经过宿主 dispatcher。只允许动作处理器通过显式上下文关闭自身，生命周期中的嵌套导航被拒绝。
+
+IUiView 是服务拥有的租约，IUiHost 负责挂载与焦点。打开在挂载隐藏态准备，Visible 与 Active 分别管理。失败清理目标并尽可能恢复已有状态；停止关闭接纳、等待在途工作，再绕过守卫清理全部实例。状态快照独立于原生对象，可供业务和诊断读取。
+
+[GodotUiRoot](../../GFramework.Godot/UI/GodotUiRoot.cs)、[GodotUiView](../../GFramework.Godot/UI/GodotUiView.cs) 和注册扩展落地普通 Control 场景；可选业务接口只承担打开／关闭或交互通知。原生适配器保存并恢复 authored 输入设置，模态 root 负责遮罩与焦点。页面包装生成器、旧层级行为家族和旧 UI 路由体系已移除。
+
+## 场景、设置与持久化
+
+场景先验证守卫并准备目标，准备失败保留旧栈；已发生的业务副作用由业务负责补偿。准备和进入接收调用令牌，退出与卸载使用非取消令牌。停止共享同一结果，清理错误聚合报告。Godot 场景工厂通过构造函数接收注册表，并回收创建失败的节点。
+
+设置初始化先独立准备全部加载与迁移结果，再更新现有实例；失败保留当前数据，IsInitialized 为 false，并向调用方返回聚合错误。每个设置应用器通过显式 dispatcher 执行，独立失败不跳过其他项，最终报告聚合错误。仓库和设置通知通过显式回调接入宿主事件系统。
+
+FileStorage 和 GodotFileStorage 共用同目录临时文件替换逻辑；Godot 可变数据使用 user://，res:// 用于只读资源。取消控制操作接纳、锁等待和后续步骤；已开始的底层写入等待到完成。数据文件布局和序列化格式保持原样。资源缓存保留创建条目时的 loader 释放责任，活跃句柄阻止普通卸载。
+
+## 采用工程
+
+[独立 .NET 示例](../../Samples/MinimalApp/Program.cs) 展示标准 DI 与可选 Architecture；[官方素材小游戏](../../Samples/DodgeTheCreeps/README.md) 展示普通 Godot 宿主中的强类型 UI、场景、输入、暂停、设置、保存和继续流程。公开教程直接引用样例源文件，编译和原生操作分别验证各自契约。

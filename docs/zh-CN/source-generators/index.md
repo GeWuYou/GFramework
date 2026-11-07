@@ -86,7 +86,7 @@ GFramework 当前发布的生成器包是：
 - `GFramework.Core.SourceGenerators.Abstractions`
   - 承载 `Core` 侧生成器特性定义，例如 `[Log]`、`[ContextAware]`、`[GetModel]`、`[GenerateEnumExtensions]`。
 - `GFramework.Godot.SourceGenerators.Abstractions`
-  - 承载 Godot 侧生成器特性定义，例如 `[GetNode]`、`[BindNodeSignal]`、`[AutoScene]`、`[AutoUiPage]`。
+  - 承载 Godot 侧生成器特性定义，例如 `[GetNode]`、`[BindNodeSignal]`、`[AutoScene]`。
 
 这些目录当前都不是新的安装入口。更实用的理解方式是：
 
@@ -131,7 +131,6 @@ GFramework 当前发布的生成器包是：
 - [Godot 项目生成器](./godot-project-generator.md)
 - [GetNode 生成器](./get-node-generator.md)
 - [BindNodeSignal 生成器](./bind-node-signal-generator.md)
-- [AutoUiPage 生成器](./auto-ui-page-generator.md)
 - [AutoScene 生成器](./auto-scene-generator.md)
 - [AutoRegisterExportedCollections 生成器](./auto-register-exported-collections-generator.md)
 

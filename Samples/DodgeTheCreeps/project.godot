@@ -1,0 +1,22 @@
+; Copyright (c) 2025-2026 GeWuYou
+; SPDX-License-Identifier: Apache-2.0
+config_version=5
+
+[application]
+config/name="Dodge the Creeps - GFramework"
+run/main_scene="res://Main.tscn"
+config/features=PackedStringArray("4.7", "C#", "GL Compatibility")
+
+[display]
+window/size/viewport_width=480
+window/size/viewport_height=720
+window/size/window_width_override=480
+window/size/window_height_override=720
+window/stretch/mode="canvas_items"
+
+[dotnet]
+project/assembly_name="DodgeTheCreeps"
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.035, 0.055, 0.1, 1)

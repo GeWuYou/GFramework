@@ -4,8 +4,6 @@
 using System.Reflection;
 using System.Threading;
 using GFramework.Core.Abstractions.Architectures;
-using GFramework.Core.Abstractions.Lifecycle;
-using GFramework.Core.Abstractions.Rule;
 using GFramework.Game.Abstractions.Data;
 using GFramework.Game.Abstractions.Enums;
 using GFramework.Game.Abstractions.Setting;
@@ -22,9 +20,7 @@ public sealed class SettingsModelTests
         var locationProvider = new TestDataLocationProvider();
         var repository = new FakeSettingsDataRepository();
         var model = new SettingsModel<FakeSettingsDataRepository>(locationProvider, repository);
-        ((IContextAware)model).SetContext(new Mock<IArchitectureContext>(MockBehavior.Loose).Object);
 
-        ((IInitializable)model).Initialize();
 
         _ = model.GetData<TestSettingsData>();
 
@@ -38,10 +34,8 @@ public sealed class SettingsModelTests
         var locationProvider = new TestDataLocationProvider();
         var repository = new FakeSettingsDataRepository();
         var model = new SettingsModel<FakeSettingsDataRepository>(locationProvider, repository);
-        ((IContextAware)model).SetContext(new Mock<IArchitectureContext>(MockBehavior.Loose).Object);
 
         _ = model.GetData<TestSettingsData>();
-        ((IInitializable)model).Initialize();
 
         repository.Stored["TestSettingsData"] = new TestSettingsData
         {
@@ -91,10 +85,8 @@ public sealed class SettingsModelTests
         var locationProvider = new TestDataLocationProvider();
         var repository = new FakeSettingsDataRepository();
         var model = new SettingsModel<FakeSettingsDataRepository>(locationProvider, repository);
-        ((IContextAware)model).SetContext(new Mock<IArchitectureContext>(MockBehavior.Loose).Object);
 
         _ = model.GetData<TestLatestSettingsData>();
-        ((IInitializable)model).Initialize();
 
         repository.Stored["TestLatestSettingsData"] = new TestLatestSettingsData
         {
@@ -104,11 +96,12 @@ public sealed class SettingsModelTests
 
         model.RegisterMigration(new TestLatestSettingsMigrationV1ToV2());
 
-        await model.InitializeAsync();
+        await Assert.CatchAsync<AggregateException>(() => model.InitializeAsync());
 
         var current = model.GetData<TestLatestSettingsData>();
         Assert.Multiple(() =>
         {
+            Assert.That(model.IsInitialized, Is.False);
             Assert.That(current.Version, Is.EqualTo(3));
             Assert.That(current.Value, Is.EqualTo("default-v3"));
         });
@@ -120,10 +113,8 @@ public sealed class SettingsModelTests
         var locationProvider = new TestDataLocationProvider();
         var repository = new FakeSettingsDataRepository();
         var model = new SettingsModel<FakeSettingsDataRepository>(locationProvider, repository);
-        ((IContextAware)model).SetContext(new Mock<IArchitectureContext>(MockBehavior.Loose).Object);
 
         _ = model.GetData<TestLatestSettingsData>();
-        ((IInitializable)model).Initialize();
 
         model.RegisterMigration(new TestLatestSettingsMigrationV1ToV2());
 
@@ -133,32 +124,20 @@ public sealed class SettingsModelTests
             Value = "legacy"
         };
 
-        var lockField = typeof(SettingsModel<FakeSettingsDataRepository>)
-            .GetField("_migrationMapLock", BindingFlags.Instance | BindingFlags.NonPublic);
-        Assert.That(lockField, Is.Not.Null);
-
-        var migrationMapLock = lockField!.GetValue(model);
-        Assert.That(migrationMapLock, Is.Not.Null);
-
-        var tasks = WithSynchronizationLockHeld(migrationMapLock!, () =>
-        {
-            var initializeTask = Task.Run(() => model.InitializeAsync());
-            var registerTask = Task.Run(() => model.RegisterMigration(new TestLatestSettingsMigrationV2ToV3()));
-
-            Thread.Sleep(50);
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(initializeTask.IsCompleted, Is.False);
-                Assert.That(registerTask.IsCompleted, Is.False);
-            });
-
-            return (initializeTask, registerTask);
-        });
+        var tasks = StartConcurrentMigrationWork(model);
 
         var (initializeTask, registerTask) = tasks;
 
-        await Task.WhenAll(initializeTask, registerTask);
+        // The first load may observe the older migration snapshot; that failure must be observable.
+        try
+        {
+            await Task.WhenAll(initializeTask, registerTask);
+        }
+        catch (AggregateException)
+        {
+            Assert.That(model.IsInitialized, Is.False);
+        }
+        await registerTask;
 
         repository.Stored["TestLatestSettingsData"] = new TestLatestSettingsData
         {
@@ -174,6 +153,77 @@ public sealed class SettingsModelTests
             Assert.That(current.Version, Is.EqualTo(3));
             Assert.That(current.Value, Is.EqualTo("legacy-migrated-v3"));
         });
+    }
+
+    /// <summary>A failed independent migration cannot commit an otherwise valid section early.</summary>
+    [Test]
+    public async Task InitializeAsync_WhenAnySectionFails_RetainsAllCurrentData()
+    {
+        var repository = new FakeSettingsDataRepository();
+        var notifications = new List<object>();
+        var model = new SettingsModel<FakeSettingsDataRepository>(new TestDataLocationProvider(), repository,
+            publishEvent: notifications.Add);
+        var simple = model.GetData<TestSettingsData>();
+        var latest = model.GetData<TestLatestSettingsData>();
+        repository.Stored["TestSettingsData"] = new TestSettingsData { Value = "persisted", Version = 1 };
+        repository.Stored["TestLatestSettingsData"] = new TestLatestSettingsData { Value = "legacy", Version = 1 };
+
+        await Assert.CatchAsync<AggregateException>(() => model.InitializeAsync());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(simple.Value, Is.EqualTo("default"));
+            Assert.That(latest.Value, Is.EqualTo("default-v3"));
+            Assert.That(model.IsInitialized, Is.False);
+            Assert.That(notifications, Is.Empty);
+        });
+    }
+
+    /// <summary>A failed save is observable and never publishes an all-saved success notification.</summary>
+    [Test]
+    public async Task SaveAllAsync_WhenRepositoryFails_PropagatesErrorWithoutSuccessNotification()
+    {
+        var repository = new Mock<ISettingsDataRepository>();
+        repository.Setup(value => value.SaveAllAsync(
+            It.IsAny<IEnumerable<(IDataLocation location, IData data)>>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromException(new InvalidOperationException("write failed")));
+        var notifications = new List<object>();
+        var model = new SettingsModel<ISettingsDataRepository>(new TestDataLocationProvider(), repository.Object,
+            publishEvent: notifications.Add);
+        _ = model.GetData<TestSettingsData>();
+
+        await Assert.CatchAsync<InvalidOperationException>(() => model.SaveAllAsync());
+
+        Assert.That(notifications, Is.Empty);
+    }
+
+    /// <summary>Starts cache rebuild and registration while the shared migration lock is held.</summary>
+    private static (Task InitializeTask, Task RegisterTask) StartConcurrentMigrationWork(
+        SettingsModel<FakeSettingsDataRepository> model)
+    {
+        var lockField = typeof(SettingsModel<FakeSettingsDataRepository>)
+            .GetField("_migrationMapLock", BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.That(lockField, Is.Not.Null);
+
+        var migrationMapLock = lockField!.GetValue(model);
+        Assert.That(migrationMapLock, Is.Not.Null);
+
+        return WithSynchronizationLockHeld(migrationMapLock!, () =>
+        {
+            var initializeTask = Task.Run(() => model.InitializeAsync());
+            var registerTask = Task.Run(() => model.RegisterMigration(new TestLatestSettingsMigrationV2ToV3()));
+
+            Thread.Sleep(50);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(initializeTask.IsCompleted, Is.False);
+                Assert.That(registerTask.IsCompleted, Is.False);
+            });
+
+            return (initializeTask, registerTask);
+        });
+
     }
 
     /// <summary>
@@ -320,29 +370,29 @@ public sealed class SettingsModelTests
 
         public Dictionary<string, IData> Stored { get; } = new(StringComparer.Ordinal);
 
-        public Task<T> LoadAsync<T>(IDataLocation location) where T : class, IData, new()
+        public Task<T> LoadAsync<T>(IDataLocation location, CancellationToken cancellationToken = default) where T : class, IData, new()
         {
             return Task.FromResult(Stored.TryGetValue(location.Key, out var data) ? (T)data : new T());
         }
 
-        public Task SaveAsync<T>(IDataLocation location, T data) where T : class, IData
+        public Task SaveAsync<T>(IDataLocation location, T data, CancellationToken cancellationToken = default) where T : class, IData
         {
             Stored[location.Key] = data;
             return Task.CompletedTask;
         }
 
-        public Task<bool> ExistsAsync(IDataLocation location)
+        public Task<bool> ExistsAsync(IDataLocation location, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(Stored.ContainsKey(location.Key));
         }
 
-        public Task DeleteAsync(IDataLocation location)
+        public Task DeleteAsync(IDataLocation location, CancellationToken cancellationToken = default)
         {
             Stored.Remove(location.Key);
             return Task.CompletedTask;
         }
 
-        public Task SaveAllAsync(IEnumerable<(IDataLocation location, IData data)> dataList)
+        public Task SaveAllAsync(IEnumerable<(IDataLocation location, IData data)> dataList, CancellationToken cancellationToken = default)
         {
             foreach (var (location, data) in dataList)
             {
@@ -352,7 +402,7 @@ public sealed class SettingsModelTests
             return Task.CompletedTask;
         }
 
-        public Task<IDictionary<string, IData>> LoadAllAsync()
+        public Task<IDictionary<string, IData>> LoadAllAsync(CancellationToken cancellationToken = default)
         {
             IDictionary<string, IData> snapshot = new Dictionary<string, IData>(Stored, StringComparer.Ordinal);
             return Task.FromResult(snapshot);

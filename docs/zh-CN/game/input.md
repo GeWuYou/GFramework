@@ -12,7 +12,7 @@ description: 说明 GFramework.Game 与 GFramework.Game.Abstractions 当前提�
 
 - 用稳定 DTO 描述动作绑定，而不是把引擎原生输入事件暴露给业务层
 - 允许导出 / 导入绑定快照，并支持主绑定替换、冲突交换和默认恢复
-- 把逻辑动作名桥接到现有 `UiInputAction`，继续复用 `UiRouterBase` 的输入仲裁
+- 把逻辑动作名桥接到现有 `UiInputAction`，继续复用 `UiService` 的输入仲裁
 
 ## 契约层入口
 
@@ -47,7 +47,7 @@ description: 说明 GFramework.Game 与 GFramework.Game.Abstractions 当前提�
   - 默认把 `ui_cancel` / `cancel` 映射到 `UiInputAction.Cancel`
   - 默认把 `ui_accept` / `confirm` / `submit` 映射到 `UiInputAction.Confirm`
 - `UiInputDispatcher`
-  - 把逻辑动作名继续分发给 `IUiRouter.TryDispatchUiAction(...)`
+  - 把逻辑动作名继续分发给 `IUiService.DispatchActionAsync(...)`
 
 也就是说，`Game` 层现在只负责统一输入语义与默认运行时行为；实际的物理输入事件采集仍由宿主层负责。
 
@@ -74,14 +74,14 @@ var defaultSnapshot = new InputBindingSnapshot(
 ]);
 
 var bindingStore = new InputBindingStore(defaultSnapshot);
-var dispatcher = new UiInputDispatcher(new UiInputActionMap(), uiRouter);
+var dispatcher = new UiInputDispatcher(new UiInputActionMap(), ui);
 ```
 
 随后由项目自己的宿主层决定：
 
 - 什么时候读取物理输入
 - 什么时候调用 `SetPrimaryBinding(...)`
-- 什么时候触发 `dispatcher.TryDispatch(...)`
+- 什么时候触发 `await dispatcher.DispatchAsync(...)`
 
 ## 当前边界
 

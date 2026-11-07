@@ -1,319 +1,70 @@
 ---
 title: Godot 场景系统
-description: 说明 GFramework.Godot 当前如何把 Game 场景契约接到 PackedScene、行为包装和最小接入路径上。
+description: 通过显式注册表、场景工厂、根容器和 dispatcher 使用默认场景导航。
 ---
 
 # Godot 场景系统
 
-`GFramework.Godot` 在场景这一层负责的是 Godot runtime 适配，而不是再提供一套 Godot 专用路由器类型。
+Godot 场景适配负责 `PackedScene` 实例化和原生生命周期，通用 `SceneRouter` 负责导航、守卫、结果和停止。
 
-当前真正参与场景接线的核心类型是：
-
-- `IGodotSceneRegistry` / `GodotSceneRegistry`
-- `GodotSceneFactory`
-- `SceneBehaviorFactory`
-- `SceneBehaviorBase<T>` 及其 `Node2D` / `Node3D` / `Control` / `Generic` 实现
-- 项目侧实现的 `ISceneRoot`
-- 项目侧继承 `SceneRouterBase` 的路由器
-
-也就是说，Godot 集成页的重点不是“再造一套场景导航 API”，而是把 `PackedScene`、`Node` 和 `GFramework.Game` 的
-`ISceneRouter` / `ISceneBehavior` 契约接起来。
-
-## 当前公开入口
-
-### `IGodotSceneRegistry`
-
-Godot 侧的场景资源表，底层是 `IAssetRegistry<PackedScene>`。它只负责：
-
-- `sceneKey -> PackedScene` 映射
-- 让 `GodotSceneFactory` 能按 key 实例化场景
-
-框架当前不会自动扫描项目里的 `.tscn` 文件并填充 registry。
-
-### `GodotSceneFactory`
-
-`GodotSceneFactory.Create(string sceneKey)` 的当前行为很明确：
-
-1. 从 `IGodotSceneRegistry` 取出 `PackedScene`
-2. 调用 `Instantiate()`
-3. 如果节点实现了 `ISceneBehaviorProvider`，优先返回 `provider.GetScene()`
-4. 否则回退到 `SceneBehaviorFactory.Create(node, sceneKey)`
-
-当前源码允许两条路径：
-
-- 显式 provider：项目自己决定行为对象
-- 自动包装：按节点类型回退到默认 behavior
-
-### `SceneBehaviorBase<T>`
-
-`SceneBehaviorBase<T>` 是当前 Godot 场景行为包装基类。它把 `ISceneBehavior` 的生命周期接到 `Node` 上：
-
-- `OnLoadAsync`
-- `OnEnterAsync`
-- `OnPauseAsync`
-- `OnResumeAsync`
-- `OnExitAsync`
-- `OnUnloadAsync`
-
-如果 owner 还实现了 `IScene`，这些阶段会继续转发到业务节点；如果没有实现 `IScene`，默认 behavior 仍会处理 Godot 节点的
-process 开关和 `QueueFreeX()` 释放。
-
-### `SceneBehaviorFactory`
-
-自动包装的选择规则来自当前实现：
-
-- `Node2D` -> `Node2DSceneBehavior`
-- `Node3D` -> `Node3DSceneBehavior`
-- `Control` -> `ControlSceneBehavior`
-- 其他 `Node` -> `GenericSceneBehavior`
-
-这意味着 Godot runtime 确实能“自动给节点补一个 behavior”，但它不会替你补项目侧路由器、root 或 registry。
-
-## 最小接入路径
-
-推荐按下面顺序接入。
-
-### 1. 继续在项目层保留自己的路由器
-
-`GFramework.Godot` 当前没有 `GodotSceneRouter` 类型。消费者项目的实际做法，是在项目层继承
-`GFramework.Game.Scene.SceneRouterBase`。
-
-最小形态通常就是：
+## 创建与登记
 
 ```csharp
-using LoggingTransitionHandler = GFramework.Game.Scene.Handler.LoggingTransitionHandler;
-
-namespace GameProject.Scene;
-
-public partial class SceneRouter : SceneRouterBase
-{
-    [GetUtility] private IGodotSceneRegistry _sceneRegistry = null!;
-
-    public Node? SceneRoot => Root as Node;
-
-    protected override void RegisterHandlers()
-    {
-        __InjectContextBindings_Generated();
-        RegisterHandler(new LoggingTransitionHandler());
-        RegisterAroundHandler(
-            new SceneTransitionAnimationHandler(() => SceneTransitionManager.Instance!, _sceneRegistry.GetAll()));
-    }
-}
-```
-
-这里可以看到，Godot 适配点在 factory / registry / root / transition handler 上，而路由器仍然是项目类。
-
-### 2. 注册 `IGodotSceneRegistry` 与 `ISceneFactory`
-
-最小 wiring 需要把 registry 和 factory 装进架构：
-
-```csharp
-using GFramework.Game.Abstractions.Scene;
+using GFramework.Game.Scene;
 using GFramework.Godot.Scene;
 using Godot;
 
-public sealed class GameSceneRegistry : GodotSceneRegistry
-{
-    public GameSceneRegistry()
-    {
-        Register(nameof(SceneKey.MainMenu), GD.Load<PackedScene>("res://scenes/main_menu.tscn"));
-        Register(nameof(SceneKey.Gameplay), GD.Load<PackedScene>("res://scenes/gameplay.tscn"));
-    }
-}
-
-architecture.RegisterUtility<IGodotSceneRegistry>(new GameSceneRegistry());
-architecture.RegisterUtility<ISceneFactory>(new GodotSceneFactory());
-architecture.RegisterSystem(new SceneRouter());
+var registry = new GodotSceneRegistry();
+registry.Register("play", GD.Load<PackedScene>("res://scenes/play.tscn"));
+var factory = new GodotSceneFactory(registry);
+var scenes = new SceneRouter(factory, sceneRoot, dispatcher);
+await scenes.ReplaceAsync("play", cancellationToken: cancellationToken);
 ```
 
-项目用什么 key 类型、资源目录或配置表都可以，但最终要能落到 `sceneKey -> PackedScene`。
+`sceneRoot` 实现 `ISceneRoot`，`dispatcher` 是在 Godot 主线程创建的共享宿主调度器。工厂通过构造函数接收注册表，普通项目直接采用 `SceneRouter`。
 
-### 3. 提供 `ISceneRoot`
+## 根容器
 
-`SceneRouterBase` 只负责切换编排，真正把场景节点挂到 Godot 场景树的是项目自己的 `ISceneRoot`。
-
-CoreGrid 的 `SceneRoot` 当前做了两件关键事：
-
-- 在 `_Ready()` 时调用 `_sceneRouter.BindRoot(this)`
-- 在 `AddScene` / `RemoveScene` 里把 `scene.Original` 当作 `Node` 挂入或移出树
-
-最小形态可以写成：
+根容器只负责挂载和移除，生命周期仍由服务驱动：
 
 ```csharp
-public sealed class SceneRoot : Node2D, ISceneRoot
+public void AddScene(ISceneBehavior scene)
 {
-    [GetSystem] private ISceneRouter _sceneRouter = null!;
+    if (scene.Original is Node node)
+        AddChild(node);
+}
 
-    public override void _Ready()
-    {
-        __InjectContextBindings_Generated();
-        _sceneRouter.BindRoot(this);
-    }
-
-    public void AddScene(ISceneBehavior scene)
-    {
-        if (scene.Original is not Node node)
-            throw new InvalidOperationException("SceneBehavior must inherit Godot Node.");
-
-        if (node.GetParent() == null)
-            AddChild(node);
-    }
-
-    public void RemoveScene(ISceneBehavior scene)
-    {
-        if (scene.Original is Node node && node.GetParent() == this)
-            RemoveChild(node);
-    }
+public void RemoveScene(ISceneBehavior scene)
+{
+    if (scene.Original is Node node && node.GetParent() == this)
+        RemoveChild(node);
 }
 ```
 
-### 4. 让场景节点提供 behavior
+宿主根应在服务停止前保持存活。使用 DI 时登记 `AddGameScenes(factory, sceneRoot, dispatcher)`；使用 Architecture 时将相同登记放入 `GameRuntimeModule(dispatcher, configure)`。
 
-当前有两种可行方式。
+## 场景与行为
 
-#### 方式 A：实现 `ISceneBehaviorProvider`
+`GodotSceneFactory` 优先使用节点实现的 `ISceneBehaviorProvider.GetScene()`，普通节点则通过 `SceneBehaviorFactory.Create(node, key)` 得到默认适配。默认支持 `Node2D`、`Node3D`、`Control` 和其他 `Node`。
 
-如果你想显式控制 behavior 类型，直接实现 `GetScene()`：
+节点可按需要实现 `IScene` 的带取消令牌生命周期：加载、进入、暂停、恢复、退出、卸载。`AutoScene` 是生成 provider 包装入口的可选方式，见 [场景生成器](../source-generators/auto-scene-generator.md)。
 
-```csharp
-public partial class GameplayRoot : Node2D, ISceneBehaviorProvider, IScene
-{
-    private ISceneBehavior? _scene;
+创建包装失败时工厂回收刚实例化的节点。业务卸载失败时，适配器仍尝试排队释放原生对象。
 
-    public ISceneBehavior GetScene()
-    {
-        return _scene ??= SceneBehaviorFactory.Create(this, nameof(SceneKey.Gameplay));
-    }
+### 暂停与原生处理设置
 
-    public ValueTask OnLoadAsync(ISceneEnterParam? param)
-    {
-        return ValueTask.CompletedTask;
-    }
+默认适配器首次暂停时保存节点的 Process、PhysicsProcess 和 Input 开关，业务暂停回调成功后暂时关闭这三项处理。重复暂停沿用首次快照。
 
-    public ValueTask OnEnterAsync()
-    {
-        return ValueTask.CompletedTask;
-    }
+恢复先等待业务 OnResumeAsync 成功，再在 Godot 主线程还原快照中的准确设置；原来关闭的处理保持关闭。快照在成功还原后消费，因此重复恢复会保留节点当前设置。暂停或恢复回调失败时保留快照，后续补偿恢复仍能还原原状态。场景卸载时清除快照并释放节点。
 
-    public ValueTask OnPauseAsync()
-    {
-        return ValueTask.CompletedTask;
-    }
+## 结果与关闭
 
-    public ValueTask OnResumeAsync()
-    {
-        return ValueTask.CompletedTask;
-    }
+导航返回 `SceneOperationResult`。守卫拒绝时保留原场景，目标准备失败时清理目标。所有宿主回调在 dispatcher 上执行，清理使用非取消令牌。
 
-    public ValueTask OnExitAsync()
-    {
-        return ValueTask.CompletedTask;
-    }
+退出时等待 `StopAsync` 或 `DisposeAsync`，然后释放场景 root、资源和宿主。生命周期回调内的后续业务操作应交回外部流程，不等待同一路由器的嵌套导航。
 
-    public ValueTask OnUnloadAsync()
-    {
-        return ValueTask.CompletedTask;
-    }
-}
-```
+## 相关主题
 
-#### 方式 B：用 `[AutoScene]` 让生成器补样板
-
-当前更贴近真实消费者 wiring 的方式，是让 `GFramework.Godot.SourceGenerators` 生成 `SceneKeyStr` 和 `GetScene()`：
-
-```csharp
-using GFramework.Game.Abstractions.Scene;
-using GFramework.Godot.SourceGenerators.Abstractions.UI;
-using Godot;
-
-[AutoScene(nameof(SceneKey.Gameplay))]
-public partial class GameplayRoot : Node2D, ISceneBehaviorProvider, IScene
-{
-    public ValueTask OnLoadAsync(ISceneEnterParam? param)
-    {
-        return ValueTask.CompletedTask;
-    }
-
-    public ValueTask OnEnterAsync()
-    {
-        return ValueTask.CompletedTask;
-    }
-
-    public ValueTask OnPauseAsync()
-    {
-        return ValueTask.CompletedTask;
-    }
-
-    public ValueTask OnResumeAsync()
-    {
-        return ValueTask.CompletedTask;
-    }
-
-    public ValueTask OnExitAsync()
-    {
-        return ValueTask.CompletedTask;
-    }
-
-    public ValueTask OnUnloadAsync()
-    {
-        return ValueTask.CompletedTask;
-    }
-}
-```
-
-生成器当前会补出与源码一致的 `GetScene()`：
-
-```csharp
-public ISceneBehavior GetScene()
-{
-    return __autoSceneBehavior_Generated ??= SceneBehaviorFactory.Create(this, SceneKeyStr);
-}
-```
-
-要注意两点：
-
-- `[AutoScene]` 只生成方法和 key，不会替你自动补 `: ISceneBehaviorProvider`
-- `IScene` 仍然是业务生命周期契约；不实现它时，默认 behavior 只会保留基础节点切换语义
-
-### 5. 从业务代码发起导航
-
-一旦 registry、factory、router、root 都装好，导航入口仍然是 `ISceneRouter`：
-
-```csharp
-await sceneRouter.ReplaceAsync(nameof(SceneKey.MainMenu));
-await sceneRouter.ReplaceAsync(nameof(SceneKey.Gameplay), new GameplayEnterParam());
-await sceneRouter.PushAsync(nameof(SceneKey.PauseMenu));
-await sceneRouter.PopAsync();
-```
-
-## 当前边界
-
-### 没有 `GodotSceneRouter`
-
-仓库当前不存在 `GodotSceneRouter` 类型；实际入口仍然是项目侧继承 `SceneRouterBase` 的 router。
-
-### 没有自动注册所有场景
-
-当前运行时只认识你注册进 `IGodotSceneRegistry` 的 `PackedScene`。它不会扫描目录、不会从脚本类型自动反推出注册表。
-
-### provider 是“优先路径”，不是“唯一路径”
-
-`GodotSceneFactory` 会优先使用 `ISceneBehaviorProvider`，但没有 provider 时仍会按节点类型自动包装。这个行为和 UI 系统不同；
-UI 工厂当前没有同等的自动回退。
-
-### root 仍然是项目职责
-
-`ISceneRoot` 的实现决定：
-
-- 节点挂到哪里
-- 移除时如何释放
-- 是否保留额外的当前视图引用
-
-Godot runtime 不会替项目生成统一的 root 节点。
-
-## 继续阅读
-
-1. [Godot 运行时集成](./index.md)
-2. [Godot 架构集成](./architecture.md)
-3. [Game 场景系统](../game/scene.md)
-4. [AutoScene 生成器](../source-generators/auto-scene-generator.md)
+- [通用场景服务](../game/scene.md)
+- [Godot UI](./ui.md)
+- [运行时示例](./runtime-sample.md)

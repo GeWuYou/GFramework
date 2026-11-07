@@ -26,14 +26,16 @@ public interface ISceneRouteGuard : IRouteGuard<ISceneBehavior>
     /// </summary>
     /// <param name="sceneKey">目标场景的唯一标识符。</param>
     /// <param name="param">场景进入参数，可能包含初始化数据或上下文信息。</param>
+    /// <param name="cancellationToken">Navigation cancellation; asynchronous guards should observe this token and finish their callbacks before returning.</param>
     /// <returns>如果允许进入则返回 true，否则返回 false。</returns>
-    ValueTask<bool> CanEnterAsync(string sceneKey, ISceneEnterParam? param);
+    ValueTask<bool> CanEnterAsync(string sceneKey, ISceneEnterParam? param, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 异步检查是否允许离开指定场景。
     /// 该成员显式细化了通用路由守卫的离开检查，使场景守卫在 API 文档中保持场景语义。
     /// </summary>
     /// <param name="sceneKey">当前场景的唯一标识符。</param>
+    /// <param name="cancellationToken">Navigation cancellation; asynchronous guards should observe this token and finish their callbacks before returning.</param>
     /// <returns>如果允许离开则返回 true，否则返回 false。</returns>
-    new ValueTask<bool> CanLeaveAsync(string sceneKey);
+    new ValueTask<bool> CanLeaveAsync(string sceneKey, CancellationToken cancellationToken = default);
 }

@@ -79,7 +79,7 @@ dotnet add package GeWuYou.GFramework.Godot
 # Core 侧源码生成器（[Log] / [ContextAware] 等）
 dotnet add package GeWuYou.GFramework.Core.SourceGenerators
 
-# Godot 侧源码生成器（[GetNode] / [AutoUiPage] 等）
+# Godot 侧源码生成器（[GetNode] / [BindNodeSignal] 等）
 dotnet add package GeWuYou.GFramework.Godot.SourceGenerators
 ```
 

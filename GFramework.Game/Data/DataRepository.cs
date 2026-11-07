@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2026 GeWuYou
+// Copyright (c) 2026 GeWuYou
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -13,8 +13,6 @@
 
 using System.Reflection;
 using GFramework.Core.Abstractions.Storage;
-using GFramework.Core.Extensions;
-using GFramework.Core.Utility;
 using GFramework.Game.Abstractions.Data;
 using GFramework.Game.Abstractions.Data.Events;
 using GFramework.Game.Extensions;
@@ -26,19 +24,18 @@ namespace GFramework.Game.Data;
 /// </summary>
 /// <param name="storage">存储接口实例</param>
 /// <param name="options">数据仓库配置选项</param>
-public class DataRepository(IStorage? storage, DataRepositoryOptions? options = null)
-    : AbstractContextUtility, IDataRepository
+/// <param name="publishEvent">Optional explicit notification callback.</param>
+public class DataRepository(IStorage storage, DataRepositoryOptions? options = null, Action<object>? publishEvent = null)
+    : IDataRepository
 {
     private static readonly MethodInfo SaveCoreGenericMethod =
         typeof(DataRepository).GetMethod(nameof(SaveCoreAsync), BindingFlags.Instance | BindingFlags.NonPublic)
         ?? throw new InvalidOperationException($"Method {nameof(SaveCoreAsync)} not found.");
 
     private readonly DataRepositoryOptions _options = options ?? new DataRepositoryOptions();
-    private IStorage? _storage = storage;
+    private readonly IStorage _storage = storage ?? throw new ArgumentNullException(nameof(storage));
 
-    private IStorage Storage => _storage ??
-                                throw new InvalidOperationException(
-                                    "Failed to initialize storage. No IStorage utility found in context.");
+    private IStorage Storage => _storage;
 
     /// <summary>
     ///     异步加载指定位置的数据
@@ -46,9 +43,11 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
     /// <typeparam name="T">数据类型，必须实现IData接口</typeparam>
     /// <param name="location">数据位置信息</param>
     /// <returns>加载的数据对象</returns>
-    public async Task<T> LoadAsync<T>(IDataLocation location)
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    public async Task<T> LoadAsync<T>(IDataLocation location, CancellationToken cancellationToken = default)
         where T : class, IData, new()
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var key = location.ToStorageKey();
 
         // 检查存储中是否存在指定键的数据
@@ -56,9 +55,10 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
             ? await Storage.ReadAsync<T>(key).ConfigureAwait(false)
             : new T();
 
+        cancellationToken.ThrowIfCancellationRequested();
         // 如果启用事件功能，则发送数据加载完成事件
         if (_options.EnableEvents)
-            this.SendEvent(new DataLoadedEvent<T>(result));
+            publishEvent?.Invoke(new DataLoadedEvent<T>(result));
 
         return result;
     }
@@ -69,10 +69,12 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
     /// <typeparam name="T">数据类型，必须实现IData接口</typeparam>
     /// <param name="location">数据位置信息</param>
     /// <param name="data">要保存的数据对象</param>
-    public async Task SaveAsync<T>(IDataLocation location, T data)
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    public async Task SaveAsync<T>(IDataLocation location, T data, CancellationToken cancellationToken = default)
         where T : class, IData
     {
-        await SaveCoreAsync(location, data, emitSavedEvent: true).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        await SaveCoreAsync(location, data, emitSavedEvent: true, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -80,8 +82,10 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
     /// </summary>
     /// <param name="location">数据位置信息</param>
     /// <returns>如果数据存在返回true，否则返回false</returns>
-    public Task<bool> ExistsAsync(IDataLocation location)
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    public Task<bool> ExistsAsync(IDataLocation location, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         return Storage.ExistsAsync(location.ToStorageKey());
     }
 
@@ -89,8 +93,10 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
     ///     异步删除指定位置的数据
     /// </summary>
     /// <param name="location">数据位置信息</param>
-    public async Task DeleteAsync(IDataLocation location)
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    public async Task DeleteAsync(IDataLocation location, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var key = location.ToStorageKey();
 
         if (!await Storage.ExistsAsync(key).ConfigureAwait(false))
@@ -98,37 +104,33 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
             return;
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         await Storage.DeleteAsync(key).ConfigureAwait(false);
         if (_options.EnableEvents)
-            this.SendEvent(new DataDeletedEvent(location));
+            publishEvent?.Invoke(new DataDeletedEvent(location));
     }
 
     /// <summary>
     ///     异步批量保存多个数据项
     /// </summary>
     /// <param name="dataList">包含数据位置和数据对象的枚举集合</param>
-    public async Task SaveAllAsync(IEnumerable<(IDataLocation location, IData data)> dataList)
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    public async Task SaveAllAsync(IEnumerable<(IDataLocation location, IData data)> dataList, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var valueTuples = dataList.ToList();
 
         // 批量保存对订阅者而言应视为一次显式提交，因此这里复用底层保存逻辑，
         // 但抑制逐项 DataSavedEvent，避免监听器对同一批次收到重复语义的事件。
         foreach (var (location, data) in valueTuples)
         {
-            await SaveCoreUntypedAsync(location, data, emitSavedEvent: false).ConfigureAwait(false);
+            await SaveCoreUntypedAsync(location, data, emitSavedEvent: false, cancellationToken).ConfigureAwait(false);
         }
 
         if (_options.EnableEvents)
-            this.SendEvent(new DataBatchSavedEvent(valueTuples));
+            publishEvent?.Invoke(new DataBatchSavedEvent(valueTuples));
     }
 
-    /// <summary>
-    ///     初始化
-    /// </summary>
-    protected override void OnInit()
-    {
-        _storage ??= this.GetUtility<IStorage>()!;
-    }
 
     /// <summary>
     ///     执行单项保存的共享流程，并根据调用入口决定是否发送单项保存事件。
@@ -137,17 +139,20 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
     /// <param name="location">目标数据位置。</param>
     /// <param name="data">要保存的数据对象。</param>
     /// <param name="emitSavedEvent">是否在成功写入后发送单项保存事件。</param>
-    private async Task SaveCoreAsync<T>(IDataLocation location, T data, bool emitSavedEvent)
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    private async Task SaveCoreAsync<T>(IDataLocation location, T data, bool emitSavedEvent, CancellationToken cancellationToken)
         where T : class, IData
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var key = location.ToStorageKey();
 
         await BackupIfNeededAsync<T>(key).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
         await Storage.WriteAsync(key, data).ConfigureAwait(false);
 
         if (emitSavedEvent && _options.EnableEvents)
         {
-            this.SendEvent(new DataSavedEvent<T>(data));
+            publishEvent?.Invoke(new DataSavedEvent<T>(data));
         }
     }
 
@@ -174,11 +179,12 @@ public class DataRepository(IStorage? storage, DataRepositoryOptions? options = 
     /// <param name="location">目标数据位置。</param>
     /// <param name="data">要保存的数据对象。</param>
     /// <param name="emitSavedEvent">是否发送单项保存事件。</param>
-    private Task SaveCoreUntypedAsync(IDataLocation location, IData data, bool emitSavedEvent)
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    private Task SaveCoreUntypedAsync(IDataLocation location, IData data, bool emitSavedEvent, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(data);
 
         var closedMethod = SaveCoreGenericMethod.MakeGenericMethod(data.GetType());
-        return (Task)closedMethod.Invoke(this, [location, data, emitSavedEvent])!;
+        return (Task)closedMethod.Invoke(this, [location, data, emitSavedEvent, cancellationToken])!;
     }
 }

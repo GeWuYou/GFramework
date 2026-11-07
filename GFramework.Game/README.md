@@ -1,385 +1,55 @@
 # GFramework.Game
 
-`GFramework.Game` 是 `GFramework` 面向游戏项目的运行时层。
+游戏通用运行时，提供强类型 UI、场景导航、输入绑定、配置、设置、存档、序列化和存储。采用构造注入，可直接创建或使用标准 DI；Architecture 为可选模块编排。
 
-它建立在 `GFramework.Core` 与 `GFramework.Game.Abstractions` 之上，提供可直接落地的实现与基类，覆盖静态内容配置、数据与存档、设置、场景路由、UI 路由、序列化、文件存储、状态机扩展等常见游戏运行时需求。
+## 包与相邻模块
 
-如果你的项目只需要“契约”而不想带入实现，请依赖 `GFramework.Game.Abstractions`。如果你的项目需要真正可运行的默认实现或基类，请依赖本包。
+- 依赖 `Core` 与 `Game.Abstractions`，使用标准 DI、日志和 Core 基础能力。
+- `Game.Abstractions` 定义业务和宿主契约，业务程序集可只引用契约。
+- `Godot` 提供原生 UI root、视图租约、场景适配、输入、暂停和存储。
+- `Game.SourceGenerators` 按 schema 生成配置类型；普通 UI 和场景采用无需生成器。
 
-## 包定位
+## 子系统
 
-- 面向使用者的默认运行时实现层，不是纯接口包。
-- 适合作为游戏项目启动层、基础设施层、引擎适配层之上的通用运行时底座。
-- 当前最成熟、最明确的能力集中在：
-  - 静态内容配置：`Config/`
-  - 数据与存档：`Data/`
-  - 设置系统：`Setting/`
-  - 场景与 UI 路由基类：`Scene/`、`UI/`
-  - 动作绑定与 UI 输入桥接：`Input/`
-  - 序列化与文件存储：`Serializer/`、`Storage/`
-
-## 与相邻包的关系
-
-- `GFramework.Core`
-  - 本包直接依赖它。
-  - 提供架构、上下文注入、事件、日志、系统/模型/utility 生命周期等底层能力。
-- `GFramework.Game.Abstractions`
-  - 本包的上游契约层。
-  - 本包中的 `FileStorage`、`SettingsModel<TRepository>`、`SaveRepository<TSaveData>`、`YamlConfigLoader`、`SceneRouterBase`、`UiRouterBase` 等都在实现这里定义的接口。
-- `GFramework.Game.SourceGenerators`
-  - 主要与配置系统配合使用。
-  - 当你需要 schema 驱动的 YAML 配表时，运行时包是 `GFramework.Game`，生成时代码由 source generators 补齐。
-- 引擎适配包或项目内适配层
-  - 本包提供的是“引擎无关”的核心逻辑和基类。
-  - 真正和 Godot、Unity、MonoGame 等引擎对象打交道的工厂、根节点、资源注册表，通常在相邻引擎包或游戏项目内实现。
-  - 典型项目里，配置文件 IO 会交给宿主适配层处理，UI / Scene 的 factory 与 root 则继续由项目自己提供。
-
-## 子系统地图
-
-### `Config/`
-
-面向静态游戏内容的只读配置系统。
-
-- `YamlConfigLoader`
-  - 从文件系统根目录加载 YAML 配置表，并注册到 `IConfigRegistry`
-- `ConfigRegistry`
-  - 运行时配置表注册表
-- `GameConfigBootstrap`
-  - 非 `Architecture` 场景下的官方配置启动入口
-- `GameConfigModule`
-  - `Architecture` 场景下的官方配置接入模块
-- `InMemoryConfigTable<TKey, TValue>`
-  - 配置表默认只读承载
-- `YamlConfigHotReloadOptions`
-  - 开发期热重载控制
-
-这个子系统通常与 `GFramework.Game.SourceGenerators` 一起使用，而不是手写大量注册代码。
-
-对应文档：
-
-- [内容配置系统](../docs/zh-CN/game/config-system.md)
-- [Game 模块总览](../docs/zh-CN/game/index.md)
-
-### `Data/`
-
-面向可写业务数据、设置持久化与存档槽位的仓库实现。
-
-- `DataRepository`
-  - 一条 `IDataLocation` 对应一份持久化对象
-- `UnifiedSettingsDataRepository`
-  - 把多个设置 section 聚合到单一文件中
-- `SaveRepository<TSaveData>`
-  - 面向槽位存档，支持版本迁移链
-- `SaveConfiguration`
-  - 槽位目录、文件名、前缀等约定
-
-常见接法：
-
-- 设置持久化使用 `UnifiedSettingsDataRepository`
-- 存档使用 `SaveRepository<GameSaveData>`
-- 两者共用同一个底层存储 utility
-
-对应文档：
-
-- [数据与存档系统](../docs/zh-CN/game/data.md)
-- [设置系统](../docs/zh-CN/game/setting.md)
-
-### `Setting/`
-
-设置生命周期编排层。
-
-- `SettingsModel<TRepository>`
-  - 管理 `ISettingsData` 实例、迁移、加载、保存、重置
-  - 编排 applicator 的 `Apply`
-- `SettingsSystem`
-  - 面向业务代码暴露更直接的系统级入口
-- `Setting/Events/*`
-  - 设置初始化、应用、保存、重置相关事件
-
-常见接法：
-
-- 在模型模块中创建 `SettingsModel<ISettingsDataRepository>`
-- 注册多个 applicator
-- 启动时先 `InitializeAsync()`，再 `ApplyAll()`
-- 退出时统一 `SaveAll()`
-
-对应文档：
-
-- [设置系统](../docs/zh-CN/game/setting.md)
-
-### `Storage/`
-
-面向本地文件系统的基础存储。
-
-- `FileStorage`
-  - 基于目录与文件的 `IStorage` 实现
-  - 负责路径清洗、细粒度锁、原子写入、层级 key 到目录结构的映射
-- `ScopedStorage`
-  - 为底层存储增加前缀作用域
-
-这部分能力经常被 `DataRepository`、`SaveRepository<TSaveData>`、`UnifiedSettingsDataRepository` 复用。
-
-对应文档：
-
-- [存储系统](../docs/zh-CN/game/storage.md)
-
-### `Serializer/`
-
-- `JsonSerializer`
-  - 当前默认序列化实现
-  - 同时可作为 `ISerializer` 与 `IRuntimeTypeSerializer`
-
-它通常先于存储和数据仓库被注册。
-
-对应文档：
-
-- [序列化系统](../docs/zh-CN/game/serialization.md)
-
-### `Scene/` 与 `UI/`
-
-面向游戏导航的可复用基类，不直接绑定具体引擎。
-
-- `SceneRouterBase`
-  - 依赖 `ISceneFactory`、`ISceneRoot`
-  - 提供栈式场景路由与转换处理管道
-- `UiRouterBase`
-  - 依赖 `IUiFactory`、`IUiRoot`
-  - 提供页面栈、Overlay/Modal/Toast 等层级 UI、输入动作分发、暂停联动
-- `Scene/Handler/*`、`UI/Handler/*`
-  - 默认转换处理器基类与日志处理器
-
-常见接法：
-
-- 项目自定义 `SceneRouter : SceneRouterBase`
-- 项目自定义 `UiRouter : UiRouterBase`
-- 工厂、注册表、root 都由项目或引擎适配层提供
-
-对应文档：
-
-- [场景系统](../docs/zh-CN/game/scene.md)
-- [UI 系统](../docs/zh-CN/game/ui.md)
-
-### `Input/`
-
-- `InputBindingStore`
-  - 纯托管动作绑定存储
-  - 提供默认快照恢复、主绑定替换、冲突交换与快照导入导出
-- `InputDeviceTracker`
-  - 提供当前活跃设备上下文的默认持有者
-- `UiInputActionMap`
-  - 把 `ui_accept` / `ui_cancel` 等逻辑动作桥接到 `UiInputAction`
-- `UiInputDispatcher`
-  - 把逻辑动作名继续分发给 `IUiRouter`
-
-对应文档：
-
-- [输入系统](../docs/zh-CN/game/input.md)
-
-### `Routing/` 与 `State/`
-
-- `Routing/RouterBase<TRoute, TContext>`
-  - Scene/UI 路由共享基类
-- `State/GameStateMachineSystem`
-  - 对核心状态机系统的游戏向封装
-
-这两部分一般被上层子系统消费，不是多数项目的第一接入点。
-
-## XML 阅读入口
-
-下面这份目录视图汇总了 `GFramework.Game` 的类型级 XML 文档入口，用来帮助你确定运行时阅读顺序；更细的参数、返回值、异常和生命周期说明，建议继续回到具体类型与成员确认。
-
-| 子系统 | 代表类型 | 阅读重点 |
+| 目录 | 主要入口 | 作用 |
 | --- | --- | --- |
-| `Config/` | `YamlConfigLoader`、`ConfigRegistry`、`GameConfigBootstrap`、`YamlConfigSchemaValidator` | 看 YAML 加载、schema 校验、模块接入与热重载边界 |
-| `Data/` `Storage/` `Serializer/` | `DataRepository`、`SaveRepository<TSaveData>`、`UnifiedSettingsDataRepository`、`FileStorage`、`JsonSerializer` | 看持久化布局、槽位存档、统一设置文件和底层序列化 / 存储实现 |
-| `Setting/` | `SettingsModel<TRepository>`、`SettingsSystem`、`SettingsAppliedEvent<T>` | 看初始化、应用、保存、重置等设置生命周期编排 |
-| `Input/` | `InputBindingStore`、`InputDeviceTracker`、`UiInputActionMap`、`UiInputDispatcher` | 看动作绑定、设备上下文和 UI 输入桥接的默认运行时实现 |
-| `Scene/` `UI/` `Routing/` | `SceneRouterBase`、`UiRouterBase`、`SceneTransitionPipeline`、`UiTransitionPipeline`、`RouterBase<TRoute, TContext>` | 看路由基类、转换处理器和项目层需要自己提供的 factory / root 边界 |
-| `Extensions/` `Internal/` `State/` | `DataLocationExtensions`、`VersionedMigrationRunner`、`GameStateMachineSystem` | 看辅助扩展、内部迁移执行逻辑和游戏态状态机封装 |
+| `UI/` | `UiService`、`UiRegistry` | 页面历史、窗口、强类型参数和对话框结果 |
+| `Scene/` | `SceneRouter` | 显式工厂与宿主驱动的场景导航 |
+| `Runtime/` | `GameServiceCollectionExtensions`、`GameRuntimeModule`、dispatcher | 标准服务登记、可选编排和宿主线程 |
+| `Input/` | `InputBindingStore`、`UiInputDispatcher` | 绑定快照和异步 UI 动作分发 |
+| `Config/` | `GameConfigBootstrap`、`YamlConfigLoader`、`ConfigRegistry` | 只读内容配置与热重载 |
+| `Data/` | `SaveRepository<T>`、`DataRepository`、`UnifiedSettingsDataRepository` | 槽位存档与业务持久化 |
+| `Setting/` | `SettingsModel<TRepository>`、`SettingsSystem` | 数据迁移、应用和保存 |
+| `Serializer/`、`Storage/` | `JsonSerializer`、`FileStorage`、`ScopedStorage` | 序列化、原子文件写入和键空间 |
 
-## 最小接入路径
+## 最小采用
 
-下面按最常见的四种接入目标给出最短路径。
+UI 通过共享 `UiRoute<TArgs>` 定义和 `UiRegistry` 工厂登记，再创建 `UiService(routes, host, dispatcher, pause)`。页面使用 `PushAsync`／`ReplaceAsync`，独立窗口使用 `ShowAsync`，实例通过句柄或视图上下文关闭。对话框通过 `UiDialogRoute<TArgs, TResult>` 返回业务结果。
 
-### 1. 只想先拿到文件存储
+场景可直接创建 `SceneRouter(factory, root, dispatcher)`。设置和存档同样通过构造函数接收存储等依赖，不要求组件角色或上下文绑定。
 
-```csharp
-using GFramework.Core.Abstractions.Serializer;
-using GFramework.Core.Abstractions.Storage;
-using GFramework.Game.Serializer;
-using GFramework.Game.Storage;
-
-var serializer = new JsonSerializer();
-IStorage storage = new FileStorage("GameData", serializer);
-
-await storage.WriteAsync("player/profile", new { Name = "Alice", Level = 3 });
-```
-
-这里的 `JsonSerializer` 建议在组合根只创建并配置一次；如果需要自定义 `JsonSerializerSettings` 或 converters，请在把它注册给 `IStorage`、`DataRepository` 或架构 utility 之前完成。
-
-如果你需要逻辑隔离，再包一层 `ScopedStorage`：
+标准 DI 提供三个接线入口：
 
 ```csharp
-var settingsStorage = new ScopedStorage(storage, "settings");
+services.AddGamePause();
+services.AddGameUi(routes, uiHost, dispatcher);
+services.AddGameScenes(sceneFactory, sceneRoot, dispatcher);
 ```
 
-### 2. 接入设置和存档
+这些扩展位于 `GFramework.Game.Runtime`。服务由 provider 拥有，传入的宿主对象仍由调用方拥有。使用 Architecture 时，将相同登记放入 `new GameRuntimeModule(dispatcher, services => { ... })`，保证业务停止先于原生宿主分离。
 
-运行时最小拼装顺序通常是：
+## 生命周期
 
-1. 注册 `JsonSerializer`
-2. 注册一个 `IStorage` 实现
-3. 注册 `ISettingsDataRepository`
-4. 创建并注册 `SettingsModel<ISettingsDataRepository>`
-5. 注册 applicator
-6. 注册 `SettingsSystem`
-7. 注册 `ISaveRepository<TSaveData>`
+所有异步调用遵循 `Async` 后缀和末尾 `CancellationToken`。UI 与 Scene 的操作结果区分应用、拒绝和无变化，异常向调用方传播。停止先关闭接纳、等待在途工作，再完成清理；宿主必须保持原生 root 和调度器存活。
 
-以下配置方法放在项目的 Architecture 类中；MySettingsLocationProvider、MyAudioSettingsApplicator、MySaveData 为项目自行提供的类型。可释放存储通过一个 owning 工厂交给 provider，配置阶段不创建文件目录或读取服务：
+设置加载先准备完整迁移结果，再更新现有数据；失败保留当前数据并报告错误。保存失败向调用方传播，已接纳的底层写入等待到完成。现有数据文件和存档布局继续使用。
 
-```csharp
-using Microsoft.Extensions.DependencyInjection;
+## 文档和可运行工程
 
-protected override void ConfigureServices(IServiceCollection services)
-{
-    RegisterUtility<JsonSerializer>();
-    services.AddSingleton<IStorage>(provider =>
-        new FileStorage("GameData", provider.GetRequiredService<JsonSerializer>()));
-    services.AddSingleton(new DataRepositoryOptions { BasePath = "settings", AutoBackup = true });
-    services.AddSingleton(new SaveConfiguration
-    {
-        SaveRoot = "saves",
-        SaveSlotPrefix = "slot_",
-        SaveFileName = "save.json"
-    });
-
-    RegisterUtility<IDataLocationProvider>(new MySettingsLocationProvider());
-    RegisterUtility<UnifiedSettingsDataRepository>();
-    RegisterModel<SettingsModel<ISettingsDataRepository>>(model =>
-        model.RegisterApplicator(new MyAudioSettingsApplicator()));
-    RegisterSystem<SettingsSystem>();
-    RegisterUtility<SaveRepository<MySaveData>>();
-}
-```
-
-启动时先等待架构完成，再通过已初始化的实例上下文触发设置加载和应用：
-
-```csharp
-await architecture.InitializeAsync();
-var settingsModel = architecture.Context.GetModel<ISettingsModel>();
-var settingsSystem = architecture.Context.GetSystem<ISettingsSystem>();
-await settingsModel.InitializeAsync();
-await settingsSystem.ApplyAll();
-```
-
-退出前：
-
-```csharp
-await settingsSystem.SaveAll();
-```
-
-在 Godot 项目中也可以沿用同一思路，只是底层存储通常换成宿主侧适配实现。
-
-### 3. 接入静态 YAML 配置
-
-如果你不走 `Architecture` 生命周期，直接使用 `GameConfigBootstrap`：
-
-```csharp
-using var bootstrap = new GameConfigBootstrap(
-    new GameConfigBootstrapOptions
-    {
-        RootPath = contentRootPath,
-        ConfigureLoader = static loader =>
-        {
-            loader.RegisterAllGeneratedConfigTables();
-        }
-    });
-
-await bootstrap.InitializeAsync();
-
-var registry = bootstrap.Registry;
-```
-
-如果使用 Architecture，在 ConfigureServices(IServiceCollection) 中 InstallModule(new GameConfigModule(options))；随后等待 architecture.InitializeAsync(cancellationToken)。模块首载由异步 BeforeUtilityInit 钩子执行，同步 Initialize 会拒绝此路径。provider 拥有 bootstrap 生命周期适配器，失败、取消和正常销毁都会释放监听资源。
-
-这一能力几乎总是与 source generators 绑定使用。目录、schema、生成器与热重载约定请直接看：
-
-- [内容配置系统](../docs/zh-CN/game/config-system.md)
-
-接入前建议先记住当前采用边界：
-
-- 正式契约以 `YamlConfigLoader` 与 `GFramework.Game.SourceGenerators` 共享支持的 schema 子集为准
-- `additionalProperties` 当前只接受 `false`，用于保持对象字段集闭合
-- `oneOf` / `anyOf` 这类会改变生成类型形状的组合关键字当前不属于采用路径
-- VS Code 配置工具是内容维护辅助层；如果 schema 超出共享子集，应回退到 raw YAML 与 schema 本体设计
-
-### 4. 接入 Scene / UI 路由
-
-这里的最小前提不是“直接 new 一个 router”，而是先补齐运行时依赖：
-
-- `ISceneFactory` / `IUiFactory`
-- `ISceneRoot` / `IUiRoot`
-- 具体页面或场景行为实现
-
-然后让项目自己的 router 继承基类：
-
-```csharp
-public sealed class MySceneRouter : SceneRouterBase
-{
-    protected override void RegisterHandlers()
-    {
-        RegisterHandler(new LoggingTransitionHandler());
-    }
-}
-
-public sealed class MyUiRouter : UiRouterBase
-{
-    protected override void RegisterHandlers()
-    {
-        RegisterHandler(new GFramework.Game.UI.Handler.LoggingTransitionHandler());
-    }
-}
-```
-
-这类 router 适合作为你的项目层或引擎适配层代码，而不是直接修改本包。
-
-## 典型项目分层方式
-
-典型项目对本包的使用大致分成三层：
-
-- 配置
-  - 项目级配置宿主类型使用生成表元数据与 YAML loader 完成配置注册
-- 设置与存档
-  - 项目层 utility 模块注册序列化器、底层存储、`UnifiedSettingsDataRepository`、
-    `SaveRepository<GameSaveData>`
-  - 项目层 model 模块创建 `SettingsModel<ISettingsDataRepository>` 并注册 applicator
-- 路由
-  - 项目自定义 `SceneRouterBase` / `UiRouterBase` 的派生类型
-
-这说明本包更适合做“游戏基础设施层”，而不是把所有引擎对象耦死在包内部。
-
-## 文档入口
-
-- 游戏模块总览：[Game 模块总览](../docs/zh-CN/game/index.md)
-- 内容配置系统：[内容配置系统](../docs/zh-CN/game/config-system.md)
-- 数据与存档：[数据与存档系统](../docs/zh-CN/game/data.md)
-- 设置系统：[设置系统](../docs/zh-CN/game/setting.md)
-- 存储系统：[存储系统](../docs/zh-CN/game/storage.md)
-- 序列化系统：[序列化系统](../docs/zh-CN/game/serialization.md)
-- 场景系统：[场景系统](../docs/zh-CN/game/scene.md)
-- UI 系统：[UI 系统](../docs/zh-CN/game/ui.md)
-- 输入系统：[输入系统](../docs/zh-CN/game/input.md)
-
-## 什么时候不该直接依赖本包
-
-以下场景优先考虑只依赖 `GFramework.Game.Abstractions`：
-
-- 你在做纯领域层、协议层或可复用 feature 包，只想引用接口和数据契约
-- 你已经有自己的配置、存储、路由实现，只想复用统一契约
-- 你不希望业务程序集带入 `Newtonsoft.Json`、`YamlDotNet` 等运行时依赖
-
-## 导航与停止
-
-Scene/UI 导航在绑定根节点时捕获宿主同步上下文，按提交顺序执行；异步生命周期回调中不要等待同一路由器的新导航。Replace 在移除旧场景前完成目标准备；清空操作被守卫拒绝时直接结束。路由器使用异步 DestroyAsync 停止，Architecture 会自动调用该契约，手动拥有路由器时也应等待其完成。
-
-FileStorage 与 Godot 存储共享临时文件替换机制，写入失败保留已有文件。具体接入见[场景系统](../docs/zh-CN/game/scene.md)、[UI 系统](../docs/zh-CN/game/ui.md)和[存储系统](../docs/zh-CN/game/storage.md)。
+- [Game 概览](../docs/zh-CN/game/index.md)
+- [UI 系统](../docs/zh-CN/game/ui.md)
+- [场景系统](../docs/zh-CN/game/scene.md)
+- [设置系统](../docs/zh-CN/game/setting.md)
+- [数据与存档](../docs/zh-CN/game/data.md)
+- [内容配置](../docs/zh-CN/game/config-system.md)
+- [官方素材小游戏](../Samples/DodgeTheCreeps/README.md)

@@ -22,19 +22,19 @@ godot --editor --path Samples/GodotIntegration
 
 ## 能力与边界
 
-- Scene/UI：继承 `SceneRouterBase` 和 `UiRouterBase`，接入项目根节点和 Godot behavior adapter。
+- Scene/UI：使用默认 SceneRouter 和 IUiService，通过显式工厂、GodotUiRoot 与强类型路由接入原生节点。
 - 配置：schema 在编译期生成 `GameplayConfig`，Godot 加载器在编辑器与导出态读取相同 YAML。
-- 暂停与输入：页面交互配置持有暂停令牌，嵌套设置菜单独立释放；重绑定使用引擎无关的绑定快照。
+- 暂停与输入：路由定义集中声明暂停、模态与输入策略，嵌套设置窗口独立释放暂停令牌；默认 GodotUiInputBridge 处理返回，重绑定使用引擎无关的绑定快照。
 - 协程：世界计时器使用节点归属协程，暂停时停止计时，退树时停止运行。
 - 设置与存档：使用现有设置仓库和槽位存档仓库，数据存放在 `user://runtime_sample/`。新游戏只有在明确保存后才覆盖旧槽位。
 
-这个工程使用程序化场景和 UI，便于定位接线。自己的项目可以把视图替换为 `PackedScene`，继续使用相同路由契约。窗口正常关闭会保留退出请求，等待当前操作与启动收尾，再等待架构停止；强制终止进程不自动保存。
+这个工程在一处注册普通 Control 工厂，界面通过实例上下文关闭自己。项目也可以用 RegisterGodotScene 注册 PackedScene，继续使用相同路由定义。GameRuntimeModule 通过 AddGamePause、AddGameUi 和 AddGameScenes 接入可选 Architecture；普通服务在就绪后使用 GetService 解析。窗口正常关闭会保留退出请求，等待当前操作与启动收尾，再等待架构停止；强制终止进程不自动保存。
 
 ## 导出与持久化
 
 项目提供 Windows Desktop 导出预设，需要匹配版本的导出模板。预设显式包含 `config/gameplay/default.yaml` 与 `schemas/gameplay.schema.json`；这两类文本是导出态配置加载的必要资源。新增配置文件时应同步更新预设，确保它们进入导出包。
 
-启动导出的程序，保存一次进度和设置后退出，再启动并继续。操作与目录说明见[示例使用说明](https://github.com/GeWuYou/GFramework/tree/main/Samples/GodotIntegration)。编译通过不等同于完成原生场景树、输入、暂停和导出运行验证。
+启动导出的程序，保存一次进度和设置后退出，再启动并继续。操作与目录说明见[示例使用说明](https://github.com/GeWuYou/GFramework/tree/main/Samples/GodotIntegration)。示例提供隔离数据的 --smoke 自检和独立进程 --smoke-continue 续测，覆盖原生场景、输入、暂停和持久化流程。
 
 ## 相关主题
 

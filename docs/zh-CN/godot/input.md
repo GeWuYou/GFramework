@@ -47,11 +47,11 @@ bindingStore.SetPrimaryBinding(
         "Space"));
 ```
 
-如果你已经有 `UiRouterBase`，还可以继续把动作名桥接到 UI 语义：
+使用 `IUiService` 时，可将逻辑动作名异步分发到 UI 语义：
 
 ```csharp
-var dispatcher = new UiInputDispatcher(new UiInputActionMap(), uiRouter);
-dispatcher.TryDispatch(InputActions.UiCancel);
+var dispatcher = new UiInputDispatcher(new UiInputActionMap(), ui);
+await dispatcher.DispatchAsync(InputActions.UiCancel, cancellationToken);
 ```
 
 ## 当前边界

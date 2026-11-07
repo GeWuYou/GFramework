@@ -121,3 +121,7 @@ dotnet add package GeWuYou.GFramework.Core.Abstractions
 ## 宿主停止顺序
 
 OnStoppingAsync 先关闭宿主接入，随后停止组件和服务模块；OnStoppedAsync 在它们停止后分离宿主根节点，最后释放 provider。需要异步退出回调的宿主应把节点分离放在 OnStoppedAsync，确保回调执行期间节点和依赖仍然存活。
+
+## 独立暂停服务
+
+`PauseStackManager` 通过可选标准日志构造，可直接使用或作为普通单例服务登记。它不要求组件角色或上下文绑定，宿主通过 `IPauseHandler` 应用实际暂停，并在停止顺序中等待 `DisposeAsync`。采用说明见 [暂停系统](../docs/zh-CN/core/pause.md)。

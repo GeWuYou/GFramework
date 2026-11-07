@@ -2,11 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using GFramework.Game.Abstractions.Data;
-using GFramework.Game.Abstractions.Enums;
+using GFramework.Game.Abstractions.UI;
 using GFramework.Game.Data;
+using GFramework.Godot.Scene;
 using Godot;
 using JsonSerializer = GFramework.Game.Serializer.JsonSerializer;
 
@@ -26,9 +28,10 @@ public partial class DemoRoot
             await _startupTask.ConfigureAwait(true);
             Require(_ready, "startup did not reach Ready");
             Require(Gameplay.Speed > 0, "generated YAML configuration was not loaded");
-            Require(string.Equals(Ui.CurrentKey, "menu", StringComparison.Ordinal), "initial menu missing");
+            Require(Ui.Snapshot.Views.Any(view => string.Equals(view.RouteKey, DemoUiRoutes.Menu.Key, StringComparison.Ordinal) && view.Visible), "initial menu missing");
             Require(_dataRootPath.StartsWith("user://runtime_smoke/", StringComparison.Ordinal), "smoke data is not isolated");
 
+            await VerifySceneProcessingFlagsAsync().ConfigureAwait(true);
             if (_smokeContinue)
             {
                 await VerifyPersistedProcessAsync().ConfigureAwait(true);
@@ -97,6 +100,58 @@ public partial class DemoRoot
         return true;
     }
 
+    /// <summary>Checks native scene pause/restoration against asymmetric authored processing settings.</summary>
+    private async Task VerifySceneProcessingFlagsAsync()
+    {
+        var node = new Node { Name = "ProcessingProbe" };
+        _sceneRoot.AddChild(node);
+        node.SetProcess(false);
+        node.SetPhysicsProcess(true);
+        node.SetProcessInput(false);
+        var scene = SceneBehaviorFactory.Create(node, "processing-probe");
+        try
+        {
+            await scene.OnLoadAsync(null).ConfigureAwait(true);
+            await scene.OnEnterAsync().ConfigureAwait(true);
+            await scene.OnResumeAsync().ConfigureAwait(true);
+            RequireProcessingFlags(node, process: false, physics: true, input: false);
+
+            await scene.OnPauseAsync().ConfigureAwait(true);
+            RequireProcessingFlags(node, process: false, physics: false, input: false);
+            await scene.OnPauseAsync().ConfigureAwait(true);
+            await scene.OnResumeAsync().ConfigureAwait(true);
+            RequireProcessingFlags(node, process: false, physics: true, input: false);
+
+            // Repeated resume must preserve a later authored state, rather than
+            // replaying an already consumed snapshot or enabling all processing.
+            node.SetProcess(true);
+            node.SetPhysicsProcess(false);
+            node.SetProcessInput(true);
+            await scene.OnResumeAsync().ConfigureAwait(true);
+            RequireProcessingFlags(node, process: true, physics: false, input: true);
+            await scene.OnPauseAsync().ConfigureAwait(true);
+            await scene.OnResumeAsync().ConfigureAwait(true);
+            RequireProcessingFlags(node, process: true, physics: false, input: true);
+        }
+        finally
+        {
+            await scene.OnExitAsync().ConfigureAwait(true);
+            await scene.OnUnloadAsync().ConfigureAwait(true);
+            RemoveScene(scene);
+            await WaitFramesAsync(2).ConfigureAwait(true);
+            Require(!GodotObject.IsInstanceValid(node), "native processing probe was not released");
+        }
+        GD.Print("GFRAMEWORK_SMOKE_CHECKS native-scene-processing: PASS");
+    }
+
+    /// <summary>Compares actual Godot processing flags without inferring them from business activity.</summary>
+    private static void RequireProcessingFlags(Node node, bool process, bool physics, bool input)
+    {
+        Require(node.IsProcessing() == process, "scene process setting was not preserved");
+        Require(node.IsPhysicsProcessing() == physics, "scene physics setting was not preserved");
+        Require(node.IsProcessingInput() == input, "scene input setting was not preserved");
+    }
+
     /// <summary>Confirms a fresh process loaded the prior run's settings and slot through normal startup and menu actions.</summary>
     private async Task VerifyPersistedProcessAsync()
     {
@@ -108,7 +163,7 @@ public partial class DemoRoot
         Require(Scenes.Current?.Original is DemoWorld, "fresh process could not continue the saved slot");
         Require(Save.Version == 1 && float.IsFinite(Save.X) && Save.X > 480,
             "fresh process loaded default or invalid gameplay state");
-        Require(!GetTree().Paused && _modals.Count == 0, "continued world inherited a stale pause owner");
+        Require(!GetTree().Paused && Ui.Snapshot.Views.Count(view => view.Options.Kind == UiRouteKind.Window) == 0, "continued world inherited a stale pause owner");
     }
 
     /// <summary>Creates the native world and checks movement plus the running node-owned coroutine.</summary>
@@ -119,7 +174,7 @@ public partial class DemoRoot
         Require(Scenes.Current?.Original is DemoWorld, "new game did not create the native world");
         var world = (DemoWorld)Scenes.Current!.Original;
         Require(world.IsInsideTree(), "world is not attached to the scene root");
-        Require(Ui.Count == 0, "main menu remained on the page stack");
+        Require(Ui.Snapshot.Views.Count == 0, "main menu remained on the page stack");
 
         var originalX = Save.X;
         InjectKey(Key.D, pressed: true);
@@ -138,7 +193,7 @@ public partial class DemoRoot
         InjectKey(Key.Escape, pressed: true);
         InjectKey(Key.Escape, pressed: false);
         await AwaitActionAsync().ConfigureAwait(true);
-        Require(GetTree().Paused && _modals.Count == 1, "pause input did not pause the scene tree");
+        Require(GetTree().Paused && Ui.Snapshot.Views.Count(view => view.Options.Kind == UiRouteKind.Window) == 1, "pause input did not pause the scene tree");
         var pausedSeconds = world.ActiveSeconds;
         var pausedX = Save.X;
         InjectKey(Key.D, pressed: true);
@@ -147,10 +202,10 @@ public partial class DemoRoot
         Require(world.ActiveSeconds == pausedSeconds && Save.X == pausedX, "world or coroutine advanced while paused");
 
         await ClickAsync("Settings").ConfigureAwait(true);
-        Require(GetTree().Paused && _modals.Count == 2, "nested settings did not retain both pause owners");
+        Require(GetTree().Paused && Ui.Snapshot.Views.Count(view => view.Options.Kind == UiRouteKind.Window) == 2, "nested settings did not retain both pause owners");
         await VerifyPreferencesAsync().ConfigureAwait(true);
         await ClickAsync("Back").ConfigureAwait(true);
-        Require(GetTree().Paused && _modals.Count == 1, "closing settings resumed the lower pause owner");
+        Require(GetTree().Paused && Ui.Snapshot.Views.Count(view => view.Options.Kind == UiRouteKind.Window) == 1, "closing settings resumed the lower pause owner");
     }
 
     /// <summary>Persists a slot, unloads the world across native frames, and restores the same saved state.</summary>
@@ -163,7 +218,7 @@ public partial class DemoRoot
         Require(loaded.X == Save.X && loaded.Y == Save.Y && loaded.Collected == Save.Collected,
             "slot reload did not preserve gameplay state");
         await ClickAsync("Return without saving").ConfigureAwait(true);
-        Require(Scenes.Current is null && !GetTree().Paused && _modals.Count == 0,
+        Require(Scenes.Current is null && !GetTree().Paused && Ui.Snapshot.Views.Count(view => view.Options.Kind == UiRouteKind.Window) == 0,
             "return to menu left a scene or pause owner active");
         Require(!GodotObject.IsInstanceValid(world), "QueueFree did not release the old world after frame boundaries");
         var stoppedSeconds = world.ActiveSeconds;
@@ -185,7 +240,7 @@ public partial class DemoRoot
         Require(!_awaitingBinding, "native key input did not finish rebinding");
         await ClickAsync("Save settings").ConfigureAwait(true);
 
-        var repository = new UnifiedSettingsDataRepository(_storage, new JsonSerializer(),
+        var repository = new UnifiedSettingsDataRepository(_storage ?? throw new InvalidOperationException("Storage was not initialized."), new JsonSerializer(),
             new DataRepositoryOptions { BasePath = _dataRootPath, EnableEvents = false });
         repository.RegisterDataType(_settingsLocation, typeof(DemoPreferences));
         var preferences = await repository.LoadAsync<DemoPreferences>(_settingsLocation).ConfigureAwait(true);
@@ -201,11 +256,26 @@ public partial class DemoRoot
     /// <param name="text">Exact visible label in the topmost sample view.</param>
     private async Task ClickAsync(string text)
     {
-        var panel = _uiRoot.GetChildren().OfType<DemoPanel>().Last();
+        var target = Ui.Snapshot.Views.Last(view => view.Visible && view.Active);
+        var panel = EnumerateNodes(_uiRoot).OfType<DemoPanel>()
+            .Single(candidate => candidate.InstanceHandle == target.Handle);
         var button = panel.GetChildren().OfType<VBoxContainer>().Single()
             .GetChildren().OfType<Button>().Single(candidate => string.Equals(candidate.Text, text, StringComparison.Ordinal));
         button.EmitSignal(Button.SignalName.Pressed);
         await AwaitActionAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>Traverses the default native host without depending on its mounting implementation.</summary>
+    /// <param name="node">Current native branch.</param>
+    /// <returns>The branch and all descendants.</returns>
+    private static IEnumerable<Node> EnumerateNodes(Node node)
+    {
+        yield return node;
+        foreach (var child in node.GetChildren())
+        {
+            foreach (var descendant in EnumerateNodes(child))
+                yield return descendant;
+        }
     }
 
     /// <summary>Joins the latest production operation, then crosses native frame boundaries for deferred frees.</summary>

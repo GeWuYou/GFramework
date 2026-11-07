@@ -1,361 +1,139 @@
 ---
 title: UI 系统
-description: 说明 GFramework.Game UI 路由当前的页面栈、层级 UI、输入语义与项目侧接入方式。
+description: 使用强类型路由、显式宿主和异步操作组织页面、窗口、对话框与暂停。
 ---
 
 # UI 系统
 
-`GFramework.Game` 的 UI 系统不是单纯的“页面栈”。按当前实现，它同时覆盖：
+`UiService` 管理页面历史、窗口顺序、输入仲裁和视图释放。它通过构造函数接收 `UiRegistry`、`IUiHost`、`IGameDispatcher`，可直接采用，也可通过标准 DI 或可选 Architecture 模块接入。
 
-- `UiLayer.Page` 的页面导航
-- `Overlay` / `Modal` / `Toast` / `Topmost` 的层级 UI
-- UI 语义动作捕获与分发
-- World 输入阻断
-- 由 UI 可见性驱动的暂停语义
+## 路由定义
 
-因此，新的接入文档不应再把它写成“只有 Push/Pop 的传统页面管理器”。
-
-## 当前公开入口
-
-### `IUiPage`
-
-最轻量的页面生命周期契约，暴露：
-
-- `OnEnter`
-- `OnExit`
-- `OnPause`
-- `OnResume`
-- `OnShow`
-- `OnHide`
-
-如果你的页面逻辑只想表达这些生命周期阶段，停留在 `IUiPage` 就够了。
-
-### `IUiPageBehavior`
-
-路由器真正操作的运行时页面行为。相比 `IUiPage`，它还携带：
-
-- `Key`
-- `Layer`
-- `Handle`
-- `View`
-- `IsAlive`
-- `IsVisible`
-- `IsModal`
-- `BlocksInput`
-- `InteractionProfile`
-- `TryHandleUiAction(UiInputAction action)`
-
-也就是说，页面栈和层级 UI 都是围绕 `IUiPageBehavior` 工作的，而不是只围绕 `IUiPage`。
-
-### `IUiRouter`
-
-当前最常用的入口分成两组。
-
-页面栈：
-
-- `PushAsync(...)`
-- `ReplaceAsync(...)`
-- `PopAsync(...)`
-- `ClearAsync()`
-- `Peek()`
-- `PeekKey()`
-
-层级 UI：
-
-- `Show(...)`
-- `Hide(...)`
-- `Resume(...)`
-- `ClearLayer(...)`
-- `HideByKey(...)`
-- `GetAllFromLayer(...)`
-
-输入与阻断：
-
-- `GetUiActionOwner(UiInputAction action)`
-- `TryDispatchUiAction(UiInputAction action)`
-- `BlocksWorldPointerInput()`
-- `BlocksWorldActionInput()`
-
-### `UiLayer`
-
-当前层级语义如下：
-
-- `Page`
-  - 页面栈层。请用 `PushAsync` / `ReplaceAsync`，不要用 `Show(...)`。
-- `Overlay`
-  - 可叠加的浮层。
-- `Modal`
-  - 默认阻断下层输入的模态层。
-- `Toast`
-  - 轻量提示层。
-- `Topmost`
-  - 最顶层的系统级 UI。
-
-### `UiTransitionPolicy` 与 `UiPopPolicy`
-
-页面栈的两个关键策略：
-
-- `UiTransitionPolicy.Exclusive`
-  - 新页面独占显示，下层页面会 `Pause + Hide`
-- `UiTransitionPolicy.Overlay`
-  - 新页面覆盖显示，下层页面只 `Pause`
-- `UiPopPolicy.Destroy`
-  - 弹出时直接销毁页面实例
-- `UiPopPolicy.Suspend`
-  - 弹出时保留页面实例，供后续恢复
-
-## UI 路由的真实语义
-
-### 页面栈和层级 UI 是两套入口
-
-当前源码里：
-
-- `Page` 层属于栈语义，用 `PushAsync` / `ReplaceAsync` / `PopAsync`
-- `Overlay`、`Modal`、`Toast`、`Topmost` 属于层级语义，用 `Show` / `Hide` / `Resume`
-
-`Show(..., UiLayer.Page)` 在当前实现里会直接抛异常；`Page` 层应通过 `PushAsync` / `ReplaceAsync` / `PopAsync` 进入。
-
-### 输入不是页面自己抢，而是 router 先仲裁
-
-`UiInteractionProfile` 用来描述页面的交互契约，例如：
-
-- 捕获哪些 `UiInputAction`
-- 是否阻断 World 指针输入
-- 是否阻断 World 语义动作输入
-- 页面可见时是否推动暂停栈
-
-输入层先把设备输入映射成 `UiInputAction`，再交给 `IUiRouter.TryDispatchUiAction(...)`。最终谁拥有动作捕获权，由当前可见页面和层级顺序决定。
-
-### 页面可见性会影响暂停与阻断
-
-这也是 UI 系统和普通页面栈最不同的地方之一。当前实现里：
-
-- `Modal` / `Topmost` 默认具有更强的输入阻断语义
-- 页面的 `InteractionProfile` 可以驱动暂停栈
-- `BlocksWorldPointerInput()` 与 `BlocksWorldActionInput()` 是给项目输入层做统一判断的
-
-如果你的项目有“打开设置页后暂停世界”“Modal 打开时地图点击失效”这类需求，优先接这个契约，而不是每个页面自己散落地写输入屏蔽逻辑。
-
-## 最小接入路径
-
-推荐按下面的顺序接入。
-
-### 推荐目录与文件约定（项目侧）
-
-UI 系统的接入文件建议按“路由、工厂、根节点、页面行为、入参”拆开。这样可以让 `UiRouterBase` 只承担编排职责，
-把引擎节点创建和页面业务逻辑留在项目侧。
-
-```text
-Game/UI/
-  GameUiRouter.cs
-  GameUiFactory.cs
-  UiRoot.cs
-  Pages/
-    MainMenuPageBehavior.cs
-    SettingsPageBehavior.cs
-  Params/
-    SettingsEnterParam.cs
-  Views/
-    MainMenuView.cs
-```
-
-推荐约定如下：
-
-- `GameUiRouter.cs`：项目侧 router，继承 `UiRouterBase`，只注册 UI transition handler 与 guard
-- `GameUiFactory.cs`：实现 `IUiFactory`，负责 `uiKey -> IUiPageBehavior` 的映射与实例创建
-- `UiRoot.cs`：实现 `IUiRoot`，负责按 `UiLayer` 把页面行为挂到真实 UI 容器
-- `Pages/*PageBehavior.cs`：放实现 `IUiPageBehavior` 的页面行为；使用 Godot 生成器时可由 `AutoUiPage` 相关样板补齐
-- `Params/*EnterParam.cs`：放实现 `IUiPageEnterParam` 的页面入参
-- `Views/*`：放项目引擎层视图包装或节点引用，不建议把导航决策写在视图里
-
-最小 wiring 通常是：
+路由定义由注册和调用方共享，参数由编译器检查：
 
 ```csharp
-architecture.RegisterUtility<IUiFactory>(new GameUiFactory());
-architecture.RegisterSystem(new GameUiRouter());
+using GFramework.Game.Abstractions.UI;
+
+public sealed record MenuArgs(string Title);
+public sealed record SettingsArgs(float Volume);
+
+public static class Routes
+{
+    public static readonly UiRoute<MenuArgs> Menu = new("menu");
+    public static readonly UiRoute<SettingsArgs> Settings = new("settings", new UiRouteOptions
+    {
+        Kind = UiRouteKind.Window,
+        Layer = 20,
+        Modal = true,
+        BlocksWorldPointerInput = true,
+        BlocksWorldActionInput = true,
+        PauseWhileVisible = true
+    });
+    public static readonly UiDialogRoute<string, bool> Confirm = new("confirm", new UiRouteOptions
+    {
+        Kind = UiRouteKind.Window,
+        Layer = 30,
+        Modal = true,
+        BlocksWorldPointerInput = true,
+        BlocksWorldActionInput = true
+    });
+}
 ```
 
-随后在 `UiRoot` 的引擎生命周期就绪点调用 `_uiRouter.BindRoot(this)`。如果项目已经按功能域组织 UI 文件，也可以保留
-原目录；关键是让 `*Router` 只做编排、`*Factory` 只做映射与创建、`*Root` 只做容器挂载，页面行为只表达页面自身语义。
+`Kind` 决定页面或独立窗口。`Layer` 只决定显示顺序；`Modal`、世界输入阻断、暂停和多实例分别声明。窗口默认单实例，再次显示会返回已有句柄，沿用原有参数；需要新参数时关闭后重新打开。`AllowMultiple = true` 显式开启多个窗口实例。
 
-### 1. 提供项目自己的 router
+页面的 `PushAsync` 每次创建历史条目。`ReplaceAsync` 替换页面历史，独立窗口继续存在。`AllowBack` 控制默认返回是否能关闭该视图。
+
+## 注册与构造
+
+在组合根创建一次注册表，登记项目自己的视图工厂：
 
 ```csharp
+using System.Threading.Tasks;
 using GFramework.Game.UI;
-using LoggingTransitionHandler = GFramework.Game.UI.Handler.LoggingTransitionHandler;
 
-public sealed class GameUiRouter : UiRouterBase
-{
-    protected override void RegisterHandlers()
-    {
-        RegisterHandler(new LoggingTransitionHandler());
-    }
-}
+var routes = new UiRegistry();
+routes.Register(Routes.Menu, (args, context, token) =>
+    Task.FromResult<IUiView>(new MenuView(args, context)));
+routes.Register(Routes.Settings, (args, context, token) =>
+    Task.FromResult<IUiView>(new SettingsView(args, context)));
+routes.Register(Routes.Confirm, (question, context, token) =>
+    Task.FromResult<IUiView>(new ConfirmView(question, context)));
+
+await using var ui = new UiService(routes, host, dispatcher, pauseManager);
+await ui.ReplaceAsync(Routes.Menu, new MenuArgs("Dodge the Creeps!"));
 ```
 
-### 2. 提供 `IUiFactory`
+`MenuView`、`SettingsView` 和 `ConfirmView` 是项目提供的 `IUiView`；`host` 和 `dispatcher` 由宿主提供。注册使用相同的路由定义实例，服务构造时复制注册表。重复 key 在登记时失败。带 `PauseWhileVisible` 的路由需要传入暂停服务。
 
-`UiRouterBase` 会通过 `IUiFactory.Create(string uiKey)` 获取页面行为实例，因此项目需要自己决定：
+纯托管宿主可使用 `InlineGameDispatcher`，原生宿主使用共享的线程调度器。Godot 的普通 `Control` 接入见 [Godot UI](../godot/ui.md)。可构建工程见 [官方素材小游戏](https://github.com/GeWuYou/GFramework/tree/main/Samples/DodgeTheCreeps)。
 
-- `uiKey` 如何映射到页面行为
-- 页面行为如何包裹具体引擎视图
-- 预挂载节点、调试节点或动态实例化页面如何接入
-
-如果你在 Godot 项目里使用 `AutoUiPage` 相关生成器，它可以帮你减少部分行为样板，但 factory / root / 实际页面注册仍然是项目职责。
-
-### 3. 提供 `IUiRoot`
-
-`IUiRoot` 负责把页面行为挂进真实 UI 容器：
-
-- `AddUiPage(IUiPageBehavior child)`
-- `AddUiPage(IUiPageBehavior child, UiLayer layer, int orderInLayer = 0)`
-- `RemoveUiPage(IUiPageBehavior child)`
-
-一种常见的项目侧实现方式，是在自己的 `CanvasLayer` 上为每个 `UiLayer` 建独立容器，再在 `_Ready()` 时执行
-`_uiRouter.BindRoot(this)`。
-
-### 4. 装配 router 与 factory
+## 日常操作
 
 ```csharp
-architecture.RegisterUtility<IUiFactory>(new GameUiFactory());
-architecture.RegisterSystem(new GameUiRouter());
+await ui.PushAsync(Routes.Menu, new MenuArgs("Another page"), cancellationToken);
+var opened = await ui.ShowAsync(Routes.Settings, new SettingsArgs(0.7f), cancellationToken);
+if (opened.Handle is { } handle)
+    await ui.CloseAsync(handle, cancellationToken);
+await ui.BackAsync(cancellationToken);
 ```
 
-### 5. 在 root 就绪后绑定
+- `PushAsync`、`ReplaceAsync` 操作页面。
+- `ShowAsync` 操作窗口、HUD 和提示等独立 UI。
+- `CloseAsync` 通过句柄关闭准确实例，无需重复传层级。
+- `BackAsync` 先处理最上层窗口；没有窗口时处理最上层页面。禁用返回的顶层视图会阻止默认返回继续穿透。
+- `ClearAsync` 在全部关闭守卫接受后关闭页面和窗口。
+
+普通操作返回 `UiOperationResult`，其中 `Status` 为 `Applied`、`Rejected` 或 `NoOp`，`Handle` 是相关实例。跨服务的句柄会被拒绝。取消使用标准取消异常，运行失败通过异常返回。
+
+## 对话框结果
 
 ```csharp
-public sealed class UiRoot : CanvasLayer, IUiRoot
-{
-    [GetSystem] private IUiRouter _uiRouter = null!;
-
-    public override void _Ready()
-    {
-        __InjectContextBindings_Generated();
-        _uiRouter.BindRoot(this);
-    }
-
-    public void AddUiPage(IUiPageBehavior child)
-    {
-        AddUiPage(child, UiLayer.Page);
-    }
-
-    public void AddUiPage(IUiPageBehavior child, UiLayer layer, int orderInLayer = 0)
-    {
-        // 项目侧决定如何把 child.View 挂到具体容器
-    }
-
-    public void RemoveUiPage(IUiPageBehavior child)
-    {
-        // 项目侧决定如何移除并释放视图
-    }
-}
+var answer = await ui.ShowDialogAsync(Routes.Confirm, "Return to menu?", cancellationToken);
+if (answer.Accepted && answer.Value == true)
+    await ReturnToMenuAsync();
 ```
 
-### 6. 从业务代码区分两类入口
+工厂收到 `UiDialogContext<TResult>`。确认按钮调用 `CompleteAsync(result)`，取消按钮调用 `CloseAsync()`。结果在视图关闭和清理完成后返回；`Accepted` 区分业务提交与未接受结果；用户关闭或打开守卫拒绝时返回未接受结果。
 
-页面栈：
+等待用户操作不占用修改队列，因此仍可打开其他 UI 或关闭宿主。调用方取消会关闭本次对话框，完成清理后取消等待任务。
 
-```csharp
-await uiRouter.ReplaceAsync("MainMenu");
-await uiRouter.PushAsync("Settings", new SettingsEnterParam());
-await uiRouter.PopAsync(UiPopPolicy.Destroy);
-```
+## 视图生命周期与所有权
 
-层级 UI：
+`IUiView` 是服务拥有的视图租约：
 
-```csharp
-var modalHandle = uiRouter.Show(
-    "ConfirmExit",
-    UiLayer.Modal,
-    new ConfirmExitParam());
+| 成员 | 责任 |
+| --- | --- |
+| `OpenAsync` | 在已挂载且隐藏时准备视图、订阅业务事件 |
+| `SetVisible` | 修改可见性 |
+| `SetActive` | 修改交互资格 |
+| `CloseAsync` | 取消业务订阅，容忍部分打开状态 |
+| `DisposeAsync` | 释放租约拥有的视图资源 |
 
-uiRouter.Hide(modalHandle, UiLayer.Modal);
-```
+业务参数在工厂中绑定，`UiViewContext` 提供本实例句柄和关闭操作。普通按钮通过它关闭自己，无需查找全局服务。宿主 `IUiHost` 负责挂载、顺序和焦点，释放仍由视图租约承担。
 
-## 扩展点
+可见、可交互和游戏暂停分别管理。页面被覆盖可保留历史；关闭默认释放，不保留隐藏缓存。工厂在返回租约之前失败时，负责回收自己创建的部分资源。
 
-### 路由守卫
+## 输入、守卫与诊断
 
-如果你要在进入或离开页面前做业务检查，实现 `IUiRouteGuard`：
+`DispatchActionAsync` 把 `Cancel`、`Confirm` 等语义动作交给最高优先级的合格视图。视图可实现 `IUiActionTarget`；未处理的 `Cancel` 使用正常返回规则。控件级键盘导航和点击由宿主原生 UI 处理。
 
-- `CanEnterAsync(string uiKey, IUiPageEnterParam? param)`
-- `CanLeaveAsync(string uiKey)`
+通过构造参数登记 `IUiGuard`，分别检查打开和关闭。拒绝保留原状态。`Snapshot` 提供不可变的视图、忙碌和停止状态，以及 `BlocksWorldPointerInput`、`BlocksWorldActionInput`；世界输入流程应查询对应阻断状态。
 
-适合放：
+所有修改操作串行执行，工厂、生命周期和宿主操作经过同一调度器。生命周期回调不能等待同一服务的嵌套导航。正常事件回调可以等待自己上下文的关闭或对话框完成。
 
-- 未保存设置拦截
-- 新手引导期间禁用某些页面跳转
-- 多层弹窗切换前的业务确认
+## 取消与停止
 
-### 过渡处理器
+令牌可取消排队和准备；已开始的关闭与释放会被完整等待。打开失败清理目标并尽可能恢复旧视图。`StopAsync` 立即关闭接纳、等待在途操作，再绕过用户守卫清理所有视图。重复停止共享同一结果；一个清理错误不会跳过其他视图。
 
-`IUiRouter` 当前公开的是：
+先等待 UI 停止，再释放原生 root、调度器和暂停服务。`DisposeAsync` 连接相同的停止过程。
 
-- `RegisterHandler(IUiTransitionHandler handler, UiTransitionHandlerOptions? options = null)`
-- `UnregisterHandler(IUiTransitionHandler handler)`
+## 迁移
 
-适合放：
+旧页面行为提供者、层级行为工厂和路由子类改为 `UiRegistry`、普通视图及默认宿主。定义一次路由策略，调用时使用强类型参数和实例句柄。页面业务不再需要生成页面包装方法。
 
-- UI 转场动画
-- 统一日志
-- 栈变化埋点
+## 相关主题
 
-### 输入适配层
-
-如果项目已经有自己的输入系统，推荐把它适配成：
-
-1. 设备输入 -> `UiInputAction`
-2. `IUiRouter.TryDispatchUiAction(...)`
-3. 若未被 UI 捕获，再决定是否把输入继续交给 World
-
-这样可以直接复用当前路由器的动作捕获与阻断语义。
-
-## 与旧写法的边界
-
-以下说法不再适合作为默认指导：
-
-- “所有 UI 都统一通过一个 Show API 管理”
-- “UI 系统只有页面栈，不涉及输入阻断和暂停语义”
-- “Modal / Topmost 只是视觉层级，不影响交互”
-
-当前更准确的理解是：
-
-- 页面栈和层级 UI 是两套入口
-- 页面行为不仅有生命周期，还有输入、阻断、暂停契约
-- router 是 UI 语义仲裁中心，项目输入层应主动接入它
-
-## 配置系统边界提示
-
-如果你的 UI 宿主接线还会读取 AI-First 配置或 schema 驱动的页面数据，本页只说明 UI router、root、factory 与输入语义，
-不负责定义配置系统的正式边界。凡是配置契约、组合关键字或工具辅助的支持范围，都应以
-[Game 配置系统](./config-system.md) 为准。
-
-默认采用路径之外的典型场景包括：
-
-- `oneOf` / `anyOf`
-- 非 `false` 的 `additionalProperties`
-- 更复杂的 schema shape，例如依赖开放对象形状、形状合并或更深层异构数组
-
-`VS Code` 工具只是辅助层，不是配置边界定义页。遇到这些复杂 shape 时，应直接回到 raw YAML 和 schema 本体设计，
-而不是从 UI 接线页推断是否“已经被工具支持”。
-
-## 推荐阅读
-
-1. [Game 模块总览](./index.md)
-2. [场景系统](./scene.md)
-3. [AutoUiPage 生成器](../source-generators/auto-ui-page-generator.md)
-4. [Game 抽象层说明](../abstractions/game-abstractions.md)
-5. [API 参考](../api-reference/index.md)
-
-
-## 导航并发与资源清理
-
-页面栈导航按提交顺序执行，重复页面检查在轮到该操作时重新进行，连续点击不会让同一个栈顶页面重复进入。BindRoot 在宿主主线程执行并捕获同步上下文；同步 Show、Hide 和 Resume 也必须在该上下文调用。
-
-不要在过渡处理器或页面生命周期回调里等待同一路由器的新导航；会收到重入错误。业务输入回调可以正常提交独立导航。
-
-页面进入失败时，路由器移除新页面并尽力恢复旧页面。UiPopPolicy.Suspend 弹出的页面仍归当前路由器管理，重新压入可复用；停止时同样会被清理。
-
-路由器的 DestroyAsync() 关闭新导航入口，等待当前操作，清理页面栈、浮层与保留页面并释放暂停请求。单个退出回调抛错不会跳过其他页面；重复停止观察同一个清理结果。Architecture 自动等待这个契约，手动拥有时也应等待异步停止，不使用同步 Destroy。
-
-过渡超时是协作取消：handler 需要观察令牌，外部取消会继续传播。
+- [Godot UI](../godot/ui.md)
+- [场景系统](./scene.md)
+- [暂停系统](../core/pause.md)

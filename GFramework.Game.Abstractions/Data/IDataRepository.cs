@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2026 GeWuYou
+// Copyright (c) 2026 GeWuYou
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,14 +11,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using GFramework.Core.Abstractions.Utility;
+
 
 namespace GFramework.Game.Abstractions.Data;
 
 /// <summary>
 ///     定义数据仓库接口，提供异步的数据加载、保存、检查存在性和删除操作
 /// </summary>
-public interface IDataRepository : IUtility
+public interface IDataRepository
 {
     /// <summary>
     ///     异步加载指定位置的数据
@@ -26,7 +26,8 @@ public interface IDataRepository : IUtility
     /// <typeparam name="T">要加载的数据类型，必须实现IData接口并具有无参构造函数</typeparam>
     /// <param name="location">数据位置信息</param>
     /// <returns>返回加载的数据对象</returns>
-    Task<T> LoadAsync<T>(IDataLocation location)
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    Task<T> LoadAsync<T>(IDataLocation location, CancellationToken cancellationToken = default)
         where T : class, IData, new();
 
 
@@ -37,7 +38,8 @@ public interface IDataRepository : IUtility
     /// <param name="location">数据位置信息</param>
     /// <param name="data">要保存的数据对象</param>
     /// <returns>返回异步操作任务</returns>
-    Task SaveAsync<T>(IDataLocation location, T data)
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    Task SaveAsync<T>(IDataLocation location, T data, CancellationToken cancellationToken = default)
         where T : class, IData;
 
     /// <summary>
@@ -45,19 +47,22 @@ public interface IDataRepository : IUtility
     /// </summary>
     /// <param name="location">数据位置信息</param>
     /// <returns>返回布尔值，表示数据是否存在</returns>
-    Task<bool> ExistsAsync(IDataLocation location);
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    Task<bool> ExistsAsync(IDataLocation location, CancellationToken cancellationToken = default);
 
     /// <summary>
     ///     异步删除指定位置的数据
     /// </summary>
     /// <param name="location">数据位置信息</param>
     /// <returns>返回异步操作任务</returns>
-    Task DeleteAsync(IDataLocation location);
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    Task DeleteAsync(IDataLocation location, CancellationToken cancellationToken = default);
 
     /// <summary>
     ///     异步批量保存多个数据项到各自的位置
     /// </summary>
     /// <param name="dataList">包含数据位置和对应数据对象的可枚举集合</param>
     /// <returns>返回异步操作任务</returns>
-    Task SaveAllAsync(IEnumerable<(IDataLocation location, IData data)> dataList);
+    /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
+    Task SaveAllAsync(IEnumerable<(IDataLocation location, IData data)> dataList, CancellationToken cancellationToken = default);
 }

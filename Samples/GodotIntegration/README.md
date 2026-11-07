@@ -44,12 +44,16 @@ dotnet build Samples/GodotIntegration/GodotIntegration.csproj -c Release
 
 | 入口 | 接入能力 |
 | --- | --- |
-| `DemoRoot` | 原生 Scene/UI 根、异步按钮错误处理、显式关闭流程 |
-| `DemoArchitecture` | Godot 架构宿主、组件初始化与停止 |
-| `DemoSceneRouter` / `DemoUiRouter` | `Game` 路由基类和 Godot behavior adapter |
-| `DemoPanel` | UI 语义动作、嵌套暂停请求和暂停期间输入 |
+| `DemoRoot` | 项目场景根、默认 UI 宿主接入、异步按钮错误处理和关闭流程 |
+| `DemoArchitecture` | 通过 GameRuntimeModule 安装标准 DI 服务，协调原生宿主停止 |
+| `DemoSceneFactory` | 构造带项目依赖的原生世界，由默认 SceneRouter 导航 |
+| `DemoUiRoutes` / `DemoPanel` | 强类型路由集中声明显示、输入和暂停策略；普通 Control 只负责视图 |
 | `DemoWorld` | 原生帧更新、节点归属协程与暂停 |
 | `schemas/` / `config/` | 配置类型生成和 Godot 编辑器/导出态 YAML 加载 |
+
+[界面定义](DemoUiRoutes.cs) 使用带标题参数的强类型路由。菜单是页面，暂停和设置是独立窗口；两个窗口各自持有暂停请求。所有视图在一处使用 RegisterGodot 注册，并由默认 GodotUiRoot 挂载。实例按钮通过 UiViewContext.CloseAsync 关闭自己，默认 GodotUiInputBridge 把未处理的返回键交给 UI 服务。窗口顺序和返回目标由服务管理。
+
+[架构接线](DemoArchitecture.cs) 在配置阶段使用 AddGamePause、AddGameUi 和 AddGameScenes 注册普通服务；启动后通过 GetService 解析 IUiService、ISceneRouter 和 IPauseStackManager。GameRuntimeModule 等待 UI 和场景停止，再交由 Godot 宿主分离节点。
 
 项目文件显式引用 `Game.Abstractions`，并通过 analyzer 引用和生成器 targets 加载 `gameplay.schema.json`。生成的 `GameplayConfig` 提供移动速度；修改 `config/gameplay/default.yaml` 后重新启动即可读取。
 

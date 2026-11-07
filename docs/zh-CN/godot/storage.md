@@ -60,48 +60,22 @@ description: 以当前 GFramework.Godot 源码与 CoreGrid 接线为准，说明
 
 ## 最小接入路径
 
-当前更常见的接法，是先注册同一个序列化器和存储实例，再让设置仓库、存档仓库等上层组件复用它：
-
 ```csharp
-using GFramework.Core.Abstractions.Serializer;
-using GFramework.Core.Abstractions.Storage;
-using GFramework.Game.Abstractions.Data;
-using GFramework.Game.Storage;
+using GFramework.Game.Data;
 using GFramework.Godot.Storage;
-using Godot;
+using JsonSerializer = GFramework.Game.Serializer.JsonSerializer;
 
-var jsonSerializer = new JsonSerializer();
-architecture.RegisterUtility<ISerializer>(jsonSerializer);
-
-var storage = new GodotFileStorage(jsonSerializer);
-architecture.RegisterUtility<IStorage>(storage);
-
-architecture.RegisterUtility(new UnifiedSettingsDataRepository(
-    storage,
-    jsonSerializer,
-    new DataRepositoryOptions
-    {
-        BasePath = ProjectSettings.GetSetting("application/config/save/setting_path").AsString(),
-        AutoBackup = true
-    }));
-
-architecture.RegisterUtility<ISaveRepository<GameSaveData>>(new SaveRepository<GameSaveData>(
-    storage,
-    new SaveConfiguration
-    {
-        SaveRoot = ProjectSettings.GetSetting("application/config/save/save_path").AsString(),
-        SaveSlotPrefix = ProjectSettings.GetSetting("application/config/save/save_slot_prefix").AsString(),
-        SaveFileName = ProjectSettings.GetSetting("application/config/save/save_file_name").AsString()
-    }));
+using var storage = new GodotFileStorage(new JsonSerializer());
+var saves = new SaveRepository<GameSaveData>(storage, new SaveConfiguration
+{
+    SaveRoot = "user://saves"
+});
+await saves.SaveAsync(1, progress, cancellationToken);
 ```
 
-这里的分工是：
+`GameSaveData` 是实现 `IData` 的项目 DTO，`progress` 为当前快照。存储和仓库可直接构造或登记为标准服务。宿主保存实例，在启动和业务流程中复用，并在所有保存任务完成后释放存储。
 
-- `GodotFileStorage` 负责底层 key -> 文件读写
-- `UnifiedSettingsDataRepository` 负责设置节聚合与持久化
-- `SaveRepository<TSaveData>` 负责存档结构和保存槽位语义
-
-不要把 `GodotFileStorage` 本身写成“设置系统”或“存档系统”的 owner。
+写入使用同目录临时文件替换；可变数据使用 `user://`。底层写入被接纳后，调用方等待到完成，再开始宿主清理。
 
 ## 什么时候应该改看别的入口
 

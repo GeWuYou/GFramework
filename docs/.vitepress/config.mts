@@ -228,6 +228,7 @@ export default defineConfig({
                 { text: '架构集成', link: '/zh-CN/godot/architecture' },
                 { text: '场景系统', link: '/zh-CN/godot/scene' },
                 { text: 'UI 系统', link: '/zh-CN/godot/ui' },
+                { text: '运行时示例', link: '/zh-CN/godot/runtime-sample' },
                 { text: '资源仓储', link: '/zh-CN/godot/resource' },
                 { text: '协程系统', link: '/zh-CN/godot/coroutine' },
                 { text: '节点扩展', link: '/zh-CN/godot/extensions' },
@@ -257,7 +258,6 @@ export default defineConfig({
                 { text: 'Godot 项目元数据生成器', link: '/zh-CN/source-generators/godot-project-generator' },
                 { text: 'GetNode 生成器 (Godot)', link: '/zh-CN/source-generators/get-node-generator' },
                 { text: 'BindNodeSignal 生成器 (Godot)', link: '/zh-CN/source-generators/bind-node-signal-generator' },
-                { text: 'AutoUiPage 生成器', link: '/zh-CN/source-generators/auto-ui-page-generator' },
                 { text: 'AutoScene 生成器', link: '/zh-CN/source-generators/auto-scene-generator' },
                 { text: 'AutoRegisterExportedCollections 生成器', link: '/zh-CN/source-generators/auto-register-exported-collections-generator' }
               ]
