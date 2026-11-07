@@ -65,6 +65,7 @@ public partial class DodgeApp : Node, ISceneRoot
         ConfigureInput();
         var arguments = OS.GetCmdlineUserArgs();
         ConfigureSmoke(arguments);
+        // #region tutorial-services
         var root = new GodotUiRoot { Name = "Ui" };
         AddChild(root);
         var context = SynchronizationContext.Current ?? throw new InvalidOperationException("Godot synchronization context is unavailable.");
@@ -80,6 +81,7 @@ public partial class DodgeApp : Node, ISceneRoot
             ? _ui.ShowAsync(DodgeRoutes.Pause, _world.Score, _lifetime.Token) : Task.CompletedTask;
         AddChild(input);
         _startup = StartAsync();
+        // #endregion tutorial-services
     }
 
     /// <summary>Loads persistent data without overwriting unreadable files with defaults.</summary>
@@ -87,6 +89,7 @@ public partial class DodgeApp : Node, ISceneRoot
     {
         try
         {
+            // #region tutorial-load-data
             _storage = new GodotFileStorage(new JsonSerializer());
             _saves = new SaveRepository<DodgeProgress>(_storage, new SaveConfiguration { SaveRoot = _dataRoot + "/saves" });
             if (await _storage.ExistsAsync(_dataRoot + "/preferences.json").ConfigureAwait(true))
@@ -98,6 +101,7 @@ public partial class DodgeApp : Node, ISceneRoot
             await _ui.ReplaceAsync(DodgeRoutes.Menu, canContinue, _lifetime.Token).ConfigureAwait(true);
             _startupStatus!.GetParent().QueueFree();
             _startupStatus = null;
+            // #endregion tutorial-load-data
             if (_capturePath is not null)
             {
                 await CaptureMenuAsync().ConfigureAwait(true);
@@ -113,6 +117,7 @@ public partial class DodgeApp : Node, ISceneRoot
         }
     }
 
+    // #region tutorial-actions
     /// <summary>Observes every native signal task and retains it for shutdown.</summary>
     /// <param name="action">Business operation called from a signal.</param>
     internal void RunAction(Func<Task> action)
@@ -128,7 +133,9 @@ public partial class DodgeApp : Node, ISceneRoot
         catch (Exception exception) { ReportError(exception); }
         _actions.RemoveAll(static task => task.IsCompleted);
     }
+    // #endregion tutorial-actions
 
+    // #region tutorial-start-game
     /// <summary>Begins a fresh or restored run through the scene service.</summary>
     internal async Task StartGameAsync(bool restore)
     {
@@ -141,7 +148,9 @@ public partial class DodgeApp : Node, ISceneRoot
         _dirty = true;
         await _ui.ShowAsync(DodgeRoutes.Hud, _world!.Score, _lifetime.Token).ConfigureAwait(true);
     }
+    // #endregion tutorial-start-game
 
+    // #region tutorial-save-game
     /// <summary>Writes one explicit save slot, preserving the previous file on failure.</summary>
     internal async Task SaveGameAsync()
     {
@@ -151,10 +160,12 @@ public partial class DodgeApp : Node, ISceneRoot
         _dirty = false;
         _menus.SetStatus("Run saved. Continue restores your score and position.");
     }
+    // #endregion tutorial-save-game
 
     /// <summary>Opens settings as an independent window with its own pause request.</summary>
     internal Task OpenSettingsAsync() => _ui.ShowAsync(DodgeRoutes.Settings, true, _lifetime.Token);
 
+    // #region tutorial-save-settings
     /// <summary>Persists preferences through the same atomic native storage implementation.</summary>
     internal async Task SavePreferencesAsync(float volume, bool fullscreen)
     {
@@ -164,7 +175,9 @@ public partial class DodgeApp : Node, ISceneRoot
         ApplyPreferences();
         _menus.SetStatus("Settings saved.");
     }
+    // #endregion tutorial-save-settings
 
+    // #region tutorial-confirm-exit
     /// <summary>Confirms discarding unsaved gameplay with a typed dialog result.</summary>
     internal async Task ReturnToMenuAsync()
     {
@@ -180,6 +193,7 @@ public partial class DodgeApp : Node, ISceneRoot
         _world = null;
         await _ui.ReplaceAsync(DodgeRoutes.Menu, await _saves.ExistsAsync(1, _lifetime.Token).ConfigureAwait(true), _lifetime.Token).ConfigureAwait(true);
     }
+    // #endregion tutorial-confirm-exit
 
     /// <summary>Moves a completed score to the game-over page and persists the best score.</summary>
     private async Task GameOverAsync()
@@ -250,6 +264,7 @@ public partial class DodgeApp : Node, ISceneRoot
         GD.PushError(exception.ToString());
     }
 
+    // #region tutorial-shutdown
     /// <summary>Stops UI admission, cancels waiting dialogs and joins accepted actions before freeing native roots.</summary>
     internal async void RequestQuit()
     {
@@ -302,6 +317,7 @@ public partial class DodgeApp : Node, ISceneRoot
         try { resource?.Dispose(); }
         catch (Exception exception) { errors.Add(exception); }
     }
+    // #endregion tutorial-shutdown
 
     /// <summary>Creates each gameplay instance without architecture or generated context access.</summary>
     private sealed class WorldFactory(DodgeApp app) : ISceneFactory

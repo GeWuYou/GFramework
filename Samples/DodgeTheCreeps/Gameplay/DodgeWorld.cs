@@ -104,6 +104,7 @@ public partial class DodgeWorld : Node2D
         BeginRun(score, position, seed: 0);
     }
 
+    // #region tutorial-loop
     /// <summary>Advances native movement, enemy ownership, scoring, and collision detection in one frame.</summary>
     /// <param name="delta">Elapsed unpaused physics-frame time.</param>
     public override void _PhysicsProcess(double delta)
@@ -127,6 +128,7 @@ public partial class DodgeWorld : Node2D
 
         AdvanceCreeps(delta);
     }
+    // #endregion tutorial-loop
 
     /// <summary>Removes the music subscription when Godot removes this world.</summary>
     public override void _ExitTree()
@@ -194,6 +196,7 @@ public partial class DodgeWorld : Node2D
         }
     }
 
+    // #region tutorial-spawn
     private void SpawnCreep()
     {
         var position = _random.RandiRange(0, 3) switch
@@ -217,7 +220,9 @@ public partial class DodgeWorld : Node2D
         AddChild(mob);
         _mobs.Add(mob);
     }
+    // #endregion tutorial-spawn
 
+    // #region tutorial-collision
     private void AdvanceCreeps(double delta)
     {
         var hitDistance = DodgePlayer.HitRadius + DodgeMob.HitRadius;
@@ -241,6 +246,7 @@ public partial class DodgeWorld : Node2D
             }
         }
     }
+    // #endregion tutorial-collision
 
     private void EndRun()
     {

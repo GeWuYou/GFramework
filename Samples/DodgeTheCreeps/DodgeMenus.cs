@@ -35,6 +35,7 @@ internal sealed class DodgeMenus : IDisposable
     /// <summary>Releases the explicitly owned theme after native views have left the tree.</summary>
     public void Dispose() => _theme.Dispose();
 
+    // #region tutorial-register
     /// <summary>Registers each view once; call sites share the same typed definitions.</summary>
     internal void Register(UiRegistry registry)
     {
@@ -45,6 +46,7 @@ internal sealed class DodgeMenus : IDisposable
         registry.RegisterGodot(DodgeRoutes.GameOver, (score, _) => GameOver(score));
         registry.RegisterGodotDialog(DodgeRoutes.Confirm, (message, context) => Confirm(message, context));
     }
+    // #endregion tutorial-register
 
     /// <summary>Updates a live HUD without retaining gameplay event subscriptions in the view.</summary>
     internal void SetScore(int score)
@@ -113,6 +115,7 @@ internal sealed class DodgeMenus : IDisposable
         return root;
     }
 
+    // #region tutorial-settings
     /// <summary>Creates settings with local draft values and explicit save.</summary>
     private Control Settings(UiViewContext context)
     {
@@ -128,6 +131,7 @@ internal sealed class DodgeMenus : IDisposable
         Status(column, "Changes are applied when saved.");
         return root;
     }
+    // #endregion tutorial-settings
 
     /// <summary>Shows the completed score and offers a fresh run.</summary>
     private Control GameOver(int score)
@@ -143,6 +147,7 @@ internal sealed class DodgeMenus : IDisposable
         return root;
     }
 
+    // #region tutorial-confirm
     /// <summary>Returns a typed decision through the dialog's own completion context.</summary>
     private Control Confirm(string message, UiDialogContext<bool> context)
     {
@@ -153,6 +158,7 @@ internal sealed class DodgeMenus : IDisposable
         Button(column, "Leave", "LEAVE WITHOUT SAVING", () => context.CompleteAsync(true));
         return root;
     }
+    // #endregion tutorial-confirm
 
     /// <summary>Creates a centered, authored Control hierarchy usable by the default host.</summary>
     private Control Page(string name, out VBoxContainer column, bool background = true)
@@ -182,6 +188,7 @@ internal sealed class DodgeMenus : IDisposable
         control.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
         return control;
     }
+    // #region tutorial-buttons
     /// <summary>Connects one button to an observed task and prevents double submission on that button.</summary>
     private Button Button(VBoxContainer column, string name, string text, Func<Task> action)
     {
@@ -203,6 +210,7 @@ internal sealed class DodgeMenus : IDisposable
         column.AddChild(button);
         button.Pressed += _app.RequestQuit;
     }
+    // #endregion tutorial-buttons
     /// <summary>Adds a high-contrast title.</summary>
     private static void Title(VBoxContainer column, string text, int size)
     {

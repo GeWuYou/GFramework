@@ -32,6 +32,7 @@ internal sealed partial class DodgePlayer : Node2D
         AddChild(_sprite);
     }
 
+    // #region tutorial-movement
     /// <summary>Moves from the declared gameplay actions and updates the matching animation.</summary>
     /// <param name="delta">Elapsed unpaused physics-frame time.</param>
     internal void Advance(double delta)
@@ -61,6 +62,7 @@ internal sealed partial class DodgePlayer : Node2D
         _sprite.Modulate = new Color(1, 1, 1,
             _invulnerable ? 0.6f + 0.4f * Mathf.Abs(Mathf.Sin((float)_animationTime * 8)) : 1);
     }
+    // #endregion tutorial-movement
 
     /// <summary>Sets the restart grace indicator without changing native process settings.</summary>
     /// <param name="enabled">Whether the world currently ignores collisions.</param>

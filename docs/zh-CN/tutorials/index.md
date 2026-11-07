@@ -52,6 +52,14 @@ description: 汇总 GFramework 的基础与进阶教程入口，帮助按学习�
 
 ---
 
+### [官方素材小游戏制作](./godot-complete-project.md)
+
+从空白 Godot C# 工程制作 Dodge the Creeps，使用官方美术、音乐与字体，逐步完成移动躲避、计分、强类型 UI、嵌套暂停、设置、存档继续和桌面导出。每个阶段提供源码片段与操作检查点。
+
+适合已有 C# 与 Godot 节点、信号基础，希望完成一款实际小游戏的开发者。
+
+---
+
 ### [高级模式教程](./advanced-patterns.md)
 
 > 探索 GFramework 的高级特性和企业级设计模式。
