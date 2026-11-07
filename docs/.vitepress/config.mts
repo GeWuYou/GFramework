@@ -304,7 +304,7 @@ export default defineConfig({
                 { text: '实现存档系统', link: '/zh-CN/tutorials/save-system' },
                 { text: '数据迁移', link: '/zh-CN/tutorials/data-migration' },
                 { text: 'Godot 集成', link: '/zh-CN/tutorials/godot-integration' },
-                { text: 'Godot 完整项目', link: '/zh-CN/tutorials/godot-complete-project' },
+                { text: '官方素材小游戏制作', link: '/zh-CN/tutorials/godot-complete-project' },
                 { text: '高级模式', link: '/zh-CN/tutorials/advanced-patterns' },
                 { text: '大型项目组织', link: '/zh-CN/tutorials/large-project-organization' },
                 { text: '单元测试', link: '/zh-CN/tutorials/unit-testing' }

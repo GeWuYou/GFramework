@@ -20,7 +20,7 @@
 
 ## 可运行小游戏
 
-[Dodge the Creeps](Samples/DodgeTheCreeps/README.md) 使用 Godot 官方教程素材，展示实际玩法、强类型 UI、暂停、设置和存档继续。源码和素材许可随工程提供。[完整项目教程](docs/zh-CN/tutorials/godot-complete-project.md) 说明采用步骤。
+[Dodge the Creeps](Samples/DodgeTheCreeps/README.md) 使用 Godot 官方教程素材，展示实际玩法、强类型 UI、暂停、设置和存档继续。源码和素材许可随工程提供。[小游戏制作教程](docs/zh-CN/tutorials/godot-complete-project.md) 从空工程逐步说明素材、玩法、框架接线与桌面导出。
 
 ## 模块地图
 
