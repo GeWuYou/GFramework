@@ -64,7 +64,7 @@ public sealed class MicrosoftDiContainerOwnershipTests
     ///     无资源拥有责任的泛型别名继续解析同一个标准 DI 单例。
     /// </summary>
     [Test]
-    public void NonDisposablePlurality_Should_Share_Instance_AcrossAliases()
+    public async Task NonDisposablePlurality_Should_Share_Instance_AcrossAliases()
     {
         using var container = new MicrosoftDiContainer();
         container.RegisterPlurality<SharedService>();
@@ -149,7 +149,7 @@ public sealed class MicrosoftDiContainerOwnershipTests
     ///     失败的资源清理同样只执行一次，所有后续调用观察同一失败结果。
     /// </summary>
     [Test]
-    public void DisposeAsync_Failure_Should_Be_Shared_Without_RepeatingCleanup()
+    public async Task DisposeAsync_Failure_Should_Be_Shared_Without_RepeatingCleanup()
     {
         var container = new MicrosoftDiContainer();
         container.RegisterSingleton<FailingResource, FailingResource>();
@@ -159,8 +159,8 @@ public sealed class MicrosoftDiContainerOwnershipTests
         var first = container.DisposeAsync().AsTask();
         var second = container.DisposeAsync().AsTask();
         Assert.That(second, Is.SameAs(first));
-        Assert.ThrowsAsync<InvalidOperationException>(async () => await first.ConfigureAwait(false));
-        Assert.ThrowsAsync<InvalidOperationException>(async () => await second.ConfigureAwait(false));
+        await Assert.ThrowsAsync<InvalidOperationException>(async () => await first.ConfigureAwait(false));
+        await Assert.ThrowsAsync<InvalidOperationException>(async () => await second.ConfigureAwait(false));
         Assert.That(resource.DisposeCount, Is.EqualTo(1));
     }
 

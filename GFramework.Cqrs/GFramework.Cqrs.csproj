@@ -21,10 +21,10 @@
 
     <!-- runtime 直接基于标准 DI 与 Microsoft.Extensions.Logging 工作，显式声明这些依赖而不是依赖 Core.Abstractions 传递 -->
     <ItemGroup>
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.8"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.14"/>
         <!-- Logger&lt;T&gt; 位于 Microsoft.Extensions.Logging 包；开放泛型 ILogger&lt;&gt; 注册需要该实现类型 -->
-        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.7"/>
-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.8"/>
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.14"/>
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.14"/>
     </ItemGroup>
 
 </Project>

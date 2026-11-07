@@ -14,7 +14,7 @@
   "bugs": {
     "url": "https://github.com/GeWuYou/GFramework/issues"
   },
-  "packageManager": "bun@1.2.15",
+  "packageManager": "bun@1.4.4",
   "keywords": [
     "gframework",
     "config",
@@ -44,7 +44,7 @@
     "publish:marketplace": "vsce publish"
   },
   "devDependencies": {
-    "@vscode/vsce": "^3.7.1"
+    "@vscode/vsce": "^3.9.2"
   },
   "vsce": {
     "yarn": false

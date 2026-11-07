@@ -37,7 +37,7 @@ public class StateMachineTests
     ///     验证注册状态后，状态会被添加到状态字典中
     /// </summary>
     [Test]
-    public void Register_Should_AddState_To_StatesDictionary()
+    public async Task Register_Should_AddState_To_StatesDictionary()
     {
         var state = new TestStateV2();
         _stateMachine.Register(state);
@@ -216,9 +216,9 @@ public class StateMachineTests
     ///     验证异步状态切换到未注册状态时应抛出InvalidOperationException
     /// </summary>
     [Test]
-    public void ChangeToAsync_ToUnregisteredState_Should_ThrowInvalidOperationException()
+    public async Task ChangeToAsync_ToUnregisteredState_Should_ThrowInvalidOperationException()
     {
-        Assert.ThrowsAsync<InvalidOperationException>(() => _stateMachine.ChangeToAsync<TestStateV2>());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _stateMachine.ChangeToAsync<TestStateV2>());
     }
 
     /// <summary>

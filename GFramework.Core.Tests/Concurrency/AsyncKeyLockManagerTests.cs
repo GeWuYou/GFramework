@@ -244,14 +244,14 @@ public sealed class AsyncKeyLockManagerTests
     }
 
     [Test]
-    public void AcquireLockAsync_AfterDispose_Should_ThrowObjectDisposedException()
+    public async Task AcquireLockAsync_AfterDispose_Should_ThrowObjectDisposedException()
     {
         // Arrange
         var manager = new AsyncKeyLockManager();
         manager.Dispose();
 
         // Act & Assert
-        Assert.ThrowsAsync<ObjectDisposedException>(() => manager.AcquireLockAsync("test-key").AsTask());
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => manager.AcquireLockAsync("test-key").AsTask());
     }
 
     [Test]
@@ -268,8 +268,8 @@ public sealed class AsyncKeyLockManagerTests
         await cts.CancelAsync().ConfigureAwait(false);
 
         // Assert
-        Assert.CatchAsync<OperationCanceledException>(() =>
-            manager.AcquireLockAsync("test-key", cts.Token).AsTask());
+        await Assert.CatchAsync<OperationCanceledException>(() =>
+            manager.AcquireLockAsync("test-key", cts.Token).AsTask()).ConfigureAwait(false);
     }
 
     [Test]

@@ -28,7 +28,7 @@ public class ArchitectureContextCqrsIntegrationTests
     ///     初始化测试所需的全局上下文状态。
     /// </summary>
     [SetUp]
-    public void SetUp()
+    public async Task SetUp()
     {
         GameContext.Clear();
     }
@@ -37,7 +37,7 @@ public class ArchitectureContextCqrsIntegrationTests
     ///     清理测试过程中写入的全局上下文状态。
     /// </summary>
     [TearDown]
-    public void TearDown()
+    public async Task TearDown()
     {
         GameContext.Clear();
     }
@@ -157,7 +157,7 @@ public class ArchitectureContextCqrsIntegrationTests
         {
             var runtime = container.GetRequired<ICqrsRuntime>();
 
-            Assert.ThrowsAsync<InvalidOperationException>(
+            await Assert.ThrowsAsync<InvalidOperationException>(
                 async () => await runtime.SendAsync(new ContextProbeRequest()).ConfigureAwait(false));
         }
         finally
@@ -183,8 +183,8 @@ public class ArchitectureContextCqrsIntegrationTests
 
         await architecture.DestroyAsync().ConfigureAwait(false);
 
-        Assert.ThrowsAsync<ObjectDisposedException>(
-            async () => await context.SendRequestAsync(new PingRequest()).ConfigureAwait(false));
+        await Assert.ThrowsAsync<ObjectDisposedException>(
+            async () => await context.SendRequestAsync(new PingRequest()).ConfigureAwait(false)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -201,7 +201,7 @@ public class ArchitectureContextCqrsIntegrationTests
 
         try
         {
-            Assert.ThrowsAsync<InvalidOperationException>(
+            await Assert.ThrowsAsync<InvalidOperationException>(
                 async () => await context.SendRequestAsync(new PingRequest()).ConfigureAwait(false));
         }
         finally

@@ -373,7 +373,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
     ///     dispatcher 会显式抛出契约错误。
     /// </summary>
     [Test]
-    public void SendAsync_Should_Throw_When_Generated_Request_Invoker_Is_Incompatible()
+    public async Task SendAsync_Should_Throw_When_Generated_Request_Invoker_Is_Incompatible()
     {
         var generatedAssembly = CreateGeneratedAssembly(
             typeof(IncompatibleRequestInvokerProviderRegistry),
@@ -384,7 +384,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
         container.Freeze();
 
         var context = new ArchitectureContext(container);
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await context.SendRequestAsync(new GeneratedRequestInvokerRequest("payload")).ConfigureAwait(false));
         Assert.That(exception, Is.Not.Null);
         Assert.That(exception!.Message, Does.Contain("incompatible invoker"));
@@ -415,7 +415,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
     ///     dispatcher 会显式抛出契约错误。
     /// </summary>
     [Test]
-    public void CreateStream_Should_Throw_When_Generated_Stream_Invoker_Is_Incompatible()
+    public async Task CreateStream_Should_Throw_When_Generated_Stream_Invoker_Is_Incompatible()
     {
         var generatedAssembly = CreateGeneratedAssembly(
             typeof(IncompatibleStreamInvokerProviderRegistry),
@@ -426,7 +426,7 @@ internal sealed class CqrsGeneratedRequestInvokerProviderTests
         container.Freeze();
 
         var context = new ArchitectureContext(container);
-        var exception = Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await DrainAsync(context.CreateStream(new GeneratedStreamInvokerRequest(3))).ConfigureAwait(false));
         Assert.That(exception, Is.Not.Null);
         Assert.That(exception!.Message, Does.Contain("incompatible invoker"));

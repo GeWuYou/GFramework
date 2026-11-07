@@ -62,7 +62,7 @@ public sealed class YamlConfigLoaderDependentSchemasTests
     ///     验证触发字段出现但条件 schema 未满足时，运行时会拒绝当前对象。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_DependentSchema_Is_Not_Satisfied()
+    public async Task LoadAsync_Should_Throw_When_DependentSchema_Is_Not_Satisfied()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -77,7 +77,7 @@ public sealed class YamlConfigLoaderDependentSchemasTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -153,7 +153,7 @@ public sealed class YamlConfigLoaderDependentSchemasTests
     ///     验证非对象 dependentSchemas 声明会在 schema 解析阶段被拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_DependentSchemas_Is_Not_An_Object()
+    public async Task LoadAsync_Should_Throw_When_DependentSchemas_Is_Not_An_Object()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -177,7 +177,7 @@ public sealed class YamlConfigLoaderDependentSchemasTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -193,7 +193,7 @@ public sealed class YamlConfigLoaderDependentSchemasTests
     ///     验证 dependentSchemas 的触发字段必须在同级 properties 中显式声明。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_DependentSchemas_Trigger_Is_Not_Declared()
+    public async Task LoadAsync_Should_Throw_When_DependentSchemas_Trigger_Is_Not_Declared()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -223,7 +223,7 @@ public sealed class YamlConfigLoaderDependentSchemasTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -239,7 +239,7 @@ public sealed class YamlConfigLoaderDependentSchemasTests
     ///     验证 dependentSchemas 只接受 object-typed 条件子 schema。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_DependentSchemas_Schema_Is_Not_Object_Typed()
+    public async Task LoadAsync_Should_Throw_When_DependentSchemas_Schema_Is_Not_Object_Typed()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -267,7 +267,7 @@ public sealed class YamlConfigLoaderDependentSchemasTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {

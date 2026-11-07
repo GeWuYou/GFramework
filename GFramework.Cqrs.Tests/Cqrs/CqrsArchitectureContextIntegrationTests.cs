@@ -46,7 +46,7 @@ public class CqrsArchitectureContextIntegrationTests
     /// 清理每个测试使用的容器与架构上下文引用。
     /// </summary>
     [TearDown]
-    public void TearDown()
+    public async Task TearDown()
     {
         _context = null;
         _container = null;
@@ -152,7 +152,7 @@ public class CqrsArchitectureContextIntegrationTests
     {
         var request = new TestErrorPropagationRequest();
 
-        var ex = Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await _context!.SendRequestAsync(request).ConfigureAwait(false));
 
         Assert.That(ex!.Message, Is.EqualTo("Test error from handler"));
@@ -168,7 +168,7 @@ public class CqrsArchitectureContextIntegrationTests
         TestExceptionHandler.LastException = null;
         var request = new TestExceptionRequest();
 
-        Assert.ThrowsAsync<DivideByZeroException>(async () =>
+        await Assert.ThrowsAsync<DivideByZeroException>(async () =>
             await _context!.SendRequestAsync(request).ConfigureAwait(false));
 
         // 验证异常被捕获并保留原始类型。
@@ -315,14 +315,14 @@ public class CqrsArchitectureContextIntegrationTests
     /// 验证架构未安装 CQRS runtime 时，上下文分发扩展会显式抛出缺失 runtime 异常。
     /// </summary>
     [Test]
-    public void Missing_Cqrs_Runtime_Should_Throw_InvalidOperationException()
+    public async Task Missing_Cqrs_Runtime_Should_Throw_InvalidOperationException()
     {
         var containerWithoutRuntime = new MicrosoftDiContainer();
         containerWithoutRuntime.Freeze();
 
         var contextWithoutRuntime = new ArchitectureContext(containerWithoutRuntime);
 
-        Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await contextWithoutRuntime.SendRequestAsync(new TestCqrsRequest { Value = 42 }).ConfigureAwait(false));
     }
 
@@ -330,7 +330,7 @@ public class CqrsArchitectureContextIntegrationTests
     /// 验证容器尚未冻结（根 provider 还未构建）时，上下文分发扩展会以显式失败阻止提前分发。
     /// </summary>
     [Test]
-    public void Dispatch_Before_Container_Freeze_Should_Throw_InvalidOperationException()
+    public async Task Dispatch_Before_Container_Freeze_Should_Throw_InvalidOperationException()
     {
         var unfrozenContainer = new MicrosoftDiContainer();
         CqrsTestRuntime.RegisterHandlers(
@@ -338,7 +338,7 @@ public class CqrsArchitectureContextIntegrationTests
             typeof(CqrsArchitectureContextIntegrationTests).Assembly);
         var contextOnUnfrozenContainer = new ArchitectureContext(unfrozenContainer);
 
-        Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await contextOnUnfrozenContainer.SendRequestAsync(new TestCqrsRequest { Value = 42 }).ConfigureAwait(false));
     }
 

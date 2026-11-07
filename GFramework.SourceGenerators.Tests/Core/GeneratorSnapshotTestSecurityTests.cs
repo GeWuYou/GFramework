@@ -18,12 +18,12 @@ public class GeneratorSnapshotTestSecurityTests
     ///     验证快照文件名映射返回绝对路径时，会在访问文件系统前被拒绝。
     /// </summary>
     [Test]
-    public void RunAsync_SnapshotFileNameSelectorReturnsAbsolutePath_ThrowsInvalidOperationException()
+    public async Task RunAsync_SnapshotFileNameSelectorReturnsAbsolutePath_ThrowsInvalidOperationException()
     {
         var snapshotRoot = CreateSnapshotRoot();
         var source = BuildSource();
 
-        Assert.ThrowsAsync<InvalidOperationException>(() =>
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
             GeneratorSnapshotTest<EnumExtensionsGenerator>.RunAsync(
                 source,
                 snapshotRoot,
@@ -34,12 +34,12 @@ public class GeneratorSnapshotTestSecurityTests
     ///     验证快照文件名映射尝试通过父级目录片段逃逸根目录时，会在访问文件系统前被拒绝。
     /// </summary>
     [Test]
-    public void RunAsync_SnapshotFileNameSelectorEscapesSnapshotRoot_ThrowsInvalidOperationException()
+    public async Task RunAsync_SnapshotFileNameSelectorEscapesSnapshotRoot_ThrowsInvalidOperationException()
     {
         var snapshotRoot = CreateSnapshotRoot();
         var source = BuildSource();
 
-        Assert.ThrowsAsync<InvalidOperationException>(() =>
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
             GeneratorSnapshotTest<EnumExtensionsGenerator>.RunAsync(
                 source,
                 snapshotRoot,

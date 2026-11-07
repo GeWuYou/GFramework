@@ -102,7 +102,7 @@ public class AutoSceneGeneratorTests
                 }
             """);
 
-        var test = new CSharpSourceGeneratorTest<AutoSceneGenerator, DefaultVerifier>
+        var test = new CSharpSourceGeneratorTest<AutoSceneGenerator, GeneratorTestVerifier>
         {
             TestState =
             {
@@ -201,7 +201,7 @@ public class AutoSceneGeneratorTests
                               }
                               """;
 
-        var test = new CSharpSourceGeneratorTest<AutoSceneGenerator, DefaultVerifier>
+        var test = new CSharpSourceGeneratorTest<AutoSceneGenerator, GeneratorTestVerifier>
         {
             TestState =
             {
@@ -260,7 +260,7 @@ public class AutoSceneGeneratorTests
                               }
                               """;
 
-        var test = new CSharpSourceGeneratorTest<AutoSceneGenerator, DefaultVerifier>
+        var test = new CSharpSourceGeneratorTest<AutoSceneGenerator, GeneratorTestVerifier>
         {
             TestState =
             {

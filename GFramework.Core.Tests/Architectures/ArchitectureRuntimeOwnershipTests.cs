@@ -116,12 +116,12 @@ public sealed class ArchitectureRuntimeOwnershipTests
             _ = architecture.Context.GetService<OwnedDependency>();
             throw new InvalidOperationException("host failed");
         };
-        Assert.ThrowsAsync<InvalidOperationException>(() => architecture.InitializeAsync());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => architecture.InitializeAsync());
         Assert.That(architecture.CurrentPhase, Is.EqualTo(ArchitecturePhase.FailedInitialization));
         Assert.That(component.StopCalls, Is.EqualTo(1));
         Assert.That(dependency.DisposeCalls, Is.EqualTo(1));
-        Assert.ThrowsAsync<InvalidOperationException>(() => architecture.WaitUntilReadyAsync());
-        Assert.Throws<InvalidOperationException>(() => architecture.InitializeAsync());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => architecture.WaitUntilReadyAsync());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => architecture.InitializeAsync()).ConfigureAwait(false);
         await architecture.DestroyAsync().ConfigureAwait(false);
         Assert.That(component.StopCalls, Is.EqualTo(1));
         Assert.That(dependency.DisposeCalls, Is.EqualTo(1));

@@ -38,7 +38,7 @@ public static class GeneratorTest<TGenerator>
         IEnumerable<MetadataReference> additionalReferences,
         params (string filename, string content)[] generatedSources)
     {
-        var test = new CSharpSourceGeneratorTest<TGenerator, DefaultVerifier>
+        var test = new CSharpSourceGeneratorTest<TGenerator, GeneratorTestVerifier>
         {
             TestState =
             {

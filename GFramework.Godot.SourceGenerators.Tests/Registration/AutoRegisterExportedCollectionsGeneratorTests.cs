@@ -125,7 +125,7 @@ public class AutoRegisterExportedCollectionsGeneratorTests
                               }
                               """;
 
-        var test = new CSharpSourceGeneratorTest<AutoRegisterExportedCollectionsGenerator, DefaultVerifier>
+        var test = new CSharpSourceGeneratorTest<AutoRegisterExportedCollectionsGenerator, GeneratorTestVerifier>
         {
             TestState =
             {
@@ -292,7 +292,7 @@ public class AutoRegisterExportedCollectionsGeneratorTests
                               }
                               """;
 
-        var test = new CSharpSourceGeneratorTest<AutoRegisterExportedCollectionsGenerator, DefaultVerifier>
+        var test = new CSharpSourceGeneratorTest<AutoRegisterExportedCollectionsGenerator, GeneratorTestVerifier>
         {
             TestState =
             {
@@ -489,7 +489,7 @@ public class AutoRegisterExportedCollectionsGeneratorTests
                               }
                               """;
 
-        var test = new CSharpSourceGeneratorTest<AutoRegisterExportedCollectionsGenerator, DefaultVerifier>
+        var test = new CSharpSourceGeneratorTest<AutoRegisterExportedCollectionsGenerator, GeneratorTestVerifier>
         {
             TestState =
             {
@@ -544,7 +544,7 @@ public class AutoRegisterExportedCollectionsGeneratorTests
                               }
                               """;
 
-        var test = new CSharpSourceGeneratorTest<AutoRegisterExportedCollectionsGenerator, DefaultVerifier>
+        var test = new CSharpSourceGeneratorTest<AutoRegisterExportedCollectionsGenerator, GeneratorTestVerifier>
         {
             TestState =
             {
@@ -599,7 +599,7 @@ public class AutoRegisterExportedCollectionsGeneratorTests
                               }
                               """;
 
-        var test = new CSharpSourceGeneratorTest<AutoRegisterExportedCollectionsGenerator, DefaultVerifier>
+        var test = new CSharpSourceGeneratorTest<AutoRegisterExportedCollectionsGenerator, GeneratorTestVerifier>
         {
             TestState =
             {
@@ -702,7 +702,7 @@ public class AutoRegisterExportedCollectionsGeneratorTests
         bool skipGeneratedSourcesCheck = false,
         params DiagnosticResult[] expectedDiagnostics)
     {
-        var test = new CSharpSourceGeneratorTest<AutoRegisterExportedCollectionsGenerator, DefaultVerifier>
+        var test = new CSharpSourceGeneratorTest<AutoRegisterExportedCollectionsGenerator, GeneratorTestVerifier>
         {
             TestState =
             {

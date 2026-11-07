@@ -65,7 +65,7 @@ jobs:
       # Secrets can be introduced in documentation as well as source code.
       - name: TruffleHog OSS
         if: github.event_name == 'pull_request'
-        uses: trufflesecurity/trufflehog@v3.95.7
+        uses: trufflesecurity/trufflehog@v3.99.8
         with:
           path: .
           base: ${{ github.event.pull_request.base.sha }}
@@ -87,9 +87,9 @@ jobs:
       - uses: actions/cache@v6
         with:
           path: ~/.cache/megalinter
-          key: ${{ runner.os }}-megalinter-v9
+          key: ${{ runner.os }}-megalinter-v10
       - name: MegaLinter
-        uses: oxsecurity/megalinter@v9.6.0
+        uses: oxsecurity/megalinter@v10.2.0
         continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -116,7 +116,7 @@ jobs:
           name: ci-impact
           path: .local/ci
       - name: Setup .NET SDKs
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: |
             8.0.x
@@ -184,12 +184,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.2.15
+          bun-version: 1.4.4
       - name: Install and test config tool
         working-directory: tools/gframework-config-tool
         run: |

@@ -15,11 +15,11 @@
         <GodotProjectDir Condition="'$(GodotProjectDir)' == ''">$(MSBuildProjectDirectory)</GodotProjectDir>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="Godot.SourceGenerators" Version="4.6.3" PrivateAssets="all"/>
-        <PackageReference Include="GodotSharp" Version="4.7.0"/>
-        <PackageReference Include="GodotSharpEditor" Version="4.7.0" PrivateAssets="all"/>
-        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.7"/>
-        <PackageReference Include="System.Collections.Immutable" Version="9.0.0"/>
+        <PackageReference Include="Godot.SourceGenerators" Version="4.7.2" PrivateAssets="all"/>
+        <PackageReference Include="GodotSharp" Version="4.7.2"/>
+        <PackageReference Include="GodotSharpEditor" Version="4.7.2" PrivateAssets="all"/>
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.14"/>
+        <PackageReference Include="System.Collections.Immutable" Version="10.0.14"/>
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\..\GFramework.Godot\GFramework.Godot.csproj"/>

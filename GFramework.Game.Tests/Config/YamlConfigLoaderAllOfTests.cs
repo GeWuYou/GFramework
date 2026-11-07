@@ -78,7 +78,7 @@ public sealed class YamlConfigLoaderAllOfTests
     ///     验证当前对象未满足任一 allOf 条目时，运行时会拒绝加载。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_AllOf_Entry_Is_Not_Satisfied()
+    public async Task LoadAsync_Should_Throw_When_AllOf_Entry_Is_Not_Satisfied()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -93,7 +93,7 @@ public sealed class YamlConfigLoaderAllOfTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -144,7 +144,7 @@ public sealed class YamlConfigLoaderAllOfTests
     ///     验证非数组 allOf 声明会在 schema 解析阶段被拒绝。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_AllOf_Is_Not_An_Array()
+    public async Task LoadAsync_Should_Throw_When_AllOf_Is_Not_An_Array()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -168,7 +168,7 @@ public sealed class YamlConfigLoaderAllOfTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -184,7 +184,7 @@ public sealed class YamlConfigLoaderAllOfTests
     ///     验证只有对象字段允许声明 allOf。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_NonObject_Schema_Declares_AllOf()
+    public async Task LoadAsync_Should_Throw_When_NonObject_Schema_Declares_AllOf()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -226,7 +226,7 @@ public sealed class YamlConfigLoaderAllOfTests
                 static config => config.Id);
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -242,7 +242,7 @@ public sealed class YamlConfigLoaderAllOfTests
     ///     验证 allOf 条目必须是对象值 schema。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_AllOf_Entry_Is_Not_Object_Valued()
+    public async Task LoadAsync_Should_Throw_When_AllOf_Entry_Is_Not_Object_Valued()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -261,7 +261,7 @@ public sealed class YamlConfigLoaderAllOfTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -277,7 +277,7 @@ public sealed class YamlConfigLoaderAllOfTests
     ///     验证运行时会显式拒绝当前共享子集尚未支持的 <c>oneOf</c>。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Object_Schema_Declares_Unsupported_OneOf()
+    public async Task LoadAsync_Should_Throw_When_Object_Schema_Declares_Unsupported_OneOf()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -315,7 +315,7 @@ public sealed class YamlConfigLoaderAllOfTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -331,7 +331,7 @@ public sealed class YamlConfigLoaderAllOfTests
     ///     验证运行时会显式拒绝当前共享子集尚未支持的 <c>anyOf</c>。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Object_Schema_Declares_Unsupported_AnyOf()
+    public async Task LoadAsync_Should_Throw_When_Object_Schema_Declares_Unsupported_AnyOf()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -369,7 +369,7 @@ public sealed class YamlConfigLoaderAllOfTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -416,7 +416,7 @@ public sealed class YamlConfigLoaderAllOfTests
     ///     验证运行时会拒绝会打开动态字段形状的 <c>additionalProperties</c>。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_Object_Schema_Declares_Unsupported_AdditionalProperties()
+    public async Task LoadAsync_Should_Throw_When_Object_Schema_Declares_Unsupported_AdditionalProperties()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -436,7 +436,7 @@ public sealed class YamlConfigLoaderAllOfTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -462,7 +462,7 @@ public sealed class YamlConfigLoaderAllOfTests
                                }
                                """)]
     [TestCase("unevaluatedProperties", "false")]
-    public void LoadAsync_Should_Throw_When_Object_Schema_Declares_Unsupported_OpenObject_Keyword(
+    public async Task LoadAsync_Should_Throw_When_Object_Schema_Declares_Unsupported_OpenObject_Keyword(
         string keywordName,
         string keywordValueJson)
     {
@@ -484,7 +484,7 @@ public sealed class YamlConfigLoaderAllOfTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -501,7 +501,7 @@ public sealed class YamlConfigLoaderAllOfTests
     ///     验证 allOf 条目只接受 object-typed schema。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_AllOf_Entry_Is_Not_Object_Typed()
+    public async Task LoadAsync_Should_Throw_When_AllOf_Entry_Is_Not_Object_Typed()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -525,7 +525,7 @@ public sealed class YamlConfigLoaderAllOfTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -541,7 +541,7 @@ public sealed class YamlConfigLoaderAllOfTests
     ///     验证 allOf 条目的 <c>properties</c> 必须声明为对象映射。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_AllOf_Entry_Properties_Is_Not_Object_Valued()
+    public async Task LoadAsync_Should_Throw_When_AllOf_Entry_Properties_Is_Not_Object_Valued()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -565,7 +565,7 @@ public sealed class YamlConfigLoaderAllOfTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -581,7 +581,7 @@ public sealed class YamlConfigLoaderAllOfTests
     ///     验证 allOf 条目的 <c>required</c> 必须声明为字段名数组。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_AllOf_Entry_Required_Is_Not_An_Array()
+    public async Task LoadAsync_Should_Throw_When_AllOf_Entry_Required_Is_Not_An_Array()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -605,7 +605,7 @@ public sealed class YamlConfigLoaderAllOfTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -621,7 +621,7 @@ public sealed class YamlConfigLoaderAllOfTests
     ///     验证 allOf 条目的 <c>required</c> 项必须是字符串字段名。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_AllOf_Entry_Required_Item_Is_Not_A_String()
+    public async Task LoadAsync_Should_Throw_When_AllOf_Entry_Required_Item_Is_Not_A_String()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -645,7 +645,7 @@ public sealed class YamlConfigLoaderAllOfTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -661,7 +661,7 @@ public sealed class YamlConfigLoaderAllOfTests
     ///     验证 allOf 条目的 <c>required</c> 不允许空白字段名。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_AllOf_Entry_Required_Item_Is_Blank()
+    public async Task LoadAsync_Should_Throw_When_AllOf_Entry_Required_Item_Is_Blank()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -685,7 +685,7 @@ public sealed class YamlConfigLoaderAllOfTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {
@@ -701,7 +701,7 @@ public sealed class YamlConfigLoaderAllOfTests
     ///     验证 allOf 条目不能要求父对象未声明的字段。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Throw_When_AllOf_Entry_Requires_Undeclared_Parent_Property()
+    public async Task LoadAsync_Should_Throw_When_AllOf_Entry_Requires_Undeclared_Parent_Property()
     {
         CreateConfigFile(
             "monster/slime.yaml",
@@ -729,7 +729,7 @@ public sealed class YamlConfigLoaderAllOfTests
         var loader = CreateMonsterRewardLoader();
         var registry = CreateRegistry();
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(() => loader.LoadAsync(registry));
 
         Assert.Multiple(() =>
         {

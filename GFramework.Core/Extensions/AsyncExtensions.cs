@@ -43,20 +43,20 @@ public static class AsyncExtensions
             // 将联合令牌传入实际任务，超时时任务会收到取消信号
             task = taskFactory(linkedCts.Token);
         }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
-            throw new TimeoutException($"操作在 {timeout.TotalSeconds} 秒后超时");
+            throw new TimeoutException($"操作在 {timeout.TotalSeconds} 秒后超时", ex);
         }
 
         try
         {
             return await task.ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested
+        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested
                                                  && linkedCts.IsCancellationRequested)
         {
             // linkedCts 触发但外部未取消 → 超时
-            throw new TimeoutException($"操作在 {timeout.TotalSeconds} 秒后超时");
+            throw new TimeoutException($"操作在 {timeout.TotalSeconds} 秒后超时", ex);
         }
     }
 
@@ -84,19 +84,19 @@ public static class AsyncExtensions
         {
             task = taskFactory(linkedCts.Token);
         }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
-            throw new TimeoutException($"操作在 {timeout.TotalSeconds} 秒后超时");
+            throw new TimeoutException($"操作在 {timeout.TotalSeconds} 秒后超时", ex);
         }
 
         try
         {
             await task.ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested
+        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested
                                                  && linkedCts.IsCancellationRequested)
         {
-            throw new TimeoutException($"操作在 {timeout.TotalSeconds} 秒后超时");
+            throw new TimeoutException($"操作在 {timeout.TotalSeconds} 秒后超时", ex);
         }
     }
 

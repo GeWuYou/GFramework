@@ -127,7 +127,7 @@ public class AutoUiPageGeneratorTests
                 }
             """);
 
-        var test = new CSharpSourceGeneratorTest<AutoUiPageGenerator, DefaultVerifier>
+        var test = new CSharpSourceGeneratorTest<AutoUiPageGenerator, GeneratorTestVerifier>
         {
             TestState =
             {

@@ -134,7 +134,7 @@ public class GameConfigBootstrapTests
     ///     验证初始化链路进行中时，第二个调用者不会再次进入并发初始化流程。
     /// </summary>
     [Test]
-    public void InitializeAsync_Should_Reject_Concurrent_Caller_While_Initialization_Is_In_Progress()
+    public async Task InitializeAsync_Should_Reject_Concurrent_Caller_While_Initialization_Is_In_Progress()
     {
         CreateMonsterFiles();
 
@@ -166,7 +166,7 @@ public class GameConfigBootstrapTests
             Is.True,
             "The first initialization attempt did not reach the guarded lifecycle section.");
 
-        var secondCallerException = Assert.ThrowsAsync<InvalidOperationException>(() => bootstrap.InitializeAsync());
+        var secondCallerException = await Assert.ThrowsAsync<InvalidOperationException>(() => bootstrap.InitializeAsync());
 
         continueInitialization.Set();
 
@@ -184,7 +184,7 @@ public class GameConfigBootstrapTests
     ///     验证在可选热重载启动失败时，不会提前公开加载器与初始化成功状态。
     /// </summary>
     [Test]
-    public void InitializeAsync_Should_Not_Publish_State_When_HotReload_Enable_Fails()
+    public async Task InitializeAsync_Should_Not_Publish_State_When_HotReload_Enable_Fails()
     {
         CreateMonsterFiles();
 
@@ -205,7 +205,7 @@ public class GameConfigBootstrapTests
                         })
             });
 
-        var exception = Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => bootstrap.InitializeAsync());
+        var exception = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => bootstrap.InitializeAsync());
 
         Assert.Multiple(() =>
         {

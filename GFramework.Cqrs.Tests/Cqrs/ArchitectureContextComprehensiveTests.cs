@@ -54,7 +54,7 @@ public sealed class ArchitectureContextComprehensiveTests
     ///     负责释放容器和上下文资源。
     /// </summary>
     [TearDown]
-    public void TearDown()
+    public async Task TearDown()
     {
         _context = null;
         _container = null;
@@ -84,9 +84,9 @@ public sealed class ArchitectureContextComprehensiveTests
     ///     测试SendRequestAsync方法在请求为null时抛出ArgumentNullException
     /// </summary>
     [Test]
-    public void SendRequestAsync_Should_ThrowArgumentNullException_When_Request_IsNull()
+    public async Task SendRequestAsync_Should_ThrowArgumentNullException_When_Request_IsNull()
     {
-        Assert.ThrowsAsync<ArgumentNullException>(async () =>
+        await Assert.ThrowsAsync<ArgumentNullException>(async () =>
             await _context!.SendRequestAsync<int>(null!).ConfigureAwait(false));
     }
 
@@ -151,7 +151,7 @@ public sealed class ArchitectureContextComprehensiveTests
     ///     测试GetService方法使用缓存
     /// </summary>
     [Test]
-    public void GetService_Should_Use_Cache()
+    public async Task GetService_Should_Use_Cache()
     {
         var firstResult = _context!.GetService<IEventBus>();
         Assert.That(firstResult, Is.Not.Null);
@@ -165,7 +165,7 @@ public sealed class ArchitectureContextComprehensiveTests
     ///     测试架构未安装 CQRS runtime 时，上下文分发入口会显式抛出缺失 runtime 异常。
     /// </summary>
     [Test]
-    public void Missing_Cqrs_Runtime_Should_Throw_InvalidOperationException()
+    public async Task Missing_Cqrs_Runtime_Should_Throw_InvalidOperationException()
     {
         var containerWithoutRuntime = new MicrosoftDiContainer();
         containerWithoutRuntime.Freeze();
@@ -173,7 +173,7 @@ public sealed class ArchitectureContextComprehensiveTests
         var contextWithoutRuntime = new ArchitectureContext(containerWithoutRuntime);
         var testRequest = new TestRequest { Value = 42 };
 
-        Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await contextWithoutRuntime.SendRequestAsync(testRequest).ConfigureAwait(false));
     }
 
@@ -208,7 +208,7 @@ public sealed class ArchitectureContextComprehensiveTests
         var longRequest = new TestLongRunningRequest { DelayMs = 1000 };
 
         // 应该在50ms后被取消
-        Assert.ThrowsAsync<TaskCanceledException>(async () =>
+        await Assert.ThrowsAsync<TaskCanceledException>(async () =>
             await _context!.SendRequestAsync(longRequest, cts.Token).ConfigureAwait(false));
     }
 
@@ -225,7 +225,7 @@ public sealed class ArchitectureContextComprehensiveTests
         var results = new List<int>();
 
         // 流应该在100ms后被取消（TaskCanceledException 继承自 OperationCanceledException）
-        Assert.CatchAsync<OperationCanceledException>(async () =>
+        await Assert.CatchAsync<OperationCanceledException>(async () =>
         {
             await foreach (var item in stream.ConfigureAwait(false))
             {
@@ -268,7 +268,7 @@ public sealed class ArchitectureContextComprehensiveTests
     {
         var faultyRequest = new TestFaultyRequest();
 
-        Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await _context!.SendRequestAsync(faultyRequest).ConfigureAwait(false));
     }
 
@@ -352,7 +352,7 @@ public sealed class ArchitectureContextComprehensiveTests
     {
         var invalidRequest = new TestValidatedRequest { Name = "" }; // 无效：空字符串
 
-        Assert.ThrowsAsync<ArgumentException>(async () =>
+        await Assert.ThrowsAsync<ArgumentException>(async () =>
             await _context!.SendAsync(invalidRequest).ConfigureAwait(false));
     }
 

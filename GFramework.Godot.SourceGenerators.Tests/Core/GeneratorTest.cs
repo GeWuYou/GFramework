@@ -19,7 +19,7 @@ public static class GeneratorTest<TGenerator>
         string source,
         params (string filename, string content)[] generatedSources)
     {
-        var test = new CSharpSourceGeneratorTest<TGenerator, DefaultVerifier>
+        var test = new CSharpSourceGeneratorTest<TGenerator, GeneratorTestVerifier>
         {
             TestState =
             {

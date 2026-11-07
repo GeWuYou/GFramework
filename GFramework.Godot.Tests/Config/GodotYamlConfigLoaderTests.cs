@@ -192,14 +192,14 @@ public sealed class GodotYamlConfigLoaderTests
     ///     验证运行时缓存目录无法重置时，Godot 适配层仍会返回结构化的配置加载诊断。
     /// </summary>
     [Test]
-    public void LoadAsync_Should_Wrap_Runtime_Cache_Directory_Reset_Failure_As_ConfigLoadException()
+    public async Task LoadAsync_Should_Wrap_Runtime_Cache_Directory_Reset_Failure_As_ConfigLoadException()
     {
         CreateMonsterFiles(_resourceRoot);
         WriteFile(_userRoot, "config_cache", "occupied");
 
         var loader = CreateLoader(isEditor: false);
 
-        var exception = Assert.ThrowsAsync<ConfigLoadException>(async () =>
+        var exception = await Assert.ThrowsAsync<ConfigLoadException>(async () =>
             await loader.LoadAsync(new ConfigRegistry()).ConfigureAwait(false));
 
         Assert.Multiple(() =>
@@ -218,7 +218,7 @@ public sealed class GodotYamlConfigLoaderTests
     /// </summary>
     [TestCase("../outside")]
     [TestCase("schemas:bad/monster")]
-    public void LoadAsync_Should_Reject_Invalid_Config_Relative_Path_When_Metadata_Is_Corrupted(
+    public async Task LoadAsync_Should_Reject_Invalid_Config_Relative_Path_When_Metadata_Is_Corrupted(
         string configRelativePath)
     {
         var corruptedSource = CreateUnsafeTableSource("monster", configRelativePath);
@@ -227,7 +227,7 @@ public sealed class GodotYamlConfigLoaderTests
             tableSources: [corruptedSource],
             configureLoader: static _ => { });
 
-        var exception = Assert.ThrowsAsync<ArgumentException>(async () =>
+        var exception = await Assert.ThrowsAsync<ArgumentException>(async () =>
             await loader.LoadAsync(new ConfigRegistry()).ConfigureAwait(false));
 
         Assert.That(exception!.ParamName, Is.EqualTo("relativePath"));
@@ -238,7 +238,7 @@ public sealed class GodotYamlConfigLoaderTests
     /// </summary>
     [TestCase("../schemas/monster.schema.json")]
     [TestCase("schemas:bad/monster.schema.json")]
-    public void LoadAsync_Should_Reject_Invalid_Schema_Relative_Path_When_Metadata_Is_Corrupted(
+    public async Task LoadAsync_Should_Reject_Invalid_Schema_Relative_Path_When_Metadata_Is_Corrupted(
         string schemaRelativePath)
     {
         WriteFile(
@@ -256,7 +256,7 @@ public sealed class GodotYamlConfigLoaderTests
             tableSources: [corruptedSource],
             configureLoader: static _ => { });
 
-        var exception = Assert.ThrowsAsync<ArgumentException>(async () =>
+        var exception = await Assert.ThrowsAsync<ArgumentException>(async () =>
             await loader.LoadAsync(new ConfigRegistry()).ConfigureAwait(false));
 
         Assert.That(exception!.ParamName, Is.EqualTo("relativePath"));

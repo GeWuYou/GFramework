@@ -121,7 +121,7 @@ public class ArchitectureConfigIntegrationTests
 
             var secondArchitecture = new ModuleOnlyArchitecture(module);
             var exception =
-                Assert.ThrowsAsync<InvalidOperationException>(() => secondArchitecture.InitializeAsync());
+                await Assert.ThrowsAsync<InvalidOperationException>(() => secondArchitecture.InitializeAsync()).ConfigureAwait(false);
 
             Assert.Multiple(() =>
             {
@@ -182,7 +182,7 @@ public class ArchitectureConfigIntegrationTests
     ///     配置首载只能由异步架构入口驱动，拒绝同步阻塞桥接。
     /// </summary>
     [Test]
-    public void GameConfigModuleShouldRejectSynchronousArchitectureInitialization()
+    public async Task GameConfigModuleShouldRejectSynchronousArchitectureInitialization()
     {
         var rootPath = CreateTempConfigRoot();
         try
@@ -212,7 +212,7 @@ public class ArchitectureConfigIntegrationTests
             var module = CreateModule(rootPath);
             await using var architecture = new ModuleOnlyArchitecture(module);
 
-            Assert.ThrowsAsync<ConfigLoadException>(() => architecture.InitializeAsync());
+            await Assert.ThrowsAsync<ConfigLoadException>(() => architecture.InitializeAsync());
             Assert.Throws<ObjectDisposedException>(() => _ = module.Loader);
         }
         finally
@@ -240,7 +240,7 @@ public class ArchitectureConfigIntegrationTests
             });
             await using var architecture = new FailingConfigArchitecture(module);
 
-            Assert.ThrowsAsync<InvalidOperationException>(() => architecture.InitializeAsync());
+            await Assert.ThrowsAsync<InvalidOperationException>(() => architecture.InitializeAsync());
             Assert.Multiple(() =>
             {
                 Assert.That(module.IsHotReloadEnabled, Is.False);
@@ -271,7 +271,7 @@ public class ArchitectureConfigIntegrationTests
             });
             await using var architecture = new ModuleOnlyArchitecture(module);
 
-            var exception = Assert.CatchAsync<OperationCanceledException>(() =>
+            var exception = await Assert.CatchAsync<OperationCanceledException>(() =>
                 architecture.InitializeAsync(cancellation.Token));
             Assert.Multiple(() =>
             {
