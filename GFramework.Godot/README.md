@@ -179,3 +179,9 @@ Godot 上。
   - 选 `GFramework.Game`
 - 需要的是 `project.godot` 元数据、节点字段注入或编译期样板：
   - 选 `GFramework.Godot.SourceGenerators`
+
+## 持久化与宿主示例
+
+GodotFileStorage 对 user:// 和普通文件路径先写同目录临时文件，再替换目标文件；res:// 用于读取随游戏打包的资源，写入会被拒绝。存档与设置应放在 user://。
+
+[可运行的桌面样例](../Samples/GodotIntegration/README.md)接入场景、UI、配置、暂停、输入与持久化；使用匹配的 Godot .NET 编辑器运行。

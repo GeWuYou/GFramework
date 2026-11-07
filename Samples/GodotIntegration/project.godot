@@ -1,0 +1,28 @@
+; Copyright (c) 2025-2026 GeWuYou
+; SPDX-License-Identifier: Apache-2.0
+config_version=5
+
+[application]
+config/name="GFramework Runtime Sample"
+run/main_scene="res://Main.tscn"
+config/features=PackedStringArray("4.7", "C#", "GL Compatibility")
+
+[display]
+window/size/viewport_width=960
+window/size/viewport_height=640
+window/stretch/mode="canvas_items"
+
+[dotnet]
+project/assembly_name="GodotIntegration"
+
+[input]
+demo_left={"deadzone":0.2,"events":[Object(InputEventKey,"physical_keycode":65)]}
+demo_right={"deadzone":0.2,"events":[Object(InputEventKey,"physical_keycode":68)]}
+demo_up={"deadzone":0.2,"events":[Object(InputEventKey,"physical_keycode":87)]}
+demo_down={"deadzone":0.2,"events":[Object(InputEventKey,"physical_keycode":83)]}
+demo_pause={"deadzone":0.2,"events":[Object(InputEventKey,"physical_keycode":4194305)]}
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.035,0.055,0.09,1)

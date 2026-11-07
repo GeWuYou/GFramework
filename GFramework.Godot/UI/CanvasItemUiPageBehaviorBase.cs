@@ -153,8 +153,15 @@ public abstract class CanvasItemUiPageBehaviorBase<T> : IUiPageBehavior
     /// </summary>
     public virtual void OnExit()
     {
-        _page?.OnExit();
-        Owner.QueueFreeX();
+        try
+        {
+            _page?.OnExit();
+        }
+        finally
+        {
+            // Native release must still be queued when a page's business exit callback fails.
+            Owner.QueueFreeX();
+        }
     }
 
     /// <summary>

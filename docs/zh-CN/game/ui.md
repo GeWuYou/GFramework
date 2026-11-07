@@ -346,3 +346,16 @@ uiRouter.Hide(modalHandle, UiLayer.Modal);
 3. [AutoUiPage 生成器](../source-generators/auto-ui-page-generator.md)
 4. [Game 抽象层说明](../abstractions/game-abstractions.md)
 5. [API 参考](../api-reference/index.md)
+
+
+## 导航并发与资源清理
+
+页面栈导航按提交顺序执行，重复页面检查在轮到该操作时重新进行，连续点击不会让同一个栈顶页面重复进入。BindRoot 在宿主主线程执行并捕获同步上下文；同步 Show、Hide 和 Resume 也必须在该上下文调用。
+
+不要在过渡处理器或页面生命周期回调里等待同一路由器的新导航；会收到重入错误。业务输入回调可以正常提交独立导航。
+
+页面进入失败时，路由器移除新页面并尽力恢复旧页面。UiPopPolicy.Suspend 弹出的页面仍归当前路由器管理，重新压入可复用；停止时同样会被清理。
+
+路由器的 DestroyAsync() 关闭新导航入口，等待当前操作，清理页面栈、浮层与保留页面并释放暂停请求。单个退出回调抛错不会跳过其他页面；重复停止观察同一个清理结果。Architecture 自动等待这个契约，手动拥有时也应等待异步停止，不使用同步 Destroy。
+
+过渡超时是协作取消：handler 需要观察令牌，外部取消会继续传播。

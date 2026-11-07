@@ -36,16 +36,27 @@ internal sealed class ResourceCache
     /// <typeparam name="T">资源类型</typeparam>
     /// <param name="path">资源路径</param>
     /// <param name="resource">资源实例</param>
+    /// <param name="release">原始加载器的资源释放操作。</param>
     /// <returns>如果成功添加返回 true，如果已存在返回 false</returns>
-    public bool Add<T>(string path, T resource) where T : class
+    public bool Add<T>(string path, T resource, Action<object> release) where T : class
     {
         if (string.IsNullOrWhiteSpace(path))
             throw new ArgumentException(PathCannotBeNullOrEmptyMessage, nameof(path));
 
         ArgumentNullException.ThrowIfNull(resource);
 
-        var entry = new ResourceCacheEntry(resource, typeof(T));
+        var entry = new ResourceCacheEntry(resource, typeof(T), release);
         return _cache.TryAdd(path, entry);
+    }
+
+    /// <summary>
+    ///     获取缓存条目的身份，供管理器在统一操作锁内关联句柄、所有权和卸载决定。
+    /// </summary>
+    /// <param name="path">资源路径。</param>
+    /// <returns>当前条目；不存在时返回 null。</returns>
+    public ResourceCacheEntry? GetEntry(string path)
+    {
+        return _cache.TryGetValue(path, out var entry) ? entry : null;
     }
 
     /// <summary>

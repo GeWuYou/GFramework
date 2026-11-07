@@ -1,0 +1,23 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Copyright (c) 2025-2026 GeWuYou
+# SPDX-License-Identifier: Apache-2.0
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GodotIntegration", "GodotIntegration.csproj", "{AA815C90-7B0B-4FEA-A89E-E4C9BF3C1C7C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+		ExportDebug|Any CPU = ExportDebug|Any CPU
+		ExportRelease|Any CPU = ExportRelease|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AA815C90-7B0B-4FEA-A89E-E4C9BF3C1C7C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AA815C90-7B0B-4FEA-A89E-E4C9BF3C1C7C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AA815C90-7B0B-4FEA-A89E-E4C9BF3C1C7C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AA815C90-7B0B-4FEA-A89E-E4C9BF3C1C7C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AA815C90-7B0B-4FEA-A89E-E4C9BF3C1C7C}.ExportDebug|Any CPU.ActiveCfg = ExportDebug|Any CPU
+		{AA815C90-7B0B-4FEA-A89E-E4C9BF3C1C7C}.ExportDebug|Any CPU.Build.0 = ExportDebug|Any CPU
+		{AA815C90-7B0B-4FEA-A89E-E4C9BF3C1C7C}.ExportRelease|Any CPU.ActiveCfg = ExportRelease|Any CPU
+		{AA815C90-7B0B-4FEA-A89E-E4C9BF3C1C7C}.ExportRelease|Any CPU.Build.0 = ExportRelease|Any CPU
+	EndGlobalSection
+EndGlobal

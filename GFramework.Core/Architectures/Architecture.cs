@@ -62,7 +62,7 @@ public abstract class Architecture : IArchitecture
 
         // 初始化管理器
         _bootstrapper = new ArchitectureBootstrapper(resolvedEnvironment, resolvedServices, factory);
-        _lifecycle = new ArchitectureLifecycle(this, resolvedConfiguration, resolvedServices, _logger);
+        _lifecycle = new ArchitectureLifecycle(this, resolvedConfiguration, resolvedServices, _logger, FinalizeHostAsync);
         _lifecycle.PhaseChanged += HandleLifecyclePhaseChanged;
         _componentRegistry = new ArchitectureComponentRegistry(
             this,
@@ -207,8 +207,11 @@ public abstract class Architecture : IArchitecture
     /// <summary>当前停止任务。</summary>
     private Task? _destructionTask;
 
-    /// <summary>宿主分离与启动失败共享同一次停止，避免重复节点/句柄清理。</summary>
+    /// <summary>宿主停止接入与启动失败共享同一次任务。</summary>
     private Task? _hostStopTask;
+
+    /// <summary>宿主最终分离与启动失败共享同一次结果，业务停止前仍保留原生根节点。</summary>
+    private Task? _hostFinalizationTask;
 
     /// <summary>显式或销毁触发的启动取消。</summary>
     private CancellationTokenSource? _startupCancellation;
@@ -353,9 +356,17 @@ public abstract class Architecture : IArchitecture
         return ValueTask.CompletedTask;
     }
 
-    /// <summary>停止宿主接线，执行时启动已结束且仍可在清理调用链中访问本实例服务。</summary>
-    /// <returns>宿主资源已停止。</returns>
+    /// <summary>关闭宿主的新操作接入；此时组件尚未停止，必须保留其清理所需的宿主节点和资源。</summary>
+    /// <returns>宿主已停止接收新工作。</returns>
     protected virtual ValueTask OnStoppingAsync() => ValueTask.CompletedTask;
+
+    /// <summary>组件和服务模块停止后分离宿主资源；根 provider 仍存活，允许清理调用链访问依赖。</summary>
+    /// <returns>宿主节点与接线已清理完成。</returns>
+    /// <remarks>
+    ///     正常销毁、启动失败及取消均经过此入口，且同一实例只执行一次。
+    ///     即使此前的组件或模块停止失败也会调用此入口；异常被记录后仍继续释放 provider。
+    /// </remarks>
+    protected virtual ValueTask OnStoppedAsync() => ValueTask.CompletedTask;
 
     /// <summary>同步启动只执行同步参与者，遇到异步组件或钩子明确要求异步入口。</summary>
     public void Initialize() => StartInitialization(false, CancellationToken.None).GetAwaiter().GetResult();
@@ -472,6 +483,18 @@ public abstract class Architecture : IArchitecture
     /// <summary>将宿主同步抛错也封装在缓存任务中。</summary>
     /// <returns>宿主停止完成。</returns>
     private async Task StopHostCoreAsync() => await OnStoppingAsync().ConfigureAwait(false);
+
+    /// <summary>缓存宿主最终分离结果，失败启动后的销毁不能再次释放原生对象。</summary>
+    /// <returns>同一次宿主最终分离的完成或失败。</returns>
+    private ValueTask FinalizeHostAsync()
+    {
+        _hostFinalizationTask ??= FinalizeHostCoreAsync();
+        return new ValueTask(_hostFinalizationTask);
+    }
+
+    /// <summary>将同步抛出的宿主最终清理异常也保存到共享任务。</summary>
+    /// <returns>宿主最终清理完成。</returns>
+    private async Task FinalizeHostCoreAsync() => await OnStoppedAsync().ConfigureAwait(false);
 
     /// <summary>启动结束后释放 linked-token 注册；已移交停止操作的源由停止操作释放。</summary>
     private void ReleaseStartupCancellation()

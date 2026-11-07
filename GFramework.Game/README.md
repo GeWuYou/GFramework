@@ -377,3 +377,9 @@ public sealed class MyUiRouter : UiRouterBase
 - 你在做纯领域层、协议层或可复用 feature 包，只想引用接口和数据契约
 - 你已经有自己的配置、存储、路由实现，只想复用统一契约
 - 你不希望业务程序集带入 `Newtonsoft.Json`、`YamlDotNet` 等运行时依赖
+
+## 导航与停止
+
+Scene/UI 导航在绑定根节点时捕获宿主同步上下文，按提交顺序执行；异步生命周期回调中不要等待同一路由器的新导航。Replace 在移除旧场景前完成目标准备；清空操作被守卫拒绝时直接结束。路由器使用异步 DestroyAsync 停止，Architecture 会自动调用该契约，手动拥有路由器时也应等待其完成。
+
+FileStorage 与 Godot 存储共享临时文件替换机制，写入失败保留已有文件。具体接入见[场景系统](../docs/zh-CN/game/scene.md)、[UI 系统](../docs/zh-CN/game/ui.md)和[存储系统](../docs/zh-CN/game/storage.md)。

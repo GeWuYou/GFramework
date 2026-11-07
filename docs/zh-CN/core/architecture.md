@@ -174,3 +174,10 @@ public sealed class MetricsHook : IArchitectureLifecycleHook
 - 上下文访问与 `ArchitectureContext`：阅读[上下文](./context.md)
 - 初始化阶段、事件与销毁流程：阅读[生命周期](./lifecycle.md)
 - 请求 / 通知 / 流式消息模型与 runtime 安装：阅读[CQRS 运行时](./cqrs.md)
+
+
+## 宿主停止钩子
+
+宿主可覆盖 OnStoppingAsync 关闭新操作接入，此时保留组件清理所需的节点和资源。组件及服务模块停止后，框架调用 OnStoppedAsync 分离宿主资源，再释放根 provider。正常销毁、启动失败和取消共用一次清理，单个阶段抛错不会跳过后续阶段。
+
+异步场景退出需要跨帧或访问原生节点时，应在它们完成后才分离根节点。Godot 架构已经通过 OnStoppedAsync 完成模块分离和锚点释放。

@@ -14,11 +14,17 @@ namespace GFramework.Core.Architectures;
 ///     在同一个正式 provider 上编排组件初始化、阶段和业务停止。配置、激活和资源释放职责分开，
 ///     失败的启动与正常销毁共享一次清理，不需要额外容器或预注册单例缓存。
 /// </summary>
+/// <param name="architecture">当前架构实例。</param>
+/// <param name="configuration">实例配置与阶段钩子。</param>
+/// <param name="services">该实例拥有的模块与根容器。</param>
+/// <param name="logger">实例日志。</param>
+/// <param name="finalizeHost">业务参与者与模块停止后、provider 释放前执行的幂等宿主分离。</param>
 internal sealed class ArchitectureLifecycle(
     IArchitecture architecture,
     IArchitectureConfiguration configuration,
     IArchitectureServices services,
-    ILogger logger)
+    ILogger logger,
+    Func<ValueTask> finalizeHost)
 {
     private readonly ArchitecturePhaseCoordinator _phases = new(architecture, configuration, logger);
     private readonly ArchitectureDisposer _disposer = new();
@@ -157,7 +163,7 @@ internal sealed class ArchitectureLifecycle(
     /// <returns>启动结果。</returns>
     public Task WaitUntilReadyAsync() => _ready.Task;
 
-    /// <summary>只执行一次的业务停止、模块停止及异步 provider 释放，失败时继续后续清理。</summary>
+    /// <summary>只执行一次的业务停止、模块停止、宿主分离及异步 provider 释放，失败时继续后续清理。</summary>
     /// <returns>全部清理完成。</returns>
     public ValueTask CleanupAsync()
     {
@@ -170,10 +176,26 @@ internal sealed class ArchitectureLifecycle(
     private async Task CleanupCoreAsync()
     {
         var errors = new List<Exception>();
-        errors.AddRange(await _disposer.StopAsync().ConfigureAwait(false));
+        try
+        {
+            errors.AddRange(await _disposer.StopAsync().ConfigureAwait(false));
+        }
+        catch (Exception error)
+        {
+            errors.Add(error);
+        }
         try
         {
             await services.ModuleManager.DestroyAllAsync().ConfigureAwait(false);
+        }
+        catch (Exception error)
+        {
+            errors.Add(error);
+        }
+        // Host roots must remain alive until all route/component callbacks and service modules have stopped.
+        try
+        {
+            await finalizeHost().ConfigureAwait(false);
         }
         catch (Exception error)
         {

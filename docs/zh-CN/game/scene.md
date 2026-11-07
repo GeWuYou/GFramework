@@ -70,7 +70,7 @@ description: 说明 GFramework.Game 场景路由的当前入口、项目侧接�
 按当前实现，最常用的三个动作语义如下：
 
 - `ReplaceAsync`
-  - 清空整个栈，再加载并进入目标场景。
+  - 先检查目标进入守卫和全部离开守卫，创建并加载目标；准备成功后才清空旧栈并进入目标。准备失败保留旧栈。
 - `PushAsync`
   - 先检查守卫，再创建新场景，挂到 `ISceneRoot`，执行 `OnLoadAsync()`，暂停当前栈顶，最后让新场景 `OnEnterAsync()`。
 - `PopAsync`
@@ -275,3 +275,14 @@ schema 的正式支持边界。涉及 YAML 配置契约、组合关键字或编�
 2. [UI 系统](./ui.md)
 3. [Game 抽象层说明](../abstractions/game-abstractions.md)
 4. [API 参考](../api-reference/index.md)
+
+
+## 失败处理与停止
+
+BindRoot 应在宿主主线程执行。路由器捕获该线程的同步上下文，后续导航与异步停止回到此上下文运行；没有同步上下文的纯托管宿主仍可使用串行导航。生命周期回调不要等待同一路由器的嵌套导航，这种重入会被拒绝。
+
+Clear 或 Replace 的任一离开守卫拒绝时，旧栈保持不变，操作直接结束。Push 的加载或进入失败会清理新实例，并尽力恢复旧场景；Pop 的退出回调抛错也会继续卸载、移除和恢复下层场景。已经产生的业务副作用不会自动回滚，清理错误会在所有清理尝试结束后聚合报告。
+
+停止使用路由器的 DestroyAsync()；Architecture 会通过 IAsyncDestroyable 自动等待它。手动拥有路由器时也必须等待异步停止，不能用同步 Destroy() 阻塞宿主线程。停止关闭新导航入口，等待当前操作，再绕过导航守卫清理全部场景；重复停止观察同一个结果。
+
+过渡 handler 的 TimeoutMs 通过取消令牌协作生效；handler 必须观察传入令牌。外部取消不会被 ContinueOnError 吞掉，超时不会强行中断忽略取消的用户代码。

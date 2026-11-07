@@ -356,43 +356,11 @@ public sealed class FileStorage : IFileStorage, IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         var path = ToPath(key);
-        var tempPath = path + ".tmp";
-
         var pathLock = await _lockManager.AcquireLockAsync(path).ConfigureAwait(false);
         await using var configuredPathLock = pathLock.ConfigureAwait(false);
 
-        try
-        {
-            var content = _serializer.Serialize(value);
-
-            // 先写入临时文件
-            {
-                var fs = new FileStream(
-                    tempPath,
-                    FileMode.Create,
-                    FileAccess.Write,
-                    FileShare.None,
-                    _bufferSize,
-                    useAsync: true);
-                await using var configuredFileStream = fs.ConfigureAwait(false);
-
-                var sw = new StreamWriter(fs, Encoding.UTF8, leaveOpen: true);
-                await using var configuredStreamWriter = sw.ConfigureAwait(false);
-
-                await sw.WriteAsync(content).ConfigureAwait(false);
-                await sw.FlushAsync().ConfigureAwait(false);
-            }
-
-            // 原子性替换目标文件
-            File.Move(tempPath, path, overwrite: true);
-        }
-        catch
-        {
-            // 清理临时文件
-            if (File.Exists(tempPath))
-                File.Delete(tempPath);
-            throw;
-        }
+        var content = _serializer.Serialize(value);
+        await AtomicFileWriter.WriteAllTextAsync(path, content, _bufferSize).ConfigureAwait(false);
     }
 
     #endregion

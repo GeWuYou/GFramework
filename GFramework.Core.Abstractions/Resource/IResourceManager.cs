@@ -44,14 +44,14 @@ public interface IResourceManager : IUtility
     IResourceHandle<T>? GetHandle<T>(string path) where T : class;
 
     /// <summary>
-    ///     卸载指定路径的资源
+    ///     卸载指定路径的资源；存在活跃句柄时保留该资源。
     /// </summary>
     /// <param name="path">资源路径</param>
     /// <returns>如果成功卸载返回 true，否则返回 false</returns>
     bool Unload(string path);
 
     /// <summary>
-    ///     卸载所有资源
+    ///     卸载所有没有活跃句柄的资源；仍被引用的条目保留，可在句柄释放后再次卸载。
     /// </summary>
     void UnloadAll();
 

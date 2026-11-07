@@ -134,6 +134,7 @@ public partial class SettingsPanel : Control
 
 ## 关键入口
 
+- 完整单机流程：[可运行示例](./runtime-sample.md)
 - 架构锚点与模块挂接：[Godot 架构集成](./architecture.md)
 - Scene / `PackedScene` 工厂与行为封装：[Godot 场景系统](./scene.md)
 - UI page 行为、layer 语义与工厂：[Godot UI 系统](./ui.md)
