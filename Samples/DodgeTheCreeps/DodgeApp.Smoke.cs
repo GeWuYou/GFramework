@@ -28,7 +28,7 @@ public partial class DodgeApp
     {
         foreach (var argument in arguments)
         {
-            if (TryConfigureFeatureSmoke(argument)) continue;
+            if (TryConfigureFeatureSmoke(argument) || TryConfigureCapture(argument)) continue;
             if (string.Equals(argument, "--content-smoke", StringComparison.Ordinal))
             {
                 _smokeMode = true;
@@ -57,28 +57,30 @@ public partial class DodgeApp
                 _smokeId = argument[17..];
                 if (!Guid.TryParseExact(_smokeId, "N", out _)) throw new ArgumentException("Smoke identifier must be a 32-digit GUID.", nameof(arguments));
             }
-            else if (argument.StartsWith("--capture-menu=", StringComparison.Ordinal)) _capturePath = argument[15..];
-            else if (argument.StartsWith("--capture-content=", StringComparison.Ordinal))
-            {
-                _capturePath = argument["--capture-content=".Length..];
-                _captureKind = "content";
-            }
-            else if (argument.StartsWith("--capture-recovery=", StringComparison.Ordinal))
-            {
-                _capturePath = argument["--capture-recovery=".Length..];
-                _captureKind = "recovery";
-            }
-            else if (argument.StartsWith("--capture-settings=", StringComparison.Ordinal))
-            {
-                _capturePath = argument["--capture-settings=".Length..];
-                _captureKind = "settings";
-            }
-            else if (argument.StartsWith("--capture-language=", StringComparison.Ordinal))
-                _captureLanguage = argument["--capture-language=".Length..];
         }
         if (_smokeMode) _dataRoot = "user://dodge_smoke/" + _smokeId;
         else if (_capturePath is not null)
             _dataRoot = "user://dodge_capture/" + Guid.NewGuid().ToString("N");
+    }
+
+    /// <summary>Selects a supported rendered view independently of the native smoke scenario.</summary>
+    private bool TryConfigureCapture(string argument)
+    {
+        const string languagePrefix = "--capture-language=";
+        if (argument.StartsWith(languagePrefix, StringComparison.Ordinal))
+        {
+            _captureLanguage = argument[languagePrefix.Length..];
+            return true;
+        }
+        foreach (var view in new[] { "menu", "content", "recovery", "settings", "game" })
+        {
+            var prefix = "--capture-" + view + "=";
+            if (!argument.StartsWith(prefix, StringComparison.Ordinal)) continue;
+            _capturePath = argument[prefix.Length..];
+            _captureKind = view;
+            return true;
+        }
+        return false;
     }
 
     /// <summary>Runs representative agent adoption scenarios in the actual engine.</summary>
@@ -94,9 +96,11 @@ public partial class DodgeApp
             }
             if (_smokeContinue)
             {
-                Click("Continue");
-                await UntilAsync(() => _world is { IsRunning: true } && HasView("hud")).ConfigureAwait(true);
-                Require(_world!.Score >= 37 && Math.Abs(Preferences.Volume - 0.35f) < 0.01, "Cross-process run/preferences restore failed.");
+                Require(!await _saves.ExistsAsync(1, _lifetime.Token).ConfigureAwait(true) &&
+                    ((Button)FindNative("Continue", "Button")).Disabled && !HasBackup,
+                    "An ended run became loadable again after restarting.");
+                Require(Preferences.BestScore >= 37 && Math.Abs(Preferences.Volume - 0.35f) < 0.01,
+                    "Retiring the run removed persistent score or settings.");
                 FinishSmoke(true);
                 return;
             }
@@ -180,10 +184,19 @@ public partial class DodgeApp
         Click("Continue");
         await UntilAsync(() => _world is { IsRunning: true } && HasView("hud")).ConfigureAwait(true);
         Require(_world!.Score >= 37, "Explicit save did not restore the expected score.");
+        _latestBackup = "backups/death-probe";
+        await _storage.WriteAsync(_dataRoot + "/saves/slot_1/" + _latestBackup, _world.CaptureProgress()).ConfigureAwait(true);
+        await StoreBackupKeyAsync().ConfigureAwait(true);
         await ToSignal(GetTree().CreateTimer(1.8), SceneTreeTimer.SignalName.Timeout);
         foreach (var enemy in GetTree().GetNodesInGroup("dodge_creeps"))
             if (enemy is Node2D creep) creep.Position = _world.PlayerPosition;
         await UntilAsync(() => HasView("game-over")).ConfigureAwait(true);
+        Require(!await _saves.ExistsAsync(1, _lifetime.Token).ConfigureAwait(true) && !HasBackup &&
+            !await _storage.ExistsAsync(_dataRoot + "/last-content-backup.json").ConfigureAwait(true),
+            "Death did not retire the run slot and its restore shortcut.");
+        Click("MainMenu");
+        await UntilAsync(() => HasView("menu")).ConfigureAwait(true);
+        Require(((Button)FindNative("Continue", "Button")).Disabled, "An ended run can still be continued from the menu.");
     }
 
     /// <summary>Exercises nested pause ownership and persisted settings through native controls.</summary>
@@ -204,10 +217,19 @@ public partial class DodgeApp
     private async Task CaptureMenuAsync()
     {
         if (_capturePath is null) return;
+        using var frozen = string.Equals(_captureKind, "game", StringComparison.Ordinal)
+            ? _pause.PauseScope("Game presentation capture") : null;
         if (string.Equals(_captureKind, "content", StringComparison.Ordinal))
             await OpenContentAsync().ConfigureAwait(true);
         else if (string.Equals(_captureKind, "settings", StringComparison.Ordinal))
             await OpenSettingsAsync().ConfigureAwait(true);
+        else if (string.Equals(_captureKind, "game", StringComparison.Ordinal))
+        {
+            await StartGameAsync(false).ConfigureAwait(true);
+            PressMovementDirection(new Vector2(1, -1));
+            _world!._PhysicsProcess(0);
+            ReleaseMovementActions();
+        }
         else if (string.Equals(_captureKind, "recovery", StringComparison.Ordinal))
         {
             RunAction(() => _ui.ShowDialogAsync(DodgeRoutes.Recover,

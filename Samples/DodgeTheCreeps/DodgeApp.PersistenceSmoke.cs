@@ -136,7 +136,7 @@ public partial class DodgeApp
         var report = await _saves.InspectContentAsync(slot, _lifetime.Token).ConfigureAwait(true);
         Require(report.IsLegacy && report.RequiresRecovery, "Sparse legacy import was silently accepted as an exact board.");
         var imported = await _saves.ImportLegacyAsync(slot, report, _lifetime.Token).ConfigureAwait(true);
-        Require(imported.Data.Version == 2 && imported.Data.LegacyLayoutReset && imported.Data.Enemies.Count == 0 &&
+        Require(imported.Data.Version == 2 && imported.Data.Enemies.Count == 0 &&
             imported.Data.Score == 21 && imported.Data.GraceRemaining == 1.5 && imported.Data.RandomState is not null,
             "The v1 migration did not explicitly initialize its missing board state.");
         var backup = await _storage.ReadSnapshotAsync(_dataRoot + "/saves/slot_88/" + imported.BackupKey, _lifetime.Token).ConfigureAwait(true);

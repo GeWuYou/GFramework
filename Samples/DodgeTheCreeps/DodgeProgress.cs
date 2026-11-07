@@ -46,11 +46,6 @@ public sealed class DodgeProgress : IVersionedData, IContentAwareSaveData
     public ulong? RandomState { get; set; }
     /// <summary>Gets or sets every living enemy in the world's stable iteration order.</summary>
     public IList<DodgeMobProgress> Enemies { get; set; } = new List<DodgeMobProgress>();
-    /// <summary>
-    /// Gets or sets whether migration had to create an empty layout because a v1 save did not record enemies.
-    /// A later complete-board capture clears this marker.
-    /// </summary>
-    public bool LegacyLayoutReset { get; set; }
     /// <inheritdoc />
     public ContentSnapshot? Content { get; set; }
 
