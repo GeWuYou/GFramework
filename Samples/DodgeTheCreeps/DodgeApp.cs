@@ -235,6 +235,7 @@ public partial class DodgeApp : Node, ISceneRoot
         await ShowGameOverAsync(score, status).ConfigureAwait(true);
     }
 
+    // #region tutorial-run-save-retirement
     /// <summary>Retires the single run slot and its restore shortcut before offering retry or menu navigation.</summary>
     private async Task<string?> RetireRunSaveAsync()
     {
@@ -254,6 +255,8 @@ public partial class DodgeApp : Node, ISceneRoot
             return Text.Get("save_clear_failed", ("error", exception.Message));
         }
     }
+
+    // #endregion tutorial-run-save-retirement
 
     /// <summary>Shows the completed run even when persisting its best score has failed.</summary>
     private async Task ShowGameOverAsync(int score, string? status)

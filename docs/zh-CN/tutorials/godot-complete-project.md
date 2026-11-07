@@ -164,6 +164,10 @@ godot --path DodgeTheCreeps
 
 本局结束后，应用清除当前存档及备份恢复入口，再显示结束页面。回到主菜单时“继续游戏”禁用，设置和最高分仍然保留。
 
+`RunEnded` 由 `DodgeApp.GameOverAsync` 观察。该流程等待以下清理完成后再显示结束页面；删除失败时显示错误，并阻止当前会话继续已结束的存档：
+
+<<< ../../../Samples/DodgeTheCreeps/DodgeApp.cs#tutorial-run-save-retirement{csharp}
+
 ### 先跑玩法预览
 
 暂时将 `DodgeApp.cs` 写为下面的预览脚本：
@@ -205,6 +209,7 @@ DodgeTheCreeps/
 ├─ DodgeRoutes.cs              # 路由定义
 ├─ DodgeMenus.cs               # 原生视图和按钮
 ├─ DodgeMenus.Content.cs       # 内容管理与恢复对话框
+├─ DodgeMenus.Settings.cs      # 音频、显示、语言与未应用草稿
 ├─ OfficialPackTrust.cs        # 游戏拥有的官方 PCK 摘要
 ├─ DodgeProgress.cs            # 当前局存档
 ├─ DodgeProgressMigration.cs   # 稀疏 v1 到完整 v2 快照
@@ -245,7 +250,11 @@ DodgeTheCreeps/
 
 <<< ../../../Samples/DodgeTheCreeps/DodgeProgress.cs{csharp}
 
-偏好数据保存音量、全屏和最高分：
+每个敌人的快照保存稳定内容 ID 和可恢复的数值状态：
+
+<<< ../../../Samples/DodgeTheCreeps/Gameplay/DodgeMobProgress.cs{csharp}
+
+偏好数据保存三路音量、显示模式、竖屏尺寸、语言和最高分：
 
 <<< ../../../Samples/DodgeTheCreeps/DodgePreferences.cs{csharp}
 
@@ -402,7 +411,14 @@ godot --headless --path DodgeTheCreeps -- --smoke
 godot --headless --path DodgeTheCreeps -- --smoke-continue=<上一轮的GUID>
 ```
 
-自检在独立数据目录中通过真实按钮、输入和引擎帧检查移动、嵌套暂停、设置、存档、确认结果和结束流程。运行检查时给进程设置超时，并检查退出码与原生日志。
+这组自检覆盖移动、暂停、保存继续及死亡清档；`--smoke-continue` 确认重启后已结束的存档不可继续，设置和最高分仍保留。完整棋盘的跨进程恢复使用另一组入口：
+
+```bash
+godot --headless --path DodgeTheCreeps -- --persistence-smoke
+godot --headless --path DodgeTheCreeps -- --persistence-smoke-continue=<上一轮输出的GUID>
+```
+
+该组比较敌人、计时、朝向、随机状态和后续生成。所有自检均使用独立数据目录，调用方设置进程超时并检查退出码与 `DODGE_SMOKE_RESULT PASS`。
 
 安装与引擎同版本的 .NET 导出模板，在练习工程中建立 `exports/`，然后执行：
 
@@ -480,7 +496,7 @@ dotnet build DodgeTheCreeps/DodgeTheCreeps.csproj -c Debug
 | 重开时提示世界尚未挂载 | 先 `AddChild` 或等待场景替换，再开始本局 |
 | 菜单关闭后仍暂停 | 检查下面是否还有可见暂停窗口或设置窗口 |
 | 界面出现但点击没有作用 | 视图注册、原生层级和按钮是否交给 `RunAction`；查看错误提示 |
-| 继续游戏不可用 | 是否明确保存槽位 1；新局只修改内存 |
+| 继续游戏不可用 | 是否已保存尚未结束的局面；死亡后该槽位会清除 |
 | 导出找不到程序集 | 独立解决方案、程序集名、SDK 与 Export 配置映射 |
 | 导出程序能启动但素材缺失 | 资源导入结果、资源路径和完整的导出目录 |
 
