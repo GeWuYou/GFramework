@@ -1,0 +1,46 @@
+# Copyright (c) 2025-2026 GeWuYou
+# SPDX-License-Identifier: Apache-2.0
+
+name: MegaLinter
+
+on:
+  workflow_call:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: megalinter-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Scan source and configuration
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      security-events: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: MegaLinter
+        uses: oxsecurity/megalinter@v10.2.0
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FAIL_ON_ERROR: ${{ github.ref == 'refs/heads/main' }}
+          # PRs retain incremental lint; default-branch reports cover the current codebase.
+          VALIDATE_ALL_CODEBASE: ${{ github.event_name != 'pull_request' }}
+      # v10 emits one aggregate report. Missing output must fail visibly instead of skipping upload.
+      - name: Upload SARIF
+        if: ${{ !cancelled() }}
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: megalinter-reports/megalinter-report.sarif
+          category: megalinter

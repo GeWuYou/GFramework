@@ -173,6 +173,11 @@ class ImpactTests(unittest.TestCase):
         self.assertTrue(plan["codeql"] and plan["lint"])
         self.assertFalse(plan["tool"] or plan["docs"] or plan["dotnet"])
 
+    def test_megalinter_configuration_only_selects_lint(self):
+        plan = self.change(".github/workflows/megalinter.yml")
+        self.assertTrue(plan["lint"])
+        self.assertFalse(any(plan[k] for k in ("full", "dotnet", "tool", "docs", "codeql")))
+
     def test_unknown_workflow_or_engineering_program_fails_broad(self):
         for name in (".github/workflows/new-workflow.yml", "engineering/new-build.py"):
             with self.subTest(name=name):

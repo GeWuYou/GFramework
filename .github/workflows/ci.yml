@@ -75,30 +75,11 @@ jobs:
     name: Source and configuration lint
     needs: impact
     if: needs.impact.outputs.lint == 'true'
-    runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
       security-events: write
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-      - uses: actions/cache@v6
-        with:
-          path: ~/.cache/megalinter
-          key: ${{ runner.os }}-megalinter-v10
-      - name: MegaLinter
-        uses: oxsecurity/megalinter@v10.2.0
-        continue-on-error: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FAIL_ON_ERROR: ${{ github.ref == 'refs/heads/main' }}
-      - name: Upload SARIF
-        if: ${{ !cancelled() && hashFiles('megalinter-reports/sarif/**') != '' }}
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: megalinter-reports/sarif
+    uses: ./.github/workflows/megalinter.yml
 
   build-and-test:
     name: Build and Test

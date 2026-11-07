@@ -90,6 +90,24 @@ class ReleaseTests(unittest.TestCase):
         self.assertIn("  schedule:", codeql)
         self.assertNotIn("  pull_request:", codeql)
 
+    def test_megalinter_reports_on_main_and_reuses_the_pr_scanner(self):
+        ci = (ROOT / ".github/workflows/ci.yml").read_text()
+        scan = (ROOT / ".github/workflows/megalinter.yml").read_text()
+        config = (ROOT / ".mega-linter.yml").read_text(encoding="utf-8-sig")
+        self.assertIn("uses: ./.github/workflows/megalinter.yml", ci)
+        self.assertIn("  workflow_call:\n", scan)
+        self.assertIn("  push:\n    branches: [main]\n", scan)
+        self.assertIn("VALIDATE_ALL_CODEBASE: ${{ github.event_name != 'pull_request' }}", scan)
+        self.assertIn("  - REPOSITORY_BETTERLEAKS\n", config)
+        self.assertNotIn("REPOSITORY_GITLEAKS", config)
+
+        # The v10 aggregate file must be uploaded even after lint findings; a missing report is an error.
+        upload = scan.split("      - name: Upload SARIF\n", 1)[1]
+        self.assertIn("if: ${{ !cancelled() }}", upload)
+        self.assertNotIn("hashFiles", upload)
+        self.assertIn("sarif_file: megalinter-reports/megalinter-report.sarif", upload)
+        self.assertIn("category: megalinter", upload)
+
 
 if __name__ == "__main__":
     unittest.main()
