@@ -1,0 +1,11 @@
+[gd_scene format=3]
+
+[node name="MoonArena" type="Node2D"]
+
+[node name="Moon" type="Polygon2D" parent="."]
+polygon = PackedVector2Array(312, 106, 329, 87, 354, 82, 378, 94, 393, 117, 389, 143, 369, 162, 344, 166, 321, 150, 309, 128)
+color = Color(0.7, 0.87, 0.95, 0.22)
+
+[node name="Crater" type="Polygon2D" parent="."]
+polygon = PackedVector2Array(337, 110, 347, 105, 357, 112, 357, 123, 347, 128, 337, 121)
+color = Color(0.16, 0.29, 0.43, 0.4)

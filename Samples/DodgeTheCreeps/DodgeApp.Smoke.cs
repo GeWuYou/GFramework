@@ -17,13 +17,35 @@ public partial class DodgeApp
     private bool _smokeContinue;
     private string _smokeId = string.Empty;
     private string? _capturePath;
+    private string _captureKind = "menu";
+    private string? _contentSmokePhase;
+    private string? _featureSmoke;
+    private bool _featureContinuation;
+    private string? _captureLanguage;
 
     /// <summary>Restricts acceptance data to one validated GUID rather than accessing normal player data.</summary>
     private void ConfigureSmoke(string[] arguments)
     {
         foreach (var argument in arguments)
         {
-            if (string.Equals(argument, "--smoke", StringComparison.Ordinal))
+            if (TryConfigureFeatureSmoke(argument)) continue;
+            if (string.Equals(argument, "--content-smoke", StringComparison.Ordinal))
+            {
+                _smokeMode = true;
+                _smokeId = Guid.NewGuid().ToString("N");
+                _contentSmokePhase = "seed";
+            }
+            else if (argument.StartsWith("--content-smoke-continue=", StringComparison.Ordinal))
+            {
+                var value = argument["--content-smoke-continue=".Length..].Split(':');
+                if (value.Length != 2 || !Guid.TryParseExact(value[0], "N", out _) ||
+                    value[1] is not ("active" or "recover" or "broken" or "profile" or "done"))
+                    throw new ArgumentException("Content continuation requires a GUID and active/recover/broken/profile/done phase.", nameof(arguments));
+                _smokeMode = true;
+                _smokeId = value[0];
+                _contentSmokePhase = value[1];
+            }
+            else if (string.Equals(argument, "--smoke", StringComparison.Ordinal))
             {
                 _smokeMode = true;
                 _smokeId = Guid.NewGuid().ToString("N");
@@ -36,8 +58,27 @@ public partial class DodgeApp
                 if (!Guid.TryParseExact(_smokeId, "N", out _)) throw new ArgumentException("Smoke identifier must be a 32-digit GUID.", nameof(arguments));
             }
             else if (argument.StartsWith("--capture-menu=", StringComparison.Ordinal)) _capturePath = argument[15..];
+            else if (argument.StartsWith("--capture-content=", StringComparison.Ordinal))
+            {
+                _capturePath = argument["--capture-content=".Length..];
+                _captureKind = "content";
+            }
+            else if (argument.StartsWith("--capture-recovery=", StringComparison.Ordinal))
+            {
+                _capturePath = argument["--capture-recovery=".Length..];
+                _captureKind = "recovery";
+            }
+            else if (argument.StartsWith("--capture-settings=", StringComparison.Ordinal))
+            {
+                _capturePath = argument["--capture-settings=".Length..];
+                _captureKind = "settings";
+            }
+            else if (argument.StartsWith("--capture-language=", StringComparison.Ordinal))
+                _captureLanguage = argument["--capture-language=".Length..];
         }
         if (_smokeMode) _dataRoot = "user://dodge_smoke/" + _smokeId;
+        else if (_capturePath is not null)
+            _dataRoot = "user://dodge_capture/" + Guid.NewGuid().ToString("N");
     }
 
     /// <summary>Runs representative agent adoption scenarios in the actual engine.</summary>
@@ -45,6 +86,12 @@ public partial class DodgeApp
     {
         try
         {
+            if (await RunFeatureSmokeAsync().ConfigureAwait(true)) return;
+            if (_contentSmokePhase is not null)
+            {
+                await RunContentSmokeAsync().ConfigureAwait(true);
+                return;
+            }
             if (_smokeContinue)
             {
                 Click("Continue");
@@ -81,6 +128,38 @@ public partial class DodgeApp
             GD.PrintErr("DODGE_SMOKE_FAILURE " + exception);
             FinishSmoke(false);
         }
+    }
+
+    /// <summary>Parses bounded acceptance identities without permitting arbitrary player-data paths.</summary>
+    private bool TryConfigureFeatureSmoke(string argument)
+    {
+        foreach (var feature in new[] { "movement", "persistence", "localization", "settings" })
+        {
+            var initial = "--" + feature + "-smoke";
+            var continuation = initial + "-continue=";
+            if (!string.Equals(argument, initial, StringComparison.Ordinal) && !argument.StartsWith(continuation, StringComparison.Ordinal)) continue;
+            _featureSmoke = feature;
+            _featureContinuation = argument.StartsWith(continuation, StringComparison.Ordinal);
+            _smokeId = _featureContinuation ? argument[continuation.Length..] : Guid.NewGuid().ToString("N");
+            if (!Guid.TryParseExact(_smokeId, "N", out _)) throw new ArgumentException("Acceptance identity must be a GUID.", nameof(argument));
+            _smokeMode = true;
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>Runs one feature-specific acceptance entrypoint while retaining normal shutdown handling.</summary>
+    private async Task<bool> RunFeatureSmokeAsync()
+    {
+        switch (_featureSmoke)
+        {
+            case "movement": await RunMovementSmokeAsync().ConfigureAwait(true); break;
+            case "persistence": await RunPersistenceSmokeAsync(_featureContinuation).ConfigureAwait(true); break;
+            case "localization": await RunLocalizationSmokeAsync(_featureContinuation).ConfigureAwait(true); break;
+            case "settings": await RunSettingsSmokeAsync(_featureContinuation).ConfigureAwait(true); break;
+            default: return false;
+        }
+        return true;
     }
 
     /// <summary>Exercises dialog results, saved-run restore and collision loss.</summary>
@@ -125,7 +204,25 @@ public partial class DodgeApp
     private async Task CaptureMenuAsync()
     {
         if (_capturePath is null) return;
-        await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
+        if (string.Equals(_captureKind, "content", StringComparison.Ordinal))
+            await OpenContentAsync().ConfigureAwait(true);
+        else if (string.Equals(_captureKind, "settings", StringComparison.Ordinal))
+            await OpenSettingsAsync().ConfigureAwait(true);
+        else if (string.Equals(_captureKind, "recovery", StringComparison.Ordinal))
+        {
+            RunAction(() => _ui.ShowDialogAsync(DodgeRoutes.Recover,
+                () => Text.Get("recovery_question") + "\n\n" +
+                    Text.Get("issue_missing_pack", ("id", "moon"), ("version", "1.0.0")) + "\n" +
+                    Text.Get("issue_missing_content", ("id", "moon:crater"), ("table", "arenas")) + "\n" +
+                    Text.Get("issue_order") + "\n\n" +
+                    Text.Get("issue_missing_pack", ("id", "coral"), ("version", "1.0.0")),
+                _lifetime.Token));
+            await UntilAsync(() => HasView("recover")).ConfigureAwait(true);
+        }
+        // Locale shaping, native output sizing and newly opened scroll containers settle
+        // over frame boundaries; capture only after the complete layout has rendered.
+        for (var frame = 0; frame < 3; frame++)
+            await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
         var error = GetViewport().GetTexture().GetImage().SavePng(_capturePath);
         if (error != Error.Ok) throw new InvalidOperationException("Menu capture failed: " + error);
         GD.Print("DODGE_CAPTURE " + _capturePath);

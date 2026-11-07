@@ -1,0 +1,33 @@
+# Copyright (c) 2025-2026 GeWuYou
+# SPDX-License-Identifier: Apache-2.0
+
+- op: add
+  table: enemies
+  id: base:walker
+  value:
+    id: base:walker
+    name: walker
+    speedMin: 125
+    speedMax: 205
+    appearance: 0
+    texture: ""
+- op: add
+  table: enemies
+  id: base:swimmer
+  value:
+    id: base:swimmer
+    name: swimmer
+    speedMin: 125
+    speedMax: 205
+    appearance: 1
+    texture: ""
+- op: add
+  table: enemies
+  id: base:flyer
+  value:
+    id: base:flyer
+    name: flyer
+    speedMin: 125
+    speedMax: 205
+    appearance: 2
+    texture: ""

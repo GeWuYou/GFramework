@@ -18,6 +18,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using GFramework.Core.Abstractions.Storage;
 using GFramework.Game.Abstractions.Data;
+using GFramework.Game.Abstractions.Storage;
 using GFramework.Game.Internal;
 using GFramework.Game.Storage;
 
@@ -27,7 +28,7 @@ namespace GFramework.Game.Data;
 ///     基于槽位的存档仓库实现
 /// </summary>
 /// <typeparam name="TSaveData">存档数据类型</typeparam>
-public class SaveRepository<TSaveData> : ISaveRepository<TSaveData>
+public partial class SaveRepository<TSaveData> : ISaveRepository<TSaveData>
     where TSaveData : class, IData, new()
 {
     private readonly SaveConfiguration _config;
@@ -40,6 +41,11 @@ public class SaveRepository<TSaveData> : ISaveRepository<TSaveData>
     private readonly object _migrationsLock = new();
 #endif
     private readonly IStorage _rootStorage;
+    // Slot-wide operations must stay serialized through inspection, backup, repair and atomic commit.
+    // The lifetime is one repository instance; this does not claim inter-process synchronization.
+    private readonly ConcurrentDictionary<int, SemaphoreSlim> _slotGates = new();
+    private readonly ContentSaveOptions<TSaveData>? _contentOptions;
+    private readonly Guid _reportOwner = Guid.NewGuid();
 
     /// <summary>
     ///     初始化存档仓库
@@ -53,6 +59,30 @@ public class SaveRepository<TSaveData> : ISaveRepository<TSaveData>
 
         _config = config;
         _rootStorage = new ScopedStorage(storage, config.SaveRoot);
+    }
+
+    /// <summary>
+    /// Creates an opt-in content-aware repository. Lossless snapshot storage is required so incompatible
+    /// files can be inspected without migrating them and backed up before any approved repair.
+    /// </summary>
+    /// <param name="storage">Storage implementing the optional <see cref="IStorageBackup"/> capability.</param>
+    /// <param name="config">Slot layout.</param>
+    /// <param name="contentOptions">Game-owned reference, validation and recovery policies.</param>
+    public SaveRepository(IStorage storage, SaveConfiguration config, ContentSaveOptions<TSaveData> contentOptions)
+        : this(storage, config)
+    {
+        ArgumentNullException.ThrowIfNull(contentOptions);
+        ArgumentNullException.ThrowIfNull(contentOptions.CurrentCatalog, nameof(contentOptions));
+        ArgumentNullException.ThrowIfNull(contentOptions.EnumerateReferences, nameof(contentOptions));
+        if (!typeof(IContentAwareSaveData).IsAssignableFrom(typeof(TSaveData)))
+        {
+            throw new ArgumentException("Content-aware saves must implement IContentAwareSaveData.", nameof(contentOptions));
+        }
+        if (storage is not IStorageBackup)
+        {
+            throw new ArgumentException("Content-aware saves require lossless IStorageBackup support.", nameof(storage));
+        }
+        _contentOptions = contentOptions;
     }
 
     /// <summary>
@@ -117,17 +147,28 @@ public class SaveRepository<TSaveData> : ISaveRepository<TSaveData>
     /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
     public async Task<TSaveData> LoadAsync(int slot, CancellationToken cancellationToken = default)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        var storage = GetSlotStorage(slot);
-
-        if (await storage.ExistsAsync(_config.SaveFileName).ConfigureAwait(false))
+        var gate = GetSlotGate(slot);
+        await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            var loaded = await storage.ReadAsync<TSaveData>(_config.SaveFileName).ConfigureAwait(false);
-            cancellationToken.ThrowIfCancellationRequested();
+            var storage = GetSlotStorage(slot);
+            if (!await storage.ExistsAsync(_config.SaveFileName).ConfigureAwait(false))
+            {
+                var fresh = new TSaveData();
+                if (_contentOptions is not null)
+                {
+                    ((IContentAwareSaveData)fresh).Content = GetCurrentCatalog().Snapshot;
+                }
+                return fresh;
+            }
+
+            var loaded = await ReadForLoadAsync(slot, storage, cancellationToken).ConfigureAwait(false);
             return await MigrateIfNeededAsync(slot, storage, loaded, cancellationToken).ConfigureAwait(false);
         }
-
-        return new TSaveData();
+        finally
+        {
+            gate.Release();
+        }
     }
 
     /// <summary>
@@ -138,17 +179,33 @@ public class SaveRepository<TSaveData> : ISaveRepository<TSaveData>
     /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
     public async Task SaveAsync(int slot, TSaveData data, CancellationToken cancellationToken = default)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        var slotPath = $"{_config.SaveSlotPrefix}{slot}";
-
-        // 确保槽位目录存在
-        if (!await _rootStorage.DirectoryExistsAsync(slotPath).ConfigureAwait(false))
-            await _rootStorage.CreateDirectoryAsync(slotPath).ConfigureAwait(false);
-
-        var storage = GetSlotStorage(slot);
-        cancellationToken.ThrowIfCancellationRequested();
-        // Once admitted, the atomic write is awaited to completion before shutdown may release storage.
-        await storage.WriteAsync(_config.SaveFileName, data).ConfigureAwait(false);
+        ArgumentNullException.ThrowIfNull(data);
+        var gate = GetSlotGate(slot);
+        await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var slotPath = $"{_config.SaveSlotPrefix}{slot}";
+            if (!await _rootStorage.DirectoryExistsAsync(slotPath).ConfigureAwait(false))
+            {
+                await _rootStorage.CreateDirectoryAsync(slotPath).ConfigureAwait(false);
+            }
+            var storage = GetSlotStorage(slot);
+            if (_contentOptions is not null)
+            {
+                var catalog = GetCurrentCatalog();
+                ValidatePreparedSave(data, catalog);
+                await WriteWithContentAsync(storage, data, catalog.Snapshot, cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await storage.WriteAsync(_config.SaveFileName, data).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            gate.Release();
+        }
     }
 
     /// <summary>
@@ -158,9 +215,16 @@ public class SaveRepository<TSaveData> : ISaveRepository<TSaveData>
     /// <param name="cancellationToken">Cancels admission and cancellable waits; accepted writes and cleanup are awaited to completion.</param>
     public async Task DeleteAsync(int slot, CancellationToken cancellationToken = default)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        var storage = GetSlotStorage(slot);
-        await storage.DeleteAsync(_config.SaveFileName).ConfigureAwait(false);
+        var gate = GetSlotGate(slot);
+        await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await GetSlotStorage(slot).DeleteAsync(_config.SaveFileName).ConfigureAwait(false);
+        }
+        finally
+        {
+            gate.Release();
+        }
     }
 
     /// <summary>
@@ -218,58 +282,55 @@ public class SaveRepository<TSaveData> : ISaveRepository<TSaveData>
     /// <exception cref="InvalidOperationException">
     ///     当前运行时缺少必要的迁移链、读取到更高版本的存档，或迁移器返回了非法版本。
     /// </exception>
-    private async Task<TSaveData> MigrateIfNeededAsync(int slot, IStorage storage, TSaveData data, CancellationToken cancellationToken)
+    private async Task<TSaveData> MigrateIfNeededAsync(int slot, IStorage storage, TSaveData data,
+        CancellationToken cancellationToken)
     {
-        if (data is not IVersionedData versionedData)
+        var beforeVersion = data is IVersionedData versioned ? versioned.Version : (int?)null;
+        var migrated = MigrateInMemory(slot, data);
+        if (_contentOptions is not null)
         {
-            return data;
+            ValidatePreparedSave(migrated, GetCurrentCatalog());
         }
-
-        var latestTemplate = new TSaveData();
-        if (latestTemplate is not IVersionedData latestVersionedData)
+        var afterVersion = migrated is IVersionedData latest ? latest.Version : (int?)null;
+        if (beforeVersion != afterVersion)
         {
-            return data;
+            cancellationToken.ThrowIfCancellationRequested();
+            if (_contentOptions is not null)
+            {
+                await WriteWithContentAsync(storage, migrated, GetCurrentCatalog().Snapshot, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                await storage.WriteAsync(_config.SaveFileName, migrated).ConfigureAwait(false);
+            }
         }
-
-        var currentVersion = versionedData.Version;
-        var targetVersion = latestVersionedData.Version;
-
-        if (currentVersion > targetVersion)
-        {
-            throw new InvalidOperationException(
-                $"Save slot {slot} for {typeof(TSaveData).Name} is version {currentVersion}, " +
-                $"which is newer than the current runtime version {targetVersion}.");
-        }
-
-        if (currentVersion == targetVersion)
-        {
-            return data;
-        }
-
-        EnsureVersionedSaveType();
-
-        Dictionary<int, ISaveMigration<TSaveData>> migrationsSnapshot;
-        lock (_migrationsLock)
-        {
-            migrationsSnapshot = new Dictionary<int, ISaveMigration<TSaveData>>(_migrations);
-        }
-
-        // 迁移链按“当前版本 -> 下一个已注册迁移器”推进；任何缺口都表示运行时无法安全解释旧存档。
-        // 这里先对迁移表拍快照，避免并发注册让同一次加载在不同步骤看到不同版本的链路。
-        var migrated = VersionedMigrationRunner.MigrateToTargetVersion(
-            data,
-            targetVersion,
-            static saveData => ((IVersionedData)saveData).Version,
-            fromVersion => migrationsSnapshot.TryGetValue(fromVersion, out var migration) ? migration : null,
-            static migration => migration.ToVersion,
-            static (migration, currentData) => migration.Migrate(currentData),
-            $"{typeof(TSaveData).Name} in slot {slot}",
-            "save migration");
-
-        cancellationToken.ThrowIfCancellationRequested();
-        await storage.WriteAsync(_config.SaveFileName, migrated).ConfigureAwait(false);
         return migrated;
     }
+
+    /// <summary>Prepares a migration without writes, allowing content recovery to commit only after full validation.</summary>
+    private TSaveData MigrateInMemory(int slot, TSaveData data)
+    {
+        if (data is not IVersionedData || new TSaveData() is not IVersionedData template)
+        {
+            return data;
+        }
+        Dictionary<int, ISaveMigration<TSaveData>> migrations;
+        lock (_migrationsLock)
+        {
+            migrations = new Dictionary<int, ISaveMigration<TSaveData>>(_migrations);
+        }
+        return VersionedMigrationRunner.MigrateToTargetVersion(
+            data, template.Version,
+            static value => ((IVersionedData)value).Version,
+            version => migrations.TryGetValue(version, out var migration) ? migration : null,
+            static migration => migration.ToVersion,
+            static (migration, current) => migration.Migrate(current),
+            $"{typeof(TSaveData).Name} in slot {slot}", "save migration");
+    }
+
+    /// <summary>Gets a repository-lifetime slot gate; unrelated slots may perform independent operations.</summary>
+    private SemaphoreSlim GetSlotGate(int slot) => _slotGates.GetOrAdd(slot, static _ => new SemaphoreSlim(1, 1));
 
     /// <summary>
     ///     验证当前存档类型支持基于版本号的迁移流程。

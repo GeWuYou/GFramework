@@ -1,6 +1,7 @@
 // Copyright (c) 2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System;
 using Godot;
 
 namespace DodgeTheCreeps.Gameplay;
@@ -15,6 +16,9 @@ internal sealed partial class DodgePlayer : Node2D
     private bool _invulnerable;
     private double _animationTime;
 
+    /// <summary>Gets the last nonzero input heading, clockwise from east in eight screen-space sectors.</summary>
+    internal int FacingDirection { get; private set; }
+
     /// <summary>Gets the forgiving collision radius used by the sample's circle hit test.</summary>
     internal const float HitRadius = 17;
 
@@ -26,10 +30,11 @@ internal sealed partial class DodgePlayer : Node2D
         {
             Name = "Sprite",
             SpriteFrames = DodgeSpriteFrames.CreatePlayer(),
-            Animation = "walk",
+            Animation = DodgeSpriteFrames.PlayerAnimationName(FacingDirection),
             Scale = new Vector2(0.42f, 0.42f)
         };
         AddChild(_sprite);
+        ApplyFacing();
     }
 
     // #region tutorial-movement
@@ -46,23 +51,49 @@ internal sealed partial class DodgePlayer : Node2D
         {
             _sprite.Stop();
         }
-        else if (Mathf.Abs(direction.X) >= Mathf.Abs(direction.Y))
-        {
-            _sprite.Play("walk");
-            _sprite.FlipH = direction.X < 0;
-            _sprite.FlipV = false;
-        }
         else
         {
-            _sprite.Play("up");
-            _sprite.FlipH = false;
-            _sprite.FlipV = direction.Y > 0;
+            // Input.GetVector limits the vector length to one, preserving equal maximum
+            // speed on cardinal and diagonal input while still allowing analog strengths.
+            FacingDirection = (Mathf.RoundToInt(direction.Angle() / (Mathf.Pi / 4)) + 8) % 8;
+            ApplyFacing();
+            _sprite.Play();
         }
 
         _sprite.Modulate = new Color(1, 1, 1,
             _invulnerable ? 0.6f + 0.4f * Mathf.Abs(Mathf.Sin((float)_animationTime * 8)) : 1);
     }
     // #endregion tutorial-movement
+
+    /// <summary>Restores a stable idle heading without synthesizing input or moving the player.</summary>
+    /// <param name="direction">Clockwise sector from zero (east) through seven (north-east).</param>
+    /// <remarks>May be called before the node enters the tree; the same pose is applied during Ready.</remarks>
+    /// <exception cref="ArgumentOutOfRangeException">The direction is outside the eight supported sectors.</exception>
+    internal void RestoreFacingDirection(int direction)
+    {
+        if (direction is < 0 or > 7)
+            throw new ArgumentOutOfRangeException(nameof(direction), direction, "Facing must be a sector from zero through seven.");
+        FacingDirection = direction;
+        if (_sprite is null) return;
+        ApplyFacing();
+        _sprite.Stop();
+    }
+
+    private void ApplyFacing()
+    {
+        // The tutorial art contains horizontal and upward pairs, not eight authored views.
+        // Reuse those pairs with explicit flips and 45-degree diagonal rotations. Every
+        // branch writes all transforms so previous diagonal/cardinal state cannot leak.
+        _sprite.Animation = DodgeSpriteFrames.PlayerAnimationName(FacingDirection);
+        _sprite.FlipH = FacingDirection is 3 or 4 or 5;
+        _sprite.FlipV = FacingDirection == 2;
+        _sprite.RotationDegrees = FacingDirection switch
+        {
+            1 or 5 => 45,
+            3 or 7 => -45,
+            _ => 0
+        };
+    }
 
     /// <summary>Sets the restart grace indicator without changing native process settings.</summary>
     /// <param name="enabled">Whether the world currently ignores collisions.</param>

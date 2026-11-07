@@ -1,6 +1,7 @@
 // Copyright (c) 2025-2026 GeWuYou
 // SPDX-License-Identifier: Apache-2.0
 
+using System;
 using GFramework.Game.Abstractions.UI;
 
 namespace DodgeTheCreeps;
@@ -16,10 +17,16 @@ internal static class DodgeRoutes
     internal static UiRoute<int> Pause { get; } = new("pause", Modal(20));
     /// <summary>Settings owns a separate pause request, including while opened over pause.</summary>
     internal static UiRoute<bool> Settings { get; } = new("settings", Modal(30));
+    /// <summary>Unsaved settings use an explicit apply, discard or keep-editing result.</summary>
+    internal static UiDialogRoute<bool, SettingsCloseChoice> SettingsUnsaved { get; } = new("settings-unsaved", Modal(40));
     /// <summary>Game-over page carries the completed score.</summary>
     internal static UiRoute<int> GameOver { get; } = new("game-over", new UiRouteOptions { Layer = 10, AllowBack = false, BlocksWorldActionInput = true });
     /// <summary>Unsaved progress confirmation returns an explicit business choice.</summary>
-    internal static UiDialogRoute<string, bool> Confirm { get; } = new("confirm", Modal(40));
+    internal static UiDialogRoute<Func<string>, bool> Confirm { get; } = new("confirm", Modal(40));
+    /// <summary>Content selection remains accessible even when the active package plan failed.</summary>
+    internal static UiRoute<bool> Content { get; } = new("content", Modal(30));
+    /// <summary>Content repair requires an explicit player decision before backup and downgrade.</summary>
+    internal static UiDialogRoute<Func<string>, bool> Recover { get; } = new("recover", Modal(40));
 
     /// <summary>Declares input and pause behavior independently of visual ordering.</summary>
     private static UiRouteOptions Modal(int layer) => new()

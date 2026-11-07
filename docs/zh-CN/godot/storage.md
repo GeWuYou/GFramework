@@ -20,6 +20,7 @@ description: 以当前 GFramework.Godot 源码与 CoreGrid 接线为准，说明
 - 识别并保留 Godot 虚拟路径：`res://`、`user://`
 - 对普通文件系统路径做段级清理，并拒绝包含 `..` 的非法 key
 - 使用 `IAsyncKeyLockManager` 对“绝对路径 / Godot 路径”做按 key 细粒度串行化
+- 通过可选的 `IStorageBackup` 提供原始文件快照与原子备份／恢复，用于 [内容缺失后的存档恢复](../game/content-packs.md)；可变数据和备份均写入 `user://`
 
 构造函数默认会在未注入锁管理器时创建内部 `AsyncKeyLockManager`。这意味着：
 

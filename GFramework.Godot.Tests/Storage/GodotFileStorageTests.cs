@@ -98,6 +98,36 @@ public sealed class GodotFileStorageTests
         await Assert.ThrowsAsync<NotSupportedException>(() => storage.WriteAsync("res://save.json", 42));
     }
 
+    /// <summary>Lossless backups preserve original bytes and unknown data through user-path resolution.</summary>
+    [Test]
+    public async Task Snapshot_UserPath_PreservesBytesAndCanRestoreOriginalFile()
+    {
+        using var storage = new GodotFileStorage(new JsonSerializer(), null,
+            key => Path.Combine(_root, key["user://".Length..]));
+        var source = Path.Combine(_root, "source.json");
+        var bytes = new byte[] { 0xEF, 0xBB, 0xBF, 52, 50, 32, 32 };
+        await File.WriteAllBytesAsync(source, bytes);
+        var snapshot = await storage.ReadSnapshotAsync("user://source.json");
+        await storage.WriteSnapshotAsync("user://backups/original", snapshot);
+        await storage.WriteAsync("user://source.json", 99);
+        var backup = await storage.ReadSnapshotAsync("user://backups/original");
+        await storage.WriteSnapshotAsync("user://source.json", backup);
+        Assert.Multiple(() =>
+        {
+            Assert.That(File.ReadAllBytes(source), Is.EqualTo(bytes));
+            Assert.That(storage.DeserializeSnapshot<int>(backup), Is.EqualTo(42));
+        });
+    }
+
+    /// <summary>Snapshot restore never writes to the packaged resource namespace.</summary>
+    [Test]
+    public async Task Snapshot_ResourcePath_IsRejected()
+    {
+        using var storage = new GodotFileStorage(new JsonSerializer(), null,
+            _ => throw new InvalidOperationException("Resolver must not be called"));
+        await Assert.ThrowsAsync<ArgumentException>(() => storage.ReadSnapshotAsync("res://save.json"));
+    }
+
     /// <summary>Provides a deterministic serialization failure before any file is opened.</summary>
     private sealed class FailingSerializer : ISerializer
     {

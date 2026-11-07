@@ -18,6 +18,7 @@
 | `Runtime/` | `GameServiceCollectionExtensions`、`GameRuntimeModule`、dispatcher | 标准服务登记、可选编排和宿主线程 |
 | `Input/` | `InputBindingStore`、`UiInputDispatcher` | 绑定快照和异步 UI 动作分发 |
 | `Config/` | `GameConfigBootstrap`、`YamlConfigLoader`、`ConfigRegistry` | 只读内容配置与热重载 |
+| `Content/` | `ContentPackDiscovery`、`ContentPackResolver`、`ContentCatalogLoader` | DLC／资料模组发现、依赖排序、字段补丁与来源追踪 |
 | `Data/` | `SaveRepository<T>`、`DataRepository`、`UnifiedSettingsDataRepository` | 槽位存档与业务持久化 |
 | `Setting/` | `SettingsModel<TRepository>`、`SettingsSystem` | 数据迁移、应用和保存 |
 | `Serializer/`、`Storage/` | `JsonSerializer`、`FileStorage`、`ScopedStorage` | 序列化、原子文件写入和键空间 |
@@ -52,4 +53,5 @@ services.AddGameScenes(sceneFactory, sceneRoot, dispatcher);
 - [设置系统](../docs/zh-CN/game/setting.md)
 - [数据与存档](../docs/zh-CN/game/data.md)
 - [内容配置](../docs/zh-CN/game/config-system.md)
+- [DLC 与资料型模组](../docs/zh-CN/game/content-packs.md)
 - [官方素材小游戏](../Samples/DodgeTheCreeps/README.md)

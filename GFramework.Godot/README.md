@@ -20,6 +20,7 @@
 | `Storage/` | `GodotFileStorage` | `user://` 持久化与原子写入 |
 | `Setting/` | 音频、图形、语言应用器 | 将设置数据应用到引擎 |
 | `Config/`、`Resource/` | Godot 配置与资源适配 | 项目资源和内容加载 |
+| `Content/` | 内容资源会话、官方 PCK 信任策略、资料素材加载 | 启动时挂载可信 DLC，隔离第三方数据与素材 |
 | `Coroutine/`、`Extensions/`、`Signal/`、`Logging/`、`Text/` | 协程、节点与日志等扩展 | 保留的引擎能力 |
 
 ## 最小采用
@@ -43,3 +44,4 @@
 - [暂停](../docs/zh-CN/godot/pause.md)
 - [设置](../docs/zh-CN/godot/setting.md)
 - [存储](../docs/zh-CN/godot/storage.md)
+- [DLC 与资料型模组](../docs/zh-CN/game/content-packs.md)
