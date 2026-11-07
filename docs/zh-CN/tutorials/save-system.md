@@ -17,7 +17,7 @@ description: 用独立槽位仓库保存游戏快照，观察错误并在退出�
 
 原生节点、信号和资源引用保留在宿主层。保存时把当前状态复制为 DTO，避免异步写入期间继续修改同一快照。
 
-示例 v2 使用 `DodgeWorld.CaptureProgress()` 捕获全部敌人及其稳定 ID、位置、速度和动画进度，同时保存玩家朝向、分数余量、生成与保护计时、RNG seed/state。`RestoreProgress` 先验证并准备整个棋盘，再提交恢复结果，不重新随机生成布局。只保存分数和位置的 v1 通过 `DodgeProgressMigration` 显式迁移为空布局，并告知玩家原格式缺失的信息。
+示例使用 `DodgeWorld.CaptureProgress()` 捕获全部敌人及其稳定 ID、位置、速度和动画进度，同时保存玩家朝向、计时和 RNG seed/state。`RestoreProgress` 先准备整个棋盘，再提交恢复结果。早期格式通过 `DodgeProgressMigration` 补充默认值，更新前备份原文件。
 
 ## 创建仓库
 
@@ -51,6 +51,8 @@ if (await saves.ExistsAsync(1, cancellationToken))
 `snapshot` 是保存前捕获的 DTO，`ApplyRestoredProgress` 由项目恢复角色、关卡、敌人和计时状态。示例的实际入口为 `DodgeWorld.RestoreProgress`。只有保存成功后更新“已保存”状态。读取失败时报告错误并保留原文件，玩家可以选择新游戏或其他槽位。
 
 `LoadAsync` 在文件缺失时返回新的默认 DTO，因此“继续游戏”先检查存在性。菜单的继续按钮应反映当前槽位是否存在。新游戏创建内存进度，在玩家明确保存前保留已有槽位。
+
+本示例采用单局存档：玩家死亡时删除当前槽位和备份恢复入口，返回菜单后禁用“继续游戏”。最高分和设置独立保存，不随本局清除。
 
 ## 槽位管理与迁移
 

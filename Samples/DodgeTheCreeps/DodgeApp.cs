@@ -46,6 +46,7 @@ public partial class DodgeApp : Node, ISceneRoot
     private Task _startup = Task.CompletedTask;
     private bool _stopping;
     private bool _dirty;
+    private bool _saveRetired;
     private string _dataRoot = "user://dodge_the_creeps";
 
     /// <summary>Gets the currently loaded preferences.</summary>
@@ -61,7 +62,9 @@ public partial class DodgeApp : Node, ISceneRoot
     /// <summary>Gets whether this process has a complete usable content catalog.</summary>
     internal bool CanStart => _content is { IsReady: true };
     /// <summary>Gets the most recent original save backup available to restore.</summary>
-    internal bool HasBackup => _latestBackup is not null;
+    internal bool HasBackup => !_saveRetired && _latestBackup is not null;
+    /// <summary>Prevents a failed deletion from making an ended run loadable in the current session.</summary>
+    internal bool CanRestoreSave => !_saveRetired;
 
     /// <summary>Creates host roots before initializing storage and showing the first menu.</summary>
     public override void _Ready()
@@ -114,13 +117,13 @@ public partial class DodgeApp : Node, ISceneRoot
             _saves = new SaveRepository<DodgeProgress>(_storage, new SaveConfiguration { SaveRoot = _dataRoot + "/saves" },
                 CreateContentSaveOptions());
             _saves.RegisterMigration(new DodgeProgressMigration());
-            if (await _storage.ExistsAsync(_dataRoot + "/last-content-backup.json").ConfigureAwait(true))
-                _latestBackup = await _storage.ReadAsync<string>(_dataRoot + "/last-content-backup.json").ConfigureAwait(true);
             if (await _storage.ExistsAsync(_dataRoot + "/preferences.json").ConfigureAwait(true))
                 Preferences = await _storage.ReadAsync<DodgePreferences>(_dataRoot + "/preferences.json").ConfigureAwait(true);
             ApplyPreferences();
             if (_captureLanguage is not null) Text.SetLanguage(_captureLanguage);
             var canContinue = await _saves.ExistsAsync(1, _lifetime.Token).ConfigureAwait(true);
+            if (canContinue && await _storage.ExistsAsync(_dataRoot + "/last-content-backup.json").ConfigureAwait(true))
+                _latestBackup = await _storage.ReadAsync<string>(_dataRoot + "/last-content-backup.json").ConfigureAwait(true);
             await _ui.ReplaceAsync(DodgeRoutes.Menu, canContinue, _lifetime.Token).ConfigureAwait(true);
             if (!CanStart) _menus.SetStatus(() => Text.Get("content_start_failed", ("error", _content.Error ?? string.Empty)));
             _startupStatus!.GetParent().QueueFree();
@@ -164,6 +167,7 @@ public partial class DodgeApp : Node, ISceneRoot
     internal async Task StartGameAsync(bool restore)
     {
         if (!CanStart) throw new InvalidOperationException("Repair content selection and restart before playing.");
+        if (restore && _saveRetired) throw new InvalidOperationException("This run has ended and cannot be continued.");
         var saved = restore ? await LoadContentSaveAsync().ConfigureAwait(true) : null;
         if (restore && saved is null) return;
         _arenaId = saved?.ArenaId ?? _content.ArenaId;
@@ -174,8 +178,6 @@ public partial class DodgeApp : Node, ISceneRoot
         else _world!.RestoreProgress(saved);
         _dirty = true;
         await _ui.ShowAsync(DodgeRoutes.Hud, _world!.Score, _lifetime.Token).ConfigureAwait(true);
-        if (saved?.LegacyLayoutReset == true)
-            _menus.SetStatus(() => Text.Get("legacy_layout_reset"));
     }
     // #endregion tutorial-start-game
 
@@ -185,6 +187,7 @@ public partial class DodgeApp : Node, ISceneRoot
     {
         if (_world is null) return;
         await _saves.SaveAsync(1, _world.CaptureProgress(), _lifetime.Token).ConfigureAwait(true);
+        _saveRetired = false;
         _dirty = false;
         _menus.SetStatus(() => Text.Get("run_saved"));
     }
@@ -217,6 +220,7 @@ public partial class DodgeApp : Node, ISceneRoot
         if (_world is null) return;
         _dirty = false;
         var score = _world.Score;
+        var status = await RetireRunSaveAsync().ConfigureAwait(true);
         if (score > Preferences.BestScore)
         {
             try { await SaveBestScoreAsync(score).ConfigureAwait(true); }
@@ -224,11 +228,31 @@ public partial class DodgeApp : Node, ISceneRoot
             {
                 // A failed best-score write must leave the game's retry and exit actions available.
                 GD.PushError(exception.ToString());
-                await ShowGameOverAsync(score, Text.Get("best_save_failed", ("error", exception.Message))).ConfigureAwait(true);
-                return;
+                var scoreError = Text.Get("best_save_failed", ("error", exception.Message));
+                status = status is null ? scoreError : status + "\n" + scoreError;
             }
         }
-        await ShowGameOverAsync(score, null).ConfigureAwait(true);
+        await ShowGameOverAsync(score, status).ConfigureAwait(true);
+    }
+
+    /// <summary>Retires the single run slot and its restore shortcut before offering retry or menu navigation.</summary>
+    private async Task<string?> RetireRunSaveAsync()
+    {
+        _saveRetired = true;
+        _latestBackup = null;
+        try
+        {
+            // Death is terminal. Shutdown waits for this cleanup instead of cancelling
+            // its admission and leaving an ended run available on the next launch.
+            await _saves.DeleteAsync(1).ConfigureAwait(true);
+            await StoreBackupKeyAsync().ConfigureAwait(true);
+            return null;
+        }
+        catch (Exception exception)
+        {
+            GD.PushError(exception.ToString());
+            return Text.Get("save_clear_failed", ("error", exception.Message));
+        }
     }
 
     /// <summary>Shows the completed run even when persisting its best score has failed.</summary>

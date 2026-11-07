@@ -88,8 +88,8 @@ public partial class DodgeApp
         }
 
         var decision = await _ui.ShowDialogAsync(DodgeRoutes.Recover,
-            () => Text.Get(report.IsLegacy ? "legacy_import_question" : "recovery_question") +
-                  (report.IsLegacy ? "\n\n" + Text.Get("legacy_layout_reset") : string.Empty) + "\n\n" + FormatContentReport(report),
+            () => report.IsLegacy ? Text.Get("save_update_question") :
+                Text.Get("recovery_question") + "\n\n" + FormatContentReport(report),
             _lifetime.Token).ConfigureAwait(true);
         if (!decision.Accepted || decision.Value != true) return null;
         var result = report.IsLegacy

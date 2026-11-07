@@ -10,8 +10,7 @@ using Godot;
 namespace DodgeTheCreeps;
 
 /// <summary>
-/// Explicitly upgrades sparse v1 progress. That format never recorded enemies, timers or RNG state;
-/// it therefore starts an empty, briefly protected layout and marks the loss of layout fidelity.
+/// Upgrades early score-and-position saves with valid defaults for newly persisted board fields.
 /// </summary>
 public sealed class DodgeProgressMigration : ISaveMigration<DodgeProgress>
 {
@@ -32,7 +31,7 @@ public sealed class DodgeProgressMigration : ISaveMigration<DodgeProgress>
             ArenaId = oldData.ArenaId, Content = oldData.Content,
             PlayerFacing = 0, ScoreElapsed = 0, SpawnRemaining = 1.5, GraceRemaining = 1.5,
             RandomSeed = random.Seed, RandomState = random.State,
-            Enemies = new List<DodgeMobProgress>(), LegacyLayoutReset = true
+            Enemies = new List<DodgeMobProgress>()
         };
     }
 }

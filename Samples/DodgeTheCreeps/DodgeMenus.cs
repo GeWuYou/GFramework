@@ -107,7 +107,7 @@ internal sealed partial class DodgeMenus : IDisposable
         Caption(column, "game_subtitle");
         Gap(column, 12);
         Button(column, "Start", "new_run", () => _app.StartGameAsync(false)).Disabled = !_app.CanStart;
-        Button(column, "Continue", "continue_run", () => _app.StartGameAsync(true)).Disabled = !canContinue || !_app.CanStart;
+        Button(column, "Continue", "continue_run", () => _app.StartGameAsync(true)).Disabled = !canContinue || !_app.CanStart || !_app.CanRestoreSave;
         Button(column, "Content", "content", _app.OpenContentAsync);
         Button(column, "Settings", "settings", _app.OpenSettingsAsync);
         QuitButton(column);
@@ -132,7 +132,7 @@ internal sealed partial class DodgeMenus : IDisposable
             Name = "HudStatus", Position = new Vector2(26, 646), Size = new Vector2(428, 68),
             MouseFilter = Control.MouseFilterEnum.Ignore, AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
-        // Keep restored-layout notices observable after the menu is replaced by gameplay.
+        // Operation feedback stays available while the gameplay HUD is the active view.
         _status = hint;
         _statusText.Add(hint, () => _app.Text.Get("hud_controls"));
         _app.Text.Bind(hint, () => hint.Text = _statusText[hint]());

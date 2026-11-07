@@ -12,18 +12,13 @@ namespace DodgeTheCreeps.Gameplay;
 /// </summary>
 internal static class DodgeSpriteFrames
 {
-    /// <summary>Creates eight named facings from the two authored tutorial frame pairs.</summary>
+    /// <summary>Creates the official horizontal and upward animation pairs, flipped for the opposite directions.</summary>
     /// <returns>A native resource ready for one player's AnimatedSprite2D.</returns>
     internal static SpriteFrames CreatePlayer()
     {
         var frames = CreateEmpty();
-        for (var direction = 0; direction < 8; direction++)
-        {
-            var vertical = direction is 2 or 6;
-            AddAnimation(frames, PlayerAnimationName(direction), 7,
-                vertical ? "playerGrey_up1.png" : "playerGrey_walk1.png",
-                vertical ? "playerGrey_up2.png" : "playerGrey_walk2.png");
-        }
+        AddAnimation(frames, "walk", 7, "playerGrey_walk1.png", "playerGrey_walk2.png");
+        AddAnimation(frames, "up", 7, "playerGrey_up1.png", "playerGrey_up2.png");
         return frames;
     }
 
@@ -32,14 +27,8 @@ internal static class DodgeSpriteFrames
     /// <returns>The animation populated by <see cref="CreatePlayer"/>.</returns>
     internal static string PlayerAnimationName(int direction) => direction switch
     {
-        0 => "east",
-        1 => "south-east",
-        2 => "south",
-        3 => "south-west",
-        4 => "west",
-        5 => "north-west",
-        6 => "north",
-        7 => "north-east",
+        2 or 6 => "up",
+        0 or 1 or 3 or 4 or 5 or 7 => "walk",
         _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, "Unknown player facing sector.")
     };
 

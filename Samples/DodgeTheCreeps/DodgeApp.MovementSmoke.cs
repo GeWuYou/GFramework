@@ -74,13 +74,13 @@ public partial class DodgeApp
 
     private static void CheckPlayerFacing(DodgePlayer player, int direction)
     {
-        var names = new[] { "east", "south-east", "south", "south-west", "west", "north-west", "north", "north-east" };
+        var names = new[] { "walk", "walk", "up", "walk", "walk", "walk", "up", "walk" };
         var sprite = player.GetNode<AnimatedSprite2D>("Sprite");
         Require(player.FacingDirection == direction, "The player did not retain facing sector " + direction);
         Require(string.Equals(sprite.Animation.ToString(), names[direction], StringComparison.Ordinal), "Facing selected the wrong native animation.");
         Require(sprite.FlipH == (direction is 3 or 4 or 5) && sprite.FlipV == (direction == 2), "A previous facing left stale sprite flips.");
-        var expectedRotation = direction switch { 1 or 5 => 45, 3 or 7 => -45, _ => 0 };
-        Require(Mathf.Abs(sprite.RotationDegrees - expectedRotation) < 0.001f, "A previous facing left stale sprite rotation.");
+        Require(Mathf.Abs(sprite.Rotation) < 0.001f, "The player sprite was rotated for diagonal movement.");
+        Require(sprite.SpriteFrames.GetAnimationNames().Length == 2, "The player should use the two authored animation pairs.");
 
         // Reconstruct the rendered heading from the original art's orientation and the
         // actual native transforms, rather than accepting a changed animation name alone.
@@ -88,8 +88,9 @@ public partial class DodgeApp
         if (sprite.FlipH) rendered.X = -rendered.X;
         if (sprite.FlipV) rendered.Y = -rendered.Y;
         rendered = rendered.Rotated(sprite.Rotation);
-        var expected = Vector2.Right.Rotated(direction * Mathf.Pi / 4);
-        Require(rendered.DistanceTo(expected) < 0.001f, "Sprite presentation does not point along its movement sector.");
+        var displayedDirection = direction is 2 or 6 ? direction : direction is 3 or 4 or 5 ? 4 : 0;
+        var expected = Vector2.Right.Rotated(displayedDirection * Mathf.Pi / 4);
+        Require(rendered.DistanceTo(expected) < 0.001f, "Sprite presentation does not match the official four-direction poses.");
     }
 
     private static void CheckRestoredFacings(DodgePlayer player)

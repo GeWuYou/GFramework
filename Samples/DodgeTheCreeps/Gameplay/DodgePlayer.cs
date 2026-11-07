@@ -81,28 +81,21 @@ internal sealed partial class DodgePlayer : Node2D
 
     private void ApplyFacing()
     {
-        // The tutorial art contains horizontal and upward pairs, not eight authored views.
-        // Reuse those pairs with explicit flips and 45-degree diagonal rotations. Every
-        // branch writes all transforms so previous diagonal/cardinal state cannot leak.
+        // Preserve eight-way movement/save headings while presenting the official
+        // horizontal/upward art without rotating the character on diagonal input.
         _sprite.Animation = DodgeSpriteFrames.PlayerAnimationName(FacingDirection);
         _sprite.FlipH = FacingDirection is 3 or 4 or 5;
         _sprite.FlipV = FacingDirection == 2;
-        _sprite.RotationDegrees = FacingDirection switch
-        {
-            1 or 5 => 45,
-            3 or 7 => -45,
-            _ => 0
-        };
+        _sprite.Rotation = 0;
     }
 
-    /// <summary>Sets the restart grace indicator without changing native process settings.</summary>
+    /// <summary>Controls the sprite's protection blink without drawing collision or status overlays.</summary>
     /// <param name="enabled">Whether the world currently ignores collisions.</param>
     internal void SetInvulnerable(bool enabled)
     {
         if (_invulnerable == enabled)
             return;
         _invulnerable = enabled;
-        QueueRedraw();
     }
 
     /// <summary>Stops animation while leaving the final player pose visible.</summary>
@@ -112,11 +105,4 @@ internal sealed partial class DodgePlayer : Node2D
         _sprite.Modulate = Colors.White;
     }
 
-    /// <summary>Draws a subtle player marker and an explicit restart-grace ring.</summary>
-    public override void _Draw()
-    {
-        DrawCircle(Vector2.Zero, 21, new Color(0.12f, 0.88f, 0.82f, 0.16f));
-        if (_invulnerable)
-            DrawArc(Vector2.Zero, 28, 0, Mathf.Tau, 40, new Color(0.3f, 0.95f, 0.86f, 0.65f), 2, true);
-    }
 }
