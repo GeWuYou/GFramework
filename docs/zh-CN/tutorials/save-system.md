@@ -54,6 +54,10 @@ if (await saves.ExistsAsync(1, cancellationToken))
 
 本示例采用单局存档：玩家死亡时删除当前槽位和备份恢复入口，返回菜单后禁用“继续游戏”。最高分和设置独立保存，不随本局清除。
 
+清档属于本游戏的结束规则，由 `DodgeApp.GameOverAsync` 等待以下实现；其他游戏可以在自己的业务层选择检查点、多槽位或长期进度：
+
+<<< ../../../Samples/DodgeTheCreeps/DodgeApp.cs#tutorial-run-save-retirement{csharp}
+
 ## 槽位管理与迁移
 
 `ListSlotsAsync` 返回包含有效存档文件的槽位编号；`DeleteAsync` 删除指定槽位文件。界面展示、删除确认和元数据由业务流程组织。
