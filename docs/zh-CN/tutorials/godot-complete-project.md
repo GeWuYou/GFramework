@@ -111,6 +111,8 @@ godot --path DodgeTheCreeps
 
 保留源码中的 `DodgeTheCreeps.Gameplay` 命名空间。可以先复制完整实现作为起点，再按本节和下一节逐项调整。
 
+当前玩法源码也包含内容包和完整快照接入口。将样例的 `Content/`、`DodgeProgress.cs` 和 `OfficialPackTrust.cs` 一并复制到练习工程，并保留 `Gameplay/` 中的敌人快照类型，使这些类型可编译；本阶段的预览脚本不创建内容会话，仍使用默认的敌人参数。完整内容启动在第六步接入。
+
 ### 输入动作
 
 在 Project Settings → Input Map 中添加四个动作及按键：
@@ -130,7 +132,7 @@ godot --path DodgeTheCreeps
 
 <<< ../../../Samples/DodgeTheCreeps/Gameplay/DodgePlayer.cs#tutorial-movement{csharp}
 
-移动方向决定动画与翻转；停止移动时停在当前帧。重开后的短暂保护由世界通知玩家，玩家绘制相应指示。
+输入向量归一化，因此斜向不会比横向移动更快。玩家将非零输入量化为从向右开始、顺时针的八个朝向，切换时明确重置动画、翻转和旋转；停下后保留最后朝向。原始素材只有横向与向上的两组动作帧，斜向复用横向帧并旋转 45°，不代表八组独立绘制的素材。需要独立斜向美术时，替换同名动画的帧即可。
 
 ## 四、实现敌人、计分与碰撞 {#world}
 
@@ -194,14 +196,27 @@ DodgeTheCreeps/
 ├─ Main.tscn
 ├─ DodgeApp.cs                 # 服务装配与游戏业务流程
 ├─ DodgeApp.Smoke.cs           # 同一个 partial 类型中的原生自检
+├─ DodgeApp.Content.cs         # 内容存档检查与确认恢复
+├─ DodgeApp.ContentSmoke.cs    # 内容跨进程自检
+├─ DodgeApp.Settings.cs        # 设置应用、回滚与持久化
+├─ DodgeApp.*Smoke.cs          # 朝向、完整存档及设置验收
 ├─ DodgeRoutes.cs              # 路由定义
 ├─ DodgeMenus.cs               # 原生视图和按钮
+├─ DodgeMenus.Content.cs       # 内容管理与恢复对话框
+├─ OfficialPackTrust.cs        # 游戏拥有的官方 PCK 摘要
 ├─ DodgeProgress.cs            # 当前局存档
+├─ DodgeProgressMigration.cs   # 稀疏 v1 到完整 v2 快照
 ├─ DodgePreferences.cs         # 音量、全屏、最高分
 ├─ Gameplay/
+├─ Content/                   # 敌人／关卡定义和内容会话
+├─ content_sources/           # 本体和可选内容包
+├─ content-schemas/           # 游戏拥有的 schema
+├─ Localization/              # 框架本地化接线及中英文本
 ├─ art/
 └─ fonts/
 ```
+
+把样例的 `content_sources/`、`content-schemas/`、`Localization/`、`official-pack/` 和 `build-official-pack.gd` 复制到练习工程。字体目录同时保留 Noto Sans SC 字体、OFL 许可和原有字体，确保中文在导出程序中也有字形。已提供的官方资源包与 `OfficialPackTrust.cs` 对应，不需要玩家重新生成摘要；开发者修改源场景后才重新运行打包脚本。
 
 ### 路由定义
 
@@ -215,14 +230,16 @@ DodgeTheCreeps/
 | HUD | 独立窗口 | `int` 初始分数；不捕获返回动作 |
 | 暂停 | 模态窗口 | `int` 当前分数；持有暂停请求 |
 | 设置 | 模态窗口 | 独立暂停请求，显示在暂停菜单上方 |
-| 放弃确认 | 结果对话框 | `string` 提问，返回 `bool` |
+| 内容管理 | 模态窗口 | 管理可选包、下次启动顺序和当前关卡 |
+| 内容恢复 | 结果对话框 | 展示差异；玩家确认后备份并恢复存档 |
+| 放弃确认 | 结果对话框 | `Func<string>` 提供当前语言的提问，返回 `bool` |
 | 结束画面 | 页面 | `int` 本局分数 |
 
 `Layer` 确定展示顺序。`Modal`、世界输入阻断和 `PauseWhileVisible` 分别决定交互与暂停。HUD 的 `AllowBack = false`、`CapturedActions = None` 使它能持续展示而不截获返回。
 
 ### 存档与偏好
 
-当前局只保存可序列化数值：
+当前局保存可序列化的数值、稳定关卡 ID，以及同文件中的内容包快照，不保存原生节点：
 
 <<< ../../../Samples/DodgeTheCreeps/DodgeProgress.cs{csharp}
 
@@ -230,11 +247,15 @@ DodgeTheCreeps/
 
 <<< ../../../Samples/DodgeTheCreeps/DodgePreferences.cs{csharp}
 
-继续游戏恢复分数和坐标，并生成新的敌人布局与保护时间。新局保持为内存状态，玩家明确保存后才更新槽位。
+v2 存档同时保存敌人 ID、数量、位置、速度、外观、动画进度，玩家朝向，计分余量、下次生成时间、剩余保护时间，以及随机生成器的 seed/state。继续游戏恢复该局面，不重新随机生成敌人，也不额外增加保护时间。新局保持为内存状态，玩家明确保存后才更新槽位。
+
+旧 v1 从未保存敌人，迁移器只能恢复分数和位置、创建空布局并给予初始保护；界面明确说明这项限制。迁移代码也属于完整采用：
+
+<<< ../../../Samples/DodgeTheCreeps/DodgeProgressMigration.cs{csharp}
 
 ## 六、装配框架服务并注册原生视图 {#services}
 
-用 [完整启动脚本](https://github.com/GeWuYou/GFramework/blob/main/Samples/DodgeTheCreeps/DodgeApp.cs) 替换第四步的预览脚本，并加入 [原生自检伴随文件](https://github.com/GeWuYou/GFramework/blob/main/Samples/DodgeTheCreeps/DodgeApp.Smoke.cs)、路由、两个数据类型和 [菜单实现](https://github.com/GeWuYou/GFramework/blob/main/Samples/DodgeTheCreeps/DodgeMenus.cs)。保留同一 `partial DodgeApp` 的两个文件，以便编译完整工程；普通启动流程也调用其中的参数解析方法。
+用 [完整启动脚本](https://github.com/GeWuYou/GFramework/blob/main/Samples/DodgeTheCreeps/DodgeApp.cs) 替换第四步的预览脚本。复制样例根目录的全部 `*.cs`、`Localization/` 及前面列出的数据和素材目录，保留同一 `partial DodgeApp`、`partial DodgeMenus` 的全部伴随文件。普通启动也调用其中的设置、内容、翻译及参数解析方法，不能只复制正文展示的代码片段。
 
 ### 在原生线程创建服务
 
@@ -284,7 +305,7 @@ DodgeTheCreeps/
 
 <<< ../../../Samples/DodgeTheCreeps/DodgeApp.cs#tutorial-start-game{csharp}
 
-`await _scenes.ReplaceAsync` 完成后，世界已经挂载并执行 `_Ready`，此时才能调用 `StartRun` 或 `RestoreRun`。
+`await _scenes.ReplaceAsync` 完成后，世界已经挂载并执行 `_Ready`，此时才能调用 `StartRun` 或 `RestoreProgress`。保存内容和动画记录的校验发生在替换场景之前；世界还会先准备全部敌人，再提交棋盘，避免失败时留下半个局面。
 
 世界的 `ScoreChanged` 通过启动脚本更新 HUD；`RunEnded` 触发结束流程，保存最高分并显示带本局分数的结束页。最高分写入失败时，结束画面的重试和返回操作仍可使用。
 
@@ -296,11 +317,19 @@ DodgeTheCreeps/
 
 设置界面从当前偏好建立局部草稿：
 
-<<< ../../../Samples/DodgeTheCreeps/DodgeMenus.cs#tutorial-settings{csharp}
+<<< ../../../Samples/DodgeTheCreeps/DodgeMenus.Settings.cs#tutorial-settings{csharp}
 
 保存时先写入新偏好，再替换内存数据并应用音量、全屏：
 
-<<< ../../../Samples/DodgeTheCreeps/DodgeApp.cs#tutorial-save-settings{csharp}
+<<< ../../../Samples/DodgeTheCreeps/DodgeApp.Settings.cs#tutorial-save-settings{csharp}
+
+设置包含总音量、音乐、音效，窗口／全屏，以及 360×540、480×720、640×960 三档竖屏分辨率。逻辑画布保持 480×720，窗口按可用屏幕区域限制并保持比例。音乐和音效分别进入 BGM、SFX 总线，再受 Master 总音量控制；滑块为零时真正静音。
+
+![中文设置界面](./assets/dodge-the-creeps/settings.png)
+
+语言支持 English 与简体中文，首次按系统语言选择，不支持的语言回退英文。语言选择立即保存并刷新现有界面；其余设置先编辑副本，应用后保存。返回或 Escape 遇到未应用修改时，可以应用、放弃或继续编辑。重置填入默认音频和显示值并恢复默认语言，最高分、存档和内容包选择保持独立。
+
+`DodgeLocalization` 复用框架 `LocalizationManager`，并将框架语言映射到 Godot locale。界面通过随节点退出自动解绑的订阅刷新文本和字体，不清空路由栈，因此切换语言不会丢失暂停、对话框或输入焦点。对话框使用文本提供函数，让已经打开的确认信息也能更新。翻译表与具名占位符在启动时校验，中文字体随工程分发。[Godot 本地化指南](https://docs.godotengine.org/en/stable/tutorials/i18n/internationalizing_games.html)
 
 关闭设置时通过实例上下文关闭准确的窗口，服务释放它自己的暂停请求；下面的暂停菜单仍然持有请求。
 
@@ -328,7 +357,13 @@ DodgeTheCreeps/
 
 这里的 `Accepted` 表示对话框提交了业务结果，`Value` 表示玩家的选择。Keep playing 提交 `false`；关闭对话框得到未接受结果；只有明确提交 `true` 才执行放弃。
 
-**检查点：** 新局返回菜单时，Keep playing 保留当前局；选择放弃后返回菜单。保存一局、退出程序，再打开并 Continue，应恢复保存的分数和位置。
+**检查点：** 新局返回菜单时，Keep playing 保留当前局；选择放弃后返回菜单。暂停一局并记录敌人的数量和位置，保存、退出，再打开并 Continue，应恢复同一局面。计时器和随机状态也随快照恢复，避免读档重新抽取后续生成；随机生成器先恢复 seed，再恢复原 state。[Godot 存档指南](https://docs.godotengine.org/en/stable/tutorials/io/saving_games.html)、[随机状态恢复约定](https://docs.godotengine.org/en/stable/classes/class_randomnumbergenerator.html)
+
+### 内容包与存档兼容
+
+主菜单的 Content 管理本体、官方 Moon DLC 和资料模组。启停与排序保存为下次启动配置，不改变当前局；重启后显示最终敌人速度及其来源。资料型模组可以追加敌人与关卡，玩法由游戏已有模板解释。
+
+继续游戏前先检查内容依赖。缺失 DLC 时可以取消并重新启用原包，或确认降级：框架先备份原始文件，再调用游戏修复钩子，将缺失关卡替换为本体关卡。长诊断可以滚动，恢复按钮保持可见。完整包格式、依赖、字段补丁、旧档导入和备份恢复见 [DLC 与资料型模组](../game/content-packs.md)。
 
 ## 十、等待服务与原生资源完成关闭 {#shutdown}
 
@@ -379,6 +414,61 @@ godot --headless --path DodgeTheCreeps --export-release "Linux Desktop"
 最后实际操作移动、暂停、焦点切换、设置、保存继续、重试和退出，检查窗口缩放、文字可读性、音量与游戏手感。
 
 需要记录主菜单画面时，可运行 `godot --path DodgeTheCreeps -- --capture-menu=<PNG绝对路径>`，程序会保存画面并正常退出。
+
+## 十二、扩展 DLC 与资料型模组 {#content-extension}
+
+示例自带四个默认停用的可选包，复制安装后由同一个内容会话加载：
+
+| 包 | 可观察效果 |
+| --- | --- |
+| Moon Arena | 官方 PCK 提供月面装饰场景，新增可选月面关卡 |
+| Coral Garden | 资料模组新增敌人与关卡，携带原始 PNG 和 OGG 素材 |
+| Fast Creeps | 修改本体敌人的速度字段 |
+| Gentle Creeps | 修改同一字段，用来观察加载顺序与来源 |
+
+![内容包与加载顺序管理](./assets/dodge-the-creeps/content.png)
+
+打开 Content，启用 Moon 和 Coral，重启后切换关卡并开始新局。然后同时启用两个速度包，通过上下按钮改变顺序并重启，观察最终 walker 速度和来源。依赖必须先加载，其余由玩家排序；保存待生效选择不改变正在进行的游戏。
+
+### 创建一个字段补丁包
+
+在 `user://dodge_the_creeps/content/installed/practice-speed/` 创建清单和 YAML。路径在内容管理界面及示例说明中提供，包根目录必须直接包含清单。
+
+```json
+{
+  "formatVersion": 1,
+  "id": "practice-speed",
+  "name": "Practice Speed",
+  "version": "1.0.0",
+  "gameId": "dodge-the-creeps",
+  "dependencies": [{ "id": "base" }],
+  "contentFiles": ["patch.yaml"]
+}
+```
+
+```yaml
+- op: patch
+  table: enemies
+  id: base:walker
+  value:
+    speedMin: 170
+    speedMax: 210
+```
+
+重启后勾选该包，并将它排在其他速度包之后；再次重启，管理界面应显示 170–210 及 `practice-speed` 来源。未知字段、非法取值和缺失引用会报告具体包与字段。新增敌人、关卡可以参考 `content_sources/coral/` 的 `add` 操作；玩家安装的原始素材使用正常 `.png`、`.ogg` 后缀，仓库示例中的 `.source` 后缀只用于保留导出前的原始媒体。
+
+### 官方资源包与存档兼容
+
+Moon 源场景位于 `official-pack/`。开发者修改后，可在练习工程重新生成 PCK 与游戏信任摘要，再构建：
+
+```bash
+godot --headless --path DodgeTheCreeps --script build-official-pack.gd
+dotnet build DodgeTheCreeps/DodgeTheCreeps.csproj -c Debug
+```
+
+固定摘要由游戏拥有，不能通过把第三方包标为“官方”绕过校验。资料型模组只使用数据和安全媒体入口；本示例不加载第三方玩法代码。
+
+保存月面关卡后停用 Moon，再重启并继续游戏，会出现依赖差异。可以取消并重新启用原包，或确认备份后降级到本体关卡；只有缺失内容提供的敌人才被移除，有效敌人状态继续保留。恢复按钮可以找回原始文件，之后仍需满足其内容依赖。包格式、合并规则和通用接入见 [DLC 与资料型模组](../game/content-packs.md)。
 
 ## 常见问题
 

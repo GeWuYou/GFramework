@@ -1,0 +1,13 @@
+# Copyright (c) 2025-2026 GeWuYou
+# SPDX-License-Identifier: Apache-2.0
+
+- op: add
+  table: enemies
+  id: coral:drifter
+  value:
+    id: coral:drifter
+    name: Coral Drifter
+    speedMin: 90
+    speedMax: 130
+    appearance: 1
+    texture: coral:sprites/creep.png

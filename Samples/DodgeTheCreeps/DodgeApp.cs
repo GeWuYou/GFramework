@@ -7,7 +7,10 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using DodgeTheCreeps.Gameplay;
+using DodgeTheCreeps.Content;
 using GFramework.Core.Pause;
+using GFramework.Game.Abstractions.Content;
+using GFramework.Game.Abstractions.Data;
 using GFramework.Game.Abstractions.Scene;
 using GFramework.Game.Abstractions.UI;
 using GFramework.Game.Data;
@@ -31,11 +34,15 @@ public partial class DodgeApp : Node, ISceneRoot
     private readonly PauseStackManager _pause = new();
     private GodotFileStorage _storage = null!;
     private SaveRepository<DodgeProgress> _saves = null!;
+    private DodgeContent _content = null!;
+    private string _arenaId = "base:yard";
+    private string? _latestBackup;
     private SceneRouter _scenes = null!;
     private UiService _ui = null!;
     private DodgeMenus _menus = null!;
     private DodgeWorld? _world;
     private Label? _startupStatus;
+    private Font? _startupFont;
     private Task _startup = Task.CompletedTask;
     private bool _stopping;
     private bool _dirty;
@@ -43,24 +50,35 @@ public partial class DodgeApp : Node, ISceneRoot
 
     /// <summary>Gets the currently loaded preferences.</summary>
     internal DodgePreferences Preferences { get; private set; } = new();
+    /// <summary>Owns framework translations and live view bindings for the current native host.</summary>
+    internal DodgeLocalization Text { get; } = new();
     /// <summary>Gets the service used by views and native smoke acceptance.</summary>
     internal IUiService Ui => _ui;
     /// <summary>Gets the active gameplay node.</summary>
     internal DodgeWorld? World => _world;
+    /// <summary>Gets content selection and its immutable active session.</summary>
+    internal DodgeContent Content => _content;
+    /// <summary>Gets whether this process has a complete usable content catalog.</summary>
+    internal bool CanStart => _content is { IsReady: true };
+    /// <summary>Gets the most recent original save backup available to restore.</summary>
+    internal bool HasBackup => _latestBackup is not null;
 
     /// <summary>Creates host roots before initializing storage and showing the first menu.</summary>
     public override void _Ready()
     {
         ProcessMode = ProcessModeEnum.Always;
+        Text.Initialize();
         GetTree().AutoAcceptQuit = false;
         GetWindow().CloseRequested += RequestQuit;
         var startupCanvas = new CanvasLayer { Name = "StartupStatus", Layer = 100 };
         AddChild(startupCanvas);
         _startupStatus = new Label
         {
-            Text = "Loading...", Position = new Vector2(20, 24), Size = new Vector2(440, 200),
+            Text = Text.Get("loading"), Position = new Vector2(20, 24), Size = new Vector2(440, 200),
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
+        _startupFont = DodgeLocalization.CreateChineseFont();
+        _startupStatus.AddThemeFontOverride("font", _startupFont);
         startupCanvas.AddChild(_startupStatus);
         ConfigureInput();
         var arguments = OS.GetCmdlineUserArgs();
@@ -91,14 +109,20 @@ public partial class DodgeApp : Node, ISceneRoot
         {
             // #region tutorial-load-data
             _storage = new GodotFileStorage(new JsonSerializer());
-            _saves = new SaveRepository<DodgeProgress>(_storage, new SaveConfiguration { SaveRoot = _dataRoot + "/saves" });
+            _content = new DodgeContent(_storage, _dataRoot);
+            await _content.InitializeAsync(_lifetime.Token).ConfigureAwait(true);
+            _saves = new SaveRepository<DodgeProgress>(_storage, new SaveConfiguration { SaveRoot = _dataRoot + "/saves" },
+                CreateContentSaveOptions());
+            _saves.RegisterMigration(new DodgeProgressMigration());
+            if (await _storage.ExistsAsync(_dataRoot + "/last-content-backup.json").ConfigureAwait(true))
+                _latestBackup = await _storage.ReadAsync<string>(_dataRoot + "/last-content-backup.json").ConfigureAwait(true);
             if (await _storage.ExistsAsync(_dataRoot + "/preferences.json").ConfigureAwait(true))
                 Preferences = await _storage.ReadAsync<DodgePreferences>(_dataRoot + "/preferences.json").ConfigureAwait(true);
-            if (!float.IsFinite(Preferences.Volume) || Preferences.Volume is < 0 or > 1 || Preferences.BestScore < 0)
-                throw new InvalidOperationException("The preferences file contains invalid values.");
             ApplyPreferences();
+            if (_captureLanguage is not null) Text.SetLanguage(_captureLanguage);
             var canContinue = await _saves.ExistsAsync(1, _lifetime.Token).ConfigureAwait(true);
             await _ui.ReplaceAsync(DodgeRoutes.Menu, canContinue, _lifetime.Token).ConfigureAwait(true);
+            if (!CanStart) _menus.SetStatus(() => Text.Get("content_start_failed", ("error", _content.Error ?? string.Empty)));
             _startupStatus!.GetParent().QueueFree();
             _startupStatus = null;
             // #endregion tutorial-load-data
@@ -139,14 +163,19 @@ public partial class DodgeApp : Node, ISceneRoot
     /// <summary>Begins a fresh or restored run through the scene service.</summary>
     internal async Task StartGameAsync(bool restore)
     {
-        var saved = restore ? await _saves.LoadAsync(1, _lifetime.Token).ConfigureAwait(true) : null;
+        if (!CanStart) throw new InvalidOperationException("Repair content selection and restart before playing.");
+        var saved = restore ? await LoadContentSaveAsync().ConfigureAwait(true) : null;
+        if (restore && saved is null) return;
+        _arenaId = saved?.ArenaId ?? _content.ArenaId;
         _world?.StopRun();
         await _ui.ClearAsync(_lifetime.Token).ConfigureAwait(true);
         await _scenes.ReplaceAsync("play", cancellationToken: _lifetime.Token).ConfigureAwait(true);
         if (saved is null) _world!.StartRun();
-        else _world!.RestoreRun(saved.Score, new Vector2(saved.X, saved.Y));
+        else _world!.RestoreProgress(saved);
         _dirty = true;
         await _ui.ShowAsync(DodgeRoutes.Hud, _world!.Score, _lifetime.Token).ConfigureAwait(true);
+        if (saved?.LegacyLayoutReset == true)
+            _menus.SetStatus(() => Text.Get("legacy_layout_reset"));
     }
     // #endregion tutorial-start-game
 
@@ -155,27 +184,14 @@ public partial class DodgeApp : Node, ISceneRoot
     internal async Task SaveGameAsync()
     {
         if (_world is null) return;
-        var position = _world.PlayerPosition;
-        await _saves.SaveAsync(1, new DodgeProgress { Score = _world.Score, X = position.X, Y = position.Y }, _lifetime.Token).ConfigureAwait(true);
+        await _saves.SaveAsync(1, _world.CaptureProgress(), _lifetime.Token).ConfigureAwait(true);
         _dirty = false;
-        _menus.SetStatus("Run saved. Continue restores your score and position.");
+        _menus.SetStatus(() => Text.Get("run_saved"));
     }
     // #endregion tutorial-save-game
 
     /// <summary>Opens settings as an independent window with its own pause request.</summary>
     internal Task OpenSettingsAsync() => _ui.ShowAsync(DodgeRoutes.Settings, true, _lifetime.Token);
-
-    // #region tutorial-save-settings
-    /// <summary>Persists preferences through the same atomic native storage implementation.</summary>
-    internal async Task SavePreferencesAsync(float volume, bool fullscreen)
-    {
-        var next = new DodgePreferences { Volume = volume, Fullscreen = fullscreen, BestScore = Preferences.BestScore };
-        await _storage.WriteAsync(_dataRoot + "/preferences.json", next).ConfigureAwait(true);
-        Preferences = next;
-        ApplyPreferences();
-        _menus.SetStatus("Settings saved.");
-    }
-    // #endregion tutorial-save-settings
 
     // #region tutorial-confirm-exit
     /// <summary>Confirms discarding unsaved gameplay with a typed dialog result.</summary>
@@ -183,7 +199,7 @@ public partial class DodgeApp : Node, ISceneRoot
     {
         if (_dirty && _world is { IsRunning: true })
         {
-            var decision = await _ui.ShowDialogAsync(DodgeRoutes.Confirm, "Leave this run without saving?", _lifetime.Token).ConfigureAwait(true);
+            var decision = await _ui.ShowDialogAsync(DodgeRoutes.Confirm, () => Text.Get("leave_question"), _lifetime.Token).ConfigureAwait(true);
             if (!decision.Accepted || decision.Value != true || _stopping) return;
         }
         _dirty = false;
@@ -203,13 +219,12 @@ public partial class DodgeApp : Node, ISceneRoot
         var score = _world.Score;
         if (score > Preferences.BestScore)
         {
-            Preferences.BestScore = score;
-            try { await _storage.WriteAsync(_dataRoot + "/preferences.json", Preferences).ConfigureAwait(true); }
+            try { await SaveBestScoreAsync(score).ConfigureAwait(true); }
             catch (Exception exception)
             {
                 // A failed best-score write must leave the game's retry and exit actions available.
                 GD.PushError(exception.ToString());
-                await ShowGameOverAsync(score, "Best score could not be saved.").ConfigureAwait(true);
+                await ShowGameOverAsync(score, Text.Get("best_save_failed", ("error", exception.Message))).ConfigureAwait(true);
                 return;
             }
         }
@@ -248,19 +263,12 @@ public partial class DodgeApp : Node, ISceneRoot
         InputMap.AddAction(name);
         foreach (var key in keys) InputMap.ActionAddEvent(name, new InputEventKey { PhysicalKeycode = key });
     }
-    /// <summary>Applies native preferences only after the storage operation has succeeded.</summary>
-    private void ApplyPreferences()
-    {
-        AudioServer.SetBusVolumeDb(0, Mathf.LinearToDb(Math.Max(Preferences.Volume, 0.0001f)));
-        if (!DisplayServer.GetName().Equals("headless", StringComparison.Ordinal))
-            DisplayServer.WindowSetMode(Preferences.Fullscreen ? DisplayServer.WindowMode.Fullscreen : DisplayServer.WindowMode.Windowed);
-    }
     /// <summary>Shows a concise error without hiding the current game.</summary>
     private void ReportError(Exception exception)
     {
-        _menus.SetStatus("Operation failed: " + exception.Message);
+        _menus.SetStatus(() => Text.Get("operation_failed", ("error", exception.Message)));
         if (_startupStatus is not null && GodotObject.IsInstanceValid(_startupStatus))
-            _startupStatus.Text = "Could not load game data.\n" + exception.Message;
+            _startupStatus.Text = Text.Get("data_load_failed", ("error", exception.Message));
         GD.PushError(exception.ToString());
     }
 
@@ -293,7 +301,11 @@ public partial class DodgeApp : Node, ISceneRoot
         finally
         {
             DisposeOwnedResource(_menus, errors);
+            DisposeOwnedResource(_startupFont, errors);
+            DisposeOwnedResource(Text, errors);
+            DisposeOwnedResource(_content, errors);
             DisposeOwnedResource(_storage, errors);
+            DisposeOwnedResource(_preferencesGate, errors);
             DisposeOwnedResource(_lifetime, errors);
             if (errors.Count > 0)
             {
@@ -327,6 +339,7 @@ public partial class DodgeApp : Node, ISceneRoot
         {
             if (!string.Equals(sceneKey, "play", StringComparison.Ordinal)) throw new InvalidOperationException("Unknown scene: " + sceneKey);
             app._world = new DodgeWorld { Name = "World" };
+            app._world.ConfigureContent(app._content, app._content.Catalog.GetTable<DodgeArenaDefinition>("arenas").Get(new ContentId(app._arenaId)));
             app._world.ScoreChanged += (_, score) => { app._menus.SetScore(score.Score); app._dirty = true; };
             app._world.RunEnded += (_, _) => app.RunAction(app.GameOverAsync);
             return SceneBehaviorFactory.Create(app._world, sceneKey);

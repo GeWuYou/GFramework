@@ -18,6 +18,7 @@ description: 通过独立服务采用 UI、场景、设置、存档、输入和�
 | 绑定、重绑定与 UI 动作 | `InputBindingStore`、`UiInputDispatcher` | [输入系统](./input.md) |
 | 文件与序列化 | `FileStorage`、`ScopedStorage`、`JsonSerializer` | [存储](./storage.md)、[序列化](./serialization.md) |
 | 静态 YAML 内容 | `GameConfigBootstrap`、`YamlConfigLoader` | [配置系统](./config-system.md) |
+| DLC 与资料型模组 | `ContentPackDiscovery`、`ContentPackResolver`、`ContentCatalogLoader` | [内容包](./content-packs.md) |
 
 ## 最小采用
 

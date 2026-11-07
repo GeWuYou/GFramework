@@ -11,7 +11,7 @@ namespace GFramework.Game.Storage;
 /// </summary>
 /// <param name="inner">内部的实际存储实现</param>
 /// <param name="prefix">用于所有键的前缀字符串</param>
-public sealed class ScopedStorage(IStorage inner, string prefix) : IScopedStorage
+public sealed class ScopedStorage(IStorage inner, string prefix) : IScopedStorage, IStorageBackup
 {
     /// <summary>
     ///     检查指定键是否存在
@@ -147,6 +147,21 @@ public sealed class ScopedStorage(IStorage inner, string prefix) : IScopedStorag
     {
         return inner.CreateDirectoryAsync(Key(path));
     }
+
+    /// <inheritdoc />
+    public Task<StorageSnapshot> ReadSnapshotAsync(string key, CancellationToken cancellationToken = default) =>
+        GetBackupStorage().ReadSnapshotAsync(Key(key), cancellationToken);
+
+    /// <inheritdoc />
+    public T DeserializeSnapshot<T>(StorageSnapshot snapshot) => GetBackupStorage().DeserializeSnapshot<T>(snapshot);
+
+    /// <inheritdoc />
+    public Task WriteSnapshotAsync(string key, StorageSnapshot snapshot, CancellationToken cancellationToken = default) =>
+        GetBackupStorage().WriteSnapshotAsync(Key(key), snapshot, cancellationToken);
+
+    /// <summary>Fails before recovery when the caller's inner storage has no optional lossless backup support.</summary>
+    private IStorageBackup GetBackupStorage() => inner as IStorageBackup ??
+        throw new NotSupportedException("The underlying storage does not support lossless snapshots.");
 
     /// <summary>
     ///     为给定的键添加前缀

@@ -1,0 +1,30 @@
+{
+  "formatVersion": 1,
+  "id": "moon",
+  "version": "1.0.0",
+  "gameId": "dodge-the-creeps",
+  "gameVersions": {
+    "minimumInclusive": "1.0.0",
+    "maximumExclusive": "2.0.0"
+  },
+  "contentApiVersions": {
+    "minimumInclusive": "1.0.0",
+    "maximumExclusive": "2.0.0"
+  },
+  "name": "Moon Arena (official DLC)",
+  "contentFiles": [
+    "arenas.yaml"
+  ],
+  "resourcePacks": [
+    "moon.pck"
+  ],
+  "dependencies": [
+    {
+      "id": "base",
+      "versions": {
+        "minimumInclusive": "1.0.0",
+        "maximumExclusive": "2.0.0"
+      }
+    }
+  ]
+}

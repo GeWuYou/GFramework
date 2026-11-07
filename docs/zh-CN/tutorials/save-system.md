@@ -17,6 +17,8 @@ description: 用独立槽位仓库保存游戏快照，观察错误并在退出�
 
 原生节点、信号和资源引用保留在宿主层。保存时把当前状态复制为 DTO，避免异步写入期间继续修改同一快照。
 
+示例 v2 使用 `DodgeWorld.CaptureProgress()` 捕获全部敌人及其稳定 ID、位置、速度和动画进度，同时保存玩家朝向、分数余量、生成与保护计时、RNG seed/state。`RestoreProgress` 先验证并准备整个棋盘，再提交恢复结果，不重新随机生成布局。只保存分数和位置的 v1 通过 `DodgeProgressMigration` 显式迁移为空布局，并告知玩家原格式缺失的信息。
+
 ## 创建仓库
 
 普通 .NET 宿主使用 `FileStorage`；Godot 使用 `GodotFileStorage` 和 `user://`：
@@ -46,7 +48,7 @@ if (await saves.ExistsAsync(1, cancellationToken))
 }
 ```
 
-`snapshot` 是保存前捕获的 DTO，`ApplyRestoredProgress` 由项目恢复角色、关卡和计分。只有保存成功后更新“已保存”状态。读取失败时报告错误并保留原文件，玩家可以选择新游戏或其他槽位。
+`snapshot` 是保存前捕获的 DTO，`ApplyRestoredProgress` 由项目恢复角色、关卡、敌人和计时状态。示例的实际入口为 `DodgeWorld.RestoreProgress`。只有保存成功后更新“已保存”状态。读取失败时报告错误并保留原文件，玩家可以选择新游戏或其他槽位。
 
 `LoadAsync` 在文件缺失时返回新的默认 DTO，因此“继续游戏”先检查存在性。菜单的继续按钮应反映当前槽位是否存在。新游戏创建内存进度，在玩家明确保存前保留已有槽位。
 
@@ -55,6 +57,8 @@ if (await saves.ExistsAsync(1, cancellationToken))
 `ListSlotsAsync` 返回包含有效存档文件的槽位编号；`DeleteAsync` 删除指定槽位文件。界面展示、删除确认和元数据由业务流程组织。
 
 版本迁移通过 `RegisterMigration` 登记。加载时使用稳定迁移表快照，成功到达当前版本后才回写；缺链、非法版本或不兼容结果通过异常报告。详细规则见 [数据迁移](./data-migration.md)。
+
+使用 DLC／模组的游戏应采用内容感知仓库：检查内容依赖先于迁移与回写，玩家确认恢复后先备份原始文件，再调用游戏钩子、迁移和验证。示例仅移除缺失定义的敌人并替换缺失关卡，其余合法状态保留。具体设置与恢复入口见 [内容包与存档兼容](../game/content-packs.md)。
 
 ## 异步操作与退出
 

@@ -9,6 +9,8 @@ description: 说明 GFramework.Game 配置系统的定位、目录约定、生�
 
 该配置系统用于管理怪物、物品、技能、任务等静态内容数据。
 
+多个 DLC 或模组需要向同一张表追加、修改或删除内容时，使用 [内容包与字段补丁](./content-packs.md)。内容包层复用本页的 schema 语义，并在合并后检查最终引用；直接向 `ConfigRegistry` 注册同名表仍是整表替换。
+
 它与 `GFramework.Core.Configuration` 不同，后者面向运行时键值配置；它也不同于 `GFramework.Game.Setting`，后者面向玩家设置和持久化。
 
 ## 当前能力

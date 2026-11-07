@@ -14,7 +14,7 @@ namespace GFramework.Game.Storage;
 ///     基于文件系统的存储实现，实现了IFileStorage接口，支持按key细粒度锁保证线程安全
 ///     使用异步安全的锁机制、原子写入和自动清理
 /// </summary>
-public sealed class FileStorage : IFileStorage, IDisposable
+public sealed class FileStorage : IFileStorage, IStorageBackup, IDisposable
 {
     private readonly int _bufferSize;
     private readonly string _extension;
@@ -120,6 +120,41 @@ public sealed class FileStorage : IFileStorage, IDisposable
     }
 
     #endregion
+
+    /// <inheritdoc />
+    public async Task<StorageSnapshot> ReadSnapshotAsync(string key, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        cancellationToken.ThrowIfCancellationRequested();
+        var path = ToPath(key);
+        var pathLock = await _lockManager.AcquireLockAsync(path).ConfigureAwait(false);
+        await using var configuredPathLock = pathLock.ConfigureAwait(false);
+        return new StorageSnapshot(await File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false));
+    }
+
+    /// <inheritdoc />
+    public T DeserializeSnapshot<T>(StorageSnapshot snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        return _serializer.Deserialize<T>(snapshot.ReadText());
+    }
+
+    /// <inheritdoc />
+    public async Task WriteSnapshotAsync(string key, StorageSnapshot snapshot,
+        CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(snapshot);
+        cancellationToken.ThrowIfCancellationRequested();
+        var path = ToPath(key);
+        var pathLock = await _lockManager.AcquireLockAsync(path).ConfigureAwait(false);
+        await using var configuredPathLock = pathLock.ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        // Preserve the original encoding and unknown serialized fields instead of round-tripping through a DTO.
+        var bytes = snapshot.ToArray();
+        await AtomicFileWriter.WriteAsync(path, stream => stream.WriteAsync(bytes).AsTask(), _bufferSize)
+            .ConfigureAwait(false);
+    }
 
     #region Delete
 

@@ -8,6 +8,7 @@ using GFramework.Core.Abstractions.Serializer;
 using GFramework.Core.Abstractions.Storage;
 using GFramework.Core.Concurrency;
 using GFramework.Game.Storage;
+using GFramework.Game.Abstractions.Storage;
 using GFramework.Godot.Extensions;
 using Godot;
 using FileAccess = Godot.FileAccess;
@@ -19,7 +20,7 @@ namespace GFramework.Godot.Storage;
 ///     支持按 key 细粒度锁保证线程安全，持久化写入先写临时文件再替换目标文件。
 ///     res:// 只用于读取打包资源；存档和设置应使用 user://。
 /// </summary>
-public sealed class GodotFileStorage : IStorage, IDisposable
+public sealed class GodotFileStorage : IStorage, IStorageBackup, IDisposable
 {
     private readonly IAsyncKeyLockManager _lockManager;
     private readonly bool _ownsLockManager;
@@ -74,6 +75,53 @@ public sealed class GodotFileStorage : IStorage, IDisposable
         {
             _lockManager.Dispose();
         }
+    }
+
+    /// <inheritdoc />
+    public async Task<StorageSnapshot> ReadSnapshotAsync(string key, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        cancellationToken.ThrowIfCancellationRequested();
+        // Resolve user:// before awaiting so native path access stays on the caller's Godot thread.
+        var logicalPath = ToAbsolutePath(key);
+        var path = ToSnapshotPath(logicalPath);
+        var pathLock = await _lockManager.AcquireLockAsync(logicalPath).ConfigureAwait(false);
+        await using var configuredPathLock = pathLock.ConfigureAwait(false);
+        return new StorageSnapshot(await File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false));
+    }
+
+    /// <inheritdoc />
+    public T DeserializeSnapshot<T>(StorageSnapshot snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        return _serializer.Deserialize<T>(snapshot.ReadText());
+    }
+
+    /// <inheritdoc />
+    public async Task WriteSnapshotAsync(string key, StorageSnapshot snapshot,
+        CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(snapshot);
+        cancellationToken.ThrowIfCancellationRequested();
+        var logicalPath = ToAbsolutePath(key);
+        var path = ToSnapshotPath(logicalPath);
+        var pathLock = await _lockManager.AcquireLockAsync(logicalPath).ConfigureAwait(false);
+        await using var configuredPathLock = pathLock.ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        var bytes = snapshot.ToArray();
+        await AtomicFileWriter.WriteAsync(path, stream => stream.WriteAsync(bytes).AsTask()).ConfigureAwait(false);
+    }
+
+    /// <summary>Snapshots are for writable saves, never exported res:// resource packages.</summary>
+    private string ToSnapshotPath(string key)
+    {
+        var path = ToAbsolutePath(key);
+        if (path.StartsWith("res://", StringComparison.Ordinal))
+        {
+            throw new ArgumentException("Lossless save snapshots cannot use read-only res:// resources.", nameof(key));
+        }
+        return path.StartsWith("user://", StringComparison.Ordinal) ? _globalizePath(path) : path;
     }
 
     #region Delete

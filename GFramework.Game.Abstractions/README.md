@@ -13,6 +13,7 @@ Game 的引擎无关契约，包括强类型 UI、场景、输入、设置、存
 | `Data/` | `IDataRepository`、`ISaveRepository<T>`、`ISettingsDataRepository` | 持久化与槽位存档 |
 | `Setting/` | `ISettingsModel`、`ISettingsSystem`、`ISettingsData` | 设置加载、迁移、应用和重置 |
 | `Config/` | `IConfigRegistry`、配置表契约 | 静态内容配置 |
+| `Content/` | `ContentId`、`ContentPackManifest`、`ContentSnapshot` | 稳定内容身份、包依赖、玩家顺序和存档内容快照 |
 | `Storage/`、`Asset/`、`Routing/` | 存储、资源登记、场景守卫契约 | 相邻能力的最小公共边界 |
 
 ## 最小采用
@@ -27,4 +28,5 @@ Scene、数据和设置服务不继承 System／Model／Utility 角色；宿主�
 - [Game 概览](../docs/zh-CN/game/index.md)
 - [UI 系统](../docs/zh-CN/game/ui.md)
 - [场景系统](../docs/zh-CN/game/scene.md)
+- [DLC 与资料型模组](../docs/zh-CN/game/content-packs.md)
 - [Game 运行时](../GFramework.Game/README.md)

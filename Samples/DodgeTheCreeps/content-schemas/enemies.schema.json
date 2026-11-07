@@ -1,0 +1,40 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "name",
+    "speedMin",
+    "speedMax",
+    "appearance",
+    "texture"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "speedMin": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 1000
+    },
+    "speedMax": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 1000
+    },
+    "appearance": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2
+    },
+    "texture": {
+      "type": "string"
+    }
+  }
+}
