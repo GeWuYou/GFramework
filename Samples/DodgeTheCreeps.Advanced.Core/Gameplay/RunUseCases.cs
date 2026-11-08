@@ -84,6 +84,7 @@ public sealed class RunUseCases(GameSession session, IRunBoard board, IRunStore 
             RequireGeneration(expectedGeneration);
             session.Retire();
             await store.RetireAsync(cancellationToken).ConfigureAwait(true);
+            session.MarkCheckpointDeleted();
 
         }
         finally { _operations.Release(); }
@@ -104,6 +105,7 @@ public sealed class RunUseCases(GameSession session, IRunBoard board, IRunStore 
         finally { _operations.Release(); }
     }
 
+    /// <summary>Rejects queued effects belonging to a board replaced while they waited for the operation gate.</summary>
     private void RequireGeneration(long expectedGeneration)
     {
         if (session.Generation != expectedGeneration)

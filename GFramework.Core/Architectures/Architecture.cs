@@ -202,6 +202,7 @@ public abstract class Architecture : IArchitecture
         descriptions.TryAddSingleton<IEventBus, EventBus>();
         ConfigureServices(descriptions);
         token.ThrowIfCancellationRequested();
+        ValidateComponentRegistrations(descriptions);
         _provider = descriptions.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
         SetPhase(ArchitecturePhase.Initializing);
         var participants = _provider.GetServices<ComponentRegistration>().OrderBy(item => item.Order).ToArray();
@@ -236,6 +237,26 @@ public abstract class Architecture : IArchitecture
         token.ThrowIfCancellationRequested();
         SetPhase(ArchitecturePhase.Ready);
         token.ThrowIfCancellationRequested();
+    }
+
+    /// <summary>
+    ///     Validates the completed composition before any provider or participant is activated. Modules may append,
+    ///     remove or replace descriptions after AddComponent, so registration-time checks alone cannot protect
+    ///     the canonical singleton identity shared by startup and ordinary consumers.
+    /// </summary>
+    private static void ValidateComponentRegistrations(IServiceCollection descriptions)
+    {
+        foreach (var participant in descriptions
+                     .Where(description => description.ServiceType == typeof(ComponentRegistration))
+                     .Select(description => description.ImplementationInstance as ComponentRegistration))
+        {
+            if (participant is null)
+                throw new InvalidOperationException("Lifecycle metadata must be registered through AddComponent().");
+            var bindings = descriptions.Where(description => !description.IsKeyedService &&
+                description.ServiceType == participant.ServiceType).ToArray();
+            if (bindings.Length != 1 || bindings[0].Lifetime != ServiceLifetime.Singleton)
+                throw new InvalidOperationException($"Component service {participant.ServiceType} must have exactly one unkeyed singleton registration.");
+        }
     }
 
     /// <summary>Cancels and joins startup, then waits for one shared reverse-stop and provider disposal result.</summary>

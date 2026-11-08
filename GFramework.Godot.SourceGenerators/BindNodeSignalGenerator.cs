@@ -612,11 +612,11 @@ public sealed class BindNodeSignalGenerator : IIncrementalGenerator
         if (namespaceName is not null)
         {
             sb.AppendLine()
-.Append("namespace ").Append(namespaceName).Append(';').AppendLine();
+                .Append("namespace ").Append(namespaceName).Append(';').AppendLine();
         }
 
         sb.AppendLine()
-.Append("partial class ").Append(typeSymbol.Name).Append(generics.Parameters).AppendLine();
+            .Append("partial class ").Append(typeSymbol.Name).Append(generics.Parameters).AppendLine();
 
         foreach (var constraint in generics.Constraints)
             sb.Append("    ").Append(constraint).AppendLine();

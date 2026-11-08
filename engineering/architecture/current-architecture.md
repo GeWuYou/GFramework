@@ -12,7 +12,7 @@ Core.Abstractions 定义能力契约，Core 提供实现。Core 不引用 CQRS�
 
 普通业务对象使用构造注入，Model/System/Utility 是职责约定。容器仅在组合根和宿主接线访问。标准 IServiceCollection 描述依赖；Architecture 构建并拥有唯一 provider，通过受阶段检查的 Services 暴露标准解析接口。
 
-普通服务不自动启动。AddComponent 登记服务键与生命周期元数据，按 order 升序、同值登记顺序启动，逆实际开始顺序停止；失败的初始化尝试也参与清理。配置型模块只组织 IServiceCollection，不拥有第二套容器或进程级注册表。
+普通服务不自动启动。AddComponent 登记服务键与生命周期元数据，按 order 升序、同值登记顺序启动，逆实际开始顺序停止；失败的初始化尝试也参与清理。组件键在最终配置完成后检查唯一的非 keyed Singleton 绑定，再构建 provider；后续模块不能悄然覆盖该约束。配置型模块只组织 IServiceCollection，不拥有第二套容器或进程级注册表。
 
 启动失败、取消和正常停止均闭合业务停止、宿主分离与 provider 释放。停止调用共享同一结果；单个清理失败不跳过其余清理。外部实例由调用者拥有，DI 创建的资源由 provider 拥有。避免工厂别名将同一资源重复登记为拥有对象。
 
@@ -22,7 +22,7 @@ Core.Abstractions 定义能力契约，Core 提供实现。Core 不引用 CQRS�
 
 - EventBus 每个类型一个同步通道，优先级与普通订阅统一快照；订阅返回独立 IDisposable。
 - StateMachine 独立于容器和事件系统，串行切换、回退与终态清理，失败后只允许停止。
-- ResourceManager 合并同键加载并返回独立租约；调用者取消不取消其他等待者，关闭后已有租约有效至归还。
+- ResourceManager 合并同键加载并返回独立租约；调用者取消不取消其他等待者，关闭等待加载与已开始的释放回调，关闭后已有租约有效至归还。
 - Option/Result 是可选的显式返回工具；取消按异步取消语义传播。
 - 协程、Store、属性、暂停和其他能力可独立采用，其所有权与线程契约由各接口说明。
 

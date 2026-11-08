@@ -50,7 +50,7 @@ godot --path Samples/DodgeTheCreeps.Advanced
 
 ## 先确定纯规则和应用端口
 
-GameSession 记录当前局是否退休、最后成功保存的位置，以及需要明确放弃的变更。它不自行读文件或查找世界。死亡先退休，再尝试清档，即使 IO 失败也不会在当前进程重新提供 Continue。
+GameSession 分别记录当前局是否退休、磁盘检查点是否因死亡而失效、最后成功保存的位置，以及需要明确放弃的变更。它不自行读文件或查找世界。死亡先退休，再尝试清档；清档失败后即使重试新局，旧检查点在当前进程也不会重新提供 Continue。只有清档成功或新局成功保存后，才解除旧检查点的禁用状态。
 
 <<< ../../../Samples/DodgeTheCreeps.Advanced.Core/Gameplay/GameSession.cs{csharp}
 

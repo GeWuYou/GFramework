@@ -12,6 +12,8 @@
 
 从仓库根目录运行；先读取 .ai/environment/tools.ai.yaml，实际工具与库存不一致时报告差异。用户级 SDK 只通过当前进程环境选择，不把机器路径写入文档或项目。
 
+构建会启用仓库 Git hooks；提交环境需提供 `bash`、`git` 与 `python3`。换行规范化脚本兼容 macOS 自带 Bash 3.2，无需 GNU sed 或新版 Bash；它只读取暂存区的属性与 blob，保留工作区内容、文件模式、二进制文件和自定义 clean filter 的已有结果。
+
 | 目的 | 命令 |
 | --- | --- |
 | Core Release 构建 | `dotnet build GFramework.Core/GFramework.Core.csproj -c Release` |

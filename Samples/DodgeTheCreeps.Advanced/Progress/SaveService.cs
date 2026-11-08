@@ -87,6 +87,9 @@ internal sealed class SaveService : IRunStore
         await StoreBackupKeyAsync().ConfigureAwait(true);
     }
 
+    /// <summary>Restores exact backup bytes only after explicit player consent, then persists the new backup pointer.</summary>
+    /// <remarks>Call on the Godot thread. Cancellation or rejection leaves the active run unchanged; continuation validates restored content separately.</remarks>
+    /// <returns>Completion of the confirmed restore and localized feedback, or a no-op when no backup exists.</returns>
     internal async Task RestoreContentBackupAsync()
     {
         if (_latestBackup is null)
@@ -165,6 +168,8 @@ internal sealed class SaveService : IRunStore
         return prepared.Data;
     }
 
+    /// <summary>Persists the current recovery pointer, deleting its metadata when no backup remains.</summary>
+    /// <returns>Completion of metadata IO; failures propagate so callers cannot report a fully committed recovery.</returns>
     internal Task StoreBackupKeyAsync() => _latestBackup is null
         ? _storage.DeleteAsync(_dataRoot + "/last-content-backup.json")
         : _storage.WriteAsync(_dataRoot + "/last-content-backup.json", _latestBackup);

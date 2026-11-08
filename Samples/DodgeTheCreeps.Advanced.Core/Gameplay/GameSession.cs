@@ -6,7 +6,7 @@ using System;
 namespace DodgeTheCreeps.Advanced.Core.Gameplay;
 
 /// <summary>
-/// Owns one run's save eligibility and unsaved-change policy. It contains no engine,
+/// Owns the current run's unsaved-change policy and the persisted checkpoint's retirement state. It contains no engine,
 /// storage or container access; the application updates it after successful effects.
 /// </summary>
 public sealed class GameSession
@@ -21,8 +21,17 @@ public sealed class GameSession
     /// <summary>Monotonic identity of gameplay changes observed before an asynchronous save.</summary>
     public long ChangeVersion => _changeVersion;
 
-    /// <summary>Whether the run ended and its old save must no longer be offered.</summary>
+    /// <summary>Whether the currently observed board ended; a retry resets this independently of the persisted slot.</summary>
     public bool IsRetired
+    {
+        get; private set;
+    }
+
+    /// <summary>
+    /// Whether the persisted slot belongs to an ended run whose deletion has not succeeded.
+    /// Starting another run does not make that old checkpoint safe to continue or restore.
+    /// </summary>
+    public bool IsCheckpointRetired
     {
         get; private set;
     }
@@ -33,7 +42,7 @@ public sealed class GameSession
         get; private set;
     }
 
-    /// <summary>Begins a new or restored board without claiming that a new board was saved.</summary>
+    /// <summary>Begins a board without claiming it was saved or reviving an undeleted checkpoint from an ended run.</summary>
     /// <param name="restored">Whether the board came from a successfully loaded checkpoint.</param>
     /// <param name="snapshot">The restored board, required only for continuation.</param>
     public void Begin(bool restored, RunSnapshot? snapshot = null)
@@ -42,6 +51,7 @@ public sealed class GameSession
             throw new ArgumentNullException(nameof(snapshot));
         _generation = checked(_generation + 1);
         IsRetired = false;
+        // A retry changes the board, not the old slot. Only deletion or a committed replacement clears its retirement.
         HasChanges = !restored;
         _savedPosition = restored ? (snapshot!.X, snapshot.Y) : null;
     }
@@ -63,6 +73,7 @@ public sealed class GameSession
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         IsRetired = false;
+        IsCheckpointRetired = false;
         HasChanges = _changeVersion != observedChangeVersion;
         _savedPosition = (snapshot.X, snapshot.Y);
     }
@@ -71,9 +82,16 @@ public sealed class GameSession
     public void Retire()
     {
         IsRetired = true;
+        IsCheckpointRetired = true;
         HasChanges = false;
         _savedPosition = null;
     }
+
+    /// <summary>
+    /// Records successful deletion of the ended checkpoint. The ended board remains retired until a new run begins.
+    /// Call only after the persistent slot has been removed, never merely after starting a retry.
+    /// </summary>
+    public void MarkCheckpointDeleted() => IsCheckpointRetired = false;
 
     /// <summary>Determines whether leaving a live board requires a discard decision.</summary>
     /// <param name="isRunning">Whether a board is active.</param>
@@ -90,7 +108,7 @@ public sealed class GameSession
     {
         if (!contentReady)
             throw new InvalidOperationException("Repair content selection and restart before playing.");
-        if (restore && IsRetired)
+        if (restore && (IsRetired || IsCheckpointRetired))
             throw new InvalidOperationException("This run has ended and cannot be continued.");
     }
 }

@@ -54,8 +54,8 @@ internal sealed class SettingsService : IDisposable
     private readonly SemaphoreSlim _preferencesGate = new(1, 1);
     private static readonly string[] PreferenceBuses = ["Master", "BGM", "SFX"];
 
-    /// <summary>Saves an audio/display draft while retaining the current score and immediately saved language.</summary>
     // #region tutorial-save-settings
+    /// <summary>Saves an audio/display draft while retaining the current score and immediately saved language.</summary>
     internal Task SaveSettingsAsync(DodgePreferences draft)
     {
         ArgumentNullException.ThrowIfNull(draft);
@@ -143,6 +143,7 @@ internal sealed class SettingsService : IDisposable
         finally { _preferencesGate.Release(); }
     }
 
+    /// <summary>Creates only missing sample audio buses, preserving existing project routing and gain settings.</summary>
     private static void EnsureAudioBuses()
     {
         foreach (var name in PreferenceBuses)
@@ -156,6 +157,7 @@ internal sealed class SettingsService : IDisposable
         }
     }
 
+    /// <summary>Updates only changed native categories so language or score writes do not reset the current display.</summary>
     private void ApplyNativePreferences(DodgePreferences next, DodgePreferences? previous)
     {
         if (previous is null || !next.Volume.Equals(previous.Volume) || !next.BgmVolume.Equals(previous.BgmVolume) ||
@@ -172,6 +174,7 @@ internal sealed class SettingsService : IDisposable
             _text.ApplySaved(next.Language);
     }
 
+    /// <summary>Converts normalized volume to native gain while preserving exact silence through the mute flag.</summary>
     private static void SetAudioBus(string name, float volume)
     {
         var index = AudioServer.GetBusIndex(name);
@@ -181,6 +184,7 @@ internal sealed class SettingsService : IDisposable
         AudioServer.SetBusMute(index, volume <= 0);
     }
 
+    /// <summary>Applies display preferences with a fixed logical arena and aspect-correct desktop bounds.</summary>
     private void ApplyGraphicsPreferences(DodgePreferences preferences)
     {
         // Output size and logical gameplay coordinates are separate: wide windows letterbox
@@ -207,6 +211,7 @@ internal sealed class SettingsService : IDisposable
         }
     }
 
+    /// <summary>Captures applied native values before a transaction, excluding display operations in headless mode.</summary>
     private NativePreferencesSnapshot CaptureNativePreferences()
     {
         var audio = PreferenceBuses.Select(name =>
@@ -220,6 +225,7 @@ internal sealed class SettingsService : IDisposable
         return new NativePreferencesSnapshot(audio, window, _text.CurrentLanguage);
     }
 
+    /// <summary>Rolls back native audio, window and language values when applying or persisting a draft fails.</summary>
     private void RestoreNativePreferences(NativePreferencesSnapshot snapshot)
     {
         foreach (var (index, decibels, muted) in snapshot.Audio)

@@ -30,6 +30,8 @@ internal sealed class ContentSelectionService
     /// <summary>Switches an explicitly injected content instance for isolated native fixture ownership.</summary>
     internal void SetContent(Content.DodgeContent content) => _content = content;
 
+    /// <summary>Opens installed-content choices on the Godot thread without changing the active content session.</summary>
+    /// <returns>Completion of content-view activation; application shutdown cancels the request.</returns>
     internal Task OpenContentAsync() => _ui.ShowAsync(DodgeRoutes.Content, args: true, _cancellationToken);
 
     /// <summary>Requires exact installed-code approval before recording an enabled next-start choice.</summary>
@@ -70,5 +72,4 @@ internal sealed class ContentSelectionService
     /// <summary>Selects an already loaded arena.</summary>
     internal Task CycleArenaAsync() => _content.CycleArenaAsync(_cancellationToken);
 
-    /// <summary>Restores original bytes; a subsequent continue still checks their content and schema.</summary>
 }

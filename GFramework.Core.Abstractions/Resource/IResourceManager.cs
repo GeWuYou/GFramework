@@ -6,11 +6,10 @@ namespace GFramework.Core.Abstractions.Resource;
 /// <summary>Coordinates typed resource loading, caching and leases independently of Architecture.</summary>
 /// <remarks>
 ///     Cache identity is the requested type and ordinal path. Requests share one in-flight load for each identity.
-///     Closing rejects new work, waits for in-flight loads, and releases unleased resources. Existing leases remain
+///     Closing rejects new work, waits for in-flight loads and releases, and releases unleased resources. Existing leases remain
 ///     usable until disposed. Externally registered loaders and policies remain owned by the caller; their release
 ///     capabilities must outlive every issued lease. Return leases before disposing a DI provider that owns loaders.
-///     Callbacks
-///     are not automatically dispatched to an engine thread; loaders must arrange their required thread affinity.
+///     Callbacks are not automatically dispatched to an engine thread; loaders must arrange their required thread affinity.
 /// </remarks>
 public interface IResourceManager : IDisposable, IAsyncDisposable
 {

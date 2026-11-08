@@ -87,6 +87,60 @@ public sealed class RunUseCasesTests
         Assert.DoesNotThrow(() => session.RequireStartAllowed(contentReady: true, restore: false));
     }
 
+    /// <summary>A retry and discard cannot turn an undeleted dead checkpoint back into a continuable run.</summary>
+    [Test]
+    public async Task RetryAndLeaveKeepFailedDeathCheckpointUnavailable()
+    {
+        var trace = new List<string>();
+        var session = new GameSession();
+        var store = new Store(trace) { DeleteFailure = true, Loaded = Snapshot() };
+        using var runs = new RunUseCases(session, new Board(trace), store);
+        await Assert.ThrowsAsync<InvalidOperationException>(async () => await runs.RetireAsync().ConfigureAwait(false)).ConfigureAwait(false);
+        await runs.StartAsync(restore: false, contentReady: true, "base:yard").ConfigureAwait(false);
+        await runs.LeaveAsync().ConfigureAwait(false);
+
+        Assert.That(session.IsRetired, Is.False, "The retry is a live run, separate from the old slot.");
+        Assert.That(session.IsCheckpointRetired, Is.True);
+        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await runs.StartAsync(restore: true, contentReady: true, "base:yard").ConfigureAwait(false)).ConfigureAwait(false);
+        Assert.That(trace, Does.Not.Contain("load"), "A dead checkpoint must be rejected before persistence is read.");
+    }
+
+    /// <summary>Only a committed replacement checkpoint can make a retry continuable after death-save deletion failed.</summary>
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task RetrySaveClearsRetiredCheckpointOnlyAfterCommit(bool saveFailure)
+    {
+        var trace = new List<string>();
+        var session = new GameSession();
+        var store = new Store(trace) { DeleteFailure = true, SaveFailure = saveFailure };
+        using var runs = new RunUseCases(session, new Board(trace), store);
+        await Assert.ThrowsAsync<InvalidOperationException>(async () => await runs.RetireAsync().ConfigureAwait(false)).ConfigureAwait(false);
+        await runs.StartAsync(restore: false, contentReady: true, "base:yard").ConfigureAwait(false);
+        if (saveFailure)
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await runs.SaveAsync().ConfigureAwait(false)).ConfigureAwait(false);
+        else
+            await runs.SaveAsync().ConfigureAwait(false);
+
+        Assert.That(session.IsCheckpointRetired, Is.EqualTo(saveFailure));
+        if (saveFailure)
+            Assert.Throws<InvalidOperationException>(() => session.RequireStartAllowed(contentReady: true, restore: true));
+        else
+            Assert.DoesNotThrow(() => session.RequireStartAllowed(contentReady: true, restore: true));
+    }
+
+    /// <summary>Successful deletion clears the invalid slot marker while the ended board remains retired.</summary>
+    [Test]
+    public async Task SuccessfulDeathDeletionClearsCheckpointMarker()
+    {
+        var session = new GameSession();
+        using var runs = new RunUseCases(session, new Board([]), new Store([]));
+        await runs.RetireAsync().ConfigureAwait(false);
+        Assert.That(session.IsRetired, Is.True);
+        Assert.That(session.IsCheckpointRetired, Is.False);
+        Assert.Throws<InvalidOperationException>(() => session.RequireStartAllowed(contentReady: true, restore: true));
+    }
+
     /// <summary>Broken content is rejected before any persistent or native action.</summary>
     [Test]
     public async Task InvalidContentDoesNotTouchStoreOrBoard()
@@ -211,10 +265,12 @@ public sealed class RunUseCasesTests
 
     private sealed class Board(List<string> trace) : IRunBoard
     {
+        /// <summary>Optional preparation barrier used to hold a start across an await.</summary>
         internal TaskCompletionSource? PrepareCompletion
         {
             get; init;
         }
+        /// <summary>Signals when the board preparation port has been reached.</summary>
         internal TaskCompletionSource PrepareStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         /// <inheritdoc />
         public bool IsRunning => true;
@@ -247,19 +303,24 @@ public sealed class RunUseCasesTests
 
     private sealed class Store(List<string> trace) : IRunStore
     {
+        /// <summary>Optional write barrier used to observe operations queued behind persistence.</summary>
         internal TaskCompletionSource? SaveCompletion
         {
             get; init;
         }
+        /// <summary>Signals when a persistent write has started.</summary>
         internal TaskCompletionSource SaveStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        /// <summary>Checkpoint supplied by the load port, or null for cancelled recovery.</summary>
         internal RunSnapshot? Loaded
         {
             get; init;
         }
+        /// <summary>Injects a write failure without replacing the previous checkpoint.</summary>
         internal bool SaveFailure
         {
             get; init;
         }
+        /// <summary>Injects a deletion failure so the ended checkpoint remains in storage.</summary>
         internal bool DeleteFailure
         {
             get; init;

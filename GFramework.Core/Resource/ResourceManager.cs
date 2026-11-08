@@ -11,8 +11,8 @@ namespace GFramework.Core.Resource;
 /// </summary>
 /// <remarks>
 ///     The operation lock protects cache identities, pending acquisitions and lease counts. Loader callbacks run
-///     outside that lock. One shared load is retained even when individual waiters cancel. Closing waits for loads,
-///     but does not wait for consumer-held leases: those remain valid and release their resource when disposed.
+///     outside that lock. One shared load is retained even when individual waiters cancel. Closing waits for loads and releases already
+///     in progress, but does not wait for consumer-held leases: those remain valid and release their resource when disposed.
 ///     Keep loader release capabilities alive until every lease is returned, including after shutdown completes.
 ///     Prefer asynchronous acquisition and disposal whenever a loader can suspend.
 /// </remarks>
@@ -27,6 +27,8 @@ public sealed class ResourceManager : IResourceManager
     private readonly Dictionary<Type, object> _loaders = [];
     private readonly List<Exception> _shutdownErrors = [];
     private IResourceReleaseStrategy _releaseStrategy = new ManualReleaseStrategy();
+    private int _activeReleases;
+    private TaskCompletionSource? _releaseDrain;
     private bool _closed;
     private Task? _shutdownTask;
 
@@ -116,8 +118,9 @@ public sealed class ResourceManager : IResourceManager
                 return false;
             entry = operation.Entry;
             _entries.Remove(key);
+            TrackRelease();
         }
-        entry.Release();
+        ReleaseTracked(entry);
         return true;
     }
 
@@ -177,10 +180,10 @@ public sealed class ResourceManager : IResourceManager
     }
 
     /// <summary>
-    ///     Closes the manager synchronously when no asynchronous load is pending. Use DisposeAsync otherwise,
+    ///     Closes the manager synchronously when no load or release is pending. Use DisposeAsync otherwise,
     ///     so a loader awaiting a host synchronization context is never blocked by synchronous shutdown.
     /// </summary>
-    /// <exception cref="InvalidOperationException">A load or asynchronous shutdown is still pending.</exception>
+    /// <exception cref="InvalidOperationException">A load, release or asynchronous shutdown is still pending.</exception>
     public void Dispose()
     {
         StartShutdown(synchronous: true).GetAwaiter().GetResult();
@@ -188,7 +191,7 @@ public sealed class ResourceManager : IResourceManager
     }
 
     /// <summary>
-    ///     Rejects new acquisitions, waits for shared loads, and releases entries without leases.
+    ///     Rejects new acquisitions, waits for shared loads and in-flight releases, and releases entries without leases.
     ///     Repeated calls observe the same shutdown task; active leases remain valid until individually disposed.
     /// </summary>
     /// <returns>The shared shutdown operation.</returns>
@@ -207,9 +210,9 @@ public sealed class ResourceManager : IResourceManager
         List<ResourceCacheEntry> released;
         lock (_gate)
         {
-            if (synchronous && (_entries.Values.Any(operation => !operation.Completion.Task.IsCompleted) ||
+            if (synchronous && (_activeReleases != 0 || _entries.Values.Any(operation => !operation.Completion.Task.IsCompleted) ||
                                 _shutdownTask is { IsCompleted: false }))
-                throw new InvalidOperationException("Resource loading is pending. Await DisposeAsync() instead.");
+                throw new InvalidOperationException("Resource loading or release is pending. Await DisposeAsync() instead.");
             if (_shutdownTask != null)
                 return new ValueTask(_shutdownTask);
             _closed = true;
@@ -353,7 +356,8 @@ public sealed class ResourceManager : IResourceManager
             entry.LeaseCount--;
             released = DetachIfEligible(key, operation);
         }
-        released?.Release();
+        if (released is not null)
+            ReleaseTracked(released);
     }
 
     /// <summary>Detaches only the current identity; stale release callbacks cannot affect a later load of the same key.</summary>
@@ -372,6 +376,7 @@ public sealed class ResourceManager : IResourceManager
             (!_closed && (operation.Reservations != 0 || operation.Pinned)))
             return null;
         _entries.Remove(key);
+        TrackRelease();
         return operation.Entry;
     }
 
@@ -384,40 +389,68 @@ public sealed class ResourceManager : IResourceManager
             if (operation.Entry == null || operation.Entry.LeaseCount != 0 || (!_closed && operation.Reservations != 0))
                 continue;
             _entries.Remove(key);
+            TrackRelease();
             released.Add(operation.Entry);
         }
         return released;
     }
 
-    /// <summary>Records shutdown releases for the shutdown caller while preserving ordinary release exceptions.</summary>
-    private void ReleaseAfterClose(ResourceCacheEntry? entry)
+    /// <summary>Reserves a release under the cache lock before its detached entry becomes invisible to shutdown.</summary>
+    private void TrackRelease()
     {
-        if (entry == null)
-            return;
+        if (_activeReleases++ == 0)
+            _releaseDrain = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+    }
+
+    /// <summary>
+    ///     Runs external cleanup without the cache lock. Failure routing and the release drain are published under
+    ///     one lock, so a concurrent close cannot hide an error between the caller and the shutdown result.
+    /// </summary>
+    private void ReleaseTracked(ResourceCacheEntry entry, bool suppressAfterClose = false)
+    {
+        Exception? failure = null;
+        var suppressed = false;
         try
         {
             entry.Release();
         }
         catch (Exception error)
         {
+            failure = error;
+        }
+        finally
+        {
             lock (_gate)
             {
-                if (!_closed)
-                    throw;
-                _shutdownErrors.Add(error);
+                if (_closed && failure is not null)
+                {
+                    _shutdownErrors.Add(failure);
+                    suppressed = suppressAfterClose;
+                }
+                if (--_activeReleases == 0)
+                    _releaseDrain!.TrySetResult();
             }
         }
+        if (failure is not null && !suppressed)
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
+    }
+
+    /// <summary>Delivers ordinary failures to acquisitions, or records closing failures for the shared shutdown.</summary>
+    private void ReleaseAfterClose(ResourceCacheEntry? entry)
+    {
+        if (entry is not null)
+            ReleaseTracked(entry, suppressAfterClose: true);
     }
 
     /// <summary>Attempts every release and reports failures together.</summary>
-    private static void ReleaseAll(IEnumerable<ResourceCacheEntry> entries)
+    private void ReleaseAll(IEnumerable<ResourceCacheEntry> entries)
     {
         var errors = new List<Exception>();
         foreach (var entry in entries)
         {
             try
             {
-                entry.Release();
+                ReleaseTracked(entry);
             }
             catch (Exception error) { errors.Add(error); }
         }
@@ -437,12 +470,24 @@ public sealed class ResourceManager : IResourceManager
                 await Task.WhenAll(pending).ConfigureAwait(false);
             }
             catch (Exception) { /* Each shared failure is already delivered to its acquiring callers. */ }
-            lock (_gate)
+            // A detached entry may no longer be in the cache when shutdown starts. Join its release barrier,
+            // then recheck under the same lock so another release cannot slip between the drain and completion.
+            while (true)
             {
-                if (_shutdownErrors.Count != 0)
-                    completion.TrySetException(new AggregateException("Resource shutdown failed.", _shutdownErrors));
-                else
-                    completion.TrySetResult();
+                Task drain;
+                lock (_gate)
+                {
+                    if (_activeReleases == 0)
+                    {
+                        if (_shutdownErrors.Count != 0)
+                            completion.TrySetException(new AggregateException("Resource shutdown failed.", _shutdownErrors));
+                        else
+                            completion.TrySetResult();
+                        return;
+                    }
+                    drain = _releaseDrain!.Task;
+                }
+                await drain.ConfigureAwait(false);
             }
         }
         catch (Exception error)
