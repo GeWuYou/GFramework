@@ -36,8 +36,14 @@ public sealed class CoroutineOwnershipTests
         var childDisposed = false;
         IEnumerator<IYieldInstruction> Child()
         {
-            try { yield return new WaitOneFrame(); }
-            finally { childDisposed = true; }
+            try
+            {
+                yield return new WaitOneFrame();
+            }
+            finally
+            {
+                childDisposed = true;
+            }
         }
         IEnumerator<IYieldInstruction> Parent(CoroutineContext context)
         {
@@ -169,7 +175,10 @@ public sealed class CoroutineOwnershipTests
                 Assert.That(childFinally, Is.False);
                 yield return new Delay(100);
             }
-            finally { childFinally = true; }
+            finally
+            {
+                childFinally = true;
+            }
         }
         IEnumerator<IYieldInstruction> Parent(CoroutineContext context)
         {
@@ -209,7 +218,10 @@ public sealed class CoroutineOwnershipTests
                 unwound = true;
                 yield return new Delay(100);
             }
-            finally { disposed = true; }
+            finally
+            {
+                disposed = true;
+            }
         }
         handle = scheduler.Run(Routine());
         scheduler.Update();
@@ -227,7 +239,10 @@ public sealed class CoroutineOwnershipTests
         scheduler.OnCoroutineFinished += (_, _) =>
         {
             notified++;
-            if (!replacement.IsValid) { replacement = scheduler.Run(Wait()); }
+            if (!replacement.IsValid)
+            {
+                replacement = scheduler.Run(Wait());
+            }
         };
         var handle = scheduler.Run(Immediate());
         Assert.That(notified, Is.EqualTo(1));
@@ -245,7 +260,10 @@ public sealed class CoroutineOwnershipTests
         var rejected = false;
         IEnumerator<IYieldInstruction> Routine()
         {
-            try { yield return new Delay(100); }
+            try
+            {
+                yield return new Delay(100);
+            }
             finally
             {
                 rejected = Assert.Throws<ObjectDisposedException>(() => retained.Run(Wait())) != null;
@@ -296,7 +314,10 @@ public sealed class CoroutineOwnershipTests
         var scheduler = Create();
         var target = scheduler.Run(Immediate());
         var captured = scheduler.Join(target);
-        for (var index = 0; index < 1100; index++) { scheduler.Run(Immediate()); }
+        for (var index = 0; index < 1100; index++)
+        {
+            scheduler.Run(Immediate());
+        }
         Assert.That(scheduler.TryGetResult(target, out _), Is.False);
         var waiter = scheduler.Run(WaitFor(captured));
         scheduler.Update();
@@ -333,8 +354,14 @@ public sealed class CoroutineOwnershipTests
         var scheduler = Create();
         IEnumerator<IYieldInstruction> Chain(int remaining)
         {
-            if (remaining > 0) { yield return new WaitForCoroutine(Chain(remaining - 1)); }
-            else { yield return new Delay(100); }
+            if (remaining > 0)
+            {
+                yield return new WaitForCoroutine(Chain(remaining - 1));
+            }
+            else
+            {
+                yield return new Delay(100);
+            }
         }
         var parent = scheduler.Run(Chain(2000));
         Assert.That(scheduler.ActiveCoroutineCount, Is.EqualTo(2001));
@@ -348,7 +375,10 @@ public sealed class CoroutineOwnershipTests
     public void RepeatedStarts_DoNotGrowHistoricalSlotScan()
     {
         var scheduler = Create();
-        for (var index = 0; index < 10000; index++) { scheduler.Run(Immediate()); }
+        for (var index = 0; index < 10000; index++)
+        {
+            scheduler.Run(Immediate());
+        }
         Assert.That(scheduler.AllocatedSlotCount, Is.EqualTo(1));
         Assert.That(scheduler.ActiveCoroutineCount, Is.Zero);
     }
@@ -377,7 +407,9 @@ public sealed class CoroutineOwnershipTests
         /// <inheritdoc />
         public bool IsDone => true;
         /// <inheritdoc />
-        public void Update(double deltaTime) { }
+        public void Update(double deltaTime)
+        {
+        }
         /// <inheritdoc />
         public void Dispose() => throw exception;
     }
@@ -388,9 +420,18 @@ public sealed class CoroutineOwnershipTests
         Assert.That(scheduler.TryGetResult(handle, out var result), Is.True);
         return result;
     }
-    private static IEnumerator<IYieldInstruction> Immediate() { yield break; }
-    private static IEnumerator<IYieldInstruction> Wait() { yield return new Delay(100); }
-    private static IEnumerator<IYieldInstruction> WaitFor(IYieldInstruction instruction) { yield return instruction; }
+    private static IEnumerator<IYieldInstruction> Immediate()
+    {
+        yield break;
+    }
+    private static IEnumerator<IYieldInstruction> Wait()
+    {
+        yield return new Delay(100);
+    }
+    private static IEnumerator<IYieldInstruction> WaitFor(IYieldInstruction instruction)
+    {
+        yield return instruction;
+    }
     private static IEnumerator<IYieldInstruction> FailAfterFrame(Exception exception)
     {
         yield return new WaitOneFrame();

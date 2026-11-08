@@ -89,7 +89,8 @@ public sealed partial class CoroutineScheduler
     internal CoroutineHandle Start(CoroutineScope scope, CoroutineHandle parent,
         IEnumerator<IYieldInstruction>? coroutine, Func<CoroutineContext, IEnumerator<IYieldInstruction>>? factory,
         string? tag, CoroutinePriority priority, string? group, CancellationToken cancellationToken,
-        CoroutineExecutionStage? stage, bool ignorePause, CoroutineFailurePolicy childFailurePolicy)
+        CoroutineExecutionStage? stage, bool ignorePause, CoroutineFailurePolicy childFailurePolicy,
+        TaskCompletionSource<CoroutineResult>? resultSource = null)
     {
         AssertDriverThread();
         if (IsDisposed || _clearing || scope.IsDisposed)
@@ -98,22 +99,25 @@ public sealed partial class CoroutineScheduler
         }
         if (RejectInput(coroutine, factory, cancellationToken))
         {
+            resultSource?.TrySetResult(default);
             return default;
         }
-        if (priority is < CoroutinePriority.Lowest or > CoroutinePriority.Highest)
-        {
-            throw new ArgumentOutOfRangeException(nameof(priority));
-        }
-        ValidateFailurePolicy(childFailurePolicy);
-        var actualStage = stage ?? ExecutionStage;
-        EnsureSupportedStage(actualStage);
+        var actualStage = ValidateStartOptions(priority, stage, childFailurePolicy);
         var index = AllocateSlot();
         var handle = new CoroutineHandle(SchedulerId, index, _generations[index]);
         var slot = new CoroutineSlot
         {
-            Handle = handle, Scope = scope, Parent = parent, Enumerator = coroutine, Stage = actualStage,
-            Priority = priority, IgnorePause = ignorePause, Tag = tag, Group = group,
-            CancellationToken = cancellationToken, StartedTimestamp = Stopwatch.GetTimestamp(),
+            Handle = handle,
+            Scope = scope,
+            Parent = parent,
+            Enumerator = coroutine,
+            Stage = actualStage,
+            Priority = priority,
+            IgnorePause = ignorePause,
+            Tag = tag,
+            Group = group,
+            CancellationToken = cancellationToken,
+            StartedTimestamp = Stopwatch.GetTimestamp(),
             ChildFailurePolicy = childFailurePolicy
         };
         try
@@ -125,19 +129,13 @@ public sealed partial class CoroutineScheduler
             _freeSlots.Push(index);
             throw;
         }
-        _slots[index] = slot;
-        _active.Add(handle, slot);
-        if (TryGetSlot(parent, out var parentSlot))
-        {
-            parentSlot.Children.Add(handle);
-        }
-        slot.QueueNode = _queues[(int)actualStage, (int)priority].AddLast(slot);
-        _statistics?.RecordStart(priority, tag);
+        RegisterActiveSlot(slot, resultSource);
         if (cancellationToken.CanBeCanceled)
         {
             slot.CancellationRegistration = cancellationToken.Register(() => _pendingKills.Enqueue(handle));
         }
         InitializeFactory(slot, factory);
+        BindCoroutineCancellation(slot);
         if (slot.PendingResult is { } pending)
         {
             RequestTermination(slot, pending);
@@ -149,6 +147,37 @@ public sealed partial class CoroutineScheduler
         }
         RefreshStatistics();
         return handle;
+    }
+
+    /// <summary>Validates launch options before reserving any task identity or ownership.</summary>
+    private CoroutineExecutionStage ValidateStartOptions(CoroutinePriority priority,
+        CoroutineExecutionStage? stage, CoroutineFailurePolicy childFailurePolicy)
+    {
+        if (priority is < CoroutinePriority.Lowest or > CoroutinePriority.Highest)
+        {
+            throw new ArgumentOutOfRangeException(nameof(priority));
+        }
+        ValidateFailurePolicy(childFailurePolicy);
+        var actualStage = stage ?? ExecutionStage;
+        EnsureSupportedStage(actualStage);
+        return actualStage;
+    }
+
+    private void RegisterActiveSlot(CoroutineSlot slot, TaskCompletionSource<CoroutineResult>? resultSource)
+    {
+        _slots[slot.Handle.SlotIndex] = slot;
+        _active.Add(slot.Handle, slot);
+        if (resultSource != null)
+        {
+            // Explicit observers must exist before any user factory, intrinsic cancellation or completion callback can run.
+            _resultSources.Add(slot.Handle, resultSource);
+        }
+        if (TryGetSlot(slot.Parent, out var parentSlot))
+        {
+            parentSlot.Children.Add(slot.Handle);
+        }
+        slot.QueueNode = _queues[(int)slot.Stage, (int)slot.Priority].AddLast(slot);
+        _statistics?.RecordStart(slot.Priority, slot.Tag);
     }
 
     private bool RejectInput(IEnumerator<IYieldInstruction>? coroutine,
@@ -201,11 +230,39 @@ public sealed partial class CoroutineScheduler
         }
     }
 
+    /// <summary>
+    ///     在用户枚举器取得执行机会前绑定其宿主生命周期；令牌访问失败也保留枚举器清理责任。
+    /// </summary>
+    private void BindCoroutineCancellation(CoroutineSlot slot)
+    {
+        if (slot.PendingResult != null || slot.Enumerator is not ICoroutineCancellationSource source)
+        {
+            return;
+        }
+
+        slot.Executing = true;
+        _executingCount++;
+        try
+        {
+            RegisterContextCancellation(slot.Handle, source.CancellationToken);
+        }
+        catch (Exception exception)
+        {
+            slot.PendingResult = CombineResults(slot.PendingResult,
+                new CoroutineResult(CoroutineCompletionStatus.Faulted, exception));
+        }
+        finally
+        {
+            slot.Executing = false;
+            _executingCount--;
+        }
+    }
+
     /// <summary>Starts a child after checking that its parent is still accepting owned work.</summary>
     internal CoroutineHandle StartChild(CoroutineHandle parent, IEnumerator<IYieldInstruction>? coroutine,
         Func<CoroutineContext, IEnumerator<IYieldInstruction>>? factory, string? tag, CoroutinePriority priority,
         string? group, CancellationToken cancellationToken, CoroutineExecutionStage? stage, bool? ignorePause,
-        CoroutineFailurePolicy childFailurePolicy)
+        CoroutineFailurePolicy childFailurePolicy, TaskCompletionSource<CoroutineResult>? resultSource = null)
     {
         AssertDriverThread();
         if (!TryGetSlot(parent, out var slot) || slot.PendingResult != null || slot.BodyCompleted)
@@ -213,7 +270,7 @@ public sealed partial class CoroutineScheduler
             throw new InvalidOperationException("The parent flow no longer accepts child tasks.");
         }
         return Start(slot.Scope, parent, coroutine, factory, tag, priority, group, cancellationToken,
-            stage ?? slot.Stage, ignorePause ?? slot.IgnorePause, childFailurePolicy);
+            stage ?? slot.Stage, ignorePause ?? slot.IgnorePause, childFailurePolicy, resultSource);
     }
 
     /// <summary>Creates cancellation infrastructure only when user code requests a token for an asynchronous operation.</summary>
@@ -311,10 +368,7 @@ public sealed partial class CoroutineScheduler
                 }
                 return;
             }
-            if (slot.PendingResult == null)
-            {
-                InstallInstruction(slot, slot.Enumerator.Current);
-            }
+            AcquireYieldedInstruction(slot, slot.Enumerator.Current);
         }
         catch (Exception ex)
         {
@@ -336,6 +390,25 @@ public sealed partial class CoroutineScheduler
         }
     }
 
+    /// <summary>
+    ///     接收已经由 MoveNext 创建的等待资源；任务在同一步终止时只取得清理责任，不再启动工作。
+    /// </summary>
+    private void AcquireYieldedInstruction(CoroutineSlot slot, IYieldInstruction? instruction)
+    {
+        if (slot.PendingResult == null)
+        {
+            InstallInstruction(slot, instruction);
+            return;
+        }
+
+        slot.Waiting = instruction;
+        if (instruction is WaitForCoroutine child)
+        {
+            // 该子枚举器从未启动，仍须履行已经交出的资源所有权。
+            slot.PendingResult = CleanupResource(slot.PendingResult.Value, child.Coroutine.Dispose);
+        }
+    }
+
     private bool AdvanceWait(CoroutineSlot slot)
     {
         var waiting = slot.Waiting;
@@ -347,6 +420,11 @@ public sealed partial class CoroutineScheduler
         if (slot.PendingResult != null || !waiting.IsDone)
         {
             return false;
+        }
+        if (waiting is ICoroutineCompletionConsumer completion)
+        {
+            // 完成可发生在上面的 Update 与 IsDone 之间；先消费最终结果再释放等待。
+            completion.ConsumeCompletion();
         }
         if (waiting is JoinCoroutine { PropagateFailure: true } join)
         {

@@ -69,6 +69,18 @@ public sealed class CoroutineContext
             ignorePause, childFailurePolicy);
     }
 
+    /// <summary>Starts an explicitly observed child, installing its result source before start-time callbacks can evict diagnostic history.</summary>
+    /// <param name="coroutine">The child iterator whose ownership is transferred to the flow.</param>
+    /// <param name="result">The retained outcome, independent of bounded diagnostic history.</param>
+    /// <returns>The child identity, using the same default options as an ordinary child start.</returns>
+    internal CoroutineHandle RunChildObserved(IEnumerator<IYieldInstruction> coroutine, out Task<CoroutineResult> result)
+    {
+        var source = new TaskCompletionSource<CoroutineResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        result = source.Task;
+        return Scheduler.StartChild(Handle, coroutine, null, null, CoroutinePriority.Normal, null,
+            default, null, null, CoroutineFailurePolicy.FailFast, source);
+    }
+
     /// <summary>Runs children concurrently, joining all results and propagating any failure after cleanup.</summary>
     /// <param name="coroutines">Iterators transferred to the parent flow.</param>
     /// <returns>An iterator to yield or compose inside this flow.</returns>

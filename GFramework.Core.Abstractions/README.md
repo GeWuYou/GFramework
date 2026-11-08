@@ -55,7 +55,7 @@ IContextAware 要求显式绑定实例上下文；未绑定时不回退到全局
 
 `IArchitectureContext` 只承载组件获取、事件系统与环境访问。request / notification / stream 的分发契约位于 `GFramework.Cqrs.Abstractions`（`ICqrsRuntime` 等），按需安装，不在本包的契约面内。
 
-协程宿主声明实际支持的 `Update`、`FixedUpdate`、`Deferred` 阶段；运行时通过 `SwitchTo` 切换阶段。`CoroutineFailurePolicy` 区分一个操作内的 FailFast 与独立任务容器的 Supervisor。`ICoroutineStatistics` 将调度执行耗时与包含等待的存活时间分开，具体调度器、作用域和结果类型由 Core 提供。
+协程宿主声明实际支持的 `Update`、`FixedUpdate`、`Deferred` 阶段；运行时通过 `SwitchTo` 切换阶段。`CoroutineFailurePolicy` 区分一个操作内的 FailFast 与独立任务容器的 Supervisor。`ICoroutineStatistics` 将调度执行耗时与包含等待的存活时间分开，具体调度器、作用域和结果类型由 Core 提供。`ICoroutineCancellationSource` 让枚举器包装器公开额外生命周期令牌，统一启动入口在首步前绑定，作用域与子流程同样适用。
 
 ## 采用建议
 

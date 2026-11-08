@@ -96,7 +96,7 @@ internal static class Program
 
         var artifactsPath = ResolveArtifactsPath(commandLineSuffix);
         return new BenchmarkInvocation(
-            benchmarkDotNetArguments.ToArray(),
+            [.. benchmarkDotNetArguments],
             commandLineSuffix,
             artifactsPath,
             artifactsPath is not null);
@@ -126,7 +126,7 @@ internal static class Program
         var startInfo = new ProcessStartInfo("dotnet")
         {
             WorkingDirectory = isolatedHostDirectory,
-            UseShellExecute = false
+            UseShellExecute = false,
         };
 
         startInfo.ArgumentList.Add(isolatedAssemblyPath);

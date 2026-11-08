@@ -12,32 +12,27 @@ namespace GFramework.Godot.SourceGenerators.Abstractions;
 ///     <c>_Ready()</c> / <c>_ExitTree()</c> 中重复的 <c>+=</c> 与 <c>-=</c> 样板代码
 ///     收敛到生成器中统一维护。
 /// </remarks>
+/// <remarks>
+///     初始化 <see cref="BindNodeSignalAttribute" /> 的新实例。
+/// </remarks>
+/// <param name="nodeFieldName">目标节点字段名。</param>
+/// <param name="signalName">目标节点上的 CLR 事件名。</param>
+/// <exception cref="ArgumentNullException">
+///     <paramref name="nodeFieldName" /> 或 <paramref name="signalName" /> 为 <see langword="null" />。
+/// </exception>
 [AttributeUsage(AttributeTargets.Method, Inherited = false, AllowMultiple = true)]
-public sealed class BindNodeSignalAttribute : Attribute
+public sealed class BindNodeSignalAttribute(
+    string nodeFieldName,
+    string signalName) : Attribute
 {
-    /// <summary>
-    ///     初始化 <see cref="BindNodeSignalAttribute" /> 的新实例。
-    /// </summary>
-    /// <param name="nodeFieldName">目标节点字段名。</param>
-    /// <param name="signalName">目标节点上的 CLR 事件名。</param>
-    /// <exception cref="ArgumentNullException">
-    ///     <paramref name="nodeFieldName" /> 或 <paramref name="signalName" /> 为 <see langword="null" />。
-    /// </exception>
-    public BindNodeSignalAttribute(
-        string nodeFieldName,
-        string signalName)
-    {
-        NodeFieldName = nodeFieldName ?? throw new ArgumentNullException(nameof(nodeFieldName));
-        SignalName = signalName ?? throw new ArgumentNullException(nameof(signalName));
-    }
 
     /// <summary>
     ///     获取目标节点字段名。
     /// </summary>
-    public string NodeFieldName { get; }
+    public string NodeFieldName { get; } = nodeFieldName ?? throw new ArgumentNullException(nameof(nodeFieldName));
 
     /// <summary>
     ///     获取目标节点上的 CLR 事件名。
     /// </summary>
-    public string SignalName { get; }
+    public string SignalName { get; } = signalName ?? throw new ArgumentNullException(nameof(signalName));
 }

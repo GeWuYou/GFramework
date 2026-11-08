@@ -22,7 +22,7 @@ public sealed class ModPatchMethod
     /// <summary>Gets an optional priority override; null preserves Harmony's method annotation/default behavior.</summary>
     public int? Priority { get; init; }
     /// <summary>Gets owner IDs to run after this patch; an empty list preserves method annotations.</summary>
-    public IReadOnlyList<string> Before { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> Before { get; init; } = [];
     /// <summary>Gets owner IDs to run before this patch; an empty list preserves method annotations.</summary>
-    public IReadOnlyList<string> After { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> After { get; init; } = [];
 }

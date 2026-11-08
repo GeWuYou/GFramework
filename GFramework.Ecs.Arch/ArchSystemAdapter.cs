@@ -68,10 +68,15 @@ public abstract class ArchSystemAdapter<T> : AbstractSystem, IArchSystemAdapter<
     ///     显式实现 IDisposable 的资源释放方法
     ///     调用受保护的虚方法 OnArchDispose 以允许子类自定义资源清理逻辑
     /// </summary>
+    /// <remarks>成功清理后抑制派生类终结器；清理抛错时不抑制终结器兜底。</remarks>
     void IDisposable.Dispose()
     {
         if (Interlocked.Exchange(ref _disposed, 1) == 0)
+        {
             OnArchDispose();
+            // Successful cleanup suppresses derived finalizers; a cleanup failure keeps the finalizer fallback.
+            GC.SuppressFinalize(this);
+        }
     }
 
     // ===== GFramework 生命周期 =====

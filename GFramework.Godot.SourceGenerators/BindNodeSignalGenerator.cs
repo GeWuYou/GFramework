@@ -190,10 +190,9 @@ public sealed class BindNodeSignalGenerator : IIncrementalGenerator
     private static List<MethodCandidate> CollectMethodCandidates(
         IReadOnlyDictionary<MethodCandidate, IReadOnlyList<AttributeData>> methodAttributes)
     {
-        return methodAttributes
+        return [.. methodAttributes
             .Where(static pair => pair.Value.Count > 0)
-            .Select(static pair => pair.Key)
-            .ToList();
+            .Select(static pair => pair.Key)];
     }
 
     private static List<SignalBindingInfo> CollectBindings(
@@ -410,7 +409,7 @@ public sealed class BindNodeSignalGenerator : IIncrementalGenerator
         AttributeData attribute,
         params object[] messageArgs)
     {
-        var location = attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation() ??
+        var location = attribute.ApplicationSyntaxReference?.GetSyntax(context.CancellationToken).GetLocation() ??
                        candidate.Method.Identifier.GetLocation();
 
         context.ReportDiagnostic(Diagnostic.Create(descriptor, location, messageArgs));
@@ -441,10 +440,9 @@ public sealed class BindNodeSignalGenerator : IIncrementalGenerator
         IMethodSymbol methodSymbol,
         INamedTypeSymbol bindNodeSignalAttribute)
     {
-        return methodSymbol.GetAttributes()
+        return [.. methodSymbol.GetAttributes()
             .Where(attribute =>
-                SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, bindNodeSignalAttribute))
-            .ToList();
+                SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, bindNodeSignalAttribute))];
     }
 
     private static IFieldSymbol? FindField(
@@ -571,7 +569,7 @@ public sealed class BindNodeSignalGenerator : IIncrementalGenerator
                 memberAccess.Name.Identifier.ValueText,
                 generatedMethodName,
                 StringComparison.Ordinal),
-            _ => false
+            _ => false,
         };
     }
 
@@ -596,7 +594,7 @@ public sealed class BindNodeSignalGenerator : IIncrementalGenerator
             IdentifierNameSyntax identifierName => identifierName.Identifier.ValueText,
             QualifiedNameSyntax qualifiedName => GetAttributeSimpleName(qualifiedName.Right),
             AliasQualifiedNameSyntax aliasQualifiedName => aliasQualifiedName.Name.Identifier.ValueText,
-            _ => null
+            _ => null,
         };
     }
 
@@ -614,22 +612,21 @@ public sealed class BindNodeSignalGenerator : IIncrementalGenerator
         if (namespaceName is not null)
         {
             sb.AppendLine()
-                .AppendLine($"namespace {namespaceName};");
+.Append("namespace ").Append(namespaceName).Append(';').AppendLine();
         }
 
         sb.AppendLine()
-            .AppendLine($"partial class {typeSymbol.Name}{generics.Parameters}");
+.Append("partial class ").Append(typeSymbol.Name).Append(generics.Parameters).AppendLine();
 
         foreach (var constraint in generics.Constraints)
-            sb.AppendLine($"    {constraint}");
+            sb.Append("    ").Append(constraint).AppendLine();
 
         sb.AppendLine("{")
             .AppendLine($"    private void {BindMethodName}()")
             .AppendLine("    {");
 
         foreach (var binding in bindings)
-            sb.AppendLine(
-                $"        {binding.FieldSymbol.Name}.{binding.EventSymbol.Name} += {binding.MethodSymbol.Name};");
+            sb.Append("        ").Append(binding.FieldSymbol.Name).Append('.').Append(binding.EventSymbol.Name).Append(" += ").Append(binding.MethodSymbol.Name).Append(';').AppendLine();
 
         sb.AppendLine("    }")
             .AppendLine()
@@ -637,8 +634,7 @@ public sealed class BindNodeSignalGenerator : IIncrementalGenerator
             .AppendLine("    {");
 
         foreach (var binding in bindings)
-            sb.AppendLine(
-                $"        {binding.FieldSymbol.Name}.{binding.EventSymbol.Name} -= {binding.MethodSymbol.Name};");
+            sb.Append("        ").Append(binding.FieldSymbol.Name).Append('.').Append(binding.EventSymbol.Name).Append(" -= ").Append(binding.MethodSymbol.Name).Append(';').AppendLine();
 
         sb.AppendLine("    }")
             .AppendLine("}");
@@ -650,11 +646,11 @@ public sealed class BindNodeSignalGenerator : IIncrementalGenerator
     {
         return typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
             .Replace("global::", string.Empty)
-            .Replace("<", "_")
-            .Replace(">", "_")
-            .Replace(",", "_")
+            .Replace('<', '_')
+            .Replace('>', '_')
+            .Replace(',', '_')
             .Replace(" ", string.Empty)
-            .Replace(".", "_") + ".BindNodeSignal.g.cs";
+            .Replace('.', '_') + ".BindNodeSignal.g.cs";
     }
 
     private static IReadOnlyList<TypeGroup> GroupByContainingType(IEnumerable<MethodCandidate> candidates)
@@ -678,51 +674,32 @@ public sealed class BindNodeSignalGenerator : IIncrementalGenerator
         return orderedGroups;
     }
 
-    private sealed class MethodCandidate
+    private sealed class MethodCandidate(
+        MethodDeclarationSyntax method,
+        IMethodSymbol methodSymbol)
     {
-        public MethodCandidate(
-            MethodDeclarationSyntax method,
-            IMethodSymbol methodSymbol)
-        {
-            Method = method;
-            MethodSymbol = methodSymbol;
-        }
+        public MethodDeclarationSyntax Method { get; } = method;
 
-        public MethodDeclarationSyntax Method { get; }
-
-        public IMethodSymbol MethodSymbol { get; }
+        public IMethodSymbol MethodSymbol { get; } = methodSymbol;
     }
 
-    private sealed class SignalBindingInfo
+    private sealed class SignalBindingInfo(
+        IFieldSymbol fieldSymbol,
+        IEventSymbol eventSymbol,
+        IMethodSymbol methodSymbol)
     {
-        public SignalBindingInfo(
-            IFieldSymbol fieldSymbol,
-            IEventSymbol eventSymbol,
-            IMethodSymbol methodSymbol)
-        {
-            FieldSymbol = fieldSymbol;
-            EventSymbol = eventSymbol;
-            MethodSymbol = methodSymbol;
-        }
+        public IFieldSymbol FieldSymbol { get; } = fieldSymbol;
 
-        public IFieldSymbol FieldSymbol { get; }
+        public IEventSymbol EventSymbol { get; } = eventSymbol;
 
-        public IEventSymbol EventSymbol { get; }
-
-        public IMethodSymbol MethodSymbol { get; }
+        public IMethodSymbol MethodSymbol { get; } = methodSymbol;
     }
 
-    private sealed class TypeGroup
+    private sealed class TypeGroup(INamedTypeSymbol typeSymbol)
     {
-        public TypeGroup(INamedTypeSymbol typeSymbol)
-        {
-            TypeSymbol = typeSymbol;
-            Methods = new List<MethodCandidate>();
-        }
+        public INamedTypeSymbol TypeSymbol { get; } = typeSymbol;
 
-        public INamedTypeSymbol TypeSymbol { get; }
-
-        public List<MethodCandidate> Methods { get; }
+        public List<MethodCandidate> Methods { get; } = [];
     }
 
     /// <summary>

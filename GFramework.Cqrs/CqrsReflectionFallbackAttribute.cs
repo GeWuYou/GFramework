@@ -36,11 +36,10 @@ public sealed class CqrsReflectionFallbackAttribute : Attribute
     {
         ArgumentNullException.ThrowIfNull(fallbackHandlerTypeNames);
 
-        FallbackHandlerTypeNames = fallbackHandlerTypeNames
+        FallbackHandlerTypeNames = [.. fallbackHandlerTypeNames
             .Where(static typeName => !string.IsNullOrWhiteSpace(typeName))
             .Distinct(StringComparer.Ordinal)
-            .OrderBy(static typeName => typeName, StringComparer.Ordinal)
-            .ToArray();
+            .Order(StringComparer.Ordinal)];
         FallbackHandlerTypes = [];
     }
 
@@ -57,11 +56,10 @@ public sealed class CqrsReflectionFallbackAttribute : Attribute
         ArgumentNullException.ThrowIfNull(fallbackHandlerTypes);
 
         FallbackHandlerTypeNames = [];
-        FallbackHandlerTypes = fallbackHandlerTypes
+        FallbackHandlerTypes = [.. fallbackHandlerTypes
             .Where(static type => type is not null)
             .Distinct()
-            .OrderBy(static type => type.FullName ?? type.Name, StringComparer.Ordinal)
-            .ToArray();
+            .OrderBy(static type => type.FullName ?? type.Name, StringComparer.Ordinal)];
     }
 
     /// <summary>

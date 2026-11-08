@@ -31,10 +31,9 @@ jobs:
           persist-credentials: false
       - name: MegaLinter
         uses: oxsecurity/megalinter@v10.2.0
-        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FAIL_ON_ERROR: ${{ github.ref == 'refs/heads/main' }}
+          FAIL_ON_ERROR: true
           # PRs retain incremental lint; default-branch reports cover the current codebase.
           VALIDATE_ALL_CODEBASE: ${{ github.event_name != 'pull_request' }}
       # v10 emits one aggregate report. Missing output must fail visibly instead of skipping upload.

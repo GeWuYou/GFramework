@@ -7,37 +7,59 @@ using GFramework.Core.Abstractions.Coroutine;
 
 namespace GFramework.Godot.Coroutine;
 
-/// <summary>An owned iterator whose node-exit cancellation is consumed by Timing before its first step.</summary>
+/// <summary>An owned iterator whose intrinsic node lifetime is consumed by every Core coroutine start boundary.</summary>
 /// <remarks>
 /// Native subscriptions are attached and released on the Godot thread. External cancellation only touches
-/// the managed cancellation source; Timing forwards its token into the scheduler so long waits do not hide exit.
+/// the managed cancellation source. The scheduler consumes its intrinsic token for direct, scoped, factory
+/// and child starts, so long waits and scene pause do not hide node exit.
 /// </remarks>
-internal sealed class NodeBoundCoroutine : IEnumerator<IYieldInstruction>
+internal sealed class NodeBoundCoroutine : IEnumerator<IYieldInstruction>, ICoroutineCancellationSource
 {
     private readonly IEnumerator<IYieldInstruction> _inner;
     private readonly List<WeakReference<Node>> _nodes = new();
     private readonly CancellationTokenSource _cancellation = new();
     private readonly Action _onNodeExiting;
-    private CancellationTokenRegistration _externalRegistration;
+    private CancellationTokenRegistration _innerCancellationRegistration;
     private bool _disposed;
-    private bool _bound;
 
     /// <summary>Transfers iterator ownership and subscribes each valid node exactly once.</summary>
     /// <param name="inner">The underlying iterator.</param>
     /// <param name="nodes">Any node's exit cancels this iterator.</param>
     internal NodeBoundCoroutine(IEnumerator<IYieldInstruction> inner, IReadOnlyCollection<Node> nodes)
     {
+        ArgumentNullException.ThrowIfNull(nodes);
         _inner = inner ?? throw new ArgumentNullException(nameof(inner));
         _onNodeExiting = _cancellation.Cancel;
-        foreach (var node in nodes.Distinct())
+        CancellationToken = _cancellation.Token;
+        try
         {
-            if (!Timing.IsNodeAlive(node))
+            foreach (var node in nodes.Distinct())
             {
-                _cancellation.Cancel();
-                continue;
+                if (!Timing.IsNodeAlive(node))
+                {
+                    _cancellation.Cancel();
+                    continue;
+                }
+                _nodes.Add(new WeakReference<Node>(node));
+                node.TreeExiting += _onNodeExiting;
             }
-            _nodes.Add(new WeakReference<Node>(node));
-            node.TreeExiting += _onNodeExiting;
+            if (inner is ICoroutineCancellationSource source)
+            {
+                // Every wrapper exposes the union of its own nodes and any intrinsic lifetime beneath it.
+                _innerCancellationRegistration = source.CancellationToken.Register(_cancellation.Cancel);
+            }
+        }
+        catch (Exception setupFailure)
+        {
+            try
+            {
+                Dispose();
+            }
+            catch (Exception cleanupFailure)
+            {
+                throw new AggregateException("Node lifetime setup and cleanup failed.", setupFailure, cleanupFailure);
+            }
+            throw;
         }
     }
 
@@ -47,21 +69,8 @@ internal sealed class NodeBoundCoroutine : IEnumerator<IYieldInstruction>
     /// <inheritdoc />
     object IEnumerator.Current => Current;
 
-    /// <summary>Combines one external token without adding any native work to its callback.</summary>
-    /// <param name="token">The external lifetime token.</param>
-    /// <returns>The node-bound lifetime token.</returns>
-    internal CancellationToken BindCancellation(CancellationToken token)
-    {
-        if (_bound)
-            throw new InvalidOperationException("A node-bound iterator can only be run once.");
-        _bound = true;
-        if (token.CanBeCanceled)
-            _externalRegistration = token.Register(_cancellation.Cancel);
-        // Chained CancelWith wrappers must expose every bound node, including while a nested wait is blocked.
-        return _inner is NodeBoundCoroutine innerBound
-            ? innerBound.BindCancellation(_cancellation.Token)
-            : _cancellation.Token;
-    }
+    /// <summary>Gets the intrinsic lifetime independently from whichever facade, scope or context starts this iterator.</summary>
+    public CancellationToken CancellationToken { get; }
 
     /// <summary>Stops before the next user step when a bound node has exited.</summary>
     /// <returns>Whether the inner iterator produced another instruction.</returns>
@@ -91,7 +100,7 @@ internal sealed class NodeBoundCoroutine : IEnumerator<IYieldInstruction>
         }
 
         // Each resource has independent ownership. A failed native unsubscription must not skip user finally blocks.
-        TryDispose(_externalRegistration.Dispose, ref failures);
+        TryDispose(_innerCancellationRegistration.Dispose, ref failures);
         TryDispose(_cancellation.Dispose, ref failures);
         TryDispose(_inner.Dispose, ref failures);
         if (failures is { Count: 1 })

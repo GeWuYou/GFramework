@@ -12,7 +12,7 @@ namespace GFramework.Core.Coroutine.Instructions;
 ///     仅观察传入任务，不拥有或取消它；停止协程不会取消外部 Task。
 ///     直接读取完成状态无需分配延续，也不会从后台线程调用调度器。
 /// </remarks>
-public sealed class WaitForTask : IYieldInstruction, ICoroutineCompletionStatusSource
+public sealed class WaitForTask : IYieldInstruction, ICoroutineCompletionStatusSource, ICoroutineCompletionConsumer
 {
     private readonly Task _task;
 
@@ -50,5 +50,11 @@ public sealed class WaitForTask : IYieldInstruction, ICoroutineCompletionStatusS
         {
             _task.GetAwaiter().GetResult();
         }
+    }
+
+    /// <inheritdoc />
+    void ICoroutineCompletionConsumer.ConsumeCompletion()
+    {
+        _task.GetAwaiter().GetResult();
     }
 }

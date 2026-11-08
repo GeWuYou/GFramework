@@ -16,7 +16,6 @@
   - `RegisterExportedCollectionAttribute`
 - Godot 项目级辅助类型
   - `AutoLoadAttribute`
-  - `GodotModuleMarker`
   - `NodeLookupMode`
 
 这些类型负责定义“消费端项目可以声明哪些特性与参数”，而具体的生成逻辑、diagnostics 和生命周期约束仍在

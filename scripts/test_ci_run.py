@@ -26,6 +26,17 @@ class RunTests(unittest.TestCase):
         del needs["build-and-test"]
         self.assertTrue(ci_run.summary(plan, needs))
 
+    def test_every_selected_pipeline_failure_blocks_merge_summary(self):
+        plan = dict.fromkeys(ci_run.FLAGS, True)
+        needs = {name: {"result": "success"}
+                 for name in ("impact", "governance", *ci_run.JOBS.values())}
+        self.assertEqual(ci_run.summary(plan, needs), [])
+        for name in ci_run.JOBS.values():
+            for outcome in ("failure", "cancelled", "skipped", "missing"):
+                with self.subTest(job=name, outcome=outcome):
+                    failed = {**needs, name: {"result": outcome}}
+                    self.assertIn(f"{name}: {outcome}", ci_run.summary(plan, failed))
+
     def test_governance_and_routing_failure_always_fail_summary(self):
         plan = dict.fromkeys(ci_run.FLAGS, False)
         for job in ("impact", "governance"):

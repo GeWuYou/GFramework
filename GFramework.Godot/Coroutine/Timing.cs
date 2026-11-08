@@ -183,7 +183,7 @@ public partial class Timing : Node
     {
         if (coroutine == null)
             return default;
-        return Scheduler.Run(coroutine, tag, cancellationToken: BindCancellation(coroutine, cancellationToken),
+        return Scheduler.Run(coroutine, tag, cancellationToken: cancellationToken,
             stage: GetStage(segment), ignorePause: segment == Segment.ProcessIgnorePause);
     }
 
@@ -195,7 +195,7 @@ public partial class Timing : Node
     /// <returns>The task handle.</returns>
     public CoroutineHandle RunCoroutineOnInstance(Func<CoroutineContext, IEnumerator<IYieldInstruction>> factory,
         Segment segment = Segment.Process, string? tag = null, CancellationToken cancellationToken = default) =>
-        Scheduler.Run(BindFactory(factory), tag, cancellationToken: cancellationToken,
+        Scheduler.Run(factory, tag, cancellationToken: cancellationToken,
             stage: GetStage(segment), ignorePause: segment == Segment.ProcessIgnorePause);
 
     /// <summary>Pauses a task and its owned descendants without mounting another host.</summary>
@@ -347,8 +347,14 @@ public partial class Timing : Node
     /// <param name="failures">The accumulated cleanup failures.</param>
     private static void TryCleanup(Action cleanup, ref List<Exception>? failures)
     {
-        try { cleanup(); }
-        catch (Exception exception) { (failures ??= new List<Exception>()).Add(exception); }
+        try
+        {
+            cleanup();
+        }
+        catch (Exception exception)
+        {
+            (failures ??= new List<Exception>()).Add(exception);
+        }
     }
 
     /// <summary>Mounts only while the captured native root remains usable.</summary>
@@ -391,42 +397,6 @@ public partial class Timing : Node
         Segment.DeferredProcess => CoroutineExecutionStage.Deferred,
         _ => throw new ArgumentOutOfRangeException(nameof(segment), segment, "Unsupported coroutine segment.")
     };
-
-    /// <summary>Transfers wrapper lifetime cancellation so a long wait can still be cancelled.</summary>
-    /// <param name="coroutine">A potentially node-bound iterator.</param>
-    /// <param name="token">The caller's external token.</param>
-    /// <returns>The combined token, or the original token for ordinary iterators.</returns>
-    private static CancellationToken BindCancellation(IEnumerator<IYieldInstruction> coroutine, CancellationToken token) =>
-        coroutine is NodeBoundCoroutine bound ? bound.BindCancellation(token) : token;
-
-    /// <summary>Consumes node-bound lifetimes produced inside a structured factory without adding hidden task ownership.</summary>
-    /// <param name="factory">The user's factory.</param>
-    /// <returns>A factory with equivalent ownership and an additional node lifetime when required.</returns>
-    private static Func<CoroutineContext, IEnumerator<IYieldInstruction>> BindFactory(
-        Func<CoroutineContext, IEnumerator<IYieldInstruction>> factory)
-    {
-        ArgumentNullException.ThrowIfNull(factory);
-        return context =>
-        {
-            var coroutine = factory(context);
-            try
-            {
-                if (coroutine is NodeBoundCoroutine bound)
-                    context.CancelWhen(bound.BindCancellation(context.CancellationToken));
-            }
-            catch (Exception bindingFailure)
-            {
-                // The factory has transferred ownership even if installing its additional lifetime is rejected.
-                try { coroutine?.Dispose(); }
-                catch (Exception cleanupFailure)
-                {
-                    throw new AggregateException("Node-bound factory lifetime setup failed.", bindingFailure, cleanupFailure);
-                }
-                throw;
-            }
-            return coroutine;
-        };
-    }
 
     /// <summary>Executes one action when its delay completes.</summary>
     /// <param name="delay">The scaled delay.</param>

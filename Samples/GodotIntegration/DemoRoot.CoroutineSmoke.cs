@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using GFramework.Core.Abstractions.Coroutine;
 using GFramework.Core.Coroutine;
+using GFramework.Core.Coroutine.Extensions;
 using GFramework.Core.Coroutine.Instructions;
 using GFramework.Godot.Coroutine;
 using Godot;
@@ -49,6 +50,12 @@ public partial class DemoRoot
         public int GamePhysicsSteps { get; set; }
         /// <summary>Ignore-pause physics steps observed after the initial yield.</summary>
         public int UiPhysicsSteps { get; set; }
+        /// <summary>Scope and child starts whose additional node lifetime must cancel their blocked waits.</summary>
+        public List<CoroutineHandle> IntrinsicHandles { get; } = new();
+        /// <summary>Actual iterator finally blocks executed by those intrinsic lifetime cancellations.</summary>
+        public int IntrinsicDisposed { get; set; }
+        /// <summary>Success continuations that must never run after their bound node exits.</summary>
+        public int IntrinsicContinuations { get; set; }
     }
 
     /// <summary>Checks native stage transitions, paused physics, nested ownership and iterator cleanup.</summary>
@@ -63,6 +70,7 @@ public partial class DemoRoot
         {
             await VerifyCoroutineStageSwitchesAsync(probe).ConfigureAwait(true);
             StartCoroutineOwnershipProbe(probe);
+            StartCoroutineIntrinsicLifetimeProbe(probe);
             await VerifyPausedCoroutineCleanupAsync(probe).ConfigureAwait(true);
             await VerifyCoroutineOwnerExitAsync(probe).ConfigureAwait(true);
             GD.Print("GFRAMEWORK_SMOKE_CHECKS coroutine-stages,pause,ownership,finally: PASS");
@@ -110,6 +118,26 @@ public partial class DemoRoot
         probe.Handles.Add(probe.UiPhysics);
     }
 
+    /// <summary>Starts node-bound waits through raw scopes and child contexts, without Timing's run facades.</summary>
+    /// <param name="probe">The native owners and observable disposal state.</param>
+    private static void StartCoroutineIntrinsicLifetimeProbe(CoroutineSmokeProbe probe)
+    {
+        var scope = probe.Owner.CreateCoroutineScope();
+        probe.IntrinsicHandles.Add(scope.Run(
+            CoroutineBlockedWait(() => probe.IntrinsicDisposed++).CancelWith(probe.SecondaryOwner),
+            stage: CoroutineExecutionStage.FixedUpdate));
+        probe.IntrinsicHandles.Add(scope.Run(_ =>
+            CoroutineBlockedWait(() => probe.IntrinsicDisposed++).CancelWith(probe.SecondaryOwner).CancelWith(probe.Owner),
+            stage: CoroutineExecutionStage.FixedUpdate));
+        probe.IntrinsicHandles.Add(scope.Run(
+            CoroutineBlockedWait(() => probe.IntrinsicDisposed++).CancelWith(probe.SecondaryOwner)
+                .Then(() => probe.IntrinsicContinuations++),
+            stage: CoroutineExecutionStage.FixedUpdate));
+        probe.Handles.Add(probe.Owner.RunCoroutine(context => CoroutineIntrinsicChildFlow(context, probe),
+            Segment.PhysicsProcess));
+        probe.Handles.AddRange(probe.IntrinsicHandles);
+    }
+
     /// <summary>Separates scene pause, external token cancellation and native node-exit cancellation during long waits.</summary>
     /// <param name="probe">The native probe and its observable counters.</param>
     private async Task VerifyPausedCoroutineCleanupAsync(CoroutineSmokeProbe probe)
@@ -130,6 +158,10 @@ public partial class DemoRoot
             "CancelWith did not cancel a long wait and dispose its underlying iterator");
         Require(probe.FactoryWrapperDisposed && !Timing.TryGetCoroutineSnapshot(probe.FactoryWrapper, out _),
             "a factory-returned CancelWith iterator did not cancel during its long wait");
+        Require(probe.IntrinsicDisposed == 6 && probe.IntrinsicContinuations == 0 &&
+            probe.IntrinsicHandles.All(handle => !Timing.TryGetCoroutineSnapshot(handle, out _)),
+            "scope or child starts did not honor CancelWith during a paused long wait");
+        GD.Print("GFRAMEWORK_SMOKE_CHECKS coroutine-intrinsic-scope-child-lifetimes: PASS");
     }
 
     /// <summary>Releases an owner while paused and verifies actual descendant finally execution across stages.</summary>
@@ -182,7 +214,26 @@ public partial class DemoRoot
             yield return new SwitchTo(CoroutineExecutionStage.FixedUpdate);
             yield return new Delay(100);
         }
-        finally { probe.ParentDisposed = true; }
+        finally
+        {
+            probe.ParentDisposed = true;
+        }
+    }
+
+    /// <summary>Starts child iterators and factories with node lifetimes while leaving their parent independent.</summary>
+    /// <param name="context">The explicit parent-child ownership boundary.</param>
+    /// <param name="probe">The native owners and child observations.</param>
+    /// <returns>The parent blocked until its ordinary owner exits.</returns>
+    private static IEnumerator<IYieldInstruction> CoroutineIntrinsicChildFlow(CoroutineContext context, CoroutineSmokeProbe probe)
+    {
+        probe.IntrinsicHandles.Add(context.RunChild(
+            CoroutineBlockedWait(() => probe.IntrinsicDisposed++).CancelWith(probe.SecondaryOwner)));
+        probe.IntrinsicHandles.Add(context.RunChild(_ =>
+            CoroutineBlockedWait(() => probe.IntrinsicDisposed++).CancelWith(probe.SecondaryOwner).CancelWith(probe.Owner)));
+        probe.IntrinsicHandles.Add(context.RunChild(
+            CoroutineBlockedWait(() => probe.IntrinsicDisposed++).CancelWith(probe.SecondaryOwner)
+                .Then(() => probe.IntrinsicContinuations++)));
+        yield return new Delay(100);
     }
 
     /// <summary>Exposes whether cancellation actually disposes the user iterator during a long wait.</summary>
@@ -190,8 +241,14 @@ public partial class DemoRoot
     /// <returns>The blocked iterator.</returns>
     private static IEnumerator<IYieldInstruction> CoroutineBlockedWait(Action onDisposed)
     {
-        try { yield return new Delay(100); }
-        finally { onDisposed(); }
+        try
+        {
+            yield return new Delay(100);
+        }
+        finally
+        {
+            onDisposed();
+        }
     }
 
     /// <summary>Counts actual physics resumptions after optionally switching from an ignore-pause Update task.</summary>

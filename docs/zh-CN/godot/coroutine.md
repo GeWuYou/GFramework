@@ -117,7 +117,11 @@ if (Timing.TryGetCoroutineSnapshot(handle, out var snapshot))
 
 `GetOwnedCoroutineCount(node)` 包含节点作用域内的活跃子任务。句柄不再依赖有限的宿主槽位前缀，多宿主之间不会互相控制。
 
-`CancelWith(node1, node2)` 用于额外绑定多个节点：经 Timing 启动后，任意节点退树会请求取消，即使协程正阻塞在长期等待中；内部枚举器仍被释放。它只在 Godot 主线程创建和释放。普通单节点任务优先采用 Node 归属入口或节点拥有的作用域。
+`CancelWith(node1, node2)` 用于额外绑定多个节点：任意节点退树会请求取消，即使协程正阻塞在长期等待中或受场景暂停影响，内部枚举器仍被释放。该规则统一适用于 Timing 入口、`scope.Run(...)` 和 `context.RunChild(...)`，也适用于工厂返回的枚举器及多层 `CancelWith(...)`。额外节点取消子任务时，不会改变原有的父子所有权或取消其独立父流程。
+
+使用 `.CancelWith(node).Then(action)` 组合时，等待中的节点绑定仍然生效；节点取消后不会执行只应在成功结束后运行的 `action`。
+
+绑定包装器只在 Godot 主线程创建和释放。普通单节点任务优先采用 Node 归属入口或节点拥有的作用域。
 
 `CallDelayed(delay, action, owner)` 在 owner 退树后不会再执行动作。自定义等待指令、组合器及业务资源应提供确定的释放路径；调度器会隔离清理异常和完成通知异常。
 

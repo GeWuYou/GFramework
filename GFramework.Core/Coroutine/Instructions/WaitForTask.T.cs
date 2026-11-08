@@ -10,7 +10,7 @@ namespace GFramework.Core.Coroutine.Instructions;
 /// </summary>
 /// <typeparam name="T">任务结果类型。</typeparam>
 /// <remarks>该等待不拥有外部任务的取消权。</remarks>
-public sealed class WaitForTask<T> : IYieldInstruction, ICoroutineCompletionStatusSource
+public sealed class WaitForTask<T> : IYieldInstruction, ICoroutineCompletionStatusSource, ICoroutineCompletionConsumer
 {
     private readonly Task<T> _task;
 
@@ -55,5 +55,11 @@ public sealed class WaitForTask<T> : IYieldInstruction, ICoroutineCompletionStat
         {
             _ = _task.GetAwaiter().GetResult();
         }
+    }
+
+    /// <inheritdoc />
+    void ICoroutineCompletionConsumer.ConsumeCompletion()
+    {
+        _ = _task.GetAwaiter().GetResult();
     }
 }

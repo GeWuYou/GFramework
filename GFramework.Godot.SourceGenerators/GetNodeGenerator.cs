@@ -47,8 +47,8 @@ public sealed class GetNodeGenerator : IIncrementalGenerator
             {
                 Parent: VariableDeclarationSyntax
                 {
-                    Parent: FieldDeclarationSyntax fieldDeclaration
-                }
+                    Parent: FieldDeclarationSyntax fieldDeclaration,
+                },
             })
             return false;
 
@@ -283,26 +283,23 @@ public sealed class GetNodeGenerator : IIncrementalGenerator
 
     private static bool IsGeneratedInjectionInvocation(InvocationExpressionSyntax invocation)
     {
-        switch (invocation.Expression)
+        return invocation.Expression switch
         {
-            case IdentifierNameSyntax identifierName:
-                return string.Equals(
-                    identifierName.Identifier.ValueText,
-                    InjectionMethodName,
-                    StringComparison.Ordinal);
-            case MemberAccessExpressionSyntax memberAccess:
-                return string.Equals(
-                    memberAccess.Name.Identifier.ValueText,
-                    InjectionMethodName,
-                    StringComparison.Ordinal);
-            default:
-                return false;
-        }
+            IdentifierNameSyntax identifierName => string.Equals(
+                                identifierName.Identifier.ValueText,
+                                InjectionMethodName,
+                                StringComparison.Ordinal),
+            MemberAccessExpressionSyntax memberAccess => string.Equals(
+                                memberAccess.Name.Identifier.ValueText,
+                                InjectionMethodName,
+                                StringComparison.Ordinal),
+            _ => false,
+        };
     }
 
     private static bool ResolveRequired(AttributeData attribute)
     {
-        return attribute.GetNamedArgument("Required", true);
+        return attribute.GetNamedArgument("Required", defaultValue: true);
     }
 
     private static bool IsParameterlessInstanceMethod(IMethodSymbol method, string methodName)
@@ -350,15 +347,12 @@ public sealed class GetNodeGenerator : IIncrementalGenerator
 
     private static string BuildPathPrefix(NodeLookupModeValue lookupMode)
     {
-        switch (lookupMode)
+        return lookupMode switch
         {
-            case NodeLookupModeValue.RelativePath:
-                return string.Empty;
-            case NodeLookupModeValue.AbsolutePath:
-                return GodotAbsolutePathPrefix;
-            default:
-                return GodotUniqueNamePrefix;
-        }
+            NodeLookupModeValue.RelativePath => string.Empty,
+            NodeLookupModeValue.AbsolutePath => GodotAbsolutePathPrefix,
+            _ => GodotUniqueNamePrefix,
+        };
     }
 
     private static string? ResolveExplicitPath(AttributeData attribute)
@@ -442,14 +436,14 @@ public sealed class GetNodeGenerator : IIncrementalGenerator
         if (namespaceName is not null)
         {
             sb.AppendLine()
-                .AppendLine($"namespace {namespaceName};");
+.Append("namespace ").Append(namespaceName).Append(';').AppendLine();
         }
 
         sb.AppendLine()
-            .AppendLine($"partial class {typeSymbol.Name}{generics.Parameters}");
+.Append("partial class ").Append(typeSymbol.Name).Append(generics.Parameters).AppendLine();
 
         foreach (var constraint in generics.Constraints)
-            sb.AppendLine($"    {constraint}");
+            sb.Append("    ").Append(constraint).AppendLine();
 
         sb.AppendLine("{")
             .AppendLine($"    private void {InjectionMethodName}()")
@@ -463,8 +457,7 @@ public sealed class GetNodeGenerator : IIncrementalGenerator
 
             var accessor = binding.Required ? "GetNode" : "GetNodeOrNull";
             var pathLiteral = EscapeStringLiteral(binding.Path);
-            sb.AppendLine(
-                $"        {binding.FieldSymbol.Name} = {accessor}<{typeName}>(\"{pathLiteral}\");");
+            sb.Append("        ").Append(binding.FieldSymbol.Name).Append(" = ").Append(accessor).Append('<').Append(typeName).Append(">(\"").Append(pathLiteral).AppendLine("\");");
         }
 
         sb.AppendLine("    }");
@@ -490,11 +483,11 @@ public sealed class GetNodeGenerator : IIncrementalGenerator
     {
         return typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
             .Replace("global::", string.Empty)
-            .Replace("<", "_")
-            .Replace(">", "_")
-            .Replace(",", "_")
+            .Replace('<', '_')
+            .Replace('>', '_')
+            .Replace(',', '_')
             .Replace(" ", string.Empty)
-            .Replace(".", "_") + ".GetNode.g.cs";
+            .Replace('.', '_') + ".GetNode.g.cs";
     }
 
     private static string EscapeStringLiteral(string value)
@@ -525,38 +518,25 @@ public sealed class GetNodeGenerator : IIncrementalGenerator
         return orderedGroups;
     }
 
-    private sealed class FieldCandidate
+    private sealed class FieldCandidate(
+        VariableDeclaratorSyntax variable,
+        IFieldSymbol fieldSymbol)
     {
-        public FieldCandidate(
-            VariableDeclaratorSyntax variable,
-            IFieldSymbol fieldSymbol)
-        {
-            Variable = variable;
-            FieldSymbol = fieldSymbol;
-        }
+        public VariableDeclaratorSyntax Variable { get; } = variable;
 
-        public VariableDeclaratorSyntax Variable { get; }
-
-        public IFieldSymbol FieldSymbol { get; }
+        public IFieldSymbol FieldSymbol { get; } = fieldSymbol;
     }
 
-    private sealed class NodeBindingInfo
+    private sealed class NodeBindingInfo(
+        IFieldSymbol fieldSymbol,
+        string path,
+        bool required)
     {
-        public NodeBindingInfo(
-            IFieldSymbol fieldSymbol,
-            string path,
-            bool required)
-        {
-            FieldSymbol = fieldSymbol;
-            Path = path;
-            Required = required;
-        }
+        public IFieldSymbol FieldSymbol { get; } = fieldSymbol;
 
-        public IFieldSymbol FieldSymbol { get; }
+        public string Path { get; } = path;
 
-        public string Path { get; }
-
-        public bool Required { get; }
+        public bool Required { get; } = required;
     }
 
     private enum NodeLookupModeValue
@@ -564,18 +544,13 @@ public sealed class GetNodeGenerator : IIncrementalGenerator
         Auto = 0,
         UniqueName = 1,
         RelativePath = 2,
-        AbsolutePath = 3
+        AbsolutePath = 3,
     }
 
-    private sealed class TypeGroup
+    private sealed class TypeGroup(INamedTypeSymbol typeSymbol)
     {
-        public TypeGroup(INamedTypeSymbol typeSymbol)
-        {
-            TypeSymbol = typeSymbol;
-        }
+        public INamedTypeSymbol TypeSymbol { get; } = typeSymbol;
 
-        public INamedTypeSymbol TypeSymbol { get; }
-
-        public List<FieldCandidate> Fields { get; } = new();
+        public List<FieldCandidate> Fields { get; } = [];
     }
 }

@@ -15,6 +15,7 @@ internal sealed class CoroutineChildrenEnumerator : IEnumerator<IYieldInstructio
     private readonly IEnumerator<IYieldInstruction>?[] _pending;
     private readonly List<CoroutineHandle> _handles = new();
     private readonly List<JoinCoroutine> _joins = new();
+    private readonly List<Task<CoroutineResult>> _retainedResults = new();
     private IYieldInstruction? _current;
     private int _waitIndex;
     private bool _started;
@@ -56,7 +57,7 @@ internal sealed class CoroutineChildrenEnumerator : IEnumerator<IYieldInstructio
             }
             if (_waitIndex < _joins.Count)
             {
-                _current = _joins[_waitIndex++];
+                _current = GetNextJoin();
                 return true;
             }
             ThrowChildFailures();
@@ -95,11 +96,25 @@ internal sealed class CoroutineChildrenEnumerator : IEnumerator<IYieldInstructio
         var context = _context!;
         for (var index = 0; index < _pending.Length; index++)
         {
-            var handle = context.RunChild(_pending[index]);
+            var handle = context.RunChildObserved(_pending[index]!, out var result);
             _pending[index] = null;
             _handles.Add(handle);
-            _joins.Add(context.Scheduler.Join(handle));
+            // The observed start owns the result before callbacks. A fresh instruction must not capture an evicted Unknown first.
+            _joins.Add(new JoinCoroutine(context.Scheduler, handle));
+            _retainedResults.Add(result);
         }
+    }
+
+    private JoinCoroutine GetNextJoin()
+    {
+        var join = _joins[_waitIndex];
+        var result = _retainedResults[_waitIndex++];
+        if (result.IsCompleted)
+        {
+            // An unfinished child is still installed as a normal dependency. Completed observations never block the driver.
+            join.Complete(result.GetAwaiter().GetResult());
+        }
+        return join;
     }
 
     private void ThrowChildFailures()
@@ -149,6 +164,7 @@ internal sealed class CoroutineChildrenEnumerator : IEnumerator<IYieldInstructio
         }
         CancelRemainingChildren(ref failures);
         _joins.Clear();
+        _retainedResults.Clear();
         _handles.Clear();
         _context = null;
         return failures switch

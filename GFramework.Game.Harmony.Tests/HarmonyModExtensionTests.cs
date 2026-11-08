@@ -27,6 +27,8 @@ namespace GFramework.Game.Harmony.Tests;
 [NonParallelizable]
 public sealed class HarmonyModExtensionTests
 {
+    private static readonly string[] _otherOwners = ["other-owner"];
+
     /// <summary>Stopping one owner preserves a second owner's patch on the same method.</summary>
     [Test]
     public async Task TwoOwners_CoexistAndUnpatchIndependently()
@@ -37,7 +39,7 @@ public sealed class HarmonyModExtensionTests
         var firstPatches = (IModPatchService)first.GetService(typeof(IModPatchService))!;
         var secondPatches = (IModPatchService)second.GetService(typeof(IModPatchService))!;
         var target = Method(nameof(Score));
-        firstPatches.Patch(target, postfix: new ModPatchMethod(Method(nameof(AddOne))) { Priority = 123, Before = new[] { "other-owner" } });
+        firstPatches.Patch(target, postfix: new ModPatchMethod(Method(nameof(AddOne))) { Priority = 123, Before = _otherOwners });
         secondPatches.Patch(target, postfix: new ModPatchMethod(Method(nameof(AddTen))));
         Assert.That(Score(), Is.EqualTo(21));
         var diagnostics = firstPatches.GetPatches();
@@ -45,7 +47,7 @@ public sealed class HarmonyModExtensionTests
         Assert.That(diagnostics[0].OwnerId, Is.EqualTo(HarmonyModExtension.GetOwnerId("test", "first")));
         Assert.That(diagnostics[0].Kind, Is.EqualTo("Postfix"));
         Assert.That(diagnostics[0].Priority, Is.EqualTo(123));
-        Assert.That(diagnostics[0].Before, Is.EqualTo(new[] { "other-owner" }));
+        Assert.That(diagnostics[0].Before, Is.EqualTo(["other-owner"]));
         firstPatches.UnpatchAll();
         Assert.That(Score(), Is.EqualTo(20));
         Assert.That(secondPatches.GetPatches(), Has.Count.EqualTo(1));
@@ -103,22 +105,22 @@ public sealed class HarmonyModExtensionTests
     public async Task CustomAdapterContext_UsesDefaultEngineForRealPatches()
     {
         var context = new AdapterLoadContext();
-        using var source = File.OpenRead(typeof(HarmonyModExtension).Assembly.Location);
+        await using var source = File.OpenRead(typeof(HarmonyModExtension).Assembly.Location);
         var adapter = context.LoadFromStream(source);
         Assert.That(adapter.Location, Is.Empty, "The fixture reproduces Godot's in-memory assembly loading.");
-        var extensionType = adapter.GetType(typeof(HarmonyModExtension).FullName!, true)!;
-        var extension = (IGameModExtension)Activator.CreateInstance(extensionType, new object?[] { null })!;
+        var extensionType = adapter.GetType(typeof(HarmonyModExtension).FullName!, throwOnError: true)!;
+        var extension = (IGameModExtension)Activator.CreateInstance(extensionType, [null])!;
         var engine = extension.SharedAssemblies.Single(static assembly => string.Equals(assembly.GetName().Name, "0Harmony", StringComparison.Ordinal));
         Assert.That(AssemblyLoadContext.GetLoadContext(engine), Is.SameAs(AssemblyLoadContext.Default));
         Assert.That(context.Assemblies.Any(static assembly => string.Equals(assembly.GetName().Name, "0Harmony", StringComparison.Ordinal)), Is.False);
         var scope = extension.CreateScope(new TestContext("custom-adapter"));
         await using var cleanup = scope.ConfigureAwait(false);
-        var serviceType = adapter.GetType(typeof(IModPatchService).FullName!, true)!;
+        var serviceType = adapter.GetType(typeof(IModPatchService).FullName!, throwOnError: true)!;
         var service = scope.GetService(serviceType)!;
-        var declarationType = adapter.GetType(typeof(ModPatchMethod).FullName!, true)!;
+        var declarationType = adapter.GetType(typeof(ModPatchMethod).FullName!, throwOnError: true)!;
         var declaration = Activator.CreateInstance(declarationType, Method(nameof(AddOne)))!;
         serviceType.GetMethod("Patch")!.Invoke(service,
-            new object?[] { Method(nameof(Score)), null, declaration, null, null });
+            [Method(nameof(Score)), null, declaration, null, null]);
         Assert.That(Score(), Is.EqualTo(11));
         await scope.DisposeAsync().ConfigureAwait(false);
         Assert.That(Score(), Is.EqualTo(10));
@@ -165,7 +167,12 @@ public sealed class HarmonyModExtensionTests
     private static void AddTen(ref int __result) => __result += 10;
     private static void InvalidPostfix(string absentParameter) => _ = absentParameter;
     private static bool SkipOriginal(ref int __result) { __result = 42; return false; }
-    private static Exception? SuppressError(Exception __exception) => null;
+    private static Exception? SuppressError(Exception __exception)
+    {
+        // Harmony injects this argument by name; this finalizer intentionally suppresses the supplied failure.
+        _ = __exception;
+        return null;
+    }
     /// <summary>Changes one known IL constant to prove actual transpiler execution instead of inspecting registration.</summary>
     private static IEnumerable<CodeInstruction> ReplaceTen(IEnumerable<CodeInstruction> instructions)
     {

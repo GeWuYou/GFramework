@@ -90,7 +90,7 @@ public partial class Timing
         }
 
         var scope = GetOrCreateOwnedScope(owner!).DefaultScope;
-        return scope.Run(coroutine, tag, cancellationToken: BindCancellation(coroutine, cancellationToken),
+        return scope.Run(coroutine, tag, cancellationToken: cancellationToken,
             stage: GetStage(segment), ignorePause: segment == Segment.ProcessIgnorePause);
     }
 
@@ -108,7 +108,7 @@ public partial class Timing
         ArgumentNullException.ThrowIfNull(factory);
         if (!IsNodeAlive(owner))
             return default;
-        return GetOrCreateOwnedScope(owner!).DefaultScope.Run(BindFactory(factory), tag,
+        return GetOrCreateOwnedScope(owner!).DefaultScope.Run(factory, tag,
             cancellationToken: cancellationToken, stage: GetStage(segment),
             ignorePause: segment == Segment.ProcessIgnorePause);
     }
